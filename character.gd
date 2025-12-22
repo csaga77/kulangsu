@@ -22,46 +22,49 @@ extends CharacterBody2D
 		is_running = new_is_running
 		_update_state() 
 
-var m_body_frames     :SpriteFrames
-var m_head_frames     :SpriteFrames
-var m_clothes_frames  :SpriteFrames
-var m_pants_frames    :SpriteFrames
-var m_hair_frames     :SpriteFrames
-var m_foot_frames     :SpriteFrames
-#var m_backpack_frames :SpriteFrames
-
-var m_texture_list := {
-	"body": "res://sprites/male_body.png",
-	"foot": "res://sprites/basic_shoes_black.png",
-	"pants": "res://sprites/male_longpants.png",
-	"clothes": "res://sprites/male_longsleeve.png",
-	"backpack": "res://sprites/backpack_black.png",
-	"head": "res://sprites/male_head.png",
-	"hair": "res://sprites/hair_black.png",
-}
-
+var m_texture_list := [
+	"res://sprites/male_body.png",
+	"res://sprites/basic_shoes_black.png",
+	"res://sprites/male_longpants.png",
+	"res://sprites/male_longsleeve.png",
+	#"res://sprites/backpack_black.png",
+	"res://sprites/male_head.png",
+	"res://sprites/hair_black.png",
+]
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	var sprite_frames_template :SpriteFrames = load("res://sprites/male_animations.tres")
-	var animated_nodes = find_children("", "AnimatedSprite2D")
-	
-	for node in animated_nodes:
-		var texture_file = m_texture_list.get(node.name)
-		if texture_file == null:
-			continue
-		var frame_texture = load(texture_file)
-		var sprite_frames :SpriteFrames = sprite_frames_template.duplicate()
-		node.sprite_frames = sprite_frames
-		var animations = sprite_frames.get_animation_names()
-		for animation_name in animations:
-			var count = sprite_frames.get_frame_count(animation_name)
-			for i in count:
-				var tex :AtlasTexture = sprite_frames.get_frame_texture(animation_name, i).duplicate()
-				if tex != null:
-					tex.atlas = frame_texture
-					sprite_frames.set_frame(animation_name, i, tex)
+	_reload()
 
+func _reload():
+	for node in get_children():
+		if node is AnimatedSprite2D:
+			node.queue_free()
+			
+	var body :AnimatedSprite2D = AnimatedSprite2D.new()
+	add_child(body)
+	
+	var sprite_frames_template :SpriteFrames = load("res://sprites/male_animations.tres").duplicate()
+	body.sprite_frames = sprite_frames_template
+	
+	var combined_image :Image = null
+	for texture_file in m_texture_list:
+		var frame_texture :Texture2D = load(texture_file)
+		if combined_image == null:
+			combined_image = frame_texture.get_image()
+		else:
+			var img = frame_texture.get_image()
+			combined_image.blend_rect(img, img.get_used_rect(), img.get_used_rect().position)
+	
+	var texture := ImageTexture.create_from_image(combined_image)
+	var animations = sprite_frames_template.get_animation_names()
+	for animation_name in animations:
+		var count = sprite_frames_template.get_frame_count(animation_name)
+		for i in count:
+			var tex :AtlasTexture = sprite_frames_template.get_frame_texture(animation_name, i).duplicate()
+			if tex != null:
+				tex.atlas = texture
+				sprite_frames_template.set_frame(animation_name, i, tex)
 
 	_update_state()
 
@@ -90,11 +93,11 @@ func _update_state() -> void:
 	elif _is_in_range(normalized_direction, 225, 315):
 		animation_name += "down"
 		
-	var animated_nodes = find_children("", "AnimatedSprite2D")
-	for node in animated_nodes:
-		node.stop()
-		node.play(animation_name)
-
+	for node in get_children():
+		if node is AnimatedSprite2D:
+			node.stop()
+			node.play(animation_name)
+		
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
 	pass
