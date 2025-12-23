@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ccptmkd8c4rj4"
-path="res://.godot/imported/male_longsleeve.png-0105603031ea1912556ecf15c0430091.ctex"
+uid="uid://bhes58pyo3ckf"
+path="res://.godot/imported/male_head.png-d77f93a67290732d8ab607cb8ad53cfb.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/male_longsleeve.png"
-dest_files=["res://.godot/imported/male_longsleeve.png-0105603031ea1912556ecf15c0430091.ctex"]
+source_file="res://sprites/male/male_head.png"
+dest_files=["res://.godot/imported/male_head.png-d77f93a67290732d8ab607cb8ad53cfb.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bfo4y312m8j8v"
-path="res://.godot/imported/hair_black.png-7ff71dc4f8e3cf1107a36e808b516172.ctex"
+uid="uid://jur5u0ho22hb"
+path="res://.godot/imported/female_longpants_black.png-d8c6f96fdbe1e40c26d55b7b790030fc.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/hair_black.png"
-dest_files=["res://.godot/imported/hair_black.png-7ff71dc4f8e3cf1107a36e808b516172.ctex"]
+source_file="res://sprites/female/female_longpants_black.png"
+dest_files=["res://.godot/imported/female_longpants_black.png-d8c6f96fdbe1e40c26d55b7b790030fc.ctex"]
 
 [params]
 

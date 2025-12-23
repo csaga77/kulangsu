@@ -1,6 +1,19 @@
 @tool
 extends CharacterBody2D
 
+enum BodyTypeEnum
+{
+	MALE = 0,
+	FEMALE = 1
+}
+
+@export var body_type :BodyTypeEnum = BodyTypeEnum.MALE:
+	set(new_body_type):
+		if body_type == new_body_type:
+			return
+		body_type = new_body_type
+		_reload()
+
 @export var direction :float = 0:
 	set(new_direction):
 		if direction == new_direction:
@@ -22,14 +35,24 @@ extends CharacterBody2D
 		is_running = new_is_running
 		_update_state() 
 
-var m_texture_list := [
-	"res://sprites/male_body.png",
-	"res://sprites/basic_shoes_black.png",
-	"res://sprites/male_longpants.png",
-	"res://sprites/male_longsleeve.png",
+var m_male_frames := [
+	"res://sprites/male/male_body.png",
+	"res://sprites/male/male_basic_shoes_black.png",
+	"res://sprites/male/male_longpants_black.png",
+	"res://sprites/male/male_longsleeve_white.png",
 	#"res://sprites/backpack_black.png",
-	"res://sprites/male_head.png",
-	"res://sprites/hair_black.png",
+	"res://sprites/male/male_head.png",
+	"res://sprites/hair_short_black.png",
+]
+
+var m_female_frames := [
+	"res://sprites/female/female_body.png",
+	"res://sprites/female/female_basic_shoes_black.png",
+	"res://sprites/female/female_longpants_black.png",
+	"res://sprites/female/female_longsleeve_white.png",
+	#"res://sprites/backpack_black.png",
+	"res://sprites/female/female_head.png",
+	"res://sprites/hair_long_loose_blonde.png",
 ]
 
 # Called when the node enters the scene tree for the first time.
@@ -48,7 +71,10 @@ func _reload():
 	body.sprite_frames = sprite_frames_template
 	
 	var combined_image :Image = null
-	for texture_file in m_texture_list:
+	var frames = m_male_frames
+	if body_type == BodyTypeEnum.FEMALE:
+		frames = m_female_frames
+	for texture_file in frames:
 		var frame_texture :Texture2D = load(texture_file)
 		if combined_image == null:
 			combined_image = frame_texture.get_image()

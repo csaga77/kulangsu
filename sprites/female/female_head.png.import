@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c1f2ol63r17kq"
-path="res://.godot/imported/male_walkcycle.png-477c7410a7b76efafd121ad6f8c28471.ctex"
+uid="uid://2ne1d0gkgidh"
+path="res://.godot/imported/female_head.png-09c5944fa32a87500439d03c12348f7f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/male_walkcycle.png"
-dest_files=["res://.godot/imported/male_walkcycle.png-477c7410a7b76efafd121ad6f8c28471.ctex"]
+source_file="res://sprites/female/female_head.png"
+dest_files=["res://.godot/imported/female_head.png-09c5944fa32a87500439d03c12348f7f.ctex"]
 
 [params]
 

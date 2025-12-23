@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://8lwwaj2m5tid"
-path="res://.godot/imported/male_longpants.png-5e09ea421aa2867e5488285392678921.ctex"
+uid="uid://spl03fvynmf6"
+path="res://.godot/imported/male_body.png-679d00dfe6272c1ecf0661e42a6406fe.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/male_longpants.png"
-dest_files=["res://.godot/imported/male_longpants.png-5e09ea421aa2867e5488285392678921.ctex"]
+source_file="res://sprites/male/male_body.png"
+dest_files=["res://.godot/imported/male_body.png-679d00dfe6272c1ecf0661e42a6406fe.ctex"]
 
 [params]
 
