@@ -11,12 +11,15 @@ config_version=5
 [application]
 
 config/name="kulangsu"
-run/main_scene="uid://chfnv650kjhxr"
+run/main_scene="uid://dd4h1niyolnlj"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
 
 [display]
 
+window/size/viewport_width=1440
+window/size/viewport_height=810
+window/stretch/mode="canvas_items"
 window/stretch/scale=2.0
 
 [input]
