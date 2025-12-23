@@ -110,12 +110,12 @@ func _update_state() -> void:
 			animation_name = "run"
 	animation_name += "_"
 	var normalized_direction = _normalize_angle(direction)
-	if _is_in_range(normalized_direction, 0, 45) or _is_in_range(normalized_direction, 315, 360):
+	if _is_in_range(normalized_direction, 0, 45.01) or _is_in_range(normalized_direction, 314.09, 360):
 		animation_name += "right"
-	elif _is_in_range(normalized_direction, 45, 135):
-		animation_name += "up"
 	elif _is_in_range(normalized_direction, 135, 225):
 		animation_name += "left"
+	elif _is_in_range(normalized_direction, 45, 135):
+		animation_name += "up"
 	elif _is_in_range(normalized_direction, 225, 315):
 		animation_name += "down"
 		
