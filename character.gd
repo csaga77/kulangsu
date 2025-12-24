@@ -67,7 +67,8 @@ func _reload():
 			
 	var body :AnimatedSprite2D = AnimatedSprite2D.new()
 	add_child(body)
-	
+	body.position = Vector2(0, -24)
+
 	var sprite_frames_template :SpriteFrames = load("res://sprites/male_animations.tres").duplicate()
 	body.sprite_frames = sprite_frames_template
 	
