@@ -1,15 +1,8 @@
-[gd_scene load_steps=6 format=4 uid="uid://byyig1mqymirh"]
+[gd_scene load_steps=4 format=4 uid="uid://byyig1mqymirh"]
 
 [ext_resource type="TileSet" uid="uid://dvrbkuapcr681" path="res://tilesets/tileset.tres" id="1_2kux5"]
 [ext_resource type="Script" uid="uid://bj1l407ues4al" path="res://ferry.gd" id="1_coo13"]
 [ext_resource type="Script" uid="uid://der8h56hnatrm" path="res://wall.gd" id="2_10jos"]
-[ext_resource type="Shader" uid="uid://5tgugs840ltd" path="res://wall_transparent.gdshader" id="3_j461t"]
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_noucg"]
-shader = ExtResource("3_j461t")
-shader_parameter/scale = 0.006944444
-shader_parameter/trans_rect_pos = Vector2(0, 0)
-shader_parameter/trans_rect_size = Vector2(0, 0)
 
 [node name="ferry" type="Node2D"]
 y_sort_enabled = true
@@ -21,7 +14,6 @@ tile_set = ExtResource("1_2kux5")
 
 [node name="wall" type="TileMapLayer" parent="."]
 y_sort_enabled = true
-material = SubResource("ShaderMaterial_noucg")
 tile_map_data = PackedByteArray("AAAGAAcAAgAAAAsAAAAGAAgAAgABAAsAAAAGAAkAAgAAAAsAAAABAAoAAgACAAgAAAABAA0AAgACAAgAAAACAAoAAgACAAgAAAACAA0AAgACAAgAAAADAAoAAgACAAgAAAADAA0AAgACAAgAAAAEAAoAAgACAAgAAAAEAA0AAgACAAgAAAAFAAoAAgACAAgAAAAFAA0AAgACAAgAAAAGAAEAAgABAAgAAAAGAAIAAgABAAsAAAAGAAMAAgAAAAsAAAAGAAQAAgABAAsAAAAGAAUAAgAAAAsAAAAGAAYAAgABAAsAAAAGAAoAAgAAAAgAAAAGAA0AAgACAAgAAAAHAA0AAgACAAgAAAAIAA0AAgACAAgAAAAJAA0AAgACAAgAAAAKAAsAAgABAAgAAAAKAAwAAgABAAgAAAAKAA0AAgAAAAgAAAALAAoAAgACAAgAAAAMAAEAAgABAAgAAAAMAAIAAgABAAsAAAAMAAMAAgAAAAsAAAAMAAQAAgABAAsAAAAMAAUAAgAAAAsAAAAMAAYAAgABAAsAAAAMAAcAAgAAAAsAAAAMAAgAAgABAAsAAAAMAAkAAgAAAAsAAAAMAAoAAgAAAAgAAAAHAAAAAgACAAgAAAAIAAAAAgACAAgAAAAJAAAAAgACAAgAAAAKAAAAAgACAAgAAAALAAAAAgACAAgAAAAMAAAAAgACAAgAAAAAAAsAAgABAAgAAAAAAAwAAgABAAgAAAAAAA0AAgABAAgAAAA=")
 tile_set = ExtResource("1_2kux5")
 script = ExtResource("2_10jos")
