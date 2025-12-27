@@ -9,9 +9,9 @@ func _ready() -> void:
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
 	var rect :Rect2
-	rect.position = m_character.global_position - Vector2(16, 48)
-	rect.size = Vector2(32, 64)
+	#rect.position = m_character.global_position - Vector2(16, 48)
+	#rect.size = Vector2(32, 64)
 	
-	#rect.position = m_character.global_position - Vector2(32, 8)
-	#rect.size = Vector2(64, 64)
+	rect.position = m_character.global_position - Vector2(16, 4)
+	rect.size = Vector2(32, 80)
 	m_ferry.set_trans_rect(rect)
