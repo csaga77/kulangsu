@@ -3,7 +3,7 @@
 [ext_resource type="TileSet" uid="uid://dvrbkuapcr681" path="res://tilesets/tileset.tres" id="1_2kux5"]
 [ext_resource type="Script" uid="uid://bj1l407ues4al" path="res://ferry.gd" id="1_coo13"]
 [ext_resource type="Script" uid="uid://der8h56hnatrm" path="res://wall.gd" id="2_10jos"]
-[ext_resource type="Shader" uid="uid://5tgugs840ltd" path="res://ferry.gdshader" id="3_j461t"]
+[ext_resource type="Shader" uid="uid://5tgugs840ltd" path="res://wall_transparent.gdshader" id="3_j461t"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_noucg"]
 shader = ExtResource("3_j461t")
