@@ -1,0 +1,4 @@
+[submodule "godot_common"]
+	path = godot_common
+	url = ../godot_common.git
+	branch = main
