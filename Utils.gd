@@ -1,11 +1,8 @@
 @tool
 class_name Utils
 
-# Returns a list of Vector2i cell coords whose tile area intersects rect_global.
-static func get_cells_intersecting_rect_global(layer: TileMapLayer, rect_global: Rect2) -> Set:
-	var result: Set = Set.new([])
-
-	# 1) Convert global rect corners -> layer local
+static func find_cells_rect(layer: TileMapLayer, rect_global) -> Rect2i:
+		# 1) Convert global rect corners -> layer local
 	var p0_local: Vector2i = layer.local_to_map(layer.to_local(rect_global.position))
 	var p1_local: Vector2i = layer.local_to_map(layer.to_local(rect_global.end))
 	var p2_local: Vector2i = layer.local_to_map(layer.to_local(rect_global.position + Vector2(rect_global.size.x, 0)))
@@ -26,6 +23,37 @@ static func get_cells_intersecting_rect_global(layer: TileMapLayer, rect_global:
 	var x1 = max(min_cell.x, max_cell.x)
 	var y0 = min(min_cell.y, max_cell.y)
 	var y1 = max(min_cell.y, max_cell.y)
+	
+	return Rect2i(x0, y0, x1 - x0, y1 - y0)
+
+static func intersects_rect_global(layer: TileMapLayer, rect_global) -> bool:
+	var rect :Rect2i = find_cells_rect(layer, rect_global)
+	
+	# Normalize in case transforms cause inversion
+	var x0 = rect.position.x
+	var x1 = rect.end.x
+	var y0 = rect.position.y
+	var y1 = rect.end.y
+	
+	# 3) Broad-phase: iterate all candidate cells
+	for y in range(y0, y1):
+		for x in range(x0, x1):
+			var cell := Vector2i(x, y)
+			if layer.get_cell_source_id(cell) == -1:
+				continue
+			return true
+	return false
+	
+# Returns a list of Vector2i cell coords whose tile area intersects rect_global.
+static func get_cells_intersecting_rect_global(layer: TileMapLayer, rect_global: Rect2) -> Set:
+	var result: Set = Set.new([])
+	var rect :Rect2i = find_cells_rect(layer, rect_global)
+	
+	# Normalize in case transforms cause inversion
+	var x0 = rect.position.x
+	var x1 = rect.end.x
+	var y0 = rect.position.y
+	var y1 = rect.end.y
 
 	# 3) Broad-phase: iterate all candidate cells
 	for y in range(y0, y1):

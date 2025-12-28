@@ -26,12 +26,11 @@ func set_trans_rect(rect):
 	m_roof.visible = is_roof_visible
 	if is_roof_visible:
 		m_wall_front.modulate.a = 1.0
-		var c :Set = Utils.get_cells_intersecting_rect_global(m_wall_mask, rect)
-		if c.is_empty():
+		if Utils.intersects_rect_global(m_wall_mask, rect):
+			m_wall_back.modulate.a = 0.5
+		else:
 			m_trans_rect.size = Vector2i.ZERO
 			m_wall_back.modulate.a = 1.0
-		else:
-			m_wall_back.modulate.a = 0.5
 	else:
 		m_wall_back.modulate.a = 1.0
 		m_wall_front.modulate.a = 0.5
