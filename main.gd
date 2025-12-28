@@ -13,5 +13,5 @@ func _process(delta: float) -> void:
 	#rect.size = Vector2(32, 64)
 	
 	rect.position = m_character.global_position - Vector2(16, 4)
-	rect.size = Vector2(32, 80)
+	rect.size = Vector2(32, 32)
 	m_ferry.set_trans_rect(rect)
