@@ -1,6 +1,6 @@
 extends Node2D
 
-@onready var m_ferry := $ferry
+@onready var m_ferry := $Ferry
 @onready var m_character :Character = $Character
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
