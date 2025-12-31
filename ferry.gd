@@ -5,7 +5,8 @@ extends Node2D
 @onready var m_roof := $roof
 @onready var m_floor :TileMapLayer = $floor
 @onready var m_roof_top :Sprite2D = $roof/roof_top
-@onready var m_wall_mask :TileMapLayer = $wall_mask
+@onready var m_wall_mask  :TileMapLayer = $wall_back/wall_mask
+@onready var m_floor_internal :TileMapLayer = $floor/floor_internal
 
 var m_trans_rect :Rect2
 
@@ -15,14 +16,7 @@ func set_trans_rect(rect):
 	m_trans_rect.position.y -= 32
 	m_trans_rect.size = m_trans_rect.size * 2
 	
-	var cells = Utils.get_cells_intersecting_rect_global(m_floor, rect)
-	var is_roof_visible = true
-	for cell in cells.data:
-		#var tile_data :TileData = m_floor.get_cell_tile_data(cell)
-		var atlas_coords := m_floor.get_cell_atlas_coords(cell)
-		if atlas_coords == Vector2i(1, 0):
-			is_roof_visible = false
-			break
+	var is_roof_visible = !Utils.intersects_rect_global(m_floor_internal, rect)
 	m_roof.visible = is_roof_visible
 	if is_roof_visible:
 		m_wall_front.modulate.a = 1.0
