@@ -1,4 +1,4 @@
-[gd_resource type="TileSet" load_steps=13 format=3 uid="uid://dvrbkuapcr681"]
+[gd_resource type="TileSet" load_steps=15 format=3 uid="uid://dvrbkuapcr681"]
 
 [ext_resource type="Texture2D" uid="uid://g5jc1m7d74xn" path="res://tilesets/building_0.png" id="1_kapyo"]
 [ext_resource type="Texture2D" uid="uid://cvy6tgofjklfv" path="res://tilesets/terrain_0.png" id="2_o6ybq"]
@@ -6,6 +6,7 @@
 [ext_resource type="Texture2D" uid="uid://bo115466yssd" path="res://tilesets/terrain_1.png" id="3_o42e4"]
 [ext_resource type="Texture2D" uid="uid://c72ct2insxyd7" path="res://tilesets/marks.png" id="4_o42e4"]
 [ext_resource type="Texture2D" uid="uid://boimxmy011fgm" path="res://tilesets/rail_tiles.png" id="5_uo638"]
+[ext_resource type="Texture2D" uid="uid://dp1vg0m4ov76n" path="res://tilesets/floor_tiles.png" id="7_7l566"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_1bvp3"]
 texture = ExtResource("1_kapyo")
@@ -1019,6 +1020,13 @@ texture_region_size = Vector2i(64, 32)
 7:13/0 = 0
 9:13/0 = 0
 
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_xxt58"]
+texture = ExtResource("7_7l566")
+texture_region_size = Vector2i(64, 32)
+0:0/0 = 0
+1:0/0 = 0
+2:0/0 = 0
+
 [resource]
 tile_shape = 1
 tile_layout = 5
@@ -1033,3 +1041,4 @@ sources/0 = SubResource("TileSetAtlasSource_1bvp3")
 sources/2 = SubResource("TileSetAtlasSource_o42e4")
 sources/3 = SubResource("TileSetAtlasSource_uo638")
 sources/4 = SubResource("TileSetAtlasSource_7l566")
+sources/6 = SubResource("TileSetAtlasSource_xxt58")
