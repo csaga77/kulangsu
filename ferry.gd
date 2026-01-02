@@ -1,3 +1,5 @@
+@tool
+class_name Ferry
 extends Node2D
 
 @onready var m_wall_back := $wall_back
