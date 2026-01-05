@@ -8,6 +8,8 @@ enum BodyTypeEnum
 	FEMALE = 1
 }
 
+signal global_position_changed()
+
 @export var body_type :BodyTypeEnum = BodyTypeEnum.MALE:
 	set(new_body_type):
 		if body_type == new_body_type:
@@ -35,6 +37,30 @@ enum BodyTypeEnum
 			return
 		is_running = new_is_running
 		_update_state() 
+		
+func get_bounding_rect() -> Rect2:
+	return Rect2(global_position - Vector2(16, 32), Vector2(32, 64))
+	
+func get_ground_rect() -> Rect2:
+	return Rect2(global_position - Vector2(16, 4), Vector2(32, 32))
+	
+
+func switch_layer(source_layer :TileMapLayer, target_layer :TileMapLayer, default_position :Vector2) -> void:
+	if source_layer != m_current_layer:
+		return
+	if m_current_layer:
+		#Utils.enable_collision(m_current_layer, false)
+		m_current_layer.collision_enabled = false
+	m_current_layer = target_layer
+	if m_current_layer:
+		z_index = m_current_layer.z_index
+		global_position = default_position
+		#Utils.enable_collision(m_current_layer)
+		m_current_layer.collision_enabled = true
+	else:
+		z_index = 0
+	
+var m_current_layer: TileMapLayer = null
 
 var m_male_frames := [
 	"res://sprites/male/male_body.png",
@@ -55,6 +81,8 @@ var m_female_frames := [
 	"res://sprites/female/female_head.png",
 	"res://sprites/hair_long_loose_blonde.png",
 ]
+
+var m_last_global_position := Vector2.ZERO
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -96,8 +124,8 @@ func _reload():
 
 	_update_state()
 
-func _is_in_range(value, min, max) -> bool:
-	return value >= min and value <= max
+func _is_in_range(value, min_value, max_value) -> bool:
+	return value >= min_value and value <= max_value
 
 func _normalize_angle(degrees):
 	var d = fmod(degrees, 360)
@@ -127,5 +155,6 @@ func _update_state() -> void:
 			node.play(animation_name)
 		
 # Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(delta: float) -> void:
-	pass
+func _process(_delta: float) -> void:
+	if !m_last_global_position.is_equal_approx(global_position):
+		global_position_changed.emit()

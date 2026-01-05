@@ -1,0 +1,26 @@
+[gd_scene load_steps=3 format=3 uid="uid://da2ycsapsfbtc"]
+
+[ext_resource type="Script" uid="uid://htxq0pd4l5hv" path="res://entry.gd" id="1_rixl5"]
+
+[sub_resource type="ConvexPolygonShape2D" id="ConvexPolygonShape2D_nlbgg"]
+points = PackedVector2Array(32, 0, 0, 16, -32, 0, 0, -16)
+
+[node name="Entry" type="Node2D"]
+script = ExtResource("1_rixl5")
+
+[node name="Entry1" type="Area2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Entry1"]
+shape = SubResource("ConvexPolygonShape2D_nlbgg")
+
+[node name="Entry2" type="Area2D" parent="."]
+position = Vector2(32, -16)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Entry2"]
+shape = SubResource("ConvexPolygonShape2D_nlbgg")
+debug_color = Color(0.989497, 0, 0.29520148, 0.41960785)
+
+[connection signal="body_entered" from="Entry1" to="." method="_on_entry_1_body_entered"]
+[connection signal="body_exited" from="Entry1" to="." method="_on_entry_1_body_exited"]
+[connection signal="body_entered" from="Entry2" to="." method="_on_entry_2_body_entered"]
+[connection signal="body_exited" from="Entry2" to="." method="_on_entry_2_body_exited"]

@@ -65,7 +65,7 @@ func _ready() -> void:
 	m_is_ready = true
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	var rect :Rect2
 	#rect.position = m_character.global_position - Vector2(16, 48)
 	#rect.size = Vector2(32, 64)

@@ -89,3 +89,11 @@ static func get_cells_intersecting_rect_global(layer: TileMapLayer, rect_global:
 			result.insert(cell)
 
 	return result
+
+static func enable_collision(layer :TileMapLayer, collision_enabled := true) -> void:
+	layer.collision_enabled = collision_enabled
+	var children = layer.find_children("*", "TileMapLayer")
+	for child in children:
+		child.collision_enabled = collision_enabled
+		
+		

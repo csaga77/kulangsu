@@ -40,7 +40,7 @@ func _ready() -> void:
 		m_wall_mask.visible = false
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	var shader_material :ShaderMaterial = m_roof_top.material
 	shader_material.set_shader_parameter("trans_rect_pos", m_trans_rect.position)
 	shader_material.set_shader_parameter("trans_rect_size", m_trans_rect.size)
