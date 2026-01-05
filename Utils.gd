@@ -28,6 +28,8 @@ static func find_cells_rect(layer: TileMapLayer, rect_global) -> Rect2i:
 
 static func intersects_rect_global(layer: TileMapLayer, rect_global) -> bool:
 	var rect :Rect2i = find_cells_rect(layer, rect_global)
+	if !layer.get_used_rect().intersects(rect):
+		return false
 	
 	# Normalize in case transforms cause inversion
 	var x0 = rect.position.x
