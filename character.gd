@@ -54,7 +54,7 @@ func switch_layer(source_layer :TileMapLayer, target_layer :TileMapLayer, defaul
 	m_current_layer = target_layer
 	if m_current_layer:
 		z_index = m_current_layer.z_index
-		global_position = default_position
+		#global_position = default_position
 		#Utils.enable_collision(m_current_layer)
 		m_current_layer.collision_enabled = true
 	else:
