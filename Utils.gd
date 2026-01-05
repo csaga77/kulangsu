@@ -2,7 +2,7 @@
 class_name Utils
 
 static func find_cells_rect(layer: TileMapLayer, rect_global) -> Rect2i:
-		# 1) Convert global rect corners -> layer local
+	# 1) Convert global rect corners -> layer local
 	var p0_local: Vector2i = layer.local_to_map(layer.to_local(rect_global.position))
 	var p1_local: Vector2i = layer.local_to_map(layer.to_local(rect_global.end))
 	var p2_local: Vector2i = layer.local_to_map(layer.to_local(rect_global.position + Vector2(rect_global.size.x, 0)))
