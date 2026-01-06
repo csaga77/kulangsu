@@ -1,6 +1,8 @@
 @tool
 extends TileMapLayer
 
+@export var semi_transparent := false
+
 @export var character :Character = null:
 	set(new_character):
 		if character == new_character:
@@ -20,10 +22,13 @@ func _ready() -> void:
 	pass # Replace with function body.
 
 func _on_character_global_position_changed() -> void:
-	if character != null and character.z_index < z_index:
-		visible = !Utils.intersects_rect_global(self, character.get_bounding_rect())
+	if character != null and CommonUtils.get_absolute_z_index(character) < CommonUtils.get_absolute_z_index(self):
+		var is_visible = !Utils.intersects_rect_global(self, character.get_bounding_rect())
+		visible = semi_transparent || is_visible
+		modulate.a = 1.0 if is_visible else 0.5
 	else:
 		visible = true
+		modulate.a = 1.0
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(_delta: float) -> void:
