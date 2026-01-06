@@ -48,3 +48,17 @@ func _process(_delta: float) -> void:
 	var shader_material2 :ShaderMaterial = m_roof.material
 	shader_material2.set_shader_parameter("trans_rect_pos", m_trans_rect.position)
 	shader_material2.set_shader_parameter("trans_rect_size", m_trans_rect.size)
+
+func _switch_layer(body: Node2D, source_layer :TileMapLayer, target_layer :TileMapLayer, default_position :Vector2) -> void:
+	var c := body as Character
+	if c == null:
+		return
+	if source_layer == null:
+		source_layer = c.m_default_layer
+	c.switch_layer(source_layer, target_layer, default_position)
+
+func _on_body_entered(body: Node2D) -> void:
+	_switch_layer(body, null, m_floor, body.global_position)
+
+func _on_body_exited(body: Node2D) -> void:
+	_switch_layer(body, m_floor, null, body.global_position)

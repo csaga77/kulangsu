@@ -24,8 +24,12 @@ extends Node2D
 var m_is_ready := false
 
 func _reload_terrain() -> void:
+	if not Engine.is_editor_hint():
+		return
+		
 	if not m_is_ready:
 		return
+
 
 	m_base.clear()
 
@@ -63,6 +67,7 @@ func _reload_terrain() -> void:
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	m_is_ready = true
+	m_character.switch_layer(null, m_base, m_character.global_position)
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(_delta: float) -> void:

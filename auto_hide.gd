@@ -23,9 +23,9 @@ func _ready() -> void:
 
 func _on_character_global_position_changed() -> void:
 	if character != null and CommonUtils.get_absolute_z_index(character) < CommonUtils.get_absolute_z_index(self):
-		var is_visible = !Utils.intersects_rect_global(self, character.get_bounding_rect())
-		visible = semi_transparent || is_visible
-		modulate.a = 1.0 if is_visible else 0.5
+		var _is_visible = !Utils.intersects_rect_global(self, character.get_bounding_rect())
+		visible = semi_transparent || _is_visible
+		modulate.a = 1.0 if _is_visible else 0.5
 	else:
 		visible = true
 		modulate.a = 1.0

@@ -44,21 +44,38 @@ func get_bounding_rect() -> Rect2:
 func get_ground_rect() -> Rect2:
 	return Rect2(global_position - Vector2(16, 4), Vector2(32, 32))
 	
+	
+var m_switching_layer := false
+var m_default_layer :TileMapLayer
 
-func switch_layer(source_layer :TileMapLayer, target_layer :TileMapLayer, default_position :Vector2) -> void:
+func switch_layer(source_layer :TileMapLayer, target_layer :TileMapLayer, _default_position :Vector2) -> void:
 	if source_layer != m_current_layer:
 		return
+	if m_switching_layer:
+		return
+	m_switching_layer = true
+	_switch_layer(source_layer, target_layer, _default_position)
+	#call_deferred("_switch_layer", source_layer, target_layer, _default_position)
+	
+func _switch_layer(_source_layer :TileMapLayer, target_layer :TileMapLayer, _default_position :Vector2) -> void:
 	if m_current_layer:
 		#Utils.enable_collision(m_current_layer, false)
 		m_current_layer.collision_enabled = false
 	m_current_layer = target_layer
+	if m_current_layer == null:
+		m_current_layer = m_default_layer
 	if m_current_layer:
+		#reparent(m_current_layer)
 		z_index = CommonUtils.get_absolute_z_index(m_current_layer) - CommonUtils.get_absolute_z_index(get_parent())
 		#global_position = default_position
 		#Utils.enable_collision(m_current_layer)
 		m_current_layer.collision_enabled = true
 	else:
 		z_index = 0
+	m_switching_layer = false
+	if m_default_layer == null:
+		m_default_layer = m_current_layer
+	
 	
 var m_current_layer: TileMapLayer = null
 
