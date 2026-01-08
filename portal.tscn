@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3 uid="uid://d27a7jcvsnfx8"]
+
+[ext_resource type="Script" uid="uid://fssw81qf0ydn" path="res://portal.gd" id="1_0r486"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_tpm7a"]
+radius = 8.0
+
+[node name="portal" type="Area2D"]
+rotation = -1.0471976
+script = ExtResource("1_0r486")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_tpm7a")
+
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]
+[connection signal="body_exited" from="." to="." method="_on_body_exited"]

@@ -30,7 +30,7 @@ func _ready() -> void:
 	m_level2.character = character
 	
 func _on_character_global_position_changed() -> void:
-	if character == null or m_steps_mask == null:
+	if character == null or m_steps_mask == null or CommonUtils.get_absolute_z_index(character) > CommonUtils.get_absolute_z_index(m_steps_mask):
 		m_steps.modulate.a = 1.0
 		return
 	var bounding_rect = character.get_ground_rect()
