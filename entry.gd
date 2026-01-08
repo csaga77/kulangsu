@@ -20,7 +20,7 @@ var m_entry_positions := [
 	Vector2(-32, 16), 
 	Vector2(32, 16), 
 ]
-		
+
 func _update_direction() -> void:
 	if m_entry2 == null:
 		return

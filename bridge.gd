@@ -1,6 +1,6 @@
 @tool
 class_name Bridge
-extends Node2D
+extends IsometricBlock
 
 @export var character :CollisionObject2D = null:
 	set(new_character):
@@ -21,8 +21,8 @@ extends Node2D
 @onready var m_ground :TileMapLayer = $ground
 @onready var m_level1 :TileMapLayer = $level1
 @onready var m_level2 :TileMapLayer = $level1/level2
-@onready var m_steps  :TileMapLayer = $steps
-@onready var m_steps3 :TileMapLayer = $steps3
+@onready var m_steps  :TileMapLayer = $ground/steps
+@onready var m_steps3 :TileMapLayer = $ground/steps3
 @onready var m_steps2 :TileMapLayer = $level1/steps2
 
 var m_is_on_steps := false
@@ -31,9 +31,8 @@ var m_is_on_steps := false
 func _ready() -> void:
 	m_level1.character = character
 	m_level2.character = character
-	m_steps.character  = character
 	m_steps2.character = character
-	m_steps3.character = character
+	#m_steps3.character = character
 
 func _switch_layer(body: Node2D, source_layer :TileMapLayer, target_layer :TileMapLayer, default_position :Vector2) -> void:
 	var c := body as Character

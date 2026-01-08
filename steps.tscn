@@ -1,0 +1,12 @@
+[gd_scene load_steps=3 format=3 uid="uid://dre5psaq1igux"]
+
+[ext_resource type="TileSet" uid="uid://dvrbkuapcr681" path="res://tilesets/tileset.tres" id="1_agqqt"]
+[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://IsometricBlock.gd" id="2_agqqt"]
+
+[node name="steps" type="TileMapLayer"]
+z_index = 1
+rotation = 0.00048865966
+tile_map_data = PackedByteArray(0, 0, 254, 255, 254, 255, 0, 0, 4, 0, 10, 0, 0, 0, 255, 255, 0, 0, 0, 0, 4, 0, 10, 0, 0, 0, 255, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0)
+tile_set = ExtResource("1_agqqt")
+collision_enabled = false
+script = ExtResource("2_agqqt")

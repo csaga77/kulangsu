@@ -1,6 +1,6 @@
 @tool
 class_name Ferry
-extends Node2D
+extends IsometricBlock
 
 @onready var m_wall_back := $wall_back
 @onready var m_wall_front := $wall_front

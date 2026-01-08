@@ -44,9 +44,8 @@ func get_bounding_rect() -> Rect2:
 func get_ground_rect() -> Rect2:
 	return Rect2(global_position - Vector2(16, 4), Vector2(32, 32))
 	
-	
 var m_switching_layer := false
-var m_default_layer :TileMapLayer
+var m_default_layer   :TileMapLayer
 
 func switch_layer(source_layer :TileMapLayer, target_layer :TileMapLayer, _default_position :Vector2) -> void:
 	if source_layer != m_current_layer:
