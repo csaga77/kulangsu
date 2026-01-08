@@ -7,6 +7,9 @@ extends Node2D
 
 var _snapping := false
 
+func _ready() -> void:
+	set_notify_local_transform(true)
+
 func _notification(what: int) -> void:
 	if not Engine.is_editor_hint():
 		return
@@ -14,7 +17,7 @@ func _notification(what: int) -> void:
 		return
 
 	# Fires when you drag the node or change its position in the inspector
-	if what == CanvasItem.NOTIFICATION_TRANSFORM_CHANGED:
+	if what == CanvasItem.NOTIFICATION_LOCAL_TRANSFORM_CHANGED:
 		#print(global_position)
 		if _snapping:
 			return
@@ -22,7 +25,7 @@ func _notification(what: int) -> void:
 		_snapping = true
 		var snapped := snap_to_iso_grid(position, iso_tile_size)
 		#print(global_position)
-		#print(snapped)
+		print(snapped)
 		# Avoid infinite notification loops
 		if snapped != position:
 			position = snapped

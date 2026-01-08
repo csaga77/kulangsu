@@ -53,7 +53,7 @@ func switch_layer(source_layer :TileMapLayer, target_layer :TileMapLayer, _defau
 	if m_switching_layer:
 		return
 	m_switching_layer = true
-	_switch_layer(source_layer, target_layer, _default_position)
+	#_switch_layer(source_layer, target_layer, _default_position)
 	#call_deferred("_switch_layer", source_layer, target_layer, _default_position)
 	
 func _switch_layer(_source_layer :TileMapLayer, target_layer :TileMapLayer, _default_position :Vector2) -> void:
@@ -111,7 +111,7 @@ func _reload():
 			
 	var body :AnimatedSprite2D = AnimatedSprite2D.new()
 	add_child(body)
-	body.position = Vector2(0, -24)
+	body.position = Vector2(0, -32)
 
 	var sprite_frames_template :SpriteFrames = load("res://sprites/male_animations.tres").duplicate()
 	body.sprite_frames = sprite_frames_template
