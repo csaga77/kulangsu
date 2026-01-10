@@ -27,6 +27,9 @@ b = Vector2(61, -91)
 texture = SubResource("AtlasTexture_25uw4")
 offset = Vector2(0, -16)
 script = ExtResource("2_tpm7a")
+layer1 = null
+layer2 = null
+collision_layer = null
 
 [node name="Sprite2D2" type="Sprite2D" parent="."]
 position = Vector2(32, -48)

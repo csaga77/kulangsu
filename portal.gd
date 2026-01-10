@@ -26,27 +26,24 @@ func _on_body_entered(body: Node2D) -> void:
 		return
 	if obj.collision_mask & mask1 == 0 and obj.collision_mask & mask2 == 0:
 		return
-	m_objects_in_portal.insert(obj)
-	if obj.collision_mask & mask1:
-		m_enter_mask = mask1
-	else:
-		m_enter_mask = mask2
-	#var local_pos = to_local(body.global_position)
-	#var vec = -local_pos.normalized()
-	#var enter_degrees = rad_to_deg(vec.angle())
-	#print("entered : ", enter_degrees)
+	#m_objects_in_portal.insert(obj)
 	#if obj.collision_mask & mask1:
-		#if CommonUtils.is_in_range(enter_degrees, -90, 90):
-			#m_is_in_portal = true
-			#m_enter_mask = mask1
-			#obj.collision_mask |= mask2
-			#print("mask1 entered")
-	#elif obj.collision_mask & mask2:
-		#if !CommonUtils.is_in_range(enter_degrees, -90, 90):
-			#m_is_in_portal = true
-			#m_enter_mask = mask2
-			#obj.collision_mask |= mask1
-			#print("mask2 entered")
+		#m_enter_mask = mask1
+	#else:
+		#m_enter_mask = mask2
+	var local_pos = to_local(body.global_position)
+	if obj.collision_mask & mask1:
+		if local_pos.x < 0:
+			m_enter_mask = mask1
+			obj.collision_mask |= mask2
+			m_objects_in_portal.insert(obj)
+			print("mask1 entered")
+	elif obj.collision_mask & mask2:
+		if local_pos.x > 0:
+			m_enter_mask = mask2
+			obj.collision_mask |= mask1
+			m_objects_in_portal.insert(obj)
+			print("mask2 entered")
 			
 
 

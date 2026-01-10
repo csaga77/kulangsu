@@ -20,7 +20,6 @@ extends IsometricBlock
 @onready var m_level1 :TileMapLayer = $level1
 @onready var m_level2 :TileMapLayer = $level1/level2
 @onready var m_steps  :Node2D = $ground/steps
-@onready var m_steps_mask :TileMapLayer = $ground/mask
 
 var m_is_on_steps := false
 
@@ -30,14 +29,15 @@ func _ready() -> void:
 	m_level2.character = character
 	
 func _on_character_global_position_changed() -> void:
-	if character == null or m_steps_mask == null or CommonUtils.get_absolute_z_index(character) > CommonUtils.get_absolute_z_index(m_steps_mask):
-		m_steps.modulate.a = 1.0
-		return
-	var bounding_rect = character.get_ground_rect()
-	if Utils.intersects_rect_global(m_steps_mask, bounding_rect):
-		m_steps.modulate.a = 0.5
-	else:
-		m_steps.modulate.a = 1.0
+	pass
+	#if character == null or m_steps_mask == null or CommonUtils.get_absolute_z_index(character) > CommonUtils.get_absolute_z_index(m_steps_mask):
+		#m_steps.modulate.a = 1.0
+		#return
+	#var bounding_rect = character.get_ground_rect()
+	#if Utils.intersects_rect_global(m_steps_mask, bounding_rect):
+		#m_steps.modulate.a = 0.5
+	#else:
+		#m_steps.modulate.a = 1.0
 
 func _switch_layer(body: Node2D, source_layer :TileMapLayer, target_layer :TileMapLayer, default_position :Vector2) -> void:
 	var c := body as Character
