@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://chfnv650kjhxr"]
 
-[ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://character.tscn" id="1_fksbf"]
-[ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://character_controller.gd" id="2_num78"]
+[ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://Player.tscn" id="1_fksbf"]
+[ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://PlayerController.gd" id="2_num78"]
 
 [node name="TestCharacter" type="Node2D"]
 

@@ -12,7 +12,7 @@ extends Node2D
 		if mask_file == new_mask_file:
 			return
 		mask_file = new_mask_file
-		call_deferred("_reload_terrain")
+		#call_deferred("_reload_terrain")
 		
 @export var tile_source_id := 1
 @export var tile_atlas_coords := Vector2i(0, 4)
@@ -20,7 +20,7 @@ extends Node2D
 
 @onready var m_base :TileMapLayer = $Base
 @onready var m_ferry :Ferry = $Ferry
-@onready var m_character :Character = $Character
+@onready var m_character :Player = $Character
 var m_is_ready := false
 
 func _reload_terrain() -> void:
@@ -67,7 +67,6 @@ func _reload_terrain() -> void:
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	m_is_ready = true
-	m_character.switch_layer(null, m_base, m_character.global_position)
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(_delta: float) -> void:

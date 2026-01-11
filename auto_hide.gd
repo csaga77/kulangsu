@@ -3,7 +3,7 @@ extends TileMapLayer
 
 @export var semi_transparent := false
 
-@export var character :Character = null:
+@export var character :Player = null:
 	set(new_character):
 		if character == new_character:
 			return
