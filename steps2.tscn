@@ -1,28 +1,39 @@
-[gd_scene load_steps=9 format=3 uid="uid://dctn3y7a7wbhe"]
+[gd_scene load_steps=11 format=3 uid="uid://dctn3y7a7wbhe"]
 
 [ext_resource type="Texture2D" uid="uid://g5jc1m7d74xn" path="res://tilesets/building_0.png" id="1_8brk0"]
 [ext_resource type="Script" uid="uid://dl2kyruhqxduy" path="res://steps.gd" id="2_7vnkx"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://IsometricBlock.gd" id="3_voad8"]
 [ext_resource type="PackedScene" uid="uid://d27a7jcvsnfx8" path="res://portal.tscn" id="4_flro2"]
 
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_7vnkx"]
+load_path = "res://.godot/imported/building_0.png-861f576686a5a2e407a62d4f7e5c249b.ctex"
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_voad8"]
+atlas = SubResource("CompressedTexture2D_7vnkx")
+region = Rect2(0, 0, 64, 64)
+
 [sub_resource type="AtlasTexture" id="AtlasTexture_8brk0"]
 atlas = ExtResource("1_8brk0")
 region = Rect2(320, 320, 64, 64)
 
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_tynux"]
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_8brk0"]
 load_path = "res://.godot/imported/building_0.png-861f576686a5a2e407a62d4f7e5c249b.ctex"
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_0n2te"]
-atlas = SubResource("CompressedTexture2D_tynux")
-region = Rect2(0, 0, 64, 64)
+atlas = SubResource("CompressedTexture2D_8brk0")
+region = Rect2(320, 320, 64, 64)
 
 [sub_resource type="SegmentShape2D" id="SegmentShape2D_tynux"]
 b = Vector2(-61, -94)
 
-[node name="steps" type="Sprite2D"]
-texture = SubResource("AtlasTexture_8brk0")
-offset = Vector2(0, -16)
+[node name="steps" type="Node2D"]
 script = ExtResource("2_7vnkx")
+
+[node name="Sprite2D3" type="Sprite2D" parent="."]
+position = Vector2(-32, -16)
+texture = SubResource("AtlasTexture_voad8")
+offset = Vector2(0, -16)
+script = ExtResource("3_voad8")
 
 [node name="Sprite2D2" type="Sprite2D" parent="."]
 position = Vector2(-32, -48)
@@ -30,9 +41,7 @@ texture = SubResource("AtlasTexture_8brk0")
 offset = Vector2(0, -16)
 script = ExtResource("3_voad8")
 
-[node name="Sprite2D3" type="Sprite2D" parent="."]
-show_behind_parent = true
-position = Vector2(-32, -16)
+[node name="Sprite2D4" type="Sprite2D" parent="."]
 texture = SubResource("AtlasTexture_0n2te")
 offset = Vector2(0, -16)
 script = ExtResource("3_voad8")
