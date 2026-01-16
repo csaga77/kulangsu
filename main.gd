@@ -14,8 +14,9 @@ extends Node2D
 		mask_file = new_mask_file
 		#call_deferred("_reload_terrain")
 		
-@export var tile_source_id := 1
-@export var tile_atlas_coords := Vector2i(0, 4)
+@export var tile_source_id := 3
+@export var building_tile_coords := Vector2i(1, 0)
+@export var mask_tile_coords := Vector2i(7, 0)
 @export var tile_alternative  := 0
 
 @onready var m_base :TileMapLayer = $Base
@@ -54,13 +55,22 @@ func _reload_terrain() -> void:
 
 	for y in range(height):
 		for x in range(width):
-			if img.get_pixel(x, y).a > 0.0:
-				m_base.set_cell(
-					Vector2i(x, y),
-					tile_source_id,
-					tile_atlas_coords,
-					tile_alternative
-				)
+			var c :Color = img.get_pixel(x, y)
+			if c.a > 0.0:
+				if c == Color.RED:
+					m_base.set_cell(
+						Vector2i(x, y),
+						tile_source_id,
+						building_tile_coords,
+						tile_alternative
+					)
+				else:
+					m_base.set_cell(
+						Vector2i(x, y),
+						tile_source_id,
+						mask_tile_coords,
+						tile_alternative
+					)
 
 	print("_reload_terrain: painted %dx%d from %s" % [width, height, mask_file])
 

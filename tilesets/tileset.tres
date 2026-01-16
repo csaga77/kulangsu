@@ -688,19 +688,14 @@ texture_region_size = Vector2i(64, 32)
 0:0/0/y_sort_origin = -16
 1:0/0 = 0
 1:0/0/y_sort_origin = -16
-1:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(0, -16, -32, 0, 0, 16, 32, 0)
 2:0/0 = 0
 2:0/0/y_sort_origin = -16
-2:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(0, -16, -32, 0, 0, 16)
 3:0/0 = 0
 3:0/0/y_sort_origin = -16
-3:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(0, -16, 32, 0, 0, 16)
 4:0/0 = 0
 4:0/0/y_sort_origin = -16
-4:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(0, -16, 32, 0, -32, 0)
 5:0/0 = 0
 5:0/0/y_sort_origin = -16
-5:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(0, 16, 32, 0, -32, 0)
 6:0/0 = 0
 6:0/0/y_sort_origin = -16
 1:1/0 = 0
@@ -999,6 +994,7 @@ texture_region_size = Vector2i(64, 32)
 4:16/0 = 0
 3:16/0 = 0
 4:15/0 = 0
+7:0/0 = 0
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_0xm2m"]
 texture = ExtResource("3_o42e4")
