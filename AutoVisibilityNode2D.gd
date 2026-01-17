@@ -49,11 +49,13 @@ func _on_character_global_position_changed() -> void:
 	var shader_material :ShaderMaterial = material
 	if shader_material:
 		modulate.a = 1.0
-		if is_semi_transparent:
-			shader_material.set_shader_parameter("trans_rect_pos", bounding_rect.position)
-			shader_material.set_shader_parameter("trans_rect_size", bounding_rect.size)
-		else:
-			shader_material.set_shader_parameter("trans_rect_size", Vector2.ZERO)
+		#leave the transparency to wall_transparent.shader
+		#shader paramters are updated in global auto visiblity material.
+		#if is_semi_transparent:
+			#shader_material.set_shader_parameter("trans_rect_pos", bounding_rect.position)
+			#shader_material.set_shader_parameter("trans_rect_size", bounding_rect.size)
+		#else:
+			#shader_material.set_shader_parameter("trans_rect_size", Vector2.ZERO)
 	else:
-		modulate.a = 0.2 if is_semi_transparent else 1.0
+		modulate.a = 0.1 if is_semi_transparent else 1.0
 	

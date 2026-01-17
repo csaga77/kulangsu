@@ -2,6 +2,7 @@
 class_name IsometricBlock
 extends Node2D
 
+@export var only_shown_in_editor := false
 @export var snap_in_editor := true
 @export var iso_tile_size := Vector2(64, 32) # diamond tile: 64w x 32h
 
@@ -9,6 +10,8 @@ var _snapping := false
 
 func _ready() -> void:
 	set_notify_local_transform(true)
+	if only_shown_in_editor:
+		visible = Engine.is_editor_hint()
 
 func _notification(what: int) -> void:
 	if not Engine.is_editor_hint():

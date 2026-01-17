@@ -77,3 +77,11 @@ func _reload_terrain() -> void:
 func _ready() -> void:
 	m_is_ready = true
 	GameGlobal.get_instance().set_player(m_player)
+	m_player.global_position_changed.connect(self._on_player_moved)
+
+func _on_player_moved() -> void:
+	var bounding_rect := m_player.get_bounding_rect()
+	var shader_material :ShaderMaterial = material
+	if shader_material:
+		shader_material.set_shader_parameter("trans_rect_pos", bounding_rect.position)
+		shader_material.set_shader_parameter("trans_rect_size", bounding_rect.size)
