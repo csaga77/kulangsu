@@ -77,13 +77,3 @@ func _reload_terrain() -> void:
 func _ready() -> void:
 	m_is_ready = true
 	GameGlobal.get_instance().set_player(m_player)
-
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(_delta: float) -> void:
-	var rect :Rect2
-	#rect.position = m_player.global_position - Vector2(16, 48)
-	#rect.size = Vector2(32, 64)
-	
-	rect.position = m_player.global_position - Vector2(16, 4)
-	rect.size = Vector2(32, 32)
-	m_ferry.set_trans_rect(rect)

@@ -1,0 +1,9 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://dw5sarpgr1teb"]
+
+[ext_resource type="Shader" uid="uid://5tgugs840ltd" path="res://resources/materials/wall_transparent.gdshader" id="1_tc1te"]
+
+[resource]
+shader = ExtResource("1_tc1te")
+shader_parameter/scale = 0.006944444
+shader_parameter/trans_rect_pos = Vector2(0, 0)
+shader_parameter/trans_rect_size = Vector2(0, 0)

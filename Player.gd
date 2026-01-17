@@ -39,7 +39,7 @@ signal global_position_changed()
 		_update_state() 
 		
 func get_bounding_rect() -> Rect2:
-	return Rect2(global_position - Vector2(16, 32), Vector2(32, 64))
+	return Rect2(global_position - Vector2(16, 64), Vector2(32, 64))
 	
 func get_ground_rect() -> Rect2:
 	return Rect2(global_position - Vector2(16, 4), Vector2(32, 32))
