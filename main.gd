@@ -21,7 +21,7 @@ extends Node2D
 
 @onready var m_base :TileMapLayer = $Base
 @onready var m_ferry :Ferry = $Ferry
-@onready var m_character :Player = $Character
+@onready var m_player :Player = $Character
 var m_is_ready := false
 
 func _reload_terrain() -> void:
@@ -30,7 +30,6 @@ func _reload_terrain() -> void:
 		
 	if not m_is_ready:
 		return
-
 
 	m_base.clear()
 
@@ -77,13 +76,14 @@ func _reload_terrain() -> void:
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	m_is_ready = true
+	GameGlobal.get_instance().set_player(m_player)
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(_delta: float) -> void:
 	var rect :Rect2
-	#rect.position = m_character.global_position - Vector2(16, 48)
+	#rect.position = m_player.global_position - Vector2(16, 48)
 	#rect.size = Vector2(32, 64)
 	
-	rect.position = m_character.global_position - Vector2(16, 4)
+	rect.position = m_player.global_position - Vector2(16, 4)
 	rect.size = Vector2(32, 32)
 	m_ferry.set_trans_rect(rect)

@@ -1,7 +1,7 @@
 @tool
 extends TileMapLayer
 
-@export var semi_transparent := false
+@export var target_nodes :Dictionary[Node2D, bool]
 
 @export var character :Player = null:
 	set(new_character):
@@ -14,26 +14,25 @@ extends TileMapLayer
 			character.global_position_changed.connect(self._on_character_global_position_changed)
 		_on_character_global_position_changed()
 
-func _update_character() -> void:
-	pass
-
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	pass # Replace with function body.
+	if GameGlobal.get_instance():
+		GameGlobal.get_instance().player_changed.connect(self._on_player_changed)
+	_on_player_changed()
+
+func _on_player_changed() -> void:
+	character = GameGlobal.get_instance().get_player()
 
 func _on_character_global_position_changed() -> void:
-	if character != null and CommonUtils.get_absolute_z_index(character) < CommonUtils.get_absolute_z_index(self):
-		var _is_visible = !Utils.intersects_rect_global(self, character.get_bounding_rect())
-		visible = semi_transparent || _is_visible
-		modulate.a = 1.0 if _is_visible else 0.5
-	else:
-		visible = true
-		modulate.a = 1.0
-
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(_delta: float) -> void:
-	if character == null:
+	if CommonUtils.get_absolute_z_index(character) != CommonUtils.get_absolute_z_index(self):
 		return
-	var rect :Rect2
-	rect.position = character.global_position - Vector2(16, 4)
-	rect.size = Vector2(32, 32)
+	var _is_visible = true
+	if character != null:
+		_is_visible = !Utils.intersects_rect_global(self, character.get_bounding_rect())
+	else:
+		_is_visible = true
+		
+	for node in target_nodes.keys():
+		var is_semi_transparent = target_nodes.get(node, false)
+		node.visible = is_semi_transparent || _is_visible
+		node.modulate.a = 1.0 if _is_visible else 0.2
