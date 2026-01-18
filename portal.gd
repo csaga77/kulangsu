@@ -37,13 +37,13 @@ func _on_body_entered(body: Node2D) -> void:
 			m_enter_mask = mask1
 			obj.collision_mask |= mask2
 			m_objects_in_portal.insert(obj)
-			print("mask1 entered")
+			#print("mask1 entered")
 	elif obj.collision_mask & mask2:
 		if local_pos.x > 0:
 			m_enter_mask = mask2
 			obj.collision_mask |= mask1
 			m_objects_in_portal.insert(obj)
-			print("mask2 entered")
+			#print("mask2 entered")
 			
 
 
@@ -60,13 +60,13 @@ func _on_body_exited(body: Node2D) -> void:
 		obj.collision_mask &= ~mask1
 		if m_enter_mask != mask2:
 			obj.z_index += 1
-		print("mask2 exited")
+		#print("mask2 exited")
 	else:
 		obj.collision_mask |= mask1
 		obj.collision_mask &= ~mask2
 		if m_enter_mask != mask1:
 			obj.z_index -= 1
-		print("mask1 exited")
+		#print("mask1 exited")
 	#var exit_degrees = rad_to_deg(vec.angle())
 	#print("exited : ", exit_degrees)
 	#var obj :CollisionObject2D = body
