@@ -14,7 +14,7 @@ void vertex() {
 void fragment() {
 	vec2 pos = world_position - trans_rect_pos;
 	if (trans_rect_size != vec2(0.0, 0.0) && pos.x >= 0.0 && pos.y >= 0.0 && pos.x < trans_rect_size.x && pos.y < trans_rect_size.y) {
-		COLOR.a = min(COLOR.a, 0.5);
+		COLOR.a = min(COLOR.a, 0.1);
 	}
 	// only apply overlay_tex on the fully red parts of the original tiles
 	//float mix_amount = floor(COLOR.r);
