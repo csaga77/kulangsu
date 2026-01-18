@@ -10,6 +10,8 @@ enum BodyTypeEnum
 
 signal global_position_changed()
 
+@export var draw_bounding_rect := false
+
 @export var body_type :BodyTypeEnum = BodyTypeEnum.MALE:
 	set(new_body_type):
 		if body_type == new_body_type:
@@ -38,8 +40,13 @@ signal global_position_changed()
 		is_running = new_is_running
 		_update_state() 
 		
+func get_local_bounding_rect() -> Rect2:
+	return Rect2(- Vector2(16, 64), Vector2(32, 64))
+		
 func get_bounding_rect() -> Rect2:
-	return Rect2(global_position - Vector2(16, 64), Vector2(32, 64))
+	var br = get_local_bounding_rect()
+	br.position += global_position
+	return br
 	
 func get_ground_rect() -> Rect2:
 	return Rect2(global_position - Vector2(16, 4), Vector2(32, 32))
@@ -139,4 +146,11 @@ func _update_state() -> void:
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(_delta: float) -> void:
 	if !m_last_global_position.is_equal_approx(global_position):
+		m_last_global_position = global_position
 		global_position_changed.emit()
+		if draw_bounding_rect:
+			queue_redraw()
+
+func _draw() -> void:
+	if draw_bounding_rect:
+		draw_rect(get_local_bounding_rect(), Color.RED, false)
