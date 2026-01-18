@@ -17,7 +17,7 @@ var m_clear_cells :Set = Set.new([])
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(_delta: float) -> void:
 	var has_changed := false
-	var cells = Utils.get_cells_intersecting_rect_global(self, trans_rect)
+	var cells = TileMapUtils.get_cells_intersecting_rect_global(self, trans_rect)
 	var clear_cells := Set.new([])
 	for cell in m_overlapping_cells.data:
 		if !cells.has(cell):
