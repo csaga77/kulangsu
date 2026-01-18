@@ -1,10 +1,14 @@
-[gd_scene load_steps=37 format=4 uid="uid://cgucpypd2f1o2"]
+[gd_scene load_steps=41 format=4 uid="uid://cgucpypd2f1o2"]
 
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://IsometricBlock.gd" id="1_p6h3n"]
 [ext_resource type="TileSet" uid="uid://dvrbkuapcr681" path="res://tilesets/tileset.tres" id="1_ygplm"]
 [ext_resource type="PackedScene" uid="uid://d27a7jcvsnfx8" path="res://portal.tscn" id="3_q88bw"]
 [ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://AutoVisibilityNode2D.gd" id="5_4o7fq"]
 [ext_resource type="Material" uid="uid://dw5sarpgr1teb" path="res://resources/materials/wall_transparent.tres" id="5_6xb53"]
+[ext_resource type="PackedScene" uid="uid://cwyx1jps70m8y" path="res://DoorSW.tscn" id="5_qe0xv"]
+[ext_resource type="PackedScene" uid="uid://camp18q8ye8gj" path="res://DoorSE.tscn" id="6_qe0xv"]
+[ext_resource type="PackedScene" uid="uid://g633gge5041u" path="res://DoorNW.tscn" id="7_by4dn"]
+[ext_resource type="PackedScene" uid="uid://i58q1hprvm" path="res://DoorNE.tscn" id="8_432a6"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_q88bw"]
 radius = 4.0
@@ -171,7 +175,6 @@ mask2 = 1048576
 shape = SubResource("CapsuleShape2D_q88bw")
 
 [node name="level 0 collision" type="TileMapLayer" parent="base"]
-visible = false
 tile_map_data = PackedByteArray("AAACABAAAwAAAAMAAAACAA8AAwAAAAMAAAACAA4AAwAAAAcAAAAFABEAAwAAAAcAAAAIABQAAwAAAAcAAAAHABQAAwAAAAQAAAAGABQAAwAAAAQAAAADABEAAwAAAAQAAAAEABEAAwAAAAQAAAAFABIAAwAAAAMAAAAFABMAAwAAAAMAAAAPABQAAwAAAAgAAAASABEAAwAAAAgAAAAVAA4AAwAAAAgAAAAQABQAAwAAAAQAAAARABQAAwAAAAQAAAATABEAAwAAAAQAAAAUABEAAwAAAAQAAAASABMAAwAAAAUAAAASABIAAwAAAAUAAAAVABAAAwAAAAUAAAAVAA8AAwAAAAUAAAAVAAcAAwAAAAYAAAASAAQAAwAAAAYAAAAPAAEAAwAAAAYAAAAQAAEAAwAAAAIAAAARAAEAAwAAAAIAAAATAAQAAwAAAAIAAAAUAAQAAwAAAAIAAAAVAAYAAwAAAAUAAAAVAAUAAwAAAAUAAAASAAMAAwAAAAUAAAASAAIAAwAAAAUAAAAGAAEAAwAAAAIAAAADAAQAAwAAAAIAAAAEAAQAAwAAAAIAAAAFAAQAAwAAAAkAAAAFAAMAAwAAAAMAAAAFAAIAAwAAAAMAAAACAAUAAwAAAAMAAAACAAYAAwAAAAkAAAABAA0AAwAAAAMAAAAOAAAAAwAAAAIAAAAHAAEAAwAAAAkAAAA=")
 tile_set = ExtResource("1_ygplm")
 script = ExtResource("1_p6h3n")
@@ -253,6 +256,54 @@ y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD//wsACwAGAAgAAAABAAwACwAHAAgAAAACAA4ACwAGAAgAAAAMAP7/CwAIAAgAAAANAAAACwAFAAgAAAAPAAEACwAIAAgAAAAAAAsACwAGAAgAAAABAAsACwAKAAgAAAABAA0ACwAHAAgAAAABAA4ACwADAAgAAAADAA4ACwAGAAgAAAAKAA4ACwAGAAgAAAALAA4ACwAGAAgAAAAMAP//CwAIAAgAAAAMAAAACwAJAAgAAAAMAAsACwALAAgAAAAMAAwACwAIAAgAAAAMAA0ACwAIAAgAAAAMAA4ACwAEAAgAAAANAAsACwAGAAgAAAAOAAAACwAFAAgAAAAOAAsACwAGAAgAAAAPAAAACwABAAgAAAAPAAIACwAIAAgAAAAPAAkACwAIAAgAAAAPAAoACwAIAAgAAAAPAAsACwAEAAgAAAA=")
 tile_set = ExtResource("1_ygplm")
 y_sort_origin = 128
+
+[node name="Doors SW" type="Node2D" parent="level1"]
+y_sort_enabled = true
+
+[node name="Door" parent="level1/Doors SW" instance=ExtResource("5_qe0xv")]
+position = Vector2(-256, 448)
+
+[node name="Door2" parent="level1/Doors SW" instance=ExtResource("5_qe0xv")]
+position = Vector2(-192, 480)
+
+[node name="Door3" parent="level1/Doors SW" instance=ExtResource("5_qe0xv")]
+position = Vector2(-128, 512)
+
+[node name="Doors SE" type="Node2D" parent="level1"]
+y_sort_enabled = true
+
+[node name="Door SE" parent="level1/Doors SE" instance=ExtResource("6_qe0xv")]
+position = Vector2(384, 448)
+
+[node name="Door SE2" parent="level1/Doors SE" instance=ExtResource("6_qe0xv")]
+position = Vector2(320, 480)
+
+[node name="Door SE3" parent="level1/Doors SE" instance=ExtResource("6_qe0xv")]
+position = Vector2(256, 512)
+
+[node name="Doors NW" type="Node2D" parent="level1"]
+y_sort_enabled = true
+
+[node name="Door NW" parent="level1/Doors NW" instance=ExtResource("7_by4dn")]
+position = Vector2(-160, 176)
+
+[node name="Door NW2" parent="level1/Doors NW" instance=ExtResource("7_by4dn")]
+position = Vector2(-224, 208)
+
+[node name="Door NW3" parent="level1/Doors NW" instance=ExtResource("7_by4dn")]
+position = Vector2(-288, 240)
+
+[node name="Doors NE" type="Node2D" parent="level1"]
+y_sort_enabled = true
+
+[node name="Door SW" parent="level1/Doors NE" instance=ExtResource("8_432a6")]
+position = Vector2(288, 176)
+
+[node name="Door SW2" parent="level1/Doors NE" instance=ExtResource("8_432a6")]
+position = Vector2(352, 208)
+
+[node name="Door SW3" parent="level1/Doors NE" instance=ExtResource("8_432a6")]
+position = Vector2(416, 240)
 
 [node name="roof" type="TileMapLayer" parent="level1" node_paths=PackedStringArray("semi_transparent_mask_layers", "visibility_mask_layers")]
 visible = false
