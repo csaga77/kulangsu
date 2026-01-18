@@ -1,4 +1,4 @@
-[gd_resource type="TileSet" load_steps=21 format=3 uid="uid://dvrbkuapcr681"]
+[gd_resource type="TileSet" load_steps=23 format=3 uid="uid://dvrbkuapcr681"]
 
 [ext_resource type="Texture2D" uid="uid://g5jc1m7d74xn" path="res://tilesets/building_0.png" id="1_kapyo"]
 [ext_resource type="Texture2D" uid="uid://cvy6tgofjklfv" path="res://tilesets/terrain_0.png" id="2_o6ybq"]
@@ -10,6 +10,7 @@
 [ext_resource type="Texture2D" uid="uid://dipkoht1but1u" path="res://tilesets/wall_2_tiles.png" id="5_6lxxo"]
 [ext_resource type="Texture2D" uid="uid://dp1vg0m4ov76n" path="res://tilesets/floor_tiles.png" id="7_7l566"]
 [ext_resource type="Texture2D" uid="uid://j0m0earbatgf" path="res://tilesets/wall_3_tiles.png" id="8_b7y85"]
+[ext_resource type="Texture2D" uid="uid://cwrirkdu0c2cf" path="res://tilesets/trinity_church_miscs.png" id="11_tun3a"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_1bvp3"]
 texture = ExtResource("1_kapyo")
@@ -1740,6 +1741,22 @@ texture_region_size = Vector2i(64, 32)
 4:0/0 = 0
 5:0/0 = 0
 
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_j2e18"]
+texture = ExtResource("11_tun3a")
+texture_region_size = Vector2i(64, 32)
+0:0/size_in_atlas = Vector2i(2, 4)
+0:0/0 = 0
+2:0/size_in_atlas = Vector2i(2, 4)
+2:0/0 = 0
+2:0/0/texture_origin = Vector2i(32, 16)
+2:0/0/y_sort_origin = 45
+0:4/size_in_atlas = Vector2i(2, 4)
+0:4/0 = 0
+0:4/0/texture_origin = Vector2i(-32, 16)
+0:4/0/y_sort_origin = 45
+2:4/size_in_atlas = Vector2i(2, 4)
+2:4/0 = 0
+
 [resource]
 resource_local_to_scene = true
 tile_shape = 1
@@ -1778,3 +1795,4 @@ sources/11 = SubResource("TileSetAtlasSource_7l566")
 sources/12 = SubResource("TileSetAtlasSource_6lxxo")
 sources/13 = SubResource("TileSetAtlasSource_b7y85")
 sources/4 = SubResource("TileSetAtlasSource_tun3a")
+sources/7 = SubResource("TileSetAtlasSource_j2e18")
