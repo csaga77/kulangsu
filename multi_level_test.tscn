@@ -1,14 +1,14 @@
 [gd_scene load_steps=11 format=4 uid="uid://drys5fr7ak3jl"]
 
-[ext_resource type="Script" uid="uid://b2n1hu1yb5y6" path="res://MultiLevelTest.gd" id="1_ks1si"]
+[ext_resource type="Script" uid="uid://b2n1hu1yb5y6" path="res://multi_level_test.gd" id="1_ks1si"]
 [ext_resource type="TileSet" uid="uid://dvrbkuapcr681" path="res://tilesets/tileset.tres" id="2_a4m66"]
-[ext_resource type="PackedScene" uid="uid://dre5psaq1igux" path="res://steps.tscn" id="3_cx0nl"]
-[ext_resource type="PackedScene" uid="uid://dctn3y7a7wbhe" path="res://steps2.tscn" id="4_3lnb0"]
+[ext_resource type="PackedScene" uid="uid://dre5psaq1igux" path="res://steps_sw.tscn" id="3_cx0nl"]
+[ext_resource type="PackedScene" uid="uid://dctn3y7a7wbhe" path="res://steps_se.tscn" id="4_3lnb0"]
 [ext_resource type="PackedScene" uid="uid://dsng4db15ns5j" path="res://pilar.tscn" id="5_5gmlp"]
 [ext_resource type="Texture2D" uid="uid://g5jc1m7d74xn" path="res://tilesets/building_0.png" id="6_4l2sk"]
-[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://IsometricBlock.gd" id="7_cssbr"]
+[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://isometric_block.gd" id="7_cssbr"]
 [ext_resource type="TileSet" uid="uid://bm2htlbsypqp4" path="res://tilesets/tileset_rails.tres" id="9_a4m66"]
-[ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://AutoVisibilityNode2D.gd" id="10_cx0nl"]
+[ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://auto_visibility_node_2d.gd" id="10_cx0nl"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_0n2te"]
 atlas = ExtResource("6_4l2sk")

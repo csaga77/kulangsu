@@ -1,14 +1,14 @@
 [gd_scene load_steps=41 format=4 uid="uid://cgucpypd2f1o2"]
 
-[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://IsometricBlock.gd" id="1_p6h3n"]
+[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://isometric_block.gd" id="1_p6h3n"]
 [ext_resource type="TileSet" uid="uid://dvrbkuapcr681" path="res://tilesets/tileset.tres" id="1_ygplm"]
 [ext_resource type="PackedScene" uid="uid://d27a7jcvsnfx8" path="res://portal.tscn" id="3_q88bw"]
-[ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://AutoVisibilityNode2D.gd" id="5_4o7fq"]
+[ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://auto_visibility_node_2d.gd" id="5_4o7fq"]
 [ext_resource type="Material" uid="uid://dw5sarpgr1teb" path="res://resources/materials/wall_transparent.tres" id="5_432a6"]
-[ext_resource type="PackedScene" uid="uid://cwyx1jps70m8y" path="res://DoorSW.tscn" id="5_qe0xv"]
-[ext_resource type="PackedScene" uid="uid://camp18q8ye8gj" path="res://DoorSE.tscn" id="6_qe0xv"]
-[ext_resource type="PackedScene" uid="uid://g633gge5041u" path="res://DoorNW.tscn" id="7_by4dn"]
-[ext_resource type="PackedScene" uid="uid://i58q1hprvm" path="res://DoorNE.tscn" id="8_432a6"]
+[ext_resource type="PackedScene" uid="uid://cwyx1jps70m8y" path="res://door_sw.tscn" id="5_qe0xv"]
+[ext_resource type="PackedScene" uid="uid://camp18q8ye8gj" path="res://door_se.tscn" id="6_qe0xv"]
+[ext_resource type="PackedScene" uid="uid://g633gge5041u" path="res://door_nw.tscn" id="7_by4dn"]
+[ext_resource type="PackedScene" uid="uid://i58q1hprvm" path="res://door_ne.tscn" id="8_432a6"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_q88bw"]
 radius = 4.0

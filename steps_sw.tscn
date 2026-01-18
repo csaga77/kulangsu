@@ -1,7 +1,7 @@
 [gd_scene load_steps=9 format=3 uid="uid://dre5psaq1igux"]
 
 [ext_resource type="Texture2D" uid="uid://g5jc1m7d74xn" path="res://tilesets/building_0.png" id="1_agqqt"]
-[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://IsometricBlock.gd" id="2_agqqt"]
+[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://isometric_block.gd" id="2_agqqt"]
 [ext_resource type="Script" uid="uid://dl2kyruhqxduy" path="res://steps.gd" id="2_tpm7a"]
 [ext_resource type="PackedScene" uid="uid://d27a7jcvsnfx8" path="res://portal.tscn" id="4_pb25h"]
 

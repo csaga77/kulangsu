@@ -4,8 +4,8 @@
 [ext_resource type="Script" uid="uid://bj1l407ues4al" path="res://ferry.gd" id="1_coo13"]
 [ext_resource type="TileSet" uid="uid://bm2htlbsypqp4" path="res://tilesets/tileset_rails.tres" id="3_noucg"]
 [ext_resource type="Texture2D" uid="uid://c7kmmi41i4kuc" path="res://sprites/kulangyu_ferry_roof_2.png" id="4_j461t"]
-[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://IsometricBlock.gd" id="5_lf2yk"]
-[ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://AutoVisibilityNode2D.gd" id="5_yk3c8"]
+[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://isometric_block.gd" id="5_lf2yk"]
+[ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://auto_visibility_node_2d.gd" id="5_yk3c8"]
 [ext_resource type="Material" uid="uid://dw5sarpgr1teb" path="res://resources/materials/wall_transparent.tres" id="6_lf2yk"]
 
 [sub_resource type="ConvexPolygonShape2D" id="ConvexPolygonShape2D_j461t"]

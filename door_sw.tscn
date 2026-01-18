@@ -1,9 +1,9 @@
-[gd_scene load_steps=10 format=3 uid="uid://g633gge5041u"]
+[gd_scene load_steps=10 format=3 uid="uid://cwyx1jps70m8y"]
 
-[ext_resource type="Script" uid="uid://bugmtr67e3qx1" path="res://Door.gd" id="1_rgfaf"]
-[ext_resource type="Texture2D" uid="uid://dw6ajs8sxti6l" path="res://sprites/doors_sprite.png" id="2_mxr8y"]
-[ext_resource type="Texture2D" uid="uid://c72ct2insxyd7" path="res://tilesets/marks.png" id="3_q5xoi"]
-[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://IsometricBlock.gd" id="4_yk532"]
+[ext_resource type="Script" uid="uid://bugmtr67e3qx1" path="res://door_2d.gd" id="1_ygu1d"]
+[ext_resource type="Texture2D" uid="uid://dw6ajs8sxti6l" path="res://sprites/doors_sprite.png" id="2_fdfi5"]
+[ext_resource type="Texture2D" uid="uid://c72ct2insxyd7" path="res://tilesets/marks.png" id="3_aryya"]
+[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://isometric_block.gd" id="4_3gdfv"]
 
 [sub_resource type="CompressedTexture2D" id="CompressedTexture2D_jbk66"]
 load_path = "res://.godot/imported/doors_sprite.png-3809237a4bd1bc6c68ddba2a7209e4fc.ctex"
@@ -13,59 +13,59 @@ atlas = SubResource("CompressedTexture2D_jbk66")
 region = Rect2(32, 0, 32, 112)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_1vvux"]
-atlas = ExtResource("2_mxr8y")
+atlas = ExtResource("2_fdfi5")
 region = Rect2(0, 0, 32, 112)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_jbk66"]
-atlas = ExtResource("3_q5xoi")
+atlas = ExtResource("3_aryya")
 region = Rect2(64, 0, 64, 32)
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_jbk66"]
 height = 60.0
 
-[node name="Door NW" type="Area2D" node_paths=PackedStringArray("open_sprites", "close_sprites")]
+[node name="Door SW" type="Area2D" node_paths=PackedStringArray("open_sprites", "close_sprites")]
 y_sort_enabled = true
-script = ExtResource("1_rgfaf")
-open_sprites = [NodePath("door0_close"), NodePath("door1_close")]
-close_sprites = [NodePath("door0_open"), NodePath("door1_open")]
+script = ExtResource("1_ygu1d")
+open_sprites = [NodePath("door0_open"), NodePath("door1_open")]
+close_sprites = [NodePath("door0_close"), NodePath("door1_close")]
 
 [node name="door0_open" type="Sprite2D" parent="."]
-position = Vector2(26, 12)
+visible = false
+position = Vector2(-30, -10)
 texture = SubResource("AtlasTexture_38qdo")
 offset = Vector2(-16, -56)
 
 [node name="door0_close" type="Sprite2D" parent="."]
-visible = false
-position = Vector2(54, -13)
+position = Vector2(-8, -10)
 texture = SubResource("AtlasTexture_1vvux")
 offset = Vector2(-16, -56)
 
 [node name="door1_close" type="Sprite2D" parent="."]
-visible = false
-position = Vector2(4, 12)
+position = Vector2(20, 4)
 texture = SubResource("AtlasTexture_1vvux")
 offset = Vector2(-16, -56)
 
 [node name="door1_open" type="Sprite2D" parent="."]
-position = Vector2(54, -2)
+visible = false
+position = Vector2(20, 2)
 texture = SubResource("AtlasTexture_38qdo")
-offset = Vector2(-16, -56)
+offset = Vector2(-16, -43)
 
 [node name="reference type" type="Sprite2D" parent="."]
 texture = SubResource("AtlasTexture_jbk66")
-script = ExtResource("4_yk532")
+script = ExtResource("4_3gdfv")
 only_shown_in_editor = true
 
 [node name="reference type2" type="Sprite2D" parent="."]
-position = Vector2(32, -16)
+position = Vector2(-32, -16)
 texture = SubResource("AtlasTexture_jbk66")
-script = ExtResource("4_yk532")
+script = ExtResource("4_3gdfv")
 only_shown_in_editor = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 z_index = 1
-position = Vector2(24, -6.9999995)
-rotation = 1.1082841
+position = Vector2(-12, -10)
+rotation = -1.0821041
 shape = SubResource("CapsuleShape2D_jbk66")
 
 [connection signal="body_entered" from="." to="." method="_on_body_entered"]
