@@ -35,14 +35,16 @@ texture = SubResource("AtlasTexture_38qdo")
 offset = Vector2(-16, -56)
 
 [node name="door0_close" type="Sprite2D" parent="."]
+visible = false
 position = Vector2(60, -10)
 texture = SubResource("AtlasTexture_1vvux")
 offset = Vector2(-16, -56)
 
 [node name="door1_close" type="Sprite2D" parent="."]
-position = Vector2(10, 15)
+visible = false
+position = Vector2(10, 2)
 texture = SubResource("AtlasTexture_1vvux")
-offset = Vector2(-16, -56)
+offset = Vector2(-16, -43)
 
 [node name="door1_open" type="Sprite2D" parent="."]
 position = Vector2(38, -10)
