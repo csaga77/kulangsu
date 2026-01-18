@@ -6,6 +6,7 @@ extends Node2D
 @export var visibility_mask_layers 	:Array[TileMapLayer]
 
 var m_player :Player
+var m_shader_material :ShaderMaterial
 
 func set_player(new_character):
 		if m_player == new_character:
@@ -19,6 +20,7 @@ func set_player(new_character):
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
+	m_shader_material = material
 	if GameGlobal.get_instance():
 		GameGlobal.get_instance().player_changed.connect(self._on_player_changed)
 	_on_player_changed()
@@ -35,20 +37,31 @@ func _on_character_global_position_changed() -> void:
 		for layer in visibility_mask_layers:
 			if CommonUtils.get_absolute_z_index(m_player) != CommonUtils.get_absolute_z_index(layer):
 				continue
-			if Utils.intersects_rect_global(layer, bounding_rect):
+			if TileMapUtils.intersects_rect_global(layer, bounding_rect):
 				should_be_visible = false
 				break
 		for layer in semi_transparent_mask_layers:
 			if CommonUtils.get_absolute_z_index(m_player) != CommonUtils.get_absolute_z_index(layer):
+				#print(layer.name, "false")
 				continue
-			if Utils.intersects_rect_global(layer, bounding_rect):
-				#print(layer.name)
+			if TileMapUtils.intersects_rect_global(layer, bounding_rect):
+				#print(layer.name, "true")
 				is_semi_transparent = true
 				break
+			#else:
+				#print(layer.name, ": false")
+				
 	visible = should_be_visible
-	var shader_material :ShaderMaterial = material
-	if shader_material:
+	if m_shader_material:
 		modulate.a = 1.0
+		if should_be_visible and !is_semi_transparent:
+			if material:
+				#print(name, " null ", should_be_visible)
+				material = null
+		else:
+			if material == null:
+				#print(name, " material ", should_be_visible)
+				material = m_shader_material
 		#leave the transparency to wall_transparent.shader
 		#shader paramters are updated in global auto visiblity material.
 		#if is_semi_transparent:
