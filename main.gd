@@ -14,12 +14,14 @@ extends Node2D
 		mask_file = new_mask_file
 		#call_deferred("_reload_terrain")
 		
-@export var tile_source_id := 3
+@export var tile_source_id := 8
+@export var building_tile_source_id := 3
 @export var building_tile_coords := Vector2i(1, 0)
-@export var mask_tile_coords := Vector2i(7, 0)
+@export var mask_tile_coords := Vector2i(1, 0)
 @export var tile_alternative  := 0
 
 @onready var m_base :TileMapLayer = $Base
+@onready var m_building_mask :TileMapLayer = $"Building Mask"
 @onready var m_ferry :Ferry = $Ferry
 @onready var m_player :Player = $Character
 var m_is_ready := false
@@ -32,6 +34,7 @@ func _reload_terrain() -> void:
 		return
 
 	m_base.clear()
+	m_building_mask.clear()
 
 	if mask_file.is_empty():
 		push_warning("mask_file is empty.")
@@ -57,9 +60,9 @@ func _reload_terrain() -> void:
 			var c :Color = img.get_pixel(x, y)
 			if c.a > 0.0:
 				if c == Color.RED:
-					m_base.set_cell(
+					m_building_mask.set_cell(
 						Vector2i(x, y),
-						tile_source_id,
+						building_tile_source_id,
 						building_tile_coords,
 						tile_alternative
 					)
