@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://bugmtr67e3qx1" path="res://buildings/components/door_2d.gd" id="1_okjne"]
 [ext_resource type="Texture2D" uid="uid://dw6ajs8sxti6l" path="res://resources/sprites/doors_sprite.png" id="2_wnywb"]
-[ext_resource type="Texture2D" uid="uid://c72ct2insxyd7" path="res://resources/tilesets/marks.png" id="3_86rtm"]
+[ext_resource type="Texture2D" uid="uid://c72ct2insxyd7" path="res://resources/tilesets/marks_0.png" id="3_86rtm"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="4_60nv3"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_jbk66"]

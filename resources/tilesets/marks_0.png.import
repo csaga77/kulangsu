@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c72ct2insxyd7"
-path="res://.godot/imported/marks.png-af3aae21487d8a44fa593531de962511.ctex"
+path="res://.godot/imported/marks_0.png-1e40c5ae619041ffb651a67c1a9bfdef.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://resources/tilesets/marks.png"
-dest_files=["res://.godot/imported/marks.png-af3aae21487d8a44fa593531de962511.ctex"]
+source_file="res://resources/tilesets/marks_0.png"
+dest_files=["res://.godot/imported/marks_0.png-1e40c5ae619041ffb651a67c1a9bfdef.ctex"]
 
 [params]
 
