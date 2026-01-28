@@ -1,0 +1,32 @@
+[gd_scene load_steps=7 format=3 uid="uid://dc2dh1e6e5hb"]
+
+[ext_resource type="Script" uid="uid://b7ntce1lyblnt" path="res://builder.gd" id="1_nebbf"]
+[ext_resource type="PackedScene" uid="uid://byyig1mqymirh" path="res://buildings/ferry.tscn" id="2_gtodl"]
+[ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/player_node.tscn" id="2_h00wr"]
+[ext_resource type="Material" uid="uid://dw5sarpgr1teb" path="res://resources/materials/wall_transparent.tres" id="2_ucbhk"]
+[ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/player_controller.gd" id="3_ucbhk"]
+[ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="4_gtodl"]
+
+[node name="Builder" type="Node2D"]
+script = ExtResource("1_nebbf")
+building = ExtResource("2_gtodl")
+
+[node name="Root" type="Node2D" parent="."]
+material = ExtResource("2_ucbhk")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(12357, 19805)
+
+[node name="Player" parent="." instance=ExtResource("2_h00wr")]
+draw_bounding_rect = true
+
+[node name="PlayerController" type="Node" parent="Player" node_paths=PackedStringArray("player")]
+script = ExtResource("3_ucbhk")
+player = NodePath("..")
+
+[node name="Camera2DController" type="Node" parent="." node_paths=PackedStringArray("camera", "target_node")]
+script = ExtResource("4_gtodl")
+camera = NodePath("../Camera2D")
+target_node = NodePath("../Player")
+min_zoom = 0.01
+metadata/_custom_type_script = "uid://1lv88f7nn3d4"
