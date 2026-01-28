@@ -5,6 +5,7 @@ extends Node2D
 @export var only_shown_in_editor := false
 @export var snap_in_editor := true
 @export var iso_tile_size := Vector2(64, 32) # diamond tile: 64w x 32h
+@export var iso_tile_offset := Vector2.ZERO
 
 var _snapping := false
 
@@ -26,7 +27,7 @@ func _notification(what: int) -> void:
 			return
 
 		_snapping = true
-		var snapped := snap_to_iso_grid(position, iso_tile_size)
+		var snapped := snap_to_iso_grid(position - iso_tile_offset, iso_tile_size) + iso_tile_offset
 		#print(global_position)
 		print(snapped)
 		# Avoid infinite notification loops
