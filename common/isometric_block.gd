@@ -35,10 +35,10 @@ func _notification(what: int) -> void:
 			position = snapped_pos
 		_snapping = false
 
-static func snap_to_iso_grid(world_pos: Vector2, tile: Vector2) -> Vector2:
+static func snap_to_iso_grid(world_pos: Vector2, tile_size: Vector2) -> Vector2:
 	# World -> iso grid (continuous)
-	var gx := (world_pos.x / tile.x + world_pos.y / tile.y)
-	var gy := (world_pos.y / tile.y - world_pos.x / tile.x)
+	var gx := (world_pos.x / tile_size.x + world_pos.y / tile_size.y)
+	var gy := (world_pos.y / tile_size.y - world_pos.x / tile_size.x)
 
 	# Snap to nearest cell
 	gx = round(gx) - 1
@@ -47,6 +47,6 @@ static func snap_to_iso_grid(world_pos: Vector2, tile: Vector2) -> Vector2:
 	
 	# Iso grid -> world
 	return Vector2(
-		(gx + 1 - gy) * tile.x * 0.5,
-		(gx + 1 + gy) * tile.y * 0.5
+		(gx + 1 - gy) * tile_size.x * 0.5,
+		(gx + 1 + gy) * tile_size.y * 0.5
 	)

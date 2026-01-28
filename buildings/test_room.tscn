@@ -1,11 +1,10 @@
-[gd_scene load_steps=23 format=4 uid="uid://b27c76jsv3pop"]
+[gd_scene load_steps=22 format=4 uid="uid://b27c76jsv3pop"]
 
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="1_moosy"]
 [ext_resource type="TileSet" uid="uid://cioy8ksn0td4" path="res://resources/tilesets/building_tiles_0.tres" id="2_mnvgh"]
 [ext_resource type="Texture2D" uid="uid://c72ct2insxyd7" path="res://resources/tilesets/marks_0.png" id="2_unh7x"]
 [ext_resource type="Texture2D" uid="uid://b82rqlsb60rbl" path="res://resources/tilesets/marks_1.png" id="4_fooa2"]
 [ext_resource type="Texture2D" uid="uid://yom5kl3l5n0g" path="res://resources/sprites/room_1.png" id="4_unh7x"]
-[ext_resource type="Material" uid="uid://dw5sarpgr1teb" path="res://resources/materials/wall_transparent.tres" id="5_hgfvh"]
 [ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="6_riyu3"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_fooa2"]
@@ -616,8 +615,8 @@ script = ExtResource("1_moosy")
 only_shown_in_editor = true
 
 [node name="back_wall" type="Node2D" parent="." node_paths=PackedStringArray("semi_transparent_mask_layers")]
+modulate = Color(1, 1, 1, 0.1)
 y_sort_enabled = true
-material = ExtResource("5_hgfvh")
 script = ExtResource("6_riyu3")
 semi_transparent_mask_layers = [NodePath("../wall_mask")]
 use_ground_bounding_rect = true
@@ -665,8 +664,8 @@ offset = Vector2(4, -93)
 script = ExtResource("1_moosy")
 
 [node name="front_wall" type="Node2D" parent="." node_paths=PackedStringArray("semi_transparent_mask_layers", "visibility_mask_layers")]
+modulate = Color(1, 1, 1, 0.1)
 y_sort_enabled = true
-material = ExtResource("5_hgfvh")
 script = ExtResource("6_riyu3")
 semi_transparent_mask_layers = [NodePath("../wall_mask")]
 visibility_mask_layers = [NodePath("../floor")]
