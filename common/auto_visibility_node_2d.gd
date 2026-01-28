@@ -3,7 +3,14 @@ class_name AutoVisibilityNode2D
 extends Node2D
 
 @export var semi_transparent_mask_layers :Array[TileMapLayer]
-@export var visibility_mask_layers 	:Array[TileMapLayer]
+@export var semi_transparent_mask_areas :Array[Area2D]:
+	set(new_areas):
+		if semi_transparent_mask_areas == new_areas:
+			return
+		semi_transparent_mask_areas = new_areas
+		_update_areas()
+@export var visibility_mask_layers :Array[TileMapLayer]
+@export var use_ground_bounding_rect := false
 
 var m_player :Player
 var m_shader_material :ShaderMaterial
@@ -24,16 +31,34 @@ func _ready() -> void:
 	if GameGlobal.get_instance():
 		GameGlobal.get_instance().player_changed.connect(self._on_player_changed)
 	_on_player_changed()
+	_update_areas()
+
+func _update_areas() -> void:
+	for area in semi_transparent_mask_areas:
+		if !area.body_entered.is_connected(self._on_semit_transparent_area_entered):
+			area.body_entered.connect(self._on_semit_transparent_area_entered)
+		if !area.body_exited.is_connected(self._on_semit_transparent_area_exited):
+			area.body_exited.connect(self._on_semit_transparent_area_exited)
+	
+var m_in_semi_transparent_areas_count := 0
+	
+func _on_semit_transparent_area_entered(body: Node2D) -> void:
+	if body == m_player:
+		m_in_semi_transparent_areas_count += 1
+		
+func _on_semit_transparent_area_exited(body: Node2D) -> void:
+	if body == m_player:
+		m_in_semi_transparent_areas_count -= 1
 
 func _on_player_changed() -> void:
 	set_player(GameGlobal.get_instance().get_player())
 
 func _on_character_global_position_changed() -> void:
-	var is_semi_transparent := false
+	var is_semi_transparent := m_in_semi_transparent_areas_count > 0
 	var should_be_visible := true
 	var bounding_rect :Rect2
 	if m_player:
-		bounding_rect = m_player.get_bounding_rect()
+		bounding_rect = m_player.get_ground_rect() if use_ground_bounding_rect else m_player.get_bounding_rect()
 		for layer in visibility_mask_layers:
 			if CommonUtils.get_absolute_z_index(m_player) != CommonUtils.get_absolute_z_index(layer):
 				continue

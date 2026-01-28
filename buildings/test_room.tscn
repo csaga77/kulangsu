@@ -592,39 +592,35 @@ region = Rect2(106, 0, 104, 148)
 [node name="TestRoom" type="Node2D"]
 y_sort_enabled = true
 script = ExtResource("1_moosy")
-iso_tile_offset = null
 
 [node name="wall_mask" type="TileMapLayer" parent="."]
 tile_map_data = PackedByteArray("AAADAP7/AwABAAAAAAACAP7/AwABAAAAAAABAP7/AwABAAAAAAAAAP7/AwABAAAAAAD///7/AwABAAAAAAD+//7/AwABAAAAAAD+////AwABAAAAAAD+/wAAAwABAAAAAAD+/wEAAwABAAAAAAD+/wIAAwABAAAAAAD+/wMAAwABAAAAAAD9/wIAAwABAAAAAAD9/wEAAwABAAAAAAD9/wAAAwABAAAAAAD9////AwABAAAAAAD9//7/AwABAAAAAAD9//3/AwABAAAAAAD+//3/AwABAAAAAAD///3/AwABAAAAAAAAAP3/AwABAAAAAAABAP3/AwABAAAAAAACAP3/AwABAAAAAAABAPz/AwABAAAAAAAAAPz/AwABAAAAAAD///z/AwABAAAAAAD+//z/AwABAAAAAAD9//z/AwABAAAAAAD8//z/AwABAAAAAAD8//3/AwABAAAAAAD8//7/AwABAAAAAAD8////AwABAAAAAAD8/wAAAwABAAAAAAD8/wEAAwABAAAAAAA=")
 tile_set = SubResource("TileSet_riyu3")
 script = ExtResource("1_moosy")
 only_shown_in_editor = true
-iso_tile_offset = null
 
 [node name="floor" type="TileMapLayer" parent="."]
 tile_map_data = PackedByteArray("AAABAAEACQAAAAAAAAACAAEACQAAAAAAAAADAAEACQAAAAAAAAADAAIACQAAAAAAAAADAAMACQAAAAAAAAACAAMACQAAAAAAAAABAAMACQAAAAAAAAABAAIACQAAAAAAAAACAAIACQAAAAAAAAA=")
 tile_set = ExtResource("2_mnvgh")
 script = ExtResource("1_moosy")
-iso_tile_offset = null
 
 [node name="external_floor" type="TileMapLayer" parent="."]
 tile_map_data = PackedByteArray("AAAAAAAACQAAAAAAAAABAAAACQAAAAAAAAACAAAACQAAAAAAAAADAAAACQAAAAAAAAAEAAAACQAAAAAAAAAAAAEACQAAAAAAAAAAAAIACQAAAAAAAAAAAAMACQAAAAAAAAAAAAQACQAAAAAAAAABAAQACQAAAAAAAAACAAQACQAAAAAAAAADAAQACQAAAAAAAAAEAAQACQAAAAAAAAAEAAMACQAAAAAAAAAEAAIACQAAAAAAAAAEAAEACQAAAAAAAAA=")
 tile_set = ExtResource("2_mnvgh")
 script = ExtResource("1_moosy")
-iso_tile_offset = null
 
 [node name="physics_layer" type="TileMapLayer" parent="."]
 tile_map_data = PackedByteArray("AAAAAAEACAAAAAQAAAAAAAMACAAAAAQAAAAAAAQACAAAAAUAAAAEAAAACAAAAAYAAAAAAAAACAAAAAcAAAAEAAQACAAAAAgAAAABAAAACAAAAAMAAAADAAAACAAAAAMAAAABAAQACAAAAAEAAAACAAQACAAAAAEAAAADAAQACAAAAAEAAAAEAAEACAAAAAIAAAAEAAIACAAAAAIAAAAEAAMACAAAAAIAAAA=")
 tile_set = SubResource("TileSet_riyu3")
 script = ExtResource("1_moosy")
 only_shown_in_editor = true
-iso_tile_offset = null
 
 [node name="back_wall" type="Node2D" parent="." node_paths=PackedStringArray("semi_transparent_mask_layers")]
 y_sort_enabled = true
 material = ExtResource("5_hgfvh")
 script = ExtResource("6_riyu3")
 semi_transparent_mask_layers = [NodePath("../wall_mask")]
+use_ground_bounding_rect = true
 
 [node name="wall" type="TileMapLayer" parent="back_wall"]
 y_sort_enabled = true
@@ -632,7 +628,6 @@ use_parent_material = true
 tile_map_data = PackedByteArray("AAAAAAAACgARAB4AAAAAAAQACgAEAAAAAAAEAAAACgAFAAAAAAAEAAQACgAHAAAAAAAAAAEACgANAB4AAQAAAAMACgANAB4AAQABAAAACgAMAB4AAQADAAAACgAMAB4AAQABAAQACgAMABQAAAACAAQACgAMABQAAAADAAQACgAMABQAAAAEAAMACgANABQAAAAEAAIACgANABQAAAAEAAEACgANABQAAAA=")
 tile_set = ExtResource("2_mnvgh")
 script = ExtResource("1_moosy")
-iso_tile_offset = null
 
 [node name="wall_north" type="Sprite2D" parent="back_wall"]
 use_parent_material = true
@@ -640,7 +635,6 @@ position = Vector2(32, 16)
 texture = SubResource("AtlasTexture_fooa2")
 offset = Vector2(0, -85)
 script = ExtResource("1_moosy")
-iso_tile_offset = null
 
 [node name="wall_north_east_0" type="Sprite2D" parent="back_wall"]
 use_parent_material = true
@@ -648,7 +642,6 @@ position = Vector2(64, 32)
 texture = SubResource("AtlasTexture_riyu3")
 offset = Vector2(12, -85)
 script = ExtResource("1_moosy")
-iso_tile_offset = null
 
 [node name="wall_north_east_1" type="Sprite2D" parent="back_wall"]
 use_parent_material = true
@@ -656,7 +649,6 @@ position = Vector2(128, 64)
 texture = SubResource("AtlasTexture_hgfvh")
 offset = Vector2(-4, -93)
 script = ExtResource("1_moosy")
-iso_tile_offset = null
 
 [node name="wall_north_east_2" type="Sprite2D" parent="back_wall"]
 use_parent_material = true
@@ -664,7 +656,6 @@ position = Vector2(0, 32)
 texture = SubResource("AtlasTexture_in82j")
 offset = Vector2(-12, -85)
 script = ExtResource("1_moosy")
-iso_tile_offset = null
 
 [node name="wall_north_east_3" type="Sprite2D" parent="back_wall"]
 use_parent_material = true
@@ -672,14 +663,14 @@ position = Vector2(-64, 64)
 texture = SubResource("AtlasTexture_0iova")
 offset = Vector2(4, -93)
 script = ExtResource("1_moosy")
-iso_tile_offset = null
 
 [node name="front_wall" type="Node2D" parent="." node_paths=PackedStringArray("semi_transparent_mask_layers", "visibility_mask_layers")]
 y_sort_enabled = true
 material = ExtResource("5_hgfvh")
 script = ExtResource("6_riyu3")
-semi_transparent_mask_layers = [NodePath("../external_floor"), NodePath("../wall_mask")]
+semi_transparent_mask_layers = [NodePath("../wall_mask")]
 visibility_mask_layers = [NodePath("../floor")]
+use_ground_bounding_rect = true
 
 [node name="wall_west" type="Sprite2D" parent="front_wall"]
 use_parent_material = true
@@ -687,7 +678,6 @@ position = Vector2(-96, 80)
 texture = SubResource("AtlasTexture_w8ooc")
 offset = Vector2(-8, -79)
 script = ExtResource("1_moosy")
-iso_tile_offset = null
 
 [node name="wall_east" type="Sprite2D" parent="front_wall"]
 use_parent_material = true
@@ -695,7 +685,6 @@ position = Vector2(160, 80)
 texture = SubResource("AtlasTexture_2maa3")
 offset = Vector2(8, -79)
 script = ExtResource("1_moosy")
-iso_tile_offset = null
 
 [node name="wall_south" type="Sprite2D" parent="front_wall"]
 use_parent_material = true
@@ -703,7 +692,6 @@ position = Vector2(32, 144)
 texture = SubResource("AtlasTexture_tjncr")
 offset = Vector2(0, -75)
 script = ExtResource("1_moosy")
-iso_tile_offset = null
 
 [node name="wall_south_west_0" type="Sprite2D" parent="front_wall"]
 use_parent_material = true

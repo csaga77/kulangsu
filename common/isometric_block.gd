@@ -27,12 +27,12 @@ func _notification(what: int) -> void:
 			return
 
 		_snapping = true
-		var snapped := snap_to_iso_grid(position - iso_tile_offset, iso_tile_size) + iso_tile_offset
+		var snapped_pos := snap_to_iso_grid(position - iso_tile_offset, iso_tile_size) + iso_tile_offset
 		#print(global_position)
-		print(snapped)
+		print(snapped_pos)
 		# Avoid infinite notification loops
-		if snapped != position:
-			position = snapped
+		if snapped_pos != position:
+			position = snapped_pos
 		_snapping = false
 
 static func snap_to_iso_grid(world_pos: Vector2, tile: Vector2) -> Vector2:

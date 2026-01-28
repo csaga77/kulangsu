@@ -10,6 +10,8 @@ enum BodyTypeEnum
 
 signal global_position_changed()
 
+signal texture_changed()
+
 @export var draw_bounding_rect := false
 
 @export var body_type :BodyTypeEnum = BodyTypeEnum.MALE:
@@ -41,6 +43,10 @@ signal global_position_changed()
 		_update_state() 
 		
 func get_local_bounding_rect() -> Rect2:
+	#var t := get_texture()
+	#if t:
+		#var v = t.get_size()
+		#return Rect2(-Vector2(v.x / 2, v.y), v)
 	return Rect2(- Vector2(16, 64), Vector2(32, 64))
 		
 func get_bounding_rect() -> Rect2:
@@ -48,9 +54,19 @@ func get_bounding_rect() -> Rect2:
 	br.position += global_position
 	return br
 	
+func get_local_ground_rect() -> Rect2:
+	return Rect2(- Vector2(16, 32), Vector2(32, 32))
+	
 func get_ground_rect() -> Rect2:
-	return Rect2(global_position - Vector2(16, 4), Vector2(32, 32))
+	var br = get_local_ground_rect()
+	br.position += global_position
+	return br
 
+func get_texture() -> Texture2D:
+	if m_sprite == null:
+		return null
+	return m_sprite.sprite_frames.get_frame_texture(m_sprite.animation, m_sprite.frame)
+	
 var m_male_frames := [
 	"res://resources/sprites/male/male_body.png",
 	"res://resources/sprites/male/male_basic_shoes_black.png",
@@ -71,6 +87,7 @@ var m_female_frames := [
 	"res://resources/sprites/hair_long_loose_blonde.png",
 ]
 
+var m_sprite :AnimatedSprite2D
 var m_last_global_position := Vector2.ZERO
 
 # Called when the node enters the scene tree for the first time.
@@ -83,6 +100,7 @@ func _reload():
 			node.queue_free()
 			
 	var body :AnimatedSprite2D = AnimatedSprite2D.new()
+	m_sprite = body
 	add_child(body)
 	body.position = Vector2(0, -32)
 
@@ -142,6 +160,8 @@ func _update_state() -> void:
 		if node is AnimatedSprite2D:
 			node.stop()
 			node.play(animation_name)
+			if !node.frame_changed.is_connected(self.texture_changed.emit):
+				node.frame_changed.connect(self.texture_changed.emit)
 		
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(_delta: float) -> void:
@@ -154,3 +174,4 @@ func _process(_delta: float) -> void:
 func _draw() -> void:
 	if draw_bounding_rect:
 		draw_rect(get_local_bounding_rect(), Color.RED, false)
+		draw_rect(get_local_ground_rect(), Color.BLUE, false)
