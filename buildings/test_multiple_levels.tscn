@@ -15,7 +15,7 @@ position = Vector2(160, 48)
 level = 2
 
 [node name="steps" parent="." instance=ExtResource("2_0a7qm")]
-position = Vector2(-96, 304)
+position = Vector2(160, 368)
 layer1 = 524288
 collision_layer = 1048576
 layer2 = 2097152
