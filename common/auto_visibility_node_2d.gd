@@ -14,6 +14,9 @@ extends Node2D
 
 var m_player :Player
 var m_shader_material :ShaderMaterial
+var m_in_semi_transparent_areas_count := 0
+var m_target_visible := true
+var m_is_changing_visibility := false
 
 func set_player(new_character):
 		if m_player == new_character:
@@ -40,9 +43,7 @@ func _update_areas() -> void:
 			area.body_entered.connect(self._on_semit_transparent_area_entered)
 		if !area.body_exited.is_connected(self._on_semit_transparent_area_exited):
 			area.body_exited.connect(self._on_semit_transparent_area_exited)
-	
-var m_in_semi_transparent_areas_count := 0
-	
+
 func _on_semit_transparent_area_entered(body: Node2D) -> void:
 	if body == m_player:
 		m_in_semi_transparent_areas_count += 1
@@ -82,25 +83,35 @@ func _on_character_global_position_changed() -> void:
 			#else:
 				#print(layer.name, ": false")
 				
-	visible = should_be_visible
+	#visible = should_be_visible
+	if m_target_visible != should_be_visible:
+		m_target_visible = should_be_visible
+		var tween = AnimationUtils.tween_node2d_visibility(self, should_be_visible)
+		if tween:
+			m_is_changing_visibility = true
+			tween.finished.connect(func():
+				m_is_changing_visibility = false
+			)
+	
 	#print(is_semi_transparent)
-	if m_shader_material:
-		modulate.a = 1.0
-		if should_be_visible and !is_semi_transparent:
-			if material:
-				#print(name, " null ", should_be_visible)
-				material = null
+	if !m_is_changing_visibility:
+		if m_shader_material:
+			modulate.a = 1.0
+			if should_be_visible and !is_semi_transparent:
+				if material:
+					#print(name, " null ", should_be_visible)
+					material = null
+			else:
+				if material == null:
+					#print(name, " material ", should_be_visible)
+					material = m_shader_material
+			#leave the transparency to wall_transparent.shader
+			#shader paramters are updated in global auto visiblity material.
+			#if is_semi_transparent:
+				#shader_material.set_shader_parameter("trans_rect_pos", bounding_rect.position)
+				#shader_material.set_shader_parameter("trans_rect_size", bounding_rect.size)
+			#else:
+				#shader_material.set_shader_parameter("trans_rect_size", Vector2.ZERO)
 		else:
-			if material == null:
-				#print(name, " material ", should_be_visible)
-				material = m_shader_material
-		#leave the transparency to wall_transparent.shader
-		#shader paramters are updated in global auto visiblity material.
-		#if is_semi_transparent:
-			#shader_material.set_shader_parameter("trans_rect_pos", bounding_rect.position)
-			#shader_material.set_shader_parameter("trans_rect_size", bounding_rect.size)
-		#else:
-			#shader_material.set_shader_parameter("trans_rect_size", Vector2.ZERO)
-	else:
-		modulate.a = 0.1 if is_semi_transparent else 1.0
+			modulate.a = 0.1 if is_semi_transparent else 1.0
 	
