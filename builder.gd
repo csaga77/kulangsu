@@ -13,9 +13,15 @@ extends Node2D
 @onready var m_root   :Node2D = $Root
 
 func _ready() -> void:
-	GameGlobal.get_instance().set_player(m_player)
-	m_player.global_position_changed.connect(self._on_player_moved)
-	#m_player.texture_changed.connect(self._on_player_texture_changed)
+	if Engine.is_editor_hint():
+		var shader_material :ShaderMaterial = m_root.material
+		if shader_material:
+			shader_material.set_shader_parameter("trans_rect_size", Vector2i.ZERO)
+	else:
+		GameGlobal.get_instance().set_player(m_player)
+		m_player.global_position_changed.connect(self._on_player_moved)
+		#m_player.texture_changed.connect(self._on_player_texture_changed)
+		
 	_reload_building()
 
 func _reload_building() -> void:
@@ -26,13 +32,12 @@ func _reload_building() -> void:
 	if building:
 		var new_building = building.instantiate()
 		m_root.add_child(new_building)
-		print("_reload_building()")
+		#print("_reload_building()")
 
 func _process(_delta: float) -> void:
 	pass
 
 func _on_player_texture_changed() -> void:
-	return
 	var shader_material :ShaderMaterial = m_root.material
 	if shader_material:
 		var tex :AtlasTexture = m_player.get_texture()
@@ -51,6 +56,4 @@ func _on_player_moved() -> void:
 	if shader_material:
 		shader_material.set_shader_parameter("trans_rect_pos", bounding_rect.position)
 		shader_material.set_shader_parameter("trans_rect_size", bounding_rect.size)
-			
-			
 		#m_player.get_texture().get_image().save_png("user://test.png")

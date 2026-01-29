@@ -1,10 +1,9 @@
-[gd_scene load_steps=22 format=4 uid="uid://b27c76jsv3pop"]
+[gd_scene load_steps=9 format=4 uid="uid://b27c76jsv3pop"]
 
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="1_moosy"]
 [ext_resource type="TileSet" uid="uid://cioy8ksn0td4" path="res://resources/tilesets/building_tiles_0.tres" id="2_mnvgh"]
 [ext_resource type="Texture2D" uid="uid://c72ct2insxyd7" path="res://resources/tilesets/marks_0.png" id="2_unh7x"]
 [ext_resource type="Texture2D" uid="uid://b82rqlsb60rbl" path="res://resources/tilesets/marks_1.png" id="4_fooa2"]
-[ext_resource type="Texture2D" uid="uid://yom5kl3l5n0g" path="res://resources/sprites/room_1.png" id="4_unh7x"]
 [ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="6_riyu3"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_fooa2"]
@@ -540,71 +539,23 @@ terrain_set_0/terrain_0/color = Color(0.5, 0.34375, 0.25, 1)
 sources/3 = SubResource("TileSetAtlasSource_fooa2")
 sources/8 = SubResource("TileSetAtlasSource_riyu3")
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_fooa2"]
-atlas = ExtResource("4_unh7x")
-region = Rect2(106, 149, 64, 116)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_riyu3"]
-atlas = ExtResource("4_unh7x")
-region = Rect2(50, 234, 40, 116)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_hgfvh"]
-atlas = ExtResource("4_unh7x")
-region = Rect2(212, 0, 72, 132)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_in82j"]
-atlas = ExtResource("4_unh7x")
-region = Rect2(312, 254, 40, 116)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_0iova"]
-atlas = ExtResource("4_unh7x")
-region = Rect2(286, 0, 72, 132)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_w8ooc"]
-atlas = ExtResource("4_unh7x")
-region = Rect2(360, 0, 48, 128)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_2maa3"]
-atlas = ExtResource("4_unh7x")
-region = Rect2(0, 234, 48, 128)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_tjncr"]
-atlas = ExtResource("4_unh7x")
-region = Rect2(318, 133, 64, 120)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_5385j"]
-atlas = ExtResource("4_unh7x")
-region = Rect2(384, 129, 24, 76)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_8w1um"]
-atlas = ExtResource("4_unh7x")
-region = Rect2(0, 0, 104, 148)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_fa0ig"]
-atlas = ExtResource("4_unh7x")
-region = Rect2(274, 317, 24, 76)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_t61y6"]
-atlas = ExtResource("4_unh7x")
-region = Rect2(106, 0, 104, 148)
-
 [node name="TestRoom" type="Node2D"]
 y_sort_enabled = true
-script = ExtResource("1_moosy")
+script = ExtResource("6_riyu3")
 
 [node name="wall_mask" type="TileMapLayer" parent="."]
-tile_map_data = PackedByteArray("AAADAP7/AwABAAAAAAACAP7/AwABAAAAAAABAP7/AwABAAAAAAAAAP7/AwABAAAAAAD///7/AwABAAAAAAD+//7/AwABAAAAAAD+////AwABAAAAAAD+/wAAAwABAAAAAAD+/wEAAwABAAAAAAD+/wIAAwABAAAAAAD+/wMAAwABAAAAAAD9/wIAAwABAAAAAAD9/wEAAwABAAAAAAD9/wAAAwABAAAAAAD9////AwABAAAAAAD9//7/AwABAAAAAAD9//3/AwABAAAAAAD+//3/AwABAAAAAAD///3/AwABAAAAAAAAAP3/AwABAAAAAAABAP3/AwABAAAAAAACAP3/AwABAAAAAAABAPz/AwABAAAAAAAAAPz/AwABAAAAAAD///z/AwABAAAAAAD+//z/AwABAAAAAAD9//z/AwABAAAAAAD8//z/AwABAAAAAAD8//3/AwABAAAAAAD8//7/AwABAAAAAAD8////AwABAAAAAAD8/wAAAwABAAAAAAD8/wEAAwABAAAAAAA=")
+tile_map_data = PackedByteArray("AAACAP7/AwABAAAAAAABAP7/AwABAAAAAAAAAP7/AwABAAAAAAD///7/AwABAAAAAAD+//7/AwABAAAAAAD+////AwABAAAAAAD+/wAAAwABAAAAAAD+/wEAAwABAAAAAAD+/wIAAwABAAAAAAD9/wEAAwABAAAAAAD9/wAAAwABAAAAAAD9////AwABAAAAAAD9//7/AwABAAAAAAD9//3/AwABAAAAAAD+//3/AwABAAAAAAD///3/AwABAAAAAAAAAP3/AwABAAAAAAABAP3/AwABAAAAAAAAAPz/AwABAAAAAAD///z/AwABAAAAAAD+//z/AwABAAAAAAD9//z/AwABAAAAAAD8//z/AwABAAAAAAD8//3/AwABAAAAAAD8//7/AwABAAAAAAD8////AwABAAAAAAD8/wAAAwABAAAAAAA=")
 tile_set = SubResource("TileSet_riyu3")
 script = ExtResource("1_moosy")
 only_shown_in_editor = true
 
 [node name="floor" type="TileMapLayer" parent="."]
-tile_map_data = PackedByteArray("AAABAAEACQAAAAAAAAACAAEACQAAAAAAAAADAAEACQAAAAAAAAADAAIACQAAAAAAAAADAAMACQAAAAAAAAACAAMACQAAAAAAAAABAAMACQAAAAAAAAABAAIACQAAAAAAAAACAAIACQAAAAAAAAA=")
+tile_map_data = PackedByteArray("AAABAAEACQAAAAAAAAACAAEACQAAAAAAAAADAAEACQAAAAAAAAADAAIACQAAAAAAAAADAAMACQAAAAAAAAACAAMACQAAAAAAAAABAAMACQAAAAAAAAABAAIACQAAAAAAAAACAAIACQAAAAAAAAAAAAIACQAAAAAAAAACAAAACQAAAAAAAAA=")
 tile_set = ExtResource("2_mnvgh")
 script = ExtResource("1_moosy")
 
 [node name="external_floor" type="TileMapLayer" parent="."]
-tile_map_data = PackedByteArray("AAAAAAAACQAAAAAAAAABAAAACQAAAAAAAAACAAAACQAAAAAAAAADAAAACQAAAAAAAAAEAAAACQAAAAAAAAAAAAEACQAAAAAAAAAAAAIACQAAAAAAAAAAAAMACQAAAAAAAAAAAAQACQAAAAAAAAABAAQACQAAAAAAAAACAAQACQAAAAAAAAADAAQACQAAAAAAAAAEAAQACQAAAAAAAAAEAAMACQAAAAAAAAAEAAIACQAAAAAAAAAEAAEACQAAAAAAAAA=")
+tile_map_data = PackedByteArray("AAAAAAAACQAAAAAAAAABAAAACQAAAAAAAAADAAAACQAAAAAAAAAEAAAACQAAAAAAAAAAAAEACQAAAAAAAAAAAAMACQAAAAAAAAAAAAQACQAAAAAAAAABAAQACQAAAAAAAAACAAQACQAAAAAAAAADAAQACQAAAAAAAAAEAAQACQAAAAAAAAAEAAMACQAAAAAAAAAEAAIACQAAAAAAAAAEAAEACQAAAAAAAAA=")
 tile_set = ExtResource("2_mnvgh")
 script = ExtResource("1_moosy")
 
@@ -614,112 +565,70 @@ tile_set = SubResource("TileSet_riyu3")
 script = ExtResource("1_moosy")
 only_shown_in_editor = true
 
-[node name="back_wall" type="Node2D" parent="." node_paths=PackedStringArray("semi_transparent_mask_layers")]
-modulate = Color(1, 1, 1, 0.1)
-y_sort_enabled = true
-script = ExtResource("6_riyu3")
-semi_transparent_mask_layers = [NodePath("../wall_mask")]
-use_ground_bounding_rect = true
-
-[node name="wall" type="TileMapLayer" parent="back_wall"]
+[node name="back_wall" type="TileMapLayer" parent="."]
 y_sort_enabled = true
 use_parent_material = true
-tile_map_data = PackedByteArray("AAAAAAAACgARAB4AAAAAAAQACgAEAAAAAAAEAAAACgAFAAAAAAAEAAQACgAHAAAAAAAAAAEACgANAB4AAQAAAAMACgANAB4AAQABAAAACgAMAB4AAQADAAAACgAMAB4AAQABAAQACgAMABQAAAACAAQACgAMABQAAAADAAQACgAMABQAAAAEAAMACgANABQAAAAEAAIACgANABQAAAAEAAEACgANABQAAAA=")
+tile_map_data = PackedByteArray("AAAAAAAACgARAB4AAAAAAAEACgANAB4AAQAAAAMACgANAB4AAQABAAAACgAMAB4AAQADAAAACgAMAB4AAQAEAAAACgACAAAAAQAAAAQACgADAAAAAQA=")
 tile_set = ExtResource("2_mnvgh")
-script = ExtResource("1_moosy")
-
-[node name="wall_north" type="Sprite2D" parent="back_wall"]
-use_parent_material = true
-position = Vector2(32, 16)
-texture = SubResource("AtlasTexture_fooa2")
-offset = Vector2(0, -85)
-script = ExtResource("1_moosy")
-
-[node name="wall_north_east_0" type="Sprite2D" parent="back_wall"]
-use_parent_material = true
-position = Vector2(64, 32)
-texture = SubResource("AtlasTexture_riyu3")
-offset = Vector2(12, -85)
-script = ExtResource("1_moosy")
-
-[node name="wall_north_east_1" type="Sprite2D" parent="back_wall"]
-use_parent_material = true
-position = Vector2(128, 64)
-texture = SubResource("AtlasTexture_hgfvh")
-offset = Vector2(-4, -93)
-script = ExtResource("1_moosy")
-
-[node name="wall_north_east_2" type="Sprite2D" parent="back_wall"]
-use_parent_material = true
-position = Vector2(0, 32)
-texture = SubResource("AtlasTexture_in82j")
-offset = Vector2(-12, -85)
-script = ExtResource("1_moosy")
-
-[node name="wall_north_east_3" type="Sprite2D" parent="back_wall"]
-use_parent_material = true
-position = Vector2(-64, 64)
-texture = SubResource("AtlasTexture_0iova")
-offset = Vector2(4, -93)
-script = ExtResource("1_moosy")
-
-[node name="front_wall" type="Node2D" parent="." node_paths=PackedStringArray("semi_transparent_mask_layers", "visibility_mask_layers")]
-modulate = Color(1, 1, 1, 0.1)
-y_sort_enabled = true
 script = ExtResource("6_riyu3")
-semi_transparent_mask_layers = [NodePath("../wall_mask")]
-visibility_mask_layers = [NodePath("../floor")]
 use_ground_bounding_rect = true
 
-[node name="wall_west" type="Sprite2D" parent="front_wall"]
+[node name="level_1" type="TileMapLayer" parent="back_wall" node_paths=PackedStringArray("visibility_mask_layers")]
+y_sort_enabled = true
 use_parent_material = true
-position = Vector2(-96, 80)
-texture = SubResource("AtlasTexture_w8ooc")
-offset = Vector2(-8, -79)
+tile_map_data = PackedByteArray("AAD/////CgARAAAAAAD//wAACgANAAAAAQD//wIACgANAAAAAQD//wMACgADAAAAAQAAAP//CgAMAAAAAQACAP//CgAMAAAAAQADAP//CgACAAAAAQA=")
+tile_set = ExtResource("2_mnvgh")
+y_sort_origin = 32
+script = ExtResource("6_riyu3")
+visibility_mask_layers = [NodePath("../../wall_mask")]
+use_ground_bounding_rect = true
+
+[node name="level_2" type="TileMapLayer" parent="back_wall/level_1"]
+y_sort_enabled = true
+use_parent_material = true
+tile_map_data = PackedByteArray("AAD+//7/CgARAAAAAAD+////CgANAAAAAQD+/wEACgANAAAAAQD+/wIACgADAAAAAQD///7/CgAMAAAAAQABAP7/CgAMAAAAAQACAP7/CgACAAAAAQA=")
+tile_set = ExtResource("2_mnvgh")
+y_sort_origin = 64
 script = ExtResource("1_moosy")
 
-[node name="wall_east" type="Sprite2D" parent="front_wall"]
+[node name="level_3" type="TileMapLayer" parent="back_wall/level_1/level_2"]
+y_sort_enabled = true
 use_parent_material = true
-position = Vector2(160, 80)
-texture = SubResource("AtlasTexture_2maa3")
-offset = Vector2(8, -79)
+tile_map_data = PackedByteArray("AAD9//3/CgARAAAAAAD9//7/CgANAAAAAQD9/wAACgANAAAAAQD9/wEACgADAAAAAQD+//3/CgAMAAAAAQAAAP3/CgAMAAAAAQABAP3/CgACAAAAAQD9////CgANAAAAAQD///3/CgAMAAAAAQA=")
+tile_set = ExtResource("2_mnvgh")
+y_sort_origin = 96
 script = ExtResource("1_moosy")
 
-[node name="wall_south" type="Sprite2D" parent="front_wall"]
+[node name="front_wall" type="TileMapLayer" parent="."]
+y_sort_enabled = true
 use_parent_material = true
-position = Vector2(32, 144)
-texture = SubResource("AtlasTexture_tjncr")
-offset = Vector2(0, -75)
+tile_map_data = PackedByteArray("AAAAAAQACgABAAAAAAAEAAAACgABAAAAAAAEAAQACgAHAAAAAAABAAQACgAMABQAAAACAAQACgAMABQAAAADAAQACgAMABQAAAAEAAMACgANABQAAAAEAAIACgANABQAAAAEAAEACgANABQAAAA=")
+tile_set = ExtResource("2_mnvgh")
+script = ExtResource("6_riyu3")
+use_ground_bounding_rect = true
+
+[node name="level_1" type="TileMapLayer" parent="front_wall" node_paths=PackedStringArray("visibility_mask_layers")]
+y_sort_enabled = true
+use_parent_material = true
+tile_map_data = PackedByteArray("AAD//wMACgABAAAAAAACAAMACgAKAAwAAAADAP//CgABAAAAAAADAAAACgALAAwAAgADAAIACgALAAwAAAADAAMACgAHAAAAAAAAAAMACgAKAAwAAgA=")
+tile_set = ExtResource("2_mnvgh")
+y_sort_origin = 32
+script = ExtResource("6_riyu3")
+visibility_mask_layers = [NodePath("../../floor"), NodePath("../../wall_mask"), NodePath("../../external_floor")]
+use_ground_bounding_rect = true
+
+[node name="level_2" type="TileMapLayer" parent="front_wall/level_1"]
+y_sort_enabled = true
+use_parent_material = true
+tile_map_data = PackedByteArray("AAD+/wIACgABAAAAAAD//wIACgAKAAwAAgABAAIACgAKAAwAAAACAP7/CgABAAAAAAACAP//CgALAAwAAgACAAEACgALAAwAAAACAAIACgAHAAAAAAA=")
+tile_set = ExtResource("2_mnvgh")
+y_sort_origin = 64
 script = ExtResource("1_moosy")
 
-[node name="wall_south_west_0" type="Sprite2D" parent="front_wall"]
+[node name="level_3" type="TileMapLayer" parent="front_wall/level_1/level_2"]
+y_sort_enabled = true
 use_parent_material = true
-position = Vector2(-64, 111)
-texture = SubResource("AtlasTexture_5385j")
-offset = Vector2(-20, -76)
+tile_map_data = PackedByteArray("AAD9/wEACgABAAAAAAD+/wEACgAMAAwAAAAAAAEACgAMAAwAAAABAP3/CgABAAAAAAABAP7/CgANAAwAAAABAAAACgANAAwAAAABAAEACgAHAAAAAAD//wEACgAMAAwAAAABAP//CgANAAwAAAA=")
+tile_set = ExtResource("2_mnvgh")
+y_sort_origin = 96
 script = ExtResource("1_moosy")
-iso_tile_offset = Vector2(0, 15)
-
-[node name="wall_south_west_1" type="Sprite2D" parent="front_wall"]
-use_parent_material = true
-position = Vector2(0, 143)
-texture = SubResource("AtlasTexture_8w1um")
-offset = Vector2(-44, -104)
-script = ExtResource("1_moosy")
-iso_tile_offset = Vector2(0, 15)
-
-[node name="wall_south_east_0" type="Sprite2D" parent="front_wall"]
-use_parent_material = true
-position = Vector2(128, 111)
-texture = SubResource("AtlasTexture_fa0ig")
-offset = Vector2(20, -76)
-script = ExtResource("1_moosy")
-iso_tile_offset = Vector2(0, 15)
-
-[node name="wall_south_east_1" type="Sprite2D" parent="front_wall"]
-use_parent_material = true
-position = Vector2(64, 143)
-texture = SubResource("AtlasTexture_t61y6")
-offset = Vector2(44, -104)
-script = ExtResource("1_moosy")
-iso_tile_offset = Vector2(0, 15)

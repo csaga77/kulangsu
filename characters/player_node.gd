@@ -43,10 +43,10 @@ signal texture_changed()
 		_update_state() 
 		
 func get_local_bounding_rect() -> Rect2:
-	#var t := get_texture()
-	#if t:
-		#var v = t.get_size()
-		#return Rect2(-Vector2(v.x / 2, v.y), v)
+	var t := get_texture()
+	if t:
+		var v = t.get_size()
+		return Rect2(-Vector2(v.x / 2, v.y), v)
 	return Rect2(- Vector2(16, 64), Vector2(32, 64))
 		
 func get_bounding_rect() -> Rect2:
@@ -160,8 +160,8 @@ func _update_state() -> void:
 		if node is AnimatedSprite2D:
 			node.stop()
 			node.play(animation_name)
-			if !node.frame_changed.is_connected(self.texture_changed.emit):
-				node.frame_changed.connect(self.texture_changed.emit)
+			#if !node.frame_changed.is_connected(self.texture_changed.emit):
+				#node.frame_changed.connect(self.texture_changed.emit)
 		
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(_delta: float) -> void:

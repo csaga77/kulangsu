@@ -28,8 +28,9 @@ func set_player(new_character):
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	m_shader_material = material
-	if GameGlobal.get_instance():
-		GameGlobal.get_instance().player_changed.connect(self._on_player_changed)
+	if !Engine.is_editor_hint():
+		if GameGlobal.get_instance():
+			GameGlobal.get_instance().player_changed.connect(self._on_player_changed)
 	_on_player_changed()
 	_update_areas()
 
@@ -51,10 +52,15 @@ func _on_semit_transparent_area_exited(body: Node2D) -> void:
 		m_in_semi_transparent_areas_count -= 1
 
 func _on_player_changed() -> void:
+	if Engine.is_editor_hint():
+		return
 	set_player(GameGlobal.get_instance().get_player())
 
 func _on_character_global_position_changed() -> void:
+	if Engine.is_editor_hint():
+		return
 	var is_semi_transparent := m_in_semi_transparent_areas_count > 0
+	#print(is_semi_transparent)
 	var should_be_visible := true
 	var bounding_rect :Rect2
 	if m_player:
@@ -77,6 +83,7 @@ func _on_character_global_position_changed() -> void:
 				#print(layer.name, ": false")
 				
 	visible = should_be_visible
+	#print(is_semi_transparent)
 	if m_shader_material:
 		modulate.a = 1.0
 		if should_be_visible and !is_semi_transparent:
