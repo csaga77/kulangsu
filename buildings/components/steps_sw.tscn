@@ -21,8 +21,11 @@ region = Rect2(0, 0, 64, 64)
 [sub_resource type="SegmentShape2D" id="SegmentShape2D_tynux"]
 b = Vector2(61, -91)
 
-[node name="steps" type="Node2D"]
+[node name="steps" type="Node2D" node_paths=PackedStringArray("layer1_nodes", "body_nodes", "layer2_nodes")]
 script = ExtResource("2_tpm7a")
+layer1_nodes = [NodePath("portal")]
+body_nodes = [NodePath("steps body")]
+layer2_nodes = [NodePath("portal2")]
 
 [node name="Sprite2D3" type="Sprite2D" parent="."]
 position = Vector2(32, -16)

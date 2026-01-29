@@ -1,7 +1,39 @@
-[gd_scene load_steps=3 format=3 uid="uid://nb76pl60f3ib"]
+[gd_scene load_steps=16 format=4 uid="uid://nb76pl60f3ib"]
 
 [ext_resource type="PackedScene" uid="uid://b27c76jsv3pop" path="res://buildings/test_room.tscn" id="1_8oy63"]
-[ext_resource type="PackedScene" uid="uid://dre5psaq1igux" path="res://buildings/components/steps_sw.tscn" id="2_0a7qm"]
+[ext_resource type="Script" uid="uid://dl2kyruhqxduy" path="res://buildings/components/steps.gd" id="2_jyvgc"]
+[ext_resource type="TileSet" uid="uid://cioy8ksn0td4" path="res://resources/tilesets/building_tiles_0.tres" id="2_x4g5s"]
+[ext_resource type="Texture2D" uid="uid://jc066lt8l3nn" path="res://resources/tilesets/building_tiles_0.png" id="3_u0u7n"]
+[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="4_x4g5s"]
+[ext_resource type="Texture2D" uid="uid://boka5fmviqaew" path="res://resources/tilesets/building_tiles_1.png" id="5_m6uu3"]
+[ext_resource type="PackedScene" uid="uid://d27a7jcvsnfx8" path="res://buildings/components/portal.tscn" id="6_6nlj4"]
+[ext_resource type="TileSet" uid="uid://dn7l7cnmn33jy" path="res://resources/tilesets/mark_tiles.tres" id="7_u0u7n"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_tjhdy"]
+atlas = ExtResource("3_u0u7n")
+region = Rect2(0, 1024, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_a3f21"]
+atlas = ExtResource("5_m6uu3")
+region = Rect2(64, 0, 64, 64)
+
+[sub_resource type="SegmentShape2D" id="SegmentShape2D_tynux"]
+b = Vector2(-61, -94)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_6h87q"]
+atlas = ExtResource("3_u0u7n")
+region = Rect2(0, 1024, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dds7o"]
+atlas = ExtResource("5_m6uu3")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_sntt2"]
+atlas = ExtResource("5_m6uu3")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="SegmentShape2D" id="SegmentShape2D_jyvgc"]
+b = Vector2(61, -91)
 
 [node name="TestMultipleLevels" type="Node2D"]
 y_sort_enabled = true
@@ -12,10 +44,112 @@ position = Vector2(160, 176)
 [node name="level2" parent="." instance=ExtResource("1_8oy63")]
 z_index = 2
 position = Vector2(160, 48)
-level = 2
+level = 3
 
-[node name="steps" parent="." instance=ExtResource("2_0a7qm")]
-position = Vector2(160, 368)
+[node name="level2_floor" type="TileMapLayer" parent="level2"]
+position = Vector2(-160, -48)
+tile_map_data = PackedByteArray("AAADAAQACgAAACYAAQAEAAQACgAAACYAAQAFAAQACgAAACYAAQAGAAQACgAAACYAAQAHAAQACgAAACYAAQAIAAQACgAAACYAAQAJAAQACgAAACYAAQAJAAMACgAAACYAAQAJAAAACgAAACYAAQAJAP//CgAAACYAAQAJAP7/CgAAACYAAQAIAP7/CgAAACYAAQAHAP7/CgAAACYAAQAGAP7/CgAAACYAAQAFAP7/CgAAACYAAQAEAP7/CgAAACYAAQADAP7/CgAAACYAAQADAP//CgAAACYAAQADAAAACgAAACYAAQADAAEACgAAACYAAQADAAIACgAAACYAAQADAAMACgAAACYAAQA=")
+tile_set = ExtResource("2_x4g5s")
+script = ExtResource("4_x4g5s")
+
+[node name="Sprite2D5" type="Sprite2D" parent="."]
+position = Vector2(224, 336)
+texture = SubResource("AtlasTexture_tjhdy")
+offset = Vector2(0, -16)
+script = ExtResource("4_x4g5s")
+
+[node name="Sprite2D6" type="Sprite2D" parent="Sprite2D5"]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_tjhdy")
+offset = Vector2(0, -16)
+script = ExtResource("4_x4g5s")
+
+[node name="steps" type="Node2D" parent="." node_paths=PackedStringArray("layer1_nodes", "body_nodes", "layer2_nodes")]
+position = Vector2(288, 368)
+script = ExtResource("2_jyvgc")
+layer1_nodes = [NodePath("portal")]
 layer1 = 524288
+body_nodes = [NodePath("steps body"), NodePath("steps/steps body")]
 collision_layer = 1048576
-layer2 = 2097152
+layer2_nodes = [NodePath("portal2")]
+layer2 = 4194304
+
+[node name="Sprite2D3" type="Sprite2D" parent="steps"]
+position = Vector2(-32, -16)
+texture = SubResource("AtlasTexture_tjhdy")
+offset = Vector2(0, -16)
+script = ExtResource("4_x4g5s")
+
+[node name="Sprite2D2" type="Sprite2D" parent="steps"]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_a3f21")
+offset = Vector2(0, -16)
+script = ExtResource("4_x4g5s")
+
+[node name="Sprite2D4" type="Sprite2D" parent="steps"]
+texture = SubResource("AtlasTexture_a3f21")
+offset = Vector2(0, -16)
+script = ExtResource("4_x4g5s")
+
+[node name="steps body" type="StaticBody2D" parent="steps"]
+collision_layer = 1048576
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="steps/steps body"]
+position = Vector2(37, -1)
+shape = SubResource("SegmentShape2D_tynux")
+
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="steps/steps body"]
+position = Vector2(-1, 15)
+shape = SubResource("SegmentShape2D_tynux")
+
+[node name="portal" parent="steps" instance=ExtResource("6_6nlj4")]
+position = Vector2(18, 6.999999)
+rotation = -2.0943952
+mask1 = 524288
+mask2 = 1048576
+
+[node name="steps" type="Node2D" parent="steps"]
+position = Vector2(-32, -112)
+
+[node name="Sprite2D3" type="Sprite2D" parent="steps/steps"]
+position = Vector2(32, -16)
+texture = SubResource("AtlasTexture_6h87q")
+offset = Vector2(0, -16)
+script = ExtResource("4_x4g5s")
+
+[node name="Sprite2D2" type="Sprite2D" parent="steps/steps"]
+position = Vector2(32, -48)
+texture = SubResource("AtlasTexture_dds7o")
+offset = Vector2(0, -16)
+script = ExtResource("4_x4g5s")
+
+[node name="Sprite2D4" type="Sprite2D" parent="steps/steps"]
+texture = SubResource("AtlasTexture_sntt2")
+offset = Vector2(0, -16)
+script = ExtResource("4_x4g5s")
+
+[node name="steps body" type="StaticBody2D" parent="steps/steps"]
+collision_layer = 1048576
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="steps/steps/steps body"]
+position = Vector2(-36, -2)
+shape = SubResource("SegmentShape2D_jyvgc")
+
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="steps/steps/steps body"]
+position = Vector2(-1, 15)
+shape = SubResource("SegmentShape2D_jyvgc")
+
+[node name="portal2" parent="steps" instance=ExtResource("6_6nlj4")]
+position = Vector2(8.999996, -197)
+rotation = -0.89754283
+mask1 = 1048576
+mask2 = 4194304
+
+[node name="physics_layer" type="TileMapLayer" parent="."]
+position = Vector2(320, 384)
+tile_map_data = PackedByteArray("AAD9/wAAAwAAAAEAAAD8/wAAAwAAAAEAAAD6////AwABAAQAAAD5//7/AwABAAMAAAA=")
+tile_set = ExtResource("7_u0u7n")
+script = ExtResource("4_x4g5s")
+only_shown_in_editor = true
