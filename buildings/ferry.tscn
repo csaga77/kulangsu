@@ -1,7 +1,6 @@
-[gd_scene load_steps=9 format=4 uid="uid://byyig1mqymirh"]
+[gd_scene load_steps=8 format=4 uid="uid://byyig1mqymirh"]
 
 [ext_resource type="TileSet" uid="uid://dvrbkuapcr681" path="res://resources/tilesets/tileset.tres" id="1_2kux5"]
-[ext_resource type="Script" uid="uid://bj1l407ues4al" path="res://buildings/ferry.gd" id="1_coo13"]
 [ext_resource type="TileSet" uid="uid://bm2htlbsypqp4" path="res://resources/tilesets/tileset_rails.tres" id="3_noucg"]
 [ext_resource type="Texture2D" uid="uid://c7kmmi41i4kuc" path="res://resources/sprites/kulangyu_ferry_roof_2.png" id="4_j461t"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="5_lf2yk"]
@@ -13,7 +12,7 @@ points = PackedVector2Array(576, 303, 64, 559, -512, 271, 0, 16)
 
 [node name="ferry" type="Area2D"]
 y_sort_enabled = true
-script = ExtResource("1_coo13")
+script = ExtResource("5_lf2yk")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("ConvexPolygonShape2D_j461t")
