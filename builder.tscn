@@ -1,7 +1,7 @@
 [gd_scene load_steps=8 format=3 uid="uid://dc2dh1e6e5hb"]
 
 [ext_resource type="Script" uid="uid://b7ntce1lyblnt" path="res://builder.gd" id="1_nebbf"]
-[ext_resource type="PackedScene" uid="uid://byyig1mqymirh" path="res://buildings/ferry.tscn" id="2_gtodl"]
+[ext_resource type="PackedScene" uid="uid://byyig1mqymirh" path="res://buildings/piano_ferry.tscn" id="2_gtodl"]
 [ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/player_node.tscn" id="2_h00wr"]
 [ext_resource type="Material" uid="uid://dw5sarpgr1teb" path="res://resources/materials/wall_transparent.tres" id="2_ucbhk"]
 [ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/player_controller.gd" id="3_ucbhk"]

@@ -27,26 +27,10 @@ func _notification(what: int) -> void:
 			return
 
 		_snapping = true
-		var snapped_pos := snap_to_iso_grid(position - iso_tile_offset, iso_tile_size) + iso_tile_offset
+		var snapped_pos := TileMapUtils.snap_to_iso_grid(position - iso_tile_offset, iso_tile_size) + iso_tile_offset
 		#print(global_position)
 		print(snapped_pos)
 		# Avoid infinite notification loops
 		if snapped_pos != position:
 			position = snapped_pos
 		_snapping = false
-
-static func snap_to_iso_grid(world_pos: Vector2, tile_size: Vector2) -> Vector2:
-	# World -> iso grid (continuous)
-	var gx := (world_pos.x / tile_size.x + world_pos.y / tile_size.y)
-	var gy := (world_pos.y / tile_size.y - world_pos.x / tile_size.x)
-
-	# Snap to nearest cell
-	gx = round(gx) - 1
-	gy = round(gy)
-	#print(Vector2(gx, gy))
-	
-	# Iso grid -> world
-	return Vector2(
-		(gx + 1 - gy) * tile_size.x * 0.5,
-		(gx + 1 + gy) * tile_size.y * 0.5
-	)
