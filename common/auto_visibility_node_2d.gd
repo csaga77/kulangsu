@@ -11,6 +11,7 @@ extends Node2D
 		_update_areas()
 @export var visibility_mask_layers :Array[TileMapLayer]
 @export var use_ground_bounding_rect := false
+@export var smooth_visibility_change := false
 
 var m_player :Player
 var m_shader_material :ShaderMaterial
@@ -57,6 +58,19 @@ func _on_player_changed() -> void:
 		return
 	set_player(GameGlobal.get_instance().get_player())
 
+func _set_visible(new_is_visible: bool) -> void:
+	if smooth_visibility_change:
+		if m_target_visible != new_is_visible:
+			m_target_visible = new_is_visible
+			var tween = AnimationUtils.tween_node2d_visibility(self, new_is_visible)
+			if tween:
+				m_is_changing_visibility = true
+				tween.finished.connect(func():
+					m_is_changing_visibility = false
+				)
+	else:
+		visible = new_is_visible
+
 func _on_character_global_position_changed() -> void:
 	if Engine.is_editor_hint():
 		return
@@ -83,15 +97,7 @@ func _on_character_global_position_changed() -> void:
 			#else:
 				#print(layer.name, ": false")
 				
-	#visible = should_be_visible
-	if m_target_visible != should_be_visible:
-		m_target_visible = should_be_visible
-		var tween = AnimationUtils.tween_node2d_visibility(self, should_be_visible)
-		if tween:
-			m_is_changing_visibility = true
-			tween.finished.connect(func():
-				m_is_changing_visibility = false
-			)
+	_set_visible(should_be_visible)
 	
 	#print(is_semi_transparent)
 	if !m_is_changing_visibility:
