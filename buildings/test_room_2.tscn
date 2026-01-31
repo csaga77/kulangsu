@@ -12,7 +12,6 @@ y_sort_enabled = true
 script = ExtResource("1_xax08")
 
 [node name="wall_mask" type="TileMapLayer" parent="."]
-visible = false
 tile_map_data = PackedByteArray("AAACAP7/AwABAAAAAAABAP7/AwABAAAAAAAAAP7/AwABAAAAAAD///7/AwABAAAAAAD+//7/AwABAAAAAAD+////AwABAAAAAAD+/wAAAwABAAAAAAD+/wEAAwABAAAAAAD+/wIAAwABAAAAAAD9/wEAAwABAAAAAAD9/wAAAwABAAAAAAD9////AwABAAAAAAD9//7/AwABAAAAAAD9//3/AwABAAAAAAD+//3/AwABAAAAAAD///3/AwABAAAAAAAAAP3/AwABAAAAAAABAP3/AwABAAAAAAAAAPz/AwABAAAAAAD///z/AwABAAAAAAD+//z/AwABAAAAAAD9//z/AwABAAAAAAD8//z/AwABAAAAAAD8//3/AwABAAAAAAD8//7/AwABAAAAAAD8////AwABAAAAAAD8/wAAAwABAAAAAAA=")
 tile_set = ExtResource("2_6qhkh")
 script = ExtResource("3_nch5g")
@@ -29,7 +28,6 @@ tile_set = ExtResource("4_4pynh")
 script = ExtResource("3_nch5g")
 
 [node name="physics_layer" type="TileMapLayer" parent="."]
-visible = false
 position = Vector2(64, 160)
 tile_map_data = PackedByteArray("AAD6//z/CAAAAAcAAAD6//3/CAAAAAQAAAD6////CAAAAAQAAAD6/wAACAAAAAUAAAD7//z/CAAAAAMAAAD7/wAACAAAAAEAAAD8/wAACAAAAAEAAAD9//z/CAAAAAMAAAD9/wAACAAAAAEAAAD+//z/CAAAAAYAAAD+//3/CAAAAAIAAAD+//7/CAAAAAIAAAD+////CAAAAAIAAAD+/wAACAAAAAgAAAA=")
 tile_set = ExtResource("2_6qhkh")
