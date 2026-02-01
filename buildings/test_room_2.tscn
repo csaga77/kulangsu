@@ -6,7 +6,7 @@
 [ext_resource type="TileSet" uid="uid://cioy8ksn0td4" path="res://resources/tilesets/building_tiles_0.tres" id="4_4pynh"]
 [ext_resource type="TileSet" uid="uid://bx8awyqypf1wf" path="res://resources/tilesets/building_tiles_1.tres" id="5_6qhkh"]
 [ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="5_gp7je"]
-[ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/building_0_tiles.tres" id="5_nch5g"]
+[ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/buildings/building_0_tiles.tres" id="5_nch5g"]
 
 [node name="TestRoom2" type="Node2D"]
 y_sort_enabled = true

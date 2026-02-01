@@ -2,13 +2,13 @@
 
 [ext_resource type="Texture2D" uid="uid://g5jc1m7d74xn" path="res://resources/tilesets/building_0.png" id="1_kapyo"]
 [ext_resource type="Texture2D" uid="uid://cvy6tgofjklfv" path="res://resources/tilesets/terrain_0.png" id="2_o6ybq"]
-[ext_resource type="Texture2D" uid="uid://d1houswq45pvj" path="res://resources/tilesets/wall_1_tiles.png" id="3_8rkia"]
+[ext_resource type="Texture2D" uid="uid://d1houswq45pvj" path="res://resources/tilesets/wall_1_tiles_old.png" id="3_8rkia"]
 [ext_resource type="Texture2D" uid="uid://do36e3eqymoa1" path="res://resources/tilesets/isometric_buildings.png" id="3_o6ybq"]
 [ext_resource type="Texture2D" uid="uid://bo115466yssd" path="res://resources/tilesets/terrain_1.png" id="3_o42e4"]
 [ext_resource type="Texture2D" uid="uid://c72ct2insxyd7" path="res://resources/tilesets/marks_0.png" id="4_o42e4"]
-[ext_resource type="Texture2D" uid="uid://dipkoht1but1u" path="res://resources/tilesets/wall_0_tiles.png" id="5_78hsd"]
+[ext_resource type="Texture2D" uid="uid://dipkoht1but1u" path="res://resources/tilesets/wall_0_tiles_old.png" id="5_78hsd"]
 [ext_resource type="Texture2D" uid="uid://dp1vg0m4ov76n" path="res://resources/tilesets/floor_tiles_0.png" id="7_7l566"]
-[ext_resource type="Texture2D" uid="uid://j0m0earbatgf" path="res://resources/tilesets/wall_1_8th_tiles.png" id="8_fdq0t"]
+[ext_resource type="Texture2D" uid="uid://j0m0earbatgf" path="res://resources/tilesets/wall_1_8th_tiles_old.png" id="8_fdq0t"]
 [ext_resource type="Texture2D" uid="uid://cwrirkdu0c2cf" path="res://resources/tilesets/trinity_church_miscs.png" id="11_tun3a"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_1bvp3"]
