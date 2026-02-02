@@ -1,6 +1,6 @@
 @tool
 class_name AutoVisibilityNode2D
-extends Node2D
+extends IsometricBlock
 
 @export var semi_transparent_mask_layers :Array[TileMapLayer]
 @export var semi_transparent_mask_areas :Array[Area2D]:
@@ -31,6 +31,7 @@ func set_player(new_character):
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
+	super._ready()
 	m_shader_material = material
 	if !Engine.is_editor_hint():
 		if GameGlobal.get_instance():

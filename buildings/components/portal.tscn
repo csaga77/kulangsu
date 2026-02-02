@@ -3,8 +3,8 @@
 [ext_resource type="Script" uid="uid://fssw81qf0ydn" path="res://buildings/components/portal.gd" id="1_0r486"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_0r486"]
-radius = 8.0
-height = 39.444866
+radius = 9.428204
+height = 41.176914
 
 [node name="portal" type="Area2D"]
 rotation = -1.0471976

@@ -25,7 +25,3 @@ func _update_level() -> void:
 		var coords = m_physics_layer.get_cell_atlas_coords(cell)
 		coords.x = level
 		m_physics_layer.set_cell(cell, source_id, coords, alternative_tile)
-
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(_delta: float) -> void:
-	pass

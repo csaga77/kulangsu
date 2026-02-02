@@ -4,6 +4,7 @@ extends Area2D
 
 @export_flags_2d_physics var mask1 := 0
 @export_flags_2d_physics var mask2 := 0
+@export var delta_z := 1
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -19,6 +20,8 @@ func _draw() -> void:
 
 var m_objects_in_portal :Set = Set.new()
 var m_enter_mask := 0
+# true: Area 1 -> Area 2, false: Area 2 -> Area 1
+var m_enter_direction := true
 
 func _on_body_entered(body: Node2D) -> void:
 	var obj :CollisionObject2D = body
@@ -32,20 +35,26 @@ func _on_body_entered(body: Node2D) -> void:
 	#else:
 		#m_enter_mask = mask2
 	var local_pos = to_local(body.global_position)
+	#print(local_pos)
 	if obj.collision_mask & mask1:
 		if local_pos.x < 0:
+			m_enter_direction = true
 			m_enter_mask = mask1
 			obj.collision_mask |= mask2
 			m_objects_in_portal.insert(obj)
-			#print("mask1 entered")
+		elif mask1 == mask2:
+			#Only change z
+			m_enter_direction = false
+			m_enter_mask = mask2 #same as mask1
+			m_objects_in_portal.insert(obj)
 	elif obj.collision_mask & mask2:
 		if local_pos.x > 0:
+			m_enter_direction = false
 			m_enter_mask = mask2
 			obj.collision_mask |= mask1
 			m_objects_in_portal.insert(obj)
 			#print("mask2 entered")
 			
-
 
 func _on_body_exited(body: Node2D) -> void:
 	var obj :CollisionObject2D = body
@@ -56,16 +65,18 @@ func _on_body_exited(body: Node2D) -> void:
 	var local_pos = to_local(body.global_position)
 	var vec = local_pos.normalized()
 	if vec.x > 0:
-		obj.collision_mask |= mask2
-		obj.collision_mask &= ~mask1
-		if m_enter_mask != mask2:
-			obj.z_index += 1
+		if mask1 != mask2:
+			obj.collision_mask &= ~mask1
+			obj.collision_mask |= mask2
+		if m_enter_direction:
+			obj.z_index += delta_z
 		#print("mask2 exited")
 	else:
-		obj.collision_mask |= mask1
-		obj.collision_mask &= ~mask2
-		if m_enter_mask != mask1:
-			obj.z_index -= 1
+		if mask1 != mask2:
+			obj.collision_mask &= ~mask2
+			obj.collision_mask |= mask1
+		if !m_enter_direction:
+			obj.z_index -= delta_z
 		#print("mask1 exited")
 	#var exit_degrees = rad_to_deg(vec.angle())
 	#print("exited : ", exit_degrees)

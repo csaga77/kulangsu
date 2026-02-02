@@ -94,7 +94,7 @@ tile_map_data = PackedByteArray("AAD//wMAAQAHAAAAAAADAP//AQAIAAAAAAADAAMAAQAAAAA
 tile_set = ExtResource("5_nch5g")
 y_sort_origin = 32
 script = ExtResource("5_gp7je")
-visibility_mask_layers = [NodePath("../../floor"), NodePath("../../external_floor"), NodePath("../../wall_mask")]
+visibility_mask_layers = [NodePath("../../floor"), NodePath("../../wall_mask")]
 use_ground_bounding_rect = true
 smooth_visibility_change = true
 
