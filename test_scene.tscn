@@ -1,0 +1,37 @@
+[gd_scene load_steps=8 format=3 uid="uid://dc2dh1e6e5hb"]
+
+[ext_resource type="Script" uid="uid://b7ntce1lyblnt" path="res://builder.gd" id="1_8pr8v"]
+[ext_resource type="PackedScene" uid="uid://dqivkaosuu5nr" path="res://scenes/test_room.tscn" id="2_buypi"]
+[ext_resource type="Material" uid="uid://dw5sarpgr1teb" path="res://resources/materials/wall_transparent.tres" id="3_njel3"]
+[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="4_vr1i5"]
+[ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/player_node.tscn" id="5_rpuu0"]
+[ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/player_controller.gd" id="6_oo8pe"]
+[ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="7_4gito"]
+
+[node name="test_scene" type="Node2D"]
+y_sort_enabled = true
+script = ExtResource("1_8pr8v")
+building = ExtResource("2_buypi")
+
+[node name="Root" type="Node2D" parent="."]
+y_sort_enabled = true
+material = ExtResource("3_njel3")
+position = Vector2(128, 32)
+script = ExtResource("4_vr1i5")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(12357, 19805)
+
+[node name="Player" parent="." instance=ExtResource("5_rpuu0")]
+draw_bounding_rect = true
+
+[node name="PlayerController" type="Node" parent="Player" node_paths=PackedStringArray("player")]
+script = ExtResource("6_oo8pe")
+player = NodePath("..")
+
+[node name="Camera2DController" type="Node" parent="." node_paths=PackedStringArray("camera", "target_node")]
+script = ExtResource("7_4gito")
+camera = NodePath("../Camera2D")
+target_node = NodePath("../Player")
+min_zoom = 0.01
+metadata/_custom_type_script = "uid://1lv88f7nn3d4"

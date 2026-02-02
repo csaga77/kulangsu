@@ -1,5 +1,5 @@
 @tool
-class_name Builder
+class_name TestScene
 extends Node2D
 
 @export var building :PackedScene:
