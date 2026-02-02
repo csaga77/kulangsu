@@ -43,7 +43,7 @@ tile_map_data = PackedByteArray("AAAAAAAAAgAAAAIAAAABAAAAAgAGAAIAAQAAAAEAAgAHAAI
 tile_set = ExtResource("5_nch5g")
 script = ExtResource("3_nch5g")
 
-[node name="top" type="TileMapLayer" parent="back_wall"]
+[node name="base_top" type="TileMapLayer" parent="back_wall"]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD/////BQALAAAAAAD//wAABQAOAAAAAQD//wIABQAOAAAAAQAAAP//BQANAAAAAQACAP//BQANAAAAAQADAP//BQAPAAAAAgD//wMABQAQAAAAAgA=")
 tile_set = ExtResource("5_nch5g")
@@ -51,14 +51,52 @@ y_sort_origin = 32
 
 [node name="corner" type="TileMapLayer" parent="back_wall"]
 y_sort_enabled = true
+tile_map_data = PackedByteArray("AAAAAAQAAQAJAAAAAwAEAAAAAQAJAAAAAQA=")
+tile_set = ExtResource("5_nch5g")
+
+[node name="top" type="TileMapLayer" parent="back_wall/corner"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAADAP//BAALAAAAAQD//wMABAALAAAAAwA=")
 tile_set = ExtResource("5_nch5g")
 y_sort_origin = 32
 
+[node name="level_1" type="TileMapLayer" parent="back_wall" node_paths=PackedStringArray("visibility_mask_layers")]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD/////AgAAAAAAAAAAAP//AgAGAAAAAQD//wAAAgAHAAAAAQACAP//AgAEAAAAAQADAP//AgAKAAAAAgD//wMAAgALAAAAAgD//wIAAgAFAAAAAQA=")
+tile_set = ExtResource("5_nch5g")
+y_sort_origin = 32
+script = ExtResource("5_gp7je")
+visibility_mask_layers = [NodePath("../../wall_mask")]
+smooth_visibility_change = true
+
+[node name="level_2" type="TileMapLayer" parent="back_wall/level_1"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD+//7/AgAAAAAAAAD+////AgAHAAAAAQD+/wEAAgAFAAAAAQD+/wIAAgALAAAAAgD///7/AgAGAAAAAQABAP7/AgAEAAAAAQACAP7/AgAKAAAAAgA=")
+tile_set = ExtResource("5_nch5g")
+y_sort_origin = 64
+
+[node name="level_3" type="TileMapLayer" parent="back_wall/level_1/level_2"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD9//3/AgAAAAAAAAD9//7/AgAFAAAAAQD9/wAAAgAFAAAAAQD9/wEAAgALAAAAAgD+//3/AgAEAAAAAQAAAP3/AgAEAAAAAQABAP3/AgAKAAAAAgD9////AgAFAAAAAQD///3/AgAEAAAAAQA=")
+tile_set = ExtResource("5_nch5g")
+y_sort_origin = 96
+
+[node name="top" type="TileMapLayer" parent="back_wall/level_1/level_2/level_3"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD8//z/BQALAAAAAAD9//z/BQANAAAAAQD+//z/BQANAAAAAQD///z/BQANAAAAAQD8//3/BQAOAAAAAQD8//7/BQAOAAAAAQD8////BQAOAAAAAQD8/wAABQAQAAAAAgAAAPz/BQAPAAAAAgA=")
+tile_set = ExtResource("5_nch5g")
+y_sort_origin = 128
+
 [node name="front_wall" type="TileMapLayer" parent="."]
-visible = false
 y_sort_enabled = true
 use_parent_material = true
-tile_map_data = PackedByteArray("AAAAAAQACgABAAAAAAAEAAAACgABAAAAAAAEAAQACgAHAAAAAAABAAQACgAMABQAAAACAAQACgAMABQAAAADAAQACgAMABQAAAAEAAMACgANABQAAAAEAAIACgANABQAAAAEAAEACgANABQAAAA=")
-tile_set = ExtResource("4_4pynh")
+tile_map_data = PackedByteArray("AAAAAAQAAQAJAAAAAAAEAAAAAQAJAAAAAAAEAAQAAQAAAAAAAAABAAQAAQAFAAYAAAACAAQAAQAFAAYAAAADAAQAAQAFAAYAAAAEAAMAAQAGAAYAAAAEAAIAAQAGAAYAAAAEAAEAAQAGAAYAAAA=")
+tile_set = ExtResource("5_nch5g")
 script = ExtResource("5_gp7je")
 use_ground_bounding_rect = true
+
+[node name="base_top" type="TileMapLayer" parent="front_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAADAAMABAAIAAAAAAD//wMABAALAAAAAAADAP//BAALAAAAAAAAAAMABQANAAEAAAABAAMABQANAAEAAAACAAMABQANAAEAAAADAAAABQAOAAEAAAADAAEABQAOAAEAAAADAAIABQAOAAEAAAA=")
+tile_set = ExtResource("5_nch5g")
+y_sort_origin = 32
