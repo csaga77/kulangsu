@@ -4,7 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://jc066lt8l3nn" path="res://resources/tilesets/building_tiles_0.png" id="2_o1tdo"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="3_voad8"]
 [ext_resource type="PackedScene" uid="uid://d27a7jcvsnfx8" path="res://buildings/components/portal.tscn" id="4_flro2"]
-[ext_resource type="Texture2D" uid="uid://boka5fmviqaew" path="res://resources/tilesets/building_tiles_1.png" id="4_s33mb"]
+[ext_resource type="Texture2D" uid="uid://boka5fmviqaew" path="res://resources/tilesets/buildings/structure_0.png" id="4_s33mb"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_tjhdy"]
 atlas = ExtResource("2_o1tdo")

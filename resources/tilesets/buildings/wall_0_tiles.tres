@@ -1,14 +1,14 @@
 [gd_resource type="TileSet" load_steps=13 format=3 uid="uid://bgynmgqncncer"]
 
-[ext_resource type="Texture2D" uid="uid://8kiihtfxyw3x" path="res://resources/tilesets/buildings/wall_0_0.png" id="1_okhqb"]
-[ext_resource type="Texture2D" uid="uid://o1fva15gqn2l" path="res://resources/tilesets/buildings/wall_0_1.png" id="2_hypy7"]
-[ext_resource type="Texture2D" uid="uid://sg8pf87vk74q" path="res://resources/tilesets/buildings/wall_0_2.png" id="3_wtm6x"]
-[ext_resource type="Texture2D" uid="uid://djp0l1dauskdx" path="res://resources/tilesets/buildings/top_0_0.png" id="4_l2nqh"]
-[ext_resource type="Texture2D" uid="uid://d1eggfbd26th0" path="res://resources/tilesets/buildings/top_0_1.png" id="5_msy2h"]
-[ext_resource type="Texture2D" uid="uid://12yx0t8mr628" path="res://resources/tilesets/buildings/top_0_2.png" id="6_ckp35"]
+[ext_resource type="Texture2D" uid="uid://8kiihtfxyw3x" path="res://resources/tilesets/buildings/wall_0_0.png" id="1_weadi"]
+[ext_resource type="Texture2D" uid="uid://o1fva15gqn2l" path="res://resources/tilesets/buildings/wall_0_1.png" id="2_kl5do"]
+[ext_resource type="Texture2D" uid="uid://sg8pf87vk74q" path="res://resources/tilesets/buildings/wall_0_2.png" id="3_1a3nb"]
+[ext_resource type="Texture2D" uid="uid://djp0l1dauskdx" path="res://resources/tilesets/buildings/top_0_0.png" id="4_6v45u"]
+[ext_resource type="Texture2D" uid="uid://d1eggfbd26th0" path="res://resources/tilesets/buildings/top_0_1.png" id="5_fby4f"]
+[ext_resource type="Texture2D" uid="uid://12yx0t8mr628" path="res://resources/tilesets/buildings/top_0_2.png" id="6_150k6"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_hryn1"]
-texture = ExtResource("1_okhqb")
+texture = ExtResource("1_weadi")
 texture_region_size = Vector2i(64, 32)
 0:0/size_in_atlas = Vector2i(1, 2)
 0:0/0 = 0
@@ -285,9 +285,47 @@ texture_region_size = Vector2i(64, 32)
 7:8/0/y_sort_origin = 12
 7:8/1 = 1
 7:8/1/texture_origin = Vector2i(-16, 24)
+10:0/size_in_atlas = Vector2i(1, 2)
+10:0/next_alternative_id = 4
+10:0/0 = 0
+10:0/0/texture_origin = Vector2i(0, 16)
+10:0/0/y_sort_origin = 12
+10:0/1 = 1
+10:0/1/texture_origin = Vector2i(-16, 24)
+10:0/2 = 2
+10:0/2/texture_origin = Vector2i(0, 32)
+10:0/3 = 3
+10:0/3/texture_origin = Vector2i(16, 24)
+11:0/size_in_atlas = Vector2i(1, 2)
+11:0/next_alternative_id = 4
+11:0/0 = 0
+11:0/0/texture_origin = Vector2i(0, 16)
+11:0/0/y_sort_origin = 12
+11:0/1 = 1
+11:0/1/texture_origin = Vector2i(-16, 24)
+11:0/2 = 2
+11:0/2/texture_origin = Vector2i(0, 32)
+11:0/3 = 3
+11:0/3/texture_origin = Vector2i(16, 24)
+10:2/size_in_atlas = Vector2i(1, 2)
+10:2/0 = 0
+11:2/size_in_atlas = Vector2i(1, 2)
+11:2/0 = 0
+10:4/size_in_atlas = Vector2i(1, 2)
+10:4/0 = 0
+11:4/size_in_atlas = Vector2i(1, 2)
+11:4/0 = 0
+10:6/size_in_atlas = Vector2i(1, 2)
+10:6/0 = 0
+11:6/size_in_atlas = Vector2i(1, 2)
+11:6/0 = 0
+10:8/size_in_atlas = Vector2i(1, 2)
+10:8/0 = 0
+11:8/size_in_atlas = Vector2i(1, 2)
+11:8/0 = 0
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_8ttyo"]
-texture = ExtResource("2_hypy7")
+texture = ExtResource("2_kl5do")
 texture_region_size = Vector2i(64, 32)
 0:0/size_in_atlas = Vector2i(1, 2)
 0:0/0 = 0
@@ -834,9 +872,47 @@ texture_region_size = Vector2i(64, 32)
 12:8/3 = 3
 12:8/3/texture_origin = Vector2i(24, 28)
 12:8/3/y_sort_origin = 12
+13:0/size_in_atlas = Vector2i(1, 2)
+13:0/next_alternative_id = 4
+13:0/0 = 0
+13:0/0/texture_origin = Vector2i(0, 16)
+13:0/0/y_sort_origin = 8
+13:0/1 = 1
+13:0/1/texture_origin = Vector2i(-24, 28)
+13:0/2 = 2
+13:0/2/texture_origin = Vector2i(0, 40)
+13:0/3 = 3
+13:0/3/texture_origin = Vector2i(24, 28)
+14:0/size_in_atlas = Vector2i(1, 2)
+14:0/next_alternative_id = 4
+14:0/0 = 0
+14:0/0/texture_origin = Vector2i(0, 16)
+14:0/0/y_sort_origin = 8
+14:0/1 = 1
+14:0/1/texture_origin = Vector2i(-24, 28)
+14:0/2 = 2
+14:0/2/texture_origin = Vector2i(0, 40)
+14:0/3 = 3
+14:0/3/texture_origin = Vector2i(24, 28)
+13:2/size_in_atlas = Vector2i(1, 2)
+13:2/0 = 0
+14:2/size_in_atlas = Vector2i(1, 2)
+14:2/0 = 0
+13:4/size_in_atlas = Vector2i(1, 2)
+13:4/0 = 0
+14:4/size_in_atlas = Vector2i(1, 2)
+14:4/0 = 0
+13:6/size_in_atlas = Vector2i(1, 2)
+13:6/0 = 0
+14:6/size_in_atlas = Vector2i(1, 2)
+14:6/0 = 0
+13:8/size_in_atlas = Vector2i(1, 2)
+13:8/0 = 0
+14:8/size_in_atlas = Vector2i(1, 2)
+14:8/0 = 0
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_05k18"]
-texture = ExtResource("3_wtm6x")
+texture = ExtResource("3_1a3nb")
 texture_region_size = Vector2i(64, 32)
 0:0/size_in_atlas = Vector2i(1, 2)
 0:0/0 = 0
@@ -1533,9 +1609,39 @@ texture_region_size = Vector2i(64, 32)
 16:8/2/texture_origin = Vector2i(0, 44)
 16:8/3 = 3
 16:8/3/texture_origin = Vector2i(28, 30)
+17:0/size_in_atlas = Vector2i(1, 2)
+17:0/next_alternative_id = 4
+17:0/0 = 0
+17:0/0/texture_origin = Vector2i(0, 16)
+17:0/0/y_sort_origin = 8
+17:0/1 = 1
+17:0/1/texture_origin = Vector2i(-28, 30)
+17:0/2 = 2
+17:0/2/texture_origin = Vector2i(0, 44)
+17:0/3 = 3
+17:0/3/texture_origin = Vector2i(28, 30)
+18:0/size_in_atlas = Vector2i(1, 2)
+18:0/next_alternative_id = 4
+18:0/0 = 0
+18:0/0/texture_origin = Vector2i(0, 16)
+18:0/0/y_sort_origin = 8
+18:0/1 = 1
+18:0/1/texture_origin = Vector2i(-28, 30)
+18:0/2 = 2
+18:0/2/texture_origin = Vector2i(0, 44)
+18:0/3 = 3
+18:0/3/texture_origin = Vector2i(28, 30)
+17:2/0 = 0
+18:2/0 = 0
+17:4/0 = 0
+18:4/0 = 0
+17:6/0 = 0
+18:6/0 = 0
+17:8/0 = 0
+18:8/0 = 0
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_tokcl"]
-texture = ExtResource("4_l2nqh")
+texture = ExtResource("4_6v45u")
 texture_region_size = Vector2i(64, 32)
 0:0/0 = 0
 1:0/0 = 0
@@ -1626,7 +1732,7 @@ texture_region_size = Vector2i(64, 32)
 11:2/3/texture_origin = Vector2i(16, 8)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_h0i20"]
-texture = ExtResource("5_msy2h")
+texture = ExtResource("5_fby4f")
 texture_region_size = Vector2i(64, 32)
 0:0/0 = 0
 1:0/0 = 0
@@ -1786,7 +1892,7 @@ texture_region_size = Vector2i(64, 32)
 17:2/3/texture_origin = Vector2i(24, 12)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_hmhlf"]
-texture = ExtResource("6_ckp35")
+texture = ExtResource("6_150k6")
 texture_region_size = Vector2i(64, 32)
 0:0/0 = 0
 1:0/0 = 0

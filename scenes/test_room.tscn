@@ -5,11 +5,12 @@
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="3_nch5g"]
 [ext_resource type="TileSet" uid="uid://cioy8ksn0td4" path="res://resources/tilesets/building_tiles_0.tres" id="4_4pynh"]
 [ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="5_gp7je"]
-[ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/buildings/building_0_tiles.tres" id="5_nch5g"]
+[ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/buildings/wall_0_tiles.tres" id="5_nch5g"]
 
-[node name="test_room_2" type="Node2D"]
+[node name="test_room_2" type="Node2D" node_paths=PackedStringArray("physics_layers")]
 y_sort_enabled = true
 script = ExtResource("1_xax08")
+physics_layers = [NodePath("physics_layer")]
 smooth_visibility_change = true
 
 [node name="wall_mask" type="TileMapLayer" parent="."]

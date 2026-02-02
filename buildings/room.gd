@@ -8,8 +8,8 @@ extends AutoVisibilityNode2D
 			return
 		level = new_level
 		_update_level()
-
-@onready var m_physics_layer :TileMapLayer = $physics_layer
+		
+@export var physics_layers : Array [TileMapLayer]
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -17,11 +17,10 @@ func _ready() -> void:
 	_update_level()
 
 func _update_level() -> void:
-	if m_physics_layer == null:
-		return
-	for cell in m_physics_layer.get_used_cells():
-		var source_id = m_physics_layer.get_cell_source_id(cell)
-		var alternative_tile = m_physics_layer.get_cell_alternative_tile(cell)
-		var coords = m_physics_layer.get_cell_atlas_coords(cell)
-		coords.x = level
-		m_physics_layer.set_cell(cell, source_id, coords, alternative_tile)
+	for physics_layer in physics_layers:
+		for cell in physics_layer.get_used_cells():
+			var source_id = physics_layer.get_cell_source_id(cell)
+			var alternative_tile = physics_layer.get_cell_alternative_tile(cell)
+			var coords = physics_layer.get_cell_atlas_coords(cell)
+			coords.x = level
+			physics_layer.set_cell(cell, source_id, coords, alternative_tile)

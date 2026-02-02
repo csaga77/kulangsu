@@ -2,7 +2,7 @@
 
 [ext_resource type="Texture2D" uid="uid://d1vf6pt7li3wg" path="res://resources/tilesets/building_tiles_2.png" id="1_2lyrs"]
 [ext_resource type="Texture2D" uid="uid://jc066lt8l3nn" path="res://resources/tilesets/building_tiles_0.png" id="2_1e74d"]
-[ext_resource type="Texture2D" uid="uid://dp1vg0m4ov76n" path="res://resources/tilesets/floor_tiles_0.png" id="3_n4fqv"]
+[ext_resource type="Texture2D" uid="uid://dp1vg0m4ov76n" path="res://resources/tilesets/buildings/floor_0.png" id="3_n4fqv"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_1ksa3"]
 texture = ExtResource("1_2lyrs")
