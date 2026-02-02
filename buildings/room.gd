@@ -1,6 +1,6 @@
 @tool
 class_name Room
-extends IsometricBlock
+extends AutoVisibilityNode2D
 
 @export var level := 0:
 	set(new_level):

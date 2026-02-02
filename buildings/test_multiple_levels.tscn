@@ -1,7 +1,7 @@
 [gd_scene load_steps=16 format=4 uid="uid://nb76pl60f3ib"]
 
-[ext_resource type="PackedScene" uid="uid://b27c76jsv3pop" path="res://buildings/test_room.tscn" id="1_8oy63"]
 [ext_resource type="Script" uid="uid://dl2kyruhqxduy" path="res://buildings/components/steps.gd" id="2_jyvgc"]
+[ext_resource type="PackedScene" uid="uid://dqivkaosuu5nr" path="res://buildings/test_room_2.tscn" id="2_m6uu3"]
 [ext_resource type="TileSet" uid="uid://cioy8ksn0td4" path="res://resources/tilesets/building_tiles_0.tres" id="2_x4g5s"]
 [ext_resource type="Texture2D" uid="uid://jc066lt8l3nn" path="res://resources/tilesets/building_tiles_0.png" id="3_u0u7n"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="4_x4g5s"]
@@ -35,16 +35,17 @@ region = Rect2(0, 0, 64, 64)
 [sub_resource type="SegmentShape2D" id="SegmentShape2D_jyvgc"]
 b = Vector2(61, -91)
 
-[node name="TestMultipleLevels" type="Node2D"]
+[node name="test_multiple_levels" type="Node2D"]
 y_sort_enabled = true
 
-[node name="level1" parent="." instance=ExtResource("1_8oy63")]
+[node name="level1" parent="." instance=ExtResource("2_m6uu3")]
 position = Vector2(160, 176)
 
-[node name="level2" parent="." instance=ExtResource("1_8oy63")]
+[node name="level2" parent="." node_paths=PackedStringArray("visibility_mask_layers") instance=ExtResource("2_m6uu3")]
 z_index = 2
 position = Vector2(160, 48)
 level = 3
+visibility_mask_layers = [NodePath("../mask")]
 
 [node name="level2_floor" type="TileMapLayer" parent="level2"]
 position = Vector2(-160, -48)
@@ -153,3 +154,14 @@ tile_map_data = PackedByteArray("AAD9/wAAAwAAAAEAAAD8/wAAAwAAAAEAAAD6////AwABAAQ
 tile_set = ExtResource("7_u0u7n")
 script = ExtResource("4_x4g5s")
 only_shown_in_editor = true
+
+[node name="physics_layer2" type="TileMapLayer" parent="."]
+position = Vector2(320, 384)
+tile_map_data = PackedByteArray("AAD5//3/AwADAAUAAAD5//z/AwADAAUAAAD4//v/AwADAAIAAAD4//7/AwADAAQAAAD3//7/AwADAAQAAAD2//7/AwADAAQAAAD1//7/AwADAAQAAAD0//7/AwADAAQAAADz//7/AwADAAQAAADy//7/AwADAAQAAAD5//n/AwADAAUAAAD5//j/AwADAAUAAAD5//f/AwADAAUAAAD4//b/AwADAAIAAAD3//b/AwADAAIAAAD2//b/AwADAAIAAAD1//b/AwADAAIAAAD0//b/AwADAAIAAADz//b/AwADAAIAAADy//b/AwADAAIAAADx//f/AwADAAMAAADx//j/AwADAAMAAADx//n/AwADAAMAAADx//r/AwADAAMAAADx//v/AwADAAMAAADx//z/AwADAAMAAADx//3/AwADAAMAAAA=")
+tile_set = ExtResource("7_u0u7n")
+script = ExtResource("4_x4g5s")
+only_shown_in_editor = true
+
+[node name="mask" type="TileMapLayer" parent="."]
+tile_map_data = PackedByteArray("AAAIAAMAAwAAAAAAAAAIAAQAAwAAAAAAAAAIAAUAAwAAAAAAAAAIAAYAAwAAAAAAAAAIAAcAAwAAAAAAAAAJAAMAAwAAAAAAAAAJAAQAAwAAAAAAAAAJAAUAAwAAAAAAAAAJAAYAAwAAAAAAAAAJAAcAAwAAAAAAAAAKAAMAAwAAAAAAAAAKAAQAAwAAAAAAAAAKAAUAAwAAAAAAAAAKAAYAAwAAAAAAAAAKAAcAAwAAAAAAAAALAAMAAwAAAAAAAAALAAQAAwAAAAAAAAALAAUAAwAAAAAAAAALAAYAAwAAAAAAAAALAAcAAwAAAAAAAAAMAAMAAwAAAAAAAAAMAAQAAwAAAAAAAAAMAAUAAwAAAAAAAAAMAAYAAwAAAAAAAAAMAAcAAwAAAAAAAAAHAAcAAwAAAAAAAAAHAAYAAwAAAAAAAAAHAAUAAwAAAAAAAAAHAAQAAwAAAAAAAAAHAAMAAwAAAAAAAAAHAAIAAwAAAAAAAAAIAAIAAwAAAAAAAAAJAAIAAwAAAAAAAAAKAAIAAwAAAAAAAAALAAIAAwAAAAAAAAAMAAIAAwAAAAAAAAALAAEAAwAAAAAAAAAKAAEAAwAAAAAAAAAJAAEAAwAAAAAAAAAIAAEAAwAAAAAAAAAHAAEAAwAAAAAAAAAGAAEAAwAAAAAAAAAGAAIAAwAAAAAAAAAGAAMAAwAAAAAAAAAGAAQAAwAAAAAAAAAGAAUAAwAAAAAAAAAGAAYAAwAAAAAAAAAFAAUAAwAAAAAAAAAFAAQAAwAAAAAAAAAFAAMAAwAAAAAAAAAFAAIAAwAAAAAAAAAFAAEAAwAAAAAAAAAFAAAAAwAAAAAAAAAGAAAAAwAAAAAAAAAHAAAAAwAAAAAAAAAIAAAAAwAAAAAAAAAJAAAAAwAAAAAAAAAKAAAAAwAAAAAAAAAJAP//AwAAAAAAAAAIAP//AwAAAAAAAAAHAP//AwAAAAAAAAAGAP//AwAAAAAAAAAFAP//AwAAAAAAAAAEAP//AwAAAAAAAAAEAAAAAwAAAAAAAAAEAAEAAwAAAAAAAAAEAAIAAwAAAAAAAAAEAAMAAwAAAAAAAAAEAAQAAwAAAAAAAAADAAMAAwAAAAAAAAADAAIAAwAAAAAAAAADAAEAAwAAAAAAAAADAAAAAwAAAAAAAAADAP//AwAAAAAAAAADAP7/AwAAAAAAAAAEAP7/AwAAAAAAAAAFAP7/AwAAAAAAAAAGAP7/AwAAAAAAAAAHAP7/AwAAAAAAAAAIAP7/AwAAAAAAAAAHAP3/AwAAAAAAAAAGAP3/AwAAAAAAAAAFAP3/AwAAAAAAAAAEAP3/AwAAAAAAAAADAP3/AwAAAAAAAAACAP3/AwAAAAAAAAACAP7/AwAAAAAAAAACAP//AwAAAAAAAAACAAAAAwAAAAAAAAACAAEAAwAAAAAAAAACAAIAAwAAAAAAAAABAAEAAwAAAAAAAAABAAAAAwAAAAAAAAABAP//AwAAAAAAAAABAP7/AwAAAAAAAAABAP3/AwAAAAAAAAABAPz/AwAAAAAAAAACAPz/AwAAAAAAAAADAPz/AwAAAAAAAAAEAPz/AwAAAAAAAAAFAPz/AwAAAAAAAAAGAPz/AwAAAAAAAAAFAPv/AwAAAAAAAAAEAPv/AwAAAAAAAAADAPv/AwAAAAAAAAACAPv/AwAAAAAAAAABAPv/AwAAAAAAAAAAAPv/AwAAAAAAAAAAAPz/AwAAAAAAAAAAAP3/AwAAAAAAAAAAAP7/AwAAAAAAAAAAAP//AwAAAAAAAAAAAAAAAwAAAAAAAAA=")
+tile_set = ExtResource("7_u0u7n")

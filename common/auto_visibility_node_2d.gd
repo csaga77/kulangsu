@@ -81,7 +81,7 @@ func _on_character_global_position_changed() -> void:
 	if m_player:
 		bounding_rect = m_player.get_ground_rect() if use_ground_bounding_rect else m_player.get_bounding_rect()
 		for layer in visibility_mask_layers:
-			if CommonUtils.get_absolute_z_index(m_player) != CommonUtils.get_absolute_z_index(layer):
+			if CommonUtils.get_absolute_z_index(m_player) > CommonUtils.get_absolute_z_index(layer):
 				continue
 			if TileMapUtils.intersects_iso_grid_rect_global(layer, bounding_rect):
 				should_be_visible = false
