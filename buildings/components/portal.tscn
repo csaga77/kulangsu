@@ -4,7 +4,7 @@
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_0r486"]
 radius = 8.0
-height = 16.0
+height = 39.444866
 
 [node name="portal" type="Area2D"]
 rotation = -1.0471976
