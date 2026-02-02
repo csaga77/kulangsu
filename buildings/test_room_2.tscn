@@ -29,6 +29,7 @@ tile_set = ExtResource("4_4pynh")
 script = ExtResource("3_nch5g")
 
 [node name="physics_layer" type="TileMapLayer" parent="."]
+visible = false
 position = Vector2(64, 160)
 tile_map_data = PackedByteArray("AAD6//z/CAAAAAcAAAD6//3/CAAAAAQAAAD6////CAAAAAQAAAD6/wAACAAAAAUAAAD7//z/CAAAAAMAAAD7/wAACAAAAAEAAAD8/wAACAAAAAEAAAD9//z/CAAAAAMAAAD9/wAACAAAAAEAAAD+//z/CAAAAAYAAAD+//3/CAAAAAIAAAD+//7/CAAAAAIAAAD+////CAAAAAIAAAD+/wAACAAAAAgAAAA=")
 tile_set = ExtResource("2_6qhkh")

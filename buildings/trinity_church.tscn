@@ -180,6 +180,7 @@ script = ExtResource("1_p6h3n")
 only_shown_in_editor = true
 
 [node name="level1" type="StaticBody2D" parent="."]
+visible = false
 z_index = 1
 y_sort_enabled = true
 collision_layer = 1048576
