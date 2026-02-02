@@ -160,7 +160,7 @@ mask2 = 2097152
 delta_z = 0
 
 [node name="portal3" parent="steps" instance=ExtResource("6_6nlj4")]
-position = Vector2(-46.000004, -114)
+position = Vector2(-44.000004, -115)
 rotation = -1.105783
 mask1 = 1048576
 mask2 = 1048576
