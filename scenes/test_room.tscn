@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://c8rbadcu5jhno" path="res://buildings/room.gd" id="1_xax08"]
 [ext_resource type="TileSet" uid="uid://dn7l7cnmn33jy" path="res://resources/tilesets/mark_tiles.tres" id="2_6qhkh"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="3_nch5g"]
-[ext_resource type="TileSet" uid="uid://cioy8ksn0td4" path="res://resources/tilesets/building_tiles_0.tres" id="4_4pynh"]
+[ext_resource type="TileSet" uid="uid://emarqgj57jx7" path="res://resources/tilesets/buildings/floor_0_tiles.tres" id="4_mous7"]
 [ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="5_gp7je"]
 [ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/buildings/wall_0_tiles.tres" id="5_nch5g"]
 
@@ -20,17 +20,16 @@ script = ExtResource("3_nch5g")
 only_shown_in_editor = true
 
 [node name="floor" type="TileMapLayer" parent="."]
-tile_map_data = PackedByteArray("AAABAAEACQAAAAAAAAACAAEACQAAAAAAAAADAAEACQAAAAAAAAADAAIACQAAAAAAAAADAAMACQAAAAAAAAACAAMACQAAAAAAAAABAAMACQAAAAAAAAABAAIACQAAAAAAAAACAAIACQAAAAAAAAAAAAIACQAAAAAAAAACAAAACQAAAAAAAAA=")
-tile_set = ExtResource("4_4pynh")
+tile_map_data = PackedByteArray("AAABAAEAAQAFAAAAAAACAAEAAQAFAAAAAAADAAEAAQAFAAAAAAADAAIAAQAFAAAAAAADAAMAAQAFAAAAAAACAAMAAQAFAAAAAAABAAMAAQAFAAAAAAABAAIAAQAFAAAAAAACAAIAAQAFAAAAAAAAAAIAAQAFAAAAAAACAAAAAQAFAAAAAAA=")
+tile_set = ExtResource("4_mous7")
 script = ExtResource("3_nch5g")
 
 [node name="external_floor" type="TileMapLayer" parent="."]
-tile_map_data = PackedByteArray("AAAAAAAACQAAAAAAAAABAAAACQAAAAAAAAADAAAACQAAAAAAAAAEAAAACQAAAAAAAAAAAAEACQAAAAAAAAAAAAMACQAAAAAAAAAAAAQACQAAAAAAAAABAAQACQAAAAAAAAACAAQACQAAAAAAAAADAAQACQAAAAAAAAAEAAQACQAAAAAAAAAEAAMACQAAAAAAAAAEAAIACQAAAAAAAAAEAAEACQAAAAAAAAA=")
-tile_set = ExtResource("4_4pynh")
+tile_map_data = PackedByteArray("AAAAAAAAAQAFAAAAAAABAAAAAQAFAAAAAAADAAAAAQAFAAAAAAAEAAAAAQAFAAAAAAAAAAEAAQAFAAAAAAAAAAMAAQAFAAAAAAAAAAQAAQAFAAAAAAABAAQAAQAFAAAAAAACAAQAAQAFAAAAAAADAAQAAQAFAAAAAAAEAAQAAQAFAAAAAAAEAAMAAQAFAAAAAAAEAAIAAQAFAAAAAAAEAAEAAQAFAAAAAAA=")
+tile_set = ExtResource("4_mous7")
 script = ExtResource("3_nch5g")
 
 [node name="physics_layer" type="TileMapLayer" parent="."]
-visible = false
 position = Vector2(64, 160)
 tile_map_data = PackedByteArray("AAD6//z/CAAAAAcAAAD6//3/CAAAAAQAAAD6////CAAAAAQAAAD6/wAACAAAAAUAAAD7//z/CAAAAAMAAAD7/wAACAAAAAEAAAD8/wAACAAAAAEAAAD9//z/CAAAAAMAAAD9/wAACAAAAAEAAAD+//z/CAAAAAYAAAD+//3/CAAAAAIAAAD+//7/CAAAAAIAAAD+////CAAAAAIAAAD+/wAACAAAAAgAAAA=")
 tile_set = ExtResource("2_6qhkh")

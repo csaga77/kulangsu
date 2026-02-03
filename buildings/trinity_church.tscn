@@ -1,11 +1,10 @@
-[gd_scene load_steps=45 format=4 uid="uid://cgucpypd2f1o2"]
+[gd_scene load_steps=44 format=4 uid="uid://cgucpypd2f1o2"]
 
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="1_p6h3n"]
-[ext_resource type="TileSet" uid="uid://dvrbkuapcr681" path="res://resources/tilesets/tileset.tres" id="1_ygplm"]
 [ext_resource type="TileSet" uid="uid://dn7l7cnmn33jy" path="res://resources/tilesets/mark_tiles.tres" id="2_s46xt"]
 [ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/buildings/wall_0_tiles.tres" id="3_m22nn"]
 [ext_resource type="PackedScene" uid="uid://d27a7jcvsnfx8" path="res://buildings/components/portal.tscn" id="3_q88bw"]
-[ext_resource type="TileSet" uid="uid://dh8addwm1ctei" path="res://resources/tilesets/buildings/structure_0_tiles.tres" id="4_26q67"]
+[ext_resource type="TileSet" uid="uid://dh8addwm1ctei" path="res://resources/tilesets/buildings/building_0_tiles.tres" id="4_26q67"]
 [ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="5_4o7fq"]
 [ext_resource type="PackedScene" uid="uid://cwyx1jps70m8y" path="res://buildings/components/door_sw.tscn" id="5_qe0xv"]
 [ext_resource type="PackedScene" uid="uid://camp18q8ye8gj" path="res://buildings/components/door_se.tscn" id="6_qe0xv"]
@@ -184,7 +183,7 @@ shape = SubResource("CapsuleShape2D_q88bw")
 
 [node name="level 0 collision" type="TileMapLayer" parent="base"]
 tile_map_data = PackedByteArray("AAACABAAAwAAAAMAAAACAA8AAwAAAAMAAAACAA4AAwAAAAcAAAAFABEAAwAAAAcAAAAIABQAAwAAAAcAAAAHABQAAwAAAAQAAAAGABQAAwAAAAQAAAADABEAAwAAAAQAAAAEABEAAwAAAAQAAAAFABIAAwAAAAMAAAAFABMAAwAAAAMAAAAPABQAAwAAAAgAAAASABEAAwAAAAgAAAAVAA4AAwAAAAgAAAAQABQAAwAAAAQAAAARABQAAwAAAAQAAAATABEAAwAAAAQAAAAUABEAAwAAAAQAAAASABMAAwAAAAUAAAASABIAAwAAAAUAAAAVABAAAwAAAAUAAAAVAA8AAwAAAAUAAAAVAAcAAwAAAAYAAAASAAQAAwAAAAYAAAAPAAEAAwAAAAYAAAAQAAEAAwAAAAIAAAARAAEAAwAAAAIAAAATAAQAAwAAAAIAAAAUAAQAAwAAAAIAAAAVAAYAAwAAAAUAAAAVAAUAAwAAAAUAAAASAAMAAwAAAAUAAAASAAIAAwAAAAUAAAAGAAEAAwAAAAIAAAADAAQAAwAAAAIAAAAEAAQAAwAAAAIAAAAFAAQAAwAAAAkAAAAFAAMAAwAAAAMAAAAFAAIAAwAAAAMAAAACAAUAAwAAAAMAAAACAAYAAwAAAAkAAAABAA0AAwAAAAMAAAAOAAAAAwAAAAIAAAAHAAEAAwAAAAkAAAA=")
-tile_set = ExtResource("1_ygplm")
+tile_set = ExtResource("2_s46xt")
 script = ExtResource("1_p6h3n")
 only_shown_in_editor = true
 
@@ -412,7 +411,7 @@ position = Vector2(416, 240)
 
 [node name="level1 collision" type="TileMapLayer" parent="level1"]
 tile_map_data = PackedByteArray("AAAGABIAAwABAAQAAAAHABIAAwABAAcAAAAOABIAAwABAAgAAAAPABIAAwABAAQAAAARAA8AAwABAAQAAAAQAA8AAwABAAgAAAASAA8AAwABAAQAAAADAA8AAwABAAQAAAAEAA8AAwABAAQAAAAFAA8AAwABAAcAAAAQABEAAwABAAUAAAAQABAAAwABAAUAAAAFABAAAwABAAMAAAATAA4AAwABAAUAAAATAA0AAwABAAgAAAATAAYAAwABAAYAAAATAAUAAwABAAUAAAASAAQAAwABAAIAAAARAAQAAwABAAIAAAAOAAEAAwABAAYAAAAPAAEAAwABAAIAAAAQAAIAAwABAAUAAAAQAAMAAwABAAUAAAAQAAQAAwABAAYAAAAFAAQAAwABAAkAAAACAA0AAwABAAcAAAACAAUAAwABAAMAAAACAAYAAwABAAkAAAAFAAMAAwABAAMAAAAFAAIAAwABAAMAAAADAAQAAwABAAIAAAAEAAQAAwABAAIAAAAGAAEAAwABAAIAAAAHAAEAAwABAAkAAAAFABEAAwABAAMAAAACAA4AAwABAAMAAAAIABIAAwABAAUAAAAKABIAAwABAAUAAAAJABIAAwABAAMAAAALABIAAwABAAMAAAANABIAAwABAAMAAAAMABIAAwABAAUAAAAIAAEAAwABAAUAAAAKAAEAAwABAAUAAAAMAAEAAwABAAUAAAANAAEAAwABAAMAAAALAAEAAwABAAMAAAAJAAEAAwABAAMAAAACAAcAAwABAAQAAAACAAkAAwABAAQAAAACAAsAAwABAAQAAAATAAsAAwABAAQAAAATAAkAAwABAAQAAAATAAcAAwABAAQAAAATAAgAAwABAAIAAAATAAoAAwABAAIAAAATAAwAAwABAAIAAAACAAgAAwABAAIAAAACAAoAAwABAAIAAAACAAwAAwABAAIAAAA=")
-tile_set = ExtResource("1_ygplm")
+tile_set = ExtResource("2_s46xt")
 script = ExtResource("1_p6h3n")
 only_shown_in_editor = true
 

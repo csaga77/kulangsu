@@ -22,7 +22,7 @@ extends Node2D
 
 @onready var m_base :TileMapLayer = $Base
 @onready var m_building_mask :TileMapLayer = $"Building Mask"
-@onready var m_ferry :Ferry = $Ferry
+@onready var m_ferry :Room = $Ferry
 @onready var m_player :Player = $Character
 var m_is_ready := false
 
