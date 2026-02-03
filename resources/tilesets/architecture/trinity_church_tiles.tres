@@ -1,0 +1,51 @@
+[gd_resource type="TileSet" load_steps=3 format=3 uid="uid://cpd02433u4y0w"]
+
+[ext_resource type="Texture2D" uid="uid://cwrirkdu0c2cf" path="res://resources/sprites/architecture/trinity_church/trinity_church_tiles.png" id="10_drhxk"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_aqpk8"]
+texture = ExtResource("10_drhxk")
+texture_region_size = Vector2i(64, 32)
+0:0/size_in_atlas = Vector2i(2, 4)
+0:0/0 = 0
+0:0/0/y_sort_origin = 40
+2:0/size_in_atlas = Vector2i(2, 4)
+2:0/0 = 0
+2:0/0/texture_origin = Vector2i(32, 16)
+2:0/0/y_sort_origin = 32
+0:4/size_in_atlas = Vector2i(2, 4)
+0:4/0 = 0
+0:4/0/texture_origin = Vector2i(-32, 16)
+0:4/0/y_sort_origin = 32
+2:4/size_in_atlas = Vector2i(2, 4)
+2:4/0 = 0
+2:4/0/y_sort_origin = 40
+
+[resource]
+resource_local_to_scene = true
+tile_shape = 1
+tile_layout = 5
+tile_size = Vector2i(64, 32)
+physics_layer_0/collision_layer = 524288
+physics_layer_0/collision_mask = 0
+physics_layer_1/collision_layer = 1048576
+physics_layer_1/collision_mask = 0
+physics_layer_2/collision_layer = 2097152
+physics_layer_2/collision_mask = 0
+physics_layer_3/collision_layer = 4194304
+physics_layer_3/collision_mask = 0
+physics_layer_4/collision_layer = 8388608
+physics_layer_4/collision_mask = 0
+physics_layer_5/collision_layer = 16777216
+physics_layer_5/collision_mask = 0
+physics_layer_6/collision_layer = 33554432
+physics_layer_6/collision_mask = 0
+physics_layer_7/collision_layer = 67108864
+physics_layer_7/collision_mask = 0
+physics_layer_8/collision_layer = 134217728
+physics_layer_8/collision_mask = 0
+physics_layer_9/collision_layer = 268435456
+physics_layer_9/collision_mask = 0
+terrain_set_0/mode = 2
+terrain_set_0/terrain_0/name = "concrete_slab"
+terrain_set_0/terrain_0/color = Color(0.5, 0.34375, 0.25, 1)
+sources/7 = SubResource("TileSetAtlasSource_aqpk8")

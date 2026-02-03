@@ -1,0 +1,63 @@
+[gd_scene load_steps=10 format=3 uid="uid://dre5psaq1igux"]
+
+[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="2_agqqt"]
+[ext_resource type="Texture2D" uid="uid://mhsy6o806uwu" path="res://resources/sprites/architecture/components/building_0_tiles.png" id="2_dds7o"]
+[ext_resource type="Script" uid="uid://dl2kyruhqxduy" path="res://architecture/components/steps.gd" id="2_tpm7a"]
+[ext_resource type="Texture2D" uid="uid://boka5fmviqaew" path="res://resources/sprites/architecture/components/structure_0.png" id="3_62v2u"]
+[ext_resource type="PackedScene" uid="uid://d27a7jcvsnfx8" path="res://architecture/components/portal.tscn" id="4_pb25h"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_6h87q"]
+atlas = ExtResource("2_dds7o")
+region = Rect2(0, 1024, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dds7o"]
+atlas = ExtResource("3_62v2u")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_sntt2"]
+atlas = ExtResource("3_62v2u")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="SegmentShape2D" id="SegmentShape2D_tynux"]
+b = Vector2(61, -91)
+
+[node name="steps" type="Node2D" node_paths=PackedStringArray("layer1_nodes", "body_nodes", "layer2_nodes")]
+script = ExtResource("2_tpm7a")
+layer1_nodes = [NodePath("portal")]
+body_nodes = [NodePath("steps body")]
+layer2_nodes = [NodePath("portal2")]
+
+[node name="Sprite2D3" type="Sprite2D" parent="."]
+position = Vector2(32, -16)
+texture = SubResource("AtlasTexture_6h87q")
+offset = Vector2(0, -16)
+script = ExtResource("2_agqqt")
+
+[node name="Sprite2D2" type="Sprite2D" parent="."]
+position = Vector2(32, -48)
+texture = SubResource("AtlasTexture_dds7o")
+offset = Vector2(0, -16)
+script = ExtResource("2_agqqt")
+
+[node name="Sprite2D4" type="Sprite2D" parent="."]
+texture = SubResource("AtlasTexture_sntt2")
+offset = Vector2(0, -16)
+script = ExtResource("2_agqqt")
+
+[node name="steps body" type="StaticBody2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="steps body"]
+position = Vector2(-36, -2)
+shape = SubResource("SegmentShape2D_tynux")
+
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="steps body"]
+position = Vector2(-1, 15)
+shape = SubResource("SegmentShape2D_tynux")
+
+[node name="portal" parent="." instance=ExtResource("4_pb25h")]
+position = Vector2(-20, 10)
+
+[node name="portal2" parent="." instance=ExtResource("4_pb25h")]
+position = Vector2(41.000004, -84)

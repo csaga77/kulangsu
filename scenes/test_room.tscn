@@ -1,11 +1,11 @@
 [gd_scene load_steps=7 format=4 uid="uid://dqivkaosuu5nr"]
 
-[ext_resource type="Script" uid="uid://c8rbadcu5jhno" path="res://buildings/room.gd" id="1_xax08"]
+[ext_resource type="Script" uid="uid://c8rbadcu5jhno" path="res://common/room.gd" id="1_xax08"]
 [ext_resource type="TileSet" uid="uid://dn7l7cnmn33jy" path="res://resources/tilesets/mark_tiles.tres" id="2_6qhkh"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="3_nch5g"]
-[ext_resource type="TileSet" uid="uid://emarqgj57jx7" path="res://resources/tilesets/buildings/floor_0_tiles.tres" id="4_mous7"]
+[ext_resource type="TileSet" uid="uid://emarqgj57jx7" path="res://resources/tilesets/architecture/floor_0_tiles.tres" id="4_mous7"]
 [ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="5_gp7je"]
-[ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/buildings/wall_0_tiles.tres" id="5_nch5g"]
+[ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/architecture/wall_0_tiles.tres" id="5_nch5g"]
 
 [node name="test_room_2" type="Node2D" node_paths=PackedStringArray("physics_layers")]
 y_sort_enabled = true

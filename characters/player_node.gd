@@ -68,23 +68,23 @@ func get_texture() -> Texture2D:
 	return m_sprite.sprite_frames.get_frame_texture(m_sprite.animation, m_sprite.frame)
 	
 var m_male_frames := [
-	"res://resources/sprites/male/male_body.png",
-	"res://resources/sprites/male/male_basic_shoes_black.png",
-	"res://resources/sprites/male/male_longpants_black.png",
-	"res://resources/sprites/male/male_longsleeve_white.png",
-	#"res://resources/sprites/backpack_black.png",
-	"res://resources/sprites/male/male_head.png",
-	"res://resources/sprites/hair_short_black.png",
+	"res://resources/sprites/characters/male/male_body.png",
+	"res://resources/sprites/characters/male/male_basic_shoes_black.png",
+	"res://resources/sprites/characters/male/male_longpants_black.png",
+	"res://resources/sprites/characters/male/male_longsleeve_white.png",
+	#"res://resources/sprites/characters/backpack_black.png",
+	"res://resources/sprites/characters/male/male_head.png",
+	"res://resources/sprites/characters/hair_short_black.png",
 ]
 
 var m_female_frames := [
-	"res://resources/sprites/female/female_body.png",
-	"res://resources/sprites/female/female_basic_shoes_black.png",
-	"res://resources/sprites/female/female_longpants_black.png",
-	"res://resources/sprites/female/female_longsleeve_white.png",
-	#"res://resources/sprites/backpack_black.png",
-	"res://resources/sprites/female/female_head.png",
-	"res://resources/sprites/hair_long_loose_blonde.png",
+	"res://resources/sprites/characters/female/female_body.png",
+	"res://resources/sprites/characters/female/female_basic_shoes_black.png",
+	"res://resources/sprites/characters/female/female_longpants_black.png",
+	"res://resources/sprites/characters/female/female_longsleeve_white.png",
+	#"res://resources/sprites/characters/backpack_black.png",
+	"res://resources/sprites/characters/female/female_head.png",
+	"res://resources/sprites/characters/hair_long_loose_blonde.png",
 ]
 
 var m_sprite :AnimatedSprite2D
@@ -104,7 +104,7 @@ func _reload():
 	add_child(body)
 	body.position = Vector2(0, -32)
 
-	var sprite_frames_template :SpriteFrames = load("res://resources/sprites/male_animations.tres").duplicate()
+	var sprite_frames_template :SpriteFrames = load("res://resources/animations/characters/male_animations.tres").duplicate()
 	body.sprite_frames = sprite_frames_template
 	
 	var combined_image :Image = null

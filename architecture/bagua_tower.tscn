@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://cvd7poved22w0"]
+
+[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="1_p6xgs"]
+
+[node name="BaguaTower" type="Node2D"]
+script = ExtResource("1_p6xgs")

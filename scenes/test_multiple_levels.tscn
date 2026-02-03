@@ -1,12 +1,12 @@
 [gd_scene load_steps=16 format=4 uid="uid://nb76pl60f3ib"]
 
-[ext_resource type="Script" uid="uid://dl2kyruhqxduy" path="res://buildings/components/steps.gd" id="2_jyvgc"]
+[ext_resource type="Script" uid="uid://dl2kyruhqxduy" path="res://architecture/components/steps.gd" id="2_jyvgc"]
 [ext_resource type="PackedScene" uid="uid://dqivkaosuu5nr" path="res://scenes/test_room.tscn" id="2_m6uu3"]
-[ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/buildings/wall_0_tiles.tres" id="2_x4g5s"]
+[ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/architecture/wall_0_tiles.tres" id="2_x4g5s"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="4_x4g5s"]
-[ext_resource type="Texture2D" uid="uid://boka5fmviqaew" path="res://resources/tilesets/buildings/structure_0.png" id="5_m6uu3"]
-[ext_resource type="PackedScene" uid="uid://d27a7jcvsnfx8" path="res://buildings/components/portal.tscn" id="6_6nlj4"]
-[ext_resource type="Texture2D" uid="uid://mhsy6o806uwu" path="res://resources/tilesets/buildings/building_0_tiles.png" id="6_i36na"]
+[ext_resource type="Texture2D" uid="uid://boka5fmviqaew" path="res://resources/sprites/architecture/components/structure_0.png" id="5_m6uu3"]
+[ext_resource type="PackedScene" uid="uid://d27a7jcvsnfx8" path="res://architecture/components/portal.tscn" id="6_6nlj4"]
+[ext_resource type="Texture2D" uid="uid://mhsy6o806uwu" path="res://resources/sprites/architecture/components/building_0_tiles.png" id="6_i36na"]
 [ext_resource type="TileSet" uid="uid://dn7l7cnmn33jy" path="res://resources/tilesets/mark_tiles.tres" id="7_u0u7n"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_tjhdy"]

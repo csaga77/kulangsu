@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=4 uid="uid://dymyxrdn3sywd"]
 
-[ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/buildings/wall_0_tiles.tres" id="1_6ths2"]
+[ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/architecture/wall_0_tiles.tres" id="1_6ths2"]
 
 [node name="test_building_tiles" type="Node2D"]
 
