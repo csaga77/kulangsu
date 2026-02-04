@@ -1,0 +1,120 @@
+[gd_scene load_steps=12 format=3 uid="uid://bbd88lcsuke4h"]
+
+[ext_resource type="PackedScene" uid="uid://d27a7jcvsnfx8" path="res://architecture/components/portal.tscn" id="1_5sph1"]
+[ext_resource type="Script" uid="uid://dl2kyruhqxduy" path="res://architecture/components/steps.gd" id="1_u6uu4"]
+[ext_resource type="Texture2D" uid="uid://boka5fmviqaew" path="res://resources/sprites/architecture/components/structure_0.png" id="3_fh4o2"]
+[ext_resource type="Texture2D" uid="uid://mhsy6o806uwu" path="res://resources/sprites/architecture/components/building_0_tiles.png" id="3_nhft0"]
+[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="4_nhft0"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_d3mvs"]
+radius = 8.505692
+height = 37.579132
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hx2jb"]
+atlas = ExtResource("3_nhft0")
+region = Rect2(0, 1024, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_nhft0"]
+atlas = ExtResource("3_fh4o2")
+region = Rect2(64, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_eyq88"]
+atlas = ExtResource("3_fh4o2")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_nhft0"]
+radius = 8.58374
+height = 67.67427
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_eyq88"]
+height = 46.502808
+
+[node name="base_stairs" type="StaticBody2D" node_paths=PackedStringArray("layer1_nodes", "body_nodes", "layer2_nodes")]
+collision_layer = 2097152
+collision_mask = 0
+script = ExtResource("1_u6uu4")
+layer1_nodes = [NodePath("portal_base_stairs_se")]
+layer1 = 524288
+body_nodes = [NodePath(".")]
+collision_layer = 2097152
+layer2_nodes = [NodePath("portal_base_stairs_ne")]
+layer2 = 1048576
+smooth_visibility_change = true
+
+[node name="portal_base_stairs_se" parent="." instance=ExtResource("1_5sph1")]
+z_index = 1
+position = Vector2(-11.000001, -2.000001)
+rotation = -2.0326524
+mask1 = 524288
+mask2 = 2097152
+
+[node name="CollisionShape2D" parent="portal_base_stairs_se" index="0"]
+shape = SubResource("CapsuleShape2D_d3mvs")
+
+[node name="portal_base_stairs_ne" parent="." instance=ExtResource("1_5sph1")]
+z_index = 1
+position = Vector2(-12.000004, -128)
+rotation = -1.1005728
+mask1 = 524288
+mask2 = 2097152
+delta_z = 0
+
+[node name="CollisionShape2D" parent="portal_base_stairs_ne" index="0"]
+shape = SubResource("CapsuleShape2D_d3mvs")
+
+[node name="block0" type="Sprite2D" parent="."]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_hx2jb")
+offset = Vector2(0, -16)
+script = ExtResource("4_nhft0")
+
+[node name="block1" type="Sprite2D" parent="."]
+position = Vector2(-64, -32)
+texture = SubResource("AtlasTexture_hx2jb")
+offset = Vector2(0, -16)
+script = ExtResource("4_nhft0")
+
+[node name="stairs_sw" type="Sprite2D" parent="."]
+position = Vector2(-32, -16)
+texture = SubResource("AtlasTexture_nhft0")
+offset = Vector2(0, -16)
+script = ExtResource("4_nhft0")
+
+[node name="stairs_ne" type="Sprite2D" parent="."]
+position = Vector2(-32, -80)
+texture = SubResource("AtlasTexture_eyq88")
+offset = Vector2(0, -16)
+script = ExtResource("4_nhft0")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(-51.999996, -14.000001)
+rotation = -0.58968186
+shape = SubResource("CapsuleShape2D_nhft0")
+
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="."]
+position = Vector2(-1, -38)
+rotation = -0.5554488
+shape = SubResource("CapsuleShape2D_nhft0")
+
+[node name="CollisionShape2D3" type="CollisionShape2D" parent="."]
+position = Vector2(-3.0000038, -90)
+rotation = 0.53972816
+shape = SubResource("CapsuleShape2D_nhft0")
+
+[node name="CollisionShape2D4" type="CollisionShape2D" parent="."]
+position = Vector2(-52.000004, -121)
+rotation = 0.5812671
+shape = SubResource("CapsuleShape2D_nhft0")
+
+[node name="CollisionShape2D5" type="CollisionShape2D" parent="."]
+position = Vector2(-86, -81)
+rotation = 1.1091913
+shape = SubResource("CapsuleShape2D_eyq88")
+
+[node name="CollisionShape2D6" type="CollisionShape2D" parent="."]
+position = Vector2(-85, -46.999996)
+rotation = 2.035844
+shape = SubResource("CapsuleShape2D_eyq88")
+
+[editable path="portal_base_stairs_se"]
+[editable path="portal_base_stairs_ne"]

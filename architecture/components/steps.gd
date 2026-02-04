@@ -1,6 +1,6 @@
 @tool
 class_name Steps
-extends IsometricBlock
+extends AutoVisibilityNode2D
 
 @export var layer1_nodes :Array[Portal]
 
