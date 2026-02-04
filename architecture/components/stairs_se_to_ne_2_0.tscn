@@ -29,13 +29,11 @@ height = 67.67427
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_eyq88"]
 height = 46.502808
 
-[node name="stairs_se_to_ne_2_0" type="StaticBody2D" node_paths=PackedStringArray("layer1_nodes", "body_nodes", "layer2_nodes")]
-collision_layer = 65536
-collision_mask = 0
+[node name="stairs_se_to_ne_2_0" type="Node2D" node_paths=PackedStringArray("layer1_nodes", "body_nodes", "layer2_nodes")]
 script = ExtResource("1_u6uu4")
 layer1_nodes = [NodePath("portal_base_stairs_se")]
 layer1 = 524288
-body_nodes = [NodePath(".")]
+body_nodes = [NodePath("collision_layer")]
 collision_layer = 65536
 layer2_nodes = [NodePath("portal_base_stairs_ne")]
 layer2 = 1048576
@@ -86,32 +84,36 @@ texture = SubResource("AtlasTexture_eyq88")
 offset = Vector2(0, -16)
 script = ExtResource("4_nhft0")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="collision_layer" type="StaticBody2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="collision_layer"]
 position = Vector2(-51.999996, -14.000001)
 rotation = -0.58968186
+scale = Vector2(0.99999994, 0.99999994)
 shape = SubResource("CapsuleShape2D_nhft0")
 
-[node name="CollisionShape2D2" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="collision_layer"]
 position = Vector2(-1, -38)
 rotation = -0.5554488
 shape = SubResource("CapsuleShape2D_nhft0")
 
-[node name="CollisionShape2D3" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D3" type="CollisionShape2D" parent="collision_layer"]
 position = Vector2(-3.0000038, -90)
 rotation = 0.53972816
 shape = SubResource("CapsuleShape2D_nhft0")
 
-[node name="CollisionShape2D4" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D4" type="CollisionShape2D" parent="collision_layer"]
 position = Vector2(-52.000004, -121)
 rotation = 0.5812671
 shape = SubResource("CapsuleShape2D_nhft0")
 
-[node name="CollisionShape2D5" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D5" type="CollisionShape2D" parent="collision_layer"]
 position = Vector2(-86, -81)
 rotation = 1.1091913
+scale = Vector2(0.99999994, 0.99999994)
 shape = SubResource("CapsuleShape2D_eyq88")
 
-[node name="CollisionShape2D6" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D6" type="CollisionShape2D" parent="collision_layer"]
 position = Vector2(-85, -46.999996)
 rotation = 2.035844
 shape = SubResource("CapsuleShape2D_eyq88")
