@@ -29,7 +29,7 @@ height = 67.67427
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_eyq88"]
 height = 46.502808
 
-[node name="base_stairs" type="StaticBody2D" node_paths=PackedStringArray("layer1_nodes", "body_nodes", "layer2_nodes")]
+[node name="stairs_se_to_ne_2_0" type="StaticBody2D" node_paths=PackedStringArray("layer1_nodes", "body_nodes", "layer2_nodes")]
 collision_layer = 2162688
 collision_mask = 0
 script = ExtResource("1_u6uu4")
