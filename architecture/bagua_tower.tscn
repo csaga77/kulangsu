@@ -194,87 +194,380 @@ smooth_visibility_change = true
 tile_map_data = PackedByteArray("AAAAAAMAAQAAAAAAAAABAAMAAQAAAAAAAAAAAAQAAQAAAAAAAAAAAAUAAQAAAAAAAAAAAAYAAQAAAAAAAAAAAAcAAQAAAAAAAAAAAAgAAQAAAAAAAAAAAAkAAQAAAAAAAAAAAAoAAQAAAAAAAAAAAAsAAQAAAAAAAAAAAAwAAQAAAAAAAAAAAA0AAQAAAAAAAAAAAA4AAQAAAAAAAAAAAA8AAQAAAAAAAAAAABAAAQAAAAAAAAAAABEAAQAAAAAAAAAAABIAAQAAAAAAAAAAABMAAQAAAAAAAAAAABQAAQAAAAAAAAAAABUAAQAAAAAAAAABAAQAAQAAAAAAAAABAAUAAQAAAAAAAAABAAYAAQAAAAAAAAABAAcAAQAAAAAAAAABAAgAAQAAAAAAAAABAAkAAQAAAAAAAAABAAoAAQAAAAAAAAABAAsAAQAAAAAAAAABAAwAAQAAAAAAAAABAA0AAQAAAAAAAAABAA4AAQAAAAAAAAABAA8AAQAAAAAAAAABABAAAQAAAAAAAAABABEAAQAAAAAAAAABABIAAQAAAAAAAAABABMAAQAAAAAAAAABABQAAQAAAAAAAAABABUAAQAAAAAAAAADAAAAAQAAAAAAAAADAAEAAQAAAAAAAAAEAAAAAQAAAAAAAAAEAAEAAQAAAAAAAAAFAAAAAQAAAAAAAAAFAAEAAQAAAAAAAAAGAAAAAQAAAAAAAAAGAAEAAQAAAAAAAAAHAAAAAQAAAAAAAAAHAAEAAQAAAAAAAAAIAAAAAQAAAAAAAAAIAAEAAQAAAAAAAAAJAAAAAQAAAAAAAAAJAAEAAQAAAAAAAAAKAAAAAQAAAAAAAAAKAAEAAQAAAAAAAAALAAAAAQAAAAAAAAALAAEAAQAAAAAAAAAMAAAAAQAAAAAAAAAMAAEAAQAAAAAAAAANAAAAAQAAAAAAAAANAAEAAQAAAAAAAAAPAAYAAQAAAAAAAAAPAAcAAQAAAAAAAAAPAAgAAQAAAAAAAAAPAAkAAQAAAAAAAAAPAAoAAQAAAAAAAAAPAAsAAQAAAAAAAAAPAAwAAQAAAAAAAAAPAA0AAQAAAAAAAAAPAA4AAQAAAAAAAAAPAA8AAQAAAAAAAAAPABAAAQAAAAAAAAAPABEAAQAAAAAAAAAPABIAAQAAAAAAAAAPABMAAQAAAAAAAAAPABQAAQAAAAAAAAAPABUAAQAAAAAAAAAQAAYAAQAAAAAAAAAQAAcAAQAAAAAAAAAQAAgAAQAAAAAAAAAQAAkAAQAAAAAAAAAQAAoAAQAAAAAAAAAQAAsAAQAAAAAAAAAQAAwAAQAAAAAAAAAQAA0AAQAAAAAAAAAQAA4AAQAAAAAAAAAQAA8AAQAAAAAAAAAQABAAAQAAAAAAAAAQABEAAQAAAAAAAAAQABIAAQAAAAAAAAAQABMAAQAAAAAAAAAQABQAAQAAAAAAAAAQABUAAQAAAAAAAAASAAcAAQAEAAAAAAASAAgAAQAEAAAAAAASAAkAAQAEAAAAAAASAAoAAQAEAAAAAAASAAsAAQAEAAAAAAASAAwAAQAEAAAAAAASAA0AAQAEAAAAAAASAA4AAQAEAAAAAAASAA8AAQAEAAAAAAASABAAAQAEAAAAAAASABEAAQAEAAAAAAATAAcAAQAEAAAAAAATAAgAAQAEAAAAAAATAAkAAQAEAAAAAAATAAoAAQAEAAAAAAATAAsAAQAEAAAAAAATAAwAAQAEAAAAAAATAA0AAQAEAAAAAAATAA4AAQAEAAAAAAATAA8AAQAEAAAAAAATABAAAQAEAAAAAAATABEAAQAEAAAAAAAUAAcAAQAEAAAAAAAUAAgAAQAEAAAAAAAUAAkAAQAEAAAAAAAUAAoAAQAEAAAAAAAUAAsAAQAEAAAAAAAUAAwAAQAEAAAAAAAUAA0AAQAEAAAAAAAUAA4AAQAEAAAAAAAUAA8AAQAEAAAAAAAUABAAAQAEAAAAAAAUABEAAQAEAAAAAAAPAAMAAQAAAAAAAAAPAAQAAQAAAAAAAAAPAAUAAQAAAAAAAAAQAAMAAQAAAAAAAAAQAAQAAQAAAAAAAAAQAAUAAQAAAAAAAAAEABcAAQAAAAAAAAAEABgAAQAAAAAAAAAFABcAAQAAAAAAAAAFABgAAQAAAAAAAAAGABcAAQAAAAAAAAAGABgAAQAAAAAAAAAHABcAAQAAAAAAAAAHABgAAQAAAAAAAAAIABcAAQAAAAAAAAAIABgAAQAAAAAAAAAJABcAAQAAAAAAAAAJABgAAQAAAAAAAAAKABcAAQAAAAAAAAAKABgAAQAAAAAAAAALABcAAQAAAAAAAAALABgAAQAAAAAAAAAMABcAAQAAAAAAAAAMABgAAQAAAAAAAAANABcAAQAAAAAAAAANABgAAQAAAAAAAAADABcAAQAAAAAAAAADABgAAQAAAAAAAAAOABIAAQAHAAAAAAAOABEAAQAHAAAAAAAOABAAAQAHAAAAAAAOAA8AAQAHAAAAAAAOAA4AAQAHAAAAAAAOAA0AAQAAAAAAAAAOAAwAAQAAAAAAAAAOAAsAAQAAAAAAAAAOAAoAAQAHAAAAAAAOAAkAAQAHAAAAAAAOAAgAAQAHAAAAAAAOAAcAAQAHAAAAAAAOAAYAAQAHAAAAAAAOAAUAAQAHAAAAAAAOAAQAAQAHAAAAAAAOAAMAAQAHAAAAAAANAAMAAQAHAAAAAAANAAIAAQAHAAAAAAAMAAIAAQAHAAAAAAALAAIAAQAHAAAAAAAKAAIAAQAHAAAAAAAJAAIAAQAAAAAAAAAIAAIAAQAAAAAAAAAHAAIAAQAAAAAAAAAGAAIAAQAHAAAAAAAFAAIAAQAHAAAAAAAEAAIAAQAHAAAAAAADAAIAAQAHAAAAAAADAAMAAQAHAAAAAAACAAMAAQAHAAAAAAACAAQAAQAHAAAAAAACAAUAAQAHAAAAAAACAAYAAQAHAAAAAAACAAcAAQAHAAAAAAACAAgAAQAHAAAAAAACAAkAAQAHAAAAAAACAAoAAQAHAAAAAAACAAsAAQAAAAAAAAACAAwAAQAAAAAAAAACAA0AAQAAAAAAAAACAA4AAQAHAAAAAAACAA8AAQAHAAAAAAACABAAAQAHAAAAAAACABEAAQAHAAAAAAACABIAAQAHAAAAAAACABMAAQAHAAAAAAACABQAAQAHAAAAAAACABUAAQAHAAAAAAADABUAAQAHAAAAAAADABQAAQAHAAAAAAADABMAAQAHAAAAAAADABIAAQAHAAAAAAADABEAAQAHAAAAAAADABAAAQAHAAAAAAADAA8AAQAHAAAAAAADAA4AAQAHAAAAAAADAA0AAQAAAAAAAAADAAwAAQAAAAAAAAADAAsAAQAAAAAAAAADAAoAAQAHAAAAAAADAAkAAQAHAAAAAAADAAgAAQAHAAAAAAADAAcAAQAHAAAAAAADAAYAAQAHAAAAAAADAAUAAQAHAAAAAAADAAQAAQAHAAAAAAAEAAQAAQAHAAAAAAAEAAMAAQAHAAAAAAAFAAMAAQAHAAAAAAAFAAQAAQAHAAAAAAAFAAUAAQAHAAAAAAAEAAUAAQAHAAAAAAAEAAYAAQAHAAAAAAAEAAcAAQAHAAAAAAAEAAgAAQAHAAAAAAAEAAkAAQAHAAAAAAAEAAoAAQAHAAAAAAAEAAsAAQAAAAAAAAAEAAwAAQAAAAAAAAAEAA0AAQAAAAAAAAAEAA4AAQAHAAAAAAAEAA8AAQAHAAAAAAAEABAAAQAHAAAAAAAEABEAAQAHAAAAAAAEABIAAQAHAAAAAAAEABMAAQAHAAAAAAAEABQAAQAHAAAAAAAEABUAAQAHAAAAAAAEABYAAQAHAAAAAAADABYAAQAHAAAAAAAFABYAAQAHAAAAAAAFABUAAQAHAAAAAAAFABQAAQAHAAAAAAAFABMAAQAHAAAAAAAFABIAAQAHAAAAAAAFABEAAQAHAAAAAAAFABAAAQAHAAAAAAAFAA8AAQAHAAAAAAAFAA4AAQAHAAAAAAAFAA0AAQAAAAAAAAAFAAwAAQAAAAAAAAAFAAsAAQAAAAAAAAAFAAoAAQAHAAAAAAAFAAkAAQAHAAAAAAAFAAgAAQAHAAAAAAAFAAcAAQAHAAAAAAAFAAYAAQAHAAAAAAAGAAYAAQAHAAAAAAAGAAUAAQAHAAAAAAAGAAQAAQAHAAAAAAAGAAMAAQAHAAAAAAAHAAMAAQAAAAAAAAAHAAQAAQAAAAAAAAAHAAUAAQAAAAAAAAAHAAYAAQAAAAAAAAAHAAcAAQAAAAAAAAAGAAcAAQAHAAAAAAAGAAgAAQAHAAAAAAAGAAkAAQAHAAAAAAAGAAoAAQAAAAAAAAAGAAsAAQAAAAAAAAAGAAwAAQAAAAAAAAAGAA0AAQAAAAAAAAAGAA4AAQAAAAAAAAAGAA8AAQAHAAAAAAAGABAAAQAHAAAAAAAGABEAAQAHAAAAAAAGABIAAQAHAAAAAAAGABMAAQAHAAAAAAAGABQAAQAHAAAAAAAGABUAAQAHAAAAAAAGABYAAQAHAAAAAAAHABYAAQAAAAAAAAAHABUAAQAAAAAAAAAHABQAAQAAAAAAAAAHABMAAQAAAAAAAAAHABIAAQAAAAAAAAAHABEAAQAAAAAAAAAHABAAAQAAAAAAAAAHAA8AAQAAAAAAAAAHAA4AAQAAAAAAAAAHAA0AAQAAAAAAAAAHAAwAAQAAAAAAAAAHAAsAAQAAAAAAAAAHAAoAAQAAAAAAAAAHAAkAAQAAAAAAAAAHAAgAAQAAAAAAAAAIAAgAAQAAAAAAAAAIAAcAAQAAAAAAAAAIAAYAAQAAAAAAAAAIAAUAAQAAAAAAAAAIAAQAAQAAAAAAAAAIAAMAAQAAAAAAAAAJAAMAAQAAAAAAAAAJAAQAAQAAAAAAAAAJAAUAAQAAAAAAAAAJAAYAAQAAAAAAAAAJAAcAAQAAAAAAAAAJAAgAAQAAAAAAAAAJAAkAAQAAAAAAAAAIAAkAAQAAAAAAAAAIAAoAAQAAAAAAAAAIAAsAAQAAAAAAAAAIAAwAAQAAAAAAAAAIAA0AAQAAAAAAAAAIAA4AAQAAAAAAAAAIAA8AAQAAAAAAAAAIABAAAQAAAAAAAAAIABEAAQAAAAAAAAAIABIAAQAAAAAAAAAIABMAAQAAAAAAAAAIABQAAQAAAAAAAAAIABUAAQAAAAAAAAAIABYAAQAAAAAAAAAJABYAAQAAAAAAAAAJABUAAQAAAAAAAAAJABQAAQAAAAAAAAAJABMAAQAAAAAAAAAJABIAAQAAAAAAAAAJABEAAQAAAAAAAAAJABAAAQAAAAAAAAAJAA8AAQAAAAAAAAAJAA4AAQAAAAAAAAAJAA0AAQAAAAAAAAAJAAwAAQAAAAAAAAAJAAsAAQAAAAAAAAAJAAoAAQAAAAAAAAAKAAoAAQAAAAAAAAAKAAkAAQAHAAAAAAAKAAgAAQAHAAAAAAAKAAcAAQAHAAAAAAAKAAYAAQAHAAAAAAAKAAUAAQAHAAAAAAAKAAQAAQAHAAAAAAAKAAMAAQAHAAAAAAALAAMAAQAHAAAAAAALAAQAAQAHAAAAAAALAAUAAQAHAAAAAAALAAYAAQAHAAAAAAALAAcAAQAHAAAAAAALAAgAAQAHAAAAAAALAAkAAQAHAAAAAAALAAoAAQAHAAAAAAALAAsAAQAAAAAAAAAKAAsAAQAAAAAAAAAKAAwAAQAAAAAAAAAKAA0AAQAAAAAAAAAKAA4AAQAAAAAAAAAKAA8AAQAHAAAAAAAKABAAAQAHAAAAAAAKABEAAQAHAAAAAAAKABIAAQAHAAAAAAAKABMAAQAHAAAAAAAKABQAAQAHAAAAAAAKABUAAQAHAAAAAAAKABYAAQAHAAAAAAALABYAAQAHAAAAAAALABUAAQAHAAAAAAALABQAAQAHAAAAAAALABMAAQAHAAAAAAALABIAAQAHAAAAAAALABEAAQAHAAAAAAALABAAAQAHAAAAAAALAA8AAQAHAAAAAAALAA4AAQAHAAAAAAALAA0AAQAAAAAAAAALAAwAAQAAAAAAAAAMAAwAAQAAAAAAAAAMAAsAAQAAAAAAAAAMAAoAAQAHAAAAAAAMAAkAAQAHAAAAAAAMAAgAAQAHAAAAAAAMAAcAAQAHAAAAAAAMAAYAAQAHAAAAAAAMAAUAAQAHAAAAAAAMAAQAAQAHAAAAAAAMAAMAAQAHAAAAAAANAAQAAQAHAAAAAAANAAUAAQAHAAAAAAANAAYAAQAHAAAAAAANAAcAAQAHAAAAAAANAAgAAQAHAAAAAAANAAkAAQAHAAAAAAANAAoAAQAHAAAAAAANAAsAAQAAAAAAAAANAAwAAQAAAAAAAAANAA0AAQAAAAAAAAAMAA0AAQAAAAAAAAAMAA4AAQAHAAAAAAAMAA8AAQAHAAAAAAAMABAAAQAHAAAAAAAMABEAAQAHAAAAAAAMABIAAQAHAAAAAAAMABMAAQAHAAAAAAAMABQAAQAHAAAAAAAMABUAAQAHAAAAAAAMABYAAQAHAAAAAAANABYAAQAHAAAAAAANABUAAQAHAAAAAAANABQAAQAHAAAAAAANABMAAQAHAAAAAAANABIAAQAHAAAAAAANABEAAQAHAAAAAAANABAAAQAHAAAAAAANAA8AAQAHAAAAAAANAA4AAQAHAAAAAAAOABMAAQAHAAAAAAAOABQAAQAHAAAAAAAOABUAAQAHAAAAAAA=")
 tile_set = ExtResource("2_4duu1")
 
-[node name="room_north" type="Node2D" parent="ground_level" node_paths=PackedStringArray("physics_layers")]
+[node name="corner_room_north" type="Node2D" parent="ground_level" node_paths=PackedStringArray("physics_layers")]
 y_sort_enabled = true
 script = ExtResource("7_564an")
 level = 1
 physics_layers = [NodePath("collision_layer")]
 
-[node name="floor" type="TileMapLayer" parent="ground_level/room_north"]
+[node name="floor" type="TileMapLayer" parent="ground_level/corner_room_north"]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD+/wIAAQAHAAAAAAD//wEAAQAHAAAAAAAAAAAAAQAHAAAAAAABAAAAAQAHAAAAAAABAP//AQAHAAAAAAABAP7/AQAHAAAAAAACAP7/AQAHAAAAAAD+//7/AQAHAAAAAAD+////AQAHAAAAAAD+/wAAAQAHAAAAAAD+/wEAAQAHAAAAAAD///7/AQAHAAAAAAD/////AQAHAAAAAAD//wAAAQAHAAAAAAD//wIAAQAHAAAAAAAAAP7/AQAHAAAAAAAAAP//AQAHAAAAAAAAAAEAAQAHAAAAAAAAAAIAAQAHAAAAAAABAAEAAQAHAAAAAAABAAIAAQAHAAAAAAACAP//AQAHAAAAAAACAAAAAQAHAAAAAAACAAEAAQAHAAAAAAACAAIAAQAHAAAAAAA=")
 tile_set = ExtResource("2_4duu1")
 
-[node name="wall_base" type="TileMapLayer" parent="ground_level/room_north"]
+[node name="wall_base" type="TileMapLayer" parent="ground_level/corner_room_north"]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD+//7/AQACAAIAAAD///7/AgAEAAIAAQAAAP7/AgAEAAIAAQABAP7/AgAEAAIAAQD+////AgAFAAIAAQD+/wAAAgAFAAIAAQD+/wEAAgAFAAIAAQD+/wIAAQAHAAAAAAACAP7/AQAIAAAAAAD//wIAAgAGAAIAAAABAAIAAQAFAAIAAAACAAIAAQAAAAIAAAACAAEAAQAGAAIAAAACAP//AgAHAAIAAAA=")
 tile_set = ExtResource("7_fcs3d")
 
-[node name="wall_base_top" type="TileMapLayer" parent="ground_level/room_north"]
+[node name="wall_base_top" type="TileMapLayer" parent="ground_level/corner_room_north"]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD9//3/BAAHAAAAAAABAAEABAAIAAAAAAABAP3/BAAGAAAAAAD9/wEABAAFAAAAAAD+/wEABQANAAAAAAAAAAEABQANAAAAAAABAAAABQAOAAAAAAABAP7/BQAOAAAAAAAAAP3/BQANAAAAAQD///3/BQANAAAAAQD+//3/BQANAAAAAQD9/wAABQAOAAAAAQD9////BQAOAAAAAQD9//7/BQAOAAAAAQA=")
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 32
 
-[node name="collision_layer" type="TileMapLayer" parent="ground_level/room_north"]
+[node name="collision_layer" type="TileMapLayer" parent="ground_level/corner_room_north"]
 z_index = 1
 tile_map_data = PackedByteArray("AAD+/wIACAABAAUAAAACAP7/CAABAAYAAAACAAIACAABAAgAAAD+//7/CAABAAcAAAD//wIACAABAAEAAAABAAIACAABAAEAAAACAAEACAABAAIAAAACAP//CAABAAIAAAD///7/CAABAAMAAAAAAP7/CAABAAMAAAABAP7/CAABAAMAAAD+/wEACAABAAQAAAD+/wAACAABAAQAAAD+////CAABAAQAAAA=")
 tile_set = ExtResource("2_itf6i")
 script = ExtResource("1_p6xgs")
 only_shown_in_editor = true
 
-[node name="back_wall_0" type="TileMapLayer" parent="ground_level/room_north"]
+[node name="back_wall_0" type="TileMapLayer" parent="ground_level/corner_room_north"]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD9//3/AQACAAAAAAD+//3/AgAKAAAAAgD9//7/AgALAAAAAgAAAP3/AgAIAAAAAQD9/wAAAgAJAAAAAQD9/wEAAQAJAAAAAgABAP3/AQAJAAAAAgA=")
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 32
 
-[node name="back_wall_1" type="TileMapLayer" parent="ground_level/room_north"]
+[node name="back_wall_1" type="TileMapLayer" parent="ground_level/corner_room_north"]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD8//z/AQACAAAAAAD8//3/AgALAAAAAgD8////AgAJAAAAAQD8/wAAAQAJAAAAAgD9//z/AgAKAAAAAgD///z/AgAIAAAAAQAAAPz/AQAJAAAAAgA=")
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 64
 
-[node name="back_wall_2" type="TileMapLayer" parent="ground_level/room_north"]
+[node name="back_wall_2" type="TileMapLayer" parent="ground_level/corner_room_north"]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD7//v/AQACAAAAAAD7//z/AgAFAAAAAQD7//7/AgAFAAAAAQD7////AQAJAAAAAgD8//v/AgAEAAAAAQD+//v/AgAEAAAAAQD///v/AQAJAAAAAgD9//v/AgAEAAAAAQD7//3/AgAFAAAAAQA=")
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 96
 
-[node name="back_wall_top" type="TileMapLayer" parent="ground_level/room_north"]
+[node name="back_wall_top" type="TileMapLayer" parent="ground_level/corner_room_north"]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD6//7/BAALAAAAAgD+//r/BAALAAAAAgD6//3/BQAOAAEAAQD6//z/BQAOAAEAAQD6//v/BQAOAAEAAQD9//r/BQANAAEAAQD8//r/BQANAAEAAQD7//r/BQANAAEAAQD6//r/BAAHAAAAAAA=")
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 128
 
-[node name="front_wall" type="Node2D" parent="ground_level/room_north" node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="front_wall" type="Node2D" parent="ground_level/corner_room_north" node_paths=PackedStringArray("visibility_mask_layers")]
 y_sort_enabled = true
 script = ExtResource("6_562by")
 visibility_mask_layers = [NodePath("../floor")]
 use_ground_bounding_rect = true
 smooth_visibility_change = true
 
-[node name="front_wall_0" type="TileMapLayer" parent="ground_level/room_north/front_wall"]
+[node name="front_wall_0" type="TileMapLayer" parent="ground_level/corner_room_north/front_wall"]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD9/wEAAQAHAAAAAAD+/wEAAgAGAAAAAAAAAAEAAgAEAAAAAAABAAAAAgAFAAAAAAABAP7/AgAHAAAAAAABAP3/AQAIAAAAAAABAAEAAQAAAAAAAAA=")
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 32
 
-[node name="front_wall_1" type="TileMapLayer" parent="ground_level/room_north/front_wall"]
+[node name="front_wall_1" type="TileMapLayer" parent="ground_level/corner_room_north/front_wall"]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD8/wAAAQAHAAAAAAD9/wAAAgAGAAAAAAD//wAAAgAEAAAAAAAAAPz/AQAIAAAAAAAAAP3/AgAHAAAAAAAAAP//AgAFAAAAAAAAAAAAAQAAAAAAAAA=")
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 64
 
-[node name="front_wall_2" type="TileMapLayer" parent="ground_level/room_north/front_wall"]
+[node name="front_wall_2" type="TileMapLayer" parent="ground_level/corner_room_north/front_wall"]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD7////AQAHAAAAAAD8////AQAFAAAAAAD+////AgAEAAAAAAD///v/AQAIAAAAAAD///z/AQAGAAAAAAD///7/AgAFAAAAAAD/////AQAAAAAAAAD9////AQAFAAAAAAD///3/AQAGAAAAAAA=")
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 96
 
-[node name="front_wall_top" type="TileMapLayer" parent="ground_level/room_north/front_wall"]
+[node name="front_wall_top" type="TileMapLayer" parent="ground_level/corner_room_north/front_wall"]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD6//7/BAAJAAAAAAD+//r/BAAKAAAAAAD7//7/BQANAAAAAAD8//7/BQANAAAAAAD9//7/BQANAAAAAAD+//3/BQAOAAAAAAD+//z/BQAOAAAAAAD+//v/BQAOAAAAAAD+//7/BAAIAAAAAAA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 128
+
+[node name="corner_room_east" type="Node2D" parent="ground_level" node_paths=PackedStringArray("physics_layers")]
+y_sort_enabled = true
+position = Vector2(512, 256)
+script = ExtResource("7_564an")
+level = 1
+physics_layers = [NodePath("collision_layer")]
+
+[node name="back_wall_mask" type="TileMapLayer" parent="ground_level/corner_room_east"]
+tile_map_data = PackedByteArray("AAD8/wAAAwAAAAAAAAD7////AwAAAAAAAAD8////AwAAAAAAAAA=")
+tile_set = ExtResource("2_itf6i")
+script = ExtResource("1_p6xgs")
+
+[node name="floor" type="TileMapLayer" parent="ground_level/corner_room_east"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD+/wIAAQAHAAAAAAD//wEAAQAHAAAAAAAAAAAAAQAHAAAAAAABAAAAAQAHAAAAAAABAP//AQAHAAAAAAABAP7/AQAHAAAAAAACAP7/AQAHAAAAAAD+//7/AQAHAAAAAAD+////AQAHAAAAAAD+/wAAAQAHAAAAAAD+/wEAAQAHAAAAAAD///7/AQAHAAAAAAD/////AQAHAAAAAAD//wAAAQAHAAAAAAD//wIAAQAHAAAAAAAAAP7/AQAHAAAAAAAAAP//AQAHAAAAAAAAAAEAAQAHAAAAAAAAAAIAAQAHAAAAAAABAAEAAQAHAAAAAAABAAIAAQAHAAAAAAACAP//AQAHAAAAAAACAAAAAQAHAAAAAAACAAEAAQAHAAAAAAACAAIAAQAHAAAAAAA=")
+tile_set = ExtResource("2_4duu1")
+
+[node name="wall_base" type="TileMapLayer" parent="ground_level/corner_room_east"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD+//7/AQACAAIAAAD///7/AgAEAAIAAQAAAP7/AgAEAAIAAQABAP7/AgAEAAIAAQD+////AgAHAAIAAQD+/wEAAgAFAAIAAQD+/wIAAQAHAAIAAAACAP7/AQAIAAAAAAD//wIAAgAGAAIAAAABAAIAAQAFAAIAAAACAAIAAQAAAAAAAAACAAEAAQAGAAYAAAACAP//AQAGAAYAAAACAAAAAQAGAAYAAAA=")
+tile_set = ExtResource("7_fcs3d")
+
+[node name="wall_base_top" type="TileMapLayer" parent="ground_level/corner_room_east"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD9//3/BAAHAAAAAAABAAEABAAIAAAAAAABAP3/BAAGAAAAAAD9/wEABAAFAAAAAAD+/wEABQANAAAAAAAAAAEABQANAAAAAAABAAAABQAOAAEAAAABAP7/BQAOAAEAAAAAAP3/BQANAAAAAQD///3/BQANAAAAAQD+//3/BQANAAAAAQD9/wAABQAOAAAAAQD9//7/BQAOAAAAAQABAP//BQAOAAEAAAA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 32
+
+[node name="collision_layer" type="TileMapLayer" parent="ground_level/corner_room_east"]
+z_index = 1
+tile_map_data = PackedByteArray("AAD+/wIACAABAAUAAAACAP7/CAABAAYAAAACAAIACAABAAgAAAD+//7/CAABAAcAAAD//wIACAABAAEAAAABAAIACAABAAEAAAACAAEACAABAAIAAAACAP//CAABAAIAAAD///7/CAABAAMAAAAAAP7/CAABAAMAAAABAP7/CAABAAMAAAD+/wEACAABAAQAAAD+////CAABAAQAAAACAAAACAABAAIAAAA=")
+tile_set = ExtResource("2_itf6i")
+script = ExtResource("1_p6xgs")
+only_shown_in_editor = true
+
+[node name="back_wall" type="Node2D" parent="ground_level/corner_room_east" node_paths=PackedStringArray("visibility_mask_layers")]
+y_sort_enabled = true
+script = ExtResource("6_562by")
+visibility_mask_layers = [NodePath("../back_wall_mask")]
+use_ground_bounding_rect = true
+smooth_visibility_change = true
+
+[node name="back_wall_0" type="TileMapLayer" parent="ground_level/corner_room_east/back_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD9//3/AQACAAAAAAD+//3/AgAKAAAAAgD9//7/AgAHAAAAAQAAAP3/AgAIAAAAAQD9/wAAAgAFAAAAAQD9/wEAAQAJAAAAAgABAP3/AQAJAAAAAgA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 32
+
+[node name="back_wall_1" type="TileMapLayer" parent="ground_level/corner_room_east/back_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD8//z/AQACAAAAAAD8//3/AgAHAAAAAQD8////AgAFAAAAAQD8/wAAAQAJAAAAAgD9//z/AgAKAAAAAgD///z/AgAIAAAAAQAAAPz/AQAJAAAAAgA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 64
+
+[node name="back_wall_2" type="TileMapLayer" parent="ground_level/corner_room_east/back_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD7//v/AQACAAAAAAD7//z/AgAFAAAAAQD7//7/AgAFAAAAAQD7////AQAJAAAAAgD8//v/AgAEAAAAAQD+//v/AgAEAAAAAQD///v/AQAJAAAAAgD9//v/AgAEAAAAAQD7//3/AgAFAAAAAQA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 96
+
+[node name="back_wall_top" type="TileMapLayer" parent="ground_level/corner_room_east/back_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD6//7/BAALAAAAAgD+//r/BAALAAAAAgD6//3/BQAOAAAAAQD6//z/BQAOAAAAAQD6//v/BQAOAAAAAQD9//r/BQANAAEAAQD8//r/BQANAAEAAQD7//r/BQANAAEAAQD6//r/BAAHAAAAAAA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 128
+
+[node name="front_wall" type="Node2D" parent="ground_level/corner_room_east" node_paths=PackedStringArray("visibility_mask_layers")]
+y_sort_enabled = true
+script = ExtResource("6_562by")
+visibility_mask_layers = [NodePath("../floor"), NodePath("../back_wall_mask")]
+use_ground_bounding_rect = true
+smooth_visibility_change = true
+
+[node name="front_wall_0" type="TileMapLayer" parent="ground_level/corner_room_east/front_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD9/wEAAQAHAAAAAAD+/wEAAgAGAAAAAAAAAAEAAgAEAAAAAAABAAAAAgAJAAQAAAABAP7/AgALAAQAAwABAP3/AQAIAAAAAAABAAEAAQAAAAAAAAA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 32
+
+[node name="front_wall_1" type="TileMapLayer" parent="ground_level/corner_room_east/front_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD8/wAAAQAHAAAAAAD9/wAAAgAGAAAAAAD//wAAAgAEAAAAAAAAAPz/AQAIAAAAAAAAAP3/AgALAAQAAwAAAP//AgAJAAQAAAAAAAAAAQAAAAAAAAA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 64
+
+[node name="front_wall_2" type="TileMapLayer" parent="ground_level/corner_room_east/front_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD7////AQAHAAAAAAD8////AQAFAAAAAAD+////AgAEAAAAAAD///v/AQAIAAAAAAD///z/AQAGAAQAAAD///7/AQAGAAQAAAD/////AQAAAAAAAAD9////AQAFAAAAAAD///3/AQAGAAQAAAA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 96
+
+[node name="front_wall_top" type="TileMapLayer" parent="ground_level/corner_room_east/front_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD6//7/BAAJAAAAAAD+//r/BAAKAAAAAAD7//7/BQANAAAAAAD8//7/BQANAAAAAAD9//7/BQANAAAAAAD+//3/BQAOAAEAAAD+//z/BQAOAAEAAAD+//v/BQAOAAEAAAD+//7/BAAIAAAAAAA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 128
+
+[node name="corner_room_south" type="Node2D" parent="ground_level" node_paths=PackedStringArray("physics_layers")]
+y_sort_enabled = true
+position = Vector2(-256, 640)
+script = ExtResource("7_564an")
+level = 1
+physics_layers = [NodePath("collision_layer")]
+
+[node name="back_wall_mask" type="TileMapLayer" parent="ground_level/corner_room_south"]
+tile_map_data = PackedByteArray("AAD8/wAAAwAAAAAAAAD7////AwAAAAAAAAD8////AwAAAAAAAAD8//7/AwAAAAAAAAD8//3/AwAAAAAAAAD8//z/AwAAAAAAAAD9//z/AwAAAAAAAAD+//z/AwAAAAAAAAD///z/AwAAAAAAAAD7//7/AwAAAAAAAAD7//3/AwAAAAAAAAD7//z/AwAAAAAAAAD7//v/AwAAAAAAAAD8//v/AwAAAAAAAAD9//v/AwAAAAAAAAD+//v/AwAAAAAAAAA=")
+tile_set = ExtResource("2_itf6i")
+script = ExtResource("1_p6xgs")
+only_shown_in_editor = true
+
+[node name="floor" type="TileMapLayer" parent="ground_level/corner_room_south"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD+/wIAAQAHAAAAAAD//wEAAQAHAAAAAAAAAAAAAQAHAAAAAAABAAAAAQAHAAAAAAABAP//AQAHAAAAAAABAP7/AQAHAAAAAAACAP7/AQAHAAAAAAD+//7/AQAHAAAAAAD+////AQAHAAAAAAD+/wAAAQAHAAAAAAD+/wEAAQAHAAAAAAD///7/AQAHAAAAAAD/////AQAHAAAAAAD//wAAAQAHAAAAAAD//wIAAQAHAAAAAAAAAP7/AQAHAAAAAAAAAP//AQAHAAAAAAAAAAEAAQAHAAAAAAAAAAIAAQAHAAAAAAABAAEAAQAHAAAAAAABAAIAAQAHAAAAAAACAP//AQAHAAAAAAACAAAAAQAHAAAAAAACAAEAAQAHAAAAAAACAAIAAQAHAAAAAAA=")
+tile_set = ExtResource("2_4duu1")
+
+[node name="wall_base" type="TileMapLayer" parent="ground_level/corner_room_south"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD+//7/AQACAAIAAAD///7/AgAGAAIAAQABAP7/AgAEAAIAAQD+////AgAHAAIAAQD+/wEAAgAFAAIAAQD+/wIAAQAHAAIAAAACAP7/AQAIAAAAAAD//wIAAQAFAAQAAAABAAIAAQAFAAQAAAACAAIAAQAAAAAAAAACAAEAAQAGAAYAAAACAP//AQAGAAYAAAACAAAAAQAGAAYAAAAAAAIAAQAFAAQAAAA=")
+tile_set = ExtResource("7_fcs3d")
+
+[node name="wall_base_top" type="TileMapLayer" parent="ground_level/corner_room_south"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD9//3/BAAHAAAAAAABAAEABAAIAAAAAAABAP3/BAAGAAAAAAD9/wEABAAFAAAAAAD+/wEABQANAAEAAAAAAAEABQANAAEAAAABAAAABQAOAAEAAAABAP7/BQAOAAEAAAAAAP3/BQANAAAAAQD+//3/BQANAAAAAQD9/wAABQAOAAAAAQD9//7/BQAOAAAAAQABAP//BQAOAAEAAAD//wEABQANAAEAAAA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 32
+
+[node name="collision_layer" type="TileMapLayer" parent="ground_level/corner_room_south"]
+z_index = 1
+tile_map_data = PackedByteArray("AAD+/wIACAABAAUAAAACAP7/CAABAAYAAAACAAIACAABAAgAAAD+//7/CAABAAcAAAD//wIACAABAAEAAAABAAIACAABAAEAAAACAAEACAABAAIAAAACAP//CAABAAIAAAD///7/CAABAAMAAAABAP7/CAABAAMAAAD+/wEACAABAAQAAAD+////CAABAAQAAAACAAAACAABAAIAAAAAAAIACAABAAEAAAA=")
+tile_set = ExtResource("2_itf6i")
+script = ExtResource("1_p6xgs")
+only_shown_in_editor = true
+
+[node name="back_wall" type="Node2D" parent="ground_level/corner_room_south" node_paths=PackedStringArray("visibility_mask_layers")]
+y_sort_enabled = true
+script = ExtResource("6_562by")
+visibility_mask_layers = [NodePath("../back_wall_mask")]
+use_ground_bounding_rect = true
+smooth_visibility_change = true
+
+[node name="back_wall_0" type="TileMapLayer" parent="ground_level/corner_room_south/back_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD9//3/AQACAAAAAAD+//3/AgAGAAAAAQD9//7/AgAHAAAAAQAAAP3/AgAEAAAAAQD9/wAAAgAFAAAAAQD9/wEAAQAJAAAAAgABAP3/AQAJAAAAAgA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 32
+
+[node name="back_wall_1" type="TileMapLayer" parent="ground_level/corner_room_south/back_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD8//z/AQACAAAAAAD8//3/AgAHAAAAAQD8////AgAFAAAAAQD8/wAAAQAJAAAAAgD9//z/AgAGAAAAAQD///z/AgAEAAAAAQAAAPz/AQAJAAAAAgA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 64
+
+[node name="back_wall_2" type="TileMapLayer" parent="ground_level/corner_room_south/back_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD7//v/AQACAAAAAAD7//z/AgAFAAAAAQD7//7/AgAFAAAAAQD7////AQAJAAAAAgD8//v/AgAEAAAAAQD+//v/AgAEAAAAAQD///v/AQAJAAAAAgD9//v/AgAEAAAAAQD7//3/AgAFAAAAAQA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 96
+
+[node name="back_wall_top" type="TileMapLayer" parent="ground_level/corner_room_south/back_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD6//7/BAALAAAAAgD+//r/BAALAAAAAgD6//3/BQAOAAAAAQD6//z/BQAOAAAAAQD6//v/BQAOAAAAAQD9//r/BQANAAAAAQD8//r/BQANAAAAAQD7//r/BQANAAAAAQD6//r/BAAHAAAAAAA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 128
+
+[node name="front_wall" type="Node2D" parent="ground_level/corner_room_south" node_paths=PackedStringArray("visibility_mask_layers")]
+y_sort_enabled = true
+script = ExtResource("6_562by")
+visibility_mask_layers = [NodePath("../floor"), NodePath("../back_wall_mask")]
+use_ground_bounding_rect = true
+smooth_visibility_change = true
+
+[node name="front_wall_0" type="TileMapLayer" parent="ground_level/corner_room_south/front_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD9/wEAAQAHAAAAAAD+/wEAAgAKAAQAAwAAAAEAAgAIAAQAAAABAAAAAgAJAAQAAAABAP7/AgALAAQAAwABAP3/AQAIAAAAAAABAAEAAQAAAAAAAAA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 32
+
+[node name="front_wall_1" type="TileMapLayer" parent="ground_level/corner_room_south/front_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD8/wAAAQAHAAAAAAD9/wAAAgAKAAQAAwD//wAAAgAIAAQAAAAAAPz/AQAIAAAAAAAAAP3/AgALAAQAAwAAAP//AgAJAAQAAAAAAAAAAQAAAAAAAAA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 64
+
+[node name="front_wall_2" type="TileMapLayer" parent="ground_level/corner_room_south/front_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD7////AQAHAAAAAAD8////AQAFAAQAAAD+////AQAFAAQAAAD///v/AQAIAAAAAAD///z/AQAGAAQAAAD///7/AQAGAAQAAAD/////AQAAAAAAAAD9////AQAFAAQAAAD///3/AQAGAAQAAAA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 96
+
+[node name="front_wall_top" type="TileMapLayer" parent="ground_level/corner_room_south/front_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD6//7/BAAJAAAAAAD+//r/BAAKAAAAAAD7//7/BQANAAEAAAD8//7/BQANAAEAAAD9//7/BQANAAEAAAD+//3/BQAOAAEAAAD+//z/BQAOAAEAAAD+//v/BQAOAAEAAAD+//7/BAAIAAAAAAA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 128
+
+[node name="corner_room_west" type="Node2D" parent="ground_level" node_paths=PackedStringArray("physics_layers")]
+y_sort_enabled = true
+position = Vector2(-768, 384)
+script = ExtResource("7_564an")
+level = 1
+physics_layers = [NodePath("collision_layer")]
+
+[node name="back_wall_mask" type="TileMapLayer" parent="ground_level/corner_room_west"]
+tile_map_data = PackedByteArray("AAD+//z/AwAAAAAAAAD///z/AwAAAAAAAAD+//v/AwAAAAAAAAA=")
+tile_set = ExtResource("2_itf6i")
+script = ExtResource("1_p6xgs")
+only_shown_in_editor = true
+
+[node name="floor" type="TileMapLayer" parent="ground_level/corner_room_west"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD+/wIAAQAHAAAAAAD//wEAAQAHAAAAAAAAAAAAAQAHAAAAAAABAAAAAQAHAAAAAAABAP//AQAHAAAAAAABAP7/AQAHAAAAAAACAP7/AQAHAAAAAAD+//7/AQAHAAAAAAD+////AQAHAAAAAAD+/wAAAQAHAAAAAAD+/wEAAQAHAAAAAAD///7/AQAHAAAAAAD/////AQAHAAAAAAD//wAAAQAHAAAAAAD//wIAAQAHAAAAAAAAAP7/AQAHAAAAAAAAAP//AQAHAAAAAAAAAAEAAQAHAAAAAAAAAAIAAQAHAAAAAAABAAEAAQAHAAAAAAABAAIAAQAHAAAAAAACAP//AQAHAAAAAAACAAAAAQAHAAAAAAACAAEAAQAHAAAAAAACAAIAAQAHAAAAAAA=")
+tile_set = ExtResource("2_4duu1")
+
+[node name="wall_base" type="TileMapLayer" parent="ground_level/corner_room_west"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD+//7/AQACAAIAAAD///7/AgAGAAIAAQABAP7/AgAEAAIAAQD+////AgAFAAIAAQD+/wEAAgAFAAIAAQD+/wIAAQAHAAIAAAACAP7/AQAIAAAAAAD//wIAAQAFAAQAAAABAAIAAQAFAAQAAAACAAIAAQAAAAAAAAACAAEAAgAFAAIAAAACAP//AgAHAAIAAAAAAAIAAQAFAAQAAAD+/wAAAgAFAAIAAQA=")
+tile_set = ExtResource("7_fcs3d")
+
+[node name="wall_base_top" type="TileMapLayer" parent="ground_level/corner_room_west"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD9//3/BAAHAAAAAAABAAEABAAIAAAAAAABAP3/BAAGAAAAAAD9/wEABAAFAAAAAAD+/wEABQANAAEAAAAAAAEABQANAAEAAAABAAAABQAOAAAAAAABAP7/BQAOAAAAAAAAAP3/BQANAAAAAQD+//3/BQANAAAAAQD9/wAABQAOAAEAAQD9//7/BQAOAAEAAQD//wEABQANAAEAAAD9////BQAOAAEAAQA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 32
+
+[node name="collision_layer" type="TileMapLayer" parent="ground_level/corner_room_west"]
+z_index = 1
+tile_map_data = PackedByteArray("AAD+/wIACAABAAUAAAACAP7/CAABAAYAAAACAAIACAABAAgAAAD+//7/CAABAAcAAAD//wIACAABAAEAAAABAAIACAABAAEAAAACAAEACAABAAIAAAACAP//CAABAAIAAAD///7/CAABAAMAAAABAP7/CAABAAMAAAD+/wEACAABAAQAAAD+////CAABAAQAAAAAAAIACAABAAEAAAD+/wAACAABAAQAAAA=")
+tile_set = ExtResource("2_itf6i")
+script = ExtResource("1_p6xgs")
+only_shown_in_editor = true
+
+[node name="back_wall" type="Node2D" parent="ground_level/corner_room_west" node_paths=PackedStringArray("visibility_mask_layers")]
+y_sort_enabled = true
+script = ExtResource("6_562by")
+visibility_mask_layers = [NodePath("../back_wall_mask")]
+use_ground_bounding_rect = true
+smooth_visibility_change = true
+
+[node name="back_wall_0" type="TileMapLayer" parent="ground_level/corner_room_west/back_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD9//3/AQACAAAAAAD+//3/AgAGAAAAAQD9//7/AgALAAAAAgAAAP3/AgAEAAAAAQD9/wAAAgAJAAAAAQD9/wEAAQAJAAAAAgABAP3/AQAJAAAAAgA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 32
+
+[node name="back_wall_1" type="TileMapLayer" parent="ground_level/corner_room_west/back_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD8//z/AQACAAAAAAD8//3/AgALAAAAAgD8////AgAJAAAAAQD8/wAAAQAJAAAAAgD9//z/AgAGAAAAAQD///z/AgAEAAAAAQAAAPz/AQAJAAAAAgA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 64
+
+[node name="back_wall_2" type="TileMapLayer" parent="ground_level/corner_room_west/back_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD7//v/AQACAAAAAAD7//z/AgAFAAAAAQD7//7/AgAFAAAAAQD7////AQAJAAAAAgD8//v/AgAEAAAAAQD+//v/AgAEAAAAAQD///v/AQAJAAAAAgD9//v/AgAEAAAAAQD7//3/AgAFAAAAAQA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 96
+
+[node name="back_wall_top" type="TileMapLayer" parent="ground_level/corner_room_west/back_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD6//7/BAALAAAAAgD+//r/BAALAAAAAgD6//3/BQAOAAEAAQD6//z/BQAOAAEAAQD6//v/BQAOAAEAAQD9//r/BQANAAAAAQD8//r/BQANAAAAAQD7//r/BQANAAAAAQD6//r/BAAHAAAAAAA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 128
+
+[node name="front_wall" type="Node2D" parent="ground_level/corner_room_west" node_paths=PackedStringArray("visibility_mask_layers")]
+y_sort_enabled = true
+script = ExtResource("6_562by")
+visibility_mask_layers = [NodePath("../floor"), NodePath("../back_wall_mask")]
+use_ground_bounding_rect = true
+smooth_visibility_change = true
+
+[node name="front_wall_0" type="TileMapLayer" parent="ground_level/corner_room_west/front_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD9/wEAAQAHAAAAAAD+/wEAAgAKAAQAAwAAAAEAAgAIAAQAAAABAAAAAgAFAAAAAAABAP7/AgAHAAAAAAABAP3/AQAIAAAAAAABAAEAAQAAAAAAAAA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 32
+
+[node name="front_wall_1" type="TileMapLayer" parent="ground_level/corner_room_west/front_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD8/wAAAQAHAAAAAAD9/wAAAgAKAAQAAwD//wAAAgAIAAQAAAAAAPz/AQAIAAAAAAAAAP3/AgAHAAAAAAAAAP//AgAFAAAAAAAAAAAAAQAAAAAAAAA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 64
+
+[node name="front_wall_2" type="TileMapLayer" parent="ground_level/corner_room_west/front_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD7////AQAHAAAAAAD8////AQAFAAQAAAD+////AQAFAAQAAAD///v/AQAIAAAAAAD///z/AQAGAAAAAAD///7/AQAGAAAAAAD/////AQAAAAAAAAD9////AQAFAAQAAAD///3/AQAGAAAAAAA=")
+tile_set = ExtResource("7_fcs3d")
+y_sort_origin = 96
+
+[node name="front_wall_top" type="TileMapLayer" parent="ground_level/corner_room_west/front_wall"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD6//7/BAAJAAAAAAD+//r/BAAKAAAAAAD7//7/BQANAAEAAAD8//7/BQANAAEAAAD9//7/BQANAAEAAAD+//3/BQAOAAAAAAD+//z/BQAOAAAAAAD+//v/BQAOAAAAAAD+//7/BAAIAAAAAAA=")
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 128
 
