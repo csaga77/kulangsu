@@ -30,13 +30,13 @@ height = 67.67427
 height = 46.502808
 
 [node name="base_stairs" type="StaticBody2D" node_paths=PackedStringArray("layer1_nodes", "body_nodes", "layer2_nodes")]
-collision_layer = 2097152
+collision_layer = 2162688
 collision_mask = 0
 script = ExtResource("1_u6uu4")
 layer1_nodes = [NodePath("portal_base_stairs_se")]
 layer1 = 524288
 body_nodes = [NodePath(".")]
-collision_layer = 2097152
+collision_layer = 2162688
 layer2_nodes = [NodePath("portal_base_stairs_ne")]
 layer2 = 1048576
 smooth_visibility_change = true
@@ -46,7 +46,7 @@ z_index = 1
 position = Vector2(-11.000001, -2.000001)
 rotation = -2.0326524
 mask1 = 524288
-mask2 = 2097152
+mask2 = 2162688
 
 [node name="CollisionShape2D" parent="portal_base_stairs_se" index="0"]
 shape = SubResource("CapsuleShape2D_d3mvs")
@@ -55,8 +55,8 @@ shape = SubResource("CapsuleShape2D_d3mvs")
 z_index = 1
 position = Vector2(-12.000004, -128)
 rotation = -1.1005728
-mask1 = 524288
-mask2 = 2097152
+mask1 = 2162688
+mask2 = 1048576
 delta_z = 0
 
 [node name="CollisionShape2D" parent="portal_base_stairs_ne" index="0"]
