@@ -1,21 +1,22 @@
-[gd_scene load_steps=7 format=4 uid="uid://dqivkaosuu5nr"]
+[gd_scene load_steps=8 format=4 uid="uid://dqivkaosuu5nr"]
 
 [ext_resource type="Script" uid="uid://c8rbadcu5jhno" path="res://common/room.gd" id="1_xax08"]
-[ext_resource type="TileSet" uid="uid://dn7l7cnmn33jy" path="res://resources/tilesets/mark_tiles.tres" id="2_6qhkh"]
+[ext_resource type="TileSet" uid="uid://c2edqbdaenat2" path="res://resources/tilesets/symbols_0_tiles.tres" id="2_sg3ht"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="3_nch5g"]
 [ext_resource type="TileSet" uid="uid://emarqgj57jx7" path="res://resources/tilesets/architecture/floor_0_tiles.tres" id="4_mous7"]
 [ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="5_gp7je"]
 [ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/architecture/wall_0_tiles.tres" id="5_nch5g"]
+[ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="5_sg3ht"]
 
 [node name="test_room_2" type="Node2D" node_paths=PackedStringArray("physics_layers")]
 y_sort_enabled = true
 script = ExtResource("1_xax08")
-physics_layers = [NodePath("physics_layer")]
+physics_layers = [NodePath("collision_layer")]
 smooth_visibility_change = true
 
 [node name="wall_mask" type="TileMapLayer" parent="."]
-tile_map_data = PackedByteArray("AAACAP7/AwABAAAAAAABAP7/AwABAAAAAAAAAP7/AwABAAAAAAD///7/AwABAAAAAAD+//7/AwABAAAAAAD+////AwABAAAAAAD+/wAAAwABAAAAAAD+/wEAAwABAAAAAAD+/wIAAwABAAAAAAD9/wEAAwABAAAAAAD9/wAAAwABAAAAAAD9////AwABAAAAAAD9//7/AwABAAAAAAD9//3/AwABAAAAAAD+//3/AwABAAAAAAD///3/AwABAAAAAAAAAP3/AwABAAAAAAABAP3/AwABAAAAAAAAAPz/AwABAAAAAAD///z/AwABAAAAAAD+//z/AwABAAAAAAD9//z/AwABAAAAAAD8//z/AwABAAAAAAD8//3/AwABAAAAAAD8//7/AwABAAAAAAD8////AwABAAAAAAD8/wAAAwABAAAAAAA=")
-tile_set = ExtResource("2_6qhkh")
+tile_map_data = PackedByteArray("AAACAP7/AAAAAAAAAAABAP7/AAAAAAAAAAAAAP7/AAAAAAAAAAD///7/AAAAAAAAAAD+//7/AAAAAAAAAAD+////AAAAAAAAAAD+/wAAAAAAAAAAAAD+/wEAAAAAAAAAAAD+/wIAAAAAAAAAAAD9/wEAAAAAAAAAAAD9/wAAAAAAAAAAAAD9////AAAAAAAAAAD9//7/AAAAAAAAAAD9//3/AAAAAAAAAAD+//3/AAAAAAAAAAD///3/AAAAAAAAAAAAAP3/AAAAAAAAAAABAP3/AAAAAAAAAAAAAPz/AAAAAAAAAAD///z/AAAAAAAAAAD+//z/AAAAAAAAAAD9//z/AAAAAAAAAAD8//z/AAAAAAAAAAD8//3/AAAAAAAAAAD8//7/AAAAAAAAAAD8////AAAAAAAAAAD8/wAAAAAAAAAAAAA=")
+tile_set = ExtResource("2_sg3ht")
 script = ExtResource("3_nch5g")
 only_shown_in_editor = true
 
@@ -29,10 +30,10 @@ tile_map_data = PackedByteArray("AAAAAAAAAQAFAAAAAAABAAAAAQAFAAAAAAADAAAAAQAFAAA
 tile_set = ExtResource("4_mous7")
 script = ExtResource("3_nch5g")
 
-[node name="physics_layer" type="TileMapLayer" parent="."]
+[node name="collision_layer" type="TileMapLayer" parent="."]
 position = Vector2(64, 160)
-tile_map_data = PackedByteArray("AAD6//z/CAAAAAcAAAD6//3/CAAAAAQAAAD6////CAAAAAQAAAD6/wAACAAAAAUAAAD7//z/CAAAAAMAAAD7/wAACAAAAAEAAAD8/wAACAAAAAEAAAD9//z/CAAAAAMAAAD9/wAACAAAAAEAAAD+//z/CAAAAAYAAAD+//3/CAAAAAIAAAD+//7/CAAAAAIAAAD+////CAAAAAIAAAD+/wAACAAAAAgAAAA=")
-tile_set = ExtResource("2_6qhkh")
+tile_map_data = PackedByteArray("AAD6//z/AwAAAAcAAAD6//3/AwAAAAMAAAD6////AwAAAAMAAAD6/wAAAwAAAAUAAAD7//z/AwAAAAQAAAD7/wAAAwAAAAEAAAD8/wAAAwAAAAEAAAD9//z/AwAAAAQAAAD9/wAAAwAAAAEAAAD+//z/AwAAAAYAAAD+//3/AwAAAAIAAAD+//7/AwAAAAIAAAD+////AwAAAAIAAAD+/wAAAwAAAAgAAAA=")
+tile_set = ExtResource("5_sg3ht")
 script = ExtResource("3_nch5g")
 only_shown_in_editor = true
 

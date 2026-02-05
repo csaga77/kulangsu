@@ -15,13 +15,13 @@ extends Node2D
 		#call_deferred("_reload_terrain")
 		
 @export var tile_source_id := 8
-@export var building_tile_source_id := 3
+@export var building_tile_source_id := 0
 @export var building_tile_coords := Vector2i(1, 0)
 @export var mask_tile_coords := Vector2i(1, 0)
 @export var tile_alternative  := 0
 
 @onready var m_base :TileMapLayer = $Base
-@onready var m_building_mask :TileMapLayer = $"Building Mask"
+@onready var m_building_mask :TileMapLayer = $building_mask
 @onready var m_ferry :Room = $Ferry
 @onready var m_player :Player = $Character
 var m_is_ready := false

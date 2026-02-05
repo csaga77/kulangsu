@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="1_p6xgs"]
 [ext_resource type="TileSet" uid="uid://emarqgj57jx7" path="res://resources/tilesets/architecture/floor_0_tiles.tres" id="2_4duu1"]
-[ext_resource type="TileSet" uid="uid://dn7l7cnmn33jy" path="res://resources/tilesets/mark_tiles.tres" id="2_itf6i"]
 [ext_resource type="TileSet" uid="uid://dh8addwm1ctei" path="res://resources/tilesets/architecture/building_0_tiles.tres" id="3_lw8s5"]
 [ext_resource type="PackedScene" uid="uid://d27a7jcvsnfx8" path="res://architecture/components/portal.tscn" id="5_5gyeu"]
 [ext_resource type="PackedScene" uid="uid://bbd88lcsuke4h" path="res://architecture/components/stairs_se_to_ne_2_0.tscn" id="5_frgy6"]
@@ -11,6 +10,7 @@
 [ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/architecture/wall_0_tiles.tres" id="7_fcs3d"]
 [ext_resource type="PackedScene" uid="uid://c14s8lpwpcmw5" path="res://architecture/components/stairs_se_to_ne_4_0.tscn" id="8_d3mvs"]
 [ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="11_ied5s"]
+[ext_resource type="TileSet" uid="uid://c2edqbdaenat2" path="res://resources/tilesets/symbols_0_tiles.tres" id="12_64aem"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_itf6i"]
 radius = 5.0
@@ -309,8 +309,8 @@ level = 1
 physics_layers = [NodePath("collision_layer")]
 
 [node name="back_wall_mask" type="TileMapLayer" parent="ground_level/corner_room_east"]
-tile_map_data = PackedByteArray("AAD8/wAAAwAAAAAAAAD7////AwAAAAAAAAD8////AwAAAAAAAAA=")
-tile_set = ExtResource("2_itf6i")
+tile_map_data = PackedByteArray("AAD8/wAAAAAAAAAAAAD7////AAAAAAAAAAD8////AAAAAAAAAAA=")
+tile_set = ExtResource("12_64aem")
 script = ExtResource("1_p6xgs")
 
 [node name="floor" type="TileMapLayer" parent="ground_level/corner_room_east"]
@@ -405,8 +405,8 @@ level = 1
 physics_layers = [NodePath("collision_layer")]
 
 [node name="back_wall_mask" type="TileMapLayer" parent="ground_level/corner_room_south"]
-tile_map_data = PackedByteArray("AAD8/wAAAwAAAAAAAAD7////AwAAAAAAAAD8////AwAAAAAAAAD8//7/AwAAAAAAAAD8//3/AwAAAAAAAAD8//z/AwAAAAAAAAD9//z/AwAAAAAAAAD+//z/AwAAAAAAAAD///z/AwAAAAAAAAD7//7/AwAAAAAAAAD7//3/AwAAAAAAAAD7//z/AwAAAAAAAAD7//v/AwAAAAAAAAD8//v/AwAAAAAAAAD9//v/AwAAAAAAAAD+//v/AwAAAAAAAAA=")
-tile_set = ExtResource("2_itf6i")
+tile_map_data = PackedByteArray("AAD8/wAAAAAAAAAAAAD7////AAAAAAAAAAD8////AAAAAAAAAAD8//7/AAAAAAAAAAD8//3/AAAAAAAAAAD8//z/AAAAAAAAAAD9//z/AAAAAAAAAAD+//z/AAAAAAAAAAD///z/AAAAAAAAAAD7//7/AAAAAAAAAAD7//3/AAAAAAAAAAD7//z/AAAAAAAAAAD7//v/AAAAAAAAAAD8//v/AAAAAAAAAAD9//v/AAAAAAAAAAD+//v/AAAAAAAAAAA=")
+tile_set = ExtResource("12_64aem")
 script = ExtResource("1_p6xgs")
 only_shown_in_editor = true
 
@@ -502,8 +502,8 @@ level = 1
 physics_layers = [NodePath("collision_layer")]
 
 [node name="back_wall_mask" type="TileMapLayer" parent="ground_level/corner_room_west"]
-tile_map_data = PackedByteArray("AAD+//z/AwAAAAAAAAD///z/AwAAAAAAAAD+//v/AwAAAAAAAAA=")
-tile_set = ExtResource("2_itf6i")
+tile_map_data = PackedByteArray("AAD+//z/AAAAAAAAAAD///z/AAAAAAAAAAD+//v/AAAAAAAAAAA=")
+tile_set = ExtResource("12_64aem")
 script = ExtResource("1_p6xgs")
 only_shown_in_editor = true
 
@@ -717,8 +717,8 @@ level = 2
 physics_layers = [NodePath("collision_layer")]
 
 [node name="back_wall_mask" type="TileMapLayer" parent="upper_level/corner_room_east"]
-tile_map_data = PackedByteArray("AAD8/wAAAwAAAAAAAAD7////AwAAAAAAAAD8////AwAAAAAAAAA=")
-tile_set = ExtResource("2_itf6i")
+tile_map_data = PackedByteArray("AAD8/wAAAAAAAAAAAAD7////AAAAAAAAAAD8////AAAAAAAAAAA=")
+tile_set = ExtResource("12_64aem")
 script = ExtResource("1_p6xgs")
 
 [node name="floor" type="TileMapLayer" parent="upper_level/corner_room_east"]
@@ -813,8 +813,8 @@ level = 2
 physics_layers = [NodePath("collision_layer")]
 
 [node name="back_wall_mask" type="TileMapLayer" parent="upper_level/corner_room_south"]
-tile_map_data = PackedByteArray("AAD8/wAAAwAAAAAAAAD7////AwAAAAAAAAD8////AwAAAAAAAAD8//7/AwAAAAAAAAD8//3/AwAAAAAAAAD8//z/AwAAAAAAAAD9//z/AwAAAAAAAAD+//z/AwAAAAAAAAD///z/AwAAAAAAAAD7//7/AwAAAAAAAAD7//3/AwAAAAAAAAD7//z/AwAAAAAAAAD7//v/AwAAAAAAAAD8//v/AwAAAAAAAAD9//v/AwAAAAAAAAD+//v/AwAAAAAAAAA=")
-tile_set = ExtResource("2_itf6i")
+tile_map_data = PackedByteArray("AAD8/wAAAAAAAAAAAAD7////AAAAAAAAAAD8////AAAAAAAAAAD8//7/AAAAAAAAAAD8//3/AAAAAAAAAAD8//z/AAAAAAAAAAD9//z/AAAAAAAAAAD+//z/AAAAAAAAAAD///z/AAAAAAAAAAD7//7/AAAAAAAAAAD7//3/AAAAAAAAAAD7//z/AAAAAAAAAAD7//v/AAAAAAAAAAD8//v/AAAAAAAAAAD9//v/AAAAAAAAAAD+//v/AAAAAAAAAAA=")
+tile_set = ExtResource("12_64aem")
 script = ExtResource("1_p6xgs")
 only_shown_in_editor = true
 
@@ -910,8 +910,8 @@ level = 2
 physics_layers = [NodePath("collision_layer")]
 
 [node name="back_wall_mask" type="TileMapLayer" parent="upper_level/corner_room_west"]
-tile_map_data = PackedByteArray("AAD+//z/AwAAAAAAAAD///z/AwAAAAAAAAD+//v/AwAAAAAAAAA=")
-tile_set = ExtResource("2_itf6i")
+tile_map_data = PackedByteArray("AAD+//z/AAAAAAAAAAD///z/AAAAAAAAAAD+//v/AAAAAAAAAAA=")
+tile_set = ExtResource("12_64aem")
 script = ExtResource("1_p6xgs")
 only_shown_in_editor = true
 
