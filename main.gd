@@ -18,6 +18,7 @@ extends Node2D
 @export var building_tile_source_id := 0
 @export var building_tile_coords := Vector2i(1, 0)
 @export var mask_tile_coords := Vector2i(1, 0)
+@export var water_tile_coords := Vector2i(4, 16)
 @export var tile_alternative  := 0
 
 @onready var m_base :TileMapLayer = $Base
@@ -66,10 +67,24 @@ func _reload_terrain() -> void:
 						tile_alternative
 					)
 				else:
-					m_base.set_cell(
+					#m_base.set_cell(
+						#Vector2i(x, y),
+						#tile_source_id,
+						#mask_tile_coords,
+						#tile_alternative
+					#)
+					m_base.set_cells_terrain_connect(
+						[Vector2i(x - 1, y - 1), Vector2i(x, y - 1), Vector2i(x + 1, y - 1), 
+						 Vector2i(x - 1, y), Vector2i(x, y), Vector2i(x + 1, y),
+						 Vector2i(x - 1, y + 1), Vector2i(x, y + 1), Vector2i(x + 1, y + 1)], 
+						0,
+						0
+					)
+			else:
+				m_base.set_cell(
 						Vector2i(x, y),
 						tile_source_id,
-						mask_tile_coords,
+						water_tile_coords,
 						tile_alternative
 					)
 
