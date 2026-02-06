@@ -1,26 +1,35 @@
-[gd_scene load_steps=12 format=3 uid="uid://c14s8lpwpcmw5"]
+[gd_scene load_steps=15 format=3 uid="uid://c14s8lpwpcmw5"]
 
 [ext_resource type="Script" uid="uid://dl2kyruhqxduy" path="res://architecture/components/steps.gd" id="1_jwn51"]
 [ext_resource type="Script" uid="uid://fssw81qf0ydn" path="res://architecture/components/portal.gd" id="2_jwn51"]
-[ext_resource type="Texture2D" uid="uid://mhsy6o806uwu" path="res://resources/sprites/architecture/components/building_0_tiles.png" id="3_scoqw"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="4_4gvrv"]
+[ext_resource type="Texture2D" uid="uid://8kiihtfxyw3x" path="res://resources/sprites/architecture/components/wall_0_0.png" id="4_jwn51"]
+[ext_resource type="Texture2D" uid="uid://dp1vg0m4ov76n" path="res://resources/sprites/architecture/components/floor_0.png" id="4_sarmn"]
 [ext_resource type="Texture2D" uid="uid://boka5fmviqaew" path="res://resources/sprites/architecture/components/structure_0.png" id="5_ap64n"]
 
-[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_d3mvs"]
-radius = 10.285093
-height = 37.579132
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_hx2jb"]
-atlas = ExtResource("3_scoqw")
-region = Rect2(0, 1024, 64, 64)
+atlas = ExtResource("4_jwn51")
+region = Rect2(384, 256, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_eyq88"]
+atlas = ExtResource("5_ap64n")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_jwn51"]
+atlas = ExtResource("4_jwn51")
+region = Rect2(320, 256, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_scoqw"]
+atlas = ExtResource("4_sarmn")
+region = Rect2(320, 0, 64, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_nhft0"]
 atlas = ExtResource("5_ap64n")
 region = Rect2(64, 0, 64, 64)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_eyq88"]
-atlas = ExtResource("5_ap64n")
-region = Rect2(0, 0, 64, 64)
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_d3mvs"]
+radius = 10.285093
+height = 37.579132
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_nhft0"]
 radius = 4.9927597
@@ -31,6 +40,7 @@ radius = 5.367462
 height = 46.502808
 
 [node name="stairs_se_to_ne_4_0" type="Node2D" node_paths=PackedStringArray("layer1_nodes", "body_nodes", "layer2_nodes")]
+y_sort_enabled = true
 script = ExtResource("1_jwn51")
 layer1_nodes = [NodePath("portal_base_stairs_se")]
 layer1 = 524288
@@ -39,6 +49,75 @@ collision_layer = 131072
 layer2_nodes = [NodePath("portal_base_stairs_ne")]
 layer2 = 1048576
 smooth_visibility_change = true
+
+[node name="block0" type="Sprite2D" parent="."]
+position = Vector2(-64, -64)
+texture = SubResource("AtlasTexture_hx2jb")
+offset = Vector2(0, -16)
+script = ExtResource("4_4gvrv")
+
+[node name="block4" type="Sprite2D" parent="block0"]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_hx2jb")
+offset = Vector2(0, -16)
+script = ExtResource("4_4gvrv")
+
+[node name="stairs_ne" type="Sprite2D" parent="block0/block4"]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_eyq88")
+offset = Vector2(0, -16)
+script = ExtResource("4_4gvrv")
+
+[node name="block1" type="Sprite2D" parent="."]
+position = Vector2(-96, -48)
+texture = SubResource("AtlasTexture_jwn51")
+offset = Vector2(0, -16)
+script = ExtResource("4_4gvrv")
+
+[node name="block3" type="Sprite2D" parent="block1"]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_jwn51")
+offset = Vector2(0, -16)
+script = ExtResource("4_4gvrv")
+
+[node name="block6" type="Sprite2D" parent="block1/block3"]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_scoqw")
+script = ExtResource("4_4gvrv")
+
+[node name="block2" type="Sprite2D" parent="."]
+position = Vector2(-64, -32)
+texture = SubResource("AtlasTexture_jwn51")
+offset = Vector2(0, -16)
+script = ExtResource("4_4gvrv")
+
+[node name="stairs_sw2" type="Sprite2D" parent="block2"]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_nhft0")
+offset = Vector2(0, -16)
+script = ExtResource("4_4gvrv")
+
+[node name="block3" type="Node2D" parent="."]
+position = Vector2(-32, -80)
+script = ExtResource("4_4gvrv")
+
+[node name="block5" type="Sprite2D" parent="block3"]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_hx2jb")
+offset = Vector2(0, -16)
+script = ExtResource("4_4gvrv")
+
+[node name="stairs_ne2" type="Sprite2D" parent="block3/block5"]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_eyq88")
+offset = Vector2(0, -16)
+script = ExtResource("4_4gvrv")
+
+[node name="stairs_sw" type="Sprite2D" parent="."]
+position = Vector2(-32, -16)
+texture = SubResource("AtlasTexture_nhft0")
+offset = Vector2(0, -16)
+script = ExtResource("4_4gvrv")
 
 [node name="portal_base_stairs_se" type="Area2D" parent="."]
 position = Vector2(-11.000001, -2.000001)
@@ -56,70 +135,9 @@ rotation = -1.1005728
 script = ExtResource("2_jwn51")
 mask1 = 131072
 mask2 = 1048576
-delta_z = 0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="portal_base_stairs_ne"]
 shape = SubResource("CapsuleShape2D_d3mvs")
-
-[node name="block0" type="Sprite2D" parent="."]
-position = Vector2(-64, -64)
-texture = SubResource("AtlasTexture_hx2jb")
-offset = Vector2(0, -16)
-script = ExtResource("4_4gvrv")
-
-[node name="block5" type="Sprite2D" parent="."]
-position = Vector2(-32, -144)
-texture = SubResource("AtlasTexture_hx2jb")
-offset = Vector2(0, -16)
-script = ExtResource("4_4gvrv")
-
-[node name="block4" type="Sprite2D" parent="."]
-position = Vector2(-64, -96)
-texture = SubResource("AtlasTexture_hx2jb")
-offset = Vector2(0, -16)
-script = ExtResource("4_4gvrv")
-
-[node name="block1" type="Sprite2D" parent="."]
-position = Vector2(-96, -48)
-texture = SubResource("AtlasTexture_hx2jb")
-offset = Vector2(0, -16)
-script = ExtResource("4_4gvrv")
-
-[node name="block2" type="Sprite2D" parent="."]
-position = Vector2(-64, -32)
-texture = SubResource("AtlasTexture_hx2jb")
-offset = Vector2(0, -16)
-script = ExtResource("4_4gvrv")
-
-[node name="block3" type="Sprite2D" parent="."]
-position = Vector2(-96, -80)
-texture = SubResource("AtlasTexture_hx2jb")
-offset = Vector2(0, -16)
-script = ExtResource("4_4gvrv")
-
-[node name="stairs_sw" type="Sprite2D" parent="."]
-position = Vector2(-32, -16)
-texture = SubResource("AtlasTexture_nhft0")
-offset = Vector2(0, -16)
-script = ExtResource("4_4gvrv")
-
-[node name="stairs_sw2" type="Sprite2D" parent="."]
-position = Vector2(-64, -64)
-texture = SubResource("AtlasTexture_nhft0")
-offset = Vector2(0, -16)
-script = ExtResource("4_4gvrv")
-
-[node name="stairs_ne" type="Sprite2D" parent="."]
-position = Vector2(-64, -128)
-texture = SubResource("AtlasTexture_eyq88")
-offset = Vector2(0, -16)
-script = ExtResource("4_4gvrv")
-
-[node name="stairs_ne2" type="Sprite2D" parent="."]
-position = Vector2(-32, -176)
-texture = SubResource("AtlasTexture_eyq88")
-offset = Vector2(0, -16)
-script = ExtResource("4_4gvrv")
 
 [node name="collision_layer" type="StaticBody2D" parent="."]
 collision_layer = 131072
