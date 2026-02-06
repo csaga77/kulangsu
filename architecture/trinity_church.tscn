@@ -1,4 +1,4 @@
-[gd_scene load_steps=45 format=4 uid="uid://cgucpypd2f1o2"]
+[gd_scene load_steps=33 format=4 uid="uid://cgucpypd2f1o2"]
 
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="1_p6h3n"]
 [ext_resource type="TileSet" uid="uid://c2edqbdaenat2" path="res://resources/tilesets/symbols_0_tiles.tres" id="2_ygw5s"]
@@ -13,6 +13,7 @@
 [ext_resource type="PackedScene" uid="uid://i58q1hprvm" path="res://architecture/components/door_ne.tscn" id="8_432a6"]
 [ext_resource type="TileSet" uid="uid://cpd02433u4y0w" path="res://resources/tilesets/architecture/trinity_church_tiles.tres" id="9_bv3vw"]
 [ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="13_ygw5s"]
+[ext_resource type="Texture2D" uid="uid://b4mqu1tdwj1wr" path="res://resources/sprites/architecture/trinity_church/trinity_church_roof.png" id="14_qudop"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_q88bw"]
 height = 200.0
@@ -29,99 +30,60 @@ b = Vector2(15, 36)
 a = Vector2(34, -6)
 b = Vector2(0, 39)
 
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_by4dn"]
-load_path = "res://.godot/imported/trinity_church_roof.png-8902fe5d97a458c08c0c13f14a0043a9.ctex"
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_l6v1r"]
-atlas = SubResource("CompressedTexture2D_by4dn")
+atlas = ExtResource("14_qudop")
 region = Rect2(790, 306, 286, 120)
 
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_432a6"]
-load_path = "res://.godot/imported/trinity_church_roof.png-8902fe5d97a458c08c0c13f14a0043a9.ctex"
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_7or3d"]
-atlas = SubResource("CompressedTexture2D_432a6")
+atlas = ExtResource("14_qudop")
 region = Rect2(567, 492, 126, 68)
 
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_l6v1r"]
-load_path = "res://.godot/imported/trinity_church_roof.png-8902fe5d97a458c08c0c13f14a0043a9.ctex"
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_dlmed"]
-atlas = SubResource("CompressedTexture2D_l6v1r")
+atlas = ExtResource("14_qudop")
 region = Rect2(438, 492, 128, 68)
 
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_6xb53"]
-load_path = "res://.godot/imported/trinity_church_roof.png-8902fe5d97a458c08c0c13f14a0043a9.ctex"
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_qe0xv"]
-atlas = SubResource("CompressedTexture2D_6xb53")
+atlas = ExtResource("14_qudop")
 region = Rect2(532, 306, 256, 184)
 
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_q88bw"]
-load_path = "res://.godot/imported/trinity_church_roof.png-8902fe5d97a458c08c0c13f14a0043a9.ctex"
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_6xb53"]
-atlas = SubResource("CompressedTexture2D_q88bw")
+atlas = ExtResource("14_qudop")
 region = Rect2(274, 274, 256, 184)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_p6lt2"]
-atlas = SubResource("CompressedTexture2D_q88bw")
+atlas = ExtResource("14_qudop")
 region = Rect2(0, 274, 272, 304)
 
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_qe0xv"]
-load_path = "res://.godot/imported/trinity_church_roof.png-8902fe5d97a458c08c0c13f14a0043a9.ctex"
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_432a6"]
-atlas = SubResource("CompressedTexture2D_qe0xv")
+atlas = ExtResource("14_qudop")
 region = Rect2(0, 0, 392, 272)
 
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_p6lt2"]
-load_path = "res://.godot/imported/trinity_church_roof.png-8902fe5d97a458c08c0c13f14a0043a9.ctex"
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_4o7fq"]
-atlas = SubResource("CompressedTexture2D_p6lt2")
+atlas = ExtResource("14_qudop")
 region = Rect2(787, 0, 272, 304)
 
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_4o7fq"]
-load_path = "res://.godot/imported/trinity_church_roof.png-8902fe5d97a458c08c0c13f14a0043a9.ctex"
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_by4dn"]
-atlas = SubResource("CompressedTexture2D_4o7fq")
+atlas = ExtResource("14_qudop")
 region = Rect2(394, 0, 392, 272)
 
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_7or3d"]
-load_path = "res://.godot/imported/trinity_church_roof.png-8902fe5d97a458c08c0c13f14a0043a9.ctex"
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_ja317"]
-atlas = SubResource("CompressedTexture2D_7or3d")
+atlas = ExtResource("14_qudop")
 region = Rect2(922, 428, 176, 94)
 
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_dlmed"]
-load_path = "res://.godot/imported/trinity_church_roof.png-8902fe5d97a458c08c0c13f14a0043a9.ctex"
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_l0dh4"]
-atlas = SubResource("CompressedTexture2D_dlmed")
+atlas = ExtResource("14_qudop")
 region = Rect2(790, 428, 130, 162)
 
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_l0dh4"]
-load_path = "res://.godot/imported/trinity_church_roof.png-8902fe5d97a458c08c0c13f14a0043a9.ctex"
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_bojot"]
-atlas = SubResource("CompressedTexture2D_l0dh4")
+atlas = ExtResource("14_qudop")
 region = Rect2(1061, 86, 64, 64)
 
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_ueo71"]
-load_path = "res://.godot/imported/trinity_church_roof.png-8902fe5d97a458c08c0c13f14a0043a9.ctex"
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_c3bx8"]
-atlas = SubResource("CompressedTexture2D_ueo71")
+atlas = ExtResource("14_qudop")
 region = Rect2(1061, 0, 64, 84)
 
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_ja317"]
-load_path = "res://.godot/imported/trinity_church_roof.png-8902fe5d97a458c08c0c13f14a0043a9.ctex"
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_ueo71"]
-atlas = SubResource("CompressedTexture2D_ja317")
+atlas = ExtResource("14_qudop")
 region = Rect2(274, 460, 162, 98)
 
 [node name="TrinityChurch" type="Node2D"]
