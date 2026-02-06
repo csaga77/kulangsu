@@ -23,11 +23,12 @@ atlas = ExtResource("3_fh4o2")
 region = Rect2(0, 0, 64, 64)
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_nhft0"]
-radius = 8.58374
-height = 67.67427
+radius = 4.436659
+height = 70.44869
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_eyq88"]
-height = 46.502808
+radius = 4.47213
+height = 44.721313
 
 [node name="stairs_se_to_ne_2_0" type="Node2D" node_paths=PackedStringArray("layer1_nodes", "body_nodes", "layer2_nodes")]
 script = ExtResource("1_u6uu4")
@@ -40,7 +41,6 @@ layer2 = 1048576
 smooth_visibility_change = true
 
 [node name="portal_base_stairs_se" parent="." instance=ExtResource("1_5sph1")]
-z_index = 1
 position = Vector2(-11.000001, -2.000001)
 rotation = -2.0326524
 mask1 = 524288
@@ -50,7 +50,6 @@ mask2 = 65536
 shape = SubResource("CapsuleShape2D_d3mvs")
 
 [node name="portal_base_stairs_ne" parent="." instance=ExtResource("1_5sph1")]
-z_index = 1
 position = Vector2(-12.000004, -128)
 rotation = -1.1005728
 mask1 = 65536
@@ -85,36 +84,37 @@ offset = Vector2(0, -16)
 script = ExtResource("4_nhft0")
 
 [node name="collision_layer" type="StaticBody2D" parent="."]
+collision_layer = 65536
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="collision_layer"]
-position = Vector2(-51.999996, -14.000001)
+position = Vector2(-48.000004, -15.999998)
 rotation = -0.58968186
 scale = Vector2(0.99999994, 0.99999994)
 shape = SubResource("CapsuleShape2D_nhft0")
 
 [node name="CollisionShape2D2" type="CollisionShape2D" parent="collision_layer"]
-position = Vector2(-1, -38)
+position = Vector2(-4, -36)
 rotation = -0.5554488
 shape = SubResource("CapsuleShape2D_nhft0")
 
 [node name="CollisionShape2D3" type="CollisionShape2D" parent="collision_layer"]
-position = Vector2(-3.0000038, -90)
+position = Vector2(-5.999996, -92)
 rotation = 0.53972816
 shape = SubResource("CapsuleShape2D_nhft0")
 
 [node name="CollisionShape2D4" type="CollisionShape2D" parent="collision_layer"]
-position = Vector2(-52.000004, -121)
+position = Vector2(-49, -116)
 rotation = 0.5812671
 shape = SubResource("CapsuleShape2D_nhft0")
 
 [node name="CollisionShape2D5" type="CollisionShape2D" parent="collision_layer"]
-position = Vector2(-86, -81)
+position = Vector2(-84.00001, -76)
 rotation = 1.1091913
 scale = Vector2(0.99999994, 0.99999994)
 shape = SubResource("CapsuleShape2D_eyq88")
 
 [node name="CollisionShape2D6" type="CollisionShape2D" parent="collision_layer"]
-position = Vector2(-85, -46.999996)
+position = Vector2(-80, -49)
 rotation = 2.035844
 shape = SubResource("CapsuleShape2D_eyq88")
 
