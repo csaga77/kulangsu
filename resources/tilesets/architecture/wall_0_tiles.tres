@@ -68,7 +68,6 @@ texture_region_size = Vector2i(64, 32)
 9:0/1/y_sort_origin = 12
 9:0/2 = 2
 9:0/2/texture_origin = Vector2i(0, 32)
-9:0/2/y_sort_origin = 12
 9:0/3 = 3
 9:0/3/texture_origin = Vector2i(16, 24)
 9:0/3/y_sort_origin = 12

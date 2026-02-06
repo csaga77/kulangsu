@@ -10,6 +10,7 @@ extends AutoVisibilityNode2D
 		_update_level()
 		
 @export var physics_layers : Array [TileMapLayer]
+@export var rooms : Array [Room]
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -24,3 +25,13 @@ func _update_level() -> void:
 			var coords = physics_layer.get_cell_atlas_coords(cell)
 			coords.x = level
 			physics_layer.set_cell(cell, source_id, coords, alternative_tile)
+	var ancestors_to_remove := []
+	for room in rooms:
+		if CommonUtils.is_ancestor(room, self):
+			ancestors_to_remove.append(room)
+			continue
+		room.level = level
+	if !ancestors_to_remove.is_empty():
+		print("Warning: do not assign acestor rooms to children rooms! " + self.name)
+		for ancestor in ancestors_to_remove:
+			rooms.erase(ancestor)
