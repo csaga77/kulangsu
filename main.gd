@@ -81,12 +81,13 @@ func _reload_terrain() -> void:
 						0
 					)
 			else:
-				m_base.set_cell(
-						Vector2i(x, y),
-						tile_source_id,
-						water_tile_coords,
-						tile_alternative
-					)
+				pass
+				#m_base.set_cell(
+						#Vector2i(x, y),
+						#tile_source_id,
+						#water_tile_coords,
+						#tile_alternative
+					#)
 
 	print("_reload_terrain: painted %dx%d from %s" % [width, height, mask_file])
 
