@@ -1,6 +1,6 @@
 @tool
 class_name Pillar
-extends AutoVisibilityNode2D
+extends IsometricBlock
 
 @export var size := 2:
 	set(new_size):
@@ -31,8 +31,9 @@ extends AutoVisibilityNode2D
 		_update_pillar()
 
 @onready var m_base :Sprite2D = $base
-@onready var m_top  :Sprite2D = $top
+@onready var m_top  :Sprite2D = $mid/top
 @onready var m_mid  := $mid
+@onready var m_mask :TileMapLayer = $mask
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -42,16 +43,21 @@ func _ready() -> void:
 func _update_pillar() -> void:
 	if m_top == null:
 		return
+	m_mask.clear()
+	m_mask.set_cell(Vector2i(-2, -1), 0, Vector2i(0, 0))
 	m_top.position.y = -iso_tile_size.y * size + iso_tile_size.y / 2
 	m_top.texture = top_texture
-	m_top.z_index = size / 2
+	m_top.z_index = size / 4
 	m_base.texture = base_texture
 	for child in m_mid.get_children():
+		if child == m_top:
+			continue
 		child.queue_free()
 	if size > 2:
 		for i in size - 2:
 			var mid_sprite := Sprite2D.new()
 			mid_sprite.texture = mid_texture
-			mid_sprite.z_index = size / 2
+			mid_sprite.z_index = i / 4
 			m_mid.add_child(mid_sprite)
 			mid_sprite.position.y = -iso_tile_size.y * (i + 2)
+			m_mask.set_cell(Vector2i(-2, -1) + Vector2i(-1, -1) * (i + 1), 0, Vector2i(0, 0))

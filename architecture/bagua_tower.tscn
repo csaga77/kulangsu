@@ -42,6 +42,12 @@ region = Rect2(336, 0, 4, 94)
 y_sort_enabled = true
 script = ExtResource("1_p6xgs")
 
+[node name="mask" type="TileMapLayer" parent="."]
+tile_map_data = PackedByteArray("AAD6/wAAAAAAAAAAAAD6/wEAAAAAAAAAAAD6/wIAAAAAAAAAAAD6/wMAAAAAAAAAAAD6/wQAAAAAAAAAAAD6/wUAAAAAAAAAAAD6/wYAAAAAAAAAAAD6/wcAAAAAAAAAAAD6/wgAAAAAAAAAAAD6/wkAAAAAAAAAAAD6/woAAAAAAAAAAAD6/wsAAAAAAAAAAAD6/wwAAAAAAAAAAAD6/w0AAAAAAAAAAAD6/w4AAAAAAAAAAAD6/w8AAAAAAAAAAAD6/xAAAAAAAAAAAAD6/xEAAAAAAAAAAAD6/xIAAAAAAAAAAAD6/xMAAAAAAAAAAAD6/xQAAAAAAAAAAAD6/xUAAAAAAAAAAAD6/xYAAAAAAAAAAAD7/wAAAAAAAAAAAAD7/wEAAAAAAAAAAAD7/wIAAAAAAAAAAAD7/wMAAAAAAAAAAAD7/wQAAAAAAAAAAAD7/wUAAAAAAAAAAAD7/wYAAAAAAAAAAAD7/wcAAAAAAAAAAAD7/wgAAAAAAAAAAAD7/wkAAAAAAAAAAAD7/woAAAAAAAAAAAD7/wsAAAAAAAAAAAD7/wwAAAAAAAAAAAD7/w0AAAAAAAAAAAD7/w4AAAAAAAAAAAD7/w8AAAAAAAAAAAD7/xAAAAAAAAAAAAD7/xEAAAAAAAAAAAD7/xIAAAAAAAAAAAD7/xMAAAAAAAAAAAD7/xQAAAAAAAAAAAD7/xUAAAAAAAAAAAD7/xYAAAAAAAAAAAD7/xcAAAAAAAAAAAD8/wAAAAAAAAAAAAD8/wEAAAAAAAAAAAD8/wIAAAAAAAAAAAD8/wMAAAAAAAAAAAD8/wQAAAAAAAAAAAD8/wUAAAAAAAAAAAD8/wYAAAAAAAAAAAD8/wcAAAAAAAAAAAD8/wgAAAAAAAAAAAD8/wkAAAAAAAAAAAD8/woAAAAAAAAAAAD8/wsAAAAAAAAAAAD8/wwAAAAAAAAAAAD8/w0AAAAAAAAAAAD8/w4AAAAAAAAAAAD8/w8AAAAAAAAAAAD8/xAAAAAAAAAAAAD8/xEAAAAAAAAAAAD8/xIAAAAAAAAAAAD8/xMAAAAAAAAAAAD8/xQAAAAAAAAAAAD8/xUAAAAAAAAAAAD8/xYAAAAAAAAAAAD8/xcAAAAAAAAAAAD8/xgAAAAAAAAAAAD9/wAAAAAAAAAAAAD9/wEAAAAAAAAAAAD9/wIAAAAAAAAAAAD9/wMAAAAAAAAAAAD9/wQAAAAAAAAAAAD9/wUAAAAAAAAAAAD9/wYAAAAAAAAAAAD9/wcAAAAAAAAAAAD9/wgAAAAAAAAAAAD9/wkAAAAAAAAAAAD9/woAAAAAAAAAAAD9/wsAAAAAAAAAAAD9/wwAAAAAAAAAAAD9/w0AAAAAAAAAAAD9/w4AAAAAAAAAAAD9/w8AAAAAAAAAAAD9/xAAAAAAAAAAAAD9/xEAAAAAAAAAAAD9/xIAAAAAAAAAAAD9/xMAAAAAAAAAAAD9/xQAAAAAAAAAAAD9/xUAAAAAAAAAAAD9/xYAAAAAAAAAAAD9/xcAAAAAAAAAAAD9/xgAAAAAAAAAAAD9/xkAAAAAAAAAAAD+/wAAAAAAAAAAAAD+/wEAAAAAAAAAAAD+/wIAAAAAAAAAAAD+/wMAAAAAAAAAAAD+/wQAAAAAAAAAAAD+/wUAAAAAAAAAAAD+/wYAAAAAAAAAAAD+/wcAAAAAAAAAAAD+/wgAAAAAAAAAAAD+/wkAAAAAAAAAAAD+/woAAAAAAAAAAAD+/wsAAAAAAAAAAAD+/wwAAAAAAAAAAAD+/w0AAAAAAAAAAAD+/w4AAAAAAAAAAAD+/w8AAAAAAAAAAAD+/xAAAAAAAAAAAAD+/xEAAAAAAAAAAAD+/xIAAAAAAAAAAAD+/xMAAAAAAAAAAAD+/xQAAAAAAAAAAAD+/xUAAAAAAAAAAAD+/xYAAAAAAAAAAAD+/xcAAAAAAAAAAAD+/xgAAAAAAAAAAAD+/xkAAAAAAAAAAAD+/xoAAAAAAAAAAAD//wAAAAAAAAAAAAD//wEAAAAAAAAAAAD//wIAAAAAAAAAAAD//wMAAAAAAAAAAAD//wQAAAAAAAAAAAD//wUAAAAAAAAAAAD//wYAAAAAAAAAAAD//wcAAAAAAAAAAAD//wgAAAAAAAAAAAD//wkAAAAAAAAAAAD//woAAAAAAAAAAAD//wsAAAAAAAAAAAD//wwAAAAAAAAAAAD//w0AAAAAAAAAAAD//w4AAAAAAAAAAAD//w8AAAAAAAAAAAD//xAAAAAAAAAAAAD//xEAAAAAAAAAAAD//xIAAAAAAAAAAAD//xMAAAAAAAAAAAD//xQAAAAAAAAAAAD//xUAAAAAAAAAAAD//xYAAAAAAAAAAAD//xcAAAAAAAAAAAD//xgAAAAAAAAAAAD//xkAAAAAAAAAAAD//xoAAAAAAAAAAAD//xsAAAAAAAAAAAD6//r/AAAAAAAAAAD6//v/AAAAAAAAAAD6//z/AAAAAAAAAAD6//3/AAAAAAAAAAD6//7/AAAAAAAAAAD6////AAAAAAAAAAD7//r/AAAAAAAAAAD7//v/AAAAAAAAAAD7//z/AAAAAAAAAAD7//3/AAAAAAAAAAD7//7/AAAAAAAAAAD7////AAAAAAAAAAD8//r/AAAAAAAAAAD8//v/AAAAAAAAAAD8//z/AAAAAAAAAAD8//3/AAAAAAAAAAD8//7/AAAAAAAAAAD8////AAAAAAAAAAD9//r/AAAAAAAAAAD9//v/AAAAAAAAAAD9//z/AAAAAAAAAAD9//3/AAAAAAAAAAD9//7/AAAAAAAAAAD9////AAAAAAAAAAD+//r/AAAAAAAAAAD+//v/AAAAAAAAAAD+//z/AAAAAAAAAAD+//3/AAAAAAAAAAD+//7/AAAAAAAAAAD+////AAAAAAAAAAD///r/AAAAAAAAAAD///v/AAAAAAAAAAD///z/AAAAAAAAAAD///3/AAAAAAAAAAD///7/AAAAAAAAAAD/////AAAAAAAAAAAAAPr/AAAAAAAAAAAAAPv/AAAAAAAAAAAAAPz/AAAAAAAAAAAAAP3/AAAAAAAAAAAAAP7/AAAAAAAAAAAAAP//AAAAAAAAAAABAPr/AAAAAAAAAAABAPv/AAAAAAAAAAABAPz/AAAAAAAAAAABAP3/AAAAAAAAAAABAP7/AAAAAAAAAAABAP//AAAAAAAAAAACAPr/AAAAAAAAAAACAPv/AAAAAAAAAAACAPz/AAAAAAAAAAACAP3/AAAAAAAAAAACAP7/AAAAAAAAAAACAP//AAAAAAAAAAADAPr/AAAAAAAAAAADAPv/AAAAAAAAAAADAPz/AAAAAAAAAAADAP3/AAAAAAAAAAADAP7/AAAAAAAAAAADAP//AAAAAAAAAAAEAPr/AAAAAAAAAAAEAPv/AAAAAAAAAAAEAPz/AAAAAAAAAAAEAP3/AAAAAAAAAAAEAP7/AAAAAAAAAAAEAP//AAAAAAAAAAAFAPr/AAAAAAAAAAAFAPv/AAAAAAAAAAAFAPz/AAAAAAAAAAAFAP3/AAAAAAAAAAAFAP7/AAAAAAAAAAAFAP//AAAAAAAAAAAGAPr/AAAAAAAAAAAGAPv/AAAAAAAAAAAGAPz/AAAAAAAAAAAGAP3/AAAAAAAAAAAGAP7/AAAAAAAAAAAGAP//AAAAAAAAAAAHAPr/AAAAAAAAAAAHAPv/AAAAAAAAAAAHAPz/AAAAAAAAAAAHAP3/AAAAAAAAAAAHAP7/AAAAAAAAAAAHAP//AAAAAAAAAAAIAPr/AAAAAAAAAAAIAPv/AAAAAAAAAAAIAPz/AAAAAAAAAAAIAP3/AAAAAAAAAAAIAP7/AAAAAAAAAAAIAP//AAAAAAAAAAAJAPr/AAAAAAAAAAAJAPv/AAAAAAAAAAAJAPz/AAAAAAAAAAAJAP3/AAAAAAAAAAAJAP7/AAAAAAAAAAAJAP//AAAAAAAAAAAKAPr/AAAAAAAAAAAKAPv/AAAAAAAAAAAKAPz/AAAAAAAAAAAKAP3/AAAAAAAAAAAKAP7/AAAAAAAAAAAKAP//AAAAAAAAAAALAPr/AAAAAAAAAAALAPv/AAAAAAAAAAALAPz/AAAAAAAAAAALAP3/AAAAAAAAAAALAP7/AAAAAAAAAAALAP//AAAAAAAAAAAMAPr/AAAAAAAAAAAMAPv/AAAAAAAAAAAMAPz/AAAAAAAAAAAMAP3/AAAAAAAAAAAMAP7/AAAAAAAAAAAMAP//AAAAAAAAAAANAPr/AAAAAAAAAAANAPv/AAAAAAAAAAANAPz/AAAAAAAAAAANAP3/AAAAAAAAAAANAP7/AAAAAAAAAAANAP//AAAAAAAAAAAOAPr/AAAAAAAAAAAOAPv/AAAAAAAAAAAOAPz/AAAAAAAAAAAOAP3/AAAAAAAAAAAOAP7/AAAAAAAAAAAOAP//AAAAAAAAAAAPAPv/AAAAAAAAAAAPAPz/AAAAAAAAAAAPAP3/AAAAAAAAAAAPAP7/AAAAAAAAAAAPAP//AAAAAAAAAAAQAPz/AAAAAAAAAAAQAP3/AAAAAAAAAAAQAP7/AAAAAAAAAAAQAP//AAAAAAAAAAARAP3/AAAAAAAAAAARAP7/AAAAAAAAAAARAP//AAAAAAAAAAASAP7/AAAAAAAAAAASAP//AAAAAAAAAAATAP//AAAAAAAAAAA=")
+tile_set = ExtResource("12_64aem")
+script = ExtResource("1_p6xgs")
+only_shown_in_editor = true
+
 [node name="base" type="Node2D" parent="."]
 y_sort_enabled = true
 script = ExtResource("1_p6xgs")
@@ -155,7 +161,7 @@ script = ExtResource("7_564an")
 level = 2
 physics_layers = [NodePath("collision_layer")]
 rooms = [NodePath("corner_room_north"), NodePath("corner_room_east"), NodePath("corner_room_south"), NodePath("corner_room_west")]
-visibility_mask_layers = [NodePath("../base_floor"), NodePath("../base_stairs_mask")]
+visibility_mask_layers = [NodePath("../base_floor"), NodePath("../base_stairs_mask"), NodePath("../../mask")]
 use_ground_bounding_rect = true
 smooth_visibility_change = true
 
@@ -428,21 +434,18 @@ tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 32
 
 [node name="back_wall_1" type="TileMapLayer" parent="base/ground_level/corner_room_south/back_wall"]
-visible = false
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD8//z/AQACAAAAAAD8//3/AgAHAAAAAQD8////AgAFAAAAAQD8/wAAAQAJAAAAAgD9//z/AgAGAAAAAQD///z/AgAEAAAAAQAAAPz/AQAJAAAAAgA=")
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 64
 
 [node name="back_wall_2" type="TileMapLayer" parent="base/ground_level/corner_room_south/back_wall"]
-visible = false
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD7//v/AQACAAAAAAD7//z/AgAFAAAAAQD7//7/AgAFAAAAAQD7////AQAJAAAAAgD8//v/AgAEAAAAAQD+//v/AgAEAAAAAQD///v/AQAJAAAAAgD9//v/AgAEAAAAAQD7//3/AgAFAAAAAQA=")
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 96
 
 [node name="back_wall_top" type="TileMapLayer" parent="base/ground_level/corner_room_south/back_wall"]
-visible = false
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD6//7/BAALAAAAAgD+//r/BAALAAAAAgD6//3/BQAOAAAAAQD6//z/BQAOAAAAAQD6//v/BQAOAAAAAQD9//r/BQANAAAAAQD8//r/BQANAAAAAQD7//r/BQANAAAAAQD6//r/BAAHAAAAAAA=")
 tile_set = ExtResource("7_fcs3d")
@@ -580,56 +583,56 @@ y_sort_origin = 128
 y_sort_enabled = true
 
 [node name="pillar_0" parent="base/ground_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(384, 400)
+position = Vector2(384, 384)
 
 [node name="pillar_1" parent="base/ground_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(256, 464)
+position = Vector2(256, 448)
 
 [node name="pillar_2" parent="base/ground_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(128, 528)
+position = Vector2(128, 512)
 
 [node name="pillar_3" parent="base/ground_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(0, 592)
+position = Vector2(0, 576)
 
 [node name="pillar_4" parent="base/ground_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(-192, 112)
+position = Vector2(-192, 96)
 
 [node name="pillar_5" parent="base/ground_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(-320, 176)
+position = Vector2(-320, 160)
 
 [node name="pillar_6" parent="base/ground_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(-448, 240)
+position = Vector2(-448, 224)
 
 [node name="pillar_7" parent="base/ground_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(-576, 304)
+position = Vector2(-576, 288)
 
 [node name="pillar_8" parent="base/ground_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(-576, 528)
+position = Vector2(-576, 512)
 
 [node name="pillar_9" parent="base/ground_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(-448, 592)
+position = Vector2(-448, 576)
 
 [node name="pillar_10" parent="base/ground_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(256, 112)
+position = Vector2(256, 96)
 
 [node name="pillar_11" parent="base/ground_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(384, 176)
+position = Vector2(384, 160)
 
 [node name="pillar_12" parent="base/ground_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(512, 464)
+position = Vector2(512, 432)
 size = 8
 iso_tile_offset = Vector2(0, 16)
 
 [node name="pillar_13" parent="base/ground_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(384, 528)
+position = Vector2(384, 512)
 size = 8
 
 [node name="pillar_14" parent="base/ground_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(256, 592)
+position = Vector2(256, 576)
 size = 8
 
 [node name="pillar_15" parent="base/ground_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(128, 656)
+position = Vector2(128, 640)
 size = 8
 
 [node name="upper_level" type="Node2D" parent="base/ground_level" node_paths=PackedStringArray("physics_layers", "rooms", "visibility_mask_layers")]
@@ -1055,43 +1058,42 @@ y_sort_origin = 128
 y_sort_enabled = true
 
 [node name="pillar_0" parent="base/ground_level/upper_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(384, 400)
+position = Vector2(384, 384)
 
 [node name="pillar_1" parent="base/ground_level/upper_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(256, 464)
+position = Vector2(256, 448)
 
 [node name="pillar_2" parent="base/ground_level/upper_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(128, 528)
+position = Vector2(128, 512)
 
 [node name="pillar_3" parent="base/ground_level/upper_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(0, 592)
+position = Vector2(0, 576)
 
 [node name="pillar_4" parent="base/ground_level/upper_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(-192, 112)
+position = Vector2(-192, 96)
 
 [node name="pillar_5" parent="base/ground_level/upper_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(-320, 176)
+position = Vector2(-320, 160)
 
 [node name="pillar_6" parent="base/ground_level/upper_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(-448, 240)
+position = Vector2(-448, 224)
 
 [node name="pillar_7" parent="base/ground_level/upper_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(-576, 304)
+position = Vector2(-576, 288)
 
 [node name="pillar_8" parent="base/ground_level/upper_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(-576, 528)
+position = Vector2(-576, 512)
 
 [node name="pillar_9" parent="base/ground_level/upper_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(-448, 592)
+position = Vector2(-448, 576)
 
 [node name="pillar_10" parent="base/ground_level/upper_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(256, 112)
+position = Vector2(288, 80)
 
 [node name="pillar_11" parent="base/ground_level/upper_level/pillars" instance=ExtResource("13_8b4w8")]
-position = Vector2(384, 176)
+position = Vector2(416, 144)
 
 [node name="roof_level" type="Node2D" parent="base/ground_level/upper_level" node_paths=PackedStringArray("physics_layers", "visibility_mask_layers")]
-visible = false
 z_index = 2
 y_sort_enabled = true
 position = Vector2(0, -128)
