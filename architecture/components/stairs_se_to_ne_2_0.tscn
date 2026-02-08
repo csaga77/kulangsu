@@ -1,10 +1,11 @@
-[gd_scene load_steps=12 format=3 uid="uid://bbd88lcsuke4h"]
+[gd_scene load_steps=18 format=3 uid="uid://bbd88lcsuke4h"]
 
 [ext_resource type="PackedScene" uid="uid://d27a7jcvsnfx8" path="res://architecture/components/portal.tscn" id="1_5sph1"]
 [ext_resource type="Script" uid="uid://dl2kyruhqxduy" path="res://architecture/components/steps.gd" id="1_u6uu4"]
 [ext_resource type="Texture2D" uid="uid://boka5fmviqaew" path="res://resources/sprites/architecture/components/structure_0.png" id="3_fh4o2"]
 [ext_resource type="Texture2D" uid="uid://mhsy6o806uwu" path="res://resources/sprites/architecture/components/building_0_tiles.png" id="3_nhft0"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="4_nhft0"]
+[ext_resource type="TileSet" uid="uid://dh8addwm1ctei" path="res://resources/tilesets/architecture/building_0_tiles.tres" id="6_3u2h8"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_d3mvs"]
 radius = 8.505692
@@ -14,13 +15,33 @@ height = 37.579132
 atlas = ExtResource("3_nhft0")
 region = Rect2(0, 1024, 64, 64)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_nhft0"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_vn2o1"]
 atlas = ExtResource("3_fh4o2")
-region = Rect2(64, 0, 64, 64)
+region = Rect2(256, 0, 64, 64)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_eyq88"]
 atlas = ExtResource("3_fh4o2")
 region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_1nwwj"]
+atlas = ExtResource("3_nhft0")
+region = Rect2(192, 1024, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_wc85n"]
+atlas = ExtResource("3_nhft0")
+region = Rect2(64, 1024, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3u2h8"]
+atlas = ExtResource("3_nhft0")
+region = Rect2(128, 1024, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_nhft0"]
+atlas = ExtResource("3_fh4o2")
+region = Rect2(64, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_8otn3"]
+atlas = ExtResource("3_fh4o2")
+region = Rect2(320, 0, 64, 64)
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_nhft0"]
 radius = 4.436659
@@ -31,6 +52,7 @@ radius = 4.47213
 height = 44.721313
 
 [node name="stairs_se_to_ne_2_0" type="Node2D" node_paths=PackedStringArray("layer1_nodes", "body_nodes", "layer2_nodes")]
+y_sort_enabled = true
 script = ExtResource("1_u6uu4")
 layer1_nodes = [NodePath("portal_base_stairs_se")]
 layer1 = 524288
@@ -64,10 +86,40 @@ texture = SubResource("AtlasTexture_hx2jb")
 offset = Vector2(0, -16)
 script = ExtResource("4_nhft0")
 
+[node name="stairs_ne2" type="Sprite2D" parent="block0"]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_vn2o1")
+offset = Vector2(0, -16)
+script = ExtResource("4_nhft0")
+
+[node name="stairs_ne" type="Sprite2D" parent="block0"]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_eyq88")
+offset = Vector2(0, -16)
+script = ExtResource("4_nhft0")
+
+[node name="block4" type="Sprite2D" parent="."]
+position = Vector2(-96, -48)
+texture = SubResource("AtlasTexture_1nwwj")
+offset = Vector2(0, -16)
+script = ExtResource("4_nhft0")
+
+[node name="block5" type="Sprite2D" parent="."]
+position = Vector2(-128, -32)
+texture = SubResource("AtlasTexture_wc85n")
+offset = Vector2(16, -24)
+script = ExtResource("4_nhft0")
+
 [node name="block1" type="Sprite2D" parent="."]
 position = Vector2(-64, -32)
 texture = SubResource("AtlasTexture_hx2jb")
 offset = Vector2(0, -16)
+script = ExtResource("4_nhft0")
+
+[node name="block2" type="Sprite2D" parent="."]
+position = Vector2(-96, -16)
+texture = SubResource("AtlasTexture_3u2h8")
+offset = Vector2(16, -24)
 script = ExtResource("4_nhft0")
 
 [node name="stairs_sw" type="Sprite2D" parent="."]
@@ -76,10 +128,10 @@ texture = SubResource("AtlasTexture_nhft0")
 offset = Vector2(0, -16)
 script = ExtResource("4_nhft0")
 
-[node name="stairs_ne" type="Sprite2D" parent="."]
-position = Vector2(-32, -80)
-texture = SubResource("AtlasTexture_eyq88")
-offset = Vector2(0, -16)
+[node name="block3" type="Sprite2D" parent="."]
+position = Vector2(-64, 0)
+texture = SubResource("AtlasTexture_8otn3")
+offset = Vector2(16, -24)
 script = ExtResource("4_nhft0")
 
 [node name="collision_layer" type="StaticBody2D" parent="."]
@@ -117,6 +169,19 @@ shape = SubResource("CapsuleShape2D_eyq88")
 position = Vector2(-80, -49)
 rotation = 2.035844
 shape = SubResource("CapsuleShape2D_eyq88")
+
+[node name="TileMapLayer2" type="TileMapLayer" parent="."]
+z_index = 1
+y_sort_enabled = true
+tile_map_data = PackedByteArray(0, 0, 250, 255, 253, 255, 2, 0, 0, 0, 10, 0, 0, 0, 251, 255, 255, 255, 2, 0, 0, 0, 6, 0, 0, 0, 251, 255, 0, 0, 2, 0, 0, 0, 0, 0, 1, 0)
+tile_set = ExtResource("6_3u2h8")
+
+[node name="TileMapLayer" type="TileMapLayer" parent="."]
+z_index = 1
+y_sort_enabled = true
+tile_map_data = PackedByteArray(0, 0, 252, 255, 0, 0, 2, 0, 0, 0, 8, 0, 1, 0, 253, 255, 0, 0, 2, 0, 0, 0, 13, 0, 1, 0, 255, 255, 1, 0, 2, 0, 0, 0, 0, 0, 2, 0)
+tile_set = ExtResource("6_3u2h8")
+y_sort_origin = 32
 
 [editable path="portal_base_stairs_se"]
 [editable path="portal_base_stairs_ne"]
