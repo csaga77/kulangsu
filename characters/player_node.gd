@@ -70,8 +70,10 @@ func get_texture() -> Texture2D:
 var m_male_frames := [
 	"res://resources/sprites/characters/male/male_body.png",
 	"res://resources/sprites/characters/male/male_basic_shoes_black.png",
-	"res://resources/sprites/characters/male/male_longpants_black.png",
-	"res://resources/sprites/characters/male/male_longsleeve_white.png",
+	#"res://resources/sprites/characters/male/male_longpants_black.png",
+	"res://resources/sprites/characters/male/male_shorts_leather.png",
+	#"res://resources/sprites/characters/male/male_longsleeve_white.png",
+	"res://resources/sprites/characters/male/male_sleeveless_white.png",
 	#"res://resources/sprites/characters/backpack_black.png",
 	"res://resources/sprites/characters/male/male_head.png",
 	"res://resources/sprites/characters/hair_short_black.png",
@@ -80,8 +82,10 @@ var m_male_frames := [
 var m_female_frames := [
 	"res://resources/sprites/characters/female/female_body.png",
 	"res://resources/sprites/characters/female/female_basic_shoes_black.png",
-	"res://resources/sprites/characters/female/female_longpants_black.png",
-	"res://resources/sprites/characters/female/female_longsleeve_white.png",
+	#"res://resources/sprites/characters/female/female_longpants_black.png",
+	"res://resources/sprites/characters/female/female_shorts_leather.png",
+	"res://resources/sprites/characters/female/female_sleeveless_white.png",
+	#"res://resources/sprites/characters/female/female_longsleeve_white.png",
 	#"res://resources/sprites/characters/backpack_black.png",
 	"res://resources/sprites/characters/female/female_head.png",
 	"res://resources/sprites/characters/hair_long_loose_blonde.png",
@@ -105,7 +109,7 @@ func _reload():
 			
 	var body :AnimatedSprite2D = AnimatedSprite2D.new()
 	m_sprite = body
-	m_sprite.material = material
+	#m_sprite.material = material
 	m_root.add_child(m_sprite)
 	m_sprite.position = Vector2(0, -32)
 

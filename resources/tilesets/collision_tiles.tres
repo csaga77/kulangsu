@@ -1,4 +1,4 @@
-[gd_resource type="TileSet" load_steps=5 format=3 uid="uid://vgxfajcetvam"]
+[gd_resource type="TileSet" format=3 uid="uid://vgxfajcetvam"]
 
 [ext_resource type="Texture2D" uid="uid://c7jv5f2hgj3he" path="res://resources/sprites/collision_0.png" id="1_qg26p"]
 [ext_resource type="Texture2D" uid="uid://ixbs7c66fnpe" path="res://resources/sprites/collision_1.png" id="2_v0uu4"]

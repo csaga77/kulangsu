@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://dc2dh1e6e5hb"]
+[gd_scene format=3 uid="uid://dc2dh1e6e5hb"]
 
 [ext_resource type="Script" uid="uid://b7ntce1lyblnt" path="res://builder.gd" id="1_8pr8v"]
 [ext_resource type="PackedScene" uid="uid://cvd7poved22w0" path="res://architecture/bagua_tower.tscn" id="2_8pr8v"]
@@ -8,27 +8,27 @@
 [ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/player_controller.gd" id="6_oo8pe"]
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="7_4gito"]
 
-[node name="test_scene" type="Node2D"]
+[node name="test_scene" type="Node2D" unique_id=1018337693]
 y_sort_enabled = true
 script = ExtResource("1_8pr8v")
 building = ExtResource("2_8pr8v")
 
-[node name="Root" type="Node2D" parent="."]
+[node name="Root" type="Node2D" parent="." unique_id=203604640]
 y_sort_enabled = true
 material = ExtResource("3_njel3")
 position = Vector2(-224, -816)
 script = ExtResource("4_vr1i5")
 
-[node name="Camera2D" type="Camera2D" parent="."]
+[node name="Camera2D" type="Camera2D" parent="." unique_id=917191712]
 position = Vector2(12357, 19805)
 
-[node name="Player" parent="." instance=ExtResource("5_rpuu0")]
+[node name="Player" parent="." unique_id=543916503 instance=ExtResource("5_rpuu0")]
 
-[node name="PlayerController" type="Node" parent="Player" node_paths=PackedStringArray("player")]
+[node name="PlayerController" type="Node" parent="Player" unique_id=1171599603 node_paths=PackedStringArray("player")]
 script = ExtResource("6_oo8pe")
 player = NodePath("..")
 
-[node name="Camera2DController" type="Node" parent="." node_paths=PackedStringArray("camera", "target_node")]
+[node name="Camera2DController" type="Node" parent="." unique_id=71173038 node_paths=PackedStringArray("camera", "target_node")]
 script = ExtResource("7_4gito")
 camera = NodePath("../Camera2D")
 target_node = NodePath("../Player")
