@@ -141,7 +141,8 @@ func _reload():
 	_update_state()
 
 func _update_state() -> void:
-	
+	if m_sprite == null:
+		return
 	m_sprite.position = Vector2(0, -32)
 	var animation_name = "walk" if is_walking else "idle"
 	if is_walking:
