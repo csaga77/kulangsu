@@ -35,6 +35,7 @@ extends IsometricBlock
 
 		
 @onready var m_base :TileMapLayer = $base
+@onready var m_water :TileMapLayer = $water
 @onready var m_building_mask :TileMapLayer = $building_mask
 var m_is_ready := false
 var m_player :Player
@@ -60,6 +61,7 @@ func _reload_terrain() -> void:
 		return
 
 	m_base.clear()
+	m_water.clear()
 	m_building_mask.clear()
 
 	if mask_file.is_empty():
@@ -107,7 +109,7 @@ func _reload_terrain() -> void:
 						#0
 					#)
 			else:
-				m_base.set_cell(
+				m_water.set_cell(
 						Vector2i(x, y),
 						tile_source_id,
 						water_tile_coords,

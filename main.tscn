@@ -15,16 +15,12 @@ script = ExtResource("1_lquwl")
 
 [node name="terrain" parent="." node_paths=PackedStringArray("player") instance=ExtResource("3_7mycd")]
 player = NodePath("../player")
-only_shown_in_editor = false
-snap_in_editor = true
-iso_tile_size = Vector2(64, 32)
-iso_tile_offset = Vector2(0, 0)
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(12357, 19805)
 
 [node name="player" parent="." instance=ExtResource("2_h2yge")]
-position = Vector2(-2520, 15920)
+position = Vector2(10831, 20208)
 draw_bounding_rect = true
 
 [node name="CharacterController" type="Node" parent="player" node_paths=PackedStringArray("player")]
