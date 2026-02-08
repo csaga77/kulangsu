@@ -15,7 +15,8 @@ uniform vec2  wave_ab       = vec2(0.02, 0.02); // wobble strength in iso (a,b) 
 uniform float vertex_bob_amp  = 0.0;
 uniform float vertex_bob_freq = 2.0;
 
-uniform vec2 tile_texture_size = vec2(0.1, 0.03125);
+//sprite size: 64 x 32 pixels, sprite texture size 10 x 32 sprites
+uniform vec2 tile_texture_size = vec2(10, 32);
 
 // --- 64x32 iso mapping (TOP-ANCHORED) ---
 // Origin ab(0,0) at top of diamond: UV(0.5, 0.0) => pixel (32,0)
@@ -74,13 +75,14 @@ void fragment() {
 		vec2 n = texture(noise_texture, n_uv).rg * 2.0 - 1.0;
 
 		// Warp in iso (a,b) space to guarantee we stay inside the diamond
-		vec2 sub_uv_origin = floor(UV / tile_texture_size) * tile_texture_size;
-		vec2 sub_uv = (UV - vec2(0.4, 0.5)) / tile_texture_size;
+		vec2 sub_uv_origin = UV * tile_texture_size;
+		vec2 sub_uv = fract(sub_uv_origin);
+		sub_uv_origin = floor(sub_uv_origin);
 		vec2 ab = uv_to_iso_ab(sub_uv);
 		ab += n * wave_ab * m;
 		ab = fract(ab);
 		// Convert back to UV for sampling
-		vec2 uv_warp = sub_uv_origin + iso_ab_to_uv(ab) * tile_texture_size;
+		vec2 uv_warp = (sub_uv_origin + iso_ab_to_uv(ab)) / tile_texture_size;
 
 		// Sample water tile texture
 		vec4 water = texture(TEXTURE, uv_warp);

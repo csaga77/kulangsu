@@ -1,11 +1,19 @@
-[gd_scene load_steps=3 format=3 uid="uid://di1r1bw1orpdw"]
+[gd_scene load_steps=5 format=3 uid="uid://di1r1bw1orpdw"]
 
+[ext_resource type="Shader" uid="uid://bmvmdjduukkw5" path="res://characters/player_node.gdshader" id="1_hhl7b"]
 [ext_resource type="Script" uid="uid://b2f2s66pb145c" path="res://characters/player_node.gd" id="1_wfnr8"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_1lao4"]
+shader = ExtResource("1_hhl7b")
+shader_parameter/fade_start = 0.5
+shader_parameter/fade_end = 1.0
+shader_parameter/tile_texture_size = Vector2(13, 54)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_glpr6"]
 radius = 12.0
 
-[node name="Character" type="CharacterBody2D"]
+[node name="character" type="CharacterBody2D"]
+material = SubResource("ShaderMaterial_1lao4")
 collision_mask = 524289
 motion_mode = 1
 script = ExtResource("1_wfnr8")

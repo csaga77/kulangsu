@@ -23,7 +23,6 @@ script = ExtResource("4_vr1i5")
 position = Vector2(12357, 19805)
 
 [node name="Player" parent="." instance=ExtResource("5_rpuu0")]
-draw_bounding_rect = true
 
 [node name="PlayerController" type="Node" parent="Player" node_paths=PackedStringArray("player")]
 script = ExtResource("6_oo8pe")

@@ -10,7 +10,7 @@ enum BodyTypeEnum
 
 signal global_position_changed()
 
-signal texture_changed()
+#signal texture_changed()
 
 @export var draw_bounding_rect := false
 
@@ -87,25 +87,30 @@ var m_female_frames := [
 	"res://resources/sprites/characters/hair_long_loose_blonde.png",
 ]
 
+var m_root :Node2D
 var m_sprite :AnimatedSprite2D
 var m_last_global_position := Vector2.ZERO
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
+	m_root = self
 	_reload()
 
 func _reload():
-	for node in get_children():
+	if m_root == null:
+		return
+	for node in m_root.get_children():
 		if node is AnimatedSprite2D:
 			node.queue_free()
 			
 	var body :AnimatedSprite2D = AnimatedSprite2D.new()
 	m_sprite = body
-	add_child(body)
-	body.position = Vector2(0, -32)
+	m_sprite.material = material
+	m_root.add_child(m_sprite)
+	m_sprite.position = Vector2(0, -32)
 
 	var sprite_frames_template :SpriteFrames = load("res://resources/animations/characters/male_animations.tres").duplicate()
-	body.sprite_frames = sprite_frames_template
+	m_sprite.sprite_frames = sprite_frames_template
 	
 	var combined_image :Image = null
 	var frames = m_male_frames
@@ -131,32 +136,25 @@ func _reload():
 
 	_update_state()
 
-func _is_in_range(value, min_value, max_value) -> bool:
-	return value >= min_value and value <= max_value
-
-func _normalize_angle(degrees):
-	var d = fmod(degrees, 360)
-	if d < 0:
-		d += 360
-	return d
-
 func _update_state() -> void:
+	
+	m_sprite.position = Vector2(0, -32)
 	var animation_name = "walk" if is_walking else "idle"
 	if is_walking:
 		if is_running:
 			animation_name = "run"
 	animation_name += "_"
-	var normalized_direction = _normalize_angle(direction)
-	if _is_in_range(normalized_direction, 0, 45.01) or _is_in_range(normalized_direction, 314.09, 360):
+	var normalized_direction = CommonUtils.normalize_angle(direction)
+	if CommonUtils.is_in_range(normalized_direction, 0, 45.01) or CommonUtils.is_in_range(normalized_direction, 314.09, 360):
 		animation_name += "right"
-	elif _is_in_range(normalized_direction, 135, 225):
+	elif CommonUtils.is_in_range(normalized_direction, 135, 225):
 		animation_name += "left"
-	elif _is_in_range(normalized_direction, 45, 135):
+	elif CommonUtils.is_in_range(normalized_direction, 45, 135):
 		animation_name += "up"
-	elif _is_in_range(normalized_direction, 225, 315):
+	elif CommonUtils.is_in_range(normalized_direction, 225, 315):
 		animation_name += "down"
 		
-	for node in get_children():
+	for node in m_root.get_children():
 		if node is AnimatedSprite2D:
 			node.stop()
 			node.play(animation_name)

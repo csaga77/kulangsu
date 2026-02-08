@@ -1,0 +1,21 @@
+[gd_resource type="ShaderMaterial" load_steps=4 format=3 uid="uid://cjiajajuywre1"]
+
+[ext_resource type="Shader" uid="uid://1iykl67giegd" path="res://resources/materials/water.gdshader" id="1_j3urw"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_h2lqh"]
+frequency = 0.003
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_h2lqh"]
+noise = SubResource("FastNoiseLite_h2lqh")
+seamless = true
+seamless_blend_skirt = 1.0
+
+[resource]
+shader = ExtResource("1_j3urw")
+shader_parameter/noise_texture = SubResource("NoiseTexture2D_h2lqh")
+shader_parameter/speed = Vector2(0.5, 0.2)
+shader_parameter/distortion = 0.01
+shader_parameter/wave_ab = Vector2(0.02, 0.02)
+shader_parameter/vertex_bob_amp = 0.0
+shader_parameter/vertex_bob_freq = 1.0
+shader_parameter/tile_texture_size = Vector2(10, 32)

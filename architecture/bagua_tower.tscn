@@ -169,7 +169,6 @@ rotation = 3.094882
 shape = SubResource("CapsuleShape2D_fcs3d")
 
 [node name="ground_level" type="Node2D" parent="base" node_paths=PackedStringArray("physics_layers", "rooms", "visibility_mask_layers")]
-visible = false
 z_index = 2
 y_sort_enabled = true
 script = ExtResource("7_564an")
@@ -655,7 +654,6 @@ position = Vector2(128, 640)
 size = 8
 
 [node name="upper_level" type="Node2D" parent="base/ground_level" node_paths=PackedStringArray("physics_layers", "rooms", "visibility_mask_layers")]
-visible = false
 z_index = 2
 y_sort_enabled = true
 position = Vector2(0, -128)
