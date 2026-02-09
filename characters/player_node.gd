@@ -76,7 +76,9 @@ var m_male_frames := [
 	"res://resources/sprites/characters/male/male_sleeveless_white.png",
 	#"res://resources/sprites/characters/backpack_black.png",
 	"res://resources/sprites/characters/male/male_head.png",
-	"res://resources/sprites/characters/hair_short_black.png",
+	#"res://resources/sprites/characters/hair/hair_short_black.png",
+	#"res://resources/sprites/characters/hair/hair_ponytail_white.png",
+	"res://resources/sprites/characters/hair/hair_spiked_white.png",
 ]
 
 var m_female_frames := [
@@ -88,7 +90,8 @@ var m_female_frames := [
 	#"res://resources/sprites/characters/female/female_longsleeve_white.png",
 	#"res://resources/sprites/characters/backpack_black.png",
 	"res://resources/sprites/characters/female/female_head.png",
-	"res://resources/sprites/characters/hair_long_loose_blonde.png",
+	#"res://resources/sprites/characters/hair/hair_long_loose_blonde.png",
+	"res://resources/sprites/characters/hair/hair_ponytail_white.png",
 ]
 
 var m_root :Node2D

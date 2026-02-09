@@ -17,7 +17,7 @@ material = SubResource("ShaderMaterial_1lao4")
 collision_mask = 524289
 motion_mode = 1
 script = ExtResource("1_wfnr8")
-body_type = 1
+direction = -90.0
 is_walking = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=403533052]

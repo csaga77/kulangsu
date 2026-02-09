@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b0ctyfatrxhf3"
-path="res://.godot/imported/hair_long_loose_blonde.png-8f759afb87d39e616e6efa6f5b42ed5a.ctex"
+uid="uid://frot1h58bydv"
+path="res://.godot/imported/hair_short_bangs_short_white.png-a7866c1f6c4620239b2a6192d1ac8a7e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://resources/sprites/characters/hair_long_loose_blonde.png"
-dest_files=["res://.godot/imported/hair_long_loose_blonde.png-8f759afb87d39e616e6efa6f5b42ed5a.ctex"]
+source_file="res://resources/sprites/characters/hair/hair_short_bangs_short_white.png"
+dest_files=["res://.godot/imported/hair_short_bangs_short_white.png-a7866c1f6c4620239b2a6192d1ac8a7e.ctex"]
 
 [params]
 
