@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="kulangsu"
-run/main_scene="uid://dc2dh1e6e5hb"
+run/main_scene="uid://dd4h1niyolnlj"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
 

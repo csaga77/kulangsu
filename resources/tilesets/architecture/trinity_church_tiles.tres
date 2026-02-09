@@ -1,4 +1,4 @@
-[gd_resource type="TileSet" load_steps=3 format=3 uid="uid://cpd02433u4y0w"]
+[gd_resource type="TileSet" format=3 uid="uid://cpd02433u4y0w"]
 
 [ext_resource type="Texture2D" uid="uid://cwrirkdu0c2cf" path="res://resources/sprites/architecture/trinity_church/trinity_church_tiles.png" id="10_drhxk"]
 

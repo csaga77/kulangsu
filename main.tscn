@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://dd4h1niyolnlj"]
+[gd_scene format=3 uid="uid://dd4h1niyolnlj"]
 
 [ext_resource type="Material" uid="uid://dw5sarpgr1teb" path="res://resources/materials/wall_transparent.tres" id="1_kek77"]
 [ext_resource type="Script" uid="uid://bywr0jr0u6i2n" path="res://main.gd" id="1_lquwl"]
@@ -7,27 +7,27 @@
 [ext_resource type="PackedScene" uid="uid://cn5g8hobx3bru" path="res://terrain.tscn" id="3_7mycd"]
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="6_7mycd"]
 
-[node name="main" type="Node2D"]
+[node name="main" type="Node2D" unique_id=1387312363]
 y_sort_enabled = true
 material = ExtResource("1_kek77")
 position = Vector2(25, -3)
 script = ExtResource("1_lquwl")
 
-[node name="terrain" parent="." node_paths=PackedStringArray("player") instance=ExtResource("3_7mycd")]
+[node name="terrain" parent="." unique_id=382500148 node_paths=PackedStringArray("player") instance=ExtResource("3_7mycd")]
 player = NodePath("../player")
 
-[node name="Camera2D" type="Camera2D" parent="."]
+[node name="Camera2D" type="Camera2D" parent="." unique_id=369660366]
 position = Vector2(12357, 19805)
 
-[node name="player" parent="." instance=ExtResource("2_h2yge")]
-position = Vector2(10831, 20208)
+[node name="player" parent="." unique_id=1388139855 instance=ExtResource("2_h2yge")]
+position = Vector2(10155, 18748)
 draw_bounding_rect = true
 
-[node name="CharacterController" type="Node" parent="player" node_paths=PackedStringArray("player")]
+[node name="CharacterController" type="Node" parent="player" unique_id=489947374 node_paths=PackedStringArray("player")]
 script = ExtResource("3_1bvp3")
 player = NodePath("..")
 
-[node name="Camera2DController" type="Node" parent="." node_paths=PackedStringArray("camera", "target_node")]
+[node name="Camera2DController" type="Node" parent="." unique_id=327363840 node_paths=PackedStringArray("camera", "target_node")]
 script = ExtResource("6_7mycd")
 camera = NodePath("../Camera2D")
 target_node = NodePath("../player")
