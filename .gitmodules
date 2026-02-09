@@ -2,3 +2,7 @@
 	path = godot_common
 	url = ../godot_common.git
 	branch = main
+[submodule "godot_tilemap"]
+	path = godot_tilemap
+	url = ../godot_tilemap.git
+	branch = main
