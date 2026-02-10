@@ -13,6 +13,10 @@ region = Rect2(0, 0, 68, 36)
 atlas = ExtResource("2_fu6og")
 region = Rect2(140, 71, 8, 68)
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_axsgs"]
+atlas = ExtResource("2_fu6og")
+region = Rect2(170, 71, 6, 68)
+
 [sub_resource type="AtlasTexture" id="AtlasTexture_4dgav"]
 atlas = ExtResource("2_fu6og")
 region = Rect2(140, 0, 18, 70)
@@ -20,10 +24,6 @@ region = Rect2(140, 0, 18, 70)
 [sub_resource type="AtlasTexture" id="AtlasTexture_4brj5"]
 atlas = ExtResource("2_fu6og")
 region = Rect2(160, 0, 18, 70)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_axsgs"]
-atlas = ExtResource("2_fu6og")
-region = Rect2(170, 71, 6, 68)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_vmxr7"]
 atlas = ExtResource("2_fu6og")
@@ -59,80 +59,72 @@ height = 60.0
 [node name="window_se" type="Area2D" unique_id=1762891925 node_paths=PackedStringArray("open_sprites", "close_sprites", "hot_areas")]
 y_sort_enabled = true
 script = ExtResource("1_270a7")
-open_sprites = [NodePath("door/open_door_0"), NodePath("door/open_door_1"), NodePath("door/open_door_2")]
-close_sprites = [NodePath("door/close_door_0"), NodePath("door/close_door_1"), NodePath("door/close_door_2")]
+open_sprites = [NodePath("door/side_jamb_1/open_door_0"), NodePath("door/side_jamb_2/open_door_1"), NodePath("door/side_jamb_3/open_door_2")]
+close_sprites = [NodePath("door/side_jamb_1/close_door_0"), NodePath("door/side_jamb_2/close_door_1"), NodePath("door/side_jamb_3/close_door_2")]
 hot_areas = [NodePath(".")]
 
 [node name="door" type="Node2D" parent="." unique_id=891364827]
 y_sort_enabled = true
 
 [node name="side_sill" type="Sprite2D" parent="door" unique_id=799826309]
-position = Vector2(30, 48)
+position = Vector2(30, 31)
 texture = SubResource("AtlasTexture_fu6og")
-offset = Vector2(0, -49)
+offset = Vector2(0, -32)
 
 [node name="side_jamb_0" type="Sprite2D" parent="door" unique_id=640630529]
 position = Vector2(60, 17)
 texture = SubResource("AtlasTexture_o5v1q")
 offset = Vector2(0, -65)
 
-[node name="close_door_0" type="Sprite2D" parent="door" unique_id=1561201501]
-position = Vector2(51, -11)
-texture = SubResource("AtlasTexture_4dgav")
-offset = Vector2(0, -32)
-
-[node name="open_door_0" type="Sprite2D" parent="door" unique_id=1494382179]
-visible = false
-position = Vector2(65, -11)
-texture = SubResource("AtlasTexture_4brj5")
-offset = Vector2(0, -32)
-
 [node name="side_jamb_1" type="Sprite2D" parent="door" unique_id=309961885]
-position = Vector2(41, -5)
+position = Vector2(41, 33)
 texture = SubResource("AtlasTexture_axsgs")
-offset = Vector2(0, -32)
+offset = Vector2(0, -70)
 
-[node name="close_door_1" type="Sprite2D" parent="door" unique_id=48949338]
-position = Vector2(31, -1)
+[node name="close_door_0" type="Sprite2D" parent="door/side_jamb_1" unique_id=1561201501]
+show_behind_parent = true
+position = Vector2(10, -44)
 texture = SubResource("AtlasTexture_4dgav")
 offset = Vector2(0, -32)
 
-[node name="open_door_1" type="Sprite2D" parent="door" unique_id=1364173495]
+[node name="open_door_0" type="Sprite2D" parent="door/side_jamb_1" unique_id=1494382179]
 visible = false
-position = Vector2(31, -2)
+show_behind_parent = true
+position = Vector2(24, -44)
 texture = SubResource("AtlasTexture_4brj5")
-offset = Vector2(0, -24)
+offset = Vector2(0, -32)
 
 [node name="side_jamb_2" type="Sprite2D" parent="door" unique_id=875595378]
-position = Vector2(21, 5)
+position = Vector2(21, 48)
 texture = SubResource("AtlasTexture_axsgs")
-offset = Vector2(0, -32)
+offset = Vector2(0, -75)
 
-[node name="close_door_2" type="Sprite2D" parent="door" unique_id=1906776536]
-position = Vector2(11, 9)
+[node name="close_door_1" type="Sprite2D" parent="door/side_jamb_2" unique_id=48949338]
+show_behind_parent = true
+position = Vector2(10, -15)
 texture = SubResource("AtlasTexture_4dgav")
-offset = Vector2(0, -32)
+offset = Vector2(0, -66)
 
-[node name="open_door_2" type="Sprite2D" parent="door" unique_id=1856480324]
+[node name="open_door_1" type="Sprite2D" parent="door/side_jamb_2" unique_id=1364173495]
 visible = false
-position = Vector2(11, 8)
+show_behind_parent = true
+position = Vector2(10, -15)
 texture = SubResource("AtlasTexture_4brj5")
-offset = Vector2(0, -24)
+offset = Vector2(0, -60)
 
 [node name="side_jamb_3" type="Sprite2D" parent="door" unique_id=680831236]
-y_sort_enabled = true
 position = Vector2(0, 48)
 texture = SubResource("AtlasTexture_vmxr7")
 offset = Vector2(0, -65)
 
 [node name="head_jamb" type="Sprite2D" parent="door/side_jamb_3" unique_id=433869610]
-position = Vector2(30, -50)
+position = Vector2(30, -70)
 texture = SubResource("AtlasTexture_crkvq")
-offset = Vector2(0, -62)
+offset = Vector2(0, -42)
 
 [node name="transom" type="Node2D" parent="door/side_jamb_3/head_jamb" unique_id=200729322]
 visible = false
-position = Vector2(-30, 66)
+position = Vector2(-30, 21)
 
 [node name="top_panel" type="Node2D" parent="door/side_jamb_3/head_jamb/transom" unique_id=1560486476]
 y_sort_enabled = true
@@ -177,8 +169,22 @@ offset = Vector2(0, -18)
 position = Vector2(30, -48)
 texture = SubResource("AtlasTexture_crkvq")
 
+[node name="close_door_2" type="Sprite2D" parent="door/side_jamb_3" unique_id=1906776536]
+show_behind_parent = true
+position = Vector2(11, 0)
+texture = SubResource("AtlasTexture_4dgav")
+offset = Vector2(0, -71)
+
+[node name="open_door_2" type="Sprite2D" parent="door/side_jamb_3" unique_id=1856480324]
+visible = false
+show_behind_parent = true
+position = Vector2(11, 0)
+texture = SubResource("AtlasTexture_4brj5")
+offset = Vector2(0, -65)
+
 [node name="tile_reference_0" type="Sprite2D" parent="." unique_id=917902731]
 z_index = -1
+position = Vector2(32, 16)
 texture = SubResource("AtlasTexture_i3rnv")
 script = ExtResource("4_vmxr7")
 only_shown_in_editor = true

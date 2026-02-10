@@ -496,7 +496,7 @@ y_sort_origin = 64
 
 [node name="front_wall_2" type="TileMapLayer" parent="base/ground_level/corner_room_south/front_wall" unique_id=378818501]
 y_sort_enabled = true
-tile_map_data = PackedByteArray("AAD7////AQAHAAAAAAD8////AQAFAAQAAAD+////AQAFAAQAAAD///v/AQAIAAAAAAD///z/AQAGAAQAAAD///7/AQAGAAQAAAD/////AQAAAAAAAAD9////AQAFAAQAAAD///3/AQAGAAQAAAA=")
+tile_map_data = PackedByteArray("AAD7////AQAHAAAAAAD8////AQAFAAQAAAD+////AQAFAAQAAAD///v/AQAIAAAAAAD///z/AQAGAAQAAAD///7/AQAGAAQAAAD/////AQAAAAAAAAD9////AQAFAAQAAAD///3/AgAFAAQAAAA=")
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 96
 
