@@ -19,8 +19,10 @@ func _ready() -> void:
 	if is_instance_of(self, Area2D) and !hot_areas.has(self):
 		hot_areas.append(self)
 	for area in hot_areas:
-		area.body_entered.connect(self._on_body_entered)
-		area.body_exited.connect(self._on_body_exited)
+		if !area.body_entered.is_connected(self._on_body_entered):
+			area.body_entered.connect(self._on_body_entered)
+		if !area.body_exited.is_connected(self._on_body_exited):
+			area.body_exited.connect(self._on_body_exited)
 	_update_open()
 
 func _update_open() -> void:

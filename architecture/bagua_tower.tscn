@@ -485,7 +485,7 @@ tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 32
 
 [node name="window_se" parent="base/ground_level/corner_room_south/front_wall/front_wall_0" unique_id=1762891925 instance=ExtResource("12_p5n1q")]
-position = Vector2(80, 56)
+position = Vector2(80, 24)
 iso_tile_size = Vector2(16, 8)
 
 [node name="front_wall_1" type="TileMapLayer" parent="base/ground_level/corner_room_south/front_wall" unique_id=1692282591]
@@ -659,7 +659,6 @@ position = Vector2(128, 640)
 size = 8
 
 [node name="upper_level" type="Node2D" parent="base/ground_level" unique_id=1419816824 node_paths=PackedStringArray("physics_layers", "rooms", "visibility_mask_layers")]
-visible = false
 z_index = 2
 y_sort_enabled = true
 position = Vector2(0, -128)

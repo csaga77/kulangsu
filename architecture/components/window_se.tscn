@@ -67,14 +67,14 @@ hot_areas = [NodePath(".")]
 y_sort_enabled = true
 
 [node name="side_sill" type="Sprite2D" parent="door" unique_id=799826309]
-position = Vector2(30, 49)
+position = Vector2(30, 48)
 texture = SubResource("AtlasTexture_fu6og")
-offset = Vector2(0, -50)
+offset = Vector2(0, -49)
 
 [node name="side_jamb_0" type="Sprite2D" parent="door" unique_id=640630529]
-position = Vector2(60, 24)
+position = Vector2(60, 17)
 texture = SubResource("AtlasTexture_o5v1q")
-offset = Vector2(0, -72)
+offset = Vector2(0, -65)
 
 [node name="close_door_0" type="Sprite2D" parent="door" unique_id=1561201501]
 position = Vector2(51, -11)
@@ -120,13 +120,15 @@ texture = SubResource("AtlasTexture_4brj5")
 offset = Vector2(0, -24)
 
 [node name="side_jamb_3" type="Sprite2D" parent="door" unique_id=680831236]
-position = Vector2(0, 55)
+y_sort_enabled = true
+position = Vector2(0, 48)
 texture = SubResource("AtlasTexture_vmxr7")
-offset = Vector2(0, -72)
+offset = Vector2(0, -65)
 
 [node name="head_jamb" type="Sprite2D" parent="door/side_jamb_3" unique_id=433869610]
-position = Vector2(30, -119)
+position = Vector2(30, -50)
 texture = SubResource("AtlasTexture_crkvq")
+offset = Vector2(0, -62)
 
 [node name="transom" type="Node2D" parent="door/side_jamb_3/head_jamb" unique_id=200729322]
 visible = false
