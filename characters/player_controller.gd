@@ -18,5 +18,7 @@ func _process(_delta: float) -> void:
 			player.direction = rad_to_deg(-new_direction_vector.angle())
 			player.is_walking = true
 			player.is_running = !Input.is_action_pressed("ui_walk")
-			player.velocity = new_direction_vector * (300 if player.is_running else 100)
-			player.move_and_slide()
+			player.move(new_direction_vector)
+			
+		if Input.is_action_just_pressed("ui_jump"):
+			player.jump()
