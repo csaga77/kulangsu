@@ -79,8 +79,9 @@ func jump() -> void:
 	if m_is_jumping:
 		return
 	m_is_jumping = true
+	#print("jump")
 	_update_state()
-		
+
 func get_local_bounding_rect() -> Rect2:
 	var t := get_texture()
 	if t:
@@ -108,7 +109,7 @@ func get_texture() -> Texture2D:
 	
 func move(direction_vector) -> void:
 	velocity = direction_vector * (300 if is_running else 100)
-	if m_is_jumping and (m_sprite.frame < 1 or m_sprite.frame == 5):
+	if m_is_jumping and (m_sprite.frame <= 1 or m_sprite.frame == 7):
 		return
 	move_and_slide()
 	
@@ -159,6 +160,7 @@ var m_sprite :AnimatedSprite2D
 var m_last_global_position := Vector2.ZERO
 var m_is_reloading := false
 var m_is_jumping := false
+var m_current_animation := ""
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -185,6 +187,7 @@ func _do_reload():
 	m_root.add_child(m_sprite)
 	m_sprite.position = Vector2(0, -32)
 	m_sprite.animation_finished.connect(self._on_animation_finished)
+	m_sprite.frame_changed.connect(self._on_animation_frame_changed)
 
 	var sprite_frames_template :SpriteFrames = load("res://resources/animations/characters/male_animations.tres").duplicate()
 	m_sprite.sprite_frames = sprite_frames_template
@@ -227,11 +230,14 @@ func _update_state() -> void:
 	m_sprite.position = Vector2(0, -32)
 	var animation_name = "walk" if is_walking else "idle"
 	if m_is_jumping:
+		if m_current_animation.contains("jump"):
+			return
 		animation_name = "jump"
 	elif is_walking:
 		if is_running:
 			animation_name = "run"
 	animation_name += "_"
+	
 	var normalized_direction = CommonUtils.normalize_angle(direction)
 	if CommonUtils.is_in_range(normalized_direction, 0, 45.01) or CommonUtils.is_in_range(normalized_direction, 314.09, 360):
 		animation_name += "right"
@@ -242,16 +248,24 @@ func _update_state() -> void:
 	elif CommonUtils.is_in_range(normalized_direction, 225, 315):
 		animation_name += "down"
 		
+	if m_current_animation == animation_name:
+		return
+	m_current_animation = animation_name
+
 	for node in m_root.get_children():
 		if node is AnimatedSprite2D:
+			if node.animation == animation_name:
+				continue
 			node.stop()
 			node.play(animation_name)
 			#if !node.frame_changed.is_connected(self.texture_changed.emit):
 				#node.frame_changed.connect(self.texture_changed.emit)
-		
+
 func _on_animation_frame_changed() -> void:
-	#if m_is_jumping and m_sprite.animation.contains("jump"):
-	pass
+	if m_sprite == null:
+		return
+	if m_is_jumping and m_sprite.frame > 1 and m_sprite.frame < 7:
+		m_sprite.position.y = -32 - (2 - abs(m_sprite.frame - 4)) * 16 
 		
 		
 func _on_animation_finished() -> void:
