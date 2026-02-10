@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=4 uid="uid://dqivkaosuu5nr"]
+[gd_scene format=4 uid="uid://dqivkaosuu5nr"]
 
 [ext_resource type="Script" uid="uid://c8rbadcu5jhno" path="res://common/room.gd" id="1_xax08"]
 [ext_resource type="TileSet" uid="uid://c2edqbdaenat2" path="res://resources/tilesets/symbols_0_tiles.tres" id="2_sg3ht"]
@@ -7,62 +7,63 @@
 [ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="5_gp7je"]
 [ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/architecture/wall_0_tiles.tres" id="5_nch5g"]
 [ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="5_sg3ht"]
+[ext_resource type="PackedScene" uid="uid://d03gognopp6ym" path="res://architecture/components/window_se.tscn" id="8_crnqe"]
 
-[node name="test_room_2" type="Node2D" node_paths=PackedStringArray("physics_layers")]
+[node name="test_room_2" type="Node2D" unique_id=2090414960 node_paths=PackedStringArray("physics_layers")]
 y_sort_enabled = true
 script = ExtResource("1_xax08")
 physics_layers = [NodePath("collision_layer")]
 smooth_visibility_change = true
 
-[node name="wall_mask" type="TileMapLayer" parent="."]
+[node name="wall_mask" type="TileMapLayer" parent="." unique_id=1329344559]
 tile_map_data = PackedByteArray("AAACAP7/AAAAAAAAAAABAP7/AAAAAAAAAAAAAP7/AAAAAAAAAAD///7/AAAAAAAAAAD+//7/AAAAAAAAAAD+////AAAAAAAAAAD+/wAAAAAAAAAAAAD+/wEAAAAAAAAAAAD+/wIAAAAAAAAAAAD9/wEAAAAAAAAAAAD9/wAAAAAAAAAAAAD9////AAAAAAAAAAD9//7/AAAAAAAAAAD9//3/AAAAAAAAAAD+//3/AAAAAAAAAAD///3/AAAAAAAAAAAAAP3/AAAAAAAAAAABAP3/AAAAAAAAAAAAAPz/AAAAAAAAAAD///z/AAAAAAAAAAD+//z/AAAAAAAAAAD9//z/AAAAAAAAAAD8//z/AAAAAAAAAAD8//3/AAAAAAAAAAD8//7/AAAAAAAAAAD8////AAAAAAAAAAD8/wAAAAAAAAAAAAA=")
 tile_set = ExtResource("2_sg3ht")
 script = ExtResource("3_nch5g")
 only_shown_in_editor = true
 
-[node name="floor" type="TileMapLayer" parent="."]
+[node name="floor" type="TileMapLayer" parent="." unique_id=1565075918]
 tile_map_data = PackedByteArray("AAABAAEAAQAFAAAAAAACAAEAAQAFAAAAAAADAAEAAQAFAAAAAAADAAIAAQAFAAAAAAADAAMAAQAFAAAAAAACAAMAAQAFAAAAAAABAAMAAQAFAAAAAAABAAIAAQAFAAAAAAACAAIAAQAFAAAAAAAAAAIAAQAFAAAAAAACAAAAAQAFAAAAAAA=")
 tile_set = ExtResource("4_mous7")
 script = ExtResource("3_nch5g")
 
-[node name="external_floor" type="TileMapLayer" parent="."]
+[node name="external_floor" type="TileMapLayer" parent="." unique_id=985457862]
 tile_map_data = PackedByteArray("AAAAAAAAAQAFAAAAAAABAAAAAQAFAAAAAAADAAAAAQAFAAAAAAAEAAAAAQAFAAAAAAAAAAEAAQAFAAAAAAAAAAMAAQAFAAAAAAAAAAQAAQAFAAAAAAABAAQAAQAFAAAAAAACAAQAAQAFAAAAAAADAAQAAQAFAAAAAAAEAAQAAQAFAAAAAAAEAAMAAQAFAAAAAAAEAAIAAQAFAAAAAAAEAAEAAQAFAAAAAAA=")
 tile_set = ExtResource("4_mous7")
 script = ExtResource("3_nch5g")
 
-[node name="collision_layer" type="TileMapLayer" parent="."]
+[node name="collision_layer" type="TileMapLayer" parent="." unique_id=1097921764]
 position = Vector2(64, 160)
 tile_map_data = PackedByteArray("AAD6//z/AwAAAAcAAAD6//3/AwAAAAMAAAD6////AwAAAAMAAAD6/wAAAwAAAAUAAAD7//z/AwAAAAQAAAD7/wAAAwAAAAEAAAD8/wAAAwAAAAEAAAD9//z/AwAAAAQAAAD9/wAAAwAAAAEAAAD+//z/AwAAAAYAAAD+//3/AwAAAAIAAAD+//7/AwAAAAIAAAD+////AwAAAAIAAAD+/wAAAwAAAAgAAAA=")
 tile_set = ExtResource("5_sg3ht")
 script = ExtResource("3_nch5g")
 only_shown_in_editor = true
 
-[node name="wall" type="TileMapLayer" parent="."]
+[node name="wall" type="TileMapLayer" parent="." unique_id=1535258825]
 y_sort_enabled = true
 use_parent_material = true
 tile_map_data = PackedByteArray("AAAAAAAAAgAAAAIAAAABAAAAAgAGAAIAAQAAAAEAAgAHAAIAAQAAAAMAAgAFAAIAAQAAAAQAAgALAAIAAgADAAAAAgAEAAIAAQAEAAAAAgAKAAIAAgA=")
 tile_set = ExtResource("5_nch5g")
 script = ExtResource("3_nch5g")
 
-[node name="base_top" type="TileMapLayer" parent="wall"]
+[node name="base_top" type="TileMapLayer" parent="wall" unique_id=171644281]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD/////BQALAAAAAAD//wAABQAOAAAAAQD//wIABQAOAAAAAQAAAP//BQANAAAAAQACAP//BQANAAAAAQADAP//BQAPAAAAAgD//wMABQAQAAAAAgA=")
 tile_set = ExtResource("5_nch5g")
 y_sort_origin = 32
 
-[node name="base_front" type="TileMapLayer" parent="wall"]
+[node name="base_front" type="TileMapLayer" parent="wall" unique_id=657388305]
 y_sort_enabled = true
 use_parent_material = true
 tile_map_data = PackedByteArray("AAAAAAQAAQAHAAAAAAAEAAAAAQAIAAAAAAAEAAQAAQAAAAAAAAABAAQAAQAFAAYAAAACAAQAAQAFAAYAAAADAAQAAQAFAAYAAAAEAAMAAQAGAAYAAAAEAAIAAQAGAAYAAAAEAAEAAQAGAAYAAAA=")
 tile_set = ExtResource("5_nch5g")
 
-[node name="base_front_top" type="TileMapLayer" parent="wall/base_front"]
+[node name="base_front_top" type="TileMapLayer" parent="wall/base_front" unique_id=900050592]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAADAAMABAAIAAAAAAD//wMABAAJAAAAAAADAP//BAAKAAAAAAAAAAMABQANAAEAAAABAAMABQANAAEAAAACAAMABQANAAEAAAADAAAABQAOAAEAAAADAAEABQAOAAEAAAADAAIABQAOAAEAAAA=")
 tile_set = ExtResource("5_nch5g")
 y_sort_origin = 32
 
-[node name="back_wall" type="TileMapLayer" parent="wall" node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="back_wall" type="TileMapLayer" parent="wall" unique_id=1460877434 node_paths=PackedStringArray("visibility_mask_layers")]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD/////AgAAAAAAAAAAAP//AgAGAAAAAQD//wAAAgAHAAAAAQACAP//AgAEAAAAAQADAP//AgAKAAAAAgD//wMAAgALAAAAAgD//wIAAgAFAAAAAQA=")
 tile_set = ExtResource("5_nch5g")
@@ -72,25 +73,25 @@ visibility_mask_layers = [NodePath("../../wall_mask")]
 use_ground_bounding_rect = true
 smooth_visibility_change = true
 
-[node name="level_2" type="TileMapLayer" parent="wall/back_wall"]
+[node name="level_2" type="TileMapLayer" parent="wall/back_wall" unique_id=984342247]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD+//7/AgAAAAAAAAD+////AgAHAAAAAQD+/wEAAgAFAAAAAQD+/wIAAgALAAAAAgD///7/AgAGAAAAAQABAP7/AgAEAAAAAQACAP7/AgAKAAAAAgA=")
 tile_set = ExtResource("5_nch5g")
 y_sort_origin = 64
 
-[node name="level_3" type="TileMapLayer" parent="wall/back_wall"]
+[node name="level_3" type="TileMapLayer" parent="wall/back_wall" unique_id=704149102]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD9//3/AgAAAAAAAAD9//7/AgAFAAAAAQD9/wAAAgAFAAAAAQD9/wEAAgALAAAAAgD+//3/AgAEAAAAAQAAAP3/AgAEAAAAAQABAP3/AgAKAAAAAgD9////AgAFAAAAAQD///3/AgAEAAAAAQA=")
 tile_set = ExtResource("5_nch5g")
 y_sort_origin = 96
 
-[node name="top" type="TileMapLayer" parent="wall/back_wall"]
+[node name="top" type="TileMapLayer" parent="wall/back_wall" unique_id=1500879572]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD8//z/BQALAAAAAAD9//z/BQANAAAAAQD+//z/BQANAAAAAQD///z/BQANAAAAAQD8//3/BQAOAAAAAQD8//7/BQAOAAAAAQD8////BQAOAAAAAQD8/wAABQAQAAAAAgAAAPz/BQAPAAAAAgA=")
 tile_set = ExtResource("5_nch5g")
 y_sort_origin = 128
 
-[node name="front_wall" type="TileMapLayer" parent="wall" node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="front_wall" type="TileMapLayer" parent="wall" unique_id=661992150 node_paths=PackedStringArray("visibility_mask_layers")]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD//wMAAQAHAAAAAAADAP//AQAIAAAAAAADAAMAAQAAAAAAAAAAAAMAAgAKAAQAAwACAAMAAgAIAAQAAAADAAIAAgAJAAQAAAADAAAAAgALAAQAAwA=")
 tile_set = ExtResource("5_nch5g")
@@ -100,20 +101,24 @@ visibility_mask_layers = [NodePath("../../floor"), NodePath("../../wall_mask")]
 use_ground_bounding_rect = true
 smooth_visibility_change = true
 
-[node name="front_level_2" type="TileMapLayer" parent="wall/front_wall"]
+[node name="front_level_2" type="TileMapLayer" parent="wall/front_wall" unique_id=1984338816]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD+/wIAAQAHAAAAAAD//wIAAgAKAAQAAwABAAIAAgAIAAQAAAACAP7/AQAIAAAAAAACAP//AgALAAQAAwACAAEAAgAJAAQAAAACAAIAAQAAAAAAAAA=")
 tile_set = ExtResource("5_nch5g")
 y_sort_origin = 64
 
-[node name="front_level_3" type="TileMapLayer" parent="wall/front_wall"]
+[node name="front_level_3" type="TileMapLayer" parent="wall/front_wall" unique_id=619821925]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD9/wEAAQAHAAAAAAD+/wEAAQAFAAQAAAAAAAEAAQAFAAQAAAABAP3/AQAIAAAAAAABAP7/AQAGAAQAAAABAAAAAQAGAAQAAAABAAEAAQAAAAAAAAD//wEAAQAFAAQAAAABAP//AQAGAAQAAAA=")
 tile_set = ExtResource("5_nch5g")
 y_sort_origin = 96
 
-[node name="top" type="TileMapLayer" parent="wall/front_wall"]
+[node name="top" type="TileMapLayer" parent="wall/front_wall" unique_id=1127960538]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD8/wAABAAJAAAAAAAAAPz/BAAKAAAAAAAAAP3/BQAOAAEAAAAAAP7/BQAOAAEAAAAAAP//BQAOAAEAAAD9/wAABQANAAEAAAD+/wAABQANAAEAAAD//wAABQANAAEAAAAAAAAABAAIAAAAAAA=")
 tile_set = ExtResource("5_nch5g")
 y_sort_origin = 128
+
+[node name="window_se" parent="wall" unique_id=1762891925 instance=ExtResource("8_crnqe")]
+position = Vector2(80, 120)
+iso_tile_size = Vector2(32, 16)

@@ -69,58 +69,71 @@ y_sort_enabled = true
 [node name="side_sill" type="Sprite2D" parent="door" unique_id=799826309]
 position = Vector2(30, 31)
 texture = SubResource("AtlasTexture_fu6og")
-offset = Vector2(0, -32)
+offset = Vector2(0, -64)
 
 [node name="side_jamb_0" type="Sprite2D" parent="door" unique_id=640630529]
 position = Vector2(60, 17)
 texture = SubResource("AtlasTexture_o5v1q")
-offset = Vector2(0, -65)
+offset = Vector2(0, -97)
 
 [node name="side_jamb_1" type="Sprite2D" parent="door" unique_id=309961885]
 position = Vector2(41, 33)
 texture = SubResource("AtlasTexture_axsgs")
-offset = Vector2(0, -70)
+offset = Vector2(0, -102)
 
 [node name="close_door_0" type="Sprite2D" parent="door/side_jamb_1" unique_id=1561201501]
 show_behind_parent = true
 position = Vector2(10, -44)
 texture = SubResource("AtlasTexture_4dgav")
-offset = Vector2(0, -32)
+offset = Vector2(0, -64)
 
 [node name="open_door_0" type="Sprite2D" parent="door/side_jamb_1" unique_id=1494382179]
 visible = false
 show_behind_parent = true
 position = Vector2(24, -44)
 texture = SubResource("AtlasTexture_4brj5")
-offset = Vector2(0, -32)
+offset = Vector2(0, -64)
 
 [node name="side_jamb_2" type="Sprite2D" parent="door" unique_id=875595378]
 position = Vector2(21, 48)
 texture = SubResource("AtlasTexture_axsgs")
-offset = Vector2(0, -75)
+offset = Vector2(0, -107)
 
 [node name="close_door_1" type="Sprite2D" parent="door/side_jamb_2" unique_id=48949338]
 show_behind_parent = true
 position = Vector2(10, -15)
 texture = SubResource("AtlasTexture_4dgav")
-offset = Vector2(0, -66)
+offset = Vector2(0, -98)
 
 [node name="open_door_1" type="Sprite2D" parent="door/side_jamb_2" unique_id=1364173495]
 visible = false
 show_behind_parent = true
 position = Vector2(10, -15)
 texture = SubResource("AtlasTexture_4brj5")
-offset = Vector2(0, -60)
+offset = Vector2(0, -92)
 
 [node name="side_jamb_3" type="Sprite2D" parent="door" unique_id=680831236]
 position = Vector2(0, 48)
 texture = SubResource("AtlasTexture_vmxr7")
-offset = Vector2(0, -65)
+offset = Vector2(0, -97)
+
+[node name="close_door_2" type="Sprite2D" parent="door/side_jamb_3" unique_id=1906776536]
+show_behind_parent = true
+position = Vector2(11, 0)
+texture = SubResource("AtlasTexture_4dgav")
+offset = Vector2(0, -103)
+
+[node name="open_door_2" type="Sprite2D" parent="door/side_jamb_3" unique_id=1856480324]
+visible = false
+show_behind_parent = true
+position = Vector2(11, 0)
+texture = SubResource("AtlasTexture_4brj5")
+offset = Vector2(0, -97)
 
 [node name="head_jamb" type="Sprite2D" parent="door/side_jamb_3" unique_id=433869610]
 position = Vector2(30, -70)
 texture = SubResource("AtlasTexture_crkvq")
-offset = Vector2(0, -42)
+offset = Vector2(0, -74)
 
 [node name="transom" type="Node2D" parent="door/side_jamb_3/head_jamb" unique_id=200729322]
 visible = false
@@ -169,22 +182,8 @@ offset = Vector2(0, -18)
 position = Vector2(30, -48)
 texture = SubResource("AtlasTexture_crkvq")
 
-[node name="close_door_2" type="Sprite2D" parent="door/side_jamb_3" unique_id=1906776536]
-show_behind_parent = true
-position = Vector2(11, 0)
-texture = SubResource("AtlasTexture_4dgav")
-offset = Vector2(0, -71)
-
-[node name="open_door_2" type="Sprite2D" parent="door/side_jamb_3" unique_id=1856480324]
-visible = false
-show_behind_parent = true
-position = Vector2(11, 0)
-texture = SubResource("AtlasTexture_4brj5")
-offset = Vector2(0, -65)
-
 [node name="tile_reference_0" type="Sprite2D" parent="." unique_id=917902731]
 z_index = -1
-position = Vector2(32, 16)
 texture = SubResource("AtlasTexture_i3rnv")
 script = ExtResource("4_vmxr7")
 only_shown_in_editor = true
@@ -197,7 +196,7 @@ script = ExtResource("4_vmxr7")
 only_shown_in_editor = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=558295921]
-position = Vector2(4.999999, -22)
+position = Vector2(19.999996, -6)
 rotation = 1.1082841
 shape = SubResource("CapsuleShape2D_jbk66")
 
