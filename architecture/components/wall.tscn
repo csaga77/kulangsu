@@ -12,13 +12,11 @@ region = Rect2(0, 0, 64, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_gj3jv"]
 atlas = ExtResource("5_h7tnk")
-region = Rect2(768, 13, 40, 52)
+region = Rect2(0, 0, 64, 64)
 
 [node name="wall" type="Node2D" unique_id=1803625367]
 script = ExtResource("1_h7tnk")
-levels = 3
-pattern = 3
-is_front_visible = false
+levels = 5
 
 [node name="tile_reference_0" type="Sprite2D" parent="." unique_id=3367058]
 texture = SubResource("AtlasTexture_i3rnv")
@@ -27,5 +25,5 @@ only_shown_in_editor = true
 
 [node name="wall_block" type="Sprite2D" parent="." unique_id=1076808908]
 material = ExtResource("2_h7tnk")
-position = Vector2(-12, -9)
+position = Vector2(0, -16)
 texture = SubResource("AtlasTexture_gj3jv")

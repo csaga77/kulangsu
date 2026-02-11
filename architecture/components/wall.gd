@@ -16,7 +16,14 @@ extends IsometricBlock
 		levels = new_levels
 		_update_tiles()
 		
-@export_range(0, 3, 1) var pattern = 0:
+@export_range(0, 2, 1) var thickness = 0:
+	set(new_thickness):
+		if thickness == new_thickness:
+			return
+		thickness = new_thickness
+		_update_tiles()
+		
+@export_range(0, 32, 1) var pattern = 0:
 	set(new_pattern):
 		if pattern == new_pattern:
 			return
@@ -80,10 +87,12 @@ func _do_update_tiles() -> void:
 	mat.set_shader_parameter("is_front_visible", is_front_visible)
 	mat.set_shader_parameter("is_left_visible", is_left_visible)
 	
-	var wall_template = m_wall_patterns[pattern]
+	#var wall_template = m_wall_patterns[pattern]
+	var region :Rect2 = Rect2(pattern * 64, thickness * 128, 64, 64)
+	var origin :Vector2 = Vector2(0, -16)
 	m_wall_block.texture.atlas = m_atlas_texture
-	m_wall_block.texture.region = wall_template.region
-	m_wall_block.position = wall_template.origin + Vector2(8.0, -4.0) * offset
+	m_wall_block.texture.region = region
+	m_wall_block.position = origin + Vector2(8.0, -4.0) * offset
 	for child in m_wall_block.get_children():
 		child.queue_free()
 
@@ -92,7 +101,7 @@ func _do_update_tiles() -> void:
 			var sprite := Sprite2D.new()
 			sprite.texture = AtlasTexture.new()
 			sprite.texture.atlas = m_atlas_texture
-			sprite.texture.region = wall_template.region
+			sprite.texture.region = region
 			sprite.position.y = level * -32
 			if level == levels - 1:
 				var sub_mat :ShaderMaterial = mat.duplicate()
