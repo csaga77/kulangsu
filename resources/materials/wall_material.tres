@@ -11,4 +11,4 @@ shader_parameter/color_front = Color(1, 0, 1, 1)
 shader_parameter/texture_front = ExtResource("3_oohfw")
 shader_parameter/color_left = Color(0, 1, 0, 1)
 shader_parameter/texture_left = ExtResource("3_oohfw")
-shader_parameter/source_tile_size = 66.0
+shader_parameter/source_tile_size = 64.0
