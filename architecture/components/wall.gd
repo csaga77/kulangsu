@@ -30,39 +30,21 @@ extends IsometricBlock
 		pattern = new_pattern
 		_update_tiles()
 		
-@export var is_front_visible = true:
+@export var is_south_east_visible = true:
 	set(new_visible):
-		if is_front_visible == new_visible:
+		if is_south_east_visible == new_visible:
 			return
-		is_front_visible = new_visible
+		is_south_east_visible = new_visible
 		_update_tiles()
-@export var is_left_visible = true:
+@export var is_south_west_visible = true:
 	set(new_visible):
-		if is_left_visible == new_visible:
+		if is_south_west_visible == new_visible:
 			return
-		is_left_visible = new_visible
+		is_south_west_visible = new_visible
 		_update_tiles()
 
 @onready var m_wall_block = $wall_block
 
-var m_wall_patterns := [
-	{
-		"region": Rect2i(0, 0, 64, 64), 
-		"origin": Vector2(0, -16)
-	},
-	{
-		"region": Rect2i(80, 16, 32, 48), 
-		"origin": Vector2(0, -8)
-	},
-	{
-		"region": Rect2i(128, 0, 48, 64), 
-		"origin": Vector2(-8, -16)
-	},
-	{
-		"region": Rect2i(768, 13, 40, 52), 
-		"origin": Vector2(-12, -9.0)
-	}
-]
 var m_atlas_texture :Texture2D = preload("res://resources/sprites/architecture/components/wall_templates_0.png")
 var m_is_updating := false
 
@@ -84,10 +66,9 @@ func _do_update_tiles() -> void:
 	
 	var mat :ShaderMaterial = m_wall_block.material
 	mat.set_shader_parameter("is_top_visible", levels == 1)
-	mat.set_shader_parameter("is_front_visible", is_front_visible)
-	mat.set_shader_parameter("is_left_visible", is_left_visible)
+	mat.set_shader_parameter("is_south_east_visible", is_south_east_visible)
+	mat.set_shader_parameter("is_south_west_visible", is_south_west_visible)
 	
-	#var wall_template = m_wall_patterns[pattern]
 	var region :Rect2 = Rect2(pattern * 64, thickness * 128, 64, 64)
 	var origin :Vector2 = Vector2(0, -16)
 	m_wall_block.texture.atlas = m_atlas_texture

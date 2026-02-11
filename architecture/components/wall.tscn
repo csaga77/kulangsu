@@ -16,7 +16,6 @@ region = Rect2(0, 0, 64, 64)
 
 [node name="wall" type="Node2D" unique_id=1803625367]
 script = ExtResource("1_h7tnk")
-levels = 5
 
 [node name="tile_reference_0" type="Sprite2D" parent="." unique_id=3367058]
 texture = SubResource("AtlasTexture_i3rnv")

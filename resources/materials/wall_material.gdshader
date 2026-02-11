@@ -26,7 +26,7 @@ void fragment() {
 
 	vec4 src = texture(TEXTURE, pp_uv);
 	vec4 out_col = vec4(0.0);
-
+	
 	if (src.a > 0.0) {
 
 		vec2 px_tile = mod(px_src, source_tile_size);
@@ -66,6 +66,13 @@ void fragment() {
 
 		} else {
 			out_col = src;
+		}
+		
+		vec2 shade_uv = pp_uv + vec2(0.0, source_tile_size / texture_size.y);
+		//Shade image is in the same texture
+		vec4 shade = texture(TEXTURE, shade_uv);
+		if (out_col.a > 0.0 && shade.a > 0.0) {
+			out_col.rgb = mix(out_col.rgb, shade.rgb, 0.7);
 		}
 	}
 
