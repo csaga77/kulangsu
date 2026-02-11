@@ -10,6 +10,7 @@
 [ext_resource type="Texture2D" uid="uid://d1eggfbd26th0" path="res://resources/sprites/architecture/components/top_0_1.png" id="6_51bbv"]
 [ext_resource type="Texture2D" uid="uid://12yx0t8mr628" path="res://resources/sprites/architecture/components/top_0_2.png" id="7_2vh7r"]
 [ext_resource type="TileSet" uid="uid://kg3mo0lcgdx7" path="res://resources/tilesets/architecture/wall_1_tiles.tres" id="10_woyct"]
+[ext_resource type="PackedScene" uid="uid://bt0wh0rca6swt" path="res://architecture/components/wall.tscn" id="11_51bbv"]
 [ext_resource type="Texture2D" uid="uid://cr8hqyr4s4rhr" path="res://resources/sprites/architecture/components/solid_walls_0_tiles.png" id="11_1848t"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="11_gj3jv"]
 [ext_resource type="Texture2D" uid="uid://dcvd2ipqyhq1q" path="res://resources/sprites/symbols_0.png" id="13_wweno"]
@@ -3027,13 +3028,13 @@ sources/4 = SubResource("TileSetAtlasSource_y7vyg")
 sources/5 = SubResource("TileSetAtlasSource_ygsqf")
 sources/6 = SubResource("TileSetAtlasSource_817j1")
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_gj3jv"]
-atlas = ExtResource("11_1848t")
-region = Rect2(768, 13, 40, 52)
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_i3rnv"]
 atlas = ExtResource("13_wweno")
 region = Rect2(0, 0, 64, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_gj3jv"]
+atlas = ExtResource("11_1848t")
+region = Rect2(768, 13, 40, 52)
 
 [node name="test_building_tiles" type="Node2D" unique_id=1496326369]
 
@@ -3056,23 +3057,11 @@ tile_set = ExtResource("2_07fga")
 
 [node name="solid_wall" type="TileMapLayer" parent="." unique_id=725748685]
 material = ExtResource("3_87ck2")
-tile_map_data = PackedByteArray("AAAZABoAAQAAAAAAAAAZABkAAQAAAAAAAAAZABgAAQAAAAAAAAAcABcAAQAFAAAAAAAcABkAAQAFAAAAAAAZABYAAQADAAAAAAAZABUAAQADAAAAAAAZABcAAQADAAAAAAAZABQAAQANAAAAAAAZABMAAQANAAAAAAAZABIAAQANAAAAAAAbABwAAQANAAAAAAAdAB4AAQADAAAAAAAfACAAAQACAAAAAAAhACIAAQAMAAAAAAAbABoAAQABAAAAAAAiABQAAQADAAgAAAAiABUAAQADAAgAAAAiABMAAQADAAgAAAAiABYAAQADAAgAAAAiABcAAQADAAsAAAAiABgAAQADAA8AAAAiABkAAQADAA8AAAAiABoAAQADAA8AAAAiABsAAQADAA8AAAAiABwAAQADAA8AAAAiAB0AAQADAA8AAAAiAB4AAQADAA8AAAAiAB8AAQADAA8AAAAiACAAAQADAA8AAAAiACEAAQADAA8AAAAiABIAAQADAA8AAAAiABEAAQADAA8AAAA=")
+tile_map_data = PackedByteArray("AAAZABoAAQAAAAAAAAAZABkAAQAAAAAAAAAZABgAAQAAAAAAAAAcABcAAQAFAAAAAAAcABkAAQAFAAAAAAAZABYAAQADAAAAAAAZABUAAQADAAAAAAAZABcAAQADAAAAAAAZABQAAQANAAAAAAAZABMAAQANAAAAAAAZABIAAQANAAAAAAAbABwAAQANAAAAAAAdAB4AAQADAAAAAAAfACAAAQACAAAAAAAhACIAAQAMAAAAAAAbABoAAQABAAAAAAAiABQAAQADAAgAAAAiABUAAQADAAgAAAAiABMAAQADAAgAAAAiABYAAQADAAgAAAAiABcAAQADAAsAAAAiABgAAQADAA8AAAAiABkAAQADAA8AAAAiABoAAQADAA8AAAAiABsAAQADAA8AAAAiABwAAQADAA8AAAAiAB0AAQADAA8AAAAiAB4AAQADAA8AAAAiAB8AAQADAA8AAAAiACAAAQADAA8AAAAiACEAAQADAA8AAAAiABIAAQADAA8AAAAiABEAAQADAA8AAAAAAP7/AAAAAAAAAQABAP7/AAAAAAAAAQACAP7/AAAAAAAAAQA=")
 tile_set = ExtResource("10_woyct")
 
-[node name="Node2D" type="Node2D" parent="." unique_id=1074030130]
+[node name="Node2D" parent="." unique_id=1803625367 instance=ExtResource("11_51bbv")]
 position = Vector2(-32, -80)
-script = ExtResource("11_gj3jv")
-
-[node name="wall_block" type="Sprite2D" parent="Node2D" unique_id=319309763]
-material = ExtResource("3_87ck2")
-texture = SubResource("AtlasTexture_gj3jv")
-offset = Vector2(-12, -9)
-script = ExtResource("11_gj3jv")
-
-[node name="tile_reference_0" type="Sprite2D" parent="Node2D" unique_id=186534393]
-texture = SubResource("AtlasTexture_i3rnv")
-script = ExtResource("11_gj3jv")
-only_shown_in_editor = true
 
 [node name="Node2D2" type="Node2D" parent="." unique_id=1550463001]
 position = Vector2(0, -64)

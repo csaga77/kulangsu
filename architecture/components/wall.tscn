@@ -1,0 +1,28 @@
+[gd_scene format=3 uid="uid://bt0wh0rca6swt"]
+
+[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="1_b46vr"]
+[ext_resource type="Script" uid="uid://700n85rau1ir" path="res://architecture/components/wall.gd" id="1_h7tnk"]
+[ext_resource type="Material" uid="uid://ksyd4he0r227" path="res://resources/materials/wall_material.tres" id="2_h7tnk"]
+[ext_resource type="Texture2D" uid="uid://cr8hqyr4s4rhr" path="res://resources/sprites/architecture/components/solid_walls_0_tiles.png" id="3_g654y"]
+[ext_resource type="Texture2D" uid="uid://dcvd2ipqyhq1q" path="res://resources/sprites/symbols_0.png" id="4_c07vg"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_i3rnv"]
+atlas = ExtResource("4_c07vg")
+region = Rect2(0, 0, 64, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_gj3jv"]
+atlas = ExtResource("3_g654y")
+region = Rect2(768, 13, 40, 52)
+
+[node name="wall" type="Node2D" unique_id=1803625367]
+script = ExtResource("1_h7tnk")
+
+[node name="tile_reference_0" type="Sprite2D" parent="." unique_id=3367058]
+texture = SubResource("AtlasTexture_i3rnv")
+script = ExtResource("1_b46vr")
+only_shown_in_editor = true
+
+[node name="wall_block" type="Sprite2D" parent="." unique_id=1076808908]
+material = ExtResource("2_h7tnk")
+position = Vector2(-12, -9)
+texture = SubResource("AtlasTexture_gj3jv")
