@@ -1,0 +1,15 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://ksyd4he0r227"]
+
+[ext_resource type="Shader" uid="uid://dkwy8jpcc6xy8" path="res://resources/materials/wall_material.gdshader" id="1_b23bv"]
+[ext_resource type="Texture2D" uid="uid://b1xojkjfqykvn" path="res://resources/materials/brick_0.png" id="3_oohfw"]
+
+[resource]
+shader = ExtResource("1_b23bv")
+shader_parameter/color_top = Color(1, 1, 0, 1)
+shader_parameter/texture_top = ExtResource("3_oohfw")
+shader_parameter/color_front = Color(1, 0, 1, 1)
+shader_parameter/texture_front = ExtResource("3_oohfw")
+shader_parameter/color_left = Color(0, 1, 0, 1)
+shader_parameter/texture_left = ExtResource("3_oohfw")
+shader_parameter/tolerance = 0.02
+shader_parameter/tiles_set_size = Vector2(60, 8)
