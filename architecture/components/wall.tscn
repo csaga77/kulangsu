@@ -14,7 +14,6 @@ script = ExtResource("1_h7tnk")
 height = 4
 size = 1
 pattern = 6
-mask = Array[bool]([true, false, true])
 
 [node name="tile_reference_0" type="Sprite2D" parent="." unique_id=3367058]
 texture = SubResource("AtlasTexture_i3rnv")

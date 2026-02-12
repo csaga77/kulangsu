@@ -5,9 +5,12 @@
 [node name="window_block" type="Node2D" unique_id=268013310]
 y_sort_enabled = true
 script = ExtResource("1_pyy81")
-window_size = 3
-stool_size = 2
+window_size = 2
+window_height = 2
 wall_size = 1
 
 [node name="base_block" type="Node2D" parent="." unique_id=292109739]
 y_sort_enabled = true
+
+[connection signal="body_entered" from="base_block/window_se" to="base_block/window_se" method="_on_body_entered"]
+[connection signal="body_exited" from="base_block/window_se" to="base_block/window_se" method="_on_body_exited"]
