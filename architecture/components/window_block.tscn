@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://d1fl1q5rxk02u"]
+
+[ext_resource type="Script" uid="uid://dxvblcffsiam6" path="res://architecture/components/window_block.gd" id="1_pyy81"]
+
+[node name="window_block" type="Node2D" unique_id=268013310]
+y_sort_enabled = true
+script = ExtResource("1_pyy81")
+window_size = 3
+stool_size = 2
+wall_size = 1
+
+[node name="base_block" type="Node2D" parent="." unique_id=292109739]
+y_sort_enabled = true

@@ -4,25 +4,23 @@
 [ext_resource type="Script" uid="uid://700n85rau1ir" path="res://architecture/components/wall.gd" id="1_h7tnk"]
 [ext_resource type="Material" uid="uid://ksyd4he0r227" path="res://resources/materials/wall_material.tres" id="2_h7tnk"]
 [ext_resource type="Texture2D" uid="uid://dcvd2ipqyhq1q" path="res://resources/sprites/symbols_0.png" id="4_c07vg"]
-[ext_resource type="Texture2D" uid="uid://dahxqggdgavxf" path="res://resources/sprites/architecture/components/wall_templates_0.png" id="5_h7tnk"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_i3rnv"]
 atlas = ExtResource("4_c07vg")
 region = Rect2(0, 0, 64, 32)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_gj3jv"]
-atlas = ExtResource("5_h7tnk")
-region = Rect2(0, 0, 64, 64)
-
 [node name="wall" type="Node2D" unique_id=1803625367]
 script = ExtResource("1_h7tnk")
+height = 4
+size = 1
+pattern = 6
+mask = Array[bool]([true, false, true])
 
 [node name="tile_reference_0" type="Sprite2D" parent="." unique_id=3367058]
 texture = SubResource("AtlasTexture_i3rnv")
 script = ExtResource("1_b46vr")
 only_shown_in_editor = true
 
-[node name="wall_block" type="Sprite2D" parent="." unique_id=1076808908]
+[node name="wall_block" type="Node2D" parent="." unique_id=1710527606]
 material = ExtResource("2_h7tnk")
 position = Vector2(0, -16)
-texture = SubResource("AtlasTexture_gj3jv")

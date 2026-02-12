@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://da7v1pw8oq6yj"]
+
+[ext_resource type="Script" uid="uid://dxvblcffsiam6" path="res://architecture/components/window_block.gd" id="1_dbe1m"]
+[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="3_tyom5"]
+
+[node name="window" type="Node2D" unique_id=1803625367]
+script = ExtResource("1_dbe1m")
+wall_size = 1
+
+[node name="base_block" type="Node2D" parent="." unique_id=1408012782]
+script = ExtResource("3_tyom5")

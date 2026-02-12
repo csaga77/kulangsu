@@ -4,8 +4,9 @@
 [ext_resource type="Texture2D" uid="uid://b1xojkjfqykvn" path="res://resources/materials/brick_0.png" id="2_oohfw"]
 
 [resource]
+resource_local_to_scene = true
 shader = ExtResource("1_b23bv")
-shader_parameter/is_top_visible = false
+shader_parameter/is_top_visible = true
 shader_parameter/color_top = Color(1, 1, 0, 1)
 shader_parameter/texture_top = ExtResource("2_oohfw")
 shader_parameter/is_south_east_visible = true
