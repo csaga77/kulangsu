@@ -11,14 +11,14 @@ extends IsometricBlock
 		if stool_height == new_height:
 			return
 		stool_height = new_height
-		_update()
+		_update_height()
 		
 @export var indent = 0:
 	set(new_indent):
 		if indent == new_indent:
 			return
 		indent = new_indent
-		_update()
+		_update_height()
 
 @export var is_open := false:
 	set(new_is_open):
@@ -29,7 +29,8 @@ extends IsometricBlock
 
 @export var align_parts :Array[Node2D]
 
-# Called when the node enters the scene tree for the first time.
+var m_is_updating = false
+
 func _ready() -> void:
 	super._ready()
 	if is_instance_of(self, Area2D) and !hot_areas.has(self):
@@ -39,10 +40,18 @@ func _ready() -> void:
 			area.body_entered.connect(self._on_body_entered)
 		if !area.body_exited.is_connected(self._on_body_exited):
 			area.body_exited.connect(self._on_body_exited)
-	_update()
 	_update_open()
+	_update_height()
 	
-func _update() -> void:
+func _update_height() -> void:
+	if m_is_updating:
+		return
+	m_is_updating = true
+	call_deferred("_do_update_height")
+	
+func _do_update_height() -> void:
+	m_is_updating = false
+	#print("Door._update_height()")
 	for part in align_parts:
 		part.position = Vector2(0, -32 * stool_height) + Vector2(-2, -1) * indent
 

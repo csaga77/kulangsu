@@ -7,71 +7,71 @@ extends IsometricBlock
 		if offset == new_offset:
 			return
 		offset = new_offset
-		_update_tiles()
+		_reload()
 		
 @export var height = 1:
 	set(new_size):
 		if height == new_size or new_size < 0:
 			return
 		height = new_size
-		_update_tiles()
+		_reload()
 		
 @export_enum("Full", "Half", "Quarter") var size = 0:
 	set(new_size):
 		if size == new_size:
 			return
 		size = new_size
-		_update_tiles()
+		_reload()
 		
 @export_range(0, 32, 1) var pattern = 0:
 	set(new_pattern):
 		if pattern == new_pattern:
 			return
 		pattern = new_pattern
-		_update_tiles()
+		_reload()
 		
 @export var is_south_east_visible = true:
 	set(new_visible):
 		if is_south_east_visible == new_visible:
 			return
 		is_south_east_visible = new_visible
-		_update_tiles()
+		_reload()
 
 @export var is_south_west_visible = true:
 	set(new_visible):
 		if is_south_west_visible == new_visible:
 			return
 		is_south_west_visible = new_visible
-		_update_tiles()
+		_reload()
 		
 @export var mask :Array[bool]:
 	set(new_mask):
 		if mask == new_mask:
 			return
 		mask = new_mask
-		_update_tiles()
+		_reload()
 
 @onready var m_wall_block = $wall_block
 
 var m_atlas_texture :Texture2D = preload("res://resources/sprites/architecture/components/wall_templates_0.png")
-var m_is_updating := false
+var m_is_reloading := false
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	super._ready()
-	_update_tiles()
+	_reload()
 
-func _update_tiles() -> void:
-	if m_is_updating:
+func _reload() -> void:
+	if m_is_reloading:
 		return
-	m_is_updating = true
-	call_deferred("_do_update_tiles")
+	m_is_reloading = true
+	call_deferred("_do_reload")
 	
-func _do_update_tiles() -> void:
-	m_is_updating = false
+func _do_reload() -> void:
+	#print("Wall._do_reload()")
+	m_is_reloading = false
 	if m_wall_block == null:
 		return
-	
 	var mat :ShaderMaterial = m_wall_block.material
 	mat.set_shader_parameter("is_top_visible", height == 1)
 	mat.set_shader_parameter("is_south_east_visible", is_south_east_visible)

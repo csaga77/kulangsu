@@ -7,28 +7,28 @@ extends IsometricBlock
 		if size == new_size or new_size < 2:
 			return
 		size = new_size
-		_update_pillar()
+		_reload()
 		
 @export var base_texture: Texture2D:
 	set(new_texture):
 		if base_texture == new_texture:
 			return
 		base_texture = new_texture
-		_update_pillar()
+		_reload()
 		
 @export var mid_texture: Texture2D:
 	set(new_texture):
 		if mid_texture == new_texture:
 			return
 		mid_texture = new_texture
-		_update_pillar()
+		_reload()
 		
 @export var top_texture: Texture2D:
 	set(new_texture):
 		if top_texture == new_texture:
 			return
 		top_texture = new_texture
-		_update_pillar()
+		_reload()
 
 @onready var m_base :Sprite2D = $base
 @onready var m_top  :Sprite2D = $mid/top
@@ -38,11 +38,14 @@ extends IsometricBlock
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	super._ready()
-	_update_pillar()
+	# no need to _reload() during _ready()
+	# It is already loaded from a scene file, no need to duplicate loading.
+	#_reload()
 
-func _update_pillar() -> void:
+func _reload() -> void:
 	if m_top == null:
 		return
+	print("Pillar._reload()")
 	m_mask.clear()
 	m_mask.set_cell(Vector2i(-2, -1), 0, Vector2i(0, 0))
 	m_top.position.y = -iso_tile_size.y * size + iso_tile_size.y / 2

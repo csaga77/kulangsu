@@ -7,35 +7,21 @@ extends IsometricBlock
 		if offset == new_offset:
 			return
 		offset = new_offset
-		_update_tiles()
-		
-@export var window_size = 1:
-	set(new_size):
-		if window_size == new_size or new_size < 0:
-			return
-		window_size = new_size
-		_update_tiles()
-		
-@export var window_height = 1:
-	set(new_size):
-		if window_height == new_size or new_size < 1:
-			return
-		window_height = new_size
-		_update_tiles()
+		_reload()
 		
 @export var header_size = 1:
 	set(new_size):
 		if header_size == new_size or new_size < 0:
 			return
 		header_size = new_size
-		_update_tiles()
+		_reload()
 		
 @export var stool_size = 1:
 	set(new_height):
 		if stool_size == new_height or new_height < 0:
 			return
 		stool_size = new_height
-		_update_tiles()
+		_reload()
 		
 @export var indent = 0:
 	set(new_indent):
@@ -50,28 +36,28 @@ extends IsometricBlock
 		if wall_size == new_size:
 			return
 		wall_size = new_size
-		_update_tiles()
+		_reload()
 		
 @export_enum("SE", "SW") var facing = 0:
 	set(new_facing):
 		if facing == new_facing:
 			return
 		facing = new_facing
-		_update_tiles()
+		_reload()
 		
 @export var is_south_east_visible = true:
 	set(new_visible):
 		if is_south_east_visible == new_visible:
 			return
 		is_south_east_visible = new_visible
-		_update_tiles()
+		_reload()
 
 @export var is_south_west_visible = true:
 	set(new_visible):
 		if is_south_west_visible == new_visible:
 			return
 		is_south_west_visible = new_visible
-		_update_tiles()
+		_reload()
 		
 @export var is_open := false:
 	set(new_is_open):
@@ -84,33 +70,35 @@ extends IsometricBlock
 
 @onready var m_wall_block :Node2D = $base_block
 
-var m_is_updating := false
+var m_is_reloading := false
 var m_window :Door
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	super._ready()
-	_update_tiles()
+	_reload()
 
-func _update_tiles() -> void:
-	if m_is_updating:
+func _reload() -> void:
+	if m_is_reloading:
 		return
-	m_is_updating = true
-	call_deferred("_do_update_tiles")
+	m_is_reloading = true
+	call_deferred("_do_reload")
 	
-func _do_update_tiles() -> void:
-	m_is_updating = false
+func _do_reload() -> void:
+	#print("WindowBlock._do_reload()")
+	m_is_reloading = false
 	if m_wall_block == null:
 		return
-	
 	for child in m_wall_block.get_children():
 		child.queue_free()
 		
-	var height = stool_size + window_height + header_size
+	var window_height = 2 #determined by window type
+	var window_width = 2 #determined by window type
+	var total_height = stool_size + window_height + header_size
 	
-	if height > 0:
+	if total_height > 0:
 		if stool_size > 0:
-			for i in range(window_size):
+			for i in range(window_width):
 				var stool :Wall = preload("res://architecture/components/wall.tscn").instantiate()
 				match facing:
 					0: #SE 
@@ -137,12 +125,12 @@ func _do_update_tiles() -> void:
 		
 		if header_size > 0:
 			var wall_mask :Array[bool]
-			for i in range(height):
+			for i in range(total_height):
 				if i >= stool_size + window_height:
 					wall_mask.append(true)
 				else:
 					wall_mask.append(false)
-			for i in range(window_size):
+			for i in range(window_width):
 				var header :Wall = preload("res://architecture/components/wall.tscn").instantiate()
 				match facing:
 					0: #SE 
@@ -156,7 +144,7 @@ func _do_update_tiles() -> void:
 						header.is_south_west_visible = is_south_west_visible
 						header.pattern = 5
 				header.size = wall_size
-				header.height = height
+				header.height = total_height
 				header.offset = offset
 				header.mask = wall_mask
 				m_wall_block.add_child(header)
