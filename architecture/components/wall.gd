@@ -68,6 +68,8 @@ extends IsometricBlock
 @onready var m_wall_block = $wall_block
 
 var m_atlas_texture :Texture2D = preload("res://resources/sprites/architecture/walls/wall_templates_0.png")
+var m_shade_texture :Texture2D = preload("res://resources/sprites/architecture/walls/wall_templates_shade_0.png")
+var m_footer_mask_texture :Texture2D = preload("res://resources/sprites/architecture/walls/wall_templates_footer_0.png")
 var m_is_reloading := false
 
 # Called when the node enters the scene tree for the first time.
@@ -87,7 +89,8 @@ func _do_reload() -> void:
 	if m_wall_block == null:
 		return
 	var mat :ShaderMaterial = m_wall_block.material
-	mat.set_shader_parameter("is_top_visible", height == 1)
+	mat.set_shader_parameter("texture_shade", m_shade_texture)
+	mat.set_shader_parameter("texture_footer_mask", m_footer_mask_texture)
 	mat.set_shader_parameter("is_south_east_visible", is_south_east_visible)
 	mat.set_shader_parameter("is_south_west_visible", is_south_west_visible)
 	mat.set_shader_parameter("texture_top", texture)
@@ -109,7 +112,7 @@ func _do_reload() -> void:
 		mid_cap = cap_mat.duplicate()
 		mid_cap.set_shader_parameter("is_footer_visible", false)
 	
-	var region :Rect2 = Rect2(pattern * 64, size * 192, 64, 64)
+	var region :Rect2 = Rect2(pattern * 64, size * 64, 64, 64)
 	var origin :Vector2 = Vector2(0, -16)
 	m_wall_block.position = origin + Vector2(8.0, -4.0) * offset.y + Vector2(-8.0, -4.0) * offset.x
 	for child in m_wall_block.get_children():
