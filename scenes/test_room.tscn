@@ -6,6 +6,7 @@
 [ext_resource type="TileSet" uid="uid://emarqgj57jx7" path="res://resources/tilesets/architecture/floor_0_tiles.tres" id="4_mous7"]
 [ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="5_sg3ht"]
 [ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="7_xsufa"]
+[ext_resource type="PackedScene" uid="uid://bpja8v0mmawj1" path="res://architecture/components/door_1x1x2_se.tscn" id="8_p0w5i"]
 [ext_resource type="PackedScene" uid="uid://b2ascu2ylwbt6" path="res://architecture/components/window_3x2x2_sw.tscn" id="9_xsufa"]
 [ext_resource type="PackedScene" uid="uid://d03gognopp6ym" path="res://architecture/components/window_3x2x2_se.tscn" id="10_p0w5i"]
 [ext_resource type="PackedScene" uid="uid://bt0wh0rca6swt" path="res://architecture/components/wall.tscn" id="10_xsufa"]
@@ -204,6 +205,11 @@ footer_texture = ExtResource("11_p0w5i")
 is_south_west_visible = false
 iso_tile_size = Vector2(16, 8)
 
+[node name="door_1x1x2_se" parent="wall/base_wall" unique_id=1287884761 instance=ExtResource("8_p0w5i")]
+position = Vector2(-48, 40)
+offset = Vector2i(1, 0)
+iso_tile_size = Vector2(16, 8)
+
 [node name="up_wall" type="Node2D" parent="wall" unique_id=1794402496 node_paths=PackedStringArray("visibility_mask_layers")]
 y_sort_enabled = true
 script = ExtResource("7_xsufa")
@@ -261,6 +267,16 @@ texture = ExtResource("11_p0w5i")
 mask = Array[bool]([false])
 iso_tile_size = Vector2(16, 8)
 
+[node name="nw_3" parent="wall/up_wall" unique_id=1593039353 instance=ExtResource("10_xsufa")]
+position = Vector2(-40, 44)
+offset = Vector2i(2, 0)
+height = 4
+size = 1
+pattern = 6
+texture = ExtResource("11_p0w5i")
+mask = Array[bool]([false, false])
+iso_tile_size = Vector2(16, 8)
+
 [node name="nw_1" parent="wall/up_wall" unique_id=1909862794 instance=ExtResource("10_xsufa")]
 position = Vector2(-72, 60)
 offset = Vector2i(2, 0)
@@ -281,6 +297,7 @@ mask = Array[bool]([false])
 iso_tile_size = Vector2(16, 8)
 
 [node name="front" type="Node2D" parent="wall/up_wall" unique_id=197174568 node_paths=PackedStringArray("visibility_mask_layers")]
+visible = false
 y_sort_enabled = true
 script = ExtResource("7_xsufa")
 visibility_mask_layers = [NodePath("../../../floor")]
