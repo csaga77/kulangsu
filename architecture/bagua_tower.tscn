@@ -12,7 +12,7 @@
 [ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="11_ied5s"]
 [ext_resource type="Texture2D" uid="uid://xxv42q7vyh85" path="res://resources/sprites/architecture/bagua_tower.png" id="12_8b4w8"]
 [ext_resource type="TileSet" uid="uid://c2edqbdaenat2" path="res://resources/tilesets/symbols_0_tiles.tres" id="12_64aem"]
-[ext_resource type="PackedScene" uid="uid://d03gognopp6ym" path="res://architecture/components/window_se.tscn" id="12_p5n1q"]
+[ext_resource type="PackedScene" uid="uid://d1fl1q5rxk02u" path="res://architecture/components/window_block.tscn" id="12_p5n1q"]
 [ext_resource type="PackedScene" uid="uid://s0b4b5sxed2f" path="res://architecture/components/pillar.tscn" id="13_8b4w8"]
 [ext_resource type="Texture2D" uid="uid://d0nn3fs56i7ih" path="res://resources/sprites/light_well_mask.png" id="13_p5n1q"]
 
@@ -425,12 +425,12 @@ y_sort_origin = -16
 
 [node name="wall_base" type="TileMapLayer" parent="base/ground_level/corner_room_south" unique_id=1881025366]
 y_sort_enabled = true
-tile_map_data = PackedByteArray("AAD+//7/AQACAAIAAAD///7/AgAGAAIAAQABAP7/AgAEAAIAAQD+////AgAHAAIAAQD+/wEAAgAFAAIAAQD+/wIAAQAHAAAAAAACAP7/AQAIAAAAAAD//wIAAQAFAAQAAAABAAIAAQAFAAQAAAACAAIAAQAAAAAAAAACAAEAAQAGAAYAAAACAP//AQAGAAYAAAACAAAAAQAGAAYAAAAAAAIAAQAFAAQAAAA=")
+tile_map_data = PackedByteArray("AAD+//7/AQACAAIAAAD///7/AgAGAAIAAQABAP7/AgAEAAIAAQD+////AgAHAAIAAQD+/wEAAgAFAAIAAQD+/wIAAQAHAAAAAAACAP7/AQAIAAAAAAACAAIAAQAAAAAAAAACAAEAAgAJAAYAAAACAP//AgALAAYAAwABAAIAAgAIAAYAAAD//wIAAgAKAAYAAwA=")
 tile_set = ExtResource("7_fcs3d")
 
 [node name="wall_base_top" type="TileMapLayer" parent="base/ground_level/corner_room_south" unique_id=128920909]
 y_sort_enabled = true
-tile_map_data = PackedByteArray("AAD9//3/BAAHAAAAAAABAAEABAAIAAAAAAABAP3/BAAGAAAAAAD9/wEABAAFAAAAAAD+/wEABQANAAEAAAAAAAEABQANAAEAAAABAAAABQAOAAEAAAABAP7/BQAOAAEAAAAAAP3/BQANAAAAAQD+//3/BQANAAAAAQD9/wAABQAOAAAAAQD9//7/BQAOAAAAAQABAP//BQAOAAEAAAD//wEABQANAAEAAAA=")
+tile_map_data = PackedByteArray("AAD9//3/BAAHAAAAAAABAAEABAAIAAAAAAABAP3/BAAGAAAAAAD9/wEABAAFAAAAAAAAAP3/BQANAAAAAQD+//3/BQANAAAAAQD9/wAABQAOAAAAAQD9//7/BQAOAAAAAQABAP7/BQAQAAEAAwABAAAABQAQAAEAAAD+/wEABQAPAAEAAwAAAAEABQAPAAEAAAA=")
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 32
 
@@ -484,10 +484,6 @@ tile_map_data = PackedByteArray("AAD9/wEAAQAHAAAAAAD+/wEAAgAKAAQAAwAAAAEAAgAIAAQ
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 32
 
-[node name="window_se" parent="base/ground_level/corner_room_south/front_wall/front_wall_0" unique_id=1762891925 instance=ExtResource("12_p5n1q")]
-position = Vector2(80, 24)
-iso_tile_size = Vector2(16, 8)
-
 [node name="front_wall_1" type="TileMapLayer" parent="base/ground_level/corner_room_south/front_wall" unique_id=1692282591]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD8/wAAAQAHAAAAAAD9/wAAAgAKAAQAAwD//wAAAgAIAAQAAAAAAPz/AQAIAAAAAAAAAP3/AgALAAQAAwAAAP//AgAJAAQAAAAAAAAAAQAAAAAAAAA=")
@@ -496,15 +492,25 @@ y_sort_origin = 64
 
 [node name="front_wall_2" type="TileMapLayer" parent="base/ground_level/corner_room_south/front_wall" unique_id=378818501]
 y_sort_enabled = true
-tile_map_data = PackedByteArray("AAD7////AQAHAAAAAAD8////AQAFAAQAAAD+////AQAFAAQAAAD///v/AQAIAAAAAAD///z/AQAGAAQAAAD///7/AQAGAAQAAAD/////AQAAAAAAAAD9////AQAFAAQAAAD///3/AgAFAAQAAAA=")
+tile_map_data = PackedByteArray("AAD7////AQAHAAAAAAD///v/AQAIAAAAAAD/////AQAAAAAAAAD8////AgAKAAQAAwD+////AgAIAAQAAAD///z/AgALAAQAAwD///7/AgAJAAQAAAA=")
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 96
 
 [node name="front_wall_top" type="TileMapLayer" parent="base/ground_level/corner_room_south/front_wall" unique_id=274801033]
 y_sort_enabled = true
-tile_map_data = PackedByteArray("AAD6//7/BAAJAAAAAAD+//r/BAAKAAAAAAD7//7/BQANAAEAAAD8//7/BQANAAEAAAD9//7/BQANAAEAAAD+//3/BQAOAAEAAAD+//z/BQAOAAEAAAD+//v/BQAOAAEAAAD+//7/BAAIAAAAAAA=")
+tile_map_data = PackedByteArray("AAD6//7/BAAJAAAAAAD+//r/BAAKAAAAAAD+//7/BAAIAAAAAAD9//7/BQAPAAEAAAD7//7/BQAPAAEAAwD+//3/BQAQAAEAAAD+//v/BQAQAAEAAwA=")
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 128
+
+[node name="window_se" parent="base/ground_level/corner_room_south/front_wall" unique_id=268013310 instance=ExtResource("12_p5n1q")]
+position = Vector2(80, 56)
+facing = 0
+iso_tile_size = Vector2(16, 8)
+
+[node name="window_sw" parent="base/ground_level/corner_room_south/front_wall" unique_id=1855700631 instance=ExtResource("12_p5n1q")]
+position = Vector2(-32, 64)
+offset = Vector2i(0, 2)
+iso_tile_size = Vector2(16, 8)
 
 [node name="corner_room_west" type="Node2D" parent="base/ground_level" unique_id=1422683478 node_paths=PackedStringArray("physics_layers")]
 y_sort_enabled = true
@@ -659,6 +665,7 @@ position = Vector2(128, 640)
 size = 8
 
 [node name="upper_level" type="Node2D" parent="base/ground_level" unique_id=1419816824 node_paths=PackedStringArray("physics_layers", "rooms", "visibility_mask_layers")]
+visible = false
 z_index = 2
 y_sort_enabled = true
 position = Vector2(0, -128)

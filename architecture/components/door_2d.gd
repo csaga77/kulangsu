@@ -13,11 +13,26 @@ extends IsometricBlock
 		stool_height = new_height
 		_update_height()
 		
+@export_enum("SE", "SW") var facing = 0:
+	set(new_facing):
+		if facing == new_facing:
+			return
+		facing = new_facing
+		m_indent_factor = -1.0 if facing == 0 else 1.0
+		_update_height()
+		
 @export var indent = 0:
 	set(new_indent):
 		if indent == new_indent:
 			return
 		indent = new_indent
+		_update_height()
+		
+@export var offset = Vector2i.ZERO:
+	set(new_offset):
+		if offset == new_offset:
+			return
+		offset = new_offset
 		_update_height()
 
 @export var is_open := false:
@@ -30,6 +45,7 @@ extends IsometricBlock
 @export var align_parts :Array[Node2D]
 
 var m_is_updating = false
+var m_indent_factor = -1.0
 
 func _ready() -> void:
 	super._ready()
@@ -53,7 +69,7 @@ func _do_update_height() -> void:
 	m_is_updating = false
 	#print("Door._update_height()")
 	for part in align_parts:
-		part.position = Vector2(0, -32 * stool_height) + Vector2(-2, -1) * indent
+		part.position = Vector2(0, -32 * stool_height) + Vector2(2 * m_indent_factor, -1) * indent + Vector2(8.0, -4.0) * offset.y + Vector2(-8.0, -4.0) * offset.x
 
 func _update_open() -> void:
 	for node in open_sprites:

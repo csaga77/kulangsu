@@ -1,7 +1,7 @@
 [gd_resource type="ShaderMaterial" format=3 uid="uid://ksyd4he0r227"]
 
 [ext_resource type="Shader" uid="uid://dkwy8jpcc6xy8" path="res://resources/materials/wall_material.gdshader" id="1_b23bv"]
-[ext_resource type="Texture2D" uid="uid://b1xojkjfqykvn" path="res://resources/materials/brick_0.png" id="2_oohfw"]
+[ext_resource type="Texture2D" uid="uid://b1xojkjfqykvn" path="res://resources/sprites/architecture/walls/brick_0.png" id="2_oohfw"]
 
 [resource]
 resource_local_to_scene = true

@@ -28,7 +28,7 @@ void fragment() {
 	vec2 px_src = floor(UV * texture_size) + vec2(0.5);
 	vec2 pp_uv = px_src / texture_size;
 
-	vec4 src = texture(TEXTURE, pp_uv);
+	vec4 src = COLOR;//textureLod(TEXTURE, pp_uv, 0);
 	vec4 out_col = vec4(0.0);
 	
 	float footer_start = source_tile_size;
@@ -38,7 +38,7 @@ void fragment() {
 		//Shade image is in the same texture
 		vec4 footer_mask = vec4(0.0, 0.0, 0.0, 0.0);
 		if (is_footer_visible) {
-			footer_mask = texture(TEXTURE, footer_uv);
+			footer_mask = textureLod(TEXTURE, footer_uv, 0);
 		}
 
 		vec2 px_tile = mod(px_src, source_tile_size);
@@ -91,7 +91,7 @@ void fragment() {
 		
 		vec2 shade_uv = pp_uv + vec2(0.0, source_tile_size / texture_size.y);
 		//Shade image is in the same texture
-		vec4 shade = texture(TEXTURE, shade_uv);
+		vec4 shade = textureLod(TEXTURE, shade_uv, 0);
 		if (out_col.a > 0.0 && shade.a > 0.0) {
 			out_col.rgb = mix(out_col.rgb, shade.rgb, 0.7);
 		}

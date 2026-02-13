@@ -1,85 +1,84 @@
 [gd_scene format=3 uid="uid://d03gognopp6ym"]
 
-[ext_resource type="Script" uid="uid://bugmtr67e3qx1" path="res://architecture/components/door_2d.gd" id="1_270a7"]
-[ext_resource type="Texture2D" uid="uid://bmcsqpagfbd2m" path="res://resources/sprites/architecture/components/window_3x2x3.png" id="2_fu6og"]
-[ext_resource type="Texture2D" uid="uid://dcvd2ipqyhq1q" path="res://resources/sprites/symbols_0.png" id="3_fu6og"]
-[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="4_vmxr7"]
+[ext_resource type="Script" uid="uid://bugmtr67e3qx1" path="res://architecture/components/door_2d.gd" id="1_cku1o"]
+[ext_resource type="Texture2D" uid="uid://dcvd2ipqyhq1q" path="res://resources/sprites/symbols_0.png" id="2_l8scb"]
+[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="3_mlcfc"]
+[ext_resource type="Texture2D" uid="uid://bmcsqpagfbd2m" path="res://resources/sprites/architecture/components/window_3x2x3.png" id="4_xkwsu"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_i3rnv"]
-atlas = ExtResource("3_fu6og")
+atlas = ExtResource("2_l8scb")
 region = Rect2(0, 0, 64, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_f1krm"]
-atlas = ExtResource("3_fu6og")
+atlas = ExtResource("2_l8scb")
 region = Rect2(64, 0, 64, 32)
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_jbk66"]
 height = 60.0
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_fu6og"]
-atlas = ExtResource("2_fu6og")
+atlas = ExtResource("4_xkwsu")
 region = Rect2(34, 0, 34, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_o5v1q"]
-atlas = ExtResource("2_fu6og")
+atlas = ExtResource("4_xkwsu")
 region = Rect2(140, 71, 8, 68)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_axsgs"]
-atlas = ExtResource("2_fu6og")
+atlas = ExtResource("4_xkwsu")
 region = Rect2(170, 71, 6, 68)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_4dgav"]
-atlas = ExtResource("2_fu6og")
+atlas = ExtResource("4_xkwsu")
 region = Rect2(140, 0, 18, 70)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_4brj5"]
-atlas = ExtResource("2_fu6og")
+atlas = ExtResource("4_xkwsu")
 region = Rect2(160, 0, 18, 70)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_lndjk"]
-atlas = ExtResource("2_fu6og")
+atlas = ExtResource("4_xkwsu")
 region = Rect2(148, 0, 10, 70)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_crkvq"]
-atlas = ExtResource("2_fu6og")
+atlas = ExtResource("4_xkwsu")
 region = Rect2(104, 0, 34, 36)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_270a7"]
-atlas = ExtResource("2_fu6og")
+atlas = ExtResource("4_xkwsu")
 region = Rect2(0, 0, 36, 36)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ijl86"]
-atlas = ExtResource("2_fu6og")
+atlas = ExtResource("4_xkwsu")
 region = Rect2(140, 0, 10, 70)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_vmxr7"]
-atlas = ExtResource("2_fu6og")
+atlas = ExtResource("4_xkwsu")
 region = Rect2(150, 71, 8, 68)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_xsyjy"]
-atlas = ExtResource("2_fu6og")
+atlas = ExtResource("4_xkwsu")
 region = Rect2(70, 14, 36, 22)
 
-[node name="window_se" type="Area2D" unique_id=1762891925 node_paths=PackedStringArray("open_sprites", "close_sprites", "hot_areas", "align_parts")]
+[node name="window_3x2x2_se" type="Area2D" unique_id=1762891925 node_paths=PackedStringArray("open_sprites", "close_sprites", "hot_areas", "align_parts")]
 y_sort_enabled = true
-script = ExtResource("1_270a7")
+script = ExtResource("1_cku1o")
 open_sprites = [NodePath("part_0/side_sill_0/side_jamb_1/open_door_0"), NodePath("part_1/side_sill_1/side_jamb_2/open_door_1"), NodePath("part_1/side_sill_1/side_jamb_3/open_door_2")]
 close_sprites = [NodePath("part_0/side_sill_0/side_jamb_1/close_door_0"), NodePath("part_1/side_sill_1/side_jamb_2/close_door_1_half"), NodePath("part_1/side_sill_1/side_jamb_3/close_door_2"), NodePath("part_0/side_sill_0/side_jamb_1/close_door_1_half2")]
 hot_areas = [NodePath(".")]
-indent = 2
 align_parts = [NodePath("part_0/side_sill_0"), NodePath("part_1/side_sill_1")]
 
 [node name="tile_reference_0" type="Sprite2D" parent="." unique_id=917902731]
 z_index = -1
 texture = SubResource("AtlasTexture_i3rnv")
-script = ExtResource("4_vmxr7")
+script = ExtResource("3_mlcfc")
 only_shown_in_editor = true
 
 [node name="tile_reference_1" type="Sprite2D" parent="." unique_id=902332202]
 z_index = -1
 position = Vector2(32, -16)
 texture = SubResource("AtlasTexture_f1krm")
-script = ExtResource("4_vmxr7")
+script = ExtResource("3_mlcfc")
 only_shown_in_editor = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=558295921]
@@ -91,7 +90,6 @@ shape = SubResource("CapsuleShape2D_jbk66")
 position = Vector2(47, -16)
 
 [node name="side_sill_0" type="Sprite2D" parent="part_0" unique_id=799826309]
-position = Vector2(-4, -2)
 texture = SubResource("AtlasTexture_fu6og")
 offset = Vector2(0, 13)
 
@@ -132,7 +130,6 @@ offset = Vector2(0, -48)
 position = Vector2(14, 0)
 
 [node name="side_sill_1" type="Sprite2D" parent="part_1" unique_id=616854993]
-position = Vector2(-4, -2)
 texture = SubResource("AtlasTexture_270a7")
 offset = Vector2(0, -1)
 

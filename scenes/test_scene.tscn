@@ -16,7 +16,7 @@ building = ExtResource("2_wtsjf")
 [node name="Root" type="Node2D" parent="." unique_id=203604640]
 y_sort_enabled = true
 material = ExtResource("3_njel3")
-position = Vector2(160, -16)
+position = Vector2(160, 48)
 script = ExtResource("4_vr1i5")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=917191712]

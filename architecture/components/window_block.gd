@@ -134,10 +134,12 @@ func _do_reload() -> void:
 				m_wall_block.add_child(stool)
 		
 		if window_height > 0:
-			m_window = preload("res://architecture/components/window_se.tscn").instantiate()
+			m_window = preload("res://architecture/components/window_3x2x2_se.tscn").instantiate() if facing == 0 else preload("res://architecture/components/window_3x2x2_sw.tscn").instantiate()
 			m_window.stool_height = stool_size
 			m_window.is_open = is_open
 			m_window.indent = indent
+			m_window.offset = offset
+			m_window.facing = facing
 			m_wall_block.add_child(m_window)
 		
 		if header_size > 0:

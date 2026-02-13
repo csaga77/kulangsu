@@ -4,12 +4,11 @@
 [ext_resource type="TileSet" uid="uid://c2edqbdaenat2" path="res://resources/tilesets/symbols_0_tiles.tres" id="2_sg3ht"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="3_nch5g"]
 [ext_resource type="TileSet" uid="uid://emarqgj57jx7" path="res://resources/tilesets/architecture/floor_0_tiles.tres" id="4_mous7"]
-[ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="5_gp7je"]
-[ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/architecture/wall_0_tiles.tres" id="5_nch5g"]
 [ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="5_sg3ht"]
 [ext_resource type="Material" uid="uid://ksyd4he0r227" path="res://resources/materials/wall_material.tres" id="6_xsufa"]
-[ext_resource type="PackedScene" uid="uid://d03gognopp6ym" path="res://architecture/components/window_se.tscn" id="8_crnqe"]
+[ext_resource type="PackedScene" uid="uid://d1fl1q5rxk02u" path="res://architecture/components/window_block.tscn" id="9_jumof"]
 [ext_resource type="PackedScene" uid="uid://bt0wh0rca6swt" path="res://architecture/components/wall.tscn" id="10_xsufa"]
+[ext_resource type="Texture2D" uid="uid://bts45cj2xyqx0" path="res://resources/sprites/architecture/walls/wall_0.png" id="11_p0w5i"]
 
 [node name="test_room_2" type="Node2D" unique_id=2090414960 node_paths=PackedStringArray("physics_layers")]
 y_sort_enabled = true
@@ -45,95 +44,140 @@ y_sort_enabled = true
 material = ExtResource("6_xsufa")
 script = ExtResource("3_nch5g")
 
-[node name="base_front" type="TileMapLayer" parent="wall" unique_id=657388305]
-y_sort_enabled = true
-use_parent_material = true
-tile_map_data = PackedByteArray("AAAAAAQAAQAHAAAAAAAEAAAAAQAIAAAAAAAEAAQAAQAAAAAAAAABAAQAAQAFAAYAAAACAAQAAQAFAAYAAAADAAQAAQAFAAYAAAAEAAMAAQAGAAYAAAAEAAIAAQAGAAYAAAAEAAEAAQAGAAYAAAA=")
-tile_set = ExtResource("5_nch5g")
-
-[node name="back_wall" type="TileMapLayer" parent="wall" unique_id=1460877434 node_paths=PackedStringArray("visibility_mask_layers")]
-visible = false
-y_sort_enabled = true
-tile_map_data = PackedByteArray("AAD/////AgAAAAAAAAAAAP//AgAGAAAAAQD//wAAAgAHAAAAAQACAP//AgAEAAAAAQADAP//AgAKAAAAAgD//wMAAgALAAAAAgD//wIAAgAFAAAAAQA=")
-tile_set = ExtResource("5_nch5g")
-y_sort_origin = 32
-script = ExtResource("5_gp7je")
-visibility_mask_layers = [NodePath("../../wall_mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
-
-[node name="level_2" type="TileMapLayer" parent="wall/back_wall" unique_id=984342247]
-y_sort_enabled = true
-tile_map_data = PackedByteArray("AAD+//7/AgAAAAAAAAD+////AgAHAAAAAQD+/wEAAgAFAAAAAQD+/wIAAgALAAAAAgD///7/AgAGAAAAAQABAP7/AgAEAAAAAQACAP7/AgAKAAAAAgA=")
-tile_set = ExtResource("5_nch5g")
-y_sort_origin = 64
-
-[node name="level_3" type="TileMapLayer" parent="wall/back_wall" unique_id=704149102]
-y_sort_enabled = true
-tile_map_data = PackedByteArray("AAD9//3/AgAAAAAAAAD9//7/AgAFAAAAAQD9/wAAAgAFAAAAAQD9/wEAAgALAAAAAgD+//3/AgAEAAAAAQAAAP3/AgAEAAAAAQABAP3/AgAKAAAAAgD9////AgAFAAAAAQD///3/AgAEAAAAAQA=")
-tile_set = ExtResource("5_nch5g")
-y_sort_origin = 96
-
-[node name="top" type="TileMapLayer" parent="wall/back_wall" unique_id=1500879572]
-y_sort_enabled = true
-tile_map_data = PackedByteArray("AAD8//z/BQALAAAAAAD9//z/BQANAAAAAQD+//z/BQANAAAAAQD///z/BQANAAAAAQD8//3/BQAOAAAAAQD8//7/BQAOAAAAAQD8////BQAOAAAAAQD8/wAABQAQAAAAAgAAAPz/BQAPAAAAAgA=")
-tile_set = ExtResource("5_nch5g")
-y_sort_origin = 128
-
-[node name="front_wall" type="TileMapLayer" parent="wall" unique_id=661992150 node_paths=PackedStringArray("visibility_mask_layers")]
-visible = false
-y_sort_enabled = true
-tile_map_data = PackedByteArray("AAD//wMAAQAHAAAAAAADAP//AQAIAAAAAAADAAMAAQAAAAAAAAAAAAMAAgAKAAQAAwACAAMAAgAIAAQAAAADAAIAAgAJAAQAAAADAAAAAgALAAQAAwA=")
-tile_set = ExtResource("5_nch5g")
-y_sort_origin = 32
-script = ExtResource("5_gp7je")
-visibility_mask_layers = [NodePath("../../floor"), NodePath("../../wall_mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
-
-[node name="front_level_2" type="TileMapLayer" parent="wall/front_wall" unique_id=1984338816]
-y_sort_enabled = true
-tile_map_data = PackedByteArray("AAD+/wIAAQAHAAAAAAD//wIAAgAKAAQAAwABAAIAAgAIAAQAAAACAP7/AQAIAAAAAAACAP//AgALAAQAAwACAAEAAgAJAAQAAAACAAIAAQAAAAAAAAA=")
-tile_set = ExtResource("5_nch5g")
-y_sort_origin = 64
-
-[node name="front_level_3" type="TileMapLayer" parent="wall/front_wall" unique_id=619821925]
-y_sort_enabled = true
-tile_map_data = PackedByteArray("AAD9/wEAAQAHAAAAAAD+/wEAAQAFAAQAAAAAAAEAAQAFAAQAAAABAP3/AQAIAAAAAAABAP7/AQAGAAQAAAABAAAAAQAGAAQAAAABAAEAAQAAAAAAAAD//wEAAQAFAAQAAAABAP//AQAGAAQAAAA=")
-tile_set = ExtResource("5_nch5g")
-y_sort_origin = 96
-
-[node name="top" type="TileMapLayer" parent="wall/front_wall" unique_id=1127960538]
-y_sort_enabled = true
-tile_map_data = PackedByteArray("AAD8/wAABAAJAAAAAAAAAPz/BAAKAAAAAAAAAP3/BQAOAAEAAAAAAP7/BQAOAAEAAAAAAP//BQAOAAEAAAD9/wAABQANAAEAAAD+/wAABQANAAEAAAD//wAABQANAAEAAAAAAAAABAAIAAAAAAA=")
-tile_set = ExtResource("5_nch5g")
-y_sort_origin = 128
-
-[node name="window_se" parent="wall" unique_id=1762891925 instance=ExtResource("8_crnqe")]
-visible = false
-position = Vector2(80, 120)
-iso_tile_size = Vector2(32, 16)
-
-[node name="wall" parent="wall" unique_id=1803625367 instance=ExtResource("10_xsufa")]
-position = Vector2(-16, 24)
-offset = Vector2i(1, 0)
+[node name="n" parent="wall" unique_id=1536793865 instance=ExtResource("10_xsufa")]
+position = Vector2(32, 16)
+height = 4
+pattern = 3
+texture = ExtResource("11_p0w5i")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall2" parent="wall" unique_id=1909862794 instance=ExtResource("10_xsufa")]
-position = Vector2(-80, 56)
-offset = Vector2i(1, 0)
+[node name="ne_0" parent="wall" unique_id=618064740 instance=ExtResource("10_xsufa")]
+position = Vector2(72, 28)
+offset = Vector2i(0, 2)
+height = 4
+pattern = 5
+texture = ExtResource("11_p0w5i")
+iso_tile_size = Vector2(16, 8)
+
+[node name="ne_1" parent="wall" unique_id=1117075523 instance=ExtResource("10_xsufa")]
+position = Vector2(136, 60)
+offset = Vector2i(0, 2)
+height = 4
+pattern = 5
+texture = ExtResource("11_p0w5i")
+is_south_east_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="ne_2" parent="wall" unique_id=1369822399 instance=ExtResource("10_xsufa")]
+position = Vector2(160, 80)
+offset = Vector2i(2, 2)
+height = 4
+size = 0
+pattern = 7
+texture = ExtResource("11_p0w5i")
+is_south_east_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="nw_0" parent="wall" unique_id=1803625367 instance=ExtResource("10_xsufa")]
+position = Vector2(-8, 28)
+offset = Vector2i(2, 0)
+height = 4
+pattern = 6
+texture = ExtResource("11_p0w5i")
+iso_tile_size = Vector2(16, 8)
+
+[node name="nw_1" parent="wall" unique_id=1909862794 instance=ExtResource("10_xsufa")]
+position = Vector2(-72, 60)
+offset = Vector2i(2, 0)
+height = 4
+pattern = 6
+texture = ExtResource("11_p0w5i")
 is_south_west_visible = false
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall3" parent="wall" unique_id=1853112219 instance=ExtResource("10_xsufa")]
-position = Vector2(-88, 68)
-offset = Vector2i(1, 0)
+[node name="nw_2" parent="wall" unique_id=385996921 instance=ExtResource("10_xsufa")]
+position = Vector2(-96, 80)
+offset = Vector2i(2, 2)
+height = 4
 size = 0
 pattern = 7
+texture = ExtResource("11_p0w5i")
+is_south_west_visible = false
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall4" parent="wall" unique_id=1536793865 instance=ExtResource("10_xsufa")]
-position = Vector2(32, 8)
-offset = Vector2i(-1, -1)
-pattern = 3
+[node name="sw_0" parent="wall" unique_id=1853112219 instance=ExtResource("10_xsufa")]
+position = Vector2(-104, 84)
+offset = Vector2i(0, 1)
+height = 4
+size = 0
+pattern = 5
+texture = ExtResource("11_p0w5i")
+footer_texture = null
+iso_tile_size = Vector2(16, 8)
+
+[node name="sw_1" parent="wall" unique_id=1344454360 instance=ExtResource("10_xsufa")]
+position = Vector2(-88, 100)
+offset = Vector2i(1, 2)
+height = 4
+pattern = 7
+footer_texture = ExtResource("11_p0w5i")
+is_south_east_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="sw_2" parent="wall" unique_id=554865961 instance=ExtResource("10_xsufa")]
+position = Vector2(-8, 140)
+offset = Vector2i(1, 2)
+height = 4
+pattern = 7
+footer_texture = ExtResource("11_p0w5i")
+is_south_east_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="s" parent="wall" unique_id=1850663905 instance=ExtResource("10_xsufa")]
+position = Vector2(32, 152)
+offset = Vector2i(1, 1)
+height = 4
+size = 0
+pattern = 4
+texture = ExtResource("11_p0w5i")
+footer_texture = null
+iso_tile_size = Vector2(16, 8)
+
+[node name="se_0" parent="wall" unique_id=76887122 instance=ExtResource("10_xsufa")]
+position = Vector2(168, 84)
+offset = Vector2i(1, 0)
+height = 4
+size = 0
+pattern = 6
+texture = ExtResource("11_p0w5i")
+footer_texture = null
+iso_tile_size = Vector2(16, 8)
+
+[node name="se_1" parent="wall" unique_id=1514361121 instance=ExtResource("10_xsufa")]
+position = Vector2(152, 100)
+offset = Vector2i(2, 1)
+height = 4
+pattern = 8
+footer_texture = ExtResource("11_p0w5i")
+is_south_west_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="window_se" parent="wall" unique_id=268013310 instance=ExtResource("9_jumof")]
+position = Vector2(96, 128)
+offset = Vector2i(2, 0)
+facing = 0
+iso_tile_size = Vector2(32, 16)
+
+[node name="window_se2" parent="wall" unique_id=1493575826 instance=ExtResource("9_jumof")]
+position = Vector2(0, 128)
+offset = Vector2i(2, 0)
+iso_tile_size = Vector2(32, 16)
+
+[node name="se_2" parent="wall" unique_id=1693068597 instance=ExtResource("10_xsufa")]
+position = Vector2(72, 140)
+offset = Vector2i(2, 1)
+height = 4
+pattern = 8
+footer_texture = ExtResource("11_p0w5i")
+is_south_west_visible = false
 iso_tile_size = Vector2(16, 8)

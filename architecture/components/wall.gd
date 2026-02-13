@@ -67,7 +67,7 @@ extends IsometricBlock
 
 @onready var m_wall_block = $wall_block
 
-var m_atlas_texture :Texture2D = preload("res://resources/sprites/architecture/components/wall_templates_0.png")
+var m_atlas_texture :Texture2D = preload("res://resources/sprites/architecture/walls/wall_templates_0.png")
 var m_is_reloading := false
 
 # Called when the node enters the scene tree for the first time.

@@ -1,0 +1,151 @@
+[gd_scene format=3 uid="uid://b2ascu2ylwbt6"]
+
+[ext_resource type="Script" uid="uid://bugmtr67e3qx1" path="res://architecture/components/door_2d.gd" id="1_nts8n"]
+[ext_resource type="Texture2D" uid="uid://dcvd2ipqyhq1q" path="res://resources/sprites/symbols_0.png" id="2_004hs"]
+[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="3_vx3yi"]
+[ext_resource type="Texture2D" uid="uid://chygdmsnrcl2h" path="res://resources/sprites/architecture/window_3x2x2.png" id="5_004hs"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_jbk66"]
+height = 60.0
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_i3rnv"]
+atlas = ExtResource("2_004hs")
+region = Rect2(0, 0, 64, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_270a7"]
+atlas = ExtResource("5_004hs")
+region = Rect2(32, 174, 36, 22)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_axsgs"]
+atlas = ExtResource("5_004hs")
+region = Rect2(188, 0, 6, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ijl86"]
+atlas = ExtResource("5_004hs")
+region = Rect2(148, 3, 10, 66)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_4brj5"]
+atlas = ExtResource("5_004hs")
+region = Rect2(160, 0, 18, 70)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_vmxr7"]
+atlas = ExtResource("5_004hs")
+region = Rect2(102, 112, 36, 84)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_4dgav"]
+atlas = ExtResource("5_004hs")
+region = Rect2(140, 0, 18, 70)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_fu6og"]
+atlas = ExtResource("5_004hs")
+region = Rect2(0, 99, 34, 82)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lndjk"]
+atlas = ExtResource("5_004hs")
+region = Rect2(140, 0, 8, 70)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_crkvq"]
+atlas = ExtResource("5_004hs")
+region = Rect2(70, 99, 34, 20)
+
+[node name="window_3x2x2_sw" type="Area2D" unique_id=1762891925 node_paths=PackedStringArray("open_sprites", "close_sprites", "hot_areas", "align_parts")]
+y_sort_enabled = true
+script = ExtResource("1_nts8n")
+open_sprites = [NodePath("base_1/part_1/side_jamb_1/open_door_0"), NodePath("base_0/part_0/side_jamb_2/open_door_1"), NodePath("base_0/part_0/side_jamb_3/open_door_2")]
+close_sprites = [NodePath("base_1/part_1/side_jamb_1/close_door_0"), NodePath("base_0/part_0/side_jamb_2/close_door_1_half"), NodePath("base_0/part_0/side_jamb_3/close_door_2"), NodePath("base_1/part_1/side_jamb_1/close_door_1_half2")]
+hot_areas = [NodePath(".")]
+align_parts = [NodePath("base_1/part_1"), NodePath("base_0/part_0")]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=558295921]
+position = Vector2(19.999996, -6)
+rotation = 1.1082841
+scale = Vector2(0.99999994, 0.99999994)
+shape = SubResource("CapsuleShape2D_jbk66")
+
+[node name="tile_reference_0" type="Sprite2D" parent="." unique_id=917902731]
+z_index = -1
+texture = SubResource("AtlasTexture_i3rnv")
+script = ExtResource("3_vx3yi")
+only_shown_in_editor = true
+
+[node name="tile_reference_1" type="Sprite2D" parent="." unique_id=902332202]
+z_index = -1
+position = Vector2(-32, -16)
+texture = SubResource("AtlasTexture_i3rnv")
+script = ExtResource("3_vx3yi")
+only_shown_in_editor = true
+
+[node name="base_0" type="Node2D" parent="." unique_id=1311551464]
+
+[node name="part_0" type="Sprite2D" parent="base_0" unique_id=616854993]
+texture = SubResource("AtlasTexture_270a7")
+offset = Vector2(-14, 5)
+
+[node name="side_jamb_2" type="Sprite2D" parent="base_0/part_0" unique_id=875595378]
+texture = SubResource("AtlasTexture_axsgs")
+offset = Vector2(-21, -25)
+
+[node name="close_door_1_half" type="Sprite2D" parent="base_0/part_0/side_jamb_2" unique_id=48949338]
+show_behind_parent = true
+texture = SubResource("AtlasTexture_ijl86")
+offset = Vector2(-27, -32)
+
+[node name="open_door_1" type="Sprite2D" parent="base_0/part_0/side_jamb_2" unique_id=1364173495]
+visible = false
+show_behind_parent = true
+position = Vector2(-31, 0)
+texture = SubResource("AtlasTexture_4brj5")
+offset = Vector2(0, -27)
+
+[node name="side_jamb_3" type="Sprite2D" parent="base_0/part_0" unique_id=680831236]
+texture = SubResource("AtlasTexture_vmxr7")
+offset = Vector2(-14, -26)
+
+[node name="close_door_2" type="Sprite2D" parent="base_0/part_0/side_jamb_3" unique_id=1906776536]
+show_behind_parent = true
+position = Vector2(-11, 0)
+texture = SubResource("AtlasTexture_4dgav")
+offset = Vector2(0, -23)
+
+[node name="open_door_2" type="Sprite2D" parent="base_0/part_0/side_jamb_3" unique_id=1856480324]
+visible = false
+show_behind_parent = true
+position = Vector2(-13, 1)
+texture = SubResource("AtlasTexture_4brj5")
+offset = Vector2(0, -17)
+
+[node name="base_1" type="Node2D" parent="." unique_id=1440075879]
+position = Vector2(-32, -16)
+
+[node name="part_1" type="Sprite2D" parent="base_1" unique_id=799826309]
+texture = SubResource("AtlasTexture_fu6og")
+offset = Vector2(-15, -24)
+
+[node name="side_jamb_1" type="Sprite2D" parent="base_1/part_1" unique_id=309961885]
+texture = SubResource("AtlasTexture_axsgs")
+offset = Vector2(-9, -19)
+
+[node name="close_door_0" type="Sprite2D" parent="base_1/part_1/side_jamb_1" unique_id=1561201501]
+show_behind_parent = true
+position = Vector2(-19, 0)
+texture = SubResource("AtlasTexture_4dgav")
+offset = Vector2(0, -27)
+
+[node name="open_door_0" type="Sprite2D" parent="base_1/part_1/side_jamb_1" unique_id=1494382179]
+visible = false
+show_behind_parent = true
+position = Vector2(-31, 0)
+texture = SubResource("AtlasTexture_4brj5")
+offset = Vector2(0, -27)
+
+[node name="close_door_1_half2" type="Sprite2D" parent="base_1/part_1/side_jamb_1" unique_id=174608978]
+position = Vector2(-4, 0)
+texture = SubResource("AtlasTexture_lndjk")
+offset = Vector2(0, -17)
+
+[node name="head_jamb_0" type="Sprite2D" parent="base_1/part_1" unique_id=433869610]
+texture = SubResource("AtlasTexture_crkvq")
+offset = Vector2(-15, -55)
+
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]
+[connection signal="body_exited" from="." to="." method="_on_body_exited"]
