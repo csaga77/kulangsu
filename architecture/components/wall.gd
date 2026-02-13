@@ -30,6 +30,20 @@ extends IsometricBlock
 		pattern = new_pattern
 		_reload()
 		
+@export var texture :Texture2D:
+	set(new_texture):
+		if texture == new_texture:
+			return
+		texture = new_texture
+		_reload()
+		
+@export var footer_texture :Texture2D:
+	set(new_texture):
+		if footer_texture == new_texture:
+			return
+		footer_texture = new_texture
+		_reload()
+		
 @export var is_south_east_visible = true:
 	set(new_visible):
 		if is_south_east_visible == new_visible:
@@ -76,10 +90,26 @@ func _do_reload() -> void:
 	mat.set_shader_parameter("is_top_visible", height == 1)
 	mat.set_shader_parameter("is_south_east_visible", is_south_east_visible)
 	mat.set_shader_parameter("is_south_west_visible", is_south_west_visible)
+	mat.set_shader_parameter("texture_top", texture)
+	mat.set_shader_parameter("texture_south_east", texture)
+	mat.set_shader_parameter("texture_south_west", texture)
+	mat.set_shader_parameter("texture_south", texture)
+	mat.set_shader_parameter("is_footer_visible", footer_texture != null)
+	mat.set_shader_parameter("texture_footer", footer_texture)
+	
 	var cap_mat :ShaderMaterial = mat.duplicate()
 	cap_mat.set_shader_parameter("is_top_visible", true)
+
+	var mid_mat :ShaderMaterial = mat
+	var mid_cap :ShaderMaterial = cap_mat
+	if height > 0 and footer_texture != null:
+		mid_mat = mat.duplicate()
+		mid_mat.set_shader_parameter("is_footer_visible", false)
+		
+		mid_cap = cap_mat.duplicate()
+		mid_cap.set_shader_parameter("is_footer_visible", false)
 	
-	var region :Rect2 = Rect2(pattern * 64, size * 128, 64, 64)
+	var region :Rect2 = Rect2(pattern * 64, size * 192, 64, 64)
 	var origin :Vector2 = Vector2(0, -16)
 	m_wall_block.position = origin + Vector2(8.0, -4.0) * offset.y + Vector2(-8.0, -4.0) * offset.x
 	for child in m_wall_block.get_children():
@@ -101,9 +131,9 @@ func _do_reload() -> void:
 			if next_level < mask.size():
 				if !mask.get(next_level):
 					need_cap = true
-				
+			
 			if need_cap:
-				sprite.material = cap_mat
+				sprite.material = cap_mat if level == 0 else mid_cap
 			else:
-				sprite.use_parent_material = true
+				sprite.material = mat if level == 0 else mid_mat
 			m_wall_block.add_child(sprite)

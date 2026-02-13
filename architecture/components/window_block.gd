@@ -45,6 +45,14 @@ extends IsometricBlock
 		facing = new_facing
 		_reload()
 		
+@export var wall_texture :Texture2D:
+	set(new_texture):
+		if wall_texture == new_texture:
+			return
+		wall_texture = new_texture
+		_reload()
+		
+		
 @export var is_south_east_visible = true:
 	set(new_visible):
 		if is_south_east_visible == new_visible:
@@ -100,6 +108,7 @@ func _do_reload() -> void:
 		if stool_size > 0:
 			for i in range(window_width):
 				var stool :Wall = preload("res://architecture/components/wall.tscn").instantiate()
+				stool.texture = wall_texture
 				match facing:
 					0: #SE 
 						stool.position = Vector2(32, -16) * i
@@ -132,6 +141,7 @@ func _do_reload() -> void:
 					wall_mask.append(false)
 			for i in range(window_width):
 				var header :Wall = preload("res://architecture/components/wall.tscn").instantiate()
+				header.texture = wall_texture
 				match facing:
 					0: #SE 
 						header.position = Vector2(32, -16) * i

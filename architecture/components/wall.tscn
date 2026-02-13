@@ -2,6 +2,8 @@
 
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="1_b46vr"]
 [ext_resource type="Script" uid="uid://700n85rau1ir" path="res://architecture/components/wall.gd" id="1_h7tnk"]
+[ext_resource type="Texture2D" uid="uid://b1xojkjfqykvn" path="res://resources/materials/brick_0.png" id="2_c07vg"]
+[ext_resource type="Texture2D" uid="uid://dk68jeo7pckk2" path="res://resources/materials/wall_1.png" id="2_g654y"]
 [ext_resource type="Material" uid="uid://ksyd4he0r227" path="res://resources/materials/wall_material.tres" id="2_h7tnk"]
 [ext_resource type="Texture2D" uid="uid://dcvd2ipqyhq1q" path="res://resources/sprites/symbols_0.png" id="4_c07vg"]
 
@@ -12,7 +14,8 @@ region = Rect2(0, 0, 64, 32)
 [node name="wall" type="Node2D" unique_id=1803625367]
 script = ExtResource("1_h7tnk")
 size = 1
-pattern = 6
+texture = ExtResource("2_c07vg")
+footer_texture = ExtResource("2_g654y")
 
 [node name="tile_reference_0" type="Sprite2D" parent="." unique_id=3367058]
 texture = SubResource("AtlasTexture_i3rnv")
