@@ -82,7 +82,7 @@ script = ExtResource("3_mlcfc")
 only_shown_in_editor = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=558295921]
-position = Vector2(19.999996, -6)
+position = Vector2(31, -1.9999986)
 rotation = 1.1082841
 shape = SubResource("CapsuleShape2D_jbk66")
 

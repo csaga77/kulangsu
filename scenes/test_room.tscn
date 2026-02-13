@@ -5,7 +5,7 @@
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="3_nch5g"]
 [ext_resource type="TileSet" uid="uid://emarqgj57jx7" path="res://resources/tilesets/architecture/floor_0_tiles.tres" id="4_mous7"]
 [ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="5_sg3ht"]
-[ext_resource type="Material" uid="uid://ksyd4he0r227" path="res://resources/materials/wall_material.tres" id="6_xsufa"]
+[ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="7_xsufa"]
 [ext_resource type="PackedScene" uid="uid://d1fl1q5rxk02u" path="res://architecture/components/window_block.tscn" id="9_jumof"]
 [ext_resource type="PackedScene" uid="uid://bt0wh0rca6swt" path="res://architecture/components/wall.tscn" id="10_xsufa"]
 [ext_resource type="Texture2D" uid="uid://bts45cj2xyqx0" path="res://resources/sprites/architecture/walls/wall_0.png" id="11_p0w5i"]
@@ -41,143 +41,332 @@ only_shown_in_editor = true
 
 [node name="wall" type="Node2D" parent="." unique_id=1232188082]
 y_sort_enabled = true
-material = ExtResource("6_xsufa")
 script = ExtResource("3_nch5g")
 
-[node name="n" parent="wall" unique_id=1536793865 instance=ExtResource("10_xsufa")]
+[node name="base_wall" type="Node2D" parent="wall" unique_id=80003810]
+y_sort_enabled = true
+
+[node name="n" parent="wall/base_wall" unique_id=298490637 instance=ExtResource("10_xsufa")]
 position = Vector2(32, 16)
-height = 4
-pattern = 3
+size = 1
 texture = ExtResource("11_p0w5i")
+is_south_east_visible = false
+is_south_west_visible = false
 iso_tile_size = Vector2(16, 8)
 
-[node name="ne_0" parent="wall" unique_id=618064740 instance=ExtResource("10_xsufa")]
+[node name="ne_0" parent="wall/base_wall" unique_id=1654769757 instance=ExtResource("10_xsufa")]
 position = Vector2(72, 28)
 offset = Vector2i(0, 2)
-height = 4
+size = 1
 pattern = 5
 texture = ExtResource("11_p0w5i")
 iso_tile_size = Vector2(16, 8)
 
-[node name="ne_1" parent="wall" unique_id=1117075523 instance=ExtResource("10_xsufa")]
+[node name="ne_1" parent="wall/base_wall" unique_id=349596683 instance=ExtResource("10_xsufa")]
 position = Vector2(136, 60)
 offset = Vector2i(0, 2)
-height = 4
+size = 1
 pattern = 5
 texture = ExtResource("11_p0w5i")
 is_south_east_visible = false
 iso_tile_size = Vector2(16, 8)
 
-[node name="ne_2" parent="wall" unique_id=1369822399 instance=ExtResource("10_xsufa")]
+[node name="ne_2" parent="wall/base_wall" unique_id=1494099836 instance=ExtResource("10_xsufa")]
 position = Vector2(160, 80)
 offset = Vector2i(2, 2)
-height = 4
-size = 0
 pattern = 7
 texture = ExtResource("11_p0w5i")
 is_south_east_visible = false
 iso_tile_size = Vector2(16, 8)
 
-[node name="nw_0" parent="wall" unique_id=1803625367 instance=ExtResource("10_xsufa")]
+[node name="nw_0" parent="wall/base_wall" unique_id=501100731 instance=ExtResource("10_xsufa")]
 position = Vector2(-8, 28)
 offset = Vector2i(2, 0)
-height = 4
+size = 1
 pattern = 6
 texture = ExtResource("11_p0w5i")
 iso_tile_size = Vector2(16, 8)
 
-[node name="nw_1" parent="wall" unique_id=1909862794 instance=ExtResource("10_xsufa")]
+[node name="nw_1" parent="wall/base_wall" unique_id=916503368 instance=ExtResource("10_xsufa")]
 position = Vector2(-72, 60)
 offset = Vector2i(2, 0)
-height = 4
+size = 1
 pattern = 6
 texture = ExtResource("11_p0w5i")
 is_south_west_visible = false
 iso_tile_size = Vector2(16, 8)
 
-[node name="nw_2" parent="wall" unique_id=385996921 instance=ExtResource("10_xsufa")]
+[node name="nw_2" parent="wall/base_wall" unique_id=610868243 instance=ExtResource("10_xsufa")]
 position = Vector2(-96, 80)
 offset = Vector2i(2, 2)
-height = 4
-size = 0
 pattern = 7
 texture = ExtResource("11_p0w5i")
 is_south_west_visible = false
 iso_tile_size = Vector2(16, 8)
 
-[node name="sw_0" parent="wall" unique_id=1853112219 instance=ExtResource("10_xsufa")]
+[node name="front" type="Node2D" parent="wall/base_wall" unique_id=877212808]
+y_sort_enabled = true
+
+[node name="sw_0" parent="wall/base_wall/front" unique_id=408049346 instance=ExtResource("10_xsufa")]
 position = Vector2(-104, 84)
 offset = Vector2i(0, 1)
-height = 4
-size = 0
 pattern = 5
 texture = ExtResource("11_p0w5i")
 footer_texture = null
 iso_tile_size = Vector2(16, 8)
 
-[node name="sw_1" parent="wall" unique_id=1344454360 instance=ExtResource("10_xsufa")]
-position = Vector2(-88, 100)
-offset = Vector2i(1, 2)
-height = 4
+[node name="sw_1" parent="wall/base_wall/front" unique_id=2125721450 instance=ExtResource("10_xsufa")]
+position = Vector2(-80, 96)
+offset = Vector2i(1, 1)
+size = 1
 pattern = 7
 footer_texture = ExtResource("11_p0w5i")
 is_south_east_visible = false
 iso_tile_size = Vector2(16, 8)
 
-[node name="sw_2" parent="wall" unique_id=554865961 instance=ExtResource("10_xsufa")]
-position = Vector2(-8, 140)
-offset = Vector2i(1, 2)
-height = 4
+[node name="sw_2" parent="wall/base_wall/front" unique_id=1739637583 instance=ExtResource("10_xsufa")]
+position = Vector2(-48, 112)
+offset = Vector2i(1, 1)
+size = 1
+pattern = 5
+footer_texture = ExtResource("11_p0w5i")
+is_south_east_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="sw_3" parent="wall/base_wall/front" unique_id=1430507900 instance=ExtResource("10_xsufa")]
+position = Vector2(-16, 128)
+offset = Vector2i(1, 1)
+size = 1
+pattern = 5
+footer_texture = ExtResource("11_p0w5i")
+is_south_east_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="sw_4" parent="wall/base_wall/front" unique_id=1803625367 instance=ExtResource("10_xsufa")]
+position = Vector2(0, 136)
+offset = Vector2i(1, 1)
+size = 1
 pattern = 7
 footer_texture = ExtResource("11_p0w5i")
 is_south_east_visible = false
 iso_tile_size = Vector2(16, 8)
 
-[node name="s" parent="wall" unique_id=1850663905 instance=ExtResource("10_xsufa")]
+[node name="s" parent="wall/base_wall/front" unique_id=10052385 instance=ExtResource("10_xsufa")]
 position = Vector2(32, 152)
 offset = Vector2i(1, 1)
-height = 4
-size = 0
 pattern = 4
 texture = ExtResource("11_p0w5i")
 footer_texture = null
 iso_tile_size = Vector2(16, 8)
 
-[node name="se_0" parent="wall" unique_id=76887122 instance=ExtResource("10_xsufa")]
+[node name="se_0" parent="wall/base_wall/front" unique_id=1089812624 instance=ExtResource("10_xsufa")]
 position = Vector2(168, 84)
 offset = Vector2i(1, 0)
-height = 4
-size = 0
 pattern = 6
 texture = ExtResource("11_p0w5i")
 footer_texture = null
 iso_tile_size = Vector2(16, 8)
 
-[node name="se_1" parent="wall" unique_id=1514361121 instance=ExtResource("10_xsufa")]
-position = Vector2(152, 100)
-offset = Vector2i(2, 1)
-height = 4
+[node name="se_1" parent="wall/base_wall/front" unique_id=9575565 instance=ExtResource("10_xsufa")]
+position = Vector2(144, 96)
+offset = Vector2i(1, 1)
+size = 1
 pattern = 8
 footer_texture = ExtResource("11_p0w5i")
 is_south_west_visible = false
 iso_tile_size = Vector2(16, 8)
 
-[node name="window_se" parent="wall" unique_id=268013310 instance=ExtResource("9_jumof")]
-position = Vector2(96, 128)
-offset = Vector2i(2, 0)
-facing = 0
-iso_tile_size = Vector2(32, 16)
+[node name="se_2" parent="wall/base_wall/front" unique_id=454996268 instance=ExtResource("10_xsufa")]
+position = Vector2(112, 112)
+offset = Vector2i(1, 1)
+size = 1
+pattern = 6
+footer_texture = ExtResource("11_p0w5i")
+is_south_west_visible = false
+iso_tile_size = Vector2(16, 8)
 
-[node name="window_se2" parent="wall" unique_id=1493575826 instance=ExtResource("9_jumof")]
-position = Vector2(0, 128)
-offset = Vector2i(2, 0)
-iso_tile_size = Vector2(32, 16)
+[node name="se_3" parent="wall/base_wall/front" unique_id=39826128 instance=ExtResource("10_xsufa")]
+position = Vector2(80, 128)
+offset = Vector2i(1, 1)
+size = 1
+pattern = 6
+footer_texture = ExtResource("11_p0w5i")
+is_south_west_visible = false
+iso_tile_size = Vector2(16, 8)
 
-[node name="se_2" parent="wall" unique_id=1693068597 instance=ExtResource("10_xsufa")]
-position = Vector2(72, 140)
-offset = Vector2i(2, 1)
-height = 4
+[node name="se_4" parent="wall/base_wall/front" unique_id=1937909557 instance=ExtResource("10_xsufa")]
+position = Vector2(64, 136)
+offset = Vector2i(1, 1)
+size = 1
 pattern = 8
 footer_texture = ExtResource("11_p0w5i")
 is_south_west_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="up_wall" type="Node2D" parent="wall" unique_id=1794402496 node_paths=PackedStringArray("visibility_mask_layers")]
+y_sort_enabled = true
+script = ExtResource("7_xsufa")
+visibility_mask_layers = [NodePath("../../wall_mask")]
+use_ground_bounding_rect = true
+smooth_visibility_change = true
+
+[node name="n" parent="wall/up_wall" unique_id=1536793865 instance=ExtResource("10_xsufa")]
+position = Vector2(32, 16)
+height = 4
+size = 1
+texture = ExtResource("11_p0w5i")
+is_south_east_visible = false
+is_south_west_visible = false
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="ne_0" parent="wall/up_wall" unique_id=618064740 instance=ExtResource("10_xsufa")]
+position = Vector2(72, 28)
+offset = Vector2i(0, 2)
+height = 4
+size = 1
+pattern = 5
+texture = ExtResource("11_p0w5i")
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="ne_1" parent="wall/up_wall" unique_id=1117075523 instance=ExtResource("10_xsufa")]
+position = Vector2(136, 60)
+offset = Vector2i(0, 2)
+height = 4
+size = 1
+pattern = 5
+texture = ExtResource("11_p0w5i")
+is_south_east_visible = false
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="ne_2" parent="wall/up_wall" unique_id=1369822399 instance=ExtResource("10_xsufa")]
+position = Vector2(160, 80)
+offset = Vector2i(2, 2)
+height = 4
+pattern = 7
+texture = ExtResource("11_p0w5i")
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="nw_0" parent="wall/up_wall" unique_id=443640138 instance=ExtResource("10_xsufa")]
+position = Vector2(-8, 28)
+offset = Vector2i(2, 0)
+height = 4
+size = 1
+pattern = 6
+texture = ExtResource("11_p0w5i")
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="nw_1" parent="wall/up_wall" unique_id=1909862794 instance=ExtResource("10_xsufa")]
+position = Vector2(-72, 60)
+offset = Vector2i(2, 0)
+height = 4
+size = 1
+pattern = 6
+texture = ExtResource("11_p0w5i")
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="nw_2" parent="wall/up_wall" unique_id=385996921 instance=ExtResource("10_xsufa")]
+position = Vector2(-96, 80)
+offset = Vector2i(2, 2)
+height = 4
+pattern = 7
+texture = ExtResource("11_p0w5i")
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="front" type="Node2D" parent="wall/up_wall" unique_id=197174568 node_paths=PackedStringArray("visibility_mask_layers")]
+y_sort_enabled = true
+script = ExtResource("7_xsufa")
+visibility_mask_layers = [NodePath("../../../floor")]
+use_ground_bounding_rect = true
+smooth_visibility_change = true
+
+[node name="sw_0" parent="wall/up_wall/front" unique_id=1853112219 instance=ExtResource("10_xsufa")]
+position = Vector2(-104, 84)
+offset = Vector2i(0, 1)
+height = 4
+pattern = 5
+texture = ExtResource("11_p0w5i")
+footer_texture = null
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="sw_1" parent="wall/up_wall/front" unique_id=1344454360 instance=ExtResource("10_xsufa")]
+position = Vector2(-72, 100)
+offset = Vector2i(2, 1)
+height = 4
+size = 1
+pattern = 7
+footer_texture = ExtResource("11_p0w5i")
+is_south_east_visible = false
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="sw_2" parent="wall/up_wall/front" unique_id=554865961 instance=ExtResource("10_xsufa")]
+position = Vector2(0, 136)
+offset = Vector2i(1, 1)
+height = 4
+size = 1
+pattern = 7
+footer_texture = ExtResource("11_p0w5i")
+is_south_east_visible = false
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="window_sw" parent="wall/up_wall/front" unique_id=1493575826 instance=ExtResource("9_jumof")]
+position = Vector2(-16, 128)
+offset = Vector2i(1, 1)
+is_stool_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="s" parent="wall/up_wall/front" unique_id=1850663905 instance=ExtResource("10_xsufa")]
+position = Vector2(32, 152)
+offset = Vector2i(1, 1)
+height = 4
+pattern = 4
+texture = ExtResource("11_p0w5i")
+footer_texture = null
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="se_0" parent="wall/up_wall/front" unique_id=76887122 instance=ExtResource("10_xsufa")]
+position = Vector2(168, 84)
+offset = Vector2i(1, 0)
+height = 4
+pattern = 6
+texture = ExtResource("11_p0w5i")
+footer_texture = null
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="se_1" parent="wall/up_wall/front" unique_id=1514361121 instance=ExtResource("10_xsufa")]
+position = Vector2(144, 96)
+offset = Vector2i(1, 1)
+height = 4
+size = 1
+pattern = 8
+footer_texture = ExtResource("11_p0w5i")
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="se_2" parent="wall/up_wall/front" unique_id=1693068597 instance=ExtResource("10_xsufa")]
+position = Vector2(64, 136)
+offset = Vector2i(1, 1)
+height = 4
+size = 1
+pattern = 8
+footer_texture = ExtResource("11_p0w5i")
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="window_se" parent="wall/up_wall/front" unique_id=268013310 instance=ExtResource("9_jumof")]
+position = Vector2(80, 128)
+offset = Vector2i(1, 1)
+is_stool_visible = false
+facing = 0
 iso_tile_size = Vector2(16, 8)

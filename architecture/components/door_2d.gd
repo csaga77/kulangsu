@@ -79,9 +79,9 @@ func _update_open() -> void:
 		node.visible = !is_open
 		
 
-func _on_body_entered(body: Node2D) -> void:
+func _on_body_entered(_body: Node2D) -> void:
 	is_open = true
 
 
-func _on_body_exited(body: Node2D) -> void:
+func _on_body_exited(_body: Node2D) -> void:
 	is_open = false

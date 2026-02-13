@@ -1,100 +1,133 @@
 shader_type canvas_item;
 
-uniform sampler2D texture_shade       : source_color, repeat_enable, filter_nearest;
-uniform sampler2D texture_footer_mask : source_color, repeat_enable, filter_nearest;
+uniform sampler2D texture_shade       : source_color, filter_nearest;
+uniform sampler2D texture_footer_mask : source_color, filter_nearest;
+uniform sampler2D texture_sides       : source_color, filter_nearest;
+uniform sampler2D texture_footer      : source_color, filter_nearest;
 
 uniform bool is_top_visible = true;
-uniform vec4 color_top   : source_color = vec4(1.0, 1.0, 0.0, 1.0);
-uniform sampler2D texture_top   : source_color, repeat_enable, filter_nearest;
+uniform vec4 top_side_mask : source_color = vec4(1.0, 1.0, 0.0, 1.0);
 
 uniform bool is_south_east_visible = true;
-uniform vec4 color_south_east : source_color = vec4(1.0, 0.0, 1.0, 1.0);
-uniform sampler2D texture_south_east : source_color, repeat_enable, filter_nearest;
+uniform vec4 south_east_side_mask : source_color = vec4(1.0, 0.0, 1.0, 1.0);
 
 uniform bool is_south_west_visible = true;
-uniform vec4 color_south_west  : source_color = vec4(0.0, 1.0, 0.0, 1.0);
-uniform sampler2D texture_south_west  : source_color, repeat_enable, filter_nearest;
+uniform vec4 south_west_side_mask : source_color = vec4(0.0, 1.0, 0.0, 1.0);
 
 uniform bool is_south_visible = true;
-uniform vec4 color_south : source_color = vec4(0.0, 1.0, 1.0, 1.0);
-uniform sampler2D texture_south : source_color, repeat_enable, filter_nearest;
+uniform vec4 south_side_mask : source_color = vec4(0.0, 1.0, 1.0, 1.0);
+
+uniform bool is_north_east_visible = true;
+uniform vec4 north_east_side_mask : source_color = vec4(1.0, 0.5, 0.0, 1.0);
+
+uniform bool is_north_west_visible = true;
+uniform vec4 north_west_side_mask : source_color = vec4(0.0, 0.5, 1.0, 1.0);
 
 uniform bool is_footer_visible = false;
-uniform sampler2D texture_footer : source_color, repeat_enable, filter_nearest;
-// source tile size is tile map raw tile size (64 x 64)
-const float source_tile_size = 64.0;
 
+uniform float color_eps = 0.02;
+uniform float shade_strength = 0.7;
+uniform bool passthrough_unmatched = false;
+
+bool match_color(vec3 a, vec3 b) {
+	return all(lessThanEqual(abs(a - b), vec3(color_eps)));
+}
 
 void fragment() {
-	vec2 texture_size = vec2(textureSize(TEXTURE, 0));
-	vec2 px_src = floor(UV * texture_size) + vec2(0.5);
-	vec2 pp_uv = px_src / texture_size;
 
-	vec4 src = textureLod(TEXTURE, pp_uv, 0);
+	vec2 src_size = vec2(textureSize(TEXTURE, 0));
+	vec2 px_src   = floor(UV * src_size) + vec2(0.5);
+	vec2 pp_uv    = px_src / src_size;
+
+	vec4 src = texture(TEXTURE, pp_uv);
 	vec4 out_col = vec4(0.0);
-	
-	float footer_start = source_tile_size;
-	
-	if (src.a > 0.0) {
-		//Shade image is in the same texture
-		vec4 footer_mask = vec4(0.0, 0.0, 0.0, 0.0);
+
+	if (src.a > 0.01) {
+
+		vec2 sides_size = vec2(textureSize(texture_sides, 0));
+		vec2 quad_px    = floor(sides_size * 0.5);
+
+		vec2 px_q = mod(px_src, quad_px);
+
+		// UV inside 2x2 atlas (0..0.5)
+		vec2 base_uv = px_q / sides_size;
+
+		// Full UV for footer
+		vec2 base_uv_full = base_uv * 2.0;
+
+		float footer_a = 0.0;
 		if (is_footer_visible) {
-			footer_mask = textureLod(texture_footer_mask, pp_uv, 0);
+			footer_a = texture(texture_footer_mask, pp_uv).a;
 		}
 
-		vec2 px_tile = mod(px_src, source_tile_size);
+		if (match_color(src.rgb, top_side_mask.rgb)) {
 
-		// for 32x32 material atlas (2x2 layout)
-		vec2 base_uv = mod(px_tile / source_tile_size, 0.5);
-
-		if (src.rgb == color_top.rgb) {
 			if (is_top_visible) {
-				vec4 repl = texture(texture_top, base_uv);
+				vec4 repl = texture(texture_sides, base_uv);
 				out_col = vec4(repl.rgb, src.a * repl.a);
 			}
 
-		} else if (src.rgb == color_south_east.rgb) {
+		} else if (match_color(src.rgb, south_east_side_mask.rgb)) {
 
 			if (is_south_east_visible) {
-				if (footer_mask.a > 0.0) {
-					vec4 repl = texture(texture_footer, base_uv + vec2(0.5, 0.5));
-					out_col = vec4(repl.rgb, src.a * repl.a);
-				} else {
-					vec4 repl = texture(texture_south_east, base_uv + vec2(0.5, 0.5));
-					out_col = vec4(repl.rgb, src.a * repl.a);
-				}
+				vec2 uv = base_uv + vec2(0.5, 0.5);
+				vec4 repl = (footer_a > 0.0)
+					? texture(texture_footer, base_uv_full)
+					: texture(texture_sides, uv);
+				out_col = vec4(repl.rgb, src.a * repl.a);
 			}
 
-		} else if (src.rgb == color_south_west.rgb) {
+		} else if (match_color(src.rgb, south_west_side_mask.rgb)) {
+
 			if (is_south_west_visible) {
-				if (footer_mask.a > 0.0) {
-					vec4 repl = texture(texture_footer, base_uv + vec2(0.0, 0.5));
-					out_col = vec4(repl.rgb, src.a * repl.a);
-				} else {
-					vec4 repl = texture(texture_south_west, base_uv + vec2(0.0, 0.5));
-					out_col = vec4(repl.rgb, src.a * repl.a);
-				}
+				vec2 uv = base_uv + vec2(0.0, 0.5);
+				vec4 repl = (footer_a > 0.0)
+					? texture(texture_footer, base_uv_full)
+					: texture(texture_sides, uv);
+				out_col = vec4(repl.rgb, src.a * repl.a);
 			}
 
-		} else if (src.rgb == color_south.rgb) {
+		} else if (match_color(src.rgb, south_side_mask.rgb)) {
+
 			if (is_south_visible) {
-				if (footer_mask.a > 0.0) {
-					vec4 repl = texture(texture_footer, base_uv + vec2(0.5, 0.0));
-					out_col = vec4(repl.rgb, src.a * repl.a);
-				} else {
-					vec4 repl = texture(texture_south, base_uv + vec2(0.5, 0.0));
-					out_col = vec4(repl.rgb, src.a * repl.a);
-				}
+				vec2 uv = base_uv + vec2(0.5, 0.0);
+				vec4 repl = (footer_a > 0.0)
+					? texture(texture_footer, base_uv_full)
+					: texture(texture_sides, uv);
+				out_col = vec4(repl.rgb, src.a * repl.a);
 			}
-		} else {
+
+		} else if (match_color(src.rgb, north_east_side_mask.rgb)) {
+
+			if (is_north_east_visible) {
+				vec2 uv = base_uv + vec2(0.0, 0.5); // adjust if atlas layout differs
+				vec4 repl = (footer_a > 0.0)
+					? texture(texture_footer, base_uv_full)
+					: texture(texture_sides, uv);
+				out_col = vec4(repl.rgb, src.a * repl.a);
+			}
+
+		} else if (match_color(src.rgb, north_west_side_mask.rgb)) {
+
+			if (is_north_west_visible) {
+				vec2 uv = base_uv + vec2(0.5, 0.5); // adjust if atlas layout differs
+				vec4 repl = (footer_a > 0.0)
+					? texture(texture_footer, base_uv_full)
+					: texture(texture_sides, uv);
+				out_col = vec4(repl.rgb, src.a * repl.a);
+			}
+
+		} else if (passthrough_unmatched) {
 			out_col = src;
 		}
-		
-		//Shade image is in the same texture
+
+		// Shade multiply
 		vec4 shade = texture(texture_shade, pp_uv);
-		if (out_col.a > 0.0 && shade.a > 0.0) {
-			out_col.rgb = mix(out_col.rgb, shade.rgb, 0.7);
+		if (out_col.a > 0.01 && shade.a > 0.01 && shade_strength > 0.0) {
+			out_col.rgb *= mix(vec3(1.0), shade.rgb, clamp(shade_strength * shade.a, 0.0, 1.0));
 		}
+
+		out_col.a *= COLOR.a;
 	}
 
 	COLOR = out_col;

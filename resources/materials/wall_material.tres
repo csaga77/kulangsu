@@ -1,21 +1,26 @@
 [gd_resource type="ShaderMaterial" format=3 uid="uid://ksyd4he0r227"]
 
 [ext_resource type="Shader" uid="uid://dkwy8jpcc6xy8" path="res://resources/materials/wall_material.gdshader" id="1_b23bv"]
+[ext_resource type="Texture2D" uid="uid://dk68jeo7pckk2" path="res://resources/sprites/architecture/walls/wall_1.png" id="2_mym6m"]
 [ext_resource type="Texture2D" uid="uid://b1xojkjfqykvn" path="res://resources/sprites/architecture/walls/brick_0.png" id="2_oohfw"]
+[ext_resource type="Texture2D" uid="uid://kuq00c1yhhtq" path="res://resources/sprites/architecture/walls/wall_templates_footer_0.png" id="3_u5wap"]
+[ext_resource type="Texture2D" uid="uid://c464f0bonebic" path="res://resources/sprites/architecture/walls/wall_templates_shade_0.png" id="4_o82x4"]
 
 [resource]
 resource_local_to_scene = true
 shader = ExtResource("1_b23bv")
+shader_parameter/texture_shade = ExtResource("4_o82x4")
+shader_parameter/texture_footer_mask = ExtResource("3_u5wap")
+shader_parameter/texture_sides = ExtResource("2_oohfw")
 shader_parameter/is_top_visible = true
 shader_parameter/color_top = Color(1, 1, 0, 1)
-shader_parameter/texture_top = ExtResource("2_oohfw")
 shader_parameter/is_south_east_visible = true
 shader_parameter/color_south_east = Color(1, 0, 1, 1)
-shader_parameter/texture_south_east = ExtResource("2_oohfw")
 shader_parameter/is_south_west_visible = true
 shader_parameter/color_south_west = Color(0, 1, 0, 1)
-shader_parameter/texture_south_west = ExtResource("2_oohfw")
 shader_parameter/is_south_visible = true
 shader_parameter/color_south = Color(0, 1, 1, 1)
-shader_parameter/texture_south = ExtResource("2_oohfw")
-shader_parameter/source_tile_size = 64.0
+shader_parameter/is_footer_visible = true
+shader_parameter/texture_footer = ExtResource("2_mym6m")
+shader_parameter/color_eps = 0.02
+shader_parameter/shade_strength = 0.7

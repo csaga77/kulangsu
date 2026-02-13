@@ -58,6 +58,20 @@ extends IsometricBlock
 		is_south_west_visible = new_visible
 		_reload()
 		
+@export var is_north_east_visible = true:
+	set(new_visible):
+		if is_north_east_visible == new_visible:
+			return
+		is_north_east_visible = new_visible
+		_reload()
+		
+@export var is_north_west_visible = true:
+	set(new_visible):
+		if is_north_west_visible == new_visible:
+			return
+		is_north_west_visible = new_visible
+		_reload()
+		
 @export var mask :Array[bool]:
 	set(new_mask):
 		if mask == new_mask:
@@ -89,16 +103,16 @@ func _do_reload() -> void:
 	if m_wall_block == null:
 		return
 	var mat :ShaderMaterial = m_wall_block.material
-	mat.set_shader_parameter("texture_shade", m_shade_texture)
-	mat.set_shader_parameter("texture_footer_mask", m_footer_mask_texture)
-	mat.set_shader_parameter("is_south_east_visible", is_south_east_visible)
-	mat.set_shader_parameter("is_south_west_visible", is_south_west_visible)
-	mat.set_shader_parameter("texture_top", texture)
-	mat.set_shader_parameter("texture_south_east", texture)
-	mat.set_shader_parameter("texture_south_west", texture)
-	mat.set_shader_parameter("texture_south", texture)
+	mat.set_shader_parameter("texture_sides", texture)
 	mat.set_shader_parameter("is_footer_visible", footer_texture != null)
 	mat.set_shader_parameter("texture_footer", footer_texture)
+	mat.set_shader_parameter("texture_shade", m_shade_texture)
+	mat.set_shader_parameter("texture_footer_mask", m_footer_mask_texture)
+	mat.set_shader_parameter("is_top_visible", height == 1)
+	mat.set_shader_parameter("is_south_east_visible", is_south_east_visible)
+	mat.set_shader_parameter("is_south_west_visible", is_south_west_visible)
+	mat.set_shader_parameter("is_north_east_visible", is_north_east_visible)
+	mat.set_shader_parameter("is_north_west_visible", is_north_west_visible)
 	
 	var cap_mat :ShaderMaterial = mat.duplicate()
 	cap_mat.set_shader_parameter("is_top_visible", true)

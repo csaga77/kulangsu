@@ -57,8 +57,8 @@ hot_areas = [NodePath(".")]
 align_parts = [NodePath("base_1/part_1"), NodePath("base_0/part_0")]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=558295921]
-position = Vector2(19.999996, -6)
-rotation = 1.1082841
+position = Vector2(-34, -2)
+rotation = -1.1258844
 scale = Vector2(0.99999994, 0.99999994)
 shape = SubResource("CapsuleShape2D_jbk66")
 

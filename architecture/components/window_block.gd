@@ -15,7 +15,14 @@ extends IsometricBlock
 			return
 		header_size = new_size
 		_reload()
-		
+
+@export var is_stool_visible = true:
+	set(new_visible):
+		if is_stool_visible == new_visible:
+			return
+		is_stool_visible = new_visible
+		_reload()
+
 @export var stool_size = 1:
 	set(new_height):
 		if stool_size == new_height or new_height < 0:
@@ -112,7 +119,7 @@ func _do_reload() -> void:
 	var total_height = stool_size + window_height + header_size
 	
 	if total_height > 0:
-		if stool_size > 0:
+		if stool_size > 0 and is_stool_visible:
 			for i in range(window_width):
 				var stool :Wall = preload("res://architecture/components/wall.tscn").instantiate()
 				stool.texture = wall_texture
