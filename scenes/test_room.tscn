@@ -6,7 +6,8 @@
 [ext_resource type="TileSet" uid="uid://emarqgj57jx7" path="res://resources/tilesets/architecture/floor_0_tiles.tres" id="4_mous7"]
 [ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="5_sg3ht"]
 [ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="7_xsufa"]
-[ext_resource type="PackedScene" uid="uid://d1fl1q5rxk02u" path="res://architecture/components/window_block.tscn" id="9_jumof"]
+[ext_resource type="PackedScene" uid="uid://b2ascu2ylwbt6" path="res://architecture/components/window_3x2x2_sw.tscn" id="9_xsufa"]
+[ext_resource type="PackedScene" uid="uid://d03gognopp6ym" path="res://architecture/components/window_3x2x2_se.tscn" id="10_p0w5i"]
 [ext_resource type="PackedScene" uid="uid://bt0wh0rca6swt" path="res://architecture/components/wall.tscn" id="10_xsufa"]
 [ext_resource type="Texture2D" uid="uid://bts45cj2xyqx0" path="res://resources/sprites/architecture/walls/wall_0.png" id="11_p0w5i"]
 
@@ -286,6 +287,12 @@ visibility_mask_layers = [NodePath("../../../floor")]
 use_ground_bounding_rect = true
 smooth_visibility_change = true
 
+[node name="window_3x2x2_sw" parent="wall/up_wall/front" unique_id=1762891925 instance=ExtResource("9_xsufa")]
+position = Vector2(-16, 128)
+stool_height = 1
+offset = Vector2i(1, 1)
+iso_tile_size = Vector2(16, 8)
+
 [node name="sw_0" parent="wall/up_wall/front" unique_id=1853112219 instance=ExtResource("10_xsufa")]
 position = Vector2(-104, 84)
 offset = Vector2i(0, 1)
@@ -303,11 +310,32 @@ height = 4
 size = 1
 pattern = 7
 footer_texture = ExtResource("11_p0w5i")
-is_south_east_visible = false
 mask = Array[bool]([false])
 iso_tile_size = Vector2(16, 8)
 
-[node name="sw_2" parent="wall/up_wall/front" unique_id=554865961 instance=ExtResource("10_xsufa")]
+[node name="sw_2" parent="wall/up_wall/front" unique_id=637211805 instance=ExtResource("10_xsufa")]
+position = Vector2(-48, 112)
+offset = Vector2i(1, 1)
+height = 4
+size = 1
+pattern = 5
+footer_texture = ExtResource("11_p0w5i")
+is_south_east_visible = false
+mask = Array[bool]([false, false, false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="sw_3" parent="wall/up_wall/front" unique_id=1559607798 instance=ExtResource("10_xsufa")]
+position = Vector2(-16, 128)
+offset = Vector2i(1, 1)
+height = 4
+size = 1
+pattern = 5
+footer_texture = ExtResource("11_p0w5i")
+is_south_east_visible = false
+mask = Array[bool]([false, false, false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="sw_4" parent="wall/up_wall/front" unique_id=554865961 instance=ExtResource("10_xsufa")]
 position = Vector2(0, 136)
 offset = Vector2i(1, 1)
 height = 4
@@ -318,12 +346,6 @@ is_south_east_visible = false
 mask = Array[bool]([false])
 iso_tile_size = Vector2(16, 8)
 
-[node name="window_sw" parent="wall/up_wall/front" unique_id=1493575826 instance=ExtResource("9_jumof")]
-position = Vector2(-16, 128)
-offset = Vector2i(1, 1)
-is_stool_visible = false
-iso_tile_size = Vector2(16, 8)
-
 [node name="s" parent="wall/up_wall/front" unique_id=1850663905 instance=ExtResource("10_xsufa")]
 position = Vector2(32, 152)
 offset = Vector2i(1, 1)
@@ -332,6 +354,12 @@ pattern = 4
 texture = ExtResource("11_p0w5i")
 footer_texture = null
 mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="window_3x2x2_se" parent="wall/up_wall/front" unique_id=42932473 instance=ExtResource("10_p0w5i")]
+position = Vector2(80, 128)
+stool_height = 1
+offset = Vector2i(1, 1)
 iso_tile_size = Vector2(16, 8)
 
 [node name="se_0" parent="wall/up_wall/front" unique_id=76887122 instance=ExtResource("10_xsufa")]
@@ -354,7 +382,27 @@ footer_texture = ExtResource("11_p0w5i")
 mask = Array[bool]([false])
 iso_tile_size = Vector2(16, 8)
 
-[node name="se_2" parent="wall/up_wall/front" unique_id=1693068597 instance=ExtResource("10_xsufa")]
+[node name="se_2" parent="wall/up_wall/front" unique_id=252213094 instance=ExtResource("10_xsufa")]
+position = Vector2(112, 112)
+offset = Vector2i(1, 1)
+height = 4
+size = 1
+pattern = 6
+footer_texture = ExtResource("11_p0w5i")
+mask = Array[bool]([false, false, false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="se_3" parent="wall/up_wall/front" unique_id=601055769 instance=ExtResource("10_xsufa")]
+position = Vector2(80, 128)
+offset = Vector2i(1, 1)
+height = 4
+size = 1
+pattern = 6
+footer_texture = ExtResource("11_p0w5i")
+mask = Array[bool]([false, false, false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="se_4" parent="wall/up_wall/front" unique_id=1693068597 instance=ExtResource("10_xsufa")]
 position = Vector2(64, 136)
 offset = Vector2i(1, 1)
 height = 4
@@ -362,11 +410,4 @@ size = 1
 pattern = 8
 footer_texture = ExtResource("11_p0w5i")
 mask = Array[bool]([false])
-iso_tile_size = Vector2(16, 8)
-
-[node name="window_se" parent="wall/up_wall/front" unique_id=268013310 instance=ExtResource("9_jumof")]
-position = Vector2(80, 128)
-offset = Vector2i(1, 1)
-is_stool_visible = false
-facing = 0
 iso_tile_size = Vector2(16, 8)

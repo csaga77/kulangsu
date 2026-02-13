@@ -12,7 +12,7 @@
 [ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="11_ied5s"]
 [ext_resource type="Texture2D" uid="uid://xxv42q7vyh85" path="res://resources/sprites/architecture/bagua_tower.png" id="12_8b4w8"]
 [ext_resource type="TileSet" uid="uid://c2edqbdaenat2" path="res://resources/tilesets/symbols_0_tiles.tres" id="12_64aem"]
-[ext_resource type="PackedScene" uid="uid://d1fl1q5rxk02u" path="res://architecture/components/window_block.tscn" id="12_p5n1q"]
+[ext_resource type="PackedScene" uid="uid://d1fl1q5rxk02u" path="res://architecture/components/window_wall.tscn" id="12_p5n1q"]
 [ext_resource type="PackedScene" uid="uid://s0b4b5sxed2f" path="res://architecture/components/pillar.tscn" id="13_8b4w8"]
 [ext_resource type="Texture2D" uid="uid://d0nn3fs56i7ih" path="res://resources/sprites/light_well_mask.png" id="13_p5n1q"]
 

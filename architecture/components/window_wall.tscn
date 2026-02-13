@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://d1fl1q5rxk02u"]
 
-[ext_resource type="Script" uid="uid://dxvblcffsiam6" path="res://architecture/components/window_block.gd" id="1_pyy81"]
+[ext_resource type="Script" uid="uid://dxvblcffsiam6" path="res://architecture/components/window_wall.gd" id="1_pyy81"]
 [ext_resource type="Texture2D" uid="uid://b1xojkjfqykvn" path="res://resources/sprites/architecture/walls/brick_0.png" id="2_7ot2q"]
 [ext_resource type="Texture2D" uid="uid://bts45cj2xyqx0" path="res://resources/sprites/architecture/walls/wall_0.png" id="2_66hes"]
 

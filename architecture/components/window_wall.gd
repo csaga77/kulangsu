@@ -1,5 +1,5 @@
 @tool
-class_name WindowBlock
+class_name WindowWall
 extends IsometricBlock
 
 @export var offset = Vector2i.ZERO:
