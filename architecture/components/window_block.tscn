@@ -1,13 +1,15 @@
 [gd_scene format=3 uid="uid://d1fl1q5rxk02u"]
 
 [ext_resource type="Script" uid="uid://dxvblcffsiam6" path="res://architecture/components/window_block.gd" id="1_pyy81"]
-[ext_resource type="Texture2D" uid="uid://dk68jeo7pckk2" path="res://resources/materials/wall_1.png" id="2_asjyx"]
+[ext_resource type="Texture2D" uid="uid://b1xojkjfqykvn" path="res://resources/materials/brick_0.png" id="2_7ot2q"]
+[ext_resource type="Texture2D" uid="uid://bts45cj2xyqx0" path="res://resources/materials/wall_0.png" id="2_66hes"]
 
 [node name="window_block" type="Node2D" unique_id=268013310]
 y_sort_enabled = true
 script = ExtResource("1_pyy81")
 wall_size = 1
-wall_texture = ExtResource("2_asjyx")
+wall_texture = ExtResource("2_7ot2q")
+wall_footer_texture = ExtResource("2_66hes")
 
 [node name="base_block" type="Node2D" parent="." unique_id=292109739]
 y_sort_enabled = true
