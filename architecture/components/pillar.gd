@@ -35,14 +35,23 @@ extends IsometricBlock
 @onready var m_mid  := $mid
 @onready var m_mask :TileMapLayer = $mask
 
+var m_is_reloading = false
+
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	super._ready()
 	# no need to _reload() during _ready()
 	# It is already loaded from a scene file, no need to duplicate loading.
-	#_reload()
+	_reload()
 
 func _reload() -> void:
+	if m_is_reloading:
+		return
+	m_is_reloading = true
+	call_deferred("_do_reload")
+	
+func _do_reload() -> void:
+	m_is_reloading = false
 	if m_top == null:
 		return
 	print("Pillar._reload()")

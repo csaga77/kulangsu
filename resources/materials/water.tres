@@ -16,6 +16,6 @@ shader_parameter/noise_texture = SubResource("NoiseTexture2D_h2lqh")
 shader_parameter/speed = Vector2(0.5, 0.2)
 shader_parameter/distortion = 0.01
 shader_parameter/wave_ab = Vector2(0.02, 0.02)
-shader_parameter/vertex_bob_amp = 0.0
+shader_parameter/vertex_bob_amp = 2.0
 shader_parameter/vertex_bob_freq = 1.0
 shader_parameter/tile_texture_size = Vector2(10, 32)
