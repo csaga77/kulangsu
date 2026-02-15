@@ -5,6 +5,7 @@
 [ext_resource type="TileSet" uid="uid://bbu6vuvl5k3ct" path="res://godot_tilemap/resources/tilesets/tile_set_2x2_combined_32x32.tres" id="2_1f8l1"]
 [ext_resource type="Script" uid="uid://o4sfxasth5gi" path="res://godot_tilemap/scenes/dual_tile_map_layer.gd" id="2_dshdi"]
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="5_onfuh"]
+[ext_resource type="Script" uid="uid://kux2sebcpljy" path="res://game/marble_game/damping_area.gd" id="6_j17kk"]
 [ext_resource type="Script" uid="uid://djt6soykmlobh" path="res://game/marble_game/marble_ball.gd" id="6_tpnu8"]
 [ext_resource type="Script" uid="uid://bgiy4eb1a2738" path="res://game/marble_game/marble_ball_player_controller.gd" id="7_xt7c1"]
 [ext_resource type="Script" uid="uid://btg1c6qvxh8mb" path="res://game/marble_game/marble_ball_ai_controller.gd" id="8_6ehy8"]
@@ -15,8 +16,11 @@ bounce = 0.5
 
 [sub_resource type="WorldBoundaryShape2D" id="WorldBoundaryShape2D_dshdi"]
 
+[sub_resource type="CircleShape2D" id="CircleShape2D_onfuh"]
+radius = 30.0
+
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_onfuh"]
-bounce = 0.3
+bounce = 0.5
 
 [sub_resource type="Resource" id="Resource_7hgil"]
 script = ExtResource("7_xt7c1")
@@ -26,24 +30,14 @@ metadata/_custom_type_script = "uid://bgiy4eb1a2738"
 
 [sub_resource type="Resource" id="Resource_j17kk"]
 script = ExtResource("8_6ehy8")
-kick_max_impulse = 50.0
 metadata/_custom_type_script = "uid://btg1c6qvxh8mb"
 
 [sub_resource type="Resource" id="Resource_3kv4t"]
 script = ExtResource("8_6ehy8")
-kick_max_impulse = 50.0
 metadata/_custom_type_script = "uid://btg1c6qvxh8mb"
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_onfuh"]
-radius = 30.0
-
-[node name="marble_game" type="Node2D" unique_id=2041496526 node_paths=PackedStringArray("balls")]
+[node name="marble_game" type="Node2D" unique_id=2041496526]
 script = ExtResource("1_1f8l1")
-balls = [NodePath("ball"), NodePath("other_ball"), NodePath("other_ball2")]
-hole_path = NodePath("hole")
-damping_area_path = NodePath("damping_area")
-linear_damp_in_zone = 5.0
-angular_damp_in_zone = 5.0
 
 [node name="camera" type="Camera2D" parent="." unique_id=1796277555]
 position_smoothing_enabled = true
@@ -61,10 +55,13 @@ script = ExtResource("2_dshdi")
 auto_surround_tile = false
 metadata/_custom_type_script = "uid://o4sfxasth5gi"
 
-[node name="damping_area" type="Area2D" parent="." unique_id=1742464821]
-position = Vector2(203, 133)
+[node name="damping_area" type="Node2D" parent="." unique_id=165588674]
 
-[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="damping_area" unique_id=919141950]
+[node name="area1" type="Area2D" parent="damping_area" unique_id=1742464821]
+position = Vector2(203, 133)
+script = ExtResource("6_j17kk")
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="damping_area/area1" unique_id=919141950]
 position = Vector2(50, 60)
 polygon = PackedVector2Array(59.1, -64, -59, -64, -104, -25, -64, 61, -60.3, 64, 59.6, 64, 63.9, 59, 64, -61.1)
 
@@ -88,6 +85,13 @@ shape = SubResource("WorldBoundaryShape2D_dshdi")
 position = Vector2(544, 352)
 shape = SubResource("WorldBoundaryShape2D_dshdi")
 
+[node name="hole" type="Area2D" parent="." unique_id=1384930562]
+position = Vector2(144, 118)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="hole" unique_id=172063252]
+shape = SubResource("CircleShape2D_onfuh")
+debug_color = Color(0.755117, 0.45648783, 5.7756904e-07, 0.41960785)
+
 [node name="ball" type="RigidBody2D" parent="." unique_id=1417319859]
 position = Vector2(78, 71)
 physics_material_override = SubResource("PhysicsMaterial_onfuh")
@@ -101,7 +105,7 @@ controller = SubResource("Resource_7hgil")
 shape = SubResource("CircleShape2D_1f8l1")
 
 [node name="other_ball" type="RigidBody2D" parent="." unique_id=350237111]
-position = Vector2(347, 70)
+position = Vector2(214, 97)
 physics_material_override = SubResource("PhysicsMaterial_onfuh")
 gravity_scale = 0.0
 linear_damp = 1.0
@@ -112,27 +116,20 @@ controller = SubResource("Resource_j17kk")
 shape = SubResource("CircleShape2D_1f8l1")
 debug_color = Color(0.9396147, 0.2281752, 0.25096583, 0.41960785)
 
-[node name="other_ball2" type="RigidBody2D" parent="." unique_id=1716040798]
-position = Vector2(296, 239)
+[node name="other_ball2" type="RigidBody2D" parent="." unique_id=1247979503]
+position = Vector2(54, 283)
 physics_material_override = SubResource("PhysicsMaterial_onfuh")
 gravity_scale = 0.0
 linear_damp = 1.0
 script = ExtResource("6_tpnu8")
 controller = SubResource("Resource_3kv4t")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="other_ball2" unique_id=950039717]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="other_ball2" unique_id=2053690475]
 shape = SubResource("CircleShape2D_1f8l1")
 debug_color = Color(0.9396147, 0.2281752, 0.25096583, 0.41960785)
 
-[node name="hole" type="Area2D" parent="." unique_id=1384930562]
-position = Vector2(144, 118)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="hole" unique_id=172063252]
-shape = SubResource("CircleShape2D_onfuh")
-debug_color = Color(0.755117, 0.45648783, 5.7756904e-07, 0.41960785)
-
 [connection signal="cell_updated" from="map" to="." method="_on_map_cell_updated"]
-[connection signal="body_entered" from="damping_area" to="." method="_on_damping_area_body_entered"]
-[connection signal="body_exited" from="damping_area" to="." method="_on_damping_area_body_exited"]
+[connection signal="body_entered" from="damping_area/area1" to="." method="_on_damping_area_body_entered"]
+[connection signal="body_exited" from="damping_area/area1" to="." method="_on_damping_area_body_exited"]
 [connection signal="body_entered" from="hole" to="." method="_on_hole_body_entered"]
 [connection signal="body_exited" from="hole" to="." method="_on_hole_body_exited"]

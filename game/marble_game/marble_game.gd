@@ -4,7 +4,7 @@ class_name MarbleGame
 extends Node2D
 
 enum GameMode { FREE, TURN }
-enum GameStatus { FREE_PLAY, WAITING_FOR_REST, WAITING_FOR_KICK }
+enum GameStatus { FREE_PLAY, WAITING_FOR_REST, WAITING_FOR_KICK, GAME_OVER }
 
 ## Selected game mode (FREE or TURN).
 @export var game_mode: GameMode = GameMode.TURN:
@@ -13,7 +13,8 @@ enum GameStatus { FREE_PLAY, WAITING_FOR_REST, WAITING_FOR_KICK }
 		_apply_mode()
 
 ## Balls in this game (multi-ball). Assign in editor.
-@export var balls: Array[MarbleBall] = []
+## If empty at runtime, the game will auto-pick up MarbleBall children.
+@export var m_balls: Array[MarbleBall] = []
 
 ## Index of the ball that gets the first turn in TURN mode.
 @export var starting_ball_index: int = 0
@@ -21,7 +22,7 @@ enum GameStatus { FREE_PLAY, WAITING_FOR_REST, WAITING_FOR_KICK }
 ## If true, enables "extra chance on hit" rule.
 @export var enable_extra_chance_on_hit: bool = true
 
-## Prints extra-chance / hole-lock events.
+## Prints extra-chance / debug events (TurnMode uses this too).
 @export var print_extra_chance_events: bool = true
 
 ## Seconds required to be "settled" before a kick window opens.
@@ -36,21 +37,39 @@ enum GameStatus { FREE_PLAY, WAITING_FOR_REST, WAITING_FOR_KICK }
 ## Hole pull force scale (optional).
 @export var hole_pull_strength: float = 0.5
 
-## Hole area (used for hole pull + enter/exit tracking).
+## Hole area path (optional). If unset, $hole is used.
 @export var hole_path: NodePath
 
-## Optional damping area path.
-@export var damping_area_path: NodePath
-
-## Damping inside damping area.
-@export var linear_damp_in_zone: float = 3.0
-@export var angular_damp_in_zone: float = 3.0
-
+# -----------------------
+# UI signals
+# -----------------------
 signal game_mode_changed(new_mode: GameMode)
 signal status_changed(new_status: GameStatus)
 signal turn_active_changed(is_active: bool)
 signal current_ball_changed(ball: MarbleBall)
 signal rest_progress_changed(progress_0_1: float)
+
+## Emitted when a ball becomes a winner (locked in hole permanently).
+signal ball_won(ball: MarbleBall)
+
+## Emitted when a ball becomes the loser (last remaining and runs out of chances).
+signal ball_lost(ball: MarbleBall)
+
+## Emitted once when the game ends.
+signal game_over
+
+# -----------------------
+# Runtime UI properties
+# -----------------------
+## Current winners list (read-only for UI).
+var m_winners: Array[MarbleBall] = []
+
+## The losing ball (null if none).
+var m_loser: MarbleBall = null
+
+## Active "challenge lock" ball: a ball currently being challenged while in the hole.
+var m_active_lock_ball: MarbleBall = null
+
 
 var m_mode: MarbleGameMode = null
 var m_status: GameStatus = GameStatus.WAITING_FOR_REST
@@ -60,66 +79,179 @@ var m_current_ball: MarbleBall = null
 
 var m_balls_in_hole: Array[MarbleBall] = []
 
-@onready var m_hole: Area2D = get_node_or_null(hole_path) as Area2D
-@onready var m_damping_area: Area2D = get_node_or_null(damping_area_path) as Area2D
+# Prefer explicit $hole (you said no need to discover hole)
+@onready var m_hole: Area2D = ($hole as Area2D) if has_node("hole") else null
 
 
 func _ready() -> void:
+	# Hole fallback: use hole_path only if $hole doesn't exist / isn't set.
+	if m_hole == null and hole_path != NodePath():
+		m_hole = get_node_or_null(hole_path) as Area2D
+
+	# Backward compatible: if editor didn't assign balls, auto pickup at runtime.
+	if not Engine.is_editor_hint():
+		if m_balls.is_empty():
+			var found: Array = CommonUtils.find_all_children_of_type(self, MarbleBall)
+			for n in found:
+				var b: MarbleBall = n
+				if b != null:
+					m_balls.append(b)
+
 	_assign_game_to_balls()
 	_connect_ball_signals()
-	_apply_mode()
+
+	if not Engine.is_editor_hint():
+		restart_game()
+
+
+func _ordinal(n: int) -> String:
+	# n is 1-based
+	var mod100 := n % 100
+	if mod100 >= 11 and mod100 <= 13:
+		return str(n) + "th"
+
+	match n % 10:
+		1: return str(n) + "st"
+		2: return str(n) + "nd"
+		3: return str(n) + "rd"
+		_: return str(n) + "th"
 
 
 ## Returns the list of balls for modes/controllers.
 func get_balls() -> Array[MarbleBall]:
-	return balls
+	return m_balls
 
 
 func restart_game() -> void:
 	m_balls_in_hole.clear()
-	for b in balls:
+	m_winners.clear()
+	m_loser = null
+	m_active_lock_ball = null
+
+	for b in m_balls:
 		if is_instance_valid(b):
 			b.set_in_hole(false)
+			b.set_controller_active(false)
+
+	_set_current_ball(null)
+	_set_turn_active(false)
+	_set_rest_progress(0.0)
+	_set_status(GameStatus.WAITING_FOR_REST)
 
 	_apply_mode()
 	if m_mode != null:
 		m_mode.on_restart(self)
 
 
+func declare_winner(ball: MarbleBall) -> void:
+	if ball == null or not is_instance_valid(ball):
+		return
+	if m_winners.has(ball):
+		return
+
+	m_winners.append(ball)
+
+	var place := m_winners.size() # 1-based
+	print("[MarbleGame] WINNER ", _ordinal(place), " -> ", ball.name)
+
+	ball_won.emit(ball)
+
+
+func declare_loser(ball: MarbleBall) -> void:
+	if ball == null or not is_instance_valid(ball):
+		return
+	if m_loser == ball:
+		return
+
+	m_loser = ball
+
+	# If there are N balls total, loser is last place.
+	var total := m_balls.size()
+	if total > 0:
+		print("[MarbleGame] LOSER ", _ordinal(total), " -> ", ball.name)
+	else:
+		print("[MarbleGame] LOSER -> ", ball.name)
+
+	ball_lost.emit(ball)
+
+
+func set_active_lock_ball(ball: MarbleBall) -> void:
+	if m_active_lock_ball == ball:
+		return
+	m_active_lock_ball = ball
+	if m_active_lock_ball != null:
+		print("[MarbleGame] ActiveLockBall -> ", m_active_lock_ball.name)
+	else:
+		print("[MarbleGame] ActiveLockBall -> <none>")
+
+
+func _print_leaderboard() -> void:
+	var total := m_balls.size()
+	print("[MarbleGame] Leaderboard:")
+
+	# Winners in order (1st, 2nd, ...)
+	for i in m_winners.size():
+		var b := m_winners[i]
+		if is_instance_valid(b):
+			print("  ", _ordinal(i + 1), ": ", b.name)
+		else:
+			print("  ", _ordinal(i + 1), ": <invalid>")
+
+	# If loser exists, it is always last place.
+	if is_instance_valid(m_loser):
+		print("  ", _ordinal(total), ": ", m_loser.name)
+	else:
+		if m_winners.size() < total:
+			for b in m_balls:
+				if not is_instance_valid(b):
+					continue
+				if m_winners.has(b):
+					continue
+				print("  ", "<unranked>: ", b.name)
+
+
+func end_game() -> void:
+	if m_status == GameStatus.GAME_OVER:
+		return
+
+	for b in m_balls:
+		if is_instance_valid(b):
+			b.set_controller_active(false)
+
+	_set_current_ball(null)
+	_set_turn_active(false)
+	_set_rest_progress(0.0)
+	_set_status(GameStatus.GAME_OVER)
+
+	print("[MarbleGame] GAME OVER")
+	_print_leaderboard()
+	game_over.emit()
+
+
 func _assign_game_to_balls() -> void:
-	for b in balls:
+	for b in m_balls:
 		if not is_instance_valid(b):
 			continue
 		b.set_game(self)
 
 
 func _connect_ball_signals() -> void:
-	for b in balls:
+	for b in m_balls:
 		if not is_instance_valid(b):
 			continue
 
 		if not b.kicked.is_connected(_on_ball_kicked):
 			b.kicked.connect(_on_ball_kicked)
-
 		if not b.body_hit.is_connected(_on_ball_body_hit):
 			b.body_hit.connect(_on_ball_body_hit)
-
 		if not b.hole_state_changed.is_connected(_on_ball_hole_state_changed):
 			b.hole_state_changed.connect(_on_ball_hole_state_changed)
 
-	# Hole enter/exit
 	if is_instance_valid(m_hole):
 		if not m_hole.body_entered.is_connected(_on_hole_body_entered):
 			m_hole.body_entered.connect(_on_hole_body_entered)
 		if not m_hole.body_exited.is_connected(_on_hole_body_exited):
 			m_hole.body_exited.connect(_on_hole_body_exited)
-
-	# Damping enter/exit (optional)
-	if is_instance_valid(m_damping_area):
-		if not m_damping_area.body_entered.is_connected(_on_damping_area_body_entered):
-			m_damping_area.body_entered.connect(_on_damping_area_body_entered)
-		if not m_damping_area.body_exited.is_connected(_on_damping_area_body_exited):
-			m_damping_area.body_exited.connect(_on_damping_area_body_exited)
 
 
 func _apply_mode() -> void:
@@ -140,6 +272,8 @@ func _apply_mode() -> void:
 func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
+	if m_status == GameStatus.GAME_OVER:
+		return
 
 	# Optional hole pull
 	if is_instance_valid(m_hole) and hole_pull_strength > 0.0:
@@ -153,8 +287,9 @@ func _physics_process(delta: float) -> void:
 	if m_mode != null:
 		m_mode.on_physics_process(self, delta)
 
+
 # -----------------------
-# UI/state helpers
+# UI/state helpers (with prints)
 # -----------------------
 func _set_status(s: GameStatus) -> void:
 	if m_status == s:
@@ -192,7 +327,9 @@ func _status_name(s: GameStatus) -> String:
 		GameStatus.FREE_PLAY: return "FREE_PLAY"
 		GameStatus.WAITING_FOR_REST: return "WAITING_FOR_REST"
 		GameStatus.WAITING_FOR_KICK: return "WAITING_FOR_KICK"
+		GameStatus.GAME_OVER: return "GAME_OVER"
 	return "UNKNOWN"
+
 
 # -----------------------
 # Forward events to mode
@@ -214,39 +351,10 @@ func _on_hole_body_entered(body: Node2D) -> void:
 		var b := body as MarbleBall
 		if not m_balls_in_hole.has(b):
 			m_balls_in_hole.append(b)
-			b.set_meta("old_linear_damp", b.linear_damp)
-			b.set_meta("old_angular_damp", b.angular_damp)
-			b.linear_damp = linear_damp_in_zone
-			b.angular_damp = angular_damp_in_zone
 		b.set_in_hole(true)
 
 func _on_hole_body_exited(body: Node2D) -> void:
 	if body is MarbleBall:
 		var b := body as MarbleBall
-		if m_balls_in_hole.has(b):
-			if b.has_meta("old_linear_damp"):
-				b.linear_damp = float(b.get_meta("old_linear_damp"))
-			if b.has_meta("old_angular_damp"):
-				b.angular_damp = float(b.get_meta("old_angular_damp"))
-			m_balls_in_hole.erase(b)
-			
+		m_balls_in_hole.erase(b)
 		b.set_in_hole(false)
-
-# -----------------------
-# Optional damping area
-# -----------------------
-func _on_damping_area_body_entered(body: Node2D) -> void:
-	if body is RigidBody2D:
-		var rb := body as RigidBody2D
-		rb.set_meta("old_linear_damp", rb.linear_damp)
-		rb.set_meta("old_angular_damp", rb.angular_damp)
-		rb.linear_damp = linear_damp_in_zone
-		rb.angular_damp = angular_damp_in_zone
-
-func _on_damping_area_body_exited(body: Node2D) -> void:
-	if body is RigidBody2D:
-		var rb := body as RigidBody2D
-		if rb.has_meta("old_linear_damp"):
-			rb.linear_damp = float(rb.get_meta("old_linear_damp"))
-		if rb.has_meta("old_angular_damp"):
-			rb.angular_damp = float(rb.get_meta("old_angular_damp"))

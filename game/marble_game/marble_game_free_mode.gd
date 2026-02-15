@@ -2,25 +2,27 @@
 class_name MarbleGameFreeMode
 extends MarbleGameMode
 
-## FREE mode: player controllers are allowed; AI controllers never kick.
+## FREE mode:
+## - All controllers allowed unless the ball is in the hole.
 
 func on_restart(game: MarbleGame) -> void:
-	for b: MarbleBall in game.get_balls():
-		if not is_instance_valid(b):
-			continue
-		# Only allow player-controlled balls in free mode
-		b.set_controller_active(b.is_player_controlled and not b.m_in_hole)
+	_enable_all(game)
 
 	game._set_status(MarbleGame.GameStatus.FREE_PLAY)
 	game._set_turn_active(true)
 	game._set_rest_progress(0.0)
+	game._set_current_ball(null)
 
 func on_apply_mode(game: MarbleGame) -> void:
 	on_restart(game)
 
 func on_physics_process(game: MarbleGame, _delta: float) -> void:
-	# Keep controller activity consistent if balls enter/exit hole.
+	# Maintain controller activity if hole state changes.
 	for b: MarbleBall in game.get_balls():
-		if not is_instance_valid(b):
-			continue
-		b.set_controller_active(b.is_player_controlled and not b.m_in_hole)
+		if is_instance_valid(b):
+			b.set_controller_active(not b.m_in_hole)
+
+func _enable_all(game: MarbleGame) -> void:
+	for b: MarbleBall in game.get_balls():
+		if is_instance_valid(b):
+			b.set_controller_active(not b.m_in_hole)
