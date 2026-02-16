@@ -30,7 +30,6 @@ signal game_over
 # -----------------------
 var m_winners: Array[MarbleBall] = []
 var m_loser: MarbleBall = null
-var m_active_lock_ball: MarbleBall = null
 
 var m_status: GameStatus = GameStatus.WAITING_FOR_REST
 var m_turn_active: bool = false
@@ -78,7 +77,6 @@ func get_hole() -> MarbleHole:
 func restart_game() -> void:
 	m_winners.clear()
 	m_loser = null
-	m_active_lock_ball = null
 
 	for b in m_balls:
 		if is_instance_valid(b):
@@ -117,16 +115,6 @@ func declare_loser(ball: MarbleBall) -> void:
 	var total := m_balls.size()
 	print("[MarbleGame] LOSER ", _ordinal(total), " -> ", ball.name)
 	ball_lost.emit(ball)
-
-
-func set_active_lock_ball(ball: MarbleBall) -> void:
-	if m_active_lock_ball == ball:
-		return
-	m_active_lock_ball = ball
-	if m_active_lock_ball != null:
-		print("[MarbleGame] ActiveLockBall -> ", m_active_lock_ball.name)
-	else:
-		print("[MarbleGame] ActiveLockBall -> <none>")
 
 
 func end_game() -> void:

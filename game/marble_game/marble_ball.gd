@@ -14,6 +14,14 @@ signal hole_state_changed(ball: MarbleBall, in_hole: bool)
 ## The controller Resource that drives this ball (Player, AI, etc).
 @export var controller: MarbleBallController
 
+## Marble sprite texture (assigned to $marble_sprite if it is a Sprite2D).
+@export var marble_texture: Texture2D:
+	set(v):
+		marble_texture = v
+		_apply_texture_to_sprite()
+		_apply_radius_to_nodes()
+		_update_rolling_shader(0.0, true)
+
 ## If true, the ball will sum damping contributions from overlapping MarbleDampingArea nodes.
 @export var enable_area_damping: bool = true
 
@@ -89,6 +97,9 @@ func _ready() -> void:
 
 	if is_instance_valid(controller):
 		controller.set_ball(self)
+
+	# Apply texture to sprite first (so sizing uses the right texture).
+	_apply_texture_to_sprite()
 
 	# Apply initial radius to sprite/collision.
 	_apply_radius_to_nodes()
@@ -197,6 +208,20 @@ func _recompute_damping() -> void:
 
 
 # --------------------------------------------------------------------
+# Internal: Apply texture to $marble_sprite if it is a Sprite2D
+# --------------------------------------------------------------------
+func _apply_texture_to_sprite() -> void:
+	if not is_node_ready():
+		return
+	if not is_instance_valid(m_marble_sprite):
+		return
+	if m_marble_sprite is TextureRect:
+		var sp := m_marble_sprite as TextureRect
+		if marble_texture != null:
+			sp.texture = marble_texture
+
+
+# --------------------------------------------------------------------
 # Internal: Apply radius to visuals + collision so they stay in sync
 # --------------------------------------------------------------------
 func _apply_radius_to_nodes() -> void:
@@ -217,7 +242,7 @@ func _apply_radius_to_nodes() -> void:
 		if m_marble_sprite is Sprite2D:
 			var sp := m_marble_sprite as Sprite2D
 
-			# ⭐ FORCE CENTER ALIGNMENT
+			# Force center alignment at the body's origin.
 			sp.centered = true
 			sp.offset = Vector2.ZERO
 			sp.position = Vector2.ZERO
@@ -231,6 +256,7 @@ func _apply_radius_to_nodes() -> void:
 				var sx = target_d / max(tex_w, 0.001)
 				var sy = target_d / max(tex_h, 0.001)
 
+				# Use uniform scale to keep aspect.
 				var smin = min(sx, sy)
 				sp.scale = Vector2(smin, smin)
 
@@ -239,6 +265,7 @@ func _apply_radius_to_nodes() -> void:
 			var target_d2 := marble_radius_px * 2.0
 			m_marble_sprite.position = -Vector2(target_d2, target_d2) / 2.0
 			m_marble_sprite.size = Vector2(target_d2, target_d2)
+
 
 # --------------------------------------------------------------------
 # Internal: Rolling shader driver (roll around axis in UV plane, not Z)

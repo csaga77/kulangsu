@@ -41,6 +41,9 @@ var m_lock_ball: MarbleBall = null               # currently challenged ball in 
 var m_lock_queue: Array[MarbleBall] = []         # balls that entered hole while a lock was active
 var m_chances_remaining: Dictionary = {}         # MarbleBall -> int (challenger chances during current lock)
 
+# Turn-mode-owned "active lock ball" for UI/debug (moved from MarbleGame)
+var m_active_lock_ball: MarbleBall = null
+
 # Pending “last chance used” loser check, resolved after all other logic
 var m_pending_loser_ball: MarbleBall = null
 
@@ -69,11 +72,11 @@ func on_restart(game: MarbleGame) -> void:
 	m_lock_queue.clear()
 	m_pending_loser_ball = null
 
+	_set_active_lock_ball(null)
+
 	for b: MarbleBall in game.get_balls():
 		m_is_winner[b] = false
 		m_chances_remaining[b] = 0
-
-	game.set_active_lock_ball(null)
 
 	game._set_status(MarbleGame.GameStatus.WAITING_FOR_REST)
 	game._set_turn_active(false)
@@ -215,7 +218,7 @@ func on_ball_hole_state_changed(game: MarbleGame, ball: MarbleBall, in_hole: boo
 			return
 
 		if _is_lock_active() and ball != m_lock_ball and (not ball.m_in_hole):
-			_grant_lock_chances_if_eligible(game, ball)
+			_grant_lock_chances_if_eligible(ball)
 
 
 # -------------------------------------------------
@@ -303,7 +306,7 @@ func _evaluate_after_rest(game: MarbleGame) -> void:
 # -----------------------
 func _start_lock_for_ball(game: MarbleGame, ball: MarbleBall) -> void:
 	m_lock_ball = ball
-	game.set_active_lock_ball(ball)
+	_set_active_lock_ball(ball)
 
 	for b: MarbleBall in game.get_balls():
 		_grant_lock_chances_or_zero(b)
@@ -327,7 +330,7 @@ func _grant_lock_chances_or_zero(b: MarbleBall) -> void:
 	m_chances_remaining[b] = max(0, lock_chances_default)
 
 
-func _grant_lock_chances_if_eligible(_game: MarbleGame, b: MarbleBall) -> void:
+func _grant_lock_chances_if_eligible(b: MarbleBall) -> void:
 	if not _is_lock_active():
 		return
 	if b == null or not is_instance_valid(b):
@@ -346,11 +349,12 @@ func _grant_lock_chances_if_eligible(_game: MarbleGame, b: MarbleBall) -> void:
 			print("[TurnMode] Lock chances granted (became eligible): ", b.name, " -> ", lock_chances_default)
 
 
-func _cancel_lock(game: MarbleGame) -> void:
+func _cancel_lock(_game: MarbleGame) -> void:
 	m_lock_ball = null
-	game.set_active_lock_ball(null)
-	for b: MarbleBall in game.get_balls():
-		m_chances_remaining[b] = 0
+	_set_active_lock_ball(null)
+	# Clear all challenger chances
+	for k in m_chances_remaining.keys():
+		m_chances_remaining[k] = 0
 
 
 func _is_lock_active() -> bool:
@@ -532,6 +536,16 @@ func _all_balls_finished(game: MarbleGame) -> bool:
 		return false
 	return true
 
+func _all_balls_are_slow(game: MarbleGame) -> bool:
+	for b: MarbleBall in game.get_balls():
+		if not is_instance_valid(b):
+			continue
+		if b.linear_velocity.length() > rest_linear_speed_threshold:
+			return false
+		if absf(b.angular_velocity) > rest_angular_speed_threshold:
+			return false
+	return true
+
 func _get_last_remaining_nonwinner_not_in_hole(game: MarbleGame) -> MarbleBall:
 	var last: MarbleBall = null
 	for b: MarbleBall in game.get_balls():
@@ -545,6 +559,15 @@ func _get_last_remaining_nonwinner_not_in_hole(game: MarbleGame) -> MarbleBall:
 			return null
 		last = b
 	return last
+
+func _set_active_lock_ball(ball: MarbleBall) -> void:
+	if m_active_lock_ball == ball:
+		return
+	m_active_lock_ball = ball
+	if m_active_lock_ball != null:
+		print("[TurnMode] ActiveLockBall -> ", m_active_lock_ball.name)
+	else:
+		print("[TurnMode] ActiveLockBall -> <none>")
 
 func _debug(game: MarbleGame, tag: String) -> void:
 	var frame := Engine.get_physics_frames()

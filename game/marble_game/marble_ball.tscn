@@ -7,6 +7,8 @@
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_onfuh"]
 bounce = 0.5
 
+[sub_resource type="CircleShape2D" id="CircleShape2D_1f8l1"]
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_j17kk"]
 resource_local_to_scene = true
 shader = ExtResource("3_aphqf")
@@ -18,8 +20,10 @@ shader_parameter/rim_darkening = 0.650000030875
 shader_parameter/highlight_power = 72.4930033959175
 shader_parameter/highlight_strength = 0.522000024795
 shader_parameter/light_dir = Vector2(-0.5, -0.8)
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_1f8l1"]
+shader_parameter/refraction_strength = 0.02
+shader_parameter/refraction_surface_mix = 0.65
+shader_parameter/refraction_radial_power = 1.75
+shader_parameter/ior = 1.45
 
 [node name="ball" type="RigidBody2D" unique_id=1800977570]
 physics_material_override = SubResource("PhysicsMaterial_onfuh")
@@ -28,6 +32,9 @@ linear_damp = 1.0
 angular_damp = 29.283
 script = ExtResource("1_h55h2")
 marble_radius_px = 10.0
+
+[node name="collision_shape" type="CollisionShape2D" parent="." unique_id=539894603]
+shape = SubResource("CircleShape2D_1f8l1")
 
 [node name="marble_sprite" type="TextureRect" parent="." unique_id=611055060]
 material = SubResource("ShaderMaterial_j17kk")
@@ -45,6 +52,3 @@ grow_vertical = 2
 mouse_filter = 2
 texture = ExtResource("4_js1yd")
 expand_mode = 1
-
-[node name="collision_shape" type="CollisionShape2D" parent="." unique_id=539894603]
-shape = SubResource("CircleShape2D_1f8l1")
