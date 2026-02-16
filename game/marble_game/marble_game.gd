@@ -34,10 +34,13 @@ enum GameStatus { FREE_PLAY, WAITING_FOR_REST, WAITING_FOR_KICK, GAME_OVER }
 ## Angular speed threshold considered "stopped enough".
 @export var rest_angular_speed_threshold: float = 2.5
 
-## Hole pull force scale (optional).
-@export var hole_pull_strength: float = 0.5
+## Hole pull force scale (delegated to MarbleHole).
+@export var hole_pull_strength: float = 0.5:
+	set(v):
+		hole_pull_strength = v
+		_apply_hole_pull_strength()
 
-## Hole area path (optional). If unset, $hole is used.
+## Hole path (optional). If unset, $hole is used.
 @export var hole_path: NodePath
 
 # -----------------------
@@ -77,16 +80,16 @@ var m_turn_active: bool = false
 var m_rest_progress: float = 0.0
 var m_current_ball: MarbleBall = null
 
-var m_balls_in_hole: Array[MarbleBall] = []
-
 # Prefer explicit $hole (you said no need to discover hole)
-@onready var m_hole: Area2D = ($hole as Area2D) if has_node("hole") else null
+@onready var m_hole: MarbleHole = ($hole as MarbleHole) if has_node("hole") else null
 
 
 func _ready() -> void:
 	# Hole fallback: use hole_path only if $hole doesn't exist / isn't set.
 	if m_hole == null and hole_path != NodePath():
-		m_hole = get_node_or_null(hole_path) as Area2D
+		m_hole = get_node_or_null(hole_path) as MarbleHole
+
+	_apply_hole_pull_strength()
 
 	# Backward compatible: if editor didn't assign balls, auto pickup at runtime.
 	if not Engine.is_editor_hint():
@@ -104,12 +107,15 @@ func _ready() -> void:
 		restart_game()
 
 
+func _apply_hole_pull_strength() -> void:
+	if is_instance_valid(m_hole):
+		m_hole.pull_strength = hole_pull_strength
+
+
 func _ordinal(n: int) -> String:
-	# n is 1-based
 	var mod100 := n % 100
 	if mod100 >= 11 and mod100 <= 13:
 		return str(n) + "th"
-
 	match n % 10:
 		1: return str(n) + "st"
 		2: return str(n) + "nd"
@@ -123,7 +129,6 @@ func get_balls() -> Array[MarbleBall]:
 
 
 func restart_game() -> void:
-	m_balls_in_hole.clear()
 	m_winners.clear()
 	m_loser = null
 	m_active_lock_ball = null
@@ -151,9 +156,8 @@ func declare_winner(ball: MarbleBall) -> void:
 
 	m_winners.append(ball)
 
-	var place := m_winners.size() # 1-based
+	var place := m_winners.size()
 	print("[MarbleGame] WINNER ", _ordinal(place), " -> ", ball.name)
-
 	ball_won.emit(ball)
 
 
@@ -165,7 +169,6 @@ func declare_loser(ball: MarbleBall) -> void:
 
 	m_loser = ball
 
-	# If there are N balls total, loser is last place.
 	var total := m_balls.size()
 	if total > 0:
 		print("[MarbleGame] LOSER ", _ordinal(total), " -> ", ball.name)
@@ -188,16 +191,9 @@ func set_active_lock_ball(ball: MarbleBall) -> void:
 func _print_leaderboard() -> void:
 	var total := m_balls.size()
 	print("[MarbleGame] Leaderboard:")
-
-	# Winners in order (1st, 2nd, ...)
 	for i in m_winners.size():
 		var b := m_winners[i]
-		if is_instance_valid(b):
-			print("  ", _ordinal(i + 1), ": ", b.name)
-		else:
-			print("  ", _ordinal(i + 1), ": <invalid>")
-
-	# If loser exists, it is always last place.
+		print("  ", _ordinal(i + 1), ": ", b.name if is_instance_valid(b) else "<invalid>")
 	if is_instance_valid(m_loser):
 		print("  ", _ordinal(total), ": ", m_loser.name)
 	else:
@@ -230,9 +226,8 @@ func end_game() -> void:
 
 func _assign_game_to_balls() -> void:
 	for b in m_balls:
-		if not is_instance_valid(b):
-			continue
-		b.set_game(self)
+		if is_instance_valid(b):
+			b.set_game(self)
 
 
 func _connect_ball_signals() -> void:
@@ -247,22 +242,15 @@ func _connect_ball_signals() -> void:
 		if not b.hole_state_changed.is_connected(_on_ball_hole_state_changed):
 			b.hole_state_changed.connect(_on_ball_hole_state_changed)
 
-	if is_instance_valid(m_hole):
-		if not m_hole.body_entered.is_connected(_on_hole_body_entered):
-			m_hole.body_entered.connect(_on_hole_body_entered)
-		if not m_hole.body_exited.is_connected(_on_hole_body_exited):
-			m_hole.body_exited.connect(_on_hole_body_exited)
+	# ❌ No hole signal connections needed anymore.
+	# Hole updates ball state; ball emits hole_state_changed; we already listen to that.
 
 
 func _apply_mode() -> void:
 	if Engine.is_editor_hint():
 		return
 
-	if game_mode == GameMode.FREE:
-		m_mode = MarbleGameFreeMode.new()
-	else:
-		m_mode = MarbleGameTurnMode.new()
-
+	m_mode = MarbleGameFreeMode.new() if game_mode == GameMode.FREE else MarbleGameTurnMode.new()
 	game_mode_changed.emit(game_mode)
 
 	if m_mode != null:
@@ -274,16 +262,6 @@ func _physics_process(delta: float) -> void:
 		return
 	if m_status == GameStatus.GAME_OVER:
 		return
-
-	# Optional hole pull
-	if is_instance_valid(m_hole) and hole_pull_strength > 0.0:
-		for b in m_balls_in_hole:
-			if not is_instance_valid(b):
-				continue
-			var vec := m_hole.global_position - b.global_position
-			if vec.length() > 0.001:
-				b.apply_central_force(vec.normalized() * vec.length_squared() * hole_pull_strength)
-
 	if m_mode != null:
 		m_mode.on_physics_process(self, delta)
 
@@ -317,10 +295,7 @@ func _set_current_ball(ball: MarbleBall) -> void:
 		return
 	m_current_ball = ball
 	current_ball_changed.emit(m_current_ball)
-	if m_current_ball != null:
-		print("[MarbleGame] CurrentBall -> ", m_current_ball.name)
-	else:
-		print("[MarbleGame] CurrentBall -> <none>")
+	print("[MarbleGame] CurrentBall -> ", (m_current_ball.name if m_current_ball != null else "<none>"))
 
 func _status_name(s: GameStatus) -> String:
 	match s:
@@ -345,16 +320,3 @@ func _on_ball_body_hit(ball: MarbleBall, other: Node) -> void:
 func _on_ball_hole_state_changed(ball: MarbleBall, in_hole: bool) -> void:
 	if m_mode != null:
 		m_mode.on_ball_hole_state_changed(self, ball, in_hole)
-
-func _on_hole_body_entered(body: Node2D) -> void:
-	if body is MarbleBall:
-		var b := body as MarbleBall
-		if not m_balls_in_hole.has(b):
-			m_balls_in_hole.append(b)
-		b.set_in_hole(true)
-
-func _on_hole_body_exited(body: Node2D) -> void:
-	if body is MarbleBall:
-		var b := body as MarbleBall
-		m_balls_in_hole.erase(b)
-		b.set_in_hole(false)

@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="5_onfuh"]
 [ext_resource type="Script" uid="uid://kux2sebcpljy" path="res://game/marble_game/damping_area.gd" id="6_j17kk"]
 [ext_resource type="Script" uid="uid://djt6soykmlobh" path="res://game/marble_game/marble_ball.gd" id="6_tpnu8"]
+[ext_resource type="Script" uid="uid://82qmw7treb7c" path="res://game/marble_game/marble_hole.gd" id="7_qesyv"]
 [ext_resource type="Script" uid="uid://bgiy4eb1a2738" path="res://game/marble_game/marble_ball_player_controller.gd" id="7_xt7c1"]
 [ext_resource type="Script" uid="uid://btg1c6qvxh8mb" path="res://game/marble_game/marble_ball_ai_controller.gd" id="8_6ehy8"]
 [ext_resource type="Shader" uid="uid://c0jfymial01io" path="res://game/marble_game/marble_ball.gdshader" id="9_lsn68"]
@@ -101,6 +102,7 @@ shape = SubResource("WorldBoundaryShape2D_dshdi")
 
 [node name="hole" type="Area2D" parent="." unique_id=1384930562]
 position = Vector2(144, 118)
+script = ExtResource("7_qesyv")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="hole" unique_id=172063252]
 shape = SubResource("CircleShape2D_onfuh")
