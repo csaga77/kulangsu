@@ -54,7 +54,7 @@ func physics_tick(delta: float) -> void:
 		return
 	if not is_instance_valid(m_game):
 		return
-	if not is_instance_valid(m_game.m_hole):
+	if not is_instance_valid(m_game.get_hole()):
 		return
 
 	m_timer += delta
@@ -66,13 +66,13 @@ func physics_tick(delta: float) -> void:
 
 
 func _kick_towards_hole(game: MarbleGame) -> void:
-	var to_hole := (game.m_hole.global_position - m_ball.global_position)
-	var dist := to_hole.length()
+	var to_hole = (game.get_hole().global_position - m_ball.global_position)
+	var dist = to_hole.length()
 	if dist < 0.001:
 		return
 
 	# --- Direction with randomness ---
-	var dir := to_hole.normalized()
+	var dir = to_hole.normalized()
 	var jitter := randf_range(-aim_jitter_radians, aim_jitter_radians)
 	dir = dir.rotated(jitter)
 

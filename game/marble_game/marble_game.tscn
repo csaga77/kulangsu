@@ -4,14 +4,17 @@
 [ext_resource type="Material" uid="uid://o1ocwjidnaaf" path="res://godot_tilemap/resources/materials/ghost_material.tres" id="1_ycs87"]
 [ext_resource type="TileSet" uid="uid://bbu6vuvl5k3ct" path="res://godot_tilemap/resources/tilesets/tile_set_2x2_combined_32x32.tres" id="2_1f8l1"]
 [ext_resource type="Script" uid="uid://o4sfxasth5gi" path="res://godot_tilemap/scenes/dual_tile_map_layer.gd" id="2_dshdi"]
+[ext_resource type="Script" uid="uid://dc6amg5xl4kj0" path="res://game/marble_game/marble_game_turn_mode.gd" id="2_gues6"]
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="5_onfuh"]
 [ext_resource type="Script" uid="uid://kux2sebcpljy" path="res://game/marble_game/damping_area.gd" id="6_j17kk"]
-[ext_resource type="Script" uid="uid://djt6soykmlobh" path="res://game/marble_game/marble_ball.gd" id="6_tpnu8"]
 [ext_resource type="Script" uid="uid://82qmw7treb7c" path="res://game/marble_game/marble_hole.gd" id="7_qesyv"]
 [ext_resource type="Script" uid="uid://bgiy4eb1a2738" path="res://game/marble_game/marble_ball_player_controller.gd" id="7_xt7c1"]
 [ext_resource type="Script" uid="uid://btg1c6qvxh8mb" path="res://game/marble_game/marble_ball_ai_controller.gd" id="8_6ehy8"]
-[ext_resource type="Shader" uid="uid://c0jfymial01io" path="res://game/marble_game/marble_ball.gdshader" id="9_lsn68"]
-[ext_resource type="Texture2D" uid="uid://bmfvvxghdvi6b" path="res://resources/sprites/white_marble.png" id="10_gues6"]
+[ext_resource type="PackedScene" uid="uid://cx454ysopwbyg" path="res://game/marble_game/marble_ball.tscn" id="8_lsn68"]
+
+[sub_resource type="Resource" id="Resource_qesyv"]
+script = ExtResource("2_gues6")
+metadata/_custom_type_script = "uid://dc6amg5xl4kj0"
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_1f8l1"]
 friction = 0.0
@@ -22,37 +25,21 @@ bounce = 0.5
 [sub_resource type="CircleShape2D" id="CircleShape2D_onfuh"]
 radius = 30.0
 
-[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_onfuh"]
-bounce = 0.5
-
-[sub_resource type="Resource" id="Resource_7hgil"]
+[sub_resource type="Resource" id="Resource_j17kk"]
 script = ExtResource("7_xt7c1")
 metadata/_custom_type_script = "uid://bgiy4eb1a2738"
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_j17kk"]
-shader = ExtResource("9_lsn68")
-shader_parameter/radius = 1.0
-shader_parameter/keep_original_aspect = true
-shader_parameter/roll_axis_uv = Vector2(0, 1)
-shader_parameter/roll_angle = 0.0
-shader_parameter/rim_darkening = 0.650000030875
-shader_parameter/highlight_power = 72.4930033959175
-shader_parameter/highlight_strength = 0.522000024795
-shader_parameter/light_dir = Vector2(-0.5, -0.8)
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_1f8l1"]
-
-[sub_resource type="Resource" id="Resource_j17kk"]
+[sub_resource type="Resource" id="Resource_lsn68"]
 script = ExtResource("8_6ehy8")
 metadata/_custom_type_script = "uid://btg1c6qvxh8mb"
 
-[sub_resource type="Resource" id="Resource_3kv4t"]
+[sub_resource type="Resource" id="Resource_gues6"]
 script = ExtResource("8_6ehy8")
 metadata/_custom_type_script = "uid://btg1c6qvxh8mb"
 
 [node name="marble_game" type="Node2D" unique_id=2041496526]
 script = ExtResource("1_1f8l1")
-game_mode = 0
+game_mode = SubResource("Resource_qesyv")
 
 [node name="camera" type="Camera2D" parent="." unique_id=1796277555]
 position_smoothing_enabled = true
@@ -60,7 +47,7 @@ position_smoothing_enabled = true
 [node name="camera_controller" type="Node" parent="camera" unique_id=1751679360 node_paths=PackedStringArray("camera", "target_node")]
 script = ExtResource("5_onfuh")
 camera = NodePath("..")
-target_node = NodePath("../../ball")
+target_node = NodePath("../../player_ball")
 
 [node name="map" type="TileMapLayer" parent="." unique_id=1008537539]
 material = ExtResource("1_ycs87")
@@ -108,61 +95,17 @@ script = ExtResource("7_qesyv")
 shape = SubResource("CircleShape2D_onfuh")
 debug_color = Color(0.755117, 0.45648783, 5.7756904e-07, 0.41960785)
 
-[node name="ball" type="RigidBody2D" parent="." unique_id=1417319859]
+[node name="player_ball" parent="." unique_id=1800977570 instance=ExtResource("8_lsn68")]
 position = Vector2(78, 71)
-physics_material_override = SubResource("PhysicsMaterial_onfuh")
-gravity_scale = 0.0
-linear_damp = 1.0
-angular_damp = 29.283
-script = ExtResource("6_tpnu8")
-controller = SubResource("Resource_7hgil")
-marble_radius_px = 10.0
-
-[node name="marble_sprite" type="TextureRect" parent="ball" unique_id=1233853783]
-material = SubResource("ShaderMaterial_j17kk")
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -10.0
-offset_top = -10.0
-offset_right = 10.0
-offset_bottom = 10.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-texture = ExtResource("10_gues6")
-expand_mode = 1
-
-[node name="collision_shape" type="CollisionShape2D" parent="ball" unique_id=121944482]
-shape = SubResource("CircleShape2D_1f8l1")
-
-[node name="other_ball" type="RigidBody2D" parent="." unique_id=350237111]
-position = Vector2(214, 97)
-physics_material_override = SubResource("PhysicsMaterial_onfuh")
-gravity_scale = 0.0
-linear_damp = 1.0
-script = ExtResource("6_tpnu8")
 controller = SubResource("Resource_j17kk")
-marble_radius_px = 10.0
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="other_ball" unique_id=1392664456]
-shape = SubResource("CircleShape2D_1f8l1")
-debug_color = Color(0.9396147, 0.2281752, 0.25096583, 0.41960785)
+[node name="ai_ball" parent="." unique_id=1269023125 instance=ExtResource("8_lsn68")]
+position = Vector2(134, 48)
+controller = SubResource("Resource_lsn68")
 
-[node name="other_ball2" type="RigidBody2D" parent="." unique_id=1247979503]
-position = Vector2(54, 283)
-physics_material_override = SubResource("PhysicsMaterial_onfuh")
-gravity_scale = 0.0
-linear_damp = 1.0
-script = ExtResource("6_tpnu8")
-controller = SubResource("Resource_3kv4t")
-marble_radius_px = 10.0
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="other_ball2" unique_id=2053690475]
-shape = SubResource("CircleShape2D_1f8l1")
-debug_color = Color(0.9396147, 0.2281752, 0.25096583, 0.41960785)
+[node name="ai_ball2" parent="." unique_id=1424609017 instance=ExtResource("8_lsn68")]
+position = Vector2(71, 135)
+controller = SubResource("Resource_gues6")
 
 [connection signal="cell_updated" from="map" to="." method="_on_map_cell_updated"]
 [connection signal="body_entered" from="damping_area/area1" to="." method="_on_damping_area_body_entered"]

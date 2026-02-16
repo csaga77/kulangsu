@@ -3,129 +3,76 @@
 class_name MarbleGame
 extends Node2D
 
-enum GameMode { FREE, TURN }
 enum GameStatus { FREE_PLAY, WAITING_FOR_REST, WAITING_FOR_KICK, GAME_OVER }
 
-## Selected game mode (FREE or TURN).
-@export var game_mode: GameMode = GameMode.TURN:
+## Game mode implementation (Resource) used by this game.
+## Assign MarbleGameFreeMode / MarbleGameTurnMode in the editor so you can configure mode properties.
+@export var game_mode: MarbleGameMode:
 	set(v):
 		game_mode = v
 		_apply_mode()
 
-## Balls in this game (multi-ball). Assign in editor.
-## If empty at runtime, the game will auto-pick up MarbleBall children.
-@export var m_balls: Array[MarbleBall] = []
-
-## Index of the ball that gets the first turn in TURN mode.
-@export var starting_ball_index: int = 0
-
-## If true, enables "extra chance on hit" rule.
-@export var enable_extra_chance_on_hit: bool = true
-
-## Prints extra-chance / debug events (TurnMode uses this too).
-@export var print_extra_chance_events: bool = true
-
-## Seconds required to be "settled" before a kick window opens.
-@export var rest_settle_time: float = 0.35
-
-## Linear speed threshold considered "stopped enough".
-@export var rest_linear_speed_threshold: float = 12.0
-
-## Angular speed threshold considered "stopped enough".
-@export var rest_angular_speed_threshold: float = 2.5
-
-## Hole pull force scale (delegated to MarbleHole).
-@export var hole_pull_strength: float = 0.5:
-	set(v):
-		hole_pull_strength = v
-		_apply_hole_pull_strength()
-
-## Hole path (optional). If unset, $hole is used.
-@export var hole_path: NodePath
-
 # -----------------------
 # UI signals
 # -----------------------
-signal game_mode_changed(new_mode: GameMode)
+signal game_mode_changed(new_mode: MarbleGameMode)
 signal status_changed(new_status: GameStatus)
 signal turn_active_changed(is_active: bool)
 signal current_ball_changed(ball: MarbleBall)
 signal rest_progress_changed(progress_0_1: float)
 
-## Emitted when a ball becomes a winner (locked in hole permanently).
 signal ball_won(ball: MarbleBall)
-
-## Emitted when a ball becomes the loser (last remaining and runs out of chances).
 signal ball_lost(ball: MarbleBall)
-
-## Emitted once when the game ends.
 signal game_over
 
 # -----------------------
 # Runtime UI properties
 # -----------------------
-## Current winners list (read-only for UI).
 var m_winners: Array[MarbleBall] = []
-
-## The losing ball (null if none).
 var m_loser: MarbleBall = null
-
-## Active "challenge lock" ball: a ball currently being challenged while in the hole.
 var m_active_lock_ball: MarbleBall = null
 
-
-var m_mode: MarbleGameMode = null
 var m_status: GameStatus = GameStatus.WAITING_FOR_REST
 var m_turn_active: bool = false
 var m_rest_progress: float = 0.0
 var m_current_ball: MarbleBall = null
 
-# Prefer explicit $hole (you said no need to discover hole)
-@onready var m_hole: MarbleHole = ($hole as MarbleHole) if has_node("hole") else null
+# Internal discovered balls
+var m_balls: Array[MarbleBall] = []
+
+@onready var m_hole: MarbleHole = $hole
+
+# Runtime active mode instance (dup of game_mode)
+var m_mode: MarbleGameMode = null
 
 
 func _ready() -> void:
-	# Hole fallback: use hole_path only if $hole doesn't exist / isn't set.
-	if m_hole == null and hole_path != NodePath():
-		m_hole = get_node_or_null(hole_path) as MarbleHole
-
-	_apply_hole_pull_strength()
-
-	# Backward compatible: if editor didn't assign balls, auto pickup at runtime.
 	if not Engine.is_editor_hint():
-		if m_balls.is_empty():
-			var found: Array = CommonUtils.find_all_children_of_type(self, MarbleBall)
-			for n in found:
-				var b: MarbleBall = n
-				if b != null:
-					m_balls.append(b)
+		_auto_discover_balls()
 
 	_assign_game_to_balls()
-	_connect_ball_signals()
 
 	if not Engine.is_editor_hint():
 		restart_game()
 
 
-func _apply_hole_pull_strength() -> void:
-	if is_instance_valid(m_hole):
-		m_hole.pull_strength = hole_pull_strength
+func _auto_discover_balls() -> void:
+	m_balls.clear()
+
+	var found: Array = CommonUtils.find_all_children_of_type(self, MarbleBall)
+	for n in found:
+		var b: MarbleBall = n
+		if b != null:
+			m_balls.append(b)
+
+	print("[MarbleGame] Auto found balls: ", m_balls.size())
 
 
-func _ordinal(n: int) -> String:
-	var mod100 := n % 100
-	if mod100 >= 11 and mod100 <= 13:
-		return str(n) + "th"
-	match n % 10:
-		1: return str(n) + "st"
-		2: return str(n) + "nd"
-		3: return str(n) + "rd"
-		_: return str(n) + "th"
-
-
-## Returns the list of balls for modes/controllers.
 func get_balls() -> Array[MarbleBall]:
 	return m_balls
+
+func get_hole() -> MarbleHole:
+	return m_hole
 
 
 func restart_game() -> void:
@@ -155,7 +102,6 @@ func declare_winner(ball: MarbleBall) -> void:
 		return
 
 	m_winners.append(ball)
-
 	var place := m_winners.size()
 	print("[MarbleGame] WINNER ", _ordinal(place), " -> ", ball.name)
 	ball_won.emit(ball)
@@ -168,13 +114,8 @@ func declare_loser(ball: MarbleBall) -> void:
 		return
 
 	m_loser = ball
-
 	var total := m_balls.size()
-	if total > 0:
-		print("[MarbleGame] LOSER ", _ordinal(total), " -> ", ball.name)
-	else:
-		print("[MarbleGame] LOSER -> ", ball.name)
-
+	print("[MarbleGame] LOSER ", _ordinal(total), " -> ", ball.name)
 	ball_lost.emit(ball)
 
 
@@ -186,24 +127,6 @@ func set_active_lock_ball(ball: MarbleBall) -> void:
 		print("[MarbleGame] ActiveLockBall -> ", m_active_lock_ball.name)
 	else:
 		print("[MarbleGame] ActiveLockBall -> <none>")
-
-
-func _print_leaderboard() -> void:
-	var total := m_balls.size()
-	print("[MarbleGame] Leaderboard:")
-	for i in m_winners.size():
-		var b := m_winners[i]
-		print("  ", _ordinal(i + 1), ": ", b.name if is_instance_valid(b) else "<invalid>")
-	if is_instance_valid(m_loser):
-		print("  ", _ordinal(total), ": ", m_loser.name)
-	else:
-		if m_winners.size() < total:
-			for b in m_balls:
-				if not is_instance_valid(b):
-					continue
-				if m_winners.has(b):
-					continue
-				print("  ", "<unranked>: ", b.name)
 
 
 func end_game() -> void:
@@ -220,7 +143,6 @@ func end_game() -> void:
 	_set_status(GameStatus.GAME_OVER)
 
 	print("[MarbleGame] GAME OVER")
-	_print_leaderboard()
 	game_over.emit()
 
 
@@ -230,28 +152,23 @@ func _assign_game_to_balls() -> void:
 			b.set_game(self)
 
 
-func _connect_ball_signals() -> void:
-	for b in m_balls:
-		if not is_instance_valid(b):
-			continue
-
-		if not b.kicked.is_connected(_on_ball_kicked):
-			b.kicked.connect(_on_ball_kicked)
-		if not b.body_hit.is_connected(_on_ball_body_hit):
-			b.body_hit.connect(_on_ball_body_hit)
-		if not b.hole_state_changed.is_connected(_on_ball_hole_state_changed):
-			b.hole_state_changed.connect(_on_ball_hole_state_changed)
-
-	# ❌ No hole signal connections needed anymore.
-	# Hole updates ball state; ball emits hole_state_changed; we already listen to that.
-
-
 func _apply_mode() -> void:
 	if Engine.is_editor_hint():
 		return
 
-	m_mode = MarbleGameFreeMode.new() if game_mode == GameMode.FREE else MarbleGameTurnMode.new()
-	game_mode_changed.emit(game_mode)
+	# Exit old runtime mode
+	if m_mode != null:
+		m_mode.on_exit_mode()
+
+	# Create a runtime instance from the editor-assigned resource.
+	# NOTE: We duplicate so runtime state doesn't dirty the editor resource.
+	if is_instance_valid(game_mode):
+		m_mode = game_mode.duplicate(true) as MarbleGameMode
+	else:
+		# Safe fallback: no mode assigned
+		m_mode = null
+
+	game_mode_changed.emit(m_mode)
 
 	if m_mode != null:
 		m_mode.on_apply_mode(self)
@@ -262,12 +179,13 @@ func _physics_process(delta: float) -> void:
 		return
 	if m_status == GameStatus.GAME_OVER:
 		return
+
 	if m_mode != null:
 		m_mode.on_physics_process(self, delta)
 
 
 # -----------------------
-# UI/state helpers (with prints)
+# UI/state helpers
 # -----------------------
 func _set_status(s: GameStatus) -> void:
 	if m_status == s:
@@ -295,7 +213,10 @@ func _set_current_ball(ball: MarbleBall) -> void:
 		return
 	m_current_ball = ball
 	current_ball_changed.emit(m_current_ball)
-	print("[MarbleGame] CurrentBall -> ", (m_current_ball.name if m_current_ball != null else "<none>"))
+	if m_current_ball != null:
+		print("[MarbleGame] CurrentBall -> ", m_current_ball.name)
+	else:
+		print("[MarbleGame] CurrentBall -> <none>")
 
 func _status_name(s: GameStatus) -> String:
 	match s:
@@ -305,18 +226,12 @@ func _status_name(s: GameStatus) -> String:
 		GameStatus.GAME_OVER: return "GAME_OVER"
 	return "UNKNOWN"
 
-
-# -----------------------
-# Forward events to mode
-# -----------------------
-func _on_ball_kicked(ball: MarbleBall) -> void:
-	if m_mode != null:
-		m_mode.on_ball_kicked(self, ball)
-
-func _on_ball_body_hit(ball: MarbleBall, other: Node) -> void:
-	if m_mode != null:
-		m_mode.on_ball_body_entered(self, ball, other)
-
-func _on_ball_hole_state_changed(ball: MarbleBall, in_hole: bool) -> void:
-	if m_mode != null:
-		m_mode.on_ball_hole_state_changed(self, ball, in_hole)
+func _ordinal(n: int) -> String:
+	var mod100 := n % 100
+	if mod100 >= 11 and mod100 <= 13:
+		return str(n) + "th"
+	match n % 10:
+		1: return str(n) + "st"
+		2: return str(n) + "nd"
+		3: return str(n) + "rd"
+		_: return str(n) + "th"

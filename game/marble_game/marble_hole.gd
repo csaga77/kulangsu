@@ -27,7 +27,7 @@ func _physics_process(_delta: float) -> void:
 		if not is_instance_valid(b):
 			continue
 		var vec := global_position - b.global_position
-		if vec.length() > 0.001:
+		if vec.length() > 15.0:
 			b.apply_central_force(vec.normalized() * vec.length_squared() * pull_strength)
 
 func _on_body_entered(body: Node2D) -> void:

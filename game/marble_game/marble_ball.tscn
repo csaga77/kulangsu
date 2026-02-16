@@ -1,0 +1,50 @@
+[gd_scene format=3 uid="uid://cx454ysopwbyg"]
+
+[ext_resource type="Script" uid="uid://djt6soykmlobh" path="res://game/marble_game/marble_ball.gd" id="1_h55h2"]
+[ext_resource type="Shader" uid="uid://c0jfymial01io" path="res://game/marble_game/marble_ball.gdshader" id="3_aphqf"]
+[ext_resource type="Texture2D" uid="uid://bmfvvxghdvi6b" path="res://resources/sprites/white_marble.png" id="4_js1yd"]
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_onfuh"]
+bounce = 0.5
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_j17kk"]
+resource_local_to_scene = true
+shader = ExtResource("3_aphqf")
+shader_parameter/radius = 1.0
+shader_parameter/keep_original_aspect = true
+shader_parameter/roll_axis_uv = Vector2(0, 1)
+shader_parameter/roll_angle = 0.0
+shader_parameter/rim_darkening = 0.650000030875
+shader_parameter/highlight_power = 72.4930033959175
+shader_parameter/highlight_strength = 0.522000024795
+shader_parameter/light_dir = Vector2(-0.5, -0.8)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_1f8l1"]
+
+[node name="ball" type="RigidBody2D" unique_id=1800977570]
+physics_material_override = SubResource("PhysicsMaterial_onfuh")
+gravity_scale = 0.0
+linear_damp = 1.0
+angular_damp = 29.283
+script = ExtResource("1_h55h2")
+marble_radius_px = 10.0
+
+[node name="marble_sprite" type="TextureRect" parent="." unique_id=611055060]
+material = SubResource("ShaderMaterial_j17kk")
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -10.0
+offset_top = -10.0
+offset_right = 10.0
+offset_bottom = 10.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("4_js1yd")
+expand_mode = 1
+
+[node name="collision_shape" type="CollisionShape2D" parent="." unique_id=539894603]
+shape = SubResource("CircleShape2D_1f8l1")
