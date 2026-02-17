@@ -6,7 +6,7 @@
 [ext_resource type="Texture2D" uid="uid://bmfvvxghdvi6b" path="res://resources/sprites/white_marble.png" id="4_js1yd"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_onfuh"]
-bounce = 0.5
+bounce = 0.2
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_1f8l1"]
 
