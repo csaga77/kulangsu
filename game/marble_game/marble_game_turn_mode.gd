@@ -50,9 +50,6 @@ var m_pending_loser_ball: MarbleBall = null
 # Debug spam guard
 var m_last_debug_frame: int = -999999
 
-var m_rng := RandomNumberGenerator.new()
-
-
 func on_restart(game: MarbleGame) -> void:
 	super.on_restart(game)
 	_disable_all(game)
@@ -84,22 +81,7 @@ func on_restart(game: MarbleGame) -> void:
 	game._set_current_ball(null)
 
 
-func on_throw_initial_balls(game: MarbleGame) -> void:
-	# Re-throw ALL balls every restart
-	m_rng.randomize()
-	for b: MarbleBall in game.get_balls():
-		if not is_instance_valid(b):
-			continue
-		if b.has_method("spawn_and_throw_away_from_hole"):
-			b.call("spawn_and_throw_away_from_hole", m_rng)
-		else:
-			b.linear_velocity = Vector2.ZERO
-			b.angular_velocity = 0.0
-			b.sleeping = false
-
-
 func on_apply_mode(game: MarbleGame) -> void:
-	m_rng.randomize()
 	super.on_apply_mode(game)
 	# IMPORTANT: do NOT call on_restart() here (prevents double throw)
 

@@ -67,8 +67,8 @@ func spawn_and_throw_away_from_hole(rng: RandomNumberGenerator) -> void:
 	var hole_pos: Vector2 = hole.global_position
 
 	var r := float(m_ball.marble_radius_px)
-	var min_dist := r * 6.0
-	var max_dist := r * 10.0
+	var min_dist := r * 10.0
+	var max_dist := r * 30.0
 
 	var angle := rng.randf_range(0.0, TAU)
 	var dist := rng.randf_range(min_dist, max_dist)
@@ -85,6 +85,7 @@ func spawn_and_throw_away_from_hole(rng: RandomNumberGenerator) -> void:
 	var dir := (spawn_pos - hole_pos).normalized()
 	dir = dir.rotated(rng.randf_range(-0.35, 0.35)).normalized()
 
-	var throw_speed := rng.randf_range(250.0, 420.0)
+	var throw_speed := rng.randf_range(1.0, 3.0)
 	m_ball.linear_velocity = dir * throw_speed
+	print("spawn_and_throw_away_from_hole:", throw_speed)
 	m_ball.angular_velocity = 0.0

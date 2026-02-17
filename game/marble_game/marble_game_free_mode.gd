@@ -23,29 +23,10 @@ func on_restart(game: MarbleGame) -> void:
 		if is_instance_valid(b):
 			b.set_controller_active(true)
 
-	# Throw balls at restart (same as TurnMode path)
-	on_throw_initial_balls(game)
-
 	game._set_status(MarbleGame.GameStatus.FREE_PLAY)
 	game._set_turn_active(false)
 	game._set_rest_progress(0.0)
 	game._set_current_ball(null)
-
-
-func on_throw_initial_balls(game: MarbleGame) -> void:
-	m_rng.randomize()
-
-	for b: MarbleBall in game.get_balls():
-		if not is_instance_valid(b):
-			continue
-		if is_instance_valid(b.controller) and b.controller.has_method("spawn_and_throw_away_from_hole"):
-			b.controller.spawn_and_throw_away_from_hole(m_rng)
-		else:
-			# fallback
-			b.linear_velocity = Vector2.ZERO
-			b.angular_velocity = 0.0
-			b.sleeping = false
-
 
 func on_physics_process(game: MarbleGame, delta: float) -> void:
 	if game.m_status == MarbleGame.GameStatus.GAME_OVER:

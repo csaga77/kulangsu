@@ -85,8 +85,6 @@ func restart_game() -> void:
 
 	# Throw balls on restart (mode can implement or ignore)
 	if m_mode != null:
-		if m_mode.has_method("on_throw_initial_balls"):
-			m_mode.call("on_throw_initial_balls", self)
 		m_mode.on_restart(self)
 
 
