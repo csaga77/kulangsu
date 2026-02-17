@@ -71,11 +71,6 @@ func restart_game() -> void:
 	m_loser = null
 	m_active_lock_ball = null
 
-	for b in m_balls:
-		if is_instance_valid(b):
-			b.set_in_hole(false)
-			# IMPORTANT: do not disable balls here. Modes decide controller activation.
-
 	_set_current_ball(null)
 	_set_turn_active(false)
 	_set_rest_progress(0.0)
@@ -174,8 +169,6 @@ func _apply_mode() -> void:
 
 func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
-		return
-	if m_status == GameStatus.GAME_OVER:
 		return
 
 	if m_mode != null:

@@ -37,7 +37,7 @@ func handle_input(_event: InputEvent) -> void:
 ## Called by MarbleBall from _physics_process.
 func physics_tick(_delta: float) -> void:
 	pass
-
+	
 func spawn_and_throw_away_from_hole(rng: RandomNumberGenerator) -> void:
 	if m_ball == null or not is_instance_valid(m_ball):
 		return
@@ -74,7 +74,7 @@ func spawn_and_throw_away_from_hole(rng: RandomNumberGenerator) -> void:
 	var dist := rng.randf_range(min_dist, max_dist)
 
 	var spawn_pos := hole_pos + Vector2.RIGHT.rotated(angle) * dist
-	m_ball.global_position = spawn_pos
+	CommonUtils.safe_teleport_body(m_ball, spawn_pos)
 
 	# Important for your roll accumulation method (uses position delta)
 	m_ball.m_last_pos = m_ball.global_position
@@ -85,7 +85,7 @@ func spawn_and_throw_away_from_hole(rng: RandomNumberGenerator) -> void:
 	var dir := (spawn_pos - hole_pos).normalized()
 	dir = dir.rotated(rng.randf_range(-0.35, 0.35)).normalized()
 
-	var throw_speed := rng.randf_range(1.0, 3.0)
+	var throw_speed := rng.randf_range(100.0, 500.0)
 	m_ball.linear_velocity = dir * throw_speed
 	print("spawn_and_throw_away_from_hole:", throw_speed)
 	m_ball.angular_velocity = 0.0

@@ -50,7 +50,8 @@ func on_throw_initial_balls(game: MarbleGame) -> void:
 		if not is_instance_valid(b):
 			continue
 		if is_instance_valid(b.controller):
-			b.controller.spawn_and_throw_away_from_hole(m_rng)
+			#on_throw_initial_balls is called from _physics_process, need to defer spawn_and_throw_away_from_hole otherwise it mess with physics
+			b.controller.call_deferred("spawn_and_throw_away_from_hole", m_rng)
 		else:
 			b.linear_velocity = Vector2.ZERO
 			b.angular_velocity = 0.0
