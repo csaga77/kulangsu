@@ -14,16 +14,16 @@ resource_local_to_scene = true
 shader = ExtResource("3_aphqf")
 shader_parameter/radius = 1.0
 shader_parameter/keep_original_aspect = true
-shader_parameter/roll_axis_uv = Vector2(0, 1)
-shader_parameter/roll_angle = 0.0
+shader_parameter/roll_rot = Basis(1, 0, 0, 0, 1, 0, 0, 0, 1)
 shader_parameter/rim_darkening = 0.650000030875
 shader_parameter/highlight_power = 72.4930033959175
 shader_parameter/highlight_strength = 0.522000024795
 shader_parameter/light_dir = Vector2(-0.5, -0.8)
 shader_parameter/refraction_strength = 0.02
-shader_parameter/refraction_surface_mix = 0.65
-shader_parameter/refraction_radial_power = 1.75
-shader_parameter/ior = 1.45
+shader_parameter/refraction_power = 2.2
+shader_parameter/fresnel_strength = 0.9
+shader_parameter/fresnel_power = 3.0
+shader_parameter/ball_opacity = 0.50000002375
 
 [node name="ball" type="RigidBody2D" unique_id=1800977570]
 physics_material_override = SubResource("PhysicsMaterial_onfuh")
@@ -34,6 +34,7 @@ script = ExtResource("1_h55h2")
 marble_radius_px = 10.0
 
 [node name="collision_shape" type="CollisionShape2D" parent="." unique_id=539894603]
+visible = false
 shape = SubResource("CircleShape2D_1f8l1")
 
 [node name="marble_sprite" type="TextureRect" parent="." unique_id=611055060]
