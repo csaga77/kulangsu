@@ -34,10 +34,6 @@ metadata/_custom_type_script = "uid://bgiy4eb1a2738"
 script = ExtResource("8_6ehy8")
 metadata/_custom_type_script = "uid://btg1c6qvxh8mb"
 
-[sub_resource type="Resource" id="Resource_gues6"]
-script = ExtResource("8_6ehy8")
-metadata/_custom_type_script = "uid://btg1c6qvxh8mb"
-
 [node name="marble_game" type="Node2D" unique_id=2041496526]
 script = ExtResource("1_1f8l1")
 game_mode = SubResource("Resource_qesyv")
@@ -105,10 +101,6 @@ marble_texture = ExtResource("11_qesyv")
 [node name="ai_ball" parent="." unique_id=1269023125 instance=ExtResource("8_lsn68")]
 position = Vector2(134, 48)
 controller = SubResource("Resource_lsn68")
-
-[node name="ai_ball2" parent="." unique_id=1424609017 instance=ExtResource("8_lsn68")]
-position = Vector2(71, 135)
-controller = SubResource("Resource_gues6")
 
 [connection signal="cell_updated" from="map" to="." method="_on_map_cell_updated"]
 [connection signal="body_entered" from="damping_area/area1" to="." method="_on_damping_area_body_entered"]
