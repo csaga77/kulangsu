@@ -4,7 +4,7 @@
 [ext_resource type="Material" uid="uid://o1ocwjidnaaf" path="res://godot_tilemap/resources/materials/ghost_material.tres" id="1_ycs87"]
 [ext_resource type="TileSet" uid="uid://bbu6vuvl5k3ct" path="res://godot_tilemap/resources/tilesets/tile_set_2x2_combined_32x32.tres" id="2_1f8l1"]
 [ext_resource type="Script" uid="uid://o4sfxasth5gi" path="res://godot_tilemap/scenes/dual_tile_map_layer.gd" id="2_dshdi"]
-[ext_resource type="Script" uid="uid://dc6amg5xl4kj0" path="res://game/marble_game/marble_game_turn_mode.gd" id="2_gues6"]
+[ext_resource type="Script" uid="uid://cdgubj5jcj12l" path="res://game/marble_game/marble_game_free_mode.gd" id="2_qesyv"]
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="5_onfuh"]
 [ext_resource type="Script" uid="uid://kux2sebcpljy" path="res://game/marble_game/damping_area.gd" id="6_j17kk"]
 [ext_resource type="Script" uid="uid://82qmw7treb7c" path="res://game/marble_game/marble_hole.gd" id="7_qesyv"]
@@ -13,9 +13,9 @@
 [ext_resource type="PackedScene" uid="uid://cx454ysopwbyg" path="res://game/marble_game/marble_ball.tscn" id="8_lsn68"]
 [ext_resource type="Texture2D" uid="uid://b1xojkjfqykvn" path="res://resources/sprites/architecture/walls/brick_0.png" id="11_qesyv"]
 
-[sub_resource type="Resource" id="Resource_qesyv"]
-script = ExtResource("2_gues6")
-metadata/_custom_type_script = "uid://dc6amg5xl4kj0"
+[sub_resource type="Resource" id="Resource_soi2e"]
+script = ExtResource("2_qesyv")
+metadata/_custom_type_script = "uid://cdgubj5jcj12l"
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_1f8l1"]
 friction = 0.0
@@ -40,7 +40,7 @@ metadata/_custom_type_script = "uid://btg1c6qvxh8mb"
 
 [node name="marble_game" type="Node2D" unique_id=2041496526]
 script = ExtResource("1_1f8l1")
-game_mode = SubResource("Resource_qesyv")
+game_mode = SubResource("Resource_soi2e")
 
 [node name="camera" type="Camera2D" parent="." unique_id=1796277555]
 position_smoothing_enabled = true
