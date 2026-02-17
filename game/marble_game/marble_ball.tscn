@@ -35,6 +35,7 @@ script = ExtResource("1_h55h2")
 marble_radius_px = 10.0
 hit_min_speed = 0.0
 hit_max_speed = 80.0
+hit_volume_db_slow = -40.0
 
 [node name="collision_shape" type="CollisionShape2D" parent="." unique_id=539894603]
 visible = false

@@ -17,6 +17,7 @@ extends Resource
 
 var m_game: MarbleGame = null
 var m_connected: bool = false
+var m_rng := RandomNumberGenerator.new()
 
 func on_apply_mode(game: MarbleGame) -> void:
 	m_game = game
@@ -44,9 +45,21 @@ func on_ball_body_entered(_game: MarbleGame, _ball: MarbleBall, _other: Node) ->
 func on_ball_hole_state_changed(_game: MarbleGame, _ball: MarbleBall, _in_hole: bool) -> void:
 	pass
 
-func on_throw_initial_balls(_game: MarbleGame) -> void:
-	pass
+func on_throw_initial_balls(game: MarbleGame) -> void:
+	for b: MarbleBall in game.get_balls():
+		if not is_instance_valid(b):
+			continue
+		if is_instance_valid(b.controller):
+			b.controller.spawn_and_throw_away_from_hole(m_rng)
+		else:
+			b.linear_velocity = Vector2.ZERO
+			b.angular_velocity = 0.0
+			b.sleeping = false
 
+	print("[GameMode] throw initial balls")
+
+func _ready() -> void:
+	m_rng.randomize()
 
 # ----------------------------------------------------------
 # Shared rest utility for modes

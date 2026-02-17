@@ -37,3 +37,54 @@ func handle_input(_event: InputEvent) -> void:
 ## Called by MarbleBall from _physics_process.
 func physics_tick(_delta: float) -> void:
 	pass
+
+func spawn_and_throw_away_from_hole(rng: RandomNumberGenerator) -> void:
+	if m_ball == null or not is_instance_valid(m_ball):
+		return
+	if m_game == null or not is_instance_valid(m_game):
+		return
+
+	var hole: MarbleHole = m_game.get_hole()
+	if hole == null or not is_instance_valid(hole):
+		return
+
+	# -----------------------------
+	# Reset physics safely
+	# -----------------------------
+	m_ball.sleeping = false
+	m_ball.freeze = false
+	m_ball.linear_velocity = Vector2.ZERO
+	m_ball.angular_velocity = 0.0
+
+	# Reset rolling state (prevents shader jumps after teleport)
+	# These fields exist in your MarbleBall.gd script.
+	m_ball.m_last_valid_roll_axis = Vector2.UP
+	m_ball.m_roll_q = Quaternion()
+
+	# -----------------------------
+	# Pick a spawn position OUTSIDE the hole area
+	# -----------------------------
+	var hole_pos: Vector2 = hole.global_position
+
+	var r := float(m_ball.marble_radius_px)
+	var min_dist := r * 6.0
+	var max_dist := r * 10.0
+
+	var angle := rng.randf_range(0.0, TAU)
+	var dist := rng.randf_range(min_dist, max_dist)
+
+	var spawn_pos := hole_pos + Vector2.RIGHT.rotated(angle) * dist
+	m_ball.global_position = spawn_pos
+
+	# Important for your roll accumulation method (uses position delta)
+	m_ball.m_last_pos = m_ball.global_position
+
+	# -----------------------------
+	# Throw direction AWAY from hole (+ small spread)
+	# -----------------------------
+	var dir := (spawn_pos - hole_pos).normalized()
+	dir = dir.rotated(rng.randf_range(-0.35, 0.35)).normalized()
+
+	var throw_speed := rng.randf_range(250.0, 420.0)
+	m_ball.linear_velocity = dir * throw_speed
+	m_ball.angular_velocity = 0.0

@@ -5,16 +5,11 @@ extends Node2D
 
 enum GameStatus { FREE_PLAY, WAITING_FOR_REST, WAITING_FOR_KICK, GAME_OVER }
 
-## Game mode implementation (Resource) used by this game.
-## Assign MarbleGameFreeMode / MarbleGameTurnMode in the editor so you can configure mode properties.
 @export var game_mode: MarbleGameMode:
 	set(v):
 		game_mode = v
 		_apply_mode()
 
-# -----------------------
-# UI signals
-# -----------------------
 signal game_mode_changed(new_mode: MarbleGameMode)
 signal status_changed(new_status: GameStatus)
 signal turn_active_changed(is_active: bool)
@@ -25,23 +20,19 @@ signal ball_won(ball: MarbleBall)
 signal ball_lost(ball: MarbleBall)
 signal game_over
 
-# -----------------------
-# Runtime UI properties
-# -----------------------
 var m_winners: Array[MarbleBall] = []
 var m_loser: MarbleBall = null
+var m_active_lock_ball: MarbleBall = null
 
 var m_status: GameStatus = GameStatus.WAITING_FOR_REST
 var m_turn_active: bool = false
 var m_rest_progress: float = 0.0
 var m_current_ball: MarbleBall = null
 
-# Internal discovered balls
 var m_balls: Array[MarbleBall] = []
 
 @onready var m_hole: MarbleHole = $hole
 
-# Runtime active mode instance (dup of game_mode)
 var m_mode: MarbleGameMode = null
 
 
@@ -70,6 +61,7 @@ func _auto_discover_balls() -> void:
 func get_balls() -> Array[MarbleBall]:
 	return m_balls
 
+
 func get_hole() -> MarbleHole:
 	return m_hole
 
@@ -77,11 +69,12 @@ func get_hole() -> MarbleHole:
 func restart_game() -> void:
 	m_winners.clear()
 	m_loser = null
+	m_active_lock_ball = null
 
 	for b in m_balls:
 		if is_instance_valid(b):
 			b.set_in_hole(false)
-			b.set_controller_active(false)
+			# IMPORTANT: do not disable balls here. Modes decide controller activation.
 
 	_set_current_ball(null)
 	_set_turn_active(false)
@@ -89,7 +82,11 @@ func restart_game() -> void:
 	_set_status(GameStatus.WAITING_FOR_REST)
 
 	_apply_mode()
+
+	# Throw balls on restart (mode can implement or ignore)
 	if m_mode != null:
+		if m_mode.has_method("on_throw_initial_balls"):
+			m_mode.call("on_throw_initial_balls", self)
 		m_mode.on_restart(self)
 
 
@@ -117,14 +114,23 @@ func declare_loser(ball: MarbleBall) -> void:
 	ball_lost.emit(ball)
 
 
+func set_active_lock_ball(ball: MarbleBall) -> void:
+	# TurnMode may still use this. FreeMode should ignore it.
+	if m_active_lock_ball == ball:
+		return
+	m_active_lock_ball = ball
+	if m_active_lock_ball != null:
+		print("[MarbleGame] ActiveLockBall -> ", m_active_lock_ball.name)
+	else:
+		print("[MarbleGame] ActiveLockBall -> <none>")
+
+
 func end_game() -> void:
 	if m_status == GameStatus.GAME_OVER:
 		return
 
-	for b in m_balls:
-		if is_instance_valid(b):
-			b.set_controller_active(false)
-
+	# IMPORTANT: do not disable balls here either. If you want that behavior,
+	# do it in the mode before calling end_game().
 	_set_current_ball(null)
 	_set_turn_active(false)
 	_set_rest_progress(0.0)
@@ -136,24 +142,30 @@ func end_game() -> void:
 
 func _assign_game_to_balls() -> void:
 	for b in m_balls:
-		if is_instance_valid(b):
-			b.set_game(self)
+		if not is_instance_valid(b):
+			continue
+
+		b.set_game(self)
+
+		# Forward ball events to active mode.
+		if not b.kicked.is_connected(_on_ball_kicked):
+			b.kicked.connect(_on_ball_kicked)
+		if not b.body_hit.is_connected(_on_ball_body_hit):
+			b.body_hit.connect(_on_ball_body_hit)
+		if not b.hole_state_changed.is_connected(_on_ball_hole_state_changed):
+			b.hole_state_changed.connect(_on_ball_hole_state_changed)
 
 
 func _apply_mode() -> void:
 	if Engine.is_editor_hint():
 		return
 
-	# Exit old runtime mode
 	if m_mode != null:
 		m_mode.on_exit_mode()
 
-	# Create a runtime instance from the editor-assigned resource.
-	# NOTE: We duplicate so runtime state doesn't dirty the editor resource.
 	if is_instance_valid(game_mode):
 		m_mode = game_mode.duplicate(true) as MarbleGameMode
 	else:
-		# Safe fallback: no mode assigned
 		m_mode = null
 
 	game_mode_changed.emit(m_mode)
@@ -170,6 +182,23 @@ func _physics_process(delta: float) -> void:
 
 	if m_mode != null:
 		m_mode.on_physics_process(self, delta)
+
+
+# ------------------------------------------------
+# Ball event forwarders (NO global win/lose/end logic here)
+# ------------------------------------------------
+func _on_ball_kicked(ball: MarbleBall) -> void:
+	if m_mode != null:
+		m_mode.on_ball_kicked(self, ball)
+
+func _on_ball_body_hit(ball: MarbleBall, other_body: Node) -> void:
+	if m_mode != null:
+		m_mode.on_ball_body_entered(self, ball, other_body)
+
+func _on_ball_hole_state_changed(ball: MarbleBall, in_hole: bool) -> void:
+	# IMPORTANT: never auto-end or auto-restart here.
+	if m_mode != null:
+		m_mode.on_ball_hole_state_changed(self, ball, in_hole)
 
 
 # -----------------------
