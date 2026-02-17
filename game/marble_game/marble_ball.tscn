@@ -24,7 +24,7 @@ shader_parameter/refraction_strength = 0.02
 shader_parameter/refraction_power = 2.2
 shader_parameter/fresnel_strength = 0.9
 shader_parameter/fresnel_power = 3.0
-shader_parameter/ball_opacity = 0.50000002375
+shader_parameter/ball_opacity = 0.6550000311125
 
 [node name="ball" type="RigidBody2D" unique_id=1800977570]
 physics_material_override = SubResource("PhysicsMaterial_onfuh")
@@ -33,7 +33,6 @@ linear_damp = 1.0
 angular_damp = 29.283
 script = ExtResource("1_h55h2")
 marble_radius_px = 10.0
-hit_sfx = ExtResource("2_h55h2")
 
 [node name="collision_shape" type="CollisionShape2D" parent="." unique_id=539894603]
 visible = false

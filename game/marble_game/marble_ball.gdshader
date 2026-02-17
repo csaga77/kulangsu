@@ -58,6 +58,7 @@ void fragment() {
 		float k = pow(t, refraction_power);
 
 		vec2 refract_uv = SCREEN_UV + n_geo.xy * (refraction_strength * k);
+		refract_uv = clamp(refract_uv, vec2(0.0), vec2(1.0));
 		vec4 bg = texture(SCREEN_TEXTURE, refract_uv);
 
 		vec2 ld2 = normalize(light_dir);
@@ -89,7 +90,7 @@ void fragment() {
 		mixed += vec3(spec) * spec_mask;
 		mixed += vec3(fresnel) * alpha_edge;
 
-		out_col = vec4(mixed, 1.0);
+		out_col = vec4(mixed, a);
 	}
 
 	COLOR = out_col;
