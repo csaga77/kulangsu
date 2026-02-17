@@ -33,6 +33,8 @@ linear_damp = 1.0
 angular_damp = 29.283
 script = ExtResource("1_h55h2")
 marble_radius_px = 10.0
+hit_min_speed = 0.0
+hit_max_speed = 80.0
 
 [node name="collision_shape" type="CollisionShape2D" parent="." unique_id=539894603]
 visible = false

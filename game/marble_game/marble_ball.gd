@@ -31,10 +31,25 @@ signal hole_state_changed(ball: MarbleBall, in_hole: bool)
 @export var roll_use_linear_velocity: bool = true
 @export var invert_roll_direction: bool = true
 
-@export var shader_param_roll_rot: StringName = &"roll_rot"
+# ------------------------------------------------
+# SIMPLE HIT SFX (uses $hit_sfx)
+# Faster hit => louder
+# ------------------------------------------------
+@export var hit_min_speed: float = 40.0
+@export var hit_max_speed: float = 500.0
+@export var hit_cooldown_sec: float = 0.06
+
+@export var hit_volume_db_slow: float = -22.0
+@export var hit_volume_db_fast: float = -6.0
+@export var hit_pitch_slow: float = 0.95
+@export var hit_pitch_fast: float = 1.05
+# ------------------------------------------------
 
 @onready var m_marble_sprite: CanvasItem = $marble_sprite
 @onready var m_collision_shape: CollisionShape2D = $collision_shape
+
+@onready var m_hit_sfx: AudioStreamPlayer2D = $hit_sfx
+var m_hit_cooldown: float = 0.0
 
 var m_game: MarbleGame = null
 var m_in_hole: bool = false
@@ -44,8 +59,10 @@ var m_base_angular_damp: float = 0.0
 var m_damping_contrib: Dictionary = {}
 
 var m_last_valid_roll_axis: Vector2 = Vector2.UP
-var m_roll_q: Quaternion = Quaternion() # accumulated rotation (kept in XY-plane increments)
+var m_roll_q: Quaternion = Quaternion()
 var m_last_pos: Vector2 = Vector2.ZERO
+
+const shader_param_roll_rot: StringName = &"roll_rot"
 
 
 func _ready() -> void:
@@ -102,11 +119,46 @@ func _physics_process(delta: float) -> void:
 	if is_instance_valid(controller):
 		controller.physics_tick(delta)
 
+	if m_hit_cooldown > 0.0:
+		m_hit_cooldown = max(0.0, m_hit_cooldown - delta)
+
 	_update_rolling_shader(delta, false)
 
 
 func _on_body_entered(body: Node) -> void:
 	body_hit.emit(self, body)
+	_play_hit_sfx(body)
+
+
+func _play_hit_sfx(body: Node) -> void:
+	if m_hit_sfx == null:
+		return
+	if m_hit_cooldown > 0.0:
+		return
+	if not (body is MarbleBall):
+		return
+
+	var other := body as MarbleBall
+	if other == null or not is_instance_valid(other):
+		return
+
+	var rel_speed := (linear_velocity - other.linear_velocity).length()
+	if rel_speed < hit_min_speed:
+		return
+
+	var t = clamp(inverse_lerp(hit_min_speed, hit_max_speed, rel_speed), 0.0, 1.0)
+	# Cubic response (soft -> strong hits grow faster)
+	var t_cubic = t * t * t
+
+	var vol_db = lerp(hit_volume_db_slow, hit_volume_db_fast, t_cubic)
+	var pitch = lerp(hit_pitch_slow, hit_pitch_fast, t_cubic)
+	pitch *= randf_range(0.98, 1.02)
+
+	m_hit_sfx.volume_db = vol_db
+	m_hit_sfx.pitch_scale = pitch
+	m_hit_sfx.play()
+
+	m_hit_cooldown = hit_cooldown_sec
 
 
 func capture_base_damping() -> void:
@@ -262,7 +314,6 @@ func _update_rolling_shader(delta: float, force: bool) -> void:
 		if axis3.length() > 0.000001:
 			axis3 = axis3.normalized()
 			var dq := Quaternion(axis3, roll_delta)
-			# need to make sure m_roll_q = m_roll_q * dq instead of m_roll_q = dq * m_roll_q.
 			m_roll_q = (m_roll_q * dq).normalized()
 
 	sm.set_shader_parameter(shader_param_roll_rot, Basis(m_roll_q))
