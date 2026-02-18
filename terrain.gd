@@ -35,7 +35,7 @@ extends IsometricBlock
 
 		
 @onready var m_base    :TileMapLayer = $base
-@onready var m_streets :TileMapLayer = $streets
+@onready var m_streets :DualTileMapLayer = $streets
 @onready var m_water   :TileMapLayer = $water
 @onready var m_building_mask :TileMapLayer = $building_mask
 var m_is_ready := false
@@ -97,12 +97,19 @@ func _reload_terrain() -> void:
 						tile_alternative
 					)
 				elif c == Color.BLUE:
-					m_streets.set_cell(
+					m_streets.set_terrain(Vector2i(x, y), 1)
+					m_base.set_cell(
 						Vector2i(x, y),
-						1,
-						Vector2i(5, 0),
-						0
+						tile_source_id,
+						mask_tile_coords,
+						tile_alternative
 					)
+					#m_streets.set_cell(
+						#Vector2i(x, y),
+						#1,
+						#Vector2i(5, 0),
+						#0
+					#)
 				else:
 					m_base.set_cell(
 						Vector2i(x, y),
