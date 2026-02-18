@@ -75,6 +75,7 @@ func spawn_and_throw_away_from_hole(rng: RandomNumberGenerator) -> void:
 
 	var spawn_pos := hole_pos + Vector2.RIGHT.rotated(angle) * dist
 	CommonUtils.safe_teleport_body(m_ball, spawn_pos)
+	m_ball.m_last_pos = spawn_pos
 
 	# Important for your roll accumulation method (uses position delta)
 	m_ball.m_last_pos = m_ball.global_position
