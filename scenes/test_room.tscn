@@ -318,7 +318,6 @@ mask = Array[bool]([false])
 iso_tile_size = Vector2(16, 8)
 
 [node name="front" type="Node2D" parent="wall/up_wall" unique_id=197174568 node_paths=PackedStringArray("visibility_mask_layers")]
-visible = false
 y_sort_enabled = true
 script = ExtResource("7_xsufa")
 visibility_mask_layers = [NodePath("../../../floor")]
