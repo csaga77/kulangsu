@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://s0b4b5sxed2f"]
+[gd_scene format=3 uid="uid://s0b4b5sxed2f"]
 
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="1_ql4gx"]
 [ext_resource type="Script" uid="uid://dwoxwuyu5u3rh" path="res://architecture/components/pillar.gd" id="1_reg51"]
@@ -18,33 +18,33 @@ region = Rect2(64, 352, 64, 64)
 atlas = ExtResource("2_reg51")
 region = Rect2(0, 352, 64, 64)
 
-[node name="pillar" type="Node2D"]
+[node name="pillar" type="Node2D" unique_id=488004301]
 script = ExtResource("1_reg51")
 size = 4
 base_texture = SubResource("AtlasTexture_reg51")
 mid_texture = SubResource("AtlasTexture_ufxag")
 top_texture = SubResource("AtlasTexture_etpbf")
 
-[node name="base" type="Sprite2D" parent="."]
+[node name="base" type="Sprite2D" parent="." unique_id=150279451]
 position = Vector2(0, -16)
 texture = SubResource("AtlasTexture_reg51")
 script = ExtResource("1_ql4gx")
 iso_tile_offset = Vector2(0, -16)
 
-[node name="mid" type="Node2D" parent="." node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="mid" type="Node2D" parent="." unique_id=2039321883 node_paths=PackedStringArray("visibility_mask_layers")]
 position = Vector2(0, 16)
 script = ExtResource("4_etpbf")
 visibility_mask_layers = [NodePath("../mask")]
 use_ground_bounding_rect = true
 smooth_visibility_change = true
 
-[node name="top" type="Sprite2D" parent="mid"]
+[node name="top" type="Sprite2D" parent="mid" unique_id=1939482116]
 z_index = 1
 position = Vector2(0, -128)
 texture = SubResource("AtlasTexture_etpbf")
 script = ExtResource("1_ql4gx")
 
-[node name="mask" type="TileMapLayer" parent="."]
+[node name="mask" type="TileMapLayer" parent="." unique_id=1950137748]
 tile_map_data = PackedByteArray(0, 0, 254, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 253, 255, 254, 255, 0, 0, 0, 0, 0, 0, 0, 0, 252, 255, 253, 255, 0, 0, 0, 0, 0, 0, 0, 0)
 tile_set = ExtResource("4_ufxag")
 script = ExtResource("1_ql4gx")

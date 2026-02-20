@@ -90,6 +90,12 @@ func _reload_terrain() -> void:
 			var c :Color = img.get_pixel(x, y)
 			if c.a > 0.0:
 				if c == Color.RED:
+					m_base.set_cell(
+						Vector2i(x, y),
+						tile_source_id,
+						mask_tile_coords,
+						tile_alternative
+					)
 					m_building_mask.set_cell(
 						Vector2i(x, y),
 						building_tile_source_id,

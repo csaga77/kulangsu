@@ -17,7 +17,6 @@ material = SubResource("ShaderMaterial_1lao4")
 collision_mask = 524289
 motion_mode = 1
 script = ExtResource("1_wfnr8")
-body_type = 1
 hair_style = 13
 hair_color = Color(0.48644572, 0.49013627, 0.49328727, 1)
 

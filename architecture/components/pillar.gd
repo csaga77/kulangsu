@@ -54,7 +54,7 @@ func _do_reload() -> void:
 	m_is_reloading = false
 	if m_top == null:
 		return
-	print("Pillar._reload()")
+	#dprint("Pillar._reload()")
 	m_mask.clear()
 	m_mask.set_cell(Vector2i(-2, -1), 0, Vector2i(0, 0))
 	m_top.position.y = -iso_tile_size.y * size + iso_tile_size.y / 2
