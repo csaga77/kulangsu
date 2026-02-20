@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://cmkwwuc50gkm5"
+path="res://.godot/imported/Song of Kulangsu.mp3-0a2d9061882cce8010338fa9f790a92d.mp3str"
+
+[deps]
+
+source_file="res://resources/audio/Song of Kulangsu.mp3"
+dest_files=["res://.godot/imported/Song of Kulangsu.mp3-0a2d9061882cce8010338fa9f790a92d.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

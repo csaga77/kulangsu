@@ -1,0 +1,23 @@
+[gd_scene format=3 uid="uid://5ugoxc1jv8wp"]
+
+[ext_resource type="Script" uid="uid://chg5jmcj6l5ww" path="res://game/piano_game/beat_json_generator.gd" id="1_1dbao"]
+[ext_resource type="Script" uid="uid://bwohp6ks43lf6" path="res://game/piano_game/piano_game.gd" id="1_6so56"]
+
+[node name="PianoGame" type="Node2D" unique_id=309440624]
+script = ExtResource("1_6so56")
+mp3_path = "res://resources/audio/Kulangsu Breeze.mp3"
+json_path = ""
+travel_time_sec = 2.0
+lookahead_sec = 2.0
+key_chars = "ASD"
+lane_margin_x = 200.0
+difficulty = "EASY"
+print_debug = true
+
+[node name="beat_json_generator" type="Node" parent="." unique_id=576002100]
+script = ExtResource("1_1dbao")
+mp3_path = "res://resources/audio/Kulangsu Breeze.mp3"
+analysis_seconds_limit = 100.0
+status = "Idle"
+progress_print_min_interval_sec = 1.0
+metadata/beatgen_last_stage = "done"
