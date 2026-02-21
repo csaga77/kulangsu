@@ -92,6 +92,7 @@ ui_jump={
 [layer_names]
 
 2d_physics/layer_1="object"
+2d_physics/layer_19="underground"
 2d_physics/layer_20="level0"
 2d_physics/layer_21="level1"
 2d_physics/layer_22="level2"

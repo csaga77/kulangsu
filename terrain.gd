@@ -34,8 +34,8 @@ extends IsometricBlock
 		_on_player_changed()
 
 		
-@onready var m_base    :TileMapLayer = $base
-@onready var m_streets :TileMapLayer = $streets
+@onready var m_base    :TileMapLayer = $ground/base
+@onready var m_streets :TileMapLayer = $ground/streets
 @onready var m_water   :TileMapLayer = $water
 @onready var m_building_mask :TileMapLayer = $building_mask
 var m_is_ready := false
