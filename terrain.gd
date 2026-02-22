@@ -110,11 +110,23 @@ func _reload_terrain() -> void:
 						mask_tile_coords,
 						tile_alternative
 					)
+					#m_streets.set_cells_terrain_connect(
+						#[Vector2i(x - 1, y - 1), Vector2i(x, y - 1), Vector2i(x + 1, y - 1), 
+						 #Vector2i(x - 1, y), Vector2i(x, y), Vector2i(x + 1, y),
+						 #Vector2i(x - 1, y + 1), Vector2i(x, y + 1), Vector2i(x + 1, y + 1)],
+						#0, 
+						#0)
+					#m_streets.set_cells_terrain_connect(
+						#[Vector2i(x - 1, y - 1), Vector2i(x, y - 1), Vector2i(x + 1, y - 1), 
+						 #Vector2i(x - 1, y), Vector2i(x, y), Vector2i(x + 1, y),
+						 #Vector2i(x - 1, y + 1), Vector2i(x, y + 1), Vector2i(x + 1, y + 1)],
+						#1, 
+						#0)
 					m_streets.set_cells_terrain_connect(
-						[Vector2i(x - 1, y - 1), Vector2i(x, y - 1), Vector2i(x + 1, y - 1), 
+						[Vector2i(x, y - 1), 
 						 Vector2i(x - 1, y), Vector2i(x, y), Vector2i(x + 1, y),
-						 Vector2i(x - 1, y + 1), Vector2i(x, y + 1), Vector2i(x + 1, y + 1)],
-						0, 
+						 Vector2i(x, y + 1)],
+						1, 
 						0)
 					#m_streets.set_cell(
 						#Vector2i(x, y),

@@ -5,13 +5,27 @@
 [ext_resource type="TileSet" uid="uid://8qwdv3hv2imc" path="res://resources/tilesets/pavement_0_tilesets.tres" id="3_ecfs0"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="4_5mapb"]
 [ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="5_ep65q"]
+[ext_resource type="Texture2D" uid="uid://mhsy6o806uwu" path="res://resources/sprites/architecture/components/building_0_tiles.png" id="6_5mapb"]
+[ext_resource type="Texture2D" uid="uid://boka5fmviqaew" path="res://resources/sprites/architecture/components/structure_0.png" id="7_fmehs"]
 
-[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_ep65q"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_vf6k1"]
+atlas = ExtResource("6_5mapb")
+region = Rect2(64, 1024, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_oumyh"]
+atlas = ExtResource("7_fmehs")
+region = Rect2(384, 64, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3hdd2"]
+atlas = ExtResource("7_fmehs")
+region = Rect2(448, 64, 64, 64)
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_5mapb"]
 resource_local_to_scene = true
 radius = 9.428204
 height = 61.71394
 
-[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_ecfs0"]
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_fmehs"]
 resource_local_to_scene = true
 radius = 9.428204
 height = 61.686035
@@ -21,30 +35,10 @@ y_sort_enabled = true
 script = ExtResource("1_pm57c")
 level = 9
 
-[node name="exit_south" parent="." unique_id=278227056 instance=ExtResource("2_ep65q")]
-position = Vector2(37, 2.9999995)
-rotation = -2.0352898
-mask1 = 524288
-mask2 = 268435456
-delta_z = -1
-
-[node name="CollisionShape2D" parent="exit_south" index="0" unique_id=1276641949]
-shape = SubResource("CapsuleShape2D_ep65q")
-
-[node name="exit_north" parent="." unique_id=1365970417 instance=ExtResource("2_ep65q")]
-position = Vector2(-615, -930.00006)
-rotation = 1.0937641
-mask1 = 524288
-mask2 = 268435456
-delta_z = -1
-
-[node name="CollisionShape2D" parent="exit_north" index="0" unique_id=1276641949]
-shape = SubResource("CapsuleShape2D_ecfs0")
-
 [node name="path" type="TileMapLayer" parent="." unique_id=473915381]
 z_index = -1
 y_sort_enabled = true
-tile_map_data = PackedByteArray("AAD+/wAAAAACAAEAAAD+////AAACAAEAAAD9/wAAAAACAAEAAAD9////AAACAAEAAAD8/wAAAAACAAEAAAD8////AAACAAEAAAD7/wAAAAACAAEAAAD7////AAACAAEAAAD6/wAAAAACAAEAAAD6////AAACAAEAAAD5/wAAAAACAAEAAAD5////AAACAAEAAAD4/wAAAAACAAEAAAD4////AAACAAEAAAD3/wAAAAACAAEAAAD3////AAACAAEAAAD2/wAAAAACAAIAAAD2////AAACAAEAAAD+/wEAAAABAAIAAAD+//7/AAADAAAAAAD9/wEAAAABAAIAAAD9//7/AAADAAAAAAD8/wEAAAABAAIAAAD8//7/AAADAAAAAAD7/wEAAAABAAIAAAD7//7/AAADAAAAAAD6/wEAAAABAAIAAAD6//7/AAADAAAAAAD5/wEAAAABAAIAAAD5//7/AAADAAAAAAD4/wEAAAABAAIAAAD4//7/AAADAAAAAAD3/wEAAAABAAIAAAD3//7/AAADAAAAAAD2/wEAAAABAAMAAAD2//7/AAACAAAAAADl/+//AAACAAIAAADm/+//AAACAAEAAADm//D/AAACAAIAAADn//D/AAACAAEAAADn//H/AAACAAIAAADo//H/AAACAAEAAADo//L/AAACAAIAAADp//L/AAACAAEAAADp//P/AAACAAIAAADq//P/AAACAAEAAADq//T/AAACAAIAAADr//T/AAACAAEAAADr//X/AAACAAIAAADs//X/AAACAAEAAADs//b/AAACAAIAAADt//b/AAACAAEAAADt//f/AAACAAIAAADu//f/AAACAAEAAADu//j/AAACAAIAAADv//j/AAACAAEAAADv//n/AAACAAIAAADw//n/AAACAAEAAADw//r/AAACAAIAAADx//r/AAACAAEAAADx//v/AAACAAIAAADy//v/AAACAAEAAADy//z/AAACAAIAAADz//z/AAACAAEAAADz//3/AAACAAIAAAD0//3/AAACAAEAAAD0//7/AAACAAIAAAD1//7/AAACAAEAAAD1////AAACAAIAAADn/+//AAACAAAAAADo//D/AAACAAAAAADp//H/AAACAAAAAADq//L/AAACAAAAAADr//P/AAACAAAAAADs//T/AAACAAAAAADt//X/AAACAAAAAADu//b/AAACAAAAAADv//f/AAACAAAAAADw//j/AAACAAAAAADx//n/AAACAAAAAADy//r/AAACAAAAAADz//v/AAACAAAAAAD0//z/AAACAAAAAAD1//3/AAACAAAAAADm//H/AAABAAMAAADn//L/AAABAAMAAADo//P/AAABAAMAAADp//T/AAABAAMAAADq//X/AAABAAMAAADr//b/AAABAAMAAADs//f/AAABAAMAAADt//j/AAABAAMAAADu//n/AAABAAMAAADv//r/AAABAAMAAADw//v/AAABAAMAAADx//z/AAABAAMAAADy//3/AAABAAMAAADz//7/AAABAAMAAAD0////AAABAAMAAAD1/wAAAAABAAMAAADj/+3/AAACAAEAAADi/+3/AAACAAEAAADh/+3/AAACAAEAAADg/+3/AAACAAEAAADf/+3/AAACAAEAAADe/+3/AAACAAEAAADd/+3/AAACAAEAAADc/+3/AAACAAEAAADb/+3/AAACAAEAAADa/+3/AAACAAEAAADa/+z/AAACAAEAAADb/+z/AAACAAEAAADc/+z/AAACAAEAAADd/+z/AAACAAEAAADe/+z/AAACAAEAAADf/+z/AAACAAEAAADg/+z/AAACAAEAAADh/+z/AAACAAEAAADi/+z/AAACAAEAAADj/+z/AAACAAEAAADj/+7/AAABAAIAAADi/+7/AAABAAIAAADh/+7/AAABAAIAAADg/+7/AAABAAIAAADf/+7/AAABAAIAAADe/+7/AAABAAIAAADd/+7/AAABAAIAAADc/+7/AAABAAIAAADb/+7/AAABAAIAAADa/+7/AAABAAIAAADh/+v/AAADAAAAAADg/+v/AAADAAAAAADf/+v/AAADAAAAAADe/+v/AAADAAAAAADd/+v/AAADAAAAAADc/+v/AAADAAAAAADb/+v/AAADAAAAAADa/+v/AAADAAAAAADi/+v/AAADAAAAAADl/+7/AAACAAEAAADk/+7/AAACAAIAAADk/+3/AAACAAEAAADm/+7/AAACAAAAAADl/+3/AAACAAAAAADk/+z/AAACAAAAAADj/+v/AAADAAAAAADl//D/AAABAAMAAADk/+//AAABAAMAAADv//b/AAADAAMAAADw//f/AAADAAMAAADx//j/AAADAAMAAADy//n/AAADAAMAAADz//r/AAADAAMAAAD0//v/AAADAAMAAAD1//z/AAADAAMAAAD2//3/AAADAAMAAADo/+//AAADAAMAAADp//D/AAADAAMAAADq//H/AAADAAMAAADr//L/AAADAAMAAADs//P/AAADAAMAAADt//T/AAADAAMAAADu//X/AAADAAMAAADk/+v/AAADAAMAAADl/+z/AAADAAMAAADm/+3/AAADAAMAAADn/+7/AAADAAMAAAD//wAAAAACAAEAAAD//wEAAAABAAIAAAD/////AAACAAEAAAD///7/AAADAAAAAADZ/+3/AAACAAEAAADZ/+7/AAABAAIAAADZ/+z/AAACAAEAAADZ/+v/AAADAAAAAAAAAAEAAAABAAIAAAAAAAAAAAACAAEAAAAAAP//AAACAAEAAAAAAP7/AAADAAAAAAABAAEAAAAAAAIAAAABAAAAAAADAAIAAAABAP//AAADAAIAAAABAP7/AAADAAMAAADY/+7/AAABAAIAAADY/+3/AAACAAEAAADY/+z/AAACAAEAAADY/+v/AAADAAAAAADX/+7/AAABAAMAAADX/+3/AAABAAAAAADX/+z/AAABAAAAAADX/+v/AAAAAAAAAAA=")
+tile_map_data = PackedByteArray("AAD+/wAABAADAAMAAAD+////BAADAAMAAAD9/wAABAADAAMAAAD9////BAADAAMAAAD8/wAABAADAAMAAAD8////BAADAAMAAAD7/wAABAADAAMAAAD7////BAADAAMAAAD6/wAABAADAAMAAAD6////BAADAAMAAAD5/wAABAADAAMAAAD5////BAADAAMAAAD4/wAABAADAAMAAAD4////BAADAAMAAAD3/wAABAADAAMAAAD3////BAADAAMAAAD+/wEABAABAAIAAAD+//7/BAABAAAAAAD9/wEABAABAAIAAAD9//7/BAABAAAAAAD8/wEABAABAAIAAAD8//7/BAABAAAAAAD7/wEABAABAAIAAAD7//7/BAABAAAAAAD6/wEABAABAAIAAAD6//7/BAABAAAAAAD5/wEABAABAAIAAAD5//7/BAABAAAAAAD4/wEABAABAAIAAAD4//7/BAABAAAAAAD3/wEABAABAAIAAAD3//7/BAABAAAAAADj/+3/BAADAAMAAADi/+3/BAADAAMAAADh/+3/BAADAAMAAADg/+3/BAADAAMAAADf/+3/BAADAAMAAADe/+3/BAADAAMAAADd/+3/BAADAAMAAADc/+3/BAADAAMAAADb/+3/BAADAAMAAADa/+3/BAADAAMAAADa/+z/BAADAAMAAADb/+z/BAADAAMAAADc/+z/BAADAAMAAADd/+z/BAADAAMAAADe/+z/BAADAAMAAADf/+z/BAADAAMAAADg/+z/BAADAAMAAADh/+z/BAADAAMAAADi/+z/BAADAAMAAADj/+z/BAADAAMAAADj/+7/BAABAAIAAADi/+7/BAABAAIAAADh/+7/BAABAAIAAADg/+7/BAABAAIAAADf/+7/BAABAAIAAADe/+7/BAABAAIAAADd/+7/BAABAAIAAADc/+7/BAABAAIAAADb/+7/BAABAAIAAADa/+7/BAABAAIAAADh/+v/BAABAAAAAADg/+v/BAABAAAAAADf/+v/BAABAAAAAADe/+v/BAABAAAAAADd/+v/BAABAAAAAADc/+v/BAABAAAAAADb/+v/BAABAAAAAADa/+v/BAABAAAAAADi/+v/BAABAAAAAADj/+v/BAABAAAAAAD//wAABAADAAMAAAD//wEABAABAAIAAAD/////BAADAAMAAAD///7/BAABAAAAAADZ/+3/BAADAAMAAADZ/+7/BAABAAIAAADZ/+z/BAADAAMAAADZ/+v/BAABAAAAAAAAAAEABAABAAIAAAAAAAAABAADAAMAAAAAAP//BAADAAMAAAAAAP7/BAABAAAAAADY/+7/BAABAAIAAADY/+3/BAADAAMAAADY/+z/BAADAAMAAADY/+v/BAABAAAAAADX/+z/BAADAAIAAAABAAAABAADAAAAAAABAP//BAADAAAAAAD2////BAADAAMAAAD2/wAABAACAAIAAAD1////BAACAAIAAAD2//7/BAACAAAAAAD1//7/BAADAAMAAAD0//7/BAACAAIAAAD1//3/BAACAAAAAAD0//3/BAADAAMAAADz//3/BAACAAIAAAD0//z/BAACAAAAAADz//z/BAADAAMAAADy//z/BAACAAIAAADz//v/BAACAAAAAADy//v/BAADAAMAAADx//v/BAACAAIAAADy//r/BAACAAAAAADx//r/BAADAAMAAADw//r/BAACAAIAAADx//n/BAACAAAAAADw//n/BAADAAMAAADv//n/BAACAAIAAADw//j/BAACAAAAAADv//j/BAADAAMAAADu//j/BAACAAIAAADv//f/BAACAAAAAADu//f/BAADAAMAAADt//f/BAACAAIAAADu//b/BAACAAAAAADt//b/BAADAAMAAADs//b/BAACAAIAAADt//X/BAACAAAAAADk/+3/BAADAAMAAADl/+3/BAACAAAAAADk/+7/BAACAAIAAADk/+z/BAACAAAAAADl/+7/BAADAAMAAADm/+7/BAACAAAAAADl/+//BAACAAIAAADm/+//BAADAAMAAADn/+//BAACAAAAAADm//D/BAACAAIAAADn//D/BAADAAMAAADo//D/BAACAAAAAADn//H/BAACAAIAAADo//H/BAADAAMAAADp//H/BAACAAAAAADo//L/BAACAAIAAADp//L/BAADAAMAAADq//L/BAACAAAAAADp//P/BAACAAIAAADq//P/BAADAAMAAADr//P/BAACAAAAAADq//T/BAACAAIAAADr//T/BAADAAMAAADs//T/BAACAAAAAADr//X/BAACAAIAAADs//X/BAADAAMAAADX/+3/BAADAAIAAAA=")
 tile_set = ExtResource("3_ecfs0")
 script = ExtResource("4_5mapb")
 
@@ -52,5 +46,113 @@ script = ExtResource("4_5mapb")
 tile_map_data = PackedByteArray("AAD//wEAAgAJAAQAAAD+/wEAAgAJAAQAAAD9/wEAAgAJAAQAAAD8/wEAAgAJAAQAAAD7/wEAAgAJAAQAAAD6/wEAAgAJAAQAAAD5/wEAAgAJAAQAAAD4/wEAAgAJAAQAAAD3/wEAAgAJAAQAAADj/+7/AgAJAAQAAADi/+7/AgAJAAQAAADh/+7/AgAJAAQAAADg/+7/AgAJAAQAAADf/+7/AgAJAAQAAADe/+7/AgAJAAQAAADd/+7/AgAJAAQAAADc/+7/AgAJAAQAAADb/+7/AgAJAAQAAADa/+7/AgAJAAQAAADZ/+7/AgAJAAQAAADZ/+v/AgAJAAEAAADa/+v/AgAJAAEAAADb/+v/AgAJAAEAAADc/+v/AgAJAAEAAADd/+v/AgAJAAEAAADe/+v/AgAJAAEAAADf/+v/AgAJAAEAAADg/+v/AgAJAAEAAADh/+v/AgAJAAEAAADi/+v/AgAJAAEAAADj/+v/AgAJAAEAAAD3//7/AgAJAAEAAAD4//7/AgAJAAEAAAD5//7/AgAJAAEAAAD6//7/AgAJAAEAAAD7//7/AgAJAAEAAAD8//7/AgAJAAEAAAD9//7/AgAJAAEAAAD+//7/AgAJAAEAAAD///7/AgAJAAEAAAD2//7/AgAJAAwAAAD1//3/AgAJAAwAAAD0//z/AgAJAAwAAADz//v/AgAJAAwAAADy//r/AgAJAAwAAADx//n/AgAJAAwAAADw//j/AgAJAAwAAADv//f/AgAJAAwAAADu//b/AgAJAAwAAADt//X/AgAJAAwAAADs//T/AgAJAAwAAADn/+//AgAJAAwAAADo//D/AgAJAAwAAADp//H/AgAJAAwAAADq//L/AgAJAAwAAADr//P/AgAJAAwAAADm/+7/AgAJAAwAAADl/+3/AgAJAAwAAADk/+z/AgAJAAwAAADk/+7/AgAJAAsAAADl/+//AgAJAAsAAADm//D/AgAJAAsAAADn//H/AgAJAAsAAADo//L/AgAJAAsAAADp//P/AgAJAAsAAADq//T/AgAJAAsAAADr//X/AgAJAAsAAADs//b/AgAJAAsAAADt//f/AgAJAAsAAADu//j/AgAJAAsAAADv//n/AgAJAAsAAADw//r/AgAJAAsAAADx//v/AgAJAAsAAADy//z/AgAJAAsAAADz//3/AgAJAAsAAAD0//7/AgAJAAsAAAD1////AgAJAAsAAAD2/wAAAgAJAAsAAAAAAP7/AgAJAAEAAADY/+v/AgAJAAEAAAAAAAEAAgAJAAQAAADY/+7/AgAJAAQAAAA=")
 tile_set = ExtResource("5_ep65q")
 
-[editable path="exit_south"]
-[editable path="exit_north"]
+[node name="exit_south" type="Node2D" parent="." unique_id=123658952]
+y_sort_enabled = true
+position = Vector2(-16, -8)
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D" type="Sprite2D" parent="exit_south" unique_id=1845337072]
+position = Vector2(16, 32)
+texture = SubResource("AtlasTexture_vf6k1")
+offset = Vector2(0, -24)
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D3" type="Sprite2D" parent="exit_south/Sprite2D" unique_id=752871813]
+position = Vector2(16, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D4" type="Sprite2D" parent="exit_south/Sprite2D" unique_id=1862158591]
+position = Vector2(0, -56)
+texture = SubResource("AtlasTexture_vf6k1")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D2" type="Sprite2D" parent="exit_south" unique_id=1815187715]
+position = Vector2(96, -8)
+texture = SubResource("AtlasTexture_vf6k1")
+offset = Vector2(0, -24)
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D6" type="Sprite2D" parent="exit_south/Sprite2D2" unique_id=1544015434]
+position = Vector2(0, -56)
+texture = SubResource("AtlasTexture_vf6k1")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D5" type="Sprite2D" parent="exit_south/Sprite2D2" unique_id=1724616073]
+position = Vector2(-32, -40)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="exit_south" parent="exit_south" unique_id=278227056 instance=ExtResource("2_ep65q")]
+position = Vector2(57, 11)
+rotation = -2.0352898
+mask1 = 524288
+mask2 = 268435456
+delta_z = -1
+
+[node name="CollisionShape2D" parent="exit_south/exit_south" index="0" unique_id=1276641949]
+shape = SubResource("CapsuleShape2D_5mapb")
+
+[node name="exit_north" type="Node2D" parent="." unique_id=1884938513]
+y_sort_enabled = true
+position = Vector2(-672, -944)
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(32, 16)
+
+[node name="Sprite2D" type="Sprite2D" parent="exit_north" unique_id=2033372023]
+position = Vector2(16, 32)
+texture = SubResource("AtlasTexture_vf6k1")
+offset = Vector2(0, -24)
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D3" type="Sprite2D" parent="exit_north/Sprite2D" unique_id=1851108045]
+position = Vector2(16, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D4" type="Sprite2D" parent="exit_north/Sprite2D" unique_id=1365476707]
+position = Vector2(0, -56)
+texture = SubResource("AtlasTexture_vf6k1")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D2" type="Sprite2D" parent="exit_north" unique_id=1052084697]
+position = Vector2(96, -8)
+texture = SubResource("AtlasTexture_vf6k1")
+offset = Vector2(0, -24)
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D6" type="Sprite2D" parent="exit_north/Sprite2D2" unique_id=1238216665]
+position = Vector2(0, -56)
+texture = SubResource("AtlasTexture_vf6k1")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D5" type="Sprite2D" parent="exit_north/Sprite2D2" unique_id=1564974087]
+position = Vector2(-32, -40)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="exit_north" parent="exit_north" unique_id=1365970417 instance=ExtResource("2_ep65q")]
+position = Vector2(59, 11)
+rotation = 1.0937641
+mask1 = 524288
+mask2 = 268435456
+delta_z = -1
+
+[node name="CollisionShape2D" parent="exit_north/exit_north" index="0" unique_id=1276641949]
+shape = SubResource("CapsuleShape2D_fmehs")
+
+[editable path="exit_south/exit_south"]
+[editable path="exit_north/exit_north"]

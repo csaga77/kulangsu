@@ -106,7 +106,6 @@ tile_set = ExtResource("3_lw8s5")
 
 [node name="base_stairs" parent="base" unique_id=1574749265 instance=ExtResource("5_frgy6")]
 position = Vector2(32, 272)
-use_ground_bounding_rect = true
 
 [node name="portal_ne_0" parent="base" unique_id=166328175 instance=ExtResource("5_5gyeu")]
 z_index = 1
@@ -169,16 +168,13 @@ position = Vector2(-0.6340047, -3.0981295)
 rotation = 3.094882
 shape = SubResource("CapsuleShape2D_fcs3d")
 
-[node name="ground_level" type="Node2D" parent="base" unique_id=1484935474 node_paths=PackedStringArray("physics_layers", "sub_level_nodes", "visibility_mask_layers")]
+[node name="ground_level" type="Node2D" parent="base" unique_id=1484935474 node_paths=PackedStringArray("physics_layers", "sub_level_nodes")]
 z_index = 2
 y_sort_enabled = true
 script = ExtResource("7_564an")
 level = 2
 physics_layers = [NodePath("collision_layer")]
 sub_level_nodes = [NodePath("corner_room_north"), NodePath("corner_room_east"), NodePath("corner_room_south"), NodePath("corner_room_west")]
-visibility_mask_layers = [NodePath("../base_floor"), NodePath("../base_stairs_mask"), NodePath("../../mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="hand_rails" type="TileMapLayer" parent="base/ground_level" unique_id=1199168486]
 y_sort_enabled = true
@@ -277,12 +273,9 @@ tile_map_data = PackedByteArray("AAD6//7/BAALAAAAAgD+//r/BAALAAAAAgD6//3/BQAOAAE
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 128
 
-[node name="front_wall" type="Node2D" parent="base/ground_level/corner_room_north" unique_id=1561955836 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="front_wall" type="Node2D" parent="base/ground_level/corner_room_north" unique_id=1561955836]
 y_sort_enabled = true
 script = ExtResource("6_562by")
-visibility_mask_layers = [NodePath("../floor")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="front_wall_0" type="TileMapLayer" parent="base/ground_level/corner_room_north/front_wall" unique_id=164596874]
 y_sort_enabled = true
@@ -342,12 +335,9 @@ tile_set = ExtResource("11_ied5s")
 script = ExtResource("1_p6xgs")
 only_shown_in_editor = true
 
-[node name="back_wall" type="Node2D" parent="base/ground_level/corner_room_east" unique_id=1173627701 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="back_wall" type="Node2D" parent="base/ground_level/corner_room_east" unique_id=1173627701]
 y_sort_enabled = true
 script = ExtResource("6_562by")
-visibility_mask_layers = [NodePath("../back_wall_mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="back_wall_0" type="TileMapLayer" parent="base/ground_level/corner_room_east/back_wall" unique_id=1017931067]
 y_sort_enabled = true
@@ -373,12 +363,9 @@ tile_map_data = PackedByteArray("AAD6//7/BAALAAAAAgD+//r/BAALAAAAAgD6//3/BQAOAAA
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 128
 
-[node name="front_wall" type="Node2D" parent="base/ground_level/corner_room_east" unique_id=1926568895 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="front_wall" type="Node2D" parent="base/ground_level/corner_room_east" unique_id=1926568895]
 y_sort_enabled = true
 script = ExtResource("6_562by")
-visibility_mask_layers = [NodePath("../floor"), NodePath("../back_wall_mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="front_wall_0" type="TileMapLayer" parent="base/ground_level/corner_room_east/front_wall" unique_id=1541191788]
 y_sort_enabled = true
@@ -440,12 +427,9 @@ tile_set = ExtResource("11_ied5s")
 script = ExtResource("1_p6xgs")
 only_shown_in_editor = true
 
-[node name="back_wall" type="Node2D" parent="base/ground_level/corner_room_south" unique_id=2088361835 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="back_wall" type="Node2D" parent="base/ground_level/corner_room_south" unique_id=2088361835]
 y_sort_enabled = true
 script = ExtResource("6_562by")
-visibility_mask_layers = [NodePath("../back_wall_mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="back_wall_0" type="TileMapLayer" parent="base/ground_level/corner_room_south/back_wall" unique_id=1340223614]
 y_sort_enabled = true
@@ -471,12 +455,9 @@ tile_map_data = PackedByteArray("AAD6//7/BAALAAAAAgD+//r/BAALAAAAAgD6//3/BQAOAAA
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 128
 
-[node name="front_wall" type="Node2D" parent="base/ground_level/corner_room_south" unique_id=307222007 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="front_wall" type="Node2D" parent="base/ground_level/corner_room_south" unique_id=307222007]
 y_sort_enabled = true
 script = ExtResource("6_562by")
-visibility_mask_layers = [NodePath("../floor"), NodePath("../back_wall_mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="front_wall_0" type="TileMapLayer" parent="base/ground_level/corner_room_south/front_wall" unique_id=1724791088]
 y_sort_enabled = true
@@ -547,12 +528,9 @@ tile_set = ExtResource("11_ied5s")
 script = ExtResource("1_p6xgs")
 only_shown_in_editor = true
 
-[node name="back_wall" type="Node2D" parent="base/ground_level/corner_room_west" unique_id=232401822 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="back_wall" type="Node2D" parent="base/ground_level/corner_room_west" unique_id=232401822]
 y_sort_enabled = true
 script = ExtResource("6_562by")
-visibility_mask_layers = [NodePath("../back_wall_mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="back_wall_0" type="TileMapLayer" parent="base/ground_level/corner_room_west/back_wall" unique_id=1221306263]
 y_sort_enabled = true
@@ -578,12 +556,9 @@ tile_map_data = PackedByteArray("AAD6//7/BAALAAAAAgD+//r/BAALAAAAAgD6//3/BQAOAAE
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 128
 
-[node name="front_wall" type="Node2D" parent="base/ground_level/corner_room_west" unique_id=220840378 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="front_wall" type="Node2D" parent="base/ground_level/corner_room_west" unique_id=220840378]
 y_sort_enabled = true
 script = ExtResource("6_562by")
-visibility_mask_layers = [NodePath("../floor"), NodePath("../back_wall_mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="front_wall_0" type="TileMapLayer" parent="base/ground_level/corner_room_west/front_wall" unique_id=77317425]
 y_sort_enabled = true
@@ -664,7 +639,7 @@ size = 8
 position = Vector2(128, 640)
 size = 8
 
-[node name="upper_level" type="Node2D" parent="base/ground_level" unique_id=1419816824 node_paths=PackedStringArray("physics_layers", "sub_level_nodes", "visibility_mask_layers")]
+[node name="upper_level" type="Node2D" parent="base/ground_level" unique_id=1419816824 node_paths=PackedStringArray("physics_layers", "sub_level_nodes")]
 z_index = 2
 y_sort_enabled = true
 position = Vector2(0, -128)
@@ -672,9 +647,6 @@ script = ExtResource("7_564an")
 level = 4
 physics_layers = [NodePath("upper_collision_layer")]
 sub_level_nodes = [NodePath("corner_room_north"), NodePath("corner_room_east"), NodePath("corner_room_south"), NodePath("corner_room_west")]
-visibility_mask_layers = [NodePath("../ground_stairs_mask"), NodePath("../ground_level_floor")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="hand_rails" type="TileMapLayer" parent="base/ground_level/upper_level" unique_id=1711740196]
 y_sort_enabled = true
@@ -798,12 +770,9 @@ tile_map_data = PackedByteArray("AAD6//7/BAALAAAAAgD+//r/BAALAAAAAgD6//3/BQAOAAE
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 128
 
-[node name="front_wall" type="Node2D" parent="base/ground_level/upper_level/corner_room_north" unique_id=1716860608 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="front_wall" type="Node2D" parent="base/ground_level/upper_level/corner_room_north" unique_id=1716860608]
 y_sort_enabled = true
 script = ExtResource("6_562by")
-visibility_mask_layers = [NodePath("../floor")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="front_wall_0" type="TileMapLayer" parent="base/ground_level/upper_level/corner_room_north/front_wall" unique_id=1094597802]
 y_sort_enabled = true
@@ -863,12 +832,9 @@ tile_set = ExtResource("11_ied5s")
 script = ExtResource("1_p6xgs")
 only_shown_in_editor = true
 
-[node name="back_wall" type="Node2D" parent="base/ground_level/upper_level/corner_room_east" unique_id=530293838 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="back_wall" type="Node2D" parent="base/ground_level/upper_level/corner_room_east" unique_id=530293838]
 y_sort_enabled = true
 script = ExtResource("6_562by")
-visibility_mask_layers = [NodePath("../back_wall_mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="back_wall_0" type="TileMapLayer" parent="base/ground_level/upper_level/corner_room_east/back_wall" unique_id=1648574077]
 y_sort_enabled = true
@@ -894,12 +860,9 @@ tile_map_data = PackedByteArray("AAD6//7/BAALAAAAAgD+//r/BAALAAAAAgD6//3/BQAOAAA
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 128
 
-[node name="front_wall" type="Node2D" parent="base/ground_level/upper_level/corner_room_east" unique_id=885922626 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="front_wall" type="Node2D" parent="base/ground_level/upper_level/corner_room_east" unique_id=885922626]
 y_sort_enabled = true
 script = ExtResource("6_562by")
-visibility_mask_layers = [NodePath("../floor"), NodePath("../back_wall_mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="front_wall_0" type="TileMapLayer" parent="base/ground_level/upper_level/corner_room_east/front_wall" unique_id=1781463155]
 y_sort_enabled = true
@@ -960,12 +923,9 @@ tile_set = ExtResource("11_ied5s")
 script = ExtResource("1_p6xgs")
 only_shown_in_editor = true
 
-[node name="back_wall" type="Node2D" parent="base/ground_level/upper_level/corner_room_south" unique_id=683500803 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="back_wall" type="Node2D" parent="base/ground_level/upper_level/corner_room_south" unique_id=683500803]
 y_sort_enabled = true
 script = ExtResource("6_562by")
-visibility_mask_layers = [NodePath("../back_wall_mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="back_wall_0" type="TileMapLayer" parent="base/ground_level/upper_level/corner_room_south/back_wall" unique_id=258769259]
 y_sort_enabled = true
@@ -991,12 +951,9 @@ tile_map_data = PackedByteArray("AAD6//7/BAALAAAAAgD+//r/BAALAAAAAgD6//3/BQAOAAA
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 128
 
-[node name="front_wall" type="Node2D" parent="base/ground_level/upper_level/corner_room_south" unique_id=1462602750 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="front_wall" type="Node2D" parent="base/ground_level/upper_level/corner_room_south" unique_id=1462602750]
 y_sort_enabled = true
 script = ExtResource("6_562by")
-visibility_mask_layers = [NodePath("../floor"), NodePath("../back_wall_mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="front_wall_0" type="TileMapLayer" parent="base/ground_level/upper_level/corner_room_south/front_wall" unique_id=1564215692]
 y_sort_enabled = true
@@ -1057,12 +1014,9 @@ tile_set = ExtResource("11_ied5s")
 script = ExtResource("1_p6xgs")
 only_shown_in_editor = true
 
-[node name="back_wall" type="Node2D" parent="base/ground_level/upper_level/corner_room_west" unique_id=896839839 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="back_wall" type="Node2D" parent="base/ground_level/upper_level/corner_room_west" unique_id=896839839]
 y_sort_enabled = true
 script = ExtResource("6_562by")
-visibility_mask_layers = [NodePath("../back_wall_mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="back_wall_0" type="TileMapLayer" parent="base/ground_level/upper_level/corner_room_west/back_wall" unique_id=313952871]
 y_sort_enabled = true
@@ -1088,12 +1042,9 @@ tile_map_data = PackedByteArray("AAD6//7/BAALAAAAAgD+//r/BAALAAAAAgD6//3/BQAOAAE
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 128
 
-[node name="front_wall" type="Node2D" parent="base/ground_level/upper_level/corner_room_west" unique_id=1898285027 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="front_wall" type="Node2D" parent="base/ground_level/upper_level/corner_room_west" unique_id=1898285027]
 y_sort_enabled = true
 script = ExtResource("6_562by")
-visibility_mask_layers = [NodePath("../floor"), NodePath("../back_wall_mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="front_wall_0" type="TileMapLayer" parent="base/ground_level/upper_level/corner_room_west/front_wall" unique_id=1749453736]
 y_sort_enabled = true
@@ -1158,16 +1109,13 @@ position = Vector2(256, 96)
 [node name="pillar_11" parent="base/ground_level/upper_level/pillars" unique_id=1828121965 instance=ExtResource("13_8b4w8")]
 position = Vector2(384, 160)
 
-[node name="roof_level" type="Node2D" parent="base/ground_level/upper_level" unique_id=61495827 node_paths=PackedStringArray("physics_layers", "visibility_mask_layers")]
+[node name="roof_level" type="Node2D" parent="base/ground_level/upper_level" unique_id=61495827 node_paths=PackedStringArray("physics_layers")]
 z_index = 2
 y_sort_enabled = true
 position = Vector2(0, -128)
 script = ExtResource("7_564an")
 level = 6
 physics_layers = [NodePath("roof_collision_layer")]
-visibility_mask_layers = [NodePath("../upper_level_stairs_mask"), NodePath("../upper_floor")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="roof_stairs_mask" type="TileMapLayer" parent="base/ground_level/upper_level/roof_level" unique_id=1276815162]
 z_index = 1
@@ -1222,12 +1170,9 @@ tile_map_data = PackedByteArray("AAAMAA4ABQAOAAAAAAAMAA0ABQAOAAAAAAAMAAwABQAOAAA
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 32
 
-[node name="wall_back" type="Node2D" parent="base/ground_level/upper_level/roof_level" unique_id=977635434 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="wall_back" type="Node2D" parent="base/ground_level/upper_level/roof_level" unique_id=977635434]
 y_sort_enabled = true
 script = ExtResource("6_562by")
-visibility_mask_layers = [NodePath("../roof_stairs_mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="wall_0" type="TileMapLayer" parent="base/ground_level/upper_level/roof_level/wall_back" unique_id=1469847397]
 y_sort_enabled = true
@@ -1247,12 +1192,9 @@ tile_map_data = PackedByteArray("AAAAAAoABQAOAAAAAQAAAAsABQAOAAAAAQAAAAwABQAOAAA
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 96
 
-[node name="wall_front" type="Node2D" parent="base/ground_level/upper_level/roof_level" unique_id=24995130 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="wall_front" type="Node2D" parent="base/ground_level/upper_level/roof_level" unique_id=24995130]
 y_sort_enabled = true
 script = ExtResource("6_562by")
-visibility_mask_layers = [NodePath("../internal_mask"), NodePath("../roof_stairs_mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="wall_0" type="TileMapLayer" parent="base/ground_level/upper_level/roof_level/wall_front" unique_id=731301626]
 y_sort_enabled = true
@@ -1272,14 +1214,11 @@ tile_map_data = PackedByteArray("AAAFAA8ABQANAAAAAAAGAA8ABQANAAAAAAAHAA8ABQANAAA
 tile_set = ExtResource("7_fcs3d")
 y_sort_origin = 96
 
-[node name="roof_tower" type="Node2D" parent="base/ground_level/upper_level/roof_level" unique_id=1870117698 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="roof_tower" type="Node2D" parent="base/ground_level/upper_level/roof_level" unique_id=1870117698]
 z_index = 2
 y_sort_enabled = true
 position = Vector2(0, 256)
 script = ExtResource("6_562by")
-visibility_mask_layers = [NodePath("../roof_stairs_mask"), NodePath("../internal_mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="floor" type="TileMapLayer" parent="base/ground_level/upper_level/roof_level/roof_tower" unique_id=1589731387]
 position = Vector2(-128, -224)
