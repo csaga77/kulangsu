@@ -4,14 +4,24 @@
 [ext_resource type="PackedScene" uid="uid://d27a7jcvsnfx8" path="res://architecture/components/portal.tscn" id="2_ep65q"]
 [ext_resource type="TileSet" uid="uid://8qwdv3hv2imc" path="res://resources/tilesets/pavement_0_tilesets.tres" id="3_ecfs0"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="4_5mapb"]
+[ext_resource type="Texture2D" uid="uid://mhsy6o806uwu" path="res://resources/sprites/architecture/components/building_0_tiles.png" id="4_fmehs"]
 [ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="5_ep65q"]
+[ext_resource type="Texture2D" uid="uid://boka5fmviqaew" path="res://resources/sprites/architecture/components/structure_0.png" id="5_vf6k1"]
 
-[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_5mapb"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_oumyh"]
+atlas = ExtResource("4_fmehs")
+region = Rect2(128, 1024, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3hdd2"]
+atlas = ExtResource("5_vf6k1")
+region = Rect2(192, 64, 64, 64)
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_l5wmh"]
 resource_local_to_scene = true
 radius = 12.522358
 height = 99.282875
 
-[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_fmehs"]
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_owb64"]
 resource_local_to_scene = true
 radius = 13.87439
 height = 97.519714
@@ -27,6 +37,534 @@ y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD+/wAABAADAAMAAAD+////BAADAAMAAAD9/wAABAADAAMAAAD9////BAADAAMAAAD8/wAABAADAAMAAAD8////BAADAAMAAAD7/wAABAADAAMAAAD7////BAADAAMAAAD6/wAABAADAAMAAAD6////BAADAAMAAAD5/wAABAADAAMAAAD5////BAADAAMAAAD4/wAABAADAAMAAAD4////BAADAAMAAAD3/wAABAADAAMAAAD3////BAADAAMAAAD+/wEABAADAAMAAAD+//7/BAABAAAAAAD9/wEABAADAAMAAAD9//7/BAABAAAAAAD8/wEABAADAAMAAAD8//7/BAABAAAAAAD7/wEABAADAAMAAAD7//7/BAABAAAAAAD6/wEABAADAAMAAAD6//7/BAABAAAAAAD5/wEABAADAAMAAAD5//7/BAABAAAAAAD4/wEABAADAAMAAAD4//7/BAABAAAAAAD3/wEABAADAAMAAAD3//7/BAABAAAAAADj/+3/BAADAAMAAADi/+3/BAADAAMAAADh/+3/BAADAAMAAADg/+3/BAADAAMAAADf/+3/BAADAAMAAADe/+3/BAADAAMAAADd/+3/BAADAAMAAADc/+3/BAADAAMAAADb/+3/BAADAAMAAADa/+3/BAADAAMAAADa/+z/BAADAAMAAADb/+z/BAADAAMAAADc/+z/BAADAAMAAADd/+z/BAADAAMAAADe/+z/BAADAAMAAADf/+z/BAADAAMAAADg/+z/BAADAAMAAADh/+z/BAADAAMAAADi/+z/BAADAAMAAADj/+z/BAADAAMAAADj/+7/BAADAAMAAADi/+7/BAADAAMAAADh/+7/BAADAAMAAADg/+7/BAADAAMAAADf/+7/BAADAAMAAADe/+7/BAADAAMAAADd/+7/BAADAAMAAADc/+7/BAADAAMAAADb/+7/BAADAAMAAADa/+7/BAADAAMAAADh/+v/BAABAAAAAADg/+v/BAABAAAAAADf/+v/BAABAAAAAADe/+v/BAABAAAAAADd/+v/BAABAAAAAADc/+v/BAABAAAAAADb/+v/BAABAAAAAADa/+v/BAABAAAAAADi/+v/BAABAAAAAADj/+v/BAABAAAAAAD//wAABAADAAMAAAD//wEABAADAAMAAAD/////BAADAAMAAAD///7/BAABAAAAAADZ/+3/BAADAAMAAADZ/+7/BAADAAMAAADZ/+z/BAADAAMAAADZ/+v/BAABAAAAAAAAAAEABAADAAMAAAAAAAAABAADAAMAAAAAAP//BAADAAMAAAAAAP7/BAABAAAAAADY/+7/BAADAAMAAADY/+3/BAADAAMAAADY/+z/BAADAAMAAADY/+v/BAABAAAAAADX/+z/BAADAAIAAAABAAAABAADAAAAAAABAP//BAADAAAAAAD2////BAADAAMAAAD2/wAABAADAAMAAAD1////BAADAAMAAAD2//7/BAACAAAAAAD1//7/BAADAAMAAAD0//7/BAADAAMAAAD1//3/BAACAAAAAAD0//3/BAADAAMAAADz//3/BAADAAMAAAD0//z/BAACAAAAAADz//z/BAADAAMAAADy//z/BAADAAMAAADz//v/BAACAAAAAADy//v/BAADAAMAAADx//v/BAADAAMAAADy//r/BAACAAAAAADx//r/BAADAAMAAADw//r/BAADAAMAAADx//n/BAACAAAAAADw//n/BAADAAMAAADv//n/BAADAAMAAADw//j/BAACAAAAAADv//j/BAADAAMAAADu//j/BAADAAMAAADv//f/BAACAAAAAADu//f/BAADAAMAAADt//f/BAADAAMAAADu//b/BAACAAAAAADt//b/BAADAAMAAADs//b/BAADAAMAAADt//X/BAACAAAAAADk/+3/BAADAAMAAADl/+3/BAACAAAAAADk/+7/BAADAAMAAADk/+z/BAACAAAAAADl/+7/BAADAAMAAADm/+7/BAACAAAAAADl/+//BAADAAMAAADm/+//BAADAAMAAADn/+//BAACAAAAAADm//D/BAADAAMAAADn//D/BAADAAMAAADo//D/BAACAAAAAADn//H/BAADAAMAAADo//H/BAADAAMAAADp//H/BAACAAAAAADo//L/BAADAAMAAADp//L/BAADAAMAAADq//L/BAACAAAAAADp//P/BAADAAMAAADq//P/BAADAAMAAADr//P/BAACAAAAAADq//T/BAADAAMAAADr//T/BAADAAMAAADs//T/BAACAAAAAADr//X/BAADAAMAAADs//X/BAADAAMAAADX/+3/BAADAAIAAAABAAEABAADAAAAAAAAAAIABAABAAIAAAD//wIABAABAAIAAAD+/wIABAABAAIAAAD9/wIABAABAAIAAAD8/wIABAABAAIAAAD7/wIABAABAAIAAAD6/wIABAABAAIAAAD5/wIABAABAAIAAAD4/wIABAABAAIAAAD3/wIABAABAAIAAAD2/wEABAACAAIAAAD1/wAABAACAAIAAAD0////BAACAAIAAADz//7/BAACAAIAAADy//3/BAACAAIAAADx//z/BAACAAIAAADw//v/BAACAAIAAADv//r/BAACAAIAAADu//n/BAACAAIAAADt//j/BAACAAIAAADs//f/BAACAAIAAADr//b/BAACAAIAAADq//X/BAACAAIAAADp//T/BAACAAIAAADo//P/BAACAAIAAADn//L/BAACAAIAAADm//H/BAACAAIAAADl//D/BAACAAIAAADk/+//BAACAAIAAADZ/+//BAABAAIAAADY/+//BAABAAIAAADX/+7/BAADAAIAAADa/+//BAABAAIAAADb/+//BAABAAIAAADc/+//BAABAAIAAADd/+//BAABAAIAAADe/+//BAABAAIAAADf/+//BAABAAIAAADg/+//BAABAAIAAADh/+//BAABAAIAAADi/+//BAABAAIAAADj/+//BAABAAIAAAA=")
 tile_set = ExtResource("3_ecfs0")
 script = ExtResource("4_5mapb")
+
+[node name="wall5" type="Sprite2D" parent="path" unique_id=1981824228]
+position = Vector2(96, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall5" unique_id=421009921]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall5" unique_id=124889734]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall5" unique_id=26831759]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall6" type="Sprite2D" parent="path" unique_id=1446982414]
+position = Vector2(-576, -976)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall6" unique_id=1205992575]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall6" unique_id=286153061]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall6" unique_id=1908649772]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall7" type="Sprite2D" parent="path" unique_id=653597577]
+position = Vector2(-544, -960)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall7" unique_id=1799273812]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall7" unique_id=114745134]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall7" unique_id=1176627026]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall8" type="Sprite2D" parent="path" unique_id=1002861260]
+position = Vector2(-512, -944)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall8" unique_id=1789042509]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall8" unique_id=574295291]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall8" unique_id=1660357236]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall9" type="Sprite2D" parent="path" unique_id=1254960193]
+position = Vector2(-480, -928)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall9" unique_id=1506943143]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall9" unique_id=1729164261]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall9" unique_id=845610907]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall10" type="Sprite2D" parent="path" unique_id=705653446]
+position = Vector2(-448, -912)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall10" unique_id=2132118580]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall10" unique_id=983481228]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall10" unique_id=2023221300]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall11" type="Sprite2D" parent="path" unique_id=915728891]
+position = Vector2(-416, -896)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall11" unique_id=211184071]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall11" unique_id=1408314563]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall11" unique_id=497229867]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall12" type="Sprite2D" parent="path" unique_id=577912330]
+position = Vector2(-384, -880)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall12" unique_id=792024404]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall12" unique_id=1915502221]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall12" unique_id=1089308431]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall13" type="Sprite2D" parent="path" unique_id=839635391]
+position = Vector2(-352, -864)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall13" unique_id=271480984]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall13" unique_id=1722722071]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall13" unique_id=1779469835]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall14" type="Sprite2D" parent="path" unique_id=270671489]
+position = Vector2(-320, -848)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall14" unique_id=2129921632]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall14" unique_id=480999701]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall14" unique_id=2134460175]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall18" type="Sprite2D" parent="path" unique_id=1659108891]
+position = Vector2(-192, -176)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall18" unique_id=1551560401]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall18" unique_id=1980949115]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall18" unique_id=417281651]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall19" type="Sprite2D" parent="path" unique_id=25830831]
+position = Vector2(-160, -160)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall19" unique_id=19765160]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall19" unique_id=588459205]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall19" unique_id=288613900]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall20" type="Sprite2D" parent="path" unique_id=1179834438]
+position = Vector2(-128, -144)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall20" unique_id=1425138459]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall20" unique_id=905129925]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall20" unique_id=1277692068]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall21" type="Sprite2D" parent="path" unique_id=1605326119]
+position = Vector2(-96, -128)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall21" unique_id=243196816]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall21" unique_id=1865599575]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall21" unique_id=1987475238]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall22" type="Sprite2D" parent="path" unique_id=1047026698]
+position = Vector2(-64, -112)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall22" unique_id=374694514]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall22" unique_id=783646894]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall22" unique_id=1855445108]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall23" type="Sprite2D" parent="path" unique_id=1327434778]
+position = Vector2(-32, -96)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall23" unique_id=1753799822]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall23" unique_id=421821574]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall23" unique_id=231197086]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall24" type="Sprite2D" parent="path" unique_id=368795627]
+position = Vector2(0, -80)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall24" unique_id=547948404]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall24" unique_id=1390037524]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall24" unique_id=314209379]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall25" type="Sprite2D" parent="path" unique_id=1960708101]
+position = Vector2(32, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall25" unique_id=391118846]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall25" unique_id=41523923]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall25" unique_id=48026436]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall26" type="Sprite2D" parent="path" unique_id=1037315650]
+position = Vector2(64, -48)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall26" unique_id=521503986]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall26" unique_id=1159828294]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall26" unique_id=226056681]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall15" type="Sprite2D" parent="path" unique_id=1959256105]
+position = Vector2(-288, -832)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall15" unique_id=1670748904]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall15" unique_id=3741136]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall15" unique_id=796844068]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall16" type="Sprite2D" parent="path" unique_id=1341822623]
+position = Vector2(-256, -816)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall16" unique_id=160074675]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall16" unique_id=684860609]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall16" unique_id=1696510516]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall17" type="Sprite2D" parent="path" unique_id=1810913250]
+position = Vector2(-224, -800)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="path/wall17" unique_id=282119106]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="path/wall17" unique_id=1083554619]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="path/wall17" unique_id=952363985]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
 
 [node name="collision_layer" type="TileMapLayer" parent="." unique_id=932654369]
 tile_map_data = PackedByteArray("AADZ/+v/AgAJAAEAAADa/+v/AgAJAAEAAADb/+v/AgAJAAEAAADc/+v/AgAJAAEAAADd/+v/AgAJAAEAAADe/+v/AgAJAAEAAADf/+v/AgAJAAEAAADg/+v/AgAJAAEAAADh/+v/AgAJAAEAAADi/+v/AgAJAAEAAADj/+v/AgAJAAEAAAD3//7/AgAJAAEAAAD4//7/AgAJAAEAAAD5//7/AgAJAAEAAAD6//7/AgAJAAEAAAD7//7/AgAJAAEAAAD8//7/AgAJAAEAAAD9//7/AgAJAAEAAAD+//7/AgAJAAEAAAD///7/AgAJAAEAAAD2//7/AgAJAAwAAAD1//3/AgAJAAwAAAD0//z/AgAJAAwAAADz//v/AgAJAAwAAADy//r/AgAJAAwAAADx//n/AgAJAAwAAADw//j/AgAJAAwAAADv//f/AgAJAAwAAADu//b/AgAJAAwAAADt//X/AgAJAAwAAADs//T/AgAJAAwAAADn/+//AgAJAAwAAADo//D/AgAJAAwAAADp//H/AgAJAAwAAADq//L/AgAJAAwAAADr//P/AgAJAAwAAADm/+7/AgAJAAwAAADl/+3/AgAJAAwAAADk/+z/AgAJAAwAAAAAAP7/AgAJAAEAAADY/+v/AgAJAAEAAAABAP7/AgAJAAEAAAD2/wEAAgAJAAsAAAD3/wIAAgAJAAQAAAD4/wIAAgAJAAQAAAD5/wIAAgAJAAQAAAD6/wIAAgAJAAQAAAD7/wIAAgAJAAQAAAD8/wIAAgAJAAQAAAD9/wIAAgAJAAQAAAD+/wIAAgAJAAQAAAD//wIAAgAJAAQAAAAAAAIAAgAJAAQAAAABAAIAAgAJAAQAAAD0////AgAJAAsAAAD1/wAAAgAJAAsAAADt//j/AgAJAAsAAADu//n/AgAJAAsAAADv//r/AgAJAAsAAADw//v/AgAJAAsAAADx//z/AgAJAAsAAADy//3/AgAJAAsAAADz//7/AgAJAAsAAADk/+//AgAJAAsAAADl//D/AgAJAAsAAADm//H/AgAJAAsAAADn//L/AgAJAAsAAADo//P/AgAJAAsAAADp//T/AgAJAAsAAADq//X/AgAJAAsAAADr//b/AgAJAAsAAADs//f/AgAJAAsAAADY/+//AgAJAAQAAADZ/+//AgAJAAQAAADa/+//AgAJAAQAAADb/+//AgAJAAQAAADc/+//AgAJAAQAAADd/+//AgAJAAQAAADe/+//AgAJAAQAAADf/+//AgAJAAQAAADg/+//AgAJAAQAAADh/+//AgAJAAQAAADi/+//AgAJAAQAAADj/+//AgAJAAQAAAA=")
@@ -48,7 +586,7 @@ mask2 = 268435456
 delta_z = -1
 
 [node name="CollisionShape2D" parent="exit_south/exit_south" index="0" unique_id=1276641949]
-shape = SubResource("CapsuleShape2D_5mapb")
+shape = SubResource("CapsuleShape2D_l5wmh")
 
 [node name="exit_north" type="Node2D" parent="." unique_id=1884938513]
 y_sort_enabled = true
@@ -64,7 +602,7 @@ mask2 = 268435456
 delta_z = -1
 
 [node name="CollisionShape2D" parent="exit_north/exit_north" index="0" unique_id=1276641949]
-shape = SubResource("CapsuleShape2D_fmehs")
+shape = SubResource("CapsuleShape2D_owb64")
 
 [editable path="exit_south/exit_south"]
 [editable path="exit_north/exit_north"]

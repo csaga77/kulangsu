@@ -5,6 +5,7 @@ extends IsometricBlock
 @export var visibility_mask_nodes: Array[Node2D]
 @export var use_ground_bounding_rect := true
 @export var smooth_visibility_change := true
+@export var is_inverted := false
 @export var is_enabled := true
 
 var m_player: Player = null
@@ -102,8 +103,8 @@ func _update_visibility() -> void:
 			if _masks_player_tilemap_layer(m_player, bounding_rect, mask_node):
 				should_be_visible = false
 				break
-
-	_set_visible(should_be_visible)
+	
+	_set_visible(!should_be_visible if is_inverted else should_be_visible)
 
 func _masks_player_tilemap_layer(player_node: Node2D, bounding_rect: Rect2, tile_map_layer: TileMapLayer) -> bool:
 	if player_node == null or tile_map_layer == null:
