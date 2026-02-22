@@ -82,12 +82,16 @@ func _on_character_global_position_changed() -> void:
 	if m_player:
 		bounding_rect = m_player.get_ground_rect() if use_ground_bounding_rect else m_player.get_bounding_rect()
 		for layer in visibility_mask_layers:
+			if not layer.enabled:
+				continue
 			if CommonUtils.get_absolute_z_index(m_player) > CommonUtils.get_absolute_z_index(layer):
 				continue
 			if TileMapUtils.intersects_iso_grid_rect_global(layer, bounding_rect):
 				should_be_visible = false
 				break
 		for layer in semi_transparent_mask_layers:
+			if not layer.enabled:
+				continue
 			if CommonUtils.get_absolute_z_index(m_player) != CommonUtils.get_absolute_z_index(layer):
 				#print(layer.name, "false")
 				continue
@@ -97,7 +101,7 @@ func _on_character_global_position_changed() -> void:
 				break
 			#else:
 				#print(layer.name, ": false")
-				
+	print("_on_character_global_position_changed()", should_be_visible)
 	_set_visible(should_be_visible)
 	
 	#print(is_semi_transparent)

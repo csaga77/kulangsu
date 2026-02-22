@@ -1,16 +1,17 @@
-[gd_scene load_steps=3 format=3 uid="uid://d27a7jcvsnfx8"]
+[gd_scene format=3 uid="uid://d27a7jcvsnfx8"]
 
 [ext_resource type="Script" uid="uid://fssw81qf0ydn" path="res://architecture/components/portal.gd" id="1_0r486"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_0r486"]
+resource_local_to_scene = true
 radius = 9.428204
 height = 41.176914
 
-[node name="portal" type="Area2D"]
+[node name="portal" type="Area2D" unique_id=278227056]
 rotation = -1.0471976
 script = ExtResource("1_0r486")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1276641949]
 shape = SubResource("CapsuleShape2D_0r486")
 
 [connection signal="body_entered" from="." to="." method="_on_body_entered"]

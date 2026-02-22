@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://dc2dh1e6e5hb"]
 
-[ext_resource type="Script" uid="uid://b7ntce1lyblnt" path="res://builder.gd" id="1_8pr8v"]
-[ext_resource type="PackedScene" uid="uid://dqivkaosuu5nr" path="res://scenes/test_room.tscn" id="2_wtsjf"]
+[ext_resource type="Script" uid="uid://b7ntce1lyblnt" path="res://scenes/test_scene.gd" id="1_8pr8v"]
+[ext_resource type="PackedScene" uid="uid://bsnlp6tg1yvj6" path="res://scenes/test_tunnel.tscn" id="2_wtsjf"]
 [ext_resource type="Material" uid="uid://dw5sarpgr1teb" path="res://resources/materials/wall_transparent.tres" id="3_njel3"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="4_vr1i5"]
 [ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/player_node.tscn" id="5_rpuu0"]
@@ -23,6 +23,7 @@ script = ExtResource("4_vr1i5")
 position = Vector2(12357, 19805)
 
 [node name="Player" parent="." unique_id=543916503 instance=ExtResource("5_rpuu0")]
+position = Vector2(-549, 7951)
 
 [node name="PlayerController" type="Node" parent="Player" unique_id=1171599603 node_paths=PackedStringArray("player")]
 script = ExtResource("6_oo8pe")
