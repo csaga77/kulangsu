@@ -1,6 +1,6 @@
-[gd_scene load_steps=10 format=4 uid="uid://byyig1mqymirh"]
+[gd_scene format=4 uid="uid://byyig1mqymirh"]
 
-[ext_resource type="Script" uid="uid://c8rbadcu5jhno" path="res://common/room.gd" id="1_j6cxs"]
+[ext_resource type="Script" uid="uid://c8rbadcu5jhno" path="res://common/level_node_2d.gd" id="1_j6cxs"]
 [ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="2_imsxt"]
 [ext_resource type="TileSet" uid="uid://c2edqbdaenat2" path="res://resources/tilesets/symbols_0_tiles.tres" id="4_imsxt"]
 [ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/architecture/wall_0_tiles.tres" id="5_2hqke"]

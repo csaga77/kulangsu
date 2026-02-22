@@ -1,6 +1,6 @@
 @tool
 class_name Tunnel
-extends Room
+extends LevelNode2D
 
 
 # Called when the node enters the scene tree for the first time.

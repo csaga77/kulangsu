@@ -1,6 +1,6 @@
 [gd_scene format=4 uid="uid://dqivkaosuu5nr"]
 
-[ext_resource type="Script" uid="uid://c8rbadcu5jhno" path="res://common/room.gd" id="1_xax08"]
+[ext_resource type="Script" uid="uid://c8rbadcu5jhno" path="res://common/level_node_2d.gd" id="1_xax08"]
 [ext_resource type="TileSet" uid="uid://c2edqbdaenat2" path="res://resources/tilesets/symbols_0_tiles.tres" id="2_sg3ht"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="3_nch5g"]
 [ext_resource type="TileSet" uid="uid://emarqgj57jx7" path="res://resources/tilesets/architecture/floor_0_tiles.tres" id="4_mous7"]

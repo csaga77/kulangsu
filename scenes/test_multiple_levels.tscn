@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=4 uid="uid://nb76pl60f3ib"]
+[gd_scene format=4 uid="uid://nb76pl60f3ib"]
 
 [ext_resource type="Script" uid="uid://dl2kyruhqxduy" path="res://architecture/components/steps.gd" id="2_jyvgc"]
 [ext_resource type="PackedScene" uid="uid://dqivkaosuu5nr" path="res://scenes/test_room.tscn" id="2_m6uu3"]
@@ -36,33 +36,33 @@ region = Rect2(0, 0, 64, 64)
 [sub_resource type="SegmentShape2D" id="SegmentShape2D_jyvgc"]
 b = Vector2(59, -93)
 
-[node name="test_multiple_levels" type="Node2D"]
+[node name="test_multiple_levels" type="Node2D" unique_id=623733804]
 y_sort_enabled = true
 
-[node name="level1" parent="." instance=ExtResource("2_m6uu3")]
+[node name="level1" parent="." unique_id=691786535 instance=ExtResource("2_m6uu3")]
 position = Vector2(160, 176)
 
-[node name="level2" parent="." node_paths=PackedStringArray("visibility_mask_layers") instance=ExtResource("2_m6uu3")]
+[node name="level2" parent="." unique_id=767418058 node_paths=PackedStringArray("visibility_mask_layers") instance=ExtResource("2_m6uu3")]
 z_index = 2
 position = Vector2(160, 48)
 level = 2
 visibility_mask_layers = [NodePath("../mask")]
 
-[node name="level2_floor" type="TileMapLayer" parent="level2"]
+[node name="level2_floor" type="TileMapLayer" parent="level2" unique_id=1318804321]
 show_behind_parent = true
 position = Vector2(-160, -48)
 tile_map_data = PackedByteArray("AAADAAQABAAAAAAAAAAEAAQABAAAAAAAAAAFAAQABAAAAAAAAAAGAAQABAAAAAAAAAAHAAQABAAAAAAAAAAIAAQABAAAAAAAAAAJAAQABAAAAAAAAAAJAAMABAAAAAAAAAAJAP//BAAAAAAAAAAJAP7/BAAAAAAAAAAIAP7/BAAAAAAAAAAHAP7/BAAAAAAAAAAGAP7/BAAAAAAAAAAFAP7/BAAAAAAAAAAEAP7/BAAAAAAAAAADAP7/BAAAAAAAAAADAP//BAAAAAAAAAADAAAABAAAAAAAAAADAAEABAAAAAAAAAADAAIABAAAAAAAAAADAAMABAAAAAAAAAAKAAUAAQAAAAAAAAAKAAQAAQAGAAAAAAAEAAUAAQAFAAAAAAAFAAUAAQAFAAAAAAAGAAUAAQAFAAAAAAAHAAUAAQAFAAAAAAAIAAUAAQAFAAAAAAAJAAUAAQAFAAAAAAAKAP//AQAGAAAAAAAKAAAAAQAGAAAAAAAJAAAABAAAAAAAAAA=")
 tile_set = ExtResource("2_x4g5s")
 script = ExtResource("4_x4g5s")
 
-[node name="level2_collision_layer" type="TileMapLayer" parent="level2"]
+[node name="level2_collision_layer" type="TileMapLayer" parent="level2" unique_id=1433673088]
 position = Vector2(160, 336)
 tile_map_data = PackedByteArray("AAD5//3/AgACAAMAAAD5//z/AgACAAMAAAD4//v/AgACAAEAAAD4//7/AgACAAQAAAD3//7/AgACAAQAAAD2//7/AgACAAQAAAD1//7/AgACAAQAAAD0//7/AgACAAQAAADz//7/AgACAAQAAADy//7/AgACAAQAAAD5//j/AgACAAMAAAD5//f/AgACAAMAAAD4//b/AgACAAEAAAD3//b/AgACAAEAAAD2//b/AgACAAEAAAD1//b/AgACAAEAAAD0//b/AgACAAEAAADz//b/AgACAAEAAADy//b/AgACAAEAAADx//f/AgACAAIAAADx//j/AgACAAIAAADx//n/AgACAAIAAADx//r/AgACAAIAAADx//v/AgACAAIAAADx//z/AgACAAIAAADx//3/AgACAAIAAAD5//n/AgACAAMAAADy//n/AgACAAIAAADy//j/AgACAAIAAAA=")
 tile_set = ExtResource("4_i36na")
 script = ExtResource("4_x4g5s")
 only_shown_in_editor = true
 
-[node name="steps" type="Node2D" parent="." node_paths=PackedStringArray("layer1_nodes", "body_nodes", "layer2_nodes")]
+[node name="steps" type="Node2D" parent="." unique_id=1433407238 node_paths=PackedStringArray("layer1_nodes", "body_nodes", "layer2_nodes")]
 position = Vector2(288, 368)
 script = ExtResource("2_jyvgc")
 layer1_nodes = [NodePath("portal")]
@@ -71,108 +71,109 @@ body_nodes = [NodePath("steps body"), NodePath("steps/steps body")]
 collision_layer = 1048576
 layer2_nodes = [NodePath("portal2")]
 layer2 = 2097152
+is_enabled = null
 
-[node name="Sprite2D5" type="Sprite2D" parent="steps"]
+[node name="Sprite2D5" type="Sprite2D" parent="steps" unique_id=1058597083]
 position = Vector2(-64, -32)
 texture = SubResource("AtlasTexture_tjhdy")
 offset = Vector2(0, -16)
 script = ExtResource("4_x4g5s")
 
-[node name="Sprite2D6" type="Sprite2D" parent="steps/Sprite2D5"]
+[node name="Sprite2D6" type="Sprite2D" parent="steps/Sprite2D5" unique_id=799202521]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_tjhdy")
 offset = Vector2(0, -16)
 script = ExtResource("4_x4g5s")
 
-[node name="Sprite2D3" type="Sprite2D" parent="steps"]
+[node name="Sprite2D3" type="Sprite2D" parent="steps" unique_id=502108697]
 position = Vector2(-32, -16)
 texture = SubResource("AtlasTexture_tjhdy")
 offset = Vector2(0, -16)
 script = ExtResource("4_x4g5s")
 
-[node name="Sprite2D2" type="Sprite2D" parent="steps/Sprite2D3"]
+[node name="Sprite2D2" type="Sprite2D" parent="steps/Sprite2D3" unique_id=1346512142]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_a3f21")
 offset = Vector2(0, -16)
 script = ExtResource("4_x4g5s")
 
-[node name="Sprite2D4" type="Sprite2D" parent="steps"]
+[node name="Sprite2D4" type="Sprite2D" parent="steps" unique_id=2133172342]
 texture = SubResource("AtlasTexture_a3f21")
 offset = Vector2(0, -16)
 script = ExtResource("4_x4g5s")
 
-[node name="steps body" type="StaticBody2D" parent="steps"]
+[node name="steps body" type="StaticBody2D" parent="steps" unique_id=1806215158]
 collision_layer = 1048576
 collision_mask = 2
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="steps/steps body"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="steps/steps body" unique_id=1270097646]
 position = Vector2(37, -1)
 shape = SubResource("SegmentShape2D_tynux")
 
-[node name="CollisionShape2D2" type="CollisionShape2D" parent="steps/steps body"]
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="steps/steps body" unique_id=1693941620]
 position = Vector2(0, 17)
 shape = SubResource("SegmentShape2D_tynux")
 
-[node name="portal" parent="steps" instance=ExtResource("6_6nlj4")]
-position = Vector2(18, 8.999999)
-rotation = -2.0943952
+[node name="portal" parent="steps" unique_id=1245600341 instance=ExtResource("6_6nlj4")]
+position = Vector2(17, 5.999999)
+rotation = -2.0756311
 mask1 = 524288
 mask2 = 1048576
 
-[node name="steps" type="Node2D" parent="steps"]
+[node name="steps" type="Node2D" parent="steps" unique_id=607504056]
 y_sort_enabled = true
 position = Vector2(-32, -112)
 
-[node name="Sprite2D3" type="Sprite2D" parent="steps/steps"]
+[node name="Sprite2D3" type="Sprite2D" parent="steps/steps" unique_id=1141220758]
 position = Vector2(32, -16)
 texture = SubResource("AtlasTexture_6h87q")
 offset = Vector2(0, -16)
 script = ExtResource("4_x4g5s")
 
-[node name="Sprite2D2" type="Sprite2D" parent="steps/steps/Sprite2D3"]
+[node name="Sprite2D2" type="Sprite2D" parent="steps/steps/Sprite2D3" unique_id=1812258347]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_dds7o")
 offset = Vector2(0, -16)
 script = ExtResource("4_x4g5s")
 
-[node name="Sprite2D4" type="Sprite2D" parent="steps/steps"]
+[node name="Sprite2D4" type="Sprite2D" parent="steps/steps" unique_id=712553169]
 texture = SubResource("AtlasTexture_sntt2")
 offset = Vector2(0, -16)
 script = ExtResource("4_x4g5s")
 
-[node name="steps body" type="StaticBody2D" parent="steps/steps"]
+[node name="steps body" type="StaticBody2D" parent="steps/steps" unique_id=332904618]
 z_index = 2
 collision_layer = 1048576
 collision_mask = 2
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="steps/steps/steps body"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="steps/steps/steps body" unique_id=1700074130]
 position = Vector2(-36, -2)
 shape = SubResource("SegmentShape2D_jyvgc")
 
-[node name="CollisionShape2D2" type="CollisionShape2D" parent="steps/steps/steps body"]
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="steps/steps/steps body" unique_id=770544511]
 position = Vector2(4, 13)
 shape = SubResource("SegmentShape2D_jyvgc")
 
-[node name="portal2" parent="steps" instance=ExtResource("6_6nlj4")]
+[node name="portal2" parent="steps" unique_id=1677280647 instance=ExtResource("6_6nlj4")]
 position = Vector2(8.999996, -202)
 rotation = -1.105783
 mask1 = 1048576
 mask2 = 2097152
 delta_z = 0
 
-[node name="portal3" parent="steps" instance=ExtResource("6_6nlj4")]
+[node name="portal3" parent="steps" unique_id=186218880 instance=ExtResource("6_6nlj4")]
 position = Vector2(-44.000004, -115)
 rotation = -1.105783
 mask1 = 1048576
 mask2 = 1048576
 
-[node name="collision_layer" type="TileMapLayer" parent="."]
+[node name="collision_layer" type="TileMapLayer" parent="." unique_id=492453515]
 position = Vector2(320, 384)
 tile_map_data = PackedByteArray("AAD9/wAAAgAAAAAAAAD8/wAAAgAAAAAAAAD6////AgABAAQAAAD5//7/AgABAAIAAAA=")
 tile_set = ExtResource("4_i36na")
 script = ExtResource("4_x4g5s")
 only_shown_in_editor = true
 
-[node name="mask" type="TileMapLayer" parent="."]
+[node name="mask" type="TileMapLayer" parent="." unique_id=1718669571]
 tile_map_data = PackedByteArray("AAAIAAMAAAAAAAAAAAAIAAQAAAAAAAAAAAAIAAUAAAAAAAAAAAAIAAYAAAAAAAAAAAAIAAcAAAAAAAAAAAAJAAMAAAAAAAAAAAAJAAQAAAAAAAAAAAAJAAUAAAAAAAAAAAAJAAYAAAAAAAAAAAAJAAcAAAAAAAAAAAAKAAMAAAAAAAAAAAAKAAQAAAAAAAAAAAAKAAUAAAAAAAAAAAAKAAYAAAAAAAAAAAAKAAcAAAAAAAAAAAALAAMAAAAAAAAAAAALAAQAAAAAAAAAAAALAAUAAAAAAAAAAAALAAYAAAAAAAAAAAALAAcAAAAAAAAAAAAMAAMAAAAAAAAAAAAMAAQAAAAAAAAAAAAMAAUAAAAAAAAAAAAMAAYAAAAAAAAAAAAMAAcAAAAAAAAAAAAHAAcAAAAAAAAAAAAHAAYAAAAAAAAAAAAHAAUAAAAAAAAAAAAHAAQAAAAAAAAAAAAHAAMAAAAAAAAAAAAHAAIAAAAAAAAAAAAIAAIAAAAAAAAAAAAJAAIAAAAAAAAAAAAKAAIAAAAAAAAAAAALAAIAAAAAAAAAAAAMAAIAAAAAAAAAAAALAAEAAAAAAAAAAAAKAAEAAAAAAAAAAAAIAAEAAAAAAAAAAAAHAAEAAAAAAAAAAAAGAAEAAAAAAAAAAAAGAAIAAAAAAAAAAAAGAAMAAAAAAAAAAAAGAAQAAAAAAAAAAAAGAAUAAAAAAAAAAAAGAAYAAAAAAAAAAAAFAAUAAAAAAAAAAAAFAAQAAAAAAAAAAAAFAAMAAAAAAAAAAAAFAAIAAAAAAAAAAAAFAAEAAAAAAAAAAAAFAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAHAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAJAAAAAAAAAAAAAAAKAAAAAAAAAAAAAAAJAP//AAAAAAAAAAAIAP//AAAAAAAAAAAHAP//AAAAAAAAAAAGAP//AAAAAAAAAAAFAP//AAAAAAAAAAAEAP//AAAAAAAAAAAEAAAAAAAAAAAAAAAEAAEAAAAAAAAAAAAEAAIAAAAAAAAAAAAEAAMAAAAAAAAAAAAEAAQAAAAAAAAAAAADAAMAAAAAAAAAAAADAAIAAAAAAAAAAAADAAEAAAAAAAAAAAADAAAAAAAAAAAAAAADAP//AAAAAAAAAAADAP7/AAAAAAAAAAAEAP7/AAAAAAAAAAAFAP7/AAAAAAAAAAAGAP7/AAAAAAAAAAAHAP7/AAAAAAAAAAAIAP7/AAAAAAAAAAAHAP3/AAAAAAAAAAAGAP3/AAAAAAAAAAAFAP3/AAAAAAAAAAAEAP3/AAAAAAAAAAADAP3/AAAAAAAAAAACAP3/AAAAAAAAAAACAP7/AAAAAAAAAAACAP//AAAAAAAAAAACAAAAAAAAAAAAAAACAAEAAAAAAAAAAAACAAIAAAAAAAAAAAABAAEAAAAAAAAAAAABAAAAAAAAAAAAAAABAP//AAAAAAAAAAABAP7/AAAAAAAAAAABAP3/AAAAAAAAAAABAPz/AAAAAAAAAAACAPz/AAAAAAAAAAADAPz/AAAAAAAAAAAEAPz/AAAAAAAAAAAFAPz/AAAAAAAAAAAGAPz/AAAAAAAAAAAFAPv/AAAAAAAAAAAEAPv/AAAAAAAAAAADAPv/AAAAAAAAAAACAPv/AAAAAAAAAAABAPv/AAAAAAAAAAAAAPv/AAAAAAAAAAAAAPz/AAAAAAAAAAAAAP3/AAAAAAAAAAAAAP7/AAAAAAAAAAAAAP//AAAAAAAAAAAAAAAAAAAAAAAAAAA=")
 tile_set = ExtResource("9_i36na")

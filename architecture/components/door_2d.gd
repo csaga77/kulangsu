@@ -77,11 +77,11 @@ func _update_open() -> void:
 		
 	for node in close_sprites:
 		node.visible = !is_open
-		
 
-func _on_body_entered(_body: Node2D) -> void:
-	is_open = true
+func _on_body_entered(body: Node2D) -> void:
+	if CommonUtils.get_absolute_z_index(body) == CommonUtils.get_absolute_z_index(self):
+		is_open = true
 
-
-func _on_body_exited(_body: Node2D) -> void:
-	is_open = false
+func _on_body_exited(body: Node2D) -> void:
+	if CommonUtils.get_absolute_z_index(body) == CommonUtils.get_absolute_z_index(self):
+		is_open = false

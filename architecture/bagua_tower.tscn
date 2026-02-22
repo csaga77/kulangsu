@@ -6,7 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://d27a7jcvsnfx8" path="res://architecture/components/portal.tscn" id="5_5gyeu"]
 [ext_resource type="PackedScene" uid="uid://bbd88lcsuke4h" path="res://architecture/components/stairs_se_to_ne_2_0.tscn" id="5_frgy6"]
 [ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="6_562by"]
-[ext_resource type="Script" uid="uid://c8rbadcu5jhno" path="res://common/room.gd" id="7_564an"]
+[ext_resource type="Script" uid="uid://c8rbadcu5jhno" path="res://common/level_node_2d.gd" id="7_564an"]
 [ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/architecture/wall_0_tiles.tres" id="7_fcs3d"]
 [ext_resource type="PackedScene" uid="uid://c14s8lpwpcmw5" path="res://architecture/components/stairs_se_to_ne_4_0.tscn" id="8_d3mvs"]
 [ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="11_ied5s"]
@@ -116,7 +116,7 @@ mask1 = 524288
 mask2 = 2097152
 delta_z = 2
 
-[node name="CollisionShape2D" parent="base/portal_ne_0" index="0"]
+[node name="CollisionShape2D" parent="base/portal_ne_0" index="0" unique_id=1276641949]
 position = Vector2(1.1339743, 3.964102)
 rotation = -0.05262607
 shape = SubResource("CapsuleShape2D_frgy6")
@@ -129,7 +129,7 @@ mask1 = 524288
 mask2 = 2097152
 delta_z = 2
 
-[node name="CollisionShape2D" parent="base/portal_nw_1" index="0"]
+[node name="CollisionShape2D" parent="base/portal_nw_1" index="0" unique_id=1276641949]
 position = Vector2(1.1339743, 3.964102)
 rotation = -0.05262607
 shape = SubResource("CapsuleShape2D_frgy6")
@@ -140,7 +140,7 @@ mask1 = 524288
 mask2 = 2097152
 delta_z = 2
 
-[node name="CollisionShape2D" parent="base/portal_sw_0" index="0"]
+[node name="CollisionShape2D" parent="base/portal_sw_0" index="0" unique_id=1276641949]
 position = Vector2(1.1339743, 3.964102)
 rotation = -0.05262607
 shape = SubResource("CapsuleShape2D_564an")
@@ -151,7 +151,7 @@ mask1 = 524288
 mask2 = 2097152
 delta_z = 2
 
-[node name="CollisionShape2D" parent="base/portal_se_0" index="0"]
+[node name="CollisionShape2D" parent="base/portal_se_0" index="0" unique_id=1276641949]
 position = Vector2(1.1339743, 3.964102)
 rotation = -0.05262607
 shape = SubResource("CapsuleShape2D_frgy6")
@@ -163,19 +163,19 @@ mask1 = 524288
 mask2 = 2097152
 delta_z = 2
 
-[node name="CollisionShape2D" parent="base/portal_se_1" index="0"]
+[node name="CollisionShape2D" parent="base/portal_se_1" index="0" unique_id=1276641949]
 z_index = 1
 position = Vector2(-0.6340047, -3.0981295)
 rotation = 3.094882
 shape = SubResource("CapsuleShape2D_fcs3d")
 
-[node name="ground_level" type="Node2D" parent="base" unique_id=1484935474 node_paths=PackedStringArray("physics_layers", "rooms", "visibility_mask_layers")]
+[node name="ground_level" type="Node2D" parent="base" unique_id=1484935474 node_paths=PackedStringArray("physics_layers", "sub_level_nodes", "visibility_mask_layers")]
 z_index = 2
 y_sort_enabled = true
 script = ExtResource("7_564an")
 level = 2
 physics_layers = [NodePath("collision_layer")]
-rooms = [NodePath("corner_room_north"), NodePath("corner_room_east"), NodePath("corner_room_south"), NodePath("corner_room_west")]
+sub_level_nodes = [NodePath("corner_room_north"), NodePath("corner_room_east"), NodePath("corner_room_south"), NodePath("corner_room_west")]
 visibility_mask_layers = [NodePath("../base_floor"), NodePath("../base_stairs_mask"), NodePath("../../mask")]
 use_ground_bounding_rect = true
 smooth_visibility_change = true
@@ -664,14 +664,14 @@ size = 8
 position = Vector2(128, 640)
 size = 8
 
-[node name="upper_level" type="Node2D" parent="base/ground_level" unique_id=1419816824 node_paths=PackedStringArray("physics_layers", "rooms", "visibility_mask_layers")]
+[node name="upper_level" type="Node2D" parent="base/ground_level" unique_id=1419816824 node_paths=PackedStringArray("physics_layers", "sub_level_nodes", "visibility_mask_layers")]
 z_index = 2
 y_sort_enabled = true
 position = Vector2(0, -128)
 script = ExtResource("7_564an")
 level = 4
 physics_layers = [NodePath("upper_collision_layer")]
-rooms = [NodePath("corner_room_north"), NodePath("corner_room_east"), NodePath("corner_room_south"), NodePath("corner_room_west")]
+sub_level_nodes = [NodePath("corner_room_north"), NodePath("corner_room_east"), NodePath("corner_room_south"), NodePath("corner_room_west")]
 visibility_mask_layers = [NodePath("../ground_stairs_mask"), NodePath("../ground_level_floor")]
 use_ground_bounding_rect = true
 smooth_visibility_change = true
