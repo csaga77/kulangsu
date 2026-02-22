@@ -41,12 +41,13 @@ y_sort_enabled = true
 
 [node name="level1" parent="." unique_id=691786535 instance=ExtResource("2_m6uu3")]
 position = Vector2(160, 176)
+use_ground_bounding_rect = false
 
-[node name="level2" parent="." unique_id=767418058 node_paths=PackedStringArray("visibility_mask_layers") instance=ExtResource("2_m6uu3")]
+[node name="level2" parent="." unique_id=767418058 node_paths=PackedStringArray("visibility_mask_nodes") instance=ExtResource("2_m6uu3")]
 z_index = 2
 position = Vector2(160, 48)
 level = 2
-visibility_mask_layers = [NodePath("../mask")]
+visibility_mask_nodes = [NodePath("../mask")]
 
 [node name="level2_floor" type="TileMapLayer" parent="level2" unique_id=1318804321]
 show_behind_parent = true
@@ -71,7 +72,7 @@ body_nodes = [NodePath("steps body"), NodePath("steps/steps body")]
 collision_layer = 1048576
 layer2_nodes = [NodePath("portal2")]
 layer2 = 2097152
-is_enabled = null
+use_ground_bounding_rect = false
 
 [node name="Sprite2D5" type="Sprite2D" parent="steps" unique_id=1058597083]
 position = Vector2(-64, -32)
@@ -155,7 +156,7 @@ position = Vector2(4, 13)
 shape = SubResource("SegmentShape2D_jyvgc")
 
 [node name="portal2" parent="steps" unique_id=1677280647 instance=ExtResource("6_6nlj4")]
-position = Vector2(8.999996, -202)
+position = Vector2(8.999996, -200)
 rotation = -1.105783
 mask1 = 1048576
 mask2 = 2097152

@@ -216,10 +216,10 @@ position = Vector2(120, 44)
 offset = Vector2i(1, 1)
 iso_tile_size = Vector2(16, 8)
 
-[node name="up_wall" type="Node2D" parent="wall" unique_id=1794402496 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="up_wall" type="Node2D" parent="wall" unique_id=1794402496 node_paths=PackedStringArray("visibility_mask_nodes")]
 y_sort_enabled = true
 script = ExtResource("7_xsufa")
-visibility_mask_layers = [NodePath("../../wall_mask")]
+visibility_mask_nodes = [NodePath("../../wall_mask")]
 use_ground_bounding_rect = true
 smooth_visibility_change = true
 
@@ -317,10 +317,10 @@ texture = ExtResource("11_p0w5i")
 mask = Array[bool]([false])
 iso_tile_size = Vector2(16, 8)
 
-[node name="front" type="Node2D" parent="wall/up_wall" unique_id=197174568 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="front" type="Node2D" parent="wall/up_wall" unique_id=197174568 node_paths=PackedStringArray("visibility_mask_nodes")]
 y_sort_enabled = true
 script = ExtResource("7_xsufa")
-visibility_mask_layers = [NodePath("../../../floor")]
+visibility_mask_nodes = [NodePath("../../../floor")]
 use_ground_bounding_rect = true
 smooth_visibility_change = true
 
