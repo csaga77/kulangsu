@@ -1,0 +1,37 @@
+[gd_scene format=3 uid="uid://buoapxctd04qd"]
+
+[ext_resource type="Texture2D" uid="uid://mhsy6o806uwu" path="res://resources/sprites/architecture/components/building_0_tiles.png" id="1_p74sh"]
+[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="2_fso2d"]
+[ext_resource type="Texture2D" uid="uid://boka5fmviqaew" path="res://resources/sprites/architecture/components/structure_0.png" id="3_mc6km"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_oumyh"]
+atlas = ExtResource("1_p74sh")
+region = Rect2(128, 1024, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3hdd2"]
+atlas = ExtResource("3_mc6km")
+region = Rect2(192, 64, 64, 64)
+
+[node name="tunnel_wall_x3" type="Sprite2D" unique_id=317975990]
+texture = SubResource("AtlasTexture_oumyh")
+offset = Vector2(0, -16)
+script = ExtResource("2_fso2d")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="." unique_id=1720765736]
+position = Vector2(0, -48)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("2_fso2d")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="." unique_id=1160103687]
+position = Vector2(0, -80)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("2_fso2d")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="Sprite2D10" unique_id=1296307415]
+position = Vector2(-32, 16)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("2_fso2d")
+iso_tile_size = Vector2(16, 8)

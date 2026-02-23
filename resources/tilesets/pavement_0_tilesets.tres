@@ -5,6 +5,8 @@
 [ext_resource type="Texture2D" uid="uid://mhsy6o806uwu" path="res://resources/sprites/architecture/components/building_0_tiles.png" id="3_mvfv6"]
 [ext_resource type="Texture2D" uid="uid://8kiihtfxyw3x" path="res://resources/sprites/architecture/components/wall_0_0.png" id="4_nlpdw"]
 [ext_resource type="Texture2D" uid="uid://dut81n7x0yxjs" path="res://resources/sprites/architecture/components/floor_stone_tiles_1.png" id="5_onfqj"]
+[ext_resource type="PackedScene" uid="uid://buoapxctd04qd" path="res://architecture/components/tunnel_wall_x3.tscn" id="6_arnp8"]
+[ext_resource type="PackedScene" uid="uid://uiby4d77k4fa" path="res://architecture/components/tunnel_wall_x4.tscn" id="7_goxnd"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_lg7om"]
 texture = ExtResource("1_swmi1")
@@ -1046,6 +1048,11 @@ texture_region_size = Vector2i(64, 32)
 0:3/0/y_sort_origin = -16
 0:3/0/terrain_set = 1
 
+[sub_resource type="TileSetScenesCollectionSource" id="TileSetScenesCollectionSource_arnp8"]
+resource_name = "tunnel_components"
+scenes/1/scene = ExtResource("6_arnp8")
+scenes/2/scene = ExtResource("7_goxnd")
+
 [resource]
 tile_shape = 1
 tile_layout = 5
@@ -1061,3 +1068,4 @@ sources/1 = SubResource("TileSetAtlasSource_mvfv6")
 sources/2 = SubResource("TileSetAtlasSource_nlpdw")
 sources/3 = SubResource("TileSetAtlasSource_onfqj")
 sources/4 = SubResource("TileSetAtlasSource_dccrm")
+sources/5 = SubResource("TileSetScenesCollectionSource_arnp8")

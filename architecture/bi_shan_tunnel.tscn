@@ -1,6 +1,6 @@
 [gd_scene format=4 uid="uid://dp838hjpyaxbe"]
 
-[ext_resource type="Script" uid="uid://uor24hx1iy68" path="res://architecture/bi_shan_tunnel.gd" id="1_pm57c"]
+[ext_resource type="Script" uid="uid://uor24hx1iy68" path="res://architecture/tunnel.gd" id="1_pm57c"]
 [ext_resource type="PackedScene" uid="uid://d27a7jcvsnfx8" path="res://architecture/components/portal.tscn" id="2_ep65q"]
 [ext_resource type="TileSet" uid="uid://8qwdv3hv2imc" path="res://resources/tilesets/pavement_0_tilesets.tres" id="3_ecfs0"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="4_5mapb"]
@@ -16,12 +16,12 @@ region = Rect2(128, 1024, 64, 64)
 atlas = ExtResource("5_vf6k1")
 region = Rect2(192, 64, 64, 64)
 
-[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_l5wmh"]
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_5mapb"]
 resource_local_to_scene = true
 radius = 12.522358
 height = 99.282875
 
-[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_owb64"]
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_fmehs"]
 resource_local_to_scene = true
 radius = 13.87439
 height = 97.519714
@@ -586,7 +586,7 @@ mask2 = 268435456
 delta_z = -1
 
 [node name="CollisionShape2D" parent="exit_south/exit_south" index="0" unique_id=1276641949]
-shape = SubResource("CapsuleShape2D_l5wmh")
+shape = SubResource("CapsuleShape2D_5mapb")
 
 [node name="exit_north" type="Node2D" parent="." unique_id=1884938513]
 y_sort_enabled = true
@@ -602,7 +602,7 @@ mask2 = 268435456
 delta_z = -1
 
 [node name="CollisionShape2D" parent="exit_north/exit_north" index="0" unique_id=1276641949]
-shape = SubResource("CapsuleShape2D_owb64")
+shape = SubResource("CapsuleShape2D_fmehs")
 
 [editable path="exit_south/exit_south"]
 [editable path="exit_north/exit_north"]
