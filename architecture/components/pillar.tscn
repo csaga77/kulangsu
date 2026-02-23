@@ -31,12 +31,10 @@ texture = SubResource("AtlasTexture_reg51")
 script = ExtResource("1_ql4gx")
 iso_tile_offset = Vector2(0, -16)
 
-[node name="mid" type="Node2D" parent="." unique_id=2039321883 node_paths=PackedStringArray("visibility_mask_layers")]
+[node name="mid" type="Node2D" parent="." unique_id=2039321883 node_paths=PackedStringArray("visibility_mask_nodes")]
 position = Vector2(0, 16)
 script = ExtResource("4_etpbf")
-visibility_mask_layers = [NodePath("../mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
+visibility_mask_nodes = [NodePath("../mask")]
 
 [node name="top" type="Sprite2D" parent="mid" unique_id=1939482116]
 z_index = 1

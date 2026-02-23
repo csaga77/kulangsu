@@ -1,0 +1,406 @@
+[gd_scene format=4 uid="uid://tqfe8fsmuxli"]
+
+[ext_resource type="Script" uid="uid://c8rbadcu5jhno" path="res://common/level_node_2d.gd" id="1_4yx2i"]
+[ext_resource type="TileSet" uid="uid://c2edqbdaenat2" path="res://resources/tilesets/symbols_0_tiles.tres" id="2_4oq21"]
+[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="3_r4kt3"]
+[ext_resource type="TileSet" uid="uid://emarqgj57jx7" path="res://resources/tilesets/architecture/floor_0_tiles.tres" id="4_pt0b5"]
+[ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="5_teclm"]
+[ext_resource type="PackedScene" uid="uid://bt0wh0rca6swt" path="res://architecture/components/wall.tscn" id="6_3wpcq"]
+[ext_resource type="Texture2D" uid="uid://bts45cj2xyqx0" path="res://resources/sprites/architecture/walls/wall_0.png" id="7_mj5f0"]
+[ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="8_urybe"]
+[ext_resource type="PackedScene" uid="uid://d1fl1q5rxk02u" path="res://architecture/components/window_wall.tscn" id="9_cax24"]
+[ext_resource type="PackedScene" uid="uid://bpja8v0mmawj1" path="res://architecture/components/door_1x1x2_se.tscn" id="10_p670k"]
+[ext_resource type="PackedScene" uid="uid://d1j7v0ydlebu8" path="res://architecture/components/door_1x1x2_sw.tscn" id="11_35ocx"]
+
+[node name="corner_room_west" type="Node2D" unique_id=1031396126 node_paths=PackedStringArray("physics_layers")]
+y_sort_enabled = true
+script = ExtResource("1_4yx2i")
+physics_layers = [NodePath("collision_layer")]
+
+[node name="back_wall_mask" type="TileMapLayer" parent="." unique_id=1176057054]
+tile_map_data = PackedByteArray("AAD8/wAAAAAAAAAAAAD7////AAAAAAAAAAD8////AAAAAAAAAAD8//7/AAAAAAAAAAD8//3/AAAAAAAAAAD8//z/AAAAAAAAAAD9//z/AAAAAAAAAAD+//z/AAAAAAAAAAD///z/AAAAAAAAAAD7//7/AAAAAAAAAAD7//3/AAAAAAAAAAD7//z/AAAAAAAAAAD7//v/AAAAAAAAAAD8//v/AAAAAAAAAAD9//v/AAAAAAAAAAD+//v/AAAAAAAAAAA=")
+tile_set = ExtResource("2_4oq21")
+script = ExtResource("3_r4kt3")
+only_shown_in_editor = true
+
+[node name="floor" type="TileMapLayer" parent="." unique_id=1263890584]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD+/wIAAQAHAAAAAAD//wEAAQAHAAAAAAAAAAAAAQAHAAAAAAABAAAAAQAHAAAAAAABAP//AQAHAAAAAAABAP7/AQAHAAAAAAACAP7/AQAHAAAAAAD+//7/AQAHAAAAAAD+////AQAHAAAAAAD+/wAAAQAHAAAAAAD+/wEAAQAHAAAAAAD///7/AQAHAAAAAAD/////AQAHAAAAAAD//wAAAQAHAAAAAAD//wIAAQAHAAAAAAAAAP7/AQAHAAAAAAAAAP//AQAHAAAAAAAAAAEAAQAHAAAAAAAAAAIAAQAHAAAAAAABAAEAAQAHAAAAAAABAAIAAQAHAAAAAAACAP//AQAHAAAAAAACAAAAAQAHAAAAAAACAAEAAQAHAAAAAAACAAIAAQAHAAAAAAA=")
+tile_set = ExtResource("4_pt0b5")
+y_sort_origin = -16
+
+[node name="collision_layer" type="TileMapLayer" parent="." unique_id=2143661531]
+z_index = 1
+tile_map_data = PackedByteArray("AAD+/wIAAAAAAAUAAAACAP7/AAAAAAYAAAACAAIAAwAAAAgAAAD+//7/AAAAAAcAAAD//wIAAwAAAAEAAAABAAIAAwAAAAEAAAACAAEAAwAAAAIAAAACAP//AwAAAAIAAAD///7/AwAAAAQAAAABAP7/AwAAAAQAAAD+/wEAAwAAAAMAAAD+////AwAAAAMAAAD+/wAAAwAAAAMAAAAAAAIAAwAAAAEAAAA=")
+tile_set = ExtResource("5_teclm")
+script = ExtResource("3_r4kt3")
+only_shown_in_editor = true
+
+[node name="base_walls" type="Node2D" parent="." unique_id=917722789]
+y_sort_enabled = true
+
+[node name="n" parent="base_walls" unique_id=1803625367 instance=ExtResource("6_3wpcq")]
+position = Vector2(32, -48)
+texture = ExtResource("7_mj5f0")
+
+[node name="nw_0" parent="base_walls" unique_id=1677621530 instance=ExtResource("6_3wpcq")]
+position = Vector2(0, -48)
+offset = Vector2i(1, 0)
+size = 1
+pattern = 8
+texture = ExtResource("7_mj5f0")
+is_south_west_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="nw_1" parent="base_walls" unique_id=626665385 instance=ExtResource("6_3wpcq")]
+position = Vector2(-32, -32)
+offset = Vector2i(1, 0)
+size = 1
+pattern = 6
+texture = ExtResource("7_mj5f0")
+is_south_west_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="nw_2" parent="base_walls" unique_id=535505568 instance=ExtResource("6_3wpcq")]
+position = Vector2(-64, -16)
+offset = Vector2i(1, 0)
+size = 1
+pattern = 6
+texture = ExtResource("7_mj5f0")
+is_south_west_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="nw_3" parent="base_walls" unique_id=643676018 instance=ExtResource("6_3wpcq")]
+position = Vector2(-80, -8)
+offset = Vector2i(1, 0)
+size = 1
+pattern = 8
+texture = ExtResource("7_mj5f0")
+is_south_west_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="nw_4" parent="base_walls" unique_id=1403117724 instance=ExtResource("6_3wpcq")]
+position = Vector2(-96, 8)
+offset = Vector2i(1, 1)
+pattern = 7
+texture = ExtResource("7_mj5f0")
+is_south_west_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="w" parent="base_walls" unique_id=984603063 instance=ExtResource("6_3wpcq")]
+position = Vector2(-96, 16)
+pattern = 5
+texture = ExtResource("7_mj5f0")
+footer_texture = null
+iso_tile_size = Vector2(16, 8)
+
+[node name="ne_0" parent="base_walls" unique_id=447105439 instance=ExtResource("6_3wpcq")]
+position = Vector2(80, -40)
+offset = Vector2i(0, 1)
+size = 1
+pattern = 5
+texture = ExtResource("7_mj5f0")
+iso_tile_size = Vector2(16, 8)
+
+[node name="ne_1" parent="base_walls" unique_id=1508841835 instance=ExtResource("6_3wpcq")]
+position = Vector2(144, 0)
+offset = Vector2i(1, 2)
+size = 1
+pattern = 5
+texture = ExtResource("7_mj5f0")
+is_south_east_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="ne_2" parent="base_walls" unique_id=1624234049 instance=ExtResource("6_3wpcq")]
+position = Vector2(160, 0)
+offset = Vector2i(0, 1)
+size = 1
+pattern = 7
+texture = ExtResource("7_mj5f0")
+is_south_east_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="ne_3" parent="base_walls" unique_id=1817123194 instance=ExtResource("6_3wpcq")]
+position = Vector2(168, 4)
+offset = Vector2i(0, 1)
+size = 1
+pattern = 9
+texture = ExtResource("7_mj5f0")
+is_south_east_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="e" parent="base_walls" unique_id=1075714469 instance=ExtResource("6_3wpcq")]
+position = Vector2(160, 16)
+size = 1
+pattern = 6
+texture = ExtResource("7_mj5f0")
+footer_texture = null
+iso_tile_size = Vector2(16, 8)
+
+[node name="sw_0" parent="base_walls" unique_id=1312449485 instance=ExtResource("6_3wpcq")]
+position = Vector2(-88, 28)
+offset = Vector2i(0, 1)
+size = 1
+pattern = 7
+footer_texture = ExtResource("7_mj5f0")
+is_south_east_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="sw_1" parent="base_walls" unique_id=1899649818 instance=ExtResource("6_3wpcq")]
+position = Vector2(-56, 44)
+offset = Vector2i(0, 1)
+size = 1
+pattern = 5
+footer_texture = ExtResource("7_mj5f0")
+is_south_east_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="sw_2" parent="base_walls" unique_id=236395987 instance=ExtResource("6_3wpcq")]
+position = Vector2(-24, 60)
+offset = Vector2i(0, 1)
+size = 1
+pattern = 5
+footer_texture = ExtResource("7_mj5f0")
+is_south_east_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="sw_3" parent="base_walls" unique_id=1997374346 instance=ExtResource("6_3wpcq")]
+position = Vector2(-8, 68)
+offset = Vector2i(0, 1)
+size = 1
+pattern = 7
+footer_texture = ExtResource("7_mj5f0")
+is_south_east_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="s" parent="base_walls" unique_id=1123238369 instance=ExtResource("6_3wpcq")]
+position = Vector2(24, 84)
+offset = Vector2i(0, 1)
+size = 1
+pattern = 4
+texture = ExtResource("7_mj5f0")
+iso_tile_size = Vector2(16, 8)
+
+[node name="se_0" parent="base_walls" unique_id=1035088181 instance=ExtResource("6_3wpcq")]
+position = Vector2(136, 36)
+offset = Vector2i(1, 0)
+size = 1
+pattern = 6
+texture = ExtResource("7_mj5f0")
+iso_tile_size = Vector2(16, 8)
+
+[node name="se_1" parent="base_walls" unique_id=1758129074 instance=ExtResource("6_3wpcq")]
+position = Vector2(72, 76)
+offset = Vector2i(2, 1)
+size = 1
+pattern = 6
+texture = ExtResource("7_mj5f0")
+is_south_west_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="back_wall" type="Node2D" parent="." unique_id=615452504 node_paths=PackedStringArray("visibility_mask_nodes")]
+y_sort_enabled = true
+script = ExtResource("8_urybe")
+visibility_mask_nodes = [NodePath("../back_wall_mask")]
+
+[node name="front_wall" type="Node2D" parent="back_wall" unique_id=297542533 node_paths=PackedStringArray("visibility_mask_nodes")]
+y_sort_enabled = true
+script = ExtResource("8_urybe")
+visibility_mask_nodes = [NodePath("../../floor")]
+
+[node name="w" parent="back_wall/front_wall" unique_id=1410704817 instance=ExtResource("6_3wpcq")]
+position = Vector2(-96, 16)
+height = 4
+pattern = 5
+texture = ExtResource("7_mj5f0")
+footer_texture = null
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="sw_0" parent="back_wall/front_wall" unique_id=1431450141 instance=ExtResource("6_3wpcq")]
+position = Vector2(-88, 28)
+offset = Vector2i(0, 1)
+height = 4
+size = 1
+pattern = 7
+footer_texture = ExtResource("7_mj5f0")
+is_south_east_visible = false
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="window_sw" parent="back_wall/front_wall" unique_id=268013310 instance=ExtResource("9_cax24")]
+position = Vector2(-24, 60)
+offset = Vector2i(0, 1)
+is_stool_visible = false
+iso_tile_size = Vector2(16, 8)
+
+[node name="sw_3" parent="back_wall/front_wall" unique_id=787273407 instance=ExtResource("6_3wpcq")]
+position = Vector2(-8, 68)
+offset = Vector2i(0, 1)
+height = 4
+size = 1
+pattern = 7
+footer_texture = ExtResource("7_mj5f0")
+is_south_east_visible = false
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="s" parent="back_wall/front_wall" unique_id=567562365 instance=ExtResource("6_3wpcq")]
+position = Vector2(24, 84)
+offset = Vector2i(0, 1)
+height = 4
+size = 1
+pattern = 4
+texture = ExtResource("7_mj5f0")
+footer_texture = null
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="se_0" parent="back_wall/front_wall" unique_id=201468471 instance=ExtResource("6_3wpcq")]
+position = Vector2(136, 36)
+offset = Vector2i(1, 0)
+height = 4
+size = 1
+pattern = 6
+texture = ExtResource("7_mj5f0")
+is_south_west_visible = false
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="se_door_top" parent="back_wall/front_wall" unique_id=325827049 instance=ExtResource("6_3wpcq")]
+position = Vector2(104, 52)
+offset = Vector2i(1, 0)
+height = 4
+size = 1
+pattern = 6
+texture = ExtResource("7_mj5f0")
+is_south_west_visible = false
+mask = Array[bool]([false, false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="se_1" parent="back_wall/front_wall" unique_id=136074868 instance=ExtResource("6_3wpcq")]
+position = Vector2(72, 76)
+offset = Vector2i(2, 1)
+height = 4
+size = 1
+pattern = 6
+texture = ExtResource("7_mj5f0")
+is_south_west_visible = false
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="e" parent="back_wall/front_wall" unique_id=65776404 instance=ExtResource("6_3wpcq")]
+position = Vector2(160, 16)
+height = 4
+size = 1
+pattern = 6
+texture = ExtResource("7_mj5f0")
+footer_texture = null
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="nw_0" parent="back_wall" unique_id=1915345436 instance=ExtResource("6_3wpcq")]
+position = Vector2(8, -44)
+offset = Vector2i(2, 0)
+height = 4
+size = 1
+pattern = 8
+footer_texture = ExtResource("7_mj5f0")
+is_south_west_visible = false
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="window_nw" parent="back_wall" unique_id=505376375 instance=ExtResource("9_cax24")]
+position = Vector2(-64, -16)
+offset = Vector2i(1, 0)
+is_stool_visible = false
+facing = 0
+iso_tile_size = Vector2(16, 8)
+
+[node name="nw_3" parent="back_wall" unique_id=1101745999 instance=ExtResource("6_3wpcq")]
+position = Vector2(-72, -4)
+offset = Vector2i(2, 0)
+height = 4
+size = 1
+pattern = 8
+footer_texture = ExtResource("7_mj5f0")
+is_south_west_visible = false
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="nw_4" parent="back_wall" unique_id=422039713 instance=ExtResource("6_3wpcq")]
+position = Vector2(-96, 8)
+offset = Vector2i(1, 1)
+height = 4
+pattern = 7
+texture = ExtResource("7_mj5f0")
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="n" parent="back_wall" unique_id=2134356846 instance=ExtResource("6_3wpcq")]
+position = Vector2(32, -48)
+height = 4
+texture = ExtResource("7_mj5f0")
+mask = Array[bool]([false])
+
+[node name="ne_0" parent="back_wall" unique_id=17370215 instance=ExtResource("6_3wpcq")]
+position = Vector2(80, -40)
+offset = Vector2i(0, 1)
+height = 4
+size = 1
+pattern = 5
+texture = ExtResource("7_mj5f0")
+is_south_east_visible = false
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="door_1x1x2_ne" parent="back_wall" unique_id=1287884761 instance=ExtResource("11_35ocx")]
+position = Vector2(120, -28)
+iso_tile_size = Vector2(16, 8)
+
+[node name="ne_door_top" parent="back_wall" unique_id=1044548887 instance=ExtResource("6_3wpcq")]
+position = Vector2(112, -24)
+offset = Vector2i(0, 1)
+height = 4
+size = 1
+pattern = 5
+texture = ExtResource("7_mj5f0")
+is_south_east_visible = false
+mask = Array[bool]([false, false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="ne_1" parent="back_wall" unique_id=878961499 instance=ExtResource("6_3wpcq")]
+position = Vector2(144, 0)
+offset = Vector2i(1, 2)
+height = 4
+size = 1
+pattern = 5
+texture = ExtResource("7_mj5f0")
+is_south_east_visible = false
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="ne_2" parent="back_wall" unique_id=1188955366 instance=ExtResource("6_3wpcq")]
+position = Vector2(168, 4)
+offset = Vector2i(1, 1)
+height = 4
+size = 1
+pattern = 7
+texture = ExtResource("7_mj5f0")
+is_south_east_visible = false
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="ne_3" parent="back_wall" unique_id=1498677047 instance=ExtResource("6_3wpcq")]
+position = Vector2(176, 8)
+offset = Vector2i(1, 1)
+height = 4
+size = 1
+pattern = 9
+texture = ExtResource("7_mj5f0")
+mask = Array[bool]([false])
+iso_tile_size = Vector2(16, 8)
+
+[node name="door_1x1x2_se" parent="back_wall" unique_id=2039817171 instance=ExtResource("10_p670k")]
+position = Vector2(96, 48)
+iso_tile_size = Vector2(16, 8)
