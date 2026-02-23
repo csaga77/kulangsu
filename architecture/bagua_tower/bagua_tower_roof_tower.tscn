@@ -1,0 +1,124 @@
+[gd_scene format=4 uid="uid://ptuy7nqqcfsm"]
+
+[ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="1_e4eiq"]
+[ext_resource type="TileSet" uid="uid://emarqgj57jx7" path="res://resources/tilesets/architecture/floor_0_tiles.tres" id="2_74ikc"]
+[ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="3_ybi25"]
+[ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/architecture/wall_0_tiles.tres" id="4_071jv"]
+[ext_resource type="Texture2D" uid="uid://xxv42q7vyh85" path="res://resources/sprites/architecture/bagua_tower/bagua_tower.png" id="5_hc3cf"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_8b4w8"]
+atlas = ExtResource("5_hc3cf")
+region = Rect2(0, 242, 320, 176)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_64aem"]
+atlas = ExtResource("5_hc3cf")
+region = Rect2(0, 0, 320, 240)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_fecrn"]
+atlas = ExtResource("5_hc3cf")
+region = Rect2(546, 0, 4, 94)
+
+[node name="roof_tower" type="Node2D" unique_id=1376877133 node_paths=PackedStringArray("visibility_mask_nodes")]
+z_index = 2
+y_sort_enabled = true
+script = ExtResource("1_e4eiq")
+visibility_mask_nodes = [NodePath(""), NodePath("")]
+
+[node name="floor" type="TileMapLayer" parent="." unique_id=1110650029]
+position = Vector2(-128, -224)
+tile_map_data = PackedByteArray("AAABAAIAAQADAAQAAAABAAMAAQADAAAAAAABAAQAAQADAAAAAAABAAUAAQADAAAAAAABAAYAAQADAAAAAAACAAEAAQADAAQAAAACAAIAAQADAAAAAAACAAMAAQADAAAAAAACAAQAAQADAAAAAAACAAUAAQADAAAAAAABAAcAAQADAAAAAAABAAgAAQADAAAAAAABAAkAAQADAAAAAAABAAoAAQADAAIAAAACAAYAAQADAAAAAAACAAcAAQADAAAAAAACAAgAAQADAAAAAAACAAkAAQADAAAAAAACAAoAAQADAAAAAAACAAsAAQADAAIAAAADAAAAAQADAAQAAAADAAEAAQADAAAAAAADAAIAAQADAAAAAAADAAMAAQADAAAAAAADAAQAAQADAAAAAAADAAUAAQADAAAAAAADAAYAAQADAAAAAAADAAcAAQADAAAAAAADAAgAAQADAAAAAAADAAkAAQADAAAAAAADAAoAAQADAAAAAAADAAsAAQADAAAAAAADAAwAAQADAAIAAAAEAAAAAQADAAAAAAAEAAEAAQADAAAAAAAEAAIAAQADAAAAAAAEAAMAAQADAAAAAAAEAAQAAQADAAAAAAAEAAUAAQADAAAAAAAEAAYAAQADAAAAAAAEAAcAAQADAAAAAAAEAAgAAQADAAAAAAAEAAkAAQADAAAAAAAEAAoAAQADAAAAAAAEAAsAAQADAAAAAAAEAAwAAQADAAAAAAAFAAAAAQADAAAAAAAFAAEAAQADAAAAAAAFAAIAAQADAAAAAAAFAAMAAQADAAAAAAAFAAQAAQADAAAAAAAFAAUAAQADAAAAAAAFAAYAAQADAAAAAAAFAAcAAQADAAAAAAAFAAgAAQADAAAAAAAFAAkAAQADAAAAAAAFAAoAAQADAAAAAAAFAAsAAQADAAAAAAAFAAwAAQADAAAAAAAGAAAAAQADAAAAAAAGAAEAAQADAAAAAAAGAAIAAQADAAAAAAAGAAMAAQADAAAAAAAGAAQAAQADAAAAAAAGAAUAAQADAAAAAAAGAAYAAQADAAAAAAAGAAcAAQADAAAAAAAGAAgAAQADAAAAAAAGAAkAAQADAAAAAAAGAAoAAQADAAAAAAAGAAsAAQADAAAAAAAGAAwAAQADAAAAAAAHAAAAAQADAAAAAAAHAAEAAQADAAAAAAAHAAIAAQADAAAAAAAHAAMAAQADAAAAAAAHAAQAAQADAAAAAAAHAAUAAQADAAAAAAAHAAYAAQADAAAAAAAHAAcAAQADAAAAAAAHAAgAAQADAAAAAAAHAAkAAQADAAAAAAAHAAoAAQADAAAAAAAHAAsAAQADAAAAAAAHAAwAAQADAAAAAAAIAAAAAQADAAAAAAAIAAEAAQADAAAAAAAIAAIAAQADAAAAAAAIAAMAAQADAAAAAAAIAAQAAQADAAAAAAAIAAUAAQADAAAAAAAIAAYAAQADAAAAAAAIAAcAAQADAAAAAAAIAAgAAQADAAAAAAAIAAkAAQADAAAAAAAIAAoAAQADAAAAAAAIAAsAAQADAAAAAAAIAAwAAQADAAAAAAAJAAAAAQADAAEAAAAJAAEAAQADAAAAAAAJAAIAAQADAAAAAAAJAAMAAQADAAAAAAAJAAQAAQADAAAAAAAJAAUAAQADAAAAAAAJAAYAAQADAAAAAAAJAAcAAQADAAAAAAAJAAgAAQADAAAAAAAJAAkAAQADAAAAAAAJAAoAAQADAAAAAAAJAAsAAQADAAAAAAAJAAwAAQADAAMAAAAKAAEAAQADAAEAAAAKAAIAAQADAAAAAAAKAAMAAQADAAAAAAAKAAQAAQADAAAAAAAKAAUAAQADAAAAAAAKAAYAAQADAAAAAAAKAAcAAQADAAAAAAAKAAgAAQADAAAAAAAKAAkAAQADAAAAAAAKAAoAAQADAAAAAAAKAAsAAQADAAMAAAALAAIAAQADAAEAAAALAAMAAQADAAAAAAALAAQAAQADAAAAAAALAAUAAQADAAAAAAALAAYAAQADAAAAAAALAAcAAQADAAAAAAALAAgAAQADAAAAAAALAAkAAQADAAAAAAALAAoAAQADAAMAAAA=")
+tile_set = ExtResource("2_74ikc")
+script = ExtResource("3_ybi25")
+
+[node name="wall_base" type="Node2D" parent="." unique_id=1097133888]
+y_sort_enabled = true
+metadata/_edit_lock_ = true
+
+[node name="wall_base" type="TileMapLayer" parent="wall_base" unique_id=157525422]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD6/wIAAgAFAAIAAQD6/wEAAgAFAAIAAQD6/wAAAgAFAAIAAQD6////AgATAAIAAAD7//7/AgASAAIAAAD8//7/AgAEAAIAAQD9//7/AgAEAAIAAQD+//7/AgAEAAIAAQD8/wQAAgAEAAIAAAD9/wQAAgAEAAIAAAD+/wQAAgAEAAIAAAD//wQAAgAQAAIAAAAAAAAAAgAFAAIAAAAAAAEAAgAFAAIAAAAAAAIAAgAFAAIAAAAAAAMAAgAQAAIAAAA=")
+tile_set = ExtResource("4_071jv")
+
+[node name="wall_base_top" type="TileMapLayer" parent="wall_base" unique_id=2105097496]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD+/wMABQATAAAAAAD//wIABQAVAAAAAAD///7/BQAZAAAAAAD+//3/BQAXAAAAAAD5/wEABQAOAAAAAQD5/wAABQAOAAAAAQD5////BQAOAAAAAQD7//3/BQANAAAAAQD8//3/BQANAAAAAQD9//3/BQANAAAAAQD//wEABQAOAAAAAAD//wAABQAOAAAAAAD/////BQAOAAAAAAD7/wMABQANAAAAAAD8/wMABQANAAAAAAD9/wMABQANAAAAAAD5/wIABQAXAAAAAQD6/wMABQAZAAAAAQD6//3/BQAVAAAAAQD5//7/BQATAAAAAQA=")
+tile_set = ExtResource("4_071jv")
+y_sort_origin = 32
+
+[node name="wall_back" type="Node2D" parent="." unique_id=720615116]
+y_sort_enabled = true
+metadata/_edit_lock_ = true
+
+[node name="wall_0" type="TileMapLayer" parent="wall_back" unique_id=1700367345]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD5/wEAAgAHAAAAAQD9//3/AgAGAAAAAQD5/wAAAgAFAAAAAQD5////AgAFAAAAAQD8//3/AgAEAAAAAQD7//3/AgAEAAAAAQD5//7/AgATAAAAAAD6//3/AgASAAAAAAA=")
+tile_set = ExtResource("4_071jv")
+y_sort_origin = 32
+
+[node name="wall_1" type="TileMapLayer" parent="wall_back" unique_id=1943315835]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD4//3/AgATAAAAAAD4//7/AgAFAAAAAQD4////AgAFAAAAAQD4/wAAAgAHAAAAAQD5//z/AgASAAAAAAD6//z/AgAEAAAAAQD7//z/AgAEAAAAAQD8//z/AgAGAAAAAQA=")
+tile_set = ExtResource("4_071jv")
+y_sort_origin = 64
+
+[node name="wall_2" type="TileMapLayer" parent="wall_back" unique_id=359634132]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD3//z/AgATAAAAAAD3//3/AgAFAAAAAQD3//7/AgAFAAAAAQD3////AgAHAAAAAQD4//v/AgASAAAAAAD5//v/AgAEAAAAAQD6//v/AgAEAAAAAQD7//v/AgAGAAAAAQA=")
+tile_set = ExtResource("4_071jv")
+y_sort_origin = 96
+
+[node name="top" type="TileMapLayer" parent="wall_back" unique_id=1948905541]
+tile_map_data = PackedByteArray("AAD4//r/BQANAAAAAQD5//r/BQANAAAAAQD6//r/BQANAAAAAQD2//7/BQAOAAAAAQD2//3/BQAOAAAAAQD2//z/BQAOAAAAAQD3//r/BQAVAAAAAQD2//v/BQATAAAAAQA=")
+tile_set = ExtResource("4_071jv")
+y_sort_origin = 128
+
+[node name="wall_front" type="Node2D" parent="." unique_id=786140685]
+y_sort_enabled = true
+metadata/_edit_lock_ = true
+
+[node name="wall_0" type="TileMapLayer" parent="wall_front" unique_id=901179664]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD+/wMAAgAQAAAAAAD//wIAAgAQAAAAAAD7/wMAAgAEAAAAAAD8/wMAAgAEAAAAAAD9/wMAAgAEAAAAAAD//wEAAgAFAAAAAAD/////AgAFAAAAAAD//wAAAgAFAAAAAAA=")
+tile_set = ExtResource("4_071jv")
+y_sort_origin = 32
+
+[node name="wall_1" type="TileMapLayer" parent="wall_front" unique_id=2076386909]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD6/wIAAgAEAAAAAAD7/wIAAgAEAAAAAAD8/wIAAgAEAAAAAAD9/wIAAgAQAAAAAAD+//7/AgAFAAAAAAD+////AgAFAAAAAAD+/wAAAgAFAAAAAAD+/wEAAgAQAAAAAAA=")
+tile_set = ExtResource("4_071jv")
+y_sort_origin = 64
+
+[node name="wall_2" type="TileMapLayer" parent="wall_front" unique_id=1203077100]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD5/wEAAgAEAAAAAAD6/wEAAgAEAAAAAAD7/wEAAgAEAAAAAAD8/wEAAgAQAAAAAAD9//3/AgAFAAAAAAD9//7/AgAFAAAAAAD9////AgAFAAAAAAD9/wAAAgAQAAAAAAA=")
+tile_set = ExtResource("4_071jv")
+y_sort_origin = 96
+
+[node name="top2" type="TileMapLayer" parent="wall_front" unique_id=561088720]
+tile_map_data = PackedByteArray("AAD2////BQAXAAAAAQD3/wAABQAZAAAAAQD8//v/BQAZAAAAAAD7//r/BQAXAAAAAAD8////BQAVAAAAAAD7/wAABQATAAAAAAD8//7/BQAOAAAAAAD8//3/BQAOAAAAAAD8//z/BQAOAAAAAAD4/wAABQANAAAAAAD5/wAABQANAAAAAAD6/wAABQANAAAAAAA=")
+tile_set = ExtResource("4_071jv")
+y_sort_origin = 128
+
+[node name="roof" type="TileMapLayer" parent="." unique_id=1473080076]
+z_index = 1
+position = Vector2(0, 1)
+tile_map_data = PackedByteArray("AAD3//z/AQAFAAAAAAD3//3/AQAFAAAAAAD3//7/AQAFAAAAAAD4//z/AQAFAAAAAAD4//3/AQAFAAAAAAD4//7/AQAFAAAAAAD5//z/AQAFAAAAAAD5//3/AQAFAAAAAAD5//7/AQAFAAAAAAD6//z/AQAFAAAAAAD6//3/AQAFAAAAAAD6//7/AQAFAAAAAAD7//z/AQAFAAAAAAD7//3/AQAFAAAAAAD7//7/AQAFAAAAAAD8//z/AQAFAAAAAAD8//3/AQAFAAAAAAD8//7/AQAFAAAAAAD2//z/AQAFAAAAAAD2//3/AQAFAAAAAAD2//7/AQAFAAAAAAD4////AQAFAAAAAAD4/wAAAQAFAAAAAAD5////AQAFAAAAAAD5/wAAAQAFAAAAAAD6////AQAFAAAAAAD6/wAAAQAFAAAAAAD4//r/AQAFAAAAAAD4//v/AQAFAAAAAAD5//r/AQAFAAAAAAD5//v/AQAFAAAAAAD6//r/AQAFAAAAAAD6//v/AQAFAAAAAAD3//v/AQAFAAAAAAD3////AQAFAAAAAAD7////AQAFAAAAAAD7//v/AQAFAAAAAAD7//r/AQAFAAEAAAD8//v/AQAFAAEAAAD3/wAAAQAFAAIAAAD2////AQAFAAIAAAD7/wAAAQAFAAMAAAD8////AQAFAAMAAAD3//r/AQAFAAQAAAD2//v/AQAFAAQAAAA=")
+tile_set = ExtResource("2_74ikc")
+
+[node name="dome_base" type="Sprite2D" parent="roof" unique_id=148741829]
+position = Vector2(-96, -152)
+texture = SubResource("AtlasTexture_8b4w8")
+script = ExtResource("3_ybi25")
+iso_tile_offset = Vector2(0, 24)
+
+[node name="dome" type="Sprite2D" parent="roof" unique_id=364278996]
+position = Vector2(-96, -200)
+texture = SubResource("AtlasTexture_64aem")
+script = ExtResource("3_ybi25")
+iso_tile_offset = Vector2(0, 8)
+
+[node name="pole" type="Sprite2D" parent="roof" unique_id=271019241]
+position = Vector2(-96, -328)
+texture = SubResource("AtlasTexture_fecrn")
+script = ExtResource("3_ybi25")
+iso_tile_offset = Vector2(0, 8)
