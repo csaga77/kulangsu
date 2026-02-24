@@ -20,7 +20,7 @@ player = NodePath("../player")
 position = Vector2(12357, 19805)
 
 [node name="player" parent="." unique_id=1388139855 instance=ExtResource("2_h2yge")]
-position = Vector2(3156, 7774)
+position = Vector2(3271, 9145)
 draw_bounding_rect = true
 
 [node name="CharacterController" type="Node" parent="player" unique_id=489947374 node_paths=PackedStringArray("player")]
