@@ -2,8 +2,6 @@
 
 [ext_resource type="Material" uid="uid://dw5sarpgr1teb" path="res://resources/materials/wall_transparent.tres" id="1_kek77"]
 [ext_resource type="Script" uid="uid://bywr0jr0u6i2n" path="res://main.gd" id="1_lquwl"]
-[ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/player_node.tscn" id="2_h2yge"]
-[ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/player_controller.gd" id="3_1bvp3"]
 [ext_resource type="PackedScene" uid="uid://cn5g8hobx3bru" path="res://terrain.tscn" id="3_7mycd"]
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="6_7mycd"]
 
@@ -14,22 +12,14 @@ position = Vector2(25, -3)
 script = ExtResource("1_lquwl")
 
 [node name="terrain" parent="." unique_id=382500148 node_paths=PackedStringArray("player") instance=ExtResource("3_7mycd")]
-player = NodePath("../player")
+player = NodePath("")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=369660366]
 position = Vector2(12357, 19805)
 
-[node name="player" parent="." unique_id=1388139855 instance=ExtResource("2_h2yge")]
-position = Vector2(3271, 9145)
-draw_bounding_rect = true
-
-[node name="CharacterController" type="Node" parent="player" unique_id=489947374 node_paths=PackedStringArray("player")]
-script = ExtResource("3_1bvp3")
-player = NodePath("..")
-
 [node name="Camera2DController" type="Node" parent="." unique_id=327363840 node_paths=PackedStringArray("camera", "target_node")]
 script = ExtResource("6_7mycd")
 camera = NodePath("../Camera2D")
-target_node = NodePath("../player")
+target_node = NodePath("")
 min_zoom = 0.01
 metadata/_custom_type_script = "uid://1lv88f7nn3d4"

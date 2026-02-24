@@ -1,17 +1,32 @@
 [gd_scene format=3 uid="uid://dc2dh1e6e5hb"]
 
 [ext_resource type="Script" uid="uid://b7ntce1lyblnt" path="res://scenes/test_scene.gd" id="1_8pr8v"]
-[ext_resource type="PackedScene" uid="uid://cvd7poved22w0" path="res://architecture/bagua_tower/bagua_tower.tscn" id="2_wtsjf"]
+[ext_resource type="PackedScene" uid="uid://dqivkaosuu5nr" path="res://scenes/test_room.tscn" id="2_wtsjf"]
 [ext_resource type="Material" uid="uid://dw5sarpgr1teb" path="res://resources/materials/wall_transparent.tres" id="3_njel3"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="4_vr1i5"]
 [ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/player_node.tscn" id="5_rpuu0"]
 [ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/player_controller.gd" id="6_oo8pe"]
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="7_4gito"]
+[ext_resource type="Shader" uid="uid://bx1o4bv3qtrdm" path="res://scenes/lighting.gdshader" id="8_h3xc6"]
+[ext_resource type="Texture2D" uid="uid://0mjtjksgnu2d" path="res://resources/sprites/2d_lights_and_shadows_neutral_point_light.png" id="8_rnaij"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_h3xc6"]
+shader = ExtResource("8_h3xc6")
+shader_parameter/canvas_modulate_color = Color(1, 1, 1, 1)
+shader_parameter/light_color = Color(1, 1, 1, 1)
+shader_parameter/intensity = 1.0
+shader_parameter/gamma_mask = 1.0
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_h3xc6"]
+blend_mode = 1
 
 [node name="test_scene" type="Node2D" unique_id=1018337693]
 y_sort_enabled = true
 script = ExtResource("1_8pr8v")
 building = ExtResource("2_wtsjf")
+
+[node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=1365478517]
+color = Color(0.25565878, 0.2556588, 0.25565875, 1)
 
 [node name="Root" type="Node2D" parent="." unique_id=203604640]
 y_sort_enabled = true
@@ -22,9 +37,25 @@ script = ExtResource("4_vr1i5")
 [node name="Camera2D" type="Camera2D" parent="." unique_id=917191712]
 position = Vector2(12357, 19805)
 
+[node name="light" type="Sprite2D" parent="." unique_id=680996679]
+visible = false
+z_index = 1
+material = SubResource("ShaderMaterial_h3xc6")
+position = Vector2(-13, 100)
+texture = ExtResource("8_rnaij")
+
+[node name="light2" type="Sprite2D" parent="." unique_id=2067308201]
+visible = false
+z_index = 1
+material = SubResource("CanvasItemMaterial_h3xc6")
+position = Vector2(-13, 100)
+texture = ExtResource("8_rnaij")
+
 [node name="Player" parent="." unique_id=543916503 instance=ExtResource("5_rpuu0")]
-position = Vector2(-459, 774)
+position = Vector2(-13, 100)
 draw_bounding_rect = true
+hair_style = 1
+hair_color = Color(0.8755488, 0.1578702, 0.29335076, 1)
 
 [node name="PlayerController" type="Node" parent="Player" unique_id=1171599603 node_paths=PackedStringArray("player")]
 script = ExtResource("6_oo8pe")
@@ -36,3 +67,7 @@ camera = NodePath("../Camera2D")
 target_node = NodePath("../Player")
 min_zoom = 0.01
 metadata/_custom_type_script = "uid://1lv88f7nn3d4"
+
+[node name="PointLight2D" type="PointLight2D" parent="." unique_id=2108239756]
+position = Vector2(-14, 101)
+texture = ExtResource("8_rnaij")

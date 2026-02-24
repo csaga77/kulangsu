@@ -17,7 +17,6 @@
 y_sort_enabled = true
 script = ExtResource("1_xax08")
 physics_layers = [NodePath("collision_layer")]
-smooth_visibility_change = true
 
 [node name="wall_mask" type="TileMapLayer" parent="." unique_id=1329344559]
 tile_map_data = PackedByteArray("AAACAP7/AAAAAAAAAAABAP7/AAAAAAAAAAAAAP7/AAAAAAAAAAD///7/AAAAAAAAAAD+//7/AAAAAAAAAAD+////AAAAAAAAAAD+/wAAAAAAAAAAAAD+/wEAAAAAAAAAAAD+/wIAAAAAAAAAAAD9/wEAAAAAAAAAAAD9/wAAAAAAAAAAAAD9////AAAAAAAAAAD9//7/AAAAAAAAAAD9//3/AAAAAAAAAAD+//3/AAAAAAAAAAD///3/AAAAAAAAAAAAAP3/AAAAAAAAAAABAP3/AAAAAAAAAAAAAPz/AAAAAAAAAAD///z/AAAAAAAAAAD+//z/AAAAAAAAAAD9//z/AAAAAAAAAAD8//z/AAAAAAAAAAD8//3/AAAAAAAAAAD8//7/AAAAAAAAAAD8////AAAAAAAAAAD8/wAAAAAAAAAAAAA=")
@@ -220,8 +219,6 @@ iso_tile_size = Vector2(16, 8)
 y_sort_enabled = true
 script = ExtResource("7_xsufa")
 visibility_mask_nodes = [NodePath("../../wall_mask")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="n" parent="wall/up_wall" unique_id=1536793865 instance=ExtResource("10_xsufa")]
 position = Vector2(32, 16)
@@ -321,8 +318,6 @@ iso_tile_size = Vector2(16, 8)
 y_sort_enabled = true
 script = ExtResource("7_xsufa")
 visibility_mask_nodes = [NodePath("../../../floor")]
-use_ground_bounding_rect = true
-smooth_visibility_change = true
 
 [node name="window_3x2x2_sw" parent="wall/up_wall/front" unique_id=1762891925 instance=ExtResource("9_xsufa")]
 position = Vector2(-16, 128)

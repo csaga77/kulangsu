@@ -33,6 +33,12 @@ bool match_color(vec3 a, vec3 b) {
 	return all(lessThanEqual(abs(a - b), vec3(color_eps)));
 }
 
+varying vec4 m_parent_modulate;
+
+void vertex() {
+	m_parent_modulate = COLOR;
+}
+
 void fragment() {
 
 	vec2 src_size = vec2(textureSize(TEXTURE, 0));
@@ -125,8 +131,9 @@ void fragment() {
 		vec4 shade = texture(texture_shade, pp_uv);
 		if (out_col.a > 0.01 && shade.a > 0.01 && shade_strength > 0.0) {
 			out_col.rgb *= mix(vec3(1.0), shade.rgb, clamp(shade_strength * shade.a, 0.0, 1.0));
+			
 		}
-
+		//out_col.rgb *= m_parent_modulate.rgb;
 		out_col.a *= COLOR.a;
 	}
 

@@ -11,6 +11,10 @@
 atlas = ExtResource("4_c07vg")
 region = Rect2(0, 0, 64, 32)
 
+[sub_resource type="OccluderPolygon2D" id="OccluderPolygon2D_g654y"]
+cull_mode = 1
+polygon = PackedVector2Array(32, 0, 0, 16, -32, 0, 0, -16)
+
 [node name="wall" type="Node2D" unique_id=1803625367]
 script = ExtResource("1_h7tnk")
 pattern = 3
@@ -25,3 +29,6 @@ only_shown_in_editor = true
 [node name="wall_block" type="Node2D" parent="." unique_id=1710527606]
 material = ExtResource("2_h7tnk")
 position = Vector2(0, -16)
+
+[node name="LightOccluder2D" type="LightOccluder2D" parent="." unique_id=2102179667]
+occluder = SubResource("OccluderPolygon2D_g654y")
