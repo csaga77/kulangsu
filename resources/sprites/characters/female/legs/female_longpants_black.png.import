@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bbkn41rrj7pcn"
-path="res://.godot/imported/female_longsleeve_white.png-271e13fc6e3d5349c588201fa10eba51.ctex"
+uid="uid://jur5u0ho22hb"
+path="res://.godot/imported/female_longpants_black.png-17c01376f616c22d6697fe13aa09dd4c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://resources/sprites/characters/female/female_longsleeve_white.png"
-dest_files=["res://.godot/imported/female_longsleeve_white.png-271e13fc6e3d5349c588201fa10eba51.ctex"]
+source_file="res://resources/sprites/characters/female/legs/female_longpants_black.png"
+dest_files=["res://.godot/imported/female_longpants_black.png-17c01376f616c22d6697fe13aa09dd4c.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bo2fdh6kgupht"
-path="res://.godot/imported/male_sleeveless_white.png-61d5e5294036ad12baa9e6bb7d74cd92.ctex"
+uid="uid://7dv3su3r32fl"
+path="res://.godot/imported/male_shorts_leather.png-4357f5a1a796e2bd8291bb46bf15ef4a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://resources/sprites/characters/male/male_sleeveless_white.png"
-dest_files=["res://.godot/imported/male_sleeveless_white.png-61d5e5294036ad12baa9e6bb7d74cd92.ctex"]
+source_file="res://resources/sprites/characters/male/legs/male_shorts_leather.png"
+dest_files=["res://.godot/imported/male_shorts_leather.png-4357f5a1a796e2bd8291bb46bf15ef4a.ctex"]
 
 [params]
 

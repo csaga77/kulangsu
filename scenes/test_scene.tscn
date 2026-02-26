@@ -26,7 +26,6 @@ script = ExtResource("1_8pr8v")
 building = ExtResource("2_wtsjf")
 
 [node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=1365478517]
-color = Color(0.25565878, 0.2556588, 0.25565875, 1)
 
 [node name="Root" type="Node2D" parent="." unique_id=203604640]
 y_sort_enabled = true
@@ -54,8 +53,21 @@ texture = ExtResource("8_rnaij")
 [node name="Player" parent="." unique_id=543916503 instance=ExtResource("5_rpuu0")]
 position = Vector2(-13, 100)
 draw_bounding_rect = true
-hair_style = 1
+body_type = 1
+hair_style_value = "Long Loose"
+legs_style_value = "Shorts Leather"
+shirt_style_value = "Longsleeve"
+head_style_value = "Head"
+feet_style_value = "Basic Shoes"
 hair_color = Color(0.8755488, 0.1578702, 0.29335076, 1)
+legs_color = Color(0.18896914, 0.18896917, 0.1889691, 1)
+shirt_color = Color(1, 1, 0.16470589, 1)
+feet_color = Color(0.3350306, 0.036729954, 0.06586475, 1)
+hair_style = "Long Loose"
+legs_style = "Shorts Leather"
+shirt_style = "Longsleeve"
+head_style = "Head"
+feet_style = "Basic Shoes"
 
 [node name="PlayerController" type="Node" parent="Player" unique_id=1171599603 node_paths=PackedStringArray("player")]
 script = ExtResource("6_oo8pe")
@@ -69,5 +81,6 @@ min_zoom = 0.01
 metadata/_custom_type_script = "uid://1lv88f7nn3d4"
 
 [node name="PointLight2D" type="PointLight2D" parent="." unique_id=2108239756]
+visible = false
 position = Vector2(-14, 101)
 texture = ExtResource("8_rnaij")

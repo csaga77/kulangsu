@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://7dv3su3r32fl"
-path="res://.godot/imported/male_shorts_leather.png-7f0ae06a3b03433785f2dcf3defbb883.ctex"
+uid="uid://bbkn41rrj7pcn"
+path="res://.godot/imported/female_longsleeve_white.png-629b46d8569921f4610ce55b1397e1d4.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://resources/sprites/characters/male/male_shorts_leather.png"
-dest_files=["res://.godot/imported/male_shorts_leather.png-7f0ae06a3b03433785f2dcf3defbb883.ctex"]
+source_file="res://resources/sprites/characters/female/torso/shirts/female_longsleeve_white.png"
+dest_files=["res://.godot/imported/female_longsleeve_white.png-629b46d8569921f4610ce55b1397e1d4.ctex"]
 
 [params]
 
