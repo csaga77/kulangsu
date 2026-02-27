@@ -381,13 +381,13 @@ func _update_state() -> void:
 	var normalized_direction: float = CommonUtils.normalize_angle(direction)
 
 	if CommonUtils.is_in_range(normalized_direction, 0.0, 45.01) or CommonUtils.is_in_range(normalized_direction, 314.09, 360.0):
-		new_animation_name += "right"
+		new_animation_name += "e"
 	elif CommonUtils.is_in_range(normalized_direction, 135.0, 225.0):
-		new_animation_name += "left"
+		new_animation_name += "w"
 	elif CommonUtils.is_in_range(normalized_direction, 45.0, 135.0):
-		new_animation_name += "up"
+		new_animation_name += "n"
 	elif CommonUtils.is_in_range(normalized_direction, 225.0, 315.0):
-		new_animation_name += "down"
+		new_animation_name += "s"
 
 	if m_current_animation_name == new_animation_name:
 		return

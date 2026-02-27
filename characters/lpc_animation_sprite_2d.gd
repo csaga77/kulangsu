@@ -164,7 +164,7 @@ func _get_property_list() -> Array:
 		"hint_string": ",".join(m_animations)
 	})
 
-	# Style dropdowns (renamed: *_style -> *)
+	# Style dropdowns
 	property_list.append({
 		"name": "hair",
 		"type": TYPE_STRING,
@@ -302,13 +302,11 @@ func play(anim_name: String) -> void:
 			notify_property_list_changed()
 
 	m_sprite.stop()
-	#print("play: ", anim_name, m_animations)
 	if !m_animations.has(anim_name):
 		return
 	m_sprite.play(anim_name)
 
 func stop() -> void:
-	#print("stop")
 	if m_sprite:
 		m_sprite.stop()
 
@@ -327,7 +325,6 @@ func _apply_animation_value() -> void:
 		return
 	if !m_sprite.sprite_frames.has_animation(m_animation):
 		return
-	print(m_animation)
 	play(m_animation)
 
 # -------------------------------------------------------------------
@@ -342,7 +339,6 @@ func _ensure_sprite() -> void:
 		if c is AnimatedSprite2D:
 			c.queue_free()
 
-	#print("_ensure_sprite")
 	m_sprite = AnimatedSprite2D.new()
 	m_sprite.name = "sprite"
 	add_child(m_sprite)
@@ -354,7 +350,6 @@ func _reload() -> void:
 	call_deferred("_do_reload")
 
 func _do_reload() -> void:
-	#print("_do_reload")
 	m_is_reloading = false
 	_ensure_sprite()
 	if m_sprite == null:
@@ -367,12 +362,13 @@ func _do_reload() -> void:
 
 	template = template.duplicate()
 	m_sprite.sprite_frames = template
-	# Animation dropdown options
+
+	# Animation dropdown options (PackedStringArray -> Array[String])
 	m_animations.clear()
 	if m_sprite.sprite_frames != null:
 		var anim_names_packed: PackedStringArray = m_sprite.sprite_frames.get_animation_names()
 		for s in anim_names_packed:
-			m_animations.append(s)
+			m_animations.append(String(s))
 
 	if m_animations.is_empty():
 		m_animations = [
@@ -384,10 +380,7 @@ func _do_reload() -> void:
 
 	var combined_image: Image = null
 
-	var base_body_path: String = \
-		"res://resources/sprites/characters/male/male_body.png" \
-		if body_type == BodyTypeEnum.MALE \
-		else "res://resources/sprites/characters/female/female_body.png"
+	var base_body_path: String = _get_body_sprite_path_for_current_body()
 
 	var selected_feet_path: String = _get_feet_sprite_path_for_current_style()
 	var selected_legs_path: String = _get_legs_sprite_path_for_current_style()
@@ -395,44 +388,66 @@ func _do_reload() -> void:
 	var selected_head_path: String = _get_head_sprite_path_for_current_style()
 	var selected_hair_path: String = _get_hair_sprite_path_for_current_style()
 
-	var layer_paths: Array[String] = [base_body_path]
-	if !selected_feet_path.is_empty(): layer_paths.append(selected_feet_path)
-	if !selected_legs_path.is_empty(): layer_paths.append(selected_legs_path)
-	if !selected_shirt_path.is_empty(): layer_paths.append(selected_shirt_path)
-	if !selected_head_path.is_empty(): layer_paths.append(selected_head_path)
+	# ------------------------------------------------------------
+	# 1) BG accessory layers ( *_bg.* ), auto-resolved by base name.
+	#    Not selectable; blended FIRST (behind everything).
+	#    Color is applied to BG as well (matching its owner part).
+	# ------------------------------------------------------------
+	var bg_entries: Array[Dictionary] = []
 
-	for path in layer_paths:
-		var tex: Texture2D = load(path)
-		if tex == null:
-			continue
+	var bg_path: String
 
-		var img: Image = tex.get_image()
-		if img == null:
-			continue
+	bg_path = _get_bg_sprite_path(base_body_path)
+	if !bg_path.is_empty():
+		bg_entries.append({"path": bg_path, "tint": Color.WHITE, "tint_on": false})
 
-		if path == selected_feet_path and !selected_feet_path.is_empty():
-			img = ImageUtils.colorize_image(img, feet_color)
-		elif path == selected_legs_path and !selected_legs_path.is_empty():
-			img = ImageUtils.colorize_image(img, legs_color)
-		elif path == selected_shirt_path and !selected_shirt_path.is_empty():
-			img = ImageUtils.colorize_image(img, shirt_color)
-		elif path == selected_head_path and !selected_head_path.is_empty():
-			img = ImageUtils.colorize_image(img, head_color)
+	bg_path = _get_bg_sprite_path(selected_feet_path)
+	if !bg_path.is_empty():
+		bg_entries.append({"path": bg_path, "tint": feet_color, "tint_on": true})
 
-		if combined_image == null:
-			combined_image = img
-		else:
-			var used := img.get_used_rect()
-			combined_image.blend_rect(img, used, used.position)
+	bg_path = _get_bg_sprite_path(selected_legs_path)
+	if !bg_path.is_empty():
+		bg_entries.append({"path": bg_path, "tint": legs_color, "tint_on": true})
 
-	if !selected_hair_path.is_empty() and combined_image != null:
-		var hair_tex: Texture2D = load(selected_hair_path)
-		if hair_tex:
-			var hair_img := hair_tex.get_image()
-			if hair_img:
-				hair_img = ImageUtils.colorize_image(hair_img, hair_color)
-				var used := hair_img.get_used_rect()
-				combined_image.blend_rect(hair_img, used, used.position)
+	bg_path = _get_bg_sprite_path(selected_shirt_path)
+	if !bg_path.is_empty():
+		bg_entries.append({"path": bg_path, "tint": shirt_color, "tint_on": true})
+
+	bg_path = _get_bg_sprite_path(selected_head_path)
+	if !bg_path.is_empty():
+		bg_entries.append({"path": bg_path, "tint": head_color, "tint_on": true})
+
+	bg_path = _get_bg_sprite_path(selected_hair_path)
+	if !bg_path.is_empty():
+		bg_entries.append({"path": bg_path, "tint": hair_color, "tint_on": true})
+
+	for e in bg_entries:
+		combined_image = _blend_layer_image(
+			combined_image,
+			String(e.get("path", "")),
+			e.get("tint", Color.WHITE),
+			bool(e.get("tint_on", false))
+		)
+
+	# ------------------------------------------------------------
+	# 2) Main layers: body -> feet -> legs -> shirt -> head -> hair
+	# ------------------------------------------------------------
+	combined_image = _blend_layer_image(combined_image, base_body_path, Color.WHITE, false)
+
+	if !selected_feet_path.is_empty():
+		combined_image = _blend_layer_image(combined_image, selected_feet_path, feet_color, true)
+
+	if !selected_legs_path.is_empty():
+		combined_image = _blend_layer_image(combined_image, selected_legs_path, legs_color, true)
+
+	if !selected_shirt_path.is_empty():
+		combined_image = _blend_layer_image(combined_image, selected_shirt_path, shirt_color, true)
+
+	if !selected_head_path.is_empty():
+		combined_image = _blend_layer_image(combined_image, selected_head_path, head_color, true)
+
+	if !selected_hair_path.is_empty():
+		combined_image = _blend_layer_image(combined_image, selected_hair_path, hair_color, true)
 
 	if combined_image == null:
 		notify_property_list_changed()
@@ -451,17 +466,59 @@ func _do_reload() -> void:
 
 	if !m_animation.is_empty() and template.has_animation(m_animation):
 		m_current_animation_name = m_animation
-		#print(m_animation)
 		m_sprite.play(m_animation)
 	else:
 		var names: PackedStringArray = template.get_animation_names()
 		if names.size() > 0:
 			m_animation = String(names[0])
 			m_current_animation_name = m_animation
-			#print(m_animation)
 			m_sprite.play(m_animation)
 
 	notify_property_list_changed()
+
+# -------------------------------------------------------------------
+# Private: bg helpers + blending
+# -------------------------------------------------------------------
+
+func _get_bg_sprite_path(main_sprite_path: String) -> String:
+	if main_sprite_path.is_empty():
+		return ""
+
+	var dir_path := main_sprite_path.get_base_dir() + "/"
+	var base := main_sprite_path.get_file().get_basename()
+	var ext := main_sprite_path.get_extension()
+	if base.ends_with("_bg"):
+		return ""
+
+	var bg_path := dir_path + base + "_bg." + ext
+	return bg_path if FileAccess.file_exists(bg_path) else ""
+
+func _blend_layer_image(
+	combined_image: Image,
+	layer_path: String,
+	tint_color: Color,
+	apply_tint: bool
+) -> Image:
+	if layer_path.is_empty():
+		return combined_image
+
+	var tex: Texture2D = load(layer_path)
+	if tex == null:
+		return combined_image
+
+	var img: Image = tex.get_image()
+	if img == null:
+		return combined_image
+
+	if apply_tint:
+		img = ImageUtils.colorize_image(img, tint_color)
+
+	if combined_image == null:
+		return img
+
+	var used := img.get_used_rect()
+	combined_image.blend_rect(img, used, used.position)
+	return combined_image
 
 # -------------------------------------------------------------------
 # Private: style option builder
@@ -489,17 +546,31 @@ func _refresh_all_style_options() -> void:
 
 	notify_property_list_changed()
 
+func _is_male_variant() -> bool:
+	match body_type:
+		BodyTypeEnum.MALE, BodyTypeEnum.MUSCULAR:
+			return true
+		BodyTypeEnum.FEMALE, BodyTypeEnum.PREGNANT:
+			return false
+		BodyTypeEnum.TEEN, BodyTypeEnum.CHILD:
+			return true
+		_:
+			return true
+
+func _get_body_sprite_path_for_current_body() -> String:
+	return "res://resources/sprites/characters/male/male_body.png" if _is_male_variant() else "res://resources/sprites/characters/female/female_body.png"
+
 func _get_legs_folder_path_for_current_body() -> String:
-	return MALE_LEGS_FOLDER_PATH if body_type == BodyTypeEnum.MALE else FEMALE_LEGS_FOLDER_PATH
+	return MALE_LEGS_FOLDER_PATH if _is_male_variant() else FEMALE_LEGS_FOLDER_PATH
 
 func _get_shirts_folder_path_for_current_body() -> String:
-	return MALE_SHIRTS_FOLDER_PATH if body_type == BodyTypeEnum.MALE else FEMALE_SHIRTS_FOLDER_PATH
+	return MALE_SHIRTS_FOLDER_PATH if _is_male_variant() else FEMALE_SHIRTS_FOLDER_PATH
 
 func _get_head_folder_path_for_current_body() -> String:
-	return MALE_HEAD_FOLDER_PATH if body_type == BodyTypeEnum.MALE else FEMALE_HEAD_FOLDER_PATH
+	return MALE_HEAD_FOLDER_PATH if _is_male_variant() else FEMALE_HEAD_FOLDER_PATH
 
 func _get_feet_folder_path_for_current_body() -> String:
-	return MALE_FEET_FOLDER_PATH if body_type == BodyTypeEnum.MALE else FEMALE_FEET_FOLDER_PATH
+	return MALE_FEET_FOLDER_PATH if _is_male_variant() else FEMALE_FEET_FOLDER_PATH
 
 func _build_style_options(
 	folder_path: String,
@@ -539,7 +610,10 @@ func _scan_sprite_paths(folder_path: String) -> Array[String]:
 			var lf := f.to_lower()
 			var ok := lf.ends_with(".png") or lf.ends_with(".webp") or lf.ends_with(".jpg") or lf.ends_with(".jpeg")
 			if ok:
-				discovered.append(folder_path + f)
+				# Exclude *_bg sprites from selectable options
+				var base := f.get_basename()
+				if !base.ends_with("_bg"):
+					discovered.append(folder_path + f)
 		f = da.get_next()
 
 	da.list_dir_end()

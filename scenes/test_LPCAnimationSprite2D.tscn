@@ -4,14 +4,15 @@
 
 [node name="TestLpcAnimationSprite2d" type="Node2D" unique_id=1253848654]
 script = ExtResource("1_35uwp")
-m_animation = "idle_right"
-m_hair = "Long Loose"
+body_type = 1
+hair_color = Color(0.8235294, 0, 0, 1)
+m_hair = "Xlong Wavy"
 m_legs = "Longpants"
 m_shirt = "Longsleeve"
 m_head = "Head"
 m_feet = "Basic Shoes"
-animation = "idle_right"
-hair = "Long Loose"
+animation = "idle_down"
+hair = "Xlong Wavy"
 legs = "Longpants"
 shirt = "Longsleeve"
 head = "Head"
