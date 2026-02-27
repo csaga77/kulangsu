@@ -53,21 +53,10 @@ texture = ExtResource("8_rnaij")
 [node name="Player" parent="." unique_id=543916503 instance=ExtResource("5_rpuu0")]
 position = Vector2(-13, 100)
 draw_bounding_rect = true
-body_type = 1
-hair_style_value = "Long Loose"
-legs_style_value = "Shorts Leather"
-shirt_style_value = "Longsleeve"
-head_style_value = "Head"
-feet_style_value = "Basic Shoes"
-hair_color = Color(0.8755488, 0.1578702, 0.29335076, 1)
-legs_color = Color(0.18896914, 0.18896917, 0.1889691, 1)
-shirt_color = Color(1, 1, 0.16470589, 1)
-feet_color = Color(0.3350306, 0.036729954, 0.06586475, 1)
-hair_style = "Long Loose"
-legs_style = "Shorts Leather"
-shirt_style = "Longsleeve"
-head_style = "Head"
-feet_style = "Basic Shoes"
+m_hair = "Long Loose"
+m_shirt = "Sleeveless"
+hair = "Long Loose"
+shirt = "Sleeveless"
 
 [node name="PlayerController" type="Node" parent="Player" unique_id=1171599603 node_paths=PackedStringArray("player")]
 script = ExtResource("6_oo8pe")

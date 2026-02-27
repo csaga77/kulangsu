@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://cfdy6vygpesrd"]
+
+[ext_resource type="Script" uid="uid://ewdrcktjt4py" path="res://characters/lpc_animation_sprite_2d.gd" id="1_35uwp"]
+
+[node name="TestLpcAnimationSprite2d" type="Node2D" unique_id=1253848654]
+script = ExtResource("1_35uwp")
+m_animation = "idle_right"
+m_hair = "Long Loose"
+m_legs = "Longpants"
+m_shirt = "Longsleeve"
+m_head = "Head"
+m_feet = "Basic Shoes"
+animation = "idle_right"
+hair = "Long Loose"
+legs = "Longpants"
+shirt = "Longsleeve"
+head = "Head"
+feet = "Basic Shoes"
