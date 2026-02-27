@@ -1,5 +1,5 @@
 @tool
-class_name LPCAnimationSprite2D
+class_name UniversalLPCAnimationSprite2D
 extends Node2D
 
 enum BodyTypeEnum {
@@ -355,18 +355,18 @@ func _do_reload() -> void:
 	if m_sprite == null:
 		return
 
-	var template: SpriteFrames = load(sprite_frames_template_path)
-	if template == null:
+	var sprite_frames: SpriteFrames = load(sprite_frames_template_path)
+	if sprite_frames == null:
 		notify_property_list_changed()
 		return
 
-	template = template.duplicate()
-	m_sprite.sprite_frames = template
+	sprite_frames = sprite_frames.duplicate()
+	m_sprite.sprite_frames = sprite_frames
 
 	# Animation dropdown options (PackedStringArray -> Array[String])
 	m_animations.clear()
-	if m_sprite.sprite_frames != null:
-		var anim_names_packed: PackedStringArray = m_sprite.sprite_frames.get_animation_names()
+	if sprite_frames != null:
+		var anim_names_packed: PackedStringArray = sprite_frames.get_animation_names()
 		for s in anim_names_packed:
 			m_animations.append(String(s))
 
@@ -455,20 +455,20 @@ func _do_reload() -> void:
 
 	var combined_tex := ImageTexture.create_from_image(combined_image)
 
-	for anim_name in template.get_animation_names():
-		var count := template.get_frame_count(anim_name)
+	for anim_name in sprite_frames.get_animation_names():
+		var count := sprite_frames.get_frame_count(anim_name)
 		for i in count:
-			var orig := template.get_frame_texture(anim_name, i)
+			var orig := sprite_frames.get_frame_texture(anim_name, i)
 			var atlas := orig.duplicate() as AtlasTexture
 			if atlas:
 				atlas.atlas = combined_tex
-				template.set_frame(anim_name, i, atlas)
+				sprite_frames.set_frame(anim_name, i, atlas)
 
-	if !m_animation.is_empty() and template.has_animation(m_animation):
+	if !m_animation.is_empty() and sprite_frames.has_animation(m_animation):
 		m_current_animation_name = m_animation
 		m_sprite.play(m_animation)
 	else:
-		var names: PackedStringArray = template.get_animation_names()
+		var names: PackedStringArray = sprite_frames.get_animation_names()
 		if names.size() > 0:
 			m_animation = String(names[0])
 			m_current_animation_name = m_animation

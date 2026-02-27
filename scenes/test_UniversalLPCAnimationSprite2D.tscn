@@ -1,17 +1,21 @@
 [gd_scene format=3 uid="uid://cfdy6vygpesrd"]
 
-[ext_resource type="Script" uid="uid://ewdrcktjt4py" path="res://characters/lpc_animation_sprite_2d.gd" id="1_35uwp"]
+[ext_resource type="Script" uid="uid://ewdrcktjt4py" path="res://characters/universal_lpc_animation_sprite_2d.gd" id="1_ya2ct"]
 
 [node name="TestLpcAnimationSprite2d" type="Node2D" unique_id=1253848654]
-script = ExtResource("1_35uwp")
+script = ExtResource("1_ya2ct")
 body_type = 1
 hair_color = Color(0.8235294, 0, 0, 1)
+legs_color = Color(0.427493, 0.42749307, 0.42749307, 1)
+shirt_color = Color(1, 0.54509807, 1, 1)
+feet_color = Color(0.37036446, 0.3703645, 0.37036446, 1)
+m_animation = "idle_e"
 m_hair = "Xlong Wavy"
 m_legs = "Longpants"
 m_shirt = "Longsleeve"
 m_head = "Head"
 m_feet = "Basic Shoes"
-animation = "idle_down"
+animation = "idle_e"
 hair = "Xlong Wavy"
 legs = "Longpants"
 shirt = "Longsleeve"

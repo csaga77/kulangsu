@@ -33,7 +33,7 @@ const BASE_SPRITE_OFFSET: Vector2 = Vector2(0, -32)
 # Animation/style proxy properties (stored on Player)
 # ------------------------------------------------------------
 
-@export var body_type: LPCAnimationSprite2D.BodyTypeEnum = LPCAnimationSprite2D.BodyTypeEnum.MALE:
+@export var body_type: UniversalLPCAnimationSprite2D.BodyTypeEnum = UniversalLPCAnimationSprite2D.BodyTypeEnum.MALE:
 	set(v):
 		if body_type == v:
 			return
@@ -88,7 +88,7 @@ const BASE_SPRITE_OFFSET: Vector2 = Vector2(0, -32)
 # Runtime
 # ------------------------------------------------------------
 
-@onready var m_anim_node: LPCAnimationSprite2D = $LPCAnimationSprite2D
+@onready var m_anim_node: UniversalLPCAnimationSprite2D = $UniversalLPCAnimationSprite2D
 
 var m_last_global_position: Vector2 = Vector2.ZERO
 var m_is_currently_jumping: bool = false
@@ -132,7 +132,7 @@ func _get_property_list() -> Array:
 		"hint_string": ",".join(anim_names)
 	})
 
-	# Style dropdown options come from LPCAnimationSprite2D's lists
+	# Style dropdown options come from UniversalLPCAnimationSprite2D's lists
 	# (these arrays are public vars on that node)
 	var hair_names: Array[String] = m_anim_node.hair_style_names
 	var legs_names: Array[String] = m_anim_node.legs_style_names
@@ -349,7 +349,7 @@ func _on_animation_finished() -> void:
 		_update_state()
 
 # ------------------------------------------------------------
-# Animation state -> play on LPCAnimationSprite2D
+# Animation state -> play on UniversalLPCAnimationSprite2D
 # ------------------------------------------------------------
 
 func _apply_animation_value() -> void:
@@ -428,7 +428,7 @@ func _apply_styles_to_anim() -> void:
 	if m_anim_node == null:
 		return
 
-	# Set dynamic properties on LPCAnimationSprite2D (hair/legs/shirt/head/feet)
+	# Set dynamic properties on UniversalLPCAnimationSprite2D (hair/legs/shirt/head/feet)
 	m_anim_node.set("hair", m_hair)
 	m_anim_node.set("legs", m_legs)
 	m_anim_node.set("shirt", m_shirt)
