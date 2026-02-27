@@ -4,20 +4,19 @@
 
 [node name="TestLpcAnimationSprite2d" type="Node2D" unique_id=1253848654]
 script = ExtResource("1_ya2ct")
-body_type = 1
-hair_color = Color(0.8235294, 0, 0, 1)
+hair_color = Color(0.8392157, 0, 0, 1)
 legs_color = Color(0.427493, 0.42749307, 0.42749307, 1)
-shirt_color = Color(1, 0.54509807, 1, 1)
 feet_color = Color(0.37036446, 0.3703645, 0.37036446, 1)
-m_animation = "idle_e"
-m_hair = "Xlong Wavy"
-m_legs = "Longpants"
-m_shirt = "Longsleeve"
-m_head = "Head"
-m_feet = "Basic Shoes"
-animation = "idle_e"
-hair = "Xlong Wavy"
-legs = "Longpants"
-shirt = "Longsleeve"
-head = "Head"
-feet = "Basic Shoes"
+m_animation = "walk_e"
+m_hair = "Default / Spiked"
+m_legs = "Default / Formal Pants"
+m_shirt = "Clothes / Longsleeve"
+m_head = "Human / Male Head"
+m_feet = "Foot Wears / Basic Shoes"
+animation = "walk_e"
+body = "Default"
+hair = "Default / Spiked"
+legs = "Default / Formal Pants"
+shirt = "Clothes / Longsleeve"
+head = "Human / Male Head"
+feet = "Foot Wears / Basic Shoes"
