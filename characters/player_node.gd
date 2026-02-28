@@ -76,6 +76,14 @@ const BASE_SPRITE_OFFSET: Vector2 = Vector2(0, -32)
 		feet_color = v
 		_apply_colors_to_anim()
 
+# NEW: body color (tint for base body sprites), same pattern as others
+@export var body_color: Color = Color.WHITE:
+	set(v):
+		if body_color == v:
+			return
+		body_color = v
+		_apply_colors_to_anim()
+
 # Stored values (persisted) for dynamic dropdowns on Player
 @export_storage var m_animation: String = "idle_down"
 @export_storage var m_hair: String = "Bald"
@@ -83,6 +91,8 @@ const BASE_SPRITE_OFFSET: Vector2 = Vector2(0, -32)
 @export_storage var m_shirt: String = "<none>"
 @export_storage var m_head: String = "<none>"
 @export_storage var m_feet: String = "<none>"
+# NEW: body style selection (kept like other dropdown-backed values)
+@export_storage var m_body: String = "Default"
 
 # ------------------------------------------------------------
 # Runtime
@@ -133,24 +143,48 @@ func _get_property_list() -> Array:
 	})
 
 	# Style dropdown options come from UniversalLPCAnimationSprite2D's lists
-	# (these arrays are public vars on that node)
+	var body_names: Array[String] = m_anim_node.get_body_options() # NEW
 	var hair_names: Array[String] = m_anim_node.get_hair_options()
 	var legs_names: Array[String] = m_anim_node.get_legs_options()
 	var shirt_names: Array[String] = m_anim_node.get_shirt_options()
 	var head_names: Array[String] = m_anim_node.get_head_options()
 	var feet_names: Array[String] = m_anim_node.get_feet_options()
 
-	if hair_names.is_empty() or legs_names.is_empty() or shirt_names.is_empty() or head_names.is_empty() or feet_names.is_empty():
+	if body_names.is_empty() or hair_names.is_empty() or legs_names.is_empty() or shirt_names.is_empty() or head_names.is_empty() or feet_names.is_empty():
 		# Trigger a refresh on the anim node (safe in editor)
 		if Engine.is_editor_hint():
 			m_anim_node.refresh_sprite_options = true
-		# Re-read (may still be empty on first inspector build; that's OK)
-		hair_names = m_anim_node.hair_style_names
-		legs_names = m_anim_node.legs_style_names
-		shirt_names = m_anim_node.shirt_style_names
-		head_names = m_anim_node.head_style_names
-		feet_names = m_anim_node.feet_style_names
 
+		# Re-read (may still be empty on first inspector build; that's OK)
+		# Prefer calling option getters again (keeps it consistent with latest API)
+		body_names = m_anim_node.get_body_options()
+		hair_names = m_anim_node.get_hair_options()
+		legs_names = m_anim_node.get_legs_options()
+		shirt_names = m_anim_node.get_shirt_options()
+		head_names = m_anim_node.get_head_options()
+		feet_names = m_anim_node.get_feet_options()
+
+		# Fallback to legacy arrays if your node still uses them in some cases
+		if body_names.is_empty() and "body_style_names" in m_anim_node:
+			body_names = m_anim_node.body_style_names
+		if hair_names.is_empty():
+			hair_names = m_anim_node.hair_style_names
+		if legs_names.is_empty():
+			legs_names = m_anim_node.legs_style_names
+		if shirt_names.is_empty():
+			shirt_names = m_anim_node.shirt_style_names
+		if head_names.is_empty():
+			head_names = m_anim_node.head_style_names
+		if feet_names.is_empty():
+			feet_names = m_anim_node.feet_style_names
+
+	property_list.append({
+		"name": "body", # NEW
+		"type": TYPE_STRING,
+		"usage": PROPERTY_USAGE_DEFAULT,
+		"hint": PROPERTY_HINT_ENUM,
+		"hint_string": ",".join(body_names)
+	})
 	property_list.append({
 		"name": "hair",
 		"type": TYPE_STRING,
@@ -200,6 +234,14 @@ func _set(property_name: StringName, value: Variant) -> bool:
 		call_deferred("_apply_animation_value")
 		return true
 
+	if p == "body": # NEW
+		var v := String(value)
+		if m_body == v:
+			return true
+		m_body = v
+		_apply_styles_to_anim()
+		return true
+
 	if p == "hair":
 		var v := String(value)
 		if m_hair == v:
@@ -247,6 +289,8 @@ func _get(property_name: StringName) -> Variant:
 
 	if p == "animation":
 		return m_animation
+	if p == "body": # NEW
+		return m_body
 	if p == "hair":
 		return m_hair
 	if p == "legs":
@@ -336,7 +380,7 @@ func _on_animation_frame_changed() -> void:
 
 	# Jump vertical bob (same shape as your original)
 	if m_is_currently_jumping and sprite.frame > 1 and sprite.frame < 7:
-		var jump_y :float = BASE_SPRITE_OFFSET.y - (2 - abs(sprite.frame - 4)) * 16
+		var jump_y: float = BASE_SPRITE_OFFSET.y - (2 - abs(sprite.frame - 4)) * 16
 		_set_sprite_offset(Vector2(BASE_SPRITE_OFFSET.x, jump_y))
 
 func _on_animation_finished() -> void:
@@ -355,8 +399,6 @@ func _on_animation_finished() -> void:
 func _apply_animation_value() -> void:
 	if m_anim_node == null:
 		return
-	# Player is allowed to call play/stop only
-	#m_anim_node.play(m_animation)
 	_update_state()
 	if Engine.is_editor_hint():
 		notify_property_list_changed()
@@ -399,8 +441,7 @@ func _update_state() -> void:
 		m_animation = new_animation_name
 		if Engine.is_editor_hint():
 			notify_property_list_changed()
-	
-	#print("_update_state: ", new_animation_name)
+
 	m_anim_node.play(new_animation_name)
 
 # ------------------------------------------------------------
@@ -423,12 +464,14 @@ func _apply_colors_to_anim() -> void:
 	m_anim_node.shirt_color = shirt_color
 	m_anim_node.head_color = head_color
 	m_anim_node.feet_color = feet_color
+	m_anim_node.body_color = body_color # NEW
 
 func _apply_styles_to_anim() -> void:
 	if m_anim_node == null:
 		return
 
-	# Set dynamic properties on UniversalLPCAnimationSprite2D (hair/legs/shirt/head/feet)
+	# Set dynamic properties on UniversalLPCAnimationSprite2D
+	m_anim_node.set("body", m_body) # NEW
 	m_anim_node.set("hair", m_hair)
 	m_anim_node.set("legs", m_legs)
 	m_anim_node.set("shirt", m_shirt)
