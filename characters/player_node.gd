@@ -481,9 +481,7 @@ func _reconnect_after_reload() -> void:
 # ------------------------------------------------------------
 
 func _get_sprite() -> AnimatedSprite2D:
-	if m_anim_node == null:
-		return null
-	return m_anim_node.get_sprite()
+	return m_anim_node
 
 func _set_sprite_offset(offset: Vector2) -> void:
 	if m_anim_node == null:
@@ -493,7 +491,6 @@ func _set_sprite_offset(offset: Vector2) -> void:
 # ------------------------------------------------------------
 # Process + debug draw
 # ------------------------------------------------------------
-
 func _process(_delta: float) -> void:
 	if !m_last_global_position.is_equal_approx(global_position):
 		m_last_global_position = global_position

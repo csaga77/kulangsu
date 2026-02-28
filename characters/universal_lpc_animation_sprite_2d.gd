@@ -1,7 +1,7 @@
 # res://characters/universal_lpc_animation_sprite_2d.gd
 @tool
 class_name UniversalLPCAnimationSprite2D
-extends Node2D
+extends AnimatedSprite2D
 
 enum BodyTypeEnum {
 	MALE = 0,
@@ -52,6 +52,13 @@ enum BodyTypeEnum {
 		shirt_color = v
 		_reload()
 
+@export var head_color: Color = Color.WHITE:
+	set(v):
+		if head_color == v:
+			return
+		head_color = v
+		_reload()
+
 @export var feet_color: Color = Color.WHITE:
 	set(v):
 		if feet_color == v:
@@ -76,24 +83,25 @@ enum BodyTypeEnum {
 
 func get_anim_options() -> Array[String]:
 	return m_anim_options
-	
+
 func get_body_options() -> Array[String]:
 	return m_body_options
-	
+
 func get_hair_options() -> Array[String]:
 	return m_hair_options
-	
+
 func get_legs_options() -> Array[String]:
 	return m_legs_options
-	
+
 func get_shirt_options() -> Array[String]:
 	return m_shirt_options
-	
+
 func get_head_options() -> Array[String]:
 	return m_head_options
-	
+
 func get_feet_options() -> Array[String]:
 	return m_feet_options
+
 # -------------------------------------------------------------------
 # Stored values (persisted) - NOT directly shown in inspector
 # Visible inspector properties are dynamic: animation + body/hair/legs/shirt/head/feet
@@ -112,7 +120,6 @@ func get_feet_options() -> Array[String]:
 # Runtime (no option arrays stored here; options come from factory)
 # -------------------------------------------------------------------
 
-var m_sprite: AnimatedSprite2D = null
 var m_is_reloading: bool = false
 var m_current_animation_name: String = ""
 
@@ -126,7 +133,6 @@ var m_head_options: Array[String] = []
 var m_feet_options: Array[String] = []
 
 func _ready() -> void:
-	_ensure_sprite()
 	_refresh_options_and_clamp_selections()
 	_reload()
 
@@ -155,7 +161,6 @@ func _get_property_list() -> Array:
 		"hint_string": ",".join(m_anim_options)
 	})
 
-	# Body option property (NEW)
 	property_list.append({
 		"name": "body",
 		"type": TYPE_STRING,
@@ -195,18 +200,15 @@ func _get_property_list() -> Array:
 	property_list.append({
 		"name": "feet",
 		"type": TYPE_STRING,
-		"usage": PROPERTY_USAGE_DEFAULT,
-		"hint": PROPERTY_HINT_ENUM,
+		"usage": PROPERTY_HINT_ENUM,
 		"hint_string": ",".join(m_feet_options)
 	})
 
 	return property_list
 
-
 func _set(property_name: StringName, value: Variant) -> bool:
-	#print("_set:", property_name, ", value: ", value)
 	var p := String(property_name)
-	var v :String 
+	var v: String 
 	if value is String:
 		v = String(value)
 
@@ -279,13 +281,11 @@ func _set(property_name: StringName, value: Variant) -> bool:
 
 	return false
 
-
 func _get(property_name: StringName) -> Variant:
 	var p := String(property_name)
 
 	if p == "animation":
 		return m_animation
-
 	if p == "body":
 		return m_body
 	if p == "hair":
@@ -301,68 +301,25 @@ func _get(property_name: StringName) -> Variant:
 
 	return null
 
-
 # -------------------------------------------------------------------
 # PUBLIC API
 # -------------------------------------------------------------------
-
-func play(anim_name: String) -> void:
-	_ensure_sprite()
-	if m_sprite == null:
-		return
-	if m_current_animation_name == anim_name:
-		return
-
-	# Ensure options exist (so .has() works in editor)
-	if m_anim_options.is_empty():
-		_refresh_options_and_clamp_selections()
-
-	m_current_animation_name = anim_name
-	if m_animation != anim_name:
-		m_animation = anim_name
-		if Engine.is_editor_hint():
-			notify_property_list_changed()
-
-	m_sprite.stop()
-	if m_sprite.sprite_frames and m_sprite.sprite_frames.has_animation(anim_name):
-		m_sprite.play(anim_name)
-
-func stop() -> void:
-	if m_sprite:
-		m_sprite.stop()
-
-func get_sprite() -> AnimatedSprite2D:
-	return m_sprite
-
+# Backward-compatible helper for callers that expect get_sprite()
 func get_animation_names() -> Array[String]:
 	return m_anim_options
+
 # -------------------------------------------------------------------
 # Private
 # -------------------------------------------------------------------
 
 func _apply_animation_value() -> void:
-	_ensure_sprite()
-	if m_sprite == null or m_sprite.sprite_frames == null:
+	if sprite_frames == null:
 		return
 	if m_animation.is_empty():
 		return
-	if !m_sprite.sprite_frames.has_animation(m_animation):
+	if !sprite_frames.has_animation(m_animation):
 		return
 	play(m_animation)
-
-
-func _ensure_sprite() -> void:
-	if m_sprite and is_instance_valid(m_sprite):
-		return
-
-	for c in get_children():
-		if c is AnimatedSprite2D:
-			c.queue_free()
-
-	m_sprite = AnimatedSprite2D.new()
-	m_sprite.name = "sprite"
-	add_child(m_sprite)
-
 
 func _refresh_options_and_clamp_selections() -> void:
 	var f := UniversalLPCSpriteFactory.get_instance()
@@ -388,23 +345,19 @@ func _refresh_options_and_clamp_selections() -> void:
 	if Engine.is_editor_hint():
 		notify_property_list_changed()
 
-
 func _reload() -> void:
 	if m_is_reloading:
 		return
 	m_is_reloading = true
 	call_deferred("_do_reload")
 
-
 func _do_reload() -> void:
 	m_is_reloading = false
-	_ensure_sprite()
-	if m_sprite == null:
-		return
 
 	var f := UniversalLPCSpriteFactory.get_instance()
 
 	# Build frames via factory (includes BG layers + tinting)
+	# NOTE: included head_color (it was previously missing in the call)
 	var frames := f.create_sprite_frames(
 		sprite_frames_template_path,
 		int(body_type),
@@ -426,7 +379,7 @@ func _do_reload() -> void:
 			notify_property_list_changed()
 		return
 
-	m_sprite.sprite_frames = frames
+	sprite_frames = frames
 
 	# Ensure animation list is aligned with actual frames
 	m_anim_options = f.get_animation_options_from_template(sprite_frames_template_path)
@@ -435,13 +388,13 @@ func _do_reload() -> void:
 	# Play current animation if possible
 	if !m_animation.is_empty() and frames.has_animation(m_animation):
 		m_current_animation_name = m_animation
-		m_sprite.play(m_animation)
+		super.play(m_animation)
 	else:
 		var packed: PackedStringArray = frames.get_animation_names()
 		if packed.size() > 0:
 			m_animation = String(packed[0])
 			m_current_animation_name = m_animation
-			m_sprite.play(m_animation)
+			super.play(m_animation)
 
 	if Engine.is_editor_hint():
 		notify_property_list_changed()
