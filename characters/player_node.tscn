@@ -36,19 +36,21 @@ feet = "Basic Shoes"
 position = Vector2(0, -7)
 shape = SubResource("CircleShape2D_glpr6")
 
-[node name="LPCAnimationSprite2D" type="Node2D" parent="." unique_id=1494583060]
+[node name="UniversalLPCAnimationSprite2D" type="Node2D" parent="." unique_id=1331407351]
 position = Vector2(0, -32)
 script = ExtResource("3_1lao4")
 m_animation = "walk_e"
-m_hair = "Spiked"
-m_legs = "Longpants"
-m_shirt = "Longsleeve"
-m_head = "Head"
-m_feet = "Basic Shoes"
+m_body = "Human / Male Body"
+m_hair = "Default / Short"
+m_legs = "Default / Fur Pants"
+m_shirt = "Clothes / Longsleeve"
+m_head = "Human / Male Head"
+m_feet = "Foot Wears / Ghillies"
 animation = "walk_e"
-hair = "Spiked"
-legs = "Longpants"
-shirt = "Longsleeve"
-head = "Head"
-feet = "Basic Shoes"
+body = "Human / Male Body"
+hair = "Default / Short"
+legs = "Default / Fur Pants"
+shirt = "Clothes / Longsleeve"
+head = "Human / Male Head"
+feet = "Foot Wears / Ghillies"
 metadata/_custom_type_script = "uid://ewdrcktjt4py"

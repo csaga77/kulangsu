@@ -74,6 +74,26 @@ enum BodyTypeEnum {
 			_refresh_options_and_clamp_selections()
 			_reload()
 
+func get_anim_options() -> Array[String]:
+	return m_anim_options
+	
+func get_body_options() -> Array[String]:
+	return m_body_options
+	
+func get_hair_options() -> Array[String]:
+	return m_hair_options
+	
+func get_legs_options() -> Array[String]:
+	return m_legs_options
+	
+func get_shirt_options() -> Array[String]:
+	return m_shirt_options
+	
+func get_head_options() -> Array[String]:
+	return m_head_options
+	
+func get_feet_options() -> Array[String]:
+	return m_feet_options
 # -------------------------------------------------------------------
 # Stored values (persisted) - NOT directly shown in inspector
 # Visible inspector properties are dynamic: animation + body/hair/legs/shirt/head/feet
@@ -184,8 +204,11 @@ func _get_property_list() -> Array:
 
 
 func _set(property_name: StringName, value: Variant) -> bool:
+	#print("_set:", property_name, ", value: ", value)
 	var p := String(property_name)
-	var v := String(value)
+	var v :String 
+	if value is String:
+		v = String(value)
 
 	if p == "animation":
 		if m_animation == v:
@@ -294,9 +317,6 @@ func play(anim_name: String) -> void:
 	if m_anim_options.is_empty():
 		_refresh_options_and_clamp_selections()
 
-	if !m_anim_options.has(anim_name):
-		return
-
 	m_current_animation_name = anim_name
 	if m_animation != anim_name:
 		m_animation = anim_name
@@ -304,7 +324,8 @@ func play(anim_name: String) -> void:
 			notify_property_list_changed()
 
 	m_sprite.stop()
-	m_sprite.play(anim_name)
+	if m_sprite.sprite_frames and m_sprite.sprite_frames.has_animation(anim_name):
+		m_sprite.play(anim_name)
 
 func stop() -> void:
 	if m_sprite:
@@ -313,7 +334,8 @@ func stop() -> void:
 func get_sprite() -> AnimatedSprite2D:
 	return m_sprite
 
-
+func get_animation_names() -> Array[String]:
+	return m_anim_options
 # -------------------------------------------------------------------
 # Private
 # -------------------------------------------------------------------

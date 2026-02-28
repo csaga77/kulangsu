@@ -134,11 +134,11 @@ func _get_property_list() -> Array:
 
 	# Style dropdown options come from UniversalLPCAnimationSprite2D's lists
 	# (these arrays are public vars on that node)
-	var hair_names: Array[String] = m_anim_node.hair_style_names
-	var legs_names: Array[String] = m_anim_node.legs_style_names
-	var shirt_names: Array[String] = m_anim_node.shirt_style_names
-	var head_names: Array[String] = m_anim_node.head_style_names
-	var feet_names: Array[String] = m_anim_node.feet_style_names
+	var hair_names: Array[String] = m_anim_node.get_hair_options()
+	var legs_names: Array[String] = m_anim_node.get_legs_options()
+	var shirt_names: Array[String] = m_anim_node.get_shirt_options()
+	var head_names: Array[String] = m_anim_node.get_head_options()
+	var feet_names: Array[String] = m_anim_node.get_feet_options()
 
 	if hair_names.is_empty() or legs_names.is_empty() or shirt_names.is_empty() or head_names.is_empty() or feet_names.is_empty():
 		# Trigger a refresh on the anim node (safe in editor)
