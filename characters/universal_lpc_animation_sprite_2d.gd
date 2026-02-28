@@ -24,6 +24,13 @@ enum BodyTypeEnum {
 		_refresh_options_and_clamp_selections()
 		_reload()
 
+@export var body_color: Color = Color.WHITE:
+	set(v):
+		if body_color == v:
+			return
+		body_color = v
+		_reload()
+
 @export var hair_color: Color = Color.BLACK:
 	set(v):
 		if hair_color == v:
@@ -43,13 +50,6 @@ enum BodyTypeEnum {
 		if shirt_color == v:
 			return
 		shirt_color = v
-		_reload()
-
-@export var head_color: Color = Color.WHITE:
-	set(v):
-		if head_color == v:
-			return
-		head_color = v
 		_reload()
 
 @export var feet_color: Color = Color.WHITE:
@@ -414,10 +414,10 @@ func _do_reload() -> void:
 		m_shirt,
 		m_head,
 		m_feet,
+		body_color,
 		hair_color,
 		legs_color,
 		shirt_color,
-		head_color,
 		feet_color
 	)
 

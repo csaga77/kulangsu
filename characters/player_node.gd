@@ -62,13 +62,6 @@ const BASE_SPRITE_OFFSET: Vector2 = Vector2(0, -32)
 		shirt_color = v
 		_apply_colors_to_anim()
 
-@export var head_color: Color = Color.WHITE:
-	set(v):
-		if head_color == v:
-			return
-		head_color = v
-		_apply_colors_to_anim()
-
 @export var feet_color: Color = Color.WHITE:
 	set(v):
 		if feet_color == v:
@@ -462,9 +455,8 @@ func _apply_colors_to_anim() -> void:
 	m_anim_node.hair_color = hair_color
 	m_anim_node.legs_color = legs_color
 	m_anim_node.shirt_color = shirt_color
-	m_anim_node.head_color = head_color
 	m_anim_node.feet_color = feet_color
-	m_anim_node.body_color = body_color # NEW
+	m_anim_node.body_color = body_color
 
 func _apply_styles_to_anim() -> void:
 	if m_anim_node == null:

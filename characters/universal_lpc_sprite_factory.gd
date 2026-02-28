@@ -164,10 +164,10 @@ func create_sprite_frames(
 	selected_shirt: String,
 	selected_head: String,
 	selected_feet: String,
+	body_color: Color,
 	hair_color: Color,
 	legs_color: Color,
 	shirt_color: Color,
-	head_color: Color,
 	feet_color: Color
 ) -> SpriteFrames:
 	var sprite_frames: SpriteFrames = load(sprite_frames_template_path)
@@ -197,10 +197,10 @@ func create_sprite_frames(
 		shirt_path,
 		head_path,
 		feet_path,
+		body_color,
 		hair_color,
 		legs_color,
 		shirt_color,
-		head_color,
 		feet_color
 	)
 	if atlas_image == null:
@@ -230,10 +230,10 @@ func create_sprite_atlas_image(
 	shirt_path: String,
 	head_path: String,
 	feet_path: String,
+	body_color: Color,
 	hair_color: Color,
 	legs_color: Color,
 	shirt_color: Color,
-	head_color: Color,
 	feet_color: Color
 ) -> Image:
 	if body_path.is_empty():
@@ -247,7 +247,7 @@ func create_sprite_atlas_image(
 	var p: String
 	p = _bg_path(body_path)
 	if !p.is_empty():
-		bg_layers.append({"path": p, "tint": Color.WHITE, "tint_on": false})
+		bg_layers.append({"path": p, "tint": body_color, "tint_on": true})
 
 	p = _bg_path(feet_path)
 	if !p.is_empty():
@@ -263,7 +263,7 @@ func create_sprite_atlas_image(
 
 	p = _bg_path(head_path)
 	if !p.is_empty():
-		bg_layers.append({"path": p, "tint": head_color, "tint_on": true})
+		bg_layers.append({"path": p, "tint": body_color, "tint_on": true})
 
 	p = _bg_path(hair_path)
 	if !p.is_empty():
@@ -278,7 +278,7 @@ func create_sprite_atlas_image(
 		)
 
 	# 2) Main layers
-	combined = _blend_layer_image(combined, body_path, Color.WHITE, false)
+	combined = _blend_layer_image(combined, body_path, body_color, true)
 
 	if !feet_path.is_empty():
 		combined = _blend_layer_image(combined, feet_path, feet_color, true)
@@ -287,7 +287,7 @@ func create_sprite_atlas_image(
 	if !shirt_path.is_empty():
 		combined = _blend_layer_image(combined, shirt_path, shirt_color, true)
 	if !head_path.is_empty():
-		combined = _blend_layer_image(combined, head_path, head_color, true)
+		combined = _blend_layer_image(combined, head_path, body_color, true)
 	if !hair_path.is_empty():
 		combined = _blend_layer_image(combined, hair_path, hair_color, true)
 
