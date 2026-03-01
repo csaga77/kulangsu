@@ -19,20 +19,19 @@ motion_mode = 1
 script = ExtResource("1_wfnr8")
 direction = -90.0
 hair_color = Color(0, 0, 0, 1)
-m_face = "<none>"
+m_face = "Human / Happy"
 m_hair = "Default / Hair Long Loose Blonde"
 m_legs = "Default / Cuffed Pants White"
 m_shirt = "Clothes / Sleeveless White"
 m_head = "Human / Male"
-m_feet = "Foot Wears / Basic Shoes Black"
 animation = "idle_s"
 body = "Default"
-face = "<none>"
+face = "Human / Happy"
 hair = "Default / Hair Long Loose Blonde"
 legs = "Default / Cuffed Pants White"
 shirt = "Clothes / Sleeveless White"
 head = "Human / Male"
-feet = "Foot Wears / Basic Shoes Black"
+feet = "<none>"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=403533052]
 position = Vector2(0, -7)
