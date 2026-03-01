@@ -28,7 +28,7 @@ buses/default_bus_layout="uid://051uw6ym0efo"
 window/size/viewport_width=1440
 window/size/viewport_height=810
 window/stretch/mode="canvas_items"
-window/stretch/scale=2.0
+window/stretch/scale=4.0
 
 [input]
 
