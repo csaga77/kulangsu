@@ -65,7 +65,7 @@ enum BodyTypeEnum {
 		body_color = v
 		_reload()
 
-@export var hair_color: Color = Color.BLACK:
+@export var hair_color: Color = Color.WHITE:
 	set(v):
 		if hair_color == v:
 			return

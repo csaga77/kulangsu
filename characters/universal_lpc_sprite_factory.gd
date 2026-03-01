@@ -19,7 +19,7 @@ static func get_instance() -> UniversalLPCSpriteFactory:
 # ------------------------------------------------------------
 const DEFAULT_SPRITE_FRAMES_TEMPLATE_PATH: String = "res://resources/animations/characters/male_animations.tres"
 
-func _get_template_path_for_body_type(body_type: int) -> String:
+func _get_template_path_for_body_type(_body_type: int) -> String:
 	return DEFAULT_SPRITE_FRAMES_TEMPLATE_PATH
 
 
@@ -35,10 +35,10 @@ const HAIR_OPTIONS := {
 
 const FACE_OPTIONS := {
 	"Human": [
-		{"path": "res://resources/sprites/characters/head/faces/human/child/",  "body_types": ["child"]},
-		{"path": "res://resources/sprites/characters/head/faces/human/male/",   "body_types": ["male", "muscular"]},
-		{"path": "res://resources/sprites/characters/head/faces/human/female/", "body_types": ["female", "teen"]},
-		{"path": "res://resources/sprites/characters/head/faces/human/elderly/","body_types": ["adult"], "head_types": ["elderly"]},
+		{"path": "res://resources/sprites/characters/head/faces/human/child/",   "body_types": ["child"]},
+		{"path": "res://resources/sprites/characters/head/faces/human/male/",    "body_types": ["male", "muscular"]},
+		{"path": "res://resources/sprites/characters/head/faces/human/female/",  "body_types": ["female", "teen"]},
+		{"path": "res://resources/sprites/characters/head/faces/human/elderly/", "body_types": ["adult"], "head_types": ["elderly"]},
 	],
 }
 
@@ -62,21 +62,21 @@ const BODY_OPTIONS := {
 
 const LEGS_OPTIONS := {
 	"Default": [
-		{"path": "res://resources/sprites/characters/legs/male/",      "body_types": ["male"]},
-		{"path": "res://resources/sprites/characters/legs/muscular/",  "body_types": ["muscular"]},
-		{"path": "res://resources/sprites/characters/legs/pregnant/",  "body_types": ["pregnant"]},
-		{"path": "res://resources/sprites/characters/legs/child/",     "body_types": ["child"]},
-		{"path": "res://resources/sprites/characters/legs/thin/",      "body_types": ["thin"]},
+		{"path": "res://resources/sprites/characters/legs/male/",     "body_types": ["male"]},
+		{"path": "res://resources/sprites/characters/legs/muscular/", "body_types": ["muscular"]},
+		{"path": "res://resources/sprites/characters/legs/pregnant/", "body_types": ["pregnant"]},
+		{"path": "res://resources/sprites/characters/legs/child/",    "body_types": ["child"]},
+		{"path": "res://resources/sprites/characters/legs/thin/",     "body_types": ["thin"]},
 	],
 }
 
 const SHIRT_OPTIONS := {
 	"Clothes": [
-		{"path": "res://resources/sprites/characters/torso/clothes/male/",      "body_types": ["male"]},
-		{"path": "res://resources/sprites/characters/torso/clothes/teen/",      "body_types": ["teen"]},
-		{"path": "res://resources/sprites/characters/torso/clothes/pregnant/",  "body_types": ["pregnant"]},
-		{"path": "res://resources/sprites/characters/torso/clothes/child/",     "body_types": ["child"]},
-		{"path": "res://resources/sprites/characters/torso/clothes/female/",    "body_types": ["female"]},
+		{"path": "res://resources/sprites/characters/torso/clothes/male/",     "body_types": ["male"]},
+		{"path": "res://resources/sprites/characters/torso/clothes/teen/",     "body_types": ["teen"]},
+		{"path": "res://resources/sprites/characters/torso/clothes/pregnant/", "body_types": ["pregnant"]},
+		{"path": "res://resources/sprites/characters/torso/clothes/child/",    "body_types": ["child"]},
+		{"path": "res://resources/sprites/characters/torso/clothes/female/",   "body_types": ["female"]},
 	],
 }
 
@@ -87,11 +87,12 @@ const FEET_OPTIONS := {
 	]
 }
 
+
 # ------------------------------------------------------------
 # Cache
 # ------------------------------------------------------------
 var m_cache_hair: Dictionary = {}       # key: "hair:<body_key>:<options_hash>"
-var m_cache_parts: Dictionary = {}      # key: "<part>:<body_key>:<options_hash>"
+var m_cache_parts: Dictionary = {}      # key: "<part>:<body_key>:<options_hash>[:<head_type>]"
 var m_cache_animations: Dictionary = {} # template_path -> Array[String]
 
 
@@ -101,23 +102,24 @@ var m_cache_animations: Dictionary = {} # template_path -> Array[String]
 func get_hair_options(body_type: int) -> Array[String]:
 	return _cached_names(_get_hair_cache(body_type))
 
-func get_face_options(body_type: int) -> Array[String]:
-	return _cached_names(_get_part_cache("face", body_type, FACE_OPTIONS, "Human", "<none>"))
+# Backward-compatible: defaults to non-elderly face cache.
+func get_face_options(body_type: int, head_type: String = "") -> Array[String]:
+	return _cached_names(_get_part_cache("face", body_type, FACE_OPTIONS, "Human", "<none>", head_type))
 
 func get_body_options(body_type: int) -> Array[String]:
-	return _cached_names(_get_part_cache("body", body_type, BODY_OPTIONS, "Human", "Default"))
+	return _cached_names(_get_part_cache("body", body_type, BODY_OPTIONS, "Human", "Default", ""))
 
 func get_legs_options(body_type: int) -> Array[String]:
-	return _cached_names(_get_part_cache("legs", body_type, LEGS_OPTIONS, "Default", "<none>"))
+	return _cached_names(_get_part_cache("legs", body_type, LEGS_OPTIONS, "Default", "<none>", ""))
 
 func get_shirt_options(body_type: int) -> Array[String]:
-	return _cached_names(_get_part_cache("shirt", body_type, SHIRT_OPTIONS, "Clothes", "<none>"))
+	return _cached_names(_get_part_cache("shirt", body_type, SHIRT_OPTIONS, "Clothes", "<none>", ""))
 
 func get_head_options(body_type: int) -> Array[String]:
-	return _cached_names(_get_part_cache("head", body_type, HEAD_OPTIONS, "Human", "Default"))
+	return _cached_names(_get_part_cache("head", body_type, HEAD_OPTIONS, "Human", "Default", ""))
 
 func get_feet_options(body_type: int) -> Array[String]:
-	return _cached_names(_get_part_cache("feet", body_type, FEET_OPTIONS, "Foot Wears", "<none>"))
+	return _cached_names(_get_part_cache("feet", body_type, FEET_OPTIONS, "Foot Wears", "<none>", ""))
 
 func get_valid_style_value(style_value: String, options: Array[String]) -> String:
 	if options.is_empty():
@@ -217,7 +219,7 @@ func create_sprite_atlas_image(layers: Array[Dictionary]) -> Image:
 			continue
 
 		var tint_on := bool(layer.get("tint_on", true))
-		var tint :Color = layer.get("tint", Color.WHITE)
+		var tint: Color = layer.get("tint", Color.WHITE)
 
 		var bg_path := _bg_path(path)
 		if !bg_path.is_empty():
@@ -230,7 +232,7 @@ func create_sprite_atlas_image(layers: Array[Dictionary]) -> Image:
 			continue
 
 		var tint_on2 := bool(layer.get("tint_on", true))
-		var tint2 :Color = layer.get("tint", Color.WHITE)
+		var tint2: Color = layer.get("tint", Color.WHITE)
 
 		combined = _blend_layer_image(combined, path2, tint2, tint_on2)
 
@@ -241,31 +243,54 @@ func create_sprite_atlas_image(layers: Array[Dictionary]) -> Image:
 # Internal: resolve flexible layers -> file paths
 # ============================================================
 func _resolve_layers(body_type: int, layers: Array[Dictionary]) -> Array[Dictionary]:
-	var out: Array[Dictionary] = []
-
+	# 1) First resolve "head" path (if any), so we can infer head_type for face.
+	var resolved_head_path := ""
 	for l_any in layers:
 		var l: Dictionary = l_any if l_any is Dictionary else {}
-		var tint :Color = l.get("tint", Color.WHITE)
-		var tint_on := bool(l.get("tint_on", true))
+
+		# Direct head path
+		if String(l.get("part", "")) == "head":
+			if l.has("path"):
+				resolved_head_path = String(l.get("path", ""))
+				break
+			else:
+				var style := String(l.get("style", ""))
+				var hp := _resolve_part_style_to_path("head", body_type, style, "")
+				if !hp.is_empty():
+					resolved_head_path = hp
+					break
+
+	var inferred_head_type := _infer_head_type_from_head_path(resolved_head_path)
+
+	# 2) Resolve all layers, routing face via inferred_head_type.
+	var out: Array[Dictionary] = []
+
+	for l_any2 in layers:
+		var l2: Dictionary = l_any2 if l_any2 is Dictionary else {}
+		var tint: Color = l2.get("tint", Color.WHITE)
+		var tint_on := bool(l2.get("tint_on", true))
 
 		# Direct path provided
-		if l.has("path"):
-			var p := String(l.get("path", ""))
+		if l2.has("path"):
+			var p := String(l2.get("path", ""))
 			if !p.is_empty():
 				out.append({"path": p, "tint": tint, "tint_on": tint_on})
 			continue
 
 		# Resolve from part/style
-		var part := String(l.get("part", ""))
-		var style := String(l.get("style", ""))
-		var resolved := _resolve_part_style_to_path(part, body_type, style)
+		var part := String(l2.get("part", ""))
+		var style := String(l2.get("style", ""))
+
+		var head_type_for_part := inferred_head_type if part == "face" else ""
+		var resolved := _resolve_part_style_to_path(part, body_type, style, head_type_for_part)
+
 		if !resolved.is_empty():
 			out.append({"path": resolved, "tint": tint, "tint_on": tint_on})
 
 	return out
 
 
-func _resolve_part_style_to_path(part: String, body_type: int, style: String) -> String:
+func _resolve_part_style_to_path(part: String, body_type: int, style: String, head_type: String) -> String:
 	if style.is_empty() or style == "<none>":
 		return ""
 
@@ -273,23 +298,33 @@ func _resolve_part_style_to_path(part: String, body_type: int, style: String) ->
 		return _resolve_from_cache(_get_hair_cache(body_type), style)
 
 	if part == "body":
-		return _resolve_from_cache(_get_part_cache("body", body_type, BODY_OPTIONS, "Human", "Default"), style)
+		return _resolve_from_cache(_get_part_cache("body", body_type, BODY_OPTIONS, "Human", "Default", ""), style)
 
 	if part == "legs":
-		return _resolve_from_cache(_get_part_cache("legs", body_type, LEGS_OPTIONS, "Default", "<none>"), style)
+		return _resolve_from_cache(_get_part_cache("legs", body_type, LEGS_OPTIONS, "Default", "<none>", ""), style)
 
 	if part == "shirt":
-		return _resolve_from_cache(_get_part_cache("shirt", body_type, SHIRT_OPTIONS, "Clothes", "<none>"), style)
+		return _resolve_from_cache(_get_part_cache("shirt", body_type, SHIRT_OPTIONS, "Clothes", "<none>", ""), style)
 
 	if part == "head":
-		return _resolve_from_cache(_get_part_cache("head", body_type, HEAD_OPTIONS, "Human", "Default"), style)
-		
+		return _resolve_from_cache(_get_part_cache("head", body_type, HEAD_OPTIONS, "Human", "Default", ""), style)
+
 	if part == "face":
-		return _resolve_from_cache(_get_part_cache("face", body_type, FACE_OPTIONS, "Human", "<none>"), style)
+		return _resolve_from_cache(_get_part_cache("face", body_type, FACE_OPTIONS, "Human", "<none>", head_type), style)
 
 	if part == "feet":
-		return _resolve_from_cache(_get_part_cache("feet", body_type, FEET_OPTIONS, "Foot Wears", "<none>"), style)
+		return _resolve_from_cache(_get_part_cache("feet", body_type, FEET_OPTIONS, "Foot Wears", "<none>", ""), style)
 
+	return ""
+
+
+func _infer_head_type_from_head_path(head_path: String) -> String:
+	if head_path.is_empty():
+		return ""
+	var s := head_path.to_lower()
+	# Rule: contains "_elderly" OR "elderly_"
+	if s.find("_elderly") != -1 or s.find("elderly_") != -1:
+		return "elderly"
 	return ""
 
 
@@ -316,7 +351,7 @@ func _get_hair_cache(body_type: int) -> Dictionary:
 	if m_cache_hair.has(cache_key):
 		return m_cache_hair[cache_key]
 
-	var out := _get_options_cache(HAIR_OPTIONS, body_type, "Default", "Bald")
+	var out := _get_options_cache(HAIR_OPTIONS, body_type, "Default", "Bald", "")
 	m_cache_hair[cache_key] = out
 	return out
 
@@ -341,13 +376,20 @@ func _get_part_cache(
 	body_type: int,
 	options_dict: Dictionary,
 	default_category: String,
-	empty_name: String
+	empty_name: String,
+	head_type: String
 ) -> Dictionary:
-	var cache_key := part + ":" + _body_key(body_type) + ":" + str(options_dict.hash())
+	var ht := head_type.strip_edges().to_lower()
+	var ht_key := ""
+	# Only faces are head-type dependent (keep others stable)
+	if part == "face" and !ht.is_empty():
+		ht_key = ":head_type=" + ht
+
+	var cache_key := part + ":" + _body_key(body_type) + ":" + str(options_dict.hash()) + ht_key
 	if m_cache_parts.has(cache_key):
 		return m_cache_parts[cache_key]
 
-	var out := _get_options_cache(options_dict, body_type, default_category, empty_name)
+	var out := _get_options_cache(options_dict, body_type, default_category, empty_name, ht)
 	m_cache_parts[cache_key] = out
 	return out
 
@@ -355,11 +397,15 @@ func _get_part_cache(
 # IMPORTANT CHANGE:
 # - If empty_name == "Default", ALWAYS create a "Default" entry and bind it to
 #   the first discovered sprite in default_category (preferred) for ALL parts.
+# - head_type filtering:
+#   * If head_type is non-empty, ONLY variants whose "head_types" includes it are eligible.
+#   * If head_type is empty, variants that specify "head_types" are ignored (reserved variants).
 func _get_options_cache(
 	options_dict: Dictionary,
 	body_type: int,
 	default_category: String,
-	empty_name: String
+	empty_name: String,
+	head_type: String
 ) -> Dictionary:
 	var names: Array[String] = []
 	var name_to_path: Dictionary = {}
@@ -385,7 +431,7 @@ func _get_options_cache(
 		var variants_any: Variant = options_dict.get(category, [])
 		var variants: Array = variants_any if variants_any is Array else []
 
-		var folder := _pick_folder_for_tags(variants, tags)
+		var folder := _pick_folder_for_tags_and_head_type(variants, tags, head_type)
 		if folder.is_empty():
 			continue
 
@@ -422,16 +468,43 @@ func _get_options_cache(
 	return {"names": names, "name_to_path": name_to_path}
 
 
-func _pick_folder_for_tags(variants: Array, tags: Array[String]) -> String:
+func _pick_folder_for_tags_and_head_type(variants: Array, body_tags: Array[String], head_type: String) -> String:
+	var ht := head_type.strip_edges().to_lower()
+
 	for v_any in variants:
 		var v: Dictionary = v_any if v_any is Dictionary else {}
-		var supported := _variant_supported_body_types(v)
 
-		for tag in tags:
+		# Head type gating (if variant declares head_types)
+		var v_head_types := _variant_supported_head_types(v)
+		if ht.is_empty():
+			# If we are NOT in a head-typed request, ignore reserved variants that declare head_types.
+			if v_head_types.size() > 0:
+				continue
+		else:
+			# If we ARE in a head-typed request, require a match.
+			if v_head_types.size() == 0:
+				continue
+			if v_head_types.find(ht) == -1:
+				continue
+
+		var supported := _variant_supported_body_types(v)
+		for tag in body_tags:
 			if supported.has(tag):
 				return String(v.get("path", ""))
 
 	return ""
+
+
+func _variant_supported_head_types(v: Dictionary) -> Array[String]:
+	var out: Array[String] = []
+	var raw: Variant = v.get("head_types", [])
+	if raw is Array:
+		for e in raw:
+			out.append(String(e).to_lower())
+	elif raw is PackedStringArray:
+		for e2 in raw:
+			out.append(String(e2).to_lower())
+	return out
 
 
 func _variant_supported_body_types(v: Dictionary) -> Array[String]:
@@ -582,10 +655,7 @@ func _cast_to_string_array(v: Variant) -> Array[String]:
 	return out
 
 
-func _format_style_display_name(
-	file_base_name: String,
-	empty_option_name: String
-) -> String:
+func _format_style_display_name(file_base_name: String, empty_option_name: String) -> String:
 	var name := file_base_name
 	if name.is_empty():
 		return empty_option_name
