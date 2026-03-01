@@ -1,7 +1,7 @@
 @tool
 extends Node2D
 
-@onready var m_player :Player = $player
+@onready var m_player :HumanBody2D = $player
 var m_is_ready := false
 
 # Called when the node enters the scene tree for the first time.

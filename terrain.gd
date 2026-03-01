@@ -22,7 +22,7 @@ extends IsometricBlock
 @export var water_tile_coords := Vector2i(4, 16)
 @export var tile_alternative  := 0
 
-@export var player :Player:
+@export var player :HumanBody2D:
 	get:
 		return m_player
 	set(new_player):
@@ -39,7 +39,7 @@ extends IsometricBlock
 @onready var m_water   :TileMapLayer = $water
 @onready var m_building_mask :TileMapLayer = $building_mask
 var m_is_ready := false
-var m_player :Player
+var m_player :HumanBody2D
 
 func _ready() -> void:
 	m_is_ready = true

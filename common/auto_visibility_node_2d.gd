@@ -8,7 +8,7 @@ extends IsometricBlock
 @export var is_inverted := false
 @export var is_enabled := true
 
-var m_player: Player = null
+var m_player: HumanBody2D = null
 var m_target_visible := true
 var m_is_changing_visibility := false
 
@@ -33,7 +33,7 @@ func _on_player_changed() -> void:
 
 	_set_player(gg.get_player())
 
-func _set_player(new_player: Player) -> void:
+func _set_player(new_player: HumanBody2D) -> void:
 	if m_player == new_player:
 		return
 

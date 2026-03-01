@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://dqivkaosuu5nr" path="res://scenes/test_room.tscn" id="2_wtsjf"]
 [ext_resource type="Material" uid="uid://dw5sarpgr1teb" path="res://resources/materials/wall_transparent.tres" id="3_njel3"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="4_vr1i5"]
-[ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/player_node.tscn" id="5_rpuu0"]
+[ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/human_body_2d.tscn" id="5_rpuu0"]
 [ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/player_controller.gd" id="6_oo8pe"]
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="7_4gito"]
 [ext_resource type="Shader" uid="uid://bx1o4bv3qtrdm" path="res://scenes/lighting.gdshader" id="8_h3xc6"]

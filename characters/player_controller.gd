@@ -1,7 +1,7 @@
 class_name PlayerController
 extends Node
 
-@export var player :Player
+@export var player :HumanBody2D
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:

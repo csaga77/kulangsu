@@ -9,7 +9,7 @@ static func get_instance() -> GameGlobal:
 	
 signal player_changed()
 	
-func get_player() -> Player:
+func get_player() -> HumanBody2D:
 	return m_player
 	
 func set_player(new_player) -> void:
@@ -22,4 +22,4 @@ func set_player(new_player) -> void:
 
 static var m_instance :GameGlobal
 
-var m_player: Player
+var m_player: HumanBody2D

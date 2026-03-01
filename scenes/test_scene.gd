@@ -9,7 +9,7 @@ extends Node2D
 		building = new_building
 		call_deferred("_reload_building")
 		
-@onready var m_player :Player = $Player
+@onready var m_player :HumanBody2D = $Player
 @onready var m_root   :Node2D = $Root
 
 func _ready() -> void:
