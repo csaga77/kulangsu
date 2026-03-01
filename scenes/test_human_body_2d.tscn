@@ -4,13 +4,25 @@
 [ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/player_controller.gd" id="2_buv3e"]
 
 [node name="test_human_body_2d" type="Node2D" unique_id=1051547171]
-
-[node name="human_body_2d" parent="." unique_id=536638414 instance=ExtResource("1_rm1ms")]
-position = Vector2(130, 118)
-hair_color = Color(0.2159017, 0.21590173, 0.2159017, 1)
-m_head = "Default"
-head = "Default"
+y_sort_enabled = true
 
 [node name="controller" type="Node" parent="." unique_id=1582765273 node_paths=PackedStringArray("player")]
 script = ExtResource("2_buv3e")
-player = NodePath("../human_body_2d")
+player = NodePath("../male")
+
+[node name="male" parent="." unique_id=536638414 instance=ExtResource("1_rm1ms")]
+position = Vector2(130, 118)
+hair_color = Color(0.2159017, 0.21590173, 0.2159017, 1)
+m_hair = "Default / Hair Spiked2 White"
+hair = "Default / Hair Spiked2 White"
+
+[node name="female" parent="." unique_id=1255111382 instance=ExtResource("1_rm1ms")]
+position = Vector2(288, 46)
+body_type = 1
+body_color = Color(0.7539839, 0.75398386, 0.75398386, 1)
+m_body = "Default"
+m_head = "Human / Female"
+m_feet = "<none>"
+body = "Default"
+head = "Human / Female"
+feet = "<none>"

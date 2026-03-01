@@ -191,7 +191,7 @@ func create_sprite_frames(body_type: int, layers: Array[Dictionary]) -> SpriteFr
 
 	for anim_name in sprite_frames.get_animation_names():
 		var count := sprite_frames.get_frame_count(anim_name)
-		for i in count:
+		for i in range(count):
 			var orig := sprite_frames.get_frame_texture(anim_name, i)
 			var atlas := orig.duplicate() as AtlasTexture
 			if atlas:
@@ -205,36 +205,40 @@ func create_sprite_frames(body_type: int, layers: Array[Dictionary]) -> SpriteFr
 # Public API: create atlas image (strict BG inversion rule)
 # ------------------------------------------------------------
 func create_sprite_atlas_image(layers: Array[Dictionary]) -> Image:
-	var normalized := _normalize_layers(layers)
-	if normalized.is_empty():
-		return null
-
 	var combined: Image = null
 
 	# 1) BG pass: STRICT inverted order of layers
-	for i in range(normalized.size() - 1, -1, -1):
-		var layer := normalized[i]
+	for i in range(layers.size() - 1, -1, -1):
+		var layer := layers[i]
+		var is_bg_on := bool(layer.get("is_bg_on", true))
+		if !is_bg_on:
+			continue
 		var path := String(layer.get("path", ""))
 		if path.is_empty():
 			continue
 
 		var tint_on := bool(layer.get("tint_on", true))
 		var tint: Color = layer.get("tint", Color.WHITE)
+		var tint_mask: Array[Color] = ContainerUtils.to_color_array(layer.get("tint_mask", []))
 
 		var bg_path := _bg_path(path)
 		if !bg_path.is_empty():
-			combined = _blend_layer_image(combined, bg_path, tint, tint_on)
+			combined = _blend_layer_image(combined, bg_path, tint, tint_on, tint_mask)
 
 	# 2) Main pass: forward order
-	for layer in normalized:
-		var path2 := String(layer.get("path", ""))
-		if path2.is_empty():
+	for layer in layers:
+		var is_fg_on := bool(layer.get("is_fg_on", true))
+		if !is_fg_on:
+			continue
+		var path := String(layer.get("path", ""))
+		if path.is_empty():
 			continue
 
-		var tint_on2 := bool(layer.get("tint_on", true))
-		var tint2: Color = layer.get("tint", Color.WHITE)
+		var tint_on := bool(layer.get("tint_on", true))
+		var tint: Color = layer.get("tint", Color.WHITE)
+		var tint_mask: Array[Color] = ContainerUtils.to_color_array(layer.get("tint_mask", []))
 
-		combined = _blend_layer_image(combined, path2, tint2, tint_on2)
+		combined = _blend_layer_image(combined, path, tint, tint_on, tint_mask)
 
 	return combined
 
@@ -248,7 +252,6 @@ func _resolve_layers(body_type: int, layers: Array[Dictionary]) -> Array[Diction
 	for l_any in layers:
 		var l: Dictionary = l_any if l_any is Dictionary else {}
 
-		# Direct head path
 		if String(l.get("part", "")) == "head":
 			if l.has("path"):
 				resolved_head_path = String(l.get("path", ""))
@@ -267,14 +270,12 @@ func _resolve_layers(body_type: int, layers: Array[Dictionary]) -> Array[Diction
 
 	for l_any2 in layers:
 		var l2: Dictionary = l_any2 if l_any2 is Dictionary else {}
-		var tint: Color = l2.get("tint", Color.WHITE)
-		var tint_on := bool(l2.get("tint_on", true))
 
 		# Direct path provided
 		if l2.has("path"):
 			var p := String(l2.get("path", ""))
 			if !p.is_empty():
-				out.append({"path": p, "tint": tint, "tint_on": tint_on})
+				out.append(l2)
 			continue
 
 		# Resolve from part/style
@@ -283,9 +284,9 @@ func _resolve_layers(body_type: int, layers: Array[Dictionary]) -> Array[Diction
 
 		var head_type_for_part := inferred_head_type if part == "face" else ""
 		var resolved := _resolve_part_style_to_path(part, body_type, style, head_type_for_part)
-
 		if !resolved.is_empty():
-			out.append({"path": resolved, "tint": tint, "tint_on": tint_on})
+			l2["path"] = resolved
+			out.append(l2)
 
 	return out
 
@@ -296,22 +297,16 @@ func _resolve_part_style_to_path(part: String, body_type: int, style: String, he
 
 	if part == "hair":
 		return _resolve_from_cache(_get_hair_cache(body_type), style)
-
 	if part == "body":
 		return _resolve_from_cache(_get_part_cache("body", body_type, BODY_OPTIONS, "Human", "Default", ""), style)
-
 	if part == "legs":
 		return _resolve_from_cache(_get_part_cache("legs", body_type, LEGS_OPTIONS, "Default", "<none>", ""), style)
-
 	if part == "shirt":
 		return _resolve_from_cache(_get_part_cache("shirt", body_type, SHIRT_OPTIONS, "Clothes", "<none>", ""), style)
-
 	if part == "head":
 		return _resolve_from_cache(_get_part_cache("head", body_type, HEAD_OPTIONS, "Human", "Default", ""), style)
-
 	if part == "face":
 		return _resolve_from_cache(_get_part_cache("face", body_type, FACE_OPTIONS, "Human", "<none>", head_type), style)
-
 	if part == "feet":
 		return _resolve_from_cache(_get_part_cache("feet", body_type, FEET_OPTIONS, "Foot Wears", "<none>", ""), style)
 
@@ -326,21 +321,6 @@ func _infer_head_type_from_head_path(head_path: String) -> String:
 	if s.find("_elderly") != -1 or s.find("elderly_") != -1:
 		return "elderly"
 	return ""
-
-
-func _normalize_layers(layers: Array[Dictionary]) -> Array[Dictionary]:
-	var out: Array[Dictionary] = []
-	for l_any in layers:
-		var l: Dictionary = l_any if l_any is Dictionary else {}
-		var p := String(l.get("path", ""))
-		if p.is_empty():
-			continue
-		out.append({
-			"path": p,
-			"tint": l.get("tint", Color.WHITE),
-			"tint_on": bool(l.get("tint_on", true))
-		})
-	return out
 
 
 # ============================================================
@@ -594,7 +574,8 @@ func _blend_layer_image(
 	combined_image: Image,
 	layer_path: String,
 	tint_color: Color,
-	apply_tint: bool
+	apply_tint: bool,
+	mask: Array[Color] = []
 ) -> Image:
 	if layer_path.is_empty():
 		return combined_image
@@ -608,7 +589,8 @@ func _blend_layer_image(
 		return combined_image
 
 	if apply_tint:
-		img = ImageUtils.colorize_image(img, tint_color)
+		# Tint in-place on the layer image to avoid extra copies.
+		img = ImageUtils.colorize_image(img, tint_color, false, mask, false)
 
 	if combined_image == null:
 		return img
@@ -662,7 +644,7 @@ func _format_style_display_name(file_base_name: String, empty_option_name: Strin
 
 	name = name.replace("_", " ")
 	var words := name.split(" ", false)
-	for i in words.size():
+	for i in range(words.size()):
 		var w: String = words[i]
 		if w.length() == 0:
 			continue

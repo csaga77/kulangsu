@@ -93,12 +93,12 @@ enum BodyTypeEnum {
 		feet_color = v
 		_reload()
 
-#private memebers
+# private members
 # Stored values (persisted) for dynamic dropdowns on HumanBody2D
 @export_storage var m_animation: String = "idle_s"
 
 @export_storage var m_body: String = "Default"
-@export_storage var m_face: String = "Default" # NEW
+@export_storage var m_face: String = "Default"
 @export_storage var m_hair: String = "Bald"
 @export_storage var m_legs: String = "<none>"
 @export_storage var m_shirt: String = "<none>"
@@ -118,7 +118,7 @@ var m_is_reloading: bool = false
 # Cached options for building inspector hint strings (names only)
 var m_anim_options: Array[String] = []
 var m_body_options: Array[String] = []
-var m_face_options: Array[String] = [] # NEW
+var m_face_options: Array[String] = []
 var m_hair_options: Array[String] = []
 var m_legs_options: Array[String] = []
 var m_shirt_options: Array[String] = []
@@ -169,7 +169,7 @@ func _get_property_list() -> Array:
 		"hint": PROPERTY_HINT_ENUM,
 		"hint_string": ",".join(m_body_options)
 	})
-	property_list.append({ # NEW
+	property_list.append({
 		"name": "face",
 		"type": TYPE_STRING,
 		"usage": PROPERTY_USAGE_DEFAULT,
@@ -217,9 +217,7 @@ func _get_property_list() -> Array:
 
 func _set(property_name: StringName, value: Variant) -> bool:
 	var p := String(property_name)
-	var v: String
-	if value is String:
-		v = String(value)
+	var v: String = String(value) if value is String else ""
 
 	if p == "animation":
 		if m_animation == v:
@@ -240,7 +238,7 @@ func _set(property_name: StringName, value: Variant) -> bool:
 			notify_property_list_changed()
 		return true
 
-	if p == "face": # NEW
+	if p == "face":
 		v = f.get_valid_style_value(v, m_face_options)
 		if m_face == v:
 			return true
@@ -310,7 +308,7 @@ func _get(property_name: StringName) -> Variant:
 		return m_animation
 	if p == "body":
 		return m_body
-	if p == "face": # NEW
+	if p == "face":
 		return m_face
 	if p == "hair":
 		return m_hair
@@ -390,7 +388,7 @@ func _on_animation_frame_changed() -> void:
 		return
 	_set_sprite_offset(BASE_SPRITE_OFFSET)
 	if m_is_currently_jumping and sprite.frame > 1 and sprite.frame < 7:
-		var jump_y :float = BASE_SPRITE_OFFSET.y - (2 - abs(sprite.frame - 4)) * 16
+		var jump_y: float = BASE_SPRITE_OFFSET.y - (2 - abs(sprite.frame - 4)) * 16
 		_set_sprite_offset(Vector2(BASE_SPRITE_OFFSET.x, jump_y))
 
 func _on_animation_finished() -> void:
@@ -427,7 +425,7 @@ func _update_state() -> void:
 		base_animation_name = "run"
 
 	var new_animation_name := base_animation_name + "_"
-	var normalized_direction :float = CommonUtils.normalize_angle(direction)
+	var normalized_direction: float = CommonUtils.normalize_angle(direction)
 
 	if CommonUtils.is_in_range(normalized_direction, 0.0, 45.01) or CommonUtils.is_in_range(normalized_direction, 314.09, 360.0):
 		new_animation_name += "e"
@@ -461,7 +459,7 @@ func _refresh_options_and_clamp_selections() -> void:
 
 	m_anim_options = f.get_animation_options(int(body_type))
 	m_body_options = f.get_body_options(int(body_type))
-	m_face_options = f.get_face_options(int(body_type)) # NEW
+	m_face_options = f.get_face_options(int(body_type))
 	m_hair_options = f.get_hair_options(int(body_type))
 	m_legs_options = f.get_legs_options(int(body_type))
 	m_shirt_options = f.get_shirt_options(int(body_type))
@@ -470,7 +468,7 @@ func _refresh_options_and_clamp_selections() -> void:
 
 	m_animation = f.get_valid_style_value(m_animation, m_anim_options)
 	m_body = f.get_valid_style_value(m_body, m_body_options)
-	m_face = f.get_valid_style_value(m_face, m_face_options) # NEW
+	m_face = f.get_valid_style_value(m_face, m_face_options)
 	m_hair = f.get_valid_style_value(m_hair, m_hair_options)
 	m_legs = f.get_valid_style_value(m_legs, m_legs_options)
 	m_shirt = f.get_valid_style_value(m_shirt, m_shirt_options)
@@ -498,9 +496,18 @@ func _do_reload() -> void:
 		{"part": "body", "style": m_body, "tint": body_color, "tint_on": true},
 		{"part": "feet", "style": m_feet, "tint": feet_color, "tint_on": true},
 		{"part": "legs", "style": m_legs, "tint": legs_color, "tint_on": true},
-		{"part": "shirt","style": m_shirt,"tint": shirt_color,"tint_on": true},
+		{"part": "shirt", "style": m_shirt, "tint": shirt_color, "tint_on": true},
 		{"part": "head", "style": m_head, "tint": body_color, "tint_on": true},
-		{"part": "face", "style": m_face, "tint": body_color, "tint_on": true},
+		{
+			"part": "face",
+			"style": m_face,
+			"tint": body_color,
+			"tint_on": true,
+			"tint_mask": [
+				Color("#f9d5ba"), Color("#faece7"), Color("#e4a47c"),
+				Color("#cc8665"), Color("#99423c")
+			]
+		},
 		{"part": "hair", "style": m_hair, "tint": hair_color, "tint_on": true},
 	]
 
