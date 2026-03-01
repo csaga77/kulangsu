@@ -171,7 +171,7 @@ func get_animation_options_from_template(sprite_frames_template_path: String) ->
 #   { "path": "res://...", "tint": Color, "tint_on": true }
 #
 # BG order is strictly the inverted order of layers.
-func create_sprite_frames(body_type: int, layers: Array[Dictionary]) -> SpriteFrames:
+func create_sprite_frames(body_type: int, layers: Array[Dictionary], name:StringName = "") -> SpriteFrames:
 	var template_path := _get_template_path_for_body_type(body_type)
 	var sprite_frames: SpriteFrames = load(template_path)
 	if sprite_frames == null:
@@ -186,6 +186,9 @@ func create_sprite_frames(body_type: int, layers: Array[Dictionary]) -> SpriteFr
 	var atlas_image: Image = create_sprite_atlas_image(resolved_layers)
 	if atlas_image == null:
 		return sprite_frames
+		
+	if !name.is_empty():
+		atlas_image.save_png("user://sprite_{0}_{1}.png".format([body_type, name.replace("/", "_")]))
 
 	var atlas_tex := ImageTexture.create_from_image(atlas_image)
 

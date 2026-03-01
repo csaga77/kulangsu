@@ -1,4 +1,11 @@
 # res://characters/human_body_2d.gd
+# Patch: split head into FG + BG nodes + cache all face variants for head nodes.
+# - m_head_node:      FG only (is_bg_on = false on every layer)
+# - m_head_bg_node:   BG only (is_fg_on = false on every layer)
+# - Head face switching:
+#     * caches SpriteFrames for ALL face options (for current head setup)
+#     * changing face does NOT rebuild; it swaps m_head_bg_node/m_head_node sprite_frames from cache
+
 @tool
 class_name HumanBody2D
 extends CharacterBody2D
@@ -70,6 +77,7 @@ enum BodyTypeEnum {
 		if hair_color == v:
 			return
 		hair_color = v
+		_invalidate_head_face_cache()
 		_reload()
 
 @export var legs_color: Color = Color.WHITE:
@@ -94,7 +102,6 @@ enum BodyTypeEnum {
 		_reload()
 
 # private members
-# Stored values (persisted) for dynamic dropdowns on HumanBody2D
 @export_storage var m_animation: String = "idle_s"
 
 @export_storage var m_body: String = "Default"
@@ -108,7 +115,9 @@ enum BodyTypeEnum {
 # -------------------------------------------------------------------
 # Runtime
 # -------------------------------------------------------------------
-@onready var m_anim_node: AnimatedSprite2D
+@onready var m_body_node: AnimatedSprite2D
+@onready var m_head_bg_node: AnimatedSprite2D
+@onready var m_head_node: AnimatedSprite2D
 
 var m_last_global_position: Vector2 = Vector2.ZERO
 var m_is_currently_jumping: bool = false
@@ -125,16 +134,41 @@ var m_shirt_options: Array[String] = []
 var m_head_options: Array[String] = []
 var m_feet_options: Array[String] = []
 
+# ------------------------------------------------------------
+# Head face cache (BG + FG SpriteFrames per face)
+# ------------------------------------------------------------
+var m_head_face_cache_key: String = ""
+var m_head_face_cache: Dictionary = {} # face_style -> { "bg": SpriteFrames, "fg": SpriteFrames }
+
 func _ready() -> void:
-	if m_anim_node == null:
-		m_anim_node = AnimatedSprite2D.new()
-		m_anim_node.name = "sprite"
-		add_child(m_anim_node)
+	# 1) Head BG stack (head/face/hair backgrounds ONLY)
+	if m_head_bg_node == null:
+		m_head_bg_node = AnimatedSprite2D.new()
+		m_head_bg_node.name = "head_bg_sprite"
+		add_child(m_head_bg_node)
+	
+	# 2) Body stack (body/feet/legs/shirt)
+	if m_body_node == null:
+		m_body_node = AnimatedSprite2D.new()
+		m_body_node.name = "body_sprite"
+		add_child(m_body_node)
+
+	# 3) Head FG stack (head/face/hair foreground ONLY)
+	if m_head_node == null:
+		m_head_node = AnimatedSprite2D.new()
+		m_head_node.name = "head_sprite"
+		add_child(m_head_node)
+
+	# Ensure draw order: head-bg behind body behind head-fg
+	move_child(m_head_bg_node, 0)
+	move_child(m_body_node, 1)
+	move_child(m_head_node, 2)
 
 	_refresh_options_and_clamp_selections()
 	_reload()
 	_connect_jump_signals()
 	_update_state()
+
 
 # ------------------------------------------------------------
 # Dynamic inspector properties (dropdowns on HumanBody2D)
@@ -142,7 +176,7 @@ func _ready() -> void:
 func _get_property_list() -> Array:
 	var property_list: Array = []
 
-	if m_anim_node == null:
+	if m_body_node == null or m_head_node == null or m_head_bg_node == null:
 		return property_list
 
 	if m_anim_options.is_empty() \
@@ -243,7 +277,10 @@ func _set(property_name: StringName, value: Variant) -> bool:
 		if m_face == v:
 			return true
 		m_face = v
-		_reload()
+
+		# Face change should NOT rebuild. Swap head frames from cache.
+		call_deferred("_apply_face_switch")
+
 		if Engine.is_editor_hint():
 			notify_property_list_changed()
 		return true
@@ -253,6 +290,7 @@ func _set(property_name: StringName, value: Variant) -> bool:
 		if m_hair == v:
 			return true
 		m_hair = v
+		_invalidate_head_face_cache()
 		_reload()
 		if Engine.is_editor_hint():
 			notify_property_list_changed()
@@ -283,6 +321,7 @@ func _set(property_name: StringName, value: Variant) -> bool:
 		if m_head == v:
 			return true
 		m_head = v
+		_invalidate_head_face_cache()
 		_reload()
 		if Engine.is_editor_hint():
 			notify_property_list_changed()
@@ -341,14 +380,19 @@ func move(direction_vector: Vector2) -> void:
 	var movement_speed: float = 300.0 if is_running else 100.0
 	velocity = dir_vec * movement_speed
 
-	var sprite := _get_sprite()
+	var sprite := _get_anim_driver()
 	if sprite != null and m_is_currently_jumping and (sprite.frame <= 1 or sprite.frame == 7):
 		return
 
 	move_and_slide()
 
 func get_texture() -> Texture2D:
-	var sprite := _get_sprite()
+	# Prefer body texture for bounds, fallback to head-fg then head-bg.
+	var sprite: AnimatedSprite2D = m_body_node
+	if sprite == null:
+		sprite = m_head_node
+	if sprite == null:
+		sprite = m_head_bg_node
 	if sprite == null or sprite.sprite_frames == null:
 		return null
 	return sprite.sprite_frames.get_frame_texture(sprite.animation, sprite.frame)
@@ -374,7 +418,7 @@ func get_ground_rect() -> Rect2:
 	return local_ground_rect
 
 func _connect_jump_signals() -> void:
-	var sprite := _get_sprite()
+	var sprite := _get_anim_driver()
 	if sprite == null:
 		return
 	if !sprite.animation_finished.is_connected(_on_animation_finished):
@@ -383,16 +427,16 @@ func _connect_jump_signals() -> void:
 		sprite.frame_changed.connect(_on_animation_frame_changed)
 
 func _on_animation_frame_changed() -> void:
-	var sprite := _get_sprite()
-	if sprite == null:
-		return
+	_sync_head_to_body()
+
 	_set_sprite_offset(BASE_SPRITE_OFFSET)
-	if m_is_currently_jumping and sprite.frame > 1 and sprite.frame < 7:
+	var sprite := _get_anim_driver()
+	if sprite != null and m_is_currently_jumping and sprite.frame > 1 and sprite.frame < 7:
 		var jump_y: float = BASE_SPRITE_OFFSET.y - (2 - abs(sprite.frame - 4)) * 16
 		_set_sprite_offset(Vector2(BASE_SPRITE_OFFSET.x, jump_y))
 
 func _on_animation_finished() -> void:
-	var sprite := _get_sprite()
+	var sprite := _get_anim_driver()
 	if sprite == null:
 		return
 	if m_is_currently_jumping and sprite.animation.contains("jump"):
@@ -400,18 +444,25 @@ func _on_animation_finished() -> void:
 		_update_state()
 
 func _apply_animation_value() -> void:
-	if m_anim_node == null or m_anim_node.sprite_frames == null:
+	if m_body_node == null or m_head_node == null or m_head_bg_node == null:
 		return
 	if m_animation.is_empty():
 		return
-	if !m_anim_node.sprite_frames.has_animation(m_animation):
+
+	# Require animation exist on all assigned framesets (if present)
+	if m_body_node.sprite_frames != null and !m_body_node.sprite_frames.has_animation(m_animation):
 		return
+	if m_head_bg_node.sprite_frames != null and !m_head_bg_node.sprite_frames.has_animation(m_animation):
+		return
+	if m_head_node.sprite_frames != null and !m_head_node.sprite_frames.has_animation(m_animation):
+		return
+
 	_update_state()
 	if Engine.is_editor_hint():
 		notify_property_list_changed()
 
 func _update_state() -> void:
-	if m_anim_node == null:
+	if m_body_node == null or m_head_node == null or m_head_bg_node == null:
 		return
 
 	_set_sprite_offset(BASE_SPRITE_OFFSET)
@@ -446,13 +497,20 @@ func _update_state() -> void:
 		if Engine.is_editor_hint():
 			notify_property_list_changed()
 
-	m_anim_node.stop()
-	if m_anim_node.sprite_frames and m_anim_node.sprite_frames.has_animation(new_animation_name):
-		m_anim_node.play(new_animation_name)
+	_stop_all_sprites()
+
+	if m_body_node.sprite_frames and m_body_node.sprite_frames.has_animation(new_animation_name):
+		m_body_node.play(new_animation_name)
+	if m_head_bg_node.sprite_frames and m_head_bg_node.sprite_frames.has_animation(new_animation_name):
+		m_head_bg_node.play(new_animation_name)
+	if m_head_node.sprite_frames and m_head_node.sprite_frames.has_animation(new_animation_name):
+		m_head_node.play(new_animation_name)
+
+	_sync_head_to_body()
 
 
 # ------------------------------------------------------------
-# Sprite generation (factory) - flexible layers API
+# Sprite generation (factory) - split into body + head (FG/BG) nodes
 # ------------------------------------------------------------
 func _refresh_options_and_clamp_selections() -> void:
 	var f := UniversalLPCSpriteFactory.get_instance()
@@ -486,21 +544,98 @@ func _reload() -> void:
 
 func _do_reload() -> void:
 	m_is_reloading = false
-	if m_anim_node == null:
+	if m_body_node == null or m_head_node == null or m_head_bg_node == null:
 		return
 
 	var f := UniversalLPCSpriteFactory.get_instance()
 
-	# Main order exactly as provided; BG order strictly inverted in factory.
-	var layers: Array[Dictionary] = [
+	# Body node layers: body, feet, legs, shirt
+	var body_layers: Array[Dictionary] = [
 		{"part": "body", "style": m_body, "tint": body_color, "tint_on": true},
 		{"part": "feet", "style": m_feet, "tint": feet_color, "tint_on": true},
 		{"part": "legs", "style": m_legs, "tint": legs_color, "tint_on": true},
 		{"part": "shirt", "style": m_shirt, "tint": shirt_color, "tint_on": true},
+	]
+
+	var body_frames := f.create_sprite_frames(int(body_type), body_layers, "body")
+	if body_frames == null:
+		if Engine.is_editor_hint():
+			notify_property_list_changed()
+		return
+	m_body_node.sprite_frames = body_frames
+
+	# ------------------------------------------------------------
+	# Head face cache build (BG + FG per face)
+	# ------------------------------------------------------------
+	var new_head_cache_key := _get_head_face_cache_key()
+	if m_head_face_cache_key != new_head_cache_key:
+		m_head_face_cache_key = new_head_cache_key
+		m_head_face_cache.clear()
+
+		# Build frames for every face option once.
+		for face_style in m_face_options:
+			if face_style == "<none>" or face_style.is_empty():
+				continue
+			_build_and_cache_head_frames_for_face(face_style)
+
+	# Refresh animation dropdown list (names only)
+	m_anim_options = f.get_animation_options(int(body_type))
+	m_animation = f.get_valid_style_value(m_animation, m_anim_options)
+
+	# Apply current animation if possible; otherwise fall back to first available
+	var anim_to_play := m_animation
+	if anim_to_play.is_empty() \
+	or !body_frames.has_animation(anim_to_play) \
+	or (m_head_bg_node.sprite_frames != null and !m_head_bg_node.sprite_frames.has_animation(anim_to_play)) \
+	or (m_head_node.sprite_frames != null and !m_head_node.sprite_frames.has_animation(anim_to_play)):
+		var packed := body_frames.get_animation_names()
+		anim_to_play = String(packed[0]) if packed.size() > 0 else ""
+
+	if !anim_to_play.is_empty():
+		m_animation = anim_to_play
+		m_current_animation_name = anim_to_play
+		_stop_all_sprites()
+		if m_body_node.sprite_frames != null and m_body_node.sprite_frames.has_animation(anim_to_play):
+			m_body_node.play(anim_to_play)
+		_apply_face_switch()
+
+	if Engine.is_editor_hint():
+		notify_property_list_changed()
+
+
+# ------------------------------------------------------------
+# Head cache helpers
+# ------------------------------------------------------------
+func _invalidate_head_face_cache() -> void:
+	m_head_face_cache_key = ""
+	m_head_face_cache.clear()
+
+func _get_head_face_cache_key() -> String:
+	# Anything that changes head rendering must be included here.
+	# Face is NOT included, because we cache across faces.
+	return (
+		str(int(body_type))
+		+ "|head=" + m_head
+		+ "|hair=" + m_hair
+		+ "|body_color=" + body_color.to_html(true)
+		+ "|hair_color=" + hair_color.to_html(true)
+	)
+
+func _build_and_cache_head_frames_for_face(face_style: String) -> void:
+	if face_style.is_empty() or face_style == "<none>":
+		return
+	if m_head_face_cache.has(face_style):
+		return
+	if m_head_node == null or m_head_bg_node == null:
+		return
+
+	var f := UniversalLPCSpriteFactory.get_instance()
+
+	var head_base_layers: Array[Dictionary] = [
 		{"part": "head", "style": m_head, "tint": body_color, "tint_on": true},
 		{
 			"part": "face",
-			"style": m_face,
+			"style": face_style,
 			"tint": body_color,
 			"tint_on": true,
 			"tint_mask": [
@@ -511,43 +646,103 @@ func _do_reload() -> void:
 		{"part": "hair", "style": m_hair, "tint": hair_color, "tint_on": true},
 	]
 
-	var frames := f.create_sprite_frames(int(body_type), layers)
-	if frames == null:
-		if Engine.is_editor_hint():
-			notify_property_list_changed()
+	# Head FG: turn OFF bg pass
+	var head_fg_layers: Array[Dictionary] = []
+	for l_any in head_base_layers:
+		var l: Dictionary = l_any.duplicate(true)
+		l["is_bg_on"] = false
+		head_fg_layers.append(l)
+
+	# Head BG: turn OFF fg pass
+	var head_bg_layers: Array[Dictionary] = []
+	for l_any2 in head_base_layers:
+		var l2: Dictionary = l_any2.duplicate(true)
+		l2["is_fg_on"] = false
+		head_bg_layers.append(l2)
+
+	var head_fg_frames := f.create_sprite_frames(int(body_type), head_fg_layers, "face_" + face_style)
+	var head_bg_frames := f.create_sprite_frames(int(body_type), head_bg_layers, "face_bg_" + face_style)
+	if head_bg_frames == null or head_fg_frames == null:
 		return
 
-	m_anim_node.sprite_frames = frames
+	m_head_face_cache[face_style] = {"bg": head_bg_frames, "fg": head_fg_frames}
 
-	m_anim_options = f.get_animation_options(int(body_type))
-	m_animation = f.get_valid_style_value(m_animation, m_anim_options)
+func _apply_face_switch() -> void:
+	# Face change should NOT rebuild. Just swap from cache built in _do_reload().
+	if m_head_node == null or m_head_bg_node == null:
+		return
 
-	if !m_animation.is_empty() and frames.has_animation(m_animation):
-		m_current_animation_name = m_animation
-		m_anim_node.play(m_animation)
-	else:
-		var packed := frames.get_animation_names()
-		if packed.size() > 0:
-			m_animation = String(packed[0])
-			m_current_animation_name = m_animation
-			m_anim_node.play(m_animation)
+	var new_key := _get_head_face_cache_key()
+	if m_head_face_cache_key != new_key:
+		# Cache invalid → normal rebuild
+		_reload()
+		return
+	
+	# Map "<none>" → "Neutral"
+	var face_to_use := m_face
+	if face_to_use == "<none>" or face_to_use.is_empty():
+		face_to_use = "Human / Neutral"
+	
+	if !m_head_face_cache.has(face_to_use):
+		# Safety fallback
+		_reload()
+		return
 
-	if Engine.is_editor_hint():
-		notify_property_list_changed()
+	var entry: Dictionary = m_head_face_cache[face_to_use]
+	var head_bg_frames: SpriteFrames = entry.get("bg", null)
+	var head_fg_frames: SpriteFrames = entry.get("fg", null)
 
+	if head_bg_frames != null:
+		m_head_bg_node.sprite_frames = head_bg_frames
+	if head_fg_frames != null:
+		m_head_node.sprite_frames = head_fg_frames
+
+	_sync_head_to_body()
 
 # ------------------------------------------------------------
 # Helpers + process/draw
 # ------------------------------------------------------------
-func _get_sprite() -> AnimatedSprite2D:
-	return m_anim_node
+func _get_anim_driver() -> AnimatedSprite2D:
+	# Driver = body node (authoritative frame index / signals)
+	return m_body_node
+
+func _stop_all_sprites() -> void:
+	if m_body_node != null:
+		m_body_node.stop()
+	if m_head_bg_node != null:
+		m_head_bg_node.stop()
+	if m_head_node != null:
+		m_head_node.stop()
+
+func _sync_head_to_body() -> void:
+	if m_body_node == null:
+		return
+
+	var anim := m_body_node.animation
+	var frame := m_body_node.frame
+
+	if m_head_bg_node != null:
+		if m_head_bg_node.animation != anim:
+			m_head_bg_node.animation = anim
+		m_head_bg_node.frame = frame
+
+	if m_head_node != null:
+		if m_head_node.animation != anim:
+			m_head_node.animation = anim
+		m_head_node.frame = frame
 
 func _set_sprite_offset(offset: Vector2) -> void:
-	if m_anim_node == null:
-		return
-	m_anim_node.position = offset
+	if m_body_node != null:
+		m_body_node.position = offset
+	if m_head_bg_node != null:
+		m_head_bg_node.position = offset
+	if m_head_node != null:
+		m_head_node.position = offset
 
 func _process(_delta: float) -> void:
+	# Defensive sync in case anything external alters one sprite.
+	_sync_head_to_body()
+
 	if !m_last_global_position.is_equal_approx(global_position):
 		m_last_global_position = global_position
 		global_position_changed.emit()

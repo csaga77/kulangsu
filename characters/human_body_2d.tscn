@@ -18,21 +18,19 @@ collision_mask = 524289
 motion_mode = 1
 script = ExtResource("1_wfnr8")
 m_animation = "idle_e"
-m_body = "Human / Male Body"
 m_face = "Human / Neutral"
-m_hair = "Default / Hair Xlong White"
+m_hair = "Default / Hair Short Black"
 m_legs = "Default / Cuffed Pants White"
 m_shirt = "Clothes / Sleeveless White"
 m_head = "Human / Male"
-m_feet = "Foot Wears / Basic Shoes Black"
 animation = "idle_e"
-body = "Human / Male Body"
+body = "Default"
 face = "Human / Neutral"
-hair = "Default / Hair Xlong White"
+hair = "Default / Hair Short Black"
 legs = "Default / Cuffed Pants White"
 shirt = "Clothes / Sleeveless White"
 head = "Human / Male"
-feet = "Foot Wears / Basic Shoes Black"
+feet = "<none>"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=403533052]
 position = Vector2(0, -7)
