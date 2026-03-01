@@ -15,19 +15,18 @@ static func get_instance() -> UniversalLPCSpriteFactory:
 
 
 # ------------------------------------------------------------
-# SpriteFrames template selection (Player should NOT know this)
+# SpriteFrames template selection (HumanBody2D should NOT know this)
 # ------------------------------------------------------------
-
 const DEFAULT_SPRITE_FRAMES_TEMPLATE_PATH: String = "res://resources/animations/characters/male_animations.tres"
 
 func _get_template_path_for_body_type(body_type: int) -> String:
+	# Keep it simple for now; you can branch by body_type later if needed.
 	return DEFAULT_SPRITE_FRAMES_TEMPLATE_PATH
 
 
 # ------------------------------------------------------------
 # Folder / base paths (factory owns folder logic)
 # ------------------------------------------------------------
-#
 # OPTIONS pattern:
 #   Category -> [ { "path": String, "body_types": Array[String] }, ... ]
 #
@@ -133,7 +132,7 @@ func get_valid_style_value(style_value: String, options: Array[String]) -> Strin
 
 
 # ------------------------------------------------------------
-# Public API: animation options (names only) (Player calls this)
+# Public API: animation options (names only)
 # ------------------------------------------------------------
 func get_animation_options(body_type: int) -> Array[String]:
 	var template_path := _get_template_path_for_body_type(body_type)
@@ -166,96 +165,31 @@ func get_animation_options_from_template(sprite_frames_template_path: String) ->
 
 
 # ------------------------------------------------------------
-# Public API: create final SpriteFrames (Player calls this)
+# Public API: create final SpriteFrames (NEW flexible layer API)
 # ------------------------------------------------------------
-func create_sprite_frames_for_body_type(
-	body_type: int,
-	selected_body: String,
-	selected_hair: String,
-	selected_legs: String,
-	selected_shirt: String,
-	selected_head: String,
-	selected_feet: String,
-	body_color: Color,
-	hair_color: Color,
-	legs_color: Color,
-	shirt_color: Color,
-	feet_color: Color
-) -> SpriteFrames:
+# layers supports any order and any subset. Each layer can be either:
+#   { "part": "hair", "style": "Default", "tint": Color, "tint_on": true }
+# or
+#   { "path": "res://...", "tint": Color, "tint_on": true }
+#
+# BG order is strictly the inverted order of layers.
+func create_sprite_frames(body_type: int, layers: Array[Dictionary]) -> SpriteFrames:
 	var template_path := _get_template_path_for_body_type(body_type)
-	return create_sprite_frames(
-		template_path,
-		body_type,
-		selected_body,
-		selected_hair,
-		selected_legs,
-		selected_shirt,
-		selected_head,
-		selected_feet,
-		body_color,
-		hair_color,
-		legs_color,
-		shirt_color,
-		feet_color
-	)
-
-
-# ------------------------------------------------------------
-# Public API: create final SpriteFrames (template-based)
-# ------------------------------------------------------------
-func create_sprite_frames(
-	sprite_frames_template_path: String,
-	body_type: int,
-	selected_body: String,
-	selected_hair: String,
-	selected_legs: String,
-	selected_shirt: String,
-	selected_head: String,
-	selected_feet: String,
-	body_color: Color,
-	hair_color: Color,
-	legs_color: Color,
-	shirt_color: Color,
-	feet_color: Color
-) -> SpriteFrames:
-	var sprite_frames: SpriteFrames = load(sprite_frames_template_path)
+	var sprite_frames: SpriteFrames = load(template_path)
 	if sprite_frames == null:
 		return null
 
 	sprite_frames = sprite_frames.duplicate()
 
-	var body_cache := _get_part_cache("body", body_type, BODY_OPTIONS, "Human", "Default")
-	var hair_cache := _get_hair_cache(body_type)
-	var legs_cache := _get_part_cache("legs", body_type, LEGS_OPTIONS, "Default", "<none>")
-	var shirt_cache := _get_part_cache("shirt", body_type, SHIRT_OPTIONS, "Clothes", "<none>")
-	var head_cache := _get_part_cache("head", body_type, HEAD_OPTIONS, "Human", "Default")
-	var feet_cache := _get_part_cache("feet", body_type, FEET_OPTIONS, "Foot Wears", "<none>")
+	var resolved_layers := _resolve_layers(body_type, layers)
+	if resolved_layers.is_empty():
+		return sprite_frames
 
-	var body_path: String = _resolve_from_cache(body_cache, selected_body)
-	var hair_path: String = _resolve_from_cache(hair_cache, selected_hair)
-	var legs_path: String = _resolve_from_cache(legs_cache, selected_legs)
-	var shirt_path: String = _resolve_from_cache(shirt_cache, selected_shirt)
-	var head_path: String = _resolve_from_cache(head_cache, selected_head)
-	var feet_path: String = _resolve_from_cache(feet_cache, selected_feet)
-
-	var atlas_image: Image = create_sprite_atlas_image(
-		body_path,
-		hair_path,
-		legs_path,
-		shirt_path,
-		head_path,
-		feet_path,
-		body_color,
-		hair_color,
-		legs_color,
-		shirt_color,
-		feet_color
-	)
+	var atlas_image: Image = create_sprite_atlas_image(resolved_layers)
 	if atlas_image == null:
 		return sprite_frames
 
 	var atlas_tex := ImageTexture.create_from_image(atlas_image)
-	atlas_image.save_png("user://atlas_image.png")
 
 	for anim_name in sprite_frames.get_animation_names():
 		var count := sprite_frames.get_frame_count(anim_name)
@@ -270,77 +204,110 @@ func create_sprite_frames(
 
 
 # ------------------------------------------------------------
-# Public API: create atlas image
+# Public API: create atlas image (NEW strict BG inversion rule)
 # ------------------------------------------------------------
-func create_sprite_atlas_image(
-	body_path: String,
-	hair_path: String,
-	legs_path: String,
-	shirt_path: String,
-	head_path: String,
-	feet_path: String,
-	body_color: Color,
-	hair_color: Color,
-	legs_color: Color,
-	shirt_color: Color,
-	feet_color: Color
-) -> Image:
-	if body_path.is_empty():
+func create_sprite_atlas_image(layers: Array[Dictionary]) -> Image:
+	var normalized := _normalize_layers(layers)
+	if normalized.is_empty():
 		return null
 
 	var combined: Image = null
 
-	# 1) BG layers first
-	var bg_layers: Array[Dictionary] = []
+	# 1) BG pass: STRICT inverted order of layers
+	for i in range(normalized.size() - 1, -1, -1):
+		var layer := normalized[i]
+		var path := String(layer.get("path", ""))
+		if path.is_empty():
+			continue
 
-	var p: String
-	p = _bg_path(body_path)
-	if !p.is_empty():
-		bg_layers.append({"path": p, "tint": body_color, "tint_on": true})
+		var tint_on := bool(layer.get("tint_on", true))
+		var tint :Color = layer.get("tint", Color.WHITE)
 
-	p = _bg_path(feet_path)
-	if !p.is_empty():
-		bg_layers.append({"path": p, "tint": feet_color, "tint_on": true})
+		var bg_path := _bg_path(path)
+		if !bg_path.is_empty():
+			combined = _blend_layer_image(combined, bg_path, tint, tint_on)
 
-	p = _bg_path(legs_path)
-	if !p.is_empty():
-		bg_layers.append({"path": p, "tint": legs_color, "tint_on": true})
+	# 2) Main pass: forward order
+	for layer in normalized:
+		var path2 := String(layer.get("path", ""))
+		if path2.is_empty():
+			continue
 
-	p = _bg_path(shirt_path)
-	if !p.is_empty():
-		bg_layers.append({"path": p, "tint": shirt_color, "tint_on": true})
+		var tint_on2 := bool(layer.get("tint_on", true))
+		var tint2 :Color = layer.get("tint", Color.WHITE)
 
-	p = _bg_path(head_path)
-	if !p.is_empty():
-		bg_layers.append({"path": p, "tint": body_color, "tint_on": true})
-
-	p = _bg_path(hair_path)
-	if !p.is_empty():
-		bg_layers.append({"path": p, "tint": hair_color, "tint_on": true})
-
-	for e in bg_layers:
-		combined = _blend_layer_image(
-			combined,
-			String(e.get("path", "")),
-			e.get("tint", Color.WHITE),
-			bool(e.get("tint_on", false))
-		)
-
-	# 2) Main layers
-	combined = _blend_layer_image(combined, body_path, body_color, true)
-
-	if !feet_path.is_empty():
-		combined = _blend_layer_image(combined, feet_path, feet_color, true)
-	if !legs_path.is_empty():
-		combined = _blend_layer_image(combined, legs_path, legs_color, true)
-	if !shirt_path.is_empty():
-		combined = _blend_layer_image(combined, shirt_path, shirt_color, true)
-	if !head_path.is_empty():
-		combined = _blend_layer_image(combined, head_path, body_color, true)
-	if !hair_path.is_empty():
-		combined = _blend_layer_image(combined, hair_path, hair_color, true)
+		combined = _blend_layer_image(combined, path2, tint2, tint_on2)
 
 	return combined
+
+
+# ============================================================
+# Internal: resolve flexible layers -> file paths
+# ============================================================
+func _resolve_layers(body_type: int, layers: Array[Dictionary]) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+
+	for l_any in layers:
+		var l: Dictionary = l_any if l_any is Dictionary else {}
+		var tint :Color = l.get("tint", Color.WHITE)
+		var tint_on := bool(l.get("tint_on", true))
+
+		# Direct path provided
+		if l.has("path"):
+			var p := String(l.get("path", ""))
+			if !p.is_empty():
+				out.append({"path": p, "tint": tint, "tint_on": tint_on})
+			continue
+
+		# Resolve from part/style
+		var part := String(l.get("part", ""))
+		var style := String(l.get("style", ""))
+		var resolved := _resolve_part_style_to_path(part, body_type, style)
+		if !resolved.is_empty():
+			out.append({"path": resolved, "tint": tint, "tint_on": tint_on})
+
+	return out
+
+
+func _resolve_part_style_to_path(part: String, body_type: int, style: String) -> String:
+	if style.is_empty() or style == "<none>":
+		return ""
+
+	if part == "hair":
+		var hair_cache := _get_hair_cache(body_type)
+		return _resolve_from_cache(hair_cache, style)
+
+	if part == "body":
+		return _resolve_from_cache(_get_part_cache("body", body_type, BODY_OPTIONS, "Human", "Default"), style)
+
+	if part == "legs":
+		return _resolve_from_cache(_get_part_cache("legs", body_type, LEGS_OPTIONS, "Default", "<none>"), style)
+
+	if part == "shirt":
+		return _resolve_from_cache(_get_part_cache("shirt", body_type, SHIRT_OPTIONS, "Clothes", "<none>"), style)
+
+	if part == "head":
+		return _resolve_from_cache(_get_part_cache("head", body_type, HEAD_OPTIONS, "Human", "Default"), style)
+
+	if part == "feet":
+		return _resolve_from_cache(_get_part_cache("feet", body_type, FEET_OPTIONS, "Foot Wears", "<none>"), style)
+
+	return ""
+
+
+func _normalize_layers(layers: Array[Dictionary]) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for l_any in layers:
+		var l: Dictionary = l_any if l_any is Dictionary else {}
+		var p := String(l.get("path", ""))
+		if p.is_empty():
+			continue
+		out.append({
+			"path": p,
+			"tint": l.get("tint", Color.WHITE),
+			"tint_on": bool(l.get("tint_on", true))
+		})
+	return out
 
 
 # ============================================================
@@ -387,9 +354,6 @@ func _get_part_cache(
 	return out
 
 
-# Build cache from:
-#   OPTIONS = { "Category": [ {path, body_types:[...]}, ... ] }
-#
 # IMPORTANT CHANGE:
 # - If empty_name == "Default", ALWAYS create a "Default" entry and bind it to
 #   the first discovered sprite in default_category (preferred) for ALL parts.

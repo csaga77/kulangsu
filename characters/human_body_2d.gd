@@ -111,7 +111,6 @@ enum BodyTypeEnum {
 var m_last_global_position: Vector2 = Vector2.ZERO
 var m_is_currently_jumping: bool = false
 var m_current_animation_name: String = ""
-
 var m_is_reloading: bool = false
 
 # Cached options for building inspector hint strings (names only)
@@ -124,9 +123,10 @@ var m_head_options: Array[String] = []
 var m_feet_options: Array[String] = []
 
 func _ready() -> void:
-	m_anim_node = AnimatedSprite2D.new()
-	m_anim_node.name = "sprite"
-	add_child(m_anim_node)
+	if m_anim_node == null:
+		m_anim_node = AnimatedSprite2D.new()
+		m_anim_node.name = "sprite"
+		add_child(m_anim_node)
 
 	_refresh_options_and_clamp_selections()
 	_reload()
@@ -136,7 +136,6 @@ func _ready() -> void:
 # ------------------------------------------------------------
 # Dynamic inspector properties (dropdowns on HumanBody2D)
 # ------------------------------------------------------------
-
 func _get_property_list() -> Array:
 	var property_list: Array = []
 
@@ -159,7 +158,6 @@ func _get_property_list() -> Array:
 		"hint": PROPERTY_HINT_ENUM,
 		"hint_string": ",".join(m_anim_options)
 	})
-
 	property_list.append({
 		"name": "body",
 		"type": TYPE_STRING,
@@ -205,9 +203,10 @@ func _get_property_list() -> Array:
 
 	return property_list
 
+
 func _set(property_name: StringName, value: Variant) -> bool:
 	var p := String(property_name)
-	var v :String
+	var v: String
 	if value is String:
 		v = String(value)
 
@@ -282,6 +281,7 @@ func _set(property_name: StringName, value: Variant) -> bool:
 
 	return false
 
+
 func _get(property_name: StringName) -> Variant:
 	var p := String(property_name)
 
@@ -302,10 +302,10 @@ func _get(property_name: StringName) -> Variant:
 
 	return null
 
+
 # ------------------------------------------------------------
 # Character actions and rectangles
 # ------------------------------------------------------------
-
 func jump() -> void:
 	if m_is_currently_jumping:
 		return
@@ -313,7 +313,7 @@ func jump() -> void:
 	_update_state()
 
 func move(direction_vector: Vector2) -> void:
-	var dir_vec: Vector2 = direction_vector
+	var dir_vec := direction_vector
 	if dir_vec.length_squared() > 0.000001:
 		dir_vec = dir_vec.normalized()
 
@@ -340,22 +340,22 @@ func get_local_bounding_rect() -> Rect2:
 	return Rect2(Vector2(-16, -64), Vector2(32, 64))
 
 func get_bounding_rect() -> Rect2:
-	var local_bounding_rect: Rect2 = get_local_bounding_rect()
-	local_bounding_rect.position += global_position
-	return local_bounding_rect
+	var r := get_local_bounding_rect()
+	r.position += global_position
+	return r
 
 func get_local_ground_rect() -> Rect2:
 	return Rect2(Vector2(-16, -32), Vector2(32, 32))
 
 func get_ground_rect() -> Rect2:
-	var local_ground_rect: Rect2 = get_local_ground_rect()
-	local_ground_rect.position += global_position
-	return local_ground_rect
+	var r := get_local_ground_rect()
+	r.position += global_position
+	return r
+
 
 # ------------------------------------------------------------
 # Jump logic
 # ------------------------------------------------------------
-
 func _connect_jump_signals() -> void:
 	var sprite := _get_sprite()
 	if sprite == null:
@@ -374,7 +374,7 @@ func _on_animation_frame_changed() -> void:
 	_set_sprite_offset(BASE_SPRITE_OFFSET)
 
 	if m_is_currently_jumping and sprite.frame > 1 and sprite.frame < 7:
-		var jump_y: float = BASE_SPRITE_OFFSET.y - (2 - abs(sprite.frame - 4)) * 16
+		var jump_y :float = BASE_SPRITE_OFFSET.y - (2 - abs(sprite.frame - 4)) * 16
 		_set_sprite_offset(Vector2(BASE_SPRITE_OFFSET.x, jump_y))
 
 func _on_animation_finished() -> void:
@@ -386,14 +386,12 @@ func _on_animation_finished() -> void:
 		m_is_currently_jumping = false
 		_update_state()
 
+
 # ------------------------------------------------------------
 # Animation state -> play
 # ------------------------------------------------------------
-
 func _apply_animation_value() -> void:
-	if m_anim_node == null:
-		return
-	if m_anim_node.sprite_frames == null:
+	if m_anim_node == null or m_anim_node.sprite_frames == null:
 		return
 	if m_animation.is_empty():
 		return
@@ -418,8 +416,8 @@ func _update_state() -> void:
 	elif is_walking and is_running:
 		base_animation_name = "run"
 
-	var new_animation_name: String = base_animation_name + "_"
-	var normalized_direction: float = CommonUtils.normalize_angle(direction)
+	var new_animation_name := base_animation_name + "_"
+	var normalized_direction :float = CommonUtils.normalize_angle(direction)
 
 	if CommonUtils.is_in_range(normalized_direction, 0.0, 45.01) or CommonUtils.is_in_range(normalized_direction, 314.09, 360.0):
 		new_animation_name += "e"
@@ -444,10 +442,10 @@ func _update_state() -> void:
 	if m_anim_node.sprite_frames and m_anim_node.sprite_frames.has_animation(new_animation_name):
 		m_anim_node.play(new_animation_name)
 
-# ------------------------------------------------------------
-# Sprite generation (factory) - template path hidden in factory
-# ------------------------------------------------------------
 
+# ------------------------------------------------------------
+# Sprite generation (factory) - flexible layers API
+# ------------------------------------------------------------
 func _refresh_options_and_clamp_selections() -> void:
 	var f := UniversalLPCSpriteFactory.get_instance()
 
@@ -483,21 +481,18 @@ func _do_reload() -> void:
 
 	var f := UniversalLPCSpriteFactory.get_instance()
 
-	var frames := f.create_sprite_frames_for_body_type(
-		int(body_type),
-		m_body,
-		m_hair,
-		m_legs,
-		m_shirt,
-		m_head,
-		m_feet,
-		body_color,
-		hair_color,
-		legs_color,
-		shirt_color,
-		feet_color
-	)
+	# MAIN layer order is exactly what we pass here.
+	# BG order will be strictly inverted by the factory.
+	var layers: Array[Dictionary] = [
+		{"part": "body", "style": m_body,  "tint": body_color,  "tint_on": true},
+		{"part": "feet", "style": m_feet,  "tint": feet_color,  "tint_on": true},
+		{"part": "legs", "style": m_legs,  "tint": legs_color,  "tint_on": true},
+		{"part": "shirt","style": m_shirt, "tint": shirt_color, "tint_on": true},
+		{"part": "head", "style": m_head,  "tint": body_color,  "tint_on": true},
+		{"part": "hair", "style": m_hair,  "tint": hair_color,  "tint_on": true},
+	]
 
+	var frames := f.create_sprite_frames(int(body_type), layers)
 	if frames == null:
 		if Engine.is_editor_hint():
 			notify_property_list_changed()
@@ -505,14 +500,16 @@ func _do_reload() -> void:
 
 	m_anim_node.sprite_frames = frames
 
+	# Re-sync animation list
 	m_anim_options = f.get_animation_options(int(body_type))
 	m_animation = f.get_valid_style_value(m_animation, m_anim_options)
 
+	# Keep current anim if possible, else first anim
 	if !m_animation.is_empty() and frames.has_animation(m_animation):
 		m_current_animation_name = m_animation
 		m_anim_node.play(m_animation)
 	else:
-		var packed: PackedStringArray = frames.get_animation_names()
+		var packed := frames.get_animation_names()
 		if packed.size() > 0:
 			m_animation = String(packed[0])
 			m_current_animation_name = m_animation
@@ -521,10 +518,10 @@ func _do_reload() -> void:
 	if Engine.is_editor_hint():
 		notify_property_list_changed()
 
+
 # ------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------
-
 func _get_sprite() -> AnimatedSprite2D:
 	return m_anim_node
 
@@ -533,10 +530,10 @@ func _set_sprite_offset(offset: Vector2) -> void:
 		return
 	m_anim_node.position = offset
 
+
 # ------------------------------------------------------------
 # Process + debug draw
 # ------------------------------------------------------------
-
 func _process(_delta: float) -> void:
 	if !m_last_global_position.is_equal_approx(global_position):
 		m_last_global_position = global_position
