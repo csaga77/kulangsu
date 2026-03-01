@@ -8,6 +8,8 @@
 [node name="human_body_2d" parent="." unique_id=536638414 instance=ExtResource("1_rm1ms")]
 position = Vector2(130, 118)
 hair_color = Color(0.2159017, 0.21590173, 0.2159017, 1)
+m_head = "Default"
+head = "Default"
 
 [node name="controller" type="Node" parent="." unique_id=1582765273 node_paths=PackedStringArray("player")]
 script = ExtResource("2_buv3e")

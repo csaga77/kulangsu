@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://jy2ov023uxfr"
-path="res://.godot/imported/male_plump.png-3cfb228a2c13cf90b63c553d957e2519.ctex"
+uid="uid://c176v7vhhj66r"
+path="res://.godot/imported/angry.png-82e1a6f88c5155f82331b1ef09c7c34a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://resources/sprites/characters/head/male_plump.png"
-dest_files=["res://.godot/imported/male_plump.png-3cfb228a2c13cf90b63c553d957e2519.ctex"]
+source_file="res://resources/sprites/characters/head/faces/human/elderly/angry.png"
+dest_files=["res://.godot/imported/angry.png-82e1a6f88c5155f82331b1ef09c7c34a.ctex"]
 
 [params]
 

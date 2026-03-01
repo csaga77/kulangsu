@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c45djt3lmyywe"
-path="res://.godot/imported/male_gaunt.png-d9b51ff7723623d856e29434392cfe61.ctex"
+uid="uid://b1c45fiebv1wc"
+path="res://.godot/imported/angry.png-2e545fed2e3f264ab53c2629b22b4498.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://resources/sprites/characters/head/male_gaunt.png"
-dest_files=["res://.godot/imported/male_gaunt.png-d9b51ff7723623d856e29434392cfe61.ctex"]
+source_file="res://resources/sprites/characters/head/faces/human/female/angry.png"
+dest_files=["res://.godot/imported/angry.png-2e545fed2e3f264ab53c2629b22b4498.ctex"]
 
 [params]
 

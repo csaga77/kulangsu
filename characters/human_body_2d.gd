@@ -93,10 +93,12 @@ enum BodyTypeEnum {
 		feet_color = v
 		_reload()
 
+#private memebers
 # Stored values (persisted) for dynamic dropdowns on HumanBody2D
 @export_storage var m_animation: String = "idle_s"
 
 @export_storage var m_body: String = "Default"
+@export_storage var m_face: String = "Default" # NEW
 @export_storage var m_hair: String = "Bald"
 @export_storage var m_legs: String = "<none>"
 @export_storage var m_shirt: String = "<none>"
@@ -116,6 +118,7 @@ var m_is_reloading: bool = false
 # Cached options for building inspector hint strings (names only)
 var m_anim_options: Array[String] = []
 var m_body_options: Array[String] = []
+var m_face_options: Array[String] = [] # NEW
 var m_hair_options: Array[String] = []
 var m_legs_options: Array[String] = []
 var m_shirt_options: Array[String] = []
@@ -144,6 +147,7 @@ func _get_property_list() -> Array:
 
 	if m_anim_options.is_empty() \
 	or m_body_options.is_empty() \
+	or m_face_options.is_empty() \
 	or m_hair_options.is_empty() \
 	or m_legs_options.is_empty() \
 	or m_shirt_options.is_empty() \
@@ -164,6 +168,13 @@ func _get_property_list() -> Array:
 		"usage": PROPERTY_USAGE_DEFAULT,
 		"hint": PROPERTY_HINT_ENUM,
 		"hint_string": ",".join(m_body_options)
+	})
+	property_list.append({ # NEW
+		"name": "face",
+		"type": TYPE_STRING,
+		"usage": PROPERTY_USAGE_DEFAULT,
+		"hint": PROPERTY_HINT_ENUM,
+		"hint_string": ",".join(m_face_options)
 	})
 	property_list.append({
 		"name": "hair",
@@ -229,6 +240,16 @@ func _set(property_name: StringName, value: Variant) -> bool:
 			notify_property_list_changed()
 		return true
 
+	if p == "face": # NEW
+		v = f.get_valid_style_value(v, m_face_options)
+		if m_face == v:
+			return true
+		m_face = v
+		_reload()
+		if Engine.is_editor_hint():
+			notify_property_list_changed()
+		return true
+
 	if p == "hair":
 		v = f.get_valid_style_value(v, m_hair_options)
 		if m_hair == v:
@@ -289,6 +310,8 @@ func _get(property_name: StringName) -> Variant:
 		return m_animation
 	if p == "body":
 		return m_body
+	if p == "face": # NEW
+		return m_face
 	if p == "hair":
 		return m_hair
 	if p == "legs":
@@ -304,7 +327,7 @@ func _get(property_name: StringName) -> Variant:
 
 
 # ------------------------------------------------------------
-# Character actions and rectangles
+# Jump + animation state logic (unchanged)
 # ------------------------------------------------------------
 func jump() -> void:
 	if m_is_currently_jumping:
@@ -339,28 +362,23 @@ func get_local_bounding_rect() -> Rect2:
 		return Rect2(-Vector2(texture_size.x * 0.5, texture_size.y), texture_size)
 	return Rect2(Vector2(-16, -64), Vector2(32, 64))
 
-func get_bounding_rect() -> Rect2:
-	var r := get_local_bounding_rect()
-	r.position += global_position
-	return r
-
 func get_local_ground_rect() -> Rect2:
 	return Rect2(Vector2(-16, -32), Vector2(32, 32))
 
+func get_bounding_rect() -> Rect2:
+	var local_bounding_rect: Rect2 = get_local_bounding_rect()
+	local_bounding_rect.position += global_position
+	return local_bounding_rect
+
 func get_ground_rect() -> Rect2:
-	var r := get_local_ground_rect()
-	r.position += global_position
-	return r
+	var local_ground_rect: Rect2 = get_local_ground_rect()
+	local_ground_rect.position += global_position
+	return local_ground_rect
 
-
-# ------------------------------------------------------------
-# Jump logic
-# ------------------------------------------------------------
 func _connect_jump_signals() -> void:
 	var sprite := _get_sprite()
 	if sprite == null:
 		return
-
 	if !sprite.animation_finished.is_connected(_on_animation_finished):
 		sprite.animation_finished.connect(_on_animation_finished)
 	if !sprite.frame_changed.is_connected(_on_animation_frame_changed):
@@ -370,9 +388,7 @@ func _on_animation_frame_changed() -> void:
 	var sprite := _get_sprite()
 	if sprite == null:
 		return
-
 	_set_sprite_offset(BASE_SPRITE_OFFSET)
-
 	if m_is_currently_jumping and sprite.frame > 1 and sprite.frame < 7:
 		var jump_y :float = BASE_SPRITE_OFFSET.y - (2 - abs(sprite.frame - 4)) * 16
 		_set_sprite_offset(Vector2(BASE_SPRITE_OFFSET.x, jump_y))
@@ -381,15 +397,10 @@ func _on_animation_finished() -> void:
 	var sprite := _get_sprite()
 	if sprite == null:
 		return
-
 	if m_is_currently_jumping and sprite.animation.contains("jump"):
 		m_is_currently_jumping = false
 		_update_state()
 
-
-# ------------------------------------------------------------
-# Animation state -> play
-# ------------------------------------------------------------
 func _apply_animation_value() -> void:
 	if m_anim_node == null or m_anim_node.sprite_frames == null:
 		return
@@ -408,7 +419,6 @@ func _update_state() -> void:
 	_set_sprite_offset(BASE_SPRITE_OFFSET)
 
 	var base_animation_name: String = "walk" if is_walking else "idle"
-
 	if m_is_currently_jumping:
 		if m_current_animation_name.contains("jump"):
 			return
@@ -451,6 +461,7 @@ func _refresh_options_and_clamp_selections() -> void:
 
 	m_anim_options = f.get_animation_options(int(body_type))
 	m_body_options = f.get_body_options(int(body_type))
+	m_face_options = f.get_face_options(int(body_type)) # NEW
 	m_hair_options = f.get_hair_options(int(body_type))
 	m_legs_options = f.get_legs_options(int(body_type))
 	m_shirt_options = f.get_shirt_options(int(body_type))
@@ -459,6 +470,7 @@ func _refresh_options_and_clamp_selections() -> void:
 
 	m_animation = f.get_valid_style_value(m_animation, m_anim_options)
 	m_body = f.get_valid_style_value(m_body, m_body_options)
+	m_face = f.get_valid_style_value(m_face, m_face_options) # NEW
 	m_hair = f.get_valid_style_value(m_hair, m_hair_options)
 	m_legs = f.get_valid_style_value(m_legs, m_legs_options)
 	m_shirt = f.get_valid_style_value(m_shirt, m_shirt_options)
@@ -481,15 +493,15 @@ func _do_reload() -> void:
 
 	var f := UniversalLPCSpriteFactory.get_instance()
 
-	# MAIN layer order is exactly what we pass here.
-	# BG order will be strictly inverted by the factory.
+	# Main order exactly as provided; BG order strictly inverted in factory.
 	var layers: Array[Dictionary] = [
-		{"part": "body", "style": m_body,  "tint": body_color,  "tint_on": true},
-		{"part": "feet", "style": m_feet,  "tint": feet_color,  "tint_on": true},
-		{"part": "legs", "style": m_legs,  "tint": legs_color,  "tint_on": true},
-		{"part": "shirt","style": m_shirt, "tint": shirt_color, "tint_on": true},
-		{"part": "head", "style": m_head,  "tint": body_color,  "tint_on": true},
-		{"part": "hair", "style": m_hair,  "tint": hair_color,  "tint_on": true},
+		{"part": "body", "style": m_body, "tint": body_color, "tint_on": true},
+		{"part": "feet", "style": m_feet, "tint": feet_color, "tint_on": true},
+		{"part": "legs", "style": m_legs, "tint": legs_color, "tint_on": true},
+		{"part": "shirt","style": m_shirt,"tint": shirt_color,"tint_on": true},
+		{"part": "head", "style": m_head, "tint": body_color, "tint_on": true},
+		{"part": "face", "style": m_face, "tint": body_color, "tint_on": true},
+		{"part": "hair", "style": m_hair, "tint": hair_color, "tint_on": true},
 	]
 
 	var frames := f.create_sprite_frames(int(body_type), layers)
@@ -500,11 +512,9 @@ func _do_reload() -> void:
 
 	m_anim_node.sprite_frames = frames
 
-	# Re-sync animation list
 	m_anim_options = f.get_animation_options(int(body_type))
 	m_animation = f.get_valid_style_value(m_animation, m_anim_options)
 
-	# Keep current anim if possible, else first anim
 	if !m_animation.is_empty() and frames.has_animation(m_animation):
 		m_current_animation_name = m_animation
 		m_anim_node.play(m_animation)
@@ -520,7 +530,7 @@ func _do_reload() -> void:
 
 
 # ------------------------------------------------------------
-# Helpers
+# Helpers + process/draw
 # ------------------------------------------------------------
 func _get_sprite() -> AnimatedSprite2D:
 	return m_anim_node
@@ -530,10 +540,6 @@ func _set_sprite_offset(offset: Vector2) -> void:
 		return
 	m_anim_node.position = offset
 
-
-# ------------------------------------------------------------
-# Process + debug draw
-# ------------------------------------------------------------
 func _process(_delta: float) -> void:
 	if !m_last_global_position.is_equal_approx(global_position):
 		m_last_global_position = global_position

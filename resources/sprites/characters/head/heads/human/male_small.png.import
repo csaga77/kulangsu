@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cl6ldfedxv2bk"
-path="res://.godot/imported/male_elderly.png-f5eb7842839fa92f99734f5ef7b53976.ctex"
+uid="uid://bdwnfh1l4cui7"
+path="res://.godot/imported/male_small.png-248009178250ab0d00d101336b4bc4ea.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://resources/sprites/characters/head/male_elderly.png"
-dest_files=["res://.godot/imported/male_elderly.png-f5eb7842839fa92f99734f5ef7b53976.ctex"]
+source_file="res://resources/sprites/characters/head/heads/human/male_small.png"
+dest_files=["res://.godot/imported/male_small.png-248009178250ab0d00d101336b4bc4ea.ctex"]
 
 [params]
 

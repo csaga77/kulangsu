@@ -20,27 +20,12 @@ static func get_instance() -> UniversalLPCSpriteFactory:
 const DEFAULT_SPRITE_FRAMES_TEMPLATE_PATH: String = "res://resources/animations/characters/male_animations.tres"
 
 func _get_template_path_for_body_type(body_type: int) -> String:
-	# Keep it simple for now; you can branch by body_type later if needed.
 	return DEFAULT_SPRITE_FRAMES_TEMPLATE_PATH
 
 
 # ------------------------------------------------------------
 # Folder / base paths (factory owns folder logic)
 # ------------------------------------------------------------
-# OPTIONS pattern:
-#   Category -> [ { "path": String, "body_types": Array[String] }, ... ]
-#
-# body_types supports:
-#   "male", "female", "teen", "child", "muscular", "pregnant"
-# and also group aliases:
-#   "adult" : matches male/female/teen/muscular/pregnant
-#   "thin"  : matches female/teen/pregnant/child
-#
-# IMPORTANT:
-# - Selection priority is the ORDER of variants in each category array.
-# - Matching uses _body_tags_for(body_type) (specific -> fallbacks).
-#
-
 const HAIR_OPTIONS := {
 	"Default": [
 		{"path": "res://resources/sprites/characters/hair/",       "body_types": ["adult"]},
@@ -48,10 +33,19 @@ const HAIR_OPTIONS := {
 	],
 }
 
+const FACE_OPTIONS := {
+	"Human": [
+		{"path": "res://resources/sprites/characters/head/faces/human/child/",  "body_types": ["child"]},
+		{"path": "res://resources/sprites/characters/head/faces/human/male/",   "body_types": ["male", "muscular"]},
+		{"path": "res://resources/sprites/characters/head/faces/human/female/", "body_types": ["female", "teen"]},
+		{"path": "res://resources/sprites/characters/head/faces/human/elderly/","body_types": ["adult"], "head_types": ["elderly"]},
+	],
+}
+
 const HEAD_OPTIONS := {
 	"Human": [
-		{"path": "res://resources/sprites/characters/head/child/", "body_types": ["child"]},
-		{"path": "res://resources/sprites/characters/head/",       "body_types": ["adult"]},
+		{"path": "res://resources/sprites/characters/head/heads/human/child/", "body_types": ["child"]},
+		{"path": "res://resources/sprites/characters/head/heads/human/",       "body_types": ["adult"]},
 	],
 }
 
@@ -93,7 +87,6 @@ const FEET_OPTIONS := {
 	]
 }
 
-
 # ------------------------------------------------------------
 # Cache
 # ------------------------------------------------------------
@@ -107,6 +100,9 @@ var m_cache_animations: Dictionary = {} # template_path -> Array[String]
 # ------------------------------------------------------------
 func get_hair_options(body_type: int) -> Array[String]:
 	return _cached_names(_get_hair_cache(body_type))
+
+func get_face_options(body_type: int) -> Array[String]:
+	return _cached_names(_get_part_cache("face", body_type, FACE_OPTIONS, "Human", "<none>"))
 
 func get_body_options(body_type: int) -> Array[String]:
 	return _cached_names(_get_part_cache("body", body_type, BODY_OPTIONS, "Human", "Default"))
@@ -165,10 +161,10 @@ func get_animation_options_from_template(sprite_frames_template_path: String) ->
 
 
 # ------------------------------------------------------------
-# Public API: create final SpriteFrames (NEW flexible layer API)
+# Public API: create final SpriteFrames (flexible layer API)
 # ------------------------------------------------------------
 # layers supports any order and any subset. Each layer can be either:
-#   { "part": "hair", "style": "Default", "tint": Color, "tint_on": true }
+#   { "part": "face", "style": "Default", "tint": Color, "tint_on": true }
 # or
 #   { "path": "res://...", "tint": Color, "tint_on": true }
 #
@@ -204,7 +200,7 @@ func create_sprite_frames(body_type: int, layers: Array[Dictionary]) -> SpriteFr
 
 
 # ------------------------------------------------------------
-# Public API: create atlas image (NEW strict BG inversion rule)
+# Public API: create atlas image (strict BG inversion rule)
 # ------------------------------------------------------------
 func create_sprite_atlas_image(layers: Array[Dictionary]) -> Image:
 	var normalized := _normalize_layers(layers)
@@ -274,8 +270,7 @@ func _resolve_part_style_to_path(part: String, body_type: int, style: String) ->
 		return ""
 
 	if part == "hair":
-		var hair_cache := _get_hair_cache(body_type)
-		return _resolve_from_cache(hair_cache, style)
+		return _resolve_from_cache(_get_hair_cache(body_type), style)
 
 	if part == "body":
 		return _resolve_from_cache(_get_part_cache("body", body_type, BODY_OPTIONS, "Human", "Default"), style)
@@ -288,6 +283,9 @@ func _resolve_part_style_to_path(part: String, body_type: int, style: String) ->
 
 	if part == "head":
 		return _resolve_from_cache(_get_part_cache("head", body_type, HEAD_OPTIONS, "Human", "Default"), style)
+		
+	if part == "face":
+		return _resolve_from_cache(_get_part_cache("face", body_type, FACE_OPTIONS, "Human", "<none>"), style)
 
 	if part == "feet":
 		return _resolve_from_cache(_get_part_cache("feet", body_type, FEET_OPTIONS, "Foot Wears", "<none>"), style)

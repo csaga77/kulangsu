@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bhes58pyo3ckf"
-path="res://.godot/imported/male_head.png-736603d27a202cc2349e9a076623f3df.ctex"
+uid="uid://2ne1d0gkgidh"
+path="res://.godot/imported/female_head.png-e38936309ecda75316b972ce7f736d25.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://resources/sprites/characters/head/male_head.png"
-dest_files=["res://.godot/imported/male_head.png-736603d27a202cc2349e9a076623f3df.ctex"]
+source_file="res://resources/sprites/characters/head/heads/human/female_head.png"
+dest_files=["res://.godot/imported/female_head.png-e38936309ecda75316b972ce7f736d25.ctex"]
 
 [params]
 
