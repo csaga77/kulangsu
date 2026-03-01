@@ -15,6 +15,27 @@ static func get_instance() -> UniversalLPCSpriteFactory:
 
 
 # ------------------------------------------------------------
+# SpriteFrames template selection (Player should NOT know this)
+# ------------------------------------------------------------
+
+const DEFAULT_SPRITE_FRAMES_TEMPLATE_PATH: String = "res://resources/animations/characters/male_animations.tres"
+
+# BodyTypeEnum ordering:
+# 0 MALE, 1 FEMALE, 2 TEEN, 3 CHILD, 4 MUSCULAR, 5 PREGNANT
+const BODY_TYPE_TO_TEMPLATE_PATH := {
+	0: "res://resources/animations/characters/male_animations.tres",
+	1: "res://resources/animations/characters/female_animations.tres",
+	2: "res://resources/animations/characters/teen_animations.tres",
+	3: "res://resources/animations/characters/child_animations.tres",
+	4: "res://resources/animations/characters/muscular_animations.tres",
+	5: "res://resources/animations/characters/pregnant_animations.tres",
+}
+
+func _get_template_path_for_body_type(body_type: int) -> String:
+	return String(BODY_TYPE_TO_TEMPLATE_PATH.get(body_type, DEFAULT_SPRITE_FRAMES_TEMPLATE_PATH))
+
+
+# ------------------------------------------------------------
 # Folder / base paths (factory owns folder logic)
 # ------------------------------------------------------------
 #
@@ -109,7 +130,6 @@ func get_shirt_options(body_type: int) -> Array[String]:
 	return _cached_names(_get_part_cache("shirt", body_type, SHIRT_OPTIONS, "Clothes", "<none>"))
 
 func get_head_options(body_type: int) -> Array[String]:
-	# Uses Default-label behavior too
 	return _cached_names(_get_part_cache("head", body_type, HEAD_OPTIONS, "Human", "Default"))
 
 func get_feet_options(body_type: int) -> Array[String]:
@@ -124,8 +144,12 @@ func get_valid_style_value(style_value: String, options: Array[String]) -> Strin
 
 
 # ------------------------------------------------------------
-# Public API: animation options (names only)
+# Public API: animation options (names only) (Player calls this)
 # ------------------------------------------------------------
+func get_animation_options(body_type: int) -> Array[String]:
+	var template_path := _get_template_path_for_body_type(body_type)
+	return get_animation_options_from_template(template_path)
+
 func get_animation_options_from_template(sprite_frames_template_path: String) -> Array[String]:
 	if sprite_frames_template_path.is_empty():
 		return []
@@ -153,7 +177,42 @@ func get_animation_options_from_template(sprite_frames_template_path: String) ->
 
 
 # ------------------------------------------------------------
-# Public API: create final SpriteFrames
+# Public API: create final SpriteFrames (Player calls this)
+# ------------------------------------------------------------
+func create_sprite_frames_for_body_type(
+	body_type: int,
+	selected_body: String,
+	selected_hair: String,
+	selected_legs: String,
+	selected_shirt: String,
+	selected_head: String,
+	selected_feet: String,
+	body_color: Color,
+	hair_color: Color,
+	legs_color: Color,
+	shirt_color: Color,
+	feet_color: Color
+) -> SpriteFrames:
+	var template_path := _get_template_path_for_body_type(body_type)
+	return create_sprite_frames(
+		template_path,
+		body_type,
+		selected_body,
+		selected_hair,
+		selected_legs,
+		selected_shirt,
+		selected_head,
+		selected_feet,
+		body_color,
+		hair_color,
+		legs_color,
+		shirt_color,
+		feet_color
+	)
+
+
+# ------------------------------------------------------------
+# Public API: create final SpriteFrames (template-based)
 # ------------------------------------------------------------
 func create_sprite_frames(
 	sprite_frames_template_path: String,
@@ -207,6 +266,7 @@ func create_sprite_frames(
 		return sprite_frames
 
 	var atlas_tex := ImageTexture.create_from_image(atlas_image)
+	atlas_image.save_png("user://atlas_image.png")
 
 	for anim_name in sprite_frames.get_animation_names():
 		var count := sprite_frames.get_frame_count(anim_name)
@@ -382,7 +442,7 @@ func _get_options_cache(
 		var local_map: Dictionary = {}
 		_build_style_options(folder, local_names, local_map, false, true, true, "")
 
-		# NEW: Always bind "Default" to first discovered sprite in default_category (preferred)
+		# Always bind Default to first discovered sprite in default_category (preferred)
 		if has_default and category == default_category and String(name_to_path.get("Default", "")).is_empty():
 			if local_names.size() > 0:
 				name_to_path["Default"] = String(local_map.get(local_names[0], ""))
@@ -539,8 +599,6 @@ func _blend_layer_image(
 # ============================================================
 # Internal: body tag / cache key logic
 # ============================================================
-# BodyTypeEnum ordering:
-# 0 MALE, 1 FEMALE, 2 TEEN, 3 CHILD, 4 MUSCULAR, 5 PREGNANT
 func _body_tags_for(body_type: int) -> Array[String]:
 	match body_type:
 		0: return ["male", "adult"]
