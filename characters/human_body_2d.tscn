@@ -22,14 +22,14 @@ m_hair = "Default / Hair Ponytail White"
 m_legs = "Default / Cuffed Pants White"
 m_shirt = "Clothes / Longsleeve White"
 m_head = "Human / Male Head"
-m_feet = "Foot Wears / Basic Boots White"
+m_feet = "Foot Wears / Basic Shoes Black"
 animation = "idle_e"
 body = "Default"
 hair = "Default / Hair Ponytail White"
 legs = "Default / Cuffed Pants White"
 shirt = "Clothes / Longsleeve White"
 head = "Human / Male Head"
-feet = "Foot Wears / Basic Boots White"
+feet = "Foot Wears / Basic Shoes Black"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=403533052]
 position = Vector2(0, -7)
