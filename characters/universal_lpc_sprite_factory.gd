@@ -3,6 +3,8 @@
 class_name UniversalLPCSpriteFactory
 extends RefCounted
 
+var debug_output :bool = false
+
 # ------------------------------------------------------------
 # Singleton (lazy)
 # ------------------------------------------------------------
@@ -187,7 +189,7 @@ func create_sprite_frames(body_type: int, layers: Array[Dictionary], name:String
 	if atlas_image == null:
 		return sprite_frames
 		
-	if !name.is_empty():
+	if debug_output and !name.is_empty():
 		atlas_image.save_png("user://sprite_{0}_{1}.png".format([body_type, name.replace("/", "_")]))
 
 	var atlas_tex := ImageTexture.create_from_image(atlas_image)
@@ -593,7 +595,7 @@ func _blend_layer_image(
 
 	if apply_tint:
 		# Tint in-place on the layer image to avoid extra copies.
-		img = ImageUtils.colorize_image(img, tint_color, false, mask, false)
+		img = ImageUtils.colorize_image(img, tint_color, false, mask)
 
 	if combined_image == null:
 		return img

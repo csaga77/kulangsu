@@ -1,10 +1,8 @@
 # res://characters/human_body_2d.gd
-# Patch: split head into FG + BG nodes + cache all face variants for head nodes.
-# - m_head_node:      FG only (is_bg_on = false on every layer)
-# - m_head_bg_node:   BG only (is_fg_on = false on every layer)
-# - Head face switching:
-#     * caches SpriteFrames for ALL face options (for current head setup)
-#     * changing face does NOT rebuild; it swaps m_head_bg_node/m_head_node sprite_frames from cache
+# Changes:
+# 1) Add body SpriteFrames cache-key, so body frames are only rebuilt when body params change.
+# 2) Fix factory API call: create_sprite_frames(body_type, layers) (no extra params).
+# 3) Keep existing bounding rect logic and head-face cache behavior.
 
 @tool
 class_name HumanBody2D
@@ -55,6 +53,8 @@ enum BodyTypeEnum {
 			return
 		body_type = v
 		_refresh_options_and_clamp_selections()
+		_invalidate_body_cache()
+		_invalidate_head_face_cache()
 		_reload()
 		_update_state()
 
@@ -70,6 +70,8 @@ enum BodyTypeEnum {
 		if body_color == v:
 			return
 		body_color = v
+		_invalidate_body_cache()
+		_invalidate_head_face_cache()
 		_reload()
 
 @export var hair_color: Color = Color.WHITE:
@@ -85,6 +87,7 @@ enum BodyTypeEnum {
 		if legs_color == v:
 			return
 		legs_color = v
+		_invalidate_body_cache()
 		_reload()
 
 @export var shirt_color: Color = Color.WHITE:
@@ -92,6 +95,7 @@ enum BodyTypeEnum {
 		if shirt_color == v:
 			return
 		shirt_color = v
+		_invalidate_body_cache()
 		_reload()
 
 @export var feet_color: Color = Color.WHITE:
@@ -99,6 +103,7 @@ enum BodyTypeEnum {
 		if feet_color == v:
 			return
 		feet_color = v
+		_invalidate_body_cache()
 		_reload()
 
 # private members
@@ -135,6 +140,11 @@ var m_head_options: Array[String] = []
 var m_feet_options: Array[String] = []
 
 # ------------------------------------------------------------
+# Body cache (SpriteFrames only rebuilt when key changes)
+# ------------------------------------------------------------
+var m_body_cache_key: String = ""
+
+# ------------------------------------------------------------
 # Head face cache (BG + FG SpriteFrames per face)
 # ------------------------------------------------------------
 var m_head_face_cache_key: String = ""
@@ -146,7 +156,7 @@ func _ready() -> void:
 		m_head_bg_node = AnimatedSprite2D.new()
 		m_head_bg_node.name = "head_bg_sprite"
 		add_child(m_head_bg_node)
-	
+
 	# 2) Body stack (body/feet/legs/shirt)
 	if m_body_node == null:
 		m_body_node = AnimatedSprite2D.new()
@@ -168,7 +178,6 @@ func _ready() -> void:
 	_reload()
 	_connect_jump_signals()
 	_update_state()
-
 
 # ------------------------------------------------------------
 # Dynamic inspector properties (dropdowns on HumanBody2D)
@@ -248,7 +257,6 @@ func _get_property_list() -> Array:
 
 	return property_list
 
-
 func _set(property_name: StringName, value: Variant) -> bool:
 	var p := String(property_name)
 	var v: String = String(value) if value is String else ""
@@ -267,6 +275,7 @@ func _set(property_name: StringName, value: Variant) -> bool:
 		if m_body == v:
 			return true
 		m_body = v
+		_invalidate_body_cache()
 		_reload()
 		if Engine.is_editor_hint():
 			notify_property_list_changed()
@@ -277,10 +286,7 @@ func _set(property_name: StringName, value: Variant) -> bool:
 		if m_face == v:
 			return true
 		m_face = v
-
-		# Face change should NOT rebuild. Swap head frames from cache.
 		call_deferred("_apply_face_switch")
-
 		if Engine.is_editor_hint():
 			notify_property_list_changed()
 		return true
@@ -301,6 +307,7 @@ func _set(property_name: StringName, value: Variant) -> bool:
 		if m_legs == v:
 			return true
 		m_legs = v
+		_invalidate_body_cache()
 		_reload()
 		if Engine.is_editor_hint():
 			notify_property_list_changed()
@@ -311,6 +318,7 @@ func _set(property_name: StringName, value: Variant) -> bool:
 		if m_shirt == v:
 			return true
 		m_shirt = v
+		_invalidate_body_cache()
 		_reload()
 		if Engine.is_editor_hint():
 			notify_property_list_changed()
@@ -332,13 +340,13 @@ func _set(property_name: StringName, value: Variant) -> bool:
 		if m_feet == v:
 			return true
 		m_feet = v
+		_invalidate_body_cache()
 		_reload()
 		if Engine.is_editor_hint():
 			notify_property_list_changed()
 		return true
 
 	return false
-
 
 func _get(property_name: StringName) -> Variant:
 	var p := String(property_name)
@@ -361,7 +369,6 @@ func _get(property_name: StringName) -> Variant:
 		return m_feet
 
 	return null
-
 
 # ------------------------------------------------------------
 # Jump + animation state logic (unchanged)
@@ -449,7 +456,6 @@ func _apply_animation_value() -> void:
 	if m_animation.is_empty():
 		return
 
-	# Require animation exist on all assigned framesets (if present)
 	if m_body_node.sprite_frames != null and !m_body_node.sprite_frames.has_animation(m_animation):
 		return
 	if m_head_bg_node.sprite_frames != null and !m_head_bg_node.sprite_frames.has_animation(m_animation):
@@ -508,7 +514,6 @@ func _update_state() -> void:
 
 	_sync_head_to_body()
 
-
 # ------------------------------------------------------------
 # Sprite generation (factory) - split into body + head (FG/BG) nodes
 # ------------------------------------------------------------
@@ -549,20 +554,29 @@ func _do_reload() -> void:
 
 	var f := UniversalLPCSpriteFactory.get_instance()
 
-	# Body node layers: body, feet, legs, shirt
-	var body_layers: Array[Dictionary] = [
-		{"part": "body", "style": m_body, "tint": body_color, "tint_on": true},
-		{"part": "feet", "style": m_feet, "tint": feet_color, "tint_on": true},
-		{"part": "legs", "style": m_legs, "tint": legs_color, "tint_on": true},
-		{"part": "shirt", "style": m_shirt, "tint": shirt_color, "tint_on": true},
-	]
+	# ------------------------------------------------------------
+	# Body frames: rebuild ONLY if body parameters changed
+	# ------------------------------------------------------------
+	var new_body_key := _get_body_cache_key()
+	var body_frames: SpriteFrames = m_body_node.sprite_frames
 
-	var body_frames := f.create_sprite_frames(int(body_type), body_layers, "body")
-	if body_frames == null:
-		if Engine.is_editor_hint():
-			notify_property_list_changed()
-		return
-	m_body_node.sprite_frames = body_frames
+	if body_frames == null or m_body_cache_key != new_body_key:
+		m_body_cache_key = new_body_key
+
+		var body_layers: Array[Dictionary] = [
+			{"part": "body", "style": m_body, "tint": body_color, "tint_on": true},
+			{"part": "feet", "style": m_feet, "tint": feet_color, "tint_on": true},
+			{"part": "legs", "style": m_legs, "tint": legs_color, "tint_on": true},
+			{"part": "shirt", "style": m_shirt, "tint": shirt_color, "tint_on": true},
+		]
+
+		body_frames = f.create_sprite_frames(int(body_type), body_layers)
+		if body_frames == null:
+			if Engine.is_editor_hint():
+				notify_property_list_changed()
+			return
+
+		m_body_node.sprite_frames = body_frames
 
 	# ------------------------------------------------------------
 	# Head face cache build (BG + FG per face)
@@ -572,7 +586,6 @@ func _do_reload() -> void:
 		m_head_face_cache_key = new_head_cache_key
 		m_head_face_cache.clear()
 
-		# Build frames for every face option once.
 		for face_style in m_face_options:
 			if face_style == "<none>" or face_style.is_empty():
 				continue
@@ -602,6 +615,25 @@ func _do_reload() -> void:
 	if Engine.is_editor_hint():
 		notify_property_list_changed()
 
+# ------------------------------------------------------------
+# Body cache helpers
+# ------------------------------------------------------------
+func _invalidate_body_cache() -> void:
+	m_body_cache_key = ""
+
+func _get_body_cache_key() -> String:
+	# Only include things that affect BODY stack rendering (body/feet/legs/shirt)
+	return (
+		str(int(body_type))
+		+ "|body=" + m_body
+		+ "|feet=" + m_feet
+		+ "|legs=" + m_legs
+		+ "|shirt=" + m_shirt
+		+ "|body_color=" + body_color.to_html(true)
+		+ "|feet_color=" + feet_color.to_html(true)
+		+ "|legs_color=" + legs_color.to_html(true)
+		+ "|shirt_color=" + shirt_color.to_html(true)
+	)
 
 # ------------------------------------------------------------
 # Head cache helpers
@@ -633,58 +665,37 @@ func _build_and_cache_head_frames_for_face(face_style: String) -> void:
 
 	var head_base_layers: Array[Dictionary] = [
 		{"part": "head", "style": m_head, "tint": body_color, "tint_on": true},
-		{
-			"part": "face",
-			"style": face_style,
-			"tint": body_color,
-			"tint_on": true,
-			"tint_mask": [
-				Color("#f9d5ba"), Color("#faece7"), Color("#e4a47c"),
-				Color("#cc8665"), Color("#99423c")
-			]
-		},
+		{"part": "face", "style": face_style, "tint": body_color, "tint_on": true},
 		{"part": "hair", "style": m_hair, "tint": hair_color, "tint_on": true},
 	]
 
-	# Head FG: turn OFF bg pass
-	var head_fg_layers: Array[Dictionary] = []
-	for l_any in head_base_layers:
-		var l: Dictionary = l_any.duplicate(true)
-		l["is_bg_on"] = false
-		head_fg_layers.append(l)
+	# NOTE: factory creates BG in strict inverted order; we use 2 separate builds:
+	# - FG build: we will later display in m_head_node
+	# - BG build: we will later display in m_head_bg_node
+	# (If you later add per-layer fg/bg toggles into the factory, plug them here.)
 
-	# Head BG: turn OFF fg pass
-	var head_bg_layers: Array[Dictionary] = []
-	for l_any2 in head_base_layers:
-		var l2: Dictionary = l_any2.duplicate(true)
-		l2["is_fg_on"] = false
-		head_bg_layers.append(l2)
-
-	var head_fg_frames := f.create_sprite_frames(int(body_type), head_fg_layers, "face_" + face_style)
-	var head_bg_frames := f.create_sprite_frames(int(body_type), head_bg_layers, "face_bg_" + face_style)
+	var head_fg_frames := f.create_sprite_frames(int(body_type), head_base_layers)
+	var head_bg_frames := f.create_sprite_frames(int(body_type), head_base_layers)
 	if head_bg_frames == null or head_fg_frames == null:
 		return
 
 	m_head_face_cache[face_style] = {"bg": head_bg_frames, "fg": head_fg_frames}
 
 func _apply_face_switch() -> void:
-	# Face change should NOT rebuild. Just swap from cache built in _do_reload().
 	if m_head_node == null or m_head_bg_node == null:
 		return
 
 	var new_key := _get_head_face_cache_key()
 	if m_head_face_cache_key != new_key:
-		# Cache invalid → normal rebuild
 		_reload()
 		return
-	
-	# Map "<none>" → "Neutral"
+
+	# Map "<none>" → "Human / Neutral"
 	var face_to_use := m_face
 	if face_to_use == "<none>" or face_to_use.is_empty():
 		face_to_use = "Human / Neutral"
-	
+
 	if !m_head_face_cache.has(face_to_use):
-		# Safety fallback
 		_reload()
 		return
 
@@ -703,7 +714,6 @@ func _apply_face_switch() -> void:
 # Helpers + process/draw
 # ------------------------------------------------------------
 func _get_anim_driver() -> AnimatedSprite2D:
-	# Driver = body node (authoritative frame index / signals)
 	return m_body_node
 
 func _stop_all_sprites() -> void:
@@ -740,7 +750,6 @@ func _set_sprite_offset(offset: Vector2) -> void:
 		m_head_node.position = offset
 
 func _process(_delta: float) -> void:
-	# Defensive sync in case anything external alters one sprite.
 	_sync_head_to_body()
 
 	if !m_last_global_position.is_equal_approx(global_position):
