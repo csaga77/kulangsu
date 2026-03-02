@@ -53,10 +53,6 @@ texture = ExtResource("8_rnaij")
 [node name="Player" parent="." unique_id=543916503 instance=ExtResource("5_rpuu0")]
 position = Vector2(-13, 100)
 draw_bounding_rect = true
-m_hair = "Long Loose"
-m_shirt = "Sleeveless"
-hair = "Long Loose"
-shirt = "Sleeveless"
 
 [node name="PlayerController" type="Node" parent="Player" unique_id=1171599603 node_paths=PackedStringArray("player")]
 script = ExtResource("6_oo8pe")

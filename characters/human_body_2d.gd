@@ -1,8 +1,13 @@
 # res://characters/human_body_2d.gd
 # Changes:
-# 1) Add body SpriteFrames cache-key, so body frames are only rebuilt when body params change.
-# 2) Fix factory API call: create_sprite_frames(body_type, layers) (no extra params).
-# 3) Keep existing bounding rect logic and head-face cache behavior.
+# - Remove facial_mood / facial_action from dynamic property list (they are @export already).
+# - Fix enum usage error (no enum "function" calls).
+# - Manage facial action animation via ACTION_DEFS in one place.
+# - Blink: base -> closing -> closed -> closing -> base, repeated twice.
+# - Rolling eyes: rolling -> looking_left -> closing_eyes -> looking_right, loops forever (NO closed_eyes).
+# - Add "complete_action" in ACTION_DEFS:
+#     * When a finite action completes, it switches to complete_action (configurable per action).
+#     * No standalone COMPLETE action enum/state.
 
 @tool
 class_name HumanBody2D
@@ -19,6 +24,19 @@ enum BodyTypeEnum {
 	CHILD = 3,
 	MUSCULAR = 4,
 	PREGNANT = 5,
+}
+
+enum FacialMoodEnum {
+	MANUAL = 0, # use "face" dropdown as base
+	NORMAL = 1,
+	SMILE = 2,
+	ANGRY = 3,
+}
+
+enum FacialActionEnum {
+	NONE = 0,
+	BLINK = 1,
+	ROLLING_EYES = 2,
 }
 
 @export var draw_bounding_rect: bool = false
@@ -55,6 +73,7 @@ enum BodyTypeEnum {
 		_refresh_options_and_clamp_selections()
 		_invalidate_body_cache()
 		_invalidate_head_face_cache()
+		_restart_face_driver()
 		_reload()
 		_update_state()
 
@@ -63,6 +82,7 @@ enum BodyTypeEnum {
 		refresh_sprite_options = false
 		if Engine.is_editor_hint():
 			_refresh_options_and_clamp_selections()
+			_restart_face_driver()
 			_reload()
 
 @export var body_color: Color = Color.WHITE:
@@ -106,11 +126,26 @@ enum BodyTypeEnum {
 		_invalidate_body_cache()
 		_reload()
 
+# These are exported already -> DO NOT add to dynamic properties.
+@export var facial_mood: FacialMoodEnum = FacialMoodEnum.MANUAL:
+	set(v):
+		if facial_mood == v:
+			return
+		facial_mood = v
+		_restart_face_driver()
+
+@export var facial_action: FacialActionEnum = FacialActionEnum.NONE:
+	set(v):
+		if facial_action == v:
+			return
+		facial_action = v
+		_restart_face_driver()
+
 # private members
 @export_storage var m_animation: String = "idle_s"
 
 @export_storage var m_body: String = "Default"
-@export_storage var m_face: String = "Default"
+@export_storage var m_face: String = "Default" # manual face selection
 @export_storage var m_hair: String = "Bald"
 @export_storage var m_legs: String = "<none>"
 @export_storage var m_shirt: String = "<none>"
@@ -150,6 +185,45 @@ var m_body_cache_key: String = ""
 var m_head_face_cache_key: String = ""
 var m_head_face_cache: Dictionary = {} # face_style -> { "bg": SpriteFrames, "fg": SpriteFrames }
 
+# ------------------------------------------------------------
+# Face driver (mood + action)
+# ------------------------------------------------------------
+var m_face_base: String = ""   # resolved base face (mood/manual)
+var m_face_render: String = "" # actually rendered face (base or action frame)
+
+var m_action_timer: float = 0.0
+var m_action_step_index: int = 0
+var m_action_loops_done: int = 0
+var m_action_is_running: bool = false
+
+const BLINK_STEP_SEC := 0.08
+const ROLL_STEP_SEC := 0.12
+
+# NOTE:
+# - loops == 0 => infinite
+# - complete_action is used only when loops > 0 and loops completed.
+# - complete_action should be a FacialActionEnum value.
+const ACTION_DEFS := {
+	FacialActionEnum.NONE: {
+		"step_sec": 0.0,
+		"loops": 1,
+		"steps": ["base"],
+		"complete_action": FacialActionEnum.NONE,
+	},
+	FacialActionEnum.BLINK: {
+		"step_sec": BLINK_STEP_SEC,
+		"loops": 2, # do twice then switch to complete_action
+		"steps": ["base", "closing eyes", "closed eyes", "closing eyes", "base"],
+		"complete_action": FacialActionEnum.NONE,
+	},
+	FacialActionEnum.ROLLING_EYES: {
+		"step_sec": ROLL_STEP_SEC,
+		"loops": 0, # infinite loop
+		"steps": ["rolling eyes", "looking left", "closing eyes", "looking right"],
+		"complete_action": FacialActionEnum.NONE, # ignored (loops=0), kept for completeness
+	},
+}
+
 func _ready() -> void:
 	# 1) Head BG stack (head/face/hair backgrounds ONLY)
 	if m_head_bg_node == null:
@@ -175,12 +249,14 @@ func _ready() -> void:
 	move_child(m_head_node, 2)
 
 	_refresh_options_and_clamp_selections()
+	_restart_face_driver()
 	_reload()
 	_connect_jump_signals()
 	_update_state()
 
 # ------------------------------------------------------------
 # Dynamic inspector properties (dropdowns on HumanBody2D)
+# NOTE: facial_mood / facial_action are @export -> DO NOT add here.
 # ------------------------------------------------------------
 func _get_property_list() -> Array:
 	var property_list: Array = []
@@ -286,7 +362,8 @@ func _set(property_name: StringName, value: Variant) -> bool:
 		if m_face == v:
 			return true
 		m_face = v
-		call_deferred("_apply_face_switch")
+		if facial_mood == FacialMoodEnum.MANUAL:
+			_restart_face_driver()
 		if Engine.is_editor_hint():
 			notify_property_list_changed()
 		return true
@@ -394,7 +471,6 @@ func move(direction_vector: Vector2) -> void:
 	move_and_slide()
 
 func get_texture() -> Texture2D:
-	# Prefer body texture for bounds, fallback to head-fg then head-bg.
 	var sprite: AnimatedSprite2D = m_body_node
 	if sprite == null:
 		sprite = m_head_node
@@ -458,10 +534,6 @@ func _apply_animation_value() -> void:
 
 	if m_body_node.sprite_frames != null and !m_body_node.sprite_frames.has_animation(m_animation):
 		return
-	if m_head_bg_node.sprite_frames != null and !m_head_bg_node.sprite_frames.has_animation(m_animation):
-		return
-	if m_head_node.sprite_frames != null and !m_head_node.sprite_frames.has_animation(m_animation):
-		return
 
 	_update_state()
 	if Engine.is_editor_hint():
@@ -515,7 +587,7 @@ func _update_state() -> void:
 	_sync_head_to_body()
 
 # ------------------------------------------------------------
-# Sprite generation (factory) - split into body + head (FG/BG) nodes
+# Sprite generation
 # ------------------------------------------------------------
 func _refresh_options_and_clamp_selections() -> void:
 	var f := UniversalLPCSpriteFactory.get_instance()
@@ -554,9 +626,7 @@ func _do_reload() -> void:
 
 	var f := UniversalLPCSpriteFactory.get_instance()
 
-	# ------------------------------------------------------------
 	# Body frames: rebuild ONLY if body parameters changed
-	# ------------------------------------------------------------
 	var new_body_key := _get_body_cache_key()
 	var body_frames: SpriteFrames = m_body_node.sprite_frames
 
@@ -578,9 +648,7 @@ func _do_reload() -> void:
 
 		m_body_node.sprite_frames = body_frames
 
-	# ------------------------------------------------------------
 	# Head face cache build (BG + FG per face)
-	# ------------------------------------------------------------
 	var new_head_cache_key := _get_head_face_cache_key()
 	if m_head_face_cache_key != new_head_cache_key:
 		m_head_face_cache_key = new_head_cache_key
@@ -591,7 +659,7 @@ func _do_reload() -> void:
 				continue
 			_build_and_cache_head_frames_for_face(face_style)
 
-	# Refresh animation dropdown list (names only)
+	# Refresh animations list
 	m_anim_options = f.get_animation_options(int(body_type))
 	m_animation = f.get_valid_style_value(m_animation, m_anim_options)
 
@@ -610,6 +678,7 @@ func _do_reload() -> void:
 		_stop_all_sprites()
 		if m_body_node.sprite_frames != null and m_body_node.sprite_frames.has_animation(anim_to_play):
 			m_body_node.play(anim_to_play)
+
 		_apply_face_switch()
 
 	if Engine.is_editor_hint():
@@ -622,7 +691,6 @@ func _invalidate_body_cache() -> void:
 	m_body_cache_key = ""
 
 func _get_body_cache_key() -> String:
-	# Only include things that affect BODY stack rendering (body/feet/legs/shirt)
 	return (
 		str(int(body_type))
 		+ "|body=" + m_body
@@ -643,8 +711,6 @@ func _invalidate_head_face_cache() -> void:
 	m_head_face_cache.clear()
 
 func _get_head_face_cache_key() -> String:
-	# Anything that changes head rendering must be included here.
-	# Face is NOT included, because we cache across faces.
 	return (
 		str(int(body_type))
 		+ "|head=" + m_head
@@ -663,22 +729,32 @@ func _build_and_cache_head_frames_for_face(face_style: String) -> void:
 
 	var f := UniversalLPCSpriteFactory.get_instance()
 
+	var face_skip_colors: Array = [
+		Color("#f9d5ba"), Color("#faece7"), Color("#e4a47c"),
+		Color("#cc8665"), Color("#99423c")
+	]
+
 	var head_base_layers: Array[Dictionary] = [
 		{"part": "head", "style": m_head, "tint": body_color, "tint_on": true},
-		{"part": "face", "style": face_style, "tint": body_color, "tint_on": true},
+		{"part": "face", "style": face_style, "tint": body_color, "tint_on": true, "tint_mask": face_skip_colors},
 		{"part": "hair", "style": m_hair, "tint": hair_color, "tint_on": true},
 	]
 
-	# NOTE: factory creates BG in strict inverted order; we use 2 separate builds:
-	# - FG build: we will later display in m_head_node
-	# - BG build: we will later display in m_head_bg_node
-	# (If you later add per-layer fg/bg toggles into the factory, plug them here.)
+	var head_fg_layers: Array[Dictionary] = []
+	for l_any in head_base_layers:
+		var l: Dictionary = l_any.duplicate(true)
+		l["is_bg_on"] = false
+		head_fg_layers.append(l)
 
-	var head_fg_frames := f.create_sprite_frames(int(body_type), head_base_layers)
-	var head_bg_frames := f.create_sprite_frames(int(body_type), head_base_layers)
-	if head_bg_frames == null or head_fg_frames == null:
-		return
+	var head_bg_layers: Array[Dictionary] = []
+	for l_any2 in head_base_layers:
+		var l2: Dictionary = l_any2.duplicate(true)
+		l2["is_fg_on"] = false
+		head_bg_layers.append(l2)
 
+	var head_fg_frames := f.create_sprite_frames(int(body_type), head_fg_layers)
+	var head_bg_frames := f.create_sprite_frames(int(body_type), head_bg_layers)
+	
 	m_head_face_cache[face_style] = {"bg": head_bg_frames, "fg": head_fg_frames}
 
 func _apply_face_switch() -> void:
@@ -690,25 +766,133 @@ func _apply_face_switch() -> void:
 		_reload()
 		return
 
-	# Map "<none>" → "Human / Neutral"
-	var face_to_use := m_face
-	if face_to_use == "<none>" or face_to_use.is_empty():
+	var face_to_use := m_face_render
+	if face_to_use.is_empty() or face_to_use == "<none>":
 		face_to_use = "Human / Neutral"
 
 	if !m_head_face_cache.has(face_to_use):
-		_reload()
-		return
+		if m_head_face_cache.has("Human / Neutral"):
+			face_to_use = "Human / Neutral"
+		else:
+			_reload()
+			return
 
 	var entry: Dictionary = m_head_face_cache[face_to_use]
 	var head_bg_frames: SpriteFrames = entry.get("bg", null)
 	var head_fg_frames: SpriteFrames = entry.get("fg", null)
 
-	if head_bg_frames != null:
-		m_head_bg_node.sprite_frames = head_bg_frames
-	if head_fg_frames != null:
-		m_head_node.sprite_frames = head_fg_frames
+	m_head_bg_node.sprite_frames = head_bg_frames
+	m_head_node.sprite_frames = head_fg_frames
 
 	_sync_head_to_body()
+
+# ------------------------------------------------------------
+# Face driver (mood + action) - centralized via ACTION_DEFS
+# ------------------------------------------------------------
+func _restart_face_driver() -> void:
+	_resolve_face_base_from_mood()
+
+	m_action_timer = 0.0
+	m_action_step_index = 0
+	m_action_loops_done = 0
+
+	var def: Dictionary = ACTION_DEFS.get(int(facial_action), ACTION_DEFS[FacialActionEnum.NONE])
+	var steps: Array = def.get("steps", ["base"])
+	m_action_is_running = (int(facial_action) != int(FacialActionEnum.NONE)) and steps.size() > 0
+
+	# Render first step immediately
+	m_face_render = _resolve_face_for_step(String(steps[0]))
+	if m_face_render.is_empty():
+		m_face_render = m_face_base
+
+	call_deferred("_apply_face_switch")
+
+func _resolve_face_base_from_mood() -> void:
+	match int(facial_mood):
+		int(FacialMoodEnum.MANUAL):
+			m_face_base = m_face
+		int(FacialMoodEnum.NORMAL):
+			m_face_base = _find_face_option_by_keywords(["neutral", "normal"])
+		int(FacialMoodEnum.SMILE):
+			m_face_base = _find_face_option_by_keywords(["smile", "happy"])
+		int(FacialMoodEnum.ANGRY):
+			m_face_base = _find_face_option_by_keywords(["angry", "mad"])
+		_:
+			m_face_base = m_face
+
+	if m_face_base.is_empty() or m_face_base == "<none>":
+		m_face_base = "Human / Neutral"
+
+func _resolve_face_for_step(step_name: String) -> String:
+	match step_name:
+		"base":
+			return m_face_base
+		_:
+			return _find_face_option_by_keywords_excluding(step_name)
+	return ""
+
+func _find_face_option_by_keywords(keywords: Array[String]) -> String:
+	if m_face_options.is_empty():
+		return ""
+
+	for opt in m_face_options:
+		var s := String(opt).to_lower()
+		for k in keywords:
+			if s.find(String(k).to_lower()) != -1:
+				return String(opt)
+	return ""
+
+# NOTE: simplified: no "excludes" param
+func _find_face_option_by_keywords_excluding(step_name: String) -> String:
+	if m_face_options.is_empty():
+		return ""
+
+	var needle := step_name.strip_edges().to_lower()
+	if needle.is_empty():
+		return ""
+
+	# First hit wins (keeps option order stable)
+	for opt in m_face_options:
+		var s2 := String(opt).to_lower()
+		if s2.find(needle) != -1:
+			return String(opt)
+
+	return ""
+
+func _set_facial_action_internal(action_value: int) -> void:
+	# Setting exported property -> will call setter -> _restart_face_driver()
+	facial_action = action_value
+
+func _advance_action_step() -> void:
+	var def: Dictionary = ACTION_DEFS.get(int(facial_action), ACTION_DEFS[FacialActionEnum.NONE])
+	var steps: Array = def.get("steps", ["base"])
+	if steps.is_empty():
+		m_action_is_running = false
+		m_face_render = m_face_base
+		_apply_face_switch()
+		return
+
+	m_action_step_index += 1
+	if m_action_step_index >= steps.size():
+		m_action_step_index = 0
+		m_action_loops_done += 1
+
+	var loops: int = int(def.get("loops", 1))
+	if loops > 0 and m_action_loops_done >= loops:
+		# Finite action finished -> switch to complete_action (configurable)
+		m_action_is_running = false
+		m_face_render = m_face_base
+		_apply_face_switch()
+
+		var next_action: int = int(def.get("complete_action", FacialActionEnum.NONE))
+		if next_action != int(facial_action):
+			call_deferred("_set_facial_action_internal", next_action)
+		return
+
+	m_face_render = _resolve_face_for_step(String(steps[m_action_step_index]))
+	if m_face_render.is_empty():
+		m_face_render = m_face_base
+	_apply_face_switch()
 
 # ------------------------------------------------------------
 # Helpers + process/draw
@@ -731,12 +915,12 @@ func _sync_head_to_body() -> void:
 	var anim := m_body_node.animation
 	var frame := m_body_node.frame
 
-	if m_head_bg_node != null:
+	if m_head_bg_node != null and m_head_bg_node.sprite_frames and m_head_bg_node.sprite_frames.has_animation(anim):
 		if m_head_bg_node.animation != anim:
 			m_head_bg_node.animation = anim
 		m_head_bg_node.frame = frame
 
-	if m_head_node != null:
+	if m_head_node != null and m_head_node.sprite_frames and m_head_node.sprite_frames.has_animation(anim):
 		if m_head_node.animation != anim:
 			m_head_node.animation = anim
 		m_head_node.frame = frame
@@ -749,8 +933,22 @@ func _set_sprite_offset(offset: Vector2) -> void:
 	if m_head_node != null:
 		m_head_node.position = offset
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_sync_head_to_body()
+
+	# facial action tick (single place)
+	if m_action_is_running:
+		var def: Dictionary = ACTION_DEFS.get(int(facial_action), ACTION_DEFS[FacialActionEnum.NONE])
+		var step_sec: float = float(def.get("step_sec", 0.0))
+		if step_sec <= 0.00001:
+			m_action_is_running = false
+		else:
+			m_action_timer += delta
+			while m_action_timer >= step_sec:
+				m_action_timer -= step_sec
+				_advance_action_step()
+				if !m_action_is_running:
+					break
 
 	if !m_last_global_position.is_equal_approx(global_position):
 		m_last_global_position = global_position

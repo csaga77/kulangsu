@@ -179,20 +179,19 @@ func create_sprite_frames(body_type: int, layers: Array[Dictionary], name:String
 	if sprite_frames == null:
 		return null
 
-	sprite_frames = sprite_frames.duplicate()
-
 	var resolved_layers := _resolve_layers(body_type, layers)
 	if resolved_layers.is_empty():
-		return sprite_frames
+		return null
 
 	var atlas_image: Image = create_sprite_atlas_image(resolved_layers)
 	if atlas_image == null:
-		return sprite_frames
+		return null
 		
 	if debug_output and !name.is_empty():
 		atlas_image.save_png("user://sprite_{0}_{1}.png".format([body_type, name.replace("/", "_")]))
 
 	var atlas_tex := ImageTexture.create_from_image(atlas_image)
+	sprite_frames = sprite_frames.duplicate()
 
 	for anim_name in sprite_frames.get_animation_names():
 		var count := sprite_frames.get_frame_count(anim_name)
