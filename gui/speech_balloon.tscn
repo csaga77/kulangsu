@@ -1,0 +1,188 @@
+[gd_scene format=3 uid="uid://c1le3qk68o7lw"]
+
+[ext_resource type="StyleBox" uid="uid://dr73ug3p3fsww" path="res://resources/style/speech_balloon_style.tres" id="1_8ma1k"]
+[ext_resource type="Texture2D" uid="uid://cfuxo3mhn37yy" path="res://resources/sprites/gui/speech_balloon.png" id="1_uo7hn"]
+[ext_resource type="Script" uid="uid://d3rp86272loka" path="res://gui/speech_balloon.gd" id="2_8ma1k"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_g50v7"]
+atlas = ExtResource("1_uo7hn")
+region = Rect2(18, 10, 7, 8)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_2ol17"]
+atlas = ExtResource("1_uo7hn")
+region = Rect2(27, 10, 7, 8)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_wogkc"]
+atlas = ExtResource("1_uo7hn")
+region = Rect2(47, 0, 8, 7)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_r5jcy"]
+atlas = ExtResource("1_uo7hn")
+region = Rect2(47, 9, 8, 7)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_0oby4"]
+atlas = ExtResource("1_uo7hn")
+region = Rect2(37, 0, 8, 7)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_x3r54"]
+atlas = ExtResource("1_uo7hn")
+region = Rect2(37, 9, 8, 7)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_8ma1k"]
+atlas = ExtResource("1_uo7hn")
+region = Rect2(18, 0, 7, 8)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_uo7hn"]
+atlas = ExtResource("1_uo7hn")
+region = Rect2(27, 0, 7, 8)
+
+[node name="SpeechBalloon" type="Node2D" unique_id=746264519]
+script = ExtResource("2_8ma1k")
+offset = 15.0
+text = "G'day, mate!"
+
+[node name="FloatingBubble" type="Panel" parent="." unique_id=1905052246]
+visible = false
+offset_left = -5.5
+offset_top = -5.5
+offset_right = 5.5
+offset_bottom = 5.5
+theme_override_styles/panel = ExtResource("1_8ma1k")
+
+[node name="Balloon" type="Control" parent="." unique_id=516925901]
+z_index = 10
+layout_mode = 3
+anchors_preset = 0
+
+[node name="VBox" type="VBoxContainer" parent="Balloon" unique_id=484324539]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -44.0
+offset_right = 131.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_constants/separation = -2
+
+[node name="HBoxTop" type="HBoxContainer" parent="Balloon/VBox" unique_id=529767074]
+z_index = 1
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="SpacerLeft" type="Control" parent="Balloon/VBox/HBoxTop" unique_id=819465129]
+custom_minimum_size = Vector2(6, 2)
+layout_mode = 2
+
+[node name="TopLeft" type="TextureRect" parent="Balloon/VBox/HBoxTop" unique_id=159674538]
+visible = false
+layout_mode = 2
+texture = SubResource("AtlasTexture_g50v7")
+
+[node name="SpacerMid" type="Control" parent="Balloon/VBox/HBoxTop" unique_id=1146428086]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TopRight" type="TextureRect" parent="Balloon/VBox/HBoxTop" unique_id=135737088]
+visible = false
+layout_mode = 2
+texture = SubResource("AtlasTexture_2ol17")
+
+[node name="SpacerRight" type="Control" parent="Balloon/VBox/HBoxTop" unique_id=1404016247]
+custom_minimum_size = Vector2(6, 0)
+layout_mode = 2
+
+[node name="HBoxMid" type="HBoxContainer" parent="Balloon/VBox" unique_id=78999927]
+layout_mode = 2
+theme_override_constants/separation = -2
+
+[node name="VBoxLeft" type="VBoxContainer" parent="Balloon/VBox/HBoxMid" unique_id=1769597161]
+z_index = 1
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="SpacerTop" type="Control" parent="Balloon/VBox/HBoxMid/VBoxLeft" unique_id=1791139805]
+custom_minimum_size = Vector2(2, 5)
+layout_mode = 2
+
+[node name="LeftTop" type="TextureRect" parent="Balloon/VBox/HBoxMid/VBoxLeft" unique_id=682541243]
+visible = false
+layout_mode = 2
+texture = SubResource("AtlasTexture_wogkc")
+
+[node name="SpacerMid" type="Control" parent="Balloon/VBox/HBoxMid/VBoxLeft" unique_id=585870338]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LeftBottom" type="TextureRect" parent="Balloon/VBox/HBoxMid/VBoxLeft" unique_id=463336975]
+visible = false
+layout_mode = 2
+texture = SubResource("AtlasTexture_r5jcy")
+
+[node name="SpacerBottom" type="Control" parent="Balloon/VBox/HBoxMid/VBoxLeft" unique_id=1524724163]
+custom_minimum_size = Vector2(0, 5)
+layout_mode = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="Balloon/VBox/HBoxMid" unique_id=782250851]
+layout_mode = 2
+theme_override_styles/panel = ExtResource("1_8ma1k")
+
+[node name="Label" type="Label" parent="Balloon/VBox/HBoxMid/PanelContainer" unique_id=447542626]
+layout_mode = 2
+size_flags_vertical = 1
+theme_override_colors/font_color = Color(0.00566115, 0.00566115, 0.00566115, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.392157)
+theme_override_font_sizes/font_size = 20
+text = "G'day, mate!"
+
+[node name="VBoxRight" type="VBoxContainer" parent="Balloon/VBox/HBoxMid" unique_id=340627996]
+z_index = 1
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="SpacerTop" type="Control" parent="Balloon/VBox/HBoxMid/VBoxRight" unique_id=559774557]
+custom_minimum_size = Vector2(2, 5)
+layout_mode = 2
+
+[node name="RightTop" type="TextureRect" parent="Balloon/VBox/HBoxMid/VBoxRight" unique_id=1496891855]
+visible = false
+layout_mode = 2
+texture = SubResource("AtlasTexture_0oby4")
+
+[node name="SpacerMid" type="Control" parent="Balloon/VBox/HBoxMid/VBoxRight" unique_id=336598927]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="RightBottom" type="TextureRect" parent="Balloon/VBox/HBoxMid/VBoxRight" unique_id=2118401475]
+visible = false
+layout_mode = 2
+texture = SubResource("AtlasTexture_x3r54")
+
+[node name="SpacerBottom" type="Control" parent="Balloon/VBox/HBoxMid/VBoxRight" unique_id=691962145]
+custom_minimum_size = Vector2(0, 5)
+layout_mode = 2
+
+[node name="HBoxBottom" type="HBoxContainer" parent="Balloon/VBox" unique_id=836003756]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="SpacerLeft" type="Control" parent="Balloon/VBox/HBoxBottom" unique_id=1114944387]
+custom_minimum_size = Vector2(6, 2)
+layout_mode = 2
+
+[node name="BottomLeft" type="TextureRect" parent="Balloon/VBox/HBoxBottom" unique_id=1554194730]
+layout_mode = 2
+texture = SubResource("AtlasTexture_8ma1k")
+
+[node name="SpacerMid" type="Control" parent="Balloon/VBox/HBoxBottom" unique_id=1712440523]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BottomRight" type="TextureRect" parent="Balloon/VBox/HBoxBottom" unique_id=1499441359]
+visible = false
+layout_mode = 2
+texture = SubResource("AtlasTexture_uo7hn")
+
+[node name="SpacerRight" type="Control" parent="Balloon/VBox/HBoxBottom" unique_id=1419618897]
+custom_minimum_size = Vector2(6, 0)
+layout_mode = 2
