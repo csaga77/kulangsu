@@ -1,0 +1,23 @@
+[gd_scene format=3 uid="uid://50lwfo13g33c"]
+
+[ext_resource type="PackedScene" uid="uid://b270dxk8o03mf" path="res://game/go_game/go_game.tscn" id="1_nspmc"]
+[ext_resource type="Script" uid="uid://cl2ts7dp3jtba" path="res://game/go_game/go_ai_agent.gd" id="2_jlkny"]
+
+[node name="TestGoGame" type="Node2D" unique_id=1617236478]
+
+[node name="GoGame" parent="." unique_id=303974692 instance=ExtResource("1_nspmc")]
+
+[node name="AI" type="Node" parent="." unique_id=173397613]
+script = ExtResource("2_jlkny")
+game_path = NodePath("../GoGame")
+ai_color = 1
+level = 2
+
+[node name="Button" type="Button" parent="." unique_id=1414098289]
+offset_left = 741.0
+offset_top = 21.0
+offset_right = 749.0
+offset_bottom = 29.0
+text = "Restart"
+
+[connection signal="pressed" from="Button" to="GoGame" method="reset_game"]

@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="kulangsu"
-run/main_scene="uid://chfnv650kjhxr"
+run/main_scene="uid://50lwfo13g33c"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
 
@@ -25,10 +25,10 @@ buses/default_bus_layout="uid://051uw6ym0efo"
 
 [display]
 
-window/size/viewport_width=1440
-window/size/viewport_height=810
+window/size/viewport_width=2880
+window/size/viewport_height=1620
 window/stretch/mode="canvas_items"
-window/stretch/scale=4.0
+window/stretch/scale=2.0
 
 [input]
 
