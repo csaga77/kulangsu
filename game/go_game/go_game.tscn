@@ -1,6 +1,0 @@
-[gd_scene format=3 uid="uid://b270dxk8o03mf"]
-
-[ext_resource type="Script" uid="uid://cyoocepckl24" path="res://game/go_game/go_game.gd" id="1_ea505"]
-
-[node name="GoGame" type="Node2D" unique_id=303974692]
-script = ExtResource("1_ea505")

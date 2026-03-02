@@ -1,0 +1,42 @@
+[gd_scene format=3 uid="uid://50lwfo13g33c"]
+
+[ext_resource type="PackedScene" uid="uid://b270dxk8o03mf" path="res://game/grid_board_game/grid_board_game.tscn" id="1_nspmc"]
+[ext_resource type="Script" uid="uid://cl2ts7dp3jtba" path="res://game/grid_board_game/board_ai_agent.gd" id="2_jlkny"]
+[ext_resource type="Script" uid="uid://kwf6wikrxwxd" path="res://game/grid_board_game/rules/gomoku_rules.gd" id="2_vmin1"]
+
+[sub_resource type="Resource" id="Resource_08kmx"]
+script = ExtResource("2_vmin1")
+metadata/_custom_type_script = "uid://kwf6wikrxwxd"
+
+[node name="TestGridBoardGame" type="Node2D" unique_id=1617236478]
+
+[node name="GridBoardGame" parent="." unique_id=303974692 instance=ExtResource("1_nspmc")]
+rules = SubResource("Resource_08kmx")
+undo_step_count = 2
+
+[node name="AI" type="Node" parent="." unique_id=173397613]
+script = ExtResource("2_jlkny")
+game_path = NodePath("../GridBoardGame")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=734435813]
+offset_left = 730.0
+offset_top = 19.0
+offset_right = 901.0
+offset_bottom = 59.0
+
+[node name="Button_Restart" type="Button" parent="HBoxContainer" unique_id=1414098289]
+layout_mode = 2
+text = "Restart"
+
+[node name="Button_Undo" type="Button" parent="HBoxContainer" unique_id=198087559]
+layout_mode = 2
+text = "Undo
+"
+
+[node name="Button_Redo" type="Button" parent="HBoxContainer" unique_id=86808275]
+layout_mode = 2
+text = "Redo"
+
+[connection signal="pressed" from="HBoxContainer/Button_Restart" to="GridBoardGame" method="reset_game"]
+[connection signal="pressed" from="HBoxContainer/Button_Undo" to="GridBoardGame" method="undo"]
+[connection signal="pressed" from="HBoxContainer/Button_Redo" to="GridBoardGame" method="redo"]

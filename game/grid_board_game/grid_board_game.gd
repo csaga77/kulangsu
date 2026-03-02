@@ -1,25 +1,21 @@
-# res://game/go_game/go_game.gd
+# res://game/grid_board_game/grid_board_game.gd
 @tool
-class_name GoGame
+class_name GridBoardGame
 extends Node2D
-
-# Minimal Go (Weiqi/Baduk) core:
-# - Click to place stones (human input)
-# - Captures (groups with 0 liberties removed)
-# - Optional suicide rule
-# - Positional superko via board hashes
-# NOTE: No AI here. AI lives in GoAIAgent and calls this class via public API.
 
 signal board_changed()
 signal turn_changed(turn_color: int)
 signal move_played(cell: Vector2i, color: int)
 signal game_reset()
+signal game_over(winner_color: int, win_line: Array[Vector2i])
 
-enum Stone {
-	EMPTY = 0,
-	BLACK = 1,
-	WHITE = 2,
-}
+enum Stone { EMPTY = 0, BLACK = 1, WHITE = 2 }
+
+@export var rules: BoardRules:
+	set(v):
+		rules = v
+		if is_inside_tree():
+			reset_game()
 
 @export var board_size: int = 19:
 	set(v):
@@ -46,26 +42,36 @@ enum Stone {
 		show_coords = v
 		queue_redraw()
 
-@export var allow_suicide: bool = false
-
 @export var reset_trigger: bool = false:
 	set(_v):
 		reset_trigger = false
 		reset_game()
 
+# Undo / Redo (ALL logic lives here)
+@export var enable_undo_redo: bool = true
+@export var max_history_steps: int = 256
+@export var enable_shortcuts: bool = true
+@export_range(1, 2, 1) var undo_step_count: int = 1
+
 var m_board: PackedInt32Array
 var m_turn: int = Stone.BLACK
 var m_last_move: Vector2i = Vector2i(-1, -1)
 
-# Repetition detection: hash(int) -> true
-var m_seen_hashes: Dictionary = {}
-var m_current_hash: int = 0
-
-# Increments once per successful move / reset.
-# Used by AI to guarantee "one move at a time".
+# for AI "one move at a time"
 var m_turn_token: int = 0
 
+# game over (Gomoku)
+var m_is_game_over: bool = false
+var m_winner: int = Stone.EMPTY
+var m_win_line: Array[Vector2i] = []
+
+# undo/redo stacks
+var m_undo_stack: Array[Dictionary] = []
+var m_redo_stack: Array[Dictionary] = []
+
 func _ready() -> void:
+	if rules == null:
+		rules = GoRules.new()
 	reset_game()
 
 func _process(_delta: float) -> void:
@@ -73,6 +79,20 @@ func _process(_delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if Engine.is_editor_hint():
+		return
+
+	if enable_shortcuts and enable_undo_redo and event is InputEventKey and event.pressed:
+		var k := event as InputEventKey
+		# Undo: Ctrl/Cmd + Z
+		if k.keycode == KEY_Z and (k.ctrl_pressed or k.meta_pressed) and (not k.shift_pressed):
+			undo()
+			return
+		# Redo: Ctrl/Cmd + Y OR Ctrl/Cmd + Shift + Z
+		if (k.keycode == KEY_Y and (k.ctrl_pressed or k.meta_pressed)) or (k.keycode == KEY_Z and (k.ctrl_pressed or k.meta_pressed) and k.shift_pressed):
+			redo()
+			return
+
+	if m_is_game_over:
 		return
 
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
@@ -83,17 +103,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		play_move(c)
 
 	if event is InputEventKey and event.pressed:
-		var k := event as InputEventKey
-		if k.keycode == KEY_R:
+		var k2 := event as InputEventKey
+		if k2.keycode == KEY_R:
 			reset_game()
 
 func _draw() -> void:
 	_draw_board()
 	_draw_stones()
 	_draw_last_move_mark()
+	_draw_win_line_if_any()
 
 # -----------------------
-# Public API (used by GoAIAgent)
+# Public API (used by AI agents)
 # -----------------------
 
 func reset_game() -> void:
@@ -105,11 +126,17 @@ func reset_game() -> void:
 	m_turn = Stone.BLACK
 	m_last_move = Vector2i(-1, -1)
 
-	m_seen_hashes.clear()
-	m_current_hash = _compute_board_hash()
-	m_seen_hashes[m_current_hash] = true
+	m_is_game_over = false
+	m_winner = Stone.EMPTY
+	m_win_line = []
 
 	m_turn_token += 1
+
+	if rules:
+		rules.reset(m_board, board_size)
+
+	_clear_history()
+	_push_current_snapshot()
 
 	queue_redraw()
 	game_reset.emit()
@@ -122,6 +149,12 @@ func get_turn() -> int:
 func get_turn_token() -> int:
 	return m_turn_token
 
+func is_game_over() -> bool:
+	return m_is_game_over
+
+func get_winner() -> int:
+	return m_winner
+
 func get_board_size() -> int:
 	return board_size
 
@@ -132,22 +165,27 @@ func is_empty_cell(cell: Vector2i) -> bool:
 	return _in_bounds(cell) and _get_cell(cell) == Stone.EMPTY
 
 func play_move(cell: Vector2i) -> bool:
-	# Returns true if move is made.
-	var result := _compute_next_state_for_move_result(m_turn, cell)
-	if not bool(result.get("ok", false)):
+	if m_is_game_over:
+		return false
+	if rules == null:
 		return false
 
 	var played_color := m_turn
+	var result := rules.compute_move(m_board, board_size, played_color, cell)
+	if not bool(result.get("ok", false)):
+		return false
 
-	# Commit
+	_clear_redo()
+
 	m_board = result["board"] as PackedInt32Array
-	m_current_hash = int(result["hash"])
-	m_seen_hashes[m_current_hash] = true
-
 	m_last_move = cell
-	m_turn = _other(m_turn)
 
+	_apply_rules_commit_result(result)
+
+	m_turn = _other(m_turn)
 	m_turn_token += 1
+
+	_push_current_snapshot()
 
 	queue_redraw()
 	move_played.emit(cell, played_color)
@@ -155,61 +193,139 @@ func play_move(cell: Vector2i) -> bool:
 	board_changed.emit()
 	return true
 
-
 func simulate_move(color: int, cell: Vector2i, out_info: Dictionary) -> bool:
-	# IMPORTANT: must NOT mutate game state.
-	var result := _compute_next_state_for_move_result(color, cell)
-	if not bool(result.get("ok", false)):
+	if rules == null:
 		return false
-
-	# Copy only the info fields out (keep it small and stable)
-	out_info["captured"] = int(result.get("captured", 0))
-	out_info["self_liberties"] = int(result.get("self_liberties", 0))
-	return true
-
-
-func _compute_next_state_for_move_result(color: int, cell: Vector2i) -> Dictionary:
-	# Returns:
-	# { ok: bool, board: PackedInt32Array, hash: int, captured: int, self_liberties: int }
-	var result: Dictionary = {}
-
-	if not _in_bounds(cell):
-		result["ok"] = false
-		return result
-	if _get_cell_in(m_board, cell) != Stone.EMPTY:
-		result["ok"] = false
-		return result
-
-	var next_board: PackedInt32Array = m_board.duplicate()
-	_set_cell_in(next_board, cell, color)
-
-	var opponent := _other(color)
-	var captured_total: int = 0
-
-	for n in _neighbors(cell):
-		if _get_cell_in(next_board, n) == opponent:
-			if _count_liberties_in(next_board, n) == 0:
-				captured_total += _remove_group_in(next_board, n)
-
-	if not allow_suicide:
-		if _count_liberties_in(next_board, cell) == 0:
-			result["ok"] = false
-			return result
-
-	var next_hash: int = _compute_board_hash_in(next_board)
-	if m_seen_hashes.has(next_hash):
-		result["ok"] = false
-		return result
-
-	result["ok"] = true
-	result["board"] = next_board
-	result["hash"] = next_hash
-	result["captured"] = captured_total
-	result["self_liberties"] = _count_liberties_in(next_board, cell)
-	return result
+	return rules.simulate_move(m_board, board_size, color, cell, out_info)
 
 # -----------------------
-# Drawing helpers
+# Undo / Redo API
+# -----------------------
+
+func can_undo() -> bool:
+	return enable_undo_redo and m_undo_stack.size() >= 2
+
+func can_redo() -> bool:
+	return enable_undo_redo and (not m_redo_stack.is_empty())
+
+func undo() -> bool:
+	if not can_undo():
+		return false
+
+	var steps := mini(undo_step_count, m_undo_stack.size() - 1)
+	var changed := false
+
+	for _i in range(steps):
+		if m_undo_stack.size() < 2:
+			break
+		var current: Dictionary = m_undo_stack.pop_back()
+		m_redo_stack.append(current)
+		_trim_history(m_redo_stack)
+
+		var prev := m_undo_stack[m_undo_stack.size() - 1]
+		_restore_snapshot(prev)
+		changed = true
+
+	if changed:
+		m_turn_token += 1
+		queue_redraw()
+		turn_changed.emit(m_turn)
+		board_changed.emit()
+
+	return changed
+
+func redo() -> bool:
+	if not can_redo():
+		return false
+
+	var steps := mini(undo_step_count, m_redo_stack.size())
+	var changed := false
+
+	for _i in range(steps):
+		if m_redo_stack.is_empty():
+			break
+		var next: Dictionary = m_redo_stack.pop_back()
+		_restore_snapshot(next)
+
+		m_undo_stack.append(next)
+		_trim_history(m_undo_stack)
+		changed = true
+
+	if changed:
+		m_turn_token += 1
+		queue_redraw()
+		turn_changed.emit(m_turn)
+		board_changed.emit()
+
+	return changed
+
+# -----------------------
+# Rules commit handling
+# -----------------------
+
+func _apply_rules_commit_result(result: Dictionary) -> void:
+	# Go: accept hash for superko state if rule supports it.
+	if result.has("hash") and rules is GoRules:
+		(rules as GoRules).accept_hash(int(result["hash"]))
+
+	# Any rules: game_over fields (Gomoku)
+	if bool(result.get("game_over", false)):
+		m_is_game_over = true
+		m_winner = int(result.get("winner", Stone.EMPTY))
+		m_win_line = result.get("win_line", []) as Array[Vector2i]
+		game_over.emit(m_winner, m_win_line)
+	else:
+		m_is_game_over = false
+		m_winner = Stone.EMPTY
+		m_win_line = []
+
+# -----------------------
+# Snapshot helpers
+# -----------------------
+
+func _clear_history() -> void:
+	m_undo_stack.clear()
+	m_redo_stack.clear()
+
+func _clear_redo() -> void:
+	m_redo_stack.clear()
+
+func _trim_history(stack: Array[Dictionary]) -> void:
+	if max_history_steps <= 0:
+		return
+	while stack.size() > max_history_steps:
+		stack.pop_front()
+
+func _push_current_snapshot() -> void:
+	if not enable_undo_redo:
+		return
+	m_undo_stack.append(_capture_snapshot())
+	_trim_history(m_undo_stack)
+
+func _capture_snapshot() -> Dictionary:
+	return {
+		"board": m_board.duplicate(),
+		"turn": m_turn,
+		"last_move": m_last_move,
+		"is_game_over": m_is_game_over,
+		"winner": m_winner,
+		"win_line": m_win_line.duplicate(),
+		"rules_state": (rules.export_state() if rules != null else {}),
+	}
+
+func _restore_snapshot(snap: Dictionary) -> void:
+	m_board = snap["board"] as PackedInt32Array
+	m_turn = int(snap["turn"])
+	m_last_move = snap["last_move"] as Vector2i
+	m_is_game_over = bool(snap["is_game_over"])
+	m_winner = int(snap["winner"])
+	m_win_line = snap["win_line"] as Array[Vector2i]
+
+	if rules != null:
+		rules.import_state(snap.get("rules_state", {}) as Dictionary)
+
+# -----------------------
+# Drawing helpers (RESTORED)
 # -----------------------
 
 func _board_origin() -> Vector2:
@@ -253,13 +369,13 @@ func _draw_board() -> void:
 	)
 
 	for i in range(board_size):
-		var a := o + Vector2(i * cell_size, 0)
-		var b := o + Vector2(i * cell_size, (board_size - 1) * cell_size)
+		var a := o + Vector2(float(i) * cell_size, 0.0)
+		var b := o + Vector2(float(i) * cell_size, float(board_size - 1) * cell_size)
 		draw_line(a, b, Color(0.12, 0.08, 0.05, 1.0), 1.0)
 
 	for j in range(board_size):
-		var a2 := o + Vector2(0, j * cell_size)
-		var b2 := o + Vector2((board_size - 1) * cell_size, j * cell_size)
+		var a2 := o + Vector2(0.0, float(j) * cell_size)
+		var b2 := o + Vector2(float(board_size - 1) * cell_size, float(j) * cell_size)
 		draw_line(a2, b2, Color(0.12, 0.08, 0.05, 1.0), 1.0)
 
 	for sp in _star_points(board_size):
@@ -268,13 +384,15 @@ func _draw_board() -> void:
 	if show_coords:
 		var f := ThemeDB.fallback_font
 		var fs := int(max(10.0, cell_size * 0.35))
+
 		for x in range(board_size):
 			var label := _go_col_label(x)
-			var px := o + Vector2(x * cell_size, -cell_size * 0.85)
+			var px := o + Vector2(float(x) * cell_size, -cell_size * 0.85)
 			draw_string(f, px, label, HORIZONTAL_ALIGNMENT_CENTER, cell_size, fs, Color(0, 0, 0, 0.75))
+
 		for y in range(board_size):
 			var row := str(board_size - y)
-			var py := o + Vector2(-cell_size * 0.95, y * cell_size + fs * 0.35)
+			var py := o + Vector2(-cell_size * 0.95, float(y) * cell_size + fs * 0.35)
 			draw_string(f, py, row, HORIZONTAL_ALIGNMENT_LEFT, cell_size, fs, Color(0, 0, 0, 0.75))
 
 func _draw_stones() -> void:
@@ -291,7 +409,7 @@ func _draw_stones() -> void:
 			else:
 				draw_circle(p, r, Color(0.95, 0.95, 0.95, 1.0))
 				draw_circle(p + Vector2(-r * 0.25, -r * 0.25), r * 0.35, Color(1, 1, 1, 0.55))
-				draw_arc(p, r, 0, TAU, 48, Color(0.2, 0.2, 0.2, 0.55), 1.0)
+				draw_arc(p, r, 0.0, TAU, 48, Color(0.2, 0.2, 0.2, 0.55), 1.0)
 
 func _draw_last_move_mark() -> void:
 	if m_last_move.x < 0:
@@ -301,6 +419,14 @@ func _draw_last_move_mark() -> void:
 	var col := Color(1.0, 0.2, 0.2, 0.9)
 	draw_line(p + Vector2(-r, 0), p + Vector2(r, 0), col, 2.0)
 	draw_line(p + Vector2(0, -r), p + Vector2(0, r), col, 2.0)
+
+func _draw_win_line_if_any() -> void:
+	if m_win_line.is_empty():
+		return
+	for i in range(m_win_line.size() - 1):
+		var a := _cell_to_screen(m_win_line[i])
+		var b := _cell_to_screen(m_win_line[i + 1])
+		draw_line(a, b, Color(1.0, 0.2, 0.2, 0.9), max(2.0, cell_size * 0.10))
 
 # -----------------------
 # Internal board helpers
@@ -317,80 +443,8 @@ func _get_cell(c: Vector2i) -> int:
 		return Stone.EMPTY
 	return m_board[_idx(c)]
 
-func _get_cell_in(arr: PackedInt32Array, c: Vector2i) -> int:
-	if not _in_bounds(c):
-		return Stone.EMPTY
-	return arr[_idx(c)]
-
-func _set_cell_in(arr: PackedInt32Array, c: Vector2i, v: int) -> void:
-	if not _in_bounds(c):
-		return
-	arr[_idx(c)] = v
-
 func _other(s: int) -> int:
 	return Stone.WHITE if s == Stone.BLACK else Stone.BLACK
-
-func _neighbors(c: Vector2i) -> Array[Vector2i]:
-	return [
-		Vector2i(c.x - 1, c.y),
-		Vector2i(c.x + 1, c.y),
-		Vector2i(c.x, c.y - 1),
-		Vector2i(c.x, c.y + 1),
-	]
-
-func _collect_group_in(arr: PackedInt32Array, start: Vector2i) -> Array[Vector2i]:
-	if not _in_bounds(start):
-		return []
-	var color := _get_cell_in(arr, start)
-	if color == Stone.EMPTY:
-		return []
-
-	var out: Array[Vector2i] = []
-	var visited: Dictionary = {}
-	var stack: Array[Vector2i] = [start]
-	visited[start] = true
-
-	while stack.size() > 0:
-		var c: Vector2i = stack.pop_back()
-		out.append(c)
-		for n in _neighbors(c):
-			if not _in_bounds(n):
-				continue
-			if visited.has(n):
-				continue
-			if _get_cell_in(arr, n) == color:
-				visited[n] = true
-				stack.append(n)
-
-	return out
-
-func _count_liberties_in(arr: PackedInt32Array, start: Vector2i) -> int:
-	var group := _collect_group_in(arr, start)
-	if group.is_empty():
-		return 0
-	var liberties: Dictionary = {}
-	for c in group:
-		for n in _neighbors(c):
-			if not _in_bounds(n):
-				continue
-			if _get_cell_in(arr, n) == Stone.EMPTY:
-				liberties[n] = true
-	return liberties.size()
-
-func _remove_group_in(arr: PackedInt32Array, start: Vector2i) -> int:
-	var group := _collect_group_in(arr, start)
-	for c in group:
-		_set_cell_in(arr, c, Stone.EMPTY)
-	return group.size()
-
-func _compute_board_hash() -> int:
-	return _compute_board_hash_in(m_board)
-
-func _compute_board_hash_in(arr: PackedInt32Array) -> int:
-	var h: int = 146959810
-	for i in range(arr.size()):
-		h = int(h * 16777619) ^ int(arr[i] + (i * 3))
-	return h
 
 func _star_points(n: int) -> Array[Vector2i]:
 	var pts: Array[Vector2i] = []
@@ -423,6 +477,7 @@ func _star_points(n: int) -> Array[Vector2i]:
 			Vector2i(b9, a9), Vector2i(b9, b9),
 			Vector2i(mid9, mid9),
 		]
+
 	var filtered: Array[Vector2i] = []
 	for p in pts:
 		if _in_bounds(p):
