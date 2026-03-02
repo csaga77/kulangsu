@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://bf4kvtu52fw0d"]
+
+[ext_resource type="Script" uid="uid://bp6jbhumghj46" path="res://scenes/interaction_area.gd" id="1_1osl1"]
+[ext_resource type="PackedScene" uid="uid://c1le3qk68o7lw" path="res://gui/speech_balloon.tscn" id="2_nwxgu"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_rm1ms"]
+radius = 32.0
+
+[node name="InteractionArea" type="Area2D" unique_id=196216196]
+script = ExtResource("1_1osl1")
+speech_balloon_scene = ExtResource("2_nwxgu")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1030915372]
+shape = SubResource("CircleShape2D_rm1ms")
+debug_color = Color(0.9498417, 0.20586151, 0.24499384, 0.41960785)
+
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]
+[connection signal="body_exited" from="." to="." method="_on_body_exited"]

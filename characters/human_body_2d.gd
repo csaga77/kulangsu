@@ -824,12 +824,9 @@ func _resolve_face_base_from_mood() -> void:
 		m_face_base = "Human / Neutral"
 
 func _resolve_face_for_step(step_name: String) -> String:
-	match step_name:
-		"base":
-			return m_face_base
-		_:
-			return _find_face_option_by_keywords_excluding(step_name)
-	return ""
+	if step_name == "base":
+		return m_face_base
+	return _find_face_option_by_keywords_excluding(step_name)
 
 func _find_face_option_by_keywords(keywords: Array[String]) -> String:
 	if m_face_options.is_empty():

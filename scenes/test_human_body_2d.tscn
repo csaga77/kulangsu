@@ -2,6 +2,7 @@
 
 [ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/human_body_2d.tscn" id="1_rm1ms"]
 [ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/player_controller.gd" id="2_buv3e"]
+[ext_resource type="PackedScene" uid="uid://bf4kvtu52fw0d" path="res://characters/interaction_area.tscn" id="3_buv3e"]
 
 [node name="test_human_body_2d" type="Node2D" unique_id=1051547171]
 y_sort_enabled = true
@@ -16,11 +17,12 @@ hair_color = Color(0.2159017, 0.21590173, 0.2159017, 1)
 m_hair = "Default / Hair Spiked2 White"
 hair = "Default / Hair Spiked2 White"
 
+[node name="interaction_area" parent="male" unique_id=196216196 instance=ExtResource("3_buv3e")]
+
 [node name="female" parent="." unique_id=1255111382 instance=ExtResource("1_rm1ms")]
-position = Vector2(288, 46)
+position = Vector2(223, 117)
 body_type = 1
-body_color = Color(0.7539839, 0.75398386, 0.75398386, 1)
 m_head = "Human / Female"
-m_feet = "<none>"
+m_feet = "Foot Wears / Slippers White"
 head = "Human / Female"
-feet = "<none>"
+feet = "Foot Wears / Slippers White"
