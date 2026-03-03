@@ -2,12 +2,29 @@
 
 [ext_resource type="Shader" uid="uid://bmvmdjduukkw5" path="res://characters/human_body_2d.gdshader" id="1_hhl7b"]
 [ext_resource type="Script" uid="uid://b2f2s66pb145c" path="res://characters/human_body_2d.gd" id="1_wfnr8"]
+[ext_resource type="Script" uid="uid://sujgif060qhn" path="res://characters/universal_lpc_sprite_builder.gd" id="3_1fo3j"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_1lao4"]
 shader = ExtResource("1_hhl7b")
 shader_parameter/fade_start = 0.0
 shader_parameter/fade_end = 1.0
 shader_parameter/tile_texture_size = Vector2(13, 54)
+
+[sub_resource type="Resource" id="Resource_f0s21"]
+script = ExtResource("3_1fo3j")
+m_face_style = "<none>"
+m_hair_style = "Default / Hair Short Black"
+m_legs_style = "Default / Longpants Black"
+m_shirt_style = "Clothes / Longsleeve White"
+m_head_style = "Human / Male"
+m_feet_style = "Foot Wears / Basic Shoes Black"
+body_style = "Default"
+face_style = "<none>"
+hair_style = "Default / Hair Short Black"
+legs_style = "Default / Longpants Black"
+shirt_style = "Clothes / Longsleeve White"
+head_style = "Human / Male"
+feet_style = "Foot Wears / Basic Shoes Black"
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_glpr6"]
 radius = 12.0
@@ -18,22 +35,10 @@ collision_mask = 524289
 motion_mode = 1
 script = ExtResource("1_wfnr8")
 direction = -90.0
-facial_mood = 1
-m_face = "Human / Closed Eyes"
-m_hair = "Default / Hair Short Bangs Short White"
-m_legs = "Default / Shorts White"
-m_shirt = "Clothes / Longsleeve White"
-m_head = "Human / Male"
-m_feet = "Foot Wears / Basic Shoes White"
+sprite_builder = SubResource("Resource_f0s21")
 animation = "idle_s"
-body = "Default"
-face = "Human / Closed Eyes"
-hair = "Default / Hair Short Bangs Short White"
-legs = "Default / Shorts White"
-shirt = "Clothes / Longsleeve White"
-head = "Human / Male"
-feet = "Foot Wears / Basic Shoes White"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=403533052]
+show_behind_parent = true
 position = Vector2(0, -7)
 shape = SubResource("CircleShape2D_glpr6")

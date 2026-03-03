@@ -21,7 +21,7 @@ static func get_instance() -> UniversalLPCSpriteFactory:
 # ------------------------------------------------------------
 const DEFAULT_SPRITE_FRAMES_TEMPLATE_PATH: String = "res://resources/animations/characters/male_animations.tres"
 
-func _get_template_path_for_body_type(_body_type: int) -> String:
+static func _get_template_path_for_body_type(_body_type: int) -> String:
 	return DEFAULT_SPRITE_FRAMES_TEMPLATE_PATH
 
 
@@ -173,24 +173,30 @@ func get_animation_options_from_template(sprite_frames_template_path: String) ->
 #   { "path": "res://...", "tint": Color, "tint_on": true }
 #
 # BG order is strictly the inverted order of layers.
+func create_sprite_frames_texture(body_type: int, layers: Array[Dictionary], name:StringName = "") -> Texture2D:
+	var resolved_layers := _resolve_layers(body_type, layers)
+	if resolved_layers.is_empty():
+		return null
+	var atlas_image: Image = create_sprite_atlas_image(resolved_layers)
+	if atlas_image == null:
+		return null
+	if debug_output and !name.is_empty():
+		atlas_image.save_png("user://sprite_{0}_{1}.png".format([body_type, name.replace("/", "_")]))
+	
+	return ImageTexture.create_from_image(atlas_image)
+
 func create_sprite_frames(body_type: int, layers: Array[Dictionary], name:StringName = "") -> SpriteFrames:
+	var atlas_tex := create_sprite_frames_texture(body_type, layers, name)
+
+	return create_sprite_frames_from_template(body_type, atlas_tex)
+
+static func create_sprite_frames_from_template(body_type: int, texture: Texture2D) -> SpriteFrames:
+	if texture == null:
+		return null
 	var template_path := _get_template_path_for_body_type(body_type)
 	var sprite_frames: SpriteFrames = load(template_path)
 	if sprite_frames == null:
 		return null
-
-	var resolved_layers := _resolve_layers(body_type, layers)
-	if resolved_layers.is_empty():
-		return null
-
-	var atlas_image: Image = create_sprite_atlas_image(resolved_layers)
-	if atlas_image == null:
-		return null
-		
-	if debug_output and !name.is_empty():
-		atlas_image.save_png("user://sprite_{0}_{1}.png".format([body_type, name.replace("/", "_")]))
-
-	var atlas_tex := ImageTexture.create_from_image(atlas_image)
 	sprite_frames = sprite_frames.duplicate()
 
 	for anim_name in sprite_frames.get_animation_names():
@@ -199,11 +205,10 @@ func create_sprite_frames(body_type: int, layers: Array[Dictionary], name:String
 			var orig := sprite_frames.get_frame_texture(anim_name, i)
 			var atlas := orig.duplicate() as AtlasTexture
 			if atlas:
-				atlas.atlas = atlas_tex
+				atlas.atlas = texture
 				sprite_frames.set_frame(anim_name, i, atlas)
 
 	return sprite_frames
-
 
 # ------------------------------------------------------------
 # Public API: create atlas image (strict BG inversion rule)
@@ -291,7 +296,6 @@ func _resolve_layers(body_type: int, layers: Array[Dictionary]) -> Array[Diction
 		if !resolved.is_empty():
 			l2["path"] = resolved
 			out.append(l2)
-
 	return out
 
 
