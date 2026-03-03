@@ -155,9 +155,9 @@ enum FacialActionEnum {
 # -------------------------------------------------------------------
 # Runtime
 # -------------------------------------------------------------------
-@onready var m_body_node: AnimatedSprite2D
-@onready var m_head_bg_node: AnimatedSprite2D
-@onready var m_head_node: AnimatedSprite2D
+var m_body_node: AnimatedSprite2D
+var m_head_bg_node: AnimatedSprite2D
+var m_head_node: AnimatedSprite2D
 
 var m_last_global_position: Vector2 = Vector2.ZERO
 var m_is_currently_jumping: bool = false
@@ -353,8 +353,7 @@ func _set(property_name: StringName, value: Variant) -> bool:
 		m_body = v
 		_invalidate_body_cache()
 		_reload()
-		if Engine.is_editor_hint():
-			notify_property_list_changed()
+		_notify_property_changed()
 		return true
 
 	if p == "face":
@@ -364,8 +363,7 @@ func _set(property_name: StringName, value: Variant) -> bool:
 		m_face = v
 		if facial_mood == FacialMoodEnum.MANUAL:
 			_restart_face_driver()
-		if Engine.is_editor_hint():
-			notify_property_list_changed()
+		_notify_property_changed()
 		return true
 
 	if p == "hair":
@@ -375,8 +373,7 @@ func _set(property_name: StringName, value: Variant) -> bool:
 		m_hair = v
 		_invalidate_head_face_cache()
 		_reload()
-		if Engine.is_editor_hint():
-			notify_property_list_changed()
+		_notify_property_changed()
 		return true
 
 	if p == "legs":
@@ -386,8 +383,7 @@ func _set(property_name: StringName, value: Variant) -> bool:
 		m_legs = v
 		_invalidate_body_cache()
 		_reload()
-		if Engine.is_editor_hint():
-			notify_property_list_changed()
+		_notify_property_changed()
 		return true
 
 	if p == "shirt":
@@ -397,8 +393,7 @@ func _set(property_name: StringName, value: Variant) -> bool:
 		m_shirt = v
 		_invalidate_body_cache()
 		_reload()
-		if Engine.is_editor_hint():
-			notify_property_list_changed()
+		_notify_property_changed()
 		return true
 
 	if p == "head":
@@ -408,8 +403,7 @@ func _set(property_name: StringName, value: Variant) -> bool:
 		m_head = v
 		_invalidate_head_face_cache()
 		_reload()
-		if Engine.is_editor_hint():
-			notify_property_list_changed()
+		_notify_property_changed()
 		return true
 
 	if p == "feet":
@@ -419,8 +413,7 @@ func _set(property_name: StringName, value: Variant) -> bool:
 		m_feet = v
 		_invalidate_body_cache()
 		_reload()
-		if Engine.is_editor_hint():
-			notify_property_list_changed()
+		_notify_property_changed()
 		return true
 
 	return false
@@ -536,8 +529,7 @@ func _apply_animation_value() -> void:
 		return
 
 	_update_state()
-	if Engine.is_editor_hint():
-		notify_property_list_changed()
+	_notify_property_changed()
 
 func _update_state() -> void:
 	if m_body_node == null or m_head_node == null or m_head_bg_node == null:
@@ -572,8 +564,7 @@ func _update_state() -> void:
 
 	if m_animation != new_animation_name:
 		m_animation = new_animation_name
-		if Engine.is_editor_hint():
-			notify_property_list_changed()
+		_notify_property_changed()
 
 	_stop_all_sprites()
 
@@ -610,14 +601,27 @@ func _refresh_options_and_clamp_selections() -> void:
 	m_head = f.get_valid_style_value(m_head, m_head_options)
 	m_feet = f.get_valid_style_value(m_feet, m_feet_options)
 
-	if Engine.is_editor_hint():
-		notify_property_list_changed()
+	_notify_property_changed()
 
 func _reload() -> void:
 	if m_is_reloading:
 		return
 	m_is_reloading = true
 	call_deferred("_do_reload")
+	
+var m_is_notifying_property_changed := false
+	
+func _notify_property_changed() -> void:
+	if !Engine.is_editor_hint():
+		return
+	if m_is_notifying_property_changed:
+		return
+	m_is_notifying_property_changed = true
+	call_deferred("_do_notify_property_changed")
+		
+func _do_notify_property_changed() -> void:
+	m_is_notifying_property_changed = false
+	notify_property_list_changed()
 
 func _do_reload() -> void:
 	m_is_reloading = false
@@ -642,8 +646,7 @@ func _do_reload() -> void:
 
 		body_frames = f.create_sprite_frames(int(body_type), body_layers)
 		if body_frames == null:
-			if Engine.is_editor_hint():
-				notify_property_list_changed()
+			_notify_property_changed()
 			return
 
 		m_body_node.sprite_frames = body_frames
@@ -681,8 +684,7 @@ func _do_reload() -> void:
 
 		_apply_face_switch()
 
-	if Engine.is_editor_hint():
-		notify_property_list_changed()
+	_notify_property_changed()
 
 # ------------------------------------------------------------
 # Body cache helpers
