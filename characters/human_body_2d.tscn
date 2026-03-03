@@ -10,21 +10,21 @@ shader_parameter/fade_start = 0.0
 shader_parameter/fade_end = 1.0
 shader_parameter/tile_texture_size = Vector2(13, 54)
 
-[sub_resource type="Resource" id="Resource_f0s21"]
+[sub_resource type="Resource" id="Resource_1fo3j"]
 script = ExtResource("3_1fo3j")
+body_type = 1
 m_face_style = "<none>"
-m_hair_style = "Default / Hair Short Black"
-m_legs_style = "Default / Longpants Black"
-m_shirt_style = "Clothes / Longsleeve White"
-m_head_style = "Human / Male"
-m_feet_style = "Foot Wears / Basic Shoes Black"
+m_hair_style = "Default_Hair_Ponytail_White"
+m_legs_style = "Default_Longpants_Black"
+m_shirt_style = "Clothes_Longsleeve_White"
+m_head_style = "Human_Female"
 body_style = "Default"
 face_style = "<none>"
-hair_style = "Default / Hair Short Black"
-legs_style = "Default / Longpants Black"
-shirt_style = "Clothes / Longsleeve White"
-head_style = "Human / Male"
-feet_style = "Foot Wears / Basic Shoes Black"
+hair_style = "Default_Hair_Ponytail_White"
+legs_style = "Default_Longpants_Black"
+shirt_style = "Clothes_Longsleeve_White"
+head_style = "Human_Female"
+feet_style = "<none>"
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_glpr6"]
 radius = 12.0
@@ -35,8 +35,10 @@ collision_mask = 524289
 motion_mode = 1
 script = ExtResource("1_wfnr8")
 direction = -90.0
-sprite_builder = SubResource("Resource_f0s21")
-animation = "idle_s"
+is_running = true
+facial_mood = 2
+sprite_builder = SubResource("Resource_1fo3j")
+sprite_path = "res://resources/sprites/characters/prebuilt_characters/default_female"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=403533052]
 show_behind_parent = true

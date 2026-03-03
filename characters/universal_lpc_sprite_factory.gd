@@ -173,7 +173,7 @@ func get_animation_options_from_template(sprite_frames_template_path: String) ->
 #   { "path": "res://...", "tint": Color, "tint_on": true }
 #
 # BG order is strictly the inverted order of layers.
-func create_sprite_frames_texture(body_type: int, layers: Array[Dictionary], name:StringName = "") -> Texture2D:
+func create_sprite_frames_texture_image(body_type: int, layers: Array[Dictionary], name:StringName = "") -> Image:
 	var resolved_layers := _resolve_layers(body_type, layers)
 	if resolved_layers.is_empty():
 		return null
@@ -183,6 +183,12 @@ func create_sprite_frames_texture(body_type: int, layers: Array[Dictionary], nam
 	if debug_output and !name.is_empty():
 		atlas_image.save_png("user://sprite_{0}_{1}.png".format([body_type, name.replace("/", "_")]))
 	
+	return atlas_image
+	
+func create_sprite_frames_texture(body_type: int, layers: Array[Dictionary], name:StringName = "") -> Texture2D:
+	var atlas_image: Image = create_sprite_frames_texture_image(body_type, layers, name)
+	if atlas_image == null:
+		return null
 	return ImageTexture.create_from_image(atlas_image)
 
 func create_sprite_frames(body_type: int, layers: Array[Dictionary], name:StringName = "") -> SpriteFrames:
@@ -433,7 +439,8 @@ func _get_options_cache(
 				name_to_path["Default"] = String(local_map.get(local_names[0], ""))
 
 		for n in local_names:
-			var full_name := category + " / " + n
+			var full_name := category + "_" + n
+			full_name = full_name.replace(" ", "_")
 			if !name_to_path.has(full_name):
 				names.append(full_name)
 				name_to_path[full_name] = String(local_map.get(n, ""))

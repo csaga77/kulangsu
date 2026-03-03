@@ -11,7 +11,11 @@ enum FacialMoodEnum {
 	MANUAL = 0, # uses builder.face_style as base
 	NORMAL = 1,
 	SMILE = 2,
-	ANGRY = 3,
+	BLUSH = 3,
+	ANGRY = 4,
+	SAD = 5,
+	SHAME = 6,
+	SHOCK = 7,
 }
 
 enum FacialActionEnum {
@@ -75,29 +79,21 @@ var m_has_ready: bool = false
 	set(v):
 		if sprite_builder == v:
 			return
-
-		if sprite_builder and sprite_builder.changed.is_connected(_on_builder_changed):
-			sprite_builder.changed.disconnect(_on_builder_changed)
-
 		sprite_builder = v
+		_notify_property_changed()
+		
+@export_dir var sprite_path: String:
+	set(v):
+		if sprite_path == v:
+			return
+		sprite_path = v
+		reload_sprites()
 
-		if sprite_builder and !sprite_builder.changed.is_connected(_on_builder_changed):
-			sprite_builder.changed.connect(_on_builder_changed)
+var body_sprite_frames: SpriteFrames
+var head_bg_sprite_frames: Dictionary # <key, SpriteFrames>
+var head_sprite_frames: Dictionary # <key, SpriteFrames>
 
-		# IMPORTANT: no builder work during scene load / before ready.
-		if m_has_ready and sprite_builder:
-			sprite_builder.ensure_options_ready()
-			_restart_face_driver()
-			_reload()
-			_notify_property_changed()
-
-# Persist SpriteFrames so we don't rebuild on ready
-var body_sprite_frames: Texture2D
-var head_bg_sprite_frames: Dictionary
-var head_sprite_frames: Dictionary
-
-# Keep animation in HumanBody2D
-@export_storage var m_animation: String = "idle_s"
+var m_animation: String = "idle_s"
 
 # Runtime nodes
 var m_body_node: AnimatedSprite2D
@@ -107,7 +103,6 @@ var m_head_node: AnimatedSprite2D
 var m_last_global_position: Vector2 = Vector2.ZERO
 var m_is_currently_jumping: bool = false
 var m_current_animation_name: String = ""
-var m_is_reloading: bool = false
 
 # Animation options (from factory by builder.body_type)
 var m_anim_options: Array[String] = []
@@ -134,13 +129,13 @@ const ACTION_DEFS := {
 	FacialActionEnum.BLINK: {
 		"step_sec": BLINK_STEP_SEC,
 		"loops": 2,
-		"steps": ["base", "closing eyes", "closed eyes", "closing eyes", "base"],
+		"steps": ["base", "closing_eyes", "closed_eyes", "closing_eyes", "base"],
 		"complete_action": FacialActionEnum.NONE,
 	},
 	FacialActionEnum.ROLLING_EYES: {
 		"step_sec": ROLL_STEP_SEC,
 		"loops": 0, # infinite (NO closed-eyes step)
-		"steps": ["rolling eyes", "looking left", "closing eyes", "looking right"],
+		"steps": ["rolling_eyes", "looking_left", "closing_eyes", "looking_right"],
 		"complete_action": FacialActionEnum.NONE, # ignored when loops=0
 	},
 }
@@ -151,8 +146,6 @@ func _ready() -> void:
 	# Keep builder reference connected (safe), but do NOT trigger any build calls.
 	if sprite_builder == null:
 		sprite_builder = UniversalLPCSpriteBuilder.new()
-	if !sprite_builder.changed.is_connected(_on_builder_changed):
-		sprite_builder.changed.connect(_on_builder_changed)
 
 	# Create sprites if missing
 	if m_head_bg_node == null:
@@ -174,24 +167,20 @@ func _ready() -> void:
 	move_child(m_body_node, 1)
 	move_child(m_head_node, 2)
 
-	# Load persisted frames ONLY (no rebuild)
-	m_body_node.sprite_frames = UniversalLPCSpriteFactory.create_sprite_frames_from_template(0, body_sprite_frames)
+	# Load persisted frames ONLY (no generate_sprites)
+	m_body_node.sprite_frames = body_sprite_frames
 	_apply_face_switch()
-	#m_head_bg_node.sprite_frames = head_bg_sprite_frames
-	#m_head_node.sprite_frames = head_sprite_frames
 	
-	# Start face driver state, but DO NOT apply_face_switch (that can rebuild via builder)
+	# Start face driver state, but DO NOT apply_face_switch (that can generate_sprites via builder)
 	_restart_face_driver_no_apply()
-
-	# Only apply animation if frames are present
-	if m_body_node.sprite_frames != null:
-		_apply_animation_value()
-
-	_connect_jump_signals()
-	_update_state()
 
 	# ---- READY COMPLETE ----
 	m_has_ready = true
+	
+	_connect_jump_signals()
+	_update_state()
+	
+	reload_sprites()
 
 func _restart_face_driver_no_apply() -> void:
 	_resolve_face_base_from_mood()
@@ -221,50 +210,48 @@ func _get_property_list() -> Array:
 	if m_body_node == null or m_head_node == null or m_head_bg_node == null:
 		return property_list
 
-	# Avoid forcing builder work before ready; allow after ready (editor convenience)
-	if m_has_ready and sprite_builder != null:
-		sprite_builder.ensure_options_ready()
-		_refresh_anim_options_and_clamp()
+	_refresh_anim_options_and_clamp()
 
 	property_list.append({
 		"name": "animation",
 		"type": TYPE_STRING,
-		"usage": PROPERTY_USAGE_DEFAULT,
+		"usage": PROPERTY_USAGE_EDITOR,
 		"hint": PROPERTY_HINT_ENUM,
 		"hint_string": ",".join(m_anim_options)
 	})
+	
+	if sprite_builder:
+		property_list.append({
+			"name": "generate_sprites",
+			"type": TYPE_CALLABLE,
+			"usage": PROPERTY_USAGE_EDITOR,
+			"hint": PROPERTY_HINT_TOOL_BUTTON,
+			"hint_string": "Generate Sprites"
+		})
+		
 
 	return property_list
 
 func _set(property_name: StringName, value: Variant) -> bool:
-	var p := String(property_name)
-	var v: String = String(value) if value is String else ""
-
-	if p == "animation":
+	if property_name == "animation":
+		var v: String = String(value) if value is String else ""
 		if m_animation == v:
 			return true
 		m_animation = v
 		call_deferred("_apply_animation_value")
 		_notify_property_changed()
 		return true
-
+	elif property_name == "generate_sprites":
+		return true
 	return false
 
 func _get(property_name: StringName) -> Variant:
 	var p := String(property_name)
 	if p == "animation":
 		return m_animation
+	elif p == "generate_sprites":
+		return Callable(self.generate_sprites)
 	return null
-
-func _on_builder_changed() -> void:
-	# Ignore builder changes during load / before ready (prevents rebuilds)
-	if !m_has_ready:
-		return
-
-	_refresh_anim_options_and_clamp()
-	_restart_face_driver()
-	_reload()
-	_notify_property_changed()
 
 func _notify_property_changed() -> void:
 	if !Engine.is_editor_hint():
@@ -358,10 +345,8 @@ func _on_animation_finished() -> void:
 		_update_state()
 
 func _refresh_anim_options_and_clamp() -> void:
-	if sprite_builder == null:
-		return
 	var f := UniversalLPCSpriteFactory.get_instance()
-	m_anim_options = f.get_animation_options(int(sprite_builder.body_type))
+	m_anim_options = f.get_animation_options(0)
 	m_animation = f.get_valid_style_value(m_animation, m_anim_options)
 
 func _apply_animation_value() -> void:
@@ -423,27 +408,143 @@ func _update_state() -> void:
 # Sprite generation via builder
 # (Never called from _ready; only after m_has_ready==true paths)
 # ------------------------------------------------------------
-func _reload() -> void:
+func generate_sprites() -> void:
 	if !m_has_ready:
 		return
-	if m_is_reloading:
-		return
-	m_is_reloading = true
-	call_deferred("_do_reload")
-
-func _do_reload() -> void:
-	m_is_reloading = false
 	if m_body_node == null or m_head_node == null or m_head_bg_node == null or sprite_builder == null:
 		return
 
 	# Body frames (cached inside builder, persisted via export var)
-	var new_body_frames := sprite_builder.build_body_frames_texture()
-	if new_body_frames != null:
-		body_sprite_frames = new_body_frames
-		m_body_node.sprite_frames = UniversalLPCSpriteFactory.create_sprite_frames_from_template(0, body_sprite_frames)
+	var new_body_frames_texture_image := sprite_builder.build_body_frames_texture_image()
+	#head background sprite frames
+	var new_head_bg_sprite_frames = sprite_builder.build_head_frames_texture_images(true)
+	#head sprite frames
+	var new_head_sprite_frames = sprite_builder.build_head_frames_texture_images(false)
+	_load_sprite_frames_images(new_body_frames_texture_image, new_head_sprite_frames, new_head_bg_sprite_frames)
+	_save_sprite_frames_images(new_body_frames_texture_image, new_head_sprite_frames, new_head_bg_sprite_frames)
+	
+func reload_sprites() -> void:
+	if !m_has_ready:
+		return
+	if m_body_node == null or m_head_node == null or m_head_bg_node == null or sprite_builder == null:
+		return
+	if sprite_path.is_empty():
+		return
+	var dir = DirAccess.open(sprite_path)
+	if dir == null:
+		return
+	var new_body_frames_texture_image :Image
+	var file_path = sprite_path.path_join("body.png")
+	var tex :Texture2D = load(file_path)
+	if tex:
+		new_body_frames_texture_image = tex.get_image()
 
-	head_bg_sprite_frames = sprite_builder.build_head_frames_textures(true)
-	head_sprite_frames = sprite_builder.build_head_frames_textures(false)
+	#head background sprite frames
+	var head_dir_path = sprite_path.path_join("head")
+	var new_head_sprite_frames: Dictionary = _load_sprite_frames_images_from_path(head_dir_path)
+	
+	var head_bg_dir_path = sprite_path.path_join("head_bg")
+	var new_head_bg_sprite_frames: Dictionary = _load_sprite_frames_images_from_path(head_bg_dir_path)
+	
+	_load_sprite_frames_images(new_body_frames_texture_image, new_head_sprite_frames, new_head_bg_sprite_frames)
+
+func _load_sprite_frames_images_from_path(path: StringName) -> Dictionary:
+	var sprite_frames: Dictionary = {}
+
+	var dir := DirAccess.open(path)
+	if dir == null:
+		push_warning("Failed to open directory: %s" % path)
+		return sprite_frames
+
+	dir.list_dir_begin()
+	var file_name := dir.get_next()
+
+	while file_name != "":
+		# Skip directories and hidden files
+		if not dir.current_is_dir() and not file_name.begins_with("."):
+			# Only load PNG files
+			if file_name.get_extension().to_lower() == "png":
+				var full_path := path.path_join(file_name)
+				var res :Texture2D = load(full_path)
+				if res != null:
+					var image :Image = res.get_image()
+					if image != null:
+						var base_name := file_name.get_basename()
+						sprite_frames[base_name] = image
+					else:
+						push_warning("Failed to load image: %s" % full_path)
+
+		file_name = dir.get_next()
+
+	dir.list_dir_end()
+
+	return sprite_frames
+
+func _save_sprite_frames_images(new_body_frames_texture_image: Image, new_head_sprite_frames: Dictionary, new_head_bg_sprite_frames: Dictionary) -> void:
+	# Body frames (cached inside builder, persisted via export var)
+	if !Engine.is_editor_hint():
+		return
+	var dir = DirAccess.open(sprite_path)
+	if dir == null:
+		return
+	if new_body_frames_texture_image != null:
+		var texture = ImageTexture.create_from_image(new_body_frames_texture_image)
+		var file_path = sprite_path.path_join("body.png")
+		var err = new_body_frames_texture_image.save_png(file_path)
+		if err != Error.OK:
+			print(err)
+
+	#head background sprite frames
+	dir.make_dir_recursive("head_bg")
+	var head_bg_dir_path = sprite_path.path_join("head_bg")
+	for face_key in new_head_bg_sprite_frames.keys():
+		var new_face_image = new_head_bg_sprite_frames.get(face_key, null)
+		if new_face_image:
+			var file_path = head_bg_dir_path.path_join("{0}.png".format([face_key]))
+			var err = new_face_image.save_png(file_path)
+			if err != Error.OK:
+				print(err)
+	
+	#head sprite frames
+	dir.make_dir_recursive("head")
+	var head_dir_path = sprite_path.path_join("head")
+	for face_key in new_head_sprite_frames.keys():
+		var new_face_image = new_head_sprite_frames.get(face_key, null)
+		if new_face_image:
+			var file_path = head_dir_path.path_join("{0}.png".format([face_key]))
+			var err = new_face_image.save_png(file_path)
+			if err != Error.OK:
+				print(err)
+
+func _load_sprite_frames_images(new_body_frames_texture_image: Image, new_head_sprite_frames: Dictionary, new_head_bg_sprite_frames: Dictionary) -> void:
+	if !m_has_ready:
+		print("_load_sprite_frames_images() not ready!")
+		return
+	if m_body_node == null or m_head_node == null or m_head_bg_node == null or sprite_builder == null:
+		return
+
+	# Body frames (cached inside builder, persisted via export var)
+	var dir = DirAccess.open(sprite_path)
+	if new_body_frames_texture_image != null:
+		var texture = ImageTexture.create_from_image(new_body_frames_texture_image)
+		body_sprite_frames = UniversalLPCSpriteFactory.create_sprite_frames_from_template(0, texture)
+		m_body_node.sprite_frames = body_sprite_frames
+
+	#head background sprite frames
+	head_bg_sprite_frames.clear()
+	for face_key in new_head_bg_sprite_frames.keys():
+		var new_face_image = new_head_bg_sprite_frames.get(face_key, null)
+		if new_face_image:
+			var texture = ImageTexture.create_from_image(new_face_image)
+			head_bg_sprite_frames[face_key] = UniversalLPCSpriteFactory.create_sprite_frames_from_template(0, texture)
+	
+	#head sprite frames
+	head_sprite_frames.clear()
+	for face_key in new_head_sprite_frames.keys():
+		var new_face_image = new_head_sprite_frames.get(face_key, null)
+		if new_face_image:
+			var texture = ImageTexture.create_from_image(new_face_image)
+			head_sprite_frames[face_key] = UniversalLPCSpriteFactory.create_sprite_frames_from_template(0, texture)
 	
 	# Ensure head frames match current face render (persist current)
 	_apply_face_switch()
@@ -474,7 +575,7 @@ func _restart_face_driver() -> void:
 
 func _resolve_face_base_from_mood() -> void:
 	if sprite_builder == null:
-		m_face_base = "Human / Neutral"
+		m_face_base = "human_neutral"
 		return
 
 	# allowed outside _ready (and outside strict no-build paths)
@@ -490,11 +591,19 @@ func _resolve_face_base_from_mood() -> void:
 			m_face_base = _find_face_option_by_keywords(["smile", "happy"])
 		int(FacialMoodEnum.ANGRY):
 			m_face_base = _find_face_option_by_keywords(["angry", "mad"])
+		int(FacialMoodEnum.SAD):
+			m_face_base = _find_face_option_by_keywords(["sad"])
+		int(FacialMoodEnum.SHAME):
+			m_face_base = _find_face_option_by_keywords(["shame"])
+		int(FacialMoodEnum.SHOCK):
+			m_face_base = _find_face_option_by_keywords(["shock"])
+		int(FacialMoodEnum.BLUSH):
+			m_face_base = _find_face_option_by_keywords(["blush"])
 		_:
 			m_face_base = sprite_builder.face_style
 
 	if m_face_base.is_empty() or m_face_base == "<none>":
-		m_face_base = "Human / Neutral"
+		m_face_base = "human_neutral"
 
 func _resolve_face_for_step(step_name: String) -> String:
 	if step_name == "base":
@@ -576,16 +685,15 @@ func _apply_face_switch() -> void:
 
 	var face_to_use := m_face_render
 	if face_to_use.is_empty() or face_to_use == "<none>":
-		face_to_use = "Human / Neutral"
+		face_to_use = "human_neutral"
 	face_to_use = face_to_use.to_lower()
-	var bg_texture = head_bg_sprite_frames.get(face_to_use, null)
-	var fg_texture = head_sprite_frames.get(face_to_use, null)
-	if fg_texture == null and !head_sprite_frames.is_empty():
-		fg_texture = head_sprite_frames.get("<none>", null)
-	m_head_bg_node.sprite_frames = UniversalLPCSpriteFactory.create_sprite_frames_from_template(0, bg_texture)
-	m_head_node.sprite_frames = UniversalLPCSpriteFactory.create_sprite_frames_from_template(0, fg_texture)
-	#print(face_to_use, ": ", m_head_node.sprite_frames)
-	
+	var bg_sprite_frames = head_bg_sprite_frames.get(face_to_use, null)
+	var fg_sprite_farmes = head_sprite_frames.get(face_to_use, null)
+	if fg_sprite_farmes == null and !head_sprite_frames.is_empty():
+		fg_sprite_farmes = head_sprite_frames.get("<none>", null)
+	m_head_bg_node.sprite_frames = bg_sprite_frames
+	m_head_node.sprite_frames = fg_sprite_farmes
+
 	_sync_head_to_body()
 
 # ------------------------------------------------------------

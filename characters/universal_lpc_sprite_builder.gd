@@ -235,8 +235,7 @@ func _emit_changed() -> void:
 # ------------------------------------------------------------
 # API used by HumanBody2D
 # ------------------------------------------------------------
-func build_body_frames_texture() -> Texture2D:
-	ensure_options_ready()
+func build_body_frames_texture_image() -> Image:
 	var f := UniversalLPCSpriteFactory.get_instance()
 	var layers: Array[Dictionary] = [
 		{"part": "body", "style": m_body_style, "tint": body_color, "tint_on": true},
@@ -244,17 +243,19 @@ func build_body_frames_texture() -> Texture2D:
 		{"part": "legs", "style": m_legs_style, "tint": legs_color, "tint_on": true},
 		{"part": "shirt", "style": m_shirt_style, "tint": shirt_color, "tint_on": true},
 	]
-	return f.create_sprite_frames_texture(int(body_type), layers, "body")
+	return f.create_sprite_frames_texture_image(int(body_type), layers, "body")
 	
-func build_head_frames_textures(is_bg: bool) -> Dictionary:
+func build_head_frames_texture_images(is_bg: bool) -> Dictionary:
 	ensure_options_ready()
 	var textures :Dictionary
 	var f := UniversalLPCSpriteFactory.get_instance()
 	for face_key in face_options:
+		if face_key == "<none>":
+			continue
 		var layers :Array[Dictionary] = _get_head_head_layers(face_key, is_bg)
-		var frame_texture: Texture2D = f.create_sprite_frames_texture(int(body_type), layers, "" if is_bg else face_key)
-		if frame_texture != null:
-			textures[face_key.to_lower()] = frame_texture
+		var frame_texture_image: Image = f.create_sprite_frames_texture_image(int(body_type), layers, "" if is_bg else face_key)
+		if frame_texture_image != null:
+			textures[face_key.to_lower()] = frame_texture_image
 	return textures
 		
 func _get_head_head_layers(face_key: String, is_bg :bool) -> Array[Dictionary]:
