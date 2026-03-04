@@ -26,6 +26,7 @@ script = ExtResource("1_8pr8v")
 building = ExtResource("2_wtsjf")
 
 [node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=1365478517]
+color = Color(0.3459457, 0.34594572, 0.3459457, 1)
 
 [node name="Root" type="Node2D" parent="." unique_id=203604640]
 y_sort_enabled = true
@@ -66,6 +67,5 @@ min_zoom = 0.01
 metadata/_custom_type_script = "uid://1lv88f7nn3d4"
 
 [node name="PointLight2D" type="PointLight2D" parent="." unique_id=2108239756]
-visible = false
 position = Vector2(-14, 101)
 texture = ExtResource("8_rnaij")
