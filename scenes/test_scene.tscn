@@ -7,8 +7,60 @@
 [ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/human_body_2d.tscn" id="5_rpuu0"]
 [ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/player_controller.gd" id="6_oo8pe"]
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="7_4gito"]
+[ext_resource type="Texture2D" uid="uid://dhf06qtvcxt2h" path="res://resources/sprites/light_mask_128x128.png" id="7_s36qc"]
 [ext_resource type="Shader" uid="uid://bx1o4bv3qtrdm" path="res://scenes/lighting.gdshader" id="8_h3xc6"]
-[ext_resource type="Texture2D" uid="uid://0mjtjksgnu2d" path="res://resources/sprites/2d_lights_and_shadows_neutral_point_light.png" id="8_rnaij"]
+[ext_resource type="PackedScene" uid="uid://b6oslfbyqgnsg" path="res://common/rain_overlay.tscn" id="10_s36qc"]
+
+[sub_resource type="Curve" id="Curve_f2ryw"]
+_data = [Vector2(0.00729926, 0.638211), 0.0, 0.0, 0, 0, Vector2(0.985402, 0.195122), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_f2ryw"]
+curve = SubResource("Curve_f2ryw")
+
+[sub_resource type="Gradient" id="Gradient_3hglr"]
+colors = PackedColorArray(1, 1, 1, 0.0784314, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_mh5nm"]
+gradient = SubResource("Gradient_3hglr")
+
+[sub_resource type="Curve" id="Curve_3hglr"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="Curve" id="Curve_mh5nm"]
+_limits = [0.0, 3.0, 0.0, 1.0]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 2.44154), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="Curve" id="Curve_oyxua"]
+_limits = [0.0, 3.0, 0.0, 1.0]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveXYZTexture" id="CurveXYZTexture_3hglr"]
+curve_x = SubResource("Curve_3hglr")
+curve_y = SubResource("Curve_mh5nm")
+curve_z = SubResource("Curve_oyxua")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_s36qc"]
+resource_local_to_scene = true
+lifetime_randomness = 1.0
+particle_flag_align_y = true
+particle_flag_disable_z = true
+emission_shape = 3
+emission_box_extents = Vector3(256, 256, 1)
+direction = Vector3(0.70710677, 0.70710677, 0)
+initial_velocity_min = 34.44
+initial_velocity_max = 47.63
+gravity = Vector3(70.71068, 70.71068, 0)
+damping_max = 46.923
+scale_min = 0.01
+scale_max = 0.049999997
+scale_over_velocity_max = 10.0
+scale_over_velocity_curve = SubResource("CurveXYZTexture_3hglr")
+color_initial_ramp = SubResource("GradientTexture1D_mh5nm")
+alpha_curve = SubResource("CurveTexture_f2ryw")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_h3xc6"]
 shader = ExtResource("8_h3xc6")
@@ -19,14 +71,12 @@ shader_parameter/gamma_mask = 1.0
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_h3xc6"]
 blend_mode = 1
+light_mode = 1
 
 [node name="test_scene" type="Node2D" unique_id=1018337693]
 y_sort_enabled = true
 script = ExtResource("1_8pr8v")
 building = ExtResource("2_wtsjf")
-
-[node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=1365478517]
-color = Color(0.3459457, 0.34594572, 0.3459457, 1)
 
 [node name="Root" type="Node2D" parent="." unique_id=203604640]
 y_sort_enabled = true
@@ -37,35 +87,42 @@ script = ExtResource("4_vr1i5")
 [node name="Camera2D" type="Camera2D" parent="." unique_id=917191712]
 position = Vector2(12357, 19805)
 
-[node name="light" type="Sprite2D" parent="." unique_id=680996679]
-visible = false
-z_index = 1
-material = SubResource("ShaderMaterial_h3xc6")
-position = Vector2(-13, 100)
-texture = ExtResource("8_rnaij")
-
-[node name="light2" type="Sprite2D" parent="." unique_id=2067308201]
-visible = false
-z_index = 1
-material = SubResource("CanvasItemMaterial_h3xc6")
-position = Vector2(-13, 100)
-texture = ExtResource("8_rnaij")
+[node name="Camera2DController" type="Node" parent="Camera2D" unique_id=71173038 node_paths=PackedStringArray("camera", "target_node")]
+script = ExtResource("7_4gito")
+camera = NodePath("..")
+target_node = NodePath("../../Player")
+min_zoom = 0.01
+metadata/_custom_type_script = "uid://1lv88f7nn3d4"
 
 [node name="Player" parent="." unique_id=543916503 instance=ExtResource("5_rpuu0")]
-position = Vector2(-13, 100)
+position = Vector2(-4, 13)
 draw_bounding_rect = true
 
 [node name="PlayerController" type="Node" parent="Player" unique_id=1171599603 node_paths=PackedStringArray("player")]
 script = ExtResource("6_oo8pe")
 player = NodePath("..")
 
-[node name="Camera2DController" type="Node" parent="." unique_id=71173038 node_paths=PackedStringArray("camera", "target_node")]
-script = ExtResource("7_4gito")
-camera = NodePath("../Camera2D")
-target_node = NodePath("../Player")
-min_zoom = 0.01
-metadata/_custom_type_script = "uid://1lv88f7nn3d4"
+[node name="RainOverlay" parent="Player" unique_id=1815453027 instance=ExtResource("10_s36qc")]
+position = Vector2(4, -13)
+amount = 10000
+process_material = SubResource("ParticleProcessMaterial_s36qc")
+
+[node name="global_lighting_use_CanvasModulate" type="CanvasModulate" parent="." unique_id=1365478517]
+
+[node name="light_use_ShaderMaterial" type="Sprite2D" parent="." unique_id=680996679]
+visible = false
+z_index = 1
+material = SubResource("ShaderMaterial_h3xc6")
+position = Vector2(-188, -1)
+texture = ExtResource("7_s36qc")
+
+[node name="light_use_CanvasItemMaterial" type="Sprite2D" parent="." unique_id=2067308201]
+z_index = 1
+material = SubResource("CanvasItemMaterial_h3xc6")
+position = Vector2(-187, 135)
+texture = ExtResource("7_s36qc")
 
 [node name="PointLight2D" type="PointLight2D" parent="." unique_id=2108239756]
-position = Vector2(-14, 101)
-texture = ExtResource("8_rnaij")
+visible = false
+position = Vector2(-48, 132)
+texture = ExtResource("7_s36qc")

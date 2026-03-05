@@ -1,0 +1,75 @@
+[gd_scene format=3 uid="uid://b6oslfbyqgnsg"]
+
+[ext_resource type="Texture2D" uid="uid://caqw3vjeeqtwy" path="res://resources/sprites/symbols_32x32.png" id="1_w4bo2"]
+[ext_resource type="Script" uid="uid://cwkkrcavlvjp7" path="res://common/rain_overlay.gd" id="1_xwq7r"]
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_f2ryw"]
+blend_mode = 1
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_drnxs"]
+atlas = ExtResource("1_w4bo2")
+region = Rect2(0, 32, 32, 32)
+
+[sub_resource type="Curve" id="Curve_f2ryw"]
+_data = [Vector2(0.00729926, 0.638211), 0.0, 0.0, 0, 0, Vector2(0.985402, 0.195122), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_f2ryw"]
+curve = SubResource("Curve_f2ryw")
+
+[sub_resource type="Gradient" id="Gradient_3hglr"]
+colors = PackedColorArray(1, 1, 1, 0.0784314, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_mh5nm"]
+gradient = SubResource("Gradient_3hglr")
+
+[sub_resource type="Curve" id="Curve_3hglr"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="Curve" id="Curve_mh5nm"]
+_limits = [0.0, 3.0, 0.0, 1.0]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 2.44154), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="Curve" id="Curve_oyxua"]
+_limits = [0.0, 3.0, 0.0, 1.0]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveXYZTexture" id="CurveXYZTexture_3hglr"]
+curve_x = SubResource("Curve_3hglr")
+curve_y = SubResource("Curve_mh5nm")
+curve_z = SubResource("Curve_oyxua")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_wmul6"]
+resource_local_to_scene = true
+lifetime_randomness = 0.2
+particle_flag_align_y = true
+particle_flag_disable_z = true
+emission_shape = 3
+emission_box_extents = Vector3(256, 256, 1)
+direction = Vector3(0.34202015, 0.9396926, 0)
+spread = 6.0
+initial_velocity_min = 200.0
+initial_velocity_max = 300.0
+gravity = Vector3(136.80806, 375.87704, 0)
+damping_max = 46.923
+scale_min = 0.07
+scale_max = 0.13
+scale_over_velocity_max = 10.0
+scale_over_velocity_curve = SubResource("CurveXYZTexture_3hglr")
+color_initial_ramp = SubResource("GradientTexture1D_mh5nm")
+alpha_curve = SubResource("CurveTexture_f2ryw")
+
+[node name="RainOverlay" type="Node2D" unique_id=636324599]
+material = SubResource("CanvasItemMaterial_f2ryw")
+script = ExtResource("1_xwq7r")
+density = 0.001
+wind_angle_degrees = 70.0
+
+[node name="particles" type="GPUParticles2D" parent="." unique_id=721728415]
+amount = 65
+texture = SubResource("AtlasTexture_drnxs")
+lifetime = 1.2
+process_material = SubResource("ParticleProcessMaterial_wmul6")
