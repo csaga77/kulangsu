@@ -98,6 +98,7 @@ func _process(_delta: float) -> void:
 	if viewport and camera:
 		viewport_size = Vector2(viewport.size)
 		zoom = camera.zoom
+		global_position = camera.global_position
 
 	if viewport_size != m_last_viewport_size or zoom != m_last_zoom:
 		m_last_viewport_size = viewport_size
