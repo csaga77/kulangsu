@@ -90,6 +90,11 @@ func setup(character: HumanBody2D) -> void:
 
 	m_character = character
 	_create_area_on_parent()
+	
+	_on_setup()
+	
+func _on_setup() -> void:
+	pass
 
 func get_time_stamp() -> float:
 	return Time.get_ticks_msec() / 1000.0
