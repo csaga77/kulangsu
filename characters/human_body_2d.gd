@@ -103,8 +103,7 @@ var m_has_ready: bool = false
 		reload_sprites()
 
 func get_direction_vector() -> Vector2:
-	var vec :Vector2
-	return vec.from_angle(deg_to_rad(direction))
+	return Vector2.from_angle(deg_to_rad(direction))
 	
 func set_direction_vector(vec: Vector2) -> void:
 	direction = rad_to_deg(vec.angle())
@@ -514,7 +513,6 @@ func _save_sprite_frames_images(new_body_frames_texture_image: Image, new_head_s
 	if dir == null:
 		return
 	if new_body_frames_texture_image != null:
-		var texture = ImageTexture.create_from_image(new_body_frames_texture_image)
 		var file_path = sprite_path.path_join("body.png")
 		var err = new_body_frames_texture_image.save_png(file_path)
 		if err != Error.OK:
@@ -552,7 +550,6 @@ func _load_sprite_frames_images(new_body_frames_texture_image: Image, new_head_s
 		return
 
 	# Body frames (cached inside builder, persisted via export var)
-	var dir = DirAccess.open(sprite_path)
 	if new_body_frames_texture_image != null:
 		var texture = ImageTexture.create_from_image(new_body_frames_texture_image)
 		body_sprite_frames = UniversalLPCSpriteFactory.create_sprite_frames_from_template(0, texture)
@@ -675,7 +672,7 @@ func _set_facial_action_internal(action_value: int) -> void:
 	facial_action = action_value
 
 func _advance_action_step() -> void:
-	var def: Dictionary = ACTION_DEFS.get(int(facial_action), ACTION_DEFS[FacialActionEnum.NONE])
+	var def: Dictionary = ACTION_DEFS.get(facial_action, ACTION_DEFS[FacialActionEnum.NONE])
 	var steps: Array = def.get("steps", ["base"])
 	if steps.is_empty():
 		m_action_is_running = false
