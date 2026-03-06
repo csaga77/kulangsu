@@ -33,6 +33,9 @@ var m_area: Area2D = null
 var m_collision_shape: CollisionShape2D = null
 var m_circle_shape: CircleShape2D = null
 
+func is_talking() -> bool:
+	return is_instance_valid(m_balloon)
+
 func is_in_flock() -> bool:
 	return false
 
