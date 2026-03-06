@@ -413,15 +413,14 @@ func generate_sprites() -> void:
 		return
 	if m_body_node == null or m_head_node == null or m_head_bg_node == null or sprite_builder == null:
 		return
-
 	# Body frames (cached inside builder, persisted via export var)
 	var new_body_frames_texture_image := sprite_builder.build_body_frames_texture_image()
 	#head background sprite frames
 	var new_head_bg_sprite_frames = sprite_builder.build_head_frames_texture_images(true)
 	#head sprite frames
 	var new_head_sprite_frames = sprite_builder.build_head_frames_texture_images(false)
-	_load_sprite_frames_images(new_body_frames_texture_image, new_head_sprite_frames, new_head_bg_sprite_frames)
 	_save_sprite_frames_images(new_body_frames_texture_image, new_head_sprite_frames, new_head_bg_sprite_frames)
+	_load_sprite_frames_images(new_body_frames_texture_image, new_head_sprite_frames, new_head_bg_sprite_frames)
 	
 func reload_sprites() -> void:
 	if !m_has_ready:
@@ -495,7 +494,9 @@ func _save_sprite_frames_images(new_body_frames_texture_image: Image, new_head_s
 			print(err)
 
 	#head background sprite frames
-	dir.make_dir_recursive("head_bg")
+	var dir_err = dir.make_dir_recursive("head_bg")
+	if dir_err != Error.OK:
+		print(dir_err)
 	var head_bg_dir_path = sprite_path.path_join("head_bg")
 	for face_key in new_head_bg_sprite_frames.keys():
 		var new_face_image = new_head_bg_sprite_frames.get(face_key, null)

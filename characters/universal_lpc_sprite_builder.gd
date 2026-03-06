@@ -21,11 +21,6 @@ enum BodyTypeEnum {
 	PREGNANT = 5,
 }
 
-@export var trigger_reload: bool:
-	set(new_trigger):
-		if new_trigger:
-			_emit_changed()
-
 @export var body_type: BodyTypeEnum = BodyTypeEnum.MALE:
 	set(v):
 		if body_type == v:

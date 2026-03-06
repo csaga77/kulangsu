@@ -11,6 +11,7 @@ shader_parameter/fade_end = 1.0
 shader_parameter/tile_texture_size = Vector2(13, 54)
 
 [sub_resource type="Resource" id="Resource_1fo3j"]
+resource_local_to_scene = true
 script = ExtResource("3_1fo3j")
 body_type = 1
 m_face_style = "<none>"

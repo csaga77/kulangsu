@@ -3,7 +3,7 @@ extends Area2D
 
 @export var speech_balloon_scene: PackedScene
 @export var anchor_path: NodePath = ^".."
-@export var follow_offset: Vector2 = Vector2(0, -48)
+@export var follow_offset: Vector2 = Vector2(-8, -54)
 
 var m_anchor: Node2D = null
 var m_npc: Node2D = null
@@ -27,10 +27,14 @@ func _process(_delta: float) -> void:
 func _on_body_entered(body: Node2D) -> void:
 	if body == null:
 		return
+	if CommonUtils.is_ancestor(body, self):
+		return
 	m_npc = body
 
 func _on_body_exited(body: Node2D) -> void:
 	if body == null or body != m_npc:
+		return
+	if CommonUtils.is_ancestor(body, self):
 		return
 	m_npc = null
 	_destroy_balloon()
@@ -50,9 +54,13 @@ func _ensure_balloon() -> void:
 	if speech_balloon_scene == null:
 		return
 
-	m_balloon = speech_balloon_scene.instantiate() as Node2D
-	get_tree().current_scene.add_child(m_balloon)
-	m_balloon.top_level = true
+	m_balloon = speech_balloon_scene.instantiate() as SpeechBalloon
+	if m_balloon:
+		if m_npc:
+			#m_balloon.anchor_location = SpeechBalloon.LocationEnum.BOTTOM_RIGHT
+			m_balloon.text = "{0} : G'day, mate!".format([m_npc.name])
+		get_tree().current_scene.add_child(m_balloon)
+		m_balloon.top_level = true
 
 func _update_balloon_position() -> void:
 	if m_balloon == null or m_npc == null:

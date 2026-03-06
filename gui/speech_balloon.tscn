@@ -39,7 +39,6 @@ region = Rect2(27, 0, 7, 8)
 [node name="SpeechBalloon" type="Node2D" unique_id=746264519]
 script = ExtResource("2_8ma1k")
 offset = 15.0
-text = "G'day, mate!"
 
 [node name="FloatingBubble" type="Panel" parent="." unique_id=1905052246]
 visible = false
@@ -60,8 +59,7 @@ anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_top = -44.0
-offset_right = 131.0
-grow_horizontal = 0
+offset_right = 19.0
 grow_vertical = 0
 theme_override_constants/separation = -2
 
@@ -124,16 +122,19 @@ custom_minimum_size = Vector2(0, 5)
 layout_mode = 2
 
 [node name="PanelContainer" type="PanelContainer" parent="Balloon/VBox/HBoxMid" unique_id=782250851]
+custom_minimum_size = Vector2(1, 0)
 layout_mode = 2
 theme_override_styles/panel = ExtResource("1_8ma1k")
 
 [node name="Label" type="Label" parent="Balloon/VBox/HBoxMid/PanelContainer" unique_id=447542626]
+custom_minimum_size = Vector2(1, 0)
 layout_mode = 2
+size_flags_horizontal = 0
 size_flags_vertical = 1
 theme_override_colors/font_color = Color(0.00566115, 0.00566115, 0.00566115, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.392157)
 theme_override_font_sizes/font_size = 20
-text = "G'day, mate!"
+autowrap_mode = 3
 
 [node name="VBoxRight" type="VBoxContainer" parent="Balloon/VBox/HBoxMid" unique_id=340627996]
 z_index = 1
