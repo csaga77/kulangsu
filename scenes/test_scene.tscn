@@ -135,7 +135,7 @@ target_node = NodePath("../../Player")
 min_zoom = 0.01
 metadata/_custom_type_script = "uid://1lv88f7nn3d4"
 
-[node name="Player" parent="." unique_id=543916503 instance=ExtResource("5_rpuu0")]
+[node name="Player" parent="." unique_id=543916503 groups=["player"] instance=ExtResource("5_rpuu0")]
 position = Vector2(-4, 13)
 draw_bounding_rect = true
 facial_mood = 1

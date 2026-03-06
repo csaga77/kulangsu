@@ -60,6 +60,10 @@ func get_linear_velocity() -> Vector2:
 	if !is_instance_valid(m_character):
 		return Vector2.ZERO
 	return m_character.velocity
+	
+func set_running(is_running: bool) -> void:
+	if is_instance_valid(m_character):
+		m_character.is_running = is_running
 
 func move_forward() -> void:
 	move_direction &= (0xFFFFFFFF ^ MoveDirectionEnum.MOVE_BACKWARD)
@@ -124,7 +128,6 @@ func process(delta: float) -> void:
 
 func _process(_delta: float) -> void:
 	if is_instance_valid(m_character):
-		m_character.is_running = !Input.is_action_pressed("ui_walk")
 		m_character.is_walking = is_moving()
 
 		if move_direction & MoveDirectionEnum.MOVE_FORWARD:
@@ -196,10 +199,11 @@ func _on_body_exited(body: Node2D) -> void:
 		m_nearby_objects.remove_at(index)
 
 	if body == m_closest_object:
-		m_closest_object = null
-		m_balloon_closed = false
 		_on_closest_object_changed(m_closest_object)
 		closest_object_changed.emit(null)
+		
+	if _can_talk_to(body):
+		m_balloon_closed = false
 		_update_balloon_content()
 
 func _create_area_on_parent() -> void:
@@ -300,16 +304,21 @@ func _ensure_balloon_instance() -> void:
 func _update_balloon_content() -> void:
 	if m_balloon_closed:
 		return
+		
+	var speech = ""
 
-	var text := _get_speech()
+	for obj in m_nearby_objects:
+		if !_can_talk_to(obj):
+			continue
+		speech = _get_speech(obj)
+		break
+	
+	speak(speech)
 
-	if text.is_empty():
-		_destroy_balloon()
-		return
+func _can_talk_to(_target_node: Node2D) -> bool:
+	return false
 
-	speak(text)
-
-func _get_speech() -> String:
+func _get_speech(_target_node: Node2D) -> String:
 	return ""
 
 func _update_balloon_position() -> void:

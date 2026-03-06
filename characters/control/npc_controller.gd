@@ -51,9 +51,15 @@ func _get_default_params() -> Dictionary:
 		#"backoff_distance": m_backoff_distance,
 	}
 
-func _on_closest_object_changed(obj: Node2D) -> void:
-	super._on_closest_object_changed(obj)
-	m_target = obj
+func _on_body_entered(body: Node2D) -> void:
+	super._on_body_entered(body)
+	if body.is_in_group("player"):
+		m_target = body
+
+func _on_body_exited(body: Node2D) -> void:
+	super._on_body_exited(body)
+	if body.is_in_group("player"):
+		m_target = null
 
 func _process(delta: float) -> void:
 	super._process(delta)
@@ -75,8 +81,12 @@ func _process(delta: float) -> void:
 
 	m_character.direction = rad_to_deg(to_target.angle())
 
-func _get_speech() -> String:
-	if !is_instance_valid(m_character) or !is_instance_valid(_get_closest_object()):
-		return ""
+func _can_talk_to(target_obj: Node2D) -> bool:
+	return target_obj.is_in_group("player")
 
+func _get_speech(target_obj: Node2D) -> String:
+	if !is_instance_valid(m_character) or !is_instance_valid(target_obj):
+		return ""
+	if !target_obj.is_in_group("player"):
+		return "" #only talk to player
 	return "{0}: ♪...".format([m_character.name])

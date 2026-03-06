@@ -9,7 +9,9 @@ func _process(delta: float) -> void:
 
 	if m_character == null or !is_instance_valid(m_character):
 		return
-
+	
+	m_character.is_running = !Input.is_action_pressed("ui_walk")
+	
 	var new_direction_vector: Vector2 = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
 	if new_direction_vector.is_zero_approx():
 		stop_moving()

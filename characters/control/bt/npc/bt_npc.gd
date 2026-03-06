@@ -21,6 +21,7 @@ class TurningCircle extends BTNode:
 		angle += angular_speed * delta
 
 		var new_dir: Vector2 = Vector2.RIGHT.rotated(angle)
+		ctx.set_running(false)
 		ctx.set_target_direction(new_dir)
 		ctx.move_forward()
 
