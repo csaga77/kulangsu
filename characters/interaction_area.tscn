@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bf4kvtu52fw0d"]
 
-[ext_resource type="Script" uid="uid://bp6jbhumghj46" path="res://scenes/interaction_area.gd" id="1_1osl1"]
+[ext_resource type="Script" uid="uid://bp6jbhumghj46" path="res://characters/interaction_area.gd" id="1_1osl1"]
 [ext_resource type="PackedScene" uid="uid://c1le3qk68o7lw" path="res://gui/speech_balloon.tscn" id="2_nwxgu"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_rm1ms"]

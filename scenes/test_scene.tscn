@@ -119,6 +119,7 @@ metadata/_custom_type_script = "uid://1lv88f7nn3d4"
 [node name="Player" parent="." unique_id=543916503 instance=ExtResource("5_rpuu0")]
 position = Vector2(-4, 13)
 draw_bounding_rect = true
+facial_mood = 1
 sprite_builder = SubResource("Resource_gthg3")
 sprite_path = "res://resources/sprites/characters/prebuilt_characters/default"
 
@@ -130,6 +131,7 @@ player = NodePath("..")
 position = Vector2(4, -13)
 
 [node name="InteractionArea" parent="Player" unique_id=196216196 instance=ExtResource("9_6qxox")]
+balloon_follow_target = 0
 
 [node name="global_lighting_use_CanvasModulate" type="CanvasModulate" parent="." unique_id=1365478517]
 
@@ -156,6 +158,9 @@ position = Vector2(221, 303)
 direction = -180.0
 sprite_builder = SubResource("Resource_ntc4i")
 
+[node name="InteractionArea2" parent="npc_1" unique_id=1684462113 instance=ExtResource("9_6qxox")]
+balloon_follow_target = 1
+
 [node name="npc_3" parent="." unique_id=1971691183 instance=ExtResource("5_rpuu0")]
 position = Vector2(158, 301)
 direction = 0.0
@@ -163,7 +168,15 @@ is_running = false
 sprite_builder = SubResource("Resource_u0xbq")
 sprite_path = "res://resources/sprites/characters/prebuilt_characters/young_boy"
 
+[node name="InteractionArea3" parent="npc_3" unique_id=221456568 instance=ExtResource("9_6qxox")]
+balloon_follow_target = 1
+
 [node name="npc_2" parent="." unique_id=407062048 instance=ExtResource("5_rpuu0")]
 position = Vector2(-392, -55)
 sprite_builder = SubResource("Resource_pln1h")
 sprite_path = "res://resources/sprites/characters/prebuilt_characters/young_lady"
+
+[node name="InteractionArea4" parent="npc_2" unique_id=630230628 instance=ExtResource("9_6qxox")]
+balloon_follow_target = 1
+
+[connection signal="inspect_requested" from="Player/PlayerController" to="Player/InteractionArea" method="inspect"]

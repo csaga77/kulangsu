@@ -2,7 +2,7 @@
 class_name SpeechBalloon
 extends Node2D
 
-@export var text: String:
+@export_multiline var text: String:
 	get:
 		return m_text
 	set(new_text):
