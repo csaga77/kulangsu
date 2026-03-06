@@ -192,6 +192,8 @@ static var _registry := {
 	"Boid.InFlock": func() -> BTNode: return BTBoid.InFlock.new(),
 	"Boid.UpdateBoid": func() -> BTNode: return BTBoid.UpdateBoid.new(),
 	
+	#NPC
+	"Npc.TurningCircle": func() -> BTNode: return BTNPC.TurningCircle.new(),
 	#Turret
 	#"Condition.IsAttackEnabled": func() -> BTNode: return BTTurretConditions.IsAttackEnabled.new(),
 	#"Condition.IsTargetInRange": func() -> BTNode: return BTTurretConditions.IsTargetInRange.new(),

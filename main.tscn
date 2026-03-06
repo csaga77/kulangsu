@@ -5,7 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://cn5g8hobx3bru" path="res://terrain.tscn" id="3_7mycd"]
 [ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/human_body_2d.tscn" id="5_lquwl"]
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="6_7mycd"]
-[ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/player_controller.gd" id="6_272bh"]
+[ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/control/player_controller.gd" id="6_272bh"]
 
 [node name="main" type="Node2D" unique_id=1387312363]
 y_sort_enabled = true

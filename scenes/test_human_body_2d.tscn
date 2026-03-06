@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://chfnv650kjhxr"]
 
 [ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/human_body_2d.tscn" id="1_rm1ms"]
-[ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/player_controller.gd" id="2_buv3e"]
+[ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/control/player_controller.gd" id="2_buv3e"]
 [ext_resource type="Script" uid="uid://sujgif060qhn" path="res://characters/universal_lpc_sprite_builder.gd" id="3_buv3e"]
 
 [sub_resource type="Resource" id="Resource_tx7l7"]
