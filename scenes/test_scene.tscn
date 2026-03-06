@@ -18,7 +18,7 @@
 script = ExtResource("6_oo8pe")
 metadata/_custom_type_script = "uid://cmokaqask0s2p"
 
-[sub_resource type="Resource" id="Resource_gthg3"]
+[sub_resource type="Resource" id="Resource_u0xbq"]
 resource_local_to_scene = true
 script = ExtResource("7_gthg3")
 body_type = 1
@@ -48,10 +48,9 @@ light_mode = 1
 
 [sub_resource type="Resource" id="Resource_ntc4i"]
 script = ExtResource("13_ntc4i")
-balloon_follow_target = 1
 metadata/_custom_type_script = "uid://vk6rfdoxtkgv"
 
-[sub_resource type="Resource" id="Resource_u0xbq"]
+[sub_resource type="Resource" id="Resource_8gixj"]
 resource_local_to_scene = true
 script = ExtResource("7_gthg3")
 body_type = 1
@@ -70,10 +69,9 @@ feet_style = "<none>"
 
 [sub_resource type="Resource" id="Resource_pln1h"]
 script = ExtResource("13_ntc4i")
-balloon_follow_target = 1
 metadata/_custom_type_script = "uid://vk6rfdoxtkgv"
 
-[sub_resource type="Resource" id="Resource_8gixj"]
+[sub_resource type="Resource" id="Resource_qq5q4"]
 resource_local_to_scene = true
 script = ExtResource("7_gthg3")
 hair_color = Color(0.2283769, 0.3198597, 0.2523491, 1)
@@ -93,10 +91,9 @@ feet_style = "Foot_Wears_Ghillies_White"
 
 [sub_resource type="Resource" id="Resource_hf2sn"]
 script = ExtResource("13_ntc4i")
-balloon_follow_target = 1
 metadata/_custom_type_script = "uid://vk6rfdoxtkgv"
 
-[sub_resource type="Resource" id="Resource_qq5q4"]
+[sub_resource type="Resource" id="Resource_gah1j"]
 resource_local_to_scene = true
 script = ExtResource("7_gthg3")
 body_type = 1
@@ -143,7 +140,7 @@ position = Vector2(-4, 13)
 draw_bounding_rect = true
 facial_mood = 1
 controller = SubResource("Resource_6qxox")
-sprite_builder = SubResource("Resource_gthg3")
+sprite_builder = SubResource("Resource_u0xbq")
 sprite_path = "res://resources/sprites/characters/prebuilt_characters/default"
 
 [node name="global_lighting_use_CanvasModulate" type="CanvasModulate" parent="." unique_id=1365478517]
@@ -170,18 +167,18 @@ texture = ExtResource("7_s36qc")
 position = Vector2(221, 303)
 direction = -180.0
 controller = SubResource("Resource_ntc4i")
-sprite_builder = SubResource("Resource_u0xbq")
+sprite_builder = SubResource("Resource_8gixj")
 
 [node name="npc_3" parent="." unique_id=1971691183 instance=ExtResource("5_rpuu0")]
 position = Vector2(158, 301)
 direction = 0.0
 is_running = false
 controller = SubResource("Resource_pln1h")
-sprite_builder = SubResource("Resource_8gixj")
+sprite_builder = SubResource("Resource_qq5q4")
 sprite_path = "res://resources/sprites/characters/prebuilt_characters/young_boy"
 
 [node name="npc_2" parent="." unique_id=407062048 instance=ExtResource("5_rpuu0")]
 position = Vector2(-392, -55)
 controller = SubResource("Resource_hf2sn")
-sprite_builder = SubResource("Resource_qq5q4")
+sprite_builder = SubResource("Resource_gah1j")
 sprite_path = "res://resources/sprites/characters/prebuilt_characters/young_lady"

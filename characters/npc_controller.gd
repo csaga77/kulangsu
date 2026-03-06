@@ -22,3 +22,9 @@ func _process(delta: float) -> void:
 		return
 
 	m_character.direction = rad_to_deg(to_target.angle())
+
+func _get_speech() -> String:
+	if !is_instance_valid(m_character) or !is_instance_valid(_get_closest_object()):
+		return ""
+
+	return "{0}: ♪...".format([m_character.name])

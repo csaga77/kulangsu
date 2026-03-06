@@ -383,6 +383,7 @@ func _apply_animation_value() -> void:
 	if m_body_node.sprite_frames != null and !m_body_node.sprite_frames.has_animation(m_animation):
 		return
 	_update_state()
+	
 
 func _update_state() -> void:
 	if m_body_node == null or m_head_node == null or m_head_bg_node == null:
