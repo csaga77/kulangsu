@@ -2,6 +2,15 @@
 class_name BaseController
 extends Resource
 
+enum MoveDirectionEnum {
+	MOVE_IDLE = 0,
+	MOVE_FORWARD   = 1 << 0,  # 1
+	MOVE_BACKWARD  = 1 << 1,  # 2
+	MOVE_LEFTWARD  = 1 << 2,  # 4
+	MOVE_RIGHTWARD = 1 << 3   # 8
+}
+var move_direction: int = MoveDirectionEnum.MOVE_IDLE
+
 signal closest_object_changed(closest_object: Node2D)
 
 enum BalloonFollowTargetEnum {
@@ -27,6 +36,55 @@ var m_area: Area2D = null
 var m_collision_shape: CollisionShape2D = null
 var m_circle_shape: CircleShape2D = null
 
+func is_in_flock() -> bool:
+	return false
+	
+func is_flock_lead() -> bool:
+	return false
+	
+func get_global_position() -> Vector2:
+	if !is_instance_valid(m_character):
+		return Vector2.ZERO
+	return m_character.global_position
+	
+func get_direction_vector() -> Vector2:
+	if !is_instance_valid(m_character):
+		return Vector2.ZERO
+	return m_character.get_direction_vector()
+	
+func set_target_direction(dir :Vector2):
+	if is_instance_valid(m_character):
+		m_character.set_direction_vector(dir)
+
+func get_linear_velocity() -> Vector2:
+	if !is_instance_valid(m_character):
+		return Vector2.ZERO
+	return m_character.velocity
+
+func move_forward():
+	move_direction &= (0xFFFFFFFF ^ MoveDirectionEnum.MOVE_BACKWARD)
+	move_direction |= MoveDirectionEnum.MOVE_FORWARD
+
+func move_backward():
+	move_direction &= (0xFFFFFFFF ^ MoveDirectionEnum.MOVE_FORWARD)
+	move_direction |= MoveDirectionEnum.MOVE_BACKWARD
+
+func move_leftward():
+	move_direction &= (0xFFFFFFFF ^ MoveDirectionEnum.MOVE_RIGHTWARD)
+	move_direction |= MoveDirectionEnum.MOVE_LEFTWARD
+
+func move_rightward():
+	move_direction &= (0xFFFFFFFF ^ MoveDirectionEnum.MOVE_LEFTWARD)
+	move_direction |= MoveDirectionEnum.MOVE_RIGHTWARD
+
+func stop_moving():
+	move_direction = MoveDirectionEnum.MOVE_IDLE
+	if is_instance_valid(m_character):
+		m_character.is_walking = false
+
+func is_moving() -> bool:
+	return move_direction != MoveDirectionEnum.MOVE_IDLE
+
 func setup(character: HumanBody2D) -> void:
 	if m_character == character:
 		return
@@ -35,7 +93,10 @@ func setup(character: HumanBody2D) -> void:
 
 	m_character = character
 	_create_area_on_parent()
-
+	
+func get_time_stamp() -> float:
+	return Time.get_ticks_msec() / 1000.0
+	
 func teardown() -> void:
 	_destroy_balloon()
 
@@ -55,6 +116,14 @@ func process(delta: float) -> void:
 	_process(delta)
 	
 func _process(_delta: float) -> void:
+	
+	if is_instance_valid(m_character):
+		m_character.is_walking = true
+		m_character.is_running = !Input.is_action_pressed("ui_walk")
+		m_character.is_walking = is_moving()
+		if move_direction & MoveDirectionEnum.MOVE_FORWARD:
+			m_character.move(m_character.get_direction_vector())
+	
 	_cleanup_nearby_objects()
 
 	var closest_object: Node2D = _get_closest_object()

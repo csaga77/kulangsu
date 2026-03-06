@@ -21,4 +21,4 @@ func _process(delta: float) -> void:
 	if to_target.length_squared() < 0.001:
 		return
 
-	m_character.direction = rad_to_deg(-to_target.angle())
+	m_character.direction = rad_to_deg(to_target.angle())

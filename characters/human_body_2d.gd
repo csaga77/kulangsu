@@ -102,6 +102,13 @@ var m_has_ready: bool = false
 		sprite_path = v
 		reload_sprites()
 
+func get_direction_vector() -> Vector2:
+	var vec :Vector2
+	return vec.from_angle(deg_to_rad(direction))
+	
+func set_direction_vector(vec: Vector2) -> void:
+	direction = rad_to_deg(vec.angle())
+
 var body_sprite_frames: SpriteFrames
 var head_bg_sprite_frames: Dictionary # <key, SpriteFrames>
 var head_sprite_frames: Dictionary # <key, SpriteFrames>
@@ -399,9 +406,9 @@ func _update_state() -> void:
 	elif CommonUtils.is_in_range(normalized_direction, 135.0, 225.0):
 		new_animation_name += "w"
 	elif CommonUtils.is_in_range(normalized_direction, 45.0, 135.0):
-		new_animation_name += "n"
-	elif CommonUtils.is_in_range(normalized_direction, 225.0, 315.0):
 		new_animation_name += "s"
+	elif CommonUtils.is_in_range(normalized_direction, 225.0, 315.0):
+		new_animation_name += "n"
 
 	if m_current_animation_name == new_animation_name:
 		return

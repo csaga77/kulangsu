@@ -12,13 +12,10 @@ func _process(delta: float) -> void:
 
 	var new_direction_vector: Vector2 = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
 	if new_direction_vector.is_zero_approx():
-		m_character.is_walking = false
-		m_character.velocity = Vector2.ZERO
+		stop_moving()
 	else:
-		m_character.direction = rad_to_deg(-new_direction_vector.angle())
-		m_character.is_walking = true
-		m_character.is_running = !Input.is_action_pressed("ui_walk")
-		m_character.move(new_direction_vector)
+		set_target_direction(new_direction_vector)
+		move_forward()
 
 	if Input.is_action_just_pressed("ui_jump"):
 		m_character.jump()
