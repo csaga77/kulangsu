@@ -10,8 +10,13 @@
 [ext_resource type="Script" uid="uid://sujgif060qhn" path="res://characters/universal_lpc_sprite_builder.gd" id="7_gthg3"]
 [ext_resource type="Texture2D" uid="uid://dhf06qtvcxt2h" path="res://resources/sprites/light_mask_128x128.png" id="7_s36qc"]
 [ext_resource type="Shader" uid="uid://bx1o4bv3qtrdm" path="res://scenes/lighting.gdshader" id="8_h3xc6"]
-[ext_resource type="PackedScene" uid="uid://bf4kvtu52fw0d" path="res://characters/interaction_area.tscn" id="9_6qxox"]
 [ext_resource type="PackedScene" uid="uid://b6oslfbyqgnsg" path="res://common/rain_overlay.tscn" id="10_s36qc"]
+[ext_resource type="Script" uid="uid://vk6rfdoxtkgv" path="res://characters/npc_controller.gd" id="13_ntc4i"]
+[ext_resource type="PackedScene" uid="uid://c1le3qk68o7lw" path="res://gui/speech_balloon.tscn" id="14_u0xbq"]
+
+[sub_resource type="Resource" id="Resource_6qxox"]
+script = ExtResource("6_oo8pe")
+metadata/_custom_type_script = "uid://cmokaqask0s2p"
 
 [sub_resource type="Resource" id="Resource_gthg3"]
 resource_local_to_scene = true
@@ -42,6 +47,11 @@ blend_mode = 1
 light_mode = 1
 
 [sub_resource type="Resource" id="Resource_ntc4i"]
+script = ExtResource("13_ntc4i")
+balloon_follow_target = 1
+metadata/_custom_type_script = "uid://vk6rfdoxtkgv"
+
+[sub_resource type="Resource" id="Resource_u0xbq"]
 resource_local_to_scene = true
 script = ExtResource("7_gthg3")
 body_type = 1
@@ -58,7 +68,12 @@ shirt_style = "Clothes_Longsleeve_White"
 head_style = "Human_Female"
 feet_style = "<none>"
 
-[sub_resource type="Resource" id="Resource_u0xbq"]
+[sub_resource type="Resource" id="Resource_pln1h"]
+script = ExtResource("13_ntc4i")
+balloon_follow_target = 1
+metadata/_custom_type_script = "uid://vk6rfdoxtkgv"
+
+[sub_resource type="Resource" id="Resource_8gixj"]
 resource_local_to_scene = true
 script = ExtResource("7_gthg3")
 hair_color = Color(0.2283769, 0.3198597, 0.2523491, 1)
@@ -76,7 +91,12 @@ shirt_style = "Clothes_Longsleeve_White"
 head_style = "Human_Male"
 feet_style = "Foot_Wears_Ghillies_White"
 
-[sub_resource type="Resource" id="Resource_pln1h"]
+[sub_resource type="Resource" id="Resource_hf2sn"]
+script = ExtResource("13_ntc4i")
+balloon_follow_target = 1
+metadata/_custom_type_script = "uid://vk6rfdoxtkgv"
+
+[sub_resource type="Resource" id="Resource_qq5q4"]
 resource_local_to_scene = true
 script = ExtResource("7_gthg3")
 body_type = 1
@@ -100,6 +120,8 @@ y_sort_enabled = true
 script = ExtResource("1_8pr8v")
 building = ExtResource("2_wtsjf")
 
+[node name="RainOverlay" parent="." unique_id=1815453027 instance=ExtResource("10_s36qc")]
+
 [node name="Root" type="Node2D" parent="." unique_id=203604640]
 y_sort_enabled = true
 material = ExtResource("3_njel3")
@@ -120,18 +142,9 @@ metadata/_custom_type_script = "uid://1lv88f7nn3d4"
 position = Vector2(-4, 13)
 draw_bounding_rect = true
 facial_mood = 1
+controller = SubResource("Resource_6qxox")
 sprite_builder = SubResource("Resource_gthg3")
 sprite_path = "res://resources/sprites/characters/prebuilt_characters/default"
-
-[node name="PlayerController" type="Node" parent="Player" unique_id=1171599603 node_paths=PackedStringArray("player")]
-script = ExtResource("6_oo8pe")
-player = NodePath("..")
-
-[node name="RainOverlay" parent="Player" unique_id=1815453027 instance=ExtResource("10_s36qc")]
-position = Vector2(4, -13)
-
-[node name="InteractionArea" parent="Player" unique_id=196216196 instance=ExtResource("9_6qxox")]
-balloon_follow_target = 0
 
 [node name="global_lighting_use_CanvasModulate" type="CanvasModulate" parent="." unique_id=1365478517]
 
@@ -156,27 +169,19 @@ texture = ExtResource("7_s36qc")
 [node name="npc_1" parent="." unique_id=1255111382 instance=ExtResource("5_rpuu0")]
 position = Vector2(221, 303)
 direction = -180.0
-sprite_builder = SubResource("Resource_ntc4i")
-
-[node name="InteractionArea2" parent="npc_1" unique_id=1684462113 instance=ExtResource("9_6qxox")]
-balloon_follow_target = 1
+controller = SubResource("Resource_ntc4i")
+sprite_builder = SubResource("Resource_u0xbq")
 
 [node name="npc_3" parent="." unique_id=1971691183 instance=ExtResource("5_rpuu0")]
 position = Vector2(158, 301)
 direction = 0.0
 is_running = false
-sprite_builder = SubResource("Resource_u0xbq")
+controller = SubResource("Resource_pln1h")
+sprite_builder = SubResource("Resource_8gixj")
 sprite_path = "res://resources/sprites/characters/prebuilt_characters/young_boy"
-
-[node name="InteractionArea3" parent="npc_3" unique_id=221456568 instance=ExtResource("9_6qxox")]
-balloon_follow_target = 1
 
 [node name="npc_2" parent="." unique_id=407062048 instance=ExtResource("5_rpuu0")]
 position = Vector2(-392, -55)
-sprite_builder = SubResource("Resource_pln1h")
+controller = SubResource("Resource_hf2sn")
+sprite_builder = SubResource("Resource_qq5q4")
 sprite_path = "res://resources/sprites/characters/prebuilt_characters/young_lady"
-
-[node name="InteractionArea4" parent="npc_2" unique_id=630230628 instance=ExtResource("9_6qxox")]
-balloon_follow_target = 1
-
-[connection signal="inspect_requested" from="Player/PlayerController" to="Player/InteractionArea" method="inspect"]

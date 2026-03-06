@@ -73,6 +73,19 @@ var m_has_ready: bool = false
 		else:
 			_restart_face_driver_no_apply()
 
+@export var controller: BaseController:
+	set(v):
+		if controller == v:
+			return
+
+		if controller != null:
+			controller.teardown()
+
+		controller = v
+
+		if is_inside_tree() and controller != null:
+			controller.setup(self)
+
 # Builder owns ALL appearance properties/styles/options/caches.
 # We do NOT expose builder style properties here.
 @export var sprite_builder: UniversalLPCSpriteBuilder = UniversalLPCSpriteBuilder.new():
@@ -143,6 +156,8 @@ const ACTION_DEFS := {
 var m_is_notifying_property_changed := false
 
 func _ready() -> void:
+	if controller != null:
+		controller.setup(self)
 	# Keep builder reference connected (safe), but do NOT trigger any build calls.
 	if sprite_builder == null:
 		sprite_builder = UniversalLPCSpriteBuilder.new()
@@ -181,6 +196,10 @@ func _ready() -> void:
 	_update_state()
 	
 	reload_sprites()
+
+func _exit_tree() -> void:
+	if controller != null:
+		controller.teardown()
 
 func _restart_face_driver_no_apply() -> void:
 	_resolve_face_base_from_mood()
@@ -737,6 +756,9 @@ func _set_sprite_offset(offset: Vector2) -> void:
 		m_head_node.position = offset
 
 func _process(delta: float) -> void:
+	if controller != null:
+		controller.process(delta)
+
 	_sync_head_to_body()
 
 	if m_action_is_running and m_has_ready:

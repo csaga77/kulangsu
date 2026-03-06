@@ -1,0 +1,254 @@
+@tool
+class_name BaseController
+extends Resource
+
+signal closest_object_changed(closest_object: Node2D)
+
+enum BalloonFollowTargetEnum {
+	NONE   = 0,
+	ANCHOR = 1,
+	TARGET = 2
+}
+
+@export var speech_balloon_scene: PackedScene = preload("res://gui/speech_balloon.tscn")
+@export var follow_offset: Vector2 = Vector2(-8, -54)
+@export var balloon_follow_target: BalloonFollowTargetEnum = BalloonFollowTargetEnum.NONE
+@export var interaction_radius: float = 48.0:
+	set(v):
+		interaction_radius = max(v, 0.0)
+		_update_collision_radius()
+
+var m_character: HumanBody2D = null
+var m_nearby_objects: Array[Node2D] = []
+var m_closest_object: Node2D = null
+var m_balloon: SpeechBalloon = null
+
+var m_area: Area2D = null
+var m_collision_shape: CollisionShape2D = null
+var m_circle_shape: CircleShape2D = null
+
+func setup(character: HumanBody2D) -> void:
+	if m_character == character:
+		return
+
+	teardown()
+
+	m_character = character
+	_create_area_on_parent()
+
+func teardown() -> void:
+	_destroy_balloon()
+
+	if m_area != null and is_instance_valid(m_area):
+		m_area.queue_free()
+
+	m_area = null
+	m_collision_shape = null
+	m_circle_shape = null
+	m_nearby_objects.clear()
+	m_closest_object = null
+	m_character = null
+
+func process(delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
+	_process(delta)
+	
+func _process(_delta: float) -> void:
+	_cleanup_nearby_objects()
+
+	var closest_object: Node2D = _get_closest_object()
+	var object_changed: bool = m_closest_object != closest_object
+
+	if object_changed:
+		m_closest_object = closest_object
+		_on_closest_object_changed(m_closest_object)
+		closest_object_changed.emit(m_closest_object)
+
+	if m_closest_object == null:
+		_destroy_balloon()
+		return
+
+	_ensure_balloon()
+
+	if m_balloon == null:
+		return
+
+	if object_changed:
+		_update_balloon_content()
+
+	_update_balloon_position()
+
+func inspect() -> void:
+	if m_closest_object == null or !is_instance_valid(m_closest_object):
+		print("Invalid target!")
+		return
+	print(m_closest_object.name)
+
+func _on_closest_object_changed(_obj: Node2D) -> void:
+	pass
+
+func _on_body_entered(body: Node2D) -> void:
+	if !_is_valid_object(body):
+		return
+
+	if m_nearby_objects.has(body):
+		return
+
+	m_nearby_objects.append(body)
+
+func _on_body_exited(body: Node2D) -> void:
+	if body == null:
+		return
+
+	var index: int = m_nearby_objects.find(body)
+	if index >= 0:
+		m_nearby_objects.remove_at(index)
+
+	if body == m_closest_object:
+		m_closest_object = null
+		_on_closest_object_changed(m_closest_object)
+		closest_object_changed.emit(null)
+
+func _get_anchor() -> Node2D:
+	return m_character
+
+func _create_area_on_parent() -> void:
+	var anchor: Node2D = _get_anchor()
+	if anchor == null:
+		push_warning("BaseController requires a HumanBody2D host")
+		return
+
+	if m_area != null and is_instance_valid(m_area):
+		return
+
+	m_area = Area2D.new()
+	m_area.name = "InteractionArea2D"
+	m_area.monitoring = true
+	m_area.monitorable = true
+
+	m_collision_shape = CollisionShape2D.new()
+	m_collision_shape.name = "CollisionShape2D"
+
+	m_circle_shape = CircleShape2D.new()
+	m_circle_shape.radius = interaction_radius
+	m_collision_shape.shape = m_circle_shape
+
+	m_area.add_child(m_collision_shape)
+	anchor.add_child(m_area)
+
+	m_area.body_entered.connect(_on_body_entered)
+	m_area.body_exited.connect(_on_body_exited)
+
+func _update_collision_radius() -> void:
+	if m_circle_shape == null:
+		return
+	m_circle_shape.radius = interaction_radius
+
+func _is_valid_object(body: Node2D) -> bool:
+	if body == null:
+		return false
+	if !is_instance_valid(body):
+		return false
+
+	var anchor: Node2D = _get_anchor()
+	if anchor != null and (body == anchor or CommonUtils.is_ancestor(body, anchor)):
+		return false
+
+	return true
+
+func _cleanup_nearby_objects() -> void:
+	var valid_objects: Array[Node2D] = []
+
+	for object_node in m_nearby_objects:
+		if _is_valid_object(object_node):
+			valid_objects.append(object_node)
+
+	m_nearby_objects = valid_objects
+
+func _get_reference_position() -> Vector2:
+	var anchor: Node2D = _get_anchor()
+	if anchor != null and is_instance_valid(anchor):
+		return anchor.global_position
+	return Vector2.ZERO
+
+func _get_closest_object() -> Node2D:
+	if m_nearby_objects.is_empty():
+		return null
+
+	var reference_position: Vector2 = _get_reference_position()
+	var closest_object: Node2D = null
+	var closest_distance_sq: float = INF
+
+	for object_node in m_nearby_objects:
+		var distance_sq: float = reference_position.distance_squared_to(object_node.global_position)
+		if distance_sq < closest_distance_sq:
+			closest_distance_sq = distance_sq
+			closest_object = object_node
+
+	return closest_object
+
+func _ensure_balloon() -> void:
+	if balloon_follow_target == BalloonFollowTargetEnum.NONE:
+		return
+	if m_balloon != null and is_instance_valid(m_balloon):
+		return
+	if speech_balloon_scene == null:
+		return
+	if m_character == null or !is_instance_valid(m_character):
+		return
+	if m_character.get_tree() == null or m_character.get_tree().current_scene == null:
+		return
+
+	m_balloon = speech_balloon_scene.instantiate() as SpeechBalloon
+	if m_balloon == null:
+		return
+
+	m_character.get_tree().current_scene.add_child(m_balloon)
+	m_balloon.top_level = true
+	_update_balloon_content()
+	_update_balloon_position()
+
+func _update_balloon_content() -> void:
+	if m_balloon == null or !is_instance_valid(m_balloon):
+		return
+
+	var speaker: Node2D = null
+	if balloon_follow_target == BalloonFollowTargetEnum.ANCHOR:
+		speaker = _get_anchor()
+	elif balloon_follow_target == BalloonFollowTargetEnum.TARGET:
+		speaker = m_closest_object
+
+	if speaker == null or !is_instance_valid(speaker):
+		return
+
+	m_balloon.text = "{0}: ♪...".format([speaker.name])
+
+func _get_balloon_follow_node() -> Node2D:
+	match balloon_follow_target:
+		BalloonFollowTargetEnum.ANCHOR:
+			var anchor: Node2D = _get_anchor()
+			if anchor != null and is_instance_valid(anchor):
+				return anchor
+		BalloonFollowTargetEnum.TARGET:
+			if m_closest_object != null and is_instance_valid(m_closest_object):
+				return m_closest_object
+
+	return null
+
+func _update_balloon_position() -> void:
+	if m_balloon == null or !is_instance_valid(m_balloon):
+		return
+
+	var follow_node: Node2D = _get_balloon_follow_node()
+	if follow_node == null:
+		return
+
+	m_balloon.global_position = follow_node.global_position + follow_offset
+
+func _destroy_balloon() -> void:
+	if m_balloon != null and is_instance_valid(m_balloon):
+		var balloon: SpeechBalloon = m_balloon
+		m_balloon = null
+		var tween = AnimationUtils.tween_node2d_visibility(balloon, false, 1.0)
+		tween.finished.connect(balloon.queue_free)

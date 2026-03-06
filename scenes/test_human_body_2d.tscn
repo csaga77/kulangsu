@@ -2,20 +2,53 @@
 
 [ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/human_body_2d.tscn" id="1_rm1ms"]
 [ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/player_controller.gd" id="2_buv3e"]
-[ext_resource type="PackedScene" uid="uid://bf4kvtu52fw0d" path="res://characters/interaction_area.tscn" id="3_buv3e"]
+[ext_resource type="Script" uid="uid://sujgif060qhn" path="res://characters/universal_lpc_sprite_builder.gd" id="3_buv3e"]
+
+[sub_resource type="Resource" id="Resource_tx7l7"]
+resource_local_to_scene = true
+script = ExtResource("3_buv3e")
+body_type = 1
+m_face_style = "<none>"
+m_hair_style = "Default_Hair_Ponytail_White"
+m_legs_style = "Default_Longpants_Black"
+m_shirt_style = "Clothes_Longsleeve_White"
+m_head_style = "Human_Female"
+body_style = "Default"
+face_style = "<none>"
+hair_style = "Default_Hair_Ponytail_White"
+legs_style = "Default_Longpants_Black"
+shirt_style = "Clothes_Longsleeve_White"
+head_style = "Human_Female"
+feet_style = "<none>"
+
+[sub_resource type="Resource" id="Resource_sxyc1"]
+resource_local_to_scene = true
+script = ExtResource("3_buv3e")
+body_type = 1
+m_face_style = "<none>"
+m_hair_style = "Default_Hair_Ponytail_White"
+m_legs_style = "Default_Longpants_Black"
+m_shirt_style = "Clothes_Longsleeve_White"
+m_head_style = "Human_Female"
+body_style = "Default"
+face_style = "<none>"
+hair_style = "Default_Hair_Ponytail_White"
+legs_style = "Default_Longpants_Black"
+shirt_style = "Clothes_Longsleeve_White"
+head_style = "Human_Female"
+feet_style = "<none>"
 
 [node name="test_human_body_2d" type="Node2D" unique_id=1051547171]
 y_sort_enabled = true
 
-[node name="controller" type="Node" parent="." unique_id=1582765273 node_paths=PackedStringArray("player")]
+[node name="controller" type="Node" parent="." unique_id=1582765273]
 script = ExtResource("2_buv3e")
-player = NodePath("../male")
 
 [node name="male" parent="." unique_id=536638414 instance=ExtResource("1_rm1ms")]
 position = Vector2(130, 118)
+sprite_builder = SubResource("Resource_tx7l7")
 sprite_path = "res://resources/sprites/characters/prebuilt_characters/default"
-
-[node name="interaction_area" parent="male" unique_id=196216196 instance=ExtResource("3_buv3e")]
 
 [node name="female" parent="." unique_id=1255111382 instance=ExtResource("1_rm1ms")]
 position = Vector2(223, 117)
+sprite_builder = SubResource("Resource_sxyc1")

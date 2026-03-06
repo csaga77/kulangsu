@@ -1,29 +1,28 @@
+@tool
 class_name PlayerController
-extends Node
-
-@export var player :HumanBody2D
+extends BaseController
 
 signal inspect_requested
 
-# Called when the node enters the scene tree for the first time.
-func _ready() -> void:
-	pass # Replace with function body.
+func _process(delta: float) -> void:
+	super._process(delta)
 
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(_delta: float) -> void:
-	if player != null:
-		var new_direction_vector = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
-		if new_direction_vector.is_zero_approx():
-			player.is_walking = false
-			player.velocity = Vector2.ZERO
-		else:
-			player.direction = rad_to_deg(-new_direction_vector.angle())
-			player.is_walking = true
-			player.is_running = !Input.is_action_pressed("ui_walk")
-			player.move(new_direction_vector)
-			
-		if Input.is_action_just_pressed("ui_jump"):
-			player.jump()
+	if m_character == null or !is_instance_valid(m_character):
+		return
 
-		if Input.is_action_just_pressed("ui_inspect"):
-			inspect_requested.emit()
+	var new_direction_vector: Vector2 = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+	if new_direction_vector.is_zero_approx():
+		m_character.is_walking = false
+		m_character.velocity = Vector2.ZERO
+	else:
+		m_character.direction = rad_to_deg(-new_direction_vector.angle())
+		m_character.is_walking = true
+		m_character.is_running = !Input.is_action_pressed("ui_walk")
+		m_character.move(new_direction_vector)
+
+	if Input.is_action_just_pressed("ui_jump"):
+		m_character.jump()
+
+	if Input.is_action_just_pressed("ui_inspect"):
+		inspect_requested.emit()
+		inspect()
