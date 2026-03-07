@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://c2356cdr8o5tr"]
+
+[ext_resource type="Script" uid="uid://b044woc18vit7" path="res://scenes/test_universal_lpc_sprite_generator.gd" id="1_3fldc"]
+[ext_resource type="Script" uid="uid://doad3dy4jbcqe" path="res://scenes/universal_lpc_metadata_reader.gd" id="1_vfqxp"]
+
+[node name="TestUniversalLpcSpriteGenerator" type="Node2D" unique_id=1808474754]
+script = ExtResource("1_3fldc")
+
+[node name="metadata_reader" type="Node" parent="." unique_id=1235277941]
+script = ExtResource("1_vfqxp")
+universal_lpc_root = "res://3rdparty/Universal-LPC-Spritesheet-Character-Generator"
+include_credits = false
