@@ -6,3 +6,7 @@
 	path = godot_tilemap
 	url = ../godot_tilemap.git
 	branch = main
+[submodule "3rdparty/Universal-LPC-Spritesheet-Character-Generator"]
+	path = 3rdparty/Universal-LPC-Spritesheet-Character-Generator
+	url = ../../csaga77-forks/Universal-LPC-Spritesheet-Character-Generator.git
+	branch = master
