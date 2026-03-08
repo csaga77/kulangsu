@@ -12,6 +12,7 @@ extends Node
 
 var _cached_js_frame_layout: Dictionary = {}
 var _js_frame_layout_loaded: bool = false
+var m_unreferenced_animations :PackedStringArray = []
 
 const DEFAULT_ANIMATIONS: PackedStringArray = [
 	"idle",
@@ -76,6 +77,7 @@ func read_all_sheet_metadata() -> Array[Dictionary]:
 
 
 func export_metadata_as_json(output_path: String = "user://universal_lpc_metadata.json") -> bool:
+	m_unreferenced_animations = _unique_packed(_to_packed_string_array(_get_default_frame_layout().keys()))
 	var definitions := read_all_sheet_metadata()
 	var export_data: Dictionary = {
 		"default_animations": DEFAULT_ANIMATIONS.duplicate(),
@@ -102,11 +104,11 @@ func export_metadata_as_json(output_path: String = "user://universal_lpc_metadat
 
 func _print_export_summary(data: Array[Dictionary], output_path: String) -> void:
 	var definition_count: int = data.size()
-	var total_animation_count: int = 0
 	var total_variant_count: int = 0
 	var total_layer_count: int = 0
 	var priorities: Array[int] = []
 	var definitions_with_credits: int = 0
+	var all_animations = _unique_packed(_to_packed_string_array(_get_default_frame_layout().keys()))
 	var additional_animation_names: PackedStringArray = []
 	var variant_names: PackedStringArray = []
 	var tag_names: PackedStringArray = []
@@ -122,17 +124,17 @@ func _print_export_summary(data: Array[Dictionary], output_path: String) -> void
 		var variants: PackedStringArray = _to_packed_string_array(entry.get("variants", []))
 		var tags: PackedStringArray = _to_packed_string_array(entry.get("tags", []))
 		var type_name: String = str(entry.get("type_name", ""))
-		var priority: int = int(entry.get("priority", 999999))
+		var priority: int = int(entry.get("priority", -1))
 		var layers_value = entry.get("layers", [])
 		var layer_count: int = layers_value.size() if typeof(layers_value) == TYPE_ARRAY else 0
 
-		total_animation_count += animations.size()
 		total_variant_count += variants.size()
 		total_layer_count += layer_count
-		priorities.append(priority)
+		if priority >= 0:
+			priorities.append(priority)
 
 		for animation in animations:
-			if not DEFAULT_ANIMATIONS.has(animation):
+			if not all_animations.has(animation):
 				additional_animation_names.append(animation)
 
 		for variant in variants:
@@ -147,6 +149,7 @@ func _print_export_summary(data: Array[Dictionary], output_path: String) -> void
 		if entry.has("credits"):
 			definitions_with_credits += 1
 
+	
 	additional_animation_names = _unique_packed(additional_animation_names)
 	variant_names = _unique_packed(variant_names)
 	tag_names = _unique_packed(tag_names)
@@ -156,16 +159,20 @@ func _print_export_summary(data: Array[Dictionary], output_path: String) -> void
 	print("[ULPC Metadata] Export complete")
 	print("[ULPC Metadata] Output: %s" % output_path)
 	print("[ULPC Metadata] Definitions: %d" % definition_count)
-	print("[ULPC Metadata] Total animations referenced: %d" % total_animation_count)
 	print("[ULPC Metadata] Total variants referenced: %d" % total_variant_count)
 	print("[ULPC Metadata] Total layers referenced: %d" % total_layer_count)
 	print("[ULPC Metadata] Priority range: %s" % _format_priority_summary(priorities))
-	print("[ULPC Metadata] Definitions with credits: %d" % definitions_with_credits)
-	print("[ULPC Metadata] Unique type names (%d): %s" % [type_names.size(), ", ".join(type_names)])
+	if include_credits:
+		print("[ULPC Metadata] Definitions with credits: %d" % definitions_with_credits)
+	print("[ULPC Metadata] Unique type names: %d" % [type_names.size()])
+	
+	print("[ULPC Metadata] Total default animations (%d): %s" % [all_animations.size(), ", ".join(all_animations)])
 	print("[ULPC Metadata] Additional animations (not in default) (%d): %s" % [additional_animation_names.size(), ", ".join(additional_animation_names)])
-	print("[ULPC Metadata] All custom animations from JS (%d): %s" % [custom_animation_names.size(), ", ".join(custom_animation_names)])
-	print("[ULPC Metadata] Unique animation variants (%d): %s" % [variant_names.size(), ", ".join(variant_names)])
-	print("[ULPC Metadata] Unique tags (%d): %s" % [tag_names.size(), ", ".join(tag_names)])
+	if use_js_frame_info:
+		print("[ULPC Metadata] All custom animations from JS (%d): %s" % [custom_animation_names.size(), ", ".join(custom_animation_names)])
+	print("[ULPC Metadata] Unreferenced animations (%d): %s" % [m_unreferenced_animations.size(), ", ".join(m_unreferenced_animations)])
+	print("[ULPC Metadata] Unique variants: %d" % [variant_names.size()])
+	print("[ULPC Metadata] Unique tags: %d" % [tag_names.size()])
 
 
 func _print_read_summary(json_files: PackedStringArray, results: Array[Dictionary]) -> void:
@@ -200,9 +207,10 @@ func _read_one_sheet_definition(json_path: String) -> Dictionary:
 	var priority: int = _extract_priority(d)
 
 	var metadata: Dictionary = {
-		"json_file": json_path,
-		"priority": priority
+		"json_file": json_path
 	}
+	if priority >= 0:
+		metadata["priority"] = priority
 
 	if d.has("definition_name") and typeof(d["definition_name"]) == TYPE_STRING and str(d["definition_name"]) != "":
 		metadata["definition_name"] = str(d["definition_name"])
@@ -353,8 +361,8 @@ func _dictionaries_equal(a: Dictionary, b: Dictionary) -> bool:
 
 func _extract_priority(d: Dictionary) -> int:
 	if d.has("priority"):
-		return int(d.get("priority", 999999))
-	return 999999
+		return int(d.get("priority", -1))
+	return -1
 
 
 func _sort_metadata_entries(a: Dictionary, b: Dictionary) -> bool:
@@ -389,6 +397,7 @@ func _extract_animations(d: Dictionary) -> PackedStringArray:
 func _extract_additional_animations_only(animations: PackedStringArray) -> PackedStringArray:
 	var extras: PackedStringArray = []
 	for animation in animations:
+		m_unreferenced_animations.erase(animation)
 		if not DEFAULT_ANIMATIONS.has(animation):
 			extras.append(animation)
 	return _unique_packed(extras)
