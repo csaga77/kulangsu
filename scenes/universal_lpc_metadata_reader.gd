@@ -2,7 +2,7 @@
 class_name UniversalLpcMetadataReader
 extends Node
 
-@export_dir var universal_lpc_root: String = "res://universal_lpc"
+@export_dir var universal_lpc_root: String = "res://3rdparty/Universal-LPC-Spritesheet-Character-Generator"
 @export var sheet_definitions_dir: String = "sheet_definitions"
 @export var spritesheets_dir: String = "spritesheets"
 @export var include_credits: bool = true
@@ -12,7 +12,11 @@ extends Node
 
 var _cached_js_frame_layout: Dictionary = {}
 var _js_frame_layout_loaded: bool = false
-var m_unreferenced_animations :PackedStringArray = []
+var m_unreferenced_animations: PackedStringArray = []
+
+const BODY_TYPES: PackedStringArray = [
+	"male", "female", "teen", "child", "muscular", "pregnant"
+]
 
 const DEFAULT_ANIMATIONS: PackedStringArray = [
 	"idle",
@@ -79,15 +83,21 @@ func read_all_sheet_metadata() -> Array[Dictionary]:
 func export_metadata_as_json(output_path: String = "user://universal_lpc_metadata.json") -> bool:
 	m_unreferenced_animations = _unique_packed(_to_packed_string_array(_get_default_frame_layout().keys()))
 	var definitions := read_all_sheet_metadata()
+
 	var export_data: Dictionary = {
-		"default_animations": DEFAULT_ANIMATIONS.duplicate(),
-		"default_variants": DEFAULT_VARIANTS.duplicate(),
+		"universal_lpc_root": universal_lpc_root,
+		"sheet_definitions_dir": sheet_definitions_dir,
+		"spritesheets_dir": spritesheets_dir,
+		"body_types": BODY_TYPES,
+		"default_animations": DEFAULT_ANIMATIONS,
+		"default_variants": DEFAULT_VARIANTS,
 		"default_frame_info": {
 			"source": "fallback",
 			"data": _get_default_frame_layout()
 		},
 		"definitions": definitions
 	}
+
 	var json_text := JSON.stringify(export_data, "\t")
 
 	var file := FileAccess.open(output_path, FileAccess.WRITE)
@@ -149,7 +159,6 @@ func _print_export_summary(data: Array[Dictionary], output_path: String) -> void
 		if entry.has("credits"):
 			definitions_with_credits += 1
 
-	
 	additional_animation_names = _unique_packed(additional_animation_names)
 	variant_names = _unique_packed(variant_names)
 	tag_names = _unique_packed(tag_names)
@@ -164,20 +173,20 @@ func _print_export_summary(data: Array[Dictionary], output_path: String) -> void
 	print("[ULPC Metadata] Priority range: %s" % _format_priority_summary(priorities))
 	if include_credits:
 		print("[ULPC Metadata] Definitions with credits: %d" % definitions_with_credits)
-	print("[ULPC Metadata] Unique type names: %d" % [type_names.size()])
-	
+	print("[ULPC Metadata] Unique type names: %d" % type_names.size())
 	print("[ULPC Metadata] Total default animations (%d): %s" % [all_animations.size(), ", ".join(all_animations)])
 	print("[ULPC Metadata] Additional animations (not in default) (%d): %s" % [additional_animation_names.size(), ", ".join(additional_animation_names)])
 	if use_js_frame_info:
 		print("[ULPC Metadata] All custom animations from JS (%d): %s" % [custom_animation_names.size(), ", ".join(custom_animation_names)])
 	print("[ULPC Metadata] Unreferenced animations (%d): %s" % [m_unreferenced_animations.size(), ", ".join(m_unreferenced_animations)])
-	print("[ULPC Metadata] Unique variants: %d" % [variant_names.size()])
-	print("[ULPC Metadata] Unique tags: %d" % [tag_names.size()])
+	print("[ULPC Metadata] Unique variants: %d" % variant_names.size())
+	print("[ULPC Metadata] Unique tags: %d" % tag_names.size())
 
 
 func _print_read_summary(json_files: PackedStringArray, results: Array[Dictionary]) -> void:
 	print("[ULPC Metadata] JSON files scanned: %d" % json_files.size())
 	print("[ULPC Metadata] Valid definitions loaded: %d" % results.size())
+
 
 func _read_one_sheet_definition(json_path: String) -> Dictionary:
 	var text := FileAccess.get_file_as_string(json_path)
@@ -207,7 +216,7 @@ func _read_one_sheet_definition(json_path: String) -> Dictionary:
 	var priority: int = _extract_priority(d)
 
 	var metadata: Dictionary = {
-		"json_file": json_path
+		"json_file": _to_relative_definition_path(json_path)
 	}
 	if priority >= 0:
 		metadata["priority"] = priority
@@ -554,6 +563,21 @@ func _join_path(a: String, b: String) -> String:
 	return a + "/" + b
 
 
+func _to_relative_definition_path(json_path: String) -> String:
+	var definitions_root := _join_path(universal_lpc_root, sheet_definitions_dir)
+	if definitions_root.ends_with("/"):
+		definitions_root = definitions_root.trim_suffix("/")
+
+	var prefix := definitions_root + "/"
+	if json_path.begins_with(prefix):
+		return json_path.substr(prefix.length())
+
+	if json_path == definitions_root:
+		return ""
+
+	return json_path
+
+
 func _arrays_equal(a: Array, b: Array) -> bool:
 	if a.size() != b.size():
 		return false
@@ -590,6 +614,7 @@ func _get_default_frame_layout() -> Dictionary:
 	for key in js_layout.keys():
 		layout[key] = (js_layout[key] as Dictionary).duplicate(true)
 	return layout
+
 
 func _extract_frame_layout_from_js() -> Dictionary:
 	if _js_frame_layout_loaded:
@@ -660,7 +685,7 @@ func _extract_explicit_custom_animation_layouts(text: String, default_frame_size
 	var object_start: int = text.find("{", anchor_index)
 	if object_start == -1:
 		return layout
-		
+
 	var object_end: int = _find_matching_brace(text, object_start, "{", "}")
 	if object_end == -1:
 		return layout
@@ -671,7 +696,7 @@ func _extract_explicit_custom_animation_layouts(text: String, default_frame_size
 			index += 1
 		if index >= object_end:
 			break
-		
+
 		var key_start: int = index
 		while index < object_end and text.substr(index, 1) != ":":
 			index += 1
@@ -686,7 +711,7 @@ func _extract_explicit_custom_animation_layouts(text: String, default_frame_size
 			index += 1
 		if index >= object_end or text.substr(index, 1) != "{":
 			continue
-		
+
 		var block_start: int = index
 		var block_end: int = _find_matching_brace(text, block_start, "{", "}")
 		if block_end == -1:
@@ -704,7 +729,7 @@ func _extract_explicit_custom_animation_layouts(text: String, default_frame_size
 		var frames_key_index: int = block_text.find("frames")
 		if frames_key_index == -1:
 			continue
-		
+
 		var frames_array_start: int = block_text.find("[", frames_key_index)
 		if frames_array_start == -1:
 			continue
@@ -715,8 +740,7 @@ func _extract_explicit_custom_animation_layouts(text: String, default_frame_size
 
 		var frames_array_text: String = block_text.substr(frames_array_start, frames_array_end - frames_array_start + 1)
 		var frame_rows: Array = _extract_custom_animation_frame_rows(frames_array_text)
-		#print("custom animation : ", animation_name, ", frame_size :", frame_size)
-		
+
 		if frame_rows.is_empty():
 			continue
 
@@ -751,10 +775,10 @@ func _find_matching_brace(text: String, open_index: int, open_char: String, clos
 				return i
 	return -1
 
+
 func _extract_custom_animation_frame_rows(frames_array_text: String) -> Array:
 	var frame_rows: Array = []
 
-	# Remove the outer frames array brackets first.
 	if frames_array_text.length() < 2:
 		return frame_rows
 
@@ -788,6 +812,7 @@ func _extract_custom_animation_frame_rows(frames_array_text: String) -> Array:
 		index = row_end + 1
 
 	return frame_rows
+
 
 func _extract_custom_animation_row_items(row_text: String) -> PackedStringArray:
 	var items: PackedStringArray = []

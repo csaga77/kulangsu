@@ -5,8 +5,9 @@
 
 [node name="TestUniversalLpcSpriteGenerator" type="Node2D" unique_id=1808474754]
 script = ExtResource("1_3fldc")
+metadata/body_types = PackedStringArray("male", "female", "teen", "child", "muscular", "pregnant")
+metadata/body_type = 0
 
 [node name="metadata_reader" type="Node" parent="." unique_id=1235277941]
 script = ExtResource("1_vfqxp")
-universal_lpc_root = "res://3rdparty/Universal-LPC-Spritesheet-Character-Generator"
 include_credits = false
