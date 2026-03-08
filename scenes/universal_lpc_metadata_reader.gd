@@ -705,16 +705,17 @@ func _extract_explicit_custom_animation_layouts(text: String, default_frame_size
 			continue
 
 		var frames_array_text: String = block_text.substr(frames_array_start, frames_array_end - frames_array_start + 1)
-		var row_lengths: Array[int] = _extract_custom_animation_row_lengths(frames_array_text)
+		var frame_rows: Array = _extract_custom_animation_frame_rows(frames_array_text)
 		#print("custom animation : ", animation_name, ", frame_size :", frame_size)
 		
-		if row_lengths.is_empty():
+		if frame_rows.is_empty():
 			continue
 
-		var directions: int = row_lengths.size()
+		var directions: int = frame_rows.size()
 		var frames_per_direction: int = 0
-		for row_length in row_lengths:
-			frames_per_direction = maxi(frames_per_direction, row_length)
+		for row in frame_rows:
+			if typeof(row) == TYPE_ARRAY:
+				frames_per_direction = maxi(frames_per_direction, (row as Array).size())
 
 		layout[animation_name] = {
 			"directions": directions,
@@ -722,7 +723,7 @@ func _extract_explicit_custom_animation_layouts(text: String, default_frame_size
 			"frame_width": frame_size,
 			"frames_per_direction": frames_per_direction,
 			"total_frames": directions * frames_per_direction,
-			"frames": row_lengths.duplicate()
+			"frames": frame_rows.duplicate(true)
 		}
 
 	print("[ULPC Metadata] Extracted custom animation layouts: %s" % ", ".join(layout.keys()))
@@ -741,12 +742,12 @@ func _find_matching_brace(text: String, open_index: int, open_char: String, clos
 				return i
 	return -1
 
-func _extract_custom_animation_row_lengths(frames_array_text: String) -> Array[int]:
-	var row_lengths: Array[int] = []
+func _extract_custom_animation_frame_rows(frames_array_text: String) -> Array:
+	var frame_rows: Array = []
 
 	# Remove the outer frames array brackets first.
 	if frames_array_text.length() < 2:
-		return row_lengths
+		return frame_rows
 
 	var inner_text: String = frames_array_text.substr(1, frames_array_text.length() - 2)
 	var index: int = 0
@@ -768,36 +769,48 @@ func _extract_custom_animation_row_lengths(frames_array_text: String) -> Array[i
 			break
 
 		var row_text: String = inner_text.substr(row_start + 1, row_end - row_start - 1)
-		var row_length: int = _count_custom_animation_row_items(row_text)
-		if row_length > 0:
-			row_lengths.append(row_length)
+		var row_items: PackedStringArray = _extract_custom_animation_row_items(row_text)
+		if not row_items.is_empty():
+			var row_array: Array[String] = []
+			for item in row_items:
+				row_array.append(item)
+			frame_rows.append(row_array)
 
 		index = row_end + 1
 
-	return row_lengths
+	return frame_rows
 
-func _count_custom_animation_row_items(row_text: String) -> int:
-	var count: int = 0
+func _extract_custom_animation_row_items(row_text: String) -> PackedStringArray:
+	var items: PackedStringArray = []
+	var current: String = ""
 	var in_string: bool = false
 	var escape_next: bool = false
 
 	for i in range(row_text.length()):
 		var ch := row_text.substr(i, 1)
 
-		if escape_next:
-			escape_next = false
-			continue
+		if in_string:
+			if escape_next:
+				current += ch
+				escape_next = false
+				continue
 
-		if ch == "\\" and in_string:
-			escape_next = true
-			continue
+			if ch == "\\":
+				escape_next = true
+				continue
 
-		if ch == '"':
-			in_string = not in_string
-			if not in_string:
-				count += 1
+			if ch == '"':
+				items.append(current)
+				current = ""
+				in_string = false
+				continue
 
-	return count
+			current += ch
+		else:
+			if ch == '"':
+				in_string = true
+
+	return items
 
 
 func _extract_int_from_block(block_text: String, keys: Array[String]) -> int:
