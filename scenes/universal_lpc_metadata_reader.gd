@@ -80,12 +80,13 @@ func read_all_sheet_metadata() -> Array[Dictionary]:
 	return results
 
 
-func export_metadata_as_json(output_path: String = "user://universal_lpc_metadata.json") -> bool:
+func export_metadata_as_json(output_path: String = "res://universal_lpc_metadata.json", target_path = "res://resources/sprites/universal_lpc") -> bool:
 	m_unreferenced_animations = _unique_packed(_to_packed_string_array(_get_default_frame_layout().keys()))
 	var definitions := read_all_sheet_metadata()
 
 	var export_data: Dictionary = {
 		"universal_lpc_root": universal_lpc_root,
+		"target_path": target_path,
 		"sheet_definitions_dir": sheet_definitions_dir,
 		"spritesheets_dir": spritesheets_dir,
 		"body_types": BODY_TYPES,

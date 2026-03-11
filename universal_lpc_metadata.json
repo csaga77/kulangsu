@@ -35776,6 +35776,6 @@
 		}
 	],
 	"sheet_definitions_dir": "sheet_definitions",
-	"spritesheets_dir": "spritesheets",
+	"spritesheets_dir": "res://resources/sprites/universal_lpc/spritesheets",
 	"universal_lpc_root": "res://3rdparty/Universal-LPC-Spritesheet-Character-Generator"
 }

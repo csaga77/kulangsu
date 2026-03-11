@@ -2,8 +2,9 @@
 extends Node2D
 
 @onready var m_reader: UniversalLpcMetadataReader = $metadata_reader
-
+@onready var m_sprite: UniversalLpcSprite2D = $universal_lpc_sprite
 @export var output_json_path: String = "res://universal_lpc_metadata.json"
+@export var target_path: String = "res://resources/sprite/universal_lpc"
 
 var m_loaded_metadata: Dictionary = {}
 var m_selection_data: Dictionary = {}
@@ -29,6 +30,14 @@ func _get_property_list() -> Array:
 		"usage": PROPERTY_USAGE_EDITOR,
 		"hint": PROPERTY_HINT_TOOL_BUTTON,
 		"hint_string": "Load Metadata JSON"
+	})
+	
+	properties.append({
+		"name": "generate_sprite",
+		"type": TYPE_CALLABLE,
+		"usage": PROPERTY_USAGE_EDITOR,
+		"hint": PROPERTY_HINT_TOOL_BUTTON,
+		"hint_string": "Generate Sprite"
 	})
 
 	if not m_body_types.is_empty():
@@ -106,6 +115,8 @@ func _get(property: StringName):
 		return Callable(self, "_generate_metadata_json")
 	if property == "load_metadata_json":
 		return Callable(self, "_load_metadata_json")
+	if property == "generate_sprite":
+		return Callable(self, "_generate_sprite")
 
 	var prop_name := String(property)
 
@@ -184,13 +195,18 @@ func _generate_metadata_json() -> void:
 
 	print("Generating Universal LPC metadata...")
 
-	var ok: bool = m_reader.export_metadata_as_json(output_json_path)
+	var ok: bool = m_reader.export_metadata_as_json(output_json_path, target_path)
 
 	if ok:
 		print("Metadata JSON generated at: ", output_json_path)
 	else:
 		push_error("Failed to generate metadata JSON.")
 
+func _generate_sprite() -> void:
+	if not Engine.is_editor_hint():
+		return
+	m_sprite.load(m_selection_data, output_json_path)
+	
 
 func _load_metadata_json() -> void:
 	if not Engine.is_editor_hint():
