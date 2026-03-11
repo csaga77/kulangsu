@@ -22,9 +22,8 @@
 		"watering",
 		"emote",
 		"combat",
-		"1h_slash",
-		"1h_backslash",
-		"1h_halfslash"
+		"backslash",
+		"halfslash"
 	],
 	"default_frame_info": {
 		"data": {

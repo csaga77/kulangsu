@@ -19,23 +19,22 @@ const BODY_TYPES: PackedStringArray = [
 ]
 
 const DEFAULT_ANIMATIONS: PackedStringArray = [
-	"idle",
 	"spellcast",
 	"thrust",
 	"walk",
-	"run",
-	"sit",
 	"slash",
 	"shoot",
 	"hurt",
-	"jump",
 	"climb",
-	"watering",
+	"idle",
+	"jump",
+	"sit",
 	"emote",
-	"combat",
-	"1h_slash",
-	"1h_backslash",
-	"1h_halfslash"
+	"run",
+	"watering",
+	"combat_idle",
+	"backslash",
+	"halfslash"
 ]
 
 const DEFAULT_VARIANTS: PackedStringArray = []
@@ -45,7 +44,7 @@ const FALLBACK_FRAME_LAYOUT: Dictionary = {
 	"1h_halfslash": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 1, "total_frames": 4},
 	"1h_slash": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 1, "total_frames": 4},
 	"climb": {"directions": 1, "frame_height": 64, "frame_width": 64, "frames_per_direction": 6, "total_frames": 6},
-	"combat": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 1, "total_frames": 4},
+	"combat_idle": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 1, "total_frames": 4},
 	"emote": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 1, "total_frames": 4},
 	"hurt": {"directions": 1, "frame_height": 64, "frame_width": 64, "frames_per_direction": 6, "total_frames": 6},
 	"idle": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 2, "total_frames": 8},
@@ -80,7 +79,7 @@ func read_all_sheet_metadata() -> Array[Dictionary]:
 	return results
 
 
-func export_metadata_as_json(output_path: String = "res://universal_lpc_metadata.json", target_path = "res://resources/sprites/universal_lpc") -> bool:
+func export_metadata_as_json(output_path: String = "res://universal_lpc_metadata.json", target_path: String = "res://resources/sprites/universal_lpc") -> bool:
 	m_unreferenced_animations = _unique_packed(_to_packed_string_array(_get_default_frame_layout().keys()))
 	var definitions := read_all_sheet_metadata()
 
@@ -99,6 +98,8 @@ func export_metadata_as_json(output_path: String = "res://universal_lpc_metadata
 		"definitions": definitions
 	}
 
+	var combined_count: int = _export_combined_variant_spritesheets(definitions, target_path)
+
 	var json_text := JSON.stringify(export_data, "\t")
 
 	var file := FileAccess.open(output_path, FileAccess.WRITE)
@@ -109,8 +110,190 @@ func export_metadata_as_json(output_path: String = "res://universal_lpc_metadata
 	file.store_string(json_text)
 	file.close()
 
+	print("[ULPC Metadata] Combined spritesheets generated: %d" % combined_count)
 	_print_export_summary(definitions, output_path)
 	return true
+
+
+func _export_combined_variant_spritesheets(definitions: Array[Dictionary], target_path: String) -> int:
+	var generated_count: int = 0
+	var default_layout: Dictionary = _get_default_frame_layout()
+
+	for definition_value in definitions:
+		if typeof(definition_value) != TYPE_DICTIONARY:
+			continue
+
+		var definition: Dictionary = definition_value
+		var variants: PackedStringArray = _to_packed_string_array(definition.get("variants", []))
+		if variants.is_empty():
+			continue
+
+		var frame_info: Dictionary = definition.get("frame_info", {})
+		var frame_info_data: Dictionary = {}
+		if typeof(frame_info) == TYPE_DICTIONARY:
+			var raw_data = frame_info.get("data", {})
+			if typeof(raw_data) == TYPE_DICTIONARY:
+				frame_info_data = raw_data
+
+		var relative_sheet_roots: PackedStringArray = _extract_relative_sheet_roots_from_layers(definition)
+		if relative_sheet_roots.is_empty():
+			continue
+
+		for relative_sheet_root in relative_sheet_roots:
+			var source_sheet_root: String = _join_path(_join_path(universal_lpc_root, spritesheets_dir), relative_sheet_root)
+			var target_sheet_root: String = _join_path(_join_path(target_path, spritesheets_dir), relative_sheet_root)
+
+			for variant in variants:
+				var combined: Image = _build_combined_variant_sheet(source_sheet_root, variant, frame_info_data, default_layout)
+				if combined == null or combined.is_empty():
+					continue
+
+				var target_file_path: String = _join_path(target_sheet_root, "%s.png" % variant)
+				if not _ensure_parent_dir_exists(target_file_path):
+					push_warning("Failed to create target directory for: %s" % target_file_path)
+					continue
+
+				var save_err: Error = combined.save_png(target_file_path)
+				if save_err != OK:
+					push_warning("Failed to save combined spritesheet: %s error=%d" % [target_file_path, save_err])
+					continue
+
+				generated_count += 1
+
+	return generated_count
+
+
+func _extract_relative_sheet_roots_from_layers(definition: Dictionary) -> PackedStringArray:
+	var out: PackedStringArray = []
+	var layers_value = definition.get("layers", [])
+	if typeof(layers_value) != TYPE_ARRAY:
+		return out
+
+	for layer_value in layers_value:
+		if typeof(layer_value) != TYPE_DICTIONARY:
+			continue
+
+		var layer: Dictionary = layer_value
+		var data_value = layer.get("data", {})
+		if typeof(data_value) != TYPE_DICTIONARY:
+			continue
+
+		var data: Dictionary = data_value
+		for key in data.keys():
+			if str(key) == "zPos":
+				continue
+
+			var raw_path: String = str(data.get(key, "")).strip_edges()
+			if raw_path == "":
+				continue
+
+			# Skip template paths for now.
+			if raw_path.contains("${"):
+				continue
+
+			var normalized_path: String = _normalize_relative_sheet_root(raw_path)
+			if normalized_path != "" and not out.has(normalized_path):
+				out.append(normalized_path)
+
+	return out
+
+
+func _normalize_relative_sheet_root(raw_path: String) -> String:
+	var path: String = raw_path.replace("\\", "/").strip_edges()
+
+	while path.begins_with("/"):
+		path = path.substr(1)
+
+	while path.ends_with("/"):
+		path = path.left(path.length() - 1)
+
+	return path
+
+
+func _build_combined_variant_sheet(source_sheet_root: String, variant: String, frame_info_data: Dictionary, default_layout: Dictionary) -> Image:
+	var animation_images: Array[Image] = []
+	var row_sizes: Array[Vector2i] = []
+	var max_width: int = 0
+	var total_height: int = 0
+	var has_any_real_image: bool = false
+
+	for animation_name in DEFAULT_ANIMATIONS:
+		var source_path_with_variant: String = _join_path(_join_path(source_sheet_root, animation_name), "%s.png" % variant)
+		var source_path_fallback: String = _join_path(source_sheet_root, "%s.png" % animation_name)
+
+		var row_image: Image = null
+		var row_size: Vector2i = Vector2i.ZERO
+
+		if FileAccess.file_exists(source_path_with_variant):
+			row_image = Image.load_from_file(source_path_with_variant)
+		elif FileAccess.file_exists(source_path_fallback):
+			row_image = Image.load_from_file(source_path_fallback)
+
+		if row_image != null and not row_image.is_empty():
+			has_any_real_image = true
+			row_size = Vector2i(row_image.get_width(), row_image.get_height())
+		else:
+			row_size = _infer_animation_sheet_size(animation_name, frame_info_data, default_layout)
+			if row_size.x <= 0 or row_size.y <= 0:
+				row_size = Vector2i(1, 1)
+
+			row_image = Image.create(row_size.x, row_size.y, false, Image.FORMAT_RGBA8)
+			row_image.fill(Color(0, 0, 0, 0))
+
+		animation_images.append(row_image)
+		row_sizes.append(row_size)
+
+		max_width = maxi(max_width, row_size.x)
+		total_height += row_size.y
+
+	if not has_any_real_image:
+		return null
+
+	if max_width <= 0 or total_height <= 0:
+		return null
+
+	var combined := Image.create(max_width, total_height, false, Image.FORMAT_RGBA8)
+	combined.fill(Color(0, 0, 0, 0))
+
+	var y_offset: int = 0
+	for i in range(animation_images.size()):
+		var row_image: Image = animation_images[i]
+		if row_image == null or row_image.is_empty():
+			y_offset += row_sizes[i].y
+			continue
+
+		combined.blit_rect(row_image, Rect2i(0, 0, row_image.get_width(), row_image.get_height()), Vector2i(0, y_offset))
+		y_offset += row_sizes[i].y
+
+	return combined
+
+
+func _infer_animation_sheet_size(animation_name: String, frame_info_data: Dictionary, default_layout: Dictionary) -> Vector2i:
+	var layout: Dictionary = {}
+
+	if frame_info_data.has(animation_name) and typeof(frame_info_data[animation_name]) == TYPE_DICTIONARY:
+		layout = (frame_info_data[animation_name] as Dictionary).duplicate(true)
+	elif default_layout.has(animation_name) and typeof(default_layout[animation_name]) == TYPE_DICTIONARY:
+		layout = (default_layout[animation_name] as Dictionary).duplicate(true)
+
+	if layout.is_empty():
+		return Vector2i(1, 1)
+
+	var frame_width: int = int(layout.get("frame_width", 64))
+	var frame_height: int = int(layout.get("frame_height", 64))
+	var directions: int = int(layout.get("directions", 1))
+	var frames_per_direction: int = int(layout.get("frames_per_direction", 1))
+
+	var sheet_width: int = maxi(1, frame_width * frames_per_direction)
+	var sheet_height: int = maxi(1, frame_height * directions)
+	return Vector2i(sheet_width, sheet_height)
+
+
+func _ensure_parent_dir_exists(file_path: String) -> bool:
+	var dir_path: String = file_path.get_base_dir()
+	if dir_path == "":
+		return false
+	return DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir_path)) == OK
 
 
 func _print_export_summary(data: Array[Dictionary], output_path: String) -> void:

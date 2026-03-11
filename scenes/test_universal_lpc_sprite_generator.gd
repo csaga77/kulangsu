@@ -4,7 +4,7 @@ extends Node2D
 @onready var m_reader: UniversalLpcMetadataReader = $metadata_reader
 @onready var m_sprite: UniversalLpcSprite2D = $universal_lpc_sprite
 @export var output_json_path: String = "res://universal_lpc_metadata.json"
-@export var target_path: String = "res://resources/sprite/universal_lpc"
+@export var target_path: String = "res://resources/sprites/universal_lpc"
 
 var m_loaded_metadata: Dictionary = {}
 var m_selection_data: Dictionary = {}
