@@ -88,16 +88,19 @@ func load(selection_data: Dictionary, universal_lpc_metadata_path: String) -> vo
 
 
 func _create_sprite_from_selection(selection: Dictionary) -> Sprite2D:
-	var animation_entries: Array[Dictionary] = _resolve_texture_paths_from_selection(selection)
-	if animation_entries.is_empty():
-		push_warning("Could not resolve animation textures for selection: %s" % str(selection.get("path_string", "")))
+	var texture_path: String = _resolve_texture_path_from_selection(selection)
+	if texture_path == "":
+		push_warning("Could not resolve combined texture for selection: %s" % str(selection.get("path_string", "")))
 		return null
 
-	var current_animation_name: String = _get_current_animation_name()
-	var texture: Texture2D = _get_texture_for_animation(animation_entries, current_animation_name)
+	var texture: Texture2D = load(texture_path) as Texture2D
 	if texture == null:
-		texture = animation_entries[0].get("texture", null) as Texture2D
-	if texture == null:
+		push_warning("Failed to load combined texture: %s" % texture_path)
+		return null
+
+	var row_rects: Dictionary = _build_animation_row_rects(selection)
+	if row_rects.is_empty():
+		push_warning("Could not build animation row rects for selection: %s" % str(selection.get("path_string", "")))
 		return null
 
 	var sprite := Sprite2D.new()
@@ -106,23 +109,16 @@ func _create_sprite_from_selection(selection: Dictionary) -> Sprite2D:
 	sprite.centered = false
 	sprite.position = Vector2.ZERO
 	sprite.z_index = int(round(_get_selection_zpos(selection)))
-	sprite.set_meta("animation_entries", animation_entries)
+	sprite.region_enabled = true
+	sprite.set_meta("row_rects", row_rects)
 	sprite.set_meta("selection_data", selection.duplicate(true))
 
-	var frame_info: Dictionary = selection.get("frame_info", {})
-	var frame_data: Dictionary = frame_info.get("data", {}) if typeof(frame_info) == TYPE_DICTIONARY else {}
+	var current_animation_name: String = _get_current_animation_name()
+	var rect: Rect2 = _get_animation_row_rect(row_rects, current_animation_name)
+	if rect.size.x <= 0 or rect.size.y <= 0:
+		rect = _get_first_animation_row_rect(row_rects)
 
-	var anim_key: String = _get_frame_info_key(selection)
-	if frame_data.has(anim_key):
-		var anim_info = frame_data[anim_key]
-		if typeof(anim_info) == TYPE_DICTIONARY:
-			var anim_dict: Dictionary = anim_info
-			var frame_width: int = int(anim_dict.get("frame_width", 0))
-			var frame_height: int = int(anim_dict.get("frame_height", 0))
-			if frame_width > 0 and frame_height > 0:
-				sprite.region_enabled = true
-				sprite.region_rect = Rect2(0, 0, frame_width, frame_height)
-
+	sprite.region_rect = rect
 	return sprite
 
 
@@ -131,30 +127,97 @@ func _apply_current_animation_to_sprites() -> void:
 	for sprite in m_sprite_nodes:
 		if not is_instance_valid(sprite):
 			continue
-		if not sprite.has_meta("animation_entries"):
+		if not sprite.has_meta("row_rects"):
 			continue
 
-		var entries_value = sprite.get_meta("animation_entries")
-		if typeof(entries_value) != TYPE_ARRAY:
+		var row_rects_value = sprite.get_meta("row_rects")
+		if typeof(row_rects_value) != TYPE_DICTIONARY:
 			continue
 
-		var entries: Array[Dictionary] = entries_value
-		var texture: Texture2D = _get_texture_for_animation(entries, animation_name)
-		if texture == null and not entries.is_empty():
-			texture = entries[0].get("texture", null) as Texture2D
+		var row_rects: Dictionary = row_rects_value
+		var rect: Rect2 = _get_animation_row_rect(row_rects, animation_name)
+		if rect.size.x <= 0 or rect.size.y <= 0:
+			rect = _get_first_animation_row_rect(row_rects)
 
-		if texture != null:
-			sprite.texture = texture
+		if rect.size.x > 0 and rect.size.y > 0:
+			sprite.region_enabled = true
+			sprite.region_rect = rect
 
 
-func _get_texture_for_animation(entries: Array[Dictionary], animation_name: String) -> Texture2D:
-	for entry_value in entries:
-		if typeof(entry_value) != TYPE_DICTIONARY:
-			continue
-		var entry: Dictionary = entry_value
-		if str(entry.get("animation", "")) == animation_name:
-			return entry.get("texture", null) as Texture2D
-	return null
+func _get_animation_row_rect(row_rects: Dictionary, animation_name: String) -> Rect2:
+	if row_rects.has(animation_name):
+		var value = row_rects[animation_name]
+		if value is Rect2:
+			return value
+	return Rect2()
+
+
+func _get_first_animation_row_rect(row_rects: Dictionary) -> Rect2:
+	for animation_name in _get_animation_names():
+		var rect: Rect2 = _get_animation_row_rect(row_rects, animation_name)
+		if rect.size.x > 0 and rect.size.y > 0:
+			return rect
+	return Rect2()
+
+
+func _build_animation_row_rects(selection: Dictionary) -> Dictionary:
+	var rects: Dictionary = {}
+	var frame_info_data: Dictionary = _get_selection_frame_info_data(selection)
+	var default_layout: Dictionary = _get_default_frame_layout_from_metadata()
+
+	var y_offset: float = 0.0
+	for animation_name in _get_animation_names():
+		var size: Vector2i = _infer_animation_sheet_size(animation_name, frame_info_data, default_layout)
+		var rect := Rect2(0, y_offset, float(size.x), float(size.y))
+		rects[animation_name] = rect
+		y_offset += float(size.y)
+
+	return rects
+
+
+func _get_selection_frame_info_data(selection: Dictionary) -> Dictionary:
+	var frame_info_value = selection.get("frame_info", {})
+	if typeof(frame_info_value) != TYPE_DICTIONARY:
+		return {}
+
+	var frame_info: Dictionary = frame_info_value
+	var data_value = frame_info.get("data", {})
+	if typeof(data_value) != TYPE_DICTIONARY:
+		return {}
+
+	return data_value
+
+
+func _get_default_frame_layout_from_metadata() -> Dictionary:
+	var default_frame_info_value = m_metadata_root.get("default_frame_info", {})
+	if typeof(default_frame_info_value) != TYPE_DICTIONARY:
+		return {}
+
+	var default_frame_info: Dictionary = default_frame_info_value
+	var data_value = default_frame_info.get("data", {})
+	if typeof(data_value) != TYPE_DICTIONARY:
+		return {}
+
+	return data_value
+
+
+func _infer_animation_sheet_size(animation_name: String, frame_info_data: Dictionary, default_layout: Dictionary) -> Vector2i:
+	var layout: Dictionary = {}
+
+	if frame_info_data.has(animation_name) and typeof(frame_info_data[animation_name]) == TYPE_DICTIONARY:
+		layout = (frame_info_data[animation_name] as Dictionary).duplicate(true)
+	elif default_layout.has(animation_name) and typeof(default_layout[animation_name]) == TYPE_DICTIONARY:
+		layout = (default_layout[animation_name] as Dictionary).duplicate(true)
+
+	if layout.is_empty():
+		return Vector2i(1, 1)
+
+	var frame_width: int = int(layout.get("frame_width", 64))
+	var frame_height: int = int(layout.get("frame_height", 64))
+	var directions: int = int(layout.get("directions", 1))
+	var frames_per_direction: int = int(layout.get("frames_per_direction", 1))
+
+	return Vector2i(maxi(1, frame_width * frames_per_direction), maxi(1, frame_height * directions))
 
 
 func _get_selection_zpos(selection: Dictionary) -> float:
@@ -184,26 +247,11 @@ func _get_selection_zpos(selection: Dictionary) -> float:
 	return highest_z if found else 0.0
 
 
-func _get_frame_info_key(selection: Dictionary) -> String:
-	var path_string: String = str(selection.get("path_string", ""))
-	if path_string != "":
-		return path_string.get_file()
-
-	var name: String = str(selection.get("name", ""))
-	return name
-
-
-func _resolve_texture_paths_from_selection(selection: Dictionary) -> Array[Dictionary]:
-	var results: Array[Dictionary] = []
-
-	var metadata_root_path: String = str(m_metadata_root.get("universal_lpc_root", ""))
+func _resolve_texture_path_from_selection(selection: Dictionary) -> String:
+	var metadata_root_path: String = str(m_metadata_root.get("target_path", ""))
 	var spritesheets_dir: String = str(m_metadata_root.get("spritesheets_dir", "spritesheets"))
 	if metadata_root_path == "":
-		return results
-
-	var default_animations: PackedStringArray = _get_animation_names()
-	if default_animations.is_empty():
-		return results
+		return ""
 
 	var spritesheets_root: String = _join_path(metadata_root_path, spritesheets_dir)
 
@@ -211,42 +259,20 @@ func _resolve_texture_paths_from_selection(selection: Dictionary) -> Array[Dicti
 	var variant: String = str(selection.get("variant", ""))
 	var layers = selection.get("layers", [])
 
-	if typeof(layers) != TYPE_ARRAY:
-		return results
+	if typeof(layers) != TYPE_ARRAY or variant == "":
+		return ""
 
 	var resolved_base_paths: PackedStringArray = _resolve_base_paths_from_selection_layers(selection, body_type, layers)
 	if resolved_base_paths.is_empty():
-		return results
+		return ""
 
-	for animation_name in default_animations:
-		var found_path: String = ""
-		for base_path in resolved_base_paths:
-			var base_dir: String = _join_path(spritesheets_root, _normalize_relative_dir(base_path))
-			if variant != "":
-				var candidate_with_variant: String = _join_path(base_dir, "%s/%s.png" % [animation_name, variant])
-				
-				if ResourceLoader.exists(candidate_with_variant):
-					found_path = candidate_with_variant
-					break
+	for base_path in resolved_base_paths:
+		var base_dir: String = _join_path(spritesheets_root, _normalize_relative_dir(base_path))
+		var candidate: String = _join_path(base_dir, "%s.png" % variant)
+		if ResourceLoader.exists(candidate):
+			return candidate
 
-			var candidate_fallback: String = _join_path(base_dir, "%s.png" % animation_name)
-			if ResourceLoader.exists(candidate_fallback):
-				found_path = candidate_fallback
-				break
-		
-		if found_path == "":
-			continue
-		var texture: Texture2D = load(found_path) as Texture2D
-		if texture == null:
-			continue
-		
-		results.append({
-			"animation": animation_name,
-			"path": found_path,
-			"texture": texture
-		})
-
-	return results
+	return ""
 
 
 func _resolve_base_paths_from_selection_layers(selection: Dictionary, body_type: String, layers: Array) -> PackedStringArray:
@@ -385,6 +411,8 @@ func _normalize_relative_dir(path: String) -> String:
 	var normalized: String = path.strip_edges().replace("\\", "/")
 	while normalized.begins_with("/"):
 		normalized = normalized.substr(1)
+	while normalized.ends_with("/"):
+		normalized = normalized.left(normalized.length() - 1)
 	return normalized
 
 

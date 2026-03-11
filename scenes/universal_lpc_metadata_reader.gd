@@ -5,7 +5,8 @@ extends Node
 @export_dir var universal_lpc_root: String = "res://3rdparty/Universal-LPC-Spritesheet-Character-Generator"
 @export var sheet_definitions_dir: String = "sheet_definitions"
 @export var spritesheets_dir: String = "spritesheets"
-@export var include_credits: bool = true
+@export var include_credits: bool = false
+@export var generate_combined_sprites: bool = false
 
 @export var use_js_frame_info: bool = true
 @export var custom_animations_js_relative_path: String = "sources/custom-animations.js"
@@ -31,7 +32,6 @@ const DEFAULT_ANIMATIONS: PackedStringArray = [
 	"sit",
 	"emote",
 	"run",
-	"watering",
 	"combat_idle",
 	"backslash",
 	"halfslash"
@@ -98,7 +98,9 @@ func export_metadata_as_json(output_path: String = "res://universal_lpc_metadata
 		"definitions": definitions
 	}
 
-	var combined_count: int = _export_combined_variant_spritesheets(definitions, target_path)
+	var combined_count: int = 0
+	if generate_combined_sprites:
+		combined_count = _export_combined_variant_spritesheets(definitions, target_path)
 
 	var json_text := JSON.stringify(export_data, "\t")
 
