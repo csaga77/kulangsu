@@ -31,7 +31,7 @@ func _get_property_list() -> Array:
 		"hint": PROPERTY_HINT_TOOL_BUTTON,
 		"hint_string": "Load Metadata JSON"
 	})
-	
+
 	properties.append({
 		"name": "generate_sprite",
 		"type": TYPE_CALLABLE,
@@ -202,11 +202,12 @@ func _generate_metadata_json() -> void:
 	else:
 		push_error("Failed to generate metadata JSON.")
 
+
 func _generate_sprite() -> void:
 	if not Engine.is_editor_hint():
 		return
 	m_sprite.load(m_selection_data, output_json_path)
-	
+
 
 func _load_metadata_json() -> void:
 	if not Engine.is_editor_hint():
@@ -322,7 +323,7 @@ func _load_metadata_json() -> void:
 
 
 func _generate_selection_data() -> void:
-	var selected_items: Array[Dictionary] = []
+	var selected_items: Dictionary = {}
 	_collect_selected_items(m_loaded_metadata.get("spritesheets", []), selected_items)
 
 	m_selection_data = {
@@ -332,7 +333,7 @@ func _generate_selection_data() -> void:
 	}
 
 
-func _collect_selected_items(children: Array, out_items: Array[Dictionary], current_parts: Array[String] = []) -> void:
+func _collect_selected_items(children: Array, out_items: Dictionary, current_parts: Array[String] = []) -> void:
 	for child in children:
 		if typeof(child) != TYPE_DICTIONARY:
 			continue
@@ -359,22 +360,8 @@ func _collect_selected_items(children: Array, out_items: Array[Dictionary], curr
 			if variant_index > variants.size():
 				continue
 
-			out_items.append({
-				"path": new_parts.duplicate(),
-				"path_string": "/".join(new_parts),
-				"name": str(data.get("name", child_name)),
-				"type_name": str(data.get("type_name", "")),
-				"variant_index": variant_index,
-				"variant": variants[variant_index - 1],
-				"json_file": str(data.get("json_file", "")),
-				"json_file_absolute": str(data.get("json_file_absolute", "")),
-				"priority": int(data.get("priority", 999999)),
-				"frame_info": _deep_copy_dictionary(data.get("frame_info", {})),
-				"layers": _deep_copy_array(data.get("layers", [])),
-				"tags": _packed_to_array(_to_packed_string_array(data.get("tags", []))),
-				"required": _packed_to_array(_to_packed_string_array(data.get("required", []))),
-				"aliases": _deep_copy_dictionary(data.get("aliases", {}))
-			})
+			var path_string: String = "/".join(new_parts)
+			out_items[path_string] = variants[variant_index - 1]
 
 
 func _get_selected_body_type_name() -> String:
@@ -611,25 +598,6 @@ func _to_packed_string_array(value) -> PackedStringArray:
 					out.append(item)
 
 	return out
-
-
-func _packed_to_array(value: PackedStringArray) -> Array[String]:
-	var out: Array[String] = []
-	for item in value:
-		out.append(item)
-	return out
-
-
-func _deep_copy_dictionary(value) -> Dictionary:
-	if typeof(value) == TYPE_DICTIONARY:
-		return (value as Dictionary).duplicate(true)
-	return {}
-
-
-func _deep_copy_array(value) -> Array:
-	if typeof(value) == TYPE_ARRAY:
-		return (value as Array).duplicate(true)
-	return []
 
 
 func _join_path(a: String, b: String) -> String:

@@ -2,22 +2,49 @@
 class_name UniversalLpcSprite2D
 extends Node2D
 
-@export var animation: int = 0:
+var animation_enum_values: PackedStringArray = []
+
+@export_storage var animation: int = 0:
 	set(value):
-		var names: PackedStringArray = _get_animation_names()
-		var max_index: int = maxi(0, names.size() - 1)
+		var names: PackedStringArray = _get_animation_enum_names()
+
+		if names.is_empty():
+			animation = value
+			return
+
+		var max_index: int = names.size() - 1
 		animation = clampi(value, 0, max_index)
 		_apply_current_animation_to_sprites()
 
-var m_selection_data: Dictionary = {}
-var m_metadata_root: Dictionary = {}
-var m_sprite_nodes: Array[Sprite2D] = []
+var animation_name: String:
+	get():
+		var names: PackedStringArray = _get_animation_enum_names()
+		if names.is_empty():
+			return ""
+		return names[clampi(animation, 0, names.size() - 1)]
+
+var is_playing: bool = true:
+	set(value):
+		is_playing = value
+		_apply_play_state_to_sprites()
+
+@export_storage var m_configuration: Dictionary = {}
+@export_storage var m_metadata_path: String = ""
+var m_metadata: Dictionary = {}
+
+var m_sprite_nodes: Array[AnimatedSprite2D] = []
 
 
 func _get_property_list() -> Array:
 	var properties: Array = []
 
-	var animation_names: PackedStringArray = _get_animation_names()
+	properties.append({
+		"name": "is_playing",
+		"type": TYPE_BOOL,
+		"usage": PROPERTY_USAGE_EDITOR
+	})
+
+	var animation_names: PackedStringArray = _get_animation_enum_names()
 	if not animation_names.is_empty():
 		properties.append({
 			"name": "animation",
@@ -30,27 +57,101 @@ func _get_property_list() -> Array:
 	return properties
 
 
-# Recreate sprites with the selection_data.
-func load(selection_data: Dictionary, universal_lpc_metadata_path: String) -> void:
-	m_selection_data = selection_data.duplicate(true)
-	m_metadata_root = _load_metadata_json(universal_lpc_metadata_path)
+func _get(property: StringName):
+	if property == "animation":
+		return animation
 
-	if m_metadata_root.is_empty():
-		push_error("Failed to load Universal LPC metadata: %s" % universal_lpc_metadata_path)
-		_clear_sprites()
-		return
+	if property == "is_playing":
+		return is_playing
 
+	return null
+
+
+func _set(property: StringName, value) -> bool:
+	if property == "animation":
+		var names: PackedStringArray = _get_animation_enum_names()
+		if names.is_empty():
+			animation = 0
+			return true
+
+		var index: int = clampi(int(value), 0, names.size() - 1)
+		animation = index
+		_apply_current_animation_to_sprites()
+		return true
+
+	if property == "is_playing":
+		is_playing = bool(value)
+		return true
+
+	return false
+
+
+func load(configuration_data: Dictionary, universal_lpc_metadata_file: String) -> void:
+	m_metadata_path = universal_lpc_metadata_file
+	m_configuration = configuration_data.duplicate(true)
+	_reload()
+
+
+func _reload() -> void:
 	_clear_sprites()
 
-	var selections = m_selection_data.get("selections", [])
-	if typeof(selections) != TYPE_ARRAY:
-		push_error("selection_data.selections must be an Array.")
+	m_metadata = _load_metadata_json(m_metadata_path)
+	if m_metadata.is_empty():
+		push_error("Failed to load Universal LPC metadata: %s" % m_metadata_path)
 		return
 
-	var sorted_selections: Array = selections.duplicate(true)
-	sorted_selections.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		var az := _get_selection_zpos(a)
-		var bz := _get_selection_zpos(b)
+	var selections_value = m_configuration.get("selections", {})
+	if typeof(selections_value) != TYPE_DICTIONARY:
+		push_error("configuration_data.selections must be a Dictionary of <path string>: <variant>.")
+		return
+
+	var selections: Dictionary = selections_value
+	var sprite_entries: Array[Dictionary] = []
+
+	for path_key in selections.keys():
+		var path_string: String = str(path_key).strip_edges()
+		if path_string == "":
+			continue
+
+		var variant: String = str(selections[path_key]).strip_edges()
+		if variant == "":
+			continue
+
+		var configured_selection: Dictionary = {
+			"path_string": path_string,
+			"variant": variant
+		}
+
+		var resolved_selection: Dictionary = _resolve_selection_definition(configured_selection)
+		if resolved_selection.is_empty():
+			continue
+
+		var layers = resolved_selection.get("layers", [])
+		if typeof(layers) != TYPE_ARRAY:
+			continue
+
+		for layer_index in range(layers.size()):
+			var layer_value = layers[layer_index]
+			if typeof(layer_value) != TYPE_DICTIONARY:
+				continue
+
+			var layer: Dictionary = layer_value
+			var z_pos: float = _get_layer_zpos(layer)
+			var priority: int = int(resolved_selection.get("priority", 999999))
+
+			sprite_entries.append({
+				"selection": resolved_selection,
+				"layer": layer,
+				"layer_index": layer_index,
+				"z_pos": z_pos,
+				"priority": priority,
+				"path_string": str(resolved_selection.get("path_string", "")),
+				"name": str(resolved_selection.get("name", ""))
+			})
+
+	sprite_entries.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var az := float(a.get("z_pos", 0.0))
+		var bz := float(b.get("z_pos", 0.0))
 		if not is_equal_approx(az, bz):
 			return az < bz
 
@@ -59,38 +160,108 @@ func load(selection_data: Dictionary, universal_lpc_metadata_path: String) -> vo
 		if ap != bp:
 			return ap < bp
 
+		var an: String = str(a.get("name", "")).to_lower()
+		var bn: String = str(b.get("name", "")).to_lower()
+		if an != bn:
+			return an < bn
+
 		return str(a.get("path_string", "")).to_lower() < str(b.get("path_string", "")).to_lower()
 	)
 
-	for selection_value in sorted_selections:
-		if typeof(selection_value) != TYPE_DICTIONARY:
+	for entry_value in sprite_entries:
+		if typeof(entry_value) != TYPE_DICTIONARY:
 			continue
 
-		var selection: Dictionary = selection_value
-		var sprite: Sprite2D = _create_sprite_from_selection(selection)
+		var entry: Dictionary = entry_value
+		var selection: Dictionary = entry.get("selection", {})
+		var layer: Dictionary = entry.get("layer", {})
+		var layer_index: int = int(entry.get("layer_index", 0))
+
+		var sprite: AnimatedSprite2D = _create_sprite_from_selection_layer(selection, layer, layer_index)
 		if sprite == null:
 			continue
 
 		add_child(sprite)
-		if Engine.is_editor_hint() and get_tree().edited_scene_root != null:
-			sprite.owner = get_tree().edited_scene_root
-
 		m_sprite_nodes.append(sprite)
 
-	var names: PackedStringArray = _get_animation_names()
-	if not names.is_empty():
-		animation = clampi(animation, 0, names.size() - 1)
-	else:
-		animation = 0
-
+	_restore_animation_selection()
 	_apply_current_animation_to_sprites()
 	notify_property_list_changed()
 
 
-func _create_sprite_from_selection(selection: Dictionary) -> Sprite2D:
-	var texture_path: String = _resolve_texture_path_from_selection(selection)
+func _resolve_selection_definition(configured_selection: Dictionary) -> Dictionary:
+	var path_string: String = str(configured_selection.get("path_string", "")).strip_edges()
+	if path_string == "":
+		return {}
+
+	var definition: Dictionary = _find_definition_by_path_string(path_string)
+	if definition.is_empty():
+		push_warning("Could not find definition for selection path: %s" % path_string)
+		return {}
+
+	var resolved: Dictionary = definition.duplicate(true)
+	resolved["path_string"] = path_string
+	resolved["variant"] = str(configured_selection.get("variant", "")).strip_edges()
+	return resolved
+
+
+func _find_definition_by_path_string(path_string: String) -> Dictionary:
+	var definitions_value = m_metadata.get("definitions", [])
+	if typeof(definitions_value) != TYPE_ARRAY:
+		return {}
+
+	for definition_value in definitions_value:
+		if typeof(definition_value) != TYPE_DICTIONARY:
+			continue
+
+		var definition: Dictionary = definition_value
+		var definition_path: String = _definition_to_path_string(definition)
+		if definition_path == path_string:
+			return definition
+
+	return {}
+
+
+func _definition_to_path_string(definition: Dictionary) -> String:
+	var json_file: String = str(definition.get("json_file", "")).strip_edges()
+	if json_file == "":
+		return ""
+
+	var parts: Array[String] = []
+
+	var dir_path: String = json_file.get_base_dir()
+	if dir_path != "" and dir_path != ".":
+		var dir_parts: PackedStringArray = dir_path.split("/")
+		for part in dir_parts:
+			var clean_part: String = String(part).strip_edges()
+			if clean_part != "" and clean_part != ".":
+				parts.append(clean_part)
+
+	var leaf_name: String = json_file.get_file().get_basename().strip_edges()
+	if leaf_name != "":
+		parts.append(leaf_name)
+
+	return "/".join(parts)
+
+
+func _restore_animation_selection() -> void:
+	var names: PackedStringArray = _compute_animation_enum_names()
+	animation_enum_values = names
+
+	if names.is_empty():
+		animation = 0
+		return
+
+	if animation >= 0 and animation < names.size():
+		return
+
+	animation = 0
+
+
+func _create_sprite_from_selection_layer(selection: Dictionary, layer: Dictionary, layer_index: int) -> AnimatedSprite2D:
+	var texture_path: String = _resolve_texture_path_from_selection_layer(selection, layer)
 	if texture_path == "":
-		push_warning("Could not resolve combined texture for selection: %s" % str(selection.get("path_string", "")))
+		push_warning("Could not resolve combined texture for selection layer: %s [layer %d]" % [str(selection.get("path_string", "")), layer_index])
 		return null
 
 	var texture: Texture2D = load(texture_path) as Texture2D
@@ -98,126 +269,132 @@ func _create_sprite_from_selection(selection: Dictionary) -> Sprite2D:
 		push_warning("Failed to load combined texture: %s" % texture_path)
 		return null
 
-	var row_rects: Dictionary = _build_animation_row_rects(selection)
-	if row_rects.is_empty():
-		push_warning("Could not build animation row rects for selection: %s" % str(selection.get("path_string", "")))
+	var sprite_frames: SpriteFrames = _build_sprite_frames(selection, texture)
+	if sprite_frames == null:
+		push_warning("Failed to build SpriteFrames for selection layer: %s [layer %d]" % [str(selection.get("path_string", "")), layer_index])
 		return null
 
-	var sprite := Sprite2D.new()
-	sprite.name = str(selection.get("name", str(selection.get("path_string", "sprite"))))
-	sprite.texture = texture
-	sprite.centered = false
+	var sprite := AnimatedSprite2D.new()
+	sprite.name = "%s_layer_%d" % [str(selection.get("name", str(selection.get("path_string", "sprite")))), layer_index]
+	sprite.sprite_frames = sprite_frames
 	sprite.position = Vector2.ZERO
-	sprite.z_index = int(round(_get_selection_zpos(selection)))
-	sprite.region_enabled = true
-	sprite.set_meta("row_rects", row_rects)
+	sprite.z_index = int(round(_get_layer_zpos(layer)))
+	sprite.centered = false
 	sprite.set_meta("selection_data", selection.duplicate(true))
+	sprite.set_meta("layer_data", layer.duplicate(true))
+	sprite.set_meta("layer_index", layer_index)
 
-	var current_animation_name: String = _get_current_animation_name()
-	var rect: Rect2 = _get_animation_row_rect(row_rects, current_animation_name)
-	if rect.size.x <= 0 or rect.size.y <= 0:
-		rect = _get_first_animation_row_rect(row_rects)
+	var current_name: String = animation_name
+	if current_name != "" and sprite_frames.has_animation(current_name):
+		sprite.animation = current_name
+	else:
+		var all_names: PackedStringArray = sprite_frames.get_animation_names()
+		if not all_names.is_empty():
+			sprite.animation = all_names[0]
 
-	sprite.region_rect = rect
+	_apply_animation_to_sprite(sprite)
 	return sprite
 
 
-func _apply_current_animation_to_sprites() -> void:
-	var animation_name: String = _get_current_animation_name()
+func _build_sprite_frames(_selection: Dictionary, texture: Texture2D) -> SpriteFrames:
+	var default_layout: Dictionary = _get_default_frame_layout_from_metadata()
+	if default_layout.is_empty():
+		return null
+
+	var sprite_frames := SpriteFrames.new()
+	var sheet_image: Image = texture.get_image()
+	if sheet_image == null or sheet_image.is_empty():
+		return null
+
+	var animation_names: PackedStringArray = _get_base_animation_names()
+	for base_animation_name in animation_names:
+		var config_value = default_layout.get(base_animation_name, null)
+		if typeof(config_value) != TYPE_DICTIONARY:
+			continue
+
+		var config: Dictionary = config_value
+		var frame_width: int = int(config.get("frame_width", 64))
+		var frame_height: int = int(config.get("frame_height", 64))
+		var y_pos: int = int(config.get("y", -1))
+		var directions: int = int(config.get("num", config.get("directions", 4)))
+		var frames_value = config.get("frames", [])
+		var frame_cycle: Array = []
+
+		if typeof(frames_value) == TYPE_ARRAY:
+			frame_cycle = (frames_value as Array).duplicate()
+		elif typeof(frames_value) == TYPE_PACKED_INT32_ARRAY:
+			for item in frames_value:
+				frame_cycle.append(item)
+
+		if frame_width <= 0 or frame_height <= 0 or y_pos < 0 or frame_cycle.is_empty():
+			continue
+
+		var dir_codes: PackedStringArray = _get_direction_codes_for_animation(directions)
+		for dir_index in range(dir_codes.size()):
+			var dir_code: String = dir_codes[dir_index]
+			var anim_key: String = "%s-%s" % [base_animation_name, dir_code]
+
+			if not sprite_frames.has_animation(anim_key):
+				sprite_frames.add_animation(anim_key)
+
+			sprite_frames.set_animation_loop(anim_key, true)
+			sprite_frames.set_animation_speed(anim_key, 8.0)
+
+			var row_y: int = y_pos + dir_index * frame_height
+			for frame_number in frame_cycle:
+				var frame_index: int = int(frame_number)
+				var region := Rect2i(frame_index * frame_width, row_y, frame_width, frame_height)
+				if region.position.x < 0 or region.position.y < 0:
+					continue
+				if region.end.x > sheet_image.get_width() or region.end.y > sheet_image.get_height():
+					continue
+
+				var atlas := AtlasTexture.new()
+				atlas.atlas = texture
+				atlas.region = Rect2(region)
+
+				sprite_frames.add_frame(anim_key, atlas)
+
+	return sprite_frames
+
+
+func _apply_play_state_to_sprites() -> void:
 	for sprite in m_sprite_nodes:
 		if not is_instance_valid(sprite):
 			continue
-		if not sprite.has_meta("row_rects"):
-			continue
 
-		var row_rects_value = sprite.get_meta("row_rects")
-		if typeof(row_rects_value) != TYPE_DICTIONARY:
-			continue
-
-		var row_rects: Dictionary = row_rects_value
-		var rect: Rect2 = _get_animation_row_rect(row_rects, animation_name)
-		if rect.size.x <= 0 or rect.size.y <= 0:
-			rect = _get_first_animation_row_rect(row_rects)
-
-		if rect.size.x > 0 and rect.size.y > 0:
-			sprite.region_enabled = true
-			sprite.region_rect = rect
+		if is_playing:
+			if sprite.sprite_frames != null and sprite.animation != StringName(""):
+				sprite.play()
+		else:
+			sprite.stop()
 
 
-func _get_animation_row_rect(row_rects: Dictionary, animation_name: String) -> Rect2:
-	if row_rects.has(animation_name):
-		var value = row_rects[animation_name]
-		if value is Rect2:
-			return value
-	return Rect2()
+func _apply_current_animation_to_sprites() -> void:
+	for sprite in m_sprite_nodes:
+		_apply_animation_to_sprite(sprite)
 
 
-func _get_first_animation_row_rect(row_rects: Dictionary) -> Rect2:
-	for animation_name in _get_animation_names():
-		var rect: Rect2 = _get_animation_row_rect(row_rects, animation_name)
-		if rect.size.x > 0 and rect.size.y > 0:
-			return rect
-	return Rect2()
+func _apply_animation_to_sprite(sprite: AnimatedSprite2D) -> void:
+	if sprite == null or sprite.sprite_frames == null:
+		return
+
+	var current_name: String = animation_name
+	if current_name != "" and sprite.sprite_frames.has_animation(current_name):
+		sprite.animation = current_name
+	elif not sprite.sprite_frames.get_animation_names().is_empty():
+		sprite.animation = sprite.sprite_frames.get_animation_names()[0]
+
+	if is_playing:
+		sprite.play()
+	else:
+		sprite.stop()
 
 
-func _build_animation_row_rects(selection: Dictionary) -> Dictionary:
-	var rects: Dictionary = {}
-	var frame_info_data: Dictionary = _get_selection_frame_info_data(selection)
-	var default_layout: Dictionary = _get_default_frame_layout_from_metadata()
-
-	var y_offset: float = 0.0
-	for animation_name in _get_animation_names():
-		var size: Vector2i = _infer_animation_sheet_size(animation_name, frame_info_data, default_layout)
-		var rect := Rect2(0, y_offset, float(size.x), float(size.y))
-		rects[animation_name] = rect
-		y_offset += float(size.y)
-
-	return rects
-
-
-func _get_selection_frame_info_data(selection: Dictionary) -> Dictionary:
-	var frame_info_value = selection.get("frame_info", {})
-	if typeof(frame_info_value) != TYPE_DICTIONARY:
-		return {}
-
-	var frame_info: Dictionary = frame_info_value
-	var data_value = frame_info.get("data", {})
-	if typeof(data_value) != TYPE_DICTIONARY:
-		return {}
-
-	return data_value
-
-
-func _get_default_frame_layout_from_metadata() -> Dictionary:
-	var default_frame_info_value = m_metadata_root.get("default_frame_info", {})
-	if typeof(default_frame_info_value) != TYPE_DICTIONARY:
-		return {}
-
-	var default_frame_info: Dictionary = default_frame_info_value
-	var data_value = default_frame_info.get("data", {})
-	if typeof(data_value) != TYPE_DICTIONARY:
-		return {}
-
-	return data_value
-
-
-func _infer_animation_sheet_size(animation_name: String, frame_info_data: Dictionary, default_layout: Dictionary) -> Vector2i:
-	var layout: Dictionary = {}
-
-	if frame_info_data.has(animation_name) and typeof(frame_info_data[animation_name]) == TYPE_DICTIONARY:
-		layout = (frame_info_data[animation_name] as Dictionary).duplicate(true)
-	elif default_layout.has(animation_name) and typeof(default_layout[animation_name]) == TYPE_DICTIONARY:
-		layout = (default_layout[animation_name] as Dictionary).duplicate(true)
-
-	if layout.is_empty():
-		return Vector2i(1, 1)
-
-	var frame_width: int = int(layout.get("frame_width", 64))
-	var frame_height: int = int(layout.get("frame_height", 64))
-	var directions: int = int(layout.get("directions", 1))
-	var frames_per_direction: int = int(layout.get("frames_per_direction", 1))
-
-	return Vector2i(maxi(1, frame_width * frames_per_direction), maxi(1, frame_height * directions))
+func _get_direction_codes_for_animation(direction_count: int) -> PackedStringArray:
+	if direction_count <= 1:
+		return PackedStringArray(["s"])
+	return PackedStringArray(["n", "w", "s", "e"])
 
 
 func _get_selection_zpos(selection: Dictionary) -> float:
@@ -233,46 +410,73 @@ func _get_selection_zpos(selection: Dictionary) -> float:
 			continue
 
 		var layer: Dictionary = layer_value
-		var data = layer.get("data", {})
-		if typeof(data) != TYPE_DICTIONARY:
-			continue
-
-		var layer_data: Dictionary = data
-		if layer_data.has("zPos"):
-			var z: float = float(layer_data.get("zPos", 0.0))
-			if not found or z > highest_z:
-				highest_z = z
-				found = true
+		var z: float = _get_layer_zpos(layer)
+		if not found or z > highest_z:
+			highest_z = z
+			found = true
 
 	return highest_z if found else 0.0
 
 
-func _resolve_texture_path_from_selection(selection: Dictionary) -> String:
-	var metadata_root_path: String = str(m_metadata_root.get("target_path", ""))
-	var spritesheets_dir: String = str(m_metadata_root.get("spritesheets_dir", "spritesheets"))
+func _get_layer_zpos(layer: Dictionary) -> float:
+	var data = layer.get("data", {})
+	if typeof(data) != TYPE_DICTIONARY:
+		return 0.0
+
+	var layer_data: Dictionary = data
+	if layer_data.has("zPos"):
+		return float(layer_data.get("zPos", 0.0))
+
+	return 0.0
+
+
+func _resolve_texture_path_from_selection_layer(selection: Dictionary, layer: Dictionary) -> String:
+	var metadata_root_path: String = str(m_metadata.get("target_path", ""))
+	var spritesheets_dir: String = str(m_metadata.get("spritesheets_dir", "spritesheets"))
 	if metadata_root_path == "":
 		return ""
 
 	var spritesheets_root: String = _join_path(metadata_root_path, spritesheets_dir)
 
-	var body_type: String = str(m_selection_data.get("body_type", ""))
+	var body_type: String = str(m_configuration.get("body_type", ""))
 	var variant: String = str(selection.get("variant", ""))
-	var layers = selection.get("layers", [])
-
-	if typeof(layers) != TYPE_ARRAY or variant == "":
+	if variant == "":
 		return ""
 
-	var resolved_base_paths: PackedStringArray = _resolve_base_paths_from_selection_layers(selection, body_type, layers)
-	if resolved_base_paths.is_empty():
+	var resolved_base_path: String = _resolve_base_path_from_layer(selection, body_type, layer)
+	if resolved_base_path == "":
 		return ""
 
-	for base_path in resolved_base_paths:
-		var base_dir: String = _join_path(spritesheets_root, _normalize_relative_dir(base_path))
-		var candidate: String = _join_path(base_dir, "%s.png" % variant)
-		if ResourceLoader.exists(candidate):
-			return candidate
+	var base_dir: String = _join_path(spritesheets_root, _normalize_relative_dir(resolved_base_path))
+	var candidate: String = _join_path(base_dir, "%s.png" % variant)
+	if ResourceLoader.exists(candidate):
+		return candidate
 
 	return ""
+
+
+func _resolve_base_path_from_layer(selection: Dictionary, body_type: String, layer: Dictionary) -> String:
+	if typeof(layer) != TYPE_DICTIONARY:
+		return ""
+
+	var data = layer.get("data", {})
+	if typeof(data) != TYPE_DICTIONARY:
+		return ""
+
+	var layer_data: Dictionary = data
+	var base_dir: String = ""
+
+	if body_type != "" and layer_data.has(body_type):
+		base_dir = str(layer_data.get(body_type, ""))
+	elif layer_data.has("default"):
+		base_dir = str(layer_data.get("default", ""))
+
+	if base_dir == "":
+		return ""
+
+	base_dir = _apply_replace_in_path(selection, base_dir)
+	base_dir = _normalize_relative_dir(base_dir)
+	return base_dir
 
 
 func _resolve_base_paths_from_selection_layers(selection: Dictionary, body_type: String, layers: Array) -> PackedStringArray:
@@ -283,24 +487,7 @@ func _resolve_base_paths_from_selection_layers(selection: Dictionary, body_type:
 			continue
 
 		var layer: Dictionary = layer_value
-		var data = layer.get("data", {})
-		if typeof(data) != TYPE_DICTIONARY:
-			continue
-
-		var layer_data: Dictionary = data
-		var base_dir: String = ""
-
-		if body_type != "" and layer_data.has(body_type):
-			base_dir = str(layer_data.get(body_type, ""))
-		elif layer_data.has("default"):
-			base_dir = str(layer_data.get("default", ""))
-
-		if base_dir == "":
-			continue
-
-		base_dir = _apply_replace_in_path(selection, base_dir)
-		base_dir = _normalize_relative_dir(base_dir)
-
+		var base_dir: String = _resolve_base_path_from_layer(selection, body_type, layer)
 		if base_dir != "" and not out.has(base_dir):
 			out.append(base_dir)
 
@@ -333,40 +520,82 @@ func _apply_replace_in_path(selection: Dictionary, template_path: String) -> Str
 
 
 func _get_selected_value_for_token(token_name: String) -> String:
-	var selections = m_selection_data.get("selections", [])
-	if typeof(selections) != TYPE_ARRAY:
+	var selections_value = m_configuration.get("selections", {})
+	if typeof(selections_value) != TYPE_DICTIONARY:
 		return ""
 
-	for selection_value in selections:
-		if typeof(selection_value) != TYPE_DICTIONARY:
+	var selections: Dictionary = selections_value
+
+	for path_key in selections.keys():
+		var path_string: String = str(path_key).strip_edges()
+		if path_string == "":
 			continue
 
-		var selection: Dictionary = selection_value
-		var type_name: String = str(selection.get("type_name", "")).strip_edges()
+		var configured_selection: Dictionary = {
+			"path_string": path_string,
+			"variant": str(selections[path_key]).strip_edges()
+		}
+
+		var resolved_selection: Dictionary = _resolve_selection_definition(configured_selection)
+		if resolved_selection.is_empty():
+			continue
+
+		var type_name: String = str(resolved_selection.get("type_name", "")).strip_edges()
 		if type_name != token_name:
 			continue
 
-		var variant: String = str(selection.get("variant", "")).strip_edges()
+		var variant: String = str(resolved_selection.get("variant", "")).strip_edges()
 		if variant != "":
 			return variant
 
-		var name: String = str(selection.get("name", "")).strip_edges()
+		var name: String = str(resolved_selection.get("name", "")).strip_edges()
 		if name != "":
 			return name
 
 	return ""
 
 
-func _get_animation_names() -> PackedStringArray:
-	return _to_packed_string_array(m_metadata_root.get("default_animations", []))
+func _get_default_frame_layout_from_metadata() -> Dictionary:
+	var default_frame_info_value = m_metadata.get("default_frame_info", {})
+	if typeof(default_frame_info_value) != TYPE_DICTIONARY:
+		return {}
+
+	var default_frame_info: Dictionary = default_frame_info_value
+	var data_value = default_frame_info.get("data", {})
+	if typeof(data_value) != TYPE_DICTIONARY:
+		return {}
+
+	return data_value
 
 
-func _get_current_animation_name() -> String:
-	var names: PackedStringArray = _get_animation_names()
-	if names.is_empty():
-		return ""
-	var idx: int = clampi(animation, 0, names.size() - 1)
-	return names[idx]
+func _get_base_animation_names() -> PackedStringArray:
+	return _to_packed_string_array(m_metadata.get("default_animations", []))
+
+
+func _get_animation_enum_names() -> PackedStringArray:
+	if !animation_enum_values.is_empty():
+		return animation_enum_values
+	return _compute_animation_enum_names()
+
+
+func _compute_animation_enum_names() -> PackedStringArray:
+	var out: PackedStringArray = []
+	var default_layout: Dictionary = _get_default_frame_layout_from_metadata()
+	var base_animation_names: PackedStringArray = _get_base_animation_names()
+
+	for base_name in base_animation_names:
+		var config_value = default_layout.get(base_name, null)
+		if typeof(config_value) != TYPE_DICTIONARY:
+			continue
+
+		var config: Dictionary = config_value
+		var direction_count: int = int(config.get("num", config.get("directions", 4)))
+		var dir_codes: PackedStringArray = _get_direction_codes_for_animation(direction_count)
+
+		for dir_code in dir_codes:
+			out.append("%s-%s" % [base_name, dir_code])
+
+	return out
 
 
 func _load_metadata_json(universal_lpc_metadata_path: String) -> Dictionary:
@@ -403,7 +632,7 @@ func _clear_sprites() -> void:
 	m_sprite_nodes.clear()
 
 	for child in get_children():
-		if child is Sprite2D:
+		if child is AnimatedSprite2D:
 			child.queue_free()
 
 
@@ -442,8 +671,12 @@ func _join_path(a: String, b: String) -> String:
 
 
 func _ready() -> void:
+	_reload()
+
 	if Engine.is_editor_hint():
 		notify_property_list_changed()
+	else:
+		_apply_current_animation_to_sprites()
 
 
 func _process(_delta: float) -> void:

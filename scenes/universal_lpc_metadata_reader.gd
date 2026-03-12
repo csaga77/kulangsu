@@ -37,28 +37,156 @@ const DEFAULT_ANIMATIONS: PackedStringArray = [
 	"halfslash"
 ]
 
+const FRAME_SIZE: int = 64
+
 const DEFAULT_VARIANTS: PackedStringArray = []
 
 const FALLBACK_FRAME_LAYOUT: Dictionary = {
-	"1h_backslash": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 1, "total_frames": 4},
-	"1h_halfslash": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 1, "total_frames": 4},
-	"1h_slash": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 1, "total_frames": 4},
-	"climb": {"directions": 1, "frame_height": 64, "frame_width": 64, "frames_per_direction": 6, "total_frames": 6},
-	"combat_idle": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 1, "total_frames": 4},
-	"emote": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 1, "total_frames": 4},
-	"hurt": {"directions": 1, "frame_height": 64, "frame_width": 64, "frames_per_direction": 6, "total_frames": 6},
-	"idle": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 2, "total_frames": 8},
-	"jump": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 9, "total_frames": 36},
-	"run": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 8, "total_frames": 32},
-	"shoot": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 13, "total_frames": 52},
-	"sit": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 1, "total_frames": 4},
-	"slash": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 6, "total_frames": 24},
-	"spellcast": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 7, "total_frames": 28},
-	"thrust": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 8, "total_frames": 32},
-	"walk": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 9, "total_frames": 36},
-	"watering": {"directions": 4, "frame_height": 64, "frame_width": 64, "frames_per_direction": 6, "total_frames": 24}
+	"spellcast": {
+		"row": 0,
+		"directions": 4,
+		"y": 0,
+		"frame_width": 64,
+		"frame_height": 64,
+		"frames": [0, 1, 2, 3, 4, 5, 6]
+	},
+	"thrust": {
+		"row": 4,
+		"directions": 4,
+		"y": 4 * FRAME_SIZE,
+		"frame_width": 64,
+		"frame_height": 64,
+		"frames": [0, 1, 2, 3, 4, 5, 6, 7]
+	},
+	"walk": {
+		"row": 8,
+		"directions": 4,
+		"y": 8 * FRAME_SIZE,
+		"frame_width": 64,
+		"frame_height": 64,
+		"frames": [1, 2, 3, 4, 5, 6, 7, 8]
+	},
+	"slash": {
+		"row": 12,
+		"directions": 4,
+		"y": 12 * FRAME_SIZE,
+		"frame_width": 64,
+		"frame_height": 64,
+		"frames": [0, 1, 2, 3, 4, 5]
+	},
+	"shoot": {
+		"row": 16,
+		"directions": 4,
+		"y": 16 * FRAME_SIZE,
+		"frame_width": 64,
+		"frame_height": 64,
+		"frames": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+	},
+	"hurt": {
+		"row": 20,
+		"directions": 1,
+		"y": 20 * FRAME_SIZE,
+		"frame_width": 64,
+		"frame_height": 64,
+		"frames": [0, 1, 2, 3, 4, 5]
+	},
+	"climb": {
+		"row": 21,
+		"directions": 1,
+		"y": 21 * FRAME_SIZE,
+		"frame_width": 64,
+		"frame_height": 64,
+		"frames": [0, 1, 2, 3, 4, 5]
+	},
+	"idle": {
+		"row": 22,
+		"directions": 4,
+		"y": 22 * FRAME_SIZE,
+		"frame_width": 64,
+		"frame_height": 64,
+		"frames": [0, 0, 1]
+	},
+	"jump": {
+		"row": 26,
+		"directions": 4,
+		"y": 26 * FRAME_SIZE,
+		"frame_width": 64,
+		"frame_height": 64,
+		"frames": [0, 1, 2, 3, 4, 1]
+	},
+	"sit": {
+		"row": 30,
+		"directions": 4,
+		"y": 30 * FRAME_SIZE,
+		"frame_width": 64,
+		"frame_height": 64,
+		"frames": [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2]
+	},
+	"emote": {
+		"row": 34,
+		"directions": 4,
+		"y": 34 * FRAME_SIZE,
+		"frame_width": 64,
+		"frame_height": 64,
+		"frames": [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2]
+	},
+	"run": {
+		"row": 38,
+		"directions": 4,
+		"y": 38 * FRAME_SIZE,
+		"frame_width": 64,
+		"frame_height": 64,
+		"frames": [0, 1, 2, 3, 4, 5, 6, 7]
+	},
+	"watering": {
+		"row": 4,
+		"directions": 4,
+		"y": 4 * FRAME_SIZE,
+		"frame_width": 64,
+		"frame_height": 64,
+		"frames": [0, 1, 4, 4, 4, 4, 5]
+	},
+	"combat_idle": {
+		"row": 42,
+		"directions": 4,
+		"y": 42 * FRAME_SIZE,
+		"frame_width": 64,
+		"frame_height": 64,
+		"frames": [0, 0, 1]
+	},
+	"combat": {
+		"row": 42,
+		"directions": 4,
+		"y": 42 * FRAME_SIZE,
+		"frame_width": 64,
+		"frame_height": 64,
+		"frames": [0, 0, 1]
+	},
+	"1h_slash": {
+		"row": 46,
+		"directions": 4,
+		"y": 46 * FRAME_SIZE,
+		"frame_width": 64,
+		"frame_height": 64,
+		"frames": [0, 1, 2, 3, 4, 5, 6]
+	},
+	"1h_backslash": {
+		"row": 46,
+		"directions": 4,
+		"y": 46 * FRAME_SIZE,
+		"frame_width": 64,
+		"frame_height": 64,
+		"frames": [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
+	},
+	"1h_halfslash": {
+		"row": 50,
+		"directions": 4,
+		"y": 50 * FRAME_SIZE,
+		"frame_width": 64,
+		"frame_height": 64,
+		"frames": [0, 1, 2, 3, 4, 5]
+	}
 }
-
 
 func read_all_sheet_metadata() -> Array[Dictionary]:
 	_clear_js_frame_layout_cache()
@@ -284,7 +412,7 @@ func _infer_animation_sheet_size(animation_name: String, frame_info_data: Dictio
 	var frame_width: int = int(layout.get("frame_width", 64))
 	var frame_height: int = int(layout.get("frame_height", 64))
 	var directions: int = int(layout.get("directions", 1))
-	var frames_per_direction: int = int(layout.get("frames_per_direction", 1))
+	var frames_per_direction: int = int(layout.get("frames", []).size())
 
 	var sheet_width: int = maxi(1, frame_width * frames_per_direction)
 	var sheet_height: int = maxi(1, frame_height * directions)
@@ -670,14 +798,10 @@ func _extract_frame_info(d: Dictionary, animations: PackedStringArray) -> Dictio
 			base = {
 				"frame_width": 64,
 				"frame_height": 64,
-				"directions": 4,
-				"frames_per_direction": 1
+				"directions": 0
 			}
-
-		base["total_frames"] = int(base["directions"]) * int(base["frames_per_direction"])
 		inferred[anim] = base
 
-	info["source"] = "fallback"
 	info["data"] = inferred
 	return info
 
@@ -845,15 +969,12 @@ func _extract_frame_layout_from_js() -> Dictionary:
 				var frame_height: int = frame_width
 				var total_width_px: int = total_width_units * frame_size
 				var total_height_px: int = total_height_units * frame_size
-				var frames_per_direction: int = maxi(1, total_width_px / maxi(frame_width, 1))
 				var directions: int = maxi(1, total_height_px / maxi(frame_height, 1))
 
 				layout[animation_name] = {
 					"directions": directions,
 					"frame_height": frame_height,
-					"frame_width": frame_width,
-					"frames_per_direction": frames_per_direction,
-					"total_frames": directions * frames_per_direction
+					"frame_width": frame_width
 				}
 
 	_cached_js_frame_layout = layout.duplicate(true)
@@ -937,11 +1058,10 @@ func _extract_explicit_custom_animation_layouts(text: String, default_frame_size
 				frames_per_direction = maxi(frames_per_direction, (row as Array).size())
 
 		layout[animation_name] = {
+			"custom_animation": true,
 			"directions": directions,
 			"frame_height": frame_size,
 			"frame_width": frame_size,
-			"frames_per_direction": frames_per_direction,
-			"total_frames": directions * frames_per_direction,
 			"frames": frame_rows.duplicate(true)
 		}
 

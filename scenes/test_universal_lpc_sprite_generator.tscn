@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://b044woc18vit7" path="res://scenes/test_universal_lpc_sprite_generator.gd" id="1_3fldc"]
 [ext_resource type="Script" uid="uid://doad3dy4jbcqe" path="res://scenes/universal_lpc_metadata_reader.gd" id="1_vfqxp"]
 [ext_resource type="Script" uid="uid://cslac4wgwcsl6" path="res://scenes/universal_lpc_sprite_2d.gd" id="3_esupq"]
-[ext_resource type="Texture2D" uid="uid://c4h7rv4ecpfbf" path="res://resources/sprites/universal_lpc/spritesheets/body/bodies/male/light.png" id="4_1g3fl"]
 
 [node name="TestUniversalLpcSpriteGenerator" type="Node2D" unique_id=1808474754]
 script = ExtResource("1_3fldc")
@@ -15,66 +14,13 @@ script = ExtResource("1_vfqxp")
 
 [node name="universal_lpc_sprite" type="Node2D" parent="." unique_id=677762815]
 script = ExtResource("3_esupq")
-animation = 4
-
-[node name="Body Color" type="Sprite2D" parent="universal_lpc_sprite" unique_id=357770955]
-z_index = 10
-texture = ExtResource("4_1g3fl")
-centered = false
-region_enabled = true
-region_rect = Rect2(0, 1024, 832, 256)
-metadata/row_rects = {
-"backslash": Rect2(0, 2944, 1, 1),
-"climb": Rect2(0, 1344, 384, 64),
-"combat_idle": Rect2(0, 2688, 64, 256),
-"emote": Rect2(0, 2176, 64, 256),
-"halfslash": Rect2(0, 2945, 1, 1),
-"hurt": Rect2(0, 1280, 384, 64),
-"idle": Rect2(0, 1408, 128, 256),
-"jump": Rect2(0, 1664, 576, 256),
-"run": Rect2(0, 2432, 512, 256),
-"shoot": Rect2(0, 1024, 832, 256),
-"sit": Rect2(0, 1920, 64, 256),
-"slash": Rect2(0, 768, 384, 256),
-"spellcast": Rect2(0, 0, 448, 256),
-"thrust": Rect2(0, 256, 512, 256),
-"walk": Rect2(0, 512, 576, 256)
+animation = 24
+m_configuration = {
+"body_type": "male",
+"body_type_index": 0,
+"selections": {
+"body/body": "light",
+"head/heads/human/heads_human_male": "light"
 }
-metadata/selection_data = {
-"aliases": {},
-"frame_info": {
-"data": {
-"combat": {
-"directions": 4.0,
-"frame_height": 64.0,
-"frame_width": 64.0,
-"frames_per_direction": 1.0,
-"total_frames": 4.0
 }
-},
-"source": "fallback"
-},
-"json_file": "body/body.json",
-"json_file_absolute": "res://3rdparty/Universal-LPC-Spritesheet-Character-Generator/sheet_definitions/body/body.json",
-"layers": [{
-"data": {
-"child": "body/bodies/child/",
-"female": "body/bodies/female/",
-"male": "body/bodies/male/",
-"muscular": "body/bodies/muscular/",
-"pregnant": "body/bodies/pregnant/",
-"teen": "body/bodies/teen/",
-"zPos": 10.0
-},
-"layer_name": "layer_1"
-}],
-"name": "Body Color",
-"path": Array[String](["body", "body"]),
-"path_string": "body/body",
-"priority": 10,
-"required": Array[String]([]),
-"tags": Array[String]([]),
-"type_name": "body",
-"variant": "light",
-"variant_index": 1
-}
+m_metadata_path = "res://universal_lpc_metadata.json"
