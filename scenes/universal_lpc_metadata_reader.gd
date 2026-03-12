@@ -254,10 +254,14 @@ func _export_combined_variant_spritesheets(definitions: Array[Dictionary], targe
 			continue
 
 		var definition: Dictionary = definition_value
+		#var type_name = definition.get("type_name", "")
+		#var replace_in_path :Dictionary = definition.get("replace_in_path", {})
+		#if replace_in_path.is_empty():
+			#continue
 		var variants: PackedStringArray = _to_packed_string_array(definition.get("variants", []))
 		if variants.is_empty():
 			continue
-
+		
 		var frame_info: Dictionary = definition.get("frame_info", {})
 		var frame_info_data: Dictionary = {}
 		if typeof(frame_info) == TYPE_DICTIONARY:
@@ -299,6 +303,11 @@ func _extract_relative_sheet_roots_from_layers(definition: Dictionary) -> Packed
 	if typeof(layers_value) != TYPE_ARRAY:
 		return out
 
+	var replace_in_path: Dictionary = {}
+	var replace_value = definition.get("replace_in_path", {})
+	if typeof(replace_value) == TYPE_DICTIONARY:
+		replace_in_path = replace_value
+
 	for layer_value in layers_value:
 		if typeof(layer_value) != TYPE_DICTIONARY:
 			continue
@@ -317,16 +326,67 @@ func _extract_relative_sheet_roots_from_layers(definition: Dictionary) -> Packed
 			if raw_path == "":
 				continue
 
-			# Skip template paths for now.
-			if raw_path.contains("${"):
-				continue
-
-			var normalized_path: String = _normalize_relative_sheet_root(raw_path)
-			if normalized_path != "" and not out.has(normalized_path):
-				out.append(normalized_path)
+			var expanded_paths: PackedStringArray = _expand_path_templates(raw_path, replace_in_path)
+			for expanded_path in expanded_paths:
+				var normalized_path: String = _normalize_relative_sheet_root(expanded_path)
+				if normalized_path != "" and not out.has(normalized_path):
+					out.append(normalized_path)
 
 	return out
 
+func _expand_path_templates(path_template: String, replace_in_path: Dictionary) -> PackedStringArray:
+	var templates: PackedStringArray = PackedStringArray([path_template])
+	var token_regex := RegEx.new()
+	if token_regex.compile("\\$\\{([^}]+)\\}") != OK:
+		return PackedStringArray([path_template])
+
+	var matches: Array = token_regex.search_all(path_template)
+	if matches.is_empty():
+		return PackedStringArray([path_template])
+
+	for match in matches:
+		var token_name: String = match.get_string(1)
+		var replacements: PackedStringArray = _get_replace_values_for_token(token_name, replace_in_path)
+
+		if replacements.is_empty():
+			replacements.append("")
+
+		var next_templates: PackedStringArray = []
+		for current_template in templates:
+			for replacement in replacements:
+				var replaced: String = current_template.replace("${%s}" % token_name, replacement)
+				if not next_templates.has(replaced):
+					next_templates.append(replaced)
+		templates = next_templates
+
+	var out: PackedStringArray = []
+	for item in templates:
+		if item.contains("${"):
+			continue
+		var normalized: String = _normalize_relative_sheet_root(item)
+		if normalized != "" and not out.has(normalized):
+			out.append(normalized)
+
+	return out
+
+
+func _get_replace_values_for_token(token_name: String, replace_in_path: Dictionary) -> PackedStringArray:
+	var out: PackedStringArray = []
+
+	if not replace_in_path.has(token_name):
+		return out
+
+	var token_value = replace_in_path[token_name]
+	if typeof(token_value) != TYPE_DICTIONARY:
+		return out
+
+	var token_map: Dictionary = token_value
+	for key in token_map.keys():
+		var mapped_value: String = str(token_map.get(key, "")).strip_edges()
+		if mapped_value != "" and not out.has(mapped_value):
+			out.append(mapped_value)
+
+	return out
 
 func _normalize_relative_sheet_root(raw_path: String) -> String:
 	var path: String = raw_path.replace("\\", "/").strip_edges()
@@ -337,8 +397,10 @@ func _normalize_relative_sheet_root(raw_path: String) -> String:
 	while path.ends_with("/"):
 		path = path.left(path.length() - 1)
 
-	return path
+	while path.find("//") != -1:
+		path = path.replace("//", "/")
 
+	return path
 
 func _build_combined_variant_sheet(source_sheet_root: String, variant: String, frame_info_data: Dictionary, default_layout: Dictionary) -> Image:
 	var animation_images: Array[Image] = []
@@ -392,11 +454,14 @@ func _build_combined_variant_sheet(source_sheet_root: String, variant: String, f
 			y_offset += row_sizes[i].y
 			continue
 
-		combined.blit_rect(row_image, Rect2i(0, 0, row_image.get_width(), row_image.get_height()), Vector2i(0, y_offset))
+		combined.blit_rect(
+			row_image,
+			Rect2i(0, 0, row_image.get_width(), row_image.get_height()),
+			Vector2i(0, y_offset)
+		)
 		y_offset += row_sizes[i].y
 
 	return combined
-
 
 func _infer_animation_sheet_size(animation_name: String, frame_info_data: Dictionary, default_layout: Dictionary) -> Vector2i:
 	var layout: Dictionary = {}
@@ -412,7 +477,14 @@ func _infer_animation_sheet_size(animation_name: String, frame_info_data: Dictio
 	var frame_width: int = int(layout.get("frame_width", 64))
 	var frame_height: int = int(layout.get("frame_height", 64))
 	var directions: int = int(layout.get("directions", 1))
-	var frames_per_direction: int = int(layout.get("frames", []).size())
+
+	var frames_value = layout.get("frames", [])
+	var frames_per_direction: int = 1
+	match typeof(frames_value):
+		TYPE_ARRAY:
+			frames_per_direction = maxi(1, (frames_value as Array).size())
+		TYPE_PACKED_INT32_ARRAY:
+			frames_per_direction = maxi(1, (frames_value as PackedInt32Array).size())
 
 	var sheet_width: int = maxi(1, frame_width * frames_per_direction)
 	var sheet_height: int = maxi(1, frame_height * directions)

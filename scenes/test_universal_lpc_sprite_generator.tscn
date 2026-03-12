@@ -10,15 +10,16 @@ m_selection_data = {
 "body_type": "male",
 "body_type_index": 0,
 "selections": {
-"body/body": "amber",
+"body/body": "light",
+"feet/boots/feet_boots_basic": "black",
 "hair/long/hair_bangslong": "blonde",
-"head/heads/human/heads_human_male": "amber",
+"head/heads/human/heads_human_male": "light",
 "legs/pants/legs_pants": "black",
 "torso/shirts/shortsleeve/torso_clothes_shortsleeve": "pink"
 }
 }
 m_match_body_color = true
-m_body_variant = 2
+m_body_variant = 1
 metadata/body_types = PackedStringArray("male", "female", "teen", "child", "muscular", "pregnant")
 metadata/body_type = 0
 
@@ -27,14 +28,15 @@ script = ExtResource("1_vfqxp")
 
 [node name="universal_lpc_sprite" type="Node2D" parent="." unique_id=677762815]
 script = ExtResource("3_esupq")
-animation = 24
+animation = 11
 m_configuration = {
 "body_type": "male",
 "body_type_index": 0,
 "selections": {
-"body/body": "amber",
+"body/body": "light",
+"feet/boots/feet_boots_basic": "black",
 "hair/long/hair_bangslong": "blonde",
-"head/heads/human/heads_human_male": "amber",
+"head/heads/human/heads_human_male": "light",
 "legs/pants/legs_pants": "black",
 "torso/shirts/shortsleeve/torso_clothes_shortsleeve": "pink"
 }

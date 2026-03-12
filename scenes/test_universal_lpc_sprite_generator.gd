@@ -204,9 +204,9 @@ func _set(property: StringName, value) -> bool:
 
 		_generate_selection_data()
 		if index == 0:
-			print("%s: none" % prop_name)
+			print("_set(%s: none)" % prop_name)
 		else:
-			print("%s: %s" % [prop_name, variants[index - 1]])
+			print("_set(%s: %s)" % [prop_name, variants[index - 1]])
 
 		notify_property_list_changed()
 		return true

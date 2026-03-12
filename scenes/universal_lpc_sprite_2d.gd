@@ -3,6 +3,7 @@ class_name UniversalLpcSprite2D
 extends Node2D
 
 var animation_enum_values: PackedStringArray = []
+var expression_enum_values: PackedStringArray = []
 
 @export_storage var animation: int = 0:
 	set(value):
@@ -22,6 +23,30 @@ var animation_name: String:
 		if names.is_empty():
 			return ""
 		return names[clampi(animation, 0, names.size() - 1)]
+
+@export_storage var expression: int = 0:
+	set(value):
+		var names: PackedStringArray = _get_expression_enum_names()
+
+		if names.is_empty():
+			expression = value
+			return
+
+		var max_index: int = names.size() - 1
+		var new_index: int = clampi(value, 0, max_index)
+		if expression == new_index:
+			return
+
+		expression = new_index
+		if not m_metadata_path.strip_edges().is_empty():
+			_reload()
+
+var expression_name: String:
+	get():
+		var names: PackedStringArray = _get_expression_enum_names()
+		if names.is_empty():
+			return ""
+		return names[clampi(expression, 0, names.size() - 1)]
 
 var is_playing: bool = true:
 	set(value):
@@ -44,6 +69,16 @@ func _get_property_list() -> Array:
 		"usage": PROPERTY_USAGE_EDITOR
 	})
 
+	var expression_names: PackedStringArray = _get_expression_enum_names()
+	if not expression_names.is_empty():
+		properties.append({
+			"name": "expression",
+			"type": TYPE_INT,
+			"hint": PROPERTY_HINT_ENUM,
+			"hint_string": ",".join(expression_names),
+			"usage": PROPERTY_USAGE_EDITOR
+		})
+
 	var animation_names: PackedStringArray = _get_animation_enum_names()
 	if not animation_names.is_empty():
 		properties.append({
@@ -61,6 +96,9 @@ func _get(property: StringName):
 	if property == "animation":
 		return animation
 
+	if property == "expression":
+		return expression
+
 	if property == "is_playing":
 		return is_playing
 
@@ -77,6 +115,16 @@ func _set(property: StringName, value) -> bool:
 		var index: int = clampi(int(value), 0, names.size() - 1)
 		animation = index
 		_apply_current_animation_to_sprites()
+		return true
+
+	if property == "expression":
+		var names: PackedStringArray = _get_expression_enum_names()
+		if names.is_empty():
+			expression = 0
+			return true
+
+		var index: int = clampi(int(value), 0, names.size() - 1)
+		expression = index
 		return true
 
 	if property == "is_playing":
@@ -99,6 +147,8 @@ func _reload() -> void:
 	if m_metadata.is_empty():
 		push_error("Failed to load Universal LPC metadata: %s" % m_metadata_path)
 		return
+
+	_restore_expression_selection()
 
 	var selections_value = m_configuration.get("selections", {})
 	if typeof(selections_value) != TYPE_DICTIONARY:
@@ -258,6 +308,20 @@ func _restore_animation_selection() -> void:
 	animation = 0
 
 
+func _restore_expression_selection() -> void:
+	var names: PackedStringArray = _compute_expression_enum_names()
+	expression_enum_values = names
+
+	if names.is_empty():
+		expression = 0
+		return
+
+	if expression >= 0 and expression < names.size():
+		return
+
+	expression = 0
+
+
 func _create_sprite_from_selection_layer(selection: Dictionary, layer: Dictionary, layer_index: int) -> AnimatedSprite2D:
 	var texture_path: String = _resolve_texture_path_from_selection_layer(selection, layer)
 	if texture_path == "":
@@ -316,7 +380,7 @@ func _build_sprite_frames(_selection: Dictionary, texture: Texture2D) -> SpriteF
 		var frame_width: int = int(config.get("frame_width", 64))
 		var frame_height: int = int(config.get("frame_height", 64))
 		var y_pos: int = int(config.get("y", -1))
-		var directions: int = int(config.get("num", config.get("directions", 4)))
+		var directions: int = int(config.get("directions", 4))
 		var frames_value = config.get("frames", [])
 		var frame_cycle: Array = []
 
@@ -439,7 +503,7 @@ func _resolve_texture_path_from_selection_layer(selection: Dictionary, layer: Di
 	var spritesheets_root: String = _join_path(metadata_root_path, spritesheets_dir)
 
 	var body_type: String = str(m_configuration.get("body_type", ""))
-	var variant: String = str(selection.get("variant", ""))
+	var variant: String = str(selection.get("variant", "")).strip_edges()
 	if variant == "":
 		return ""
 
@@ -447,11 +511,14 @@ func _resolve_texture_path_from_selection_layer(selection: Dictionary, layer: Di
 	if resolved_base_path == "":
 		return ""
 
+	#print("_resolve_texture_path_from_selection_layer 2 ", resolved_base_path)
 	var base_dir: String = _join_path(spritesheets_root, _normalize_relative_dir(resolved_base_path))
 	var candidate: String = _join_path(base_dir, "%s.png" % variant)
 	if ResourceLoader.exists(candidate):
 		return candidate
 
+	#print("_resolve_texture_path_from_selection_layer: ", candidate)
+	#print("_resolve_texture_path_from_selection_layer 4 ")
 	return ""
 
 
@@ -476,6 +543,11 @@ func _resolve_base_path_from_layer(selection: Dictionary, body_type: String, lay
 
 	base_dir = _apply_replace_in_path(selection, base_dir)
 	base_dir = _normalize_relative_dir(base_dir)
+
+	# If any unresolved token remains, this path cannot match generated pngs.
+	if base_dir.contains("${"):
+		return ""
+
 	return base_dir
 
 
@@ -495,37 +567,66 @@ func _resolve_base_paths_from_selection_layers(selection: Dictionary, body_type:
 
 
 func _apply_replace_in_path(selection: Dictionary, template_path: String) -> String:
-	var selection_replace_map = selection.get("replace_in_path", {})
-	if typeof(selection_replace_map) != TYPE_DICTIONARY:
-		return template_path
+	var replace_value = selection.get("replace_in_path", {})
+	if typeof(replace_value) != TYPE_DICTIONARY:
+		return _normalize_relative_dir(template_path)
 
+	var replace_map: Dictionary = replace_value
 	var resolved: String = template_path
-	var replace_map: Dictionary = selection_replace_map
 
-	for token in replace_map.keys():
-		var token_name: String = str(token)
-		var token_dict_value = replace_map[token]
-		if typeof(token_dict_value) != TYPE_DICTIONARY:
-			continue
-
-		var token_dict: Dictionary = token_dict_value
+	var token_regex := RegEx.new()
+	if token_regex.compile("\\$\\{([^}]+)\\}") != OK:
+		return _normalize_relative_dir(resolved)
+	
+	var matches: Array = token_regex.search_all(template_path)
+	#if !matches.is_empty():
+		#print(template_path, ": ", matches)
+	
+	for match in matches:
+		var token_name: String = match.get_string(1)
 		var selected_value: String = _get_selected_value_for_token(token_name)
 		if selected_value == "":
 			selected_value = "none"
-
-		var replacement: String = str(token_dict.get(selected_value, token_dict.get("none", "")))
+		#print(token_name, ": ", selected_value)
+		
+		var replacement: String = _get_replace_in_path_replacement(replace_map, token_name, selected_value)
 		resolved = resolved.replace("${%s}" % token_name, replacement)
+	#if !matches.is_empty():
+		#print(resolved)
+	return _normalize_relative_dir(resolved)
+	
+func _get_replace_in_path_replacement(replace_map: Dictionary, token_name: String, selected_value: String) -> String:
+	if not replace_map.has(token_name):
+		return ""
+	var token_value = replace_map[token_name]
+	if typeof(token_value) != TYPE_DICTIONARY:
+		return ""
+	selected_value = selected_value.to_lower()
+	#print(token_name, ": ", selected_value)
+	var token_dict: Dictionary = token_value
+	for key in token_dict.keys():
+		var key_1 = key.to_lower()
+		if selected_value == key_1:
+			return str(token_dict[key]).strip_edges()
+		var key_2 = key_1.replace("_", " ")
+		if selected_value == key_2:
+			return str(token_dict[key]).strip_edges()
+	
+	if token_dict.has("none"):
+		return str(token_dict["none"]).strip_edges()
 
-	return resolved
-
+	return ""
 
 func _get_selected_value_for_token(token_name: String) -> String:
+	if token_name == "expression":
+		return expression_name
+
 	var selections_value = m_configuration.get("selections", {})
 	if typeof(selections_value) != TYPE_DICTIONARY:
 		return ""
 
 	var selections: Dictionary = selections_value
-
+	#print(selections)
 	for path_key in selections.keys():
 		var path_string: String = str(path_key).strip_edges()
 		if path_string == "":
@@ -537,20 +638,23 @@ func _get_selected_value_for_token(token_name: String) -> String:
 		}
 
 		var resolved_selection: Dictionary = _resolve_selection_definition(configured_selection)
+		
 		if resolved_selection.is_empty():
 			continue
+			
 
 		var type_name: String = str(resolved_selection.get("type_name", "")).strip_edges()
 		if type_name != token_name:
 			continue
-
+		
+		var resolved_name: String = str(resolved_selection.get("name", "")).strip_edges()
+		if resolved_name != "":
+			return resolved_name
+		
 		var variant: String = str(resolved_selection.get("variant", "")).strip_edges()
 		if variant != "":
 			return variant
 
-		var name: String = str(resolved_selection.get("name", "")).strip_edges()
-		if name != "":
-			return name
 
 	return ""
 
@@ -589,12 +693,55 @@ func _compute_animation_enum_names() -> PackedStringArray:
 			continue
 
 		var config: Dictionary = config_value
-		var direction_count: int = int(config.get("num", config.get("directions", 4)))
+		var direction_count: int = int(config.get("directions", 4))
 		var dir_codes: PackedStringArray = _get_direction_codes_for_animation(direction_count)
 
 		for dir_code in dir_codes:
 			out.append("%s-%s" % [base_name, dir_code])
 
+	return out
+
+
+func _get_expression_enum_names() -> PackedStringArray:
+	if !expression_enum_values.is_empty():
+		return expression_enum_values
+	return _compute_expression_enum_names()
+
+
+func _compute_expression_enum_names() -> PackedStringArray:
+	var out: PackedStringArray = []
+	var definitions_value = m_metadata.get("definitions", [])
+	if typeof(definitions_value) != TYPE_ARRAY:
+		return out
+
+	for definition_value in definitions_value:
+		if typeof(definition_value) != TYPE_DICTIONARY:
+			continue
+
+		var definition: Dictionary = definition_value
+		var replace_in_path_value = definition.get("replace_in_path", {})
+		if typeof(replace_in_path_value) != TYPE_DICTIONARY:
+			continue
+
+		var replace_in_path: Dictionary = replace_in_path_value
+		if not replace_in_path.has("expression"):
+			continue
+
+		var expression_map_value = replace_in_path.get("expression", {})
+		if typeof(expression_map_value) != TYPE_DICTIONARY:
+			continue
+
+		var expression_map: Dictionary = expression_map_value
+		for key in expression_map.keys():
+			var expression_key: String = str(key).strip_edges()
+			if expression_key != "" and not out.has(expression_key):
+				out.append(expression_key)
+		break
+
+	if out.is_empty():
+		out.append("none")
+
+	expression_enum_values = out
 	return out
 
 
@@ -642,6 +789,8 @@ func _normalize_relative_dir(path: String) -> String:
 		normalized = normalized.substr(1)
 	while normalized.ends_with("/"):
 		normalized = normalized.left(normalized.length() - 1)
+	while normalized.find("//") != -1:
+		normalized = normalized.replace("//", "/")
 	return normalized
 
 
