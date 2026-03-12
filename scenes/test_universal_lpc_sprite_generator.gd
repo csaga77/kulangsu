@@ -7,11 +7,16 @@ extends Node2D
 @export var target_path: String = "res://resources/sprites/universal_lpc"
 
 var m_loaded_metadata: Dictionary = {}
-var m_selection_data: Dictionary = {}
-
 var m_body_types: PackedStringArray = []
-var m_selected_body_type: int = 0
 
+@export_storage var m_selection_data: Dictionary = {}
+@export_storage var m_selected_body_type: int = 0
+@export_storage var m_match_body_color: bool = false
+@export_storage var m_body_variant: int = 0
+
+func _ready() -> void:
+	_load_metadata_json()
+	_generate_selection_data()
 
 func _get_property_list() -> Array:
 	var properties: Array = []
@@ -41,6 +46,14 @@ func _get_property_list() -> Array:
 	})
 
 	if not m_body_types.is_empty():
+		properties.append({
+			"name": "match_body_color",
+			"type": TYPE_BOOL,
+			"hint": PROPERTY_HINT_NONE,
+			"hint_string": "Match Body Color",
+			"usage": PROPERTY_USAGE_EDITOR
+		})
+		
 		properties.append({
 			"name": "body_type",
 			"type": TYPE_INT,
@@ -119,6 +132,9 @@ func _get(property: StringName):
 		return Callable(self, "_generate_sprite")
 
 	var prop_name := String(property)
+	
+	if prop_name == "match_body_color":
+		return m_match_body_color
 
 	if prop_name == "body_type":
 		return m_selected_body_type
@@ -142,6 +158,16 @@ func _get(property: StringName):
 func _set(property: StringName, value) -> bool:
 	var prop_name := String(property)
 
+	if prop_name == "match_body_color":
+		var new_match = bool(value)
+		if m_match_body_color == new_match:
+			return false
+		m_match_body_color = new_match
+		_generate_selection_data()
+		if Engine.is_editor_hint():
+			notify_property_list_changed()
+		return true
+
 	if prop_name == "body_type":
 		if m_body_types.is_empty():
 			return false
@@ -153,7 +179,8 @@ func _set(property: StringName, value) -> bool:
 		m_selected_body_type = index
 		_generate_selection_data()
 		print("Selected body type: ", m_body_types[m_selected_body_type])
-		notify_property_list_changed()
+		if Engine.is_editor_hint():
+			notify_property_list_changed()
 		return true
 
 	var leaf: Dictionary = _find_leaf_by_property_path(prop_name)
@@ -161,9 +188,9 @@ func _set(property: StringName, value) -> bool:
 		var variants: PackedStringArray = _get_leaf_variants(leaf)
 		var max_index: int = variants.size()
 		var index: int = clampi(int(value), 0, max_index)
-
+		var leaf_data: Dictionary
 		if index > 0:
-			var leaf_data: Dictionary = leaf.get("data", {})
+			leaf_data = leaf.get("data", {})
 			var type_name: String = str(leaf_data.get("type_name", "")).strip_edges()
 			if type_name != "":
 				_clear_same_type_name_selection(m_loaded_metadata.get("spritesheets", []), type_name, leaf)
@@ -171,9 +198,11 @@ func _set(property: StringName, value) -> bool:
 		var state: Dictionary = leaf.get("state", {})
 		state["variant_index"] = index
 		leaf["state"] = state
+		if leaf_data.get("match_body_color", false) and index > 0:
+			#print("match_body_color :", index)
+			m_body_variant = index
 
 		_generate_selection_data()
-
 		if index == 0:
 			print("%s: none" % prop_name)
 		else:
@@ -238,9 +267,9 @@ func _load_metadata_json() -> void:
 
 	var root: Dictionary = json.data
 	m_loaded_metadata.clear()
-	m_selection_data.clear()
+	#m_selection_data.clear()
 	m_body_types.clear()
-	m_selected_body_type = 0
+	#m_selected_body_type = 0
 
 	var json_universal_lpc_root: String = str(root.get("universal_lpc_root", ""))
 	var json_sheet_definitions_dir: String = str(root.get("sheet_definitions_dir", "sheet_definitions"))
@@ -321,8 +350,15 @@ func _load_metadata_json() -> void:
 	if not m_body_types.is_empty():
 		print("Body Types: ", ", ".join(m_body_types))
 
+var m_is_loading_sprite := false
 
 func _generate_selection_data() -> void:
+	if m_is_loading_sprite:
+		return
+	m_is_loading_sprite = true
+	call_deferred("_do_load_sprite")
+	
+func _do_load_sprite() -> void:
 	var selected_items: Dictionary = {}
 	_collect_selected_items(m_loaded_metadata.get("spritesheets", []), selected_items)
 
@@ -331,7 +367,8 @@ func _generate_selection_data() -> void:
 		"body_type": _get_selected_body_type_name(),
 		"selections": selected_items
 	}
-
+	_generate_sprite()
+	m_is_loading_sprite = false
 
 func _collect_selected_items(children: Array, out_items: Dictionary, current_parts: Array[String] = []) -> void:
 	for child in children:
@@ -359,6 +396,10 @@ func _collect_selected_items(children: Array, out_items: Dictionary, current_par
 			var variants: PackedStringArray = _to_packed_string_array(data.get("variants", []))
 			if variant_index > variants.size():
 				continue
+
+			if m_match_body_color and data.get("match_body_color", false):
+				variant_index = m_body_variant
+				state["variant_index"] = variant_index
 
 			var path_string: String = "/".join(new_parts)
 			out_items[path_string] = variants[variant_index - 1]
@@ -503,6 +544,7 @@ func _build_spritesheet_item(def: Dictionary) -> Dictionary:
 		"layers",
 		"priority",
 		"json_file",
+		"match_body_color",
 		"path"
 	]:
 		if def.has(key):
@@ -523,6 +565,12 @@ func _insert_item_into_tree_from_path_array(tree: Array, path_parts: Array[Strin
 		var existing = _find_child(node_array, part)
 
 		if is_leaf:
+			var path_string = "/".join(path_parts)
+			var variant :String = m_selection_data["selections"].get(path_string, "")
+			var variant_index := 0
+			if !variant.is_empty():
+				variant_index = item.get("variants", []).find(variant) + 1
+
 			if existing == null:
 				node_array.append({
 					"name": part,
@@ -530,7 +578,7 @@ func _insert_item_into_tree_from_path_array(tree: Array, path_parts: Array[Strin
 					"priority": int(item.get("priority", 999999)),
 					"data": item,
 					"state": {
-						"variant_index": 0
+						"variant_index": variant_index
 					}
 				})
 			else:
@@ -538,7 +586,7 @@ func _insert_item_into_tree_from_path_array(tree: Array, path_parts: Array[Strin
 				existing["data"] = item
 				var state: Dictionary = existing.get("state", {})
 				if not state.has("variant_index"):
-					state["variant_index"] = 0
+					state["variant_index"] = variant_index
 				existing["state"] = state
 			return
 

@@ -6,6 +6,19 @@
 
 [node name="TestUniversalLpcSpriteGenerator" type="Node2D" unique_id=1808474754]
 script = ExtResource("1_3fldc")
+m_selection_data = {
+"body_type": "male",
+"body_type_index": 0,
+"selections": {
+"body/body": "amber",
+"hair/long/hair_bangslong": "blonde",
+"head/heads/human/heads_human_male": "amber",
+"legs/pants/legs_pants": "black",
+"torso/shirts/shortsleeve/torso_clothes_shortsleeve": "pink"
+}
+}
+m_match_body_color = true
+m_body_variant = 2
 metadata/body_types = PackedStringArray("male", "female", "teen", "child", "muscular", "pregnant")
 metadata/body_type = 0
 
@@ -19,8 +32,11 @@ m_configuration = {
 "body_type": "male",
 "body_type_index": 0,
 "selections": {
-"body/body": "light",
-"head/heads/human/heads_human_male": "light"
+"body/body": "amber",
+"hair/long/hair_bangslong": "blonde",
+"head/heads/human/heads_human_male": "amber",
+"legs/pants/legs_pants": "black",
+"torso/shirts/shortsleeve/torso_clothes_shortsleeve": "pink"
 }
 }
 m_metadata_path = "res://universal_lpc_metadata.json"
