@@ -12,6 +12,7 @@ metadata/body_type = 0
 
 [node name="metadata_generator" type="Node" parent="." unique_id=1235277941]
 script = ExtResource("1_vfqxp")
+generate_combined_sprites = true
 
 [node name="universal_lpc_sprite_builder" type="Node" parent="." unique_id=2076666237 node_paths=PackedStringArray("sprite")]
 script = ExtResource("3_1g3fl")
@@ -30,6 +31,7 @@ m_configuration = {
 "head/faces/face_neutral": "light",
 "head/heads/human/heads_human_male": "light",
 "legs/pants/legs_pants": "black",
+"torso/jacket/torso_jacket_collared": "brown striped",
 "torso/shirts/longsleeve/torso_clothes_longsleeve": "black"
 }
 }
