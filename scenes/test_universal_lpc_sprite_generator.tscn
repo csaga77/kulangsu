@@ -2,46 +2,33 @@
 
 [ext_resource type="Script" uid="uid://b044woc18vit7" path="res://scenes/test_universal_lpc_sprite_generator.gd" id="1_3fldc"]
 [ext_resource type="Script" uid="uid://doad3dy4jbcqe" path="res://scenes/universal_lpc_metadata_generator.gd" id="1_vfqxp"]
+[ext_resource type="Script" uid="uid://c8crxg5aplluj" path="res://scenes/universal_lpc_sprite_builder.gd" id="3_1g3fl"]
 [ext_resource type="Script" uid="uid://cslac4wgwcsl6" path="res://scenes/universal_lpc_sprite_2d.gd" id="3_esupq"]
 
 [node name="TestUniversalLpcSpriteGenerator" type="Node2D" unique_id=1808474754]
 script = ExtResource("1_3fldc")
-m_configuration_data = {
-"body_type": "male",
-"body_type_index": 0,
-"selections": {
-"body/body": "light",
-"feet/boots/feet_boots_basic": "black",
-"hair/long/hair_bangslong": "blonde",
-"head/faces/face_neutral": "light",
-"head/heads/human/heads_human_male": "light",
-"legs/pants/legs_pants": "black",
-"torso/shirts/shortsleeve/torso_clothes_shortsleeve": "pink"
-}
-}
-m_match_body_color = true
-m_body_variant = 1
 metadata/body_types = PackedStringArray("male", "female", "teen", "child", "muscular", "pregnant")
 metadata/body_type = 0
 
 [node name="metadata_generator" type="Node" parent="." unique_id=1235277941]
 script = ExtResource("1_vfqxp")
 
+[node name="universal_lpc_sprite_builder" type="Node" parent="." unique_id=2076666237 node_paths=PackedStringArray("sprite")]
+script = ExtResource("3_1g3fl")
+sprite = NodePath("../universal_lpc_sprite")
+
 [node name="universal_lpc_sprite" type="Node2D" parent="." unique_id=677762815]
 script = ExtResource("3_esupq")
 animation = 24
-m_expression = 2
 m_configuration = {
 "body_type": "male",
 "body_type_index": 0,
 "selections": {
 "body/body": "light",
-"feet/boots/feet_boots_basic": "black",
 "hair/long/hair_bangslong": "blonde",
-"head/faces/face_neutral": "light",
 "head/heads/human/heads_human_male": "light",
 "legs/pants/legs_pants": "black",
-"torso/shirts/shortsleeve/torso_clothes_shortsleeve": "pink"
+"torso/shirts/longsleeve/torso_clothes_longsleeve": "black"
 }
 }
-m_metadata_path = "res://universal_lpc_metadata.json"
+m_metadata_file = "res://resources/sprites/universal_lpc/universal_lpc_metadata.json"
