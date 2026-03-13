@@ -1,12 +1,12 @@
 [gd_scene format=3 uid="uid://c2356cdr8o5tr"]
 
 [ext_resource type="Script" uid="uid://b044woc18vit7" path="res://scenes/test_universal_lpc_sprite_generator.gd" id="1_3fldc"]
-[ext_resource type="Script" uid="uid://doad3dy4jbcqe" path="res://scenes/universal_lpc_metadata_reader.gd" id="1_vfqxp"]
+[ext_resource type="Script" uid="uid://doad3dy4jbcqe" path="res://scenes/universal_lpc_metadata_generator.gd" id="1_vfqxp"]
 [ext_resource type="Script" uid="uid://cslac4wgwcsl6" path="res://scenes/universal_lpc_sprite_2d.gd" id="3_esupq"]
 
 [node name="TestUniversalLpcSpriteGenerator" type="Node2D" unique_id=1808474754]
 script = ExtResource("1_3fldc")
-m_selection_data = {
+m_configuration_data = {
 "body_type": "male",
 "body_type_index": 0,
 "selections": {
@@ -24,7 +24,7 @@ m_body_variant = 1
 metadata/body_types = PackedStringArray("male", "female", "teen", "child", "muscular", "pregnant")
 metadata/body_type = 0
 
-[node name="metadata_reader" type="Node" parent="." unique_id=1235277941]
+[node name="metadata_generator" type="Node" parent="." unique_id=1235277941]
 script = ExtResource("1_vfqxp")
 
 [node name="universal_lpc_sprite" type="Node2D" parent="." unique_id=677762815]

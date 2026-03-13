@@ -1,7 +1,7 @@
 @tool
 extends Node2D
 
-@onready var m_reader: UniversalLpcMetadataReader = $metadata_reader
+@onready var m_reader: UniversalLpcMetadataGenerator = $metadata_generator
 @onready var m_sprite: UniversalLpcSprite2D = $universal_lpc_sprite
 @export var output_json_path: String = "res://universal_lpc_metadata.json"
 @export var target_path: String = "res://resources/sprites/universal_lpc"
@@ -9,7 +9,7 @@ extends Node2D
 var m_loaded_metadata: Dictionary = {}
 var m_body_types: PackedStringArray = []
 
-@export_storage var m_selection_data: Dictionary = {}
+@export_storage var m_configuration_data: Dictionary = {}
 @export_storage var m_selected_body_type: int = 0
 @export_storage var m_match_body_color: bool = false
 @export_storage var m_body_variant: int = 0
@@ -148,7 +148,7 @@ func _get(property: StringName):
 	if prop_name.begins_with(prefix):
 		var key := prop_name.trim_prefix(prefix)
 		if key == "selection_data":
-			return m_selection_data
+			return m_configuration_data
 		if m_loaded_metadata.has(key):
 			return m_loaded_metadata[key]
 
@@ -233,9 +233,7 @@ func _generate_metadata_json() -> void:
 
 
 func _generate_sprite() -> void:
-	if not Engine.is_editor_hint():
-		return
-	m_sprite.load(m_selection_data, output_json_path)
+	m_sprite.load(m_configuration_data, output_json_path)
 
 
 func _load_metadata_json() -> void:
@@ -267,7 +265,7 @@ func _load_metadata_json() -> void:
 
 	var root: Dictionary = json.data
 	m_loaded_metadata.clear()
-	#m_selection_data.clear()
+	#m_configuration_data.clear()
 	m_body_types.clear()
 	#m_selected_body_type = 0
 
@@ -362,7 +360,7 @@ func _do_load_sprite() -> void:
 	var selected_items: Dictionary = {}
 	_collect_selected_items(m_loaded_metadata.get("spritesheets", []), selected_items)
 
-	m_selection_data = {
+	m_configuration_data = {
 		"body_type_index": m_selected_body_type,
 		"body_type": _get_selected_body_type_name(),
 		"selections": selected_items
@@ -566,7 +564,7 @@ func _insert_item_into_tree_from_path_array(tree: Array, path_parts: Array[Strin
 
 		if is_leaf:
 			var path_string = "/".join(path_parts)
-			var variant :String = m_selection_data["selections"].get(path_string, "")
+			var variant :String = m_configuration_data["selections"].get(path_string, "")
 			var variant_index := 0
 			if !variant.is_empty():
 				variant_index = item.get("variants", []).find(variant) + 1

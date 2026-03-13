@@ -1,5 +1,5 @@
 @tool
-class_name UniversalLpcMetadataReader
+class_name UniversalLpcMetadataGenerator
 extends Node
 
 @export_dir var universal_lpc_root: String = "res://3rdparty/Universal-LPC-Spritesheet-Character-Generator"
