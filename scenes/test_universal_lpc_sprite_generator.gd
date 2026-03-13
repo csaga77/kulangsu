@@ -37,13 +37,6 @@ func _get_property_list() -> Array:
 			"usage": PROPERTY_USAGE_EDITOR,
 			"hint": PROPERTY_HINT_TOOL_BUTTON,
 			"hint_string": "Load Metadata JSON"
-		},
-		{
-			"name": "generate_sprite",
-			"type": TYPE_CALLABLE,
-			"usage": PROPERTY_USAGE_EDITOR,
-			"hint": PROPERTY_HINT_TOOL_BUTTON,
-			"hint_string": "Generate Sprite"
 		}
 	]
 
@@ -53,8 +46,6 @@ func _get(property: StringName):
 		return Callable(self, "_generate_metadata_json")
 	if property == "load_metadata_json":
 		return Callable(self, "_load_metadata_json")
-	if property == "generate_sprite":
-		return Callable(self, "_generate_sprite")
 
 	return null
 
@@ -79,11 +70,6 @@ func _generate_metadata_json() -> void:
 		print("Metadata JSON generated at: ", metadata_file)
 	else:
 		push_error("Failed to generate metadata JSON.")
-
-
-func _generate_sprite() -> void:
-	m_builder.load_into_sprite(metadata_file)
-
 
 func _load_metadata_json() -> void:
 	if not Engine.is_editor_hint():
@@ -116,7 +102,7 @@ func _load_metadata_json() -> void:
 
 	UniversalLpcFactory.instance().configure(metadata_file)
 	m_builder.metadata_file = metadata_file
-	m_builder.load_metadata_from_root(root, m_builder.m_configuration_data)
+	m_builder.load_metadata_from_root(root, m_builder.configuration)
 
 	_generate_selection_data()
 

@@ -6,7 +6,7 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_1lao4"]
 shader = ExtResource("1_hhl7b")
-shader_parameter/fade_start = 0.0
+shader_parameter/fade_start = 1.0
 shader_parameter/fade_end = 1.0
 shader_parameter/tile_texture_size = Vector2(13, 54)
 
@@ -30,9 +30,7 @@ shape = SubResource("CircleShape2D_glpr6")
 [node name="universal_lpc_sprite" type="Node2D" parent="." unique_id=199955474]
 position = Vector2(-32, -64)
 script = ExtResource("3_1fo3j")
-animation = 24
-m_expression = 9
-m_configuration = {
+configuration = {
 "body_type": "male",
 "body_type_index": 0,
 "selections": {
@@ -44,4 +42,5 @@ m_configuration = {
 "torso/shirts/longsleeve/torso_clothes_longsleeve": "black"
 }
 }
-m_metadata_file = "res://resources/sprites/universal_lpc/universal_lpc_metadata.json"
+animation = 24
+m_expression = 9

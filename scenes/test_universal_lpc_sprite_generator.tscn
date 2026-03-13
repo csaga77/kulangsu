@@ -14,25 +14,38 @@ metadata/body_type = 0
 script = ExtResource("1_vfqxp")
 generate_combined_sprites = true
 
-[node name="universal_lpc_sprite_builder" type="Node" parent="." unique_id=2076666237 node_paths=PackedStringArray("sprite")]
+[node name="universal_lpc_sprite_builder" type="Node" parent="." unique_id=2076666237]
 script = ExtResource("3_1g3fl")
-sprite = NodePath("../universal_lpc_sprite")
-
-[node name="universal_lpc_sprite" type="Node2D" parent="." unique_id=677762815]
-script = ExtResource("3_esupq")
-animation = 24
-m_expression = 9
-m_configuration = {
+configuration = {
 "body_type": "male",
 "body_type_index": 0,
 "selections": {
 "body/body": "light",
-"hair/long/hair_bangslong": "blonde",
+"feet/shoes/feet_shoes_revised": "bluegray",
+"hair/long/hair_bangslong": "platinum",
 "head/faces/face_neutral": "light",
 "head/heads/human/heads_human_male": "light",
-"legs/pants/legs_pants": "black",
-"torso/jacket/torso_jacket_collared": "brown striped",
-"torso/shirts/longsleeve/torso_clothes_longsleeve": "black"
+"legs/pants/legs_formal": "base",
+"torso/shirts/longsleeve/torso_clothes_longsleeve": "bluegray"
 }
 }
-m_metadata_file = "res://resources/sprites/universal_lpc/universal_lpc_metadata.json"
+
+[node name="universal_lpc_sprite" type="Node2D" parent="." unique_id=677762815]
+script = ExtResource("3_esupq")
+configuration = {
+"body_type": "male",
+"body_type_index": 0,
+"selections": {
+"body/body": "light",
+"feet/shoes/feet_shoes_revised": "bluegray",
+"hair/long/hair_bangslong": "platinum",
+"head/faces/face_neutral": "light",
+"head/heads/human/heads_human_male": "light",
+"legs/pants/legs_formal": "base",
+"torso/shirts/longsleeve/torso_clothes_longsleeve": "bluegray"
+}
+}
+animation = 24
+m_expression = 9
+
+[connection signal="configuration_changed" from="universal_lpc_sprite_builder" to="universal_lpc_sprite" method="set_configuration"]

@@ -83,6 +83,15 @@ var m_has_ready: bool = false
 
 		if is_inside_tree() and controller != null:
 			controller.setup(self)
+			
+signal configuration_changed(cfg: Dictionary)
+
+func get_configuration() -> Dictionary:
+	return m_universal_lpc_sprite.configuration if m_universal_lpc_sprite else {}
+	
+func set_configuration(new_config: Dictionary) -> void:
+	if m_universal_lpc_sprite:
+		m_universal_lpc_sprite.set_configuration(new_config)
 
 var m_animation: String = "idle-s"
 
@@ -154,6 +163,7 @@ func _ensure_universal_lpc_sprite() -> void:
 	if m_universal_lpc_sprite == null:
 		m_universal_lpc_sprite = UniversalLpcSprite2D.new()
 		m_universal_lpc_sprite.name = "universal_lpc_sprite"
+		m_universal_lpc_sprite.configuration_changed.connect(self.configuration_changed.emit)
 		add_child(m_universal_lpc_sprite)
 
 	move_child(m_universal_lpc_sprite, get_child_count() - 1)

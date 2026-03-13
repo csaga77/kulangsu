@@ -2,6 +2,31 @@
 class_name UniversalLpcSprite2D
 extends Node2D
 
+@export var metadata_file: String = "res://resources/sprites/universal_lpc/universal_lpc_metadata.json":
+	set(new_file):
+		if metadata_file == new_file:
+			return
+		metadata_file = new_file
+		_reload()
+
+signal configuration_changed(cfg: Dictionary)
+
+func get_configuration() -> Dictionary:
+	return m_configuration
+	
+func set_configuration(new_config: Dictionary) -> void:
+	if m_configuration == new_config:
+		return
+	m_configuration = new_config
+	_reload()
+	configuration_changed.emit(m_configuration)
+	
+@export var configuration: Dictionary:
+	get():
+		return get_configuration()
+	set(new_cfg):
+		set_configuration(new_cfg)
+		
 @export_storage var animation: int = 0:
 	set(value):
 		var names: PackedStringArray = _get_animation_enum_names()
@@ -48,20 +73,11 @@ var is_playing: bool = true:
 		is_playing = value
 		_apply_play_state_to_sprites()
 
-@export_storage var m_configuration: Dictionary = {}
-@export_storage var m_metadata_file: String = ""
-
+var m_configuration: Dictionary = {}
 var m_sprite_nodes: Array[AnimatedSprite2D] = []
-
 
 func _get_property_list() -> Array:
 	var properties: Array = []
-	
-	properties.append({
-		"name": "configuration",
-		"type": TYPE_DICTIONARY,
-		"usage": PROPERTY_USAGE_EDITOR
-	})
 
 	properties.append({
 		"name": "is_playing",
@@ -93,9 +109,6 @@ func _get_property_list() -> Array:
 
 
 func _get(property: StringName):
-	if property == "configuration":
-		return m_configuration
-		
 	if property == "animation":
 		return animation
 
@@ -107,14 +120,8 @@ func _get(property: StringName):
 
 	return null
 
-
-func _set(property: StringName, value) -> bool:
-	if property == "configuration":
-		var new_config = Dictionary(value)
-		m_configuration = new_config
-		_reload()
-		return true
 	
+func _set(property: StringName, value) -> bool:
 	if property == "animation":
 		var names: PackedStringArray = _get_animation_enum_names()
 		if names.is_empty():
@@ -143,20 +150,19 @@ func _set(property: StringName, value) -> bool:
 
 	return false
 
-func get_configuration() -> Dictionary:
-	return m_configuration
-
-func load(configuration_data: Dictionary, metadata_file: String) -> void:
-	m_metadata_file = metadata_file
-	m_configuration = configuration_data.duplicate(true)
-	_reload()
-
-
+var m_is_loading := false
 func _reload() -> void:
+	if m_is_loading:
+		return
+	m_is_loading = true
+	call_deferred("_do_reload")
+	
+func _do_reload() -> void:
+	m_is_loading = false
 	#print("_realod()")
 	_clear_sprites()
 
-	if not UniversalLpcFactory.instance().configure(m_metadata_file):
+	if not UniversalLpcFactory.instance().configure(metadata_file):
 		return
 
 	_restore_expression_selection()
@@ -241,7 +247,7 @@ func _reload() -> void:
 		var sprite: AnimatedSprite2D = _create_sprite_from_selection_layer(selection, layer, layer_index)
 		if sprite == null:
 			continue
-
+		sprite.use_parent_material = true
 		add_child(sprite)
 		m_sprite_nodes.append(sprite)
 
@@ -563,8 +569,7 @@ func _clear_sprites() -> void:
 
 
 func _ready() -> void:
-	if m_metadata_file.strip_edges() != "":
-		_reload()
+	_reload()
 
 	if Engine.is_editor_hint():
 		notify_property_list_changed()

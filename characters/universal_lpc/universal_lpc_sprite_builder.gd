@@ -2,44 +2,42 @@
 class_name LpcSpriteBuilder
 extends Node
 
-@export var sprite: UniversalLpcSprite2D:
-	set(new_sprite):
-		if sprite == new_sprite:
-			return
-		sprite = new_sprite
-		_on_sprite_changed()
 @export var metadata_file: String = "res://resources/sprites/universal_lpc/universal_lpc_metadata.json"
+
+func get_configuration() -> Dictionary:
+	return m_configuration
+
+func set_configuration(new_cfg: Dictionary) -> void:
+	if m_configuration == new_cfg:
+		return
+	m_configuration = new_cfg
+	_apply_configuration_to_builder_state(m_configuration)
+	if not m_metadata.is_empty():
+		notify_property_list_changed()
+	configuration_changed.emit(m_configuration)
+
+@export var configuration: Dictionary:
+	get():
+		return get_configuration()
+	set(new_cfg):
+		set_configuration(new_cfg)
+			
+signal configuration_changed(config:Dictionary)
 
 var m_metadata: Dictionary = {}
 var m_body_types: PackedStringArray = []
 
-var m_configuration_data: Dictionary = {}
+var m_configuration: Dictionary = {}
 var m_selected_body_type: int = 0
 var m_match_body_color: bool = false
 var m_body_variant: int = 0
 		
 func _ready() -> void:
-	_on_sprite_changed()
-
-func _on_sprite_changed() -> void:
-	if sprite == null:
-		return
-
-	var config: Dictionary = sprite.get_configuration()
-	if config.is_empty():
-		return
-
-	m_configuration_data = config.duplicate(true)
-
-	_apply_configuration_to_builder_state(m_configuration_data)
-
-	if not m_metadata.is_empty():
-		notify_property_list_changed()
+	pass
 
 func _apply_configuration_to_builder_state(configuration: Dictionary) -> void:
 	_apply_body_type_from_configuration(configuration)
 	_apply_selection_state_from_configuration(configuration)
-
 
 func _apply_body_type_from_configuration(configuration: Dictionary) -> void:
 	var body_type_index: int = int(configuration.get("body_type_index", -1))
@@ -191,7 +189,7 @@ func _get(property: StringName):
 	if prop_name.begins_with(prefix):
 		var key := prop_name.trim_prefix(prefix)
 		if key == "selection_data":
-			return m_configuration_data
+			return m_configuration
 		if m_metadata.has(key):
 			return m_metadata[key]
 
@@ -245,7 +243,7 @@ func _set(property: StringName, value) -> bool:
 func clear() -> void:
 	m_metadata.clear()
 	m_body_types.clear()
-	m_configuration_data.clear()
+	set_configuration({})
 	m_selected_body_type = 0
 	m_match_body_color = false
 	m_body_variant = 0
@@ -255,13 +253,14 @@ func load_into_sprite(in_metadata_file: String = "") -> void:
 	if in_metadata_file.strip_edges() != "":
 		metadata_file = in_metadata_file
 
-	generate_selection_data()
+	var selected_items: Dictionary = {}
+	collect_selected_items(m_metadata.get("spritesheets", []), selected_items)
 
-	if sprite == null:
-		return
-
-	sprite.load(m_configuration_data, metadata_file)
-
+	set_configuration({
+		"body_type_index": m_selected_body_type,
+		"body_type": get_selected_body_type_name(),
+		"selections": selected_items
+	})
 
 func _append_leaf_properties(properties: Array, children: Array, current_parts: Array[String] = []) -> void:
 	for child in children:
@@ -340,19 +339,6 @@ func set_leaf_value(property_path: String, value: int) -> Dictionary:
 		"variants": variants,
 		"selected_variant": selected_variant
 	}
-
-
-func generate_selection_data() -> Dictionary:
-	var selected_items: Dictionary = {}
-	collect_selected_items(m_metadata.get("spritesheets", []), selected_items)
-
-	m_configuration_data = {
-		"body_type_index": m_selected_body_type,
-		"body_type": get_selected_body_type_name(),
-		"selections": selected_items
-	}
-
-	return m_configuration_data
 
 
 func collect_selected_items(children: Array, out_items: Dictionary, current_parts: Array[String] = []) -> void:
@@ -487,6 +473,7 @@ func count_leaf_items(children: Array) -> int:
 
 
 func load_metadata_from_root(root: Dictionary, previous_configuration_data: Dictionary = {}) -> void:
+	
 	m_metadata.clear()
 	m_body_types.clear()
 
