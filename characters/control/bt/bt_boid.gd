@@ -53,7 +53,7 @@ class UpdateBoid extends BTNode:
 		return "UpdateBoid"
 
 	func _tick(ctx: BaseController, _delta: float) -> int:
-		if not ctx.is_valid():
+		if not is_instance_valid(ctx):
 			return BTTypes.Status.FAILURE
 		if ctx.is_flock_lead():
 			return BTTypes.Status.FAILURE
@@ -62,7 +62,7 @@ class UpdateBoid extends BTNode:
 		var current_dir: Vector2 = _safe_dir(ctx.get_direction_vector())
 		
 		var neighbors: Array = ctx.get_flockmates_in_radius(perception_radius) if ctx.has_method("get_flockmates_in_radius") else []
-		if follow_target and ctx.get_target_controller():
+		if follow_target and ctx.has_method("get_target_controller") and ctx.get_target_controller():
 			neighbors.append(ctx.get_target_controller())
 		if neighbors.is_empty():
 			return BTTypes.Status.FAILURE

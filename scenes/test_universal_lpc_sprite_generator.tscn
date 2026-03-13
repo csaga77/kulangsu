@@ -46,6 +46,5 @@ configuration = {
 }
 }
 animation = 24
-m_expression = 9
 
 [connection signal="configuration_changed" from="universal_lpc_sprite_builder" to="universal_lpc_sprite" method="set_configuration"]

@@ -44,7 +44,10 @@ var animation_name: String:
 		var names: PackedStringArray = _get_animation_enum_names()
 		if names.is_empty():
 			return
-		animation = names.find(new_animation)
+		var index := names.find(new_animation)
+		if index < 0:
+			return
+		animation = index
 	get():
 		var names: PackedStringArray = _get_animation_enum_names()
 		if names.is_empty():

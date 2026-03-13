@@ -369,11 +369,13 @@ func collect_selected_items(children: Array, out_items: Dictionary, current_part
 				continue
 
 			if m_match_body_color and data.get("match_body_color", false):
-				variant_index = m_body_variant
+				variant_index = clampi(m_body_variant, 0, variants.size())
 				state["variant_index"] = variant_index
 				child_dict["state"] = state
 
 			var path_string: String = "/".join(new_parts)
+			if variant_index <= 0 or variant_index > variants.size():
+				continue
 			out_items[path_string] = variants[variant_index - 1]
 
 

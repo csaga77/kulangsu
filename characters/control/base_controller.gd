@@ -11,6 +11,7 @@ enum MoveDirectionEnum {
 }
 
 var move_direction: int = MoveDirectionEnum.MOVE_IDLE
+var blackboard: BTBlackboard = BTBlackboard.new()
 
 signal closest_object_changed(closest_object: Node2D)
 
@@ -119,6 +120,7 @@ func teardown() -> void:
 	m_closest_object = null
 	m_balloon_text = ""
 	m_balloon_closed = false
+	blackboard = BTBlackboard.new()
 	m_character = null
 
 func process(delta: float) -> void:
@@ -199,6 +201,7 @@ func _on_body_exited(body: Node2D) -> void:
 		m_nearby_objects.remove_at(index)
 
 	if body == m_closest_object:
+		m_closest_object = null
 		_on_closest_object_changed(m_closest_object)
 		closest_object_changed.emit(null)
 		

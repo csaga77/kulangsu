@@ -15,7 +15,7 @@ func _tick(ctx, delta: float) -> BTTypes.Status:
 	if child == null:
 		return BTTypes.Status.FAILURE
 	if ctx.get_time_stamp() - m_start > max(0.0, seconds):
-		child.close(ctx, BTTypes.Status.FAILURE)
+		child.abort(ctx)
 		m_start = -1.0
 		return BTTypes.Status.FAILURE
 	var res = child.tick(ctx, delta)

@@ -34,6 +34,25 @@ var m_default_expression_replacement: Dictionary = {
 	"none": "default"
 }
 
+const DEFAULT_EXPRESSION_REPLACEMENT: Dictionary = {
+	"Angry": "anger",
+	"Angry_Alt": "anger",
+	"Blush": "blush",
+	"Closed_Eyes": "closed",
+	"Closing_Eyes": "closing",
+	"Happy": "happy",
+	"Happy_Alt": "happy",
+	"Looking_Left": "look_l",
+	"Looking_Right": "look_r",
+	"Neutral": "neutral",
+	"Rolling_Eyes": "eyeroll",
+	"Sad": "sad",
+	"Sad_Alt": "sad",
+	"Shame": "shame",
+	"Shock": "shock",
+	"none": "default"
+}
+
 
 func configure(metadata_file: String) -> bool:
 	metadata_file = metadata_file.strip_edges()
@@ -52,6 +71,7 @@ func configure(metadata_file: String) -> bool:
 	m_metadata_file = metadata_file
 	m_metadata = metadata
 	m_texture_cache.clear()
+	m_default_expression_replacement = DEFAULT_EXPRESSION_REPLACEMENT.duplicate(true)
 
 	var default_expr_value = m_metadata.get("default_expression_paths", {})
 	if typeof(default_expr_value) == TYPE_DICTIONARY and not default_expr_value.is_empty():
