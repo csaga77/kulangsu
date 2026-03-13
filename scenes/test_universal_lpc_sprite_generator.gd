@@ -114,7 +114,7 @@ func _load_metadata_json() -> void:
 
 	var root: Dictionary = json.data
 
-	LpcSpriteFactory.instance().configure(metadata_file)
+	UniversalLpcFactory.instance().configure(metadata_file)
 	m_builder.metadata_file = metadata_file
 	m_builder.load_metadata_from_root(root, m_builder.m_configuration_data)
 
