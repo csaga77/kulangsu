@@ -35,7 +35,7 @@ var expression_name: String:
 		var names: PackedStringArray = _get_expression_enum_names()
 		if names.is_empty():
 			return
-		m_expression = names.find(expression_name)
+		m_expression = names.find(new_expression)
 		_apply_expression_to_sprites()
 	get():
 		var names: PackedStringArray = _get_expression_enum_names()
@@ -447,7 +447,7 @@ func _apply_expression_to_sprites() -> void:
 		var texture: Texture2D = UniversalLpcFactory.instance().get_texture(texture_path)
 		if texture == null:
 			continue
-
+		#print(texture_path)
 		var sprite_frames: SpriteFrames = _build_sprite_frames(texture)
 		if sprite_frames == null:
 			continue

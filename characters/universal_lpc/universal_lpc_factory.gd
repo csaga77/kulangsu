@@ -193,9 +193,8 @@ func resolve_texture_path(
 	)
 	if resolved_base_path == "":
 		return ""
-
 	var base_dir: String = _join_path(spritesheets_root, _normalize_relative_dir(resolved_base_path))
-	var candidate: String = _join_path(base_dir, "%s.png" % variant)
+	var candidate: String = _join_path(base_dir, "%s.png" % variant).replace(" ", "_")
 	if ResourceLoader.exists(candidate):
 		return candidate
 

@@ -19,9 +19,8 @@ collision_mask = 524289
 motion_mode = 1
 script = ExtResource("1_wfnr8")
 direction = 90.0
-is_walking = true
 is_running = true
-facial_mood = 2
+facial_mood = 1
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=403533052]
 show_behind_parent = true
@@ -31,7 +30,7 @@ shape = SubResource("CircleShape2D_glpr6")
 [node name="universal_lpc_sprite" type="Node2D" parent="." unique_id=199955474]
 position = Vector2(-32, -64)
 script = ExtResource("3_1fo3j")
-animation = 40
+animation = 24
 m_expression = 9
 m_configuration = {
 "body_type": "male",

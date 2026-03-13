@@ -275,6 +275,8 @@ func _export_combined_variant_spritesheets(definitions: Array[Dictionary], targe
 
 		var definition: Dictionary = definition_value
 		#var type_name = definition.get("type_name", "")
+		#if type_name not in ["hair", "jacket"]:
+			#continue
 		#var replace_in_path :Dictionary = definition.get("replace_in_path", {})
 		#if replace_in_path.is_empty():
 			#continue
@@ -302,7 +304,7 @@ func _export_combined_variant_spritesheets(definitions: Array[Dictionary], targe
 				if combined == null or combined.is_empty():
 					continue
 
-				var target_file_path: String = _join_path(target_sheet_root, "%s.png" % variant)
+				var target_file_path: String = _join_path(target_sheet_root, "%s.png" % variant).replace(" ", "_")
 				if not _ensure_parent_dir_exists(target_file_path):
 					push_warning("Failed to create target directory for: %s" % target_file_path)
 					continue
@@ -430,8 +432,8 @@ func _build_combined_variant_sheet(source_sheet_root: String, variant: String, f
 	var has_any_real_image: bool = false
 
 	for animation_name in DEFAULT_ANIMATIONS:
-		var source_path_with_variant: String = _join_path(_join_path(source_sheet_root, animation_name), "%s.png" % variant)
-		var source_path_fallback: String = _join_path(source_sheet_root, "%s.png" % animation_name)
+		var source_path_with_variant: String = _join_path(_join_path(source_sheet_root, animation_name), "%s.png" % variant).replace(" ", "_")
+		var source_path_fallback: String = _join_path(source_sheet_root, "%s.png" % animation_name).replace(" ", "_")
 
 		var row_image: Image = null
 		var row_size: Vector2i = Vector2i.ZERO
