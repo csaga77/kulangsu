@@ -24,6 +24,24 @@
 		"backslash",
 		"halfslash"
 	],
+	"default_expression_paths": {
+		"Angry": "anger",
+		"Angry_Alt": "anger",
+		"Blush": "blush",
+		"Closed_Eyes": "closed",
+		"Closing_Eyes": "closing",
+		"Happy": "happy",
+		"Happy_Alt": "happy",
+		"Looking_Left": "look_l",
+		"Looking_Right": "look_r",
+		"Neutral": "neutral",
+		"Rolling_Eyes": "eyeroll",
+		"Sad": "sad",
+		"Sad_Alt": "sad",
+		"Shame": "shame",
+		"Shock": "shock",
+		"none": "default"
+	},
 	"default_frame_info": {
 		"data": {
 			"1h_backslash": {

@@ -37,6 +37,25 @@ const DEFAULT_ANIMATIONS: PackedStringArray = [
 	"halfslash"
 ]
 
+const DEFAULT_EXPRESSION_PATHS :Dictionary = {
+	"Angry": "anger",
+	"Angry_Alt": "anger",
+	"Blush": "blush",
+	"Closed_Eyes": "closed",
+	"Closing_Eyes": "closing",
+	"Happy": "happy",
+	"Happy_Alt": "happy",
+	"Looking_Left": "look_l",
+	"Looking_Right": "look_r",
+	"Neutral": "neutral",
+	"Rolling_Eyes": "eyeroll",
+	"Sad": "sad",
+	"Sad_Alt": "sad",
+	"Shame": "shame",
+	"Shock": "shock",
+	"none": "default"
+}
+
 const FRAME_SIZE: int = 64
 
 const DEFAULT_VARIANTS: PackedStringArray = []
@@ -218,6 +237,7 @@ func export_metadata_as_json(output_path: String = "res://universal_lpc_metadata
 		"spritesheets_dir": spritesheets_dir,
 		"body_types": BODY_TYPES,
 		"default_animations": DEFAULT_ANIMATIONS,
+		"default_expression_paths": DEFAULT_EXPRESSION_PATHS,
 		"default_variants": DEFAULT_VARIANTS,
 		"default_frame_info": {
 			"source": "fallback",

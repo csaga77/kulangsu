@@ -24,29 +24,14 @@ var animation_name: String:
 			return ""
 		return names[clampi(animation, 0, names.size() - 1)]
 
-@export_storage var expression: int = 0:
-	set(value):
-		var names: PackedStringArray = _get_expression_enum_names()
-
-		if names.is_empty():
-			expression = value
-			return
-
-		var max_index: int = names.size() - 1
-		var new_index: int = clampi(value, 0, max_index)
-		if expression == new_index:
-			return
-
-		expression = new_index
-		if not m_metadata_path.strip_edges().is_empty():
-			_reload()
+@export_storage var m_expression: int = 0
 
 var expression_name: String:
 	get():
 		var names: PackedStringArray = _get_expression_enum_names()
 		if names.is_empty():
 			return ""
-		return names[clampi(expression, 0, names.size() - 1)]
+		return names[clampi(m_expression, 0, names.size() - 1)]
 
 var is_playing: bool = true:
 	set(value):
@@ -58,7 +43,26 @@ var is_playing: bool = true:
 var m_metadata: Dictionary = {}
 
 var m_sprite_nodes: Array[AnimatedSprite2D] = []
+var m_texture_cache: Dictionary = {} # <String texture_path, Texture2D>
 
+var m_default_expression_replacement :Dictionary = {
+	"Angry": "anger",
+	"Angry_Alt": "anger",
+	"Blush": "blush",
+	"Closed_Eyes": "closed",
+	"Closing_Eyes": "closing",
+	"Happy": "happy",
+	"Happy_Alt": "happy",
+	"Looking_Left": "look_l",
+	"Looking_Right": "look_r",
+	"Neutral": "neutral",
+	"Rolling_Eyes": "eyeroll",
+	"Sad": "sad",
+	"Sad_Alt": "sad",
+	"Shame": "shame",
+	"Shock": "shock",
+	"none": "default"
+}
 
 func _get_property_list() -> Array:
 	var properties: Array = []
@@ -97,7 +101,7 @@ func _get(property: StringName):
 		return animation
 
 	if property == "expression":
-		return expression
+		return m_expression
 
 	if property == "is_playing":
 		return is_playing
@@ -120,11 +124,12 @@ func _set(property: StringName, value) -> bool:
 	if property == "expression":
 		var names: PackedStringArray = _get_expression_enum_names()
 		if names.is_empty():
-			expression = 0
+			m_expression = 0
 			return true
 
 		var index: int = clampi(int(value), 0, names.size() - 1)
-		expression = index
+		m_expression = index
+		_apply_expression_to_sprites()
 		return true
 
 	if property == "is_playing":
@@ -142,12 +147,13 @@ func load(configuration_data: Dictionary, universal_lpc_metadata_file: String) -
 
 func _reload() -> void:
 	_clear_sprites()
+	_clear_texture_cache()
 
 	m_metadata = _load_metadata_json(m_metadata_path)
 	if m_metadata.is_empty():
 		push_error("Failed to load Universal LPC metadata: %s" % m_metadata_path)
 		return
-
+	m_default_expression_replacement = m_metadata.get("default_expression_paths", {})
 	_restore_expression_selection()
 
 	var selections_value = m_configuration.get("selections", {})
@@ -236,6 +242,7 @@ func _reload() -> void:
 
 	_restore_animation_selection()
 	_apply_current_animation_to_sprites()
+	#_prewarm_expression_texture_cache()
 	notify_property_list_changed()
 
 
@@ -313,24 +320,19 @@ func _restore_expression_selection() -> void:
 	expression_enum_values = names
 
 	if names.is_empty():
-		expression = 0
+		m_expression = 0
 		return
 
-	if expression >= 0 and expression < names.size():
+	if m_expression >= 0 and m_expression < names.size():
 		return
 
-	expression = 0
+	m_expression = 0
 
 
 func _create_sprite_from_selection_layer(selection: Dictionary, layer: Dictionary, layer_index: int) -> AnimatedSprite2D:
-	var texture_path: String = _resolve_texture_path_from_selection_layer(selection, layer)
-	if texture_path == "":
-		push_warning("Could not resolve combined texture for selection layer: %s [layer %d]" % [str(selection.get("path_string", "")), layer_index])
-		return null
-
-	var texture: Texture2D = load(texture_path) as Texture2D
+	var texture: Texture2D = _get_texture_for_selection_layer(selection, layer)
 	if texture == null:
-		push_warning("Failed to load combined texture: %s" % texture_path)
+		push_warning("Failed to resolve combined texture for selection layer: %s [layer %d]" % [str(selection.get("path_string", "")), layer_index])
 		return null
 
 	var sprite_frames: SpriteFrames = _build_sprite_frames(selection, texture)
@@ -347,6 +349,7 @@ func _create_sprite_from_selection_layer(selection: Dictionary, layer: Dictionar
 	sprite.set_meta("selection_data", selection.duplicate(true))
 	sprite.set_meta("layer_data", layer.duplicate(true))
 	sprite.set_meta("layer_index", layer_index)
+	sprite.set_meta("texture_path", _resolve_texture_path_from_selection_layer(selection, layer))
 
 	var current_name: String = animation_name
 	if current_name != "" and sprite_frames.has_animation(current_name):
@@ -455,6 +458,81 @@ func _apply_animation_to_sprite(sprite: AnimatedSprite2D) -> void:
 		sprite.stop()
 
 
+func _apply_expression_to_sprites() -> void:
+	for sprite in m_sprite_nodes:
+		if not is_instance_valid(sprite):
+			continue
+
+		var selection = sprite.get_meta("selection_data", {})
+		var layer = sprite.get_meta("layer_data", {})
+
+		if typeof(selection) != TYPE_DICTIONARY or typeof(layer) != TYPE_DICTIONARY:
+			continue
+
+		var was_playing: bool = sprite.is_playing()
+		var old_animation: StringName = sprite.animation
+		var old_frame: int = sprite.frame
+		var old_progress: float = sprite.frame_progress
+
+		var texture: Texture2D = _get_texture_for_selection_layer(selection, layer)
+		if texture == null:
+			continue
+
+		var sprite_frames: SpriteFrames = _build_sprite_frames(selection, texture)
+		if sprite_frames == null:
+			continue
+
+		sprite.sprite_frames = sprite_frames
+		sprite.set_meta("texture_path", _resolve_texture_path_from_selection_layer(selection, layer))
+
+		var target_animation: String = animation_name
+		if target_animation == "":
+			target_animation = str(old_animation)
+
+		if target_animation != "" and sprite_frames.has_animation(target_animation):
+			sprite.animation = target_animation
+		else:
+			var all_names: PackedStringArray = sprite_frames.get_animation_names()
+			if not all_names.is_empty():
+				sprite.animation = all_names[0]
+
+		var frame_count: int = sprite_frames.get_frame_count(sprite.animation)
+		if frame_count > 0:
+			sprite.frame = clampi(old_frame, 0, frame_count - 1)
+			sprite.frame_progress = old_progress
+
+		if is_playing and was_playing:
+			sprite.play()
+		else:
+			sprite.stop()
+
+
+func _prewarm_expression_texture_cache() -> void:
+	var expression_names: PackedStringArray = _get_expression_enum_names()
+	if expression_names.is_empty():
+		return
+
+	var original_expression: int = m_expression
+
+	for expr_index in range(expression_names.size()):
+		m_expression = expr_index
+
+		for sprite in m_sprite_nodes:
+			if not is_instance_valid(sprite):
+				continue
+
+			var selection = sprite.get_meta("selection_data", {})
+			var layer = sprite.get_meta("layer_data", {})
+			if typeof(selection) != TYPE_DICTIONARY or typeof(layer) != TYPE_DICTIONARY:
+				continue
+
+			var texture_path: String = _resolve_texture_path_from_selection_layer(selection, layer)
+			if texture_path != "":
+				_get_cached_texture(texture_path)
+
+	m_expression = original_expression
+
+
 func _get_direction_codes_for_animation(direction_count: int) -> PackedStringArray:
 	if direction_count <= 1:
 		return PackedStringArray(["s"])
@@ -494,6 +572,39 @@ func _get_layer_zpos(layer: Dictionary) -> float:
 	return 0.0
 
 
+func _get_texture_for_selection_layer(selection: Dictionary, layer: Dictionary) -> Texture2D:
+	var texture_path: String = _resolve_texture_path_from_selection_layer(selection, layer)
+	#print(texture_path)
+	if texture_path == "":
+		return null
+
+	return _get_cached_texture(texture_path)
+
+
+func _get_cached_texture(texture_path: String) -> Texture2D:
+	#print("_get_cached_texture: ", texture_path)
+	if texture_path == "":
+		return null
+
+	#print(texture_path)
+	if m_texture_cache.has(texture_path):
+		var cached = m_texture_cache[texture_path]
+		if cached is Texture2D:
+			return cached
+
+	var texture: Texture2D = load(texture_path) as Texture2D
+	if texture == null:
+		push_warning("Failed to load combined texture: %s" % texture_path)
+		return null
+
+	m_texture_cache[texture_path] = texture
+	return texture
+
+
+func _clear_texture_cache() -> void:
+	m_texture_cache.clear()
+
+
 func _resolve_texture_path_from_selection_layer(selection: Dictionary, layer: Dictionary) -> String:
 	var metadata_root_path: String = str(m_metadata.get("target_path", ""))
 	var spritesheets_dir: String = str(m_metadata.get("spritesheets_dir", "spritesheets"))
@@ -511,14 +622,12 @@ func _resolve_texture_path_from_selection_layer(selection: Dictionary, layer: Di
 	if resolved_base_path == "":
 		return ""
 
-	#print("_resolve_texture_path_from_selection_layer 2 ", resolved_base_path)
 	var base_dir: String = _join_path(spritesheets_root, _normalize_relative_dir(resolved_base_path))
 	var candidate: String = _join_path(base_dir, "%s.png" % variant)
+	#print("_resolve_texture_path_from_selection_layer: ", candidate)
 	if ResourceLoader.exists(candidate):
 		return candidate
 
-	#print("_resolve_texture_path_from_selection_layer: ", candidate)
-	#print("_resolve_texture_path_from_selection_layer 4 ")
 	return ""
 
 
@@ -544,7 +653,6 @@ func _resolve_base_path_from_layer(selection: Dictionary, body_type: String, lay
 	base_dir = _apply_replace_in_path(selection, base_dir)
 	base_dir = _normalize_relative_dir(base_dir)
 
-	# If any unresolved token remains, this path cannot match generated pngs.
 	if base_dir.contains("${"):
 		return ""
 
@@ -565,57 +673,67 @@ func _resolve_base_paths_from_selection_layers(selection: Dictionary, body_type:
 
 	return out
 
-
 func _apply_replace_in_path(selection: Dictionary, template_path: String) -> String:
 	var replace_value = selection.get("replace_in_path", {})
+	var resolved: String = template_path
+
+	# Replace head expression folder with ${expression}
+	var expr_regex := RegEx.new()
+	if expr_regex.compile("(head/faces/\\$\\{head\\}/)[^/]+") == OK:
+		var match := expr_regex.search(resolved)
+		if match:
+			resolved = resolved.replace(match.get_string(0), match.get_string(1) + "${expression}")
+			
+
 	if typeof(replace_value) != TYPE_DICTIONARY:
-		return _normalize_relative_dir(template_path)
+		return _normalize_relative_dir(resolved)
 
 	var replace_map: Dictionary = replace_value
-	var resolved: String = template_path
 
 	var token_regex := RegEx.new()
 	if token_regex.compile("\\$\\{([^}]+)\\}") != OK:
 		return _normalize_relative_dir(resolved)
-	
-	var matches: Array = token_regex.search_all(template_path)
-	#if !matches.is_empty():
-		#print(template_path, ": ", matches)
+
+	var matches: Array = token_regex.search_all(resolved)
 	
 	for match in matches:
 		var token_name: String = match.get_string(1)
 		var selected_value: String = _get_selected_value_for_token(token_name)
 		if selected_value == "":
 			selected_value = "none"
-		#print(token_name, ": ", selected_value)
 		
 		var replacement: String = _get_replace_in_path_replacement(replace_map, token_name, selected_value)
 		resolved = resolved.replace("${%s}" % token_name, replacement)
-	#if !matches.is_empty():
-		#print(resolved)
 	return _normalize_relative_dir(resolved)
-	
+
+
 func _get_replace_in_path_replacement(replace_map: Dictionary, token_name: String, selected_value: String) -> String:
 	if not replace_map.has(token_name):
+		if token_name == "expression":
+			return m_default_expression_replacement.get(selected_value, "neutral")
 		return ""
+
 	var token_value = replace_map[token_name]
 	if typeof(token_value) != TYPE_DICTIONARY:
 		return ""
+
 	selected_value = selected_value.to_lower()
-	#print(token_name, ": ", selected_value)
+
 	var token_dict: Dictionary = token_value
 	for key in token_dict.keys():
-		var key_1 = key.to_lower()
+		var key_1: String = str(key).to_lower()
 		if selected_value == key_1:
 			return str(token_dict[key]).strip_edges()
-		var key_2 = key_1.replace("_", " ")
+
+		var key_2: String = key_1.replace("_", " ")
 		if selected_value == key_2:
 			return str(token_dict[key]).strip_edges()
-	
+
 	if token_dict.has("none"):
 		return str(token_dict["none"]).strip_edges()
 
 	return ""
+
 
 func _get_selected_value_for_token(token_name: String) -> String:
 	if token_name == "expression":
@@ -626,7 +744,6 @@ func _get_selected_value_for_token(token_name: String) -> String:
 		return ""
 
 	var selections: Dictionary = selections_value
-	#print(selections)
 	for path_key in selections.keys():
 		var path_string: String = str(path_key).strip_edges()
 		if path_string == "":
@@ -638,23 +755,20 @@ func _get_selected_value_for_token(token_name: String) -> String:
 		}
 
 		var resolved_selection: Dictionary = _resolve_selection_definition(configured_selection)
-		
 		if resolved_selection.is_empty():
 			continue
-			
 
 		var type_name: String = str(resolved_selection.get("type_name", "")).strip_edges()
 		if type_name != token_name:
 			continue
-		
+
 		var resolved_name: String = str(resolved_selection.get("name", "")).strip_edges()
 		if resolved_name != "":
 			return resolved_name
-		
+
 		var variant: String = str(resolved_selection.get("variant", "")).strip_edges()
 		if variant != "":
 			return variant
-
 
 	return ""
 
@@ -820,7 +934,8 @@ func _join_path(a: String, b: String) -> String:
 
 
 func _ready() -> void:
-	_reload()
+	if m_metadata_path.strip_edges() != "":
+		_reload()
 
 	if Engine.is_editor_hint():
 		notify_property_list_changed()

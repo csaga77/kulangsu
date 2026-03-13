@@ -13,6 +13,7 @@ m_selection_data = {
 "body/body": "light",
 "feet/boots/feet_boots_basic": "black",
 "hair/long/hair_bangslong": "blonde",
+"head/faces/face_neutral": "light",
 "head/heads/human/heads_human_male": "light",
 "legs/pants/legs_pants": "black",
 "torso/shirts/shortsleeve/torso_clothes_shortsleeve": "pink"
@@ -28,7 +29,8 @@ script = ExtResource("1_vfqxp")
 
 [node name="universal_lpc_sprite" type="Node2D" parent="." unique_id=677762815]
 script = ExtResource("3_esupq")
-animation = 11
+animation = 24
+m_expression = 2
 m_configuration = {
 "body_type": "male",
 "body_type_index": 0,
@@ -36,6 +38,7 @@ m_configuration = {
 "body/body": "light",
 "feet/boots/feet_boots_basic": "black",
 "hair/long/hair_bangslong": "blonde",
+"head/faces/face_neutral": "light",
 "head/heads/human/heads_human_male": "light",
 "legs/pants/legs_pants": "black",
 "torso/shirts/shortsleeve/torso_clothes_shortsleeve": "pink"
