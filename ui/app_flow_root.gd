@@ -29,6 +29,7 @@ var m_game_root: Node = null
 
 var m_viewport_root: Control
 var m_ui_root: Control
+var m_backdrop: ColorRect
 var m_boot_screen: Control
 var m_title_screen: Control
 var m_hud: Control
@@ -88,10 +89,10 @@ func _build_app_shell() -> void:
 	m_viewport_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	ui_layer.add_child(m_viewport_root)
 
-	var backdrop := ColorRect.new()
-	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
-	backdrop.color = Color(0.06, 0.10, 0.14, 1.0)
-	m_viewport_root.add_child(backdrop)
+	m_backdrop = ColorRect.new()
+	m_backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	m_backdrop.color = Color(0.06, 0.10, 0.14, 1.0)
+	m_viewport_root.add_child(m_backdrop)
 
 	m_ui_root = Control.new()
 	m_ui_root.name = "Root"
@@ -224,6 +225,7 @@ func _show_boot_sequence() -> void:
 func _show_title() -> void:
 	m_state = ScreenState.TITLE
 	get_tree().paused = false
+	_set_panel_visible(m_backdrop, true)
 	_set_panel_visible(m_boot_screen, false)
 	_set_panel_visible(m_title_screen, true)
 	_set_panel_visible(m_hud, false)
@@ -250,9 +252,6 @@ func _ensure_game_loaded() -> void:
 
 
 func _begin_gameplay(is_free_walk: bool, is_continue: bool = false) -> void:
-	_ensure_game_loaded()
-	m_game_root.visible = true
-
 	if is_continue:
 		AppState.configure_continue()
 	elif is_free_walk:
@@ -260,6 +259,12 @@ func _begin_gameplay(is_free_walk: bool, is_continue: bool = false) -> void:
 	else:
 		AppState.configure_new_game()
 
+	_ensure_game_loaded()
+	m_game_root.visible = true
+	if m_game_root.has_method("sync_ui_state"):
+		m_game_root.call("sync_ui_state")
+
+	_set_panel_visible(m_backdrop, false)
 	_set_panel_visible(m_boot_screen, false)
 	_set_panel_visible(m_title_screen, false)
 	_set_panel_visible(m_hud, true)
@@ -280,6 +285,7 @@ func _open_overlay(new_state: ScreenState) -> void:
 	get_tree().paused = true
 	_refresh_journal_content()
 	_refresh_ending_content()
+	_set_panel_visible(m_backdrop, true)
 	_set_panel_visible(m_hud, true)
 	_set_panel_visible(m_journal_panel, new_state == ScreenState.JOURNAL)
 	_set_panel_visible(m_pause_panel, new_state == ScreenState.PAUSE)
@@ -294,6 +300,7 @@ func _resume_gameplay() -> void:
 		return
 	m_state = ScreenState.PLAYING
 	get_tree().paused = false
+	_set_panel_visible(m_backdrop, false)
 	_set_panel_visible(m_journal_panel, false)
 	_set_panel_visible(m_pause_panel, false)
 	_set_panel_visible(m_settings_panel, false)
@@ -307,6 +314,7 @@ func _close_settings_panel() -> void:
 	if _is_game_active():
 		_open_overlay(ScreenState.PAUSE)
 	else:
+		_set_panel_visible(m_backdrop, true)
 		_set_panel_visible(m_settings_panel, false)
 		_show_title()
 
@@ -314,6 +322,7 @@ func _close_settings_panel() -> void:
 func _show_confirm(title_text: String, body_text: String, action: Callable) -> void:
 	m_confirm_action = action
 	m_confirm_panel.call("set_content", title_text, body_text)
+	_set_panel_visible(m_backdrop, true)
 	_set_panel_visible(m_confirm_panel, true)
 	m_state = ScreenState.CONFIRM
 	get_tree().paused = _is_game_active()
@@ -324,13 +333,17 @@ func _hide_confirm() -> void:
 	if _is_game_active():
 		if m_pause_panel.visible:
 			m_state = ScreenState.PAUSE
+			_set_panel_visible(m_backdrop, true)
 		elif m_ending_panel.visible:
 			m_state = ScreenState.ENDING
+			_set_panel_visible(m_backdrop, true)
 		else:
 			m_state = ScreenState.PLAYING
 			get_tree().paused = false
+			_set_panel_visible(m_backdrop, false)
 	else:
 		m_state = ScreenState.TITLE
+		_set_panel_visible(m_backdrop, true)
 
 
 func _return_to_title() -> void:

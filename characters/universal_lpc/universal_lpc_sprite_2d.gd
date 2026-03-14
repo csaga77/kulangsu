@@ -320,7 +320,6 @@ func _create_sprite_from_selection_layer(selection: Dictionary, layer: Dictionar
 	sprite.name = "%s_layer_%d" % [str(selection.get("name", str(selection.get("path_string", "sprite")))), layer_index]
 	sprite.sprite_frames = sprite_frames
 	sprite.position = Vector2.ZERO
-	sprite.z_index = int(round(_get_layer_zpos(layer)))
 	sprite.centered = false
 	sprite.set_meta("selection_data", selection.duplicate(true))
 	sprite.set_meta("layer_data", layer.duplicate(true))

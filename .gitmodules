@@ -10,3 +10,7 @@
 	path = 3rdparty/Universal-LPC-Spritesheet-Character-Generator
 	url = ../../csaga77-forks/Universal-LPC-Spritesheet-Character-Generator.git
 	branch = master
+[submodule "codex_agents"]
+	path = codex_agents
+	url = ../codex_agent.git
+	branch = main
