@@ -23,6 +23,7 @@ The module is a sandbox component, not a full island-facing feature yet.
 - AI scheduler: [`game/grid_board_game/board_ai_agent.gd`](game/grid_board_game/board_ai_agent.gd)
 - AI strategies: [`game/grid_board_game/ai`](game/grid_board_game/ai)
 - Manual test scene: [`game/grid_board_game/test_grid_board_game.tscn`](game/grid_board_game/test_grid_board_game.tscn)
+- Terminal turn regression scene: [`game/grid_board_game/test_terminal_turn_state.tscn`](game/grid_board_game/test_terminal_turn_state.tscn)
 
 ## Current Structure
 
@@ -152,6 +153,8 @@ If a new rules resource carries internal state, it must fully round-trip through
 - Buttons for restart, undo, and redo
 
 This scene is useful for interaction checks, but it is not a substitute for targeted automated tests around rules, AI legality, and state restoration.
+
+[`game/grid_board_game/test_terminal_turn_state.tscn`](game/grid_board_game/test_terminal_turn_state.tscn) is a focused regression scene that boots, plays a forced Gomoku win, and exits. It verifies that terminal match state keeps the winning player as the visible turn and as the final `turn_changed` value.
 
 ## Known Gaps
 

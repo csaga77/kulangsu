@@ -64,6 +64,7 @@ The feel is closer to a short physics toy than a scored sports game. The stronge
 - active turn ball
 - winner and loser tracking
 - restart and game-over signaling
+- configured board spawn bounds
 
 It is the orchestration layer, not the rule layer. Modes are meant to decide when kicks are allowed, how winners are assigned, and when the round ends.
 
@@ -75,6 +76,8 @@ It is the orchestration layer, not the rule layer. Modes are meant to decide whe
 - shared velocity thresholds
 - initial throw behavior
 - ball event hooks
+
+Ball events now enter modes through the root game only, which keeps kick and hole logic from being double-processed.
 
 Two modes exist today:
 
@@ -104,6 +107,7 @@ Current implementations:
 - [`game/marble_game/marble_ball_ai_controller.gd`](game/marble_game/marble_ball_ai_controller.gd): delayed kick toward the hole with jitter and strength variation
 
 Controllers are resources, so a scene can mix human and AI marbles without changing the marble body script.
+The shared spawn helper now samples inside the root game’s exported board bounds before throwing a marble away from the hole.
 
 ### Hole and Damping
 
@@ -161,33 +165,16 @@ Because the hole is off-center, spawn and shot tuning must account for the small
 - `FreeMode` is useful for rapid feel iteration.
 - `TurnMode` already has the beginnings of a readable winner / loser structure.
 
-## Review Findings To Address
+## Recent Stability Notes
 
-### 1. Mode event delivery is currently duplicated
-
-The root game forwards ball events to the active mode, and the base mode also connects directly to the same ball signals. That means `TurnMode` logic can process a single kick, collision, or hole event twice.
-
-Impact:
-
-- kicks can consume two state transitions
-- chance counters can decrement too far
-- first-hit extra chance logic can be skipped because the kick count increments twice
-
-### 2. Initial spawn positions are not constrained to the board
-
-Restart throws sample a ring around the hole, but they do not clamp or validate positions against the board bounds. Because the hole is near the top-left of a `544 x 352` arena, some spawn points can land outside the intended playfield.
-
-Impact:
-
-- inconsistent starts
-- possible wall-overlap or out-of-bounds spawns
-- harder-to-tune restart feel
+- Mode callbacks are routed through [`game/marble_game/marble_game.gd`](game/marble_game/marble_game.gd) only.
+- Restart spawn sampling uses the scene’s configured board bounds and avoids obvious ball overlap when possible.
+- The prototype currently loads without the earlier stale scene connection issue.
 
 ## Recommended Next Steps
 
-1. Keep only one event-routing path into each mode: either root forwarding or per-mode direct signal connections.
-2. Make spawn selection board-aware by validating against bounds and, ideally, nearby collisions.
-3. Add a small deterministic probe or test scene for turn-mode rules so kick counting, extra chances, and loser resolution can be verified quickly after changes.
+1. Add a small deterministic probe or test scene for turn-mode rules so kick counting, extra chances, and loser resolution can be verified quickly after changes.
+2. If the board becomes more crowded, upgrade spawn selection from simple clearance checks to shape queries against live physics.
 
 ## Fit With The Main Game
 

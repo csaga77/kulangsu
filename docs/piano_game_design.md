@@ -72,6 +72,7 @@ The loaded onset list is transformed in a few steps:
 - energy-band lane assignment
 
 The result is a reduced chart meant to stay readable instead of mirroring every detected transient in the source audio.
+If those filters remove every note, the prototype should fail the load instead of starting a meaningless zero-note run.
 
 ### 3. Lane layout
 
