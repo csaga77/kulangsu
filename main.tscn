@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/human_body_2d.tscn" id="5_lquwl"]
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="6_7mycd"]
 [ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/control/player_controller.gd" id="6_272bh"]
+[ext_resource type="PackedScene" uid="uid://c1le3qk68o7lw" path="res://gui/speech_balloon.tscn" id="7_272bh"]
 
 [sub_resource type="Resource" id="Resource_qjl73"]
 script = ExtResource("6_272bh")
@@ -14,10 +15,10 @@ metadata/_custom_type_script = "uid://cmokaqask0s2p"
 [node name="main" type="Node2D" unique_id=1387312363]
 y_sort_enabled = true
 material = ExtResource("1_kek77")
-position = Vector2(25, -3)
 script = ExtResource("1_lquwl")
 
-[node name="terrain" parent="." unique_id=382500148 instance=ExtResource("3_7mycd")]
+[node name="terrain" parent="." unique_id=382500148 node_paths=PackedStringArray("player") instance=ExtResource("3_7mycd")]
+player = NodePath("../player")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=369660366]
 position = Vector2(12357, 19805)
