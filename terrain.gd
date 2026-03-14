@@ -2,6 +2,12 @@
 class_name Terrain
 extends IsometricBlock
 
+const TERRAIN_TILESET := preload("res://resources/tilesets/terrain_0_tiles.tres")
+const PAVEMENT_TILESET := preload("res://resources/tilesets/pavement_0_tilesets.tres")
+const SYMBOLS_TILESET := preload("res://resources/tilesets/symbols_0_tiles.tres")
+const WATER_MATERIAL := preload("res://resources/materials/water.tres")
+const ISO_TILEMAP_SCRIPT := preload("res://common/isometric_block.gd")
+
 @export var reload: bool = false:
 	set(new_reload):
 		if not new_reload:
@@ -34,15 +40,18 @@ extends IsometricBlock
 		_on_player_changed()
 
 		
-@onready var m_base    :TileMapLayer = $ground/base
-@onready var m_streets :TileMapLayer = $ground/streets
-@onready var m_water   :TileMapLayer = $water
-@onready var m_building_mask :TileMapLayer = $building_mask
+var m_base: TileMapLayer
+var m_streets: TileMapLayer
+var m_water: TileMapLayer
+var m_building_mask: TileMapLayer
 var m_is_ready := false
 var m_player :HumanBody2D
 
 func _ready() -> void:
 	m_is_ready = true
+	_ensure_generated_layers()
+	if _should_generate_terrain():
+		_paint_terrain_from_mask()
 	if m_player:
 		if !m_player.global_position_changed.is_connected(self._on_player_moved):
 			m_player.global_position_changed.connect(self._on_player_moved)
@@ -55,12 +64,55 @@ func _on_player_changed():
 		_on_player_moved()
 
 func _reload_terrain() -> void:
-	if not Engine.is_editor_hint():
-		return
-		
 	if not m_is_ready:
 		return
 
+	_ensure_generated_layers()
+	_paint_terrain_from_mask()
+
+func _tile_map_is_empty(layer: TileMapLayer) -> bool:
+	if not is_instance_valid(layer):
+		return true
+	return layer.get_used_rect().size == Vector2i.ZERO
+
+func _should_generate_terrain() -> bool:
+	if mask_file.is_empty():
+		return false
+	return _tile_map_is_empty(m_base) or _tile_map_is_empty(m_streets) or _tile_map_is_empty(m_water)
+
+func _configure_generated_layer(layer: TileMapLayer, layer_name: String, parent: Node, index: int) -> TileMapLayer:
+	if is_instance_valid(layer):
+		return layer
+
+	layer = TileMapLayer.new()
+	layer.name = layer_name
+	parent.add_child(layer)
+	parent.move_child(layer, min(index, parent.get_child_count() - 1))
+	return layer
+
+func _ensure_generated_layers() -> void:
+	var ground := $ground as Node
+
+	m_base = _configure_generated_layer(ground.get_node_or_null("base") as TileMapLayer, "base", ground, 0)
+	m_base.tile_set = TERRAIN_TILESET
+
+	m_streets = _configure_generated_layer(ground.get_node_or_null("streets") as TileMapLayer, "streets", ground, 1)
+	m_streets.tile_set = PAVEMENT_TILESET
+
+	m_water = _configure_generated_layer(get_node_or_null("water") as TileMapLayer, "water", self, 1)
+	m_water.y_sort_enabled = true
+	m_water.material = WATER_MATERIAL
+	m_water.position = Vector2(0, 8)
+	m_water.tile_set = TERRAIN_TILESET
+	m_water.set_script(ISO_TILEMAP_SCRIPT)
+
+	m_building_mask = _configure_generated_layer(get_node_or_null("building_mask") as TileMapLayer, "building_mask", self, 2)
+	m_building_mask.y_sort_enabled = true
+	m_building_mask.tile_set = SYMBOLS_TILESET
+	m_building_mask.set_script(ISO_TILEMAP_SCRIPT)
+	m_building_mask.only_shown_in_editor = true
+
+func _paint_terrain_from_mask() -> void:
 	m_base.clear()
 	m_water.clear()
 	m_streets.clear()
