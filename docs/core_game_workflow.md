@@ -391,6 +391,12 @@ Resident notes should unlock only after introduction and should answer:
 
 This gives exploration context without turning the game into a dense quest log.
 
+Current prototype support for those notes now lives in:
+
+- resident content catalog: [`game/resident_catalog.gd`](game/resident_catalog.gd)
+- runtime resident state: [`game/app_state.gd`](game/app_state.gd)
+- resident journal rendering: [`ui/screens/journal_overlay.gd`](ui/screens/journal_overlay.gd)
+
 ## Save and Recovery Checkpoints
 
 The intended flow already avoids harsh failure, so save behavior should support continuity rather than tension.
@@ -562,7 +568,7 @@ Avoid:
 ### Systems to add next
 
 1. Quest state machine
-2. Journal / map UI
+2. Full dialogue panel layered on top of the existing resident note system
 3. Landmark objective triggers
 4. Melody fragment inventory
 5. Endgame festival sequence controller

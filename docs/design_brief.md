@@ -74,6 +74,7 @@ Input expectations:
 
 ## If You Need More Detail
 
+- NPC and resident system slice: [`docs/npc_system_design.md`](docs/npc_system_design.md)
 - Reusable board game module: [`docs/grid_board_game_design.md`](docs/grid_board_game_design.md)
 - Marble game prototype rules and architecture: [`docs/marble_game_design.md`](docs/marble_game_design.md)
 - Piano mini-game prototype and integration guidance: [`docs/piano_game_design.md`](docs/piano_game_design.md)

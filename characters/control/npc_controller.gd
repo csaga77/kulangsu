@@ -6,6 +6,8 @@ extends BaseController
 @export_category("Behavior Tree (JSON)")
 @export var use_json_bt := true
 @export_file var bt_json_path := "res://resources/bt/bt_default_npc.json"
+@export_category("Resident")
+@export var resident_id: StringName
 
 var m_target: Node2D = null
 var m_bt_tree: BTTree
@@ -13,7 +15,8 @@ var m_is_building_bt_tree := false
 
 func _on_setup() -> void:
 	super._on_setup()
-	_schedule_built_bt_tree()
+	if use_json_bt:
+		_schedule_built_bt_tree()
 
 func _schedule_built_bt_tree():
 	if m_is_building_bt_tree:
@@ -40,6 +43,14 @@ func _load_BT_tree():
 	m_is_building_bt_tree = false
 	if m_bt_tree == null:
 		printerr("Could not build BT tree!")
+
+
+func get_resident_id() -> String:
+	return String(resident_id)
+
+
+func refresh_dialogue() -> void:
+	_update_balloon_content()
 
 func _get_default_params() -> Dictionary:
 	return {
@@ -93,5 +104,14 @@ func _get_speech(target_obj: Node2D) -> String:
 	if !is_instance_valid(m_character) or !is_instance_valid(target_obj):
 		return ""
 	if !target_obj.is_in_group("player"):
-		return "" #only talk to player
-	return "{0}: ♪...".format([m_character.name])
+		return ""
+
+	var resident_key := get_resident_id()
+	if resident_key.is_empty():
+		return "%s: ♪..." % m_character.name
+
+	var display_name := AppState.get_resident_display_name(resident_key)
+	var speech := AppState.get_resident_ambient_line(resident_key)
+	if speech.is_empty():
+		return ""
+	return "%s: %s" % [display_name, speech]

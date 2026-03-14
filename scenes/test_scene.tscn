@@ -30,14 +30,20 @@ light_mode = 1
 
 [sub_resource type="Resource" id="Resource_ntc4i"]
 script = ExtResource("13_ntc4i")
+use_json_bt = false
+resident_id = &"ferry_caretaker"
 metadata/_custom_type_script = "uid://vk6rfdoxtkgv"
 
 [sub_resource type="Resource" id="Resource_pln1h"]
 script = ExtResource("13_ntc4i")
+use_json_bt = false
+resident_id = &"church_caretaker"
 metadata/_custom_type_script = "uid://vk6rfdoxtkgv"
 
 [sub_resource type="Resource" id="Resource_hf2sn"]
 script = ExtResource("13_ntc4i")
+use_json_bt = false
+resident_id = &"tunnel_guide"
 metadata/_custom_type_script = "uid://vk6rfdoxtkgv"
 
 [node name="test_scene" type="Node2D" unique_id=1018337693]
@@ -89,17 +95,17 @@ visible = false
 position = Vector2(-48, 132)
 texture = ExtResource("7_s36qc")
 
-[node name="npc_1" parent="." unique_id=1255111382 instance=ExtResource("5_rpuu0")]
+[node name="CaretakerLian" parent="." unique_id=1255111382 instance=ExtResource("5_rpuu0")]
 position = Vector2(221, 303)
 direction = -180.0
 controller = SubResource("Resource_ntc4i")
 
-[node name="npc_3" parent="." unique_id=1971691183 instance=ExtResource("5_rpuu0")]
+[node name="ChoirCaretakerMei" parent="." unique_id=1971691183 instance=ExtResource("5_rpuu0")]
 position = Vector2(158, 301)
 direction = 0.0
 is_running = false
 controller = SubResource("Resource_pln1h")
 
-[node name="npc_2" parent="." unique_id=407062048 instance=ExtResource("5_rpuu0")]
+[node name="TunnelGuideRen" parent="." unique_id=407062048 instance=ExtResource("5_rpuu0")]
 position = Vector2(-392, -55)
 controller = SubResource("Resource_hf2sn")

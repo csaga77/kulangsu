@@ -3,6 +3,15 @@ extends Node2D
 
 const DEFAULT_HINT := "R Inspect   J Journal   Esc Pause"
 const LANDMARK_SYNC_DISTANCE := 1600.0
+const NPC_SCENE: PackedScene = preload("res://characters/human_body_2d.tscn")
+const PROTOTYPE_RESIDENT_SPAWNS := [
+	{
+		"resident_id": "tower_keeper",
+		"offset": Vector2(180.0, 92.0),
+		"direction": -155.0,
+		"mood": HumanBody2D.FacialMoodEnum.NORMAL,
+	},
+]
 
 @onready var m_player :HumanBody2D = $player
 @onready var m_terrain: Terrain = $terrain
@@ -16,6 +25,7 @@ var m_is_ready := false
 var m_player_controller: PlayerController = null
 var m_closest_object: Node2D = null
 var m_landmark_nodes: Dictionary = {}
+var m_resident_root: Node2D = null
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -24,6 +34,7 @@ func _ready() -> void:
 		m_terrain.player = m_player
 	GameGlobal.get_instance().set_player(m_player)
 	_cache_landmarks()
+	_spawn_prototype_residents()
 	_connect_ui_signals()
 	sync_ui_state()
 
@@ -33,12 +44,7 @@ func sync_ui_state() -> void:
 		return
 
 	AppState.set_landmarks(PackedStringArray(m_landmark_nodes.keys()))
-	AppState.set_residents(PackedStringArray([
-		"Caretaker",
-		"Ferry Worker",
-		"Tunnel Guide",
-		"Tower Keeper",
-	]))
+	AppState.set_residents(AppState.get_known_resident_names())
 	_sync_location_from_player()
 	_update_hint_text(m_closest_object)
 
@@ -111,6 +117,20 @@ func _on_inspect_requested() -> void:
 		AppState.set_save_status("Inspect: nothing nearby")
 		return
 
+	var resident_controller := _get_resident_controller(m_closest_object)
+	if resident_controller != null:
+		var resident_id := resident_controller.get_resident_id()
+		var interaction := AppState.interact_with_resident(resident_id)
+		var resident_name := AppState.get_resident_display_name(resident_id)
+
+		if interaction.is_empty():
+			AppState.set_save_status("Talked with %s" % resident_name)
+
+		resident_controller.refresh_dialogue()
+		AppState.set_residents(AppState.get_known_resident_names())
+		_update_hint_text(m_closest_object)
+		return
+
 	var display_name := _display_name_for_node(m_closest_object)
 	AppState.set_save_status("Inspect: %s" % display_name)
 
@@ -121,6 +141,9 @@ func _update_hint_text(target: Node2D) -> void:
 		return
 
 	var display_name := _display_name_for_node(target)
+	if _get_resident_controller(target) != null:
+		AppState.set_hint("R Talk to %s   J Journal   Esc Pause" % display_name)
+		return
 	AppState.set_hint("R Inspect %s   J Journal   Esc Pause" % display_name)
 
 
@@ -139,6 +162,10 @@ func _display_name_for_node(target: Node2D) -> String:
 	if !is_instance_valid(target):
 		return ""
 
+	var resident_controller := _get_resident_controller(target)
+	if resident_controller != null:
+		return AppState.get_resident_display_name(resident_controller.get_resident_id())
+
 	for landmark_name in m_landmark_nodes.keys():
 		if target == m_landmark_nodes[landmark_name]:
 			return landmark_name
@@ -156,3 +183,43 @@ func _display_name_for_node(target: Node2D) -> String:
 		output += current_char
 
 	return output
+
+
+func _spawn_prototype_residents() -> void:
+	if Engine.is_editor_hint():
+		return
+	if !is_instance_valid(m_player):
+		return
+	if m_resident_root != null and is_instance_valid(m_resident_root):
+		return
+
+	m_resident_root = Node2D.new()
+	m_resident_root.name = "ResidentPrototypes"
+	add_child(m_resident_root)
+
+	for spec in PROTOTYPE_RESIDENT_SPAWNS:
+		var npc := NPC_SCENE.instantiate() as HumanBody2D
+		if npc == null:
+			continue
+
+		var controller := NPCController.new()
+		var resident_id := String(spec.get("resident_id", ""))
+		controller.use_json_bt = false
+		controller.resident_id = StringName(resident_id)
+		controller.interaction_radius = 88.0
+
+		npc.name = AppState.get_resident_display_name(resident_id)
+		npc.controller = controller
+		npc.direction = float(spec.get("direction", 0.0))
+		npc.facial_mood = int(spec.get("mood", HumanBody2D.FacialMoodEnum.NORMAL)) as HumanBody2D.FacialMoodEnum
+
+		m_resident_root.add_child(npc)
+		var spawn_offset: Vector2 = spec.get("offset", Vector2.ZERO)
+		npc.global_position = m_player.global_position + spawn_offset
+
+
+func _get_resident_controller(target: Node2D) -> NPCController:
+	var human := target as HumanBody2D
+	if human == null:
+		return null
+	return human.controller as NPCController

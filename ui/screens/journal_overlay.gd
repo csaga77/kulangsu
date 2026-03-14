@@ -22,7 +22,7 @@ func refresh_from_state() -> void:
 		"\n".join(AppState.landmarks),
 		AppState.location,
 	]
-	m_residents_body.text = "Known residents\n%s" % "\n".join(AppState.residents)
+	m_residents_body.text = "Resident Notes\n%s" % AppState.build_resident_journal_text()
 	m_melody_body.text = "Melody fragments\nRecovered: %d / %d" % [
 		AppState.fragments_found,
 		AppState.fragments_total,
