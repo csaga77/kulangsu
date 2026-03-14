@@ -1,5 +1,7 @@
 # Kulangsu UI Workflow
 
+Read [`/Users/bchen/Workspace/Godot/kulangsu/docs/design_brief.md`](/Users/bchen/Workspace/Godot/kulangsu/docs/design_brief.md) first for the minimum-token summary. Use this doc only when full menu and screen flow detail is needed.
+
 ## UI Goal
 Design a full UI journey from app launch to app exit that supports a calm exploration game, stays lightweight during play, and gives the player clear orientation without breaking immersion.
 

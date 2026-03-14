@@ -1,5 +1,7 @@
 # Kulangsu UI Design Context
 
+Read [`/Users/bchen/Workspace/Godot/kulangsu/docs/design_brief.md`](/Users/bchen/Workspace/Godot/kulangsu/docs/design_brief.md) first for the minimum-token summary. Use this doc only when UI architecture or layout constraints need more detail.
+
 ## Purpose
 This document captures the current UI design direction and implementation context so future UI work can continue from a stable baseline.
 

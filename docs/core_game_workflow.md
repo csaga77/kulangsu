@@ -1,5 +1,7 @@
 # Kulangsu Core Game Workflow
 
+Read [`/Users/bchen/Workspace/Godot/kulangsu/docs/design_brief.md`](/Users/bchen/Workspace/Godot/kulangsu/docs/design_brief.md) first for the minimum-token summary. Use this doc only when story and progression structure need more detail.
+
 ## Design Goal
 Build the game around a calm exploration-to-performance loop:
 
