@@ -54,6 +54,16 @@ grow_horizontal = 2
 mouse_filter = 2
 color = Color(0.937255, 0.85098, 0.678431, 0.08)
 
+[node name="SunWash" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_left = 0.52
+anchor_right = 1.0
+offset_bottom = 436.0
+grow_horizontal = 2
+mouse_filter = 2
+color = Color(0.952941, 0.776471, 0.470588, 0.1)
+
 [node name="BottomFade" type="ColorRect" parent="."]
 layout_mode = 1
 anchors_preset = 12
@@ -81,97 +91,218 @@ grow_vertical = 2
 [node name="Center" type="CenterContainer" parent="SafeArea"]
 layout_mode = 2
 
-[node name="Content" type="VBoxContainer" parent="SafeArea/Center"]
-custom_minimum_size = Vector2(320, 0)
+[node name="Content" type="HBoxContainer" parent="SafeArea/Center"]
+custom_minimum_size = Vector2(1360, 0)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
-theme_override_constants/separation = 28
+theme_override_constants/separation = 34
 alignment = 1
 
-[node name="Hero" type="VBoxContainer" parent="SafeArea/Center/Content"]
-custom_minimum_size = Vector2(720, 0)
+[node name="HeroColumn" type="VBoxContainer" parent="SafeArea/Center/Content"]
+custom_minimum_size = Vector2(860, 0)
 layout_mode = 2
-theme_override_constants/separation = 18
-alignment = 1
+size_flags_horizontal = 3
+theme_override_constants/separation = 22
 
-[node name="Eyebrow" type="Label" parent="SafeArea/Center/Content/Hero"]
+[node name="HeroPanel" type="PanelContainer" parent="SafeArea/Center/Content/HeroColumn"]
+custom_minimum_size = Vector2(860, 0)
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="SafeArea/Center/Content/HeroColumn/HeroPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 34
+theme_override_constants/margin_top = 32
+theme_override_constants/margin_right = 34
+theme_override_constants/margin_bottom = 30
+
+[node name="Hero" type="VBoxContainer" parent="SafeArea/Center/Content/HeroColumn/HeroPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="Eyebrow" type="Label" parent="SafeArea/Center/Content/HeroColumn/HeroPanel/Margin/Hero"]
 layout_mode = 2
 modulate = Color(0.917647, 0.862745, 0.756863, 0.85)
 theme_override_font_sizes/font_size = 18
 text = "Piano Island Adventure"
-horizontal_alignment = 1
 
-[node name="Title" type="Label" parent="SafeArea/Center/Content/Hero"]
+[node name="Title" type="Label" parent="SafeArea/Center/Content/HeroColumn/HeroPanel/Margin/Hero"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 72
 text = "KULANGSU"
-horizontal_alignment = 1
 
-[node name="Subtitle" type="Label" parent="SafeArea/Center/Content/Hero"]
+[node name="Subtitle" type="Label" parent="SafeArea/Center/Content/HeroColumn/HeroPanel/Margin/Hero"]
 custom_minimum_size = Vector2(720, 0)
 layout_mode = 2
 text = "Walk the island. Listen to its people. Restore the festival melody."
 autowrap_mode = 3
-horizontal_alignment = 1
 
-[node name="Description" type="Label" parent="SafeArea/Center/Content/Hero"]
+[node name="Description" type="Label" parent="SafeArea/Center/Content/HeroColumn/HeroPanel/Margin/Hero"]
 custom_minimum_size = Vector2(720, 0)
 layout_mode = 2
 modulate = Color(1, 1, 1, 0.78)
 text = "A calm story of harbor paths, church bells, tunnel echoes, and the music hidden between them."
 autowrap_mode = 3
-horizontal_alignment = 1
 
-[node name="MenuCard" type="PanelContainer" parent="SafeArea/Center/Content"]
-custom_minimum_size = Vector2(320, 0)
+[node name="FeatureRow" type="HBoxContainer" parent="SafeArea/Center/Content/HeroColumn/HeroPanel/Margin/Hero"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="HarborChip" type="PanelContainer" parent="SafeArea/Center/Content/HeroColumn/HeroPanel/Margin/Hero/FeatureRow"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SafeArea/Center/Content/HeroColumn/HeroPanel/Margin/Hero/FeatureRow/HarborChip"]
+layout_mode = 2
+text = "Harbor paths"
+
+[node name="BellChip" type="PanelContainer" parent="SafeArea/Center/Content/HeroColumn/HeroPanel/Margin/Hero/FeatureRow"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SafeArea/Center/Content/HeroColumn/HeroPanel/Margin/Hero/FeatureRow/BellChip"]
+layout_mode = 2
+text = "Bell towers"
+
+[node name="TunnelChip" type="PanelContainer" parent="SafeArea/Center/Content/HeroColumn/HeroPanel/Margin/Hero/FeatureRow"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SafeArea/Center/Content/HeroColumn/HeroPanel/Margin/Hero/FeatureRow/TunnelChip"]
+layout_mode = 2
+text = "Tunnel echoes"
+
+[node name="HeroFooter" type="Label" parent="SafeArea/Center/Content/HeroColumn/HeroPanel/Margin/Hero"]
+layout_mode = 2
+modulate = Color(0.964706, 0.886275, 0.733333, 0.72)
+theme_override_font_sizes/font_size = 16
+text = "A watercolor harbor dream framed like a travel poster."
+
+[node name="StoryBand" type="PanelContainer" parent="SafeArea/Center/Content/HeroColumn"]
+custom_minimum_size = Vector2(860, 0)
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="SafeArea/Center/Content/HeroColumn/StoryBand"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 18
+
+[node name="StoryBody" type="VBoxContainer" parent="SafeArea/Center/Content/HeroColumn/StoryBand/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="StoryKicker" type="Label" parent="SafeArea/Center/Content/HeroColumn/StoryBand/Margin/StoryBody"]
+layout_mode = 2
+modulate = Color(0.945098, 0.85098, 0.694118, 0.82)
+theme_override_font_sizes/font_size = 16
+text = "Festival Route"
+
+[node name="StoryTitle" type="Label" parent="SafeArea/Center/Content/HeroColumn/StoryBand/Margin/StoryBody"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "Follow the harbor lights inland."
+
+[node name="StoryText" type="Label" parent="SafeArea/Center/Content/HeroColumn/StoryBand/Margin/StoryBody"]
+custom_minimum_size = Vector2(760, 0)
+layout_mode = 2
+modulate = Color(1, 1, 1, 0.72)
+text = "Each stop along the island offers a small rhythm: ferries at the pier, choir bells near the church, and hidden conversations in the tunnel shade."
+autowrap_mode = 3
+
+[node name="ActionColumn" type="VBoxContainer" parent="SafeArea/Center/Content"]
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 18
+
+[node name="MenuCard" type="PanelContainer" parent="SafeArea/Center/Content/ActionColumn"]
+custom_minimum_size = Vector2(420, 0)
 layout_mode = 2
 size_flags_horizontal = 4
 
-[node name="Margin" type="MarginContainer" parent="SafeArea/Center/Content/MenuCard"]
+[node name="Margin" type="MarginContainer" parent="SafeArea/Center/Content/ActionColumn/MenuCard"]
 layout_mode = 2
 theme_override_constants/margin_left = 22
 theme_override_constants/margin_top = 22
 theme_override_constants/margin_right = 22
 theme_override_constants/margin_bottom = 22
 
-[node name="MenuButtons" type="VBoxContainer" parent="SafeArea/Center/Content/MenuCard/Margin"]
+[node name="MenuButtons" type="VBoxContainer" parent="SafeArea/Center/Content/ActionColumn/MenuCard/Margin"]
 layout_mode = 2
 theme_override_constants/separation = 12
 alignment = 1
 
-[node name="ContinueButton" type="Button" parent="SafeArea/Center/Content/MenuCard/Margin/MenuButtons"]
-custom_minimum_size = Vector2(316, 54)
+[node name="MenuHeader" type="Label" parent="SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons"]
+layout_mode = 2
+modulate = Color(0.921569, 0.862745, 0.760784, 0.82)
+theme_override_font_sizes/font_size = 16
+text = "Choose your route"
+
+[node name="ContinueButton" type="Button" parent="SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons"]
+custom_minimum_size = Vector2(376, 58)
 layout_mode = 2
 text = "Continue"
 
-[node name="NewGameButton" type="Button" parent="SafeArea/Center/Content/MenuCard/Margin/MenuButtons"]
-custom_minimum_size = Vector2(316, 54)
+[node name="NewGameButton" type="Button" parent="SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons"]
+custom_minimum_size = Vector2(376, 58)
 layout_mode = 2
 text = "New Game"
 
-[node name="FreeWalkButton" type="Button" parent="SafeArea/Center/Content/MenuCard/Margin/MenuButtons"]
-custom_minimum_size = Vector2(316, 54)
+[node name="FreeWalkButton" type="Button" parent="SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons"]
+custom_minimum_size = Vector2(376, 58)
 layout_mode = 2
 text = "Free Walk"
 
-[node name="SettingsButton" type="Button" parent="SafeArea/Center/Content/MenuCard/Margin/MenuButtons"]
-custom_minimum_size = Vector2(316, 54)
+[node name="SettingsButton" type="Button" parent="SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons"]
+custom_minimum_size = Vector2(376, 58)
 layout_mode = 2
 text = "Settings"
 
-[node name="CreditsButton" type="Button" parent="SafeArea/Center/Content/MenuCard/Margin/MenuButtons"]
-custom_minimum_size = Vector2(316, 54)
+[node name="CreditsButton" type="Button" parent="SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons"]
+custom_minimum_size = Vector2(376, 58)
 layout_mode = 2
 text = "Credits"
 
-[node name="QuitButton" type="Button" parent="SafeArea/Center/Content/MenuCard/Margin/MenuButtons"]
-custom_minimum_size = Vector2(316, 54)
+[node name="QuitButton" type="Button" parent="SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons"]
+custom_minimum_size = Vector2(376, 58)
 layout_mode = 2
 text = "Quit"
 
-[node name="Footer" type="Label" parent="SafeArea/Center/Content/MenuCard/Margin/MenuButtons"]
+[node name="Footer" type="Label" parent="SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons"]
 layout_mode = 2
 modulate = Color(1, 1, 1, 0.65)
 text = "Prototype app flow"
-horizontal_alignment = 1
+
+[node name="TravelNote" type="PanelContainer" parent="SafeArea/Center/Content/ActionColumn"]
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="Margin" type="MarginContainer" parent="SafeArea/Center/Content/ActionColumn/TravelNote"]
+layout_mode = 2
+theme_override_constants/margin_left = 22
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 22
+theme_override_constants/margin_bottom = 18
+
+[node name="TravelBody" type="VBoxContainer" parent="SafeArea/Center/Content/ActionColumn/TravelNote/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TravelKicker" type="Label" parent="SafeArea/Center/Content/ActionColumn/TravelNote/Margin/TravelBody"]
+layout_mode = 2
+modulate = Color(0.945098, 0.85098, 0.694118, 0.76)
+theme_override_font_sizes/font_size = 15
+text = "Tonight's Mood"
+
+[node name="TravelText" type="Label" parent="SafeArea/Center/Content/ActionColumn/TravelNote/Margin/TravelBody"]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+modulate = Color(1, 1, 1, 0.76)
+text = "Sea mist over the ferry quay, warm lanterns near the lane, and a melody waiting to be pieced together."
+autowrap_mode = 3
+
+[node name="TravelHint" type="Label" parent="SafeArea/Center/Content/ActionColumn/TravelNote/Margin/TravelBody"]
+layout_mode = 2
+modulate = Color(0.952941, 0.886275, 0.760784, 0.72)
+theme_override_font_sizes/font_size = 14
+text = "Tip: Continue is available after a run begins."
