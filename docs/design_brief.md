@@ -32,10 +32,10 @@ Read this first. It is the minimum-token design context for new Codex threads.
 
 ## Architecture Anchors
 
-- UI entry point: [`/Users/bchen/Workspace/Godot/kulangsu/ui/app_flow_root.tscn`](/Users/bchen/Workspace/Godot/kulangsu/ui/app_flow_root.tscn)
-- App shell logic: [`/Users/bchen/Workspace/Godot/kulangsu/ui/app_flow_root.gd`](/Users/bchen/Workspace/Godot/kulangsu/ui/app_flow_root.gd)
-- Shared UI state: [`/Users/bchen/Workspace/Godot/kulangsu/game/app_state.gd`](/Users/bchen/Workspace/Godot/kulangsu/game/app_state.gd)
-- Shared UI styling: [`/Users/bchen/Workspace/Godot/kulangsu/ui/ui_style.gd`](/Users/bchen/Workspace/Godot/kulangsu/ui/ui_style.gd)
+- UI entry point: [`ui/app_flow_root.tscn`](ui/app_flow_root.tscn)
+- App shell logic: [`ui/app_flow_root.gd`](ui/app_flow_root.gd)
+- Shared UI state: [`game/app_state.gd`](game/app_state.gd)
+- Shared UI styling: [`ui/ui_style.gd`](ui/ui_style.gd)
 - Current dedicated screens: boot, title, game HUD
 
 ## Layout Rule That Must Stay True
@@ -74,6 +74,7 @@ Input expectations:
 
 ## If You Need More Detail
 
-- UI architecture and constraints: [`/Users/bchen/Workspace/Godot/kulangsu/docs/ui_design_context.md`](/Users/bchen/Workspace/Godot/kulangsu/docs/ui_design_context.md)
-- Story and progression flow: [`/Users/bchen/Workspace/Godot/kulangsu/docs/core_game_workflow.md`](/Users/bchen/Workspace/Godot/kulangsu/docs/core_game_workflow.md)
-- Full title/settings/pause/endgame flow: [`/Users/bchen/Workspace/Godot/kulangsu/docs/ui_workflow.md`](/Users/bchen/Workspace/Godot/kulangsu/docs/ui_workflow.md)
+- Repeatable moment-to-moment gameplay design: [`docs/core_gameplay_plays.md`](docs/core_gameplay_plays.md)
+- UI architecture and constraints: [`docs/ui_design_context.md`](docs/ui_design_context.md)
+- Story and progression flow: [`docs/core_game_workflow.md`](docs/core_game_workflow.md)
+- Full title/settings/pause/endgame flow: [`docs/ui_workflow.md`](docs/ui_workflow.md)

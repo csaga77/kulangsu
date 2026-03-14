@@ -1,6 +1,6 @@
 # Kulangsu UI Design Context
 
-Read [`/Users/bchen/Workspace/Godot/kulangsu/docs/design_brief.md`](/Users/bchen/Workspace/Godot/kulangsu/docs/design_brief.md) first for the minimum-token summary. Use this doc only when UI architecture or layout constraints need more detail.
+Read [`docs/design_brief.md`](docs/design_brief.md) first for the minimum-token summary. Use this doc only when UI architecture or layout constraints need more detail.
 
 ## Purpose
 This document captures the current UI design direction and implementation context so future UI work can continue from a stable baseline.
@@ -42,12 +42,12 @@ The UI should support exploration first, with menus and overlays helping orienta
 
 The UI is currently orchestrated by:
 
-- [ui/app_flow_root.gd](/Users/bchen/Workspace/Godot/kulangsu/ui/app_flow_root.gd)
-- [ui/app_flow_root.tscn](/Users/bchen/Workspace/Godot/kulangsu/ui/app_flow_root.tscn)
+- [ui/app_flow_root.gd](ui/app_flow_root.gd)
+- [ui/app_flow_root.tscn](ui/app_flow_root.tscn)
 
 This app shell is the startup scene through:
 
-- [project.godot](/Users/bchen/Workspace/Godot/kulangsu/project.godot)
+- [project.godot](project.godot)
 
 The shell is responsible for:
 
@@ -62,7 +62,7 @@ The shell is responsible for:
 
 The UI reads from a shared singleton:
 
-- [game/app_state.gd](/Users/bchen/Workspace/Godot/kulangsu/game/app_state.gd)
+- [game/app_state.gd](game/app_state.gd)
 
 `AppState` currently stores:
 
@@ -83,7 +83,7 @@ This is the correct place for future UI-facing progression state.
 
 Reusable UI styling helpers live in:
 
-- [ui/ui_style.gd](/Users/bchen/Workspace/Godot/kulangsu/ui/ui_style.gd)
+- [ui/ui_style.gd](ui/ui_style.gd)
 
 It currently provides:
 
@@ -96,9 +96,9 @@ Future shared UI colors, typography rules, spacing tokens, and component styles 
 
 ### Implemented Dedicated Screens
 
-- [ui/screens/boot_screen.tscn](/Users/bchen/Workspace/Godot/kulangsu/ui/screens/boot_screen.tscn)
-- [ui/screens/title_screen.tscn](/Users/bchen/Workspace/Godot/kulangsu/ui/screens/title_screen.tscn)
-- [ui/screens/game_hud.tscn](/Users/bchen/Workspace/Godot/kulangsu/ui/screens/game_hud.tscn)
+- [ui/screens/boot_screen.tscn](ui/screens/boot_screen.tscn)
+- [ui/screens/title_screen.tscn](ui/screens/title_screen.tscn)
+- [ui/screens/game_hud.tscn](ui/screens/game_hud.tscn)
 
 ### Overlays Still Built in the App Shell
 
@@ -149,8 +149,8 @@ Current implementation:
 
 Relevant files:
 
-- [ui/screens/title_screen.tscn](/Users/bchen/Workspace/Godot/kulangsu/ui/screens/title_screen.tscn)
-- [ui/screens/title_screen.gd](/Users/bchen/Workspace/Godot/kulangsu/ui/screens/title_screen.gd)
+- [ui/screens/title_screen.tscn](ui/screens/title_screen.tscn)
+- [ui/screens/title_screen.gd](ui/screens/title_screen.gd)
 
 Design intent:
 
@@ -178,8 +178,8 @@ Current content:
 
 Relevant files:
 
-- [ui/screens/game_hud.tscn](/Users/bchen/Workspace/Godot/kulangsu/ui/screens/game_hud.tscn)
-- [ui/screens/game_hud.gd](/Users/bchen/Workspace/Godot/kulangsu/ui/screens/game_hud.gd)
+- [ui/screens/game_hud.tscn](ui/screens/game_hud.tscn)
+- [ui/screens/game_hud.gd](ui/screens/game_hud.gd)
 
 Design intent:
 
@@ -206,7 +206,7 @@ Current rule:
 
 Relevant code:
 
-- [ui/app_flow_root.gd](/Users/bchen/Workspace/Godot/kulangsu/ui/app_flow_root.gd)
+- [ui/app_flow_root.gd](ui/app_flow_root.gd)
 
 Future UI work should respect this unless the entire UI system is intentionally rebuilt.
 
@@ -214,8 +214,8 @@ Future UI work should respect this unless the entire UI system is intentionally 
 
 There is still an existing in-world speech UI:
 
-- [gui/speech_balloon.tscn](/Users/bchen/Workspace/Godot/kulangsu/gui/speech_balloon.tscn)
-- [gui/speech_balloon.gd](/Users/bchen/Workspace/Godot/kulangsu/gui/speech_balloon.gd)
+- [gui/speech_balloon.tscn](gui/speech_balloon.tscn)
+- [gui/speech_balloon.gd](gui/speech_balloon.gd)
 
 That remains the right pattern for ambient moment-to-moment interaction.
 
@@ -238,8 +238,8 @@ The UI currently assumes the game is structured around:
 
 That aligns with:
 
-- [docs/core_game_workflow.md](/Users/bchen/Workspace/Godot/kulangsu/docs/core_game_workflow.md)
-- [docs/ui_workflow.md](/Users/bchen/Workspace/Godot/kulangsu/docs/ui_workflow.md)
+- [docs/core_game_workflow.md](docs/core_game_workflow.md)
+- [docs/ui_workflow.md](docs/ui_workflow.md)
 
 Future UI work should continue supporting that model unless the game structure changes.
 

@@ -1,6 +1,6 @@
 # Kulangsu Core Game Workflow
 
-Read [`/Users/bchen/Workspace/Godot/kulangsu/docs/design_brief.md`](/Users/bchen/Workspace/Godot/kulangsu/docs/design_brief.md) first for the minimum-token summary. Use this doc only when story and progression structure need more detail.
+Read [`docs/design_brief.md`](docs/design_brief.md) first for the minimum-token summary. Use this doc only when story and progression structure need more detail.
 
 ## Design Goal
 Build the game around a calm exploration-to-performance loop:
@@ -13,9 +13,9 @@ Build the game around a calm exploration-to-performance loop:
 
 This fits the current project strengths:
 
-- Large explorable island terrain in [`/Users/bchen/Workspace/Godot/kulangsu/terrain.tscn`](/Users/bchen/Workspace/Godot/kulangsu/terrain.tscn)
-- Free movement and inspect input in [`/Users/bchen/Workspace/Godot/kulangsu/characters/control/player_controller.gd`](/Users/bchen/Workspace/Godot/kulangsu/characters/control/player_controller.gd)
-- Proximity dialogue balloon interactions in [`/Users/bchen/Workspace/Godot/kulangsu/characters/control/base_controller.gd`](/Users/bchen/Workspace/Godot/kulangsu/characters/control/base_controller.gd)
+- Large explorable island terrain in [`terrain.tscn`](terrain.tscn)
+- Free movement and inspect input in [`characters/control/player_controller.gd`](characters/control/player_controller.gd)
+- Proximity dialogue balloon interactions in [`characters/control/base_controller.gd`](characters/control/base_controller.gd)
 - Landmark spaces already placed in the island scene:
   - Piano Ferry
   - Bagua Tower
@@ -42,6 +42,8 @@ The player is a newcomer to Kulangsu who gradually learns the island by walking 
 4. Traverse the space to solve it.
 5. Receive a melody fragment, relationship gain, and the next lead.
 6. Return to the overworld and choose the next landmark.
+
+For the repeatable moment-to-moment play design that should power each of those steps, see [`docs/core_gameplay_plays.md`](docs/core_gameplay_plays.md).
 
 ## Full Game Flow
 
@@ -288,7 +290,7 @@ This lets the project share one quest structure across all four landmark arcs in
 
 ### AppState Targets
 
-The shared UI state in [`/Users/bchen/Workspace/Godot/kulangsu/game/app_state.gd`](/Users/bchen/Workspace/Godot/kulangsu/game/app_state.gd) should reflect the current story beat with lightweight values:
+The shared UI state in [`game/app_state.gd`](game/app_state.gd) should reflect the current story beat with lightweight values:
 
 - `mode`: `Title`, `Story`, `Free Walk`, or `Postgame`
 - `chapter`: broad progression label such as `Arrival` or `Festival Night`
@@ -297,7 +299,7 @@ The shared UI state in [`/Users/bchen/Workspace/Godot/kulangsu/game/app_state.gd
 - `hint`: current control reminder or context-sensitive prompt
 - `fragments_found`: restored melody count out of four
 
-The doc in [`/Users/bchen/Workspace/Godot/kulangsu/docs/ui_design_context.md`](/Users/bchen/Workspace/Godot/kulangsu/docs/ui_design_context.md) already assumes this state drives the HUD and overlays, so gameplay progression should update it as soon as objectives change.
+The doc in [`docs/ui_design_context.md`](docs/ui_design_context.md) already assumes this state drives the HUD and overlays, so gameplay progression should update it as soon as objectives change.
 
 ## Landmark State Template
 
@@ -527,13 +529,13 @@ Avoid:
 
 ### Existing systems already aligned
 
-- Overworld exploration: [`/Users/bchen/Workspace/Godot/kulangsu/main.tscn`](/Users/bchen/Workspace/Godot/kulangsu/main.tscn)
-- Global player reference: [`/Users/bchen/Workspace/Godot/kulangsu/game/game_global.gd`](/Users/bchen/Workspace/Godot/kulangsu/game/game_global.gd)
-- Interaction radius and dialogue bubble logic: [`/Users/bchen/Workspace/Godot/kulangsu/characters/control/base_controller.gd`](/Users/bchen/Workspace/Godot/kulangsu/characters/control/base_controller.gd)
-- Player input and inspect action: [`/Users/bchen/Workspace/Godot/kulangsu/characters/control/player_controller.gd`](/Users/bchen/Workspace/Godot/kulangsu/characters/control/player_controller.gd)
-- NPC autonomous presence and talk detection: [`/Users/bchen/Workspace/Godot/kulangsu/characters/control/npc_controller.gd`](/Users/bchen/Workspace/Godot/kulangsu/characters/control/npc_controller.gd)
-- Layered traversal through portals / stairs: [`/Users/bchen/Workspace/Godot/kulangsu/architecture/components/portal.gd`](/Users/bchen/Workspace/Godot/kulangsu/architecture/components/portal.gd)
-- Tunnel masking and layered tunnel traversal: [`/Users/bchen/Workspace/Godot/kulangsu/architecture/tunnel.gd`](/Users/bchen/Workspace/Godot/kulangsu/architecture/tunnel.gd)
+- Overworld exploration: [`main.tscn`](main.tscn)
+- Global player reference: [`game/game_global.gd`](game/game_global.gd)
+- Interaction radius and dialogue bubble logic: [`characters/control/base_controller.gd`](characters/control/base_controller.gd)
+- Player input and inspect action: [`characters/control/player_controller.gd`](characters/control/player_controller.gd)
+- NPC autonomous presence and talk detection: [`characters/control/npc_controller.gd`](characters/control/npc_controller.gd)
+- Layered traversal through portals / stairs: [`architecture/components/portal.gd`](architecture/components/portal.gd)
+- Tunnel masking and layered tunnel traversal: [`architecture/tunnel.gd`](architecture/tunnel.gd)
 
 ### Systems to add next
 
