@@ -1,0 +1,67 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/screens/journal_overlay.gd" id="1_j4ebj"]
+
+[node name="JournalOverlay" type="PanelContainer"]
+offset_left = 500.0
+offset_top = 220.0
+offset_right = 1420.0
+offset_bottom = 860.0
+script = ExtResource("1_j4ebj")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
+
+[node name="Body" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="Margin/Body"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "Journal"
+
+[node name="Tabs" type="TabContainer" parent="Margin/Body"]
+custom_minimum_size = Vector2(760, 480)
+layout_mode = 2
+
+[node name="Objectives" type="VBoxContainer" parent="Margin/Body/Tabs"]
+layout_mode = 2
+
+[node name="QuestBody" type="Label" parent="Margin/Body/Tabs/Objectives"]
+custom_minimum_size = Vector2(760, 0)
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="Map" type="VBoxContainer" parent="Margin/Body/Tabs"]
+layout_mode = 2
+
+[node name="MapBody" type="Label" parent="Margin/Body/Tabs/Map"]
+custom_minimum_size = Vector2(760, 0)
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="Residents" type="VBoxContainer" parent="Margin/Body/Tabs"]
+layout_mode = 2
+
+[node name="ResidentsBody" type="Label" parent="Margin/Body/Tabs/Residents"]
+custom_minimum_size = Vector2(760, 0)
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="Melody" type="VBoxContainer" parent="Margin/Body/Tabs"]
+layout_mode = 2
+
+[node name="MelodyBody" type="Label" parent="Margin/Body/Tabs/Melody"]
+custom_minimum_size = Vector2(760, 0)
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="CloseButton" type="Button" parent="Margin/Body"]
+custom_minimum_size = Vector2(320, 54)
+layout_mode = 2
+text = "Close Journal"

@@ -1,0 +1,177 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://ui/screens/title_screen.gd" id="1_2hrtl"]
+[ext_resource type="Texture2D" path="res://ui/assets/title_harbor_backdrop_cropped.png" id="2_2a0d1"]
+[ext_resource type="Texture2D" path="res://ui/assets/title_map_overlay_cropped.png" id="3_6owqg"]
+
+[node name="TitleScreen" type="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_2hrtl")
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_2a0d1")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="BackdropOverlay" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+modulate = Color(1, 1, 1, 0.8)
+texture = ExtResource("3_6owqg")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Veil" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.03, 0.06, 0.09, 0.32)
+
+[node name="TopGlow" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 292.0
+grow_horizontal = 2
+mouse_filter = 2
+color = Color(0.937255, 0.85098, 0.678431, 0.08)
+
+[node name="BottomFade" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -282.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+color = Color(0.0156863, 0.0392157, 0.054902, 0.46)
+
+[node name="SafeArea" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 36.0
+offset_top = 24.0
+offset_right = -36.0
+offset_bottom = -24.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Center" type="CenterContainer" parent="SafeArea"]
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="SafeArea/Center"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/separation = 28
+alignment = 1
+
+[node name="Hero" type="VBoxContainer" parent="SafeArea/Center/Content"]
+custom_minimum_size = Vector2(720, 0)
+layout_mode = 2
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="Eyebrow" type="Label" parent="SafeArea/Center/Content/Hero"]
+layout_mode = 2
+modulate = Color(0.917647, 0.862745, 0.756863, 0.85)
+theme_override_font_sizes/font_size = 18
+text = "Piano Island Adventure"
+horizontal_alignment = 1
+
+[node name="Title" type="Label" parent="SafeArea/Center/Content/Hero"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 72
+text = "KULANGSU"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="SafeArea/Center/Content/Hero"]
+custom_minimum_size = Vector2(720, 0)
+layout_mode = 2
+text = "Walk the island. Listen to its people. Restore the festival melody."
+autowrap_mode = 3
+horizontal_alignment = 1
+
+[node name="Description" type="Label" parent="SafeArea/Center/Content/Hero"]
+custom_minimum_size = Vector2(720, 0)
+layout_mode = 2
+modulate = Color(1, 1, 1, 0.78)
+text = "A calm story of harbor paths, church bells, tunnel echoes, and the music hidden between them."
+autowrap_mode = 3
+horizontal_alignment = 1
+
+[node name="MenuCard" type="PanelContainer" parent="SafeArea/Center/Content"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="Margin" type="MarginContainer" parent="SafeArea/Center/Content/MenuCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 22
+theme_override_constants/margin_top = 22
+theme_override_constants/margin_right = 22
+theme_override_constants/margin_bottom = 22
+
+[node name="MenuButtons" type="VBoxContainer" parent="SafeArea/Center/Content/MenuCard/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ContinueButton" type="Button" parent="SafeArea/Center/Content/MenuCard/Margin/MenuButtons"]
+custom_minimum_size = Vector2(316, 54)
+layout_mode = 2
+text = "Continue"
+
+[node name="NewGameButton" type="Button" parent="SafeArea/Center/Content/MenuCard/Margin/MenuButtons"]
+custom_minimum_size = Vector2(316, 54)
+layout_mode = 2
+text = "New Game"
+
+[node name="FreeWalkButton" type="Button" parent="SafeArea/Center/Content/MenuCard/Margin/MenuButtons"]
+custom_minimum_size = Vector2(316, 54)
+layout_mode = 2
+text = "Free Walk"
+
+[node name="SettingsButton" type="Button" parent="SafeArea/Center/Content/MenuCard/Margin/MenuButtons"]
+custom_minimum_size = Vector2(316, 54)
+layout_mode = 2
+text = "Settings"
+
+[node name="CreditsButton" type="Button" parent="SafeArea/Center/Content/MenuCard/Margin/MenuButtons"]
+custom_minimum_size = Vector2(316, 54)
+layout_mode = 2
+text = "Credits"
+
+[node name="QuitButton" type="Button" parent="SafeArea/Center/Content/MenuCard/Margin/MenuButtons"]
+custom_minimum_size = Vector2(316, 54)
+layout_mode = 2
+text = "Quit"
+
+[node name="Footer" type="Label" parent="SafeArea/Center/Content/MenuCard/Margin/MenuButtons"]
+layout_mode = 2
+modulate = Color(1, 1, 1, 0.65)
+text = "Prototype app flow"
+horizontal_alignment = 1

@@ -1,0 +1,58 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/screens/ending_overlay.gd" id="1_cp1s8"]
+
+[node name="EndingOverlay" type="PanelContainer"]
+offset_left = 500.0
+offset_top = 220.0
+offset_right = 1420.0
+offset_bottom = 860.0
+script = ExtResource("1_cp1s8")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
+
+[node name="Body" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="Margin/Body"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "Festival Restored"
+
+[node name="EndingLabel" type="Label" parent="Margin/Body"]
+custom_minimum_size = Vector2(760, 0)
+layout_mode = 2
+text = "Ending Summary"
+autowrap_mode = 3
+
+[node name="SummaryBody" type="Label" parent="Margin/Body"]
+custom_minimum_size = Vector2(760, 0)
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="ChooseLabel" type="Label" parent="Margin/Body"]
+custom_minimum_size = Vector2(760, 0)
+layout_mode = 2
+text = "Choose how the prototype closes."
+autowrap_mode = 3
+
+[node name="ReturnButton" type="Button" parent="Margin/Body"]
+custom_minimum_size = Vector2(320, 54)
+layout_mode = 2
+text = "Leave on the Morning Ferry"
+
+[node name="StayButton" type="Button" parent="Margin/Body"]
+custom_minimum_size = Vector2(320, 54)
+layout_mode = 2
+text = "Stay a Little Longer"
+
+[node name="CreditsButton" type="Button" parent="Margin/Body"]
+custom_minimum_size = Vector2(320, 54)
+layout_mode = 2
+text = "Credits"

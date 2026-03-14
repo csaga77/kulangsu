@@ -1,0 +1,97 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/screens/game_hud.gd" id="1_rks8h"]
+
+[node name="GameHUD" type="Control"]
+script = ExtResource("1_rks8h")
+
+[node name="ObjectiveCard" type="PanelContainer" parent="."]
+offset_left = 28.0
+offset_top = 24.0
+offset_right = 568.0
+offset_bottom = 152.0
+
+[node name="Margin" type="MarginContainer" parent="ObjectiveCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 14
+
+[node name="Body" type="VBoxContainer" parent="ObjectiveCard/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Header" type="Label" parent="ObjectiveCard/Margin/Body"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Current Objective"
+
+[node name="Objective" type="Label" parent="ObjectiveCard/Margin/Body"]
+custom_minimum_size = Vector2(500, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Find out why the island feels quiet today."
+autowrap_mode = 3
+
+[node name="StatusCard" type="PanelContainer" parent="."]
+offset_left = 1512.0
+offset_top = 24.0
+offset_right = 1860.0
+offset_bottom = 154.0
+
+[node name="Margin" type="MarginContainer" parent="StatusCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 14
+
+[node name="Body" type="VBoxContainer" parent="StatusCard/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Mode" type="Label" parent="StatusCard/Margin/Body"]
+layout_mode = 2
+text = "Mode: Story"
+
+[node name="Chapter" type="Label" parent="StatusCard/Margin/Body"]
+layout_mode = 2
+text = "Chapter: Arrival"
+
+[node name="Location" type="Label" parent="StatusCard/Margin/Body"]
+layout_mode = 2
+text = "Location: Piano Ferry"
+
+[node name="Fragments" type="Label" parent="StatusCard/Margin/Body"]
+layout_mode = 2
+text = "Melody: 0 / 4 fragments"
+
+[node name="HintCard" type="PanelContainer" parent="."]
+offset_left = 620.0
+offset_top = 960.0
+offset_right = 1300.0
+offset_bottom = 1038.0
+
+[node name="Margin" type="MarginContainer" parent="HintCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 14
+
+[node name="Hint" type="Label" parent="HintCard/Margin"]
+custom_minimum_size = Vector2(636, 46)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "R Inspect   J Journal   Esc Pause"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SaveStatus" type="Label" parent="."]
+offset_left = 28.0
+offset_top = 1006.0
+offset_right = 568.0
+offset_bottom = 1034.0
+modulate = Color(1, 1, 1, 0.75)
+text = "Autosave: ready"

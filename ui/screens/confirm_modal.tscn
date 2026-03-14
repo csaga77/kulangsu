@@ -1,0 +1,51 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/screens/confirm_modal.gd" id="1_u2mb4"]
+
+[node name="ConfirmModal" type="PanelContainer"]
+offset_left = 580.0
+offset_top = 320.0
+offset_right = 1340.0
+offset_bottom = 760.0
+script = ExtResource("1_u2mb4")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
+
+[node name="Body" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="Margin/Body"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "Confirm"
+
+[node name="ConfirmTitle" type="Label" parent="Margin/Body"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+autowrap_mode = 3
+
+[node name="ConfirmBody" type="Label" parent="Margin/Body"]
+custom_minimum_size = Vector2(620, 0)
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="Actions" type="HBoxContainer" parent="Margin/Body"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="CancelButton" type="Button" parent="Margin/Body/Actions"]
+custom_minimum_size = Vector2(220, 54)
+layout_mode = 2
+text = "Cancel"
+
+[node name="ConfirmButton" type="Button" parent="Margin/Body/Actions"]
+custom_minimum_size = Vector2(220, 54)
+layout_mode = 2
+text = "Confirm"
