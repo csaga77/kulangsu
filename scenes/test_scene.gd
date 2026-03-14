@@ -25,9 +25,11 @@ func _ready() -> void:
 	_reload_building()
 
 func _reload_building() -> void:
-	if m_root:
-		for child in m_root.get_children():
-			child.queue_free()
+	if m_root == null:
+		return
+
+	for child in m_root.get_children():
+		child.queue_free()
 
 	if building:
 		var new_building = building.instantiate()

@@ -22,6 +22,11 @@ func _schedule_built_bt_tree():
 	call_deferred("_load_BT_tree")
 	
 func _load_BT_tree():
+	if Engine.is_editor_hint():
+		m_bt_tree = null
+		m_is_building_bt_tree = false
+		return
+
 	var tree: BTTree = null
 	if use_json_bt:
 		var path := bt_json_path
