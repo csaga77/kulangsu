@@ -37,7 +37,7 @@ func handle_input(_event: InputEvent) -> void:
 ## Called by MarbleBall from _physics_process.
 func physics_tick(_delta: float) -> void:
 	pass
-	
+
 func spawn_and_throw_away_from_hole(rng: RandomNumberGenerator) -> void:
 	if m_ball == null or not is_instance_valid(m_ball):
 		return
@@ -69,11 +69,8 @@ func spawn_and_throw_away_from_hole(rng: RandomNumberGenerator) -> void:
 	var r := float(m_ball.marble_radius_px)
 	var min_dist := r * 10.0
 	var max_dist := r * 30.0
-
-	var angle := rng.randf_range(0.0, TAU)
-	var dist := rng.randf_range(min_dist, max_dist)
-
-	var spawn_pos := hole_pos + Vector2.RIGHT.rotated(angle) * dist
+	var spawn_rect := m_game.get_spawn_rect_for_ball(m_ball)
+	var spawn_pos := _pick_spawn_position(rng, hole_pos, min_dist, max_dist, spawn_rect)
 	CommonUtils.safe_teleport_body(m_ball, spawn_pos)
 	m_ball.m_last_pos = spawn_pos
 
@@ -90,3 +87,61 @@ func spawn_and_throw_away_from_hole(rng: RandomNumberGenerator) -> void:
 	m_ball.linear_velocity = dir * throw_speed
 	print("spawn_and_throw_away_from_hole:", throw_speed)
 	m_ball.angular_velocity = 0.0
+
+
+func _pick_spawn_position(
+	rng: RandomNumberGenerator,
+	hole_pos: Vector2,
+	min_dist: float,
+	max_dist: float,
+	spawn_rect: Rect2
+) -> Vector2:
+	var has_spawn_rect := spawn_rect.size.x > 0.0 and spawn_rect.size.y > 0.0
+
+	if has_spawn_rect:
+		for _attempt in range(48):
+			var candidate := Vector2(
+				rng.randf_range(spawn_rect.position.x, spawn_rect.position.x + spawn_rect.size.x),
+				rng.randf_range(spawn_rect.position.y, spawn_rect.position.y + spawn_rect.size.y)
+			)
+			var dist_to_hole := candidate.distance_to(hole_pos)
+			if dist_to_hole < min_dist or dist_to_hole > max_dist:
+				continue
+			if not _is_spawn_position_clear(candidate):
+				continue
+			return candidate
+
+		for _attempt in range(48):
+			var relaxed_candidate := Vector2(
+				rng.randf_range(spawn_rect.position.x, spawn_rect.position.x + spawn_rect.size.x),
+				rng.randf_range(spawn_rect.position.y, spawn_rect.position.y + spawn_rect.size.y)
+			)
+			if not _is_spawn_position_clear(relaxed_candidate):
+				continue
+			return relaxed_candidate
+
+		return spawn_rect.get_center()
+
+	for _attempt in range(48):
+		var angle := rng.randf_range(0.0, TAU)
+		var dist := rng.randf_range(min_dist, max_dist)
+		var candidate := hole_pos + Vector2.RIGHT.rotated(angle) * dist
+		if not _is_spawn_position_clear(candidate):
+			continue
+		return candidate
+
+	return hole_pos + Vector2.RIGHT * min_dist
+
+
+func _is_spawn_position_clear(candidate: Vector2) -> bool:
+	if not is_instance_valid(m_game) or not is_instance_valid(m_ball):
+		return true
+
+	var min_gap := m_ball.marble_radius_px * 2.25
+	for other: MarbleBall in m_game.get_balls():
+		if other == null or other == m_ball or not is_instance_valid(other):
+			continue
+		if candidate.distance_to(other.global_position) < min_gap:
+			return false
+
+	return true

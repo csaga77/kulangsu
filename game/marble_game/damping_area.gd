@@ -10,7 +10,7 @@ extends Area2D
 @export var angular_damp_contribution: float = 3.0
 
 ## If true, prints enter/exit contribution events.
-@export var print_debug: bool = false
+@export var debug_logging_enabled: bool = false
 
 
 func _ready() -> void:
@@ -28,7 +28,7 @@ func _on_body_entered(body: Node2D) -> void:
 	var area_id := int(get_instance_id())
 	ball.add_damping_contribution(area_id, linear_damp_contribution, angular_damp_contribution)
 
-	if print_debug:
+	if debug_logging_enabled:
 		print("[MarbleDampingArea] Enter ", ball.name,
 			" +(", linear_damp_contribution, ", ", angular_damp_contribution, ") area=", name)
 
@@ -41,5 +41,5 @@ func _on_body_exited(body: Node2D) -> void:
 	var area_id := int(get_instance_id())
 	ball.remove_damping_contribution(area_id)
 
-	if print_debug:
+	if debug_logging_enabled:
 		print("[MarbleDampingArea] Exit  ", ball.name, " area=", name)

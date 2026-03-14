@@ -216,9 +216,9 @@ func _apply_texture_to_sprite() -> void:
 		if marble_texture != null:
 			sp2.texture = marble_texture
 	elif m_marble_sprite is TextureRect:
-		var tr := m_marble_sprite as TextureRect
+		var texture_rect := m_marble_sprite as TextureRect
 		if marble_texture != null:
-			tr.texture = marble_texture
+			texture_rect.texture = marble_texture
 
 
 func _apply_radius_to_nodes() -> void:

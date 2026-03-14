@@ -479,6 +479,11 @@ func _load_song_and_chart() -> void:
 	next_onsets = int_res.get("times", []) as Array[float]
 	next_onset_energy = int_res.get("energy", []) as Array[float]
 	
+	if next_onsets.is_empty():
+		_clear_loaded_song_state()
+		push_error("PianoGame: chart became empty after filtering.")
+		return
+	
 	if next_onsets.size() != next_onset_energy.size():
 		_clear_loaded_song_state()
 		push_error("PianoGame: onsets/energy length mismatch after filtering.")

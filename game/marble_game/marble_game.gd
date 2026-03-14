@@ -10,6 +10,8 @@ enum GameStatus { FREE_PLAY, WAITING_FOR_REST, WAITING_FOR_KICK, GAME_OVER }
 		game_mode = v
 		_apply_mode()
 
+@export var spawn_bounds: Rect2 = Rect2()
+
 signal game_mode_changed(new_mode: MarbleGameMode)
 signal status_changed(new_status: GameStatus)
 signal turn_active_changed(is_active: bool)
@@ -64,6 +66,21 @@ func get_balls() -> Array[MarbleBall]:
 
 func get_hole() -> MarbleHole:
 	return m_hole
+
+
+func get_spawn_rect_for_ball(ball: MarbleBall) -> Rect2:
+	if ball == null or not is_instance_valid(ball):
+		return Rect2()
+	if spawn_bounds.size.x <= 0.0 or spawn_bounds.size.y <= 0.0:
+		return Rect2()
+
+	var margin: float = max(ball.marble_radius_px, 0.0)
+	var usable_position: Vector2 = spawn_bounds.position + Vector2.ONE * margin
+	var usable_size: Vector2 = spawn_bounds.size - Vector2.ONE * margin * 2.0
+	if usable_size.x <= 0.0 or usable_size.y <= 0.0:
+		return Rect2()
+
+	return Rect2(usable_position, usable_size)
 
 
 func restart_game() -> void:

@@ -2,7 +2,7 @@
 class_name MarbleGameFreeMode
 extends MarbleGameMode
 
-@export var print_debug: bool = false
+@export var debug_logging_enabled: bool = false
 @export var restart_delay: float = 1.2
 
 var m_rest_timer: float = 0.0
@@ -22,9 +22,6 @@ func on_restart(game: MarbleGame) -> void:
 		if not is_instance_valid(b):
 			continue
 
-		if not b.hole_state_changed.is_connected(_on_ball_hole_state_changed):
-			b.hole_state_changed.connect(_on_ball_hole_state_changed)
-
 		b.set_controller_active(not b.m_in_hole)
 
 	game._set_current_ball(null)
@@ -40,7 +37,7 @@ func on_physics_process(game: MarbleGame, delta: float) -> void:
 	if game.m_status == MarbleGame.GameStatus.GAME_OVER:
 		m_restart_timer += delta
 		if m_restart_timer >= restart_delay:
-			if print_debug:
+			if debug_logging_enabled:
 				print("[FreeMode] Restarting game after GAME_OVER")
 			m_restart_timer = 0.0
 			game.restart_game()
@@ -69,7 +66,7 @@ func on_physics_process(game: MarbleGame, delta: float) -> void:
 
 	if not m_started:
 		m_started = true
-		if print_debug:
+		if debug_logging_enabled:
 			print("[FreeMode] Started after settle")
 
 	# ---------------------------------------------------
@@ -79,13 +76,13 @@ func on_physics_process(game: MarbleGame, delta: float) -> void:
 	#   2) and we are at a rest-settle moment (we are here)
 	# ---------------------------------------------------
 	if _all_balls_in_hole(game):
-		if print_debug:
+		if debug_logging_enabled:
 			print("[FreeMode] All balls settled in hole -> end_game")
 		game.end_game()
 		return
 
 
-func _on_ball_hole_state_changed(ball: MarbleBall, in_hole: bool) -> void:
+func on_ball_hole_state_changed(_game: MarbleGame, ball: MarbleBall, in_hole: bool) -> void:
 	if not is_instance_valid(ball):
 		return
 	# Free mode rule: balls inside hole cannot be kicked

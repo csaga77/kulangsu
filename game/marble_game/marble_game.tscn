@@ -37,6 +37,7 @@ metadata/_custom_type_script = "uid://btg1c6qvxh8mb"
 [node name="marble_game" type="Node2D" unique_id=2041496526]
 script = ExtResource("1_1f8l1")
 game_mode = SubResource("Resource_qesyv")
+spawn_bounds = Rect2(0, 0, 544, 352)
 
 [node name="camera" type="Camera2D" parent="." unique_id=1796277555]
 position_smoothing_enabled = true
