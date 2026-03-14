@@ -32,7 +32,7 @@ AppState="*res://game/app_state.gd"
 window/size/viewport_width=2880
 window/size/viewport_height=1620
 window/stretch/mode="canvas_items"
-window/stretch/scale=4.0
+window/stretch/scale=2.0
 window/stretch/scale_mode="integer"
 
 [global_group]

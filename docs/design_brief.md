@@ -12,14 +12,14 @@ Read this first. It is the minimum-token design context for new Codex threads.
 
 1. Arrive on the island with a simple question.
 2. Explore landmarks and meet residents.
-3. Complete short landmark-specific objective chains.
-4. Recover four melody fragments.
+3. Hear, collect, and reconstruct melody fragments from residents and places.
+4. Complete short landmark-specific objective chains.
 5. Unlock a final island-wide performance and ending choice.
 
 ## Core Content Model
 
 - Main quest plus lightweight district objectives.
-- Progress is tracked through melody fragments, landmarks, residents, chapter, and location.
+- Progress is tracked through melody fragments, reconstructed melodies, landmarks, residents, chapter, and location.
 - `Free Walk` is a low-pressure exploration mode separate from story progression.
 
 ## UI Direction
@@ -74,6 +74,9 @@ Input expectations:
 
 ## If You Need More Detail
 
+- Reusable board game module: [`docs/grid_board_game_design.md`](docs/grid_board_game_design.md)
+- Marble game prototype rules and architecture: [`docs/marble_game_design.md`](docs/marble_game_design.md)
+- Piano mini-game prototype and integration guidance: [`docs/piano_game_design.md`](docs/piano_game_design.md)
 - Repeatable moment-to-moment gameplay design: [`docs/core_gameplay_plays.md`](docs/core_gameplay_plays.md)
 - UI architecture and constraints: [`docs/ui_design_context.md`](docs/ui_design_context.md)
 - Story and progression flow: [`docs/core_game_workflow.md`](docs/core_game_workflow.md)

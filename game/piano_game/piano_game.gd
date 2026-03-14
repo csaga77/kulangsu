@@ -299,6 +299,7 @@ var m_count_good: int = 0
 var m_count_miss: int = 0
 var m_combo: int = 0
 var m_max_combo: int = 0
+var m_chart_loaded: bool = false
 var m_game_finished: bool = false
 var m_final_printed: bool = false
 
@@ -321,6 +322,13 @@ func _ready() -> void:
 	_prepare_draw_font()
 	_rebuild_key_pool()
 	_reload_deferred()
+
+func _exit_tree() -> void:
+	_release_player()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		_release_player()
 
 func _prepare_draw_font() -> void:
 	m_draw_font = letter_font if letter_font != null else ThemeDB.fallback_font
@@ -356,6 +364,8 @@ func _reset_runtime() -> void:
 	m_final_printed = false
 
 func _play() -> void:
+	if not m_chart_loaded:
+		return
 	if m_player == null or m_player.stream == null:
 		return
 	if m_player.playing:
@@ -379,6 +389,28 @@ func _song_time() -> float:
 		t -= AudioServer.get_output_latency()
 	return t + (offset_ms / 1000.0)
 
+func _clear_loaded_song_state() -> void:
+	_release_player_stream()
+	m_stream_length = 0.0
+	m_bpm = 0.0
+	m_last_onset_time = 0.0
+	m_onsets.clear()
+	m_onset_energy.clear()
+	m_onset_chars.clear()
+	m_chart_loaded = false
+
+func _release_player_stream() -> void:
+	if m_player == null:
+		return
+	m_player.stop()
+	m_player.stream = null
+
+func _release_player() -> void:
+	if m_player == null:
+		return
+	_release_player_stream()
+	m_player = null
+
 # -------------------------
 # Load JSON (onsets + onset_energy)
 # -------------------------
@@ -386,33 +418,32 @@ func _song_time() -> float:
 func _load_song_and_chart() -> void:
 	var stream: AudioStream = _load_mp3_stream(mp3_path)
 	if stream == null:
+		_clear_loaded_song_state()
 		push_error("PianoGame: failed to load mp3: %s" % mp3_path)
 		return
-	m_player.stream = stream
-
-	m_stream_length = 0.0
+	
+	var stream_length: float = 0.0
 	if stream.has_method("get_length"):
-		m_stream_length = float(stream.call("get_length"))
-
+		stream_length = float(stream.call("get_length"))
+	
 	var use_json_path: String = json_path
 	if auto_json_from_mp3 and use_json_path.is_empty():
 		use_json_path = _auto_json_path(mp3_path)
-
+	
 	var data: Dictionary = _load_json(use_json_path)
 	if data.is_empty():
+		_clear_loaded_song_state()
 		push_error("PianoGame: failed to load json: %s" % use_json_path)
 		return
-
-	m_bpm = float(data.get("bpm", 0.0))
-
+	
+	var next_bpm: float = float(data.get("bpm", 0.0))
+	
 	var raw_onsets: Array[float] = _dict_get_float_array(data, "onsets")
 	if raw_onsets.is_empty():
+		_clear_loaded_song_state()
 		push_error("PianoGame: JSON has no 'onsets'.")
-		m_onsets.clear()
-		m_onset_energy.clear()
-		m_onset_chars.clear()
 		return
-
+	
 	var raw_energy: Array[float] = _dict_get_float_array(data, "onset_energy")
 	if raw_energy.is_empty():
 		raw_energy.resize(raw_onsets.size())
@@ -431,32 +462,30 @@ func _load_song_and_chart() -> void:
 		thin_rng.seed = _stable_seed_from_strings(mp3_path, use_json_path)
 	else:
 		thin_rng.randomize()
-
+	
 	# Thin (keep alignment)
 	var thin_res: Dictionary = _thin_times_and_energy(raw_onsets, raw_energy, onset_stride, onset_keep_prob, thin_rng)
-	m_onsets = thin_res.get("times", []) as Array[float]
-	m_onset_energy = thin_res.get("energy", []) as Array[float]
-
+	var next_onsets: Array[float] = thin_res.get("times", []) as Array[float]
+	var next_onset_energy: Array[float] = thin_res.get("energy", []) as Array[float]
+	
 	# Filter by min energy (keep alignment)
-	var filt_res: Dictionary = _filter_by_min_energy(m_onsets, m_onset_energy, min_onset_energy)
-	m_onsets = filt_res.get("times", []) as Array[float]
-	m_onset_energy = filt_res.get("energy", []) as Array[float]
-
+	var filt_res: Dictionary = _filter_by_min_energy(next_onsets, next_onset_energy, min_onset_energy)
+	next_onsets = filt_res.get("times", []) as Array[float]
+	next_onset_energy = filt_res.get("energy", []) as Array[float]
+	
 	# Apply min hit interval (manual or auto) — keep alignment, drop too-close hits
-	var effective_interval: float = _get_effective_min_hit_interval_sec()
-	var int_res: Dictionary = _apply_min_hit_interval(m_onsets, m_onset_energy, effective_interval)
-	m_onsets = int_res.get("times", []) as Array[float]
-	m_onset_energy = int_res.get("energy", []) as Array[float]
-
-	if m_onsets.size() != m_onset_energy.size():
+	var effective_interval: float = _get_effective_min_hit_interval_sec(next_bpm)
+	var int_res: Dictionary = _apply_min_hit_interval(next_onsets, next_onset_energy, effective_interval)
+	next_onsets = int_res.get("times", []) as Array[float]
+	next_onset_energy = int_res.get("energy", []) as Array[float]
+	
+	if next_onsets.size() != next_onset_energy.size():
+		_clear_loaded_song_state()
 		push_error("PianoGame: onsets/energy length mismatch after filtering.")
-		m_onsets.clear()
-		m_onset_energy.clear()
-		m_onset_chars.clear()
 		return
-
-	m_last_onset_time = m_onsets.back() if not m_onsets.is_empty() else 0.0
-
+	
+	var next_last_onset_time: float = next_onsets.back() if not next_onsets.is_empty() else 0.0
+	
 	# Decide pool order for energy bands
 	var band_pool: Array[String] = m_pool.duplicate()
 	if randomize_lane_mapping and band_pool.size() > 1:
@@ -466,15 +495,24 @@ func _load_song_and_chart() -> void:
 		else:
 			map_rng.randomize()
 		_shuffle_array_in_place(band_pool, map_rng)
-
+	
 	# Assign lane chars by energy quantile bins
-	m_onset_chars = _assign_chars_by_energy_bins(m_onset_energy, band_pool)
-
+	var next_onset_chars: Array[String] = _assign_chars_by_energy_bins(next_onset_energy, band_pool)
+	
+	m_player.stream = stream
+	m_stream_length = stream_length
+	m_bpm = next_bpm
+	m_onsets = next_onsets
+	m_onset_energy = next_onset_energy
+	m_onset_chars = next_onset_chars
+	m_last_onset_time = next_last_onset_time
+	m_chart_loaded = true
+	
 	if print_debug:
 		print("Loaded JSON: ", use_json_path,
-			" onsets=", m_onsets.size(),
+			" onsets=", next_onsets.size(),
 			" lanes=", m_pool.size(),
-			" bpm=", m_bpm,
+			" bpm=", next_bpm,
 			" min_interval=", effective_interval,
 			" min_energy=", min_onset_energy)
 
@@ -482,11 +520,11 @@ func _load_song_and_chart() -> void:
 # Difficulty-based interval
 # -------------------------
 
-func _get_effective_min_hit_interval_sec() -> float:
+func _get_effective_min_hit_interval_sec(bpm_override: float = -1.0) -> float:
 	if not auto_min_hit_interval:
 		return min_hit_interval_sec
-
-	var bpm: float = m_bpm
+	
+	var bpm: float = bpm_override if bpm_override > 0.0 else m_bpm
 	if bpm <= 1.0:
 		bpm = 120.0
 
@@ -682,7 +720,10 @@ func _process(_delta: float) -> void:
 	if m_player == null:
 		queue_redraw()
 		return
-
+	if not m_chart_loaded:
+		queue_redraw()
+		return
+	
 	# Keep drawing HUD even when stopped
 	if not m_player.playing:
 		_try_finalize_if_done(_song_time())
@@ -787,6 +828,8 @@ func _print_final_summary_once() -> void:
 # -------------------------
 
 func _unhandled_input(event: InputEvent) -> void:
+	if m_game_finished or m_player == null or not m_player.playing:
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var key_string: String = OS.get_keycode_string(event.keycode).to_upper()
 		if m_lane_index.has(key_string):
@@ -794,6 +837,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func judge_key(ch: String) -> void:
 	if m_player == null or m_player.stream == null:
+		return
+	if m_game_finished or not m_player.playing:
 		return
 	if m_onsets.is_empty() or m_onset_chars.is_empty():
 		return

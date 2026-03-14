@@ -182,7 +182,8 @@ func play_move(cell: Vector2i) -> bool:
 
 	_apply_rules_commit_result(result)
 
-	m_turn = _other(m_turn)
+	if not m_is_game_over:
+		m_turn = _other(m_turn)
 	m_turn_token += 1
 
 	_push_current_snapshot()

@@ -29,6 +29,7 @@ This fits the current project strengths:
 - Landmark stories: each major landmark delivers one self-contained objective chain.
 - Social discovery: NPC interactions reveal routes, history, and unlock tasks.
 - Musical restoration: progress is tracked as recovered melody fragments.
+- Musical discovery: melodies should be heard in residents, ambience, and landmarks before they are fully reconstructed.
 - Low punishment: setbacks cost time and rerouting, not hard failure screens.
 
 ## Player Fantasy
@@ -37,11 +38,13 @@ The player is a newcomer to Kulangsu who gradually learns the island by walking 
 ## Core Loop
 
 1. Enter a district.
-2. Find a local resident, clue, or landmark interaction point.
-3. Learn a short objective.
-4. Traverse the space to solve it.
-5. Receive a melody fragment, relationship gain, and the next lead.
-6. Return to the overworld and choose the next landmark.
+2. Hear a local melody cue from a resident, object, or environment.
+3. Find a local resident, clue, or landmark interaction point.
+4. Learn a short objective.
+5. Traverse the space to solve it.
+6. Reconstruct or perform a short melody beat.
+7. Receive a melody fragment, relationship gain, and the next lead.
+8. Return to the overworld and choose the next landmark.
 
 For the repeatable moment-to-moment play design that should power each of those steps, see [`docs/core_gameplay_plays.md`](docs/core_gameplay_plays.md).
 
@@ -92,6 +95,14 @@ Reward:
 ### 4. Open Exploration Phase
 
 The island opens after the ferry tutorial. The player can visit the landmarks in flexible order, but each one should reinforce a different style of play.
+
+Across all landmarks, the player should repeatedly move through:
+
+- discovery of a musical cue
+- social or environmental context
+- short traversal problem solving
+- light melody reconstruction or performance
+- world and relationship payoff
 
 Recommended route:
 
@@ -219,6 +230,8 @@ Tracks:
 - Landmark progress
 - Known residents
 - Collected melody fragments
+- Reconstructed melodies
+- Melody state: heard, reconstructed, performed
 - Open shortcuts
 
 ### Relationship Layer
@@ -246,12 +259,15 @@ Purpose:
 - Reward exploration of side paths
 - Deepen island identity
 - Improve completion ending
+- Add optional melody context without bloating the critical path
 
 ## Progress Structure
 
 ### Main Progress Gate
 
 The player needs all four melody fragments to trigger the finale.
+
+Each fragment should ideally feel reconstructed from multiple musical encounters rather than granted as a generic quest token.
 
 ### Soft Gates
 
@@ -359,6 +375,12 @@ Each active entry should contain:
 - Reward preview if appropriate
 - Completion marker after resolution
 
+Melody entries can additionally include:
+
+- Source hints
+- Related resident
+- Current music state
+
 ### Resident Notes
 
 Resident notes should unlock only after introduction and should answer:
@@ -410,7 +432,7 @@ The ending sequence should behave like a playable ritual, not a detached cutscen
 
 1. Lock free-roam interactions except the festival nodes
 2. Gather helped residents into the plaza
-3. Activate the four fragment stations in order
+3. Activate the reconstructed melody stations in order
 4. Play environmental response pass across lights, windows, crowd, and music
 5. Transition into ending choice
 
@@ -434,7 +456,7 @@ Build the workflow in the smallest loop that proves the design.
 - Ferry arrival objective
 - One lead NPC at Ferry Plaza
 - Journal unlock
-- Trinity Church full arc
+- Trinity Church full arc with melody discovery and reconstruction
 - Rewarding the first melody fragment
 
 ### Slice 2: Shared Quest Plumbing

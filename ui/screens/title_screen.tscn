@@ -1,8 +1,7 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://ui/screens/title_screen.gd" id="1_2hrtl"]
-[ext_resource type="Texture2D" path="res://ui/assets/title_harbor_backdrop_cropped.png" id="2_2a0d1"]
-[ext_resource type="Texture2D" path="res://ui/assets/title_map_overlay_cropped.png" id="3_6owqg"]
+[ext_resource type="Texture2D" path="res://ui/assets/title_harbor_backdrop_kulangsu_pixel.png" id="2_2a0d1"]
 
 [node name="TitleScreen" type="Control"]
 layout_mode = 1
@@ -21,18 +20,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 texture = ExtResource("2_2a0d1")
-expand_mode = 1
-stretch_mode = 6
-
-[node name="BackdropOverlay" type="TextureRect" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-modulate = Color(1, 1, 1, 0.8)
-texture = ExtResource("3_6owqg")
+texture_filter = 1
 expand_mode = 1
 stretch_mode = 6
 
@@ -43,26 +31,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.03, 0.06, 0.09, 0.32)
-
-[node name="TopGlow" type="ColorRect" parent="."]
-layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_bottom = 292.0
-grow_horizontal = 2
-mouse_filter = 2
-color = Color(0.937255, 0.85098, 0.678431, 0.08)
-
-[node name="SunWash" type="ColorRect" parent="."]
-layout_mode = 1
-anchors_preset = 10
-anchor_left = 0.52
-anchor_right = 1.0
-offset_bottom = 436.0
-grow_horizontal = 2
-mouse_filter = 2
-color = Color(0.952941, 0.776471, 0.470588, 0.1)
+color = Color(1, 1, 1, 0.08)
 
 [node name="BottomFade" type="ColorRect" parent="."]
 layout_mode = 1
@@ -103,7 +72,6 @@ alignment = 1
 custom_minimum_size = Vector2(860, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 22
 
 [node name="HeroPanel" type="PanelContainer" parent="SafeArea/Center/Content/HeroColumn"]
 custom_minimum_size = Vector2(860, 0)
@@ -175,44 +143,10 @@ modulate = Color(0.964706, 0.886275, 0.733333, 0.72)
 theme_override_font_sizes/font_size = 16
 text = "A watercolor harbor dream framed like a travel poster."
 
-[node name="StoryBand" type="PanelContainer" parent="SafeArea/Center/Content/HeroColumn"]
-custom_minimum_size = Vector2(860, 0)
-layout_mode = 2
-
-[node name="Margin" type="MarginContainer" parent="SafeArea/Center/Content/HeroColumn/StoryBand"]
-layout_mode = 2
-theme_override_constants/margin_left = 24
-theme_override_constants/margin_top = 20
-theme_override_constants/margin_right = 24
-theme_override_constants/margin_bottom = 18
-
-[node name="StoryBody" type="VBoxContainer" parent="SafeArea/Center/Content/HeroColumn/StoryBand/Margin"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="StoryKicker" type="Label" parent="SafeArea/Center/Content/HeroColumn/StoryBand/Margin/StoryBody"]
-layout_mode = 2
-modulate = Color(0.945098, 0.85098, 0.694118, 0.82)
-theme_override_font_sizes/font_size = 16
-text = "Festival Route"
-
-[node name="StoryTitle" type="Label" parent="SafeArea/Center/Content/HeroColumn/StoryBand/Margin/StoryBody"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 28
-text = "Follow the harbor lights inland."
-
-[node name="StoryText" type="Label" parent="SafeArea/Center/Content/HeroColumn/StoryBand/Margin/StoryBody"]
-custom_minimum_size = Vector2(760, 0)
-layout_mode = 2
-modulate = Color(1, 1, 1, 0.72)
-text = "Each stop along the island offers a small rhythm: ferries at the pier, choir bells near the church, and hidden conversations in the tunnel shade."
-autowrap_mode = 3
-
 [node name="ActionColumn" type="VBoxContainer" parent="SafeArea/Center/Content"]
 custom_minimum_size = Vector2(420, 0)
 layout_mode = 2
 size_flags_horizontal = 4
-theme_override_constants/separation = 18
 
 [node name="MenuCard" type="PanelContainer" parent="SafeArea/Center/Content/ActionColumn"]
 custom_minimum_size = Vector2(420, 0)
@@ -271,38 +205,3 @@ text = "Quit"
 layout_mode = 2
 modulate = Color(1, 1, 1, 0.65)
 text = "Prototype app flow"
-
-[node name="TravelNote" type="PanelContainer" parent="SafeArea/Center/Content/ActionColumn"]
-custom_minimum_size = Vector2(420, 0)
-layout_mode = 2
-size_flags_horizontal = 4
-
-[node name="Margin" type="MarginContainer" parent="SafeArea/Center/Content/ActionColumn/TravelNote"]
-layout_mode = 2
-theme_override_constants/margin_left = 22
-theme_override_constants/margin_top = 20
-theme_override_constants/margin_right = 22
-theme_override_constants/margin_bottom = 18
-
-[node name="TravelBody" type="VBoxContainer" parent="SafeArea/Center/Content/ActionColumn/TravelNote/Margin"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="TravelKicker" type="Label" parent="SafeArea/Center/Content/ActionColumn/TravelNote/Margin/TravelBody"]
-layout_mode = 2
-modulate = Color(0.945098, 0.85098, 0.694118, 0.76)
-theme_override_font_sizes/font_size = 15
-text = "Tonight's Mood"
-
-[node name="TravelText" type="Label" parent="SafeArea/Center/Content/ActionColumn/TravelNote/Margin/TravelBody"]
-custom_minimum_size = Vector2(360, 0)
-layout_mode = 2
-modulate = Color(1, 1, 1, 0.76)
-text = "Sea mist over the ferry quay, warm lanterns near the lane, and a melody waiting to be pieced together."
-autowrap_mode = 3
-
-[node name="TravelHint" type="Label" parent="SafeArea/Center/Content/ActionColumn/TravelNote/Margin/TravelBody"]
-layout_mode = 2
-modulate = Color(0.952941, 0.886275, 0.760784, 0.72)
-theme_override_font_sizes/font_size = 14
-text = "Tip: Continue is available after a run begins."

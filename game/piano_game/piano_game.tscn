@@ -5,7 +5,7 @@
 
 [node name="PianoGame" type="Node2D" unique_id=309440624]
 script = ExtResource("1_6so56")
-mp3_path = "res://resources/audio/Kulangsu Breeze.mp3"
+mp3_path = "res://resources/audio/summer_of_qin_dao.mp3"
 json_path = ""
 travel_time_sec = 2.0
 lookahead_sec = 2.0
@@ -16,8 +16,9 @@ print_debug = true
 
 [node name="beat_json_generator" type="Node" parent="." unique_id=576002100]
 script = ExtResource("1_1dbao")
-mp3_path = "res://resources/audio/Kulangsu Breeze.mp3"
+mp3_path = "res://resources/audio/summer_of_qin_dao.mp3"
 analysis_seconds_limit = 100.0
-status = "Idle"
+progress = 1.0
+status = "Done"
 progress_print_min_interval_sec = 1.0
 metadata/beatgen_last_stage = "done"

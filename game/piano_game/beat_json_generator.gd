@@ -69,6 +69,13 @@ func _ready() -> void:
 	m_requested_output_json_path = output_json_path
 	_set_progress(0.0, "Idle")
 
+func _exit_tree() -> void:
+	_release_player()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		_release_player()
+
 func _regenerate() -> void:
 	m_requested_mp3_path = mp3_path
 	m_requested_output_json_path = output_json_path
@@ -108,6 +115,13 @@ func _set_progress(p: float, s: String) -> void:
 		m_last_progress_print_p = progress
 		m_last_progress_print_ms = now_ms
 		print("[BeatJsonGenerator] ", int(progress * 100.0), "% - ", status)
+
+func _release_player() -> void:
+	if m_player == null:
+		return
+	m_player.stop()
+	m_player.stream = null
+	m_player = null
 
 func _ensure_capture_bus(bus_name: String = "BeatCapture") -> void:
 	m_capture_bus_index = AudioServer.get_bus_index(bus_name)
@@ -161,15 +175,8 @@ func _safe_write_json(path_try: String, json_text: String) -> String:
 		f.store_string(json_text)
 		f.close()
 		return path_try
-
-	var fallback: String = "user://beats.json"
-	var f2: FileAccess = FileAccess.open(fallback, FileAccess.WRITE)
-	if f2:
-		f2.store_string(json_text)
-		f2.close()
-		return fallback
-
-	push_error("Failed to write JSON to %s and %s" % [path_try, fallback])
+	
+	push_error("Failed to write beat JSON to %s" % path_try)
 	return ""
 
 func generate_json(src_mp3_path: String, out_json_path: String = "") -> void:
@@ -254,9 +261,11 @@ func generate_json(src_mp3_path: String, out_json_path: String = "") -> void:
 
 	var json_text: String = JSON.stringify(analysis, "\t", false)
 	var written_to: String = _safe_write_json(out_path, json_text)
-	if written_to != "":
-		print("Wrote beat JSON: ", written_to)
-
+	if written_to == "":
+		_set_progress(0.0, "Failed to write JSON")
+		return
+	
+	print("Wrote beat JSON: ", written_to)
 	_set_progress(1.0, "Done")
 
 # ------------------------------------------------------------
