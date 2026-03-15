@@ -19,7 +19,7 @@ Read this first. It is the minimum-token design context for new Codex threads.
 ## Core Content Model
 
 - Main quest plus lightweight district objectives.
-- Progress is tracked through melody fragments, reconstructed melodies, landmarks, residents, chapter, and location.
+- Progress is tracked through melody fragments, reconstructed melodies, landmarks, residents, chapter, location, player appearance, and wardrobe unlocks.
 - `Free Walk` is a low-pressure exploration mode separate from story progression.
 
 ## UI Direction
@@ -36,7 +36,7 @@ Read this first. It is the minimum-token design context for new Codex threads.
 - App shell logic: [`ui/app_flow_root.gd`](ui/app_flow_root.gd)
 - Shared UI state: [`game/app_state.gd`](game/app_state.gd)
 - Shared UI styling: [`ui/ui_style.gd`](ui/ui_style.gd)
-- Current dedicated screens: boot, title, game HUD
+- Current dedicated screens: boot, title, player setup, game HUD
 
 ## Layout Rule That Must Stay True
 
@@ -49,9 +49,10 @@ Read this first. It is the minimum-token design context for new Codex threads.
 1. Boot
 2. Title
 3. `Continue` / `New Game` / `Free Walk`
-4. In-game HUD
-5. In-game overlays: journal, pause, settings, credits, ending, confirm modal
-6. Return to title or quit
+4. Character setup for new runs
+5. In-game HUD
+6. In-game overlays: journal, pause, settings, credits, ending, confirm modal
+7. Return to title or quit
 
 Input expectations:
 
@@ -75,6 +76,7 @@ Input expectations:
 ## If You Need More Detail
 
 - NPC and resident system slice: [`docs/npc_system_design.md`](docs/npc_system_design.md)
+- Player wardrobe and costume unlocks: [`docs/player_costume_system.md`](docs/player_costume_system.md)
 - Reusable board game module: [`docs/grid_board_game_design.md`](docs/grid_board_game_design.md)
 - Marble game prototype rules and architecture: [`docs/marble_game_design.md`](docs/marble_game_design.md)
 - Piano mini-game prototype and integration guidance: [`docs/piano_game_design.md`](docs/piano_game_design.md)

@@ -1,0 +1,233 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/screens/player_customization_overlay.gd" id="1_setup"]
+
+[node name="PlayerCustomizationOverlay" type="PanelContainer"]
+offset_left = 360.0
+offset_top = 120.0
+offset_right = 1560.0
+offset_bottom = 960.0
+script = ExtResource("1_setup")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
+
+[node name="Body" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Title" type="Label" parent="Margin/Body"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "Set Up Your Traveler"
+
+[node name="SubTitle" type="Label" parent="Margin/Body"]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+autowrap_mode = 3
+text = "Choose a body, gender, skin tone, and hair before arriving on Kulangsu."
+
+[node name="Content" type="HBoxContainer" parent="Margin/Body"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 24
+
+[node name="PreviewColumn" type="VBoxContainer" parent="Margin/Body/Content"]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="PreviewFrame" type="PanelContainer" parent="Margin/Body/Content/PreviewColumn"]
+custom_minimum_size = Vector2(360, 360)
+layout_mode = 2
+
+[node name="PreviewViewportContainer" type="SubViewportContainer" parent="Margin/Body/Content/PreviewColumn/PreviewFrame"]
+layout_mode = 2
+stretch = true
+
+[node name="PreviewViewport" type="SubViewport" parent="Margin/Body/Content/PreviewColumn/PreviewFrame/PreviewViewportContainer"]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(360, 360)
+render_target_update_mode = 4
+
+[node name="Summary" type="Label" parent="Margin/Body/Content/PreviewColumn"]
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+autowrap_mode = 3
+text = "Body: Adult"
+
+[node name="ControlsColumn" type="VBoxContainer" parent="Margin/Body/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="BodyRow" type="VBoxContainer" parent="Margin/Body/Content/ControlsColumn"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label" type="Label" parent="Margin/Body/Content/ControlsColumn/BodyRow"]
+layout_mode = 2
+text = "Body"
+
+[node name="Controls" type="HBoxContainer" parent="Margin/Body/Content/ControlsColumn/BodyRow"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PrevButton" type="Button" parent="Margin/Body/Content/ControlsColumn/BodyRow/Controls"]
+custom_minimum_size = Vector2(118, 50)
+layout_mode = 2
+text = "Previous"
+
+[node name="Value" type="Label" parent="Margin/Body/Content/ControlsColumn/BodyRow/Controls"]
+custom_minimum_size = Vector2(140, 50)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+vertical_alignment = 1
+text = "Adult"
+
+[node name="NextButton" type="Button" parent="Margin/Body/Content/ControlsColumn/BodyRow/Controls"]
+custom_minimum_size = Vector2(118, 50)
+layout_mode = 2
+text = "Next"
+
+[node name="GenderRow" type="VBoxContainer" parent="Margin/Body/Content/ControlsColumn"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label" type="Label" parent="Margin/Body/Content/ControlsColumn/GenderRow"]
+layout_mode = 2
+text = "Gender"
+
+[node name="Controls" type="HBoxContainer" parent="Margin/Body/Content/ControlsColumn/GenderRow"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PrevButton" type="Button" parent="Margin/Body/Content/ControlsColumn/GenderRow/Controls"]
+custom_minimum_size = Vector2(118, 50)
+layout_mode = 2
+text = "Previous"
+
+[node name="Value" type="Label" parent="Margin/Body/Content/ControlsColumn/GenderRow/Controls"]
+custom_minimum_size = Vector2(140, 50)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+vertical_alignment = 1
+text = "Masculine"
+
+[node name="NextButton" type="Button" parent="Margin/Body/Content/ControlsColumn/GenderRow/Controls"]
+custom_minimum_size = Vector2(118, 50)
+layout_mode = 2
+text = "Next"
+
+[node name="SkinRow" type="VBoxContainer" parent="Margin/Body/Content/ControlsColumn"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label" type="Label" parent="Margin/Body/Content/ControlsColumn/SkinRow"]
+layout_mode = 2
+text = "Skin Tone"
+
+[node name="Controls" type="HBoxContainer" parent="Margin/Body/Content/ControlsColumn/SkinRow"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PrevButton" type="Button" parent="Margin/Body/Content/ControlsColumn/SkinRow/Controls"]
+custom_minimum_size = Vector2(118, 50)
+layout_mode = 2
+text = "Previous"
+
+[node name="Value" type="Label" parent="Margin/Body/Content/ControlsColumn/SkinRow/Controls"]
+custom_minimum_size = Vector2(140, 50)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+vertical_alignment = 1
+text = "Light"
+
+[node name="NextButton" type="Button" parent="Margin/Body/Content/ControlsColumn/SkinRow/Controls"]
+custom_minimum_size = Vector2(118, 50)
+layout_mode = 2
+text = "Next"
+
+[node name="HairStyleRow" type="VBoxContainer" parent="Margin/Body/Content/ControlsColumn"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label" type="Label" parent="Margin/Body/Content/ControlsColumn/HairStyleRow"]
+layout_mode = 2
+text = "Hair Style"
+
+[node name="Controls" type="HBoxContainer" parent="Margin/Body/Content/ControlsColumn/HairStyleRow"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PrevButton" type="Button" parent="Margin/Body/Content/ControlsColumn/HairStyleRow/Controls"]
+custom_minimum_size = Vector2(118, 50)
+layout_mode = 2
+text = "Previous"
+
+[node name="Value" type="Label" parent="Margin/Body/Content/ControlsColumn/HairStyleRow/Controls"]
+custom_minimum_size = Vector2(140, 50)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+vertical_alignment = 1
+text = "Short Bangs"
+
+[node name="NextButton" type="Button" parent="Margin/Body/Content/ControlsColumn/HairStyleRow/Controls"]
+custom_minimum_size = Vector2(118, 50)
+layout_mode = 2
+text = "Next"
+
+[node name="HairColorRow" type="VBoxContainer" parent="Margin/Body/Content/ControlsColumn"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label" type="Label" parent="Margin/Body/Content/ControlsColumn/HairColorRow"]
+layout_mode = 2
+text = "Hair Color"
+
+[node name="Controls" type="HBoxContainer" parent="Margin/Body/Content/ControlsColumn/HairColorRow"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PrevButton" type="Button" parent="Margin/Body/Content/ControlsColumn/HairColorRow/Controls"]
+custom_minimum_size = Vector2(118, 50)
+layout_mode = 2
+text = "Previous"
+
+[node name="Value" type="Label" parent="Margin/Body/Content/ControlsColumn/HairColorRow/Controls"]
+custom_minimum_size = Vector2(140, 50)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+vertical_alignment = 1
+text = "Chestnut"
+
+[node name="NextButton" type="Button" parent="Margin/Body/Content/ControlsColumn/HairColorRow/Controls"]
+custom_minimum_size = Vector2(118, 50)
+layout_mode = 2
+text = "Next"
+
+[node name="Footer" type="HBoxContainer" parent="Margin/Body"]
+layout_mode = 2
+alignment = 2
+theme_override_constants/separation = 12
+
+[node name="CancelButton" type="Button" parent="Margin/Body/Footer"]
+custom_minimum_size = Vector2(220, 54)
+layout_mode = 2
+text = "Back"
+
+[node name="ConfirmButton" type="Button" parent="Margin/Body/Footer"]
+custom_minimum_size = Vector2(240, 54)
+layout_mode = 2
+text = "Begin Story"

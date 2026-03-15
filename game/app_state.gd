@@ -2,6 +2,8 @@
 extends Node
 
 const RESIDENT_CATALOG_SCRIPT := preload("res://game/resident_catalog.gd")
+const PLAYER_APPEARANCE_CATALOG_SCRIPT := preload("res://game/player_appearance_catalog.gd")
+const PLAYER_COSTUME_CATALOG_SCRIPT := preload("res://game/player_costume_catalog.gd")
 
 signal mode_changed(mode: String)
 signal chapter_changed(chapter: String)
@@ -13,6 +15,10 @@ signal fragments_changed(found: int, total: int)
 signal landmarks_changed(landmarks: PackedStringArray)
 signal residents_changed(residents: PackedStringArray)
 signal resident_profile_changed(resident_id: String, resident: Dictionary)
+signal player_profile_changed(profile: Dictionary)
+signal player_costume_changed(costume_id: String, costume: Dictionary)
+signal player_costumes_changed(unlocked_ids: PackedStringArray, equipped_costume_id: String)
+signal player_appearance_changed(profile: Dictionary, appearance_config: Dictionary)
 signal summary_changed(summary: Dictionary)
 
 var mode := "Title"
@@ -26,6 +32,15 @@ var fragments_total := 4
 var landmarks: PackedStringArray = _default_landmarks()
 var residents: PackedStringArray = PackedStringArray()
 var resident_profiles: Dictionary = _default_resident_profiles()
+var player_profile: Dictionary = PLAYER_APPEARANCE_CATALOG_SCRIPT.default_profile()
+var player_costume_catalog: Dictionary = PLAYER_COSTUME_CATALOG_SCRIPT.build_catalog()
+var unlocked_player_costume_ids: PackedStringArray = PLAYER_COSTUME_CATALOG_SCRIPT.build_unlocked_costume_ids(
+	mode,
+	fragments_found,
+	fragments_total,
+	resident_profiles
+)
+var equipped_player_costume_id := PLAYER_COSTUME_CATALOG_SCRIPT.default_costume_id()
 var ending_summary := {
 	"fragments": "4 / 4",
 	"residents": "0",
@@ -39,6 +54,7 @@ func set_mode(new_mode: String) -> void:
 		return
 	mode = new_mode
 	mode_changed.emit(mode)
+	_refresh_player_costumes()
 
 
 func set_chapter(new_chapter: String) -> void:
@@ -84,6 +100,7 @@ func set_fragments(found: int, total: int = fragments_total) -> void:
 	fragments_found = found
 	fragments_total = total
 	fragments_changed.emit(fragments_found, fragments_total)
+	_refresh_player_costumes()
 	_update_summary_counts()
 
 
@@ -102,6 +119,7 @@ func set_resident_profiles(new_profiles: Dictionary) -> void:
 	_sync_known_residents()
 	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
 		resident_profile_changed.emit(resident_id, get_resident_profile(resident_id))
+	_refresh_player_costumes()
 
 
 func set_summary(summary: Dictionary) -> void:
@@ -153,6 +171,151 @@ func get_resident_spawn_config(resident_id: String) -> Dictionary:
 	var resident: Dictionary = resident_profiles.get(resident_id, {})
 	var spawn: Dictionary = resident.get("spawn", {})
 	return spawn.duplicate(true)
+
+
+func get_player_profile() -> Dictionary:
+	return player_profile.duplicate(true)
+
+
+func get_player_body_display_name() -> String:
+	return PLAYER_APPEARANCE_CATALOG_SCRIPT.body_frame_display_name(
+		String(player_profile.get("body_frame_id", "adult"))
+	)
+
+
+func get_player_gender_display_name() -> String:
+	return PLAYER_APPEARANCE_CATALOG_SCRIPT.presentation_display_name(
+		String(player_profile.get("presentation_id", "masculine"))
+	)
+
+
+func get_player_skin_display_name() -> String:
+	return PLAYER_APPEARANCE_CATALOG_SCRIPT.skin_tone_display_name(
+		String(player_profile.get("skin_tone_id", "light"))
+	)
+
+
+func get_player_hair_style_display_name() -> String:
+	return PLAYER_APPEARANCE_CATALOG_SCRIPT.hair_style_display_name(
+		String(player_profile.get("hair_style_id", "short_bangs"))
+	)
+
+
+func get_player_hair_color_display_name() -> String:
+	return PLAYER_APPEARANCE_CATALOG_SCRIPT.hair_color_display_name(
+		String(player_profile.get("hair_color_id", "chestnut"))
+	)
+
+
+func get_player_costume_ids() -> PackedStringArray:
+	return PLAYER_COSTUME_CATALOG_SCRIPT.ordered_ids()
+
+
+func get_player_costume(costume_id: String) -> Dictionary:
+	if !player_costume_catalog.has(costume_id):
+		return {}
+	return player_costume_catalog[costume_id].duplicate(true)
+
+
+func get_unlocked_player_costume_ids() -> PackedStringArray:
+	return PackedStringArray(unlocked_player_costume_ids)
+
+
+func get_equipped_player_costume_id() -> String:
+	return equipped_player_costume_id
+
+
+func get_equipped_player_costume() -> Dictionary:
+	return get_player_costume(equipped_player_costume_id)
+
+
+func get_equipped_player_costume_display_name() -> String:
+	return String(get_equipped_player_costume().get("display_name", "Harbor Arrival"))
+
+
+func set_player_profile(new_profile: Dictionary) -> bool:
+	var normalized_profile := PLAYER_APPEARANCE_CATALOG_SCRIPT.normalize_profile(new_profile)
+	if player_profile == normalized_profile:
+		return false
+
+	player_profile = normalized_profile
+	player_profile_changed.emit(get_player_profile())
+	_emit_player_appearance_changed()
+	return true
+
+
+func cycle_player_body_frame(direction: int) -> void:
+	_cycle_player_profile_option(
+		"body_frame_id",
+		PLAYER_APPEARANCE_CATALOG_SCRIPT.body_frame_options(),
+		direction
+	)
+
+
+func cycle_player_gender(direction: int) -> void:
+	_cycle_player_profile_option(
+		"presentation_id",
+		PLAYER_APPEARANCE_CATALOG_SCRIPT.presentation_options(),
+		direction
+	)
+
+
+func cycle_player_skin_tone(direction: int) -> void:
+	_cycle_player_profile_option(
+		"skin_tone_id",
+		PLAYER_APPEARANCE_CATALOG_SCRIPT.skin_tone_options(),
+		direction
+	)
+
+
+func cycle_player_hair_style(direction: int) -> void:
+	_cycle_player_profile_option(
+		"hair_style_id",
+		PLAYER_APPEARANCE_CATALOG_SCRIPT.hair_style_options(),
+		direction
+	)
+
+
+func cycle_player_hair_color(direction: int) -> void:
+	_cycle_player_profile_option(
+		"hair_color_id",
+		PLAYER_APPEARANCE_CATALOG_SCRIPT.hair_color_options(),
+		direction
+	)
+
+
+func get_player_appearance_config() -> Dictionary:
+	var costume: Dictionary = get_equipped_player_costume()
+	var costume_selections: Dictionary = costume.get("selections", {})
+	return PLAYER_APPEARANCE_CATALOG_SCRIPT.build_appearance_config(player_profile, costume_selections)
+
+
+func equip_player_costume(costume_id: String) -> bool:
+	if !player_costume_catalog.has(costume_id):
+		return false
+	if unlocked_player_costume_ids.find(costume_id) < 0:
+		return false
+	if equipped_player_costume_id == costume_id:
+		return true
+
+	equipped_player_costume_id = costume_id
+	player_costume_changed.emit(equipped_player_costume_id, get_equipped_player_costume())
+	_emit_player_appearance_changed()
+	player_costumes_changed.emit(get_unlocked_player_costume_ids(), equipped_player_costume_id)
+	return true
+
+
+func cycle_player_costume(direction: int) -> void:
+	if unlocked_player_costume_ids.is_empty():
+		return
+
+	var current_index := unlocked_player_costume_ids.find(equipped_player_costume_id)
+	if current_index < 0:
+		equip_player_costume(String(unlocked_player_costume_ids[0]))
+		return
+
+	var next_index := posmod(current_index + direction, unlocked_player_costume_ids.size())
+	equip_player_costume(String(unlocked_player_costume_ids[next_index]))
 
 
 func get_known_resident_names() -> PackedStringArray:
@@ -207,6 +370,53 @@ func build_resident_journal_text() -> String:
 	return "\n\n".join(PackedStringArray(sections))
 
 
+func build_player_costume_journal_text() -> String:
+	var sections: Array[String] = []
+
+	sections.append(
+		"Current look: %s\nBody: %s\nGender: %s\nHair: %s\nHair color: %s\nUnlocked looks: %d / %d\nUse the controls below to change costume and hair." % [
+			get_equipped_player_costume_display_name(),
+			get_player_body_display_name(),
+			get_player_gender_display_name(),
+			get_player_hair_style_display_name(),
+			get_player_hair_color_display_name(),
+			unlocked_player_costume_ids.size(),
+			get_player_costume_ids().size(),
+		]
+	)
+
+	for costume_id in get_player_costume_ids():
+		var costume: Dictionary = player_costume_catalog.get(costume_id, {})
+		var is_unlocked := unlocked_player_costume_ids.find(costume_id) >= 0
+		var state_text := "Locked"
+		if costume_id == equipped_player_costume_id:
+			state_text = "Wearing"
+		elif is_unlocked:
+			state_text = "Unlocked"
+
+		sections.append(
+			"%s: %s\n%s\nRoute: %s" % [
+				state_text,
+				String(costume.get("display_name", costume_id)),
+				String(costume.get("summary", "")),
+				String(costume.get("unlock_hint", "Always available.")),
+			]
+		)
+
+	return "\n\n".join(PackedStringArray(sections))
+
+
+func build_player_setup_summary_text() -> String:
+	return "Body: %s\nGender: %s\nSkin: %s\nHair: %s\nHair color: %s\nStarting look: %s" % [
+		get_player_body_display_name(),
+		get_player_gender_display_name(),
+		get_player_skin_display_name(),
+		get_player_hair_style_display_name(),
+		get_player_hair_color_display_name(),
+		get_equipped_player_costume_display_name(),
+	]
+
+
 func interact_with_resident(resident_id: String) -> Dictionary:
 	if !resident_profiles.has(resident_id):
 		return {}
@@ -219,6 +429,7 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 	if dialogue_beats.is_empty():
 		resident_profiles[resident_id] = resident
 		_sync_known_residents()
+		_refresh_player_costumes()
 		resident_profile_changed.emit(resident_id, get_resident_profile(resident_id))
 		return {}
 
@@ -243,6 +454,7 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 	resident_profiles[resident_id] = resident
 	_sync_known_residents()
 	_apply_resident_beat(beat)
+	_refresh_player_costumes()
 	resident_profile_changed.emit(resident_id, get_resident_profile(resident_id))
 	return beat.duplicate(true)
 
@@ -361,6 +573,7 @@ func _seed_resident_progress(
 
 	resident_profiles[resident_id] = resident
 	_sync_known_residents()
+	_refresh_player_costumes()
 	resident_profile_changed.emit(resident_id, get_resident_profile(resident_id))
 
 
@@ -379,3 +592,42 @@ func _update_summary_counts() -> void:
 	summary["residents"] = str(_count_helped_residents())
 	ending_summary = summary
 	summary_changed.emit(ending_summary)
+
+
+func _cycle_player_profile_option(profile_key: String, options: Array, direction: int) -> void:
+	var next_profile := get_player_profile()
+	var current_id := String(next_profile.get(profile_key, ""))
+	next_profile[profile_key] = PLAYER_APPEARANCE_CATALOG_SCRIPT.cycle_option_id(options, current_id, direction)
+	set_player_profile(next_profile)
+
+
+func _emit_player_appearance_changed() -> void:
+	player_appearance_changed.emit(get_player_profile(), get_player_appearance_config())
+
+
+func _refresh_player_costumes() -> void:
+	var next_unlocked := PLAYER_COSTUME_CATALOG_SCRIPT.build_unlocked_costume_ids(
+		mode,
+		fragments_found,
+		fragments_total,
+		resident_profiles
+	)
+	var unlocked_changed := unlocked_player_costume_ids != next_unlocked
+	var next_equipped := equipped_player_costume_id
+
+	if next_unlocked.find(next_equipped) < 0:
+		next_equipped = PLAYER_COSTUME_CATALOG_SCRIPT.default_costume_id()
+		if next_unlocked.find(next_equipped) < 0 and !next_unlocked.is_empty():
+			next_equipped = String(next_unlocked[0])
+
+	var costume_changed := next_equipped != equipped_player_costume_id
+
+	unlocked_player_costume_ids = next_unlocked
+	equipped_player_costume_id = next_equipped
+
+	if costume_changed:
+		player_costume_changed.emit(equipped_player_costume_id, get_equipped_player_costume())
+		_emit_player_appearance_changed()
+
+	if unlocked_changed or costume_changed:
+		player_costumes_changed.emit(get_unlocked_player_costume_ids(), equipped_player_costume_id)

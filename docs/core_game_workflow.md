@@ -229,6 +229,8 @@ Tracks:
 - Current objective
 - Landmark progress
 - Known residents
+- Unlocked wardrobe looks
+- Current player appearance profile
 - Collected melody fragments
 - Reconstructed melodies
 - Melody state: heard, reconstructed, performed
@@ -242,7 +244,7 @@ Benefits:
 
 - Cleaner directions
 - Optional lore
-- Cosmetic endgame changes
+- Costume unlocks and cosmetic endgame changes
 - Better final turnout at the festival
 
 ### Optional Collectibles
@@ -314,6 +316,8 @@ The shared UI state in [`game/app_state.gd`](game/app_state.gd) should reflect t
 - `objective`: one clear action sentence
 - `hint`: current control reminder or context-sensitive prompt
 - `fragments_found`: restored melody count out of four
+- `player_profile`: selected body, gender, skin, and hair options
+- `equipped_player_costume_id`: the wardrobe preset currently worn by the player
 
 The doc in [`docs/ui_design_context.md`](docs/ui_design_context.md) already assumes this state drives the HUD and overlays, so gameplay progression should update it as soon as objectives change.
 

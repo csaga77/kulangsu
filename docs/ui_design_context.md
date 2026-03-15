@@ -75,6 +75,8 @@ The UI reads from a shared singleton:
 - fragment progress
 - landmark list
 - resident list
+- player profile
+- unlocked and equipped player costumes
 - ending summary
 
 This is the correct place for future UI-facing progression state.
@@ -98,6 +100,7 @@ Future shared UI colors, typography rules, spacing tokens, and component styles 
 
 - [ui/screens/boot_screen.tscn](ui/screens/boot_screen.tscn)
 - [ui/screens/title_screen.tscn](ui/screens/title_screen.tscn)
+- [ui/screens/player_customization_overlay.tscn](ui/screens/player_customization_overlay.tscn)
 - [ui/screens/game_hud.tscn](ui/screens/game_hud.tscn)
 
 ### Overlays Still Built in the App Shell
@@ -120,14 +123,15 @@ The intended app flow is:
 1. Boot
 2. Title screen
 3. `Continue` / `New Game` / `Free Walk`
-4. In-game HUD
-5. In-game overlays:
+4. Character setup before a fresh story run or free walk
+5. In-game HUD
+6. In-game overlays:
    - Journal
    - Pause
    - Settings
    - Credits
    - Ending
-6. Return to title or quit
+7. Return to title or quit
 
 Important behavior:
 
@@ -135,6 +139,7 @@ Important behavior:
 - `J` toggles the journal during gameplay
 - `Continue` should feel like resuming context, not starting over
 - `Free Walk` should feel like a lower-pressure mode, not just another save slot
+- New runs should allow a quick appearance setup without leaving the shell flow
 
 ## Title Screen Design Context
 
@@ -224,7 +229,7 @@ The larger shell UI should complement it, not replace it.
 Recommended split:
 
 - speech balloons for short local reactions
-- shell overlays for objectives, pause, settings, journal, and ending summary
+- shell overlays for objectives, pause, settings, journal, wardrobe browsing, and ending summary
 
 ## Content Model the UI Assumes
 

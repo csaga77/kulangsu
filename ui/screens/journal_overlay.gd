@@ -1,5 +1,7 @@
 extends PanelContainer
 
+const HUMAN_BODY_SCENE := preload("res://characters/human_body_2d.tscn")
+
 signal close_requested()
 
 @onready var m_tabs: TabContainer = $Margin/Body/Tabs
@@ -7,13 +9,38 @@ signal close_requested()
 @onready var m_map_body: Label = $Margin/Body/Tabs/Map/MapBody
 @onready var m_residents_body: Label = $Margin/Body/Tabs/Residents/ResidentsBody
 @onready var m_melody_body: Label = $Margin/Body/Tabs/Melody/MelodyBody
+@onready var m_preview_viewport: SubViewport = $Margin/Body/Tabs/Wardrobe/WardrobeContent/PreviewFrame/PreviewViewportContainer/PreviewViewport
+@onready var m_wardrobe_body: Label = $Margin/Body/Tabs/Wardrobe/WardrobeContent/WardrobeBody
+@onready var m_costume_value: Label = $Margin/Body/Tabs/Wardrobe/WardrobeContent/CostumeRow/Controls/Value
+@onready var m_prev_costume_button: Button = $Margin/Body/Tabs/Wardrobe/WardrobeContent/CostumeRow/Controls/PreviousCostumeButton
+@onready var m_next_costume_button: Button = $Margin/Body/Tabs/Wardrobe/WardrobeContent/CostumeRow/Controls/NextCostumeButton
+@onready var m_hair_style_value: Label = $Margin/Body/Tabs/Wardrobe/WardrobeContent/HairStyleRow/Controls/Value
+@onready var m_prev_hair_style_button: Button = $Margin/Body/Tabs/Wardrobe/WardrobeContent/HairStyleRow/Controls/PreviousHairStyleButton
+@onready var m_next_hair_style_button: Button = $Margin/Body/Tabs/Wardrobe/WardrobeContent/HairStyleRow/Controls/NextHairStyleButton
+@onready var m_hair_color_value: Label = $Margin/Body/Tabs/Wardrobe/WardrobeContent/HairColorRow/Controls/Value
+@onready var m_prev_hair_color_button: Button = $Margin/Body/Tabs/Wardrobe/WardrobeContent/HairColorRow/Controls/PreviousHairColorButton
+@onready var m_next_hair_color_button: Button = $Margin/Body/Tabs/Wardrobe/WardrobeContent/HairColorRow/Controls/NextHairColorButton
 @onready var m_close_button: Button = $Margin/Body/CloseButton
+
+var m_preview_actor: HumanBody2D = null
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	add_theme_stylebox_override("panel", UIStyle.build_panel_style())
+	_build_preview_actor()
+	m_prev_costume_button.pressed.connect(_on_previous_costume_pressed)
+	m_next_costume_button.pressed.connect(_on_next_costume_pressed)
+	m_prev_hair_style_button.pressed.connect(_on_previous_hair_style_pressed)
+	m_next_hair_style_button.pressed.connect(_on_next_hair_style_pressed)
+	m_prev_hair_color_button.pressed.connect(_on_previous_hair_color_pressed)
+	m_next_hair_color_button.pressed.connect(_on_next_hair_color_pressed)
 	m_close_button.pressed.connect(close_requested.emit)
+	if !AppState.player_costumes_changed.is_connected(_on_player_costumes_changed):
+		AppState.player_costumes_changed.connect(_on_player_costumes_changed)
+	if !AppState.player_appearance_changed.is_connected(_on_player_appearance_changed):
+		AppState.player_appearance_changed.connect(_on_player_appearance_changed)
+	refresh_from_state()
 
 
 func refresh_from_state() -> void:
@@ -27,3 +54,75 @@ func refresh_from_state() -> void:
 		AppState.fragments_found,
 		AppState.fragments_total,
 	]
+	m_wardrobe_body.text = "Wardrobe\n%s" % AppState.build_player_costume_journal_text()
+	m_costume_value.text = AppState.get_equipped_player_costume_display_name()
+	m_hair_style_value.text = AppState.get_player_hair_style_display_name()
+	m_hair_color_value.text = AppState.get_player_hair_color_display_name()
+	_refresh_preview()
+
+	var unlocked_count := AppState.get_unlocked_player_costume_ids().size()
+	m_prev_costume_button.disabled = unlocked_count <= 1
+	m_next_costume_button.disabled = unlocked_count <= 1
+
+
+func _build_preview_actor() -> void:
+	var preview_root := Node2D.new()
+	preview_root.name = "PreviewRoot"
+	m_preview_viewport.add_child(preview_root)
+
+	m_preview_actor = HUMAN_BODY_SCENE.instantiate() as HumanBody2D
+	if m_preview_actor == null:
+		return
+
+	preview_root.add_child(m_preview_actor)
+	m_preview_actor.position = Vector2(140, 228)
+	m_preview_actor.scale = Vector2.ONE * 1.85
+	m_preview_actor.direction = 180.0
+	m_preview_actor.is_running = false
+	m_preview_actor.is_walking = false
+	m_preview_actor.facial_mood = HumanBody2D.FacialMoodEnum.NORMAL
+
+
+func _refresh_preview() -> void:
+	if m_preview_actor == null:
+		return
+
+	m_preview_actor.set_configuration(AppState.get_player_appearance_config())
+
+
+func _on_previous_costume_pressed() -> void:
+	AppState.cycle_player_costume(-1)
+	refresh_from_state()
+
+
+func _on_next_costume_pressed() -> void:
+	AppState.cycle_player_costume(1)
+	refresh_from_state()
+
+
+func _on_previous_hair_style_pressed() -> void:
+	AppState.cycle_player_hair_style(-1)
+	refresh_from_state()
+
+
+func _on_next_hair_style_pressed() -> void:
+	AppState.cycle_player_hair_style(1)
+	refresh_from_state()
+
+
+func _on_previous_hair_color_pressed() -> void:
+	AppState.cycle_player_hair_color(-1)
+	refresh_from_state()
+
+
+func _on_next_hair_color_pressed() -> void:
+	AppState.cycle_player_hair_color(1)
+	refresh_from_state()
+
+
+func _on_player_costumes_changed(_unlocked_ids: PackedStringArray, _equipped_costume_id: String) -> void:
+	refresh_from_state()
+
+
+func _on_player_appearance_changed(_profile: Dictionary, _appearance_config: Dictionary) -> void:
+	refresh_from_state()

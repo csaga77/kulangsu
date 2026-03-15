@@ -3,6 +3,7 @@ extends Node
 const GAME_SCENE: PackedScene = preload("res://main.tscn")
 const BOOT_SCREEN_SCENE: PackedScene = preload("res://ui/screens/boot_screen.tscn")
 const TITLE_SCREEN_SCENE: PackedScene = preload("res://ui/screens/title_screen.tscn")
+const PLAYER_SETUP_SCENE: PackedScene = preload("res://ui/screens/player_customization_overlay.tscn")
 const HUD_SCENE: PackedScene = preload("res://ui/screens/game_hud.tscn")
 const JOURNAL_SCENE: PackedScene = preload("res://ui/screens/journal_overlay.tscn")
 const PAUSE_SCENE: PackedScene = preload("res://ui/screens/pause_overlay.tscn")
@@ -15,6 +16,7 @@ const UI_DESIGN_SIZE := Vector2(1920.0, 1080.0)
 enum ScreenState {
 	BOOT,
 	TITLE,
+	PLAYER_SETUP,
 	PLAYING,
 	JOURNAL,
 	PAUSE,
@@ -32,6 +34,7 @@ var m_ui_root: Control
 var m_backdrop: ColorRect
 var m_boot_screen: Control
 var m_title_screen: Control
+var m_player_setup_panel: PanelContainer
 var m_hud: Control
 var m_journal_panel: PanelContainer
 var m_pause_panel: PanelContainer
@@ -40,6 +43,7 @@ var m_credits_panel: PanelContainer
 var m_ending_panel: PanelContainer
 var m_confirm_panel: PanelContainer
 var m_confirm_action: Callable
+var m_pending_setup_free_walk := false
 
 
 func _ready() -> void:
@@ -116,6 +120,11 @@ func _build_app_shell() -> void:
 	m_title_screen.connect("credits_pressed", _on_title_credits_pressed)
 	m_title_screen.connect("quit_pressed", _on_title_quit_pressed)
 
+	m_player_setup_panel = PLAYER_SETUP_SCENE.instantiate() as PanelContainer
+	m_ui_root.add_child(m_player_setup_panel)
+	m_player_setup_panel.connect("confirm_requested", _on_player_setup_confirmed)
+	m_player_setup_panel.connect("cancel_requested", _on_player_setup_cancelled)
+
 	m_hud = HUD_SCENE.instantiate() as Control
 	m_ui_root.add_child(m_hud)
 
@@ -186,6 +195,7 @@ func _build_app_shell() -> void:
 	m_confirm_panel.connect("confirm_requested", _on_confirm_accepted)
 
 	_set_panel_visible(m_title_screen, false)
+	_set_panel_visible(m_player_setup_panel, false)
 	_set_panel_visible(m_hud, false)
 	_set_panel_visible(m_journal_panel, false)
 	_set_panel_visible(m_pause_panel, false)
@@ -228,6 +238,7 @@ func _show_title() -> void:
 	_set_panel_visible(m_backdrop, true)
 	_set_panel_visible(m_boot_screen, false)
 	_set_panel_visible(m_title_screen, true)
+	_set_panel_visible(m_player_setup_panel, false)
 	_set_panel_visible(m_hud, false)
 	_set_panel_visible(m_journal_panel, false)
 	_set_panel_visible(m_pause_panel, false)
@@ -267,6 +278,7 @@ func _begin_gameplay(is_free_walk: bool, is_continue: bool = false) -> void:
 	_set_panel_visible(m_backdrop, false)
 	_set_panel_visible(m_boot_screen, false)
 	_set_panel_visible(m_title_screen, false)
+	_set_panel_visible(m_player_setup_panel, false)
 	_set_panel_visible(m_hud, true)
 	_set_panel_visible(m_journal_panel, false)
 	_set_panel_visible(m_pause_panel, false)
@@ -372,6 +384,8 @@ func _handle_escape() -> void:
 				func() -> void:
 					get_tree().quit()
 			)
+		ScreenState.PLAYER_SETUP:
+			_show_title()
 		ScreenState.PLAYING:
 			_open_overlay(ScreenState.PAUSE)
 		ScreenState.JOURNAL:
@@ -411,11 +425,11 @@ func _on_continue_pressed() -> void:
 
 
 func _on_new_game_pressed() -> void:
-	_begin_gameplay(false, false)
+	_open_player_setup(false)
 
 
 func _on_free_walk_pressed() -> void:
-	_begin_gameplay(true, false)
+	_open_player_setup(true)
 
 
 func _on_title_settings_pressed() -> void:
@@ -436,6 +450,26 @@ func _on_title_quit_pressed() -> void:
 		"Leave Kulangsu for now?",
 		func() -> void: get_tree().quit()
 	)
+
+
+func _open_player_setup(is_free_walk: bool) -> void:
+	m_pending_setup_free_walk = is_free_walk
+	m_player_setup_panel.call("set_flow_context", is_free_walk)
+	m_player_setup_panel.call("refresh_from_state")
+	_set_panel_visible(m_backdrop, true)
+	_set_panel_visible(m_title_screen, false)
+	_set_panel_visible(m_player_setup_panel, true)
+	_set_panel_visible(m_confirm_panel, false)
+	m_state = ScreenState.PLAYER_SETUP
+	get_tree().paused = false
+
+
+func _on_player_setup_confirmed() -> void:
+	_begin_gameplay(m_pending_setup_free_walk, false)
+
+
+func _on_player_setup_cancelled() -> void:
+	_show_title()
 
 
 func _on_prototype_finale_pressed() -> void:

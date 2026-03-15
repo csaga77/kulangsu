@@ -292,6 +292,15 @@ Tabs:
 - Map
 - Residents
 - Melody Fragments
+- Wardrobe
+
+Wardrobe tab:
+
+- Show a live player preview
+- Show current equipped look and unlocked count
+- List each preset with summary and unlock route
+- Let the player cycle unlocked looks without leaving the journal
+- Let the player change hair style and hair color during gameplay
 
 Behavior:
 
@@ -299,7 +308,26 @@ Behavior:
 - Darkens world slightly
 - Opens on last viewed tab
 
-### E. Map Overlay
+### E. Character Setup Overlay
+
+Opened from `New Game` and `Free Walk` before gameplay begins.
+
+Shows:
+
+- body options
+- gender presentation options
+- skin tone options
+- hair style options
+- hair color options
+- live player preview
+
+Behavior:
+
+- Uses the same shared appearance state as the in-game player
+- `Back` returns to title without starting gameplay
+- Confirm enters the requested mode with the chosen profile
+
+### F. Map Overlay
 
 Inside the journal or as a sister tab.
 
@@ -312,7 +340,7 @@ Shows:
 
 Avoid showing everything from the start.
 
-### F. Collection / Reward Toasts
+### G. Collection / Reward Toasts
 
 For momentary positive feedback:
 

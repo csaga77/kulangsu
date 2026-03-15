@@ -3,10 +3,10 @@
 [ext_resource type="Script" path="res://ui/screens/journal_overlay.gd" id="1_j4ebj"]
 
 [node name="JournalOverlay" type="PanelContainer"]
-offset_left = 500.0
-offset_top = 220.0
-offset_right = 1420.0
-offset_bottom = 860.0
+offset_left = 440.0
+offset_top = 150.0
+offset_right = 1480.0
+offset_bottom = 930.0
 script = ExtResource("1_j4ebj")
 
 [node name="Margin" type="MarginContainer" parent="."]
@@ -26,8 +26,9 @@ theme_override_font_sizes/font_size = 36
 text = "Journal"
 
 [node name="Tabs" type="TabContainer" parent="Margin/Body"]
-custom_minimum_size = Vector2(760, 480)
+custom_minimum_size = Vector2(0, 540)
 layout_mode = 2
+size_flags_vertical = 3
 
 [node name="Objectives" type="VBoxContainer" parent="Margin/Body/Tabs"]
 layout_mode = 2
@@ -60,6 +61,130 @@ layout_mode = 2
 custom_minimum_size = Vector2(760, 0)
 layout_mode = 2
 autowrap_mode = 3
+
+[node name="Wardrobe" type="ScrollContainer" parent="Margin/Body/Tabs"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="WardrobeContent" type="VBoxContainer" parent="Margin/Body/Tabs/Wardrobe"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 18
+
+[node name="PreviewLabel" type="Label" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent"]
+layout_mode = 2
+text = "Preview"
+
+[node name="PreviewFrame" type="PanelContainer" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent"]
+custom_minimum_size = Vector2(280, 280)
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="PreviewViewportContainer" type="SubViewportContainer" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent/PreviewFrame"]
+layout_mode = 2
+stretch = true
+
+[node name="PreviewViewport" type="SubViewport" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent/PreviewFrame/PreviewViewportContainer"]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(280, 280)
+render_target_update_mode = 4
+
+[node name="WardrobeBody" type="Label" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent"]
+custom_minimum_size = Vector2(0, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+
+[node name="CostumeRow" type="VBoxContainer" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label" type="Label" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent/CostumeRow"]
+layout_mode = 2
+text = "Costume"
+
+[node name="Controls" type="HBoxContainer" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent/CostumeRow"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PreviousCostumeButton" type="Button" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent/CostumeRow/Controls"]
+custom_minimum_size = Vector2(180, 54)
+layout_mode = 2
+text = "Previous Look"
+
+[node name="Value" type="Label" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent/CostumeRow/Controls"]
+custom_minimum_size = Vector2(160, 54)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+vertical_alignment = 1
+text = "Harbor Arrival"
+
+[node name="NextCostumeButton" type="Button" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent/CostumeRow/Controls"]
+custom_minimum_size = Vector2(180, 54)
+layout_mode = 2
+text = "Next Look"
+
+[node name="HairStyleRow" type="VBoxContainer" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label" type="Label" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent/HairStyleRow"]
+layout_mode = 2
+text = "Hair Style"
+
+[node name="Controls" type="HBoxContainer" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent/HairStyleRow"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PreviousHairStyleButton" type="Button" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent/HairStyleRow/Controls"]
+custom_minimum_size = Vector2(180, 54)
+layout_mode = 2
+text = "Previous Style"
+
+[node name="Value" type="Label" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent/HairStyleRow/Controls"]
+custom_minimum_size = Vector2(160, 54)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+vertical_alignment = 1
+text = "Short Bangs"
+
+[node name="NextHairStyleButton" type="Button" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent/HairStyleRow/Controls"]
+custom_minimum_size = Vector2(180, 54)
+layout_mode = 2
+text = "Next Style"
+
+[node name="HairColorRow" type="VBoxContainer" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label" type="Label" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent/HairColorRow"]
+layout_mode = 2
+text = "Hair Color"
+
+[node name="Controls" type="HBoxContainer" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent/HairColorRow"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PreviousHairColorButton" type="Button" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent/HairColorRow/Controls"]
+custom_minimum_size = Vector2(180, 54)
+layout_mode = 2
+text = "Previous Color"
+
+[node name="Value" type="Label" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent/HairColorRow/Controls"]
+custom_minimum_size = Vector2(160, 54)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+vertical_alignment = 1
+text = "Chestnut"
+
+[node name="NextHairColorButton" type="Button" parent="Margin/Body/Tabs/Wardrobe/WardrobeContent/HairColorRow/Controls"]
+custom_minimum_size = Vector2(180, 54)
+layout_mode = 2
+text = "Next Color"
 
 [node name="CloseButton" type="Button" parent="Margin/Body"]
 custom_minimum_size = Vector2(320, 54)

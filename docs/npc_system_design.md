@@ -72,6 +72,7 @@ That matches the design goal from [`docs/core_game_workflow.md`](docs/core_game_
 ### Main Overworld
 
 - [`main.gd`](main.gd) now spawns the full 30-resident roster from catalog-defined spawn metadata.
+- The main scene keeps the player and resident instances under one shared y-sorted actor layer so characters sort against each other consistently.
 - Spawn anchors currently map to five overworld hubs:
   - Piano Ferry
   - Trinity Church

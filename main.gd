@@ -5,7 +5,8 @@ const DEFAULT_HINT := "R Inspect   J Journal   Esc Pause"
 const LANDMARK_SYNC_DISTANCE := 1600.0
 const NPC_SCENE: PackedScene = preload("res://characters/human_body_2d.tscn")
 
-@onready var m_player :HumanBody2D = $player
+@onready var m_actor_root: Node2D = $actors
+@onready var m_player :HumanBody2D = $actors/player
 @onready var m_terrain: Terrain = $terrain
 @onready var m_bagua_tower: Node2D = $terrain/ground/buildings/BaguaTower
 @onready var m_trinity_church: Node2D = $terrain/ground/buildings/TrinityChurch
@@ -69,10 +70,14 @@ func _connect_ui_signals() -> void:
 	if !is_instance_valid(m_player):
 		return
 
+	if !AppState.player_appearance_changed.is_connected(_on_player_appearance_changed):
+		AppState.player_appearance_changed.connect(_on_player_appearance_changed)
+
 	if !m_player.global_position_changed.is_connected(_sync_location_from_player):
 		m_player.global_position_changed.connect(_sync_location_from_player)
 
 	m_player_controller = m_player.controller as PlayerController
+	_apply_player_costume()
 	if m_player_controller == null:
 		return
 
@@ -199,7 +204,8 @@ func _spawn_catalog_residents() -> void:
 
 	m_resident_root = Node2D.new()
 	m_resident_root.name = "Residents"
-	add_child(m_resident_root)
+	m_resident_root.y_sort_enabled = true
+	m_actor_root.add_child(m_resident_root)
 
 	for resident_id in AppState.get_resident_ids():
 		var spawn_config := AppState.get_resident_spawn_config(resident_id)
@@ -226,6 +232,21 @@ func _spawn_catalog_residents() -> void:
 		m_resident_root.add_child(npc)
 		var spawn_offset: Vector2 = spawn_config.get("offset", Vector2.ZERO)
 		npc.global_position = anchor_node.global_position + spawn_offset
+
+
+func _on_player_appearance_changed(_profile: Dictionary, _appearance_config: Dictionary) -> void:
+	_apply_player_costume()
+
+
+func _apply_player_costume() -> void:
+	if !is_instance_valid(m_player):
+		return
+
+	var appearance_config := AppState.get_player_appearance_config()
+	if appearance_config.is_empty():
+		return
+
+	m_player.set_configuration(appearance_config)
 
 
 func _get_resident_controller(target: Node2D) -> NPCController:
