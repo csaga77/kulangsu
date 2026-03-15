@@ -4,14 +4,6 @@ extends Node2D
 const DEFAULT_HINT := "R Inspect   J Journal   Esc Pause"
 const LANDMARK_SYNC_DISTANCE := 1600.0
 const NPC_SCENE: PackedScene = preload("res://characters/human_body_2d.tscn")
-const PROTOTYPE_RESIDENT_SPAWNS := [
-	{
-		"resident_id": "tower_keeper",
-		"offset": Vector2(180.0, 92.0),
-		"direction": -155.0,
-		"mood": HumanBody2D.FacialMoodEnum.NORMAL,
-	},
-]
 
 @onready var m_player :HumanBody2D = $player
 @onready var m_terrain: Terrain = $terrain
@@ -20,11 +12,14 @@ const PROTOTYPE_RESIDENT_SPAWNS := [
 @onready var m_piano_ferry: Node2D = $terrain/ground/buildings/piano_ferry
 @onready var m_long_shan_tunnel: Node2D = $terrain/long_shan_tunnel
 @onready var m_bi_shan_tunnel: Node2D = $terrain/bi_shan_tunnel
+@onready var m_bi_shan_tunnel_entry_south: Node2D = $terrain/ground/bi_shan_tunnel_entries/entry_south
+@onready var m_long_shan_tunnel_entry_south: Node2D = $terrain/ground/long_shan_tunnel_entries/entry_south
 
 var m_is_ready := false
 var m_player_controller: PlayerController = null
 var m_closest_object: Node2D = null
 var m_landmark_nodes: Dictionary = {}
+var m_spawn_anchor_nodes: Dictionary = {}
 var m_resident_root: Node2D = null
 
 # Called when the node enters the scene tree for the first time.
@@ -34,7 +29,8 @@ func _ready() -> void:
 		m_terrain.player = m_player
 	GameGlobal.get_instance().set_player(m_player)
 	_cache_landmarks()
-	_spawn_prototype_residents()
+	_cache_spawn_anchors()
+	_spawn_catalog_residents()
 	_connect_ui_signals()
 	sync_ui_state()
 
@@ -56,6 +52,16 @@ func _cache_landmarks() -> void:
 		"Bagua Tower": m_bagua_tower,
 		"Long Shan Tunnel": m_long_shan_tunnel,
 		"Bi Shan Tunnel": m_bi_shan_tunnel,
+	}
+
+
+func _cache_spawn_anchors() -> void:
+	m_spawn_anchor_nodes = {
+		"Piano Ferry": m_piano_ferry,
+		"Trinity Church": m_trinity_church,
+		"Bagua Tower": m_bagua_tower,
+		"Bi Shan Tunnel South": m_bi_shan_tunnel_entry_south,
+		"Long Shan Tunnel South": m_long_shan_tunnel_entry_south,
 	}
 
 
@@ -185,37 +191,41 @@ func _display_name_for_node(target: Node2D) -> String:
 	return output
 
 
-func _spawn_prototype_residents() -> void:
+func _spawn_catalog_residents() -> void:
 	if Engine.is_editor_hint():
-		return
-	if !is_instance_valid(m_player):
 		return
 	if m_resident_root != null and is_instance_valid(m_resident_root):
 		return
 
 	m_resident_root = Node2D.new()
-	m_resident_root.name = "ResidentPrototypes"
+	m_resident_root.name = "Residents"
 	add_child(m_resident_root)
 
-	for spec in PROTOTYPE_RESIDENT_SPAWNS:
+	for resident_id in AppState.get_resident_ids():
+		var spawn_config := AppState.get_resident_spawn_config(resident_id)
+		var anchor_id := String(spawn_config.get("anchor_id", ""))
+		var anchor_node := m_spawn_anchor_nodes.get(anchor_id) as Node2D
+		if !is_instance_valid(anchor_node):
+			push_warning("Missing NPC spawn anchor '%s' for resident '%s'." % [anchor_id, resident_id])
+			continue
+
 		var npc := NPC_SCENE.instantiate() as HumanBody2D
 		if npc == null:
 			continue
 
 		var controller := NPCController.new()
-		var resident_id := String(spec.get("resident_id", ""))
 		controller.use_json_bt = false
 		controller.resident_id = StringName(resident_id)
-		controller.interaction_radius = 88.0
+		controller.interaction_radius = float(spawn_config.get("interaction_radius", 72.0))
 
 		npc.name = AppState.get_resident_display_name(resident_id)
 		npc.controller = controller
-		npc.direction = float(spec.get("direction", 0.0))
-		npc.facial_mood = int(spec.get("mood", HumanBody2D.FacialMoodEnum.NORMAL)) as HumanBody2D.FacialMoodEnum
+		npc.direction = float(spawn_config.get("direction", 0.0))
+		npc.facial_mood = int(spawn_config.get("mood", HumanBody2D.FacialMoodEnum.NORMAL)) as HumanBody2D.FacialMoodEnum
 
 		m_resident_root.add_child(npc)
-		var spawn_offset: Vector2 = spec.get("offset", Vector2.ZERO)
-		npc.global_position = m_player.global_position + spawn_offset
+		var spawn_offset: Vector2 = spawn_config.get("offset", Vector2.ZERO)
+		npc.global_position = anchor_node.global_position + spawn_offset
 
 
 func _get_resident_controller(target: Node2D) -> NPCController:

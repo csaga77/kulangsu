@@ -1,7 +1,7 @@
 @tool
 extends Node
 
-const ResidentCatalog := preload("res://game/resident_catalog.gd")
+const RESIDENT_CATALOG_SCRIPT := preload("res://game/resident_catalog.gd")
 
 signal mode_changed(mode: String)
 signal chapter_changed(chapter: String)
@@ -100,7 +100,7 @@ func set_residents(new_residents: PackedStringArray) -> void:
 func set_resident_profiles(new_profiles: Dictionary) -> void:
 	resident_profiles = new_profiles.duplicate(true)
 	_sync_known_residents()
-	for resident_id in ResidentCatalog.resident_order():
+	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
 		resident_profile_changed.emit(resident_id, get_resident_profile(resident_id))
 
 
@@ -120,11 +120,11 @@ func _default_landmarks() -> PackedStringArray:
 
 
 func _default_resident_profiles() -> Dictionary:
-	return ResidentCatalog.build_defaults()
+	return RESIDENT_CATALOG_SCRIPT.build_defaults()
 
 
 func get_resident_ids() -> PackedStringArray:
-	return PackedStringArray(ResidentCatalog.resident_order())
+	return PackedStringArray(RESIDENT_CATALOG_SCRIPT.resident_order())
 
 
 func get_resident_profile(resident_id: String) -> Dictionary:
@@ -143,9 +143,21 @@ func get_resident_landmark(resident_id: String) -> String:
 	return String(resident.get("landmark", "Unknown District"))
 
 
+func get_resident_appearance_config(resident_id: String) -> Dictionary:
+	var resident: Dictionary = resident_profiles.get(resident_id, {})
+	var appearance: Dictionary = resident.get("appearance", {})
+	return appearance.duplicate(true)
+
+
+func get_resident_spawn_config(resident_id: String) -> Dictionary:
+	var resident: Dictionary = resident_profiles.get(resident_id, {})
+	var spawn: Dictionary = resident.get("spawn", {})
+	return spawn.duplicate(true)
+
+
 func get_known_resident_names() -> PackedStringArray:
 	var names := PackedStringArray()
-	for resident_id in ResidentCatalog.resident_order():
+	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
 		var resident: Dictionary = resident_profiles.get(resident_id, {})
 		if resident.get("known", false):
 			names.append(String(resident.get("display_name", resident_id)))
@@ -172,7 +184,7 @@ func get_resident_ambient_line(resident_id: String) -> String:
 func build_resident_journal_text() -> String:
 	var sections: Array[String] = []
 
-	for resident_id in ResidentCatalog.resident_order():
+	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
 		var resident: Dictionary = resident_profiles.get(resident_id, {})
 		if !resident.get("known", false):
 			continue
@@ -183,7 +195,7 @@ func build_resident_journal_text() -> String:
 				String(resident.get("role", "")),
 				String(resident.get("routine_note", "")),
 				int(resident.get("trust", 0)),
-				ResidentCatalog.max_trust(),
+				RESIDENT_CATALOG_SCRIPT.max_trust(),
 				String(resident.get("current_step", "Stay in touch.")),
 				String(resident.get("melody_hint", "")),
 			]
@@ -220,7 +232,7 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 	resident["trust"] = clampi(
 		int(resident.get("trust", 0)) + int(beat.get("trust_delta", 0)),
 		0,
-		ResidentCatalog.max_trust()
+		RESIDENT_CATALOG_SCRIPT.max_trust()
 	)
 	resident["quest_state"] = String(beat.get("quest_state", resident.get("quest_state", "available")))
 	resident["current_step"] = String(beat.get("journal_step", beat.get("objective", "Stay in touch.")))
@@ -279,7 +291,7 @@ func configure_free_walk() -> void:
 	set_fragments(0, 4)
 	set_landmarks(_default_landmarks())
 	set_resident_profiles(_default_resident_profiles())
-	for resident_id in ResidentCatalog.resident_order():
+	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
 		_seed_resident_progress(resident_id, 1, 1, "introduced", "Sandbox resident notes are available in free walk.")
 	_update_summary_counts()
 
@@ -294,8 +306,8 @@ func configure_postgame() -> void:
 	set_fragments(4, 4)
 	set_landmarks(_default_landmarks())
 	set_resident_profiles(_default_resident_profiles())
-	for resident_id in ResidentCatalog.resident_order():
-		_seed_resident_progress(resident_id, 2, ResidentCatalog.max_trust(), "resolved", "Present at the restored festival and ready for lighter postgame dialogue.")
+	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
+		_seed_resident_progress(resident_id, 2, RESIDENT_CATALOG_SCRIPT.max_trust(), "resolved", "Present at the restored festival and ready for lighter postgame dialogue.")
 	_update_summary_counts()
 
 
@@ -338,7 +350,7 @@ func _seed_resident_progress(
 	var dialogue_beats: Array = resident.get("dialogue_beats", [])
 
 	resident["known"] = true
-	resident["trust"] = clampi(trust, 0, ResidentCatalog.max_trust())
+	resident["trust"] = clampi(trust, 0, RESIDENT_CATALOG_SCRIPT.max_trust())
 	resident["quest_state"] = quest_state
 	resident["current_step"] = current_step
 
@@ -354,7 +366,7 @@ func _seed_resident_progress(
 
 func _count_helped_residents() -> int:
 	var count := 0
-	for resident_id in ResidentCatalog.resident_order():
+	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
 		var resident: Dictionary = resident_profiles.get(resident_id, {})
 		if int(resident.get("trust", 0)) > 0:
 			count += 1

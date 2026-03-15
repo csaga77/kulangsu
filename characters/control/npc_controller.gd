@@ -15,6 +15,7 @@ var m_is_building_bt_tree := false
 
 func _on_setup() -> void:
 	super._on_setup()
+	_apply_resident_presentation()
 	if use_json_bt:
 		_schedule_built_bt_tree()
 
@@ -51,6 +52,19 @@ func get_resident_id() -> String:
 
 func refresh_dialogue() -> void:
 	_update_balloon_content()
+
+
+func _apply_resident_presentation() -> void:
+	if !is_instance_valid(m_character):
+		return
+
+	var resident_key := get_resident_id()
+	if resident_key.is_empty():
+		return
+
+	var appearance_config: Dictionary = AppState.get_resident_appearance_config(resident_key)
+	if !appearance_config.is_empty():
+		m_character.call_deferred("set_configuration", appearance_config)
 
 func _get_default_params() -> Dictionary:
 	return {

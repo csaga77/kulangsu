@@ -19,6 +19,8 @@ Read [`docs/design_brief.md`](docs/design_brief.md) first for the project summar
   - home landmark
   - role and routine note
   - melody hint
+  - appearance preset
+  - spawn anchor and overworld placement offset
   - ambient speech lines
   - talk interaction beats
 
@@ -39,6 +41,7 @@ Resident interactions update the same shared state the HUD and journal already r
 ### NPC Controller Hook
 
 - [`characters/control/npc_controller.gd`](characters/control/npc_controller.gd) now exposes `resident_id`.
+- Resident appearance presets are applied automatically to `HumanBody2D` from the resident catalog.
 - Ambient speech balloons pull from the resident profile in `AppState`.
 - JSON behavior trees can still be used for autonomous motion, but prototype residents can disable them and remain stationary.
 
@@ -68,8 +71,14 @@ That matches the design goal from [`docs/core_game_workflow.md`](docs/core_game_
 
 ### Main Overworld
 
-- [`main.gd`](main.gd) spawns one prototype resident near the current player start so the system is immediately testable from the main scene.
-- This is a temporary staging choice until the opening flow and resident placements are aligned with the ferry-first story setup.
+- [`main.gd`](main.gd) now spawns the full 30-resident roster from catalog-defined spawn metadata.
+- Spawn anchors currently map to five overworld hubs:
+  - Piano Ferry
+  - Trinity Church
+  - Bi Shan Tunnel south entrance
+  - Long Shan Tunnel south entrance
+  - Bagua Tower
+- This keeps the overworld population testable without hand-placing 30 separate scene instances.
 
 ### Sandbox Scene
 
@@ -90,6 +99,6 @@ That matches the design goal from [`docs/core_game_workflow.md`](docs/core_game_
 ## Best Next Steps
 
 1. Add a dedicated dialogue overlay for longer resident conversations, while keeping speech balloons for ambient lines.
-2. Replace the prototype resident spawner in [`main.gd`](main.gd) with authored resident placements in the overworld scenes.
+2. Replace the shared hub anchor offsets with dedicated scene markers if individual resident placement needs finer art-direction control.
 3. Connect resident beats to landmark quest state so residents can unlock and resolve district arcs directly.
 4. Add postgame resident variants so the same system can support festival and free-walk dialogue changes.
