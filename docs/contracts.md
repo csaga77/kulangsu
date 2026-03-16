@@ -62,6 +62,26 @@ Governance:
 - keep scene-specific world wiring local to `main.gd` unless it becomes a reusable subsystem
 - document node-path, actor-layer, or spawn-anchor naming assumptions if new systems depend on them
 
+## Multi-Level Scene Contract
+
+Owned by:
+
+- [`../common/level_node_2d.gd`](../common/level_node_2d.gd)
+- [`../common/level_context_2d.gd`](../common/level_context_2d.gd)
+
+Current contract:
+
+- `LevelNode2D` supports three level sources: explicit level, context slot, and inherit-parent
+- reusable room scenes should prefer `Inherit Parent` so they do not hardcode runtime level ids
+- landmark or building scenes that own multiple floors should provide the runtime mapping through `LevelContext2D`
+- `level` remains the explicit fallback value for standalone scenes and one-off spaces
+
+Governance:
+
+- keep runtime level mappings in the parent landmark/building scene when child rooms are intended to be reusable
+- when introducing new multi-level spaces, prefer slot-based parent mapping over repeating raw runtime level ids on child instances
+- if the `LevelNode2D` resolution modes or `LevelContext2D` mapping interface change, update this file and the relevant scene docs
+
 ## Reusable Module Contracts
 
 ### Grid Board Game

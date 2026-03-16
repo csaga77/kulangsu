@@ -38,7 +38,7 @@ Put player control, NPC behavior, interaction prompts, and behavior-tree work he
 
 - [`../architecture/`](../architecture) - landmark scenes such as Bagua Tower, tunnels, church, and ferry content
 - [`../architecture/components/`](../architecture/components) - reusable world-building pieces
-- [`../common/`](../common) - shared world nodes and effects
+- [`../common/`](../common) - shared world nodes, effects, and level-context helpers such as `LevelNode2D`
 
 Put new landmark scenes and reusable architectural pieces here.
 

@@ -19,6 +19,7 @@
 [ext_resource type="Texture2D" uid="uid://d0nn3fs56i7ih" path="res://resources/sprites/light_well_mask.png" id="13_p5n1q"]
 [ext_resource type="PackedScene" uid="uid://bokp77sph16o3" path="res://architecture/bagua_tower/bagua_tower_corner_room_south.tscn" id="16_sgvu4"]
 [ext_resource type="PackedScene" uid="uid://ptuy7nqqcfsm" path="res://architecture/bagua_tower/bagua_tower_roof_tower.tscn" id="19_16kol"]
+[ext_resource type="Script" path="res://common/level_context_2d.gd" id="20_qo5t7"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_frgy6"]
 radius = 9.428204
@@ -52,6 +53,10 @@ only_shown_in_editor = true
 [node name="base" type="Node2D" parent="." unique_id=878863395]
 y_sort_enabled = true
 script = ExtResource("1_p6xgs")
+
+[node name="level_context" type="Node" parent="base"]
+script = ExtResource("20_qo5t7")
+runtime_levels = PackedInt32Array(2, 4, 6)
 
 [node name="base_stairs_mask" type="TileMapLayer" parent="base" unique_id=1888151543]
 z_index = 1
@@ -164,7 +169,8 @@ shape = SubResource("CapsuleShape2D_fcs3d")
 z_index = 2
 y_sort_enabled = true
 script = ExtResource("7_564an")
-level = 2
+level_source = 1
+level_slot = 0
 physics_layers = [NodePath("collision_layer")]
 sub_level_nodes = [NodePath("corner_room_north"), NodePath("corner_room_east"), NodePath("corner_room_west"), NodePath("corner_room_south")]
 visibility_mask_nodes = [NodePath("../base_stairs_mask"), NodePath("../base_floor")]
@@ -215,19 +221,15 @@ collision_layer = 4194304
 layer2 = 8388608
 
 [node name="corner_room_north" parent="base/ground_level" unique_id=786573067 instance=ExtResource("12_p5n1q")]
-level = 2
 
 [node name="corner_room_east" parent="base/ground_level" unique_id=1031396126 instance=ExtResource("10_mvqn0")]
 position = Vector2(512, 256)
-level = 2
 
 [node name="corner_room_west" parent="base/ground_level" unique_id=1860094030 instance=ExtResource("12_ac4q4")]
 position = Vector2(-768, 384)
-level = 2
 
 [node name="corner_room_south" parent="base/ground_level" unique_id=824153175 instance=ExtResource("16_sgvu4")]
 position = Vector2(-256, 640)
-level = 2
 
 [node name="pillars" type="Node2D" parent="base/ground_level" unique_id=2066970078]
 y_sort_enabled = true
@@ -289,7 +291,8 @@ z_index = 2
 y_sort_enabled = true
 position = Vector2(0, -128)
 script = ExtResource("7_564an")
-level = 4
+level_source = 1
+level_slot = 1
 physics_layers = [NodePath("upper_collision_layer")]
 sub_level_nodes = [NodePath("corner_room_north"), NodePath("corner_room_east"), NodePath("corner_room_west"), NodePath("corner_room_south")]
 visibility_mask_nodes = [NodePath("../ground_stairs_mask"), NodePath("../ground_level_floor")]
@@ -365,19 +368,15 @@ collision_layer = 16777216
 layer2 = 33554432
 
 [node name="corner_room_north" parent="base/ground_level/upper_level" unique_id=952358897 instance=ExtResource("12_p5n1q")]
-level = 4
 
 [node name="corner_room_east" parent="base/ground_level/upper_level" unique_id=1451283213 instance=ExtResource("10_mvqn0")]
 position = Vector2(512, 256)
-level = 4
 
 [node name="corner_room_west" parent="base/ground_level/upper_level" unique_id=561495526 instance=ExtResource("12_ac4q4")]
 position = Vector2(-768, 384)
-level = 4
 
 [node name="corner_room_south" parent="base/ground_level/upper_level" unique_id=1215982848 instance=ExtResource("16_sgvu4")]
 position = Vector2(-256, 640)
-level = 4
 
 [node name="pillars" type="Node2D" parent="base/ground_level/upper_level" unique_id=1628285835]
 y_sort_enabled = true
@@ -423,7 +422,8 @@ z_index = 2
 y_sort_enabled = true
 position = Vector2(0, -128)
 script = ExtResource("7_564an")
-level = 6
+level_source = 1
+level_slot = 2
 physics_layers = [NodePath("roof_collision_layer")]
 visibility_mask_nodes = [NodePath("../upper_level_stairs_mask"), NodePath("../upper_floor")]
 
