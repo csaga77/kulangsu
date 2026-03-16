@@ -32,10 +32,10 @@ Read this first. It is the minimum-token design context for new Codex threads.
 
 ## Architecture Anchors
 
-- UI entry point: [`ui/app_flow_root.tscn`](ui/app_flow_root.tscn)
-- App shell logic: [`ui/app_flow_root.gd`](ui/app_flow_root.gd)
-- Shared UI state: [`game/app_state.gd`](game/app_state.gd)
-- Shared UI styling: [`ui/ui_style.gd`](ui/ui_style.gd)
+- UI entry point: [`../ui/app_flow_root.tscn`](../ui/app_flow_root.tscn)
+- App shell logic: [`../ui/app_flow_root.gd`](../ui/app_flow_root.gd)
+- Shared UI state: [`../game/app_state.gd`](../game/app_state.gd)
+- Shared UI styling: [`../ui/ui_style.gd`](../ui/ui_style.gd)
 - Current dedicated screens: boot, title, player setup, game HUD
 
 ## Layout Rule That Must Stay True
@@ -75,12 +75,20 @@ Input expectations:
 
 ## If You Need More Detail
 
-- NPC and resident system slice: [`docs/npc_system_design.md`](docs/npc_system_design.md)
-- Player wardrobe and costume unlocks: [`docs/player_costume_system.md`](docs/player_costume_system.md)
-- Reusable board game module: [`docs/grid_board_game_design.md`](docs/grid_board_game_design.md)
-- Marble game prototype rules and architecture: [`docs/marble_game_design.md`](docs/marble_game_design.md)
-- Piano mini-game prototype and integration guidance: [`docs/piano_game_design.md`](docs/piano_game_design.md)
-- Repeatable moment-to-moment gameplay design: [`docs/core_gameplay_plays.md`](docs/core_gameplay_plays.md)
-- UI architecture and constraints: [`docs/ui_design_context.md`](docs/ui_design_context.md)
-- Story and progression flow: [`docs/core_game_workflow.md`](docs/core_game_workflow.md)
-- Full title/settings/pause/endgame flow: [`docs/ui_workflow.md`](docs/ui_workflow.md)
+- Repository runtime map and ownership boundaries: [`architecture.md`](architecture.md)
+- Directory map and key entry points: [`module_map.md`](module_map.md)
+- Submodule roles and governance: [`submodules.md`](submodules.md)
+- Shared interfaces and boundaries: [`contracts.md`](contracts.md)
+- Release and versioning policy: [`release_policy.md`](release_policy.md)
+- Repo coding and documentation rules: [`coding_rules.md`](coding_rules.md)
+- Feature-doc guide: [`features/README.md`](features/README.md)
+- Feature-doc template: [`features/template.md`](features/template.md)
+- NPC and resident system slice: [`npc_system_design.md`](npc_system_design.md)
+- Player wardrobe and costume unlocks: [`player_costume_system.md`](player_costume_system.md)
+- Reusable board game module: [`grid_board_game_design.md`](grid_board_game_design.md)
+- Marble game prototype rules and architecture: [`marble_game_design.md`](marble_game_design.md)
+- Piano mini-game prototype and integration guidance: [`piano_game_design.md`](piano_game_design.md)
+- Repeatable moment-to-moment gameplay design: [`core_gameplay_plays.md`](core_gameplay_plays.md)
+- UI architecture and constraints: [`ui_design_context.md`](ui_design_context.md)
+- Story and progression flow: [`core_game_workflow.md`](core_game_workflow.md)
+- Full title/settings/pause/endgame flow: [`ui_workflow.md`](ui_workflow.md)
