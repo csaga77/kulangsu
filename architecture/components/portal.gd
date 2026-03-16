@@ -18,10 +18,19 @@ func _process(_delta: float) -> void:
 func _draw() -> void:
 	DrawUtils.draw_arrow(self, $CollisionShape2D.position, Vector2.RIGHT.rotated(0), 20, Color.RED)
 
-var m_objects_in_portal :Set = Set.new()
-var m_enter_mask := 0
-# true: Area 1 -> Area 2, false: Area 2 -> Area 1
-var m_enter_direction := true
+var m_transition_state_by_body: Dictionary = {}
+
+func _store_transition_state(obj: CollisionObject2D, enter_direction: bool) -> void:
+	m_transition_state_by_body[obj.get_instance_id()] = {
+		"enter_direction": enter_direction,
+	}
+
+func _take_transition_state(obj: CollisionObject2D) -> Dictionary:
+	var body_id := obj.get_instance_id()
+	var transition_state: Dictionary = m_transition_state_by_body.get(body_id, {})
+	if !transition_state.is_empty():
+		m_transition_state_by_body.erase(body_id)
+	return transition_state
 
 func _on_body_entered(body: Node2D) -> void:
 	var obj :CollisionObject2D = body
@@ -38,21 +47,15 @@ func _on_body_entered(body: Node2D) -> void:
 	#print(local_pos)
 	if obj.collision_mask & mask1:
 		if local_pos.x < 0:
-			m_enter_direction = true
-			m_enter_mask = mask1
+			_store_transition_state(obj, true)
 			obj.collision_mask |= mask2
-			m_objects_in_portal.insert(obj)
 		elif mask1 == mask2:
 			#Only change z
-			m_enter_direction = false
-			m_enter_mask = mask2 #same as mask1
-			m_objects_in_portal.insert(obj)
+			_store_transition_state(obj, false)
 	elif obj.collision_mask & mask2:
 		if local_pos.x > 0:
-			m_enter_direction = false
-			m_enter_mask = mask2
+			_store_transition_state(obj, false)
 			obj.collision_mask |= mask1
-			m_objects_in_portal.insert(obj)
 			#print("mask2 entered")
 			
 
@@ -60,22 +63,24 @@ func _on_body_exited(body: Node2D) -> void:
 	var obj :CollisionObject2D = body
 	if obj == null:
 		return
-	if !m_objects_in_portal.remove(obj):
+	var transition_state := _take_transition_state(obj)
+	if transition_state.is_empty():
 		return
+	var enter_direction := bool(transition_state.get("enter_direction", true))
 	var local_pos = to_local(body.global_position)
 	var vec = local_pos.normalized()
 	if vec.x > 0:
 		if mask1 != mask2:
 			obj.collision_mask &= ~mask1
 			obj.collision_mask |= mask2
-		if m_enter_direction:
+		if enter_direction:
 			obj.z_index += delta_z
 		#print("mask2 exited")
 	else:
 		if mask1 != mask2:
 			obj.collision_mask &= ~mask2
 			obj.collision_mask |= mask1
-		if !m_enter_direction:
+		if !enter_direction:
 			obj.z_index -= delta_z
 		#print("mask1 exited")
 	#var exit_degrees = rad_to_deg(vec.angle())
