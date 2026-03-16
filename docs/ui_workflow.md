@@ -1,11 +1,11 @@
 # Kulangsu UI Workflow
 
-Read [`docs/design_brief.md`](docs/design_brief.md) first for the minimum-token summary. Use this doc only when full menu and screen flow detail is needed.
+Read [`design_brief.md`](design_brief.md) first for the minimum-token summary. Use this doc only when full menu and screen flow detail is needed.
 
 ## UI Goal
 Design a full UI journey from app launch to app exit that supports a calm exploration game, stays lightweight during play, and gives the player clear orientation without breaking immersion.
 
-The current project already includes an in-world dialogue UI in [`gui/speech_balloon.tscn`](gui/speech_balloon.tscn), so the rest of the interface should follow the same principle:
+The current project already includes an in-world dialogue UI in [`../gui/speech_balloon.tscn`](../gui/speech_balloon.tscn), so the rest of the interface should follow the same principle:
 
 - readable
 - minimal
@@ -130,7 +130,7 @@ Settings should be reachable from both title and pause, with the same panel stru
 - Pause binding
 - Walk / run behavior
 
-Current bindings already implied by [`project.godot`](project.godot):
+Current bindings already implied by [`../project.godot`](../project.godot):
 
 - Move: `WASD` / arrows
 - Walk modifier
@@ -226,7 +226,7 @@ The default HUD should stay minimal.
 ### Conditional Elements
 
 - Inspect prompt when near an interactive object
-- Talk prompt when near an NPC
+- Talk prompt when near a resident, usually rendered as `R Talk to <resident name>`
 - Landmark discovered banner
 - Melody fragment acquired banner
 
@@ -247,7 +247,7 @@ Appears when near something relevant.
 Examples:
 
 - `R Inspect`
-- `Talk`
+- `R Talk to Caretaker Lian`
 - `Enter`
 - `Climb`
 
@@ -255,7 +255,7 @@ This should be small and fade in/out quickly.
 
 ### B. Speech / Dialogue
 
-Current in-world pattern already exists in [`gui/speech_balloon.gd`](gui/speech_balloon.gd).
+Current in-world pattern already exists in [`../gui/speech_balloon.gd`](../gui/speech_balloon.gd).
 
 Use two dialogue tiers:
 
@@ -293,6 +293,12 @@ Tabs:
 - Residents
 - Melody Fragments
 - Wardrobe
+
+Resident tab:
+
+- Show role and usual location
+- Show trust level and current lead
+- Show melody clue once the resident is known
 
 Wardrobe tab:
 

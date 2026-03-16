@@ -1,6 +1,6 @@
 # Kulangsu UI Design Context
 
-Read [`docs/design_brief.md`](docs/design_brief.md) first for the minimum-token summary. Use this doc only when UI architecture or layout constraints need more detail.
+Read [`design_brief.md`](design_brief.md) first for the minimum-token summary. Use this doc only when UI architecture or layout constraints need more detail.
 
 ## Purpose
 This document captures the current UI design direction and implementation context so future UI work can continue from a stable baseline.
@@ -42,12 +42,12 @@ The UI should support exploration first, with menus and overlays helping orienta
 
 The UI is currently orchestrated by:
 
-- [ui/app_flow_root.gd](ui/app_flow_root.gd)
-- [ui/app_flow_root.tscn](ui/app_flow_root.tscn)
+- [`../ui/app_flow_root.gd`](../ui/app_flow_root.gd)
+- [`../ui/app_flow_root.tscn`](../ui/app_flow_root.tscn)
 
 This app shell is the startup scene through:
 
-- [project.godot](project.godot)
+- [`../project.godot`](../project.godot)
 
 The shell is responsible for:
 
@@ -62,7 +62,7 @@ The shell is responsible for:
 
 The UI reads from a shared singleton:
 
-- [game/app_state.gd](game/app_state.gd)
+- [`../game/app_state.gd`](../game/app_state.gd)
 
 `AppState` currently stores:
 
@@ -85,7 +85,7 @@ This is the correct place for future UI-facing progression state.
 
 Reusable UI styling helpers live in:
 
-- [ui/ui_style.gd](ui/ui_style.gd)
+- [`../ui/ui_style.gd`](../ui/ui_style.gd)
 
 It currently provides:
 
@@ -98,10 +98,10 @@ Future shared UI colors, typography rules, spacing tokens, and component styles 
 
 ### Implemented Dedicated Screens
 
-- [ui/screens/boot_screen.tscn](ui/screens/boot_screen.tscn)
-- [ui/screens/title_screen.tscn](ui/screens/title_screen.tscn)
-- [ui/screens/player_customization_overlay.tscn](ui/screens/player_customization_overlay.tscn)
-- [ui/screens/game_hud.tscn](ui/screens/game_hud.tscn)
+- [`../ui/screens/boot_screen.tscn`](../ui/screens/boot_screen.tscn)
+- [`../ui/screens/title_screen.tscn`](../ui/screens/title_screen.tscn)
+- [`../ui/screens/player_customization_overlay.tscn`](../ui/screens/player_customization_overlay.tscn)
+- [`../ui/screens/game_hud.tscn`](../ui/screens/game_hud.tscn)
 
 ### Overlays Still Built in the App Shell
 
@@ -154,8 +154,8 @@ Current implementation:
 
 Relevant files:
 
-- [ui/screens/title_screen.tscn](ui/screens/title_screen.tscn)
-- [ui/screens/title_screen.gd](ui/screens/title_screen.gd)
+- [`../ui/screens/title_screen.tscn`](../ui/screens/title_screen.tscn)
+- [`../ui/screens/title_screen.gd`](../ui/screens/title_screen.gd)
 
 Design intent:
 
@@ -183,8 +183,8 @@ Current content:
 
 Relevant files:
 
-- [ui/screens/game_hud.tscn](ui/screens/game_hud.tscn)
-- [ui/screens/game_hud.gd](ui/screens/game_hud.gd)
+- [`../ui/screens/game_hud.tscn`](../ui/screens/game_hud.tscn)
+- [`../ui/screens/game_hud.gd`](../ui/screens/game_hud.gd)
 
 Design intent:
 
@@ -211,7 +211,7 @@ Current rule:
 
 Relevant code:
 
-- [ui/app_flow_root.gd](ui/app_flow_root.gd)
+- [`../ui/app_flow_root.gd`](../ui/app_flow_root.gd)
 
 Future UI work should respect this unless the entire UI system is intentionally rebuilt.
 
@@ -219,8 +219,8 @@ Future UI work should respect this unless the entire UI system is intentionally 
 
 There is still an existing in-world speech UI:
 
-- [gui/speech_balloon.tscn](gui/speech_balloon.tscn)
-- [gui/speech_balloon.gd](gui/speech_balloon.gd)
+- [`../gui/speech_balloon.tscn`](../gui/speech_balloon.tscn)
+- [`../gui/speech_balloon.gd`](../gui/speech_balloon.gd)
 
 That remains the right pattern for ambient moment-to-moment interaction.
 
@@ -239,12 +239,13 @@ The UI currently assumes the game is structured around:
 - a main objective
 - melody fragment progress
 - known residents
+- resident notes with trust, current lead, and melody clues
 - chapter / location framing
 
 That aligns with:
 
-- [docs/core_game_workflow.md](docs/core_game_workflow.md)
-- [docs/ui_workflow.md](docs/ui_workflow.md)
+- [core_game_workflow.md](core_game_workflow.md)
+- [ui_workflow.md](ui_workflow.md)
 
 Future UI work should continue supporting that model unless the game structure changes.
 
@@ -263,7 +264,7 @@ Future UI work should continue supporting that model unless the game structure c
 If work continues on the UI, the most sensible order is:
 
 1. Split journal, pause, settings, credits, ending, and confirm modal into dedicated scenes.
-2. Replace hardcoded prototype strings with real quest and discovery data from gameplay.
+2. Extend the resident note and dialogue surfaces as more landmark quest state comes online.
 3. Make the HUD responsive within the scaled canvas instead of relying mostly on fixed offsets.
 4. Expand `ui_style.gd` into a more complete theme/token layer.
 5. Add motion and transitions carefully, keeping the calm tone intact.

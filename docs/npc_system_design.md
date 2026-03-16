@@ -1,6 +1,8 @@
 # Kulangsu NPC System Design
 
-Read [`docs/design_brief.md`](docs/design_brief.md) first for the project summary. This doc covers the current resident-system slice and the intended direction for future NPC work.
+Read [`design_brief.md`](design_brief.md) first for the project summary. This doc covers the current resident-system slice and the intended direction for future NPC work.
+
+If the task is implementation-focused, read [`features/npc_system.md`](features/npc_system.md) first and come back here only for the broader design rationale.
 
 ## Goals
 
@@ -13,7 +15,8 @@ Read [`docs/design_brief.md`](docs/design_brief.md) first for the project summar
 
 ### Resident Catalog
 
-- Static resident content lives in [`game/resident_catalog.gd`](game/resident_catalog.gd).
+- Static resident content lives in [`../game/resident_catalog.gd`](../game/resident_catalog.gd).
+- The current roster is a 30-resident catalog with four story residents and twenty-six ambient residents.
 - Each resident entry defines:
   - display name
   - home landmark
@@ -28,7 +31,7 @@ This keeps resident writing in one place instead of scattering strings across sc
 
 ### Runtime Resident State
 
-- [`game/app_state.gd`](game/app_state.gd) now stores runtime resident profiles.
+- [`../game/app_state.gd`](../game/app_state.gd) now stores runtime resident profiles and resident-facing getters for display names, appearance configs, spawn configs, ambient speech, and journal text.
 - Runtime fields include:
   - `known`
   - `trust`
@@ -40,24 +43,25 @@ Resident interactions update the same shared state the HUD and journal already r
 
 ### NPC Controller Hook
 
-- [`characters/control/npc_controller.gd`](characters/control/npc_controller.gd) now exposes `resident_id`.
+- [`../characters/control/npc_controller.gd`](../characters/control/npc_controller.gd) now exposes `resident_id`.
 - Resident appearance presets are applied automatically to `HumanBody2D` from the resident catalog.
 - Ambient speech balloons pull from the resident profile in `AppState`.
-- JSON behavior trees can still be used for autonomous motion, but prototype residents can disable them and remain stationary.
+- The current overworld roster disables JSON behavior trees and stays stationary until authored movement or schedules are added.
+- Residents still turn to face the player while the player is in talk range.
 
 ### Talk Interaction Flow
 
-- [`main.gd`](main.gd) now distinguishes NPCs from generic inspectables.
+- [`../main.gd`](../main.gd) now distinguishes NPCs from generic inspectables.
 - When the player is near a resident:
-  - the hint changes from `Inspect` to `Talk`
+  - the hint changes from `Inspect` to `Talk to <resident name>`
   - pressing `R` advances that resident's talk beat
-  - the objective, chapter, save status, and resident notes can all update from that beat
+  - the objective, chapter, save status, trust state, and resident notes can all update from that beat
 
 This gives the project a lightweight "full conversation" stand-in before a dedicated dialogue panel exists.
 
 ### Journal Integration
 
-- [`ui/screens/journal_overlay.gd`](ui/screens/journal_overlay.gd) now renders resident notes instead of only a flat resident name list.
+- [`../ui/screens/journal_overlay.gd`](../ui/screens/journal_overlay.gd) now renders resident notes instead of only a flat resident name list.
 - The resident tab currently shows:
   - role
   - usual location
@@ -65,13 +69,13 @@ This gives the project a lightweight "full conversation" stand-in before a dedic
   - current lead
   - melody clue
 
-That matches the design goal from [`docs/core_game_workflow.md`](docs/core_game_workflow.md): resident notes should answer who the person is, where they are found, and why they matter.
+That matches the design goal from [`core_game_workflow.md`](core_game_workflow.md): resident notes should answer who the person is, where they are found, and why they matter.
 
 ## Prototype Coverage
 
 ### Main Overworld
 
-- [`main.gd`](main.gd) now spawns the full 30-resident roster from catalog-defined spawn metadata.
+- [`../main.gd`](../main.gd) now spawns the full 30-resident roster from catalog-defined spawn metadata.
 - The main scene keeps the player and resident instances under one shared y-sorted actor layer so characters sort against each other consistently.
 - Spawn anchors currently map to five overworld hubs:
   - Piano Ferry
@@ -83,7 +87,7 @@ That matches the design goal from [`docs/core_game_workflow.md`](docs/core_game_
 
 ### Sandbox Scene
 
-- [`scenes/test_scene.tscn`](scenes/test_scene.tscn) now maps its three NPCs to resident ids.
+- [`../scenes/test_scene.tscn`](../scenes/test_scene.tscn) now maps its three NPCs to resident ids.
 - Use this scene as the faster sandbox for checking:
   - ambient speech
   - talk prompts
@@ -103,3 +107,5 @@ That matches the design goal from [`docs/core_game_workflow.md`](docs/core_game_
 2. Replace the shared hub anchor offsets with dedicated scene markers if individual resident placement needs finer art-direction control.
 3. Connect resident beats to landmark quest state so residents can unlock and resolve district arcs directly.
 4. Add postgame resident variants so the same system can support festival and free-walk dialogue changes.
+
+See the shorter implementation-facing summary in [`features/npc_system.md`](features/npc_system.md).

@@ -1,6 +1,6 @@
 # Kulangsu Core Game Workflow
 
-Read [`docs/design_brief.md`](docs/design_brief.md) first for the minimum-token summary. Use this doc only when story and progression structure need more detail.
+Read [`design_brief.md`](design_brief.md) first for the minimum-token summary. Use this doc only when story and progression structure need more detail.
 
 ## Design Goal
 Build the game around a calm exploration-to-performance loop:
@@ -13,9 +13,9 @@ Build the game around a calm exploration-to-performance loop:
 
 This fits the current project strengths:
 
-- Large explorable island terrain in [`terrain.tscn`](terrain.tscn)
-- Free movement and inspect input in [`characters/control/player_controller.gd`](characters/control/player_controller.gd)
-- Proximity dialogue balloon interactions in [`characters/control/base_controller.gd`](characters/control/base_controller.gd)
+- Large explorable island terrain in [`../terrain.tscn`](../terrain.tscn)
+- Free movement and inspect input in [`../characters/control/player_controller.gd`](../characters/control/player_controller.gd)
+- Proximity dialogue balloon interactions in [`../characters/control/base_controller.gd`](../characters/control/base_controller.gd)
 - Landmark spaces already placed in the island scene:
   - Piano Ferry
   - Bagua Tower
@@ -46,7 +46,7 @@ The player is a newcomer to Kulangsu who gradually learns the island by walking 
 7. Receive a melody fragment, relationship gain, and the next lead.
 8. Return to the overworld and choose the next landmark.
 
-For the repeatable moment-to-moment play design that should power each of those steps, see [`docs/core_gameplay_plays.md`](docs/core_gameplay_plays.md).
+For the repeatable moment-to-moment play design that should power each of those steps, see [`core_gameplay_plays.md`](core_gameplay_plays.md).
 
 ## Full Game Flow
 
@@ -308,7 +308,7 @@ This lets the project share one quest structure across all four landmark arcs in
 
 ### AppState Targets
 
-The shared UI state in [`game/app_state.gd`](game/app_state.gd) should reflect the current story beat with lightweight values:
+The shared UI state in [`../game/app_state.gd`](../game/app_state.gd) should reflect the current story beat with lightweight values:
 
 - `mode`: `Title`, `Story`, `Free Walk`, or `Postgame`
 - `chapter`: broad progression label such as `Arrival` or `Festival Night`
@@ -319,7 +319,7 @@ The shared UI state in [`game/app_state.gd`](game/app_state.gd) should reflect t
 - `player_profile`: selected body, gender, skin, and hair options
 - `equipped_player_costume_id`: the wardrobe preset currently worn by the player
 
-The doc in [`docs/ui_design_context.md`](docs/ui_design_context.md) already assumes this state drives the HUD and overlays, so gameplay progression should update it as soon as objectives change.
+The doc in [`ui_design_context.md`](ui_design_context.md) already assumes this state drives the HUD and overlays, so gameplay progression should update it as soon as objectives change.
 
 ## Landmark State Template
 
@@ -395,11 +395,13 @@ Resident notes should unlock only after introduction and should answer:
 
 This gives exploration context without turning the game into a dense quest log.
 
-Current prototype support for those notes now lives in:
+Current resident-system support for those notes now lives in:
 
-- resident content catalog: [`game/resident_catalog.gd`](game/resident_catalog.gd)
-- runtime resident state: [`game/app_state.gd`](game/app_state.gd)
-- resident journal rendering: [`ui/screens/journal_overlay.gd`](ui/screens/journal_overlay.gd)
+- resident content catalog: [`../game/resident_catalog.gd`](../game/resident_catalog.gd)
+- runtime resident state: [`../game/app_state.gd`](../game/app_state.gd)
+- overworld resident spawning and talk prompts: [`../main.gd`](../main.gd)
+- resident talk controller: [`../characters/control/npc_controller.gd`](../characters/control/npc_controller.gd)
+- resident journal rendering: [`../ui/screens/journal_overlay.gd`](../ui/screens/journal_overlay.gd)
 
 ## Save and Recovery Checkpoints
 
@@ -561,13 +563,13 @@ Avoid:
 
 ### Existing systems already aligned
 
-- Overworld exploration: [`main.tscn`](main.tscn)
-- Global player reference: [`game/game_global.gd`](game/game_global.gd)
-- Interaction radius and dialogue bubble logic: [`characters/control/base_controller.gd`](characters/control/base_controller.gd)
-- Player input and inspect action: [`characters/control/player_controller.gd`](characters/control/player_controller.gd)
-- NPC autonomous presence and talk detection: [`characters/control/npc_controller.gd`](characters/control/npc_controller.gd)
-- Layered traversal through portals / stairs: [`architecture/components/portal.gd`](architecture/components/portal.gd)
-- Tunnel masking and layered tunnel traversal: [`architecture/tunnel.gd`](architecture/tunnel.gd)
+- Overworld exploration: [`../main.tscn`](../main.tscn)
+- Global player reference: [`../game/game_global.gd`](../game/game_global.gd)
+- Interaction radius and dialogue bubble logic: [`../characters/control/base_controller.gd`](../characters/control/base_controller.gd)
+- Player input and inspect action: [`../characters/control/player_controller.gd`](../characters/control/player_controller.gd)
+- NPC autonomous presence and talk detection: [`../characters/control/npc_controller.gd`](../characters/control/npc_controller.gd)
+- Layered traversal through portals / stairs: [`../architecture/components/portal.gd`](../architecture/components/portal.gd)
+- Tunnel masking and layered tunnel traversal: [`../architecture/tunnel.gd`](../architecture/tunnel.gd)
 
 ### Systems to add next
 
@@ -583,7 +585,7 @@ Avoid:
 ### Milestone 1: Playable Vertical Slice
 
 - Ferry arrival
-- One NPC
+- Data-driven resident roster across the main overworld
 - One journal objective
 - Trinity Church quest
 - One melody fragment reward

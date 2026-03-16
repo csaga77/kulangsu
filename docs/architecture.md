@@ -52,8 +52,9 @@ Responsibilities:
 
 - main island scene setup
 - player spawn and camera context
+- shared y-sorted actor layer for the player and spawned residents
 - landmark lookup and location syncing
-- resident spawning and inspect/talk prompts
+- data-driven resident spawning, inspect/talk prompts, and overworld resident presentation
 - feeding current world context into `AppState`
 
 Boundary:
@@ -73,6 +74,7 @@ Responsibilities:
 
 - shared mode, chapter, location, objective, hint, save status, and summary data
 - resident and player-facing catalog data
+- resident runtime profiles plus resident appearance, spawn, and journal-facing lookup helpers
 - state that multiple screens or systems need to read consistently
 
 Boundary:
@@ -93,7 +95,7 @@ Responsibilities:
 - player and NPC control
 - interaction discovery and inspect requests
 - behavior-tree support code
-- character visuals and in-world speech balloon UI
+- resident presentation hookup, character visuals, and in-world speech balloon UI
 
 ### World Spaces And Landmark Content
 

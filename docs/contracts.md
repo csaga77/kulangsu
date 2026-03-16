@@ -33,7 +33,8 @@ Owned by:
 Current contract:
 
 - `AppState` is the shared UI/progression-facing bridge between gameplay and UI
-- it exposes signals for mode, chapter, location, objective, hint, save status, fragments, landmarks, residents, player appearance/costumes, and summary updates
+- it exposes signals for mode, chapter, location, objective, hint, save status, fragments, landmarks, residents, resident profiles, player appearance/costumes, and summary updates
+- world and UI code rely on resident getters for resident ids, display names, appearance configs, spawn configs, ambient speech, and resident journal text
 - UI screens and world integration code rely on those signals and state getters/setters
 
 Governance:
@@ -52,13 +53,14 @@ Owned by:
 Current contract:
 
 - `main.gd` maps landmarks and spawn anchors, spawns residents, reacts to controller events, and syncs player context into `AppState`
+- `main.tscn` keeps the player and resident instances under one shared y-sorted actor layer rooted at `actors`
 - player inspect and talk prompts flow from nearby world objects through controller signals into `AppState`
 - landmark naming and location sync depend on known nodes in the main scene
 
 Governance:
 
 - keep scene-specific world wiring local to `main.gd` unless it becomes a reusable subsystem
-- document node-path or naming assumptions if new systems depend on them
+- document node-path, actor-layer, or spawn-anchor naming assumptions if new systems depend on them
 
 ## Reusable Module Contracts
 
