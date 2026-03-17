@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" uid="uid://b7ntce1lyblnt" path="res://scenes/test_scene.gd" id="1_8pr8v"]
 [ext_resource type="PackedScene" uid="uid://dqivkaosuu5nr" path="res://scenes/test_room.tscn" id="2_wtsjf"]
-[ext_resource type="Material" uid="uid://dw5sarpgr1teb" path="res://resources/materials/wall_transparent.tres" id="3_njel3"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="4_vr1i5"]
 [ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/human_body_2d.tscn" id="5_rpuu0"]
 [ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/control/player_controller.gd" id="6_oo8pe"]
@@ -55,7 +54,6 @@ building = ExtResource("2_wtsjf")
 
 [node name="Root" type="Node2D" parent="." unique_id=203604640]
 y_sort_enabled = true
-material = ExtResource("3_njel3")
 position = Vector2(160, 48)
 script = ExtResource("4_vr1i5")
 
@@ -72,7 +70,6 @@ metadata/_custom_type_script = "uid://1lv88f7nn3d4"
 [node name="Player" parent="." unique_id=543916503 groups=["player"] instance=ExtResource("5_rpuu0")]
 position = Vector2(-4, 13)
 draw_bounding_rect = true
-facial_mood = 1
 controller = SubResource("Resource_6qxox")
 
 [node name="global_lighting_use_CanvasModulate" type="CanvasModulate" parent="." unique_id=1365478517]

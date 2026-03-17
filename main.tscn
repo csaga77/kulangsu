@@ -1,6 +1,5 @@
 [gd_scene format=3 uid="uid://dd4h1niyolnlj"]
 
-[ext_resource type="Material" uid="uid://dw5sarpgr1teb" path="res://resources/materials/wall_transparent.tres" id="1_kek77"]
 [ext_resource type="Script" uid="uid://bywr0jr0u6i2n" path="res://main.gd" id="1_lquwl"]
 [ext_resource type="PackedScene" uid="uid://cn5g8hobx3bru" path="res://terrain.tscn" id="3_7mycd"]
 [ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/human_body_2d.tscn" id="5_lquwl"]
@@ -14,14 +13,17 @@ metadata/_custom_type_script = "uid://cmokaqask0s2p"
 
 [node name="main" type="Node2D" unique_id=1387312363]
 y_sort_enabled = true
-material = ExtResource("1_kek77")
 script = ExtResource("1_lquwl")
 
 [node name="terrain" parent="." unique_id=382500148 node_paths=PackedStringArray("player") instance=ExtResource("3_7mycd")]
 player = NodePath("../actors/player")
 
-[node name="actors" type="Node2D" parent="."]
+[node name="actors" type="Node2D" parent="." unique_id=1343309121]
 y_sort_enabled = true
+
+[node name="player" parent="actors" unique_id=1255111382 groups=["player"] instance=ExtResource("5_lquwl")]
+position = Vector2(3428, 7735)
+controller = SubResource("Resource_qjl73")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=369660366]
 position = Vector2(12357, 19805)
@@ -32,7 +34,3 @@ camera = NodePath("../Camera2D")
 target_node = NodePath("../actors/player")
 min_zoom = 0.01
 metadata/_custom_type_script = "uid://1lv88f7nn3d4"
-
-[node name="player" parent="actors" unique_id=1255111382 groups=["player"] instance=ExtResource("5_lquwl")]
-position = Vector2(3428, 7735)
-controller = SubResource("Resource_qjl73")
