@@ -18,7 +18,7 @@ Put new menu, overlay, HUD, or shell-flow work here.
 ## World Integration And Shared State
 
 - [`../main.tscn`](../main.tscn) / [`../main.gd`](../main.gd) - connects terrain, the shared actor layer, landmarks, and residents to the UI
-- [`../terrain.tscn`](../terrain.tscn) / [`../terrain.gd`](../terrain.gd) - island terrain and world-level setup
+- [`../terrain.tscn`](../terrain.tscn) / [`../terrain.gd`](../terrain.gd) - island terrain, generated water layer, and water rendering setup
 - [`../game/app_state.gd`](../game/app_state.gd) - shared UI/progression-facing state
 - [`../game/resident_catalog.gd`](../game/resident_catalog.gd) - resident roster, dialogue, appearance, and spawn data
 - [`../game/player_appearance_catalog.gd`](../game/player_appearance_catalog.gd) / [`../game/player_costume_catalog.gd`](../game/player_costume_catalog.gd) - player customization data
@@ -61,6 +61,7 @@ Be careful about renames or moves here because scene and resource references can
 ## Validation Scenes
 
 - [`../scenes/`](../scenes) - ad hoc prototype and validation scenes
+- [`../scenes/test_water_render.tscn`](../scenes/test_water_render.tscn) - focused water color, wave, transparency, and refraction sandbox
 - [`../scenes/test_scene.tscn`](../scenes/test_scene.tscn) - focused resident speech, talk, and journal sandbox
 - [`../game/grid_board_game/test_grid_board_game.tscn`](../game/grid_board_game/test_grid_board_game.tscn)
 - [`../game/grid_board_game/test_terminal_turn_state.tscn`](../game/grid_board_game/test_terminal_turn_state.tscn)
@@ -71,6 +72,7 @@ Use these when you need a focused validation target instead of the full project 
 
 - [`../docs/`](../docs) - project docs
 - [`features/npc_system.md`](features/npc_system.md) - implementation-facing summary of the resident/NPC system
+- [`features/terrain_water_rendering.md`](features/terrain_water_rendering.md) - terrain water rendering and validation notes
 - [`features/`](features) - feature specs
 - [`features/template.md`](features/template.md) - local feature-spec template
 - [`../codex_agents/`](../codex_agents) - shared generic agent runbooks and support docs
@@ -93,6 +95,7 @@ Useful searches when locating code:
 - `inspect_requested` for inspect flow
 - `set_location` for location syncing
 - `resident` for resident systems and data
+- `water_tint` for the water shader and material
 - `class_name GridBoardGame` for the board-game module
 - `class_name UIStyle` for shared UI styling
 
