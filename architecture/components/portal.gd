@@ -6,6 +6,8 @@ extends Area2D
 @export_flags_2d_physics var mask2 := 0
 @export var delta_z := 1
 
+const SIDE_EPSILON := 0.001
+
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	pass # Replace with function body.
@@ -46,14 +48,14 @@ func _on_body_entered(body: Node2D) -> void:
 	var local_pos = to_local(body.global_position)
 	#print(local_pos)
 	if obj.collision_mask & mask1:
-		if local_pos.x < 0:
+		if _is_on_mask1_side(local_pos.x):
 			_store_transition_state(obj, true)
 			obj.collision_mask |= mask2
 		elif mask1 == mask2:
 			#Only change z
 			_store_transition_state(obj, false)
 	elif obj.collision_mask & mask2:
-		if local_pos.x > 0:
+		if _is_on_mask2_side(local_pos.x):
 			_store_transition_state(obj, false)
 			obj.collision_mask |= mask1
 			#print("mask2 entered")
@@ -69,7 +71,7 @@ func _on_body_exited(body: Node2D) -> void:
 	var enter_direction := bool(transition_state.get("enter_direction", true))
 	var local_pos = to_local(body.global_position)
 	var vec = local_pos.normalized()
-	if vec.x > 0:
+	if _is_on_mask2_side(vec.x):
 		if mask1 != mask2:
 			obj.collision_mask &= ~mask1
 			obj.collision_mask |= mask2
@@ -95,3 +97,9 @@ func _on_body_exited(body: Node2D) -> void:
 			#obj.collision_mask |= mask1
 			#obj.collision_mask &= ~mask2
 			#print("mask1 exited")
+
+func _is_on_mask1_side(local_x: float) -> bool:
+	return local_x <= SIDE_EPSILON
+
+func _is_on_mask2_side(local_x: float) -> bool:
+	return local_x >= -SIDE_EPSILON
