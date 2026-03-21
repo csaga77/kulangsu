@@ -61,6 +61,7 @@ Be careful about renames or moves here because scene and resource references can
 ## Validation Scenes
 
 - [`../scenes/`](../scenes) - ad hoc prototype and validation scenes
+- [`../scenes/test_npc_layer_interaction.tscn`](../scenes/test_npc_layer_interaction.tscn) - focused same-layer NPC targeting and portal-driven z-layer switching sandbox
 - [`../scenes/test_water_render.tscn`](../scenes/test_water_render.tscn) - focused water color, wave, transparency, and refraction sandbox
 - [`../scenes/test_scene.tscn`](../scenes/test_scene.tscn) - focused resident speech, talk, and journal sandbox
 - [`../game/grid_board_game/test_grid_board_game.tscn`](../game/grid_board_game/test_grid_board_game.tscn)

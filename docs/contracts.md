@@ -54,7 +54,7 @@ Current contract:
 
 - `main.gd` maps landmarks and spawn anchors, spawns residents, reacts to controller events, and syncs player context into `AppState`
 - `main.tscn` keeps the player and resident instances under one shared y-sorted actor layer rooted at `actors`
-- player inspect and talk prompts flow from nearby world objects through controller signals into `AppState`
+- player inspect and talk prompts flow from nearby same-layer world objects through controller signals into `AppState`
 - landmark naming and location sync depend on known nodes in the main scene
 
 Governance:

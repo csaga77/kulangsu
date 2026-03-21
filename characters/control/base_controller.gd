@@ -249,7 +249,17 @@ func _is_valid_object(body: Node2D) -> bool:
 	if m_character != null and (body == m_character or CommonUtils.is_ancestor(body, m_character)):
 		return false
 
+	if !_shares_interaction_layer(body):
+		return false
+
 	return true
+
+func _shares_interaction_layer(target_node: Node2D) -> bool:
+	if !is_instance_valid(m_character):
+		return false
+	if !is_instance_valid(target_node):
+		return false
+	return CommonUtils.get_absolute_z_index(m_character) == CommonUtils.get_absolute_z_index(target_node)
 
 func _cleanup_nearby_objects() -> void:
 	var valid_objects: Array[Node2D] = []

@@ -259,7 +259,7 @@ Current in-world pattern already exists in [`../gui/speech_balloon.gd`](../gui/s
 
 Use two dialogue tiers:
 
-- Ambient speech balloon for short reactive lines
+- Resident cue or revealed-line balloon for the current lightweight talk flow
 - Full dialogue panel for important quest conversations
 
 ### C. Full Dialogue Panel

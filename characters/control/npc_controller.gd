@@ -12,6 +12,7 @@ extends BaseController
 var m_target: Node2D = null
 var m_bt_tree: BTTree
 var m_is_building_bt_tree := false
+var m_revealed_dialogue_line := ""
 
 func _on_setup() -> void:
 	super._on_setup()
@@ -54,6 +55,11 @@ func refresh_dialogue() -> void:
 	_update_balloon_content()
 
 
+func reveal_dialogue(line: String) -> void:
+	m_revealed_dialogue_line = line.strip_edges()
+	_update_balloon_content()
+
+
 func _apply_resident_presentation() -> void:
 	if !is_instance_valid(m_character):
 		return
@@ -85,11 +91,13 @@ func _on_body_entered(body: Node2D) -> void:
 	super._on_body_entered(body)
 	if body.is_in_group("player"):
 		m_target = body
+		_clear_revealed_dialogue()
 
 func _on_body_exited(body: Node2D) -> void:
 	super._on_body_exited(body)
 	if body.is_in_group("player"):
 		m_target = null
+		_clear_revealed_dialogue()
 
 func _process(delta: float) -> void:
 	super._process(delta)
@@ -120,12 +128,16 @@ func _get_speech(target_obj: Node2D) -> String:
 	if !target_obj.is_in_group("player"):
 		return ""
 
+	if m_revealed_dialogue_line.is_empty():
+		return "..."
+
 	var resident_key := get_resident_id()
 	if resident_key.is_empty():
-		return "%s: ♪..." % m_character.name
+		return "%s: %s" % [m_character.name, m_revealed_dialogue_line]
 
 	var display_name := AppState.get_resident_display_name(resident_key)
-	var speech := AppState.get_resident_ambient_line(resident_key)
-	if speech.is_empty():
-		return ""
-	return "%s: %s" % [display_name, speech]
+	return "%s: %s" % [display_name, m_revealed_dialogue_line]
+
+
+func _clear_revealed_dialogue() -> void:
+	m_revealed_dialogue_line = ""

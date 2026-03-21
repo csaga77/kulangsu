@@ -133,11 +133,12 @@ func _on_inspect_requested() -> void:
 		var resident_id := resident_controller.get_resident_id()
 		var interaction := AppState.interact_with_resident(resident_id)
 		var resident_name := AppState.get_resident_display_name(resident_id)
+		var dialogue_line := String(interaction.get("line", ""))
 
 		if interaction.is_empty():
 			AppState.set_save_status("Talked with %s" % resident_name)
 
-		resident_controller.refresh_dialogue()
+		resident_controller.reveal_dialogue(dialogue_line)
 		AppState.set_residents(AppState.get_known_resident_names())
 		_update_hint_text(m_closest_object)
 		return

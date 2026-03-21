@@ -7,18 +7,99 @@ extends Area2D
 @export var delta_z := 1
 
 const SIDE_EPSILON := 0.001
+const DEBUG_FILL_COLOR := Color(0.301961, 0.878431, 1.0, 0.18)
+const DEBUG_OUTLINE_COLOR := Color(0.301961, 0.878431, 1.0, 0.95)
+const DEBUG_OUTLINE_WIDTH := 2.0
+const DEBUG_CAPSULE_SEGMENTS := 16
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	pass # Replace with function body.
+	queue_redraw()
 
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(_delta: float) -> void:
-	pass
+	if Engine.is_editor_hint():
+		queue_redraw()
 
 func _draw() -> void:
-	DrawUtils.draw_arrow(self, $CollisionShape2D.position, Vector2.RIGHT.rotated(0), 20, Color.RED)
+	var collision_shape := $CollisionShape2D as CollisionShape2D
+	if collision_shape == null or collision_shape.shape == null:
+		return
+
+	var shape := collision_shape.shape
+	if shape is RectangleShape2D:
+		_draw_rectangle_shape(collision_shape, shape as RectangleShape2D)
+	elif shape is CapsuleShape2D:
+		_draw_capsule_shape(collision_shape, shape as CapsuleShape2D)
+
+	var arrow_direction := collision_shape.transform.x.normalized()
+	DrawUtils.draw_arrow(
+		self,
+		collision_shape.position,
+		arrow_direction,
+		_get_arrow_length(shape),
+		DEBUG_OUTLINE_COLOR
+	)
+
+
+func _draw_rectangle_shape(collision_shape: CollisionShape2D, shape: RectangleShape2D) -> void:
+	var half_size := shape.size * 0.5
+	var points := PackedVector2Array([
+		Vector2(-half_size.x, -half_size.y),
+		Vector2(half_size.x, -half_size.y),
+		Vector2(half_size.x, half_size.y),
+		Vector2(-half_size.x, half_size.y),
+	])
+	_draw_portal_polygon(collision_shape, points)
+
+
+func _draw_capsule_shape(collision_shape: CollisionShape2D, shape: CapsuleShape2D) -> void:
+	var radius: float = shape.radius
+	var total_height: float = maxf(shape.height, radius * 2.0)
+	var half_body_height: float = maxf(total_height * 0.5 - radius, 0.0)
+	var top_center := Vector2(0.0, -half_body_height)
+	var bottom_center := Vector2(0.0, half_body_height)
+	var points := PackedVector2Array()
+
+	for i in range(DEBUG_CAPSULE_SEGMENTS + 1):
+		var t: float = float(i) / float(DEBUG_CAPSULE_SEGMENTS)
+		var angle: float = lerpf(PI, 0.0, t)
+		points.append(top_center + Vector2(cos(angle), sin(angle)) * radius)
+
+	for i in range(DEBUG_CAPSULE_SEGMENTS + 1):
+		var t: float = float(i) / float(DEBUG_CAPSULE_SEGMENTS)
+		var angle: float = lerpf(0.0, PI, t)
+		points.append(bottom_center + Vector2(cos(angle), sin(angle)) * radius)
+
+	_draw_portal_polygon(collision_shape, points)
+
+
+func _draw_portal_polygon(collision_shape: CollisionShape2D, local_points: PackedVector2Array) -> void:
+	if local_points.is_empty():
+		return
+
+	var transformed_points := PackedVector2Array()
+	for point in local_points:
+		transformed_points.append(collision_shape.transform * point)
+
+	draw_colored_polygon(transformed_points, DEBUG_FILL_COLOR)
+	for i in range(transformed_points.size()):
+		var next_index := (i + 1) % transformed_points.size()
+		draw_line(
+			transformed_points[i],
+			transformed_points[next_index],
+			DEBUG_OUTLINE_COLOR,
+			DEBUG_OUTLINE_WIDTH
+		)
+
+
+func _get_arrow_length(shape: Shape2D) -> float:
+	if shape is RectangleShape2D:
+		return maxf((shape as RectangleShape2D).size.x * 0.4, 16.0)
+	if shape is CapsuleShape2D:
+		return maxf((shape as CapsuleShape2D).radius * 1.5, 16.0)
+	return 20.0
 
 var m_transition_state_by_body: Dictionary = {}
 

@@ -1,0 +1,130 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/test_npc_layer_interaction.gd" id="1_scene"]
+[ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/human_body_2d.tscn" id="2_human"]
+[ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/control/player_controller.gd" id="3_player"]
+[ext_resource type="Script" uid="uid://vk6rfdoxtkgv" path="res://characters/control/npc_controller.gd" id="4_npc"]
+[ext_resource type="PackedScene" uid="uid://d27a7jcvsnfx8" path="res://architecture/components/portal.tscn" id="5_portal"]
+[ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="6_camera"]
+
+[sub_resource type="Resource" id="Resource_player_controller"]
+script = ExtResource("3_player")
+metadata/_custom_type_script = "uid://cmokaqask0s2p"
+
+[sub_resource type="Resource" id="Resource_ground_lian"]
+script = ExtResource("4_npc")
+use_json_bt = false
+resident_id = &"ferry_caretaker"
+interaction_radius = 92.0
+metadata/_custom_type_script = "uid://vk6rfdoxtkgv"
+
+[sub_resource type="Resource" id="Resource_ground_pei"]
+script = ExtResource("4_npc")
+use_json_bt = false
+resident_id = &"dock_musician_pei"
+interaction_radius = 92.0
+metadata/_custom_type_script = "uid://vk6rfdoxtkgv"
+
+[sub_resource type="Resource" id="Resource_upper_suyin"]
+script = ExtResource("4_npc")
+use_json_bt = false
+resident_id = &"tower_keeper"
+interaction_radius = 92.0
+metadata/_custom_type_script = "uid://vk6rfdoxtkgv"
+
+[sub_resource type="Resource" id="Resource_upper_wen"]
+script = ExtResource("4_npc")
+use_json_bt = false
+resident_id = &"storyteller_wen"
+interaction_radius = 92.0
+metadata/_custom_type_script = "uid://vk6rfdoxtkgv"
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_layer_portal"]
+size = Vector2(64, 200)
+
+[node name="test_npc_layer_interaction" type="Node2D"]
+y_sort_enabled = true
+script = ExtResource("1_scene")
+
+[node name="GroundGuide" type="Line2D" parent="."]
+points = PackedVector2Array(56, 280, 544, 280)
+width = 3.0
+default_color = Color(0.435294, 0.772549, 0.447059, 0.9)
+
+[node name="UpperGuide" type="Line2D" parent="."]
+z_index = 1
+points = PackedVector2Array(56, 160, 544, 160)
+width = 3.0
+default_color = Color(0.952941, 0.705882, 0.301961, 0.9)
+
+[node name="LayerPortal" parent="." instance=ExtResource("5_portal")]
+position = Vector2(300, 220)
+rotation = -1.5707964
+mask1 = 524288
+mask2 = 1048576
+delta_z = 1
+
+[node name="CollisionShape2D" parent="LayerPortal" index="0"]
+shape = SubResource("RectangleShape2D_layer_portal")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(300, 220)
+
+[node name="Camera2DController" type="Node" parent="." node_paths=PackedStringArray("camera", "target_node")]
+script = ExtResource("6_camera")
+camera = NodePath("../Camera2D")
+target_node = NodePath("../Player")
+min_zoom = 0.01
+metadata/_custom_type_script = "uid://1lv88f7nn3d4"
+
+[node name="Player" parent="." groups=["player"] instance=ExtResource("2_human")]
+position = Vector2(112, 280)
+direction = 0.0
+controller = SubResource("Resource_player_controller")
+
+[node name="GroundCaretakerLian" parent="." instance=ExtResource("2_human")]
+position = Vector2(184, 280)
+direction = 180.0
+is_running = false
+controller = SubResource("Resource_ground_lian")
+
+[node name="GroundPei" parent="." instance=ExtResource("2_human")]
+position = Vector2(432, 280)
+direction = 180.0
+is_running = false
+controller = SubResource("Resource_ground_pei")
+
+[node name="UpperTowerKeeperSuyin" parent="." instance=ExtResource("2_human")]
+z_index = 1
+position = Vector2(184, 160)
+collision_mask = 1048577
+direction = 180.0
+is_running = false
+controller = SubResource("Resource_upper_suyin")
+
+[node name="UpperStorytellerWen" parent="." instance=ExtResource("2_human")]
+z_index = 1
+position = Vector2(432, 160)
+collision_mask = 1048577
+direction = 180.0
+is_running = false
+controller = SubResource("Resource_upper_wen")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="OverlayBackground" type="ColorRect" parent="CanvasLayer"]
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 824.0
+offset_bottom = 246.0
+color = Color(0.0431373, 0.0588235, 0.0823529, 0.78)
+
+[node name="StatusLabel" type="Label" parent="CanvasLayer"]
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 812.0
+offset_bottom = 234.0
+theme_override_colors/font_color = Color(0.941176, 0.94902, 0.972549, 1)
+theme_override_font_sizes/font_size = 18
+autowrap_mode = 3
+text = "NPC Layer Interaction Test"
