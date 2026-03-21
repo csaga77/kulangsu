@@ -96,6 +96,12 @@ Responsibilities:
 - interaction discovery and inspect requests
 - behavior-tree support code
 - resident presentation hookup, character visuals, and in-world speech balloon UI
+- metadata-driven LPC sprite composition and development-time metadata generation tooling
+
+Notes:
+
+- The runtime game consumes the prebuilt Universal LPC metadata under [`../resources/sprites/universal_lpc/`](../resources/sprites/universal_lpc).
+- [`../characters/human_body_2d.gd`](../characters/human_body_2d.gd) owns the root material/shader setup for composed avatars, while the child Universal LPC node composes the visible layers.
 
 ### World Spaces And Landmark Content
 

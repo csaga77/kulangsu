@@ -52,6 +52,14 @@ The prototype wardrobe currently ships with four presets:
 - Costume unlocks are recalculated whenever mode, fragment progress, or resident trust changes.
 - If the currently equipped look becomes invalid for the new state, the system falls back to the default arrival outfit automatically.
 
+### Universal LPC Runtime Contract
+
+- The shipped game consumes the prebuilt metadata file at [`../resources/sprites/universal_lpc/universal_lpc_metadata.json`](../resources/sprites/universal_lpc/universal_lpc_metadata.json).
+- Regenerating Universal LPC metadata is a development-time workflow driven by the validation tooling under [`../scenes/test_universal_lpc_sprite_generator.tscn`](../scenes/test_universal_lpc_sprite_generator.tscn), not a runtime game step.
+- [`../characters/human_body_2d.gd`](../characters/human_body_2d.gd) remains the root avatar node and owns the material/shader setup for the composed character.
+- [`../characters/universal_lpc/universal_lpc_sprite_2d.gd`](../characters/universal_lpc/universal_lpc_sprite_2d.gd) handles metadata-driven layer composition under `HumanBody2D`.
+- Animation authoring for this slice should stay within the shipped default LPC animation set and any explicitly supported custom animation layouts captured in the prebuilt metadata.
+
 ### Player Application
 
 - [`main.gd`](main.gd) listens for `AppState.player_appearance_changed`.
@@ -99,7 +107,8 @@ This keeps the feature overlay-based and consistent with the project’s minimal
 - In-story costume changes should remain preset looks, not combinatorial paper-doll editing.
 - Unlocks should read as gifts, local borrowing, or story recognition rather than loot drops.
 - Wardrobe text should stay short enough to scan in the journal without feeling like a spreadsheet.
-- New outfits should use asset paths already supported by the Universal LPC metadata unless the sprite pipeline is intentionally expanded.
+- New outfits should use asset paths already supported by the shipped Universal LPC metadata unless the sprite pipeline is intentionally expanded.
+- New appearance content should assume prebuilt metadata and existing runtime animation support, not on-demand metadata generation in the shipped game.
 
 ## Good Next Steps
 

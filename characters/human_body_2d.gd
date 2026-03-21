@@ -163,11 +163,21 @@ func _ensure_universal_lpc_sprite() -> void:
 	if m_universal_lpc_sprite == null:
 		m_universal_lpc_sprite = UniversalLpcSprite2D.new()
 		m_universal_lpc_sprite.name = "universal_lpc_sprite"
-		m_universal_lpc_sprite.configuration_changed.connect(self.configuration_changed.emit)
 		add_child(m_universal_lpc_sprite)
+
+	if !m_universal_lpc_sprite.configuration_changed.is_connected(self.configuration_changed.emit):
+		m_universal_lpc_sprite.configuration_changed.connect(self.configuration_changed.emit)
 
 	move_child(m_universal_lpc_sprite, get_child_count() - 1)
 	m_universal_lpc_sprite.position = BASE_SPRITE_OFFSET
+	_sync_universal_lpc_sprite_material()
+
+
+func _sync_universal_lpc_sprite_material() -> void:
+	if m_universal_lpc_sprite == null:
+		return
+
+	m_universal_lpc_sprite.material = material
 
 
 func _restart_face_driver_no_apply() -> void:

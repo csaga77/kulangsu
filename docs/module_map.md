@@ -30,6 +30,7 @@ If several screens or systems need the same player-facing state, it probably bel
 - [`../characters/`](../characters) - player and NPC scenes plus sprite systems
 - [`../characters/control/`](../characters/control) - controllers, resident presentation hookup, and interaction behavior
 - [`../characters/control/bt/`](../characters/control/bt) - behavior-tree framework
+- [`../characters/universal_lpc/`](../characters/universal_lpc) - Universal LPC metadata tooling, runtime sprite composition, and related helpers
 - [`../gui/`](../gui) - in-world UI such as speech balloons
 
 Put player control, NPC behavior, interaction prompts, and behavior-tree work here.
