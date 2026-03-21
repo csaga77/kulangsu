@@ -83,6 +83,7 @@ Input expectations:
 - Repo coding and documentation rules: [`coding_rules.md`](coding_rules.md)
 - Feature-doc guide: [`features/README.md`](features/README.md)
 - Feature-doc template: [`features/template.md`](features/template.md)
+- Multi-level landmark and stacked-room design: [`features/multi_level_spaces.md`](features/multi_level_spaces.md)
 - NPC and resident system slice: [`npc_system_design.md`](npc_system_design.md)
 - Player wardrobe and costume unlocks: [`player_costume_system.md`](player_costume_system.md)
 - Reusable board game module: [`grid_board_game_design.md`](grid_board_game_design.md)

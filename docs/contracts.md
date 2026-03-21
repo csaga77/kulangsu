@@ -68,6 +68,7 @@ Owned by:
 
 - [`../common/level_node_2d.gd`](../common/level_node_2d.gd)
 - [`../common/level_context_2d.gd`](../common/level_context_2d.gd)
+- [`features/multi_level_spaces.md`](features/multi_level_spaces.md)
 
 Current contract:
 
@@ -75,11 +76,16 @@ Current contract:
 - reusable room scenes should prefer `Inherit Parent` so they do not hardcode runtime level ids
 - landmark or building scenes that own multiple floors should provide the runtime mapping through `LevelContext2D`
 - `level` remains the explicit fallback value for standalone scenes and one-off spaces
+- this contract currently covers room tile-physics level resolution, not the full actor collision / visibility source of truth
+- portals and stairs still own actor collision-mask and `z_index` transitions separately from `LevelNode2D`
+- visibility masking still depends on authored mask layers plus absolute `z_index` behavior
 
 Governance:
 
 - keep runtime level mappings in the parent landmark/building scene when child rooms are intended to be reusable
 - when introducing new multi-level spaces, prefer slot-based parent mapping over repeating raw runtime level ids on child instances
+- do not assume `LevelContext2D` automatically configures actor spawn masks, portal masks, stair masks, or visibility masks
+- if you need the full current design, known limitation, or validation targets, start with [`features/multi_level_spaces.md`](features/multi_level_spaces.md)
 - if the `LevelNode2D` resolution modes or `LevelContext2D` mapping interface change, update this file and the relevant scene docs
 
 ## Reusable Module Contracts

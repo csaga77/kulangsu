@@ -63,6 +63,9 @@ Be careful about renames or moves here because scene and resource references can
 
 - [`../scenes/`](../scenes) - ad hoc prototype and validation scenes
 - [`../scenes/test_npc_layer_interaction.tscn`](../scenes/test_npc_layer_interaction.tscn) - focused same-layer NPC targeting and portal-driven z-layer switching sandbox
+- [`../scenes/test_level_context.tscn`](../scenes/test_level_context.tscn) - focused parent-owned level-slot mapping and inherited room-level resolution sandbox
+- [`../scenes/test_portal_overlap.tscn`](../scenes/test_portal_overlap.tscn) - focused multi-actor portal transition regression test
+- [`../scenes/test_bagua_stairs_visibility.tscn`](../scenes/test_bagua_stairs_visibility.tscn) - full Bagua Tower ascent, descent, and upper-floor visibility integration test
 - [`../scenes/test_water_render.tscn`](../scenes/test_water_render.tscn) - focused water color, wave, transparency, and refraction sandbox
 - [`../scenes/test_scene.tscn`](../scenes/test_scene.tscn) - focused resident speech, talk, and journal sandbox
 - [`../game/grid_board_game/test_grid_board_game.tscn`](../game/grid_board_game/test_grid_board_game.tscn)
@@ -73,6 +76,7 @@ Use these when you need a focused validation target instead of the full project 
 ## Documentation And Agent Support
 
 - [`../docs/`](../docs) - project docs
+- [`features/multi_level_spaces.md`](features/multi_level_spaces.md) - implementation-facing guide for stacked rooms, parent-owned level mapping, portals, stairs, and current design gaps
 - [`features/npc_system.md`](features/npc_system.md) - implementation-facing summary of the resident/NPC system
 - [`features/terrain_water_rendering.md`](features/terrain_water_rendering.md) - terrain water rendering and validation notes
 - [`features/`](features) - feature specs
