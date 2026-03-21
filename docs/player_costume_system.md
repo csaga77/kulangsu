@@ -31,6 +31,7 @@ Read [`docs/design_brief.md`](docs/design_brief.md) first for the project summar
   - short summary
   - unlock route text
   - costume-layer sprite selections that are merged on top of the player profile
+- New costumes are not complete until their id is also added to the catalog order and unlock logic in [`../game/player_costume_catalog.gd`](../game/player_costume_catalog.gd).
 
 The prototype wardrobe currently ships with four presets:
 
@@ -59,6 +60,7 @@ The prototype wardrobe currently ships with four presets:
 - [`../characters/human_body_2d.gd`](../characters/human_body_2d.gd) remains the root avatar node and owns the material/shader setup for the composed character.
 - [`../characters/universal_lpc/universal_lpc_sprite_2d.gd`](../characters/universal_lpc/universal_lpc_sprite_2d.gd) handles metadata-driven layer composition under `HumanBody2D`.
 - Animation authoring for this slice should stay within the shipped default LPC animation set and any explicitly supported custom animation layouts captured in the prebuilt metadata.
+- [`../characters/human_body_2d.gd`](../characters/human_body_2d.gd) currently auto-drives idle, walk, run, and jump presentation from movement state; custom animation layouts still require an explicit gameplay/UI caller that sets the active animation name.
 
 ### Player Application
 
@@ -109,6 +111,35 @@ This keeps the feature overlay-based and consistent with the project’s minimal
 - Wardrobe text should stay short enough to scan in the journal without feeling like a spreadsheet.
 - New outfits should use asset paths already supported by the shipped Universal LPC metadata unless the sprite pipeline is intentionally expanded.
 - New appearance content should assume prebuilt metadata and existing runtime animation support, not on-demand metadata generation in the shipped game.
+
+## Adding New Content
+
+### New Costume Preset
+
+1. Add the costume entry and selection map in [`../game/player_costume_catalog.gd`](../game/player_costume_catalog.gd).
+2. Add the costume id to `ORDER` so journal cycling and unlocked-list ordering stay deterministic.
+3. Update `is_costume_unlocked(...)` so the preset can actually become available in story mode, free walk, or postgame.
+4. Keep the unlock hint text aligned with the real unlock rule so the journal stays trustworthy.
+
+### New Base Appearance Option
+
+1. Add the curated option in [`../game/player_appearance_catalog.gd`](../game/player_appearance_catalog.gd).
+2. Confirm the referenced LPC path and variant already exist in the shipped metadata at [`../resources/sprites/universal_lpc/universal_lpc_metadata.json`](../resources/sprites/universal_lpc/universal_lpc_metadata.json).
+3. If the change introduces a brand new profile field instead of a new option value, update the `AppState` getters/cyclers plus both customization surfaces in [`../ui/screens/player_customization_overlay.gd`](../ui/screens/player_customization_overlay.gd) and [`../ui/screens/journal_overlay.gd`](../ui/screens/journal_overlay.gd).
+
+### New LPC Asset Or Animation Support
+
+1. Prefer reusing paths and variants already present in the shipped metadata.
+2. If new metadata must be generated, treat that as development tooling work and revalidate the shipped JSON before relying on the new content in gameplay.
+3. Do not assume metadata alone makes a custom animation playable in the game; add or update an explicit runtime trigger path when the feature needs one.
+
+## Validation
+
+- Start a new run or free walk and confirm the setup overlay preview updates correctly for every changed profile field.
+- Open the journal wardrobe tab and confirm the preview, labels, unlocked count, and costume cycling reflect the new content.
+- Validate the live overworld avatar through the main project flow so `AppState.player_appearance_changed` still updates the active player immediately.
+- If unlock rules changed, confirm both the locked and unlocked states read correctly in the journal text.
+- If new LPC assets or animations were introduced, use [`../scenes/test_universal_lpc_sprite_generator.tscn`](../scenes/test_universal_lpc_sprite_generator.tscn) or another focused validation scene before relying on the full game flow.
 
 ## Good Next Steps
 
