@@ -14,6 +14,7 @@ This file documents the current release and versioning practice for this reposit
 
 - Treat the root repo commit as the authoritative version snapshot of the playable project.
 - Treat each submodule pointer change as part of the versioned state of the root repo.
+- Keep parent repo file changes and parent repo submodule-pointer changes in separate commits so release history shows content changes and pinned-submodule changes independently.
 - Do not imply semantic-version or release-tag guarantees unless the repo starts using them explicitly.
 
 ## Release Governance

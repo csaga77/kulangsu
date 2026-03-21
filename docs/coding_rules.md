@@ -4,6 +4,8 @@ Read [`design_brief.md`](design_brief.md), then check [`architecture.md`](archit
 
 Generic Godot and GDScript conventions live in [`../codex_agents/GODOT_DEVELOPMENT_RUNBOOK.md`](../codex_agents/GODOT_DEVELOPMENT_RUNBOOK.md). This file is only for Kulangsu-specific coding constraints.
 
+Keep shared/common coding rules in [`../codex_agents/`](../codex_agents). Add rules here only when they are specific to Kulangsu's scene structure, UI flow, state ownership, or repo workflow.
+
 ## Scene Ownership
 
 - Keep scene-specific behavior inside the owning scene script unless reuse clearly justifies extraction.
@@ -53,6 +55,7 @@ Generic Godot and GDScript conventions live in [`../codex_agents/GODOT_DEVELOPME
 - Update [`coding_rules.md`](coding_rules.md) when repo conventions change.
 - Keep older deep-dive docs in sync when they still describe the affected feature.
 - Keep documentation changes in the same patch when practical.
+- Move reusable or cross-project guidance into [`../codex_agents/`](../codex_agents) instead of duplicating it here.
 
 ## Do Not
 

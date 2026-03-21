@@ -40,6 +40,13 @@ This repo currently tracks these submodules through [`.gitmodules`](.gitmodules)
 
 See [`docs/submodules.md`](docs/submodules.md) for update rules, boundaries, and when to edit a submodule versus the parent repo.
 
+Primary submodule documentation entry points:
+
+- [`codex_agents/AGENTS.md`](codex_agents/AGENTS.md) and [`codex_agents/README.md`](codex_agents/README.md) - generic agent guidance, reusable runbooks, and the submodule's own docs map
+- [`godot_common/AGENTS.md`](godot_common/AGENTS.md), [`godot_common/README.md`](godot_common/README.md), and [`godot_common/docs/`](godot_common/docs) - entry points for shared Godot support code and helper ownership guidance
+- [`godot_tilemap/AGENTS.md`](godot_tilemap/AGENTS.md), [`godot_tilemap/README.md`](godot_tilemap/README.md), and [`godot_tilemap/docs/`](godot_tilemap/docs) - entry points for tilemap helper/tooling architecture and repo conventions
+- [`3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md`](3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md) - upstream LPC generator overview, licensing, attribution, and development references
+
 ## Run The Project
 
 Use a local Godot 4 editor or runtime to open [`project.godot`](project.godot).
@@ -77,6 +84,7 @@ Start here for project context:
 - [`docs/architecture.md`](docs/architecture.md) - system boundaries and relationships
 - [`docs/module_map.md`](docs/module_map.md) - where code and content live
 - [`docs/submodules.md`](docs/submodules.md) - submodule roles and governance
+- [`codex_agents/README.md`](codex_agents/README.md) - entry point for the shared agent-support submodule
 - [`docs/contracts.md`](docs/contracts.md) - stable interfaces and boundaries
 - [`docs/release_policy.md`](docs/release_policy.md) - current release/version policy
 - [`docs/features/README.md`](docs/features/README.md) - how feature specs work

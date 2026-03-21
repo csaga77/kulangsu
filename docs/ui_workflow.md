@@ -2,6 +2,16 @@
 
 Read [`design_brief.md`](design_brief.md) first for the minimum-token summary. Use this doc only when full menu and screen flow detail is needed.
 
+## Status
+
+This document mixes current prototype behavior with planned production-ready UI flow.
+
+Current runtime truth lives in [`../ui/app_flow_root.gd`](../ui/app_flow_root.gd), [`../game/app_state.gd`](../game/app_state.gd), and [`design_brief.md`](design_brief.md).
+
+Important limitation:
+
+- Save slots, real autosave/loading, and save-metadata boot flow described below are design targets, not shipped behavior in the current prototype.
+
 ## UI Goal
 Design a full UI journey from app launch to app exit that supports a calm exploration game, stays lightweight during play, and gives the player clear orientation without breaking immersion.
 
@@ -164,7 +174,7 @@ Content:
 - Open source acknowledgements
 
 Existing attribution source:
-- [`credit.md`](credit.md)
+- [`../credit.md`](../credit.md)
 
 ## 6. New Game / Continue Flow
 
@@ -172,13 +182,23 @@ Existing attribution source:
 
 Selecting `Continue`:
 
-- Loads latest autosave directly
-- Shows a short loading card with current chapter and location
-- Enters play
+- Planned production flow:
+  - Loads latest autosave directly
+  - Shows a short loading card with current chapter and location
+  - Enters play
+- Current prototype behavior:
+  - Seeds a representative mid-story state through `AppState.configure_continue()`
+  - Does not load persisted save data
 
 ### New Game
 
-Selecting `New Game` opens a lightweight setup flow:
+Current prototype behavior:
+
+1. Open the character setup overlay directly
+2. Confirm appearance choices
+3. Begin play
+
+Planned production flow:
 
 1. Choose save slot
 2. Confirm overwrite if needed
@@ -193,7 +213,7 @@ Purpose:
 
 Rules:
 
-- Separate save state from story mode
+- Planned: separate save state from story mode once real persistence exists
 - Disable main quest progression
 - Keep inspect, movement, and landmark browsing active
 
@@ -385,6 +405,8 @@ Opened from in-game with pause input.
 - Autosave before leaving in-story play where safe
 
 ## 11. Save Flow
+
+This section is planned behavior. The current prototype only exposes save-status text and seeded checkpoint language in UI state; it does not persist saves to disk.
 
 ### Autosave
 

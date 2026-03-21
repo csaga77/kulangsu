@@ -1,6 +1,6 @@
 # Kulangsu Core Gameplay Plays
 
-Read [`docs/design_brief.md`](docs/design_brief.md) first for the minimum-token summary. Use this doc when designing the repeatable moment-to-moment plays that make up the island loop.
+Read [`design_brief.md`](design_brief.md) first for the minimum-token summary. Use this doc when designing the repeatable moment-to-moment plays that make up the island loop.
 
 ## Purpose
 

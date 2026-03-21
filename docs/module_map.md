@@ -82,6 +82,7 @@ Use these when you need a focused validation target instead of the full project 
 - [`features/`](features) - feature specs
 - [`features/template.md`](features/template.md) - local feature-spec template
 - [`../codex_agents/`](../codex_agents) - shared generic agent runbooks and support docs
+- [`../codex_agents/README.md`](../codex_agents/README.md) / [`../codex_agents/AGENTS.md`](../codex_agents/AGENTS.md) - submodule doc entry points when a task depends on shared runbooks or agent behavior
 
 ## Submodules
 
@@ -90,7 +91,19 @@ Use these when you need a focused validation target instead of the full project 
 - [`../codex_agents/`](../codex_agents) - shared agent docs and runbooks, tracked as a submodule
 - [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator) - third-party LPC asset generator, tracked as a submodule
 
-See [`submodules.md`](submodules.md) for edit and update rules.
+Submodule doc entry points:
+
+- [`../godot_common/AGENTS.md`](../godot_common/AGENTS.md)
+- [`../godot_common/README.md`](../godot_common/README.md)
+- [`../godot_common/docs/architecture.md`](../godot_common/docs/architecture.md)
+- [`../godot_tilemap/AGENTS.md`](../godot_tilemap/AGENTS.md)
+- [`../godot_tilemap/README.md`](../godot_tilemap/README.md)
+- [`../godot_tilemap/docs/architecture.md`](../godot_tilemap/docs/architecture.md)
+- [`../codex_agents/README.md`](../codex_agents/README.md)
+- [`../codex_agents/AGENTS.md`](../codex_agents/AGENTS.md)
+- [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md)
+
+See [`submodules.md`](submodules.md) for edit rules, update rules, and a parent-repo index of submodule documentation.
 
 ## Search Tips
 

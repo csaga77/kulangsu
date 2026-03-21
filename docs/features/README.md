@@ -30,6 +30,8 @@ Update an existing feature doc when:
 - Start from [`template.md`](template.md).
 - Keep each file focused on one durable feature or subsystem.
 - Link to deeper design docs when they already exist instead of duplicating long explanations.
+- This folder is still only partially populated. If a system currently has only a root-level design doc one level up, treat that existing doc as the source of truth until a short feature summary is added here.
+- Avoid creating duplicate docs with overlapping ownership. Prefer extending the existing authoritative doc, then add a concise feature summary here when the extra entry point would help future contributors.
 - Keep the feature doc in the same patch as the code change when practical.
 - If a feature changes architecture, interfaces, or release implications, also update [`../architecture.md`](../architecture.md), [`../contracts.md`](../contracts.md), or [`../release_policy.md`](../release_policy.md) as needed.
 

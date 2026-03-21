@@ -1,35 +1,35 @@
 # Grid Board Game Design
 
-Read [`docs/design_brief.md`](docs/design_brief.md) first for the minimum-token project summary. This document describes the reusable board-game module in [`game/grid_board_game`](game/grid_board_game) as it exists today.
+Read [`design_brief.md`](design_brief.md) first for the minimum-token project summary. This document describes the reusable board-game module in [`../game/grid_board_game`](../game/grid_board_game) as it exists today.
 
 ## Purpose
 
 `grid_board_game` is a small reusable tabletop module for turn-based stone placement games. It currently supports:
 
-- Go-style placement, capture, suicide checks, and positional superko through [`game/grid_board_game/rules/go_rules.gd`](game/grid_board_game/rules/go_rules.gd)
-- Gomoku-style line wins plus optional exact-five and Renju restrictions through [`game/grid_board_game/rules/gomoku_rules.gd`](game/grid_board_game/rules/gomoku_rules.gd)
-- Optional AI turns through [`game/grid_board_game/board_ai_agent.gd`](game/grid_board_game/board_ai_agent.gd)
-- Local undo/redo state handled by [`game/grid_board_game/grid_board_game.gd`](game/grid_board_game/grid_board_game.gd)
+- Go-style placement, capture, suicide checks, and positional superko through [`../game/grid_board_game/rules/go_rules.gd`](../game/grid_board_game/rules/go_rules.gd)
+- Gomoku-style line wins plus optional exact-five and Renju restrictions through [`../game/grid_board_game/rules/gomoku_rules.gd`](../game/grid_board_game/rules/gomoku_rules.gd)
+- Optional AI turns through [`../game/grid_board_game/board_ai_agent.gd`](../game/grid_board_game/board_ai_agent.gd)
+- Local undo/redo state handled by [`../game/grid_board_game/grid_board_game.gd`](../game/grid_board_game/grid_board_game.gd)
 
 The module is a sandbox component, not a full island-facing feature yet.
 
 ## Files
 
-- Scene shell: [`game/grid_board_game/grid_board_game.tscn`](game/grid_board_game/grid_board_game.tscn)
-- Main controller and renderer: [`game/grid_board_game/grid_board_game.gd`](game/grid_board_game/grid_board_game.gd)
-- Base rules contract: [`game/grid_board_game/rules/board_rules.gd`](game/grid_board_game/rules/board_rules.gd)
-- Go rules: [`game/grid_board_game/rules/go_rules.gd`](game/grid_board_game/rules/go_rules.gd)
-- Gomoku rules: [`game/grid_board_game/rules/gomoku_rules.gd`](game/grid_board_game/rules/gomoku_rules.gd)
-- AI scheduler: [`game/grid_board_game/board_ai_agent.gd`](game/grid_board_game/board_ai_agent.gd)
-- AI strategies: [`game/grid_board_game/ai`](game/grid_board_game/ai)
-- Manual test scene: [`game/grid_board_game/test_grid_board_game.tscn`](game/grid_board_game/test_grid_board_game.tscn)
-- Terminal turn regression scene: [`game/grid_board_game/test_terminal_turn_state.tscn`](game/grid_board_game/test_terminal_turn_state.tscn)
+- Scene shell: [`../game/grid_board_game/grid_board_game.tscn`](../game/grid_board_game/grid_board_game.tscn)
+- Main controller and renderer: [`../game/grid_board_game/grid_board_game.gd`](../game/grid_board_game/grid_board_game.gd)
+- Base rules contract: [`../game/grid_board_game/rules/board_rules.gd`](../game/grid_board_game/rules/board_rules.gd)
+- Go rules: [`../game/grid_board_game/rules/go_rules.gd`](../game/grid_board_game/rules/go_rules.gd)
+- Gomoku rules: [`../game/grid_board_game/rules/gomoku_rules.gd`](../game/grid_board_game/rules/gomoku_rules.gd)
+- AI scheduler: [`../game/grid_board_game/board_ai_agent.gd`](../game/grid_board_game/board_ai_agent.gd)
+- AI strategies: [`../game/grid_board_game/ai`](../game/grid_board_game/ai)
+- Manual test scene: [`../game/grid_board_game/test_grid_board_game.tscn`](../game/grid_board_game/test_grid_board_game.tscn)
+- Terminal turn regression scene: [`../game/grid_board_game/test_terminal_turn_state.tscn`](../game/grid_board_game/test_terminal_turn_state.tscn)
 
 ## Current Structure
 
 ### `GridBoardGame`
 
-[`game/grid_board_game/grid_board_game.gd`](game/grid_board_game/grid_board_game.gd) owns the live match state:
+[`../game/grid_board_game/grid_board_game.gd`](../game/grid_board_game/grid_board_game.gd) owns the live match state:
 
 - Flat `PackedInt32Array` board storage
 - Active turn, last move marker, and game-over fields
@@ -51,7 +51,7 @@ Design rule:
 
 ### `BoardRules`
 
-[`game/grid_board_game/rules/board_rules.gd`](game/grid_board_game/rules/board_rules.gd) defines the swap-in rules interface:
+[`../game/grid_board_game/rules/board_rules.gd`](../game/grid_board_game/rules/board_rules.gd) defines the swap-in rules interface:
 
 - `reset(board, board_size)`
 - `simulate_move(board, board_size, color, cell, out_info)`
@@ -64,7 +64,7 @@ Design rule:
 
 ### Go Rules
 
-[`game/grid_board_game/rules/go_rules.gd`](game/grid_board_game/rules/go_rules.gd) currently implements:
+[`../game/grid_board_game/rules/go_rules.gd`](../game/grid_board_game/rules/go_rules.gd) currently implements:
 
 - Occupancy validation
 - Opponent capture after placement
@@ -76,7 +76,7 @@ This is not yet a full scored Go loop. There is no explicit pass action, territo
 
 ### Gomoku Rules
 
-[`game/grid_board_game/rules/gomoku_rules.gd`](game/grid_board_game/rules/gomoku_rules.gd) currently implements:
+[`../game/grid_board_game/rules/gomoku_rules.gd`](../game/grid_board_game/rules/gomoku_rules.gd) currently implements:
 
 - Occupancy validation
 - Line-win detection from the latest move
@@ -89,17 +89,17 @@ Rule-specific win detection should stay in the rules resource so the board contr
 
 ### AI Layer
 
-[`game/grid_board_game/board_ai_agent.gd`](game/grid_board_game/board_ai_agent.gd) is a turn scheduler, not the decision maker. It:
+[`../game/grid_board_game/board_ai_agent.gd`](../game/grid_board_game/board_ai_agent.gd) is a turn scheduler, not the decision maker. It:
 
 - Binds to a `GridBoardGame`
 - Watches turn changes and resets
 - Uses `m_turn_token` to ensure one move per turn
 - Waits for an optional delay before moving
 
-Strategy classes in [`game/grid_board_game/ai`](game/grid_board_game/ai) choose cells:
+Strategy classes in [`../game/grid_board_game/ai`](../game/grid_board_game/ai) choose cells:
 
-- [`game/grid_board_game/ai/go_ai_strategy.gd`](game/grid_board_game/ai/go_ai_strategy.gd) prefers captures, liberties, and center control
-- [`game/grid_board_game/ai/gomoku_ai_strategy.gd`](game/grid_board_game/ai/gomoku_ai_strategy.gd) prefers immediate wins, blocks, line growth, and center bias
+- [`../game/grid_board_game/ai/go_ai_strategy.gd`](../game/grid_board_game/ai/go_ai_strategy.gd) prefers captures, liberties, and center control
+- [`../game/grid_board_game/ai/gomoku_ai_strategy.gd`](../game/grid_board_game/ai/gomoku_ai_strategy.gd) prefers immediate wins, blocks, line growth, and center bias
 
 Design rule:
 Keep scheduling and move evaluation separate. Turn timing belongs in the agent; board heuristics belong in strategies.
@@ -127,7 +127,7 @@ Current implementation details:
 - Gomoku wins are shown with a red line
 - Coordinate labels are optional
 
-Current validation coverage is strongest for the origin-placed manual test scene in [`game/grid_board_game/test_grid_board_game.tscn`](game/grid_board_game/test_grid_board_game.tscn). Transformed placements and UI embedding still need explicit coverage.
+Current validation coverage is strongest for the origin-placed manual test scene in [`../game/grid_board_game/test_grid_board_game.tscn`](../game/grid_board_game/test_grid_board_game.tscn). Transformed placements and UI embedding still need explicit coverage.
 
 ## Undo / Redo
 
@@ -145,7 +145,7 @@ If a new rules resource carries internal state, it must fully round-trip through
 
 ## Test Scene
 
-[`game/grid_board_game/test_grid_board_game.tscn`](game/grid_board_game/test_grid_board_game.tscn) is the current smoke-test scene. It provides:
+[`../game/grid_board_game/test_grid_board_game.tscn`](../game/grid_board_game/test_grid_board_game.tscn) is the current smoke-test scene. It provides:
 
 - A live `GridBoardGame` instance
 - A Gomoku rules resource override
@@ -154,7 +154,7 @@ If a new rules resource carries internal state, it must fully round-trip through
 
 This scene is useful for interaction checks, but it is not a substitute for targeted automated tests around rules, AI legality, and state restoration.
 
-[`game/grid_board_game/test_terminal_turn_state.tscn`](game/grid_board_game/test_terminal_turn_state.tscn) is a focused regression scene that boots, plays a forced Gomoku win, and exits. It verifies that terminal match state keeps the winning player as the visible turn and as the final `turn_changed` value.
+[`../game/grid_board_game/test_terminal_turn_state.tscn`](../game/grid_board_game/test_terminal_turn_state.tscn) is a focused regression scene that boots, plays a forced Gomoku win, and exits. It verifies that terminal match state keeps the winning player as the visible turn and as the final `turn_changed` value.
 
 ## Known Gaps
 

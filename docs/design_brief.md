@@ -78,6 +78,7 @@ Input expectations:
 - Repository runtime map and ownership boundaries: [`architecture.md`](architecture.md)
 - Directory map and key entry points: [`module_map.md`](module_map.md)
 - Submodule roles and governance: [`submodules.md`](submodules.md)
+- Submodule-owned doc entry points and when to read them: [`submodules.md`](submodules.md)
 - Shared interfaces and boundaries: [`contracts.md`](contracts.md)
 - Release and versioning policy: [`release_policy.md`](release_policy.md)
 - Repo coding and documentation rules: [`coding_rules.md`](coding_rules.md)

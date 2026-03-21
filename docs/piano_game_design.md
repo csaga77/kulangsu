@@ -1,6 +1,6 @@
 # Kulangsu Piano Game Design
 
-Read [`docs/design_brief.md`](docs/design_brief.md) first for the minimum-token summary. Use this doc when working on the standalone piano mini-game prototype in [`game/piano_game/piano_game.tscn`](game/piano_game/piano_game.tscn) or when planning how short performance beats should integrate into the main game.
+Read [`design_brief.md`](design_brief.md) first for the minimum-token summary. Use this doc when working on the standalone piano mini-game prototype in [`../game/piano_game/piano_game.tscn`](../game/piano_game/piano_game.tscn) or when planning how short performance beats should integrate into the main game.
 
 ## Purpose
 
@@ -15,11 +15,11 @@ The prototype is useful, but it should support the main island loop rather than 
 
 The current piano game is a standalone scene:
 
-- Scene: [`game/piano_game/piano_game.tscn`](game/piano_game/piano_game.tscn)
-- Runtime script: [`game/piano_game/piano_game.gd`](game/piano_game/piano_game.gd)
-- Chart generator: [`game/piano_game/beat_json_generator.gd`](game/piano_game/beat_json_generator.gd)
+- Scene: [`../game/piano_game/piano_game.tscn`](../game/piano_game/piano_game.tscn)
+- Runtime script: [`../game/piano_game/piano_game.gd`](../game/piano_game/piano_game.gd)
+- Chart generator: [`../game/piano_game/beat_json_generator.gd`](../game/piano_game/beat_json_generator.gd)
 
-It is not yet wired into the main app shell in [`ui/app_flow_root.tscn`](ui/app_flow_root.tscn), the gameplay HUD, or story progression in [`game/app_state.gd`](game/app_state.gd).
+It is not yet wired into the main app shell in [`../ui/app_flow_root.tscn`](../ui/app_flow_root.tscn), the gameplay HUD, or story progression in [`../game/app_state.gd`](../game/app_state.gd).
 
 Today it behaves more like a self-contained prototype or authoring sandbox than a finished player-facing game mode.
 
@@ -50,7 +50,7 @@ The wrong use cases are:
 
 ### 1. Song and chart load
 
-[`game/piano_game/piano_game.gd`](game/piano_game/piano_game.gd) loads:
+[`../game/piano_game/piano_game.gd`](../game/piano_game/piano_game.gd) loads:
 
 - an MP3 stream from `mp3_path`
 - a beat JSON file from `json_path`, or from the derived `*.beats.json` path when `auto_json_from_mp3` is enabled
@@ -59,8 +59,8 @@ If either asset fails to load, the prototype should clear the active song and ch
 
 The current example scene points at:
 
-- [`resources/audio/Kulangsu Breeze.mp3`](resources/audio/Kulangsu Breeze.mp3)
-- [`resources/audio/Kulangsu Breeze.beats.json`](resources/audio/Kulangsu Breeze.beats.json)
+- [`../resources/audio/Kulangsu Breeze.mp3`](../resources/audio/Kulangsu Breeze.mp3)
+- [`../resources/audio/Kulangsu Breeze.beats.json`](../resources/audio/Kulangsu Breeze.beats.json)
 
 ### 2. Chart shaping
 
@@ -112,7 +112,7 @@ This is enough for prototype evaluation, but a shipped version should expose com
 
 ## Beat JSON Contract
 
-The current chart format written by [`game/piano_game/beat_json_generator.gd`](game/piano_game/beat_json_generator.gd) is a lightweight dictionary with:
+The current chart format written by [`../game/piano_game/beat_json_generator.gd`](../game/piano_game/beat_json_generator.gd) is a lightweight dictionary with:
 
 - `bpm`
 - `duration`
@@ -128,7 +128,7 @@ That makes the generator loosely coupled to the runtime scene, which is good for
 
 ## Chart Generation Intent
 
-[`game/piano_game/beat_json_generator.gd`](game/piano_game/beat_json_generator.gd) is an authoring tool, not a final player feature.
+[`../game/piano_game/beat_json_generator.gd`](../game/piano_game/beat_json_generator.gd) is an authoring tool, not a final player feature.
 
 Its job is to:
 
@@ -172,7 +172,7 @@ The next implementation step should be integration, not complexity expansion.
 Specifically:
 
 1. Trigger a short piano phrase from a landmark or resident interaction.
-2. Feed success or partial success into [`game/app_state.gd`](game/app_state.gd).
+2. Feed success or partial success into [`../game/app_state.gd`](../game/app_state.gd).
 3. Replace console-only completion with a clear callback, signal, or result payload that the app shell can consume.
 4. Tune charts around emotional clarity and story readability before adding more difficulty options.
 

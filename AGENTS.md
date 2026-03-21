@@ -1,3 +1,7 @@
+Keep this file Kulangsu-specific.
+
+Common agent rules, shared workflow guidance, and reusable runbook conventions belong in `codex_agents/`, not here.
+
 ## Quick Start
 
 - Read `docs/design_brief.md` first for the project goal, player loop, and UI direction.
@@ -5,7 +9,8 @@
 - Read `docs/contracts.md` when changing shared state, interfaces, signals, public APIs, or submodule boundaries.
 - Read `docs/release_policy.md` before changing versioning, release preparation, or submodule pinning practices.
 - Use `docs/features/README.md` and `docs/features/template.md` when you add or significantly change a feature.
-- Read `codex_agents/AGENTS.md` only for generic agent behavior and reusable runbook guidance.
+- Read `codex_agents/AGENTS.md` for generic agent behavior and reusable runbook guidance.
+- If a task touches a submodule directly, read `docs/submodules.md` first, then open that submodule's own `AGENTS.md` and repo docs before changing anything inside it.
 
 Only open the longer design docs if the task needs more depth:
 
@@ -13,10 +18,24 @@ Only open the longer design docs if the task needs more depth:
 - `docs/core_game_workflow.md` for story and progression structure
 - `docs/ui_workflow.md` for full-screen and menu flow details
 
+Submodule doc entry points:
+
+- `codex_agents/AGENTS.md` and `codex_agents/README.md` for shared agent guidance and runbook discovery
+- `godot_common/AGENTS.md`, `godot_common/README.md`, and `godot_common/docs/` for the shared Godot support-code submodule
+- `godot_tilemap/AGENTS.md`, `godot_tilemap/README.md`, and `godot_tilemap/docs/` for the tilemap helper/tooling submodule
+- `3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md` for upstream LPC generator usage and licensing details
+
+Submodule read order when editing inside a submodule:
+
+- `godot_common`: `godot_common/AGENTS.md` -> `godot_common/README.md` -> `godot_common/docs/architecture.md` -> `godot_common/docs/module_map.md` -> `godot_common/docs/coding_rules.md`
+- `godot_tilemap`: `godot_tilemap/AGENTS.md` -> `godot_tilemap/README.md` -> `godot_tilemap/docs/architecture.md` -> `godot_tilemap/docs/module_map.md` -> `godot_tilemap/docs/coding_rules.md`
+- `codex_agents`: `codex_agents/AGENTS.md` -> `codex_agents/README.md` -> the relevant `codex_agents/docs/` files for the task
+- `3rdparty/Universal-LPC-Spritesheet-Character-Generator`: upstream `README.md` first, then tool docs if the task touches generator workflows
+
 ## Project Conventions
 
 - This is a Godot 4 GDScript project with scene ownership centered on `.tscn` files plus nearby scripts.
-- Follow the generic Godot/GDScript rules in `codex_agents/GODOT_DEVELOPMENT_RUNBOOK.md`; this file only captures Kulangsu-specific constraints and boundaries.
+- Follow the generic Godot/GDScript rules in `codex_agents/GODOT_DEVELOPMENT_RUNBOOK.md`; this file only captures Kulangsu-specific constraints, boundaries, and exceptions.
 - Keep documentation links relative to the file they live in.
 - Preserve existing resource paths, scene names, and exported properties unless the task requires a change.
 - Do not invent dependencies, build steps, save systems, or workflows that are not present in the repo.
@@ -38,6 +57,11 @@ Only open the longer design docs if the task needs more depth:
 - Reuse established patterns in nearby files before introducing new abstractions.
 - Do not move assets, rename resources, or add new globals unless the task clearly requires it.
 - Do not edit a submodule from the parent repo unless the task actually requires changing that submodule.
+- Do not mix top-level file changes and submodule pointer updates in the same parent-repo commit.
+- If a task spans both the parent repo and one or more submodules, use separate commits:
+  - commit the submodule repo changes inside each submodule first
+  - commit the parent repo file changes separately
+  - commit any parent repo submodule pointer updates separately
 - Do not invent dependencies, release workflows, CI jobs, or tooling that are not present in the repo.
 
 ## Testing And Validation
@@ -51,6 +75,8 @@ Only open the longer design docs if the task needs more depth:
 
 Documentation must stay consistent with the codebase.
 
+Keep shared/common documentation guidance in `codex_agents/`. Add rules here only when they are specific to Kulangsu, its architecture, or its repo workflow.
+
 If a change introduces or significantly changes a feature, system behavior, module structure, or architecture, update the relevant docs in the same patch whenever practical.
 
 At minimum:
@@ -63,3 +89,4 @@ At minimum:
 - Update `docs/release_policy.md` when release/versioning practice or submodule pinning policy changes.
 - Add or update a feature spec under `docs/features/` when a gameplay feature, UI flow, reusable module, or important system behavior changes.
 - Update `docs/design_brief.md` if the quick-start product framing changes materially.
+- If work changes a submodule directly, update that submodule's own `AGENTS.md`, `README.md`, and `docs/` files when their guidance or ownership notes change.

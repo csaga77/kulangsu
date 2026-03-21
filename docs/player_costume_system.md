@@ -1,6 +1,6 @@
 # Kulangsu Player Appearance And Costume System
 
-Read [`docs/design_brief.md`](docs/design_brief.md) first for the project summary. This doc covers the current wardrobe slice and the intended direction for future player cosmetic work.
+Read [`design_brief.md`](design_brief.md) first for the project summary. This doc covers the current wardrobe slice and the intended direction for future player cosmetic work.
 
 ## Goals
 
@@ -14,7 +14,7 @@ Read [`docs/design_brief.md`](docs/design_brief.md) first for the project summar
 
 ### Base Appearance Catalog
 
-- Curated base appearance options live in [`game/player_appearance_catalog.gd`](game/player_appearance_catalog.gd).
+- Curated base appearance options live in [`../game/player_appearance_catalog.gd`](../game/player_appearance_catalog.gd).
 - The current profile supports:
   - body frame
   - gender presentation
@@ -25,7 +25,7 @@ Read [`docs/design_brief.md`](docs/design_brief.md) first for the project summar
 
 ### Costume Catalog
 
-- Static costume definitions live in [`game/player_costume_catalog.gd`](game/player_costume_catalog.gd).
+- Static costume definitions live in [`../game/player_costume_catalog.gd`](../game/player_costume_catalog.gd).
 - Each entry defines:
   - display name
   - short summary
@@ -42,7 +42,7 @@ The prototype wardrobe currently ships with four presets:
 
 ### Runtime Wardrobe State
 
-- [`game/app_state.gd`](game/app_state.gd) now stores:
+- [`../game/app_state.gd`](../game/app_state.gd) now stores:
   - the player profile
   - unlocked costume ids
   - currently equipped costume id
@@ -64,13 +64,13 @@ The prototype wardrobe currently ships with four presets:
 
 ### Player Application
 
-- [`main.gd`](main.gd) listens for `AppState.player_appearance_changed`.
+- [`../main.gd`](../main.gd) listens for `AppState.player_appearance_changed`.
 - The active player `HumanBody2D` receives the new appearance config immediately through `set_configuration`.
 - This keeps the overworld avatar, journal state, and future save data aligned around one source of truth.
 
 ### Start-Of-Game Character Setup
 
-- [`ui/screens/player_customization_overlay.gd`](ui/screens/player_customization_overlay.gd) and [`ui/screens/player_customization_overlay.tscn`](ui/screens/player_customization_overlay.tscn) now provide a setup overlay before `New Game` and `Free Walk`.
+- [`../ui/screens/player_customization_overlay.gd`](../ui/screens/player_customization_overlay.gd) and [`../ui/screens/player_customization_overlay.tscn`](../ui/screens/player_customization_overlay.tscn) now provide a setup overlay before `New Game` and `Free Walk`.
 - The overlay currently supports:
   - body
   - gender
@@ -78,11 +78,11 @@ The prototype wardrobe currently ships with four presets:
   - hair style
   - hair color
   - a live player preview
-- [`ui/app_flow_root.gd`](ui/app_flow_root.gd) now routes new runs through this setup step before gameplay begins.
+- [`../ui/app_flow_root.gd`](../ui/app_flow_root.gd) now routes new runs through this setup step before gameplay begins.
 
 ### Journal Wardrobe Flow
 
-- [`ui/screens/journal_overlay.gd`](ui/screens/journal_overlay.gd) and [`ui/screens/journal_overlay.tscn`](ui/screens/journal_overlay.tscn) now include a `Wardrobe` tab.
+- [`../ui/screens/journal_overlay.gd`](../ui/screens/journal_overlay.gd) and [`../ui/screens/journal_overlay.tscn`](../ui/screens/journal_overlay.tscn) now include a `Wardrobe` tab.
 - The tab shows:
   - a live player preview
   - current look
