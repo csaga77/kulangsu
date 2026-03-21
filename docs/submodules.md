@@ -50,6 +50,7 @@ Use this section when a task crosses the parent repo boundary and you need the s
 Start with:
 
 - [`submodules.md`](submodules.md) for ownership, edit rules, and pointer governance
+- [`../codex_agents/SOURCE_CONTROL_RUNBOOK.md`](../codex_agents/SOURCE_CONTROL_RUNBOOK.md) for generic submodule-safe staging, commit, and push workflow
 - [`architecture.md`](architecture.md) and [`module_map.md`](module_map.md) for how the parent repo consumes each submodule
 - [`contracts.md`](contracts.md) if the task changes a stable interface or assumption between the parent repo and a submodule
 
@@ -68,16 +69,11 @@ Start with:
 
 ## Governance Rules
 
-- Treat each submodule as its own repository boundary.
+- Follow the generic submodule Git workflow in [`../codex_agents/SOURCE_CONTROL_RUNBOOK.md`](../codex_agents/SOURCE_CONTROL_RUNBOOK.md).
+- Treat each submodule as its own repository boundary within Kulangsu.
 - Do not change a submodule unless the task actually requires it.
 - If a task needs a submodule change, inspect that submodule’s own docs first.
-- Keep parent-repo changes and submodule changes logically separate even when delivered together.
 - When a submodule commit changes, the parent repo must update the submodule pointer intentionally.
-- Do not mix parent-repo file edits and submodule pointer updates in the same parent-repo commit.
-- Preferred commit order for cross-repo work:
-  - submodule repo commit(s)
-  - parent repo file-change commit(s)
-  - parent repo submodule-pointer commit(s)
 
 ## When To Edit A Submodule
 

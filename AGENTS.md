@@ -35,10 +35,9 @@ Submodule read order when editing inside a submodule:
 ## Project Conventions
 
 - This is a Godot 4 GDScript project with scene ownership centered on `.tscn` files plus nearby scripts.
-- Follow the generic Godot/GDScript rules in `codex_agents/GODOT_DEVELOPMENT_RUNBOOK.md`; this file only captures Kulangsu-specific constraints, boundaries, and exceptions.
-- Keep documentation links relative to the file they live in.
-- Preserve existing resource paths, scene names, and exported properties unless the task requires a change.
-- Do not invent dependencies, build steps, save systems, or workflows that are not present in the repo.
+- Follow the generic Godot/GDScript, scope, resource, and validation rules in `codex_agents/GODOT_DEVELOPMENT_RUNBOOK.md`.
+- Follow the generic Git and submodule-history rules in `codex_agents/SOURCE_CONTROL_RUNBOOK.md`.
+- This file only captures Kulangsu-specific constraints, boundaries, and exceptions.
 
 ## Architecture Boundaries
 
@@ -52,24 +51,14 @@ Submodule read order when editing inside a submodule:
 
 ## Change Scope Rules
 
-- Prefer minimal, safe changes that fit the existing module and scene structure.
-- Do not refactor unrelated systems while solving a focused task.
-- Reuse established patterns in nearby files before introducing new abstractions.
-- Do not move assets, rename resources, or add new globals unless the task clearly requires it.
 - Do not edit a submodule from the parent repo unless the task actually requires changing that submodule.
-- Do not mix top-level file changes and submodule pointer updates in the same parent-repo commit.
-- If a task spans both the parent repo and one or more submodules, use separate commits:
-  - commit the submodule repo changes inside each submodule first
-  - commit the parent repo file changes separately
-  - commit any parent repo submodule pointer updates separately
-- Do not invent dependencies, release workflows, CI jobs, or tooling that are not present in the repo.
+- Use [`docs/submodules.md`](docs/submodules.md) for Kulangsu-specific submodule routing and doc entry points.
 
 ## Testing And Validation
 
-- If behavior changes, run the project or the most relevant scene when practical.
+- Follow the generic validation expectations in `codex_agents/GODOT_DEVELOPMENT_RUNBOOK.md`.
 - For app flow, HUD, overlay, or shared-state changes, validate through the main project flow.
 - For isolated features, use the existing validation scenes under `scenes/` and feature-local test scenes such as the ones in `game/grid_board_game/`.
-- If you cannot run validation, say so explicitly in the final handoff.
 
 ## Documentation Maintenance
 

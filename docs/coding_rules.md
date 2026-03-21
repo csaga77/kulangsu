@@ -2,7 +2,10 @@
 
 Read [`design_brief.md`](design_brief.md), then check [`architecture.md`](architecture.md) and the nearby module before editing.
 
-Generic Godot and GDScript conventions live in [`../codex_agents/GODOT_DEVELOPMENT_RUNBOOK.md`](../codex_agents/GODOT_DEVELOPMENT_RUNBOOK.md). This file is only for Kulangsu-specific coding constraints.
+Generic Godot and GDScript conventions live in [`../codex_agents/GODOT_DEVELOPMENT_RUNBOOK.md`](../codex_agents/GODOT_DEVELOPMENT_RUNBOOK.md).
+Generic source-control and submodule-history rules live in [`../codex_agents/SOURCE_CONTROL_RUNBOOK.md`](../codex_agents/SOURCE_CONTROL_RUNBOOK.md).
+
+This file is only for Kulangsu-specific coding constraints.
 
 Keep shared/common coding rules in [`../codex_agents/`](../codex_agents). Add rules here only when they are specific to Kulangsu's scene structure, UI flow, state ownership, or repo workflow.
 
@@ -28,39 +31,9 @@ Keep shared/common coding rules in [`../codex_agents/`](../codex_agents). Add ru
 - Do not rely on fragile fixed offsets that assume a large desktop viewport.
 - Grow shared styling from [`../ui/ui_style.gd`](../ui/ui_style.gd) instead of hardcoding the same values across screens.
 
-## Resources and Paths
-
-- Preserve existing resource paths and loading patterns.
-- Avoid renaming or moving scenes, scripts, assets, or exported properties unless the task requires it.
-- Check scene references after touching `.tscn`, `.tres`, and preload paths.
-- Use relative paths in project docs and agent instructions.
-
-## Signals and Node Access
-
-- Use signals for clear scene-to-scene or component-to-component events.
-- Do not add a signal when a direct local call is simpler.
-- Keep signal names explicit and consistent with nearby code.
-- Prefer node access patterns that match the local file.
-- Check for null when a node might not exist.
-
-## Validation
-
-- Update or add demo or test scenes when behavior changes.
-- Make sure changed scenes still load.
-- Recheck signal connections, exported defaults, and resource references.
-- Prefer small reproducible validation scenes for new systems.
-
 ## Documentation Rules
 
 - Update [`coding_rules.md`](coding_rules.md) when repo conventions change.
 - Keep older deep-dive docs in sync when they still describe the affected feature.
 - Keep documentation changes in the same patch when practical.
 - Move reusable or cross-project guidance into [`../codex_agents/`](../codex_agents) instead of duplicating it here.
-
-## Do Not
-
-- Refactor unrelated systems while solving a focused task.
-- Add new singleton state for scene-local behavior.
-- Move assets or scripts without checking downstream references.
-- Replace the overlay-driven in-game UI flow with hard scene swaps by accident.
-- Leave docs stale after changing architecture, feature ownership, or workflow.

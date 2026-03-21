@@ -2,6 +2,8 @@
 
 This file documents the current release and versioning practice for this repository based on what is actually checked in today.
 
+Generic Git history-shaping and submodule commit workflow lives in [`../codex_agents/SOURCE_CONTROL_RUNBOOK.md`](../codex_agents/SOURCE_CONTROL_RUNBOOK.md). This file only captures Kulangsu-specific release and versioning expectations.
+
 ## Current State
 
 - The primary branch is currently `main`.
@@ -14,7 +16,6 @@ This file documents the current release and versioning practice for this reposit
 
 - Treat the root repo commit as the authoritative version snapshot of the playable project.
 - Treat each submodule pointer change as part of the versioned state of the root repo.
-- Keep parent repo file changes and parent repo submodule-pointer changes in separate commits so release history shows content changes and pinned-submodule changes independently.
 - Do not imply semantic-version or release-tag guarantees unless the repo starts using them explicitly.
 
 ## Release Governance
