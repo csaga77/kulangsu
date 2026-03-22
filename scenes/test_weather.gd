@@ -54,6 +54,12 @@ const WATER_TILE_ALTERNATIVE := 0
 const WATER_FILL_MARGIN := Vector2(320.0, 240.0)
 const WEATHER_CONTROLS_VISIBLE_TEXT := "Hide Weather Controls"
 const WEATHER_CONTROLS_HIDDEN_TEXT := "Show Weather Controls"
+const THUNDER_FILL_COLOR := Color(0.97, 0.98, 1.0, 0.0)
+const THUNDER_GLOW_COLOR := Color(0.82, 0.9, 1.0, 0.0)
+const THUNDER_FIRST_DELAY_MIN := 1.2
+const THUNDER_FIRST_DELAY_MAX := 2.8
+const THUNDER_MIN_DELAY := 3.0
+const THUNDER_MAX_DELAY := 6.5
 
 @export var rebuild_environment: bool = false:
 	set(value):
@@ -74,6 +80,16 @@ const WEATHER_CONTROLS_HIDDEN_TEXT := "Show Weather Controls"
 var m_player_controller: PlayerController = null
 var m_closest_object: Node2D = null
 var m_weather_defaults: Dictionary = {}
+var m_rain_enabled := true
+var m_thunder_enabled := false
+var m_thunder_strength := 0.65
+var m_thunder_wait_remaining := 0.0
+var m_thunder_segments: Array[Dictionary] = []
+var m_thunder_segment_index := -1
+var m_thunder_segment_elapsed := 0.0
+var m_thunder_segment_start_alpha := 0.0
+var m_thunder_current_alpha := 0.0
+var m_thunder_rng := RandomNumberGenerator.new()
 var m_weather_controls_visible := true
 
 @onready var m_water: TileMapLayer = $Water
@@ -82,8 +98,12 @@ var m_weather_controls_visible := true
 @onready var m_ground_impacts: RainGroundImpacts = $GroundImpacts
 @onready var m_player: HumanBody2D = $Actors/Player
 @onready var m_rain_overlay: RainOverlay = $WeatherLayer/RainOverlay
+@onready var m_thunder_fill: ColorRect = $ThunderLayer/ThunderFill
+@onready var m_thunder_glow: ColorRect = $ThunderLayer/ThunderGlow
 @onready var m_toggle_weather_controls_button: Button = $WeatherControlsLayer/ToggleWeatherControlsButton
 @onready var m_weather_panel: PanelContainer = $WeatherControlsLayer/WeatherPanel
+@onready var m_rain_enabled_button: CheckButton = $WeatherControlsLayer/WeatherPanel/Margin/Body/RainEnabledButton
+@onready var m_thunder_enabled_button: CheckButton = $WeatherControlsLayer/WeatherPanel/Margin/Body/ThunderEnabledButton
 @onready var m_density_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/DensitySlider
 @onready var m_density_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/DensityValue
 @onready var m_angle_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/AngleSlider
@@ -94,12 +114,16 @@ var m_weather_controls_visible := true
 @onready var m_drop_speed_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/DropSpeedValue
 @onready var m_drop_size_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/DropSizeSlider
 @onready var m_drop_size_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/DropSizeValue
+@onready var m_thunder_strength_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/ThunderStrengthSlider
+@onready var m_thunder_strength_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/ThunderStrengthValue
 @onready var m_impact_gain_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/ImpactGainSlider
 @onready var m_impact_gain_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/ImpactGainValue
+@onready var m_trigger_thunder_button: Button = $WeatherControlsLayer/WeatherPanel/Margin/Body/TriggerThunderButton
 @onready var m_reset_weather_controls_button: Button = $WeatherControlsLayer/WeatherPanel/Margin/Body/ResetWeatherButton
 
 
 func _ready() -> void:
+	m_thunder_rng.randomize()
 	_rebuild_environment()
 	_rebuild_ground()
 	_setup_weather_controls()
@@ -118,6 +142,12 @@ func _ready() -> void:
 		if !m_player_controller.inspect_requested.is_connected(_on_player_inspect_requested):
 			m_player_controller.inspect_requested.connect(_on_player_inspect_requested)
 	AppState.set_residents(AppState.get_known_resident_names())
+
+
+func _process(delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
+	_update_thunder(delta)
 
 
 func _rebuild_environment() -> void:
@@ -299,6 +329,9 @@ func _setup_weather_controls() -> void:
 	_disable_focus_for_control(m_weather_panel)
 	_connect_weather_controls()
 	_capture_weather_defaults()
+	_apply_rain_enabled(m_rain_enabled)
+	_apply_thunder_strength(m_thunder_strength)
+	_apply_thunder_enabled(m_thunder_enabled)
 	_sync_weather_controls_from_scene()
 	_set_weather_controls_visible(m_weather_controls_visible)
 
@@ -317,6 +350,10 @@ func _disable_focus_for_control(control: Control) -> void:
 func _connect_weather_controls() -> void:
 	if not m_toggle_weather_controls_button.pressed.is_connected(_on_toggle_weather_controls_pressed):
 		m_toggle_weather_controls_button.pressed.connect(_on_toggle_weather_controls_pressed)
+	if not m_rain_enabled_button.toggled.is_connected(_on_rain_enabled_toggled):
+		m_rain_enabled_button.toggled.connect(_on_rain_enabled_toggled)
+	if not m_thunder_enabled_button.toggled.is_connected(_on_thunder_enabled_toggled):
+		m_thunder_enabled_button.toggled.connect(_on_thunder_enabled_toggled)
 	if not m_density_slider.value_changed.is_connected(_on_density_slider_changed):
 		m_density_slider.value_changed.connect(_on_density_slider_changed)
 	if not m_angle_slider.value_changed.is_connected(_on_angle_slider_changed):
@@ -327,8 +364,12 @@ func _connect_weather_controls() -> void:
 		m_drop_speed_slider.value_changed.connect(_on_drop_speed_slider_changed)
 	if not m_drop_size_slider.value_changed.is_connected(_on_drop_size_slider_changed):
 		m_drop_size_slider.value_changed.connect(_on_drop_size_slider_changed)
+	if not m_thunder_strength_slider.value_changed.is_connected(_on_thunder_strength_slider_changed):
+		m_thunder_strength_slider.value_changed.connect(_on_thunder_strength_slider_changed)
 	if not m_impact_gain_slider.value_changed.is_connected(_on_impact_gain_slider_changed):
 		m_impact_gain_slider.value_changed.connect(_on_impact_gain_slider_changed)
+	if not m_trigger_thunder_button.pressed.is_connected(_on_trigger_thunder_pressed):
+		m_trigger_thunder_button.pressed.connect(_on_trigger_thunder_pressed)
 	if not m_reset_weather_controls_button.pressed.is_connected(_on_reset_weather_controls_pressed):
 		m_reset_weather_controls_button.pressed.connect(_on_reset_weather_controls_pressed)
 
@@ -337,7 +378,13 @@ func _capture_weather_defaults() -> void:
 	if not is_instance_valid(m_rain_overlay) or not is_instance_valid(m_ground_impacts):
 		return
 
+	m_rain_enabled = m_rain_overlay.visible and m_ground_impacts.visible
+	m_thunder_enabled = m_thunder_enabled_button.button_pressed
+	m_thunder_strength = m_thunder_strength_slider.value
 	m_weather_defaults = {
+		"rain_enabled": m_rain_enabled,
+		"thunder_enabled": m_thunder_enabled,
+		"thunder_strength": m_thunder_strength,
 		"density": m_rain_overlay.density,
 		"wind_angle_degrees": m_rain_overlay.wind_angle_degrees,
 		"wind_strength": m_rain_overlay.wind_strength,
@@ -351,11 +398,14 @@ func _sync_weather_controls_from_scene() -> void:
 	if not is_instance_valid(m_rain_overlay) or not is_instance_valid(m_ground_impacts):
 		return
 
+	m_rain_enabled_button.set_pressed_no_signal(m_rain_enabled)
+	m_thunder_enabled_button.set_pressed_no_signal(m_thunder_enabled)
 	m_density_slider.set_value_no_signal(m_rain_overlay.density)
 	m_angle_slider.set_value_no_signal(m_rain_overlay.wind_angle_degrees)
 	m_wind_strength_slider.set_value_no_signal(m_rain_overlay.wind_strength)
 	m_drop_speed_slider.set_value_no_signal(m_rain_overlay.drop_speed)
 	m_drop_size_slider.set_value_no_signal(m_rain_overlay.drop_size)
+	m_thunder_strength_slider.set_value_no_signal(m_thunder_strength)
 	m_impact_gain_slider.set_value_no_signal(m_ground_impacts.density_spawn_multiplier)
 	_update_weather_value_labels()
 
@@ -366,6 +416,7 @@ func _update_weather_value_labels() -> void:
 	m_wind_strength_value.text = "%d" % roundi(m_wind_strength_slider.value)
 	m_drop_speed_value.text = "%d" % roundi(m_drop_speed_slider.value)
 	m_drop_size_value.text = "%.3f" % m_drop_size_slider.value
+	m_thunder_strength_value.text = "%.2f" % m_thunder_strength_slider.value
 	m_impact_gain_value.text = "%d" % roundi(m_impact_gain_slider.value)
 
 
@@ -379,8 +430,154 @@ func _set_weather_controls_visible(should_show: bool) -> void:
 		)
 
 
+func _apply_rain_enabled(should_enable: bool) -> void:
+	m_rain_enabled = should_enable
+	if is_instance_valid(m_rain_overlay):
+		m_rain_overlay.visible = should_enable
+	if is_instance_valid(m_ground_impacts):
+		if not should_enable:
+			m_ground_impacts.clear_impacts()
+		m_ground_impacts.visible = should_enable
+	if is_instance_valid(m_rain_enabled_button):
+		m_rain_enabled_button.set_pressed_no_signal(should_enable)
+
+
+func _apply_thunder_enabled(should_enable: bool) -> void:
+	m_thunder_enabled = should_enable
+	if is_instance_valid(m_thunder_enabled_button):
+		m_thunder_enabled_button.set_pressed_no_signal(should_enable)
+	if should_enable:
+		if not _thunder_is_active() and m_thunder_wait_remaining <= 0.0:
+			_schedule_next_thunder_burst(true)
+	else:
+		_clear_active_thunder()
+
+
+func _apply_thunder_strength(value: float) -> void:
+	m_thunder_strength = clampf(value, 0.0, 1.0)
+	if is_instance_valid(m_thunder_strength_slider):
+		m_thunder_strength_slider.set_value_no_signal(m_thunder_strength)
+
+
+func _update_thunder(delta: float) -> void:
+	if _thunder_is_active():
+		_advance_thunder_burst(delta)
+		return
+
+	if not m_thunder_enabled:
+		return
+
+	m_thunder_wait_remaining -= delta
+	if m_thunder_wait_remaining <= 0.0:
+		_start_random_thunder_burst()
+
+
+func _schedule_next_thunder_burst(use_short_delay: bool = false) -> void:
+	if use_short_delay:
+		m_thunder_wait_remaining = m_thunder_rng.randf_range(THUNDER_FIRST_DELAY_MIN, THUNDER_FIRST_DELAY_MAX)
+		return
+	m_thunder_wait_remaining = m_thunder_rng.randf_range(THUNDER_MIN_DELAY, THUNDER_MAX_DELAY)
+
+
+func _start_random_thunder_burst() -> void:
+	_start_thunder_burst(_build_random_thunder_burst())
+
+
+func _start_thunder_burst(segments: Array[Dictionary]) -> void:
+	if segments.is_empty():
+		return
+	m_thunder_segments = segments
+	m_thunder_segment_index = 0
+	m_thunder_segment_elapsed = 0.0
+	m_thunder_segment_start_alpha = m_thunder_current_alpha
+
+
+func _build_random_thunder_burst() -> Array[Dictionary]:
+	var segments: Array[Dictionary] = []
+	var primary_peak := lerpf(0.24, 0.74, m_thunder_strength) * m_thunder_rng.randf_range(0.92, 1.08)
+	segments.append({"alpha": primary_peak, "duration": 0.03})
+	segments.append({"alpha": 0.0, "duration": 0.11})
+	if m_thunder_rng.randf() < 0.75:
+		var secondary_peak := primary_peak * m_thunder_rng.randf_range(0.45, 0.78)
+		segments.append({"alpha": secondary_peak, "duration": 0.026})
+		segments.append({"alpha": 0.0, "duration": 0.16})
+	if m_thunder_rng.randf() < 0.28:
+		var tertiary_peak := primary_peak * m_thunder_rng.randf_range(0.2, 0.42)
+		segments.append({"alpha": tertiary_peak, "duration": 0.02})
+		segments.append({"alpha": 0.0, "duration": 0.18})
+	return segments
+
+
+func _advance_thunder_burst(delta: float) -> void:
+	if not _thunder_is_active():
+		return
+
+	var segment := m_thunder_segments[m_thunder_segment_index]
+	var duration := maxf(float(segment.get("duration", 0.01)), 0.001)
+	var target_alpha := clampf(float(segment.get("alpha", 0.0)), 0.0, 1.0)
+	m_thunder_segment_elapsed += delta
+	var progress := clampf(m_thunder_segment_elapsed / duration, 0.0, 1.0)
+	_set_thunder_flash_alpha(lerpf(m_thunder_segment_start_alpha, target_alpha, progress))
+	if progress < 1.0:
+		return
+
+	m_thunder_segment_index += 1
+	m_thunder_segment_elapsed = 0.0
+	m_thunder_segment_start_alpha = m_thunder_current_alpha
+	if m_thunder_segment_index >= m_thunder_segments.size():
+		_finish_thunder_burst()
+
+
+func _finish_thunder_burst() -> void:
+	m_thunder_segments.clear()
+	m_thunder_segment_index = -1
+	m_thunder_segment_elapsed = 0.0
+	m_thunder_segment_start_alpha = 0.0
+	_set_thunder_flash_alpha(0.0)
+	if m_thunder_enabled:
+		_schedule_next_thunder_burst()
+
+
+func _clear_active_thunder() -> void:
+	m_thunder_segments.clear()
+	m_thunder_segment_index = -1
+	m_thunder_segment_elapsed = 0.0
+	m_thunder_segment_start_alpha = 0.0
+	m_thunder_wait_remaining = 0.0
+	_set_thunder_flash_alpha(0.0)
+
+
+func _thunder_is_active() -> bool:
+	return m_thunder_segment_index >= 0 and m_thunder_segment_index < m_thunder_segments.size()
+
+
+func _set_thunder_flash_alpha(alpha: float) -> void:
+	m_thunder_current_alpha = clampf(alpha, 0.0, 1.0)
+	var should_show := m_thunder_current_alpha > 0.001
+
+	if is_instance_valid(m_thunder_fill):
+		var fill_color := THUNDER_FILL_COLOR
+		fill_color.a = minf(m_thunder_current_alpha * 0.4, 0.42)
+		m_thunder_fill.color = fill_color
+		m_thunder_fill.visible = should_show
+
+	if is_instance_valid(m_thunder_glow):
+		var glow_color := THUNDER_GLOW_COLOR
+		glow_color.a = minf(m_thunder_current_alpha * 0.9, 0.85)
+		m_thunder_glow.color = glow_color
+		m_thunder_glow.visible = should_show
+
+
 func _on_toggle_weather_controls_pressed() -> void:
 	_set_weather_controls_visible(not m_weather_controls_visible)
+
+
+func _on_rain_enabled_toggled(button_pressed: bool) -> void:
+	_apply_rain_enabled(button_pressed)
+
+
+func _on_thunder_enabled_toggled(button_pressed: bool) -> void:
+	_apply_thunder_enabled(button_pressed)
 
 
 func _on_density_slider_changed(value: float) -> void:
@@ -413,16 +610,28 @@ func _on_drop_size_slider_changed(value: float) -> void:
 	_update_weather_value_labels()
 
 
+func _on_thunder_strength_slider_changed(value: float) -> void:
+	_apply_thunder_strength(value)
+	_update_weather_value_labels()
+
+
 func _on_impact_gain_slider_changed(value: float) -> void:
 	if is_instance_valid(m_ground_impacts):
 		m_ground_impacts.density_spawn_multiplier = value
 	_update_weather_value_labels()
 
 
+func _on_trigger_thunder_pressed() -> void:
+	_start_random_thunder_burst()
+
+
 func _on_reset_weather_controls_pressed() -> void:
 	if m_weather_defaults.is_empty():
 		return
 
+	_apply_rain_enabled(bool(m_weather_defaults.get("rain_enabled", true)))
+	_apply_thunder_enabled(bool(m_weather_defaults.get("thunder_enabled", false)))
+	_apply_thunder_strength(float(m_weather_defaults.get("thunder_strength", m_thunder_strength)))
 	if is_instance_valid(m_rain_overlay):
 		m_rain_overlay.density = float(m_weather_defaults.get("density", m_rain_overlay.density))
 		m_rain_overlay.wind_angle_degrees = float(

@@ -12,7 +12,7 @@ Read this file first when the task is specifically about the reusable rain overl
 - Rain should read as a calm, screen-wide weather layer rather than a handful of isolated particle streaks.
 - Wind changes should be obvious enough to tune direction and force without turning the island into a noisy storm scene.
 - Weather validation should happen in a scene built for weather, not while also mentally filtering through NPC, journal, or dialogue behavior.
-- The dedicated weather sandbox should expose the main tuning knobs in-scene so quick rain iteration does not depend on inspector edits.
+- The dedicated weather sandbox should expose the main tuning knobs in-scene, including rain and thunder toggles, so quick iteration does not depend on inspector edits.
 
 ## Rules
 
@@ -22,7 +22,7 @@ Read this file first when the task is specifically about the reusable rain overl
 - The dedicated weather sandbox should use `TileMapLayer` terrain and ground for outdoor hit validation instead of a hand-drawn background or platform proxy.
 - The dedicated weather sandbox may keep a small number of temporary foreground occluder proxies when that is the fastest way to validate rain layering, shelter readability, or under-cover silhouettes.
 - The dedicated weather sandbox should include a controllable player plus a few resident actors so rain readability can be checked around moving silhouettes and nearby speech balloons.
-- The dedicated weather sandbox should keep a lightweight weather control panel for the most common rain and ground-impact adjustments.
+- The dedicated weather sandbox should keep a lightweight weather control panel for the most common rain, thunder, and ground-impact adjustments, including temporarily disabling effects for A/B checks.
 - Weather rendering should stay in shared rendering/common helpers until the game has a broader authored weather system.
 - Validation tile layers in [`../../scenes/test_weather.tscn`](../../scenes/test_weather.tscn) exist only to make rain coverage, direction, and visibility easy to judge; the remaining hand-authored foreground shapes are only proxy occluders.
 - Keep the weather sandbox focused on rendering and tuning. Do not let it become the new home for NPC, journal, or progression checks.
@@ -30,6 +30,7 @@ Read this file first when the task is specifically about the reusable rain overl
 ## Edge Cases
 
 - In a `CanvasLayer`, the rain overlay should stay anchored to the viewport instead of shifting when the player or camera moves.
+- If a thunder flash pass is enabled, the flash should brighten both world content and the rain overlay without washing out the weather-control UI.
 - Outside a `CanvasLayer`, the rain overlay still depends on the active `Camera2D` for coverage sizing.
 - Weather tuning is sensitive to viewport size and zoom; if rain suddenly looks sparse or overcrowded, verify the camera and overlay coverage before changing particle values.
 - If a future overlay stops reading as screen-wide, first confirm whether it is being drawn in a true overlay layer or mixed into y-sorted world content.
@@ -65,7 +66,9 @@ Read this file first when the task is specifically about the reusable rain overl
 - `test_weather.tscn` keeps a shared `Actors` layer with a player and resident instances so weather can be checked against gameplay-scale characters.
 - `test_weather.tscn` still includes a small `ForegroundOccluders` proxy layer for quick shelter/occlusion validation without needing a fully authored foreground set.
 - `test_weather.tscn` keeps the rain overlay under a dedicated `CanvasLayer` so visual tuning happens in an actual overlay context.
-- `test_weather.tscn` also keeps a weather-controls `CanvasLayer` that adjusts the shared rain overlay and ground-impact gain in real time.
+- `test_weather.tscn` also keeps a weather-controls `CanvasLayer` that can toggle rain or thunder on and off, trigger a flash on demand, and adjust the shared rain overlay plus ground-impact gain in real time.
+- `test_weather.tscn` includes a lightweight thunder flash `CanvasLayer` so lightning readability checks can happen without introducing a full gameplay lighting system.
+- The thunder flash pass uses a brief neutral fill plus a cooler additive glow so the scene reads like a lightning strike instead of a flat blue tint.
 
 ## Contracts / Boundaries
 
@@ -75,12 +78,14 @@ Read this file first when the task is specifically about the reusable rain overl
 ## Validation
 
 - Run [`../../scenes/test_weather.tscn`](../../scenes/test_weather.tscn) for focused rain tuning.
-- Use the in-scene weather control panel to tune rain density, wind angle, wind strength, drop speed, drop size, and ground-impact gain while the scene is running.
+- Use the in-scene weather control panel to toggle rain or thunder on or off, trigger thunder manually, and tune rain density, wind angle, wind strength, drop speed, drop size, thunder strength, and ground-impact gain while the scene is running.
 - Adjust the `RainOverlay` instance or `GroundImpacts` node in the inspector only when a change needs a deeper structural retune than the panel exposes.
 - Walk the player around the pier and approach residents to confirm rain still reads cleanly around actors and nearby `...` talk cues.
 - Check three things before considering a weather tweak complete:
   - rain coverage still feels screen-wide at the current camera zoom
   - wind direction and force remain readable against the tilemap shoreline and pier edges
+  - optional thunder flashes still keep the world and rain visually coherent instead of flashing only one layer
+  - thunder still reads as a quick flash of light instead of a long ambient wash
   - ground impacts stay lightweight and readable without turning the lower half of the frame into visual noise
   - player and resident silhouettes remain legible under both rain and foreground occluders
   - the overlay stays visually separate from unrelated resident or UI validation
@@ -94,4 +99,4 @@ Read this file first when the task is specifically about the reusable rain overl
 ## Out Of Scope
 
 - A full dynamic weather state machine, forecast schedule, or story-driven weather progression.
-- Audio mixing, puddles, lightning, wet-surface shaders, or gameplay rules that depend on weather state.
+- Audio mixing, puddles, looping storm audio, wet-surface shaders, or gameplay rules that depend on weather state.

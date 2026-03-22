@@ -191,6 +191,18 @@ func _ensure_pool() -> void:
 		m_impacts.pop_back()
 
 
+func clear_impacts() -> void:
+	var had_active := false
+	for impact in m_impacts:
+		if impact.active:
+			impact.active = false
+			had_active = true
+
+	m_spawn_accumulator = 0.0
+	if had_active:
+		queue_redraw()
+
+
 func _resolve_rain_overlay() -> void:
 	if has_node(rain_overlay_path):
 		m_rain_overlay = get_node(rain_overlay_path) as RainOverlay

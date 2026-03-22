@@ -10,7 +10,6 @@
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="6_camera"]
 [ext_resource type="PackedScene" uid="uid://c1le3qk68o7lw" path="res://gui/speech_balloon.tscn" id="7_7hrv5"]
 [ext_resource type="Script" uid="uid://vk6rfdoxtkgv" path="res://characters/control/npc_controller.gd" id="7_npc"]
-
 [sub_resource type="Resource" id="Resource_player"]
 script = ExtResource("5_player")
 
@@ -28,6 +27,9 @@ resident_id = &"church_caretaker"
 script = ExtResource("7_npc")
 use_json_bt = false
 resident_id = &"tunnel_guide"
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_thunder"]
+blend_mode = 1
 
 [node name="TestWeather" type="Node2D" unique_id=148000635]
 y_sort_enabled = true
@@ -136,6 +138,32 @@ density = 0.0012
 wind_angle_degrees = 72.0
 wind_strength = 460.0
 
+[node name="ThunderLayer" type="CanvasLayer" parent="." unique_id=762698829]
+layer = 15
+
+[node name="ThunderFill" type="ColorRect" parent="ThunderLayer" unique_id=110574932]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.968627, 0.980392, 1, 0)
+
+[node name="ThunderGlow" type="ColorRect" parent="ThunderLayer" unique_id=1316335208]
+visible = false
+material = SubResource("CanvasItemMaterial_thunder")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.819608, 0.901961, 1, 0)
+
 [node name="Camera2D" type="Camera2D" parent="." unique_id=530920901]
 position = Vector2(640, 360)
 
@@ -159,7 +187,7 @@ text = "Hide Weather Controls"
 offset_left = 18.0
 offset_top = 68.0
 offset_right = 454.0
-offset_bottom = 450.0
+offset_bottom = 590.0
 
 [node name="Margin" type="MarginContainer" parent="WeatherControlsLayer/WeatherPanel"]
 layout_mode = 2
@@ -180,8 +208,17 @@ text = "Weather Controls"
 [node name="Hint" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
 custom_minimum_size = Vector2(360, 0)
 layout_mode = 2
-text = "Mouse-adjust rain in place. Tab hides the panel. WASD moves, R inspects."
+text = "Adjust rain and thunder in place. Tab hides the panel. WASD moves, R inspects."
 autowrap_mode = 3
+
+[node name="RainEnabledButton" type="CheckButton" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
+layout_mode = 2
+button_pressed = true
+text = "Rain Enabled"
+
+[node name="ThunderEnabledButton" type="CheckButton" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
+layout_mode = 2
+text = "Thunder Enabled"
 
 [node name="ControlsGrid" type="GridContainer" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
 layout_mode = 2
@@ -283,6 +320,24 @@ size_flags_horizontal = 3
 horizontal_alignment = 2
 text = "0.100"
 
+[node name="ThunderStrengthLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+text = "Thunder Strength"
+
+[node name="ThunderStrengthSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+custom_minimum_size = Vector2(220, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.05
+value = 0.65
+
+[node name="ThunderStrengthValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "0.65"
+
 [node name="ImpactGainLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
 layout_mode = 2
 text = "Impact Gain"
@@ -300,6 +355,11 @@ layout_mode = 2
 size_flags_horizontal = 3
 horizontal_alignment = 2
 text = "22000"
+
+[node name="TriggerThunderButton" type="Button" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Trigger Thunder"
 
 [node name="ResetWeatherButton" type="Button" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
 custom_minimum_size = Vector2(0, 40)
