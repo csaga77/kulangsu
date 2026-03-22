@@ -8,6 +8,7 @@
 [ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/human_body_2d.tscn" id="4_human"]
 [ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/control/player_controller.gd" id="5_player"]
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="6_camera"]
+[ext_resource type="PackedScene" path="res://common/fog_overlay.tscn" id="6_fog"]
 [ext_resource type="PackedScene" uid="uid://c1le3qk68o7lw" path="res://gui/speech_balloon.tscn" id="7_7hrv5"]
 [ext_resource type="Script" uid="uid://vk6rfdoxtkgv" path="res://characters/control/npc_controller.gd" id="7_npc"]
 [sub_resource type="Resource" id="Resource_player"]
@@ -132,6 +133,20 @@ polygon = PackedVector2Array(416, 264, 756, 214, 756, 244, 424, 294)
 [node name="WeatherLayer" type="CanvasLayer" parent="." unique_id=1603355903]
 layer = 10
 
+[node name="FogOverlay" parent="WeatherLayer" unique_id=307017093 instance=ExtResource("6_fog")]
+position = Vector2(640, 360)
+density = 0.42
+height_ratio = 0.58
+softness = 0.34
+haze_strength = 0.48
+wisp_strength = 0.72
+edge_brightness = 0.24
+drift_speed = 0.11
+wind_angle_degrees = 72.0
+wind_strength = 460.0
+fog_color = Color(0.831373, 0.894118, 0.941176, 0.62)
+noise_scale = Vector2(4, 1.9)
+
 [node name="RainOverlay" parent="WeatherLayer" unique_id=1694872417 instance=ExtResource("2_2gm2u")]
 position = Vector2(846, 557.5)
 density = 0.0012
@@ -187,7 +202,7 @@ text = "Hide Weather Controls"
 offset_left = 18.0
 offset_top = 68.0
 offset_right = 454.0
-offset_bottom = 590.0
+offset_bottom = 716.0
 
 [node name="Margin" type="MarginContainer" parent="WeatherControlsLayer/WeatherPanel"]
 layout_mode = 2
@@ -208,13 +223,18 @@ text = "Weather Controls"
 [node name="Hint" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
 custom_minimum_size = Vector2(360, 0)
 layout_mode = 2
-text = "Adjust rain and thunder in place. Tab hides the panel. WASD moves, R inspects."
+text = "Adjust rain, fog, and thunder in place. Tab hides the panel. WASD moves, R inspects."
 autowrap_mode = 3
 
 [node name="RainEnabledButton" type="CheckButton" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
 layout_mode = 2
 button_pressed = true
 text = "Rain Enabled"
+
+[node name="FogEnabledButton" type="CheckButton" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
+layout_mode = 2
+button_pressed = true
+text = "Fog Enabled"
 
 [node name="ThunderEnabledButton" type="CheckButton" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
 layout_mode = 2
@@ -319,6 +339,61 @@ layout_mode = 2
 size_flags_horizontal = 3
 horizontal_alignment = 2
 text = "0.100"
+
+[node name="FogDensityLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+text = "Fog Density"
+
+[node name="FogDensitySlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+custom_minimum_size = Vector2(220, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.01
+value = 0.42
+
+[node name="FogDensityValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "0.42"
+
+[node name="FogHeightLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+text = "Fog Height"
+
+[node name="FogHeightSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+custom_minimum_size = Vector2(220, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.1
+max_value = 0.9
+step = 0.01
+value = 0.58
+
+[node name="FogHeightValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "0.58"
+
+[node name="FogDriftLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+text = "Fog Drift"
+
+[node name="FogDriftSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+custom_minimum_size = Vector2(220, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 0.2
+step = 0.005
+value = 0.11
+
+[node name="FogDriftValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "0.110"
 
 [node name="ThunderStrengthLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
 layout_mode = 2

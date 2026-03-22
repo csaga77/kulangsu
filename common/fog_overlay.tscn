@@ -1,0 +1,21 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://common/fog_overlay.gd" id="1_gnfd0"]
+
+[sub_resource type="Shader" id="Shader_h0xsn"]
+code = "shader_type canvas_item;\nrender_mode unshaded;\n\nuniform vec4 fog_color : source_color = vec4(0.831373, 0.894118, 0.941176, 0.56);\nuniform float density : hint_range(0.0, 1.0) = 0.42;\nuniform float fog_height : hint_range(0.1, 1.0) = 0.56;\nuniform float softness : hint_range(0.01, 0.8) = 0.3;\nuniform float haze_strength : hint_range(0.0, 1.0) = 0.42;\nuniform float wisp_strength : hint_range(0.0, 1.0) = 0.62;\nuniform float edge_brightness : hint_range(0.0, 0.6) = 0.22;\nuniform float drift_speed : hint_range(0.0, 0.4) = 0.11;\nuniform vec2 wind_direction = vec2(0.951633, 0.307235);\nuniform float wind_strength_factor : hint_range(0.0, 1.0) = 0.5111111;\nuniform vec2 noise_scale = vec2(4.2, 2.0);\nuniform vec2 drift_offset = vec2(0.0, 0.0);\n\nfloat hash(vec2 p) {\n\treturn fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);\n}\n\nfloat noise(vec2 p) {\n\tvec2 i = floor(p);\n\tvec2 f = fract(p);\n\tvec2 u = f * f * (3.0 - 2.0 * f);\n\treturn mix(\n\t\tmix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),\n\t\tmix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),\n\t\tu.y\n\t);\n}\n\nfloat fbm(vec2 p) {\n\tfloat value = 0.0;\n\tfloat amplitude = 0.5;\n\tfor (int i = 0; i < 4; i++) {\n\t\tvalue += noise(p) * amplitude;\n\t\tp = p * 2.02 + vec2(11.7, 6.3);\n\t\tamplitude *= 0.5;\n\t}\n\treturn value;\n}\n\nvoid fragment() {\n\tvec2 uv = UV;\n\tvec2 main_dir = wind_direction;\n\tif (length(main_dir) < 0.001) {\n\t\tmain_dir = vec2(1.0, 0.0);\n\t}\n\tmain_dir = normalize(main_dir);\n\tvec2 drift_large = drift_offset * 1.15;\n\tvec2 drift_mid = drift_offset * 1.95;\n\tvec2 drift_fine = drift_offset * 2.85;\n\tfloat fog_top = clamp(1.0 - fog_height, 0.0, 0.95);\n\tfloat distance_fade = smoothstep(0.0, max(fog_top + softness * 0.55, 0.16), uv.y);\n\tfloat haze_mask = mix(0.58, 1.0, smoothstep(0.0, min(fog_top + softness * 0.75, 0.9), uv.y));\n\tfloat top_edge = 1.0 - smoothstep(0.0, max(fog_top + softness * 0.5, 0.22), uv.y);\n\tfloat large_band = fbm(vec2((uv.x - drift_large.x) * noise_scale.x * 0.68, (uv.y - drift_large.y) * (noise_scale.y * 0.82)) + vec2(0.0, 1.2));\n\tfloat mid_band = fbm(vec2(((uv.x + 3.4) - drift_mid.x) * (noise_scale.x * 0.92), (uv.y - drift_mid.y) * (noise_scale.y * 1.28)) + vec2(0.8, -0.6));\n\tfloat fine_band = fbm(vec2(((uv.x - 1.7) - drift_fine.x) * (noise_scale.x * 1.85), (uv.y - drift_fine.y) * (noise_scale.y * 2.05)) + vec2(-1.4, 2.0));\n\tfloat pockets = smoothstep(0.24, 0.8, mix(large_band, mid_band, 0.52));\n\tfloat wisps = smoothstep(0.42, 0.78, fine_band) * smoothstep(0.16, 0.92, mid_band);\n\tfloat body_variation = mix(0.74, 1.08, pockets);\n\tfloat screen_fill = mix(0.56, 0.74, distance_fade);\n\tfloat base_alpha = density * screen_fill * body_variation;\n\tfloat haze_alpha = density * haze_strength * haze_mask * mix(0.5, 0.98, large_band);\n\tfloat wisp_alpha = density * wisp_strength * screen_fill * 0.24 * wisps;\n\tfloat alpha = clamp((base_alpha + haze_alpha + wisp_alpha) * 0.72, 0.0, 1.0);\n\tfloat highlight = clamp(top_edge * edge_brightness * 0.45 + wisps * 0.05, 0.0, 0.24);\n\tvec3 color = mix(fog_color.rgb, vec3(0.98, 1.0, 1.0), highlight);\n\tCOLOR = vec4(color, fog_color.a * alpha);\n}\n"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_h0xsn"]
+shader = SubResource("Shader_h0xsn")
+
+[node name="FogOverlay" type="Node2D"]
+script = ExtResource("1_gnfd0")
+
+[node name="fog" type="ColorRect" parent="."]
+offset_left = -256.0
+offset_top = -256.0
+offset_right = 256.0
+offset_bottom = 256.0
+mouse_filter = 2
+material = SubResource("ShaderMaterial_h0xsn")
+color = Color(1, 1, 1, 1)
