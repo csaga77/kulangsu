@@ -65,6 +65,7 @@ Validation is currently manual:
 - Run the full project after app-shell, HUD, overlay, or progression changes.
 - Open focused scenes when changing a specific subsystem.
 - Use the existing test/prototype scenes under [`scenes/`](scenes) and feature-local test scenes such as [`game/grid_board_game/test_grid_board_game.tscn`](game/grid_board_game/test_grid_board_game.tscn) and [`game/grid_board_game/test_terminal_turn_state.tscn`](game/grid_board_game/test_terminal_turn_state.tscn).
+- Use [`scenes/test_weather.tscn`](scenes/test_weather.tscn) for weather-specific validation. It now combines tilemap-backed water and terrain, pier-ground rain impacts, foreground occluders, and actor readability checks in one sandbox.
 
 If you make a change that affects behavior and you cannot run the project or a relevant scene, call that out explicitly in your handoff.
 
@@ -88,4 +89,5 @@ Start here for project context:
 - [`docs/contracts.md`](docs/contracts.md) - stable interfaces and boundaries
 - [`docs/release_policy.md`](docs/release_policy.md) - current release/version policy
 - [`docs/features/README.md`](docs/features/README.md) - how feature specs work
+- [`docs/features/weather_rendering.md`](docs/features/weather_rendering.md) - reusable rain rendering and focused weather-sandbox guidance
 - [`AGENTS.md`](AGENTS.md) - repository instructions for coding agents

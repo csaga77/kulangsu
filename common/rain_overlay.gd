@@ -68,12 +68,13 @@ var m_rain_particle_process_material: ParticleProcessMaterial
 var m_last_viewport_size: Vector2 = Vector2.ZERO
 var m_last_zoom: Vector2 = Vector2.ONE
 var m_last_extents: Vector2 = Vector2(256.0, 256.0)
+var m_last_screen_space := false
 
 
 func _ready() -> void:
 	if m_rain:
 		m_rain_particle_process_material = m_rain.process_material as ParticleProcessMaterial
-		m_rain.local_coords = false
+		m_rain.local_coords = _uses_viewport_space()
 
 	_update_direction_randomness()
 	_update_drop_size()
@@ -88,30 +89,38 @@ func _process(_delta: float) -> void:
 		return
 
 	var viewport := get_viewport()
-	var camera: Camera2D = null
-	if viewport:
-		camera = viewport.get_camera_2d()
-
 	var viewport_size := Vector2(256.0, 256.0)
 	var zoom := Vector2.ONE
+	var visible_size := viewport_size
+	var use_screen_space := _uses_viewport_space()
 
-	if viewport and camera:
+	if viewport:
 		viewport_size = Vector2(viewport.size)
-		zoom = camera.zoom
-		global_position = camera.global_position
+		visible_size = viewport_size
 
-	if viewport_size != m_last_viewport_size or zoom != m_last_zoom:
+	if use_screen_space:
+		position = viewport_size * 0.5
+	else:
+		var camera: Camera2D = null
+		if viewport:
+			camera = viewport.get_camera_2d()
+		if viewport and camera:
+			zoom = camera.zoom
+			visible_size = viewport_size / zoom
+			global_position = camera.global_position
+
+	if viewport_size != m_last_viewport_size or zoom != m_last_zoom or visible_size != m_last_extents or use_screen_space != m_last_screen_space:
 		m_last_viewport_size = viewport_size
 		m_last_zoom = zoom
-
-		var s := viewport_size / zoom
-		m_last_extents = s
+		m_last_screen_space = use_screen_space
+		m_last_extents = visible_size
 
 		if m_rain_particle_process_material:
-			m_rain_particle_process_material.emission_box_extents = Vector3(s.x, s.y, 1.0)
+			m_rain_particle_process_material.emission_box_extents = Vector3(visible_size.x * 0.5, visible_size.y * 0.5, 1.0)
 
-		_update_density()
+			_update_density()
 
+	_sync_particle_space(use_screen_space, visible_size)
 	_update_wind()
 
 
@@ -186,3 +195,28 @@ func _update_wind() -> void:
 	var vec := Vector2.RIGHT.rotated(deg_to_rad(wind_angle_degrees)).normalized()
 	m_rain_particle_process_material.direction = Vector3(vec.x, vec.y, 0)
 	m_rain_particle_process_material.gravity = Vector3(vec.x, vec.y, 0) * wind_strength
+
+
+func _sync_particle_space(use_screen_space: bool, visible_size: Vector2) -> void:
+	if m_rain == null:
+		return
+
+	if m_rain.local_coords != use_screen_space:
+		m_rain.local_coords = use_screen_space
+		m_rain.restart()
+
+	var half_size := visible_size * 0.5
+	var travel_margin: Vector2 = Vector2.ONE * maxf(drop_speed * drop_lifetime, 64.0)
+	m_rain.visibility_rect = Rect2(
+		-half_size - travel_margin,
+		visible_size + travel_margin * 2.0
+	)
+
+
+func _uses_viewport_space() -> bool:
+	var node: Node = self
+	while node != null:
+		if node is CanvasLayer:
+			return true
+		node = node.get_parent()
+	return false

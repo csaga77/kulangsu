@@ -8,7 +8,6 @@
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="7_4gito"]
 [ext_resource type="Texture2D" uid="uid://dhf06qtvcxt2h" path="res://resources/sprites/light_mask_128x128.png" id="7_s36qc"]
 [ext_resource type="Shader" uid="uid://bx1o4bv3qtrdm" path="res://scenes/lighting.gdshader" id="8_h3xc6"]
-[ext_resource type="PackedScene" uid="uid://b6oslfbyqgnsg" path="res://common/rain_overlay.tscn" id="10_s36qc"]
 [ext_resource type="Script" uid="uid://vk6rfdoxtkgv" path="res://characters/control/npc_controller.gd" id="13_ntc4i"]
 [ext_resource type="PackedScene" uid="uid://c1le3qk68o7lw" path="res://gui/speech_balloon.tscn" id="14_u0xbq"]
 
@@ -49,8 +48,6 @@ metadata/_custom_type_script = "uid://vk6rfdoxtkgv"
 y_sort_enabled = true
 script = ExtResource("1_8pr8v")
 building = ExtResource("2_wtsjf")
-
-[node name="RainOverlay" parent="." unique_id=1815453027 instance=ExtResource("10_s36qc")]
 
 [node name="Root" type="Node2D" parent="." unique_id=203604640]
 y_sort_enabled = true
