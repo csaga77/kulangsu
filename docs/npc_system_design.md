@@ -133,6 +133,7 @@ This shared-anchor-plus-offset model is intentionally cheap to author. It is les
 
 - `appearance` is a `HumanBody2D.set_configuration()` payload assembled by `_look(...)` in [`../game/resident_catalog.gd`](../game/resident_catalog.gd).
 - Resident looks should continue to be authored in the catalog, not hardcoded in scene instances.
+- When authoring a resident look, verify that each selected LPC path supports that resident's `body_type` and chosen variant in the shipped metadata. A path existing in the metadata file is not enough if its layer data only supports another body type or a narrower variant set.
 
 ## Current Player-Facing Behavior
 
@@ -197,6 +198,8 @@ When the system breaks, start here:
 - Resident appears but has the wrong look:
   - Check `resident_id` on the instantiated controller.
   - Check `AppState.get_resident_appearance_config()` and `NPCController._apply_resident_presentation()`.
+  - Check the resident's LPC path/body-type/variant combination against [`../resources/sprites/universal_lpc/universal_lpc_metadata.json`](../resources/sprites/universal_lpc/universal_lpc_metadata.json).
+  - Treat `Failed to resolve combined texture for selection layer` warnings as invalid appearance content, not as a harmless fallback.
 - Prompt says `Inspect` instead of `Talk`:
   - Check whether the target is actually using `NPCController`.
   - Check same-layer gating in [`../characters/control/base_controller.gd`](../characters/control/base_controller.gd).

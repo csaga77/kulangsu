@@ -68,8 +68,10 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 ### Change Resident Appearance
 
 1. Edit the resident's `_look(...)` config in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd).
-2. Do not hardcode appearance in scenes; `NPCController` applies resident appearance automatically.
-3. Verify both the main scene and [`../../scenes/test_scene.tscn`](../../scenes/test_scene.tscn) if that resident id is used there.
+2. Confirm that every selected LPC path supports the resident's body type and chosen variant in the shipped metadata. A matching path name alone does not guarantee the combination can render.
+3. Do not hardcode appearance in scenes; `NPCController` applies resident appearance automatically.
+4. Verify both the main scene and [`../../scenes/test_scene.tscn`](../../scenes/test_scene.tscn) if that resident id is used there.
+5. Treat `Failed to resolve combined texture for selection layer` warnings as a resident-content bug and fix the catalog entry instead of ignoring the warning.
 
 ### Move A Resident
 
