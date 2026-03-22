@@ -87,11 +87,22 @@ var m_has_ready: bool = false
 signal configuration_changed(cfg: Dictionary)
 
 func get_configuration() -> Dictionary:
-	return m_universal_lpc_sprite.configuration if m_universal_lpc_sprite else {}
-	
+	if m_universal_lpc_sprite:
+		return m_universal_lpc_sprite.configuration
+	return m_cached_configuration.duplicate(true) if m_has_cached_configuration else {}
+		
 func set_configuration(new_config: Dictionary) -> void:
+	m_cached_configuration = new_config.duplicate(true)
+	m_has_cached_configuration = true
 	if m_universal_lpc_sprite:
 		m_universal_lpc_sprite.set_configuration(new_config)
+
+
+@export var configuration: Dictionary:
+	get():
+		return get_configuration()
+	set(new_config):
+		set_configuration(new_config)
 
 var m_animation: String = "idle-s"
 
@@ -100,6 +111,8 @@ var m_is_currently_jumping: bool = false
 var m_jump_timer: float = 0.0
 var m_current_animation_name: String = ""
 var m_anim_options: Array[String] = []
+var m_cached_configuration: Dictionary = {}
+var m_has_cached_configuration: bool = false
 
 var m_face_base: String = ""
 var m_face_render: String = ""
@@ -165,12 +178,18 @@ func _ensure_universal_lpc_sprite() -> void:
 		m_universal_lpc_sprite.name = "universal_lpc_sprite"
 		add_child(m_universal_lpc_sprite)
 
-	if !m_universal_lpc_sprite.configuration_changed.is_connected(self.configuration_changed.emit):
-		m_universal_lpc_sprite.configuration_changed.connect(self.configuration_changed.emit)
+	if !m_universal_lpc_sprite.configuration_changed.is_connected(_on_universal_lpc_sprite_configuration_changed):
+		m_universal_lpc_sprite.configuration_changed.connect(_on_universal_lpc_sprite_configuration_changed)
 
 	move_child(m_universal_lpc_sprite, get_child_count() - 1)
 	m_universal_lpc_sprite.position = BASE_SPRITE_OFFSET
 	_sync_universal_lpc_sprite_material()
+
+	if m_has_cached_configuration:
+		m_universal_lpc_sprite.set_configuration(m_cached_configuration)
+	else:
+		m_cached_configuration = m_universal_lpc_sprite.get_configuration().duplicate(true)
+		m_has_cached_configuration = true
 
 
 func _sync_universal_lpc_sprite_material() -> void:
@@ -178,6 +197,12 @@ func _sync_universal_lpc_sprite_material() -> void:
 		return
 
 	m_universal_lpc_sprite.material = material
+
+
+func _on_universal_lpc_sprite_configuration_changed(cfg: Dictionary) -> void:
+	m_cached_configuration = cfg.duplicate(true)
+	m_has_cached_configuration = true
+	configuration_changed.emit(cfg)
 
 
 func _restart_face_driver_no_apply() -> void:
