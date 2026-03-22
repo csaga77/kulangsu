@@ -66,7 +66,7 @@ Be careful about renames or moves here because scene and resource references can
 - [`../scenes/test_level_context.tscn`](../scenes/test_level_context.tscn) - focused parent-owned level-slot mapping and inherited room-level resolution sandbox
 - [`../scenes/test_portal_overlap.tscn`](../scenes/test_portal_overlap.tscn) - focused multi-actor portal transition regression test
 - [`../scenes/test_bagua_stairs_visibility.tscn`](../scenes/test_bagua_stairs_visibility.tscn) - full Bagua Tower ascent, descent, and upper-floor visibility integration test
-- [`../scenes/test_weather.tscn`](../scenes/test_weather.tscn) - focused rain tuning sandbox with tilemap-backed water/terrain, pier impacts, actor readability checks, and temporary foreground occluder proxies
+- [`../scenes/test_weather.tscn`](../scenes/test_weather.tscn) - focused rain tuning sandbox with tilemap-backed water/terrain, pier impacts, an in-scene weather control panel, actor readability checks, and temporary foreground occluder proxies
 - [`../scenes/test_water_render.tscn`](../scenes/test_water_render.tscn) - focused water color, wave, transparency, and refraction sandbox
 - [`../scenes/test_scene.tscn`](../scenes/test_scene.tscn) - focused resident speech, talk, and journal sandbox
 - [`../game/grid_board_game/test_grid_board_game.tscn`](../game/grid_board_game/test_grid_board_game.tscn)

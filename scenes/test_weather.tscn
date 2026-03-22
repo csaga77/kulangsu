@@ -144,3 +144,164 @@ script = ExtResource("6_camera")
 camera = NodePath("..")
 target_node = NodePath("../../Actors/Player")
 min_zoom = 0.01
+
+[node name="WeatherControlsLayer" type="CanvasLayer" parent="."]
+layer = 20
+
+[node name="ToggleWeatherControlsButton" type="Button" parent="WeatherControlsLayer"]
+offset_left = 18.0
+offset_top = 18.0
+offset_right = 230.0
+offset_bottom = 56.0
+text = "Hide Weather Controls"
+
+[node name="WeatherPanel" type="PanelContainer" parent="WeatherControlsLayer"]
+offset_left = 18.0
+offset_top = 68.0
+offset_right = 454.0
+offset_bottom = 450.0
+
+[node name="Margin" type="MarginContainer" parent="WeatherControlsLayer/WeatherPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="Body" type="VBoxContainer" parent="WeatherControlsLayer/WeatherPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Weather Controls"
+
+[node name="Hint" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+text = "Mouse-adjust rain in place. Tab hides the panel. WASD moves, R inspects."
+autowrap_mode = 3
+
+[node name="ControlsGrid" type="GridContainer" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 3
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 10
+
+[node name="DensityLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+text = "Rain Density"
+
+[node name="DensitySlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+custom_minimum_size = Vector2(220, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 0.004
+step = 0.0001
+value = 0.0012
+
+[node name="DensityValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "0.0012"
+
+[node name="AngleLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+text = "Wind Angle"
+
+[node name="AngleSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+custom_minimum_size = Vector2(220, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 35.0
+max_value = 120.0
+step = 1.0
+value = 72.0
+
+[node name="AngleValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "72 deg"
+
+[node name="WindStrengthLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+text = "Wind Strength"
+
+[node name="WindStrengthSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+custom_minimum_size = Vector2(220, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 900.0
+step = 10.0
+value = 460.0
+
+[node name="WindStrengthValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "460"
+
+[node name="DropSpeedLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+text = "Drop Speed"
+
+[node name="DropSpeedSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+custom_minimum_size = Vector2(220, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 50.0
+max_value = 450.0
+step = 10.0
+value = 250.0
+
+[node name="DropSpeedValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "250"
+
+[node name="DropSizeLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+text = "Drop Size"
+
+[node name="DropSizeSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+custom_minimum_size = Vector2(220, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.03
+max_value = 0.18
+step = 0.005
+value = 0.1
+
+[node name="DropSizeValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "0.100"
+
+[node name="ImpactGainLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+text = "Impact Gain"
+
+[node name="ImpactGainSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+custom_minimum_size = Vector2(220, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 40000.0
+step = 250.0
+value = 22000.0
+
+[node name="ImpactGainValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "22000"
+
+[node name="ResetWeatherButton" type="Button" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Reset to Scene Defaults"

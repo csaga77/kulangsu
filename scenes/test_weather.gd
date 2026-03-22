@@ -52,6 +52,8 @@ const TERRAIN_TILE_VARIANTS := [
 const WATER_TILE_COORDS := Vector2i(4, 16)
 const WATER_TILE_ALTERNATIVE := 0
 const WATER_FILL_MARGIN := Vector2(320.0, 240.0)
+const WEATHER_CONTROLS_VISIBLE_TEXT := "Hide Weather Controls"
+const WEATHER_CONTROLS_HIDDEN_TEXT := "Show Weather Controls"
 
 @export var rebuild_environment: bool = false:
 	set(value):
@@ -71,16 +73,36 @@ const WATER_FILL_MARGIN := Vector2(320.0, 240.0)
 
 var m_player_controller: PlayerController = null
 var m_closest_object: Node2D = null
+var m_weather_defaults: Dictionary = {}
+var m_weather_controls_visible := true
 
 @onready var m_water: TileMapLayer = $Water
 @onready var m_backdrop_terrain: TileMapLayer = $BackdropTerrain
 @onready var m_ground: TileMapLayer = $Ground
+@onready var m_ground_impacts: RainGroundImpacts = $GroundImpacts
 @onready var m_player: HumanBody2D = $Actors/Player
+@onready var m_rain_overlay: RainOverlay = $WeatherLayer/RainOverlay
+@onready var m_toggle_weather_controls_button: Button = $WeatherControlsLayer/ToggleWeatherControlsButton
+@onready var m_weather_panel: PanelContainer = $WeatherControlsLayer/WeatherPanel
+@onready var m_density_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/DensitySlider
+@onready var m_density_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/DensityValue
+@onready var m_angle_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/AngleSlider
+@onready var m_angle_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/AngleValue
+@onready var m_wind_strength_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/WindStrengthSlider
+@onready var m_wind_strength_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/WindStrengthValue
+@onready var m_drop_speed_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/DropSpeedSlider
+@onready var m_drop_speed_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/DropSpeedValue
+@onready var m_drop_size_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/DropSizeSlider
+@onready var m_drop_size_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/DropSizeValue
+@onready var m_impact_gain_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/ImpactGainSlider
+@onready var m_impact_gain_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/ImpactGainValue
+@onready var m_reset_weather_controls_button: Button = $WeatherControlsLayer/WeatherPanel/Margin/Body/ResetWeatherButton
 
 
 func _ready() -> void:
 	_rebuild_environment()
 	_rebuild_ground()
+	_setup_weather_controls()
 	if Engine.is_editor_hint():
 		return
 
@@ -258,3 +280,163 @@ func _get_resident_controller(target: Node2D) -> NPCController:
 	if human == null:
 		return null
 	return human.controller as NPCController
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if Engine.is_editor_hint():
+		return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_TAB:
+		_set_weather_controls_visible(not m_weather_controls_visible)
+		get_viewport().set_input_as_handled()
+
+
+func _setup_weather_controls() -> void:
+	if not is_instance_valid(m_weather_panel):
+		return
+
+	m_weather_panel.add_theme_stylebox_override("panel", UIStyle.build_panel_style())
+	_disable_focus_for_control(m_toggle_weather_controls_button)
+	_disable_focus_for_control(m_weather_panel)
+	_connect_weather_controls()
+	_capture_weather_defaults()
+	_sync_weather_controls_from_scene()
+	_set_weather_controls_visible(m_weather_controls_visible)
+
+
+func _disable_focus_for_control(control: Control) -> void:
+	if control == null:
+		return
+
+	control.focus_mode = Control.FOCUS_NONE
+	for child in control.get_children():
+		var child_control := child as Control
+		if child_control != null:
+			_disable_focus_for_control(child_control)
+
+
+func _connect_weather_controls() -> void:
+	if not m_toggle_weather_controls_button.pressed.is_connected(_on_toggle_weather_controls_pressed):
+		m_toggle_weather_controls_button.pressed.connect(_on_toggle_weather_controls_pressed)
+	if not m_density_slider.value_changed.is_connected(_on_density_slider_changed):
+		m_density_slider.value_changed.connect(_on_density_slider_changed)
+	if not m_angle_slider.value_changed.is_connected(_on_angle_slider_changed):
+		m_angle_slider.value_changed.connect(_on_angle_slider_changed)
+	if not m_wind_strength_slider.value_changed.is_connected(_on_wind_strength_slider_changed):
+		m_wind_strength_slider.value_changed.connect(_on_wind_strength_slider_changed)
+	if not m_drop_speed_slider.value_changed.is_connected(_on_drop_speed_slider_changed):
+		m_drop_speed_slider.value_changed.connect(_on_drop_speed_slider_changed)
+	if not m_drop_size_slider.value_changed.is_connected(_on_drop_size_slider_changed):
+		m_drop_size_slider.value_changed.connect(_on_drop_size_slider_changed)
+	if not m_impact_gain_slider.value_changed.is_connected(_on_impact_gain_slider_changed):
+		m_impact_gain_slider.value_changed.connect(_on_impact_gain_slider_changed)
+	if not m_reset_weather_controls_button.pressed.is_connected(_on_reset_weather_controls_pressed):
+		m_reset_weather_controls_button.pressed.connect(_on_reset_weather_controls_pressed)
+
+
+func _capture_weather_defaults() -> void:
+	if not is_instance_valid(m_rain_overlay) or not is_instance_valid(m_ground_impacts):
+		return
+
+	m_weather_defaults = {
+		"density": m_rain_overlay.density,
+		"wind_angle_degrees": m_rain_overlay.wind_angle_degrees,
+		"wind_strength": m_rain_overlay.wind_strength,
+		"drop_speed": m_rain_overlay.drop_speed,
+		"drop_size": m_rain_overlay.drop_size,
+		"impact_gain": m_ground_impacts.density_spawn_multiplier,
+	}
+
+
+func _sync_weather_controls_from_scene() -> void:
+	if not is_instance_valid(m_rain_overlay) or not is_instance_valid(m_ground_impacts):
+		return
+
+	m_density_slider.set_value_no_signal(m_rain_overlay.density)
+	m_angle_slider.set_value_no_signal(m_rain_overlay.wind_angle_degrees)
+	m_wind_strength_slider.set_value_no_signal(m_rain_overlay.wind_strength)
+	m_drop_speed_slider.set_value_no_signal(m_rain_overlay.drop_speed)
+	m_drop_size_slider.set_value_no_signal(m_rain_overlay.drop_size)
+	m_impact_gain_slider.set_value_no_signal(m_ground_impacts.density_spawn_multiplier)
+	_update_weather_value_labels()
+
+
+func _update_weather_value_labels() -> void:
+	m_density_value.text = "%.4f" % m_density_slider.value
+	m_angle_value.text = "%d deg" % roundi(m_angle_slider.value)
+	m_wind_strength_value.text = "%d" % roundi(m_wind_strength_slider.value)
+	m_drop_speed_value.text = "%d" % roundi(m_drop_speed_slider.value)
+	m_drop_size_value.text = "%.3f" % m_drop_size_slider.value
+	m_impact_gain_value.text = "%d" % roundi(m_impact_gain_slider.value)
+
+
+func _set_weather_controls_visible(should_show: bool) -> void:
+	m_weather_controls_visible = should_show
+	if is_instance_valid(m_weather_panel):
+		m_weather_panel.visible = should_show
+	if is_instance_valid(m_toggle_weather_controls_button):
+		m_toggle_weather_controls_button.text = (
+			WEATHER_CONTROLS_VISIBLE_TEXT if should_show else WEATHER_CONTROLS_HIDDEN_TEXT
+		)
+
+
+func _on_toggle_weather_controls_pressed() -> void:
+	_set_weather_controls_visible(not m_weather_controls_visible)
+
+
+func _on_density_slider_changed(value: float) -> void:
+	if is_instance_valid(m_rain_overlay):
+		m_rain_overlay.density = value
+	_update_weather_value_labels()
+
+
+func _on_angle_slider_changed(value: float) -> void:
+	if is_instance_valid(m_rain_overlay):
+		m_rain_overlay.wind_angle_degrees = value
+	_update_weather_value_labels()
+
+
+func _on_wind_strength_slider_changed(value: float) -> void:
+	if is_instance_valid(m_rain_overlay):
+		m_rain_overlay.wind_strength = value
+	_update_weather_value_labels()
+
+
+func _on_drop_speed_slider_changed(value: float) -> void:
+	if is_instance_valid(m_rain_overlay):
+		m_rain_overlay.drop_speed = value
+	_update_weather_value_labels()
+
+
+func _on_drop_size_slider_changed(value: float) -> void:
+	if is_instance_valid(m_rain_overlay):
+		m_rain_overlay.drop_size = value
+	_update_weather_value_labels()
+
+
+func _on_impact_gain_slider_changed(value: float) -> void:
+	if is_instance_valid(m_ground_impacts):
+		m_ground_impacts.density_spawn_multiplier = value
+	_update_weather_value_labels()
+
+
+func _on_reset_weather_controls_pressed() -> void:
+	if m_weather_defaults.is_empty():
+		return
+
+	if is_instance_valid(m_rain_overlay):
+		m_rain_overlay.density = float(m_weather_defaults.get("density", m_rain_overlay.density))
+		m_rain_overlay.wind_angle_degrees = float(
+			m_weather_defaults.get("wind_angle_degrees", m_rain_overlay.wind_angle_degrees)
+		)
+		m_rain_overlay.wind_strength = float(
+			m_weather_defaults.get("wind_strength", m_rain_overlay.wind_strength)
+		)
+		m_rain_overlay.drop_speed = float(m_weather_defaults.get("drop_speed", m_rain_overlay.drop_speed))
+		m_rain_overlay.drop_size = float(m_weather_defaults.get("drop_size", m_rain_overlay.drop_size))
+
+	if is_instance_valid(m_ground_impacts):
+		m_ground_impacts.density_spawn_multiplier = float(
+			m_weather_defaults.get("impact_gain", m_ground_impacts.density_spawn_multiplier)
+		)
+
+	_sync_weather_controls_from_scene()

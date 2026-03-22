@@ -12,6 +12,7 @@ Read this file first when the task is specifically about the reusable rain overl
 - Rain should read as a calm, screen-wide weather layer rather than a handful of isolated particle streaks.
 - Wind changes should be obvious enough to tune direction and force without turning the island into a noisy storm scene.
 - Weather validation should happen in a scene built for weather, not while also mentally filtering through NPC, journal, or dialogue behavior.
+- The dedicated weather sandbox should expose the main tuning knobs in-scene so quick rain iteration does not depend on inspector edits.
 
 ## Rules
 
@@ -21,6 +22,7 @@ Read this file first when the task is specifically about the reusable rain overl
 - The dedicated weather sandbox should use `TileMapLayer` terrain and ground for outdoor hit validation instead of a hand-drawn background or platform proxy.
 - The dedicated weather sandbox may keep a small number of temporary foreground occluder proxies when that is the fastest way to validate rain layering, shelter readability, or under-cover silhouettes.
 - The dedicated weather sandbox should include a controllable player plus a few resident actors so rain readability can be checked around moving silhouettes and nearby speech balloons.
+- The dedicated weather sandbox should keep a lightweight weather control panel for the most common rain and ground-impact adjustments.
 - Weather rendering should stay in shared rendering/common helpers until the game has a broader authored weather system.
 - Validation tile layers in [`../../scenes/test_weather.tscn`](../../scenes/test_weather.tscn) exist only to make rain coverage, direction, and visibility easy to judge; the remaining hand-authored foreground shapes are only proxy occluders.
 - Keep the weather sandbox focused on rendering and tuning. Do not let it become the new home for NPC, journal, or progression checks.
@@ -63,6 +65,7 @@ Read this file first when the task is specifically about the reusable rain overl
 - `test_weather.tscn` keeps a shared `Actors` layer with a player and resident instances so weather can be checked against gameplay-scale characters.
 - `test_weather.tscn` still includes a small `ForegroundOccluders` proxy layer for quick shelter/occlusion validation without needing a fully authored foreground set.
 - `test_weather.tscn` keeps the rain overlay under a dedicated `CanvasLayer` so visual tuning happens in an actual overlay context.
+- `test_weather.tscn` also keeps a weather-controls `CanvasLayer` that adjusts the shared rain overlay and ground-impact gain in real time.
 
 ## Contracts / Boundaries
 
@@ -72,8 +75,8 @@ Read this file first when the task is specifically about the reusable rain overl
 ## Validation
 
 - Run [`../../scenes/test_weather.tscn`](../../scenes/test_weather.tscn) for focused rain tuning.
-- Adjust the `RainOverlay` instance directly in the scene to tune density, wind angle, wind strength, size, speed, and lifetime.
-- Tune `GroundImpacts` in the same scene for spawn rate, impact lifetime, drift, and the visible ground band.
+- Use the in-scene weather control panel to tune rain density, wind angle, wind strength, drop speed, drop size, and ground-impact gain while the scene is running.
+- Adjust the `RainOverlay` instance or `GroundImpacts` node in the inspector only when a change needs a deeper structural retune than the panel exposes.
 - Walk the player around the pier and approach residents to confirm rain still reads cleanly around actors and nearby `...` talk cues.
 - Check three things before considering a weather tweak complete:
   - rain coverage still feels screen-wide at the current camera zoom
