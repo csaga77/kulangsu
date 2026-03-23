@@ -33,8 +33,10 @@ Owned by:
 Current contract:
 
 - `AppState` is the shared UI/progression-facing bridge between gameplay and UI
-- it exposes signals for mode, chapter, location, objective, hint, save status, fragments, landmarks, residents, resident profiles, player appearance/costumes, and summary updates
+- it exposes signals for mode, chapter, location, objective, hint, save status, fragments, melody progress, landmarks, residents, resident profiles, player appearance/costumes, and summary updates
+- it now owns shared melody runtime state while [`../game/melody_catalog.gd`](../game/melody_catalog.gd) owns authored melody definitions
 - world and UI code rely on resident getters for resident ids, display names, appearance configs, spawn configs, ambient speech, and resident journal text
+- UI code can now rely on melody getters and journal helpers for melody-facing player context
 - UI screens and world integration code rely on those signals and state getters/setters
 
 Governance:

@@ -2,6 +2,7 @@
 extends Node
 
 const RESIDENT_CATALOG_SCRIPT := preload("res://game/resident_catalog.gd")
+const MELODY_CATALOG_SCRIPT := preload("res://game/melody_catalog.gd")
 const PLAYER_APPEARANCE_CATALOG_SCRIPT := preload("res://game/player_appearance_catalog.gd")
 const PLAYER_COSTUME_CATALOG_SCRIPT := preload("res://game/player_costume_catalog.gd")
 
@@ -12,6 +13,7 @@ signal objective_changed(objective: String)
 signal hint_changed(hint: String)
 signal save_status_changed(status: String)
 signal fragments_changed(found: int, total: int)
+signal melody_progress_changed(melody_id: String, melody: Dictionary)
 signal landmarks_changed(landmarks: PackedStringArray)
 signal residents_changed(residents: PackedStringArray)
 signal resident_profile_changed(resident_id: String, resident: Dictionary)
@@ -29,6 +31,8 @@ var hint := "R Inspect   J Journal   Esc Pause"
 var save_status := "Autosave: ready"
 var fragments_found := 0
 var fragments_total := 4
+var melody_catalog: Dictionary = MELODY_CATALOG_SCRIPT.build_catalog()
+var melody_progress: Dictionary = _default_melody_progress()
 var landmarks: PackedStringArray = _default_landmarks()
 var residents: PackedStringArray = PackedStringArray()
 var resident_profiles: Dictionary = _default_resident_profiles()
@@ -104,6 +108,13 @@ func set_fragments(found: int, total: int = fragments_total) -> void:
 	_update_summary_counts()
 
 
+func set_melody_progress(new_progress: Dictionary) -> void:
+	melody_progress = _normalize_melody_progress(new_progress)
+	for melody_id in get_melody_ids():
+		melody_progress_changed.emit(melody_id, get_melody_state(melody_id))
+	_sync_fragment_summary_from_melodies()
+
+
 func set_landmarks(new_landmarks: PackedStringArray) -> void:
 	landmarks = new_landmarks
 	landmarks_changed.emit(landmarks)
@@ -141,8 +152,41 @@ func _default_resident_profiles() -> Dictionary:
 	return RESIDENT_CATALOG_SCRIPT.build_defaults()
 
 
+func _default_melody_progress() -> Dictionary:
+	var progress := {}
+
+	for melody_id in MELODY_CATALOG_SCRIPT.ordered_ids():
+		var melody_definition: Dictionary = melody_catalog.get(melody_id, {})
+		progress[melody_id] = {
+			"state": "unknown",
+			"fragments_found": 0,
+			"fragments_total": int(melody_definition.get("fragment_total", 0)),
+			"known_sources": [],
+			"next_lead": String(melody_definition.get("unlock_condition", "")),
+			"performed": false,
+		}
+
+	return progress
+
+
 func get_resident_ids() -> PackedStringArray:
 	return PackedStringArray(RESIDENT_CATALOG_SCRIPT.resident_order())
+
+
+func get_melody_ids() -> PackedStringArray:
+	return MELODY_CATALOG_SCRIPT.ordered_ids()
+
+
+func get_melody_definition(melody_id: String) -> Dictionary:
+	if !melody_catalog.has(melody_id):
+		return {}
+	return melody_catalog[melody_id].duplicate(true)
+
+
+func get_melody_state(melody_id: String) -> Dictionary:
+	if !melody_progress.has(melody_id):
+		return {}
+	return melody_progress[melody_id].duplicate(true)
 
 
 func get_resident_profile(resident_id: String) -> Dictionary:
@@ -370,6 +414,54 @@ func build_resident_journal_text() -> String:
 	return "\n\n".join(PackedStringArray(sections))
 
 
+func build_melody_journal_text() -> String:
+	var sections: Array[String] = []
+
+	for melody_id in get_melody_ids():
+		var melody_definition := get_melody_definition(melody_id)
+		if melody_definition.is_empty():
+			continue
+
+		var melody_state := get_melody_state(melody_id)
+		var known_sources := _normalize_string_array(melody_state.get("known_sources", []))
+		var source_lines: Array[String] = []
+
+		for source in melody_definition.get("sources", []):
+			var source_id := String(source.get("source_id", ""))
+			var source_status := "Not yet confirmed"
+			if known_sources.find(source_id) >= 0:
+				source_status = "Confirmed clue"
+
+			source_lines.append(
+				"%s (%s)\n%s\n%s" % [
+					String(source.get("label", "Unknown clue")),
+					String(source.get("landmark", "Unknown landmark")),
+					source_status,
+					String(source.get("summary", "")),
+				]
+			)
+
+		sections.append(
+			"%s\nDistrict: %s\nStage: %s\nRecovered fragments: %d / %d\nSummary: %s\nNext lead: %s\nPerformance point: %s\nWorld response: %s\n\nClue map\n%s" % [
+				String(melody_definition.get("display_name", melody_id)),
+				String(melody_definition.get("district", "Unknown district")),
+				MELODY_CATALOG_SCRIPT.state_display_name(String(melody_state.get("state", "unknown"))),
+				int(melody_state.get("fragments_found", 0)),
+				int(melody_state.get("fragments_total", int(melody_definition.get("fragment_total", 0)))),
+				String(melody_definition.get("summary", "")),
+				String(melody_state.get("next_lead", melody_definition.get("unlock_condition", ""))),
+				String(melody_definition.get("performance_landmark", "Unknown")),
+				String(melody_definition.get("world_response_summary", "")),
+				"\n\n".join(PackedStringArray(source_lines)),
+			]
+		)
+
+	if sections.is_empty():
+		return "No melody notes recorded yet.\n\nKeep exploring, listen for a repeated phrase, and check the journal after each major clue."
+
+	return "\n\n".join(PackedStringArray(sections))
+
+
 func build_player_costume_journal_text() -> String:
 	var sections: Array[String] = []
 
@@ -466,9 +558,9 @@ func configure_new_game() -> void:
 	set_objective("Find out why the island feels quiet today.")
 	set_hint("R Inspect   J Journal   Esc Pause")
 	set_save_status("Autosave: prototype checkpoint ready")
-	set_fragments(0, 4)
 	set_landmarks(_default_landmarks())
 	set_resident_profiles(_default_resident_profiles())
+	set_melody_progress(_build_story_melody_progress("new_game"))
 	set_summary({
 		"fragments": "0 / 4",
 		"residents": "0",
@@ -484,9 +576,9 @@ func configure_continue() -> void:
 	set_objective("Resume exploring from the harbor and choose your next district.")
 	set_hint("R Inspect   J Journal   Esc Pause")
 	set_save_status("Autosave: resumed from the latest harbor checkpoint")
-	set_fragments(2, 4)
 	set_landmarks(_default_landmarks())
 	set_resident_profiles(_default_resident_profiles())
+	set_melody_progress(_build_story_melody_progress("continue"))
 	_seed_resident_progress("ferry_caretaker", 2, 2, "resolved", "Waiting for the harbor to hear a fully restored phrase.")
 	_seed_resident_progress("church_caretaker", 2, 2, "reward_collected", "The church phrase is stable and pointing toward the tunnels.")
 	_seed_resident_progress("tower_keeper", 1, 1, "introduced", "Preparing to compare fragments at Bagua Tower.")
@@ -500,9 +592,9 @@ func configure_free_walk() -> void:
 	set_objective("Wander the island and learn how the first district wants to be introduced.")
 	set_hint("R Inspect   J Journal   Esc Pause")
 	set_save_status("Autosave: free walk sandbox ready")
-	set_fragments(0, 4)
 	set_landmarks(_default_landmarks())
 	set_resident_profiles(_default_resident_profiles())
+	set_melody_progress(_build_story_melody_progress("free_walk"))
 	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
 		_seed_resident_progress(resident_id, 1, 1, "introduced", "Sandbox resident notes are available in free walk.")
 	_update_summary_counts()
@@ -515,9 +607,9 @@ func configure_postgame() -> void:
 	set_objective("Wander the island after the festival.")
 	set_hint("R Inspect   J Journal   Esc Pause")
 	set_save_status("Autosave: postgame prototype checkpoint ready")
-	set_fragments(4, 4)
 	set_landmarks(_default_landmarks())
 	set_resident_profiles(_default_resident_profiles())
+	set_melody_progress(_build_story_melody_progress("postgame"))
 	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
 		_seed_resident_progress(resident_id, 2, RESIDENT_CATALOG_SCRIPT.max_trust(), "resolved", "Present at the restored festival and ready for lighter postgame dialogue.")
 	_update_summary_counts()
@@ -592,6 +684,108 @@ func _update_summary_counts() -> void:
 	summary["residents"] = str(_count_helped_residents())
 	ending_summary = summary
 	summary_changed.emit(ending_summary)
+
+
+func _build_story_melody_progress(state_id: String) -> Dictionary:
+	match state_id:
+		"new_game":
+			return {
+				"festival_melody": {
+					"state": "heard",
+					"fragments_found": 0,
+					"known_sources": ["ferry_plaza"],
+					"next_lead": "Speak with the church caretaker and compare how the bells answer the harbor.",
+					"performed": false,
+				},
+			}
+		"continue":
+			return {
+				"festival_melody": {
+					"state": "reconstructed",
+					"fragments_found": 2,
+					"known_sources": ["ferry_plaza", "church_bells", "tunnel_echo"],
+					"next_lead": "Carry the stronger contour toward Bagua Tower and compare the recovered phrases.",
+					"performed": false,
+				},
+			}
+		"free_walk":
+			return {
+				"festival_melody": {
+					"state": "heard",
+					"fragments_found": 0,
+					"known_sources": ["ferry_plaza"],
+					"next_lead": "Wander freely and use residents to sample how each district hears the island's missing tune.",
+					"performed": false,
+				},
+			}
+		"postgame":
+			return {
+				"festival_melody": {
+					"state": "resonant",
+					"fragments_found": 4,
+					"known_sources": ["ferry_plaza", "church_bells", "tunnel_echo", "tower_chamber"],
+					"next_lead": "Listen to how the island answers now that the festival melody has returned.",
+					"performed": true,
+				},
+			}
+		_:
+			return _default_melody_progress()
+
+
+func _normalize_melody_progress(new_progress: Dictionary) -> Dictionary:
+	var normalized := _default_melody_progress()
+
+	for melody_id in get_melody_ids():
+		var melody_definition: Dictionary = melody_catalog.get(melody_id, {})
+		var current_state: Dictionary = normalized.get(melody_id, {}).duplicate(true)
+		var incoming_state: Dictionary = new_progress.get(melody_id, {})
+
+		current_state["state"] = String(incoming_state.get("state", current_state.get("state", "unknown")))
+		current_state["fragments_total"] = maxi(
+			int(incoming_state.get("fragments_total", current_state.get("fragments_total", int(melody_definition.get("fragment_total", 0))))),
+			0
+		)
+		current_state["fragments_found"] = clampi(
+			int(incoming_state.get("fragments_found", current_state.get("fragments_found", 0))),
+			0,
+			int(current_state.get("fragments_total", 0))
+		)
+		current_state["known_sources"] = _normalize_string_array(
+			incoming_state.get("known_sources", current_state.get("known_sources", []))
+		)
+		current_state["next_lead"] = String(incoming_state.get("next_lead", current_state.get("next_lead", "")))
+		current_state["performed"] = bool(incoming_state.get("performed", current_state.get("performed", false)))
+
+		normalized[melody_id] = current_state
+
+	return normalized
+
+
+func _normalize_string_array(value: Variant) -> Array[String]:
+	var output: Array[String] = []
+
+	if value is PackedStringArray:
+		for entry in value:
+			output.append(String(entry))
+		return output
+
+	if value is Array:
+		for entry in value:
+			output.append(String(entry))
+
+	return output
+
+
+func _sync_fragment_summary_from_melodies() -> void:
+	var total_found := 0
+	var total_fragments := 0
+
+	for melody_id in get_melody_ids():
+		var melody_state: Dictionary = melody_progress.get(melody_id, {})
+		total_found += int(melody_state.get("fragments_found", 0))
+		total_fragments += int(melody_state.get("fragments_total", 0))
+
+	set_fragments(total_found, total_fragments)
 
 
 func _cycle_player_profile_option(profile_key: String, options: Array, direction: int) -> void:

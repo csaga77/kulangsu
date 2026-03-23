@@ -50,10 +50,7 @@ func refresh_from_state() -> void:
 		AppState.location,
 	]
 	m_residents_body.text = "Resident Notes\n%s" % AppState.build_resident_journal_text()
-	m_melody_body.text = "Melody fragments\nRecovered: %d / %d" % [
-		AppState.fragments_found,
-		AppState.fragments_total,
-	]
+	m_melody_body.text = "Melody Journal\n%s" % AppState.build_melody_journal_text()
 	m_wardrobe_body.text = "Wardrobe\n%s" % AppState.build_player_costume_journal_text()
 	m_costume_value.text = AppState.get_equipped_player_costume_display_name()
 	m_hair_style_value.text = AppState.get_player_hair_style_display_name()

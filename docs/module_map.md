@@ -20,6 +20,7 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../main.tscn`](../main.tscn) / [`../main.gd`](../main.gd) - connects terrain, the shared actor layer, landmarks, and residents to the UI
 - [`../terrain.tscn`](../terrain.tscn) / [`../terrain.gd`](../terrain.gd) - island terrain, generated water layer, and water rendering setup
 - [`../game/app_state.gd`](../game/app_state.gd) - shared UI/progression-facing state
+- [`../game/melody_catalog.gd`](../game/melody_catalog.gd) - authored melody definitions, clue sources, and performance-point summaries
 - [`../game/resident_catalog.gd`](../game/resident_catalog.gd) - resident roster, dialogue, appearance, and spawn data
 - [`../game/player_appearance_catalog.gd`](../game/player_appearance_catalog.gd) / [`../game/player_costume_catalog.gd`](../game/player_costume_catalog.gd) - player customization data
 
@@ -78,6 +79,7 @@ Use these when you need a focused validation target instead of the full project 
 
 - [`../docs/`](../docs) - project docs
 - [`features/multi_level_spaces.md`](features/multi_level_spaces.md) - implementation-facing guide for stacked rooms, parent-owned level mapping, portals, stairs, and current design gaps
+- [`features/core_melody_loop.md`](features/core_melody_loop.md) - implementation-facing summary of the current melody-driven gameplay loop, gap list, and MVP build order
 - [`features/npc_system.md`](features/npc_system.md) - implementation-facing summary of the resident/NPC system
 - [`features/weather_rendering.md`](features/weather_rendering.md) - current weather-system design, ownership, extension guide, and focused validation notes for the tilemap-backed sandbox
 - [`features/terrain_water_rendering.md`](features/terrain_water_rendering.md) - terrain water rendering and validation notes
