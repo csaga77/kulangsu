@@ -22,8 +22,22 @@ player = NodePath("../actors/player")
 y_sort_enabled = true
 
 [node name="player" parent="actors" unique_id=1255111382 groups=["player"] instance=ExtResource("5_lquwl")]
-position = Vector2(3428, 7735)
+position = Vector2(5200, 9421)
 controller = SubResource("Resource_qjl73")
+configuration = {
+"body_type": "male",
+"body_type_index": 0,
+"selections": {
+"body/body": "light",
+"feet/shoes/feet_shoes_basic": "brown",
+"hair/short/hair_bangs": "chestnut",
+"head/faces/face_neutral": "light",
+"head/heads/human/heads_human_male": "light",
+"legs/pants/legs_pants": "charcoal",
+"torso/backpack/backpack": "leather",
+"torso/shirts/longsleeve/torso_clothes_longsleeve": "teal"
+}
+}
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=369660366]
 position = Vector2(12357, 19805)
