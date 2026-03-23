@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://cx454ysopwbyg"]
 
 [ext_resource type="Script" uid="uid://djt6soykmlobh" path="res://game/marble_game/marble_ball.gd" id="1_h55h2"]
-[ext_resource type="AudioStream" uid="uid://eoxfok8ew80c" path="res://resources/audio/marble_hit.mp3" id="2_h55h2"]
+[ext_resource type="AudioStream" uid="uid://eoxfok8ew80c" path="res://resources/audio/sfx/marble_hit.mp3" id="2_h55h2"]
 [ext_resource type="Shader" uid="uid://c0jfymial01io" path="res://game/marble_game/marble_ball.gdshader" id="3_aphqf"]
 [ext_resource type="Texture2D" uid="uid://bmfvvxghdvi6b" path="res://resources/sprites/white_marble.png" id="4_js1yd"]
 
