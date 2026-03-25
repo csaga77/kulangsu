@@ -116,7 +116,18 @@ Use this order to close the gap with the smallest architectural risk.
 
 The `Melody` journal tab now shows melody name, district, stage, fragment progress, clue map, next lead, and world-response summary per melody.
 
-### 4. Build One Complete Landmark Loop
+### 4. Build One Complete Landmark Loop ✦ Code Complete — Needs Scene Wire-Up
+
+All four landmark arcs are fully implemented in code:
+
+- `LandmarkController` + Trinity Church arc (choir cue collection via `LandmarkTrigger`)
+- `LandmarkController` + Bi Shan Tunnel arc (echo tracing + mural chamber)
+- `LandmarkController` + Long Shan Tunnel arc (escort via entry/exit triggers + `tunnel_guide` dialogue beats)
+- `LandmarkController` + Bagua Tower arc (synthesis chamber + `tower_keeper` dialogue beats)
+
+The remaining manual steps are placing each controller as a child of its corresponding scene in the Godot editor and tuning trigger offsets to match the actual scene layouts.
+
+See [`trinity_church.md`](trinity_church.md), [`bi_shan_tunnel.md`](bi_shan_tunnel.md), [`long_shan_tunnel.md`](long_shan_tunnel.md), and [`bagua_tower.md`](bagua_tower.md) for per-landmark integration checklists.
 
 - Use one landmark as the first full vertical slice.
 - Good first candidates:

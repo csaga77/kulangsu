@@ -35,6 +35,7 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 - Resident talk progression is linear right now. `conversation_index` advances through the resident's `dialogue_beats`.
 - Nearby resident bubbles should default to `...` until explicit talk input reveals a line.
 - Residents should only be targetable when the player shares the same absolute z/layer context.
+- If a resident and a collectible landmark trigger overlap in range, the resident should win the closest-target selection so `Talk` stays reliable.
 - Residents currently spawn as stationary overworld actors; they can still face the player while interacting.
 - Player and resident actors must stay under the same y-sorted actor layer in the main scene so character overlap reads correctly.
 
@@ -108,6 +109,7 @@ If a resident uses an unsupported `anchor_id`, startup should warn and skip that
 - If a resident and the player overlap physically but live on different absolute z layers, they should not target each other, show a talk prompt, or show a resident speech cue.
 - The journal text is generated as one formatted text block, not a structured list widget. If you change the resident note format, update both the docs and the journal renderer.
 - The main overworld currently uses shared hub anchors with offsets, not dedicated per-resident scene markers.
+- Collected landmark triggers must immediately drop out of closest-target selection so they do not block nearby resident talk prompts.
 
 ## Architecture / Ownership
 
@@ -173,6 +175,7 @@ When extending the NPC system, make changes in this order unless the task is str
 
 - Run the full project and verify that the main scene loads with the resident roster present.
 - Confirm that approaching a resident changes the hint to a talk prompt and that `R` advances their dialogue.
+- In Trinity Church and other mixed interaction spaces, confirm that nearby residents still win target selection over collectible cue triggers.
 - Open the journal and verify that introduced residents appear with updated notes.
 - Use [`../../game/tests/npc_system/test_npc_layer_interaction.tscn`](../../game/tests/npc_system/test_npc_layer_interaction.tscn) when testing same-layer gating, portal-driven z changes, and closest-target behavior across stacked resident layers.
 - Use [`../../game/tests/npc_system/test_scene.tscn`](../../game/tests/npc_system/test_scene.tscn) as a faster sandbox for resident speech and journal checks.
@@ -184,6 +187,7 @@ Quick validation checklist:
 - New or changed residents appear under the shared `actors` layer and sort correctly against the player
 - Crossing the portal in `test_npc_layer_interaction.tscn` changes the player's absolute z and swaps which resident row is targetable
 - The nearby cue still shows `...` before talk, and the revealed resident line still fits in the speech balloon
+- After collecting a nearby landmark trigger, the prompt should immediately fall through to the nearest valid resident if one is still in range
 - Resident introduction still makes the resident appear in the journal
 - If trust/objective/save status changed, the HUD and journal still reflect that state cleanly
 

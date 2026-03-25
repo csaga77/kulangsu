@@ -149,6 +149,17 @@ func _on_inspect_requested() -> void:
 		_update_hint_text(m_closest_object)
 		return
 
+	var landmark_trigger := _get_landmark_trigger(m_closest_object)
+	if landmark_trigger != null:
+		AppState.activate_landmark_trigger(
+			landmark_trigger.landmark_id,
+			landmark_trigger.trigger_id,
+			landmark_trigger.display_name
+		)
+		landmark_trigger.collect()
+		_update_hint_text(m_closest_object)
+		return
+
 	var display_name := _display_name_for_node(m_closest_object)
 	AppState.set_save_status("Inspect: %s" % display_name)
 
@@ -156,6 +167,14 @@ func _on_inspect_requested() -> void:
 func _update_hint_text(target: Node2D) -> void:
 	if !is_instance_valid(target):
 		AppState.set_hint(DEFAULT_HINT)
+		return
+
+	var landmark_trigger := _get_landmark_trigger(target)
+	if landmark_trigger != null:
+		if landmark_trigger.is_collected():
+			AppState.set_hint(DEFAULT_HINT)
+		else:
+			AppState.set_hint("R Collect %s   J Journal   Esc Pause" % landmark_trigger.display_name)
 		return
 
 	var display_name := _display_name_for_node(target)
@@ -261,3 +280,7 @@ func _get_resident_controller(target: Node2D) -> NPCController:
 	if human == null:
 		return null
 	return human.controller as NPCController
+
+
+func _get_landmark_trigger(target: Node2D) -> LandmarkTrigger:
+	return target as LandmarkTrigger

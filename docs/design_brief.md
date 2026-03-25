@@ -67,6 +67,8 @@ Input expectations:
 - Long Shan Tunnel: escort and reassurance.
 - Bagua Tower: vertical traversal and synthesis.
 
+**This five-landmark route is canonical.** An external GDD references Sunlight Rock and Zheng Chenggong Statue as additional landmarks, but these are not part of the current authored route and are out of scope until an explicit world-design decision is made. Do not add, replace, or reorder landmarks without updating this file, `core_game_workflow.md`, and the relevant landmark feature docs.
+
 ## Non-Goals
 
 - Do not add mandatory combat to the main loop.

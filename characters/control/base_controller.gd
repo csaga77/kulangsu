@@ -233,6 +233,8 @@ func _create_area_on_parent() -> void:
 
 	m_area.body_entered.connect(_on_body_entered)
 	m_area.body_exited.connect(_on_body_exited)
+	m_area.area_entered.connect(_on_body_entered)
+	m_area.area_exited.connect(_on_body_exited)
 
 func _update_collision_radius() -> void:
 	if m_circle_shape == null:
@@ -244,6 +246,10 @@ func _is_valid_object(body: Node2D) -> bool:
 		return false
 
 	if !is_instance_valid(body):
+		return false
+
+	var landmark_trigger := body as LandmarkTrigger
+	if landmark_trigger != null and landmark_trigger.is_collected():
 		return false
 
 	if m_character != null and (body == m_character or CommonUtils.is_ancestor(body, m_character)):
@@ -282,16 +288,37 @@ func _get_closest_object() -> Node2D:
 
 	var reference_position := _get_reference_position()
 	var closest_object: Node2D = null
+	var closest_priority := INF
 	var closest_distance_sq := INF
 
 	for object_node in m_nearby_objects:
+		var interaction_priority := _get_interaction_priority(object_node)
 		var distance_sq := reference_position.distance_squared_to(object_node.global_position)
 
-		if distance_sq < closest_distance_sq:
+		if interaction_priority < closest_priority:
+			closest_priority = interaction_priority
+			closest_distance_sq = distance_sq
+			closest_object = object_node
+			continue
+
+		if interaction_priority == closest_priority and distance_sq < closest_distance_sq:
 			closest_distance_sq = distance_sq
 			closest_object = object_node
 
 	return closest_object
+
+
+func _get_interaction_priority(object_node: Node2D) -> int:
+	if object_node == null or !is_instance_valid(object_node):
+		return 100
+
+	if object_node is HumanBody2D:
+		return 0
+
+	if object_node is LandmarkTrigger:
+		return 2
+
+	return 1
 
 func _ensure_balloon_instance() -> void:
 	if m_balloon != null and is_instance_valid(m_balloon):

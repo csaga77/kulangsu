@@ -140,6 +140,34 @@ Governance:
 - new multi-level spaces should use either absolute or parent-relative exported `level_id` values where a reusable scene or component needs to point at a logical level
 - existing portals and stairs outside Bagua Tower may continue to use hand-authored mask values; migration is not required but recommended
 
+## Landmark Progress Contract
+
+Owned by:
+
+- [`../game/app_state.gd`](../game/app_state.gd)
+- [`../architecture/trinity_church_controller.gd`](../architecture/trinity_church_controller.gd) (per-landmark controller)
+- [`../game/landmark_trigger.gd`](../game/landmark_trigger.gd) (per-pickup node)
+
+Current contract:
+
+- `AppState.landmark_progress` is a `Dictionary` keyed by landmark id (`piano_ferry`, `trinity_church`, `bi_shan_tunnel`, `long_shan_tunnel`, `bagua_tower`)
+- each entry is a `Dictionary` with at minimum a `"state"` key: `locked / available / introduced / in_progress / resolved / reward_collected`
+- landmark-specific sub-state (e.g. `"cues_collected"` for Trinity Church) lives inside the same per-landmark entry
+- `AppState.landmark_progress_changed(landmark_id, progress)` fires whenever any landmark's entry changes
+- `AppState.get_landmark_progress(landmark_id)` and `get_landmark_state(landmark_id)` are the read API
+- `AppState.set_landmark_progress(landmark_id, progress)` and `advance_landmark_state(landmark_id, new_state)` are the write API
+- `AppState.activate_landmark_trigger(landmark_id, trigger_id, display_name)` is called by `main.gd` when the player inspects a `LandmarkTrigger` node; it routes to the correct per-landmark collection handler
+- `AppState.set_all_landmark_progress(progress)` sets multiple landmarks at once; used by `configure_*` methods
+- Resident dialogue beats may carry `"unlock_landmark"` to unlock a landmark when the beat fires, and `"gate"` / `"gate_fallback"` to block a beat until a landmark condition is satisfied
+- Resident dialogue beats may carry `"landmark_reward"` to trigger a landmark resolution (fragment award, melody state update, downstream unlocks) when the beat fires
+
+Governance:
+
+- keep per-landmark collection logic in `AppState`; keep per-landmark scene setup in the landmark controller
+- if a new landmark arc is added, add its id to `_default_landmark_progress()` and `_build_landmark_progress()`, create a controller script, and add a `_collect_*` and `_resolve_*` method pair to `AppState`
+- if the landmark state enum changes, update this file and the relevant landmark feature docs
+- `LandmarkTrigger` nodes handle their own hide/disable after collection; do not re-enable them from outside the trigger or controller
+
 ## Reusable Module Contracts
 
 ### Grid Board Game

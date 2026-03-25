@@ -45,6 +45,10 @@ Put player control, NPC behavior, interaction prompts, and behavior-tree work he
 - [`../architecture/bagua_tower/tests/`](../architecture/bagua_tower/tests) - Bagua Tower-specific validation scenes and scripts
 - [`../common/`](../common) - shared world nodes, effects, and level helpers such as `LevelNode2D` and `LevelRegistry`
 
+### Landmark Quest Triggers
+
+- [`../game/landmark_trigger.gd`](../game/landmark_trigger.gd) - `class_name LandmarkTrigger extends Area2D`; place directly in a landmark scene; exports `landmark_id`, `trigger_id`, `display_name`, `visible_in_states`, `collected_progress_key`, `requires_collected`, `hide_if_flag`; self-manages visibility by subscribing to `AppState.landmark_progress_changed`; hides and disables itself after `collect()` is called
+
 Put new landmark scenes and reusable architectural pieces here. Define shared floor data in `LevelRegistry`, and use absolute or parent-relative exported `level_id` integers in traversal components.
 
 ## Reusable Gameplay Modules
