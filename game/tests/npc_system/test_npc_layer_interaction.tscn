@@ -1,6 +1,6 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://scenes/test_npc_layer_interaction.gd" id="1_scene"]
+[ext_resource type="Script" path="res://game/tests/npc_system/test_npc_layer_interaction.gd" id="1_scene"]
 [ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/human_body_2d.tscn" id="2_human"]
 [ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/control/player_controller.gd" id="3_player"]
 [ext_resource type="Script" uid="uid://vk6rfdoxtkgv" path="res://characters/control/npc_controller.gd" id="4_npc"]

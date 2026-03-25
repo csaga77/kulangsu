@@ -1,5 +1,4 @@
 @tool
-class_name TestNPCLayerInteraction
 extends Node2D
 
 const LAYER_ONE_MASK := 524288

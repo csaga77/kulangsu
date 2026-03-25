@@ -70,7 +70,7 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 1. Edit the resident's `_look(...)` config in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd).
 2. Confirm that every selected LPC path supports the resident's body type and chosen variant in the shipped metadata. A matching path name alone does not guarantee the combination can render.
 3. Do not hardcode appearance in scenes; `NPCController` applies resident appearance automatically.
-4. Verify both the main scene and [`../../scenes/test_scene.tscn`](../../scenes/test_scene.tscn) if that resident id is used there.
+4. Verify both the main scene and [`../../game/tests/npc_system/test_scene.tscn`](../../game/tests/npc_system/test_scene.tscn) if that resident id is used there.
 5. Treat `Failed to resolve combined texture for selection layer` warnings as a resident-content bug and fix the catalog entry instead of ignoring the warning.
 
 ### Move A Resident
@@ -121,8 +121,8 @@ If a resident uses an unsupported `anchor_id`, startup should warn and skip that
 
 - Scenes:
   - [`../../main.tscn`](../../main.tscn)
-  - [`../../scenes/test_npc_layer_interaction.tscn`](../../scenes/test_npc_layer_interaction.tscn)
-  - [`../../scenes/test_scene.tscn`](../../scenes/test_scene.tscn)
+  - [`../../game/tests/npc_system/test_npc_layer_interaction.tscn`](../../game/tests/npc_system/test_npc_layer_interaction.tscn)
+  - [`../../game/tests/npc_system/test_scene.tscn`](../../game/tests/npc_system/test_scene.tscn)
 - Scripts:
   - [`../../main.gd`](../../main.gd)
   - [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd)
@@ -174,8 +174,8 @@ When extending the NPC system, make changes in this order unless the task is str
 - Run the full project and verify that the main scene loads with the resident roster present.
 - Confirm that approaching a resident changes the hint to a talk prompt and that `R` advances their dialogue.
 - Open the journal and verify that introduced residents appear with updated notes.
-- Use [`../../scenes/test_npc_layer_interaction.tscn`](../../scenes/test_npc_layer_interaction.tscn) when testing same-layer gating, portal-driven z changes, and closest-target behavior across stacked resident layers.
-- Use [`../../scenes/test_scene.tscn`](../../scenes/test_scene.tscn) as a faster sandbox for resident speech and journal checks.
+- Use [`../../game/tests/npc_system/test_npc_layer_interaction.tscn`](../../game/tests/npc_system/test_npc_layer_interaction.tscn) when testing same-layer gating, portal-driven z changes, and closest-target behavior across stacked resident layers.
+- Use [`../../game/tests/npc_system/test_scene.tscn`](../../game/tests/npc_system/test_scene.tscn) as a faster sandbox for resident speech and journal checks.
 
 Quick validation checklist:
 

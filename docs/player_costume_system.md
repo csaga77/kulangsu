@@ -56,7 +56,7 @@ The prototype wardrobe currently ships with four presets:
 ### Universal LPC Runtime Contract
 
 - The shipped game consumes the prebuilt metadata file at [`../resources/sprites/universal_lpc/universal_lpc_metadata.json`](../resources/sprites/universal_lpc/universal_lpc_metadata.json).
-- Regenerating Universal LPC metadata is a development-time workflow driven by the validation tooling under [`../scenes/test_universal_lpc_sprite_generator.tscn`](../scenes/test_universal_lpc_sprite_generator.tscn), not a runtime game step.
+- Regenerating Universal LPC metadata is a development-time workflow driven by the validation tooling under [`../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn`](../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn), not a runtime game step.
 - [`../characters/human_body_2d.gd`](../characters/human_body_2d.gd) remains the root avatar node and owns the material/shader setup for the composed character.
 - [`../characters/universal_lpc/universal_lpc_sprite_2d.gd`](../characters/universal_lpc/universal_lpc_sprite_2d.gd) handles metadata-driven layer composition under `HumanBody2D`.
 - Animation authoring for this slice should stay within the shipped default LPC animation set and any explicitly supported custom animation layouts captured in the prebuilt metadata.
@@ -142,7 +142,7 @@ This keeps the feature overlay-based and consistent with the project’s minimal
 - Open the journal wardrobe tab and confirm the preview, labels, unlocked count, and costume cycling reflect the new content.
 - Validate the live overworld avatar through the main project flow so `AppState.player_appearance_changed` still updates the active player immediately.
 - If unlock rules changed, confirm both the locked and unlocked states read correctly in the journal text.
-- If new LPC assets or animations were introduced, use [`../scenes/test_universal_lpc_sprite_generator.tscn`](../scenes/test_universal_lpc_sprite_generator.tscn) or another focused validation scene before relying on the full game flow.
+- If new LPC assets or animations were introduced, use [`../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn`](../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn) or another focused validation scene before relying on the full game flow.
 - Treat `Failed to resolve combined texture for selection layer` warnings as content bugs. They usually mean the chosen path, body type, or variant is unsupported by the shipped metadata.
 
 ## Good Next Steps

@@ -29,9 +29,11 @@ If several screens or systems need the same player-facing state, it probably bel
 ## Characters And Interaction
 
 - [`../characters/`](../characters) - player and NPC scenes plus sprite systems
+- [`../characters/tests/`](../characters/tests) - direct character smoke scenes such as `HumanBody2D`
 - [`../characters/control/`](../characters/control) - controllers, resident presentation hookup, and interaction behavior
 - [`../characters/control/bt/`](../characters/control/bt) - behavior-tree framework
 - [`../characters/universal_lpc/`](../characters/universal_lpc) - Universal LPC metadata tooling, runtime sprite composition, and related helpers
+- [`../characters/universal_lpc/tests/`](../characters/universal_lpc/tests) - Universal LPC metadata and composition validation tooling
 - [`../gui/`](../gui) - in-world UI such as speech balloons
 
 Put player control, NPC behavior, interaction prompts, and behavior-tree work here.
@@ -40,6 +42,7 @@ Put player control, NPC behavior, interaction prompts, and behavior-tree work he
 
 - [`../architecture/`](../architecture) - landmark scenes such as Bagua Tower, tunnels, church, and ferry content
 - [`../architecture/components/`](../architecture/components) - reusable world-building pieces such as portals and stairs
+- [`../architecture/bagua_tower/tests/`](../architecture/bagua_tower/tests) - Bagua Tower-specific validation scenes and scripts
 - [`../common/`](../common) - shared world nodes, effects, and level helpers such as `LevelNode2D` and `LevelRegistry`
 
 Put new landmark scenes and reusable architectural pieces here. Define shared floor data in `LevelRegistry`, and use absolute or parent-relative exported `level_id` integers in traversal components.
@@ -49,6 +52,7 @@ Put new landmark scenes and reusable architectural pieces here. Define shared fl
 - [`../game/grid_board_game/`](../game/grid_board_game) - reusable board-game module and local test scenes
 - [`../game/marble_game/`](../game/marble_game) - marble-game prototype
 - [`../game/piano_game/`](../game/piano_game) - piano mini-game prototype
+- [`../game/tests/npc_system/`](../game/tests/npc_system) - NPC/resident validation scenes and companion test assets
 
 If a feature is self-contained and reusable, extend its module folder instead of scattering logic across unrelated directories.
 
@@ -63,14 +67,17 @@ Be careful about renames or moves here because scene and resource references can
 ## Validation Scenes
 
 - [`../scenes/`](../scenes) - ad hoc prototype and validation scenes
-- [`../scenes/test_npc_layer_interaction.tscn`](../scenes/test_npc_layer_interaction.tscn) - focused same-layer NPC targeting and portal-driven z-layer switching sandbox
+- [`../characters/tests/test_human_body_2d.tscn`](../characters/tests/test_human_body_2d.tscn) - direct `HumanBody2D` smoke sandbox with player-controller wiring
+- [`../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn`](../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn) - Universal LPC metadata and sprite-composition validation tool
+- [`../game/tests/npc_system/test_npc_layer_interaction.tscn`](../game/tests/npc_system/test_npc_layer_interaction.tscn) - focused same-layer NPC targeting and portal-driven z-layer switching sandbox
 - [`../scenes/test_level_resolution.tscn`](../scenes/test_level_resolution.tscn) - focused relative-level resolution and inherited room-level sandbox
 - [`../scenes/test_portal_overlap.tscn`](../scenes/test_portal_overlap.tscn) - focused multi-actor portal transition regression test
-- [`../scenes/test_bagua_portal_levels.tscn`](../scenes/test_bagua_portal_levels.tscn) - focused Bagua base-to-ground portal integration for `level_id` actor transitions
-- [`../scenes/test_bagua_stairs_visibility.tscn`](../scenes/test_bagua_stairs_visibility.tscn) - full Bagua Tower ascent, descent, and upper-floor visibility integration test
+- [`../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn`](../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn) - focused Bagua base-to-ground portal integration for `level_id` actor transitions
+- [`../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn`](../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn) - full Bagua Tower ascent, descent, and upper-floor visibility integration test
+- [`../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn`](../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn) - focused Bagua stair physical traversal integration test
 - [`../scenes/test_weather.tscn`](../scenes/test_weather.tscn) - focused weather tuning sandbox with tilemap-backed water/terrain, a shared fog pass, pier impacts, a thunder-flash pass, an in-scene weather control panel with rain, fog, and thunder controls, actor readability checks, and temporary foreground occluder proxies
 - [`../scenes/test_water_render.tscn`](../scenes/test_water_render.tscn) - focused water color, wave, transparency, and refraction sandbox
-- [`../scenes/test_scene.tscn`](../scenes/test_scene.tscn) - focused resident speech, talk, and journal sandbox
+- [`../game/tests/npc_system/test_scene.tscn`](../game/tests/npc_system/test_scene.tscn) - focused resident speech, talk, and journal sandbox
 - [`../game/grid_board_game/test_grid_board_game.tscn`](../game/grid_board_game/test_grid_board_game.tscn)
 - [`../game/grid_board_game/test_terminal_turn_state.tscn`](../game/grid_board_game/test_terminal_turn_state.tscn)
 

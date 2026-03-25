@@ -166,7 +166,7 @@ Use [`../main.tscn`](../main.tscn) when validating:
 
 ### Fast Resident Content Check
 
-Use [`../scenes/test_scene.tscn`](../scenes/test_scene.tscn) when you want a faster sandbox for:
+Use [`../game/tests/npc_system/test_scene.tscn`](../game/tests/npc_system/test_scene.tscn) when you want a faster sandbox for:
 
 - resident appearance
 - cue-bubble and revealed-line behavior
@@ -177,7 +177,7 @@ This scene is better when the bug is about resident content or presentation rath
 
 ### Layer And Portal Check
 
-Use [`../scenes/test_npc_layer_interaction.tscn`](../scenes/test_npc_layer_interaction.tscn) when changing:
+Use [`../game/tests/npc_system/test_npc_layer_interaction.tscn`](../game/tests/npc_system/test_npc_layer_interaction.tscn) when changing:
 
 - same-layer targeting rules
 - `BaseController` proximity filtering
