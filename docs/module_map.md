@@ -40,9 +40,9 @@ Put player control, NPC behavior, interaction prompts, and behavior-tree work he
 
 - [`../architecture/`](../architecture) - landmark scenes such as Bagua Tower, tunnels, church, and ferry content
 - [`../architecture/components/`](../architecture/components) - reusable world-building pieces such as portals and stairs
-- [`../common/`](../common) - shared world nodes, effects, and level-context helpers such as `LevelNode2D`, `LevelContext2D`, and `LevelProfile`
+- [`../common/`](../common) - shared world nodes, effects, and level helpers such as `LevelNode2D` and `LevelRegistry`
 
-Put new landmark scenes and reusable architectural pieces here. Define parent-owned `LevelProfile` floor mappings in the owning landmark scene, and use plain exported `level_id` integers in traversal components.
+Put new landmark scenes and reusable architectural pieces here. Define shared floor data in `LevelRegistry`, and use absolute or parent-relative exported `level_id` integers in traversal components.
 
 ## Reusable Gameplay Modules
 
@@ -64,9 +64,9 @@ Be careful about renames or moves here because scene and resource references can
 
 - [`../scenes/`](../scenes) - ad hoc prototype and validation scenes
 - [`../scenes/test_npc_layer_interaction.tscn`](../scenes/test_npc_layer_interaction.tscn) - focused same-layer NPC targeting and portal-driven z-layer switching sandbox
-- [`../scenes/test_level_context.tscn`](../scenes/test_level_context.tscn) - focused parent-owned level-slot mapping and inherited room-level resolution sandbox
+- [`../scenes/test_level_resolution.tscn`](../scenes/test_level_resolution.tscn) - focused relative-level resolution and inherited room-level sandbox
 - [`../scenes/test_portal_overlap.tscn`](../scenes/test_portal_overlap.tscn) - focused multi-actor portal transition regression test
-- [`../scenes/test_bagua_portal_levels.tscn`](../scenes/test_bagua_portal_levels.tscn) - focused Bagua base-to-ground portal integration for `level_id -> LevelProfile` actor transitions
+- [`../scenes/test_bagua_portal_levels.tscn`](../scenes/test_bagua_portal_levels.tscn) - focused Bagua base-to-ground portal integration for `level_id` actor transitions
 - [`../scenes/test_bagua_stairs_visibility.tscn`](../scenes/test_bagua_stairs_visibility.tscn) - full Bagua Tower ascent, descent, and upper-floor visibility integration test
 - [`../scenes/test_weather.tscn`](../scenes/test_weather.tscn) - focused weather tuning sandbox with tilemap-backed water/terrain, a shared fog pass, pier impacts, a thunder-flash pass, an in-scene weather control panel with rain, fog, and thunder controls, actor readability checks, and temporary foreground occluder proxies
 - [`../scenes/test_water_render.tscn`](../scenes/test_water_render.tscn) - focused water color, wave, transparency, and refraction sandbox

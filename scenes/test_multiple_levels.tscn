@@ -46,7 +46,7 @@ use_ground_bounding_rect = false
 [node name="level2" parent="." unique_id=767418058 node_paths=PackedStringArray("visibility_mask_nodes") instance=ExtResource("2_m6uu3")]
 z_index = 2
 position = Vector2(160, 48)
-level = 2
+level_id = 2
 visibility_mask_nodes = [NodePath("../mask")]
 
 [node name="level2_floor" type="TileMapLayer" parent="level2" unique_id=1318804321]

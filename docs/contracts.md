@@ -69,53 +69,54 @@ Governance:
 Owned by:
 
 - [`../common/level_node_2d.gd`](../common/level_node_2d.gd)
-- [`../common/level_context_2d.gd`](../common/level_context_2d.gd)
+- [`../common/level_registry.gd`](../common/level_registry.gd)
 - [`features/multi_level_spaces.md`](features/multi_level_spaces.md)
 
 Current contract:
 
-- `LevelNode2D` supports three level sources: explicit level, context slot, and inherit-parent
-- reusable room scenes should prefer `Inherit Parent` so they do not hardcode runtime level ids
-- landmark or building scenes that own multiple floors should provide the runtime mapping through `LevelContext2D`
-- `LevelContext2D.runtime_levels` maps local floor slots to stable `level_id` values
-- `LevelContext2D.level_profiles` maps those `level_id` values to runtime floor data such as tile atlas column, actor collision mask, and actor `z_index`
-- `LevelContext2D.level_profiles` may include additional non-slot levels when a landmark needs bridge-only actor states, such as Bagua's exterior base profile
-- `level` remains the explicit fallback value for standalone scenes and one-off spaces
-- `LevelNode2D` resolves a `level_id`, then asks the nearest `LevelContext2D` for the corresponding physics-atlas column instead of assuming `level_id == atlas_column`
-- actor traversal components resolve their final collision-mask and `z_index` state through the same parent-owned level profiles
+- every level-aware node must expose a `level_id` for its own level
+- every level-aware node may expose additional `level_id` properties such as `level_from`, `level_to`, `level_bottom`, or `level_top`
+- `LevelNode2D` resolves its `level_id` either absolutely or relative to the closest level-aware parent
+- reusable room scenes should prefer relative level ids so they do not hardcode runtime level ids
+- `LevelRegistry` derives shared runtime floor data from `level_id`
+- By default, `LevelRegistry` maps `level_id` to runtime floor data as `physics_atlas_column = level_id`, `z_index = level_id`, and `collision_mask = 1 << (19 + level_id)`
+- `LevelRegistry` remains the place to update if a landmark ever needs non-formula level behavior
+- `LevelNode2D` resolves a `level_id`, then asks `LevelRegistry` for the corresponding physics-atlas column instead of assuming `level_id == atlas_column`
+- actor traversal components resolve their final collision-mask and `z_index` state through the same shared global level data
 - visibility masking still depends on authored mask layers plus absolute `z_index` behavior
 
 Governance:
 
-- keep runtime level mappings in the parent landmark/building scene when child rooms are intended to be reusable
-- when introducing new multi-level spaces, prefer slot-based parent mapping over repeating raw runtime level ids on child instances
-- do not duplicate physics-atlas, collision-mask, or actor-`z_index` values outside the owning `LevelContext2D` level profiles when a scene is using the parent-owned model
-- do not assume `LevelContext2D` automatically configures visibility masks
+- keep shared level ids consistent across scenes when child rooms are intended to be reusable
+- when introducing new multi-level spaces, prefer relative level ids on child instances over repeating raw runtime level ids everywhere
+- do not duplicate physics-atlas, collision-mask, or actor-`z_index` values outside `LevelRegistry` when a scene is using the shared model
+- do not assume `LevelRegistry` automatically configures visibility masks
 - if you need the full current design, known limitation, or validation targets, start with [`features/multi_level_spaces.md`](features/multi_level_spaces.md)
-- if the `LevelNode2D` resolution modes or `LevelContext2D` mapping interface change, update this file and the relevant scene docs
+- if the level-id resolution model or `LevelRegistry` derivation rules change, update this file and the relevant scene docs
 
 ## Multi-Level Actor Transition Contract
 
 Owned by:
 
-- [`../common/level_profile.gd`](../common/level_profile.gd)
-- [`../common/level_context_2d.gd`](../common/level_context_2d.gd)
+- [`../common/level_registry.gd`](../common/level_registry.gd)
 - [`../architecture/components/portal.gd`](../architecture/components/portal.gd)
 - [`../architecture/components/steps.gd`](../architecture/components/steps.gd)
 
 Current contract:
 
-- `LevelProfile` is the runtime floor profile keyed by `level_id`; it defines `physics_atlas_column`, `collision_mask`, and `z_index`
-- `LevelContext2D` is the runtime lookup surface for those profiles and exposes `apply_level_to_actor(level_id, actor)` for consistent actor-state application
-- `Portal` accepts optional `level_from` and `level_to` `level_id` exports. When set, it resolves the matching profile through the nearest `LevelContext2D` and applies the final actor state from that profile.
-- `Steps` accepts optional `level_bottom` and `level_top` `level_id` exports. When set, it resolves masks and actor-layer spacing from the nearest `LevelContext2D` and configures its child portals from those shared profiles.
+- `LevelRegistry` owns the shared level derivation rules keyed by `level_id`
+- `LevelRegistry` exposes `resolve_level_physics_atlas_column()`, `resolve_level_collision_mask()`, `resolve_level_z_index()`, and `apply_level_to_actor()`
+- `LevelRegistry` is used as a static global helper and should not be instantiated
+- `Portal` exposes `level_id`, `level_from`, and `level_to` plus a mode that makes all of those ids either absolute or relative to the closest level-aware parent.
+- `Steps` exposes `level_id`, `level_bottom`, and `level_top` plus a mode that makes all of those ids either absolute or relative to the closest level-aware parent.
+- When their related `level_id` properties are set, `Portal` and `Steps` resolve the matching profiles through `LevelRegistry`.
 - Both `Portal` and `Steps` fall back to hand-authored mask values if level ids are not provided or profile lookup is unavailable, preserving backward compatibility.
-- Direct spawn, teleport, or restore of an actor into a non-ground level should call `LevelContext2D.apply_level_to_actor(level_id, actor)` or the equivalent profile lookup path.
+- Direct spawn, teleport, or restore of an actor into a non-ground level should call `LevelRegistry.apply_level_to_actor(level_id, actor)` or the equivalent profile lookup path.
 
 Governance:
 
-- if the `LevelProfile` resource structure or the traversal components' `level_id` interface changes, update this file and relevant feature docs
-- new multi-level spaces should define `LevelProfile` floor data in the owning landmark scene and use plain exported `level_id` values where a reusable scene or component needs to point at a logical level
+- if the shared level derivation rules or the traversal components' `level_id` interface change, update this file and relevant feature docs
+- new multi-level spaces should use either absolute or parent-relative exported `level_id` values where a reusable scene or component needs to point at a logical level
 - existing portals and stairs outside Bagua Tower may continue to use hand-authored mask values; migration is not required but recommended
 
 ## Reusable Module Contracts

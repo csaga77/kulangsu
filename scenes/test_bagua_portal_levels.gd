@@ -2,6 +2,7 @@ extends Node2D
 
 const BAGUA_TOWER_SCENE: PackedScene = preload("res://architecture/bagua_tower/bagua_tower.tscn")
 const PLAYER_SCENE: PackedScene = preload("res://characters/human_body_2d.tscn")
+const LEVEL_REGISTRY := preload("res://common/level_registry.gd")
 
 const MOVE_FRAMES := 90
 const ARRIVAL_RADIUS := 16.0
@@ -10,7 +11,6 @@ var m_failures := PackedStringArray()
 var m_tower: Node2D = null
 var m_player: CharacterBody2D = null
 var m_portal: Node2D = null
-var m_level_context: Node = null
 
 func _ready() -> void:
 	call_deferred("_run")
@@ -24,21 +24,20 @@ func _run() -> void:
 	add_child(m_player)
 	GameGlobal.get_instance().set_player(m_player)
 
-	m_level_context = m_tower.get_node("base/level_context")
 	m_portal = m_tower.get_node("base/portal_ne_0") as Node2D
 
-	var base_mask := int(m_level_context.call("resolve_level_collision_mask", 0, 0))
-	var ground_mask := int(m_level_context.call("resolve_level_collision_mask", 2, 0))
-	var base_z := int(m_level_context.call("resolve_level_z_index", 0, -1))
-	var ground_z := int(m_level_context.call("resolve_level_z_index", 2, 0))
+	var base_mask := LEVEL_REGISTRY.resolve_level_collision_mask(0, 0)
+	var ground_mask := LEVEL_REGISTRY.resolve_level_collision_mask(2, 0)
+	var base_z := LEVEL_REGISTRY.resolve_level_z_index(0, -1)
+	var ground_z := LEVEL_REGISTRY.resolve_level_z_index(2, 0)
 	var ground_portal_mask := int(m_portal.get("mask2"))
 
-	_assert_equal("Context resolves the base collision mask", base_mask, 524288)
-	_assert_equal("Context resolves the ground collision mask", ground_mask, 2097152)
-	_assert_equal("Context resolves the base z_index", base_z, 0)
-	_assert_equal("Context resolves the ground z_index", ground_z, 2)
+	_assert_equal("Resolver resolves the base collision mask", base_mask, 524288)
+	_assert_equal("Resolver resolves the ground collision mask", ground_mask, 2097152)
+	_assert_equal("Resolver resolves the base z_index", base_z, 0)
+	_assert_equal("Resolver resolves the ground z_index", ground_z, 2)
 	_assert_equal("Portal destination mask resolves to the ground floor", ground_portal_mask, ground_mask)
-	_assert_equal("Context applies the base level to the player", m_level_context.call("apply_level_to_actor", 0, m_player), true)
+	_assert_equal("Registry applies the base level to the player", LEVEL_REGISTRY.apply_level_to_actor(0, m_player), true)
 
 	m_player.global_position = m_portal.to_global(Vector2(-56.0, 0.0))
 	await _settle()

@@ -19,7 +19,7 @@ height = 202.26587
 [node name="long_shan_tunnel" type="Node2D" unique_id=679129524]
 y_sort_enabled = true
 script = ExtResource("1_76ww7")
-level = 9
+level_id = 9
 
 [node name="path" type="TileMapLayer" parent="." unique_id=473915381]
 z_index = -1

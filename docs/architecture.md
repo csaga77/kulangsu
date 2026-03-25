@@ -117,7 +117,7 @@ Responsibilities:
 
 - landmark scenes such as Bagua Tower, tunnels, church, and ferry content
 - reusable architectural pieces shared by those spaces
-- shared multi-level helpers such as `LevelNode2D`, `LevelContext2D`, and `LevelProfile`
+- shared multi-level helpers such as `LevelNode2D` and `LevelRegistry`
 
 ### Reusable Game Modules
 

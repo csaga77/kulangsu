@@ -15,7 +15,7 @@
 [node name="corner_room_north" type="Node2D" unique_id=1031396126 node_paths=PackedStringArray("physics_layers")]
 y_sort_enabled = true
 script = ExtResource("1_ujsfg")
-level_source = 2
+level_id_mode = 1
 physics_layers = [NodePath("collision_layer")]
 
 [node name="back_wall_mask" type="TileMapLayer" parent="." unique_id=1176057054]

@@ -3,41 +3,27 @@ class_name LevelNode2D
 extends AutoVisibilityNode2D
 
 signal resolved_level_changed(resolved_level: int)
+const LEVEL_REGISTRY := preload("res://common/level_registry.gd")
 
-enum LevelSource {
-	EXPLICIT = 0,
-	CONTEXT_SLOT = 1,
-	INHERIT_PARENT = 2,
-}
-
-@export var level := 0:
-	set(new_level):
-		if level == new_level:
+@export var level_id: int = 0:
+	set(new_level_id):
+		if level_id == new_level_id:
 			return
-		level = new_level
-		_update_level()
+		level_id = new_level_id
+		_request_level_refresh()
 
-@export var level_source: LevelSource = LevelSource.EXPLICIT:
-	set(new_level_source):
-		if level_source == new_level_source:
+@export_enum("Absolute", "Relative To Parent") var level_id_mode: int = LEVEL_REGISTRY.LevelIdMode.ABSOLUTE:
+	set(new_level_id_mode):
+		if level_id_mode == new_level_id_mode:
 			return
-		level_source = new_level_source
-		_rebind_level_dependencies()
-		_update_level()
-
-@export var level_slot := 0:
-	set(new_level_slot):
-		if level_slot == new_level_slot:
-			return
-		level_slot = new_level_slot
-		_update_level()
+		level_id_mode = new_level_id_mode
+		_request_level_refresh()
 		
 @export var physics_layers : Array [TileMapLayer]
 @export var sub_level_nodes : Array [LevelNode2D]
 
 var m_resolved_level := 0
-var m_level_context: LevelContext2D = null
-var m_parent_level_node: LevelNode2D = null
+var m_parent_level_node: Node = null
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -47,6 +33,12 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	_unbind_level_dependencies()
+
+func _request_level_refresh() -> void:
+	if !is_inside_tree():
+		return
+	_rebind_level_dependencies()
+	_update_level()
 
 func _update_level() -> void:
 	var new_resolved_level := _resolve_level()
@@ -83,71 +75,36 @@ func refresh_level_from_context() -> void:
 	_rebind_level_dependencies()
 	_update_level()
 
-func get_resolved_level() -> int:
+func get_resolved_level_id() -> int:
 	return m_resolved_level
 
-func _resolve_level() -> int:
-	match level_source:
-		LevelSource.CONTEXT_SLOT:
-			var level_context := _find_level_context()
-			if level_context != null:
-				return level_context.resolve_level_slot(level_slot, level)
-		LevelSource.INHERIT_PARENT:
-			var parent_level_node := _find_parent_level_node()
-			if is_instance_valid(parent_level_node):
-				return parent_level_node.get_resolved_level()
-	return level
+func get_resolved_level() -> int:
+	return get_resolved_level_id()
 
-func _resolve_physics_atlas_column(level_id: int) -> int:
-	var level_context := _find_level_context()
-	if level_context == null:
-		return level_id
-	return level_context.resolve_level_physics_atlas_column(level_id, level_id)
+func _resolve_level() -> int:
+	return LEVEL_REGISTRY.resolve_level_id(self, level_id, level_id_mode)
+
+func _resolve_physics_atlas_column(resolved_level_id: int) -> int:
+	return LEVEL_REGISTRY.resolve_level_physics_atlas_column(resolved_level_id, resolved_level_id)
 
 func _rebind_level_dependencies() -> void:
-	var level_context_changed := Callable(self, "_on_level_context_changed")
-	var next_level_context := _find_level_context()
-	if is_instance_valid(m_level_context):
-		var should_disconnect_context := m_level_context != next_level_context
-		if should_disconnect_context and m_level_context.is_connected("runtime_levels_changed", level_context_changed):
-			m_level_context.disconnect("runtime_levels_changed", level_context_changed)
-	m_level_context = next_level_context
-	if is_instance_valid(m_level_context):
-		if !m_level_context.is_connected("runtime_levels_changed", level_context_changed):
-			m_level_context.connect("runtime_levels_changed", level_context_changed)
-
 	var next_parent_level_node := _find_parent_level_node()
 	if is_instance_valid(m_parent_level_node):
-		var should_disconnect_parent := m_parent_level_node != next_parent_level_node or level_source != LevelSource.INHERIT_PARENT
-		if should_disconnect_parent and m_parent_level_node.resolved_level_changed.is_connected(self._on_parent_level_changed):
-			m_parent_level_node.resolved_level_changed.disconnect(self._on_parent_level_changed)
+		var should_disconnect_parent: bool = m_parent_level_node != next_parent_level_node or level_id_mode != LEVEL_REGISTRY.LevelIdMode.RELATIVE_TO_PARENT
+		if should_disconnect_parent and m_parent_level_node.has_signal("resolved_level_changed") and m_parent_level_node.is_connected("resolved_level_changed", self._on_parent_level_changed):
+			m_parent_level_node.disconnect("resolved_level_changed", self._on_parent_level_changed)
 	m_parent_level_node = next_parent_level_node
-	if level_source == LevelSource.INHERIT_PARENT and is_instance_valid(m_parent_level_node):
-		if !m_parent_level_node.resolved_level_changed.is_connected(self._on_parent_level_changed):
-			m_parent_level_node.resolved_level_changed.connect(self._on_parent_level_changed)
+	if level_id_mode == LEVEL_REGISTRY.LevelIdMode.RELATIVE_TO_PARENT and is_instance_valid(m_parent_level_node) and m_parent_level_node.has_signal("resolved_level_changed"):
+		if !m_parent_level_node.is_connected("resolved_level_changed", self._on_parent_level_changed):
+			m_parent_level_node.connect("resolved_level_changed", self._on_parent_level_changed)
 
 func _unbind_level_dependencies() -> void:
-	var level_context_changed := Callable(self, "_on_level_context_changed")
-	if is_instance_valid(m_level_context) and m_level_context.is_connected("runtime_levels_changed", level_context_changed):
-		m_level_context.disconnect("runtime_levels_changed", level_context_changed)
-	if is_instance_valid(m_parent_level_node) and m_parent_level_node.resolved_level_changed.is_connected(self._on_parent_level_changed):
-		m_parent_level_node.resolved_level_changed.disconnect(self._on_parent_level_changed)
-	m_level_context = null
+	if is_instance_valid(m_parent_level_node) and m_parent_level_node.has_signal("resolved_level_changed") and m_parent_level_node.is_connected("resolved_level_changed", self._on_parent_level_changed):
+		m_parent_level_node.disconnect("resolved_level_changed", self._on_parent_level_changed)
 	m_parent_level_node = null
 
-func _find_level_context() -> LevelContext2D:
-	return LevelContext2D.find_from(self)
-
-func _find_parent_level_node() -> LevelNode2D:
-	var node := get_parent()
-	while node != null:
-		if node is LevelNode2D:
-			return node as LevelNode2D
-		node = node.get_parent()
-	return null
-
-func _on_level_context_changed() -> void:
-	_update_level()
+func _find_parent_level_node() -> Node:
+	return LEVEL_REGISTRY.find_parent_level_node(self)
 
 func _on_parent_level_changed(_resolved_level: int) -> void:
 	_update_level()
