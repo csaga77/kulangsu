@@ -45,6 +45,27 @@ Governance:
 - do not move scene-local behavior into `AppState` without a strong reason
 - if signal names, payload shapes, or key state fields change, update this file and the affected feature docs
 
+## Scene-Graph Utility Singleton Contract
+
+Owned by:
+
+- [`../game/game_global.gd`](../game/game_global.gd)
+
+Current contract:
+
+- `GameGlobal` is a static singleton accessed via `GameGlobal.get_instance()`
+- it holds the live `HumanBody2D` player node reference for the running scene
+- it exposes one signal: `player_changed`, emitted when the player reference changes
+- `main.gd` sets the reference in `_ready()` after the scene tree is live
+- scene-graph systems (terrain, AI, behavior trees) use `GameGlobal` to reach the player node
+- UI and progression code should use `AppState` instead for anything player-facing or save-relevant
+
+Governance:
+
+- keep `GameGlobal` to player-node reference and signal only; do not add progression or UI-state fields here
+- if the player reference contract changes (e.g. the player node type changes), update this file and `architecture.md`
+- do not add a second static singleton for scene-graph plumbing; extend `GameGlobal` only if the need is clearly scene-graph-level
+
 ## World Integration Contract
 
 Owned by:

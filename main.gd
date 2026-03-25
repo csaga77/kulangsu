@@ -1,3 +1,8 @@
+# @tool is required so that @onready node references resolve correctly when the
+# scene is open in the Godot editor (e.g. for terrain authoring and landmark
+# inspection). All runtime-only code paths (resident spawning, signal wiring,
+# location syncing) are guarded by Engine.is_editor_hint() checks or by the
+# m_is_ready flag so they do not execute during edit-time.
 @tool
 extends Node2D
 
@@ -139,7 +144,8 @@ func _on_inspect_requested() -> void:
 			AppState.set_save_status("Talked with %s" % resident_name)
 
 		resident_controller.reveal_dialogue(dialogue_line)
-		AppState.set_residents(AppState.get_known_resident_names())
+		# Note: set_residents is not called here because interact_with_resident
+		# already calls _sync_known_residents() internally.
 		_update_hint_text(m_closest_object)
 		return
 

@@ -90,8 +90,8 @@ The external GDD's `Sunlight Rock` and `Zheng Chenggong Statue` are not part of 
 
 These are the biggest differences between the current project and the target "music RPG" design.
 
-1. There is no formal melody catalog. Fragments are counted globally, but not modeled as named melodies with source fragments, states, or performance targets.
-2. The journal `Melody` tab only shows recovered fragment count, not melody-specific entries, clue text, or progression tiers.
+1. ~~There is no formal melody catalog.~~ **Resolved.** `game/melody_catalog.gd` now owns melody definitions. `AppState` now owns per-melody runtime state (`melody_progress`) with named ids, fragment counts, progression tier, known sources, next lead, and performed flag. `melody_progress_changed` is a live signal. The journal `Melody` tab reads full melody-specific text from `AppState.build_melody_journal_text()`.
+2. ~~The journal `Melody` tab only shows recovered fragment count.~~ **Resolved.** The journal now shows melody name, district, stage, fragment progress, clue map, next lead, and world-response summary per melody.
 3. The main loop has resident-driven objective beats, but not yet landmark-specific gameplay closures such as cue ordering, escort resolution, or tower synthesis in the live runtime.
 4. There is no shared `practice` or `performance` state in the main story loop.
 5. `Continue` is prototype-seeded state, not real story persistence.
@@ -102,31 +102,19 @@ These are the biggest differences between the current project and the target "mu
 
 Use this order to close the gap with the smallest architectural risk.
 
-### 1. Formalize Melody Progress As Shared State
+> **Note:** Steps 1–3 below have been completed. The melody catalog, melody runtime state in AppState, and the updated journal Melody tab are all live. The current starting point is Step 4.
 
-- Add a melody runtime model to [`../../game/app_state.gd`](../../game/app_state.gd).
-- Keep the first version small:
-  - named melody ids
-  - per-melody fragment counts
-  - progression tier
-  - whether the melody has been performed
-- Reuse the current global fragment count only as a summary, not as the only source of truth.
+### ~~1. Formalize Melody Progress As Shared State~~ ✓ Done
 
-### 2. Add One Authored Melody Catalog
+`AppState` now owns per-melody runtime state with named ids, fragment counts, progression tier, known sources, next lead, and performed flag.
 
-- Add a new shared data source such as [`../../game/melody_catalog.gd`](../../game/melody_catalog.gd).
-- Start with one full melody tied to one district chain before modeling the whole island.
-- Let residents and landmarks point into that catalog by id.
+### ~~2. Add One Authored Melody Catalog~~ ✓ Done
 
-### 3. Upgrade The Journal Melody Tab
+[`../../game/melody_catalog.gd`](../../game/melody_catalog.gd) owns melody definitions. Residents point into it by id.
 
-- Expand [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd) so the `Melody` tab shows:
-  - melody name or placeholder
-  - current tier
-  - fragment progress
-  - who or what hinted at it
-  - next lead when known
-- Keep it text-first at the start. Do not jump straight to a complex notation UI.
+### ~~3. Upgrade The Journal Melody Tab~~ ✓ Done
+
+The `Melody` journal tab now shows melody name, district, stage, fragment progress, clue map, next lead, and world-response summary per melody.
 
 ### 4. Build One Complete Landmark Loop
 

@@ -1,3 +1,8 @@
+# @tool is required so that catalog data (melody_catalog, player_costume_catalog,
+# etc.) is populated when the autoload is loaded in the Godot editor. This allows
+# UI scenes and inspector tools to read catalog state at edit-time. No scene-
+# mutating or signal-dependent logic runs at edit-time; all state is initialized
+# inline from the catalog scripts, which are themselves @tool-safe pure functions.
 @tool
 extends Node
 

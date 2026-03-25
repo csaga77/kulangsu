@@ -83,6 +83,25 @@ Boundary:
 
 - `AppState` is for shared UI/progression state. Do not use it as a dumping ground for scene-local implementation details.
 
+### Scene-Graph Utility Singleton
+
+Primary file:
+
+- [`../game/game_global.gd`](../game/game_global.gd)
+
+Responsibilities:
+
+- holds the live `HumanBody2D` player node reference for the current scene
+- exposes a `player_changed` signal so scene-graph systems can react when the player node is replaced
+- provides a static `get_instance()` accessor so non-UI systems (terrain, AI, behavior trees) can reach the player without going through `AppState`
+
+Boundary:
+
+- `GameGlobal` is a scene-graph plumbing singleton, not a progression or UI-state store
+- keep it lean: player-node reference and signal only
+- UI and progression code should use `AppState`, not `GameGlobal`, for anything player-facing or save-relevant
+- `main.gd` sets the player reference in `_ready()` after the scene is live
+
 ### Characters, Interaction, And Behavior
 
 Primary folders:
