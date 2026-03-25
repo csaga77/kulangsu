@@ -1,0 +1,1 @@
+Read AGENTS.md first. It contains the full quick-start guide, architecture boundaries, change scope rules, validation guidance, and doc reading order for this project.
