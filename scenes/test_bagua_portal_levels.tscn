@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://bd1sb6t0m0id5"]
+
+[ext_resource type="Script" path="res://scenes/test_bagua_portal_levels.gd" id="1_h5b0d"]
+
+[node name="test_bagua_portal_levels" type="Node2D"]
+script = ExtResource("1_h5b0d")

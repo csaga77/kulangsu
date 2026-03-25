@@ -34,20 +34,35 @@
 
 ### 2. Parent-Owned Runtime Mapping
 
-- [`../../common/level_context_2d.gd`](../../common/level_context_2d.gd) stores `runtime_levels`, a `PackedInt32Array` that maps local slots to runtime level ids.
+- [`../../common/level_context_2d.gd`](../../common/level_context_2d.gd) stores:
+  - `runtime_levels`, a `PackedInt32Array` that maps local floor slots to stable `level_id` values
+  - `level_profiles`, a parent-owned array of [`../../common/level_profile.gd`](../../common/level_profile.gd) resources keyed by `level_id`
 - Parent landmark scenes such as [`../../architecture/bagua_tower/bagua_tower.tscn`](../../architecture/bagua_tower/bagua_tower.tscn) own this mapping.
 - Reusable room scenes such as the Bagua corner rooms use `INHERIT_PARENT` so they do not bake in runtime ids.
 - Current Bagua Tower mapping is local slots `0/1/2 -> runtime levels 2/4/6`.
+- Bagua also defines a separate base-bridge profile with `level_id = 0` for the exterior-to-ground door portals. That profile is intentionally not part of the reusable room-slot mapping.
 
-### 3. Actor Level Transitions
+### 3. Shared Level Profiles And Actor Transitions
 
-- [`../../architecture/components/steps.gd`](../../architecture/components/steps.gd) wires a stair scene from three hand-authored masks:
-  - `layer1`: source floor
-  - `collision_layer`: middle stair-only traversal layer
-  - `layer2`: destination floor
-- [`../../architecture/components/portal.gd`](../../architecture/components/portal.gd) changes an actor's `collision_mask` and `z_index` as the body crosses the portal's local x-axis.
+- [`../../common/level_spec.gd`](../../common/level_spec.gd) is now a lightweight `@tool` `Resource` that exposes only `level_id`. Use it as a durable reference to a logical level from reusable portals, stairs, and scene instances.
+- [`../../common/level_profile.gd`](../../common/level_profile.gd) is the actual runtime floor profile keyed by `level_id`:
+  - `physics_atlas_column`: tile physics atlas column used by `LevelNode2D`
+  - `collision_mask`: actor collision mask for this floor
+  - `z_index`: actor z layer / occlusion rank
+- `LevelContext2D` is the lookup surface that maps `level_id -> LevelProfile`. `LevelNode2D`, `Portal`, and `Steps` all resolve through the nearest context instead of carrying duplicate values.
+- `LevelContext2D.apply_level_to_actor(level_id, actor)` is the shared path for applying actor collision-mask and `z_index` state.
+- [`../../architecture/components/steps.gd`](../../architecture/components/steps.gd) now accepts two exported `LevelSpec` resources:
+  - `level_bottom`: source floor id reference
+  - `level_top`: destination floor id reference
+  - Derives `collision_mask` values and stair portal `delta_z` spacing from the parent-owned profiles
+  - Falls back to hand-authored `layer1`, `layer2`, `collision_layer` values if specs are not provided or a level context is unavailable
+- [`../../architecture/components/portal.gd`](../../architecture/components/portal.gd) now accepts two exported `LevelSpec` resources:
+  - `level_from`: source level id reference
+  - `level_to`: destination level id reference
+  - Calls `LevelContext2D.apply_level_to_actor()` on exit when specs are provided
+  - Falls back to hand-authored mask manipulation if specs are not provided or a level context is unavailable
 - Portal transition state is tracked per body instance so overlapping actors do not overwrite each other.
-- Portal side detection now tolerates centerline contact, which matters for descending Bagua stairs.
+- Portal side detection now tolerates centerline contact, which matters for descending stairs.
 
 ### 4. Visibility
 
@@ -61,43 +76,44 @@
 
 - [`../../architecture/bagua_tower/bagua_tower.tscn`](../../architecture/bagua_tower/bagua_tower.tscn) is the best current reference for the intended pattern.
 - Parent ownership:
-  - `base/level_context` defines the local-slot -> runtime-level mapping.
+  - `base/level_context` defines both the local-slot -> `level_id` mapping and the `level_id -> LevelProfile` mapping.
   - `base/ground_level`, `upper_level`, and `roof_level` resolve through context slots.
+  - `base/portal_*` door bridges resolve through the same `LevelContext2D`, but use the separate base profile instead of a room slot.
 - Reusable child content:
   - the Bagua corner room scenes inherit their resolved level from the parent floor node.
 - Traversal:
-  - stair instances own the floor-to-floor mask transitions.
-  - portal nodes inside each stair scene switch actor collision masks and `z_index`.
+  - stair instances own the floor-to-floor `LevelSpec` references.
+  - direct portals and stair portals both resolve final actor state through the same `LevelProfile` data.
 
 ## Known Limitation
 
-- The project does not yet have one runtime source of truth for level state.
-- `LevelContext2D` and `LevelNode2D` currently solve only the room tile-physics level mapping problem.
-- Actor collision masks, stair transition masks, portal `delta_z`, and visibility mask tilemaps are still authored separately in scenes.
-- This means new floors can still desynchronize if a scene author updates only one of:
-  - the room's resolved level / physics atlas column
-  - the actor collision masks used by portals or stairs
-  - the `z_index` assumptions used by visibility masking
-- Direct spawn, teleport, or restore into non-base floors still requires explicit actor mask / z setup outside the room-level mapping system.
+- Visibility masking remains a separate authored concern (see `AutoVisibilityNode2D`).
+- `LevelProfile` does not encode visibility mask information; visibility still depends on hand-authored mask tilemaps and `z_index` comparison.
+- Direct spawn, teleport, or restore into non-base floors should call `LevelContext2D.apply_level_to_actor(level_id, actor)` to ensure consistent actor state. This is not yet automated globally.
+- Multi-stair spaces that need intermediate traversal-only states may still need additional authored mask logic beyond the current shared level-profile model.
 
-## Recommended Direction
+## Implemented Direction
 
-- Introduce a shared runtime level profile, for example `LevelSpec`, that defines:
-  - logical level id
-  - tile physics atlas column
-  - actor collision mask
-  - actor z layer or occlusion rank
-  - optional transition-only mask
-- Add one actor-facing API that applies a level profile consistently on spawn, teleport, restore, and portal traversal.
-- Convert portals and stairs to transition between level profiles or level slots, not raw bitmasks.
-- Keep the current parent-owned `LevelContext2D` pattern for reusable rooms even if the actor-level system is upgraded later.
+As of this version, the parent-owned `level_id -> LevelProfile` model has been implemented:
+
+- `LevelSpec` is a level-id reference, not a duplicate floor data container.
+- `LevelProfile` is the single shared source for per-level tile-atlas, collision-mask, and actor-`z_index` data inside the owning landmark scene.
+- `LevelNode2D`, `Portal`, and `Steps` all resolve their runtime floor behavior through the nearest `LevelContext2D`.
+- Backward compatibility is preserved: portals and stairs continue to work with hand-authored mask values if `LevelSpec` references are not provided.
+- Bagua Tower has been migrated to use `LevelProfile` resources for its room floors plus a separate base bridge profile for the exterior door portals.
+
+## Future Direction
+
+- Consider a central registry for spawn, teleport, and restore flows so actor placement always applies the correct `level_id` automatically.
+- Automatically derive visibility mask setup from `LevelProfile` data and authored floor metadata.
+- Consider making level-aware spawning part of the main game flow.
 
 ## Ownership / Boundaries
 
 - Room tile-level resolution belongs in [`../../common/level_node_2d.gd`](../../common/level_node_2d.gd) and [`../../common/level_context_2d.gd`](../../common/level_context_2d.gd).
 - Actor mask / z transitions belong in reusable traversal components under [`../../architecture/components/`](../../architecture/components/).
 - Visibility behavior belongs in [`../../common/auto_visibility_node_2d.gd`](../../common/auto_visibility_node_2d.gd) plus scene-authored mask tilemaps.
-- Parent landmarks own local-slot mapping and should place stairs / portals where they know the `from` and `to` floors.
+- Parent landmarks own local-slot mapping, level profiles, and should place stairs / portals where they know the `from` and `to` floors.
 - Reusable room scenes should not own global runtime level ids.
 
 ## Relevant Files
@@ -107,20 +123,27 @@
   - [`../../architecture/bagua_tower/bagua_tower_corner_room_north.tscn`](../../architecture/bagua_tower/bagua_tower_corner_room_north.tscn)
   - [`../../architecture/components/stairs_se_to_ne_4_0.tscn`](../../architecture/components/stairs_se_to_ne_4_0.tscn)
 - Scripts:
+  - [`../../common/level_profile.gd`](../../common/level_profile.gd)
+  - [`../../common/level_spec.gd`](../../common/level_spec.gd)
   - [`../../common/level_node_2d.gd`](../../common/level_node_2d.gd)
   - [`../../common/level_context_2d.gd`](../../common/level_context_2d.gd)
   - [`../../common/auto_visibility_node_2d.gd`](../../common/auto_visibility_node_2d.gd)
   - [`../../architecture/components/steps.gd`](../../architecture/components/steps.gd)
   - [`../../architecture/components/portal.gd`](../../architecture/components/portal.gd)
+- Level resources (Bagua Tower):
+  - `LevelSpec_ground`, `LevelSpec_upper`, and `LevelSpec_roof` are inline level-id references
+  - `LevelProfile_ground`, `LevelProfile_upper`, and `LevelProfile_roof` are inline runtime floor profiles
 - Validation scenes:
   - [`../../scenes/test_level_context.tscn`](../../scenes/test_level_context.tscn)
   - [`../../scenes/test_portal_overlap.tscn`](../../scenes/test_portal_overlap.tscn)
+  - [`../../scenes/test_bagua_portal_levels.tscn`](../../scenes/test_bagua_portal_levels.tscn)
   - [`../../scenes/test_bagua_stairs_visibility.tscn`](../../scenes/test_bagua_stairs_visibility.tscn)
 
 ## Validation
 
 - Validate local-slot resolution with [`../../scenes/test_level_context.tscn`](../../scenes/test_level_context.tscn).
 - Validate concurrent portal usage with [`../../scenes/test_portal_overlap.tscn`](../../scenes/test_portal_overlap.tscn).
+- Validate direct portal level-id actor transitions with [`../../scenes/test_bagua_portal_levels.tscn`](../../scenes/test_bagua_portal_levels.tscn).
 - Validate real Bagua ascent + descent + visibility behavior with [`../../scenes/test_bagua_stairs_visibility.tscn`](../../scenes/test_bagua_stairs_visibility.tscn).
 - When editing stacked spaces, verify both directions of traversal. Do not assume a passing ascent implies descent is correct.
 
@@ -128,4 +151,4 @@
 
 - Replacing the current visibility system.
 - Redesigning Bagua Tower content layout.
-- Automatically deriving every collision mask and visibility rule from `LevelContext2D` in the current patch.
+- Automatically deriving every visibility rule from `LevelContext2D` in the current patch.

@@ -19,7 +19,42 @@
 [ext_resource type="Texture2D" uid="uid://d0nn3fs56i7ih" path="res://resources/sprites/light_well_mask.png" id="13_p5n1q"]
 [ext_resource type="PackedScene" uid="uid://bokp77sph16o3" path="res://architecture/bagua_tower/bagua_tower_corner_room_south.tscn" id="16_sgvu4"]
 [ext_resource type="PackedScene" uid="uid://ptuy7nqqcfsm" path="res://architecture/bagua_tower/bagua_tower_roof_tower.tscn" id="19_16kol"]
-[ext_resource type="Script" path="res://common/level_context_2d.gd" id="20_qo5t7"]
+[ext_resource type="Script" uid="uid://dsd3uubrqsfek" path="res://common/level_context_2d.gd" id="20_qo5t7"]
+[ext_resource type="Script" uid="uid://bwegs20wnt22s" path="res://common/level_spec.gd" id="24_lvlspec"]
+[ext_resource type="Script" path="res://common/level_profile.gd" id="25_lvlprof"]
+
+[sub_resource type="Resource" id="LevelSpec_base"]
+script = ExtResource("24_lvlspec")
+level_id = 0
+
+[sub_resource type="Resource" id="LevelProfile_base"]
+script = ExtResource("25_lvlprof")
+level_id = 0
+physics_atlas_column = 0
+collision_mask = 524288
+z_index = 0
+
+[sub_resource type="Resource" id="LevelSpec_ground"]
+script = ExtResource("24_lvlspec")
+level_id = 2
+
+[sub_resource type="Resource" id="LevelProfile_ground"]
+script = ExtResource("25_lvlprof")
+level_id = 2
+physics_atlas_column = 2
+collision_mask = 2097152
+z_index = 2
+
+[sub_resource type="Resource" id="LevelSpec_upper"]
+script = ExtResource("24_lvlspec")
+level_id = 4
+
+[sub_resource type="Resource" id="LevelProfile_upper"]
+script = ExtResource("25_lvlprof")
+level_id = 4
+physics_atlas_column = 4
+collision_mask = 8388608
+z_index = 4
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_frgy6"]
 radius = 9.428204
@@ -40,6 +75,17 @@ region = Rect2(322, 0, 192, 112)
 [sub_resource type="ConvexPolygonShape2D" id="ConvexPolygonShape2D_fecrn"]
 points = PackedVector2Array(96, 0, 64, 35, 0, 48, -64, 35, -96, 0, -64, -35, 0, -48, 64, -35)
 
+[sub_resource type="Resource" id="LevelSpec_roof"]
+script = ExtResource("24_lvlspec")
+level_id = 6
+
+[sub_resource type="Resource" id="LevelProfile_roof"]
+script = ExtResource("25_lvlprof")
+level_id = 6
+physics_atlas_column = 6
+collision_mask = 33554432
+z_index = 6
+
 [node name="BaguaTower" type="Node2D" unique_id=1773205049]
 y_sort_enabled = true
 script = ExtResource("1_p6xgs")
@@ -54,9 +100,10 @@ only_shown_in_editor = true
 y_sort_enabled = true
 script = ExtResource("1_p6xgs")
 
-[node name="level_context" type="Node" parent="base"]
+[node name="level_context" type="Node" parent="base" unique_id=1012690208]
 script = ExtResource("20_qo5t7")
 runtime_levels = PackedInt32Array(2, 4, 6)
+level_profiles = [SubResource("LevelProfile_base"), SubResource("LevelProfile_ground"), SubResource("LevelProfile_upper"), SubResource("LevelProfile_roof")]
 
 [node name="base_stairs_mask" type="TileMapLayer" parent="base" unique_id=1888151543]
 z_index = 1
@@ -108,6 +155,8 @@ position = Vector2(32, 272)
 z_index = 1
 position = Vector2(341.00003, 120.00001)
 rotation = 2.0908325
+level_from = SubResource("LevelSpec_base")
+level_to = SubResource("LevelSpec_ground")
 mask1 = 524288
 mask2 = 2097152
 delta_z = 2
@@ -121,6 +170,8 @@ shape = SubResource("CapsuleShape2D_frgy6")
 z_index = 1
 position = Vector2(-397.99997, 180)
 rotation = 1.1542037
+level_from = SubResource("LevelSpec_base")
+level_to = SubResource("LevelSpec_ground")
 mask1 = 524288
 mask2 = 2097152
 delta_z = 2
@@ -132,6 +183,8 @@ shape = SubResource("CapsuleShape2D_frgy6")
 
 [node name="portal_sw_0" parent="base" unique_id=1808827159 instance=ExtResource("5_5gyeu")]
 position = Vector2(-596.0002, 642)
+level_from = SubResource("LevelSpec_base")
+level_to = SubResource("LevelSpec_ground")
 mask1 = 524288
 mask2 = 2097152
 delta_z = 2
@@ -143,6 +196,8 @@ shape = SubResource("CapsuleShape2D_564an")
 
 [node name="portal_se_0" parent="base" unique_id=1976813060 instance=ExtResource("5_5gyeu")]
 position = Vector2(300, 711)
+level_from = SubResource("LevelSpec_base")
+level_to = SubResource("LevelSpec_ground")
 mask1 = 524288
 mask2 = 2097152
 delta_z = 2
@@ -155,6 +210,8 @@ shape = SubResource("CapsuleShape2D_frgy6")
 [node name="portal_se_1" parent="base" unique_id=1483520597 instance=ExtResource("5_5gyeu")]
 position = Vector2(517.00006, 588)
 rotation = 2.0835705
+level_from = SubResource("LevelSpec_base")
+level_to = SubResource("LevelSpec_ground")
 mask1 = 524288
 mask2 = 2097152
 delta_z = 2
@@ -170,7 +227,6 @@ z_index = 2
 y_sort_enabled = true
 script = ExtResource("7_564an")
 level_source = 1
-level_slot = 0
 physics_layers = [NodePath("collision_layer")]
 sub_level_nodes = [NodePath("corner_room_north"), NodePath("corner_room_east"), NodePath("corner_room_west"), NodePath("corner_room_south")]
 visibility_mask_nodes = [NodePath("../base_stairs_mask"), NodePath("../base_floor")]
@@ -216,6 +272,8 @@ tile_set = ExtResource("2_4duu1")
 
 [node name="stairs_se_to_ne_4_0" parent="base/ground_level" unique_id=351643035 instance=ExtResource("8_d3mvs")]
 position = Vector2(-32, 240)
+level_bottom = SubResource("LevelSpec_ground")
+level_top = SubResource("LevelSpec_upper")
 layer1 = 2097152
 collision_layer = 4194304
 layer2 = 8388608
@@ -363,6 +421,8 @@ script = ExtResource("1_p6xgs")
 
 [node name="stairs_se_to_ne_4_1" parent="base/ground_level/upper_level" unique_id=5664761 instance=ExtResource("8_d3mvs")]
 position = Vector2(128, 192)
+level_bottom = SubResource("LevelSpec_upper")
+level_top = SubResource("LevelSpec_roof")
 layer1 = 8388608
 collision_layer = 16777216
 layer2 = 33554432

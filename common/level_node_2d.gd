@@ -2,8 +2,6 @@
 class_name LevelNode2D
 extends AutoVisibilityNode2D
 
-const LEVEL_CONTEXT_SCRIPT := preload("res://common/level_context_2d.gd")
-
 signal resolved_level_changed(resolved_level: int)
 
 enum LevelSource {
@@ -38,7 +36,7 @@ enum LevelSource {
 @export var sub_level_nodes : Array [LevelNode2D]
 
 var m_resolved_level := 0
-var m_level_context: Node = null
+var m_level_context: LevelContext2D = null
 var m_parent_level_node: LevelNode2D = null
 
 # Called when the node enters the scene tree for the first time.
@@ -54,13 +52,14 @@ func _update_level() -> void:
 	var new_resolved_level := _resolve_level()
 	var level_changed := m_resolved_level != new_resolved_level
 	m_resolved_level = new_resolved_level
+	var atlas_column := _resolve_physics_atlas_column(m_resolved_level)
 
 	for physics_layer in physics_layers:
 		for cell in physics_layer.get_used_cells():
 			var source_id = physics_layer.get_cell_source_id(cell)
 			var alternative_tile = physics_layer.get_cell_alternative_tile(cell)
 			var coords = physics_layer.get_cell_atlas_coords(cell)
-			coords.x = m_resolved_level
+			coords.x = atlas_column
 			physics_layer.set_cell(cell, source_id, coords, alternative_tile)
 
 	var ancestors_to_remove := []
@@ -91,23 +90,29 @@ func _resolve_level() -> int:
 	match level_source:
 		LevelSource.CONTEXT_SLOT:
 			var level_context := _find_level_context()
-			if is_instance_valid(level_context) and level_context.has_method("resolve_level_slot"):
-				return int(level_context.call("resolve_level_slot", level_slot, level))
+			if level_context != null:
+				return level_context.resolve_level_slot(level_slot, level)
 		LevelSource.INHERIT_PARENT:
 			var parent_level_node := _find_parent_level_node()
 			if is_instance_valid(parent_level_node):
 				return parent_level_node.get_resolved_level()
 	return level
 
+func _resolve_physics_atlas_column(level_id: int) -> int:
+	var level_context := _find_level_context()
+	if level_context == null:
+		return level_id
+	return level_context.resolve_level_physics_atlas_column(level_id, level_id)
+
 func _rebind_level_dependencies() -> void:
 	var level_context_changed := Callable(self, "_on_level_context_changed")
 	var next_level_context := _find_level_context()
 	if is_instance_valid(m_level_context):
-		var should_disconnect_context := m_level_context != next_level_context or level_source != LevelSource.CONTEXT_SLOT
+		var should_disconnect_context := m_level_context != next_level_context
 		if should_disconnect_context and m_level_context.is_connected("runtime_levels_changed", level_context_changed):
 			m_level_context.disconnect("runtime_levels_changed", level_context_changed)
 	m_level_context = next_level_context
-	if level_source == LevelSource.CONTEXT_SLOT and is_instance_valid(m_level_context):
+	if is_instance_valid(m_level_context):
 		if !m_level_context.is_connected("runtime_levels_changed", level_context_changed):
 			m_level_context.connect("runtime_levels_changed", level_context_changed)
 
@@ -130,16 +135,8 @@ func _unbind_level_dependencies() -> void:
 	m_level_context = null
 	m_parent_level_node = null
 
-func _find_level_context() -> Node:
-	var node := self as Node
-	while node != null:
-		if _is_level_context(node):
-			return node
-		for child in node.get_children():
-			if child is Node and _is_level_context(child):
-				return child
-		node = node.get_parent()
-	return null
+func _find_level_context() -> LevelContext2D:
+	return LevelContext2D.find_from(self)
 
 func _find_parent_level_node() -> LevelNode2D:
 	var node := get_parent()
@@ -154,6 +151,3 @@ func _on_level_context_changed() -> void:
 
 func _on_parent_level_changed(_resolved_level: int) -> void:
 	_update_level()
-
-func _is_level_context(node: Node) -> bool:
-	return node != null and node.get_script() == LEVEL_CONTEXT_SCRIPT

@@ -1,6 +1,5 @@
 extends Node
 
-const LEVEL_CONTEXT_SCRIPT := preload("res://common/level_context_2d.gd")
 const LEVEL_NODE_SCRIPT := preload("res://common/level_node_2d.gd")
 
 var m_failures := PackedStringArray()
@@ -9,8 +8,8 @@ func _ready() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
-	var level_context := LEVEL_CONTEXT_SCRIPT.new()
-	level_context.runtime_levels = PackedInt32Array([2, 4, 6])
+	var level_context := LevelContext2D.new()
+	level_context.set("runtime_levels", PackedInt32Array([2, 4, 6]))
 	add_child(level_context)
 
 	var parent_level: Node = LEVEL_NODE_SCRIPT.new()
@@ -28,7 +27,7 @@ func _run() -> void:
 	_assert_equal("Parent resolves runtime level from context slot", parent_level.call("get_resolved_level"), 4)
 	_assert_equal("Child room inherits resolved parent level", child_room.call("get_resolved_level"), 4)
 
-	level_context.runtime_levels = PackedInt32Array([2, 8, 10])
+	level_context.set("runtime_levels", PackedInt32Array([2, 8, 10]))
 	await get_tree().process_frame
 	_assert_equal("Parent reacts to context runtime level changes", parent_level.call("get_resolved_level"), 8)
 	_assert_equal("Child follows parent after context change", child_room.call("get_resolved_level"), 8)

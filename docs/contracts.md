@@ -77,18 +77,48 @@ Current contract:
 - `LevelNode2D` supports three level sources: explicit level, context slot, and inherit-parent
 - reusable room scenes should prefer `Inherit Parent` so they do not hardcode runtime level ids
 - landmark or building scenes that own multiple floors should provide the runtime mapping through `LevelContext2D`
+- `LevelContext2D.runtime_levels` maps local floor slots to stable `level_id` values
+- `LevelContext2D.level_profiles` maps those `level_id` values to runtime floor data such as tile atlas column, actor collision mask, and actor `z_index`
+- `LevelContext2D.level_profiles` may include additional non-slot levels when a landmark needs bridge-only actor states, such as Bagua's exterior base profile
 - `level` remains the explicit fallback value for standalone scenes and one-off spaces
-- this contract currently covers room tile-physics level resolution, not the full actor collision / visibility source of truth
-- portals and stairs still own actor collision-mask and `z_index` transitions separately from `LevelNode2D`
+- `LevelNode2D` resolves a `level_id`, then asks the nearest `LevelContext2D` for the corresponding physics-atlas column instead of assuming `level_id == atlas_column`
+- actor traversal components resolve their final collision-mask and `z_index` state through the same parent-owned level profiles
 - visibility masking still depends on authored mask layers plus absolute `z_index` behavior
 
 Governance:
 
 - keep runtime level mappings in the parent landmark/building scene when child rooms are intended to be reusable
 - when introducing new multi-level spaces, prefer slot-based parent mapping over repeating raw runtime level ids on child instances
-- do not assume `LevelContext2D` automatically configures actor spawn masks, portal masks, stair masks, or visibility masks
+- do not duplicate physics-atlas, collision-mask, or actor-`z_index` values outside the owning `LevelContext2D` level profiles when a scene is using the parent-owned model
+- do not assume `LevelContext2D` automatically configures visibility masks
 - if you need the full current design, known limitation, or validation targets, start with [`features/multi_level_spaces.md`](features/multi_level_spaces.md)
 - if the `LevelNode2D` resolution modes or `LevelContext2D` mapping interface change, update this file and the relevant scene docs
+
+## Multi-Level Actor Transition Contract
+
+Owned by:
+
+- [`../common/level_profile.gd`](../common/level_profile.gd)
+- [`../common/level_spec.gd`](../common/level_spec.gd)
+- [`../common/level_context_2d.gd`](../common/level_context_2d.gd)
+- [`../architecture/components/portal.gd`](../architecture/components/portal.gd)
+- [`../architecture/components/steps.gd`](../architecture/components/steps.gd)
+
+Current contract:
+
+- `LevelSpec` is a lightweight `@tool` `Resource` that exposes only `level_id`
+- `LevelProfile` is the runtime floor profile keyed by `level_id`; it defines `physics_atlas_column`, `collision_mask`, and `z_index`
+- `LevelContext2D` is the runtime lookup surface for those profiles and exposes `apply_level_to_actor(level_id, actor)` for consistent actor-state application
+- `Portal` accepts optional `level_from` and `level_to` `LevelSpec` exports. When set, it resolves the matching profile through the nearest `LevelContext2D` and applies the final actor state from that profile.
+- `Steps` accepts optional `level_bottom` and `level_top` `LevelSpec` exports. When set, it resolves masks and actor-layer spacing from the nearest `LevelContext2D` and configures its child portals from those shared profiles.
+- Both `Portal` and `Steps` fall back to hand-authored mask values if `LevelSpec` references are not provided or profile lookup is unavailable, preserving backward compatibility.
+- Direct spawn, teleport, or restore of an actor into a non-ground level should call `LevelContext2D.apply_level_to_actor(level_id, actor)` or the equivalent profile lookup path.
+
+Governance:
+
+- if the `LevelSpec` or `LevelProfile` resource structure changes, update this file and relevant feature docs
+- new multi-level spaces should define `LevelProfile` floor data in the owning landmark scene and use `LevelSpec` only where a reusable scene or component needs to point at a logical level
+- existing portals and stairs outside Bagua Tower may continue to use hand-authored mask values; migration is not required but recommended
 
 ## Reusable Module Contracts
 
