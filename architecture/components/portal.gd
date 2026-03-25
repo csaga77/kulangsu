@@ -2,8 +2,8 @@
 class_name Portal
 extends Area2D
 
-@export var level_from: LevelSpec = null
-@export var level_to: LevelSpec = null
+@export var level_from := -1
+@export var level_to := -1
 @export_flags_2d_physics var mask1 := 0
 @export_flags_2d_physics var mask2 := 0
 @export var delta_z := 1
@@ -110,10 +110,10 @@ func _update_level_masks() -> void:
 	var level_context := LevelContext2D.find_from(self)
 	if level_context == null:
 		return
-	if level_from != null:
-		mask1 = level_context.resolve_level_collision_mask(level_from.level_id, mask1)
-	if level_to != null:
-		mask2 = level_context.resolve_level_collision_mask(level_to.level_id, mask2)
+	if level_from >= 0:
+		mask1 = level_context.resolve_level_collision_mask(level_from, mask1)
+	if level_to >= 0:
+		mask2 = level_context.resolve_level_collision_mask(level_to, mask2)
 
 func _store_transition_state(obj: CollisionObject2D, enter_direction: bool) -> void:
 	m_transition_state_by_body[obj.get_instance_id()] = {
@@ -165,9 +165,9 @@ func _on_body_exited(body: Node2D) -> void:
 	var local_pos = to_local(body.global_position)
 	var vec = local_pos.normalized()
 	if _is_on_mask2_side(vec.x):
-		if level_from != null and level_to != null:
+		if level_from >= 0 and level_to >= 0:
 			var level_context := LevelContext2D.find_from(self)
-			if level_context == null or !level_context.apply_level_to_actor(level_to.level_id, obj):
+			if level_context == null or !level_context.apply_level_to_actor(level_to, obj):
 				if mask1 != mask2:
 					obj.collision_mask &= ~mask1
 					obj.collision_mask |= mask2
@@ -181,9 +181,9 @@ func _on_body_exited(body: Node2D) -> void:
 				obj.z_index += delta_z
 		#print("mask2 exited")
 	else:
-		if level_from != null and level_to != null:
+		if level_from >= 0 and level_to >= 0:
 			var level_context := LevelContext2D.find_from(self)
-			if level_context == null or !level_context.apply_level_to_actor(level_from.level_id, obj):
+			if level_context == null or !level_context.apply_level_to_actor(level_from, obj):
 				if mask1 != mask2:
 					obj.collision_mask &= ~mask2
 					obj.collision_mask |= mask1

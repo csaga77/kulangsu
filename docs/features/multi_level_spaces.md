@@ -44,23 +44,22 @@
 
 ### 3. Shared Level Profiles And Actor Transitions
 
-- [`../../common/level_spec.gd`](../../common/level_spec.gd) is now a lightweight `@tool` `Resource` that exposes only `level_id`. Use it as a durable reference to a logical level from reusable portals, stairs, and scene instances.
 - [`../../common/level_profile.gd`](../../common/level_profile.gd) is the actual runtime floor profile keyed by `level_id`:
   - `physics_atlas_column`: tile physics atlas column used by `LevelNode2D`
   - `collision_mask`: actor collision mask for this floor
   - `z_index`: actor z layer / occlusion rank
 - `LevelContext2D` is the lookup surface that maps `level_id -> LevelProfile`. `LevelNode2D`, `Portal`, and `Steps` all resolve through the nearest context instead of carrying duplicate values.
 - `LevelContext2D.apply_level_to_actor(level_id, actor)` is the shared path for applying actor collision-mask and `z_index` state.
-- [`../../architecture/components/steps.gd`](../../architecture/components/steps.gd) now accepts two exported `LevelSpec` resources:
-  - `level_bottom`: source floor id reference
-  - `level_top`: destination floor id reference
+- [`../../architecture/components/steps.gd`](../../architecture/components/steps.gd) now accepts two exported `level_id` integers:
+  - `level_bottom`: source floor id
+  - `level_top`: destination floor id
   - Derives `collision_mask` values and stair portal `delta_z` spacing from the parent-owned profiles
-  - Falls back to hand-authored `layer1`, `layer2`, `collision_layer` values if specs are not provided or a level context is unavailable
-- [`../../architecture/components/portal.gd`](../../architecture/components/portal.gd) now accepts two exported `LevelSpec` resources:
-  - `level_from`: source level id reference
-  - `level_to`: destination level id reference
-  - Calls `LevelContext2D.apply_level_to_actor()` on exit when specs are provided
-  - Falls back to hand-authored mask manipulation if specs are not provided or a level context is unavailable
+  - Falls back to hand-authored `layer1`, `layer2`, `collision_layer` values if level ids are unset or a level context is unavailable
+- [`../../architecture/components/portal.gd`](../../architecture/components/portal.gd) now accepts two exported `level_id` integers:
+  - `level_from`: source level id
+  - `level_to`: destination level id
+  - Calls `LevelContext2D.apply_level_to_actor()` on exit when level ids are provided
+  - Falls back to hand-authored mask manipulation if level ids are unset or a level context is unavailable
 - Portal transition state is tracked per body instance so overlapping actors do not overwrite each other.
 - Portal side detection now tolerates centerline contact, which matters for descending stairs.
 
@@ -82,7 +81,7 @@
 - Reusable child content:
   - the Bagua corner room scenes inherit their resolved level from the parent floor node.
 - Traversal:
-  - stair instances own the floor-to-floor `LevelSpec` references.
+  - stair instances own the floor-to-floor `level_id` values.
   - direct portals and stair portals both resolve final actor state through the same `LevelProfile` data.
 
 ## Known Limitation
@@ -96,10 +95,9 @@
 
 As of this version, the parent-owned `level_id -> LevelProfile` model has been implemented:
 
-- `LevelSpec` is a level-id reference, not a duplicate floor data container.
 - `LevelProfile` is the single shared source for per-level tile-atlas, collision-mask, and actor-`z_index` data inside the owning landmark scene.
 - `LevelNode2D`, `Portal`, and `Steps` all resolve their runtime floor behavior through the nearest `LevelContext2D`.
-- Backward compatibility is preserved: portals and stairs continue to work with hand-authored mask values if `LevelSpec` references are not provided.
+- Backward compatibility is preserved: portals and stairs continue to work with hand-authored mask values if level ids are not provided.
 - Bagua Tower has been migrated to use `LevelProfile` resources for its room floors plus a separate base bridge profile for the exterior door portals.
 
 ## Future Direction
@@ -124,15 +122,14 @@ As of this version, the parent-owned `level_id -> LevelProfile` model has been i
   - [`../../architecture/components/stairs_se_to_ne_4_0.tscn`](../../architecture/components/stairs_se_to_ne_4_0.tscn)
 - Scripts:
   - [`../../common/level_profile.gd`](../../common/level_profile.gd)
-  - [`../../common/level_spec.gd`](../../common/level_spec.gd)
   - [`../../common/level_node_2d.gd`](../../common/level_node_2d.gd)
   - [`../../common/level_context_2d.gd`](../../common/level_context_2d.gd)
   - [`../../common/auto_visibility_node_2d.gd`](../../common/auto_visibility_node_2d.gd)
   - [`../../architecture/components/steps.gd`](../../architecture/components/steps.gd)
   - [`../../architecture/components/portal.gd`](../../architecture/components/portal.gd)
 - Level resources (Bagua Tower):
-  - `LevelSpec_ground`, `LevelSpec_upper`, and `LevelSpec_roof` are inline level-id references
-  - `LevelProfile_ground`, `LevelProfile_upper`, and `LevelProfile_roof` are inline runtime floor profiles
+  - `LevelProfile_base`, `LevelProfile_ground`, `LevelProfile_upper`, and `LevelProfile_roof` are inline runtime floor profiles
+  - portal and stair instances reference those profiles by raw `level_id`
 - Validation scenes:
   - [`../../scenes/test_level_context.tscn`](../../scenes/test_level_context.tscn)
   - [`../../scenes/test_portal_overlap.tscn`](../../scenes/test_portal_overlap.tscn)

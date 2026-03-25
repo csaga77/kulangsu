@@ -2,8 +2,8 @@
 class_name Steps
 extends AutoVisibilityNode2D
 
-@export var level_bottom: LevelSpec = null
-@export var level_top: LevelSpec = null
+@export var level_bottom := -1
+@export var level_top := -1
 
 @export var layer1_nodes :Array[Portal]
 
@@ -38,24 +38,24 @@ func _request_mask_update() -> void:
 	_update_mask()
 
 func _update_mask() -> void:
-	# If both LevelSpecs are provided, use them to derive the collision masks
-	if level_bottom != null and level_top != null:
+	# If both level ids are provided, use them to derive the collision masks.
+	if level_bottom >= 0 and level_top >= 0:
 		var level_context: LevelContext2D = LevelContext2D.find_from(self)
 		if level_context == null:
 			push_warning("Steps '%s' could not find a LevelContext2D for level-based mask resolution." % name)
 			return
 
-		var bottom_mask: int = level_context.resolve_level_collision_mask(level_bottom.level_id, layer1)
-		var top_mask: int = level_context.resolve_level_collision_mask(level_top.level_id, layer2)
-		var bottom_z: int = level_context.resolve_level_z_index(level_bottom.level_id, 0)
-		var top_z: int = level_context.resolve_level_z_index(level_top.level_id, 0)
+		var bottom_mask: int = level_context.resolve_level_collision_mask(level_bottom, layer1)
+		var top_mask: int = level_context.resolve_level_collision_mask(level_top, layer2)
+		var bottom_z: int = level_context.resolve_level_z_index(level_bottom, 0)
+		var top_z: int = level_context.resolve_level_z_index(level_top, 0)
 		var z_gap: int = abs(top_z - bottom_z)
 		var should_override_delta: bool = z_gap % 2 == 0
 		var portal_delta_z: int = z_gap >> 1 if should_override_delta else 1
 		if !should_override_delta:
 			push_warning(
 				"Steps '%s' expected an even z gap between levels %d and %d, keeping existing portal delta_z."
-				% [name, level_bottom.level_id, level_top.level_id]
+				% [name, level_bottom, level_top]
 			)
 
 		# Apply to body nodes (CollisionObject2D): set collision_layer bits
@@ -79,7 +79,7 @@ func _update_mask() -> void:
 				if should_override_delta:
 					p2.delta_z = portal_delta_z
 	else:
-		# Fallback to original behavior if LevelSpecs not provided
+		# Fallback to original behavior if level ids are not provided.
 		# Apply to body nodes (CollisionObject2D): set collision_layer bits
 		for body in body_nodes:
 			if is_instance_valid(body):

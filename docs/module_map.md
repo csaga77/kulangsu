@@ -40,9 +40,9 @@ Put player control, NPC behavior, interaction prompts, and behavior-tree work he
 
 - [`../architecture/`](../architecture) - landmark scenes such as Bagua Tower, tunnels, church, and ferry content
 - [`../architecture/components/`](../architecture/components) - reusable world-building pieces such as portals and stairs
-- [`../common/`](../common) - shared world nodes, effects, and level-context helpers such as `LevelNode2D`, `LevelContext2D`, `LevelSpec`, and `LevelProfile`
+- [`../common/`](../common) - shared world nodes, effects, and level-context helpers such as `LevelNode2D`, `LevelContext2D`, and `LevelProfile`
 
-Put new landmark scenes and reusable architectural pieces here. Define parent-owned `LevelProfile` floor mappings in the owning landmark scene, and use `LevelSpec` as lightweight `level_id` references in traversal components.
+Put new landmark scenes and reusable architectural pieces here. Define parent-owned `LevelProfile` floor mappings in the owning landmark scene, and use plain exported `level_id` integers in traversal components.
 
 ## Reusable Gameplay Modules
 

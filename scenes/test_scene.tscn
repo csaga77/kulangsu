@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://dc2dh1e6e5hb"]
 
 [ext_resource type="Script" uid="uid://b7ntce1lyblnt" path="res://scenes/test_scene.gd" id="1_8pr8v"]
-[ext_resource type="PackedScene" uid="uid://dqivkaosuu5nr" path="res://scenes/test_room.tscn" id="2_wtsjf"]
+[ext_resource type="PackedScene" uid="uid://cvd7poved22w0" path="res://architecture/bagua_tower/bagua_tower.tscn" id="2_s36qc"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="4_vr1i5"]
 [ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/human_body_2d.tscn" id="5_rpuu0"]
 [ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/control/player_controller.gd" id="6_oo8pe"]
@@ -47,11 +47,11 @@ metadata/_custom_type_script = "uid://vk6rfdoxtkgv"
 [node name="test_scene" type="Node2D" unique_id=1018337693]
 y_sort_enabled = true
 script = ExtResource("1_8pr8v")
-building = ExtResource("2_wtsjf")
+building = ExtResource("2_s36qc")
 
 [node name="Root" type="Node2D" parent="." unique_id=203604640]
 y_sort_enabled = true
-position = Vector2(160, 48)
+position = Vector2(736, -720)
 script = ExtResource("4_vr1i5")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=917191712]
@@ -68,6 +68,18 @@ metadata/_custom_type_script = "uid://1lv88f7nn3d4"
 position = Vector2(-4, 13)
 draw_bounding_rect = true
 controller = SubResource("Resource_6qxox")
+configuration = {
+"body_type": "male",
+"body_type_index": 0,
+"selections": {
+"body/body": "light",
+"hair/long/hair_bangslong": "blonde",
+"head/faces/face_neutral": "light",
+"head/heads/human/heads_human_male": "light",
+"legs/pants/legs_pants": "black",
+"torso/shirts/longsleeve/torso_clothes_longsleeve": "black"
+}
+}
 
 [node name="global_lighting_use_CanvasModulate" type="CanvasModulate" parent="." unique_id=1365478517]
 
@@ -93,13 +105,53 @@ texture = ExtResource("7_s36qc")
 position = Vector2(221, 303)
 direction = -180.0
 controller = SubResource("Resource_ntc4i")
+configuration = {
+"body_type": "female",
+"body_type_index": 1,
+"selections": {
+"body/body": "light",
+"feet/shoes/feet_shoes_revised": "brown",
+"hair/bob/hair_bob_side_part": "gray",
+"head/faces/face_neutral": "light",
+"head/heads/human/heads_human_female_elderly": "light",
+"legs/pants/legs_formal": "navy",
+"torso/shirts/longsleeve/torso_clothes_longsleeve2_cardigan": "sky"
+}
+}
 
 [node name="ChoirCaretakerMei" parent="." unique_id=1971691183 instance=ExtResource("5_rpuu0")]
 position = Vector2(158, 301)
 direction = 0.0
 is_running = false
 controller = SubResource("Resource_pln1h")
+configuration = {
+"body_type": "female",
+"body_type_index": 1,
+"selections": {
+"body/body": "olive",
+"feet/shoes/feet_shoes_revised": "black",
+"hair/long/hair_wavy": "dark brown",
+"head/faces/face_neutral": "olive",
+"head/heads/human/heads_human_female": "olive",
+"legs/pants/legs_formal": "charcoal",
+"torso/shirts/longsleeve/torso_clothes_longsleeve2_cardigan": "maroon"
+}
+}
 
 [node name="TunnelGuideRen" parent="." unique_id=407062048 instance=ExtResource("5_rpuu0")]
 position = Vector2(-392, -55)
 controller = SubResource("Resource_hf2sn")
+configuration = {
+"body_type": "male",
+"body_type_index": 0,
+"selections": {
+"body/body": "bronze",
+"feet/shoes/feet_shoes_revised": "leather",
+"hair/beards/beards_trimmed": "dark brown",
+"hair/short/hair_bedhead": "black",
+"head/faces/face_neutral": "bronze",
+"head/heads/human/heads_human_male": "bronze",
+"legs/pants/legs_pants": "walnut",
+"torso/shirts/shortsleeve/torso_clothes_tshirt": "forest"
+}
+}

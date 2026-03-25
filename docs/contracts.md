@@ -99,25 +99,23 @@ Governance:
 Owned by:
 
 - [`../common/level_profile.gd`](../common/level_profile.gd)
-- [`../common/level_spec.gd`](../common/level_spec.gd)
 - [`../common/level_context_2d.gd`](../common/level_context_2d.gd)
 - [`../architecture/components/portal.gd`](../architecture/components/portal.gd)
 - [`../architecture/components/steps.gd`](../architecture/components/steps.gd)
 
 Current contract:
 
-- `LevelSpec` is a lightweight `@tool` `Resource` that exposes only `level_id`
 - `LevelProfile` is the runtime floor profile keyed by `level_id`; it defines `physics_atlas_column`, `collision_mask`, and `z_index`
 - `LevelContext2D` is the runtime lookup surface for those profiles and exposes `apply_level_to_actor(level_id, actor)` for consistent actor-state application
-- `Portal` accepts optional `level_from` and `level_to` `LevelSpec` exports. When set, it resolves the matching profile through the nearest `LevelContext2D` and applies the final actor state from that profile.
-- `Steps` accepts optional `level_bottom` and `level_top` `LevelSpec` exports. When set, it resolves masks and actor-layer spacing from the nearest `LevelContext2D` and configures its child portals from those shared profiles.
-- Both `Portal` and `Steps` fall back to hand-authored mask values if `LevelSpec` references are not provided or profile lookup is unavailable, preserving backward compatibility.
+- `Portal` accepts optional `level_from` and `level_to` `level_id` exports. When set, it resolves the matching profile through the nearest `LevelContext2D` and applies the final actor state from that profile.
+- `Steps` accepts optional `level_bottom` and `level_top` `level_id` exports. When set, it resolves masks and actor-layer spacing from the nearest `LevelContext2D` and configures its child portals from those shared profiles.
+- Both `Portal` and `Steps` fall back to hand-authored mask values if level ids are not provided or profile lookup is unavailable, preserving backward compatibility.
 - Direct spawn, teleport, or restore of an actor into a non-ground level should call `LevelContext2D.apply_level_to_actor(level_id, actor)` or the equivalent profile lookup path.
 
 Governance:
 
-- if the `LevelSpec` or `LevelProfile` resource structure changes, update this file and relevant feature docs
-- new multi-level spaces should define `LevelProfile` floor data in the owning landmark scene and use `LevelSpec` only where a reusable scene or component needs to point at a logical level
+- if the `LevelProfile` resource structure or the traversal components' `level_id` interface changes, update this file and relevant feature docs
+- new multi-level spaces should define `LevelProfile` floor data in the owning landmark scene and use plain exported `level_id` values where a reusable scene or component needs to point at a logical level
 - existing portals and stairs outside Bagua Tower may continue to use hand-authored mask values; migration is not required but recommended
 
 ## Reusable Module Contracts
