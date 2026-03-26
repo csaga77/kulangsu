@@ -47,10 +47,14 @@ Primary files:
 - [`../scenes/game_main.gd`](../scenes/game_main.gd)
 - [`../terrain/terrain.tscn`](../terrain/terrain.tscn)
 - [`../terrain/terrain.gd`](../terrain/terrain.gd)
+- [`../terrain/terrain_generation_profile.gd`](../terrain/terrain_generation_profile.gd)
+- [`../terrain/terrain_mask_rule.gd`](../terrain/terrain_mask_rule.gd)
 
 Responsibilities:
 
 - main island scene setup
+- mask-driven terrain generation and generated helper-layer lifecycle
+- terrain mask legend, per-color semantics, and street-connect defaults
 - player spawn and camera context
 - shared y-sorted actor layer for the player and spawned residents
 - landmark lookup and location syncing
@@ -61,6 +65,7 @@ Responsibilities:
 Boundary:
 
 - Keep scene-specific world integration here instead of scattering it across UI files or unrelated helpers.
+- Keep terrain semantics in terrain profile/rule resources instead of hard-coding new mask-color branches directly into unrelated systems.
 
 ### Shared State And Catalogs
 

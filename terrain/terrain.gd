@@ -7,6 +7,7 @@ const PAVEMENT_TILESET := preload("res://resources/tilesets/pavement_0_tilesets.
 const SYMBOLS_TILESET := preload("res://resources/tilesets/symbols_0_tiles.tres")
 const WATER_MATERIAL := preload("res://resources/materials/water.tres")
 const ISO_TILEMAP_SCRIPT := preload("res://common/isometric_block.gd")
+const TERRAIN_GENERATION_PROFILE_SCRIPT := preload("res://terrain/terrain_generation_profile.gd")
 
 @export var reload: bool = false:
 	set(new_reload):
@@ -20,13 +21,8 @@ const ISO_TILEMAP_SCRIPT := preload("res://common/isometric_block.gd")
 			return
 		mask_file = new_mask_file
 		#call_deferred("_reload_terrain")
-		
-@export var tile_source_id := 8
-@export var building_tile_source_id := 0
-@export var building_tile_coords := Vector2i(1, 0)
-@export var mask_tile_coords := Vector2i(1, 0)
-@export var water_tile_coords := Vector2i(4, 16)
-@export var tile_alternative  := 0
+
+@export var generation_profile: Resource
 
 @export var player :HumanBody2D:
 	get:
@@ -86,13 +82,6 @@ func _find_generated_layer(parent: Node, layer_name: String) -> TileMapLayer:
 			return child as TileMapLayer
 	return null
 
-func _discard_direct_generated_layer(parent: Node, layer_name: String) -> void:
-	var layer := parent.get_node_or_null(layer_name) as TileMapLayer
-	if not is_instance_valid(layer):
-		return
-	parent.remove_child(layer)
-	layer.free()
-
 func _reset_water_layer_state(layer: TileMapLayer) -> void:
 	layer.name = "water"
 	layer.visible = true
@@ -139,6 +128,13 @@ func _ensure_generated_layers() -> void:
 	m_building_mask.set_script(ISO_TILEMAP_SCRIPT)
 	m_building_mask.only_shown_in_editor = true
 
+func _get_generation_profile():
+	if generation_profile == null:
+		generation_profile = TERRAIN_GENERATION_PROFILE_SCRIPT.new()
+	elif generation_profile.has_method("ensure_defaults"):
+		generation_profile.ensure_defaults()
+	return generation_profile
+
 func _paint_terrain_from_mask() -> void:
 	m_base.clear()
 	m_water.clear()
@@ -163,80 +159,91 @@ func _paint_terrain_from_mask() -> void:
 
 	var width := img.get_width()
 	var height := img.get_height()
+	var profile: Variant = _get_generation_profile()
 
 	for y in range(height):
 		for x in range(width):
 			var tile_pos := Vector2i(x, y)
-			var c :Color = img.get_pixel(x, y)
-			if c.a > 0.0:
-				if c == Color.RED:
-					m_base.set_cell(
-						tile_pos,
-						tile_source_id,
-						mask_tile_coords,
-						tile_alternative
-					)
-					m_building_mask.set_cell(
-						tile_pos,
-						building_tile_source_id,
-						building_tile_coords,
-						tile_alternative
-					)
-				elif c == Color.BLUE:
-					#m_streets.set_terrain(Vector2i(x, y), 1)
-					m_base.set_cell(
-						tile_pos,
-						tile_source_id,
-						mask_tile_coords,
-						tile_alternative
-					)
-					#m_streets.set_cells_terrain_connect(
-						#[Vector2i(x - 1, y - 1), Vector2i(x, y - 1), Vector2i(x + 1, y - 1), 
-						 #Vector2i(x - 1, y), Vector2i(x, y), Vector2i(x + 1, y),
-						 #Vector2i(x - 1, y + 1), Vector2i(x, y + 1), Vector2i(x + 1, y + 1)],
-						#0, 
-						#0)
-					#m_streets.set_cells_terrain_connect(
-						#[Vector2i(x - 1, y - 1), Vector2i(x, y - 1), Vector2i(x + 1, y - 1), 
-						 #Vector2i(x - 1, y), Vector2i(x, y), Vector2i(x + 1, y),
-						 #Vector2i(x - 1, y + 1), Vector2i(x, y + 1), Vector2i(x + 1, y + 1)],
-						#1, 
-						#0)
-					m_streets.set_cells_terrain_connect(
-						[Vector2i(x, y - 1), 
-						 Vector2i(x - 1, y), tile_pos, Vector2i(x + 1, y),
-						 Vector2i(x, y + 1)],
-						1, 
-						0)
-					#m_streets.set_cell(
-						#Vector2i(x, y),
-						#1,
-						#Vector2i(5, 0),
-						#0
-					#)
-				else:
-					m_base.set_cell(
-						tile_pos,
-						tile_source_id,
-						mask_tile_coords,
-						tile_alternative
-					)
-					#m_base.set_cells_terrain_connect(
-						#[Vector2i(x - 1, y - 1), Vector2i(x, y - 1), Vector2i(x + 1, y - 1), 
-						 #Vector2i(x - 1, y), Vector2i(x, y), Vector2i(x + 1, y),
-						 #Vector2i(x - 1, y + 1), Vector2i(x, y + 1), Vector2i(x + 1, y + 1)], 
-						#0,
-						#0
-					#)
-			else:
-				#print(tile_pos, " ", tile_source_id, " ", water_tile_coords)
-				m_water.set_cell(
-					tile_pos,
-					tile_source_id,
-					water_tile_coords,
-					tile_alternative
-				)
+			var pixel: Color = img.get_pixel(x, y)
+			_paint_mask_cell(tile_pos, pixel, profile)
 	print("_reload_terrain: painted %dx%d from %s" % [width, height, mask_file])
+
+func _paint_mask_cell(tile_pos: Vector2i, pixel: Color, profile) -> void:
+	if profile.is_water_pixel(pixel):
+		_paint_water_cell(tile_pos, profile)
+		return
+
+	var rule: Variant = profile.resolve_rule_for_pixel(pixel)
+	if rule == null:
+		return
+
+	if rule.paint_base:
+		_paint_base_cell(tile_pos, rule, profile)
+	if rule.paint_street:
+		_paint_street_cell(tile_pos, profile)
+	if rule.paint_building_mask:
+		_paint_building_mask_cell(tile_pos, rule, profile)
+
+func _paint_base_cell(tile_pos: Vector2i, rule, profile) -> void:
+	m_base.set_cell(
+		tile_pos,
+		_resolve_base_source_id(rule, profile),
+		_resolve_base_tile_coords(rule, profile),
+		_resolve_base_tile_alternative(rule, profile)
+	)
+
+func _paint_street_cell(tile_pos: Vector2i, profile) -> void:
+	m_streets.set_cells_terrain_connect(
+		profile.build_street_cells(tile_pos),
+		profile.street_terrain_set,
+		profile.street_terrain
+	)
+
+func _paint_building_mask_cell(tile_pos: Vector2i, rule, profile) -> void:
+	m_building_mask.set_cell(
+		tile_pos,
+		_resolve_building_mask_source_id(rule, profile),
+		_resolve_building_mask_tile_coords(rule, profile),
+		_resolve_building_mask_tile_alternative(rule, profile)
+	)
+
+func _paint_water_cell(tile_pos: Vector2i, profile) -> void:
+	m_water.set_cell(
+		tile_pos,
+		profile.water_source_id,
+		profile.water_tile_coords,
+		profile.water_tile_alternative
+	)
+
+func _resolve_base_source_id(rule, profile) -> int:
+	if rule.has_base_source_override():
+		return rule.base_source_id_override
+	return profile.base_source_id
+
+func _resolve_base_tile_coords(rule, profile) -> Vector2i:
+	if rule.has_base_tile_coords_override():
+		return rule.base_tile_coords_override
+	return profile.base_tile_coords
+
+func _resolve_base_tile_alternative(rule, profile) -> int:
+	if rule.has_base_tile_alternative_override():
+		return rule.base_tile_alternative_override
+	return profile.base_tile_alternative
+
+func _resolve_building_mask_source_id(rule, profile) -> int:
+	if rule.has_building_mask_source_override():
+		return rule.building_mask_source_id_override
+	return profile.building_mask_source_id
+
+func _resolve_building_mask_tile_coords(rule, profile) -> Vector2i:
+	if rule.has_building_mask_tile_coords_override():
+		return rule.building_mask_tile_coords_override
+	return profile.building_mask_tile_coords
+
+func _resolve_building_mask_tile_alternative(rule, profile) -> int:
+	if rule.has_building_mask_tile_alternative_override():
+		return rule.building_mask_tile_alternative_override
+	return profile.building_mask_tile_alternative
 
 func _on_player_moved() -> void:
 	if !is_instance_valid(m_player):
