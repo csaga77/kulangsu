@@ -950,49 +950,76 @@ func advance_landmark_state(landmark_id: String, new_state: String) -> void:
 
 ## Called when the player inspects a LandmarkTrigger in the world.
 ## Routes to the appropriate per-landmark collection handler.
-func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_name: String) -> void:
+## Returns true only when the caller should consume the trigger in the scene.
+func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_name: String) -> bool:
 	match landmark_id:
 		"trinity_church":
+			var church_progress := get_landmark_progress("trinity_church")
+			if church_progress.is_empty() or _progress_has_string_entry(church_progress, "cues_collected", trigger_id):
+				return false
 			var all_collected := _collect_trinity_church_cue(trigger_id)
 			set_save_status("Found: %s" % display_name)
 			if all_collected:
 				set_objective("Return to Choir Caretaker Mei with all three choir cues.")
 				set_hint("R Talk to Choir Caretaker Mei   J Journal   Esc Pause")
 				set_save_status("All choir cues found — return to Choir Caretaker Mei.")
+			return true
 		"bi_shan_tunnel":
+			var tunnel_progress := get_landmark_progress("bi_shan_tunnel")
+			if tunnel_progress.is_empty():
+				return false
 			if trigger_id == "chamber":
-				var progress := get_landmark_progress("bi_shan_tunnel")
-				var echoes: Array = progress.get("echoes_collected", [])
+				var echoes: Array = tunnel_progress.get("echoes_collected", [])
 				if echoes.size() >= 3:
 					_resolve_bi_shan_tunnel()
+					return true
 				else:
 					set_save_status("The mural panel is silent. Trace the three tunnel echoes first.")
-			else:
-				var all_echoes := _collect_bi_shan_echo(trigger_id)
-				set_save_status("Heard: %s" % display_name)
-				if all_echoes:
-					set_objective("Reach the mural chamber at the far end of Bi Shan Tunnel.")
-					set_hint("Follow the resonance to the chamber.   J Journal   Esc Pause")
-					set_save_status("All three echoes traced — follow the resonance to the chamber.")
+					return false
+			if _progress_has_string_entry(tunnel_progress, "echoes_collected", trigger_id):
+				return false
+			var all_echoes := _collect_bi_shan_echo(trigger_id)
+			set_save_status("Heard: %s" % display_name)
+			if all_echoes:
+				set_objective("Reach the mural chamber at the far end of Bi Shan Tunnel.")
+				set_hint("Follow the resonance to the chamber.   J Journal   Esc Pause")
+				set_save_status("All three echoes traced — follow the resonance to the chamber.")
+			return true
 		"long_shan_tunnel":
 			match trigger_id:
 				"tunnel_entry":
 					if get_landmark_state("long_shan_tunnel") == "available":
 						advance_landmark_state("long_shan_tunnel", "introduced")
 						set_save_status("Long Shan Tunnel entry reached — find Tunnel Guide Ren.")
+						return true
+					return false
 				"tunnel_exit":
 					if get_landmark_state("long_shan_tunnel") == "in_progress":
 						_resolve_long_shan_tunnel()
-					else:
-						set_save_status("Tunnel exit reached — talk to Tunnel Guide Ren before crossing.")
+						return true
+					set_save_status("Tunnel exit reached — talk to Tunnel Guide Ren before crossing.")
+					return false
+			return false
 		"bagua_tower":
 			if trigger_id == "synthesis_chamber":
+				var tower_progress := get_landmark_progress("bagua_tower")
+				if tower_progress.is_empty():
+					return false
 				var melody_state := get_melody_state("festival_melody")
 				var fragments_in := int(melody_state.get("fragments_found", 0))
-				if get_landmark_state("bagua_tower") == "in_progress" and fragments_in >= 3:
+				if get_landmark_state("bagua_tower") == "in_progress" \
+				and fragments_in >= 3 \
+				and !bool(tower_progress.get("synthesis_done", false)):
 					_resolve_bagua_tower_synthesis()
-				else:
-					set_save_status("The tower shows distance but not yet direction. Recover more fragments first.")
+					return true
+				set_save_status("The tower shows distance but not yet direction. Recover more fragments first.")
+				return false
+			return false
+	return false
+
+
+func _progress_has_string_entry(progress: Dictionary, progress_key: String, entry_id: String) -> bool:
+	return _normalize_string_array(progress.get(progress_key, [])).find(entry_id) >= 0
 
 
 ## Collect one Trinity Church choir cue. Returns true when all three are in.

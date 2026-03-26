@@ -7,6 +7,7 @@
 [ext_resource type="Texture2D" uid="uid://mhsy6o806uwu" path="res://resources/sprites/architecture/components/building_0_tiles.png" id="4_fmehs"]
 [ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="5_ep65q"]
 [ext_resource type="Texture2D" uid="uid://boka5fmviqaew" path="res://resources/sprites/architecture/components/structure_0.png" id="5_vf6k1"]
+[ext_resource type="Script" path="res://game/landmark_trigger.gd" id="6_ltrg"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_oumyh"]
 atlas = ExtResource("4_fmehs")
@@ -25,6 +26,18 @@ height = 99.282875
 resource_local_to_scene = true
 radius = 13.87439
 height = 97.519714
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_echo_a"]
+radius = 28.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_echo_b"]
+radius = 28.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_echo_c"]
+radius = 28.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_chamber"]
+radius = 32.0
 
 [node name="bi_shan_tunnel" type="Node2D" unique_id=679129524]
 y_sort_enabled = true
@@ -603,6 +616,55 @@ delta_z = -1
 
 [node name="CollisionShape2D" parent="exit_north/exit_north" index="0" unique_id=1276641949]
 shape = SubResource("CapsuleShape2D_fmehs")
+
+[node name="EchoA" type="Area2D" parent="."]
+script = ExtResource("6_ltrg")
+landmark_id = "bi_shan_tunnel"
+trigger_id = "echo_a"
+display_name = "Tunnel Echo (North Wall)"
+visible_in_states = Array[String](["available", "introduced", "in_progress"])
+collected_progress_key = "echoes_collected"
+position = Vector2(-160, -224)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="EchoA"]
+shape = SubResource("CircleShape2D_echo_a")
+
+[node name="EchoB" type="Area2D" parent="."]
+script = ExtResource("6_ltrg")
+landmark_id = "bi_shan_tunnel"
+trigger_id = "echo_b"
+display_name = "Tunnel Echo (Arch Midpoint)"
+visible_in_states = Array[String](["available", "introduced", "in_progress"])
+collected_progress_key = "echoes_collected"
+position = Vector2(-336, -480)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="EchoB"]
+shape = SubResource("CircleShape2D_echo_b")
+
+[node name="EchoC" type="Area2D" parent="."]
+script = ExtResource("6_ltrg")
+landmark_id = "bi_shan_tunnel"
+trigger_id = "echo_c"
+display_name = "Tunnel Echo (Mural Approach)"
+visible_in_states = Array[String](["available", "introduced", "in_progress"])
+collected_progress_key = "echoes_collected"
+position = Vector2(-544, -760)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="EchoC"]
+shape = SubResource("CircleShape2D_echo_c")
+
+[node name="Chamber" type="Area2D" parent="."]
+script = ExtResource("6_ltrg")
+landmark_id = "bi_shan_tunnel"
+trigger_id = "chamber"
+display_name = "Mural Chamber"
+visible_in_states = Array[String](["in_progress"])
+collected_progress_key = "echoes_collected"
+requires_collected = Array[String](["echo_a", "echo_b", "echo_c"])
+position = Vector2(-640, -896)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Chamber"]
+shape = SubResource("CircleShape2D_chamber")
 
 [editable path="exit_south/exit_south"]
 [editable path="exit_north/exit_north"]

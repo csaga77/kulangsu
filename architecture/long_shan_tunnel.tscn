@@ -5,6 +5,7 @@
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="3_jejh2"]
 [ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="6_a1qgf"]
 [ext_resource type="PackedScene" uid="uid://d27a7jcvsnfx8" path="res://architecture/components/portal.tscn" id="7_elph4"]
+[ext_resource type="Script" path="res://game/landmark_trigger.gd" id="8_ltrg"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_76ww7"]
 resource_local_to_scene = true
@@ -15,6 +16,12 @@ height = 203.91873
 resource_local_to_scene = true
 radius = 13.87439
 height = 202.26587
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_entry"]
+radius = 30.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_exit"]
+radius = 30.0
 
 [node name="long_shan_tunnel" type="Node2D" unique_id=679129524]
 y_sort_enabled = true
@@ -63,6 +70,28 @@ delta_z = -1
 
 [node name="CollisionShape2D" parent="exit_north/exit_north" index="0" unique_id=1276641949]
 shape = SubResource("CapsuleShape2D_qm2ka")
+
+[node name="TunnelEntry" type="Area2D" parent="."]
+script = ExtResource("8_ltrg")
+landmark_id = "long_shan_tunnel"
+trigger_id = "tunnel_entry"
+display_name = "Long Shan Tunnel Entry"
+visible_in_states = Array[String](["available"])
+position = Vector2(72, 16)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="TunnelEntry"]
+shape = SubResource("CircleShape2D_entry")
+
+[node name="TunnelExit" type="Area2D" parent="."]
+script = ExtResource("8_ltrg")
+landmark_id = "long_shan_tunnel"
+trigger_id = "tunnel_exit"
+display_name = "Long Shan Tunnel Exit"
+visible_in_states = Array[String](["in_progress"])
+position = Vector2(-3032, -2144)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="TunnelExit"]
+shape = SubResource("CircleShape2D_exit")
 
 [editable path="exit_south/exit_south"]
 [editable path="exit_north/exit_north"]

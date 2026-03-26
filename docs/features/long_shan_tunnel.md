@@ -96,10 +96,10 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 
 ## Integration Checklist
 
-- [ ] Place two `LandmarkTrigger` nodes in `long_shan_tunnel.tscn`: `tunnel_entry` and `tunnel_exit`.
-- [ ] For `tunnel_entry`: set `landmark_id = "long_shan_tunnel"`, `visible_in_states = [available]`.
-- [ ] For `tunnel_exit`: set `landmark_id = "long_shan_tunnel"`, `visible_in_states = [in_progress]`.
-- [ ] Position each trigger at the south and north tunnel mouths respectively.
+- [x] Place two `LandmarkTrigger` nodes in `long_shan_tunnel.tscn`: `tunnel_entry` and `tunnel_exit`.
+- [x] For `tunnel_entry`: set `landmark_id = "long_shan_tunnel"`, `visible_in_states = [available]`.
+- [x] For `tunnel_exit`: set `landmark_id = "long_shan_tunnel"`, `visible_in_states = [in_progress]`.
+- [x] Position each trigger at the south and north tunnel mouths respectively.
 - [ ] Confirm `collision_layer` matches the layer used for inspectable objects.
 
 ## Out Of Scope

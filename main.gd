@@ -28,6 +28,7 @@ enum ScreenState {
 
 var m_state: ScreenState = ScreenState.BOOT
 var m_game_root: Node = null
+var m_has_resume_state := false
 
 var m_viewport_root: Control
 var m_ui_root: Control
@@ -248,7 +249,7 @@ func _show_title() -> void:
 	_set_panel_visible(m_confirm_panel, false)
 	if m_game_root != null:
 		m_game_root.visible = false
-	m_title_screen.call("set_continue_enabled", m_game_root != null)
+	m_title_screen.call("set_continue_enabled", m_has_resume_state)
 	AppState.set_mode("Title")
 
 
@@ -257,12 +258,31 @@ func _ensure_game_loaded() -> void:
 		m_game_root.visible = true
 		return
 
+	if m_game_root != null and !is_instance_valid(m_game_root):
+		m_game_root = null
+
 	m_game_root = GAME_SCENE.instantiate()
 	m_game_root.name = "GameRoot"
 	get_node("GameLayer").add_child(m_game_root)
 
 
+func _discard_game_loaded() -> void:
+	if m_game_root == null:
+		return
+	if !is_instance_valid(m_game_root):
+		m_game_root = null
+		return
+
+	var previous_root := m_game_root
+	m_game_root = null
+	var game_layer := get_node_or_null("GameLayer")
+	if game_layer != null and previous_root.get_parent() == game_layer:
+		game_layer.remove_child(previous_root)
+	previous_root.queue_free()
+
+
 func _begin_gameplay(is_free_walk: bool, is_continue: bool = false) -> void:
+	_discard_game_loaded()
 	if is_continue:
 		AppState.configure_continue()
 	elif is_free_walk:
@@ -270,6 +290,7 @@ func _begin_gameplay(is_free_walk: bool, is_continue: bool = false) -> void:
 	else:
 		AppState.configure_new_game()
 
+	m_has_resume_state = true
 	_ensure_game_loaded()
 	m_game_root.visible = true
 	if m_game_root.has_method("sync_ui_state"):

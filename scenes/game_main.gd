@@ -151,12 +151,13 @@ func _on_inspect_requested() -> void:
 
 	var landmark_trigger := _get_landmark_trigger(m_closest_object)
 	if landmark_trigger != null:
-		AppState.activate_landmark_trigger(
+		var consumed := AppState.activate_landmark_trigger(
 			landmark_trigger.landmark_id,
 			landmark_trigger.trigger_id,
 			landmark_trigger.display_name
 		)
-		landmark_trigger.collect()
+		if consumed:
+			landmark_trigger.collect()
 		_update_hint_text(m_closest_object)
 		return
 

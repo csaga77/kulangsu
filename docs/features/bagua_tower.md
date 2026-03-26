@@ -57,7 +57,7 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
 ## Relevant Files
 
 - Scenes:
-  - [`../../architecture/bagua_tower.tscn`](../../architecture/bagua_tower.tscn)
+  - [`../../architecture/bagua_tower/bagua_tower.tscn`](../../architecture/bagua_tower/bagua_tower.tscn)
 - Scripts:
   - [`../../game/landmark_trigger.gd`](../../game/landmark_trigger.gd)
   - [`../../game/app_state.gd`](../../game/app_state.gd)
@@ -104,9 +104,9 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
 
 ## Integration Checklist
 
-- [ ] Place one `LandmarkTrigger` node in `bagua_tower.tscn`: `synthesis_chamber`.
-- [ ] Set `landmark_id = "bagua_tower"`, `visible_in_states = [in_progress]`, `hide_if_flag = "synthesis_done"`.
-- [ ] Position the trigger at the top chamber room in the tower.
+- [x] Place one `LandmarkTrigger` node in `bagua_tower.tscn`: `synthesis_chamber`.
+- [x] Set `landmark_id = "bagua_tower"`, `visible_in_states = [in_progress]`, `hide_if_flag = "synthesis_done"`.
+- [x] Position the trigger at the top chamber room in the tower.
 - [x] `tower_keeper` beat 1 `"landmark_states"` uses `"in_progress"` — synthesis chamber trigger becomes visible after beat 1 fires.
 - [ ] Confirm `collision_layer` matches the layer used for inspectable objects.
 
