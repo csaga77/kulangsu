@@ -94,13 +94,13 @@
 - [`../../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn`](../../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn)
 - [`../../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn`](../../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn)
 - [`../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn`](../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn)
-- [`../../scenes/test_level_resolution.tscn`](../../scenes/test_level_resolution.tscn)
-- [`../../scenes/test_portal_overlap.tscn`](../../scenes/test_portal_overlap.tscn)
+- [`../../scenes/tests/test_level_resolution.tscn`](../../scenes/tests/test_level_resolution.tscn)
+- [`../../scenes/tests/test_portal_overlap.tscn`](../../scenes/tests/test_portal_overlap.tscn)
 
 ## Validation
 
-- Validate relative-level resolution with [`../../scenes/test_level_resolution.tscn`](../../scenes/test_level_resolution.tscn).
-- Validate concurrent portal usage with [`../../scenes/test_portal_overlap.tscn`](../../scenes/test_portal_overlap.tscn).
+- Validate relative-level resolution with [`../../scenes/tests/test_level_resolution.tscn`](../../scenes/tests/test_level_resolution.tscn).
+- Validate concurrent portal usage with [`../../scenes/tests/test_portal_overlap.tscn`](../../scenes/tests/test_portal_overlap.tscn).
 - Validate direct portal actor transitions with [`../../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn`](../../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn).
 - Validate Bagua ascent, descent, and visibility behavior with [`../../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn`](../../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn).
 - Validate physical stair traversal with [`../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn`](../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn).

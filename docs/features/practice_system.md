@@ -76,7 +76,7 @@ For Trinity Church specifically: the chime activation at the end of the choir cu
 - `AppState` owns the `performed` flag per melody and the state transition to `performed`.
 - `melody_catalog.gd` owns the `performance_landmark` and `performance_prompt` fields per melody.
 - A future `PerformanceTrigger` or extended `LandmarkTrigger` node will own the in-world activation point.
-- The recognition prompt UI belongs in a new overlay or a dedicated screen script under `ui/screens/`. It should not live in `AppState` or `main.gd`.
+- The recognition prompt UI belongs in a new overlay or a dedicated screen script under `ui/screens/`. It should not live in `AppState` or `scenes/game_main.gd`.
 - The `piano_game` module can be integrated as the recognition prompt backend once the interface is stable.
 
 ## Relevant Files

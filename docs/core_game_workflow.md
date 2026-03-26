@@ -13,7 +13,7 @@ Build the game around a calm exploration-to-performance loop:
 
 This fits the current project strengths:
 
-- Large explorable island terrain in [`../terrain.tscn`](../terrain.tscn)
+- Large explorable island terrain in [`../terrain/terrain.tscn`](../terrain/terrain.tscn)
 - Free movement and inspect input in [`../characters/control/player_controller.gd`](../characters/control/player_controller.gd)
 - Proximity dialogue balloon interactions in [`../characters/control/base_controller.gd`](../characters/control/base_controller.gd)
 - Landmark spaces already placed in the island scene:
@@ -400,7 +400,7 @@ Current resident-system support for those notes now lives in:
 
 - resident content catalog: [`../game/resident_catalog.gd`](../game/resident_catalog.gd)
 - runtime resident state: [`../game/app_state.gd`](../game/app_state.gd)
-- overworld resident spawning and talk prompts: [`../main.gd`](../main.gd)
+- overworld resident spawning and talk prompts: [`../scenes/game_main.gd`](../scenes/game_main.gd)
 - resident talk controller: [`../characters/control/npc_controller.gd`](../characters/control/npc_controller.gd)
 - resident journal rendering: [`../ui/screens/journal_overlay.gd`](../ui/screens/journal_overlay.gd)
 
@@ -564,7 +564,7 @@ Avoid:
 
 ### Existing systems already aligned
 
-- Overworld exploration: [`../main.tscn`](../main.tscn)
+- Overworld exploration: [`../scenes/game_main.tscn`](../scenes/game_main.tscn)
 - Global player reference: [`../game/game_global.gd`](../game/game_global.gd)
 - Interaction radius and dialogue bubble logic: [`../characters/control/base_controller.gd`](../characters/control/base_controller.gd)
 - Player input and inspect action: [`../characters/control/player_controller.gd`](../characters/control/player_controller.gd)

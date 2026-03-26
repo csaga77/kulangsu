@@ -43,7 +43,7 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 - `AppState` owns all landmark progress state, the exit resolution logic, and the fragment reward.
 - Each `LandmarkTrigger` placed in the scene self-manages its own visibility by subscribing to `AppState.landmark_progress_changed`.
 - `LandmarkTrigger` owns its own collected state and hide/disable behavior.
-- `main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
+- `scenes/game_main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
 - `resident_catalog.gd` owns the authored beat gates and `landmark_states` fields for `tunnel_guide`.
 - `long_shan_tunnel.tscn` hosts the `LandmarkTrigger` nodes directly; their configuration lives in their exported properties.
 
@@ -55,7 +55,7 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
   - [`../../game/landmark_trigger.gd`](../../game/landmark_trigger.gd)
   - [`../../game/app_state.gd`](../../game/app_state.gd)
   - [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
-  - [`../../main.gd`](../../main.gd)
+  - [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
 - Shared state or catalogs:
   - `AppState.landmark_progress["long_shan_tunnel"]`
   - `AppState.melody_progress["festival_melody"]`

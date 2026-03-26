@@ -8,7 +8,7 @@ Open these files first in this order:
 
 1. [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
 2. [`../../game/app_state.gd`](../../game/app_state.gd)
-3. [`../../main.gd`](../../main.gd)
+3. [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
 4. [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd)
 5. [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd)
 
@@ -45,7 +45,7 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 - Story residents live in `ResidentCatalog._story_residents()`.
 - Ambient residents live in `ResidentCatalog._ambient_residents()`.
 - `AppState` builds runtime resident profiles from the catalog defaults and exposes the getters the rest of the game uses.
-- `main.gd` never hardcodes individual residents; it loops over `AppState.get_resident_ids()` and spawns them from catalog metadata.
+- `scenes/game_main.gd` never hardcodes individual residents; it loops over `AppState.get_resident_ids()` and spawns them from catalog metadata.
 - `NPCController` uses `resident_id` to pull appearance from `AppState`, keeps a local revealed-line state, and defaults the nearby bubble to `...`.
 - The journal never reads the catalog directly; it asks `AppState.build_resident_journal_text()`.
 
@@ -57,7 +57,7 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 2. Add the resident entry in `ResidentCatalog._story_residents()` or `ResidentCatalog._ambient_residents()`.
 3. Define `appearance` with `_look(...)`.
 4. Define `spawn` with `_spawn(anchor_id, offset, direction, mood, interaction_radius)`.
-5. If the `anchor_id` is new, add it to the spawn-anchor map in [`../../main.gd`](../../main.gd).
+5. If the `anchor_id` is new, add it to the spawn-anchor map in [`../../scenes/game_main.gd`](../../scenes/game_main.gd).
 6. Run the project and confirm the resident appears, speaks, and shows up in the journal after introduction.
 
 ### Change Resident Dialogue Or Progression
@@ -79,7 +79,7 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 1. Adjust the resident's `spawn` dictionary in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd).
 2. Prefer changing the `offset` first.
 3. Only add a new `anchor_id` if the resident truly belongs to a different hub or needs a new placement cluster.
-4. If adding a new anchor id, update [`../../main.gd`](../../main.gd) and document it below in `Current Spawn Anchors`.
+4. If adding a new anchor id, update [`../../scenes/game_main.gd`](../../scenes/game_main.gd) and document it below in `Current Spawn Anchors`.
 
 ### Add Resident Movement Or Schedules
 
@@ -90,7 +90,7 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 
 ## Current Spawn Anchors
 
-The catalog `spawn.anchor_id` values currently supported by [`../../main.gd`](../../main.gd) are:
+The catalog `spawn.anchor_id` values currently supported by [`../../scenes/game_main.gd`](../../scenes/game_main.gd) are:
 
 - `Piano Ferry` -> `terrain/ground/buildings/piano_ferry`
 - `Trinity Church` -> `terrain/ground/buildings/TrinityChurch`
@@ -115,18 +115,18 @@ If a resident uses an unsupported `anchor_id`, startup should warn and skip that
 
 - [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd) owns resident content and spawn metadata.
 - [`../../game/app_state.gd`](../../game/app_state.gd) owns runtime resident profiles, shared resident getters, and journal text generation.
-- [`../../main.gd`](../../main.gd) owns overworld spawn-anchor mapping, resident instantiation, and talk-prompt wiring.
+- [`../../scenes/game_main.gd`](../../scenes/game_main.gd) owns overworld spawn-anchor mapping, resident instantiation, and talk-prompt wiring.
 - [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd) owns resident presentation hookup and nearby bubble reveal behavior.
 - [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd) owns resident note presentation in the journal.
 
 ## Relevant Files
 
 - Scenes:
-  - [`../../main.tscn`](../../main.tscn)
+  - [`../../scenes/game_main.tscn`](../../scenes/game_main.tscn)
   - [`../../game/tests/npc_system/test_npc_layer_interaction.tscn`](../../game/tests/npc_system/test_npc_layer_interaction.tscn)
   - [`../../game/tests/npc_system/test_scene.tscn`](../../game/tests/npc_system/test_scene.tscn)
 - Scripts:
-  - [`../../main.gd`](../../main.gd)
+  - [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
   - [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd)
   - [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd)
 - Shared state or catalogs:
@@ -146,8 +146,8 @@ If a resident uses an unsupported `anchor_id`, startup should warn and skip that
   - player controller `closest_object_changed`
   - player controller `inspect_requested`
 - Important node paths, dictionaries, resources, or data flow:
-  - `main.tscn` keeps the overworld actor layer at `actors`, with the player at `actors/player`
-  - `main.gd` maps resident spawn `anchor_id` values to concrete scene nodes
+  - `scenes/game_main.tscn` keeps the overworld actor layer at `actors`, with the player at `actors/player`
+  - `scenes/game_main.gd` maps resident spawn `anchor_id` values to concrete scene nodes
   - `NPCController.resident_id` links an instantiated actor to resident catalog data
   - `AppState.interact_with_resident()` advances talk beats and updates resident runtime state
   - `NPCController.reveal_dialogue()` swaps the nearby `...` cue to the just-triggered resident line
@@ -160,7 +160,7 @@ When extending the NPC system, make changes in this order unless the task is str
 
 1. Update resident content or data shape in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd).
 2. Update shared runtime behavior in [`../../game/app_state.gd`](../../game/app_state.gd) if the change affects state, getters, or beat side effects.
-3. Update world integration in [`../../main.gd`](../../main.gd) only if spawn anchors, prompt behavior, or actor-layer assumptions need to change.
+3. Update world integration in [`../../scenes/game_main.gd`](../../scenes/game_main.gd) only if spawn anchors, prompt behavior, or actor-layer assumptions need to change.
 4. Update [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd) only if NPC presentation or talk behavior changes.
 5. Update [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd) only if the player-facing resident notes need to render differently.
 6. Update the docs in the same patch.

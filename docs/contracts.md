@@ -5,7 +5,7 @@ This file documents the durable boundaries future changes should preserve. These
 ## Runtime Entry Contracts
 
 - [`../project.godot`](../project.godot) must continue to define the Godot project entry point and the `AppState` autoload.
-- The current main scene contract is `run/main_scene = res://ui/app_flow_root.tscn`.
+- The current main scene contract is `run/main_scene = res://main.tscn`.
 - The current autoload contract is `AppState = res://game/app_state.gd`.
 
 If either changes, update this file, [`architecture.md`](architecture.md), and [`README.md`](../README.md).
@@ -14,8 +14,8 @@ If either changes, update this file, [`architecture.md`](architecture.md), and [
 
 Owned by:
 
-- [`../ui/app_flow_root.tscn`](../ui/app_flow_root.tscn)
-- [`../ui/app_flow_root.gd`](../ui/app_flow_root.gd)
+- [`../main.tscn`](../main.tscn)
+- [`../main.gd`](../main.gd)
 
 Current contract:
 
@@ -56,7 +56,7 @@ Current contract:
 - `GameGlobal` is a static singleton accessed via `GameGlobal.get_instance()`
 - it holds the live `HumanBody2D` player node reference for the running scene
 - it exposes one signal: `player_changed`, emitted when the player reference changes
-- `main.gd` sets the reference in `_ready()` after the scene tree is live
+- `scenes/game_main.gd` sets the reference in `_ready()` after the scene tree is live
 - scene-graph systems (terrain, AI, behavior trees) use `GameGlobal` to reach the player node
 - UI and progression code should use `AppState` instead for anything player-facing or save-relevant
 
@@ -70,19 +70,19 @@ Governance:
 
 Owned by:
 
-- [`../main.tscn`](../main.tscn)
-- [`../main.gd`](../main.gd)
+- [`../scenes/game_main.tscn`](../scenes/game_main.tscn)
+- [`../scenes/game_main.gd`](../scenes/game_main.gd)
 
 Current contract:
 
-- `main.gd` maps landmarks and spawn anchors, spawns residents, reacts to controller events, and syncs player context into `AppState`
-- `main.tscn` keeps the player and resident instances under one shared y-sorted actor layer rooted at `actors`
+- `scenes/game_main.gd` maps landmarks and spawn anchors, spawns residents, reacts to controller events, and syncs player context into `AppState`
+- `scenes/game_main.tscn` keeps the player and resident instances under one shared y-sorted actor layer rooted at `actors`
 - player inspect and talk prompts flow from nearby same-layer world objects through controller signals into `AppState`
 - landmark naming and location sync depend on known nodes in the main scene
 
 Governance:
 
-- keep scene-specific world wiring local to `main.gd` unless it becomes a reusable subsystem
+- keep scene-specific world wiring local to `scenes/game_main.gd` unless it becomes a reusable subsystem
 - document node-path, actor-layer, or spawn-anchor naming assumptions if new systems depend on them
 
 ## Multi-Level Scene Contract
@@ -156,7 +156,7 @@ Current contract:
 - `AppState.landmark_progress_changed(landmark_id, progress)` fires whenever any landmark's entry changes
 - `AppState.get_landmark_progress(landmark_id)` and `get_landmark_state(landmark_id)` are the read API
 - `AppState.set_landmark_progress(landmark_id, progress)` and `advance_landmark_state(landmark_id, new_state)` are the write API
-- `AppState.activate_landmark_trigger(landmark_id, trigger_id, display_name)` is called by `main.gd` when the player inspects a `LandmarkTrigger` node; it routes to the correct per-landmark collection handler
+- `AppState.activate_landmark_trigger(landmark_id, trigger_id, display_name)` is called by `scenes/game_main.gd` when the player inspects a `LandmarkTrigger` node; it routes to the correct per-landmark collection handler
 - `AppState.set_all_landmark_progress(progress)` sets multiple landmarks at once; used by `configure_*` methods
 - Resident dialogue beats may carry `"unlock_landmark"` to unlock a landmark when the beat fires, and `"gate"` / `"gate_fallback"` to block a beat until a landmark condition is satisfied
 - Resident dialogue beats may carry `"landmark_reward"` to trigger a landmark resolution (fragment award, melody state update, downstream unlocks) when the beat fires

@@ -8,7 +8,7 @@ This repository is also a small super-repo: the main game lives here, and severa
 
 - Godot 4 project configured through [`project.godot`](project.godot)
 - GDScript and `.tscn` scenes
-- Canvas-based UI rooted in [`ui/app_flow_root.tscn`](ui/app_flow_root.tscn)
+- Canvas-based UI rooted in [`main.tscn`](main.tscn)
 - Shared UI/progression state in the `AppState` autoload at [`game/app_state.gd`](game/app_state.gd)
 - Git submodules for shared support code, tilemap tooling, third-party LPC assets, and agent runbooks
 
@@ -17,11 +17,12 @@ No package manager, CI pipeline, or automated test runner is checked into this r
 ## Repository Layout
 
 - [`ui/`](ui) - app shell, screens, overlays, and shared UI styling
-- [`main.tscn`](main.tscn) / [`main.gd`](main.gd) - main island scene and world integration logic
+- [`scenes/game_main.tscn`](scenes/game_main.tscn) / [`scenes/game_main.gd`](scenes/game_main.gd) - main island scene and world integration logic
 - [`game/`](game) - shared state, catalogs, and reusable gameplay modules
 - [`characters/`](characters) - player, NPC, controller, and behavior-tree code
 - [`architecture/`](architecture) - landmark scenes and reusable building pieces
-- [`scenes/`](scenes) - prototype and validation scenes
+- [`scenes/`](scenes) - runtime gameplay scenes plus validation scene containers
+- [`terrain/`](terrain) - island terrain scene, terrain generation, and water rendering setup
 - [`resources/`](resources) - audio, sprites, materials, animations, and tilesets
 - [`docs/`](docs) - project documentation for humans and coding agents
 - [`codex_agents/`](codex_agents) - shared agent runbooks and reusable support docs
@@ -53,8 +54,8 @@ Use a local Godot 4 editor or runtime to open [`project.godot`](project.godot).
 
 Important runtime entry points:
 
-- Main configured scene: [`ui/app_flow_root.tscn`](ui/app_flow_root.tscn)
-- Main gameplay scene embedded by the shell: [`main.tscn`](main.tscn)
+- Main configured scene: [`main.tscn`](main.tscn)
+- Main gameplay scene embedded by the shell: [`scenes/game_main.tscn`](scenes/game_main.tscn)
 
 This repo does not include export scripts or shell wrappers for launching the project.
 
@@ -64,8 +65,8 @@ Validation is currently manual:
 
 - Run the full project after app-shell, HUD, overlay, or progression changes.
 - Open focused scenes when changing a specific subsystem.
-- Use the existing test/prototype scenes under [`scenes/`](scenes) and feature-local test scenes such as [`game/grid_board_game/test_grid_board_game.tscn`](game/grid_board_game/test_grid_board_game.tscn) and [`game/grid_board_game/test_terminal_turn_state.tscn`](game/grid_board_game/test_terminal_turn_state.tscn).
-- Use [`scenes/test_weather.tscn`](scenes/test_weather.tscn) for weather-specific validation. It now combines tilemap-backed water and terrain, a shared fog pass, pier-ground rain impacts, a thunder-flash test pass, an in-scene weather control panel with rain, fog, and thunder controls, foreground occluders, and actor readability checks in one sandbox.
+- Use the existing validation scenes under [`scenes/tests/`](scenes/tests) and feature-local test scenes such as [`game/grid_board_game/test_grid_board_game.tscn`](game/grid_board_game/test_grid_board_game.tscn) and [`game/grid_board_game/test_terminal_turn_state.tscn`](game/grid_board_game/test_terminal_turn_state.tscn).
+- Use [`scenes/tests/test_weather.tscn`](scenes/tests/test_weather.tscn) for weather-specific validation. It now combines tilemap-backed water and terrain, a shared fog pass, pier-ground rain impacts, a thunder-flash test pass, an in-scene weather control panel with rain, fog, and thunder controls, foreground occluders, and actor readability checks in one sandbox.
 
 If you make a change that affects behavior and you cannot run the project or a relevant scene, call that out explicitly in your handoff.
 

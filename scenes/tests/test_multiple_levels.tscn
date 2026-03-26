@@ -1,7 +1,7 @@
 [gd_scene format=4 uid="uid://nb76pl60f3ib"]
 
 [ext_resource type="Script" uid="uid://dl2kyruhqxduy" path="res://architecture/components/steps.gd" id="2_jyvgc"]
-[ext_resource type="PackedScene" uid="uid://dqivkaosuu5nr" path="res://scenes/test_room.tscn" id="2_m6uu3"]
+[ext_resource type="PackedScene" uid="uid://dqivkaosuu5nr" path="res://scenes/tests/test_room.tscn" id="2_m6uu3"]
 [ext_resource type="TileSet" uid="uid://bgynmgqncncer" path="res://resources/tilesets/architecture/wall_0_tiles.tres" id="2_x4g5s"]
 [ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="4_i36na"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="4_x4g5s"]

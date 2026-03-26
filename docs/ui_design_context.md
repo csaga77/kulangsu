@@ -42,8 +42,8 @@ The UI should support exploration first, with menus and overlays helping orienta
 
 The UI is currently orchestrated by:
 
-- [`../ui/app_flow_root.gd`](../ui/app_flow_root.gd)
-- [`../ui/app_flow_root.tscn`](../ui/app_flow_root.tscn)
+- [`../main.gd`](../main.gd)
+- [`../main.tscn`](../main.tscn)
 
 This app shell is the startup scene through:
 
@@ -105,7 +105,7 @@ Future shared UI colors, typography rules, spacing tokens, and component styles 
 
 ### Overlays Still Built in the App Shell
 
-These currently exist as programmatically built panels in `app_flow_root.gd`:
+These currently exist as programmatically built panels in `main.gd`:
 
 - Journal
 - Pause
@@ -211,7 +211,7 @@ Current rule:
 
 Relevant code:
 
-- [`../ui/app_flow_root.gd`](../ui/app_flow_root.gd)
+- [`../main.gd`](../main.gd)
 
 Future UI work should respect this unless the entire UI system is intentionally rebuilt.
 

@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://scenes/test_portal_overlap.gd" id="1_30wa2"]
+[ext_resource type="Script" path="res://scenes/tests/test_portal_overlap.gd" id="1_30wa2"]
 
 [node name="test_portal_overlap" type="Node2D"]
 script = ExtResource("1_30wa2")

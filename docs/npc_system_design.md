@@ -15,7 +15,7 @@ The live resident flow is:
 
 1. [`../game/resident_catalog.gd`](../game/resident_catalog.gd) defines the static resident roster, content, appearance presets, and spawn metadata.
 2. [`../game/app_state.gd`](../game/app_state.gd) clones those defaults into mutable runtime `resident_profiles` and exposes all resident-facing getters.
-3. [`../main.gd`](../main.gd) caches supported spawn anchors, spawns the roster under the shared `actors/Residents` layer, and turns player `R` input into resident talk interactions.
+3. [`../scenes/game_main.gd`](../scenes/game_main.gd) caches supported spawn anchors, spawns the roster under the shared `actors/Residents` layer, and turns player `R` input into resident talk interactions.
 4. [`../characters/control/base_controller.gd`](../characters/control/base_controller.gd) filters nearby targets to the same absolute z layer before closest-target or speech logic can use them.
 5. [`../characters/control/npc_controller.gd`](../characters/control/npc_controller.gd) applies each resident's appearance, shows the nearby `...` cue, reveals the current talk line after interaction, and keeps stationary residents facing the player while nearby.
 6. [`../ui/screens/journal_overlay.gd`](../ui/screens/journal_overlay.gd) renders resident notes from `AppState.build_resident_journal_text()`.
@@ -39,11 +39,11 @@ This split is intentional: authored content stays in the catalog, mutable progre
   - `conversation_index`
   - `quest_state`
   - `current_step`
-- If a future feature needs resident progression to affect more than the local scene, it should probably enter through `AppState` instead of being hidden in `main.gd` or `npc_controller.gd`.
+- If a future feature needs resident progression to affect more than the local scene, it should probably enter through `AppState` instead of being hidden in `scenes/game_main.gd` or `npc_controller.gd`.
 
 ### Shared Actor Layer Is Required
 
-- In the main overworld, the player and resident instances live under the same y-sorted `actors` branch in [`../main.tscn`](../main.tscn).
+- In the main overworld, the player and resident instances live under the same y-sorted `actors` branch in [`../scenes/game_main.tscn`](../scenes/game_main.tscn).
 - This is required for believable overlap and draw order. If the player and residents are split into separate visual layers, depth cues break quickly.
 - The shared y-sorted actor layer is a rendering rule, not just a convenience for the current implementation.
 
@@ -139,7 +139,7 @@ This shared-anchor-plus-offset model is intentionally cheap to author. It is les
 
 - Approaching a same-layer resident changes the hint from `Inspect` to `Talk to <resident>`.
 - A nearby resident shows `...` in the speech balloon until the player presses `R`.
-- Pressing `R` runs `AppState.interact_with_resident(resident_id)` through [`../main.gd`](../main.gd).
+- Pressing `R` runs `AppState.interact_with_resident(resident_id)` through [`../scenes/game_main.gd`](../scenes/game_main.gd).
 - The NPC bubble then swaps from `...` to the returned beat line for that interaction.
 - The interaction can:
   - reveal the resident in the journal
@@ -156,7 +156,7 @@ Use the test scenes deliberately. They are not interchangeable.
 
 ### Full Overworld Check
 
-Use [`../main.tscn`](../main.tscn) when validating:
+Use [`../scenes/game_main.tscn`](../scenes/game_main.tscn) when validating:
 
 - full-roster spawning
 - anchor placement
@@ -194,7 +194,7 @@ When the system breaks, start here:
 - Resident missing entirely:
   - Check `resident_order()` and the resident entry in [`../game/resident_catalog.gd`](../game/resident_catalog.gd).
   - Check `AppState.get_resident_ids()` and `get_resident_spawn_config()`.
-  - Check for missing anchor warnings from [`../main.gd`](../main.gd).
+  - Check for missing anchor warnings from [`../scenes/game_main.gd`](../scenes/game_main.gd).
 - Resident appears but has the wrong look:
   - Check `resident_id` on the instantiated controller.
   - Check `AppState.get_resident_appearance_config()` and `NPCController._apply_resident_presentation()`.
@@ -214,7 +214,7 @@ When the system breaks, start here:
 
 - Preserve the catalog as the source of truth for authored resident content.
 - Keep shared resident progression in [`../game/app_state.gd`](../game/app_state.gd), not in scene-local nodes.
-- Keep world wiring in [`../main.gd`](../main.gd) and controller scripts.
+- Keep world wiring in [`../scenes/game_main.gd`](../scenes/game_main.gd) and controller scripts.
 - Keep journal rendering thin. If the resident note shape changes, change the data producer first.
 - If new resident movement or schedules are added, keep authored schedule data in the catalog and runtime movement logic in world/controller code.
 - If anchor ids, resident profile keys, or same-layer targeting rules change, update:

@@ -10,7 +10,7 @@ Open these files first in this order:
 2. [`../core_game_workflow.md`](../core_game_workflow.md)
 3. [`../../game/app_state.gd`](../../game/app_state.gd)
 4. [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
-5. [`../../main.gd`](../../main.gd)
+5. [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
 6. [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd)
 
 Use [`../core_gameplay_plays.md`](../core_gameplay_plays.md) after this file when you need the broader tone and repeatable-play rationale.
@@ -40,7 +40,7 @@ This is how the current repo already maps to the high-level RPG pitch.
 
 ### Core Loop Mapping
 
-- `Explore` already exists through the main island scene in [`../../main.gd`](../../main.gd) and the terrain/landmark setup.
+- `Explore` already exists through the main island scene in [`../../scenes/game_main.gd`](../../scenes/game_main.gd) and the terrain/landmark setup.
 - `Hear` is represented mostly through resident writing, ambient lines, and melody clue text in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd), but not yet as a formal runtime melody state.
 - `Collect` exists today as a fragment counter in [`../../game/app_state.gd`](../../game/app_state.gd) and the journal `Melody` tab in [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd).
 - `Practice` is still mostly design intent. There is not yet a shared practice state or training loop in the main overworld flow.
@@ -261,20 +261,20 @@ That structure may become useful later, but the current project is already organ
 - [`../../game/app_state.gd`](../../game/app_state.gd) owns shared player-facing melody progress.
 - [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd) owns resident-authored clue text and resident-to-melody relationships.
 - [`../../game/melody_catalog.gd`](../../game/melody_catalog.gd) owns melody definitions and fragment metadata.
-- [`../../main.gd`](../../main.gd) owns overworld integration, location context, and resident interaction wiring.
+- [`../../scenes/game_main.gd`](../../scenes/game_main.gd) owns overworld integration, location context, and resident interaction wiring.
 - Landmark scenes under [`../../architecture/`](../../architecture) or focused gameplay modules under [`../../game/`](../../game) should own local task logic and performance triggers.
 - [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd) owns melody presentation in the journal.
-- [`../../ui/app_flow_root.gd`](../../ui/app_flow_root.gd) owns shell flow and overlays, not gameplay rules.
+- [`../../main.gd`](../../main.gd) owns shell flow and overlays, not gameplay rules.
 
 ## Relevant Files
 
 - Scenes:
+  - [`../../scenes/game_main.tscn`](../../scenes/game_main.tscn)
   - [`../../main.tscn`](../../main.tscn)
-  - [`../../ui/app_flow_root.tscn`](../../ui/app_flow_root.tscn)
   - landmark scenes under [`../../architecture/`](../../architecture)
 - Scripts:
+  - [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
   - [`../../main.gd`](../../main.gd)
-  - [`../../ui/app_flow_root.gd`](../../ui/app_flow_root.gd)
   - [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd)
 - Shared state or catalogs:
   - [`../../game/app_state.gd`](../../game/app_state.gd)
@@ -296,7 +296,7 @@ That structure may become useful later, but the current project is already organ
   - `resident_profile_changed`
   - `summary_changed`
 - Current flow:
-  - resident interaction starts in [`../../main.gd`](../../main.gd)
+  - resident interaction starts in [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
   - resident progression updates in [`../../game/app_state.gd`](../../game/app_state.gd)
   - the journal reads summary text from [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd)
 - Recommended next additions:

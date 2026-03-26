@@ -19,7 +19,7 @@ The current piano game is a standalone scene:
 - Runtime script: [`../game/piano_game/piano_game.gd`](../game/piano_game/piano_game.gd)
 - Chart generator: [`../game/piano_game/beat_json_generator.gd`](../game/piano_game/beat_json_generator.gd)
 
-It is not yet wired into the main app shell in [`../ui/app_flow_root.tscn`](../ui/app_flow_root.tscn), the gameplay HUD, or story progression in [`../game/app_state.gd`](../game/app_state.gd).
+It is not yet wired into the main app shell in [`../main.tscn`](../main.tscn), the gameplay HUD, or story progression in [`../game/app_state.gd`](../game/app_state.gd).
 
 Today it behaves more like a self-contained prototype or authoring sandbox than a finished player-facing game mode.
 

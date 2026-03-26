@@ -1,286 +1,478 @@
-# @tool is required so that @onready node references resolve correctly when the
-# scene is open in the Godot editor (e.g. for terrain authoring and landmark
-# inspection). All runtime-only code paths (resident spawning, signal wiring,
-# location syncing) are guarded by Engine.is_editor_hint() checks or by the
-# m_is_ready flag so they do not execute during edit-time.
-@tool
-extends Node2D
+extends Node
 
-const DEFAULT_HINT := "R Inspect   J Journal   Esc Pause"
-const LANDMARK_SYNC_DISTANCE := 1600.0
-const NPC_SCENE: PackedScene = preload("res://characters/human_body_2d.tscn")
+const GAME_SCENE: PackedScene = preload("res://scenes/game_main.tscn")
+const BOOT_SCREEN_SCENE: PackedScene = preload("res://ui/screens/boot_screen.tscn")
+const TITLE_SCREEN_SCENE: PackedScene = preload("res://ui/screens/title_screen.tscn")
+const PLAYER_SETUP_SCENE: PackedScene = preload("res://ui/screens/player_customization_overlay.tscn")
+const HUD_SCENE: PackedScene = preload("res://ui/screens/game_hud.tscn")
+const JOURNAL_SCENE: PackedScene = preload("res://ui/screens/journal_overlay.tscn")
+const PAUSE_SCENE: PackedScene = preload("res://ui/screens/pause_overlay.tscn")
+const SETTINGS_SCENE: PackedScene = preload("res://ui/screens/settings_overlay.tscn")
+const CREDITS_SCENE: PackedScene = preload("res://ui/screens/credits_overlay.tscn")
+const ENDING_SCENE: PackedScene = preload("res://ui/screens/ending_overlay.tscn")
+const CONFIRM_SCENE: PackedScene = preload("res://ui/screens/confirm_modal.tscn")
+const UI_DESIGN_SIZE := Vector2(1920.0, 1080.0)
 
-@onready var m_actor_root: Node2D = $actors
-@onready var m_player :HumanBody2D = $actors/player
-@onready var m_terrain: Terrain = $terrain
-@onready var m_bagua_tower: Node2D = $terrain/ground/buildings/BaguaTower
-@onready var m_trinity_church: Node2D = $terrain/ground/buildings/TrinityChurch
-@onready var m_piano_ferry: Node2D = $terrain/ground/buildings/piano_ferry
-@onready var m_long_shan_tunnel: Node2D = $terrain/long_shan_tunnel
-@onready var m_bi_shan_tunnel: Node2D = $terrain/bi_shan_tunnel
-@onready var m_bi_shan_tunnel_entry_south: Node2D = $terrain/ground/bi_shan_tunnel_entries/entry_south
-@onready var m_long_shan_tunnel_entry_south: Node2D = $terrain/ground/long_shan_tunnel_entries/entry_south
+enum ScreenState {
+	BOOT,
+	TITLE,
+	PLAYER_SETUP,
+	PLAYING,
+	JOURNAL,
+	PAUSE,
+	SETTINGS,
+	CREDITS,
+	ENDING,
+	CONFIRM,
+}
 
-var m_is_ready := false
-var m_player_controller: PlayerController = null
-var m_closest_object: Node2D = null
-var m_landmark_nodes: Dictionary = {}
-var m_spawn_anchor_nodes: Dictionary = {}
-var m_resident_root: Node2D = null
+var m_state: ScreenState = ScreenState.BOOT
+var m_game_root: Node = null
 
-# Called when the node enters the scene tree for the first time.
+var m_viewport_root: Control
+var m_ui_root: Control
+var m_backdrop: ColorRect
+var m_boot_screen: Control
+var m_title_screen: Control
+var m_player_setup_panel: PanelContainer
+var m_hud: Control
+var m_journal_panel: PanelContainer
+var m_pause_panel: PanelContainer
+var m_settings_panel: PanelContainer
+var m_credits_panel: PanelContainer
+var m_ending_panel: PanelContainer
+var m_confirm_panel: PanelContainer
+var m_confirm_action: Callable
+var m_pending_setup_free_walk := false
+
+
 func _ready() -> void:
-	m_is_ready = true
-	if is_instance_valid(m_terrain):
-		m_terrain.player = m_player
-	GameGlobal.get_instance().set_player(m_player)
-	_cache_landmarks()
-	_cache_spawn_anchors()
-	_spawn_catalog_residents()
-	_connect_ui_signals()
-	sync_ui_state()
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	_build_app_shell()
+	get_viewport().size_changed.connect(_update_ui_layout)
+	_update_ui_layout()
+	_show_boot_sequence()
 
 
-func sync_ui_state() -> void:
-	if !m_is_ready:
+func _input(event: InputEvent) -> void:
+	if event.is_echo():
 		return
 
-	AppState.set_landmarks(PackedStringArray(m_landmark_nodes.keys()))
-	AppState.set_residents(AppState.get_known_resident_names())
-	_sync_location_from_player()
-	_update_hint_text(m_closest_object)
-
-
-func _cache_landmarks() -> void:
-	m_landmark_nodes = {
-		"Piano Ferry": m_piano_ferry,
-		"Trinity Church": m_trinity_church,
-		"Bagua Tower": m_bagua_tower,
-		"Long Shan Tunnel": m_long_shan_tunnel,
-		"Bi Shan Tunnel": m_bi_shan_tunnel,
-	}
-
-
-func _cache_spawn_anchors() -> void:
-	m_spawn_anchor_nodes = {
-		"Piano Ferry": m_piano_ferry,
-		"Trinity Church": m_trinity_church,
-		"Bagua Tower": m_bagua_tower,
-		"Bi Shan Tunnel South": m_bi_shan_tunnel_entry_south,
-		"Long Shan Tunnel South": m_long_shan_tunnel_entry_south,
-	}
-
-
-func _connect_ui_signals() -> void:
-	if !is_instance_valid(m_player):
+	if m_state == ScreenState.BOOT and event.is_pressed():
+		_show_title()
+		get_viewport().set_input_as_handled()
 		return
 
-	if !AppState.player_appearance_changed.is_connected(_on_player_appearance_changed):
-		AppState.player_appearance_changed.connect(_on_player_appearance_changed)
-
-	if !m_player.global_position_changed.is_connected(_sync_location_from_player):
-		m_player.global_position_changed.connect(_sync_location_from_player)
-
-	m_player_controller = m_player.controller as PlayerController
-	_apply_player_costume()
-	if m_player_controller == null:
-		return
-
-	if !m_player_controller.closest_object_changed.is_connected(_on_closest_object_changed):
-		m_player_controller.closest_object_changed.connect(_on_closest_object_changed)
-	if !m_player_controller.inspect_requested.is_connected(_on_inspect_requested):
-		m_player_controller.inspect_requested.connect(_on_inspect_requested)
+	if event is InputEventKey and event.pressed:
+		match event.keycode:
+			KEY_ESCAPE:
+				_handle_escape()
+				get_viewport().set_input_as_handled()
+			KEY_J:
+				if _is_game_active():
+					if m_state == ScreenState.JOURNAL:
+						_resume_gameplay()
+					elif m_state == ScreenState.PLAYING:
+						_open_overlay(ScreenState.JOURNAL)
+					get_viewport().set_input_as_handled()
 
 
-func _sync_location_from_player() -> void:
-	if !is_instance_valid(m_player):
-		return
+func _build_app_shell() -> void:
+	var game_layer := Node2D.new()
+	game_layer.name = "GameLayer"
+	add_child(game_layer)
 
-	if _is_landmark(m_closest_object):
-		AppState.set_location(_display_name_for_node(m_closest_object))
-		return
+	var ui_layer := CanvasLayer.new()
+	ui_layer.name = "UILayer"
+	ui_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(ui_layer)
 
-	var best_name := "Island Paths"
-	var best_distance_sq := INF
+	m_viewport_root = Control.new()
+	m_viewport_root.name = "ViewportRoot"
+	m_viewport_root.process_mode = Node.PROCESS_MODE_ALWAYS
+	m_viewport_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ui_layer.add_child(m_viewport_root)
 
-	for landmark_name in m_landmark_nodes.keys():
-		var landmark_node: Node2D = m_landmark_nodes[landmark_name]
-		if !is_instance_valid(landmark_node):
-			continue
+	m_backdrop = ColorRect.new()
+	m_backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	m_backdrop.color = Color(0.06, 0.10, 0.14, 1.0)
+	m_viewport_root.add_child(m_backdrop)
 
-		var distance_sq := m_player.global_position.distance_squared_to(landmark_node.global_position)
-		if distance_sq < best_distance_sq:
-			best_distance_sq = distance_sq
-			best_name = landmark_name
+	m_ui_root = Control.new()
+	m_ui_root.name = "Root"
+	m_ui_root.process_mode = Node.PROCESS_MODE_ALWAYS
+	m_ui_root.position = Vector2.ZERO
+	m_ui_root.custom_minimum_size = UI_DESIGN_SIZE
+	m_ui_root.size = UI_DESIGN_SIZE
+	m_viewport_root.add_child(m_ui_root)
 
-	if best_distance_sq <= LANDMARK_SYNC_DISTANCE * LANDMARK_SYNC_DISTANCE:
-		AppState.set_location(best_name)
-	else:
-		AppState.set_location("Island Paths")
+	m_boot_screen = BOOT_SCREEN_SCENE.instantiate() as Control
+	m_ui_root.add_child(m_boot_screen)
+	if m_boot_screen.has_signal("skipped"):
+		m_boot_screen.connect("skipped", _show_title)
 
+	m_title_screen = TITLE_SCREEN_SCENE.instantiate() as Control
+	m_ui_root.add_child(m_title_screen)
+	m_title_screen.connect("continue_pressed", _on_continue_pressed)
+	m_title_screen.connect("new_game_pressed", _on_new_game_pressed)
+	m_title_screen.connect("free_walk_pressed", _on_free_walk_pressed)
+	m_title_screen.connect("settings_pressed", _on_title_settings_pressed)
+	m_title_screen.connect("credits_pressed", _on_title_credits_pressed)
+	m_title_screen.connect("quit_pressed", _on_title_quit_pressed)
 
-func _on_closest_object_changed(new_object: Node2D) -> void:
-	m_closest_object = new_object
+	m_player_setup_panel = PLAYER_SETUP_SCENE.instantiate() as PanelContainer
+	m_ui_root.add_child(m_player_setup_panel)
+	m_player_setup_panel.connect("confirm_requested", _on_player_setup_confirmed)
+	m_player_setup_panel.connect("cancel_requested", _on_player_setup_cancelled)
 
-	if _is_landmark(new_object):
-		AppState.set_location(_display_name_for_node(new_object))
+	m_hud = HUD_SCENE.instantiate() as Control
+	m_ui_root.add_child(m_hud)
 
-	_update_hint_text(new_object)
+	m_journal_panel = JOURNAL_SCENE.instantiate() as PanelContainer
+	m_ui_root.add_child(m_journal_panel)
+	m_journal_panel.connect("close_requested", _resume_gameplay)
 
-
-func _on_inspect_requested() -> void:
-	if !is_instance_valid(m_closest_object):
-		AppState.set_save_status("Inspect: nothing nearby")
-		return
-
-	var resident_controller := _get_resident_controller(m_closest_object)
-	if resident_controller != null:
-		var resident_id := resident_controller.get_resident_id()
-		var interaction := AppState.interact_with_resident(resident_id)
-		var resident_name := AppState.get_resident_display_name(resident_id)
-		var dialogue_line := String(interaction.get("line", ""))
-
-		if interaction.is_empty():
-			AppState.set_save_status("Talked with %s" % resident_name)
-
-		resident_controller.reveal_dialogue(dialogue_line)
-		# Note: set_residents is not called here because interact_with_resident
-		# already calls _sync_known_residents() internally.
-		_update_hint_text(m_closest_object)
-		return
-
-	var landmark_trigger := _get_landmark_trigger(m_closest_object)
-	if landmark_trigger != null:
-		AppState.activate_landmark_trigger(
-			landmark_trigger.landmark_id,
-			landmark_trigger.trigger_id,
-			landmark_trigger.display_name
+	m_pause_panel = PAUSE_SCENE.instantiate() as PanelContainer
+	m_ui_root.add_child(m_pause_panel)
+	m_pause_panel.connect("resume_requested", _resume_gameplay)
+	m_pause_panel.connect("journal_requested", func() -> void:
+		_open_overlay(ScreenState.JOURNAL)
+	)
+	m_pause_panel.connect("settings_requested", func() -> void:
+		_open_overlay(ScreenState.SETTINGS)
+	)
+	m_pause_panel.connect("ending_requested", _on_prototype_finale_pressed)
+	m_pause_panel.connect("return_to_title_requested", func() -> void:
+		_show_confirm(
+			"Return to Title?",
+			"The current prototype does not save story progress. Return anyway?",
+			_return_to_title
 		)
-		landmark_trigger.collect()
-		_update_hint_text(m_closest_object)
-		return
+	)
+	m_pause_panel.connect("quit_requested", func() -> void:
+		_show_confirm(
+			"Quit the App?",
+			"Leave Kulangsu for now?",
+			func() -> void:
+				get_tree().quit()
+		)
+	)
 
-	var display_name := _display_name_for_node(m_closest_object)
-	AppState.set_save_status("Inspect: %s" % display_name)
+	m_settings_panel = SETTINGS_SCENE.instantiate() as PanelContainer
+	m_ui_root.add_child(m_settings_panel)
+	m_settings_panel.connect("back_requested", _close_settings_panel)
 
-
-func _update_hint_text(target: Node2D) -> void:
-	if !is_instance_valid(target):
-		AppState.set_hint(DEFAULT_HINT)
-		return
-
-	var landmark_trigger := _get_landmark_trigger(target)
-	if landmark_trigger != null:
-		if landmark_trigger.is_collected():
-			AppState.set_hint(DEFAULT_HINT)
+	m_credits_panel = CREDITS_SCENE.instantiate() as PanelContainer
+	m_ui_root.add_child(m_credits_panel)
+	m_credits_panel.connect("back_requested", func() -> void:
+		if _is_game_active():
+			_resume_gameplay()
 		else:
-			AppState.set_hint("R Collect %s   J Journal   Esc Pause" % landmark_trigger.display_name)
+			_set_panel_visible(m_credits_panel, false)
+			_show_title()
+	)
+
+	m_ending_panel = ENDING_SCENE.instantiate() as PanelContainer
+	m_ui_root.add_child(m_ending_panel)
+	m_ending_panel.connect("return_to_title_requested", func() -> void:
+		_show_confirm(
+			"Return to Title?",
+			"The ferry departs at dawn. Roll credits and return to title?",
+			_return_to_title
+		)
+	)
+	m_ending_panel.connect("stay_requested", func() -> void:
+		AppState.configure_postgame()
+		_resume_gameplay()
+	)
+	m_ending_panel.connect("credits_requested", func() -> void:
+		_open_overlay(ScreenState.CREDITS)
+	)
+
+	m_confirm_panel = CONFIRM_SCENE.instantiate() as PanelContainer
+	m_ui_root.add_child(m_confirm_panel)
+	m_confirm_panel.connect("cancel_requested", _hide_confirm)
+	m_confirm_panel.connect("confirm_requested", _on_confirm_accepted)
+
+	_set_panel_visible(m_title_screen, false)
+	_set_panel_visible(m_player_setup_panel, false)
+	_set_panel_visible(m_hud, false)
+	_set_panel_visible(m_journal_panel, false)
+	_set_panel_visible(m_pause_panel, false)
+	_set_panel_visible(m_settings_panel, false)
+	_set_panel_visible(m_credits_panel, false)
+	_set_panel_visible(m_ending_panel, false)
+	_set_panel_visible(m_confirm_panel, false)
+
+
+func _update_ui_layout() -> void:
+	if m_ui_root == null or !is_instance_valid(m_ui_root):
 		return
 
-	var display_name := _display_name_for_node(target)
-	if _get_resident_controller(target) != null:
-		AppState.set_hint("R Talk to %s   J Journal   Esc Pause" % display_name)
-		return
-	AppState.set_hint("R Inspect %s   J Journal   Esc Pause" % display_name)
-
-
-func _is_landmark(target: Node2D) -> bool:
-	if !is_instance_valid(target):
-		return false
-
-	for landmark_node in m_landmark_nodes.values():
-		if target == landmark_node:
-			return true
-
-	return false
-
-
-func _display_name_for_node(target: Node2D) -> String:
-	if !is_instance_valid(target):
-		return ""
-
-	var resident_controller := _get_resident_controller(target)
-	if resident_controller != null:
-		return AppState.get_resident_display_name(resident_controller.get_resident_id())
-
-	for landmark_name in m_landmark_nodes.keys():
-		if target == m_landmark_nodes[landmark_name]:
-			return landmark_name
-
-	var raw_name := String(target.name).replace("_", " ").strip_edges()
-	if raw_name.is_empty():
-		return "nearby object"
-
-	var output := ""
-	for i in range(raw_name.length()):
-		var current_char := raw_name.substr(i, 1)
-		var previous_char := raw_name.substr(i - 1, 1) if i > 0 else ""
-		if i > 0 and current_char == current_char.to_upper() and previous_char != " " and previous_char != previous_char.to_upper():
-			output += " "
-		output += current_char
-
-	return output
-
-
-func _spawn_catalog_residents() -> void:
-	if Engine.is_editor_hint():
-		return
-	if m_resident_root != null and is_instance_valid(m_resident_root):
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
 		return
 
-	m_resident_root = Node2D.new()
-	m_resident_root.name = "Residents"
-	m_resident_root.y_sort_enabled = true
-	m_actor_root.add_child(m_resident_root)
+	var scale_factor: float = min(
+		viewport_size.x / UI_DESIGN_SIZE.x,
+		viewport_size.y / UI_DESIGN_SIZE.y
+	)
+	scale_factor = max(scale_factor, 0.1)
 
-	for resident_id in AppState.get_resident_ids():
-		var spawn_config := AppState.get_resident_spawn_config(resident_id)
-		var anchor_id := String(spawn_config.get("anchor_id", ""))
-		var anchor_node := m_spawn_anchor_nodes.get(anchor_id) as Node2D
-		if !is_instance_valid(anchor_node):
-			push_warning("Missing NPC spawn anchor '%s' for resident '%s'." % [anchor_id, resident_id])
-			continue
-
-		var npc := NPC_SCENE.instantiate() as HumanBody2D
-		if npc == null:
-			continue
-
-		var controller := NPCController.new()
-		controller.use_json_bt = false
-		controller.resident_id = StringName(resident_id)
-		controller.interaction_radius = float(spawn_config.get("interaction_radius", 72.0))
-
-		npc.name = AppState.get_resident_display_name(resident_id)
-		npc.controller = controller
-		npc.direction = float(spawn_config.get("direction", 0.0))
-		npc.facial_mood = int(spawn_config.get("mood", HumanBody2D.FacialMoodEnum.NORMAL)) as HumanBody2D.FacialMoodEnum
-
-		m_resident_root.add_child(npc)
-		var spawn_offset: Vector2 = spawn_config.get("offset", Vector2.ZERO)
-		npc.global_position = anchor_node.global_position + spawn_offset
+	m_ui_root.scale = Vector2.ONE * scale_factor
+	m_ui_root.position = (viewport_size - (UI_DESIGN_SIZE * scale_factor)) / 2.0
 
 
-func _on_player_appearance_changed(_profile: Dictionary, _appearance_config: Dictionary) -> void:
-	_apply_player_costume()
+func _show_boot_sequence() -> void:
+	m_state = ScreenState.BOOT
+	_set_panel_visible(m_boot_screen, true)
+	_set_panel_visible(m_title_screen, false)
+	await get_tree().create_timer(1.1, true, false, true).timeout
+	if m_state == ScreenState.BOOT:
+		_show_title()
 
 
-func _apply_player_costume() -> void:
-	if !is_instance_valid(m_player):
+func _show_title() -> void:
+	m_state = ScreenState.TITLE
+	get_tree().paused = false
+	_set_panel_visible(m_backdrop, true)
+	_set_panel_visible(m_boot_screen, false)
+	_set_panel_visible(m_title_screen, true)
+	_set_panel_visible(m_player_setup_panel, false)
+	_set_panel_visible(m_hud, false)
+	_set_panel_visible(m_journal_panel, false)
+	_set_panel_visible(m_pause_panel, false)
+	_set_panel_visible(m_settings_panel, false)
+	_set_panel_visible(m_credits_panel, false)
+	_set_panel_visible(m_ending_panel, false)
+	_set_panel_visible(m_confirm_panel, false)
+	if m_game_root != null:
+		m_game_root.visible = false
+	m_title_screen.call("set_continue_enabled", m_game_root != null)
+	AppState.set_mode("Title")
+
+
+func _ensure_game_loaded() -> void:
+	if m_game_root != null and is_instance_valid(m_game_root):
+		m_game_root.visible = true
 		return
 
-	var appearance_config := AppState.get_player_appearance_config()
-	if appearance_config.is_empty():
+	m_game_root = GAME_SCENE.instantiate()
+	m_game_root.name = "GameRoot"
+	get_node("GameLayer").add_child(m_game_root)
+
+
+func _begin_gameplay(is_free_walk: bool, is_continue: bool = false) -> void:
+	if is_continue:
+		AppState.configure_continue()
+	elif is_free_walk:
+		AppState.configure_free_walk()
+	else:
+		AppState.configure_new_game()
+
+	_ensure_game_loaded()
+	m_game_root.visible = true
+	if m_game_root.has_method("sync_ui_state"):
+		m_game_root.call("sync_ui_state")
+
+	_set_panel_visible(m_backdrop, false)
+	_set_panel_visible(m_boot_screen, false)
+	_set_panel_visible(m_title_screen, false)
+	_set_panel_visible(m_player_setup_panel, false)
+	_set_panel_visible(m_hud, true)
+	_set_panel_visible(m_journal_panel, false)
+	_set_panel_visible(m_pause_panel, false)
+	_set_panel_visible(m_settings_panel, false)
+	_set_panel_visible(m_credits_panel, false)
+	_set_panel_visible(m_ending_panel, false)
+	_set_panel_visible(m_confirm_panel, false)
+	m_state = ScreenState.PLAYING
+	get_tree().paused = false
+
+
+func _open_overlay(new_state: ScreenState) -> void:
+	if !_is_game_active():
 		return
+	m_state = new_state
+	get_tree().paused = true
+	_refresh_journal_content()
+	_refresh_ending_content()
+	_set_panel_visible(m_backdrop, true)
+	_set_panel_visible(m_hud, true)
+	_set_panel_visible(m_journal_panel, new_state == ScreenState.JOURNAL)
+	_set_panel_visible(m_pause_panel, new_state == ScreenState.PAUSE)
+	_set_panel_visible(m_settings_panel, new_state == ScreenState.SETTINGS)
+	_set_panel_visible(m_credits_panel, new_state == ScreenState.CREDITS)
+	_set_panel_visible(m_ending_panel, new_state == ScreenState.ENDING)
+	_set_panel_visible(m_confirm_panel, false)
 
-	m_player.set_configuration(appearance_config)
+
+func _resume_gameplay() -> void:
+	if !_is_game_active():
+		return
+	m_state = ScreenState.PLAYING
+	get_tree().paused = false
+	_set_panel_visible(m_backdrop, false)
+	_set_panel_visible(m_journal_panel, false)
+	_set_panel_visible(m_pause_panel, false)
+	_set_panel_visible(m_settings_panel, false)
+	_set_panel_visible(m_credits_panel, false)
+	_set_panel_visible(m_ending_panel, false)
+	_set_panel_visible(m_confirm_panel, false)
+	_set_panel_visible(m_hud, true)
 
 
-func _get_resident_controller(target: Node2D) -> NPCController:
-	var human := target as HumanBody2D
-	if human == null:
-		return null
-	return human.controller as NPCController
+func _close_settings_panel() -> void:
+	if _is_game_active():
+		_open_overlay(ScreenState.PAUSE)
+	else:
+		_set_panel_visible(m_backdrop, true)
+		_set_panel_visible(m_settings_panel, false)
+		_show_title()
 
 
-func _get_landmark_trigger(target: Node2D) -> LandmarkTrigger:
-	return target as LandmarkTrigger
+func _show_confirm(title_text: String, body_text: String, action: Callable) -> void:
+	m_confirm_action = action
+	m_confirm_panel.call("set_content", title_text, body_text)
+	_set_panel_visible(m_backdrop, true)
+	_set_panel_visible(m_confirm_panel, true)
+	m_state = ScreenState.CONFIRM
+	get_tree().paused = _is_game_active()
+
+
+func _hide_confirm() -> void:
+	_set_panel_visible(m_confirm_panel, false)
+	if _is_game_active():
+		if m_pause_panel.visible:
+			m_state = ScreenState.PAUSE
+			_set_panel_visible(m_backdrop, true)
+		elif m_ending_panel.visible:
+			m_state = ScreenState.ENDING
+			_set_panel_visible(m_backdrop, true)
+		else:
+			m_state = ScreenState.PLAYING
+			get_tree().paused = false
+			_set_panel_visible(m_backdrop, false)
+	else:
+		m_state = ScreenState.TITLE
+		_set_panel_visible(m_backdrop, true)
+
+
+func _return_to_title() -> void:
+	get_tree().paused = false
+	if m_game_root != null:
+		m_game_root.visible = false
+	_show_title()
+
+
+func _refresh_journal_content() -> void:
+	m_journal_panel.call("refresh_from_state")
+
+
+func _refresh_ending_content() -> void:
+	m_ending_panel.call("refresh_from_state")
+
+
+func _handle_escape() -> void:
+	match m_state:
+		ScreenState.BOOT:
+			_show_title()
+		ScreenState.TITLE:
+			_show_confirm(
+				"Quit the App?",
+				"Leave Kulangsu for now?",
+				func() -> void:
+					get_tree().quit()
+			)
+		ScreenState.PLAYER_SETUP:
+			_show_title()
+		ScreenState.PLAYING:
+			_open_overlay(ScreenState.PAUSE)
+		ScreenState.JOURNAL:
+			_resume_gameplay()
+		ScreenState.PAUSE:
+			_resume_gameplay()
+		ScreenState.SETTINGS:
+			_close_settings_panel()
+		ScreenState.CREDITS:
+			if _is_game_active():
+				_resume_gameplay()
+			else:
+				_set_panel_visible(m_credits_panel, false)
+				_show_title()
+		ScreenState.ENDING:
+			_resume_gameplay()
+		ScreenState.CONFIRM:
+			_hide_confirm()
+
+
+func _on_confirm_accepted() -> void:
+	_hide_confirm()
+	if m_confirm_action.is_valid():
+		m_confirm_action.call()
+
+
+func _set_panel_visible(node: CanvasItem, is_visible: bool) -> void:
+	node.visible = is_visible
+
+
+func _is_game_active() -> bool:
+	return m_game_root != null and is_instance_valid(m_game_root) and m_game_root.visible
+
+
+func _on_continue_pressed() -> void:
+	_begin_gameplay(false, true)
+
+
+func _on_new_game_pressed() -> void:
+	_open_player_setup(false)
+
+
+func _on_free_walk_pressed() -> void:
+	_open_player_setup(true)
+
+
+func _on_title_settings_pressed() -> void:
+	_set_panel_visible(m_title_screen, false)
+	_set_panel_visible(m_settings_panel, true)
+	m_state = ScreenState.SETTINGS
+
+
+func _on_title_credits_pressed() -> void:
+	_set_panel_visible(m_title_screen, false)
+	_set_panel_visible(m_credits_panel, true)
+	m_state = ScreenState.CREDITS
+
+
+func _on_title_quit_pressed() -> void:
+	_show_confirm(
+		"Quit the App?",
+		"Leave Kulangsu for now?",
+		func() -> void: get_tree().quit()
+	)
+
+
+func _open_player_setup(is_free_walk: bool) -> void:
+	m_pending_setup_free_walk = is_free_walk
+	m_player_setup_panel.call("set_flow_context", is_free_walk)
+	m_player_setup_panel.call("refresh_from_state")
+	_set_panel_visible(m_backdrop, true)
+	_set_panel_visible(m_title_screen, false)
+	_set_panel_visible(m_player_setup_panel, true)
+	_set_panel_visible(m_confirm_panel, false)
+	m_state = ScreenState.PLAYER_SETUP
+	get_tree().paused = false
+
+
+func _on_player_setup_confirmed() -> void:
+	_begin_gameplay(m_pending_setup_free_walk, false)
+
+
+func _on_player_setup_cancelled() -> void:
+	_show_title()
+
+
+func _on_prototype_finale_pressed() -> void:
+	if _is_game_active():
+		AppState.configure_postgame()
+		_open_overlay(ScreenState.ENDING)

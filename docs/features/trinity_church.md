@@ -44,7 +44,7 @@ The mood should stay calm throughout. There is no timer, no failure state, and n
 - `AppState` owns all landmark progress state, the pickup collection logic, and the fragment reward.
 - Each `LandmarkTrigger` placed in the scene self-manages its own visibility by subscribing to `AppState.landmark_progress_changed`.
 - `LandmarkTrigger` owns its own collected state and hide/disable behavior.
-- `main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
+- `scenes/game_main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
 - `resident_catalog.gd` owns the authored beat gates and landmark reward keys for church_caretaker and ferry_caretaker.
 - `trinity_church.tscn` hosts the controller as a child node. No logic lives in the scene file itself.
 
@@ -56,7 +56,7 @@ The mood should stay calm throughout. There is no timer, no failure state, and n
   - [`../../game/landmark_trigger.gd`](../../game/landmark_trigger.gd)
   - [`../../game/app_state.gd`](../../game/app_state.gd)
   - [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
-  - [`../../main.gd`](../../main.gd)
+  - [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
 - Shared state or catalogs:
   - `AppState.landmark_progress["trinity_church"]`
   - `AppState.melody_progress["festival_melody"]`
@@ -75,7 +75,7 @@ The mood should stay calm throughout. There is no timer, no failure state, and n
   - `AppState.landmark_progress_changed` — consumed by each `LandmarkTrigger` to self-manage visibility
 - Data flow:
   - `ferry_caretaker` beat 0 fires → `_apply_resident_beat` reads `"unlock_landmark": "trinity_church"` → `advance_landmark_state("trinity_church", "available")` → `LandmarkTrigger._on_landmark_progress_changed` shows cue triggers
-  - Player presses R near a cue → `main.gd._on_inspect_requested` → `AppState.activate_landmark_trigger` → `_collect_trinity_church_cue` → `landmark_progress_changed`
+  - Player presses R near a cue → `scenes/game_main.gd._on_inspect_requested` → `AppState.activate_landmark_trigger` → `_collect_trinity_church_cue` → `landmark_progress_changed`
   - Player presses R on church_caretaker with all cues → `interact_with_resident` → gate passes → beat fires → `_apply_resident_beat` reads `"landmark_reward": "trinity_church"` → `_resolve_trinity_church` → melody and landmark state update
 
 ## Contracts / Boundaries

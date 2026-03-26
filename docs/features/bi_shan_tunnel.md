@@ -43,7 +43,7 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
 - `AppState` owns all landmark progress state, the echo collection logic, and the fragment reward.
 - Each `LandmarkTrigger` placed in the scene self-manages its own visibility by subscribing to `AppState.landmark_progress_changed`.
 - `LandmarkTrigger` owns its own collected state and hide/disable behavior.
-- `main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
+- `scenes/game_main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
 - `bi_shan_tunnel.tscn` hosts the `LandmarkTrigger` nodes directly; their configuration lives in their exported properties.
 
 ## Relevant Files
@@ -53,7 +53,7 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
 - Scripts:
   - [`../../game/landmark_trigger.gd`](../../game/landmark_trigger.gd)
   - [`../../game/app_state.gd`](../../game/app_state.gd)
-  - [`../../main.gd`](../../main.gd)
+  - [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
 - Shared state or catalogs:
   - `AppState.landmark_progress["bi_shan_tunnel"]`
   - `AppState.melody_progress["festival_melody"]`
@@ -73,7 +73,7 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
   - `AppState.landmark_progress_changed` — consumed by each `LandmarkTrigger` to self-manage visibility
 - Data flow:
   - `_resolve_trinity_church()` fires → `advance_landmark_state("bi_shan_tunnel", "available")` → `LandmarkTrigger._on_landmark_progress_changed` shows echo triggers
-  - Player presses R near an echo → `main.gd._on_inspect_requested` → `AppState.activate_landmark_trigger` → `_collect_bi_shan_echo` → `landmark_progress_changed`
+  - Player presses R near an echo → `scenes/game_main.gd._on_inspect_requested` → `AppState.activate_landmark_trigger` → `_collect_bi_shan_echo` → `landmark_progress_changed`
   - All echoes collected → chamber trigger appears → player presses R at chamber → `activate_landmark_trigger` with `trigger_id == "chamber"` → `_resolve_bi_shan_tunnel` → melody and landmark state update
 
 ## Contracts / Boundaries

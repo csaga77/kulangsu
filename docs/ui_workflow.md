@@ -6,7 +6,7 @@ Read [`design_brief.md`](design_brief.md) first for the minimum-token summary. U
 
 This document mixes current prototype behavior with planned production-ready UI flow.
 
-Current runtime truth lives in [`../ui/app_flow_root.gd`](../ui/app_flow_root.gd), [`../game/app_state.gd`](../game/app_state.gd), and [`design_brief.md`](design_brief.md).
+Current runtime truth lives in [`../main.gd`](../main.gd), [`../game/app_state.gd`](../game/app_state.gd), and [`design_brief.md`](design_brief.md).
 
 Important limitation:
 

@@ -21,7 +21,7 @@
 - Water tile art must remain visually seamless across neighboring cells; avoid per-tile UV warps that break atlas edges.
 - Semi-transparent water should preserve the base tile alpha first, then layer tint and refraction on top so the water remains visible on `TileMapLayer` rendering paths.
 - Refraction should support the water read, not replace it. If the sea starts looking muddy or brown, pull distortion influence back before changing terrain generation.
-- Tool-generated terrain helpers should stay transient and unowned so they do not show up in the editor scene tree or accumulate large serialized `TileMapLayer` caches in `terrain.tscn`.
+- Tool-generated terrain helpers should stay transient and unowned so they do not show up in the editor scene tree or accumulate large serialized `TileMapLayer` caches in `terrain/terrain.tscn`.
 - Water and foam changes should stay calm and restrained. Favor subtle motion and shoreline readability over dramatic wave effects.
 
 ## Edge Cases
@@ -36,18 +36,18 @@
 
 ## Architecture / Ownership
 
-- [`../../terrain.tscn`](../../terrain.tscn) and [`../../terrain.gd`](../../terrain.gd) own water tile generation.
+- [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn) and [`../../terrain/terrain.gd`](../../terrain/terrain.gd) own water tile generation.
 - [`../../resources/materials/water.tres`](../../resources/materials/water.tres) and [`../../resources/materials/water.gdshader`](../../resources/materials/water.gdshader) own the blue water body, wave animation, semi-transparent tinting, and screen-space refraction treatment.
 - Keep water rendering local to terrain/common rendering helpers. Do not move it into UI, `AppState`, or unrelated gameplay modules.
 
 ## Relevant Files
 
 - Scenes:
-- [`../../scenes/test_water_render.tscn`](../../scenes/test_water_render.tscn)
-- [`../../terrain.tscn`](../../terrain.tscn)
+- [`../../scenes/tests/test_water_render.tscn`](../../scenes/tests/test_water_render.tscn)
+- [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn)
 - Scripts:
-- [`../../scenes/test_water_render.gd`](../../scenes/test_water_render.gd)
-- [`../../terrain.gd`](../../terrain.gd)
+- [`../../scenes/tests/test_water_render.gd`](../../scenes/tests/test_water_render.gd)
+- [`../../terrain/terrain.gd`](../../terrain/terrain.gd)
 - Materials:
 - [`../../resources/materials/water.tres`](../../resources/materials/water.tres)
 - [`../../resources/materials/water.gdshader`](../../resources/materials/water.gdshader)
@@ -61,7 +61,7 @@
 - Signals consumed:
 - None dedicated to water rendering.
 - Important node paths, dictionaries, resources, or data flow:
-- `terrain.gd` reads `mask_file`, paints land/street/building layers, then fills water for transparent pixels.
+- `terrain/terrain.gd` reads `mask_file`, paints land/street/building layers, then fills water for transparent pixels.
 - `water.tres` points to `water.gdshader`, which applies world-space wave motion, a blue water body, semi-transparent compositing, and light screen refraction on the water layer.
 
 ## Contracts / Boundaries
@@ -73,9 +73,9 @@
 
 ## Validation
 
-- Use [`../../scenes/test_water_render.tscn`](../../scenes/test_water_render.tscn) for focused water tuning before checking the full terrain scene.
+- Use [`../../scenes/tests/test_water_render.tscn`](../../scenes/tests/test_water_render.tscn) for focused water tuning before checking the full terrain scene.
 - The test scene root exposes a `rebuild` toggle in the inspector so water tiles and the guide backdrop can be refreshed after local scene edits.
-- Run [`../../terrain.tscn`](../../terrain.tscn) directly after water changes.
+- Run [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn) directly after water changes.
 - Confirm `_reload_terrain: painted ...` appears without new terrain/water parse errors.
 - Visually check four things:
 - water tiles remain seamless

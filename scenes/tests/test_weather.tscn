@@ -1,6 +1,6 @@
 [gd_scene format=4 uid="uid://cnrlh8dkpyf20"]
 
-[ext_resource type="Script" uid="uid://bs1ug7kjsfm3j" path="res://scenes/test_weather.gd" id="1_dpjoi"]
+[ext_resource type="Script" uid="uid://bs1ug7kjsfm3j" path="res://scenes/tests/test_weather.gd" id="1_dpjoi"]
 [ext_resource type="PackedScene" uid="uid://b6oslfbyqgnsg" path="res://common/rain_overlay.tscn" id="2_2gm2u"]
 [ext_resource type="Material" uid="uid://cjiajajuywre1" path="res://resources/materials/water.tres" id="2_g3svb"]
 [ext_resource type="TileSet" uid="uid://cqo6awm27cwcf" path="res://resources/tilesets/terrain_0_tiles.tres" id="3_d2mrq"]

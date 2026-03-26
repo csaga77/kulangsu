@@ -14,7 +14,7 @@ This document is also the current handoff guide for the weather system. Another 
 
 - The weather system is currently a reusable rendering stack plus a focused sandbox, not a full gameplay/weather-progression system.
 - The shared reusable pieces live in [`../../common/`](../../common).
-- The dedicated integration/tuning target is [`../../scenes/test_weather.tscn`](../../scenes/test_weather.tscn).
+- The dedicated integration/tuning target is [`../../scenes/tests/test_weather.tscn`](../../scenes/tests/test_weather.tscn).
 - The sandbox is the source of truth for default tuning. The scene instance values are captured at startup and reused for the panel reset flow.
 
 ## Design Intent
@@ -62,7 +62,7 @@ Important implications:
 - [`../../common/rain_overlay.tscn`](../../common/rain_overlay.tscn) and [`../../common/rain_overlay.gd`](../../common/rain_overlay.gd) own the reusable rain overlay.
 - [`../../common/fog_overlay.tscn`](../../common/fog_overlay.tscn) and [`../../common/fog_overlay.gd`](../../common/fog_overlay.gd) own the reusable fog overlay.
 - [`../../common/rain_ground_impacts.gd`](../../common/rain_ground_impacts.gd) owns the lightweight isometric raindrop ground-hit effect.
-- [`../../scenes/test_weather.tscn`](../../scenes/test_weather.tscn) and [`../../scenes/test_weather.gd`](../../scenes/test_weather.gd) own the sandbox scene, tilemap-backed reference terrain, thunder pass, actor readability setup, and in-scene weather controls.
+- [`../../scenes/tests/test_weather.tscn`](../../scenes/tests/test_weather.tscn) and [`../../scenes/tests/test_weather.gd`](../../scenes/tests/test_weather.gd) own the sandbox scene, tilemap-backed reference terrain, thunder pass, actor readability setup, and in-scene weather controls.
 
 Keep weather rendering local to `common/` and focused validation scenes. Do not move weather state into UI, `AppState`, or unrelated gameplay modules unless the game gets an actual authored weather system.
 
@@ -77,9 +77,9 @@ If you need to change something, start here:
 - Tune ground-hit spawn logic, iso placement, or draw behavior:
   Use [`../../common/rain_ground_impacts.gd`](../../common/rain_ground_impacts.gd).
 - Change default weather feel, control panel behavior, or reset behavior:
-  Use [`../../scenes/test_weather.tscn`](../../scenes/test_weather.tscn) and [`../../scenes/test_weather.gd`](../../scenes/test_weather.gd).
+  Use [`../../scenes/tests/test_weather.tscn`](../../scenes/tests/test_weather.tscn) and [`../../scenes/tests/test_weather.gd`](../../scenes/tests/test_weather.gd).
 - Change sandbox layout, actors, or tilemap-backed terrain references:
-  Use [`../../scenes/test_weather.gd`](../../scenes/test_weather.gd) first, then [`../../scenes/test_weather.tscn`](../../scenes/test_weather.tscn) if a scene-structure change is needed.
+  Use [`../../scenes/tests/test_weather.gd`](../../scenes/tests/test_weather.gd) first, then [`../../scenes/tests/test_weather.tscn`](../../scenes/tests/test_weather.tscn) if a scene-structure change is needed.
 - Add a new reusable weather render pass:
   Put the render/helper node under `common/`, instantiate and validate it in `test_weather`, then document it here.
 
@@ -117,7 +117,7 @@ If you need to change something, start here:
 
 - The thunder effect is currently sandbox-owned, not a shared reusable weather node yet.
 - It uses a short neutral fill plus additive glow in `ThunderLayer`.
-- Its scheduling and flash sequencing live in [`../../scenes/test_weather.gd`](../../scenes/test_weather.gd).
+- Its scheduling and flash sequencing live in [`../../scenes/tests/test_weather.gd`](../../scenes/tests/test_weather.gd).
 
 ## Weather Controls
 
@@ -143,9 +143,9 @@ Current controls:
 
 Important behavior:
 
-- The scene instance values are captured in `m_weather_defaults` by [`../../scenes/test_weather.gd`](../../scenes/test_weather.gd) during `_capture_weather_defaults()`.
+- The scene instance values are captured in `m_weather_defaults` by [`../../scenes/tests/test_weather.gd`](../../scenes/tests/test_weather.gd) during `_capture_weather_defaults()`.
 - Reset restores those captured values, not separate hardcoded defaults.
-- If you change the intended default weather feel, update the instance values in [`../../scenes/test_weather.tscn`](../../scenes/test_weather.tscn). The script then syncs the controls from the scene state.
+- If you change the intended default weather feel, update the instance values in [`../../scenes/tests/test_weather.tscn`](../../scenes/tests/test_weather.tscn). The script then syncs the controls from the scene state.
 - Wind angle and wind strength are shared inputs: changing them updates both rain and fog.
 - `Rain Enabled` currently toggles the rain overlay and ground impacts together.
 
@@ -178,7 +178,7 @@ When adding a new weather feature, follow this order:
 
 1. Decide whether the feature is reusable rendering or scene-specific validation.
 2. Put reusable rendering helpers in `common/`.
-3. Instantiate and validate the feature in [`../../scenes/test_weather.tscn`](../../scenes/test_weather.tscn).
+3. Instantiate and validate the feature in [`../../scenes/tests/test_weather.tscn`](../../scenes/tests/test_weather.tscn).
 4. Add weather-panel controls only for knobs that are likely to be tuned repeatedly.
 5. Keep gameplay/weather-state decisions out of `AppState` unless a broader authored weather system is actually being introduced.
 6. Update this doc, [`../module_map.md`](../module_map.md), and [`../../README.md`](../../README.md) when the feature changes weather ownership or validation workflow.
@@ -195,7 +195,7 @@ These are reasonable follow-on features for the current design:
 
 ## Validation
 
-- Run [`../../scenes/test_weather.tscn`](../../scenes/test_weather.tscn) for focused weather tuning.
+- Run [`../../scenes/tests/test_weather.tscn`](../../scenes/tests/test_weather.tscn) for focused weather tuning.
 - Use the in-scene weather control panel to toggle rain, fog, or thunder on or off, trigger thunder manually, and tune the main shared parameters while the scene is running.
 - Adjust the shared weather nodes in the inspector only when a change needs a deeper structural retune than the panel exposes.
 - Walk the player around the pier and approach residents to confirm weather still reads cleanly around actors and nearby `...` talk cues.
@@ -213,7 +213,7 @@ These are reasonable follow-on features for the current design:
 
 ## Current Exceptions
 
-- [`../../scenes/test_weather.tscn`](../../scenes/test_weather.tscn) is mostly tilemap-backed now.
+- [`../../scenes/tests/test_weather.tscn`](../../scenes/tests/test_weather.tscn) is mostly tilemap-backed now.
 - The remaining non-tilemap content in that sandbox is the temporary `ForegroundOccluders` proxy layer made from `Line2D` and `Polygon2D` nodes.
 - Replace those proxies with authored tilemap or scene content only when weather tuning actually needs more realistic shelter geometry.
 

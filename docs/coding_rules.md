@@ -25,7 +25,7 @@ Keep shared/common coding rules in [`../codex_agents/`](../codex_agents). Add ru
 
 ## UI Rules
 
-- Preserve the current app-shell pattern in [`../ui/app_flow_root.gd`](../ui/app_flow_root.gd).
+- Preserve the current app-shell pattern in [`../main.gd`](../main.gd).
 - Keep in-game menus and panels as overlays unless a redesign intentionally changes the flow.
 - Author UI against the `1920 x 1080` design canvas used by the shell.
 - Do not rely on fragile fixed offsets that assume a large desktop viewport.

@@ -13,9 +13,9 @@ Most gameplay and scene work happens in the main repo. Shared or vendor-style co
 
 ## Startup Flow
 
-1. [`../project.godot`](../project.godot) boots the app through [`../ui/app_flow_root.tscn`](../ui/app_flow_root.tscn).
-2. [`../ui/app_flow_root.gd`](../ui/app_flow_root.gd) builds the UI shell, manages screen state, and instantiates [`../main.tscn`](../main.tscn) for gameplay.
-3. [`../main.gd`](../main.gd) connects the player, terrain, landmarks, residents, and interaction state to the UI-facing autoload [`../game/app_state.gd`](../game/app_state.gd).
+1. [`../project.godot`](../project.godot) boots the app through [`../main.tscn`](../main.tscn).
+2. [`../main.gd`](../main.gd) builds the UI shell, manages screen state, and instantiates [`../scenes/game_main.tscn`](../scenes/game_main.tscn) for gameplay.
+3. [`../scenes/game_main.gd`](../scenes/game_main.gd) connects the player, terrain, landmarks, residents, and interaction state to the UI-facing autoload [`../game/app_state.gd`](../game/app_state.gd).
 4. Screen scripts under [`../ui/screens/`](../ui/screens) read shared state and send actions back to the shell.
 
 ## Main Systems
@@ -24,8 +24,8 @@ Most gameplay and scene work happens in the main repo. Shared or vendor-style co
 
 Primary files:
 
-- [`../ui/app_flow_root.tscn`](../ui/app_flow_root.tscn)
-- [`../ui/app_flow_root.gd`](../ui/app_flow_root.gd)
+- [`../main.tscn`](../main.tscn)
+- [`../main.gd`](../main.gd)
 - [`../ui/screens/`](../ui/screens)
 - [`../ui/ui_style.gd`](../ui/ui_style.gd)
 
@@ -43,10 +43,10 @@ Boundary:
 
 Primary files:
 
-- [`../main.tscn`](../main.tscn)
-- [`../main.gd`](../main.gd)
-- [`../terrain.tscn`](../terrain.tscn)
-- [`../terrain.gd`](../terrain.gd)
+- [`../scenes/game_main.tscn`](../scenes/game_main.tscn)
+- [`../scenes/game_main.gd`](../scenes/game_main.gd)
+- [`../terrain/terrain.tscn`](../terrain/terrain.tscn)
+- [`../terrain/terrain.gd`](../terrain/terrain.gd)
 
 Responsibilities:
 
@@ -100,7 +100,7 @@ Boundary:
 - `GameGlobal` is a scene-graph plumbing singleton, not a progression or UI-state store
 - keep it lean: player-node reference and signal only
 - UI and progression code should use `AppState`, not `GameGlobal`, for anything player-facing or save-relevant
-- `main.gd` sets the player reference in `_ready()` after the scene is live
+- `scenes/game_main.gd` sets the player reference in `_ready()` after the scene is live
 
 ### Characters, Interaction, And Behavior
 
@@ -187,7 +187,7 @@ Boundary:
 
 - Screen flow, menus, overlays, HUD: [`../ui/`](../ui)
 - Shared player-facing state: [`../game/app_state.gd`](../game/app_state.gd)
-- Overworld logic and resident syncing: [`../main.gd`](../main.gd)
+- Overworld logic and resident syncing: [`../scenes/game_main.gd`](../scenes/game_main.gd)
 - Player or NPC behavior: [`../characters/control/`](../characters/control)
 - Landmark scenes and reusable architecture pieces: [`../architecture/`](../architecture)
 - Reusable mini-games or subsystems: [`../game/`](../game)

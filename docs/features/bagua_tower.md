@@ -50,7 +50,7 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
 - `AppState` owns all landmark progress state, the synthesis logic, and the fragment reward.
 - The `LandmarkTrigger` placed at the top of the tower self-manages its own visibility by subscribing to `AppState.landmark_progress_changed`.
 - `LandmarkTrigger` owns its own collected state and hide/disable behavior.
-- `main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
+- `scenes/game_main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
 - `resident_catalog.gd` owns the authored beat gates and `landmark_states` fields for `tower_keeper`.
 - `bagua_tower.tscn` hosts the `LandmarkTrigger` node directly; its configuration lives in its exported properties.
 
@@ -62,7 +62,7 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
   - [`../../game/landmark_trigger.gd`](../../game/landmark_trigger.gd)
   - [`../../game/app_state.gd`](../../game/app_state.gd)
   - [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
-  - [`../../main.gd`](../../main.gd)
+  - [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
 - Shared state or catalogs:
   - `AppState.landmark_progress["bagua_tower"]`
   - `AppState.melody_progress["festival_melody"]`

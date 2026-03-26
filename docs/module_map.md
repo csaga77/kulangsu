@@ -5,8 +5,8 @@ Read [`design_brief.md`](design_brief.md) and [`architecture.md`](architecture.m
 ## Entry Points
 
 - [`../project.godot`](../project.godot) - Godot project configuration, autoloads, input map, and main scene
-- [`../ui/app_flow_root.tscn`](../ui/app_flow_root.tscn) / [`../ui/app_flow_root.gd`](../ui/app_flow_root.gd) - app startup and overlay flow
-- [`../main.tscn`](../main.tscn) / [`../main.gd`](../main.gd) - main island scene and world integration
+- [`../main.tscn`](../main.tscn) / [`../main.gd`](../main.gd) - app startup and overlay flow
+- [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - main island scene and world integration
 
 ## UI And Screen Flow
 
@@ -17,8 +17,8 @@ Put new menu, overlay, HUD, or shell-flow work here.
 
 ## World Integration And Shared State
 
-- [`../main.tscn`](../main.tscn) / [`../main.gd`](../main.gd) - connects terrain, the shared actor layer, landmarks, and residents to the UI
-- [`../terrain.tscn`](../terrain.tscn) / [`../terrain.gd`](../terrain.gd) - island terrain, generated water layer, and water rendering setup
+- [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - connects terrain, the shared actor layer, landmarks, and residents to the UI
+- [`../terrain/terrain.tscn`](../terrain/terrain.tscn) / [`../terrain/terrain.gd`](../terrain/terrain.gd) - island terrain, generated water layer, and water rendering setup
 - [`../game/app_state.gd`](../game/app_state.gd) - shared UI/progression-facing state
 - [`../game/melody_catalog.gd`](../game/melody_catalog.gd) - authored melody definitions, clue sources, and performance-point summaries
 - [`../game/resident_catalog.gd`](../game/resident_catalog.gd) - resident roster, dialogue, appearance, and spawn data
@@ -70,17 +70,18 @@ Be careful about renames or moves here because scene and resource references can
 
 ## Validation Scenes
 
-- [`../scenes/`](../scenes) - ad hoc prototype and validation scenes
+- [`../scenes/`](../scenes) - runtime gameplay scenes such as `game_main`
+- [`../scenes/tests/`](../scenes/tests) - ad hoc prototype and validation scenes
 - [`../characters/tests/test_human_body_2d.tscn`](../characters/tests/test_human_body_2d.tscn) - direct `HumanBody2D` smoke sandbox with player-controller wiring
 - [`../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn`](../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn) - Universal LPC metadata and sprite-composition validation tool
 - [`../game/tests/npc_system/test_npc_layer_interaction.tscn`](../game/tests/npc_system/test_npc_layer_interaction.tscn) - focused same-layer NPC targeting and portal-driven z-layer switching sandbox
-- [`../scenes/test_level_resolution.tscn`](../scenes/test_level_resolution.tscn) - focused relative-level resolution and inherited room-level sandbox
-- [`../scenes/test_portal_overlap.tscn`](../scenes/test_portal_overlap.tscn) - focused multi-actor portal transition regression test
+- [`../scenes/tests/test_level_resolution.tscn`](../scenes/tests/test_level_resolution.tscn) - focused relative-level resolution and inherited room-level sandbox
+- [`../scenes/tests/test_portal_overlap.tscn`](../scenes/tests/test_portal_overlap.tscn) - focused multi-actor portal transition regression test
 - [`../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn`](../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn) - focused Bagua base-to-ground portal integration for `level_id` actor transitions
 - [`../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn`](../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn) - full Bagua Tower ascent, descent, and upper-floor visibility integration test
 - [`../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn`](../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn) - focused Bagua stair physical traversal integration test
-- [`../scenes/test_weather.tscn`](../scenes/test_weather.tscn) - focused weather tuning sandbox with tilemap-backed water/terrain, a shared fog pass, pier impacts, a thunder-flash pass, an in-scene weather control panel with rain, fog, and thunder controls, actor readability checks, and temporary foreground occluder proxies
-- [`../scenes/test_water_render.tscn`](../scenes/test_water_render.tscn) - focused water color, wave, transparency, and refraction sandbox
+- [`../scenes/tests/test_weather.tscn`](../scenes/tests/test_weather.tscn) - focused weather tuning sandbox with tilemap-backed water/terrain, a shared fog pass, pier impacts, a thunder-flash pass, an in-scene weather control panel with rain, fog, and thunder controls, actor readability checks, and temporary foreground occluder proxies
+- [`../scenes/tests/test_water_render.tscn`](../scenes/tests/test_water_render.tscn) - focused water color, wave, transparency, and refraction sandbox
 - [`../game/tests/npc_system/test_scene.tscn`](../game/tests/npc_system/test_scene.tscn) - focused resident speech, talk, and journal sandbox
 - [`../game/grid_board_game/test_grid_board_game.tscn`](../game/grid_board_game/test_grid_board_game.tscn)
 - [`../game/grid_board_game/test_terminal_turn_state.tscn`](../game/grid_board_game/test_terminal_turn_state.tscn)

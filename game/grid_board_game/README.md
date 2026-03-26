@@ -6,7 +6,7 @@ Self-contained turn-based grid board game prototype with AI support.
 
 **Standalone prototype — not yet wired into the main story flow.**
 
-`grid_board_game.gd` and `grid_board_game.tscn` define the module interface and its public contract (signals: `board_changed`, `turn_changed`, `move_played`, `game_reset`, `game_over`; API: `reset_game()`, `play_move()`, `simulate_move()`, `undo()`, `redo()`). However, there is currently no trigger in `main.gd`, `app_flow_root.gd`, or any landmark scene that instantiates or enters this module during normal gameplay.
+`grid_board_game.gd` and `grid_board_game.tscn` define the module interface and its public contract (signals: `board_changed`, `turn_changed`, `move_played`, `game_reset`, `game_over`; API: `reset_game()`, `play_move()`, `simulate_move()`, `undo()`, `redo()`). However, there is currently no trigger in `scenes/game_main.gd`, `main.gd`, or any landmark scene that instantiates or enters this module during normal gameplay.
 
 The public API contract is documented in `docs/contracts.md` (Reusable Module Contracts — Grid Board Game). Update that file if signals or public methods change.
 

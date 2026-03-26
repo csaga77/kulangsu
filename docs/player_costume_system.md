@@ -64,7 +64,7 @@ The prototype wardrobe currently ships with four presets:
 
 ### Player Application
 
-- [`../main.gd`](../main.gd) listens for `AppState.player_appearance_changed`.
+- [`../scenes/game_main.gd`](../scenes/game_main.gd) listens for `AppState.player_appearance_changed`.
 - The active player `HumanBody2D` receives the new appearance config immediately through `set_configuration`.
 - This keeps the overworld avatar, journal state, and future save data aligned around one source of truth.
 
@@ -78,7 +78,7 @@ The prototype wardrobe currently ships with four presets:
   - hair style
   - hair color
   - a live player preview
-- [`../ui/app_flow_root.gd`](../ui/app_flow_root.gd) now routes new runs through this setup step before gameplay begins.
+- [`../main.gd`](../main.gd) now routes new runs through this setup step before gameplay begins.
 
 ### Journal Wardrobe Flow
 

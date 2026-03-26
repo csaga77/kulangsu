@@ -41,8 +41,8 @@ Submodule read order when editing inside a submodule:
 
 ## Architecture Boundaries
 
-- `ui/app_flow_root.tscn` and `ui/app_flow_root.gd` own startup, title flow, overlay flow, and UI scaling.
-- `main.tscn` and `main.gd` own the island scene, landmark syncing, resident spawning, and world-to-UI integration.
+- `main.tscn` and `main.gd` own startup, title flow, overlay flow, and UI scaling.
+- `scenes/game_main.tscn` and `scenes/game_main.gd` own the island scene, landmark syncing, resident spawning, and world-to-UI integration.
 - `game/app_state.gd` owns shared UI-facing and progression-facing state. Do not turn it into a dump for scene-local logic.
 - Reusable gameplay modules should stay under `game/` in their existing feature folders such as `grid_board_game`, `marble_game`, and `piano_game`.
 - Landmark scenes and reusable building pieces belong under `architecture/`.
@@ -58,7 +58,7 @@ Submodule read order when editing inside a submodule:
 
 - Follow the generic validation expectations in `codex_agents/GODOT_DEVELOPMENT_RUNBOOK.md`.
 - For app flow, HUD, overlay, or shared-state changes, validate through the main project flow.
-- For isolated features, use the existing validation scenes under `scenes/` and feature-local test scenes such as the ones in `game/grid_board_game/`.
+- For isolated features, use the existing validation scenes under `scenes/tests/` and feature-local test scenes such as the ones in `game/grid_board_game/`.
 
 ## Documentation Maintenance
 

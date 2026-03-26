@@ -1,6 +1,6 @@
 [gd_scene format=4 uid="uid://cn5g8hobx3bru"]
 
-[ext_resource type="Script" uid="uid://dpwk67fdrclgh" path="res://terrain.gd" id="2_h2lqh"]
+[ext_resource type="Script" uid="uid://dpwk67fdrclgh" path="res://terrain/terrain.gd" id="2_h2lqh"]
 [ext_resource type="TileSet" uid="uid://cqo6awm27cwcf" path="res://resources/tilesets/terrain_0_tiles.tres" id="3_hl62s"]
 [ext_resource type="Script" uid="uid://c8rbadcu5jhno" path="res://common/level_node_2d.gd" id="3_lg7om"]
 [ext_resource type="TileSet" uid="uid://8qwdv3hv2imc" path="res://resources/tilesets/pavement_0_tilesets.tres" id="4_1q4c8"]

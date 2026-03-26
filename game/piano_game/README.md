@@ -6,7 +6,7 @@ Self-contained rhythm/melody interaction prototype.
 
 **Standalone prototype — not yet wired into the main story flow.**
 
-`piano_game.gd` and `piano_game.tscn` define the module interface, but there is currently no trigger in `main.gd`, `app_flow_root.gd`, or any landmark scene that instantiates or enters this module during normal gameplay.
+`piano_game.gd` and `piano_game.tscn` define the module interface, but there is currently no trigger in `scenes/game_main.gd`, `main.gd`, or any landmark scene that instantiates or enters this module during normal gameplay.
 
 Before connecting this module to the main loop, read `docs/features/core_melody_loop.md` (MVP Step 5 — Add One Performance Point) for the intended integration path. The design intent is a short, low-complexity performance trigger at a specific landmark, not a full rhythm-game stage.
 

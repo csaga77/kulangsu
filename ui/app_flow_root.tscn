@@ -1,6 +1,0 @@
-[gd_scene format=3 uid="uid://dyowktmfbolqe"]
-
-[ext_resource type="Script" uid="uid://djoqn3xvjgbgs" path="res://ui/app_flow_root.gd" id="1_3f80r"]
-
-[node name="AppFlowRoot" type="Node" unique_id=895228331]
-script = ExtResource("1_3f80r")
