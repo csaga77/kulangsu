@@ -18,7 +18,8 @@ The mood should stay calm throughout. There is no timer, no failure state, and n
 
 - Trinity Church starts `locked`. It unlocks to `available` when the `ferry_caretaker` fires her first dialogue beat (`"unlock_landmark": "trinity_church"`).
 - The three choir cue triggers (steps, garden, yard) are visible and collectible once the landmark state is `available`, `introduced`, or `in_progress`.
-- Each cue is a `LandmarkTrigger` node placed directly in the scene. Collecting one calls `AppState.activate_landmark_trigger("trinity_church", cue_id, display_name)`.
+- Each cue is a `LandmarkTrigger` node placed directly in the scene. Collecting one calls `AppState.activate_landmark_trigger("trinity_church", cue_id, display_name, melody_hint)`.
+- Each cue carries a `melody_hint` export — flavour text shown on-screen when collected (e.g. "A low bell tone echoes from the old stone steps..."). This gives the player incremental melody feedback during the pickup walk.
 - Landmark state advances to `in_progress` on first cue collection.
 - The church_caretaker's resolved dialogue beat (beat index 2) has `"gate": "trinity_church_cues"`. It only fires when all three cues are in `cues_collected`. Before that, she responds with the gate fallback line.
 - When the gate passes and the resolved beat fires, `"landmark_reward": "trinity_church"` triggers `AppState._resolve_trinity_church()`:
@@ -69,6 +70,7 @@ The mood should stay calm throughout. There is no timer, no failure state, and n
 
 - Signals emitted:
   - `AppState.landmark_progress_changed("trinity_church", progress)` — on any cue collection or state advance
+  - `AppState.melody_hint_shown(text)` — on each cue collection (carries the trigger's `melody_hint` flavour text)
   - `AppState.melody_progress_changed("festival_melody", state)` — on arc resolution
   - `AppState.fragments_changed(found, total)` — on arc resolution (via set_melody_progress)
 - Signals consumed:

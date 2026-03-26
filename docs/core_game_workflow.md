@@ -85,7 +85,7 @@ Sequence:
 2. Nearby NPC shows a `...` talk cue.
 3. Player presses `R` near the NPC to reveal the first full line.
 4. Player inspects the ferry plaza marker, piano crate, or notice board.
-5. NPC explains that four island landmarks each hold part of the missing festival melody.
+5. NPC explains that the island's landmarks each help restore one of three missing melody fragments.
 6. World map / journal opens after this conversation.
 
 Reward:
@@ -268,7 +268,7 @@ Purpose:
 
 ### Main Progress Gate
 
-The player needs all four melody fragments to trigger the finale.
+The player needs all three melody fragments to trigger the finale.
 
 Each fragment should ideally feel reconstructed from multiple musical encounters rather than granted as a generic quest token.
 
@@ -316,7 +316,7 @@ The shared UI state in [`../game/app_state.gd`](../game/app_state.gd) should ref
 - `location`: current district or landmark label
 - `objective`: one clear action sentence
 - `hint`: current control reminder or context-sensitive prompt
-- `fragments_found`: restored melody count out of four
+- `fragments_found`: restored melody count out of three
 - `player_profile`: selected body, gender, skin, and hair options
 - `equipped_player_costume_id`: the wardrobe preset currently worn by the player
 
@@ -437,7 +437,7 @@ The ending sequence should behave like a playable ritual, not a detached cutscen
 
 ### Festival Entry Conditions
 
-- All four fragments restored
+- All three fragments restored
 - Player returns to Ferry Plaza
 - Festival prompt explicitly confirmed
 
@@ -600,7 +600,7 @@ Avoid:
 ### Milestone 3: Structure Lock
 
 - Bagua Tower progression
-- Four fragments connected to one main quest
+- Three fragments connected to one main quest
 - Journal and completion tracking
 
 ### Milestone 4: Endgame
@@ -611,4 +611,4 @@ Avoid:
 
 ## One-Sentence Loop
 
-Arrive by ferry, explore the island's landmark districts, help residents recover four pieces of a lost festival melody, reunite the island through a final performance, and choose whether to leave Kulangsu or remain part of it.
+Arrive by ferry, explore the island's landmark districts, help residents recover three melody fragments from a lost festival tune, reunite the island through a final performance, and choose whether to leave Kulangsu or remain part of it.

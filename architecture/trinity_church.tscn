@@ -13,7 +13,7 @@
 [ext_resource type="TileSet" uid="uid://cpd02433u4y0w" path="res://resources/tilesets/architecture/trinity_church_tiles.tres" id="9_bv3vw"]
 [ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="13_ygw5s"]
 [ext_resource type="Texture2D" uid="uid://b4mqu1tdwj1wr" path="res://resources/sprites/architecture/trinity_church/trinity_church_roof.png" id="14_qudop"]
-[ext_resource type="Script" path="res://game/landmark_trigger.gd" id="15_ltrg"]
+[ext_resource type="Script" uid="uid://mcx1lgk33g2" path="res://game/landmark_trigger.gd" id="15_ltrg"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_l6v1r"]
 atlas = ExtResource("14_qudop")
@@ -445,37 +445,40 @@ position = Vector2(0, -9)
 texture = SubResource("AtlasTexture_ueo71")
 
 [node name="CueSteps" type="Area2D" parent="." unique_id=2100000001]
+position = Vector2(-64, 430)
 script = ExtResource("15_ltrg")
 landmark_id = "trinity_church"
 trigger_id = "steps"
 display_name = "Choir Cue (Steps)"
+melody_hint = "A low bell tone echoes from the old stone steps..."
 visible_in_states = Array[String](["available", "introduced", "in_progress"])
 collected_progress_key = "cues_collected"
-position = Vector2(-64, 430)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="CueSteps" unique_id=2100000002]
 shape = SubResource("CircleShape2D_steps")
 
 [node name="CueGarden" type="Area2D" parent="." unique_id=2100000003]
+position = Vector2(310, 290)
 script = ExtResource("15_ltrg")
 landmark_id = "trinity_church"
 trigger_id = "garden"
 display_name = "Choir Cue (Garden)"
+melody_hint = "A bright chime rises from the garden wall..."
 visible_in_states = Array[String](["available", "introduced", "in_progress"])
 collected_progress_key = "cues_collected"
-position = Vector2(310, 290)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="CueGarden" unique_id=2100000004]
 shape = SubResource("CircleShape2D_garden")
 
 [node name="CueYard" type="Area2D" parent="." unique_id=2100000005]
+position = Vector2(-230, 350)
 script = ExtResource("15_ltrg")
 landmark_id = "trinity_church"
 trigger_id = "yard"
 display_name = "Choir Cue (Yard)"
+melody_hint = "A warm hum lingers in the quiet yard..."
 visible_in_states = Array[String](["available", "introduced", "in_progress"])
 collected_progress_key = "cues_collected"
-position = Vector2(-230, 350)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="CueYard" unique_id=2100000006]
 shape = SubResource("CircleShape2D_yard")

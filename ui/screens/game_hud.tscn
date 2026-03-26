@@ -65,7 +65,7 @@ text = "Location: Piano Ferry"
 
 [node name="Fragments" type="Label" parent="StatusCard/Margin/Body"]
 layout_mode = 2
-text = "Melody: 0 / 4 fragments"
+text = "Melody Fragments: 0 / 3"
 
 [node name="HintCard" type="PanelContainer" parent="."]
 offset_left = 620.0

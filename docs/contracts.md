@@ -155,7 +155,8 @@ Current contract:
 - `AppState.landmark_progress_changed(landmark_id, progress)` fires whenever any landmark's entry changes
 - `AppState.get_landmark_progress(landmark_id)` and `get_landmark_state(landmark_id)` are the read API
 - `AppState.set_landmark_progress(landmark_id, progress)` and `advance_landmark_state(landmark_id, new_state)` are the write API
-- `AppState.activate_landmark_trigger(landmark_id, trigger_id, display_name)` is called by `scenes/game_main.gd` when the player inspects a `LandmarkTrigger` node; it routes to the correct per-landmark collection handler and returns whether the caller should consume the trigger
+- `AppState.activate_landmark_trigger(landmark_id, trigger_id, display_name, melody_hint)` is called by `scenes/game_main.gd` when the player inspects a `LandmarkTrigger` node; it routes to the correct per-landmark collection handler and returns whether the caller should consume the trigger
+- `AppState.melody_hint_shown(text)` fires when a trigger with a non-empty `melody_hint` is collected; the HUD subscribes to display the flavour text on-screen
 - `AppState.set_all_landmark_progress(progress)` sets multiple landmarks at once; used by `configure_*` methods
 - Resident dialogue beats may carry `"unlock_landmark"` to unlock a landmark when the beat fires, and `"gate"` / `"gate_fallback"` to block a beat until a landmark condition is satisfied
 - Resident dialogue beats may carry `"landmark_reward"` to trigger a landmark resolution (fragment award, melody state update, downstream unlocks) when the beat fires

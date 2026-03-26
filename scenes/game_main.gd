@@ -66,6 +66,7 @@ func _cache_spawn_anchors() -> void:
 		"Piano Ferry": m_piano_ferry,
 		"Trinity Church": m_trinity_church,
 		"Bagua Tower": m_bagua_tower,
+		"Bi Shan Tunnel": m_bi_shan_tunnel,
 		"Bi Shan Tunnel South": m_bi_shan_tunnel_entry_south,
 		"Long Shan Tunnel South": m_long_shan_tunnel_entry_south,
 	}
@@ -154,7 +155,8 @@ func _on_inspect_requested() -> void:
 		var consumed := AppState.activate_landmark_trigger(
 			landmark_trigger.landmark_id,
 			landmark_trigger.trigger_id,
-			landmark_trigger.display_name
+			landmark_trigger.display_name,
+			landmark_trigger.melody_hint
 		)
 		if consumed:
 			landmark_trigger.collect()

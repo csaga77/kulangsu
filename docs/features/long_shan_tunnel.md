@@ -22,8 +22,8 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 - `tunnel_guide` beat 1 fires on the next interaction. Beat 1 carries `"landmark_states": {"long_shan_tunnel": "in_progress"}`.
 - The `tunnel_exit` trigger becomes visible once the landmark is `in_progress`. Reaching it calls `AppState.activate_landmark_trigger("long_shan_tunnel", "tunnel_exit", ...)`. AppState calls `_resolve_long_shan_tunnel()`:
   - Landmark state advances to `reward_collected`.
-  - `tunnel_passage` is added to `festival_melody.known_sources`.
-  - `festival_melody.fragments_found` increments by 1.
+  - `tunnel_echo` is confirmed in `festival_melody.known_sources`.
+  - `festival_melody.fragments_found` only increments if the shared tunnel fragment was not already restored in Bi Shan Tunnel.
   - `festival_melody.state` updates to `heard` or `reconstructed`.
   - Objective updates to point toward Bagua Tower.
 - `tunnel_guide` beat 2 is gated on `"gate": "long_shan_exit_reached"`. It only fires once the landmark is `reward_collected`. It carries `"unlock_landmark": "bagua_tower"` (belt-and-suspenders — AppState also unlocks the tower directly in `_resolve_long_shan_tunnel()`).
@@ -35,7 +35,7 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 
 - If the player reaches the exit before talking to Ren twice (state not `in_progress`), a status line reads "Tunnel exit reached — talk to Tunnel Guide Ren before crossing." and nothing resolves.
 - If the player talks to Ren before hitting the entry trigger, beat 0's `landmark_states` field still advances the landmark to `introduced` — the entry trigger is then redundant but harmless.
-- If `_resolve_long_shan_tunnel()` is called more than once, `tunnel_passage` is only appended once and fragment counts are clamped.
+- If `_resolve_long_shan_tunnel()` is called more than once, `tunnel_echo` is only confirmed once and fragment counts are clamped.
 - Free Walk should not advance story chapter. Currently the bagua_tower unlock fires on resolve in Free Walk — this is acceptable in sandbox mode.
 
 ## Architecture / Ownership

@@ -19,6 +19,7 @@ signal hint_changed(hint: String)
 signal save_status_changed(status: String)
 signal fragments_changed(found: int, total: int)
 signal melody_progress_changed(melody_id: String, melody: Dictionary)
+signal melody_hint_shown(text: String)
 signal landmarks_changed(landmarks: PackedStringArray)
 signal residents_changed(residents: PackedStringArray)
 signal resident_profile_changed(resident_id: String, resident: Dictionary)
@@ -36,7 +37,7 @@ var objective := "Find out why the island feels quiet today."
 var hint := "R Inspect   J Journal   Esc Pause"
 var save_status := "Autosave: ready"
 var fragments_found := 0
-var fragments_total := 4
+var fragments_total := 3
 var melody_catalog: Dictionary = MELODY_CATALOG_SCRIPT.build_catalog()
 var melody_progress: Dictionary = _default_melody_progress()
 var landmarks: PackedStringArray = _default_landmarks()
@@ -580,7 +581,7 @@ func configure_new_game() -> void:
 	set_melody_progress(_build_story_melody_progress("new_game"))
 	set_all_landmark_progress(_build_landmark_progress("new_game"))
 	set_summary({
-		"fragments": "0 / 4",
+		"fragments": "0 / 3",
 		"residents": "0",
 		"collectibles": "prototype",
 		"playtime": "a brief evening on Kulangsu",
@@ -759,7 +760,7 @@ func _build_story_melody_progress(state_id: String) -> Dictionary:
 			return {
 				"festival_melody": {
 					"state": "resonant",
-					"fragments_found": 4,
+					"fragments_found": 3,
 					"known_sources": ["ferry_plaza", "church_bells", "tunnel_echo", "tower_chamber"],
 					"next_lead": "Listen to how the island answers now that the festival melody has returned.",
 					"performed": true,
@@ -951,7 +952,8 @@ func advance_landmark_state(landmark_id: String, new_state: String) -> void:
 ## Called when the player inspects a LandmarkTrigger in the world.
 ## Routes to the appropriate per-landmark collection handler.
 ## Returns true only when the caller should consume the trigger in the scene.
-func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_name: String) -> bool:
+## melody_hint is optional flavour text shown to the player on collection.
+func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_name: String, melody_hint: String = "") -> bool:
 	match landmark_id:
 		"trinity_church":
 			var church_progress := get_landmark_progress("trinity_church")
@@ -959,6 +961,8 @@ func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_
 				return false
 			var all_collected := _collect_trinity_church_cue(trigger_id)
 			set_save_status("Found: %s" % display_name)
+			if melody_hint != "":
+				melody_hint_shown.emit(melody_hint)
 			if all_collected:
 				set_objective("Return to Choir Caretaker Mei with all three choir cues.")
 				set_hint("R Talk to Choir Caretaker Mei   J Journal   Esc Pause")
@@ -1008,7 +1012,7 @@ func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_
 				var melody_state := get_melody_state("festival_melody")
 				var fragments_in := int(melody_state.get("fragments_found", 0))
 				if get_landmark_state("bagua_tower") == "in_progress" \
-				and fragments_in >= 3 \
+				and fragments_in >= 2 \
 				and !bool(tower_progress.get("synthesis_done", false)):
 					_resolve_bagua_tower_synthesis()
 					return true
@@ -1077,21 +1081,8 @@ func _collect_bi_shan_echo(echo_id: String) -> bool:
 func _resolve_bi_shan_tunnel() -> void:
 	advance_landmark_state("bi_shan_tunnel", "reward_collected")
 
-	var melody_state := get_melody_state("festival_melody").duplicate(true)
-	var sources: Array[String] = _normalize_string_array(melody_state.get("known_sources", []))
-	if sources.find("tunnel_echo") < 0:
-		sources.append("tunnel_echo")
-	melody_state["known_sources"] = sources
-
-	var new_found := mini(
-		int(melody_state.get("fragments_found", 0)) + 1,
-		int(melody_state.get("fragments_total", 4))
-	)
-	melody_state["fragments_found"] = new_found
-	if new_found >= 2:
-		melody_state["state"] = "reconstructed"
-	elif new_found >= 1:
-		melody_state["state"] = "heard"
+	var melody_state := _award_festival_source_once("tunnel_echo")
+	_sync_festival_state_from_fragments(melody_state)
 
 	set_melody_progress({"festival_melody": melody_state})
 	set_objective("Explore Long Shan Tunnel and find Tunnel Guide Ren.")
@@ -1103,21 +1094,8 @@ func _resolve_bi_shan_tunnel() -> void:
 func _resolve_long_shan_tunnel() -> void:
 	advance_landmark_state("long_shan_tunnel", "reward_collected")
 
-	var melody_state := get_melody_state("festival_melody").duplicate(true)
-	var sources: Array[String] = _normalize_string_array(melody_state.get("known_sources", []))
-	if sources.find("tunnel_passage") < 0:
-		sources.append("tunnel_passage")
-	melody_state["known_sources"] = sources
-
-	var new_found := mini(
-		int(melody_state.get("fragments_found", 0)) + 1,
-		int(melody_state.get("fragments_total", 4))
-	)
-	melody_state["fragments_found"] = new_found
-	if new_found >= 2:
-		melody_state["state"] = "reconstructed"
-	elif new_found >= 1:
-		melody_state["state"] = "heard"
+	var melody_state := _award_festival_source_once("tunnel_echo")
+	_sync_festival_state_from_fragments(melody_state)
 
 	set_melody_progress({"festival_melody": melody_state})
 	set_objective("Climb Bagua Tower and find Tower Keeper Lin.")
@@ -1140,23 +1118,8 @@ func _resolve_bagua_tower_synthesis() -> void:
 func _resolve_bagua_tower() -> void:
 	advance_landmark_state("bagua_tower", "reward_collected")
 
-	var melody_state := get_melody_state("festival_melody").duplicate(true)
-	var sources: Array[String] = _normalize_string_array(melody_state.get("known_sources", []))
-	if sources.find("tower_synthesis") < 0:
-		sources.append("tower_synthesis")
-	melody_state["known_sources"] = sources
-
-	var new_found := mini(
-		int(melody_state.get("fragments_found", 0)) + 1,
-		int(melody_state.get("fragments_total", 4))
-	)
-	melody_state["fragments_found"] = new_found
-	if new_found >= 4:
-		melody_state["state"] = "performed"
-	elif new_found >= 2:
-		melody_state["state"] = "reconstructed"
-	elif new_found >= 1:
-		melody_state["state"] = "heard"
+	var melody_state := _award_festival_source_once("tower_chamber")
+	_sync_festival_state_from_fragments(melody_state, true)
 
 	set_melody_progress({"festival_melody": melody_state})
 	set_objective("The island melody is complete. Find the festival stage to perform it.")
@@ -1198,24 +1161,44 @@ func _resolve_trinity_church() -> void:
 	advance_landmark_state("trinity_church", "reward_collected")
 
 	# Add church_bells as a confirmed melody source and award one fragment.
-	var melody_state := get_melody_state("festival_melody").duplicate(true)
-	var sources: Array[String] = _normalize_string_array(melody_state.get("known_sources", []))
-	if sources.find("church_bells") < 0:
-		sources.append("church_bells")
-	melody_state["known_sources"] = sources
-
-	var new_found := mini(
-		int(melody_state.get("fragments_found", 0)) + 1,
-		int(melody_state.get("fragments_total", 4))
-	)
-	melody_state["fragments_found"] = new_found
-	if new_found >= 2:
-		melody_state["state"] = "reconstructed"
-	elif new_found >= 1:
-		melody_state["state"] = "heard"
+	var melody_state := _award_festival_source_once("church_bells")
+	_sync_festival_state_from_fragments(melody_state)
 
 	set_melody_progress({"festival_melody": melody_state})
 
 	# Open the tunnel landmarks for the next phase.
 	advance_landmark_state("bi_shan_tunnel", "available")
 	advance_landmark_state("long_shan_tunnel", "available")
+
+
+func _award_festival_source_once(source_id: String) -> Dictionary:
+	var melody_state := get_melody_state("festival_melody").duplicate(true)
+	var sources: Array[String] = _normalize_string_array(melody_state.get("known_sources", []))
+	if sources.find(source_id) >= 0:
+		melody_state["known_sources"] = sources
+		return melody_state
+
+	sources.append(source_id)
+	melody_state["known_sources"] = sources
+	melody_state["fragments_found"] = mini(
+		int(melody_state.get("fragments_found", 0)) + 1,
+		int(melody_state.get("fragments_total", fragments_total))
+	)
+	return melody_state
+
+
+func _sync_festival_state_from_fragments(melody_state: Dictionary, allow_performed: bool = false) -> void:
+	var found := int(melody_state.get("fragments_found", 0))
+	var total := int(melody_state.get("fragments_total", fragments_total))
+	if allow_performed and found >= total:
+		melody_state["state"] = "performed"
+		melody_state["performed"] = true
+	elif found >= 2:
+		melody_state["state"] = "reconstructed"
+		melody_state["performed"] = bool(melody_state.get("performed", false))
+	elif found >= 1:
+		melody_state["state"] = "heard"
+		melody_state["performed"] = bool(melody_state.get("performed", false))
+	else:
+		melody_state["state"] = "unknown"
+		melody_state["performed"] = bool(melody_state.get("performed", false))

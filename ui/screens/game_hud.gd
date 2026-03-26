@@ -31,6 +31,7 @@ func _bind_state() -> void:
 	AppState.fragments_changed.connect(_refresh_fragments)
 	AppState.hint_changed.connect(_refresh_hint)
 	AppState.save_status_changed.connect(_refresh_save_status)
+	AppState.melody_hint_shown.connect(_show_melody_hint)
 
 
 func _refresh_all() -> void:
@@ -60,7 +61,7 @@ func _refresh_location(value: String) -> void:
 
 
 func _refresh_fragments(found: int, total: int) -> void:
-	m_fragments_label.text = "Melody: %d / %d fragments" % [found, total]
+	m_fragments_label.text = "Melody Fragments: %d / %d" % [found, total]
 
 
 func _refresh_hint(value: String) -> void:
@@ -68,4 +69,8 @@ func _refresh_hint(value: String) -> void:
 
 
 func _refresh_save_status(value: String) -> void:
+	m_save_label.text = value
+
+
+func _show_melody_hint(value: String) -> void:
 	m_save_label.text = value

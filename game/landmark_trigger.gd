@@ -32,6 +32,11 @@ extends Area2D
 ## Label shown in the inspect prompt and save-status line.
 @export var display_name: String = "Inspect"
 
+## Optional flavour text shown on-screen when this trigger is collected.
+## Used to give the player incremental melody feedback during pickup arcs.
+## Leave empty to skip the melody hint and show only the default save-status.
+@export_multiline var melody_hint: String = ""
+
 ## Landmark states in which this trigger should be visible.
 ## Common values: "available", "introduced", "in_progress".
 @export var visible_in_states: Array[String] = []
@@ -47,14 +52,43 @@ extends Area2D
 ## If non-empty, hide this trigger when progress[hide_if_flag] is truthy.
 @export var hide_if_flag: String = ""
 
+## Toggle to draw the trigger radius and label in-game for debugging.
+@export var debug_draw: bool = false
+
+## Color used for the debug circle overlay.
+@export var debug_color: Color = Color(1.0, 0.3, 0.5, 0.35)
+
 var _collected: bool = false
 
 
 func _ready() -> void:
 	if Engine.is_editor_hint():
+		queue_redraw()
 		return
 	_sync_visibility()
 	AppState.landmark_progress_changed.connect(_on_landmark_progress_changed)
+
+
+func _draw() -> void:
+	if !debug_draw:
+		return
+	# Draw a circle matching the first CollisionShape2D child's radius.
+	var radius := 28.0
+	for child in get_children():
+		var shape_node := child as CollisionShape2D
+		if shape_node != null and shape_node.shape is CircleShape2D:
+			radius = (shape_node.shape as CircleShape2D).radius
+			break
+	draw_circle(Vector2.ZERO, radius, debug_color)
+	# Outline ring.
+	var outline := Color(debug_color.r, debug_color.g, debug_color.b, 0.8)
+	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, outline, 1.5)
+	# Label above the circle.
+	var label_text := "%s / %s" % [landmark_id, trigger_id]
+	var font := ThemeDB.fallback_font
+	var font_size := ThemeDB.fallback_font_size
+	var text_size := font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	draw_string(font, Vector2(-text_size.x * 0.5, -radius - 6.0), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE)
 
 
 func is_collected() -> bool:

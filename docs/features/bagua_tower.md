@@ -1,11 +1,11 @@
 # Bagua Tower Arc
 
-Two-step synthesis arc for the final landmark. The player climbs to the top chamber, activates the synthesis trigger, and then confirms the completed melody with Tower Keeper Suyin to claim the fourth fragment.
+Two-step synthesis arc for the final landmark. The player climbs to the top chamber, activates the synthesis trigger, and then confirms the completed melody with Tower Keeper Suyin to claim the third fragment.
 
 ## Goal
 
 - Give the player a clear climactic moment: climb high, let the phrases come together, and complete the island melody.
-- Award the fourth melody fragment and advance the melody to `performed` state.
+- Award the third melody fragment and advance the melody to `performed` state.
 - Set up the post-arc flow toward the festival performance.
 
 ## User / Player Experience
@@ -25,23 +25,23 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
 - `tower_keeper` beat 1 carries `"landmark_states": {"bagua_tower": "in_progress"}`. After beat 1, the landmark is `in_progress` and the synthesis chamber trigger becomes visible at the top of the tower.
 
 - The `synthesis_chamber` trigger is a `LandmarkTrigger` visible once the landmark is `in_progress`.
-- When the player presses R at the chamber with 3+ fragments, `_resolve_bagua_tower_synthesis()` fires:
+- When the player presses R at the chamber with 2+ fragments, `_resolve_bagua_tower_synthesis()` fires:
   - `landmark_progress["bagua_tower"]["synthesis_done"]` is set to `true`.
   - Landmark state advances to `resolved`.
   - Objective updates to "Return to Tower Keeper Lin to confirm the island melody."
 - `tower_keeper` beat 2 is gated on `"gate": "bagua_synthesis_done"`. The gate passes once `synthesis_done` is `true`. When it fires, `"landmark_reward": "bagua_tower"` calls `_resolve_bagua_tower()`:
   - Landmark state advances to `reward_collected`.
-  - `tower_synthesis` is added to `festival_melody.known_sources`.
+  - `tower_chamber` is added to `festival_melody.known_sources`.
   - `festival_melody.fragments_found` increments by 1.
-  - If `fragments_found >= 4`, `festival_melody.state` advances to `performed`.
+  - If `fragments_found >= 3`, `festival_melody.state` advances to `performed`.
   - Objective updates to "The island melody is complete. Find the festival stage to perform it."
 - Before the gate passes, beat 2 returns the `gate_fallback`: "The synthesis chamber at the top is not ready yet. Climb higher and let the phrases settle from there."
 - In `Free Walk` mode, the landmark starts `available` and the arc can be played through normally.
 
 ## Edge Cases
 
-- If the player reaches the chamber with fewer than 3 fragments, a status line reads "The tower shows distance but not yet direction. Recover more fragments first." and nothing fires.
-- If `_resolve_bagua_tower()` is called more than once, `tower_synthesis` is only appended once and fragment counts are clamped to `fragments_total`.
+- If the player reaches the chamber with fewer than 2 fragments, a status line reads "The tower shows distance but not yet direction. Recover more fragments first." and nothing fires.
+- If `_resolve_bagua_tower()` is called more than once, `tower_chamber` is only appended once and fragment counts are clamped to `fragments_total`.
 - If the melody already has 4 fragments from a save edge case, the `performed` check still runs correctly (clamped).
 - Free Walk should not advance story chapter.
 
