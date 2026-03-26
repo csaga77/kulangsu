@@ -9,6 +9,10 @@
 [ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="5_yk3c8"]
 [ext_resource type="Texture2D" uid="uid://cddixtrkgs1a3" path="res://resources/sprites/architecture/piano_ferry/piano_ferry_roof.png" id="6_867i5"]
 [ext_resource type="TileSet" uid="uid://dh8addwm1ctei" path="res://resources/tilesets/architecture/building_0_tiles.tres" id="7_j6cxs"]
+[ext_resource type="Script" uid="uid://mcx1lgk33g2" path="res://game/landmark_trigger.gd" id="8_ltrg"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_harbor_refrain"]
+radius = 56.0
 
 [node name="ferry" type="Node2D" unique_id=61386167]
 y_sort_enabled = true
@@ -113,3 +117,15 @@ visibility_mask_nodes = [NodePath("../wall_mask"), NodePath("../floor/internal_f
 [node name="Sprite2D" type="Sprite2D" parent="roof" unique_id=1139291538]
 position = Vector2(340, 176)
 texture = ExtResource("6_867i5")
+
+[node name="HarborRefrain" type="Area2D" parent="."]
+position = Vector2(-96, 240)
+script = ExtResource("8_ltrg")
+landmark_id = "piano_ferry"
+trigger_id = "harbor_refrain"
+display_name = "Harbor Clue"
+melody_hint = "The old piano crate answers the ferry ropes with a patient two-note pulse."
+visible_in_states = Array[String](["introduced"])
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HarborRefrain"]
+shape = SubResource("CircleShape2D_harbor_refrain")

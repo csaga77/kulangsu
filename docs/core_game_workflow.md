@@ -83,15 +83,16 @@ Sequence:
 
 1. Player spawns near the ferry.
 2. Nearby NPC shows a `...` talk cue.
-3. Player presses `R` near the NPC to reveal the first full line.
-4. Player inspects the ferry plaza marker, piano crate, or notice board.
-5. NPC explains that the island's landmarks each help restore one of three missing melody fragments.
-6. World map / journal opens after this conversation.
+3. Player presses `R` near Caretaker Lian and is pointed toward the old piano crate by the notice board.
+4. Player inspects the ferry plaza clue and hears the harbor refrain more clearly.
+5. Player returns to Caretaker Lian, who marks Trinity Church as the first real lead.
+6. The journal unlocks after this return conversation and the island opens into the first uphill route.
 
 Reward:
 
 - Journal unlocked
-- Main quest unlocked: `Restore the Festival Melody`
+- Trinity Church unlocked as the first landmark lead
+- Main quest clarified: `Speak with the church caretaker.`
 
 ### 4. Open Exploration Phase
 

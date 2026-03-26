@@ -14,7 +14,7 @@ static func build_catalog() -> Dictionary:
 				"display_name": "Festival Melody",
 				"district": "Island-wide",
 				"summary": "A missing festival line scattered across the harbor, church, tunnels, and tower.",
-				"fragment_total": 3,
+				"fragment_total": 4,
 				"performance_landmark": "Bagua Tower",
 				"performance_prompt": "Compare the recovered phrases at Bagua Tower when enough of the contour is known.",
 				"unlock_condition": "Recover clues from the harbor, church, tunnels, and tower.",

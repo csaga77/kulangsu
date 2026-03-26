@@ -36,8 +36,9 @@ var location := "Piano Ferry"
 var objective := "Find out why the island feels quiet today."
 var hint := "R Inspect   J Journal   Esc Pause"
 var save_status := "Autosave: ready"
+var journal_unlocked := true
 var fragments_found := 0
-var fragments_total := 3
+var fragments_total := 4
 var melody_catalog: Dictionary = MELODY_CATALOG_SCRIPT.build_catalog()
 var melody_progress: Dictionary = _default_melody_progress()
 var landmarks: PackedStringArray = _default_landmarks()
@@ -102,6 +103,24 @@ func set_save_status(new_status: String) -> void:
 		return
 	save_status = new_status
 	save_status_changed.emit(save_status)
+
+
+func set_journal_unlocked(unlocked: bool) -> void:
+	journal_unlocked = unlocked
+
+
+func is_journal_unlocked() -> bool:
+	return journal_unlocked
+
+
+func build_input_hint(primary_action: String = "R Inspect") -> String:
+	var parts: PackedStringArray = PackedStringArray()
+	if !primary_action.is_empty():
+		parts.append(primary_action)
+	if journal_unlocked:
+		parts.append("J Journal")
+	parts.append("Esc Pause")
+	return "   ".join(parts)
 
 
 func set_fragments(found: int, total: int = fragments_total) -> void:
@@ -550,6 +569,10 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 		var fallback := String(beat.get("gate_fallback", ""))
 		return {"line": fallback}
 
+	# Track whether this is a new beat vs. a repeat of the last beat.
+	var is_new_beat := beat_index < dialogue_beats.size() - 1 \
+		or int(resident.get("_last_applied_beat", -1)) != beat_index
+
 	resident["trust"] = clampi(
 		int(resident.get("trust", 0)) + int(beat.get("trust_delta", 0)),
 		0,
@@ -561,9 +584,16 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 	if beat_index < dialogue_beats.size() - 1:
 		resident["conversation_index"] = beat_index + 1
 
+	# Remember which beat was last applied so we don't re-fire side effects.
+	resident["_last_applied_beat"] = beat_index
+
 	resident_profiles[resident_id] = resident
 	_sync_known_residents()
-	_apply_resident_beat(beat)
+	# Only fire side-effects (landmark rewards, unlocks, state changes) on first
+	# application of a beat. Repeat interactions with the same final beat return
+	# the dialogue line but skip _apply_resident_beat to prevent duplicate awards.
+	if is_new_beat:
+		_apply_resident_beat(beat)
 	_refresh_player_costumes()
 	resident_profile_changed.emit(resident_id, get_resident_profile(resident_id))
 	return beat.duplicate(true)
@@ -574,14 +604,15 @@ func configure_new_game() -> void:
 	set_chapter("Arrival")
 	set_location("Piano Ferry")
 	set_objective("Find out why the island feels quiet today.")
-	set_hint("R Inspect   J Journal   Esc Pause")
+	set_journal_unlocked(false)
+	set_hint(build_input_hint("R Inspect"))
 	set_save_status("Autosave: prototype checkpoint ready")
 	set_landmarks(_default_landmarks())
 	set_resident_profiles(_default_resident_profiles())
 	set_melody_progress(_build_story_melody_progress("new_game"))
 	set_all_landmark_progress(_build_landmark_progress("new_game"))
 	set_summary({
-		"fragments": "0 / 3",
+		"fragments": "0 / 4",
 		"residents": "0",
 		"collectibles": "prototype",
 		"playtime": "a brief evening on Kulangsu",
@@ -593,7 +624,8 @@ func configure_continue() -> void:
 	set_chapter("Midway")
 	set_location("Harbor Path")
 	set_objective("Resume exploring from the harbor and choose your next district.")
-	set_hint("R Inspect   J Journal   Esc Pause")
+	set_journal_unlocked(true)
+	set_hint(build_input_hint("R Inspect"))
 	set_save_status("Autosave: resumed from the latest harbor checkpoint")
 	set_landmarks(_default_landmarks())
 	set_resident_profiles(_default_resident_profiles())
@@ -610,7 +642,8 @@ func configure_free_walk() -> void:
 	set_chapter("Free Walk")
 	set_location("Piano Ferry")
 	set_objective("Wander the island and learn how the first district wants to be introduced.")
-	set_hint("R Inspect   J Journal   Esc Pause")
+	set_journal_unlocked(true)
+	set_hint(build_input_hint("R Inspect"))
 	set_save_status("Autosave: free walk sandbox ready")
 	set_landmarks(_default_landmarks())
 	set_resident_profiles(_default_resident_profiles())
@@ -626,7 +659,8 @@ func configure_postgame() -> void:
 	set_chapter("Festival Night")
 	set_location("Ferry Plaza")
 	set_objective("Wander the island after the festival.")
-	set_hint("R Inspect   J Journal   Esc Pause")
+	set_journal_unlocked(true)
+	set_hint(build_input_hint("R Inspect"))
 	set_save_status("Autosave: postgame prototype checkpoint ready")
 	set_landmarks(_default_landmarks())
 	set_resident_profiles(_default_resident_profiles())
@@ -732,7 +766,7 @@ func _build_story_melody_progress(state_id: String) -> Dictionary:
 					"state": "heard",
 					"fragments_found": 0,
 					"known_sources": ["ferry_plaza"],
-					"next_lead": "Speak with the church caretaker and compare how the bells answer the harbor.",
+					"next_lead": "Listen to the harbor refrain around the ferry plaza before following the bells uphill.",
 					"performed": false,
 				},
 			}
@@ -740,7 +774,7 @@ func _build_story_melody_progress(state_id: String) -> Dictionary:
 			return {
 				"festival_melody": {
 					"state": "reconstructed",
-					"fragments_found": 2,
+					"fragments_found": 3,
 					"known_sources": ["ferry_plaza", "church_bells", "tunnel_echo"],
 					"next_lead": "Carry the stronger contour toward Bagua Tower and compare the recovered phrases.",
 					"performed": false,
@@ -760,7 +794,7 @@ func _build_story_melody_progress(state_id: String) -> Dictionary:
 			return {
 				"festival_melody": {
 					"state": "resonant",
-					"fragments_found": 3,
+					"fragments_found": 4,
 					"known_sources": ["ferry_plaza", "church_bells", "tunnel_echo", "tower_chamber"],
 					"next_lead": "Listen to how the island answers now that the festival melody has returned.",
 					"performed": true,
@@ -871,7 +905,7 @@ func _refresh_player_costumes() -> void:
 
 func _default_landmark_progress() -> Dictionary:
 	return {
-		"piano_ferry": {"state": "locked"},
+		"piano_ferry": {"state": "locked", "harbor_clue_found": false},
 		"trinity_church": {"state": "locked", "cues_collected": []},
 		"bi_shan_tunnel": {"state": "locked", "echoes_collected": []},
 		"long_shan_tunnel": {"state": "locked"},
@@ -883,7 +917,7 @@ func _build_landmark_progress(state_id: String) -> Dictionary:
 	match state_id:
 		"new_game":
 			return {
-				"piano_ferry": {"state": "available"},
+				"piano_ferry": {"state": "available", "harbor_clue_found": false},
 				"trinity_church": {"state": "locked", "cues_collected": []},
 				"bi_shan_tunnel": {"state": "locked", "echoes_collected": []},
 				"long_shan_tunnel": {"state": "locked"},
@@ -891,7 +925,7 @@ func _build_landmark_progress(state_id: String) -> Dictionary:
 			}
 		"continue":
 			return {
-				"piano_ferry": {"state": "reward_collected"},
+				"piano_ferry": {"state": "reward_collected", "harbor_clue_found": true},
 				"trinity_church": {"state": "reward_collected", "cues_collected": ["steps", "garden", "yard"]},
 				"bi_shan_tunnel": {"state": "introduced", "echoes_collected": []},
 				"long_shan_tunnel": {"state": "available"},
@@ -899,7 +933,7 @@ func _build_landmark_progress(state_id: String) -> Dictionary:
 			}
 		"free_walk":
 			return {
-				"piano_ferry": {"state": "available"},
+				"piano_ferry": {"state": "introduced", "harbor_clue_found": false},
 				"trinity_church": {"state": "available", "cues_collected": []},
 				"bi_shan_tunnel": {"state": "available", "echoes_collected": []},
 				"long_shan_tunnel": {"state": "available"},
@@ -907,7 +941,7 @@ func _build_landmark_progress(state_id: String) -> Dictionary:
 			}
 		"postgame":
 			return {
-				"piano_ferry": {"state": "reward_collected"},
+				"piano_ferry": {"state": "reward_collected", "harbor_clue_found": true},
 				"trinity_church": {"state": "reward_collected", "cues_collected": ["steps", "garden", "yard"]},
 				"bi_shan_tunnel": {"state": "reward_collected", "echoes_collected": ["echo_a", "echo_b", "echo_c"]},
 				"long_shan_tunnel": {"state": "reward_collected"},
@@ -955,6 +989,17 @@ func advance_landmark_state(landmark_id: String, new_state: String) -> void:
 ## melody_hint is optional flavour text shown to the player on collection.
 func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_name: String, melody_hint: String = "") -> bool:
 	match landmark_id:
+		"piano_ferry":
+			var ferry_progress := get_landmark_progress("piano_ferry")
+			if ferry_progress.is_empty() or bool(ferry_progress.get("harbor_clue_found", false)):
+				return false
+			_collect_piano_ferry_harbor_clue()
+			if melody_hint != "":
+				melody_hint_shown.emit(melody_hint)
+			set_objective("Return to Caretaker Lian with the harbor refrain.")
+			set_hint(build_input_hint("R Talk to Caretaker Lian"))
+			set_save_status("The harbor refrain is clearer now — return to Caretaker Lian.")
+			return true
 		"trinity_church":
 			var church_progress := get_landmark_progress("trinity_church")
 			if church_progress.is_empty() or _progress_has_string_entry(church_progress, "cues_collected", trigger_id):
@@ -1024,6 +1069,16 @@ func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_
 
 func _progress_has_string_entry(progress: Dictionary, progress_key: String, entry_id: String) -> bool:
 	return _normalize_string_array(progress.get(progress_key, [])).find(entry_id) >= 0
+
+
+func _collect_piano_ferry_harbor_clue() -> void:
+	var progress := get_landmark_progress("piano_ferry")
+	if progress.is_empty():
+		return
+
+	progress["harbor_clue_found"] = true
+	progress["state"] = "resolved"
+	set_landmark_progress("piano_ferry", progress)
 
 
 ## Collect one Trinity Church choir cue. Returns true when all three are in.
@@ -1133,6 +1188,11 @@ func _check_beat_gate(beat: Dictionary) -> bool:
 	if gate.is_empty():
 		return true
 	match gate:
+		"piano_ferry_harbor_clue":
+			var ferry_progress := get_landmark_progress("piano_ferry")
+			return bool(ferry_progress.get("harbor_clue_found", false))
+		"first_fragment_restored":
+			return fragments_found >= 1
 		"trinity_church_cues":
 			var progress := get_landmark_progress("trinity_church")
 			var cues: Array = progress.get("cues_collected", [])
@@ -1148,10 +1208,23 @@ func _check_beat_gate(beat: Dictionary) -> bool:
 ## Dispatch to the correct landmark resolution handler.
 func _resolve_landmark(landmark_id: String) -> void:
 	match landmark_id:
+		"piano_ferry":
+			_resolve_piano_ferry()
 		"trinity_church":
 			_resolve_trinity_church()
 		"bagua_tower":
 			_resolve_bagua_tower()
+
+
+func _resolve_piano_ferry() -> void:
+	advance_landmark_state("piano_ferry", "reward_collected")
+	set_journal_unlocked(true)
+
+	var melody_state := _award_festival_source_once("ferry_plaza")
+	_sync_festival_state_from_fragments(melody_state)
+	melody_state["next_lead"] = "Speak with the church caretaker and compare how the bells answer the harbor."
+	set_melody_progress({"festival_melody": melody_state})
+	set_save_status("Journal unlocked — Trinity Church is marked as your first lead.")
 
 
 ## Award the Trinity Church melody fragment, update melody state, and unlock

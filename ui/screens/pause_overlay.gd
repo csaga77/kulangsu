@@ -24,3 +24,9 @@ func _ready() -> void:
 	m_ending_button.pressed.connect(ending_requested.emit)
 	m_return_button.pressed.connect(return_to_title_requested.emit)
 	m_quit_button.pressed.connect(quit_requested.emit)
+	set_journal_enabled(AppState.is_journal_unlocked())
+
+
+func set_journal_enabled(enabled: bool) -> void:
+	m_journal_button.disabled = !enabled
+	m_journal_button.text = "Journal" if enabled else "Journal (Locked)"

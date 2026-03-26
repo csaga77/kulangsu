@@ -118,16 +118,18 @@ The `Melody` journal tab now shows melody name, district, stage, fragment progre
 
 ### 4. Build One Complete Landmark Loop ✦ Code Complete — Triggers Placed
 
-All four landmark arcs are fully implemented in code and `LandmarkTrigger` nodes have been placed in each scene:
+The route now has a lightweight onboarding arc plus all four landmark arcs implemented in code:
+
+- Piano Ferry onboarding arc (Caretaker Lian -> harbor clue trigger -> journal unlock -> Trinity Church handoff)
 
 - Trinity Church arc (choir cue collection via three `LandmarkTrigger` nodes)
 - Bi Shan Tunnel arc (echo tracing via three echo triggers + mural chamber trigger)
 - Long Shan Tunnel arc (escort via entry/exit `LandmarkTrigger` nodes + `tunnel_guide` dialogue beats)
 - Bagua Tower arc (synthesis chamber `LandmarkTrigger` + `tower_keeper` dialogue beats)
 
-The remaining manual steps are confirming collision layers and tuning trigger positions to match the final scene layouts. `Piano Ferry` does not yet have a feature doc or landmark-specific collection/resolution logic in `AppState` — it is the simplest onboarding arc and is a good candidate for the next implementation pass.
+The remaining manual steps are confirming collision layers and tuning trigger positions to match the final scene layouts.
 
-See [`trinity_church.md`](trinity_church.md), [`bi_shan_tunnel.md`](bi_shan_tunnel.md), [`long_shan_tunnel.md`](long_shan_tunnel.md), and [`bagua_tower.md`](bagua_tower.md) for per-landmark integration checklists.
+See [`piano_ferry.md`](piano_ferry.md), [`trinity_church.md`](trinity_church.md), [`bi_shan_tunnel.md`](bi_shan_tunnel.md), [`long_shan_tunnel.md`](long_shan_tunnel.md), and [`bagua_tower.md`](bagua_tower.md) for per-landmark integration checklists.
 
 - Use one landmark as the first full vertical slice.
 - Good first candidates:

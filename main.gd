@@ -71,7 +71,10 @@ func _input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_J:
 				if _is_game_active():
-					if m_state == ScreenState.JOURNAL:
+					if !AppState.is_journal_unlocked():
+						if m_state == ScreenState.PLAYING:
+							AppState.set_save_status("The journal will open after you return to Caretaker Lian with the harbor clue.")
+					elif m_state == ScreenState.JOURNAL:
 						_resume_gameplay()
 					elif m_state == ScreenState.PLAYING:
 						_open_overlay(ScreenState.JOURNAL)
@@ -314,10 +317,15 @@ func _begin_gameplay(is_free_walk: bool, is_continue: bool = false) -> void:
 func _open_overlay(new_state: ScreenState) -> void:
 	if !_is_game_active():
 		return
+	if new_state == ScreenState.JOURNAL and !AppState.is_journal_unlocked():
+		AppState.set_save_status("The journal will open after you return to Caretaker Lian with the harbor clue.")
+		return
 	m_state = new_state
 	get_tree().paused = true
 	_refresh_journal_content()
 	_refresh_ending_content()
+	if new_state == ScreenState.PAUSE:
+		m_pause_panel.call("set_journal_enabled", AppState.is_journal_unlocked())
 	_set_panel_visible(m_backdrop, true)
 	_set_panel_visible(m_hud, true)
 	_set_panel_visible(m_journal_panel, new_state == ScreenState.JOURNAL)

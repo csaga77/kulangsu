@@ -6,7 +6,6 @@
 @tool
 extends Node2D
 
-const DEFAULT_HINT := "R Inspect   J Journal   Esc Pause"
 const LANDMARK_SYNC_DISTANCE := 1600.0
 const NPC_SCENE: PackedScene = preload("res://characters/human_body_2d.tscn")
 const LEVEL_REGISTRY := preload("res://common/level_registry.gd")
@@ -204,22 +203,22 @@ func _on_inspect_requested() -> void:
 
 func _update_hint_text(target: Node2D) -> void:
 	if !is_instance_valid(target):
-		AppState.set_hint(DEFAULT_HINT)
+		AppState.set_hint(AppState.build_input_hint("R Inspect"))
 		return
 
 	var landmark_trigger := _get_landmark_trigger(target)
 	if landmark_trigger != null:
 		if landmark_trigger.is_collected():
-			AppState.set_hint(DEFAULT_HINT)
+			AppState.set_hint(AppState.build_input_hint("R Inspect"))
 		else:
-			AppState.set_hint("R Collect %s   J Journal   Esc Pause" % landmark_trigger.display_name)
+			AppState.set_hint(AppState.build_input_hint("R Collect %s" % landmark_trigger.display_name))
 		return
 
 	var display_name := _display_name_for_node(target)
 	if _get_resident_controller(target) != null:
-		AppState.set_hint("R Talk to %s   J Journal   Esc Pause" % display_name)
+		AppState.set_hint(AppState.build_input_hint("R Talk to %s" % display_name))
 		return
-	AppState.set_hint("R Inspect %s   J Journal   Esc Pause" % display_name)
+	AppState.set_hint(AppState.build_input_hint("R Inspect %s" % display_name))
 
 
 func _is_landmark(target: Node2D) -> bool:

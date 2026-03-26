@@ -35,6 +35,7 @@ Current contract:
 - `AppState` is the shared UI/progression-facing bridge between gameplay and UI
 - it exposes signals for mode, chapter, location, objective, hint, save status, fragments, melody progress, landmarks, residents, resident profiles, player appearance/costumes, and summary updates
 - it now owns shared melody runtime state while [`../game/melody_catalog.gd`](../game/melody_catalog.gd) owns authored melody definitions
+- the app shell and world hint logic may query `AppState.is_journal_unlocked()` and `AppState.build_input_hint(...)` to keep the early tutorial flow and controls text aligned
 - world and UI code rely on resident getters for resident ids, display names, appearance configs, spawn configs, ambient speech, resident journal text, and full resident profiles when optional movement metadata is needed
 - UI code can now rely on melody getters and journal helpers for melody-facing player context
 - UI screens and world integration code rely on those signals and state getters/setters
@@ -154,7 +155,7 @@ Current contract:
 
 - `AppState.landmark_progress` is a `Dictionary` keyed by landmark id (`piano_ferry`, `trinity_church`, `bi_shan_tunnel`, `long_shan_tunnel`, `bagua_tower`)
 - each entry is a `Dictionary` with at minimum a `"state"` key: `locked / available / introduced / in_progress / resolved / reward_collected`
-- landmark-specific sub-state (e.g. `"cues_collected"` for Trinity Church) lives inside the same per-landmark entry
+- landmark-specific sub-state (e.g. `"harbor_clue_found"` for Piano Ferry or `"cues_collected"` for Trinity Church) lives inside the same per-landmark entry
 - `AppState.landmark_progress_changed(landmark_id, progress)` fires whenever any landmark's entry changes
 - `AppState.get_landmark_progress(landmark_id)` and `get_landmark_state(landmark_id)` are the read API
 - `AppState.set_landmark_progress(landmark_id, progress)` and `advance_landmark_state(landmark_id, new_state)` are the write API
