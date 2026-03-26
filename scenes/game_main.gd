@@ -9,6 +9,7 @@ extends Node2D
 const DEFAULT_HINT := "R Inspect   J Journal   Esc Pause"
 const LANDMARK_SYNC_DISTANCE := 1600.0
 const NPC_SCENE: PackedScene = preload("res://characters/human_body_2d.tscn")
+const LEVEL_REGISTRY := preload("res://common/level_registry.gd")
 
 @onready var m_actor_root: Node2D = $actors
 @onready var m_player :HumanBody2D = $actors/player
@@ -19,13 +20,20 @@ const NPC_SCENE: PackedScene = preload("res://characters/human_body_2d.tscn")
 @onready var m_long_shan_tunnel: Node2D = $terrain/long_shan_tunnel
 @onready var m_bi_shan_tunnel: Node2D = $terrain/bi_shan_tunnel
 @onready var m_bi_shan_tunnel_entry_south: Node2D = $terrain/ground/bi_shan_tunnel_entries/entry_south
+@onready var m_bi_shan_tunnel_entry_north: Node2D = $terrain/ground/bi_shan_tunnel_entries/entry_north
 @onready var m_long_shan_tunnel_entry_south: Node2D = $terrain/ground/long_shan_tunnel_entries/entry_south
+@onready var m_long_shan_tunnel_entry_north: Node2D = $terrain/ground/long_shan_tunnel_entries/entry_north
+@onready var m_bi_shan_tunnel_portal_south: Node2D = $terrain/bi_shan_tunnel/exit_south
+@onready var m_bi_shan_tunnel_portal_north: Node2D = $terrain/bi_shan_tunnel/exit_north
+@onready var m_long_shan_tunnel_portal_south: Node2D = $terrain/long_shan_tunnel/exit_south
+@onready var m_long_shan_tunnel_portal_north: Node2D = $terrain/long_shan_tunnel/exit_north
 
 var m_is_ready := false
 var m_player_controller: PlayerController = null
 var m_closest_object: Node2D = null
 var m_landmark_nodes: Dictionary = {}
 var m_spawn_anchor_nodes: Dictionary = {}
+var m_tunnel_nodes: Array[Tunnel] = []
 var m_resident_root: Node2D = null
 
 # Called when the node enters the scene tree for the first time.
@@ -36,9 +44,18 @@ func _ready() -> void:
 	GameGlobal.get_instance().set_player(m_player)
 	_cache_landmarks()
 	_cache_spawn_anchors()
+	_cache_tunnels()
 	_spawn_catalog_residents()
 	_connect_ui_signals()
 	sync_ui_state()
+
+
+func _process(_delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
+	if !m_is_ready:
+		return
+	_sync_tunnel_resident_visibility()
 
 
 func sync_ui_state() -> void:
@@ -67,9 +84,25 @@ func _cache_spawn_anchors() -> void:
 		"Trinity Church": m_trinity_church,
 		"Bagua Tower": m_bagua_tower,
 		"Bi Shan Tunnel": m_bi_shan_tunnel,
+		"Long Shan Tunnel": m_long_shan_tunnel,
 		"Bi Shan Tunnel South": m_bi_shan_tunnel_entry_south,
+		"Bi Shan Tunnel North": m_bi_shan_tunnel_entry_north,
 		"Long Shan Tunnel South": m_long_shan_tunnel_entry_south,
+		"Long Shan Tunnel North": m_long_shan_tunnel_entry_north,
+		"Bi Shan Tunnel South Portal": m_bi_shan_tunnel_portal_south,
+		"Bi Shan Tunnel North Portal": m_bi_shan_tunnel_portal_north,
+		"Long Shan Tunnel South Portal": m_long_shan_tunnel_portal_south,
+		"Long Shan Tunnel North Portal": m_long_shan_tunnel_portal_north,
 	}
+
+
+func _cache_tunnels() -> void:
+	m_tunnel_nodes.clear()
+
+	for tunnel_node in [m_bi_shan_tunnel, m_long_shan_tunnel]:
+		var tunnel := tunnel_node as Tunnel
+		if tunnel != null:
+			m_tunnel_nodes.append(tunnel)
 
 
 func _connect_ui_signals() -> void:
@@ -96,6 +129,8 @@ func _connect_ui_signals() -> void:
 func _sync_location_from_player() -> void:
 	if !is_instance_valid(m_player):
 		return
+
+	_sync_tunnel_resident_visibility()
 
 	if _is_landmark(m_closest_object):
 		AppState.set_location(_display_name_for_node(m_closest_object))
@@ -237,7 +272,8 @@ func _spawn_catalog_residents() -> void:
 	m_actor_root.add_child(m_resident_root)
 
 	for resident_id in AppState.get_resident_ids():
-		var spawn_config := AppState.get_resident_spawn_config(resident_id)
+		var resident_profile := AppState.get_resident_profile(resident_id)
+		var spawn_config: Dictionary = resident_profile.get("spawn", {})
 		var anchor_id := String(spawn_config.get("anchor_id", ""))
 		var anchor_node := m_spawn_anchor_nodes.get(anchor_id) as Node2D
 		if !is_instance_valid(anchor_node):
@@ -260,7 +296,150 @@ func _spawn_catalog_residents() -> void:
 
 		m_resident_root.add_child(npc)
 		var spawn_offset: Vector2 = spawn_config.get("offset", Vector2.ZERO)
-		npc.global_position = anchor_node.global_position + spawn_offset
+		npc.global_position = _resolve_actor_anchor_position(npc, anchor_node, spawn_offset)
+		_apply_anchor_level_to_actor(npc, anchor_node)
+
+		var movement_config := _build_resident_movement_config(resident_id, npc, resident_profile.get("movement", {}))
+		if !movement_config.is_empty():
+			controller.configure_movement(movement_config)
+
+		if !npc.global_position_changed.is_connected(_sync_tunnel_resident_visibility):
+			npc.global_position_changed.connect(_sync_tunnel_resident_visibility)
+
+	_sync_tunnel_resident_visibility()
+
+
+func _sync_tunnel_resident_visibility() -> void:
+	if !is_instance_valid(m_resident_root):
+		return
+
+	var active_tunnel := _find_player_tunnel()
+	for child in m_resident_root.get_children():
+		var resident := child as HumanBody2D
+		if resident == null:
+			continue
+
+		var resident_tunnel := _find_resident_tunnel(resident)
+		if resident_tunnel != null:
+			LEVEL_REGISTRY.apply_level_to_actor(resident_tunnel.get_resolved_level_id(), resident)
+			resident.visible = resident_tunnel == active_tunnel
+			continue
+
+		LEVEL_REGISTRY.apply_level_to_actor(0, resident)
+		resident.visible = active_tunnel == null
+
+
+func _find_player_tunnel() -> Tunnel:
+	return _find_tunnel_for_actor(m_player, true)
+
+
+func _find_resident_tunnel(actor: HumanBody2D) -> Tunnel:
+	return _find_tunnel_for_actor(actor, false)
+
+
+func _find_tunnel_for_actor(actor: HumanBody2D, require_interior_level: bool) -> Tunnel:
+	if !is_instance_valid(actor):
+		return null
+
+	for tunnel in m_tunnel_nodes:
+		if !is_instance_valid(tunnel):
+			continue
+		if require_interior_level and tunnel.contains_actor_interior(actor):
+			return tunnel
+		if !require_interior_level and tunnel.contains_actor(actor):
+			return tunnel
+
+	return null
+
+
+func _build_resident_movement_config(resident_id: String, actor: HumanBody2D, movement_config: Dictionary) -> Dictionary:
+	if movement_config.is_empty():
+		return {}
+
+	var resolved_route_points: Array[Dictionary] = []
+	var previous_position := Vector2.ZERO
+	var previous_tunnel: Tunnel = null
+	var has_previous_point := false
+	for point_value in movement_config.get("route_points", []):
+		var route_point := point_value as Dictionary
+		if route_point.is_empty():
+			continue
+
+		var anchor_id := String(route_point.get("anchor_id", ""))
+		var anchor_node := m_spawn_anchor_nodes.get(anchor_id) as Node2D
+		if !is_instance_valid(anchor_node):
+			push_warning("Missing NPC movement anchor '%s' for resident '%s'." % [anchor_id, resident_id])
+			return {}
+
+		var point_copy := route_point.duplicate(true)
+		var route_offset: Vector2 = route_point.get("offset", Vector2.ZERO)
+		var resolved_position := _resolve_actor_anchor_position(actor, anchor_node, route_offset)
+		var route_tunnel := _find_tunnel_ancestor(anchor_node)
+		if has_previous_point and route_tunnel != null and route_tunnel == previous_tunnel:
+			var tunnel_path := route_tunnel.get_path_between_world_positions(actor, previous_position, resolved_position)
+			for i in range(maxi(tunnel_path.size() - 1, 0)):
+				resolved_route_points.append({
+					"position": tunnel_path[i],
+					"wait_min_sec": 0.0,
+					"wait_max_sec": 0.0,
+				})
+
+		point_copy["position"] = resolved_position
+		point_copy.erase("anchor_id")
+		point_copy.erase("offset")
+		resolved_route_points.append(point_copy)
+		previous_position = resolved_position
+		previous_tunnel = route_tunnel
+		has_previous_point = true
+
+	if resolved_route_points.size() < 2:
+		return {}
+
+	var resolved_config := movement_config.duplicate(true)
+	resolved_config["route_points"] = resolved_route_points
+	return resolved_config
+
+
+func _resolve_actor_anchor_position(actor: HumanBody2D, anchor_node: Node2D, offset: Vector2) -> Vector2:
+	if !is_instance_valid(anchor_node):
+		return offset
+
+	var desired_position := anchor_node.global_position + offset
+	var tunnel_anchor := _find_tunnel_ancestor(anchor_node)
+	if tunnel_anchor == null:
+		return desired_position
+
+	return tunnel_anchor.snap_actor_to_walkable_position(actor, desired_position)
+
+
+func _apply_anchor_level_to_actor(actor: HumanBody2D, anchor_node: Node) -> void:
+	if !is_instance_valid(actor):
+		return
+
+	var level_node := _find_level_node(anchor_node)
+	if level_node == null:
+		return
+
+	LEVEL_REGISTRY.apply_level_to_actor(int(level_node.call("get_resolved_level_id")), actor)
+
+
+func _find_tunnel_ancestor(start_node: Node) -> Tunnel:
+	var current := start_node
+	while current != null:
+		var tunnel := current as Tunnel
+		if tunnel != null:
+			return tunnel
+		current = current.get_parent()
+	return null
+
+
+func _find_level_node(start_node: Node) -> Node:
+	var current := start_node
+	while current != null:
+		if current.has_method("get_resolved_level_id"):
+			return current
+		current = current.get_parent()
+	return null
 
 
 func _on_player_appearance_changed(_profile: Dictionary, _appearance_config: Dictionary) -> void:

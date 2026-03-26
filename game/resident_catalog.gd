@@ -169,8 +169,8 @@ static func _story_residents() -> Dictionary:
 		"tunnel_guide": _resident(
 			"Tunnel Guide Ren",
 			"Long Shan Tunnel",
-			"Waits at the safer tunnel mouths and judges routes by how calm they feel.",
-			"Usually near the lit tunnel pockets or the southern entrance.",
+			"Paces between the southern entrance and the first lit pocket, judging routes by how calm they feel.",
+			"Usually moving between the southern entrance and the first lit pocket.",
 			"Ren listens for echoes that stay warm instead of the ones that bounce the farthest.",
 			[
 				"A loud echo is not always the right one. The good routes sound patient.",
@@ -226,7 +226,17 @@ static func _story_residents() -> Dictionary:
 					"hair/beards/beards_trimmed": "dark brown",
 				}
 			),
-			_spawn("Long Shan Tunnel South", Vector2(-220.0, 200.0), -110.0, MOOD_SAD, 88.0)
+			_spawn("Long Shan Tunnel", Vector2(-160.0, 48.0), -110.0, MOOD_SAD, 88.0),
+			_route(
+				[
+					_route_point("Long Shan Tunnel", Vector2(-160.0, 48.0), 1.2, 1.2),
+					_route_point("Long Shan Tunnel South Portal", Vector2(-32.0, 16.0), 0.0, 0.0),
+					_route_point("Long Shan Tunnel South", Vector2(320.0, -160.0), 2.0, 2.0),
+				],
+				24.0,
+				0.4,
+				1.0
+			)
 		),
 		"tower_keeper": _resident(
 			"Tower Keeper Suyin",
@@ -509,7 +519,7 @@ static func _ambient_residents() -> Dictionary:
 			"display_name": "Echo Sketcher Yan",
 			"landmark": "Bi Shan Tunnel",
 			"role": "Draws tunnel corners from memory and labels them by how they sound.",
-			"routine_note": "Usually near the safer side of the southern tunnel mouth.",
+			"routine_note": "Usually a little way inside the safer southern stretch.",
 			"melody_hint": "He maps echoes like they are architectural lines.",
 			"ambient_lines": [
 				"The tunnel draws straighter on paper than it behaves in person.",
@@ -528,7 +538,7 @@ static func _ambient_residents() -> Dictionary:
 				"feet/shoes/feet_shoes_basic",
 				"bluegray"
 			),
-			"spawn": _spawn("Bi Shan Tunnel", Vector2(-120.0, -200.0), -125.0, MOOD_NORMAL),
+			"spawn": _spawn("Bi Shan Tunnel", Vector2(-224.0, -336.0), -125.0, MOOD_NORMAL),
 		},
 		{
 			"id": "mural_restorer_cai",
@@ -554,14 +564,14 @@ static func _ambient_residents() -> Dictionary:
 				"feet/shoes/feet_shoes_revised",
 				"brown"
 			),
-			"spawn": _spawn("Bi Shan Tunnel", Vector2(-350.0, -480.0), -85.0, MOOD_SMILE),
+			"spawn": _spawn("Bi Shan Tunnel", Vector2(-224.0, -592.0), -85.0, MOOD_SMILE),
 		},
 		{
 			"id": "tunnel_listener_nuo",
 			"display_name": "Tunnel Listener Nuo",
 			"landmark": "Bi Shan Tunnel",
-			"role": "Waits at the mouth of the tunnel and judges routes by the shape of returning echoes.",
-			"routine_note": "Usually standing still just outside the southern entrance.",
+			"role": "Listens at the mouth of the tunnel and paces between the entrance and the first echo pocket.",
+			"routine_note": "Usually moving between the southern entrance and the first chamber.",
 			"melody_hint": "She notices when an echo lands on the wrong emotional beat.",
 			"ambient_lines": [
 				"You can tell which corridor is lying by how eager it sounds.",
@@ -580,14 +590,24 @@ static func _ambient_residents() -> Dictionary:
 				"feet/shoes/feet_shoes_revised",
 				"gray"
 			),
-			"spawn": _spawn("Bi Shan Tunnel", Vector2(-550.0, -750.0), 10.0, MOOD_SHAME),
+			"spawn": _spawn("Bi Shan Tunnel", Vector2(-128.0, -32.0), 10.0, MOOD_SHAME),
+			"movement": _route(
+				[
+					_route_point("Bi Shan Tunnel", Vector2(-128.0, -32.0), 1.0, 1.0),
+					_route_point("Bi Shan Tunnel South Portal", Vector2(40.0, 0.0), 0.0, 0.0),
+					_route_point("Bi Shan Tunnel South", Vector2(288.0, -144.0), 1.8, 1.8),
+				],
+				24.0,
+				0.4,
+				0.9
+			),
 		},
 		{
 			"id": "raincoat_child_xiu",
 			"display_name": "Raincoat Child Xiu",
 			"landmark": "Long Shan Tunnel",
 			"role": "Collects polished pebbles and treats every tunnel as a weather story.",
-			"routine_note": "Usually just outside the safer long tunnel approach.",
+			"routine_note": "Usually in the first lit stretch of the tunnel.",
 			"melody_hint": "They notice which tunnel sounds brave and which sounds lonely.",
 			"ambient_lines": [
 				"This tunnel sounds like it wants company.",
@@ -606,14 +626,14 @@ static func _ambient_residents() -> Dictionary:
 				"feet/shoes/feet_shoes_basic",
 				"brown"
 			),
-			"spawn": _spawn("Long Shan Tunnel South", Vector2(-80.0, 260.0), -75.0, MOOD_SHOCK),
+			"spawn": _spawn("Long Shan Tunnel", Vector2(-608.0, -208.0), -75.0, MOOD_SHOCK),
 		},
 		{
 			"id": "storyteller_wen",
 			"display_name": "Storyteller Wen",
 			"landmark": "Long Shan Tunnel",
 			"role": "Keeps nearby children calm by turning the tunnel into a story with gentle pacing.",
-			"routine_note": "Usually on a dry stone near the entrance, waiting for nervous walkers.",
+			"routine_note": "Usually on a dry stone a little way inside the tunnel, waiting for nervous walkers.",
 			"melody_hint": "She says the melody through Long Shan needs reassurance more than volume.",
 			"ambient_lines": [
 				"The trick is not to outrun the tunnel. It dislikes being treated like a race.",
@@ -632,7 +652,7 @@ static func _ambient_residents() -> Dictionary:
 				"feet/shoes/feet_shoes_revised",
 				"black"
 			),
-			"spawn": _spawn("Long Shan Tunnel South", Vector2(70.0, 220.0), -20.0, MOOD_SMILE),
+			"spawn": _spawn("Long Shan Tunnel", Vector2(-1024.0, -448.0), -20.0, MOOD_SMILE),
 		},
 		{
 			"id": "rope_handler_qiu",
@@ -658,7 +678,7 @@ static func _ambient_residents() -> Dictionary:
 				"feet/shoes/feet_shoes_revised",
 				"brown"
 			),
-			"spawn": _spawn("Long Shan Tunnel South", Vector2(210.0, 160.0), 25.0, MOOD_NORMAL),
+			"spawn": _spawn("Long Shan Tunnel", Vector2(-1408.0, -672.0), 25.0, MOOD_NORMAL),
 		},
 		{
 			"id": "porter_shan",
@@ -684,7 +704,7 @@ static func _ambient_residents() -> Dictionary:
 				"feet/shoes/feet_shoes_basic",
 				"leather"
 			),
-			"spawn": _spawn("Long Shan Tunnel South", Vector2(340.0, 100.0), 70.0, MOOD_SMILE),
+			"spawn": _spawn("Long Shan Tunnel", Vector2(-1760.0, -880.0), 70.0, MOOD_SMILE),
 		},
 		{
 			"id": "light_watcher_he",
@@ -710,7 +730,7 @@ static func _ambient_residents() -> Dictionary:
 				"feet/shoes/feet_shoes_revised",
 				"black"
 			),
-			"spawn": _spawn("Long Shan Tunnel South", Vector2(120.0, 320.0), -5.0, MOOD_SHAME),
+			"spawn": _spawn("Long Shan Tunnel", Vector2(-1984.0, -1184.0), -5.0, MOOD_SHAME),
 		},
 		{
 			"id": "terrace_painter_nian",
@@ -929,7 +949,8 @@ static func _resident(
 	ambient_lines: Array,
 	dialogue_beats: Array,
 	appearance: Dictionary,
-	spawn: Dictionary
+	spawn: Dictionary,
+	movement: Dictionary = {}
 ) -> Dictionary:
 	return {
 		"display_name": display_name,
@@ -941,6 +962,7 @@ static func _resident(
 		"dialogue_beats": dialogue_beats.duplicate(true),
 		"appearance": appearance.duplicate(true),
 		"spawn": spawn.duplicate(true),
+		"movement": movement.duplicate(true),
 		"known": false,
 		"trust": 0,
 		"conversation_index": 0,
@@ -963,6 +985,39 @@ static func _spawn(
 		"mood": mood,
 		"interaction_radius": interaction_radius,
 	}
+
+
+static func _route(
+	route_points: Array,
+	arrival_radius: float = 24.0,
+	wait_min_sec: float = 0.5,
+	wait_max_sec: float = 1.2,
+	ping_pong: bool = true
+) -> Dictionary:
+	return {
+		"route_points": route_points.duplicate(true),
+		"arrival_radius": arrival_radius,
+		"wait_min_sec": wait_min_sec,
+		"wait_max_sec": wait_max_sec,
+		"ping_pong": ping_pong,
+	}
+
+
+static func _route_point(
+	anchor_id: String,
+	offset: Vector2 = Vector2.ZERO,
+	wait_min_sec: float = -1.0,
+	wait_max_sec: float = -1.0
+) -> Dictionary:
+	var point := {
+		"anchor_id": anchor_id,
+		"offset": offset,
+	}
+	if wait_min_sec >= 0.0:
+		point["wait_min_sec"] = wait_min_sec
+	if wait_max_sec >= 0.0:
+		point["wait_max_sec"] = wait_max_sec
+	return point
 
 
 static func _look(

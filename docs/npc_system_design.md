@@ -13,11 +13,11 @@ Read [`design_brief.md`](design_brief.md) first for the project summary and tone
 
 The live resident flow is:
 
-1. [`../game/resident_catalog.gd`](../game/resident_catalog.gd) defines the static resident roster, content, appearance presets, and spawn metadata.
+1. [`../game/resident_catalog.gd`](../game/resident_catalog.gd) defines the static resident roster, content, appearance presets, spawn metadata, and optional movement routes.
 2. [`../game/app_state.gd`](../game/app_state.gd) clones those defaults into mutable runtime `resident_profiles` and exposes all resident-facing getters.
-3. [`../scenes/game_main.gd`](../scenes/game_main.gd) caches supported spawn anchors, spawns the roster under the shared `actors/Residents` layer, and turns player `R` input into resident talk interactions.
+3. [`../scenes/game_main.gd`](../scenes/game_main.gd) caches supported spawn and route anchors, spawns the roster under the shared `actors/Residents` layer, turns player `R` input into resident talk interactions, and synchronizes tunnel-specific visibility and level state.
 4. [`../characters/control/base_controller.gd`](../characters/control/base_controller.gd) filters nearby targets to the same absolute z layer before closest-target or speech logic can use them.
-5. [`../characters/control/npc_controller.gd`](../characters/control/npc_controller.gd) applies each resident's appearance, shows the nearby `...` cue, reveals the current talk line after interaction, and keeps stationary residents facing the player while nearby.
+5. [`../characters/control/npc_controller.gd`](../characters/control/npc_controller.gd) applies each resident's appearance, shows the nearby `...` cue, reveals the current talk line after interaction, and can follow simple authored route loops while still facing the player when nearby.
 6. [`../ui/screens/journal_overlay.gd`](../ui/screens/journal_overlay.gd) renders resident notes from `AppState.build_resident_journal_text()`.
 
 This split is intentional: authored content stays in the catalog, mutable progression stays in shared state, and scene/controller code handles only world integration and presentation.
@@ -52,6 +52,12 @@ This split is intentional: authored content stays in the catalog, mutable progre
 - Proximity alone is not enough for interaction. [`../characters/control/base_controller.gd`](../characters/control/base_controller.gd) rejects nearby targets unless they share the same absolute z value as the active character.
 - That rule protects stacked spaces and portal-driven traversal from cross-layer talk prompts, accidental auto-speech, or misleading target selection.
 - If future work changes portals, stacked traversal, or NPC movement between layers, re-validate this rule instead of assuming the older behavior still holds.
+
+### Tunnel Context Is Stricter For The Player
+
+- Tunnel residents now follow a stricter visibility rule than plain same-layer targeting alone.
+- The player only counts as being "in a tunnel" after actually reaching that tunnel's interior level; walking over the tunnel footprint on the surface must not reveal tunnel residents or hide ground buildings.
+- Routed residents still reacquire tunnel state from tunnel geometry as they move back into a tunnel, so portal timing and route motion do not leave them stranded on outside level data.
 
 ### Dialogue Is Lightweight On Purpose
 
@@ -119,13 +125,29 @@ Resident spawn metadata is currently:
 - `mood`
 - `interaction_radius`
 
-The main scene supports five anchor ids today:
+Optional resident movement metadata is currently:
+
+- `movement.route_points`
+- `movement.arrival_radius`
+- `movement.wait_min_sec`
+- `movement.wait_max_sec`
+- `movement.ping_pong`
+
+The main scene supports these resident anchor ids today:
 
 - `Piano Ferry`
 - `Trinity Church`
 - `Bagua Tower`
 - `Bi Shan Tunnel South`
+- `Bi Shan Tunnel North`
+- `Bi Shan Tunnel`
+- `Bi Shan Tunnel South Portal`
+- `Bi Shan Tunnel North Portal`
+- `Long Shan Tunnel`
 - `Long Shan Tunnel South`
+- `Long Shan Tunnel North`
+- `Long Shan Tunnel South Portal`
+- `Long Shan Tunnel North Portal`
 
 This shared-anchor-plus-offset model is intentionally cheap to author. It is less precise than dedicated placement markers, but it keeps roster iteration fast while the island layout is still moving.
 
@@ -187,6 +209,15 @@ Use [`../game/tests/npc_system/test_npc_layer_interaction.tscn`](../game/tests/n
 
 This sandbox deliberately places residents on multiple z layers and uses a portal transition to move the player between them. The portal's cyan debug zone is drawn from its actual collision shape, so if the portal size changes the visible test affordance should change with it.
 
+### Tunnel Context Check
+
+Use [`../game/tests/npc_system/test_tunnel_visibility.tscn`](../game/tests/npc_system/test_tunnel_visibility.tscn) and [`../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../game/tests/npc_system/test_tunnel_npc_travel.tscn) when changing:
+
+- tunnel-resident visibility rules
+- player tunnel-entry detection versus surface overlap
+- tunnel resident route re-entry or outside/tunnel level restoration
+- ground-building masking tied to tunnel interiors
+
 ## Debugging Shortcuts
 
 When the system breaks, start here:
@@ -205,6 +236,10 @@ When the system breaks, start here:
   - Check same-layer gating in [`../characters/control/base_controller.gd`](../characters/control/base_controller.gd).
 - Resident talks across layers:
   - Check absolute z values first, not just node parentage or local `z_index`.
+- Tunnel residents show or hide at the wrong time:
+  - Check `Tunnel.contains_actor_interior()` versus `Tunnel.contains_actor()`.
+  - Check `_find_player_tunnel()` and `_find_resident_tunnel()` in [`../scenes/game_main.gd`](../scenes/game_main.gd).
+  - Check tunnel masking refresh in [`../common/auto_visibility_node_2d.gd`](../common/auto_visibility_node_2d.gd).
 - Journal text looks stale:
   - Check `AppState.interact_with_resident()`, `resident_profile_changed`, and `build_resident_journal_text()`.
 - Spawn feels visually wrong:
@@ -225,7 +260,7 @@ When the system breaks, start here:
 
 ## Current Limits And Intentional Gaps
 
-- Residents are still stationary in the shipped slice.
+- Residents can now follow simple authored route loops, but they do not yet have full schedules, branching routines, or broader navigation.
 - Resident talk progression is linear.
 - The journal is still one formatted text block.
 - The roster still uses shared hub anchors with offsets instead of dedicated scene markers.

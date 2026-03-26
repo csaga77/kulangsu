@@ -11,6 +11,8 @@ extends IsometricBlock
 var m_player: HumanBody2D = null
 var m_target_visible := true
 var m_is_changing_visibility := false
+var m_last_player_absolute_z := 0
+var m_has_player_level_sample := false
 
 func _ready() -> void:
 	super._ready()
@@ -42,11 +44,23 @@ func _set_player(new_player: HumanBody2D) -> void:
 			m_player.global_position_changed.disconnect(self._update_visibility)
 
 	m_player = new_player
+	m_has_player_level_sample = false
 
 	if m_player:
 		m_player.global_position_changed.connect(self._update_visibility)
 
 	_update_visibility()
+
+
+func _process(_delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
+	if !is_enabled or m_player == null:
+		return
+
+	var absolute_z := CommonUtils.get_absolute_z_index(m_player)
+	if !m_has_player_level_sample or m_last_player_absolute_z != absolute_z:
+		_update_visibility()
 
 func _set_visible(new_is_visible: bool) -> void:
 	if smooth_visibility_change:
@@ -81,8 +95,12 @@ func _update_visibility() -> void:
 
 	# No player => keep visible (or keep current state; choose visible for safety)
 	if m_player == null:
+		m_has_player_level_sample = false
 		_set_visible(true)
 		return
+
+	m_last_player_absolute_z = CommonUtils.get_absolute_z_index(m_player)
+	m_has_player_level_sample = true
 
 	var should_be_visible := true
 	var bounding_rect: Rect2 = m_player.get_ground_rect() if use_ground_bounding_rect else m_player.get_bounding_rect()

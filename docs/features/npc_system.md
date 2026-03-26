@@ -35,8 +35,10 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 - Resident talk progression is linear right now. `conversation_index` advances through the resident's `dialogue_beats`.
 - Nearby resident bubbles should default to `...` until explicit talk input reveals a line.
 - Residents should only be targetable when the player shares the same absolute z/layer context.
+- Residents should only be visible and targetable when they share the player's current tunnel context: both outside, or inside the same tunnel after actually entering its interior level rather than merely overlapping the tunnel footprint on the surface.
+- Player tunnel context is intentionally stricter than resident tunnel reacquisition: the player must reach the tunnel interior level, while routed residents may reacquire tunnel level/visibility from tunnel geometry as they move back in.
 - If a resident and a collectible landmark trigger overlap in range, the resident should win the closest-target selection so `Talk` stays reliable.
-- Residents currently spawn as stationary overworld actors; they can still face the player while interacting.
+- Residents may stay stationary or follow authored route points; routed tunnel residents should still pause for nearby talk and use the same tunnel visibility rules as the player.
 - Player and resident actors must stay under the same y-sorted actor layer in the main scene so character overlap reads correctly.
 
 ## Current Authoring Model
@@ -46,7 +48,9 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 - Ambient residents live in `ResidentCatalog._ambient_residents()`.
 - `AppState` builds runtime resident profiles from the catalog defaults and exposes the getters the rest of the game uses.
 - `scenes/game_main.gd` never hardcodes individual residents; it loops over `AppState.get_resident_ids()` and spawns them from catalog metadata.
-- `NPCController` uses `resident_id` to pull appearance from `AppState`, keeps a local revealed-line state, and defaults the nearby bubble to `...`.
+- Tunnel-root spawns and tunnel-owned movement waypoints are snapped back onto the authored tunnel path if an offset drifts off the walkable area.
+- `NPCController` uses `resident_id` to pull appearance from `AppState`, keeps a local revealed-line state, defaults the nearby bubble to `...`, and can follow optional route loops built from catalog metadata.
+- `scenes/game_main.gd` re-syncs player tunnel context from actual interior-level entry, while residents still regain tunnel level/visibility from tunnel geometry so routed tunnel residents can move in and out cleanly without player surface overlap falsely counting as tunnel entry.
 - The journal never reads the catalog directly; it asks `AppState.build_resident_journal_text()`.
 
 ## Common Tasks
@@ -79,24 +83,33 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 1. Adjust the resident's `spawn` dictionary in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd).
 2. Prefer changing the `offset` first.
 3. Only add a new `anchor_id` if the resident truly belongs to a different hub or needs a new placement cluster.
-4. If adding a new anchor id, update [`../../scenes/game_main.gd`](../../scenes/game_main.gd) and document it below in `Current Spawn Anchors`.
+4. If adding a new anchor id, update [`../../scenes/game_main.gd`](../../scenes/game_main.gd) and document it below in `Current Resident Anchors`.
 
 ### Add Resident Movement Or Schedules
 
 1. Start in [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd).
-2. Decide whether the change should reuse the existing JSON BT path or introduce a resident-specific controller behavior.
-3. Keep resident content in the catalog and movement logic in controller/world code.
-4. Update this doc and [`../npc_system_design.md`](../npc_system_design.md), because movement is currently a known non-goal of the shipped slice.
+2. Author simple loop routes in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd) with `_route(...)` and `_route_point(...)`.
+3. Add any new `anchor_id` values to [`../../scenes/game_main.gd`](../../scenes/game_main.gd) so spawn and route points resolve to scene nodes.
+4. Keep resident content in the catalog and movement logic in controller/world code.
+5. Validate route behavior with [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn) when the route crosses tunnel boundaries.
 
-## Current Spawn Anchors
+## Current Resident Anchors
 
-The catalog `spawn.anchor_id` values currently supported by [`../../scenes/game_main.gd`](../../scenes/game_main.gd) are:
+The catalog `spawn.anchor_id` values and `movement.route_points[].anchor_id` values currently supported by [`../../scenes/game_main.gd`](../../scenes/game_main.gd) are:
 
 - `Piano Ferry` -> `terrain/ground/buildings/piano_ferry`
 - `Trinity Church` -> `terrain/ground/buildings/TrinityChurch`
 - `Bagua Tower` -> `terrain/ground/buildings/BaguaTower`
 - `Bi Shan Tunnel South` -> `terrain/ground/bi_shan_tunnel_entries/entry_south`
+- `Bi Shan Tunnel North` -> `terrain/ground/bi_shan_tunnel_entries/entry_north`
+- `Bi Shan Tunnel` -> `terrain/bi_shan_tunnel`
+- `Bi Shan Tunnel South Portal` -> `terrain/bi_shan_tunnel/exit_south`
+- `Bi Shan Tunnel North Portal` -> `terrain/bi_shan_tunnel/exit_north`
+- `Long Shan Tunnel` -> `terrain/long_shan_tunnel`
 - `Long Shan Tunnel South` -> `terrain/ground/long_shan_tunnel_entries/entry_south`
+- `Long Shan Tunnel North` -> `terrain/ground/long_shan_tunnel_entries/entry_north`
+- `Long Shan Tunnel South Portal` -> `terrain/long_shan_tunnel/exit_south`
+- `Long Shan Tunnel North Portal` -> `terrain/long_shan_tunnel/exit_north`
 
 If a resident uses an unsupported `anchor_id`, startup should warn and skip that resident.
 
@@ -107,6 +120,9 @@ If a resident uses an unsupported `anchor_id`, startup should warn and skip that
 - Unknown residents should stay hidden from the resident journal until introduced.
 - `Free Walk`, `Continue`, and `Postgame` may seed resident progress differently, so docs and future save work should treat resident state as mode-aware.
 - If a resident and the player overlap physically but live on different absolute z layers, they should not target each other, show a talk prompt, or show a resident speech cue.
+- If a resident is inside Bi Shan or Long Shan Tunnel while the player is outside, that resident should be hidden and should drop out of closest-target selection until they exit or the player joins them.
+- If the player is inside Bi Shan or Long Shan Tunnel, residents outside that same tunnel should be hidden and should drop out of closest-target selection until the player exits or the resident re-enters.
+- Tunnel-routed residents should switch back to the correct outside or tunnel level state as soon as they cross the tunnel boundary.
 - The journal text is generated as one formatted text block, not a structured list widget. If you change the resident note format, update both the docs and the journal renderer.
 - The main overworld currently uses shared hub anchors with offsets, not dedicated per-resident scene markers.
 - Collected landmark triggers must immediately drop out of closest-target selection so they do not block nearby resident talk prompts.
@@ -115,8 +131,8 @@ If a resident uses an unsupported `anchor_id`, startup should warn and skip that
 
 - [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd) owns resident content and spawn metadata.
 - [`../../game/app_state.gd`](../../game/app_state.gd) owns runtime resident profiles, shared resident getters, and journal text generation.
-- [`../../scenes/game_main.gd`](../../scenes/game_main.gd) owns overworld spawn-anchor mapping, resident instantiation, and talk-prompt wiring.
-- [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd) owns resident presentation hookup and nearby bubble reveal behavior.
+- [`../../scenes/game_main.gd`](../../scenes/game_main.gd) owns overworld spawn/movement-anchor mapping, resident instantiation, tunnel-context syncing, and talk-prompt wiring.
+- [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd) owns resident presentation hookup, nearby bubble reveal behavior, and simple route-following movement.
 - [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd) owns resident note presentation in the journal.
 
 ## Relevant Files
@@ -124,6 +140,8 @@ If a resident uses an unsupported `anchor_id`, startup should warn and skip that
 - Scenes:
   - [`../../scenes/game_main.tscn`](../../scenes/game_main.tscn)
   - [`../../game/tests/npc_system/test_npc_layer_interaction.tscn`](../../game/tests/npc_system/test_npc_layer_interaction.tscn)
+  - [`../../game/tests/npc_system/test_tunnel_visibility.tscn`](../../game/tests/npc_system/test_tunnel_visibility.tscn)
+  - [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn)
   - [`../../game/tests/npc_system/test_scene.tscn`](../../game/tests/npc_system/test_scene.tscn)
 - Scripts:
   - [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
@@ -147,8 +165,9 @@ If a resident uses an unsupported `anchor_id`, startup should warn and skip that
   - player controller `inspect_requested`
 - Important node paths, dictionaries, resources, or data flow:
   - `scenes/game_main.tscn` keeps the overworld actor layer at `actors`, with the player at `actors/player`
-  - `scenes/game_main.gd` maps resident spawn `anchor_id` values to concrete scene nodes
+  - `scenes/game_main.gd` maps resident spawn and movement `anchor_id` values to concrete scene nodes
   - `NPCController.resident_id` links an instantiated actor to resident catalog data
+  - optional `resident_profile.movement.route_points` expand into resolved world-space route positions at spawn time
   - `AppState.interact_with_resident()` advances talk beats and updates resident runtime state
   - `NPCController.reveal_dialogue()` swaps the nearby `...` cue to the just-triggered resident line
   - `AppState.build_resident_journal_text()` is the only resident-note text source used by the journal UI
@@ -178,12 +197,19 @@ When extending the NPC system, make changes in this order unless the task is str
 - In Trinity Church and other mixed interaction spaces, confirm that nearby residents still win target selection over collectible cue triggers.
 - Open the journal and verify that introduced residents appear with updated notes.
 - Use [`../../game/tests/npc_system/test_npc_layer_interaction.tscn`](../../game/tests/npc_system/test_npc_layer_interaction.tscn) when testing same-layer gating, portal-driven z changes, and closest-target behavior across stacked resident layers.
+- Use [`../../game/tests/npc_system/test_tunnel_visibility.tscn`](../../game/tests/npc_system/test_tunnel_visibility.tscn) for tunnel-resident placement, tunnel-context visibility, and tunnel spacing regression coverage.
+- Use [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn) for tunnel route crossing, level-state syncing, and in/out tunnel resident travel coverage.
 - Use [`../../game/tests/npc_system/test_scene.tscn`](../../game/tests/npc_system/test_scene.tscn) as a faster sandbox for resident speech and journal checks.
+- Use the main project flow to verify that tunnel residents spawn on walkable tunnel cells, can move in and out through tunnel entrances, and only remain visible when they share the player's current tunnel context.
 
 Quick validation checklist:
 
-- No startup warnings about missing NPC spawn anchors
+- No startup warnings about missing NPC spawn or movement anchors
 - Residents on a different absolute z layer do not become the closest target and do not trigger `Talk`
+- Tunnel residents spawn on walkable tunnel cells instead of outside the tunnel boundary
+- Tunnel residents inherit the correct tunnel level on spawn and switch back to the outside level after leaving the tunnel
+- Tunnel residents only stay visible when they share the player's current tunnel context
+- Walking over a tunnel footprint on the surface must not reveal tunnel residents or hide the ground layer
 - New or changed residents appear under the shared `actors` layer and sort correctly against the player
 - Crossing the portal in `test_npc_layer_interaction.tscn` changes the player's absolute z and swaps which resident row is targetable
 - The nearby cue still shows `...` before talk, and the revealed resident line still fits in the speech balloon
@@ -193,7 +219,7 @@ Quick validation checklist:
 
 ## Known Limitations
 
-- Residents do not yet have authored patrols, schedules, or daily routines.
+- Residents can follow simple authored route loops, but there are still no full daily schedules, branching behaviors, or navigation-aware path planning outside authored routes.
 - Story beats are still linear and resident-specific branching is not modeled.
 - Spawn placement is offset-based around shared hubs rather than dedicated scene markers.
 - There is no full dialogue panel or save-data serialization for resident progression yet.

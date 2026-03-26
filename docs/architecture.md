@@ -55,6 +55,7 @@ Responsibilities:
 - shared y-sorted actor layer for the player and spawned residents
 - landmark lookup and location syncing
 - data-driven resident spawning, inspect/talk prompts, and overworld resident presentation
+- tunnel interior context, tunnel-resident visibility syncing, and ground-building masking when the player actually enters a tunnel interior
 - feeding current world context into `AppState`
 
 Boundary:

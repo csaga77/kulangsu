@@ -14,6 +14,8 @@ The player enters Bi Shan Tunnel after Trinity Church resolves. Three faint echo
 
 The mood stays quiet throughout. There is no timer, no failure state, and no required order for the three echo markers. The chamber trigger is simply hidden until all three echoes are collected.
 
+When the player enters through a tunnel mouth and reaches the tunnel interior, the surface ground/building layer should hide so the tunnel graphics and tunnel residents read cleanly. Walking over the same footprint on the surface must not trigger that tunnel-only presentation.
+
 ## Rules
 
 - Bi Shan Tunnel starts `locked`. It unlocks to `available` when `_resolve_trinity_church()` fires (simultaneously with Long Shan Tunnel).
@@ -44,6 +46,7 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
 - Each `LandmarkTrigger` placed in the scene self-manages its own visibility by subscribing to `AppState.landmark_progress_changed`.
 - `LandmarkTrigger` owns its own collected state and hide/disable behavior.
 - `scenes/game_main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
+- `tunnel.gd`, `auto_visibility_node_2d.gd`, and `scenes/game_main.gd` together own the tunnel-only presentation rule: player interior entry hides the surface layer, while tunnel residents only appear when the player shares that tunnel context.
 - `bi_shan_tunnel.tscn` hosts the `LandmarkTrigger` nodes directly; their configuration lives in their exported properties.
 
 ## Relevant Files
@@ -89,6 +92,8 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
 - Press R at the chamber before collecting all echoes. Confirm the "silent panel" status line appears and nothing advances.
 - Start a Continue game. Confirm echo triggers are visible (echoes_collected is empty) and the arc is playable.
 - Start a Free Walk game. Confirm echo triggers appear and the arc plays through.
+- Enter the tunnel properly through a mouth and walk inside. Confirm the surface ground/building layer hides and tunnel residents appear.
+- Move across the same tunnel footprint on the surface without entering the tunnel interior. Confirm the surface layer stays visible and tunnel residents stay hidden.
 
 ## Integration Checklist
 

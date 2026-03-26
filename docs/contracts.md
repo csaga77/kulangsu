@@ -35,7 +35,7 @@ Current contract:
 - `AppState` is the shared UI/progression-facing bridge between gameplay and UI
 - it exposes signals for mode, chapter, location, objective, hint, save status, fragments, melody progress, landmarks, residents, resident profiles, player appearance/costumes, and summary updates
 - it now owns shared melody runtime state while [`../game/melody_catalog.gd`](../game/melody_catalog.gd) owns authored melody definitions
-- world and UI code rely on resident getters for resident ids, display names, appearance configs, spawn configs, ambient speech, and resident journal text
+- world and UI code rely on resident getters for resident ids, display names, appearance configs, spawn configs, ambient speech, resident journal text, and full resident profiles when optional movement metadata is needed
 - UI code can now rely on melody getters and journal helpers for melody-facing player context
 - UI screens and world integration code rely on those signals and state getters/setters
 
@@ -75,10 +75,11 @@ Owned by:
 
 Current contract:
 
-- `scenes/game_main.gd` maps landmarks and spawn anchors, spawns residents, reacts to controller events, and syncs player context into `AppState`
+- `scenes/game_main.gd` maps landmarks plus resident spawn/movement anchors, spawns residents, reacts to controller events, syncs player tunnel context into `AppState`, and keeps resident outside/tunnel level state aligned with their current tunnel context
 - `scenes/game_main.tscn` keeps the player and resident instances under one shared y-sorted actor layer rooted at `actors`
 - player inspect and talk prompts flow from nearby same-layer world objects through controller signals into `AppState`
 - landmark naming and location sync depend on known nodes in the main scene
+- player tunnel context must only become active after the player reaches the tunnel interior level; overlapping the tunnel footprint on the surface must not count as tunnel entry
 
 Governance:
 
@@ -105,6 +106,7 @@ Current contract:
 - `LevelNode2D` resolves a `level_id`, then asks `LevelRegistry` for the corresponding physics-atlas column instead of assuming `level_id == atlas_column`
 - actor traversal components resolve their final collision-mask and `z_index` state through the same shared global level data
 - visibility masking still depends on authored mask layers plus absolute `z_index` behavior
+- tunnel masking may layer additional context rules on top of authored masks, such as requiring the player to be on the tunnel's interior level before hiding ground buildings
 
 Governance:
 
@@ -133,6 +135,7 @@ Current contract:
 - When their related `level_id` properties are set, `Portal` and `Steps` resolve the matching profiles through `LevelRegistry`.
 - Both `Portal` and `Steps` fall back to hand-authored mask values if level ids are not provided or profile lookup is unavailable, preserving backward compatibility.
 - Direct spawn, teleport, or restore of an actor into a non-ground level should call `LevelRegistry.apply_level_to_actor(level_id, actor)` or the equivalent profile lookup path.
+- Both player and NPC actors use the same shared level-transition helpers, but gameplay systems may still interpret tunnel context differently on top of that shared transition data.
 
 Governance:
 

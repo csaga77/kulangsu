@@ -14,6 +14,8 @@ The player arrives at Long Shan Tunnel after Bi Shan Tunnel resolves. Tunnel Gui
 
 The tone stays quiet. There is no timer, no NPC pathfinding, and no failure state. "Escort" here means the player traverses the tunnel while a resident's words stay with them — it is a mood and a framing, not a mechanical chase.
 
+When the player properly enters the tunnel interior, the surface ground/building layer should hide so the tunnel art and tunnel residents read as the active space. Walking across the tunnel footprint on the surface must not reveal those tunnel-only residents.
+
 ## Rules
 
 - Long Shan Tunnel starts `locked`. It unlocks to `available` when `_resolve_trinity_church()` fires (simultaneously with Bi Shan Tunnel).
@@ -44,6 +46,7 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 - Each `LandmarkTrigger` placed in the scene self-manages its own visibility by subscribing to `AppState.landmark_progress_changed`.
 - `LandmarkTrigger` owns its own collected state and hide/disable behavior.
 - `scenes/game_main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
+- `tunnel.gd`, `auto_visibility_node_2d.gd`, and `scenes/game_main.gd` together own the tunnel-only presentation rule: player interior entry hides the surface layer, while routed tunnel residents can move in and out and only remain visible when the player shares that tunnel context.
 - `resident_catalog.gd` owns the authored beat gates and `landmark_states` fields for `tunnel_guide`.
 - `long_shan_tunnel.tscn` hosts the `LandmarkTrigger` nodes directly; their configuration lives in their exported properties.
 
@@ -93,6 +96,8 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 - Press R at the tunnel_exit trigger. Confirm the arc resolves, journal updates, and Bagua Tower becomes available.
 - Try talking to tunnel_guide at beat 2 before reaching the exit. Confirm the gate_fallback line appears.
 - Start a Continue game. Confirm the arc is accessible (state: available, entry trigger visible).
+- Enter the tunnel through a mouth and walk inside. Confirm the surface ground/building layer hides and tunnel residents appear.
+- Move over the same tunnel footprint on the surface without entering the tunnel interior. Confirm the surface layer stays visible and tunnel residents stay hidden.
 
 ## Integration Checklist
 

@@ -9,16 +9,54 @@ extends BaseController
 @export_category("Resident")
 @export var resident_id: StringName
 
+const DEFAULT_ROUTE_ARRIVAL_RADIUS := 24.0
+const DEFAULT_ROUTE_WAIT_MIN_SEC := 0.5
+const DEFAULT_ROUTE_WAIT_MAX_SEC := 1.2
+const ROUTE_MOVE_SPEED := 72.0
+
 var m_target: Node2D = null
 var m_bt_tree: BTTree
 var m_is_building_bt_tree := false
 var m_revealed_dialogue_line := ""
+var m_route_points: Array[Dictionary] = []
+var m_route_index := -1
+var m_route_direction := 1
+var m_route_arrival_radius := DEFAULT_ROUTE_ARRIVAL_RADIUS
+var m_route_wait_min_sec := DEFAULT_ROUTE_WAIT_MIN_SEC
+var m_route_wait_max_sec := DEFAULT_ROUTE_WAIT_MAX_SEC
+var m_route_wait_timer := 0.0
+var m_route_ping_pong := true
+var m_route_is_moving := false
+var m_route_motion_target := Vector2.ZERO
 
 func _on_setup() -> void:
 	super._on_setup()
 	_apply_resident_presentation()
-	if use_json_bt:
+	_reset_route_progress()
+	if use_json_bt and !_has_route():
 		_schedule_built_bt_tree()
+
+
+func configure_movement(movement_config: Dictionary) -> void:
+	m_route_points.clear()
+	m_route_index = -1
+	m_route_direction = 1
+	m_route_wait_timer = 0.0
+	m_route_arrival_radius = maxf(float(movement_config.get("arrival_radius", DEFAULT_ROUTE_ARRIVAL_RADIUS)), 4.0)
+	m_route_wait_min_sec = maxf(float(movement_config.get("wait_min_sec", DEFAULT_ROUTE_WAIT_MIN_SEC)), 0.0)
+	m_route_wait_max_sec = maxf(float(movement_config.get("wait_max_sec", DEFAULT_ROUTE_WAIT_MAX_SEC)), m_route_wait_min_sec)
+	m_route_ping_pong = bool(movement_config.get("ping_pong", true))
+
+	for point_value in movement_config.get("route_points", []):
+		var route_point := point_value as Dictionary
+		if route_point.is_empty():
+			continue
+		if !route_point.has("position"):
+			continue
+		m_route_points.append(route_point.duplicate(true))
+
+	if is_instance_valid(m_character):
+		_reset_route_progress()
 
 func _schedule_built_bt_tree():
 	if m_is_building_bt_tree:
@@ -100,15 +138,18 @@ func _on_body_exited(body: Node2D) -> void:
 		_clear_revealed_dialogue()
 
 func _process(delta: float) -> void:
+	m_route_is_moving = false
+	if _has_route():
+		_update_route(delta)
+	else:
+		_update_behavior_tree(delta)
+
 	super._process(delta)
-	
-	if !Engine.is_editor_hint() and is_instance_valid(m_bt_tree):
-		#m_bt_tree.set_debug_enabled(is_debug_enabled())
-		m_bt_tree.tick(self, delta)
-		#_set_debug_string(m_bt_tree.get_last_executed_path())
 
 	if m_character == null or !is_instance_valid(m_character):
 		return
+
+	_apply_route_motion(delta)
 
 	if m_target == null or !is_instance_valid(m_target):
 		return
@@ -141,3 +182,114 @@ func _get_speech(target_obj: Node2D) -> String:
 
 func _clear_revealed_dialogue() -> void:
 	m_revealed_dialogue_line = ""
+
+
+func _has_route() -> bool:
+	return m_route_points.size() >= 2
+
+
+func _update_behavior_tree(delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
+	if !is_instance_valid(m_bt_tree):
+		return
+	#m_bt_tree.set_debug_enabled(is_debug_enabled())
+	m_bt_tree.tick(self, delta)
+	#_set_debug_string(m_bt_tree.get_last_executed_path())
+
+
+func _update_route(delta: float) -> void:
+	if !is_instance_valid(m_character):
+		return
+
+	if is_talking() or (is_instance_valid(m_target) and m_target.is_in_group("player")):
+		stop_moving()
+		return
+
+	if m_route_index < 0 or m_route_index >= m_route_points.size():
+		_reset_route_progress()
+
+	if m_route_index < 0 or m_route_index >= m_route_points.size():
+		stop_moving()
+		return
+
+	if m_route_wait_timer > 0.0:
+		m_route_wait_timer = maxf(m_route_wait_timer - delta, 0.0)
+		stop_moving()
+		return
+
+	var route_point := m_route_points[m_route_index]
+	var target_position: Vector2 = route_point.get("position", m_character.global_position)
+	var to_target := target_position - m_character.global_position
+	if to_target.length_squared() <= m_route_arrival_radius * m_route_arrival_radius:
+		_advance_route_point(route_point)
+		stop_moving()
+		return
+
+	set_running(false)
+	stop_moving()
+	set_target_direction(to_target)
+	m_route_motion_target = target_position
+	m_route_is_moving = true
+
+
+func _advance_route_point(route_point: Dictionary) -> void:
+	m_route_wait_timer = _get_route_wait_duration(route_point)
+
+	if m_route_points.size() <= 1:
+		return
+
+	var next_index := m_route_index + m_route_direction
+	if m_route_ping_pong:
+		if next_index >= m_route_points.size() or next_index < 0:
+			m_route_direction *= -1
+			next_index = m_route_index + m_route_direction
+	else:
+		next_index = posmod(next_index, m_route_points.size())
+
+	m_route_index = clampi(next_index, 0, m_route_points.size() - 1)
+
+
+func _get_route_wait_duration(route_point: Dictionary) -> float:
+	var wait_min_sec := maxf(float(route_point.get("wait_min_sec", m_route_wait_min_sec)), 0.0)
+	var wait_max_sec := maxf(float(route_point.get("wait_max_sec", m_route_wait_max_sec)), wait_min_sec)
+	if is_equal_approx(wait_min_sec, wait_max_sec):
+		return wait_min_sec
+	return randf_range(wait_min_sec, wait_max_sec)
+
+
+func _reset_route_progress() -> void:
+	m_route_wait_timer = 0.0
+	m_route_is_moving = false
+	if !_has_route() or !is_instance_valid(m_character):
+		m_route_index = -1
+		m_route_direction = 1
+		return
+
+	var nearest_index := 0
+	var nearest_distance_sq := INF
+	for i in range(m_route_points.size()):
+		var route_point := m_route_points[i]
+		var route_position: Vector2 = route_point.get("position", m_character.global_position)
+		var distance_sq := m_character.global_position.distance_squared_to(route_position)
+		if distance_sq < nearest_distance_sq:
+			nearest_distance_sq = distance_sq
+			nearest_index = i
+
+	m_route_index = nearest_index
+	m_route_direction = -1 if nearest_index >= m_route_points.size() - 1 else 1
+
+
+func _apply_route_motion(delta: float) -> void:
+	if !_has_route():
+		return
+	if !m_route_is_moving:
+		return
+	if !is_instance_valid(m_character):
+		return
+
+	m_character.global_position = m_character.global_position.move_toward(
+		m_route_motion_target,
+		ROUTE_MOVE_SPEED * delta
+	)
+	m_character.is_walking = true

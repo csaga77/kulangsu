@@ -248,6 +248,10 @@ func _is_valid_object(body: Node2D) -> bool:
 	if !is_instance_valid(body):
 		return false
 
+	var canvas_item := body as CanvasItem
+	if canvas_item != null and !canvas_item.is_visible_in_tree():
+		return false
+
 	var landmark_trigger := body as LandmarkTrigger
 	if landmark_trigger != null and landmark_trigger.is_collected():
 		return false

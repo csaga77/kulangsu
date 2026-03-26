@@ -14,6 +14,7 @@
 - Reusable room scenes should prefer relative level ids so they do not hardcode global runtime ids.
 - Portals and stairs must move actors between levels in both directions.
 - Visibility changes must continue to match the player's active floor.
+- Tunnel interiors should only hide ground-space art after the player actually reaches the tunnel's interior level; surface overlap alone is not enough.
 
 ## Current Design
 
@@ -57,6 +58,8 @@
 
 - [`../../common/auto_visibility_node_2d.gd`](../../common/auto_visibility_node_2d.gd) still owns visibility masking behavior.
 - Visibility is still based on authored mask tilemaps plus absolute `z_index` relationships.
+- `AutoVisibilityNode2D` must also respect actor level changes that happen without a new position sample, such as portal-driven tunnel entry.
+- Tunnel scenes may further require interior-level membership before a visibility mask hides the ground layer.
 - The level system does not currently derive visibility masks automatically.
 
 ## Reference Implementation
@@ -69,6 +72,7 @@
   - corner rooms: relative `level_id = 0`
   - door portals: absolute `0 -> 2`
   - stairs: relative `0 -> 2`
+- [`../../architecture/bi_shan_tunnel.tscn`](../../architecture/bi_shan_tunnel.tscn) and [`../../architecture/long_shan_tunnel.tscn`](../../architecture/long_shan_tunnel.tscn) are the current reference for tunnel-specific interior masking and tunnel-level traversal.
 
 ## Known Limitation
 
@@ -88,12 +92,18 @@
 
 - [`../../common/level_registry.gd`](../../common/level_registry.gd)
 - [`../../common/level_node_2d.gd`](../../common/level_node_2d.gd)
+- [`../../common/auto_visibility_node_2d.gd`](../../common/auto_visibility_node_2d.gd)
+- [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd)
 - [`../../architecture/components/portal.gd`](../../architecture/components/portal.gd)
 - [`../../architecture/components/steps.gd`](../../architecture/components/steps.gd)
 - [`../../architecture/bagua_tower/bagua_tower.tscn`](../../architecture/bagua_tower/bagua_tower.tscn)
+- [`../../architecture/bi_shan_tunnel.tscn`](../../architecture/bi_shan_tunnel.tscn)
+- [`../../architecture/long_shan_tunnel.tscn`](../../architecture/long_shan_tunnel.tscn)
 - [`../../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn`](../../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn)
 - [`../../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn`](../../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn)
 - [`../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn`](../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn)
+- [`../../game/tests/npc_system/test_tunnel_visibility.tscn`](../../game/tests/npc_system/test_tunnel_visibility.tscn)
+- [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn)
 - [`../../scenes/tests/test_level_resolution.tscn`](../../scenes/tests/test_level_resolution.tscn)
 - [`../../scenes/tests/test_portal_overlap.tscn`](../../scenes/tests/test_portal_overlap.tscn)
 
@@ -104,3 +114,5 @@
 - Validate direct portal actor transitions with [`../../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn`](../../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn).
 - Validate Bagua ascent, descent, and visibility behavior with [`../../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn`](../../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn).
 - Validate physical stair traversal with [`../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn`](../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn).
+- Validate tunnel-only visibility swaps and surface-overlap behavior with [`../../game/tests/npc_system/test_tunnel_visibility.tscn`](../../game/tests/npc_system/test_tunnel_visibility.tscn).
+- Validate routed NPC re-entry and tunnel level restoration with [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn).

@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://game/tests/npc_system/test_tunnel_npc_travel.gd" id="1_scene"]
+
+[node name="test_tunnel_npc_travel" type="Node"]
+script = ExtResource("1_scene")

@@ -17,8 +17,8 @@ Put new menu, overlay, HUD, or shell-flow work here.
 
 ## World Integration And Shared State
 
-- [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - connects terrain, the shared actor layer, landmarks, and residents to the UI
-- [`../terrain/terrain.tscn`](../terrain/terrain.tscn) / [`../terrain/terrain.gd`](../terrain/terrain.gd) - island terrain, generated water layer, and water rendering setup
+- [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - connects terrain, the shared actor layer, landmarks, tunnel interior context, and residents to the UI
+- [`../terrain/terrain.tscn`](../terrain/terrain.tscn) / [`../terrain/terrain.gd`](../terrain/terrain.gd) - island terrain, generated water layer, water rendering setup, and the ground-layer masking hooks used by tunnel interiors
 - [`../game/app_state.gd`](../game/app_state.gd) - shared UI/progression-facing state
 - [`../game/melody_catalog.gd`](../game/melody_catalog.gd) - authored melody definitions, clue sources, and performance-point summaries
 - [`../game/resident_catalog.gd`](../game/resident_catalog.gd) - resident roster, dialogue, appearance, and spawn data
@@ -43,7 +43,7 @@ Put player control, NPC behavior, interaction prompts, and behavior-tree work he
 - [`../architecture/`](../architecture) - landmark scenes such as Bagua Tower, tunnels, church, and ferry content
 - [`../architecture/components/`](../architecture/components) - reusable world-building pieces such as portals and stairs
 - [`../architecture/bagua_tower/tests/`](../architecture/bagua_tower/tests) - Bagua Tower-specific validation scenes and scripts
-- [`../common/`](../common) - shared world nodes, effects, and level helpers such as `LevelNode2D` and `LevelRegistry`
+- [`../common/`](../common) - shared world nodes, effects, visibility helpers, and level helpers such as `AutoVisibilityNode2D`, `LevelNode2D`, and `LevelRegistry`
 
 ### Landmark Quest Triggers
 
@@ -75,6 +75,8 @@ Be careful about renames or moves here because scene and resource references can
 - [`../characters/tests/test_human_body_2d.tscn`](../characters/tests/test_human_body_2d.tscn) - direct `HumanBody2D` smoke sandbox with player-controller wiring
 - [`../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn`](../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn) - Universal LPC metadata and sprite-composition validation tool
 - [`../game/tests/npc_system/test_npc_layer_interaction.tscn`](../game/tests/npc_system/test_npc_layer_interaction.tscn) - focused same-layer NPC targeting and portal-driven z-layer switching sandbox
+- [`../game/tests/npc_system/test_tunnel_visibility.tscn`](../game/tests/npc_system/test_tunnel_visibility.tscn) - focused tunnel-resident spawn, spacing, and tunnel-context visibility regression scene
+- [`../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../game/tests/npc_system/test_tunnel_npc_travel.tscn) - focused tunnel resident route, in/out tunnel travel, and tunnel level-state regression scene
 - [`../scenes/tests/test_level_resolution.tscn`](../scenes/tests/test_level_resolution.tscn) - focused relative-level resolution and inherited room-level sandbox
 - [`../scenes/tests/test_portal_overlap.tscn`](../scenes/tests/test_portal_overlap.tscn) - focused multi-actor portal transition regression test
 - [`../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn`](../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn) - focused Bagua base-to-ground portal integration for `level_id` actor transitions

@@ -594,6 +594,8 @@ iso_tile_size = Vector2(32, 16)
 [node name="exit_south" parent="exit_south" unique_id=278227056 instance=ExtResource("2_ep65q")]
 position = Vector2(58.000008, -2)
 rotation = -2.0352898
+level_from = 0
+level_to = 9
 mask1 = 524288
 mask2 = 268435456
 delta_z = -1
@@ -610,6 +612,8 @@ iso_tile_size = Vector2(32, 16)
 [node name="exit_north" parent="exit_north" unique_id=1365970417 instance=ExtResource("2_ep65q")]
 position = Vector2(47, 9)
 rotation = 1.0937641
+level_from = 0
+level_to = 9
 mask1 = 524288
 mask2 = 268435456
 delta_z = -1
