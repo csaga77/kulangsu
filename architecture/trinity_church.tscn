@@ -445,7 +445,7 @@ position = Vector2(0, -9)
 texture = SubResource("AtlasTexture_ueo71")
 
 [node name="CueSteps" type="Area2D" parent="." unique_id=2100000001]
-position = Vector2(-64, 430)
+position = Vector2(64, 470)
 script = ExtResource("15_ltrg")
 landmark_id = "trinity_church"
 trigger_id = "steps"
@@ -458,7 +458,7 @@ collected_progress_key = "cues_collected"
 shape = SubResource("CircleShape2D_steps")
 
 [node name="CueGarden" type="Area2D" parent="." unique_id=2100000003]
-position = Vector2(310, 290)
+position = Vector2(430, 260)
 script = ExtResource("15_ltrg")
 landmark_id = "trinity_church"
 trigger_id = "garden"
@@ -471,7 +471,7 @@ collected_progress_key = "cues_collected"
 shape = SubResource("CircleShape2D_garden")
 
 [node name="CueYard" type="Area2D" parent="." unique_id=2100000005]
-position = Vector2(-230, 350)
+position = Vector2(-390, 260)
 script = ExtResource("15_ltrg")
 landmark_id = "trinity_church"
 trigger_id = "yard"
