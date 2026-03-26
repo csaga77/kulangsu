@@ -109,6 +109,7 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
 - [x] Position the trigger at the top chamber room in the tower.
 - [x] `tower_keeper` beat 1 `"landmark_states"` uses `"in_progress"` — synthesis chamber trigger becomes visible after beat 1 fires.
 - [ ] Confirm `collision_layer` matches the layer used for inspectable objects.
+- [ ] Confirm `z_index` on the synthesis chamber trigger matches the player's level at the top chamber (multi-level scene — `base_controller.gd` filters by `z_index` equality).
 
 ## Out Of Scope
 

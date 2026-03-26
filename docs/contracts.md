@@ -145,8 +145,7 @@ Governance:
 Owned by:
 
 - [`../game/app_state.gd`](../game/app_state.gd)
-- [`../architecture/trinity_church_controller.gd`](../architecture/trinity_church_controller.gd) (per-landmark controller)
-- [`../game/landmark_trigger.gd`](../game/landmark_trigger.gd) (per-pickup node)
+- [`../game/landmark_trigger.gd`](../game/landmark_trigger.gd) (self-managing per-pickup node)
 
 Current contract:
 
@@ -163,8 +162,8 @@ Current contract:
 
 Governance:
 
-- keep per-landmark collection logic in `AppState`; keep per-landmark scene setup in the landmark controller
-- if a new landmark arc is added, add its id to `_default_landmark_progress()` and `_build_landmark_progress()`, create a controller script, and add a `_collect_*` and `_resolve_*` method pair to `AppState`
+- keep per-landmark collection logic in `AppState`; keep per-landmark scene setup in `LandmarkTrigger` nodes placed directly in each landmark scene
+- if a new landmark arc is added, add its id to `_default_landmark_progress()` and `_build_landmark_progress()`, place `LandmarkTrigger` nodes in the landmark scene with the correct exported properties, and add a `_collect_*` and `_resolve_*` method pair to `AppState`
 - if the landmark state enum changes, update this file and the relevant landmark feature docs
 - `LandmarkTrigger` nodes handle their own hide/disable after collection; callers should only invoke `collect()` when `activate_landmark_trigger(...)` returns `true`
 

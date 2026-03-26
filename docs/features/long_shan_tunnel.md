@@ -74,7 +74,7 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 - Signals consumed:
   - `AppState.landmark_progress_changed` — consumed by each `LandmarkTrigger` to self-manage visibility
 - Data flow:
-  - `_resolve_trinity_church()` fires → `advance_landmark_state("long_shan_tunnel", "available")` → `LandmarkController._on_landmark_progress_changed` shows entry trigger
+  - `_resolve_trinity_church()` fires → `advance_landmark_state("long_shan_tunnel", "available")` → `LandmarkTrigger._on_landmark_progress_changed` shows entry trigger
   - Player reaches entry trigger → `activate_landmark_trigger` → `advance_landmark_state("long_shan_tunnel", "introduced")` → entry trigger hides
   - Player talks to tunnel_guide (beats 0 and 1) → `landmark_states` fields confirm `introduced` then `in_progress` → `landmark_progress_changed` → exit trigger appears
   - Player reaches exit trigger → `activate_landmark_trigger` → `_resolve_long_shan_tunnel` → melody + landmark state update → bagua_tower unlocked
