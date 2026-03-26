@@ -76,6 +76,7 @@ delta_z = -1
 shape = SubResource("CapsuleShape2D_qm2ka")
 
 [node name="TunnelEntry" type="Area2D" parent="."]
+collision_layer = 1
 script = ExtResource("8_ltrg")
 landmark_id = "long_shan_tunnel"
 trigger_id = "tunnel_entry"
@@ -87,6 +88,7 @@ position = Vector2(72, 16)
 shape = SubResource("CircleShape2D_entry")
 
 [node name="TunnelExit" type="Area2D" parent="."]
+collision_layer = 1
 script = ExtResource("8_ltrg")
 landmark_id = "long_shan_tunnel"
 trigger_id = "tunnel_exit"

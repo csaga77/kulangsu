@@ -102,7 +102,7 @@ These are the biggest differences between the current project and the target "mu
 
 Use this order to close the gap with the smallest architectural risk.
 
-> **Note:** Steps 1–3 below have been completed. The melody catalog, melody runtime state in AppState, and the updated journal Melody tab are all live. The current starting point is Step 4.
+> **Note:** Steps 1–4 have been completed. The melody catalog, melody runtime state in AppState, the updated journal Melody tab, and all five landmark trigger arcs are all live. The current starting point is Step 5.
 
 ### ~~1. Formalize Melody Progress As Shared State~~ ✓ Done
 
@@ -116,18 +116,17 @@ Use this order to close the gap with the smallest architectural risk.
 
 The `Melody` journal tab now shows melody name, district, stage, fragment progress, clue map, next lead, and world-response summary per melody.
 
-### 4. Build One Complete Landmark Loop ✦ Code Complete — Triggers Placed
+### ~~4. Build One Complete Landmark Loop~~ ✓ Done
 
-The route now has a lightweight onboarding arc plus all four landmark arcs implemented in code:
+All five landmark arcs are fully integrated and confirmed:
 
 - Piano Ferry onboarding arc (Caretaker Lian -> harbor clue trigger -> journal unlock -> Trinity Church handoff)
-
 - Trinity Church arc (choir cue collection via three `LandmarkTrigger` nodes)
 - Bi Shan Tunnel arc (echo tracing via three echo triggers + mural chamber trigger)
 - Long Shan Tunnel arc (escort via entry/exit `LandmarkTrigger` nodes + `tunnel_guide` dialogue beats)
 - Bagua Tower arc (synthesis chamber `LandmarkTrigger` + `tower_keeper` dialogue beats)
 
-The remaining manual steps are confirming collision layers and tuning trigger positions to match the final scene layouts.
+All `LandmarkTrigger` nodes have `collision_layer = 1` (layer "object") confirmed explicit. The `SynthesisChamber` in `bagua_tower.tscn` has `z_index = -2` set to align its absolute z_index (6) with the player's z_index after climbing all tower stairs.
 
 See [`piano_ferry.md`](piano_ferry.md), [`trinity_church.md`](trinity_church.md), [`bi_shan_tunnel.md`](bi_shan_tunnel.md), [`long_shan_tunnel.md`](long_shan_tunnel.md), and [`bagua_tower.md`](bagua_tower.md) for per-landmark integration checklists.
 

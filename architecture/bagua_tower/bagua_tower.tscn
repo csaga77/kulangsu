@@ -579,6 +579,8 @@ position = Vector2(0, 256)
 visibility_mask_nodes = [NodePath("../internal_mask"), NodePath("../roof_stairs_mask")]
 
 [node name="SynthesisChamber" type="Area2D" parent="base/ground_level/upper_level/roof_level/roof_tower"]
+collision_layer = 1
+z_index = -2
 script = ExtResource("20_ltrg")
 landmark_id = "bagua_tower"
 trigger_id = "synthesis_chamber"

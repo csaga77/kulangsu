@@ -101,7 +101,7 @@ When the player enters through a tunnel mouth and reaches the tunnel interior, t
 - [x] For echo triggers: set `landmark_id = "bi_shan_tunnel"`, `collected_progress_key = "echoes_collected"`, `visible_in_states = [available, introduced, in_progress]`.
 - [x] For the chamber trigger: same `landmark_id`, `requires_collected = [echo_a, echo_b, echo_c]`, `collected_progress_key = "echoes_collected"`, `visible_in_states = [in_progress]`.
 - [x] Position each trigger node at the matching world location in the tunnel.
-- [ ] Confirm `collision_layer` matches the layer used for inspectable objects.
+- [x] Confirm `collision_layer` matches the layer used for inspectable objects.
 
 ## Out Of Scope
 

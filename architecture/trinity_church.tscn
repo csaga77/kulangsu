@@ -445,6 +445,7 @@ position = Vector2(0, -9)
 texture = SubResource("AtlasTexture_ueo71")
 
 [node name="CueSteps" type="Area2D" parent="." unique_id=2100000001]
+collision_layer = 1
 position = Vector2(64, 470)
 script = ExtResource("15_ltrg")
 landmark_id = "trinity_church"
@@ -458,6 +459,7 @@ collected_progress_key = "cues_collected"
 shape = SubResource("CircleShape2D_steps")
 
 [node name="CueGarden" type="Area2D" parent="." unique_id=2100000003]
+collision_layer = 1
 position = Vector2(430, 260)
 script = ExtResource("15_ltrg")
 landmark_id = "trinity_church"
@@ -471,6 +473,7 @@ collected_progress_key = "cues_collected"
 shape = SubResource("CircleShape2D_garden")
 
 [node name="CueYard" type="Area2D" parent="." unique_id=2100000005]
+collision_layer = 1
 position = Vector2(-390, 260)
 script = ExtResource("15_ltrg")
 landmark_id = "trinity_church"

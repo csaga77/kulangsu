@@ -101,7 +101,7 @@ The mood should stay calm throughout. There is no timer, no failure state, and n
 - [ ] Place three `LandmarkTrigger` nodes in `trinity_church.tscn` — one for each cue: `steps`, `garden`, `yard`.
 - [ ] For each: set `landmark_id = "trinity_church"`, `collected_progress_key = "cues_collected"`, `visible_in_states = [available, introduced, in_progress]`.
 - [ ] Position each trigger node at the matching world location in the scene.
-- [ ] Confirm `collision_layer` matches the layer used for inspectable objects.
+- [x] Confirm `collision_layer` matches the layer used for inspectable objects.
 
 ## Out Of Scope
 

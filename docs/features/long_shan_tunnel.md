@@ -105,7 +105,7 @@ When the player properly enters the tunnel interior, the surface ground/building
 - [x] For `tunnel_entry`: set `landmark_id = "long_shan_tunnel"`, `visible_in_states = [available]`.
 - [x] For `tunnel_exit`: set `landmark_id = "long_shan_tunnel"`, `visible_in_states = [in_progress]`.
 - [x] Position each trigger at the south and north tunnel mouths respectively.
-- [ ] Confirm `collision_layer` matches the layer used for inspectable objects.
+- [x] Confirm `collision_layer` matches the layer used for inspectable objects.
 
 ## Out Of Scope
 

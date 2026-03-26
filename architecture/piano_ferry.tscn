@@ -119,6 +119,7 @@ position = Vector2(340, 176)
 texture = ExtResource("6_867i5")
 
 [node name="HarborRefrain" type="Area2D" parent="."]
+collision_layer = 1
 position = Vector2(-96, 240)
 script = ExtResource("8_ltrg")
 landmark_id = "piano_ferry"

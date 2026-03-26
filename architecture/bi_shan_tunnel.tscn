@@ -622,6 +622,7 @@ delta_z = -1
 shape = SubResource("CapsuleShape2D_fmehs")
 
 [node name="EchoA" type="Area2D" parent="."]
+collision_layer = 1
 script = ExtResource("6_ltrg")
 landmark_id = "bi_shan_tunnel"
 trigger_id = "echo_a"
@@ -634,6 +635,7 @@ position = Vector2(-160, -224)
 shape = SubResource("CircleShape2D_echo_a")
 
 [node name="EchoB" type="Area2D" parent="."]
+collision_layer = 1
 script = ExtResource("6_ltrg")
 landmark_id = "bi_shan_tunnel"
 trigger_id = "echo_b"
@@ -646,6 +648,7 @@ position = Vector2(-336, -480)
 shape = SubResource("CircleShape2D_echo_b")
 
 [node name="EchoC" type="Area2D" parent="."]
+collision_layer = 1
 script = ExtResource("6_ltrg")
 landmark_id = "bi_shan_tunnel"
 trigger_id = "echo_c"
@@ -658,6 +661,7 @@ position = Vector2(-544, -760)
 shape = SubResource("CircleShape2D_echo_c")
 
 [node name="Chamber" type="Area2D" parent="."]
+collision_layer = 1
 script = ExtResource("6_ltrg")
 landmark_id = "bi_shan_tunnel"
 trigger_id = "chamber"
