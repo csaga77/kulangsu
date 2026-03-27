@@ -6,6 +6,7 @@ extends LevelNode2D
 var m_walkable_world_positions: Array[Vector2] = []
 var m_walkable_cells: Array[Vector2i] = []
 var m_walkable_world_positions_by_cell: Dictionary = {}
+var m_walkable_cache_dirty := true
 
 const WALKABLE_NEIGHBORS := [
 	Vector2i.LEFT,
@@ -45,19 +46,24 @@ func snap_actor_to_walkable_position(actor_node: Node2D, desired_global_position
 	if actor_node == null or m_path_layer == null:
 		return desired_global_position
 
-	_cache_walkable_world_positions()
+	_ensure_walkable_cache()
 
-	var previous_position := actor_node.global_position
-	actor_node.global_position = desired_global_position
-	if contains_actor(actor_node):
-		actor_node.global_position = previous_position
+	var actor_rect := _get_actor_rect(actor_node)
+	if actor_rect.size == Vector2.ZERO:
+		return desired_global_position
+
+	# Test the desired position without moving the actor node.
+	var offset := desired_global_position - actor_node.global_position
+	var shifted_rect := Rect2(actor_rect.position + offset, actor_rect.size)
+	if _rect_intersects_path(shifted_rect):
 		return desired_global_position
 
 	var nearest_position := desired_global_position
 	var nearest_distance_sq := INF
 	for walkable_position in m_walkable_world_positions:
-		actor_node.global_position = walkable_position
-		if !contains_actor(actor_node):
+		var walk_offset := walkable_position - actor_node.global_position
+		var walk_rect := Rect2(actor_rect.position + walk_offset, actor_rect.size)
+		if !_rect_intersects_path(walk_rect):
 			continue
 
 		var distance_sq := desired_global_position.distance_squared_to(walkable_position)
@@ -65,12 +71,25 @@ func snap_actor_to_walkable_position(actor_node: Node2D, desired_global_position
 			nearest_distance_sq = distance_sq
 			nearest_position = walkable_position
 
-	actor_node.global_position = previous_position
 	return nearest_position
 
 
+func _get_actor_rect(actor_node: Node2D) -> Rect2:
+	if actor_node.has_method("get_ground_rect"):
+		return actor_node.call("get_ground_rect")
+	if actor_node.has_method("get_bounding_rect"):
+		return actor_node.call("get_bounding_rect")
+	return Rect2()
+
+
+func _rect_intersects_path(rect: Rect2) -> bool:
+	if m_path_layer == null:
+		return false
+	return TileMapUtils.intersects_iso_grid_rect_global(m_path_layer, rect)
+
+
 func get_path_between_world_positions(actor_node: Node2D, from_global_position: Vector2, to_global_position: Vector2) -> Array[Vector2]:
-	_cache_walkable_world_positions()
+	_ensure_walkable_cache()
 	if m_path_layer == null or m_walkable_cells.is_empty():
 		return [to_global_position]
 
@@ -129,15 +148,29 @@ func _contains_actor_rect(actor_node: Node2D, bounding_rect: Rect2, require_matc
 func _ready() -> void:
 	super._ready()
 	_cache_walkable_world_positions()
+	if m_path_layer and m_path_layer.has_signal("changed"):
+		if !m_path_layer.changed.is_connected(_invalidate_walkable_cache):
+			m_path_layer.changed.connect(_invalidate_walkable_cache)
 
 func _process(delta: float) -> void:
 	pass
+
+func _invalidate_walkable_cache() -> void:
+	m_walkable_cache_dirty = true
+
+
+func _ensure_walkable_cache() -> void:
+	if not m_walkable_cache_dirty:
+		return
+	_cache_walkable_world_positions()
+
 
 func _cache_walkable_world_positions() -> void:
 	m_walkable_world_positions.clear()
 	m_walkable_cells.clear()
 	m_walkable_world_positions_by_cell.clear()
 	if m_path_layer == null:
+		m_walkable_cache_dirty = false
 		return
 
 	for cell in m_path_layer.get_used_cells():
@@ -145,6 +178,7 @@ func _cache_walkable_world_positions() -> void:
 		m_walkable_cells.append(cell)
 		m_walkable_world_positions.append(world_position)
 		m_walkable_world_positions_by_cell[cell] = world_position
+	m_walkable_cache_dirty = false
 
 
 func _find_nearest_walkable_cell(actor_node: Node2D, desired_global_position: Vector2) -> Vector2i:

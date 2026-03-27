@@ -7,7 +7,11 @@ enum LevelIdMode {
 	RELATIVE_TO_PARENT,
 }
 
+## Collision masks are packed into bits BASE_COLLISION_MASK_BIT through 31.
+## With a base of 19, that gives bits 19-31 = 13 distinct levels (IDs 0-12).
+## Exceeding level_id 12 will overflow into bits owned by other systems.
 const BASE_COLLISION_MASK_BIT := 19
+const MAX_SUPPORTED_LEVEL_ID := 31 - BASE_COLLISION_MASK_BIT  # 12
 
 static func is_level_related_node(node: Node) -> bool:
 	return node != null and node.has_method("get_resolved_level_id")
@@ -29,6 +33,8 @@ static func resolve_level_id(node: Node, local_level_id: int, level_id_mode: int
 	return int(parent_level_node.call("get_resolved_level_id")) + local_level_id
 
 static func has_level_data(level_id: int) -> bool:
+	if level_id > MAX_SUPPORTED_LEVEL_ID:
+		push_warning("LevelRegistry: level_id %d exceeds max supported (%d). Collision mask will overflow." % [level_id, MAX_SUPPORTED_LEVEL_ID])
 	return level_id >= 0
 
 static func resolve_level_physics_atlas_column(level_id: int, fallback_column: int = 0) -> int:

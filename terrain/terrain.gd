@@ -20,9 +20,9 @@ const TERRAIN_GENERATION_PROFILE_SCRIPT := preload("res://terrain/terrain_genera
 		if mask_file == new_mask_file:
 			return
 		mask_file = new_mask_file
-		#call_deferred("_reload_terrain")
+		call_deferred("_reload_terrain")
 
-@export var generation_profile: Resource
+@export var generation_profile: TerrainGenerationProfile
 
 @export var player :HumanBody2D:
 	get:
@@ -74,7 +74,7 @@ func _tile_map_is_empty(layer: TileMapLayer) -> bool:
 func _should_generate_terrain() -> bool:
 	if mask_file.is_empty():
 		return false
-	return _tile_map_is_empty(m_base) or _tile_map_is_empty(m_streets) or _tile_map_is_empty(m_water)
+	return _tile_map_is_empty(m_base) or _tile_map_is_empty(m_streets) or _tile_map_is_empty(m_water) or _tile_map_is_empty(m_building_mask)
 
 func _find_generated_layer(parent: Node, layer_name: String) -> TileMapLayer:
 	for child in parent.get_children(true):
@@ -128,10 +128,10 @@ func _ensure_generated_layers() -> void:
 	m_building_mask.set_script(ISO_TILEMAP_SCRIPT)
 	m_building_mask.only_shown_in_editor = true
 
-func _get_generation_profile():
+func _get_generation_profile() -> TerrainGenerationProfile:
 	if generation_profile == null:
 		generation_profile = TERRAIN_GENERATION_PROFILE_SCRIPT.new()
-	elif generation_profile.has_method("ensure_defaults"):
+	else:
 		generation_profile.ensure_defaults()
 	return generation_profile
 

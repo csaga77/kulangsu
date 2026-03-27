@@ -38,8 +38,8 @@ Source of truth:
 - Path: [`../codex_agents/`](../codex_agents)
 - Branch in `.gitmodules`: `main`
 - Role in this repo: shared agent runbooks, templates, and related docs
-- Docs to read first: [`../codex_agents/AGENTS.md`](../codex_agents/AGENTS.md) and [`../codex_agents/README.md`](../codex_agents/README.md)
-- Additional docs: [`../codex_agents/docs/architecture.md`](../codex_agents/docs/architecture.md), [`../codex_agents/docs/module_map.md`](../codex_agents/docs/module_map.md), [`../codex_agents/docs/coding_rules.md`](../codex_agents/docs/coding_rules.md), and feature docs under [`../codex_agents/docs/features/`](../codex_agents/docs/features)
+- Docs to read first: [`../codex_agents/AGENTS.md`](../codex_agents/AGENTS.md), then the smallest relevant runbook or `docs/` file for the task
+- Additional docs: [`../codex_agents/README.md`](../codex_agents/README.md) for human overview or onboarding, plus [`../codex_agents/docs/architecture.md`](../codex_agents/docs/architecture.md), [`../codex_agents/docs/module_map.md`](../codex_agents/docs/module_map.md), [`../codex_agents/docs/coding_rules.md`](../codex_agents/docs/coding_rules.md), and feature docs under [`../codex_agents/docs/features/`](../codex_agents/docs/features) when needed
 
 ## Submodule Documentation Index
 
@@ -51,12 +51,12 @@ Start with:
 
 - [`submodules.md`](submodules.md) for ownership, edit rules, and pointer governance
 - [`../codex_agents/SOURCE_CONTROL_RUNBOOK.md`](../codex_agents/SOURCE_CONTROL_RUNBOOK.md) for generic submodule-safe staging, commit, and push workflow
-- [`architecture.md`](architecture.md) and [`module_map.md`](module_map.md) for how the parent repo consumes each submodule
+- [`architecture.md`](architecture.md) and [`module_map.md`](module_map.md) only when you need to understand how the parent repo consumes a submodule
 - [`contracts.md`](contracts.md) if the task changes a stable interface or assumption between the parent repo and a submodule
 
 ### Then Open The Relevant Submodule Docs
 
-- `codex_agents`: start with [`../codex_agents/AGENTS.md`](../codex_agents/AGENTS.md), then [`../codex_agents/README.md`](../codex_agents/README.md)
+- `codex_agents`: start with [`../codex_agents/AGENTS.md`](../codex_agents/AGENTS.md), then the smallest relevant runbook or `docs/` file for the task; open [`../codex_agents/README.md`](../codex_agents/README.md) only when overview or onboarding context helps
 - `godot_common`: start with [`../godot_common/AGENTS.md`](../godot_common/AGENTS.md), then [`../godot_common/README.md`](../godot_common/README.md)
 - `godot_tilemap`: start with [`../godot_tilemap/AGENTS.md`](../godot_tilemap/AGENTS.md), then [`../godot_tilemap/README.md`](../godot_tilemap/README.md)
 - `3rdparty/Universal-LPC-Spritesheet-Character-Generator`: start with [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md), then check tool docs if the task touches generator workflows

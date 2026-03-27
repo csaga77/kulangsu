@@ -20,7 +20,7 @@ Only open the longer design docs if the task needs more depth:
 
 Submodule doc entry points:
 
-- `codex_agents/AGENTS.md` and `codex_agents/README.md` for shared agent guidance and runbook discovery
+- `codex_agents/AGENTS.md` for shared agent guidance and runbook routing; open `codex_agents/README.md` only when overview or onboarding context helps
 - `godot_common/AGENTS.md`, `godot_common/README.md`, and `godot_common/docs/` for the shared Godot support-code submodule
 - `godot_tilemap/AGENTS.md`, `godot_tilemap/README.md`, and `godot_tilemap/docs/` for the tilemap helper/tooling submodule
 - `3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md` for upstream LPC generator usage and licensing details
@@ -29,7 +29,7 @@ Submodule read order when editing inside a submodule:
 
 - `godot_common`: `godot_common/AGENTS.md` -> `godot_common/README.md` -> `godot_common/docs/architecture.md` -> `godot_common/docs/module_map.md` -> `godot_common/docs/coding_rules.md`
 - `godot_tilemap`: `godot_tilemap/AGENTS.md` -> `godot_tilemap/README.md` -> `godot_tilemap/docs/architecture.md` -> `godot_tilemap/docs/module_map.md` -> `godot_tilemap/docs/coding_rules.md`
-- `codex_agents`: `codex_agents/AGENTS.md` -> `codex_agents/README.md` -> the relevant `codex_agents/docs/` files for the task
+- `codex_agents`: `codex_agents/AGENTS.md` -> the relevant runbook or `codex_agents/docs/` file for the task -> `codex_agents/README.md` if overview or onboarding context is needed
 - `3rdparty/Universal-LPC-Spritesheet-Character-Generator`: upstream `README.md` first, then tool docs if the task touches generator workflows
 
 ## Project Conventions

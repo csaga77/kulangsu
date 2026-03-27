@@ -37,7 +37,9 @@ const LEVEL_REGISTRY := preload("res://common/level_registry.gd")
 @export_flags_2d_physics var mask2 := 0
 @export var delta_z := 1
 
-const SIDE_EPSILON := 0.001
+## Side detection: mask1 is the negative-x side (left in local space),
+## mask2 is the non-negative-x side (right). No epsilon — a body exactly
+## on the midline is assigned to the mask2 side deterministically.
 const DEBUG_FILL_COLOR := Color(0.301961, 0.878431, 1.0, 0.18)
 const DEBUG_OUTLINE_COLOR := Color(0.301961, 0.878431, 1.0, 0.95)
 const DEBUG_OUTLINE_WIDTH := 2.0
@@ -209,63 +211,37 @@ func _on_body_entered(body: Node2D) -> void:
 			
 
 func _on_body_exited(body: Node2D) -> void:
-	var obj :CollisionObject2D = body
+	var obj: CollisionObject2D = body as CollisionObject2D
 	if obj == null:
 		return
 	var transition_state := _take_transition_state(obj)
 	if transition_state.is_empty():
 		return
 	var enter_direction := bool(transition_state.get("enter_direction", true))
-	var local_pos = to_local(body.global_position)
-	var vec = local_pos.normalized()
+	var local_pos := to_local(body.global_position)
+	var vec := local_pos.normalized()
 	if _is_on_mask2_side(vec.x):
-		if m_resolved_level_from >= 0 and m_resolved_level_to >= 0:
-			if !LEVEL_REGISTRY.apply_level_to_actor(m_resolved_level_to, obj):
-				if mask1 != mask2:
-					obj.collision_mask &= ~mask1
-					obj.collision_mask |= mask2
-				if enter_direction:
-					obj.z_index += delta_z
-		else:
-			if mask1 != mask2:
-				obj.collision_mask &= ~mask1
-				obj.collision_mask |= mask2
-			if enter_direction:
-				obj.z_index += delta_z
-		#print("mask2 exited")
+		_apply_exit_level(obj, m_resolved_level_to, mask1, mask2, enter_direction, delta_z)
 	else:
-		if m_resolved_level_from >= 0 and m_resolved_level_to >= 0:
-			if !LEVEL_REGISTRY.apply_level_to_actor(m_resolved_level_from, obj):
-				if mask1 != mask2:
-					obj.collision_mask &= ~mask2
-					obj.collision_mask |= mask1
-				if !enter_direction:
-					obj.z_index -= delta_z
-		else:
-			if mask1 != mask2:
-				obj.collision_mask &= ~mask2
-				obj.collision_mask |= mask1
-			if !enter_direction:
-				obj.z_index -= delta_z
-		#print("mask1 exited")
-	#var exit_degrees = rad_to_deg(vec.angle())
-	#print("exited : ", exit_degrees)
-	#var obj :CollisionObject2D = body
-	#if obj:
-		#if CommonUtils.is_in_range(exit_degrees, -90, 90):
-			#obj.collision_mask |= mask2
-			#obj.collision_mask &= ~mask1
-			#print("mask2 exited")
-		#else:
-			#obj.collision_mask |= mask1
-			#obj.collision_mask &= ~mask2
-			#print("mask1 exited")
+		_apply_exit_level(obj, m_resolved_level_from, mask2, mask1, !enter_direction, -delta_z)
+
+
+func _apply_exit_level(obj: CollisionObject2D, target_level: int, clear_mask: int, set_mask: int, should_shift_z: bool, z_delta: int) -> void:
+	var used_level_registry := false
+	if m_resolved_level_from >= 0 and m_resolved_level_to >= 0:
+		used_level_registry = LEVEL_REGISTRY.apply_level_to_actor(target_level, obj)
+	if !used_level_registry:
+		if mask1 != mask2:
+			obj.collision_mask &= ~clear_mask
+			obj.collision_mask |= set_mask
+		if should_shift_z:
+			obj.z_index += z_delta
 
 func _is_on_mask1_side(local_x: float) -> bool:
-	return local_x <= SIDE_EPSILON
+	return local_x < 0.0
 
 func _is_on_mask2_side(local_x: float) -> bool:
-	return local_x >= -SIDE_EPSILON
+	return local_x >= 0.0
 
 func _resolve_optional_level_id(local_level_id: int) -> int:
 	if local_level_id < 0:
