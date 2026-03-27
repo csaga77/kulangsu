@@ -163,6 +163,11 @@ func _process(delta: float) -> void:
 func _can_talk_to(target_obj: Node2D) -> bool:
 	return target_obj.is_in_group("player")
 
+
+func is_moving() -> bool:
+	return m_route_is_moving or super.is_moving()
+
+
 func _get_speech(target_obj: Node2D) -> String:
 	if !is_instance_valid(m_character) or !is_instance_valid(target_obj):
 		return ""
@@ -227,7 +232,7 @@ func _update_route(delta: float) -> void:
 		return
 
 	set_running(false)
-	stop_moving()
+	move_direction = MoveDirectionEnum.MOVE_IDLE
 	set_target_direction(to_target)
 	m_route_motion_target = target_position
 	m_route_is_moving = true

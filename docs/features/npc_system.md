@@ -139,10 +139,11 @@ If a resident uses an unsupported `anchor_id`, startup should warn and skip that
 
 - Scenes:
   - [`../../scenes/game_main.tscn`](../../scenes/game_main.tscn)
-  - [`../../game/tests/npc_system/test_npc_layer_interaction.tscn`](../../game/tests/npc_system/test_npc_layer_interaction.tscn)
-  - [`../../game/tests/npc_system/test_tunnel_visibility.tscn`](../../game/tests/npc_system/test_tunnel_visibility.tscn)
-  - [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn)
-  - [`../../game/tests/npc_system/test_scene.tscn`](../../game/tests/npc_system/test_scene.tscn)
+- [`../../game/tests/npc_system/test_npc_layer_interaction.tscn`](../../game/tests/npc_system/test_npc_layer_interaction.tscn)
+- [`../../game/tests/npc_system/test_npc_control.tscn`](../../game/tests/npc_system/test_npc_control.tscn)
+- [`../../game/tests/npc_system/test_tunnel_visibility.tscn`](../../game/tests/npc_system/test_tunnel_visibility.tscn)
+- [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn)
+- [`../../game/tests/npc_system/test_scene.tscn`](../../game/tests/npc_system/test_scene.tscn)
 - Scripts:
   - [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
   - [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd)
@@ -197,6 +198,7 @@ When extending the NPC system, make changes in this order unless the task is str
 - In Trinity Church and other mixed interaction spaces, confirm that nearby residents still win target selection over collectible cue triggers.
 - Open the journal and verify that introduced residents appear with updated notes.
 - Use [`../../game/tests/npc_system/test_npc_layer_interaction.tscn`](../../game/tests/npc_system/test_npc_layer_interaction.tscn) when testing same-layer gating, portal-driven z changes, and closest-target behavior across stacked resident layers.
+- Use [`../../game/tests/npc_system/test_npc_control.tscn`](../../game/tests/npc_system/test_npc_control.tscn) when changing routed NPC controller behavior such as walk animation playback, nearby talk pause/resume, or dialogue reveal handling.
 - Use [`../../game/tests/npc_system/test_tunnel_visibility.tscn`](../../game/tests/npc_system/test_tunnel_visibility.tscn) for tunnel-resident placement, tunnel-context visibility, and tunnel spacing regression coverage.
 - Use [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn) for tunnel route crossing, level-state syncing, and in/out tunnel resident travel coverage.
 - Use [`../../game/tests/npc_system/test_scene.tscn`](../../game/tests/npc_system/test_scene.tscn) as a faster sandbox for resident speech and journal checks.

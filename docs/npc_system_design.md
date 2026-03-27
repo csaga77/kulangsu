@@ -209,6 +209,17 @@ Use [`../game/tests/npc_system/test_npc_layer_interaction.tscn`](../game/tests/n
 
 This sandbox deliberately places residents on multiple z layers and uses a portal transition to move the player between them. The portal's cyan debug zone is drawn from its actual collision shape, so if the portal size changes the visible test affordance should change with it.
 
+### Focused NPC Control Check
+
+Use [`../game/tests/npc_system/test_npc_control.tscn`](../game/tests/npc_system/test_npc_control.tscn) when changing:
+
+- routed NPC controller behavior
+- walk animation playback during route motion
+- pause/resume behavior when the player enters or leaves talk range
+- nearby `...` cue and revealed-line handoff after a talk interaction
+
+This regression scene instantiates the main overworld, waits for a routed tunnel resident to leave the tunnel, verifies that movement advances the resident's walk frames, checks that the route pauses while the player is nearby, confirms the nearby cue changes from `...` to the revealed line after talk, and then verifies the route resumes once the player leaves range.
+
 ### Tunnel Context Check
 
 Use [`../game/tests/npc_system/test_tunnel_visibility.tscn`](../game/tests/npc_system/test_tunnel_visibility.tscn) and [`../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../game/tests/npc_system/test_tunnel_npc_travel.tscn) when changing:
