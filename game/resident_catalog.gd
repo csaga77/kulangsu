@@ -174,12 +174,12 @@ static func _story_residents() -> Dictionary:
 			),
 			_spawn("Trinity Church", Vector2(-300.0, 210.0), -130.0, MOOD_SMILE, 88.0)
 		),
-		"tunnel_guide": _resident(
-			"Tunnel Guide Ren",
-			"Long Shan Tunnel",
-			"Paces between the southern entrance and the first lit pocket, judging routes by how calm they feel.",
-			"Usually moving between the southern entrance and the first lit pocket.",
-			"Ren listens for echoes that stay warm instead of the ones that bounce the farthest.",
+			"tunnel_guide": _resident(
+				"Tunnel Guide Ren",
+				"Long Shan Tunnel",
+				"Keeps a calm pace from the southern entrance through to the northern mouth, judging routes by how steady they feel.",
+				"Usually moving from the southern entrance through the tunnel to the northern mouth.",
+				"Ren listens for echoes that stay warm instead of the ones that bounce the farthest.",
 			[
 				"A loud echo is not always the right one. The good routes sound patient.",
 				"If I stop, it means the light ahead no longer feels safe.",
@@ -237,9 +237,9 @@ static func _story_residents() -> Dictionary:
 			_spawn("Long Shan Tunnel", Vector2(-160.0, 48.0), -110.0, MOOD_SAD, 88.0),
 			_route(
 				[
-					_route_point("Long Shan Tunnel", Vector2(-160.0, 48.0), 1.2, 1.2),
-					_route_point("Long Shan Tunnel South Portal", Vector2(-32.0, 16.0), 0.0, 0.0),
-					_route_point("Long Shan Tunnel South", Vector2(320.0, -160.0), 2.0, 2.0),
+					_route_point("Long Shan Tunnel South Portal", Vector2(-32.0, 0.0), 0.0, 0.0),
+					_route_point("Long Shan Tunnel", Vector2(-1536.0, -1072.0), 0.0, 0.0),
+					_route_point("Long Shan Tunnel North Portal", Vector2(-32.0, 0.0), 2.0, 2.0),
 				],
 				24.0,
 				0.4,
@@ -884,6 +884,7 @@ static func _ambient_residents() -> Dictionary:
 		var ambient_lines: Array = spec.get("ambient_lines", [])
 		var appearance: Dictionary = spec.get("appearance", {})
 		var spawn: Dictionary = spec.get("spawn", {})
+		var movement: Dictionary = spec.get("movement", {})
 
 		residents[resident_id] = _ambient_resident(
 			String(spec.get("display_name", resident_id)),
@@ -893,7 +894,8 @@ static func _ambient_residents() -> Dictionary:
 			String(spec.get("melody_hint", "")),
 			ambient_lines,
 			appearance,
-			spawn
+			spawn,
+			movement
 		)
 
 	return residents
@@ -907,7 +909,8 @@ static func _ambient_resident(
 	melody_hint: String,
 	ambient_lines: Array,
 	appearance: Dictionary,
-	spawn: Dictionary
+	spawn: Dictionary,
+	movement: Dictionary = {}
 ) -> Dictionary:
 	return _resident(
 		display_name,
@@ -918,7 +921,8 @@ static func _ambient_resident(
 		ambient_lines,
 		_ambient_beats(display_name, landmark, ambient_lines),
 		appearance,
-		spawn
+		spawn,
+		movement
 	)
 
 

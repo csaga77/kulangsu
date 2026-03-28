@@ -108,10 +108,7 @@ func get_path_between_world_positions(actor_node: Node2D, from_global_position: 
 		if current == end_cell:
 			break
 
-		for direction in WALKABLE_NEIGHBORS:
-			var neighbor: Vector2i = current + Vector2i(direction)
-			if !m_walkable_world_positions_by_cell.has(neighbor):
-				continue
+		for neighbor in _preferred_walkable_neighbors(current, end_cell):
 			if came_from.has(neighbor):
 				continue
 			came_from[neighbor] = current
@@ -194,6 +191,56 @@ func _find_nearest_walkable_cell(actor_node: Node2D, desired_global_position: Ve
 			nearest_cell = cell
 
 	return nearest_cell
+
+
+func _preferred_walkable_neighbors(current: Vector2i, end_cell: Vector2i) -> Array[Vector2i]:
+	var ordered_neighbors: Array[Vector2i] = []
+
+	for direction in WALKABLE_NEIGHBORS:
+		var neighbor: Vector2i = current + Vector2i(direction)
+		if !m_walkable_world_positions_by_cell.has(neighbor):
+			continue
+		_insert_preferred_walkable_neighbor(ordered_neighbors, neighbor, end_cell)
+
+	return ordered_neighbors
+
+
+func _insert_preferred_walkable_neighbor(ordered_neighbors: Array[Vector2i], candidate: Vector2i, end_cell: Vector2i) -> void:
+	var insert_index := ordered_neighbors.size()
+	for i in range(ordered_neighbors.size()):
+		if _is_preferred_walkable_neighbor(candidate, ordered_neighbors[i], end_cell):
+			insert_index = i
+			break
+
+	ordered_neighbors.insert(insert_index, candidate)
+
+
+func _is_preferred_walkable_neighbor(candidate: Vector2i, existing: Vector2i, end_cell: Vector2i) -> bool:
+	var candidate_connectivity := _walkable_neighbor_count(candidate)
+	var existing_connectivity := _walkable_neighbor_count(existing)
+	if candidate_connectivity != existing_connectivity:
+		return candidate_connectivity > existing_connectivity
+
+	var candidate_distance := _manhattan_cell_distance(candidate, end_cell)
+	var existing_distance := _manhattan_cell_distance(existing, end_cell)
+	if candidate_distance != existing_distance:
+		return candidate_distance < existing_distance
+
+	if candidate.x != existing.x:
+		return candidate.x < existing.x
+	return candidate.y < existing.y
+
+
+func _walkable_neighbor_count(cell: Vector2i) -> int:
+	var count := 0
+	for direction in WALKABLE_NEIGHBORS:
+		if m_walkable_world_positions_by_cell.has(cell + Vector2i(direction)):
+			count += 1
+	return count
+
+
+func _manhattan_cell_distance(a: Vector2i, b: Vector2i) -> int:
+	return absi(a.x - b.x) + absi(a.y - b.y)
 
 
 func _world_position_for_cell(cell: Vector2i) -> Vector2:

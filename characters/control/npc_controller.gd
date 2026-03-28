@@ -28,6 +28,7 @@ var m_route_wait_timer := 0.0
 var m_route_ping_pong := true
 var m_route_is_moving := false
 var m_route_motion_target := Vector2.ZERO
+var m_route_allow_collision_bypass := false
 
 func _on_setup() -> void:
 	super._on_setup()
@@ -46,6 +47,7 @@ func configure_movement(movement_config: Dictionary) -> void:
 	m_route_wait_min_sec = maxf(float(movement_config.get("wait_min_sec", DEFAULT_ROUTE_WAIT_MIN_SEC)), 0.0)
 	m_route_wait_max_sec = maxf(float(movement_config.get("wait_max_sec", DEFAULT_ROUTE_WAIT_MAX_SEC)), m_route_wait_min_sec)
 	m_route_ping_pong = bool(movement_config.get("ping_pong", true))
+	m_route_allow_collision_bypass = false
 
 	for point_value in movement_config.get("route_points", []):
 		var route_point := point_value as Dictionary
@@ -235,6 +237,7 @@ func _update_route(delta: float) -> void:
 	move_direction = MoveDirectionEnum.MOVE_IDLE
 	set_target_direction(to_target)
 	m_route_motion_target = target_position
+	m_route_allow_collision_bypass = bool(route_point.get("allow_collision_bypass", false))
 	m_route_is_moving = true
 
 
@@ -293,8 +296,15 @@ func _apply_route_motion(delta: float) -> void:
 	if !is_instance_valid(m_character):
 		return
 
-	m_character.global_position = m_character.global_position.move_toward(
-		m_route_motion_target,
-		ROUTE_MOVE_SPEED * delta
-	)
+	var to_target := m_route_motion_target - m_character.global_position
+	if to_target.length_squared() <= 0.001:
+		return
+
+	if m_route_allow_collision_bypass:
+		m_character.global_position = m_character.global_position.move_toward(
+			m_route_motion_target,
+			ROUTE_MOVE_SPEED * delta
+		)
+	else:
+		m_character.move_with_speed(to_target, ROUTE_MOVE_SPEED)
 	m_character.is_walking = true

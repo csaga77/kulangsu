@@ -1,11 +1,36 @@
 [gd_scene format=3 uid="uid://cnbw53uosbr88"]
 
-[ext_resource type="Script" path="res://scenes/game_main.gd" id="1_lquwl"]
+[ext_resource type="Script" uid="uid://dkcv1yv2mvfcf" path="res://scenes/game_main.gd" id="1_lquwl"]
 [ext_resource type="PackedScene" uid="uid://cn5g8hobx3bru" path="res://terrain/terrain.tscn" id="3_7mycd"]
+[ext_resource type="Script" uid="uid://fhntny4qsoc1" path="res://terrain/terrain_mask_rule.gd" id="3_cxf66"]
+[ext_resource type="Script" uid="uid://bc2rtlndfb5gm" path="res://terrain/terrain_generation_profile.gd" id="4_mn252"]
 [ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/human_body_2d.tscn" id="5_lquwl"]
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="6_7mycd"]
 [ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/control/player_controller.gd" id="6_272bh"]
 [ext_resource type="PackedScene" uid="uid://c1le3qk68o7lw" path="res://gui/speech_balloon.tscn" id="7_272bh"]
+
+[sub_resource type="Resource" id="Resource_lla21"]
+script = ExtResource("3_cxf66")
+rule_id = &"building_mask"
+display_name = "Building Mask"
+mask_color = Color(1, 0, 0, 1)
+paint_building_mask = true
+
+[sub_resource type="Resource" id="Resource_0dt25"]
+script = ExtResource("3_cxf66")
+rule_id = &"street"
+display_name = "Street"
+mask_color = Color(0, 0, 1, 1)
+paint_street = true
+
+[sub_resource type="Resource" id="Resource_jm48l"]
+script = ExtResource("3_cxf66")
+
+[sub_resource type="Resource" id="Resource_5pnww"]
+script = ExtResource("4_mn252")
+street_neighbor_offsets = Array[Vector2i]([Vector2i(0, -1), Vector2i(-1, 0), Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)])
+color_rules = Array[Resource]([SubResource("Resource_lla21"), SubResource("Resource_0dt25")])
+default_land_rule = SubResource("Resource_jm48l")
 
 [sub_resource type="Resource" id="Resource_qjl73"]
 script = ExtResource("6_272bh")
@@ -14,15 +39,17 @@ metadata/_custom_type_script = "uid://cmokaqask0s2p"
 [node name="game_main" type="Node2D" unique_id=1387312363]
 y_sort_enabled = true
 script = ExtResource("1_lquwl")
+debug_draw_npc_routes = true
 
 [node name="terrain" parent="." unique_id=382500148 node_paths=PackedStringArray("player") instance=ExtResource("3_7mycd")]
+generation_profile = SubResource("Resource_5pnww")
 player = NodePath("../actors/player")
 
 [node name="actors" type="Node2D" parent="." unique_id=1343309121]
 y_sort_enabled = true
 
 [node name="player" parent="actors" unique_id=1255111382 groups=["player"] instance=ExtResource("5_lquwl")]
-position = Vector2(5248, 9776)
+position = Vector2(3569, 7648)
 controller = SubResource("Resource_qjl73")
 configuration = {
 "body_type": "male",

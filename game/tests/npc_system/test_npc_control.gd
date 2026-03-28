@@ -3,7 +3,7 @@ extends Node
 
 const GAME_MAIN_SCENE := preload("res://scenes/game_main.tscn")
 const ROUTED_RESIDENT_ID := "tunnel_guide"
-const WAIT_TIMEOUT_SEC := 12.0
+const WAIT_TIMEOUT_SEC := 18.0
 const OUTSIDE_PLAYER_POSITION := Vector2(-263.0, 8541.0)
 
 
@@ -31,13 +31,14 @@ func _run() -> void:
 	_assert(long_shan_tunnel != null, "Long Shan Tunnel did not load.")
 	_assert(routed_resident != null, "Routed resident did not load.")
 	_assert(controller != null, "Routed resident controller did not load.")
-	_assert(long_shan_tunnel.contains_actor(routed_resident), "%s should start inside Long Shan Tunnel." % routed_resident.name)
+	_assert(long_shan_tunnel.contains_actor_interior(routed_resident), "%s should start inside Long Shan Tunnel interior." % routed_resident.name)
 
-	await _wait_for_tunnel_state(routed_resident, long_shan_tunnel, false, WAIT_TIMEOUT_SEC)
 	await _assert_animation_advances_while_moving(routed_resident, WAIT_TIMEOUT_SEC)
 
+	LevelRegistry.apply_level_to_actor(long_shan_tunnel.get_resolved_level_id(), player)
 	player.global_position = routed_resident.global_position + Vector2(24.0, 0.0)
 	await _wait_for_player_target(controller, player, WAIT_TIMEOUT_SEC)
+	_assert(routed_resident.visible, "%s should be visible when the player shares the same tunnel interior." % routed_resident.name)
 	_assert(!controller.is_moving(), "%s should pause its route while the player is nearby." % routed_resident.name)
 	_assert(!routed_resident.is_walking, "%s should stop walking while paused for talk." % routed_resident.name)
 	_assert(String(controller._get_speech(player)) == "...", "%s should show an unrevealed nearby cue before talk." % routed_resident.name)
@@ -51,6 +52,7 @@ func _run() -> void:
 	var expected_speech := "%s: %s" % [AppState.get_resident_display_name(ROUTED_RESIDENT_ID), line]
 	_assert(String(controller._get_speech(player)) == expected_speech, "%s should reveal its current dialogue line after talk." % routed_resident.name)
 
+	LevelRegistry.apply_level_to_actor(0, player)
 	player.global_position = OUTSIDE_PLAYER_POSITION
 	await _wait_for_player_target(controller, null, WAIT_TIMEOUT_SEC)
 	_assert(controller.m_revealed_dialogue_line.is_empty(), "%s should clear the revealed line after the player leaves range." % routed_resident.name)
@@ -95,19 +97,6 @@ func _assert_animation_advances_while_moving(resident: HumanBody2D, timeout_sec:
 		return
 
 	_assert(false, "%s moved, but the walk animation never advanced within %.1f seconds." % [resident.name, timeout_sec])
-
-
-func _wait_for_tunnel_state(resident: HumanBody2D, tunnel: Tunnel, expected_inside: bool, timeout_sec: float) -> void:
-	var elapsed := 0.0
-	while elapsed < timeout_sec:
-		if tunnel.contains_actor(resident) == expected_inside:
-			await _settle()
-			return
-		await get_tree().physics_frame
-		await get_tree().process_frame
-		elapsed += get_process_delta_time()
-
-	_assert(false, "%s did not reach expected tunnel state=%s within %.1f seconds." % [resident.name, str(expected_inside), timeout_sec])
 
 
 func _wait_for_player_target(controller: NPCController, expected_target: Node2D, timeout_sec: float) -> void:

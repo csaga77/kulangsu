@@ -9,6 +9,9 @@ extends Node2D
 const LANDMARK_SYNC_DISTANCE := 1600.0
 const NPC_SCENE: PackedScene = preload("res://characters/human_body_2d.tscn")
 const LEVEL_REGISTRY := preload("res://common/level_registry.gd")
+const TUNNEL_ENTRY_FRONT_APPROACH_DISTANCE := 96.0
+const TUNNEL_PORTAL_SUFFIX := " Portal"
+const DIRECTIONAL_PORTAL_MIN_OFFSET_DISTANCE := 16.0
 
 @onready var m_actor_root: Node2D = $actors
 @onready var m_player :HumanBody2D = $actors/player
@@ -26,6 +29,28 @@ const LEVEL_REGISTRY := preload("res://common/level_registry.gd")
 @onready var m_bi_shan_tunnel_portal_north: Node2D = $terrain/bi_shan_tunnel/exit_north
 @onready var m_long_shan_tunnel_portal_south: Node2D = $terrain/long_shan_tunnel/exit_south
 @onready var m_long_shan_tunnel_portal_north: Node2D = $terrain/long_shan_tunnel/exit_north
+
+@export var debug_draw_npc_routes: bool = false:
+	set(value):
+		if debug_draw_npc_routes == value:
+			return
+		debug_draw_npc_routes = value
+		queue_redraw()
+
+@export var debug_npc_route_filter: String = "":
+	set(value):
+		var normalized_value := value.strip_edges()
+		if debug_npc_route_filter == normalized_value:
+			return
+		debug_npc_route_filter = normalized_value
+		queue_redraw()
+
+@export var debug_draw_npc_route_labels: bool = true:
+	set(value):
+		if debug_draw_npc_route_labels == value:
+			return
+		debug_draw_npc_route_labels = value
+		queue_redraw()
 
 var m_is_ready := false
 var m_player_controller: PlayerController = null
@@ -55,6 +80,126 @@ func _process(_delta: float) -> void:
 	if !m_is_ready:
 		return
 	_sync_tunnel_resident_visibility()
+	if debug_draw_npc_routes:
+		queue_redraw()
+
+
+func _draw() -> void:
+	if !debug_draw_npc_routes:
+		return
+	if !is_instance_valid(m_resident_root):
+		return
+
+	var font: Font = ThemeDB.fallback_font
+	var font_size: int = maxi(12, ThemeDB.fallback_font_size - 2)
+	for child in m_resident_root.get_children():
+		var resident := child as HumanBody2D
+		if resident == null:
+			continue
+
+		var controller := resident.controller as NPCController
+		if controller == null or controller.m_route_points.size() < 2:
+			continue
+		if !_npc_route_matches_debug_filter(resident, controller):
+			continue
+
+		_draw_npc_route_debug(resident, controller, font, font_size)
+
+
+func _draw_npc_route_debug(
+	resident: HumanBody2D,
+	controller: NPCController,
+	font: Font,
+	font_size: int
+) -> void:
+	var route_points: Array[Dictionary] = controller.m_route_points
+	if route_points.size() < 2:
+		return
+
+	var resident_id: String = controller.get_resident_id()
+	var display_name: String = String(resident.name)
+	if !resident_id.is_empty():
+		display_name = AppState.get_resident_display_name(resident_id)
+
+	var color_key: String = resident_id if !resident_id.is_empty() else display_name
+	var base_color: Color = _npc_route_debug_color(color_key)
+	var line_color := Color(base_color.r, base_color.g, base_color.b, 0.78)
+	var fill_color := Color(base_color.r, base_color.g, base_color.b, 0.22)
+	var bypass_color := Color(1.0, 0.72, 0.28, 0.95)
+
+	for i in range(route_points.size() - 1):
+		var from_position: Vector2 = route_points[i].get("position", Vector2.ZERO)
+		var to_position: Vector2 = route_points[i + 1].get("position", Vector2.ZERO)
+		draw_line(to_local(from_position), to_local(to_position), line_color, 3.0, true)
+
+	if !controller.m_route_ping_pong and route_points.size() > 2:
+		var loop_start: Vector2 = route_points[0].get("position", Vector2.ZERO)
+		var loop_end: Vector2 = route_points[route_points.size() - 1].get("position", Vector2.ZERO)
+		draw_line(
+			to_local(loop_end),
+			to_local(loop_start),
+			Color(base_color.r, base_color.g, base_color.b, 0.35),
+			2.0,
+			true
+		)
+
+	for i in range(route_points.size()):
+		var route_point := route_points[i]
+		var point_position: Vector2 = route_point.get("position", Vector2.ZERO)
+		var point_local := to_local(point_position)
+		var is_active_point := i == controller.m_route_index
+		var radius := 11.0 if is_active_point else 8.0
+		draw_circle(point_local, radius, fill_color)
+		draw_arc(point_local, radius, 0.0, TAU, 32, base_color, 2.0)
+
+		if bool(route_point.get("allow_collision_bypass", false)):
+			draw_arc(point_local, radius + 4.0, 0.0, TAU, 24, bypass_color, 1.5)
+
+		if debug_draw_npc_route_labels and font != null:
+			draw_string(
+				font,
+				point_local + Vector2(radius + 4.0, -6.0),
+				str(i),
+				HORIZONTAL_ALIGNMENT_LEFT,
+				-1,
+				font_size,
+				Color.WHITE
+			)
+
+	var resident_local := to_local(resident.global_position)
+	draw_circle(resident_local, 6.0, Color(1.0, 1.0, 1.0, 0.92))
+	draw_arc(resident_local, 10.0, 0.0, TAU, 32, base_color, 2.0)
+
+	if controller.m_route_index >= 0 and controller.m_route_index < route_points.size():
+		var active_position: Vector2 = route_points[controller.m_route_index].get("position", resident.global_position)
+		draw_line(resident_local, to_local(active_position), Color(1.0, 1.0, 1.0, 0.78), 2.0, true)
+
+	if debug_draw_npc_route_labels and font != null:
+		var label := "%s [%d]" % [display_name, controller.m_route_index]
+		draw_string(
+			font,
+			resident_local + Vector2(14.0, -12.0),
+			label,
+			HORIZONTAL_ALIGNMENT_LEFT,
+			-1,
+			font_size,
+			Color.WHITE
+		)
+
+
+func _npc_route_matches_debug_filter(resident: HumanBody2D, controller: NPCController) -> bool:
+	if debug_npc_route_filter.is_empty():
+		return true
+
+	var filter_text := debug_npc_route_filter.to_lower()
+	var resident_id := controller.get_resident_id().to_lower()
+	var display_name := resident.name.to_lower()
+	return resident_id.contains(filter_text) or display_name.contains(filter_text)
+
+
+func _npc_route_debug_color(color_key: String) -> Color:
+	var hue_seed := absi(color_key.hash()) % 1024
+	return Color.from_hsv(float(hue_seed) / 1024.0, 0.72, 1.0, 0.95)
 
 
 func sync_ui_state() -> void:
@@ -333,7 +478,7 @@ func _find_player_tunnel() -> Tunnel:
 
 
 func _find_resident_tunnel(actor: HumanBody2D) -> Tunnel:
-	return _find_tunnel_for_actor(actor, false)
+	return _find_tunnel_for_actor(actor, true)
 
 
 func _find_tunnel_for_actor(actor: HumanBody2D, require_interior_level: bool) -> Tunnel:
@@ -357,6 +502,8 @@ func _build_resident_movement_config(resident_id: String, actor: HumanBody2D, mo
 
 	var resolved_route_points: Array[Dictionary] = []
 	var previous_position := Vector2.ZERO
+	var previous_anchor_id := ""
+	var previous_anchor_node: Node2D = null
 	var previous_tunnel: Tunnel = null
 	var has_previous_point := false
 	for point_value in movement_config.get("route_points", []):
@@ -372,7 +519,7 @@ func _build_resident_movement_config(resident_id: String, actor: HumanBody2D, mo
 
 		var point_copy := route_point.duplicate(true)
 		var route_offset: Vector2 = route_point.get("offset", Vector2.ZERO)
-		var resolved_position := _resolve_actor_anchor_position(actor, anchor_node, route_offset)
+		var resolved_position := _resolve_route_anchor_position(actor, anchor_id, anchor_node, route_offset)
 		var route_tunnel := _find_tunnel_ancestor(anchor_node)
 		if has_previous_point and route_tunnel != null and route_tunnel == previous_tunnel:
 			var tunnel_path := route_tunnel.get_path_between_world_positions(actor, previous_position, resolved_position)
@@ -381,13 +528,30 @@ func _build_resident_movement_config(resident_id: String, actor: HumanBody2D, mo
 					"position": tunnel_path[i],
 					"wait_min_sec": 0.0,
 					"wait_max_sec": 0.0,
+					"allow_collision_bypass": true,
 				})
+		elif has_previous_point:
+			var transition_points := _build_tunnel_boundary_transition_points(
+				actor,
+				previous_anchor_id,
+				previous_anchor_node,
+				previous_position,
+				anchor_id,
+				anchor_node,
+				resolved_position
+			)
+			for transition_point in transition_points:
+				resolved_route_points.append(transition_point)
 
+		if route_tunnel != null or anchor_id.ends_with(TUNNEL_PORTAL_SUFFIX):
+			point_copy["allow_collision_bypass"] = true
 		point_copy["position"] = resolved_position
 		point_copy.erase("anchor_id")
 		point_copy.erase("offset")
 		resolved_route_points.append(point_copy)
 		previous_position = resolved_position
+		previous_anchor_id = anchor_id
+		previous_anchor_node = anchor_node
 		previous_tunnel = route_tunnel
 		has_previous_point = true
 
@@ -409,6 +573,167 @@ func _resolve_actor_anchor_position(actor: HumanBody2D, anchor_node: Node2D, off
 		return desired_position
 
 	return tunnel_anchor.snap_actor_to_walkable_position(actor, desired_position)
+
+
+func _resolve_route_anchor_position(actor: HumanBody2D, anchor_id: String, anchor_node: Node2D, offset: Vector2) -> Vector2:
+	if anchor_id.ends_with(TUNNEL_PORTAL_SUFFIX):
+		return _resolve_directional_portal_route_position(actor, anchor_id, anchor_node, offset)
+	return _resolve_actor_anchor_position(actor, anchor_node, offset)
+
+
+func _resolve_directional_portal_route_position(
+	actor: HumanBody2D,
+	portal_anchor_id: String,
+	portal_anchor_node: Node2D,
+	offset: Vector2
+) -> Vector2:
+	var entry_anchor_id := _get_tunnel_entry_anchor_id_for_portal(portal_anchor_id)
+	if entry_anchor_id.is_empty():
+		return _resolve_actor_anchor_position(actor, portal_anchor_node, offset)
+
+	var entry_anchor_node := m_spawn_anchor_nodes.get(entry_anchor_id) as Node2D
+	if !is_instance_valid(entry_anchor_node):
+		return _resolve_actor_anchor_position(actor, portal_anchor_node, offset)
+
+	var portal_center := _resolve_portal_center_position(actor, portal_anchor_node)
+	var portal_direction := _get_portal_direction_vector(portal_anchor_node)
+	if portal_direction.length_squared() <= 0.001:
+		return _resolve_actor_anchor_position(actor, portal_anchor_node, offset)
+	var portal_lateral := _get_portal_lateral_vector(portal_anchor_node)
+
+	var tunnel_side_sign := _get_portal_tunnel_side_sign(portal_anchor_node)
+	var portal_distance := maxf(absf(offset.x), DIRECTIONAL_PORTAL_MIN_OFFSET_DISTANCE)
+	var lateral_offset := offset.y
+
+	return portal_center + portal_direction * tunnel_side_sign * portal_distance + portal_lateral * lateral_offset
+
+
+func _build_tunnel_boundary_transition_points(
+	actor: HumanBody2D,
+	previous_anchor_id: String,
+	previous_anchor_node: Node2D,
+	previous_position: Vector2,
+	current_anchor_id: String,
+	current_anchor_node: Node2D,
+	current_position: Vector2
+) -> Array[Dictionary]:
+	var portal_anchor_id := ""
+	var portal_anchor_node: Node2D = null
+
+	if _get_tunnel_entry_anchor_id_for_portal(previous_anchor_id) == current_anchor_id:
+		portal_anchor_id = previous_anchor_id
+		portal_anchor_node = previous_anchor_node
+	elif _get_tunnel_entry_anchor_id_for_portal(current_anchor_id) == previous_anchor_id:
+		portal_anchor_id = current_anchor_id
+		portal_anchor_node = current_anchor_node
+	else:
+		return []
+
+	if !is_instance_valid(portal_anchor_node):
+		return []
+
+	var entry_anchor_id := _get_tunnel_entry_anchor_id_for_portal(portal_anchor_id)
+	var entry_anchor_node := m_spawn_anchor_nodes.get(entry_anchor_id) as Node2D
+	if !is_instance_valid(entry_anchor_node):
+		return []
+
+	var portal_center := _resolve_portal_center_position(actor, portal_anchor_node)
+	var portal_direction := _get_portal_direction_vector(portal_anchor_node)
+	if portal_direction.length_squared() <= 0.001:
+		return []
+
+	var transition_points: Array[Dictionary] = []
+	var outside_side_sign := -_get_portal_tunnel_side_sign(portal_anchor_node)
+	var portal_target_position := current_position if portal_anchor_id == current_anchor_id else previous_position
+	var relative_to_portal := portal_target_position - portal_center
+	var lateral_component := relative_to_portal - portal_direction * relative_to_portal.dot(portal_direction)
+	_append_unique_transition_point(
+		transition_points,
+		portal_center + portal_direction * outside_side_sign * TUNNEL_ENTRY_FRONT_APPROACH_DISTANCE + lateral_component
+	)
+
+	return transition_points
+
+
+func _append_unique_transition_point(points: Array[Dictionary], candidate: Vector2) -> void:
+	if !points.is_empty():
+		var previous_position: Vector2 = points[points.size() - 1].get("position", Vector2.ZERO)
+		if previous_position.distance_to(candidate) <= 1.0:
+			return
+
+	points.append({
+		"position": candidate,
+		"wait_min_sec": 0.0,
+		"wait_max_sec": 0.0,
+		"allow_collision_bypass": true,
+	})
+
+
+func _get_tunnel_entry_anchor_id_for_portal(anchor_id: String) -> String:
+	if !anchor_id.ends_with(TUNNEL_PORTAL_SUFFIX):
+		return ""
+	return anchor_id.left(anchor_id.length() - TUNNEL_PORTAL_SUFFIX.length())
+
+
+func _resolve_portal_center_position(actor: HumanBody2D, portal_anchor_node: Node2D) -> Vector2:
+	var portal_node := _get_portal_for_anchor(portal_anchor_node)
+	if portal_node != null:
+		return _resolve_actor_anchor_position(actor, portal_node, Vector2.ZERO)
+	return _resolve_actor_anchor_position(actor, portal_anchor_node, Vector2.ZERO)
+
+
+func _get_portal_direction_vector(portal_anchor_node: Node2D) -> Vector2:
+	var portal_node := _get_portal_for_anchor(portal_anchor_node)
+	if portal_node == null:
+		return Vector2.ZERO
+
+	var collision_shape := portal_node.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if collision_shape != null:
+		return collision_shape.global_transform.x.normalized()
+
+	return portal_node.global_transform.x.normalized()
+
+
+func _get_portal_lateral_vector(portal_anchor_node: Node2D) -> Vector2:
+	var portal_node := _get_portal_for_anchor(portal_anchor_node)
+	if portal_node == null:
+		return Vector2.ZERO
+
+	var collision_shape := portal_node.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if collision_shape != null:
+		return collision_shape.global_transform.y.normalized()
+
+	return portal_node.global_transform.y.normalized()
+
+
+func _get_portal_tunnel_side_sign(portal_anchor_node: Node2D) -> float:
+	var portal_node := _get_portal_for_anchor(portal_anchor_node)
+	var tunnel_anchor := _find_tunnel_ancestor(portal_anchor_node)
+	if portal_node == null or tunnel_anchor == null:
+		return 1.0
+
+	var tunnel_mask := LEVEL_REGISTRY.resolve_level_collision_mask(tunnel_anchor.get_resolved_level_id())
+	if (int(portal_node.get("mask1")) & tunnel_mask) != 0:
+		return -1.0
+	if (int(portal_node.get("mask2")) & tunnel_mask) != 0:
+		return 1.0
+	return 1.0
+
+
+func _get_portal_for_anchor(anchor_node: Node2D) -> Portal:
+	if anchor_node == null:
+		return null
+
+	var direct_portal := anchor_node as Portal
+	if direct_portal != null:
+		return direct_portal
+
+	for child in anchor_node.get_children():
+		var portal_child := child as Portal
+		if portal_child != null:
+			return portal_child
+
+	return null
 
 
 func _apply_anchor_level_to_actor(actor: HumanBody2D, anchor_node: Node) -> void:

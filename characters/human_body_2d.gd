@@ -284,6 +284,14 @@ func move(direction_vector: Vector2) -> void:
 		dir_vec = dir_vec.normalized()
 
 	var movement_speed: float = 300.0 if is_running else 100.0
+	move_with_speed(dir_vec, movement_speed)
+
+
+func move_with_speed(direction_vector: Vector2, movement_speed: float) -> void:
+	var dir_vec := direction_vector
+	if dir_vec.length_squared() > 0.000001:
+		dir_vec = dir_vec.normalized()
+
 	velocity = dir_vec * movement_speed
 	move_and_slide()
 

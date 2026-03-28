@@ -57,7 +57,9 @@ This split is intentional: authored content stays in the catalog, mutable progre
 
 - Tunnel residents now follow a stricter visibility rule than plain same-layer targeting alone.
 - The player only counts as being "in a tunnel" after actually reaching that tunnel's interior level; walking over the tunnel footprint on the surface must not reveal tunnel residents or hide ground buildings.
-- Routed residents still reacquire tunnel state from tunnel geometry as they move back into a tunnel, so portal timing and route motion do not leave them stranded on outside level data.
+- Routed residents use the same interior-only tunnel classification, and actual level changes now come from the same portal overlap logic the player uses.
+- When authored routes cross between a tunnel portal anchor and its paired surface entry anchor, the main scene resolves extra portal-direction waypoints so the resident traverses along the portal axis instead of clipping in from the side.
+- Portal-anchored route offsets are resolved in portal-local coordinates so authored points can preserve both through-portal depth and lateral alignment.
 
 ### Dialogue Is Lightweight On Purpose
 
@@ -215,10 +217,18 @@ Use [`../game/tests/npc_system/test_npc_control.tscn`](../game/tests/npc_system/
 
 - routed NPC controller behavior
 - walk animation playback during route motion
+- collision-aware route movement against walls or blockers
 - pause/resume behavior when the player enters or leaves talk range
 - nearby `...` cue and revealed-line handoff after a talk interaction
 
 This regression scene instantiates the main overworld, waits for a routed tunnel resident to leave the tunnel, verifies that movement advances the resident's walk frames, checks that the route pauses while the player is nearby, confirms the nearby cue changes from `...` to the revealed line after talk, and then verifies the route resumes once the player leaves range.
+
+Use [`../game/tests/npc_system/test_npc_route_collision.tscn`](../game/tests/npc_system/test_npc_route_collision.tscn) when changing:
+
+- routed NPC movement code that should respect `CharacterBody2D` collision
+- blocker or wall interactions along authored routes
+
+This regression scene uses a single routed NPC and a blocking wall, then asserts that route movement starts but does not pass through the obstacle.
 
 ### Tunnel Context Check
 
@@ -227,6 +237,7 @@ Use [`../game/tests/npc_system/test_tunnel_visibility.tscn`](../game/tests/npc_s
 - tunnel-resident visibility rules
 - player tunnel-entry detection versus surface overlap
 - tunnel resident route re-entry or outside/tunnel level restoration
+- portal-direction approach/exit alignment for routed residents
 - ground-building masking tied to tunnel interiors
 
 ## Debugging Shortcuts
