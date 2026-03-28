@@ -256,7 +256,7 @@ func _is_valid_object(body: Node2D) -> bool:
 	if landmark_trigger != null and landmark_trigger.is_collected():
 		return false
 
-	if m_character != null and (body == m_character or CommonUtils.is_ancestor(body, m_character)):
+	if m_character != null and (body == m_character or CommonUtils.is_ancestor(m_character, body)):
 		return false
 
 	if !_shares_interaction_layer(body):
@@ -316,11 +316,10 @@ func _get_interaction_priority(object_node: Node2D) -> int:
 	if object_node == null or !is_instance_valid(object_node):
 		return 100
 
-	if object_node is HumanBody2D:
+	# Let residents and landmark cues compete by distance on the same layer so
+	# a nearby NPC does not mask an active cue the player is standing on.
+	if object_node is HumanBody2D or object_node is LandmarkTrigger:
 		return 0
-
-	if object_node is LandmarkTrigger:
-		return 2
 
 	return 1
 

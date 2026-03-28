@@ -16,7 +16,7 @@ The live resident flow is:
 1. [`../game/resident_catalog.gd`](../game/resident_catalog.gd) defines the static resident roster, content, appearance presets, spawn metadata, and optional movement routes.
 2. [`../game/app_state.gd`](../game/app_state.gd) clones those defaults into mutable runtime `resident_profiles` and exposes all resident-facing getters.
 3. [`../scenes/game_main.gd`](../scenes/game_main.gd) caches supported spawn and route anchors, resolves sparse authored routes into world-space movement points, spawns the roster under the shared `actors/Residents` layer, turns player `R` input into resident talk interactions, and synchronizes tunnel-specific visibility and level state.
-4. [`../characters/control/base_controller.gd`](../characters/control/base_controller.gd) filters nearby targets to the same absolute z layer before closest-target or speech logic can use them.
+4. [`../characters/control/base_controller.gd`](../characters/control/base_controller.gd) filters nearby targets to the same absolute z layer, ignores controller-owned overlap nodes, and lets residents plus landmark cues compete by distance before closest-target or speech logic can use them.
 5. [`../characters/control/npc_controller.gd`](../characters/control/npc_controller.gd) applies each resident's appearance, shows the nearby `...` cue, reveals the current talk line after interaction, and follows resolved runtime route points with collision-aware motion except on explicit tunnel/portal bypass helper points.
 6. [`../ui/screens/journal_overlay.gd`](../ui/screens/journal_overlay.gd) renders resident notes from `AppState.build_resident_journal_text()`.
 
@@ -200,7 +200,7 @@ This shared-anchor-plus-offset model is intentionally cheap to author. It is les
 
 ## Current Player-Facing Behavior
 
-- Approaching a same-layer resident changes the hint from `Inspect` to `Talk to <resident>`.
+- Approaching the nearest same-layer resident or landmark cue updates the hint to match that target.
 - A nearby resident shows `...` in the speech balloon until the player presses `R`.
 - Pressing `R` runs `AppState.interact_with_resident(resident_id)` through [`../scenes/game_main.gd`](../scenes/game_main.gd).
 - The NPC bubble then swaps from `...` to the returned beat line for that interaction.

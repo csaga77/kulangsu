@@ -80,7 +80,7 @@ Current contract:
 
 - `scenes/game_main.gd` maps landmarks plus resident spawn/movement anchors, spawns residents, reacts to controller events, syncs player tunnel context into `AppState`, and keeps resident outside/tunnel level state aligned with their current tunnel context
 - `scenes/game_main.tscn` keeps the player and resident instances under one shared y-sorted actor layer rooted at `actors`
-- player inspect and talk prompts flow from nearby same-layer world objects through controller signals into `AppState`
+- player inspect and talk prompts flow from the nearest nearby same-layer resident or landmark cue through controller signals into `AppState`
 - landmark naming and location sync depend on known nodes in the main scene
 - player tunnel context must only become active after the player reaches the tunnel interior level; overlapping the tunnel footprint on the surface must not count as tunnel entry
 

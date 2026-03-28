@@ -39,7 +39,7 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 - Residents should only be targetable when the player shares the same absolute z/layer context.
 - Residents should only be visible and targetable when they share the player's current tunnel context: both outside, or inside the same tunnel after actually entering its interior level rather than merely overlapping the tunnel footprint on the surface.
 - Tunnel context is intentionally interior-only for both player and residents: surface overlap with a tunnel footprint should not count as being inside that tunnel.
-- If a resident and a collectible landmark trigger overlap in range, the resident should win the closest-target selection so `Talk` stays reliable.
+- Residents and collectible landmark triggers should share the top closest-target priority so the nearest same-layer target wins and active cues remain collectible in mixed spaces.
 - Residents may stay stationary or follow authored route points; routed tunnel residents should still pause for nearby talk and use the same tunnel visibility rules as the player.
 - When a route crosses between a tunnel portal anchor and its paired surface entry anchor, the resolved route must insert portal-direction-aligned waypoints so the resident enters and exits along the portal axis instead of cutting across the side.
 - Player and resident actors must stay under the same y-sorted actor layer in the main scene so character overlap reads correctly.
@@ -233,7 +233,7 @@ When extending the NPC system, make changes in this order unless the task is str
 
 - Run the full project and verify that the main scene loads with the resident roster present.
 - Confirm that approaching a resident changes the hint to a talk prompt and that `R` advances their dialogue.
-- In Trinity Church and other mixed interaction spaces, confirm that nearby residents still win target selection over collectible cue triggers.
+- In Trinity Church and other mixed interaction spaces, confirm that the nearest same-layer resident or collectible cue wins target selection.
 - Open the journal and verify that introduced residents appear with updated notes.
 - Use [`../../game/tests/npc_system/test_npc_layer_interaction.tscn`](../../game/tests/npc_system/test_npc_layer_interaction.tscn) when testing same-layer gating, portal-driven z changes, and closest-target behavior across stacked resident layers.
 - Use [`../../game/tests/npc_system/test_npc_control.tscn`](../../game/tests/npc_system/test_npc_control.tscn) when changing routed NPC controller behavior such as walk animation playback, nearby talk pause/resume, or dialogue reveal handling.
