@@ -34,8 +34,8 @@ If you are changing how terrain mask colors map to layers, start with the terrai
 - [`../characters/tests/`](../characters/tests) - direct character smoke scenes such as `HumanBody2D`
 - [`../characters/control/`](../characters/control) - controllers, resident presentation hookup, and interaction behavior
 - [`../characters/control/bt/`](../characters/control/bt) - behavior-tree framework
-- [`../characters/universal_lpc/`](../characters/universal_lpc) - Universal LPC metadata tooling, runtime sprite composition, and related helpers
-- [`../characters/universal_lpc/tests/`](../characters/universal_lpc/tests) - Universal LPC metadata and composition validation tooling
+- [`../characters/universal_lpc/`](../characters/universal_lpc) - Universal LPC metadata tooling, source-asset audit helpers, runtime sprite composition, and related helpers
+- [`../characters/universal_lpc/tests/`](../characters/universal_lpc/tests) - Universal LPC metadata, source-asset audit, and composition validation tooling
 - [`../gui/`](../gui) - in-world UI such as speech balloons
 
 Put player control, NPC behavior, interaction prompts, and behavior-tree work here.
@@ -76,6 +76,7 @@ Be careful about renames or moves here because scene and resource references can
 - [`../scenes/tests/`](../scenes/tests) - ad hoc prototype and validation scenes
 - [`../characters/tests/test_human_body_2d.tscn`](../characters/tests/test_human_body_2d.tscn) - direct `HumanBody2D` smoke sandbox with player-controller wiring
 - [`../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn`](../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn) - Universal LPC metadata and sprite-composition validation tool
+- [`../characters/universal_lpc/tests/test_universal_lpc_asset_audit.tscn`](../characters/universal_lpc/tests/test_universal_lpc_asset_audit.tscn) - focused Universal LPC source-sheet audit for missing animation rows, JSON/source mismatches, and player-facing AI target triage
 - [`../game/tests/npc_system/test_npc_layer_interaction.tscn`](../game/tests/npc_system/test_npc_layer_interaction.tscn) - focused same-layer NPC targeting and portal-driven z-layer switching sandbox
 - [`../game/tests/npc_system/test_npc_control.tscn`](../game/tests/npc_system/test_npc_control.tscn) - focused routed NPC control regression scene covering Ren's in-tunnel walk-frame playback, nearby talk pause, dialogue reveal, and route resume
 - [`../game/tests/npc_system/test_npc_route_collision.tscn`](../game/tests/npc_system/test_npc_route_collision.tscn) - focused routed NPC wall-collision regression scene covering collision-aware route motion against blocking geometry

@@ -135,6 +135,7 @@ This keeps the feature overlay-based and consistent with the project’s minimal
 1. Prefer reusing paths and variants already present in the shipped metadata.
 2. If new metadata must be generated, treat that as development tooling work and revalidate the shipped JSON before relying on the new content in gameplay.
 3. Do not assume metadata alone makes a custom animation playable in the game; add or update an explicit runtime trigger path when the feature needs one.
+4. Before spending time painting or AI-generating missing rows, run [`../characters/universal_lpc/tests/test_universal_lpc_asset_audit.tscn`](../characters/universal_lpc/tests/test_universal_lpc_asset_audit.tscn) to separate true source-art gaps from JSON/source mismatches and alias-only runtime gaps.
 
 ## Validation
 
@@ -143,6 +144,7 @@ This keeps the feature overlay-based and consistent with the project’s minimal
 - Validate the live overworld avatar through the main project flow so `AppState.player_appearance_changed` still updates the active player immediately.
 - If unlock rules changed, confirm both the locked and unlocked states read correctly in the journal text.
 - If new LPC assets or animations were introduced, use [`../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn`](../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn) or another focused validation scene before relying on the full game flow.
+- Use [`../characters/universal_lpc/tests/test_universal_lpc_asset_audit.tscn`](../characters/universal_lpc/tests/test_universal_lpc_asset_audit.tscn) before asset-authoring passes to identify which curated player paths are missing `idle / walk / run / jump`, which styles only need JSON/runtime fixes, and which dynamic-path definitions still need manual review.
 - Treat `Failed to resolve combined texture for selection layer` warnings as content bugs. They usually mean the chosen path, body type, or variant is unsupported by the shipped metadata.
 
 ## Good Next Steps

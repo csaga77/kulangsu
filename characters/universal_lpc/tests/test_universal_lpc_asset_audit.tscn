@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://characters/universal_lpc/tests/test_universal_lpc_asset_audit.gd" id="1_9mo8t"]
+
+[node name="TestUniversalLpcAssetAudit" type="Node"]
+script = ExtResource("1_9mo8t")
