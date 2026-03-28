@@ -49,7 +49,7 @@ player = NodePath("../actors/player")
 y_sort_enabled = true
 
 [node name="player" parent="actors" unique_id=1255111382 groups=["player"] instance=ExtResource("5_lquwl")]
-position = Vector2(3569, 7648)
+position = Vector2(4890, 9471)
 controller = SubResource("Resource_qjl73")
 configuration = {
 "body_type": "male",
