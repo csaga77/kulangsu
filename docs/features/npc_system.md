@@ -12,6 +12,8 @@ Open these files first in this order:
 4. [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd)
 5. [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd)
 
+For tunnel-route bugs, also open [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd) immediately after `game_main.gd`.
+
 Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the broader design rationale after reading this summary.
 
 ## Goal
@@ -51,12 +53,22 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 - `scenes/game_main.gd` never hardcodes individual residents; it loops over `AppState.get_resident_ids()` and spawns them from catalog metadata.
 - Tunnel-root spawns and tunnel-owned movement waypoints are snapped back onto the authored tunnel path if an offset drifts off the walkable area.
 - Tunnel-internal route expansion prefers higher-connectivity walkable cells so residents stay nearer the middle of a tunnel path when multiple shortest routes exist.
-- `NPCController` uses `resident_id` to pull appearance from `AppState`, keeps a local revealed-line state, defaults the nearby bubble to `...`, and can follow optional route loops built from catalog metadata.
+- `NPCController` uses `resident_id` to pull appearance from `AppState`, keeps a local revealed-line state, defaults the nearby bubble to `...`, and follows the resolved runtime route produced from catalog metadata.
 - `scenes/game_main.gd` re-syncs both player and resident tunnel context from actual tunnel interiors rather than any surface footprint overlap.
 - Routed residents now rely on the same portal overlap logic as the player for actual tunnel-side level changes; the route builder only shapes the approach and crossing points.
 - For paired tunnel portal and surface entry anchors, `scenes/game_main.gd` expands the authored route with explicit portal-direction approach points so surface-to-tunnel travel stays aligned with the portal facing.
 - Tunnel portal route-point offsets are interpreted in portal-local space: `x` controls distance through the portal axis and `y` controls lateral alignment along the portal opening.
+- `scenes/game_main.gd` resolves authored `movement.route_points` once at spawn time: it validates anchors, resolves anchor positions, snaps tunnel points to walkable cells, expands same-tunnel point pairs across the tunnel path, and inserts portal-facing helper points for paired portal/surface transitions.
+- `NPCController` only receives resolved world-space route points; it does not resolve scene anchors or tunnel path cells on the fly.
+- Routed NPCs use `HumanBody2D.move_with_speed()` for ordinary route motion so walls still block them, and only fall back to direct positional bypass on route points explicitly flagged with `allow_collision_bypass`.
 - The journal never reads the catalog directly; it asks `AppState.build_resident_journal_text()`.
+
+## Current Routed Residents
+
+- `tunnel_guide` / Tunnel Guide Ren is the reference case for an inside-only tunnel route. He spawns inside Long Shan Tunnel and currently routes south portal -> mid-tunnel point -> north portal without leaving the tunnel walls.
+- `tunnel_listener_nuo` / Tunnel Listener Nuo is the reference case for a tunnel-to-surface route. She starts inside Bi Shan Tunnel, crosses the south portal, and exits through the paired surface entry using the portal-direction front-approach helper points.
+- If Ren breaks but Nuo still works, start by inspecting Long Shan tunnel path snapping and same-tunnel route expansion.
+- If Nuo breaks but Ren still works, start by inspecting portal-direction transition helpers, portal-local offsets, and portal overlap-driven level changes.
 
 ## Common Tasks
 
@@ -92,20 +104,23 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 
 ### Add Resident Movement Or Schedules
 
-1. Start in [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd).
-2. Author simple loop routes in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd) with `_route(...)` and `_route_point(...)`.
-3. Add any new `anchor_id` values to [`../../scenes/game_main.gd`](../../scenes/game_main.gd) so spawn and route points resolve to scene nodes.
+1. Author or adjust the sparse route in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd) with `_route(...)` and `_route_point(...)`.
+2. Add any new `anchor_id` values to [`../../scenes/game_main.gd`](../../scenes/game_main.gd) so spawn and route points resolve to scene nodes.
+3. Only change [`../../scenes/game_main.gd`](../../scenes/game_main.gd), [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd), or [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd) if the route needs new resolution rules, tunnel path behavior, or runtime movement behavior.
 4. Keep resident content in the catalog and movement logic in controller/world code.
-5. If a route crosses a tunnel boundary, author both the portal anchor and the paired surface entry anchor so the main scene can build the front-entrance transition automatically.
-6. For tunnel portal anchors, author `offset.x` as distance through the portal axis and `offset.y` as lateral placement along the portal opening.
-7. Validate route behavior with [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn) when the route crosses tunnel boundaries.
+5. If a route stays inside a tunnel, author tunnel and portal anchors only and let [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd) expand the interior walk path between them.
+6. If a route crosses a tunnel boundary, author both the portal anchor and the paired surface entry anchor so the main scene can build the front-entrance transition automatically.
+7. For tunnel portal anchors, author `offset.x` as distance through the portal axis and `offset.y` as lateral placement along the portal opening.
+8. Validate route behavior with [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn) and the route debug overlay whenever the route uses tunnel anchors or portal crossings.
 
 ### Debug Resident Routes
 
 1. Open [`../../scenes/game_main.tscn`](../../scenes/game_main.tscn) and enable `debug_draw_npc_routes` on the root `game_main` node.
 2. Set `debug_npc_route_filter` to a resident id such as `tunnel_guide` or a display-name fragment such as `Ren` to isolate one route.
-3. In play mode, look for numbered waypoint rings, the resident marker, and the white line to the current target waypoint.
-4. Orange outer rings mark route points that intentionally bypass collision, such as tunnel-internal segments or portal transition helpers.
+3. Use `Ren` for inside-only Long Shan tunnel path checks and `Nuo` for portal-to-surface transition checks.
+4. In play mode, look for numbered waypoint rings, the resident marker, and the white line to the current target waypoint.
+5. Orange outer rings mark route points that intentionally bypass collision, such as tunnel path helper points or portal transition helpers.
+6. If the numbered points do not match the authored route count, that is expected: [`../../scenes/game_main.gd`](../../scenes/game_main.gd) may expand the sparse authored route into additional resolved helper points.
 
 ## Current Resident Anchors
 
@@ -137,6 +152,7 @@ If a resident uses an unsupported `anchor_id`, startup should warn and skip that
 - If a resident is inside Bi Shan or Long Shan Tunnel while the player is outside, that resident should be hidden and should drop out of closest-target selection until they exit or the player joins them.
 - If the player is inside Bi Shan or Long Shan Tunnel, residents outside that same tunnel should be hidden and should drop out of closest-target selection until the player exits or the resident re-enters.
 - Tunnel-routed residents should switch back to the correct outside or tunnel level state as soon as they cross the tunnel boundary.
+- If route geometry looks wrong, inspect both the sparse authored route in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd) and the expanded runtime route in `NPCController.m_route_points`; the main scene may have inserted tunnel-path or portal transition helper points.
 - The journal text is generated as one formatted text block, not a structured list widget. If you change the resident note format, update both the docs and the journal renderer.
 - The main overworld currently uses shared hub anchors with offsets, not dedicated per-resident scene markers.
 - Collected landmark triggers must immediately drop out of closest-target selection so they do not block nearby resident talk prompts.
@@ -146,6 +162,7 @@ If a resident uses an unsupported `anchor_id`, startup should warn and skip that
 - [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd) owns resident content and spawn metadata.
 - [`../../game/app_state.gd`](../../game/app_state.gd) owns runtime resident profiles, shared resident getters, and journal text generation.
 - [`../../scenes/game_main.gd`](../../scenes/game_main.gd) owns overworld spawn/movement-anchor mapping, resident instantiation, tunnel-context syncing, and talk-prompt wiring.
+- [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd) owns tunnel walkable-path snapping, interior checks, and same-tunnel route expansion helpers.
 - [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd) owns resident presentation hookup, nearby bubble reveal behavior, and simple route-following movement.
 - [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd) owns resident note presentation in the journal.
 
@@ -161,6 +178,7 @@ If a resident uses an unsupported `anchor_id`, startup should warn and skip that
 - [`../../game/tests/npc_system/test_scene.tscn`](../../game/tests/npc_system/test_scene.tscn)
 - Scripts:
   - [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
+  - [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd)
   - [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd)
   - [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd)
 - Shared state or catalogs:
@@ -182,9 +200,12 @@ If a resident uses an unsupported `anchor_id`, startup should warn and skip that
 - Important node paths, dictionaries, resources, or data flow:
   - `scenes/game_main.tscn` keeps the overworld actor layer at `actors`, with the player at `actors/player`
   - `scenes/game_main.gd` maps resident spawn and movement `anchor_id` values to concrete scene nodes
+  - `scenes/game_main.gd` expands sparse authored `movement.route_points` into resolved world-space route positions before calling `NPCController.configure_movement()`
+  - same-tunnel point pairs expand through [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd) walkable path cells
+  - tunnel portal-to-surface entry route pairs expand into additional portal-direction waypoints at spawn time
   - `NPCController.resident_id` links an instantiated actor to resident catalog data
-- optional `resident_profile.movement.route_points` expand into resolved world-space route positions at spawn time
-- tunnel portal-to-surface entry route pairs expand into additional portal-direction waypoints at spawn time
+  - `NPCController.m_route_points` stores the resolved runtime route, not the sparse authored route from the catalog
+  - `NPCController` uses collision-aware movement by default and only bypasses collision on route points flagged with `allow_collision_bypass`
   - `AppState.interact_with_resident()` advances talk beats and updates resident runtime state
   - `NPCController.reveal_dialogue()` swaps the nearby `...` cue to the just-triggered resident line
   - `AppState.build_resident_journal_text()` is the only resident-note text source used by the journal UI
@@ -196,10 +217,11 @@ When extending the NPC system, make changes in this order unless the task is str
 
 1. Update resident content or data shape in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd).
 2. Update shared runtime behavior in [`../../game/app_state.gd`](../../game/app_state.gd) if the change affects state, getters, or beat side effects.
-3. Update world integration in [`../../scenes/game_main.gd`](../../scenes/game_main.gd) only if spawn anchors, prompt behavior, or actor-layer assumptions need to change.
-4. Update [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd) only if NPC presentation or talk behavior changes.
-5. Update [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd) only if the player-facing resident notes need to render differently.
-6. Update the docs in the same patch.
+3. Update world integration in [`../../scenes/game_main.gd`](../../scenes/game_main.gd) only if spawn anchors, prompt behavior, route resolution, or actor-layer assumptions need to change.
+4. Update [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd) only if tunnel walkability, tunnel-path expansion, or interior checks need to change.
+5. Update [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd) only if NPC presentation or runtime route-following behavior changes.
+6. Update [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd) only if the player-facing resident notes need to render differently.
+7. Update the docs in the same patch.
 
 ## Contracts / Boundaries
 
@@ -217,7 +239,7 @@ When extending the NPC system, make changes in this order unless the task is str
 - Use [`../../game/tests/npc_system/test_npc_control.tscn`](../../game/tests/npc_system/test_npc_control.tscn) when changing routed NPC controller behavior such as walk animation playback, nearby talk pause/resume, or dialogue reveal handling.
 - Use [`../../game/tests/npc_system/test_npc_route_collision.tscn`](../../game/tests/npc_system/test_npc_route_collision.tscn) when changing routed NPC movement against blocking walls or other collision geometry.
 - Use [`../../game/tests/npc_system/test_tunnel_visibility.tscn`](../../game/tests/npc_system/test_tunnel_visibility.tscn) for tunnel-resident placement, tunnel-context visibility, and tunnel spacing regression coverage.
-- Use [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn) for tunnel route crossing, level-state syncing, and in/out tunnel resident travel coverage.
+- Use [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn) for tunnel route crossing, level-state syncing, and the two reference routed residents: Ren's inside-only Long Shan route and Nuo's Bi Shan tunnel-to-surface route.
 - Use [`../../game/tests/npc_system/test_scene.tscn`](../../game/tests/npc_system/test_scene.tscn) as a faster sandbox for resident speech and journal checks.
 - Use the main project flow to verify that tunnel residents spawn on walkable tunnel cells, can move in and out through tunnel entrances, and only remain visible when they share the player's current tunnel context.
 
@@ -229,6 +251,8 @@ Quick validation checklist:
 - Tunnel residents inherit the correct tunnel level on spawn and switch back to the outside level after leaving the tunnel
 - Tunnel residents only stay visible when they share the player's current tunnel context
 - Walking over a tunnel footprint on the surface must not reveal tunnel residents or hide the ground layer
+- Ren's Long Shan route should resolve from the south tunnel mouth to a mid-tunnel point to the north tunnel mouth without leaving the tunnel walls
+- Nuo's Bi Shan route should resolve from the tunnel portal to a front-aligned outside helper point before reaching her outside wait point
 - Tunnel-routed residents enter and exit along the tunnel portal direction instead of cutting across the side
 - Routed NPCs stop at blocking walls instead of sliding straight through route obstacles
 - New or changed residents appear under the shared `actors` layer and sort correctly against the player

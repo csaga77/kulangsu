@@ -59,6 +59,7 @@ Responsibilities:
 - shared y-sorted actor layer for the player and spawned residents
 - landmark lookup and location syncing
 - data-driven resident spawning, inspect/talk prompts, and overworld resident presentation
+- resident route resolution from authored anchors into runtime world-space waypoints, including tunnel path expansion and portal-direction helper points
 - tunnel interior context, tunnel-resident visibility syncing, and ground-building masking when the player actually enters a tunnel interior
 - feeding current world context into `AppState`
 
@@ -122,7 +123,7 @@ Responsibilities:
 - player and NPC control
 - interaction discovery and inspect requests
 - behavior-tree support code
-- resident presentation hookup, character visuals, and in-world speech balloon UI
+- resident presentation hookup, collision-aware routed NPC movement, character visuals, and in-world speech balloon UI
 - metadata-driven LPC sprite composition and development-time metadata generation tooling
 
 Notes:
