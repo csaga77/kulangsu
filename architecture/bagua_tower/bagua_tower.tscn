@@ -19,7 +19,7 @@
 [ext_resource type="Texture2D" uid="uid://d0nn3fs56i7ih" path="res://resources/sprites/light_well_mask.png" id="13_p5n1q"]
 [ext_resource type="PackedScene" uid="uid://bokp77sph16o3" path="res://architecture/bagua_tower/bagua_tower_corner_room_south.tscn" id="16_sgvu4"]
 [ext_resource type="PackedScene" uid="uid://ptuy7nqqcfsm" path="res://architecture/bagua_tower/bagua_tower_roof_tower.tscn" id="19_16kol"]
-[ext_resource type="Script" path="res://game/landmark_trigger.gd" id="20_ltrg"]
+[ext_resource type="Script" uid="uid://mcx1lgk33g2" path="res://game/landmark_trigger.gd" id="20_ltrg"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_frgy6"]
 radius = 9.428204
@@ -107,7 +107,6 @@ position = Vector2(32, 272)
 z_index = 1
 position = Vector2(341.00003, 120.00001)
 rotation = 2.0908325
-level_id = 0
 level_from = 0
 level_to = 2
 mask1 = 524288
@@ -123,7 +122,6 @@ shape = SubResource("CapsuleShape2D_frgy6")
 z_index = 1
 position = Vector2(-397.99997, 180)
 rotation = 1.1542037
-level_id = 0
 level_from = 0
 level_to = 2
 mask1 = 524288
@@ -137,7 +135,6 @@ shape = SubResource("CapsuleShape2D_frgy6")
 
 [node name="portal_sw_0" parent="base" unique_id=1808827159 instance=ExtResource("5_5gyeu")]
 position = Vector2(-596.0002, 642)
-level_id = 0
 level_from = 0
 level_to = 2
 mask1 = 524288
@@ -151,7 +148,6 @@ shape = SubResource("CapsuleShape2D_564an")
 
 [node name="portal_se_0" parent="base" unique_id=1976813060 instance=ExtResource("5_5gyeu")]
 position = Vector2(300, 711)
-level_id = 0
 level_from = 0
 level_to = 2
 mask1 = 524288
@@ -166,7 +162,6 @@ shape = SubResource("CapsuleShape2D_frgy6")
 [node name="portal_se_1" parent="base" unique_id=1483520597 instance=ExtResource("5_5gyeu")]
 position = Vector2(517.00006, 588)
 rotation = 2.0835705
-level_id = 0
 level_from = 0
 level_to = 2
 mask1 = 524288
@@ -578,18 +573,17 @@ y_sort_origin = 96
 position = Vector2(0, 256)
 visibility_mask_nodes = [NodePath("../internal_mask"), NodePath("../roof_stairs_mask")]
 
-[node name="SynthesisChamber" type="Area2D" parent="base/ground_level/upper_level/roof_level/roof_tower"]
-collision_layer = 1
+[node name="SynthesisChamber" type="Area2D" parent="base/ground_level/upper_level/roof_level/roof_tower" unique_id=1063406610]
 z_index = -2
+position = Vector2(-96, -96)
 script = ExtResource("20_ltrg")
 landmark_id = "bagua_tower"
 trigger_id = "synthesis_chamber"
 display_name = "Synthesis Chamber"
 visible_in_states = Array[String](["in_progress"])
 hide_if_flag = "synthesis_done"
-position = Vector2(-96, -96)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="base/ground_level/upper_level/roof_level/roof_tower/SynthesisChamber"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="base/ground_level/upper_level/roof_level/roof_tower/SynthesisChamber" unique_id=192327253]
 shape = SubResource("CircleShape2D_synthesis_chamber")
 
 [editable path="base/portal_ne_0"]
