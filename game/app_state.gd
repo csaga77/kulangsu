@@ -29,6 +29,7 @@ signal player_costumes_changed(unlocked_ids: PackedStringArray, equipped_costume
 signal player_appearance_changed(profile: Dictionary, appearance_config: Dictionary)
 signal summary_changed(summary: Dictionary)
 signal landmark_progress_changed(landmark_id: String, progress: Dictionary)
+signal story_milestone(milestone_id: String, context: Dictionary)
 
 var mode := "Title"
 var chapter := "Arrival"
@@ -545,6 +546,41 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 
 	resident["known"] = true
 
+	# --- Conditional beats: check priority-sorted context-sensitive lines first.
+	var conditional_beat := _pick_conditional_beat(resident_id, resident)
+	if !conditional_beat.is_empty():
+		var fired: Array = _normalize_string_array(resident.get("_fired_conditional_beats", []))
+		var beat_key := String(conditional_beat.get("_beat_key", ""))
+		var is_new_conditional := !beat_key.is_empty() and fired.find(beat_key) < 0
+		if is_new_conditional:
+			fired.append(beat_key)
+			resident["_fired_conditional_beats"] = fired
+
+		var old_cond_trust := int(resident.get("trust", 0))
+		resident["trust"] = clampi(
+			old_cond_trust + int(conditional_beat.get("trust_delta", 0)),
+			0,
+			RESIDENT_CATALOG_SCRIPT.max_trust()
+		)
+		var cond_journal := String(conditional_beat.get("journal_step", ""))
+		if !cond_journal.is_empty():
+			resident["current_step"] = cond_journal
+
+		resident_profiles[resident_id] = resident
+		_sync_known_residents()
+		# Only fire side-effects on the first application of this conditional
+		# beat, matching the is_new_beat guard used by the linear spine.
+		if is_new_conditional:
+			_apply_resident_beat(conditional_beat)
+			_emit_trust_milestone_if_max(resident_id, old_cond_trust, int(resident.get("trust", 0)))
+		_refresh_player_costumes()
+		resident_profile_changed.emit(resident_id, get_resident_profile(resident_id))
+		# Strip the internal tracking key before returning to callers.
+		var result := conditional_beat.duplicate(true)
+		result.erase("_beat_key")
+		return result
+
+	# --- Linear beat spine: fall back to conversation_index progression.
 	if dialogue_beats.is_empty():
 		resident_profiles[resident_id] = resident
 		_sync_known_residents()
@@ -573,8 +609,9 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 	var is_new_beat := beat_index < dialogue_beats.size() - 1 \
 		or int(resident.get("_last_applied_beat", -1)) != beat_index
 
+	var old_trust := int(resident.get("trust", 0))
 	resident["trust"] = clampi(
-		int(resident.get("trust", 0)) + int(beat.get("trust_delta", 0)),
+		old_trust + int(beat.get("trust_delta", 0)),
 		0,
 		RESIDENT_CATALOG_SCRIPT.max_trust()
 	)
@@ -594,6 +631,7 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 	# the dialogue line but skip _apply_resident_beat to prevent duplicate awards.
 	if is_new_beat:
 		_apply_resident_beat(beat)
+	_emit_trust_milestone_if_max(resident_id, old_trust, int(resident.get("trust", 0)))
 	_refresh_player_costumes()
 	resident_profile_changed.emit(resident_id, get_resident_profile(resident_id))
 	return beat.duplicate(true)
@@ -1136,10 +1174,12 @@ func _collect_bi_shan_echo(echo_id: String) -> bool:
 func _resolve_bi_shan_tunnel() -> void:
 	advance_landmark_state("bi_shan_tunnel", "reward_collected")
 
+	var previous_melody: Dictionary = get_melody_state("festival_melody").duplicate(true)
 	var melody_state := _award_festival_source_once("tunnel_echo")
 	_sync_festival_state_from_fragments(melody_state)
 
 	set_melody_progress({"festival_melody": melody_state})
+	_emit_fragment_story_milestones(previous_melody, "tunnel_echo", melody_state)
 	set_objective("Explore Long Shan Tunnel and find Tunnel Guide Ren.")
 	set_save_status("Bi Shan Tunnel — mural resonance restored.")
 
@@ -1149,10 +1189,12 @@ func _resolve_bi_shan_tunnel() -> void:
 func _resolve_long_shan_tunnel() -> void:
 	advance_landmark_state("long_shan_tunnel", "reward_collected")
 
+	var previous_melody: Dictionary = get_melody_state("festival_melody").duplicate(true)
 	var melody_state := _award_festival_source_once("tunnel_echo")
 	_sync_festival_state_from_fragments(melody_state)
 
 	set_melody_progress({"festival_melody": melody_state})
+	_emit_fragment_story_milestones(previous_melody, "tunnel_echo", melody_state)
 	set_objective("Climb Bagua Tower and find Tower Keeper Lin.")
 	set_save_status("Long Shan Tunnel — passage completed.")
 
@@ -1173,10 +1215,12 @@ func _resolve_bagua_tower_synthesis() -> void:
 func _resolve_bagua_tower() -> void:
 	advance_landmark_state("bagua_tower", "reward_collected")
 
+	var previous_melody: Dictionary = get_melody_state("festival_melody").duplicate(true)
 	var melody_state := _award_festival_source_once("tower_chamber")
 	_sync_festival_state_from_fragments(melody_state, true)
 
 	set_melody_progress({"festival_melody": melody_state})
+	_emit_fragment_story_milestones(previous_melody, "tower_chamber", melody_state)
 	set_objective("The island melody is complete. Find the festival stage to perform it.")
 	set_save_status("The island melody is whole.")
 
@@ -1205,7 +1249,91 @@ func _check_beat_gate(beat: Dictionary) -> bool:
 	return true
 
 
-## Dispatch to the correct landmark resolution handler.
+# ---------------------------------------------------------------------------
+# Conditional Beat Evaluation
+# ---------------------------------------------------------------------------
+
+## Pick the highest-priority conditional beat whose conditions are all satisfied
+## and that has not already fired (if marked once). Returns an empty Dictionary
+## when no conditional beat matches, signalling the caller to fall through to
+## the linear dialogue_beats spine.
+func _pick_conditional_beat(resident_id: String, resident: Dictionary) -> Dictionary:
+	var conditional_beats: Array = resident.get("conditional_beats", [])
+	if conditional_beats.is_empty():
+		return {}
+
+	var fired: Array[String] = _normalize_string_array(resident.get("_fired_conditional_beats", []))
+
+	var best_beat: Dictionary = {}
+	var best_priority := -1
+
+	for i in conditional_beats.size():
+		var cbeat: Dictionary = conditional_beats[i]
+
+		# Build a stable key from the array index for once-tracking.
+		var beat_key := "cond_%d" % i
+		cbeat["_beat_key"] = beat_key
+
+		if bool(cbeat.get("once", false)) and fired.find(beat_key) >= 0:
+			continue
+
+		var conditions: Dictionary = cbeat.get("conditions", {})
+		if !_check_conditional_conditions(conditions, resident):
+			continue
+
+		var priority := int(cbeat.get("priority", 0))
+		if priority > best_priority:
+			best_priority = priority
+			best_beat = cbeat
+
+	return best_beat
+
+
+## Evaluate all condition keys in a conditional beat's conditions dictionary.
+## Returns true only when every condition is satisfied.
+func _check_conditional_conditions(conditions: Dictionary, resident: Dictionary) -> bool:
+	for key in conditions.keys():
+		match key:
+			"landmark_state":
+				var required: Dictionary = conditions[key]
+				for lm_id in required.keys():
+					if get_landmark_state(String(lm_id)) != String(required[lm_id]):
+						return false
+			"melody_state":
+				var required: Dictionary = conditions[key]
+				for mel_id in required.keys():
+					var mel := get_melody_state(String(mel_id))
+					if String(mel.get("state", "unknown")) != String(required[mel_id]):
+						return false
+			"fragments_found_min":
+				if fragments_found < int(conditions[key]):
+					return false
+			"trust_min":
+				if int(resident.get("trust", 0)) < int(conditions[key]):
+					return false
+			"chapter":
+				if chapter != String(conditions[key]):
+					return false
+			"mode":
+				if mode != String(conditions[key]):
+					return false
+			"resident_known":
+				var required_known: Array = conditions[key] if conditions[key] is Array else []
+				for rid in required_known:
+					var other: Dictionary = resident_profiles.get(String(rid), {})
+					if !bool(other.get("known", false)):
+						return false
+	return true
+
+
+## Emit a resident_trust_max milestone the first time a resident reaches max trust.
+func _emit_trust_milestone_if_max(resident_id: String, old_trust: int, new_trust: int) -> void:
+	if new_trust >= RESIDENT_CATALOG_SCRIPT.max_trust() and old_trust < RESIDENT_CATALOG_SCRIPT.max_trust():
+		story_milestone.emit("resident_trust_max", {"resident_id": resident_id})
+
+
+## Dispatch to the correct landmark resolution handler and emit a story
+## milestone so ambient systems can react without coupling to internals.
 func _resolve_landmark(landmark_id: String) -> void:
 	match landmark_id:
 		"piano_ferry":
@@ -1215,15 +1343,23 @@ func _resolve_landmark(landmark_id: String) -> void:
 		"bagua_tower":
 			_resolve_bagua_tower()
 
+	story_milestone.emit("landmark_resolved", {
+		"landmark_id": landmark_id,
+		"fragments_found": fragments_found,
+		"helped_residents": _count_helped_residents(),
+	})
+
 
 func _resolve_piano_ferry() -> void:
 	advance_landmark_state("piano_ferry", "reward_collected")
 	set_journal_unlocked(true)
 
+	var previous_melody: Dictionary = get_melody_state("festival_melody").duplicate(true)
 	var melody_state := _award_festival_source_once("ferry_plaza")
 	_sync_festival_state_from_fragments(melody_state)
 	melody_state["next_lead"] = "Speak with the church caretaker and compare how the bells answer the harbor."
 	set_melody_progress({"festival_melody": melody_state})
+	_emit_fragment_story_milestones(previous_melody, "ferry_plaza", melody_state)
 	set_save_status("Journal unlocked — Trinity Church is marked as your first lead.")
 
 
@@ -1234,10 +1370,12 @@ func _resolve_trinity_church() -> void:
 	advance_landmark_state("trinity_church", "reward_collected")
 
 	# Add church_bells as a confirmed melody source and award one fragment.
+	var previous_melody: Dictionary = get_melody_state("festival_melody").duplicate(true)
 	var melody_state := _award_festival_source_once("church_bells")
 	_sync_festival_state_from_fragments(melody_state)
 
 	set_melody_progress({"festival_melody": melody_state})
+	_emit_fragment_story_milestones(previous_melody, "church_bells", melody_state)
 
 	# Open the tunnel landmarks for the next phase.
 	advance_landmark_state("bi_shan_tunnel", "available")
@@ -1253,11 +1391,32 @@ func _award_festival_source_once(source_id: String) -> Dictionary:
 
 	sources.append(source_id)
 	melody_state["known_sources"] = sources
-	melody_state["fragments_found"] = mini(
+	var new_count := mini(
 		int(melody_state.get("fragments_found", 0)) + 1,
 		int(melody_state.get("fragments_total", fragments_total))
 	)
+	melody_state["fragments_found"] = new_count
+
 	return melody_state
+
+
+func _emit_fragment_story_milestones(previous_melody: Dictionary, source_id: String, melody_state: Dictionary) -> void:
+	var previous_sources: Array[String] = _normalize_string_array(previous_melody.get("known_sources", []))
+	if previous_sources.find(source_id) >= 0:
+		return
+
+	var new_count := int(melody_state.get("fragments_found", 0))
+	story_milestone.emit("fragment_restored", {
+		"melody_id": "festival_melody",
+		"source_id": source_id,
+		"total_found": new_count,
+	})
+
+	if new_count >= int(melody_state.get("fragments_total", fragments_total)):
+		story_milestone.emit("festival_ready", {
+			"fragments_found": new_count,
+			"helped_residents": _count_helped_residents(),
+		})
 
 
 func _sync_festival_state_from_fragments(melody_state: Dictionary, allow_performed: bool = false) -> void:

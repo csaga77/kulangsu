@@ -34,7 +34,7 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 - Each resident entry owns identity, landmark context, ambient lines, dialogue beats, appearance preset, and spawn metadata.
 - Ambient lines must stay short enough for speech balloons.
 - Talk beats may update objective, chapter, save status, trust, and resident journal state through `AppState`.
-- Resident talk progression is linear right now. `conversation_index` advances through the resident's `dialogue_beats`.
+- Resident talk progression uses a two-layer model: `conditional_beats` (priority-sorted, condition-gated, checked first) and then the linear `dialogue_beats` spine indexed by `conversation_index`.
 - Nearby resident bubbles should default to `...` until explicit talk input reveals a line.
 - Residents should only be targetable when the player shares the same absolute z/layer context.
 - Residents should only be visible and targetable when they share the player's current tunnel context: both outside, or inside the same tunnel after actually entering its interior level rather than merely overlapping the tunnel footprint on the surface.

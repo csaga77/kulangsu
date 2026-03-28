@@ -115,7 +115,34 @@ static func _story_residents() -> Dictionary:
 				"feet/shoes/feet_shoes_revised",
 				"brown"
 			),
-			_spawn("Piano Ferry", Vector2(-260.0, 180.0), -150.0, MOOD_NORMAL, 88.0)
+			_spawn("Piano Ferry", Vector2(-260.0, 180.0), -150.0, MOOD_NORMAL, 88.0),
+			{},
+			[
+				{
+					"conditions": {"landmark_state": {"trinity_church": "reward_collected"}},
+					"priority": 10,
+					"once": true,
+					"line": "The church phrase came home. The harbor can breathe easier now.",
+					"trust_delta": 1,
+					"journal_step": "Lian heard the church fragment return and trusts the melody is mending.",
+				},
+				{
+					"conditions": {"landmark_state": {"long_shan_tunnel": "reward_collected"}},
+					"priority": 20,
+					"once": true,
+					"line": "You walked someone through the dark. The harbor hears that kind of thing.",
+					"trust_delta": 1,
+					"journal_step": "Lian noticed you helped in Long Shan Tunnel.",
+				},
+				{
+					"conditions": {"fragments_found_min": 3},
+					"priority": 30,
+					"once": true,
+					"line": "Three phrases and the plaza is already humming louder. The tower will want to hear them together.",
+					"objective": "Carry the recovered phrases to Bagua Tower.",
+					"journal_step": "Lian urged you toward the tower now that most phrases are in hand.",
+				},
+			]
 		),
 		"church_caretaker": _resident(
 			"Choir Caretaker Mei",
@@ -172,7 +199,25 @@ static func _story_residents() -> Dictionary:
 				"feet/shoes/feet_shoes_revised",
 				"black"
 			),
-			_spawn("Trinity Church", Vector2(-300.0, 210.0), -130.0, MOOD_SMILE, 88.0)
+			_spawn("Trinity Church", Vector2(-300.0, 210.0), -130.0, MOOD_SMILE, 88.0),
+			{},
+			[
+				{
+					"conditions": {"landmark_state": {"bi_shan_tunnel": "reward_collected"}},
+					"priority": 10,
+					"once": true,
+					"line": "The tunnel echo came back softer than I expected. When music returns through stone, it always sounds gentler.",
+					"trust_delta": 1,
+					"journal_step": "Mei heard the tunnel echo resolve and feels the church phrase sits more naturally now.",
+				},
+				{
+					"conditions": {"fragments_found_min": 3, "resident_known": ["tower_keeper"]},
+					"priority": 20,
+					"once": true,
+					"line": "Suyin at the tower knows how to read distance. If anyone can line up three separate phrases, it is someone who sees the whole island at once.",
+					"journal_step": "Mei endorsed Tower Keeper Suyin as the person who can synthesize the recovered fragments.",
+				},
+			]
 		),
 			"tunnel_guide": _resident(
 				"Tunnel Guide Ren",
@@ -962,7 +1007,8 @@ static func _resident(
 	dialogue_beats: Array,
 	appearance: Dictionary,
 	spawn: Dictionary,
-	movement: Dictionary = {}
+	movement: Dictionary = {},
+	conditional_beats: Array = []
 ) -> Dictionary:
 	return {
 		"display_name": display_name,
@@ -972,6 +1018,7 @@ static func _resident(
 		"melody_hint": melody_hint,
 		"ambient_lines": ambient_lines.duplicate(true),
 		"dialogue_beats": dialogue_beats.duplicate(true),
+		"conditional_beats": conditional_beats.duplicate(true),
 		"appearance": appearance.duplicate(true),
 		"spawn": spawn.duplicate(true),
 		"movement": movement.duplicate(true),

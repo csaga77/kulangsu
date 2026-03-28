@@ -79,7 +79,10 @@ This split is intentional: authored content stays in the catalog, mutable progre
   - a nearby `...` cue bubble before the player commits to talk
   - short authored lines for resident beats
   - linear `dialogue_beats` for `R` interactions
+  - optional `conditional_beats` for context-sensitive lines that react to cross-landmark progress
 - `conversation_index` determines which beat is consumed next. For ambient residents, those beats are generated from `ambient_lines`. This is a compact prototype-friendly model, not a full branching dialogue system.
+- When `conditional_beats` are present, `interact_with_resident()` evaluates them first: it picks the highest-priority beat whose conditions are all satisfied and that has not already fired (if marked `once`). If no conditional beat matches, it falls through to the linear spine.
+- Condition keys include `landmark_state`, `melody_state`, `fragments_found_min`, `trust_min`, `chapter`, `mode`, and `resident_known`. All are evaluated against current `AppState`.
 - The system is intentionally biased toward short conversations, objective nudges, and journal updates rather than large dialogue trees.
 
 ### Journal Notes Are Generated Text
@@ -101,6 +104,7 @@ Each catalog resident currently resolves to a runtime profile with these keys:
   - `melody_hint`
   - `ambient_lines`
   - `dialogue_beats`
+  - `conditional_beats`
   - `appearance`
   - `spawn`
 - Runtime progression fields:
@@ -109,6 +113,7 @@ Each catalog resident currently resolves to a runtime profile with these keys:
   - `conversation_index`
   - `quest_state`
   - `current_step`
+  - `_fired_conditional_beats`
 
 The catalog helper `_resident(...)` in [`../game/resident_catalog.gd`](../game/resident_catalog.gd) defines the default shape. If this shape changes, update [`contracts.md`](contracts.md) and [`features/npc_system.md`](features/npc_system.md) in the same patch.
 
@@ -128,6 +133,28 @@ The catalog helper `_resident(...)` in [`../game/resident_catalog.gd`](../game/r
   - `quest_state`
 
 Ambient residents do not need custom beats authored by hand. [`../game/resident_catalog.gd`](../game/resident_catalog.gd) currently builds their beats from `ambient_lines` through `_ambient_beats(...)`.
+
+### Conditional Beat Shape
+
+`conditional_beats` entries are evaluated by `_pick_conditional_beat()` before the linear spine. Each entry uses:
+
+- Required:
+  - `conditions`: dictionary of condition keys (see below)
+  - `line`: the dialogue text
+- Optional:
+  - `priority`: integer, higher wins (default 0)
+  - `once`: if true, the beat fires only once per resident; tracked in `_fired_conditional_beats`
+  - `trust_delta`, `journal_step`, `objective`, `hint`, `chapter`, `save_status`, `quest_state`: same side-effect keys as linear beats
+
+Condition keys:
+
+- `landmark_state`: `{landmark_id: required_state}`
+- `melody_state`: `{melody_id: required_state}`
+- `fragments_found_min`: minimum total fragment count
+- `trust_min`: minimum trust with this resident
+- `chapter`: required current chapter
+- `mode`: required current mode
+- `resident_known`: array of resident ids that must be known
 
 ### Spawn Payload
 

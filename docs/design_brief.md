@@ -89,6 +89,7 @@ Input expectations:
 - Core melody loop, current gap list, and MVP implementation order: [`features/core_melody_loop.md`](features/core_melody_loop.md)
 - Multi-level landmark and stacked-room design: [`features/multi_level_spaces.md`](features/multi_level_spaces.md)
 - NPC and resident system slice: [`npc_system_design.md`](npc_system_design.md)
+- Event and story extension ideas: [`event_story_system_design.md`](event_story_system_design.md)
 - Player wardrobe and costume unlocks: [`player_costume_system.md`](player_costume_system.md)
 - Reusable board game module: [`grid_board_game_design.md`](grid_board_game_design.md)
 - Marble game prototype rules and architecture: [`marble_game_design.md`](marble_game_design.md)
