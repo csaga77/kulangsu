@@ -98,6 +98,9 @@ Use these when you need a focused validation target instead of the full project 
 
 ## Documentation And Agent Support
 
+- [`../scripts/source_control_report.py`](../scripts/source_control_report.py) - repo-local wrapper for the shared source-control inspection helper
+- [`../scripts/token_efficiency_audit.py`](../scripts/token_efficiency_audit.py) - repo-local wrapper for the shared helper ROI audit
+- [`../scripts/token_efficiency_workflows.json`](../scripts/token_efficiency_workflows.json) - local workflow baselines and review cadence for token-efficiency audits
 - [`../docs/`](../docs) - project docs
 - [`features/multi_level_spaces.md`](features/multi_level_spaces.md) - implementation-facing guide for stacked rooms, parent-owned level mapping, portals, stairs, and current design gaps
 - [`features/core_melody_loop.md`](features/core_melody_loop.md) - implementation-facing summary of the current melody-driven gameplay loop, gap list, MVP build order, and reusable manual playtest route
@@ -146,6 +149,8 @@ Useful searches when locating code:
 - `RainGroundImpacts` for isometric raindrop ground-hit rendering
 - `test_weather` for the focused weather sandbox and control panel
 - `water_tint` for the water shader and material
+- `source_control_report` for the repo-local and shared Git inspection helpers
+- `token_efficiency` for helper ROI and audit cadence review
 - `class_name GridBoardGame` for the board-game module
 - `class_name UIStyle` for shared UI styling
 

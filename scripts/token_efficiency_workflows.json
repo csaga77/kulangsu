@@ -1,0 +1,85 @@
+{
+  "heuristics": {
+    "bytes_per_token": 4.0,
+    "command_overhead_tokens": 25.0
+  },
+  "workflows": [
+    {
+      "name": "source_control_parent_repo",
+      "description": "Compare the local source-control report wrapper against the common manual multi-command inspection flow for the Kulangsu parent repo.",
+      "cwd": "..",
+      "helper": {
+        "label": "local source control report",
+        "cmd": [
+          "python3",
+          "scripts/source_control_report.py",
+          "--max-files",
+          "8",
+          "--max-commits",
+          "5"
+        ]
+      },
+      "baseline": [
+        {
+          "label": "root status",
+          "cmd": [
+            "git",
+            "status",
+            "-sb"
+          ]
+        },
+        {
+          "label": "submodule heads",
+          "cmd": [
+            "git",
+            "submodule",
+            "status"
+          ]
+        },
+        {
+          "label": "godot_common status",
+          "cmd": [
+            "git",
+            "-C",
+            "godot_common",
+            "status",
+            "-sb"
+          ]
+        },
+        {
+          "label": "godot_tilemap status",
+          "cmd": [
+            "git",
+            "-C",
+            "godot_tilemap",
+            "status",
+            "-sb"
+          ]
+        },
+        {
+          "label": "lpc generator status",
+          "cmd": [
+            "git",
+            "-C",
+            "3rdparty/Universal-LPC-Spritesheet-Character-Generator",
+            "status",
+            "-sb"
+          ]
+        },
+        {
+          "label": "codex_agents status",
+          "cmd": [
+            "git",
+            "-C",
+            "codex_agents",
+            "status",
+            "-sb"
+          ]
+        }
+      ],
+      "review": {
+        "expected_uses_between_reviews": 20
+      }
+    }
+  ]
+}

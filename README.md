@@ -24,6 +24,7 @@ No package manager, CI pipeline, or automated test runner is checked into this r
 - [`scenes/`](scenes) - runtime gameplay scenes plus validation scene containers
 - [`terrain/`](terrain) - island terrain scene, terrain generation, and water rendering setup
 - [`resources/`](resources) - audio, sprites, materials, animations, and tilesets
+- [`scripts/`](scripts) - repo-local helper wrappers, including the short source-control report entry point
 - [`docs/`](docs) - project documentation for humans and coding agents
 - [`codex_agents/`](codex_agents) - shared agent runbooks and reusable support docs
 - [`godot_common/`](godot_common) - shared Godot support code via submodule
@@ -47,6 +48,40 @@ Primary submodule documentation entry points:
 - [`godot_common/AGENTS.md`](godot_common/AGENTS.md), [`godot_common/README.md`](godot_common/README.md), and [`godot_common/docs/`](godot_common/docs) - entry points for shared Godot support code and helper ownership guidance
 - [`godot_tilemap/AGENTS.md`](godot_tilemap/AGENTS.md), [`godot_tilemap/README.md`](godot_tilemap/README.md), and [`godot_tilemap/docs/`](godot_tilemap/docs) - entry points for tilemap helper/tooling architecture and repo conventions
 - [`3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md`](3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md) - upstream LPC generator overview, licensing, attribution, and development references
+
+## Workflow Helpers
+
+For low-token source-control inspection in this repo, prefer the local wrapper:
+
+```bash
+python3 scripts/source_control_report.py
+```
+
+It defaults to the parent repo, delegates to the shared helper in [`codex_agents/scripts/source_control_report.py`](codex_agents/scripts/source_control_report.py), and keeps common branch/worktree/submodule checks in one report.
+
+Useful variants:
+
+```bash
+python3 scripts/source_control_report.py codex_agents
+python3 scripts/source_control_report.py --fail-on-warnings
+python3 scripts/source_control_report.py --json
+```
+
+For periodic review of whether a token-saving helper still earns its keep, prefer:
+
+```bash
+python3 scripts/token_efficiency_audit.py
+```
+
+It defaults to [`scripts/token_efficiency_workflows.json`](scripts/token_efficiency_workflows.json), forwards to the shared audit helper in [`codex_agents/scripts/token_efficiency_audit.py`](codex_agents/scripts/token_efficiency_audit.py), and compares the local helper against the documented manual baseline.
+
+Useful variants:
+
+```bash
+python3 scripts/token_efficiency_audit.py --fail-on-regression
+python3 scripts/token_efficiency_audit.py --json
+python3 scripts/token_efficiency_audit.py scripts/token_efficiency_workflows.json --workflow source_control_parent_repo
+```
 
 ## Run The Project
 
@@ -86,6 +121,8 @@ Start here for project context:
 - [`docs/architecture.md`](docs/architecture.md) - system boundaries and relationships
 - [`docs/module_map.md`](docs/module_map.md) - where code and content live
 - [`docs/submodules.md`](docs/submodules.md) - submodule roles and governance
+- [`scripts/source_control_report.py`](scripts/source_control_report.py) - repo-local source-control status wrapper
+- [`scripts/token_efficiency_audit.py`](scripts/token_efficiency_audit.py) - repo-local helper ROI and review-cadence audit wrapper
 - [`codex_agents/README.md`](codex_agents/README.md) - entry point for the shared agent-support submodule
 - [`docs/contracts.md`](docs/contracts.md) - stable interfaces and boundaries
 - [`docs/release_policy.md`](docs/release_policy.md) - current release/version policy
