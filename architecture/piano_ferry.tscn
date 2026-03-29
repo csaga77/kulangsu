@@ -14,6 +14,9 @@
 [sub_resource type="CircleShape2D" id="CircleShape2D_harbor_refrain"]
 radius = 56.0
 
+[sub_resource type="CircleShape2D" id="CircleShape2D_festival_stage"]
+radius = 84.0
+
 [node name="ferry" type="Node2D" unique_id=61386167]
 y_sort_enabled = true
 script = ExtResource("1_j6cxs")
@@ -130,3 +133,16 @@ visible_in_states = Array[String](["introduced"])
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HarborRefrain"]
 shape = SubResource("CircleShape2D_harbor_refrain")
+
+[node name="FestivalStage" type="Area2D" parent="."]
+collision_layer = 1
+position = Vector2(432, 256)
+script = ExtResource("8_ltrg")
+landmark_id = "festival_stage"
+trigger_id = "harbor_stage"
+display_name = "Festival Stage"
+melody_hint = "The plaza answers back all at once as the harbor finally carries the full melody."
+visible_in_states = Array[String](["available"])
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="FestivalStage"]
+shape = SubResource("CircleShape2D_festival_stage")

@@ -23,6 +23,12 @@ radius = 30.0
 [sub_resource type="CircleShape2D" id="CircleShape2D_exit"]
 radius = 30.0
 
+[sub_resource type="CircleShape2D" id="CircleShape2D_light_pocket_south"]
+radius = 34.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_light_pocket_north"]
+radius = 34.0
+
 [node name="long_shan_tunnel" type="Node2D" unique_id=679129524]
 y_sort_enabled = true
 script = ExtResource("1_76ww7")
@@ -98,6 +104,35 @@ position = Vector2(-3032, -2144)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="TunnelExit"]
 shape = SubResource("CircleShape2D_exit")
+
+[node name="LightPocketSouth" type="Area2D" parent="."]
+collision_layer = 1
+position = Vector2(-1104, -768)
+script = ExtResource("8_ltrg")
+landmark_id = "long_shan_tunnel"
+trigger_id = "light_pocket_south"
+display_name = "Lit Pocket"
+melody_hint = "The tunnel air steadies where the lantern light gathers."
+visible_in_states = Array[String](["in_progress"])
+collected_progress_key = "checkpoints_collected"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LightPocketSouth"]
+shape = SubResource("CircleShape2D_light_pocket_south")
+
+[node name="LightPocketNorth" type="Area2D" parent="."]
+collision_layer = 1
+position = Vector2(-2208, -1568)
+script = ExtResource("8_ltrg")
+landmark_id = "long_shan_tunnel"
+trigger_id = "light_pocket_north"
+display_name = "Lit Pocket"
+melody_hint = "Ren's route holds together once the next lantern pocket answers back."
+visible_in_states = Array[String](["in_progress"])
+collected_progress_key = "checkpoints_collected"
+requires_collected = Array[String](["light_pocket_south"])
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LightPocketNorth"]
+shape = SubResource("CircleShape2D_light_pocket_north")
 
 [editable path="exit_south/exit_south"]
 [editable path="exit_north/exit_north"]

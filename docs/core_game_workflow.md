@@ -132,8 +132,8 @@ Objective chain:
 
 1. Meet the church caretaker.
 2. Find three missing choir cues scattered around the church grounds.
-3. Return them in the correct order.
-4. Trigger a short chime sequence.
+3. Follow the cues in the church's authored order: steps, garden, then quiet yard.
+4. Trigger a short chime confirmation and return to Mei.
 
 Reward:
 
@@ -185,7 +185,7 @@ Objective chain:
 1. Meet an anxious NPC who refuses to cross alone.
 2. Lead them through the tunnel at a calm pace.
 3. Stop at safe lit pockets when the NPC becomes nervous.
-4. Exit together and hear their story.
+4. Exit together, then hear their story and Bagua handoff.
 
 Failure state:
 
@@ -235,7 +235,7 @@ Tracks:
 - Current player appearance profile
 - Collected melody fragments
 - Reconstructed melodies
-- Melody state: heard, reconstructed, performed
+- Melody state: heard, reconstructed, performed, resonant
 - Open shortcuts
 
 ### Relationship Layer
@@ -438,15 +438,15 @@ The ending sequence should behave like a playable ritual, not a detached cutscen
 
 ### Festival Entry Conditions
 
-- All three fragments restored
+- All four fragments restored
 - Player returns to Ferry Plaza
-- Festival prompt explicitly confirmed
+- Festival stage trigger explicitly activated
 
 ### Finale Sequence Beats
 
-1. Lock free-roam interactions except the festival nodes
+1. Lock free-roam interactions except the festival stage
 2. Gather helped residents into the plaza
-3. Activate the reconstructed melody stations in order
+3. Activate the reconstructed harbor stage
 4. Play environmental response pass across lights, windows, crowd, and music
 5. Transition into ending choice
 
@@ -496,7 +496,7 @@ Build the workflow in the smallest loop that proves the design.
 
 ### 1. Return to Ferry Plaza
 
-After recovering all fragments, the player is told the festival can begin at sunset near the ferry / central plaza.
+After recovering all fragments at Bagua Tower, the player is told to return to the ferry plaza and use the harbor festival stage.
 
 ### 2. Final Preparation
 
@@ -513,7 +513,7 @@ This is the payoff sequence.
 Structure:
 
 1. Residents from completed quest lines gather.
-2. The player activates each recovered melody fragment in order.
+2. The player activates the harbor festival stage.
 3. The full arrangement plays.
 4. The island visually responds:
    - lights
@@ -575,12 +575,9 @@ Avoid:
 
 ### Systems to add next
 
-1. Quest state machine
+1. Shared practice / recognition prompt layer
 2. Full dialogue panel layered on top of the existing resident note system
-3. Landmark objective triggers
-4. Melody fragment inventory
-5. Endgame festival sequence controller
-6. Save / load progression data
+3. Save / load progression data
 
 ## Suggested Production Milestones
 
@@ -606,10 +603,10 @@ Avoid:
 
 ### Milestone 4: Endgame
 
-- Festival assembly
+- Festival stage performance
 - Ending choice
 - Postgame free walk
 
 ## One-Sentence Loop
 
-Arrive by ferry, explore the island's landmark districts, help residents recover three melody fragments from a lost festival tune, reunite the island through a final performance, and choose whether to leave Kulangsu or remain part of it.
+Arrive by ferry, explore the island's landmark districts, help residents recover four melody fragments from a lost festival tune, reunite the island through a final harbor-stage performance, and choose whether to leave Kulangsu or remain part of it.

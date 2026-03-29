@@ -40,11 +40,6 @@ custom_minimum_size = Vector2(320, 54)
 layout_mode = 2
 text = "Settings"
 
-[node name="EndingButton" type="Button" parent="Margin/Body"]
-custom_minimum_size = Vector2(320, 54)
-layout_mode = 2
-text = "Prototype Ending"
-
 [node name="ReturnButton" type="Button" parent="Margin/Body"]
 custom_minimum_size = Vector2(320, 54)
 layout_mode = 2

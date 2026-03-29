@@ -13,11 +13,11 @@ static func build_catalog() -> Dictionary:
 			"festival_melody": {
 				"display_name": "Festival Melody",
 				"district": "Island-wide",
-				"summary": "A missing festival line scattered across the harbor, church, tunnels, and tower.",
+				"summary": "A missing festival line first noticed at the harbor, then rebuilt across the church, tunnels, and tower.",
 				"fragment_total": 4,
-				"performance_landmark": "Bagua Tower",
-				"performance_prompt": "Compare the recovered phrases at Bagua Tower when enough of the contour is known.",
-				"unlock_condition": "Recover clues from the harbor, church, tunnels, and tower.",
+				"performance_landmark": "Festival Stage",
+				"performance_prompt": "Return to the ferry plaza and let the restored route ring out at the harbor stage.",
+				"unlock_condition": "Listen at the harbor, then recover four true fragments from the church, tunnels, and tower.",
 				"world_response_summary": "Residents, routes, and the harbor gathering feel more alive once the island remembers the tune.",
 			"sources": [
 				{
@@ -33,16 +33,22 @@ static func build_catalog() -> Dictionary:
 					"summary": "A steadier phrase hidden in the bells, choir cues, and the church grounds.",
 				},
 				{
-					"source_id": "tunnel_echo",
-					"label": "Tunnel Contour",
-					"landmark": "Bi Shan / Long Shan Tunnels",
-					"summary": "A direction-changing line heard through calmer echoes and safe-lit tunnel pockets.",
+					"source_id": "bi_shan_echo",
+					"label": "Bi Shan Contour",
+					"landmark": "Bi Shan Tunnel",
+					"summary": "A calmer tunnel phrase revealed when the mural chamber finally answers the traced echoes.",
+				},
+				{
+					"source_id": "long_shan_route",
+					"label": "Long Shan Cadence",
+					"landmark": "Long Shan Tunnel",
+					"summary": "A steadier route phrase carried between the lit pockets while escorting Ren through the dark.",
 				},
 				{
 					"source_id": "tower_chamber",
 					"label": "Tower Synthesis",
 					"landmark": "Bagua Tower",
-					"summary": "The high-place comparison that lets the island's separate phrases line up into one route.",
+					"summary": "The high-place comparison that lets the island's separate phrases line up into one route toward the harbor stage.",
 				},
 			],
 		},

@@ -10,17 +10,22 @@ The first complete landmark loop. Establishes the quest plumbing pattern that Bi
 
 ## User / Player Experience
 
-The player arrives at Trinity Church after Caretaker Lian at the ferry points them there. Choir Caretaker Mei explains that three choir cues have scattered across the church grounds. The player walks the grounds, presses R near three glowing or visually distinct spots (the front steps, the side garden, and the quiet yard), and collects each cue. Once all three are in hand, returning to Mei and pressing R triggers the resolution: the phrase settles, the fragment is awarded, and the journal updates to point toward the tunnels. The church caretaker's ambient lines change after resolution.
+The player arrives at Trinity Church after Caretaker Lian at the ferry points them there. Choir Caretaker Mei explains that three choir cues have scattered across the church grounds. The player walks the grounds, presses `R` at three invisible cue volumes placed at the front steps, the side garden, and the quiet yard, and collects each cue in that authored order. Once all three are in hand, the HUD surfaces a short chime line and the player returns to Mei to resolve the arc: the phrase settles, the fragment is awarded, and the journal updates to point toward the tunnels. The church caretaker's ambient lines change after resolution.
 
-The mood should stay calm throughout. There is no timer, no failure state, and no wrong order for collecting the three cues. The ordering gate applies only to the resolution beat — the player cannot trigger Mei's resolved dialogue until all three are in hand.
+The mood should stay calm throughout. There is no timer and no hard fail state. The cue order is authored through trigger visibility rather than punishment: the next cue only appears once the previous one has been collected.
 
 ## Rules
 
 - Trinity Church starts `locked`. It unlocks to `available` when the `ferry_caretaker` fires her first dialogue beat (`"unlock_landmark": "trinity_church"`).
-- The three choir cue triggers (steps, garden, yard) are visible and collectible once the landmark state is `available`, `introduced`, or `in_progress`.
+- The three choir cue triggers (steps, garden, yard) are invisible `LandmarkTrigger` volumes that become collectible once the landmark state is `available`, `introduced`, or `in_progress`.
 - Each cue is a `LandmarkTrigger` node placed directly in the scene. Collecting one calls `AppState.activate_landmark_trigger("trinity_church", cue_id, display_name, melody_hint)`.
+- Cue order is authored in the scene:
+  - `steps` has no prerequisite.
+  - `garden` requires `steps`.
+  - `yard` requires `steps` and `garden`.
 - Each cue carries a `melody_hint` export — flavour text shown on-screen when collected (e.g. "A low bell tone echoes from the old stone steps..."). This gives the player incremental melody feedback during the pickup walk.
 - Landmark state advances to `in_progress` on first cue collection.
+- After the third cue, `AppState` emits one extra chime-flavoured `melody_hint` and redirects the objective back to Mei.
 - The church_caretaker's resolved dialogue beat (beat index 2) has `"gate": "trinity_church_cues"`. It only fires when all three cues are in `cues_collected`. Before that, she responds with the gate fallback line.
 - When the gate passes and the resolved beat fires, `"landmark_reward": "trinity_church"` triggers `AppState._resolve_trinity_church()`:
   - Landmark state advances to `reward_collected`.
@@ -88,8 +93,8 @@ The mood should stay calm throughout. There is no timer, no failure state, and n
 
 ## Validation
 
-- Run the game, start a New Game, talk to Caretaker Lian. Confirm trinity_church advances to `available` and the three cue triggers appear near the church.
-- Walk to each cue and press R. Confirm each one disappears and the objective/hint updates after the third.
+- Run the game, start a New Game, talk to Caretaker Lian. Confirm trinity_church advances to `available` and the steps cue is the first one available near the church.
+- Walk to each cue and press R. Confirm the garden cue waits for the steps cue, the yard cue waits for steps plus garden, and the objective/hint updates after the third.
 - Talk to church_caretaker before collecting all cues. Confirm the gate fallback line appears.
 - Collect all three cues and talk to church_caretaker again. Confirm the resolved line fires, the journal Melody tab shows `church_bells` as a confirmed source, and fragments_found increments.
 - Open the journal after resolution. Confirm the Melody tab shows fragment count 1/4 and church_bells listed.
@@ -99,13 +104,14 @@ The mood should stay calm throughout. There is no timer, no failure state, and n
 ## Integration Checklist
 
 - [ ] Place three `LandmarkTrigger` nodes in `trinity_church.tscn` — one for each cue: `steps`, `garden`, `yard`.
-- [ ] For each: set `landmark_id = "trinity_church"`, `collected_progress_key = "cues_collected"`, `visible_in_states = [available, introduced, in_progress]`.
+- [x] For each: set `landmark_id = "trinity_church"`, `collected_progress_key = "cues_collected"`, `visible_in_states = [available, introduced, in_progress]`.
+- [x] Gate `garden` behind `steps` and `yard` behind `steps` + `garden` using `requires_collected`.
 - [ ] Position each trigger node at the matching world location in the scene.
 - [x] Confirm `collision_layer` matches the layer used for inspectable objects.
 
 ## Out Of Scope
 
-- Audio or visual effects for the chime sequence. The arc resolves via text/journal for now.
+- A bespoke visual marker for choir cues. The current implementation intentionally keeps cues invisible and relies on proximity prompts plus melody-hint text.
 - A formal "performance beat" UI for the chime. The resolution is implicit through the dialogue beat.
 - Any changes to the church scene's tile layout, roof, or doors.
 - The choir student and bell repairer resident arcs (ambient residents at the church). Those are separate from the main arc.

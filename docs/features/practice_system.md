@@ -1,6 +1,6 @@
 # Practice System
 
-Design doc for the practice and performance layer. No implementation exists yet. Read this before adding any practice or performance state to the game.
+Design doc for the practice and recognition layer that should sit between fragment recovery and the final harbor-stage performance. A simple in-world performance trigger now exists; this doc is about the richer prompt that still has not been implemented.
 
 ## Goal
 
@@ -48,9 +48,9 @@ This avoids requiring the `piano_game` module before the first performance lands
 
 ### Performance Point Activation
 
-Each landmark has one performance point: a `LandmarkTrigger` (or equivalent Area2D) placed at the canonical performance spot listed in `melody_catalog.gd`. The player presses R at that node when the melody is in `reconstructed` state. The recognition prompt opens. On success, `AppState` advances the melody to `performed` and fires the world response.
+Each landmark can have one performance point: a `LandmarkTrigger` (or equivalent Area2D) placed at the canonical performance spot listed in `melody_catalog.gd`. The player presses R at that node when the melody is in `reconstructed` state. The recognition prompt opens. On success, `AppState` advances the melody to `performed` and fires the world response.
 
-Current performance landmark for `festival_melody`: **Bagua Tower** (as defined in `melody_catalog.gd`).
+Current performance landmark for `festival_melody`: **Festival Stage** at Piano Ferry (as defined in `melody_catalog.gd`).
 
 For Trinity Church specifically: the chime activation at the end of the choir cue arc is effectively the first performance point, simplified. The current implementation resolves it implicitly through the caretaker's resolved beat. When a proper performance system exists, this can be upgraded to use the recognition prompt at the church performance spot before the beat fires.
 
@@ -100,7 +100,7 @@ For Trinity Church specifically: the chime activation at the end of the choir cu
 ## Validation
 
 Once implemented:
-- Reach Bagua Tower with `festival_melody` in `reconstructed` state.
+- Reach the Festival Stage with `festival_melody` in `reconstructed` state.
 - Press R at the performance point. Confirm the recognition prompt opens.
 - Complete the prompt correctly. Confirm `performed` flag is set and the journal Melody tab updates.
 - Attempt the prompt with incorrect order. Confirm gentle feedback and immediate retry.

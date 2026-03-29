@@ -49,6 +49,8 @@ var m_pending_setup_free_walk := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	if !AppState.story_milestone.is_connected(_on_story_milestone):
+		AppState.story_milestone.connect(_on_story_milestone)
 	_build_app_shell()
 	get_viewport().size_changed.connect(_update_ui_layout)
 	_update_ui_layout()
@@ -145,7 +147,6 @@ func _build_app_shell() -> void:
 	m_pause_panel.connect("settings_requested", func() -> void:
 		_open_overlay(ScreenState.SETTINGS)
 	)
-	m_pause_panel.connect("ending_requested", _on_prototype_finale_pressed)
 	m_pause_panel.connect("return_to_title_requested", func() -> void:
 		_show_confirm(
 			"Return to Title?",
@@ -501,7 +502,6 @@ func _on_player_setup_cancelled() -> void:
 	_show_title()
 
 
-func _on_prototype_finale_pressed() -> void:
-	if _is_game_active():
-		AppState.configure_postgame()
+func _on_story_milestone(milestone_id: String, _context: Dictionary) -> void:
+	if milestone_id == "festival_performed" and _is_game_active():
 		_open_overlay(ScreenState.ENDING)

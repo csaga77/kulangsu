@@ -659,9 +659,9 @@ func configure_new_game() -> void:
 
 func configure_continue() -> void:
 	set_mode("Story")
-	set_chapter("Midway")
-	set_location("Harbor Path")
-	set_objective("Resume exploring from the harbor and choose your next district.")
+	set_chapter("Open Exploration")
+	set_location("Trinity Church")
+	set_objective("Resume from the church grounds and choose which tunnel route to follow next.")
 	set_journal_unlocked(true)
 	set_hint(build_input_hint("R Inspect"))
 	set_save_status("Autosave: resumed from the latest harbor checkpoint")
@@ -671,7 +671,6 @@ func configure_continue() -> void:
 	set_all_landmark_progress(_build_landmark_progress("continue"))
 	_seed_resident_progress("ferry_caretaker", 2, 2, "resolved", "Waiting for the harbor to hear a fully restored phrase.")
 	_seed_resident_progress("church_caretaker", 2, 2, "reward_collected", "The church phrase is stable and pointing toward the tunnels.")
-	_seed_resident_progress("tower_keeper", 1, 1, "introduced", "Preparing to compare fragments at Bagua Tower.")
 	_update_summary_counts()
 
 
@@ -811,10 +810,10 @@ func _build_story_melody_progress(state_id: String) -> Dictionary:
 		"continue":
 			return {
 				"festival_melody": {
-					"state": "reconstructed",
-					"fragments_found": 3,
-					"known_sources": ["ferry_plaza", "church_bells", "tunnel_echo"],
-					"next_lead": "Carry the stronger contour toward Bagua Tower and compare the recovered phrases.",
+					"state": "heard",
+					"fragments_found": 1,
+					"known_sources": ["ferry_plaza", "church_bells"],
+					"next_lead": "Follow either tunnel route and see how the church phrase changes under stone.",
 					"performed": false,
 				},
 			}
@@ -833,7 +832,7 @@ func _build_story_melody_progress(state_id: String) -> Dictionary:
 				"festival_melody": {
 					"state": "resonant",
 					"fragments_found": 4,
-					"known_sources": ["ferry_plaza", "church_bells", "tunnel_echo", "tower_chamber"],
+					"known_sources": ["ferry_plaza", "church_bells", "bi_shan_echo", "long_shan_route", "tower_chamber"],
 					"next_lead": "Listen to how the island answers now that the festival melody has returned.",
 					"performed": true,
 				},
@@ -946,8 +945,9 @@ func _default_landmark_progress() -> Dictionary:
 		"piano_ferry": {"state": "locked", "harbor_clue_found": false},
 		"trinity_church": {"state": "locked", "cues_collected": []},
 		"bi_shan_tunnel": {"state": "locked", "echoes_collected": []},
-		"long_shan_tunnel": {"state": "locked"},
-		"bagua_tower": {"state": "locked"},
+		"long_shan_tunnel": {"state": "locked", "checkpoints_collected": []},
+		"bagua_tower": {"state": "locked", "synthesis_done": false},
+		"festival_stage": {"state": "locked"},
 	}
 
 
@@ -958,32 +958,36 @@ func _build_landmark_progress(state_id: String) -> Dictionary:
 				"piano_ferry": {"state": "available", "harbor_clue_found": false},
 				"trinity_church": {"state": "locked", "cues_collected": []},
 				"bi_shan_tunnel": {"state": "locked", "echoes_collected": []},
-				"long_shan_tunnel": {"state": "locked"},
-				"bagua_tower": {"state": "locked"},
+				"long_shan_tunnel": {"state": "locked", "checkpoints_collected": []},
+				"bagua_tower": {"state": "locked", "synthesis_done": false},
+				"festival_stage": {"state": "locked"},
 			}
 		"continue":
 			return {
 				"piano_ferry": {"state": "reward_collected", "harbor_clue_found": true},
 				"trinity_church": {"state": "reward_collected", "cues_collected": ["steps", "garden", "yard"]},
-				"bi_shan_tunnel": {"state": "introduced", "echoes_collected": []},
-				"long_shan_tunnel": {"state": "available"},
-				"bagua_tower": {"state": "locked"},
+				"bi_shan_tunnel": {"state": "available", "echoes_collected": []},
+				"long_shan_tunnel": {"state": "available", "checkpoints_collected": []},
+				"bagua_tower": {"state": "locked", "synthesis_done": false},
+				"festival_stage": {"state": "locked"},
 			}
 		"free_walk":
 			return {
 				"piano_ferry": {"state": "introduced", "harbor_clue_found": false},
 				"trinity_church": {"state": "available", "cues_collected": []},
 				"bi_shan_tunnel": {"state": "available", "echoes_collected": []},
-				"long_shan_tunnel": {"state": "available"},
-				"bagua_tower": {"state": "available"},
+				"long_shan_tunnel": {"state": "available", "checkpoints_collected": []},
+				"bagua_tower": {"state": "available", "synthesis_done": false},
+				"festival_stage": {"state": "locked"},
 			}
 		"postgame":
 			return {
 				"piano_ferry": {"state": "reward_collected", "harbor_clue_found": true},
 				"trinity_church": {"state": "reward_collected", "cues_collected": ["steps", "garden", "yard"]},
 				"bi_shan_tunnel": {"state": "reward_collected", "echoes_collected": ["echo_a", "echo_b", "echo_c"]},
-				"long_shan_tunnel": {"state": "reward_collected"},
-				"bagua_tower": {"state": "reward_collected"},
+				"long_shan_tunnel": {"state": "reward_collected", "checkpoints_collected": ["light_pocket_south", "light_pocket_north"]},
+				"bagua_tower": {"state": "reward_collected", "synthesis_done": true},
+				"festival_stage": {"state": "reward_collected"},
 			}
 		_:
 			return _default_landmark_progress()
@@ -1028,6 +1032,8 @@ func advance_landmark_state(landmark_id: String, new_state: String) -> void:
 func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_name: String, melody_hint: String = "") -> bool:
 	match landmark_id:
 		"piano_ferry":
+			if trigger_id != "harbor_refrain":
+				return false
 			var ferry_progress := get_landmark_progress("piano_ferry")
 			if ferry_progress.is_empty() or bool(ferry_progress.get("harbor_clue_found", false)):
 				return false
@@ -1043,13 +1049,21 @@ func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_
 			if church_progress.is_empty() or _progress_has_string_entry(church_progress, "cues_collected", trigger_id):
 				return false
 			var all_collected := _collect_trinity_church_cue(trigger_id)
+			var cue_count := _normalize_string_array(
+				get_landmark_progress("trinity_church").get("cues_collected", [])
+			).size()
 			set_save_status("Found: %s" % display_name)
 			if melody_hint != "":
 				melody_hint_shown.emit(melody_hint)
 			if all_collected:
+				melody_hint_shown.emit("The three choir cues settle into one gentle church chime.")
 				set_objective("Return to Choir Caretaker Mei with all three choir cues.")
-				set_hint("R Talk to Choir Caretaker Mei   J Journal   Esc Pause")
+				set_hint(build_input_hint("R Talk to Choir Caretaker Mei"))
 				set_save_status("All choir cues found — return to Choir Caretaker Mei.")
+			elif cue_count == 1:
+				set_objective("Follow the next choir cue toward the side garden.")
+			elif cue_count == 2:
+				set_objective("Find the last choir cue in the quiet yard.")
 			return true
 		"bi_shan_tunnel":
 			var tunnel_progress := get_landmark_progress("bi_shan_tunnel")
@@ -1080,10 +1094,31 @@ func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_
 						set_save_status("Long Shan Tunnel entry reached — find Tunnel Guide Ren.")
 						return true
 					return false
+				"light_pocket_south", "light_pocket_north":
+					if get_landmark_state("long_shan_tunnel") != "in_progress":
+						set_save_status("The lit pockets matter once Tunnel Guide Ren starts the crossing.")
+						return false
+					var all_checkpoints := _collect_long_shan_checkpoint(trigger_id)
+					if melody_hint != "":
+						melody_hint_shown.emit(melody_hint)
+					if all_checkpoints:
+						set_objective("Lead the route through to the Long Shan Tunnel exit.")
+						set_hint(build_input_hint("R Collect Long Shan Tunnel Exit"))
+						set_save_status("Both lit pockets are steady — guide the route to the exit.")
+					else:
+						set_objective("Keep moving with Ren until you reach the next lit pocket.")
+						set_save_status("A safe-lit pocket steadied the route ahead.")
+					return true
 				"tunnel_exit":
 					if get_landmark_state("long_shan_tunnel") == "in_progress":
-						_resolve_long_shan_tunnel()
-						return true
+						var checkpoint_count := _normalize_string_array(
+							get_landmark_progress("long_shan_tunnel").get("checkpoints_collected", [])
+						).size()
+						if checkpoint_count >= 2:
+							_resolve_long_shan_tunnel()
+							return true
+						set_save_status("The route is still uneven. Pause with Ren at the lit pockets before crossing.")
+						return false
 					set_save_status("Tunnel exit reached — talk to Tunnel Guide Ren before crossing.")
 					return false
 			return false
@@ -1095,13 +1130,20 @@ func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_
 				var melody_state := get_melody_state("festival_melody")
 				var fragments_in := int(melody_state.get("fragments_found", 0))
 				if get_landmark_state("bagua_tower") == "in_progress" \
-				and fragments_in >= 2 \
+				and fragments_in >= 3 \
 				and !bool(tower_progress.get("synthesis_done", false)):
 					_resolve_bagua_tower_synthesis()
 					return true
 				set_save_status("The tower shows distance but not yet direction. Recover more fragments first.")
 				return false
 			return false
+		"festival_stage":
+			if get_landmark_state("festival_stage") != "available":
+				return false
+			if melody_hint != "":
+				melody_hint_shown.emit(melody_hint)
+			_perform_festival_melody()
+			return true
 	return false
 
 
@@ -1169,18 +1211,38 @@ func _collect_bi_shan_echo(echo_id: String) -> bool:
 	return echoes.size() >= 3
 
 
+## Collect one Long Shan lit-pocket checkpoint. Returns true when both route
+## checkpoints have been reached and the exit can resolve the escort.
+func _collect_long_shan_checkpoint(checkpoint_id: String) -> bool:
+	var progress := get_landmark_progress("long_shan_tunnel")
+	if progress.is_empty():
+		return false
+
+	var checkpoints: Array[String] = []
+	for entry in progress.get("checkpoints_collected", []):
+		checkpoints.append(String(entry))
+
+	if checkpoints.find(checkpoint_id) >= 0:
+		return checkpoints.size() >= 2
+
+	checkpoints.append(checkpoint_id)
+	progress["checkpoints_collected"] = checkpoints
+	set_landmark_progress("long_shan_tunnel", progress)
+	return checkpoints.size() >= 2
+
+
 ## Award the Bi Shan Tunnel melody fragment and advance melody state.
 ## Called when the player activates the mural chamber trigger with all echoes.
 func _resolve_bi_shan_tunnel() -> void:
 	advance_landmark_state("bi_shan_tunnel", "reward_collected")
 
 	var previous_melody: Dictionary = get_melody_state("festival_melody").duplicate(true)
-	var melody_state := _award_festival_source_once("tunnel_echo")
+	var melody_state := _award_festival_source_once("bi_shan_echo")
 	_sync_festival_state_from_fragments(melody_state)
 
 	set_melody_progress({"festival_melody": melody_state})
-	_emit_fragment_story_milestones(previous_melody, "tunnel_echo", melody_state)
-	set_objective("Explore Long Shan Tunnel and find Tunnel Guide Ren.")
+	_emit_fragment_story_milestones(previous_melody, "bi_shan_echo", melody_state)
+	set_objective("Explore Long Shan Tunnel and keep Ren moving between the lit pockets.")
 	set_save_status("Bi Shan Tunnel — mural resonance restored.")
 
 
@@ -1190,12 +1252,12 @@ func _resolve_long_shan_tunnel() -> void:
 	advance_landmark_state("long_shan_tunnel", "reward_collected")
 
 	var previous_melody: Dictionary = get_melody_state("festival_melody").duplicate(true)
-	var melody_state := _award_festival_source_once("tunnel_echo")
+	var melody_state := _award_festival_source_once("long_shan_route")
 	_sync_festival_state_from_fragments(melody_state)
 
 	set_melody_progress({"festival_melody": melody_state})
-	_emit_fragment_story_milestones(previous_melody, "tunnel_echo", melody_state)
-	set_objective("Climb Bagua Tower and find Tower Keeper Lin.")
+	_emit_fragment_story_milestones(previous_melody, "long_shan_route", melody_state)
+	set_objective("Climb Bagua Tower and compare the recovered phrases with Tower Keeper Suyin.")
 	set_save_status("Long Shan Tunnel — passage completed.")
 
 
@@ -1206,8 +1268,8 @@ func _resolve_bagua_tower_synthesis() -> void:
 	progress["synthesis_done"] = true
 	progress["state"] = "resolved"
 	set_landmark_progress("bagua_tower", progress)
-	set_objective("Return to Tower Keeper Lin to confirm the island melody.")
-	set_save_status("Bagua Tower synthesis complete — return to Tower Keeper Lin.")
+	set_objective("Return to Tower Keeper Suyin to confirm the island route.")
+	set_save_status("Bagua Tower synthesis complete — return to Tower Keeper Suyin.")
 
 
 ## Award the final Bagua Tower melody fragment and complete the island melody.
@@ -1217,12 +1279,14 @@ func _resolve_bagua_tower() -> void:
 
 	var previous_melody: Dictionary = get_melody_state("festival_melody").duplicate(true)
 	var melody_state := _award_festival_source_once("tower_chamber")
-	_sync_festival_state_from_fragments(melody_state, true)
+	_sync_festival_state_from_fragments(melody_state)
+	melody_state["next_lead"] = "Return to the ferry plaza and perform the restored melody at the festival stage."
 
 	set_melody_progress({"festival_melody": melody_state})
 	_emit_fragment_story_milestones(previous_melody, "tower_chamber", melody_state)
-	set_objective("The island melody is complete. Find the festival stage to perform it.")
-	set_save_status("The island melody is whole.")
+	advance_landmark_state("festival_stage", "available")
+	set_objective("Return to Piano Ferry and perform the restored melody at the festival stage.")
+	set_save_status("The island melody is whole — the harbor stage is ready.")
 
 
 ## Gate check: returns false if a beat's prerequisite condition is not met.
@@ -1246,6 +1310,10 @@ func _check_beat_gate(beat: Dictionary) -> bool:
 		"bagua_synthesis_done":
 			var progress := get_landmark_progress("bagua_tower")
 			return bool(progress.get("synthesis_done", false))
+		"bagua_tower_available":
+			return get_landmark_state("bagua_tower") != "locked"
+		"three_fragments_restored":
+			return fragments_found >= 3
 	return true
 
 
@@ -1355,11 +1423,11 @@ func _resolve_piano_ferry() -> void:
 	set_journal_unlocked(true)
 
 	var previous_melody: Dictionary = get_melody_state("festival_melody").duplicate(true)
-	var melody_state := _award_festival_source_once("ferry_plaza")
+	var melody_state := _award_festival_source_once("ferry_plaza", false)
 	_sync_festival_state_from_fragments(melody_state)
 	melody_state["next_lead"] = "Speak with the church caretaker and compare how the bells answer the harbor."
 	set_melody_progress({"festival_melody": melody_state})
-	_emit_fragment_story_milestones(previous_melody, "ferry_plaza", melody_state)
+	_emit_fragment_story_milestones(previous_melody, "ferry_plaza", melody_state, false)
 	set_save_status("Journal unlocked — Trinity Church is marked as your first lead.")
 
 
@@ -1382,7 +1450,7 @@ func _resolve_trinity_church() -> void:
 	advance_landmark_state("long_shan_tunnel", "available")
 
 
-func _award_festival_source_once(source_id: String) -> Dictionary:
+func _award_festival_source_once(source_id: String, counts_as_fragment: bool = true) -> Dictionary:
 	var melody_state := get_melody_state("festival_melody").duplicate(true)
 	var sources: Array[String] = _normalize_string_array(melody_state.get("known_sources", []))
 	if sources.find(source_id) >= 0:
@@ -1391,18 +1459,27 @@ func _award_festival_source_once(source_id: String) -> Dictionary:
 
 	sources.append(source_id)
 	melody_state["known_sources"] = sources
-	var new_count := mini(
-		int(melody_state.get("fragments_found", 0)) + 1,
-		int(melody_state.get("fragments_total", fragments_total))
-	)
-	melody_state["fragments_found"] = new_count
+	if counts_as_fragment:
+		var new_count := mini(
+			int(melody_state.get("fragments_found", 0)) + 1,
+			int(melody_state.get("fragments_total", fragments_total))
+		)
+		melody_state["fragments_found"] = new_count
 
 	return melody_state
 
 
-func _emit_fragment_story_milestones(previous_melody: Dictionary, source_id: String, melody_state: Dictionary) -> void:
+func _emit_fragment_story_milestones(
+	previous_melody: Dictionary,
+	source_id: String,
+	melody_state: Dictionary,
+	counts_as_fragment: bool = true
+) -> void:
 	var previous_sources: Array[String] = _normalize_string_array(previous_melody.get("known_sources", []))
 	if previous_sources.find(source_id) >= 0:
+		return
+
+	if !counts_as_fragment:
 		return
 
 	var new_count := int(melody_state.get("fragments_found", 0))
@@ -1419,18 +1496,37 @@ func _emit_fragment_story_milestones(previous_melody: Dictionary, source_id: Str
 		})
 
 
-func _sync_festival_state_from_fragments(melody_state: Dictionary, allow_performed: bool = false) -> void:
+func _sync_festival_state_from_fragments(melody_state: Dictionary) -> void:
 	var found := int(melody_state.get("fragments_found", 0))
-	var total := int(melody_state.get("fragments_total", fragments_total))
-	if allow_performed and found >= total:
+	var performed := bool(melody_state.get("performed", false))
+	var known_sources := _normalize_string_array(melody_state.get("known_sources", []))
+	if performed:
 		melody_state["state"] = "performed"
 		melody_state["performed"] = true
 	elif found >= 2:
 		melody_state["state"] = "reconstructed"
 		melody_state["performed"] = bool(melody_state.get("performed", false))
-	elif found >= 1:
+	elif found >= 1 or !known_sources.is_empty():
 		melody_state["state"] = "heard"
 		melody_state["performed"] = bool(melody_state.get("performed", false))
 	else:
 		melody_state["state"] = "unknown"
 		melody_state["performed"] = bool(melody_state.get("performed", false))
+
+
+func _perform_festival_melody() -> void:
+	advance_landmark_state("festival_stage", "reward_collected")
+
+	var melody_state := get_melody_state("festival_melody").duplicate(true)
+	melody_state["performed"] = true
+	melody_state["state"] = "performed"
+	melody_state["next_lead"] = "Stay for the harbor gathering or keep wandering once the festival recap ends."
+	set_melody_progress({"festival_melody": melody_state})
+
+	set_chapter("Festival Night")
+	set_objective("The restored festival melody carries across the harbor.")
+	set_save_status("The harbor gathering answers the restored melody.")
+	story_milestone.emit("festival_performed", {
+		"fragments_found": fragments_found,
+		"helped_residents": _count_helped_residents(),
+	})

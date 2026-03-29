@@ -468,6 +468,7 @@ display_name = "Choir Cue (Garden)"
 melody_hint = "A bright chime rises from the garden wall..."
 visible_in_states = Array[String](["available", "introduced", "in_progress"])
 collected_progress_key = "cues_collected"
+requires_collected = Array[String](["steps"])
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="CueGarden" unique_id=2100000004]
 shape = SubResource("CircleShape2D_garden")
@@ -482,6 +483,7 @@ display_name = "Choir Cue (Yard)"
 melody_hint = "A warm hum lingers in the quiet yard..."
 visible_in_states = Array[String](["available", "introduced", "in_progress"])
 collected_progress_key = "cues_collected"
+requires_collected = Array[String](["steps", "garden"])
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="CueYard" unique_id=2100000006]
 shape = SubResource("CircleShape2D_yard")

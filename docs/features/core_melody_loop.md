@@ -44,7 +44,7 @@ This is how the current repo already maps to the high-level RPG pitch.
 - `Hear` is represented mostly through resident writing, ambient lines, and melody clue text in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd), but not yet as a formal runtime melody state.
 - `Collect` exists today as a fragment counter in [`../../game/app_state.gd`](../../game/app_state.gd) and the journal `Melody` tab in [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd).
 - `Practice` is still mostly design intent. There is not yet a shared practice state or training loop in the main overworld flow.
-- `Perform` is also mostly design intent. The shell supports ending/postgame flow, but there is not yet a reusable in-world performance-point system.
+- `Perform` now exists as a simple in-world harbor-stage trigger. The shell supports ending/postgame flow, but there is not yet a reusable recognition/prompt layer before performance.
 - `Unlock` exists today mainly as updated objectives, resident trust, costume unlocks, journal notes, and prototype fragment count changes.
 - `Deepen` exists today through resident trust, follow-up dialogue beats, and additional journal context rather than a full authored melody mastery system.
 
@@ -71,7 +71,7 @@ The external GDD's `Sunlight Rock` and `Zheng Chenggong Statue` are not part of 
   - residents are already the main source of local clues, trust, and objective nudges
 - Performance system:
   - shell and story framing exist
-  - reusable in-world performance triggers do not yet exist in the main loop
+  - one in-world performance trigger now exists, but a reusable practice / recognition layer does not
 - Growth system:
   - current progression is tracked through chapter, objective, trust, fragments, and costume unlocks
   - explicit melody growth tiers are not yet implemented
@@ -92,8 +92,8 @@ These are the biggest differences between the current project and the target "mu
 
 1. ~~There is no formal melody catalog.~~ **Resolved.** `game/melody_catalog.gd` now owns melody definitions. `AppState` now owns per-melody runtime state (`melody_progress`) with named ids, fragment counts, progression tier, known sources, next lead, and performed flag. `melody_progress_changed` is a live signal. The journal `Melody` tab reads full melody-specific text from `AppState.build_melody_journal_text()`.
 2. ~~The journal `Melody` tab only shows recovered fragment count.~~ **Resolved.** The journal now shows melody name, district, stage, fragment progress, clue map, next lead, and world-response summary per melody.
-3. The main loop has resident-driven objective beats, but not yet landmark-specific gameplay closures such as cue ordering, escort resolution, or tower synthesis in the live runtime.
-4. There is no shared `practice` or `performance` state in the main story loop.
+3. There is still no shared `practice` layer in the main story loop.
+4. Performance exists as one world trigger, but there is not yet a reusable recognition / prompt system for landmark performances.
 5. `Continue` is prototype-seeded state, not real story persistence.
 6. The external GDD proposes a landmark list that differs from the repo's current authored route.
 7. The external GDD suggests JSON data files, but the current project is still primarily catalog-driven through GDScript.
@@ -102,7 +102,7 @@ These are the biggest differences between the current project and the target "mu
 
 Use this order to close the gap with the smallest architectural risk.
 
-> **Note:** Steps 1–4 have been completed. The melody catalog, melody runtime state in AppState, the updated journal Melody tab, and all five landmark trigger arcs are all live. The current starting point is Step 5.
+> **Note:** Steps 1–6 now have a working first pass. The melody catalog, melody runtime state in AppState, updated journal Melody tab, all five landmark arcs, the harbor-stage performance point, and the ending/postgame handoff are all live. The current starting point is Step 7.
 
 ### ~~1. Formalize Melody Progress As Shared State~~ ✓ Done
 
@@ -123,12 +123,12 @@ All five landmark arcs are fully integrated and confirmed:
 - Piano Ferry onboarding arc (Caretaker Lian -> harbor clue trigger -> journal unlock -> Trinity Church handoff)
 - Trinity Church arc (choir cue collection via three `LandmarkTrigger` nodes)
 - Bi Shan Tunnel arc (echo tracing via three echo triggers + mural chamber trigger)
-- Long Shan Tunnel arc (escort via entry/exit `LandmarkTrigger` nodes + `tunnel_guide` dialogue beats)
-- Bagua Tower arc (synthesis chamber `LandmarkTrigger` + `tower_keeper` dialogue beats)
+- Long Shan Tunnel arc (entry trigger + lit-pocket checkpoints + exit trigger + `tunnel_guide` dialogue beats)
+- Bagua Tower arc (synthesis chamber `LandmarkTrigger` + `tower_keeper` dialogue beats + harbor-stage handoff)
 
 All `LandmarkTrigger` nodes have `collision_layer = 1` (layer "object") confirmed explicit. The `SynthesisChamber` in `bagua_tower.tscn` has `z_index = -2` set to align its absolute z_index (6) with the player's z_index after climbing all tower stairs.
 
-See [`piano_ferry.md`](piano_ferry.md), [`trinity_church.md`](trinity_church.md), [`bi_shan_tunnel.md`](bi_shan_tunnel.md), [`long_shan_tunnel.md`](long_shan_tunnel.md), and [`bagua_tower.md`](bagua_tower.md) for per-landmark integration checklists.
+See [`piano_ferry.md`](piano_ferry.md), [`trinity_church.md`](trinity_church.md), [`bi_shan_tunnel.md`](bi_shan_tunnel.md), [`long_shan_tunnel.md`](long_shan_tunnel.md), [`bagua_tower.md`](bagua_tower.md), and [`../../game/tests/cue_progression/test_cue_progression.tscn`](../../game/tests/cue_progression/test_cue_progression.tscn) for the current integration coverage.
 
 - Use one landmark as the first full vertical slice.
 - Good first candidates:
@@ -142,23 +142,18 @@ See [`piano_ferry.md`](piano_ferry.md), [`trinity_church.md`](trinity_church.md)
   - one short performance or activation beat
   - visible world response
 
-### 5. Add One Performance Point
+### ~~5. Add One Performance Point~~ ✓ Done
 
-- Create one world trigger where a reconstructed melody can be performed.
-- Keep the first version low complexity:
-  - simple ordering
-  - short timing window
-  - contextual activation
-- Do not require full integration of [`../../game/piano_game/`](../../game/piano_game) before the first usable version lands.
+- `festival_stage` is now a real landmark trigger at Piano Ferry.
+- Bagua Tower no longer marks the melody performed directly; it unlocks the harbor-stage performance point instead.
+- Triggering the harbor stage advances the melody to `performed` and opens the ending overlay through `festival_performed`.
 
-### 6. Add Persistent World Response
+### ~~6. Add Persistent World Response~~ ✓ Done
 
-- After a successful performance, change at least one persistent thing:
-  - resident dialogue
-  - objective text
-  - route availability
-  - hint text
-  - ambient/journal state
+- After the harbor-stage performance:
+  - the ending overlay opens from gameplay
+  - postgame configuration seeds `resonant` melody state
+  - objective and summary flow hand off cleanly into postgame
 
 ### 7. Revisit Save / Continue Only After The Loop Exists
 
@@ -321,6 +316,53 @@ That structure may become useful later, but the current project is already organ
   - early arrival is handled clearly
   - successful performance changes at least one persistent world-facing state
   - failure or cancellation does not strand the player in a broken objective state
+
+### Reusable Manual Playtest Route
+
+Use this route when you want one end-to-end manual check of the current story-critical melody loop.
+
+1. Start a `New Game`.
+   Expectation: the journal is locked, objective is the ferry opening, and fragment count is `0 / 4`.
+
+2. Complete Piano Ferry onboarding.
+   Actions: talk to Caretaker Lian, inspect the harbor clue, return to Lian.
+   Expectation: the journal unlocks only after the second talk, Trinity Church becomes the next lead, and fragment count stays `0 / 4`.
+
+3. Complete Trinity Church.
+   Actions: collect `steps`, then `garden`, then `yard`, then talk to Choir Caretaker Mei.
+   Expectation: cue order is enforced through availability, the objective returns to Mei after the third cue, and the melody advances to `1 / 4`.
+
+4. Complete Bi Shan Tunnel.
+   Actions: collect `echo_a`, `echo_b`, `echo_c`, then inspect the chamber.
+   Expectation: the chamber only resolves after all three echoes, and the melody advances to `2 / 4`.
+
+5. Complete Long Shan Tunnel.
+   Actions: enter the tunnel, talk to Ren twice, reach the south lit pocket, reach the north lit pocket, then use the exit and talk to Ren again.
+   Expectation: the exit refuses early completion until both lit pockets are reached, the melody advances to `3 / 4`, and Bagua Tower unlocks after Ren's follow-up.
+
+6. Complete Bagua Tower.
+   Actions: talk to Suyin, talk again once three fragments are in hand, climb to the synthesis chamber, return to Suyin.
+   Expectation: the chamber refuses early use below three fragments, Bagua awards the fourth fragment, and the harbor festival stage unlocks without marking the melody performed yet.
+
+7. Complete the harbor performance.
+   Actions: return to Piano Ferry and activate the Festival Stage.
+   Expectation: the melody becomes `performed`, the ending overlay opens, and postgame remains available from the ending screen.
+
+### Manual Failure Checks
+
+Run these quick checks when you want confidence that progression gates still fail softly:
+
+1. Press `J` before returning to Lian with the harbor clue.
+   Expectation: the journal stays locked and the game shows the onboarding reminder.
+
+2. Try Trinity `garden` before `steps`, and `yard` before `garden`.
+   Expectation: those later cues are not yet available.
+
+3. Try the Long Shan exit before both lit pockets are collected.
+   Expectation: the route refuses to resolve and points the player back to the lit pockets.
+
+4. Try the Bagua synthesis chamber before three fragments are restored.
+   Expectation: the chamber refuses to resolve and preserves the current objective state.
 
 ## Out Of Scope
 
