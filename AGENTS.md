@@ -6,7 +6,7 @@ Common agent rules, shared workflow guidance, and reusable runbook conventions b
 
 - Read `docs/design_brief.md` first for the project goal, player loop, and UI direction.
 - For source-control-only tasks, skip the gameplay design docs and start with `scripts/source_control_report.py`, `docs/submodules.md`, and `codex_agents/SOURCE_CONTROL_RUNBOOK.md`.
-- For helper-ROI or token-efficiency workflow review, start with `scripts/token_efficiency_audit.py` and `codex_agents/TOKEN_EFFICIENCY_RUNBOOK.md`.
+- For helper-ROI or token-efficiency workflow review, start with `scripts/token_efficiency_workflows.json`, `codex_agents/TOKEN_EFFICIENCY_RUNBOOK.md`, and `codex_agents/scripts/token_efficiency_audit.py`.
 - Then read `docs/architecture.md`, `docs/module_map.md`, and `docs/submodules.md` before making structural changes.
 - Read `docs/contracts.md` when changing shared state, interfaces, signals, public APIs, or submodule boundaries.
 - Read `docs/release_policy.md` before changing versioning, release preparation, or submodule pinning practices.
@@ -40,7 +40,7 @@ Submodule read order when editing inside a submodule:
 - Follow the generic Godot/GDScript, scope, resource, and validation rules in `codex_agents/GODOT_DEVELOPMENT_RUNBOOK.md`.
 - Follow the generic Git and submodule-history rules in `codex_agents/SOURCE_CONTROL_RUNBOOK.md`.
 - For parent-repo Git inspection, prefer `python3 scripts/source_control_report.py` before manual Git status commands, and rerun it after commits, pushes, pulls, rebases, or submodule pointer updates when you need a fresh summary.
-- For token-efficiency review, prefer `python3 scripts/token_efficiency_audit.py` and do not run it on every normal task; use it when helper workflows change or on periodic amortized review.
+- For token-efficiency review, prefer `python3 codex_agents/scripts/token_efficiency_audit.py scripts/token_efficiency_workflows.json` and do not run it on every normal task; use it when helper workflows change or on periodic amortized review.
 - This file only captures Kulangsu-specific constraints, boundaries, and exceptions.
 
 ## Architecture Boundaries

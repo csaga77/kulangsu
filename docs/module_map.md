@@ -99,8 +99,8 @@ Use these when you need a focused validation target instead of the full project 
 ## Documentation And Agent Support
 
 - [`../scripts/source_control_report.py`](../scripts/source_control_report.py) - repo-local wrapper for the shared source-control inspection helper
-- [`../scripts/token_efficiency_audit.py`](../scripts/token_efficiency_audit.py) - repo-local wrapper for the shared helper ROI audit
 - [`../scripts/token_efficiency_workflows.json`](../scripts/token_efficiency_workflows.json) - local workflow baselines and review cadence for token-efficiency audits
+- [`../codex_agents/scripts/token_efficiency_audit.py`](../codex_agents/scripts/token_efficiency_audit.py) - shared helper ROI audit script used with the local workflow config
 - [`../docs/`](../docs) - project docs
 - [`features/multi_level_spaces.md`](features/multi_level_spaces.md) - implementation-facing guide for stacked rooms, parent-owned level mapping, portals, stairs, and current design gaps
 - [`features/core_melody_loop.md`](features/core_melody_loop.md) - implementation-facing summary of the current melody-driven gameplay loop, gap list, MVP build order, and reusable manual playtest route

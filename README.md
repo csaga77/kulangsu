@@ -24,7 +24,7 @@ No package manager, CI pipeline, or automated test runner is checked into this r
 - [`scenes/`](scenes) - runtime gameplay scenes plus validation scene containers
 - [`terrain/`](terrain) - island terrain scene, terrain generation, and water rendering setup
 - [`resources/`](resources) - audio, sprites, materials, animations, and tilesets
-- [`scripts/`](scripts) - repo-local helper wrappers, including the short source-control report entry point
+- [`scripts/`](scripts) - repo-local helper wrappers and workflow configs, including the short source-control report entry point
 - [`docs/`](docs) - project documentation for humans and coding agents
 - [`codex_agents/`](codex_agents) - shared agent runbooks and reusable support docs
 - [`godot_common/`](godot_common) - shared Godot support code via submodule
@@ -67,20 +67,20 @@ python3 scripts/source_control_report.py --fail-on-warnings
 python3 scripts/source_control_report.py --json
 ```
 
-For periodic review of whether a token-saving helper still earns its keep, prefer:
+For periodic review of whether a token-saving helper still earns its keep, call the shared audit directly with the local workflow config:
 
 ```bash
-python3 scripts/token_efficiency_audit.py
+python3 codex_agents/scripts/token_efficiency_audit.py scripts/token_efficiency_workflows.json
 ```
 
-It defaults to [`scripts/token_efficiency_workflows.json`](scripts/token_efficiency_workflows.json), forwards to the shared audit helper in [`codex_agents/scripts/token_efficiency_audit.py`](codex_agents/scripts/token_efficiency_audit.py), and compares the local helper against the documented manual baseline.
+The audit logic stays generic in [`codex_agents/scripts/token_efficiency_audit.py`](codex_agents/scripts/token_efficiency_audit.py), while the repo-specific manual baseline and review cadence live in [`scripts/token_efficiency_workflows.json`](scripts/token_efficiency_workflows.json).
 
 Useful variants:
 
 ```bash
-python3 scripts/token_efficiency_audit.py --fail-on-regression
-python3 scripts/token_efficiency_audit.py --json
-python3 scripts/token_efficiency_audit.py scripts/token_efficiency_workflows.json --workflow source_control_parent_repo
+python3 codex_agents/scripts/token_efficiency_audit.py scripts/token_efficiency_workflows.json --fail-on-regression
+python3 codex_agents/scripts/token_efficiency_audit.py scripts/token_efficiency_workflows.json --json
+python3 codex_agents/scripts/token_efficiency_audit.py scripts/token_efficiency_workflows.json --workflow source_control_parent_repo
 ```
 
 ## Run The Project
@@ -122,7 +122,8 @@ Start here for project context:
 - [`docs/module_map.md`](docs/module_map.md) - where code and content live
 - [`docs/submodules.md`](docs/submodules.md) - submodule roles and governance
 - [`scripts/source_control_report.py`](scripts/source_control_report.py) - repo-local source-control status wrapper
-- [`scripts/token_efficiency_audit.py`](scripts/token_efficiency_audit.py) - repo-local helper ROI and review-cadence audit wrapper
+- [`scripts/token_efficiency_workflows.json`](scripts/token_efficiency_workflows.json) - local manual baseline and review cadence for token-efficiency audits
+- [`codex_agents/scripts/token_efficiency_audit.py`](codex_agents/scripts/token_efficiency_audit.py) - shared helper ROI and review-cadence audit script
 - [`codex_agents/README.md`](codex_agents/README.md) - entry point for the shared agent-support submodule
 - [`docs/contracts.md`](docs/contracts.md) - stable interfaces and boundaries
 - [`docs/release_policy.md`](docs/release_policy.md) - current release/version policy
