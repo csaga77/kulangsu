@@ -845,7 +845,7 @@ static func _ambient_residents() -> Dictionary:
 			"id": "map_student_jia",
 			"display_name": "Map Student Jia",
 			"landmark": "Bagua Tower",
-			"role": "Sketches route diagrams and keeps revising them whenever a new shortcut opens.",
+			"role": "Sketches route diagrams and keeps revising them whenever an old route becomes easier to trust.",
 			"routine_note": "Usually close to the lower stairs with paper spread on a crate.",
 			"melody_hint": "They think the melody can be mapped as a route between trusted places.",
 			"ambient_lines": [

@@ -11,6 +11,7 @@ const PAUSE_SCENE: PackedScene = preload("res://ui/screens/pause_overlay.tscn")
 const SETTINGS_SCENE: PackedScene = preload("res://ui/screens/settings_overlay.tscn")
 const CREDITS_SCENE: PackedScene = preload("res://ui/screens/credits_overlay.tscn")
 const ENDING_SCENE: PackedScene = preload("res://ui/screens/ending_overlay.tscn")
+const DEPARTURE_SCENE: PackedScene = preload("res://ui/screens/departure_overlay.tscn")
 const CONFIRM_SCENE: PackedScene = preload("res://ui/screens/confirm_modal.tscn")
 const UI_DESIGN_SIZE := Vector2(1920.0, 1080.0)
 
@@ -25,6 +26,7 @@ enum ScreenState {
 	SETTINGS,
 	CREDITS,
 	ENDING,
+	DEPARTURE,
 	CONFIRM,
 }
 
@@ -45,6 +47,7 @@ var m_pause_panel: PanelContainer
 var m_settings_panel: PanelContainer
 var m_credits_panel: PanelContainer
 var m_ending_panel: PanelContainer
+var m_departure_panel: PanelContainer
 var m_confirm_panel: PanelContainer
 var m_confirm_action: Callable
 var m_pending_setup_free_walk := false
@@ -205,6 +208,10 @@ func _build_app_shell() -> void:
 		_open_credits_panel(ScreenState.ENDING)
 	)
 
+	m_departure_panel = DEPARTURE_SCENE.instantiate() as PanelContainer
+	m_ui_root.add_child(m_departure_panel)
+	m_departure_panel.connect("continue_requested", _on_departure_continue_requested)
+
 	m_confirm_panel = CONFIRM_SCENE.instantiate() as PanelContainer
 	m_ui_root.add_child(m_confirm_panel)
 	m_confirm_panel.connect("cancel_requested", _hide_confirm)
@@ -219,6 +226,7 @@ func _build_app_shell() -> void:
 	_set_panel_visible(m_settings_panel, false)
 	_set_panel_visible(m_credits_panel, false)
 	_set_panel_visible(m_ending_panel, false)
+	_set_panel_visible(m_departure_panel, false)
 	_set_panel_visible(m_confirm_panel, false)
 
 
@@ -264,6 +272,7 @@ func _show_title() -> void:
 	_set_panel_visible(m_settings_panel, false)
 	_set_panel_visible(m_credits_panel, false)
 	_set_panel_visible(m_ending_panel, false)
+	_set_panel_visible(m_departure_panel, false)
 	_set_panel_visible(m_confirm_panel, false)
 	if m_game_root != null:
 		m_game_root.visible = false
@@ -333,6 +342,7 @@ func _begin_gameplay(is_free_walk: bool, is_continue: bool = false) -> void:
 	_set_panel_visible(m_settings_panel, false)
 	_set_panel_visible(m_credits_panel, false)
 	_set_panel_visible(m_ending_panel, false)
+	_set_panel_visible(m_departure_panel, false)
 	_set_panel_visible(m_confirm_panel, false)
 	m_state = ScreenState.PLAYING
 	get_tree().paused = false
@@ -358,6 +368,7 @@ func _open_overlay(new_state: ScreenState) -> void:
 	_set_panel_visible(m_settings_panel, new_state == ScreenState.SETTINGS)
 	_set_panel_visible(m_credits_panel, new_state == ScreenState.CREDITS)
 	_set_panel_visible(m_ending_panel, new_state == ScreenState.ENDING)
+	_set_panel_visible(m_departure_panel, false)
 	_set_panel_visible(m_confirm_panel, false)
 
 
@@ -373,6 +384,7 @@ func _resume_gameplay() -> void:
 	_set_panel_visible(m_settings_panel, false)
 	_set_panel_visible(m_credits_panel, false)
 	_set_panel_visible(m_ending_panel, false)
+	_set_panel_visible(m_departure_panel, false)
 	_set_panel_visible(m_confirm_panel, false)
 	_set_panel_visible(m_hud, true)
 
@@ -429,6 +441,7 @@ func _open_credits_panel(return_state: ScreenState) -> void:
 		_set_panel_visible(m_settings_panel, false)
 		_set_panel_visible(m_credits_panel, true)
 		_set_panel_visible(m_ending_panel, false)
+		_set_panel_visible(m_departure_panel, false)
 		_set_panel_visible(m_confirm_panel, false)
 		return
 
@@ -512,7 +525,25 @@ func _complete_story_departure() -> void:
 	AppState.set_mode("Title")
 	get_tree().paused = false
 	_discard_game_loaded()
-	_open_credits_panel(ScreenState.TITLE)
+	_open_departure_panel()
+
+
+func _open_departure_panel() -> void:
+	m_state = ScreenState.DEPARTURE
+	m_departure_panel.call("refresh_from_state")
+	_set_panel_visible(m_backdrop, true)
+	_set_panel_visible(m_boot_screen, false)
+	_set_panel_visible(m_title_screen, false)
+	_set_panel_visible(m_player_setup_panel, false)
+	_set_panel_visible(m_hud, false)
+	_set_panel_visible(m_journal_panel, false)
+	_set_panel_visible(m_melody_prompt_panel, false)
+	_set_panel_visible(m_pause_panel, false)
+	_set_panel_visible(m_settings_panel, false)
+	_set_panel_visible(m_credits_panel, false)
+	_set_panel_visible(m_ending_panel, false)
+	_set_panel_visible(m_departure_panel, true)
+	_set_panel_visible(m_confirm_panel, false)
 
 
 func _refresh_journal_content() -> void:
@@ -549,6 +580,8 @@ func _handle_escape() -> void:
 		ScreenState.CREDITS:
 			_close_credits_panel()
 		ScreenState.ENDING:
+			pass
+		ScreenState.DEPARTURE:
 			pass
 		ScreenState.CONFIRM:
 			_hide_confirm()
@@ -657,3 +690,7 @@ func _on_melody_prompt_performance_completed(request: Dictionary) -> void:
 	AppState.complete_prompt_request(request)
 	if m_state == ScreenState.MELODY_PROMPT:
 		_close_melody_prompt()
+
+
+func _on_departure_continue_requested() -> void:
+	_open_credits_panel(ScreenState.TITLE)

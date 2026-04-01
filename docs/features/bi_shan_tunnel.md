@@ -6,11 +6,11 @@ Navigation and echo-tracing arc for the second landmark. Establishes the pickup-
 
 - Give the player a self-guided exploration task with no dialogue gating.
 - Prove that the pickup trigger system works for landmark arcs that are driven entirely by world interaction rather than conversation.
-- Award one melody fragment, unlock a reusable cross-island shortcut, and point the player toward Long Shan Tunnel as the next destination.
+- Award one melody fragment, mark Bi Shan as a dependable cross-island shortcut route, and point the player toward Long Shan Tunnel as the next destination.
 
 ## User / Player Experience
 
-The player enters Bi Shan Tunnel after Trinity Church resolves. Three faint echo markers are scattered along the tunnel walls — a north-wall spot, an arch midpoint, and a mural approach near the far end. The player walks the tunnel, presses `R` at each invisible cue volume, and hears a short descriptive line as each echo is collected. Once all three are in hand, a fourth marker appears at the mural chamber at the far end. Pressing `R` at the chamber resolves the arc: the mural panel responds, the fragment is awarded, a calmer cross-island route opens, and the journal updates to point toward Long Shan Tunnel.
+The player enters Bi Shan Tunnel after Trinity Church resolves. Three faint echo markers are scattered along the tunnel walls — a north-wall spot, an arch midpoint, and a mural approach near the far end. The player walks the tunnel, presses `R` at each invisible cue volume, and hears a short descriptive line as each echo is collected. Once all three are in hand, a fourth marker appears at the mural chamber at the far end. Pressing `R` at the chamber resolves the arc: the mural panel responds, the fragment is awarded, the tunnel becomes legible as a calmer cross-island route, and the journal updates to point toward Long Shan Tunnel.
 
 The mood stays quiet throughout. There is no timer, no failure state, and no required order for the three echo markers. The chamber trigger is simply hidden until all three echoes are collected.
 

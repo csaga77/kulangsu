@@ -25,7 +25,7 @@ Current contract:
 - `Esc` backs out through overlay flow and `J` toggles the journal during gameplay
 - the reusable melody prompt overlay opens from `AppState` requests and may return either to gameplay or to the journal, depending on where it was launched
 - the ending overlay may now open from the in-world `festival_performed` milestone instead of only through shell-local controls
-- once the ending overlay opens, `Stay` configures autosaved postgame while `Leave` clears the resumable story autosave, routes through credits, and returns to title with `Continue` disabled
+- once the ending overlay opens, `Stay` configures autosaved postgame while `Leave` clears the resumable story autosave, routes through the dedicated morning-ferry departure card and credits, and returns to title with `Continue` disabled
 
 ## Shared State Contract
 

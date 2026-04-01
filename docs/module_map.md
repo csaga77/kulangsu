@@ -11,7 +11,7 @@ Read [`design_brief.md`](design_brief.md) and [`architecture.md`](architecture.m
 ## UI And Screen Flow
 
 - [`../ui/`](../ui) - shell logic, screen scenes, UI styling, and title assets
-- [`../ui/screens/`](../ui/screens) - boot, title, HUD, journal, melody prompt, pause, settings, credits, ending, and player setup screens
+- [`../ui/screens/`](../ui/screens) - boot, title, HUD, journal, melody prompt, pause, settings, departure, credits, ending, and player setup screens
 
 Put new menu, overlay, HUD, or shell-flow work here.
 

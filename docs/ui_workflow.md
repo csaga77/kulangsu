@@ -500,10 +500,9 @@ After the ending choice:
 - Current first-pass runtime:
   - Confirm departure from the ending overlay
   - Clear the active story autosave so `Continue` does not reopen a resolved ending choice
-  - Fade into credits
+  - Show a dedicated morning-ferry departure card
+  - Continue from that card into credits
   - Return to the title screen with `Continue` disabled
-- Planned later polish:
-  - Show a dedicated ferry departure card before credits
 
 ## 16. App Exit Flow
 

@@ -154,7 +154,7 @@ See [`piano_ferry.md`](piano_ferry.md), [`trinity_church.md`](trinity_church.md)
 - After the harbor-stage performance:
   - the ending overlay opens from gameplay
   - `Stay a Little Longer` seeds `resonant` postgame state and writes the new postgame autosave
-  - `Leave on the Morning Ferry` clears the resumable story autosave before rolling credits back to title
+  - `Leave on the Morning Ferry` clears the resumable story autosave, shows the dedicated departure card, then rolls credits back to title
 
 ### ~~7. Revisit Save / Continue Only After The Loop Exists~~ ✓ Done
 
@@ -370,7 +370,10 @@ Use this shorter route when you only need to verify the ending overlay, credits 
 5. Reopen the ending overlay, choose `Leave on the Morning Ferry`, then cancel the confirm.
    Expectation: the cancel action keeps the player on the ending overlay.
 
-6. Choose `Leave on the Morning Ferry` again and confirm it, then return from credits to title.
+6. Choose `Leave on the Morning Ferry` again and confirm it.
+   Expectation: the dedicated morning-ferry departure card opens before credits, and `Continue` is already disabled for this resolved run.
+
+7. Continue from the departure card through credits, then return to title.
    Expectation: `Continue` is disabled because the resolved story run no longer has a resumable autosave.
 
 ### Manual Failure Checks

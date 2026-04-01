@@ -276,7 +276,7 @@ Each fragment should ideally feel reconstructed from multiple musical encounters
 ### Soft Gates
 
 - NPC hints point toward the next suitable landmark.
-- Tunnel shortcuts unlock after completion.
+- Tunnel routes become trustworthy shortcuts after completion.
 - Certain doors or upper layers only open after earlier story beats.
 
 ### No Hard Combat Gate
@@ -414,7 +414,7 @@ The intended flow already avoids harsh failure, so save behavior should support 
 - After the ferry tutorial unlocks the main quest
 - On landmark introduction
 - On landmark completion
-- When a shortcut opens
+- When a tunnel route becomes a trusted shortcut
 - Before the festival start prompt
 - After the ending choice
 

@@ -15,7 +15,7 @@ const STORY_AUTOSAVE_PATH := "user://story_autosave.save"
 const SHORTCUT_DEFINITIONS := {
 	"bi_shan_crossing": {
 		"display_name": "Bi Shan Cross-Island Route",
-		"summary": "The mural chamber steadied a calmer passage between the island's north and south approaches.",
+		"summary": "The Bi Shan tunnel now reads as a dependable passage between the island's north and south approaches.",
 	},
 }
 
@@ -1829,7 +1829,7 @@ func _resolve_bi_shan_tunnel() -> void:
 	_emit_fragment_story_milestones(previous_melody, "bi_shan_echo", melody_state)
 	unlock_shortcut("bi_shan_crossing")
 	set_objective("Explore Long Shan Tunnel and keep Ren moving between the lit pockets.")
-	set_save_status("Bi Shan Tunnel — mural resonance restored, and the cross-island route feels steadier now.")
+	set_save_status("Bi Shan Tunnel — mural resonance restored, and the tunnel route feels steadier now.")
 
 
 ## Award the Long Shan Tunnel melody fragment and advance melody state.

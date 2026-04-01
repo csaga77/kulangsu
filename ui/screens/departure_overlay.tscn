@@ -1,0 +1,42 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/screens/departure_overlay.gd" id="1_3d4t0"]
+
+[node name="DepartureOverlay" type="PanelContainer"]
+offset_left = 560.0
+offset_top = 250.0
+offset_right = 1360.0
+offset_bottom = 830.0
+script = ExtResource("1_3d4t0")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
+
+[node name="Body" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="Margin/Body"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "Morning Ferry"
+
+[node name="SubtitleLabel" type="Label" parent="Margin/Body"]
+custom_minimum_size = Vector2(720, 0)
+layout_mode = 2
+text = "The harbor keeps the melody after you step aboard."
+autowrap_mode = 3
+
+[node name="BodyLabel" type="Label" parent="Margin/Body"]
+custom_minimum_size = Vector2(720, 0)
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="ContinueButton" type="Button" parent="Margin/Body"]
+custom_minimum_size = Vector2(320, 54)
+layout_mode = 2
+text = "Continue to Credits"
