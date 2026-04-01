@@ -488,15 +488,22 @@ After the ending choice:
 
 ### Option A: Stay
 
-- Load postgame free exploration
-- Mark story as completed
-- Unlock credits and chapter review in title
+- Current first-pass runtime:
+  - Load postgame free exploration immediately
+  - Write a fresh story autosave for the postgame state
+  - Keep `Continue` pointed at the safe postgame harbor checkpoint
+- Planned later polish:
+  - Unlock deeper chapter review / recap UI in title
 
 ### Option B: Leave
 
-- Show final ferry departure card
-- Fade into credits
-- Return to title screen
+- Current first-pass runtime:
+  - Confirm departure from the ending overlay
+  - Clear the active story autosave so `Continue` does not reopen a resolved ending choice
+  - Fade into credits
+  - Return to the title screen with `Continue` disabled
+- Planned later polish:
+  - Show a dedicated ferry departure card before credits
 
 ## 16. App Exit Flow
 

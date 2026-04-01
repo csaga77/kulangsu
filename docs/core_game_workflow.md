@@ -96,7 +96,7 @@ Reward:
 
 ### 4. Open Exploration Phase
 
-The island opens after the ferry tutorial. The player can visit the landmarks in flexible order, but each one should reinforce a different style of play.
+The island opens after the ferry tutorial, but the current shipped route is better described as a guided sequence with one light midgame fork than as fully flexible landmark order.
 
 Across all landmarks, the player should repeatedly move through:
 
@@ -109,11 +109,11 @@ Across all landmarks, the player should repeatedly move through:
 Recommended route:
 
 1. Trinity Church
-2. Bi Shan Tunnel
-3. Long Shan Tunnel
+2. Bi Shan Tunnel or Long Shan Tunnel
+3. The remaining tunnel
 4. Bagua Tower
 
-The route should stay flexible, but soft guidance comes from NPC hints and difficulty.
+Soft guidance comes from NPC hints, fragment requirements, and landmark unlocks. In the current implementation, Bagua only becomes useful once both the tunnel handoff and enough fragments are in place.
 
 ## Landmark Objective Arcs
 
@@ -176,27 +176,27 @@ Companionship, guidance, trust
 
 Gameplay focus:
 
-- Escort / follow behavior
-- Keeping pace with an NPC
+- Checkpoint-based accompaniment
+- Moving between lit pockets in sequence
 - Protecting route clarity rather than combat
 
 Objective chain:
 
 1. Meet an anxious NPC who refuses to cross alone.
-2. Lead them through the tunnel at a calm pace.
-3. Stop at safe lit pockets when the NPC becomes nervous.
-4. Exit together, then hear their story and Bagua handoff.
+2. Start the crossing through dialogue and move through the tunnel at a calm pace.
+3. Stop at safe lit pockets in sequence.
+4. Reach the exit, then return to Ren for the Bagua handoff.
 
 Failure state:
 
-- If the NPC lags too far behind, they stop and call out.
-- Player returns to re-engage instead of restarting the whole sequence.
+- Reaching the exit early does not complete the route.
+- Skipping a lit pocket leaves the passage unresolved until the player steadies the route properly.
 
 Reward:
 
 - Melody Fragment 3
-- Companion relationship unlock
-- New dialogue options in previously visited zones
+- Companion relationship progress
+- Bagua Tower handoff after Ren's follow-up beat
 
 ### D. Bagua Tower: Master Perspective
 
@@ -269,7 +269,7 @@ Purpose:
 
 ### Main Progress Gate
 
-The player needs all three melody fragments to trigger the finale.
+The player needs three landmark fragments before Bagua Tower can synthesize the route, and all four landmark fragments before the ferry-stage finale can fire.
 
 Each fragment should ideally feel reconstructed from multiple musical encounters rather than granted as a generic quest token.
 
@@ -317,7 +317,7 @@ The shared UI state in [`../game/app_state.gd`](../game/app_state.gd) should ref
 - `location`: current district or landmark label
 - `objective`: one clear action sentence
 - `hint`: current control reminder or context-sensitive prompt
-- `fragments_found`: restored melody count out of three
+- `fragments_found`: restored melody count out of four
 - `player_profile`: selected body, gender, skin, and hair options
 - `equipped_player_costume_id`: the wardrobe preset currently worn by the player
 

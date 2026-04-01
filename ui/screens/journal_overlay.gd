@@ -47,10 +47,7 @@ func _ready() -> void:
 
 func refresh_from_state() -> void:
 	m_quest_body.text = "Main Quest\n%s" % AppState.objective
-	m_map_body.text = "Discovered landmarks\n%s\n\nCurrent location\n%s" % [
-		"\n".join(AppState.landmarks),
-		AppState.location,
-	]
+	m_map_body.text = AppState.build_map_journal_text()
 	m_residents_body.text = "Resident Notes\n%s" % AppState.build_resident_journal_text()
 	m_melody_body.text = "Melody Journal\n%s" % AppState.build_melody_journal_text()
 	m_wardrobe_body.text = "Wardrobe\n%s" % AppState.build_player_costume_journal_text()

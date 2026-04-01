@@ -181,8 +181,8 @@ static func _story_residents() -> Dictionary:
 					"quest_state": "resolved",
 					"trust_delta": 1,
 					"save_status": "Choir Caretaker Mei tied the church clue to the tunnels",
-					"gate": "trinity_church_cues",
-					"gate_fallback": "The choir cues are still scattered across the grounds. Keep searching near the steps, the side garden, and the quiet yard.",
+					"gate": "trinity_church_chime",
+					"gate_fallback": "The choir cues are gathered, but the church phrase still needs to settle at the choir chime near the steps.",
 					"landmark_reward": "trinity_church",
 				},
 			],
@@ -280,17 +280,33 @@ static func _story_residents() -> Dictionary:
 				}
 			),
 			_spawn("Long Shan Tunnel", Vector2(-160.0, 48.0), -110.0, MOOD_SAD, 88.0),
-			_route(
+				_route(
+					[
+						_route_point("Long Shan Tunnel South Portal", Vector2(-32.0, 0.0), 0.0, 0.0),
+						_route_point("Long Shan Tunnel", Vector2(-1536.0, -1072.0), 0.0, 0.0),
+						_route_point("Long Shan Tunnel North Portal", Vector2(-32.0, 0.0), 2.0, 2.0),
+					],
+					24.0,
+					0.4,
+					1.0
+				),
 				[
-					_route_point("Long Shan Tunnel South Portal", Vector2(-32.0, 0.0), 0.0, 0.0),
-					_route_point("Long Shan Tunnel", Vector2(-1536.0, -1072.0), 0.0, 0.0),
-					_route_point("Long Shan Tunnel North Portal", Vector2(-32.0, 0.0), 2.0, 2.0),
-				],
-				24.0,
-				0.4,
-				1.0
-			)
-		),
+					{
+						"conditions": {"landmark_state": {"bagua_tower": "reward_collected"}},
+						"priority": 10,
+						"once": true,
+					"line": "From the tower, the route sounds patient instead of anxious. I think that is how we knew it was the right crossing.",
+					"journal_step": "Ren felt the tower confirmed the calm route through Long Shan Tunnel.",
+				},
+				{
+					"conditions": {"melody_state": {"festival_melody": "performed"}},
+					"priority": 20,
+					"once": true,
+						"line": "You carried the route all the way back to the harbor. Even the tunnel walls would have listened for that.",
+						"journal_step": "Ren heard that the harbor finally carried the tunnel route out into the open.",
+					},
+				]
+			),
 		"tower_keeper": _resident(
 			"Tower Keeper Suyin",
 			"Bagua Tower",
@@ -352,7 +368,17 @@ static func _story_residents() -> Dictionary:
 				"feet/shoes/feet_shoes_revised",
 				"charcoal"
 			),
-			_spawn("Bagua Tower", Vector2(-220.0, 260.0), -120.0, MOOD_NORMAL, 88.0)
+			_spawn("Bagua Tower", Vector2(-220.0, 260.0), -120.0, MOOD_NORMAL, 88.0),
+			{},
+			[
+				{
+					"conditions": {"melody_state": {"festival_melody": "performed"}},
+					"priority": 10,
+					"once": true,
+					"line": "The harbor answered exactly where the tower said it would. Height only mattered because you carried the route back down.",
+					"journal_step": "Suyin approved how the tower's route returned to the harbor.",
+				},
+			]
 		),
 	}
 

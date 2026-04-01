@@ -71,7 +71,7 @@ The external GDD's `Sunlight Rock` and `Zheng Chenggong Statue` are not part of 
   - residents are already the main source of local clues, trust, and objective nudges
 - Performance system:
   - shell and story framing exist
-  - a reusable recognition prompt now exists for journal practice and the harbor-stage performance point
+  - a reusable recognition prompt now exists for journal practice, the Trinity choir chime, and the harbor-stage performance point
   - other landmark-specific performance beats may still resolve through simplified landmark dialogue for now
 - Growth system:
   - current progression is tracked through chapter, objective, trust, fragments, melody state, and costume unlocks
@@ -122,9 +122,9 @@ The `Melody` journal tab now shows melody name, district, stage, fragment progre
 All five landmark arcs are fully integrated and confirmed:
 
 - Piano Ferry onboarding arc (Caretaker Lian -> harbor clue trigger -> journal unlock -> Trinity Church handoff)
-- Trinity Church arc (choir cue collection via three `LandmarkTrigger` nodes)
+- Trinity Church arc (choir cue collection via three `LandmarkTrigger` nodes plus the `ChoirChime` confirmation point)
 - Bi Shan Tunnel arc (echo tracing via three echo triggers + mural chamber trigger)
-- Long Shan Tunnel arc (entry trigger + lit-pocket checkpoints + exit trigger + `tunnel_guide` dialogue beats)
+- Long Shan Tunnel arc (entry trigger + lit-pocket checkpoints + exit trigger + return-to-Ren handoff + `tunnel_guide` dialogue beats)
 - Bagua Tower arc (synthesis chamber `LandmarkTrigger` + `tower_keeper` dialogue beats + harbor-stage handoff)
 
 All `LandmarkTrigger` nodes have `collision_layer = 1` (layer "object") confirmed explicit. The `SynthesisChamber` in `bagua_tower.tscn` has `z_index = -2` set to align its absolute z_index (6) with the player's z_index after climbing all tower stairs.
@@ -153,13 +153,13 @@ See [`piano_ferry.md`](piano_ferry.md), [`trinity_church.md`](trinity_church.md)
 
 - After the harbor-stage performance:
   - the ending overlay opens from gameplay
-  - postgame configuration seeds `resonant` melody state
-  - objective and summary flow hand off cleanly into postgame
+  - `Stay a Little Longer` seeds `resonant` postgame state and writes the new postgame autosave
+  - `Leave on the Morning Ferry` clears the resumable story autosave before rolling credits back to title
 
 ### ~~7. Revisit Save / Continue Only After The Loop Exists~~ ✓ Done
 
 - Story mode now writes one versioned autosave payload from `AppState`.
-- `Continue` restores melody, resident, landmark, player-appearance, and postgame state together.
+- `Continue` restores melody, landmark, shortcut, resident, player-appearance, and postgame state together.
 - `scenes/game_main.gd` now resumes from safe landmark and tunnel-entry anchors instead of interior tunnel positions.
 
 ## Recommended Growth Tiers
@@ -348,8 +348,30 @@ Use this route when you want one end-to-end manual check of the current story-cr
    Actions: return to Piano Ferry, activate the Festival Stage, then enter the recovered phrase segments in the authored order.
    Expectation: the prompt opens first, a wrong order clears softly, the melody becomes `performed` only after success, and the ending overlay opens with postgame still available from the ending screen.
 
-8. Return to title, then choose `Continue`.
+8. Choose `Stay a Little Longer`, return to title, then choose `Continue`.
    Expectation: the title footer shows the latest saved chapter/location summary, `Continue` is enabled, and the run resumes at the latest safe district anchor rather than an interior tunnel spot.
+
+### Reusable Manual Ending Smoke Pass
+
+Use this shorter route when you only need to verify the ending overlay, credits flow, and `Continue` behavior.
+
+1. Complete the harbor performance and wait for the ending overlay.
+   Expectation: the ending overlay opens immediately after a successful performance prompt.
+
+2. Press `Esc` while the ending overlay is open.
+   Expectation: the ending overlay stays open; it should not drop back into live gameplay.
+
+3. Choose `Credits`, then back out.
+   Expectation: credits return to the ending overlay, not to title or gameplay.
+
+4. Choose `Stay a Little Longer`, then return to title and choose `Continue`.
+   Expectation: `Continue` is still enabled and resumes the autosaved postgame harbor state.
+
+5. Reopen the ending overlay, choose `Leave on the Morning Ferry`, then cancel the confirm.
+   Expectation: the cancel action keeps the player on the ending overlay.
+
+6. Choose `Leave on the Morning Ferry` again and confirm it, then return from credits to title.
+   Expectation: `Continue` is disabled because the resolved story run no longer has a resumable autosave.
 
 ### Manual Failure Checks
 
@@ -369,6 +391,9 @@ Run these quick checks when you want confidence that progression gates still fai
 
 5. Open journal practice after Bi Shan or later, then intentionally submit the wrong order once.
    Expectation: the prompt stays open, gives a gentle retry hint, and clears the selected order without advancing melody state.
+
+6. Choose `Leave on the Morning Ferry` from the ending overlay, return from credits to the title screen, and check the title menu.
+   Expectation: `Continue` is disabled because the resolved story run no longer has a resumable autosave.
 
 ## Out Of Scope
 

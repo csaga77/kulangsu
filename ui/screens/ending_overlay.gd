@@ -1,6 +1,6 @@
 extends PanelContainer
 
-signal return_to_title_requested()
+signal leave_requested()
 signal stay_requested()
 signal credits_requested()
 
@@ -13,7 +13,7 @@ signal credits_requested()
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	add_theme_stylebox_override("panel", UIStyle.build_panel_style())
-	m_return_button.pressed.connect(return_to_title_requested.emit)
+	m_return_button.pressed.connect(leave_requested.emit)
 	m_stay_button.pressed.connect(stay_requested.emit)
 	m_credits_button.pressed.connect(credits_requested.emit)
 

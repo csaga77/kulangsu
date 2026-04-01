@@ -1,8 +1,8 @@
 extends PanelContainer
 
 signal close_requested()
-signal practice_completed(melody_id: String)
-signal performance_completed(melody_id: String)
+signal practice_completed(request: Dictionary)
+signal performance_completed(request: Dictionary)
 
 const DEFAULT_FEEDBACK_COLOR := Color(0.88, 0.90, 0.94, 1.0)
 const ERROR_FEEDBACK_COLOR := Color(0.95, 0.70, 0.64, 1.0)
@@ -135,11 +135,10 @@ func _on_confirm_pressed() -> void:
 		return
 
 	if m_selected_ids == expected_order:
-		var melody_id := String(m_request.get("melody_id", ""))
 		if String(m_request.get("mode", "practice")) == "performance":
-			performance_completed.emit(melody_id)
+			performance_completed.emit(m_request.duplicate(true))
 		else:
-			practice_completed.emit(melody_id)
+			practice_completed.emit(m_request.duplicate(true))
 		return
 
 	_set_feedback(String(m_request.get("retry_hint", "That order felt off. Try again.")), ERROR_FEEDBACK_COLOR)

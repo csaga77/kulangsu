@@ -48,11 +48,11 @@ This avoids requiring the `piano_game` module before the first performance lands
 
 ### Performance Point Activation
 
-Each landmark can have one performance point: a `LandmarkTrigger` (or equivalent Area2D) placed at the canonical performance spot listed in `melody_catalog.gd`. The player presses R at that node when the melody is in `reconstructed` state. The recognition prompt opens. On success, `AppState` advances the melody to `performed` and fires the world response.
+Each landmark can have one performance point: a `LandmarkTrigger` (or equivalent Area2D) placed at the canonical performance spot listed in `melody_catalog.gd`. The player presses R at that node when the melody is in `reconstructed` state. The recognition prompt opens. On success, `AppState.complete_prompt_request(...)` advances the melody or landmark and fires the appropriate world response.
 
 Current performance landmark for `festival_melody`: **Festival Stage** at Piano Ferry (as defined in `melody_catalog.gd`).
 
-For Trinity Church specifically: the chime activation at the end of the choir cue arc is still simplified. The current implementation resolves it implicitly through the caretaker's resolved beat. The reusable prompt now exists, so Trinity can be migrated to it later without inventing a new UI pattern.
+For Trinity Church specifically: the choir chime at the end of the cue arc is now the first non-finale landmark use of the reusable prompt. Mei's final reward beat stays dialogue-driven, but the phrase must first be settled through the same ordered-confirmation UI used by the harbor stage.
 
 ## Rules
 
@@ -74,10 +74,10 @@ For Trinity Church specifically: the chime activation at the end of the choir cu
 
 ## Architecture / Ownership
 
-- `AppState` owns the prompt-request signal, the `performed` flag per melody, and the state transition to `performed`.
+- `AppState` owns the prompt-request signal, the `performed` flag per melody, the state transition to `performed`, and landmark-specific prompt completions such as the Trinity choir chime.
 - `melody_catalog.gd` owns the `performance_landmark`, `performance_prompt`, and prompt segment ordering fields per melody.
 - The in-world activation point still lives on `LandmarkTrigger` at Festival Stage.
-- The recognition prompt UI now lives in `ui/screens/melody_prompt_overlay.*`. It does not write melody state directly; it reports completion back through the shell into `AppState`.
+- The recognition prompt UI now lives in `ui/screens/melody_prompt_overlay.*`. It does not write melody or landmark state directly; it reports the full prompt request back through the shell into `AppState.complete_prompt_request(...)`.
 - The `piano_game` module can be integrated as the recognition prompt backend once the interface is stable.
 
 ## Relevant Files
@@ -103,6 +103,7 @@ For Trinity Church specifically: the chime activation at the end of the choir cu
 ## Validation
 
 - Reach the Festival Stage with `festival_melody` in `reconstructed` state.
+- Reach the Trinity choir chime after collecting `steps`, `garden`, and `yard`. Confirm the same ordered-confirmation prompt opens and only then returns the objective to Mei.
 - Open the journal Melody tab after Bi Shan and confirm `Practice Festival Melody` is enabled.
 - Complete the journal prompt correctly. Confirm the prompt closes and melody state remains unchanged.
 - Press R at the performance point. Confirm the recognition prompt opens.

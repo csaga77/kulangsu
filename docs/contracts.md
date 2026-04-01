@@ -25,6 +25,7 @@ Current contract:
 - `Esc` backs out through overlay flow and `J` toggles the journal during gameplay
 - the reusable melody prompt overlay opens from `AppState` requests and may return either to gameplay or to the journal, depending on where it was launched
 - the ending overlay may now open from the in-world `festival_performed` milestone instead of only through shell-local controls
+- once the ending overlay opens, `Stay` configures autosaved postgame while `Leave` clears the resumable story autosave, routes through credits, and returns to title with `Continue` disabled
 
 ## Shared State Contract
 
@@ -39,12 +40,13 @@ Current contract:
 - `story_milestone(milestone_id, context)` fires after compound state changes resolve; current milestone ids are `landmark_resolved`, `fragment_restored`, `festival_ready`, `festival_performed`, and `resident_trust_max`
 - it now owns shared melody runtime state while [`../game/melody_catalog.gd`](../game/melody_catalog.gd) owns authored melody definitions
 - `melody_prompt_requested(request)` is the bridge from gameplay/journal actions into the reusable ordered-confirmation overlay; `AppState` remains the owner of validation gates and completion methods
+- prompt completions now flow back through `complete_prompt_request(request)`, which dispatches landmark-specific confirmations such as the Trinity choir chime as well as melody practice/performance
 - `save_metadata_changed(metadata)` is the shell-facing signal for title `Continue` state and latest story autosave summary
-- `AppState` now owns the one-slot story autosave payload, current safe resume anchor, and the `configure_continue()`, `save_story_autosave()`, and `set_story_resume_checkpoint(...)` bridge methods used by the shell and world scene
+- `AppState` now owns the one-slot story autosave payload, current safe resume anchor, and the `configure_continue()`, `save_story_autosave()`, `clear_story_autosave()`, and `set_story_resume_checkpoint(...)` bridge methods used by the shell and world scene
 - the app shell and world hint logic may query `AppState.is_journal_unlocked()` and `AppState.build_input_hint(...)` to keep the early tutorial flow and controls text aligned
 - world and UI code rely on resident getters for resident ids, display names, appearance configs, spawn configs, ambient speech, resident journal text, and full resident profiles when optional movement metadata is needed
 - `interact_with_resident()` checks a resident's `conditional_beats` (priority-sorted, condition-gated) before falling through to the linear `dialogue_beats` spine
-- UI code can now rely on melody getters, journal helpers, `can_practice_melody(...)`, `request_melody_practice(...)`, `complete_melody_practice(...)`, and `complete_melody_performance(...)` for melody-facing player context
+- UI code can now rely on melody getters, journal helpers, `build_map_journal_text()`, `get_open_shortcuts()`, `can_practice_melody(...)`, `request_melody_practice(...)`, and `complete_prompt_request(...)` for melody-facing and route-facing player context
 - UI screens and world integration code rely on those signals and state getters/setters
 
 Governance:
@@ -163,7 +165,7 @@ Current contract:
 
 - `AppState.landmark_progress` is a `Dictionary` keyed by landmark id (`piano_ferry`, `trinity_church`, `bi_shan_tunnel`, `long_shan_tunnel`, `bagua_tower`, `festival_stage`)
 - each entry is a `Dictionary` with at minimum a `"state"` key: `locked / available / introduced / in_progress / resolved / reward_collected`
-- landmark-specific sub-state (e.g. `"harbor_clue_found"` for Piano Ferry, `"cues_collected"` for Trinity Church, `"checkpoints_collected"` for Long Shan Tunnel, or `"synthesis_done"` for Bagua Tower) lives inside the same per-landmark entry
+- landmark-specific sub-state (e.g. `"harbor_clue_found"` for Piano Ferry, `"cues_collected"` plus `"chime_performed"` for Trinity Church, `"checkpoints_collected"` for Long Shan Tunnel, or `"synthesis_done"` for Bagua Tower) lives inside the same per-landmark entry
 - `AppState.landmark_progress_changed(landmark_id, progress)` fires whenever any landmark's entry changes
 - `AppState.get_landmark_progress(landmark_id)` and `get_landmark_state(landmark_id)` are the read API
 - `AppState.set_landmark_progress(landmark_id, progress)` and `advance_landmark_state(landmark_id, new_state)` are the write API

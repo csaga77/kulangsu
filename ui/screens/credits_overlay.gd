@@ -14,7 +14,7 @@ func _ready() -> void:
 
 
 func _load_credits_text() -> String:
-	var output := "Prototype Credits\n\n"
+	var output := "Kulangsu Credits\n\n"
 	if FileAccess.file_exists("res://credit.md"):
 		var file := FileAccess.open("res://credit.md", FileAccess.READ)
 		if file != null:

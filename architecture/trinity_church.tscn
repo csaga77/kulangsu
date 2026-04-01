@@ -80,6 +80,9 @@ radius = 28.0
 [sub_resource type="CircleShape2D" id="CircleShape2D_yard"]
 radius = 28.0
 
+[sub_resource type="CircleShape2D" id="CircleShape2D_chime"]
+radius = 30.0
+
 [node name="TrinityChurch" type="Node2D" unique_id=1531621787]
 y_sort_enabled = true
 script = ExtResource("1_p6h3n")
@@ -487,3 +490,19 @@ requires_collected = Array[String](["steps", "garden"])
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="CueYard" unique_id=2100000006]
 shape = SubResource("CircleShape2D_yard")
+
+[node name="ChoirChime" type="Area2D" parent="." unique_id=2100000007]
+collision_layer = 1
+position = Vector2(64, 360)
+script = ExtResource("15_ltrg")
+landmark_id = "trinity_church"
+trigger_id = "choir_chime"
+display_name = "Choir Chime"
+melody_hint = "The bell tower waits for the three choir cues to settle together..."
+visible_in_states = Array[String](["in_progress"])
+collected_progress_key = "cues_collected"
+requires_collected = Array[String](["steps", "garden", "yard"])
+hide_if_flag = "chime_performed"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="ChoirChime" unique_id=2100000008]
+shape = SubResource("CircleShape2D_chime")

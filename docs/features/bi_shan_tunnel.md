@@ -6,11 +6,11 @@ Navigation and echo-tracing arc for the second landmark. Establishes the pickup-
 
 - Give the player a self-guided exploration task with no dialogue gating.
 - Prove that the pickup trigger system works for landmark arcs that are driven entirely by world interaction rather than conversation.
-- Award one melody fragment and open the Long Shan Tunnel as the next destination.
+- Award one melody fragment, unlock a reusable cross-island shortcut, and point the player toward Long Shan Tunnel as the next destination.
 
 ## User / Player Experience
 
-The player enters Bi Shan Tunnel after Trinity Church resolves. Three faint echo markers are scattered along the tunnel walls — a north-wall spot, an arch midpoint, and a mural approach near the far end. The player walks the tunnel, presses `R` at each invisible cue volume, and hears a short descriptive line as each echo is collected. Once all three are in hand, a fourth marker appears at the mural chamber at the far end. Pressing `R` at the chamber resolves the arc: the mural panel responds, the fragment is awarded, and the journal updates to point toward Long Shan Tunnel.
+The player enters Bi Shan Tunnel after Trinity Church resolves. Three faint echo markers are scattered along the tunnel walls — a north-wall spot, an arch midpoint, and a mural approach near the far end. The player walks the tunnel, presses `R` at each invisible cue volume, and hears a short descriptive line as each echo is collected. Once all three are in hand, a fourth marker appears at the mural chamber at the far end. Pressing `R` at the chamber resolves the arc: the mural panel responds, the fragment is awarded, a calmer cross-island route opens, and the journal updates to point toward Long Shan Tunnel.
 
 The mood stays quiet throughout. There is no timer, no failure state, and no required order for the three echo markers. The chamber trigger is simply hidden until all three echoes are collected.
 
@@ -28,6 +28,7 @@ When the player enters through a tunnel mouth and reaches the tunnel interior, t
   - `bi_shan_echo` is added to `festival_melody.known_sources`.
   - `festival_melody.fragments_found` increments by 1.
   - `festival_melody.state` updates to `heard` (1 fragment) or `reconstructed` (2+).
+  - `bi_shan_crossing` is added to `AppState.open_shortcuts`.
   - Objective updates to point toward Long Shan Tunnel's escort route and lit pockets.
 - Echo triggers and the chamber trigger hide themselves after collection. The controller re-hides all triggers when the landmark state is `resolved` or `reward_collected`.
 - In `Free Walk` mode, the landmark starts `available` and the arc can be played through normally.
@@ -42,7 +43,7 @@ When the player enters through a tunnel mouth and reaches the tunnel interior, t
 
 ## Architecture / Ownership
 
-- `AppState` owns all landmark progress state, the echo collection logic, and the fragment reward.
+- `AppState` owns all landmark progress state, the echo collection logic, the fragment reward, and the shortcut list surfaced in the journal Map tab.
 - Each `LandmarkTrigger` placed in the scene self-manages its own visibility by subscribing to `AppState.landmark_progress_changed`.
 - `LandmarkTrigger` owns its own collected state and hide/disable behavior.
 - `scenes/game_main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
@@ -89,6 +90,7 @@ When the player enters through a tunnel mouth and reaches the tunnel interior, t
 - Run the game, start a New Game, complete the Trinity Church arc. Confirm bi_shan_tunnel advances to `available` and the three echo triggers appear inside the tunnel.
 - Walk to each echo and press R. Confirm each one disappears and the mural chamber trigger appears after the third.
 - Press R at the chamber. Confirm the arc resolves, the journal Melody tab shows `bi_shan_echo` as a confirmed source, and fragments_found increments.
+- Open the journal Map tab after the chamber resolves. Confirm `Bi Shan Cross-Island Route` appears under `Open shortcuts`.
 - Press R at the chamber before collecting all echoes. Confirm the "silent panel" status line appears and nothing advances.
 - Start a Continue game. Confirm echo triggers are visible (echoes_collected is empty) and the arc is playable.
 - Start a Free Walk game. Confirm echo triggers appear and the arc plays through.

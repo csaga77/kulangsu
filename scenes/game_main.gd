@@ -339,6 +339,8 @@ func _connect_ui_signals() -> void:
 
 	if !AppState.player_appearance_changed.is_connected(_on_player_appearance_changed):
 		AppState.player_appearance_changed.connect(_on_player_appearance_changed)
+	if !AppState.story_milestone.is_connected(_on_story_milestone):
+		AppState.story_milestone.connect(_on_story_milestone)
 
 	if !m_player.global_position_changed.is_connected(_sync_location_from_player):
 		m_player.global_position_changed.connect(_sync_location_from_player)
@@ -443,6 +445,8 @@ func _update_hint_text(target: Node2D) -> void:
 		if landmark_trigger.is_collected():
 			AppState.set_hint(AppState.build_input_hint("R Inspect"))
 		elif landmark_trigger.landmark_id == "festival_stage":
+			AppState.set_hint(AppState.build_input_hint("R Perform %s" % landmark_trigger.display_name))
+		elif landmark_trigger.landmark_id == "trinity_church" and landmark_trigger.trigger_id == "choir_chime":
 			AppState.set_hint(AppState.build_input_hint("R Perform %s" % landmark_trigger.display_name))
 		else:
 			AppState.set_hint(AppState.build_input_hint("R Collect %s" % landmark_trigger.display_name))
@@ -857,6 +861,26 @@ func _find_level_node(start_node: Node) -> Node:
 
 func _on_player_appearance_changed(_profile: Dictionary, _appearance_config: Dictionary) -> void:
 	_apply_player_costume()
+
+
+func _on_story_milestone(milestone_id: String, context: Dictionary) -> void:
+	if AppState.mode != "Story":
+		return
+
+	match milestone_id:
+		"fragment_restored":
+			if String(context.get("source_id", "")) == "bi_shan_echo":
+				call_deferred("_apply_story_milestone_status", "The Bi Shan crossing feels calmer now that its mural route has answered.")
+		"festival_ready":
+			call_deferred("_apply_story_milestone_status", "Across the island, lamps and harbor ropes turn back toward the plaza.")
+
+
+func _apply_story_milestone_status(text: String) -> void:
+	if AppState.mode != "Story":
+		return
+	if text.is_empty():
+		return
+	AppState.set_save_status(text)
 
 
 func _apply_player_costume() -> void:

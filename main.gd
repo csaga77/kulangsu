@@ -49,6 +49,7 @@ var m_confirm_panel: PanelContainer
 var m_confirm_action: Callable
 var m_pending_setup_free_walk := false
 var m_prompt_return_state: ScreenState = ScreenState.PLAYING
+var m_credits_return_state: ScreenState = ScreenState.TITLE
 
 
 func _ready() -> void:
@@ -185,21 +186,15 @@ func _build_app_shell() -> void:
 
 	m_credits_panel = CREDITS_SCENE.instantiate() as PanelContainer
 	m_ui_root.add_child(m_credits_panel)
-	m_credits_panel.connect("back_requested", func() -> void:
-		if _is_game_active():
-			_resume_gameplay()
-		else:
-			_set_panel_visible(m_credits_panel, false)
-			_show_title()
-	)
+	m_credits_panel.connect("back_requested", _close_credits_panel)
 
 	m_ending_panel = ENDING_SCENE.instantiate() as PanelContainer
 	m_ui_root.add_child(m_ending_panel)
-	m_ending_panel.connect("return_to_title_requested", func() -> void:
+	m_ending_panel.connect("leave_requested", func() -> void:
 		_show_confirm(
-			"Return to Title?",
-			"The ferry departs at dawn. Roll credits and return to title?",
-			_return_to_title
+			"Leave on the Morning Ferry?",
+			"Depart Kulangsu, roll credits, and close this story run?",
+			_complete_story_departure
 		)
 	)
 	m_ending_panel.connect("stay_requested", func() -> void:
@@ -207,7 +202,7 @@ func _build_app_shell() -> void:
 		_resume_gameplay()
 	)
 	m_ending_panel.connect("credits_requested", func() -> void:
-		_open_overlay(ScreenState.CREDITS)
+		_open_credits_panel(ScreenState.ENDING)
 	)
 
 	m_confirm_panel = CONFIRM_SCENE.instantiate() as PanelContainer
@@ -256,6 +251,7 @@ func _show_boot_sequence() -> void:
 
 func _show_title() -> void:
 	m_state = ScreenState.TITLE
+	m_credits_return_state = ScreenState.TITLE
 	get_tree().paused = false
 	_set_panel_visible(m_backdrop, true)
 	_set_panel_visible(m_boot_screen, false)
@@ -417,6 +413,50 @@ func _hide_confirm() -> void:
 		_set_panel_visible(m_backdrop, true)
 
 
+func _open_credits_panel(return_state: ScreenState) -> void:
+	m_credits_return_state = return_state
+	if return_state == ScreenState.TITLE or !_is_game_active():
+		m_state = ScreenState.CREDITS
+		get_tree().paused = false
+		_set_panel_visible(m_backdrop, true)
+		_set_panel_visible(m_boot_screen, false)
+		_set_panel_visible(m_title_screen, false)
+		_set_panel_visible(m_player_setup_panel, false)
+		_set_panel_visible(m_hud, false)
+		_set_panel_visible(m_journal_panel, false)
+		_set_panel_visible(m_melody_prompt_panel, false)
+		_set_panel_visible(m_pause_panel, false)
+		_set_panel_visible(m_settings_panel, false)
+		_set_panel_visible(m_credits_panel, true)
+		_set_panel_visible(m_ending_panel, false)
+		_set_panel_visible(m_confirm_panel, false)
+		return
+
+	_open_overlay(ScreenState.CREDITS)
+
+
+func _close_credits_panel() -> void:
+	match m_credits_return_state:
+		ScreenState.ENDING:
+			if _is_game_active():
+				_open_overlay(ScreenState.ENDING)
+			else:
+				_show_title()
+		ScreenState.PAUSE:
+			if _is_game_active():
+				_open_overlay(ScreenState.PAUSE)
+			else:
+				_show_title()
+		ScreenState.PLAYING:
+			if _is_game_active():
+				_resume_gameplay()
+			else:
+				_show_title()
+		_:
+			_set_panel_visible(m_credits_panel, false)
+			_show_title()
+
+
 func _open_melody_prompt(request: Dictionary) -> void:
 	if !_is_game_active():
 		return
@@ -467,6 +507,14 @@ func _return_to_title() -> void:
 	_show_title()
 
 
+func _complete_story_departure() -> void:
+	AppState.clear_story_autosave()
+	AppState.set_mode("Title")
+	get_tree().paused = false
+	_discard_game_loaded()
+	_open_credits_panel(ScreenState.TITLE)
+
+
 func _refresh_journal_content() -> void:
 	m_journal_panel.call("refresh_from_state")
 
@@ -499,13 +547,9 @@ func _handle_escape() -> void:
 		ScreenState.SETTINGS:
 			_close_settings_panel()
 		ScreenState.CREDITS:
-			if _is_game_active():
-				_resume_gameplay()
-			else:
-				_set_panel_visible(m_credits_panel, false)
-				_show_title()
+			_close_credits_panel()
 		ScreenState.ENDING:
-			_resume_gameplay()
+			pass
 		ScreenState.CONFIRM:
 			_hide_confirm()
 
@@ -558,9 +602,7 @@ func _on_title_settings_pressed() -> void:
 
 
 func _on_title_credits_pressed() -> void:
-	_set_panel_visible(m_title_screen, false)
-	_set_panel_visible(m_credits_panel, true)
-	m_state = ScreenState.CREDITS
+	_open_credits_panel(ScreenState.TITLE)
 
 
 func _on_title_quit_pressed() -> void:
@@ -606,12 +648,12 @@ func _on_melody_prompt_requested(request: Dictionary) -> void:
 	_open_melody_prompt(request)
 
 
-func _on_melody_prompt_practice_completed(melody_id: String) -> void:
-	AppState.complete_melody_practice(melody_id)
+func _on_melody_prompt_practice_completed(request: Dictionary) -> void:
+	AppState.complete_prompt_request(request)
 	_close_melody_prompt()
 
 
-func _on_melody_prompt_performance_completed(melody_id: String) -> void:
-	AppState.complete_melody_performance(melody_id)
+func _on_melody_prompt_performance_completed(request: Dictionary) -> void:
+	AppState.complete_prompt_request(request)
 	if m_state == ScreenState.MELODY_PROMPT:
 		_close_melody_prompt()

@@ -12,6 +12,12 @@ const PLAYER_APPEARANCE_CATALOG_SCRIPT := preload("res://game/player_appearance_
 const PLAYER_COSTUME_CATALOG_SCRIPT := preload("res://game/player_costume_catalog.gd")
 const STORY_AUTOSAVE_VERSION := 1
 const STORY_AUTOSAVE_PATH := "user://story_autosave.save"
+const SHORTCUT_DEFINITIONS := {
+	"bi_shan_crossing": {
+		"display_name": "Bi Shan Cross-Island Route",
+		"summary": "The mural chamber steadied a calmer passage between the island's north and south approaches.",
+	},
+}
 
 signal mode_changed(mode: String)
 signal chapter_changed(chapter: String)
@@ -47,6 +53,7 @@ var fragments_total := 4
 var melody_catalog: Dictionary = MELODY_CATALOG_SCRIPT.build_catalog()
 var melody_progress: Dictionary = _default_melody_progress()
 var landmarks: PackedStringArray = _default_landmarks()
+var open_shortcuts: PackedStringArray = PackedStringArray()
 var residents: PackedStringArray = PackedStringArray()
 var resident_profiles: Dictionary = _default_resident_profiles()
 var player_profile: Dictionary = PLAYER_APPEARANCE_CATALOG_SCRIPT.default_profile()
@@ -88,6 +95,35 @@ func _default_story_save_metadata() -> Dictionary:
 		"resume_location": "",
 		"saved_at_unix": 0,
 	}
+
+
+func get_open_shortcuts() -> PackedStringArray:
+	return PackedStringArray(open_shortcuts)
+
+
+func set_open_shortcuts(new_shortcuts: Variant) -> void:
+	var normalized := PackedStringArray()
+	for shortcut_id in _normalize_string_array(new_shortcuts):
+		if SHORTCUT_DEFINITIONS.has(shortcut_id) and normalized.find(shortcut_id) < 0:
+			normalized.append(shortcut_id)
+
+	if open_shortcuts == normalized:
+		return
+
+	open_shortcuts = normalized
+
+
+func unlock_shortcut(shortcut_id: String) -> bool:
+	var normalized_id := shortcut_id.strip_edges()
+	if normalized_id.is_empty() or !SHORTCUT_DEFINITIONS.has(normalized_id):
+		return false
+	if open_shortcuts.find(normalized_id) >= 0:
+		return false
+
+	var next_shortcuts := get_open_shortcuts()
+	next_shortcuts.append(normalized_id)
+	set_open_shortcuts(next_shortcuts)
+	return true
 
 
 func has_story_autosave() -> bool:
@@ -132,10 +168,14 @@ func override_story_autosave_path_for_tests(path: String) -> void:
 	refresh_story_autosave_metadata()
 
 
-func clear_story_autosave_for_tests() -> void:
+func clear_story_autosave() -> void:
 	if FileAccess.file_exists(_story_autosave_path):
 		DirAccess.remove_absolute(_story_autosave_path)
 	refresh_story_autosave_metadata()
+
+
+func clear_story_autosave_for_tests() -> void:
+	clear_story_autosave()
 
 
 func refresh_story_autosave_metadata() -> void:
@@ -352,6 +392,21 @@ func can_perform_melody(melody_id: String) -> bool:
 
 func request_melody_practice(melody_id: String) -> void:
 	_request_melody_prompt(melody_id, "practice")
+
+
+func complete_prompt_request(request: Dictionary) -> void:
+	var completion_kind := String(request.get("completion_kind", ""))
+	var melody_id := String(request.get("melody_id", ""))
+
+	match completion_kind:
+		"melody_practice":
+			complete_melody_practice(melody_id)
+		"festival_performance":
+			complete_melody_performance(melody_id)
+		"trinity_chime":
+			_complete_trinity_church_chime()
+		_:
+			set_save_status("The phrase settles, but nothing answers it yet.")
 
 
 func complete_melody_practice(melody_id: String) -> void:
@@ -583,6 +638,31 @@ func get_resident_ambient_line(resident_id: String) -> String:
 	return String(ambient_lines[conversation_index])
 
 
+func build_map_journal_text() -> String:
+	var landmark_text := "None marked yet."
+	if !landmarks.is_empty():
+		landmark_text = "\n".join(landmarks)
+
+	var shortcut_text := "No shortcuts opened yet."
+	if !open_shortcuts.is_empty():
+		var shortcut_sections: Array[String] = []
+		for shortcut_id in open_shortcuts:
+			var shortcut_definition: Dictionary = SHORTCUT_DEFINITIONS.get(String(shortcut_id), {})
+			shortcut_sections.append(
+				"%s\n%s" % [
+					String(shortcut_definition.get("display_name", shortcut_id)),
+					String(shortcut_definition.get("summary", "")),
+				]
+			)
+		shortcut_text = "\n\n".join(PackedStringArray(shortcut_sections))
+
+	return "Discovered landmarks\n%s\n\nCurrent location\n%s\n\nOpen shortcuts\n%s" % [
+		landmark_text,
+		location,
+		shortcut_text,
+	]
+
+
 func build_resident_journal_text() -> String:
 	var sections: Array[String] = []
 
@@ -719,6 +799,7 @@ func _build_story_autosave_payload() -> Dictionary:
 		"journal_unlocked": journal_unlocked,
 		"melody_progress": melody_progress.duplicate(true),
 		"landmark_progress": landmark_progress.duplicate(true),
+		"open_shortcuts": get_open_shortcuts(),
 		"resident_profiles": resident_profiles.duplicate(true),
 		"player_profile": player_profile.duplicate(true),
 		"equipped_player_costume_id": equipped_player_costume_id,
@@ -763,6 +844,7 @@ func _normalize_story_autosave_payload(payload: Dictionary) -> Dictionary:
 		"journal_unlocked": bool(payload.get("journal_unlocked", true)),
 		"melody_progress": payload.get("melody_progress", {}),
 		"landmark_progress": payload.get("landmark_progress", {}),
+		"open_shortcuts": payload.get("open_shortcuts", []),
 		"resident_profiles": payload.get("resident_profiles", {}),
 		"player_profile": payload.get("player_profile", PLAYER_APPEARANCE_CATALOG_SCRIPT.default_profile()),
 		"equipped_player_costume_id": String(payload.get("equipped_player_costume_id", PLAYER_COSTUME_CATALOG_SCRIPT.default_costume_id())),
@@ -850,6 +932,7 @@ func _apply_story_autosave_payload(payload: Dictionary) -> bool:
 	set_journal_unlocked(bool(payload.get("journal_unlocked", true)))
 	set_hint(build_input_hint("R Inspect"))
 	set_landmarks(_default_landmarks())
+	set_open_shortcuts(payload.get("open_shortcuts", []))
 	set_resident_profiles(_normalize_saved_resident_profiles(payload.get("resident_profiles", {})))
 	set_melody_progress(payload.get("melody_progress", {}))
 	set_all_landmark_progress(_normalize_saved_landmark_progress(payload.get("landmark_progress", {})))
@@ -992,6 +1075,7 @@ func configure_new_game() -> void:
 	set_hint(build_input_hint("R Inspect"))
 	set_save_status("Autosave: story start saved")
 	set_landmarks(_default_landmarks())
+	set_open_shortcuts(PackedStringArray())
 	set_resident_profiles(_default_resident_profiles())
 	set_melody_progress(_build_story_melody_progress("new_game"))
 	set_all_landmark_progress(_build_landmark_progress("new_game"))
@@ -1028,6 +1112,7 @@ func configure_free_walk() -> void:
 	set_hint(build_input_hint("R Inspect"))
 	set_save_status("Free Walk: sandbox ready")
 	set_landmarks(_default_landmarks())
+	set_open_shortcuts(PackedStringArray())
 	set_resident_profiles(_default_resident_profiles())
 	set_melody_progress(_build_story_melody_progress("free_walk"))
 	set_all_landmark_progress(_build_landmark_progress("free_walk"))
@@ -1045,6 +1130,7 @@ func configure_postgame() -> void:
 	set_hint(build_input_hint("R Inspect"))
 	set_save_status("Autosave: postgame checkpoint saved")
 	set_landmarks(_default_landmarks())
+	set_open_shortcuts(PackedStringArray(["bi_shan_crossing"]))
 	set_resident_profiles(_default_resident_profiles())
 	set_melody_progress(_build_story_melody_progress("postgame"))
 	set_all_landmark_progress(_build_landmark_progress("postgame"))
@@ -1291,7 +1377,7 @@ func _refresh_player_costumes() -> void:
 func _default_landmark_progress() -> Dictionary:
 	return {
 		"piano_ferry": {"state": "locked", "harbor_clue_found": false},
-		"trinity_church": {"state": "locked", "cues_collected": []},
+		"trinity_church": {"state": "locked", "cues_collected": [], "chime_performed": false},
 		"bi_shan_tunnel": {"state": "locked", "echoes_collected": []},
 		"long_shan_tunnel": {"state": "locked", "checkpoints_collected": []},
 		"bagua_tower": {"state": "locked", "synthesis_done": false},
@@ -1304,7 +1390,7 @@ func _build_landmark_progress(state_id: String) -> Dictionary:
 		"new_game":
 			return {
 				"piano_ferry": {"state": "available", "harbor_clue_found": false},
-				"trinity_church": {"state": "locked", "cues_collected": []},
+				"trinity_church": {"state": "locked", "cues_collected": [], "chime_performed": false},
 				"bi_shan_tunnel": {"state": "locked", "echoes_collected": []},
 				"long_shan_tunnel": {"state": "locked", "checkpoints_collected": []},
 				"bagua_tower": {"state": "locked", "synthesis_done": false},
@@ -1313,7 +1399,7 @@ func _build_landmark_progress(state_id: String) -> Dictionary:
 		"continue":
 			return {
 				"piano_ferry": {"state": "reward_collected", "harbor_clue_found": true},
-				"trinity_church": {"state": "reward_collected", "cues_collected": ["steps", "garden", "yard"]},
+				"trinity_church": {"state": "reward_collected", "cues_collected": ["steps", "garden", "yard"], "chime_performed": true},
 				"bi_shan_tunnel": {"state": "available", "echoes_collected": []},
 				"long_shan_tunnel": {"state": "available", "checkpoints_collected": []},
 				"bagua_tower": {"state": "locked", "synthesis_done": false},
@@ -1322,7 +1408,7 @@ func _build_landmark_progress(state_id: String) -> Dictionary:
 		"free_walk":
 			return {
 				"piano_ferry": {"state": "introduced", "harbor_clue_found": false},
-				"trinity_church": {"state": "available", "cues_collected": []},
+				"trinity_church": {"state": "available", "cues_collected": [], "chime_performed": false},
 				"bi_shan_tunnel": {"state": "available", "echoes_collected": []},
 				"long_shan_tunnel": {"state": "available", "checkpoints_collected": []},
 				"bagua_tower": {"state": "available", "synthesis_done": false},
@@ -1331,7 +1417,7 @@ func _build_landmark_progress(state_id: String) -> Dictionary:
 		"postgame":
 			return {
 				"piano_ferry": {"state": "reward_collected", "harbor_clue_found": true},
-				"trinity_church": {"state": "reward_collected", "cues_collected": ["steps", "garden", "yard"]},
+				"trinity_church": {"state": "reward_collected", "cues_collected": ["steps", "garden", "yard"], "chime_performed": true},
 				"bi_shan_tunnel": {"state": "reward_collected", "echoes_collected": ["echo_a", "echo_b", "echo_c"]},
 				"long_shan_tunnel": {"state": "reward_collected", "checkpoints_collected": ["light_pocket_south", "light_pocket_north"]},
 				"bagua_tower": {"state": "reward_collected", "synthesis_done": true},
@@ -1395,7 +1481,20 @@ func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_
 			return true
 		"trinity_church":
 			var church_progress := get_landmark_progress("trinity_church")
-			if church_progress.is_empty() or _progress_has_string_entry(church_progress, "cues_collected", trigger_id):
+			if church_progress.is_empty():
+				return false
+			if trigger_id == "choir_chime":
+				if bool(church_progress.get("chime_performed", false)):
+					return false
+				var cue_count := _normalize_string_array(church_progress.get("cues_collected", [])).size()
+				if cue_count < 3:
+					set_save_status("The church phrase needs all three choir cues before it can settle.")
+					return false
+				if melody_hint != "":
+					melody_hint_shown.emit(melody_hint)
+				_request_trinity_chime_prompt()
+				return false
+			if _progress_has_string_entry(church_progress, "cues_collected", trigger_id):
 				return false
 			var all_collected := _collect_trinity_church_cue(trigger_id)
 			var cue_count := _normalize_string_array(
@@ -1405,10 +1504,10 @@ func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_
 			if melody_hint != "":
 				melody_hint_shown.emit(melody_hint)
 			if all_collected:
-				melody_hint_shown.emit("The three choir cues settle into one gentle church chime.")
-				set_objective("Return to Choir Caretaker Mei with all three choir cues.")
-				set_hint(build_input_hint("R Talk to Choir Caretaker Mei"))
-				set_save_status("All choir cues found — return to Choir Caretaker Mei.")
+				melody_hint_shown.emit("The three choir cues lean toward one church chime, but they still need to be settled together.")
+				set_objective("Settle the church phrase at the choir chime near the steps.")
+				set_hint(build_input_hint("R Perform Choir Chime"))
+				set_save_status("All choir cues found — settle them at the choir chime.")
 			elif cue_count == 1:
 				set_objective("Follow the next choir cue toward the side garden.")
 			elif cue_count == 2:
@@ -1507,7 +1606,12 @@ func _progress_has_string_entry(progress: Dictionary, progress_key: String, entr
 	return _normalize_string_array(progress.get(progress_key, [])).find(entry_id) >= 0
 
 
-func _request_melody_prompt(melody_id: String, prompt_mode: String) -> void:
+func _request_melody_prompt(
+	melody_id: String,
+	prompt_mode: String,
+	completion_kind: String = "",
+	request_overrides: Dictionary = {}
+) -> void:
 	var melody_definition := get_melody_definition(melody_id)
 	if melody_definition.is_empty():
 		set_save_status("The phrase slips away before it can be arranged.")
@@ -1528,7 +1632,11 @@ func _request_melody_prompt(melody_id: String, prompt_mode: String) -> void:
 		set_save_status("The phrase needs more shape before it can be rehearsed.")
 		return
 
-	if prompt_mode == "performance" and !can_perform_melody(melody_id):
+	var normalized_completion_kind := completion_kind
+	if normalized_completion_kind.is_empty():
+		normalized_completion_kind = "festival_performance" if prompt_mode == "performance" else "melody_practice"
+
+	if prompt_mode == "performance" and normalized_completion_kind == "festival_performance" and !can_perform_melody(melody_id):
 		set_save_status("The performance point is not ready to answer the melody yet.")
 		return
 
@@ -1546,12 +1654,33 @@ func _request_melody_prompt(melody_id: String, prompt_mode: String) -> void:
 	var request := {
 		"melody_id": melody_id,
 		"mode": prompt_mode,
+		"completion_kind": normalized_completion_kind,
 		"title": prompt_title,
 		"body": prompt_body,
 		"segments": prompt_segments,
 		"expected_order": expected_order,
 		"retry_hint": "That contour felt off. Try beginning with %s." % first_label,
 		"hint_text": "Choose the known phrase segments in order.",
+	}
+	request.merge(request_overrides, true)
+	melody_prompt_requested.emit(request)
+
+
+func _request_trinity_chime_prompt() -> void:
+	var request := {
+		"melody_id": "festival_melody",
+		"mode": "performance",
+		"completion_kind": "trinity_chime",
+		"title": "Settle the Trinity Chime",
+		"body": "Arrange the choir cues in the order Mei taught you, then let the church phrase settle into one calm chime.",
+		"segments": [
+			{"source_id": "steps", "label": "Stone Steps", "landmark": "Trinity Church"},
+			{"source_id": "garden", "label": "Side Garden", "landmark": "Trinity Church"},
+			{"source_id": "yard", "label": "Quiet Yard", "landmark": "Trinity Church"},
+		],
+		"expected_order": ["steps", "garden", "yard"],
+		"retry_hint": "The church phrase begins at the steps before the garden and quiet yard answer.",
+		"hint_text": "Choose the choir cues in Mei's order.",
 	}
 	melody_prompt_requested.emit(request)
 
@@ -1618,6 +1747,30 @@ func _collect_trinity_church_cue(cue_id: String) -> bool:
 	return cues.size() >= 3
 
 
+func _complete_trinity_church_chime() -> void:
+	var progress := get_landmark_progress("trinity_church")
+	if progress.is_empty():
+		set_save_status("The church phrase is not ready to settle yet.")
+		return
+
+	var cues := _normalize_string_array(progress.get("cues_collected", []))
+	if cues.size() < 3:
+		set_save_status("The church phrase still needs all three choir cues.")
+		return
+
+	if bool(progress.get("chime_performed", false)):
+		set_save_status("The church bells have already settled into place.")
+		return
+
+	progress["chime_performed"] = true
+	progress["state"] = "resolved"
+	set_landmark_progress("trinity_church", progress)
+	set_objective("Return to Choir Caretaker Mei with the settled church phrase.")
+	set_hint(build_input_hint("R Talk to Choir Caretaker Mei"))
+	set_save_status("The choir phrase settled into one calm church chime.")
+	_autosave_story_progress()
+
+
 ## Collect one Bi Shan Tunnel echo marker. Returns true when all three are in.
 ## Advances the landmark to in_progress on first echo collected.
 func _collect_bi_shan_echo(echo_id: String) -> bool:
@@ -1674,8 +1827,9 @@ func _resolve_bi_shan_tunnel() -> void:
 
 	set_melody_progress({"festival_melody": melody_state})
 	_emit_fragment_story_milestones(previous_melody, "bi_shan_echo", melody_state)
+	unlock_shortcut("bi_shan_crossing")
 	set_objective("Explore Long Shan Tunnel and keep Ren moving between the lit pockets.")
-	set_save_status("Bi Shan Tunnel — mural resonance restored.")
+	set_save_status("Bi Shan Tunnel — mural resonance restored, and the cross-island route feels steadier now.")
 
 
 ## Award the Long Shan Tunnel melody fragment and advance melody state.
@@ -1689,8 +1843,9 @@ func _resolve_long_shan_tunnel() -> void:
 
 	set_melody_progress({"festival_melody": melody_state})
 	_emit_fragment_story_milestones(previous_melody, "long_shan_route", melody_state)
-	set_objective("Climb Bagua Tower and compare the recovered phrases with Tower Keeper Suyin.")
-	set_save_status("Long Shan Tunnel — passage completed.")
+	set_objective("Return to Tunnel Guide Ren so he can open the route toward Bagua Tower.")
+	set_hint(build_input_hint("R Talk to Tunnel Guide Ren"))
+	set_save_status("Long Shan Tunnel — passage completed. Ren can now point out the tower route.")
 
 
 ## Called when the synthesis chamber trigger fires at the top of Bagua Tower.
@@ -1737,6 +1892,9 @@ func _check_beat_gate(beat: Dictionary) -> bool:
 			var progress := get_landmark_progress("trinity_church")
 			var cues: Array = progress.get("cues_collected", [])
 			return cues.size() >= 3
+		"trinity_church_chime":
+			var progress := get_landmark_progress("trinity_church")
+			return bool(progress.get("chime_performed", false))
 		"long_shan_exit_reached":
 			return get_landmark_state("long_shan_tunnel") == "reward_collected"
 		"bagua_synthesis_done":
@@ -1958,7 +2116,6 @@ func _perform_festival_melody() -> void:
 	set_chapter("Festival Night")
 	set_objective("The restored festival melody carries across the harbor.")
 	set_save_status("The harbor gathering answers the restored melody.")
-	save_story_autosave()
 	story_milestone.emit("festival_performed", {
 		"fragments_found": fragments_found,
 		"helped_residents": _count_helped_residents(),
