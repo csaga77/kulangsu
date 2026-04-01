@@ -9,6 +9,7 @@ signal close_requested()
 @onready var m_map_body: Label = $Margin/Body/Tabs/Map/MapBody
 @onready var m_residents_body: Label = $Margin/Body/Tabs/Residents/ResidentsBody
 @onready var m_melody_body: Label = $Margin/Body/Tabs/Melody/MelodyBody
+@onready var m_melody_practice_button: Button = $Margin/Body/Tabs/Melody/MelodyPracticeButton
 @onready var m_preview_viewport: SubViewport = $Margin/Body/Tabs/Wardrobe/WardrobeContent/PreviewFrame/PreviewViewportContainer/PreviewViewport
 @onready var m_wardrobe_body: Label = $Margin/Body/Tabs/Wardrobe/WardrobeContent/WardrobeBody
 @onready var m_costume_value: Label = $Margin/Body/Tabs/Wardrobe/WardrobeContent/CostumeRow/Controls/Value
@@ -35,6 +36,7 @@ func _ready() -> void:
 	m_next_hair_style_button.pressed.connect(_on_next_hair_style_pressed)
 	m_prev_hair_color_button.pressed.connect(_on_previous_hair_color_pressed)
 	m_next_hair_color_button.pressed.connect(_on_next_hair_color_pressed)
+	m_melody_practice_button.pressed.connect(_on_melody_practice_pressed)
 	m_close_button.pressed.connect(close_requested.emit)
 	if !AppState.player_costumes_changed.is_connected(_on_player_costumes_changed):
 		AppState.player_costumes_changed.connect(_on_player_costumes_changed)
@@ -61,6 +63,23 @@ func refresh_from_state() -> void:
 	m_prev_costume_button.disabled = unlocked_count <= 1
 	m_next_costume_button.disabled = unlocked_count <= 1
 
+	var primary_melody_id := _primary_melody_id()
+	if primary_melody_id.is_empty():
+		m_melody_practice_button.disabled = true
+		m_melody_practice_button.text = "Practice Melody"
+		return
+
+	var melody_definition := AppState.get_melody_definition(primary_melody_id)
+	var melody_state := AppState.get_melody_state(primary_melody_id)
+	var melody_label := String(melody_definition.get("display_name", "Melody"))
+	var stage := String(melody_state.get("state", "unknown"))
+	var is_replay := stage in ["performed", "resonant"]
+	m_melody_practice_button.disabled = !AppState.can_practice_melody(primary_melody_id)
+	if is_replay:
+		m_melody_practice_button.text = "Replay %s" % melody_label
+	else:
+		m_melody_practice_button.text = "Practice %s" % melody_label
+
 
 func _build_preview_actor() -> void:
 	var preview_root := Node2D.new()
@@ -85,6 +104,13 @@ func _refresh_preview() -> void:
 		return
 
 	m_preview_actor.set_configuration(AppState.get_player_appearance_config())
+
+
+func _primary_melody_id() -> String:
+	var melody_ids := AppState.get_melody_ids()
+	if melody_ids.is_empty():
+		return ""
+	return String(melody_ids[0])
 
 
 func _on_previous_costume_pressed() -> void:
@@ -115,6 +141,13 @@ func _on_previous_hair_color_pressed() -> void:
 func _on_next_hair_color_pressed() -> void:
 	AppState.cycle_player_hair_color(1)
 	refresh_from_state()
+
+
+func _on_melody_practice_pressed() -> void:
+	var melody_id := _primary_melody_id()
+	if melody_id.is_empty():
+		return
+	AppState.request_melody_practice(melody_id)
 
 
 func _on_player_costumes_changed(_unlocked_ids: PackedStringArray, _equipped_costume_id: String) -> void:

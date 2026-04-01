@@ -62,6 +62,11 @@ custom_minimum_size = Vector2(760, 0)
 layout_mode = 2
 autowrap_mode = 3
 
+[node name="MelodyPracticeButton" type="Button" parent="Margin/Body/Tabs/Melody"]
+custom_minimum_size = Vector2(340, 54)
+layout_mode = 2
+text = "Practice Melody"
+
 [node name="Wardrobe" type="ScrollContainer" parent="Margin/Body/Tabs"]
 layout_mode = 2
 size_flags_vertical = 3

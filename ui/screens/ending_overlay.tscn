@@ -39,7 +39,7 @@ autowrap_mode = 3
 [node name="ChooseLabel" type="Label" parent="Margin/Body"]
 custom_minimum_size = Vector2(760, 0)
 layout_mode = 2
-text = "Choose how the prototype closes."
+text = "Choose what comes next."
 autowrap_mode = 3
 
 [node name="ReturnButton" type="Button" parent="Margin/Body"]

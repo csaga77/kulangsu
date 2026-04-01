@@ -23,6 +23,6 @@ func refresh_from_state() -> void:
 	m_summary_body.text = "Melody fragments recovered: %s\nResidents helped: %s\nOptional collectibles found: %s\nPlaytime: %s" % [
 		summary.get("fragments", "4 / 4"),
 		summary.get("residents", "4"),
-		summary.get("collectibles", "prototype"),
+		summary.get("collectibles", "Not tracked in this build"),
 		summary.get("playtime", "a brief evening on Kulangsu"),
 	]

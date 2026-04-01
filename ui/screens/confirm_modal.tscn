@@ -28,12 +28,12 @@ text = "Confirm"
 [node name="ConfirmTitle" type="Label" parent="Margin/Body"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
-autowrap_mode = 3
+autowrap_mode = 1
 
 [node name="ConfirmBody" type="Label" parent="Margin/Body"]
 custom_minimum_size = Vector2(620, 0)
 layout_mode = 2
-autowrap_mode = 3
+autowrap_mode = 1
 
 [node name="Actions" type="HBoxContainer" parent="Margin/Body"]
 layout_mode = 2

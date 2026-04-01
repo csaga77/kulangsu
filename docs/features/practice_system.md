@@ -1,6 +1,6 @@
 # Practice System
 
-Design doc for the practice and recognition layer that should sit between fragment recovery and the final harbor-stage performance. A simple in-world performance trigger now exists; this doc is about the richer prompt that still has not been implemented.
+Design doc for the practice and recognition layer that now sits between fragment recovery and the final harbor-stage performance. The first ordered-confirmation prompt is live; this doc captures the shipped first pass plus the follow-on expansion points.
 
 ## Goal
 
@@ -10,7 +10,7 @@ Design doc for the practice and recognition layer that should sit between fragme
 
 ## User / Player Experience
 
-After collecting one or more melody fragments, the player should feel that they "know" the phrase well enough to reproduce it at the landmark's performance point. The practice layer exists to make that transition feel earned rather than automatic.
+After collecting enough melody fragments to reconstruct the phrase, the player should feel that they "know" it well enough to reproduce it at the landmark's performance point. The practice layer exists to make that transition feel earned rather than automatic.
 
 The experience should be: hear a short phrase → confirm you recognize it → perform it at the right place → the world responds. There should be no long rhythm-game stage, no score, and no hard fail. A wrong attempt produces gentle corrective feedback and lets the player try again immediately.
 
@@ -18,7 +18,7 @@ The experience should be: hear a short phrase → confirm you recognize it → p
 
 ### Practice vs. Performance Distinction
 
-**Practice** is optional preparation that can happen anywhere a melody fragment is "known." The player can trigger it from the journal Melody tab or from a landmark's ambient cue. It gives the player a chance to hear the phrase and confirm the contour before committing to the performance point.
+**Practice** is optional preparation that can happen once the melody is `reconstructed`. The current first pass is triggered from the journal Melody tab. It gives the player a chance to order the known phrase segments before committing to the performance point.
 
 **Performance** is the landmark-specific activation that awards the fragment and changes the world. It requires the player to be at the correct performance landmark and have the necessary melody state.
 
@@ -33,15 +33,15 @@ Keeping these two separate means the practice layer can be built and tested inde
 | `performed` | World response is live; repeat performance available as ambient replay. |
 | `resonant` | Full island resonance; ambient-only, no further player input required. |
 
-For the first implementation, only `reconstructed` and above need an active interaction. `heard` can be a passive listen that plays audio (when audio exists) or shows a short descriptive line.
+The current first pass only offers the active prompt at `reconstructed` and above. `heard` remains journal/context flavor rather than an input-driven prompt.
 
 ### Recognition Prompt (First Version)
 
-The simplest workable first version is a **short ordered confirmation**: the player sees 2–4 phrase segments labeled by their source (e.g. "Harbor Opening", "Church Phrase", "Tunnel Echo") and selects them in the order that feels right for the melody contour.
+The shipped first version is a **short ordered confirmation**: the player sees 2–4 known fragment segments labeled by their source landmark and selects them in the order that feels right for the melody contour.
 
 - Order is shown as a list, not a notation UI.
-- A correct sequence moves the melody to `performed` at the landmark.
-- An incorrect sequence shows a short hint ("That order felt reversed — try starting from the harbor phrase.") and lets the player try again with no penalty.
+- A correct sequence completes rehearsal immediately, or moves the melody to `performed` when the prompt was opened from the landmark performance point.
+- An incorrect sequence shows a short hint and lets the player try again with no penalty.
 - There is no time limit.
 
 This avoids requiring the `piano_game` module before the first performance lands.
@@ -52,11 +52,11 @@ Each landmark can have one performance point: a `LandmarkTrigger` (or equivalent
 
 Current performance landmark for `festival_melody`: **Festival Stage** at Piano Ferry (as defined in `melody_catalog.gd`).
 
-For Trinity Church specifically: the chime activation at the end of the choir cue arc is effectively the first performance point, simplified. The current implementation resolves it implicitly through the caretaker's resolved beat. When a proper performance system exists, this can be upgraded to use the recognition prompt at the church performance spot before the beat fires.
+For Trinity Church specifically: the chime activation at the end of the choir cue arc is still simplified. The current implementation resolves it implicitly through the caretaker's resolved beat. The reusable prompt now exists, so Trinity can be migrated to it later without inventing a new UI pattern.
 
 ## Rules
 
-- Practice is always optional. Skipping practice does not block performance.
+- Practice is always optional. Skipping journal practice does not block performance.
 - Performance requires the melody to be in `reconstructed` state or higher.
 - Performance requires the player to be at the melody's `performance_landmark`.
 - A failed recognition attempt is not a fail state. The player retries immediately.
@@ -67,24 +67,28 @@ For Trinity Church specifically: the chime activation at the end of the choir cu
 ## Edge Cases
 
 - Player reaches the performance landmark before reconstructing the melody: show a "the phrase is not ready yet" message and do not open the prompt.
-- Player already performed the melody: show a "replay" option instead of the main prompt; replay does not re-award the fragment.
+- Player opens journal practice before reconstruction: keep the button disabled and do not open the prompt.
+- Player already performed the melody: journal practice can still replay the ordered prompt; the world performance point itself remains hidden once collected.
 - The performance prompt should fail softly if the melody catalog entry is missing. Log a warning and do not crash.
 - Free Walk seeds melody state differently; practice and performance in Free Walk should read from AppState normally but not set story chapter.
 
 ## Architecture / Ownership
 
-- `AppState` owns the `performed` flag per melody and the state transition to `performed`.
-- `melody_catalog.gd` owns the `performance_landmark` and `performance_prompt` fields per melody.
-- A future `PerformanceTrigger` or extended `LandmarkTrigger` node will own the in-world activation point.
-- The recognition prompt UI belongs in a new overlay or a dedicated screen script under `ui/screens/`. It should not live in `AppState` or `scenes/game_main.gd`.
+- `AppState` owns the prompt-request signal, the `performed` flag per melody, and the state transition to `performed`.
+- `melody_catalog.gd` owns the `performance_landmark`, `performance_prompt`, and prompt segment ordering fields per melody.
+- The in-world activation point still lives on `LandmarkTrigger` at Festival Stage.
+- The recognition prompt UI now lives in `ui/screens/melody_prompt_overlay.*`. It does not write melody state directly; it reports completion back through the shell into `AppState`.
 - The `piano_game` module can be integrated as the recognition prompt backend once the interface is stable.
 
 ## Relevant Files
 
 - Shared state or catalogs:
-  - [`../../game/app_state.gd`](../../game/app_state.gd) — `melody_progress[id]["performed"]`, `melody_progress[id]["state"]`
-  - [`../../game/melody_catalog.gd`](../../game/melody_catalog.gd) — `performance_landmark`, `performance_prompt` per melody
+  - [`../../game/app_state.gd`](../../game/app_state.gd) — prompt request/completion methods plus `melody_progress[id]["performed"]`, `melody_progress[id]["state"]`
+  - [`../../game/melody_catalog.gd`](../../game/melody_catalog.gd) — `performance_landmark`, `performance_prompt`, and prompt-segment metadata per melody
   - [`../../game/piano_game/piano_game.gd`](../../game/piano_game/piano_game.gd) — candidate performance backend (currently standalone)
+- UI:
+  - [`../../ui/screens/melody_prompt_overlay.gd`](../../ui/screens/melody_prompt_overlay.gd) — ordered-confirmation prompt UI
+  - [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd) — journal-side practice entry point
 - Related docs:
   - [`core_melody_loop.md`](core_melody_loop.md) — MVP Step 5 (Add One Performance Point)
   - [`trinity_church.md`](trinity_church.md) — first simplified performance point
@@ -93,18 +97,18 @@ For Trinity Church specifically: the chime activation at the end of the choir cu
 
 ## Contracts / Boundaries
 
-- When this system is implemented, add a `PerformanceTrigger` contract to `contracts.md`.
 - If the `performed` flag shape or the melody state transition rules change, update `contracts.md` (Shared State Contract).
-- The recognition prompt UI must not write melody state directly. It should call `AppState` setters only.
+- The recognition prompt UI must not write melody state directly. It should report completion back through the shell so `AppState` remains the state owner.
 
 ## Validation
 
-Once implemented:
 - Reach the Festival Stage with `festival_melody` in `reconstructed` state.
+- Open the journal Melody tab after Bi Shan and confirm `Practice Festival Melody` is enabled.
+- Complete the journal prompt correctly. Confirm the prompt closes and melody state remains unchanged.
 - Press R at the performance point. Confirm the recognition prompt opens.
 - Complete the prompt correctly. Confirm `performed` flag is set and the journal Melody tab updates.
 - Attempt the prompt with incorrect order. Confirm gentle feedback and immediate retry.
-- Return to the performance point after performing. Confirm the replay option appears instead of the main prompt.
+- Return to the journal after performing. Confirm the button changes to replay language instead of the initial practice wording.
 
 ## Out Of Scope
 

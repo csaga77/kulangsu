@@ -6,6 +6,7 @@ const PIANO_FERRY_SCENE: PackedScene = preload("res://architecture/piano_ferry.t
 
 var m_failures := PackedStringArray()
 var m_milestones := PackedStringArray()
+var m_prompt_requests: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -15,10 +16,13 @@ func _ready() -> void:
 func _run() -> void:
 	if !AppState.story_milestone.is_connected(_on_story_milestone):
 		AppState.story_milestone.connect(_on_story_milestone)
+	if !AppState.melody_prompt_requested.is_connected(_on_melody_prompt_requested):
+		AppState.melody_prompt_requested.connect(_on_melody_prompt_requested)
 
 	AppState.configure_new_game()
 	_assert_true(AppState.fragments_found == 0, "New game starts with zero fragments")
 	_assert_true(AppState.get_landmark_state("festival_stage") == "locked", "Festival stage starts locked")
+	_assert_true(!AppState.can_practice_melody("festival_melody"), "Practice stays locked until at least two true fragments are restored")
 
 	AppState.interact_with_resident("ferry_caretaker")
 	AppState.activate_landmark_trigger("piano_ferry", "harbor_refrain", "Harbor Clue")
@@ -42,6 +46,11 @@ func _run() -> void:
 	AppState.activate_landmark_trigger("bi_shan_tunnel", "echo_c", "Echo C")
 	AppState.activate_landmark_trigger("bi_shan_tunnel", "chamber", "Mural Chamber")
 	_assert_true(AppState.fragments_found == 2, "Bi Shan awards the second fragment")
+	_assert_true(AppState.can_practice_melody("festival_melody"), "Practice unlocks once the melody is reconstructed")
+
+	var practice_requests_before := m_prompt_requests.size()
+	AppState.request_melody_practice("festival_melody")
+	_assert_true(m_prompt_requests.size() == practice_requests_before + 1, "Journal practice requests the melody prompt once reconstructed")
 
 	AppState.activate_landmark_trigger("long_shan_tunnel", "tunnel_entry", "Entry")
 	AppState.interact_with_resident("tunnel_guide")
@@ -61,7 +70,12 @@ func _run() -> void:
 	_assert_true(AppState.get_landmark_state("festival_stage") == "available", "Festival stage unlocks after Bagua")
 	_assert_true(!bool(AppState.get_melody_state("festival_melody").get("performed", false)), "Bagua does not mark the melody performed")
 
-	AppState.activate_landmark_trigger("festival_stage", "harbor_stage", "Festival Stage")
+	var festival_requests_before := m_prompt_requests.size()
+	var stage_consumed := AppState.activate_landmark_trigger("festival_stage", "harbor_stage", "Festival Stage")
+	_assert_true(!stage_consumed, "Festival stage waits for prompt confirmation before completion")
+	_assert_true(m_prompt_requests.size() == festival_requests_before + 1, "Festival stage requests the melody prompt")
+	_assert_true(!bool(AppState.get_melody_state("festival_melody").get("performed", false)), "Festival stage does not mark the melody performed before prompt success")
+	AppState.complete_melody_performance("festival_melody")
 	_assert_true(bool(AppState.get_melody_state("festival_melody").get("performed", false)), "Festival stage marks the melody performed")
 	_assert_true(m_milestones.has("festival_performed"), "Festival performance emits the festival_performed milestone")
 
@@ -97,6 +111,10 @@ func _run() -> void:
 
 func _on_story_milestone(milestone_id: String, _context: Dictionary) -> void:
 	m_milestones.append(milestone_id)
+
+
+func _on_melody_prompt_requested(request: Dictionary) -> void:
+	m_prompt_requests.append(request.duplicate(true))
 
 
 func _assert_true(condition: bool, label: String) -> void:

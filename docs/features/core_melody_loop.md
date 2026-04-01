@@ -41,11 +41,11 @@ This is how the current repo already maps to the high-level RPG pitch.
 ### Core Loop Mapping
 
 - `Explore` already exists through the main island scene in [`../../scenes/game_main.gd`](../../scenes/game_main.gd) and the terrain/landmark setup.
-- `Hear` is represented mostly through resident writing, ambient lines, and melody clue text in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd), but not yet as a formal runtime melody state.
+- `Hear` is represented through resident writing, ambient lines, melody clue text, and shared melody runtime state in [`../../game/app_state.gd`](../../game/app_state.gd).
 - `Collect` exists today as a fragment counter in [`../../game/app_state.gd`](../../game/app_state.gd) and the journal `Melody` tab in [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd).
-- `Practice` is still mostly design intent. There is not yet a shared practice state or training loop in the main overworld flow.
-- `Perform` now exists as a simple in-world harbor-stage trigger. The shell supports ending/postgame flow, but there is not yet a reusable recognition/prompt layer before performance.
-- `Unlock` exists today mainly as updated objectives, resident trust, costume unlocks, journal notes, and prototype fragment count changes.
+- `Practice` now exists as a short ordered-confirmation prompt launched from the journal once the melody is reconstructed.
+- `Perform` now routes through the same recognition/prompt layer at the harbor-stage performance point before the shell opens the ending/postgame flow.
+- `Unlock` exists today mainly as updated objectives, resident trust, costume unlocks, journal notes, and fragment count changes.
 - `Deepen` exists today through resident trust, follow-up dialogue beats, and additional journal context rather than a full authored melody mastery system.
 
 ### Current Canonical Landmarks
@@ -63,18 +63,19 @@ The external GDD's `Sunlight Rock` and `Zheng Chenggong Statue` are not part of 
 ### Current System Mapping By Feature
 
 - Melody system:
-  - fragment count exists
-  - melody-specific authored metadata does not
-  - journal melody view is currently summary-only
+  - shared melody runtime state exists
+  - melody-specific authored metadata exists in `melody_catalog.gd`
+  - journal melody view now shows landmark/source-specific detail
 - NPC system:
   - strong current fit
   - residents are already the main source of local clues, trust, and objective nudges
 - Performance system:
   - shell and story framing exist
-  - one in-world performance trigger now exists, but a reusable practice / recognition layer does not
+  - a reusable recognition prompt now exists for journal practice and the harbor-stage performance point
+  - other landmark-specific performance beats may still resolve through simplified landmark dialogue for now
 - Growth system:
-  - current progression is tracked through chapter, objective, trust, fragments, and costume unlocks
-  - explicit melody growth tiers are not yet implemented
+  - current progression is tracked through chapter, objective, trust, fragments, melody state, and costume unlocks
+  - the `heard -> reconstructed -> performed -> resonant` tier model now exists, but later island-side feedback from `resonant` is still light
 
 ## Rules
 
@@ -92,9 +93,9 @@ These are the biggest differences between the current project and the target "mu
 
 1. ~~There is no formal melody catalog.~~ **Resolved.** `game/melody_catalog.gd` now owns melody definitions. `AppState` now owns per-melody runtime state (`melody_progress`) with named ids, fragment counts, progression tier, known sources, next lead, and performed flag. `melody_progress_changed` is a live signal. The journal `Melody` tab reads full melody-specific text from `AppState.build_melody_journal_text()`.
 2. ~~The journal `Melody` tab only shows recovered fragment count.~~ **Resolved.** The journal now shows melody name, district, stage, fragment progress, clue map, next lead, and world-response summary per melody.
-3. There is still no shared `practice` layer in the main story loop.
-4. Performance exists as one world trigger, but there is not yet a reusable recognition / prompt system for landmark performances.
-5. `Continue` is prototype-seeded state, not real story persistence.
+3. ~~There is still no shared `practice` layer in the main story loop.~~ **Resolved.** The journal can now request a reusable ordered-confirmation practice prompt once the melody is reconstructed.
+4. ~~Performance exists as one world trigger, but there is not yet a reusable recognition / prompt system for landmark performances.~~ **Resolved for the festival finale.** The harbor-stage performance point now routes through the reusable melody prompt before `performed` is set.
+5. ~~`Continue` is prototype-seeded state, not real story persistence.~~ **Resolved.** Story mode now writes and loads a real versioned autosave, the title footer exposes latest save metadata, and `Continue` resumes from a safe landmark or tunnel-entry anchor instead of a fragile in-puzzle position.
 6. The external GDD proposes a landmark list that differs from the repo's current authored route.
 7. The external GDD suggests JSON data files, but the current project is still primarily catalog-driven through GDScript.
 
@@ -102,7 +103,7 @@ These are the biggest differences between the current project and the target "mu
 
 Use this order to close the gap with the smallest architectural risk.
 
-> **Note:** Steps 1–6 now have a working first pass. The melody catalog, melody runtime state in AppState, updated journal Melody tab, all five landmark arcs, the harbor-stage performance point, and the ending/postgame handoff are all live. The current starting point is Step 7.
+> **Note:** Steps 1–7 now have a working first pass. The melody catalog, melody runtime state in AppState, updated journal Melody tab, all five landmark arcs, the reusable practice/performance prompt, the harbor-stage performance point, the ending/postgame handoff, and real story autosave-backed `Continue` are all live. The current starting point is external-route cleanup and any future multi-slot save polish, not the first-pass loop itself.
 
 ### ~~1. Formalize Melody Progress As Shared State~~ ✓ Done
 
@@ -146,7 +147,7 @@ See [`piano_ferry.md`](piano_ferry.md), [`trinity_church.md`](trinity_church.md)
 
 - `festival_stage` is now a real landmark trigger at Piano Ferry.
 - Bagua Tower no longer marks the melody performed directly; it unlocks the harbor-stage performance point instead.
-- Triggering the harbor stage advances the melody to `performed` and opens the ending overlay through `festival_performed`.
+- Triggering the harbor stage now opens the reusable melody prompt first; only a correct order advances the melody to `performed` and opens the ending overlay through `festival_performed`.
 
 ### ~~6. Add Persistent World Response~~ ✓ Done
 
@@ -155,10 +156,11 @@ See [`piano_ferry.md`](piano_ferry.md), [`trinity_church.md`](trinity_church.md)
   - postgame configuration seeds `resonant` melody state
   - objective and summary flow hand off cleanly into postgame
 
-### 7. Revisit Save / Continue Only After The Loop Exists
+### ~~7. Revisit Save / Continue Only After The Loop Exists~~ ✓ Done
 
-- Do not design full save serialization first.
-- Once one melody loop works end to end, then define how `Continue` should store and restore melody, resident, and landmark state together.
+- Story mode now writes one versioned autosave payload from `AppState`.
+- `Continue` restores melody, resident, landmark, player-appearance, and postgame state together.
+- `scenes/game_main.gd` now resumes from safe landmark and tunnel-entry anchors instead of interior tunnel positions.
 
 ## Recommended Growth Tiers
 
@@ -246,7 +248,8 @@ That structure may become useful later, but the current project is already organ
 ## Edge Cases
 
 - `Free Walk` should not accidentally advance or fake the full story loop unless that mode is intentionally changed.
-- `Continue` is still prototype data. Do not document it as a real save/load flow.
+- `Free Walk` should not overwrite the story autosave.
+- `Continue` should resume at a safe checkpoint anchor, not a tunnel interior or a resident-facing interaction spot.
 - A resident clue may reveal a melody before the player can perform it; the journal should handle partial knowledge cleanly.
 - Melody progress should fail soft when content is missing. A bad melody id should not crash resident interaction or journal rendering.
 - Performance points should fail with readable feedback, not silent no-op behavior.
@@ -291,14 +294,12 @@ That structure may become useful later, but the current project is already organ
   - `fragments_changed`
   - `resident_profile_changed`
   - `summary_changed`
+  - `save_metadata_changed`
 - Current flow:
   - resident interaction starts in [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
   - resident progression updates in [`../../game/app_state.gd`](../../game/app_state.gd)
   - the journal reads summary text from [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd)
-- Recommended next additions:
-  - a melody-state getter API in [`../../game/app_state.gd`](../../game/app_state.gd)
-  - a melody journal text builder similar to the resident journal helper
-  - optional melody-specific signals only if the UI or world needs a cleaner update hook than the existing fragment/objective signals
+  - story autosave metadata stays in [`../../game/app_state.gd`](../../game/app_state.gd) and feeds the title shell in [`../../main.gd`](../../main.gd)
 
 ## Contracts / Boundaries
 
@@ -312,10 +313,9 @@ That structure may become useful later, but the current project is already organ
 - Run the full project and confirm the overworld, HUD, and journal still open normally.
 - Verify that melody-related resident dialogue still updates objective, hint, and resident notes correctly.
 - Open the journal and confirm the `Melody` tab reflects the intended story state for `New Game`, `Continue`, and `Free Walk`.
-- When the first performance point exists, verify:
-  - early arrival is handled clearly
-  - successful performance changes at least one persistent world-facing state
-  - failure or cancellation does not strand the player in a broken objective state
+- Run [`../../game/tests/persistence/test_story_autosave.tscn`](../../game/tests/persistence/test_story_autosave.tscn) when save/load or checkpoint behavior changes.
+- Verify that journal practice opens only after the melody reaches `reconstructed`, and that a wrong ordered-confirmation attempt fails softly.
+- Verify that the harbor-stage performance point opens the same prompt, and that success changes at least one persistent world-facing state without stranding the player on cancellation.
 
 ### Reusable Manual Playtest Route
 
@@ -345,8 +345,11 @@ Use this route when you want one end-to-end manual check of the current story-cr
    Expectation: the chamber refuses early use below three fragments, Bagua awards the fourth fragment, and the harbor festival stage unlocks without marking the melody performed yet.
 
 7. Complete the harbor performance.
-   Actions: return to Piano Ferry and activate the Festival Stage.
-   Expectation: the melody becomes `performed`, the ending overlay opens, and postgame remains available from the ending screen.
+   Actions: return to Piano Ferry, activate the Festival Stage, then enter the recovered phrase segments in the authored order.
+   Expectation: the prompt opens first, a wrong order clears softly, the melody becomes `performed` only after success, and the ending overlay opens with postgame still available from the ending screen.
+
+8. Return to title, then choose `Continue`.
+   Expectation: the title footer shows the latest saved chapter/location summary, `Continue` is enabled, and the run resumes at the latest safe district anchor rather than an interior tunnel spot.
 
 ### Manual Failure Checks
 
@@ -363,6 +366,9 @@ Run these quick checks when you want confidence that progression gates still fai
 
 4. Try the Bagua synthesis chamber before three fragments are restored.
    Expectation: the chamber refuses to resolve and preserves the current objective state.
+
+5. Open journal practice after Bi Shan or later, then intentionally submit the wrong order once.
+   Expectation: the prompt stays open, gives a gentle retry hint, and clears the selected order without advancing melody state.
 
 ## Out Of Scope
 

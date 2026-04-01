@@ -12,6 +12,15 @@ const LEVEL_REGISTRY := preload("res://common/level_registry.gd")
 const TUNNEL_ENTRY_FRONT_APPROACH_DISTANCE := 96.0
 const TUNNEL_PORTAL_SUFFIX := " Portal"
 const DIRECTIONAL_PORTAL_MIN_OFFSET_DISTANCE := 16.0
+const STORY_SAFE_RESUME_ANCHOR_IDS := [
+	"Piano Ferry",
+	"Trinity Church",
+	"Bagua Tower",
+	"Bi Shan Tunnel South",
+	"Bi Shan Tunnel North",
+	"Long Shan Tunnel South",
+	"Long Shan Tunnel North",
+]
 
 @onready var m_actor_root: Node2D = $actors
 @onready var m_player :HumanBody2D = $actors/player
@@ -68,6 +77,7 @@ func _ready() -> void:
 	GameGlobal.get_instance().set_player(m_player)
 	_cache_landmarks()
 	_cache_spawn_anchors()
+	_apply_story_resume_anchor_if_needed()
 	_cache_tunnels()
 	_spawn_catalog_residents()
 	_connect_ui_signals()
@@ -240,6 +250,80 @@ func _cache_spawn_anchors() -> void:
 	}
 
 
+func _apply_story_resume_anchor_if_needed() -> void:
+	if !is_instance_valid(m_player):
+		return
+	if AppState.mode not in ["Story", "Postgame"]:
+		return
+
+	var anchor_id := AppState.get_story_resume_anchor_id()
+	if anchor_id.is_empty():
+		anchor_id = "Piano Ferry"
+
+	var anchor_node := m_spawn_anchor_nodes.get(anchor_id) as Node2D
+	if !is_instance_valid(anchor_node):
+		anchor_node = m_spawn_anchor_nodes.get("Piano Ferry") as Node2D
+	if !is_instance_valid(anchor_node):
+		return
+
+	m_player.global_position = _resolve_actor_anchor_position(m_player, anchor_node, Vector2.ZERO)
+	_apply_anchor_level_to_actor(m_player, anchor_node)
+
+
+func _update_story_resume_checkpoint() -> void:
+	if AppState.mode not in ["Story", "Postgame"]:
+		return
+
+	var anchor_id := _find_story_resume_anchor_id()
+	if anchor_id.is_empty():
+		return
+
+	var location_label := AppState.location
+	if location_label.is_empty() or location_label == "Island Paths":
+		location_label = _resume_location_for_anchor(anchor_id)
+
+	AppState.set_story_resume_checkpoint(anchor_id, location_label)
+
+
+func _find_story_resume_anchor_id() -> String:
+	var player_tunnel := _find_player_tunnel()
+	if player_tunnel == m_bi_shan_tunnel:
+		return _find_nearest_anchor_id(["Bi Shan Tunnel South", "Bi Shan Tunnel North"])
+	if player_tunnel == m_long_shan_tunnel:
+		return _find_nearest_anchor_id(["Long Shan Tunnel South", "Long Shan Tunnel North"])
+	return _find_nearest_anchor_id(STORY_SAFE_RESUME_ANCHOR_IDS)
+
+
+func _find_nearest_anchor_id(anchor_ids: Array) -> String:
+	if !is_instance_valid(m_player):
+		return ""
+
+	var best_anchor_id := ""
+	var best_distance_sq := INF
+	for anchor_value in anchor_ids:
+		var anchor_id := String(anchor_value)
+		var anchor_node := m_spawn_anchor_nodes.get(anchor_id) as Node2D
+		if !is_instance_valid(anchor_node):
+			continue
+
+		var distance_sq := m_player.global_position.distance_squared_to(anchor_node.global_position)
+		if distance_sq < best_distance_sq:
+			best_distance_sq = distance_sq
+			best_anchor_id = anchor_id
+
+	return best_anchor_id
+
+
+func _resume_location_for_anchor(anchor_id: String) -> String:
+	if anchor_id.begins_with("Bi Shan Tunnel"):
+		return "Bi Shan Tunnel"
+	if anchor_id.begins_with("Long Shan Tunnel"):
+		return "Long Shan Tunnel"
+	if anchor_id == "Piano Ferry" and AppState.mode == "Postgame":
+		return "Ferry Plaza"
+	return anchor_id
+
+
 func _cache_tunnels() -> void:
 	m_tunnel_nodes.clear()
 
@@ -278,6 +362,7 @@ func _sync_location_from_player() -> void:
 
 	if _is_landmark(m_closest_object):
 		AppState.set_location(_display_name_for_node(m_closest_object))
+		_update_story_resume_checkpoint()
 		return
 
 	var best_name := "Island Paths"
@@ -297,6 +382,8 @@ func _sync_location_from_player() -> void:
 		AppState.set_location(best_name)
 	else:
 		AppState.set_location("Island Paths")
+
+	_update_story_resume_checkpoint()
 
 
 func _on_closest_object_changed(new_object: Node2D) -> void:
@@ -355,6 +442,8 @@ func _update_hint_text(target: Node2D) -> void:
 	if landmark_trigger != null:
 		if landmark_trigger.is_collected():
 			AppState.set_hint(AppState.build_input_hint("R Inspect"))
+		elif landmark_trigger.landmark_id == "festival_stage":
+			AppState.set_hint(AppState.build_input_hint("R Perform %s" % landmark_trigger.display_name))
 		else:
 			AppState.set_hint(AppState.build_input_hint("R Collect %s" % landmark_trigger.display_name))
 		return

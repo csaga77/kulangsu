@@ -23,6 +23,7 @@ Current contract:
 - gameplay remains embedded while overlays are shown on top
 - UI is authored against a `1920 x 1080` design canvas and scaled to the live viewport
 - `Esc` backs out through overlay flow and `J` toggles the journal during gameplay
+- the reusable melody prompt overlay opens from `AppState` requests and may return either to gameplay or to the journal, depending on where it was launched
 - the ending overlay may now open from the in-world `festival_performed` milestone instead of only through shell-local controls
 
 ## Shared State Contract
@@ -34,13 +35,16 @@ Owned by:
 Current contract:
 
 - `AppState` is the shared UI/progression-facing bridge between gameplay and UI
-- it exposes signals for mode, chapter, location, objective, hint, save status, fragments, melody progress, landmarks, residents, resident profiles, player appearance/costumes, summary updates, and story milestones
+- it exposes signals for mode, chapter, location, objective, hint, save status, fragments, melody progress, melody prompt requests, landmarks, residents, resident profiles, player appearance/costumes, summary updates, and story milestones
 - `story_milestone(milestone_id, context)` fires after compound state changes resolve; current milestone ids are `landmark_resolved`, `fragment_restored`, `festival_ready`, `festival_performed`, and `resident_trust_max`
 - it now owns shared melody runtime state while [`../game/melody_catalog.gd`](../game/melody_catalog.gd) owns authored melody definitions
+- `melody_prompt_requested(request)` is the bridge from gameplay/journal actions into the reusable ordered-confirmation overlay; `AppState` remains the owner of validation gates and completion methods
+- `save_metadata_changed(metadata)` is the shell-facing signal for title `Continue` state and latest story autosave summary
+- `AppState` now owns the one-slot story autosave payload, current safe resume anchor, and the `configure_continue()`, `save_story_autosave()`, and `set_story_resume_checkpoint(...)` bridge methods used by the shell and world scene
 - the app shell and world hint logic may query `AppState.is_journal_unlocked()` and `AppState.build_input_hint(...)` to keep the early tutorial flow and controls text aligned
 - world and UI code rely on resident getters for resident ids, display names, appearance configs, spawn configs, ambient speech, resident journal text, and full resident profiles when optional movement metadata is needed
 - `interact_with_resident()` checks a resident's `conditional_beats` (priority-sorted, condition-gated) before falling through to the linear `dialogue_beats` spine
-- UI code can now rely on melody getters and journal helpers for melody-facing player context
+- UI code can now rely on melody getters, journal helpers, `can_practice_melody(...)`, `request_melody_practice(...)`, `complete_melody_practice(...)`, and `complete_melody_performance(...)` for melody-facing player context
 - UI screens and world integration code rely on those signals and state getters/setters
 
 Governance:
@@ -80,6 +84,7 @@ Owned by:
 Current contract:
 
 - `scenes/game_main.gd` maps landmarks plus resident spawn/movement anchors, spawns residents, reacts to controller events, syncs player tunnel context into `AppState`, and keeps resident outside/tunnel level state aligned with their current tunnel context
+- `scenes/game_main.gd` also owns mapping the live player position onto safe story resume anchors for autosave and continue
 - `scenes/game_main.tscn` keeps the player and resident instances under one shared y-sorted actor layer rooted at `actors`
 - player inspect and talk prompts flow from the nearest nearby same-layer resident or landmark cue through controller signals into `AppState`
 - landmark naming and location sync depend on known nodes in the main scene

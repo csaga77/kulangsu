@@ -4,13 +4,13 @@ Read [`design_brief.md`](design_brief.md) first for the minimum-token summary. U
 
 ## Status
 
-This document mixes current prototype behavior with planned production-ready UI flow.
+This document mixes current first-pass shipped behavior with planned later UI flow.
 
 Current runtime truth lives in [`../main.gd`](../main.gd), [`../game/app_state.gd`](../game/app_state.gd), and [`design_brief.md`](design_brief.md).
 
 Important limitation:
 
-- Save slots, real autosave/loading, and save-metadata boot flow described below are design targets, not shipped behavior in the current prototype.
+- Story mode now ships with one real autosave-backed `Continue` flow, but multi-slot save UX is still future work.
 
 ## UI Goal
 Design a full UI journey from app launch to app exit that supports a calm exploration game, stays lightweight during play, and gives the player clear orientation without breaking immersion.
@@ -182,17 +182,17 @@ Existing attribution source:
 
 Selecting `Continue`:
 
-- Planned production flow:
-  - Loads latest autosave directly
-  - Shows a short loading card with current chapter and location
-  - Enters play
-- Current prototype behavior:
-  - Seeds a representative mid-story state through `AppState.configure_continue()`
-  - Does not load persisted save data
+- Current first-pass behavior:
+  - Loads the latest story autosave through `AppState.configure_continue()`
+  - Restores shared story state including melody, resident, landmark, and postgame progress
+  - Enters play at the latest safe resume anchor instead of a fragile interior tunnel position
+  - Shows the latest saved chapter, location, and fragment summary in the title footer
+- Current limitation:
+  - Story mode uses one versioned autosave, not multiple save slots yet
 
 ### New Game
 
-Current prototype behavior:
+Current first-pass behavior:
 
 1. Open the character setup overlay directly
 2. Confirm appearance choices
@@ -213,7 +213,7 @@ Purpose:
 
 Rules:
 
-- Planned: separate save state from story mode once real persistence exists
+- Current: story autosave remains separate from Free Walk runtime state
 - Disable main quest progression
 - Keep inspect, movement, and landmark browsing active
 
@@ -406,7 +406,7 @@ Opened from in-game with pause input.
 
 ## 11. Save Flow
 
-This section is planned behavior. The current prototype only exposes save-status text and seeded checkpoint language in UI state; it does not persist saves to disk.
+This section now reflects the first-pass shipped story autosave flow. Multi-slot save UX is still planned behavior.
 
 ### Autosave
 
@@ -419,7 +419,8 @@ Trigger on:
 
 Feedback:
 
-- Small non-blocking save icon in HUD
+- save-status text in the HUD
+- title-footer metadata for the latest story autosave
 
 ### Manual Save
 
@@ -428,7 +429,7 @@ If included:
 - Available from pause menu
 - Use named slots with chapter, location, and playtime
 
-If manual save is omitted early on, autosave alone is acceptable for the prototype.
+If manual save is omitted early on, autosave alone is acceptable for the current story build.
 
 ## 12. Failure / Recovery UI
 

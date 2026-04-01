@@ -23,6 +23,7 @@ const BUTTON_DISABLED_TEXT_COLOR := Color(0.84, 0.82, 0.76, 0.45)
 @onready var m_settings_button: Button = $SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons/SettingsButton
 @onready var m_credits_button: Button = $SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons/CreditsButton
 @onready var m_quit_button: Button = $SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons/QuitButton
+@onready var m_footer_label: Label = $SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons/Footer
 
 
 func _ready() -> void:
@@ -42,6 +43,22 @@ func _ready() -> void:
 
 func set_continue_enabled(is_enabled: bool) -> void:
 	m_continue_button.disabled = !is_enabled
+
+
+func set_continue_metadata(metadata: Dictionary) -> void:
+	var footer_text := "No story autosave yet. Begin at Piano Ferry to create one."
+	if bool(metadata.get("exists", false)):
+		var mode_text := String(metadata.get("mode", "Story"))
+		var chapter_text := String(metadata.get("chapter", "Arrival"))
+		var location_text := String(metadata.get("resume_location", metadata.get("location", "Piano Ferry")))
+		var fragments_text := String(metadata.get("fragments_text", "0 / 4"))
+		footer_text = "Latest autosave: %s\n%s • %s • Fragments %s" % [
+			location_text,
+			mode_text,
+			chapter_text,
+			fragments_text,
+		]
+	m_footer_label.text = footer_text
 
 
 func _apply_button_styles() -> void:

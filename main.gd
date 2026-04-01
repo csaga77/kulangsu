@@ -6,6 +6,7 @@ const TITLE_SCREEN_SCENE: PackedScene = preload("res://ui/screens/title_screen.t
 const PLAYER_SETUP_SCENE: PackedScene = preload("res://ui/screens/player_customization_overlay.tscn")
 const HUD_SCENE: PackedScene = preload("res://ui/screens/game_hud.tscn")
 const JOURNAL_SCENE: PackedScene = preload("res://ui/screens/journal_overlay.tscn")
+const MELODY_PROMPT_SCENE: PackedScene = preload("res://ui/screens/melody_prompt_overlay.tscn")
 const PAUSE_SCENE: PackedScene = preload("res://ui/screens/pause_overlay.tscn")
 const SETTINGS_SCENE: PackedScene = preload("res://ui/screens/settings_overlay.tscn")
 const CREDITS_SCENE: PackedScene = preload("res://ui/screens/credits_overlay.tscn")
@@ -19,6 +20,7 @@ enum ScreenState {
 	PLAYER_SETUP,
 	PLAYING,
 	JOURNAL,
+	MELODY_PROMPT,
 	PAUSE,
 	SETTINGS,
 	CREDITS,
@@ -38,6 +40,7 @@ var m_title_screen: Control
 var m_player_setup_panel: PanelContainer
 var m_hud: Control
 var m_journal_panel: PanelContainer
+var m_melody_prompt_panel: PanelContainer
 var m_pause_panel: PanelContainer
 var m_settings_panel: PanelContainer
 var m_credits_panel: PanelContainer
@@ -45,13 +48,19 @@ var m_ending_panel: PanelContainer
 var m_confirm_panel: PanelContainer
 var m_confirm_action: Callable
 var m_pending_setup_free_walk := false
+var m_prompt_return_state: ScreenState = ScreenState.PLAYING
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	if !AppState.story_milestone.is_connected(_on_story_milestone):
 		AppState.story_milestone.connect(_on_story_milestone)
+	if !AppState.melody_prompt_requested.is_connected(_on_melody_prompt_requested):
+		AppState.melody_prompt_requested.connect(_on_melody_prompt_requested)
 	_build_app_shell()
+	if !AppState.save_metadata_changed.is_connected(_on_story_save_metadata_changed):
+		AppState.save_metadata_changed.connect(_on_story_save_metadata_changed)
+	_refresh_story_save_state(AppState.get_story_save_metadata())
 	get_viewport().size_changed.connect(_update_ui_layout)
 	_update_ui_layout()
 	_show_boot_sequence()
@@ -138,6 +147,12 @@ func _build_app_shell() -> void:
 	m_ui_root.add_child(m_journal_panel)
 	m_journal_panel.connect("close_requested", _resume_gameplay)
 
+	m_melody_prompt_panel = MELODY_PROMPT_SCENE.instantiate() as PanelContainer
+	m_ui_root.add_child(m_melody_prompt_panel)
+	m_melody_prompt_panel.connect("close_requested", _close_melody_prompt)
+	m_melody_prompt_panel.connect("practice_completed", _on_melody_prompt_practice_completed)
+	m_melody_prompt_panel.connect("performance_completed", _on_melody_prompt_performance_completed)
+
 	m_pause_panel = PAUSE_SCENE.instantiate() as PanelContainer
 	m_ui_root.add_child(m_pause_panel)
 	m_pause_panel.connect("resume_requested", _resume_gameplay)
@@ -150,7 +165,7 @@ func _build_app_shell() -> void:
 	m_pause_panel.connect("return_to_title_requested", func() -> void:
 		_show_confirm(
 			"Return to Title?",
-			"The current prototype does not save story progress. Return anyway?",
+			"The latest safe story checkpoint will be autosaved before you leave.",
 			_return_to_title
 		)
 	)
@@ -159,6 +174,7 @@ func _build_app_shell() -> void:
 			"Quit the App?",
 			"Leave Kulangsu for now?",
 			func() -> void:
+				_persist_story_session()
 				get_tree().quit()
 		)
 	)
@@ -203,6 +219,7 @@ func _build_app_shell() -> void:
 	_set_panel_visible(m_player_setup_panel, false)
 	_set_panel_visible(m_hud, false)
 	_set_panel_visible(m_journal_panel, false)
+	_set_panel_visible(m_melody_prompt_panel, false)
 	_set_panel_visible(m_pause_panel, false)
 	_set_panel_visible(m_settings_panel, false)
 	_set_panel_visible(m_credits_panel, false)
@@ -246,6 +263,7 @@ func _show_title() -> void:
 	_set_panel_visible(m_player_setup_panel, false)
 	_set_panel_visible(m_hud, false)
 	_set_panel_visible(m_journal_panel, false)
+	_set_panel_visible(m_melody_prompt_panel, false)
 	_set_panel_visible(m_pause_panel, false)
 	_set_panel_visible(m_settings_panel, false)
 	_set_panel_visible(m_credits_panel, false)
@@ -253,7 +271,7 @@ func _show_title() -> void:
 	_set_panel_visible(m_confirm_panel, false)
 	if m_game_root != null:
 		m_game_root.visible = false
-	m_title_screen.call("set_continue_enabled", m_has_resume_state)
+	_refresh_story_save_state(AppState.get_story_save_metadata())
 	AppState.set_mode("Title")
 
 
@@ -288,13 +306,21 @@ func _discard_game_loaded() -> void:
 func _begin_gameplay(is_free_walk: bool, is_continue: bool = false) -> void:
 	_discard_game_loaded()
 	if is_continue:
-		AppState.configure_continue()
+		if !AppState.configure_continue():
+			_refresh_story_save_state(AppState.get_story_save_metadata())
+			_show_title()
+			_show_confirm(
+				"Continue Unavailable",
+				"No usable story autosave was found. Start a new game or begin a free walk instead.",
+				Callable()
+			)
+			return
 	elif is_free_walk:
 		AppState.configure_free_walk()
 	else:
 		AppState.configure_new_game()
 
-	m_has_resume_state = true
+	_refresh_story_save_state(AppState.get_story_save_metadata())
 	_ensure_game_loaded()
 	m_game_root.visible = true
 	if m_game_root.has_method("sync_ui_state"):
@@ -306,6 +332,7 @@ func _begin_gameplay(is_free_walk: bool, is_continue: bool = false) -> void:
 	_set_panel_visible(m_player_setup_panel, false)
 	_set_panel_visible(m_hud, true)
 	_set_panel_visible(m_journal_panel, false)
+	_set_panel_visible(m_melody_prompt_panel, false)
 	_set_panel_visible(m_pause_panel, false)
 	_set_panel_visible(m_settings_panel, false)
 	_set_panel_visible(m_credits_panel, false)
@@ -330,6 +357,7 @@ func _open_overlay(new_state: ScreenState) -> void:
 	_set_panel_visible(m_backdrop, true)
 	_set_panel_visible(m_hud, true)
 	_set_panel_visible(m_journal_panel, new_state == ScreenState.JOURNAL)
+	_set_panel_visible(m_melody_prompt_panel, false)
 	_set_panel_visible(m_pause_panel, new_state == ScreenState.PAUSE)
 	_set_panel_visible(m_settings_panel, new_state == ScreenState.SETTINGS)
 	_set_panel_visible(m_credits_panel, new_state == ScreenState.CREDITS)
@@ -344,6 +372,7 @@ func _resume_gameplay() -> void:
 	get_tree().paused = false
 	_set_panel_visible(m_backdrop, false)
 	_set_panel_visible(m_journal_panel, false)
+	_set_panel_visible(m_melody_prompt_panel, false)
 	_set_panel_visible(m_pause_panel, false)
 	_set_panel_visible(m_settings_panel, false)
 	_set_panel_visible(m_credits_panel, false)
@@ -388,7 +417,50 @@ func _hide_confirm() -> void:
 		_set_panel_visible(m_backdrop, true)
 
 
+func _open_melody_prompt(request: Dictionary) -> void:
+	if !_is_game_active():
+		return
+
+	if m_state == ScreenState.PLAYING:
+		m_prompt_return_state = ScreenState.PLAYING
+	elif m_state == ScreenState.JOURNAL:
+		m_prompt_return_state = ScreenState.JOURNAL
+	else:
+		m_prompt_return_state = ScreenState.PLAYING
+
+	m_state = ScreenState.MELODY_PROMPT
+	get_tree().paused = true
+	m_melody_prompt_panel.call("configure_request", request)
+	_set_panel_visible(m_backdrop, true)
+	_set_panel_visible(m_hud, true)
+	_set_panel_visible(m_journal_panel, false)
+	_set_panel_visible(m_melody_prompt_panel, true)
+	_set_panel_visible(m_pause_panel, false)
+	_set_panel_visible(m_settings_panel, false)
+	_set_panel_visible(m_credits_panel, false)
+	_set_panel_visible(m_ending_panel, false)
+	_set_panel_visible(m_confirm_panel, false)
+
+
+func _close_melody_prompt() -> void:
+	_set_panel_visible(m_melody_prompt_panel, false)
+	if !_is_game_active():
+		return
+
+	if m_prompt_return_state == ScreenState.JOURNAL:
+		m_state = ScreenState.JOURNAL
+		get_tree().paused = true
+		_refresh_journal_content()
+		_set_panel_visible(m_backdrop, true)
+		_set_panel_visible(m_hud, true)
+		_set_panel_visible(m_journal_panel, true)
+		return
+
+	_resume_gameplay()
+
+
 func _return_to_title() -> void:
+	_persist_story_session()
 	get_tree().paused = false
 	if m_game_root != null:
 		m_game_root.visible = false
@@ -420,6 +492,8 @@ func _handle_escape() -> void:
 			_open_overlay(ScreenState.PAUSE)
 		ScreenState.JOURNAL:
 			_resume_gameplay()
+		ScreenState.MELODY_PROMPT:
+			_close_melody_prompt()
 		ScreenState.PAUSE:
 			_resume_gameplay()
 		ScreenState.SETTINGS:
@@ -450,7 +524,22 @@ func _is_game_active() -> bool:
 	return m_game_root != null and is_instance_valid(m_game_root) and m_game_root.visible
 
 
+func _persist_story_session() -> void:
+	if AppState.mode in ["Story", "Postgame"]:
+		AppState.save_story_autosave()
+
+
+func _refresh_story_save_state(metadata: Dictionary) -> void:
+	m_has_resume_state = bool(metadata.get("exists", false))
+	if m_title_screen == null or !is_instance_valid(m_title_screen):
+		return
+	m_title_screen.call("set_continue_enabled", m_has_resume_state)
+	m_title_screen.call("set_continue_metadata", metadata)
+
+
 func _on_continue_pressed() -> void:
+	if !m_has_resume_state:
+		return
 	_begin_gameplay(false, true)
 
 
@@ -505,3 +594,24 @@ func _on_player_setup_cancelled() -> void:
 func _on_story_milestone(milestone_id: String, _context: Dictionary) -> void:
 	if milestone_id == "festival_performed" and _is_game_active():
 		_open_overlay(ScreenState.ENDING)
+
+
+func _on_story_save_metadata_changed(metadata: Dictionary) -> void:
+	_refresh_story_save_state(metadata)
+
+
+func _on_melody_prompt_requested(request: Dictionary) -> void:
+	if !_is_game_active():
+		return
+	_open_melody_prompt(request)
+
+
+func _on_melody_prompt_practice_completed(melody_id: String) -> void:
+	AppState.complete_melody_practice(melody_id)
+	_close_melody_prompt()
+
+
+func _on_melody_prompt_performance_completed(melody_id: String) -> void:
+	AppState.complete_melody_performance(melody_id)
+	if m_state == ScreenState.MELODY_PROMPT:
+		_close_melody_prompt()

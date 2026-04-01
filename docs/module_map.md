@@ -11,7 +11,7 @@ Read [`design_brief.md`](design_brief.md) and [`architecture.md`](architecture.m
 ## UI And Screen Flow
 
 - [`../ui/`](../ui) - shell logic, screen scenes, UI styling, and title assets
-- [`../ui/screens/`](../ui/screens) - boot, title, HUD, journal, pause, settings, credits, ending, and player setup screens
+- [`../ui/screens/`](../ui/screens) - boot, title, HUD, journal, melody prompt, pause, settings, credits, ending, and player setup screens
 
 Put new menu, overlay, HUD, or shell-flow work here.
 
@@ -83,6 +83,7 @@ Be careful about renames or moves here because scene and resource references can
 - [`../game/tests/npc_system/test_tunnel_visibility.tscn`](../game/tests/npc_system/test_tunnel_visibility.tscn) - focused tunnel-resident spawn, spacing, and tunnel-context visibility regression scene
 - [`../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../game/tests/npc_system/test_tunnel_npc_travel.tscn) - focused tunnel resident route regression scene covering Ren's inside-only Long Shan path plus Nuo's Bi Shan portal-to-surface transition and level-state restoration
 - [`../game/tests/cue_progression/test_cue_progression.tscn`](../game/tests/cue_progression/test_cue_progression.tscn) - focused Ferry -> Church -> tunnels -> Bagua -> harbor-stage progression regression covering fragment awards, Bagua gating, and the in-world ending trigger
+- [`../game/tests/persistence/test_story_autosave.tscn`](../game/tests/persistence/test_story_autosave.tscn) - focused story autosave regression covering first-save creation, real `Continue`, safe resume anchors, and postgame restore
 - [`../scenes/tests/test_level_resolution.tscn`](../scenes/tests/test_level_resolution.tscn) - focused relative-level resolution and inherited room-level sandbox
 - [`../scenes/tests/test_portal_overlap.tscn`](../scenes/tests/test_portal_overlap.tscn) - focused multi-actor portal transition regression test
 - [`../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn`](../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn) - focused Bagua base-to-ground portal integration for `level_id` actor transitions

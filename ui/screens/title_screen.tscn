@@ -204,4 +204,5 @@ text = "Quit"
 [node name="Footer" type="Label" parent="SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons"]
 layout_mode = 2
 modulate = Color(1, 1, 1, 0.65)
-text = "Prototype app flow"
+autowrap_mode = 3
+text = "No story autosave yet. Begin at Piano Ferry to create one."
