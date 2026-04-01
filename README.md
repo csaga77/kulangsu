@@ -67,6 +67,19 @@ python3 scripts/source_control_report.py --fail-on-warnings
 python3 scripts/source_control_report.py --json
 ```
 
+For the routine "pull latest parent repo state and refresh all tracked submodules" flow on a clean worktree, prefer:
+
+```bash
+python3 codex_agents/scripts/source_control_ops.py update-latest .
+```
+
+Useful variants:
+
+```bash
+python3 codex_agents/scripts/source_control_ops.py update-latest . --dry-run
+python3 codex_agents/scripts/source_control_ops.py update-latest . --max-submodule-commits 5
+```
+
 For periodic review of whether a token-saving helper still earns its keep, call the shared audit directly with the local workflow config:
 
 ```bash

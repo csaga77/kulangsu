@@ -50,6 +50,7 @@ Use this section when a task crosses the parent repo boundary and you need the s
 Start with:
 
 - [`../scripts/source_control_report.py`](../scripts/source_control_report.py) for the default parent-repo source-control snapshot; it forwards to the shared helper in `codex_agents`
+- [`../codex_agents/scripts/source_control_ops.py`](../codex_agents/scripts/source_control_ops.py) `update-latest` for the routine clean-worktree flow that pulls the parent repo and refreshes tracked submodules
 - [`submodules.md`](submodules.md) for ownership, edit rules, and pointer governance
 - [`../codex_agents/SOURCE_CONTROL_RUNBOOK.md`](../codex_agents/SOURCE_CONTROL_RUNBOOK.md) for generic submodule-safe staging, commit, and push workflow
 - [`architecture.md`](architecture.md) and [`module_map.md`](module_map.md) only when you need to understand how the parent repo consumes a submodule
