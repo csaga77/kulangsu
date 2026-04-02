@@ -51,20 +51,20 @@ Primary submodule documentation entry points:
 
 ## Workflow Helpers
 
-For low-token source-control inspection in this repo, prefer the local wrapper:
+For low-token source-control inspection in this repo, prefer the shared helper directly:
 
 ```bash
-python3 scripts/source_control_report.py
+python3 codex_agents/scripts/source_control_report.py .
 ```
 
-It defaults to the parent repo, delegates to the shared helper in [`codex_agents/scripts/source_control_report.py`](codex_agents/scripts/source_control_report.py), and keeps common branch/worktree/submodule checks in one report.
+It keeps common branch/worktree/submodule checks in one report without a repo-local wrapper layer.
 
 Useful variants:
 
 ```bash
-python3 scripts/source_control_report.py codex_agents
-python3 scripts/source_control_report.py --fail-on-warnings
-python3 scripts/source_control_report.py --json
+python3 codex_agents/scripts/source_control_report.py codex_agents
+python3 codex_agents/scripts/source_control_report.py . --fail-on-warnings
+python3 codex_agents/scripts/source_control_report.py . --json
 ```
 
 For the routine "pull latest parent repo state and refresh all tracked submodules" flow on a clean worktree, prefer:
@@ -134,7 +134,7 @@ Start here for project context:
 - [`docs/architecture.md`](docs/architecture.md) - system boundaries and relationships
 - [`docs/module_map.md`](docs/module_map.md) - where code and content live
 - [`docs/submodules.md`](docs/submodules.md) - submodule roles and governance
-- [`scripts/source_control_report.py`](scripts/source_control_report.py) - repo-local source-control status wrapper
+- [`codex_agents/scripts/source_control_report.py`](codex_agents/scripts/source_control_report.py) - shared source-control status helper
 - [`scripts/token_efficiency_workflows.json`](scripts/token_efficiency_workflows.json) - local manual baseline and review cadence for token-efficiency audits
 - [`codex_agents/scripts/token_efficiency_audit.py`](codex_agents/scripts/token_efficiency_audit.py) - shared helper ROI and review-cadence audit script
 - [`codex_agents/README.md`](codex_agents/README.md) - entry point for the shared agent-support submodule

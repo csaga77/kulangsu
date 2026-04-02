@@ -103,7 +103,8 @@ Use these when you need a focused validation target instead of the full project 
 
 ## Documentation And Agent Support
 
-- [`../scripts/source_control_report.py`](../scripts/source_control_report.py) - repo-local wrapper for the shared source-control inspection helper
+- [`../codex_agents/scripts/source_control_report.py`](../codex_agents/scripts/source_control_report.py) - shared read-only source-control inspection helper
+- [`../codex_agents/scripts/source_control_ops.py`](../codex_agents/scripts/source_control_ops.py) - shared compact helper for explicit stage, commit, push, publish, and update-latest workflows
 - [`../scripts/token_efficiency_workflows.json`](../scripts/token_efficiency_workflows.json) - local workflow baselines and review cadence for token-efficiency audits
 - [`../codex_agents/scripts/token_efficiency_audit.py`](../codex_agents/scripts/token_efficiency_audit.py) - shared helper ROI audit script used with the local workflow config
 - [`../docs/`](../docs) - project docs
@@ -155,6 +156,7 @@ Useful searches when locating code:
 - `test_weather` for the focused weather sandbox and control panel
 - `water_tint` for the water shader and material
 - `source_control_report` for the repo-local and shared Git inspection helpers
+- `source_control_ops` for the repo-local and shared Git mutation helpers
 - `token_efficiency` for helper ROI and audit cadence review
 - `class_name GridBoardGame` for the board-game module
 - `class_name UIStyle` for shared UI styling

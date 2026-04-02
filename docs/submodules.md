@@ -49,8 +49,8 @@ Use this section when a task crosses the parent repo boundary and you need the s
 
 Start with:
 
-- [`../scripts/source_control_report.py`](../scripts/source_control_report.py) for the default parent-repo source-control snapshot; it forwards to the shared helper in `codex_agents`
-- [`../codex_agents/scripts/source_control_ops.py`](../codex_agents/scripts/source_control_ops.py) `update-latest` for the routine clean-worktree flow that pulls the parent repo and refreshes tracked submodules
+- [`../codex_agents/scripts/source_control_report.py`](../codex_agents/scripts/source_control_report.py) for the default parent-repo source-control snapshot
+- [`../codex_agents/scripts/source_control_ops.py`](../codex_agents/scripts/source_control_ops.py) for the shared mutation helper; prefer it for explicit stage, commit, push, publish, and `update-latest` flows
 - [`submodules.md`](submodules.md) for ownership, edit rules, and pointer governance
 - [`../codex_agents/SOURCE_CONTROL_RUNBOOK.md`](../codex_agents/SOURCE_CONTROL_RUNBOOK.md) for generic submodule-safe staging, commit, and push workflow
 - [`architecture.md`](architecture.md) and [`module_map.md`](module_map.md) only when you need to understand how the parent repo consumes a submodule
@@ -102,7 +102,7 @@ If submodule behavior or integration changes:
 
 ## Validation Expectations
 
-- Re-run [`../scripts/source_control_report.py`](../scripts/source_control_report.py) after submodule commits, pointer bumps, or pushes when you need a refreshed parent-repo summary.
+- Re-run [`../codex_agents/scripts/source_control_report.py`](../codex_agents/scripts/source_control_report.py) after submodule commits, pointer bumps, or pushes when you need a refreshed parent-repo summary.
 - Verify the parent repo still loads or runs after changing a submodule pointer.
 - Validate the smallest relevant flow that exercises the changed submodule integration.
 - If a submodule was edited directly, call out both the submodule worktree state and the parent pointer change in the handoff.

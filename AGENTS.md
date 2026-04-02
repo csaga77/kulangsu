@@ -5,7 +5,7 @@ Common agent rules, shared workflow guidance, and reusable runbook conventions b
 ## Quick Start
 
 - Read `docs/design_brief.md` first for the project goal, player loop, and UI direction.
-- For source-control-only tasks, skip the gameplay design docs and start with `scripts/source_control_report.py`, `docs/submodules.md`, and `codex_agents/SOURCE_CONTROL_RUNBOOK.md`. For a routine "update parent repo plus tracked submodules to latest" task, prefer `python3 codex_agents/scripts/source_control_ops.py update-latest .`.
+- For source-control-only tasks, skip the gameplay design docs and start with `codex_agents/scripts/source_control_report.py`, `docs/submodules.md`, and `codex_agents/SOURCE_CONTROL_RUNBOOK.md`. Treat `codex_agents/SOURCE_CONTROL_RUNBOOK.md` as mandatory before source-control mutations. For repeated explicit stage/commit/push or one-shot publish flows on task-owned files, prefer `python3 codex_agents/scripts/source_control_ops.py publish ...` over manually chaining multiple Git commands. For a routine "update parent repo plus tracked submodules to latest" task, prefer `python3 codex_agents/scripts/source_control_ops.py update-latest .`.
 - For helper-ROI or token-efficiency workflow review, start with `scripts/token_efficiency_workflows.json`, `codex_agents/TOKEN_EFFICIENCY_RUNBOOK.md`, and `codex_agents/scripts/token_efficiency_audit.py`.
 - Then read `docs/architecture.md`, `docs/module_map.md`, and `docs/submodules.md` before making structural changes.
 - Read `docs/contracts.md` when changing shared state, interfaces, signals, public APIs, or submodule boundaries.
@@ -39,9 +39,12 @@ Submodule read order when editing inside a submodule:
 - This is a Godot 4 GDScript project with scene ownership centered on `.tscn` files plus nearby scripts.
 - Follow the generic Godot/GDScript, scope, resource, and validation rules in `codex_agents/GODOT_DEVELOPMENT_RUNBOOK.md`.
 - Follow the generic Git and submodule-history rules in `codex_agents/SOURCE_CONTROL_RUNBOOK.md`.
+- Do not add or prefer repo-local wrappers for generic source-control workflows. Use `codex_agents/scripts/source_control_report.py` and `codex_agents/scripts/source_control_ops.py` directly unless a task truly requires repo-specific behavior beyond path defaults or documentation.
 - When designing class properties, use the narrowest acceptable type instead of generic `Resource`, `Array`, or other broad slots. Prefer concrete resource classes, typed arrays, and explicit scalar property types; only leave a property generic when heterogeneous values are an intentional part of the design.
-- For parent-repo Git inspection, prefer `python3 scripts/source_control_report.py` before manual Git status commands, and rerun it after commits, pushes, pulls, rebases, or submodule pointer updates when you need a fresh summary.
+- For parent-repo Git inspection, prefer `python3 codex_agents/scripts/source_control_report.py .` before manual Git status commands, and rerun it after commits, pushes, pulls, rebases, or submodule pointer updates when you need a fresh summary.
+- For repeated explicit stage/commit/push or one-shot publish flows on task-owned files, prefer `python3 codex_agents/scripts/source_control_ops.py stage|commit|push|publish ...` over manually retyping multiple Git commands.
 - For the routine "pull latest parent repo state and update tracked submodules" workflow, prefer `python3 codex_agents/scripts/source_control_ops.py update-latest .` over manual `git pull --rebase` plus `git submodule update --init --remote --rebase`.
+- For any source-control task, always consider whether reusing an existing shared helper or improving one in `codex_agents/scripts/` would save tokens over repeated manual Git commands. If the helper path is net-positive and still safe for the task, prefer reusing or improving the shared script over repeating ad-hoc command sequences.
 - For token-efficiency review, prefer `python3 codex_agents/scripts/token_efficiency_audit.py scripts/token_efficiency_workflows.json` and do not run it on every normal task; use it when helper workflows change or on periodic amortized review.
 - This file only captures Kulangsu-specific constraints, boundaries, and exceptions.
 
