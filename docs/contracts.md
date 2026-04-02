@@ -45,6 +45,7 @@ Current contract:
 - `AppState` now owns the one-slot story autosave payload, current safe resume anchor, and the `configure_continue()`, `save_story_autosave()`, `clear_story_autosave()`, and `set_story_resume_checkpoint(...)` bridge methods used by the shell and world scene
 - the app shell and world hint logic may query `AppState.is_journal_unlocked()` and `AppState.build_input_hint(...)` to keep the early tutorial flow and controls text aligned
 - world and UI code rely on resident getters for resident ids, definitions, display names, appearance configs, spawn configs, movement configs, behavior configs, ambient speech, resident journal text, and full resident profiles when optional movement metadata is needed
+- `ResidentCatalog` may merge external `.tres` resident definitions from `res://game/residents/definitions/`; matching ids override built-ins and `include_in_catalog = false` keeps a resource out of the runtime roster
 - `interact_with_resident()` checks a resident's `conditional_beats` (priority-sorted, condition-gated) before falling through to the linear `dialogue_beats` spine
 - UI code can now rely on melody getters, journal helpers, `build_map_journal_text()`, `get_open_shortcuts()`, `can_practice_melody(...)`, `request_melody_practice(...)`, and `complete_prompt_request(...)` for melody-facing and dependable-route player context
 - UI screens and world integration code rely on those signals and state getters/setters

@@ -2,15 +2,21 @@
 class_name ResidentDefinition
 extends Resource
 
-@export var id := ""
-@export var display_name := ""
-@export_multiline var landmark := ""
-@export_multiline var role := ""
-@export_multiline var routine_note := ""
-@export_multiline var melody_hint := ""
-@export var appearance: Resource
-@export var dialogue: Resource
-@export var routine: Resource
+@export var id: String = ""
+@export var include_in_catalog: bool = true
+@export var sort_order: int = 0
+@export var display_name: String = ""
+@export_multiline var landmark: String = ""
+@export_multiline var role: String = ""
+@export_multiline var routine_note: String = ""
+@export_multiline var melody_hint: String = ""
+@export var appearance: ResidentAppearanceDefinition
+@export var dialogue: ResidentDialogueDefinition
+@export var routine: ResidentRoutineDefinition
+
+
+func should_include_in_catalog() -> bool:
+	return include_in_catalog
 
 
 func build_appearance_config() -> Dictionary:
@@ -38,7 +44,7 @@ func get_behavior_config() -> Dictionary:
 
 
 func to_runtime_profile() -> Dictionary:
-	var dialogue_data = {}
+	var dialogue_data: Dictionary = {}
 	if dialogue != null:
 		dialogue_data = dialogue.to_dictionary()
 	return {

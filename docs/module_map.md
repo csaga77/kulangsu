@@ -24,6 +24,7 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../game/melody_catalog.gd`](../game/melody_catalog.gd) - authored melody definitions, onboarding clue sources, fragment sources, and performance-point summaries
 - [`../game/resident_catalog.gd`](../game/resident_catalog.gd) - resident roster and the helper builders that produce resident definitions
 - [`../game/resident_system/`](../game/resident_system) - resident definition resources for appearance, dialogue, routine, and behavior metadata
+- [`../game/residents/`](../game/residents) - editor-authored resident definitions, templates, and the short designer workflow note
 - [`../game/player_appearance_catalog.gd`](../game/player_appearance_catalog.gd) / [`../game/player_costume_catalog.gd`](../game/player_costume_catalog.gd) - player customization data
 
 If several screens or systems need the same player-facing state, it probably belongs in `game/app_state.gd`.

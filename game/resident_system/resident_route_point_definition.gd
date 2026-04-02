@@ -2,11 +2,11 @@
 class_name ResidentRoutePointDefinition
 extends Resource
 
-@export var anchor_id := ""
-@export var offset := Vector2.ZERO
-@export var wait_min_sec := -1.0
-@export var wait_max_sec := -1.0
-@export var allow_collision_bypass := false
+@export var anchor_id: String = ""
+@export var offset: Vector2 = Vector2.ZERO
+@export var wait_min_sec: float = -1.0
+@export var wait_max_sec: float = -1.0
+@export var allow_collision_bypass: bool = false
 
 
 func to_dictionary() -> Dictionary:

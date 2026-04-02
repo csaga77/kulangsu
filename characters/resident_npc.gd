@@ -2,7 +2,16 @@
 class_name ResidentNPC
 extends HumanBody2D
 
-@export var resident_definition: Resource
+@export var resident_definition: ResidentDefinition:
+	set(v):
+		if resident_definition == v:
+			return
+		if resident_definition != null and resident_definition.changed.is_connected(_on_resident_definition_changed):
+			resident_definition.changed.disconnect(_on_resident_definition_changed)
+		resident_definition = v
+		if resident_definition != null and !resident_definition.changed.is_connected(_on_resident_definition_changed):
+			resident_definition.changed.connect(_on_resident_definition_changed)
+		_apply_resident_definition()
 @export var resident_id: StringName
 
 
@@ -15,7 +24,7 @@ func has_definition() -> bool:
 	return resident_definition != null
 
 
-func apply_definition(definition, resident_id_value: String = "") -> void:
+func apply_definition(definition: ResidentDefinition, resident_id_value: String = "") -> void:
 	resident_definition = definition
 	if !resident_id_value.is_empty():
 		resident_id = StringName(resident_id_value)
@@ -25,6 +34,10 @@ func apply_definition(definition, resident_id_value: String = "") -> void:
 
 
 func sync_definition_presentation() -> void:
+	_apply_resident_definition()
+
+
+func _on_resident_definition_changed() -> void:
 	_apply_resident_definition()
 
 

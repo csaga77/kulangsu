@@ -2,11 +2,11 @@
 class_name ResidentMovementDefinition
 extends Resource
 
-@export var route_points: Array[Resource] = []
-@export var arrival_radius := 24.0
-@export var wait_min_sec := 0.5
-@export var wait_max_sec := 1.2
-@export var ping_pong := true
+@export var route_points: Array[ResidentRoutePointDefinition] = []
+@export var arrival_radius: float = 24.0
+@export var wait_min_sec: float = 0.5
+@export var wait_max_sec: float = 1.2
+@export var ping_pong: bool = true
 
 
 func is_empty() -> bool:

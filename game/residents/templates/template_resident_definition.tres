@@ -1,0 +1,78 @@
+[gd_resource type="Resource" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://game/resident_system/resident_definition.gd" id="1_definition"]
+[ext_resource type="Script" path="res://game/resident_system/resident_appearance_definition.gd" id="2_appearance"]
+[ext_resource type="Script" path="res://game/resident_system/resident_dialogue_definition.gd" id="3_dialogue"]
+[ext_resource type="Script" path="res://game/resident_system/resident_dialogue_beat_definition.gd" id="4_beat"]
+[ext_resource type="Script" path="res://game/resident_system/resident_routine_definition.gd" id="5_routine"]
+[ext_resource type="Script" path="res://game/resident_system/resident_spawn_definition.gd" id="6_spawn"]
+[ext_resource type="Script" path="res://game/resident_system/resident_movement_definition.gd" id="7_movement"]
+[ext_resource type="Script" path="res://game/resident_system/resident_route_point_definition.gd" id="8_route_point"]
+
+[sub_resource type="Resource" id="ResidentAppearanceDefinition_template"]
+script = ExtResource("2_appearance")
+body_type = "female"
+skin = "light"
+head_path = "head/heads/human/heads_human_female"
+hair_path = "hair/bob/hair_bob"
+hair_color = "dark brown"
+shirt_path = "torso/shirts/longsleeve/torso_clothes_longsleeve2"
+shirt_color = "teal"
+pants_path = "legs/pants/legs_pants"
+pants_color = "navy"
+shoes_path = "feet/shoes/feet_shoes_revised"
+shoes_color = "brown"
+
+[sub_resource type="Resource" id="ResidentDialogueBeatDefinition_intro"]
+script = ExtResource("4_beat")
+line = "This is a template resident line."
+journal_step = "Replace this with the resident's current lead."
+save_status = "Spoke with the template resident."
+
+[sub_resource type="Resource" id="ResidentRoutePointDefinition_a"]
+script = ExtResource("8_route_point")
+anchor_id = "Piano Ferry"
+offset = Vector2(0, 0)
+
+[sub_resource type="Resource" id="ResidentRoutePointDefinition_b"]
+script = ExtResource("8_route_point")
+anchor_id = "Piano Ferry"
+offset = Vector2(72, 24)
+wait_min_sec = 1.0
+wait_max_sec = 2.0
+
+[sub_resource type="Resource" id="ResidentMovementDefinition_template"]
+script = ExtResource("7_movement")
+route_points = [SubResource("ResidentRoutePointDefinition_a"), SubResource("ResidentRoutePointDefinition_b")]
+
+[sub_resource type="Resource" id="ResidentSpawnDefinition_template"]
+script = ExtResource("6_spawn")
+anchor_id = "Piano Ferry"
+offset = Vector2(0, 120)
+direction = -90.0
+mood = 1
+interaction_radius = 88.0
+
+[sub_resource type="Resource" id="ResidentRoutineDefinition_template"]
+script = ExtResource("5_routine")
+spawn = SubResource("ResidentSpawnDefinition_template")
+movement = SubResource("ResidentMovementDefinition_template")
+
+[sub_resource type="Resource" id="ResidentDialogueDefinition_template"]
+script = ExtResource("3_dialogue")
+ambient_lines = PackedStringArray("...", "Template residents can be authored in the Inspector now.")
+dialogue_beats = [SubResource("ResidentDialogueBeatDefinition_intro")]
+
+[resource]
+script = ExtResource("1_definition")
+id = "template_resident"
+include_in_catalog = false
+sort_order = 1000
+display_name = "Template Resident"
+landmark = "Piano Ferry"
+role = "Replace this with the resident's role."
+routine_note = "Replace this with where they can usually be found."
+melody_hint = "Replace this with how they describe the island's melody."
+appearance = SubResource("ResidentAppearanceDefinition_template")
+dialogue = SubResource("ResidentDialogueDefinition_template")
+routine = SubResource("ResidentRoutineDefinition_template")

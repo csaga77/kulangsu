@@ -4,8 +4,8 @@ extends BaseController
 
 # ---------- JSON BT settings ----------
 @export_category("Behavior Tree (JSON)")
-@export var use_json_bt := true
-@export_file var bt_json_path := "res://resources/bt/bt_default_npc.json"
+@export var use_json_bt: bool = true
+@export_file var bt_json_path: String = "res://resources/bt/bt_default_npc.json"
 @export_category("Resident")
 @export var resident_id: StringName
 
@@ -17,18 +17,18 @@ const ROUTE_MOVE_SPEED := 72.0
 var m_target: Node2D = null
 var m_bt_tree: BTTree
 var m_is_building_bt_tree := false
-var m_revealed_dialogue_line := ""
+var m_revealed_dialogue_line: String = ""
 var m_route_points: Array[Dictionary] = []
 var m_route_index := -1
 var m_route_direction := 1
-var m_route_arrival_radius := DEFAULT_ROUTE_ARRIVAL_RADIUS
-var m_route_wait_min_sec := DEFAULT_ROUTE_WAIT_MIN_SEC
-var m_route_wait_max_sec := DEFAULT_ROUTE_WAIT_MAX_SEC
-var m_route_wait_timer := 0.0
-var m_route_ping_pong := true
-var m_route_is_moving := false
-var m_route_motion_target := Vector2.ZERO
-var m_route_allow_collision_bypass := false
+var m_route_arrival_radius: float = DEFAULT_ROUTE_ARRIVAL_RADIUS
+var m_route_wait_min_sec: float = DEFAULT_ROUTE_WAIT_MIN_SEC
+var m_route_wait_max_sec: float = DEFAULT_ROUTE_WAIT_MAX_SEC
+var m_route_wait_timer: float = 0.0
+var m_route_ping_pong: bool = true
+var m_route_is_moving: bool = false
+var m_route_motion_target: Vector2 = Vector2.ZERO
+var m_route_allow_collision_bypass: bool = false
 
 func _on_setup() -> void:
 	super._on_setup()

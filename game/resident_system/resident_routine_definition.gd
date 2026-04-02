@@ -2,8 +2,8 @@
 class_name ResidentRoutineDefinition
 extends Resource
 
-@export var spawn: Resource
-@export var movement: Resource
+@export var spawn: ResidentSpawnDefinition
+@export var movement: ResidentMovementDefinition
 @export var behavior_preset: StringName = &""
 @export var behavior_metadata: Dictionary = {}
 

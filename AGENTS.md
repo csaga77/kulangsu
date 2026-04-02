@@ -39,6 +39,7 @@ Submodule read order when editing inside a submodule:
 - This is a Godot 4 GDScript project with scene ownership centered on `.tscn` files plus nearby scripts.
 - Follow the generic Godot/GDScript, scope, resource, and validation rules in `codex_agents/GODOT_DEVELOPMENT_RUNBOOK.md`.
 - Follow the generic Git and submodule-history rules in `codex_agents/SOURCE_CONTROL_RUNBOOK.md`.
+- When designing class properties, use the narrowest acceptable type instead of generic `Resource`, `Array`, or other broad slots. Prefer concrete resource classes, typed arrays, and explicit scalar property types; only leave a property generic when heterogeneous values are an intentional part of the design.
 - For parent-repo Git inspection, prefer `python3 scripts/source_control_report.py` before manual Git status commands, and rerun it after commits, pushes, pulls, rebases, or submodule pointer updates when you need a fresh summary.
 - For the routine "pull latest parent repo state and update tracked submodules" workflow, prefer `python3 codex_agents/scripts/source_control_ops.py update-latest .` over manual `git pull --rebase` plus `git submodule update --init --remote --rebase`.
 - For token-efficiency review, prefer `python3 codex_agents/scripts/token_efficiency_audit.py scripts/token_efficiency_workflows.json` and do not run it on every normal task; use it when helper workflows change or on periodic amortized review.

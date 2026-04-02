@@ -13,7 +13,7 @@ Read [`design_brief.md`](design_brief.md) first for the project summary and tone
 
 The live resident flow is:
 
-1. [`../game/resident_catalog.gd`](../game/resident_catalog.gd) defines the static resident roster and builds resource-backed `ResidentDefinition` objects plus nested appearance/dialogue/routine resources under [`../game/resident_system/`](../game/resident_system).
+1. [`../game/resident_catalog.gd`](../game/resident_catalog.gd) defines the built-in resident roster, auto-loads external resident resources from [`../game/residents/definitions/`](../game/residents/definitions), and builds resource-backed `ResidentDefinition` objects plus nested appearance/dialogue/routine resources under [`../game/resident_system/`](../game/resident_system).
 2. [`../game/app_state.gd`](../game/app_state.gd) keeps immutable `resident_definitions`, clones them into mutable runtime `resident_profiles`, and exposes all resident-facing getters.
 3. [`../scenes/game_main.gd`](../scenes/game_main.gd) caches supported spawn and route anchors, resolves sparse authored routes into world-space movement points, instantiates [`../characters/resident_npc.tscn`](../characters/resident_npc.tscn), applies the matching definition, and synchronizes tunnel-specific visibility and level state.
 4. [`../characters/control/base_controller.gd`](../characters/control/base_controller.gd) filters nearby targets to the same absolute z layer, ignores controller-owned overlap nodes, and lets residents plus landmark cues compete by distance before closest-target or speech logic can use them.
@@ -27,9 +27,10 @@ This split is intentional: authored content stays in the catalog, mutable progre
 
 ### Catalog First, Scene Second
 
-- Residents are authored as `ResidentDefinition` resources built by the catalog instead of bespoke scene variants because the current roster is already 30 NPCs and the system needs to scale content faster than scene maintenance.
+- Residents are authored as `ResidentDefinition` resources instead of bespoke scene variants because the current roster is already 30 NPCs and the system needs to scale content faster than scene maintenance.
 - [`../game/resident_catalog.gd`](../game/resident_catalog.gd) is the source of truth for which residents exist. `resident_order()` is not a convenience list; it is part of the contract for the full runtime roster.
 - Static fields such as `display_name`, `role`, `ambient_lines`, `appearance`, and `spawn` belong in the catalog even if only one current scene uses them.
+- Designers can now create or override residents entirely in the editor by saving `ResidentDefinition` `.tres` files under [`../game/residents/definitions/`](../game/residents/definitions); matching ids override built-ins.
 
 ### Runtime State Lives In `AppState`
 
@@ -102,6 +103,8 @@ Each catalog resident now has two layers:
   - `appearance`
   - `dialogue`
   - `routine`
+  - `sort_order`
+  - `include_in_catalog`
 - a flattened runtime profile in `AppState.resident_profiles`
 
 Each definition currently resolves to a runtime profile with these keys:
@@ -143,6 +146,23 @@ The catalog helper `_resident(...)` in [`../game/resident_catalog.gd`](../game/r
   - `quest_state`
 
 Ambient residents do not need custom beats authored by hand. [`../game/resident_catalog.gd`](../game/resident_catalog.gd) currently builds their beats from `ambient_lines` through `_ambient_beats(...)`.
+
+### Editor Authoring Resources
+
+Designers can now work in the Inspector with:
+
+- `ResidentDefinition`
+- `ResidentAppearanceDefinition`
+- `ResidentDialogueDefinition`
+- `ResidentDialogueBeatDefinition`
+- `ResidentConditionalBeatDefinition`
+- `ResidentBeatConditionsDefinition`
+- `ResidentRoutineDefinition`
+- `ResidentSpawnDefinition`
+- `ResidentMovementDefinition`
+- `ResidentRoutePointDefinition`
+
+The quick-start resource template is [`../game/residents/templates/template_resident_definition.tres`](../game/residents/templates/template_resident_definition.tres).
 
 ### Conditional Beat Shape
 

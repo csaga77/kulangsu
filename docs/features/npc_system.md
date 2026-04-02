@@ -32,7 +32,8 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 
 ## Rules
 
-- Resident authoring lives in one catalog and each resident id must appear in the catalog order list.
+- The runtime resident roster is assembled by `ResidentCatalog` from built-in definitions plus any editor-authored `.tres` definitions found under `game/residents/definitions/`.
+- Resident ids must stay unique across built-ins and editor-authored resources.
 - Each resident entry owns identity, landmark context, ambient lines, dialogue beats, appearance preset, and spawn metadata.
 - Ambient lines must stay short enough for speech balloons.
 - Talk beats may update objective, chapter, save status, trust, and resident journal state through `AppState`.
@@ -46,12 +47,23 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 - When a route crosses between a tunnel portal anchor and its paired surface entry anchor, the resolved route must insert portal-direction-aligned waypoints so the resident enters and exits along the portal axis instead of cutting across the side.
 - Player and resident actors must stay under the same y-sorted actor layer in the main scene so character overlap reads correctly.
 
+## Editor Authoring Workflow
+
+- New editor-authored residents live under [`../../game/residents/definitions/`](../../game/residents/definitions).
+- Start from [`../../game/residents/templates/template_resident_definition.tres`](../../game/residents/templates/template_resident_definition.tres) and duplicate it into the `definitions/` folder.
+- The runtime automatically loads `.tres` residents from that folder; no catalog-script edit is required for a brand-new editor-authored resident.
+- If an editor-authored resident uses the same `id` as a built-in resident, the external resource overrides the built-in catalog version.
+- [`../../characters/resident_npc.gd`](../../characters/resident_npc.gd) exposes a typed `resident_definition` Inspector property, so preview/test scenes only accept `ResidentDefinition` resources in that slot.
+- Use [`../../game/residents/README.md`](../../game/residents/README.md) as the short designer-facing checklist.
+
 ## Current Authoring Model
 
 - The source of truth for which residents exist is `ResidentCatalog.resident_order()`.
 - Story residents live in `ResidentCatalog._story_residents()`.
 - Ambient residents live in `ResidentCatalog._ambient_residents()`.
 - The catalog now builds resource-backed `ResidentDefinition` objects plus nested appearance/dialogue/routine resources under [`../../game/resident_system/`](../../game/resident_system).
+- Resident resource slots should stay concretely typed to their matching resource classes, not broad `Resource` or untyped array slots, so Inspector authoring only accepts valid NPC data shapes.
+- The catalog merges the built-in roster with any editor-authored definitions found under [`../../game/residents/definitions/`](../../game/residents/definitions).
 - `AppState` keeps both immutable `resident_definitions` for authored data and mutable `resident_profiles` for trust, conversation progress, and save/load state.
 - `scenes/game_main.gd` never hardcodes individual residents; it loops over `AppState.get_resident_ids()`, instantiates [`../../characters/resident_npc.tscn`](../../characters/resident_npc.tscn), applies the matching definition, and then resolves world-specific spawn and route data.
 - Tunnel-root spawns and tunnel-owned movement waypoints are snapped back onto the authored tunnel path if an offset drifts off the walkable area.
@@ -77,44 +89,51 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 
 ### Add A New Resident
 
-1. Add the new resident id to `ResidentCatalog.resident_order()`.
-2. Add the resident entry in `ResidentCatalog._story_residents()` or `ResidentCatalog._ambient_residents()`.
-3. Define `appearance` with `_look(...)`, which now builds a `ResidentAppearanceDefinition`.
-4. Define `spawn` with `_spawn(anchor_id, offset, direction, mood, interaction_radius)` and optional movement with `_route(...)` / `_route_point(...)`, which now build routine resources.
-5. If the `anchor_id` is new, add it to the spawn-anchor map in [`../../scenes/game_main.gd`](../../scenes/game_main.gd).
+1. Duplicate [`../../game/residents/templates/template_resident_definition.tres`](../../game/residents/templates/template_resident_definition.tres) into [`../../game/residents/definitions/`](../../game/residents/definitions).
+2. Set a unique `id`, `display_name`, `role`, `routine_note`, and `melody_hint` in the Inspector.
+3. Fill `appearance`, `dialogue`, and `routine` in the Inspector using the nested resource fields.
+4. If the resident needs an existing hub placement, set `routine.spawn.anchor_id` to one of the supported anchor ids below.
+5. If the resident needs a new anchor id, add it to the spawn-anchor map in [`../../scenes/game_main.gd`](../../scenes/game_main.gd).
 6. Run the project and confirm the resident appears, speaks, and shows up in the journal after introduction.
+7. For a built-in resident override instead of a brand-new NPC, use the same `id` as the built-in resident.
 
 ### Change Resident Dialogue Or Progression
 
-1. Edit the resident's `ambient_lines` or `dialogue_beats` in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd).
-2. If the beat introduces new state keys or new side effects, update [`../../game/app_state.gd`](../../game/app_state.gd) and the docs in [`../contracts.md`](../contracts.md).
-3. Verify that `R` advances the talk beat and that objective/save status/journal text update as expected.
+1. For editor-authored residents, edit the `ResidentDialogueDefinition` resource in the Inspector.
+2. Use `ResidentDialogueBeatDefinition`, `ResidentConditionalBeatDefinition`, and `ResidentBeatConditionsDefinition` resources instead of hand-editing raw beat dictionaries whenever possible.
+3. For built-in residents that still live in the script catalog, edit `ambient_lines`, `dialogue_beats`, or `conditional_beats` in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd).
+4. If the beat introduces new state keys or new side effects, update [`../../game/app_state.gd`](../../game/app_state.gd) and the docs in [`../contracts.md`](../contracts.md).
+5. Verify that `R` advances the talk beat and that objective/save status/journal text update as expected.
 
 ### Change Resident Appearance
 
-1. Edit the resident's `_look(...)` config in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd).
-2. Confirm that every selected LPC path supports the resident's body type and chosen variant in the shipped metadata. A matching path name alone does not guarantee the combination can render.
-3. Do not hardcode appearance in scenes; [`../../characters/resident_npc.gd`](../../characters/resident_npc.gd) applies `ResidentDefinition.appearance` automatically when the overworld spawns the actor.
-4. Verify both the main scene and [`../../game/tests/npc_system/test_scene.tscn`](../../game/tests/npc_system/test_scene.tscn) if that resident id is used there.
-5. Treat `Failed to resolve combined texture for selection layer` warnings as a resident-content bug and fix the catalog entry instead of ignoring the warning.
+1. For editor-authored residents, edit the `ResidentAppearanceDefinition` resource in the Inspector.
+2. Prefer the named appearance fields (`skin`, `head_path`, `hair_path`, `shirt_path`, `pants_path`, `shoes_path`) over the raw `selections` dictionary.
+3. Use `selections` only for advanced overrides that do not fit the simple outfit fields cleanly.
+4. Confirm that every selected LPC path supports the resident's body type and chosen variant in the shipped metadata. A matching path name alone does not guarantee the combination can render.
+5. Do not hardcode appearance in scenes; [`../../characters/resident_npc.gd`](../../characters/resident_npc.gd) applies `ResidentDefinition.appearance` automatically when the overworld spawns the actor.
+6. Verify both the main scene and [`../../game/tests/npc_system/test_scene.tscn`](../../game/tests/npc_system/test_scene.tscn) if that resident id is used there.
+7. Treat `Failed to resolve combined texture for selection layer` warnings as a resident-content bug and fix the catalog entry instead of ignoring the warning.
 
 ### Move A Resident
 
-1. Adjust the resident's `spawn` dictionary in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd).
-2. Prefer changing the `offset` first.
-3. Only add a new `anchor_id` if the resident truly belongs to a different hub or needs a new placement cluster.
-4. If adding a new anchor id, update [`../../scenes/game_main.gd`](../../scenes/game_main.gd) and document it below in `Current Resident Anchors`.
+1. For editor-authored residents, edit the `ResidentSpawnDefinition` resource in the Inspector.
+2. For built-in residents, adjust the `spawn` data in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd).
+3. Prefer changing the `offset` first.
+4. Only add a new `anchor_id` if the resident truly belongs to a different hub or needs a new placement cluster.
+5. If adding a new anchor id, update [`../../scenes/game_main.gd`](../../scenes/game_main.gd) and document it below in `Current Resident Anchors`.
 
 ### Add Resident Movement Or Schedules
 
-1. Author or adjust the sparse route in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd) with `_route(...)` and `_route_point(...)`.
-2. Add any new `anchor_id` values to [`../../scenes/game_main.gd`](../../scenes/game_main.gd) so spawn and route points resolve to scene nodes.
-3. Only change [`../../scenes/game_main.gd`](../../scenes/game_main.gd), [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd), or [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd) if the route needs new resolution rules, tunnel path behavior, or runtime movement behavior.
-4. Keep resident content in the catalog and movement logic in controller/world code.
-5. If a route stays inside a tunnel, author tunnel and portal anchors only and let [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd) expand the interior walk path between them.
-6. If a route crosses a tunnel boundary, author both the portal anchor and the paired surface entry anchor so the main scene can build the front-entrance transition automatically.
-7. For tunnel portal anchors, author `offset.x` as distance through the portal axis and `offset.y` as lateral placement along the portal opening.
-8. Validate route behavior with [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn) and the route debug overlay whenever the route uses tunnel anchors or portal crossings.
+1. For editor-authored residents, edit the `ResidentMovementDefinition` and `ResidentRoutePointDefinition` resources in the Inspector.
+2. For built-in residents, author or adjust the sparse route in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd) with `_route(...)` and `_route_point(...)`.
+3. Add any new `anchor_id` values to [`../../scenes/game_main.gd`](../../scenes/game_main.gd) so spawn and route points resolve to scene nodes.
+4. Only change [`../../scenes/game_main.gd`](../../scenes/game_main.gd), [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd), or [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd) if the route needs new resolution rules, tunnel path behavior, or runtime movement behavior.
+5. Keep resident content in definitions/catalog data and movement logic in controller/world code.
+6. If a route stays inside a tunnel, author tunnel and portal anchors only and let [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd) expand the interior walk path between them.
+7. If a route crosses a tunnel boundary, author both the portal anchor and the paired surface entry anchor so the main scene can build the front-entrance transition automatically.
+8. For tunnel portal anchors, author `offset.x` as distance through the portal axis and `offset.y` as lateral placement along the portal opening.
+9. Validate route behavior with [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn) and the route debug overlay whenever the route uses tunnel anchors or portal crossings.
 
 ### Debug Resident Routes
 
