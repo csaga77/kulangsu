@@ -9,6 +9,7 @@ extends BaseController
 @export_category("Resident")
 @export var resident_id: StringName
 
+const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const DEFAULT_ROUTE_ARRIVAL_RADIUS := 24.0
 const DEFAULT_ROUTE_WAIT_MIN_SEC := 0.5
 const DEFAULT_ROUTE_WAIT_MAX_SEC := 1.2
@@ -29,6 +30,12 @@ var m_route_ping_pong: bool = true
 var m_route_is_moving: bool = false
 var m_route_motion_target: Vector2 = Vector2.ZERO
 var m_route_allow_collision_bypass: bool = false
+
+
+func _app_state():
+	if !is_instance_valid(m_character):
+		return null
+	return APP_RUNTIME.get_app_state(m_character)
 
 func _on_setup() -> void:
 	super._on_setup()
@@ -112,7 +119,7 @@ func _apply_resident_presentation() -> void:
 	if resident_key.is_empty():
 		return
 
-	var appearance_config: Dictionary = AppState.get_resident_appearance_config(resident_key)
+	var appearance_config: Dictionary = _app_state().get_resident_appearance_config(resident_key)
 	if !appearance_config.is_empty():
 		m_character.call_deferred("set_configuration", appearance_config)
 
@@ -187,7 +194,7 @@ func _get_speech(target_obj: Node2D) -> String:
 	if resident_key.is_empty():
 		return "%s: %s" % [m_character.name, m_revealed_dialogue_line]
 
-	var display_name := AppState.get_resident_display_name(resident_key)
+	var display_name = _app_state().get_resident_display_name(resident_key)
 	return "%s: %s" % [display_name, m_revealed_dialogue_line]
 
 

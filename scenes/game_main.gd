@@ -9,6 +9,7 @@ extends Node2D
 const LANDMARK_SYNC_DISTANCE := 1600.0
 const NPC_SCENE: PackedScene = preload("res://characters/resident_npc.tscn")
 const LEVEL_REGISTRY := preload("res://common/level_registry.gd")
+const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const TUNNEL_ENTRY_FRONT_APPROACH_DISTANCE := 96.0
 const TUNNEL_PORTAL_SUFFIX := " Portal"
 const DIRECTIONAL_PORTAL_MIN_OFFSET_DISTANCE := 16.0
@@ -69,12 +70,22 @@ var m_spawn_anchor_nodes: Dictionary = {}
 var m_tunnel_nodes: Array[Tunnel] = []
 var m_resident_root: Node2D = null
 
+
+func _app_state():
+	return APP_RUNTIME.get_app_state(self)
+
+
+func _enter_tree() -> void:
+	if Engine.is_editor_hint():
+		return
+	_app_state()
+
+
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	m_is_ready = true
 	if is_instance_valid(m_terrain):
 		m_terrain.player = m_player
-	GameGlobal.get_instance().set_player(m_player)
 	_cache_landmarks()
 	_cache_spawn_anchors()
 	_apply_story_resume_anchor_if_needed()
@@ -82,6 +93,10 @@ func _ready() -> void:
 	_spawn_catalog_residents()
 	_connect_ui_signals()
 	sync_ui_state()
+
+
+func _exit_tree() -> void:
+	m_is_ready = false
 
 
 func _process(_delta: float) -> void:
@@ -129,7 +144,7 @@ func _draw_npc_route_debug(
 	var resident_id: String = controller.get_resident_id()
 	var display_name: String = String(resident.name)
 	if !resident_id.is_empty():
-		display_name = AppState.get_resident_display_name(resident_id)
+		display_name = _app_state().get_resident_display_name(resident_id)
 
 	var color_key: String = resident_id if !resident_id.is_empty() else display_name
 	var base_color: Color = _npc_route_debug_color(color_key)
@@ -216,8 +231,8 @@ func sync_ui_state() -> void:
 	if !m_is_ready:
 		return
 
-	AppState.set_landmarks(PackedStringArray(m_landmark_nodes.keys()))
-	AppState.set_residents(AppState.get_known_resident_names())
+	_app_state().set_landmarks(PackedStringArray(m_landmark_nodes.keys()))
+	_app_state().set_residents(_app_state().get_known_resident_names())
 	_sync_location_from_player()
 	_update_hint_text(m_closest_object)
 
@@ -253,10 +268,10 @@ func _cache_spawn_anchors() -> void:
 func _apply_story_resume_anchor_if_needed() -> void:
 	if !is_instance_valid(m_player):
 		return
-	if AppState.mode not in ["Story", "Postgame"]:
+	if _app_state().mode not in ["Story", "Postgame"]:
 		return
 
-	var anchor_id := AppState.get_story_resume_anchor_id()
+	var anchor_id = _app_state().get_story_resume_anchor_id()
 	if anchor_id.is_empty():
 		anchor_id = "Piano Ferry"
 
@@ -271,18 +286,18 @@ func _apply_story_resume_anchor_if_needed() -> void:
 
 
 func _update_story_resume_checkpoint() -> void:
-	if AppState.mode not in ["Story", "Postgame"]:
+	if _app_state().mode not in ["Story", "Postgame"]:
 		return
 
 	var anchor_id := _find_story_resume_anchor_id()
 	if anchor_id.is_empty():
 		return
 
-	var location_label := AppState.location
+	var location_label = _app_state().location
 	if location_label.is_empty() or location_label == "Island Paths":
 		location_label = _resume_location_for_anchor(anchor_id)
 
-	AppState.set_story_resume_checkpoint(anchor_id, location_label)
+	_app_state().set_story_resume_checkpoint(anchor_id, location_label)
 
 
 func _find_story_resume_anchor_id() -> String:
@@ -319,7 +334,7 @@ func _resume_location_for_anchor(anchor_id: String) -> String:
 		return "Bi Shan Tunnel"
 	if anchor_id.begins_with("Long Shan Tunnel"):
 		return "Long Shan Tunnel"
-	if anchor_id == "Piano Ferry" and AppState.mode == "Postgame":
+	if anchor_id == "Piano Ferry" and _app_state().mode == "Postgame":
 		return "Ferry Plaza"
 	return anchor_id
 
@@ -337,10 +352,10 @@ func _connect_ui_signals() -> void:
 	if !is_instance_valid(m_player):
 		return
 
-	if !AppState.player_appearance_changed.is_connected(_on_player_appearance_changed):
-		AppState.player_appearance_changed.connect(_on_player_appearance_changed)
-	if !AppState.story_milestone.is_connected(_on_story_milestone):
-		AppState.story_milestone.connect(_on_story_milestone)
+	if !_app_state().player_appearance_changed.is_connected(_on_player_appearance_changed):
+		_app_state().player_appearance_changed.connect(_on_player_appearance_changed)
+	if !_app_state().story_milestone.is_connected(_on_story_milestone):
+		_app_state().story_milestone.connect(_on_story_milestone)
 
 	if !m_player.global_position_changed.is_connected(_sync_location_from_player):
 		m_player.global_position_changed.connect(_sync_location_from_player)
@@ -363,7 +378,7 @@ func _sync_location_from_player() -> void:
 	_sync_tunnel_resident_visibility()
 
 	if _is_landmark(m_closest_object):
-		AppState.set_location(_display_name_for_node(m_closest_object))
+		_app_state().set_location(_display_name_for_node(m_closest_object))
 		_update_story_resume_checkpoint()
 		return
 
@@ -381,9 +396,9 @@ func _sync_location_from_player() -> void:
 			best_name = landmark_name
 
 	if best_distance_sq <= LANDMARK_SYNC_DISTANCE * LANDMARK_SYNC_DISTANCE:
-		AppState.set_location(best_name)
+		_app_state().set_location(best_name)
 	else:
-		AppState.set_location("Island Paths")
+		_app_state().set_location("Island Paths")
 
 	_update_story_resume_checkpoint()
 
@@ -392,25 +407,25 @@ func _on_closest_object_changed(new_object: Node2D) -> void:
 	m_closest_object = new_object
 
 	if _is_landmark(new_object):
-		AppState.set_location(_display_name_for_node(new_object))
+		_app_state().set_location(_display_name_for_node(new_object))
 
 	_update_hint_text(new_object)
 
 
 func _on_inspect_requested() -> void:
 	if !is_instance_valid(m_closest_object):
-		AppState.set_save_status("Inspect: nothing nearby")
+		_app_state().set_save_status("Inspect: nothing nearby")
 		return
 
 	var resident_controller := _get_resident_controller(m_closest_object)
 	if resident_controller != null:
 		var resident_id := resident_controller.get_resident_id()
-		var interaction := AppState.interact_with_resident(resident_id)
-		var resident_name := AppState.get_resident_display_name(resident_id)
+		var interaction = _app_state().interact_with_resident(resident_id)
+		var resident_name = _app_state().get_resident_display_name(resident_id)
 		var dialogue_line := String(interaction.get("line", ""))
 
 		if interaction.is_empty():
-			AppState.set_save_status("Talked with %s" % resident_name)
+			_app_state().set_save_status("Talked with %s" % resident_name)
 
 		resident_controller.reveal_dialogue(dialogue_line)
 		# Note: set_residents is not called here because interact_with_resident
@@ -420,7 +435,7 @@ func _on_inspect_requested() -> void:
 
 	var landmark_trigger := _get_landmark_trigger(m_closest_object)
 	if landmark_trigger != null:
-		var consumed := AppState.activate_landmark_trigger(
+		var consumed = _app_state().activate_landmark_trigger(
 			landmark_trigger.landmark_id,
 			landmark_trigger.trigger_id,
 			landmark_trigger.display_name,
@@ -432,31 +447,31 @@ func _on_inspect_requested() -> void:
 		return
 
 	var display_name := _display_name_for_node(m_closest_object)
-	AppState.set_save_status("Inspect: %s" % display_name)
+	_app_state().set_save_status("Inspect: %s" % display_name)
 
 
 func _update_hint_text(target: Node2D) -> void:
 	if !is_instance_valid(target):
-		AppState.set_hint(AppState.build_input_hint("R Inspect"))
+		_app_state().set_hint(_app_state().build_input_hint("R Inspect"))
 		return
 
 	var landmark_trigger := _get_landmark_trigger(target)
 	if landmark_trigger != null:
 		if landmark_trigger.is_collected():
-			AppState.set_hint(AppState.build_input_hint("R Inspect"))
+			_app_state().set_hint(_app_state().build_input_hint("R Inspect"))
 		elif landmark_trigger.landmark_id == "festival_stage":
-			AppState.set_hint(AppState.build_input_hint("R Perform %s" % landmark_trigger.display_name))
+			_app_state().set_hint(_app_state().build_input_hint("R Perform %s" % landmark_trigger.display_name))
 		elif landmark_trigger.landmark_id == "trinity_church" and landmark_trigger.trigger_id == "choir_chime":
-			AppState.set_hint(AppState.build_input_hint("R Perform %s" % landmark_trigger.display_name))
+			_app_state().set_hint(_app_state().build_input_hint("R Perform %s" % landmark_trigger.display_name))
 		else:
-			AppState.set_hint(AppState.build_input_hint("R Collect %s" % landmark_trigger.display_name))
+			_app_state().set_hint(_app_state().build_input_hint("R Collect %s" % landmark_trigger.display_name))
 		return
 
 	var display_name := _display_name_for_node(target)
 	if _get_resident_controller(target) != null:
-		AppState.set_hint(AppState.build_input_hint("R Talk to %s" % display_name))
+		_app_state().set_hint(_app_state().build_input_hint("R Talk to %s" % display_name))
 		return
-	AppState.set_hint(AppState.build_input_hint("R Inspect %s" % display_name))
+	_app_state().set_hint(_app_state().build_input_hint("R Inspect %s" % display_name))
 
 
 func _is_landmark(target: Node2D) -> bool:
@@ -476,7 +491,7 @@ func _display_name_for_node(target: Node2D) -> String:
 
 	var resident_controller := _get_resident_controller(target)
 	if resident_controller != null:
-		return AppState.get_resident_display_name(resident_controller.get_resident_id())
+		return _app_state().get_resident_display_name(resident_controller.get_resident_id())
 
 	for landmark_name in m_landmark_nodes.keys():
 		if target == m_landmark_nodes[landmark_name]:
@@ -508,8 +523,8 @@ func _spawn_catalog_residents() -> void:
 	m_resident_root.y_sort_enabled = true
 	m_actor_root.add_child(m_resident_root)
 
-	for resident_id in AppState.get_resident_ids():
-		var resident_definition = AppState.get_resident_definition(resident_id)
+	for resident_id in _app_state().get_resident_ids():
+		var resident_definition = _app_state().get_resident_definition(resident_id)
 		if resident_definition == null:
 			push_warning("Missing resident definition for resident '%s'." % resident_id)
 			continue
@@ -873,7 +888,7 @@ func _on_player_appearance_changed(_profile: Dictionary, _appearance_config: Dic
 
 
 func _on_story_milestone(milestone_id: String, context: Dictionary) -> void:
-	if AppState.mode != "Story":
+	if _app_state().mode != "Story":
 		return
 
 	match milestone_id:
@@ -885,18 +900,18 @@ func _on_story_milestone(milestone_id: String, context: Dictionary) -> void:
 
 
 func _apply_story_milestone_status(text: String) -> void:
-	if AppState.mode != "Story":
+	if _app_state().mode != "Story":
 		return
 	if text.is_empty():
 		return
-	AppState.set_save_status(text)
+	_app_state().set_save_status(text)
 
 
 func _apply_player_costume() -> void:
 	if !is_instance_valid(m_player):
 		return
 
-	var appearance_config := AppState.get_player_appearance_config()
+	var appearance_config = _app_state().get_player_appearance_config()
 	if appearance_config.is_empty():
 		return
 

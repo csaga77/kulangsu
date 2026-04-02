@@ -1,6 +1,7 @@
 @tool
 extends Node2D
 
+const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const LAYER_ONE_MASK := 524288
 const LAYER_TWO_MASK := 1048576
 
@@ -13,13 +14,16 @@ var m_last_interaction_text := "No interaction yet."
 var m_last_player_z := 0
 
 
+func _app_state():
+	return APP_RUNTIME.get_app_state(self)
+
+
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 
-	AppState.configure_new_game()
-	GameGlobal.get_instance().set_player(m_player)
-	m_player.set_configuration(AppState.get_player_appearance_config())
+	_app_state().configure_new_game()
+	m_player.set_configuration(_app_state().get_player_appearance_config())
 
 	m_player_controller = m_player.controller as PlayerController
 	if m_player_controller != null:
@@ -60,8 +64,8 @@ func _on_inspect_requested() -> void:
 		return
 
 	var resident_id := resident_controller.get_resident_id()
-	var resident_name := AppState.get_resident_display_name(resident_id)
-	var interaction := AppState.interact_with_resident(resident_id)
+	var resident_name = _app_state().get_resident_display_name(resident_id)
+	var interaction = _app_state().interact_with_resident(resident_id)
 	resident_controller.reveal_dialogue(String(interaction.get("line", "")))
 
 	if interaction.is_empty():
@@ -84,7 +88,7 @@ func _refresh_status() -> void:
 		var target_z := CommonUtils.get_absolute_z_index(m_closest_object)
 		var resident_controller := _get_resident_controller(m_closest_object)
 		if resident_controller != null:
-			var resident_name := AppState.get_resident_display_name(resident_controller.get_resident_id())
+			var resident_name = _app_state().get_resident_display_name(resident_controller.get_resident_id())
 			target_text = "%s (z %d)" % [resident_name, target_z]
 			prompt_text = "R Talk to %s" % resident_name
 		else:

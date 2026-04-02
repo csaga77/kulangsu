@@ -566,7 +566,7 @@ Avoid:
 ### Existing systems already aligned
 
 - Overworld exploration: [`../scenes/game_main.tscn`](../scenes/game_main.tscn)
-- Global player reference: [`../game/game_global.gd`](../game/game_global.gd)
+- Runtime player lookup: [`../game/app_runtime.gd`](../game/app_runtime.gd)
 - Interaction radius and dialogue bubble logic: [`../characters/control/base_controller.gd`](../characters/control/base_controller.gd)
 - Player input and inspect action: [`../characters/control/player_controller.gd`](../characters/control/player_controller.gd)
 - NPC autonomous presence and talk detection: [`../characters/control/npc_controller.gd`](../characters/control/npc_controller.gd)

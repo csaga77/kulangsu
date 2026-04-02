@@ -64,7 +64,7 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 - The catalog now builds resource-backed `ResidentDefinition` objects plus nested appearance/dialogue/routine resources under [`../../game/resident_system/`](../../game/resident_system).
 - Resident resource slots should stay concretely typed to their matching resource classes, not broad `Resource` or untyped array slots, so Inspector authoring only accepts valid NPC data shapes.
 - The catalog merges the built-in roster with any editor-authored definitions found under [`../../game/residents/definitions/`](../../game/residents/definitions).
-- `AppState` keeps both immutable `resident_definitions` for authored data and mutable `resident_profiles` for trust, conversation progress, and save/load state.
+- `AppState` keeps both immutable `resident_definitions` for authored data and mutable `resident_profiles` for trust, conversation progress, and save/load state, but now initializes those resident dictionaries lazily instead of fully building them at service startup.
 - `scenes/game_main.gd` never hardcodes individual residents; it loops over `AppState.get_resident_ids()`, instantiates [`../../characters/resident_npc.tscn`](../../characters/resident_npc.tscn), applies the matching definition, and then resolves world-specific spawn and route data.
 - Tunnel-root spawns and tunnel-owned movement waypoints are snapped back onto the authored tunnel path if an offset drifts off the walkable area.
 - Tunnel-internal route expansion prefers higher-connectivity walkable cells so residents stay nearer the middle of a tunnel path when multiple shortest routes exist.

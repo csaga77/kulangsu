@@ -1,6 +1,7 @@
 extends PanelContainer
 
 const HUMAN_BODY_SCENE := preload("res://characters/human_body_2d.tscn")
+const APP_RUNTIME := preload("res://game/app_runtime.gd")
 
 signal confirm_requested()
 signal cancel_requested()
@@ -21,14 +22,18 @@ var m_is_free_walk := false
 var m_preview_actor: HumanBody2D = null
 
 
+func _app_state():
+	return APP_RUNTIME.get_app_state(self)
+
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	add_theme_stylebox_override("panel", UIStyle.build_panel_style())
 	_build_preview_actor()
 	_connect_buttons()
 
-	if !AppState.player_appearance_changed.is_connected(_on_player_appearance_changed):
-		AppState.player_appearance_changed.connect(_on_player_appearance_changed)
+	if !_app_state().player_appearance_changed.is_connected(_on_player_appearance_changed):
+		_app_state().player_appearance_changed.connect(_on_player_appearance_changed)
 
 	refresh_from_state()
 
@@ -41,12 +46,12 @@ func set_flow_context(is_free_walk: bool) -> void:
 
 func refresh_from_state() -> void:
 	_refresh_flow_labels()
-	m_body_value.text = AppState.get_player_body_display_name()
-	m_gender_value.text = AppState.get_player_gender_display_name()
-	m_skin_value.text = AppState.get_player_skin_display_name()
-	m_hair_style_value.text = AppState.get_player_hair_style_display_name()
-	m_hair_color_value.text = AppState.get_player_hair_color_display_name()
-	m_summary_label.text = AppState.build_player_setup_summary_text()
+	m_body_value.text = _app_state().get_player_body_display_name()
+	m_gender_value.text = _app_state().get_player_gender_display_name()
+	m_skin_value.text = _app_state().get_player_skin_display_name()
+	m_hair_style_value.text = _app_state().get_player_hair_style_display_name()
+	m_hair_color_value.text = _app_state().get_player_hair_color_display_name()
+	m_summary_label.text = _app_state().build_player_setup_summary_text()
 	_refresh_preview()
 
 
@@ -71,52 +76,52 @@ func _build_preview_actor() -> void:
 func _connect_buttons() -> void:
 	$Margin/Body/Content/ControlsColumn/BodyRow/Controls/PrevButton.pressed.connect(
 		func() -> void:
-			AppState.cycle_player_body_frame(-1)
+			_app_state().cycle_player_body_frame(-1)
 			refresh_from_state()
 	)
 	$Margin/Body/Content/ControlsColumn/BodyRow/Controls/NextButton.pressed.connect(
 		func() -> void:
-			AppState.cycle_player_body_frame(1)
+			_app_state().cycle_player_body_frame(1)
 			refresh_from_state()
 	)
 	$Margin/Body/Content/ControlsColumn/GenderRow/Controls/PrevButton.pressed.connect(
 		func() -> void:
-			AppState.cycle_player_gender(-1)
+			_app_state().cycle_player_gender(-1)
 			refresh_from_state()
 	)
 	$Margin/Body/Content/ControlsColumn/GenderRow/Controls/NextButton.pressed.connect(
 		func() -> void:
-			AppState.cycle_player_gender(1)
+			_app_state().cycle_player_gender(1)
 			refresh_from_state()
 	)
 	$Margin/Body/Content/ControlsColumn/SkinRow/Controls/PrevButton.pressed.connect(
 		func() -> void:
-			AppState.cycle_player_skin_tone(-1)
+			_app_state().cycle_player_skin_tone(-1)
 			refresh_from_state()
 	)
 	$Margin/Body/Content/ControlsColumn/SkinRow/Controls/NextButton.pressed.connect(
 		func() -> void:
-			AppState.cycle_player_skin_tone(1)
+			_app_state().cycle_player_skin_tone(1)
 			refresh_from_state()
 	)
 	$Margin/Body/Content/ControlsColumn/HairStyleRow/Controls/PrevButton.pressed.connect(
 		func() -> void:
-			AppState.cycle_player_hair_style(-1)
+			_app_state().cycle_player_hair_style(-1)
 			refresh_from_state()
 	)
 	$Margin/Body/Content/ControlsColumn/HairStyleRow/Controls/NextButton.pressed.connect(
 		func() -> void:
-			AppState.cycle_player_hair_style(1)
+			_app_state().cycle_player_hair_style(1)
 			refresh_from_state()
 	)
 	$Margin/Body/Content/ControlsColumn/HairColorRow/Controls/PrevButton.pressed.connect(
 		func() -> void:
-			AppState.cycle_player_hair_color(-1)
+			_app_state().cycle_player_hair_color(-1)
 			refresh_from_state()
 	)
 	$Margin/Body/Content/ControlsColumn/HairColorRow/Controls/NextButton.pressed.connect(
 		func() -> void:
-			AppState.cycle_player_hair_color(1)
+			_app_state().cycle_player_hair_color(1)
 			refresh_from_state()
 	)
 
@@ -139,7 +144,7 @@ func _refresh_preview() -> void:
 	if m_preview_actor == null:
 		return
 
-	m_preview_actor.set_configuration(AppState.get_player_appearance_config())
+	m_preview_actor.set_configuration(_app_state().get_player_appearance_config())
 
 
 func _on_player_appearance_changed(_profile: Dictionary, _appearance_config: Dictionary) -> void:

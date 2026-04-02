@@ -1,5 +1,7 @@
 extends PanelContainer
 
+const APP_RUNTIME := preload("res://game/app_runtime.gd")
+
 signal leave_requested()
 signal stay_requested()
 signal credits_requested()
@@ -8,6 +10,10 @@ signal credits_requested()
 @onready var m_return_button: Button = $Margin/Body/ReturnButton
 @onready var m_stay_button: Button = $Margin/Body/StayButton
 @onready var m_credits_button: Button = $Margin/Body/CreditsButton
+
+
+func _app_state():
+	return APP_RUNTIME.get_app_state(self)
 
 
 func _ready() -> void:
@@ -19,7 +25,7 @@ func _ready() -> void:
 
 
 func refresh_from_state() -> void:
-	var summary := AppState.ending_summary
+	var summary = _app_state().ending_summary
 	m_summary_body.text = "Melody fragments recovered: %s\nResidents helped: %s\nOptional collectibles found: %s\nPlaytime: %s" % [
 		summary.get("fragments", "4 / 4"),
 		summary.get("residents", "4"),

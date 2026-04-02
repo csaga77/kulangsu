@@ -18,7 +18,6 @@ func _ready() -> void:
 		if shader_material:
 			shader_material.set_shader_parameter("trans_rect_size", Vector2i.ZERO)
 	else:
-		GameGlobal.get_instance().set_player(m_player)
 		m_player.global_position_changed.connect(self._on_player_moved)
 		#m_player.texture_changed.connect(self._on_player_texture_changed)
 		

@@ -14,8 +14,8 @@ Most gameplay and scene work happens in the main repo. Shared or vendor-style co
 ## Startup Flow
 
 1. [`../project.godot`](../project.godot) boots the app through [`../main.tscn`](../main.tscn).
-2. [`../main.gd`](../main.gd) builds the UI shell, manages screen state, and instantiates [`../scenes/game_main.tscn`](../scenes/game_main.tscn) for gameplay.
-3. [`../scenes/game_main.gd`](../scenes/game_main.gd) connects the player, terrain, landmarks, residents, and interaction state to the UI-facing autoload [`../game/app_state.gd`](../game/app_state.gd).
+2. [`../main.gd`](../main.gd) builds the UI shell, ensures the shared [`../game/app_state.gd`](../game/app_state.gd) service exists through [`../game/app_runtime.gd`](../game/app_runtime.gd), and instantiates [`../scenes/game_main.tscn`](../scenes/game_main.tscn) for gameplay.
+3. [`../scenes/game_main.gd`](../scenes/game_main.gd) connects the player, terrain, landmarks, residents, and interaction state to that shared scene-owned state service.
 4. Screen scripts under [`../ui/screens/`](../ui/screens) read shared state and send actions back to the shell.
 
 ## Main Systems
@@ -85,6 +85,7 @@ Responsibilities:
 - shared mode, chapter, location, objective, hint, save status, and summary data
 - shared melody definitions and melody-progress state used by the journal and future performance systems
 - resident and player-facing catalog data
+- lazy resident definition/profile initialization so startup does not eagerly build the full resident runtime just to load the shared state service
 - resident definition resources for appearance, dialogue, routine, and behavior metadata
 - editor-authored resident definition files and templates
 - resident runtime profiles plus resident appearance, spawn, movement, behavior, and journal-facing lookup helpers
@@ -94,24 +95,22 @@ Boundary:
 
 - `AppState` is for shared UI/progression state. Do not use it as a dumping ground for scene-local implementation details.
 
-### Scene-Graph Utility Singleton
+### Runtime Service Lookup
 
 Primary file:
 
-- [`../game/game_global.gd`](../game/game_global.gd)
+- [`../game/app_runtime.gd`](../game/app_runtime.gd)
 
 Responsibilities:
 
-- holds the live `HumanBody2D` player node reference for the current scene
-- exposes a `player_changed` signal so scene-graph systems can react when the player node is replaced
-- provides a static `get_instance()` accessor so non-UI systems (terrain, AI, behavior trees) can reach the player without going through `AppState`
+- resolves the one scene-owned `AppStateService` instance for runtime callers without using a Project Settings autoload
+- resolves the live `HumanBody2D` player from the existing `"player"` group for scene-graph helpers such as visibility masking
 
 Boundary:
 
-- `GameGlobal` is a scene-graph plumbing singleton, not a progression or UI-state store
-- keep it lean: player-node reference and signal only
-- UI and progression code should use `AppState`, not `GameGlobal`, for anything player-facing or save-relevant
-- `scenes/game_main.gd` sets the player reference in `_ready()` after the scene is live
+- `AppRuntime` is a lookup helper, not a gameplay-state owner
+- UI and progression code should use `AppState`, not raw player lookup, for anything player-facing or save-relevant
+- the player group contract must stay valid for scene-graph helpers that resolve the player through `AppRuntime`
 
 ### Characters, Interaction, And Behavior
 

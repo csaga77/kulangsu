@@ -14,7 +14,7 @@ Read [`design_brief.md`](design_brief.md) first for the project summary and tone
 The live resident flow is:
 
 1. [`../game/resident_catalog.gd`](../game/resident_catalog.gd) defines the built-in resident roster, auto-loads external resident resources from [`../game/residents/definitions/`](../game/residents/definitions), and builds resource-backed `ResidentDefinition` objects plus nested appearance/dialogue/routine resources under [`../game/resident_system/`](../game/resident_system).
-2. [`../game/app_state.gd`](../game/app_state.gd) keeps immutable `resident_definitions`, clones them into mutable runtime `resident_profiles`, and exposes all resident-facing getters.
+2. [`../game/app_state.gd`](../game/app_state.gd) keeps immutable `resident_definitions`, clones them into mutable runtime `resident_profiles`, lazily initializes both on demand, and exposes all resident-facing getters.
 3. [`../scenes/game_main.gd`](../scenes/game_main.gd) caches supported spawn and route anchors, resolves sparse authored routes into world-space movement points, instantiates [`../characters/resident_npc.tscn`](../characters/resident_npc.tscn), applies the matching definition, and synchronizes tunnel-specific visibility and level state.
 4. [`../characters/control/base_controller.gd`](../characters/control/base_controller.gd) filters nearby targets to the same absolute z layer, ignores controller-owned overlap nodes, and lets residents plus landmark cues compete by distance before closest-target or speech logic can use them.
 5. [`../characters/resident_npc.gd`](../characters/resident_npc.gd) applies each resident definition's static appearance to the runtime `HumanBody2D`.
@@ -34,7 +34,7 @@ This split is intentional: authored content stays in the catalog, mutable progre
 
 ### Runtime State Lives In `AppState`
 
-- The resident system does not mutate the catalog directly. [`../game/app_state.gd`](../game/app_state.gd) owns both the immutable definition cache and the mutable runtime copy so the HUD, journal, costume unlock logic, and future save/load work can all read the same resident state.
+- The resident system does not mutate the catalog directly. [`../game/app_state.gd`](../game/app_state.gd) owns both the immutable definition cache and the mutable runtime copy so the HUD, journal, costume unlock logic, and future save/load work can all read the same resident state. Those resident dictionaries are initialized lazily so service startup does not eagerly build the entire resident runtime.
 - Current mutable resident fields are:
   - `known`
   - `trust`

@@ -2,12 +2,17 @@
 extends Node
 
 const GAME_MAIN_SCENE := preload("res://scenes/game_main.tscn")
+const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const ROUTED_RESIDENT_ID := "tunnel_guide"
 const SECOND_ROUTED_RESIDENT_ID := "tunnel_listener_nuo"
 const WAIT_TIMEOUT_SEC := 18.0
 const TUNNEL_ENTRY_FRONT_APPROACH_DISTANCE := 96.0
 const DIRECTIONAL_PORTAL_MIN_OFFSET_DISTANCE := 16.0
 const ROUTE_POSITION_TOLERANCE := 8.0
+
+
+func _app_state():
+	return APP_RUNTIME.get_app_state(self)
 
 
 func _ready() -> void:
@@ -17,7 +22,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	AppState.configure_new_game()
+	_app_state().configure_new_game()
 	var game_main := GAME_MAIN_SCENE.instantiate()
 	add_child(game_main)
 
@@ -252,7 +257,7 @@ func _wait_for_tunnel_state(resident: HumanBody2D, tunnel: Tunnel, expected_insi
 
 
 func _resident_node(residents_root: Node2D, resident_id: String) -> HumanBody2D:
-	var display_name := AppState.get_resident_display_name(resident_id)
+	var display_name = _app_state().get_resident_display_name(resident_id)
 	var resident := residents_root.get_node_or_null(display_name) as HumanBody2D
 	_assert(resident != null, "Resident '%s' did not spawn." % resident_id)
 	return resident

@@ -21,8 +21,8 @@ func _run() -> void:
 
 	m_player = PLAYER_SCENE.instantiate() as CharacterBody2D
 	m_player.name = "TestPlayer"
+	m_player.add_to_group("player")
 	add_child(m_player)
-	GameGlobal.get_instance().set_player(m_player)
 
 	m_portal = m_tower.get_node("base/portal_ne_0") as Node2D
 

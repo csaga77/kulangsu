@@ -9,7 +9,7 @@ This repository is also a small super-repo: the main game lives here, and severa
 - Godot 4 project configured through [`project.godot`](project.godot)
 - GDScript and `.tscn` scenes
 - Canvas-based UI rooted in [`main.tscn`](main.tscn)
-- Shared UI/progression state in the `AppState` autoload at [`game/app_state.gd`](game/app_state.gd)
+- Shared UI/progression state in the scene-owned [`AppStateService`](game/app_state.gd) resolved through [`AppRuntime`](game/app_runtime.gd)
 - Git submodules for shared support code, tilemap tooling, third-party LPC assets, and agent runbooks
 
 No package manager, CI pipeline, or automated test runner is checked into this repository.

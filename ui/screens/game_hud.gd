@@ -1,5 +1,7 @@
 extends Control
 
+const APP_RUNTIME := preload("res://game/app_runtime.gd")
+
 @onready var m_objective_card: PanelContainer = $ObjectiveCard
 @onready var m_status_card: PanelContainer = $StatusCard
 @onready var m_hint_card: PanelContainer = $HintCard
@@ -12,6 +14,10 @@ extends Control
 @onready var m_save_label: Label = $SaveStatus
 
 
+func _app_state():
+	return APP_RUNTIME.get_app_state(self)
+
+
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	m_objective_card.add_theme_stylebox_override("panel", UIStyle.build_panel_style())
@@ -22,26 +28,26 @@ func _ready() -> void:
 
 
 func _bind_state() -> void:
-	if AppState.objective_changed.is_connected(_refresh_objective):
+	if _app_state().objective_changed.is_connected(_refresh_objective):
 		return
-	AppState.objective_changed.connect(_refresh_objective)
-	AppState.mode_changed.connect(_refresh_mode)
-	AppState.chapter_changed.connect(_refresh_chapter)
-	AppState.location_changed.connect(_refresh_location)
-	AppState.fragments_changed.connect(_refresh_fragments)
-	AppState.hint_changed.connect(_refresh_hint)
-	AppState.save_status_changed.connect(_refresh_save_status)
-	AppState.melody_hint_shown.connect(_show_melody_hint)
+	_app_state().objective_changed.connect(_refresh_objective)
+	_app_state().mode_changed.connect(_refresh_mode)
+	_app_state().chapter_changed.connect(_refresh_chapter)
+	_app_state().location_changed.connect(_refresh_location)
+	_app_state().fragments_changed.connect(_refresh_fragments)
+	_app_state().hint_changed.connect(_refresh_hint)
+	_app_state().save_status_changed.connect(_refresh_save_status)
+	_app_state().melody_hint_shown.connect(_show_melody_hint)
 
 
 func _refresh_all() -> void:
-	_refresh_objective(AppState.objective)
-	_refresh_mode(AppState.mode)
-	_refresh_chapter(AppState.chapter)
-	_refresh_location(AppState.location)
-	_refresh_fragments(AppState.fragments_found, AppState.fragments_total)
-	_refresh_hint(AppState.hint)
-	_refresh_save_status(AppState.save_status)
+	_refresh_objective(_app_state().objective)
+	_refresh_mode(_app_state().mode)
+	_refresh_chapter(_app_state().chapter)
+	_refresh_location(_app_state().location)
+	_refresh_fragments(_app_state().fragments_found, _app_state().fragments_total)
+	_refresh_hint(_app_state().hint)
+	_refresh_save_status(_app_state().save_status)
 
 
 func _refresh_objective(value: String) -> void:

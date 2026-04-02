@@ -2,6 +2,8 @@
 class_name AutoVisibilityNode2D
 extends IsometricBlock
 
+const APP_RUNTIME := preload("res://game/app_runtime.gd")
+
 @export var visibility_mask_nodes: Array[Node2D]
 @export var use_ground_bounding_rect := true
 @export var smooth_visibility_change := true
@@ -16,24 +18,19 @@ var m_has_player_level_sample := false
 
 func _ready() -> void:
 	super._ready()
+	_sync_player()
 
-	if !Engine.is_editor_hint():
-		var gg = GameGlobal.get_instance()
-		if gg:
-			gg.player_changed.connect(self._on_player_changed)
 
-	_on_player_changed()
-
-func _on_player_changed() -> void:
+func _exit_tree() -> void:
 	if Engine.is_editor_hint():
 		return
+	_set_player(null)
 
-	var gg = GameGlobal.get_instance()
-	if gg == null:
-		_set_player(null)
+
+func _sync_player() -> void:
+	if Engine.is_editor_hint():
 		return
-
-	_set_player(gg.get_player())
+	_set_player(APP_RUNTIME.get_player(self))
 
 func _set_player(new_player: HumanBody2D) -> void:
 	if m_player == new_player:
@@ -55,7 +52,12 @@ func _set_player(new_player: HumanBody2D) -> void:
 func _process(_delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
-	if !is_enabled or m_player == null:
+	if !is_enabled:
+		return
+
+	if !is_instance_valid(m_player):
+		_sync_player()
+	if m_player == null:
 		return
 
 	var absolute_z := CommonUtils.get_absolute_z_index(m_player)

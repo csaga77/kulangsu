@@ -4,9 +4,9 @@ This file documents the durable boundaries future changes should preserve. These
 
 ## Runtime Entry Contracts
 
-- [`../project.godot`](../project.godot) must continue to define the Godot project entry point and the `AppState` autoload.
+- [`../project.godot`](../project.godot) must continue to define the Godot project entry point.
 - The current main scene contract is `run/main_scene = res://main.tscn`.
-- The current autoload contract is `AppState = res://game/app_state.gd`.
+- The current shared-state runtime contract is a single scene-owned [`AppStateService`](../game/app_state.gd) instance resolved through [`../game/app_runtime.gd`](../game/app_runtime.gd).
 
 If either changes, update this file, [`architecture.md`](architecture.md), and [`README.md`](../README.md).
 
@@ -32,10 +32,13 @@ Current contract:
 Owned by:
 
 - [`../game/app_state.gd`](../game/app_state.gd)
+- [`../game/app_runtime.gd`](../game/app_runtime.gd)
 
 Current contract:
 
 - `AppState` is the shared UI/progression-facing bridge between gameplay and UI
+- the running app owns exactly one `AppStateService` node; callers resolve it through `AppRuntime.get_app_state(node)` instead of a Project Settings autoload
+- resident definitions and default resident runtime profiles are initialized lazily through `AppState` getters/configuration instead of being fully built at script-load time
 - it exposes signals for mode, chapter, location, objective, hint, save status, fragments, melody progress, melody prompt requests, landmarks, residents, resident profiles, player appearance/costumes, summary updates, and story milestones
 - `story_milestone(milestone_id, context)` fires after compound state changes resolve; current milestone ids are `landmark_resolved`, `fragment_restored`, `festival_ready`, `festival_performed`, and `resident_trust_max`
 - it now owns shared melody runtime state while [`../game/melody_catalog.gd`](../game/melody_catalog.gd) owns authored melody definitions
@@ -56,26 +59,22 @@ Governance:
 - do not move scene-local behavior into `AppState` without a strong reason
 - if signal names, payload shapes, or key state fields change, update this file and the affected feature docs
 
-## Scene-Graph Utility Singleton Contract
+## Scene-Graph Lookup Contract
 
 Owned by:
 
-- [`../game/game_global.gd`](../game/game_global.gd)
+- [`../game/app_runtime.gd`](../game/app_runtime.gd)
 
 Current contract:
 
-- `GameGlobal` is a static singleton accessed via `GameGlobal.get_instance()`
-- it holds the live `HumanBody2D` player node reference for the running scene
-- it exposes one signal: `player_changed`, emitted when the player reference changes
-- `scenes/game_main.gd` sets the reference in `_ready()` after the scene tree is live
-- scene-graph systems (terrain, AI, behavior trees) use `GameGlobal` to reach the player node
-- UI and progression code should use `AppState` instead for anything player-facing or save-relevant
+- scene-graph systems that need the live player node resolve it through `AppRuntime.get_player(node)`
+- the current player contract depends on the active player actor staying in the `"player"` group
+- shared UI/progression code should still use `AppState`, not direct player-node lookups, for anything save-relevant or player-facing
 
 Governance:
 
-- keep `GameGlobal` to player-node reference and signal only; do not add progression or UI-state fields here
-- if the player reference contract changes (e.g. the player node type changes), update this file and `architecture.md`
-- do not add a second static singleton for scene-graph plumbing; extend `GameGlobal` only if the need is clearly scene-graph-level
+- keep player lookup lightweight and scene-owned; do not reintroduce a static singleton just to hold the live player pointer
+- if the player group contract changes, update this file and `architecture.md`
 
 ## World Integration Contract
 

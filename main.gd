@@ -13,6 +13,7 @@ const CREDITS_SCENE: PackedScene = preload("res://ui/screens/credits_overlay.tsc
 const ENDING_SCENE: PackedScene = preload("res://ui/screens/ending_overlay.tscn")
 const DEPARTURE_SCENE: PackedScene = preload("res://ui/screens/departure_overlay.tscn")
 const CONFIRM_SCENE: PackedScene = preload("res://ui/screens/confirm_modal.tscn")
+const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const UI_DESIGN_SIZE := Vector2(1920.0, 1080.0)
 
 enum ScreenState {
@@ -55,16 +56,24 @@ var m_prompt_return_state: ScreenState = ScreenState.PLAYING
 var m_credits_return_state: ScreenState = ScreenState.TITLE
 
 
+func _app_state():
+	return APP_RUNTIME.get_app_state(self)
+
+
+func _enter_tree() -> void:
+	_app_state()
+
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	if !AppState.story_milestone.is_connected(_on_story_milestone):
-		AppState.story_milestone.connect(_on_story_milestone)
-	if !AppState.melody_prompt_requested.is_connected(_on_melody_prompt_requested):
-		AppState.melody_prompt_requested.connect(_on_melody_prompt_requested)
+	if !_app_state().story_milestone.is_connected(_on_story_milestone):
+		_app_state().story_milestone.connect(_on_story_milestone)
+	if !_app_state().melody_prompt_requested.is_connected(_on_melody_prompt_requested):
+		_app_state().melody_prompt_requested.connect(_on_melody_prompt_requested)
 	_build_app_shell()
-	if !AppState.save_metadata_changed.is_connected(_on_story_save_metadata_changed):
-		AppState.save_metadata_changed.connect(_on_story_save_metadata_changed)
-	_refresh_story_save_state(AppState.get_story_save_metadata())
+	if !_app_state().save_metadata_changed.is_connected(_on_story_save_metadata_changed):
+		_app_state().save_metadata_changed.connect(_on_story_save_metadata_changed)
+	_refresh_story_save_state(_app_state().get_story_save_metadata())
 	get_viewport().size_changed.connect(_update_ui_layout)
 	_update_ui_layout()
 	_show_boot_sequence()
@@ -86,9 +95,9 @@ func _input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_J:
 				if _is_game_active():
-					if !AppState.is_journal_unlocked():
+					if !_app_state().is_journal_unlocked():
 						if m_state == ScreenState.PLAYING:
-							AppState.set_save_status("The journal will open after you return to Caretaker Lian with the harbor clue.")
+							_app_state().set_save_status("The journal will open after you return to Caretaker Lian with the harbor clue.")
 					elif m_state == ScreenState.JOURNAL:
 						_resume_gameplay()
 					elif m_state == ScreenState.PLAYING:
@@ -201,7 +210,7 @@ func _build_app_shell() -> void:
 		)
 	)
 	m_ending_panel.connect("stay_requested", func() -> void:
-		AppState.configure_postgame()
+		_app_state().configure_postgame()
 		_resume_gameplay()
 	)
 	m_ending_panel.connect("credits_requested", func() -> void:
@@ -276,8 +285,8 @@ func _show_title() -> void:
 	_set_panel_visible(m_confirm_panel, false)
 	if m_game_root != null:
 		m_game_root.visible = false
-	_refresh_story_save_state(AppState.get_story_save_metadata())
-	AppState.set_mode("Title")
+	_refresh_story_save_state(_app_state().get_story_save_metadata())
+	_app_state().set_mode("Title")
 
 
 func _ensure_game_loaded() -> void:
@@ -311,8 +320,8 @@ func _discard_game_loaded() -> void:
 func _begin_gameplay(is_free_walk: bool, is_continue: bool = false) -> void:
 	_discard_game_loaded()
 	if is_continue:
-		if !AppState.configure_continue():
-			_refresh_story_save_state(AppState.get_story_save_metadata())
+		if !_app_state().configure_continue():
+			_refresh_story_save_state(_app_state().get_story_save_metadata())
 			_show_title()
 			_show_confirm(
 				"Continue Unavailable",
@@ -321,11 +330,11 @@ func _begin_gameplay(is_free_walk: bool, is_continue: bool = false) -> void:
 			)
 			return
 	elif is_free_walk:
-		AppState.configure_free_walk()
+		_app_state().configure_free_walk()
 	else:
-		AppState.configure_new_game()
+		_app_state().configure_new_game()
 
-	_refresh_story_save_state(AppState.get_story_save_metadata())
+	_refresh_story_save_state(_app_state().get_story_save_metadata())
 	_ensure_game_loaded()
 	m_game_root.visible = true
 	if m_game_root.has_method("sync_ui_state"):
@@ -351,15 +360,15 @@ func _begin_gameplay(is_free_walk: bool, is_continue: bool = false) -> void:
 func _open_overlay(new_state: ScreenState) -> void:
 	if !_is_game_active():
 		return
-	if new_state == ScreenState.JOURNAL and !AppState.is_journal_unlocked():
-		AppState.set_save_status("The journal will open after you return to Caretaker Lian with the harbor clue.")
+	if new_state == ScreenState.JOURNAL and !_app_state().is_journal_unlocked():
+		_app_state().set_save_status("The journal will open after you return to Caretaker Lian with the harbor clue.")
 		return
 	m_state = new_state
 	get_tree().paused = true
 	_refresh_journal_content()
 	_refresh_ending_content()
 	if new_state == ScreenState.PAUSE:
-		m_pause_panel.call("set_journal_enabled", AppState.is_journal_unlocked())
+		m_pause_panel.call("set_journal_enabled", _app_state().is_journal_unlocked())
 	_set_panel_visible(m_backdrop, true)
 	_set_panel_visible(m_hud, true)
 	_set_panel_visible(m_journal_panel, new_state == ScreenState.JOURNAL)
@@ -521,8 +530,8 @@ func _return_to_title() -> void:
 
 
 func _complete_story_departure() -> void:
-	AppState.clear_story_autosave()
-	AppState.set_mode("Title")
+	_app_state().clear_story_autosave()
+	_app_state().set_mode("Title")
 	get_tree().paused = false
 	_discard_game_loaded()
 	_open_departure_panel()
@@ -602,8 +611,8 @@ func _is_game_active() -> bool:
 
 
 func _persist_story_session() -> void:
-	if AppState.mode in ["Story", "Postgame"]:
-		AppState.save_story_autosave()
+	if _app_state().mode in ["Story", "Postgame"]:
+		_app_state().save_story_autosave()
 
 
 func _refresh_story_save_state(metadata: Dictionary) -> void:
@@ -682,12 +691,12 @@ func _on_melody_prompt_requested(request: Dictionary) -> void:
 
 
 func _on_melody_prompt_practice_completed(request: Dictionary) -> void:
-	AppState.complete_prompt_request(request)
+	_app_state().complete_prompt_request(request)
 	_close_melody_prompt()
 
 
 func _on_melody_prompt_performance_completed(request: Dictionary) -> void:
-	AppState.complete_prompt_request(request)
+	_app_state().complete_prompt_request(request)
 	if m_state == ScreenState.MELODY_PROMPT:
 		_close_melody_prompt()
 

@@ -27,8 +27,8 @@ func _run() -> void:
 
 	m_player = PLAYER_SCENE.instantiate() as CharacterBody2D
 	m_player.name = "TestPlayer"
+	m_player.add_to_group("player")
 	add_child(m_player)
-	GameGlobal.get_instance().set_player(m_player)
 
 	m_upper_level = m_tower.get_node("base/ground_level/upper_level") as Node2D
 	m_ground_floor = m_tower.get_node("base/ground_level/ground_level_floor") as TileMapLayer

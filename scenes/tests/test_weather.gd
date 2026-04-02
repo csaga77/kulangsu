@@ -3,6 +3,7 @@ extends Node2D
 
 const TERRAIN_TILESET := preload("res://resources/tilesets/terrain_0_tiles.tres")
 const WATER_MATERIAL := preload("res://resources/materials/water.tres")
+const APP_RUNTIME := preload("res://game/app_runtime.gd")
 
 const PIER_POLYGON := [
 	Vector2(-110.0, 566.0),
@@ -131,6 +132,10 @@ var m_weather_controls_visible := true
 @onready var m_reset_weather_controls_button: Button = $WeatherControlsLayer/WeatherPanel/Margin/Body/ResetWeatherButton
 
 
+func _app_state():
+	return APP_RUNTIME.get_app_state(self)
+
+
 func _ready() -> void:
 	m_thunder_rng.randomize()
 	_rebuild_environment()
@@ -139,9 +144,8 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 
-	GameGlobal.get_instance().set_player(m_player)
-	if !AppState.player_appearance_changed.is_connected(_on_player_appearance_changed):
-		AppState.player_appearance_changed.connect(_on_player_appearance_changed)
+	if !_app_state().player_appearance_changed.is_connected(_on_player_appearance_changed):
+		_app_state().player_appearance_changed.connect(_on_player_appearance_changed)
 
 	m_player_controller = m_player.controller as PlayerController
 	_apply_player_costume()
@@ -150,7 +154,7 @@ func _ready() -> void:
 			m_player_controller.closest_object_changed.connect(_on_closest_object_changed)
 		if !m_player_controller.inspect_requested.is_connected(_on_player_inspect_requested):
 			m_player_controller.inspect_requested.connect(_on_player_inspect_requested)
-	AppState.set_residents(AppState.get_known_resident_names())
+	_app_state().set_residents(_app_state().get_known_resident_names())
 
 
 func _process(delta: float) -> void:
@@ -291,7 +295,7 @@ func _apply_player_costume() -> void:
 	if !is_instance_valid(m_player):
 		return
 
-	var appearance_config := AppState.get_player_appearance_config()
+	var appearance_config = _app_state().get_player_appearance_config()
 	if appearance_config.is_empty():
 		return
 
@@ -308,10 +312,10 @@ func _on_player_inspect_requested() -> void:
 		return
 
 	var resident_id := resident_controller.get_resident_id()
-	var interaction := AppState.interact_with_resident(resident_id)
+	var interaction = _app_state().interact_with_resident(resident_id)
 	var dialogue_line := String(interaction.get("line", ""))
 	resident_controller.reveal_dialogue(dialogue_line)
-	AppState.set_residents(AppState.get_known_resident_names())
+	_app_state().set_residents(_app_state().get_known_resident_names())
 
 
 func _get_resident_controller(target: Node2D) -> NPCController:

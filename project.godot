@@ -23,10 +23,6 @@ config/icon="res://icon.svg"
 
 buses/default_bus_layout="uid://051uw6ym0efo"
 
-[autoload]
-
-AppState="*res://game/app_state.gd"
-
 [display]
 
 window/size/viewport_width=2880

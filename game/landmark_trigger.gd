@@ -23,6 +23,8 @@
 class_name LandmarkTrigger
 extends Area2D
 
+const APP_RUNTIME := preload("res://game/app_runtime.gd")
+
 ## Must match the AppState.landmark_progress key for this landmark.
 @export var landmark_id: String = ""
 
@@ -61,12 +63,16 @@ extends Area2D
 var _collected: bool = false
 
 
+func _app_state():
+	return APP_RUNTIME.get_app_state(self)
+
+
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		queue_redraw()
 		return
 	_sync_visibility()
-	AppState.landmark_progress_changed.connect(_on_landmark_progress_changed)
+	_app_state().landmark_progress_changed.connect(_on_landmark_progress_changed)
 
 
 func _draw() -> void:
@@ -118,7 +124,7 @@ func _on_landmark_progress_changed(changed_id: String, progress: Dictionary) -> 
 
 
 func _sync_visibility() -> void:
-	var progress := AppState.get_landmark_progress(landmark_id)
+	var progress = _app_state().get_landmark_progress(landmark_id)
 	_apply_progress(progress)
 
 

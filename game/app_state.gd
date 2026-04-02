@@ -1,9 +1,10 @@
 # @tool is required so that catalog data (melody_catalog, player_costume_catalog,
-# etc.) is populated when the autoload is loaded in the Godot editor. This allows
-# UI scenes and inspector tools to read catalog state at edit-time. No scene-
-# mutating or signal-dependent logic runs at edit-time; all state is initialized
-# inline from the catalog scripts, which are themselves @tool-safe pure functions.
+# etc.) remains available when the scene-owned service is loaded in the editor.
+# Scene-mutating or signal-dependent logic still stays out of edit-time, but
+# heavier resident runtime state is initialized lazily so catalog issues have a
+# smaller blast radius during startup and editor loads.
 @tool
+class_name AppStateService
 extends Node
 
 const RESIDENT_CATALOG_SCRIPT := preload("res://game/resident_catalog.gd")
@@ -12,6 +13,7 @@ const PLAYER_APPEARANCE_CATALOG_SCRIPT := preload("res://game/player_appearance_
 const PLAYER_COSTUME_CATALOG_SCRIPT := preload("res://game/player_costume_catalog.gd")
 const STORY_AUTOSAVE_VERSION := 1
 const STORY_AUTOSAVE_PATH := "user://story_autosave.save"
+const APP_STATE_GROUP := &"app_state_service"
 const SHORTCUT_DEFINITIONS := {
 	"bi_shan_crossing": {
 		"display_name": "Bi Shan Tunnel Route",
@@ -55,15 +57,15 @@ var melody_progress: Dictionary = _default_melody_progress()
 var landmarks: PackedStringArray = _default_landmarks()
 var open_shortcuts: PackedStringArray = PackedStringArray()
 var residents: PackedStringArray = PackedStringArray()
-var resident_definitions: Dictionary = RESIDENT_CATALOG_SCRIPT.build_definitions()
-var resident_profiles: Dictionary = _default_resident_profiles()
+var resident_definitions: Dictionary = {}
+var resident_profiles: Dictionary = {}
 var player_profile: Dictionary = PLAYER_APPEARANCE_CATALOG_SCRIPT.default_profile()
 var player_costume_catalog: Dictionary = PLAYER_COSTUME_CATALOG_SCRIPT.build_catalog()
 var unlocked_player_costume_ids: PackedStringArray = PLAYER_COSTUME_CATALOG_SCRIPT.build_unlocked_costume_ids(
 	mode,
 	fragments_found,
 	fragments_total,
-	resident_profiles
+	{}
 )
 var equipped_player_costume_id := PLAYER_COSTUME_CATALOG_SCRIPT.default_costume_id()
 var landmark_progress: Dictionary = _default_landmark_progress()
@@ -77,6 +79,10 @@ var story_save_metadata := _default_story_save_metadata()
 var story_resume_anchor_id := "Piano Ferry"
 var story_resume_location := "Piano Ferry"
 var _story_autosave_path := STORY_AUTOSAVE_PATH
+
+
+func _enter_tree() -> void:
+	add_to_group(APP_STATE_GROUP)
 
 
 func _ready() -> void:
@@ -331,9 +337,7 @@ func _default_landmarks() -> PackedStringArray:
 
 
 func _default_resident_profiles() -> Dictionary:
-	if resident_definitions.is_empty():
-		resident_definitions = RESIDENT_CATALOG_SCRIPT.build_definitions()
-
+	_ensure_resident_definitions()
 	var profiles: Dictionary = {}
 	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
 		var definition = resident_definitions.get(resident_id)
@@ -454,16 +458,19 @@ func complete_melody_performance(melody_id: String) -> void:
 
 
 func get_resident_profile(resident_id: String) -> Dictionary:
+	_ensure_resident_profiles()
 	if !resident_profiles.has(resident_id):
 		return {}
 	return resident_profiles[resident_id].duplicate(true)
 
 
 func get_resident_definition(resident_id: String):
+	_ensure_resident_definitions()
 	return resident_definitions.get(resident_id)
 
 
 func get_resident_display_name(resident_id: String) -> String:
+	_ensure_resident_profiles()
 	var definition = get_resident_definition(resident_id)
 	if definition != null and !definition.display_name.is_empty():
 		return definition.display_name
@@ -472,6 +479,7 @@ func get_resident_display_name(resident_id: String) -> String:
 
 
 func get_resident_landmark(resident_id: String) -> String:
+	_ensure_resident_profiles()
 	var definition = get_resident_definition(resident_id)
 	if definition != null and !definition.landmark.is_empty():
 		return definition.landmark
@@ -480,6 +488,7 @@ func get_resident_landmark(resident_id: String) -> String:
 
 
 func get_resident_appearance_config(resident_id: String) -> Dictionary:
+	_ensure_resident_profiles()
 	var definition = get_resident_definition(resident_id)
 	if definition != null:
 		var definition_appearance = definition.build_appearance_config()
@@ -492,6 +501,7 @@ func get_resident_appearance_config(resident_id: String) -> Dictionary:
 
 
 func get_resident_spawn_config(resident_id: String) -> Dictionary:
+	_ensure_resident_profiles()
 	var definition = get_resident_definition(resident_id)
 	if definition != null:
 		var definition_spawn = definition.get_spawn_config()
@@ -504,6 +514,7 @@ func get_resident_spawn_config(resident_id: String) -> Dictionary:
 
 
 func get_resident_movement_config(resident_id: String) -> Dictionary:
+	_ensure_resident_profiles()
 	var definition = get_resident_definition(resident_id)
 	if definition != null:
 		var definition_movement = definition.get_movement_config()
@@ -516,6 +527,7 @@ func get_resident_movement_config(resident_id: String) -> Dictionary:
 
 
 func get_resident_behavior_config(resident_id: String) -> Dictionary:
+	_ensure_resident_profiles()
 	var definition = get_resident_definition(resident_id)
 	if definition != null:
 		var definition_behavior = definition.get_behavior_config()
@@ -673,6 +685,7 @@ func cycle_player_costume(direction: int) -> void:
 
 
 func get_known_resident_names() -> PackedStringArray:
+	_ensure_resident_profiles()
 	var names := PackedStringArray()
 	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
 		var resident: Dictionary = resident_profiles.get(resident_id, {})
@@ -682,6 +695,7 @@ func get_known_resident_names() -> PackedStringArray:
 
 
 func get_resident_ambient_line(resident_id: String) -> String:
+	_ensure_resident_profiles()
 	var resident: Dictionary = resident_profiles.get(resident_id, {})
 	if resident.is_empty():
 		return ""
@@ -724,6 +738,7 @@ func build_map_journal_text() -> String:
 
 
 func build_resident_journal_text() -> String:
+	_ensure_resident_profiles()
 	var sections: Array[String] = []
 
 	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
@@ -1016,6 +1031,7 @@ func _autosave_story_progress() -> void:
 
 
 func interact_with_resident(resident_id: String) -> Dictionary:
+	_ensure_resident_profiles()
 	if !resident_profiles.has(resident_id):
 		return {}
 
@@ -1273,6 +1289,7 @@ func _seed_resident_progress(
 
 
 func _count_helped_residents() -> int:
+	_ensure_resident_profiles()
 	var count := 0
 	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
 		var resident: Dictionary = resident_profiles.get(resident_id, {})
@@ -1403,6 +1420,7 @@ func _emit_player_appearance_changed() -> void:
 
 
 func _refresh_player_costumes() -> void:
+	_ensure_resident_profiles()
 	var next_unlocked := PLAYER_COSTUME_CATALOG_SCRIPT.build_unlocked_costume_ids(
 		mode,
 		fragments_found,
@@ -1428,6 +1446,20 @@ func _refresh_player_costumes() -> void:
 
 	if unlocked_changed or costume_changed:
 		player_costumes_changed.emit(get_unlocked_player_costume_ids(), equipped_player_costume_id)
+
+
+func _ensure_resident_definitions() -> void:
+	if !resident_definitions.is_empty():
+		return
+
+	resident_definitions = RESIDENT_CATALOG_SCRIPT.build_definitions()
+
+
+func _ensure_resident_profiles() -> void:
+	if !resident_profiles.is_empty():
+		return
+
+	resident_profiles = _default_resident_profiles()
 
 
 # ---------------------------------------------------------------------------
