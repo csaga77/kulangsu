@@ -1,8 +1,7 @@
 @tool
 extends Node2D
 
-const WATER_TILESET := preload("res://resources/tilesets/terrain_0_tiles.tres")
-const WATER_MATERIAL := preload("res://resources/materials/water.tres")
+const WATER_LAYER_SETUP_SCRIPT := preload("res://terrain/water_layer_setup.gd")
 
 @export var rebuild: bool = false:
 	set(value):
@@ -30,10 +29,7 @@ func _rebuild_water() -> void:
 	if not is_instance_valid(m_water):
 		return
 
-	m_water.tile_set = WATER_TILESET
-	m_water.material = WATER_MATERIAL
-	m_water.y_sort_enabled = true
-	m_water.position = water_position
+	WATER_LAYER_SETUP_SCRIPT.configure_layer(m_water, water_position)
 
 	m_water.clear()
 	for y in range(water_size.y):

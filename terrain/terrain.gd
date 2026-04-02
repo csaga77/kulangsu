@@ -5,9 +5,9 @@ extends IsometricBlock
 const TERRAIN_TILESET := preload("res://resources/tilesets/terrain_0_tiles.tres")
 const PAVEMENT_TILESET := preload("res://resources/tilesets/pavement_0_tilesets.tres")
 const SYMBOLS_TILESET := preload("res://resources/tilesets/symbols_0_tiles.tres")
-const WATER_MATERIAL := preload("res://resources/materials/water.tres")
 const ISO_TILEMAP_SCRIPT := preload("res://common/isometric_block.gd")
 const TERRAIN_GENERATION_PROFILE_SCRIPT := preload("res://terrain/terrain_generation_profile.gd")
+const WATER_LAYER_SETUP_SCRIPT := preload("res://terrain/water_layer_setup.gd")
 
 @export var reload: bool = false:
 	set(new_reload):
@@ -84,21 +84,7 @@ func _find_generated_layer(parent: Node, layer_name: String) -> TileMapLayer:
 
 func _reset_water_layer_state(layer: TileMapLayer) -> void:
 	layer.name = "water"
-	layer.visible = true
-	layer.enabled = true
-	layer.y_sort_enabled = true
-	layer.z_index = 0
-	layer.position = Vector2.ZERO
-	layer.rotation = 0.0
-	layer.scale = Vector2.ONE
-	layer.modulate = Color.WHITE
-	layer.self_modulate = Color.WHITE
-	layer.material = WATER_MATERIAL
-	layer.use_parent_material = false
-	layer.show_behind_parent = false
-	layer.top_level = false
-	layer.tile_set = TERRAIN_TILESET
-	layer.set_script(null)
+	WATER_LAYER_SETUP_SCRIPT.configure_layer(layer, Vector2.ZERO)
 
 func _configure_generated_layer(layer: TileMapLayer, layer_name: String, parent: Node, index: int) -> TileMapLayer:
 	if not is_instance_valid(layer):

@@ -37,6 +37,7 @@
 ## Architecture / Ownership
 
 - [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn) and [`../../terrain/terrain.gd`](../../terrain/terrain.gd) own water tile generation.
+- [`../../terrain/water_layer_setup.gd`](../../terrain/water_layer_setup.gd) owns the shared `TileMapLayer` configuration used by both generated terrain water and the focused water sandbox.
 - [`../../terrain/terrain_generation_profile.gd`](../../terrain/terrain_generation_profile.gd) owns the default water tile source, atlas coordinates, and transparent-pixel terrain rule used by terrain generation.
 - [`../../resources/materials/water.tres`](../../resources/materials/water.tres) and [`../../resources/materials/water.gdshader`](../../resources/materials/water.gdshader) own the blue water body, wave animation, semi-transparent tinting, and screen-space refraction treatment.
 - Keep water rendering local to terrain/common rendering helpers. Do not move it into UI, `AppState`, or unrelated gameplay modules.
@@ -49,6 +50,7 @@
 - Scripts:
 - [`../../scenes/tests/test_water_render.gd`](../../scenes/tests/test_water_render.gd)
 - [`../../terrain/terrain.gd`](../../terrain/terrain.gd)
+- [`../../terrain/water_layer_setup.gd`](../../terrain/water_layer_setup.gd)
 - [`../../terrain/terrain_generation_profile.gd`](../../terrain/terrain_generation_profile.gd)
 - Materials:
 - [`../../resources/materials/water.tres`](../../resources/materials/water.tres)
@@ -65,22 +67,24 @@
 - None dedicated to water rendering.
 - Important node paths, dictionaries, resources, or data flow:
 - `terrain/terrain.gd` reads `mask_file`, asks `TerrainGenerationProfile` to interpret each pixel, then fills water whenever the profile treats that pixel as water.
+- `terrain/water_layer_setup.gd` keeps the water tileset/material/visibility/y-sort state in one place so the terrain scene and water sandbox stay aligned.
 - `water.tres` points to `water.gdshader`, which applies world-space wave motion, a blue water body, semi-transparent compositing, and light screen refraction on the water layer.
 
 ## Contracts / Boundaries
 
 - Transparent pixels in the terrain mask are still the source of truth for water placement.
 - Water tile source ids and atlas coordinates now live with the terrain generation profile, not as ad hoc constants inside `terrain.gd`.
+- Water layer state should be configured through [`../../terrain/water_layer_setup.gd`](../../terrain/water_layer_setup.gd) so the terrain scene and [`../../scenes/tests/test_water_render.tscn`](../../scenes/tests/test_water_render.tscn) do not drift apart.
 - The water layer must stay compatible with the existing isometric `TileMapLayer` placement conventions, but it should not depend on editor snapping from [`../../common/isometric_block.gd`](../../common/isometric_block.gd) because it is generated, not hand-placed.
 - If terrain generation stops being mask-driven, this doc and [`../module_map.md`](../module_map.md) should be updated.
 - If shoreline foam moves from procedural drawing to atlas/mesh-based content, update this doc with the new asset ownership and validation steps.
 
 ## Validation
 
-- Use [`../../scenes/tests/test_water_render.tscn`](../../scenes/tests/test_water_render.tscn) for focused water tuning before checking the full terrain scene.
+- Use [`../../scenes/tests/test_water_render.tscn`](../../scenes/tests/test_water_render.tscn) as the primary validation target for water shader and layer-setup changes.
 - The test scene root exposes a `rebuild` toggle in the inspector so water tiles and the guide backdrop can be refreshed after local scene edits.
-- Run [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn) directly after water changes.
-- Confirm `_reload_terrain: painted ...` appears without new terrain/water parse errors.
+- Run [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn) only when terrain mask generation or water placement logic changes.
+- Confirm the test scene logs `test_water_render: rebuilt ...` without new water shader parse errors.
 - Visually check four things:
 - water tiles remain seamless
 - blue color and wave motion remain readable before any refraction detail
