@@ -86,7 +86,7 @@ func _reset_water_layer_state(layer: TileMapLayer) -> void:
 	layer.name = "water"
 	layer.visible = true
 	layer.enabled = true
-	layer.y_sort_enabled = false
+	layer.y_sort_enabled = true
 	layer.z_index = 0
 	layer.position = Vector2.ZERO
 	layer.rotation = 0.0
