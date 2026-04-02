@@ -1,6 +1,14 @@
 class_name ResidentCatalog
 extends RefCounted
 
+const RESIDENT_APPEARANCE_DEFINITION_SCRIPT := preload("res://game/resident_system/resident_appearance_definition.gd")
+const RESIDENT_DEFINITION_SCRIPT := preload("res://game/resident_system/resident_definition.gd")
+const RESIDENT_DIALOGUE_DEFINITION_SCRIPT := preload("res://game/resident_system/resident_dialogue_definition.gd")
+const RESIDENT_MOVEMENT_DEFINITION_SCRIPT := preload("res://game/resident_system/resident_movement_definition.gd")
+const RESIDENT_ROUTE_POINT_DEFINITION_SCRIPT := preload("res://game/resident_system/resident_route_point_definition.gd")
+const RESIDENT_ROUTINE_DEFINITION_SCRIPT := preload("res://game/resident_system/resident_routine_definition.gd")
+const RESIDENT_SPAWN_DEFINITION_SCRIPT := preload("res://game/resident_system/resident_spawn_definition.gd")
+
 const MAX_TRUST := 3
 const MOOD_NORMAL := 1
 const MOOD_SMILE := 2
@@ -45,10 +53,28 @@ static func resident_order() -> Array[String]:
 	]
 
 
-static func build_defaults() -> Dictionary:
+static func build_definitions() -> Dictionary:
 	var residents: Dictionary = {}
 	residents.merge(_story_residents(), true)
 	residents.merge(_ambient_residents(), true)
+
+	for resident_id in residents.keys():
+		var definition = residents.get(resident_id)
+		if definition == null:
+			continue
+		definition.id = String(resident_id)
+
+	return residents
+
+
+static func build_defaults() -> Dictionary:
+	var residents: Dictionary = {}
+	var definitions := build_definitions()
+	for resident_id in resident_order():
+		var definition = definitions.get(resident_id)
+		if definition == null:
+			continue
+		residents[resident_id] = definition.to_runtime_profile()
 	return residents
 
 
@@ -233,8 +259,8 @@ static func _story_residents() -> Dictionary:
 			[
 				{
 					"line": "I know the way through Long Shan, but not alone. Walk a calm route and stop whenever the light thins too much.",
-					"objective": "Guide the resident through Long Shan Tunnel.",
-					"journal_step": "Needs a calm escort route through Long Shan Tunnel.",
+					"objective": "Start a calm crossing through Long Shan Tunnel with Ren.",
+					"journal_step": "Needs a calm crossing through Long Shan Tunnel, paced by the lit route.",
 					"hint": "R Talk   J Journal   Esc Pause",
 					"chapter": "Open Exploration",
 					"quest_state": "introduced",
@@ -244,23 +270,22 @@ static func _story_residents() -> Dictionary:
 				},
 				{
 					"line": "If I call out, come back to the last lit pocket instead of pushing ahead. The route only works if we can both still hear each other.",
-					"objective": "Keep Ren close to the lit route through Long Shan Tunnel.",
-					"journal_step": "Explained that distance, not danger, is the main escort failure point.",
+					"objective": "Move with Ren between the lit pockets through Long Shan Tunnel.",
+					"journal_step": "Explained that the lit pockets, not speed, are what keep the route steady.",
 					"quest_state": "in_progress",
 					"landmark_states": {"long_shan_tunnel": "in_progress"},
 					"trust_delta": 1,
 					"save_status": "Tunnel Guide Ren explained the escort rhythm",
 				},
 				{
-					"line": "Once we are through, I can point you toward the tower. High places make the scattered phrases finally line up.",
-					"objective": "Reach Bagua Tower after the tunnel escort.",
-					"journal_step": "Ready to redirect you toward Bagua Tower after the escort resolves.",
+					"line": "Once we are through, I can finally tell whether the other tunnel still disagrees with this one. If it does, settle Bi Shan first and then come back.",
+					"objective": "Settle Bi Shan Tunnel if its route still feels uncertain, then check back with Ren.",
+					"journal_step": "Waiting to compare Long Shan against Bi Shan before pointing you toward the tower.",
 					"quest_state": "resolved",
 					"gate": "long_shan_exit_reached",
 					"gate_fallback": "The passage is not done yet. Stay close and keep moving toward the exit.",
-					"unlock_landmark": "bagua_tower",
 					"trust_delta": 1,
-					"save_status": "Tunnel Guide Ren opened the route toward Bagua Tower",
+					"save_status": "Tunnel Guide Ren wants to compare the two tunnel routes before sending you to the tower",
 				},
 			],
 			_look(
@@ -292,6 +317,22 @@ static func _story_residents() -> Dictionary:
 				),
 				[
 					{
+						"conditions": {
+							"landmark_state": {
+								"long_shan_tunnel": "reward_collected",
+								"bagua_tower": "locked",
+							},
+							"fragments_found_min": 3,
+						},
+						"priority": 5,
+						"once": true,
+						"line": "Good. Now the tunnels agree instead of arguing. Take that steadier route up to Bagua Tower, and the high rooms should finally make sense of it.",
+						"objective": "Reach Bagua Tower now that both tunnel routes are steady.",
+						"journal_step": "Ren judged the two tunnel routes steady enough to carry up to Bagua Tower.",
+						"unlock_landmark": "bagua_tower",
+						"save_status": "Tunnel Guide Ren opened the route toward Bagua Tower",
+					},
+					{
 						"conditions": {"landmark_state": {"bagua_tower": "reward_collected"}},
 						"priority": 10,
 						"once": true,
@@ -320,14 +361,14 @@ static func _story_residents() -> Dictionary:
 			],
 			[
 				{
-					"line": "The tower helps once the tunnels stop contradicting each other. Bring me the route after Long Shan settles, and I can show you what the island looks like when its phrases finally agree.",
+					"line": "The tower helps once the tunnels stop contradicting each other. Bring me the route when both crossings sound steady, and I can show you what the island looks like when its phrases finally agree.",
 					"objective": "Reach Bagua Tower once the tunnel routes are steady.",
 					"journal_step": "Waiting for the tunnel routes to settle before the tower can help assemble the larger melody.",
 					"hint": "R Talk   J Journal   Esc Pause",
 					"chapter": "Open Exploration",
 					"quest_state": "available",
 					"gate": "bagua_tower_available",
-					"gate_fallback": "The tower can wait until the tunnels stop contradicting each other. Clear Long Shan first, then bring the route up here.",
+					"gate_fallback": "The tower can wait until the tunnels agree. Settle Bi Shan and Long Shan until the route sounds steady, then bring it up here.",
 					"landmark_states": {"bagua_tower": "available"},
 					"trust_delta": 1,
 					"save_status": "Resident note added: Tower Keeper Suyin",
@@ -957,9 +998,9 @@ static func _ambient_residents() -> Dictionary:
 			continue
 
 		var ambient_lines: Array = spec.get("ambient_lines", [])
-		var appearance: Dictionary = spec.get("appearance", {})
-		var spawn: Dictionary = spec.get("spawn", {})
-		var movement: Dictionary = spec.get("movement", {})
+		var appearance = spec.get("appearance")
+		var spawn = spec.get("spawn")
+		var movement = spec.get("movement")
 
 		residents[resident_id] = _ambient_resident(
 			String(spec.get("display_name", resident_id)),
@@ -983,10 +1024,10 @@ static func _ambient_resident(
 	routine_note: String,
 	melody_hint: String,
 	ambient_lines: Array,
-	appearance: Dictionary,
-	spawn: Dictionary,
-	movement: Dictionary = {}
-) -> Dictionary:
+	appearance,
+	spawn,
+	movement = null
+) -> Resource:
 	return _resident(
 		display_name,
 		landmark,
@@ -1035,29 +1076,37 @@ static func _resident(
 	melody_hint: String,
 	ambient_lines: Array,
 	dialogue_beats: Array,
-	appearance: Dictionary,
-	spawn: Dictionary,
-	movement: Dictionary = {},
+	appearance,
+	spawn,
+	movement = null,
 	conditional_beats: Array = []
-) -> Dictionary:
-	return {
-		"display_name": display_name,
-		"landmark": landmark,
-		"role": role,
-		"routine_note": routine_note,
-		"melody_hint": melody_hint,
-		"ambient_lines": ambient_lines.duplicate(true),
-		"dialogue_beats": dialogue_beats.duplicate(true),
-		"conditional_beats": conditional_beats.duplicate(true),
-		"appearance": appearance.duplicate(true),
-		"spawn": spawn.duplicate(true),
-		"movement": movement.duplicate(true),
-		"known": false,
-		"trust": 0,
-		"conversation_index": 0,
-		"quest_state": "available",
-		"current_step": "Not introduced yet.",
-	}
+) -> Resource:
+	var dialogue = RESIDENT_DIALOGUE_DEFINITION_SCRIPT.new()
+	dialogue.set_ambient_lines_from_array(ambient_lines)
+	for beat_value in dialogue_beats:
+		dialogue.dialogue_beats.append(beat_value.duplicate(true) if beat_value is Dictionary else beat_value)
+	for conditional_value in conditional_beats:
+		dialogue.conditional_beats.append(
+			conditional_value.duplicate(true) if conditional_value is Dictionary else conditional_value
+		)
+
+	if movement is Dictionary and movement.is_empty():
+		movement = null
+
+	var routine = RESIDENT_ROUTINE_DEFINITION_SCRIPT.new()
+	routine.spawn = spawn
+	routine.movement = movement
+
+	var definition = RESIDENT_DEFINITION_SCRIPT.new()
+	definition.display_name = display_name
+	definition.landmark = landmark
+	definition.role = role
+	definition.routine_note = routine_note
+	definition.melody_hint = melody_hint
+	definition.appearance = appearance
+	definition.dialogue = dialogue
+	definition.routine = routine
+	return definition
 
 
 static func _spawn(
@@ -1066,14 +1115,14 @@ static func _spawn(
 	direction: float,
 	mood: int = MOOD_NORMAL,
 	interaction_radius: float = 72.0
-) -> Dictionary:
-	return {
-		"anchor_id": anchor_id,
-		"offset": offset,
-		"direction": direction,
-		"mood": mood,
-		"interaction_radius": interaction_radius,
-	}
+) -> Resource:
+	var definition = RESIDENT_SPAWN_DEFINITION_SCRIPT.new()
+	definition.anchor_id = anchor_id
+	definition.offset = offset
+	definition.direction = direction
+	definition.mood = mood
+	definition.interaction_radius = interaction_radius
+	return definition
 
 
 static func _route(
@@ -1082,14 +1131,17 @@ static func _route(
 	wait_min_sec: float = 0.5,
 	wait_max_sec: float = 1.2,
 	ping_pong: bool = true
-) -> Dictionary:
-	return {
-		"route_points": route_points.duplicate(true),
-		"arrival_radius": arrival_radius,
-		"wait_min_sec": wait_min_sec,
-		"wait_max_sec": wait_max_sec,
-		"ping_pong": ping_pong,
-	}
+) -> Resource:
+	var definition = RESIDENT_MOVEMENT_DEFINITION_SCRIPT.new()
+	definition.arrival_radius = arrival_radius
+	definition.wait_min_sec = wait_min_sec
+	definition.wait_max_sec = wait_max_sec
+	definition.ping_pong = ping_pong
+	for point_value in route_points:
+		if point_value == null:
+			continue
+		definition.route_points.append(point_value)
+	return definition
 
 
 static func _route_point(
@@ -1097,16 +1149,13 @@ static func _route_point(
 	offset: Vector2 = Vector2.ZERO,
 	wait_min_sec: float = -1.0,
 	wait_max_sec: float = -1.0
-) -> Dictionary:
-	var point := {
-		"anchor_id": anchor_id,
-		"offset": offset,
-	}
-	if wait_min_sec >= 0.0:
-		point["wait_min_sec"] = wait_min_sec
-	if wait_max_sec >= 0.0:
-		point["wait_max_sec"] = wait_max_sec
-	return point
+) -> Resource:
+	var definition = RESIDENT_ROUTE_POINT_DEFINITION_SCRIPT.new()
+	definition.anchor_id = anchor_id
+	definition.offset = offset
+	definition.wait_min_sec = wait_min_sec
+	definition.wait_max_sec = wait_max_sec
+	return definition
 
 
 static func _look(
@@ -1122,7 +1171,7 @@ static func _look(
 	shoes_path: String,
 	shoes_color: String,
 	extra_selections: Dictionary = {}
-) -> Dictionary:
+) -> Resource:
 	var selections := {
 		"body/body": skin,
 		"head/faces/face_neutral": skin,
@@ -1140,12 +1189,12 @@ static func _look(
 	return _appearance(body_type, _body_type_index(body_type), selections)
 
 
-static func _appearance(body_type: String, body_type_index: int, selections: Dictionary) -> Dictionary:
-	return {
-		"body_type": body_type,
-		"body_type_index": body_type_index,
-		"selections": selections.duplicate(true),
-	}
+static func _appearance(body_type: String, body_type_index: int, selections: Dictionary) -> Resource:
+	var definition = RESIDENT_APPEARANCE_DEFINITION_SCRIPT.new()
+	definition.body_type = body_type
+	definition.body_type_index = body_type_index
+	definition.selections = selections.duplicate(true)
+	return definition
 
 
 static func _body_type_index(body_type: String) -> int:

@@ -75,6 +75,7 @@ Primary files:
 - [`../game/app_state.gd`](../game/app_state.gd)
 - [`../game/melody_catalog.gd`](../game/melody_catalog.gd)
 - [`../game/resident_catalog.gd`](../game/resident_catalog.gd)
+- [`../game/resident_system/`](../game/resident_system)
 - [`../game/player_appearance_catalog.gd`](../game/player_appearance_catalog.gd)
 - [`../game/player_costume_catalog.gd`](../game/player_costume_catalog.gd)
 
@@ -83,7 +84,8 @@ Responsibilities:
 - shared mode, chapter, location, objective, hint, save status, and summary data
 - shared melody definitions and melody-progress state used by the journal and future performance systems
 - resident and player-facing catalog data
-- resident runtime profiles plus resident appearance, spawn, and journal-facing lookup helpers
+- resident definition resources for appearance, dialogue, routine, and behavior metadata
+- resident runtime profiles plus resident appearance, spawn, movement, behavior, and journal-facing lookup helpers
 - state that multiple screens or systems need to read consistently
 
 Boundary:

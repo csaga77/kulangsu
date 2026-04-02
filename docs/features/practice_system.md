@@ -50,9 +50,14 @@ This avoids requiring the `piano_game` module before the first performance lands
 
 Each landmark can have one performance point: a `LandmarkTrigger` (or equivalent Area2D) placed at the canonical performance spot listed in `melody_catalog.gd`. The player presses R at that node when the melody is in `reconstructed` state. The recognition prompt opens. On success, `AppState.complete_prompt_request(...)` advances the melody or landmark and fires the appropriate world response.
 
-Current performance landmark for `festival_melody`: **Festival Stage** at Piano Ferry (as defined in `melody_catalog.gd`).
+Current landmark-specific uses of the reusable prompt for `festival_melody`:
 
-For Trinity Church specifically: the choir chime at the end of the cue arc is now the first non-finale landmark use of the reusable prompt. Mei's final reward beat stays dialogue-driven, but the phrase must first be settled through the same ordered-confirmation UI used by the harbor stage.
+- **Trinity Church**: choir chime after `steps -> garden -> yard`
+- **Bi Shan Tunnel**: mural chamber after the three echo markers are traced
+- **Long Shan Tunnel**: exit route after the two lit pockets are steadied
+- **Festival Stage** at Piano Ferry: final harbor performance point
+
+Bagua Tower still uses the simpler synthesis trigger plus Suyin follow-up dialogue for now.
 
 ## Rules
 
@@ -74,7 +79,7 @@ For Trinity Church specifically: the choir chime at the end of the cue arc is no
 
 ## Architecture / Ownership
 
-- `AppState` owns the prompt-request signal, the `performed` flag per melody, the state transition to `performed`, and landmark-specific prompt completions such as the Trinity choir chime.
+- `AppState` owns the prompt-request signal, the `performed` flag per melody, the state transition to `performed`, and landmark-specific prompt completions such as the Trinity choir chime, the Bi Shan chamber contour, and the Long Shan exit route.
 - `melody_catalog.gd` owns the `performance_landmark`, `performance_prompt`, and prompt segment ordering fields per melody.
 - The in-world activation point still lives on `LandmarkTrigger` at Festival Stage.
 - The recognition prompt UI now lives in `ui/screens/melody_prompt_overlay.*`. It does not write melody or landmark state directly; it reports the full prompt request back through the shell into `AppState.complete_prompt_request(...)`.
@@ -104,6 +109,8 @@ For Trinity Church specifically: the choir chime at the end of the cue arc is no
 
 - Reach the Festival Stage with `festival_melody` in `reconstructed` state.
 - Reach the Trinity choir chime after collecting `steps`, `garden`, and `yard`. Confirm the same ordered-confirmation prompt opens and only then returns the objective to Mei.
+- Reach the Bi Shan mural chamber after collecting all three echoes. Confirm the prompt opens before the fragment is awarded.
+- Reach the Long Shan exit after both lit pockets. Confirm the route prompt opens before the fragment is awarded.
 - Open the journal Melody tab after Bi Shan and confirm `Practice Festival Melody` is enabled.
 - Complete the journal prompt correctly. Confirm the prompt closes and melody state remains unchanged.
 - Press R at the performance point. Confirm the recognition prompt opens.

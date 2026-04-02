@@ -7,7 +7,7 @@
 extends Node2D
 
 const LANDMARK_SYNC_DISTANCE := 1600.0
-const NPC_SCENE: PackedScene = preload("res://characters/human_body_2d.tscn")
+const NPC_SCENE: PackedScene = preload("res://characters/resident_npc.tscn")
 const LEVEL_REGISTRY := preload("res://common/level_registry.gd")
 const TUNNEL_ENTRY_FRONT_APPROACH_DISTANCE := 96.0
 const TUNNEL_PORTAL_SUFFIX := " Portal"
@@ -509,8 +509,12 @@ func _spawn_catalog_residents() -> void:
 	m_actor_root.add_child(m_resident_root)
 
 	for resident_id in AppState.get_resident_ids():
-		var resident_profile := AppState.get_resident_profile(resident_id)
-		var spawn_config: Dictionary = resident_profile.get("spawn", {})
+		var resident_definition = AppState.get_resident_definition(resident_id)
+		if resident_definition == null:
+			push_warning("Missing resident definition for resident '%s'." % resident_id)
+			continue
+
+		var spawn_config = resident_definition.get_spawn_config()
 		var anchor_id := String(spawn_config.get("anchor_id", ""))
 		var anchor_node := m_spawn_anchor_nodes.get(anchor_id) as Node2D
 		if !is_instance_valid(anchor_node):
@@ -520,13 +524,14 @@ func _spawn_catalog_residents() -> void:
 		var npc := NPC_SCENE.instantiate() as HumanBody2D
 		if npc == null:
 			continue
+		if npc.has_method("apply_definition"):
+			npc.call("apply_definition", resident_definition, resident_id)
 
 		var controller := NPCController.new()
 		controller.use_json_bt = false
 		controller.resident_id = StringName(resident_id)
 		controller.interaction_radius = float(spawn_config.get("interaction_radius", 72.0))
 
-		npc.name = AppState.get_resident_display_name(resident_id)
 		npc.controller = controller
 		npc.direction = float(spawn_config.get("direction", 0.0))
 		npc.facial_mood = int(spawn_config.get("mood", HumanBody2D.FacialMoodEnum.NORMAL)) as HumanBody2D.FacialMoodEnum
@@ -536,7 +541,11 @@ func _spawn_catalog_residents() -> void:
 		npc.global_position = _resolve_actor_anchor_position(npc, anchor_node, spawn_offset)
 		_apply_anchor_level_to_actor(npc, anchor_node)
 
-		var movement_config := _build_resident_movement_config(resident_id, npc, resident_profile.get("movement", {}))
+		var movement_config := _build_resident_movement_config(
+			resident_id,
+			npc,
+			resident_definition.get_movement_config()
+		)
 		if !movement_config.is_empty():
 			controller.configure_movement(movement_config)
 

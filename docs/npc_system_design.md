@@ -13,12 +13,13 @@ Read [`design_brief.md`](design_brief.md) first for the project summary and tone
 
 The live resident flow is:
 
-1. [`../game/resident_catalog.gd`](../game/resident_catalog.gd) defines the static resident roster, content, appearance presets, spawn metadata, and optional movement routes.
-2. [`../game/app_state.gd`](../game/app_state.gd) clones those defaults into mutable runtime `resident_profiles` and exposes all resident-facing getters.
-3. [`../scenes/game_main.gd`](../scenes/game_main.gd) caches supported spawn and route anchors, resolves sparse authored routes into world-space movement points, spawns the roster under the shared `actors/Residents` layer, turns player `R` input into resident talk interactions, and synchronizes tunnel-specific visibility and level state.
+1. [`../game/resident_catalog.gd`](../game/resident_catalog.gd) defines the static resident roster and builds resource-backed `ResidentDefinition` objects plus nested appearance/dialogue/routine resources under [`../game/resident_system/`](../game/resident_system).
+2. [`../game/app_state.gd`](../game/app_state.gd) keeps immutable `resident_definitions`, clones them into mutable runtime `resident_profiles`, and exposes all resident-facing getters.
+3. [`../scenes/game_main.gd`](../scenes/game_main.gd) caches supported spawn and route anchors, resolves sparse authored routes into world-space movement points, instantiates [`../characters/resident_npc.tscn`](../characters/resident_npc.tscn), applies the matching definition, and synchronizes tunnel-specific visibility and level state.
 4. [`../characters/control/base_controller.gd`](../characters/control/base_controller.gd) filters nearby targets to the same absolute z layer, ignores controller-owned overlap nodes, and lets residents plus landmark cues compete by distance before closest-target or speech logic can use them.
-5. [`../characters/control/npc_controller.gd`](../characters/control/npc_controller.gd) applies each resident's appearance, shows the nearby `...` cue, reveals the current talk line after interaction, and follows resolved runtime route points with collision-aware motion except on explicit tunnel/portal bypass helper points.
-6. [`../ui/screens/journal_overlay.gd`](../ui/screens/journal_overlay.gd) renders resident notes from `AppState.build_resident_journal_text()`.
+5. [`../characters/resident_npc.gd`](../characters/resident_npc.gd) applies each resident definition's static appearance to the runtime `HumanBody2D`.
+6. [`../characters/control/npc_controller.gd`](../characters/control/npc_controller.gd) shows the nearby `...` cue, reveals the current talk line after interaction, and follows resolved runtime route points with collision-aware motion except on explicit tunnel/portal bypass helper points.
+7. [`../ui/screens/journal_overlay.gd`](../ui/screens/journal_overlay.gd) renders resident notes from `AppState.build_resident_journal_text()`.
 
 This split is intentional: authored content stays in the catalog, mutable progression stays in shared state, and scene/controller code handles only world integration and presentation.
 
@@ -26,13 +27,13 @@ This split is intentional: authored content stays in the catalog, mutable progre
 
 ### Catalog First, Scene Second
 
-- Residents are authored as dictionaries instead of bespoke scene variants because the current roster is already 30 NPCs and the system needs to scale content faster than scene maintenance.
+- Residents are authored as `ResidentDefinition` resources built by the catalog instead of bespoke scene variants because the current roster is already 30 NPCs and the system needs to scale content faster than scene maintenance.
 - [`../game/resident_catalog.gd`](../game/resident_catalog.gd) is the source of truth for which residents exist. `resident_order()` is not a convenience list; it is part of the contract for the full runtime roster.
 - Static fields such as `display_name`, `role`, `ambient_lines`, `appearance`, and `spawn` belong in the catalog even if only one current scene uses them.
 
 ### Runtime State Lives In `AppState`
 
-- The resident system does not mutate the catalog directly. [`../game/app_state.gd`](../game/app_state.gd) owns the runtime copy so the HUD, journal, costume unlock logic, and future save/load work can all read the same resident state.
+- The resident system does not mutate the catalog directly. [`../game/app_state.gd`](../game/app_state.gd) owns both the immutable definition cache and the mutable runtime copy so the HUD, journal, costume unlock logic, and future save/load work can all read the same resident state.
 - Current mutable resident fields are:
   - `known`
   - `trust`
@@ -94,7 +95,16 @@ This split is intentional: authored content stays in the catalog, mutable progre
 
 ### Resident Profile Shape
 
-Each catalog resident currently resolves to a runtime profile with these keys:
+Each catalog resident now has two layers:
+
+- `ResidentDefinition` authoring data:
+  - identity strings such as `display_name`, `landmark`, `role`, `routine_note`, `melody_hint`
+  - `appearance`
+  - `dialogue`
+  - `routine`
+- a flattened runtime profile in `AppState.resident_profiles`
+
+Each definition currently resolves to a runtime profile with these keys:
 
 - Static authoring fields:
   - `display_name`
@@ -115,7 +125,7 @@ Each catalog resident currently resolves to a runtime profile with these keys:
   - `current_step`
   - `_fired_conditional_beats`
 
-The catalog helper `_resident(...)` in [`../game/resident_catalog.gd`](../game/resident_catalog.gd) defines the default shape. If this shape changes, update [`contracts.md`](contracts.md) and [`features/npc_system.md`](features/npc_system.md) in the same patch.
+The catalog helper `_resident(...)` in [`../game/resident_catalog.gd`](../game/resident_catalog.gd) builds the definition and its default runtime profile shape. If this shape changes, update [`contracts.md`](contracts.md) and [`features/npc_system.md`](features/npc_system.md) in the same patch.
 
 ### Dialogue Beat Shape
 
@@ -194,7 +204,8 @@ This shared-anchor-plus-offset model is intentionally cheap to author. It is les
 
 ### Appearance Payload
 
-- `appearance` is a `HumanBody2D.set_configuration()` payload assembled by `_look(...)` in [`../game/resident_catalog.gd`](../game/resident_catalog.gd).
+- `appearance` is now authored as a `ResidentAppearanceDefinition` built by `_look(...)` in [`../game/resident_catalog.gd`](../game/resident_catalog.gd).
+- [`../characters/resident_npc.gd`](../characters/resident_npc.gd) converts that authored appearance into the `HumanBody2D.set_configuration()` payload used by the LPC renderer.
 - Resident looks should continue to be authored in the catalog, not hardcoded in scene instances.
 - When authoring a resident look, verify that each selected LPC path supports that resident's `body_type` and chosen variant in the shipped metadata. A path existing in the metadata file is not enough if its layer data only supports another body type or a narrower variant set.
 

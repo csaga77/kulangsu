@@ -1,16 +1,16 @@
 # Long Shan Tunnel Arc
 
-Escort-style arc for the third landmark. The player accompanies Tunnel Guide Ren through the tunnel and exits at the north mouth to complete the arc.
+Checkpoint-based accompaniment arc for the third landmark. The player moves with Tunnel Guide Ren's rhythm through the tunnel and settles the route at the north mouth before the arc completes.
 
 ## Goal
 
-- Give the player a paced traversal task where staying on the lit route with a resident matters emotionally, even without true NPC-follow AI.
-- Award one melody fragment on exit and unlock Bagua Tower.
+- Give the player a paced traversal task where Ren's guidance and the lit route matter emotionally, even without true NPC-follow AI.
+- Award one melody fragment at the exit route and only unlock Bagua Tower once both tunnels are steady enough to compare.
 - Establish the pattern for arcs driven by a mix of resident dialogue beats and world trigger checkpoints.
 
 ## User / Player Experience
 
-The player arrives at Long Shan Tunnel after Trinity Church resolves. Tunnel Guide Ren is near the south entrance. The first conversation asks the player to walk a calm route and stop when the light thins. A second beat reinforces the rhythm. Once the player has talked to Ren twice (landmark is `in_progress`), two invisible lit-pocket checkpoints become available in sequence before the north exit can resolve. Reaching both pockets and then the exit completes the crossing: the fragment is awarded, the journal updates, and the objective points back to Ren for the actual Bagua Tower handoff.
+The player arrives at Long Shan Tunnel after Trinity Church resolves. Tunnel Guide Ren is near the south entrance. The first conversation asks the player to walk a calm route and stop when the light thins. A second beat reinforces the rhythm. Once the player has talked to Ren twice (landmark is `in_progress`), two invisible lit-pocket checkpoints become available in sequence before the north exit can respond. Reaching both pockets and then the exit opens a short ordered-confirmation prompt that settles the route the player just followed. On success, the fragment is awarded, the journal updates, and the objective points back to Ren so he can compare Long Shan against Bi Shan before the Bagua handoff.
 
 The tone stays quiet. There is no timer, no NPC pathfinding, and no failure state. "Escort" here means the player traverses the tunnel while a resident's words stay with them — it is a mood and a framing, not a mechanical chase.
 
@@ -25,13 +25,14 @@ When the player properly enters the tunnel interior, the surface ground/building
 - Two intermediate lit-pocket triggers (`light_pocket_south`, `light_pocket_north`) become visible once the landmark is `in_progress`.
   - `light_pocket_north` requires `light_pocket_south`.
   - Both write into `landmark_progress["long_shan_tunnel"]["checkpoints_collected"]`.
-- The `tunnel_exit` trigger becomes visible once the landmark is `in_progress`. Reaching it calls `AppState.activate_landmark_trigger("long_shan_tunnel", "tunnel_exit", ...)`. AppState only resolves the arc after both lit pockets have been collected:
+- The `tunnel_exit` trigger becomes visible once the landmark is `in_progress`. Reaching it calls `AppState.activate_landmark_trigger("long_shan_tunnel", "tunnel_exit", ...)`. AppState only opens the route-settling prompt after both lit pockets have been collected. On prompt success:
   - Landmark state advances to `reward_collected`.
   - `long_shan_route` is confirmed in `festival_melody.known_sources`.
   - `festival_melody.fragments_found` increments by 1 as its own third fragment.
   - `festival_melody.state` updates to `heard` or `reconstructed`.
   - Objective updates to point back to Tunnel Guide Ren.
-- `tunnel_guide` beat 2 is gated on `"gate": "long_shan_exit_reached"`. It only fires once the landmark is `reward_collected`. It carries `"unlock_landmark": "bagua_tower"` and is the beat that actually opens the tower route.
+- `tunnel_guide` beat 2 is still gated on `"gate": "long_shan_exit_reached"`, but it now acts as the "compare the tunnels" follow-up instead of immediately opening Bagua Tower.
+- A `tunnel_guide` conditional beat opens Bagua Tower only when `long_shan_tunnel == reward_collected`, `bagua_tower == locked`, and `fragments_found >= 3`. This keeps the middle fork soft without sending the player to the tower too early.
 - Before the gate passes, beat 2 returns the `gate_fallback` line: "The passage is not done yet. Stay close and keep moving toward the exit."
 - In `Free Walk` mode, the landmark starts `available` and the arc can be played through normally.
 - In `Continue` mode, the landmark starts `available` — the player can walk the escort arc fresh.
@@ -47,7 +48,7 @@ When the player properly enters the tunnel interior, the surface ground/building
 
 ## Architecture / Ownership
 
-- `AppState` owns all landmark progress state, the lit-pocket checkpoint logic, the exit resolution logic, and the fragment reward.
+- `AppState` owns all landmark progress state, the lit-pocket checkpoint logic, the exit-route prompt request/completion, and the fragment reward.
 - Each `LandmarkTrigger` placed in the scene self-manages its own visibility by subscribing to `AppState.landmark_progress_changed`.
 - `LandmarkTrigger` owns its own collected state and hide/disable behavior.
 - `scenes/game_main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
@@ -86,8 +87,8 @@ When the player properly enters the tunnel interior, the surface ground/building
 - Player reaches entry trigger → `activate_landmark_trigger` → `advance_landmark_state("long_shan_tunnel", "introduced")` → entry trigger hides
 - Player talks to tunnel_guide (beats 0 and 1) → `landmark_states` fields confirm `introduced` then `in_progress` → `landmark_progress_changed` → lit-pocket and exit triggers appear
 - Player reaches both lit pockets → `activate_landmark_trigger` → `checkpoints_collected` updates
-- Player reaches exit trigger → `_resolve_long_shan_tunnel` → melody + landmark state update + objective points back to Ren
-- Player talks to tunnel_guide beat 2 → gate passes → `unlock_landmark = "bagua_tower"`
+- Player reaches exit trigger → Long Shan route prompt opens → `complete_prompt_request(...)` → `_resolve_long_shan_tunnel` → melody + landmark state update + objective points back to Ren
+- Player talks to tunnel_guide after the route settles → either the comparison beat points toward Bi Shan or the conditional beat unlocks Bagua Tower once both tunnel routes agree
 
 ## Contracts / Boundaries
 
@@ -100,8 +101,8 @@ When the player properly enters the tunnel interior, the surface ground/building
 - Run the game, complete the Trinity Church arc. Confirm long_shan_tunnel advances to `available` and the entry trigger appears near the south entrance.
 - Walk to the entry trigger. Confirm the landmark advances to `introduced`.
 - Talk to tunnel_guide twice. Confirm landmark advances to `in_progress`, the lit-pocket checkpoints appear in sequence, and the exit is now the final step.
-- Press R at the two lit pockets, then the tunnel_exit trigger. Confirm the arc resolves, journal updates, and the objective points back to Ren instead of directly to Bagua.
-- Talk to Ren after the exit resolves. Confirm his next beat opens Bagua Tower.
+- Press R at the two lit pockets, then the tunnel_exit trigger. Confirm the prompt opens before the arc resolves, then complete it and confirm the objective points back to Ren instead of directly to Bagua.
+- Talk to Ren after the exit resolves. Confirm he redirects the player to Bi Shan if that tunnel is still unresolved, or opens Bagua Tower once both routes are steady.
 - Try talking to tunnel_guide at beat 2 before reaching the exit. Confirm the gate_fallback line appears.
 - Start a Continue game. Confirm the arc is accessible (state: available, entry trigger visible).
 - Enter the tunnel through a mouth and walk inside. Confirm the surface ground/building layer hides and tunnel residents appear.

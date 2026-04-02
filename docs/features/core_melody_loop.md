@@ -71,8 +71,8 @@ The external GDD's `Sunlight Rock` and `Zheng Chenggong Statue` are not part of 
   - residents are already the main source of local clues, trust, and objective nudges
 - Performance system:
   - shell and story framing exist
-  - a reusable recognition prompt now exists for journal practice, the Trinity choir chime, and the harbor-stage performance point
-  - other landmark-specific performance beats may still resolve through simplified landmark dialogue for now
+  - a reusable recognition prompt now exists for journal practice, the Trinity choir chime, the Bi Shan mural chamber, the Long Shan exit route, and the harbor-stage performance point
+  - Bagua Tower still resolves through the simpler synthesis-and-confirm dialogue pattern for now
 - Growth system:
   - current progression is tracked through chapter, objective, trust, fragments, melody state, and costume unlocks
   - the `heard -> reconstructed -> performed -> resonant` tier model now exists, but later island-side feedback from `resonant` is still light
@@ -123,8 +123,8 @@ All five landmark arcs are fully integrated and confirmed:
 
 - Piano Ferry onboarding arc (Caretaker Lian -> harbor clue trigger -> journal unlock -> Trinity Church handoff)
 - Trinity Church arc (choir cue collection via three `LandmarkTrigger` nodes plus the `ChoirChime` confirmation point)
-- Bi Shan Tunnel arc (echo tracing via three echo triggers + mural chamber trigger)
-- Long Shan Tunnel arc (entry trigger + lit-pocket checkpoints + exit trigger + return-to-Ren handoff + `tunnel_guide` dialogue beats)
+- Bi Shan Tunnel arc (echo tracing via three echo triggers + mural-chamber prompt + route-note update)
+- Long Shan Tunnel arc (entry trigger + lit-pocket checkpoints + exit-route prompt + return-to-Ren comparison handoff + `tunnel_guide` dialogue beats)
 - Bagua Tower arc (synthesis chamber `LandmarkTrigger` + `tower_keeper` dialogue beats + harbor-stage handoff)
 
 All `LandmarkTrigger` nodes have `collision_layer = 1` (layer "object") confirmed explicit. The `SynthesisChamber` in `bagua_tower.tscn` has `z_index = -2` set to align its absolute z_index (6) with the player's z_index after climbing all tower stairs.
@@ -159,7 +159,7 @@ See [`piano_ferry.md`](piano_ferry.md), [`trinity_church.md`](trinity_church.md)
 ### ~~7. Revisit Save / Continue Only After The Loop Exists~~ ✓ Done
 
 - Story mode now writes one versioned autosave payload from `AppState`.
-- `Continue` restores melody, landmark, shortcut, resident, player-appearance, and postgame state together.
+- `Continue` restores melody, landmark, dependable-route notes, resident, player-appearance, and postgame state together.
 - `scenes/game_main.gd` now resumes from safe landmark and tunnel-entry anchors instead of interior tunnel positions.
 
 ## Recommended Growth Tiers
@@ -329,16 +329,16 @@ Use this route when you want one end-to-end manual check of the current story-cr
    Expectation: the journal unlocks only after the second talk, Trinity Church becomes the next lead, and fragment count stays `0 / 4`.
 
 3. Complete Trinity Church.
-   Actions: collect `steps`, then `garden`, then `yard`, then talk to Choir Caretaker Mei.
-   Expectation: cue order is enforced through availability, the objective returns to Mei after the third cue, and the melody advances to `1 / 4`.
+   Actions: collect `steps`, then `garden`, then `yard`, settle the choir chime, then talk to Choir Caretaker Mei.
+   Expectation: cue order is enforced through availability, the chime prompt returns the objective to Mei, and the melody advances to `1 / 4`.
 
 4. Complete Bi Shan Tunnel.
-   Actions: collect `echo_a`, `echo_b`, `echo_c`, then inspect the chamber.
-   Expectation: the chamber only resolves after all three echoes, and the melody advances to `2 / 4`.
+   Actions: collect `echo_a`, `echo_b`, `echo_c`, inspect the chamber, then settle the short chamber prompt.
+   Expectation: the chamber only opens the prompt after all three echoes, the journal records Bi Shan as a dependable route, and the melody advances to `2 / 4`.
 
 5. Complete Long Shan Tunnel.
-   Actions: enter the tunnel, talk to Ren twice, reach the south lit pocket, reach the north lit pocket, then use the exit and talk to Ren again.
-   Expectation: the exit refuses early completion until both lit pockets are reached, the melody advances to `3 / 4`, and Bagua Tower unlocks after Ren's follow-up.
+   Actions: enter the tunnel, talk to Ren twice, reach the south lit pocket, reach the north lit pocket, use the exit, settle the short route prompt, then talk to Ren again.
+   Expectation: the exit refuses early completion until both lit pockets are reached, the melody advances to `3 / 4`, and Bagua Tower unlocks only after Ren confirms the tunnel routes agree.
 
 6. Complete Bagua Tower.
    Actions: talk to Suyin, talk again once three fragments are in hand, climb to the synthesis chamber, return to Suyin.
@@ -392,7 +392,7 @@ Run these quick checks when you want confidence that progression gates still fai
 4. Try the Bagua synthesis chamber before three fragments are restored.
    Expectation: the chamber refuses to resolve and preserves the current objective state.
 
-5. Open journal practice after Bi Shan or later, then intentionally submit the wrong order once.
+5. Trigger the Bi Shan chamber, Long Shan exit, or journal practice prompt, then intentionally submit the wrong order once.
    Expectation: the prompt stays open, gives a gentle retry hint, and clears the selected order without advancing melody state.
 
 6. Choose `Leave on the Morning Ferry` from the ending overlay, return from credits to the title screen, and check the title menu.

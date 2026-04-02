@@ -362,7 +362,7 @@ Shows:
 - Current player location
 - Discovered landmarks
 - Objective highlight
-- Unlocked shortcuts
+- Dependable routes
 
 Avoid showing everything from the start.
 
@@ -371,7 +371,7 @@ Avoid showing everything from the start.
 For momentary positive feedback:
 
 - `Landmark Discovered`
-- `Shortcut Unlocked`
+- `Route Steadied`
 - `Melody Fragment Recovered`
 
 Rules:

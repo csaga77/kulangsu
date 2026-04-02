@@ -14,7 +14,7 @@ const STORY_AUTOSAVE_VERSION := 1
 const STORY_AUTOSAVE_PATH := "user://story_autosave.save"
 const SHORTCUT_DEFINITIONS := {
 	"bi_shan_crossing": {
-		"display_name": "Bi Shan Cross-Island Route",
+		"display_name": "Bi Shan Tunnel Route",
 		"summary": "The Bi Shan tunnel now reads as a dependable passage between the island's north and south approaches.",
 	},
 }
@@ -55,6 +55,7 @@ var melody_progress: Dictionary = _default_melody_progress()
 var landmarks: PackedStringArray = _default_landmarks()
 var open_shortcuts: PackedStringArray = PackedStringArray()
 var residents: PackedStringArray = PackedStringArray()
+var resident_definitions: Dictionary = RESIDENT_CATALOG_SCRIPT.build_definitions()
 var resident_profiles: Dictionary = _default_resident_profiles()
 var player_profile: Dictionary = PLAYER_APPEARANCE_CATALOG_SCRIPT.default_profile()
 var player_costume_catalog: Dictionary = PLAYER_COSTUME_CATALOG_SCRIPT.build_catalog()
@@ -330,7 +331,16 @@ func _default_landmarks() -> PackedStringArray:
 
 
 func _default_resident_profiles() -> Dictionary:
-	return RESIDENT_CATALOG_SCRIPT.build_defaults()
+	if resident_definitions.is_empty():
+		resident_definitions = RESIDENT_CATALOG_SCRIPT.build_definitions()
+
+	var profiles: Dictionary = {}
+	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
+		var definition = resident_definitions.get(resident_id)
+		if definition == null:
+			continue
+		profiles[resident_id] = definition.to_runtime_profile()
+	return profiles
 
 
 func _default_melody_progress() -> Dictionary:
@@ -405,6 +415,10 @@ func complete_prompt_request(request: Dictionary) -> void:
 			complete_melody_performance(melody_id)
 		"trinity_chime":
 			_complete_trinity_church_chime()
+		"bi_shan_chamber":
+			_complete_bi_shan_chamber()
+		"long_shan_route":
+			_complete_long_shan_route()
 		_:
 			set_save_status("The phrase settles, but nothing answers it yet.")
 
@@ -445,26 +459,72 @@ func get_resident_profile(resident_id: String) -> Dictionary:
 	return resident_profiles[resident_id].duplicate(true)
 
 
+func get_resident_definition(resident_id: String):
+	return resident_definitions.get(resident_id)
+
+
 func get_resident_display_name(resident_id: String) -> String:
+	var definition = get_resident_definition(resident_id)
+	if definition != null and !definition.display_name.is_empty():
+		return definition.display_name
 	var resident: Dictionary = resident_profiles.get(resident_id, {})
 	return String(resident.get("display_name", "Resident"))
 
 
 func get_resident_landmark(resident_id: String) -> String:
+	var definition = get_resident_definition(resident_id)
+	if definition != null and !definition.landmark.is_empty():
+		return definition.landmark
 	var resident: Dictionary = resident_profiles.get(resident_id, {})
 	return String(resident.get("landmark", "Unknown District"))
 
 
 func get_resident_appearance_config(resident_id: String) -> Dictionary:
+	var definition = get_resident_definition(resident_id)
+	if definition != null:
+		var definition_appearance = definition.build_appearance_config()
+		if !definition_appearance.is_empty():
+			return definition_appearance
+
 	var resident: Dictionary = resident_profiles.get(resident_id, {})
 	var appearance: Dictionary = resident.get("appearance", {})
 	return appearance.duplicate(true)
 
 
 func get_resident_spawn_config(resident_id: String) -> Dictionary:
+	var definition = get_resident_definition(resident_id)
+	if definition != null:
+		var definition_spawn = definition.get_spawn_config()
+		if !definition_spawn.is_empty():
+			return definition_spawn
+
 	var resident: Dictionary = resident_profiles.get(resident_id, {})
 	var spawn: Dictionary = resident.get("spawn", {})
 	return spawn.duplicate(true)
+
+
+func get_resident_movement_config(resident_id: String) -> Dictionary:
+	var definition = get_resident_definition(resident_id)
+	if definition != null:
+		var definition_movement = definition.get_movement_config()
+		if !definition_movement.is_empty():
+			return definition_movement
+
+	var resident: Dictionary = resident_profiles.get(resident_id, {})
+	var movement: Dictionary = resident.get("movement", {})
+	return movement.duplicate(true)
+
+
+func get_resident_behavior_config(resident_id: String) -> Dictionary:
+	var definition = get_resident_definition(resident_id)
+	if definition != null:
+		var definition_behavior = definition.get_behavior_config()
+		if !definition_behavior.is_empty():
+			return definition_behavior
+
+	var resident: Dictionary = resident_profiles.get(resident_id, {})
+	var behavior: Dictionary = resident.get("behavior", {})
+	return behavior.duplicate(true)
 
 
 func get_player_profile() -> Dictionary:
@@ -643,7 +703,7 @@ func build_map_journal_text() -> String:
 	if !landmarks.is_empty():
 		landmark_text = "\n".join(landmarks)
 
-	var shortcut_text := "No shortcuts opened yet."
+	var shortcut_text := "No dependable routes noted yet."
 	if !open_shortcuts.is_empty():
 		var shortcut_sections: Array[String] = []
 		for shortcut_id in open_shortcuts:
@@ -656,7 +716,7 @@ func build_map_journal_text() -> String:
 			)
 		shortcut_text = "\n\n".join(PackedStringArray(shortcut_sections))
 
-	return "Discovered landmarks\n%s\n\nCurrent location\n%s\n\nOpen shortcuts\n%s" % [
+	return "Discovered landmarks\n%s\n\nCurrent location\n%s\n\nDependable routes\n%s" % [
 		landmark_text,
 		location,
 		shortcut_text,
@@ -1521,9 +1581,10 @@ func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_
 			if trigger_id == "chamber":
 				var echoes: Array = tunnel_progress.get("echoes_collected", [])
 				if echoes.size() >= 3:
-					_resolve_bi_shan_tunnel()
-					_autosave_story_progress()
-					return true
+					if melody_hint != "":
+						melody_hint_shown.emit(melody_hint)
+					_request_bi_shan_chamber_prompt()
+					return false
 				else:
 					set_save_status("The mural panel is silent. Trace the three tunnel echoes first.")
 					return false
@@ -1568,9 +1629,10 @@ func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_
 							get_landmark_progress("long_shan_tunnel").get("checkpoints_collected", [])
 						).size()
 						if checkpoint_count >= 2:
-							_resolve_long_shan_tunnel()
-							_autosave_story_progress()
-							return true
+							if melody_hint != "":
+								melody_hint_shown.emit(melody_hint)
+							_request_long_shan_route_prompt()
+							return false
 						set_save_status("The route is still uneven. Pause with Ren at the lit pockets before crossing.")
 						return false
 					set_save_status("Tunnel exit reached — talk to Tunnel Guide Ren before crossing.")
@@ -1685,6 +1747,43 @@ func _request_trinity_chime_prompt() -> void:
 	melody_prompt_requested.emit(request)
 
 
+func _request_bi_shan_chamber_prompt() -> void:
+	var request := {
+		"melody_id": "festival_melody",
+		"mode": "performance",
+		"completion_kind": "bi_shan_chamber",
+		"title": "Settle the Bi Shan Contour",
+		"body": "Arrange the tunnel echoes from the first steady contour to the mural-facing answer so the chamber can respond.",
+		"segments": [
+			{"source_id": "echo_a", "label": "North Wall Echo", "landmark": "Bi Shan Tunnel"},
+			{"source_id": "echo_b", "label": "Arch Midpoint", "landmark": "Bi Shan Tunnel"},
+			{"source_id": "echo_c", "label": "Mural Approach", "landmark": "Bi Shan Tunnel"},
+		],
+		"expected_order": ["echo_a", "echo_b", "echo_c"],
+		"retry_hint": "Let the north wall answer first, then the arch midpoint, before the mural approach settles.",
+		"hint_text": "Choose the tunnel echoes in the contour they reveal together.",
+	}
+	melody_prompt_requested.emit(request)
+
+
+func _request_long_shan_route_prompt() -> void:
+	var request := {
+		"melody_id": "festival_melody",
+		"mode": "performance",
+		"completion_kind": "long_shan_route",
+		"title": "Steady the Long Shan Route",
+		"body": "Confirm the lit-pocket rhythm that carried Ren through the tunnel before the exit can settle into one route.",
+		"segments": [
+			{"source_id": "light_pocket_south", "label": "South Lit Pocket", "landmark": "Long Shan Tunnel"},
+			{"source_id": "light_pocket_north", "label": "North Lit Pocket", "landmark": "Long Shan Tunnel"},
+		],
+		"expected_order": ["light_pocket_south", "light_pocket_north"],
+		"retry_hint": "The steadier route begins with the south lit pocket before the northern light answers it.",
+		"hint_text": "Choose the lit pockets in the order Ren followed them.",
+	}
+	melody_prompt_requested.emit(request)
+
+
 func _build_melody_prompt_segments(melody_id: String) -> Array[Dictionary]:
 	var melody_definition := get_melody_definition(melody_id)
 	var melody_state := get_melody_state(melody_id)
@@ -1771,6 +1870,21 @@ func _complete_trinity_church_chime() -> void:
 	_autosave_story_progress()
 
 
+func _complete_bi_shan_chamber() -> void:
+	var progress := get_landmark_progress("bi_shan_tunnel")
+	var echoes := _normalize_string_array(progress.get("echoes_collected", []))
+	if echoes.size() < 3:
+		set_save_status("The mural panel is still waiting on the three tunnel echoes.")
+		return
+
+	if get_landmark_state("bi_shan_tunnel") == "reward_collected":
+		set_save_status("The Bi Shan contour has already settled into the tunnel walls.")
+		return
+
+	_resolve_bi_shan_tunnel()
+	_autosave_story_progress()
+
+
 ## Collect one Bi Shan Tunnel echo marker. Returns true when all three are in.
 ## Advances the landmark to in_progress on first echo collected.
 func _collect_bi_shan_echo(echo_id: String) -> bool:
@@ -1797,7 +1911,7 @@ func _collect_bi_shan_echo(echo_id: String) -> bool:
 
 
 ## Collect one Long Shan lit-pocket checkpoint. Returns true when both route
-## checkpoints have been reached and the exit can resolve the escort.
+## checkpoints have been reached and the exit can open the route-settling prompt.
 func _collect_long_shan_checkpoint(checkpoint_id: String) -> bool:
 	var progress := get_landmark_progress("long_shan_tunnel")
 	if progress.is_empty():
@@ -1816,8 +1930,19 @@ func _collect_long_shan_checkpoint(checkpoint_id: String) -> bool:
 	return checkpoints.size() >= 2
 
 
+func _complete_long_shan_route() -> void:
+	var progress := get_landmark_progress("long_shan_tunnel")
+	var checkpoints := _normalize_string_array(progress.get("checkpoints_collected", []))
+	if checkpoints.size() < 2 or get_landmark_state("long_shan_tunnel") != "in_progress":
+		set_save_status("The Long Shan route still needs both lit pockets before it can settle.")
+		return
+
+	_resolve_long_shan_tunnel()
+	_autosave_story_progress()
+
+
 ## Award the Bi Shan Tunnel melody fragment and advance melody state.
-## Called when the player activates the mural chamber trigger with all echoes.
+## Called when the player settles the mural chamber prompt after tracing all echoes.
 func _resolve_bi_shan_tunnel() -> void:
 	advance_landmark_state("bi_shan_tunnel", "reward_collected")
 
@@ -1828,12 +1953,22 @@ func _resolve_bi_shan_tunnel() -> void:
 	set_melody_progress({"festival_melody": melody_state})
 	_emit_fragment_story_milestones(previous_melody, "bi_shan_echo", melody_state)
 	unlock_shortcut("bi_shan_crossing")
-	set_objective("Explore Long Shan Tunnel and keep Ren moving between the lit pockets.")
-	set_save_status("Bi Shan Tunnel — mural resonance restored, and the tunnel route feels steadier now.")
+	if get_landmark_state("long_shan_tunnel") == "reward_collected" and get_landmark_state("bagua_tower") == "locked":
+		set_objective("Return to Tunnel Guide Ren now that both tunnel routes agree.")
+		set_hint(build_input_hint("R Talk to Tunnel Guide Ren"))
+		set_save_status("Bi Shan Tunnel — mural resonance restored. Ren can now compare the two tunnel routes.")
+	elif get_landmark_state("bagua_tower") != "locked":
+		set_objective("Carry the steadier tunnel route up to Bagua Tower.")
+		set_hint(build_input_hint("R Talk to Tower Keeper Suyin"))
+		set_save_status("Bi Shan Tunnel — mural resonance restored, and the tower can now read the route clearly.")
+	else:
+		set_objective("Explore Long Shan Tunnel and move with Ren between the lit pockets.")
+		set_hint(build_input_hint("R Inspect"))
+		set_save_status("Bi Shan Tunnel — mural resonance restored, and the tunnel route feels steadier now.")
 
 
 ## Award the Long Shan Tunnel melody fragment and advance melody state.
-## Called when the player exits the tunnel with the escort in progress.
+## Called when the player settles the exit-route prompt after both lit pockets.
 func _resolve_long_shan_tunnel() -> void:
 	advance_landmark_state("long_shan_tunnel", "reward_collected")
 
@@ -1843,9 +1978,9 @@ func _resolve_long_shan_tunnel() -> void:
 
 	set_melody_progress({"festival_melody": melody_state})
 	_emit_fragment_story_milestones(previous_melody, "long_shan_route", melody_state)
-	set_objective("Return to Tunnel Guide Ren so he can open the route toward Bagua Tower.")
+	set_objective("Return to Tunnel Guide Ren and compare what the tunnel routes now suggest.")
 	set_hint(build_input_hint("R Talk to Tunnel Guide Ren"))
-	set_save_status("Long Shan Tunnel — passage completed. Ren can now point out the tower route.")
+	set_save_status("Long Shan Tunnel — passage completed. Ren can now judge what the route means.")
 
 
 ## Called when the synthesis chamber trigger fires at the top of Bagua Tower.

@@ -113,7 +113,7 @@ Recommended route:
 3. The remaining tunnel
 4. Bagua Tower
 
-Soft guidance comes from NPC hints, fragment requirements, and landmark unlocks. In the current implementation, Bagua only becomes useful once both the tunnel handoff and enough fragments are in place.
+Soft guidance comes from NPC hints, fragment requirements, and landmark unlocks. In the current implementation, the tunnels form a soft middle fork, but Bagua only opens cleanly once both tunnel routes are steady enough to compare.
 
 ## Landmark Objective Arcs
 
@@ -157,7 +157,7 @@ Objective chain:
 1. Find the correct tunnel entrance.
 2. Follow echo cues through the tunnel without getting turned around.
 3. Reach a hidden chamber or mural node.
-4. Inspect the chamber to recover the next fragment.
+4. Settle the mural contour to recover the next fragment.
 
 Failure state:
 
@@ -167,7 +167,7 @@ Failure state:
 Reward:
 
 - Melody Fragment 2
-- Shortcut unlocked across the island
+- Bi Shan recorded as a dependable cross-island route
 
 ### C. Long Shan Tunnel: Help Someone Through
 
@@ -185,7 +185,7 @@ Objective chain:
 1. Meet an anxious NPC who refuses to cross alone.
 2. Start the crossing through dialogue and move through the tunnel at a calm pace.
 3. Stop at safe lit pockets in sequence.
-4. Reach the exit, then return to Ren for the Bagua handoff.
+4. Reach the exit, settle the route, then return to Ren for the Bagua handoff.
 
 Failure state:
 
@@ -196,7 +196,7 @@ Reward:
 
 - Melody Fragment 3
 - Companion relationship progress
-- Bagua Tower handoff after Ren's follow-up beat
+- Bagua Tower handoff after Ren confirms both tunnel routes agree
 
 ### D. Bagua Tower: Master Perspective
 
@@ -236,7 +236,7 @@ Tracks:
 - Collected melody fragments
 - Reconstructed melodies
 - Melody state: heard, reconstructed, performed, resonant
-- Open shortcuts
+- Dependable routes
 
 ### Relationship Layer
 
@@ -276,7 +276,7 @@ Each fragment should ideally feel reconstructed from multiple musical encounters
 ### Soft Gates
 
 - NPC hints point toward the next suitable landmark.
-- Tunnel routes become trustworthy shortcuts after completion.
+- Tunnel routes become dependable journal/map routes after completion.
 - Certain doors or upper layers only open after earlier story beats.
 
 ### No Hard Combat Gate
@@ -342,7 +342,7 @@ Each major district should use the same internal quest states, with custom conte
 - `available` to `introduced`: first resident conversation or landmark inspection
 - `introduced` to `in_progress`: player accepts or activates the local objective
 - `in_progress` to `resolved`: success condition met
-- `resolved` to `reward_collected`: fragment, trust, and shortcut updates are granted
+- `resolved` to `reward_collected`: fragment, trust, and route-note updates are granted
 
 ### Per-Landmark Data Needed
 
@@ -353,7 +353,7 @@ Each landmark entry should eventually define:
 - Intro trigger
 - Solve trigger list
 - Reward payload
-- Shortcut unlock or follow-up hint
+- Route-note update or follow-up hint
 - Recovery text if the player gets lost or stalls
 
 This can live in a lightweight resource, dictionary table, or singleton-managed data block later. The important design constraint is that all four arcs expose the same fields.
@@ -368,7 +368,7 @@ Use one sentence with an action verb:
 
 - `Speak with the church caretaker.`
 - `Follow the tunnel echoes to the hidden chamber.`
-- `Guide the resident through Long Shan Tunnel.`
+- `Start a calm crossing through Long Shan Tunnel with Ren.`
 - `Return to Ferry Plaza at sunset.`
 
 ### Journal Entry Format
@@ -414,7 +414,7 @@ The intended flow already avoids harsh failure, so save behavior should support 
 - After the ferry tutorial unlocks the main quest
 - On landmark introduction
 - On landmark completion
-- When a tunnel route becomes a trusted shortcut
+- When a tunnel route becomes dependable in the journal
 - Before the festival start prompt
 - After the ending choice
 
@@ -483,8 +483,8 @@ Build the workflow in the smallest loop that proves the design.
 ### Slice 3: Tunnel Variants
 
 - Bi Shan echo navigation
-- Long Shan escort pacing
-- Shortcut unlock messaging
+- Long Shan accompaniment pacing
+- Dependable-route messaging
 
 ### Slice 4: Endgame
 

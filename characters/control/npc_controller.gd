@@ -104,6 +104,10 @@ func _apply_resident_presentation() -> void:
 	if !is_instance_valid(m_character):
 		return
 
+	if m_character.has_method("has_definition") and bool(m_character.call("has_definition")):
+		m_character.call("sync_definition_presentation")
+		return
+
 	var resident_key := get_resident_id()
 	if resident_key.is_empty():
 		return

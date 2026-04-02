@@ -7,10 +7,12 @@ Read this file first when the task is specifically about residents, NPC dialogue
 Open these files first in this order:
 
 1. [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
-2. [`../../game/app_state.gd`](../../game/app_state.gd)
-3. [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
-4. [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd)
-5. [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd)
+2. [`../../game/resident_system/resident_definition.gd`](../../game/resident_system/resident_definition.gd)
+3. [`../../game/app_state.gd`](../../game/app_state.gd)
+4. [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
+5. [`../../characters/resident_npc.gd`](../../characters/resident_npc.gd)
+6. [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd)
+7. [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd)
 
 For tunnel-route bugs, also open [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd) immediately after `game_main.gd`.
 
@@ -49,11 +51,12 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 - The source of truth for which residents exist is `ResidentCatalog.resident_order()`.
 - Story residents live in `ResidentCatalog._story_residents()`.
 - Ambient residents live in `ResidentCatalog._ambient_residents()`.
-- `AppState` builds runtime resident profiles from the catalog defaults and exposes the getters the rest of the game uses.
-- `scenes/game_main.gd` never hardcodes individual residents; it loops over `AppState.get_resident_ids()` and spawns them from catalog metadata.
+- The catalog now builds resource-backed `ResidentDefinition` objects plus nested appearance/dialogue/routine resources under [`../../game/resident_system/`](../../game/resident_system).
+- `AppState` keeps both immutable `resident_definitions` for authored data and mutable `resident_profiles` for trust, conversation progress, and save/load state.
+- `scenes/game_main.gd` never hardcodes individual residents; it loops over `AppState.get_resident_ids()`, instantiates [`../../characters/resident_npc.tscn`](../../characters/resident_npc.tscn), applies the matching definition, and then resolves world-specific spawn and route data.
 - Tunnel-root spawns and tunnel-owned movement waypoints are snapped back onto the authored tunnel path if an offset drifts off the walkable area.
 - Tunnel-internal route expansion prefers higher-connectivity walkable cells so residents stay nearer the middle of a tunnel path when multiple shortest routes exist.
-- `NPCController` uses `resident_id` to pull appearance from `AppState`, keeps a local revealed-line state, defaults the nearby bubble to `...`, and follows the resolved runtime route produced from catalog metadata.
+- `ResidentNPC` owns static resident presentation from the definition; `NPCController` keeps the local revealed-line state, defaults the nearby bubble to `...`, and follows the resolved runtime route produced from catalog metadata.
 - `scenes/game_main.gd` re-syncs both player and resident tunnel context from actual tunnel interiors rather than any surface footprint overlap.
 - Routed residents now rely on the same portal overlap logic as the player for actual tunnel-side level changes; the route builder only shapes the approach and crossing points.
 - For paired tunnel portal and surface entry anchors, `scenes/game_main.gd` expands the authored route with explicit portal-direction approach points so surface-to-tunnel travel stays aligned with the portal facing.
@@ -76,8 +79,8 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 
 1. Add the new resident id to `ResidentCatalog.resident_order()`.
 2. Add the resident entry in `ResidentCatalog._story_residents()` or `ResidentCatalog._ambient_residents()`.
-3. Define `appearance` with `_look(...)`.
-4. Define `spawn` with `_spawn(anchor_id, offset, direction, mood, interaction_radius)`.
+3. Define `appearance` with `_look(...)`, which now builds a `ResidentAppearanceDefinition`.
+4. Define `spawn` with `_spawn(anchor_id, offset, direction, mood, interaction_radius)` and optional movement with `_route(...)` / `_route_point(...)`, which now build routine resources.
 5. If the `anchor_id` is new, add it to the spawn-anchor map in [`../../scenes/game_main.gd`](../../scenes/game_main.gd).
 6. Run the project and confirm the resident appears, speaks, and shows up in the journal after introduction.
 
@@ -91,7 +94,7 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 
 1. Edit the resident's `_look(...)` config in [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd).
 2. Confirm that every selected LPC path supports the resident's body type and chosen variant in the shipped metadata. A matching path name alone does not guarantee the combination can render.
-3. Do not hardcode appearance in scenes; `NPCController` applies resident appearance automatically.
+3. Do not hardcode appearance in scenes; [`../../characters/resident_npc.gd`](../../characters/resident_npc.gd) applies `ResidentDefinition.appearance` automatically when the overworld spawns the actor.
 4. Verify both the main scene and [`../../game/tests/npc_system/test_scene.tscn`](../../game/tests/npc_system/test_scene.tscn) if that resident id is used there.
 5. Treat `Failed to resolve combined texture for selection layer` warnings as a resident-content bug and fix the catalog entry instead of ignoring the warning.
 
@@ -159,11 +162,13 @@ If a resident uses an unsupported `anchor_id`, startup should warn and skip that
 
 ## Architecture / Ownership
 
-- [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd) owns resident content and spawn metadata.
-- [`../../game/app_state.gd`](../../game/app_state.gd) owns runtime resident profiles, shared resident getters, and journal text generation.
-- [`../../scenes/game_main.gd`](../../scenes/game_main.gd) owns overworld spawn/movement-anchor mapping, resident instantiation, tunnel-context syncing, and talk-prompt wiring.
+- [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd) owns resident roster authoring and the helper builders that produce resident definitions.
+- [`../../game/resident_system/`](../../game/resident_system) owns the typed resident definition resources for appearance, dialogue, routine, and behavior metadata.
+- [`../../game/app_state.gd`](../../game/app_state.gd) owns immutable resident definitions, mutable runtime resident profiles, shared resident getters, and journal text generation.
+- [`../../scenes/game_main.gd`](../../scenes/game_main.gd) owns overworld spawn/movement-anchor mapping, `ResidentNPC` instantiation, tunnel-context syncing, and talk-prompt wiring.
 - [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd) owns tunnel walkable-path snapping, interior checks, and same-tunnel route expansion helpers.
-- [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd) owns resident presentation hookup, nearby bubble reveal behavior, and simple route-following movement.
+- [`../../characters/resident_npc.gd`](../../characters/resident_npc.gd) owns static resident presentation on top of `HumanBody2D`.
+- [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd) owns nearby bubble reveal behavior and simple route-following movement.
 - [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd) owns resident note presentation in the journal.
 
 ## Relevant Files
