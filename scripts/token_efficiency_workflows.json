@@ -6,13 +6,13 @@
   "workflows": [
     {
       "name": "source_control_parent_repo",
-      "description": "Compare the local source-control report wrapper against the common manual multi-command inspection flow for the Kulangsu parent repo.",
+      "description": "Compare the shared source-control report helper against the common manual multi-command inspection flow for the Kulangsu parent repo.",
       "cwd": "..",
       "helper": {
-        "label": "local source control report",
+        "label": "shared source control report",
         "cmd": [
           "python3",
-          "scripts/source_control_report.py",
+          "agent_tools/scripts/source_control_report.py",
           "--max-files",
           "8",
           "--max-commits",
@@ -67,11 +67,11 @@
           ]
         },
         {
-          "label": "codex_agents status",
+          "label": "agent_tools status",
           "cmd": [
             "git",
             "-C",
-            "codex_agents",
+            "agent_tools",
             "status",
             "-sb"
           ]

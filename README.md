@@ -24,9 +24,9 @@ No package manager, CI pipeline, or automated test runner is checked into this r
 - [`scenes/`](scenes) - runtime gameplay scenes plus validation scene containers
 - [`terrain/`](terrain) - island terrain scene, terrain generation, and water rendering setup
 - [`resources/`](resources) - audio, sprites, materials, animations, and tilesets
-- [`scripts/`](scripts) - repo-local helper wrappers and workflow configs, including the short source-control report entry point
+- [`scripts/`](scripts) - repo-local workflow configs and project-specific helper data
 - [`docs/`](docs) - project documentation for humans and coding agents
-- [`codex_agents/`](codex_agents) - shared agent runbooks and reusable support docs
+- [`agent_tools/`](agent_tools) - shared agent runbooks and reusable support docs
 - [`godot_common/`](godot_common) - shared Godot support code via submodule
 - [`godot_tilemap/`](godot_tilemap) - tilemap tooling/support code via submodule
 - [`3rdparty/Universal-LPC-Spritesheet-Character-Generator/`](3rdparty/Universal-LPC-Spritesheet-Character-Generator) - third-party LPC asset generator via submodule
@@ -38,13 +38,13 @@ This repo currently tracks these submodules through [`.gitmodules`](.gitmodules)
 - [`godot_common/`](godot_common)
 - [`godot_tilemap/`](godot_tilemap)
 - [`3rdparty/Universal-LPC-Spritesheet-Character-Generator/`](3rdparty/Universal-LPC-Spritesheet-Character-Generator)
-- [`codex_agents/`](codex_agents)
+- [`agent_tools/`](agent_tools)
 
 See [`docs/submodules.md`](docs/submodules.md) for update rules, boundaries, and when to edit a submodule versus the parent repo.
 
 Primary submodule documentation entry points:
 
-- [`codex_agents/AGENTS.md`](codex_agents/AGENTS.md) and [`codex_agents/README.md`](codex_agents/README.md) - generic agent guidance, reusable runbooks, and the submodule's own docs map
+- [`agent_tools/AGENTS.md`](agent_tools/AGENTS.md) and [`agent_tools/README.md`](agent_tools/README.md) - generic agent guidance, reusable runbooks, and the submodule's own docs map
 - [`godot_common/AGENTS.md`](godot_common/AGENTS.md), [`godot_common/README.md`](godot_common/README.md), and [`godot_common/docs/`](godot_common/docs) - entry points for shared Godot support code and helper ownership guidance
 - [`godot_tilemap/AGENTS.md`](godot_tilemap/AGENTS.md), [`godot_tilemap/README.md`](godot_tilemap/README.md), and [`godot_tilemap/docs/`](godot_tilemap/docs) - entry points for tilemap helper/tooling architecture and repo conventions
 - [`3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md`](3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md) - upstream LPC generator overview, licensing, attribution, and development references
@@ -54,7 +54,7 @@ Primary submodule documentation entry points:
 For low-token source-control inspection in this repo, prefer the shared helper directly:
 
 ```bash
-python3 codex_agents/scripts/source_control_report.py .
+python3 agent_tools/scripts/source_control_report.py .
 ```
 
 It keeps common branch/worktree/submodule checks in one report without a repo-local wrapper layer.
@@ -62,38 +62,38 @@ It keeps common branch/worktree/submodule checks in one report without a repo-lo
 Useful variants:
 
 ```bash
-python3 codex_agents/scripts/source_control_report.py codex_agents
-python3 codex_agents/scripts/source_control_report.py . --fail-on-warnings
-python3 codex_agents/scripts/source_control_report.py . --json
+python3 agent_tools/scripts/source_control_report.py agent_tools
+python3 agent_tools/scripts/source_control_report.py . --fail-on-warnings
+python3 agent_tools/scripts/source_control_report.py . --json
 ```
 
 For the routine "pull latest parent repo state and refresh all tracked submodules" flow on a clean worktree, prefer:
 
 ```bash
-python3 codex_agents/scripts/source_control_ops.py update-latest .
+python3 agent_tools/scripts/source_control_ops.py update-latest .
 ```
 
 Useful variants:
 
 ```bash
-python3 codex_agents/scripts/source_control_ops.py update-latest . --dry-run
-python3 codex_agents/scripts/source_control_ops.py update-latest . --max-submodule-commits 5
+python3 agent_tools/scripts/source_control_ops.py update-latest . --dry-run
+python3 agent_tools/scripts/source_control_ops.py update-latest . --max-submodule-commits 5
 ```
 
 For periodic review of whether a token-saving helper still earns its keep, call the shared audit directly with the local workflow config:
 
 ```bash
-python3 codex_agents/scripts/token_efficiency_audit.py scripts/token_efficiency_workflows.json
+python3 agent_tools/scripts/token_efficiency_audit.py scripts/token_efficiency_workflows.json
 ```
 
-The audit logic stays generic in [`codex_agents/scripts/token_efficiency_audit.py`](codex_agents/scripts/token_efficiency_audit.py), while the repo-specific manual baseline and review cadence live in [`scripts/token_efficiency_workflows.json`](scripts/token_efficiency_workflows.json).
+The audit logic stays generic in [`agent_tools/scripts/token_efficiency_audit.py`](agent_tools/scripts/token_efficiency_audit.py), while the repo-specific manual baseline and review cadence live in [`scripts/token_efficiency_workflows.json`](scripts/token_efficiency_workflows.json).
 
 Useful variants:
 
 ```bash
-python3 codex_agents/scripts/token_efficiency_audit.py scripts/token_efficiency_workflows.json --fail-on-regression
-python3 codex_agents/scripts/token_efficiency_audit.py scripts/token_efficiency_workflows.json --json
-python3 codex_agents/scripts/token_efficiency_audit.py scripts/token_efficiency_workflows.json --workflow source_control_parent_repo
+python3 agent_tools/scripts/token_efficiency_audit.py scripts/token_efficiency_workflows.json --fail-on-regression
+python3 agent_tools/scripts/token_efficiency_audit.py scripts/token_efficiency_workflows.json --json
+python3 agent_tools/scripts/token_efficiency_audit.py scripts/token_efficiency_workflows.json --workflow source_control_parent_repo
 ```
 
 ## Run The Project
@@ -134,10 +134,10 @@ Start here for project context:
 - [`docs/architecture.md`](docs/architecture.md) - system boundaries and relationships
 - [`docs/module_map.md`](docs/module_map.md) - where code and content live
 - [`docs/submodules.md`](docs/submodules.md) - submodule roles and governance
-- [`codex_agents/scripts/source_control_report.py`](codex_agents/scripts/source_control_report.py) - shared source-control status helper
+- [`agent_tools/scripts/source_control_report.py`](agent_tools/scripts/source_control_report.py) - shared source-control status helper
 - [`scripts/token_efficiency_workflows.json`](scripts/token_efficiency_workflows.json) - local manual baseline and review cadence for token-efficiency audits
-- [`codex_agents/scripts/token_efficiency_audit.py`](codex_agents/scripts/token_efficiency_audit.py) - shared helper ROI and review-cadence audit script
-- [`codex_agents/README.md`](codex_agents/README.md) - entry point for the shared agent-support submodule
+- [`agent_tools/scripts/token_efficiency_audit.py`](agent_tools/scripts/token_efficiency_audit.py) - shared helper ROI and review-cadence audit script
+- [`agent_tools/README.md`](agent_tools/README.md) - entry point for the shared agent-support submodule
 - [`docs/contracts.md`](docs/contracts.md) - stable interfaces and boundaries
 - [`docs/release_policy.md`](docs/release_policy.md) - current release/version policy
 - [`docs/features/README.md`](docs/features/README.md) - how feature specs work

@@ -2,12 +2,12 @@
 
 Read [`design_brief.md`](design_brief.md), then check [`architecture.md`](architecture.md) and the nearby module before editing.
 
-Generic Godot and GDScript conventions live in [`../codex_agents/GODOT_DEVELOPMENT_RUNBOOK.md`](../codex_agents/GODOT_DEVELOPMENT_RUNBOOK.md).
-Generic source-control and submodule-history rules live in [`../codex_agents/SOURCE_CONTROL_RUNBOOK.md`](../codex_agents/SOURCE_CONTROL_RUNBOOK.md).
+Generic Godot and GDScript conventions live in [`../agent_tools/GODOT_DEVELOPMENT_RUNBOOK.md`](../agent_tools/GODOT_DEVELOPMENT_RUNBOOK.md).
+Generic source-control and submodule-history rules live in [`../agent_tools/SOURCE_CONTROL_RUNBOOK.md`](../agent_tools/SOURCE_CONTROL_RUNBOOK.md).
 
 This file is only for Kulangsu-specific coding constraints.
 
-Keep shared/common coding rules in [`../codex_agents/`](../codex_agents). Add rules here only when they are specific to Kulangsu's scene structure, UI flow, state ownership, or repo workflow.
+Keep shared/common coding rules in [`../agent_tools/`](../agent_tools). Add rules here only when they are specific to Kulangsu's scene structure, UI flow, state ownership, or repo workflow.
 
 ## Scene Ownership
 
@@ -36,4 +36,4 @@ Keep shared/common coding rules in [`../codex_agents/`](../codex_agents). Add ru
 - Update [`coding_rules.md`](coding_rules.md) when repo conventions change.
 - Keep older deep-dive docs in sync when they still describe the affected feature.
 - Keep documentation changes in the same patch when practical.
-- Move reusable or cross-project guidance into [`../codex_agents/`](../codex_agents) instead of duplicating it here.
+- Move reusable or cross-project guidance into [`../agent_tools/`](../agent_tools) instead of duplicating it here.

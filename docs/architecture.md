@@ -171,7 +171,7 @@ Primary folders:
 
 - [`../godot_common/`](../godot_common)
 - [`../godot_tilemap/`](../godot_tilemap)
-- [`../codex_agents/`](../codex_agents)
+- [`../agent_tools/`](../agent_tools)
 - [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator)
 
 Responsibilities:

@@ -2,7 +2,7 @@
 
 This file documents the current release and versioning practice for this repository based on what is actually checked in today.
 
-Generic Git history-shaping and submodule commit workflow lives in [`../codex_agents/SOURCE_CONTROL_RUNBOOK.md`](../codex_agents/SOURCE_CONTROL_RUNBOOK.md). This file only captures Kulangsu-specific release and versioning expectations.
+Generic Git history-shaping and submodule commit workflow lives in [`../agent_tools/SOURCE_CONTROL_RUNBOOK.md`](../agent_tools/SOURCE_CONTROL_RUNBOOK.md). This file only captures Kulangsu-specific release and versioning expectations.
 
 ## Current State
 

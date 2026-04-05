@@ -103,10 +103,10 @@ Use these when you need a focused validation target instead of the full project 
 
 ## Documentation And Agent Support
 
-- [`../codex_agents/scripts/source_control_report.py`](../codex_agents/scripts/source_control_report.py) - shared read-only source-control inspection helper
-- [`../codex_agents/scripts/source_control_ops.py`](../codex_agents/scripts/source_control_ops.py) - shared compact helper for explicit stage, commit, push, publish, and update-latest workflows
+- [`../agent_tools/scripts/source_control_report.py`](../agent_tools/scripts/source_control_report.py) - shared read-only source-control inspection helper
+- [`../agent_tools/scripts/source_control_ops.py`](../agent_tools/scripts/source_control_ops.py) - shared compact helper for explicit stage, commit, push, publish, and update-latest workflows
 - [`../scripts/token_efficiency_workflows.json`](../scripts/token_efficiency_workflows.json) - local workflow baselines and review cadence for token-efficiency audits
-- [`../codex_agents/scripts/token_efficiency_audit.py`](../codex_agents/scripts/token_efficiency_audit.py) - shared helper ROI audit script used with the local workflow config
+- [`../agent_tools/scripts/token_efficiency_audit.py`](../agent_tools/scripts/token_efficiency_audit.py) - shared helper ROI audit script used with the local workflow config
 - [`../docs/`](../docs) - project docs
 - [`features/multi_level_spaces.md`](features/multi_level_spaces.md) - implementation-facing guide for stacked rooms, parent-owned level mapping, portals, stairs, and current design gaps
 - [`features/core_melody_loop.md`](features/core_melody_loop.md) - implementation-facing summary of the current melody-driven gameplay loop, gap list, MVP build order, reusable manual playtest route, and manual ending smoke pass
@@ -117,14 +117,14 @@ Use these when you need a focused validation target instead of the full project 
 - [`features/terrain_water_rendering.md`](features/terrain_water_rendering.md) - terrain water rendering and validation notes
 - [`features/`](features) - feature specs
 - [`features/template.md`](features/template.md) - local feature-spec template
-- [`../codex_agents/`](../codex_agents) - shared generic agent runbooks and support docs
-- [`../codex_agents/README.md`](../codex_agents/README.md) / [`../codex_agents/AGENTS.md`](../codex_agents/AGENTS.md) - submodule doc entry points when a task depends on shared runbooks or agent behavior
+- [`../agent_tools/`](../agent_tools) - shared generic agent runbooks and support docs
+- [`../agent_tools/README.md`](../agent_tools/README.md) / [`../agent_tools/AGENTS.md`](../agent_tools/AGENTS.md) - submodule doc entry points when a task depends on shared runbooks or agent behavior
 
 ## Submodules
 
 - [`../godot_common/`](../godot_common) - shared Godot support code, tracked as a submodule
 - [`../godot_tilemap/`](../godot_tilemap) - tilemap helpers/tooling, tracked as a submodule
-- [`../codex_agents/`](../codex_agents) - shared agent docs and runbooks, tracked as a submodule
+- [`../agent_tools/`](../agent_tools) - shared agent docs and runbooks, tracked as a submodule
 - [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator) - third-party LPC asset generator, tracked as a submodule
 
 Submodule doc entry points:
@@ -135,8 +135,8 @@ Submodule doc entry points:
 - [`../godot_tilemap/AGENTS.md`](../godot_tilemap/AGENTS.md)
 - [`../godot_tilemap/README.md`](../godot_tilemap/README.md)
 - [`../godot_tilemap/docs/architecture.md`](../godot_tilemap/docs/architecture.md)
-- [`../codex_agents/README.md`](../codex_agents/README.md)
-- [`../codex_agents/AGENTS.md`](../codex_agents/AGENTS.md)
+- [`../agent_tools/README.md`](../agent_tools/README.md)
+- [`../agent_tools/AGENTS.md`](../agent_tools/AGENTS.md)
 - [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md)
 
 See [`submodules.md`](submodules.md) for edit rules, update rules, and a parent-repo index of submodule documentation.
