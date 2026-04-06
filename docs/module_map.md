@@ -66,6 +66,10 @@ Put new landmark scenes and reusable architectural pieces here. Define shared fl
 
 If a feature is self-contained and reusable, extend its module folder instead of scattering logic across unrelated directories.
 
+## Editor Plugins
+
+- [`../addons/mp3_to_ogg/`](../addons/mp3_to_ogg) - editor dock plugin that batch-converts MP3 files to OGG Vorbis via ffmpeg; remembers last-used per-user dock settings, provides ffmpeg/source/target pickers, a quality slider, background conversion with progress feedback, selectable conversion log output, and copy support
+
 ## Shared Utilities And Assets
 
 - [`../godot_common/`](../godot_common) - support utilities reused across scenes
