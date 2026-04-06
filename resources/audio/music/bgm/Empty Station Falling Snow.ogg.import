@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://bdtyhsaxxlwfo"
+path="res://.godot/imported/Empty Station Falling Snow.ogg-a67ef79629dfc0d71c568008f53f35f9.oggvorbisstr"
+
+[deps]
+
+source_file="res://resources/audio/music/bgm/Empty Station Falling Snow.ogg"
+dest_files=["res://.godot/imported/Empty Station Falling Snow.ogg-a67ef79629dfc0d71c568008f53f35f9.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

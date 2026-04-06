@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://h3e4jtm8fetq"
+path="res://.godot/imported/Shine Like This.ogg-470399d533924fa167fb16b1b40f636f.oggvorbisstr"
+
+[deps]
+
+source_file="res://resources/audio/music/bgm/Shine Like This.ogg"
+dest_files=["res://.godot/imported/Shine Like This.ogg-470399d533924fa167fb16b1b40f636f.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

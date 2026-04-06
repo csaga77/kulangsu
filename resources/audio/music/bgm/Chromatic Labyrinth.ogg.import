@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://d2uapqry2h1q5"
+path="res://.godot/imported/Chromatic Labyrinth.ogg-ac2b0eb3f0897196ab1f55a1012b1783.oggvorbisstr"
+
+[deps]
+
+source_file="res://resources/audio/music/bgm/Chromatic Labyrinth.ogg"
+dest_files=["res://.godot/imported/Chromatic Labyrinth.ogg-ac2b0eb3f0897196ab1f55a1012b1783.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

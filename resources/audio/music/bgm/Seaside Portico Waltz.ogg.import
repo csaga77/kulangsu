@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://biyoprfobse2o"
+path="res://.godot/imported/Seaside Portico Waltz.ogg-9eeee4a6afa7cab93cadc8764d91fc80.oggvorbisstr"
+
+[deps]
+
+source_file="res://resources/audio/music/bgm/Seaside Portico Waltz.ogg"
+dest_files=["res://.godot/imported/Seaside Portico Waltz.ogg-9eeee4a6afa7cab93cadc8764d91fc80.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

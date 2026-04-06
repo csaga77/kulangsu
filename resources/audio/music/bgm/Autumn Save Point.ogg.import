@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://ben3ttu0opvl0"
+path="res://.godot/imported/Autumn Save Point.ogg-075ed421f00db40d1a90ce58d96e30df.oggvorbisstr"
+
+[deps]
+
+source_file="res://resources/audio/music/bgm/Autumn Save Point.ogg"
+dest_files=["res://.godot/imported/Autumn Save Point.ogg-075ed421f00db40d1a90ce58d96e30df.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

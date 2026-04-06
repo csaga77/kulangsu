@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://bony5rq3n2hr5"
+path="res://.godot/imported/Abyssal Echoes.ogg-50ccd649ff8d60c4a489fc86bb38044d.oggvorbisstr"
+
+[deps]
+
+source_file="res://resources/audio/music/bgm/Abyssal Echoes.ogg"
+dest_files=["res://.godot/imported/Abyssal Echoes.ogg-50ccd649ff8d60c4a489fc86bb38044d.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

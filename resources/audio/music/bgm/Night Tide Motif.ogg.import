@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://d32nxhef3rpfu"
+path="res://.godot/imported/Night Tide Motif.ogg-ccb72c7d95dd13634b7fbb617aa7ae31.oggvorbisstr"
+
+[deps]
+
+source_file="res://resources/audio/music/bgm/Night Tide Motif.ogg"
+dest_files=["res://.godot/imported/Night Tide Motif.ogg-ccb72c7d95dd13634b7fbb617aa7ae31.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

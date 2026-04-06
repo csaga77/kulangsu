@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://drtfmp5fsrgnx"
+path="res://.godot/imported/Summer of Piano Island (Chapter 1).ogg-bad62acbdfe77b07bdbb0b2012c13280.oggvorbisstr"
+
+[deps]
+
+source_file="res://resources/audio/music/bgm/Summer of Piano Island (Chapter 1).ogg"
+dest_files=["res://.godot/imported/Summer of Piano Island (Chapter 1).ogg-bad62acbdfe77b07bdbb0b2012c13280.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://cshhgc3n1dcdr"
+path="res://.godot/imported/Shelter From The Rain.ogg-8b7598eb75b567770c98a8d45e3751cf.oggvorbisstr"
+
+[deps]
+
+source_file="res://resources/audio/music/bgm/Shelter From The Rain.ogg"
+dest_files=["res://.godot/imported/Shelter From The Rain.ogg-8b7598eb75b567770c98a8d45e3751cf.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4
