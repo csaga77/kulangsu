@@ -6,6 +6,19 @@ Read `core_melody_loop.md` first, then this file.
 
 The BGM system maintains a weighted pool of music tracks. Five context factors — location, time of day, progress, season, and weather — shape the probability of which track plays next. No track is deterministically mapped to a single context. The island has moods, not a soundtrack.
 
+## V1 Scope
+
+Build the real catalog/controller architecture first. Do not ship a separate one-off placeholder loop system that will later be replaced.
+
+V1 should:
+
+- add a `bgm_catalog.gd` plus one controller that owns the active `AudioStreamPlayer`
+- use only the context the game already has: `location` and melody `progress`
+- treat missing systems as fixed defaults until they exist: `time = afternoon`, `season = summer`, `weather = clear`
+- start with a small seed pool: 4 Island Commons, 2 Location-Leaning tracks, and 1 Exclusive track
+- make the first Exclusive track depend on live factors such as `performed`/`resonant`, not on deferred systems such as rain or time of day
+- ship without variants unless one is needed to prove the pipeline
+
 ## File Storage
 
 All BGM pool tracks live under `resources/audio/music/bgm/`. Landmark motifs and other non-pool audio live in sibling folders.
@@ -19,9 +32,7 @@ resources/audio/music/
 ├── motifs/                       — landmark fragment motifs (one-shot)
 │   ├── motif_church_bells.ogg
 │   └── ...
-├── summer_of_piano_island.mp3    — existing standalone track
-├── summer_of_qin_dao.mp3         — used by piano game prototype
-└── summer_of_qin_dao.beats.json
+└── ...
 ```
 
 Format: OGG Vorbis preferred (native loop support in Godot 4). 44100 Hz, normalized to ~-14 LUFS.
@@ -43,6 +54,8 @@ Five zones corresponding to the canonical landmarks, plus open overworld:
 
 Four periods. Exact hour boundaries TBD.
 
+V1 default: `afternoon` for all selection passes until a time-of-day system exists.
+
 - `morning` — bright, still, beginning
 - `afternoon` — warm, active, full
 - `evening` — mellow, reflective, settling
@@ -50,11 +63,11 @@ Four periods. Exact hour boundaries TBD.
 
 ### Progress
 
-Derived from `AppState.melody_progress`:
+Derived directly from `AppState.melody_progress.state`:
 
-- `early` — 0 fragments, island feels empty and waiting
-- `searching` — 1–2 fragments, something is building
-- `gathering` — 3–4 fragments, the picture is forming
+- `unknown` — before the melody has been meaningfully heard
+- `heard` — one or more fragments found, the island is starting to speak
+- `reconstructed` — enough fragments are known to practice the melody
 - `performed` — harbor performance complete, the island is whole
 - `resonant` — postgame, the island remembers
 
@@ -67,14 +80,26 @@ Season:
 - `autumn` — mellow, lower tones, golden
 - `winter` — sparse, crystalline, still
 
-Weather (can overlay any season):
+V1 default: `summer` for all selection passes until a season system exists.
+
+Weather (evaluated independently from season):
 
 - `clear` — default, no modification
 - `rain` — muffled quality, intimacy
 - `fog` — distant, soft edges, reduced high end
 - `wind` — subtle movement, restlessness
 
+V1 default: `clear` for all selection passes until a weather system exists.
+
 ## Track Pool Structure
+
+The counts below are the long-term target. V1 should seed the system with 7 tracks total:
+
+- 4 Island Commons
+- 2 Location-Leaning tracks
+- 1 Exclusive track
+
+Expand toward the larger counts only after the controller, selection rules, and in-game feel are stable.
 
 ### Tier 1 — Island Commons (8–10 base tracks)
 
@@ -82,14 +107,14 @@ General-purpose tracks that can play anywhere. They define the island's overall 
 
 Mood spread within this tier:
 
-- 3–4 still / contemplative pieces (weighted toward early progress, night, winter)
-- 3–4 warm / wandering pieces (weighted toward afternoon, summer, mid-progress)
+- 3–4 still / contemplative pieces (weighted toward `unknown`/`heard`, night, winter)
+- 3–4 warm / wandering pieces (weighted toward afternoon, summer, `reconstructed`)
 - 2–3 gently hopeful pieces (weighted toward performed/resonant, morning, spring)
 
 Variant strategy:
 
 - 4–5 of these tracks get seasonal variants (same melody, different instrumentation/color per season)
-- 2–3 get progress variants (same piece with added layer or harmony in late game)
+- 2–3 get progress variants (alternate arrangements with fuller harmony or instrumentation in late game)
 - Estimated files: 25–33
 
 ### Tier 2 — Location-Leaning (6–8 base tracks)
@@ -115,9 +140,9 @@ Hard-locked to specific conditions. Rare. The player notices when these appear.
 
 Candidates:
 
+- `after_the_stage` — any location + performed/resonant progress. Proof the island changed. Best first Exclusive candidate for V1 because it relies only on current live progression.
 - `dawn_harbor` — ferry plaza + morning only. The arrival feeling.
 - `island_rain` — any location + rain. The island's rain voice.
-- `after_the_stage` — any location + performed/resonant progress. Proof the island changed.
 - `resonant_night` — any location + night + resonant state. The rarest piece. Island fully at rest.
 - `restored_landmark` — specific landmark + after that landmark's fragment is found. One per landmark arc (up to 4: church, Bi Shan, Long Shan, Bagua). Only heard on revisit.
 
@@ -126,7 +151,7 @@ Variant strategy:
 - None. These are singular. Their rarity is the point.
 - Estimated files: 4–6 condition-gated tracks + up to 4 restored-landmark tracks = 8–10 total
 
-### Pool Summary
+### Long-Term Pool Summary
 
 | Tier | Base tracks | With variants | Role |
 |---|---|---|---|
@@ -160,10 +185,20 @@ If the player changes zones during the commitment window, the system notes the n
 When selecting the next track:
 
 1. Score every track in the pool against the current context (location, time, progress, season, weather). Each track carries per-factor affinity weights. The score is the product of all five weights.
+   In V1, resolve deferred systems to fixed defaults: `time = afternoon`, `season = summer`, `weather = clear`.
 2. Zero out any track in the recent history buffer.
 3. Zero out any Tier 3 track whose exclusive condition is not met.
 4. Normalize remaining scores to probabilities.
 5. Weighted random selection.
+
+### Fallback Order
+
+If all candidate scores collapse to zero:
+
+1. Ignore the recent-history exclusion once and rescore.
+2. If still empty, fall back to Tier 1 commons only.
+3. If still empty, pick any valid base track that matches the current location well enough to avoid silence caused by tagging mistakes.
+4. If still empty, stay silent and log a warning.
 
 ### Recent History Buffer
 
@@ -196,11 +231,11 @@ When a track is selected and it has variants:
 
 - Seasonal variant: pick the variant matching the current season. If no variant exists for the current season, use the base version.
 - Weather variant: if the current weather has a variant for this track, use it. Weather variant overrides seasonal variant (rain version of the summer version = just the rain version).
-- Progress variant: if the player's progress tier has a variant for this track, use it. Progress variant is the highest priority — it layers on top of season/weather.
+- Progress variant: if the player's progress tier has a variant for this track, use it. Progress variant is the highest priority and replaces any lower-priority choice.
 
 Priority: progress variant > weather variant > seasonal variant > base track.
 
-Only one version of a track plays at a time. Variants are not layered.
+Variants are single-file substitutions. Only one version of a track plays at a time. Variants are not layered.
 
 ## Audio Bus Layout
 
@@ -222,16 +257,16 @@ Location-based bus effects can color any track that plays in that zone without n
 
 - `AppState.melody_progress` — progress tier
 - `AppState.current_location` or zone detection signals — location
-- Game clock or time-of-day system (TBD) — time
-- Season/weather system (TBD) — season, weather
+- Game clock or time-of-day system (later) — time
+- Season/weather system (later) — season, weather
 
 ### Signals To Listen For
 
 - `fragments_changed` — update progress tier for next selection
 - `melody_progress_changed` — tier transition
 - Location zone enter/exit signals from `LandmarkTrigger` or area nodes
-- Weather change signal (TBD)
-- Time-of-day period change signal (TBD)
+- Weather change signal (later)
+- Time-of-day period change signal (later)
 
 ### Does Not Own
 
@@ -242,8 +277,8 @@ Location-based bus effects can color any track that plays in that zone without n
 
 ## Open Questions
 
-1. Does the game have or plan a time-of-day system? If not, time factor is deferred.
-2. Does the game have or plan a season/weather system? If not, season/weather factor is deferred.
+1. When time-of-day exists, should period changes wait for the current track to end or trigger reselection after the commitment window?
+2. When weather exists, should weather-exclusive Tier 3 tracks always bypass the silence gap on first trigger?
 3. Should Free Walk mode use the same BGM pool with different weights, or a separate pool?
-4. What is the target total audio file size budget? 50 OGG files at ~1 MB each = ~50 MB.
+4. What is the target total audio file size budget once the pool grows beyond the V1 seed set?
 5. Should the BGM system persist its recent history across save/load, or reset on Continue?

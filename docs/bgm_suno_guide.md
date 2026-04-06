@@ -4,13 +4,19 @@ Reference this while generating tracks for the BGM pool. Read `features/bgm_syst
 
 ## Goal
 
-Generate 24–28 discrete music tracks across three tiers (Island Commons, Location-Leaning, Exclusive Moments), plus seasonal/weather variants for a subset. Each track is a standalone piece selected by weighted probability — they do not layer or play simultaneously.
+For V1, generate 7 discrete music tracks across three tiers:
+
+- 4 Island Commons
+- 2 Location-Leaning tracks
+- 1 Exclusive track
+
+Do not start by generating the full long-term pool. Expand only after the controller, catalog, and in-game selection feel stable. Each track is a standalone piece selected by weighted probability — they do not layer or play simultaneously.
 
 ## Ground Rules
 
 1. **Lock a key family.** All tracks should be in compatible keys: C major, A minor, F major, or G major. Mixing freely within this family keeps transitions smooth when one track follows another.
 
-2. **Lock a BPM range.** Stay within 65–80 BPM across the pool. Tracks at the extremes (65 vs. 80) will feel noticeably different in energy, so use the range intentionally — slower for night/winter/early-progress, faster for afternoon/summer/gathering.
+2. **Lock a BPM range.** Stay within 65–80 BPM across the pool. Tracks at the extremes (65 vs. 80) will feel noticeably different in energy, so use the range intentionally — slower for more contemplative `unknown`/`heard` pieces, faster for warmer `reconstructed`/`performed` pieces.
 
 3. **Use Instrumental mode.** Toggle "Instrumental" on so Suno doesn't generate vocals.
 
@@ -19,8 +25,9 @@ Generate 24–28 discrete music tracks across three tiers (Island Commons, Locat
 5. **Generate in batches by tier.** Do all Island Commons first so they form a cohesive family. Then Location-Leaning. Then Exclusive Moments. This keeps the pool's identity consistent.
 
 6. **Generate 3–4 candidates per slot.** Suno is unpredictable. Keep the one that fits best with the rest of the pool. Discard generously.
+7. **Skip variants for the first pass.** Do not generate seasonal/weather variants until the base pool is working in-game.
 
-## Tier 1 — Island Commons (8–10 tracks)
+## Tier 1 — Island Commons (4 tracks for V1)
 
 These define the island's baseline sound. They should all feel like they belong to the same place and could follow each other without jarring transitions.
 
@@ -28,7 +35,7 @@ Generate in three mood groups:
 
 ### Still / Contemplative (3–4 tracks)
 
-For early progress, night, winter. The island at its emptiest and quietest.
+For `unknown`/`heard`, night, winter. The island at its emptiest and quietest.
 
 **Style of Music:**
 ```
@@ -49,7 +56,7 @@ C. A quiet piano piece that sounds like remembering something. Unhurried,
 
 ### Warm / Wandering (3–4 tracks)
 
-For mid-progress, afternoon, summer/autumn. The island coming alive.
+For `reconstructed`, afternoon, summer/autumn. The island coming alive.
 
 **Style of Music:**
 ```
@@ -70,7 +77,7 @@ C. A calm piano melody with gentle forward motion. Not arriving anywhere
 
 ### Gently Hopeful (2–3 tracks)
 
-For performed/resonant progress, morning, spring. The island after restoration.
+For `performed`/`resonant`, morning, spring. The island after restoration.
 
 **Style of Music:**
 ```
@@ -89,9 +96,14 @@ C. A simple, clear piano phrase that feels like completion. Not an ending —
    more like the island settling into a version of itself it always wanted.
 ```
 
-## Tier 2 — Location-Leaning (6–8 tracks)
+## Tier 2 — Location-Leaning (2 tracks for V1, expand later)
 
 Each track should evoke the spatial character of one or two landmarks. Use more specific textural descriptions.
+
+For V1, pick the two clearest contrasts for the current game feel. Good first choices are:
+
+- one open/social track (`Ferry Plaza` or `Bagua Tower`)
+- one enclosed/interior track (`Trinity Church` or `Tunnels`)
 
 ### Ferry Plaza (1–2 tracks)
 
@@ -150,9 +162,11 @@ Ascending phrases, bright but not loud. The feeling of seeing the whole
 island from above. Clear, expansive, synthesizing.
 ```
 
-## Tier 3 — Exclusive Moments (4–6 condition-gated + up to 4 landmark-specific)
+## Tier 3 — Exclusive Moments (1 track for V1, expand later)
 
 These are special. Each plays only under specific conditions and should feel noticeably distinct from the commons and location tracks.
+
+For V1, choose an Exclusive track that depends only on live systems that already exist. The best first candidate is `After the Stage` because it keys off `performed`/`resonant`. Defer `Dawn Harbor`, `Island Rain`, and `Resonant Night` until time/weather systems exist.
 
 ### Dawn Harbor
 
@@ -229,6 +243,8 @@ The player may only hear this once.
 Generate one per landmark, using the Tier 2 location prompt as a starting point but with a warmer, more resolved character — the same space, but it sounds different now that the fragment is home.
 
 ## Generating Variants
+
+Defer this entire section until after the V1 seed pool is stable in-game.
 
 For 4–5 Island Commons tracks, generate seasonal variants:
 

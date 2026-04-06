@@ -65,10 +65,18 @@ The external GDD's `Sunlight Rock` and `Zheng Chenggong Statue` are not part of 
 - Melody system:
   - shared melody runtime state exists
   - melody-specific authored metadata exists in `melody_catalog.gd`
+  - the current authored melody is `festival_melody`, with four landmark fragments and the non-fragment ferry plaza source `ferry_plaza` (`Harbor Refrain`)
+  - `AppState` currently owns `{ state, fragments_found, fragments_total, known_sources, next_lead, performed }` per melody and emits `melody_progress_changed`, `melody_hint_shown`, `melody_prompt_requested`, and `fragments_changed`
   - journal melody view now shows landmark/source-specific detail
 - NPC system:
   - strong current fit
   - residents are already the main source of local clues, trust, and objective nudges
+  - current `melody_hint` text is narrative-facing color, not a deeper mechanical link back into melody ids yet
+- Audio system:
+  - there is still no BGM controller, ambient music layer, or landmark motif playback in the main game flow
+  - no `AudioStreamPlayer` nodes currently own overworld music in `main.tscn` or `scenes/game_main.tscn`
+  - standalone music references still exist in scene config and design docs, but none are wired into gameplay yet
+  - `game/piano_game/` remains the only player-facing music interaction path, and it is still a standalone prototype
 - Performance system:
   - shell and story framing exist
   - a reusable recognition prompt now exists for journal practice, the Trinity choir chime, the Bi Shan mural chamber, the Long Shan exit route, and the harbor-stage performance point
@@ -98,6 +106,7 @@ These are the biggest differences between the current project and the target "mu
 5. ~~`Continue` is prototype-seeded state, not real story persistence.~~ **Resolved.** Story mode now writes and loads a real versioned autosave, the title footer exposes latest save metadata, and `Continue` resumes from a safe landmark or tunnel-entry anchor instead of a fragile in-puzzle position.
 6. The external GDD proposes a landmark list that differs from the repo's current authored route.
 7. The external GDD suggests JSON data files, but the current project is still primarily catalog-driven through GDScript.
+8. The main story loop is still largely silent. There is no BGM controller, no landmark motif layer, and no integrated piano/performance audio path in the overworld flow yet.
 
 ## MVP Implementation Order
 

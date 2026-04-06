@@ -114,6 +114,10 @@ Use these when you need a focused validation target instead of the full project 
 - [`../docs/`](../docs) - project docs
 - [`features/multi_level_spaces.md`](features/multi_level_spaces.md) - implementation-facing guide for stacked rooms, parent-owned level mapping, portals, stairs, and current design gaps
 - [`features/core_melody_loop.md`](features/core_melody_loop.md) - implementation-facing summary of the current melody-driven gameplay loop, gap list, MVP build order, reusable manual playtest route, and manual ending smoke pass
+- [`features/bgm_system.md`](features/bgm_system.md) - BGM pool design, V1 controller scope, selection rules, fallback order, and variant policy
+- [`features/bgm_tagging_guide.md`](features/bgm_tagging_guide.md) - track-weight authoring rules for the future `bgm_catalog.gd`
+- [`bgm_suno_guide.md`](bgm_suno_guide.md) - Suno-focused content-generation guide for the 7-track BGM seed pool and later expansion
+- [`piano_game_design.md`](piano_game_design.md) - current piano prototype status plus integration rules for short story-facing performance beats
 - [`features/piano_ferry.md`](features/piano_ferry.md) - implementation-facing summary of the ferry onboarding arc and journal unlock handoff
 - [`features/npc_system.md`](features/npc_system.md) - implementation-facing summary of the resident/NPC system
 - [`features/terrain_system.md`](features/terrain_system.md) - terrain generation ownership, mask-rule workflow, and extension guide

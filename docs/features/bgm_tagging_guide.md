@@ -28,9 +28,9 @@ Each track is one entry in `game/bgm_catalog.gd`, following the project's existi
         "night": 0.1,
     },
     "progress": {
-        "early": 0.7,
-        "searching": 0.8,
-        "gathering": 0.5,
+        "unknown": 0.7,
+        "heard": 0.8,
+        "reconstructed": 0.5,
         "performed": 0.3,
         "resonant": 0.3,
     },
@@ -50,9 +50,12 @@ Each track is one entry in `game/bgm_catalog.gd`, following the project's existi
 },
 ```
 
+V1 note: the live game currently resolves `time = afternoon`, `season = summer`, and `weather = clear` for every BGM selection. Seed tracks should keep those three weights comfortably non-zero or they will disappear from the pool.
+
 ### Weight Rules
 
 - Every factor group (location, time, progress, season, weather) must have at least one value > 0.0, otherwise the track can never be selected (the product of all weights will be zero).
+- For V1 seed tracks, make sure `afternoon`, `summer`, and `clear` are all > 0.0 because those are the fixed defaults until the missing systems exist.
 - Weights are relative within their group. A track with `morning: 0.9, night: 0.1` is 9x more likely in the morning than at night, but it can still play at night.
 - For Tier 3 exclusive tracks, set all non-matching values to `0.0` to enforce hard exclusivity. For example, the rain-only track would have `clear: 0.0, rain: 1.0, fog: 0.0, wind: 0.0`.
 - For Tier 1 commons, keep all weights above `0.1` so they remain reachable in any context. They should feel universal.
@@ -72,6 +75,12 @@ score = location[current_zone]
 
 All five are multiplied together. A track that fits well on three axes but poorly on one will score low — every axis matters.
 
+In V1, use:
+
+- `current_period = afternoon`
+- `current_season = summer`
+- `current_weather = clear`
+
 ## Tagging Workflow
 
 When you have a new track, listen to it and ask these five questions:
@@ -90,7 +99,7 @@ If the track feels timeless (works at any hour), keep all time weights in the 0.
 
 ### 3. How far into the story does this belong?
 
-Sparse, tentative, searching pieces belong to early/searching progress. Fuller, warmer pieces belong to gathering/performed. Pieces with a sense of completion or memory belong to resonant.
+Sparse, tentative, searching pieces belong to `unknown`/`heard`. Fuller, warmer pieces belong to `reconstructed`/`performed`. Pieces with a sense of completion or memory belong to `resonant`.
 
 If a track works across the whole game, flatten the progress weights (0.4–0.7 across the board) but give a slight bump to the tier it fits best.
 
@@ -110,12 +119,13 @@ If a track has seasonal or weather variants, list them in the `variants` diction
 "variants": {
     "autumn": "res://resources/audio/music/bgm/bgm_harbor_morning_autumn.ogg",
     "rain": "res://resources/audio/music/bgm/bgm_harbor_morning_rain.ogg",
+    "performed": "res://resources/audio/music/bgm/bgm_harbor_morning_performed.ogg",
 },
 ```
 
 The system checks for a variant matching the current context before playing the base file. Priority order: progress variant > weather variant > seasonal variant > base.
 
-A track does not need variants. Most won't have them. Variants are for tracks where you've intentionally produced an alternate version.
+A selected variant always replaces the base file. Variants do not layer on top of one another. A track does not need variants. Most won't have them. Variants are for tracks where you've intentionally produced an alternate version.
 
 ## Tier-Specific Tagging Patterns
 
@@ -129,7 +139,7 @@ season: one or two at 0.7–0.8, others at 0.3–0.5
 weather: clear at 0.6–0.8, others at 0.2–0.4
 ```
 
-These tracks should be reachable from almost any context. Avoid putting any weight below 0.1.
+These tracks should be reachable from almost any context. Avoid putting any weight below 0.1 on active V1 factors, and keep `afternoon`, `summer`, and `clear` comfortably non-zero.
 
 ### Tier 2 — Location-Leaning
 
@@ -148,7 +158,7 @@ The location weights do most of the work here. Keep the other axes relatively op
 ```
 location: either one location at 1.0 and rest at 0.0, or all at 0.5+ if the exclusivity comes from another axis
 time: either one period at 1.0 and rest at 0.0, or open
-progress: often the exclusive axis — e.g., resonant at 1.0, rest at 0.0
+progress: often the exclusive axis — e.g., performed or resonant at 1.0, rest at 0.0
 season: usually open unless the track is season-exclusive
 weather: rain at 1.0 and rest at 0.0 for the rain track, etc.
 ```
@@ -183,3 +193,13 @@ After trimming the track to its final loop length, record the exact duration in 
 5. Compare weights to 2–3 existing tracks in the catalog — does this new track occupy a different niche or overlap too much?
 6. If it overlaps heavily with an existing track, consider whether it should be a variant of that track instead of a separate entry.
 7. Add it to `bgm_catalog.gd`, test in-game by forcing selection, then adjust weights based on how it feels in context.
+
+## V1 Seed Pool Recommendation
+
+For the first playable pass, tag only:
+
+- 4 Island Commons
+- 2 Location-Leaning tracks
+- 1 Exclusive track keyed off current live progression (prefer `performed`/`resonant`)
+
+Delay time-of-day, weather-exclusive, and seasonal-heavy tracks until the controller and seed pool feel stable.

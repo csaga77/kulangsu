@@ -23,6 +23,8 @@ It is not yet wired into the main app shell in [`../main.tscn`](../main.tscn), t
 
 Today it behaves more like a self-contained prototype or authoring sandbox than a finished player-facing game mode.
 
+The current scene is configured to point at `res://resources/audio/summer_of_qin_dao.mp3` and auto-derive the companion `*.beats.json` chart beside that source file when those assets are present.
+
 ## Design Role Inside Kulangsu
 
 Piano interaction should reinforce the island fantasy:
@@ -46,6 +48,11 @@ The wrong use cases are:
 - dense note spam that asks for expert rhythm-game skill
 - UI-heavy mode swaps that break the calm exploration tone
 
+Later candidates, once short phrase integration is working:
+
+- an alternative performance backend for the festival finale
+- an optional free-play station at Piano Ferry
+
 ## Current Runtime Flow
 
 ### 1. Song and chart load
@@ -59,8 +66,8 @@ If either asset fails to load, the prototype should clear the active song and ch
 
 The current example scene points at:
 
-- [`../resources/audio/Kulangsu Breeze.mp3`](../resources/audio/Kulangsu Breeze.mp3)
-- [`../resources/audio/Kulangsu Breeze.beats.json`](../resources/audio/Kulangsu Breeze.beats.json)
+- `res://resources/audio/summer_of_qin_dao.mp3`
+- the auto-derived chart at `res://resources/audio/summer_of_qin_dao.beats.json` when `json_path` is left empty
 
 ### 2. Chart shaping
 
