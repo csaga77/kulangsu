@@ -10,6 +10,7 @@ const LANDMARK_SYNC_DISTANCE := 1600.0
 const NPC_SCENE: PackedScene = preload("res://characters/resident_npc.tscn")
 const LEVEL_REGISTRY := preload("res://common/level_registry.gd")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
+const BGM_MANAGER_SCRIPT := preload("res://game/bgm_manager.gd")
 const TUNNEL_ENTRY_FRONT_APPROACH_DISTANCE := 96.0
 const TUNNEL_PORTAL_SUFFIX := " Portal"
 const DIRECTIONAL_PORTAL_MIN_OFFSET_DISTANCE := 16.0
@@ -69,6 +70,7 @@ var m_landmark_nodes: Dictionary = {}
 var m_spawn_anchor_nodes: Dictionary = {}
 var m_tunnel_nodes: Array[Tunnel] = []
 var m_resident_root: Node2D = null
+var m_bgm_manager: Node = null
 
 
 func _app_state():
@@ -92,11 +94,14 @@ func _ready() -> void:
 	_cache_tunnels()
 	_spawn_catalog_residents()
 	_connect_ui_signals()
+	if !Engine.is_editor_hint():
+		_setup_bgm()
 	sync_ui_state()
 
 
 func _exit_tree() -> void:
 	m_is_ready = false
+	m_bgm_manager = null
 
 
 func _process(_delta: float) -> void:
@@ -369,6 +374,15 @@ func _connect_ui_signals() -> void:
 		m_player_controller.closest_object_changed.connect(_on_closest_object_changed)
 	if !m_player_controller.inspect_requested.is_connected(_on_inspect_requested):
 		m_player_controller.inspect_requested.connect(_on_inspect_requested)
+
+
+func _setup_bgm() -> void:
+	if is_instance_valid(m_bgm_manager):
+		return
+
+	m_bgm_manager = BGM_MANAGER_SCRIPT.new()
+	m_bgm_manager.name = "BGMManager"
+	add_child(m_bgm_manager)
 
 
 func _sync_location_from_player() -> void:

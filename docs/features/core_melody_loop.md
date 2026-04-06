@@ -73,10 +73,10 @@ The external GDD's `Sunlight Rock` and `Zheng Chenggong Statue` are not part of 
   - residents are already the main source of local clues, trust, and objective nudges
   - current `melody_hint` text is narrative-facing color, not a deeper mechanical link back into melody ids yet
 - Audio system:
-  - there is still no BGM controller, ambient music layer, or landmark motif playback in the main game flow
-  - no `AudioStreamPlayer` nodes currently own overworld music in `main.tscn` or `scenes/game_main.tscn`
-  - standalone music references still exist in scene config and design docs, but none are wired into gameplay yet
-  - `game/piano_game/` remains the only player-facing music interaction path, and it is still a standalone prototype
+  - a scene-owned BGM controller now runs from `scenes/game_main.gd` through `game/bgm_manager.gd`, using a 7-track seed pool from `game/bgm_catalog.gd`
+  - the current V1 BGM pass keys off location plus melody progress, with fixed defaults for time, season, and weather
+  - landmark motifs and integrated piano/performance audio are still missing from the overworld flow
+  - `game/piano_game/` remains the only player-facing note-lane interaction path, and it is still a standalone prototype
 - Performance system:
   - shell and story framing exist
   - a reusable recognition prompt now exists for journal practice, the Trinity choir chime, the Bi Shan mural chamber, the Long Shan exit route, and the harbor-stage performance point
@@ -106,7 +106,7 @@ These are the biggest differences between the current project and the target "mu
 5. ~~`Continue` is prototype-seeded state, not real story persistence.~~ **Resolved.** Story mode now writes and loads a real versioned autosave, the title footer exposes latest save metadata, and `Continue` resumes from a safe landmark or tunnel-entry anchor instead of a fragile in-puzzle position.
 6. The external GDD proposes a landmark list that differs from the repo's current authored route.
 7. The external GDD suggests JSON data files, but the current project is still primarily catalog-driven through GDScript.
-8. The main story loop is still largely silent. There is no BGM controller, no landmark motif layer, and no integrated piano/performance audio path in the overworld flow yet.
+8. The main story loop now has seed-pool BGM, but it still lacks landmark motif playback and an integrated piano/performance audio path in the overworld flow.
 
 ## MVP Implementation Order
 

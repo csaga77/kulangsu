@@ -56,6 +56,7 @@ Responsibilities:
 - mask-driven terrain generation and generated helper-layer lifecycle
 - terrain mask legend, per-color semantics, and street-connect defaults
 - player spawn and camera context
+- scene-owned BGM playback driven by shared location and melody-progress context
 - shared y-sorted actor layer for the player and spawned residents
 - landmark lookup and location syncing
 - data-driven resident spawning, inspect/talk prompts, and overworld resident presentation
@@ -154,11 +155,14 @@ Primary folders:
 
 - [`../game/grid_board_game/`](../game/grid_board_game)
 - [`../game/marble_game/`](../game/marble_game)
+- [`../game/bgm_catalog.gd`](../game/bgm_catalog.gd)
+- [`../game/bgm_manager.gd`](../game/bgm_manager.gd)
 - [`../game/piano_game/`](../game/piano_game)
 
 Responsibilities:
 
 - self-contained gameplay modules and prototypes
+- seed-pool BGM catalog authoring plus scene-owned weighted playback orchestration
 - feature-specific scenes, scripts, rules, AI helpers, and local test scenes
 
 Boundary:

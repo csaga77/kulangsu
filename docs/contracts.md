@@ -185,6 +185,27 @@ Governance:
 
 ## Reusable Module Contracts
 
+### Background Music
+
+Owned by:
+
+- [`../game/bgm_catalog.gd`](../game/bgm_catalog.gd)
+- [`../game/bgm_manager.gd`](../game/bgm_manager.gd)
+- [`../scenes/game_main.gd`](../scenes/game_main.gd)
+
+Current contract:
+
+- `game_main.gd` owns exactly one scene-local `BgmManager` while gameplay is loaded
+- `BgmManager` owns the active `AudioStreamPlayer`, recent-history buffer, commitment window, silence gap timer, and weighted track selection
+- `BgmManager` reads shared state from `AppState` through the existing `location_changed` and `melody_progress_changed` signals plus current location/progress snapshots; it does not write shared gameplay state back
+- the current V1 context is `location + melody progress` with fixed defaults `time = afternoon`, `season = summer`, and `weather = clear`
+- the current seed pool is authored in `BgmCatalog` rather than inferred from directory scanning
+
+Governance:
+
+- if the catalog format changes materially, update this file and the BGM feature docs
+- if BGM ownership moves out of `game_main.gd` or begins depending on new `AppState` APIs, update this file, [`architecture.md`](architecture.md), and [`module_map.md`](module_map.md)
+
 ### Grid Board Game
 
 Owned by:
