@@ -14,6 +14,9 @@ const NATURAL_GAP_MIN_SECONDS := 5.0
 const NATURAL_GAP_MAX_SECONDS := 12.0
 const LOCATION_GAP_MIN_SECONDS := 1.5
 const LOCATION_GAP_MAX_SECONDS := 3.0
+const NATURAL_FADE_MIN_SECONDS := 3.0
+const NATURAL_FADE_MAX_SECONDS := 5.0
+const MIN_SCHEDULED_FADE_DELAY_SECONDS := 0.05
 
 signal track_selected(track_id: String, file_path: String, context: Dictionary)
 signal track_started(track_id: String)
@@ -39,7 +42,10 @@ var m_commitment_expires_at := 0.0
 var m_is_transitioning := false
 var m_player: AudioStreamPlayer = null
 var m_gap_timer: Timer = null
+var m_track_end_fade_timer: Timer = null
 var m_fade_tween: Tween = null
+var m_scheduled_fade_track_id := ""
+var m_scheduled_fade_duration := 0.0
 
 
 func _ready() -> void:
@@ -105,6 +111,13 @@ func _create_runtime_nodes() -> void:
 	if !m_gap_timer.timeout.is_connected(_on_gap_timer_timeout):
 		m_gap_timer.timeout.connect(_on_gap_timer_timeout)
 
+	m_track_end_fade_timer = Timer.new()
+	m_track_end_fade_timer.name = "BGMTrackEndFadeTimer"
+	m_track_end_fade_timer.one_shot = true
+	add_child(m_track_end_fade_timer)
+	if !m_track_end_fade_timer.timeout.is_connected(_on_track_end_fade_timer_timeout):
+		m_track_end_fade_timer.timeout.connect(_on_track_end_fade_timer_timeout)
+
 
 func _connect_app_state() -> void:
 	if app_state == null:
@@ -119,7 +132,8 @@ func _connect_app_state() -> void:
 
 
 func _validate_catalog() -> void:
-	for track_id in BGM_CATALOG_SCRIPT.ordered_ids():
+	for track_id_value in BGM_CATALOG_SCRIPT.ordered_ids():
+		var track_id := String(track_id_value)
 		var track: Dictionary = m_catalog.get(track_id, {})
 		if track.is_empty():
 			push_warning("BGM: missing catalog entry for %s." % track_id)
@@ -129,9 +143,8 @@ func _validate_catalog() -> void:
 		if file_path.is_empty():
 			push_warning("BGM: %s has no audio file." % track_id)
 			continue
-
-		if _get_stream_for_track(track) == null:
-			push_warning("BGM: %s could not load %s." % [track_id, file_path])
+		if !ResourceLoader.exists(file_path):
+			push_warning("BGM: %s is missing %s." % [track_id, file_path])
 
 
 func _sync_context_from_app_state() -> void:
@@ -214,14 +227,16 @@ func _fade_out_current_track(reason: String) -> void:
 	if !is_instance_valid(m_player):
 		return
 
+	var fade_duration := _resolve_scheduled_fade_duration(reason)
 	m_is_transitioning = true
+	_cancel_scheduled_track_end_fade()
 	_kill_fade_tween()
 	m_fade_tween = create_tween()
 	m_fade_tween.tween_property(
 		m_player,
 		"volume_db",
 		SILENT_VOLUME_DB,
-		_fade_out_duration_for_reason(reason)
+		fade_duration
 	)
 	m_fade_tween.finished.connect(_on_fade_out_finished.bind(reason), CONNECT_ONE_SHOT)
 
@@ -234,6 +249,7 @@ func _on_fade_out_finished(reason: String) -> void:
 
 
 func _on_track_finished() -> void:
+	_cancel_scheduled_track_end_fade()
 	if m_is_transitioning:
 		return
 	_start_gap("natural_end")
@@ -259,10 +275,22 @@ func _on_gap_timer_timeout() -> void:
 	_select_and_play_next_track(reason)
 
 
+func _on_track_end_fade_timer_timeout() -> void:
+	if m_is_transitioning:
+		return
+	if !is_instance_valid(m_player) or !m_player.playing:
+		return
+	if m_current_track_id.is_empty() or m_current_track_id != m_scheduled_fade_track_id:
+		return
+
+	_fade_out_current_track("natural_end")
+
+
 func _select_and_play_next_track(reason: String) -> void:
 	var track_id := _pick_next_track_id()
 	if track_id.is_empty():
 		m_current_track_id = ""
+		_cancel_scheduled_track_end_fade()
 		push_warning("BGM: no track could be selected for context %s." % _context_debug_string())
 		return
 
@@ -270,9 +298,11 @@ func _select_and_play_next_track(reason: String) -> void:
 	var file_path := String(track.get("file", ""))
 	var stream := _get_stream_for_track(track)
 	if stream == null:
+		m_current_track_id = ""
+		_cancel_scheduled_track_end_fade()
 		push_warning("BGM: selected track %s has no usable stream at %s." % [track_id, file_path])
 		return
-
+		
 	m_current_track_id = track_id
 	m_pending_location = ""
 	m_commitment_expires_at = _now_seconds() + MIN_COMMITMENT_SECONDS
@@ -282,6 +312,7 @@ func _select_and_play_next_track(reason: String) -> void:
 	m_player.stream = stream
 	m_player.volume_db = SILENT_VOLUME_DB
 	m_player.play()
+	_schedule_track_end_fade(track_id, track, stream)
 
 	_kill_fade_tween()
 	m_fade_tween = create_tween()
@@ -311,9 +342,17 @@ func _pick_next_track_id() -> String:
 	if !track_id.is_empty():
 		return track_id
 
-	track_id = _pick_location_fallback_track_id()
+	track_id = _pick_location_fallback_track_id(true)
 	if !track_id.is_empty():
 		push_warning("BGM: using location-only fallback %s for %s." % [track_id, _context_debug_string()])
+		return track_id
+		
+	track_id = _pick_location_fallback_track_id(false)
+	if !track_id.is_empty():
+		push_warning(
+			"BGM: using relaxed location-only fallback %s for %s."
+			% [track_id, _context_debug_string()]
+		)
 		return track_id
 
 	return ""
@@ -323,7 +362,8 @@ func _pick_track_id(exclude_history: bool, tier_filter: String) -> String:
 	var scores := {}
 	var total_score := 0.0
 
-	for track_id in BGM_CATALOG_SCRIPT.ordered_ids():
+	for track_id_value in BGM_CATALOG_SCRIPT.ordered_ids():
+		var track_id := String(track_id_value)
 		var track: Dictionary = m_catalog.get(track_id, {})
 		if track.is_empty():
 			continue
@@ -333,7 +373,7 @@ func _pick_track_id(exclude_history: bool, tier_filter: String) -> String:
 			continue
 		if !tier_filter.is_empty() and String(track.get("tier", "")) != tier_filter:
 			continue
-		if _get_stream_for_track(track) == null:
+		if !_track_file_exists(track):
 			continue
 
 		var score := _score_track(track, m_context)
@@ -347,32 +387,39 @@ func _pick_track_id(exclude_history: bool, tier_filter: String) -> String:
 		return ""
 
 	var roll := m_rng.randf() * total_score
-	for track_id in BGM_CATALOG_SCRIPT.ordered_ids():
+	for track_id_value in BGM_CATALOG_SCRIPT.ordered_ids():
+		var track_id := String(track_id_value)
 		if !scores.has(track_id):
 			continue
 		roll -= float(scores.get(track_id, 0.0))
 		if roll <= 0.0:
 			return track_id
 
-	for track_id in BGM_CATALOG_SCRIPT.ordered_ids():
+	for track_id_value in BGM_CATALOG_SCRIPT.ordered_ids():
+		var track_id := String(track_id_value)
 		if scores.has(track_id):
 			return track_id
 
 	return ""
 
 
-func _pick_location_fallback_track_id() -> String:
+func _pick_location_fallback_track_id(exclude_recent_history: bool = true) -> String:
 	var location_key := String(m_context.get("location", "overworld"))
 	var best_track_id := ""
 	var best_location_weight := -1.0
 
-	for track_id in BGM_CATALOG_SCRIPT.ordered_ids():
+	for track_id_value in BGM_CATALOG_SCRIPT.ordered_ids():
+		var track_id := String(track_id_value)
 		var track: Dictionary = m_catalog.get(track_id, {})
 		if track.is_empty():
 			continue
 		if String(track.get("tier", "")) == "exclusive":
 			continue
-		if _get_stream_for_track(track) == null:
+		if exclude_recent_history and m_recent_history.has(track_id):
+			continue
+		if is_instance_valid(m_player) and m_player.playing and track_id == m_current_track_id:
+			continue
+		if !_track_file_exists(track):
 			continue
 
 		var location_weights: Dictionary = track.get("location", {})
@@ -408,6 +455,11 @@ func _get_stream_for_track(track: Dictionary) -> AudioStream:
 	return _get_stream_for_path(file_path)
 
 
+func _track_file_exists(track: Dictionary) -> bool:
+	var file_path := String(track.get("file", ""))
+	return !file_path.is_empty() and ResourceLoader.exists(file_path)
+
+
 func _get_stream_for_path(file_path: String) -> AudioStream:
 	if m_stream_cache.has(file_path):
 		return m_stream_cache.get(file_path) as AudioStream
@@ -420,6 +472,40 @@ func _get_stream_for_path(file_path: String) -> AudioStream:
 
 	m_stream_cache[file_path] = stream
 	return stream
+
+
+func _schedule_track_end_fade(track_id: String, track: Dictionary, stream: AudioStream) -> void:
+	_cancel_scheduled_track_end_fade()
+	if !is_instance_valid(m_track_end_fade_timer):
+		return
+
+	var fade_out_duration := _fade_out_duration_for_reason("natural_end")
+	var track_duration := _resolve_track_duration_seconds(track, stream)
+	var schedule_delay := maxf(track_duration - fade_out_duration, MIN_SCHEDULED_FADE_DELAY_SECONDS)
+	m_scheduled_fade_track_id = track_id
+	m_scheduled_fade_duration = fade_out_duration
+	m_track_end_fade_timer.start(schedule_delay)
+
+
+func _resolve_track_duration_seconds(track: Dictionary, stream: AudioStream) -> float:
+	if stream != null:
+		var stream_length := stream.get_length()
+		if stream_length > 0.05:
+			return stream_length
+	return maxf(float(track.get("duration", 0.0)), MIN_SCHEDULED_FADE_DELAY_SECONDS)
+
+
+func _cancel_scheduled_track_end_fade() -> void:
+	m_scheduled_fade_track_id = ""
+	m_scheduled_fade_duration = 0.0
+	if is_instance_valid(m_track_end_fade_timer):
+		m_track_end_fade_timer.stop()
+
+
+func _resolve_scheduled_fade_duration(reason: String) -> float:
+	if reason == "natural_end" and m_scheduled_fade_duration > 0.0:
+		return m_scheduled_fade_duration
+	return _fade_out_duration_for_reason(reason)
 
 
 func _append_recent_history(track_id: String) -> void:
@@ -463,6 +549,8 @@ func _fade_in_duration_for_reason(reason: String) -> float:
 
 func _fade_out_duration_for_reason(reason: String) -> float:
 	match reason:
+		"natural_end":
+			return m_rng.randf_range(NATURAL_FADE_MIN_SECONDS, NATURAL_FADE_MAX_SECONDS)
 		"location_change":
 			return m_rng.randf_range(4.0, 6.0)
 		"weather_change":
