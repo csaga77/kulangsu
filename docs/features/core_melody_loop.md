@@ -9,9 +9,10 @@ Open these files first in this order:
 1. [`../design_brief.md`](../design_brief.md)
 2. [`../core_game_workflow.md`](../core_game_workflow.md)
 3. [`../../game/app_state.gd`](../../game/app_state.gd)
-4. [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
-5. [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
-6. [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd)
+4. [`../../game/landmark_progression.gd`](../../game/landmark_progression.gd)
+5. [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
+6. [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
+7. [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd)
 
 Use [`../core_gameplay_plays.md`](../core_gameplay_plays.md) after this file when you need the broader tone and repeatable-play rationale.
 
@@ -66,24 +67,26 @@ The external GDD's `Sunlight Rock` and `Zheng Chenggong Statue` are not part of 
   - shared melody runtime state exists
   - melody-specific authored metadata exists in `melody_catalog.gd`
   - the current authored melody is `festival_melody`, with four landmark fragments and the non-fragment ferry plaza source `ferry_plaza` (`Harbor Refrain`)
-  - `AppState` currently owns `{ state, fragments_found, fragments_total, known_sources, next_lead, performed }` per melody and emits `melody_progress_changed`, `melody_hint_shown`, `melody_prompt_requested`, and `fragments_changed`
+  - `AppState` currently owns `{ state, fragments_found, fragments_total, known_sources, next_lead, performed }` per melody and emits `melody_progress_changed`, `melody_hint_shown`, `melody_prompt_requested`, `landmark_audio_cue_requested`, and `fragments_changed`
+  - `game/landmark_progression.gd` now owns the active landmark trigger, prompt-dispatch, and fragment-award implementation behind the `AppState` bridge API
   - journal melody view now shows landmark/source-specific detail
 - NPC system:
   - strong current fit
   - residents are already the main source of local clues, trust, and objective nudges
   - current `melody_hint` text is narrative-facing color, not a deeper mechanical link back into melody ids yet
 - Audio system:
-  - a scene-owned BGM controller now runs from `scenes/game_main.gd` through `game/bgm_manager.gd`, using a 7-track seed pool from `game/bgm_catalog.gd`
+  - a scene-owned BGM controller now runs from `scenes/game_main.gd` through `game/bgm_manager.gd`, using a 12-track weighted pool from `game/bgm_catalog.gd`
   - the current V1 BGM pass keys off location plus melody progress, with fixed defaults for time, season, and weather
-  - landmark motifs and integrated piano/performance audio are still missing from the overworld flow
-  - `game/piano_game/` remains the only player-facing note-lane interaction path, and it is still a standalone prototype
+  - landmark cues now play as local one-shot motifs in the overworld and briefly duck BGM so "hear before you name it" lands before the journal text does
+  - the recognition prompt now has segment-select, correct-order, and wrong-order audio feedback, and ducks BGM for the full prompt overlay
+  - `game/piano_game/` remains a standalone prototype with a documented future integration path in `piano_game_integration.md`
 - Performance system:
   - shell and story framing exist
   - a reusable recognition prompt now exists for journal practice, the Trinity choir chime, the Bi Shan mural chamber, the Long Shan exit route, and the harbor-stage performance point
   - Bagua Tower still resolves through the simpler synthesis-and-confirm dialogue pattern for now
 - Growth system:
   - current progression is tracked through chapter, objective, trust, fragments, melody state, and costume unlocks
-  - the `heard -> reconstructed -> performed -> resonant` tier model now exists, but later island-side feedback from `resonant` is still light
+  - the `heard -> reconstructed -> performed -> resonant` tier model now includes unique postgame resident dialogue and resonant-only BGM selection
 
 ## Rules
 
@@ -106,7 +109,7 @@ These are the biggest differences between the current project and the target "mu
 5. ~~`Continue` is prototype-seeded state, not real story persistence.~~ **Resolved.** Story mode now writes and loads a real versioned autosave, the title footer exposes latest save metadata, and `Continue` resumes from a safe landmark or tunnel-entry anchor instead of a fragile in-puzzle position.
 6. The external GDD proposes a landmark list that differs from the repo's current authored route.
 7. The external GDD suggests JSON data files, but the current project is still primarily catalog-driven through GDScript.
-8. The main story loop now has seed-pool BGM, but it still lacks landmark motif playback and an integrated piano/performance audio path in the overworld flow.
+8. The main story loop now has landmark motif playback and prompt-audio feedback, but the piano game is still not integrated into the overworld or finale flow.
 
 ## MVP Implementation Order
 
@@ -182,7 +185,7 @@ Recommended project-aligned tier model:
 3. `performed`
 4. `resonant`
 
-Use `resonant` only if the game truly needs a fourth state that means "this melody has changed the island and now feeds back into later content." Do not add it just to satisfy a level count.
+`resonant` is now justified by real postgame feedback: unique resident follow-up beats and resonant-only music selection. Keep using it only when that island-memory layer is actually visible to the player.
 
 ## Recommended Data Structures And File Layout
 

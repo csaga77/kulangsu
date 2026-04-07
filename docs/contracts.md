@@ -38,19 +38,22 @@ Current contract:
 
 - `AppState` is the shared UI/progression-facing bridge between gameplay and UI
 - the running app owns exactly one `AppStateService` node; callers resolve it through `AppRuntime.get_app_state(node)` instead of a Project Settings autoload
+- `AppState` keeps the stable public API, but active player-profile, journal-text, story-save, and landmark/melody progression logic now live in composed helper scripts under `game/`
 - resident definitions and default resident runtime profiles are initialized lazily through `AppState` getters/configuration instead of being fully built at script-load time
-- it exposes signals for mode, chapter, location, objective, hint, save status, fragments, melody progress, melody prompt requests, landmarks, residents, resident profiles, player appearance/costumes, summary updates, and story milestones
+- it exposes signals for mode, chapter, location, objective, hint, save status, fragments, melody progress, melody prompt requests, landmark audio cue requests, landmarks, residents, resident profiles, player appearance/costumes, summary updates, and story milestones
+- `landmark_audio_cue_requested(cue_id, context)` is the bridge from successful landmark interactions into one-shot world audio feedback; it fires for both collected pickups and prompt-opening landmark interactions such as the Trinity choir chime, Bi Shan chamber, Long Shan exit, and harbor stage
 - `story_milestone(milestone_id, context)` fires after compound state changes resolve; current milestone ids are `landmark_resolved`, `fragment_restored`, `festival_ready`, `festival_performed`, and `resident_trust_max`
 - it now owns shared melody runtime state while [`../game/melody_catalog.gd`](../game/melody_catalog.gd) owns authored melody definitions
-- `melody_prompt_requested(request)` is the bridge from gameplay/journal actions into the reusable ordered-confirmation overlay; `AppState` remains the owner of validation gates and completion methods
+- `melody_prompt_requested(request)` is the bridge from gameplay/journal actions into the reusable ordered-confirmation overlay; `AppState` preserves the public validation/completion API while `game/landmark_progression.gd` owns the active implementation
 - prompt completions now flow back through `complete_prompt_request(request)`, which dispatches landmark-specific confirmations such as the Trinity choir chime, the Bi Shan chamber contour, the Long Shan exit route, as well as melody practice/performance
 - `save_metadata_changed(metadata)` is the shell-facing signal for title `Continue` state and latest story autosave summary
-- `AppState` now owns the one-slot story autosave payload, current safe resume anchor, and the `configure_continue()`, `save_story_autosave()`, `clear_story_autosave()`, and `set_story_resume_checkpoint(...)` bridge methods used by the shell and world scene
+- `AppState` now owns the one-slot story autosave contract, current safe resume anchor, and the `configure_continue()`, `save_story_autosave()`, `clear_story_autosave()`, and `set_story_resume_checkpoint(...)` bridge methods used by the shell and world scene; `game/story_save_service.gd` owns the active read/write implementation
 - the app shell and world hint logic may query `AppState.is_journal_unlocked()` and `AppState.build_input_hint(...)` to keep the early tutorial flow and controls text aligned
 - world and UI code rely on resident getters for resident ids, definitions, display names, appearance configs, spawn configs, movement configs, behavior configs, ambient speech, resident journal text, and full resident profiles when optional movement metadata is needed
 - `ResidentCatalog` may merge external `.tres` resident definitions from `res://game/residents/definitions/`; matching ids override built-ins and `include_in_catalog = false` keeps a resource out of the runtime roster
 - `interact_with_resident()` checks a resident's `conditional_beats` (priority-sorted, condition-gated) before falling through to the linear `dialogue_beats` spine
 - UI code can now rely on melody getters, journal helpers, `build_map_journal_text()`, `get_open_shortcuts()`, `can_practice_melody(...)`, `request_melody_practice(...)`, and `complete_prompt_request(...)` for melody-facing and dependable-route player context
+- `ui/screens/journal_overlay.gd` and `ui/screens/player_customization_overlay.gd` are the live consumers of `game/journal_builder.gd`
 - UI screens and world integration code rely on those signals and state getters/setters
 
 Governance:
@@ -85,7 +88,7 @@ Owned by:
 
 Current contract:
 
-- `scenes/game_main.gd` maps landmarks plus resident spawn/movement anchors, spawns residents, reacts to controller events, syncs player tunnel context into `AppState`, and keeps resident outside/tunnel level state aligned with their current tunnel context
+- `scenes/game_main.gd` maps landmarks plus resident spawn/movement anchors, reacts to controller events, syncs player tunnel context into `AppState`, and delegates route resolution, resident spawning, tunnel context, and debug route drawing to focused helper scripts under `scenes/`
 - `scenes/game_main.gd` instantiates `ResidentNPC` actors from `AppState.get_resident_definition(...)` and then applies world-specific spawn, level, and route resolution
 - `scenes/game_main.gd` also owns mapping the live player position onto safe story resume anchors for autosave and continue
 - `scenes/game_main.tscn` keeps the player and resident instances under one shared y-sorted actor layer rooted at `actors`
@@ -95,7 +98,7 @@ Current contract:
 
 Governance:
 
-- keep scene-specific world wiring local to `scenes/game_main.gd` unless it becomes a reusable subsystem
+- keep scene-specific world wiring local to `scenes/game_main.gd` unless it becomes a reusable subsystem; reusable overworld helpers should live under `scenes/`
 - document node-path, actor-layer, or spawn-anchor naming assumptions if new systems depend on them
 
 ## Multi-Level Scene Contract
@@ -170,16 +173,17 @@ Current contract:
 - `AppState.landmark_progress_changed(landmark_id, progress)` fires whenever any landmark's entry changes
 - `AppState.get_landmark_progress(landmark_id)` and `get_landmark_state(landmark_id)` are the read API
 - `AppState.set_landmark_progress(landmark_id, progress)` and `advance_landmark_state(landmark_id, new_state)` are the write API
-- `AppState.activate_landmark_trigger(landmark_id, trigger_id, display_name, melody_hint)` is called by `scenes/game_main.gd` when the player inspects a `LandmarkTrigger` node; it routes to the correct per-landmark collection handler and returns whether the caller should consume the trigger
+- `AppState.activate_landmark_trigger(landmark_id, trigger_id, display_name, melody_hint)` is called by `scenes/game_main.gd` when the player inspects a `LandmarkTrigger` node; it routes to the correct per-landmark collection handler through `game/landmark_progression.gd` and returns whether the caller should consume the trigger
 - `AppState.melody_hint_shown(text)` fires when a trigger with a non-empty `melody_hint` is collected; the HUD subscribes to display the flavour text on-screen
+- successful landmark interactions may also emit `AppState.landmark_audio_cue_requested(cue_id, context)` so the world scene can play a local motif without relying on `melody_hint_shown` text alone
 - `AppState.set_all_landmark_progress(progress)` sets multiple landmarks at once; used by `configure_*` methods
 - Resident dialogue beats may carry `"unlock_landmark"` to unlock a landmark when the beat fires, and `"gate"` / `"gate_fallback"` to block a beat until a landmark condition is satisfied
 - Resident dialogue beats may carry `"landmark_reward"` to trigger a landmark resolution (fragment award, melody state update, downstream unlocks) when the beat fires
 
 Governance:
 
-- keep per-landmark collection logic in `AppState`; keep per-landmark scene setup in `LandmarkTrigger` nodes placed directly in each landmark scene
-- if a new landmark arc is added, add its id to `_default_landmark_progress()` and `_build_landmark_progress()`, place `LandmarkTrigger` nodes in the landmark scene with the correct exported properties, and add a `_collect_*` and `_resolve_*` method pair to `AppState`
+- keep per-landmark scene setup in `LandmarkTrigger` nodes placed directly in each landmark scene, and keep active collection/resolution logic in `game/landmark_progression.gd` behind `AppState`'s public API
+- if a new landmark arc is added, add its id to `_default_landmark_progress()` and `_build_landmark_progress()`, place `LandmarkTrigger` nodes in the landmark scene with the correct exported properties, and extend `game/landmark_progression.gd` plus the `AppState` bridge methods together
 - if the landmark state enum changes, update this file and the relevant landmark feature docs
 - `LandmarkTrigger` nodes handle their own hide/disable after collection; callers should only invoke `collect()` when `activate_landmark_trigger(...)` returns `true`
 
@@ -197,6 +201,7 @@ Current contract:
 
 - `game_main.gd` owns exactly one scene-local `BgmManager` while gameplay is loaded
 - `BgmManager` owns the active `AudioStreamPlayer`, recent-history buffer, commitment window, silence gap timer, and weighted track selection
+- `BgmManager` also owns short-lived ducking state through `duck_for_cue(duration)` and `set_ducked(ducked)` so landmark cues and melody prompts can lower BGM without moving BGM ownership into the UI
 - `BgmManager` reads shared state from `AppState` through the existing `location_changed` and `melody_progress_changed` signals plus current location/progress snapshots; it does not write shared gameplay state back
 - the current V1 context is `location + melody progress` with fixed defaults `time = afternoon`, `season = summer`, and `weather = clear`
 - the current seed pool is authored in `BgmCatalog` rather than inferred from directory scanning

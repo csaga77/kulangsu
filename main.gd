@@ -267,6 +267,7 @@ func _show_boot_sequence() -> void:
 
 
 func _show_title() -> void:
+	_set_prompt_bgm_ducked(false)
 	m_state = ScreenState.TITLE
 	m_credits_return_state = ScreenState.TITLE
 	get_tree().paused = false
@@ -336,6 +337,7 @@ func _begin_gameplay(is_free_walk: bool, is_continue: bool = false) -> void:
 
 	_refresh_story_save_state(_app_state().get_story_save_metadata())
 	_ensure_game_loaded()
+	_set_prompt_bgm_ducked(false)
 	m_game_root.visible = true
 	if m_game_root.has_method("sync_ui_state"):
 		m_game_root.call("sync_ui_state")
@@ -491,6 +493,7 @@ func _open_melody_prompt(request: Dictionary) -> void:
 		m_prompt_return_state = ScreenState.PLAYING
 
 	m_state = ScreenState.MELODY_PROMPT
+	_set_prompt_bgm_ducked(true)
 	get_tree().paused = true
 	m_melody_prompt_panel.call("configure_request", request)
 	_set_panel_visible(m_backdrop, true)
@@ -505,6 +508,7 @@ func _open_melody_prompt(request: Dictionary) -> void:
 
 
 func _close_melody_prompt() -> void:
+	_set_prompt_bgm_ducked(false)
 	_set_panel_visible(m_melody_prompt_panel, false)
 	if !_is_game_active():
 		return
@@ -604,6 +608,13 @@ func _on_confirm_accepted() -> void:
 
 func _set_panel_visible(node: CanvasItem, is_visible: bool) -> void:
 	node.visible = is_visible
+
+
+func _set_prompt_bgm_ducked(ducked: bool) -> void:
+	if m_game_root == null or !is_instance_valid(m_game_root):
+		return
+	if m_game_root.has_method("set_prompt_bgm_ducked"):
+		m_game_root.call("set_prompt_bgm_ducked", ducked)
 
 
 func _is_game_active() -> bool:

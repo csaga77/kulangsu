@@ -7,6 +7,10 @@ Read [`design_brief.md`](design_brief.md) and [`architecture.md`](architecture.m
 - [`../project.godot`](../project.godot) - Godot project configuration, input map, and main scene
 - [`../main.tscn`](../main.tscn) / [`../main.gd`](../main.gd) - app startup and overlay flow
 - [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - main island scene and world integration
+- [`../scenes/route_resolver.gd`](../scenes/route_resolver.gd) - resolves resident spawn anchors, tunnel portal approach points, and tunnel-to-surface route transitions
+- [`../scenes/resident_spawner.gd`](../scenes/resident_spawner.gd) - instantiates runtime residents from `AppState` definitions onto the shared actor layer
+- [`../scenes/tunnel_context.gd`](../scenes/tunnel_context.gd) - keeps resident visibility and level state aligned with the player's active tunnel interior
+- [`../scenes/npc_route_debug_drawer.gd`](../scenes/npc_route_debug_drawer.gd) - optional extracted NPC route debug drawing for overworld validation
 
 ## UI And Screen Flow
 
@@ -21,8 +25,12 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../terrain/terrain.tscn`](../terrain/terrain.tscn) / [`../terrain/terrain.gd`](../terrain/terrain.gd) - island terrain, generated helper layers, water rendering setup, and the ground-layer masking hooks used by tunnel interiors
 - [`../terrain/water_layer_setup.gd`](../terrain/water_layer_setup.gd) - shared water `TileMapLayer` setup used by runtime terrain and the focused water sandbox
 - [`../terrain/terrain_generation_profile.gd`](../terrain/terrain_generation_profile.gd) / [`../terrain/terrain_mask_rule.gd`](../terrain/terrain_mask_rule.gd) - terrain mask legend, per-color semantics, and generated-layer paint defaults
-- [`../game/app_state.gd`](../game/app_state.gd) - shared UI/progression-facing state, autosave payload, dependable-route notes, melody prompt dispatch, landmark progression, and lazily initialized resident runtime state
+- [`../game/app_state.gd`](../game/app_state.gd) - shared UI/progression-facing state plus the compatibility shell that composes profile, journal, autosave, and landmark helpers
 - [`../game/app_runtime.gd`](../game/app_runtime.gd) - scene-owned runtime lookup for `AppStateService` and the live `"player"` group member
+- [`../game/player_profile_service.gd`](../game/player_profile_service.gd) - owns player appearance/profile and unlocked/equipped costume state while preserving `AppState`'s public API
+- [`../game/journal_builder.gd`](../game/journal_builder.gd) - pure journal/setup text builders used by the journal and player setup overlays
+- [`../game/story_save_service.gd`](../game/story_save_service.gd) - versioned story autosave read/write logic and save metadata refresh
+- [`../game/landmark_progression.gd`](../game/landmark_progression.gd) - landmark trigger handling, melody prompt requests, fragment awards, and harbor-performance completion flow
 - [`../game/bgm_catalog.gd`](../game/bgm_catalog.gd) / [`../game/bgm_manager.gd`](../game/bgm_manager.gd) - seed-pool BGM definitions plus scene-owned weighted playback and transition logic for overworld music
 - [`../game/melody_catalog.gd`](../game/melody_catalog.gd) - authored melody definitions, onboarding clue sources, fragment sources, and performance-point summaries
 - [`../game/resident_catalog.gd`](../game/resident_catalog.gd) - resident roster and the helper builders that produce resident definitions
@@ -120,6 +128,7 @@ Use these when you need a focused validation target instead of the full project 
 - [`features/bgm_tagging_guide.md`](features/bgm_tagging_guide.md) - track-weight authoring rules for the future `bgm_catalog.gd`
 - [`bgm_suno_guide.md`](bgm_suno_guide.md) - Suno-focused content-generation guide for the 7-track BGM seed pool and later expansion
 - [`piano_game_design.md`](piano_game_design.md) - current piano prototype status plus integration rules for short story-facing performance beats
+- [`features/piano_game_integration.md`](features/piano_game_integration.md) - canonical decision and future contract for connecting the standalone piano prototype to the main game
 - [`features/piano_ferry.md`](features/piano_ferry.md) - implementation-facing summary of the ferry onboarding arc and journal unlock handoff
 - [`features/npc_system.md`](features/npc_system.md) - implementation-facing summary of the resident/NPC system
 - [`features/terrain_system.md`](features/terrain_system.md) - terrain generation ownership, mask-rule workflow, and extension guide

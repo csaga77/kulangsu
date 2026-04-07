@@ -6,6 +6,12 @@ signal performance_completed(request: Dictionary)
 
 const DEFAULT_FEEDBACK_COLOR := Color(0.88, 0.90, 0.94, 1.0)
 const ERROR_FEEDBACK_COLOR := Color(0.95, 0.70, 0.64, 1.0)
+const SEGMENT_SELECT_PATH := "res://resources/audio/sfx/melody_prompt/segment_select.ogg"
+const ORDER_CORRECT_PATH := "res://resources/audio/sfx/melody_prompt/order_correct.ogg"
+const ORDER_WRONG_PATH := "res://resources/audio/sfx/melody_prompt/order_wrong.ogg"
+const UI_AUDIO_VOLUME_DB := -5.0
+const ORDER_CORRECT_WAIT_CAP_SECONDS := 1.6
+const ORDER_WRONG_WAIT_CAP_SECONDS := 0.9
 
 @onready var m_title_label: Label = $Margin/Body/PromptTitle
 @onready var m_body_label: Label = $Margin/Body/PromptBody
@@ -19,11 +25,16 @@ const ERROR_FEEDBACK_COLOR := Color(0.95, 0.70, 0.64, 1.0)
 var m_request: Dictionary = {}
 var m_selected_ids: Array[String] = []
 var m_option_buttons: Dictionary = {}
+var m_segment_select_player: AudioStreamPlayer = null
+var m_order_correct_player: AudioStreamPlayer = null
+var m_order_wrong_player: AudioStreamPlayer = null
+var m_submission_locked := false
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	add_theme_stylebox_override("panel", UIStyle.build_panel_style())
+	_setup_audio_players()
 	m_clear_button.pressed.connect(_on_clear_pressed)
 	m_confirm_button.pressed.connect(_on_confirm_pressed)
 	m_cancel_button.pressed.connect(close_requested.emit)
@@ -33,6 +44,7 @@ func _ready() -> void:
 func configure_request(request: Dictionary) -> void:
 	m_request = request.duplicate(true)
 	m_selected_ids.clear()
+	m_submission_locked = false
 	_rebuild_options()
 	m_title_label.text = String(m_request.get("title", "Melody Prompt"))
 	m_body_label.text = String(m_request.get("body", "Arrange the known phrase segments in order."))
@@ -63,6 +75,7 @@ func _rebuild_options() -> void:
 func _reset_content() -> void:
 	m_request.clear()
 	m_selected_ids.clear()
+	m_submission_locked = false
 	m_title_label.text = "Melody Prompt"
 	m_body_label.text = ""
 	m_sequence_label.text = "Selected order\nNothing chosen yet."
@@ -83,14 +96,15 @@ func _refresh_selection_text() -> void:
 
 func _refresh_action_state() -> void:
 	var expected_count := _expected_order().size()
-	m_clear_button.disabled = m_selected_ids.is_empty()
-	m_confirm_button.disabled = expected_count == 0 or m_selected_ids.size() != expected_count
+	m_clear_button.disabled = m_submission_locked or m_selected_ids.is_empty()
+	m_confirm_button.disabled = m_submission_locked or expected_count == 0 or m_selected_ids.size() != expected_count
+	m_cancel_button.disabled = m_submission_locked
 
 	for source_id in m_option_buttons.keys():
 		var button := m_option_buttons[source_id] as Button
 		if button == null:
 			continue
-		button.disabled = m_selected_ids.find(String(source_id)) >= 0
+		button.disabled = m_submission_locked or m_selected_ids.find(String(source_id)) >= 0
 
 
 func _label_for_source(source_id: String) -> String:
@@ -113,16 +127,61 @@ func _set_feedback(text: String, color: Color) -> void:
 	m_feedback_label.modulate = color
 
 
+func _setup_audio_players() -> void:
+	m_segment_select_player = _build_audio_player("SegmentSelectPlayer", SEGMENT_SELECT_PATH)
+	m_order_correct_player = _build_audio_player("OrderCorrectPlayer", ORDER_CORRECT_PATH)
+	m_order_wrong_player = _build_audio_player("OrderWrongPlayer", ORDER_WRONG_PATH)
+
+
+func _build_audio_player(player_name: String, stream_path: String) -> AudioStreamPlayer:
+	var player := AudioStreamPlayer.new()
+	player.name = player_name
+	player.process_mode = Node.PROCESS_MODE_ALWAYS
+	player.volume_db = UI_AUDIO_VOLUME_DB
+	if ResourceLoader.exists(stream_path):
+		player.stream = load(stream_path) as AudioStream
+	add_child(player)
+	return player
+
+
+func _play_one_shot(player: AudioStreamPlayer) -> void:
+	if player == null or player.stream == null:
+		return
+	player.stop()
+	player.play()
+
+
+func _play_one_shot_and_wait(player: AudioStreamPlayer, wait_cap_seconds: float) -> void:
+	if player == null or player.stream == null:
+		return
+
+	var wait_time := wait_cap_seconds
+	var stream_length := player.stream.get_length()
+	if stream_length > 0.05:
+		wait_time = minf(stream_length, wait_cap_seconds)
+
+	player.stop()
+	player.play()
+	if wait_time <= 0.05:
+		return
+	await get_tree().create_timer(wait_time, true, false, true).timeout
+
+
 func _on_option_pressed(source_id: String) -> void:
+	if m_submission_locked:
+		return
 	if m_selected_ids.find(source_id) >= 0:
 		return
 
 	m_selected_ids.append(source_id)
+	_play_one_shot(m_segment_select_player)
 	_refresh_selection_text()
 	_refresh_action_state()
 
 
 func _on_clear_pressed() -> void:
+	if m_submission_locked:
+		return
 	m_selected_ids.clear()
 	_set_feedback(String(m_request.get("hint_text", "Choose the known phrase segments in order.")), DEFAULT_FEEDBACK_COLOR)
 	_refresh_selection_text()
@@ -130,18 +189,26 @@ func _on_clear_pressed() -> void:
 
 
 func _on_confirm_pressed() -> void:
+	if m_submission_locked:
+		return
 	var expected_order := _expected_order()
 	if expected_order.is_empty():
 		return
 
+	m_submission_locked = true
+	_refresh_action_state()
 	if m_selected_ids == expected_order:
+		_set_feedback("The phrase settles into place.", DEFAULT_FEEDBACK_COLOR)
+		await _play_one_shot_and_wait(m_order_correct_player, ORDER_CORRECT_WAIT_CAP_SECONDS)
 		if String(m_request.get("mode", "practice")) == "performance":
 			performance_completed.emit(m_request.duplicate(true))
 		else:
 			practice_completed.emit(m_request.duplicate(true))
 		return
 
+	await _play_one_shot_and_wait(m_order_wrong_player, ORDER_WRONG_WAIT_CAP_SECONDS)
 	_set_feedback(String(m_request.get("retry_hint", "That order felt off. Try again.")), ERROR_FEEDBACK_COLOR)
 	m_selected_ids.clear()
+	m_submission_locked = false
 	_refresh_selection_text()
 	_refresh_action_state()

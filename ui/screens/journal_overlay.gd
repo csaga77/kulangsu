@@ -2,6 +2,7 @@ extends PanelContainer
 
 const HUMAN_BODY_SCENE := preload("res://characters/human_body_2d.tscn")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
+const JOURNAL_BUILDER := preload("res://game/journal_builder.gd")
 
 signal close_requested()
 
@@ -52,10 +53,10 @@ func _ready() -> void:
 
 func refresh_from_state() -> void:
 	m_quest_body.text = "Main Quest\n%s" % _app_state().objective
-	m_map_body.text = _app_state().build_map_journal_text()
-	m_residents_body.text = "Resident Notes\n%s" % _app_state().build_resident_journal_text()
-	m_melody_body.text = "Melody Journal\n%s" % _app_state().build_melody_journal_text()
-	m_wardrobe_body.text = "Wardrobe\n%s" % _app_state().build_player_costume_journal_text()
+	m_map_body.text = JOURNAL_BUILDER.build_map_journal_text(_app_state())
+	m_residents_body.text = "Resident Notes\n%s" % JOURNAL_BUILDER.build_resident_journal_text(_app_state())
+	m_melody_body.text = "Melody Journal\n%s" % JOURNAL_BUILDER.build_melody_journal_text(_app_state())
+	m_wardrobe_body.text = "Wardrobe\n%s" % JOURNAL_BUILDER.build_player_costume_journal_text(_app_state())
 	m_costume_value.text = _app_state().get_equipped_player_costume_display_name()
 	m_hair_style_value.text = _app_state().get_player_hair_style_display_name()
 	m_hair_color_value.text = _app_state().get_player_hair_color_display_name()

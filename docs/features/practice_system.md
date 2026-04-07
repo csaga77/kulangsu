@@ -31,7 +31,7 @@ Keeping these two separate means the practice layer can be built and tested inde
 | `heard` | Trigger a passive listen (no input required). |
 | `reconstructed` | Trigger a simple recognition prompt. |
 | `performed` | World response is live; repeat performance available as ambient replay. |
-| `resonant` | Full island resonance; ambient-only, no further player input required. |
+| `resonant` | Full island resonance is live; optional journal replay can remain available, but no new mandatory input is introduced. |
 
 The current first pass only offers the active prompt at `reconstructed` and above. `heard` remains journal/context flavor rather than an input-driven prompt.
 
@@ -40,8 +40,10 @@ The current first pass only offers the active prompt at `reconstructed` and abov
 The shipped first version is a **short ordered confirmation**: the player sees 2–4 known fragment segments labeled by their source landmark and selects them in the order that feels right for the melody contour.
 
 - Order is shown as a list, not a notation UI.
+- Each segment tap now plays a short feedback tone so the player hears the phrase assemble as they select it.
 - A correct sequence completes rehearsal immediately, or moves the melody to `performed` when the prompt was opened from the landmark performance point.
 - An incorrect sequence shows a short hint and lets the player try again with no penalty.
+- Correct and wrong submissions now play short confirmation sounds, and the prompt ducks BGM for the full overlay lifetime so those cues remain audible.
 - There is no time limit.
 
 This avoids requiring the `piano_game` module before the first performance lands.
@@ -82,7 +84,8 @@ Bagua Tower still uses the simpler synthesis trigger plus Suyin follow-up dialog
 - `AppState` owns the prompt-request signal, the `performed` flag per melody, the state transition to `performed`, and landmark-specific prompt completions such as the Trinity choir chime, the Bi Shan chamber contour, and the Long Shan exit route.
 - `melody_catalog.gd` owns the `performance_landmark`, `performance_prompt`, and prompt segment ordering fields per melody.
 - The in-world activation point still lives on `LandmarkTrigger` at Festival Stage.
-- The recognition prompt UI now lives in `ui/screens/melody_prompt_overlay.*`. It does not write melody or landmark state directly; it reports the full prompt request back through the shell into `AppState.complete_prompt_request(...)`.
+- The recognition prompt UI now lives in `ui/screens/melody_prompt_overlay.*`. It owns the local select/correct/wrong one-shot sounds, but it does not write melody or landmark state directly; it reports the full prompt request back through the shell into `AppState.complete_prompt_request(...)`.
+- `main.gd` owns prompt-lifetime BGM ducking by telling the live gameplay scene to duck or release its `BgmManager` when the overlay opens and closes.
 - The `piano_game` module can be integrated as the recognition prompt backend once the interface is stable.
 
 ## Relevant Files

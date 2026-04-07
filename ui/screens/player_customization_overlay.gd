@@ -2,6 +2,7 @@ extends PanelContainer
 
 const HUMAN_BODY_SCENE := preload("res://characters/human_body_2d.tscn")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
+const JOURNAL_BUILDER := preload("res://game/journal_builder.gd")
 
 signal confirm_requested()
 signal cancel_requested()
@@ -51,7 +52,7 @@ func refresh_from_state() -> void:
 	m_skin_value.text = _app_state().get_player_skin_display_name()
 	m_hair_style_value.text = _app_state().get_player_hair_style_display_name()
 	m_hair_color_value.text = _app_state().get_player_hair_color_display_name()
-	m_summary_label.text = _app_state().build_player_setup_summary_text()
+	m_summary_label.text = JOURNAL_BUILDER.build_player_setup_summary_text(_app_state())
 	_refresh_preview()
 
 

@@ -254,6 +254,13 @@ static func _story_residents() -> Dictionary:
 					"objective": "Carry the recovered phrases to Bagua Tower.",
 					"journal_step": "Lian urged you toward the tower now that most phrases are in hand.",
 				},
+				{
+					"conditions": {"melody_state": {"festival_melody": "resonant"}},
+					"priority": 40,
+					"once": true,
+					"line": "Listen to the ropes now. The harbor kept the melody after the crowd went home. It is not performing anymore, just breathing on its own.",
+					"journal_step": "Lian noticed the plaza now carries the restored melody even in the quiet after the festival.",
+				},
 			]
 		),
 		"church_caretaker": _resident(
@@ -328,6 +335,13 @@ static func _story_residents() -> Dictionary:
 					"once": true,
 					"line": "Suyin at the tower knows how to read distance. If anyone can line up three separate phrases, it is someone who sees the whole island at once.",
 					"journal_step": "Mei endorsed Tower Keeper Suyin as the person who can synthesize the recovered fragments.",
+				},
+				{
+					"conditions": {"melody_state": {"festival_melody": "resonant"}},
+					"priority": 30,
+					"once": true,
+					"line": "The bells do not need help to settle tonight. Even the empty loft keeps answering the harbor in a softer voice.",
+					"journal_step": "Mei heard the church hold onto the festival melody after the performance ended.",
 				},
 			]
 		),
@@ -432,6 +446,13 @@ static func _story_residents() -> Dictionary:
 						"line": "You carried the route all the way back to the harbor. Even the tunnel walls would have listened for that.",
 						"journal_step": "Ren heard that the harbor finally carried the tunnel route out into the open.",
 					},
+					{
+						"conditions": {"melody_state": {"festival_melody": "resonant"}},
+						"priority": 30,
+						"once": true,
+						"line": "Long Shan sounds warmer now. The dark is still the dark, but the route keeps its calm even when no one is proving it anymore.",
+						"journal_step": "Ren felt the tunnel keep its steadier cadence after the festival night quieted down.",
+					},
 				]
 			),
 		"tower_keeper": _resident(
@@ -504,6 +525,13 @@ static func _story_residents() -> Dictionary:
 					"once": true,
 					"line": "The harbor answered exactly where the tower said it would. Height only mattered because you carried the route back down.",
 					"journal_step": "Suyin approved how the tower's route returned to the harbor.",
+				},
+				{
+					"conditions": {"melody_state": {"festival_melody": "resonant"}},
+					"priority": 20,
+					"once": true,
+					"line": "From up here the island has stopped sounding like separate landmarks. It holds one line now, even when nobody is trying to gather it.",
+					"journal_step": "Suyin heard the whole island keep one shared line after the festival performance passed into memory.",
 				},
 			]
 		),

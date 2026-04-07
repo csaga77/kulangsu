@@ -11,6 +11,10 @@ const RESIDENT_CATALOG_SCRIPT := preload("res://game/resident_catalog.gd")
 const MELODY_CATALOG_SCRIPT := preload("res://game/melody_catalog.gd")
 const PLAYER_APPEARANCE_CATALOG_SCRIPT := preload("res://game/player_appearance_catalog.gd")
 const PLAYER_COSTUME_CATALOG_SCRIPT := preload("res://game/player_costume_catalog.gd")
+const JOURNAL_BUILDER_SCRIPT := preload("res://game/journal_builder.gd")
+const PLAYER_PROFILE_SERVICE_SCRIPT := preload("res://game/player_profile_service.gd")
+const STORY_SAVE_SERVICE_SCRIPT := preload("res://game/story_save_service.gd")
+const LANDMARK_PROGRESSION_SCRIPT := preload("res://game/landmark_progression.gd")
 const STORY_AUTOSAVE_VERSION := 1
 const STORY_AUTOSAVE_PATH := "user://story_autosave.save"
 const APP_STATE_GROUP := &"app_state_service"
@@ -31,6 +35,7 @@ signal fragments_changed(found: int, total: int)
 signal melody_progress_changed(melody_id: String, melody: Dictionary)
 signal melody_hint_shown(text: String)
 signal melody_prompt_requested(request: Dictionary)
+signal landmark_audio_cue_requested(cue_id: String, context: Dictionary)
 signal landmarks_changed(landmarks: PackedStringArray)
 signal residents_changed(residents: PackedStringArray)
 signal resident_profile_changed(resident_id: String, resident: Dictionary)
@@ -79,6 +84,25 @@ var story_save_metadata := _default_story_save_metadata()
 var story_resume_anchor_id := "Piano Ferry"
 var story_resume_location := "Piano Ferry"
 var _story_autosave_path := STORY_AUTOSAVE_PATH
+var m_player_profile_service: RefCounted = null
+var m_story_save_service: RefCounted = null
+var m_landmark_progression: RefCounted = null
+
+
+func _init() -> void:
+	m_player_profile_service = PLAYER_PROFILE_SERVICE_SCRIPT.new(
+		self,
+		PLAYER_APPEARANCE_CATALOG_SCRIPT,
+		PLAYER_COSTUME_CATALOG_SCRIPT,
+		player_costume_catalog,
+		mode,
+		fragments_found,
+		fragments_total,
+		resident_profiles
+	)
+	m_story_save_service = STORY_SAVE_SERVICE_SCRIPT.new(self)
+	m_story_save_service.set_story_autosave_path(_story_autosave_path)
+	m_landmark_progression = LANDMARK_PROGRESSION_SCRIPT.new(self)
 
 
 func _enter_tree() -> void:
@@ -169,58 +193,46 @@ func set_story_resume_checkpoint(anchor_id: String, location_label: String = "")
 
 
 func override_story_autosave_path_for_tests(path: String) -> void:
-	_story_autosave_path = path.strip_edges()
+	_story_autosave_path = _resolve_story_autosave_test_path(path)
 	if _story_autosave_path.is_empty():
 		_story_autosave_path = STORY_AUTOSAVE_PATH
+	m_story_save_service.set_story_autosave_path(_story_autosave_path)
 	refresh_story_autosave_metadata()
 
 
 func clear_story_autosave() -> void:
-	if FileAccess.file_exists(_story_autosave_path):
-		DirAccess.remove_absolute(_story_autosave_path)
-	refresh_story_autosave_metadata()
+	m_story_save_service.clear_story_autosave()
 
 
 func clear_story_autosave_for_tests() -> void:
 	clear_story_autosave()
 
 
-func refresh_story_autosave_metadata() -> void:
-	var next_metadata := _default_story_save_metadata()
-	var payload := _read_story_autosave_payload()
-	if !payload.is_empty():
-		next_metadata = _build_story_save_metadata_from_payload(payload)
+func _resolve_story_autosave_test_path(path: String) -> String:
+	var normalized_path := path.strip_edges()
+	if normalized_path.is_empty():
+		return STORY_AUTOSAVE_PATH
+	if !normalized_path.begins_with("user://"):
+		return normalized_path
 
-	story_save_metadata = next_metadata
-	save_metadata_changed.emit(get_story_save_metadata())
+	var file_name := normalized_path.get_file()
+	if file_name.is_empty():
+		file_name = "story_autosave_test.save"
+	var test_dir := ProjectSettings.globalize_path("res://.godot_test_saves")
+	DirAccess.make_dir_recursive_absolute(test_dir)
+	return test_dir.path_join(file_name)
+
+
+func refresh_story_autosave_metadata() -> void:
+	m_story_save_service.refresh_story_autosave_metadata()
 
 
 func save_story_autosave(status_text: String = "") -> bool:
-	if !_is_story_persistable_mode():
-		return false
-
-	var file := FileAccess.open(_story_autosave_path, FileAccess.WRITE)
-	if file == null:
-		if !status_text.is_empty():
-			set_save_status(status_text)
-		return false
-
-	file.store_var(_build_story_autosave_payload(), false)
-	file.flush()
-	refresh_story_autosave_metadata()
-
-	if !status_text.is_empty():
-		set_save_status(status_text)
-
-	return true
+	return m_story_save_service.save_story_autosave(status_text)
 
 
 func load_story_autosave() -> bool:
-	var payload := _read_story_autosave_payload()
-	if payload.is_empty():
-		return false
-
-	return _apply_story_autosave_payload(payload)
+	return m_story_save_service.load_story_autosave()
 
 
 func set_mode(new_mode: String) -> void:
@@ -393,7 +405,7 @@ func can_practice_melody(melody_id: String) -> bool:
 	if melody_stage not in ["reconstructed", "performed", "resonant"]:
 		return false
 
-	return _build_melody_prompt_segments(melody_id).size() >= 2
+	return m_landmark_progression.build_melody_prompt_segments(melody_id).size() >= 2
 
 
 func can_perform_melody(melody_id: String) -> bool:
@@ -405,56 +417,19 @@ func can_perform_melody(melody_id: String) -> bool:
 
 
 func request_melody_practice(melody_id: String) -> void:
-	_request_melody_prompt(melody_id, "practice")
+	m_landmark_progression.request_melody_prompt(melody_id, "practice")
 
 
 func complete_prompt_request(request: Dictionary) -> void:
-	var completion_kind := String(request.get("completion_kind", ""))
-	var melody_id := String(request.get("melody_id", ""))
-
-	match completion_kind:
-		"melody_practice":
-			complete_melody_practice(melody_id)
-		"festival_performance":
-			complete_melody_performance(melody_id)
-		"trinity_chime":
-			_complete_trinity_church_chime()
-		"bi_shan_chamber":
-			_complete_bi_shan_chamber()
-		"long_shan_route":
-			_complete_long_shan_route()
-		_:
-			set_save_status("The phrase settles, but nothing answers it yet.")
+	m_landmark_progression.complete_prompt_request(request)
 
 
 func complete_melody_practice(melody_id: String) -> void:
-	var melody_definition := get_melody_definition(melody_id)
-	if melody_definition.is_empty():
-		set_save_status("The phrase slips away before you can practice it.")
-		return
-
-	set_save_status("%s feels steadier after a short rehearsal." % String(melody_definition.get("display_name", "The melody")))
+	m_landmark_progression.complete_melody_practice(melody_id)
 
 
 func complete_melody_performance(melody_id: String) -> void:
-	var melody_state := get_melody_state(melody_id)
-	if melody_state.is_empty():
-		set_save_status("The performance point is not ready yet.")
-		return
-
-	if bool(melody_state.get("performed", false)):
-		set_save_status("The harbor already remembers this melody.")
-		return
-
-	if !can_perform_melody(melody_id):
-		set_save_status("The phrase is not ready to carry across the harbor yet.")
-		return
-
-	match melody_id:
-		"festival_melody":
-			_perform_festival_melody()
-		_:
-			set_save_status("This performance point is not wired yet.")
+	m_landmark_progression.complete_melody_performance(melody_id)
 
 
 func get_resident_profile(resident_id: String) -> Dictionary:
@@ -540,148 +515,87 @@ func get_resident_behavior_config(resident_id: String) -> Dictionary:
 
 
 func get_player_profile() -> Dictionary:
-	return player_profile.duplicate(true)
+	return m_player_profile_service.get_player_profile()
 
 
 func get_player_body_display_name() -> String:
-	return PLAYER_APPEARANCE_CATALOG_SCRIPT.body_frame_display_name(
-		String(player_profile.get("body_frame_id", "adult"))
-	)
+	return m_player_profile_service.get_player_body_display_name()
 
 
 func get_player_gender_display_name() -> String:
-	return PLAYER_APPEARANCE_CATALOG_SCRIPT.presentation_display_name(
-		String(player_profile.get("presentation_id", "masculine"))
-	)
+	return m_player_profile_service.get_player_gender_display_name()
 
 
 func get_player_skin_display_name() -> String:
-	return PLAYER_APPEARANCE_CATALOG_SCRIPT.skin_tone_display_name(
-		String(player_profile.get("skin_tone_id", "light"))
-	)
+	return m_player_profile_service.get_player_skin_display_name()
 
 
 func get_player_hair_style_display_name() -> String:
-	return PLAYER_APPEARANCE_CATALOG_SCRIPT.hair_style_display_name(
-		String(player_profile.get("hair_style_id", "short_bangs"))
-	)
+	return m_player_profile_service.get_player_hair_style_display_name()
 
 
 func get_player_hair_color_display_name() -> String:
-	return PLAYER_APPEARANCE_CATALOG_SCRIPT.hair_color_display_name(
-		String(player_profile.get("hair_color_id", "chestnut"))
-	)
+	return m_player_profile_service.get_player_hair_color_display_name()
 
 
 func get_player_costume_ids() -> PackedStringArray:
-	return PLAYER_COSTUME_CATALOG_SCRIPT.ordered_ids()
+	return m_player_profile_service.get_player_costume_ids()
 
 
 func get_player_costume(costume_id: String) -> Dictionary:
-	if !player_costume_catalog.has(costume_id):
-		return {}
-	return player_costume_catalog[costume_id].duplicate(true)
+	return m_player_profile_service.get_player_costume(costume_id)
 
 
 func get_unlocked_player_costume_ids() -> PackedStringArray:
-	return PackedStringArray(unlocked_player_costume_ids)
+	return m_player_profile_service.get_unlocked_player_costume_ids()
 
 
 func get_equipped_player_costume_id() -> String:
-	return equipped_player_costume_id
+	return m_player_profile_service.get_equipped_player_costume_id()
 
 
 func get_equipped_player_costume() -> Dictionary:
-	return get_player_costume(equipped_player_costume_id)
+	return m_player_profile_service.get_equipped_player_costume()
 
 
 func get_equipped_player_costume_display_name() -> String:
-	return String(get_equipped_player_costume().get("display_name", "Harbor Arrival"))
+	return m_player_profile_service.get_equipped_player_costume_display_name()
 
 
 func set_player_profile(new_profile: Dictionary) -> bool:
-	var normalized_profile := PLAYER_APPEARANCE_CATALOG_SCRIPT.normalize_profile(new_profile)
-	if player_profile == normalized_profile:
-		return false
-
-	player_profile = normalized_profile
-	player_profile_changed.emit(get_player_profile())
-	_emit_player_appearance_changed()
-	return true
+	return m_player_profile_service.set_player_profile(new_profile)
 
 
 func cycle_player_body_frame(direction: int) -> void:
-	_cycle_player_profile_option(
-		"body_frame_id",
-		PLAYER_APPEARANCE_CATALOG_SCRIPT.body_frame_options(),
-		direction
-	)
+	m_player_profile_service.cycle_player_body_frame(direction)
 
 
 func cycle_player_gender(direction: int) -> void:
-	_cycle_player_profile_option(
-		"presentation_id",
-		PLAYER_APPEARANCE_CATALOG_SCRIPT.presentation_options(),
-		direction
-	)
+	m_player_profile_service.cycle_player_gender(direction)
 
 
 func cycle_player_skin_tone(direction: int) -> void:
-	_cycle_player_profile_option(
-		"skin_tone_id",
-		PLAYER_APPEARANCE_CATALOG_SCRIPT.skin_tone_options(),
-		direction
-	)
+	m_player_profile_service.cycle_player_skin_tone(direction)
 
 
 func cycle_player_hair_style(direction: int) -> void:
-	_cycle_player_profile_option(
-		"hair_style_id",
-		PLAYER_APPEARANCE_CATALOG_SCRIPT.hair_style_options(),
-		direction
-	)
+	m_player_profile_service.cycle_player_hair_style(direction)
 
 
 func cycle_player_hair_color(direction: int) -> void:
-	_cycle_player_profile_option(
-		"hair_color_id",
-		PLAYER_APPEARANCE_CATALOG_SCRIPT.hair_color_options(),
-		direction
-	)
+	m_player_profile_service.cycle_player_hair_color(direction)
 
 
 func get_player_appearance_config() -> Dictionary:
-	var costume: Dictionary = get_equipped_player_costume()
-	var costume_selections: Dictionary = costume.get("selections", {})
-	return PLAYER_APPEARANCE_CATALOG_SCRIPT.build_appearance_config(player_profile, costume_selections)
+	return m_player_profile_service.get_player_appearance_config()
 
 
 func equip_player_costume(costume_id: String) -> bool:
-	if !player_costume_catalog.has(costume_id):
-		return false
-	if unlocked_player_costume_ids.find(costume_id) < 0:
-		return false
-	if equipped_player_costume_id == costume_id:
-		return true
-
-	equipped_player_costume_id = costume_id
-	player_costume_changed.emit(equipped_player_costume_id, get_equipped_player_costume())
-	_emit_player_appearance_changed()
-	player_costumes_changed.emit(get_unlocked_player_costume_ids(), equipped_player_costume_id)
-	return true
+	return m_player_profile_service.equip_player_costume(costume_id)
 
 
 func cycle_player_costume(direction: int) -> void:
-	if unlocked_player_costume_ids.is_empty():
-		return
-
-	var current_index := unlocked_player_costume_ids.find(equipped_player_costume_id)
-	if current_index < 0:
-		equip_player_costume(String(unlocked_player_costume_ids[0]))
-		return
-
-	var next_index := posmod(current_index + direction, unlocked_player_costume_ids.size())
-	equip_player_costume(String(unlocked_player_costume_ids[next_index]))
+	m_player_profile_service.cycle_player_costume(direction)
 
 
 func get_known_resident_names() -> PackedStringArray:
@@ -713,150 +627,23 @@ func get_resident_ambient_line(resident_id: String) -> String:
 
 
 func build_map_journal_text() -> String:
-	var landmark_text := "None marked yet."
-	if !landmarks.is_empty():
-		landmark_text = "\n".join(landmarks)
-
-	var shortcut_text := "No dependable routes noted yet."
-	if !open_shortcuts.is_empty():
-		var shortcut_sections: Array[String] = []
-		for shortcut_id in open_shortcuts:
-			var shortcut_definition: Dictionary = SHORTCUT_DEFINITIONS.get(String(shortcut_id), {})
-			shortcut_sections.append(
-				"%s\n%s" % [
-					String(shortcut_definition.get("display_name", shortcut_id)),
-					String(shortcut_definition.get("summary", "")),
-				]
-			)
-		shortcut_text = "\n\n".join(PackedStringArray(shortcut_sections))
-
-	return "Discovered landmarks\n%s\n\nCurrent location\n%s\n\nDependable routes\n%s" % [
-		landmark_text,
-		location,
-		shortcut_text,
-	]
+	return JOURNAL_BUILDER_SCRIPT.build_map_journal_text(self)
 
 
 func build_resident_journal_text() -> String:
-	_ensure_resident_profiles()
-	var sections: Array[String] = []
-
-	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
-		var resident: Dictionary = resident_profiles.get(resident_id, {})
-		if !resident.get("known", false):
-			continue
-
-		sections.append(
-			"%s\n%s\nUsually found: %s\nTrust: %d / %d\nCurrent lead: %s\nMelody clue: %s" % [
-				String(resident.get("display_name", resident_id)),
-				String(resident.get("role", "")),
-				String(resident.get("routine_note", "")),
-				int(resident.get("trust", 0)),
-				RESIDENT_CATALOG_SCRIPT.max_trust(),
-				String(resident.get("current_step", "Stay in touch.")),
-				String(resident.get("melody_hint", "")),
-			]
-		)
-
-	if sections.is_empty():
-		return "No residents introduced yet.\n\nListen for a nearby greeting or use R when a talk prompt appears."
-
-	return "\n\n".join(PackedStringArray(sections))
+	return JOURNAL_BUILDER_SCRIPT.build_resident_journal_text(self)
 
 
 func build_melody_journal_text() -> String:
-	var sections: Array[String] = []
-
-	for melody_id in get_melody_ids():
-		var melody_definition := get_melody_definition(melody_id)
-		if melody_definition.is_empty():
-			continue
-
-		var melody_state := get_melody_state(melody_id)
-		var known_sources := _normalize_string_array(melody_state.get("known_sources", []))
-		var source_lines: Array[String] = []
-
-		for source in melody_definition.get("sources", []):
-			var source_id := String(source.get("source_id", ""))
-			var source_status := "Not yet confirmed"
-			if known_sources.find(source_id) >= 0:
-				source_status = "Confirmed clue"
-
-			source_lines.append(
-				"%s (%s)\n%s\n%s" % [
-					String(source.get("label", "Unknown clue")),
-					String(source.get("landmark", "Unknown landmark")),
-					source_status,
-					String(source.get("summary", "")),
-				]
-			)
-
-		sections.append(
-			"%s\nDistrict: %s\nStage: %s\nRecovered fragments: %d / %d\nSummary: %s\nNext lead: %s\nPerformance point: %s\nWorld response: %s\n\nClue map\n%s" % [
-				String(melody_definition.get("display_name", melody_id)),
-				String(melody_definition.get("district", "Unknown district")),
-				MELODY_CATALOG_SCRIPT.state_display_name(String(melody_state.get("state", "unknown"))),
-				int(melody_state.get("fragments_found", 0)),
-				int(melody_state.get("fragments_total", int(melody_definition.get("fragment_total", 0)))),
-				String(melody_definition.get("summary", "")),
-				String(melody_state.get("next_lead", melody_definition.get("unlock_condition", ""))),
-				String(melody_definition.get("performance_landmark", "Unknown")),
-				String(melody_definition.get("world_response_summary", "")),
-				"\n\n".join(PackedStringArray(source_lines)),
-			]
-		)
-
-	if sections.is_empty():
-		return "No melody notes recorded yet.\n\nKeep exploring, listen for a repeated phrase, and check the journal after each major clue."
-
-	return "\n\n".join(PackedStringArray(sections))
+	return JOURNAL_BUILDER_SCRIPT.build_melody_journal_text(self)
 
 
 func build_player_costume_journal_text() -> String:
-	var sections: Array[String] = []
-
-	sections.append(
-		"Current look: %s\nBody: %s\nGender: %s\nHair: %s\nHair color: %s\nUnlocked looks: %d / %d\nUse the controls below to change costume and hair." % [
-			get_equipped_player_costume_display_name(),
-			get_player_body_display_name(),
-			get_player_gender_display_name(),
-			get_player_hair_style_display_name(),
-			get_player_hair_color_display_name(),
-			unlocked_player_costume_ids.size(),
-			get_player_costume_ids().size(),
-		]
-	)
-
-	for costume_id in get_player_costume_ids():
-		var costume: Dictionary = player_costume_catalog.get(costume_id, {})
-		var is_unlocked := unlocked_player_costume_ids.find(costume_id) >= 0
-		var state_text := "Locked"
-		if costume_id == equipped_player_costume_id:
-			state_text = "Wearing"
-		elif is_unlocked:
-			state_text = "Unlocked"
-
-		sections.append(
-			"%s: %s\n%s\nRoute: %s" % [
-				state_text,
-				String(costume.get("display_name", costume_id)),
-				String(costume.get("summary", "")),
-				String(costume.get("unlock_hint", "Always available.")),
-			]
-		)
-
-	return "\n\n".join(PackedStringArray(sections))
+	return JOURNAL_BUILDER_SCRIPT.build_player_costume_journal_text(self)
 
 
 func build_player_setup_summary_text() -> String:
-	return "Body: %s\nGender: %s\nSkin: %s\nHair: %s\nHair color: %s\nStarting look: %s" % [
-		get_player_body_display_name(),
-		get_player_gender_display_name(),
-		get_player_skin_display_name(),
-		get_player_hair_style_display_name(),
-		get_player_hair_color_display_name(),
-		get_equipped_player_costume_display_name(),
-	]
+	return JOURNAL_BUILDER_SCRIPT.build_player_setup_summary_text(self)
 
 
 func _is_story_persistable_mode(mode_id: String = mode) -> bool:
@@ -1201,10 +988,10 @@ func configure_postgame() -> void:
 	set_mode("Postgame")
 	set_chapter("Festival Night")
 	set_location("Ferry Plaza")
-	set_objective("Wander the island after the festival.")
+	set_objective("Wander the island after the festival and listen for what changed.")
 	set_journal_unlocked(true)
 	set_hint(build_input_hint("R Inspect"))
-	set_save_status("Autosave: postgame checkpoint saved")
+	set_save_status("Postgame checkpoint saved — residents and music now answer the resonant melody.")
 	set_landmarks(_default_landmarks())
 	set_open_shortcuts(PackedStringArray(["bi_shan_crossing"]))
 	set_resident_profiles(_default_resident_profiles())
@@ -1421,31 +1208,12 @@ func _emit_player_appearance_changed() -> void:
 
 func _refresh_player_costumes() -> void:
 	_ensure_resident_profiles()
-	var next_unlocked := PLAYER_COSTUME_CATALOG_SCRIPT.build_unlocked_costume_ids(
+	m_player_profile_service.refresh_player_costumes(
 		mode,
 		fragments_found,
 		fragments_total,
 		resident_profiles
 	)
-	var unlocked_changed := unlocked_player_costume_ids != next_unlocked
-	var next_equipped := equipped_player_costume_id
-
-	if next_unlocked.find(next_equipped) < 0:
-		next_equipped = PLAYER_COSTUME_CATALOG_SCRIPT.default_costume_id()
-		if next_unlocked.find(next_equipped) < 0 and !next_unlocked.is_empty():
-			next_equipped = String(next_unlocked[0])
-
-	var costume_changed := next_equipped != equipped_player_costume_id
-
-	unlocked_player_costume_ids = next_unlocked
-	equipped_player_costume_id = next_equipped
-
-	if costume_changed:
-		player_costume_changed.emit(equipped_player_costume_id, get_equipped_player_costume())
-		_emit_player_appearance_changed()
-
-	if unlocked_changed or costume_changed:
-		player_costumes_changed.emit(get_unlocked_player_costume_ids(), equipped_player_costume_id)
 
 
 func _ensure_resident_definitions() -> void:
@@ -1551,149 +1319,32 @@ func advance_landmark_state(landmark_id: String, new_state: String) -> void:
 	set_landmark_progress(landmark_id, progress)
 
 
+func _request_landmark_audio_cue(
+	cue_id: String,
+	landmark_id: String,
+	trigger_id: String,
+	display_name: String
+) -> void:
+	if cue_id.is_empty():
+		return
+	landmark_audio_cue_requested.emit(cue_id, {
+		"landmark_id": landmark_id,
+		"trigger_id": trigger_id,
+		"display_name": display_name,
+	})
+
+
 ## Called when the player inspects a LandmarkTrigger in the world.
 ## Routes to the appropriate per-landmark collection handler.
 ## Returns true only when the caller should consume the trigger in the scene.
 ## melody_hint is optional flavour text shown to the player on collection.
 func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_name: String, melody_hint: String = "") -> bool:
-	match landmark_id:
-		"piano_ferry":
-			if trigger_id != "harbor_refrain":
-				return false
-			var ferry_progress := get_landmark_progress("piano_ferry")
-			if ferry_progress.is_empty() or bool(ferry_progress.get("harbor_clue_found", false)):
-				return false
-			_collect_piano_ferry_harbor_clue()
-			if melody_hint != "":
-				melody_hint_shown.emit(melody_hint)
-			set_objective("Return to Caretaker Lian with the harbor refrain.")
-			set_hint(build_input_hint("R Talk to Caretaker Lian"))
-			set_save_status("The harbor refrain is clearer now — return to Caretaker Lian.")
-			_autosave_story_progress()
-			return true
-		"trinity_church":
-			var church_progress := get_landmark_progress("trinity_church")
-			if church_progress.is_empty():
-				return false
-			if trigger_id == "choir_chime":
-				if bool(church_progress.get("chime_performed", false)):
-					return false
-				var cue_count := _normalize_string_array(church_progress.get("cues_collected", [])).size()
-				if cue_count < 3:
-					set_save_status("The church phrase needs all three choir cues before it can settle.")
-					return false
-				if melody_hint != "":
-					melody_hint_shown.emit(melody_hint)
-				_request_trinity_chime_prompt()
-				return false
-			if _progress_has_string_entry(church_progress, "cues_collected", trigger_id):
-				return false
-			var all_collected := _collect_trinity_church_cue(trigger_id)
-			var cue_count := _normalize_string_array(
-				get_landmark_progress("trinity_church").get("cues_collected", [])
-			).size()
-			set_save_status("Found: %s" % display_name)
-			if melody_hint != "":
-				melody_hint_shown.emit(melody_hint)
-			if all_collected:
-				melody_hint_shown.emit("The three choir cues lean toward one church chime, but they still need to be settled together.")
-				set_objective("Settle the church phrase at the choir chime near the steps.")
-				set_hint(build_input_hint("R Perform Choir Chime"))
-				set_save_status("All choir cues found — settle them at the choir chime.")
-			elif cue_count == 1:
-				set_objective("Follow the next choir cue toward the side garden.")
-			elif cue_count == 2:
-				set_objective("Find the last choir cue in the quiet yard.")
-			_autosave_story_progress()
-			return true
-		"bi_shan_tunnel":
-			var tunnel_progress := get_landmark_progress("bi_shan_tunnel")
-			if tunnel_progress.is_empty():
-				return false
-			if trigger_id == "chamber":
-				var echoes: Array = tunnel_progress.get("echoes_collected", [])
-				if echoes.size() >= 3:
-					if melody_hint != "":
-						melody_hint_shown.emit(melody_hint)
-					_request_bi_shan_chamber_prompt()
-					return false
-				else:
-					set_save_status("The mural panel is silent. Trace the three tunnel echoes first.")
-					return false
-			if _progress_has_string_entry(tunnel_progress, "echoes_collected", trigger_id):
-				return false
-			var all_echoes := _collect_bi_shan_echo(trigger_id)
-			set_save_status("Heard: %s" % display_name)
-			if all_echoes:
-				set_objective("Reach the mural chamber at the far end of Bi Shan Tunnel.")
-				set_hint("Follow the resonance to the chamber.   J Journal   Esc Pause")
-				set_save_status("All three echoes traced — follow the resonance to the chamber.")
-			_autosave_story_progress()
-			return true
-		"long_shan_tunnel":
-			match trigger_id:
-				"tunnel_entry":
-					if get_landmark_state("long_shan_tunnel") == "available":
-						advance_landmark_state("long_shan_tunnel", "introduced")
-						set_save_status("Long Shan Tunnel entry reached — find Tunnel Guide Ren.")
-						_autosave_story_progress()
-						return true
-					return false
-				"light_pocket_south", "light_pocket_north":
-					if get_landmark_state("long_shan_tunnel") != "in_progress":
-						set_save_status("The lit pockets matter once Tunnel Guide Ren starts the crossing.")
-						return false
-					var all_checkpoints := _collect_long_shan_checkpoint(trigger_id)
-					if melody_hint != "":
-						melody_hint_shown.emit(melody_hint)
-					if all_checkpoints:
-						set_objective("Lead the route through to the Long Shan Tunnel exit.")
-						set_hint(build_input_hint("R Collect Long Shan Tunnel Exit"))
-						set_save_status("Both lit pockets are steady — guide the route to the exit.")
-					else:
-						set_objective("Keep moving with Ren until you reach the next lit pocket.")
-						set_save_status("A safe-lit pocket steadied the route ahead.")
-					_autosave_story_progress()
-					return true
-				"tunnel_exit":
-					if get_landmark_state("long_shan_tunnel") == "in_progress":
-						var checkpoint_count := _normalize_string_array(
-							get_landmark_progress("long_shan_tunnel").get("checkpoints_collected", [])
-						).size()
-						if checkpoint_count >= 2:
-							if melody_hint != "":
-								melody_hint_shown.emit(melody_hint)
-							_request_long_shan_route_prompt()
-							return false
-						set_save_status("The route is still uneven. Pause with Ren at the lit pockets before crossing.")
-						return false
-					set_save_status("Tunnel exit reached — talk to Tunnel Guide Ren before crossing.")
-					return false
-			return false
-		"bagua_tower":
-			if trigger_id == "synthesis_chamber":
-				var tower_progress := get_landmark_progress("bagua_tower")
-				if tower_progress.is_empty():
-					return false
-				var melody_state := get_melody_state("festival_melody")
-				var fragments_in := int(melody_state.get("fragments_found", 0))
-				if get_landmark_state("bagua_tower") == "in_progress" \
-				and fragments_in >= 3 \
-				and !bool(tower_progress.get("synthesis_done", false)):
-					_resolve_bagua_tower_synthesis()
-					_autosave_story_progress()
-					return true
-				set_save_status("The tower shows distance but not yet direction. Recover more fragments first.")
-				return false
-			return false
-		"festival_stage":
-			if get_landmark_state("festival_stage") != "available":
-				return false
-			if melody_hint != "":
-				melody_hint_shown.emit(melody_hint)
-			_request_melody_prompt("festival_melody", "performance")
-			return false
-	return false
+	return m_landmark_progression.activate_landmark_trigger(
+		landmark_id,
+		trigger_id,
+		display_name,
+		melody_hint
+	)
 
 
 func _progress_has_string_entry(progress: Dictionary, progress_key: String, entry_id: String) -> bool:
@@ -1706,141 +1357,28 @@ func _request_melody_prompt(
 	completion_kind: String = "",
 	request_overrides: Dictionary = {}
 ) -> void:
-	var melody_definition := get_melody_definition(melody_id)
-	if melody_definition.is_empty():
-		set_save_status("The phrase slips away before it can be arranged.")
-		return
-
-	var melody_state := get_melody_state(melody_id)
-	if melody_state.is_empty():
-		set_save_status("The phrase is not ready yet.")
-		return
-
-	var prompt_segments := _build_melody_prompt_segments(melody_id)
-	if prompt_segments.size() < 2:
-		set_save_status("Recover at least two steady phrase segments before arranging the melody.")
-		return
-
-	var melody_stage := String(melody_state.get("state", "unknown"))
-	if melody_stage not in ["reconstructed", "performed", "resonant"]:
-		set_save_status("The phrase needs more shape before it can be rehearsed.")
-		return
-
-	var normalized_completion_kind := completion_kind
-	if normalized_completion_kind.is_empty():
-		normalized_completion_kind = "festival_performance" if prompt_mode == "performance" else "melody_practice"
-
-	if prompt_mode == "performance" and normalized_completion_kind == "festival_performance" and !can_perform_melody(melody_id):
-		set_save_status("The performance point is not ready to answer the melody yet.")
-		return
-
-	var expected_order: Array[String] = []
-	for segment in prompt_segments:
-		expected_order.append(String(segment.get("source_id", "")))
-
-	var first_label := String(prompt_segments[0].get("label", "the opening phrase"))
-	var display_name := String(melody_definition.get("display_name", melody_id))
-	var prompt_title := "Practice %s" % display_name
-	var prompt_body := "Arrange the phrase segments in the order that feels right. There is no penalty for trying again."
-	if prompt_mode == "performance":
-		prompt_title = "Perform %s" % display_name
-		prompt_body = String(melody_definition.get("performance_prompt", ""))
-	var request := {
-		"melody_id": melody_id,
-		"mode": prompt_mode,
-		"completion_kind": normalized_completion_kind,
-		"title": prompt_title,
-		"body": prompt_body,
-		"segments": prompt_segments,
-		"expected_order": expected_order,
-		"retry_hint": "That contour felt off. Try beginning with %s." % first_label,
-		"hint_text": "Choose the known phrase segments in order.",
-	}
-	request.merge(request_overrides, true)
-	melody_prompt_requested.emit(request)
+	m_landmark_progression.request_melody_prompt(
+		melody_id,
+		prompt_mode,
+		completion_kind,
+		request_overrides
+	)
 
 
 func _request_trinity_chime_prompt() -> void:
-	var request := {
-		"melody_id": "festival_melody",
-		"mode": "performance",
-		"completion_kind": "trinity_chime",
-		"title": "Settle the Trinity Chime",
-		"body": "Arrange the choir cues in the order Mei taught you, then let the church phrase settle into one calm chime.",
-		"segments": [
-			{"source_id": "steps", "label": "Stone Steps", "landmark": "Trinity Church"},
-			{"source_id": "garden", "label": "Side Garden", "landmark": "Trinity Church"},
-			{"source_id": "yard", "label": "Quiet Yard", "landmark": "Trinity Church"},
-		],
-		"expected_order": ["steps", "garden", "yard"],
-		"retry_hint": "The church phrase begins at the steps before the garden and quiet yard answer.",
-		"hint_text": "Choose the choir cues in Mei's order.",
-	}
-	melody_prompt_requested.emit(request)
+	m_landmark_progression.request_trinity_chime_prompt()
 
 
 func _request_bi_shan_chamber_prompt() -> void:
-	var request := {
-		"melody_id": "festival_melody",
-		"mode": "performance",
-		"completion_kind": "bi_shan_chamber",
-		"title": "Settle the Bi Shan Contour",
-		"body": "Arrange the tunnel echoes from the first steady contour to the mural-facing answer so the chamber can respond.",
-		"segments": [
-			{"source_id": "echo_a", "label": "North Wall Echo", "landmark": "Bi Shan Tunnel"},
-			{"source_id": "echo_b", "label": "Arch Midpoint", "landmark": "Bi Shan Tunnel"},
-			{"source_id": "echo_c", "label": "Mural Approach", "landmark": "Bi Shan Tunnel"},
-		],
-		"expected_order": ["echo_a", "echo_b", "echo_c"],
-		"retry_hint": "Let the north wall answer first, then the arch midpoint, before the mural approach settles.",
-		"hint_text": "Choose the tunnel echoes in the contour they reveal together.",
-	}
-	melody_prompt_requested.emit(request)
+	m_landmark_progression.request_bi_shan_chamber_prompt()
 
 
 func _request_long_shan_route_prompt() -> void:
-	var request := {
-		"melody_id": "festival_melody",
-		"mode": "performance",
-		"completion_kind": "long_shan_route",
-		"title": "Steady the Long Shan Route",
-		"body": "Confirm the lit-pocket rhythm that carried Ren through the tunnel before the exit can settle into one route.",
-		"segments": [
-			{"source_id": "light_pocket_south", "label": "South Lit Pocket", "landmark": "Long Shan Tunnel"},
-			{"source_id": "light_pocket_north", "label": "North Lit Pocket", "landmark": "Long Shan Tunnel"},
-		],
-		"expected_order": ["light_pocket_south", "light_pocket_north"],
-		"retry_hint": "The steadier route begins with the south lit pocket before the northern light answers it.",
-		"hint_text": "Choose the lit pockets in the order Ren followed them.",
-	}
-	melody_prompt_requested.emit(request)
+	m_landmark_progression.request_long_shan_route_prompt()
 
 
 func _build_melody_prompt_segments(melody_id: String) -> Array[Dictionary]:
-	var melody_definition := get_melody_definition(melody_id)
-	var melody_state := get_melody_state(melody_id)
-	if melody_definition.is_empty() or melody_state.is_empty():
-		return []
-
-	var known_sources := _normalize_string_array(melody_state.get("known_sources", []))
-	var prompt_segments: Array[Dictionary] = []
-
-	for source in melody_definition.get("sources", []):
-		var source_id := String(source.get("source_id", ""))
-		if source_id.is_empty():
-			continue
-		if !bool(source.get("counts_as_fragment", true)):
-			continue
-		if known_sources.find(source_id) < 0:
-			continue
-
-		prompt_segments.append({
-			"source_id": source_id,
-			"label": String(source.get("label", "Unknown phrase")),
-			"landmark": String(source.get("landmark", "Unknown landmark")),
-		})
-
-	return prompt_segments
+	return m_landmark_progression.build_melody_prompt_segments(melody_id)
 
 
 func _collect_piano_ferry_harbor_clue() -> void:
@@ -1879,42 +1417,11 @@ func _collect_trinity_church_cue(cue_id: String) -> bool:
 
 
 func _complete_trinity_church_chime() -> void:
-	var progress := get_landmark_progress("trinity_church")
-	if progress.is_empty():
-		set_save_status("The church phrase is not ready to settle yet.")
-		return
-
-	var cues := _normalize_string_array(progress.get("cues_collected", []))
-	if cues.size() < 3:
-		set_save_status("The church phrase still needs all three choir cues.")
-		return
-
-	if bool(progress.get("chime_performed", false)):
-		set_save_status("The church bells have already settled into place.")
-		return
-
-	progress["chime_performed"] = true
-	progress["state"] = "resolved"
-	set_landmark_progress("trinity_church", progress)
-	set_objective("Return to Choir Caretaker Mei with the settled church phrase.")
-	set_hint(build_input_hint("R Talk to Choir Caretaker Mei"))
-	set_save_status("The choir phrase settled into one calm church chime.")
-	_autosave_story_progress()
+	m_landmark_progression.complete_trinity_church_chime()
 
 
 func _complete_bi_shan_chamber() -> void:
-	var progress := get_landmark_progress("bi_shan_tunnel")
-	var echoes := _normalize_string_array(progress.get("echoes_collected", []))
-	if echoes.size() < 3:
-		set_save_status("The mural panel is still waiting on the three tunnel echoes.")
-		return
-
-	if get_landmark_state("bi_shan_tunnel") == "reward_collected":
-		set_save_status("The Bi Shan contour has already settled into the tunnel walls.")
-		return
-
-	_resolve_bi_shan_tunnel()
-	_autosave_story_progress()
+	m_landmark_progression.complete_bi_shan_chamber()
 
 
 ## Collect one Bi Shan Tunnel echo marker. Returns true when all three are in.
@@ -1963,84 +1470,31 @@ func _collect_long_shan_checkpoint(checkpoint_id: String) -> bool:
 
 
 func _complete_long_shan_route() -> void:
-	var progress := get_landmark_progress("long_shan_tunnel")
-	var checkpoints := _normalize_string_array(progress.get("checkpoints_collected", []))
-	if checkpoints.size() < 2 or get_landmark_state("long_shan_tunnel") != "in_progress":
-		set_save_status("The Long Shan route still needs both lit pockets before it can settle.")
-		return
-
-	_resolve_long_shan_tunnel()
-	_autosave_story_progress()
+	m_landmark_progression.complete_long_shan_route()
 
 
 ## Award the Bi Shan Tunnel melody fragment and advance melody state.
 ## Called when the player settles the mural chamber prompt after tracing all echoes.
 func _resolve_bi_shan_tunnel() -> void:
-	advance_landmark_state("bi_shan_tunnel", "reward_collected")
-
-	var previous_melody: Dictionary = get_melody_state("festival_melody").duplicate(true)
-	var melody_state := _award_festival_source_once("bi_shan_echo")
-	_sync_festival_state_from_fragments(melody_state)
-
-	set_melody_progress({"festival_melody": melody_state})
-	_emit_fragment_story_milestones(previous_melody, "bi_shan_echo", melody_state)
-	unlock_shortcut("bi_shan_crossing")
-	if get_landmark_state("long_shan_tunnel") == "reward_collected" and get_landmark_state("bagua_tower") == "locked":
-		set_objective("Return to Tunnel Guide Ren now that both tunnel routes agree.")
-		set_hint(build_input_hint("R Talk to Tunnel Guide Ren"))
-		set_save_status("Bi Shan Tunnel — mural resonance restored. Ren can now compare the two tunnel routes.")
-	elif get_landmark_state("bagua_tower") != "locked":
-		set_objective("Carry the steadier tunnel route up to Bagua Tower.")
-		set_hint(build_input_hint("R Talk to Tower Keeper Suyin"))
-		set_save_status("Bi Shan Tunnel — mural resonance restored, and the tower can now read the route clearly.")
-	else:
-		set_objective("Explore Long Shan Tunnel and move with Ren between the lit pockets.")
-		set_hint(build_input_hint("R Inspect"))
-		set_save_status("Bi Shan Tunnel — mural resonance restored, and the tunnel route feels steadier now.")
+	m_landmark_progression.resolve_bi_shan_tunnel()
 
 
 ## Award the Long Shan Tunnel melody fragment and advance melody state.
 ## Called when the player settles the exit-route prompt after both lit pockets.
 func _resolve_long_shan_tunnel() -> void:
-	advance_landmark_state("long_shan_tunnel", "reward_collected")
-
-	var previous_melody: Dictionary = get_melody_state("festival_melody").duplicate(true)
-	var melody_state := _award_festival_source_once("long_shan_route")
-	_sync_festival_state_from_fragments(melody_state)
-
-	set_melody_progress({"festival_melody": melody_state})
-	_emit_fragment_story_milestones(previous_melody, "long_shan_route", melody_state)
-	set_objective("Return to Tunnel Guide Ren and compare what the tunnel routes now suggest.")
-	set_hint(build_input_hint("R Talk to Tunnel Guide Ren"))
-	set_save_status("Long Shan Tunnel — passage completed. Ren can now judge what the route means.")
+	m_landmark_progression.resolve_long_shan_tunnel()
 
 
 ## Called when the synthesis chamber trigger fires at the top of Bagua Tower.
 ## Marks synthesis as done, which gates tower_keeper's final resolved beat.
 func _resolve_bagua_tower_synthesis() -> void:
-	var progress := get_landmark_progress("bagua_tower")
-	progress["synthesis_done"] = true
-	progress["state"] = "resolved"
-	set_landmark_progress("bagua_tower", progress)
-	set_objective("Return to Tower Keeper Suyin to confirm the island route.")
-	set_save_status("Bagua Tower synthesis complete — return to Tower Keeper Suyin.")
+	m_landmark_progression.resolve_bagua_tower_synthesis()
 
 
 ## Award the final Bagua Tower melody fragment and complete the island melody.
 ## Called when tower_keeper's final dialogue beat fires with "landmark_reward": "bagua_tower".
 func _resolve_bagua_tower() -> void:
-	advance_landmark_state("bagua_tower", "reward_collected")
-
-	var previous_melody: Dictionary = get_melody_state("festival_melody").duplicate(true)
-	var melody_state := _award_festival_source_once("tower_chamber")
-	_sync_festival_state_from_fragments(melody_state)
-	melody_state["next_lead"] = "Return to the ferry plaza and perform the restored melody at the festival stage."
-
-	set_melody_progress({"festival_melody": melody_state})
-	_emit_fragment_story_milestones(previous_melody, "tower_chamber", melody_state)
-	advance_landmark_state("festival_stage", "available")
-	set_objective("Return to Piano Ferry and perform the restored melody at the festival stage.")
-	set_save_status("The island melody is whole — the harbor stage is ready.")
+	m_landmark_progression.resolve_bagua_tower()
 
 
 ## Gate check: returns false if a beat's prerequisite condition is not met.
@@ -2160,70 +1614,22 @@ func _emit_trust_milestone_if_max(resident_id: String, old_trust: int, new_trust
 ## Dispatch to the correct landmark resolution handler and emit a story
 ## milestone so ambient systems can react without coupling to internals.
 func _resolve_landmark(landmark_id: String) -> void:
-	match landmark_id:
-		"piano_ferry":
-			_resolve_piano_ferry()
-		"trinity_church":
-			_resolve_trinity_church()
-		"bagua_tower":
-			_resolve_bagua_tower()
-
-	story_milestone.emit("landmark_resolved", {
-		"landmark_id": landmark_id,
-		"fragments_found": fragments_found,
-		"helped_residents": _count_helped_residents(),
-	})
+	m_landmark_progression.resolve_landmark(landmark_id)
 
 
 func _resolve_piano_ferry() -> void:
-	advance_landmark_state("piano_ferry", "reward_collected")
-	set_journal_unlocked(true)
-
-	var previous_melody: Dictionary = get_melody_state("festival_melody").duplicate(true)
-	var melody_state := _award_festival_source_once("ferry_plaza", false)
-	_sync_festival_state_from_fragments(melody_state)
-	melody_state["next_lead"] = "Speak with the church caretaker and compare how the bells answer the harbor."
-	set_melody_progress({"festival_melody": melody_state})
-	_emit_fragment_story_milestones(previous_melody, "ferry_plaza", melody_state, false)
-	set_save_status("Journal unlocked — Trinity Church is marked as your first lead.")
+	m_landmark_progression.resolve_piano_ferry()
 
 
 ## Award the Trinity Church melody fragment, update melody state, and unlock
 ## the tunnel landmarks. Called automatically when the church_caretaker's
 ## resolved dialogue beat fires with "landmark_reward": "trinity_church".
 func _resolve_trinity_church() -> void:
-	advance_landmark_state("trinity_church", "reward_collected")
-
-	# Add church_bells as a confirmed melody source and award one fragment.
-	var previous_melody: Dictionary = get_melody_state("festival_melody").duplicate(true)
-	var melody_state := _award_festival_source_once("church_bells")
-	_sync_festival_state_from_fragments(melody_state)
-
-	set_melody_progress({"festival_melody": melody_state})
-	_emit_fragment_story_milestones(previous_melody, "church_bells", melody_state)
-
-	# Open the tunnel landmarks for the next phase.
-	advance_landmark_state("bi_shan_tunnel", "available")
-	advance_landmark_state("long_shan_tunnel", "available")
+	m_landmark_progression.resolve_trinity_church()
 
 
 func _award_festival_source_once(source_id: String, counts_as_fragment: bool = true) -> Dictionary:
-	var melody_state := get_melody_state("festival_melody").duplicate(true)
-	var sources: Array[String] = _normalize_string_array(melody_state.get("known_sources", []))
-	if sources.find(source_id) >= 0:
-		melody_state["known_sources"] = sources
-		return melody_state
-
-	sources.append(source_id)
-	melody_state["known_sources"] = sources
-	if counts_as_fragment:
-		var new_count := mini(
-			int(melody_state.get("fragments_found", 0)) + 1,
-			int(melody_state.get("fragments_total", fragments_total))
-		)
-		melody_state["fragments_found"] = new_count
-
-	return melody_state
+	return m_landmark_progression.award_festival_source_once(source_id, counts_as_fragment)
 
 
 func _emit_fragment_story_milestones(
@@ -2232,58 +1638,17 @@ func _emit_fragment_story_milestones(
 	melody_state: Dictionary,
 	counts_as_fragment: bool = true
 ) -> void:
-	var previous_sources: Array[String] = _normalize_string_array(previous_melody.get("known_sources", []))
-	if previous_sources.find(source_id) >= 0:
-		return
-
-	if !counts_as_fragment:
-		return
-
-	var new_count := int(melody_state.get("fragments_found", 0))
-	story_milestone.emit("fragment_restored", {
-		"melody_id": "festival_melody",
-		"source_id": source_id,
-		"total_found": new_count,
-	})
-
-	if new_count >= int(melody_state.get("fragments_total", fragments_total)):
-		story_milestone.emit("festival_ready", {
-			"fragments_found": new_count,
-			"helped_residents": _count_helped_residents(),
-		})
+	m_landmark_progression.emit_fragment_story_milestones(
+		previous_melody,
+		source_id,
+		melody_state,
+		counts_as_fragment
+	)
 
 
 func _sync_festival_state_from_fragments(melody_state: Dictionary) -> void:
-	var found := int(melody_state.get("fragments_found", 0))
-	var performed := bool(melody_state.get("performed", false))
-	var known_sources := _normalize_string_array(melody_state.get("known_sources", []))
-	if performed:
-		melody_state["state"] = "performed"
-		melody_state["performed"] = true
-	elif found >= 2:
-		melody_state["state"] = "reconstructed"
-		melody_state["performed"] = bool(melody_state.get("performed", false))
-	elif found >= 1 or !known_sources.is_empty():
-		melody_state["state"] = "heard"
-		melody_state["performed"] = bool(melody_state.get("performed", false))
-	else:
-		melody_state["state"] = "unknown"
-		melody_state["performed"] = bool(melody_state.get("performed", false))
+	m_landmark_progression.sync_festival_state_from_fragments(melody_state)
 
 
 func _perform_festival_melody() -> void:
-	advance_landmark_state("festival_stage", "reward_collected")
-
-	var melody_state := get_melody_state("festival_melody").duplicate(true)
-	melody_state["performed"] = true
-	melody_state["state"] = "performed"
-	melody_state["next_lead"] = "Stay for the harbor gathering or keep wandering once the festival recap ends."
-	set_melody_progress({"festival_melody": melody_state})
-
-	set_chapter("Festival Night")
-	set_objective("The restored festival melody carries across the harbor.")
-	set_save_status("The harbor gathering answers the restored melody.")
-	story_milestone.emit("festival_performed", {
-		"fragments_found": fragments_found,
-		"helped_residents": _count_helped_residents(),
-	})
+	m_landmark_progression.perform_festival_melody()

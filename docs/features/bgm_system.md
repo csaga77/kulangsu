@@ -19,20 +19,30 @@ V1 should:
 - make the first Exclusive track depend on live factors such as `performed`/`resonant`, not on deferred systems such as rain or time of day
 - ship without variants unless one is needed to prove the pipeline
 
+The live pool has now moved beyond that first seed pass to 12 tracks total:
+
+- 5 Island Commons
+- 5 Location-Leaning tracks
+- 2 Exclusive tracks
+
 ## File Storage
 
-All BGM pool tracks live under `resources/audio/music/bgm/`. Landmark motifs and other non-pool audio live in sibling folders.
+All BGM pool tracks live under `resources/audio/music/bgm/`. Landmark motifs and prompt feedback live under `resources/audio/sfx/`.
 
 ```
-resources/audio/music/
-├── bgm/                          — pool tracks and variants
-│   ├── bgm_harbor_morning.ogg
-│   ├── bgm_harbor_morning_autumn.ogg
-│   └── ...
-├── motifs/                       — landmark fragment motifs (one-shot)
-│   ├── motif_church_bells.ogg
-│   └── ...
-└── ...
+resources/audio/
+├── music/
+│   └── bgm/                      — pool tracks and variants
+│       ├── Stillness.ogg
+│       ├── Moonlit Tides Save Theme.ogg
+│       └── ...
+└── sfx/
+    ├── landmark_cues/            — landmark motif one-shots
+    │   ├── trinity_chime.ogg
+    │   └── ...
+    └── melody_prompt/            — prompt select/correct/wrong feedback
+        ├── segment_select.ogg
+        └── ...
 ```
 
 Format: OGG Vorbis preferred (native loop support in Godot 4). 44100 Hz, normalized to ~-14 LUFS.
@@ -93,11 +103,11 @@ V1 default: `clear` for all selection passes until a weather system exists.
 
 ## Track Pool Structure
 
-The counts below are the long-term target. V1 should seed the system with 7 tracks total:
+The counts below are the long-term target. The first playable pass seeded 7 tracks; the live pool now sits at 12 while still following the same tiering rules:
 
-- 4 Island Commons
-- 2 Location-Leaning tracks
-- 1 Exclusive track
+- 5 Island Commons
+- 5 Location-Leaning tracks
+- 2 Exclusive tracks
 
 Expand toward the larger counts only after the controller, selection rules, and in-game feel are stable.
 
@@ -218,6 +228,12 @@ Exception: Tier 3 exclusive tracks may start with zero gap when their trigger co
 - Location-triggered reselection (after commitment window): current track fades out over 4–6 seconds, silence gap, then new track fades in over 2–3 seconds.
 - Weather change: current track fades out over 6–8 seconds (slower, less abrupt), new selection fades in.
 - Progress change (fragment found): current track continues to its natural end. The next selection reflects the new progress state. No hard cut — the player doesn't hear a "level up" in the BGM.
+
+### Cue Ducking
+
+- Landmark cue motifs briefly duck BGM by about 6 dB through `BgmManager.duck_for_cue(duration)`.
+- The melody prompt ducks BGM for the full lifetime of the overlay through `BgmManager.set_ducked(true/false)`.
+- Cue ducking lowers the currently playing BGM instead of crossfading, so the island still feels continuous while one-shot motifs and prompt feedback stay readable.
 
 ### Crossfade Rule
 

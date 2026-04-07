@@ -10,6 +10,8 @@ const MIN_COMMITMENT_SECONDS := 45.0
 const RECENT_HISTORY_LIMIT := 3
 const SILENT_VOLUME_DB := -60.0
 const PLAY_VOLUME_DB := -6.0
+const DUCKED_PLAY_VOLUME_DB := PLAY_VOLUME_DB - 6.0
+const DUCK_TWEEN_SECONDS := 0.18
 const NATURAL_GAP_MIN_SECONDS := 5.0
 const NATURAL_GAP_MAX_SECONDS := 12.0
 const LOCATION_GAP_MIN_SECONDS := 1.5
@@ -43,9 +45,12 @@ var m_is_transitioning := false
 var m_player: AudioStreamPlayer = null
 var m_gap_timer: Timer = null
 var m_track_end_fade_timer: Timer = null
+var m_cue_duck_timer: Timer = null
 var m_fade_tween: Tween = null
 var m_scheduled_fade_track_id := ""
 var m_scheduled_fade_duration := 0.0
+var m_is_manually_ducked := false
+var m_is_cue_ducked := false
 
 
 func _ready() -> void:
@@ -95,6 +100,22 @@ func request_reselection(reason: String = "manual") -> void:
 	_fade_out_current_track(reason)
 
 
+func set_ducked(ducked: bool) -> void:
+	if m_is_manually_ducked == ducked:
+		return
+	m_is_manually_ducked = ducked
+	_sync_duck_volume()
+
+
+func duck_for_cue(duration: float) -> void:
+	if duration <= 0.0:
+		return
+	m_is_cue_ducked = true
+	if is_instance_valid(m_cue_duck_timer):
+		m_cue_duck_timer.start(duration)
+	_sync_duck_volume()
+
+
 func _create_runtime_nodes() -> void:
 	m_player = AudioStreamPlayer.new()
 	m_player.name = "BGMPlayer"
@@ -117,6 +138,13 @@ func _create_runtime_nodes() -> void:
 	add_child(m_track_end_fade_timer)
 	if !m_track_end_fade_timer.timeout.is_connected(_on_track_end_fade_timer_timeout):
 		m_track_end_fade_timer.timeout.connect(_on_track_end_fade_timer_timeout)
+
+	m_cue_duck_timer = Timer.new()
+	m_cue_duck_timer.name = "BGMCueDuckTimer"
+	m_cue_duck_timer.one_shot = true
+	add_child(m_cue_duck_timer)
+	if !m_cue_duck_timer.timeout.is_connected(_on_cue_duck_timer_timeout):
+		m_cue_duck_timer.timeout.connect(_on_cue_duck_timer_timeout)
 
 
 func _connect_app_state() -> void:
@@ -286,6 +314,11 @@ func _on_track_end_fade_timer_timeout() -> void:
 	_fade_out_current_track("natural_end")
 
 
+func _on_cue_duck_timer_timeout() -> void:
+	m_is_cue_ducked = false
+	_sync_duck_volume()
+
+
 func _select_and_play_next_track(reason: String) -> void:
 	var track_id := _pick_next_track_id()
 	if track_id.is_empty():
@@ -316,7 +349,12 @@ func _select_and_play_next_track(reason: String) -> void:
 
 	_kill_fade_tween()
 	m_fade_tween = create_tween()
-	m_fade_tween.tween_property(m_player, "volume_db", PLAY_VOLUME_DB, _fade_in_duration_for_reason(reason))
+	m_fade_tween.tween_property(
+		m_player,
+		"volume_db",
+		_target_play_volume_db(),
+		_fade_in_duration_for_reason(reason)
+	)
 
 	var label := String(track.get("label", track_id))
 	print(
@@ -567,6 +605,27 @@ func _gap_duration_for_reason(reason: String) -> float:
 			return m_rng.randf_range(LOCATION_GAP_MIN_SECONDS, LOCATION_GAP_MAX_SECONDS)
 		_:
 			return 0.01
+
+
+func _target_play_volume_db() -> float:
+	if m_is_manually_ducked or m_is_cue_ducked:
+		return DUCKED_PLAY_VOLUME_DB
+	return PLAY_VOLUME_DB
+
+
+func _sync_duck_volume() -> void:
+	if !is_instance_valid(m_player) or !m_player.playing:
+		return
+	if m_is_transitioning:
+		return
+
+	var target_volume := _target_play_volume_db()
+	if is_equal_approx(m_player.volume_db, target_volume):
+		return
+
+	_kill_fade_tween()
+	m_fade_tween = create_tween()
+	m_fade_tween.tween_property(m_player, "volume_db", target_volume, DUCK_TWEEN_SECONDS)
 
 
 func _kill_fade_tween() -> void:

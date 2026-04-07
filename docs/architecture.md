@@ -60,6 +60,7 @@ Responsibilities:
 - shared y-sorted actor layer for the player and spawned residents
 - landmark lookup and location syncing
 - data-driven resident spawning, inspect/talk prompts, and overworld resident presentation
+- extracted world helpers under `scenes/` now own route resolution (`route_resolver.gd`), resident spawning (`resident_spawner.gd`), tunnel context (`tunnel_context.gd`), and optional NPC route debug drawing (`npc_route_debug_drawer.gd`)
 - resident route resolution from authored anchors into runtime world-space waypoints, including tunnel path expansion and portal-direction helper points
 - tunnel interior context, tunnel-resident visibility syncing, and ground-building masking when the player actually enters a tunnel interior
 - feeding current world context into `AppState`
@@ -86,6 +87,7 @@ Responsibilities:
 - shared mode, chapter, location, objective, hint, save status, and summary data
 - shared melody definitions and melody-progress state used by the journal and future performance systems
 - resident and player-facing catalog data
+- `AppState` now composes focused helper scripts for journal text (`journal_builder.gd`), player profile/costume ownership (`player_profile_service.gd`), story autosave (`story_save_service.gd`), and landmark/melody progression (`landmark_progression.gd`)
 - lazy resident definition/profile initialization so startup does not eagerly build the full resident runtime just to load the shared state service
 - resident definition resources for appearance, dialogue, routine, and behavior metadata
 - editor-authored resident definition files and templates
