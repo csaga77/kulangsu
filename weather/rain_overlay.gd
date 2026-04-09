@@ -2,6 +2,14 @@
 class_name RainOverlay
 extends Node2D
 
+const MIN_WIND_ANGLE_DEGREES := 30.0
+const MAX_WIND_ANGLE_DEGREES := 150.0
+
+@export var enabled := true:
+	set(value):
+		enabled = value
+		_sync_enabled_state()
+
 @export var density: float = 0.002:
 	set(v):
 		density = max(v, 0.0)
@@ -20,7 +28,7 @@ extends Node2D
 # Wind control
 @export var wind_angle_degrees: float = 90.0:
 	set(v):
-		wind_angle_degrees = v
+		wind_angle_degrees = clampf(wrapf(v, 0.0, 360.0), MIN_WIND_ANGLE_DEGREES, MAX_WIND_ANGLE_DEGREES)
 		_update_wind()
 
 @export var wind_strength: float = 400.0:
@@ -76,6 +84,7 @@ func _ready() -> void:
 		m_rain_particle_process_material = m_rain.process_material as ParticleProcessMaterial
 		m_rain.local_coords = _uses_viewport_space()
 
+	_sync_enabled_state()
 	_update_direction_randomness()
 	_update_drop_size()
 	_update_speed()
@@ -85,7 +94,7 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	if not is_visible_in_tree():
+	if not is_visible_in_tree() or not enabled:
 		return
 
 	var viewport := get_viewport()
@@ -213,6 +222,15 @@ func _sync_particle_space(use_screen_space: bool, visible_size: Vector2) -> void
 		-half_size - travel_margin,
 		visible_size + travel_margin * 2.0
 	)
+
+
+func _sync_enabled_state() -> void:
+	if m_rain == null:
+		return
+	m_rain.visible = enabled
+	m_rain.emitting = enabled
+	if enabled:
+		m_rain.restart()
 
 
 func _get_max_particle_travel_distance() -> float:

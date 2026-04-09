@@ -7,6 +7,7 @@ This file documents the durable boundaries future changes should preserve. These
 - [`../project.godot`](../project.godot) must continue to define the Godot project entry point.
 - The current main scene contract is `run/main_scene = res://main.tscn`.
 - The current shared-state runtime contract is a single scene-owned [`AppStateService`](../game/app_state.gd) instance resolved through [`../game/app_runtime.gd`](../game/app_runtime.gd).
+- The current overworld-weather runtime contract is a single scene-owned [`WeatherManager`](../weather/weather_manager.gd) instance resolved through [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd).
 
 If either changes, update this file, [`architecture.md`](architecture.md), and [`README.md`](../README.md).
 
@@ -62,6 +63,29 @@ Governance:
 - do not move scene-local behavior into `AppState` without a strong reason
 - if signal names, payload shapes, or key state fields change, update this file and the affected feature docs
 
+## Weather Runtime Contract
+
+Owned by:
+
+- [`../weather/weather_manager.gd`](../weather/weather_manager.gd)
+- [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd)
+- [`../scenes/game_main.gd`](../scenes/game_main.gd)
+
+Current contract:
+
+- `WeatherManager` owns the overworld weather preset list, random hold/transition timing, interpolation, runtime weather-rig instancing, and the live application of synced wind settings to registered rain, fog, and cloud-shadow nodes
+- the running app owns exactly one `WeatherManager` node; callers resolve it through `WeatherRuntime.get_weather_manager(node)` instead of a Project Settings autoload
+- gameplay scenes register weather hosts with `WeatherManager.register_weather_host(...)`, providing attachment parents, a ground-impact spawn layer, and any scene-specific default properties instead of instantiating weather nodes themselves
+- gameplay scenes may update sync flags and shared wind through `WeatherManager.set_target_sync(...)` and `WeatherManager.set_registered_wind(...)` instead of duplicating per-pass wind propagation logic
+- gameplay scenes may use `WeatherManager.set_registered_visibility(...)` for aggregate show/hide, but tunnel suppression and other visibility-policy decisions still stay in `game_main.gd`
+- the focused weather sandbox may reuse the same manager for wind-sync behavior while keeping random cycling disabled
+
+Governance:
+
+- keep overworld weather-cycle policy, synced wind application, and runtime weather-rig creation in `WeatherManager`, not in reusable overlay nodes or scene files
+- keep scene-specific visibility rules such as tunnel suppression in the owning scene script
+- if the registration API or the single-manager runtime assumption changes, update this file and the weather feature docs
+
 ## Scene-Graph Lookup Contract
 
 Owned by:
@@ -91,6 +115,7 @@ Current contract:
 - `scenes/game_main.gd` maps landmarks plus resident spawn/movement anchors, reacts to controller events, syncs player tunnel context into `AppState`, and delegates route resolution, resident spawning, tunnel context, and debug route drawing to focused helper scripts under `scenes/`
 - `scenes/game_main.gd` instantiates `ResidentNPC` actors from `AppState.get_resident_definition(...)` and then applies world-specific spawn, level, and route resolution
 - `scenes/game_main.gd` also owns mapping the live player position onto safe story resume anchors for autosave and continue
+- `scenes/game_main.gd` registers overworld weather hosts plus the terrain spawn layer with `WeatherManager`, which instantiates the active rain, fog, cloud-shadow, and ground-impact nodes at runtime
 - `scenes/game_main.tscn` keeps the player and resident instances under one shared y-sorted actor layer rooted at `actors`
 - player inspect and talk prompts flow from the nearest nearby same-layer resident or landmark cue through controller signals into `AppState`
 - landmark naming and location sync depend on known nodes in the main scene

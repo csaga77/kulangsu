@@ -4,6 +4,7 @@ extends Node2D
 const TERRAIN_TILESET := preload("res://resources/tilesets/terrain_0_tiles.tres")
 const WATER_MATERIAL := preload("res://resources/materials/water.tres")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
+const WEATHER_RUNTIME := preload("res://weather/weather_runtime.gd")
 
 const PIER_POLYGON := [
 	Vector2(-110.0, 566.0),
@@ -61,6 +62,46 @@ const THUNDER_FIRST_DELAY_MIN := 1.2
 const THUNDER_FIRST_DELAY_MAX := 2.8
 const THUNDER_MIN_DELAY := 3.0
 const THUNDER_MAX_DELAY := 6.5
+const TEST_RAIN_PROPERTIES := {
+	"density": 0.0012,
+	"wind_angle_degrees": 72.0,
+	"wind_strength": 460.0,
+}
+const TEST_FOG_PROPERTIES := {
+	"density": 0.42,
+	"height_ratio": 0.58,
+	"softness": 0.34,
+	"haze_strength": 0.48,
+	"wisp_strength": 0.72,
+	"edge_brightness": 0.24,
+	"drift_speed": 0.11,
+	"wind_angle_degrees": 72.0,
+	"wind_strength": 460.0,
+	"fog_color": Color(0.831373, 0.894118, 0.941176, 0.62),
+	"noise_scale": Vector2(4.0, 1.9),
+}
+const TEST_CLOUD_PROPERTIES := {
+	"shadow_strength": 1.84,
+	"coverage": 0.43,
+	"softness": 0.24,
+	"drift_speed": 0.055,
+	"wind_angle_degrees": 72.0,
+	"wind_strength": 460.0,
+}
+const TEST_IMPACT_PROPERTIES := {
+	"max_impacts": 48,
+	"density_spawn_multiplier": 22000.0,
+	"spawn_top_ratio": 0.3,
+	"side_margin": 88.0,
+	"bottom_margin": 28.0,
+	"streak_duration": 0.08,
+	"lifetime_min": 0.22,
+	"lifetime_max": 0.34,
+	"scale_min": 3.2,
+	"scale_max": 5.4,
+	"impact_color": Color(0.956863, 0.980392, 1.0, 0.34),
+	"ripple_color": Color(0.713726, 0.890196, 1.0, 0.18),
+}
 
 @export var rebuild_environment: bool = false:
 	set(value):
@@ -81,8 +122,14 @@ const THUNDER_MAX_DELAY := 6.5
 var m_player_controller: PlayerController = null
 var m_closest_object: Node2D = null
 var m_weather_defaults: Dictionary = {}
+var m_master_wind_angle_degrees := 72.0
+var m_master_wind_strength := 460.0
 var m_rain_enabled := true
+var m_rain_sync_with_wind := true
 var m_fog_enabled := true
+var m_fog_sync_with_wind := true
+var m_cloud_enabled := true
+var m_cloud_sync_with_wind := true
 var m_thunder_enabled := false
 var m_thunder_strength := 0.65
 var m_thunder_wait_remaining := 0.0
@@ -93,60 +140,135 @@ var m_thunder_segment_start_alpha := 0.0
 var m_thunder_current_alpha := 0.0
 var m_thunder_rng := RandomNumberGenerator.new()
 var m_weather_controls_visible := true
+var m_weather_manager: WeatherManager = null
 
 @onready var m_water: TileMapLayer = $Water
 @onready var m_backdrop_terrain: TileMapLayer = $BackdropTerrain
 @onready var m_ground: TileMapLayer = $Ground
-@onready var m_cloud_shadows: Node2D = $CloudShadows
-@onready var m_ground_impacts: RainGroundImpacts = $GroundImpacts
 @onready var m_player: HumanBody2D = $Actors/Player
-@onready var m_fog_overlay = $WeatherLayer/FogOverlay
-@onready var m_rain_overlay: RainOverlay = $WeatherLayer/RainOverlay
 @onready var m_thunder_fill: ColorRect = $ThunderLayer/ThunderFill
 @onready var m_thunder_glow: ColorRect = $ThunderLayer/ThunderGlow
 @onready var m_toggle_weather_controls_button: Button = $WeatherControlsLayer/ToggleWeatherControlsButton
 @onready var m_weather_panel: PanelContainer = $WeatherControlsLayer/WeatherPanel
-@onready var m_rain_enabled_button: CheckButton = $WeatherControlsLayer/WeatherPanel/Margin/Body/RainEnabledButton
-@onready var m_fog_enabled_button: CheckButton = $WeatherControlsLayer/WeatherPanel/Margin/Body/FogEnabledButton
-@onready var m_thunder_enabled_button: CheckButton = $WeatherControlsLayer/WeatherPanel/Margin/Body/ThunderEnabledButton
-@onready var m_density_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/DensitySlider
-@onready var m_density_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/DensityValue
-@onready var m_angle_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/AngleSlider
-@onready var m_angle_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/AngleValue
-@onready var m_wind_strength_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/WindStrengthSlider
-@onready var m_wind_strength_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/WindStrengthValue
-@onready var m_drop_speed_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/DropSpeedSlider
-@onready var m_drop_speed_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/DropSpeedValue
-@onready var m_drop_size_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/DropSizeSlider
-@onready var m_drop_size_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/DropSizeValue
-@onready var m_fog_density_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/FogDensitySlider
-@onready var m_fog_density_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/FogDensityValue
-@onready var m_fog_height_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/FogHeightSlider
-@onready var m_fog_height_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/FogHeightValue
-@onready var m_fog_drift_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/FogDriftSlider
-@onready var m_fog_drift_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/FogDriftValue
-@onready var m_shadow_darkness_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/ShadowDarknessSlider
-@onready var m_shadow_darkness_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/ShadowDarknessValue
-@onready var m_thunder_strength_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/ThunderStrengthSlider
-@onready var m_thunder_strength_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/ThunderStrengthValue
-@onready var m_impact_gain_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/ImpactGainSlider
-@onready var m_impact_gain_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/ImpactGainValue
-@onready var m_trigger_thunder_button: Button = $WeatherControlsLayer/WeatherPanel/Margin/Body/TriggerThunderButton
+@onready var m_rain_enabled_button: CheckButton = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainEnabledButton
+@onready var m_rain_sync_wind_button: CheckButton = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainSyncWindButton
+@onready var m_fog_enabled_button: CheckButton = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content/FogEnabledButton
+@onready var m_fog_sync_wind_button: CheckButton = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content/FogSyncWindButton
+@onready var m_cloud_enabled_button: CheckButton = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudEnabledButton
+@onready var m_cloud_sync_wind_button: CheckButton = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudSyncWindButton
+@onready var m_thunder_enabled_button: CheckButton = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/ThunderEnabledButton
+@onready var m_density_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid/DensitySlider
+@onready var m_density_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid/DensityValue
+@onready var m_angle_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Wind/Content/WindControlsGrid/AngleSlider
+@onready var m_angle_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Wind/Content/WindControlsGrid/AngleValue
+@onready var m_wind_strength_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Wind/Content/WindControlsGrid/WindStrengthSlider
+@onready var m_wind_strength_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Wind/Content/WindControlsGrid/WindStrengthValue
+@onready var m_drop_speed_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid/DropSpeedSlider
+@onready var m_drop_speed_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid/DropSpeedValue
+@onready var m_drop_size_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid/DropSizeSlider
+@onready var m_drop_size_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid/DropSizeValue
+@onready var m_fog_density_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content/FogControlsGrid/FogDensitySlider
+@onready var m_fog_density_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content/FogControlsGrid/FogDensityValue
+@onready var m_fog_height_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content/FogControlsGrid/FogHeightSlider
+@onready var m_fog_height_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content/FogControlsGrid/FogHeightValue
+@onready var m_fog_drift_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content/FogControlsGrid/FogDriftSlider
+@onready var m_fog_drift_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content/FogControlsGrid/FogDriftValue
+@onready var m_cloud_size_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid/CloudSizeSlider
+@onready var m_cloud_size_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid/CloudSizeValue
+@onready var m_shadow_direction_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid/ShadowDirectionSlider
+@onready var m_shadow_direction_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid/ShadowDirectionValue
+@onready var m_shadow_speed_gain_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid/ShadowSpeedGainSlider
+@onready var m_shadow_speed_gain_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid/ShadowSpeedGainValue
+@onready var m_shadow_darkness_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid/ShadowDarknessSlider
+@onready var m_shadow_darkness_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid/ShadowDarknessValue
+@onready var m_thunder_strength_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid/ThunderStrengthSlider
+@onready var m_thunder_strength_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid/ThunderStrengthValue
+@onready var m_impact_gain_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid/ImpactGainSlider
+@onready var m_impact_gain_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid/ImpactGainValue
+@onready var m_trigger_thunder_button: Button = $WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/TriggerThunderButton
 @onready var m_reset_weather_controls_button: Button = $WeatherControlsLayer/WeatherPanel/Margin/Body/ResetWeatherButton
+var m_weather_layer: CanvasLayer = null
+var m_rain_overlay: RainOverlay = null
+var m_fog_overlay: FogOverlay = null
+var m_cloud_shadows: CloudShadowOverlay = null
+var m_ground_impacts: RainGroundImpacts = null
 
 
 func _app_state():
 	return APP_RUNTIME.get_app_state(self)
 
 
+func _weather_manager() -> WeatherManager:
+	if Engine.is_editor_hint():
+		return null
+	if m_weather_manager != null and is_instance_valid(m_weather_manager):
+		return m_weather_manager
+	m_weather_manager = WEATHER_RUNTIME.get_weather_manager(self) as WeatherManager
+	return m_weather_manager
+
+
+func _register_weather_targets() -> void:
+	var weather_manager := _weather_manager()
+	if !is_instance_valid(weather_manager):
+		return
+
+	weather_manager.cycles_enabled = false
+	var weather_nodes := weather_manager.register_weather_host(self, _build_weather_host_config())
+	_cache_weather_nodes(weather_nodes)
+	weather_manager.set_registered_wind(m_master_wind_angle_degrees, m_master_wind_strength)
+
+
+func _build_weather_host_config() -> Dictionary:
+	return {
+		"overlay_parent": self,
+		"overlay_layer": 10,
+		"cloud_parent": self,
+		"cloud_z_index": 1,
+		"cloud_properties": TEST_CLOUD_PROPERTIES,
+		"impacts_parent": self,
+		"impacts_z_index": 2,
+		"impact_properties": TEST_IMPACT_PROPERTIES,
+		"spawn_layer": m_ground,
+		"rain_properties": TEST_RAIN_PROPERTIES,
+		"fog_properties": TEST_FOG_PROPERTIES,
+		"sync_rain_with_wind": m_rain_sync_with_wind,
+		"sync_fog_with_wind": m_fog_sync_with_wind,
+		"sync_cloud_with_wind": m_cloud_sync_with_wind,
+	}
+
+
+func _cache_weather_nodes(weather_nodes: Dictionary) -> void:
+	m_weather_layer = weather_nodes.get("weather_layer") as CanvasLayer
+	m_rain_overlay = weather_nodes.get("rain_overlay") as RainOverlay
+	m_fog_overlay = weather_nodes.get("fog_overlay") as FogOverlay
+	m_cloud_shadows = weather_nodes.get("cloud_shadow_overlay") as CloudShadowOverlay
+	m_ground_impacts = weather_nodes.get("ground_impacts") as RainGroundImpacts
+
+
+func _sync_weather_manager_wind() -> void:
+	var weather_manager := _weather_manager()
+	if !is_instance_valid(weather_manager):
+		return
+
+	weather_manager.cycles_enabled = false
+	weather_manager.set_target_sync(
+		m_rain_sync_with_wind,
+		m_fog_sync_with_wind,
+		m_cloud_sync_with_wind
+	)
+	weather_manager.set_registered_wind(m_master_wind_angle_degrees, m_master_wind_strength)
+
+
 func _enter_tree() -> void:
 	_app_state()
+	_weather_manager()
 
 
 func _ready() -> void:
 	m_thunder_rng.randomize()
 	_rebuild_environment()
 	_rebuild_ground()
+	_register_weather_targets()
 	_setup_weather_controls()
 	if Engine.is_editor_hint():
 		return
@@ -168,6 +290,12 @@ func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	_update_thunder(delta)
+
+
+func _exit_tree() -> void:
+	if is_instance_valid(m_weather_manager):
+		m_weather_manager.unregister_weather_targets(self)
+	m_weather_manager = null
 
 
 func _rebuild_environment() -> void:
@@ -353,10 +481,14 @@ func _setup_weather_controls() -> void:
 	_capture_weather_defaults()
 	_apply_rain_enabled(m_rain_enabled)
 	_apply_fog_enabled(m_fog_enabled)
+	_apply_cloud_enabled(m_cloud_enabled)
+	_apply_rain_sync_with_wind(m_rain_sync_with_wind)
+	_apply_fog_sync_with_wind(m_fog_sync_with_wind)
+	_apply_cloud_sync_with_wind(m_cloud_sync_with_wind)
 	_apply_thunder_strength(m_thunder_strength)
 	_apply_thunder_enabled(m_thunder_enabled)
 	_sync_weather_controls_from_scene()
-	_sync_fog_with_wind_controls()
+	_apply_wind_sync_settings()
 	_set_weather_controls_visible(m_weather_controls_visible)
 
 
@@ -376,8 +508,16 @@ func _connect_weather_controls() -> void:
 		m_toggle_weather_controls_button.pressed.connect(_on_toggle_weather_controls_pressed)
 	if not m_rain_enabled_button.toggled.is_connected(_on_rain_enabled_toggled):
 		m_rain_enabled_button.toggled.connect(_on_rain_enabled_toggled)
+	if not m_rain_sync_wind_button.toggled.is_connected(_on_rain_sync_wind_toggled):
+		m_rain_sync_wind_button.toggled.connect(_on_rain_sync_wind_toggled)
 	if not m_fog_enabled_button.toggled.is_connected(_on_fog_enabled_toggled):
 		m_fog_enabled_button.toggled.connect(_on_fog_enabled_toggled)
+	if not m_fog_sync_wind_button.toggled.is_connected(_on_fog_sync_wind_toggled):
+		m_fog_sync_wind_button.toggled.connect(_on_fog_sync_wind_toggled)
+	if not m_cloud_enabled_button.toggled.is_connected(_on_cloud_enabled_toggled):
+		m_cloud_enabled_button.toggled.connect(_on_cloud_enabled_toggled)
+	if not m_cloud_sync_wind_button.toggled.is_connected(_on_cloud_sync_wind_toggled):
+		m_cloud_sync_wind_button.toggled.connect(_on_cloud_sync_wind_toggled)
 	if not m_thunder_enabled_button.toggled.is_connected(_on_thunder_enabled_toggled):
 		m_thunder_enabled_button.toggled.connect(_on_thunder_enabled_toggled)
 	if not m_density_slider.value_changed.is_connected(_on_density_slider_changed):
@@ -396,6 +536,12 @@ func _connect_weather_controls() -> void:
 		m_fog_height_slider.value_changed.connect(_on_fog_height_slider_changed)
 	if not m_fog_drift_slider.value_changed.is_connected(_on_fog_drift_slider_changed):
 		m_fog_drift_slider.value_changed.connect(_on_fog_drift_slider_changed)
+	if not m_cloud_size_slider.value_changed.is_connected(_on_cloud_size_slider_changed):
+		m_cloud_size_slider.value_changed.connect(_on_cloud_size_slider_changed)
+	if not m_shadow_direction_slider.value_changed.is_connected(_on_shadow_direction_slider_changed):
+		m_shadow_direction_slider.value_changed.connect(_on_shadow_direction_slider_changed)
+	if not m_shadow_speed_gain_slider.value_changed.is_connected(_on_shadow_speed_gain_slider_changed):
+		m_shadow_speed_gain_slider.value_changed.connect(_on_shadow_speed_gain_slider_changed)
 	if not m_shadow_darkness_slider.value_changed.is_connected(_on_shadow_darkness_slider_changed):
 		m_shadow_darkness_slider.value_changed.connect(_on_shadow_darkness_slider_changed)
 	if not m_thunder_strength_slider.value_changed.is_connected(_on_thunder_strength_slider_changed):
@@ -412,22 +558,35 @@ func _capture_weather_defaults() -> void:
 	if not is_instance_valid(m_rain_overlay) or not is_instance_valid(m_ground_impacts) or not is_instance_valid(m_fog_overlay):
 		return
 
-	m_rain_enabled = m_rain_overlay.visible and m_ground_impacts.visible
-	m_fog_enabled = m_fog_overlay.visible
+	m_rain_enabled = _is_node_enabled(m_rain_overlay, true) and _is_node_enabled(m_ground_impacts, true)
+	m_fog_enabled = _is_node_enabled(m_fog_overlay, true)
+	m_cloud_enabled = _is_node_enabled(m_cloud_shadows, true)
+	m_master_wind_angle_degrees = m_angle_slider.value
+	m_master_wind_strength = m_wind_strength_slider.value
+	m_rain_sync_with_wind = m_rain_sync_wind_button.button_pressed
+	m_fog_sync_with_wind = m_fog_sync_wind_button.button_pressed
+	m_cloud_sync_with_wind = m_cloud_sync_wind_button.button_pressed
 	m_thunder_enabled = m_thunder_enabled_button.button_pressed
 	m_thunder_strength = m_thunder_strength_slider.value
 	m_weather_defaults = {
+		"master_wind_angle_degrees": m_master_wind_angle_degrees,
+		"master_wind_strength": m_master_wind_strength,
 		"rain_enabled": m_rain_enabled,
+		"rain_sync_with_wind": m_rain_sync_with_wind,
 		"fog_enabled": m_fog_enabled,
+		"fog_sync_with_wind": m_fog_sync_with_wind,
+		"cloud_enabled": m_cloud_enabled,
+		"cloud_sync_with_wind": m_cloud_sync_with_wind,
 		"fog_density": m_fog_overlay.density,
 		"fog_height_ratio": m_fog_overlay.height_ratio,
 		"fog_drift_speed": m_fog_overlay.drift_speed,
-		"shadow_darkness": _get_cloud_shadow_strength(0.92),
+		"cloud_size": _get_cloud_shadow_size(1.0),
+		"shadow_direction_degrees": _get_cloud_shadow_direction(72.0),
+		"shadow_speed_gain": _get_cloud_shadow_speed_gain(1.0),
+		"shadow_darkness": _get_cloud_shadow_strength(1.84),
 		"thunder_enabled": m_thunder_enabled,
 		"thunder_strength": m_thunder_strength,
 		"density": m_rain_overlay.density,
-		"wind_angle_degrees": m_rain_overlay.wind_angle_degrees,
-		"wind_strength": m_rain_overlay.wind_strength,
 		"drop_speed": m_rain_overlay.drop_speed,
 		"drop_size": m_rain_overlay.drop_size,
 		"impact_gain": m_ground_impacts.density_spawn_multiplier,
@@ -439,16 +598,23 @@ func _sync_weather_controls_from_scene() -> void:
 		return
 
 	m_rain_enabled_button.set_pressed_no_signal(m_rain_enabled)
+	m_rain_sync_wind_button.set_pressed_no_signal(m_rain_sync_with_wind)
 	m_fog_enabled_button.set_pressed_no_signal(m_fog_enabled)
+	m_fog_sync_wind_button.set_pressed_no_signal(m_fog_sync_with_wind)
+	m_cloud_enabled_button.set_pressed_no_signal(m_cloud_enabled)
+	m_cloud_sync_wind_button.set_pressed_no_signal(m_cloud_sync_with_wind)
 	m_thunder_enabled_button.set_pressed_no_signal(m_thunder_enabled)
 	m_density_slider.set_value_no_signal(m_rain_overlay.density)
-	m_angle_slider.set_value_no_signal(m_rain_overlay.wind_angle_degrees)
-	m_wind_strength_slider.set_value_no_signal(m_rain_overlay.wind_strength)
+	m_angle_slider.set_value_no_signal(m_master_wind_angle_degrees)
+	m_wind_strength_slider.set_value_no_signal(m_master_wind_strength)
 	m_drop_speed_slider.set_value_no_signal(m_rain_overlay.drop_speed)
 	m_drop_size_slider.set_value_no_signal(m_rain_overlay.drop_size)
 	m_fog_density_slider.set_value_no_signal(m_fog_overlay.density)
 	m_fog_height_slider.set_value_no_signal(m_fog_overlay.height_ratio)
 	m_fog_drift_slider.set_value_no_signal(m_fog_overlay.drift_speed)
+	m_cloud_size_slider.set_value_no_signal(_get_cloud_shadow_size(m_cloud_size_slider.value))
+	m_shadow_direction_slider.set_value_no_signal(_get_cloud_shadow_direction(m_shadow_direction_slider.value))
+	m_shadow_speed_gain_slider.set_value_no_signal(_get_cloud_shadow_speed_gain(m_shadow_speed_gain_slider.value))
 	m_shadow_darkness_slider.set_value_no_signal(_get_cloud_shadow_strength(m_shadow_darkness_slider.value))
 	m_thunder_strength_slider.set_value_no_signal(m_thunder_strength)
 	m_impact_gain_slider.set_value_no_signal(m_ground_impacts.density_spawn_multiplier)
@@ -464,6 +630,9 @@ func _update_weather_value_labels() -> void:
 	m_fog_density_value.text = "%.2f" % m_fog_density_slider.value
 	m_fog_height_value.text = "%.2f" % m_fog_height_slider.value
 	m_fog_drift_value.text = "%.3f" % m_fog_drift_slider.value
+	m_cloud_size_value.text = "%.2f" % m_cloud_size_slider.value
+	m_shadow_direction_value.text = "%d deg" % roundi(m_shadow_direction_slider.value)
+	m_shadow_speed_gain_value.text = "%.2f" % m_shadow_speed_gain_slider.value
 	m_shadow_darkness_value.text = "%.2f" % m_shadow_darkness_slider.value
 	m_thunder_strength_value.text = "%.2f" % m_thunder_strength_slider.value
 	m_impact_gain_value.text = "%d" % roundi(m_impact_gain_slider.value)
@@ -481,43 +650,115 @@ func _set_weather_controls_visible(should_show: bool) -> void:
 
 func _apply_rain_enabled(should_enable: bool) -> void:
 	m_rain_enabled = should_enable
-	if is_instance_valid(m_rain_overlay):
-		m_rain_overlay.visible = should_enable
-	if is_instance_valid(m_ground_impacts):
-		if not should_enable:
-			m_ground_impacts.clear_impacts()
-		m_ground_impacts.visible = should_enable
+	_set_node_enabled(m_rain_overlay, should_enable)
+	_set_node_enabled(m_ground_impacts, should_enable)
 	if is_instance_valid(m_rain_enabled_button):
 		m_rain_enabled_button.set_pressed_no_signal(should_enable)
 
 
 func _apply_fog_enabled(should_enable: bool) -> void:
 	m_fog_enabled = should_enable
-	if is_instance_valid(m_fog_overlay):
-		m_fog_overlay.visible = should_enable
+	_set_node_enabled(m_fog_overlay, should_enable)
 	if is_instance_valid(m_fog_enabled_button):
 		m_fog_enabled_button.set_pressed_no_signal(should_enable)
 
 
-func _sync_fog_with_wind_controls() -> void:
-	if is_instance_valid(m_fog_overlay):
-		m_fog_overlay.wind_angle_degrees = m_angle_slider.value
-		m_fog_overlay.wind_strength = m_wind_strength_slider.value
+func _apply_rain_sync_with_wind(should_sync: bool) -> void:
+	m_rain_sync_with_wind = should_sync
+	if is_instance_valid(m_rain_sync_wind_button):
+		m_rain_sync_wind_button.set_pressed_no_signal(should_sync)
+	_sync_weather_manager_wind()
 
-	if is_instance_valid(m_cloud_shadows):
-		m_cloud_shadows.wind_angle_degrees = m_angle_slider.value
-		m_cloud_shadows.wind_strength = m_wind_strength_slider.value
+
+func _apply_fog_sync_with_wind(should_sync: bool) -> void:
+	m_fog_sync_with_wind = should_sync
+	if is_instance_valid(m_fog_sync_wind_button):
+		m_fog_sync_wind_button.set_pressed_no_signal(should_sync)
+	_sync_weather_manager_wind()
+
+
+func _apply_cloud_enabled(should_enable: bool) -> void:
+	m_cloud_enabled = should_enable
+	_set_node_enabled(m_cloud_shadows, should_enable)
+	if is_instance_valid(m_cloud_enabled_button):
+		m_cloud_enabled_button.set_pressed_no_signal(should_enable)
+
+
+func _apply_cloud_sync_with_wind(should_sync: bool) -> void:
+	m_cloud_sync_with_wind = should_sync
+	if is_instance_valid(m_cloud_sync_wind_button):
+		m_cloud_sync_wind_button.set_pressed_no_signal(should_sync)
+	_sync_weather_manager_wind()
+
+
+func _apply_wind_sync_settings() -> void:
+	_sync_weather_manager_wind()
 
 
 func _set_cloud_shadow_strength(value: float) -> void:
 	if is_instance_valid(m_cloud_shadows):
-		m_cloud_shadows.set("shadow_strength", clampf(value, 0.0, 2.0))
+		m_cloud_shadows.set("shadow_strength", clampf(value, 0.0, 3.0))
+
+
+func _set_cloud_shadow_size(value: float) -> void:
+	if is_instance_valid(m_cloud_shadows):
+		m_cloud_shadows.set("cloud_size", clampf(value, 0.5, 4.0))
+
+
+func _set_cloud_shadow_direction(value: float) -> void:
+	if is_instance_valid(m_cloud_shadows):
+		m_cloud_shadows.set("wind_angle_degrees", wrapf(value, 0.0, 360.0))
+
+
+func _set_cloud_shadow_speed_gain(value: float) -> void:
+	if is_instance_valid(m_cloud_shadows):
+		m_cloud_shadows.set("speed_gain", clampf(value, 0.0, 6.0))
 
 
 func _get_cloud_shadow_strength(default_value: float) -> float:
 	if not is_instance_valid(m_cloud_shadows):
 		return default_value
 	return float(m_cloud_shadows.get("shadow_strength"))
+
+
+func _get_cloud_shadow_size(default_value: float) -> float:
+	if not is_instance_valid(m_cloud_shadows):
+		return default_value
+	return float(m_cloud_shadows.get("cloud_size"))
+
+
+func _get_cloud_shadow_direction(default_value: float) -> float:
+	if not is_instance_valid(m_cloud_shadows):
+		return default_value
+	return float(m_cloud_shadows.get("wind_angle_degrees"))
+
+
+func _get_cloud_shadow_speed_gain(default_value: float) -> float:
+	if not is_instance_valid(m_cloud_shadows):
+		return default_value
+	return float(m_cloud_shadows.get("speed_gain"))
+
+
+func _set_node_enabled(node: Object, should_enable: bool) -> void:
+	if node == null:
+		return
+	if _has_property(node, &"enabled"):
+		node.set("enabled", should_enable)
+
+
+func _is_node_enabled(node: Object, default_value: bool) -> bool:
+	if node == null:
+		return default_value
+	if _has_property(node, &"enabled"):
+		return bool(node.get("enabled"))
+	return default_value
+
+
+func _has_property(node: Object, property_name: StringName) -> bool:
+	for property in node.get_property_list():
+		if StringName(property.get("name", "")) == property_name:
+			return true
+	return false
 
 
 func _apply_thunder_enabled(should_enable: bool) -> void:
@@ -654,8 +895,24 @@ func _on_rain_enabled_toggled(button_pressed: bool) -> void:
 	_apply_rain_enabled(button_pressed)
 
 
+func _on_rain_sync_wind_toggled(button_pressed: bool) -> void:
+	_apply_rain_sync_with_wind(button_pressed)
+
+
 func _on_fog_enabled_toggled(button_pressed: bool) -> void:
 	_apply_fog_enabled(button_pressed)
+
+
+func _on_fog_sync_wind_toggled(button_pressed: bool) -> void:
+	_apply_fog_sync_with_wind(button_pressed)
+
+
+func _on_cloud_enabled_toggled(button_pressed: bool) -> void:
+	_apply_cloud_enabled(button_pressed)
+
+
+func _on_cloud_sync_wind_toggled(button_pressed: bool) -> void:
+	_apply_cloud_sync_with_wind(button_pressed)
 
 
 func _on_thunder_enabled_toggled(button_pressed: bool) -> void:
@@ -669,16 +926,14 @@ func _on_density_slider_changed(value: float) -> void:
 
 
 func _on_angle_slider_changed(value: float) -> void:
-	if is_instance_valid(m_rain_overlay):
-		m_rain_overlay.wind_angle_degrees = value
-	_sync_fog_with_wind_controls()
+	m_master_wind_angle_degrees = value
+	_apply_wind_sync_settings()
 	_update_weather_value_labels()
 
 
 func _on_wind_strength_slider_changed(value: float) -> void:
-	if is_instance_valid(m_rain_overlay):
-		m_rain_overlay.wind_strength = value
-	_sync_fog_with_wind_controls()
+	m_master_wind_strength = value
+	_apply_wind_sync_settings()
 	_update_weather_value_labels()
 
 
@@ -712,6 +967,22 @@ func _on_fog_drift_slider_changed(value: float) -> void:
 	_update_weather_value_labels()
 
 
+func _on_cloud_size_slider_changed(value: float) -> void:
+	_set_cloud_shadow_size(value)
+	_update_weather_value_labels()
+
+
+func _on_shadow_direction_slider_changed(value: float) -> void:
+	if not m_cloud_sync_with_wind:
+		_set_cloud_shadow_direction(value)
+	_update_weather_value_labels()
+
+
+func _on_shadow_speed_gain_slider_changed(value: float) -> void:
+	_set_cloud_shadow_speed_gain(value)
+	_update_weather_value_labels()
+
+
 func _on_shadow_darkness_slider_changed(value: float) -> void:
 	_set_cloud_shadow_strength(value)
 	_update_weather_value_labels()
@@ -738,16 +1009,13 @@ func _on_reset_weather_controls_pressed() -> void:
 
 	_apply_rain_enabled(bool(m_weather_defaults.get("rain_enabled", true)))
 	_apply_fog_enabled(bool(m_weather_defaults.get("fog_enabled", true)))
+	_apply_cloud_enabled(bool(m_weather_defaults.get("cloud_enabled", true)))
+	m_master_wind_angle_degrees = float(m_weather_defaults.get("master_wind_angle_degrees", m_master_wind_angle_degrees))
+	m_master_wind_strength = float(m_weather_defaults.get("master_wind_strength", m_master_wind_strength))
 	_apply_thunder_enabled(bool(m_weather_defaults.get("thunder_enabled", false)))
 	_apply_thunder_strength(float(m_weather_defaults.get("thunder_strength", m_thunder_strength)))
 	if is_instance_valid(m_rain_overlay):
 		m_rain_overlay.density = float(m_weather_defaults.get("density", m_rain_overlay.density))
-		m_rain_overlay.wind_angle_degrees = float(
-			m_weather_defaults.get("wind_angle_degrees", m_rain_overlay.wind_angle_degrees)
-		)
-		m_rain_overlay.wind_strength = float(
-			m_weather_defaults.get("wind_strength", m_rain_overlay.wind_strength)
-		)
 		m_rain_overlay.drop_speed = float(m_weather_defaults.get("drop_speed", m_rain_overlay.drop_speed))
 		m_rain_overlay.drop_size = float(m_weather_defaults.get("drop_size", m_rain_overlay.drop_size))
 
@@ -764,7 +1032,12 @@ func _on_reset_weather_controls_pressed() -> void:
 		m_fog_overlay.drift_speed = float(
 			m_weather_defaults.get("fog_drift_speed", m_fog_overlay.drift_speed)
 		)
-	_set_cloud_shadow_strength(float(m_weather_defaults.get("shadow_darkness", _get_cloud_shadow_strength(0.92))))
-
-	_sync_fog_with_wind_controls()
+	_set_cloud_shadow_size(float(m_weather_defaults.get("cloud_size", _get_cloud_shadow_size(1.0))))
+	_set_cloud_shadow_direction(float(m_weather_defaults.get("shadow_direction_degrees", _get_cloud_shadow_direction(72.0))))
+	_set_cloud_shadow_speed_gain(float(m_weather_defaults.get("shadow_speed_gain", _get_cloud_shadow_speed_gain(1.0))))
+	_set_cloud_shadow_strength(float(m_weather_defaults.get("shadow_darkness", _get_cloud_shadow_strength(1.84))))
+	_apply_rain_sync_with_wind(bool(m_weather_defaults.get("rain_sync_with_wind", true)))
+	_apply_fog_sync_with_wind(bool(m_weather_defaults.get("fog_sync_with_wind", true)))
+	_apply_cloud_sync_with_wind(bool(m_weather_defaults.get("cloud_sync_with_wind", true)))
+	_apply_wind_sync_settings()
 	_sync_weather_controls_from_scene()

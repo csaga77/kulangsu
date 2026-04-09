@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://b6oslfbyqgnsg"]
 
 [ext_resource type="Texture2D" uid="uid://caqw3vjeeqtwy" path="res://resources/sprites/symbols_32x32.png" id="1_w4bo2"]
-[ext_resource type="Script" uid="uid://cwkkrcavlvjp7" path="res://common/rain_overlay.gd" id="1_xwq7r"]
+[ext_resource type="Script" uid="uid://cwkkrcavlvjp7" path="res://weather/rain_overlay.gd" id="1_xwq7r"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_f2ryw"]
 blend_mode = 1

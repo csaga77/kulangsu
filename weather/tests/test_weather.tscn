@@ -1,15 +1,11 @@
 [gd_scene format=4 uid="uid://cnrlh8dkpyf20"]
 
-[ext_resource type="Script" uid="uid://bs1ug7kjsfm3j" path="res://scenes/tests/test_weather.gd" id="1_dpjoi"]
-[ext_resource type="PackedScene" uid="uid://b6oslfbyqgnsg" path="res://common/rain_overlay.tscn" id="2_2gm2u"]
+[ext_resource type="Script" uid="uid://bs1ug7kjsfm3j" path="res://weather/tests/test_weather.gd" id="1_dpjoi"]
 [ext_resource type="Material" uid="uid://cjiajajuywre1" path="res://resources/materials/water.tres" id="2_g3svb"]
 [ext_resource type="TileSet" uid="uid://cqo6awm27cwcf" path="res://resources/tilesets/terrain_0_tiles.tres" id="3_d2mrq"]
-[ext_resource type="Script" uid="uid://dtcats1frc10s" path="res://common/rain_ground_impacts.gd" id="3_hq7j7"]
-[ext_resource type="PackedScene" path="res://common/cloud_shadow_overlay.tscn" id="3_cloud"]
 [ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/human_body_2d.tscn" id="4_human"]
 [ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/control/player_controller.gd" id="5_player"]
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="6_camera"]
-[ext_resource type="PackedScene" path="res://common/fog_overlay.tscn" id="6_fog"]
 [ext_resource type="PackedScene" uid="uid://c1le3qk68o7lw" path="res://gui/speech_balloon.tscn" id="7_7hrv5"]
 [ext_resource type="Script" uid="uid://vk6rfdoxtkgv" path="res://characters/control/npc_controller.gd" id="7_npc"]
 [sub_resource type="Resource" id="Resource_player"]
@@ -51,33 +47,6 @@ tile_set = ExtResource("3_d2mrq")
 z_index = 1
 tile_map_data = PackedByteArray("AAASABEACAAJAAIAAAASABIACAAEAAAAAAATABAACAAHAAIAAAATABEACAACAAAAAAATABIACAAHAAAAAAAUAA4ACAAAAAIAAAAUAA8ACAAFAAIAAAAUABAACAAAAAAAAAAUABEACAAFAAAAAAAUABIACAAAAAIAAAAVAA0ACAAIAAAAAAAVAA4ACAADAAIAAAAVAA8ACAAIAAIAAAAVABAACAADAAAAAAAVABEACAAIAAAAAAAVABIACAADAAIAAAAWAAwACAAGAAAAAAAWAA0ACAABAAIAAAAWAA4ACAAGAAIAAAAWAA8ACAABAAAAAAAWABAACAAGAAAAAAAWABEACAABAAIAAAAWABIACAAGAAIAAAAXAAoACAAJAAIAAAAXAAsACAAEAAAAAAAXAAwACAAJAAAAAAAXAA0ACAAEAAIAAAAXAA4ACAAJAAIAAAAXAA8ACAAEAAAAAAAXABAACAAJAAAAAAAXABEACAAEAAIAAAAXABIACAAJAAIAAAAYAAkACAAHAAIAAAAYAAoACAACAAAAAAAYAAsACAAHAAAAAAAYAAwACAACAAIAAAAYAA0ACAAHAAIAAAAYAA4ACAACAAAAAAAYAA8ACAAHAAAAAAAYABAACAACAAIAAAAYABEACAAHAAIAAAAYABIACAACAAAAAAAZAAgACAAFAAIAAAAZAAkACAAAAAAAAAAZAAoACAAFAAAAAAAZAAsACAAAAAIAAAAZAAwACAAFAAIAAAAZAA0ACAAAAAAAAAAZAA4ACAAFAAAAAAAZAA8ACAAAAAIAAAAZABAACAAFAAIAAAAZABEACAAAAAAAAAAZABIACAAFAAAAAAAaAAYACAAIAAAAAAAaAAcACAADAAIAAAAaAAgACAAIAAIAAAAaAAkACAADAAAAAAAaAAoACAAIAAAAAAAaAAsACAADAAIAAAAaAAwACAAIAAIAAAAaAA0ACAADAAAAAAAaAA4ACAAIAAAAAAAaAA8ACAADAAIAAAAaABAACAAIAAIAAAAaABEACAADAAAAAAAaABIACAAIAAAAAAAbAAUACAAGAAAAAAAbAAYACAABAAIAAAAbAAcACAAGAAIAAAAbAAgACAABAAAAAAAbAAkACAAGAAAAAAAbAAoACAABAAIAAAAbAAsACAAGAAIAAAAbAAwACAABAAAAAAAbAA0ACAAGAAAAAAAbAA4ACAABAAIAAAAbAA8ACAAGAAIAAAAbABAACAABAAAAAAAbABEACAAGAAAAAAAbABIACAABAAIAAAAcAAQACAAEAAAAAAAcAAUACAAJAAAAAAAcAAYACAAEAAIAAAAcAAcACAAJAAIAAAAcAAgACAAEAAAAAAAcAAkACAAJAAAAAAAcAAoACAAEAAIAAAAcAAsACAAJAAIAAAAcAAwACAAEAAAAAAAcAA0ACAAJAAAAAAAcAA4ACAAEAAIAAAAcAA8ACAAJAAIAAAAcABAACAAEAAAAAAAcABEACAAJAAAAAAAdAAIACAAHAAIAAAAdAAMACAACAAAAAAAdAAQACAAHAAAAAAAdAAUACAACAAIAAAAdAAYACAAHAAIAAAAdAAcACAACAAAAAAAdAAgACAAHAAAAAAAdAAkACAACAAIAAAAdAAoACAAHAAIAAAAdAAsACAACAAAAAAAdAAwACAAHAAAAAAAdAA0ACAACAAIAAAAdAA4ACAAHAAIAAAAdAA8ACAACAAAAAAAeAAEACAAFAAIAAAAeAAIACAAAAAAAAAAeAAMACAAFAAAAAAAeAAQACAAAAAIAAAAeAAUACAAFAAIAAAAeAAYACAAAAAAAAAAeAAcACAAFAAAAAAAeAAgACAAAAAIAAAAeAAkACAAFAAIAAAAeAAoACAAAAAAAAAAeAAsACAAFAAAAAAAeAAwACAAAAAIAAAAeAA0ACAAFAAIAAAAeAA4ACAAAAAAAAAAfAAAACAADAAIAAAAfAAEACAAIAAIAAAAfAAIACAADAAAAAAAfAAMACAAIAAAAAAAfAAQACAADAAIAAAAfAAUACAAIAAIAAAAfAAYACAADAAAAAAAfAAcACAAIAAAAAAAfAAgACAADAAIAAAAfAAkACAAIAAIAAAAfAAoACAADAAAAAAAfAAsACAAIAAAAAAAfAAwACAADAAIAAAAgAP7/CAAGAAAAAAAgAP//CAABAAIAAAAgAAAACAAGAAIAAAAgAAEACAABAAAAAAAgAAIACAAGAAAAAAAgAAMACAABAAIAAAAgAAQACAAGAAIAAAAgAAUACAABAAAAAAAgAAYACAAGAAAAAAAgAAcACAABAAIAAAAgAAgACAAGAAIAAAAgAAkACAABAAAAAAAgAAoACAAGAAAAAAAgAAsACAABAAIAAAAhAP3/CAAEAAAAAAAhAP7/CAAJAAAAAAAhAP//CAAEAAIAAAAhAAAACAAJAAIAAAAhAAEACAAEAAAAAAAhAAIACAAJAAAAAAAhAAMACAAEAAIAAAAhAAQACAAJAAIAAAAhAAUACAAEAAAAAAAhAAYACAAJAAAAAAAhAAcACAAEAAIAAAAhAAgACAAJAAIAAAAhAAkACAAEAAAAAAAiAP3/CAAHAAAAAAAiAP7/CAACAAIAAAAiAP//CAAHAAIAAAAiAAAACAACAAAAAAAiAAEACAAHAAAAAAAiAAIACAACAAIAAAAiAAMACAAHAAIAAAAiAAQACAACAAAAAAAiAAUACAAHAAAAAAAiAAYACAACAAIAAAAiAAcACAAHAAIAAAAiAAgACAACAAAAAAAjAP3/CAAAAAIAAAAjAP7/CAAFAAIAAAAjAP//CAAAAAAAAAAjAAAACAAFAAAAAAAjAAEACAAAAAIAAAAjAAIACAAFAAIAAAAjAAMACAAAAAAAAAAjAAQACAAFAAAAAAAjAAUACAAAAAIAAAAjAAYACAAFAAIAAAAkAP3/CAADAAIAAAAkAP7/CAAIAAIAAAAkAP//CAADAAAAAAAkAAAACAAIAAAAAAAkAAEACAADAAIAAAAkAAIACAAIAAIAAAAkAAMACAADAAAAAAAkAAQACAAIAAAAAAAkAAUACAADAAIAAAAlAP7/CAABAAAAAAAlAP//CAAGAAAAAAAlAAAACAABAAIAAAAlAAEACAAGAAIAAAAlAAIACAABAAAAAAAlAAMACAAGAAAAAAAmAP7/CAAEAAAAAAAmAP//CAAJAAAAAAAmAAAACAAEAAIAAAAmAAEACAAJAAIAAAAmAAIACAAEAAAAAAAnAP7/CAAHAAAAAAAnAP//CAACAAIAAAAnAAAACAAHAAIAAAAoAP7/CAAAAAIAAAAoAP//CAAFAAIAAAARABMACAAGAAAAAAASABMACAAJAAAAAAATABMACAACAAIAAAAUABMACAAFAAIAAAAVABMACAAIAAIAAAAWABMACAABAAAAAAAXABMACAAEAAAAAAAYABMACAAHAAAAAAAZABMACAAAAAIAAAAaABMACAADAAIAAAASABQACAAEAAIAAAATABQACAAHAAIAAAAUABQACAAAAAAAAAAVABQACAADAAAAAAAWABQACAAGAAAAAAAXABQACAAJAAAAAAAYABQACAACAAIAAAAZABQACAAFAAIAAAAaABQACAAIAAIAAAAVABUACAAIAAAAAAAWABUACAABAAIAAAAXABUACAAEAAIAAAAYABUACAAHAAIAAAAZABUACAAAAAAAAAAXABYACAAJAAIAAAAYABYACAACAAAAAAAZABYACAAFAAAAAAA=")
 tile_set = ExtResource("3_d2mrq")
-
-[node name="CloudShadows" parent="." instance=ExtResource("3_cloud")]
-z_index = 1
-shadow_strength = 0.92
-coverage = 0.43
-softness = 0.24
-drift_speed = 0.055
-wind_angle_degrees = 72.0
-wind_strength = 460.0
-
-[node name="GroundImpacts" type="Node2D" parent="." unique_id=187256800]
-z_index = 2
-script = ExtResource("3_hq7j7")
-rain_overlay_path = NodePath("../WeatherLayer/RainOverlay")
-spawn_layer_path = NodePath("../Ground")
-max_impacts = 48
-density_spawn_multiplier = 22000.0
-spawn_top_ratio = 0.3
-side_margin = 88.0
-bottom_margin = 28.0
-streak_duration = 0.08
-lifetime_min = 0.22
-lifetime_max = 0.34
-scale_min = 3.2
-scale_max = 5.4
-impact_color = Color(0.956863, 0.980392, 1, 0.34)
-ripple_color = Color(0.713726, 0.890196, 1, 0.18)
 
 [node name="Actors" type="Node2D" parent="." unique_id=1170994322]
 z_index = 3
@@ -139,29 +108,6 @@ polygon = PackedVector2Array(216, 168, 540, 126, 756, 214, 416, 264)
 [node name="CanopyShadow" type="Polygon2D" parent="ForegroundOccluders" unique_id=291597441]
 color = Color(0.470588, 0.262745, 0.215686, 0.46)
 polygon = PackedVector2Array(416, 264, 756, 214, 756, 244, 424, 294)
-
-[node name="WeatherLayer" type="CanvasLayer" parent="." unique_id=1603355903]
-layer = 10
-
-[node name="FogOverlay" parent="WeatherLayer" unique_id=307017093 instance=ExtResource("6_fog")]
-position = Vector2(640, 360)
-density = 0.42
-height_ratio = 0.58
-softness = 0.34
-haze_strength = 0.48
-wisp_strength = 0.72
-edge_brightness = 0.24
-drift_speed = 0.11
-wind_angle_degrees = 72.0
-wind_strength = 460.0
-fog_color = Color(0.831373, 0.894118, 0.941176, 0.62)
-noise_scale = Vector2(4, 1.9)
-
-[node name="RainOverlay" parent="WeatherLayer" unique_id=1694872417 instance=ExtResource("2_2gm2u")]
-position = Vector2(640, 360)
-density = 0.0012
-wind_angle_degrees = 72.0
-wind_strength = 460.0
 
 [node name="ThunderLayer" type="CanvasLayer" parent="." unique_id=762698829]
 layer = 15
@@ -233,72 +179,56 @@ text = "Weather Controls"
 [node name="Hint" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
 custom_minimum_size = Vector2(360, 0)
 layout_mode = 2
-text = "Adjust rain, fog, and thunder in place. Tab hides the panel. WASD moves, R inspects."
+text = "Adjust rain, fog, and cloud shadow in place. Use tabs to switch groups. Tab hides the panel. WASD moves, R inspects."
 autowrap_mode = 3
 
-[node name="RainEnabledButton" type="CheckButton" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
+[node name="WeatherTabs" type="TabContainer" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
+custom_minimum_size = Vector2(0, 520)
 layout_mode = 2
-button_pressed = true
-text = "Rain Enabled"
+size_flags_horizontal = 3
+size_flags_vertical = 3
 
-[node name="FogEnabledButton" type="CheckButton" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
+[node name="Wind" type="MarginContainer" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs"]
 layout_mode = 2
-button_pressed = true
-text = "Fog Enabled"
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
 
-[node name="ThunderEnabledButton" type="CheckButton" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
+[node name="Content" type="VBoxContainer" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Wind"]
 layout_mode = 2
-text = "Thunder Enabled"
+theme_override_constants/separation = 12
 
-[node name="ControlsGrid" type="GridContainer" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
+[node name="WindControlsGrid" type="GridContainer" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Wind/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
 columns = 3
 theme_override_constants/h_separation = 12
 theme_override_constants/v_separation = 10
 
-[node name="DensityLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
-layout_mode = 2
-text = "Rain Density"
-
-[node name="DensitySlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
-custom_minimum_size = Vector2(220, 24)
-layout_mode = 2
-size_flags_horizontal = 3
-max_value = 0.004
-step = 0.0001
-value = 0.0012
-
-[node name="DensityValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
-layout_mode = 2
-size_flags_horizontal = 3
-horizontal_alignment = 2
-text = "0.0012"
-
-[node name="AngleLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="AngleLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Wind/Content/WindControlsGrid"]
 layout_mode = 2
 text = "Wind Angle"
 
-[node name="AngleSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="AngleSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Wind/Content/WindControlsGrid"]
 custom_minimum_size = Vector2(220, 24)
 layout_mode = 2
 size_flags_horizontal = 3
-min_value = 35.0
-max_value = 120.0
+max_value = 360.0
 step = 1.0
 value = 72.0
 
-[node name="AngleValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="AngleValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Wind/Content/WindControlsGrid"]
 layout_mode = 2
 size_flags_horizontal = 3
 horizontal_alignment = 2
 text = "72 deg"
 
-[node name="WindStrengthLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="WindStrengthLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Wind/Content/WindControlsGrid"]
 layout_mode = 2
 text = "Wind Strength"
 
-[node name="WindStrengthSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="WindStrengthSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Wind/Content/WindControlsGrid"]
 custom_minimum_size = Vector2(220, 24)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -306,17 +236,67 @@ max_value = 900.0
 step = 10.0
 value = 460.0
 
-[node name="WindStrengthValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="WindStrengthValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Wind/Content/WindControlsGrid"]
 layout_mode = 2
 size_flags_horizontal = 3
 horizontal_alignment = 2
 text = "460"
 
-[node name="DropSpeedLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="Rain" type="MarginContainer" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Content" type="VBoxContainer" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="RainEnabledButton" type="CheckButton" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content"]
+layout_mode = 2
+button_pressed = true
+text = "Rain Enabled"
+
+[node name="RainSyncWindButton" type="CheckButton" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content"]
+layout_mode = 2
+button_pressed = true
+text = "Sync With Wind"
+
+[node name="ThunderEnabledButton" type="CheckButton" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content"]
+layout_mode = 2
+text = "Thunder Enabled"
+
+[node name="RainControlsGrid" type="GridContainer" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 3
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 10
+
+[node name="DensityLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid"]
+layout_mode = 2
+text = "Rain Density"
+
+[node name="DensitySlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid"]
+custom_minimum_size = Vector2(220, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 0.004
+step = 0.0001
+value = 0.0012
+
+[node name="DensityValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "0.0012"
+
+[node name="DropSpeedLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid"]
 layout_mode = 2
 text = "Drop Speed"
 
-[node name="DropSpeedSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="DropSpeedSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid"]
 custom_minimum_size = Vector2(220, 24)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -325,17 +305,17 @@ max_value = 450.0
 step = 10.0
 value = 250.0
 
-[node name="DropSpeedValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="DropSpeedValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid"]
 layout_mode = 2
 size_flags_horizontal = 3
 horizontal_alignment = 2
 text = "250"
 
-[node name="DropSizeLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="DropSizeLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid"]
 layout_mode = 2
 text = "Drop Size"
 
-[node name="DropSizeSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="DropSizeSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid"]
 custom_minimum_size = Vector2(220, 24)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -344,17 +324,86 @@ max_value = 0.18
 step = 0.005
 value = 0.1
 
-[node name="DropSizeValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="DropSizeValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid"]
 layout_mode = 2
 size_flags_horizontal = 3
 horizontal_alignment = 2
 text = "0.100"
 
-[node name="FogDensityLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="ImpactGainLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid"]
+layout_mode = 2
+text = "Impact Gain"
+
+[node name="ImpactGainSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid"]
+custom_minimum_size = Vector2(220, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 40000.0
+step = 250.0
+value = 22000.0
+
+[node name="ImpactGainValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "22000"
+
+[node name="ThunderStrengthLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid"]
+layout_mode = 2
+text = "Thunder Strength"
+
+[node name="ThunderStrengthSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid"]
+custom_minimum_size = Vector2(220, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.05
+value = 0.65
+
+[node name="ThunderStrengthValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content/RainControlsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "0.65"
+
+[node name="TriggerThunderButton" type="Button" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Rain/Content"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Trigger Thunder"
+
+[node name="Fog" type="MarginContainer" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Content" type="VBoxContainer" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="FogEnabledButton" type="CheckButton" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content"]
+layout_mode = 2
+button_pressed = true
+text = "Fog Enabled"
+
+[node name="FogSyncWindButton" type="CheckButton" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content"]
+layout_mode = 2
+button_pressed = true
+text = "Sync With Wind"
+
+[node name="FogControlsGrid" type="GridContainer" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 3
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 10
+
+[node name="FogDensityLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content/FogControlsGrid"]
 layout_mode = 2
 text = "Fog Density"
 
-[node name="FogDensitySlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="FogDensitySlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content/FogControlsGrid"]
 custom_minimum_size = Vector2(220, 24)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -362,17 +411,17 @@ max_value = 1.0
 step = 0.01
 value = 0.42
 
-[node name="FogDensityValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="FogDensityValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content/FogControlsGrid"]
 layout_mode = 2
 size_flags_horizontal = 3
 horizontal_alignment = 2
 text = "0.42"
 
-[node name="FogHeightLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="FogHeightLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content/FogControlsGrid"]
 layout_mode = 2
 text = "Fog Height"
 
-[node name="FogHeightSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="FogHeightSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content/FogControlsGrid"]
 custom_minimum_size = Vector2(220, 24)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -381,17 +430,17 @@ max_value = 0.9
 step = 0.01
 value = 0.58
 
-[node name="FogHeightValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="FogHeightValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content/FogControlsGrid"]
 layout_mode = 2
 size_flags_horizontal = 3
 horizontal_alignment = 2
 text = "0.58"
 
-[node name="FogDriftLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="FogDriftLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content/FogControlsGrid"]
 layout_mode = 2
 text = "Fog Drift"
 
-[node name="FogDriftSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="FogDriftSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content/FogControlsGrid"]
 custom_minimum_size = Vector2(220, 24)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -399,70 +448,112 @@ max_value = 0.2
 step = 0.005
 value = 0.11
 
-[node name="FogDriftValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="FogDriftValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Fog/Content/FogControlsGrid"]
 layout_mode = 2
 size_flags_horizontal = 3
 horizontal_alignment = 2
 text = "0.110"
 
-[node name="ShadowDarknessLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="Cloud" type="MarginContainer" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Content" type="VBoxContainer" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="CloudEnabledButton" type="CheckButton" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content"]
+layout_mode = 2
+button_pressed = true
+text = "Cloud Enabled"
+
+[node name="CloudSyncWindButton" type="CheckButton" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content"]
+layout_mode = 2
+button_pressed = true
+text = "Sync With Wind"
+
+[node name="CloudControlsGrid" type="GridContainer" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 3
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 10
+
+[node name="CloudSizeLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid"]
+layout_mode = 2
+text = "Cloud Size"
+
+[node name="CloudSizeSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid"]
+custom_minimum_size = Vector2(220, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.5
+max_value = 4.0
+step = 0.05
+value = 1.0
+
+[node name="CloudSizeValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "1.00"
+
+[node name="ShadowDirectionLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid"]
+layout_mode = 2
+text = "Shadow Direction"
+
+[node name="ShadowDirectionSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid"]
+custom_minimum_size = Vector2(220, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 360.0
+step = 1.0
+value = 72.0
+
+[node name="ShadowDirectionValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "72 deg"
+
+[node name="ShadowSpeedGainLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid"]
+layout_mode = 2
+text = "Shadow Speed Gain"
+
+[node name="ShadowSpeedGainSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid"]
+custom_minimum_size = Vector2(220, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 6.0
+step = 0.05
+value = 1.0
+
+[node name="ShadowSpeedGainValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "1.00"
+
+[node name="ShadowDarknessLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid"]
 layout_mode = 2
 text = "Shadow Darkness"
 
-[node name="ShadowDarknessSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="ShadowDarknessSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid"]
 custom_minimum_size = Vector2(220, 24)
 layout_mode = 2
 size_flags_horizontal = 3
-max_value = 2.0
+max_value = 3.0
 step = 0.01
-value = 0.92
+value = 1.84
 
-[node name="ShadowDarknessValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
+[node name="ShadowDarknessValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/WeatherTabs/Cloud/Content/CloudControlsGrid"]
 layout_mode = 2
 size_flags_horizontal = 3
 horizontal_alignment = 2
-text = "0.92"
-
-[node name="ThunderStrengthLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
-layout_mode = 2
-text = "Thunder Strength"
-
-[node name="ThunderStrengthSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
-custom_minimum_size = Vector2(220, 24)
-layout_mode = 2
-size_flags_horizontal = 3
-max_value = 1.0
-step = 0.05
-value = 0.65
-
-[node name="ThunderStrengthValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
-layout_mode = 2
-size_flags_horizontal = 3
-horizontal_alignment = 2
-text = "0.65"
-
-[node name="ImpactGainLabel" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
-layout_mode = 2
-text = "Impact Gain"
-
-[node name="ImpactGainSlider" type="HSlider" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
-custom_minimum_size = Vector2(220, 24)
-layout_mode = 2
-size_flags_horizontal = 3
-max_value = 40000.0
-step = 250.0
-value = 22000.0
-
-[node name="ImpactGainValue" type="Label" parent="WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid"]
-layout_mode = 2
-size_flags_horizontal = 3
-horizontal_alignment = 2
-text = "22000"
-
-[node name="TriggerThunderButton" type="Button" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
-custom_minimum_size = Vector2(0, 40)
-layout_mode = 2
-text = "Trigger Thunder"
+text = "1.84"
 
 [node name="ResetWeatherButton" type="Button" parent="WeatherControlsLayer/WeatherPanel/Margin/Body"]
 custom_minimum_size = Vector2(0, 40)

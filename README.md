@@ -9,7 +9,7 @@ This repository is also a small super-repo: the main game lives here, and severa
 - Godot 4 project configured through [`project.godot`](project.godot)
 - GDScript and `.tscn` scenes
 - Canvas-based UI rooted in [`main.tscn`](main.tscn)
-- Shared UI/progression state in the scene-owned [`AppStateService`](game/app_state.gd) resolved through [`AppRuntime`](game/app_runtime.gd)
+- Shared scene-owned runtime services for UI/progression state and overworld weather, resolved through [`AppRuntime`](game/app_runtime.gd) and [`WeatherRuntime`](weather/weather_runtime.gd)
 - Git submodules for shared support code, tilemap tooling, third-party LPC assets, and agent runbooks
 
 No package manager, CI pipeline, or automated test runner is checked into this repository.
@@ -19,6 +19,7 @@ No package manager, CI pipeline, or automated test runner is checked into this r
 - [`ui/`](ui) - app shell, screens, overlays, and shared UI styling
 - [`scenes/game_main.tscn`](scenes/game_main.tscn) / [`scenes/game_main.gd`](scenes/game_main.gd) - main island scene and world integration logic
 - [`game/`](game) - shared state, catalogs, and reusable gameplay modules
+- [`weather/`](weather) - reusable weather overlays, the global weather manager/runtime, and the dedicated weather sandbox
 - [`characters/`](characters) - player, NPC, controller, and behavior-tree code
 - [`architecture/`](architecture) - landmark scenes and reusable building pieces
 - [`scenes/`](scenes) - runtime gameplay scenes plus validation scene containers
@@ -103,7 +104,7 @@ Use a local Godot 4 editor or runtime to open [`project.godot`](project.godot).
 Important runtime entry points:
 
 - Main configured scene: [`main.tscn`](main.tscn)
-- Main gameplay scene embedded by the shell: [`scenes/game_main.tscn`](scenes/game_main.tscn), which now includes the shared overworld cloud-shadow, rain, fog, and ground-impact weather passes plus a lightweight random weather-cycle controller
+- Main gameplay scene embedded by the shell: [`scenes/game_main.tscn`](scenes/game_main.tscn), which now registers overworld weather hosts and lets the global [`WeatherManager`](weather/weather_manager.gd) instantiate and manage the shared cloud-shadow, rain, fog, and ground-impact passes at runtime
 
 This repo does not include export scripts or shell wrappers for launching the project.
 
@@ -113,9 +114,9 @@ Validation is currently manual:
 
 - Run the full project after app-shell, HUD, overlay, or progression changes.
 - Open focused scenes when changing a specific subsystem.
-- Use the existing validation scenes under [`scenes/tests/`](scenes/tests) and feature-local test scenes such as [`game/grid_board_game/test_grid_board_game.tscn`](game/grid_board_game/test_grid_board_game.tscn) and [`game/grid_board_game/test_terminal_turn_state.tscn`](game/grid_board_game/test_terminal_turn_state.tscn).
-- Use [`scenes/game_main.tscn`](scenes/game_main.tscn) or the full app flow when validating the shared overworld weather, cloud shadows, and random cycle transitions against the real island terrain and resident silhouettes.
-- Use [`scenes/tests/test_weather.tscn`](scenes/tests/test_weather.tscn) for weather-specific validation. It now combines tilemap-backed water and terrain, a shared fog pass, pier-ground rain impacts, a thunder-flash test pass, an in-scene weather control panel with rain, fog, cloud-shadow darkness, and thunder controls, foreground occluders, and actor readability checks in one sandbox.
+- Use the existing validation scenes under [`scenes/tests/`](scenes/tests), the dedicated weather sandbox under [`weather/tests/`](weather/tests), and feature-local test scenes such as [`game/grid_board_game/test_grid_board_game.tscn`](game/grid_board_game/test_grid_board_game.tscn) and [`game/grid_board_game/test_terminal_turn_state.tscn`](game/grid_board_game/test_terminal_turn_state.tscn).
+- Use [`scenes/game_main.tscn`](scenes/game_main.tscn) or the full app flow when validating the shared overworld weather, cloud shadows, and global weather-manager transitions against the real island terrain and resident silhouettes.
+- Use [`weather/tests/test_weather.tscn`](weather/tests/test_weather.tscn) for weather-specific validation. It now combines tilemap-backed water and terrain, manager-attached shared fog/rain/cloud/impact passes, a thunder-flash test pass, and a tabbed weather control panel split into `Wind`, `Rain`, `Fog`, and `Cloud` groups with per-pass `Sync With Wind` toggles for faster tuning, alongside foreground occluders and actor readability checks.
 
 If you make a change that affects behavior and you cannot run the project or a relevant scene, call that out explicitly in your handoff.
 

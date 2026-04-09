@@ -14,8 +14,8 @@ Most gameplay and scene work happens in the main repo. Shared or vendor-style co
 ## Startup Flow
 
 1. [`../project.godot`](../project.godot) boots the app through [`../main.tscn`](../main.tscn).
-2. [`../main.gd`](../main.gd) builds the UI shell, ensures the shared [`../game/app_state.gd`](../game/app_state.gd) service exists through [`../game/app_runtime.gd`](../game/app_runtime.gd), and instantiates [`../scenes/game_main.tscn`](../scenes/game_main.tscn) for gameplay.
-3. [`../scenes/game_main.gd`](../scenes/game_main.gd) connects the player, terrain, landmarks, residents, and interaction state to that shared scene-owned state service.
+2. [`../main.gd`](../main.gd) builds the UI shell, ensures the shared runtime services exist through [`../game/app_runtime.gd`](../game/app_runtime.gd) and [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd), and instantiates [`../scenes/game_main.tscn`](../scenes/game_main.tscn) for gameplay.
+3. [`../scenes/game_main.gd`](../scenes/game_main.gd) connects the player, terrain, landmarks, residents, and interaction state to shared runtime services, and registers the overworld weather nodes with the global weather manager.
 4. Screen scripts under [`../ui/screens/`](../ui/screens) read shared state and send actions back to the shell.
 
 ## Main Systems
@@ -45,7 +45,8 @@ Primary files:
 
 - [`../scenes/game_main.tscn`](../scenes/game_main.tscn)
 - [`../scenes/game_main.gd`](../scenes/game_main.gd)
-- [`../scenes/weather_cycle_controller.gd`](../scenes/weather_cycle_controller.gd)
+- [`../weather/weather_manager.gd`](../weather/weather_manager.gd)
+- [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd)
 - [`../terrain/terrain.tscn`](../terrain/terrain.tscn)
 - [`../terrain/terrain.gd`](../terrain/terrain.gd)
 - [`../terrain/island_generation_profile.tres`](../terrain/island_generation_profile.tres)
@@ -59,8 +60,8 @@ Responsibilities:
 - shared authored terrain-profile resource used by both direct terrain validation and the gameplay scene instance
 - terrain mask legend, per-color semantics, and street-connect defaults
 - player spawn and camera context
-- shared overworld weather attachment for reusable cloud-shadow, rain, fog, and ground-impact rendering
-- lightweight random overworld weather cycling across reusable rain/fog presets
+- shared overworld weather host registration for reusable cloud-shadow, rain, fog, and ground-impact rendering
+- global weather-manager ownership for runtime weather-rig instancing, overworld random weather cycling, and shared wind sync across reusable rain/fog/cloud passes
 - scene-owned BGM playback driven by shared location and melody-progress context
 - shared y-sorted actor layer for the player and spawned residents
 - landmark lookup and location syncing
@@ -108,15 +109,20 @@ Boundary:
 Primary file:
 
 - [`../game/app_runtime.gd`](../game/app_runtime.gd)
+- [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd)
+- [`../weather/weather_manager.gd`](../weather/weather_manager.gd)
 
 Responsibilities:
 
 - resolves the one scene-owned `AppStateService` instance for runtime callers without using a Project Settings autoload
+- resolves the one scene-owned `WeatherManager` instance for runtime callers without using a Project Settings autoload
+- keeps overworld weather-cycle selection, interpolation, and shared wind-sync application out of `game_main.tscn`
 - resolves the live `HumanBody2D` player from the existing `"player"` group for scene-graph helpers such as visibility masking
 
 Boundary:
 
-- `AppRuntime` is a lookup helper, not a gameplay-state owner
+- `AppRuntime` and `WeatherRuntime` are lookup helpers, not gameplay-state owners
+- `WeatherManager` owns the global overworld weather-cycle policy and the live application of synced wind settings to registered weather nodes
 - UI and progression code should use `AppState`, not raw player lookup, for anything player-facing or save-relevant
 - the player group contract must stay valid for scene-graph helpers that resolve the player through `AppRuntime`
 

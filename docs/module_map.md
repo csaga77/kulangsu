@@ -6,8 +6,10 @@ Read [`design_brief.md`](design_brief.md) and [`architecture.md`](architecture.m
 
 - [`../project.godot`](../project.godot) - Godot project configuration, input map, and main scene
 - [`../main.tscn`](../main.tscn) / [`../main.gd`](../main.gd) - app startup and overlay flow
-- [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - main island scene, world integration, and shared overworld weather attachment
-- [`../scenes/weather_cycle_controller.gd`](../scenes/weather_cycle_controller.gd) - scene-owned random weather preset cycling for the overworld weather stack, including wind sync for cloud shadows
+- [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - main island scene, world integration, and shared overworld weather host registration
+- [`../weather/`](../weather) - weather-specific top-level folder for reusable overlays, the global weather manager/runtime, and the dedicated weather sandbox
+- [`../weather/weather_manager.gd`](../weather/weather_manager.gd) - global overworld weather manager that instantiates runtime weather rigs, owns preset cycling, and applies synced wind across registered rain, fog, and cloud-shadow targets
+- [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd) - runtime lookup helper for the global scene-owned `WeatherManager`
 - [`../scenes/route_resolver.gd`](../scenes/route_resolver.gd) - resolves resident spawn anchors, tunnel portal approach points, and tunnel-to-surface route transitions
 - [`../scenes/resident_spawner.gd`](../scenes/resident_spawner.gd) - instantiates runtime residents from `AppState` definitions onto the shared actor layer
 - [`../scenes/tunnel_context.gd`](../scenes/tunnel_context.gd) - keeps resident visibility and level state aligned with the player's active tunnel interior
@@ -22,13 +24,15 @@ Put new menu, overlay, HUD, or shell-flow work here.
 
 ## World Integration And Shared State
 
-- [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - connects terrain, the shared actor layer, reusable overworld weather, the scene-owned random weather cycle, tunnel-based weather suppression, landmarks, tunnel interior context, resident route resolution, and residents to the UI
+- [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - connects terrain, the shared actor layer, manager-owned overworld weather, tunnel-based weather suppression, landmarks, tunnel interior context, resident route resolution, and residents to the UI
 - [`../terrain/terrain.tscn`](../terrain/terrain.tscn) / [`../terrain/terrain.gd`](../terrain/terrain.gd) - island terrain, generated helper layers, water rendering setup, and the ground-layer masking hooks used by tunnel interiors
 - [`../terrain/island_generation_profile.tres`](../terrain/island_generation_profile.tres) - shared authored terrain profile resource referenced by `terrain.tscn` so direct terrain validation and `game_main` use the same rules
 - [`../terrain/water_layer_setup.gd`](../terrain/water_layer_setup.gd) - shared water `TileMapLayer` setup used by runtime terrain and the focused water sandbox
 - [`../terrain/terrain_generation_profile.gd`](../terrain/terrain_generation_profile.gd) / [`../terrain/terrain_mask_rule.gd`](../terrain/terrain_mask_rule.gd) - terrain mask legend, per-color semantics, and generated-layer paint defaults
 - [`../game/app_state.gd`](../game/app_state.gd) - shared UI/progression-facing state plus the compatibility shell that composes profile, journal, autosave, and landmark helpers
 - [`../game/app_runtime.gd`](../game/app_runtime.gd) - scene-owned runtime lookup for `AppStateService` and the live `"player"` group member
+- [`../weather/weather_manager.gd`](../weather/weather_manager.gd) - global scene-owned weather service for overworld preset cycling, runtime weather-rig instancing, and synced wind application
+- [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd) - runtime lookup helper for `WeatherManager`
 - [`../game/player_profile_service.gd`](../game/player_profile_service.gd) - owns player appearance/profile and unlocked/equipped costume state while preserving `AppState`'s public API
 - [`../game/journal_builder.gd`](../game/journal_builder.gd) - pure journal/setup text builders used by the journal and player setup overlays
 - [`../game/story_save_service.gd`](../game/story_save_service.gd) - versioned story autosave read/write logic and save metadata refresh
@@ -93,6 +97,7 @@ Be careful about renames or moves here because scene and resource references can
 
 - [`../scenes/`](../scenes) - runtime gameplay scenes such as `game_main`
 - [`../scenes/tests/`](../scenes/tests) - ad hoc prototype and validation scenes
+- [`../weather/tests/`](../weather/tests) - dedicated weather validation scenes and tuning sandboxes
 - [`../characters/tests/test_human_body_2d.tscn`](../characters/tests/test_human_body_2d.tscn) - direct `HumanBody2D` smoke sandbox with player-controller wiring
 - [`../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn`](../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn) - Universal LPC metadata and sprite-composition validation tool
 - [`../characters/universal_lpc/tests/test_universal_lpc_asset_audit.tscn`](../characters/universal_lpc/tests/test_universal_lpc_asset_audit.tscn) - focused Universal LPC source-sheet audit for missing animation rows, JSON/source mismatches, and player-facing AI target triage
@@ -109,7 +114,7 @@ Be careful about renames or moves here because scene and resource references can
 - [`../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn`](../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn) - focused Bagua base-to-ground portal integration for `level_id` actor transitions
 - [`../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn`](../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn) - full Bagua Tower ascent, descent, and upper-floor visibility integration test
 - [`../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn`](../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn) - focused Bagua stair physical traversal integration test
-- [`../scenes/tests/test_weather.tscn`](../scenes/tests/test_weather.tscn) - focused weather tuning sandbox with tilemap-backed water/terrain, a shared fog pass, pier impacts, a thunder-flash pass, an in-scene weather control panel with rain, fog, cloud-shadow darkness, and thunder controls, actor readability checks, and temporary foreground occluder proxies
+- [`../weather/tests/test_weather.tscn`](../weather/tests/test_weather.tscn) - focused weather tuning sandbox with tilemap-backed water/terrain, manager-attached fog/rain/cloud/impact passes, a thunder-flash pass, a tabbed weather control panel split into `Wind`, `Rain`, `Fog`, and `Cloud` tuning groups with per-pass `Sync With Wind` toggles, actor readability checks, and temporary foreground occluder proxies
 - [`../scenes/tests/test_water_render.tscn`](../scenes/tests/test_water_render.tscn) - focused water color, wave, transparency, and refraction sandbox
 - [`../game/tests/npc_system/test_scene.tscn`](../game/tests/npc_system/test_scene.tscn) - focused resident speech, talk, and journal sandbox
 - [`../game/grid_board_game/test_grid_board_game.tscn`](../game/grid_board_game/test_grid_board_game.tscn)
@@ -176,7 +181,7 @@ Useful searches when locating code:
 - `RainOverlay` for the reusable rain/weather effect
 - `CloudShadowOverlay` for the slow-moving ground cloud-shadow pass
 - `RainGroundImpacts` for isometric raindrop ground-hit rendering
-- `WeatherCycleController` for the overworld's random weather preset loop
+- `WeatherManager` for the overworld's global weather-cycle and wind-sync service
 - `test_weather` for the focused weather sandbox and control panel
 - `water_tint` for the water shader and material
 - `source_control_report` for the repo-local and shared Git inspection helpers

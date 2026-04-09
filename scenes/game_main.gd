@@ -10,6 +10,7 @@ const LANDMARK_SYNC_DISTANCE := 1600.0
 const NPC_SCENE: PackedScene = preload("res://characters/resident_npc.tscn")
 const LEVEL_REGISTRY := preload("res://common/level_registry.gd")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
+const WEATHER_RUNTIME := preload("res://weather/weather_runtime.gd")
 const BGM_MANAGER_SCRIPT := preload("res://game/bgm_manager.gd")
 const ROUTE_RESOLVER_SCRIPT := preload("res://scenes/route_resolver.gd")
 const RESIDENT_SPAWNER_SCRIPT := preload("res://scenes/resident_spawner.gd")
@@ -18,6 +19,50 @@ const NPC_ROUTE_DEBUG_DRAWER_SCRIPT := preload("res://scenes/npc_route_debug_dra
 const TUNNEL_ENTRY_FRONT_APPROACH_DISTANCE := 96.0
 const TUNNEL_PORTAL_SUFFIX := " Portal"
 const DIRECTIONAL_PORTAL_MIN_OFFSET_DISTANCE := 16.0
+const WEATHER_HOLD_DURATION_MIN := 20.0
+const WEATHER_HOLD_DURATION_MAX := 38.0
+const WEATHER_TRANSITION_DURATION_MIN := 9.0
+const WEATHER_TRANSITION_DURATION_MAX := 18.0
+const MAIN_RAIN_PROPERTIES := {
+	"density": 0.0012,
+	"wind_angle_degrees": 72.0,
+	"wind_strength": 460.0,
+}
+const MAIN_FOG_PROPERTIES := {
+	"density": 0.42,
+	"height_ratio": 0.58,
+	"softness": 0.34,
+	"haze_strength": 0.48,
+	"wisp_strength": 0.72,
+	"edge_brightness": 0.24,
+	"drift_speed": 0.11,
+	"wind_angle_degrees": 72.0,
+	"wind_strength": 460.0,
+	"fog_color": Color(0.831373, 0.894118, 0.941176, 0.62),
+	"noise_scale": Vector2(4.0, 1.9),
+}
+const MAIN_CLOUD_PROPERTIES := {
+	"shadow_strength": 1.84,
+	"coverage": 0.43,
+	"softness": 0.24,
+	"drift_speed": 0.055,
+	"wind_angle_degrees": 72.0,
+	"wind_strength": 460.0,
+}
+const MAIN_IMPACT_PROPERTIES := {
+	"max_impacts": 48,
+	"density_spawn_multiplier": 22000.0,
+	"spawn_top_ratio": 0.3,
+	"side_margin": 88.0,
+	"bottom_margin": 28.0,
+	"streak_duration": 0.08,
+	"lifetime_min": 0.22,
+	"lifetime_max": 0.34,
+	"scale_min": 3.2,
+	"scale_max": 5.4,
+	"impact_color": Color(0.956863, 0.980392, 1.0, 0.34),
+	"ripple_color": Color(0.713726, 0.890196, 1.0, 0.18),
+}
 const LANDMARK_CUE_FILES := {
 	"piano_ferry": "res://resources/audio/sfx/landmark_cues/piano_ferry_refrain.ogg",
 	"trinity_church": "res://resources/audio/sfx/landmark_cues/trinity_chime.ogg",
@@ -39,11 +84,6 @@ const STORY_SAFE_RESUME_ANCHOR_IDS := [
 
 @onready var m_actor_root: Node2D = $actors
 @onready var m_player :HumanBody2D = $actors/player
-@onready var m_ground_impacts: RainGroundImpacts = $actors/GroundImpacts
-@onready var m_cloud_shadows: Node2D = $terrain/CloudShadows
-@onready var m_weather_layer: CanvasLayer = $WeatherLayer
-@onready var m_fog_overlay: FogOverlay = $WeatherLayer/FogOverlay
-@onready var m_rain_overlay: RainOverlay = $WeatherLayer/RainOverlay
 @onready var m_terrain: Terrain = $terrain
 @onready var m_bagua_tower: Node2D = $terrain/ground/buildings/BaguaTower
 @onready var m_trinity_church: Node2D = $terrain/ground/buildings/TrinityChurch
@@ -96,10 +136,73 @@ var m_resident_spawner: RefCounted = null
 var m_tunnel_context: Node = null
 var m_debug_route_drawer: Node2D = null
 var m_weather_hidden_for_tunnel := false
+var m_weather_manager: WeatherManager = null
+var m_weather_layer: CanvasLayer = null
+var m_fog_overlay: FogOverlay = null
+var m_rain_overlay: RainOverlay = null
+var m_cloud_shadows: CloudShadowOverlay = null
+var m_ground_impacts: RainGroundImpacts = null
 
 
 func _app_state():
 	return APP_RUNTIME.get_app_state(self)
+
+
+func _weather_manager() -> WeatherManager:
+	if m_weather_manager != null and is_instance_valid(m_weather_manager):
+		return m_weather_manager
+	m_weather_manager = WEATHER_RUNTIME.get_weather_manager(self) as WeatherManager
+	return m_weather_manager
+
+
+func _register_weather_targets() -> void:
+	if Engine.is_editor_hint():
+		return
+
+	var weather_manager := _weather_manager()
+	if !is_instance_valid(weather_manager):
+		return
+
+	weather_manager.cycles_enabled = true
+	weather_manager.hold_duration_min = WEATHER_HOLD_DURATION_MIN
+	weather_manager.hold_duration_max = WEATHER_HOLD_DURATION_MAX
+	weather_manager.transition_duration_min = WEATHER_TRANSITION_DURATION_MIN
+	weather_manager.transition_duration_max = WEATHER_TRANSITION_DURATION_MAX
+	var weather_nodes := weather_manager.register_weather_host(self, _build_weather_host_config())
+	_cache_weather_nodes(weather_nodes)
+
+
+func _build_weather_host_config() -> Dictionary:
+	return {
+		"overlay_parent": self,
+		"overlay_layer": 2,
+		"cloud_parent": m_terrain,
+		"cloud_z_index": 2,
+		"cloud_properties": MAIN_CLOUD_PROPERTIES,
+		"impacts_parent": m_actor_root,
+		"impacts_z_index": -1,
+		"impact_properties": MAIN_IMPACT_PROPERTIES,
+		"spawn_layer": _get_weather_spawn_layer(),
+		"rain_properties": MAIN_RAIN_PROPERTIES,
+		"fog_properties": MAIN_FOG_PROPERTIES,
+		"sync_rain_with_wind": true,
+		"sync_fog_with_wind": true,
+		"sync_cloud_with_wind": true,
+	}
+
+
+func _cache_weather_nodes(weather_nodes: Dictionary) -> void:
+	m_weather_layer = weather_nodes.get("weather_layer") as CanvasLayer
+	m_rain_overlay = weather_nodes.get("rain_overlay") as RainOverlay
+	m_fog_overlay = weather_nodes.get("fog_overlay") as FogOverlay
+	m_cloud_shadows = weather_nodes.get("cloud_shadow_overlay") as CloudShadowOverlay
+	m_ground_impacts = weather_nodes.get("ground_impacts") as RainGroundImpacts
+
+
+func _get_weather_spawn_layer() -> TileMapLayer:
+	if !is_instance_valid(m_terrain):
+		return null
+	return m_terrain.get_node_or_null("ground/base") as TileMapLayer
 
 
 func _ensure_scene_helpers() -> void:
@@ -143,6 +246,7 @@ func _enter_tree() -> void:
 	if Engine.is_editor_hint():
 		return
 	_app_state()
+	_weather_manager()
 
 
 # Called when the node enters the scene tree for the first time.
@@ -150,6 +254,7 @@ func _ready() -> void:
 	m_is_ready = true
 	if is_instance_valid(m_terrain):
 		m_terrain.player = m_player
+	_register_weather_targets()
 	if is_instance_valid(m_ground_impacts):
 		m_ground_impacts.notify_spawn_layer_changed()
 	_cache_landmarks()
@@ -169,6 +274,9 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	m_is_ready = false
+	if is_instance_valid(m_weather_manager):
+		m_weather_manager.unregister_weather_targets(self)
+	m_weather_manager = null
 	m_bgm_manager = null
 	m_route_resolver = null
 	m_resident_spawner = null
@@ -683,18 +791,17 @@ func _sync_weather_visibility() -> void:
 		return
 
 	m_weather_hidden_for_tunnel = is_player_in_tunnel
+	if is_instance_valid(m_weather_manager):
+		m_weather_manager.set_registered_visibility(not is_player_in_tunnel)
+		return
 	if is_instance_valid(m_weather_layer):
 		m_weather_layer.visible = not is_player_in_tunnel
-	if is_instance_valid(m_fog_overlay):
-		m_fog_overlay.visible = not is_player_in_tunnel
-	if is_instance_valid(m_rain_overlay):
-		m_rain_overlay.visible = not is_player_in_tunnel
 	if is_instance_valid(m_cloud_shadows):
 		m_cloud_shadows.visible = not is_player_in_tunnel
 	if is_instance_valid(m_ground_impacts):
-		m_ground_impacts.visible = not is_player_in_tunnel
 		if is_player_in_tunnel:
 			m_ground_impacts.clear_impacts()
+		m_ground_impacts.visible = not is_player_in_tunnel
 
 
 func _find_player_tunnel() -> Tunnel:

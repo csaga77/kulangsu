@@ -2,6 +2,11 @@
 class_name FogOverlay
 extends Node2D
 
+@export var enabled := true:
+	set(value):
+		enabled = value
+		_sync_enabled_state()
+
 @export_range(0.0, 1.0, 0.01) var density: float = 0.42:
 	set(value):
 		density = clampf(value, 0.0, 1.0)
@@ -71,12 +76,13 @@ func _ready() -> void:
 	set_process(true)
 	if is_instance_valid(m_fog):
 		m_shader_material = m_fog.material as ShaderMaterial
+	_sync_enabled_state()
 	_update_material()
 	_update_rect(Vector2(512.0, 512.0))
 
 
 func _process(delta: float) -> void:
-	if not is_visible_in_tree():
+	if not is_visible_in_tree() or not enabled:
 		return
 
 	var viewport := get_viewport()
@@ -179,3 +185,8 @@ func _uses_viewport_space() -> bool:
 			return true
 		node = node.get_parent()
 	return false
+
+
+func _sync_enabled_state() -> void:
+	if is_instance_valid(m_fog):
+		m_fog.visible = enabled

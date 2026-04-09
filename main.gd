@@ -14,6 +14,7 @@ const ENDING_SCENE: PackedScene = preload("res://ui/screens/ending_overlay.tscn"
 const DEPARTURE_SCENE: PackedScene = preload("res://ui/screens/departure_overlay.tscn")
 const CONFIRM_SCENE: PackedScene = preload("res://ui/screens/confirm_modal.tscn")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
+const WEATHER_RUNTIME := preload("res://weather/weather_runtime.gd")
 const UI_DESIGN_SIZE := Vector2(1920.0, 1080.0)
 
 enum ScreenState {
@@ -62,6 +63,7 @@ func _app_state():
 
 func _enter_tree() -> void:
 	_app_state()
+	WEATHER_RUNTIME.get_weather_manager(self)
 
 
 func _ready() -> void:

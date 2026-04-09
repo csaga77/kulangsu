@@ -14,6 +14,13 @@ class ImpactState:
 
 @export var rain_overlay_path: NodePath
 @export var spawn_layer_path: NodePath
+@export var enabled := true:
+	set(value):
+		enabled = value
+		if not enabled:
+			clear_impacts()
+		else:
+			queue_redraw()
 
 @export var iso_tile_size: Vector2 = Vector2(64.0, 32.0):
 	set(value):
@@ -103,6 +110,8 @@ var m_rng := RandomNumberGenerator.new()
 var m_spawn_accumulator: float = 0.0
 var m_rain_overlay: RainOverlay = null
 var m_spawn_layer: TileMapLayer = null
+var m_bound_rain_overlay: RainOverlay = null
+var m_bound_spawn_layer: TileMapLayer = null
 var m_spawn_world_points: Array[Vector2] = []
 var m_cached_spawn_rect := Rect2()
 var m_cached_spawn_points: Array[Vector2] = []
@@ -119,7 +128,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if not is_visible_in_tree():
+	if not is_visible_in_tree() or not enabled:
 		return
 
 	_resolve_rain_overlay()
@@ -159,6 +168,8 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
+	if not enabled:
+		return
 	var rain_dir := _get_rain_direction()
 	for impact in m_impacts:
 		if not impact.active:
@@ -213,11 +224,28 @@ func clear_impacts() -> void:
 		queue_redraw()
 
 
+func set_rain_overlay(rain_overlay: RainOverlay) -> void:
+	m_bound_rain_overlay = rain_overlay
+	m_rain_overlay = rain_overlay
+
+
+func set_spawn_layer(spawn_layer: TileMapLayer) -> void:
+	if m_bound_spawn_layer == spawn_layer:
+		return
+	m_bound_spawn_layer = spawn_layer
+	m_spawn_layer = spawn_layer
+	_invalidate_spawn_cache()
+
+
 func notify_spawn_layer_changed() -> void:
 	_invalidate_spawn_cache()
 
 
 func _resolve_rain_overlay() -> void:
+	if is_instance_valid(m_bound_rain_overlay):
+		m_rain_overlay = m_bound_rain_overlay
+		return
+	m_bound_rain_overlay = null
 	var next_overlay: RainOverlay = null
 	if has_node(rain_overlay_path):
 		next_overlay = get_node(rain_overlay_path) as RainOverlay
@@ -225,6 +253,12 @@ func _resolve_rain_overlay() -> void:
 
 
 func _resolve_spawn_layer() -> void:
+	if is_instance_valid(m_bound_spawn_layer):
+		if m_spawn_layer != m_bound_spawn_layer:
+			m_spawn_layer = m_bound_spawn_layer
+			_invalidate_spawn_cache()
+		return
+	m_bound_spawn_layer = null
 	var next_layer: TileMapLayer = null
 	if has_node(spawn_layer_path):
 		next_layer = get_node(spawn_layer_path) as TileMapLayer
