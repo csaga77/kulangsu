@@ -511,7 +511,7 @@ func _sync_fog_with_wind_controls() -> void:
 
 func _set_cloud_shadow_strength(value: float) -> void:
 	if is_instance_valid(m_cloud_shadows):
-		m_cloud_shadows.set("shadow_strength", clampf(value, 0.0, 1.0))
+		m_cloud_shadows.set("shadow_strength", clampf(value, 0.0, 2.0))
 
 
 func _get_cloud_shadow_strength(default_value: float) -> float:
