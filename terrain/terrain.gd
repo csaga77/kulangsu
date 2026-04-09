@@ -6,7 +6,6 @@ const TERRAIN_TILESET := preload("res://resources/tilesets/terrain_0_tiles.tres"
 const PAVEMENT_TILESET := preload("res://resources/tilesets/pavement_0_tilesets.tres")
 const SYMBOLS_TILESET := preload("res://resources/tilesets/symbols_0_tiles.tres")
 const ISO_TILEMAP_SCRIPT := preload("res://common/isometric_block.gd")
-const TERRAIN_GENERATION_PROFILE_SCRIPT := preload("res://terrain/terrain_generation_profile.gd")
 const WATER_LAYER_SETUP_SCRIPT := preload("res://terrain/water_layer_setup.gd")
 
 @export var reload: bool = false:
@@ -116,9 +115,11 @@ func _ensure_generated_layers() -> void:
 
 func _get_generation_profile() -> TerrainGenerationProfile:
 	if generation_profile == null:
-		generation_profile = TERRAIN_GENERATION_PROFILE_SCRIPT.new()
-	else:
-		generation_profile.ensure_defaults()
+		push_error("Terrain requires an authored generation_profile resource.")
+		return null
+	generation_profile.ensure_defaults()
+	if not generation_profile.is_valid_profile():
+		return null
 	return generation_profile
 
 func _paint_terrain_from_mask() -> void:
@@ -145,7 +146,9 @@ func _paint_terrain_from_mask() -> void:
 
 	var width := img.get_width()
 	var height := img.get_height()
-	var profile: Variant = _get_generation_profile()
+	var profile := _get_generation_profile()
+	if profile == null:
+		return
 
 	for y in range(height):
 		for x in range(width):
@@ -154,12 +157,12 @@ func _paint_terrain_from_mask() -> void:
 			_paint_mask_cell(tile_pos, pixel, profile)
 	print("_reload_terrain: painted %dx%d from %s" % [width, height, mask_file])
 
-func _paint_mask_cell(tile_pos: Vector2i, pixel: Color, profile) -> void:
+func _paint_mask_cell(tile_pos: Vector2i, pixel: Color, profile: TerrainGenerationProfile) -> void:
 	if profile.is_water_pixel(pixel):
 		_paint_water_cell(tile_pos, profile)
 		return
 
-	var rule: Variant = profile.resolve_rule_for_pixel(pixel)
+	var rule := profile.resolve_rule_for_pixel(pixel)
 	if rule == null:
 		return
 
@@ -170,7 +173,7 @@ func _paint_mask_cell(tile_pos: Vector2i, pixel: Color, profile) -> void:
 	if rule.paint_building_mask:
 		_paint_building_mask_cell(tile_pos, rule, profile)
 
-func _paint_base_cell(tile_pos: Vector2i, rule, profile) -> void:
+func _paint_base_cell(tile_pos: Vector2i, rule: TerrainMaskRule, profile: TerrainGenerationProfile) -> void:
 	m_base.set_cell(
 		tile_pos,
 		_resolve_base_source_id(rule, profile),
@@ -178,14 +181,14 @@ func _paint_base_cell(tile_pos: Vector2i, rule, profile) -> void:
 		_resolve_base_tile_alternative(rule, profile)
 	)
 
-func _paint_street_cell(tile_pos: Vector2i, profile) -> void:
+func _paint_street_cell(tile_pos: Vector2i, profile: TerrainGenerationProfile) -> void:
 	m_streets.set_cells_terrain_connect(
 		profile.build_street_cells(tile_pos),
 		profile.street_terrain_set,
 		profile.street_terrain
 	)
 
-func _paint_building_mask_cell(tile_pos: Vector2i, rule, profile) -> void:
+func _paint_building_mask_cell(tile_pos: Vector2i, rule: TerrainMaskRule, profile: TerrainGenerationProfile) -> void:
 	m_building_mask.set_cell(
 		tile_pos,
 		_resolve_building_mask_source_id(rule, profile),
@@ -193,7 +196,7 @@ func _paint_building_mask_cell(tile_pos: Vector2i, rule, profile) -> void:
 		_resolve_building_mask_tile_alternative(rule, profile)
 	)
 
-func _paint_water_cell(tile_pos: Vector2i, profile) -> void:
+func _paint_water_cell(tile_pos: Vector2i, profile: TerrainGenerationProfile) -> void:
 	m_water.set_cell(
 		tile_pos,
 		profile.water_source_id,
@@ -201,32 +204,32 @@ func _paint_water_cell(tile_pos: Vector2i, profile) -> void:
 		profile.water_tile_alternative
 	)
 
-func _resolve_base_source_id(rule, profile) -> int:
+func _resolve_base_source_id(rule: TerrainMaskRule, profile: TerrainGenerationProfile) -> int:
 	if rule.has_base_source_override():
 		return rule.base_source_id_override
 	return profile.base_source_id
 
-func _resolve_base_tile_coords(rule, profile) -> Vector2i:
+func _resolve_base_tile_coords(rule: TerrainMaskRule, profile: TerrainGenerationProfile) -> Vector2i:
 	if rule.has_base_tile_coords_override():
 		return rule.base_tile_coords_override
 	return profile.base_tile_coords
 
-func _resolve_base_tile_alternative(rule, profile) -> int:
+func _resolve_base_tile_alternative(rule: TerrainMaskRule, profile: TerrainGenerationProfile) -> int:
 	if rule.has_base_tile_alternative_override():
 		return rule.base_tile_alternative_override
 	return profile.base_tile_alternative
 
-func _resolve_building_mask_source_id(rule, profile) -> int:
+func _resolve_building_mask_source_id(rule: TerrainMaskRule, profile: TerrainGenerationProfile) -> int:
 	if rule.has_building_mask_source_override():
 		return rule.building_mask_source_id_override
 	return profile.building_mask_source_id
 
-func _resolve_building_mask_tile_coords(rule, profile) -> Vector2i:
+func _resolve_building_mask_tile_coords(rule: TerrainMaskRule, profile: TerrainGenerationProfile) -> Vector2i:
 	if rule.has_building_mask_tile_coords_override():
 		return rule.building_mask_tile_coords_override
 	return profile.building_mask_tile_coords
 
-func _resolve_building_mask_tile_alternative(rule, profile) -> int:
+func _resolve_building_mask_tile_alternative(rule: TerrainMaskRule, profile: TerrainGenerationProfile) -> int:
 	if rule.has_building_mask_tile_alternative_override():
 		return rule.building_mask_tile_alternative_override
 	return profile.building_mask_tile_alternative

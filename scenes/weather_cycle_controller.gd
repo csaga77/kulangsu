@@ -72,6 +72,7 @@ const WEATHER_PRESETS: Array[Dictionary] = [
 
 @export var rain_overlay_path: NodePath
 @export var fog_overlay_path: NodePath
+@export var cloud_shadow_overlay_path: NodePath
 
 @export var cycles_enabled := true
 @export_range(5.0, 120.0, 1.0) var hold_duration_min: float = 18.0
@@ -82,6 +83,7 @@ const WEATHER_PRESETS: Array[Dictionary] = [
 var m_rng := RandomNumberGenerator.new()
 var m_rain_overlay: RainOverlay = null
 var m_fog_overlay: FogOverlay = null
+var m_cloud_shadow_overlay: Node = null
 var m_current_weather: Dictionary = {}
 var m_source_weather: Dictionary = {}
 var m_target_weather: Dictionary = {}
@@ -135,6 +137,11 @@ func _resolve_weather_nodes() -> void:
 		next_fog_overlay = get_node(fog_overlay_path) as FogOverlay
 	m_fog_overlay = next_fog_overlay
 
+	var next_cloud_shadow_overlay: Node = null
+	if has_node(cloud_shadow_overlay_path):
+		next_cloud_shadow_overlay = get_node(cloud_shadow_overlay_path)
+	m_cloud_shadow_overlay = next_cloud_shadow_overlay
+
 
 func _try_initialize_weather_state() -> bool:
 	if not _has_weather_targets():
@@ -152,7 +159,11 @@ func _try_initialize_weather_state() -> bool:
 
 
 func _has_weather_targets() -> bool:
-	return is_instance_valid(m_rain_overlay) or is_instance_valid(m_fog_overlay)
+	return (
+		is_instance_valid(m_rain_overlay)
+		or is_instance_valid(m_fog_overlay)
+		or is_instance_valid(m_cloud_shadow_overlay)
+	)
 
 
 func _capture_current_weather() -> Dictionary:
@@ -293,6 +304,10 @@ func _apply_weather(weather: Dictionary) -> void:
 		m_fog_overlay.drift_speed = float(weather.get("fog_drift_speed", m_fog_overlay.drift_speed))
 		m_fog_overlay.wind_angle_degrees = wind_angle_degrees
 		m_fog_overlay.wind_strength = wind_strength
+
+	if is_instance_valid(m_cloud_shadow_overlay):
+		m_cloud_shadow_overlay.wind_angle_degrees = wind_angle_degrees
+		m_cloud_shadow_overlay.wind_strength = wind_strength
 
 
 func _random_duration(min_value: float, max_value: float) -> float:

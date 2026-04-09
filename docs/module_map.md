@@ -7,7 +7,7 @@ Read [`design_brief.md`](design_brief.md) and [`architecture.md`](architecture.m
 - [`../project.godot`](../project.godot) - Godot project configuration, input map, and main scene
 - [`../main.tscn`](../main.tscn) / [`../main.gd`](../main.gd) - app startup and overlay flow
 - [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - main island scene, world integration, and shared overworld weather attachment
-- [`../scenes/weather_cycle_controller.gd`](../scenes/weather_cycle_controller.gd) - scene-owned random weather preset cycling for the overworld rain and fog stack
+- [`../scenes/weather_cycle_controller.gd`](../scenes/weather_cycle_controller.gd) - scene-owned random weather preset cycling for the overworld weather stack, including wind sync for cloud shadows
 - [`../scenes/route_resolver.gd`](../scenes/route_resolver.gd) - resolves resident spawn anchors, tunnel portal approach points, and tunnel-to-surface route transitions
 - [`../scenes/resident_spawner.gd`](../scenes/resident_spawner.gd) - instantiates runtime residents from `AppState` definitions onto the shared actor layer
 - [`../scenes/tunnel_context.gd`](../scenes/tunnel_context.gd) - keeps resident visibility and level state aligned with the player's active tunnel interior
@@ -22,8 +22,9 @@ Put new menu, overlay, HUD, or shell-flow work here.
 
 ## World Integration And Shared State
 
-- [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - connects terrain, the shared actor layer, reusable overworld weather, the scene-owned random weather cycle, landmarks, tunnel interior context, resident route resolution, and residents to the UI
+- [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - connects terrain, the shared actor layer, reusable overworld weather, the scene-owned random weather cycle, tunnel-based weather suppression, landmarks, tunnel interior context, resident route resolution, and residents to the UI
 - [`../terrain/terrain.tscn`](../terrain/terrain.tscn) / [`../terrain/terrain.gd`](../terrain/terrain.gd) - island terrain, generated helper layers, water rendering setup, and the ground-layer masking hooks used by tunnel interiors
+- [`../terrain/island_generation_profile.tres`](../terrain/island_generation_profile.tres) - shared authored terrain profile resource referenced by `terrain.tscn` so direct terrain validation and `game_main` use the same rules
 - [`../terrain/water_layer_setup.gd`](../terrain/water_layer_setup.gd) - shared water `TileMapLayer` setup used by runtime terrain and the focused water sandbox
 - [`../terrain/terrain_generation_profile.gd`](../terrain/terrain_generation_profile.gd) / [`../terrain/terrain_mask_rule.gd`](../terrain/terrain_mask_rule.gd) - terrain mask legend, per-color semantics, and generated-layer paint defaults
 - [`../game/app_state.gd`](../game/app_state.gd) - shared UI/progression-facing state plus the compatibility shell that composes profile, journal, autosave, and landmark helpers
@@ -108,7 +109,7 @@ Be careful about renames or moves here because scene and resource references can
 - [`../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn`](../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn) - focused Bagua base-to-ground portal integration for `level_id` actor transitions
 - [`../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn`](../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn) - full Bagua Tower ascent, descent, and upper-floor visibility integration test
 - [`../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn`](../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn) - focused Bagua stair physical traversal integration test
-- [`../scenes/tests/test_weather.tscn`](../scenes/tests/test_weather.tscn) - focused weather tuning sandbox with tilemap-backed water/terrain, a shared fog pass, pier impacts, a thunder-flash pass, an in-scene weather control panel with rain, fog, and thunder controls, actor readability checks, and temporary foreground occluder proxies
+- [`../scenes/tests/test_weather.tscn`](../scenes/tests/test_weather.tscn) - focused weather tuning sandbox with tilemap-backed water/terrain, a shared fog pass, pier impacts, a thunder-flash pass, an in-scene weather control panel with rain, fog, cloud-shadow darkness, and thunder controls, actor readability checks, and temporary foreground occluder proxies
 - [`../scenes/tests/test_water_render.tscn`](../scenes/tests/test_water_render.tscn) - focused water color, wave, transparency, and refraction sandbox
 - [`../game/tests/npc_system/test_scene.tscn`](../game/tests/npc_system/test_scene.tscn) - focused resident speech, talk, and journal sandbox
 - [`../game/grid_board_game/test_grid_board_game.tscn`](../game/grid_board_game/test_grid_board_game.tscn)
@@ -172,6 +173,7 @@ Useful searches when locating code:
 - `resident` for resident systems and data
 - `FogOverlay` for the reusable fog/weather effect
 - `RainOverlay` for the reusable rain/weather effect
+- `CloudShadowOverlay` for the slow-moving ground cloud-shadow pass
 - `RainGroundImpacts` for isometric raindrop ground-hit rendering
 - `WeatherCycleController` for the overworld's random weather preset loop
 - `test_weather` for the focused weather sandbox and control panel

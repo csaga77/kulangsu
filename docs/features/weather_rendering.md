@@ -14,8 +14,8 @@ This document is also the current handoff guide for the weather system. Another 
 
 - The weather system is currently a reusable rendering stack, a lightweight overworld random-cycle controller, and a focused sandbox, not a full gameplay/weather-progression system.
 - The shared reusable pieces live in [`../../common/`](../../common).
-- [`../../scenes/game_main.tscn`](../../scenes/game_main.tscn) now instantiates the shared rain, fog, and ground-impact passes for the playable overworld.
-- [`../../scenes/weather_cycle_controller.gd`](../../scenes/weather_cycle_controller.gd) now drives random preset-to-preset transitions for the overworld rain and fog.
+- [`../../scenes/game_main.tscn`](../../scenes/game_main.tscn) now instantiates the shared cloud-shadow, rain, fog, and ground-impact passes for the playable overworld.
+- [`../../scenes/weather_cycle_controller.gd`](../../scenes/weather_cycle_controller.gd) now drives random preset-to-preset transitions for the overworld rain and fog, while keeping cloud-shadow drift aligned with the shared wind.
 - The dedicated integration/tuning target is [`../../scenes/tests/test_weather.tscn`](../../scenes/tests/test_weather.tscn).
 - The sandbox is the source of truth for default tuning. The scene instance values are captured at startup and reused for the panel reset flow.
 - Thunder is still sandbox-owned for now. The main scene currently uses the shared reusable weather pieces only.
@@ -26,6 +26,7 @@ This document is also the current handoff guide for the weather system. Another 
 
 - Rain should read as a calm, screen-wide isometric weather layer instead of a few isolated particle streaks.
 - Fog should read as a screen-wide isometric haze, not a bottom-only shoreline band.
+- Cloud shadows should read as broad, slow-moving multiply-darkened world shadows that drift with the weather direction without darkening actors or UI.
 - Wind direction should be easy to judge from both rain and fog.
 - Wind strength should produce an obvious speed change in fog drift instead of only subtle shader motion, and calm wind should allow the fog to settle instead of drifting anyway.
 - Ground rain hits should stay lightweight and small, and should read against the repo's `64 x 32` isometric tile convention.
@@ -42,6 +43,7 @@ test_weather.tscn
 - Water (TileMapLayer)
 - BackdropTerrain (TileMapLayer)
 - Ground (TileMapLayer)
+- CloudShadows (CloudShadowOverlay)
 - GroundImpacts (RainGroundImpacts)
 - Actors
 - ForegroundOccluders
@@ -58,6 +60,7 @@ test_weather.tscn
 Important implications:
 
 - Terrain and ground are tilemap-backed.
+- Cloud shadows are world-space and should sit above terrain but below actors and ground impacts.
 - Ground impacts are world-space and sample painted cells from `Ground`.
 - Fog and rain are screen-space overlays under `WeatherLayer`.
 - In the real overworld scene, that `WeatherLayer` sits above terrain/actors and below the shell UI layer.
@@ -68,6 +71,7 @@ Important implications:
 
 - [`../../common/rain_overlay.tscn`](../../common/rain_overlay.tscn) and [`../../common/rain_overlay.gd`](../../common/rain_overlay.gd) own the reusable rain overlay.
 - [`../../common/fog_overlay.tscn`](../../common/fog_overlay.tscn) and [`../../common/fog_overlay.gd`](../../common/fog_overlay.gd) own the reusable fog overlay.
+- [`../../common/cloud_shadow_overlay.tscn`](../../common/cloud_shadow_overlay.tscn) and [`../../common/cloud_shadow_overlay.gd`](../../common/cloud_shadow_overlay.gd) own the reusable drifting ground-shadow pass.
 - [`../../common/rain_ground_impacts.gd`](../../common/rain_ground_impacts.gd) owns the lightweight isometric raindrop ground-hit effect.
 - [`../../scenes/game_main.tscn`](../../scenes/game_main.tscn) and [`../../scenes/game_main.gd`](../../scenes/game_main.gd) own how the shared weather passes are attached to the real overworld scene.
 - [`../../scenes/weather_cycle_controller.gd`](../../scenes/weather_cycle_controller.gd) owns random preset selection, hold timing, and smooth interpolation between overworld weather states.
@@ -83,6 +87,8 @@ If you need to change something, start here:
   Use [`../../common/rain_overlay.gd`](../../common/rain_overlay.gd) and [`../../common/rain_overlay.tscn`](../../common/rain_overlay.tscn).
 - Tune fog distribution, motion, or shader look:
   Use [`../../common/fog_overlay.gd`](../../common/fog_overlay.gd) and [`../../common/fog_overlay.tscn`](../../common/fog_overlay.tscn).
+- Tune cloud-shadow coverage, softness, or drift behavior:
+  Use [`../../common/cloud_shadow_overlay.gd`](../../common/cloud_shadow_overlay.gd) and [`../../common/cloud_shadow_overlay.tscn`](../../common/cloud_shadow_overlay.tscn).
 - Tune ground-hit spawn logic, iso placement, or draw behavior:
   Use [`../../common/rain_ground_impacts.gd`](../../common/rain_ground_impacts.gd).
 - Change default weather feel, control panel behavior, or reset behavior:
@@ -97,6 +103,15 @@ If you need to change something, start here:
   Put the render/helper node under `common/`, instantiate and validate it in `test_weather`, then document it here.
 
 ## Core Behaviors
+
+### Cloud Shadow Overlay
+
+- `CloudShadowOverlay` is a world-space `Node2D` with a shader-driven `ColorRect`.
+- It tracks camera coverage for sizing, but samples shader noise in world coordinates so the shadow pattern does not stick to the screen when the player moves.
+- It is intended to sit above terrain and below actors so only the ground/world scene darkens.
+- The shader now uses a multiply-style darkening pass instead of a faint alpha tint, so readable cloud shapes come from the tint value plus the cloud mask instead of only transparency.
+- It drifts slowly using the shared weather wind angle and wind strength.
+- In gameplay, tunnel suppression should hide it alongside rain and fog.
 
 ### Rain Overlay
 
@@ -134,12 +149,13 @@ If you need to change something, start here:
 - It captures the current scene-instance weather values on startup, holds for a random duration, then transitions to a different preset over another random duration.
 - The current preset list covers calm haze, mist, light rain, steady rain, and a gustier shower.
 - It interpolates rain density, rain drop speed/size, fog density, fog height, fog drift speed, wind angle, and wind strength.
+- It also pushes the shared wind direction/strength into the cloud-shadow overlay so the broad ground shadows drift with the same weather direction.
 - The cycle currently affects the playable overworld only. The weather sandbox stays manual so it remains a predictable tuning environment.
 - If future work needs authored districts, chapters, or forecast control, replace the preset selection policy in `WeatherCycleController` instead of pushing that logic down into `RainOverlay` or `FogOverlay`.
 
 ### Tunnel Suppression
 
-- The overworld scene currently hides `WeatherLayer` and `GroundImpacts` whenever the player is inside a tunnel interior.
+- The overworld scene currently hides `WeatherLayer`, `GroundImpacts`, and `CloudShadows` whenever the player is inside a tunnel interior.
 - This logic lives in [`../../scenes/game_main.gd`](../../scenes/game_main.gd) alongside the existing tunnel-context visibility sync.
 - When tunnel suppression activates, ground impacts are also cleared so outdoor raindrop hits do not reappear when the player exits.
 - The sandbox does not apply this behavior because it is meant for direct weather inspection, not tunnel integration validation.
@@ -167,6 +183,7 @@ Current controls:
 - `Fog Density`
 - `Fog Height`
 - `Fog Drift`
+- `Shadow Darkness`
 - `Thunder Strength`
 - `Impact Gain`
 - `Trigger Thunder`
@@ -177,7 +194,8 @@ Important behavior:
 - The scene instance values are captured in `m_weather_defaults` by [`../../scenes/tests/test_weather.gd`](../../scenes/tests/test_weather.gd) during `_capture_weather_defaults()`.
 - Reset restores those captured values, not separate hardcoded defaults.
 - If you change the intended default weather feel, update the instance values in [`../../scenes/tests/test_weather.tscn`](../../scenes/tests/test_weather.tscn). The script then syncs the controls from the scene state.
-- Wind angle and wind strength are shared inputs: changing them updates both rain and fog.
+- Wind angle and wind strength are shared inputs: changing them updates rain, fog, and cloud-shadow drift together.
+- `Shadow Darkness` currently maps to `CloudShadowOverlay.shadow_strength`, so it is the main sandbox knob for how strongly the multiply shadow pass darkens the ground.
 - `Rain Enabled` currently toggles the rain overlay and ground impacts together.
 
 ## Sandbox Responsibilities
@@ -196,6 +214,8 @@ Do not let `test_weather` become the default place to test unrelated NPC, journa
 ## Known Constraints And Pitfalls
 
 - In a `CanvasLayer`, the rain and fog overlays should stay anchored to the viewport instead of shifting when the player or camera moves.
+- `CloudShadowOverlay` is intentionally not a `CanvasLayer` pass. It needs world-space sampling so the shadows stay attached to the ground when the camera moves.
+- If cloud shadows seem to disappear, check both the multiply shader defaults and the scene-instance `coverage` / `shadow_strength` values before assuming the node is missing.
 - In tool mode, the overlays should not keep rewriting saved scene transforms. Their runtime anchoring is intentional, but the scene file should stay stable when opened in the editor.
 - Outside a `CanvasLayer`, `RainOverlay` still depends on the active `Camera2D` for coverage sizing.
 - Tunnel suppression for gameplay weather is currently scene-owned in `game_main.gd`, not built into the reusable overlay nodes themselves.
@@ -240,6 +260,8 @@ These are reasonable follow-on features for the current design:
 - Check these things before considering a weather tweak complete:
   - rain coverage still feels screen-wide at the current camera zoom
   - fog reads across the whole screen for the isometric camera instead of collapsing into a local band
+  - cloud shadows drift slowly across the ground instead of appearing screen-stuck
+  - cloud shadows stay below actors and do not darken the HUD
   - fog drift still follows the shared wind direction
   - stronger wind clearly speeds the fog up instead of leaving it nearly static
   - the layered fog pass still reads like drifting mist and haze instead of a flat alpha wash

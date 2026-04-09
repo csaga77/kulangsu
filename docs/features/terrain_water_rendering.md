@@ -37,6 +37,7 @@
 ## Architecture / Ownership
 
 - [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn) and [`../../terrain/terrain.gd`](../../terrain/terrain.gd) own water tile generation.
+- [`../../terrain/island_generation_profile.tres`](../../terrain/island_generation_profile.tres) is the shared authored terrain profile used by both direct terrain validation and the instanced overworld terrain.
 - [`../../terrain/water_layer_setup.gd`](../../terrain/water_layer_setup.gd) owns the shared `TileMapLayer` configuration used by both generated terrain water and the focused water sandbox.
 - [`../../terrain/terrain_generation_profile.gd`](../../terrain/terrain_generation_profile.gd) owns the default water tile source, atlas coordinates, and transparent-pixel terrain rule used by terrain generation.
 - [`../../resources/materials/water.tres`](../../resources/materials/water.tres) and [`../../resources/materials/water.gdshader`](../../resources/materials/water.gdshader) own the blue water body, wave animation, semi-transparent tinting, and screen-space refraction treatment.
@@ -47,6 +48,8 @@
 - Scenes:
 - [`../../scenes/tests/test_water_render.tscn`](../../scenes/tests/test_water_render.tscn)
 - [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn)
+- Resources:
+- [`../../terrain/island_generation_profile.tres`](../../terrain/island_generation_profile.tres)
 - Scripts:
 - [`../../scenes/tests/test_water_render.gd`](../../scenes/tests/test_water_render.gd)
 - [`../../terrain/terrain.gd`](../../terrain/terrain.gd)
@@ -66,6 +69,7 @@
 - Signals consumed:
 - None dedicated to water rendering.
 - Important node paths, dictionaries, resources, or data flow:
+- `terrain.tscn` points at `island_generation_profile.tres`, so `game_main.tscn` inherits the same water-placement rules instead of carrying a separate inline profile.
 - `terrain/terrain.gd` reads `mask_file`, asks `TerrainGenerationProfile` to interpret each pixel, then fills water whenever the profile treats that pixel as water.
 - `terrain/water_layer_setup.gd` keeps the water tileset/material/visibility/y-sort state in one place so the terrain scene and water sandbox stay aligned.
 - `water.tres` points to `water.gdshader`, which applies world-space wave motion, a blue water body, semi-transparent compositing, and light screen refraction on the water layer.

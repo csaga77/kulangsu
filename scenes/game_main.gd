@@ -40,6 +40,7 @@ const STORY_SAFE_RESUME_ANCHOR_IDS := [
 @onready var m_actor_root: Node2D = $actors
 @onready var m_player :HumanBody2D = $actors/player
 @onready var m_ground_impacts: RainGroundImpacts = $actors/GroundImpacts
+@onready var m_cloud_shadows: Node2D = $terrain/CloudShadows
 @onready var m_weather_layer: CanvasLayer = $WeatherLayer
 @onready var m_fog_overlay: FogOverlay = $WeatherLayer/FogOverlay
 @onready var m_rain_overlay: RainOverlay = $WeatherLayer/RainOverlay
@@ -688,6 +689,8 @@ func _sync_weather_visibility() -> void:
 		m_fog_overlay.visible = not is_player_in_tunnel
 	if is_instance_valid(m_rain_overlay):
 		m_rain_overlay.visible = not is_player_in_tunnel
+	if is_instance_valid(m_cloud_shadows):
+		m_cloud_shadows.visible = not is_player_in_tunnel
 	if is_instance_valid(m_ground_impacts):
 		m_ground_impacts.visible = not is_player_in_tunnel
 		if is_player_in_tunnel:

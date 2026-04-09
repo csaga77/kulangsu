@@ -31,6 +31,7 @@
 ## Architecture / Ownership
 
 - [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn) owns authored world content plus the generated helper-layer attachment points.
+- [`../../terrain/island_generation_profile.tres`](../../terrain/island_generation_profile.tres) owns the authored terrain rule set that `terrain.tscn` and the `game_main` instance share.
 - [`../../terrain/terrain.gd`](../../terrain/terrain.gd) owns mask loading, generated-layer lifecycle, and the runtime player transparency hook.
 - [`../../terrain/terrain_generation_profile.gd`](../../terrain/terrain_generation_profile.gd) owns the generated-terrain defaults and street-connect footprint.
 - [`../../terrain/terrain_mask_rule.gd`](../../terrain/terrain_mask_rule.gd) owns per-color terrain semantics and per-rule tile overrides.
@@ -40,6 +41,8 @@
 
 - Scenes:
 - [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn)
+- Resources:
+- [`../../terrain/island_generation_profile.tres`](../../terrain/island_generation_profile.tres)
 - Scripts:
 - [`../../terrain/terrain.gd`](../../terrain/terrain.gd)
 - [`../../terrain/terrain_generation_profile.gd`](../../terrain/terrain_generation_profile.gd)
@@ -58,6 +61,7 @@
 - Signals consumed:
 - `HumanBody2D.global_position_changed` for the terrain transparency rectangle update.
 - Important node paths, dictionaries, resources, or data flow:
+- `terrain.tscn` exports `generation_profile` as the shared `island_generation_profile.tres`, so direct terrain validation and the instanced terrain inside `game_main.tscn` read the same authored rules.
 - `Terrain._paint_terrain_from_mask()` reads `mask_file`, asks `TerrainGenerationProfile` how to interpret each pixel, then writes to `base`, `streets`, `water`, and `building_mask`.
 - `TerrainGenerationProfile.resolve_rule_for_pixel()` maps exact mask colors to `TerrainMaskRule` resources and falls back to `default_land_rule`.
 - `TerrainMaskRule` can override the profile defaults for a specific semantic without forcing new branches into `Terrain.gd`.
@@ -65,7 +69,7 @@
 ## Contracts / Boundaries
 
 - Transparent pixels mean water unless this doc and [`../module_map.md`](../module_map.md) are updated together.
-- `terrain/terrain.gd` may orchestrate generation, but semantic meaning belongs in the profile and rule resources.
+- `terrain/terrain.gd` may orchestrate generation, but semantic meaning belongs in the shared profile resource and rule resources.
 - Water visuals remain governed by [`terrain_water_rendering.md`](terrain_water_rendering.md). Do not mix shader-tuning decisions into terrain-semantic rules.
 - If terrain generation stops being mask-driven or starts writing gameplay data, update this doc, [`../architecture.md`](../architecture.md), and [`../contracts.md`](../contracts.md).
 

@@ -97,6 +97,7 @@ var m_weather_controls_visible := true
 @onready var m_water: TileMapLayer = $Water
 @onready var m_backdrop_terrain: TileMapLayer = $BackdropTerrain
 @onready var m_ground: TileMapLayer = $Ground
+@onready var m_cloud_shadows: Node2D = $CloudShadows
 @onready var m_ground_impacts: RainGroundImpacts = $GroundImpacts
 @onready var m_player: HumanBody2D = $Actors/Player
 @onready var m_fog_overlay = $WeatherLayer/FogOverlay
@@ -124,6 +125,8 @@ var m_weather_controls_visible := true
 @onready var m_fog_height_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/FogHeightValue
 @onready var m_fog_drift_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/FogDriftSlider
 @onready var m_fog_drift_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/FogDriftValue
+@onready var m_shadow_darkness_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/ShadowDarknessSlider
+@onready var m_shadow_darkness_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/ShadowDarknessValue
 @onready var m_thunder_strength_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/ThunderStrengthSlider
 @onready var m_thunder_strength_value: Label = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/ThunderStrengthValue
 @onready var m_impact_gain_slider: HSlider = $WeatherControlsLayer/WeatherPanel/Margin/Body/ControlsGrid/ImpactGainSlider
@@ -393,6 +396,8 @@ func _connect_weather_controls() -> void:
 		m_fog_height_slider.value_changed.connect(_on_fog_height_slider_changed)
 	if not m_fog_drift_slider.value_changed.is_connected(_on_fog_drift_slider_changed):
 		m_fog_drift_slider.value_changed.connect(_on_fog_drift_slider_changed)
+	if not m_shadow_darkness_slider.value_changed.is_connected(_on_shadow_darkness_slider_changed):
+		m_shadow_darkness_slider.value_changed.connect(_on_shadow_darkness_slider_changed)
 	if not m_thunder_strength_slider.value_changed.is_connected(_on_thunder_strength_slider_changed):
 		m_thunder_strength_slider.value_changed.connect(_on_thunder_strength_slider_changed)
 	if not m_impact_gain_slider.value_changed.is_connected(_on_impact_gain_slider_changed):
@@ -417,6 +422,7 @@ func _capture_weather_defaults() -> void:
 		"fog_density": m_fog_overlay.density,
 		"fog_height_ratio": m_fog_overlay.height_ratio,
 		"fog_drift_speed": m_fog_overlay.drift_speed,
+		"shadow_darkness": _get_cloud_shadow_strength(0.92),
 		"thunder_enabled": m_thunder_enabled,
 		"thunder_strength": m_thunder_strength,
 		"density": m_rain_overlay.density,
@@ -443,6 +449,7 @@ func _sync_weather_controls_from_scene() -> void:
 	m_fog_density_slider.set_value_no_signal(m_fog_overlay.density)
 	m_fog_height_slider.set_value_no_signal(m_fog_overlay.height_ratio)
 	m_fog_drift_slider.set_value_no_signal(m_fog_overlay.drift_speed)
+	m_shadow_darkness_slider.set_value_no_signal(_get_cloud_shadow_strength(m_shadow_darkness_slider.value))
 	m_thunder_strength_slider.set_value_no_signal(m_thunder_strength)
 	m_impact_gain_slider.set_value_no_signal(m_ground_impacts.density_spawn_multiplier)
 	_update_weather_value_labels()
@@ -457,6 +464,7 @@ func _update_weather_value_labels() -> void:
 	m_fog_density_value.text = "%.2f" % m_fog_density_slider.value
 	m_fog_height_value.text = "%.2f" % m_fog_height_slider.value
 	m_fog_drift_value.text = "%.3f" % m_fog_drift_slider.value
+	m_shadow_darkness_value.text = "%.2f" % m_shadow_darkness_slider.value
 	m_thunder_strength_value.text = "%.2f" % m_thunder_strength_slider.value
 	m_impact_gain_value.text = "%d" % roundi(m_impact_gain_slider.value)
 
@@ -492,11 +500,24 @@ func _apply_fog_enabled(should_enable: bool) -> void:
 
 
 func _sync_fog_with_wind_controls() -> void:
-	if not is_instance_valid(m_fog_overlay):
-		return
+	if is_instance_valid(m_fog_overlay):
+		m_fog_overlay.wind_angle_degrees = m_angle_slider.value
+		m_fog_overlay.wind_strength = m_wind_strength_slider.value
 
-	m_fog_overlay.wind_angle_degrees = m_angle_slider.value
-	m_fog_overlay.wind_strength = m_wind_strength_slider.value
+	if is_instance_valid(m_cloud_shadows):
+		m_cloud_shadows.wind_angle_degrees = m_angle_slider.value
+		m_cloud_shadows.wind_strength = m_wind_strength_slider.value
+
+
+func _set_cloud_shadow_strength(value: float) -> void:
+	if is_instance_valid(m_cloud_shadows):
+		m_cloud_shadows.set("shadow_strength", clampf(value, 0.0, 1.0))
+
+
+func _get_cloud_shadow_strength(default_value: float) -> float:
+	if not is_instance_valid(m_cloud_shadows):
+		return default_value
+	return float(m_cloud_shadows.get("shadow_strength"))
 
 
 func _apply_thunder_enabled(should_enable: bool) -> void:
@@ -691,6 +712,11 @@ func _on_fog_drift_slider_changed(value: float) -> void:
 	_update_weather_value_labels()
 
 
+func _on_shadow_darkness_slider_changed(value: float) -> void:
+	_set_cloud_shadow_strength(value)
+	_update_weather_value_labels()
+
+
 func _on_thunder_strength_slider_changed(value: float) -> void:
 	_apply_thunder_strength(value)
 	_update_weather_value_labels()
@@ -738,6 +764,7 @@ func _on_reset_weather_controls_pressed() -> void:
 		m_fog_overlay.drift_speed = float(
 			m_weather_defaults.get("fog_drift_speed", m_fog_overlay.drift_speed)
 		)
+	_set_cloud_shadow_strength(float(m_weather_defaults.get("shadow_darkness", _get_cloud_shadow_strength(0.92))))
 
 	_sync_fog_with_wind_controls()
 	_sync_weather_controls_from_scene()

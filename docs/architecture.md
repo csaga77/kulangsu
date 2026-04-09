@@ -48,6 +48,7 @@ Primary files:
 - [`../scenes/weather_cycle_controller.gd`](../scenes/weather_cycle_controller.gd)
 - [`../terrain/terrain.tscn`](../terrain/terrain.tscn)
 - [`../terrain/terrain.gd`](../terrain/terrain.gd)
+- [`../terrain/island_generation_profile.tres`](../terrain/island_generation_profile.tres)
 - [`../terrain/terrain_generation_profile.gd`](../terrain/terrain_generation_profile.gd)
 - [`../terrain/terrain_mask_rule.gd`](../terrain/terrain_mask_rule.gd)
 
@@ -55,9 +56,10 @@ Responsibilities:
 
 - main island scene setup
 - mask-driven terrain generation and generated helper-layer lifecycle
+- shared authored terrain-profile resource used by both direct terrain validation and the gameplay scene instance
 - terrain mask legend, per-color semantics, and street-connect defaults
 - player spawn and camera context
-- shared overworld weather attachment for reusable rain, fog, and ground-impact rendering
+- shared overworld weather attachment for reusable cloud-shadow, rain, fog, and ground-impact rendering
 - lightweight random overworld weather cycling across reusable rain/fog presets
 - scene-owned BGM playback driven by shared location and melody-progress context
 - shared y-sorted actor layer for the player and spawned residents
