@@ -1,6 +1,6 @@
 # Kulangsu Core Game Workflow
 
-Read [`design_brief.md`](design_brief.md) first for the minimum-token summary. Use this doc only when story and progression structure need more detail.
+Read [`design_brief.md`](design_brief.md) first for the minimum-token summary. Use [`storyline.md`](storyline.md) for the dedicated narrative summary, and use this doc when story progression, quest structure, and ending flow need more detail.
 
 ## Design Goal
 Build the game around a calm exploration-to-performance loop:

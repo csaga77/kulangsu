@@ -126,6 +126,7 @@ Use these when you need a focused validation target instead of the full project 
 - [`../docs/`](../docs) - project docs
 - [`features/multi_level_spaces.md`](features/multi_level_spaces.md) - implementation-facing guide for stacked rooms, parent-owned level mapping, portals, stairs, and current design gaps
 - [`features/core_melody_loop.md`](features/core_melody_loop.md) - implementation-facing summary of the current melody-driven gameplay loop, gap list, MVP build order, reusable manual playtest route, and manual ending smoke pass
+- [`storyline.md`](storyline.md) - dedicated narrative summary for the current main story, landmark arc framing, and ending tone
 - [`features/bgm_system.md`](features/bgm_system.md) - BGM pool design, V1 controller scope, selection rules, fallback order, and variant policy
 - [`features/bgm_tagging_guide.md`](features/bgm_tagging_guide.md) - track-weight authoring rules for the future `bgm_catalog.gd`
 - [`bgm_suno_guide.md`](bgm_suno_guide.md) - Suno-focused content-generation guide for the 7-track BGM seed pool and later expansion
