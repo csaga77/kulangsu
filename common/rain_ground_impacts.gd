@@ -103,6 +103,11 @@ var m_rng := RandomNumberGenerator.new()
 var m_spawn_accumulator: float = 0.0
 var m_rain_overlay: RainOverlay = null
 var m_spawn_layer: TileMapLayer = null
+var m_spawn_world_points: Array[Vector2] = []
+var m_cached_spawn_rect := Rect2()
+var m_cached_spawn_points: Array[Vector2] = []
+var m_has_cached_spawn_rect := false
+var m_spawn_cache_dirty := true
 
 
 func _ready() -> void:
@@ -122,6 +127,7 @@ func _process(delta: float) -> void:
 	var camera_rect := _get_camera_world_rect()
 	if camera_rect.size == Vector2.ZERO:
 		return
+	var candidate_rect := _build_spawn_candidate_rect(camera_rect)
 
 	var needs_redraw := false
 	for impact in m_impacts:
@@ -135,13 +141,14 @@ func _process(delta: float) -> void:
 		needs_redraw = true
 
 	var target_spawn_rate := base_spawn_rate + _get_rain_density() * density_spawn_multiplier
-	if target_spawn_rate > 0.0:
+	if target_spawn_rate > 0.0 and candidate_rect.size.x > 0.0 and candidate_rect.size.y > 0.0:
+		_prepare_spawn_candidates(candidate_rect, camera_rect)
 		m_spawn_accumulator += target_spawn_rate * delta
 		var spawn_count := mini(int(m_spawn_accumulator), max_impacts)
 		if spawn_count > 0:
 			m_spawn_accumulator -= float(spawn_count)
 			for _i in range(spawn_count):
-				if _spawn_impact(camera_rect):
+				if _spawn_impact(candidate_rect):
 					needs_redraw = true
 
 	if needs_redraw:
@@ -203,14 +210,25 @@ func clear_impacts() -> void:
 		queue_redraw()
 
 
+func notify_spawn_layer_changed() -> void:
+	_invalidate_spawn_cache()
+
+
 func _resolve_rain_overlay() -> void:
+	var next_overlay: RainOverlay = null
 	if has_node(rain_overlay_path):
-		m_rain_overlay = get_node(rain_overlay_path) as RainOverlay
+		next_overlay = get_node(rain_overlay_path) as RainOverlay
+	m_rain_overlay = next_overlay
 
 
 func _resolve_spawn_layer() -> void:
+	var next_layer: TileMapLayer = null
 	if has_node(spawn_layer_path):
-		m_spawn_layer = get_node(spawn_layer_path) as TileMapLayer
+		next_layer = get_node(spawn_layer_path) as TileMapLayer
+	if m_spawn_layer == next_layer:
+		return
+	m_spawn_layer = next_layer
+	_invalidate_spawn_cache()
 
 
 func _get_camera_world_rect() -> Rect2:
@@ -244,19 +262,21 @@ func _get_active_iso_tile_size() -> Vector2:
 	return iso_tile_size
 
 
-func _spawn_impact(camera_rect: Rect2) -> bool:
-	var impact := _find_free_impact()
-	if impact == null:
-		return false
-
+func _build_spawn_candidate_rect(camera_rect: Rect2) -> Rect2:
 	var left := camera_rect.position.x + side_margin
 	var right := camera_rect.end.x - side_margin
 	var top := lerpf(camera_rect.position.y, camera_rect.end.y, spawn_top_ratio)
 	var bottom := camera_rect.end.y - bottom_margin
 	if right <= left or bottom <= top:
+		return Rect2()
+	return Rect2(Vector2(left, top), Vector2(right - left, bottom - top))
+
+
+func _spawn_impact(candidate_rect: Rect2) -> bool:
+	var impact := _find_free_impact()
+	if impact == null:
 		return false
 
-	var candidate_rect := Rect2(Vector2(left, top), Vector2(right - left, bottom - top))
 	var snapped_pos := _sample_spawn_position(candidate_rect)
 	if not snapped_pos.is_finite():
 		return false
@@ -303,13 +323,11 @@ func _build_isometric_ring(center: Vector2, radius: float) -> PackedVector2Array
 
 func _sample_spawn_position(candidate_rect: Rect2) -> Vector2:
 	if is_instance_valid(m_spawn_layer) and m_spawn_layer.tile_set != null:
-		var candidate_cells := _collect_spawn_cells(candidate_rect)
-		if candidate_cells.is_empty():
-			var fallback_rect := _get_camera_world_rect().grow(maxf(_get_active_iso_tile_size().x, _get_active_iso_tile_size().y))
-			candidate_cells = _collect_spawn_cells(fallback_rect)
-		if candidate_cells.is_empty():
+		if not m_has_cached_spawn_rect or m_cached_spawn_rect != candidate_rect:
+			_prepare_spawn_candidates(candidate_rect, _get_camera_world_rect())
+		if m_cached_spawn_points.is_empty():
 			return Vector2(INF, INF)
-		return candidate_cells[m_rng.randi_range(0, candidate_cells.size() - 1)]
+		return m_cached_spawn_points[m_rng.randi_range(0, m_cached_spawn_points.size() - 1)]
 
 	for _i in range(10):
 		var candidate := Vector2(
@@ -320,12 +338,47 @@ func _sample_spawn_position(candidate_rect: Rect2) -> Vector2:
 	return Vector2(INF, INF)
 
 
-func _collect_spawn_cells(candidate_rect: Rect2) -> Array[Vector2]:
+func _invalidate_spawn_cache() -> void:
+	m_spawn_world_points.clear()
+	m_cached_spawn_points.clear()
+	m_has_cached_spawn_rect = false
+	m_spawn_cache_dirty = true
+
+
+func _prepare_spawn_candidates(candidate_rect: Rect2, camera_rect: Rect2) -> void:
+	if not is_instance_valid(m_spawn_layer) or m_spawn_layer.tile_set == null:
+		return
+	if candidate_rect.size.x <= 0.0 or candidate_rect.size.y <= 0.0:
+		m_cached_spawn_points.clear()
+		m_cached_spawn_rect = candidate_rect
+		m_has_cached_spawn_rect = true
+		return
+	_rebuild_spawn_world_points_if_needed()
+	if m_has_cached_spawn_rect and m_cached_spawn_rect == candidate_rect:
+		return
+	m_cached_spawn_rect = candidate_rect
+	m_has_cached_spawn_rect = true
+	m_cached_spawn_points = _filter_spawn_points(candidate_rect)
+	if m_cached_spawn_points.is_empty():
+		var fallback_rect := camera_rect.grow(maxf(_get_active_iso_tile_size().x, _get_active_iso_tile_size().y))
+		m_cached_spawn_points = _filter_spawn_points(fallback_rect)
+
+
+func _rebuild_spawn_world_points_if_needed() -> void:
+	if not m_spawn_cache_dirty:
+		return
+	m_spawn_cache_dirty = false
+	m_spawn_world_points.clear()
+	if not is_instance_valid(m_spawn_layer):
+		return
+	for cell in m_spawn_layer.get_used_cells():
+		m_spawn_world_points.append(m_spawn_layer.to_global(m_spawn_layer.map_to_local(cell)))
+
+
+func _filter_spawn_points(candidate_rect: Rect2) -> Array[Vector2]:
 	var spawn_points: Array[Vector2] = []
 	var expanded_rect := candidate_rect.grow(maxf(_get_active_iso_tile_size().x, _get_active_iso_tile_size().y) * 0.5)
-	for cell in m_spawn_layer.get_used_cells():
-		var world_pos := m_spawn_layer.to_global(m_spawn_layer.map_to_local(cell))
+	for world_pos in m_spawn_world_points:
 		if expanded_rect.has_point(world_pos):
 			spawn_points.append(world_pos)
-
 	return spawn_points

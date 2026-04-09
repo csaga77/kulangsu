@@ -103,7 +103,7 @@ Use a local Godot 4 editor or runtime to open [`project.godot`](project.godot).
 Important runtime entry points:
 
 - Main configured scene: [`main.tscn`](main.tscn)
-- Main gameplay scene embedded by the shell: [`scenes/game_main.tscn`](scenes/game_main.tscn)
+- Main gameplay scene embedded by the shell: [`scenes/game_main.tscn`](scenes/game_main.tscn), which now includes the shared overworld rain, fog, and ground-impact weather passes
 
 This repo does not include export scripts or shell wrappers for launching the project.
 
@@ -114,6 +114,7 @@ Validation is currently manual:
 - Run the full project after app-shell, HUD, overlay, or progression changes.
 - Open focused scenes when changing a specific subsystem.
 - Use the existing validation scenes under [`scenes/tests/`](scenes/tests) and feature-local test scenes such as [`game/grid_board_game/test_grid_board_game.tscn`](game/grid_board_game/test_grid_board_game.tscn) and [`game/grid_board_game/test_terminal_turn_state.tscn`](game/grid_board_game/test_terminal_turn_state.tscn).
+- Use [`scenes/game_main.tscn`](scenes/game_main.tscn) or the full app flow when validating the shared overworld weather against the real island terrain and resident silhouettes.
 - Use [`scenes/tests/test_weather.tscn`](scenes/tests/test_weather.tscn) for weather-specific validation. It now combines tilemap-backed water and terrain, a shared fog pass, pier-ground rain impacts, a thunder-flash test pass, an in-scene weather control panel with rain, fog, and thunder controls, foreground occluders, and actor readability checks in one sandbox.
 
 If you make a change that affects behavior and you cannot run the project or a relevant scene, call that out explicitly in your handoff.

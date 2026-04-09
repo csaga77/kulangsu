@@ -84,12 +84,13 @@ func _process(delta: float) -> void:
 	var zoom := Vector2.ONE
 	var visible_size := viewport_size
 	var use_screen_space := _uses_viewport_space()
+	var should_sync_transform := not Engine.is_editor_hint()
 
 	if viewport != null:
 		viewport_size = Vector2(viewport.size)
 		visible_size = viewport_size
 
-	if use_screen_space:
+	if use_screen_space and should_sync_transform:
 		position = viewport_size * 0.5
 	else:
 		var camera: Camera2D = null
@@ -98,7 +99,8 @@ func _process(delta: float) -> void:
 		if viewport != null and camera != null:
 			zoom = camera.zoom
 			visible_size = viewport_size / zoom
-			global_position = camera.global_position
+			if should_sync_transform:
+				global_position = camera.global_position
 
 	if (
 		viewport_size != m_last_viewport_size
@@ -151,8 +153,7 @@ func _advance_drift(delta: float, visible_size: Vector2) -> void:
 
 	var width := maxf(visible_size.x, 1.0)
 	var height := maxf(visible_size.y, 1.0)
-	var strength_factor := clampf(wind_strength / 900.0, 0.0, 1.0)
-	var pixels_per_second := drift_speed * lerpf(180.0, 1320.0, strength_factor)
+	var pixels_per_second := drift_speed * wind_strength * (1320.0 / 900.0)
 	var wind_direction := _get_wind_direction()
 	var uv_velocity := Vector2(
 		wind_direction.x * pixels_per_second / width,

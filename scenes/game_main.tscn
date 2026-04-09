@@ -8,6 +8,9 @@
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="6_7mycd"]
 [ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/control/player_controller.gd" id="6_272bh"]
 [ext_resource type="PackedScene" uid="uid://c1le3qk68o7lw" path="res://gui/speech_balloon.tscn" id="7_272bh"]
+[ext_resource type="PackedScene" uid="uid://b6oslfbyqgnsg" path="res://common/rain_overlay.tscn" id="8_rain"]
+[ext_resource type="PackedScene" path="res://common/fog_overlay.tscn" id="9_fog"]
+[ext_resource type="Script" path="res://common/rain_ground_impacts.gd" id="10_impacts"]
 
 [sub_resource type="Resource" id="Resource_lla21"]
 script = ExtResource("3_cxf66")
@@ -48,6 +51,24 @@ player = NodePath("../actors/player")
 [node name="actors" type="Node2D" parent="." unique_id=1343309121]
 y_sort_enabled = true
 
+[node name="GroundImpacts" type="Node2D" parent="actors"]
+z_index = -1
+script = ExtResource("10_impacts")
+rain_overlay_path = NodePath("../../WeatherLayer/RainOverlay")
+spawn_layer_path = NodePath("../../terrain/ground/base")
+max_impacts = 48
+density_spawn_multiplier = 22000.0
+spawn_top_ratio = 0.3
+side_margin = 88.0
+bottom_margin = 28.0
+streak_duration = 0.08
+lifetime_min = 0.22
+lifetime_max = 0.34
+scale_min = 3.2
+scale_max = 5.4
+impact_color = Color(0.956863, 0.980392, 1, 0.34)
+ripple_color = Color(0.713726, 0.890196, 1, 0.18)
+
 [node name="player" parent="actors" unique_id=1255111382 groups=["player"] instance=ExtResource("5_lquwl")]
 position = Vector2(4890, 9471)
 controller = SubResource("Resource_qjl73")
@@ -65,6 +86,29 @@ configuration = {
 "torso/shirts/longsleeve/torso_clothes_longsleeve": "teal"
 }
 }
+
+[node name="WeatherLayer" type="CanvasLayer" parent="."]
+layer = -10
+
+[node name="FogOverlay" parent="WeatherLayer" instance=ExtResource("9_fog")]
+position = Vector2(640, 360)
+density = 0.42
+height_ratio = 0.58
+softness = 0.34
+haze_strength = 0.48
+wisp_strength = 0.72
+edge_brightness = 0.24
+drift_speed = 0.11
+wind_angle_degrees = 72.0
+wind_strength = 460.0
+fog_color = Color(0.831373, 0.894118, 0.941176, 0.62)
+noise_scale = Vector2(4, 1.9)
+
+[node name="RainOverlay" parent="WeatherLayer" instance=ExtResource("8_rain")]
+position = Vector2(640, 360)
+density = 0.0012
+wind_angle_degrees = 72.0
+wind_strength = 460.0
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=369660366]
 position = Vector2(12357, 19805)

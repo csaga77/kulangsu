@@ -56,6 +56,7 @@ Responsibilities:
 - mask-driven terrain generation and generated helper-layer lifecycle
 - terrain mask legend, per-color semantics, and street-connect defaults
 - player spawn and camera context
+- shared overworld weather attachment for reusable rain, fog, and ground-impact rendering
 - scene-owned BGM playback driven by shared location and melody-progress context
 - shared y-sorted actor layer for the player and spawned residents
 - landmark lookup and location syncing

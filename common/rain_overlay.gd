@@ -93,12 +93,13 @@ func _process(_delta: float) -> void:
 	var zoom := Vector2.ONE
 	var visible_size := viewport_size
 	var use_screen_space := _uses_viewport_space()
+	var should_sync_transform := not Engine.is_editor_hint()
 
 	if viewport:
 		viewport_size = Vector2(viewport.size)
 		visible_size = viewport_size
 
-	if use_screen_space:
+	if use_screen_space and should_sync_transform:
 		position = viewport_size * 0.5
 	else:
 		var camera: Camera2D = null
@@ -107,7 +108,8 @@ func _process(_delta: float) -> void:
 		if viewport and camera:
 			zoom = camera.zoom
 			visible_size = viewport_size / zoom
-			global_position = camera.global_position
+			if should_sync_transform:
+				global_position = camera.global_position
 
 	if viewport_size != m_last_viewport_size or zoom != m_last_zoom or visible_size != m_last_extents or use_screen_space != m_last_screen_space:
 		m_last_viewport_size = viewport_size
@@ -206,11 +208,17 @@ func _sync_particle_space(use_screen_space: bool, visible_size: Vector2) -> void
 		m_rain.restart()
 
 	var half_size := visible_size * 0.5
-	var travel_margin: Vector2 = Vector2.ONE * maxf(drop_speed * drop_lifetime, 64.0)
+	var travel_margin: Vector2 = Vector2.ONE * maxf(_get_max_particle_travel_distance(), 64.0)
 	m_rain.visibility_rect = Rect2(
 		-half_size - travel_margin,
 		visible_size + travel_margin * 2.0
 	)
+
+
+func _get_max_particle_travel_distance() -> float:
+	var max_initial_speed := maxf(drop_speed * (1.0 + speed_randomness), drop_speed)
+	var acceleration_distance := 0.5 * wind_strength * drop_lifetime * drop_lifetime
+	return max_initial_speed * drop_lifetime + acceleration_distance
 
 
 func _uses_viewport_space() -> bool:

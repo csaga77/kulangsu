@@ -136,6 +136,10 @@ func _app_state():
 	return APP_RUNTIME.get_app_state(self)
 
 
+func _enter_tree() -> void:
+	_app_state()
+
+
 func _ready() -> void:
 	m_thunder_rng.randomize()
 	_rebuild_environment()
@@ -209,6 +213,8 @@ func _rebuild_ground() -> void:
 	m_ground.y_sort_enabled = false
 	m_ground.clear()
 	_fill_polygon_with_variants(m_ground, PIER_POLYGON, TERRAIN_SOURCE_ID, TERRAIN_TILE_VARIANTS)
+	if is_instance_valid(m_ground_impacts):
+		m_ground_impacts.notify_spawn_layer_changed()
 
 
 func _fill_polygon_with_variants(

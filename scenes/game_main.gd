@@ -39,6 +39,7 @@ const STORY_SAFE_RESUME_ANCHOR_IDS := [
 
 @onready var m_actor_root: Node2D = $actors
 @onready var m_player :HumanBody2D = $actors/player
+@onready var m_ground_impacts: RainGroundImpacts = $actors/GroundImpacts
 @onready var m_terrain: Terrain = $terrain
 @onready var m_bagua_tower: Node2D = $terrain/ground/buildings/BaguaTower
 @onready var m_trinity_church: Node2D = $terrain/ground/buildings/TrinityChurch
@@ -144,6 +145,8 @@ func _ready() -> void:
 	m_is_ready = true
 	if is_instance_valid(m_terrain):
 		m_terrain.player = m_player
+	if is_instance_valid(m_ground_impacts):
+		m_ground_impacts.notify_spawn_layer_changed()
 	_cache_landmarks()
 	_cache_spawn_anchors()
 	_ensure_scene_helpers()
