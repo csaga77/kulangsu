@@ -11,6 +11,7 @@
 [ext_resource type="PackedScene" uid="uid://b6oslfbyqgnsg" path="res://common/rain_overlay.tscn" id="8_rain"]
 [ext_resource type="PackedScene" path="res://common/fog_overlay.tscn" id="9_fog"]
 [ext_resource type="Script" path="res://common/rain_ground_impacts.gd" id="10_impacts"]
+[ext_resource type="Script" path="res://scenes/weather_cycle_controller.gd" id="11_weather"]
 
 [sub_resource type="Resource" id="Resource_lla21"]
 script = ExtResource("3_cxf66")
@@ -88,7 +89,7 @@ configuration = {
 }
 
 [node name="WeatherLayer" type="CanvasLayer" parent="."]
-layer = -10
+layer = 2
 
 [node name="FogOverlay" parent="WeatherLayer" instance=ExtResource("9_fog")]
 position = Vector2(640, 360)
@@ -109,6 +110,15 @@ position = Vector2(640, 360)
 density = 0.0012
 wind_angle_degrees = 72.0
 wind_strength = 460.0
+
+[node name="WeatherCycleController" type="Node" parent="."]
+script = ExtResource("11_weather")
+rain_overlay_path = NodePath("../WeatherLayer/RainOverlay")
+fog_overlay_path = NodePath("../WeatherLayer/FogOverlay")
+hold_duration_min = 20.0
+hold_duration_max = 38.0
+transition_duration_min = 9.0
+transition_duration_max = 18.0
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=369660366]
 position = Vector2(12357, 19805)

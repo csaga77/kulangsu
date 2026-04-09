@@ -7,6 +7,7 @@ Read [`design_brief.md`](design_brief.md) and [`architecture.md`](architecture.m
 - [`../project.godot`](../project.godot) - Godot project configuration, input map, and main scene
 - [`../main.tscn`](../main.tscn) / [`../main.gd`](../main.gd) - app startup and overlay flow
 - [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - main island scene, world integration, and shared overworld weather attachment
+- [`../scenes/weather_cycle_controller.gd`](../scenes/weather_cycle_controller.gd) - scene-owned random weather preset cycling for the overworld rain and fog stack
 - [`../scenes/route_resolver.gd`](../scenes/route_resolver.gd) - resolves resident spawn anchors, tunnel portal approach points, and tunnel-to-surface route transitions
 - [`../scenes/resident_spawner.gd`](../scenes/resident_spawner.gd) - instantiates runtime residents from `AppState` definitions onto the shared actor layer
 - [`../scenes/tunnel_context.gd`](../scenes/tunnel_context.gd) - keeps resident visibility and level state aligned with the player's active tunnel interior
@@ -21,7 +22,7 @@ Put new menu, overlay, HUD, or shell-flow work here.
 
 ## World Integration And Shared State
 
-- [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - connects terrain, the shared actor layer, reusable overworld weather, landmarks, tunnel interior context, resident route resolution, and residents to the UI
+- [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - connects terrain, the shared actor layer, reusable overworld weather, the scene-owned random weather cycle, landmarks, tunnel interior context, resident route resolution, and residents to the UI
 - [`../terrain/terrain.tscn`](../terrain/terrain.tscn) / [`../terrain/terrain.gd`](../terrain/terrain.gd) - island terrain, generated helper layers, water rendering setup, and the ground-layer masking hooks used by tunnel interiors
 - [`../terrain/water_layer_setup.gd`](../terrain/water_layer_setup.gd) - shared water `TileMapLayer` setup used by runtime terrain and the focused water sandbox
 - [`../terrain/terrain_generation_profile.gd`](../terrain/terrain_generation_profile.gd) / [`../terrain/terrain_mask_rule.gd`](../terrain/terrain_mask_rule.gd) - terrain mask legend, per-color semantics, and generated-layer paint defaults
@@ -172,6 +173,7 @@ Useful searches when locating code:
 - `FogOverlay` for the reusable fog/weather effect
 - `RainOverlay` for the reusable rain/weather effect
 - `RainGroundImpacts` for isometric raindrop ground-hit rendering
+- `WeatherCycleController` for the overworld's random weather preset loop
 - `test_weather` for the focused weather sandbox and control panel
 - `water_tint` for the water shader and material
 - `source_control_report` for the repo-local and shared Git inspection helpers

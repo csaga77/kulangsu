@@ -45,6 +45,7 @@ Primary files:
 
 - [`../scenes/game_main.tscn`](../scenes/game_main.tscn)
 - [`../scenes/game_main.gd`](../scenes/game_main.gd)
+- [`../scenes/weather_cycle_controller.gd`](../scenes/weather_cycle_controller.gd)
 - [`../terrain/terrain.tscn`](../terrain/terrain.tscn)
 - [`../terrain/terrain.gd`](../terrain/terrain.gd)
 - [`../terrain/terrain_generation_profile.gd`](../terrain/terrain_generation_profile.gd)
@@ -57,6 +58,7 @@ Responsibilities:
 - terrain mask legend, per-color semantics, and street-connect defaults
 - player spawn and camera context
 - shared overworld weather attachment for reusable rain, fog, and ground-impact rendering
+- lightweight random overworld weather cycling across reusable rain/fog presets
 - scene-owned BGM playback driven by shared location and melody-progress context
 - shared y-sorted actor layer for the player and spawned residents
 - landmark lookup and location syncing

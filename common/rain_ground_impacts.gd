@@ -140,7 +140,10 @@ func _process(delta: float) -> void:
 			continue
 		needs_redraw = true
 
-	var target_spawn_rate := base_spawn_rate + _get_rain_density() * density_spawn_multiplier
+	var rain_density := _get_rain_density()
+	var target_spawn_rate := 0.0
+	if rain_density > 0.0:
+		target_spawn_rate = base_spawn_rate + rain_density * density_spawn_multiplier
 	if target_spawn_rate > 0.0 and candidate_rect.size.x > 0.0 and candidate_rect.size.y > 0.0:
 		_prepare_spawn_candidates(candidate_rect, camera_rect)
 		m_spawn_accumulator += target_spawn_rate * delta

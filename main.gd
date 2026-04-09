@@ -112,6 +112,7 @@ func _build_app_shell() -> void:
 
 	var ui_layer := CanvasLayer.new()
 	ui_layer.name = "UILayer"
+	ui_layer.layer = 10
 	ui_layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(ui_layer)
 

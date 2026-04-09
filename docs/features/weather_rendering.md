@@ -8,16 +8,19 @@ This document is also the current handoff guide for the weather system. Another 
 
 - Keep weather rendering reusable and local to shared rendering helpers instead of burying it inside unrelated test scenes or gameplay systems.
 - Give future weather-effect tuning a focused sandbox where rain density, wind, fog coverage, and overlay behavior can be checked quickly.
-- Keep the current weather work rendering-first. The project does not have a broader gameplay weather state machine yet.
+- Keep the current weather work rendering-first. The project now has a lightweight overworld weather cycle, but not a story-authored forecast or full gameplay weather progression system.
 
 ## Current Status
 
-- The weather system is currently a reusable rendering stack plus a focused sandbox, not a full gameplay/weather-progression system.
+- The weather system is currently a reusable rendering stack, a lightweight overworld random-cycle controller, and a focused sandbox, not a full gameplay/weather-progression system.
 - The shared reusable pieces live in [`../../common/`](../../common).
 - [`../../scenes/game_main.tscn`](../../scenes/game_main.tscn) now instantiates the shared rain, fog, and ground-impact passes for the playable overworld.
+- [`../../scenes/weather_cycle_controller.gd`](../../scenes/weather_cycle_controller.gd) now drives random preset-to-preset transitions for the overworld rain and fog.
 - The dedicated integration/tuning target is [`../../scenes/tests/test_weather.tscn`](../../scenes/tests/test_weather.tscn).
 - The sandbox is the source of truth for default tuning. The scene instance values are captured at startup and reused for the panel reset flow.
 - Thunder is still sandbox-owned for now. The main scene currently uses the shared reusable weather pieces only.
+- In gameplay, the overworld `WeatherLayer` should render above the world canvas so terrain does not hide the rain, while the shell UI stays on a higher `CanvasLayer` above weather.
+- In gameplay, tunnel interiors should suppress the shared rain, fog, and ground-impact passes entirely so the player does not see outdoor weather inside a tunnel.
 
 ## Design Intent
 
@@ -28,6 +31,7 @@ This document is also the current handoff guide for the weather system. Another 
 - Ground rain hits should stay lightweight and small, and should read against the repo's `64 x 32` isometric tile convention.
 - Thunder should read as a short flash of light, not a long ambient lighting wash.
 - Weather validation should happen in a scene built for weather, not while also mentally filtering through unrelated dialogue, journal, or progression behavior.
+- Weather changes in gameplay should feel gentle and atmospheric. The cycle should drift between presets over time, not pop abruptly or swing like an arcade storm system.
 
 ## Runtime Stack
 
@@ -56,6 +60,7 @@ Important implications:
 - Terrain and ground are tilemap-backed.
 - Ground impacts are world-space and sample painted cells from `Ground`.
 - Fog and rain are screen-space overlays under `WeatherLayer`.
+- In the real overworld scene, that `WeatherLayer` sits above terrain/actors and below the shell UI layer.
 - Thunder is a separate screen-space pass above the world/weather but below the controls UI.
 - The weather controls are sandbox-only. They are for tuning and validation, not gameplay state.
 
@@ -65,6 +70,7 @@ Important implications:
 - [`../../common/fog_overlay.tscn`](../../common/fog_overlay.tscn) and [`../../common/fog_overlay.gd`](../../common/fog_overlay.gd) own the reusable fog overlay.
 - [`../../common/rain_ground_impacts.gd`](../../common/rain_ground_impacts.gd) owns the lightweight isometric raindrop ground-hit effect.
 - [`../../scenes/game_main.tscn`](../../scenes/game_main.tscn) and [`../../scenes/game_main.gd`](../../scenes/game_main.gd) own how the shared weather passes are attached to the real overworld scene.
+- [`../../scenes/weather_cycle_controller.gd`](../../scenes/weather_cycle_controller.gd) owns random preset selection, hold timing, and smooth interpolation between overworld weather states.
 - [`../../scenes/tests/test_weather.tscn`](../../scenes/tests/test_weather.tscn) and [`../../scenes/tests/test_weather.gd`](../../scenes/tests/test_weather.gd) own the sandbox scene, tilemap-backed reference terrain, thunder pass, actor readability setup, and in-scene weather controls.
 
 Keep weather rendering local to `common/` and focused validation scenes. Do not move weather state into UI, `AppState`, or unrelated gameplay modules unless the game gets an actual authored weather system.
@@ -83,6 +89,8 @@ If you need to change something, start here:
   Use [`../../scenes/tests/test_weather.tscn`](../../scenes/tests/test_weather.tscn) and [`../../scenes/tests/test_weather.gd`](../../scenes/tests/test_weather.gd).
 - Change how reusable rain/fog/ground impacts are attached to the overworld scene:
   Use [`../../scenes/game_main.tscn`](../../scenes/game_main.tscn) and [`../../scenes/game_main.gd`](../../scenes/game_main.gd).
+- Change the overworld's random preset list, hold duration, or transition timing:
+  Use [`../../scenes/weather_cycle_controller.gd`](../../scenes/weather_cycle_controller.gd) and the instance values in [`../../scenes/game_main.tscn`](../../scenes/game_main.tscn).
 - Change sandbox layout, actors, or tilemap-backed terrain references:
   Use [`../../scenes/tests/test_weather.gd`](../../scenes/tests/test_weather.gd) first, then [`../../scenes/tests/test_weather.tscn`](../../scenes/tests/test_weather.tscn) if a scene-structure change is needed.
 - Add a new reusable weather render pass:
@@ -114,10 +122,27 @@ If you need to change something, start here:
 - `RainGroundImpacts` is a pooled `Node2D` effect, not a spawned-per-drop scene system.
 - Spawn rate is derived from:
   `base_spawn_rate + rain_density * density_spawn_multiplier`
+- Ground impacts only spawn when current rain density is above zero, so the overworld can transition into dry presets without leaving stray raindrop hits behind.
 - The effect samples actual painted cells from the assigned tilemap layer instead of guessing arbitrary positions.
 - The effect caches painted-cell world positions and only refilters the current camera band as the view changes, so repeated impact spawns do not rescan the whole tilemap every burst.
 - Impacts are snapped and drawn against the repo's `64 x 32` isometric convention.
 - If the assigned `Ground` layer is empty, or the `spawn_layer_path` is wrong, the effect will appear to stop working.
+
+### Overworld Cycle Controller
+
+- `WeatherCycleController` is a scene-owned helper, not a reusable render node.
+- It captures the current scene-instance weather values on startup, holds for a random duration, then transitions to a different preset over another random duration.
+- The current preset list covers calm haze, mist, light rain, steady rain, and a gustier shower.
+- It interpolates rain density, rain drop speed/size, fog density, fog height, fog drift speed, wind angle, and wind strength.
+- The cycle currently affects the playable overworld only. The weather sandbox stays manual so it remains a predictable tuning environment.
+- If future work needs authored districts, chapters, or forecast control, replace the preset selection policy in `WeatherCycleController` instead of pushing that logic down into `RainOverlay` or `FogOverlay`.
+
+### Tunnel Suppression
+
+- The overworld scene currently hides `WeatherLayer` and `GroundImpacts` whenever the player is inside a tunnel interior.
+- This logic lives in [`../../scenes/game_main.gd`](../../scenes/game_main.gd) alongside the existing tunnel-context visibility sync.
+- When tunnel suppression activates, ground impacts are also cleared so outdoor raindrop hits do not reappear when the player exits.
+- The sandbox does not apply this behavior because it is meant for direct weather inspection, not tunnel integration validation.
 
 ### Thunder
 
@@ -173,12 +198,14 @@ Do not let `test_weather` become the default place to test unrelated NPC, journa
 - In a `CanvasLayer`, the rain and fog overlays should stay anchored to the viewport instead of shifting when the player or camera moves.
 - In tool mode, the overlays should not keep rewriting saved scene transforms. Their runtime anchoring is intentional, but the scene file should stay stable when opened in the editor.
 - Outside a `CanvasLayer`, `RainOverlay` still depends on the active `Camera2D` for coverage sizing.
+- Tunnel suppression for gameplay weather is currently scene-owned in `game_main.gd`, not built into the reusable overlay nodes themselves.
 - Weather tuning is sensitive to viewport size and zoom. If rain looks sparse or fog looks wrong, check camera and overlay coverage before changing effect numbers.
 - The fog shader is embedded in [`../../common/fog_overlay.tscn`](../../common/fog_overlay.tscn). If a change seems to have no effect, confirm you edited the shader subresource and not only the script.
 - If fog appears static, inspect `drift_offset` updates in [`../../common/fog_overlay.gd`](../../common/fog_overlay.gd) before retuning the shader again.
 - If ground impacts disappear, confirm that `Ground` is painted and that `RainGroundImpacts.spawn_layer_path` still points to the right node.
 - `ForegroundOccluders` are still temporary proxies. They are not a long-term world-authoring solution.
 - Thunder is still scene-local. If thunder needs to become reusable, move it deliberately and document the new ownership split.
+- The overworld cycle is random and scene-local. It is not currently saved, seeded from story state, or coordinated with BGM.
 
 ## Extension Workflow
 
@@ -199,11 +226,13 @@ These are reasonable follow-on features for the current design:
 - authored foreground shelter geometry to replace proxy occluders
 - reusable thunder node if lightning needs to be used outside the sandbox
 - additional fog controls such as tint, band scale, or turbulence
-- scene-level weather presets if the project starts using weather beyond the sandbox
+- authored weather preset resources or inspector-driven preset authoring if the random overworld cycle needs designer-facing tuning
+- authored routing rules for the overworld cycle, such as district-specific preset weights or time-of-day bias
 
 ## Validation
 
 - Run [`../../scenes/game_main.tscn`](../../scenes/game_main.tscn) or the full app flow when you need to confirm that the shared weather layers read correctly over the real island terrain and resident silhouettes.
+- Let the overworld run long enough to confirm at least one random preset transition occurs without sudden popping, stray dry-weather ground impacts, or obviously mismatched fog/rain wind direction.
 - Run [`../../scenes/tests/test_weather.tscn`](../../scenes/tests/test_weather.tscn) for focused weather tuning.
 - Use the in-scene weather control panel to toggle rain, fog, or thunder on or off, trigger thunder manually, and tune the main shared parameters while the scene is running.
 - Adjust the shared weather nodes in the inspector only when a change needs a deeper structural retune than the panel exposes.
@@ -228,5 +257,5 @@ These are reasonable follow-on features for the current design:
 
 ## Out Of Scope
 
-- A full dynamic weather state machine, forecast schedule, or story-driven weather progression.
+- A full authored forecast schedule, story-driven weather progression, save-persistent weather state, or thunder integration in gameplay.
 - Audio mixing, puddles, looping storm audio, volumetric world fog, wet-surface shaders, or gameplay rules that depend on weather state.

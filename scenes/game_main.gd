@@ -40,6 +40,9 @@ const STORY_SAFE_RESUME_ANCHOR_IDS := [
 @onready var m_actor_root: Node2D = $actors
 @onready var m_player :HumanBody2D = $actors/player
 @onready var m_ground_impacts: RainGroundImpacts = $actors/GroundImpacts
+@onready var m_weather_layer: CanvasLayer = $WeatherLayer
+@onready var m_fog_overlay: FogOverlay = $WeatherLayer/FogOverlay
+@onready var m_rain_overlay: RainOverlay = $WeatherLayer/RainOverlay
 @onready var m_terrain: Terrain = $terrain
 @onready var m_bagua_tower: Node2D = $terrain/ground/buildings/BaguaTower
 @onready var m_trinity_church: Node2D = $terrain/ground/buildings/TrinityChurch
@@ -91,6 +94,7 @@ var m_route_resolver: RefCounted = null
 var m_resident_spawner: RefCounted = null
 var m_tunnel_context: Node = null
 var m_debug_route_drawer: Node2D = null
+var m_weather_hidden_for_tunnel := false
 
 
 func _app_state():
@@ -669,6 +673,25 @@ func _spawn_catalog_residents() -> void:
 func _sync_tunnel_resident_visibility() -> void:
 	if is_instance_valid(m_tunnel_context):
 		m_tunnel_context.sync()
+	_sync_weather_visibility()
+
+
+func _sync_weather_visibility() -> void:
+	var is_player_in_tunnel := _find_player_tunnel() != null
+	if m_weather_hidden_for_tunnel == is_player_in_tunnel:
+		return
+
+	m_weather_hidden_for_tunnel = is_player_in_tunnel
+	if is_instance_valid(m_weather_layer):
+		m_weather_layer.visible = not is_player_in_tunnel
+	if is_instance_valid(m_fog_overlay):
+		m_fog_overlay.visible = not is_player_in_tunnel
+	if is_instance_valid(m_rain_overlay):
+		m_rain_overlay.visible = not is_player_in_tunnel
+	if is_instance_valid(m_ground_impacts):
+		m_ground_impacts.visible = not is_player_in_tunnel
+		if is_player_in_tunnel:
+			m_ground_impacts.clear_impacts()
 
 
 func _find_player_tunnel() -> Tunnel:
