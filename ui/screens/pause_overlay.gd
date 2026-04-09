@@ -28,8 +28,20 @@ func _ready() -> void:
 	m_return_button.pressed.connect(return_to_title_requested.emit)
 	m_quit_button.pressed.connect(quit_requested.emit)
 	set_journal_enabled(_app_state().is_journal_unlocked())
+	visibility_changed.connect(_on_visibility_changed)
+
+
+func grab_default_focus() -> void:
+	if !is_visible_in_tree():
+		return
+	m_resume_button.grab_focus()
 
 
 func set_journal_enabled(enabled: bool) -> void:
 	m_journal_button.disabled = !enabled
 	m_journal_button.text = "Journal" if enabled else "Journal (Locked)"
+
+
+func _on_visibility_changed() -> void:
+	if is_visible_in_tree():
+		call_deferred("grab_default_focus")

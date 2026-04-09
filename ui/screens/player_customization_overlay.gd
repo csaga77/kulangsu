@@ -11,6 +11,7 @@ signal cancel_requested()
 @onready var m_subtitle_label: Label = $Margin/Body/SubTitle
 @onready var m_preview_viewport: SubViewport = $Margin/Body/Content/PreviewColumn/PreviewFrame/PreviewViewportContainer/PreviewViewport
 @onready var m_summary_label: Label = $Margin/Body/Content/PreviewColumn/Summary
+@onready var m_body_prev_button: Button = $Margin/Body/Content/ControlsColumn/BodyRow/Controls/PrevButton
 @onready var m_body_value: Label = $Margin/Body/Content/ControlsColumn/BodyRow/Controls/Value
 @onready var m_gender_value: Label = $Margin/Body/Content/ControlsColumn/GenderRow/Controls/Value
 @onready var m_skin_value: Label = $Margin/Body/Content/ControlsColumn/SkinRow/Controls/Value
@@ -36,6 +37,7 @@ func _ready() -> void:
 	if !_app_state().player_appearance_changed.is_connected(_on_player_appearance_changed):
 		_app_state().player_appearance_changed.connect(_on_player_appearance_changed)
 
+	visibility_changed.connect(_on_visibility_changed)
 	refresh_from_state()
 
 
@@ -150,3 +152,14 @@ func _refresh_preview() -> void:
 
 func _on_player_appearance_changed(_profile: Dictionary, _appearance_config: Dictionary) -> void:
 	refresh_from_state()
+
+
+func grab_default_focus() -> void:
+	if !is_visible_in_tree():
+		return
+	m_body_prev_button.grab_focus()
+
+
+func _on_visibility_changed() -> void:
+	if is_visible_in_tree():
+		call_deferred("grab_default_focus")

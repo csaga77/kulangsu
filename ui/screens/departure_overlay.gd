@@ -16,6 +16,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	add_theme_stylebox_override("panel", UIStyle.build_panel_style())
 	m_continue_button.pressed.connect(continue_requested.emit)
+	visibility_changed.connect(_on_visibility_changed)
 
 
 func refresh_from_state() -> void:
@@ -24,3 +25,14 @@ func refresh_from_state() -> void:
 		String(summary.get("fragments", "4 / 4")),
 		String(summary.get("residents", "0")),
 	]
+
+
+func grab_default_focus() -> void:
+	if !is_visible_in_tree():
+		return
+	m_continue_button.grab_focus()
+
+
+func _on_visibility_changed() -> void:
+	if is_visible_in_tree():
+		call_deferred("grab_default_focus")

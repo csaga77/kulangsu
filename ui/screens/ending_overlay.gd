@@ -22,6 +22,7 @@ func _ready() -> void:
 	m_return_button.pressed.connect(leave_requested.emit)
 	m_stay_button.pressed.connect(stay_requested.emit)
 	m_credits_button.pressed.connect(credits_requested.emit)
+	visibility_changed.connect(_on_visibility_changed)
 
 
 func refresh_from_state() -> void:
@@ -32,3 +33,14 @@ func refresh_from_state() -> void:
 		summary.get("collectibles", "Not tracked in this build"),
 		summary.get("playtime", "a brief evening on Kulangsu"),
 	]
+
+
+func grab_default_focus() -> void:
+	if !is_visible_in_tree():
+		return
+	m_stay_button.grab_focus()
+
+
+func _on_visibility_changed() -> void:
+	if is_visible_in_tree():
+		call_deferred("grab_default_focus")

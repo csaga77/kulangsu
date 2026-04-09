@@ -2,6 +2,9 @@
 class_name BaseController
 extends Resource
 
+const BASE_CONTROLLER_APP_RUNTIME := preload("res://game/app_runtime.gd")
+const DEFAULT_SPEECH_TEXT_CHARACTERS_PER_SECOND := 120.0
+
 enum MoveDirectionEnum {
 	MOVE_IDLE = 0,
 	MOVE_FORWARD   = 1 << 0,
@@ -151,6 +154,7 @@ func _process(_delta: float) -> void:
 		if !is_instance_valid(m_character):
 			_destroy_balloon()
 		else:
+			m_balloon.text_characters_per_second = _resolve_dialogue_text_speed()
 			_update_balloon_position()
 
 func inspect() -> void:
@@ -343,6 +347,19 @@ func _ensure_balloon_instance() -> void:
 
 	m_character.get_tree().current_scene.add_child(m_balloon)
 	m_balloon.top_level = true
+	m_balloon.text_characters_per_second = _resolve_dialogue_text_speed()
+
+
+func _resolve_dialogue_text_speed() -> float:
+	if !is_instance_valid(m_character):
+		return DEFAULT_SPEECH_TEXT_CHARACTERS_PER_SECOND
+
+	var app_state = BASE_CONTROLLER_APP_RUNTIME.get_app_state(m_character)
+	if app_state == null:
+		return DEFAULT_SPEECH_TEXT_CHARACTERS_PER_SECOND
+	if !app_state.has_method("get_dialogue_text_characters_per_second"):
+		return DEFAULT_SPEECH_TEXT_CHARACTERS_PER_SECOND
+	return app_state.get_dialogue_text_characters_per_second()
 
 func _update_balloon_content() -> void:
 	if m_balloon_closed:

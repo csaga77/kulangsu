@@ -10,20 +10,20 @@ signal quit_pressed()
 const BUTTON_TEXT_COLOR := Color(0.97, 0.95, 0.90, 1.0)
 const BUTTON_DISABLED_TEXT_COLOR := Color(0.84, 0.82, 0.76, 0.45)
 
-@onready var m_hero_panel: PanelContainer = $SafeArea/Center/Content/HeroColumn/HeroPanel
-@onready var m_menu_card: PanelContainer = $SafeArea/Center/Content/ActionColumn/MenuCard
+@onready var m_hero_panel: PanelContainer = $SafeArea/Center/Content/HeroPanel
+@onready var m_menu_card: PanelContainer = $SafeArea/Center/Content/MenuCardWrap/MenuCard
 @onready var m_chip_panels: Array[PanelContainer] = [
-	$SafeArea/Center/Content/HeroColumn/HeroPanel/Margin/Hero/FeatureRow/HarborChip,
-	$SafeArea/Center/Content/HeroColumn/HeroPanel/Margin/Hero/FeatureRow/BellChip,
-	$SafeArea/Center/Content/HeroColumn/HeroPanel/Margin/Hero/FeatureRow/TunnelChip,
+	$SafeArea/Center/Content/HeroPanel/Margin/Hero/FeatureRow/HarborChip,
+	$SafeArea/Center/Content/HeroPanel/Margin/Hero/FeatureRow/BellChip,
+	$SafeArea/Center/Content/HeroPanel/Margin/Hero/FeatureRow/TunnelChip,
 ]
-@onready var m_continue_button: Button = $SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons/ContinueButton
-@onready var m_new_game_button: Button = $SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons/NewGameButton
-@onready var m_free_walk_button: Button = $SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons/FreeWalkButton
-@onready var m_settings_button: Button = $SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons/SettingsButton
-@onready var m_credits_button: Button = $SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons/CreditsButton
-@onready var m_quit_button: Button = $SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons/QuitButton
-@onready var m_footer_label: Label = $SafeArea/Center/Content/ActionColumn/MenuCard/Margin/MenuButtons/Footer
+@onready var m_continue_button: Button = $SafeArea/Center/Content/MenuCardWrap/MenuCard/Margin/MenuButtons/ContinueButton
+@onready var m_new_game_button: Button = $SafeArea/Center/Content/MenuCardWrap/MenuCard/Margin/MenuButtons/NewGameButton
+@onready var m_free_walk_button: Button = $SafeArea/Center/Content/MenuCardWrap/MenuCard/Margin/MenuButtons/FreeWalkButton
+@onready var m_settings_button: Button = $SafeArea/Center/Content/MenuCardWrap/MenuCard/Margin/MenuButtons/SettingsButton
+@onready var m_credits_button: Button = $SafeArea/Center/Content/MenuCardWrap/MenuCard/Margin/MenuButtons/CreditsButton
+@onready var m_quit_button: Button = $SafeArea/Center/Content/MenuCardWrap/MenuCard/Margin/MenuButtons/QuitButton
+@onready var m_footer_label: Label = $SafeArea/Center/Content/MenuCardWrap/MenuCard/Margin/MenuButtons/Footer
 
 
 func _ready() -> void:
@@ -39,10 +39,22 @@ func _ready() -> void:
 	m_settings_button.pressed.connect(settings_pressed.emit)
 	m_credits_button.pressed.connect(credits_pressed.emit)
 	m_quit_button.pressed.connect(quit_pressed.emit)
+	visibility_changed.connect(_on_visibility_changed)
+
+
+func grab_default_focus() -> void:
+	if !is_visible_in_tree():
+		return
+	if m_continue_button.disabled:
+		m_new_game_button.grab_focus()
+		return
+	m_continue_button.grab_focus()
 
 
 func set_continue_enabled(is_enabled: bool) -> void:
 	m_continue_button.disabled = !is_enabled
+	if is_visible_in_tree():
+		call_deferred("grab_default_focus")
 
 
 func set_continue_metadata(metadata: Dictionary) -> void:
@@ -101,3 +113,8 @@ func _apply_button_styles() -> void:
 		button.add_theme_color_override("font_pressed_color", BUTTON_TEXT_COLOR)
 		button.add_theme_color_override("font_focus_color", BUTTON_TEXT_COLOR)
 		button.add_theme_color_override("font_disabled_color", BUTTON_DISABLED_TEXT_COLOR)
+
+
+func _on_visibility_changed() -> void:
+	if is_visible_in_tree():
+		call_deferred("grab_default_focus")

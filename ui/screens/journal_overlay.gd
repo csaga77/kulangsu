@@ -7,10 +7,10 @@ const JOURNAL_BUILDER := preload("res://game/journal_builder.gd")
 signal close_requested()
 
 @onready var m_tabs: TabContainer = $Margin/Body/Tabs
-@onready var m_quest_body: Label = $Margin/Body/Tabs/Objectives/QuestBody
-@onready var m_map_body: Label = $Margin/Body/Tabs/Map/MapBody
-@onready var m_residents_body: Label = $Margin/Body/Tabs/Residents/ResidentsBody
-@onready var m_melody_body: Label = $Margin/Body/Tabs/Melody/MelodyBody
+@onready var m_quest_body: RichTextLabel = $Margin/Body/Tabs/Objectives/QuestBody
+@onready var m_map_body: RichTextLabel = $Margin/Body/Tabs/Map/MapBody
+@onready var m_residents_body: RichTextLabel = $Margin/Body/Tabs/Residents/ResidentsBody
+@onready var m_melody_body: RichTextLabel = $Margin/Body/Tabs/Melody/MelodyBody
 @onready var m_melody_practice_button: Button = $Margin/Body/Tabs/Melody/MelodyPracticeButton
 @onready var m_preview_viewport: SubViewport = $Margin/Body/Tabs/Wardrobe/WardrobeContent/PreviewFrame/PreviewViewportContainer/PreviewViewport
 @onready var m_wardrobe_body: Label = $Margin/Body/Tabs/Wardrobe/WardrobeContent/WardrobeBody
@@ -48,7 +48,14 @@ func _ready() -> void:
 		_app_state().player_costumes_changed.connect(_on_player_costumes_changed)
 	if !_app_state().player_appearance_changed.is_connected(_on_player_appearance_changed):
 		_app_state().player_appearance_changed.connect(_on_player_appearance_changed)
+	visibility_changed.connect(_on_visibility_changed)
 	refresh_from_state()
+
+
+func grab_default_focus() -> void:
+	if !is_visible_in_tree():
+		return
+	m_tabs.grab_focus()
 
 
 func refresh_from_state() -> void:
@@ -159,3 +166,8 @@ func _on_player_costumes_changed(_unlocked_ids: PackedStringArray, _equipped_cos
 
 func _on_player_appearance_changed(_profile: Dictionary, _appearance_config: Dictionary) -> void:
 	refresh_from_state()
+
+
+func _on_visibility_changed() -> void:
+	if is_visible_in_tree():
+		call_deferred("grab_default_focus")

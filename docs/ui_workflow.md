@@ -123,8 +123,12 @@ Settings should be reachable from both title and pause, with the same panel stru
 
 - Master volume
 - Music volume
-- Ambient volume
-- UI volume
+- Prompt / cue volume for melody confirmations and landmark audio feedback
+
+Current first-pass implementation:
+
+- Master, music, prompt volume, and speech text speed all apply immediately within the current run
+- The panel does not yet ship a persisted cross-session settings save
 
 ### Display
 

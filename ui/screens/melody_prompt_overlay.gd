@@ -4,6 +4,7 @@ signal close_requested()
 signal practice_completed(request: Dictionary)
 signal performance_completed(request: Dictionary)
 
+const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const DEFAULT_FEEDBACK_COLOR := Color(0.88, 0.90, 0.94, 1.0)
 const ERROR_FEEDBACK_COLOR := Color(0.95, 0.70, 0.64, 1.0)
 const SEGMENT_SELECT_PATH := "res://resources/audio/sfx/melody_prompt/segment_select.ogg"
@@ -31,13 +32,21 @@ var m_order_wrong_player: AudioStreamPlayer = null
 var m_submission_locked := false
 
 
+func _app_state():
+	return APP_RUNTIME.get_app_state(self)
+
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	add_theme_stylebox_override("panel", UIStyle.build_panel_style())
 	_setup_audio_players()
+	_apply_prompt_volume()
 	m_clear_button.pressed.connect(_on_clear_pressed)
 	m_confirm_button.pressed.connect(_on_confirm_pressed)
 	m_cancel_button.pressed.connect(close_requested.emit)
+	if !_app_state().prompt_volume_changed.is_connected(_on_prompt_volume_changed):
+		_app_state().prompt_volume_changed.connect(_on_prompt_volume_changed)
+	visibility_changed.connect(_on_visibility_changed)
 	_reset_content()
 
 
@@ -70,6 +79,9 @@ func _rebuild_options() -> void:
 		button.pressed.connect(_on_option_pressed.bind(source_id))
 		m_options_container.add_child(button)
 		m_option_buttons[source_id] = button
+
+	if is_visible_in_tree():
+		call_deferred("grab_default_focus")
 
 
 func _reset_content() -> void:
@@ -107,6 +119,20 @@ func _refresh_action_state() -> void:
 		button.disabled = m_submission_locked or m_selected_ids.find(String(source_id)) >= 0
 
 
+func grab_default_focus() -> void:
+	if !is_visible_in_tree():
+		return
+
+	for source_id in m_option_buttons.keys():
+		var button := m_option_buttons[source_id] as Button
+		if button == null or button.disabled:
+			continue
+		button.grab_focus()
+		return
+
+	m_cancel_button.grab_focus()
+
+
 func _label_for_source(source_id: String) -> String:
 	var segments: Array = m_request.get("segments", [])
 	for segment in segments:
@@ -131,6 +157,7 @@ func _setup_audio_players() -> void:
 	m_segment_select_player = _build_audio_player("SegmentSelectPlayer", SEGMENT_SELECT_PATH)
 	m_order_correct_player = _build_audio_player("OrderCorrectPlayer", ORDER_CORRECT_PATH)
 	m_order_wrong_player = _build_audio_player("OrderWrongPlayer", ORDER_WRONG_PATH)
+	_apply_prompt_volume()
 
 
 func _build_audio_player(player_name: String, stream_path: String) -> AudioStreamPlayer:
@@ -142,6 +169,26 @@ func _build_audio_player(player_name: String, stream_path: String) -> AudioStrea
 		player.stream = load(stream_path) as AudioStream
 	add_child(player)
 	return player
+
+
+func _apply_prompt_volume() -> void:
+	var app_state = _app_state()
+	if app_state == null:
+		return
+
+	var volume_db = app_state.get_prompt_volume_db(UI_AUDIO_VOLUME_DB)
+	for player in [m_segment_select_player, m_order_correct_player, m_order_wrong_player]:
+		if player != null:
+			player.volume_db = volume_db
+
+
+func _on_prompt_volume_changed(_volume_percent: float) -> void:
+	_apply_prompt_volume()
+
+
+func _on_visibility_changed() -> void:
+	if is_visible_in_tree():
+		call_deferred("grab_default_focus")
 
 
 func _play_one_shot(player: AudioStreamPlayer) -> void:

@@ -406,6 +406,8 @@ func _connect_ui_signals() -> void:
 		_app_state().story_milestone.connect(_on_story_milestone)
 	if !_app_state().landmark_audio_cue_requested.is_connected(_on_landmark_audio_cue_requested):
 		_app_state().landmark_audio_cue_requested.connect(_on_landmark_audio_cue_requested)
+	if !_app_state().prompt_volume_changed.is_connected(_on_prompt_volume_changed):
+		_app_state().prompt_volume_changed.connect(_on_prompt_volume_changed)
 
 	if !m_player.global_position_changed.is_connected(_sync_location_from_player):
 		m_player.global_position_changed.connect(_sync_location_from_player)
@@ -438,9 +440,9 @@ func _setup_landmark_audio_feedback() -> void:
 
 	m_landmark_cue_player = AudioStreamPlayer.new()
 	m_landmark_cue_player.name = "LandmarkCuePlayer"
-	m_landmark_cue_player.volume_db = LANDMARK_CUE_VOLUME_DB
 	m_landmark_cue_player.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(m_landmark_cue_player)
+	_apply_prompt_volume()
 
 
 func set_prompt_bgm_ducked(ducked: bool) -> void:
@@ -452,6 +454,17 @@ func set_prompt_bgm_ducked(ducked: bool) -> void:
 
 func _on_landmark_audio_cue_requested(cue_id: String, _context: Dictionary) -> void:
 	_play_landmark_audio_cue(cue_id)
+
+
+func _on_prompt_volume_changed(_volume_percent: float) -> void:
+	_apply_prompt_volume()
+
+
+func _apply_prompt_volume() -> void:
+	if !is_instance_valid(m_landmark_cue_player):
+		return
+
+	m_landmark_cue_player.volume_db = _app_state().get_prompt_volume_db(LANDMARK_CUE_VOLUME_DB)
 
 
 func _play_landmark_audio_cue(cue_id: String) -> void:

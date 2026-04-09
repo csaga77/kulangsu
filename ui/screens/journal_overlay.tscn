@@ -33,34 +33,42 @@ size_flags_vertical = 3
 [node name="Objectives" type="VBoxContainer" parent="Margin/Body/Tabs"]
 layout_mode = 2
 
-[node name="QuestBody" type="Label" parent="Margin/Body/Tabs/Objectives"]
+[node name="QuestBody" type="RichTextLabel" parent="Margin/Body/Tabs/Objectives"]
 custom_minimum_size = Vector2(760, 0)
 layout_mode = 2
-autowrap_mode = 3
+size_flags_vertical = 3
+scroll_active = true
+selection_enabled = true
 
 [node name="Map" type="VBoxContainer" parent="Margin/Body/Tabs"]
 layout_mode = 2
 
-[node name="MapBody" type="Label" parent="Margin/Body/Tabs/Map"]
+[node name="MapBody" type="RichTextLabel" parent="Margin/Body/Tabs/Map"]
 custom_minimum_size = Vector2(760, 0)
 layout_mode = 2
-autowrap_mode = 3
+size_flags_vertical = 3
+scroll_active = true
+selection_enabled = true
 
 [node name="Residents" type="VBoxContainer" parent="Margin/Body/Tabs"]
 layout_mode = 2
 
-[node name="ResidentsBody" type="Label" parent="Margin/Body/Tabs/Residents"]
+[node name="ResidentsBody" type="RichTextLabel" parent="Margin/Body/Tabs/Residents"]
 custom_minimum_size = Vector2(760, 0)
 layout_mode = 2
-autowrap_mode = 3
+size_flags_vertical = 3
+scroll_active = true
+selection_enabled = true
 
 [node name="Melody" type="VBoxContainer" parent="Margin/Body/Tabs"]
 layout_mode = 2
 
-[node name="MelodyBody" type="Label" parent="Margin/Body/Tabs/Melody"]
+[node name="MelodyBody" type="RichTextLabel" parent="Margin/Body/Tabs/Melody"]
 custom_minimum_size = Vector2(760, 0)
 layout_mode = 2
-autowrap_mode = 3
+size_flags_vertical = 3
+scroll_active = true
+selection_enabled = true
 
 [node name="MelodyPracticeButton" type="Button" parent="Margin/Body/Tabs/Melody"]
 custom_minimum_size = Vector2(340, 54)

@@ -18,6 +18,7 @@ func _ready() -> void:
 	add_theme_stylebox_override("panel", UIStyle.build_panel_style())
 	m_cancel_button.pressed.connect(cancel_requested.emit)
 	m_confirm_button.pressed.connect(confirm_requested.emit)
+	visibility_changed.connect(_on_visibility_changed)
 	call_deferred("_fit_to_content")
 
 
@@ -37,3 +38,14 @@ func _fit_to_content() -> void:
 		clampf(maxf(minimum_size.y, MIN_PANEL_SIZE.y), MIN_PANEL_SIZE.y, MAX_PANEL_SIZE.y)
 	)
 	position = (UI_DESIGN_SIZE - size) * 0.5
+
+
+func grab_default_focus() -> void:
+	if !is_visible_in_tree():
+		return
+	m_cancel_button.grab_focus()
+
+
+func _on_visibility_changed() -> void:
+	if is_visible_in_tree():
+		call_deferred("grab_default_focus")

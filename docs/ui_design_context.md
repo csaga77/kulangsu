@@ -102,19 +102,14 @@ Future shared UI colors, typography rules, spacing tokens, and component styles 
 - [`../ui/screens/title_screen.tscn`](../ui/screens/title_screen.tscn)
 - [`../ui/screens/player_customization_overlay.tscn`](../ui/screens/player_customization_overlay.tscn)
 - [`../ui/screens/game_hud.tscn`](../ui/screens/game_hud.tscn)
-
-### Overlays Still Built in the App Shell
-
-These currently exist as programmatically built panels in `main.gd`:
-
-- Journal
-- Pause
-- Settings
-- Credits
-- Ending
-- Confirm modal
-
-These can be split into dedicated scenes later, but the current behavior and content should be preserved unless intentionally redesigned.
+- [`../ui/screens/journal_overlay.tscn`](../ui/screens/journal_overlay.tscn)
+- [`../ui/screens/melody_prompt_overlay.tscn`](../ui/screens/melody_prompt_overlay.tscn)
+- [`../ui/screens/pause_overlay.tscn`](../ui/screens/pause_overlay.tscn)
+- [`../ui/screens/settings_overlay.tscn`](../ui/screens/settings_overlay.tscn)
+- [`../ui/screens/credits_overlay.tscn`](../ui/screens/credits_overlay.tscn)
+- [`../ui/screens/ending_overlay.tscn`](../ui/screens/ending_overlay.tscn)
+- [`../ui/screens/departure_overlay.tscn`](../ui/screens/departure_overlay.tscn)
+- [`../ui/screens/confirm_modal.tscn`](../ui/screens/confirm_modal.tscn)
 
 ## Final Flow the UI Should Support
 
