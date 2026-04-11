@@ -95,7 +95,7 @@ Input expectations:
 - Marble game prototype rules and architecture: [`marble_game_design.md`](marble_game_design.md)
 - Piano mini-game prototype and integration guidance: [`piano_game_design.md`](piano_game_design.md)
 - Repeatable moment-to-moment gameplay design: [`core_gameplay_plays.md`](core_gameplay_plays.md)
-- Dedicated narrative summary and story framing: [`storyline.md`](storyline.md)
+- Dedicated narrative summary and story framing: [`story/summer_of_piano_island_story_framework.md`](story/summer_of_piano_island_story_framework.md)
 - UI architecture and constraints: [`ui_design_context.md`](ui_design_context.md)
 - Story and progression flow: [`core_game_workflow.md`](core_game_workflow.md)
 - Full title/settings/pause/endgame flow: [`ui_workflow.md`](ui_workflow.md)

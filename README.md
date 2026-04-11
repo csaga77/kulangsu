@@ -133,7 +133,7 @@ This repo does not currently include a checked-in release pipeline, export autom
 Start here for project context:
 
 - [`docs/design_brief.md`](docs/design_brief.md) - minimum-token game and UI summary
-- [`docs/storyline.md`](docs/storyline.md) - dedicated background story and main narrative summary
+- [`docs/story/summer_of_piano_island_story_framework.md`](docs/story/summer_of_piano_island_story_framework.md) - single source of truth for story direction, protagonist background, and landmark narrative framing
 - [`docs/architecture.md`](docs/architecture.md) - system boundaries and relationships
 - [`docs/module_map.md`](docs/module_map.md) - where code and content live
 - [`docs/submodules.md`](docs/submodules.md) - submodule roles and governance

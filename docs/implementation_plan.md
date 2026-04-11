@@ -12,7 +12,7 @@ AppState dropped from 2,289 to 1,761 lines. Eight focused helpers were extracted
 **Audio Foundation (Workstream B) — Done.**
 Landmark audio cues live (6 OGG clips, BGM ducking). Melody prompt overlay has segment-select, correct-order, and wrong-order audio feedback. `resonant` tier now has unique postgame dialogue beats and resonant-only BGM selection (`night_tide_memory`). BGM pool expanded to 12 tracks across 3 tiers with full 5-factor affinity weights. Piano game integration decision documented: optional free-play station, not mandatory story gate.
 
-**Additional work shipped:** Weather rendering system (rain, fog, cloud shadows, ground impacts) with `WeatherManager` and `WeatherRuntime`. Storyline doc (`docs/storyline.md`) as narrative source of truth.
+**Additional work shipped:** Weather rendering system (rain, fog, cloud shadows, ground impacts) with `WeatherManager` and `WeatherRuntime`. Story framework doc (`docs/story/summer_of_piano_island_story_framework.md`) as narrative source of truth.
 
 ---
 
@@ -170,7 +170,7 @@ These tasks add content within the existing architecture. No structural changes 
 - Each beat should be 1-3 lines of dialogue, no branching.
 - Optionally, one resident could hint at a future visit or reference a minor island detail that rewards exploration.
 
-**Files to read first:** `game/resident_catalog.gd` (search `conditional_beats`), `docs/storyline.md` (resident character notes).
+**Files to read first:** `game/resident_catalog.gd` (search `conditional_beats`), `docs/story/summer_of_piano_island_story_framework.md` (resident character notes).
 
 **Validation:** Complete the harbor performance, choose "Stay a Little Longer." Visit each key resident. Verify new dialogue beats fire. Verify they don't fire before `resonant` state.
 
@@ -190,7 +190,7 @@ These tasks add content within the existing architecture. No structural changes 
 - Track collected count in `AppState`. Display in journal and ending summary.
 - Completing all collectibles could improve the Community ending (more NPCs at festival, richer ambient response).
 
-**Files to read first:** `game/landmark_trigger.gd` (reuse pattern for collectible triggers), `docs/core_game_workflow.md` (collectible design notes), `docs/storyline.md`.
+**Files to read first:** `game/landmark_trigger.gd` (reuse pattern for collectible triggers), `docs/core_game_workflow.md` (collectible design notes), `docs/story/summer_of_piano_island_story_framework.md`.
 
 **Deliverable:** Design document first (`docs/features/collectibles.md`), then implementation.
 
@@ -208,7 +208,7 @@ These are documented decision points that need human input before implementation
 
 **Decision needed:** Are the external GDD landmarks out of scope permanently, or is there a plan to add them as optional side content? If added, do they carry melody fragments (changing the 4-fragment model) or are they purely cosmetic/lore?
 
-**Impact:** If landmarks are added, update `docs/design_brief.md`, `docs/core_game_workflow.md`, `docs/storyline.md`, `game/melody_catalog.gd`, and all five landmark feature docs.
+**Impact:** If landmarks are added, update `docs/design_brief.md`, `docs/core_game_workflow.md`, `docs/story/summer_of_piano_island_story_framework.md`, `game/melody_catalog.gd`, and all five landmark feature docs.
 
 ---
 
@@ -219,6 +219,104 @@ These are documented decision points that need human input before implementation
 **Decision needed:** Is there authoring-scale pressure that justifies migration? If a non-programmer needs to author resident dialogue or melody definitions, JSON may be justified. If the current GDScript catalogs are sufficient, defer.
 
 **Impact:** If migrated, update `docs/architecture.md`, `docs/contracts.md`, resident/melody catalog ownership.
+
+---
+
+## Workstream F: Story Integration
+
+These tasks integrate the canonical story framework into the current five-landmark melody game without turning the project into a narrative reboot.
+
+### F1. Map the story framework onto the current landmark route
+
+**Scope:** Turn the canonical story framing in `docs/story/summer_of_piano_island_story_framework.md` into concrete content targets for the live playable route.
+
+**Goal:** Make the current game read as a music-centered coming-of-age slice rather than a disconnected quest structure.
+
+**How:**
+- Treat the protagonist as someone returning to an emotionally distant home, not as a total outsider.
+- Keep the current five-landmark route canonical.
+- Map the four emotional lines onto the existing route:
+  - Trinity Church -> grandmother, church memory, guilt, grace
+  - Bi Shan Tunnel -> buried memory, shame, inward pressure
+  - Long Shan Tunnel -> companionship, steadiness, practical care
+  - Bagua Tower -> architecture, inheritance, future-facing perspective
+  - Piano Ferry -> return, departure, family distance, harbor memory
+- Produce a landmark-by-landmark crosswalk for:
+  - resident beats to add or rewrite
+  - journal text to deepen
+  - inspectable objects or cues that should gain emotional meaning
+  - ending-summary language or ending-tone emphasis updates
+
+**Files to read first:** `docs/story/summer_of_piano_island_story_framework.md`, `docs/core_game_workflow.md`, `docs/event_story_system_design.md`, `game/resident_catalog.gd`, `game/app_state.gd`.
+
+**Deliverable:** A compact content mapping document or tracked checklist before implementation begins.
+
+**Risk:** Medium. This is where story quality improves or becomes muddled, so the mapping should be explicit before content edits start.
+
+---
+
+### F2. Reframe the opening and first fragment around memory and return
+
+**Scope:** Use the existing opening and Trinity Church arc as the first integrated narrative slice.
+
+**Goal:** Prove that the merged story works without adding home scenes, school scenes, or a new seasonal simulation layer.
+
+**How:**
+- Reframe Ferry Plaza as return to a too-quiet island rather than first discovery by a pure outsider.
+- Give Caretaker Lian early dialogue or journal support that hints at:
+  - changed perspective
+  - family distance
+  - known-but-distant homecoming
+- Make Trinity Church the clearest early expression of:
+  - grandmother memory
+  - church routine
+  - guilt and grace
+  - memory returning through ordered listening
+- Update the first-fragment reward text so it feels emotionally meaningful, not like a generic token grant.
+
+**Files to read first:** `docs/story/summer_of_piano_island_story_framework.md`, `docs/features/piano_ferry.md`, `docs/features/trinity_church.md`, `game/resident_catalog.gd`, `game/journal_builder.gd`, `game/app_state.gd`.
+
+**Validation:** Play Ferry Plaza through Trinity Church and confirm the landmark still reads cleanly as gameplay while the new emotional framing is legible through resident beats, journal updates, and objective text.
+
+**Risk:** Low-medium. This is the safest place to test the merged story voice because it reuses the existing early-game route.
+
+---
+
+### F3. Deepen the tunnels and finale with emotional emphasis
+
+**Scope:** Extend the new narrative framing across the rest of the route after the opening slice is working.
+
+**How:**
+- Use Bi Shan Tunnel to externalize avoided memory and inward disorientation.
+- Use Long Shan Tunnel to emphasize trust, companionship, and steadying care.
+- Use Bagua Tower to foreground architecture, inheritance, and future-facing perspective.
+- Use the harbor finale and ending choice to connect:
+  - quiet maturity
+  - relationship emphasis
+  - inheritance emphasis
+
+**Files to read first:** `docs/story/summer_of_piano_island_story_framework.md`, `docs/features/bi_shan_tunnel.md`, `docs/features/long_shan_tunnel.md`, `docs/features/bagua_tower.md`, `game/resident_catalog.gd`, `ui/screens/ending_overlay.gd`.
+
+**Validation:** Run the full landmark route and confirm each landmark still has a distinct gameplay role while also carrying one major emotional function from the story framework.
+
+**Risk:** Medium. The main failure mode is over-explaining themes instead of letting place and action carry them.
+
+---
+
+### F4. Defer heavier narrative expansion until the current slice is strong
+
+**Scope:** Preserve the current project's exploration-first identity by explicitly deferring larger narrative systems until the landmark route can carry the new framework well.
+
+**Do not implement yet unless the project explicitly chooses a larger rewrite:**
+- full home interior scenes
+- school as a primary location
+- explicit mock-exam systems
+- large four-friend scene networks
+- fully seasonal chapter simulation
+
+**Why:** The current opportunity is to deepen meaning inside the existing game, not to outrun the codebase with a second game's worth of structure.
+
+**Risk:** Low. This is a planning guardrail, not a coding task.
 
 ---
 
@@ -239,7 +337,13 @@ Workstream D (content — mostly parallel):
 Workstream E (decisions — no code):
   E1 and E2 are independent design decisions
 
-C, D, and E are independent workstreams and can run in parallel.
+Workstream F (story integration):
+  F1 should happen before F2 and F3
+  F2 is the preferred first implementation slice
+  F3 should follow after the opening slice reads well
+  F4 is a standing scope guardrail
+
+C, D, E, and F are independent at the top level, but F1 should inform any story-facing content work in D3 and D4.
 ```
 
 ## Global Rules
@@ -251,3 +355,5 @@ C, D, and E are independent workstreams and can run in parallel.
 - Do not introduce mandatory combat, score ranking, or long rhythm-game stages.
 - Do not change the canonical five-landmark route without updating `docs/design_brief.md` and `docs/core_game_workflow.md`.
 - Prefer GDScript catalogs over JSON data files unless authoring scale justifies migration.
+- Treat `docs/story/summer_of_piano_island_story_framework.md` as the only story source of truth.
+- Deepen the existing landmark route before introducing heavy home/school/season-simulation systems.

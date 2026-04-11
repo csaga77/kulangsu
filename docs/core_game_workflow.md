@@ -1,6 +1,6 @@
 # Kulangsu Core Game Workflow
 
-Read [`design_brief.md`](design_brief.md) first for the minimum-token summary. Use [`storyline.md`](storyline.md) for the dedicated narrative summary, and use this doc when story progression, quest structure, and ending flow need more detail.
+Read [`design_brief.md`](design_brief.md) first for the minimum-token summary. Use [`story/summer_of_piano_island_story_framework.md`](story/summer_of_piano_island_story_framework.md) for the dedicated narrative summary, and use this doc when story progression, quest structure, and ending flow need more detail.
 
 ## Design Goal
 Build the game around a calm exploration-to-performance loop:
@@ -33,7 +33,7 @@ This fits the current project strengths:
 - Low punishment: setbacks cost time and rerouting, not hard failure screens.
 
 ## Player Fantasy
-The player is a newcomer to Kulangsu who gradually learns the island by walking it, listening to its residents, and reactivating musical memories hidden across important places. By the end, the player is no longer a tourist passing through, but someone who understands how the island's people and places connect.
+The player is a returning Kulangsu local who has grown emotionally distant from home and gradually relearns the island by walking it, listening to its residents, and reactivating musical memories hidden across important places. By the end, the player should no longer feel estranged from the island, but like someone who understands how its people, places, and memories connect.
 
 ## Core Loop
 
@@ -59,7 +59,7 @@ For the repeatable moment-to-moment play design that should power each of those 
 
 ### 2. Opening / Arrival
 
-The game begins at the Piano Ferry terminal. The ferry arrival is the framing device for both the start and the end.
+The game begins with the player's return through the Piano Ferry terminal. The ferry arrival is the framing device for both the start and the end.
 
 Player learns:
 
