@@ -16,7 +16,7 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
 
 ## Rules
 
-- Piano Ferry starts `available` in `New Game`, `introduced` in `Free Walk`, and `reward_collected` in `Continue` and `Postgame`.
+- Piano Ferry starts `available` in `New Game` and `introduced` in `Free Walk`. `Continue` restores whatever the active story autosave had already reached.
 - `ferry_caretaker` beat 0 carries `"landmark_states": {"piano_ferry": "introduced"}`. This reveals the harbor clue trigger and sets the immediate objective to inspect the piano crate.
 - The harbor clue is a single `LandmarkTrigger` node placed directly in `piano_ferry.tscn`.
 - `piano_ferry.tscn` also hosts the late-game `festival_stage` trigger, but that belongs to the separate `festival_stage` landmark id rather than the onboarding arc itself.

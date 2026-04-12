@@ -169,7 +169,7 @@ If a resident uses an unsupported `anchor_id`, startup should warn and skip that
 - If a resident id is missing from runtime state, NPC speech should fail soft instead of crashing.
 - If a spawn anchor is missing in the main scene, the resident should be skipped with a warning rather than breaking startup.
 - Unknown residents should stay hidden from the resident journal until introduced.
-- `Free Walk`, `Continue`, and `Postgame` may seed resident progress differently, so docs and future save work should treat resident state as mode-aware.
+- `Free Walk` and `Continue` may seed resident progress differently, so docs and future save work should treat resident state as mode-aware.
 - If a resident and the player overlap physically but live on different absolute z layers, they should not target each other, show a talk prompt, or show a resident speech cue.
 - If a resident is inside Bi Shan or Long Shan Tunnel while the player is outside, that resident should be hidden and should drop out of closest-target selection until they exit or the player joins them.
 - If the player is inside Bi Shan or Long Shan Tunnel, residents outside that same tunnel should be hidden and should drop out of closest-target selection until the player exits or the resident re-enters.

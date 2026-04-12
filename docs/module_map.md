@@ -69,7 +69,7 @@ Put player control, NPC behavior, interaction prompts, and behavior-tree work he
 
 ### Landmark Quest Triggers
 
-- [`../game/landmark_trigger.gd`](../game/landmark_trigger.gd) - `class_name LandmarkTrigger extends Area2D`; place directly in a landmark scene; exports `landmark_id`, `trigger_id`, `display_name`, `visible_in_states`, `collected_progress_key`, `requires_collected`, `hide_if_flag`; these are invisible gameplay volumes by default, self-manage visibility by subscribing to `AppState.landmark_progress_changed`, and hide/disable themselves after `collect()` is called
+- [`../game/landmark_trigger.gd`](../game/landmark_trigger.gd) - `class_name LandmarkTrigger extends Area2D`; place in a landmark scene or terrain-owned trigger container; exports `landmark_id`, `trigger_id`, `display_name`, `visible_in_states`, `collected_progress_key`, `requires_collected`, `hide_if_flag`; these are invisible gameplay volumes by default, self-manage visibility by subscribing to `AppState.landmark_progress_changed`, and hide/disable themselves after `collect()` is called
 
 Put new landmark scenes and reusable architectural pieces here. Define shared floor data in `LevelRegistry`, and use absolute or parent-relative exported `level_id` integers in traversal components.
 
@@ -109,7 +109,7 @@ Be careful about renames or moves here because scene and resource references can
 - [`../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../game/tests/npc_system/test_tunnel_npc_travel.tscn) - focused tunnel resident route regression scene covering Ren's inside-only Long Shan path plus Nuo's Bi Shan portal-to-surface transition and level-state restoration
 - [`../game/tests/cue_progression/test_cue_progression.tscn`](../game/tests/cue_progression/test_cue_progression.tscn) - focused Ferry -> Trinity choir chime -> Bi Shan chamber prompt -> Long Shan exit prompt -> Bagua -> harbor-stage progression regression covering fragment awards, dependable-route notes, Bagua gating, and the spring guardrail on harbor-triggered endgame
 - [`../game/tests/bgm/test_bgm_manager.tscn`](../game/tests/bgm/test_bgm_manager.tscn) - focused BGM regression scene covering lazy catalog validation, natural-end fade scheduling, and location-fallback variety rules
-- [`../game/tests/persistence/test_story_autosave.tscn`](../game/tests/persistence/test_story_autosave.tscn) - focused story autosave regression covering first-save creation, real `Continue`, safe resume anchors, guarded harbor-performance persistence, postgame restore, and departure-save clearing
+- [`../game/tests/persistence/test_story_autosave.tscn`](../game/tests/persistence/test_story_autosave.tscn) - focused story autosave regression covering first-save creation, real `Continue`, safe resume anchors, guarded harbor-performance persistence, soft-ending continuation restore, and departure-save clearing
 - [`../game/tests/story_routes/test_story_routes.tscn`](../game/tests/story_routes/test_story_routes.tscn) - focused seasonal-route regression covering concurrent route seeds, manual lead pinning persistence, non-landmark seasonal progression, guarded endgame activation, and final-act save/restore
 - [`../scenes/tests/test_level_resolution.tscn`](../scenes/tests/test_level_resolution.tscn) - focused relative-level resolution and inherited room-level sandbox
 - [`../scenes/tests/test_portal_overlap.tscn`](../scenes/tests/test_portal_overlap.tscn) - focused multi-actor portal transition regression test

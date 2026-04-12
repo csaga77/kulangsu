@@ -373,4 +373,4 @@ When the system breaks, start here:
 1. Add a dedicated dialogue overlay for longer resident conversations while keeping ambient balloons for short nearby lines.
 2. Replace shared hub anchors with authored scene markers if placement quality becomes more important than authoring speed.
 3. Connect resident beats more directly to landmark quest modules once those district flows stabilize.
-4. Add mode-aware or postgame dialogue variants without breaking the shared resident profile contract.
+4. Add route-aware or ending-aware dialogue variants without breaking the shared resident profile contract.

@@ -378,12 +378,12 @@ func set_season_phase(new_phase: String) -> void:
 	if normalized_phase.is_empty():
 		normalized_phase = "summer_1"
 	if season_phase == normalized_phase:
-		if mode in ["Story", "Postgame"] and chapter != get_season_phase_display_name():
+		if mode == "Story" and chapter != get_season_phase_display_name():
 			set_chapter(get_season_phase_display_name())
 		return
 	season_phase = normalized_phase
 	season_phase_changed.emit(season_phase)
-	if mode in ["Story", "Postgame"]:
+	if mode == "Story":
 		set_chapter(get_season_phase_display_name())
 	_update_summary_counts()
 
@@ -485,7 +485,7 @@ func set_story_flags(new_flags: Dictionary) -> void:
 		story_flags = new_flags.duplicate(true)
 		return
 	story_flags = m_story_route_graph.normalize_story_flags(new_flags)
-	if mode in ["Story", "Postgame"]:
+	if mode == "Story":
 		refresh_story_routes()
 
 
@@ -628,6 +628,41 @@ func apply_ending_choice(choice_id: String) -> void:
 		set_endgame_state(next_endgame_state)
 	ending_summary["ending_choice"] = normalized_choice
 	_autosave_story_progress()
+
+
+func get_endgame_behavior() -> String:
+	return String(endgame_state.get("ending_behavior", ""))
+
+
+func can_continue_after_endgame() -> bool:
+	return bool(endgame_state.get("active", false)) and get_endgame_behavior() == "continue_story"
+
+
+func continue_story_after_endgame() -> bool:
+	if !can_continue_after_endgame():
+		return false
+
+	var previous_endgame_state := endgame_state.duplicate(true)
+	var trigger_event_id := String(previous_endgame_state.get("trigger_event_id", ""))
+	var resume_phase_id := String(previous_endgame_state.get("resume_phase_id", "spring_festival"))
+	if resume_phase_id.is_empty() or resume_phase_id == "endgame":
+		resume_phase_id = "spring_festival"
+
+	set_endgame_state(STORY_ROUTE_GRAPH_SCRIPT.default_endgame_state())
+	set_season_phase(resume_phase_id)
+
+	if trigger_event_id == "harbor_festival_performed":
+		var melody_state := get_melody_state("festival_melody")
+		if !melody_state.is_empty() and bool(melody_state.get("performed", false)):
+			melody_state["state"] = "resonant"
+			melody_state["next_lead"] = "Wander the island and listen to what the restored melody leaves behind."
+			set_melody_progress({"festival_melody": melody_state})
+		set_objective("Wander the island and listen to what the restored melody leaves behind.")
+		set_save_status("The festival fades, but the island keeps the melody.")
+
+	refresh_story_routes()
+	_autosave_story_progress()
+	return true
 
 
 func _default_landmarks() -> PackedStringArray:
@@ -953,7 +988,7 @@ func _apply_story_route_state_bundle(state: Dictionary) -> void:
 
 
 func _is_story_persistable_mode(mode_id: String = mode) -> bool:
-	return mode_id in ["Story", "Postgame"]
+	return mode_id == "Story"
 
 
 func _build_story_autosave_payload() -> Dictionary:
@@ -1006,15 +1041,21 @@ func _normalize_story_autosave_payload(payload: Dictionary) -> Dictionary:
 		return {}
 
 	var normalized_mode := String(payload.get("mode", "Story"))
-	if !_is_story_persistable_mode(normalized_mode):
+	if normalized_mode == "Postgame":
 		normalized_mode = "Story"
+	elif !_is_story_persistable_mode(normalized_mode):
+		normalized_mode = "Story"
+
+	var normalized_phase := String(payload.get("season_phase", "summer_1"))
+	if normalized_phase == "postgame":
+		normalized_phase = "spring_festival"
 
 	return {
 		"version": STORY_AUTOSAVE_VERSION,
 		"saved_at_unix": int(payload.get("saved_at_unix", 0)),
 		"mode": normalized_mode,
 		"chapter": String(payload.get("chapter", "Arrival")),
-		"season_phase": String(payload.get("season_phase", "summer_1")),
+		"season_phase": normalized_phase,
 		"location": String(payload.get("location", "Piano Ferry")),
 		"objective": String(payload.get("objective", "Find out why the island feels quiet today.")),
 		"journal_unlocked": bool(payload.get("journal_unlocked", true)),
@@ -1311,31 +1352,6 @@ func configure_free_walk() -> void:
 	_update_summary_counts()
 
 
-func configure_postgame() -> void:
-	set_mode("Postgame")
-	set_season_phase("postgame")
-	set_location("Ferry Plaza")
-	set_objective("Wander the island after the ending and listen for what changed.")
-	set_journal_unlocked(true)
-	set_hint(build_input_hint("R Inspect"))
-	set_save_status("Postgame checkpoint saved — the island now carries the story you chose to stay with.")
-	if bool(get_melody_state("festival_melody").get("performed", false)):
-		var melody_state := get_melody_state("festival_melody")
-		melody_state["state"] = "resonant"
-		melody_state["next_lead"] = "Wander the island and listen to what the restored melody leaves behind."
-		set_melody_progress({"festival_melody": melody_state})
-		if get_landmark_state("festival_stage") != "reward_collected":
-			advance_landmark_state("festival_stage", "reward_collected")
-	_manual_pinned_lead_id = ""
-	endgame_state = STORY_ROUTE_GRAPH_SCRIPT.default_endgame_state()
-	endgame_state_changed.emit(endgame_state.duplicate(true))
-	refresh_story_routes()
-	story_resume_anchor_id = "Piano Ferry"
-	story_resume_location = "Ferry Plaza"
-	_update_summary_counts()
-	save_story_autosave()
-
-
 func _apply_resident_beat(beat: Dictionary) -> void:
 	var new_objective := String(beat.get("objective", ""))
 	if !new_objective.is_empty():
@@ -1350,7 +1366,7 @@ func _apply_resident_beat(beat: Dictionary) -> void:
 		set_season_phase(new_phase)
 
 	var new_chapter := String(beat.get("chapter", ""))
-	if !new_chapter.is_empty() and mode not in ["Story", "Postgame"]:
+	if !new_chapter.is_empty() and mode != "Story":
 		set_chapter(new_chapter)
 
 	var new_status := String(beat.get("save_status", ""))
@@ -1442,15 +1458,9 @@ func _update_summary_counts() -> void:
 	summary["season"] = get_season_phase_display_name()
 	if m_story_route_graph != null:
 		summary["routes"] = m_story_route_graph.build_route_completion_summary()
-	var ending_trigger := String(endgame_state.get("trigger_event_id", ""))
-	if ending_trigger.is_empty() and mode == "Postgame":
-		ending_trigger = String(summary.get("ending_trigger", ""))
-	summary["ending_trigger"] = ending_trigger
+	summary["ending_trigger"] = String(endgame_state.get("trigger_event_id", ""))
 	var ending_tone_tags := PackedStringArray(_normalize_string_array(endgame_state.get("ending_tone_tags", [])))
-	if ending_tone_tags.is_empty() and mode == "Postgame":
-		summary["ending_tones"] = String(summary.get("ending_tones", ""))
-	else:
-		summary["ending_tones"] = ", ".join(ending_tone_tags)
+	summary["ending_tones"] = ", ".join(ending_tone_tags)
 	ending_summary = summary
 	summary_changed.emit(ending_summary)
 
@@ -1485,16 +1495,6 @@ func _build_story_melody_progress(state_id: String) -> Dictionary:
 					"known_sources": ["ferry_plaza"],
 					"next_lead": "Wander freely and use residents to sample how each district hears the island's missing tune.",
 					"performed": false,
-				},
-			}
-		"postgame":
-			return {
-				"festival_melody": {
-					"state": "resonant",
-					"fragments_found": 4,
-					"known_sources": ["ferry_plaza", "church_bells", "bi_shan_echo", "long_shan_route", "tower_chamber"],
-					"next_lead": "Listen to how the island answers now that the festival melody has returned.",
-					"performed": true,
 				},
 			}
 		_:
@@ -1659,15 +1659,6 @@ func _build_landmark_progress(state_id: String) -> Dictionary:
 				"long_shan_tunnel": {"state": "available", "checkpoints_collected": []},
 				"bagua_tower": {"state": "available", "synthesis_done": false},
 				"festival_stage": {"state": "locked"},
-			}
-		"postgame":
-			return {
-				"piano_ferry": {"state": "reward_collected", "harbor_clue_found": true},
-				"trinity_church": {"state": "reward_collected", "cues_collected": ["steps", "garden", "yard"], "chime_performed": true},
-				"bi_shan_tunnel": {"state": "reward_collected", "echoes_collected": ["echo_a", "echo_b", "echo_c"]},
-				"long_shan_tunnel": {"state": "reward_collected", "checkpoints_collected": ["light_pocket_south", "light_pocket_north"]},
-				"bagua_tower": {"state": "reward_collected", "synthesis_done": true},
-				"festival_stage": {"state": "reward_collected"},
 			}
 		_:
 			return _default_landmark_progress()

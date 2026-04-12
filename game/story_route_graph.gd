@@ -171,6 +171,7 @@ static func build_event_definitions() -> Dictionary:
 			"pin_priority": 120,
 			"completion_score": 1,
 			"endgame_trigger": "future_commitment_end",
+			"ending_behavior": "end_run",
 			"closing_label": "The harbor no longer asks for certainty. It only asks whether the future you carry is finally your own.",
 			"tone_tags": ["honesty", "turning_point", "harbor"],
 			"status_text": "The harbor has turned into a place where an honest future can become its own ending.",
@@ -188,6 +189,7 @@ static func build_event_definitions() -> Dictionary:
 			"completion_score": 2,
 			"season_phase": "summer_2",
 			"endgame_trigger": "exam_completed",
+			"ending_behavior": "end_run",
 			"closing_label": "The exam is over. Second summer arrives without certainty, but with a more honest self standing inside it.",
 			"tone_tags": ["release", "second_summer", "honesty"],
 			"status_text": "The exam season has passed, and the year has opened into a second summer.",
@@ -294,6 +296,7 @@ static func build_event_definitions() -> Dictionary:
 			"pin_priority": 98,
 			"completion_score": 2,
 			"endgame_trigger": "harbor_festival_performed",
+			"ending_behavior": "continue_story",
 			"closing_label": "The restored harbor performance is no longer only a festival. It has become the public shape of everything the island remembers.",
 			"tone_tags": ["music", "community", "public_memory"],
 			"status_text": "The harbor has performed the restored melody back into the island.",
@@ -314,6 +317,8 @@ static func default_endgame_state() -> Dictionary:
 		"trigger_event_id": "",
 		"closing_label": "",
 		"ending_tone_tags": [],
+		"ending_behavior": "",
+		"resume_phase_id": "",
 	}
 
 
@@ -331,8 +336,6 @@ static func phase_display_name(phase_id: String) -> String:
 			return "Second Summer"
 		"endgame":
 			return "Final Act"
-		"postgame":
-			return "Afterword"
 		_:
 			return "Story"
 
@@ -342,16 +345,6 @@ func build_story_state(state_id: String) -> Dictionary:
 	var phase := "summer_1"
 	var endgame := default_endgame_state()
 	match state_id:
-		"postgame":
-			phase = "postgame"
-			for event_id in flags.keys():
-				flags[event_id] = true
-			endgame = {
-				"active": false,
-				"trigger_event_id": "harbor_festival_performed",
-				"closing_label": "The harbor has gone quiet again, but it no longer sounds empty.",
-				"ending_tone_tags": PackedStringArray(["music", "inheritance", "afterglow"]),
-			}
 		"free_walk":
 			phase = "summer_1"
 
@@ -388,6 +381,8 @@ func normalize_endgame_state(value: Variant) -> Dictionary:
 	normalized["trigger_event_id"] = String(normalized.get("trigger_event_id", ""))
 	normalized["closing_label"] = String(normalized.get("closing_label", ""))
 	normalized["ending_tone_tags"] = _normalize_string_array(normalized.get("ending_tone_tags", []))
+	normalized["ending_behavior"] = String(normalized.get("ending_behavior", ""))
+	normalized["resume_phase_id"] = String(normalized.get("resume_phase_id", ""))
 	return normalized
 
 
@@ -647,17 +642,21 @@ func _maybe_start_endgame(preferred_event_id: String) -> void:
 		var trigger_id := String(definition.get("endgame_trigger", ""))
 		if trigger_id.is_empty():
 			continue
+		var ending_behavior := String(definition.get("ending_behavior", "end_run"))
 		var endgame_state := {
 			"active": true,
 			"trigger_event_id": event_id,
 			"closing_label": String(definition.get("closing_label", "Take a quiet moment before choosing what comes next.")),
 			"ending_tone_tags": _build_tone_tags(definition),
+			"ending_behavior": ending_behavior,
+			"resume_phase_id": String(m_owner.season_phase),
 		}
 		m_owner.set_endgame_state(endgame_state)
 		m_owner.set_season_phase("endgame")
 		m_owner._emit_story_milestone("endgame_started", {
 			"trigger_event_id": event_id,
 			"trigger_id": trigger_id,
+			"ending_behavior": ending_behavior,
 			"closing_label": String(endgame_state.get("closing_label", "")),
 		})
 		return

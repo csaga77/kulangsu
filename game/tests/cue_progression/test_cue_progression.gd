@@ -3,6 +3,7 @@ extends Node2D
 const TRINITY_CHURCH_SCENE: PackedScene = preload("res://architecture/trinity_church.tscn")
 const LONG_SHAN_TUNNEL_SCENE: PackedScene = preload("res://architecture/long_shan_tunnel.tscn")
 const PIANO_FERRY_SCENE: PackedScene = preload("res://architecture/piano_ferry.tscn")
+const TERRAIN_SCENE: PackedScene = preload("res://terrain/terrain.tscn")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 
 var m_failures := PackedStringArray()
@@ -113,6 +114,10 @@ func _run() -> void:
 	_assert_true(m_milestones.has("festival_performed"), "Festival performance emits the festival_performed milestone")
 	_assert_true(bool(_app_state().endgame_state.get("active", false)), "Festival performance can now start the final act once spring has resolved")
 	_assert_true(String(_app_state().endgame_state.get("trigger_event_id", "")) == "harbor_festival_performed", "Festival performance stores the correct endgame trigger once it is allowed")
+	_assert_true(_app_state().get_endgame_behavior() == "continue_story", "Harbor performance is classified as a soft ending that can continue into play")
+	_assert_true(_app_state().continue_story_after_endgame(), "Soft endings can clear the ending state and return to live story play")
+	_assert_true(!bool(_app_state().endgame_state.get("active", false)), "Continuing after a soft ending clears the active endgame state")
+	_assert_true(String(_app_state().get_melody_state("festival_melody").get("state", "")) == "resonant", "Continuing after the harbor ending upgrades the melody into its persistent resonant state")
 
 	_app_state().configure_new_game()
 	_app_state().interact_with_resident("ferry_caretaker")
@@ -154,11 +159,24 @@ func _run() -> void:
 	trinity_scene.free()
 
 	var long_shan_scene: Node = LONG_SHAN_TUNNEL_SCENE.instantiate()
-	var pocket_south: Node = long_shan_scene.get_node("LightPocketSouth")
-	var pocket_north: Node = long_shan_scene.get_node("LightPocketNorth")
-	_assert_true(pocket_south != null, "Long Shan includes the first lit pocket cue")
-	_assert_true(pocket_north.requires_collected == ["light_pocket_south"], "Long Shan second pocket waits for the first")
+	_assert_true(
+		long_shan_scene.find_children("*", "LandmarkTrigger", true, false).is_empty(),
+		"Long Shan keeps its cue triggers in the terrain-owned trigger containers"
+	)
 	long_shan_scene.free()
+
+	var terrain_scene: Node = TERRAIN_SCENE.instantiate()
+	var pocket_south := terrain_scene.get_node_or_null(
+		"landmark_triggers/long_shan_tunnel_interior_triggers/LightPocketSouth"
+	) as LandmarkTrigger
+	var pocket_north := terrain_scene.get_node_or_null(
+		"landmark_triggers/long_shan_tunnel_interior_triggers/LightPocketNorth"
+	) as LandmarkTrigger
+	_assert_true(pocket_south != null, "Long Shan includes the first lit pocket cue in the terrain trigger layer")
+	_assert_true(pocket_north != null, "Long Shan includes the second lit pocket cue in the terrain trigger layer")
+	if pocket_north != null:
+		_assert_true(pocket_north.requires_collected == ["light_pocket_south"], "Long Shan second pocket waits for the first")
+	terrain_scene.free()
 
 	var piano_ferry_scene: Node = PIANO_FERRY_SCENE.instantiate()
 	var festival_stage: Node = piano_ferry_scene.get_node("FestivalStage")

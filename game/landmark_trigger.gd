@@ -1,6 +1,7 @@
 ## LandmarkTrigger
 ##
-## Place this node directly in a landmark scene to create an inspectable pickup.
+## Place this node in a landmark scene or terrain-owned trigger container
+## to create an inspectable pickup.
 ## scenes/game_main.gd detects it via _get_landmark_trigger() and routes the R-inspect action
 ## to AppState.activate_landmark_trigger(). The trigger manages its own visibility
 ## by subscribing to AppState.landmark_progress_changed.

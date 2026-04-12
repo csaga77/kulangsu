@@ -117,19 +117,24 @@ func _run() -> void:
 	_assert_true(bool(_app_state().get_melody_state("festival_melody").get("performed", false)), "Continue restores the saved harbor performance state")
 	_assert_true(bool(_app_state().endgame_state.get("active", false)), "Continue restores the harbor-performance endgame once spring was resolved first")
 	_assert_true(String(_app_state().endgame_state.get("trigger_event_id", "")) == "harbor_festival_performed", "Continue preserves the harbor-performance endgame trigger")
+	_assert_true(_app_state().get_endgame_behavior() == "continue_story", "Continue preserves the soft-ending classification for harbor performance")
 	_assert_true(_app_state().get_open_shortcuts().find("bi_shan_crossing") >= 0, "Continue restores dependable route state")
 
-	_app_state().configure_postgame()
-	_app_state().set_story_resume_checkpoint("Piano Ferry", "Ferry Plaza")
-	_app_state().save_story_autosave()
-	_assert_true(_app_state().configure_continue(), "Continue can load a saved postgame state")
-	_assert_true(_app_state().mode == "Postgame", "Continue restores postgame mode")
-	_assert_true(_app_state().get_landmark_state("festival_stage") == "reward_collected", "Continue restores the completed festival stage in postgame")
-	_assert_true(_app_state().get_story_resume_location() == "Ferry Plaza", "Postgame continue keeps the harbor resume label")
+	_assert_true(_app_state().continue_story_after_endgame(), "Soft endings can be cleared into continued story play")
+	_assert_true(!bool(_app_state().endgame_state.get("active", false)), "Continuing after a soft ending removes the active endgame state")
+	_assert_true(_app_state().mode == "Story", "Soft ending continuation stays in Story mode")
+	_assert_true(_app_state().season_phase == "spring_festival", "Soft ending continuation restores the underlying seasonal phase")
+	_assert_true(String(_app_state().get_melody_state("festival_melody").get("state", "")) == "resonant", "Soft ending continuation keeps the harbor melody in a resonant follow-through state")
+
+	_app_state().configure_free_walk()
+	_assert_true(_app_state().configure_continue(), "Continue can load a saved continued-story state after a soft ending")
+	_assert_true(_app_state().mode == "Story", "Continue restores Story mode after a soft ending was allowed to continue")
+	_assert_true(!bool(_app_state().endgame_state.get("active", false)), "Continue does not reopen the ending overlay after a soft ending was already resolved")
+	_assert_true(String(_app_state().get_melody_state("festival_melody").get("state", "")) == "resonant", "Continue preserves the resonant melody state from the soft-ending continuation")
 
 	_app_state().clear_story_autosave()
 	_assert_true(!_app_state().has_story_autosave(), "Clearing the story autosave removes the saved continue state")
-	_assert_true(!_app_state().configure_continue(), "Continue stays unavailable after departure clears the autosave")
+	_assert_true(!_app_state().configure_continue(), "Continue stays unavailable after the story autosave is cleared")
 
 	if m_failures.is_empty():
 		print("PASS: story autosave flow")

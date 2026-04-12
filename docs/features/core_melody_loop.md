@@ -86,7 +86,7 @@ The external GDD's `Sunlight Rock` and `Zheng Chenggong Statue` are not part of 
   - Bagua Tower still resolves through the simpler synthesis-and-confirm dialogue pattern for now
 - Growth system:
   - current progression is tracked through chapter, objective, trust, fragments, melody state, and costume unlocks
-  - the `heard -> reconstructed -> performed -> resonant` tier model now includes unique postgame resident dialogue and resonant-only BGM selection
+  - the `heard -> reconstructed -> performed -> resonant` tier model now includes unique soft-ending follow-up dialogue and resonant-only BGM selection
 
 ## Rules
 
@@ -115,7 +115,7 @@ These are the biggest differences between the current project and the target "mu
 
 Use this order to close the gap with the smallest architectural risk.
 
-> **Note:** Steps 1–7 now have a working first pass. The melody catalog, melody runtime state in AppState, updated journal Melody tab, all five landmark arcs, the reusable practice/performance prompt, the harbor-stage performance point, the ending/postgame handoff, and real story autosave-backed `Continue` are all live. The current starting point is external-route cleanup and any future multi-slot save polish, not the first-pass loop itself.
+> **Note:** Steps 1–7 now have a working first pass. The melody catalog, melody runtime state in AppState, updated journal Melody tab, all five landmark arcs, the reusable practice/performance prompt, the harbor-stage performance point, the ending/soft-ending handoff, and real story autosave-backed `Continue` are all live. The current starting point is external-route cleanup and any future multi-slot save polish, not the first-pass loop itself.
 
 ### ~~1. Formalize Melody Progress As Shared State~~ ✓ Done
 
@@ -166,13 +166,13 @@ See [`piano_ferry.md`](piano_ferry.md), [`trinity_church.md`](trinity_church.md)
 
 - After the harbor-stage performance:
   - the ending overlay opens from gameplay
-  - `Stay a Little Longer` seeds `resonant` postgame state and writes the new postgame autosave
+  - `Continue Exploring` clears the soft-ending wrapper, returns to live story play, and lets the harbor melody settle into `resonant`
   - `Leave on the Morning Ferry` clears the resumable story autosave, shows the dedicated departure card, then rolls credits back to title
 
 ### ~~7. Revisit Save / Continue Only After The Loop Exists~~ ✓ Done
 
 - Story mode now writes one versioned autosave payload from `AppState`.
-- `Continue` restores melody, landmark, dependable-route notes, resident, player-appearance, and postgame state together.
+- `Continue` restores melody, landmark, dependable-route notes, resident, player-appearance, and any active ending context together.
 - `scenes/game_main.gd` now resumes from safe landmark and tunnel-entry anchors instead of interior tunnel positions.
 
 ## Recommended Growth Tiers
@@ -186,7 +186,7 @@ Recommended project-aligned tier model:
 3. `performed`
 4. `resonant`
 
-`resonant` is now justified by real postgame feedback: unique resident follow-up beats and resonant-only music selection. Keep using it only when that island-memory layer is actually visible to the player.
+`resonant` is now justified by real post-ending follow-up: unique resident beats and resonant-only music selection. Keep using it only when that island-memory layer is actually visible to the player during continued story play.
 
 ## Recommended Data Structures And File Layout
 
@@ -363,9 +363,12 @@ Use this route when you want one end-to-end manual check of the current story-cr
 
 8. Complete the harbor performance.
    Actions: return to Piano Ferry, activate the Festival Stage, then enter the recovered phrase segments in the authored order.
-   Expectation: the prompt opens first, a wrong order clears softly, the melody becomes `performed` only after success, and the ending overlay opens with postgame still available from the ending screen.
+   Expectation: the prompt opens first, a wrong order clears softly, the melody becomes `performed` only after success, and the ending overlay opens with `Continue Exploring` available for the harbor soft ending.
 
-9. Choose `Stay a Little Longer`, return to title, then choose `Continue`.
+9. Choose `Continue Exploring`.
+   Expectation: the ending overlay closes, the story resumes in-world, and `festival_melody` upgrades to `resonant`.
+
+10. Return to title, then choose `Continue`.
    Expectation: the title footer shows the latest saved chapter/location summary, `Continue` is enabled, and the run resumes at the latest safe district anchor rather than an interior tunnel spot.
 
 ### Reusable Manual Ending Smoke Pass
@@ -381,8 +384,8 @@ Use this shorter route when you only need to verify the ending overlay, credits 
 3. Choose `Credits`, then back out.
    Expectation: credits return to the ending overlay, not to title or gameplay.
 
-4. Choose `Stay a Little Longer`, then return to title and choose `Continue`.
-   Expectation: `Continue` is still enabled and resumes the autosaved postgame harbor state.
+4. Choose `Continue Exploring`, then return to title and choose `Continue`.
+   Expectation: `Continue` is still enabled and resumes the autosaved continued-story state after the harbor ending.
 
 5. Reopen the ending overlay, choose `Leave on the Morning Ferry`, then cancel the confirm.
    Expectation: the cancel action keeps the player on the ending overlay.

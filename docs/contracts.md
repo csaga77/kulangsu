@@ -26,7 +26,7 @@ Current contract:
 - `Esc` backs out through overlay flow and `J` toggles the journal during gameplay
 - the reusable melody prompt overlay opens from `AppState` requests and may return either to gameplay or to the journal, depending on where it was launched
 - the ending overlay now opens from the shared `endgame_started` milestone instead of assuming the harbor performance is always the only ending gate
-- once the ending overlay opens, `Stay` configures autosaved postgame while `Leave` clears the resumable story autosave, routes through the dedicated morning-ferry departure card and credits, and returns to title with `Continue` disabled
+- once the ending overlay opens, `Continue Exploring` is offered only for endings whose `ending_behavior` is `continue_story`; choosing it clears the active ending wrapper, restores live story play, and writes a fresh story autosave, while `Leave` clears the resumable story autosave, routes through the dedicated morning-ferry departure card and credits, and returns to title with `Continue` disabled
 
 ## Shared State Contract
 
@@ -51,7 +51,7 @@ Current contract:
 - `save_metadata_changed(metadata)` is the shell-facing signal for title `Continue` state and latest story autosave summary
 - composed helper scripts emit `AppState`-owned signals back through bridge methods on `AppState` itself so the public signal contract stays centralized and GDScript static analysis can still verify those signals are live
 - `AppState` now owns the one-slot story autosave contract, current safe resume anchor, and the `configure_continue()`, `save_story_autosave()`, `clear_story_autosave()`, and `set_story_resume_checkpoint(...)` bridge methods used by the shell and world scene; `game/story_save_service.gd` owns the active read/write implementation
-- `game/story_route_graph.gd` owns canonical route definitions, event definitions, lead selection, endgame-trigger evaluation, and baseline ending-tone tag generation
+- `game/story_route_graph.gd` owns canonical route definitions, event definitions, lead selection, endgame-trigger evaluation, ending-behavior classification, and baseline ending-tone tag generation
 - the app shell and world hint logic may query `AppState.is_journal_unlocked()` and `AppState.build_input_hint(...)` to keep the early tutorial flow and controls text aligned
 - world and UI code rely on resident getters for resident ids, definitions, display names, appearance configs, spawn configs, movement configs, behavior configs, ambient speech, resident journal text, and full resident profiles when optional movement metadata is needed
 - `ResidentCatalog` may merge external `.tres` resident definitions from `res://game/residents/definitions/`; matching ids override built-ins and `include_in_catalog = false` keeps a resource out of the runtime roster
@@ -212,7 +212,7 @@ Current contract:
 
 Governance:
 
-- keep per-landmark scene setup in `LandmarkTrigger` nodes placed directly in each landmark scene, and keep active collection/resolution logic in `game/landmark_progression.gd` behind `AppState`'s public API
+- keep per-landmark trigger setup in `LandmarkTrigger` nodes placed in the landmark scene or a terrain-owned trigger container, and keep active collection/resolution logic in `game/landmark_progression.gd` behind `AppState`'s public API
 - if a new landmark arc is added, add its id to `_default_landmark_progress()` and `_build_landmark_progress()`, place `LandmarkTrigger` nodes in the landmark scene with the correct exported properties, and extend `game/landmark_progression.gd` plus the `AppState` bridge methods together
 - if the landmark state enum changes, update this file and the relevant landmark feature docs
 - `LandmarkTrigger` nodes handle their own hide/disable after collection; callers should only invoke `collect()` when `activate_landmark_trigger(...)` returns `true`

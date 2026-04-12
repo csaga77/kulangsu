@@ -66,7 +66,7 @@ func _is_story_persistable_mode(mode_id: String = "") -> bool:
 	var normalized_mode := mode_id
 	if normalized_mode.is_empty():
 		normalized_mode = m_owner.mode
-	return normalized_mode in ["Story", "Postgame"]
+	return normalized_mode == "Story"
 
 
 func _build_story_autosave_payload() -> Dictionary:
@@ -119,15 +119,21 @@ func _normalize_story_autosave_payload(payload: Dictionary) -> Dictionary:
 		return {}
 
 	var normalized_mode := String(payload.get("mode", "Story"))
-	if !_is_story_persistable_mode(normalized_mode):
+	if normalized_mode == "Postgame":
 		normalized_mode = "Story"
+	elif !_is_story_persistable_mode(normalized_mode):
+		normalized_mode = "Story"
+
+	var normalized_phase := String(payload.get("season_phase", "summer_1"))
+	if normalized_phase == "postgame":
+		normalized_phase = "spring_festival"
 
 	return {
 		"version": STORY_AUTOSAVE_VERSION,
 		"saved_at_unix": int(payload.get("saved_at_unix", 0)),
 		"mode": normalized_mode,
 		"chapter": String(payload.get("chapter", "Arrival")),
-		"season_phase": String(payload.get("season_phase", "summer_1")),
+		"season_phase": normalized_phase,
 		"location": String(payload.get("location", "Piano Ferry")),
 		"objective": String(payload.get("objective", "Find out why the island feels quiet today.")),
 		"journal_unlocked": bool(payload.get("journal_unlocked", true)),

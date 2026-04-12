@@ -50,7 +50,7 @@ text = "Leave on the Morning Ferry"
 [node name="StayButton" type="Button" parent="Margin/Body"]
 custom_minimum_size = Vector2(320, 54)
 layout_mode = 2
-text = "Stay a Little Longer"
+text = "Continue Exploring"
 
 [node name="CreditsButton" type="Button" parent="Margin/Body"]
 custom_minimum_size = Vector2(320, 54)

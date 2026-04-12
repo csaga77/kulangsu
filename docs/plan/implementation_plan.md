@@ -149,4 +149,4 @@ Primary files:
 - whether to add more non-landmark routes beyond the current four
 - whether to add more major-event endgame triggers after the current structure settles
 - whether to expose more route state directly in the world instead of mostly in dialogue and journal text
-- whether to add more authored postgame-only wandering content for stay endings
+- whether to add more authored wandering content after soft endings without introducing a separate after-ending mode

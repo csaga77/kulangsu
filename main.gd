@@ -213,10 +213,9 @@ func _build_app_shell() -> void:
 			_complete_story_departure
 		)
 	)
-	m_ending_panel.connect("stay_requested", func() -> void:
-		_app_state().apply_ending_choice("stay")
-		_app_state().configure_postgame()
-		_resume_gameplay()
+	m_ending_panel.connect("continue_story_requested", func() -> void:
+		if _app_state().continue_story_after_endgame():
+			_resume_gameplay()
 	)
 	m_ending_panel.connect("credits_requested", func() -> void:
 		_open_credits_panel(ScreenState.ENDING)
@@ -629,7 +628,7 @@ func _is_game_active() -> bool:
 
 
 func _persist_story_session() -> void:
-	if _app_state().mode in ["Story", "Postgame"]:
+	if _app_state().mode == "Story":
 		_app_state().save_story_autosave()
 
 

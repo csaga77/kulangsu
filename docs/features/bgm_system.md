@@ -79,7 +79,7 @@ Derived directly from `AppState.melody_progress.state`:
 - `heard` — one or more fragments found, the island is starting to speak
 - `reconstructed` — enough fragments are known to practice the melody
 - `performed` — harbor performance complete, the island is whole
-- `resonant` — postgame, the island remembers
+- `resonant` — soft-ending follow-through, the island remembers
 
 ### Season / Weather
 

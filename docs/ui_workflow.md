@@ -44,7 +44,7 @@ The current project already includes an in-world dialogue UI in [`../gui/speech_
 10. Pause menu
 11. Endgame flow
 12. Ending screen
-13. Postgame choice
+13. Ending resolution choice
 14. Return to title or quit app
 
 ## 1. App Launch
@@ -188,7 +188,7 @@ Selecting `Continue`:
 
 - Current first-pass behavior:
   - Loads the latest story autosave through `AppState.configure_continue()`
-  - Restores shared story state including melody, resident, landmark, and postgame progress
+  - Restores shared story state including melody, resident, landmark, and any active ending context
   - Enters play at the latest safe resume anchor instead of a fragile interior tunnel position
   - Shows the latest saved chapter, location, and fragment summary in the title footer
 - Current limitation:
@@ -484,18 +484,19 @@ After the festival:
 ### Ending Choice
 
 - `Leave on the Morning Ferry`
-- `Stay a Little Longer`
+- `Continue Exploring` when the ending supports continued play
 
-## 15. Postgame / End App Flow
+## 15. Ending Resolution / End App Flow
 
 After the ending choice:
 
-### Option A: Stay
+### Option A: Continue Exploring
 
 - Current first-pass runtime:
-  - Load postgame free exploration immediately
-  - Write a fresh story autosave for the postgame state
-  - Keep `Continue` pointed at the safe postgame harbor checkpoint
+  - Available only for soft endings
+  - Clear the active ending state and return to live story play in the saved underlying season
+  - Write a fresh story autosave for the continued story state
+  - Keep `Continue` pointed at the latest safe story checkpoint
 - Planned later polish:
   - Unlock deeper chapter review / recap UI in title
 
@@ -573,7 +574,7 @@ This keeps the UI predictable.
 8. Pause for settings or return flow
 9. Trigger finale
 10. View ending summary
-11. Return to title or continue postgame
+11. Return to title or continue the story when the ending allows it
 12. Quit app from title or pause
 
 ## 20. MVP UI Build Order

@@ -21,7 +21,6 @@ The current top-level frame is:
 4. `Spring Festival / Spring`
 5. `Second Summer`
 6. `Final Act`
-7. `Postgame`
 
 ## Design Goal
 
@@ -42,7 +41,7 @@ The game should feel like:
 4. Advance one or more route states, story flags, resident trust beats, or melody progress.
 5. Let seasonal anchors move the year forward.
 6. Enter a short final act once a designated major event lands after spring has resolved.
-7. Choose whether the story lingers on the island or departs from it.
+7. Resolve the ending by leaving the island or, for soft endings, returning to live story play.
 
 For the repeatable moment-to-moment play design that powers those beats, see [`core_gameplay_plays.md`](core_gameplay_plays.md).
 
@@ -208,15 +207,14 @@ When endgame starts:
 - new route beats stop becoming the live focus
 - the pinned lead becomes the closing lead
 - the game enters `Final Act` instead of hard-cutting to credits
-- ending tone is shaped by the trigger, route mix, resident trust/turnout, and the final stay-or-leave choice
+- ending tone is shaped by the trigger, route mix, resident trust/turnout, and the final leave-or-continue choice when that ending allows it
 
-## Ending And Postgame
+## Ending Behaviors
 
-The ending frame still keeps the ferry departure-versus-stay contrast.
+The ending frame still keeps the ferry departure contrast, but there is no separate after-ending exploration mode anymore.
 
-- `Leave` turns the story into a departure ending, then returns to title
-- `Stay` turns the story into an afterword and unlocks `Postgame`
-
-`Postgame` is for endings that imply staying or lingering on the island. It is not a generic sandbox reset.
+- `summer_exam_complete` and `future_commitment_end` are hard endings. The run can leave for credits or return to title, but it does not reopen live story play.
+- `harbor_festival_performed` is a soft ending. `Continue Exploring` clears the active ending state, restores the saved seasonal phase, and keeps the story running in-world.
+- the harbor soft ending also lets `festival_melody` settle into its `resonant` follow-through once play resumes.
 
 `Free Walk` remains a separate non-canon exploration mode.

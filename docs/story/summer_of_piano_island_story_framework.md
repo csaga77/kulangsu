@@ -118,7 +118,6 @@ The current story frame is:
 4. `Spring Festival / Spring`
 5. `Second Summer`
 6. `Final Act`
-7. `Postgame`
 
 These are authored emotional phases, not calendar simulation.
 

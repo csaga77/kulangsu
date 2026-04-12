@@ -431,7 +431,7 @@ func _cache_spawn_anchors() -> void:
 func _apply_story_resume_anchor_if_needed() -> void:
 	if !is_instance_valid(m_player):
 		return
-	if _app_state().mode not in ["Story", "Postgame"]:
+	if _app_state().mode != "Story":
 		return
 
 	var anchor_id = _app_state().get_story_resume_anchor_id()
@@ -449,7 +449,7 @@ func _apply_story_resume_anchor_if_needed() -> void:
 
 
 func _update_story_resume_checkpoint() -> void:
-	if _app_state().mode not in ["Story", "Postgame"]:
+	if _app_state().mode != "Story":
 		return
 
 	var anchor_id := _find_story_resume_anchor_id()
@@ -497,8 +497,6 @@ func _resume_location_for_anchor(anchor_id: String) -> String:
 		return "Bi Shan Tunnel"
 	if anchor_id.begins_with("Long Shan Tunnel"):
 		return "Long Shan Tunnel"
-	if anchor_id == "Piano Ferry" and _app_state().mode == "Postgame":
-		return "Ferry Plaza"
 	return anchor_id
 
 
