@@ -16,6 +16,7 @@ const LONG_SHAN_RESIDENT_IDS := [
 	"porter_shan",
 	"light_watcher_he",
 ]
+const TUNNEL_MANAGED_RESIDENT_IDS := BI_SHAN_RESIDENT_IDS + LONG_SHAN_RESIDENT_IDS
 const MIN_TUNNEL_SPACING := 220.0
 const OUTSIDE_PLAYER_POSITION := Vector2(-263.0, 8541.0)
 
@@ -62,7 +63,14 @@ func _run() -> void:
 	_assert_group_on_tunnel_level(residents_root, long_shan_tunnel, LONG_SHAN_RESIDENT_IDS)
 	_assert_group_spacing(residents_root, BI_SHAN_RESIDENT_IDS, MIN_TUNNEL_SPACING)
 	_assert_group_spacing(residents_root, LONG_SHAN_RESIDENT_IDS, MIN_TUNNEL_SPACING)
-	_assert_visibility_matches_player_context(player, residents_root, tunnels, "Initial outside state should match tunnel context.")
+	var non_tunnel_snapshots := _capture_non_tunnel_resident_state(residents_root)
+	_assert_visibility_matches_player_context(
+		player,
+		residents_root,
+		tunnels,
+		non_tunnel_snapshots,
+		"Initial outside state should match tunnel context."
+	)
 	_assert(ground.visible, "Ground should stay visible while the player is outside.")
 
 	_move_player_over_tunnel_surface(player, _resident_node(residents_root, BI_SHAN_RESIDENT_IDS[0]), initial_player_z, initial_player_collision_mask)
@@ -70,25 +78,49 @@ func _run() -> void:
 	await get_tree().process_frame
 	_assert(bi_shan_tunnel.contains_actor(player), "Surface overlap case should still place the player over the Bi Shan tunnel footprint.")
 	_assert(!bi_shan_tunnel.contains_actor_interior(player), "Surface overlap case should not count as being inside Bi Shan Tunnel.")
-	_assert_visibility_matches_player_context(player, residents_root, tunnels, "Surface overlap should still use outside tunnel visibility.")
+	_assert_visibility_matches_player_context(
+		player,
+		residents_root,
+		tunnels,
+		non_tunnel_snapshots,
+		"Surface overlap should still use outside tunnel visibility."
+	)
 	_assert(ground.visible, "Ground should stay visible while the player only overlaps the tunnel footprint on the surface.")
 
 	_move_player_into_tunnel(player, bi_shan_tunnel, _resident_node(residents_root, BI_SHAN_RESIDENT_IDS[0]), initial_player_z, initial_player_collision_mask)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_assert_visibility_matches_player_context(player, residents_root, tunnels, "Bi Shan tunnel state should match tunnel context.")
+	_assert_visibility_matches_player_context(
+		player,
+		residents_root,
+		tunnels,
+		non_tunnel_snapshots,
+		"Bi Shan tunnel state should match tunnel context."
+	)
 	_assert(ground.visible == false, "Ground should hide while the player is inside Bi Shan Tunnel.")
 
 	_move_player_outside(player, initial_player_z, initial_player_collision_mask)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_assert_visibility_matches_player_context(player, residents_root, tunnels, "Returning outside should restore outside context visibility.")
+	_assert_visibility_matches_player_context(
+		player,
+		residents_root,
+		tunnels,
+		non_tunnel_snapshots,
+		"Returning outside should restore outside context visibility."
+	)
 	_assert(ground.visible, "Ground should reappear after leaving the tunnel.")
 
 	_move_player_into_tunnel(player, long_shan_tunnel, _resident_node(residents_root, LONG_SHAN_RESIDENT_IDS[0]), initial_player_z, initial_player_collision_mask)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_assert_visibility_matches_player_context(player, residents_root, tunnels, "Long Shan tunnel state should match tunnel context.")
+	_assert_visibility_matches_player_context(
+		player,
+		residents_root,
+		tunnels,
+		non_tunnel_snapshots,
+		"Long Shan tunnel state should match tunnel context."
+	)
 	_assert(ground.visible == false, "Ground should hide while the player is inside Long Shan Tunnel.")
 
 	print("Tunnel NPC visibility regression passed.")
@@ -119,17 +151,41 @@ func _assert_group_on_tunnel_level(residents_root: Node2D, tunnel: Tunnel, resid
 		_assert(resident.collision_mask == expected_mask, "%s should start on tunnel collision mask %d." % [resident.name, expected_mask])
 
 
-func _assert_visibility_matches_player_context(player: HumanBody2D, residents_root: Node2D, tunnels: Array[Tunnel], message: String) -> void:
+func _assert_visibility_matches_player_context(
+	player: HumanBody2D,
+	residents_root: Node2D,
+	tunnels: Array[Tunnel],
+	non_tunnel_snapshots: Dictionary,
+	message: String
+) -> void:
 	var player_tunnel := _find_tunnel_for_actor(player, tunnels)
 	for child in residents_root.get_children():
 		var resident := child as HumanBody2D
 		if resident == null:
 			continue
+		var resident_id := String(resident.get("resident_id"))
 		var resident_tunnel := _find_tunnel_for_actor(resident, tunnels)
-		var should_be_visible := resident_tunnel == player_tunnel
+		if TUNNEL_MANAGED_RESIDENT_IDS.has(resident_id):
+			var should_be_visible := resident_tunnel == player_tunnel
+			_assert(
+				resident.visible == should_be_visible,
+				"%s %s Expected visible=%s, got %s." % [resident.name, message, str(should_be_visible), str(resident.visible)]
+			)
+			continue
+
+		var snapshot: Dictionary = non_tunnel_snapshots.get(resident_id, {})
+		_assert(!snapshot.is_empty(), "%s should have a baseline non-tunnel snapshot." % resident.name)
 		_assert(
-			resident.visible == should_be_visible,
-			"%s %s Expected visible=%s, got %s." % [resident.name, message, str(should_be_visible), str(resident.visible)]
+			resident.visible == bool(snapshot.get("visible", resident.visible)),
+			"%s %s Non-tunnel visibility should remain unchanged." % [resident.name, message]
+		)
+		_assert(
+			CommonUtils.get_absolute_z_index(resident) == int(snapshot.get("z_index", resident.z_index)),
+			"%s %s Non-tunnel z level should remain unchanged." % [resident.name, message]
+		)
+		_assert(
+			resident.collision_mask == int(snapshot.get("collision_mask", resident.collision_mask)),
+			"%s %s Non-tunnel collision mask should remain unchanged." % [resident.name, message]
 		)
 
 
@@ -141,6 +197,23 @@ func _find_tunnel_for_actor(actor: HumanBody2D, tunnels: Array[Tunnel]) -> Tunne
 		if tunnel != null and tunnel.contains_actor_interior(actor):
 			return tunnel
 	return null
+
+
+func _capture_non_tunnel_resident_state(residents_root: Node2D) -> Dictionary:
+	var snapshots: Dictionary = {}
+	for child in residents_root.get_children():
+		var resident := child as HumanBody2D
+		if resident == null:
+			continue
+		var resident_id := String(resident.get("resident_id"))
+		if TUNNEL_MANAGED_RESIDENT_IDS.has(resident_id):
+			continue
+		snapshots[resident_id] = {
+			"visible": resident.visible,
+			"z_index": CommonUtils.get_absolute_z_index(resident),
+			"collision_mask": resident.collision_mask,
+		}
+	return snapshots
 
 
 func _assert_group_visible(residents_root: Node2D, resident_ids: Array, message: String) -> void:

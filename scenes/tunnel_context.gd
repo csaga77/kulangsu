@@ -7,6 +7,7 @@ var m_player: HumanBody2D = null
 var m_resident_root: Node2D = null
 var m_tunnel_nodes: Array[Tunnel] = []
 var m_use_process_fallback := true
+var m_tunnel_managed_resident_ids: Dictionary = {}
 
 
 func _process(_delta: float) -> void:
@@ -21,6 +22,7 @@ func configure(player: HumanBody2D, resident_root: Node2D, tunnel_nodes: Array) 
 	m_player = player
 	m_resident_root = resident_root
 	m_tunnel_nodes.clear()
+	m_tunnel_managed_resident_ids.clear()
 	for tunnel_value in tunnel_nodes:
 		var tunnel := tunnel_value as Tunnel
 		if tunnel != null:
@@ -39,14 +41,16 @@ func sync() -> void:
 		if resident == null:
 			continue
 
+		var resident_id := resident.get_instance_id()
 		var resident_tunnel := find_resident_tunnel(resident)
 		if resident_tunnel != null:
+			m_tunnel_managed_resident_ids[resident_id] = true
 			LEVEL_REGISTRY.apply_level_to_actor(resident_tunnel.get_resolved_level_id(), resident)
 			resident.visible = resident_tunnel == active_tunnel
 			continue
 
-		LEVEL_REGISTRY.apply_level_to_actor(0, resident)
-		resident.visible = active_tunnel == null
+		if m_tunnel_managed_resident_ids.has(resident_id):
+			resident.visible = active_tunnel == null
 
 
 func find_player_tunnel() -> Tunnel:
