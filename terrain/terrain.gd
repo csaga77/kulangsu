@@ -111,7 +111,7 @@ func _ensure_generated_layers() -> void:
 	m_building_mask.y_sort_enabled = true
 	m_building_mask.tile_set = SYMBOLS_TILESET
 	m_building_mask.set_script(ISO_TILEMAP_SCRIPT)
-	m_building_mask.only_shown_in_editor = true
+	m_building_mask.visible = Engine.is_editor_hint()
 
 func _get_generation_profile() -> TerrainGenerationProfile:
 	if generation_profile == null:
