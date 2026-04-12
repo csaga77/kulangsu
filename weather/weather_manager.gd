@@ -149,20 +149,20 @@ func _process(delta: float) -> void:
 		_schedule_hold()
 
 
-func register_weather_host(owner: Node, host_config: Dictionary = {}) -> Dictionary:
-	if owner == null:
+func register_weather_host(host_owner: Node, host_config: Dictionary = {}) -> Dictionary:
+	if host_owner == null:
 		return {}
 
-	if m_target_owner != null and owner != m_target_owner:
+	if m_target_owner != null and host_owner != m_target_owner:
 		_clear_weather_targets()
 
 	_clear_weather_targets()
 
-	var rig := _build_weather_rig(owner, host_config)
+	var rig := _build_weather_rig(host_owner, host_config)
 	if rig == null:
 		return {}
 
-	m_target_owner = owner
+	m_target_owner = host_owner
 	m_registered_rig = rig
 	m_weather_layer = rig.weather_layer
 	m_rain_overlay = rig.rain_overlay
@@ -179,11 +179,11 @@ func register_weather_host(owner: Node, host_config: Dictionary = {}) -> Diction
 	else:
 		_apply_weather(m_current_weather)
 
-	return get_registered_weather_nodes(owner)
+	return get_registered_weather_nodes(host_owner)
 
 
-func get_registered_weather_nodes(owner: Node = null) -> Dictionary:
-	if owner != null and owner != m_target_owner:
+func get_registered_weather_nodes(host_owner: Node = null) -> Dictionary:
+	if host_owner != null and host_owner != m_target_owner:
 		return {}
 	_resolve_weather_targets()
 	return {
@@ -233,13 +233,13 @@ func set_registered_visibility(is_visible: bool) -> void:
 		m_ground_impacts.visible = is_visible
 
 
-func unregister_weather_targets(owner: Node) -> void:
-	if owner != null and owner != m_target_owner:
+func unregister_weather_targets(host_owner: Node) -> void:
+	if host_owner != null and host_owner != m_target_owner:
 		return
 	_clear_weather_targets()
 
 
-func _build_weather_rig(owner: Node, host_config: Dictionary) -> WeatherRig:
+func _build_weather_rig(host_owner: Node, host_config: Dictionary) -> WeatherRig:
 	var overlay_parent := host_config.get("overlay_parent") as Node
 	var cloud_parent := host_config.get("cloud_parent") as Node
 	var impacts_parent := host_config.get("impacts_parent") as Node
@@ -253,7 +253,7 @@ func _build_weather_rig(owner: Node, host_config: Dictionary) -> WeatherRig:
 	var impact_properties: Dictionary = host_config.get("impact_properties", {})
 
 	var rig := WeatherRig.new()
-	rig.owner = owner
+	rig.owner = host_owner
 
 	if is_instance_valid(overlay_parent):
 		rig.weather_layer = CanvasLayer.new()

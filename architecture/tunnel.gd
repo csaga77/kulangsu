@@ -149,7 +149,7 @@ func _ready() -> void:
 		if !m_path_layer.changed.is_connected(_invalidate_walkable_cache):
 			m_path_layer.changed.connect(_invalidate_walkable_cache)
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	pass
 
 func _invalidate_walkable_cache() -> void:

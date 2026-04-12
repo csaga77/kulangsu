@@ -59,7 +59,7 @@ func _do_reload() -> void:
 	m_mask.set_cell(Vector2i(-2, -1), 0, Vector2i(0, 0))
 	m_top.position.y = -iso_tile_size.y * size + iso_tile_size.y / 2
 	m_top.texture = top_texture
-	m_top.z_index = size / 4
+	m_top.z_index = int(float(size) / 4.0)
 	m_base.texture = base_texture
 	for child in m_mid.get_children():
 		if child == m_top:
@@ -69,7 +69,7 @@ func _do_reload() -> void:
 		for i in size - 2:
 			var mid_sprite := Sprite2D.new()
 			mid_sprite.texture = mid_texture
-			mid_sprite.z_index = i / 4
+			mid_sprite.z_index = int(float(i) / 4.0)
 			m_mid.add_child(mid_sprite)
 			mid_sprite.position.y = -iso_tile_size.y * (i + 2)
 			m_mask.set_cell(Vector2i(-2, -1) + Vector2i(-1, -1) * (i + 1), 0, Vector2i(0, 0))

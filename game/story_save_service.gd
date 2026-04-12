@@ -31,7 +31,7 @@ func refresh_story_autosave_metadata() -> void:
 		next_metadata = _build_story_save_metadata_from_payload(payload)
 
 	m_owner.story_save_metadata = next_metadata
-	m_owner.save_metadata_changed.emit(m_owner.get_story_save_metadata())
+	m_owner._emit_save_metadata_changed(m_owner.get_story_save_metadata())
 
 
 func save_story_autosave(status_text: String = "") -> bool:

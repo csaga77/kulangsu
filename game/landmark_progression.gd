@@ -23,7 +23,7 @@ func activate_landmark_trigger(
 				return false
 			_collect_piano_ferry_harbor_clue()
 			if !melody_hint.is_empty():
-				m_owner.melody_hint_shown.emit(melody_hint)
+				m_owner._emit_melody_hint_shown(melody_hint)
 			m_owner._request_landmark_audio_cue("piano_ferry", landmark_id, trigger_id, display_name)
 			m_owner.set_objective("Return to Caretaker Lian with the harbor refrain.")
 			m_owner.set_hint(m_owner.build_input_hint("R Talk to Caretaker Lian"))
@@ -42,7 +42,7 @@ func activate_landmark_trigger(
 					m_owner.set_save_status("The church phrase needs all three choir cues before it can settle.")
 					return false
 				if !melody_hint.is_empty():
-					m_owner.melody_hint_shown.emit(melody_hint)
+					m_owner._emit_melody_hint_shown(melody_hint)
 				m_owner._request_landmark_audio_cue("trinity_church", landmark_id, trigger_id, display_name)
 				request_trinity_chime_prompt()
 				return false
@@ -55,10 +55,10 @@ func activate_landmark_trigger(
 			).size()
 			m_owner.set_save_status("Found: %s" % display_name)
 			if !melody_hint.is_empty():
-				m_owner.melody_hint_shown.emit(melody_hint)
+				m_owner._emit_melody_hint_shown(melody_hint)
 			m_owner._request_landmark_audio_cue("trinity_church", landmark_id, trigger_id, display_name)
 			if all_collected:
-				m_owner.melody_hint_shown.emit("The three choir cues lean toward one church chime, but they still need to be settled together.")
+				m_owner._emit_melody_hint_shown("The three choir cues lean toward one church chime, but they still need to be settled together.")
 				m_owner.set_objective("Settle the church phrase at the choir chime near the steps.")
 				m_owner.set_hint(m_owner.build_input_hint("R Perform Choir Chime"))
 				m_owner.set_save_status("All choir cues found — settle them at the choir chime.")
@@ -76,7 +76,7 @@ func activate_landmark_trigger(
 				var echoes := _normalize_string_array(tunnel_progress.get("echoes_collected", []))
 				if echoes.size() >= 3:
 					if !melody_hint.is_empty():
-						m_owner.melody_hint_shown.emit(melody_hint)
+						m_owner._emit_melody_hint_shown(melody_hint)
 					m_owner._request_landmark_audio_cue("bi_shan_tunnel", landmark_id, trigger_id, display_name)
 					request_bi_shan_chamber_prompt()
 					return false
@@ -109,7 +109,7 @@ func activate_landmark_trigger(
 						return false
 					var all_checkpoints := _collect_long_shan_checkpoint(trigger_id)
 					if !melody_hint.is_empty():
-						m_owner.melody_hint_shown.emit(melody_hint)
+						m_owner._emit_melody_hint_shown(melody_hint)
 					m_owner._request_landmark_audio_cue("long_shan_tunnel", landmark_id, trigger_id, display_name)
 					if all_checkpoints:
 						m_owner.set_objective("Lead the route through to the Long Shan Tunnel exit.")
@@ -127,7 +127,7 @@ func activate_landmark_trigger(
 						).size()
 						if checkpoint_count >= 2:
 							if !melody_hint.is_empty():
-								m_owner.melody_hint_shown.emit(melody_hint)
+								m_owner._emit_melody_hint_shown(melody_hint)
 							m_owner._request_landmark_audio_cue("long_shan_tunnel", landmark_id, trigger_id, display_name)
 							request_long_shan_route_prompt()
 							return false
@@ -157,7 +157,7 @@ func activate_landmark_trigger(
 			if m_owner.get_landmark_state("festival_stage") != "available":
 				return false
 			if !melody_hint.is_empty():
-				m_owner.melody_hint_shown.emit(melody_hint)
+				m_owner._emit_melody_hint_shown(melody_hint)
 			m_owner._request_landmark_audio_cue("festival_stage", landmark_id, trigger_id, display_name)
 			request_melody_prompt("festival_melody", "performance")
 			return false
@@ -225,11 +225,11 @@ func request_melody_prompt(
 		"hint_text": "Choose the known phrase segments in order.",
 	}
 	request.merge(request_overrides, true)
-	m_owner.melody_prompt_requested.emit(request)
+	m_owner._emit_melody_prompt_requested(request)
 
 
 func request_trinity_chime_prompt() -> void:
-	m_owner.melody_prompt_requested.emit({
+	m_owner._emit_melody_prompt_requested({
 		"melody_id": "festival_melody",
 		"mode": "performance",
 		"completion_kind": "trinity_chime",
@@ -247,7 +247,7 @@ func request_trinity_chime_prompt() -> void:
 
 
 func request_bi_shan_chamber_prompt() -> void:
-	m_owner.melody_prompt_requested.emit({
+	m_owner._emit_melody_prompt_requested({
 		"melody_id": "festival_melody",
 		"mode": "performance",
 		"completion_kind": "bi_shan_chamber",
@@ -265,7 +265,7 @@ func request_bi_shan_chamber_prompt() -> void:
 
 
 func request_long_shan_route_prompt() -> void:
-	m_owner.melody_prompt_requested.emit({
+	m_owner._emit_melody_prompt_requested({
 		"melody_id": "festival_melody",
 		"mode": "performance",
 		"completion_kind": "long_shan_route",

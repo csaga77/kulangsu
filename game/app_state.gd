@@ -1561,6 +1561,30 @@ func _cycle_player_profile_option(profile_key: String, options: Array, direction
 	set_player_profile(next_profile)
 
 
+func _emit_melody_hint_shown(text: String) -> void:
+	melody_hint_shown.emit(text)
+
+
+func _emit_melody_prompt_requested(request: Dictionary) -> void:
+	melody_prompt_requested.emit(request)
+
+
+func _emit_player_profile_changed(profile: Dictionary) -> void:
+	player_profile_changed.emit(profile)
+
+
+func _emit_player_costume_changed(costume_id: String, costume: Dictionary) -> void:
+	player_costume_changed.emit(costume_id, costume)
+
+
+func _emit_player_costumes_changed(unlocked_ids: PackedStringArray, equipped_costume_id: String) -> void:
+	player_costumes_changed.emit(unlocked_ids, equipped_costume_id)
+
+
+func _emit_save_metadata_changed(metadata: Dictionary) -> void:
+	save_metadata_changed.emit(metadata)
+
+
 func _emit_player_appearance_changed() -> void:
 	player_appearance_changed.emit(get_player_profile(), get_player_appearance_config())
 
@@ -1898,7 +1922,7 @@ func _check_beat_gate(beat: Dictionary) -> bool:
 ## and that has not already fired (if marked once). Returns an empty Dictionary
 ## when no conditional beat matches, signalling the caller to fall through to
 ## the linear dialogue_beats spine.
-func _pick_conditional_beat(resident_id: String, resident: Dictionary) -> Dictionary:
+func _pick_conditional_beat(_resident_id: String, resident: Dictionary) -> Dictionary:
 	var conditional_beats: Array = resident.get("conditional_beats", [])
 	if conditional_beats.is_empty():
 		return {}

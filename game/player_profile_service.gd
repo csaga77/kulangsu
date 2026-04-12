@@ -104,7 +104,7 @@ func set_player_profile(new_profile: Dictionary) -> bool:
 
 	m_player_profile = normalized_profile
 	_sync_owner_state()
-	m_owner.player_profile_changed.emit(get_player_profile())
+	m_owner._emit_player_profile_changed(get_player_profile())
 	_emit_player_appearance_changed()
 	return true
 
@@ -165,9 +165,9 @@ func equip_player_costume(costume_id: String) -> bool:
 
 	m_equipped_player_costume_id = costume_id
 	_sync_owner_state()
-	m_owner.player_costume_changed.emit(m_equipped_player_costume_id, get_equipped_player_costume())
+	m_owner._emit_player_costume_changed(m_equipped_player_costume_id, get_equipped_player_costume())
 	_emit_player_appearance_changed()
-	m_owner.player_costumes_changed.emit(get_unlocked_player_costume_ids(), m_equipped_player_costume_id)
+	m_owner._emit_player_costumes_changed(get_unlocked_player_costume_ids(), m_equipped_player_costume_id)
 	return true
 
 
@@ -211,11 +211,11 @@ func refresh_player_costumes(
 	_sync_owner_state()
 
 	if costume_changed:
-		m_owner.player_costume_changed.emit(m_equipped_player_costume_id, get_equipped_player_costume())
+		m_owner._emit_player_costume_changed(m_equipped_player_costume_id, get_equipped_player_costume())
 		_emit_player_appearance_changed()
 
 	if unlocked_changed or costume_changed:
-		m_owner.player_costumes_changed.emit(get_unlocked_player_costume_ids(), m_equipped_player_costume_id)
+		m_owner._emit_player_costumes_changed(get_unlocked_player_costume_ids(), m_equipped_player_costume_id)
 
 
 func _cycle_player_profile_option(profile_key: String, options: Array, direction: int) -> void:

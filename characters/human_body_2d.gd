@@ -446,7 +446,7 @@ func _resolve_face_for_step(step_name: String) -> String:
 
 
 func _set_facial_action_internal(action_value: int) -> void:
-	facial_action = action_value
+	facial_action = action_value as FacialActionEnum
 
 
 func _advance_action_step() -> void:
@@ -602,12 +602,12 @@ func _find_expression_by_keywords(keywords: Array[String]) -> String:
 	if names.is_empty():
 		return ""
 
-	for name in names:
-		var lowered: String = String(name).to_lower()
+	for expression_name in names:
+		var lowered: String = String(expression_name).to_lower()
 		for keyword in keywords:
 			var k: String = String(keyword).to_lower()
 			if lowered.find(k) != -1:
-				return String(name)
+				return String(expression_name)
 
 	return ""
 

@@ -49,6 +49,7 @@ Current contract:
 - `melody_prompt_requested(request)` is the bridge from gameplay/journal actions into the reusable ordered-confirmation overlay; `AppState` preserves the public validation/completion API while `game/landmark_progression.gd` owns the active implementation
 - prompt completions now flow back through `complete_prompt_request(request)`, which dispatches landmark-specific confirmations such as the Trinity choir chime, the Bi Shan chamber contour, the Long Shan exit route, as well as melody practice/performance
 - `save_metadata_changed(metadata)` is the shell-facing signal for title `Continue` state and latest story autosave summary
+- composed helper scripts emit `AppState`-owned signals back through bridge methods on `AppState` itself so the public signal contract stays centralized and GDScript static analysis can still verify those signals are live
 - `AppState` now owns the one-slot story autosave contract, current safe resume anchor, and the `configure_continue()`, `save_story_autosave()`, `clear_story_autosave()`, and `set_story_resume_checkpoint(...)` bridge methods used by the shell and world scene; `game/story_save_service.gd` owns the active read/write implementation
 - `game/story_route_graph.gd` owns canonical route definitions, event definitions, lead selection, endgame-trigger evaluation, and baseline ending-tone tag generation
 - the app shell and world hint logic may query `AppState.is_journal_unlocked()` and `AppState.build_input_hint(...)` to keep the early tutorial flow and controls text aligned
