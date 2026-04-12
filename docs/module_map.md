@@ -33,6 +33,7 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../game/app_runtime.gd`](../game/app_runtime.gd) - scene-owned runtime lookup for `AppStateService` and the live `"player"` group member
 - [`../weather/weather_manager.gd`](../weather/weather_manager.gd) - global scene-owned weather service for overworld preset cycling, runtime weather-rig instancing, and synced wind application
 - [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd) - runtime lookup helper for `WeatherManager`
+- [`../game/landmark_trigger_catalog.gd`](../game/landmark_trigger_catalog.gd) - canonical authored `landmark_id` list plus valid `trigger_id` values per landmark; shared by inspector dropdowns and runtime progression validation
 - [`../game/player_profile_service.gd`](../game/player_profile_service.gd) - owns player appearance/profile and unlocked/equipped costume state while preserving `AppState`'s public API
 - [`../game/journal_builder.gd`](../game/journal_builder.gd) - pure journal/setup text builders used by the journal and player setup overlays
 - [`../game/story_save_service.gd`](../game/story_save_service.gd) - versioned story autosave read/write logic and save metadata refresh
@@ -69,7 +70,7 @@ Put player control, NPC behavior, interaction prompts, and behavior-tree work he
 
 ### Landmark Quest Triggers
 
-- [`../game/landmark_trigger.gd`](../game/landmark_trigger.gd) - `class_name LandmarkTrigger extends LevelArea2D`; place in a landmark scene or terrain-owned trigger container; exports `landmark_id`, `trigger_id`, `display_name`, `visible_in_states`, `collected_progress_key`, `requires_collected`, `hide_if_flag`, and the shared level-aware `level_id` fields; these are invisible gameplay volumes by default, self-manage visibility by subscribing to `AppState.landmark_progress_changed`, and hide/disable themselves after `collect()` is called
+- [`../game/landmark_trigger.gd`](../game/landmark_trigger.gd) - `class_name LandmarkTrigger extends LevelArea2D`; place in a landmark scene or under the matching terrain landmark instance; exports an enum-backed `landmark_id`, a `trigger_id` dropdown filtered to the selected landmark, plus `display_name`, `visible_in_states`, `collected_progress_key`, `requires_collected`, `hide_if_flag`, and the shared level-aware `level_id` fields; these are invisible gameplay volumes by default, self-manage visibility by subscribing to `AppState.landmark_progress_changed`, warn in the editor when a trigger id does not belong to the selected landmark, and hide/disable themselves after `collect()` is called
 
 Put new landmark scenes and reusable architectural pieces here. Define shared floor data in `LevelRegistry`, and use absolute or parent-relative exported `level_id` integers in traversal components.
 

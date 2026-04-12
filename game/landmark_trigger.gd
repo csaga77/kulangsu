@@ -1,6 +1,6 @@
 ## LandmarkTrigger
 ##
-## Place this node in a landmark scene or terrain-owned trigger container
+## Place this node in a landmark scene or under the matching terrain landmark instance
 ## to create an inspectable pickup.
 ## scenes/game_main.gd detects it via _get_landmark_trigger() and routes the R-inspect action
 ## to AppState.activate_landmark_trigger(). The trigger manages its own visibility
@@ -28,12 +28,26 @@ class_name LandmarkTrigger
 extends LevelArea2D
 
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
+const LANDMARK_TRIGGER_CATALOG := preload("res://game/landmark_trigger_catalog.gd")
 
 ## Must match the AppState.landmark_progress key for this landmark.
-@export var landmark_id: String = ""
+@export var landmark_id: String = "":
+	set(value):
+		if landmark_id == value:
+			return
+		landmark_id = value
+		if !trigger_id.is_empty() and !LANDMARK_TRIGGER_CATALOG.has_valid_trigger_id(landmark_id, trigger_id):
+			trigger_id = ""
+		notify_property_list_changed()
+		update_configuration_warnings()
 
 ## Per-landmark action key — passed to AppState.activate_landmark_trigger.
-@export var trigger_id: String = ""
+@export var trigger_id: String = "":
+	set(value):
+		if trigger_id == value:
+			return
+		trigger_id = value
+		update_configuration_warnings()
 
 ## Label shown in the inspect prompt and save-status line.
 @export var display_name: String = "Inspect"
@@ -74,6 +88,7 @@ func _app_state():
 func _ready() -> void:
 	super._ready()
 	if Engine.is_editor_hint():
+		update_configuration_warnings()
 		queue_redraw()
 		return
 	_sync_visibility()
@@ -100,6 +115,39 @@ func _draw() -> void:
 	var font_size := ThemeDB.fallback_font_size
 	var text_size := font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 	draw_string(font, Vector2(-text_size.x * 0.5, -radius - 6.0), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE)
+
+
+func _validate_property(property: Dictionary) -> void:
+	match String(property.get("name", "")):
+		"landmark_id":
+			property["hint"] = PROPERTY_HINT_ENUM
+			property["hint_string"] = LANDMARK_TRIGGER_CATALOG.build_landmark_enum_hint()
+		"trigger_id":
+			property["hint"] = PROPERTY_HINT_ENUM
+			property["hint_string"] = LANDMARK_TRIGGER_CATALOG.build_trigger_enum_hint(landmark_id)
+
+
+func _get_configuration_warnings() -> PackedStringArray:
+	var warnings := PackedStringArray()
+	if landmark_id.is_empty():
+		warnings.append("Choose a landmark_id.")
+		return warnings
+
+	if trigger_id.is_empty():
+		warnings.append("Choose a trigger_id.")
+		return warnings
+
+	var valid_trigger_ids := LANDMARK_TRIGGER_CATALOG.get_valid_trigger_ids(landmark_id)
+	if valid_trigger_ids.is_empty():
+		warnings.append("landmark_id '%s' is not in the known LandmarkTrigger id map." % landmark_id)
+		return warnings
+
+	if valid_trigger_ids.find(trigger_id) < 0:
+		warnings.append(
+			"trigger_id '%s' is not valid for landmark_id '%s'. Expected one of: %s."
+			% [trigger_id, landmark_id, ", ".join(valid_trigger_ids)]
+		)
+	return warnings
 
 
 func is_collected() -> bool:

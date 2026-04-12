@@ -165,25 +165,25 @@ func _assert_group_on_tunnel_level(residents_root: Node2D, tunnel: Tunnel, resid
 
 
 func _assert_tunnel_trigger_ownership(terrain: Node2D, bi_shan_tunnel: Tunnel, long_shan_tunnel: Tunnel) -> void:
-	var bi_shan_echo_a := terrain.get_node_or_null("landmark_triggers/bi_shan_tunnel_interior_triggers/EchoA") as LandmarkTrigger
-	var bi_shan_chamber := terrain.get_node_or_null("landmark_triggers/bi_shan_tunnel_interior_triggers/Chamber") as LandmarkTrigger
-	var long_shan_entry := terrain.get_node_or_null("landmark_triggers/long_shan_tunnel_surface_triggers/TunnelEntry") as LandmarkTrigger
-	var long_shan_exit := terrain.get_node_or_null("landmark_triggers/long_shan_tunnel_surface_triggers/TunnelExit") as LandmarkTrigger
-	var long_shan_pocket_south := terrain.get_node_or_null("landmark_triggers/long_shan_tunnel_interior_triggers/LightPocketSouth") as LandmarkTrigger
-	var long_shan_pocket_north := terrain.get_node_or_null("landmark_triggers/long_shan_tunnel_interior_triggers/LightPocketNorth") as LandmarkTrigger
-	_assert(bi_shan_echo_a != null, "Bi Shan echo triggers should live under terrain-owned trigger containers.")
-	_assert(bi_shan_chamber != null, "Bi Shan chamber trigger should live under terrain-owned trigger containers.")
-	_assert(long_shan_entry != null, "Long Shan entry trigger should live under terrain-owned trigger containers.")
-	_assert(long_shan_exit != null, "Long Shan exit trigger should live under terrain-owned trigger containers.")
-	_assert(long_shan_pocket_south != null, "Long Shan south light pocket should live under terrain-owned trigger containers.")
-	_assert(long_shan_pocket_north != null, "Long Shan north light pocket should live under terrain-owned trigger containers.")
+	var bi_shan_echo_a := terrain.get_node_or_null("bi_shan_tunnel/interior_triggers/EchoA") as LandmarkTrigger
+	var bi_shan_chamber := terrain.get_node_or_null("bi_shan_tunnel/interior_triggers/Chamber") as LandmarkTrigger
+	var long_shan_entry := terrain.get_node_or_null("long_shan_tunnel/surface_triggers/TunnelEntry") as LandmarkTrigger
+	var long_shan_exit := terrain.get_node_or_null("long_shan_tunnel/surface_triggers/TunnelExit") as LandmarkTrigger
+	var long_shan_pocket_south := terrain.get_node_or_null("long_shan_tunnel/interior_triggers/LightPocketSouth") as LandmarkTrigger
+	var long_shan_pocket_north := terrain.get_node_or_null("long_shan_tunnel/interior_triggers/LightPocketNorth") as LandmarkTrigger
+	_assert(bi_shan_echo_a != null, "Bi Shan echo triggers should live under the Bi Shan terrain instance.")
+	_assert(bi_shan_chamber != null, "Bi Shan chamber trigger should live under the Bi Shan terrain instance.")
+	_assert(long_shan_entry != null, "Long Shan entry trigger should live under the Long Shan terrain instance.")
+	_assert(long_shan_exit != null, "Long Shan exit trigger should live under the Long Shan terrain instance.")
+	_assert(long_shan_pocket_south != null, "Long Shan south light pocket should live under the Long Shan terrain instance.")
+	_assert(long_shan_pocket_north != null, "Long Shan north light pocket should live under the Long Shan terrain instance.")
 	_assert(
-		bi_shan_tunnel.find_children("*", "LandmarkTrigger", true, false).is_empty(),
-		"Bi Shan tunnel scene should no longer host LandmarkTrigger nodes directly."
+		bi_shan_echo_a != null and bi_shan_echo_a.get_parent().get_parent() == bi_shan_tunnel,
+		"Bi Shan tunnel triggers should hang directly off the Bi Shan landmark instance in terrain."
 	)
 	_assert(
-		long_shan_tunnel.find_children("*", "LandmarkTrigger", true, false).is_empty(),
-		"Long Shan tunnel scene should no longer host LandmarkTrigger nodes directly."
+		long_shan_pocket_south != null and long_shan_pocket_south.get_parent().get_parent() == long_shan_tunnel,
+		"Long Shan tunnel triggers should hang directly off the Long Shan landmark instance in terrain."
 	)
 	_assert(
 		CommonUtils.get_absolute_z_index(long_shan_entry) == 0,

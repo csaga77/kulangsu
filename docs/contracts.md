@@ -214,10 +214,12 @@ Current contract:
 - Resident dialogue beats may carry `"unlock_landmark"` to unlock a landmark when the beat fires, and `"gate"` / `"gate_fallback"` to block a beat until a landmark condition is satisfied
 - Resident dialogue beats may carry `"landmark_reward"` to trigger a landmark resolution (fragment award, melody state update, downstream unlocks) when the beat fires
 - `LandmarkTrigger` inherits the shared `LevelArea2D` level fields, so a trigger can resolve its interaction layer from a parent level node or an explicit `level_context_path` without landmark-specific logic
+- `game/landmark_trigger_catalog.gd` owns the canonical authored `landmark_id` list and valid `trigger_id` values for each landmark; both `LandmarkTrigger` inspector dropdowns and `LandmarkProgression.activate_landmark_trigger(...)` validation read from that shared catalog
+- `LandmarkTrigger.landmark_id` is an exported inspector enum over the currently authored landmark ids, and `LandmarkTrigger.trigger_id` is an enum-filtered inspector field whose available options follow the selected landmark; invalid landmark/trigger combinations should surface as configuration warnings in the editor instead of silently authoring mismatched pairs
 
 Governance:
 
-- keep per-landmark trigger setup in `LandmarkTrigger` nodes placed in the landmark scene or a terrain-owned trigger container, and keep active collection/resolution logic in `game/landmark_progression.gd` behind `AppState`'s public API
+- keep per-landmark trigger setup in `LandmarkTrigger` nodes placed in the landmark scene or under the matching terrain landmark instance, and keep active collection/resolution logic in `game/landmark_progression.gd` behind `AppState`'s public API
 - when a trigger must follow a non-ground interaction layer, set its shared level fields instead of hardcoding a separate scene-local z contract
 - if a new landmark arc is added, add its id to `_default_landmark_progress()` and `_build_landmark_progress()`, place `LandmarkTrigger` nodes in the landmark scene with the correct exported properties, and extend `game/landmark_progression.gd` plus the `AppState` bridge methods together
 - if the landmark state enum changes, update this file and the relevant landmark feature docs

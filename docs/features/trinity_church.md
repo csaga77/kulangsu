@@ -18,8 +18,8 @@ The mood should stay calm throughout. There is no timer and no hard fail state. 
 
 - Trinity Church starts `locked`. It unlocks to `available` when the `ferry_caretaker` fires her first dialogue beat (`"unlock_landmark": "trinity_church"`).
 - The three choir cue triggers (steps, garden, yard) are invisible `LandmarkTrigger` volumes that become collectible once the landmark state is `available`, `introduced`, or `in_progress`.
-- Each cue is a `LandmarkTrigger` node placed directly in the scene. Collecting one calls `AppState.activate_landmark_trigger("trinity_church", cue_id, display_name, melody_hint)`.
-- Cue order is authored in the scene:
+- Each cue is a `LandmarkTrigger` node authored in `terrain.tscn` under the `TrinityChurch` landmark instance. Collecting one calls `AppState.activate_landmark_trigger("trinity_church", cue_id, display_name, melody_hint)`.
+- Cue order is authored in the terrain scene:
   - `steps` has no prerequisite.
   - `garden` requires `steps`.
   - `yard` requires `steps` and `garden`.
@@ -55,17 +55,19 @@ The mood should stay calm throughout. There is no timer and no hard fail state. 
 ## Architecture / Ownership
 
 - `AppState` owns all landmark progress state, the pickup collection logic, and the fragment reward.
-- Each `LandmarkTrigger` placed in the scene self-manages its own visibility by subscribing to `AppState.landmark_progress_changed`.
+- Each `LandmarkTrigger` under the `TrinityChurch` terrain instance self-manages its own visibility by subscribing to `AppState.landmark_progress_changed`.
 - `LandmarkTrigger` owns its own collected state and hide/disable behavior.
 - `scenes/game_main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
 - `resident_catalog.gd` owns the authored beat gates and landmark reward keys for church_caretaker and ferry_caretaker.
 - `ui/screens/melody_prompt_overlay.*` provides the shared confirmation UI used by the choir chime and later melody performances.
+- `terrain.tscn` owns Trinity Church trigger placement under the `TrinityChurch` landmark instance, while `trinity_church.tscn` stays focused on architecture and presentation.
 - `trinity_church.tscn` hosts the controller as a child node. No logic lives in the scene file itself.
 
 ## Relevant Files
 
 - Scenes:
   - [`../../architecture/trinity_church.tscn`](../../architecture/trinity_church.tscn)
+  - [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn)
 - Scripts:
   - [`../../game/landmark_trigger.gd`](../../game/landmark_trigger.gd)
   - [`../../game/app_state.gd`](../../game/app_state.gd)
@@ -115,8 +117,8 @@ The mood should stay calm throughout. There is no timer and no hard fail state. 
 
 ## Integration Checklist
 
-- [x] Place three `LandmarkTrigger` nodes in `trinity_church.tscn` — one for each cue: `steps`, `garden`, `yard`.
-- [x] Place one `LandmarkTrigger` node in `trinity_church.tscn` for `choir_chime`, gated behind all three cue ids.
+- [x] Place three `LandmarkTrigger` nodes in `terrain.tscn` under `TrinityChurch` — one for each cue: `steps`, `garden`, `yard`.
+- [x] Place one `LandmarkTrigger` node in `terrain.tscn` under `TrinityChurch` for `choir_chime`, gated behind all three cue ids.
 - [x] For each: set `landmark_id = "trinity_church"`, `collected_progress_key = "cues_collected"`, `visible_in_states = [available, introduced, in_progress]`.
 - [x] Gate `garden` behind `steps` and `yard` behind `steps` + `garden` using `requires_collected`.
 - [ ] Position each trigger node at the matching world location in the scene.

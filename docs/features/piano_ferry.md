@@ -18,8 +18,8 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
 
 - Piano Ferry starts `available` in `New Game` and `introduced` in `Free Walk`. `Continue` restores whatever the active story autosave had already reached.
 - `ferry_caretaker` beat 0 carries `"landmark_states": {"piano_ferry": "introduced"}`. This reveals the harbor clue trigger and sets the immediate objective to inspect the piano crate.
-- The harbor clue is a single `LandmarkTrigger` node placed directly in `piano_ferry.tscn`.
-- `piano_ferry.tscn` also hosts the late-game `festival_stage` trigger, but that belongs to the separate `festival_stage` landmark id rather than the onboarding arc itself.
+- The harbor clue is a single `LandmarkTrigger` node authored in `terrain.tscn` under the `piano_ferry` landmark instance.
+- `terrain.tscn` also hosts the late-game `festival_stage` trigger under the same `piano_ferry` landmark instance, but that belongs to the separate `festival_stage` landmark id rather than the onboarding arc itself.
 - Pressing `R` at the harbor clue calls `AppState.activate_landmark_trigger("piano_ferry", "harbor_refrain", ...)`.
 - When the trigger fires:
   - `landmark_progress["piano_ferry"]["harbor_clue_found"]` becomes `true`
@@ -47,14 +47,14 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
 
 - `AppState` owns Piano Ferry progress state, the journal unlock flag, and the harbor-clue collection/resolution flow.
 - `resident_catalog.gd` owns Caretaker Lian's gate logic and the Trinity Church handoff beat.
-- `piano_ferry.tscn` hosts the `LandmarkTrigger` node directly; its configuration lives in exported properties.
-- The ferry landmark scene now hosts both the onboarding harbor clue and the final harbor-stage performance trigger; `AppState` distinguishes them by landmark id.
+- `terrain.tscn` owns Piano Ferry trigger placement under the `piano_ferry` landmark instance; `AppState` distinguishes the onboarding harbor clue and the final harbor-stage performance point by landmark id.
 - `main.gd` and `scenes/game_main.gd` query `AppState.is_journal_unlocked()` to keep controls text and journal access in sync with the onboarding state.
 
 ## Relevant Files
 
 - Scenes:
   - [`../../architecture/piano_ferry.tscn`](../../architecture/piano_ferry.tscn)
+  - [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn)
 - Scripts:
   - [`../../game/app_state.gd`](../../game/app_state.gd)
   - [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)

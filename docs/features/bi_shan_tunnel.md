@@ -18,7 +18,7 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
 
 - Bi Shan Tunnel starts `locked`. It unlocks to `available` when `_resolve_trinity_church()` fires (simultaneously with Long Shan Tunnel).
 - The three echo triggers (echo_a, echo_b, echo_c) are visible and collectible once the landmark state is `available`, `introduced`, or `in_progress`.
-- Each echo trigger is a `LandmarkTrigger` node authored in `terrain.tscn` under the Bi Shan interior trigger container. Collecting one calls `AppState.activate_landmark_trigger("bi_shan_tunnel", echo_id, display_name)`.
+- Each echo trigger is a `LandmarkTrigger` node authored in `terrain.tscn` under the `bi_shan_tunnel` landmark instance. Collecting one calls `AppState.activate_landmark_trigger("bi_shan_tunnel", echo_id, display_name)`.
 - Landmark state advances to `in_progress` on first echo collection.
 - The mural chamber trigger (`trigger_id: "chamber"`) becomes visible only once all three echoes are in `echoes_collected`.
 - When the player presses R at the chamber with all echoes collected, `AppState` opens the reusable ordered-confirmation prompt for the Bi Shan contour. On success, `_resolve_bi_shan_tunnel()` fires:
@@ -42,7 +42,7 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
 ## Architecture / Ownership
 
 - `AppState` owns all landmark progress state, the echo collection logic, the chamber-prompt request/completion, the fragment reward, and the dependable-route list surfaced in the journal Map tab.
-- `terrain.tscn` owns the Bi Shan trigger placement under terrain-local interior trigger containers, while each trigger resolves its runtime level from the Bi Shan tunnel context and `bi_shan_tunnel.tscn` stays focused on traversal and presentation.
+- `terrain.tscn` owns the Bi Shan trigger placement as local children under the `bi_shan_tunnel` landmark instance, while each trigger resolves its runtime level from the tunnel parent and `bi_shan_tunnel.tscn` stays focused on traversal and presentation.
 - Shared tunnel presentation, resident visibility, level masking, and exterior/interior ownership are documented in [`multi_level_spaces.md`](multi_level_spaces.md).
 
 ## Relevant Files

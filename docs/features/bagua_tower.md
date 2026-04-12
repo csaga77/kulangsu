@@ -54,12 +54,13 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
 - `LandmarkTrigger` owns its own collected state and hide/disable behavior.
 - `scenes/game_main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
 - `resident_catalog.gd` owns the authored beat gates and `landmark_states` fields for `tower_keeper`.
-- `bagua_tower.tscn` hosts the `LandmarkTrigger` node directly; its configuration lives in its exported properties.
+- `terrain.tscn` owns the synthesis chamber trigger placement under the `BaguaTower` landmark instance at `roof_tower`, while `bagua_tower.tscn` stays focused on structure, traversal, and presentation.
 
 ## Relevant Files
 
 - Scenes:
   - [`../../architecture/bagua_tower/bagua_tower.tscn`](../../architecture/bagua_tower/bagua_tower.tscn)
+  - [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn)
 - Scripts:
   - [`../../game/landmark_trigger.gd`](../../game/landmark_trigger.gd)
   - [`../../game/app_state.gd`](../../game/app_state.gd)
@@ -106,7 +107,7 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
 
 ## Integration Checklist
 
-- [x] Place one `LandmarkTrigger` node in `bagua_tower.tscn`: `synthesis_chamber`.
+- [x] Place one `LandmarkTrigger` node in `terrain.tscn` under `BaguaTower/.../roof_tower`: `synthesis_chamber`.
 - [x] Set `landmark_id = "bagua_tower"`, `visible_in_states = [in_progress]`, `hide_if_flag = "synthesis_done"`.
 - [x] Position the trigger at the top chamber room in the tower.
 - [x] `tower_keeper` beat 1 `"landmark_states"` uses `"in_progress"` — synthesis chamber trigger becomes visible after beat 1 fires.

@@ -1,6 +1,8 @@
 class_name LandmarkProgression
 extends RefCounted
 
+const LANDMARK_TRIGGER_CATALOG := preload("res://game/landmark_trigger_catalog.gd")
+
 var m_owner: Node = null
 
 
@@ -14,6 +16,11 @@ func activate_landmark_trigger(
 	display_name: String,
 	melody_hint: String = ""
 ) -> bool:
+	if !LANDMARK_TRIGGER_CATALOG.has_landmark_id(landmark_id):
+		return false
+	if !LANDMARK_TRIGGER_CATALOG.has_valid_trigger_id(landmark_id, trigger_id, false):
+		return false
+
 	match landmark_id:
 		"piano_ferry":
 			if trigger_id != "harbor_refrain":

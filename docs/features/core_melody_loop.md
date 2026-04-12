@@ -139,7 +139,7 @@ All five landmark arcs are fully integrated and confirmed:
 - Long Shan Tunnel arc (entry trigger + lit-pocket checkpoints + exit-route prompt + return-to-Ren comparison handoff + `tunnel_guide` dialogue beats)
 - Bagua Tower arc (synthesis chamber `LandmarkTrigger` + `tower_keeper` dialogue beats + spring-gated harbor-stage handoff)
 
-All `LandmarkTrigger` nodes have `collision_layer = 1` (layer "object") confirmed explicit. The `SynthesisChamber` in `bagua_tower.tscn` has `z_index = -2` set to align its absolute z_index (6) with the player's z_index after climbing all tower stairs.
+All `LandmarkTrigger` nodes have `collision_layer = 1` (layer "object") confirmed explicit. The `SynthesisChamber` authored in `terrain.tscn` under `BaguaTower/.../roof_tower` keeps `z_index = -2` so its absolute z index still aligns with the player's top-tower level.
 
 See [`piano_ferry.md`](piano_ferry.md), [`trinity_church.md`](trinity_church.md), [`bi_shan_tunnel.md`](bi_shan_tunnel.md), [`long_shan_tunnel.md`](long_shan_tunnel.md), [`bagua_tower.md`](bagua_tower.md), and [`../../game/tests/cue_progression/test_cue_progression.tscn`](../../game/tests/cue_progression/test_cue_progression.tscn) for the current integration coverage.
 
