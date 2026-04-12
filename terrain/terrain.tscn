@@ -17,7 +17,7 @@
 [ext_resource type="Texture2D" uid="uid://c7jv5f2hgj3he" path="res://resources/sprites/collision_0.png" id="15_lhepi"]
 [ext_resource type="Texture2D" uid="uid://ixbs7c66fnpe" path="res://resources/sprites/collision_1.png" id="16_nmsyl"]
 [ext_resource type="PackedScene" uid="uid://dg67x86mmxeix" path="res://architecture/long_shan_tunnel.tscn" id="18_k6k1t"]
-[ext_resource type="Resource" path="res://terrain/island_generation_profile.tres" id="19_prof"]
+[ext_resource type="Resource" uid="uid://cot8hhxh0v0h8" path="res://terrain/island_generation_profile.tres" id="19_prof"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_agy8s"]
 atlas = ExtResource("10_qofig")
@@ -1693,7 +1693,7 @@ sources/0 = SubResource("TileSetAtlasSource_qofig")
 [node name="terrain" type="Node2D" unique_id=752398157]
 y_sort_enabled = true
 script = ExtResource("2_h2lqh")
-mask_file = "res://design/gulangyu_map_nano_export.png"
+mask_file = "res://design/gulangyu_map_mini_export.png"
 generation_profile = ExtResource("19_prof")
 
 [node name="ground" type="Node2D" parent="." unique_id=496345999 node_paths=PackedStringArray("visibility_mask_nodes")]
