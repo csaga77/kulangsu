@@ -232,6 +232,31 @@ Current canonical relationships:
 - landmark resolutions can enrich family, preservation, and ending tone
 - landmark completion should not be required for baseline completion of the year
 
+## Current Playable Coverage
+
+This section keeps the canon aligned with the game's current playable slice.
+
+The intended story is broader than the currently authored resident and route content. For now, the game expresses each route at different levels of depth:
+
+- `family_memory` currently lands the harbor return, church-linked memory, winter reveal, and Spring Festival recognition
+- `study_future` currently lands the naming of autumn pressure, a future-honesty turn, and the release of second summer
+- `preservation_inheritance` currently lands an initial inheritance-recognition beat, but not yet a full island-wide chain
+- `melody_landmarks` currently remains the most embodied route in terms of landmark spaces, musical restoration, and public payoff
+
+This means the current playable story already supports the seasonal multi-route structure, but not all canonical emotional lines are equally developed yet.
+
+## Storyline Gap Priorities
+
+The next narrative expansion should stay focused on the gaps that most affect the shape of the year:
+
+1. Deepen `family_memory` around A Po, the parents, and the cost of care so the family route carries more than Grandma-adjacent memory alone.
+2. Expand `study_future` into a year-long pressure line with more than a few turning-point beats, so the route feels lived rather than summarized.
+3. Grow `preservation_inheritance` from one strong recognition beat into a short chain spread across multiple districts and residents.
+4. Turn `spring_festival_resolved` into a clearer seasonal sequence so spring feels like a real emotional culmination, not just a gate.
+5. Keep `melody_landmarks` optional for completion while making sure the non-melody routes gain enough embodied play that they do not read as secondary text threads.
+
+Until those gaps are filled, the canon should be read as the target story shape rather than a claim that every route already has equal playable weight.
+
 ## Endings
 
 The story ends through a short final act, not instant credits from an ordinary route completion.

@@ -141,6 +141,26 @@ The current playable slice resolves seasonal anchors mostly through resident int
 
 This means the player can currently reach a valid ending by strongly following the family, study, and preservation routes while leaving most of the landmark melody route unfinished.
 
+## Current Coverage And Gameplay Gaps
+
+The current structure is in place, but the routes do not yet carry equal gameplay weight.
+
+Current read of the playable slice:
+
+- `family_memory` is present, but most of its weight still sits in harbor return, church memory, winter reveal, and spring recognition
+- `study_future` is structurally important, but currently lands through a small number of resident-led turning points
+- `preservation_inheritance` is thematically strong, but still behaves more like an unlock path than a full route chain
+- `spring_festival_resolved` works as a seasonal anchor, but still needs a more authored multi-step sequence
+- `melody_landmarks` remains the route with the clearest physical progression and strongest environmental play
+
+Current gameplay-content priority order:
+
+1. Add more embodied family beats around A Po, the parents, and household care.
+2. Spread study/future pressure across more residents, districts, and seasonal moments.
+3. Build preservation into a short chain with visible reactivity beyond Bagua Tower.
+4. Give Spring Festival a stronger playable setup and payoff.
+5. Keep enriching the landmark route without letting it reclaim the role of sole progression spine.
+
 ## HUD And Journal Structure
 
 The HUD stays minimal.

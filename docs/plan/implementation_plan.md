@@ -24,6 +24,18 @@ Regression coverage now includes:
 - story autosave and continue
 - seasonal route progression outside the landmark spine
 
+## Content Reality Check
+
+The architecture and state model are ahead of the authored content depth.
+
+Current practical coverage:
+
+- `family_memory` has a workable spine, but the A Po and parent threads are still under-authored
+- `study_future` functions, but is still too compressed to feel like a full year-long line
+- `preservation_inheritance` has one strong foothold and still needs route depth
+- `melody_landmarks` remains the richest embodied route
+- `spring_festival_resolved` works as a gate, but still needs a stronger sequence-level treatment
+
 ## What Remains
 
 The next phase is mostly content, reactivity, and final-act polish rather than more progression architecture.
@@ -39,7 +51,16 @@ Tasks:
 - add more resident beats to `family_memory`, especially around A Po, the parents, and church-linked memory
 - add more study/future beats so the route feels like a year-long pressure line instead of a few turning points
 - add more preservation beats outside Bagua Tower so architecture becomes visible across the island
+- author Spring Festival as a clearer multi-step sequence instead of a thin resolution gate
 - add more optional landmark-route enrichment that affects ending tone without becoming mandatory
+
+Priority order inside this workstream:
+
+1. `family_memory`: make care, absence, and family sacrifice more visible in play
+2. `study_future`: spread pressure and future-choice uncertainty across the year
+3. `preservation_inheritance`: create a short district-spanning route chain
+4. `spring_festival_resolved`: build a stronger emotional culmination scene
+5. `melody_landmarks`: keep adding enrichment without re-centering the whole game around it
 
 Primary files:
 
