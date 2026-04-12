@@ -3,11 +3,12 @@
 importer="oggvorbisstr"
 type="AudioStreamOggVorbis"
 uid="uid://cjcf0cphe4rlv"
-valid=false
+path="res://.godot/imported/segment_select.ogg-9042d7494d4863b4a59299e0d48c943e.oggvorbisstr"
 
 [deps]
 
 source_file="res://resources/audio/sfx/melody_prompt/segment_select.ogg"
+dest_files=["res://.godot/imported/segment_select.ogg-9042d7494d4863b4a59299e0d48c943e.oggvorbisstr"]
 
 [params]
 
