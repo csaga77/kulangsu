@@ -9,7 +9,7 @@
 [ext_resource type="Texture2D" uid="uid://dhf06qtvcxt2h" path="res://resources/sprites/light_mask_128x128.png" id="7_s36qc"]
 [ext_resource type="Shader" uid="uid://bx1o4bv3qtrdm" path="res://game/tests/npc_system/lighting.gdshader" id="8_h3xc6"]
 [ext_resource type="Script" uid="uid://vk6rfdoxtkgv" path="res://characters/control/npc_controller.gd" id="13_ntc4i"]
-[ext_resource type="PackedScene" uid="uid://c1le3qk68o7lw" path="res://gui/speech_balloon.tscn" id="14_u0xbq"]
+[ext_resource type="PackedScene" uid="uid://c1le3qk68o7lw" path="res://common/gui/speech_balloon.tscn" id="14_u0xbq"]
 
 [sub_resource type="Resource" id="Resource_6qxox"]
 script = ExtResource("6_oo8pe")

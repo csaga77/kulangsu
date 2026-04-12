@@ -214,8 +214,8 @@ Future UI work should respect this unless the entire UI system is intentionally 
 
 There is still an existing in-world speech UI:
 
-- [`../gui/speech_balloon.tscn`](../gui/speech_balloon.tscn)
-- [`../gui/speech_balloon.gd`](../gui/speech_balloon.gd)
+- [`../common/gui/speech_balloon.tscn`](../common/gui/speech_balloon.tscn)
+- [`../common/gui/speech_balloon.gd`](../common/gui/speech_balloon.gd)
 
 That remains the right pattern for ambient moment-to-moment interaction.
 

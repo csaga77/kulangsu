@@ -2,7 +2,7 @@
 
 [ext_resource type="StyleBox" uid="uid://dr73ug3p3fsww" path="res://resources/style/speech_balloon_style.tres" id="1_8ma1k"]
 [ext_resource type="Texture2D" uid="uid://cfuxo3mhn37yy" path="res://resources/sprites/gui/speech_balloon.png" id="1_uo7hn"]
-[ext_resource type="Script" uid="uid://d3rp86272loka" path="res://gui/speech_balloon.gd" id="2_8ma1k"]
+[ext_resource type="Script" uid="uid://d3rp86272loka" path="res://common/gui/speech_balloon.gd" id="2_8ma1k"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_g50v7"]
 atlas = ExtResource("1_uo7hn")

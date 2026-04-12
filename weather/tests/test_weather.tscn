@@ -6,7 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/human_body_2d.tscn" id="4_human"]
 [ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/control/player_controller.gd" id="5_player"]
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="6_camera"]
-[ext_resource type="PackedScene" uid="uid://c1le3qk68o7lw" path="res://gui/speech_balloon.tscn" id="7_7hrv5"]
+[ext_resource type="PackedScene" uid="uid://c1le3qk68o7lw" path="res://common/gui/speech_balloon.tscn" id="7_7hrv5"]
 [ext_resource type="Script" uid="uid://vk6rfdoxtkgv" path="res://characters/control/npc_controller.gd" id="7_npc"]
 [sub_resource type="Resource" id="Resource_player"]
 script = ExtResource("5_player")

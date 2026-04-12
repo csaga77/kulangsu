@@ -137,7 +137,7 @@ Primary folders:
 - [`../characters/control/`](../characters/control)
 - [`../characters/control/bt/`](../characters/control/bt)
 - [`../characters/universal_lpc/`](../characters/universal_lpc)
-- [`../gui/`](../gui)
+- [`../common/gui/`](../common/gui)
 
 Responsibilities:
 

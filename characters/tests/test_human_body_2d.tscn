@@ -2,7 +2,7 @@
 
 [ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/human_body_2d.tscn" id="1_rm1ms"]
 [ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/control/player_controller.gd" id="2_buv3e"]
-[ext_resource type="PackedScene" uid="uid://c1le3qk68o7lw" path="res://gui/speech_balloon.tscn" id="3_tx7l7"]
+[ext_resource type="PackedScene" uid="uid://c1le3qk68o7lw" path="res://common/gui/speech_balloon.tscn" id="3_tx7l7"]
 
 [sub_resource type="Resource" id="Resource_sxyc1"]
 script = ExtResource("2_buv3e")

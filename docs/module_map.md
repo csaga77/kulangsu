@@ -57,7 +57,7 @@ If you are changing how terrain mask colors map to layers, start with the terrai
 - [`../characters/control/bt/`](../characters/control/bt) - behavior-tree framework
 - [`../characters/universal_lpc/`](../characters/universal_lpc) - Universal LPC metadata tooling, source-asset audit helpers, runtime sprite composition, and related helpers
 - [`../characters/universal_lpc/tests/`](../characters/universal_lpc/tests) - Universal LPC metadata, source-asset audit, and composition validation tooling
-- [`../gui/`](../gui) - in-world UI such as speech balloons
+- [`../common/gui/`](../common/gui) - in-world UI such as speech balloons
 
 Put player control, NPC behavior, interaction prompts, and behavior-tree work here.
 
@@ -66,7 +66,7 @@ Put player control, NPC behavior, interaction prompts, and behavior-tree work he
 - [`../architecture/`](../architecture) - landmark scenes such as Bagua Tower, tunnels, church, and ferry content
 - [`../architecture/components/`](../architecture/components) - reusable world-building pieces such as portals and stairs
 - [`../architecture/bagua_tower/tests/`](../architecture/bagua_tower/tests) - Bagua Tower-specific validation scenes and scripts
-- [`../common/`](../common) - shared world nodes, effects, visibility helpers, and level helpers such as `AutoVisibilityNode2D`, `LevelNode2D`, `LevelArea2D`, and `LevelRegistry`
+- [`../common/`](../common) - shared world nodes, effects, visibility helpers, level helpers, and common world-facing UI primitives
 
 ### Landmark Quest Triggers
 

@@ -18,7 +18,7 @@ var blackboard: BTBlackboard = BTBlackboard.new()
 
 signal closest_object_changed(closest_object: Node2D)
 
-@export var speech_balloon_scene: PackedScene = preload("res://gui/speech_balloon.tscn")
+@export var speech_balloon_scene: PackedScene = preload("res://common/gui/speech_balloon.tscn")
 @export var follow_offset: Vector2 = Vector2(-8, -54)
 @export var interaction_radius: float = 48.0:
 	set(v):
