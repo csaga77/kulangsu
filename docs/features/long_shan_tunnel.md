@@ -17,7 +17,7 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 ## Rules
 
 - Long Shan Tunnel starts `locked`. It unlocks to `available` when `_resolve_trinity_church()` fires (simultaneously with Bi Shan Tunnel).
-- The `tunnel_entry` trigger is a `LandmarkTrigger` visible once state is `available`. Reaching it calls `AppState.activate_landmark_trigger("long_shan_tunnel", "tunnel_entry", ...)`. AppState advances the landmark to `introduced`.
+- The `tunnel_entry` trigger is a `LandmarkTrigger` authored in `terrain.tscn` at the south tunnel mouth and visible once state is `available`. Reaching it calls `AppState.activate_landmark_trigger("long_shan_tunnel", "tunnel_entry", ...)`. AppState advances the landmark to `introduced`.
 - `tunnel_guide` beat 0 fires when the player talks to Ren. Beat 0 carries `"landmark_states": {"long_shan_tunnel": "introduced"}` which confirms the landmark state (may already be introduced by the entry trigger — either order is safe).
 - `tunnel_guide` beat 1 fires on the next interaction. Beat 1 carries `"landmark_states": {"long_shan_tunnel": "in_progress"}`.
 - Two intermediate lit-pocket triggers (`light_pocket_south`, `light_pocket_north`) become visible once the landmark is `in_progress`.
@@ -48,13 +48,14 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 
 - `AppState` owns all landmark progress state, the lit-pocket checkpoint logic, the exit-route prompt request/completion, and the fragment reward.
 - `resident_catalog.gd` owns the authored beat gates and `landmark_states` fields for `tunnel_guide`.
-- `long_shan_tunnel.tscn` hosts the `LandmarkTrigger` nodes directly; their configuration lives in their exported properties.
+- `terrain.tscn` owns Long Shan trigger placement under terrain-local surface and interior trigger containers, while `long_shan_tunnel.tscn` stays focused on traversal and presentation.
 - Shared tunnel presentation, resident visibility, level masking, and exterior/interior ownership are documented in [`multi_level_spaces.md`](multi_level_spaces.md).
 
 ## Relevant Files
 
 - Scenes:
   - [`../../architecture/long_shan_tunnel.tscn`](../../architecture/long_shan_tunnel.tscn)
+  - [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn)
 - Scripts:
   - [`../../game/landmark_trigger.gd`](../../game/landmark_trigger.gd)
   - [`../../game/app_state.gd`](../../game/app_state.gd)
@@ -105,7 +106,7 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 
 ## Integration Checklist
 
-- [x] Place four `LandmarkTrigger` nodes in `long_shan_tunnel.tscn`: `tunnel_entry`, `light_pocket_south`, `light_pocket_north`, and `tunnel_exit`.
+- [x] Place four `LandmarkTrigger` nodes in `terrain.tscn` for the Long Shan tunnel arc: `tunnel_entry`, `light_pocket_south`, `light_pocket_north`, and `tunnel_exit`.
 - [x] For `tunnel_entry`: set `landmark_id = "long_shan_tunnel"`, `visible_in_states = [available]`.
 - [x] For the lit-pocket cues: set `landmark_id = "long_shan_tunnel"`, `visible_in_states = [in_progress]`, `collected_progress_key = "checkpoints_collected"`, and gate the north pocket behind the south pocket.
 - [x] For `tunnel_exit`: set `landmark_id = "long_shan_tunnel"`, `visible_in_states = [in_progress]`.

@@ -18,7 +18,7 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
 
 - Bi Shan Tunnel starts `locked`. It unlocks to `available` when `_resolve_trinity_church()` fires (simultaneously with Long Shan Tunnel).
 - The three echo triggers (echo_a, echo_b, echo_c) are visible and collectible once the landmark state is `available`, `introduced`, or `in_progress`.
-- Each echo trigger is a `LandmarkTrigger` node placed directly in the scene. Collecting one calls `AppState.activate_landmark_trigger("bi_shan_tunnel", echo_id, display_name)`.
+- Each echo trigger is a `LandmarkTrigger` node authored in `terrain.tscn` under the Bi Shan interior trigger container. Collecting one calls `AppState.activate_landmark_trigger("bi_shan_tunnel", echo_id, display_name)`.
 - Landmark state advances to `in_progress` on first echo collection.
 - The mural chamber trigger (`trigger_id: "chamber"`) becomes visible only once all three echoes are in `echoes_collected`.
 - When the player presses R at the chamber with all echoes collected, `AppState` opens the reusable ordered-confirmation prompt for the Bi Shan contour. On success, `_resolve_bi_shan_tunnel()` fires:
@@ -42,13 +42,14 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
 ## Architecture / Ownership
 
 - `AppState` owns all landmark progress state, the echo collection logic, the chamber-prompt request/completion, the fragment reward, and the dependable-route list surfaced in the journal Map tab.
-- `bi_shan_tunnel.tscn` hosts the `LandmarkTrigger` nodes directly; their configuration lives in their exported properties.
+- `terrain.tscn` owns the Bi Shan trigger placement under terrain-local interior trigger containers, while `bi_shan_tunnel.tscn` stays focused on traversal and presentation.
 - Shared tunnel presentation, resident visibility, level masking, and exterior/interior ownership are documented in [`multi_level_spaces.md`](multi_level_spaces.md).
 
 ## Relevant Files
 
 - Scenes:
   - [`../../architecture/bi_shan_tunnel.tscn`](../../architecture/bi_shan_tunnel.tscn)
+  - [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn)
 - Scripts:
   - [`../../game/landmark_trigger.gd`](../../game/landmark_trigger.gd)
   - [`../../game/app_state.gd`](../../game/app_state.gd)
@@ -94,7 +95,7 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
 
 ## Integration Checklist
 
-- [x] Place four `LandmarkTrigger` nodes in `bi_shan_tunnel.tscn`: `echo_a`, `echo_b`, `echo_c`, and `chamber`.
+- [x] Place four `LandmarkTrigger` nodes in `terrain.tscn` for the Bi Shan tunnel arc: `echo_a`, `echo_b`, `echo_c`, and `chamber`.
 - [x] For echo triggers: set `landmark_id = "bi_shan_tunnel"`, `collected_progress_key = "echoes_collected"`, `visible_in_states = [available, introduced, in_progress]`.
 - [x] For the chamber trigger: same `landmark_id`, `requires_collected = [echo_a, echo_b, echo_c]`, `collected_progress_key = "echoes_collected"`, `visible_in_states = [in_progress]`.
 - [x] Position each trigger node at the matching world location in the tunnel.

@@ -70,6 +70,7 @@
 - Each tunnel scene now splits visible presentation into `exterior` and `interior` child nodes that both inherit `IsometricBlock`.
 - `exterior` stays visible while the player is outside the tunnel. `interior` only becomes the active presentation after the player actually reaches the tunnel interior level.
 - Tunnel-mouth entry anchors and surface mouth art now live under each tunnel scene's `exterior/..._entries` node so the full surface presentation travels with the tunnel scene instead of global terrain.
+- [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn) now owns tunnel landmark-trigger placement. Surface triggers live in terrain-local outside containers, while interior cues live in terrain-local level-aware containers on the tunnel interior level.
 - [`../../scenes/tunnel_context.gd`](../../scenes/tunnel_context.gd) marks which tunnel, if any, is active for the player. It should only manage actors that are actually inside a tunnel and must not rewrite unrelated non-tunnel residents onto ground level.
 - [`../../scenes/route_resolver.gd`](../../scenes/route_resolver.gd) must treat anchors under a tunnel `exterior` node as outside anchors even though they are nested under a tunnel root. Only interior/path anchors should snap onto the tunnel walkable path.
 - [`../../scenes/game_main.gd`](../../scenes/game_main.gd) owns the shared spawn-anchor map that points resident movement and resume anchors at the tunnel exterior mouths and portal nodes.
@@ -100,6 +101,7 @@
 - Visibility behavior belongs in [`../../common/auto_visibility_node_2d.gd`](../../common/auto_visibility_node_2d.gd) plus scene-authored mask tilemaps.
 - Tunnel presentation and tunnel-only resident visibility belong in [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd), [`../../scenes/tunnel_context.gd`](../../scenes/tunnel_context.gd), [`../../scenes/game_main.gd`](../../scenes/game_main.gd), and authored visibility masks.
 - Tunnel route-anchor resolution belongs in [`../../scenes/route_resolver.gd`](../../scenes/route_resolver.gd).
+- Terrain-local tunnel trigger placement belongs in [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn), not in the reusable tunnel scenes.
 - Reusable room scenes should prefer relative level ids instead of hardcoded global runtime ids.
 
 ## Relevant Files
@@ -113,6 +115,7 @@
 - [`../../scenes/tunnel_context.gd`](../../scenes/tunnel_context.gd)
 - [`../../scenes/route_resolver.gd`](../../scenes/route_resolver.gd)
 - [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
+- [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn)
 - [`../../architecture/bagua_tower/bagua_tower.tscn`](../../architecture/bagua_tower/bagua_tower.tscn)
 - [`../../architecture/bi_shan_tunnel.tscn`](../../architecture/bi_shan_tunnel.tscn)
 - [`../../architecture/long_shan_tunnel.tscn`](../../architecture/long_shan_tunnel.tscn)
