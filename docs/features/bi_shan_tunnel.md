@@ -42,7 +42,7 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
 ## Architecture / Ownership
 
 - `AppState` owns all landmark progress state, the echo collection logic, the chamber-prompt request/completion, the fragment reward, and the dependable-route list surfaced in the journal Map tab.
-- `terrain.tscn` owns the Bi Shan trigger placement under terrain-local interior trigger containers, while `bi_shan_tunnel.tscn` stays focused on traversal and presentation.
+- `terrain.tscn` owns the Bi Shan trigger placement under terrain-local interior trigger containers, while each trigger resolves its runtime level from the Bi Shan tunnel context and `bi_shan_tunnel.tscn` stays focused on traversal and presentation.
 - Shared tunnel presentation, resident visibility, level masking, and exterior/interior ownership are documented in [`multi_level_spaces.md`](multi_level_spaces.md).
 
 ## Relevant Files

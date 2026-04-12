@@ -48,7 +48,7 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 
 - `AppState` owns all landmark progress state, the lit-pocket checkpoint logic, the exit-route prompt request/completion, and the fragment reward.
 - `resident_catalog.gd` owns the authored beat gates and `landmark_states` fields for `tunnel_guide`.
-- `terrain.tscn` owns Long Shan trigger placement under terrain-local surface and interior trigger containers, while `long_shan_tunnel.tscn` stays focused on traversal and presentation.
+- `terrain.tscn` owns Long Shan trigger placement under terrain-local surface and interior trigger containers, while each interior trigger resolves its runtime level from the Long Shan tunnel context and `long_shan_tunnel.tscn` stays focused on traversal and presentation.
 - Shared tunnel presentation, resident visibility, level masking, and exterior/interior ownership are documented in [`multi_level_spaces.md`](multi_level_spaces.md).
 
 ## Relevant Files

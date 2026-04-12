@@ -194,6 +194,22 @@ func _assert_tunnel_trigger_ownership(terrain: Node2D, bi_shan_tunnel: Tunnel, l
 		"Long Shan exit trigger should stay on the outside surface layer."
 	)
 	_assert(
+		long_shan_entry.get_resolved_level_id() == 0,
+		"Long Shan entry trigger should keep its outside resolved level."
+	)
+	_assert(
+		long_shan_exit.get_resolved_level_id() == 0,
+		"Long Shan exit trigger should keep its outside resolved level."
+	)
+	_assert(
+		bi_shan_echo_a.get_resolved_level_id() == bi_shan_tunnel.get_resolved_level_id(),
+		"Bi Shan interior triggers should resolve their level from the tunnel context."
+	)
+	_assert(
+		long_shan_pocket_south.get_resolved_level_id() == long_shan_tunnel.get_resolved_level_id(),
+		"Long Shan light-pocket triggers should resolve their level from the tunnel context."
+	)
+	_assert(
 		CommonUtils.get_absolute_z_index(bi_shan_echo_a) == bi_shan_tunnel.get_resolved_level_id(),
 		"Bi Shan interior triggers should stay on the tunnel interior layer."
 	)

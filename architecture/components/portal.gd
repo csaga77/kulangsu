@@ -1,23 +1,6 @@
 @tool
 class_name Portal
-extends Area2D
-
-signal resolved_level_changed(resolved_level: int)
-const LEVEL_REGISTRY := preload("res://common/level_registry.gd")
-
-@export var level_id: int = 0:
-	set(new_level_id):
-		if level_id == new_level_id:
-			return
-		level_id = new_level_id
-		_request_level_refresh()
-
-@export_enum("Absolute", "Relative To Parent") var level_id_mode: int = LEVEL_REGISTRY.LevelIdMode.ABSOLUTE:
-	set(new_level_id_mode):
-		if level_id_mode == new_level_id_mode:
-			return
-		level_id_mode = new_level_id_mode
-		_request_level_refresh()
+extends "res://common/level_area_2d.gd"
 
 @export var level_from := -1:
 	set(new_level_from):
@@ -45,19 +28,14 @@ const DEBUG_OUTLINE_COLOR := Color(0.301961, 0.878431, 1.0, 0.95)
 const DEBUG_OUTLINE_WIDTH := 2.0
 const DEBUG_CAPSULE_SEGMENTS := 16
 
-var m_parent_level_node: Node = null
-var m_resolved_level_id := 0
 var m_resolved_level_from := -1
 var m_resolved_level_to := -1
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	_rebind_level_dependencies()
+	super._ready()
 	_update_level_masks()
 	queue_redraw()
-
-func _exit_tree() -> void:
-	_unbind_level_dependencies()
 
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
@@ -146,20 +124,12 @@ func _get_arrow_length(shape: Shape2D) -> float:
 
 var m_transition_state_by_body: Dictionary = {}
 
-func get_resolved_level_id() -> int:
-	return m_resolved_level_id
-
 func _request_level_refresh() -> void:
-	if !is_inside_tree():
-		return
-	_rebind_level_dependencies()
+	super._request_level_refresh()
 	_update_level_masks()
 	queue_redraw()
 
 func _update_level_masks() -> void:
-	var new_resolved_level_id := _resolve_local_level_id(level_id)
-	var level_changed := m_resolved_level_id != new_resolved_level_id
-	m_resolved_level_id = new_resolved_level_id
 	m_resolved_level_from = _resolve_optional_level_id(level_from)
 	m_resolved_level_to = _resolve_optional_level_id(level_to)
 
@@ -167,9 +137,6 @@ func _update_level_masks() -> void:
 		mask1 = LEVEL_REGISTRY.resolve_level_collision_mask(m_resolved_level_from, mask1)
 	if m_resolved_level_to >= 0:
 		mask2 = LEVEL_REGISTRY.resolve_level_collision_mask(m_resolved_level_to, mask2)
-
-	if level_changed:
-		resolved_level_changed.emit(m_resolved_level_id)
 
 func _store_transition_state(obj: CollisionObject2D, enter_direction: bool) -> void:
 	m_transition_state_by_body[obj.get_instance_id()] = {
@@ -246,29 +213,8 @@ func _is_on_mask2_side(local_x: float) -> bool:
 func _resolve_optional_level_id(local_level_id: int) -> int:
 	if local_level_id < 0:
 		return -1
-	return _resolve_local_level_id(local_level_id)
-
-func _resolve_local_level_id(local_level_id: int) -> int:
 	return LEVEL_REGISTRY.resolve_level_id(self, local_level_id, level_id_mode)
 
-func _rebind_level_dependencies() -> void:
-	var next_parent_level_node := _find_parent_level_node()
-	if is_instance_valid(m_parent_level_node):
-		var should_disconnect_parent: bool = m_parent_level_node != next_parent_level_node or level_id_mode != LEVEL_REGISTRY.LevelIdMode.RELATIVE_TO_PARENT
-		if should_disconnect_parent and m_parent_level_node.has_signal("resolved_level_changed") and m_parent_level_node.is_connected("resolved_level_changed", self._on_parent_level_changed):
-			m_parent_level_node.disconnect("resolved_level_changed", self._on_parent_level_changed)
-	m_parent_level_node = next_parent_level_node
-	if level_id_mode == LEVEL_REGISTRY.LevelIdMode.RELATIVE_TO_PARENT and is_instance_valid(m_parent_level_node) and m_parent_level_node.has_signal("resolved_level_changed"):
-		if !m_parent_level_node.is_connected("resolved_level_changed", self._on_parent_level_changed):
-			m_parent_level_node.connect("resolved_level_changed", self._on_parent_level_changed)
-
-func _unbind_level_dependencies() -> void:
-	if is_instance_valid(m_parent_level_node) and m_parent_level_node.has_signal("resolved_level_changed") and m_parent_level_node.is_connected("resolved_level_changed", self._on_parent_level_changed):
-		m_parent_level_node.disconnect("resolved_level_changed", self._on_parent_level_changed)
-	m_parent_level_node = null
-
-func _find_parent_level_node() -> Node:
-	return LEVEL_REGISTRY.find_parent_level_node(self)
-
-func _on_parent_level_changed(_resolved_level: int) -> void:
+func _on_level_context_changed(_resolved_level: int) -> void:
+	super._on_level_context_changed(_resolved_level)
 	_update_level_masks()

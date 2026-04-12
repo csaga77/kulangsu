@@ -36,6 +36,10 @@
 - [`../../common/level_node_2d.gd`](../../common/level_node_2d.gd)
   - owns a node's resolved room level for tile physics atlas selection
   - rewrites `coords.x` for its exported `physics_layers`
+- [`../../common/level_area_2d.gd`](../../common/level_area_2d.gd)
+  - gives reusable `Area2D` gameplay nodes the same exported `level_id` / `level_id_mode` contract
+  - may resolve relative level ids through either the closest level-aware parent or an explicit `level_context_path`
+  - can sync its interaction-facing `z_index` from the resolved level without requiring a separate level container
 - [`../../architecture/components/portal.gd`](../../architecture/components/portal.gd)
   - owns `level_id`, `level_from`, and `level_to`
   - resolves actor collision-mask and `z_index` state through `LevelRegistry`
@@ -70,7 +74,7 @@
 - Each tunnel scene now splits visible presentation into `exterior` and `interior` child nodes that both inherit `IsometricBlock`.
 - `exterior` stays visible while the player is outside the tunnel. `interior` only becomes the active presentation after the player actually reaches the tunnel interior level.
 - Tunnel-mouth entry anchors and surface mouth art now live under each tunnel scene's `exterior/..._entries` node so the full surface presentation travels with the tunnel scene instead of global terrain.
-- [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn) now owns tunnel landmark-trigger placement. Surface triggers live in terrain-local outside containers, while interior cues live in terrain-local level-aware containers on the tunnel interior level.
+- [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn) now owns tunnel landmark-trigger placement. Surface triggers live in terrain-local outside containers, while interior cues resolve their level from the tunnel instance through `LandmarkTrigger`'s shared level-aware fields.
 - [`../../scenes/tunnel_context.gd`](../../scenes/tunnel_context.gd) marks which tunnel, if any, is active for the player. It should only manage actors that are actually inside a tunnel and must not rewrite unrelated non-tunnel residents onto ground level.
 - [`../../scenes/route_resolver.gd`](../../scenes/route_resolver.gd) must treat anchors under a tunnel `exterior` node as outside anchors even though they are nested under a tunnel root. Only interior/path anchors should snap onto the tunnel walkable path.
 - [`../../scenes/game_main.gd`](../../scenes/game_main.gd) owns the shared spawn-anchor map that points resident movement and resume anchors at the tunnel exterior mouths and portal nodes.
@@ -108,6 +112,7 @@
 
 - [`../../common/level_registry.gd`](../../common/level_registry.gd)
 - [`../../common/level_node_2d.gd`](../../common/level_node_2d.gd)
+- [`../../common/level_area_2d.gd`](../../common/level_area_2d.gd)
 - [`../../common/auto_visibility_node_2d.gd`](../../common/auto_visibility_node_2d.gd)
 - [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd)
 - [`../../architecture/components/portal.gd`](../../architecture/components/portal.gd)

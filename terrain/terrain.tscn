@@ -1,88 +1,19 @@
 [gd_scene format=4 uid="uid://cn5g8hobx3bru"]
 
 [ext_resource type="Script" uid="uid://dpwk67fdrclgh" path="res://terrain/terrain.gd" id="2_h2lqh"]
-[ext_resource type="TileSet" uid="uid://cqo6awm27cwcf" path="res://resources/tilesets/terrain_0_tiles.tres" id="3_hl62s"]
 [ext_resource type="Script" uid="uid://c8rbadcu5jhno" path="res://common/level_node_2d.gd" id="3_lg7om"]
 [ext_resource type="TileSet" uid="uid://8qwdv3hv2imc" path="res://resources/tilesets/pavement_0_tilesets.tres" id="4_1q4c8"]
-[ext_resource type="TileSet" uid="uid://c2edqbdaenat2" path="res://resources/tilesets/symbols_0_tiles.tres" id="4_xo2vs"]
 [ext_resource type="PackedScene" uid="uid://cvd7poved22w0" path="res://architecture/bagua_tower/bagua_tower.tscn" id="5_1q4c8"]
 [ext_resource type="PackedScene" uid="uid://cgucpypd2f1o2" path="res://architecture/trinity_church.tscn" id="6_lg7om"]
 [ext_resource type="Script" uid="uid://ddee7be1iarx6" path="res://common/isometric_block.gd" id="6_xo2vs"]
 [ext_resource type="PackedScene" uid="uid://byyig1mqymirh" path="res://architecture/piano_ferry.tscn" id="7_0i68f"]
-[ext_resource type="Texture2D" uid="uid://mhsy6o806uwu" path="res://resources/sprites/architecture/components/building_0_tiles.png" id="10_qofig"]
-[ext_resource type="Texture2D" uid="uid://boka5fmviqaew" path="res://resources/sprites/architecture/components/structure_0.png" id="11_k6k1t"]
 [ext_resource type="PackedScene" uid="uid://dp838hjpyaxbe" path="res://architecture/bi_shan_tunnel.tscn" id="12_lg7om"]
-[ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="12_nsrdk"]
 [ext_resource type="Texture2D" uid="uid://cgn1agdn3e8p4" path="res://resources/sprites/collision_2.png" id="14_mrt7q"]
 [ext_resource type="Texture2D" uid="uid://c7jv5f2hgj3he" path="res://resources/sprites/collision_0.png" id="15_lhepi"]
 [ext_resource type="Texture2D" uid="uid://ixbs7c66fnpe" path="res://resources/sprites/collision_1.png" id="16_nmsyl"]
 [ext_resource type="PackedScene" uid="uid://dg67x86mmxeix" path="res://architecture/long_shan_tunnel.tscn" id="18_k6k1t"]
 [ext_resource type="Resource" uid="uid://cot8hhxh0v0h8" path="res://terrain/island_generation_profile.tres" id="19_prof"]
-[ext_resource type="Script" path="res://game/landmark_trigger.gd" id="20_ltrg"]
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_agy8s"]
-atlas = ExtResource("10_qofig")
-region = Rect2(192, 1024, 64, 64)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_lj33d"]
-atlas = ExtResource("11_k6k1t")
-region = Rect2(384, 64, 64, 64)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_4spss"]
-atlas = ExtResource("11_k6k1t")
-region = Rect2(448, 64, 64, 64)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_i682v"]
-atlas = ExtResource("10_qofig")
-region = Rect2(192, 1152, 64, 64)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_kfw2k"]
-atlas = ExtResource("10_qofig")
-region = Rect2(128, 1024, 64, 64)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_ick23"]
-atlas = ExtResource("11_k6k1t")
-region = Rect2(192, 64, 64, 64)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_nsrdk"]
-atlas = ExtResource("10_qofig")
-region = Rect2(192, 1024, 64, 64)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_mrt7q"]
-atlas = ExtResource("11_k6k1t")
-region = Rect2(384, 64, 64, 64)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_lhepi"]
-atlas = ExtResource("11_k6k1t")
-region = Rect2(448, 64, 64, 64)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_nmsyl"]
-atlas = ExtResource("10_qofig")
-region = Rect2(192, 1152, 64, 64)
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_bi_shan_echo_a"]
-radius = 28.0
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_bi_shan_echo_b"]
-radius = 28.0
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_bi_shan_echo_c"]
-radius = 28.0
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_bi_shan_chamber"]
-radius = 32.0
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_long_shan_entry"]
-radius = 30.0
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_long_shan_exit"]
-radius = 30.0
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_long_shan_light_pocket_south"]
-radius = 34.0
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_long_shan_light_pocket_north"]
-radius = 34.0
+[ext_resource type="Script" uid="uid://mcx1lgk33g2" path="res://game/landmark_trigger.gd" id="20_ltrg"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_qofig"]
 texture = ExtResource("14_mrt7q")
@@ -1715,6 +1646,30 @@ sources/2 = SubResource("TileSetAtlasSource_k6k1t")
 sources/3 = SubResource("TileSetAtlasSource_nsrdk")
 sources/0 = SubResource("TileSetAtlasSource_qofig")
 
+[sub_resource type="CircleShape2D" id="CircleShape2D_long_shan_entry"]
+radius = 30.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_long_shan_exit"]
+radius = 30.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_long_shan_light_pocket_south"]
+radius = 34.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_long_shan_light_pocket_north"]
+radius = 34.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_bi_shan_echo_a"]
+radius = 28.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_bi_shan_echo_b"]
+radius = 28.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_bi_shan_echo_c"]
+radius = 28.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_bi_shan_chamber"]
+radius = 32.0
+
 [node name="terrain" type="Node2D" unique_id=752398157]
 y_sort_enabled = true
 script = ExtResource("2_h2lqh")
@@ -1756,47 +1711,41 @@ position = Vector2(3360, 7536)
 [node name="bi_shan_tunnel" parent="." unique_id=1049644062 instance=ExtResource("12_lg7om")]
 position = Vector2(-992, 7824)
 
-[node name="landmark_triggers" type="Node2D" parent="."]
+[node name="landmark_triggers" type="Node2D" parent="." unique_id=215885482]
 y_sort_enabled = true
 
-[node name="long_shan_tunnel_surface_triggers" type="Node2D" parent="landmark_triggers"]
+[node name="long_shan_tunnel_surface_triggers" type="Node2D" parent="landmark_triggers" unique_id=1241806202]
 y_sort_enabled = true
 position = Vector2(3360, 7536)
 
-[node name="TunnelEntry" type="Area2D" parent="landmark_triggers/long_shan_tunnel_surface_triggers"]
-collision_layer = 1
+[node name="TunnelEntry" type="Area2D" parent="landmark_triggers/long_shan_tunnel_surface_triggers" unique_id=305395278]
+position = Vector2(72, 16)
 script = ExtResource("20_ltrg")
 landmark_id = "long_shan_tunnel"
 trigger_id = "tunnel_entry"
 display_name = "Long Shan Tunnel Entry"
 visible_in_states = Array[String](["available"])
-position = Vector2(72, 16)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="landmark_triggers/long_shan_tunnel_surface_triggers/TunnelEntry"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="landmark_triggers/long_shan_tunnel_surface_triggers/TunnelEntry" unique_id=931432197]
 shape = SubResource("CircleShape2D_long_shan_entry")
 
-[node name="TunnelExit" type="Area2D" parent="landmark_triggers/long_shan_tunnel_surface_triggers"]
-collision_layer = 1
+[node name="TunnelExit" type="Area2D" parent="landmark_triggers/long_shan_tunnel_surface_triggers" unique_id=983027399]
+position = Vector2(-3032, -2144)
 script = ExtResource("20_ltrg")
 landmark_id = "long_shan_tunnel"
 trigger_id = "tunnel_exit"
 display_name = "Long Shan Tunnel Exit"
 visible_in_states = Array[String](["in_progress"])
-position = Vector2(-3032, -2144)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="landmark_triggers/long_shan_tunnel_surface_triggers/TunnelExit"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="landmark_triggers/long_shan_tunnel_surface_triggers/TunnelExit" unique_id=351464324]
 shape = SubResource("CircleShape2D_long_shan_exit")
 
-[node name="long_shan_tunnel_interior_triggers" type="Node2D" parent="landmark_triggers"]
-z_index = 9
+[node name="long_shan_tunnel_interior_triggers" type="Node2D" parent="landmark_triggers" unique_id=1758185602]
 y_sort_enabled = true
 position = Vector2(3360, 7536)
-script = ExtResource("3_lg7om")
-level_id = 9
 
-[node name="LightPocketSouth" type="Area2D" parent="landmark_triggers/long_shan_tunnel_interior_triggers"]
-collision_layer = 1
-position = Vector2(-1104, -768)
+[node name="LightPocketSouth" type="Area2D" parent="landmark_triggers/long_shan_tunnel_interior_triggers" unique_id=604685596]
+position = Vector2(-1247, -635)
 script = ExtResource("20_ltrg")
 landmark_id = "long_shan_tunnel"
 trigger_id = "light_pocket_south"
@@ -1804,13 +1753,15 @@ display_name = "Lit Pocket"
 melody_hint = "The tunnel air steadies where the lantern light gathers."
 visible_in_states = Array[String](["in_progress"])
 collected_progress_key = "checkpoints_collected"
+level_id_mode = 1
+level_context_path = NodePath("../../../long_shan_tunnel")
+sync_z_index_to_resolved_level = true
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="landmark_triggers/long_shan_tunnel_interior_triggers/LightPocketSouth"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="landmark_triggers/long_shan_tunnel_interior_triggers/LightPocketSouth" unique_id=1652914485]
 shape = SubResource("CircleShape2D_long_shan_light_pocket_south")
 
-[node name="LightPocketNorth" type="Area2D" parent="landmark_triggers/long_shan_tunnel_interior_triggers"]
-collision_layer = 1
-position = Vector2(-2208, -1568)
+[node name="LightPocketNorth" type="Area2D" parent="landmark_triggers/long_shan_tunnel_interior_triggers" unique_id=1151902220]
+position = Vector2(-2191, -1681)
 script = ExtResource("20_ltrg")
 landmark_id = "long_shan_tunnel"
 trigger_id = "light_pocket_north"
@@ -1819,58 +1770,64 @@ melody_hint = "Ren's route holds together once the next lantern pocket answers b
 visible_in_states = Array[String](["in_progress"])
 collected_progress_key = "checkpoints_collected"
 requires_collected = Array[String](["light_pocket_south"])
+level_id_mode = 1
+level_context_path = NodePath("../../../long_shan_tunnel")
+sync_z_index_to_resolved_level = true
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="landmark_triggers/long_shan_tunnel_interior_triggers/LightPocketNorth"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="landmark_triggers/long_shan_tunnel_interior_triggers/LightPocketNorth" unique_id=1545793173]
 shape = SubResource("CircleShape2D_long_shan_light_pocket_north")
 
-[node name="bi_shan_tunnel_interior_triggers" type="Node2D" parent="landmark_triggers"]
-z_index = 9
+[node name="bi_shan_tunnel_interior_triggers" type="Node2D" parent="landmark_triggers" unique_id=76678079]
 y_sort_enabled = true
 position = Vector2(-992, 7824)
-script = ExtResource("3_lg7om")
-level_id = 9
 
-[node name="EchoA" type="Area2D" parent="landmark_triggers/bi_shan_tunnel_interior_triggers"]
-collision_layer = 1
+[node name="EchoA" type="Area2D" parent="landmark_triggers/bi_shan_tunnel_interior_triggers" unique_id=2101834769]
+position = Vector2(-160, -224)
 script = ExtResource("20_ltrg")
 landmark_id = "bi_shan_tunnel"
 trigger_id = "echo_a"
 display_name = "Tunnel Echo (North Wall)"
 visible_in_states = Array[String](["available", "introduced", "in_progress"])
 collected_progress_key = "echoes_collected"
-position = Vector2(-160, -224)
+level_id_mode = 1
+level_context_path = NodePath("../../../bi_shan_tunnel")
+sync_z_index_to_resolved_level = true
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="landmark_triggers/bi_shan_tunnel_interior_triggers/EchoA"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="landmark_triggers/bi_shan_tunnel_interior_triggers/EchoA" unique_id=1408231679]
 shape = SubResource("CircleShape2D_bi_shan_echo_a")
 
-[node name="EchoB" type="Area2D" parent="landmark_triggers/bi_shan_tunnel_interior_triggers"]
-collision_layer = 1
+[node name="EchoB" type="Area2D" parent="landmark_triggers/bi_shan_tunnel_interior_triggers" unique_id=744687722]
+position = Vector2(-336, -480)
 script = ExtResource("20_ltrg")
 landmark_id = "bi_shan_tunnel"
 trigger_id = "echo_b"
 display_name = "Tunnel Echo (Arch Midpoint)"
 visible_in_states = Array[String](["available", "introduced", "in_progress"])
 collected_progress_key = "echoes_collected"
-position = Vector2(-336, -480)
+level_id_mode = 1
+level_context_path = NodePath("../../../bi_shan_tunnel")
+sync_z_index_to_resolved_level = true
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="landmark_triggers/bi_shan_tunnel_interior_triggers/EchoB"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="landmark_triggers/bi_shan_tunnel_interior_triggers/EchoB" unique_id=1876900643]
 shape = SubResource("CircleShape2D_bi_shan_echo_b")
 
-[node name="EchoC" type="Area2D" parent="landmark_triggers/bi_shan_tunnel_interior_triggers"]
-collision_layer = 1
+[node name="EchoC" type="Area2D" parent="landmark_triggers/bi_shan_tunnel_interior_triggers" unique_id=2011113315]
+position = Vector2(-544, -760)
 script = ExtResource("20_ltrg")
 landmark_id = "bi_shan_tunnel"
 trigger_id = "echo_c"
 display_name = "Tunnel Echo (Mural Approach)"
 visible_in_states = Array[String](["available", "introduced", "in_progress"])
 collected_progress_key = "echoes_collected"
-position = Vector2(-544, -760)
+level_id_mode = 1
+level_context_path = NodePath("../../../bi_shan_tunnel")
+sync_z_index_to_resolved_level = true
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="landmark_triggers/bi_shan_tunnel_interior_triggers/EchoC"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="landmark_triggers/bi_shan_tunnel_interior_triggers/EchoC" unique_id=609031426]
 shape = SubResource("CircleShape2D_bi_shan_echo_c")
 
-[node name="Chamber" type="Area2D" parent="landmark_triggers/bi_shan_tunnel_interior_triggers"]
-collision_layer = 1
+[node name="Chamber" type="Area2D" parent="landmark_triggers/bi_shan_tunnel_interior_triggers" unique_id=1252645597]
+position = Vector2(-640, -896)
 script = ExtResource("20_ltrg")
 landmark_id = "bi_shan_tunnel"
 trigger_id = "chamber"
@@ -1878,7 +1835,9 @@ display_name = "Mural Chamber"
 visible_in_states = Array[String](["in_progress"])
 collected_progress_key = "echoes_collected"
 requires_collected = Array[String](["echo_a", "echo_b", "echo_c"])
-position = Vector2(-640, -896)
+level_id_mode = 1
+level_context_path = NodePath("../../../bi_shan_tunnel")
+sync_z_index_to_resolved_level = true
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="landmark_triggers/bi_shan_tunnel_interior_triggers/Chamber"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="landmark_triggers/bi_shan_tunnel_interior_triggers/Chamber" unique_id=51779856]
 shape = SubResource("CircleShape2D_bi_shan_chamber")

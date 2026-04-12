@@ -136,6 +136,7 @@ Governance:
 Owned by:
 
 - [`../common/level_node_2d.gd`](../common/level_node_2d.gd)
+- [`../common/level_area_2d.gd`](../common/level_area_2d.gd)
 - [`../common/level_registry.gd`](../common/level_registry.gd)
 - [`features/multi_level_spaces.md`](features/multi_level_spaces.md)
 
@@ -144,12 +145,14 @@ Current contract:
 - every level-aware node must expose a `level_id` for its own level
 - every level-aware node may expose additional `level_id` properties such as `level_from`, `level_to`, `level_bottom`, or `level_top`
 - `LevelNode2D` resolves its `level_id` either absolutely or relative to the closest level-aware parent
+- `LevelArea2D` exposes the same `level_id` contract for reusable `Area2D` gameplay nodes and may optionally resolve relative ids through an explicit `level_context_path`
 - reusable room scenes should prefer relative level ids so they do not hardcode runtime level ids
 - `LevelRegistry` derives shared runtime floor data from `level_id`
 - By default, `LevelRegistry` maps `level_id` to runtime floor data as `physics_atlas_column = level_id`, `z_index = level_id`, and `collision_mask = 1 << (19 + level_id)`
 - `LevelRegistry` remains the place to update if a landmark ever needs non-formula level behavior
 - `LevelNode2D` resolves a `level_id`, then asks `LevelRegistry` for the corresponding physics-atlas column instead of assuming `level_id == atlas_column`
 - actor traversal components resolve their final collision-mask and `z_index` state through the same shared global level data
+- level-aware `Area2D` nodes may also sync their runtime `z_index` from the resolved level so interaction-layer checks line up with the shared level model
 - visibility masking still depends on authored mask layers plus absolute `z_index` behavior
 - tunnel masking may layer additional context rules on top of authored masks, such as requiring the player to be on the tunnel's interior level before hiding ground buildings
 
@@ -186,6 +189,7 @@ Governance:
 
 - if the shared level derivation rules or the traversal components' `level_id` interface change, update this file and relevant feature docs
 - new multi-level spaces should use either absolute or parent-relative exported `level_id` values where a reusable scene or component needs to point at a logical level
+- when a reusable `Area2D` needs shared level behavior, prefer `LevelArea2D` or a subclass instead of duplicating level-resolution logic in the leaf node
 - existing portals and stairs outside Bagua Tower may continue to use hand-authored mask values; migration is not required but recommended
 
 ## Landmark Progress Contract
@@ -209,10 +213,12 @@ Current contract:
 - `AppState.set_all_landmark_progress(progress)` sets multiple landmarks at once; used by `configure_*` methods
 - Resident dialogue beats may carry `"unlock_landmark"` to unlock a landmark when the beat fires, and `"gate"` / `"gate_fallback"` to block a beat until a landmark condition is satisfied
 - Resident dialogue beats may carry `"landmark_reward"` to trigger a landmark resolution (fragment award, melody state update, downstream unlocks) when the beat fires
+- `LandmarkTrigger` inherits the shared `LevelArea2D` level fields, so a trigger can resolve its interaction layer from a parent level node or an explicit `level_context_path` without landmark-specific logic
 
 Governance:
 
 - keep per-landmark trigger setup in `LandmarkTrigger` nodes placed in the landmark scene or a terrain-owned trigger container, and keep active collection/resolution logic in `game/landmark_progression.gd` behind `AppState`'s public API
+- when a trigger must follow a non-ground interaction layer, set its shared level fields instead of hardcoding a separate scene-local z contract
 - if a new landmark arc is added, add its id to `_default_landmark_progress()` and `_build_landmark_progress()`, place `LandmarkTrigger` nodes in the landmark scene with the correct exported properties, and extend `game/landmark_progression.gd` plus the `AppState` bridge methods together
 - if the landmark state enum changes, update this file and the relevant landmark feature docs
 - `LandmarkTrigger` nodes handle their own hide/disable after collection; callers should only invoke `collect()` when `activate_landmark_trigger(...)` returns `true`

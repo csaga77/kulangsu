@@ -65,11 +65,11 @@ Put player control, NPC behavior, interaction prompts, and behavior-tree work he
 - [`../architecture/`](../architecture) - landmark scenes such as Bagua Tower, tunnels, church, and ferry content
 - [`../architecture/components/`](../architecture/components) - reusable world-building pieces such as portals and stairs
 - [`../architecture/bagua_tower/tests/`](../architecture/bagua_tower/tests) - Bagua Tower-specific validation scenes and scripts
-- [`../common/`](../common) - shared world nodes, effects, visibility helpers, and level helpers such as `AutoVisibilityNode2D`, `LevelNode2D`, and `LevelRegistry`
+- [`../common/`](../common) - shared world nodes, effects, visibility helpers, and level helpers such as `AutoVisibilityNode2D`, `LevelNode2D`, `LevelArea2D`, and `LevelRegistry`
 
 ### Landmark Quest Triggers
 
-- [`../game/landmark_trigger.gd`](../game/landmark_trigger.gd) - `class_name LandmarkTrigger extends Area2D`; place in a landmark scene or terrain-owned trigger container; exports `landmark_id`, `trigger_id`, `display_name`, `visible_in_states`, `collected_progress_key`, `requires_collected`, `hide_if_flag`; these are invisible gameplay volumes by default, self-manage visibility by subscribing to `AppState.landmark_progress_changed`, and hide/disable themselves after `collect()` is called
+- [`../game/landmark_trigger.gd`](../game/landmark_trigger.gd) - `class_name LandmarkTrigger extends LevelArea2D`; place in a landmark scene or terrain-owned trigger container; exports `landmark_id`, `trigger_id`, `display_name`, `visible_in_states`, `collected_progress_key`, `requires_collected`, `hide_if_flag`, and the shared level-aware `level_id` fields; these are invisible gameplay volumes by default, self-manage visibility by subscribing to `AppState.landmark_progress_changed`, and hide/disable themselves after `collect()` is called
 
 Put new landmark scenes and reusable architectural pieces here. Define shared floor data in `LevelRegistry`, and use absolute or parent-relative exported `level_id` integers in traversal components.
 

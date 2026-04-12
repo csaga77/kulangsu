@@ -19,10 +19,13 @@
 ##   7. Add a CollisionShape2D child with a shape that covers the pickup area.
 ##   8. Set collision_layer to match the physics layer the player scans for
 ##      nearby interactables (same layer used by resident NPC areas).
+##   9. If this trigger must follow a non-ground level, use level_id /
+##      level_id_mode and optionally level_context_path just like other
+##      level-aware nodes.
 
 @tool
 class_name LandmarkTrigger
-extends Area2D
+extends LevelArea2D
 
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 
@@ -69,6 +72,7 @@ func _app_state():
 
 
 func _ready() -> void:
+	super._ready()
 	if Engine.is_editor_hint():
 		queue_redraw()
 		return
