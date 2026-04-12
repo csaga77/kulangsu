@@ -43,14 +43,27 @@ func _run() -> void:
 	_assert_true(_app_state().season_phase == "autumn_study", "Pei names the autumn study pressure")
 	_assert_true(bool(_app_state().get_story_flag("autumn_pressure_named", false)), "Autumn pressure anchor resolves from the harbor route")
 
+	var pei_too_early: Dictionary = _app_state().interact_with_resident("dock_musician_pei")
+	_assert_true(
+		String(pei_too_early.get("line", "")).to_lower().contains("spring festival"),
+		"The future-choice beat stays gated until both the shared pressure and Spring Festival are ready"
+	)
+	_assert_true(!bool(_app_state().get_story_flag("future_commitment_choice", false)), "Pei cannot resolve the future choice too early")
+
+	_app_state().interact_with_resident("postcard_seller_an")
+	_assert_true(bool(_app_state().get_story_flag("preservation_inheritance_seen", false)), "Preservation now starts at the harbor without requiring Bagua first")
+
+	_app_state().interact_with_resident("choir_student_lin")
+	_assert_true(bool(_app_state().get_story_flag("autumn_pressure_shared", false)), "The study route now gets a second shared-pressure beat before the future choice")
+
 	_app_state().interact_with_resident("church_caretaker")
 	_assert_true(bool(_app_state().get_story_flag("trinity_memory_awakened", false)), "Trinity awakens the family-memory route without clearing the church landmark")
 	_app_state().interact_with_resident("church_caretaker")
 	_assert_true(_app_state().season_phase == "winter", "The church memory reveal advances the year into winter")
 	_assert_true(bool(_app_state().get_story_flag("winter_memory_reveal", false)), "Winter memory reveal can resolve through route dialogue")
 
-	_app_state().interact_with_resident("terrace_painter_nian")
-	_assert_true(bool(_app_state().get_story_flag("preservation_inheritance_seen", false)), "Preservation route can advance from the tower district without finishing the melody arc")
+	_app_state().interact_with_resident("tea_vendor_hua")
+	_assert_true(bool(_app_state().get_story_flag("spring_festival_prepared", false)), "Spring Festival now has a harbor-preparation step before Lian resolves it")
 
 	var lian_result: Dictionary = _app_state().interact_with_resident("ferry_caretaker")
 	_assert_true(String(lian_result.get("line", "")).to_lower().contains("festival"), "Cross-route family dialogue changes once winter memory and preservation align")
@@ -59,7 +72,7 @@ func _run() -> void:
 	_assert_true(!bool(_app_state().endgame_state.get("active", false)), "Resolving spring festival alone does not start the final act")
 
 	_app_state().interact_with_resident("dock_musician_pei")
-	_assert_true(bool(_app_state().get_story_flag("future_commitment_choice", false)), "Pei can resolve the future-choice beat once spring is settled")
+	_assert_true(bool(_app_state().get_story_flag("future_commitment_choice", false)), "Pei can resolve the future-choice beat once spring and shared pressure are both settled")
 	_assert_true(!bool(_app_state().endgame_state.get("active", false)), "Naming a future does not end the game until a designated major event lands")
 
 	_app_state().interact_with_resident("dock_musician_pei")
@@ -83,6 +96,33 @@ func _run() -> void:
 	_assert_true(_app_state().mode == "Postgame", "Stay-style endings unlock postgame exploration")
 	_assert_true(_app_state().season_phase == "postgame", "Postgame swaps the season label into the afterword phase")
 	_assert_true(String(_app_state().ending_summary.get("ending_tones", "")).contains("lingering"), "Postgame keeps the stay-ending tone summary")
+
+	_app_state().configure_new_game()
+	_progress_through_ferry_opening()
+	_app_state().interact_with_resident("dock_musician_pei")
+	_app_state().interact_with_resident("postcard_seller_an")
+	_app_state().interact_with_resident("choir_student_lin")
+	_app_state().interact_with_resident("church_caretaker")
+	_app_state().interact_with_resident("church_caretaker")
+	_app_state().interact_with_resident("tea_vendor_hua")
+	_app_state().interact_with_resident("ferry_caretaker")
+	_app_state().interact_with_resident("dock_musician_pei")
+	_app_state().interact_with_resident("ticket_clerk_min")
+	_assert_true(bool(_app_state().get_story_flag("future_commitment_witnessed", false)), "Ticket Clerk Min now witnesses the future choice before it can become an ending")
+	_assert_true(!bool(_app_state().endgame_state.get("active", false)), "Witnessing the future choice alone does not start the final act")
+	_app_state().interact_with_resident("ferry_caretaker")
+	_assert_true(bool(_app_state().get_story_flag("future_commitment_end", false)), "Lian now closes the honest-future ending after the harbor witnesses it")
+	_assert_true(bool(_app_state().endgame_state.get("active", false)), "The honest-future ending can still start the final act once the harbor answers it")
+	_assert_true(String(_app_state().endgame_state.get("trigger_event_id", "")) == "future_commitment_end", "The honest-future ending stores the correct endgame trigger")
+
+	_app_state().configure_new_game()
+	_progress_through_ferry_opening()
+	_app_state().interact_with_resident("dock_musician_pei")
+	_app_state().interact_with_resident("postcard_seller_an")
+	_app_state().advance_landmark_state("bagua_tower", "available")
+	_app_state().refresh_story_routes()
+	_app_state().interact_with_resident("terrace_painter_nian")
+	_assert_true(bool(_app_state().get_story_flag("preservation_tower_perspective", false)), "Preservation now gets a Bagua follow-up beat once the tower is reachable")
 
 	_app_state().clear_story_autosave_for_tests()
 

@@ -603,6 +603,7 @@ func resolve_story_event(event_id: String) -> bool:
 		return false
 	var changed: bool = m_story_route_graph.resolve_story_event(event_id)
 	if changed:
+		_sync_story_route_dependent_landmarks(event_id)
 		_autosave_story_progress()
 	return changed
 
@@ -1120,6 +1121,7 @@ func _apply_story_autosave_payload(payload: Dictionary) -> bool:
 	set_summary(_normalize_saved_summary(payload.get("ending_summary", {})))
 	set_player_profile(payload.get("player_profile", PLAYER_APPEARANCE_CATALOG_SCRIPT.default_profile()))
 	refresh_story_routes()
+	_sync_story_route_dependent_landmarks()
 
 	var saved_costume_id := String(
 		payload.get("equipped_player_costume_id", PLAYER_COSTUME_CATALOG_SCRIPT.default_costume_id())
@@ -1264,6 +1266,7 @@ func configure_new_game() -> void:
 	set_melody_progress(_build_story_melody_progress("new_game"))
 	set_all_landmark_progress(_build_landmark_progress("new_game"))
 	refresh_story_routes()
+	_sync_story_route_dependent_landmarks()
 	story_resume_anchor_id = "Piano Ferry"
 	story_resume_location = "Piano Ferry"
 	set_summary({
@@ -1880,6 +1883,13 @@ func _resolve_bagua_tower() -> void:
 	m_landmark_progression.resolve_bagua_tower()
 
 
+func _sync_story_route_dependent_landmarks(event_id: String = "") -> void:
+	if m_landmark_progression == null:
+		return
+	if event_id.is_empty() or event_id == "spring_festival_resolved" or event_id == "melody_bagua_aligned":
+		m_landmark_progression.sync_festival_stage_availability(event_id == "spring_festival_resolved")
+
+
 ## Gate check: returns false if a beat's prerequisite condition is not met.
 ## The conversation does not advance and a fallback line is shown instead.
 func _check_beat_gate(beat: Dictionary) -> bool:
@@ -1908,6 +1918,12 @@ func _check_beat_gate(beat: Dictionary) -> bool:
 			return get_landmark_state("bagua_tower") != "locked"
 		"three_fragments_restored":
 			return fragments_found >= 3
+		"future_choice_ready":
+			return bool(get_story_flag("spring_festival_resolved", false)) \
+				and bool(get_story_flag("autumn_pressure_shared", false))
+		"preservation_tower_ready":
+			return bool(get_story_flag("preservation_inheritance_seen", false)) \
+				and get_landmark_state("bagua_tower") != "locked"
 		_:
 			if story_flags.has(gate):
 				return bool(story_flags.get(gate, false))

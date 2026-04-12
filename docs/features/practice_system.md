@@ -50,7 +50,7 @@ This avoids requiring the `piano_game` module before the first performance lands
 
 ### Performance Point Activation
 
-Each landmark can have one performance point: a `LandmarkTrigger` (or equivalent Area2D) placed at the canonical performance spot listed in `melody_catalog.gd`. The player presses R at that node when the melody is in `reconstructed` state. The recognition prompt opens. On success, `AppState.complete_prompt_request(...)` advances the melody or landmark and fires the appropriate world response.
+Each landmark can have one performance point: a `LandmarkTrigger` (or equivalent Area2D) placed at the canonical performance spot listed in `melody_catalog.gd`. The player presses R at that node when the melody is in `reconstructed` state and any story-side gating for that performance point is satisfied. The recognition prompt opens. On success, `AppState.complete_prompt_request(...)` advances the melody or landmark and fires the appropriate world response.
 
 Current landmark-specific uses of the reusable prompt for `festival_melody`:
 
@@ -66,6 +66,7 @@ Bagua Tower still uses the simpler synthesis trigger plus Suyin follow-up dialog
 - Practice is always optional. Skipping journal practice does not block performance.
 - Performance requires the melody to be in `reconstructed` state or higher.
 - Performance requires the player to be at the melody's `performance_landmark`.
+- The `festival_stage` performance point specifically requires both Bagua alignment and `spring_festival_resolved`, so the harbor performance cannot outrun the seasonal story.
 - A failed recognition attempt is not a fail state. The player retries immediately.
 - Performance state is stored in `AppState.melody_progress[melody_id]["performed"]`.
 - The `piano_game` module is a candidate for the full performance interaction but should not be required for the first working version.
@@ -110,7 +111,7 @@ Bagua Tower still uses the simpler synthesis trigger plus Suyin follow-up dialog
 
 ## Validation
 
-- Reach the Festival Stage with `festival_melody` in `reconstructed` state.
+- Reach the Festival Stage with `festival_melody` in `reconstructed` state and Spring Festival resolved.
 - Reach the Trinity choir chime after collecting `steps`, `garden`, and `yard`. Confirm the same ordered-confirmation prompt opens and only then returns the objective to Mei.
 - Reach the Bi Shan mural chamber after collecting all three echoes. Confirm the prompt opens before the fragment is awarded.
 - Reach the Long Shan exit after both lit pockets. Confirm the route prompt opens before the fragment is awarded.

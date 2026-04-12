@@ -1693,7 +1693,7 @@ sources/0 = SubResource("TileSetAtlasSource_qofig")
 [node name="terrain" type="Node2D" unique_id=752398157]
 y_sort_enabled = true
 script = ExtResource("2_h2lqh")
-mask_file = "res://design/gulangyu_map_mini_export.png"
+mask_file = "res://design/gulangyu_map_nano_export.png"
 generation_profile = ExtResource("19_prof")
 
 [node name="ground" type="Node2D" parent="." unique_id=496345999 node_paths=PackedStringArray("visibility_mask_nodes")]

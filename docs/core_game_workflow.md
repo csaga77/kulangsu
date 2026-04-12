@@ -105,6 +105,7 @@ Current anchors:
 - `summer_return_complete` opens the broader story after the harbor return settles
 - `autumn_pressure_named` moves the year into Autumn / Study
 - `winter_memory_reveal` moves the year into Winter
+- `spring_festival_prepared` stages the harbor's emotional preparation for Spring Festival before the seasonal resolution lands
 - `spring_festival_resolved` moves the year into Spring Festival / Spring
 - `summer_exam_complete` moves the year into Second Summer and can also trigger the final act
 
@@ -134,32 +135,35 @@ This route:
 
 The current playable slice resolves seasonal anchors mostly through resident interaction:
 
-- `Caretaker Lian` anchors the harbor return and spring-festival recognition
+- `Caretaker Lian` anchors the harbor return, the Spring Festival resolution, and the honest-future harbor ending
 - `Dock Musician Pei` names autumn pressure, future honesty, and second-summer release
 - `Choir Caretaker Mei` awakens and sharpens the church-linked memory line
-- `Terrace Painter Nian` anchors preservation and inheritance from the tower district
+- `Choir Student Lin` turns autumn pressure into a shared social feeling before the future route can resolve honestly
+- `Postcard Seller An` starts the preservation route from the harbor instead of leaving it all to Bagua Tower
+- `Terrace Painter Nian` now pays that preservation route off with the island-wide tower perspective once Bagua is reachable
+- `Tea Vendor Hua` gives Spring Festival a visible harbor-preparation beat before Lian resolves it
 
 This means the player can currently reach a valid ending by strongly following the family, study, and preservation routes while leaving most of the landmark melody route unfinished.
 
 ## Current Coverage And Gameplay Gaps
 
-The current structure is in place, but the routes do not yet carry equal gameplay weight.
+The current structure is in place, and each non-melody route now has at least a short authored chain instead of a single turning-point line. The next gaps are more about depth and reactivity than missing route shape.
 
 Current read of the playable slice:
 
-- `family_memory` is present, but most of its weight still sits in harbor return, church memory, winter reveal, and spring recognition
-- `study_future` is structurally important, but currently lands through a small number of resident-led turning points
-- `preservation_inheritance` is thematically strong, but still behaves more like an unlock path than a full route chain
-- `spring_festival_resolved` works as a seasonal anchor, but still needs a more authored multi-step sequence
-- `melody_landmarks` remains the route with the clearest physical progression and strongest environmental play
+- `family_memory` now has a clearer four-step emotional chain through harbor return, church memory, winter revelation, harbor preparation, and Spring Festival resolution
+- `study_future` now has two distinct outcomes: a second-summer exam release and an earlier honest-future harbor ending, both paced through more than one resident
+- `preservation_inheritance` now starts at the harbor and pays off at Bagua Tower instead of collapsing into a single tower conversation
+- `spring_festival_resolved` now lands as a sequence with visible preparation rather than a single gate line
+- `melody_landmarks` remains the route with the clearest physical progression and strongest environmental play, but its public climax now waits for Spring Festival instead of cutting ahead of the seasonal arc
 
 Current gameplay-content priority order:
 
 1. Add more embodied family beats around A Po, the parents, and household care.
-2. Spread study/future pressure across more residents, districts, and seasonal moments.
-3. Build preservation into a short chain with visible reactivity beyond Bagua Tower.
-4. Give Spring Festival a stronger playable setup and payoff.
-5. Keep enriching the landmark route without letting it reclaim the role of sole progression spine.
+2. Add more reactivity after the new study/preservation beats so residents and objectives acknowledge the player's route mix more often.
+3. Give Spring Festival and the honest-future ending more bespoke aftermath writing once the closing lead takes over.
+4. Keep enriching the landmark route without letting it reclaim the role of sole progression spine.
+5. Add more household and district-specific responses once major route beats have fired.
 
 ## HUD And Journal Structure
 

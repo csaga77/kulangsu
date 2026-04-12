@@ -45,7 +45,7 @@ This is how the current repo already maps to the high-level RPG pitch.
 - `Hear` is represented through resident writing, ambient lines, melody clue text, and shared melody runtime state in [`../../game/app_state.gd`](../../game/app_state.gd).
 - `Collect` exists today as a fragment counter in [`../../game/app_state.gd`](../../game/app_state.gd) and the journal `Melody` tab in [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd).
 - `Practice` now exists as a short ordered-confirmation prompt launched from the journal once the melody is reconstructed.
-- `Perform` now routes through the same recognition/prompt layer at the harbor-stage performance point before the shell opens the ending/postgame flow.
+- `Perform` now routes through the same recognition/prompt layer at the harbor-stage performance point, but only after Bagua alignment and Spring Festival resolution both make that public performance feel earned.
 - `Unlock` exists today mainly as updated objectives, resident trust, costume unlocks, journal notes, and fragment count changes.
 - `Deepen` exists today through resident trust, follow-up dialogue beats, and additional journal context rather than a full authored melody mastery system.
 
@@ -137,7 +137,7 @@ All five landmark arcs are fully integrated and confirmed:
 - Trinity Church arc (choir cue collection via three `LandmarkTrigger` nodes plus the `ChoirChime` confirmation point)
 - Bi Shan Tunnel arc (echo tracing via three echo triggers + mural-chamber prompt + route-note update)
 - Long Shan Tunnel arc (entry trigger + lit-pocket checkpoints + exit-route prompt + return-to-Ren comparison handoff + `tunnel_guide` dialogue beats)
-- Bagua Tower arc (synthesis chamber `LandmarkTrigger` + `tower_keeper` dialogue beats + harbor-stage handoff)
+- Bagua Tower arc (synthesis chamber `LandmarkTrigger` + `tower_keeper` dialogue beats + spring-gated harbor-stage handoff)
 
 All `LandmarkTrigger` nodes have `collision_layer = 1` (layer "object") confirmed explicit. The `SynthesisChamber` in `bagua_tower.tscn` has `z_index = -2` set to align its absolute z_index (6) with the player's z_index after climbing all tower stairs.
 
@@ -158,7 +158,8 @@ See [`piano_ferry.md`](piano_ferry.md), [`trinity_church.md`](trinity_church.md)
 ### ~~5. Add One Performance Point~~ ✓ Done
 
 - `festival_stage` is now a real landmark trigger at Piano Ferry.
-- Bagua Tower no longer marks the melody performed directly; it unlocks the harbor-stage performance point instead.
+- Bagua Tower no longer marks the melody performed directly; it only makes the harbor-stage performance point eligible.
+- The harbor-stage performance point becomes available once both `melody_bagua_aligned` and `spring_festival_resolved` are true, so the public finale waits for the seasonal story to catch up.
 - Triggering the harbor stage now opens the reusable melody prompt first; only a correct order advances the melody to `performed` and opens the ending overlay through `festival_performed`.
 
 ### ~~6. Add Persistent World Response~~ ✓ Done
@@ -354,13 +355,17 @@ Use this route when you want one end-to-end manual check of the current story-cr
 
 6. Complete Bagua Tower.
    Actions: talk to Suyin, talk again once three fragments are in hand, climb to the synthesis chamber, return to Suyin.
-   Expectation: the chamber refuses early use below three fragments, Bagua awards the fourth fragment, and the harbor festival stage unlocks without marking the melody performed yet.
+   Expectation: the chamber refuses early use below three fragments, Bagua awards the fourth fragment, and the harbor festival stage stays locked until Spring Festival has been resolved.
 
-7. Complete the harbor performance.
+7. Resolve Spring Festival.
+   Actions: talk to Dock Musician Pei to name autumn pressure, talk to Postcard Seller An, return to Mei for the winter-memory beat, talk to Tea Vendor Hua, then return to Caretaker Lian.
+   Expectation: the seasonal route reaches `spring_festival_resolved`, and the harbor festival stage finally becomes available once the family route catches up with the completed melody route.
+
+8. Complete the harbor performance.
    Actions: return to Piano Ferry, activate the Festival Stage, then enter the recovered phrase segments in the authored order.
    Expectation: the prompt opens first, a wrong order clears softly, the melody becomes `performed` only after success, and the ending overlay opens with postgame still available from the ending screen.
 
-8. Choose `Stay a Little Longer`, return to title, then choose `Continue`.
+9. Choose `Stay a Little Longer`, return to title, then choose `Continue`.
    Expectation: the title footer shows the latest saved chapter/location summary, `Continue` is enabled, and the run resumes at the latest safe district anchor rather than an interior tunnel spot.
 
 ### Reusable Manual Ending Smoke Pass

@@ -256,12 +256,22 @@ static func _story_residents() -> Dictionary:
 					"journal_step": "Lian urged you toward the tower now that most phrases are in hand.",
 				},
 				{
-					"conditions": {"story_flag_all": ["winter_memory_reveal", "preservation_inheritance_seen"]},
+					"conditions": {"story_flag_all": ["spring_festival_prepared"]},
 					"priority": 35,
 					"once": true,
 					"line": "This coming festival will be the first one without your grandmother's place still waiting for her. The harbor knows before the house says it aloud.",
 					"journal_step": "Lian finally spoke of the first Spring Festival without Grandma as something the whole island is already bracing for.",
 					"story_event": "spring_festival_resolved",
+				},
+				{
+					"conditions": {"story_flag_all": ["future_commitment_witnessed"]},
+					"priority": 38,
+					"once": true,
+					"line": "Then let the harbor answer you clearly. A future does not become real only when it is approved. Sometimes it becomes real when you can finally carry it here without apologizing for it.",
+					"objective": "If this turning point feels true, let the harbor close the story here.",
+					"journal_step": "Lian turned the harbor into the place where an honest future could finally be answered back.",
+					"story_event": "future_commitment_end",
+					"save_status": "Caretaker Lian recognized the harbor as the place where the future-choice route can honestly close.",
 				},
 				{
 					"conditions": {"melody_state": {"festival_melody": "resonant"}},
@@ -610,6 +620,18 @@ static func _ambient_residents() -> Dictionary:
 				"tan"
 			),
 			"spawn": _spawn("Piano Ferry", Vector2(40.0, 280.0), -40.0, MOOD_SMILE),
+			"conditional_beats": [
+				{
+					"conditions": {"story_flag_all": ["autumn_pressure_named"]},
+					"priority": 20,
+					"once": true,
+					"line": "People buy the old verandas and tower railings more than the beach cards now. I think they are trying to carry home proof that this island still remembers itself. That is how inheritance starts feeling urgent instead of quaint.",
+					"objective": "Climb to Bagua Tower once you can and see how that inheritance changes shape from above.",
+					"journal_step": "An made the island's older buildings feel like the part people are quietly afraid to lose.",
+					"story_event": "preservation_inheritance_seen",
+					"save_status": "Postcard Seller An reframed preservation as something visitors and locals are already trying to hold onto.",
+				},
+			],
 		},
 		{
 			"id": "dock_musician_pei",
@@ -634,8 +656,8 @@ static func _ambient_residents() -> Dictionary:
 					"line": "After a year like this, honesty matters more than certainty. Name one future that is yours before the island asks anything else of you.",
 					"objective": "Stay with Pei until the year breaks open into second summer.",
 					"journal_step": "Pei pushed the future question away from prestige and toward honesty.",
-					"gate": "spring_festival_resolved",
-					"gate_fallback": "The future question is real, but it is not ready for an answer yet. Let the year keep turning first.",
+					"gate": "future_choice_ready",
+					"gate_fallback": "The future question is real, but it needs both the shared autumn pressure and the Spring Festival harbor before it can be answered honestly.",
 					"story_event": "future_commitment_choice",
 					"save_status": "Dock Musician Pei reframed the future as an honest choice instead of a performance.",
 				},
@@ -689,6 +711,18 @@ static func _ambient_residents() -> Dictionary:
 				"leather"
 			),
 			"spawn": _spawn("Piano Ferry", Vector2(320.0, 140.0), 85.0, MOOD_SMILE),
+			"conditional_beats": [
+				{
+					"conditions": {"story_flag_all": ["winter_memory_reveal", "preservation_inheritance_seen"]},
+					"priority": 20,
+					"once": true,
+					"line": "I already started steeping extra chrysanthemum for the festival week, and every time I do it I remember your grandmother setting aside the first cup before anyone asked. The harbor has noticed this Spring Festival is arriving differently.",
+					"objective": "Go back to Lian once the harbor's Spring Festival preparations feel impossible to ignore.",
+					"journal_step": "Hua made the Spring Festival feel prepared by the harbor before it was spoken aloud at home.",
+					"story_event": "spring_festival_prepared",
+					"save_status": "Tea Vendor Hua turned Spring Festival from an upcoming date into something the harbor is already carrying.",
+				},
+			],
 		},
 		{
 			"id": "ticket_clerk_min",
@@ -706,10 +740,11 @@ static func _ambient_residents() -> Dictionary:
 					"conditions": {"story_flag_all": ["future_commitment_choice"]},
 					"priority": 30,
 					"once": true,
-					"line": "Some departures are not really departures. Sometimes standing here and admitting the future has already turned is enough to let a story end honestly.",
-					"journal_step": "Min turned the ticket desk into a place where an honest turning point could become its own ending.",
-					"story_event": "future_commitment_end",
-					"save_status": "Ticket Clerk Min recognized the harbor as a possible ending point in its own right.",
+					"line": "I can hear when someone is speaking about departure as a timetable and when they are speaking about it as a truth. Whatever you named with Pei, it sounds like something the harbor should witness before anyone tries to close the book on it.",
+					"objective": "Return to Lian if this future feels steady enough to let the harbor answer it.",
+					"journal_step": "Min witnessed the future you named and treated it like something the harbor could now answer back.",
+					"story_event": "future_commitment_witnessed",
+					"save_status": "Ticket Clerk Min heard the future-choice turning point and sent it back into the harbor to be answered.",
 				},
 			],
 			"appearance": _look(
@@ -752,6 +787,18 @@ static func _ambient_residents() -> Dictionary:
 				"black"
 			),
 			"spawn": _spawn("Trinity Church", Vector2(-160.0, 290.0), -100.0, MOOD_BLUSH),
+			"conditional_beats": [
+				{
+					"conditions": {"story_flag_all": ["autumn_pressure_named"]},
+					"priority": 20,
+					"once": true,
+					"line": "Everyone talks about next year like there is a right note we are all supposed to hit together. I keep worrying I will only find out mine after everyone else has already sung theirs. It helps a little to know the fear is shared, even if that does not make it quieter.",
+					"objective": "Carry that shared pressure back into the harbor before you try to answer the future question.",
+					"journal_step": "Lin admitted the same pressure is shaping the church side of the island too, which made the fear feel shared instead of private.",
+					"story_event": "autumn_pressure_shared",
+					"save_status": "Choir Student Lin made the autumn pressure feel communal instead of solitary.",
+				},
+			],
 		},
 		{
 			"id": "bell_repairer_qiao",
@@ -1041,11 +1088,11 @@ static func _ambient_residents() -> Dictionary:
 				{
 					"line": "From up here the old buildings stop looking decorative. They start looking like the shape of everyone who kept living here long enough to leave traces behind. That is why losing them hurts.",
 					"objective": "Carry that wider view back into the year and notice what the island is asking you to preserve.",
-					"journal_step": "Nian made the old buildings feel like inheritance instead of scenery.",
-					"gate": "autumn_pressure_named",
-					"gate_fallback": "The tower can wait until the year starts pressing on you hard enough to ask what is worth carrying forward.",
-					"story_event": "preservation_inheritance_seen",
-					"save_status": "Terrace Painter Nian made preservation feel personal instead of abstract.",
+					"journal_step": "Nian widened the inheritance question from a harbor feeling into an island-scale view.",
+					"gate": "preservation_tower_ready",
+					"gate_fallback": "The tower view will land better after someone at the harbor first makes preservation feel urgent rather than picturesque.",
+					"story_event": "preservation_tower_perspective",
+					"save_status": "Terrace Painter Nian widened preservation from a feeling into a responsibility.",
 				},
 				{
 					"line": "Once you see the island that way, every wall and window starts sounding like a memory someone trusted the next person to keep.",

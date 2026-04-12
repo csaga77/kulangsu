@@ -92,8 +92,16 @@ func _run() -> void:
 	_app_state().activate_landmark_trigger("bagua_tower", "synthesis_chamber", "Synthesis Chamber")
 	_app_state().interact_with_resident("tower_keeper")
 	_assert_true(_app_state().fragments_found == 4, "Bagua awards the fourth fragment")
-	_assert_true(_app_state().get_landmark_state("festival_stage") == "available", "Festival stage unlocks after Bagua")
+	_assert_true(_app_state().get_landmark_state("festival_stage") == "locked", "Festival stage stays locked until Spring Festival is emotionally ready")
 	_assert_true(!bool(_app_state().get_melody_state("festival_melody").get("performed", false)), "Bagua does not mark the melody performed")
+
+	_app_state().interact_with_resident("dock_musician_pei")
+	_app_state().interact_with_resident("postcard_seller_an")
+	_app_state().interact_with_resident("church_caretaker")
+	_app_state().interact_with_resident("tea_vendor_hua")
+	_app_state().interact_with_resident("ferry_caretaker")
+	_assert_true(bool(_app_state().get_story_flag("spring_festival_resolved", false)), "The family route can still bring Spring Festival online after the melody is complete")
+	_assert_true(_app_state().get_landmark_state("festival_stage") == "available", "Festival stage unlocks once Bagua and Spring Festival are both resolved")
 
 	var festival_requests_before := m_prompt_requests.size()
 	var stage_consumed = _app_state().activate_landmark_trigger("festival_stage", "harbor_stage", "Festival Stage")
@@ -103,7 +111,8 @@ func _run() -> void:
 	_app_state().complete_prompt_request(m_prompt_requests[m_prompt_requests.size() - 1])
 	_assert_true(bool(_app_state().get_melody_state("festival_melody").get("performed", false)), "Festival stage marks the melody performed")
 	_assert_true(m_milestones.has("festival_performed"), "Festival performance emits the festival_performed milestone")
-	_assert_true(!bool(_app_state().endgame_state.get("active", false)), "Festival performance alone does not start the final act before spring resolves")
+	_assert_true(bool(_app_state().endgame_state.get("active", false)), "Festival performance can now start the final act once spring has resolved")
+	_assert_true(String(_app_state().endgame_state.get("trigger_event_id", "")) == "harbor_festival_performed", "Festival performance stores the correct endgame trigger once it is allowed")
 
 	_app_state().configure_new_game()
 	_app_state().interact_with_resident("ferry_caretaker")

@@ -510,14 +510,18 @@ func resolve_bagua_tower() -> void:
 	var previous_melody: Dictionary = m_owner.get_melody_state("festival_melody").duplicate(true)
 	var melody_state := award_festival_source_once("tower_chamber")
 	sync_festival_state_from_fragments(melody_state)
-	melody_state["next_lead"] = "Return to the ferry plaza and perform the restored melody at the festival stage."
+	melody_state["next_lead"] = "Carry the restored melody quietly until Spring Festival is ready to hold it in public."
 
 	m_owner.set_melody_progress({"festival_melody": melody_state})
 	m_owner.resolve_story_event("melody_bagua_aligned")
 	emit_fragment_story_milestones(previous_melody, "tower_chamber", melody_state)
-	m_owner.advance_landmark_state("festival_stage", "available")
-	m_owner.set_objective("Return to Piano Ferry and perform the restored melody at the festival stage.")
-	m_owner.set_save_status("The island melody is whole — the harbor stage is ready.")
+	sync_festival_stage_availability()
+	if m_owner.get_landmark_state("festival_stage") == "available":
+		m_owner.set_objective("Return to Piano Ferry and perform the restored melody at the festival stage.")
+		m_owner.set_save_status("The island melody is whole — the harbor stage is ready.")
+	else:
+		m_owner.set_objective("Carry the restored melody until Spring Festival is ready to answer it in public.")
+		m_owner.set_save_status("The island melody is whole, but the harbor is not ready to perform it yet.")
 
 
 func sync_festival_state_from_fragments(melody_state: Dictionary) -> void:
@@ -554,6 +558,30 @@ func perform_festival_melody() -> void:
 		"fragments_found": m_owner.fragments_found,
 		"helped_residents": m_owner._count_helped_residents(),
 	})
+
+
+func sync_festival_stage_availability(notify_player: bool = false) -> void:
+	if m_owner.mode != "Story":
+		return
+	var stage_state: String = m_owner.get_landmark_state("festival_stage")
+	if stage_state == "reward_collected":
+		return
+
+	var melody_ready := bool(m_owner.get_story_flag("melody_bagua_aligned", false))
+	var spring_ready := bool(m_owner.get_story_flag("spring_festival_resolved", false))
+	if melody_ready and spring_ready:
+		if stage_state != "available":
+			m_owner.advance_landmark_state("festival_stage", "available")
+		var melody_state: Dictionary = m_owner.get_melody_state("festival_melody").duplicate(true)
+		melody_state["next_lead"] = "Return to the ferry plaza and perform the restored melody at the festival stage."
+		m_owner.set_melody_progress({"festival_melody": melody_state})
+		if notify_player:
+			m_owner.set_objective("Return to Piano Ferry and perform the restored melody at the festival stage.")
+			m_owner.set_save_status("Spring Festival is ready — the harbor stage can finally answer the restored melody.")
+		return
+
+	if stage_state == "available":
+		m_owner.advance_landmark_state("festival_stage", "locked")
 
 
 func _progress_has_string_entry(progress: Dictionary, progress_key: String, entry_id: String) -> bool:
