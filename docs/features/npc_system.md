@@ -34,6 +34,7 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 
 - The runtime resident roster is assembled by `ResidentCatalog` from built-in definitions plus any editor-authored `.tres` definitions found under `game/residents/definitions/`.
 - Resident ids must stay unique across built-ins and editor-authored resources.
+- `ResidentCatalog.build_builtin_definitions()` is the baseline built-in roster; `build_definitions()` then layers external override resources on top of it.
 - Each resident entry owns identity, landmark context, ambient lines, dialogue beats, appearance preset, and spawn metadata.
 - Ambient lines must stay short enough for speech balloons.
 - Talk beats may update objective, chapter, save status, trust, and resident journal state through `AppState`.
@@ -64,7 +65,9 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 - The catalog now builds resource-backed `ResidentDefinition` objects plus nested appearance/dialogue/routine resources under [`../../game/resident_system/`](../../game/resident_system).
 - Resident resource slots should stay concretely typed to their matching resource classes, not broad `Resource` or untyped array slots, so Inspector authoring only accepts valid NPC data shapes.
 - The catalog merges the built-in roster with any editor-authored definitions found under [`../../game/residents/definitions/`](../../game/residents/definitions).
+- The first migrated built-in override resources are [`../../game/residents/definitions/ticket_clerk_min.tres`](../../game/residents/definitions/ticket_clerk_min.tres) and [`../../game/residents/definitions/terrace_painter_nian.tres`](../../game/residents/definitions/terrace_painter_nian.tres); use them as reference files when converting more residents out of the script catalog.
 - `AppState` keeps both immutable `resident_definitions` for authored data and mutable `resident_profiles` for trust, conversation progress, and save/load state, but now initializes those resident dictionaries lazily instead of fully building them at service startup.
+- Resident talk application now lives in [`../../game/resident_interaction_service.gd`](../../game/resident_interaction_service.gd) behind `AppState` facades, so route updates, autosave, trust milestones, and journal-facing state changes still flow through the shared-state contract.
 - `scenes/game_main.gd` never hardcodes individual residents; it loops over `AppState.get_resident_ids()`, instantiates [`../../characters/resident_npc.tscn`](../../characters/resident_npc.tscn), applies the matching definition, and then resolves world-specific spawn and route data.
 - Tunnel-root spawns and tunnel-owned movement waypoints are snapped back onto the authored tunnel path if an offset drifts off the walkable area.
 - Tunnel-internal route expansion prefers higher-connectivity walkable cells so residents stay nearer the middle of a tunnel path when multiple shortest routes exist.
@@ -77,6 +80,7 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 - `NPCController` only receives resolved world-space route points; it does not resolve scene anchors or tunnel path cells on the fly.
 - Routed NPCs use `HumanBody2D.move_with_speed()` for ordinary route motion so walls still block them, and only fall back to direct positional bypass on route points explicitly flagged with `allow_collision_bypass`.
 - The journal never reads the catalog directly; it asks `AppState.build_resident_journal_text()`.
+- Focused override/regression coverage now lives in [`../../game/tests/npc_system/test_resident_catalog_external_defs.tscn`](../../game/tests/npc_system/test_resident_catalog_external_defs.tscn) and [`../../game/tests/npc_system/test_resident_interaction.tscn`](../../game/tests/npc_system/test_resident_interaction.tscn).
 
 ## Current Routed Residents
 

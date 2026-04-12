@@ -37,6 +37,8 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../game/player_profile_service.gd`](../game/player_profile_service.gd) - owns player appearance/profile and unlocked/equipped costume state while preserving `AppState`'s public API
 - [`../game/journal_builder.gd`](../game/journal_builder.gd) - pure journal/setup text builders used by the journal and player setup overlays
 - [`../game/story_save_service.gd`](../game/story_save_service.gd) - versioned story autosave read/write logic and save metadata refresh
+- [`../game/audio_settings_service.gd`](../game/audio_settings_service.gd) - owns runtime volume/text-speed state while `AppState` keeps the shell-facing API and signals
+- [`../game/resident_interaction_service.gd`](../game/resident_interaction_service.gd) - applies resident dialogue beats, conditional beats, trust milestones, route refresh, and resident-facing autosave side effects behind `AppState` facades
 - [`../game/story_route_graph.gd`](../game/story_route_graph.gd) - canonical seasonal route definitions, event definitions, lead selection, endgame trigger logic, and tone-tag assembly
 - [`../game/landmark_progression.gd`](../game/landmark_progression.gd) - landmark trigger handling, melody prompt requests, fragment awards, and harbor-performance completion flow
 - [`../game/landmark_cue_loader.gd`](../game/landmark_cue_loader.gd) - shared one-shot landmark cue loader/cache that decodes shipped Vorbis `.ogg` cues directly instead of relying on editor import state
@@ -44,8 +46,9 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../game/melody_catalog.gd`](../game/melody_catalog.gd) - authored melody definitions, onboarding clue sources, fragment sources, and performance-point summaries
 - [`../game/resident_catalog.gd`](../game/resident_catalog.gd) - resident roster and the helper builders that produce resident definitions
 - [`../game/resident_system/`](../game/resident_system) - resident definition resources for appearance, dialogue, routine, and behavior metadata
-- [`../game/residents/`](../game/residents) - editor-authored resident definitions, templates, and the short designer workflow note
+- [`../game/residents/`](../game/residents) - editor-authored resident definitions, built-in override resources, templates, and the short designer workflow note
 - [`../game/player_appearance_catalog.gd`](../game/player_appearance_catalog.gd) / [`../game/player_costume_catalog.gd`](../game/player_costume_catalog.gd) - player customization data
+- [`../weather/overworld_weather_preset.gd`](../weather/overworld_weather_preset.gd) / [`../weather/overworld_weather_preset.tres`](../weather/overworld_weather_preset.tres) - shared default rain/fog/cloud/impact tuning consumed by `game_main` and `test_weather`
 If several screens or systems need the same player-facing state, it probably belongs in `game/app_state.gd`.
 If you are changing how terrain mask colors map to layers, start with the terrain profile and rule scripts before editing `terrain.gd`.
 
@@ -106,6 +109,8 @@ Be careful about renames or moves here because scene and resource references can
 - [`../characters/universal_lpc/tests/test_universal_lpc_asset_audit.tscn`](../characters/universal_lpc/tests/test_universal_lpc_asset_audit.tscn) - focused Universal LPC source-sheet audit for missing animation rows, JSON/source mismatches, and player-facing AI target triage
 - [`../game/tests/npc_system/test_npc_layer_interaction.tscn`](../game/tests/npc_system/test_npc_layer_interaction.tscn) - focused same-layer NPC targeting and portal-driven z-layer switching sandbox
 - [`../game/tests/npc_system/test_npc_control.tscn`](../game/tests/npc_system/test_npc_control.tscn) - focused routed NPC control regression scene covering Ren's in-tunnel walk-frame playback, nearby talk pause, dialogue reveal, and route resume
+- [`../game/tests/npc_system/test_resident_interaction.tscn`](../game/tests/npc_system/test_resident_interaction.tscn) - focused resident progression regression covering gate fallbacks, trust-max milestones, and a resident-driven autosave/continue path
+- [`../game/tests/npc_system/test_resident_catalog_external_defs.tscn`](../game/tests/npc_system/test_resident_catalog_external_defs.tscn) - focused resident catalog regression covering external `.tres` override parity against the built-in baseline
 - [`../game/tests/npc_system/test_npc_route_collision.tscn`](../game/tests/npc_system/test_npc_route_collision.tscn) - focused routed NPC wall-collision regression scene covering collision-aware route motion against blocking geometry
 - [`../game/tests/npc_system/test_tunnel_visibility.tscn`](../game/tests/npc_system/test_tunnel_visibility.tscn) - focused tunnel-resident spawn, spacing, and tunnel-context visibility regression scene
 - [`../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../game/tests/npc_system/test_tunnel_npc_travel.tscn) - focused tunnel resident route regression scene covering Ren's inside-only Long Shan path plus Nuo's Bi Shan portal-to-surface transition and level-state restoration
@@ -118,7 +123,7 @@ Be careful about renames or moves here because scene and resource references can
 - [`../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn`](../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn) - focused Bagua base-to-ground portal integration for `level_id` actor transitions
 - [`../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn`](../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn) - full Bagua Tower ascent, descent, and upper-floor visibility integration test
 - [`../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn`](../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn) - focused Bagua stair physical traversal integration test
-- [`../weather/tests/test_weather.tscn`](../weather/tests/test_weather.tscn) - focused weather tuning sandbox with tilemap-backed water/terrain, manager-attached fog/rain/cloud/impact passes, a thunder-flash pass, a tabbed weather control panel split into `Wind`, `Rain`, `Fog`, and `Cloud` tuning groups with per-pass `Sync With Wind` toggles, actor readability checks, and temporary foreground occluder proxies
+- [`../weather/tests/test_weather.tscn`](../weather/tests/test_weather.tscn) - focused weather tuning sandbox with tilemap-backed water/terrain, manager-attached fog/rain/cloud/impact passes, a thunder-flash pass, a tabbed weather control panel split into `Wind`, `Rain`, `Fog`, and `Cloud` tuning groups with per-pass `Sync With Wind` toggles, actor readability checks, temporary foreground occluder proxies, and a parity check against the shared overworld weather preset
 - [`../scenes/tests/test_water_render.tscn`](../scenes/tests/test_water_render.tscn) - focused water color, wave, transparency, and refraction sandbox
 - [`../game/tests/npc_system/test_scene.tscn`](../game/tests/npc_system/test_scene.tscn) - focused resident speech, talk, and journal sandbox
 - [`../game/grid_board_game/test_grid_board_game.tscn`](../game/grid_board_game/test_grid_board_game.tscn)

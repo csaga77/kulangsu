@@ -82,10 +82,22 @@ static func resident_order() -> Array[String]:
 
 
 static func build_definitions() -> Dictionary:
+	var residents := build_builtin_definitions()
+	residents.merge(_load_external_resident_definitions(), true)
+
+	for resident_id in residents.keys():
+		var definition = residents.get(resident_id)
+		if definition == null:
+			continue
+		definition.id = String(resident_id)
+
+	return residents
+
+
+static func build_builtin_definitions() -> Dictionary:
 	var residents: Dictionary = {}
 	residents.merge(_story_residents(), true)
 	residents.merge(_ambient_residents(), true)
-	residents.merge(_load_external_resident_definitions(), true)
 
 	for resident_id in residents.keys():
 		var definition = residents.get(resident_id)

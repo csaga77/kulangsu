@@ -77,10 +77,11 @@ Important implications:
 - [`../../weather/fog_overlay.tscn`](../../weather/fog_overlay.tscn) and [`../../weather/fog_overlay.gd`](../../weather/fog_overlay.gd) own the reusable fog overlay.
 - [`../../weather/cloud_shadow_overlay.tscn`](../../weather/cloud_shadow_overlay.tscn) and [`../../weather/cloud_shadow_overlay.gd`](../../weather/cloud_shadow_overlay.gd) own the reusable drifting ground-shadow pass.
 - [`../../weather/rain_ground_impacts.gd`](../../weather/rain_ground_impacts.gd) owns the lightweight isometric raindrop ground-hit effect.
-- [`../../scenes/game_main.gd`](../../scenes/game_main.gd) owns how the real overworld scene registers weather hosts and default properties.
+- [`../../weather/overworld_weather_preset.gd`](../../weather/overworld_weather_preset.gd) and [`../../weather/overworld_weather_preset.tres`](../../weather/overworld_weather_preset.tres) own the shared default overworld rain/fog/cloud/impact tuning.
+- [`../../scenes/game_main.gd`](../../scenes/game_main.gd) owns how the real overworld scene registers weather hosts and consumes the shared preset resource.
 - [`../../weather/weather_manager.gd`](../../weather/weather_manager.gd) owns runtime weather-rig instancing, random preset selection, hold timing, smooth interpolation between overworld weather states, and the live application of synced wind settings to registered rain/fog/cloud targets.
 - [`../../weather/weather_runtime.gd`](../../weather/weather_runtime.gd) owns the runtime lookup path for that single shared manager instance.
-- [`../../weather/tests/test_weather.tscn`](../../weather/tests/test_weather.tscn) and [`../../weather/tests/test_weather.gd`](../../weather/tests/test_weather.gd) own the sandbox scene, tilemap-backed reference terrain, thunder pass, actor readability setup, in-scene weather controls, and the weather-host registration used for runtime weather nodes.
+- [`../../weather/tests/test_weather.tscn`](../../weather/tests/test_weather.tscn) and [`../../weather/tests/test_weather.gd`](../../weather/tests/test_weather.gd) own the sandbox scene, tilemap-backed reference terrain, thunder pass, actor readability setup, in-scene weather controls, the weather-host registration used for runtime weather nodes, and the preset-parity smoke check.
 
 Keep weather rendering local to `weather/` and focused validation scenes. Do not move weather state into UI, `AppState`, or unrelated gameplay modules unless the game gets an actual authored weather system.
 
@@ -97,7 +98,7 @@ If you need to change something, start here:
 - Tune ground-hit spawn logic, iso placement, or draw behavior:
   Use [`../../weather/rain_ground_impacts.gd`](../../weather/rain_ground_impacts.gd).
 - Change default weather feel, control panel behavior, or reset behavior:
-  Use [`../../weather/tests/test_weather.tscn`](../../weather/tests/test_weather.tscn) and [`../../weather/tests/test_weather.gd`](../../weather/tests/test_weather.gd).
+  Start with [`../../weather/overworld_weather_preset.tres`](../../weather/overworld_weather_preset.tres), then confirm the shared values still read correctly through [`../../weather/tests/test_weather.tscn`](../../weather/tests/test_weather.tscn) and [`../../weather/tests/test_weather.gd`](../../weather/tests/test_weather.gd).
 - Change how reusable rain/fog/ground impacts are attached to the overworld scene:
   Use [`../../scenes/game_main.gd`](../../scenes/game_main.gd) and [`../../weather/weather_manager.gd`](../../weather/weather_manager.gd).
 - Change the overworld's random preset list, hold duration, transition timing, or synced gameplay wind application:
@@ -192,7 +193,7 @@ Important behavior:
 
 - The runtime weather values are captured in `m_weather_defaults` by [`../../weather/tests/test_weather.gd`](../../weather/tests/test_weather.gd) during `_capture_weather_defaults()`.
 - Reset restores those captured values, not separate hardcoded defaults.
-- If you change the intended default weather feel, update the sandbox weather host config in [`../../weather/tests/test_weather.gd`](../../weather/tests/test_weather.gd) and any matching UI-default values in [`../../weather/tests/test_weather.tscn`](../../weather/tests/test_weather.tscn). The script then syncs the controls from the live scene state.
+- If you change the intended default weather feel, update [`../../weather/overworld_weather_preset.tres`](../../weather/overworld_weather_preset.tres). Both [`../../scenes/game_main.gd`](../../scenes/game_main.gd) and [`../../weather/tests/test_weather.gd`](../../weather/tests/test_weather.gd) consume that same resource, and the sandbox now includes a smoke check so those defaults cannot drift silently.
 - The panel layout now groups the tuning surface into `Wind`, `Rain`, `Fog`, and `Cloud` tabs. Thunder remains in the `Rain` tab because it is currently sandbox-only storm feedback, not a shared weather pass.
 - The `Wind` tab owns the master wind angle and wind strength values instead of borrowing them from the rain overlay.
 - `Wind Angle` now spans the full `0..360` range for shared wind direction, but `RainOverlay` locally clamps that angle to `30..150` so rain stays in the intended isometric slant range even when fog or cloud shadows are driven to other compass directions.

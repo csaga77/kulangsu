@@ -12,6 +12,7 @@ const LEVEL_REGISTRY := preload("res://common/level_registry.gd")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const LANDMARK_CUE_LOADER_SCRIPT := preload("res://game/landmark_cue_loader.gd")
 const WEATHER_RUNTIME := preload("res://weather/weather_runtime.gd")
+const OVERWORLD_WEATHER_PRESET = preload("res://weather/overworld_weather_preset.tres")
 const BGM_MANAGER_SCRIPT := preload("res://game/bgm_manager.gd")
 const ROUTE_RESOLVER_SCRIPT := preload("res://scenes/route_resolver.gd")
 const RESIDENT_SPAWNER_SCRIPT := preload("res://scenes/resident_spawner.gd")
@@ -24,46 +25,6 @@ const WEATHER_HOLD_DURATION_MIN := 20.0
 const WEATHER_HOLD_DURATION_MAX := 38.0
 const WEATHER_TRANSITION_DURATION_MIN := 9.0
 const WEATHER_TRANSITION_DURATION_MAX := 18.0
-const MAIN_RAIN_PROPERTIES := {
-	"density": 0.0012,
-	"wind_angle_degrees": 72.0,
-	"wind_strength": 460.0,
-}
-const MAIN_FOG_PROPERTIES := {
-	"density": 0.42,
-	"height_ratio": 0.58,
-	"softness": 0.34,
-	"haze_strength": 0.48,
-	"wisp_strength": 0.72,
-	"edge_brightness": 0.24,
-	"drift_speed": 0.11,
-	"wind_angle_degrees": 72.0,
-	"wind_strength": 460.0,
-	"fog_color": Color(0.831373, 0.894118, 0.941176, 0.62),
-	"noise_scale": Vector2(4.0, 1.9),
-}
-const MAIN_CLOUD_PROPERTIES := {
-	"shadow_strength": 1.84,
-	"coverage": 0.43,
-	"softness": 0.24,
-	"drift_speed": 0.055,
-	"wind_angle_degrees": 72.0,
-	"wind_strength": 460.0,
-}
-const MAIN_IMPACT_PROPERTIES := {
-	"max_impacts": 48,
-	"density_spawn_multiplier": 22000.0,
-	"spawn_top_ratio": 0.3,
-	"side_margin": 88.0,
-	"bottom_margin": 28.0,
-	"streak_duration": 0.08,
-	"lifetime_min": 0.22,
-	"lifetime_max": 0.34,
-	"scale_min": 3.2,
-	"scale_max": 5.4,
-	"impact_color": Color(0.956863, 0.980392, 1.0, 0.34),
-	"ripple_color": Color(0.713726, 0.890196, 1.0, 0.18),
-}
 const LANDMARK_CUE_FILES := {
 	"piano_ferry": "res://resources/audio/sfx/landmark_cues/piano_ferry_refrain.ogg",
 	"trinity_church": "res://resources/audio/sfx/landmark_cues/trinity_chime.ogg",
@@ -179,13 +140,13 @@ func _build_weather_host_config() -> Dictionary:
 		"overlay_layer": 2,
 		"cloud_parent": m_terrain,
 		"cloud_z_index": 2,
-		"cloud_properties": MAIN_CLOUD_PROPERTIES,
+		"cloud_properties": OVERWORLD_WEATHER_PRESET.get_cloud_properties(),
 		"impacts_parent": m_actor_root,
 		"impacts_z_index": -1,
-		"impact_properties": MAIN_IMPACT_PROPERTIES,
+		"impact_properties": OVERWORLD_WEATHER_PRESET.get_impact_properties(),
 		"spawn_layer": _get_weather_spawn_layer(),
-		"rain_properties": MAIN_RAIN_PROPERTIES,
-		"fog_properties": MAIN_FOG_PROPERTIES,
+		"rain_properties": OVERWORLD_WEATHER_PRESET.get_rain_properties(),
+		"fog_properties": OVERWORLD_WEATHER_PRESET.get_fog_properties(),
 		"sync_rain_with_wind": true,
 		"sync_fog_with_wind": true,
 		"sync_cloud_with_wind": true,

@@ -1,0 +1,83 @@
+[gd_resource type="Resource" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://game/resident_system/resident_definition.gd" id="1_definition"]
+[ext_resource type="Script" path="res://game/resident_system/resident_appearance_definition.gd" id="2_appearance"]
+[ext_resource type="Script" path="res://game/resident_system/resident_dialogue_definition.gd" id="3_dialogue"]
+[ext_resource type="Script" path="res://game/resident_system/resident_dialogue_beat_definition.gd" id="4_beat"]
+[ext_resource type="Script" path="res://game/resident_system/resident_conditional_beat_definition.gd" id="5_conditional"]
+[ext_resource type="Script" path="res://game/resident_system/resident_beat_conditions_definition.gd" id="6_conditions"]
+[ext_resource type="Script" path="res://game/resident_system/resident_routine_definition.gd" id="7_routine"]
+[ext_resource type="Script" path="res://game/resident_system/resident_spawn_definition.gd" id="8_spawn"]
+
+[sub_resource type="Resource" id="ResidentAppearanceDefinition_ticket_clerk_min"]
+script = ExtResource("2_appearance")
+body_type = "female"
+body_type_index_override = 1
+skin = "light"
+head_path = "head/heads/human/heads_human_female"
+hair_path = "hair/short/hair_parted"
+hair_color = "ash"
+shirt_path = "torso/shirts/longsleeve/torso_clothes_longsleeve2_cardigan"
+shirt_color = "bluegray"
+pants_path = "legs/pants/legs_formal"
+pants_color = "navy"
+shoes_path = "feet/shoes/feet_shoes_revised"
+shoes_color = "black"
+
+[sub_resource type="Resource" id="ResidentDialogueBeatDefinition_ticket_clerk_min_a"]
+script = ExtResource("4_beat")
+line = "The timetable looks correct, but the platform still feels early somehow."
+journal_step = "Heard a local note from Ticket Clerk Min near Piano Ferry."
+save_status = "Spoke with Ticket Clerk Min"
+
+[sub_resource type="Resource" id="ResidentDialogueBeatDefinition_ticket_clerk_min_b"]
+script = ExtResource("4_beat")
+line = "I trust clocks less than footsteps when the island goes quiet like this."
+journal_step = "Heard a local note from Ticket Clerk Min near Piano Ferry."
+save_status = "Spoke with Ticket Clerk Min"
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_ticket_clerk_min"]
+script = ExtResource("6_conditions")
+extra_conditions = {"story_flag_all": ["future_commitment_choice"]}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_ticket_clerk_min"]
+script = ExtResource("5_conditional")
+line = "I can hear when someone is speaking about departure as a timetable and when they are speaking about it as a truth. Whatever you named with Pei, it sounds like something the harbor should witness before anyone tries to close the book on it."
+objective = "Return to Lian if this future feels steady enough to let the harbor answer it."
+journal_step = "Min witnessed the future you named and treated it like something the harbor could now answer back."
+save_status = "Ticket Clerk Min heard the future-choice turning point and sent it back into the harbor to be answered."
+extra_fields = {"story_event": "future_commitment_witnessed"}
+conditions = SubResource("ResidentBeatConditionsDefinition_ticket_clerk_min")
+priority = 30
+once = true
+
+[sub_resource type="Resource" id="ResidentSpawnDefinition_ticket_clerk_min"]
+script = ExtResource("8_spawn")
+anchor_id = "Piano Ferry"
+offset = Vector2(120, 360)
+direction = -10.0
+mood = 1
+interaction_radius = 72.0
+
+[sub_resource type="Resource" id="ResidentRoutineDefinition_ticket_clerk_min"]
+script = ExtResource("7_routine")
+spawn = SubResource("ResidentSpawnDefinition_ticket_clerk_min")
+
+[sub_resource type="Resource" id="ResidentDialogueDefinition_ticket_clerk_min"]
+script = ExtResource("3_dialogue")
+ambient_lines = PackedStringArray("The timetable looks correct, but the platform still feels early somehow.", "I trust clocks less than footsteps when the island goes quiet like this.")
+dialogue_beats = [SubResource("ResidentDialogueBeatDefinition_ticket_clerk_min_a"), SubResource("ResidentDialogueBeatDefinition_ticket_clerk_min_b")]
+conditional_beats = [SubResource("ResidentConditionalBeatDefinition_ticket_clerk_min")]
+
+[resource]
+script = ExtResource("1_definition")
+id = "ticket_clerk_min"
+include_in_catalog = true
+display_name = "Ticket Clerk Min"
+landmark = "Piano Ferry"
+role = "Balances the outbound ledger and keeps track of ferry timings."
+routine_note = "Usually near the timetable board or ticket desk."
+melody_hint = "She hears the lost melody as a schedule that never quite departs on time."
+appearance = SubResource("ResidentAppearanceDefinition_ticket_clerk_min")
+dialogue = SubResource("ResidentDialogueDefinition_ticket_clerk_min")
+routine = SubResource("ResidentRoutineDefinition_ticket_clerk_min")

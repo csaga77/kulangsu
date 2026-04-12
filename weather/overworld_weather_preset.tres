@@ -1,0 +1,46 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://weather/overworld_weather_preset.gd" id="1_preset"]
+
+[resource]
+script = ExtResource("1_preset")
+rain_properties = {
+"density": 0.0012,
+"wind_angle_degrees": 72.0,
+"wind_strength": 460.0
+}
+fog_properties = {
+"density": 0.42,
+"drift_speed": 0.11,
+"edge_brightness": 0.24,
+"fog_color": Color(0.831373, 0.894118, 0.941176, 0.62),
+"haze_strength": 0.48,
+"height_ratio": 0.58,
+"noise_scale": Vector2(4, 1.9),
+"softness": 0.34,
+"wind_angle_degrees": 72.0,
+"wind_strength": 460.0,
+"wisp_strength": 0.72
+}
+cloud_properties = {
+"coverage": 0.43,
+"drift_speed": 0.055,
+"shadow_strength": 1.84,
+"softness": 0.24,
+"wind_angle_degrees": 72.0,
+"wind_strength": 460.0
+}
+impact_properties = {
+"bottom_margin": 28.0,
+"density_spawn_multiplier": 22000.0,
+"impact_color": Color(0.956863, 0.980392, 1.0, 0.34),
+"lifetime_max": 0.34,
+"lifetime_min": 0.22,
+"max_impacts": 48,
+"ripple_color": Color(0.713726, 0.890196, 1.0, 0.18),
+"scale_max": 5.4,
+"scale_min": 3.2,
+"side_margin": 88.0,
+"spawn_top_ratio": 0.3,
+"streak_duration": 0.08
+}

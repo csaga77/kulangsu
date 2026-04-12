@@ -39,7 +39,7 @@ Current contract:
 
 - `AppState` is the shared UI/progression-facing bridge between gameplay and UI
 - the running app owns exactly one `AppStateService` node; callers resolve it through `AppRuntime.get_app_state(node)` instead of a Project Settings autoload
-- `AppState` keeps the stable public API, but active player-profile, journal-text, story-save, and landmark/melody progression logic now live in composed helper scripts under `game/`
+- `AppState` keeps the stable public API, but active player-profile, journal-text, story-save, landmark/melody progression, resident interaction, and runtime audio/settings logic now live in composed helper scripts under `game/`
 - `chapter` is now a compatibility/display label; authoritative story progression lives in `season_phase`, route state, and `story_flags`
 - resident definitions and default resident runtime profiles are initialized lazily through `AppState` getters/configuration instead of being fully built at script-load time
 - it exposes signals for mode, chapter, season phase, location, objective, hint, save status, fragments, melody progress, melody prompt requests, landmark audio cue requests, landmarks, residents, resident profiles, player appearance/costumes, route progress, active leads, endgame state, summary updates, and story milestones
@@ -50,7 +50,8 @@ Current contract:
 - prompt completions now flow back through `complete_prompt_request(request)`, which dispatches landmark-specific confirmations such as the Trinity choir chime, the Bi Shan chamber contour, the Long Shan exit route, as well as melody practice/performance
 - `save_metadata_changed(metadata)` is the shell-facing signal for title `Continue` state and latest story autosave summary
 - composed helper scripts emit `AppState`-owned signals back through bridge methods on `AppState` itself so the public signal contract stays centralized and GDScript static analysis can still verify those signals are live
-- `AppState` now owns the one-slot story autosave contract, current safe resume anchor, and the `configure_continue()`, `save_story_autosave()`, `clear_story_autosave()`, and `set_story_resume_checkpoint(...)` bridge methods used by the shell and world scene; `game/story_save_service.gd` owns the active read/write implementation
+- `AppState` now owns the one-slot story autosave contract, current safe resume anchor, and the `configure_new_game()`, `configure_continue()`, `configure_free_walk()`, `save_story_autosave()`, `clear_story_autosave()`, and `set_story_resume_checkpoint(...)` bridge methods used by the shell and world scene; `game/story_save_service.gd` owns the active read/write implementation
+- `AppState` also keeps the landmark bridge methods (`activate_landmark_trigger(...)`, prompt-request/completion facades) and resident/audio facades even when helper scripts own the implementation, so runtime callers and tests continue to target the same shared-state contract
 - `game/story_route_graph.gd` owns canonical route definitions, event definitions, lead selection, endgame-trigger evaluation, ending-behavior classification, and baseline ending-tone tag generation
 - the app shell and world hint logic may query `AppState.is_journal_unlocked()` and `AppState.build_input_hint(...)` to keep the early tutorial flow and controls text aligned
 - world and UI code rely on resident getters for resident ids, definitions, display names, appearance configs, spawn configs, movement configs, behavior configs, ambient speech, resident journal text, and full resident profiles when optional movement metadata is needed
@@ -81,6 +82,7 @@ Current contract:
 - `WeatherManager` owns the overworld weather preset list, random hold/transition timing, interpolation, runtime weather-rig instancing, and the live application of synced wind settings to registered rain, fog, and cloud-shadow nodes
 - the running app owns exactly one `WeatherManager` node; callers resolve it through `WeatherRuntime.get_weather_manager(node)` instead of a Project Settings autoload
 - gameplay scenes register weather hosts with `WeatherManager.register_weather_host(...)`, providing attachment parents, a ground-impact spawn layer, and any scene-specific default properties instead of instantiating weather nodes themselves
+- the shared default overworld rain/fog/cloud/impact properties now live in [`../weather/overworld_weather_preset.tres`](../weather/overworld_weather_preset.tres), and both [`../scenes/game_main.gd`](../scenes/game_main.gd) and [`../weather/tests/test_weather.gd`](../weather/tests/test_weather.gd) must consume that same resource instead of carrying duplicate inline constant dictionaries
 - gameplay scenes may update sync flags and shared wind through `WeatherManager.set_target_sync(...)` and `WeatherManager.set_registered_wind(...)` instead of duplicating per-pass wind propagation logic
 - gameplay scenes may use `WeatherManager.set_registered_visibility(...)` for aggregate show/hide, but tunnel suppression and other visibility-policy decisions still stay in `game_main.gd`
 - the focused weather sandbox may reuse the same manager for wind-sync behavior while keeping random cycling disabled

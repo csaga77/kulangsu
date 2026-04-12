@@ -5,6 +5,7 @@ const TERRAIN_TILESET := preload("res://resources/tilesets/terrain_0_tiles.tres"
 const WATER_MATERIAL := preload("res://resources/materials/water.tres")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const WEATHER_RUNTIME := preload("res://weather/weather_runtime.gd")
+const OVERWORLD_WEATHER_PRESET = preload("res://weather/overworld_weather_preset.tres")
 
 const PIER_POLYGON := [
 	Vector2(-110.0, 566.0),
@@ -62,46 +63,6 @@ const THUNDER_FIRST_DELAY_MIN := 1.2
 const THUNDER_FIRST_DELAY_MAX := 2.8
 const THUNDER_MIN_DELAY := 3.0
 const THUNDER_MAX_DELAY := 6.5
-const TEST_RAIN_PROPERTIES := {
-	"density": 0.0012,
-	"wind_angle_degrees": 72.0,
-	"wind_strength": 460.0,
-}
-const TEST_FOG_PROPERTIES := {
-	"density": 0.42,
-	"height_ratio": 0.58,
-	"softness": 0.34,
-	"haze_strength": 0.48,
-	"wisp_strength": 0.72,
-	"edge_brightness": 0.24,
-	"drift_speed": 0.11,
-	"wind_angle_degrees": 72.0,
-	"wind_strength": 460.0,
-	"fog_color": Color(0.831373, 0.894118, 0.941176, 0.62),
-	"noise_scale": Vector2(4.0, 1.9),
-}
-const TEST_CLOUD_PROPERTIES := {
-	"shadow_strength": 1.84,
-	"coverage": 0.43,
-	"softness": 0.24,
-	"drift_speed": 0.055,
-	"wind_angle_degrees": 72.0,
-	"wind_strength": 460.0,
-}
-const TEST_IMPACT_PROPERTIES := {
-	"max_impacts": 48,
-	"density_spawn_multiplier": 22000.0,
-	"spawn_top_ratio": 0.3,
-	"side_margin": 88.0,
-	"bottom_margin": 28.0,
-	"streak_duration": 0.08,
-	"lifetime_min": 0.22,
-	"lifetime_max": 0.34,
-	"scale_min": 3.2,
-	"scale_max": 5.4,
-	"impact_color": Color(0.956863, 0.980392, 1.0, 0.34),
-	"ripple_color": Color(0.713726, 0.890196, 1.0, 0.18),
-}
 
 @export var rebuild_environment: bool = false:
 	set(value):
@@ -224,13 +185,13 @@ func _build_weather_host_config() -> Dictionary:
 		"overlay_layer": 10,
 		"cloud_parent": self,
 		"cloud_z_index": 1,
-		"cloud_properties": TEST_CLOUD_PROPERTIES,
+		"cloud_properties": OVERWORLD_WEATHER_PRESET.get_cloud_properties(),
 		"impacts_parent": self,
 		"impacts_z_index": 2,
-		"impact_properties": TEST_IMPACT_PROPERTIES,
+		"impact_properties": OVERWORLD_WEATHER_PRESET.get_impact_properties(),
 		"spawn_layer": m_ground,
-		"rain_properties": TEST_RAIN_PROPERTIES,
-		"fog_properties": TEST_FOG_PROPERTIES,
+		"rain_properties": OVERWORLD_WEATHER_PRESET.get_rain_properties(),
+		"fog_properties": OVERWORLD_WEATHER_PRESET.get_fog_properties(),
 		"sync_rain_with_wind": m_rain_sync_with_wind,
 		"sync_fog_with_wind": m_fog_sync_with_wind,
 		"sync_cloud_with_wind": m_cloud_sync_with_wind,
@@ -488,8 +449,76 @@ func _setup_weather_controls() -> void:
 	_apply_thunder_strength(m_thunder_strength)
 	_apply_thunder_enabled(m_thunder_enabled)
 	_sync_weather_controls_from_scene()
+	_verify_overworld_weather_preset()
 	_apply_wind_sync_settings()
 	_set_weather_controls_visible(m_weather_controls_visible)
+
+
+func _verify_overworld_weather_preset() -> void:
+	if !is_instance_valid(m_rain_overlay) \
+	or !is_instance_valid(m_fog_overlay) \
+	or !is_instance_valid(m_cloud_shadows) \
+	or !is_instance_valid(m_ground_impacts):
+		return
+
+	var rain_properties := OVERWORLD_WEATHER_PRESET.get_rain_properties()
+	_assert_weather_value(
+		m_rain_overlay.density,
+		float(rain_properties.get("density", m_rain_overlay.density)),
+		"Rain density matches the shared overworld preset."
+	)
+	_assert_weather_value(
+		m_rain_overlay.wind_angle_degrees,
+		float(rain_properties.get("wind_angle_degrees", m_rain_overlay.wind_angle_degrees)),
+		"Rain wind angle matches the shared overworld preset."
+	)
+	_assert_weather_value(
+		m_rain_overlay.wind_strength,
+		float(rain_properties.get("wind_strength", m_rain_overlay.wind_strength)),
+		"Rain wind strength matches the shared overworld preset."
+	)
+
+	var fog_properties := OVERWORLD_WEATHER_PRESET.get_fog_properties()
+	_assert_weather_value(
+		m_fog_overlay.density,
+		float(fog_properties.get("density", m_fog_overlay.density)),
+		"Fog density matches the shared overworld preset."
+	)
+	_assert_weather_value(
+		m_fog_overlay.height_ratio,
+		float(fog_properties.get("height_ratio", m_fog_overlay.height_ratio)),
+		"Fog height ratio matches the shared overworld preset."
+	)
+	_assert_weather_value(
+		m_fog_overlay.drift_speed,
+		float(fog_properties.get("drift_speed", m_fog_overlay.drift_speed)),
+		"Fog drift speed matches the shared overworld preset."
+	)
+
+	var cloud_properties := OVERWORLD_WEATHER_PRESET.get_cloud_properties()
+	_assert_weather_value(
+		float(m_cloud_shadows.get("shadow_strength")),
+		float(cloud_properties.get("shadow_strength", m_cloud_shadows.get("shadow_strength"))),
+		"Cloud shadow strength matches the shared overworld preset."
+	)
+	_assert_weather_value(
+		float(m_cloud_shadows.get("coverage")),
+		float(cloud_properties.get("coverage", m_cloud_shadows.get("coverage"))),
+		"Cloud coverage matches the shared overworld preset."
+	)
+
+	var impact_properties := OVERWORLD_WEATHER_PRESET.get_impact_properties()
+	_assert_weather_value(
+		m_ground_impacts.density_spawn_multiplier,
+		float(impact_properties.get("density_spawn_multiplier", m_ground_impacts.density_spawn_multiplier)),
+		"Ground impact density matches the shared overworld preset."
+	)
+
+
+func _assert_weather_value(actual: float, expected: float, label: String) -> void:
+	if is_equal_approx(actual, expected):
+		return
+	push_error("%s Expected %.4f, got %.4f." % [label, expected, actual])
 
 
 func _disable_focus_for_control(control: Control) -> void:

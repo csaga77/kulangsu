@@ -25,8 +25,8 @@ func clear_story_autosave() -> void:
 
 
 func refresh_story_autosave_metadata() -> void:
-	var next_metadata := _default_story_save_metadata()
-	var payload := _read_story_autosave_payload()
+	var next_metadata: Dictionary = m_owner._default_story_save_metadata()
+	var payload: Dictionary = _read_story_autosave_payload()
 	if !payload.is_empty():
 		next_metadata = _build_story_save_metadata_from_payload(payload)
 
@@ -35,7 +35,7 @@ func refresh_story_autosave_metadata() -> void:
 
 
 func save_story_autosave(status_text: String = "") -> bool:
-	if !_is_story_persistable_mode():
+	if !m_owner._is_story_persistable_mode():
 		return false
 
 	var file := FileAccess.open(m_story_autosave_path, FileAccess.WRITE)
@@ -62,11 +62,72 @@ func load_story_autosave() -> bool:
 	return _apply_story_autosave_payload(payload)
 
 
-func _is_story_persistable_mode(mode_id: String = "") -> bool:
-	var normalized_mode := mode_id
-	if normalized_mode.is_empty():
-		normalized_mode = m_owner.mode
-	return normalized_mode == "Story"
+func configure_new_game() -> void:
+	var story_state: Dictionary = m_owner.m_story_route_graph.build_story_state("new_game") \
+		if m_owner.m_story_route_graph != null else {}
+	m_owner.set_mode("Story")
+	m_owner._apply_story_route_state_bundle(story_state)
+	m_owner.set_location("Piano Ferry")
+	m_owner.set_objective("Find out why the island feels quiet today.")
+	m_owner.set_journal_unlocked(false)
+	m_owner.set_hint(m_owner.build_input_hint("R Inspect"))
+	m_owner.set_save_status("Autosave: story start saved")
+	m_owner.set_landmarks(m_owner._default_landmarks())
+	m_owner.set_open_shortcuts(PackedStringArray())
+	m_owner.set_resident_profiles(m_owner._default_resident_profiles())
+	m_owner.set_melody_progress(m_owner._build_story_melody_progress("new_game"))
+	m_owner.set_all_landmark_progress(m_owner._build_landmark_progress("new_game"))
+	m_owner.refresh_story_routes()
+	m_owner._sync_story_route_dependent_landmarks()
+	m_owner.story_resume_anchor_id = "Piano Ferry"
+	m_owner.story_resume_location = "Piano Ferry"
+	m_owner.set_summary({
+		"fragments": "0 / 4",
+		"residents": "0",
+		"collectibles": "Not tracked in this build",
+		"playtime": "a brief evening on Kulangsu",
+	})
+	save_story_autosave()
+
+
+func configure_continue() -> bool:
+	if !load_story_autosave():
+		m_owner.set_save_status("Continue is unavailable until a story autosave exists.")
+		return false
+
+	m_owner.set_hint(m_owner.build_input_hint("R Inspect"))
+	var resume_label: String = m_owner.story_resume_location
+	if resume_label.is_empty():
+		resume_label = m_owner.location
+	m_owner.set_save_status("Autosave: resumed at %s" % resume_label)
+	return true
+
+
+func configure_free_walk() -> void:
+	var story_state: Dictionary = m_owner.m_story_route_graph.build_story_state("free_walk") \
+		if m_owner.m_story_route_graph != null else {}
+	m_owner.set_mode("Free Walk")
+	m_owner._apply_story_route_state_bundle(story_state)
+	m_owner.set_chapter("Free Walk")
+	m_owner.set_location("Piano Ferry")
+	m_owner.set_objective("Wander the island and learn how the first district wants to be introduced.")
+	m_owner.set_journal_unlocked(true)
+	m_owner.set_hint(m_owner.build_input_hint("R Inspect"))
+	m_owner.set_save_status("Free Walk: sandbox ready")
+	m_owner.set_landmarks(m_owner._default_landmarks())
+	m_owner.set_open_shortcuts(PackedStringArray())
+	m_owner.set_resident_profiles(m_owner._default_resident_profiles())
+	m_owner.set_melody_progress(m_owner._build_story_melody_progress("free_walk"))
+	m_owner.set_all_landmark_progress(m_owner._build_landmark_progress("free_walk"))
+	for resident_id in m_owner.RESIDENT_CATALOG_SCRIPT.resident_order():
+		m_owner._seed_resident_progress(
+			resident_id,
+			1,
+			1,
+			"introduced",
+			"Sandbox resident notes are available in free walk."
+		)
+	m_owner._update_summary_counts()
 
 
 func _build_story_autosave_payload() -> Dictionary:
@@ -121,7 +182,7 @@ func _normalize_story_autosave_payload(payload: Dictionary) -> Dictionary:
 	var normalized_mode := String(payload.get("mode", "Story"))
 	if normalized_mode == "Postgame":
 		normalized_mode = "Story"
-	elif !_is_story_persistable_mode(normalized_mode):
+	elif !m_owner._is_story_persistable_mode(normalized_mode):
 		normalized_mode = "Story"
 
 	var normalized_phase := String(payload.get("season_phase", "summer_1"))
@@ -240,6 +301,7 @@ func _apply_story_autosave_payload(payload: Dictionary) -> bool:
 	m_owner.set_summary(_normalize_saved_summary(payload.get("ending_summary", {})))
 	m_owner.set_player_profile(payload.get("player_profile", m_owner.PLAYER_APPEARANCE_CATALOG_SCRIPT.default_profile()))
 	m_owner.refresh_story_routes()
+	m_owner._sync_story_route_dependent_landmarks()
 
 	var saved_costume_id := String(
 		payload.get("equipped_player_costume_id", m_owner.PLAYER_COSTUME_CATALOG_SCRIPT.default_costume_id())
@@ -250,16 +312,3 @@ func _apply_story_autosave_payload(payload: Dictionary) -> bool:
 	m_owner._update_summary_counts()
 	refresh_story_autosave_metadata()
 	return true
-
-
-func _default_story_save_metadata() -> Dictionary:
-	return {
-		"exists": false,
-		"mode": "",
-		"chapter": "",
-		"location": "",
-		"fragments_text": "0 / 4",
-		"resume_anchor_id": "",
-		"resume_location": "",
-		"saved_at_unix": 0,
-	}

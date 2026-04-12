@@ -84,6 +84,8 @@ Primary files:
 - [`../game/melody_catalog.gd`](../game/melody_catalog.gd)
 - [`../game/resident_catalog.gd`](../game/resident_catalog.gd)
 - [`../game/story_route_graph.gd`](../game/story_route_graph.gd)
+- [`../game/audio_settings_service.gd`](../game/audio_settings_service.gd)
+- [`../game/resident_interaction_service.gd`](../game/resident_interaction_service.gd)
 - [`../game/resident_system/`](../game/resident_system)
 - [`../game/residents/`](../game/residents)
 - [`../game/player_appearance_catalog.gd`](../game/player_appearance_catalog.gd)
@@ -96,11 +98,11 @@ Responsibilities:
 - shared melody definitions and melody-progress state used by the journal and future performance systems
 - catalog-first seasonal route definitions, event definitions, lead selection, and endgame-trigger logic in `story_route_graph.gd`
 - resident and player-facing catalog data
-- `AppState` now composes focused helper scripts for journal text (`journal_builder.gd`), player profile/costume ownership (`player_profile_service.gd`), story autosave (`story_save_service.gd`), and landmark/melody progression (`landmark_progression.gd`)
+- `AppState` now composes focused helper scripts for journal text (`journal_builder.gd`), player profile/costume ownership (`player_profile_service.gd`), story autosave (`story_save_service.gd`), landmark/melody progression (`landmark_progression.gd`), resident dialogue/application (`resident_interaction_service.gd`), and runtime audio/settings state (`audio_settings_service.gd`)
 - the app shell now opens the ending overlay from the shared `endgame_started` story milestone instead of relying on the older landmark-only ending assumption
 - lazy resident definition/profile initialization so startup does not eagerly build the full resident runtime just to load the shared state service
 - resident definition resources for appearance, dialogue, routine, and behavior metadata
-- editor-authored resident definition files and templates
+- editor-authored resident definition files and templates, including override resources that can replace built-in residents by id
 - resident runtime profiles plus resident appearance, spawn, movement, behavior, and journal-facing lookup helpers
 - state that multiple screens or systems need to read consistently
 
@@ -115,11 +117,14 @@ Primary file:
 - [`../game/app_runtime.gd`](../game/app_runtime.gd)
 - [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd)
 - [`../weather/weather_manager.gd`](../weather/weather_manager.gd)
+- [`../weather/overworld_weather_preset.gd`](../weather/overworld_weather_preset.gd)
+- [`../weather/overworld_weather_preset.tres`](../weather/overworld_weather_preset.tres)
 
 Responsibilities:
 
 - resolves the one scene-owned `AppStateService` instance for runtime callers without using a Project Settings autoload
 - resolves the one scene-owned `WeatherManager` instance for runtime callers without using a Project Settings autoload
+- keeps the default overworld weather tuning in a shared resource consumed by both the real overworld and the focused weather sandbox
 - keeps overworld weather-cycle selection, interpolation, and shared wind-sync application out of `game_main.tscn`
 - resolves the live `HumanBody2D` player from the existing `"player"` group for scene-graph helpers such as visibility masking
 
