@@ -10,6 +10,15 @@ func _init(owner: Node) -> void:
 	m_owner = owner
 
 
+static func route_display_order() -> Array[String]:
+	return [
+		"family_memory",
+		"study_future",
+		"preservation_inheritance",
+		"melody_landmarks",
+	]
+
+
 static func build_route_definitions() -> Dictionary:
 	return {
 		"family_memory": {
@@ -467,6 +476,11 @@ func resolve_story_event(event_id: String) -> bool:
 		m_owner.set_save_status(status_text)
 
 	refresh_story_state()
+	m_owner._emit_story_milestone("story_event_resolved", {
+		"event_id": event_id,
+		"route_id": String(event_definition.get("route_id", "")),
+		"season_phase": String(m_owner.season_phase),
+	})
 
 	var endgame_trigger := String(event_definition.get("endgame_trigger", ""))
 	if !endgame_trigger.is_empty():
@@ -506,7 +520,7 @@ func clear_manual_pinned_lead() -> void:
 
 func build_route_completion_summary() -> String:
 	var parts: Array[String] = []
-	for route_id in build_route_definitions().keys():
+	for route_id in route_display_order():
 		var route_definition: Dictionary = get_route_definition(route_id)
 		var progress: Dictionary = m_owner.route_progress.get(route_id, {})
 		parts.append("%s %d" % [
@@ -514,6 +528,33 @@ func build_route_completion_summary() -> String:
 			int(progress.get("completion_score", 0)),
 		])
 	return ", ".join(PackedStringArray(parts))
+
+
+func build_route_emphasis_text() -> String:
+	var ranked_routes := _build_route_mix_entries()
+	if ranked_routes.is_empty():
+		return "No route has taken the lead yet."
+
+	var primary: Dictionary = ranked_routes[0]
+	var primary_label := String(primary.get("display_name", "The year"))
+	var primary_score := int(primary.get("score", 0))
+	if primary_score <= 0:
+		return "No route has taken the lead yet."
+
+	if ranked_routes.size() == 1:
+		return "%s carried most of the year." % primary_label
+
+	var secondary: Dictionary = ranked_routes[1]
+	var secondary_label := String(secondary.get("display_name", "the rest of the island"))
+	var secondary_score := int(secondary.get("score", 0))
+	if secondary_score <= 0:
+		return "%s carried most of the year." % primary_label
+	if primary_score == secondary_score:
+		return "%s and %s kept the year in balance." % [primary_label, secondary_label]
+	return "%s carried most of the year, with %s answering close behind." % [
+		primary_label,
+		secondary_label,
+	]
 
 
 func build_ending_tone_tags(ending_choice: String = "") -> PackedStringArray:
@@ -673,10 +714,14 @@ func _build_tone_tags(event_definition: Dictionary, ending_choice: String = "") 
 
 	if family_score >= 3 and tags.find("grace") < 0:
 		tags.append("grace")
+	if family_score >= 4 and tags.find("care") < 0:
+		tags.append("care")
 	if study_score >= 2 and tags.find("future") < 0:
 		tags.append("future")
 	if preservation_score >= 2 and tags.find("inheritance") < 0:
 		tags.append("inheritance")
+	if preservation_score >= 2 and helped_residents >= 4 and tags.find("stewardship") < 0:
+		tags.append("stewardship")
 	if melody_score >= 4 and tags.find("belonging") < 0:
 		tags.append("belonging")
 	if helped_residents >= 6 and tags.find("community") < 0:
@@ -775,12 +820,45 @@ func _route_state_label(
 	return "idle"
 
 
+func _build_route_mix_entries() -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
+	var route_definitions := build_route_definitions()
+	for route_id in route_display_order():
+		var route_definition: Dictionary = route_definitions.get(route_id, {})
+		var progress: Dictionary = m_owner.route_progress.get(route_id, {})
+		var score := int(progress.get("completion_score", 0))
+		if score <= 0:
+			continue
+		entries.append({
+			"route_id": route_id,
+			"display_name": String(route_definition.get("display_name", route_id)),
+			"pin_priority": int(route_definition.get("pin_priority", 0)),
+			"score": score,
+		})
+
+	entries.sort_custom(_sort_route_mix_entries)
+	return entries
+
+
 static func _sort_lead_candidates(a: Dictionary, b: Dictionary) -> bool:
 	var priority_a := int(a.get("priority", 0))
 	var priority_b := int(b.get("priority", 0))
 	if priority_a != priority_b:
 		return priority_a > priority_b
 	return String(a.get("event_id", "")) < String(b.get("event_id", ""))
+
+
+static func _sort_route_mix_entries(a: Dictionary, b: Dictionary) -> bool:
+	var score_a := int(a.get("score", 0))
+	var score_b := int(b.get("score", 0))
+	if score_a != score_b:
+		return score_a > score_b
+
+	var priority_a := int(a.get("pin_priority", 0))
+	var priority_b := int(b.get("pin_priority", 0))
+	if priority_a != priority_b:
+		return priority_a > priority_b
+	return String(a.get("route_id", "")) < String(b.get("route_id", ""))
 
 
 static func _normalize_string_array(value: Variant) -> Array[String]:

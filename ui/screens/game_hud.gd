@@ -5,6 +5,7 @@ const APP_RUNTIME := preload("res://game/app_runtime.gd")
 @onready var m_objective_card: PanelContainer = $ObjectiveCard
 @onready var m_status_card: PanelContainer = $StatusCard
 @onready var m_hint_card: PanelContainer = $HintCard
+@onready var m_header_label: Label = $ObjectiveCard/Margin/Body/Header
 @onready var m_objective_label: Label = $ObjectiveCard/Margin/Body/Objective
 @onready var m_task_label: Label = $ObjectiveCard/Margin/Body/Task
 @onready var m_mode_label: Label = $StatusCard/Margin/Body/Mode
@@ -54,10 +55,29 @@ func _refresh_all() -> void:
 
 
 func _refresh_objective(value: String) -> void:
-	m_objective_label.text = _app_state().get_active_lead_text()
-	if m_objective_label.text.is_empty():
-		m_objective_label.text = value
-	m_task_label.text = "Current task: %s" % value
+	var app_state = _app_state()
+	var active_lead_id: String = app_state.get_active_lead_id()
+	var lead_text: String = app_state.get_active_lead_text()
+	if lead_text.is_empty():
+		lead_text = value
+		m_header_label.text = "Current Lead"
+	elif app_state.is_story_lead_manually_pinned():
+		m_header_label.text = "Pinned Lead (Manual)"
+	else:
+		m_header_label.text = "Pinned Lead (Auto)"
+
+	m_objective_label.text = lead_text
+
+	var extra_leads := maxi(app_state.get_available_lead_ids().size() - (0 if active_lead_id.is_empty() else 1), 0)
+	var task_lines := PackedStringArray(["Current task: %s" % value])
+	if extra_leads > 0:
+		task_lines.append("%d other live lead%s waiting in the journal." % [
+			extra_leads,
+			"s" if extra_leads != 1 else "",
+		])
+	elif !active_lead_id.is_empty():
+		task_lines.append("No other live leads right now.")
+	m_task_label.text = "\n".join(task_lines)
 
 
 func _refresh_mode(value: String) -> void:

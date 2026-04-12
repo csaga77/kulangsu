@@ -80,7 +80,7 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 - `NPCController` only receives resolved world-space route points; it does not resolve scene anchors or tunnel path cells on the fly.
 - Routed NPCs use `HumanBody2D.move_with_speed()` for ordinary route motion so walls still block them, and only fall back to direct positional bypass on route points explicitly flagged with `allow_collision_bypass`.
 - The journal never reads the catalog directly; it asks `AppState.build_resident_journal_text()`.
-- Focused override/regression coverage now lives in [`../../game/tests/npc_system/test_resident_catalog_external_defs.tscn`](../../game/tests/npc_system/test_resident_catalog_external_defs.tscn) and [`../../game/tests/npc_system/test_resident_interaction.tscn`](../../game/tests/npc_system/test_resident_interaction.tscn).
+- Focused override/regression coverage now lives in [`../../game/tests/npc_system/test_resident_catalog_external_defs.tscn`](../../game/tests/npc_system/test_resident_catalog_external_defs.tscn), [`../../game/tests/npc_system/test_resident_interaction.tscn`](../../game/tests/npc_system/test_resident_interaction.tscn), [`../../game/tests/story_routes/test_story_reactivity.tscn`](../../game/tests/story_routes/test_story_reactivity.tscn), and [`../../game/tests/persistence/test_story_state_persistence.tscn`](../../game/tests/persistence/test_story_state_persistence.tscn).
 
 ## Current Routed Residents
 

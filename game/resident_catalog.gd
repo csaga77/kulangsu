@@ -268,6 +268,14 @@ static func _story_residents() -> Dictionary:
 					"journal_step": "Lian urged you toward the tower now that most phrases are in hand.",
 				},
 				{
+					"conditions": {"story_flag_all": ["winter_memory_reveal"]},
+					"priority": 32,
+					"once": true,
+					"line": "A Po has been keeping the house warm enough for your parents to return into something gentler than silence. That kind of care holds longer than people admit. It is part of why this winter hurts the way it does.",
+					"journal_step": "Lian tied the winter memory to A Po's care and the parents who keep leaving and returning around it.",
+					"save_status": "Lian named care, absence, and winter as the same family story.",
+				},
+				{
 					"conditions": {"story_flag_all": ["spring_festival_prepared"]},
 					"priority": 35,
 					"once": true,
@@ -606,6 +614,15 @@ static func _ambient_residents() -> Dictionary:
 				"brown"
 			),
 			"spawn": _spawn("Piano Ferry", Vector2(-120.0, 240.0), -95.0, MOOD_NORMAL),
+			"conditional_beats": [
+				{
+					"conditions": {"story_flag_all": ["summer_exam_complete"]},
+					"priority": 20,
+					"once": true,
+					"line": "Second summer changes the cargo lane too. Everyone lifts the same trunks, but nobody is pretending the year still has one answer packed inside it anymore.",
+					"journal_step": "Jun heard second summer arrive as a quieter harbor rhythm instead of one more deadline.",
+				},
+			],
 		},
 		{
 			"id": "postcard_seller_an",
@@ -642,6 +659,13 @@ static func _ambient_residents() -> Dictionary:
 					"journal_step": "An made the island's older buildings feel like the part people are quietly afraid to lose.",
 					"story_event": "preservation_inheritance_seen",
 					"save_status": "Postcard Seller An reframed preservation as something visitors and locals are already trying to hold onto.",
+				},
+				{
+					"conditions": {"story_flag_all": ["preservation_tower_perspective"]},
+					"priority": 30,
+					"once": true,
+					"line": "Once you have seen the island from Bagua, the postcard rack feels almost embarrassed. Little rectangles trying to carry whole verandas, stair rails, and rooflines home. Still, people keep buying them because they know those details matter.",
+					"journal_step": "An treated the postcard rack like proof that people can recognize an inheritance even when they only carry part of it away.",
 				},
 			],
 		},
@@ -734,6 +758,13 @@ static func _ambient_residents() -> Dictionary:
 					"story_event": "spring_festival_prepared",
 					"save_status": "Tea Vendor Hua turned Spring Festival from an upcoming date into something the harbor is already carrying.",
 				},
+				{
+					"conditions": {"story_flag_all": ["spring_festival_resolved"]},
+					"priority": 30,
+					"once": true,
+					"line": "I still set out one extra cup before dawn. A Po notices it, I notice that she notices it, and suddenly the whole stall understands what kind of festival week this is.",
+					"journal_step": "Hua marked the festival aftermath through the extra cup everyone notices but nobody needs explained.",
+				},
 			],
 		},
 		{
@@ -810,6 +841,13 @@ static func _ambient_residents() -> Dictionary:
 					"story_event": "autumn_pressure_shared",
 					"save_status": "Choir Student Lin made the autumn pressure feel communal instead of solitary.",
 				},
+				{
+					"conditions": {"story_flag_all": ["future_commitment_choice"]},
+					"priority": 30,
+					"once": true,
+					"line": "When someone names a future honestly, the choir air changes. It does not make the next note easy. It just makes it sound like it belongs to the singer at last.",
+					"journal_step": "Lin heard honesty change the sound of the future, even before it made anything easier.",
+				},
 			],
 		},
 		{
@@ -840,6 +878,15 @@ static func _ambient_residents() -> Dictionary:
 				}
 			),
 			"spawn": _spawn("Trinity Church", Vector2(20.0, 330.0), -35.0, MOOD_NORMAL),
+			"conditional_beats": [
+				{
+					"conditions": {"story_flag_all": ["winter_memory_reveal"]},
+					"priority": 20,
+					"once": true,
+					"line": "Winter makes people hear bells differently. Brass keeps the shape of every strike, the way a family keeps the shape of what was not said soon enough.",
+					"journal_step": "Qiao treated the church bells as brass memory: sound that keeps the shape of what the family finally had to hear.",
+				},
+			],
 		},
 		{
 			"id": "florist_yumei",
@@ -1152,6 +1199,15 @@ static func _ambient_residents() -> Dictionary:
 				"black"
 			),
 			"spawn": _spawn("Bagua Tower", Vector2(80.0, 360.0), -35.0, MOOD_SMILE),
+			"conditional_beats": [
+				{
+					"conditions": {"story_flag_all": ["preservation_tower_perspective"]},
+					"priority": 20,
+					"once": true,
+					"line": "Once Nian points out the old roofs from above, the map stops being directions and starts being custody. Every line I draw now feels like a promise not to forget where the island learned to keep itself.",
+					"journal_step": "Jia turned mapping into stewardship after the tower made preservation feel island-wide.",
+				},
+			],
 		},
 		{
 			"id": "rooftop_sweeper_mo",
@@ -1230,6 +1286,15 @@ static func _ambient_residents() -> Dictionary:
 				"gray"
 			),
 			"spawn": _spawn("Bagua Tower", Vector2(120.0, 180.0), -15.0, MOOD_NORMAL),
+			"conditional_beats": [
+				{
+					"conditions": {"melody_state": {"festival_melody": "resonant"}},
+					"priority": 20,
+					"once": true,
+					"line": "After the festival, the shutters still rattle in time even when the terrace is empty. It feels like the island finally learned how to keep its own light aligned.",
+					"journal_step": "Su noticed the island keep the festival melody quietly alive in the empty tower shutters.",
+				},
+			],
 		},
 	]
 

@@ -502,6 +502,18 @@ func get_active_lead_id() -> String:
 	return active_lead_id
 
 
+func is_story_lead_manually_pinned() -> bool:
+	if _manual_pinned_lead_id.is_empty():
+		return false
+	return get_available_lead_ids().find(_manual_pinned_lead_id) >= 0
+
+
+func get_manual_story_lead_id() -> String:
+	if !is_story_lead_manually_pinned():
+		return ""
+	return _manual_pinned_lead_id
+
+
 func get_story_route_definition(route_id: String) -> Dictionary:
 	if m_story_route_graph == null:
 		return {}
@@ -521,6 +533,12 @@ func get_active_lead_text() -> String:
 	if lead_text.is_empty():
 		return objective
 	return lead_text
+
+
+func build_route_emphasis_text() -> String:
+	if m_story_route_graph == null:
+		return "No route has taken the lead yet."
+	return m_story_route_graph.build_route_emphasis_text()
 
 
 func pin_story_lead(lead_id: String) -> void:
@@ -976,6 +994,7 @@ func _update_summary_counts() -> void:
 	summary["season"] = get_season_phase_display_name()
 	if m_story_route_graph != null:
 		summary["routes"] = m_story_route_graph.build_route_completion_summary()
+	summary["route_emphasis"] = build_route_emphasis_text()
 	summary["ending_trigger"] = String(endgame_state.get("trigger_event_id", ""))
 	var ending_tone_tags := PackedStringArray(_normalize_string_array(endgame_state.get("ending_tone_tags", [])))
 	summary["ending_tones"] = ", ".join(ending_tone_tags)

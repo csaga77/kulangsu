@@ -77,6 +77,8 @@ Keep shared/common documentation guidance in `agent_tools/`. Add rules here only
 
 If a change introduces or significantly changes a feature, system behavior, module structure, or architecture, update the relevant docs in the same patch whenever practical.
 
+If work implements or materially completes a planned item from `docs/plan/implementation_plan.md`, update the implementation plan and every affected canonical doc in the same patch. Do not leave the plan marked as complete while related workflow, story, feature, module-map, or planning-index docs still describe the old state.
+
 At minimum:
 
 - Update `README.md` when the project overview, setup, or validation guidance changes.
@@ -87,4 +89,6 @@ At minimum:
 - Update `docs/release_policy.md` when release/versioning practice or submodule pinning policy changes.
 - Add or update a feature spec under `docs/features/` when a gameplay feature, UI flow, reusable module, or important system behavior changes.
 - Update `docs/design_brief.md` if the quick-start product framing changes materially.
+- Update `docs/plan/implementation_plan.md` and `docs/plan/README.md` when shipped work changes the current roadmap, completed-workstream status, or planning entry points.
+- Update related canonical docs such as `docs/core_game_workflow.md`, `docs/core_gameplay_plays.md`, `docs/story/summer_of_piano_island_story_framework.md`, and any affected validation references when a planned feature or workstream lands.
 - If work changes a submodule directly, update that submodule's own `AGENTS.md`, `README.md`, and `docs/` files when their guidance or ownership notes change.

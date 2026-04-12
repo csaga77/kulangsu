@@ -15,7 +15,7 @@ Use this folder for:
 
 - The current playable canon is the seasonal multi-route architecture.
 - The five-landmark melody route remains canonical as one major route inside that broader structure.
-- Workstream 0 (AppState decomposition and architecture cleanup) is the recommended next focus before heavy content authoring in Workstreams 1-4.
+- `implementation_plan.md` is the source of truth for what is shipped, what is still active, and what the next follow-on work should be.
 - This folder no longer keeps historical or superseded draft notes.
 
 ## Merge Rule
@@ -27,4 +27,4 @@ If a temporary planning note is created during a live design change, merge the d
 - implementation sequencing -> [`implementation_plan.md`](implementation_plan.md)
 - project framing and doc routing -> [`../design_brief.md`](../design_brief.md), [`../module_map.md`](../module_map.md), and [`../../README.md`](../../README.md)
 
-When the seasonal structure changes again, update [`../design_brief.md`](../design_brief.md), [`../core_game_workflow.md`](../core_game_workflow.md), [`../core_gameplay_plays.md`](../core_gameplay_plays.md), [`../story/summer_of_piano_island_story_framework.md`](../story/summer_of_piano_island_story_framework.md), and [`implementation_plan.md`](implementation_plan.md) together.
+When a planned workstream or roadmap item is implemented, update [`implementation_plan.md`](implementation_plan.md) and every affected canonical doc together in the same patch. At minimum, review [`../design_brief.md`](../design_brief.md), [`../core_game_workflow.md`](../core_game_workflow.md), [`../core_gameplay_plays.md`](../core_gameplay_plays.md), [`../story/summer_of_piano_island_story_framework.md`](../story/summer_of_piano_island_story_framework.md), [`../module_map.md`](../module_map.md), the relevant feature docs under [`../features/`](../features/), and this index file whenever planning status or routing changes.

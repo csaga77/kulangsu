@@ -54,6 +54,11 @@ custom_minimum_size = Vector2(180, 54)
 layout_mode = 2
 text = "Next Lead"
 
+[node name="ClearLeadPinButton" type="Button" parent="Margin/Body/Tabs/Objectives/LeadControls"]
+custom_minimum_size = Vector2(180, 54)
+layout_mode = 2
+text = "Auto Lead"
+
 [node name="Map" type="VBoxContainer" parent="Margin/Body/Tabs"]
 layout_mode = 2
 

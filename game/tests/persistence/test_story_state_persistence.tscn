@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://game/tests/persistence/test_story_state_persistence.gd" id="1_story_state_persistence"]
+
+[node name="test_story_state_persistence" type="Node2D"]
+script = ExtResource("1_story_state_persistence")

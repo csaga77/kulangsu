@@ -62,25 +62,45 @@ static func build_story_routes_journal_text(app_state: Node) -> String:
 	var active_lead_text: String = app_state.get_active_lead_text()
 	if active_lead_text.is_empty():
 		active_lead_text = app_state.objective
+	var active_lead_id: String = app_state.get_active_lead_id()
+	var live_lead_ids: PackedStringArray = app_state.get_available_lead_ids()
+	var other_live_leads := maxi(live_lead_ids.size() - (0 if active_lead_id.is_empty() else 1), 0)
+	var lead_mode_text := "Automatic routing is following the strongest live lead right now."
+	if app_state.is_story_lead_manually_pinned():
+		lead_mode_text = "Manual pin active. Use Auto Lead below to hand the HUD back to automatic routing."
+	var other_live_text := "No other live leads right now."
+	if other_live_leads > 0:
+		other_live_text = "%d other live lead%s waiting in the ledger." % [
+			other_live_leads,
+			"s" if other_live_leads != 1 else "",
+		]
 
 	sections.append(
-		"Pinned lead\n%s\n\nSeason\n%s\n\nCurrent task\n%s" % [
+		"Pinned lead\n%s\n\nLead selection\n%s\n%s\n\nSeason\n%s\n\nCurrent task\n%s\n\nRoute emphasis\n%s" % [
 			active_lead_text,
+			lead_mode_text,
+			other_live_text,
 			app_state.get_season_phase_display_name(),
 			app_state.objective,
+			app_state.build_route_emphasis_text(),
 		]
 	)
 
 	var live_leads: Array[String] = []
-	for lead_id in app_state.get_available_lead_ids():
+	for lead_id in live_lead_ids:
 		var event_definition: Dictionary = app_state.get_story_event_definition(String(lead_id))
 		if event_definition.is_empty():
 			continue
-		var lead_prefix := "[Pinned] " if String(lead_id) == app_state.get_active_lead_id() else ""
+		var route_id := String(event_definition.get("route_id", ""))
+		var route_name := String(app_state.get_story_route_definition(route_id).get("display_name", route_id))
+		var lead_prefix := ""
+		if String(lead_id) == active_lead_id:
+			lead_prefix = "[Manual HUD] " if app_state.is_story_lead_manually_pinned() else "[HUD] "
 		live_leads.append(
-			"%s%s\n%s" % [
+			"%s%s\nRoute: %s\n%s" % [
 				lead_prefix,
 				String(event_definition.get("lead_text", lead_id)),
+				route_name,
 				String(event_definition.get("journal_note", "")),
 			]
 		)
@@ -105,17 +125,23 @@ static func build_story_routes_journal_text(app_state: Node) -> String:
 		var next_text := "No open lead."
 		if !next_lead_id.is_empty():
 			next_text = String(app_state.get_story_event_definition(next_lead_id).get("lead_text", "No open lead."))
+		var resolved_count := _normalize_string_array(progress.get("resolved_beat_ids", [])).size()
+		var open_count := _normalize_string_array(progress.get("available_beat_ids", [])).size()
+		var blocked_count := _normalize_string_array(progress.get("blocked_beat_ids", [])).size()
 		route_sections.append(
-			"%s\nState: %s\nCompletion score: %d\nNext lead: %s" % [
+			"%s\nState: %s\nResolved beats: %d\nOpen beats: %d\nBlocked beats: %d\nCompletion score: %d\nNext lead: %s" % [
 				String(route_definition.get("display_name", route_id)),
 				String(progress.get("state", "idle")),
+				resolved_count,
+				open_count,
+				blocked_count,
 				int(progress.get("completion_score", 0)),
 				next_text,
 			]
 		)
 
 	sections.append("Route ledger\n%s" % "\n\n".join(PackedStringArray(route_sections)))
-	sections.append("Lead pinning\nUse the lead buttons below to cycle the pinned route lead shown on the HUD.")
+	sections.append("Lead controls\nPrevious and Next create a manual pin. Auto Lead clears it and returns the HUD to automatic routing.")
 	return "\n\n".join(PackedStringArray(sections))
 
 

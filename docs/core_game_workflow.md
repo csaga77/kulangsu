@@ -137,10 +137,14 @@ The current playable slice resolves seasonal anchors mostly through resident int
 - `Caretaker Lian` anchors the harbor return, the Spring Festival resolution, and the honest-future harbor ending
 - `Dock Musician Pei` names autumn pressure, future honesty, and second-summer release
 - `Choir Caretaker Mei` awakens and sharpens the church-linked memory line
-- `Choir Student Lin` turns autumn pressure into a shared social feeling before the future route can resolve honestly
-- `Postcard Seller An` starts the preservation route from the harbor instead of leaving it all to Bagua Tower
-- `Terrace Painter Nian` now pays that preservation route off with the island-wide tower perspective once Bagua is reachable
-- `Tea Vendor Hua` gives Spring Festival a visible harbor-preparation beat before Lian resolves it
+- `Choir Student Lin` turns autumn pressure into a shared social feeling and later hears the future route become honest instead of performative
+- `Bell Repairer Qiao` gives the winter reveal a church-side echo that ties family memory to brass, ritual, and what was left unsaid
+- `Postcard Seller An` starts the preservation route from the harbor and then reflects Bagua's wider perspective back onto the postcard rack
+- `Terrace Painter Nian` pays the preservation route off with the island-wide tower perspective once Bagua is reachable
+- `Map Student Jia` turns that tower perspective into stewardship language instead of mere wayfinding
+- `Tea Vendor Hua` gives Spring Festival both a visible harbor-preparation beat and a quieter aftermath beat once it resolves
+- `Ferry Porter Jun` hears second summer arrive as a harbor rhythm instead of one more deadline
+- `Window Caretaker Su` gives the melody route a soft post-festival follow-through once the harbor performance settles into ordinary island air
 
 This means the player can currently reach a valid ending by strongly following the family, study, and preservation routes while leaving most of the landmark melody route unfinished.
 
@@ -150,19 +154,19 @@ The current structure is in place, and each non-melody route now has at least a 
 
 Current read of the playable slice:
 
-- `family_memory` now has a clearer four-step emotional chain through harbor return, church memory, winter revelation, harbor preparation, and Spring Festival resolution
-- `study_future` now has two distinct outcomes: a second-summer exam release and an earlier honest-future harbor ending, both paced through more than one resident
-- `preservation_inheritance` now starts at the harbor and pays off at Bagua Tower instead of collapsing into a single tower conversation
-- `spring_festival_resolved` now lands as a sequence with visible preparation rather than a single gate line
-- `melody_landmarks` remains the route with the clearest physical progression and strongest environmental play, but its public climax now waits for Spring Festival instead of cutting ahead of the seasonal arc
+- `family_memory` now runs through harbor return, church memory, winter revelation, A Po and parent-care reflection, harbor preparation, and Spring Festival aftermath
+- `study_future` now stretches across Pei, Lin, Min, and Jun, with both the honest-future turn and second-summer release receiving broader district follow-through
+- `preservation_inheritance` now starts at the harbor, widens at Bagua Tower, and continues through map and postcard reactions instead of collapsing into one tower exchange
+- `spring_festival_resolved` now lands as preparation, resolution, and quieter aftermath rather than a single gate line
+- `melody_landmarks` remains the route with the clearest physical progression and strongest environmental play, and it now gets a softer resonant follow-through after the public performance
 
 Current gameplay-content priority order:
 
-1. Add more embodied family beats around A Po, the parents, and household care.
-2. Add more reactivity after the new study/preservation beats so residents and objectives acknowledge the player's route mix more often.
-3. Give Spring Festival and the honest-future ending more bespoke aftermath writing once the closing lead takes over.
+1. Add more embodied household scenes around A Po, the parents, and daily care so the family route is not carried mostly by talk beats.
+2. Push preservation and melody reactivity into more inspectables, props, and district-facing world cues instead of leaving it mostly in resident dialogue.
+3. Turn the differentiated ending copy into more playable authored closing moments once the final-act overlay language settles.
 4. Keep enriching the landmark route without letting it reclaim the role of sole progression spine.
-5. Add more household and district-specific responses once major route beats have fired.
+5. Continue migrating residents out of `resident_catalog.gd` so route growth does not stay trapped in one large script.
 
 ## HUD And Journal Structure
 
@@ -181,8 +185,9 @@ It should show:
 The journal should hold the wider multi-route view:
 
 - season
-- pinned lead
+- pinned lead with explicit manual-versus-auto routing state
 - other live leads
+- route emphasis and lead-control guidance
 - per-route state
 - resident notes
 - melody notes
@@ -214,7 +219,7 @@ When endgame starts:
 The ending frame still keeps the ferry departure contrast, but there is no separate after-ending exploration mode anymore.
 
 - `summer_exam_complete` and `future_commitment_end` are hard endings. The run can leave for credits or return to title, but it does not reopen live story play.
-- `harbor_festival_performed` is a soft ending. `Continue Exploring` clears the active ending state, restores the saved seasonal phase, and keeps the story running in-world.
+- `harbor_festival_performed` is a soft ending. The player can leave on the morning ferry or stay a little longer; `Continue Exploring` clears the active ending state, restores the saved seasonal phase, and keeps the story running in-world.
 - the harbor soft ending also lets `festival_melody` settle into its `resonant` follow-through once play resumes.
 
 `Free Walk` remains a separate non-canon exploration mode.

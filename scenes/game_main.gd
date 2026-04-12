@@ -870,6 +870,10 @@ func _on_story_milestone(milestone_id: String, context: Dictionary) -> void:
 		return
 
 	match milestone_id:
+		"story_event_resolved":
+			var event_status := _story_event_status_text(String(context.get("event_id", "")))
+			if !event_status.is_empty():
+				call_deferred("_apply_story_milestone_status", event_status)
 		"fragment_restored":
 			if String(context.get("source_id", "")) == "bi_shan_echo":
 				call_deferred("_apply_story_milestone_status", "The Bi Shan crossing feels calmer now that its mural route has answered.")
@@ -883,6 +887,26 @@ func _apply_story_milestone_status(text: String) -> void:
 	if text.is_empty():
 		return
 	_app_state().set_save_status(text)
+
+
+func _story_event_status_text(event_id: String) -> String:
+	match event_id:
+		"winter_memory_reveal":
+			return "Even the church grounds feel colder now that the memory has spoken clearly."
+		"spring_festival_prepared":
+			return "Steam, ferry ropes, and paper charms make the harbor feel like it is already bracing for festival week."
+		"future_commitment_choice":
+			return "The harbor sounds less like an exam hall and more like a future you can answer honestly."
+		"future_commitment_witnessed":
+			return "The harbor has heard the future in your own voice before the ferry ever does."
+		"summer_exam_complete":
+			return "Second summer arrives, quieter than the pressure that led here."
+		"preservation_inheritance_seen":
+			return "Harbor postcard racks and old railings start reading like the same inheritance."
+		"preservation_tower_perspective":
+			return "From Bagua Tower down, the island's older roofs stop looking decorative and start looking shared."
+		_:
+			return ""
 
 
 func _apply_player_costume() -> void:

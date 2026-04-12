@@ -10,6 +10,7 @@ signal close_requested()
 @onready var m_quest_body: RichTextLabel = $Margin/Body/Tabs/Objectives/QuestBody
 @onready var m_prev_lead_button: Button = $Margin/Body/Tabs/Objectives/LeadControls/PreviousLeadButton
 @onready var m_next_lead_button: Button = $Margin/Body/Tabs/Objectives/LeadControls/NextLeadButton
+@onready var m_clear_lead_pin_button: Button = $Margin/Body/Tabs/Objectives/LeadControls/ClearLeadPinButton
 @onready var m_map_body: RichTextLabel = $Margin/Body/Tabs/Map/MapBody
 @onready var m_residents_body: RichTextLabel = $Margin/Body/Tabs/Residents/ResidentsBody
 @onready var m_melody_body: RichTextLabel = $Margin/Body/Tabs/Melody/MelodyBody
@@ -46,6 +47,7 @@ func _ready() -> void:
 	m_next_hair_color_button.pressed.connect(_on_next_hair_color_pressed)
 	m_prev_lead_button.pressed.connect(_on_previous_lead_pressed)
 	m_next_lead_button.pressed.connect(_on_next_lead_pressed)
+	m_clear_lead_pin_button.pressed.connect(_on_clear_lead_pin_pressed)
 	m_melody_practice_button.pressed.connect(_on_melody_practice_pressed)
 	m_close_button.pressed.connect(close_requested.emit)
 	if !_app_state().player_costumes_changed.is_connected(_on_player_costumes_changed):
@@ -81,6 +83,7 @@ func refresh_from_state() -> void:
 	var lead_count: int = _app_state().get_available_lead_ids().size()
 	m_prev_lead_button.disabled = lead_count <= 1
 	m_next_lead_button.disabled = lead_count <= 1
+	m_clear_lead_pin_button.disabled = !_app_state().is_story_lead_manually_pinned()
 
 	var primary_melody_id := _primary_melody_id()
 	if primary_melody_id.is_empty():
@@ -169,6 +172,11 @@ func _on_previous_lead_pressed() -> void:
 
 func _on_next_lead_pressed() -> void:
 	_app_state().cycle_story_lead(1)
+	refresh_from_state()
+
+
+func _on_clear_lead_pin_pressed() -> void:
+	_app_state().clear_manual_story_lead()
 	refresh_from_state()
 
 
