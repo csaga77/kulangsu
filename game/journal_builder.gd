@@ -57,6 +57,68 @@ static func build_resident_journal_text(app_state: Node) -> String:
 	return "\n\n".join(PackedStringArray(sections))
 
 
+static func build_story_routes_journal_text(app_state: Node) -> String:
+	var sections: Array[String] = []
+	var active_lead_text: String = app_state.get_active_lead_text()
+	if active_lead_text.is_empty():
+		active_lead_text = app_state.objective
+
+	sections.append(
+		"Pinned lead\n%s\n\nSeason\n%s\n\nCurrent task\n%s" % [
+			active_lead_text,
+			app_state.get_season_phase_display_name(),
+			app_state.objective,
+		]
+	)
+
+	var live_leads: Array[String] = []
+	for lead_id in app_state.get_available_lead_ids():
+		var event_definition: Dictionary = app_state.get_story_event_definition(String(lead_id))
+		if event_definition.is_empty():
+			continue
+		var lead_prefix := "[Pinned] " if String(lead_id) == app_state.get_active_lead_id() else ""
+		live_leads.append(
+			"%s%s\n%s" % [
+				lead_prefix,
+				String(event_definition.get("lead_text", lead_id)),
+				String(event_definition.get("journal_note", "")),
+			]
+		)
+
+	if live_leads.is_empty():
+		sections.append("Live routes\nNo open route leads.")
+	else:
+		sections.append("Live routes\n%s" % "\n\n".join(PackedStringArray(live_leads)))
+
+	var route_sections: Array[String] = []
+	for route_id in [
+		"family_memory",
+		"study_future",
+		"preservation_inheritance",
+		"melody_landmarks",
+	]:
+		var route_definition: Dictionary = app_state.get_story_route_definition(route_id)
+		var progress: Dictionary = app_state.get_route_progress(route_id)
+		if route_definition.is_empty() or progress.is_empty():
+			continue
+		var next_lead_id := String(progress.get("next_lead_id", ""))
+		var next_text := "No open lead."
+		if !next_lead_id.is_empty():
+			next_text = String(app_state.get_story_event_definition(next_lead_id).get("lead_text", "No open lead."))
+		route_sections.append(
+			"%s\nState: %s\nCompletion score: %d\nNext lead: %s" % [
+				String(route_definition.get("display_name", route_id)),
+				String(progress.get("state", "idle")),
+				int(progress.get("completion_score", 0)),
+				next_text,
+			]
+		)
+
+	sections.append("Route ledger\n%s" % "\n\n".join(PackedStringArray(route_sections)))
+	sections.append("Lead pinning\nUse the lead buttons below to cycle the pinned route lead shown on the HUD.")
+	return "\n\n".join(PackedStringArray(sections))
+
+
 static func build_melody_journal_text(app_state: Node) -> String:
 	var sections: Array[String] = []
 

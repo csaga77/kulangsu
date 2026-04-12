@@ -206,6 +206,7 @@ func _build_app_shell() -> void:
 	m_ending_panel = ENDING_SCENE.instantiate() as PanelContainer
 	m_ui_root.add_child(m_ending_panel)
 	m_ending_panel.connect("leave_requested", func() -> void:
+		_app_state().apply_ending_choice("leave")
 		_show_confirm(
 			"Leave on the Morning Ferry?",
 			"Depart Kulangsu, roll credits, and close this story run?",
@@ -213,6 +214,7 @@ func _build_app_shell() -> void:
 		)
 	)
 	m_ending_panel.connect("stay_requested", func() -> void:
+		_app_state().apply_ending_choice("stay")
 		_app_state().configure_postgame()
 		_resume_gameplay()
 	)
@@ -360,6 +362,8 @@ func _begin_gameplay(is_free_walk: bool, is_continue: bool = false) -> void:
 	_set_panel_visible(m_confirm_panel, false)
 	m_state = ScreenState.PLAYING
 	get_tree().paused = false
+	if bool(_app_state().endgame_state.get("active", false)):
+		call_deferred("_open_overlay", ScreenState.ENDING)
 
 
 func _open_overlay(new_state: ScreenState) -> void:
@@ -690,7 +694,7 @@ func _on_player_setup_cancelled() -> void:
 
 
 func _on_story_milestone(milestone_id: String, _context: Dictionary) -> void:
-	if milestone_id == "festival_performed" and _is_game_active():
+	if milestone_id == "endgame_started" and _is_game_active():
 		_open_overlay(ScreenState.ENDING)
 
 

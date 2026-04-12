@@ -27,11 +27,20 @@ func _ready() -> void:
 
 func refresh_from_state() -> void:
 	var summary = _app_state().ending_summary
-	m_summary_body.text = "Melody fragments recovered: %s\nResidents helped: %s\nOptional collectibles found: %s\nPlaytime: %s" % [
+	var endgame = _app_state().endgame_state
+	var tones := String(summary.get("ending_tones", ""))
+	if tones.is_empty():
+		tones = "Not yet named"
+	var closing_label := String(endgame.get("closing_label", "Take a quiet moment before choosing what comes next."))
+	m_summary_body.text = "%s\n\nSeason: %s\nRoute scores: %s\nMelody fragments recovered: %s\nResidents helped: %s\nOptional collectibles found: %s\nPlaytime: %s\nEnding tones: %s" % [
+		closing_label,
+		String(summary.get("season", "Story")),
+		String(summary.get("routes", "No route summary yet.")),
 		summary.get("fragments", "4 / 4"),
 		summary.get("residents", "4"),
 		summary.get("collectibles", "Not tracked in this build"),
 		summary.get("playtime", "a brief evening on Kulangsu"),
+		tones,
 	]
 
 

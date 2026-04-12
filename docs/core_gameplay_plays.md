@@ -6,6 +6,11 @@ Read [`design_brief.md`](design_brief.md) first for the minimum-token summary. U
 
 Define the core plays the player should perform again and again across the whole game so each landmark feels distinct without breaking the calm exploration identity.
 
+These plays now support both halves of the shipped structure:
+
+- resident-led seasonal routes
+- landmark-led melody content
+
 The target feeling is:
 
 - Curious, not rushed
@@ -424,3 +429,12 @@ If the team needs one slice that proves the design, it should be:
 5. Return to overworld with the next lead
 
 That slice exercises the full exploration-to-melody loop in the clearest, lowest-risk form.
+
+## Canon Routing
+
+Current canon for the broader structure lives in:
+
+- [`design_brief.md`](design_brief.md)
+- [`core_game_workflow.md`](core_game_workflow.md)
+- [`story/summer_of_piano_island_story_framework.md`](story/summer_of_piano_island_story_framework.md)
+- [`plan/implementation_plan.md`](plan/implementation_plan.md)

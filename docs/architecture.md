@@ -83,6 +83,7 @@ Primary files:
 - [`../game/app_state.gd`](../game/app_state.gd)
 - [`../game/melody_catalog.gd`](../game/melody_catalog.gd)
 - [`../game/resident_catalog.gd`](../game/resident_catalog.gd)
+- [`../game/story_route_graph.gd`](../game/story_route_graph.gd)
 - [`../game/resident_system/`](../game/resident_system)
 - [`../game/residents/`](../game/residents)
 - [`../game/player_appearance_catalog.gd`](../game/player_appearance_catalog.gd)
@@ -91,9 +92,12 @@ Primary files:
 Responsibilities:
 
 - shared mode, chapter, location, objective, hint, save status, and summary data
+- shared seasonal story state: `season_phase`, `route_progress`, `story_flags`, active leads, and endgame state
 - shared melody definitions and melody-progress state used by the journal and future performance systems
+- catalog-first seasonal route definitions, event definitions, lead selection, and endgame-trigger logic in `story_route_graph.gd`
 - resident and player-facing catalog data
 - `AppState` now composes focused helper scripts for journal text (`journal_builder.gd`), player profile/costume ownership (`player_profile_service.gd`), story autosave (`story_save_service.gd`), and landmark/melody progression (`landmark_progression.gd`)
+- the app shell now opens the ending overlay from the shared `endgame_started` story milestone instead of relying on the older landmark-only ending assumption
 - lazy resident definition/profile initialization so startup does not eagerly build the full resident runtime just to load the shared state service
 - resident definition resources for appearance, dialogue, routine, and behavior metadata
 - editor-authored resident definition files and templates

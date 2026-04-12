@@ -107,7 +107,9 @@ func _run() -> void:
 		"Festival performance does not overwrite the pre-choice autosave metadata"
 	)
 	_assert_true(_app_state().configure_continue(), "Continue can still reload the last pre-ending autosave after performance")
-	_assert_true(!bool(_app_state().get_melody_state("festival_melody").get("performed", false)), "Continue restores the pre-choice story state before the ending branch is chosen")
+	_assert_true(bool(_app_state().get_melody_state("festival_melody").get("performed", false)), "Continue restores the saved harbor performance state")
+	_assert_true(!bool(_app_state().endgame_state.get("active", false)), "Continue keeps endgame inactive when the spring guardrail has not been satisfied")
+	_assert_true(String(_app_state().endgame_state.get("trigger_event_id", "")) == "", "Continue leaves the final-act trigger empty when the harbor performance alone is not enough to end the game")
 	_assert_true(_app_state().get_open_shortcuts().find("bi_shan_crossing") >= 0, "Continue restores dependable route state")
 
 	_app_state().configure_postgame()

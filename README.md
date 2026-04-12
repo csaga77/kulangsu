@@ -132,8 +132,11 @@ This repo does not currently include a checked-in release pipeline, export autom
 
 Start here for project context:
 
+- [`docs/README.md`](docs/README.md) - canonical docs index and routing guide
 - [`docs/design_brief.md`](docs/design_brief.md) - minimum-token game and UI summary
-- [`docs/story/summer_of_piano_island_story_framework.md`](docs/story/summer_of_piano_island_story_framework.md) - single source of truth for story direction, protagonist background, and landmark narrative framing
+- [`docs/story/summer_of_piano_island_story_framework.md`](docs/story/summer_of_piano_island_story_framework.md) - single source of truth for story direction, protagonist background, seasonal frame, and route meanings
+- [`docs/plan/README.md`](docs/plan/README.md) - planning-doc index for the current status and active plan
+- [`docs/plan/implementation_plan.md`](docs/plan/implementation_plan.md) - canonical implementation plan for the current seasonal multi-route playable game
 - [`docs/architecture.md`](docs/architecture.md) - system boundaries and relationships
 - [`docs/module_map.md`](docs/module_map.md) - where code and content live
 - [`docs/submodules.md`](docs/submodules.md) - submodule roles and governance

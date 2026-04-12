@@ -418,7 +418,7 @@ func resolve_landmark(landmark_id: String) -> void:
 		"bagua_tower":
 			resolve_bagua_tower()
 
-	m_owner.story_milestone.emit("landmark_resolved", {
+	m_owner._emit_story_milestone("landmark_resolved", {
 		"landmark_id": landmark_id,
 		"fragments_found": m_owner.fragments_found,
 		"helped_residents": m_owner._count_helped_residents(),
@@ -434,8 +434,9 @@ func resolve_piano_ferry() -> void:
 	sync_festival_state_from_fragments(melody_state)
 	melody_state["next_lead"] = "Speak with the church caretaker and compare how the bells answer the harbor."
 	m_owner.set_melody_progress({"festival_melody": melody_state})
+	m_owner.resolve_story_event("melody_ferry_settled")
 	emit_fragment_story_milestones(previous_melody, "ferry_plaza", melody_state, false)
-	m_owner.set_save_status("Journal unlocked — Trinity Church is marked as your first lead.")
+	m_owner.set_save_status("Journal unlocked - Trinity Church is marked as your first lead.")
 
 
 func resolve_trinity_church() -> void:
@@ -446,6 +447,7 @@ func resolve_trinity_church() -> void:
 	sync_festival_state_from_fragments(melody_state)
 
 	m_owner.set_melody_progress({"festival_melody": melody_state})
+	m_owner.resolve_story_event("melody_church_restored")
 	emit_fragment_story_milestones(previous_melody, "church_bells", melody_state)
 
 	m_owner.advance_landmark_state("bi_shan_tunnel", "available")
@@ -460,6 +462,7 @@ func resolve_bi_shan_tunnel() -> void:
 	sync_festival_state_from_fragments(melody_state)
 
 	m_owner.set_melody_progress({"festival_melody": melody_state})
+	m_owner.resolve_story_event("melody_bi_shan_restored")
 	emit_fragment_story_milestones(previous_melody, "bi_shan_echo", melody_state)
 	m_owner.unlock_shortcut("bi_shan_crossing")
 	if m_owner.get_landmark_state("long_shan_tunnel") == "reward_collected" \
@@ -485,6 +488,7 @@ func resolve_long_shan_tunnel() -> void:
 	sync_festival_state_from_fragments(melody_state)
 
 	m_owner.set_melody_progress({"festival_melody": melody_state})
+	m_owner.resolve_story_event("melody_long_shan_restored")
 	emit_fragment_story_milestones(previous_melody, "long_shan_route", melody_state)
 	m_owner.set_objective("Return to Tunnel Guide Ren and compare what the tunnel routes now suggest.")
 	m_owner.set_hint(m_owner.build_input_hint("R Talk to Tunnel Guide Ren"))
@@ -509,6 +513,7 @@ func resolve_bagua_tower() -> void:
 	melody_state["next_lead"] = "Return to the ferry plaza and perform the restored melody at the festival stage."
 
 	m_owner.set_melody_progress({"festival_melody": melody_state})
+	m_owner.resolve_story_event("melody_bagua_aligned")
 	emit_fragment_story_milestones(previous_melody, "tower_chamber", melody_state)
 	m_owner.advance_landmark_state("festival_stage", "available")
 	m_owner.set_objective("Return to Piano Ferry and perform the restored melody at the festival stage.")
@@ -542,10 +547,10 @@ func perform_festival_melody() -> void:
 	melody_state["next_lead"] = "Stay for the harbor gathering or keep wandering once the festival recap ends."
 	m_owner.set_melody_progress({"festival_melody": melody_state})
 
-	m_owner.set_chapter("Festival Night")
+	m_owner.resolve_story_event("harbor_festival_performed")
 	m_owner.set_objective("The restored festival melody carries across the harbor.")
 	m_owner.set_save_status("The harbor gathering answers the restored melody.")
-	m_owner.story_milestone.emit("festival_performed", {
+	m_owner._emit_story_milestone("festival_performed", {
 		"fragments_found": m_owner.fragments_found,
 		"helped_residents": m_owner._count_helped_residents(),
 	})
@@ -650,14 +655,14 @@ func emit_fragment_story_milestones(
 		return
 
 	var new_count := int(melody_state.get("fragments_found", 0))
-	m_owner.story_milestone.emit("fragment_restored", {
+	m_owner._emit_story_milestone("fragment_restored", {
 		"melody_id": "festival_melody",
 		"source_id": source_id,
 		"total_found": new_count,
 	})
 
 	if new_count >= int(melody_state.get("fragments_total", m_owner.fragments_total)):
-		m_owner.story_milestone.emit("festival_ready", {
+		m_owner._emit_story_milestone("festival_ready", {
 			"fragments_found": new_count,
 			"helped_residents": m_owner._count_helped_residents(),
 		})

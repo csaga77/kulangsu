@@ -25,7 +25,7 @@ Current contract:
 - UI is authored against a `1920 x 1080` design canvas and scaled to the live viewport
 - `Esc` backs out through overlay flow and `J` toggles the journal during gameplay
 - the reusable melody prompt overlay opens from `AppState` requests and may return either to gameplay or to the journal, depending on where it was launched
-- the ending overlay may now open from the in-world `festival_performed` milestone instead of only through shell-local controls
+- the ending overlay now opens from the shared `endgame_started` milestone instead of assuming the harbor performance is always the only ending gate
 - once the ending overlay opens, `Stay` configures autosaved postgame while `Leave` clears the resumable story autosave, routes through the dedicated morning-ferry departure card and credits, and returns to title with `Continue` disabled
 
 ## Shared State Contract
@@ -40,21 +40,25 @@ Current contract:
 - `AppState` is the shared UI/progression-facing bridge between gameplay and UI
 - the running app owns exactly one `AppStateService` node; callers resolve it through `AppRuntime.get_app_state(node)` instead of a Project Settings autoload
 - `AppState` keeps the stable public API, but active player-profile, journal-text, story-save, and landmark/melody progression logic now live in composed helper scripts under `game/`
+- `chapter` is now a compatibility/display label; authoritative story progression lives in `season_phase`, route state, and `story_flags`
 - resident definitions and default resident runtime profiles are initialized lazily through `AppState` getters/configuration instead of being fully built at script-load time
-- it exposes signals for mode, chapter, location, objective, hint, save status, fragments, melody progress, melody prompt requests, landmark audio cue requests, landmarks, residents, resident profiles, player appearance/costumes, summary updates, and story milestones
+- it exposes signals for mode, chapter, season phase, location, objective, hint, save status, fragments, melody progress, melody prompt requests, landmark audio cue requests, landmarks, residents, resident profiles, player appearance/costumes, route progress, active leads, endgame state, summary updates, and story milestones
 - `landmark_audio_cue_requested(cue_id, context)` is the bridge from successful landmark interactions into one-shot world audio feedback; it fires for both collected pickups and prompt-opening landmark interactions such as the Trinity choir chime, Bi Shan chamber, Long Shan exit, and harbor stage
-- `story_milestone(milestone_id, context)` fires after compound state changes resolve; current milestone ids are `landmark_resolved`, `fragment_restored`, `festival_ready`, `festival_performed`, and `resident_trust_max`
+- `story_milestone(milestone_id, context)` fires after compound state changes resolve; current milestone ids include `landmark_resolved`, `fragment_restored`, `festival_ready`, `festival_performed`, `resident_trust_max`, and `endgame_started`
 - it now owns shared melody runtime state while [`../game/melody_catalog.gd`](../game/melody_catalog.gd) owns authored melody definitions
 - `melody_prompt_requested(request)` is the bridge from gameplay/journal actions into the reusable ordered-confirmation overlay; `AppState` preserves the public validation/completion API while `game/landmark_progression.gd` owns the active implementation
 - prompt completions now flow back through `complete_prompt_request(request)`, which dispatches landmark-specific confirmations such as the Trinity choir chime, the Bi Shan chamber contour, the Long Shan exit route, as well as melody practice/performance
 - `save_metadata_changed(metadata)` is the shell-facing signal for title `Continue` state and latest story autosave summary
 - `AppState` now owns the one-slot story autosave contract, current safe resume anchor, and the `configure_continue()`, `save_story_autosave()`, `clear_story_autosave()`, and `set_story_resume_checkpoint(...)` bridge methods used by the shell and world scene; `game/story_save_service.gd` owns the active read/write implementation
+- `game/story_route_graph.gd` owns canonical route definitions, event definitions, lead selection, endgame-trigger evaluation, and baseline ending-tone tag generation
 - the app shell and world hint logic may query `AppState.is_journal_unlocked()` and `AppState.build_input_hint(...)` to keep the early tutorial flow and controls text aligned
 - world and UI code rely on resident getters for resident ids, definitions, display names, appearance configs, spawn configs, movement configs, behavior configs, ambient speech, resident journal text, and full resident profiles when optional movement metadata is needed
 - `ResidentCatalog` may merge external `.tres` resident definitions from `res://game/residents/definitions/`; matching ids override built-ins and `include_in_catalog = false` keeps a resource out of the runtime roster
 - `interact_with_resident()` checks a resident's `conditional_beats` (priority-sorted, condition-gated) before falling through to the linear `dialogue_beats` spine
+- resident conditional gating may now read `season_phase`, `story_flags`, route state, route score, and endgame-active state
 - UI code can now rely on melody getters, journal helpers, `build_map_journal_text()`, `get_open_shortcuts()`, `can_practice_melody(...)`, `request_melody_practice(...)`, and `complete_prompt_request(...)` for melody-facing and dependable-route player context
 - `ui/screens/journal_overlay.gd` and `ui/screens/player_customization_overlay.gd` are the live consumers of `game/journal_builder.gd`
+- HUD and journal code now treat one active lead as the primary player-facing objective while the journal exposes the broader live route list
 - UI screens and world integration code rely on those signals and state getters/setters
 
 Governance:

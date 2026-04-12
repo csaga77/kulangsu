@@ -14,6 +14,7 @@ const PLAYER_COSTUME_CATALOG_SCRIPT := preload("res://game/player_costume_catalo
 const JOURNAL_BUILDER_SCRIPT := preload("res://game/journal_builder.gd")
 const PLAYER_PROFILE_SERVICE_SCRIPT := preload("res://game/player_profile_service.gd")
 const STORY_SAVE_SERVICE_SCRIPT := preload("res://game/story_save_service.gd")
+const STORY_ROUTE_GRAPH_SCRIPT := preload("res://game/story_route_graph.gd")
 const LANDMARK_PROGRESSION_SCRIPT := preload("res://game/landmark_progression.gd")
 const STORY_AUTOSAVE_VERSION := 1
 const STORY_AUTOSAVE_PATH := "user://story_autosave.save"
@@ -55,6 +56,10 @@ signal player_appearance_changed(profile: Dictionary, appearance_config: Diction
 signal summary_changed(summary: Dictionary)
 signal landmark_progress_changed(landmark_id: String, progress: Dictionary)
 signal story_milestone(milestone_id: String, context: Dictionary)
+signal season_phase_changed(phase_id: String)
+signal route_progress_changed(route_id: String, progress: Dictionary)
+signal active_leads_changed(active_lead_id: String, available_lead_ids: PackedStringArray)
+signal endgame_state_changed(endgame_state: Dictionary)
 signal save_metadata_changed(metadata: Dictionary)
 signal master_volume_changed(volume_percent: float)
 signal music_volume_changed(volume_percent: float)
@@ -63,6 +68,7 @@ signal dialogue_text_speed_changed(speed_percent: float, characters_per_second: 
 
 var mode := "Title"
 var chapter := "Arrival"
+var season_phase := "summer_1"
 var location := "Piano Ferry"
 var objective := "Find out why the island feels quiet today."
 var hint := "R Inspect   J Journal   Esc Pause"
@@ -87,6 +93,12 @@ var unlocked_player_costume_ids: PackedStringArray = PLAYER_COSTUME_CATALOG_SCRI
 )
 var equipped_player_costume_id := PLAYER_COSTUME_CATALOG_SCRIPT.default_costume_id()
 var landmark_progress: Dictionary = _default_landmark_progress()
+var route_progress: Dictionary = {}
+var story_flags: Dictionary = {}
+var available_lead_ids: PackedStringArray = PackedStringArray()
+var active_lead_id := ""
+var endgame_state := STORY_ROUTE_GRAPH_SCRIPT.default_endgame_state()
+var _manual_pinned_lead_id := ""
 var ending_summary := {
 	"fragments": "4 / 4",
 	"residents": "0",
@@ -104,6 +116,7 @@ var _story_autosave_path := STORY_AUTOSAVE_PATH
 var m_player_profile_service: RefCounted = null
 var m_story_save_service: RefCounted = null
 var m_landmark_progression: RefCounted = null
+var m_story_route_graph: RefCounted = null
 
 
 func _init() -> void:
@@ -120,6 +133,9 @@ func _init() -> void:
 	m_story_save_service = STORY_SAVE_SERVICE_SCRIPT.new(self)
 	m_story_save_service.set_story_autosave_path(_story_autosave_path)
 	m_landmark_progression = LANDMARK_PROGRESSION_SCRIPT.new(self)
+	m_story_route_graph = STORY_ROUTE_GRAPH_SCRIPT.new(self)
+	story_flags = m_story_route_graph.build_default_story_flags()
+	route_progress = m_story_route_graph.build_story_state("new_game").get("route_progress", {}).duplicate(true)
 
 
 func _enter_tree() -> void:
@@ -357,6 +373,25 @@ func set_chapter(new_chapter: String) -> void:
 	chapter_changed.emit(chapter)
 
 
+func set_season_phase(new_phase: String) -> void:
+	var normalized_phase := new_phase.strip_edges()
+	if normalized_phase.is_empty():
+		normalized_phase = "summer_1"
+	if season_phase == normalized_phase:
+		if mode in ["Story", "Postgame"] and chapter != get_season_phase_display_name():
+			set_chapter(get_season_phase_display_name())
+		return
+	season_phase = normalized_phase
+	season_phase_changed.emit(season_phase)
+	if mode in ["Story", "Postgame"]:
+		set_chapter(get_season_phase_display_name())
+	_update_summary_counts()
+
+
+func get_season_phase_display_name() -> String:
+	return STORY_ROUTE_GRAPH_SCRIPT.phase_display_name(season_phase)
+
+
 func set_location(new_location: String) -> void:
 	if location == new_location:
 		return
@@ -442,7 +477,156 @@ func set_resident_profiles(new_profiles: Dictionary) -> void:
 
 func set_summary(summary: Dictionary) -> void:
 	ending_summary = summary.duplicate(true)
-	summary_changed.emit(ending_summary)
+	_update_summary_counts()
+
+
+func set_story_flags(new_flags: Dictionary) -> void:
+	if m_story_route_graph == null:
+		story_flags = new_flags.duplicate(true)
+		return
+	story_flags = m_story_route_graph.normalize_story_flags(new_flags)
+	if mode in ["Story", "Postgame"]:
+		refresh_story_routes()
+
+
+func set_story_flag(flag_id: String, value: Variant = true) -> void:
+	var normalized_flag := flag_id.strip_edges()
+	if normalized_flag.is_empty():
+		return
+	if story_flags.get(normalized_flag, null) == value:
+		return
+	story_flags[normalized_flag] = value
+
+
+func get_story_flag(flag_id: String, default_value: Variant = false) -> Variant:
+	return story_flags.get(flag_id, default_value)
+
+
+func get_story_flags() -> Dictionary:
+	return story_flags.duplicate(true)
+
+
+func get_route_progress(route_id: String) -> Dictionary:
+	if !route_progress.has(route_id):
+		return {}
+	return route_progress[route_id].duplicate(true)
+
+
+func set_route_progress(route_id: String, progress: Dictionary) -> void:
+	if route_id.is_empty():
+		return
+	route_progress[route_id] = progress.duplicate(true)
+	route_progress_changed.emit(route_id, get_route_progress(route_id))
+
+
+func set_all_route_progress(new_progress: Dictionary) -> void:
+	var route_definitions := STORY_ROUTE_GRAPH_SCRIPT.build_route_definitions()
+	route_progress = {}
+	for route_id in route_definitions.keys():
+		route_progress[route_id] = new_progress.get(route_id, {}).duplicate(true)
+		route_progress_changed.emit(route_id, get_route_progress(route_id))
+
+
+func set_active_leads(new_active_lead_id: String, new_available_lead_ids: Variant) -> void:
+	var normalized_available := PackedStringArray()
+	for lead_id in _normalize_string_array(new_available_lead_ids):
+		if normalized_available.find(lead_id) < 0:
+			normalized_available.append(lead_id)
+
+	var normalized_active := new_active_lead_id.strip_edges()
+	if !normalized_active.is_empty() and normalized_available.find(normalized_active) < 0:
+		normalized_active = ""
+
+	if active_lead_id == normalized_active and available_lead_ids == normalized_available:
+		return
+
+	active_lead_id = normalized_active
+	available_lead_ids = normalized_available
+	active_leads_changed.emit(active_lead_id, PackedStringArray(available_lead_ids))
+
+
+func get_available_lead_ids() -> PackedStringArray:
+	return PackedStringArray(available_lead_ids)
+
+
+func get_active_lead_id() -> String:
+	return active_lead_id
+
+
+func get_story_route_definition(route_id: String) -> Dictionary:
+	if m_story_route_graph == null:
+		return {}
+	return m_story_route_graph.get_route_definition(route_id)
+
+
+func get_story_event_definition(event_id: String) -> Dictionary:
+	if m_story_route_graph == null:
+		return {}
+	return m_story_route_graph.get_event_definition(event_id)
+
+
+func get_active_lead_text() -> String:
+	if m_story_route_graph == null:
+		return objective
+	var lead_text := String(m_story_route_graph.get_active_lead_text())
+	if lead_text.is_empty():
+		return objective
+	return lead_text
+
+
+func pin_story_lead(lead_id: String) -> void:
+	if m_story_route_graph == null:
+		return
+	m_story_route_graph.pin_story_lead(lead_id)
+
+
+func cycle_story_lead(direction: int) -> void:
+	if m_story_route_graph == null:
+		return
+	m_story_route_graph.cycle_story_lead(direction)
+
+
+func clear_manual_story_lead() -> void:
+	if m_story_route_graph == null:
+		return
+	m_story_route_graph.clear_manual_pinned_lead()
+
+
+func refresh_story_routes() -> void:
+	if m_story_route_graph == null:
+		return
+	m_story_route_graph.refresh_story_state()
+
+
+func resolve_story_event(event_id: String) -> bool:
+	if m_story_route_graph == null:
+		return false
+	var changed: bool = m_story_route_graph.resolve_story_event(event_id)
+	if changed:
+		_autosave_story_progress()
+	return changed
+
+
+func set_endgame_state(new_endgame_state: Dictionary) -> void:
+	if m_story_route_graph == null:
+		endgame_state = new_endgame_state.duplicate(true)
+	else:
+		endgame_state = m_story_route_graph.normalize_endgame_state(new_endgame_state)
+	endgame_state_changed.emit(endgame_state.duplicate(true))
+	_update_summary_counts()
+
+
+func apply_ending_choice(choice_id: String) -> void:
+	var normalized_choice := choice_id.strip_edges().to_lower()
+	if normalized_choice.is_empty():
+		return
+	set_story_flag("ending_choice", normalized_choice)
+	if m_story_route_graph != null:
+		var next_endgame_state := endgame_state.duplicate(true)
+		next_endgame_state["ending_tone_tags"] = m_story_route_graph.build_ending_tone_tags(normalized_choice)
+		set_endgame_state(next_endgame_state)
+	ending_summary["ending_choice"] = normalized_choice
+	_autosave_story_progress()
 
 
 func _default_landmarks() -> PackedStringArray:
@@ -741,6 +925,10 @@ func build_resident_journal_text() -> String:
 	return JOURNAL_BUILDER_SCRIPT.build_resident_journal_text(self)
 
 
+func build_story_routes_journal_text() -> String:
+	return JOURNAL_BUILDER_SCRIPT.build_story_routes_journal_text(self)
+
+
 func build_melody_journal_text() -> String:
 	return JOURNAL_BUILDER_SCRIPT.build_melody_journal_text(self)
 
@@ -753,6 +941,16 @@ func build_player_setup_summary_text() -> String:
 	return JOURNAL_BUILDER_SCRIPT.build_player_setup_summary_text(self)
 
 
+func _apply_story_route_state_bundle(state: Dictionary) -> void:
+	if m_story_route_graph == null:
+		return
+	story_flags = m_story_route_graph.normalize_story_flags(state.get("story_flags", {}))
+	_manual_pinned_lead_id = String(state.get("manual_pinned_lead_id", ""))
+	endgame_state = m_story_route_graph.normalize_endgame_state(state.get("endgame_state", {}))
+	endgame_state_changed.emit(endgame_state.duplicate(true))
+	set_season_phase(String(state.get("season_phase", "summer_1")))
+
+
 func _is_story_persistable_mode(mode_id: String = mode) -> bool:
 	return mode_id in ["Story", "Postgame"]
 
@@ -763,11 +961,18 @@ func _build_story_autosave_payload() -> Dictionary:
 		"saved_at_unix": int(Time.get_unix_time_from_system()),
 		"mode": mode,
 		"chapter": chapter,
+		"season_phase": season_phase,
 		"location": location,
 		"objective": objective,
 		"journal_unlocked": journal_unlocked,
 		"melody_progress": melody_progress.duplicate(true),
 		"landmark_progress": landmark_progress.duplicate(true),
+		"route_progress": route_progress.duplicate(true),
+		"story_flags": get_story_flags(),
+		"available_lead_ids": get_available_lead_ids(),
+		"active_lead_id": get_active_lead_id(),
+		"endgame_state": endgame_state.duplicate(true),
+		"manual_pinned_lead_id": _manual_pinned_lead_id,
 		"open_shortcuts": get_open_shortcuts(),
 		"resident_profiles": resident_profiles.duplicate(true),
 		"player_profile": player_profile.duplicate(true),
@@ -808,11 +1013,18 @@ func _normalize_story_autosave_payload(payload: Dictionary) -> Dictionary:
 		"saved_at_unix": int(payload.get("saved_at_unix", 0)),
 		"mode": normalized_mode,
 		"chapter": String(payload.get("chapter", "Arrival")),
+		"season_phase": String(payload.get("season_phase", "summer_1")),
 		"location": String(payload.get("location", "Piano Ferry")),
 		"objective": String(payload.get("objective", "Find out why the island feels quiet today.")),
 		"journal_unlocked": bool(payload.get("journal_unlocked", true)),
 		"melody_progress": payload.get("melody_progress", {}),
 		"landmark_progress": payload.get("landmark_progress", {}),
+		"route_progress": payload.get("route_progress", {}),
+		"story_flags": payload.get("story_flags", {}),
+		"available_lead_ids": payload.get("available_lead_ids", []),
+		"active_lead_id": String(payload.get("active_lead_id", "")),
+		"endgame_state": payload.get("endgame_state", {}),
+		"manual_pinned_lead_id": String(payload.get("manual_pinned_lead_id", "")),
 		"open_shortcuts": payload.get("open_shortcuts", []),
 		"resident_profiles": payload.get("resident_profiles", {}),
 		"player_profile": payload.get("player_profile", PLAYER_APPEARANCE_CATALOG_SCRIPT.default_profile()),
@@ -835,7 +1047,7 @@ func _build_story_save_metadata_from_payload(payload: Dictionary) -> Dictionary:
 	return {
 		"exists": true,
 		"mode": String(payload.get("mode", "Story")),
-		"chapter": String(payload.get("chapter", "")),
+		"chapter": String(payload.get("chapter", STORY_ROUTE_GRAPH_SCRIPT.phase_display_name(String(payload.get("season_phase", "summer_1"))))),
 		"location": String(payload.get("location", resume_location)),
 		"fragments_text": fragments_text,
 		"resume_anchor_id": String(payload.get("story_resume_anchor_id", "")),
@@ -895,7 +1107,7 @@ func _apply_story_autosave_payload(payload: Dictionary) -> bool:
 		story_resume_location = "Piano Ferry"
 
 	set_mode(String(payload.get("mode", "Story")))
-	set_chapter(String(payload.get("chapter", "Arrival")))
+	_apply_story_route_state_bundle(payload)
 	set_location(String(payload.get("location", story_resume_location)))
 	set_objective(String(payload.get("objective", objective)))
 	set_journal_unlocked(bool(payload.get("journal_unlocked", true)))
@@ -907,6 +1119,7 @@ func _apply_story_autosave_payload(payload: Dictionary) -> bool:
 	set_all_landmark_progress(_normalize_saved_landmark_progress(payload.get("landmark_progress", {})))
 	set_summary(_normalize_saved_summary(payload.get("ending_summary", {})))
 	set_player_profile(payload.get("player_profile", PLAYER_APPEARANCE_CATALOG_SCRIPT.default_profile()))
+	refresh_story_routes()
 
 	var saved_costume_id := String(
 		payload.get("equipped_player_costume_id", PLAYER_COSTUME_CATALOG_SCRIPT.default_costume_id())
@@ -1037,8 +1250,9 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 
 
 func configure_new_game() -> void:
+	var story_state: Dictionary = m_story_route_graph.build_story_state("new_game") if m_story_route_graph != null else {}
 	set_mode("Story")
-	set_chapter("Arrival")
+	_apply_story_route_state_bundle(story_state)
 	set_location("Piano Ferry")
 	set_objective("Find out why the island feels quiet today.")
 	set_journal_unlocked(false)
@@ -1049,6 +1263,7 @@ func configure_new_game() -> void:
 	set_resident_profiles(_default_resident_profiles())
 	set_melody_progress(_build_story_melody_progress("new_game"))
 	set_all_landmark_progress(_build_landmark_progress("new_game"))
+	refresh_story_routes()
 	story_resume_anchor_id = "Piano Ferry"
 	story_resume_location = "Piano Ferry"
 	set_summary({
@@ -1074,7 +1289,9 @@ func configure_continue() -> bool:
 
 
 func configure_free_walk() -> void:
+	var story_state: Dictionary = m_story_route_graph.build_story_state("free_walk") if m_story_route_graph != null else {}
 	set_mode("Free Walk")
+	_apply_story_route_state_bundle(story_state)
 	set_chapter("Free Walk")
 	set_location("Piano Ferry")
 	set_objective("Wander the island and learn how the first district wants to be introduced.")
@@ -1093,21 +1310,25 @@ func configure_free_walk() -> void:
 
 func configure_postgame() -> void:
 	set_mode("Postgame")
-	set_chapter("Festival Night")
+	set_season_phase("postgame")
 	set_location("Ferry Plaza")
-	set_objective("Wander the island after the festival and listen for what changed.")
+	set_objective("Wander the island after the ending and listen for what changed.")
 	set_journal_unlocked(true)
 	set_hint(build_input_hint("R Inspect"))
-	set_save_status("Postgame checkpoint saved — residents and music now answer the resonant melody.")
-	set_landmarks(_default_landmarks())
-	set_open_shortcuts(PackedStringArray(["bi_shan_crossing"]))
-	set_resident_profiles(_default_resident_profiles())
-	set_melody_progress(_build_story_melody_progress("postgame"))
-	set_all_landmark_progress(_build_landmark_progress("postgame"))
+	set_save_status("Postgame checkpoint saved — the island now carries the story you chose to stay with.")
+	if bool(get_melody_state("festival_melody").get("performed", false)):
+		var melody_state := get_melody_state("festival_melody")
+		melody_state["state"] = "resonant"
+		melody_state["next_lead"] = "Wander the island and listen to what the restored melody leaves behind."
+		set_melody_progress({"festival_melody": melody_state})
+		if get_landmark_state("festival_stage") != "reward_collected":
+			advance_landmark_state("festival_stage", "reward_collected")
+	_manual_pinned_lead_id = ""
+	endgame_state = STORY_ROUTE_GRAPH_SCRIPT.default_endgame_state()
+	endgame_state_changed.emit(endgame_state.duplicate(true))
+	refresh_story_routes()
 	story_resume_anchor_id = "Piano Ferry"
 	story_resume_location = "Ferry Plaza"
-	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
-		_seed_resident_progress(resident_id, 2, RESIDENT_CATALOG_SCRIPT.max_trust(), "resolved", "Present at the restored festival and ready for lighter postgame dialogue.")
 	_update_summary_counts()
 	save_story_autosave()
 
@@ -1121,8 +1342,12 @@ func _apply_resident_beat(beat: Dictionary) -> void:
 	if !new_hint.is_empty():
 		set_hint(new_hint)
 
+	var new_phase := String(beat.get("season_phase", ""))
+	if !new_phase.is_empty():
+		set_season_phase(new_phase)
+
 	var new_chapter := String(beat.get("chapter", ""))
-	if !new_chapter.is_empty():
+	if !new_chapter.is_empty() and mode not in ["Story", "Postgame"]:
 		set_chapter(new_chapter)
 
 	var new_status := String(beat.get("save_status", ""))
@@ -1146,6 +1371,21 @@ func _apply_resident_beat(beat: Dictionary) -> void:
 	var landmark_reward := String(beat.get("landmark_reward", ""))
 	if !landmark_reward.is_empty():
 		_resolve_landmark(landmark_reward)
+
+	var beat_story_flags = beat.get("story_flags", {})
+	if beat_story_flags is Dictionary:
+		for flag_id in beat_story_flags.keys():
+			set_story_flag(String(flag_id), beat_story_flags[flag_id])
+
+	var story_event := String(beat.get("story_event", ""))
+	if !story_event.is_empty():
+		resolve_story_event(story_event)
+
+	var pin_lead_id := String(beat.get("pin_lead_id", ""))
+	if !pin_lead_id.is_empty():
+		pin_story_lead(pin_lead_id)
+
+	refresh_story_routes()
 
 
 func _sync_known_residents() -> void:
@@ -1196,6 +1436,18 @@ func _update_summary_counts() -> void:
 	var summary := ending_summary.duplicate(true)
 	summary["fragments"] = "%d / %d" % [fragments_found, fragments_total]
 	summary["residents"] = str(_count_helped_residents())
+	summary["season"] = get_season_phase_display_name()
+	if m_story_route_graph != null:
+		summary["routes"] = m_story_route_graph.build_route_completion_summary()
+	var ending_trigger := String(endgame_state.get("trigger_event_id", ""))
+	if ending_trigger.is_empty() and mode == "Postgame":
+		ending_trigger = String(summary.get("ending_trigger", ""))
+	summary["ending_trigger"] = ending_trigger
+	var ending_tone_tags := PackedStringArray(_normalize_string_array(endgame_state.get("ending_tone_tags", [])))
+	if ending_tone_tags.is_empty() and mode == "Postgame":
+		summary["ending_tones"] = String(summary.get("ending_tones", ""))
+	else:
+		summary["ending_tones"] = ", ".join(ending_tone_tags)
 	ending_summary = summary
 	summary_changed.emit(ending_summary)
 
@@ -1632,6 +1884,9 @@ func _check_beat_gate(beat: Dictionary) -> bool:
 			return get_landmark_state("bagua_tower") != "locked"
 		"three_fragments_restored":
 			return fragments_found >= 3
+		_:
+			if story_flags.has(gate):
+				return bool(story_flags.get(gate, false))
 	return true
 
 
@@ -1700,6 +1955,14 @@ func _check_conditional_conditions(conditions: Dictionary, resident: Dictionary)
 			"chapter":
 				if chapter != String(conditions[key]):
 					return false
+			"season_phase":
+				var expected_phase: Variant = conditions[key]
+				if expected_phase is Array or expected_phase is PackedStringArray:
+					var allowed_phases := _normalize_string_array(expected_phase)
+					if allowed_phases.find(season_phase) < 0:
+						return false
+				elif season_phase != String(expected_phase):
+					return false
 			"mode":
 				if mode != String(conditions[key]):
 					return false
@@ -1709,13 +1972,42 @@ func _check_conditional_conditions(conditions: Dictionary, resident: Dictionary)
 					var other: Dictionary = resident_profiles.get(String(rid), {})
 					if !bool(other.get("known", false)):
 						return false
+			"story_flag_all":
+				for flag_id_value in conditions[key]:
+					if !bool(get_story_flag(String(flag_id_value), false)):
+						return false
+			"story_flag_any":
+				var any_found := false
+				for flag_id_value in conditions[key]:
+					if bool(get_story_flag(String(flag_id_value), false)):
+						any_found = true
+						break
+				if !any_found:
+					return false
+			"route_state":
+				var required_routes: Dictionary = conditions[key]
+				for route_id in required_routes.keys():
+					if String(get_route_progress(String(route_id)).get("state", "idle")) != String(required_routes[route_id]):
+						return false
+			"route_score_min":
+				var minimum_scores: Dictionary = conditions[key]
+				for route_id in minimum_scores.keys():
+					if int(get_route_progress(String(route_id)).get("completion_score", 0)) < int(minimum_scores[route_id]):
+						return false
+			"endgame_active":
+				if bool(endgame_state.get("active", false)) != bool(conditions[key]):
+					return false
 	return true
 
 
 ## Emit a resident_trust_max milestone the first time a resident reaches max trust.
 func _emit_trust_milestone_if_max(resident_id: String, old_trust: int, new_trust: int) -> void:
 	if new_trust >= RESIDENT_CATALOG_SCRIPT.max_trust() and old_trust < RESIDENT_CATALOG_SCRIPT.max_trust():
-		story_milestone.emit("resident_trust_max", {"resident_id": resident_id})
+		_emit_story_milestone("resident_trust_max", {"resident_id": resident_id})
+
+
+func _emit_story_milestone(milestone_id: String, context: Dictionary = {}) -> void:
+	story_milestone.emit(milestone_id, context.duplicate(true))
 
 
 ## Dispatch to the correct landmark resolution handler and emit a story

@@ -36,6 +36,7 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../game/player_profile_service.gd`](../game/player_profile_service.gd) - owns player appearance/profile and unlocked/equipped costume state while preserving `AppState`'s public API
 - [`../game/journal_builder.gd`](../game/journal_builder.gd) - pure journal/setup text builders used by the journal and player setup overlays
 - [`../game/story_save_service.gd`](../game/story_save_service.gd) - versioned story autosave read/write logic and save metadata refresh
+- [`../game/story_route_graph.gd`](../game/story_route_graph.gd) - canonical seasonal route definitions, event definitions, lead selection, endgame trigger logic, and tone-tag assembly
 - [`../game/landmark_progression.gd`](../game/landmark_progression.gd) - landmark trigger handling, melody prompt requests, fragment awards, and harbor-performance completion flow
 - [`../game/bgm_catalog.gd`](../game/bgm_catalog.gd) / [`../game/bgm_manager.gd`](../game/bgm_manager.gd) - seed-pool BGM definitions plus scene-owned weighted playback and transition logic for overworld music
 - [`../game/melody_catalog.gd`](../game/melody_catalog.gd) - authored melody definitions, onboarding clue sources, fragment sources, and performance-point summaries
@@ -106,9 +107,10 @@ Be careful about renames or moves here because scene and resource references can
 - [`../game/tests/npc_system/test_npc_route_collision.tscn`](../game/tests/npc_system/test_npc_route_collision.tscn) - focused routed NPC wall-collision regression scene covering collision-aware route motion against blocking geometry
 - [`../game/tests/npc_system/test_tunnel_visibility.tscn`](../game/tests/npc_system/test_tunnel_visibility.tscn) - focused tunnel-resident spawn, spacing, and tunnel-context visibility regression scene
 - [`../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../game/tests/npc_system/test_tunnel_npc_travel.tscn) - focused tunnel resident route regression scene covering Ren's inside-only Long Shan path plus Nuo's Bi Shan portal-to-surface transition and level-state restoration
-- [`../game/tests/cue_progression/test_cue_progression.tscn`](../game/tests/cue_progression/test_cue_progression.tscn) - focused Ferry -> Trinity choir chime -> Bi Shan chamber prompt -> Long Shan exit prompt -> Bagua -> harbor-stage progression regression covering fragment awards, dependable-route notes, Bagua gating, and the in-world ending trigger
+- [`../game/tests/cue_progression/test_cue_progression.tscn`](../game/tests/cue_progression/test_cue_progression.tscn) - focused Ferry -> Trinity choir chime -> Bi Shan chamber prompt -> Long Shan exit prompt -> Bagua -> harbor-stage progression regression covering fragment awards, dependable-route notes, Bagua gating, and the spring guardrail on harbor-triggered endgame
 - [`../game/tests/bgm/test_bgm_manager.tscn`](../game/tests/bgm/test_bgm_manager.tscn) - focused BGM regression scene covering lazy catalog validation, natural-end fade scheduling, and location-fallback variety rules
-- [`../game/tests/persistence/test_story_autosave.tscn`](../game/tests/persistence/test_story_autosave.tscn) - focused story autosave regression covering first-save creation, real `Continue`, safe resume anchors, pre-ending save retention, postgame restore, and departure-save clearing
+- [`../game/tests/persistence/test_story_autosave.tscn`](../game/tests/persistence/test_story_autosave.tscn) - focused story autosave regression covering first-save creation, real `Continue`, safe resume anchors, guarded harbor-performance persistence, postgame restore, and departure-save clearing
+- [`../game/tests/story_routes/test_story_routes.tscn`](../game/tests/story_routes/test_story_routes.tscn) - focused seasonal-route regression covering concurrent route seeds, manual lead pinning persistence, non-landmark seasonal progression, guarded endgame activation, and final-act save/restore
 - [`../scenes/tests/test_level_resolution.tscn`](../scenes/tests/test_level_resolution.tscn) - focused relative-level resolution and inherited room-level sandbox
 - [`../scenes/tests/test_portal_overlap.tscn`](../scenes/tests/test_portal_overlap.tscn) - focused multi-actor portal transition regression test
 - [`../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn`](../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn) - focused Bagua base-to-ground portal integration for `level_id` actor transitions
@@ -129,9 +131,11 @@ Use these when you need a focused validation target instead of the full project 
 - [`../scripts/token_efficiency_workflows.json`](../scripts/token_efficiency_workflows.json) - local workflow baselines and review cadence for token-efficiency audits
 - [`../agent_tools/scripts/token_efficiency_audit.py`](../agent_tools/scripts/token_efficiency_audit.py) - shared helper ROI audit script used with the local workflow config
 - [`../docs/`](../docs) - project docs
+- [`plan/README.md`](plan/README.md) - planning-doc index for the current status and active plan
+- [`plan/implementation_plan.md`](plan/implementation_plan.md) - canonical implementation plan for the current seasonal multi-route playable game
 - [`features/multi_level_spaces.md`](features/multi_level_spaces.md) - implementation-facing guide for stacked rooms, parent-owned level mapping, portals, stairs, and current design gaps
 - [`features/core_melody_loop.md`](features/core_melody_loop.md) - implementation-facing summary of the current melody-driven gameplay loop, gap list, MVP build order, reusable manual playtest route, and manual ending smoke pass
-- [`story/summer_of_piano_island_story_framework.md`](story/summer_of_piano_island_story_framework.md) - single source of truth for the current story, protagonist background, landmark arc framing, seasonal story frame, and ending tone
+- [`story/summer_of_piano_island_story_framework.md`](story/summer_of_piano_island_story_framework.md) - single source of truth for the current story, protagonist background, seasonal frame, route meanings, and ending tone
 - [`features/bgm_system.md`](features/bgm_system.md) - BGM pool design, V1 controller scope, selection rules, fallback order, and variant policy
 - [`features/bgm_tagging_guide.md`](features/bgm_tagging_guide.md) - track-weight authoring rules for the future `bgm_catalog.gd`
 - [`bgm_suno_guide.md`](bgm_suno_guide.md) - Suno-focused content-generation guide for the 7-track BGM seed pool and later expansion

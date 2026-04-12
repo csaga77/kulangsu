@@ -11,15 +11,17 @@ Read this first. It is the minimum-token design context for new Codex threads.
 ## Player Loop
 
 1. Arrive on the island with a simple question.
-2. Explore landmarks and meet residents.
-3. Hear, collect, and reconstruct melody fragments from residents and places.
-4. Complete short landmark-specific objective chains.
-5. Unlock a final island-wide performance and ending choice.
+2. Open several story routes at once through landmarks and residents.
+3. Follow one pinned lead on the HUD while tracking the wider route ledger in the journal.
+4. Hear, collect, and reconstruct melody fragments from residents and places while also advancing family, study, and preservation beats.
+5. Let seasonal anchors move the year toward a short final act and ending choice.
 
 ## Core Content Model
 
-- Main quest plus lightweight district objectives.
-- Progress is tracked through melody fragments, reconstructed melodies, landmarks, residents, chapter, location, player appearance, and wardrobe unlocks.
+- Seasonal multi-route structure rather than one main quest route.
+- The five-landmark melody route remains one major route, not the only route.
+- Progress is tracked through `season_phase`, `route_progress`, `story_flags`, melody fragments, reconstructed melodies, landmarks, residents, location, player appearance, and wardrobe unlocks.
+- `chapter` remains a compatibility/display label, not the authoritative progression key.
 - `Free Walk` is a low-pressure exploration mode separate from story progression.
 
 ## UI Direction
@@ -67,7 +69,7 @@ Input expectations:
 - Long Shan Tunnel: escort and reassurance.
 - Bagua Tower: vertical traversal and synthesis.
 
-**This five-landmark route is canonical.** An external GDD references Sunlight Rock and Zheng Chenggong Statue as additional landmarks, but these are not part of the current authored route and are out of scope until an explicit world-design decision is made. Do not add, replace, or reorder landmarks without updating this file, `core_game_workflow.md`, and the relevant landmark feature docs.
+**These five landmarks remain canonical.** They now sit inside a broader seasonal multi-route structure, with the melody route as the strongest symbolic route rather than the sole mainline. An external GDD references Sunlight Rock and Zheng Chenggong Statue as additional landmarks, but these are not part of the current authored route and are out of scope until an explicit world-design decision is made. Do not add, replace, or reorder landmarks without updating this file, `core_game_workflow.md`, and the relevant landmark feature docs.
 
 ## Non-Goals
 
@@ -84,6 +86,7 @@ Input expectations:
 - Shared interfaces and boundaries: [`contracts.md`](contracts.md)
 - Release and versioning policy: [`release_policy.md`](release_policy.md)
 - Repo coding and documentation rules: [`coding_rules.md`](coding_rules.md)
+- Planning-doc index and canonical implementation plan: [`plan/README.md`](plan/README.md), [`plan/implementation_plan.md`](plan/implementation_plan.md)
 - Feature-doc guide: [`features/README.md`](features/README.md)
 - Feature-doc template: [`features/template.md`](features/template.md)
 - Core melody loop, current gap list, and MVP implementation order: [`features/core_melody_loop.md`](features/core_melody_loop.md)

@@ -103,6 +103,7 @@ func _run() -> void:
 	_app_state().complete_prompt_request(m_prompt_requests[m_prompt_requests.size() - 1])
 	_assert_true(bool(_app_state().get_melody_state("festival_melody").get("performed", false)), "Festival stage marks the melody performed")
 	_assert_true(m_milestones.has("festival_performed"), "Festival performance emits the festival_performed milestone")
+	_assert_true(!bool(_app_state().endgame_state.get("active", false)), "Festival performance alone does not start the final act before spring resolves")
 
 	_app_state().configure_new_game()
 	_app_state().interact_with_resident("ferry_caretaker")

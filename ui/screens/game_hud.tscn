@@ -25,13 +25,21 @@ theme_override_constants/separation = 6
 [node name="Header" type="Label" parent="ObjectiveCard/Margin/Body"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "Current Objective"
+text = "Pinned Lead"
 
 [node name="Objective" type="Label" parent="ObjectiveCard/Margin/Body"]
 custom_minimum_size = Vector2(500, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 22
 text = "Find out why the island feels quiet today."
+autowrap_mode = 3
+
+[node name="Task" type="Label" parent="ObjectiveCard/Margin/Body"]
+custom_minimum_size = Vector2(500, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+modulate = Color(1, 1, 1, 0.72)
+text = "Current task: Find out why the island feels quiet today."
 autowrap_mode = 3
 
 [node name="StatusCard" type="PanelContainer" parent="."]

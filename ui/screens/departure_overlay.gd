@@ -21,9 +21,14 @@ func _ready() -> void:
 
 func refresh_from_state() -> void:
 	var summary = _app_state().ending_summary
-	m_body_label.text = "The first ferry ropes loosen while the harbor keeps singing behind you.\n\nYou leave after restoring %s of the festival melody and helping %s residents answer it.\n\nThis story run is complete. Continue will stay unavailable until a new journey begins." % [
+	var tones := String(summary.get("ending_tones", ""))
+	if tones.is_empty():
+		tones = "quiet departure"
+	m_body_label.text = "The first ferry ropes loosen while the harbor keeps singing behind you.\n\nYou leave during %s after restoring %s of the festival melody and helping %s residents answer it.\n\nThe route mix that carried this ending sounded like: %s.\n\nThis story run is complete. Continue will stay unavailable until a new journey begins." % [
+		String(summary.get("season", "the story's final season")),
 		String(summary.get("fragments", "4 / 4")),
 		String(summary.get("residents", "0")),
+		tones,
 	]
 
 

@@ -8,6 +8,8 @@ signal close_requested()
 
 @onready var m_tabs: TabContainer = $Margin/Body/Tabs
 @onready var m_quest_body: RichTextLabel = $Margin/Body/Tabs/Objectives/QuestBody
+@onready var m_prev_lead_button: Button = $Margin/Body/Tabs/Objectives/LeadControls/PreviousLeadButton
+@onready var m_next_lead_button: Button = $Margin/Body/Tabs/Objectives/LeadControls/NextLeadButton
 @onready var m_map_body: RichTextLabel = $Margin/Body/Tabs/Map/MapBody
 @onready var m_residents_body: RichTextLabel = $Margin/Body/Tabs/Residents/ResidentsBody
 @onready var m_melody_body: RichTextLabel = $Margin/Body/Tabs/Melody/MelodyBody
@@ -42,12 +44,16 @@ func _ready() -> void:
 	m_next_hair_style_button.pressed.connect(_on_next_hair_style_pressed)
 	m_prev_hair_color_button.pressed.connect(_on_previous_hair_color_pressed)
 	m_next_hair_color_button.pressed.connect(_on_next_hair_color_pressed)
+	m_prev_lead_button.pressed.connect(_on_previous_lead_pressed)
+	m_next_lead_button.pressed.connect(_on_next_lead_pressed)
 	m_melody_practice_button.pressed.connect(_on_melody_practice_pressed)
 	m_close_button.pressed.connect(close_requested.emit)
 	if !_app_state().player_costumes_changed.is_connected(_on_player_costumes_changed):
 		_app_state().player_costumes_changed.connect(_on_player_costumes_changed)
 	if !_app_state().player_appearance_changed.is_connected(_on_player_appearance_changed):
 		_app_state().player_appearance_changed.connect(_on_player_appearance_changed)
+	if !_app_state().active_leads_changed.is_connected(_on_active_leads_changed):
+		_app_state().active_leads_changed.connect(_on_active_leads_changed)
 	visibility_changed.connect(_on_visibility_changed)
 	refresh_from_state()
 
@@ -59,7 +65,7 @@ func grab_default_focus() -> void:
 
 
 func refresh_from_state() -> void:
-	m_quest_body.text = "Main Quest\n%s" % _app_state().objective
+	m_quest_body.text = "Story Routes\n%s" % JOURNAL_BUILDER.build_story_routes_journal_text(_app_state())
 	m_map_body.text = JOURNAL_BUILDER.build_map_journal_text(_app_state())
 	m_residents_body.text = "Resident Notes\n%s" % JOURNAL_BUILDER.build_resident_journal_text(_app_state())
 	m_melody_body.text = "Melody Journal\n%s" % JOURNAL_BUILDER.build_melody_journal_text(_app_state())
@@ -69,9 +75,12 @@ func refresh_from_state() -> void:
 	m_hair_color_value.text = _app_state().get_player_hair_color_display_name()
 	_refresh_preview()
 
-	var unlocked_count = _app_state().get_unlocked_player_costume_ids().size()
+	var unlocked_count: int = _app_state().get_unlocked_player_costume_ids().size()
 	m_prev_costume_button.disabled = unlocked_count <= 1
 	m_next_costume_button.disabled = unlocked_count <= 1
+	var lead_count: int = _app_state().get_available_lead_ids().size()
+	m_prev_lead_button.disabled = lead_count <= 1
+	m_next_lead_button.disabled = lead_count <= 1
 
 	var primary_melody_id := _primary_melody_id()
 	if primary_melody_id.is_empty():
@@ -79,8 +88,8 @@ func refresh_from_state() -> void:
 		m_melody_practice_button.text = "Practice Melody"
 		return
 
-	var melody_definition = _app_state().get_melody_definition(primary_melody_id)
-	var melody_state = _app_state().get_melody_state(primary_melody_id)
+	var melody_definition: Dictionary = _app_state().get_melody_definition(primary_melody_id)
+	var melody_state: Dictionary = _app_state().get_melody_state(primary_melody_id)
 	var melody_label := String(melody_definition.get("display_name", "Melody"))
 	var stage := String(melody_state.get("state", "unknown"))
 	var is_replay := stage in ["performed", "resonant"]
@@ -153,6 +162,16 @@ func _on_next_hair_color_pressed() -> void:
 	refresh_from_state()
 
 
+func _on_previous_lead_pressed() -> void:
+	_app_state().cycle_story_lead(-1)
+	refresh_from_state()
+
+
+func _on_next_lead_pressed() -> void:
+	_app_state().cycle_story_lead(1)
+	refresh_from_state()
+
+
 func _on_melody_practice_pressed() -> void:
 	var melody_id := _primary_melody_id()
 	if melody_id.is_empty():
@@ -165,6 +184,10 @@ func _on_player_costumes_changed(_unlocked_ids: PackedStringArray, _equipped_cos
 
 
 func _on_player_appearance_changed(_profile: Dictionary, _appearance_config: Dictionary) -> void:
+	refresh_from_state()
+
+
+func _on_active_leads_changed(_active_lead_id: String, _available_lead_ids: PackedStringArray) -> void:
 	refresh_from_state()
 
 

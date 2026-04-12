@@ -75,11 +75,18 @@ func _build_story_autosave_payload() -> Dictionary:
 		"saved_at_unix": int(Time.get_unix_time_from_system()),
 		"mode": m_owner.mode,
 		"chapter": m_owner.chapter,
+		"season_phase": m_owner.season_phase,
 		"location": m_owner.location,
 		"objective": m_owner.objective,
 		"journal_unlocked": m_owner.journal_unlocked,
 		"melody_progress": m_owner.melody_progress.duplicate(true),
 		"landmark_progress": m_owner.landmark_progress.duplicate(true),
+		"route_progress": m_owner.route_progress.duplicate(true),
+		"story_flags": m_owner.get_story_flags(),
+		"available_lead_ids": m_owner.get_available_lead_ids(),
+		"active_lead_id": m_owner.get_active_lead_id(),
+		"endgame_state": m_owner.endgame_state.duplicate(true),
+		"manual_pinned_lead_id": m_owner._manual_pinned_lead_id,
 		"open_shortcuts": m_owner.get_open_shortcuts(),
 		"resident_profiles": m_owner.resident_profiles.duplicate(true),
 		"player_profile": m_owner.get_player_profile(),
@@ -120,11 +127,18 @@ func _normalize_story_autosave_payload(payload: Dictionary) -> Dictionary:
 		"saved_at_unix": int(payload.get("saved_at_unix", 0)),
 		"mode": normalized_mode,
 		"chapter": String(payload.get("chapter", "Arrival")),
+		"season_phase": String(payload.get("season_phase", "summer_1")),
 		"location": String(payload.get("location", "Piano Ferry")),
 		"objective": String(payload.get("objective", "Find out why the island feels quiet today.")),
 		"journal_unlocked": bool(payload.get("journal_unlocked", true)),
 		"melody_progress": payload.get("melody_progress", {}),
 		"landmark_progress": payload.get("landmark_progress", {}),
+		"route_progress": payload.get("route_progress", {}),
+		"story_flags": payload.get("story_flags", {}),
+		"available_lead_ids": payload.get("available_lead_ids", []),
+		"active_lead_id": String(payload.get("active_lead_id", "")),
+		"endgame_state": payload.get("endgame_state", {}),
+		"manual_pinned_lead_id": String(payload.get("manual_pinned_lead_id", "")),
 		"open_shortcuts": payload.get("open_shortcuts", []),
 		"resident_profiles": payload.get("resident_profiles", {}),
 		"player_profile": payload.get("player_profile", m_owner.PLAYER_APPEARANCE_CATALOG_SCRIPT.default_profile()),
@@ -147,7 +161,7 @@ func _build_story_save_metadata_from_payload(payload: Dictionary) -> Dictionary:
 	return {
 		"exists": true,
 		"mode": String(payload.get("mode", "Story")),
-		"chapter": String(payload.get("chapter", "")),
+		"chapter": String(payload.get("chapter", m_owner.STORY_ROUTE_GRAPH_SCRIPT.phase_display_name(String(payload.get("season_phase", "summer_1"))))),
 		"location": String(payload.get("location", resume_location)),
 		"fragments_text": fragments_text,
 		"resume_anchor_id": String(payload.get("story_resume_anchor_id", "")),
@@ -207,7 +221,7 @@ func _apply_story_autosave_payload(payload: Dictionary) -> bool:
 		m_owner.story_resume_location = "Piano Ferry"
 
 	m_owner.set_mode(String(payload.get("mode", "Story")))
-	m_owner.set_chapter(String(payload.get("chapter", "Arrival")))
+	m_owner._apply_story_route_state_bundle(payload)
 	m_owner.set_location(String(payload.get("location", m_owner.story_resume_location)))
 	m_owner.set_objective(String(payload.get("objective", m_owner.objective)))
 	m_owner.set_journal_unlocked(bool(payload.get("journal_unlocked", true)))
@@ -219,6 +233,7 @@ func _apply_story_autosave_payload(payload: Dictionary) -> bool:
 	m_owner.set_all_landmark_progress(_normalize_saved_landmark_progress(payload.get("landmark_progress", {})))
 	m_owner.set_summary(_normalize_saved_summary(payload.get("ending_summary", {})))
 	m_owner.set_player_profile(payload.get("player_profile", m_owner.PLAYER_APPEARANCE_CATALOG_SCRIPT.default_profile()))
+	m_owner.refresh_story_routes()
 
 	var saved_costume_id := String(
 		payload.get("equipped_player_costume_id", m_owner.PLAYER_COSTUME_CATALOG_SCRIPT.default_costume_id())

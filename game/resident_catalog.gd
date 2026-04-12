@@ -200,6 +200,7 @@ static func _story_residents() -> Dictionary:
 					"gate_fallback": "Before you chase the bells, listen to the old piano crate by the notice board. The harbor is holding the opening pulse there.",
 					"unlock_landmark": "trinity_church",
 					"landmark_reward": "piano_ferry",
+					"story_event": "summer_return_complete",
 					"trust_delta": 1,
 					"save_status": "Caretaker Lian marked your first uphill lead.",
 				},
@@ -255,6 +256,14 @@ static func _story_residents() -> Dictionary:
 					"journal_step": "Lian urged you toward the tower now that most phrases are in hand.",
 				},
 				{
+					"conditions": {"story_flag_all": ["winter_memory_reveal", "preservation_inheritance_seen"]},
+					"priority": 35,
+					"once": true,
+					"line": "This coming festival will be the first one without your grandmother's place still waiting for her. The harbor knows before the house says it aloud.",
+					"journal_step": "Lian finally spoke of the first Spring Festival without Grandma as something the whole island is already bracing for.",
+					"story_event": "spring_festival_resolved",
+				},
+				{
 					"conditions": {"melody_state": {"festival_melody": "resonant"}},
 					"priority": 40,
 					"once": true,
@@ -282,6 +291,7 @@ static func _story_residents() -> Dictionary:
 					"hint": "R Talk   J Journal   Esc Pause",
 					"chapter": "Open Exploration",
 					"quest_state": "introduced",
+					"story_event": "trinity_memory_awakened",
 					"trust_delta": 1,
 					"save_status": "Resident note added: Choir Caretaker Mei",
 				},
@@ -335,6 +345,14 @@ static func _story_residents() -> Dictionary:
 					"once": true,
 					"line": "Suyin at the tower knows how to read distance. If anyone can line up three separate phrases, it is someone who sees the whole island at once.",
 					"journal_step": "Mei endorsed Tower Keeper Suyin as the person who can synthesize the recovered fragments.",
+				},
+				{
+					"conditions": {"story_flag_all": ["trinity_memory_awakened", "autumn_pressure_named"]},
+					"priority": 25,
+					"once": true,
+					"line": "Once the school year tightens, the church does not make the memory kinder. It only makes it impossible to avoid. Some grief waits until winter to speak clearly.",
+					"journal_step": "Mei named the colder turn of the year as the moment memory stops staying gentle and starts speaking plainly.",
+					"story_event": "winter_memory_reveal",
 				},
 				{
 					"conditions": {"melody_state": {"festival_melody": "resonant"}},
@@ -604,6 +622,33 @@ static func _ambient_residents() -> Dictionary:
 				"The sea wind keeps taking the last note somewhere inland.",
 				"I only need one honest phrase before the harbor can sing along again.",
 			],
+			"dialogue_beats": [
+				{
+					"line": "Everyone keeps talking about the year ahead as if your future were already scheduled. That kind of pressure can make even a harbor sound sharp. You do not have to pretend it feels normal.",
+					"objective": "Come back to Dock Musician Pei once the year has turned far enough to speak honestly about the future.",
+					"journal_step": "Pei heard the exam pressure in the harbor before you said it out loud.",
+					"story_event": "autumn_pressure_named",
+					"save_status": "Dock Musician Pei named the pressure hanging over the year.",
+				},
+				{
+					"line": "After a year like this, honesty matters more than certainty. Name one future that is yours before the island asks anything else of you.",
+					"objective": "Stay with Pei until the year breaks open into second summer.",
+					"journal_step": "Pei pushed the future question away from prestige and toward honesty.",
+					"gate": "spring_festival_resolved",
+					"gate_fallback": "The future question is real, but it is not ready for an answer yet. Let the year keep turning first.",
+					"story_event": "future_commitment_choice",
+					"save_status": "Dock Musician Pei reframed the future as an honest choice instead of a performance.",
+				},
+				{
+					"line": "The exam is finally over. Listen to the harbor now: it is quieter, but it is not empty. What remains is the part nobody else could rank for you.",
+					"objective": "Take a quiet moment at the harbor before choosing whether to leave or remain with what the island now means.",
+					"journal_step": "Pei named the strange quiet after the exam and treated it like the start of second summer.",
+					"gate": "future_commitment_choice",
+					"gate_fallback": "Name one future honestly first. The stranger quiet comes after that.",
+					"story_event": "summer_exam_complete",
+					"save_status": "Dock Musician Pei marked the exam's end and the arrival of second summer.",
+				},
+			],
 			"appearance": _look(
 				"male",
 				"olive",
@@ -655,6 +700,17 @@ static func _ambient_residents() -> Dictionary:
 			"ambient_lines": [
 				"The timetable looks correct, but the platform still feels early somehow.",
 				"I trust clocks less than footsteps when the island goes quiet like this.",
+			],
+			"conditional_beats": [
+				{
+					"conditions": {"story_flag_all": ["future_commitment_choice"]},
+					"priority": 30,
+					"once": true,
+					"line": "Some departures are not really departures. Sometimes standing here and admitting the future has already turned is enough to let a story end honestly.",
+					"journal_step": "Min turned the ticket desk into a place where an honest turning point could become its own ending.",
+					"story_event": "future_commitment_end",
+					"save_status": "Ticket Clerk Min recognized the harbor as a possible ending point in its own right.",
+				},
 			],
 			"appearance": _look(
 				"female",
@@ -981,6 +1037,22 @@ static func _ambient_residents() -> Dictionary:
 				"The island only starts composing itself when you climb high enough.",
 				"I paint the gaps between landmarks first. That is where the melody hides.",
 			],
+			"dialogue_beats": [
+				{
+					"line": "From up here the old buildings stop looking decorative. They start looking like the shape of everyone who kept living here long enough to leave traces behind. That is why losing them hurts.",
+					"objective": "Carry that wider view back into the year and notice what the island is asking you to preserve.",
+					"journal_step": "Nian made the old buildings feel like inheritance instead of scenery.",
+					"gate": "autumn_pressure_named",
+					"gate_fallback": "The tower can wait until the year starts pressing on you hard enough to ask what is worth carrying forward.",
+					"story_event": "preservation_inheritance_seen",
+					"save_status": "Terrace Painter Nian made preservation feel personal instead of abstract.",
+				},
+				{
+					"line": "Once you see the island that way, every wall and window starts sounding like a memory someone trusted the next person to keep.",
+					"journal_step": "Nian keeps treating the island's older buildings as memory made visible.",
+					"save_status": "Spoke with Terrace Painter Nian",
+				},
+			],
 			"appearance": _look(
 				"female",
 				"olive",
@@ -1115,17 +1187,42 @@ static func _ambient_residents() -> Dictionary:
 		var appearance = spec.get("appearance")
 		var spawn = spec.get("spawn")
 		var movement = spec.get("movement")
+		var dialogue_beats: Array = spec.get("dialogue_beats", [])
+		var conditional_beats: Array = spec.get("conditional_beats", [])
 
-		residents[resident_id] = _ambient_resident(
+		if dialogue_beats.is_empty() and conditional_beats.is_empty():
+			residents[resident_id] = _ambient_resident(
+				String(spec.get("display_name", resident_id)),
+				String(spec.get("landmark", "Island Paths")),
+				String(spec.get("role", "")),
+				String(spec.get("routine_note", "")),
+				String(spec.get("melody_hint", "")),
+				ambient_lines,
+				appearance,
+				spawn,
+				movement
+			)
+			continue
+
+		if dialogue_beats.is_empty():
+			dialogue_beats = _ambient_beats(
+				String(spec.get("display_name", resident_id)),
+				String(spec.get("landmark", "Island Paths")),
+				ambient_lines
+			)
+
+		residents[resident_id] = _resident(
 			String(spec.get("display_name", resident_id)),
 			String(spec.get("landmark", "Island Paths")),
 			String(spec.get("role", "")),
 			String(spec.get("routine_note", "")),
 			String(spec.get("melody_hint", "")),
 			ambient_lines,
+			dialogue_beats,
 			appearance,
 			spawn,
-			movement
+			movement,
+			conditional_beats
 		)
 
 	return residents
