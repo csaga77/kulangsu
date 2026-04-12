@@ -14,8 +14,6 @@ The player arrives at Long Shan Tunnel after Trinity Church resolves. Tunnel Gui
 
 The tone stays quiet. There is no timer, no NPC pathfinding, and no failure state. "Escort" here means the player traverses the tunnel while a resident's words stay with them — it is a mood and a framing, not a mechanical chase.
 
-When the player properly enters the tunnel interior, the surface ground/building layer should hide so the tunnel art and tunnel residents read as the active space. Walking across the tunnel footprint on the surface must not reveal those tunnel-only residents.
-
 ## Rules
 
 - Long Shan Tunnel starts `locked`. It unlocks to `available` when `_resolve_trinity_church()` fires (simultaneously with Bi Shan Tunnel).
@@ -49,15 +47,9 @@ When the player properly enters the tunnel interior, the surface ground/building
 ## Architecture / Ownership
 
 - `AppState` owns all landmark progress state, the lit-pocket checkpoint logic, the exit-route prompt request/completion, and the fragment reward.
-- Each `LandmarkTrigger` placed in the scene self-manages its own visibility by subscribing to `AppState.landmark_progress_changed`.
-- `LandmarkTrigger` owns its own collected state and hide/disable behavior.
-- `scenes/game_main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
-- `tunnel.gd`, `auto_visibility_node_2d.gd`, and `scenes/game_main.gd` together own the tunnel-only presentation rule: player interior entry hides the surface layer, while routed tunnel residents can move in and out and only remain visible when the player shares that tunnel context.
-- `long_shan_tunnel.tscn` keeps the root `Tunnel` node for level-aware masking, portal anchors, and walkable path ownership, and now splits visible presentation into `exterior` and `interior` child nodes that both inherit `IsometricBlock`.
-- `long_shan_tunnel.tscn` also owns the tunnel-mouth entry anchors and exterior mouth art under `exterior/long_shan_tunnel_entries`, so the full surface presentation now travels with the tunnel scene.
-- `TunnelContext` marks the active tunnel; the tunnel scene shows `exterior` while the player is outside and switches to `interior` only after true tunnel entry.
 - `resident_catalog.gd` owns the authored beat gates and `landmark_states` fields for `tunnel_guide`.
 - `long_shan_tunnel.tscn` hosts the `LandmarkTrigger` nodes directly; their configuration lives in their exported properties.
+- Shared tunnel presentation, resident visibility, level masking, and exterior/interior ownership are documented in [`multi_level_spaces.md`](multi_level_spaces.md).
 
 ## Relevant Files
 
@@ -74,24 +66,25 @@ When the player properly enters the tunnel interior, the surface ground/building
 - Related docs:
   - [`../contracts.md`](../contracts.md) — Landmark Progress Contract
   - [`core_melody_loop.md`](core_melody_loop.md)
+  - [`multi_level_spaces.md`](multi_level_spaces.md) — shared tunnel presentation and level behavior
   - [`trinity_church.md`](trinity_church.md) — beat gate pattern
   - [`../core_game_workflow.md`](../core_game_workflow.md)
 
 ## Signals / Nodes / Data Flow
 
 - Signals emitted:
-- `AppState.landmark_progress_changed("long_shan_tunnel", progress)` — on state advance and lit-pocket collection
+  - `AppState.landmark_progress_changed("long_shan_tunnel", progress)` — on state advance and lit-pocket collection
   - `AppState.melody_progress_changed("festival_melody", state)` — on arc resolution
   - `AppState.fragments_changed(found, total)` — on arc resolution
 - Signals consumed:
   - `AppState.landmark_progress_changed` — consumed by each `LandmarkTrigger` to self-manage visibility
 - Data flow:
-- `_resolve_trinity_church()` fires → `advance_landmark_state("long_shan_tunnel", "available")` → `LandmarkTrigger._on_landmark_progress_changed` shows entry trigger
-- Player reaches entry trigger → `activate_landmark_trigger` → `advance_landmark_state("long_shan_tunnel", "introduced")` → entry trigger hides
-- Player talks to tunnel_guide (beats 0 and 1) → `landmark_states` fields confirm `introduced` then `in_progress` → `landmark_progress_changed` → lit-pocket and exit triggers appear
-- Player reaches both lit pockets → `activate_landmark_trigger` → `checkpoints_collected` updates
-- Player reaches exit trigger → Long Shan route prompt opens → `complete_prompt_request(...)` → `_resolve_long_shan_tunnel` → melody + landmark state update + objective points back to Ren
-- Player talks to tunnel_guide after the route settles → either the comparison beat points toward Bi Shan or the conditional beat unlocks Bagua Tower once both tunnel routes agree
+  - `_resolve_trinity_church()` fires → `advance_landmark_state("long_shan_tunnel", "available")` → `LandmarkTrigger._on_landmark_progress_changed` shows entry trigger
+  - Player reaches entry trigger → `activate_landmark_trigger` → `advance_landmark_state("long_shan_tunnel", "introduced")` → entry trigger hides
+  - Player talks to tunnel_guide (beats 0 and 1) → `landmark_states` fields confirm `introduced` then `in_progress` → `landmark_progress_changed` → lit-pocket and exit triggers appear
+  - Player reaches both lit pockets → `activate_landmark_trigger` → `checkpoints_collected` updates
+  - Player reaches exit trigger → Long Shan route prompt opens → `complete_prompt_request(...)` → `_resolve_long_shan_tunnel` → melody + landmark state update + objective points back to Ren
+  - Player talks to tunnel_guide after the route settles → either the comparison beat points toward Bi Shan or the conditional beat unlocks Bagua Tower once both tunnel routes agree
 
 ## Contracts / Boundaries
 
@@ -108,10 +101,7 @@ When the player properly enters the tunnel interior, the surface ground/building
 - Talk to Ren after the exit resolves. Confirm he redirects the player to Bi Shan if that tunnel is still unresolved, or opens Bagua Tower once both routes are steady.
 - Try talking to tunnel_guide at beat 2 before reaching the exit. Confirm the gate_fallback line appears.
 - Start a Continue game. Confirm the arc is accessible (state: available, entry trigger visible).
-- Enter the tunnel through a mouth and walk inside. Confirm the surface ground/building layer hides and tunnel residents appear.
-- While inside, confirm the tunnel root keeps the `interior` `IsometricBlock` visible and hides the `exterior` `IsometricBlock`.
-- Move over the same tunnel footprint on the surface without entering the tunnel interior. Confirm the surface layer stays visible and tunnel residents stay hidden.
-- While still outside, confirm the tunnel root keeps the `exterior` `IsometricBlock` visible and the `interior` `IsometricBlock` hidden.
+- If shared tunnel presentation or level behavior changed, also run the tunnel validation steps documented in [`multi_level_spaces.md`](multi_level_spaces.md).
 
 ## Integration Checklist
 

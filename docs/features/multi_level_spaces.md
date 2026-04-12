@@ -15,6 +15,7 @@
 - Portals and stairs must move actors between levels in both directions.
 - Visibility changes must continue to match the player's active floor.
 - Tunnel interiors should only hide ground-space art after the player actually reaches the tunnel's interior level; surface overlap alone is not enough.
+- Tunnel scenes should keep shared surface-mouth art and entry anchors under their own `exterior` node rather than under global terrain ownership.
 
 ## Current Design
 
@@ -62,6 +63,17 @@
 - Tunnel scenes may further require interior-level membership before a visibility mask hides the ground layer.
 - The level system does not currently derive visibility masks automatically.
 
+### 5. Tunnel System
+
+- [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd) owns the shared tunnel scene contract.
+- The tunnel root still owns level-aware masking, walkable path lookup, portal anchors, and the player-inside state.
+- Each tunnel scene now splits visible presentation into `exterior` and `interior` child nodes that both inherit `IsometricBlock`.
+- `exterior` stays visible while the player is outside the tunnel. `interior` only becomes the active presentation after the player actually reaches the tunnel interior level.
+- Tunnel-mouth entry anchors and surface mouth art now live under each tunnel scene's `exterior/..._entries` node so the full surface presentation travels with the tunnel scene instead of global terrain.
+- [`../../scenes/tunnel_context.gd`](../../scenes/tunnel_context.gd) marks which tunnel, if any, is active for the player. It should only manage actors that are actually inside a tunnel and must not rewrite unrelated non-tunnel residents onto ground level.
+- [`../../scenes/route_resolver.gd`](../../scenes/route_resolver.gd) must treat anchors under a tunnel `exterior` node as outside anchors even though they are nested under a tunnel root. Only interior/path anchors should snap onto the tunnel walkable path.
+- [`../../scenes/game_main.gd`](../../scenes/game_main.gd) owns the shared spawn-anchor map that points resident movement and resume anchors at the tunnel exterior mouths and portal nodes.
+
 ## Reference Implementation
 
 - [`../../architecture/bagua_tower/bagua_tower.tscn`](../../architecture/bagua_tower/bagua_tower.tscn) is the best current reference.
@@ -86,6 +98,8 @@
 - Room tile-level resolution belongs in [`../../common/level_node_2d.gd`](../../common/level_node_2d.gd).
 - Actor mask / z transitions belong in reusable traversal components under [`../../architecture/components/`](../../architecture/components/).
 - Visibility behavior belongs in [`../../common/auto_visibility_node_2d.gd`](../../common/auto_visibility_node_2d.gd) plus scene-authored mask tilemaps.
+- Tunnel presentation and tunnel-only resident visibility belong in [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd), [`../../scenes/tunnel_context.gd`](../../scenes/tunnel_context.gd), [`../../scenes/game_main.gd`](../../scenes/game_main.gd), and authored visibility masks.
+- Tunnel route-anchor resolution belongs in [`../../scenes/route_resolver.gd`](../../scenes/route_resolver.gd).
 - Reusable room scenes should prefer relative level ids instead of hardcoded global runtime ids.
 
 ## Relevant Files
@@ -96,6 +110,9 @@
 - [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd)
 - [`../../architecture/components/portal.gd`](../../architecture/components/portal.gd)
 - [`../../architecture/components/steps.gd`](../../architecture/components/steps.gd)
+- [`../../scenes/tunnel_context.gd`](../../scenes/tunnel_context.gd)
+- [`../../scenes/route_resolver.gd`](../../scenes/route_resolver.gd)
+- [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
 - [`../../architecture/bagua_tower/bagua_tower.tscn`](../../architecture/bagua_tower/bagua_tower.tscn)
 - [`../../architecture/bi_shan_tunnel.tscn`](../../architecture/bi_shan_tunnel.tscn)
 - [`../../architecture/long_shan_tunnel.tscn`](../../architecture/long_shan_tunnel.tscn)

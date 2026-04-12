@@ -14,8 +14,6 @@ The player enters Bi Shan Tunnel after Trinity Church resolves. Three faint echo
 
 The mood stays quiet throughout. There is no timer, no failure state, and no required order for the three echo markers. The chamber trigger is simply hidden until all three echoes are collected.
 
-When the player enters through a tunnel mouth and reaches the tunnel interior, the surface ground/building layer should hide so the tunnel graphics and tunnel residents read cleanly. Walking over the same footprint on the surface must not trigger that tunnel-only presentation.
-
 ## Rules
 
 - Bi Shan Tunnel starts `locked`. It unlocks to `available` when `_resolve_trinity_church()` fires (simultaneously with Long Shan Tunnel).
@@ -44,14 +42,8 @@ When the player enters through a tunnel mouth and reaches the tunnel interior, t
 ## Architecture / Ownership
 
 - `AppState` owns all landmark progress state, the echo collection logic, the chamber-prompt request/completion, the fragment reward, and the dependable-route list surfaced in the journal Map tab.
-- Each `LandmarkTrigger` placed in the scene self-manages its own visibility by subscribing to `AppState.landmark_progress_changed`.
-- `LandmarkTrigger` owns its own collected state and hide/disable behavior.
-- `scenes/game_main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
-- `tunnel.gd`, `auto_visibility_node_2d.gd`, and `scenes/game_main.gd` together own the tunnel-only presentation rule: player interior entry hides the surface layer, while tunnel residents only appear when the player shares that tunnel context.
-- `bi_shan_tunnel.tscn` keeps the root `Tunnel` node for level-aware masking, portal anchors, and walkable path ownership, and now splits visible presentation into `exterior` and `interior` child nodes that both inherit `IsometricBlock`.
-- `bi_shan_tunnel.tscn` also owns the tunnel-mouth entry anchors and exterior mouth art under `exterior/bi_shan_tunnel_entries`, so the full surface presentation now travels with the tunnel scene.
-- `TunnelContext` marks the active tunnel; the tunnel scene shows `exterior` while the player is outside and switches to `interior` only after true tunnel entry.
 - `bi_shan_tunnel.tscn` hosts the `LandmarkTrigger` nodes directly; their configuration lives in their exported properties.
+- Shared tunnel presentation, resident visibility, level masking, and exterior/interior ownership are documented in [`multi_level_spaces.md`](multi_level_spaces.md).
 
 ## Relevant Files
 
@@ -67,6 +59,7 @@ When the player enters through a tunnel mouth and reaches the tunnel interior, t
 - Related docs:
   - [`../contracts.md`](../contracts.md) — Landmark Progress Contract
   - [`core_melody_loop.md`](core_melody_loop.md)
+  - [`multi_level_spaces.md`](multi_level_spaces.md) — shared tunnel presentation and level behavior
   - [`trinity_church.md`](trinity_church.md) — arc pattern this one follows
   - [`../core_game_workflow.md`](../core_game_workflow.md)
 
@@ -97,10 +90,7 @@ When the player enters through a tunnel mouth and reaches the tunnel interior, t
 - Press R at the chamber before collecting all echoes. Confirm the "silent panel" status line appears and nothing advances.
 - Start a Continue game. Confirm echo triggers are visible (echoes_collected is empty) and the arc is playable.
 - Start a Free Walk game. Confirm echo triggers appear and the arc plays through.
-- Enter the tunnel properly through a mouth and walk inside. Confirm the surface ground/building layer hides and tunnel residents appear.
-- While inside, confirm the tunnel root keeps the `interior` `IsometricBlock` visible and hides the `exterior` `IsometricBlock`.
-- Move across the same tunnel footprint on the surface without entering the tunnel interior. Confirm the surface layer stays visible and tunnel residents stay hidden.
-- While still outside, confirm the tunnel root keeps the `exterior` `IsometricBlock` visible and the `interior` `IsometricBlock` hidden.
+- If shared tunnel presentation or level behavior changed, also run the tunnel validation steps documented in [`multi_level_spaces.md`](multi_level_spaces.md).
 
 ## Integration Checklist
 
