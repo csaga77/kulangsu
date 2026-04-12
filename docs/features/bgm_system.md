@@ -45,7 +45,7 @@ resources/audio/
         └── ...
 ```
 
-Format: OGG Vorbis preferred (native loop support in Godot 4). 44100 Hz, normalized to ~-14 LUFS.
+Format requirement: ship `.ogg` assets as actual Ogg Vorbis, not Ogg FLAC or another codec hidden behind the `.ogg` extension. Use `44100 Hz` and normalize to about `-14 LUFS`. Godot 4 can report a mislabeled `.ogg` file exists while still failing to load it through the normal `load()` resource path, so convert first and then wire the asset into the catalog.
 
 ## Context Factors
 

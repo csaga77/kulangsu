@@ -3,11 +3,12 @@
 importer="oggvorbisstr"
 type="AudioStreamOggVorbis"
 uid="uid://dv3mkfy6enkik"
-valid=false
+path="res://.godot/imported/trinity_chime.ogg-40e93e89ed5aeb000f210494bd51ab00.oggvorbisstr"
 
 [deps]
 
 source_file="res://resources/audio/sfx/landmark_cues/trinity_chime.ogg"
+dest_files=["res://.godot/imported/trinity_chime.ogg-40e93e89ed5aeb000f210494bd51ab00.oggvorbisstr"]
 
 [params]
 

@@ -46,6 +46,14 @@ Read this first. It is the minimum-token design context for new Codex threads.
 - UI is authored against a `1920 x 1080` design canvas and scaled to fit by the app shell.
 - Do not assume large fixed desktop layouts or place controls with fragile offsets.
 
+## Audio Asset Guardrail
+
+- Treat `.ogg` in `resources/audio/` as a real format requirement, not just a file extension.
+- Shipped `.ogg` assets must be encoded as Ogg Vorbis at `44100 Hz`.
+- Do not commit Ogg FLAC or other codecs under a `.ogg` extension. Godot may report the file exists but still fail to load it through the normal resource path.
+- For landmark cues, prompt SFX, and BGM, transcode source audio to Vorbis before wiring it into scenes, catalogs, or docs.
+- If you need a conversion path, start with [`../addons/mp3_to_ogg/`](../addons/mp3_to_ogg) or an equivalent ffmpeg Vorbis transcode step.
+
 ## Current App Flow
 
 1. Boot

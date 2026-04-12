@@ -10,6 +10,7 @@ const LANDMARK_SYNC_DISTANCE := 1600.0
 const NPC_SCENE: PackedScene = preload("res://characters/resident_npc.tscn")
 const LEVEL_REGISTRY := preload("res://common/level_registry.gd")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
+const LANDMARK_CUE_LOADER_SCRIPT := preload("res://game/landmark_cue_loader.gd")
 const WEATHER_RUNTIME := preload("res://weather/weather_runtime.gd")
 const BGM_MANAGER_SCRIPT := preload("res://game/bgm_manager.gd")
 const ROUTE_RESOLVER_SCRIPT := preload("res://scenes/route_resolver.gd")
@@ -130,7 +131,7 @@ var m_tunnel_nodes: Array[Tunnel] = []
 var m_resident_root: Node2D = null
 var m_bgm_manager: Node = null
 var m_landmark_cue_player: AudioStreamPlayer = null
-var m_landmark_cue_stream_cache: Dictionary = {}
+var m_landmark_cue_loader: RefCounted = LANDMARK_CUE_LOADER_SCRIPT.new()
 var m_route_resolver: RefCounted = null
 var m_resident_spawner: RefCounted = null
 var m_tunnel_context: Node = null
@@ -607,16 +608,9 @@ func _get_landmark_cue_stream(cue_id: String) -> AudioStream:
 	var file_path := String(LANDMARK_CUE_FILES.get(cue_id, ""))
 	if file_path.is_empty():
 		return null
-	if m_landmark_cue_stream_cache.has(file_path):
-		return m_landmark_cue_stream_cache.get(file_path) as AudioStream
-	if !ResourceLoader.exists(file_path):
-		return null
-
-	var stream := load(file_path) as AudioStream
+	var stream := m_landmark_cue_loader.get_stream(file_path) as AudioStream
 	if stream == null:
 		return null
-
-	m_landmark_cue_stream_cache[file_path] = stream
 	return stream
 
 

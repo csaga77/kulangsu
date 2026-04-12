@@ -3,11 +3,12 @@
 importer="oggvorbisstr"
 type="AudioStreamOggVorbis"
 uid="uid://28yy2rmlfx6w"
-valid=false
+path="res://.godot/imported/bi_shan_echo.ogg-5598f0f6525d254597412e36393851f6.oggvorbisstr"
 
 [deps]
 
 source_file="res://resources/audio/sfx/landmark_cues/bi_shan_echo.ogg"
+dest_files=["res://.godot/imported/bi_shan_echo.ogg-5598f0f6525d254597412e36393851f6.oggvorbisstr"]
 
 [params]
 

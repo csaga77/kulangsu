@@ -3,11 +3,12 @@
 importer="oggvorbisstr"
 type="AudioStreamOggVorbis"
 uid="uid://b3grrkbb1dfxi"
-valid=false
+path="res://.godot/imported/festival_stage.ogg-837538a2713d555598a4f4d80d5a85b0.oggvorbisstr"
 
 [deps]
 
 source_file="res://resources/audio/sfx/landmark_cues/festival_stage.ogg"
+dest_files=["res://.godot/imported/festival_stage.ogg-837538a2713d555598a4f4d80d5a85b0.oggvorbisstr"]
 
 [params]
 

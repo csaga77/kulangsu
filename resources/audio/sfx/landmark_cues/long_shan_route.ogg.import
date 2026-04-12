@@ -3,11 +3,12 @@
 importer="oggvorbisstr"
 type="AudioStreamOggVorbis"
 uid="uid://uvucpi4nhbqj"
-valid=false
+path="res://.godot/imported/long_shan_route.ogg-c5eaf59f67606e8519af292642edae50.oggvorbisstr"
 
 [deps]
 
 source_file="res://resources/audio/sfx/landmark_cues/long_shan_route.ogg"
+dest_files=["res://.godot/imported/long_shan_route.ogg-c5eaf59f67606e8519af292642edae50.oggvorbisstr"]
 
 [params]
 

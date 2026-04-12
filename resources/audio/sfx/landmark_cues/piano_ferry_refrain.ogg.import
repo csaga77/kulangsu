@@ -3,11 +3,12 @@
 importer="oggvorbisstr"
 type="AudioStreamOggVorbis"
 uid="uid://bdyg5njrxf0n0"
-valid=false
+path="res://.godot/imported/piano_ferry_refrain.ogg-88698d015b401ad35876846f46c93330.oggvorbisstr"
 
 [deps]
 
 source_file="res://resources/audio/sfx/landmark_cues/piano_ferry_refrain.ogg"
+dest_files=["res://.godot/imported/piano_ferry_refrain.ogg-88698d015b401ad35876846f46c93330.oggvorbisstr"]
 
 [params]
 

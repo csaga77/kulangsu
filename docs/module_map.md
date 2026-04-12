@@ -39,6 +39,7 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../game/story_save_service.gd`](../game/story_save_service.gd) - versioned story autosave read/write logic and save metadata refresh
 - [`../game/story_route_graph.gd`](../game/story_route_graph.gd) - canonical seasonal route definitions, event definitions, lead selection, endgame trigger logic, and tone-tag assembly
 - [`../game/landmark_progression.gd`](../game/landmark_progression.gd) - landmark trigger handling, melody prompt requests, fragment awards, and harbor-performance completion flow
+- [`../game/landmark_cue_loader.gd`](../game/landmark_cue_loader.gd) - shared one-shot landmark cue loader/cache that decodes shipped Vorbis `.ogg` cues directly instead of relying on editor import state
 - [`../game/bgm_catalog.gd`](../game/bgm_catalog.gd) / [`../game/bgm_manager.gd`](../game/bgm_manager.gd) - seed-pool BGM definitions plus scene-owned weighted playback and transition logic for overworld music
 - [`../game/melody_catalog.gd`](../game/melody_catalog.gd) - authored melody definitions, onboarding clue sources, fragment sources, and performance-point summaries
 - [`../game/resident_catalog.gd`](../game/resident_catalog.gd) - resident roster and the helper builders that produce resident definitions
@@ -85,7 +86,7 @@ If a feature is self-contained and reusable, extend its module folder instead of
 
 ## Editor Plugins
 
-- [`../addons/mp3_to_ogg/`](../addons/mp3_to_ogg) - editor dock plugin that batch-converts MP3 files to OGG Vorbis via ffmpeg; remembers last-used per-user dock settings, provides ffmpeg/source/target pickers, a quality slider, background conversion with progress feedback, selectable conversion log output, and copy support
+- [`../addons/mp3_to_ogg/`](../addons/mp3_to_ogg) - editor dock plugin that batch-converts MP3 files to OGG Vorbis via ffmpeg; remembers last-used per-user dock settings, provides ffmpeg/source/target pickers, a quality slider, background conversion with progress feedback, selectable conversion log output, and copy support. Use this when adding shipped `.ogg` assets under `resources/audio/`; Godot expects those files to be real Vorbis streams, not Ogg FLAC with a misleading extension.
 
 ## Shared Utilities And Assets
 
