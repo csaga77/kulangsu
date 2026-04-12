@@ -77,6 +77,7 @@ var m_last_viewport_size: Vector2 = Vector2.ZERO
 var m_last_zoom: Vector2 = Vector2.ONE
 var m_last_extents: Vector2 = Vector2(256.0, 256.0)
 var m_last_screen_space := false
+var m_target_particle_amount := 0
 
 
 func _ready() -> void:
@@ -151,7 +152,9 @@ func _update_density_with_extents(s: Vector2) -> void:
 	else:
 		target = max(target, 0)
 
-	m_rain.amount = target
+	m_target_particle_amount = target
+	m_rain.amount = maxi(target, 1)
+	_sync_emission_state()
 
 
 func _update_direction_randomness() -> void:
@@ -228,9 +231,15 @@ func _sync_enabled_state() -> void:
 	if m_rain == null:
 		return
 	m_rain.visible = enabled
-	m_rain.emitting = enabled
-	if enabled:
+	_sync_emission_state()
+	if enabled and m_target_particle_amount > 0:
 		m_rain.restart()
+
+
+func _sync_emission_state() -> void:
+	if m_rain == null:
+		return
+	m_rain.emitting = enabled and m_target_particle_amount > 0
 
 
 func _get_max_particle_travel_distance() -> float:
