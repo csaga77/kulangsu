@@ -7,9 +7,9 @@ signal performance_completed(request: Dictionary)
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const DEFAULT_FEEDBACK_COLOR := Color(0.88, 0.90, 0.94, 1.0)
 const ERROR_FEEDBACK_COLOR := Color(0.95, 0.70, 0.64, 1.0)
-const SEGMENT_SELECT_PATH := "res://resources/audio/sfx/melody_prompt/segment_select.ogg"
-const ORDER_CORRECT_PATH := "res://resources/audio/sfx/melody_prompt/order_correct.ogg"
-const ORDER_WRONG_PATH := "res://resources/audio/sfx/melody_prompt/order_wrong.ogg"
+const SEGMENT_SELECT_PATH := "res://resources/audio/sfx/melody_prompt/segment_select.wav"
+const ORDER_CORRECT_PATH := "res://resources/audio/sfx/melody_prompt/order_correct.wav"
+const ORDER_WRONG_PATH := "res://resources/audio/sfx/melody_prompt/order_wrong.wav"
 const UI_AUDIO_VOLUME_DB := -5.0
 const ORDER_CORRECT_WAIT_CAP_SECONDS := 1.6
 const ORDER_WRONG_WAIT_CAP_SECONDS := 0.9
