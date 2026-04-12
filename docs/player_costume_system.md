@@ -21,7 +21,10 @@ Read [`design_brief.md`](design_brief.md) first for the project summary. This do
   - skin tone
   - hair style
   - hair color
-- These options are intentionally curated instead of exposing every raw LPC sheet, which keeps the combinations readable and known-good.
+- Body frame and presentation stay curated.
+- Skin tone now exposes the full shared LPC-safe palette supported by the player body, neutral face, and both human head shapes.
+- Hair style now exposes every shipped standalone LPC hair layer that fully supports the project's player body types and required runtime rows, while still excluding child-only, unmapped, or partially missing definitions.
+- Hair color now exposes the full shared LPC-safe palette used across those supported hair styles.
 
 ### Costume Catalog
 
@@ -106,7 +109,7 @@ This keeps the feature overlay-based and consistent with the project’s minimal
 
 ## Design Rules
 
-- Initial character setup should stay curated and legible rather than becoming a raw asset browser.
+- Initial character setup should stay legible even though hair style now exposes the full player-safe shipped LPC hair list.
 - In-story costume changes should remain preset looks, not combinatorial paper-doll editing.
 - Unlocks should read as gifts, local borrowing, or story recognition rather than loot drops.
 - Wardrobe text should stay short enough to scan in the journal without feeling like a spreadsheet.
@@ -127,7 +130,7 @@ This keeps the feature overlay-based and consistent with the project’s minimal
 
 ### New Base Appearance Option
 
-1. Add the curated option in [`../game/player_appearance_catalog.gd`](../game/player_appearance_catalog.gd).
+1. Add the option in [`../game/player_appearance_catalog.gd`](../game/player_appearance_catalog.gd). Hair styles should stay aligned with the full shipped set of player-safe standalone LPC hair definitions unless the project intentionally returns to a smaller curated subset.
 2. Confirm the referenced LPC path and variant already exist in the shipped metadata at [`../resources/sprites/universal_lpc/universal_lpc_metadata.json`](../resources/sprites/universal_lpc/universal_lpc_metadata.json).
 3. Confirm the path also supports the intended `body_type` values for that option set; some shipped LPC entries only support a subset of male/female/teen variants.
 4. If the change introduces a brand new profile field instead of a new option value, update the `AppState` getters/cyclers plus both customization surfaces in [`../ui/screens/player_customization_overlay.gd`](../ui/screens/player_customization_overlay.gd) and [`../ui/screens/journal_overlay.gd`](../ui/screens/journal_overlay.gd).

@@ -4,6 +4,8 @@ const HUMAN_BODY_SCENE := preload("res://characters/human_body_2d.tscn")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const PLAYER_APPEARANCE_CATALOG := preload("res://game/player_appearance_catalog.gd")
 const PLAYER_COSTUME_CATALOG := preload("res://game/player_costume_catalog.gd")
+const PREVIEW_ACTOR_SCALE := 2.2
+const PREVIEW_SPRITE_SIZE := Vector2(64.0, 64.0)
 
 signal confirm_requested()
 signal cancel_requested()
@@ -24,6 +26,7 @@ signal cancel_requested()
 var m_is_free_walk := false
 var m_preview_actor: HumanBody2D = null
 var m_draft_profile: Dictionary = {}
+var m_preview_center_refresh_pending := false
 
 
 func _app_state():
@@ -35,6 +38,7 @@ func _ready() -> void:
 	add_theme_stylebox_override("panel", UIStyle.build_panel_style())
 	_build_preview_actor()
 	_connect_buttons()
+	m_preview_viewport.size_changed.connect(_schedule_preview_center_refresh)
 
 	visibility_changed.connect(_on_visibility_changed)
 	refresh_from_state()
@@ -89,8 +93,8 @@ func _build_preview_actor() -> void:
 		return
 
 	preview_root.add_child(m_preview_actor)
-	m_preview_actor.position = Vector2(180, 288)
-	m_preview_actor.scale = Vector2.ONE * 2.2
+	m_preview_actor.scale = Vector2.ONE * PREVIEW_ACTOR_SCALE
+	_schedule_preview_center_refresh()
 	m_preview_actor.direction = 180.0
 	m_preview_actor.is_running = false
 	m_preview_actor.is_walking = false
@@ -162,7 +166,37 @@ func _refresh_preview() -> void:
 	if m_preview_actor == null:
 		return
 
+	_schedule_preview_center_refresh()
 	m_preview_actor.set_configuration(_build_preview_appearance_config())
+
+
+func _center_preview_actor() -> void:
+	if m_preview_actor == null:
+		return
+
+	var viewport_size := Vector2(m_preview_viewport.size)
+	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+		return
+	var scaled_preview_size := PREVIEW_SPRITE_SIZE * PREVIEW_ACTOR_SCALE
+	m_preview_actor.position = Vector2(
+		viewport_size.x * 0.5,
+		viewport_size.y * 0.5 + scaled_preview_size.y * 0.5
+	)
+
+
+func _schedule_preview_center_refresh() -> void:
+	if m_preview_center_refresh_pending:
+		return
+
+	m_preview_center_refresh_pending = true
+	call_deferred("_refresh_preview_center_after_layout")
+
+
+func _refresh_preview_center_after_layout() -> void:
+	_center_preview_actor()
+	await get_tree().process_frame
+	_center_preview_actor()
+	m_preview_center_refresh_pending = false
 
 
 func _ensure_draft_profile() -> void:
@@ -210,4 +244,5 @@ func grab_default_focus() -> void:
 
 func _on_visibility_changed() -> void:
 	if is_visible_in_tree():
+		_schedule_preview_center_refresh()
 		call_deferred("grab_default_focus")
