@@ -15,6 +15,7 @@ Use this folder for:
 
 - The current playable canon is the seasonal multi-route architecture.
 - The five-landmark melody route remains canonical as one major route inside that broader structure.
+- Workstream 0 (AppState decomposition and architecture cleanup) is the recommended next focus before heavy content authoring in Workstreams 1-4.
 - This folder no longer keeps historical or superseded draft notes.
 
 ## Merge Rule
