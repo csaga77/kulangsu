@@ -80,6 +80,20 @@ func _assert_runtime_selection_behaviors() -> void:
 		expected_fade_delay,
 		TIMER_TOLERANCE_SECONDS
 	)
+	manager._on_track_end_fade_timer_timeout()
+	await get_tree().process_frame
+	_assert_true(
+		manager.m_player.playing,
+		"Natural-end fade keeps the current track playing until the stream actually finishes"
+	)
+	_assert_true(
+		!manager.m_is_transitioning and manager.m_is_natural_end_fading,
+		"Natural-end fade does not reuse the mid-track transition path"
+	)
+	_assert_true(
+		manager.m_gap_timer.is_stopped(),
+		"Natural-end fade does not start the silence gap before the stream finishes"
+	)
 
 	manager.m_recent_history.clear()
 	manager.m_recent_history.append_array(["seaside_portico_waltz", "wave_of_kulangsu"])

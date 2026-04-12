@@ -51,6 +51,7 @@ var m_scheduled_fade_track_id := ""
 var m_scheduled_fade_duration := 0.0
 var m_is_manually_ducked := false
 var m_is_cue_ducked := false
+var m_is_natural_end_fading := false
 
 
 func _ready() -> void:
@@ -257,6 +258,7 @@ func _fade_out_current_track(reason: String) -> void:
 
 	var fade_duration := _resolve_scheduled_fade_duration(reason)
 	m_is_transitioning = true
+	m_is_natural_end_fading = false
 	_cancel_scheduled_track_end_fade()
 	_kill_fade_tween()
 	m_fade_tween = create_tween()
@@ -278,6 +280,7 @@ func _on_fade_out_finished(reason: String) -> void:
 
 func _on_track_finished() -> void:
 	_cancel_scheduled_track_end_fade()
+	m_is_natural_end_fading = false
 	if m_is_transitioning:
 		return
 	_start_gap("natural_end")
@@ -311,7 +314,26 @@ func _on_track_end_fade_timer_timeout() -> void:
 	if m_current_track_id.is_empty() or m_current_track_id != m_scheduled_fade_track_id:
 		return
 
-	_fade_out_current_track("natural_end")
+	_start_natural_end_fade()
+
+
+func _start_natural_end_fade() -> void:
+	if !is_instance_valid(m_player) or !m_player.playing:
+		return
+	if m_is_natural_end_fading:
+		return
+
+	var fade_duration := _resolve_scheduled_fade_duration("natural_end")
+	m_is_natural_end_fading = true
+	_cancel_scheduled_track_end_fade()
+	_kill_fade_tween()
+	m_fade_tween = create_tween()
+	m_fade_tween.tween_property(
+		m_player,
+		"volume_db",
+		SILENT_VOLUME_DB,
+		fade_duration
+	)
 
 
 func _on_cue_duck_timer_timeout() -> void:
@@ -339,6 +361,7 @@ func _select_and_play_next_track(reason: String) -> void:
 	m_current_track_id = track_id
 	m_pending_location = ""
 	m_commitment_expires_at = _now_seconds() + MIN_COMMITMENT_SECONDS
+	m_is_natural_end_fading = false
 	_append_recent_history(track_id)
 
 	m_player.bus = _resolve_bus_name()
