@@ -151,14 +151,14 @@ The catalog `spawn.anchor_id` values and `movement.route_points[].anchor_id` val
 - `Piano Ferry` -> `terrain/ground/buildings/piano_ferry`
 - `Trinity Church` -> `terrain/ground/buildings/TrinityChurch`
 - `Bagua Tower` -> `terrain/ground/buildings/BaguaTower`
-- `Bi Shan Tunnel South` -> `terrain/ground/bi_shan_tunnel_entries/entry_south`
-- `Bi Shan Tunnel North` -> `terrain/ground/bi_shan_tunnel_entries/entry_north`
+- `Bi Shan Tunnel South` -> `terrain/bi_shan_tunnel/exterior/bi_shan_tunnel_entries/entry_south`
+- `Bi Shan Tunnel North` -> `terrain/bi_shan_tunnel/exterior/bi_shan_tunnel_entries/entry_north`
 - `Bi Shan Tunnel` -> `terrain/bi_shan_tunnel`
 - `Bi Shan Tunnel South Portal` -> `terrain/bi_shan_tunnel/exit_south`
 - `Bi Shan Tunnel North Portal` -> `terrain/bi_shan_tunnel/exit_north`
 - `Long Shan Tunnel` -> `terrain/long_shan_tunnel`
-- `Long Shan Tunnel South` -> `terrain/ground/long_shan_tunnel_entries/entry_south`
-- `Long Shan Tunnel North` -> `terrain/ground/long_shan_tunnel_entries/entry_north`
+- `Long Shan Tunnel South` -> `terrain/long_shan_tunnel/exterior/long_shan_tunnel_entries/entry_south`
+- `Long Shan Tunnel North` -> `terrain/long_shan_tunnel/exterior/long_shan_tunnel_entries/entry_north`
 - `Long Shan Tunnel South Portal` -> `terrain/long_shan_tunnel/exit_south`
 - `Long Shan Tunnel North Portal` -> `terrain/long_shan_tunnel/exit_north`
 
@@ -185,7 +185,7 @@ If a resident uses an unsupported `anchor_id`, startup should warn and skip that
 - [`../../game/resident_system/`](../../game/resident_system) owns the typed resident definition resources for appearance, dialogue, routine, and behavior metadata.
 - [`../../game/app_state.gd`](../../game/app_state.gd) owns immutable resident definitions, mutable runtime resident profiles, shared resident getters, and journal text generation.
 - [`../../scenes/game_main.gd`](../../scenes/game_main.gd) owns overworld spawn/movement-anchor mapping, `ResidentNPC` instantiation, tunnel-context syncing, and talk-prompt wiring.
-- [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd) owns tunnel walkable-path snapping, interior checks, and same-tunnel route expansion helpers.
+- [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd) owns tunnel walkable-path snapping, interior checks, same-tunnel route expansion helpers, and the `exterior`/`interior` presentation swap for tunnel scenes.
 - [`../../characters/resident_npc.gd`](../../characters/resident_npc.gd) owns static resident presentation on top of `HumanBody2D`.
 - [`../../characters/control/npc_controller.gd`](../../characters/control/npc_controller.gd) owns nearby bubble reveal behavior and simple route-following movement.
 - [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd) owns resident note presentation in the journal.
@@ -262,7 +262,7 @@ When extending the NPC system, make changes in this order unless the task is str
 - Use [`../../game/tests/npc_system/test_npc_layer_interaction.tscn`](../../game/tests/npc_system/test_npc_layer_interaction.tscn) when testing same-layer gating, portal-driven z changes, and closest-target behavior across stacked resident layers.
 - Use [`../../game/tests/npc_system/test_npc_control.tscn`](../../game/tests/npc_system/test_npc_control.tscn) when changing routed NPC controller behavior such as walk animation playback, nearby talk pause/resume, or dialogue reveal handling.
 - Use [`../../game/tests/npc_system/test_npc_route_collision.tscn`](../../game/tests/npc_system/test_npc_route_collision.tscn) when changing routed NPC movement against blocking walls or other collision geometry.
-- Use [`../../game/tests/npc_system/test_tunnel_visibility.tscn`](../../game/tests/npc_system/test_tunnel_visibility.tscn) for tunnel-resident placement, tunnel-context visibility, and tunnel spacing regression coverage.
+- Use [`../../game/tests/npc_system/test_tunnel_visibility.tscn`](../../game/tests/npc_system/test_tunnel_visibility.tscn) for tunnel-resident placement, tunnel-context visibility, tunnel presentation (`exterior` vs `interior`), and tunnel spacing regression coverage.
 - Use [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn) for tunnel route crossing, level-state syncing, and the two reference routed residents: Ren's inside-only Long Shan route and Nuo's Bi Shan tunnel-to-surface route.
 - Use [`../../game/tests/npc_system/test_scene.tscn`](../../game/tests/npc_system/test_scene.tscn) as a faster sandbox for resident speech and journal checks.
 - Use the main project flow to verify that tunnel residents spawn on walkable tunnel cells, can move in and out through tunnel entrances, and only remain visible when they share the player's current tunnel context.
@@ -274,6 +274,7 @@ Quick validation checklist:
 - Tunnel residents spawn on walkable tunnel cells instead of outside the tunnel boundary
 - Tunnel residents inherit the correct tunnel level on spawn and switch back to the outside level after leaving the tunnel
 - Tunnel residents only stay visible when they share the player's current tunnel context
+- Each tunnel shows its `exterior` `IsometricBlock` while the player is outside and switches to its `interior` `IsometricBlock` only after true tunnel entry
 - Walking over a tunnel footprint on the surface must not reveal tunnel residents or hide the ground layer
 - Ren's Long Shan route should resolve from the south tunnel mouth to a mid-tunnel point to the north tunnel mouth without leaving the tunnel walls
 - Nuo's Bi Shan route should resolve from the tunnel portal to a front-aligned outside helper point before reaching her outside wait point

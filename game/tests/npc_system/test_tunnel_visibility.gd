@@ -71,6 +71,8 @@ func _run() -> void:
 		non_tunnel_snapshots,
 		"Initial outside state should match tunnel context."
 	)
+	_assert_tunnel_presentation(bi_shan_tunnel, false, "Initial outside state should keep Bi Shan on its exterior presentation.")
+	_assert_tunnel_presentation(long_shan_tunnel, false, "Initial outside state should keep Long Shan on its exterior presentation.")
 	_assert(ground.visible, "Ground should stay visible while the player is outside.")
 
 	_move_player_over_tunnel_surface(player, _resident_node(residents_root, BI_SHAN_RESIDENT_IDS[0]), initial_player_z, initial_player_collision_mask)
@@ -85,6 +87,8 @@ func _run() -> void:
 		non_tunnel_snapshots,
 		"Surface overlap should still use outside tunnel visibility."
 	)
+	_assert_tunnel_presentation(bi_shan_tunnel, false, "Surface overlap should not switch Bi Shan to its interior presentation.")
+	_assert_tunnel_presentation(long_shan_tunnel, false, "Surface overlap should not affect Long Shan presentation.")
 	_assert(ground.visible, "Ground should stay visible while the player only overlaps the tunnel footprint on the surface.")
 
 	_move_player_into_tunnel(player, bi_shan_tunnel, _resident_node(residents_root, BI_SHAN_RESIDENT_IDS[0]), initial_player_z, initial_player_collision_mask)
@@ -97,6 +101,8 @@ func _run() -> void:
 		non_tunnel_snapshots,
 		"Bi Shan tunnel state should match tunnel context."
 	)
+	_assert_tunnel_presentation(bi_shan_tunnel, true, "Bi Shan should switch to its interior presentation once the player enters.")
+	_assert_tunnel_presentation(long_shan_tunnel, false, "Long Shan should stay on its exterior presentation while Bi Shan is active.")
 	_assert(ground.visible == false, "Ground should hide while the player is inside Bi Shan Tunnel.")
 
 	_move_player_outside(player, initial_player_z, initial_player_collision_mask)
@@ -109,6 +115,8 @@ func _run() -> void:
 		non_tunnel_snapshots,
 		"Returning outside should restore outside context visibility."
 	)
+	_assert_tunnel_presentation(bi_shan_tunnel, false, "Leaving Bi Shan should restore its exterior presentation.")
+	_assert_tunnel_presentation(long_shan_tunnel, false, "Leaving Bi Shan should leave Long Shan on its exterior presentation.")
 	_assert(ground.visible, "Ground should reappear after leaving the tunnel.")
 
 	_move_player_into_tunnel(player, long_shan_tunnel, _resident_node(residents_root, LONG_SHAN_RESIDENT_IDS[0]), initial_player_z, initial_player_collision_mask)
@@ -121,6 +129,8 @@ func _run() -> void:
 		non_tunnel_snapshots,
 		"Long Shan tunnel state should match tunnel context."
 	)
+	_assert_tunnel_presentation(bi_shan_tunnel, false, "Bi Shan should stay on its exterior presentation while Long Shan is active.")
+	_assert_tunnel_presentation(long_shan_tunnel, true, "Long Shan should switch to its interior presentation once the player enters.")
 	_assert(ground.visible == false, "Ground should hide while the player is inside Long Shan Tunnel.")
 
 	print("Tunnel NPC visibility regression passed.")
@@ -149,6 +159,26 @@ func _assert_group_on_tunnel_level(residents_root: Node2D, tunnel: Tunnel, resid
 		var resident := _resident_node(residents_root, resident_id)
 		_assert(CommonUtils.get_absolute_z_index(resident) == expected_z, "%s should start on tunnel z %d." % [resident.name, expected_z])
 		_assert(resident.collision_mask == expected_mask, "%s should start on tunnel collision mask %d." % [resident.name, expected_mask])
+
+
+func _assert_tunnel_presentation(tunnel: Tunnel, expected_inside: bool, message: String) -> void:
+	_assert(tunnel != null, "Tunnel presentation check requires a valid tunnel.")
+	var exterior := tunnel.get_node_or_null("exterior") as IsometricBlock
+	var interior := tunnel.get_node_or_null("interior") as IsometricBlock
+	_assert(exterior != null, "%s should expose an exterior IsometricBlock node." % tunnel.name)
+	_assert(interior != null, "%s should expose an interior IsometricBlock node." % tunnel.name)
+	_assert(
+		exterior.visible == !expected_inside,
+		"%s %s Expected exterior visible=%s, got %s." % [tunnel.name, message, str(!expected_inside), str(exterior.visible)]
+	)
+	_assert(
+		interior.visible == expected_inside,
+		"%s %s Expected interior visible=%s, got %s." % [tunnel.name, message, str(expected_inside), str(interior.visible)]
+	)
+	_assert(
+		tunnel.is_player_inside() == expected_inside,
+		"%s %s Expected tunnel context inside=%s, got %s." % [tunnel.name, message, str(expected_inside), str(tunnel.is_player_inside())]
+	)
 
 
 func _assert_visibility_matches_player_context(

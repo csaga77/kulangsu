@@ -53,6 +53,9 @@ When the player properly enters the tunnel interior, the surface ground/building
 - `LandmarkTrigger` owns its own collected state and hide/disable behavior.
 - `scenes/game_main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
 - `tunnel.gd`, `auto_visibility_node_2d.gd`, and `scenes/game_main.gd` together own the tunnel-only presentation rule: player interior entry hides the surface layer, while routed tunnel residents can move in and out and only remain visible when the player shares that tunnel context.
+- `long_shan_tunnel.tscn` keeps the root `Tunnel` node for level-aware masking, portal anchors, and walkable path ownership, and now splits visible presentation into `exterior` and `interior` child nodes that both inherit `IsometricBlock`.
+- `long_shan_tunnel.tscn` also owns the tunnel-mouth entry anchors and exterior mouth art under `exterior/long_shan_tunnel_entries`, so the full surface presentation now travels with the tunnel scene.
+- `TunnelContext` marks the active tunnel; the tunnel scene shows `exterior` while the player is outside and switches to `interior` only after true tunnel entry.
 - `resident_catalog.gd` owns the authored beat gates and `landmark_states` fields for `tunnel_guide`.
 - `long_shan_tunnel.tscn` hosts the `LandmarkTrigger` nodes directly; their configuration lives in their exported properties.
 
@@ -106,7 +109,9 @@ When the player properly enters the tunnel interior, the surface ground/building
 - Try talking to tunnel_guide at beat 2 before reaching the exit. Confirm the gate_fallback line appears.
 - Start a Continue game. Confirm the arc is accessible (state: available, entry trigger visible).
 - Enter the tunnel through a mouth and walk inside. Confirm the surface ground/building layer hides and tunnel residents appear.
+- While inside, confirm the tunnel root keeps the `interior` `IsometricBlock` visible and hides the `exterior` `IsometricBlock`.
 - Move over the same tunnel footprint on the surface without entering the tunnel interior. Confirm the surface layer stays visible and tunnel residents stay hidden.
+- While still outside, confirm the tunnel root keeps the `exterior` `IsometricBlock` visible and the `interior` `IsometricBlock` hidden.
 
 ## Integration Checklist
 

@@ -8,6 +8,9 @@
 [ext_resource type="TileSet" uid="uid://vgxfajcetvam" path="res://resources/tilesets/collision_tiles.tres" id="5_ep65q"]
 [ext_resource type="Texture2D" uid="uid://boka5fmviqaew" path="res://resources/sprites/architecture/components/structure_0.png" id="5_vf6k1"]
 [ext_resource type="Script" path="res://game/landmark_trigger.gd" id="6_ltrg"]
+[ext_resource type="TileSet" uid="uid://cqo6awm27cwcf" path="res://resources/tilesets/terrain_0_tiles.tres" id="7_hl62s"]
+[ext_resource type="TileSet" uid="uid://c2edqbdaenat2" path="res://resources/tilesets/symbols_0_tiles.tres" id="8_xo2vs"]
+[ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="9_nsrdk"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_oumyh"]
 atlas = ExtResource("4_fmehs")
@@ -16,6 +19,22 @@ region = Rect2(128, 1024, 64, 64)
 [sub_resource type="AtlasTexture" id="AtlasTexture_3hdd2"]
 atlas = ExtResource("5_vf6k1")
 region = Rect2(192, 64, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_entry_column"]
+atlas = ExtResource("4_fmehs")
+region = Rect2(192, 1024, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_entry_trim"]
+atlas = ExtResource("5_vf6k1")
+region = Rect2(384, 64, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_entry_cap"]
+atlas = ExtResource("5_vf6k1")
+region = Rect2(448, 64, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_entry_slope"]
+atlas = ExtResource("4_fmehs")
+region = Rect2(192, 1152, 64, 64)
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_5mapb"]
 resource_local_to_scene = true
@@ -44,536 +63,816 @@ y_sort_enabled = true
 script = ExtResource("1_pm57c")
 level_id = 9
 
-[node name="path" type="TileMapLayer" parent="." unique_id=473915381]
+[node name="exterior" type="Node2D" parent="."]
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(32, 16)
+
+[node name="bi_shan_tunnel_entries" type="Node2D" parent="exterior" unique_id=524352640]
+y_sort_enabled = true
+position = Vector2(992, -7824)
+
+[node name="entry_south" type="Node2D" parent="exterior/bi_shan_tunnel_entries" unique_id=1278051776]
+y_sort_enabled = true
+position = Vector2(-1008, 7848)
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(32, 16)
+
+[node name="Sprite2D" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_south" unique_id=1438901590]
+position = Vector2(0, 40)
+texture = SubResource("AtlasTexture_entry_column")
+offset = Vector2(0, -24)
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D5" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_south/Sprite2D" unique_id=1108133227]
+position = Vector2(0, -56)
+texture = SubResource("AtlasTexture_entry_column")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D4" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_south/Sprite2D" unique_id=1836224349]
+position = Vector2(0, -88)
+texture = SubResource("AtlasTexture_entry_column")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D3" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_south/Sprite2D/Sprite2D4" unique_id=96356608]
+show_behind_parent = true
+position = Vector2(32, -16)
+texture = SubResource("AtlasTexture_entry_trim")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D2" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_south" unique_id=568410283]
+position = Vector2(128, -24)
+texture = SubResource("AtlasTexture_entry_column")
+offset = Vector2(0, -24)
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D6" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_south/Sprite2D2" unique_id=1520817789]
+position = Vector2(0, -56)
+texture = SubResource("AtlasTexture_entry_column")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D7" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_south/Sprite2D2" unique_id=2131724779]
+position = Vector2(0, -88)
+texture = SubResource("AtlasTexture_entry_column")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D5" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_south/Sprite2D2/Sprite2D7" unique_id=13102860]
+position = Vector2(-32, 16)
+texture = SubResource("AtlasTexture_entry_cap")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D8" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_south/Sprite2D2/Sprite2D7" unique_id=1958450782]
+position = Vector2(-64, 16)
+texture = SubResource("AtlasTexture_entry_slope")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="entry_north" type="Node2D" parent="exterior/bi_shan_tunnel_entries" unique_id=965150552]
+y_sort_enabled = true
+position = Vector2(-1696, 6896)
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(32, 16)
+
+[node name="Sprite2D" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north" unique_id=1478613190 node_paths=PackedStringArray("visibility_mask_nodes")]
+position = Vector2(0, 40)
+texture = SubResource("AtlasTexture_entry_column")
+offset = Vector2(0, -24)
+script = ExtResource("9_nsrdk")
+visibility_mask_nodes = [NodePath("../../visibility_mask")]
+is_inverted = true
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D5" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D" unique_id=526676634]
+position = Vector2(0, -56)
+texture = SubResource("AtlasTexture_entry_column")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D4" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D" unique_id=792076122]
+position = Vector2(0, -88)
+texture = SubResource("AtlasTexture_entry_column")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D3" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D/Sprite2D4" unique_id=936536723]
+show_behind_parent = true
+position = Vector2(32, -16)
+texture = SubResource("AtlasTexture_entry_trim")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D2" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north" unique_id=890892403 node_paths=PackedStringArray("visibility_mask_nodes")]
+position = Vector2(128, -24)
+texture = SubResource("AtlasTexture_entry_column")
+offset = Vector2(0, -24)
+script = ExtResource("9_nsrdk")
+visibility_mask_nodes = [NodePath("../../visibility_mask")]
+is_inverted = true
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D6" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2" unique_id=658146583]
+position = Vector2(0, -56)
+texture = SubResource("AtlasTexture_entry_column")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D7" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2" unique_id=1365973818]
+position = Vector2(0, -88)
+texture = SubResource("AtlasTexture_entry_column")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D5" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2/Sprite2D7" unique_id=1554727071]
+position = Vector2(-32, 16)
+texture = SubResource("AtlasTexture_entry_cap")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D8" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2/Sprite2D7" unique_id=1300618209]
+position = Vector2(-64, 16)
+texture = SubResource("AtlasTexture_entry_slope")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2" unique_id=10176343]
+position = Vector2(32, -8)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2/wall" unique_id=1758086430]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2/wall" unique_id=1059621448]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2/wall" unique_id=843568406]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall2" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2" unique_id=199878520]
+position = Vector2(64, 8)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2/wall2" unique_id=1246891520]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2/wall2" unique_id=799795138]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2/wall2" unique_id=1974345069]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall3" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2" unique_id=211728343]
+position = Vector2(96, 24)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2/wall3" unique_id=1037558411]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2/wall3" unique_id=407810513]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2/wall3" unique_id=2076791364]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall4" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2" unique_id=876115449]
+position = Vector2(128, 40)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2/wall4" unique_id=1685038467]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2/wall4" unique_id=58164973]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2/wall4" unique_id=1781602862]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="wall5" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2" unique_id=1456371306]
+position = Vector2(160, 56)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D9" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2/wall5" unique_id=594798949]
+position = Vector2(0, -32)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D10" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2/wall5" unique_id=1936813889]
+position = Vector2(0, -64)
+texture = SubResource("AtlasTexture_oumyh")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="Sprite2D11" type="Sprite2D" parent="exterior/bi_shan_tunnel_entries/entry_north/Sprite2D2/wall5" unique_id=2104447832]
+position = Vector2(-32, -48)
+texture = SubResource("AtlasTexture_3hdd2")
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(16, 8)
+
+[node name="bi_shan_tunnel_north_entry_rock_base" type="TileMapLayer" parent="exterior/bi_shan_tunnel_entries/entry_north" unique_id=435799028]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAAHAP//CAAEAAoAAAAHAAAACAAEAAoAAAAHAP7/CAAEAAoAAAAHAAEACAAEAAoAAAAGAAEACAAEAAoAAAAFAAEACAAEAAoAAAAEAAEACAAEAAoAAAADAAEACAAEAAoAAAACAAEACAAEAAoAAAABAAEACAAEAAoAAAAAAAEACAAEAAoAAAAFAPz/CAAEAAoAAAAGAP3/CAAEAAoAAAD//wEACAAEAAoAAAA=")
+tile_set = ExtResource("7_hl62s")
+
+[node name="bi_shan_tunnel_north_entry_rock_topapLayer2" type="TileMapLayer" parent="exterior/bi_shan_tunnel_entries/entry_north" unique_id=1202261672 node_paths=PackedStringArray("visibility_mask_nodes")]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAAAAP//CAAFAAoAAAAAAP7/CAAFAAoAAAAEAP//CAAEAAoAAAAEAP7/CAAEAAoAAAAEAP3/CAAEAAoAAAADAP3/CAAEAAoAAAACAP3/CAAEAAoAAAABAP3/CAAEAAoAAAAAAP3/CAAFAAoAAAABAP//CAAEAAoAAAABAP7/CAAEAAoAAAACAP//CAAEAAoAAAADAP//CAAEAAoAAAACAP7/CAAEAAoAAAADAP7/CAAEAAoAAAD+////CAAFAAoAAAD+//7/CAAFAAoAAAD+//3/CAAFAAoAAAD+//z/CAAFAAoAAAD/////CAAFAAoAAAD///7/CAAFAAoAAAD///3/CAAFAAoAAAD///z/CAAFAAoAAAD+/wAACAADAAoAAAD//wAACAAEAAoAAAAAAAAACAAEAAoAAAABAAAACAAEAAoAAAAEAPz/CAAEAAoAAAACAAAACAAEAAoAAAADAAAACAAEAAoAAAAEAAAACAAEAAoAAAAFAAAACAAEAAoAAAAGAAAACAAEAAoAAAAGAP//CAAEAAoAAAAGAP7/CAAEAAoAAAAGAP3/CAAEAAoAAAAFAPz/CAAEAAoAAAAEAPv/CAAEAAoAAAADAPv/CAAEAAoAAAACAPv/CAAEAAoAAAABAPv/CAAEAAoAAAAAAPv/CAAEAAoAAAD///v/CAAEAAoAAAD+//v/CAAEAAoAAAAAAPz/CAAEAAoAAAABAPz/CAAEAAoAAAACAPz/CAAEAAoAAAADAPz/CAAEAAoAAAAFAP3/CAAEAAoAAAAFAP7/CAAEAAoAAAAFAP//CAAEAAoAAAA=")
+tile_set = ExtResource("7_hl62s")
+y_sort_origin = 32
+script = ExtResource("9_nsrdk")
+visibility_mask_nodes = [NodePath("../../visibility_mask")]
+
+[node name="visibility_mask" type="TileMapLayer" parent="exterior/bi_shan_tunnel_entries" unique_id=17394004]
+tile_map_data = PackedByteArray("AAC7APIAAAAAAAAAAAC7APEAAAAAAAAAAAC6APAAAAAAAAAAAAC7APAAAAAAAAAAAAC8APEAAAAAAAAAAAC9APIAAAAAAAAAAAC+APIAAAAAAAAAAAC/APIAAAAAAAAAAAC/APEAAAAAAAAAAAC/APAAAAAAAAAAAAC+APAAAAAAAAAAAAC9APAAAAAAAAAAAAC8APAAAAAAAAAAAAC9APEAAAAAAAAAAAC+APEAAAAAAAAAAAC7AO8AAAAAAAAAAAC7AO4AAAAAAAAAAAC6AO8AAAAAAAAAAAC6AO4AAAAAAAAAAAC6AO0AAAAAAAAAAAC7AO0AAAAAAAAAAAA=")
+tile_set = ExtResource("8_xo2vs")
+
+[node name="interior" type="Node2D" parent="."]
+y_sort_enabled = true
+script = ExtResource("4_5mapb")
+iso_tile_size = Vector2(32, 16)
+
+[node name="path" type="TileMapLayer" parent="interior" unique_id=473915381]
 z_index = -1
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD+/wAABAADAAMAAAD+////BAADAAMAAAD9/wAABAADAAMAAAD9////BAADAAMAAAD8/wAABAADAAMAAAD8////BAADAAMAAAD7/wAABAADAAMAAAD7////BAADAAMAAAD6/wAABAADAAMAAAD6////BAADAAMAAAD5/wAABAADAAMAAAD5////BAADAAMAAAD4/wAABAADAAMAAAD4////BAADAAMAAAD3/wAABAADAAMAAAD3////BAADAAMAAAD+/wEABAADAAMAAAD+//7/BAABAAAAAAD9/wEABAADAAMAAAD9//7/BAABAAAAAAD8/wEABAADAAMAAAD8//7/BAABAAAAAAD7/wEABAADAAMAAAD7//7/BAABAAAAAAD6/wEABAADAAMAAAD6//7/BAABAAAAAAD5/wEABAADAAMAAAD5//7/BAABAAAAAAD4/wEABAADAAMAAAD4//7/BAABAAAAAAD3/wEABAADAAMAAAD3//7/BAABAAAAAADj/+3/BAADAAMAAADi/+3/BAADAAMAAADh/+3/BAADAAMAAADg/+3/BAADAAMAAADf/+3/BAADAAMAAADe/+3/BAADAAMAAADd/+3/BAADAAMAAADc/+3/BAADAAMAAADb/+3/BAADAAMAAADa/+3/BAADAAMAAADa/+z/BAADAAMAAADb/+z/BAADAAMAAADc/+z/BAADAAMAAADd/+z/BAADAAMAAADe/+z/BAADAAMAAADf/+z/BAADAAMAAADg/+z/BAADAAMAAADh/+z/BAADAAMAAADi/+z/BAADAAMAAADj/+z/BAADAAMAAADj/+7/BAADAAMAAADi/+7/BAADAAMAAADh/+7/BAADAAMAAADg/+7/BAADAAMAAADf/+7/BAADAAMAAADe/+7/BAADAAMAAADd/+7/BAADAAMAAADc/+7/BAADAAMAAADb/+7/BAADAAMAAADa/+7/BAADAAMAAADh/+v/BAABAAAAAADg/+v/BAABAAAAAADf/+v/BAABAAAAAADe/+v/BAABAAAAAADd/+v/BAABAAAAAADc/+v/BAABAAAAAADb/+v/BAABAAAAAADa/+v/BAABAAAAAADi/+v/BAABAAAAAADj/+v/BAABAAAAAAD//wAABAADAAMAAAD//wEABAADAAMAAAD/////BAADAAMAAAD///7/BAABAAAAAADZ/+3/BAADAAMAAADZ/+7/BAADAAMAAADZ/+z/BAADAAMAAADZ/+v/BAABAAAAAAAAAAEABAADAAMAAAAAAAAABAADAAMAAAAAAP//BAADAAMAAAAAAP7/BAABAAAAAADY/+7/BAADAAMAAADY/+3/BAADAAMAAADY/+z/BAADAAMAAADY/+v/BAABAAAAAADX/+z/BAADAAIAAAABAAAABAADAAAAAAABAP//BAADAAAAAAD2////BAADAAMAAAD2/wAABAADAAMAAAD1////BAADAAMAAAD2//7/BAACAAAAAAD1//7/BAADAAMAAAD0//7/BAADAAMAAAD1//3/BAACAAAAAAD0//3/BAADAAMAAADz//3/BAADAAMAAAD0//z/BAACAAAAAADz//z/BAADAAMAAADy//z/BAADAAMAAADz//v/BAACAAAAAADy//v/BAADAAMAAADx//v/BAADAAMAAADy//r/BAACAAAAAADx//r/BAADAAMAAADw//r/BAADAAMAAADx//n/BAACAAAAAADw//n/BAADAAMAAADv//n/BAADAAMAAADw//j/BAACAAAAAADv//j/BAADAAMAAADu//j/BAADAAMAAADv//f/BAACAAAAAADu//f/BAADAAMAAADt//f/BAADAAMAAADu//b/BAACAAAAAADt//b/BAADAAMAAADs//b/BAADAAMAAADt//X/BAACAAAAAADk/+3/BAADAAMAAADl/+3/BAACAAAAAADk/+7/BAADAAMAAADk/+z/BAACAAAAAADl/+7/BAADAAMAAADm/+7/BAACAAAAAADl/+//BAADAAMAAADm/+//BAADAAMAAADn/+//BAACAAAAAADm//D/BAADAAMAAADn//D/BAADAAMAAADo//D/BAACAAAAAADn//H/BAADAAMAAADo//H/BAADAAMAAADp//H/BAACAAAAAADo//L/BAADAAMAAADp//L/BAADAAMAAADq//L/BAACAAAAAADp//P/BAADAAMAAADq//P/BAADAAMAAADr//P/BAACAAAAAADq//T/BAADAAMAAADr//T/BAADAAMAAADs//T/BAACAAAAAADr//X/BAADAAMAAADs//X/BAADAAMAAADX/+3/BAADAAIAAAABAAEABAADAAAAAAAAAAIABAABAAIAAAD//wIABAABAAIAAAD+/wIABAABAAIAAAD9/wIABAABAAIAAAD8/wIABAABAAIAAAD7/wIABAABAAIAAAD6/wIABAABAAIAAAD5/wIABAABAAIAAAD4/wIABAABAAIAAAD3/wIABAABAAIAAAD2/wEABAACAAIAAAD1/wAABAACAAIAAAD0////BAACAAIAAADz//7/BAACAAIAAADy//3/BAACAAIAAADx//z/BAACAAIAAADw//v/BAACAAIAAADv//r/BAACAAIAAADu//n/BAACAAIAAADt//j/BAACAAIAAADs//f/BAACAAIAAADr//b/BAACAAIAAADq//X/BAACAAIAAADp//T/BAACAAIAAADo//P/BAACAAIAAADn//L/BAACAAIAAADm//H/BAACAAIAAADl//D/BAACAAIAAADk/+//BAACAAIAAADZ/+//BAABAAIAAADY/+//BAABAAIAAADX/+7/BAADAAIAAADa/+//BAABAAIAAADb/+//BAABAAIAAADc/+//BAABAAIAAADd/+//BAABAAIAAADe/+//BAABAAIAAADf/+//BAABAAIAAADg/+//BAABAAIAAADh/+//BAABAAIAAADi/+//BAABAAIAAADj/+//BAABAAIAAAA=")
 tile_set = ExtResource("3_ecfs0")
 script = ExtResource("4_5mapb")
 
-[node name="wall5" type="Sprite2D" parent="path" unique_id=1981824228]
+[node name="wall5" type="Sprite2D" parent="interior/path" unique_id=1981824228]
 position = Vector2(96, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall5" unique_id=421009921]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall5" unique_id=421009921]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall5" unique_id=124889734]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall5" unique_id=124889734]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall5" unique_id=26831759]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall5" unique_id=26831759]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall6" type="Sprite2D" parent="path" unique_id=1446982414]
+[node name="wall6" type="Sprite2D" parent="interior/path" unique_id=1446982414]
 position = Vector2(-576, -976)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall6" unique_id=1205992575]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall6" unique_id=1205992575]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall6" unique_id=286153061]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall6" unique_id=286153061]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall6" unique_id=1908649772]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall6" unique_id=1908649772]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall7" type="Sprite2D" parent="path" unique_id=653597577]
+[node name="wall7" type="Sprite2D" parent="interior/path" unique_id=653597577]
 position = Vector2(-544, -960)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall7" unique_id=1799273812]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall7" unique_id=1799273812]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall7" unique_id=114745134]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall7" unique_id=114745134]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall7" unique_id=1176627026]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall7" unique_id=1176627026]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall8" type="Sprite2D" parent="path" unique_id=1002861260]
+[node name="wall8" type="Sprite2D" parent="interior/path" unique_id=1002861260]
 position = Vector2(-512, -944)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall8" unique_id=1789042509]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall8" unique_id=1789042509]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall8" unique_id=574295291]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall8" unique_id=574295291]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall8" unique_id=1660357236]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall8" unique_id=1660357236]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall9" type="Sprite2D" parent="path" unique_id=1254960193]
+[node name="wall9" type="Sprite2D" parent="interior/path" unique_id=1254960193]
 position = Vector2(-480, -928)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall9" unique_id=1506943143]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall9" unique_id=1506943143]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall9" unique_id=1729164261]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall9" unique_id=1729164261]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall9" unique_id=845610907]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall9" unique_id=845610907]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall10" type="Sprite2D" parent="path" unique_id=705653446]
+[node name="wall10" type="Sprite2D" parent="interior/path" unique_id=705653446]
 position = Vector2(-448, -912)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall10" unique_id=2132118580]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall10" unique_id=2132118580]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall10" unique_id=983481228]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall10" unique_id=983481228]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall10" unique_id=2023221300]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall10" unique_id=2023221300]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall11" type="Sprite2D" parent="path" unique_id=915728891]
+[node name="wall11" type="Sprite2D" parent="interior/path" unique_id=915728891]
 position = Vector2(-416, -896)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall11" unique_id=211184071]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall11" unique_id=211184071]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall11" unique_id=1408314563]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall11" unique_id=1408314563]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall11" unique_id=497229867]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall11" unique_id=497229867]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall12" type="Sprite2D" parent="path" unique_id=577912330]
+[node name="wall12" type="Sprite2D" parent="interior/path" unique_id=577912330]
 position = Vector2(-384, -880)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall12" unique_id=792024404]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall12" unique_id=792024404]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall12" unique_id=1915502221]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall12" unique_id=1915502221]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall12" unique_id=1089308431]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall12" unique_id=1089308431]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall13" type="Sprite2D" parent="path" unique_id=839635391]
+[node name="wall13" type="Sprite2D" parent="interior/path" unique_id=839635391]
 position = Vector2(-352, -864)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall13" unique_id=271480984]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall13" unique_id=271480984]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall13" unique_id=1722722071]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall13" unique_id=1722722071]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall13" unique_id=1779469835]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall13" unique_id=1779469835]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall14" type="Sprite2D" parent="path" unique_id=270671489]
+[node name="wall14" type="Sprite2D" parent="interior/path" unique_id=270671489]
 position = Vector2(-320, -848)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall14" unique_id=2129921632]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall14" unique_id=2129921632]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall14" unique_id=480999701]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall14" unique_id=480999701]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall14" unique_id=2134460175]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall14" unique_id=2134460175]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall18" type="Sprite2D" parent="path" unique_id=1659108891]
+[node name="wall18" type="Sprite2D" parent="interior/path" unique_id=1659108891]
 position = Vector2(-192, -176)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall18" unique_id=1551560401]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall18" unique_id=1551560401]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall18" unique_id=1980949115]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall18" unique_id=1980949115]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall18" unique_id=417281651]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall18" unique_id=417281651]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall19" type="Sprite2D" parent="path" unique_id=25830831]
+[node name="wall19" type="Sprite2D" parent="interior/path" unique_id=25830831]
 position = Vector2(-160, -160)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall19" unique_id=19765160]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall19" unique_id=19765160]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall19" unique_id=588459205]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall19" unique_id=588459205]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall19" unique_id=288613900]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall19" unique_id=288613900]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall20" type="Sprite2D" parent="path" unique_id=1179834438]
+[node name="wall20" type="Sprite2D" parent="interior/path" unique_id=1179834438]
 position = Vector2(-128, -144)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall20" unique_id=1425138459]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall20" unique_id=1425138459]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall20" unique_id=905129925]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall20" unique_id=905129925]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall20" unique_id=1277692068]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall20" unique_id=1277692068]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall21" type="Sprite2D" parent="path" unique_id=1605326119]
+[node name="wall21" type="Sprite2D" parent="interior/path" unique_id=1605326119]
 position = Vector2(-96, -128)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall21" unique_id=243196816]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall21" unique_id=243196816]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall21" unique_id=1865599575]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall21" unique_id=1865599575]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall21" unique_id=1987475238]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall21" unique_id=1987475238]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall22" type="Sprite2D" parent="path" unique_id=1047026698]
+[node name="wall22" type="Sprite2D" parent="interior/path" unique_id=1047026698]
 position = Vector2(-64, -112)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall22" unique_id=374694514]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall22" unique_id=374694514]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall22" unique_id=783646894]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall22" unique_id=783646894]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall22" unique_id=1855445108]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall22" unique_id=1855445108]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall23" type="Sprite2D" parent="path" unique_id=1327434778]
+[node name="wall23" type="Sprite2D" parent="interior/path" unique_id=1327434778]
 position = Vector2(-32, -96)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall23" unique_id=1753799822]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall23" unique_id=1753799822]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall23" unique_id=421821574]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall23" unique_id=421821574]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall23" unique_id=231197086]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall23" unique_id=231197086]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall24" type="Sprite2D" parent="path" unique_id=368795627]
+[node name="wall24" type="Sprite2D" parent="interior/path" unique_id=368795627]
 position = Vector2(0, -80)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall24" unique_id=547948404]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall24" unique_id=547948404]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall24" unique_id=1390037524]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall24" unique_id=1390037524]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall24" unique_id=314209379]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall24" unique_id=314209379]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall25" type="Sprite2D" parent="path" unique_id=1960708101]
+[node name="wall25" type="Sprite2D" parent="interior/path" unique_id=1960708101]
 position = Vector2(32, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall25" unique_id=391118846]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall25" unique_id=391118846]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall25" unique_id=41523923]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall25" unique_id=41523923]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall25" unique_id=48026436]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall25" unique_id=48026436]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall26" type="Sprite2D" parent="path" unique_id=1037315650]
+[node name="wall26" type="Sprite2D" parent="interior/path" unique_id=1037315650]
 position = Vector2(64, -48)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall26" unique_id=521503986]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall26" unique_id=521503986]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall26" unique_id=1159828294]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall26" unique_id=1159828294]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall26" unique_id=226056681]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall26" unique_id=226056681]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall15" type="Sprite2D" parent="path" unique_id=1959256105]
+[node name="wall15" type="Sprite2D" parent="interior/path" unique_id=1959256105]
 position = Vector2(-288, -832)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall15" unique_id=1670748904]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall15" unique_id=1670748904]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall15" unique_id=3741136]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall15" unique_id=3741136]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall15" unique_id=796844068]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall15" unique_id=796844068]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall16" type="Sprite2D" parent="path" unique_id=1341822623]
+[node name="wall16" type="Sprite2D" parent="interior/path" unique_id=1341822623]
 position = Vector2(-256, -816)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall16" unique_id=160074675]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall16" unique_id=160074675]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall16" unique_id=684860609]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall16" unique_id=684860609]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall16" unique_id=1696510516]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall16" unique_id=1696510516]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="wall17" type="Sprite2D" parent="path" unique_id=1810913250]
+[node name="wall17" type="Sprite2D" parent="interior/path" unique_id=1810913250]
 position = Vector2(-224, -800)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D9" type="Sprite2D" parent="path/wall17" unique_id=282119106]
+[node name="Sprite2D9" type="Sprite2D" parent="interior/path/wall17" unique_id=282119106]
 position = Vector2(0, -32)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D10" type="Sprite2D" parent="path/wall17" unique_id=1083554619]
+[node name="Sprite2D10" type="Sprite2D" parent="interior/path/wall17" unique_id=1083554619]
 position = Vector2(0, -64)
 texture = SubResource("AtlasTexture_oumyh")
 script = ExtResource("4_5mapb")
 iso_tile_size = Vector2(16, 8)
 
-[node name="Sprite2D11" type="Sprite2D" parent="path/wall17" unique_id=952363985]
+[node name="Sprite2D11" type="Sprite2D" parent="interior/path/wall17" unique_id=952363985]
 position = Vector2(-32, -48)
 texture = SubResource("AtlasTexture_3hdd2")
 script = ExtResource("4_5mapb")

@@ -48,6 +48,9 @@ When the player enters through a tunnel mouth and reaches the tunnel interior, t
 - `LandmarkTrigger` owns its own collected state and hide/disable behavior.
 - `scenes/game_main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
 - `tunnel.gd`, `auto_visibility_node_2d.gd`, and `scenes/game_main.gd` together own the tunnel-only presentation rule: player interior entry hides the surface layer, while tunnel residents only appear when the player shares that tunnel context.
+- `bi_shan_tunnel.tscn` keeps the root `Tunnel` node for level-aware masking, portal anchors, and walkable path ownership, and now splits visible presentation into `exterior` and `interior` child nodes that both inherit `IsometricBlock`.
+- `bi_shan_tunnel.tscn` also owns the tunnel-mouth entry anchors and exterior mouth art under `exterior/bi_shan_tunnel_entries`, so the full surface presentation now travels with the tunnel scene.
+- `TunnelContext` marks the active tunnel; the tunnel scene shows `exterior` while the player is outside and switches to `interior` only after true tunnel entry.
 - `bi_shan_tunnel.tscn` hosts the `LandmarkTrigger` nodes directly; their configuration lives in their exported properties.
 
 ## Relevant Files
@@ -95,7 +98,9 @@ When the player enters through a tunnel mouth and reaches the tunnel interior, t
 - Start a Continue game. Confirm echo triggers are visible (echoes_collected is empty) and the arc is playable.
 - Start a Free Walk game. Confirm echo triggers appear and the arc plays through.
 - Enter the tunnel properly through a mouth and walk inside. Confirm the surface ground/building layer hides and tunnel residents appear.
+- While inside, confirm the tunnel root keeps the `interior` `IsometricBlock` visible and hides the `exterior` `IsometricBlock`.
 - Move across the same tunnel footprint on the surface without entering the tunnel interior. Confirm the surface layer stays visible and tunnel residents stay hidden.
+- While still outside, confirm the tunnel root keeps the `exterior` `IsometricBlock` visible and the `interior` `IsometricBlock` hidden.
 
 ## Integration Checklist
 

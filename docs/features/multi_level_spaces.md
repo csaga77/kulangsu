@@ -114,5 +114,5 @@
 - Validate direct portal actor transitions with [`../../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn`](../../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn).
 - Validate Bagua ascent, descent, and visibility behavior with [`../../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn`](../../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn).
 - Validate physical stair traversal with [`../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn`](../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn).
-- Validate tunnel-only visibility swaps and surface-overlap behavior with [`../../game/tests/npc_system/test_tunnel_visibility.tscn`](../../game/tests/npc_system/test_tunnel_visibility.tscn).
+- Validate tunnel-only visibility swaps, `exterior`/`interior` presentation handoff, and surface-overlap behavior with [`../../game/tests/npc_system/test_tunnel_visibility.tscn`](../../game/tests/npc_system/test_tunnel_visibility.tscn).
 - Validate routed NPC re-entry and tunnel level restoration with [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn).

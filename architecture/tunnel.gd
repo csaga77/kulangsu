@@ -2,11 +2,14 @@
 class_name Tunnel
 extends LevelNode2D
 
-@onready var m_path_layer :TileMapLayer = $path
+@onready var m_exterior_node: IsometricBlock = $exterior
+@onready var m_interior_node: IsometricBlock = $interior
+@onready var m_path_layer :TileMapLayer = $interior/path
 var m_walkable_world_positions: Array[Vector2] = []
 var m_walkable_cells: Array[Vector2i] = []
 var m_walkable_world_positions_by_cell: Dictionary = {}
 var m_walkable_cache_dirty := true
+var m_player_inside := false
 
 const WALKABLE_NEIGHBORS := [
 	Vector2i.LEFT,
@@ -41,6 +44,33 @@ func contains_actor_interior(actor_node: Node2D) -> bool:
 
 func mask_player(player_node: Node2D, bounding_rect: Rect2) -> bool:
 	return _contains_actor_rect(player_node, bounding_rect, true)
+
+
+func set_player_inside(is_inside: bool) -> void:
+	if m_player_inside == is_inside:
+		return
+
+	m_player_inside = is_inside
+	_sync_presentation_visibility()
+
+
+func is_player_inside() -> bool:
+	return m_player_inside
+
+
+func get_path_layer() -> TileMapLayer:
+	return m_path_layer
+
+
+func uses_walkable_path_for_anchor(anchor_node: Node) -> bool:
+	if anchor_node == null:
+		return false
+	if anchor_node == self:
+		return true
+	if m_exterior_node != null and (anchor_node == m_exterior_node or m_exterior_node.is_ancestor_of(anchor_node)):
+		return false
+	return is_ancestor_of(anchor_node)
+
 
 func snap_actor_to_walkable_position(actor_node: Node2D, desired_global_position: Vector2) -> Vector2:
 	if actor_node == null or m_path_layer == null:
@@ -144,6 +174,7 @@ func _contains_actor_rect(actor_node: Node2D, bounding_rect: Rect2, require_matc
 
 func _ready() -> void:
 	super._ready()
+	_sync_presentation_visibility()
 	_cache_walkable_world_positions()
 	if m_path_layer and m_path_layer.has_signal("changed"):
 		if !m_path_layer.changed.is_connected(_invalidate_walkable_cache):
@@ -249,3 +280,13 @@ func _world_position_for_cell(cell: Vector2i) -> Vector2:
 
 func _actor_is_on_tunnel_level(actor_node: Node2D) -> bool:
 	return CommonUtils.get_absolute_z_index(actor_node) == get_resolved_level_id()
+
+
+func _sync_presentation_visibility() -> void:
+	if Engine.is_editor_hint():
+		return
+
+	if is_instance_valid(m_exterior_node):
+		m_exterior_node.visible = !m_player_inside
+	if is_instance_valid(m_interior_node):
+		m_interior_node.visible = m_player_inside

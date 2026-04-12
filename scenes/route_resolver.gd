@@ -41,7 +41,7 @@ func build_resident_movement_config(resident_id: String, actor: HumanBody2D, mov
 		var point_copy := route_point.duplicate(true)
 		var route_offset: Vector2 = route_point.get("offset", Vector2.ZERO)
 		var resolved_position := resolve_route_anchor_position(actor, anchor_id, anchor_node, route_offset)
-		var route_tunnel := find_tunnel_ancestor(anchor_node)
+		var route_tunnel := find_walkable_tunnel_ancestor(anchor_node)
 		if has_previous_point and route_tunnel != null and route_tunnel == previous_tunnel:
 			var tunnel_path := route_tunnel.get_path_between_world_positions(actor, previous_position, resolved_position)
 			for i in range(maxi(tunnel_path.size() - 1, 0)):
@@ -89,7 +89,7 @@ func resolve_actor_anchor_position(actor: HumanBody2D, anchor_node: Node2D, offs
 		return offset
 
 	var desired_position := anchor_node.global_position + offset
-	var tunnel_anchor := find_tunnel_ancestor(anchor_node)
+	var tunnel_anchor := find_walkable_tunnel_ancestor(anchor_node)
 	if tunnel_anchor == null:
 		return desired_position
 
@@ -279,9 +279,22 @@ func find_tunnel_ancestor(start_node: Node) -> Tunnel:
 
 
 func find_level_node(start_node: Node) -> Node:
+	var tunnel_anchor := find_tunnel_ancestor(start_node)
+	if tunnel_anchor != null and !tunnel_anchor.uses_walkable_path_for_anchor(start_node):
+		return null
+
 	var current := start_node
 	while current != null:
 		if current.has_method("get_resolved_level_id"):
 			return current
 		current = current.get_parent()
 	return null
+
+
+func find_walkable_tunnel_ancestor(start_node: Node) -> Tunnel:
+	var tunnel_anchor := find_tunnel_ancestor(start_node)
+	if tunnel_anchor == null:
+		return null
+	if !tunnel_anchor.uses_walkable_path_for_anchor(start_node):
+		return null
+	return tunnel_anchor

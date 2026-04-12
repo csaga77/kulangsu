@@ -36,6 +36,11 @@ func sync() -> void:
 		return
 
 	var active_tunnel := find_player_tunnel()
+	for tunnel in m_tunnel_nodes:
+		if !is_instance_valid(tunnel):
+			continue
+		tunnel.set_player_inside(tunnel == active_tunnel)
+
 	for child in m_resident_root.get_children():
 		var resident := child as HumanBody2D
 		if resident == null:

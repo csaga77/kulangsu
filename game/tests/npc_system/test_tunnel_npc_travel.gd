@@ -33,7 +33,7 @@ func _run() -> void:
 	var bi_shan_tunnel := game_main.get_node("terrain/bi_shan_tunnel") as Tunnel
 	var long_shan_portal_south := game_main.get_node("terrain/long_shan_tunnel/exit_south") as Node2D
 	var long_shan_portal_north := game_main.get_node("terrain/long_shan_tunnel/exit_north") as Node2D
-	var bi_shan_entry_south := game_main.get_node("terrain/ground/bi_shan_tunnel_entries/entry_south") as Node2D
+	var bi_shan_entry_south := game_main.get_node("terrain/bi_shan_tunnel/exterior/bi_shan_tunnel_entries/entry_south") as Node2D
 	var bi_shan_portal_south := game_main.get_node("terrain/bi_shan_tunnel/exit_south") as Node2D
 	var routed_resident := _resident_node(residents_root, ROUTED_RESIDENT_ID)
 	var second_routed_resident := _resident_node(residents_root, SECOND_ROUTED_RESIDENT_ID)
@@ -135,7 +135,7 @@ func _assert_tunnel_portal_endpoint(
 
 
 func _assert_route_points_on_tunnel_path(tunnel: Tunnel, route_points: Array[Dictionary], message: String) -> void:
-	var path_layer := tunnel.get_node_or_null("path") as TileMapLayer
+	var path_layer := tunnel.get_path_layer()
 	_assert(path_layer != null, "%s Missing tunnel path layer." % message)
 
 	var used_cells := path_layer.get_used_cells()
