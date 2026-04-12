@@ -35,13 +35,13 @@ static func build_catalog() -> Dictionary:
 		),
 		"tunnel_weather": _costume(
 			"Tunnel Weather",
-			"A cape-and-bandana layer set for damp routes and echo-heavy crossings.",
+			"A weather-ready bandana and boot pairing for damp routes and echo-heavy crossings.",
 			"Unlocked after helping Tunnel Guide Ren or recovering two melody fragments.",
 			_tunnel_selections()
 		),
 		"festival_evening": _costume(
 			"Festival Evening",
-			"A formal sash, scarf, and hat kept for the restored island performance.",
+			"A formal scarf-and-hat look kept for the restored island performance.",
 			"Unlocked once the full festival melody is restored.",
 			_festival_selections()
 		),
@@ -84,7 +84,7 @@ static func is_costume_unlocked(
 		"tunnel_weather":
 			return _resident_trust(resident_profiles, "tunnel_guide") > 0 or fragments_found >= 2
 		"festival_evening":
-			return mode == "Postgame" or (fragments_total > 0 and fragments_found >= fragments_total)
+			return fragments_total > 0 and fragments_found >= fragments_total
 		_:
 			return false
 
@@ -108,7 +108,6 @@ static func _arrival_selections() -> Dictionary:
 		"torso/shirts/longsleeve/torso_clothes_longsleeve": "teal",
 		"legs/pants/legs_pants": "charcoal",
 		"feet/shoes/feet_shoes_basic": "brown",
-		"torso/backpack/backpack": "leather",
 	}
 
 
@@ -127,7 +126,6 @@ static func _tunnel_selections() -> Dictionary:
 		"legs/pants/legs_pants": "brown",
 		"feet/boots/feet_boots_basic": "brown",
 		"headwear/coverings/bandana/hat_bandana": "charcoal",
-		"torso/cape/cape_solid": "forest",
 	}
 
 
@@ -137,7 +135,6 @@ static func _festival_selections() -> Dictionary:
 		"legs/pants/legs_pants": "navy",
 		"feet/shoes/feet_shoes_basic": "black",
 		"headwear/hats/formal/hat_formal_bowler": "black",
-		"torso/waist/belt_sash": "yellow",
 		"head/neck/neck_scarf": "red",
 	}
 

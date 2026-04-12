@@ -2,7 +2,8 @@ extends PanelContainer
 
 const HUMAN_BODY_SCENE := preload("res://characters/human_body_2d.tscn")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
-const JOURNAL_BUILDER := preload("res://game/journal_builder.gd")
+const PLAYER_APPEARANCE_CATALOG := preload("res://game/player_appearance_catalog.gd")
+const PLAYER_COSTUME_CATALOG := preload("res://game/player_costume_catalog.gd")
 
 signal confirm_requested()
 signal cancel_requested()
@@ -22,6 +23,7 @@ signal cancel_requested()
 
 var m_is_free_walk := false
 var m_preview_actor: HumanBody2D = null
+var m_draft_profile: Dictionary = {}
 
 
 func _app_state():
@@ -34,9 +36,6 @@ func _ready() -> void:
 	_build_preview_actor()
 	_connect_buttons()
 
-	if !_app_state().player_appearance_changed.is_connected(_on_player_appearance_changed):
-		_app_state().player_appearance_changed.connect(_on_player_appearance_changed)
-
 	visibility_changed.connect(_on_visibility_changed)
 	refresh_from_state()
 
@@ -48,13 +47,35 @@ func set_flow_context(is_free_walk: bool) -> void:
 
 
 func refresh_from_state() -> void:
+	m_draft_profile = PLAYER_APPEARANCE_CATALOG.normalize_profile(_app_state().get_player_profile())
+	_refresh_from_draft()
+
+
+func commit_draft_to_app_state() -> void:
+	_ensure_draft_profile()
+	_app_state().set_player_profile(m_draft_profile)
+	_app_state().equip_player_costume(PLAYER_COSTUME_CATALOG.default_costume_id())
+
+
+func _refresh_from_draft() -> void:
+	_ensure_draft_profile()
 	_refresh_flow_labels()
-	m_body_value.text = _app_state().get_player_body_display_name()
-	m_gender_value.text = _app_state().get_player_gender_display_name()
-	m_skin_value.text = _app_state().get_player_skin_display_name()
-	m_hair_style_value.text = _app_state().get_player_hair_style_display_name()
-	m_hair_color_value.text = _app_state().get_player_hair_color_display_name()
-	m_summary_label.text = JOURNAL_BUILDER.build_player_setup_summary_text(_app_state())
+	m_body_value.text = PLAYER_APPEARANCE_CATALOG.body_frame_display_name(
+		String(m_draft_profile.get("body_frame_id", "adult"))
+	)
+	m_gender_value.text = PLAYER_APPEARANCE_CATALOG.presentation_display_name(
+		String(m_draft_profile.get("presentation_id", "masculine"))
+	)
+	m_skin_value.text = PLAYER_APPEARANCE_CATALOG.skin_tone_display_name(
+		String(m_draft_profile.get("skin_tone_id", "light"))
+	)
+	m_hair_style_value.text = PLAYER_APPEARANCE_CATALOG.hair_style_display_name(
+		String(m_draft_profile.get("hair_style_id", "short_bangs"))
+	)
+	m_hair_color_value.text = PLAYER_APPEARANCE_CATALOG.hair_color_display_name(
+		String(m_draft_profile.get("hair_color_id", "chestnut"))
+	)
+	m_summary_label.text = _build_setup_summary_text()
 	_refresh_preview()
 
 
@@ -79,56 +100,50 @@ func _build_preview_actor() -> void:
 func _connect_buttons() -> void:
 	$Margin/Body/Content/ControlsColumn/BodyRow/Controls/PrevButton.pressed.connect(
 		func() -> void:
-			_app_state().cycle_player_body_frame(-1)
-			refresh_from_state()
+			_cycle_draft_option("body_frame_id", PLAYER_APPEARANCE_CATALOG.body_frame_options(), -1)
 	)
 	$Margin/Body/Content/ControlsColumn/BodyRow/Controls/NextButton.pressed.connect(
 		func() -> void:
-			_app_state().cycle_player_body_frame(1)
-			refresh_from_state()
+			_cycle_draft_option("body_frame_id", PLAYER_APPEARANCE_CATALOG.body_frame_options(), 1)
 	)
 	$Margin/Body/Content/ControlsColumn/GenderRow/Controls/PrevButton.pressed.connect(
 		func() -> void:
-			_app_state().cycle_player_gender(-1)
-			refresh_from_state()
+			_cycle_draft_option("presentation_id", PLAYER_APPEARANCE_CATALOG.presentation_options(), -1)
 	)
 	$Margin/Body/Content/ControlsColumn/GenderRow/Controls/NextButton.pressed.connect(
 		func() -> void:
-			_app_state().cycle_player_gender(1)
-			refresh_from_state()
+			_cycle_draft_option("presentation_id", PLAYER_APPEARANCE_CATALOG.presentation_options(), 1)
 	)
 	$Margin/Body/Content/ControlsColumn/SkinRow/Controls/PrevButton.pressed.connect(
 		func() -> void:
-			_app_state().cycle_player_skin_tone(-1)
-			refresh_from_state()
+			_cycle_draft_option("skin_tone_id", PLAYER_APPEARANCE_CATALOG.skin_tone_options(), -1)
 	)
 	$Margin/Body/Content/ControlsColumn/SkinRow/Controls/NextButton.pressed.connect(
 		func() -> void:
-			_app_state().cycle_player_skin_tone(1)
-			refresh_from_state()
+			_cycle_draft_option("skin_tone_id", PLAYER_APPEARANCE_CATALOG.skin_tone_options(), 1)
 	)
 	$Margin/Body/Content/ControlsColumn/HairStyleRow/Controls/PrevButton.pressed.connect(
 		func() -> void:
-			_app_state().cycle_player_hair_style(-1)
-			refresh_from_state()
+			_cycle_draft_option("hair_style_id", PLAYER_APPEARANCE_CATALOG.hair_style_options(), -1)
 	)
 	$Margin/Body/Content/ControlsColumn/HairStyleRow/Controls/NextButton.pressed.connect(
 		func() -> void:
-			_app_state().cycle_player_hair_style(1)
-			refresh_from_state()
+			_cycle_draft_option("hair_style_id", PLAYER_APPEARANCE_CATALOG.hair_style_options(), 1)
 	)
 	$Margin/Body/Content/ControlsColumn/HairColorRow/Controls/PrevButton.pressed.connect(
 		func() -> void:
-			_app_state().cycle_player_hair_color(-1)
-			refresh_from_state()
+			_cycle_draft_option("hair_color_id", PLAYER_APPEARANCE_CATALOG.hair_color_options(), -1)
 	)
 	$Margin/Body/Content/ControlsColumn/HairColorRow/Controls/NextButton.pressed.connect(
 		func() -> void:
-			_app_state().cycle_player_hair_color(1)
-			refresh_from_state()
+			_cycle_draft_option("hair_color_id", PLAYER_APPEARANCE_CATALOG.hair_color_options(), 1)
 	)
 
-	m_confirm_button.pressed.connect(confirm_requested.emit)
+	m_confirm_button.pressed.connect(
+		func() -> void:
+			commit_draft_to_app_state()
+			confirm_requested.emit()
+	)
 	m_cancel_button.pressed.connect(cancel_requested.emit)
 
 
@@ -147,11 +162,44 @@ func _refresh_preview() -> void:
 	if m_preview_actor == null:
 		return
 
-	m_preview_actor.set_configuration(_app_state().get_player_appearance_config())
+	m_preview_actor.set_configuration(_build_preview_appearance_config())
 
 
-func _on_player_appearance_changed(_profile: Dictionary, _appearance_config: Dictionary) -> void:
-	refresh_from_state()
+func _ensure_draft_profile() -> void:
+	if !m_draft_profile.is_empty():
+		return
+	m_draft_profile = PLAYER_APPEARANCE_CATALOG.default_profile()
+
+
+func _cycle_draft_option(profile_key: String, options: Array, direction: int) -> void:
+	_ensure_draft_profile()
+	var current_id := String(m_draft_profile.get(profile_key, ""))
+	m_draft_profile[profile_key] = PLAYER_APPEARANCE_CATALOG.cycle_option_id(options, current_id, direction)
+	_refresh_from_draft()
+
+
+func _build_preview_appearance_config() -> Dictionary:
+	_ensure_draft_profile()
+	var costume: Dictionary = _default_setup_costume()
+	var costume_selections: Dictionary = costume.get("selections", {})
+	return PLAYER_APPEARANCE_CATALOG.build_appearance_config(m_draft_profile, costume_selections)
+
+
+func _build_setup_summary_text() -> String:
+	_ensure_draft_profile()
+	return "Body: %s\nGender: %s\nSkin: %s\nHair: %s\nHair color: %s\nStarting look: %s" % [
+		PLAYER_APPEARANCE_CATALOG.body_frame_display_name(String(m_draft_profile.get("body_frame_id", "adult"))),
+		PLAYER_APPEARANCE_CATALOG.presentation_display_name(String(m_draft_profile.get("presentation_id", "masculine"))),
+		PLAYER_APPEARANCE_CATALOG.skin_tone_display_name(String(m_draft_profile.get("skin_tone_id", "light"))),
+		PLAYER_APPEARANCE_CATALOG.hair_style_display_name(String(m_draft_profile.get("hair_style_id", "short_bangs"))),
+		PLAYER_APPEARANCE_CATALOG.hair_color_display_name(String(m_draft_profile.get("hair_color_id", "chestnut"))),
+		String(_default_setup_costume().get("display_name", "Harbor Arrival")),
+	]
+
+
+func _default_setup_costume() -> Dictionary:
+	var catalog := PLAYER_COSTUME_CATALOG.build_catalog()
+	return catalog.get(PLAYER_COSTUME_CATALOG.default_costume_id(), {})
 
 
 func grab_default_focus() -> void:

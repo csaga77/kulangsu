@@ -78,6 +78,8 @@ The prototype wardrobe currently ships with four presets:
   - hair style
   - hair color
   - a live player preview
+- Setup changes now stay in a local draft until the player confirms, so `Back` returns to title without mutating the live profile.
+- The setup preview always shows the default `Harbor Arrival` starting look instead of whichever costume happened to be equipped in the previous session.
 - [`../main.gd`](../main.gd) now routes new runs through this setup step before gameplay begins.
 
 ### Journal Wardrobe Flow
@@ -101,7 +103,6 @@ This keeps the feature overlay-based and consistent with the project’s minimal
 - `Tunnel Weather` unlocks after helping Tunnel Guide Ren or restoring two melody fragments.
 - `Festival Evening` unlocks once the full melody is restored.
 - `Free Walk` exposes the whole wardrobe for sandbox browsing.
-- `Postgame` keeps the full wardrobe available, including the festival outfit.
 
 ## Design Rules
 
@@ -111,6 +112,7 @@ This keeps the feature overlay-based and consistent with the project’s minimal
 - Wardrobe text should stay short enough to scan in the journal without feeling like a spreadsheet.
 - New outfits should use asset paths already supported by the shipped Universal LPC metadata unless the sprite pipeline is intentionally expanded.
 - A valid-looking LPC path is not enough on its own; the shipped metadata must support the requested body types and color/variant choices for that path.
+- Player-facing preset layers should also cover the shipped movement contract (`idle`, `walk`, `run`, `jump`) for every reachable body type before they land in the costume catalog.
 - New appearance content should assume prebuilt metadata and existing runtime animation support, not on-demand metadata generation in the shipped game.
 
 ## Adding New Content
@@ -119,7 +121,7 @@ This keeps the feature overlay-based and consistent with the project’s minimal
 
 1. Add the costume entry and selection map in [`../game/player_costume_catalog.gd`](../game/player_costume_catalog.gd).
 2. Add the costume id to `ORDER` so journal cycling and unlocked-list ordering stay deterministic.
-3. Update `is_costume_unlocked(...)` so the preset can actually become available in story mode, free walk, or postgame.
+3. Update `is_costume_unlocked(...)` so the preset can actually become available in story mode or free walk.
 4. Keep the unlock hint text aligned with the real unlock rule so the journal stays trustworthy.
 5. Before shipping the preset, confirm each selected LPC path supports the body types and variants the player can actually reach with that costume.
 
@@ -140,11 +142,13 @@ This keeps the feature overlay-based and consistent with the project’s minimal
 ## Validation
 
 - Start a new run or free walk and confirm the setup overlay preview updates correctly for every changed profile field.
+- Change setup options, press `Back`, reopen the setup overlay, and confirm the original live profile is restored until `Begin Story` or `Enter Free Walk` is pressed.
 - Open the journal wardrobe tab and confirm the preview, labels, unlocked count, and costume cycling reflect the new content.
 - Validate the live overworld avatar through the main project flow so `AppState.player_appearance_changed` still updates the active player immediately.
 - If unlock rules changed, confirm both the locked and unlocked states read correctly in the journal text.
 - If new LPC assets or animations were introduced, use [`../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn`](../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn) or another focused validation scene before relying on the full game flow.
 - Use [`../characters/universal_lpc/tests/test_universal_lpc_asset_audit.tscn`](../characters/universal_lpc/tests/test_universal_lpc_asset_audit.tscn) before asset-authoring passes to identify which curated player paths are missing `idle / walk / run / jump`, which styles only need JSON/runtime fixes, and which dynamic-path definitions still need manual review.
+- Use [`../ui/screens/tests/test_player_customization_overlay.tscn`](../ui/screens/tests/test_player_customization_overlay.tscn) to regression-test draft setup behavior and confirm that setup only commits on confirm.
 - Treat `Failed to resolve combined texture for selection layer` warnings as content bugs. They usually mean the chosen path, body type, or variant is unsupported by the shipped metadata.
 
 ## Good Next Steps
