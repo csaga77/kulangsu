@@ -6,6 +6,7 @@ Common agent rules, shared workflow guidance, and reusable runbook conventions b
 
 - Read `docs/design_brief.md` first for the project goal, player loop, and UI direction.
 - For source-control-only tasks, skip the gameplay design docs and start with `agent_tools/scripts/source_control_report.py`, `docs/submodules.md`, and `agent_tools/SOURCE_CONTROL_RUNBOOK.md`. Treat `agent_tools/SOURCE_CONTROL_RUNBOOK.md` as mandatory before source-control mutations. For repeated explicit stage/commit/push or one-shot publish flows on task-owned files, prefer `python3 agent_tools/scripts/source_control_ops.py publish ...` over manually chaining multiple Git commands. For a routine "update parent repo plus tracked submodules to latest" task, prefer `python3 agent_tools/scripts/source_control_ops.py update-latest .`.
+- **IMPORTANT: Before any source-control mutation, load the source-control skill with `/skill source-control` or explicitly read `agent_tools/SOURCE_CONTROL_RUNBOOK.md` first.**
 - For helper-ROI or token-efficiency workflow review, start with `scripts/token_efficiency_workflows.json`, `agent_tools/TOKEN_EFFICIENCY_RUNBOOK.md`, and `agent_tools/scripts/token_efficiency_audit.py`.
 - Then read `docs/architecture.md`, `docs/module_map.md`, and `docs/submodules.md` before making structural changes.
 - Read `docs/contracts.md` when changing shared state, interfaces, signals, public APIs, or submodule boundaries.
