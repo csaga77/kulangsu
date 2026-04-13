@@ -55,7 +55,7 @@ Current practical coverage:
 
 ## Architecture Reality Check
 
-`AppState` (1,278 lines, 30 signals) is still the shared state hub. The Workstream 0 cleanup shipped first, and the follow-on content/HUD/ending pass now builds on that bridge surface cleanly. The next monolith is `resident_catalog.gd` (1,707 lines), which is still where most route growth lands until more residents move into per-definition resources.
+`AppState` (about 1.3k lines, 30 signals) is still the shared state hub. The Workstream 0 cleanup shipped first, and the follow-on content/HUD/ending pass now builds on that bridge surface cleanly. The next monolith is `resident_catalog.gd` (about 1.6k lines), which is still where most route growth lands until more residents move into per-definition resources.
 
 Current pressure points:
 
@@ -68,36 +68,45 @@ Current pressure points:
 
 ## What Remains
 
-Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but they are still active tracks rather than fully finished bodies of work. The next phase is no longer the architecture pass itself; it is about deepening those content and polish workstreams until the remaining embodied-scene, world-reactivity, and closing-movement gaps are closed.
+Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but they are still active tracks rather than fully finished bodies of work. The next phase is no longer the architecture pass itself; it is about deepening those content and polish workstreams until the remaining embodied-scene, world-reactivity, and closing-movement gaps are closed. Resident migration remains useful sidecar cleanup, but it is not the recommended next focus while the manual conversion path is still relatively expensive.
 
 ### Status Summary
 
 | Workstream | Status | Next Priority |
 |------------|--------|---------------|
 | Workstream 0 | Complete | — |
-| Workstream 1 | First pass shipped | Priority 1 |
-| Workstream 2 | First pass shipped | Priority 2 |
-| Workstream 3 | First pass shipped | Lower (depends on content) |
+| Workstream 1 | First pass shipped | Priority 1 (content depth) |
+| Workstream 2 | First pass shipped | Priority 2 (world reactivity) |
+| Workstream 3 | First pass shipped | Priority 3 (ending polish after more content) |
 | Workstream 4 | First pass shipped | Lower (polish) |
-| Workstream 5 | First pass shipped | Priority 4 |
+| Workstream 5 | First pass shipped | Priority 4 (validation) |
+| Resident Migration | Partial (6 migrated; remaining require manual `.tres` conversion) | Deferred sidecar (touch when content work needs it) |
 
-### Priority 1: Route Content Depth (unblocks world reactivity)
+### Priority 1: Route Content Depth (recommended next)
 
 - add more embodied household, festival, and closing-movement scenes so the strongest beats are not carried mostly by overlays and talk lines
-- spread mid-route beats across more playable spaces and smaller turns instead of relying on a handful of major resident conversations
+- focus first on `family_memory` household beats or `study_future` middle beats
 
 ### Priority 2: World-State Reactivity (depends on content depth)
 
-- extend route reactivity into inspectables, props, ambient audio, and district dressing instead of relying mostly on dialogue and save-status feedback
+- extend route reactivity into inspectables, props, ambient audio, district dressing, and more non-resident surfaces
 - keep widening cross-district follow-through so major anchors feel visible outside the specific resident who resolved them
 
-### Priority 3: Resident Migration (reduces review velocity bottleneck)
+### Priority 3: Final-Act And Ending Polish (after more embodied content)
 
-- migrate more residents out of `resident_catalog.gd` into per-resident resources and lightweight authoring helpers
+- turn more of the final-act and departure texture into playable closing movement rather than leaving it mostly in overlays
+- keep sharpening trigger-specific aftermath and ferry framing once more embodied content exists to support it
 
 ### Priority 4: Validation Expansion (lower urgency, opportunistic)
 
-- widen validation around settings/audio behavior and any future typed payload migrations
+- widen validation around settings/audio behavior and richer world-state reactivity
+- add focused coverage for future typed payload migrations if that cleanup starts
+
+### Deferred Sidecar: Resident Migration (manual conversion; not the recommended next focus)
+
+- 6 residents already migrated to `.tres` files
+- keep migrating touched residents when content work already requires editing them, or when review velocity becomes the bottleneck
+- avoid making manual conversion the headline task until helper/tooling work makes that path meaningfully cheaper
 
 ## Workstream 1: Route Content Depth
 
