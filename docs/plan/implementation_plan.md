@@ -70,11 +70,33 @@ Current pressure points:
 
 Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but they are still active tracks rather than fully finished bodies of work. The next phase is no longer the architecture pass itself; it is about deepening those content and polish workstreams until the remaining embodied-scene, world-reactivity, and closing-movement gaps are closed.
 
-Near-term follow-on opportunities:
+### Status Summary
+
+| Workstream | Status | Next Priority |
+|------------|--------|---------------|
+| Workstream 0 | Complete | — |
+| Workstream 1 | First pass shipped | Priority 1 |
+| Workstream 2 | First pass shipped | Priority 2 |
+| Workstream 3 | First pass shipped | Lower (depends on content) |
+| Workstream 4 | First pass shipped | Lower (polish) |
+| Workstream 5 | First pass shipped | Priority 4 |
+
+### Priority 1: Route Content Depth (unblocks world reactivity)
 
 - add more embodied household, festival, and closing-movement scenes so the strongest beats are not carried mostly by overlays and talk lines
-- migrate more residents out of `resident_catalog.gd` into per-resident resources and lightweight authoring helpers
+- spread mid-route beats across more playable spaces and smaller turns instead of relying on a handful of major resident conversations
+
+### Priority 2: World-State Reactivity (depends on content depth)
+
 - extend route reactivity into inspectables, props, ambient audio, and district dressing instead of relying mostly on dialogue and save-status feedback
+- keep widening cross-district follow-through so major anchors feel visible outside the specific resident who resolved them
+
+### Priority 3: Resident Migration (reduces review velocity bottleneck)
+
+- migrate more residents out of `resident_catalog.gd` into per-resident resources and lightweight authoring helpers
+
+### Priority 4: Validation Expansion (lower urgency, opportunistic)
+
 - widen validation around settings/audio behavior and any future typed payload migrations
 
 ## Workstream 1: Route Content Depth
@@ -196,9 +218,17 @@ Verification now in repo:
 
 ## Deferred Design Questions
 
-- whether to add more non-landmark routes beyond the current four
-- whether to add more major-event endgame triggers after the current structure settles
-- whether to expose more route state directly in the world instead of mostly in dialogue and journal text
-- whether to add more authored wandering content after soft endings without introducing a separate after-ending mode
-- whether to introduce typed `Resource` subclasses for high-traffic dictionary payloads (landmark progress, melody progress, autosave) to catch key-typo bugs at parse time
-- whether to collapse the player profile facade by exposing the profile service directly to UI consumers
+### High-Impact (affect significant architecture)
+
+1. **Typed Resource Migration**: Whether to introduce `Resource` subclasses for high-traffic dictionary payloads (landmark progress, melody progress, autosave) to catch key-typo bugs at parse time
+2. **Route State Visibility**: Whether to expose more route state directly in the world instead of mostly in dialogue and journal text
+
+### Medium-Impact (add content or modes)
+
+3. **Additional Routes**: Whether to add more non-landmark routes beyond the current four
+4. **Additional Endgame Triggers**: Whether to add more major-event endgame triggers after the current structure settles
+5. **Post-Ending Wandering**: Whether to add more authored wandering content after soft endings without introducing a separate after-ending mode
+
+### Low-Impact (cleanup/refinement)
+
+6. **Profile Facade Collapse**: Whether to collapse the player profile facade by exposing the profile service directly to UI consumers

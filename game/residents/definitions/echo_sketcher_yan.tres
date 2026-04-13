@@ -1,0 +1,51 @@
+[gd_resource type="Resource" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://game/resident_system/resident_definition.gd" id="1_definition"]
+[ext_resource type="Script" path="res://game/resident_system/resident_appearance_definition.gd" id="2_appearance"]
+[ext_resource type="Script" path="res://game/resident_system/resident_dialogue_definition.gd" id="3_dialogue"]
+[ext_resource type="Script" path="res://game/resident_system/resident_routine_definition.gd" id="5_routine"]
+[ext_resource type="Script" path="res://game/resident_system/resident_spawn_definition.gd" id="6_spawn"]
+
+[sub_resource type="Resource" id="ResidentAppearanceDefinition_echo_sketcher_yan"]
+script = ExtResource("2_appearance")
+body_type = "male"
+skin = "light"
+head_path = "head/heads/human/heads_human_male"
+hair_path = "hair/short/hair_parted"
+hair_color = "sandy"
+shirt_path = "torso/shirts/shortsleeve/torso_clothes_tshirt_vneck"
+shirt_color = "sky"
+pants_path = "legs/pants/legs_pants2"
+pants_color = "brown"
+shoes_path = "feet/shoes/feet_shoes_basic"
+shoes_color = "bluegray"
+
+[sub_resource type="Resource" id="ResidentSpawnDefinition_echo_sketcher_yan"]
+script = ExtResource("6_spawn")
+anchor_id = "Bi Shan Tunnel"
+offset = Vector2(-224, -336)
+direction = -125.0
+mood = 1
+interaction_radius = 72.0
+
+[sub_resource type="Resource" id="ResidentRoutineDefinition_echo_sketcher_yan"]
+script = ExtResource("5_routine")
+spawn = SubResource("ResidentSpawnDefinition_echo_sketcher_yan")
+
+[sub_resource type="Resource" id="ResidentDialogueDefinition_echo_sketcher_yan"]
+script = ExtResource("3_dialogue")
+ambient_lines = PackedStringArray("The tunnel draws straighter on paper than it behaves in person.", "I trust the echoes that return rounded at the edges.")
+dialogue_beats = []
+
+[resource]
+script = ExtResource("1_definition")
+id = "echo_sketcher_yan"
+include_in_catalog = true
+display_name = "Echo Sketcher Yan"
+landmark = "Bi Shan Tunnel"
+role = "Draws tunnel corners from memory and labels them by how they sound."
+routine_note = "Usually a little way inside the safer southern stretch."
+melody_hint = "He maps echoes like they are architectural lines."
+appearance = SubResource("ResidentAppearanceDefinition_echo_sketcher_yan")
+dialogue = SubResource("ResidentDialogueDefinition_echo_sketcher_yan")
+routine = SubResource("ResidentRoutineDefinition_echo_sketcher_yan")
