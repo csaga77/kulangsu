@@ -27,6 +27,7 @@ Shipped foundations:
 - differentiated ending and departure copy for exam, honest-future, and harbor-performance routes, including soft-ending stay-versus-leave text
 - added cross-route resident follow-through across harbor, church, and Bagua districts after winter-memory, preservation, future-choice, second-summer, and resonant-festival beats
 - scene-level milestone status feedback for major route events so world-state changes are not only visible in journal text
+- harbor, church, and Bagua inspectable surfaces now carry route-state reactivity so non-resident world objects reflect Spring Festival, winter-memory, future-choice, second-summer, and preservation beats
 
 Regression coverage now includes:
 
@@ -134,6 +135,7 @@ First-pass shipped outcome:
 
 - new conditional beats now react to winter-memory, Spring Festival, future-choice, second-summer, preservation, and resonant-festival state across ferry, church, and Bagua districts
 - `scenes/game_main.gd` now surfaces selected route-event resolutions as world-status feedback instead of leaving those turns only in journal state
+- route-aware inspectables at Piano Ferry, Trinity Church, and Bagua Tower now carry non-resident world reactivity alongside dialogue follow-through
 - route progress now changes more of what the island feels like without requiring landmark-only progression
 
 Still open:

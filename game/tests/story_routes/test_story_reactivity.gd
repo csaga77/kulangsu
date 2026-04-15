@@ -2,6 +2,7 @@ extends Node2D
 
 const TEST_AUTOSAVE_PATH := "user://story_reactivity_test.save"
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
+const STORY_WORLD_REACTIVITY_SCRIPT := preload("res://game/story_world_reactivity.gd")
 
 var m_failures := PackedStringArray()
 
@@ -30,12 +31,36 @@ func _run() -> void:
 		String(lian_result.get("line", "")).to_lower().contains("a po"),
 		"Lian now reflects on A Po and the parents once winter memory turns clear"
 	)
+	var church_bench_text := STORY_WORLD_REACTIVITY_SCRIPT.build_inspect_text(
+		_app_state(),
+		"church_stone_bench"
+	)
+	_assert_true(
+		church_bench_text.to_lower().contains("winter memory"),
+		"Church Stone Bench echoes the winter-memory reveal outside resident dialogue"
+	)
 	_app_state().interact_with_resident("tea_vendor_hua")
+	var lanterns_prepared_text := STORY_WORLD_REACTIVITY_SCRIPT.build_inspect_text(
+		_app_state(),
+		"harbor_lantern_lines"
+	)
+	_assert_true(
+		lanterns_prepared_text.to_lower().contains("festival week"),
+		"Harbor Lantern Lines react once Spring Festival preparation is underway"
+	)
 	_app_state().interact_with_resident("ferry_caretaker")
 	var hua_after: Dictionary = _app_state().interact_with_resident("tea_vendor_hua")
 	_assert_true(
 		String(hua_after.get("line", "")).to_lower().contains("extra cup"),
 		"Tea Vendor Hua reflects the Spring Festival aftermath after the harbor resolution"
+	)
+	var lanterns_resolved_text := STORY_WORLD_REACTIVITY_SCRIPT.build_inspect_text(
+		_app_state(),
+		"harbor_lantern_lines"
+	)
+	_assert_true(
+		lanterns_resolved_text.to_lower().contains("wax"),
+		"Harbor Lantern Lines keep the Spring Festival aftermath visible after the route resolves"
 	)
 
 	_app_state().configure_new_game()
@@ -45,11 +70,27 @@ func _run() -> void:
 		String(lin_after.get("line", "")).to_lower().contains("belongs to the singer"),
 		"Choir Student Lin reacts once the future choice has been named honestly"
 	)
+	var notice_board_choice_text := STORY_WORLD_REACTIVITY_SCRIPT.build_inspect_text(
+		_app_state(),
+		"harbor_notice_board"
+	)
+	_assert_true(
+		notice_board_choice_text.to_lower().contains("sentence"),
+		"Harbor Notice Board reacts once the future choice is named"
+	)
 	_app_state().interact_with_resident("dock_musician_pei")
 	var jun_after: Dictionary = _app_state().interact_with_resident("ferry_porter_jun")
 	_assert_true(
 		String(jun_after.get("line", "")).to_lower().contains("second summer"),
 		"Ferry Porter Jun reacts once the exam route opens into second summer"
+	)
+	var notice_board_exam_text := STORY_WORLD_REACTIVITY_SCRIPT.build_inspect_text(
+		_app_state(),
+		"harbor_notice_board"
+	)
+	_assert_true(
+		notice_board_exam_text.to_lower().contains("second summer"),
+		"Harbor Notice Board reflects the quieter second-summer aftermath"
 	)
 
 	_app_state().configure_new_game()
@@ -64,10 +105,26 @@ func _run() -> void:
 		String(jia_after.get("line", "")).to_lower().contains("custody"),
 		"Map Student Jia reacts once Bagua turns preservation into responsibility"
 	)
+	var postcard_rack_text := STORY_WORLD_REACTIVITY_SCRIPT.build_inspect_text(
+		_app_state(),
+		"postcard_display_rack"
+	)
+	_assert_true(
+		postcard_rack_text.to_lower().contains("custody"),
+		"Postcard Display Rack reacts once preservation turns into inheritance"
+	)
 	var an_after: Dictionary = _app_state().interact_with_resident("postcard_seller_an")
 	_assert_true(
 		String(an_after.get("line", "")).to_lower().contains("little rectangles"),
 		"Postcard Seller An reacts after the Bagua preservation perspective lands"
+	)
+	var bagua_railings_text := STORY_WORLD_REACTIVITY_SCRIPT.build_inspect_text(
+		_app_state(),
+		"bagua_railings"
+	)
+	_assert_true(
+		bagua_railings_text.to_lower().contains("entrusted"),
+		"Bagua Railings carry the preservation perspective onto a non-resident surface"
 	)
 
 	_app_state().clear_story_autosave_for_tests()

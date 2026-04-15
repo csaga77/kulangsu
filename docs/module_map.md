@@ -40,6 +40,7 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../game/audio_settings_service.gd`](../game/audio_settings_service.gd) - owns runtime volume/text-speed state while `AppState` keeps the shell-facing API and signals
 - [`../game/resident_interaction_service.gd`](../game/resident_interaction_service.gd) - applies resident dialogue beats, conditional beats, trust milestones, route refresh, and resident-facing autosave side effects behind `AppState` facades
 - [`../game/story_route_graph.gd`](../game/story_route_graph.gd) - canonical seasonal route definitions, event definitions, lead selection, endgame trigger logic, and tone-tag assembly
+- [`../game/story_world_reactivity.gd`](../game/story_world_reactivity.gd) / [`../game/story_inspectable.gd`](../game/story_inspectable.gd) - installs world-facing inspectable surfaces at ferry, church, and Bagua landmarks and resolves route-aware non-resident inspection text
 - [`../game/landmark_progression.gd`](../game/landmark_progression.gd) - landmark trigger handling, melody prompt requests, fragment awards, and harbor-performance completion flow
 - [`../game/landmark_cue_loader.gd`](../game/landmark_cue_loader.gd) - shared one-shot landmark cue loader/cache that decodes shipped Vorbis `.ogg` cues directly instead of relying on editor import state
 - [`../game/bgm_catalog.gd`](../game/bgm_catalog.gd) / [`../game/bgm_manager.gd`](../game/bgm_manager.gd) - seed-pool BGM definitions plus scene-owned weighted playback and transition logic for overworld music
