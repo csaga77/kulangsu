@@ -9,9 +9,53 @@
 [ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="5_yk3c8"]
 [ext_resource type="Texture2D" uid="uid://cddixtrkgs1a3" path="res://resources/sprites/architecture/piano_ferry/piano_ferry_roof.png" id="6_867i5"]
 [ext_resource type="TileSet" uid="uid://dh8addwm1ctei" path="res://resources/tilesets/architecture/building_0_tiles.tres" id="7_j6cxs"]
+[ext_resource type="Script" uid="uid://2inbno67jnvm" path="res://game/story_inspectable.gd" id="8_8jbr6"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_harbor_lantern_lines"]
+radius = 42.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_harbor_notice_board"]
+radius = 38.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_postcard_display_rack"]
+radius = 34.0
+
 [node name="ferry" type="Node2D" unique_id=61386167]
 y_sort_enabled = true
 script = ExtResource("1_j6cxs")
+
+[node name="HarborLanternLines" type="Area2D" parent="."]
+position = Vector2(136, 196)
+script = ExtResource("8_8jbr6")
+inspectable_id = "harbor_lantern_lines"
+display_name = "Harbor Lantern Lines"
+level_id_mode = 1
+sync_z_index_to_resolved_level = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HarborLanternLines"]
+shape = SubResource("CircleShape2D_harbor_lantern_lines")
+
+[node name="HarborNoticeBoard" type="Area2D" parent="."]
+position = Vector2(300, 176)
+script = ExtResource("8_8jbr6")
+inspectable_id = "harbor_notice_board"
+display_name = "Harbor Notice Board"
+level_id_mode = 1
+sync_z_index_to_resolved_level = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HarborNoticeBoard"]
+shape = SubResource("CircleShape2D_harbor_notice_board")
+
+[node name="PostcardDisplayRack" type="Area2D" parent="."]
+position = Vector2(-8, 180)
+script = ExtResource("8_8jbr6")
+inspectable_id = "postcard_display_rack"
+display_name = "Postcard Display Rack"
+level_id_mode = 1
+sync_z_index_to_resolved_level = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PostcardDisplayRack"]
+shape = SubResource("CircleShape2D_postcard_display_rack")
 
 [node name="collision_layer" type="TileMapLayer" parent="." unique_id=358310393]
 z_index = 1

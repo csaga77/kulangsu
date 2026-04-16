@@ -39,6 +39,7 @@
 - [`../../common/level_area_2d.gd`](../../common/level_area_2d.gd)
   - gives reusable `Area2D` gameplay nodes the same exported `level_id` / `level_id_mode` contract
   - may resolve relative level ids through either the closest level-aware parent or an explicit `level_context_path`
+  - should usually be parented under the matching level-aware node when the scene owns the interactable directly; treat `level_context_path` as an escape hatch for terrain-owned or cross-scene placement
   - can sync its interaction-facing `z_index` from the resolved level without requiring a separate level container
 - [`../../architecture/components/portal.gd`](../../architecture/components/portal.gd)
   - owns `level_id`, `level_from`, and `level_to`
@@ -101,6 +102,7 @@
 
 - Shared level-id rules and static level data belong in [`../../common/level_registry.gd`](../../common/level_registry.gd).
 - Room tile-level resolution belongs in [`../../common/level_node_2d.gd`](../../common/level_node_2d.gd).
+- Scene-owned level-aware interactables should usually live in the reusable landmark scene under the matching level-aware parent instead of being installed from outside the scene.
 - Actor mask / z transitions belong in reusable traversal components under [`../../architecture/components/`](../../architecture/components/).
 - Visibility behavior belongs in [`../../common/auto_visibility_node_2d.gd`](../../common/auto_visibility_node_2d.gd) plus scene-authored mask tilemaps.
 - Tunnel presentation and tunnel-only resident visibility belong in [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd), [`../../scenes/tunnel_context.gd`](../../scenes/tunnel_context.gd), [`../../scenes/game_main.gd`](../../scenes/game_main.gd), and authored visibility masks.

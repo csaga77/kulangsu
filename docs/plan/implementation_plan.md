@@ -146,6 +146,10 @@ Still open:
 Primary files:
 
 - `game/resident_catalog.gd`
+- `game/story_world_reactivity.gd`
+- `architecture/piano_ferry.tscn`
+- `architecture/trinity_church.tscn`
+- `architecture/bagua_tower/bagua_tower.tscn`
 - `scenes/game_main.gd`
 
 ## Workstream 3: Final-Act And Ending Polish

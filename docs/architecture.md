@@ -69,7 +69,7 @@ Responsibilities:
 - extracted world helpers under `scenes/` now own route resolution (`route_resolver.gd`), resident spawning (`resident_spawner.gd`), tunnel context (`tunnel_context.gd`), and optional NPC route debug drawing (`npc_route_debug_drawer.gd`)
 - resident route resolution from authored anchors into runtime world-space waypoints, including tunnel path expansion and portal-direction helper points
 - tunnel interior context, tunnel-resident visibility syncing, and ground-building masking when the player actually enters a tunnel interior
-- lightweight story inspectables installed around major landmarks so route-state changes can surface on non-resident world objects as well as in dialogue
+- lightweight story inspectables authored inside major landmark scenes so route-state changes can surface on non-resident world objects as well as in dialogue without losing level context
 - feeding current world context into `AppState`
 
 Boundary:

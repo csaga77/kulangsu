@@ -147,7 +147,7 @@ Current contract:
 - every level-aware node must expose a `level_id` for its own level
 - every level-aware node may expose additional `level_id` properties such as `level_from`, `level_to`, `level_bottom`, or `level_top`
 - `LevelNode2D` resolves its `level_id` either absolutely or relative to the closest level-aware parent
-- `LevelArea2D` exposes the same `level_id` contract for reusable `Area2D` gameplay nodes and may optionally resolve relative ids through an explicit `level_context_path`
+- `LevelArea2D` exposes the same `level_id` contract for reusable `Area2D` gameplay nodes and may optionally resolve relative ids through an explicit `level_context_path`, but scene-owned interactables should normally live under the matching level-aware parent
 - reusable room scenes should prefer relative level ids so they do not hardcode runtime level ids
 - `LevelRegistry` derives shared runtime floor data from `level_id`
 - By default, `LevelRegistry` maps `level_id` to runtime floor data as `physics_atlas_column = level_id`, `z_index = level_id`, and `collision_mask = 1 << (19 + level_id)`
@@ -192,6 +192,7 @@ Governance:
 - if the shared level derivation rules or the traversal components' `level_id` interface change, update this file and relevant feature docs
 - new multi-level spaces should use either absolute or parent-relative exported `level_id` values where a reusable scene or component needs to point at a logical level
 - when a reusable `Area2D` needs shared level behavior, prefer `LevelArea2D` or a subclass instead of duplicating level-resolution logic in the leaf node
+- when a scene-owned `LevelArea2D` can live under the right `LevelNode2D`, prefer that parentage over pointing back to an external `level_context_path`
 - existing portals and stairs outside Bagua Tower may continue to use hand-authored mask values; migration is not required but recommended
 
 ## Landmark Progress Contract
@@ -215,7 +216,7 @@ Current contract:
 - `AppState.set_all_landmark_progress(progress)` sets multiple landmarks at once; used by `configure_*` methods
 - Resident dialogue beats may carry `"unlock_landmark"` to unlock a landmark when the beat fires, and `"gate"` / `"gate_fallback"` to block a beat until a landmark condition is satisfied
 - Resident dialogue beats may carry `"landmark_reward"` to trigger a landmark resolution (fragment award, melody state update, downstream unlocks) when the beat fires
-- `LandmarkTrigger` inherits the shared `LevelArea2D` level fields, so a trigger can resolve its interaction layer from a parent level node or an explicit `level_context_path` without landmark-specific logic
+- `LandmarkTrigger` inherits the shared `LevelArea2D` level fields, so a trigger can resolve its interaction layer from a parent level node or an explicit `level_context_path` without landmark-specific logic; use the explicit context path mainly for terrain-owned or cross-scene trigger placement
 - `game/landmark_trigger_catalog.gd` owns the canonical authored `landmark_id` list and valid `trigger_id` values for each landmark; both `LandmarkTrigger` inspector dropdowns and `LandmarkProgression.activate_landmark_trigger(...)` validation read from that shared catalog
 - `LandmarkTrigger.landmark_id` is an exported inspector enum over the currently authored landmark ids, and `LandmarkTrigger.trigger_id` is an enum-filtered inspector field whose available options follow the selected landmark; invalid landmark/trigger combinations should surface as configuration warnings in the editor instead of silently authoring mismatched pairs
 

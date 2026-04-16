@@ -2,10 +2,18 @@
 class_name StoryInspectable
 extends LevelArea2D
 
+const STORY_INSPECTABLE_LEVEL_REGISTRY := preload("res://common/level_registry.gd")
+
 @export var inspectable_id: String = ""
 @export var display_name: String = "Inspect"
 @export var debug_draw := false
 @export var debug_color: Color = Color(0.28, 0.82, 0.96, 0.35)
+
+
+func _init() -> void:
+	level_id = 0
+	level_id_mode = STORY_INSPECTABLE_LEVEL_REGISTRY.LevelIdMode.RELATIVE_TO_PARENT
+	sync_z_index_to_resolved_level = true
 
 
 func _draw() -> void:

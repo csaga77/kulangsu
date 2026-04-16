@@ -14,7 +14,6 @@ const LANDMARK_CUE_LOADER_SCRIPT := preload("res://game/landmark_cue_loader.gd")
 const WEATHER_RUNTIME := preload("res://weather/weather_runtime.gd")
 const OVERWORLD_WEATHER_PRESET = preload("res://weather/overworld_weather_preset.tres")
 const BGM_MANAGER_SCRIPT := preload("res://game/bgm_manager.gd")
-const STORY_INSPECTABLE_SCRIPT := preload("res://game/story_inspectable.gd")
 const STORY_WORLD_REACTIVITY_SCRIPT := preload("res://game/story_world_reactivity.gd")
 const ROUTE_RESOLVER_SCRIPT := preload("res://scenes/route_resolver.gd")
 const RESIDENT_SPAWNER_SCRIPT := preload("res://scenes/resident_spawner.gd")
@@ -99,7 +98,6 @@ var m_route_resolver: RefCounted = null
 var m_resident_spawner: RefCounted = null
 var m_tunnel_context: Node = null
 var m_debug_route_drawer: Node2D = null
-var m_story_inspectables: Array = []
 var m_weather_hidden_for_tunnel := false
 var m_weather_manager: WeatherManager = null
 var m_weather_layer: CanvasLayer = null
@@ -226,8 +224,7 @@ func _ready() -> void:
 	_cache_spawn_anchors()
 	_ensure_scene_helpers()
 	if !Engine.is_editor_hint():
-		_install_story_inspectables()
-	_apply_story_resume_anchor_if_needed()
+		_apply_story_resume_anchor_if_needed()
 	_cache_tunnels()
 	_setup_landmark_audio_feedback()
 	_spawn_catalog_residents()
@@ -373,17 +370,6 @@ func _cache_landmarks() -> void:
 		"Long Shan Tunnel": m_long_shan_tunnel,
 		"Bi Shan Tunnel": m_bi_shan_tunnel,
 	}
-
-
-func _install_story_inspectables() -> void:
-	if Engine.is_editor_hint():
-		return
-	m_story_inspectables = STORY_WORLD_REACTIVITY_SCRIPT.install_story_inspectables({
-		"piano_ferry": m_piano_ferry,
-		"trinity_church": m_trinity_church,
-		"bagua_tower": m_bagua_tower,
-	})
-
 
 func _cache_spawn_anchors() -> void:
 	m_spawn_anchor_nodes = {
@@ -670,8 +656,8 @@ func _on_inspect_requested() -> void:
 		_app_state().set_save_status(
 			STORY_WORLD_REACTIVITY_SCRIPT.build_inspect_text(
 				_app_state(),
-				String(story_inspectable.get("inspectable_id")),
-				String(story_inspectable.get("display_name"))
+				story_inspectable.inspectable_id,
+				story_inspectable.display_name
 			)
 		)
 		return
@@ -725,7 +711,7 @@ func _display_name_for_node(target: Node2D) -> String:
 
 	var story_inspectable := _get_story_inspectable(target)
 	if story_inspectable != null:
-		var inspectable_name := String(story_inspectable.get("display_name"))
+		var inspectable_name := story_inspectable.display_name
 		if !inspectable_name.is_empty():
 			return inspectable_name
 
@@ -963,9 +949,7 @@ func _get_landmark_trigger(target: Node2D) -> LandmarkTrigger:
 	return target as LandmarkTrigger
 
 
-func _get_story_inspectable(target: Node2D) -> Area2D:
+func _get_story_inspectable(target: Node2D) -> StoryInspectable:
 	if !is_instance_valid(target):
 		return null
-	if target.get_script() != STORY_INSPECTABLE_SCRIPT:
-		return null
-	return target as Area2D
+	return target as StoryInspectable
