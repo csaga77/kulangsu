@@ -50,7 +50,7 @@ This avoids requiring the `piano_game` module before the first performance lands
 
 ### Performance Point Activation
 
-Each landmark can have one performance point: a `LandmarkTrigger` (or equivalent Area2D) placed at the canonical performance spot listed in `melody_catalog.gd`. The player presses R at that node when the melody is in `reconstructed` state and any story-side gating for that performance point is satisfied. The recognition prompt opens. On success, `AppState.complete_prompt_request(...)` advances the melody or landmark and fires the appropriate world response.
+Each landmark can have one performance point: a `StorySubjectArea2D` placed at the canonical performance spot listed in `melody_catalog.gd`. The player presses R at that node when the melody is in `reconstructed` state and any story-side gating for that performance point is satisfied. The recognition prompt opens. On success, `AppState.complete_prompt_request(...)` advances the melody or landmark and fires the appropriate world response.
 
 Current landmark-specific uses of the reusable prompt for `festival_melody`:
 
@@ -82,9 +82,10 @@ Bagua Tower still uses the simpler synthesis trigger plus Suyin follow-up dialog
 
 ## Architecture / Ownership
 
-- `AppState` owns the prompt-request signal, the `performed` flag per melody, the state transition to `performed`, and landmark-specific prompt completions such as the Trinity choir chime, the Bi Shan chamber contour, and the Long Shan exit route.
+- `AppState` owns the public prompt-request/completion bridge plus the melody state it mutates, while authored StoryEvent world-event bindings now own landmark-specific prompt completions such as the Trinity choir chime, the Bi Shan chamber contour, the Long Shan exit route, and the harbor-stage performance.
+- `game/landmark_progression.gd` now mainly owns generic melody-prompt validation/building and the remaining compatibility fallback path.
 - `melody_catalog.gd` owns the `performance_landmark`, `performance_prompt`, and prompt segment ordering fields per melody.
-- The in-world activation point still lives on `LandmarkTrigger` at Festival Stage.
+- The in-world activation point still lives on a `StorySubjectArea2D` at Festival Stage.
 - The recognition prompt UI now lives in `ui/screens/melody_prompt_overlay.*`. It owns the local select/correct/wrong one-shot sounds, but it does not write melody or landmark state directly; it reports the full prompt request back through the shell into `AppState.complete_prompt_request(...)`.
 - `main.gd` owns prompt-lifetime BGM ducking by telling the live gameplay scene to duck or release its `BgmManager` when the overlay opens and closes.
 - The `piano_game` module can be integrated as the recognition prompt backend once the interface is stable.

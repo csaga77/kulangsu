@@ -3,8 +3,10 @@ extends Node2D
 const TEST_AUTOSAVE_PATH := "user://story_event_service_test.save"
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const GAME_MAIN_SCENE := preload("res://scenes/game_main.tscn")
+const StorySubjectArea2D = preload("res://game/story_subject_area.gd")
 
 var m_failures := PackedStringArray()
+var m_prompt_requests: Array[Dictionary] = []
 
 
 func _app_state():
@@ -16,10 +18,32 @@ func _ready() -> void:
 
 
 func _run() -> void:
+	if !_app_state().melody_prompt_requested.is_connected(_on_melody_prompt_requested):
+		_app_state().melody_prompt_requested.connect(_on_melody_prompt_requested)
+
 	_app_state().override_story_autosave_path_for_tests(TEST_AUTOSAVE_PATH)
 	_app_state().clear_story_autosave_for_tests()
 
 	_app_state().configure_new_game()
+	var harbor_trigger := StorySubjectArea2D.new()
+	harbor_trigger.subject_id = "landmark:piano_ferry.harbor_refrain"
+	_assert_true(
+		harbor_trigger.get_story_subject_id() == "landmark:piano_ferry.harbor_refrain",
+		"StorySubjectArea2D keeps a stable world subject id"
+	)
+	_assert_true(
+		harbor_trigger.get_story_action() == "collect",
+		"StorySubjectArea2D resolves the default collect action from StoryEvent metadata"
+	)
+	var choir_trigger := StorySubjectArea2D.new()
+	choir_trigger.subject_id = "landmark:trinity_church.choir_chime"
+	_assert_true(
+		choir_trigger.get_story_action() == "perform",
+		"StorySubjectArea2D resolves the default perform action from StoryEvent metadata"
+	)
+	harbor_trigger.free()
+	choir_trigger.free()
+
 	var lian_intro: Dictionary = _app_state().activate_story_subject("npc:ferry_caretaker", "talk")
 	_assert_true(
 		String(lian_intro.get("line", "")).to_lower().contains("old piano crate"),
@@ -30,6 +54,11 @@ func _run() -> void:
 		"StoryEvent talk activation still advances resident progress"
 	)
 
+	_app_state().configure_new_game()
+	m_prompt_requests.clear()
+	_progress_through_landmark_spine_via_story_subjects()
+
+	_app_state().configure_new_game()
 	_progress_to_winter_memory_via_story_subjects()
 	var bench_preview: Dictionary = _app_state().describe_story_subject("inspectable:church_stone_bench", "inspect")
 	_assert_true(
@@ -111,7 +140,15 @@ func _run() -> void:
 
 func _progress_through_ferry_opening() -> void:
 	_app_state().activate_story_subject("npc:ferry_caretaker", "talk")
-	_app_state().activate_landmark_trigger("piano_ferry", "harbor_refrain", "Harbor Clue")
+	var harbor_result: Dictionary = _app_state().activate_story_subject(
+		"landmark:piano_ferry.harbor_refrain",
+		"collect",
+		{"display_name": "Harbor Clue"}
+	)
+	_assert_true(
+		bool(harbor_result.get("consumed", false)),
+		"StoryEvent landmark activation routes the harbor refrain through the generic subject API"
+	)
 	_app_state().activate_story_subject("npc:ferry_caretaker", "talk")
 
 
@@ -122,6 +159,235 @@ func _progress_to_winter_memory_via_story_subjects() -> void:
 	_app_state().activate_story_subject("npc:choir_student_lin", "talk")
 	_app_state().activate_story_subject("npc:church_caretaker", "talk")
 	_app_state().activate_story_subject("npc:church_caretaker", "talk")
+
+
+func _progress_through_trinity_church_via_story_subjects() -> void:
+	_progress_through_ferry_opening()
+	_app_state().activate_story_subject("npc:church_caretaker", "talk")
+	_app_state().activate_story_subject("npc:church_caretaker", "talk")
+	var steps_result: Dictionary = _app_state().activate_story_subject(
+		"landmark:trinity_church.steps",
+		"collect",
+		{"display_name": "Stone Steps"}
+	)
+	_assert_true(
+		bool(steps_result.get("consumed", false)),
+		"StoryEvent landmark activation collects the first Trinity cue through the generic subject API"
+	)
+	var garden_result: Dictionary = _app_state().activate_story_subject(
+		"landmark:trinity_church.garden",
+		"collect",
+		{"display_name": "Side Garden"}
+	)
+	_assert_true(
+		bool(garden_result.get("consumed", false)),
+		"StoryEvent landmark activation collects the second Trinity cue through the generic subject API"
+	)
+	var yard_result: Dictionary = _app_state().activate_story_subject(
+		"landmark:trinity_church.yard",
+		"collect",
+		{"display_name": "Quiet Yard"}
+	)
+	_assert_true(
+		bool(yard_result.get("consumed", false)),
+		"StoryEvent landmark activation collects the final Trinity cue through the generic subject API"
+	)
+	_assert_true(
+		_app_state().get_landmark_progress("trinity_church").get("cues_collected", []).size() == 3,
+		"StoryEvent landmark activation updates Trinity cue progress in shared landmark state"
+	)
+
+	var prompt_count_before := m_prompt_requests.size()
+	var choir_result: Dictionary = _app_state().activate_story_subject(
+		"landmark:trinity_church.choir_chime",
+		"perform",
+		{"display_name": "Choir Chime"}
+	)
+	_assert_true(
+		!bool(choir_result.get("consumed", true)),
+		"StoryEvent landmark activation keeps the Trinity choir chime available while the prompt is open"
+	)
+	_assert_true(
+		m_prompt_requests.size() == prompt_count_before + 1,
+		"StoryEvent landmark activation emits the Trinity choir prompt through the shared melody prompt signal"
+	)
+	var latest_prompt: Dictionary = {}
+	if m_prompt_requests.size() > 0:
+		latest_prompt = m_prompt_requests[m_prompt_requests.size() - 1]
+	_assert_true(
+		String(latest_prompt.get("completion_kind", "")) == "trinity_chime",
+		"StoryEvent landmark activation emits the authored Trinity choir prompt payload"
+	)
+
+
+func _progress_through_landmark_spine_via_story_subjects() -> void:
+	_progress_through_trinity_church_via_story_subjects()
+	_app_state().complete_prompt_request(m_prompt_requests[m_prompt_requests.size() - 1])
+	_app_state().activate_story_subject("npc:church_caretaker", "talk")
+	_assert_true(
+		_app_state().fragments_found == 1,
+		"StoryEvent landmark prompt completion still leaves Trinity reward resolution intact"
+	)
+
+	_assert_true(
+		bool(_app_state().activate_story_subject(
+			"landmark:bi_shan_tunnel.echo_a",
+			"collect",
+			{"display_name": "North Wall Echo"}
+		).get("consumed", false)),
+		"StoryEvent landmark activation collects the first Bi Shan echo through the generic subject API"
+	)
+	_assert_true(
+		bool(_app_state().activate_story_subject(
+			"landmark:bi_shan_tunnel.echo_b",
+			"collect",
+			{"display_name": "Arch Midpoint"}
+		).get("consumed", false)),
+		"StoryEvent landmark activation collects the second Bi Shan echo through the generic subject API"
+	)
+	_assert_true(
+		bool(_app_state().activate_story_subject(
+			"landmark:bi_shan_tunnel.echo_c",
+			"collect",
+			{"display_name": "Mural Approach"}
+		).get("consumed", false)),
+		"StoryEvent landmark activation collects the final Bi Shan echo through the generic subject API"
+	)
+
+	var bi_shan_prompt_count := m_prompt_requests.size()
+	var chamber_result: Dictionary = _app_state().activate_story_subject(
+		"landmark:bi_shan_tunnel.chamber",
+		"collect",
+		{"display_name": "Mural Chamber"}
+	)
+	_assert_true(
+		!bool(chamber_result.get("consumed", true)),
+		"StoryEvent landmark activation keeps the Bi Shan chamber available while the prompt is open"
+	)
+	_assert_true(
+		m_prompt_requests.size() == bi_shan_prompt_count + 1,
+		"StoryEvent landmark activation emits the Bi Shan chamber prompt through the shared melody prompt signal"
+	)
+	_assert_true(
+		String(m_prompt_requests[m_prompt_requests.size() - 1].get("completion_kind", "")) == "bi_shan_chamber",
+		"StoryEvent landmark activation emits the authored Bi Shan chamber prompt payload"
+	)
+	_app_state().complete_prompt_request(m_prompt_requests[m_prompt_requests.size() - 1])
+	_assert_true(
+		_app_state().fragments_found == 2,
+		"StoryEvent landmark prompt completion still resolves the Bi Shan reward path"
+	)
+
+	_assert_true(
+		bool(_app_state().activate_story_subject(
+			"landmark:long_shan_tunnel.tunnel_entry",
+			"collect",
+			{"display_name": "Long Shan Entry"}
+		).get("consumed", false)),
+		"StoryEvent landmark activation routes the Long Shan entry through the generic subject API"
+	)
+	_app_state().activate_story_subject("npc:tunnel_guide", "talk")
+	_app_state().activate_story_subject("npc:tunnel_guide", "talk")
+	_assert_true(
+		bool(_app_state().activate_story_subject(
+			"landmark:long_shan_tunnel.light_pocket_south",
+			"collect",
+			{"display_name": "South Lit Pocket"}
+		).get("consumed", false)),
+		"StoryEvent landmark activation collects the first Long Shan checkpoint through the generic subject API"
+	)
+	_assert_true(
+		bool(_app_state().activate_story_subject(
+			"landmark:long_shan_tunnel.light_pocket_north",
+			"collect",
+			{"display_name": "North Lit Pocket"}
+		).get("consumed", false)),
+		"StoryEvent landmark activation collects the second Long Shan checkpoint through the generic subject API"
+	)
+
+	var long_shan_prompt_count := m_prompt_requests.size()
+	var exit_result: Dictionary = _app_state().activate_story_subject(
+		"landmark:long_shan_tunnel.tunnel_exit",
+		"collect",
+		{"display_name": "Tunnel Exit"}
+	)
+	_assert_true(
+		!bool(exit_result.get("consumed", true)),
+		"StoryEvent landmark activation keeps the Long Shan exit available while the prompt is open"
+	)
+	_assert_true(
+		m_prompt_requests.size() == long_shan_prompt_count + 1,
+		"StoryEvent landmark activation emits the Long Shan route prompt through the shared melody prompt signal"
+	)
+	_assert_true(
+		String(m_prompt_requests[m_prompt_requests.size() - 1].get("completion_kind", "")) == "long_shan_route",
+		"StoryEvent landmark activation emits the authored Long Shan route prompt payload"
+	)
+	_app_state().complete_prompt_request(m_prompt_requests[m_prompt_requests.size() - 1])
+	_app_state().activate_story_subject("npc:tunnel_guide", "talk")
+	_assert_true(
+		_app_state().get_landmark_state("bagua_tower") == "available",
+		"StoryEvent landmark prompt completion still leaves Ren's Bagua handoff intact"
+	)
+
+	_app_state().activate_story_subject("npc:tower_keeper", "talk")
+	_app_state().activate_story_subject("npc:tower_keeper", "talk")
+	var bagua_result: Dictionary = _app_state().activate_story_subject(
+		"landmark:bagua_tower.synthesis_chamber",
+		"collect",
+		{"display_name": "Synthesis Chamber"}
+	)
+	_assert_true(
+		bool(bagua_result.get("consumed", false)),
+		"StoryEvent landmark activation routes the Bagua synthesis chamber through the generic subject API"
+	)
+	_assert_true(
+		bool(_app_state().get_landmark_progress("bagua_tower").get("synthesis_done", false)),
+		"StoryEvent landmark activation writes Bagua synthesis progress through shared landmark state"
+	)
+	_app_state().activate_story_subject("npc:tower_keeper", "talk")
+	_assert_true(
+		_app_state().get_landmark_state("festival_stage") == "locked",
+		"StoryEvent landmark migration keeps the festival stage gated behind Spring Festival resolution"
+	)
+
+	_app_state().activate_story_subject("npc:dock_musician_pei", "talk")
+	_app_state().activate_story_subject("npc:postcard_seller_an", "talk")
+	_app_state().activate_story_subject("npc:church_caretaker", "talk")
+	_app_state().activate_story_subject("npc:tea_vendor_hua", "talk")
+	_app_state().activate_story_subject("npc:ferry_caretaker", "talk")
+	_assert_true(
+		bool(_app_state().get_story_flag("spring_festival_resolved", false)),
+		"StoryEvent landmark migration still fits the existing Spring Festival resolution path"
+	)
+	_assert_true(
+		_app_state().get_landmark_state("festival_stage") == "available",
+		"StoryEvent landmark migration still unlocks the harbor stage once melody and Spring Festival are ready"
+	)
+
+	var festival_prompt_count := m_prompt_requests.size()
+	var festival_result: Dictionary = _app_state().activate_story_subject(
+		"landmark:festival_stage.harbor_stage",
+		"perform",
+		{"display_name": "Festival Stage"}
+	)
+	_assert_true(
+		!bool(festival_result.get("consumed", true)),
+		"StoryEvent landmark activation keeps the festival stage available while the harbor prompt is open"
+	)
+	_assert_true(
+		m_prompt_requests.size() == festival_prompt_count + 1,
+		"StoryEvent landmark activation emits the harbor-stage melody prompt through the shared melody prompt builder"
+	)
+	_assert_true(
+		String(m_prompt_requests[m_prompt_requests.size() - 1].get("completion_kind", "")) == "festival_performance",
+		"StoryEvent landmark activation emits the live festival-performance prompt payload"
+	)
+	_app_state().complete_prompt_request(m_prompt_requests[m_prompt_requests.size() - 1])
+	_assert_true(
+		bool(_app_state().get_melody_state("festival_melody").get("performed", false)),
+		"StoryEvent landmark prompt completion still resolves the harbor-stage performance path"
+	)
 
 
 func _find_resident_actor(game_main: Node, resident_id: String) -> HumanBody2D:
@@ -145,3 +411,7 @@ func _assert_true(condition: bool, label: String) -> void:
 		print("PASS: %s" % label)
 		return
 	m_failures.append("%s." % label)
+
+
+func _on_melody_prompt_requested(request: Dictionary) -> void:
+	m_prompt_requests.append(request.duplicate(true))

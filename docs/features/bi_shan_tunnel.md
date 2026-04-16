@@ -16,12 +16,12 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
 
 ## Rules
 
-- Bi Shan Tunnel starts `locked`. It unlocks to `available` when `_resolve_trinity_church()` fires (simultaneously with Long Shan Tunnel).
+- Bi Shan Tunnel starts `locked`. It unlocks to `available` when the Trinity church reward event resolves (simultaneously with Long Shan Tunnel).
 - The three echo triggers (echo_a, echo_b, echo_c) are visible and collectible once the landmark state is `available`, `introduced`, or `in_progress`.
-- Each echo trigger is a `LandmarkTrigger` node authored in `terrain.tscn` under the `bi_shan_tunnel` landmark instance. Collecting one calls `AppState.activate_landmark_trigger("bi_shan_tunnel", echo_id, display_name)`.
+- Each echo trigger is a `StorySubjectArea2D` node authored inside `bi_shan_tunnel.tscn`. Collecting one resolves through the authored StoryEvent subject `landmark:bi_shan_tunnel.<echo_id>`.
 - Landmark state advances to `in_progress` on first echo collection.
 - The mural chamber trigger (`trigger_id: "chamber"`) becomes visible only once all three echoes are in `echoes_collected`.
-- When the player presses R at the chamber with all echoes collected, `AppState` opens the reusable ordered-confirmation prompt for the Bi Shan contour. On success, `_resolve_bi_shan_tunnel()` fires:
+- When the player presses R at the chamber with all echoes collected, `AppState` opens the reusable ordered-confirmation prompt for the Bi Shan contour. On success, the authored `prompt_completed:bi_shan_chamber` StoryEvent binding resolves:
   - Landmark state advances to `reward_collected`.
   - `bi_shan_echo` is added to `festival_melody.known_sources`.
   - `festival_melody.fragments_found` increments by 1.
@@ -35,14 +35,16 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
 ## Edge Cases
 
 - If the player reaches the chamber before collecting all three echoes, a status line reads "The mural panel is silent. Trace the three tunnel echoes first." and nothing advances.
-- If `_collect_bi_shan_echo` is called with an already-collected echo_id, it is a no-op. The `LandmarkTrigger.collect()` guard also prevents double-collection.
-- If `_resolve_bi_shan_tunnel()` is somehow called more than once, `bi_shan_echo` is only appended once (guarded by `find` check) and fragment counts are clamped to `fragments_total`.
+- If an already-collected echo subject is activated again, the authored StoryEvent binding resolves to a no-op.
+- If the Bi Shan chamber reward event is applied more than once, `bi_shan_echo` is only appended once and fragment counts stay clamped to `fragments_total`.
 - Free Walk should not advance story chapter. Currently it does advance landmark state on resolve — this is acceptable in sandbox mode.
 
 ## Architecture / Ownership
 
-- `AppState` owns all landmark progress state, the echo collection logic, the chamber-prompt request/completion, the fragment reward, and the dependable-route list surfaced in the journal Map tab.
-- `terrain.tscn` owns the Bi Shan trigger placement as local children under the `bi_shan_tunnel` landmark instance, while each trigger resolves its runtime level from the tunnel parent and `bi_shan_tunnel.tscn` stays focused on traversal and presentation.
+- `AppState` owns the shared landmark progress state and the public trigger bridge.
+- `game/story_event_catalog.gd` and `game/story_event_service.gd` now own Bi Shan echo collection, the chamber prompt-open interaction, and the `prompt_completed:bi_shan_chamber` reward follow-through.
+- `game/landmark_progression.gd` now mainly supplies the generic melody prompt builder and compatibility fallback behind that flow.
+- `bi_shan_tunnel.tscn` owns both tunnel presentation and the reusable echo/chamber world subjects; each trigger still resolves its runtime level from the tunnel parent.
 - Shared tunnel presentation, resident visibility, level masking, and exterior/interior ownership are documented in [`multi_level_spaces.md`](multi_level_spaces.md).
 
 ## Relevant Files
@@ -51,7 +53,7 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
   - [`../../architecture/bi_shan_tunnel.tscn`](../../architecture/bi_shan_tunnel.tscn)
   - [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn)
 - Scripts:
-  - [`../../game/landmark_trigger.gd`](../../game/landmark_trigger.gd)
+  - [`../../game/story_subject_area.gd`](../../game/story_subject_area.gd)
   - [`../../game/app_state.gd`](../../game/app_state.gd)
   - [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
 - Shared state or catalogs:
@@ -71,16 +73,16 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
   - `AppState.melody_progress_changed("festival_melody", state)` — on arc resolution
   - `AppState.fragments_changed(found, total)` — on arc resolution (via set_melody_progress)
 - Signals consumed:
-  - `AppState.landmark_progress_changed` — consumed by each `LandmarkTrigger` to self-manage visibility
+  - `AppState.landmark_progress_changed` — consumed by each `StorySubjectArea2D` through StoryEvent presence sync
 - Data flow:
-  - `_resolve_trinity_church()` fires → `advance_landmark_state("bi_shan_tunnel", "available")` → `LandmarkTrigger._on_landmark_progress_changed` shows echo triggers
-  - Player presses R near an echo → `scenes/game_main.gd._on_inspect_requested` → `AppState.activate_landmark_trigger` → `_collect_bi_shan_echo` → `landmark_progress_changed`
-  - All echoes collected → chamber trigger appears → player presses R at chamber → `activate_landmark_trigger` with `trigger_id == "chamber"` → Bi Shan prompt request → `complete_prompt_request(...)` → `_resolve_bi_shan_tunnel` → melody and landmark state update
+  - Trinity reward event resolves → `advance_landmark_state("bi_shan_tunnel", "available")` → StoryEvent presence rules show echo subjects
+  - Player presses R near an echo → `scenes/game_main.gd._on_inspect_requested` → `StorySubjectArea2D` builds subject context → `AppState.activate_story_subject(...)` → authored Bi Shan echo binding updates `echoes_collected` → `landmark_progress_changed`
+  - All echoes collected → chamber trigger appears → player presses R at chamber → `StorySubjectArea2D` builds subject context → `AppState.activate_story_subject(...)` → authored Bi Shan chamber binding emits the prompt request → `complete_prompt_request(...)` → `StoryEventService.notify_world_event("prompt_completed:bi_shan_chamber", ...)` → melody and landmark state update
 
 ## Contracts / Boundaries
 
 - The `landmark_progress["bi_shan_tunnel"]` shape (`state`, `echoes_collected`) is part of the Landmark Progress Contract in `contracts.md`. Update that file if fields are added or renamed.
-- `LandmarkTrigger` must not read or write `AppState` fields directly; it uses the public API (`get_landmark_progress`, `landmark_progress_changed`).
+- `StorySubjectArea2D` must not read or write `AppState` fields directly; it uses the public API and shared StoryEvent metadata.
 
 ## Validation
 
@@ -95,9 +97,9 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
 
 ## Integration Checklist
 
-- [x] Place four `LandmarkTrigger` nodes in `terrain.tscn` for the Bi Shan tunnel arc: `echo_a`, `echo_b`, `echo_c`, and `chamber`.
-- [x] For echo triggers: set `landmark_id = "bi_shan_tunnel"`, `collected_progress_key = "echoes_collected"`, `visible_in_states = [available, introduced, in_progress]`.
-- [x] For the chamber trigger: same `landmark_id`, `requires_collected = [echo_a, echo_b, echo_c]`, `collected_progress_key = "echoes_collected"`, `visible_in_states = [in_progress]`.
+- [x] Place four `StorySubjectArea2D` nodes in `bi_shan_tunnel.tscn` for the Bi Shan tunnel arc: `echo_a`, `echo_b`, `echo_c`, and `chamber`.
+- [x] For echo triggers: set `subject_id` to the authored StoryEvent subjects (`landmark:bi_shan_tunnel.echo_a`, `...echo_b`, `...echo_c`).
+- [x] For the chamber trigger: set `subject_id = "landmark:bi_shan_tunnel.chamber"` and keep the echo prerequisite / visibility rules in StoryEvent subject metadata.
 - [x] Position each trigger node at the matching world location in the tunnel.
 - [x] Confirm `collision_layer` matches the layer used for inspectable objects.
 

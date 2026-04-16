@@ -13,22 +13,26 @@ A first-pass runtime is now live in the codebase.
 
 Current shipped pieces:
 
+- `game/story_event_catalog.gd` is the authored StoryEvent tree file for the current migrated landmark interaction slices
 - `game/story_event_service.gd` is composed by `AppState` as the shared StoryEvent bridge
 - `AppState` now exposes `describe_story_subject(...)`, `activate_story_subject(...)`, `notify_story_world_event(...)`, `pick_story_candidate(...)`, `matches_story_conditions(...)`, and `apply_story_effects(...)`
-- `game_main.gd` now routes resident talk and scene-owned `StoryInspectable` inspect interactions through stable subject ids instead of separate route-specific callbacks
+- `game_main.gd` now routes resident talk and scene-authored `StorySubjectArea2D` interactions through stable subject ids instead of separate route-specific callbacks
 - resident conditional beats now reuse the shared candidate-selection, condition-matching, and effect-application paths
 - resident routine overrides are now a live world-effect channel that can reposition already spawned residents and persist through story autosave/continue
+- migrated authored landmark nodes now cover the full `melody_landmarks` interaction spine plus landmark prompt-completion/reward world events: `piano_ferry.harbor_refrain`, Trinity cue/chime/reward beats, Bi Shan echoes/chamber/reward, Long Shan entry/checkpoints/exit/reward, Bagua synthesis/reward, and the harbor-stage prompt/performance completion
 
 Current shipped subject ids:
 
 - `npc:<resident_id>`
+- `landmark:<landmark_id>.<trigger_id>`
 - `inspectable:<inspectable_id>`
 
 Still not migrated:
 
 - authored recursive `StoryEventDefinition` trees for the four top-level route families
 - a director that arbitrates across many active route-family definitions instead of the current shared helpers over route graph, resident data, and inspectable catalogs
-- landmark-trigger progression and other non-interaction signals moving fully through `notify_story_world_event(...)`
+- landmark-trigger progression still enters through the older `activate_landmark_trigger(...)` compatibility bridge, but the current melody landmark subjects and their prompt-completion/reward follow-through now resolve in authored StoryEvent definitions before any legacy fallback helper in `landmark_progression.gd`
+- broader non-interaction signals beyond the current landmark prompt-completion/reward events moving fully through `notify_story_world_event(...)`
 - a published-fact ledger replacing `story_route_graph.gd` as the canonical progression source
 
 ### Goals
@@ -167,12 +171,12 @@ activate_subject(subject_id, action, ctx)
 
 This gives one interaction pipeline for NPC talk, inspect text, collectible triggers, performance points, and level-bound surfaces.
 
-The current implementation has only shipped the first two pieces of that pipeline so far:
+The current implementation has shipped the interaction-facing half of that pipeline so far:
 
 - `describe_subject(subject_id, action, ctx)`
 - `activate_subject(subject_id, action, ctx)`
 
-`notify_world_event(...)` exists on `AppState` and `StoryEventService`, but current landmark progression still mostly resolves through the existing landmark bridge and route graph helpers.
+`notify_world_event(...)` exists on `AppState` and `StoryEventService`, and it now carries the current landmark prompt-completion/reward follow-through. Broader seasonal/story-route events still mostly resolve through the existing route graph helpers.
 
 ### How Current Routes Use World Subjects
 
@@ -242,7 +246,8 @@ This direction implies the following refactor target:
 - current hardcoded progression in `landmark_progression.gd` should be split into generic StoryEvent runtime plus authored event definitions
 - current non-resident inspect text in `story_world_reactivity.gd` should move into the same StoryEvent-driven subject model
 - `game_main.gd` should become a thin interaction router into the director
-- scene-owned interaction geometry should remain scene-authored, while `LandmarkTrigger` / `StoryInspectable` behavior should converge on a thinner generic world-subject binding layer
+- scene-owned interaction geometry should remain scene-authored, while world-subject behavior should stay in the generic `StorySubjectArea2D` + StoryEvent metadata layer instead of bespoke trigger/inspectable scripts
+- a `StorySubjectArea2D` instance should represent a stable physical hotspot in the world; different StoryEvents may reuse that same `subject_id`, with active binding metadata deciding the current action, label, hint, and visibility
 - the current route ledger and UI route categories should remain player-facing views, even if their backing state is generated from active `StoryEventDefinition` trees and published facts
 
 ### Concrete Runtime Spec
@@ -594,7 +599,7 @@ Add a small set of high-level story signals to `AppState` that fire after compou
 signal story_milestone(milestone_id: String, context: Dictionary)
 ```
 
-Milestones are emitted from `_resolve_landmark()` and `_apply_resident_beat()` after all state updates are done. Example milestone ids:
+Milestones are emitted from authored StoryEvent effect application and `_apply_resident_beat()` after all state updates are done. Example milestone ids:
 
 - `"landmark_resolved"` with `{landmark_id, fragment_awarded}`
 - `"fragment_restored"` with `{melody_id, source_id, total_found}`

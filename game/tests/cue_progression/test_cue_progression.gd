@@ -1,11 +1,13 @@
 extends Node2D
 
 const TRINITY_CHURCH_SCENE: PackedScene = preload("res://architecture/trinity_church.tscn")
+const BI_SHAN_TUNNEL_SCENE: PackedScene = preload("res://architecture/bi_shan_tunnel.tscn")
 const LONG_SHAN_TUNNEL_SCENE: PackedScene = preload("res://architecture/long_shan_tunnel.tscn")
 const PIANO_FERRY_SCENE: PackedScene = preload("res://architecture/piano_ferry.tscn")
 const BAGUA_TOWER_SCENE: PackedScene = preload("res://architecture/bagua_tower/bagua_tower.tscn")
 const TERRAIN_SCENE: PackedScene = preload("res://terrain/terrain.tscn")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
+const StorySubjectArea2D = preload("res://game/story_subject_area.gd")
 
 var m_failures := PackedStringArray()
 var m_milestones := PackedStringArray()
@@ -152,29 +154,36 @@ func _run() -> void:
 
 	var trinity_scene: Node = TRINITY_CHURCH_SCENE.instantiate()
 	_assert_true(
-		trinity_scene.find_children("*", "LandmarkTrigger", true, false).is_empty(),
-		"Trinity Church keeps its cue triggers out of the packed church scene"
+		_find_subject_areas_with_prefix(trinity_scene, "landmark:").size() == 4,
+		"Trinity Church now owns its cue subjects inside the packed church scene"
 	)
 	trinity_scene.free()
 
 	var long_shan_scene: Node = LONG_SHAN_TUNNEL_SCENE.instantiate()
 	_assert_true(
-		long_shan_scene.find_children("*", "LandmarkTrigger", true, false).is_empty(),
-		"Long Shan keeps its cue triggers out of the packed tunnel scene"
+		_find_subject_areas_with_prefix(long_shan_scene, "landmark:").size() == 4,
+		"Long Shan now owns its route subjects inside the packed tunnel scene"
 	)
 	long_shan_scene.free()
 
+	var bi_shan_scene: Node = BI_SHAN_TUNNEL_SCENE.instantiate()
+	_assert_true(
+		_find_subject_areas_with_prefix(bi_shan_scene, "landmark:").size() == 4,
+		"Bi Shan now owns its echo subjects inside the packed tunnel scene"
+	)
+	bi_shan_scene.free()
+
 	var piano_ferry_scene: Node = PIANO_FERRY_SCENE.instantiate()
 	_assert_true(
-		piano_ferry_scene.find_children("*", "LandmarkTrigger", true, false).is_empty(),
-		"Piano Ferry keeps its clue triggers out of the packed ferry scene"
+		_find_subject_areas_with_prefix(piano_ferry_scene, "landmark:").size() == 2,
+		"Piano Ferry now owns its harbor subjects inside the packed ferry scene"
 	)
 	piano_ferry_scene.free()
 
 	var bagua_tower_scene: Node = BAGUA_TOWER_SCENE.instantiate()
 	_assert_true(
-		bagua_tower_scene.find_children("*", "LandmarkTrigger", true, false).is_empty(),
-		"Bagua Tower keeps its synthesis trigger out of the packed tower scene"
+		_find_subject_areas_with_prefix(bagua_tower_scene, "landmark:").size() == 1,
+		"Bagua Tower now owns its synthesis subject inside the packed tower scene"
 	)
 	bagua_tower_scene.free()
 
@@ -183,46 +192,50 @@ func _run() -> void:
 	await get_tree().process_frame
 	var cue_garden := terrain_scene.get_node_or_null(
 		"ground/buildings/TrinityChurch/CueGarden"
-	) as LandmarkTrigger
+	) as StorySubjectArea2D
 	var cue_yard := terrain_scene.get_node_or_null(
 		"ground/buildings/TrinityChurch/CueYard"
-	) as LandmarkTrigger
+	) as StorySubjectArea2D
 	var choir_chime := terrain_scene.get_node_or_null(
 		"ground/buildings/TrinityChurch/ChoirChime"
-	) as LandmarkTrigger
+	) as StorySubjectArea2D
 	_assert_true(cue_garden != null, "Trinity Church includes the garden cue under the terrain landmark instance")
 	_assert_true(cue_yard != null, "Trinity Church includes the yard cue under the terrain landmark instance")
 	_assert_true(choir_chime != null, "Trinity Church includes the choir chime under the terrain landmark instance")
 	if cue_garden != null:
-		_assert_true(cue_garden.requires_collected == ["steps"], "Trinity garden cue waits for the steps cue")
+		_assert_true(cue_garden.subject_id == "landmark:trinity_church.garden", "Trinity garden cue resolves through a generic story subject id")
 	if cue_yard != null:
-		_assert_true(cue_yard.requires_collected == ["steps", "garden"], "Trinity yard cue waits for steps and garden")
+		_assert_true(cue_yard.subject_id == "landmark:trinity_church.yard", "Trinity yard cue resolves through a generic story subject id")
 	if choir_chime != null:
-		_assert_true(choir_chime.requires_collected == ["steps", "garden", "yard"], "Trinity choir chime waits for all three choir cues")
+		_assert_true(choir_chime.subject_id == "landmark:trinity_church.choir_chime", "Trinity choir chime resolves through a generic story subject id")
 
 	var pocket_south := terrain_scene.get_node_or_null(
 		"long_shan_tunnel/interior_triggers/LightPocketSouth"
-	) as LandmarkTrigger
+	) as StorySubjectArea2D
 	var pocket_north := terrain_scene.get_node_or_null(
 		"long_shan_tunnel/interior_triggers/LightPocketNorth"
-	) as LandmarkTrigger
+	) as StorySubjectArea2D
 	_assert_true(pocket_south != null, "Long Shan includes the first lit pocket cue under the terrain landmark instance")
 	_assert_true(pocket_north != null, "Long Shan includes the second lit pocket cue under the terrain landmark instance")
 	if pocket_north != null:
-		_assert_true(pocket_north.requires_collected == ["light_pocket_south"], "Long Shan second pocket waits for the first")
+		_assert_true(pocket_north.subject_id == "landmark:long_shan_tunnel.light_pocket_north", "Long Shan second pocket resolves through a generic story subject id")
 
 	var harbor_refrain := terrain_scene.get_node_or_null(
 		"ground/buildings/piano_ferry/HarborRefrain"
-	) as LandmarkTrigger
+	) as StorySubjectArea2D
 	var festival_stage := terrain_scene.get_node_or_null(
 		"ground/buildings/piano_ferry/FestivalStage"
-	) as LandmarkTrigger
+	) as StorySubjectArea2D
 	_assert_true(harbor_refrain != null, "Piano Ferry includes the harbor clue under the terrain landmark instance")
 	_assert_true(festival_stage != null, "Piano Ferry includes the festival stage trigger under the terrain landmark instance")
+	if harbor_refrain != null:
+		_assert_true(harbor_refrain.subject_id == "landmark:piano_ferry.harbor_refrain", "Piano Ferry harbor clue resolves through a generic story subject id")
+	if festival_stage != null:
+		_assert_true(festival_stage.subject_id == "landmark:festival_stage.harbor_stage", "Festival stage resolves through a generic story subject id")
 
 	var synthesis_chamber := terrain_scene.get_node_or_null(
 		"ground/buildings/BaguaTower/SynthesisChamber"
-	) as LandmarkTrigger
+	) as StorySubjectArea2D
 	var bagua_roof_level := terrain_scene.get_node_or_null(
 		"ground/buildings/BaguaTower/base/ground_level/upper_level/roof_level"
 	)
@@ -231,7 +244,7 @@ func _run() -> void:
 	if synthesis_chamber != null:
 		_assert_true(
 			synthesis_chamber.level_context_path == NodePath("../base/ground_level/upper_level/roof_level"),
-			"Bagua synthesis chamber resolves its level from the roof-level node without nesting under the packed tower scene"
+			"Bagua synthesis chamber resolves its level from the roof-level node inside the packed tower scene"
 		)
 		_assert_true(
 			synthesis_chamber.sync_z_index_to_resolved_level,
@@ -248,28 +261,21 @@ func _run() -> void:
 			)
 	terrain_scene.free()
 
-	var inspector_trigger := LandmarkTrigger.new()
-	var landmark_property := _get_property_info(inspector_trigger, "landmark_id")
+	var inspector_subject := StorySubjectArea2D.new()
+	var subject_property := _get_property_info(inspector_subject, "subject_id")
 	_assert_true(
-		String(landmark_property.get("hint_string", "")).contains("trinity_church"),
-		"LandmarkTrigger landmark_id dropdown comes from the shared landmark catalog"
+		String(subject_property.get("hint_string", "")).contains("landmark:trinity_church.steps"),
+		"StorySubjectArea2D subject_id dropdown comes from the shared StoryEvent world-subject catalog"
 	)
-	var trigger_property := _get_property_info(inspector_trigger, "trigger_id")
 	_assert_true(
-		String(trigger_property.get("hint_string", "")) == "Unset:",
-		"LandmarkTrigger keeps trigger_id empty until a landmark is selected"
+		String(subject_property.get("hint_string", "")).contains("landmark:bi_shan_tunnel.echo_a"),
+		"StorySubjectArea2D subject_id dropdown includes tunnel cue subjects"
 	)
-	inspector_trigger.landmark_id = "trinity_church"
-	trigger_property = _get_property_info(inspector_trigger, "trigger_id")
-	var trinity_hint := String(trigger_property.get("hint_string", ""))
-	_assert_true(trinity_hint.contains("steps"), "LandmarkTrigger offers Trinity trigger ids after selecting Trinity Church")
-	_assert_true(!trinity_hint.contains("echo_a"), "LandmarkTrigger hides Bi Shan trigger ids when Trinity Church is selected")
-	inspector_trigger.landmark_id = "bi_shan_tunnel"
-	trigger_property = _get_property_info(inspector_trigger, "trigger_id")
-	var bi_shan_hint := String(trigger_property.get("hint_string", ""))
-	_assert_true(bi_shan_hint.contains("echo_a"), "LandmarkTrigger offers Bi Shan trigger ids after selecting Bi Shan Tunnel")
-	_assert_true(!bi_shan_hint.contains("steps"), "LandmarkTrigger hides Trinity trigger ids when Bi Shan Tunnel is selected")
-	inspector_trigger.free()
+	_assert_true(
+		String(subject_property.get("hint_string", "")).contains("inspectable:church_stone_bench"),
+		"StorySubjectArea2D subject_id dropdown also includes scene-authored inspect subjects"
+	)
+	inspector_subject.free()
 
 	if m_failures.is_empty():
 		print("PASS: cue progression flow")
@@ -295,6 +301,20 @@ func _get_property_info(object: Object, property_name: String) -> Dictionary:
 		if String(property.get("name", "")) == property_name:
 			return property
 	return {}
+
+
+func _find_subject_areas_with_prefix(root: Node, prefix: String) -> Array[StorySubjectArea2D]:
+	var matches: Array[StorySubjectArea2D] = []
+	if root == null:
+		return matches
+	for node in root.find_children("*", "StorySubjectArea2D", true, false):
+		var subject_area := node as StorySubjectArea2D
+		if subject_area == null:
+			continue
+		if !subject_area.subject_id.begins_with(prefix):
+			continue
+		matches.append(subject_area)
+	return matches
 
 
 func _assert_true(condition: bool, label: String) -> void:

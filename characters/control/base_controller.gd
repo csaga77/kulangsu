@@ -3,6 +3,7 @@ class_name BaseController
 extends Resource
 
 const BASE_CONTROLLER_APP_RUNTIME := preload("res://game/app_runtime.gd")
+const StorySubjectArea2D = preload("res://game/story_subject_area.gd")
 const DEFAULT_SPEECH_TEXT_CHARACTERS_PER_SECOND := 120.0
 
 enum MoveDirectionEnum {
@@ -256,10 +257,6 @@ func _is_valid_object(body: Node2D) -> bool:
 	if canvas_item != null and !canvas_item.is_visible_in_tree():
 		return false
 
-	var landmark_trigger := body as LandmarkTrigger
-	if landmark_trigger != null and landmark_trigger.is_collected():
-		return false
-
 	if m_character != null and (body == m_character or CommonUtils.is_ancestor(m_character, body)):
 		return false
 
@@ -320,10 +317,12 @@ func _get_interaction_priority(object_node: Node2D) -> int:
 	if object_node == null or !is_instance_valid(object_node):
 		return 100
 
-	# Let residents and landmark cues compete by distance on the same layer so
-	# a nearby NPC does not mask an active cue the player is standing on.
-	if object_node is HumanBody2D or object_node is LandmarkTrigger:
+	if object_node is HumanBody2D:
 		return 0
+
+	var story_subject_area := object_node as StorySubjectArea2D
+	if story_subject_area != null:
+		return story_subject_area.get_interaction_priority()
 
 	return 1
 

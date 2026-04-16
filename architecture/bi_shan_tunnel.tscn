@@ -10,6 +10,7 @@
 [ext_resource type="TileSet" uid="uid://cqo6awm27cwcf" path="res://resources/tilesets/terrain_0_tiles.tres" id="7_hl62s"]
 [ext_resource type="TileSet" uid="uid://c2edqbdaenat2" path="res://resources/tilesets/symbols_0_tiles.tres" id="8_xo2vs"]
 [ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="9_nsrdk"]
+[ext_resource type="Script" path="res://game/story_subject_area.gd" id="10_cgoio"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_oumyh"]
 atlas = ExtResource("4_fmehs")
@@ -44,6 +45,18 @@ height = 99.282875
 resource_local_to_scene = true
 radius = 13.87439
 height = 97.519714
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_bi_shan_echo_a"]
+radius = 28.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_bi_shan_echo_b"]
+radius = 28.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_bi_shan_echo_c"]
+radius = 28.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_bi_shan_chamber"]
+radius = 32.0
 
 [node name="bi_shan_tunnel" type="Node2D" unique_id=679129524]
 y_sort_enabled = true
@@ -906,6 +919,53 @@ delta_z = -1
 
 [node name="CollisionShape2D" parent="exit_north/exit_north" index="0" unique_id=1276641949]
 shape = SubResource("CapsuleShape2D_fmehs")
+
+[node name="interior_triggers" type="Node2D" parent="."]
+y_sort_enabled = true
+
+[node name="EchoA" type="Area2D" parent="interior_triggers"]
+z_index = 9
+position = Vector2(-160, -224)
+script = ExtResource("10_cgoio")
+subject_id = "landmark:bi_shan_tunnel.echo_a"
+level_id_mode = 1
+sync_z_index_to_resolved_level = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="interior_triggers/EchoA"]
+shape = SubResource("CircleShape2D_bi_shan_echo_a")
+
+[node name="EchoB" type="Area2D" parent="interior_triggers"]
+z_index = 9
+position = Vector2(-336, -480)
+script = ExtResource("10_cgoio")
+subject_id = "landmark:bi_shan_tunnel.echo_b"
+level_id_mode = 1
+sync_z_index_to_resolved_level = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="interior_triggers/EchoB"]
+shape = SubResource("CircleShape2D_bi_shan_echo_b")
+
+[node name="EchoC" type="Area2D" parent="interior_triggers"]
+z_index = 9
+position = Vector2(-544, -760)
+script = ExtResource("10_cgoio")
+subject_id = "landmark:bi_shan_tunnel.echo_c"
+level_id_mode = 1
+sync_z_index_to_resolved_level = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="interior_triggers/EchoC"]
+shape = SubResource("CircleShape2D_bi_shan_echo_c")
+
+[node name="Chamber" type="Area2D" parent="interior_triggers"]
+z_index = 9
+position = Vector2(-640, -896)
+script = ExtResource("10_cgoio")
+subject_id = "landmark:bi_shan_tunnel.chamber"
+level_id_mode = 1
+sync_z_index_to_resolved_level = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="interior_triggers/Chamber"]
+shape = SubResource("CircleShape2D_bi_shan_chamber")
 
 [editable path="exit_south/exit_south"]
 [editable path="exit_north/exit_north"]

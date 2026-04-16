@@ -11,10 +11,10 @@ const NPC_SCENE: PackedScene = preload("res://characters/resident_npc.tscn")
 const LEVEL_REGISTRY := preload("res://common/level_registry.gd")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const LANDMARK_CUE_LOADER_SCRIPT := preload("res://game/landmark_cue_loader.gd")
+const StorySubjectArea2D = preload("res://game/story_subject_area.gd")
 const WEATHER_RUNTIME := preload("res://weather/weather_runtime.gd")
 const OVERWORLD_WEATHER_PRESET = preload("res://weather/overworld_weather_preset.tres")
 const BGM_MANAGER_SCRIPT := preload("res://game/bgm_manager.gd")
-const STORY_WORLD_REACTIVITY_SCRIPT := preload("res://game/story_world_reactivity.gd")
 const ROUTE_RESOLVER_SCRIPT := preload("res://scenes/route_resolver.gd")
 const RESIDENT_SPAWNER_SCRIPT := preload("res://scenes/resident_spawner.gd")
 const TUNNEL_CONTEXT_SCRIPT := preload("res://scenes/tunnel_context.gd")
@@ -624,51 +624,36 @@ func _on_inspect_requested() -> void:
 		_app_state().set_save_status("Inspect: nothing nearby")
 		return
 
-	var resident_controller := _get_resident_controller(m_closest_object)
-	if resident_controller != null:
-		var resident_id := resident_controller.get_resident_id()
-		var interaction = _app_state().activate_story_subject(
-			"npc:%s" % resident_id,
-			"talk",
-			_build_story_subject_context(m_closest_object, {"resident_id": resident_id})
-		)
-		var resident_name = _app_state().get_resident_display_name(resident_id)
-		var dialogue_line := String(interaction.get("line", ""))
+	var interaction_request := _build_story_interaction_request(m_closest_object)
+	if interaction_request.is_empty():
+		_app_state().set_save_status("Inspect: %s" % _display_name_for_node(m_closest_object))
+		return
 
+	var interaction_context: Dictionary = interaction_request.get("context", {})
+	var interaction: Dictionary = _app_state().activate_story_subject(
+		String(interaction_request.get("subject_id", "")),
+		String(interaction_request.get("action", "")),
+		interaction_context
+	)
+
+	var resident_controller: NPCController = interaction_request.get("resident_controller", null)
+	if resident_controller != null:
+		var resident_id := String(interaction_request.get("resident_id", ""))
+		var resident_name := String(interaction_request.get("display_name", resident_id))
+		var dialogue_line := String(interaction.get("line", ""))
 		if interaction.is_empty():
 			_app_state().set_save_status("Talked with %s" % resident_name)
-
 		resident_controller.reveal_dialogue(dialogue_line)
 		# Note: set_residents is not called here because interact_with_resident
 		# already calls _sync_known_residents() internally.
 		_update_hint_text(m_closest_object)
 		return
 
-	var landmark_trigger := _get_landmark_trigger(m_closest_object)
-	if landmark_trigger != null:
-		var consumed = _app_state().activate_landmark_trigger(
-			landmark_trigger.landmark_id,
-			landmark_trigger.trigger_id,
-			landmark_trigger.display_name,
-			landmark_trigger.melody_hint
-		)
-		if consumed:
-			landmark_trigger.collect()
-		_update_hint_text(m_closest_object)
-		return
+	if String(interaction_request.get("action", "")) == "inspect":
+		var display_name := String(interaction_request.get("display_name", ""))
+		_app_state().set_save_status(String(interaction.get("text", "Inspect: %s" % display_name)))
 
-	var story_inspectable := _get_story_inspectable(m_closest_object)
-	if story_inspectable != null:
-		var inspect_result: Dictionary = _app_state().activate_story_subject(
-			STORY_WORLD_REACTIVITY_SCRIPT.build_subject_id(story_inspectable.inspectable_id),
-			"inspect",
-			_build_story_subject_context(m_closest_object, {"display_name": story_inspectable.display_name})
-		)
-		_app_state().set_save_status(String(inspect_result.get("text", "Inspect: %s" % story_inspectable.display_name)))
-		return
-
-	var display_name := _display_name_for_node(m_closest_object)
-	_app_state().set_save_status("Inspect: %s" % display_name)
+	_update_hint_text(m_closest_object)
 
 
 func _update_hint_text(target: Node2D) -> void:
@@ -676,23 +661,26 @@ func _update_hint_text(target: Node2D) -> void:
 		_app_state().set_hint(_app_state().build_input_hint("R Inspect"))
 		return
 
-	var landmark_trigger := _get_landmark_trigger(target)
-	if landmark_trigger != null:
-		if landmark_trigger.is_collected():
-			_app_state().set_hint(_app_state().build_input_hint("R Inspect"))
-		elif landmark_trigger.landmark_id == "festival_stage":
-			_app_state().set_hint(_app_state().build_input_hint("R Perform %s" % landmark_trigger.display_name))
-		elif landmark_trigger.landmark_id == "trinity_church" and landmark_trigger.trigger_id == "choir_chime":
-			_app_state().set_hint(_app_state().build_input_hint("R Perform %s" % landmark_trigger.display_name))
-		else:
-			_app_state().set_hint(_app_state().build_input_hint("R Collect %s" % landmark_trigger.display_name))
+	var interaction_request := _build_story_interaction_request(target)
+	if interaction_request.is_empty():
+		_app_state().set_hint(_app_state().build_input_hint("R Inspect %s" % _display_name_for_node(target)))
 		return
 
-	var display_name := _display_name_for_node(target)
-	if _get_resident_controller(target) != null:
+	var action := String(interaction_request.get("action", ""))
+	var display_name := String(interaction_request.get("display_name", ""))
+	if action == "talk":
 		_app_state().set_hint(_app_state().build_input_hint("R Talk to %s" % display_name))
 		return
-	_app_state().set_hint(_app_state().build_input_hint("R Inspect %s" % display_name))
+
+	var description: Dictionary = _app_state().describe_story_subject(
+		String(interaction_request.get("subject_id", "")),
+		action,
+		interaction_request.get("context", {})
+	)
+	var prompt_text := String(description.get("prompt", "")).strip_edges()
+	if prompt_text.is_empty():
+		prompt_text = "%s %s" % [_interaction_verb_for_action(action), display_name]
+	_app_state().set_hint(_app_state().build_input_hint("R %s" % prompt_text))
 
 
 func _is_landmark(target: Node2D) -> bool:
@@ -714,11 +702,11 @@ func _display_name_for_node(target: Node2D) -> String:
 	if resident_controller != null:
 		return _app_state().get_resident_display_name(resident_controller.get_resident_id())
 
-	var story_inspectable := _get_story_inspectable(target)
-	if story_inspectable != null:
-		var inspectable_name := story_inspectable.display_name
-		if !inspectable_name.is_empty():
-			return inspectable_name
+	var story_subject_area := _get_story_subject_area(target)
+	if story_subject_area != null:
+		var subject_name := story_subject_area.get_display_name()
+		if !subject_name.is_empty():
+			return subject_name
 
 	for landmark_name in m_landmark_nodes.keys():
 		if target == m_landmark_nodes[landmark_name]:
@@ -979,14 +967,55 @@ func _get_resident_controller(target: Node2D) -> NPCController:
 	return human.controller as NPCController
 
 
-func _get_landmark_trigger(target: Node2D) -> LandmarkTrigger:
-	return target as LandmarkTrigger
-
-
-func _get_story_inspectable(target: Node2D) -> StoryInspectable:
+func _get_story_subject_area(target: Node2D) -> StorySubjectArea2D:
 	if !is_instance_valid(target):
 		return null
-	return target as StoryInspectable
+	return target as StorySubjectArea2D
+
+
+func _build_story_interaction_request(target: Node2D) -> Dictionary:
+	if !is_instance_valid(target):
+		return {}
+
+	var resident_controller := _get_resident_controller(target)
+	if resident_controller != null:
+		var resident_id := resident_controller.get_resident_id()
+		return {
+			"subject_id": "npc:%s" % resident_id,
+			"action": "talk",
+			"display_name": _app_state().get_resident_display_name(resident_id),
+			"resident_id": resident_id,
+			"resident_controller": resident_controller,
+			"context": _build_story_subject_context(target, {"resident_id": resident_id}),
+		}
+
+	var story_subject_area := _get_story_subject_area(target)
+	if story_subject_area == null:
+		return {}
+
+	var subject_id := story_subject_area.get_story_subject_id()
+	var action := story_subject_area.get_story_action()
+	if subject_id.is_empty() or action.is_empty():
+		return {}
+
+	return {
+		"subject_id": subject_id,
+		"action": action,
+		"display_name": story_subject_area.get_display_name(),
+		"context": _build_story_subject_context(target, story_subject_area.build_story_subject_context()),
+	}
+
+
+func _interaction_verb_for_action(action: String) -> String:
+	match action:
+		"perform":
+			return "Perform"
+		"collect":
+			return "Collect"
+		"talk":
+			return "Talk to"
+		_:
+			return "Inspect"
 
 
 func _find_resident_actor(resident_id: String) -> HumanBody2D:

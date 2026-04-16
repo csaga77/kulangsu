@@ -280,7 +280,7 @@ Location-based bus effects can color any track that plays in that zone without n
 
 - `fragments_changed` — update progress tier for next selection
 - `melody_progress_changed` — tier transition
-- Location zone enter/exit signals from `LandmarkTrigger` or area nodes
+- Location zone enter/exit signals from world-subject or area nodes
 - Weather change signal (later)
 - Time-of-day period change signal (later)
 

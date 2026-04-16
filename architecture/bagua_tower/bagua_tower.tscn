@@ -19,7 +19,7 @@
 [ext_resource type="Texture2D" uid="uid://d0nn3fs56i7ih" path="res://resources/sprites/light_well_mask.png" id="13_p5n1q"]
 [ext_resource type="PackedScene" uid="uid://bokp77sph16o3" path="res://architecture/bagua_tower/bagua_tower_corner_room_south.tscn" id="16_sgvu4"]
 [ext_resource type="PackedScene" uid="uid://ptuy7nqqcfsm" path="res://architecture/bagua_tower/bagua_tower_roof_tower.tscn" id="19_16kol"]
-[ext_resource type="Script" uid="uid://2inbno67jnvm" path="res://game/story_inspectable.gd" id="20_exa0w"]
+[ext_resource type="Script" path="res://game/story_subject_area.gd" id="20_exa0w"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_frgy6"]
 radius = 9.428204
@@ -42,6 +42,9 @@ points = PackedVector2Array(96, 0, 64, 35, 0, 48, -64, 35, -96, 0, -64, -35, 0, 
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_bagua_railings"]
 radius = 36.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_synthesis_chamber"]
+radius = 34.0
 
 [node name="BaguaTower" type="Node2D" unique_id=1773205049]
 y_sort_enabled = true
@@ -311,13 +314,24 @@ visibility_mask_nodes = [NodePath("../ground_stairs_mask"), NodePath("../ground_
 [node name="BaguaRailings" type="Area2D" parent="base/ground_level/upper_level"]
 position = Vector2(80, 184)
 script = ExtResource("20_exa0w")
-inspectable_id = "bagua_railings"
-display_name = "Bagua Railings"
+subject_id = "inspectable:bagua_railings"
 level_id_mode = 1
 sync_z_index_to_resolved_level = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="base/ground_level/upper_level/BaguaRailings"]
 shape = SubResource("CircleShape2D_bagua_railings")
+
+[node name="SynthesisChamber" type="Area2D" parent="."]
+z_index = 6
+position = Vector2(-96, -96)
+script = ExtResource("20_exa0w")
+subject_id = "landmark:bagua_tower.synthesis_chamber"
+level_id_mode = 1
+level_context_path = NodePath("../base/ground_level/upper_level/roof_level")
+sync_z_index_to_resolved_level = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SynthesisChamber"]
+shape = SubResource("CircleShape2D_synthesis_chamber")
 
 [node name="hand_rails" type="TileMapLayer" parent="base/ground_level/upper_level" unique_id=1711740196]
 y_sort_enabled = true

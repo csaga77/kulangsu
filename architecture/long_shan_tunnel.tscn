@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://d27a7jcvsnfx8" path="res://architecture/components/portal.tscn" id="7_elph4"]
 [ext_resource type="Texture2D" uid="uid://mhsy6o806uwu" path="res://resources/sprites/architecture/components/building_0_tiles.png" id="9_fmehs"]
 [ext_resource type="Texture2D" uid="uid://boka5fmviqaew" path="res://resources/sprites/architecture/components/structure_0.png" id="10_vf6k1"]
+[ext_resource type="Script" path="res://game/story_subject_area.gd" id="11_hfhsm"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_76ww7"]
 resource_local_to_scene = true
@@ -33,6 +34,18 @@ region = Rect2(192, 1152, 64, 64)
 resource_local_to_scene = true
 radius = 13.87439
 height = 202.26587
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_long_shan_entry"]
+radius = 30.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_long_shan_exit"]
+radius = 30.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_long_shan_light_pocket_south"]
+radius = 34.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_long_shan_light_pocket_north"]
+radius = 34.0
 
 [node name="long_shan_tunnel" type="Node2D" unique_id=679129524]
 y_sort_enabled = true
@@ -285,6 +298,50 @@ delta_z = -1
 
 [node name="CollisionShape2D" parent="exit_north/exit_north" index="0" unique_id=1276641949]
 shape = SubResource("CapsuleShape2D_qm2ka")
+
+[node name="surface_triggers" type="Node2D" parent="."]
+y_sort_enabled = true
+
+[node name="TunnelEntry" type="Area2D" parent="surface_triggers"]
+position = Vector2(72, 16)
+script = ExtResource("11_hfhsm")
+subject_id = "landmark:long_shan_tunnel.tunnel_entry"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="surface_triggers/TunnelEntry"]
+shape = SubResource("CircleShape2D_long_shan_entry")
+
+[node name="TunnelExit" type="Area2D" parent="surface_triggers"]
+position = Vector2(-3032, -2144)
+script = ExtResource("11_hfhsm")
+subject_id = "landmark:long_shan_tunnel.tunnel_exit"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="surface_triggers/TunnelExit"]
+shape = SubResource("CircleShape2D_long_shan_exit")
+
+[node name="interior_triggers" type="Node2D" parent="."]
+y_sort_enabled = true
+
+[node name="LightPocketSouth" type="Area2D" parent="interior_triggers"]
+z_index = 9
+position = Vector2(-1247, -635)
+script = ExtResource("11_hfhsm")
+subject_id = "landmark:long_shan_tunnel.light_pocket_south"
+level_id_mode = 1
+sync_z_index_to_resolved_level = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="interior_triggers/LightPocketSouth"]
+shape = SubResource("CircleShape2D_long_shan_light_pocket_south")
+
+[node name="LightPocketNorth" type="Area2D" parent="interior_triggers"]
+z_index = 9
+position = Vector2(-2191, -1681)
+script = ExtResource("11_hfhsm")
+subject_id = "landmark:long_shan_tunnel.light_pocket_north"
+level_id_mode = 1
+sync_z_index_to_resolved_level = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="interior_triggers/LightPocketNorth"]
+shape = SubResource("CircleShape2D_long_shan_light_pocket_north")
 
 [editable path="exit_south/exit_south"]
 [editable path="exit_north/exit_north"]

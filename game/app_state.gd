@@ -441,6 +441,12 @@ func describe_story_subject(subject_id: String, action: String, context: Diction
 	return m_story_event_service.describe_subject(subject_id, action, context)
 
 
+func describe_story_subject_metadata(subject_id: String, context: Dictionary = {}) -> Dictionary:
+	if m_story_event_service == null:
+		return {}
+	return m_story_event_service.describe_subject_metadata(subject_id, context)
+
+
 func activate_story_subject(subject_id: String, action: String, context: Dictionary = {}) -> Dictionary:
 	if m_story_event_service == null:
 		return {}
@@ -757,11 +763,34 @@ func can_perform_melody(melody_id: String) -> bool:
 	return false
 
 
+func request_melody_prompt(
+	melody_id: String,
+	prompt_mode: String,
+	completion_kind: String = "",
+	request_overrides: Dictionary = {}
+) -> void:
+	m_landmark_progression.request_melody_prompt(
+		melody_id,
+		prompt_mode,
+		completion_kind,
+		request_overrides
+	)
+
+
 func request_melody_practice(melody_id: String) -> void:
-	m_landmark_progression.request_melody_prompt(melody_id, "practice")
+	request_melody_prompt(melody_id, "practice")
 
 
 func complete_prompt_request(request: Dictionary) -> void:
+	var completion_kind := String(request.get("completion_kind", "")).strip_edges()
+	if m_story_event_service != null and !completion_kind.is_empty():
+		var result: Dictionary = m_story_event_service.notify_world_event(
+			"prompt_completed:%s" % completion_kind,
+			{},
+			request
+		)
+		if bool(result.get("handled", false)):
+			return
 	m_landmark_progression.complete_prompt_request(request)
 
 
@@ -770,7 +799,10 @@ func complete_melody_practice(melody_id: String) -> void:
 
 
 func complete_melody_performance(melody_id: String) -> void:
-	m_landmark_progression.complete_melody_performance(melody_id)
+	complete_prompt_request({
+		"melody_id": melody_id,
+		"completion_kind": "festival_performance",
+	})
 
 
 func get_resident_profile(resident_id: String) -> Dictionary:
@@ -1381,11 +1413,29 @@ func _request_landmark_audio_cue(
 	})
 
 
-## Called when the player inspects a LandmarkTrigger in the world.
-## Routes to the appropriate per-landmark collection handler.
-## Returns true only when the caller should consume the trigger in the scene.
-## melody_hint is optional flavour text shown to the player on collection.
+## Compatibility bridge for legacy tests/callers that still activate landmark
+## subjects from ids instead of walking through a StorySubjectArea2D instance.
+## Returns true only when the current authored StoryEvent binding consumes the
+## interaction immediately.
 func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_name: String, melody_hint: String = "") -> bool:
+	if m_story_event_service != null:
+		var story_result: Dictionary = m_story_event_service.activate_authored_landmark_subject(
+			landmark_id,
+			trigger_id,
+			display_name,
+			melody_hint
+		)
+		if bool(story_result.get("handled", false)):
+			return bool(story_result.get("consumed", false))
+	return _activate_legacy_landmark_trigger(landmark_id, trigger_id, display_name, melody_hint)
+
+
+func _activate_legacy_landmark_trigger(
+	landmark_id: String,
+	trigger_id: String,
+	display_name: String,
+	melody_hint: String = ""
+) -> bool:
 	return m_landmark_progression.activate_landmark_trigger(
 		landmark_id,
 		trigger_id,
@@ -1395,10 +1445,9 @@ func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_
 
 
 func _sync_story_route_dependent_landmarks(event_id: String = "") -> void:
-	if m_landmark_progression == null:
+	if m_story_event_service == null:
 		return
-	if event_id.is_empty() or event_id == "spring_festival_resolved" or event_id == "melody_bagua_aligned":
-		m_landmark_progression.sync_festival_stage_availability(event_id == "spring_festival_resolved")
+	m_story_event_service.sync_story_route_dependent_landmarks(event_id)
 
 
 func _emit_story_milestone(milestone_id: String, context: Dictionary = {}) -> void:
@@ -1408,4 +1457,12 @@ func _emit_story_milestone(milestone_id: String, context: Dictionary = {}) -> vo
 ## Dispatch to the correct landmark resolution handler and emit a story
 ## milestone so ambient systems can react without coupling to internals.
 func _resolve_landmark(landmark_id: String) -> void:
+	if m_story_event_service != null:
+		var result: Dictionary = m_story_event_service.notify_world_event(
+			"landmark_reward:%s" % landmark_id.strip_edges(),
+			{},
+			{"landmark_id": landmark_id}
+		)
+		if bool(result.get("handled", false)):
+			return
 	m_landmark_progression.resolve_landmark(landmark_id)

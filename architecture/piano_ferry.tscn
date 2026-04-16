@@ -9,7 +9,7 @@
 [ext_resource type="Script" uid="uid://3q62xww2yikq" path="res://common/auto_visibility_node_2d.gd" id="5_yk3c8"]
 [ext_resource type="Texture2D" uid="uid://cddixtrkgs1a3" path="res://resources/sprites/architecture/piano_ferry/piano_ferry_roof.png" id="6_867i5"]
 [ext_resource type="TileSet" uid="uid://dh8addwm1ctei" path="res://resources/tilesets/architecture/building_0_tiles.tres" id="7_j6cxs"]
-[ext_resource type="Script" uid="uid://2inbno67jnvm" path="res://game/story_inspectable.gd" id="8_8jbr6"]
+[ext_resource type="Script" path="res://game/story_subject_area.gd" id="8_8jbr6"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_harbor_lantern_lines"]
 radius = 42.0
@@ -20,6 +20,12 @@ radius = 38.0
 [sub_resource type="CircleShape2D" id="CircleShape2D_postcard_display_rack"]
 radius = 34.0
 
+[sub_resource type="CircleShape2D" id="CircleShape2D_harbor_refrain"]
+radius = 56.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_festival_stage"]
+radius = 84.0
+
 [node name="ferry" type="Node2D" unique_id=61386167]
 y_sort_enabled = true
 script = ExtResource("1_j6cxs")
@@ -27,8 +33,7 @@ script = ExtResource("1_j6cxs")
 [node name="HarborLanternLines" type="Area2D" parent="."]
 position = Vector2(136, 196)
 script = ExtResource("8_8jbr6")
-inspectable_id = "harbor_lantern_lines"
-display_name = "Harbor Lantern Lines"
+subject_id = "inspectable:harbor_lantern_lines"
 level_id_mode = 1
 sync_z_index_to_resolved_level = true
 
@@ -38,8 +43,7 @@ shape = SubResource("CircleShape2D_harbor_lantern_lines")
 [node name="HarborNoticeBoard" type="Area2D" parent="."]
 position = Vector2(300, 176)
 script = ExtResource("8_8jbr6")
-inspectable_id = "harbor_notice_board"
-display_name = "Harbor Notice Board"
+subject_id = "inspectable:harbor_notice_board"
 level_id_mode = 1
 sync_z_index_to_resolved_level = true
 
@@ -49,13 +53,32 @@ shape = SubResource("CircleShape2D_harbor_notice_board")
 [node name="PostcardDisplayRack" type="Area2D" parent="."]
 position = Vector2(-8, 180)
 script = ExtResource("8_8jbr6")
-inspectable_id = "postcard_display_rack"
-display_name = "Postcard Display Rack"
+subject_id = "inspectable:postcard_display_rack"
 level_id_mode = 1
 sync_z_index_to_resolved_level = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="PostcardDisplayRack"]
 shape = SubResource("CircleShape2D_postcard_display_rack")
+
+[node name="HarborRefrain" type="Area2D" parent="."]
+position = Vector2(-96, 240)
+script = ExtResource("8_8jbr6")
+subject_id = "landmark:piano_ferry.harbor_refrain"
+level_id_mode = 1
+sync_z_index_to_resolved_level = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HarborRefrain"]
+shape = SubResource("CircleShape2D_harbor_refrain")
+
+[node name="FestivalStage" type="Area2D" parent="."]
+position = Vector2(432, 256)
+script = ExtResource("8_8jbr6")
+subject_id = "landmark:festival_stage.harbor_stage"
+level_id_mode = 1
+sync_z_index_to_resolved_level = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="FestivalStage"]
+shape = SubResource("CircleShape2D_festival_stage")
 
 [node name="collision_layer" type="TileMapLayer" parent="." unique_id=358310393]
 z_index = 1

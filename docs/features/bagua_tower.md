@@ -25,12 +25,12 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
 - `tower_keeper` beat 0 is gated on `"gate": "bagua_tower_available"` and carries `"landmark_states": {"bagua_tower": "available"}` as a safe confirm.
 - `tower_keeper` beat 1 is gated on `"gate": "three_fragments_restored"` and carries `"landmark_states": {"bagua_tower": "in_progress"}`. After beat 1, the landmark is `in_progress` and the synthesis chamber trigger becomes visible at the top of the tower.
 
-- The `synthesis_chamber` trigger is a `LandmarkTrigger` visible once the landmark is `in_progress`.
-- When the player presses R at the chamber with 3+ fragments, `_resolve_bagua_tower_synthesis()` fires:
+- The `synthesis_chamber` interaction is a `StorySubjectArea2D` visible once the landmark is `in_progress`.
+- When the player presses R at the chamber with 3+ fragments, the authored Bagua StoryEvent binding fires:
   - `landmark_progress["bagua_tower"]["synthesis_done"]` is set to `true`.
   - Landmark state advances to `resolved`.
   - Objective updates to "Return to Tower Keeper Suyin to confirm the island route."
-- `tower_keeper` beat 2 is gated on `"gate": "bagua_synthesis_done"`. The gate passes once `synthesis_done` is `true`. When it fires, `"landmark_reward": "bagua_tower"` calls `_resolve_bagua_tower()`:
+- `tower_keeper` beat 2 is gated on `"gate": "bagua_synthesis_done"`. The gate passes once `synthesis_done` is `true`. When it fires, `"landmark_reward": "bagua_tower"` routes through the authored `landmark_reward:bagua_tower` StoryEvent binding:
   - Landmark state advances to `reward_collected`.
   - `tower_chamber` is added to `festival_melody.known_sources`.
   - `festival_melody.fragments_found` increments by 1.
@@ -43,18 +43,19 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
 ## Edge Cases
 
 - If the player reaches the chamber with fewer than 3 fragments, a status line reads "The tower shows distance but not yet direction. Recover more fragments first." and nothing fires.
-- If `_resolve_bagua_tower()` is called more than once, `tower_chamber` is only appended once and fragment counts are clamped to `fragments_total`.
+- If the Bagua reward event is applied more than once, `tower_chamber` is only appended once and fragment counts stay clamped to `fragments_total`.
 - If the melody already has 4 fragments from a save edge case, Bagua should still only unlock the harbor-stage trigger once.
 - Free Walk should not advance story chapter.
 
 ## Architecture / Ownership
 
-- `AppState` owns all landmark progress state, the synthesis logic, the fragment reward, and the handoff to the separate `festival_stage` landmark.
-- The `LandmarkTrigger` placed at the top of the tower self-manages its own visibility by subscribing to `AppState.landmark_progress_changed`.
-- `LandmarkTrigger` owns its own collected state and hide/disable behavior.
-- `scenes/game_main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
+- `AppState` owns the shared landmark progress state and the public trigger bridge.
+- `game/story_event_catalog.gd` and `game/story_event_service.gd` now own the Bagua synthesis trigger interaction plus the downstream `landmark_reward:bagua_tower` fragment reward and festival-stage handoff.
+- `game/landmark_progression.gd` now mainly supplies the generic melody prompt builder and compatibility fallback.
+- The `StorySubjectArea2D` placed at the top of the tower resolves visibility through StoryEvent metadata and `AppState` story state.
+- `scenes/game_main.gd` routes R-inspect on tower world subjects through the shared `activate_story_subject(...)` path.
 - `resident_catalog.gd` owns the authored beat gates and `landmark_states` fields for `tower_keeper`.
-- `terrain.tscn` owns the synthesis chamber trigger placement under the `BaguaTower` landmark instance at `roof_tower`, while `bagua_tower.tscn` stays focused on structure, traversal, and presentation.
+- `bagua_tower.tscn` owns the synthesis chamber world subject inside the reusable tower scene, while StoryEvent bindings decide when that hotspot is visible and what it does.
 
 ## Relevant Files
 
@@ -62,7 +63,7 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
   - [`../../architecture/bagua_tower/bagua_tower.tscn`](../../architecture/bagua_tower/bagua_tower.tscn)
   - [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn)
 - Scripts:
-  - [`../../game/landmark_trigger.gd`](../../game/landmark_trigger.gd)
+  - [`../../game/story_subject_area.gd`](../../game/story_subject_area.gd)
   - [`../../game/app_state.gd`](../../game/app_state.gd)
   - [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
   - [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
@@ -83,18 +84,18 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
   - `AppState.melody_progress_changed("festival_melody", state)` — on arc resolution
   - `AppState.fragments_changed(found, total)` — on arc resolution
 - Signals consumed:
-  - `AppState.landmark_progress_changed` — consumed by the `LandmarkTrigger` to self-manage visibility
+  - `AppState.landmark_progress_changed` — consumed by the tower `StorySubjectArea2D` through StoryEvent presence sync
 - Data flow:
-- `tunnel_guide` beat 2 → `advance_landmark_state("bagua_tower", "available")`
-- Player talks to tower_keeper (beats 0 and 1) → `landmark_states` confirms `available` then `in_progress` → `landmark_progress_changed` → chamber trigger appears
-- Player presses R at synthesis_chamber → `activate_landmark_trigger` → `_resolve_bagua_tower_synthesis` → landmark `resolved` + `synthesis_done`
-- Player talks to tower_keeper beat 2 → gate passes → `_apply_resident_beat` → `_resolve_landmark("bagua_tower")` → `_resolve_bagua_tower` → final fragment + `festival_stage` unlock
+  - `tunnel_guide` beat 2 → `advance_landmark_state("bagua_tower", "available")`
+  - Player talks to tower_keeper (beats 0 and 1) → `landmark_states` confirms `available` then `in_progress` → `landmark_progress_changed` → chamber trigger appears
+  - Player presses R at synthesis_chamber → `StorySubjectArea2D` builds subject context → `AppState.activate_story_subject(...)` → authored Bagua synthesis binding sets landmark `resolved` + `synthesis_done`
+  - Player talks to tower_keeper beat 2 → gate passes → `_apply_resident_beat` → `_resolve_landmark("bagua_tower")` → `StoryEventService.notify_world_event("landmark_reward:bagua_tower", ...)` → final fragment + `festival_stage` unlock
 
 ## Contracts / Boundaries
 
 - The `"gate"`, `"gate_fallback"`, `"landmark_reward"`, and `"landmark_states"` beat fields are part of the resident beat contract.
 - The `landmark_progress["bagua_tower"]` shape (`state`, `synthesis_done`) is part of the Landmark Progress Contract in `contracts.md`. Update that file if fields are added or renamed.
-- `LandmarkTrigger` must not read or write `AppState` fields directly.
+- `StorySubjectArea2D` must not read or write `AppState` fields directly.
 
 ## Validation
 
@@ -107,8 +108,8 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
 
 ## Integration Checklist
 
-- [x] Place one `LandmarkTrigger` node in `terrain.tscn` under `BaguaTower/.../roof_tower`: `synthesis_chamber`.
-- [x] Set `landmark_id = "bagua_tower"`, `visible_in_states = [in_progress]`, `hide_if_flag = "synthesis_done"`.
+- [x] Place one `StorySubjectArea2D` node in `bagua_tower.tscn` for `synthesis_chamber`, with an internal `level_context_path` to the roof level.
+- [x] Set `subject_id = "landmark:bagua_tower.synthesis_chamber"` and keep in-progress visibility plus `synthesis_done` hiding in StoryEvent subject metadata.
 - [x] Position the trigger at the top chamber room in the tower.
 - [x] `tower_keeper` beat 1 `"landmark_states"` uses `"in_progress"` — synthesis chamber trigger becomes visible after beat 1 fires.
 - [x] Confirm `collision_layer` matches the layer used for inspectable objects.

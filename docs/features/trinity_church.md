@@ -17,23 +17,23 @@ The mood should stay calm throughout. There is no timer and no hard fail state. 
 ## Rules
 
 - Trinity Church starts `locked`. It unlocks to `available` when the `ferry_caretaker` fires her first dialogue beat (`"unlock_landmark": "trinity_church"`).
-- The three choir cue triggers (steps, garden, yard) are invisible `LandmarkTrigger` volumes that become collectible once the landmark state is `available`, `introduced`, or `in_progress`.
-- Each cue is a `LandmarkTrigger` node authored in `terrain.tscn` under the `TrinityChurch` landmark instance. Collecting one calls `AppState.activate_landmark_trigger("trinity_church", cue_id, display_name, melody_hint)`.
-- Cue order is authored in the terrain scene:
+- The three choir cue triggers (steps, garden, yard) are invisible `StorySubjectArea2D` volumes that become collectible once the landmark state and StoryEvent presence rules allow them.
+- Each cue is a `StorySubjectArea2D` node authored inside `trinity_church.tscn`. Collecting one resolves through the authored StoryEvent subject `landmark:trinity_church.<cue_id>`.
+- Cue order is authored in StoryEvent conditions against those reusable scene-owned subject ids:
   - `steps` has no prerequisite.
   - `garden` requires `steps`.
   - `yard` requires `steps` and `garden`.
 - Each cue carries a `melody_hint` export — flavour text shown on-screen when collected (e.g. "A low bell tone echoes from the old stone steps..."). This gives the player incremental melody feedback during the pickup walk.
 - Landmark state advances to `in_progress` on first cue collection.
 - After the third cue, `AppState` emits one extra chime-flavoured `melody_hint` and redirects the objective to the `choir_chime` trigger near the steps.
-- The choir chime is its own `LandmarkTrigger` node. It only becomes usable once `steps`, `garden`, and `yard` are all present in `cues_collected`.
+- The choir chime is its own `StorySubjectArea2D` node. It only becomes usable once `steps`, `garden`, and `yard` are all present in `cues_collected`.
 - Pressing `R` at the choir chime opens the reusable ordered-confirmation prompt with the authored order `steps -> garden -> yard`.
-- When the prompt succeeds, `_complete_trinity_church_chime()`:
+- When the prompt succeeds, the authored `prompt_completed:trinity_chime` StoryEvent binding:
   - sets `landmark_progress["trinity_church"]["chime_performed"] = true`
   - advances the landmark to `resolved`
   - redirects the objective back to Mei
 - The church_caretaker's resolved dialogue beat (beat index 2) now has `"gate": "trinity_church_chime"`. It only fires after the choir chime prompt succeeds. Before that, she responds with the gate fallback line.
-- When the gate passes and the resolved beat fires, `"landmark_reward": "trinity_church"` triggers `AppState._resolve_trinity_church()`:
+- When the gate passes and the resolved beat fires, `"landmark_reward": "trinity_church"` routes through the authored `landmark_reward:trinity_church` StoryEvent binding:
   - Landmark state advances to `reward_collected`.
   - `church_bells` is added to `festival_melody.known_sources`.
   - `festival_melody.fragments_found` increments by 1.
@@ -47,20 +47,21 @@ The mood should stay calm throughout. There is no timer and no hard fail state. 
 
 - If the player talks to church_caretaker before collecting any cues, her beat 0 fires normally (no gate). Beat 1 fires normally. Beat 2 is gated.
 - If the player collects all three cues without ever talking to church_caretaker, the objective updates to the choir chime first, then back to Mei after the prompt succeeds.
-- If `activate_landmark_trigger` is called with an already-collected cue_id, it is a no-op. The `LandmarkTrigger.collect()` guard also prevents double-collection.
+- If `activate_landmark_trigger` is called with an already-collected cue_id, it is a no-op.
 - If the player presses `R` at the choir chime before all three cues are collected, a status line explains that the phrase still needs every choir cue.
-- If `_resolve_trinity_church()` is called more than once (e.g. due to a save/load edge case), `church_bells` is only appended once (guarded by `find` check) and fragment counts are clamped to `fragments_total`.
+- If the church reward event is applied more than once (e.g. due to a save/load edge case), `church_bells` is only appended once and fragment counts stay clamped to `fragments_total`.
 - Free Walk should not advance story chapter or set tunnel states differently. Currently it does advance `bi_shan_tunnel` and `long_shan_tunnel` to `available` on resolve — this is acceptable in sandbox mode.
 
 ## Architecture / Ownership
 
-- `AppState` owns all landmark progress state, the pickup collection logic, and the fragment reward.
-- Each `LandmarkTrigger` under the `TrinityChurch` terrain instance self-manages its own visibility by subscribing to `AppState.landmark_progress_changed`.
-- `LandmarkTrigger` owns its own collected state and hide/disable behavior.
-- `scenes/game_main.gd` routes R-inspect on `LandmarkTrigger` nodes to `AppState.activate_landmark_trigger()`.
+- `AppState` owns the shared landmark progress state and the public interaction bridge.
+- `game/story_event_catalog.gd` and `game/story_event_service.gd` now own Trinity's cue collection logic, choir-chime prompt request, `prompt_completed:trinity_chime`, and the downstream `landmark_reward:trinity_church` resolution flow as authored StoryEvent bindings.
+- `game/landmark_progression.gd` now mainly supplies the generic melody prompt builder plus compatibility fallbacks for any unmigrated prompt/reward path.
+- Each `StorySubjectArea2D` under the packed `TrinityChurch` scene resolves visibility through StoryEvent metadata and shared story-state signals.
+- `scenes/game_main.gd` routes R-inspect on church world subjects through the shared `activate_story_subject(...)` path.
 - `resident_catalog.gd` owns the authored beat gates and landmark reward keys for church_caretaker and ferry_caretaker.
 - `ui/screens/melody_prompt_overlay.*` provides the shared confirmation UI used by the choir chime and later melody performances.
-- `terrain.tscn` owns Trinity Church trigger placement under the `TrinityChurch` landmark instance, while `trinity_church.tscn` stays focused on architecture and presentation.
+- `trinity_church.tscn` owns both the church presentation and the reusable cue/chime world subjects for that landmark.
 - `trinity_church.tscn` hosts the controller as a child node. No logic lives in the scene file itself.
 
 ## Relevant Files
@@ -69,8 +70,11 @@ The mood should stay calm throughout. There is no timer and no hard fail state. 
   - [`../../architecture/trinity_church.tscn`](../../architecture/trinity_church.tscn)
   - [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn)
 - Scripts:
-  - [`../../game/landmark_trigger.gd`](../../game/landmark_trigger.gd)
+  - [`../../game/story_subject_area.gd`](../../game/story_subject_area.gd)
   - [`../../game/app_state.gd`](../../game/app_state.gd)
+  - [`../../game/story_event_catalog.gd`](../../game/story_event_catalog.gd)
+  - [`../../game/story_event_service.gd`](../../game/story_event_service.gd)
+  - [`../../game/landmark_progression.gd`](../../game/landmark_progression.gd)
   - [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
   - [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
 - Shared state or catalogs:
@@ -90,19 +94,19 @@ The mood should stay calm throughout. There is no timer and no hard fail state. 
   - `AppState.melody_progress_changed("festival_melody", state)` — on Mei's final arc resolution
   - `AppState.fragments_changed(found, total)` — on arc resolution (via set_melody_progress)
 - Signals consumed:
-  - `AppState.landmark_progress_changed` — consumed by each `LandmarkTrigger` to self-manage visibility
+  - `AppState.landmark_progress_changed` — consumed by each `StorySubjectArea2D` through StoryEvent presence sync
 - Data flow:
-  - `ferry_caretaker` beat 0 fires → `_apply_resident_beat` reads `"unlock_landmark": "trinity_church"` → `advance_landmark_state("trinity_church", "available")` → `LandmarkTrigger._on_landmark_progress_changed` shows cue triggers
-  - Player presses R near a cue → `scenes/game_main.gd._on_inspect_requested` → `AppState.activate_landmark_trigger` → `_collect_trinity_church_cue` → `landmark_progress_changed`
-  - Player presses R at `ChoirChime` after all cues are found → `AppState.activate_landmark_trigger` → `melody_prompt_requested`
-  - Prompt succeeds → `AppState.complete_prompt_request(...)` → `_complete_trinity_church_chime` → objective returns to Mei
-  - Player presses R on church_caretaker after the chime settles → `interact_with_resident` → gate passes → beat fires → `_apply_resident_beat` reads `"landmark_reward": "trinity_church"` → `_resolve_trinity_church` → melody and landmark state update
+  - `ferry_caretaker` beat 0 fires → `_apply_resident_beat` reads `"unlock_landmark": "trinity_church"` → `advance_landmark_state("trinity_church", "available")` → StoryEvent presence rules show cue subjects
+  - Player presses R near a cue → `scenes/game_main.gd._on_inspect_requested` → `StorySubjectArea2D` builds subject context → `AppState.activate_story_subject(...)` → authored Trinity cue binding applies shared landmark-progress effects → `landmark_progress_changed`
+  - Player presses R at `ChoirChime` after all cues are found → `StorySubjectArea2D` builds subject context → `AppState.activate_story_subject(...)` → authored Trinity choir-chime binding emits `melody_prompt_requested`
+  - Prompt succeeds → `AppState.complete_prompt_request(...)` → `StoryEventService.notify_world_event("prompt_completed:trinity_chime", ...)` → authored Trinity completion binding returns the objective to Mei
+  - Player presses R on church_caretaker after the chime settles → `interact_with_resident` → gate passes → beat fires → `_apply_resident_beat` reads `"landmark_reward": "trinity_church"` → `StoryEventService.notify_world_event("landmark_reward:trinity_church", ...)` → melody and landmark state update
 
 ## Contracts / Boundaries
 
 - The `"gate"`, `"gate_fallback"`, `"unlock_landmark"`, and `"landmark_reward"` beat fields are part of the resident beat contract. If they are renamed or removed, update `contracts.md` and `_apply_resident_beat`.
 - The `landmark_progress["trinity_church"]` shape (`state`, `cues_collected`, `chime_performed`) is part of the Landmark Progress Contract in `contracts.md`. Update that file if fields are added or renamed.
-- `LandmarkTrigger` must not read or write `AppState` fields directly; it uses the public API (`get_landmark_progress`, `landmark_progress_changed`).
+- `StorySubjectArea2D` must not read or write `AppState` fields directly; it uses the public API and shared StoryEvent metadata.
 
 ## Validation
 
@@ -117,10 +121,10 @@ The mood should stay calm throughout. There is no timer and no hard fail state. 
 
 ## Integration Checklist
 
-- [x] Place three `LandmarkTrigger` nodes in `terrain.tscn` under `TrinityChurch` — one for each cue: `steps`, `garden`, `yard`.
-- [x] Place one `LandmarkTrigger` node in `terrain.tscn` under `TrinityChurch` for `choir_chime`, gated behind all three cue ids.
-- [x] For each: set `landmark_id = "trinity_church"`, `collected_progress_key = "cues_collected"`, `visible_in_states = [available, introduced, in_progress]`.
-- [x] Gate `garden` behind `steps` and `yard` behind `steps` + `garden` using `requires_collected`.
+- [x] Place three `StorySubjectArea2D` nodes in `trinity_church.tscn` — one for each cue: `steps`, `garden`, `yard`.
+- [x] Place one `StorySubjectArea2D` node in `trinity_church.tscn` for `choir_chime`, gated behind all three cue ids.
+- [x] For each: set `subject_id` to the authored StoryEvent subject (`landmark:trinity_church.steps`, `...garden`, `...yard`, `...choir_chime`).
+- [x] Keep collection order and visibility rules in `game/story_event_catalog.gd` subject metadata instead of per-node exports.
 - [ ] Position each trigger node at the matching world location in the scene.
 - [x] Confirm `collision_layer` matches the layer used for inspectable objects.
 

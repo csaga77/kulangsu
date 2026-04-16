@@ -9,10 +9,12 @@ Open these files first in this order:
 1. [`../design_brief.md`](../design_brief.md)
 2. [`../core_game_workflow.md`](../core_game_workflow.md)
 3. [`../../game/app_state.gd`](../../game/app_state.gd)
-4. [`../../game/landmark_progression.gd`](../../game/landmark_progression.gd)
-5. [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
-6. [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
-7. [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd)
+4. [`../../game/story_event_catalog.gd`](../../game/story_event_catalog.gd)
+5. [`../../game/story_event_service.gd`](../../game/story_event_service.gd)
+6. [`../../game/landmark_progression.gd`](../../game/landmark_progression.gd)
+7. [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
+8. [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
+9. [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd)
 
 Use [`../core_gameplay_plays.md`](../core_gameplay_plays.md) after this file when you need the broader tone and repeatable-play rationale.
 
@@ -68,7 +70,8 @@ The external GDD's `Sunlight Rock` and `Zheng Chenggong Statue` are not part of 
   - melody-specific authored metadata exists in `melody_catalog.gd`
   - the current authored melody is `festival_melody`, with four landmark fragments and the non-fragment ferry plaza source `ferry_plaza` (`Harbor Refrain`)
   - `AppState` currently owns `{ state, fragments_found, fragments_total, known_sources, next_lead, performed }` per melody and emits `melody_progress_changed`, `melody_hint_shown`, `melody_prompt_requested`, `landmark_audio_cue_requested`, and `fragments_changed`
-  - `game/landmark_progression.gd` now owns the active landmark trigger, prompt-dispatch, and fragment-award implementation behind the `AppState` bridge API
+  - `game/story_event_catalog.gd` plus `game/story_event_service.gd` now own the active landmark trigger, landmark prompt-completion, and fragment-award implementation for the melody-landmark spine behind the `AppState` bridge API
+  - `game/landmark_progression.gd` now mainly owns generic melody-prompt validation/building plus compatibility fallback helpers
   - journal melody view now shows landmark/source-specific detail
 - NPC system:
   - strong current fit
@@ -134,12 +137,12 @@ The `Melody` journal tab now shows melody name, district, stage, fragment progre
 All five landmark arcs are fully integrated and confirmed:
 
 - Piano Ferry onboarding arc (Caretaker Lian -> harbor clue trigger -> journal unlock -> Trinity Church handoff)
-- Trinity Church arc (choir cue collection via three `LandmarkTrigger` nodes plus the `ChoirChime` confirmation point)
+- Trinity Church arc (choir cue collection via three `StorySubjectArea2D` nodes plus the `ChoirChime` confirmation point)
 - Bi Shan Tunnel arc (echo tracing via three echo triggers + mural-chamber prompt + route-note update)
 - Long Shan Tunnel arc (entry trigger + lit-pocket checkpoints + exit-route prompt + return-to-Ren comparison handoff + `tunnel_guide` dialogue beats)
-- Bagua Tower arc (synthesis chamber `LandmarkTrigger` + `tower_keeper` dialogue beats + spring-gated harbor-stage handoff)
+- Bagua Tower arc (synthesis chamber `StorySubjectArea2D` + `tower_keeper` dialogue beats + spring-gated harbor-stage handoff)
 
-All `LandmarkTrigger` nodes have `collision_layer = 1` (layer "object") confirmed explicit. The `SynthesisChamber` authored in `terrain.tscn` under `BaguaTower/.../roof_tower` keeps `z_index = -2` so its absolute z index still aligns with the player's top-tower level.
+All landmark `StorySubjectArea2D` nodes have `collision_layer = 1` (layer "object") confirmed explicit. The `SynthesisChamber` is now authored inside `bagua_tower.tscn` and keeps an internal roof-level context so its runtime z index still aligns with the player's top-tower level.
 
 See [`piano_ferry.md`](piano_ferry.md), [`trinity_church.md`](trinity_church.md), [`bi_shan_tunnel.md`](bi_shan_tunnel.md), [`long_shan_tunnel.md`](long_shan_tunnel.md), [`bagua_tower.md`](bagua_tower.md), and [`../../game/tests/cue_progression/test_cue_progression.tscn`](../../game/tests/cue_progression/test_cue_progression.tscn) for the current integration coverage.
 

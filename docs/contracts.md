@@ -46,15 +46,16 @@ Current contract:
 - `landmark_audio_cue_requested(cue_id, context)` is the bridge from successful landmark interactions into one-shot world audio feedback; it fires for both collected pickups and prompt-opening landmark interactions such as the Trinity choir chime, Bi Shan chamber, Long Shan exit, and harbor stage
 - `story_milestone(milestone_id, context)` fires after compound state changes resolve; current milestone ids include `landmark_resolved`, `fragment_restored`, `festival_ready`, `festival_performed`, `resident_trust_max`, and `endgame_started`
 - it now owns shared melody runtime state while [`../game/melody_catalog.gd`](../game/melody_catalog.gd) owns authored melody definitions
-- `melody_prompt_requested(request)` is the bridge from gameplay/journal actions into the reusable ordered-confirmation overlay; `AppState` preserves the public validation/completion API while `game/landmark_progression.gd` owns the active implementation
-- prompt completions now flow back through `complete_prompt_request(request)`, which dispatches landmark-specific confirmations such as the Trinity choir chime, the Bi Shan chamber contour, the Long Shan exit route, as well as melody practice/performance
+- `melody_prompt_requested(request)` is the bridge from gameplay/journal actions into the reusable ordered-confirmation overlay; `AppState` preserves the public validation/completion API while `game/landmark_progression.gd` now mainly owns generic melody-prompt validation/building and StoryEvent world-event bindings own the current landmark-specific completions
+- prompt completions now flow back through `complete_prompt_request(request)`, which first offers the request to authored StoryEvent world-event bindings for landmark-specific confirmations such as the Trinity choir chime, the Bi Shan chamber contour, the Long Shan exit route, and the harbor-stage performance, while melody practice still falls back through the compatibility helper
 - `save_metadata_changed(metadata)` is the shell-facing signal for title `Continue` state and latest story autosave summary
 - composed helper scripts emit `AppState`-owned signals back through bridge methods on `AppState` itself so the public signal contract stays centralized and GDScript static analysis can still verify those signals are live
 - `AppState` now owns the one-slot story autosave contract, current safe resume anchor, and the `configure_new_game()`, `configure_continue()`, `configure_free_walk()`, `save_story_autosave()`, `clear_story_autosave()`, and `set_story_resume_checkpoint(...)` bridge methods used by the shell and world scene; `game/story_save_service.gd` owns the active read/write implementation
 - `AppState` also keeps the landmark bridge methods (`activate_landmark_trigger(...)`, prompt-request/completion facades) and resident/audio facades even when helper scripts own the implementation, so runtime callers and tests continue to target the same shared-state contract
 - `AppState` now composes `game/story_event_service.gd` and exposes `describe_story_subject(subject_id, action, context)`, `activate_story_subject(subject_id, action, context)`, `notify_story_world_event(event_id, payload, context)`, `pick_story_candidate(candidates, context)`, `matches_story_conditions(conditions, context)`, and `apply_story_effects(payload, context)` as the shared StoryEvent bridge
-- `activate_story_subject(...)` is now the generic interaction entry point for resident talk and scene-authored `StoryInspectable` inspect surfaces; the current subject taxonomy includes `npc:<resident_id>` and `inspectable:<inspectable_id>`
-- `apply_story_effects(...)` is the shared write path for resident beats and future StoryEvent bindings; current supported effect channels include objective/hint/save-status updates, `season_phase`, landmark unlock/state/reward changes, `story_flags`, `story_event`, `pin_lead_id`, resident routine overrides, resident routine override clearing, and story milestones
+- `activate_story_subject(...)` is now the generic interaction entry point for resident talk and all scene-authored `StorySubjectArea2D` world subjects; the current subject taxonomy includes `npc:<resident_id>`, `landmark:<landmark_id>.<trigger_id>`, and `inspectable:<inspectable_id>`
+- `activate_landmark_trigger(...)` remains as a compatibility bridge for direct callers and tests, but it now consults the authored StoryEvent landmark bindings first; the current landmark-trigger surface is authored there, and landmark reward handoffs now route through authored StoryEvent world-event bindings as well
+- `apply_story_effects(...)` is the shared write path for resident beats and future StoryEvent bindings; current supported effect channels include objective/hint/save-status updates, `season_phase`, landmark unlock/state/reward changes, landmark-progress patch/list updates, melody hint/audio/prompt emission, melody-progress patch/fragment-award updates, journal/shortcut unlocks, `story_flags`, `story_event`, `pin_lead_id`, resident routine overrides, resident routine override clearing, conditional follow-up effects, and story milestones
 - `game/story_route_graph.gd` owns canonical route definitions, event definitions, lead selection, endgame-trigger evaluation, ending-behavior classification, and baseline ending-tone tag generation
 - the app shell and world hint logic may query `AppState.is_journal_unlocked()` and `AppState.build_input_hint(...)` to keep the early tutorial flow and controls text aligned
 - world and UI code rely on resident getters for resident ids, definitions, display names, appearance configs, spawn configs, movement configs, behavior configs, ambient speech, resident journal text, and full resident profiles when optional movement metadata is needed
@@ -82,6 +83,7 @@ Reference:
 Owned by:
 
 - [`../game/app_state.gd`](../game/app_state.gd)
+- [`../game/story_event_catalog.gd`](../game/story_event_catalog.gd)
 - [`../game/story_event_service.gd`](../game/story_event_service.gd)
 - [`../game/resident_interaction_service.gd`](../game/resident_interaction_service.gd)
 - [`../game/story_world_reactivity.gd`](../game/story_world_reactivity.gd)
@@ -90,7 +92,9 @@ Current contract:
 
 - story-facing world interactions now flow through stable `subject_id + action` pairs instead of route-specific scene callbacks
 - `StoryEventService` owns generic context building, shared condition matching, priority-based candidate selection, and shared effect application, while `story_route_graph.gd`, resident data, and existing landmark helpers remain the current canonical source for route/event meaning
+- `game/story_event_catalog.gd` is the authored StoryEvent tree file for the current landmark migration; it now owns the full `melody_landmarks` landmark-interaction subtree
 - resident conditional beats now resolve through `pick_story_candidate(...)` and apply their side effects through `apply_story_effects(...)` rather than keeping separate copies of condition/effect logic
+- `StorySubjectArea2D` is now the shared world-side subject adapter; `game_main.gd` routes all world-subject interactions through `activate_story_subject(...)`, and `StoryEventService` resolves current `landmark:` and `inspectable:` subjects plus landmark reward world events through the authored catalog before any compatibility fallback path
 - non-resident inspect text now resolves through `StoryWorldReactivity.resolve_inspect_result(...)`, which builds stable `inspectable:` subject ids and reuses the shared condition matcher
 - resident routine overrides are the first live world-state effect channel driven through the shared StoryEvent boundary; the world scene listens for override changes and reapplies spawn anchor, level, and movement state to live resident actors
 - the current route ledger remains the player-facing progression view, while the longer-term goal is still to migrate route families into authored recursive StoryEvent definitions and a published-fact ledger
@@ -152,7 +156,7 @@ Current contract:
 
 - `scenes/game_main.gd` maps landmarks plus resident spawn/movement anchors, reacts to controller events, syncs player tunnel context into `AppState`, and delegates route resolution, resident spawning, tunnel context, and debug route drawing to focused helper scripts under `scenes/`
 - `scenes/game_main.gd` instantiates `ResidentNPC` actors from `AppState.get_resident_definition(...)` and then applies world-specific spawn, level, and route resolution
-- `scenes/game_main.gd` now routes resident talk and `StoryInspectable` inspect actions through `AppState.activate_story_subject(...)`, while still owning closest-target selection, world prompt presentation, and fallback generic inspect text
+- `scenes/game_main.gd` now routes resident talk and `StorySubjectArea2D` world interactions through `AppState.activate_story_subject(...)`, while still owning closest-target selection, world prompt presentation, and fallback generic inspect text
 - `scenes/game_main.gd` also owns mapping the live player position onto safe story resume anchors for autosave and continue
 - `scenes/game_main.gd` registers overworld weather hosts plus the terrain spawn layer with `WeatherManager`, which instantiates the active rain, fog, cloud-shadow, and ground-impact nodes at runtime
 - `scenes/game_main.tscn` keeps the player and resident instances under one shared y-sorted actor layer rooted at `actors`
@@ -233,7 +237,7 @@ Governance:
 Owned by:
 
 - [`../game/app_state.gd`](../game/app_state.gd)
-- [`../game/landmark_trigger.gd`](../game/landmark_trigger.gd) (self-managing per-pickup node)
+- [`../game/story_subject_area.gd`](../game/story_subject_area.gd) (scene-authored world subject node)
 
 Current contract:
 
@@ -243,23 +247,22 @@ Current contract:
 - `AppState.landmark_progress_changed(landmark_id, progress)` fires whenever any landmark's entry changes
 - `AppState.get_landmark_progress(landmark_id)` and `get_landmark_state(landmark_id)` are the read API
 - `AppState.set_landmark_progress(landmark_id, progress)` and `advance_landmark_state(landmark_id, new_state)` are the write API
-- `AppState.activate_landmark_trigger(landmark_id, trigger_id, display_name, melody_hint)` is called by `scenes/game_main.gd` when the player inspects a `LandmarkTrigger` node; it routes to the correct per-landmark collection handler through `game/landmark_progression.gd` and returns whether the caller should consume the trigger
+- `AppState.activate_landmark_trigger(landmark_id, trigger_id, display_name, melody_hint)` now exists as a compatibility bridge for tests or legacy callers; runtime world interaction goes through `StorySubjectArea2D` nodes and `AppState.activate_story_subject(...)`, which first offers the interaction to `game/story_event_service.gd` as the stable subject id `landmark:<landmark_id>.<trigger_id>`
 - `AppState.melody_hint_shown(text)` fires when a trigger with a non-empty `melody_hint` is collected; the HUD subscribes to display the flavour text on-screen
 - successful landmark interactions may also emit `AppState.landmark_audio_cue_requested(cue_id, context)` so the world scene can play a local motif without relying on `melody_hint_shown` text alone
 - `AppState.set_all_landmark_progress(progress)` sets multiple landmarks at once; used by `configure_*` methods
 - Resident dialogue beats may carry `"unlock_landmark"` to unlock a landmark when the beat fires, and `"gate"` / `"gate_fallback"` to block a beat until a landmark condition is satisfied
 - Resident dialogue beats may carry `"landmark_reward"` to trigger a landmark resolution (fragment award, melody state update, downstream unlocks) when the beat fires
-- `LandmarkTrigger` inherits the shared `LevelArea2D` level fields, so a trigger can resolve its interaction layer from a parent level node or an explicit `level_context_path` without landmark-specific logic; use the explicit context path mainly for terrain-owned or cross-scene trigger placement
-- `game/landmark_trigger_catalog.gd` owns the canonical authored `landmark_id` list and valid `trigger_id` values for each landmark; both `LandmarkTrigger` inspector dropdowns and `LandmarkProgression.activate_landmark_trigger(...)` validation read from that shared catalog
-- `LandmarkTrigger.landmark_id` is an exported inspector enum over the currently authored landmark ids, and `LandmarkTrigger.trigger_id` is an enum-filtered inspector field whose available options follow the selected landmark; invalid landmark/trigger combinations should surface as configuration warnings in the editor instead of silently authoring mismatched pairs
+- `StorySubjectArea2D` inherits the shared `LevelArea2D` level fields, so a world subject can resolve its interaction layer from a parent level node or an explicit `level_context_path` without landmark-specific logic; use the explicit context path mainly for scene-internal cross-level placement or other exceptional cases where the hotspot cannot sit directly under its level context
+- `game/story_event_catalog.gd` owns the canonical authored world-subject metadata list and presence rules; the `StorySubjectArea2D.subject_id` dropdown reads from that shared catalog, surfaces configuration warnings for unknown ids, and keeps stable world subjects decoupled from whichever StoryEvent currently binds them
 
 Governance:
 
-- keep per-landmark trigger setup in `LandmarkTrigger` nodes placed in the landmark scene or under the matching terrain landmark instance, and keep active collection/resolution logic in `game/landmark_progression.gd` behind `AppState`'s public API
+- keep per-landmark and inspect-surface setup in `StorySubjectArea2D` nodes placed in the landmark or feature scene that owns the hotspot, and keep active resolution logic behind `AppState`'s public API; current landmark interaction beats plus landmark prompt-completion/reward follow-through and world-subject visibility rules live in `game/story_event_catalog.gd`/`game/story_event_service.gd`, while `game/landmark_progression.gd` now mostly supplies generic prompt-building and fallback behavior
 - when a trigger must follow a non-ground interaction layer, set its shared level fields instead of hardcoding a separate scene-local z contract
-- if a new landmark arc is added, add its id to `_default_landmark_progress()` and `_build_landmark_progress()`, place `LandmarkTrigger` nodes in the landmark scene with the correct exported properties, and extend `game/landmark_progression.gd` plus the `AppState` bridge methods together
+- if a new landmark arc is added, add its id to `_default_landmark_progress()` and `_build_landmark_progress()`, place `StorySubjectArea2D` nodes with the correct stable `subject_id` and level placement in the owning landmark scene, and prefer authored `StoryEvent` subject/world-event bindings plus subject metadata/presence rules before extending any remaining legacy `game/landmark_progression.gd` fallback
 - if the landmark state enum changes, update this file and the relevant landmark feature docs
-- `LandmarkTrigger` nodes handle their own hide/disable after collection; callers should only invoke `collect()` when `activate_landmark_trigger(...)` returns `true`
+- `StorySubjectArea2D` nodes mirror visibility and targetability from StoryEvent metadata; callers should not own hide/disable decisions directly
 
 ## Reusable Module Contracts
 

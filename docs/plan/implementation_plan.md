@@ -14,7 +14,8 @@ Shipped foundations:
 - four canonical routes: family, study, preservation, melody
 - one pinned HUD lead plus multi-route journal view
 - route graph and endgame trigger logic in `game/story_route_graph.gd`
-- first-pass StoryEvent runtime in `game/story_event_service.gd`, including subject-based resident talk and inspectable routing through `AppState`
+- first-pass StoryEvent runtime in `game/story_event_service.gd`, including subject-based resident talk, landmark-trigger routing, and inspectable routing through `AppState`
+- first authored StoryEvent tree file in `game/story_event_catalog.gd`, now owning the full `melody_landmarks` interaction spine: ferry harbor clue, Trinity cue/chime, Bi Shan echoes/chamber, Long Shan entry/checkpoints/exit, Bagua synthesis, and the harbor-stage prompt-open
 - save/load support for seasonal story state, route state, lead pinning, and endgame state
 - story-driven resident routine overrides that persist through autosave/continue and reapply to live actors in `game_main`
 - resident gating against `season_phase`, route state, and `story_flags`
@@ -65,7 +66,7 @@ Current pressure points:
 - most resident definitions, dialogue spines, and conditional beats still live in `resident_catalog.gd`; only the first override resources have moved into per-resident `.tres` files
 - `AppState` still carries a broad facade/signal surface, including many one-line forwarding methods that are useful for compatibility but still add maintenance cost
 - `StorySaveService` and `LandmarkProgression` remain intentionally tight `AppState` helpers, so future cleanup still needs to preserve the bridge API instead of assuming those helpers are independently reusable modules
-- `StoryEventService` is now live as a shared subject/effect bridge, but it still projects off `story_route_graph.gd`, resident dictionaries, and `story_world_reactivity.gd` instead of authored recursive event definitions plus a published-fact ledger
+- `StoryEventService` is now live as a shared subject/effect bridge, and `story_event_catalog.gd` now owns the full melody-landmark interaction spine plus its landmark prompt-completion/reward world events, but most progression still projects off `story_route_graph.gd`, resident dictionaries, and `story_world_reactivity.gd` instead of a fuller recursive event definition set plus a published-fact ledger
 - route-content work will keep touching large built-in resident dictionaries until more residents migrate out of the script catalog
 - high-traffic dictionary payloads (landmark progress, melody progress, autosave) are still untyped
 - regression coverage is now strong for landmark, route, resident-interaction, reactivity, and autosave flows, but still lighter around settings/audio behavior and richer world-object reactivity
@@ -222,7 +223,7 @@ Primary files:
 
 Shipped outcome:
 
-- landmark progression behavior lives in `game/landmark_progression.gd` while `AppState` keeps the landmark bridge API and signal surface
+- landmark progression behavior is now split between authored StoryEvent landmark bindings/world events and `game/landmark_progression.gd`'s remaining generic prompt-builder/fallback helpers, while `AppState` keeps the landmark bridge API and signal surface
 - resident dialogue/application lives in `game/resident_interaction_service.gd` with `AppState` facades preserved for runtime callers and tests
 - runtime settings state lives in `game/audio_settings_service.gd`
 - `StorySaveService` owns the active payload pipeline plus `configure_new_game()`, `configure_continue()`, and `configure_free_walk()` implementation while `AppState` keeps the public bridge methods

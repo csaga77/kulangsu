@@ -3,6 +3,7 @@ extends Node
 
 const GAME_MAIN_SCENE := preload("res://scenes/game_main.tscn")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
+const StorySubjectArea2D = preload("res://game/story_subject_area.gd")
 const BI_SHAN_RESIDENT_IDS := [
 	"echo_sketcher_yan",
 	"mural_restorer_cai",
@@ -165,12 +166,12 @@ func _assert_group_on_tunnel_level(residents_root: Node2D, tunnel: Tunnel, resid
 
 
 func _assert_tunnel_trigger_ownership(terrain: Node2D, bi_shan_tunnel: Tunnel, long_shan_tunnel: Tunnel) -> void:
-	var bi_shan_echo_a := terrain.get_node_or_null("bi_shan_tunnel/interior_triggers/EchoA") as LandmarkTrigger
-	var bi_shan_chamber := terrain.get_node_or_null("bi_shan_tunnel/interior_triggers/Chamber") as LandmarkTrigger
-	var long_shan_entry := terrain.get_node_or_null("long_shan_tunnel/surface_triggers/TunnelEntry") as LandmarkTrigger
-	var long_shan_exit := terrain.get_node_or_null("long_shan_tunnel/surface_triggers/TunnelExit") as LandmarkTrigger
-	var long_shan_pocket_south := terrain.get_node_or_null("long_shan_tunnel/interior_triggers/LightPocketSouth") as LandmarkTrigger
-	var long_shan_pocket_north := terrain.get_node_or_null("long_shan_tunnel/interior_triggers/LightPocketNorth") as LandmarkTrigger
+	var bi_shan_echo_a := terrain.get_node_or_null("bi_shan_tunnel/interior_triggers/EchoA") as StorySubjectArea2D
+	var bi_shan_chamber := terrain.get_node_or_null("bi_shan_tunnel/interior_triggers/Chamber") as StorySubjectArea2D
+	var long_shan_entry := terrain.get_node_or_null("long_shan_tunnel/surface_triggers/TunnelEntry") as StorySubjectArea2D
+	var long_shan_exit := terrain.get_node_or_null("long_shan_tunnel/surface_triggers/TunnelExit") as StorySubjectArea2D
+	var long_shan_pocket_south := terrain.get_node_or_null("long_shan_tunnel/interior_triggers/LightPocketSouth") as StorySubjectArea2D
+	var long_shan_pocket_north := terrain.get_node_or_null("long_shan_tunnel/interior_triggers/LightPocketNorth") as StorySubjectArea2D
 	_assert(bi_shan_echo_a != null, "Bi Shan echo triggers should live under the Bi Shan terrain instance.")
 	_assert(bi_shan_chamber != null, "Bi Shan chamber trigger should live under the Bi Shan terrain instance.")
 	_assert(long_shan_entry != null, "Long Shan entry trigger should live under the Long Shan terrain instance.")

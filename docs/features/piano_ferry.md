@@ -18,9 +18,9 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
 
 - Piano Ferry starts `available` in `New Game` and `introduced` in `Free Walk`. `Continue` restores whatever the active story autosave had already reached.
 - `ferry_caretaker` beat 0 carries `"landmark_states": {"piano_ferry": "introduced"}`. This reveals the harbor clue trigger and sets the immediate objective to inspect the piano crate.
-- The harbor clue is a single `LandmarkTrigger` node authored in `terrain.tscn` under the `piano_ferry` landmark instance.
-- `terrain.tscn` also hosts the late-game `festival_stage` trigger under the same `piano_ferry` landmark instance, but that belongs to the separate `festival_stage` landmark id rather than the onboarding arc itself.
-- Pressing `R` at the harbor clue calls `AppState.activate_landmark_trigger("piano_ferry", "harbor_refrain", ...)`.
+- The harbor clue is a single `StorySubjectArea2D` node authored inside `piano_ferry.tscn` so the physical hotspot travels with the reusable landmark scene.
+- `piano_ferry.tscn` also hosts the late-game `festival_stage` subject under the same landmark scene, but that belongs to the separate `festival_stage` landmark id rather than the onboarding arc itself.
+- Pressing `R` at the harbor clue calls `AppState.activate_landmark_trigger("piano_ferry", "harbor_refrain", ...)`, which now bridges into the authored StoryEvent subject `landmark:piano_ferry.harbor_refrain`.
 - When the trigger fires:
   - `landmark_progress["piano_ferry"]["harbor_clue_found"]` becomes `true`
   - landmark state advances to `resolved`
@@ -40,14 +40,16 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
 - Pressing `J` before the ferry arc resolves should not open the journal. The app shell instead shows a short status reminder telling the player to return to Caretaker Lian with the harbor clue.
 - Opening the pause menu before the ferry arc resolves shows the journal button as disabled.
 - Re-activating the harbor clue after collection is a no-op.
-- If `_resolve_piano_ferry()` is called again in a seeded mode, it should keep `ferry_plaza` in known sources and leave fragment counts unchanged.
+- If the ferry reward event is applied again in a seeded mode, it should keep `ferry_plaza` in known sources and leave fragment counts unchanged.
 - `Free Walk` starts with the journal already unlocked even though the ferry clue can still be played as ambient onboarding content.
 
 ## Architecture / Ownership
 
-- `AppState` owns Piano Ferry progress state, the journal unlock flag, and the harbor-clue collection/resolution flow.
+- `AppState` owns Piano Ferry progress state, the journal unlock flag, and the public landmark trigger bridge.
+- `game/story_event_catalog.gd` and `game/story_event_service.gd` now own both the harbor-clue interaction beat and the `landmark_reward:piano_ferry` onboarding reward flow.
+- `resident_catalog.gd` still owns Caretaker Lian's handoff beat and is what emits the ferry reward event through its `landmark_reward` key.
 - `resident_catalog.gd` owns Caretaker Lian's gate logic and the Trinity Church handoff beat.
-- `terrain.tscn` owns Piano Ferry trigger placement under the `piano_ferry` landmark instance; `AppState` distinguishes the onboarding harbor clue and the final harbor-stage performance point by landmark id.
+- `piano_ferry.tscn` owns Piano Ferry world-subject placement; `AppState` distinguishes the onboarding harbor clue and the final harbor-stage performance point by landmark id.
 - `main.gd` and `scenes/game_main.gd` query `AppState.is_journal_unlocked()` to keep controls text and journal access in sync with the onboarding state.
 
 ## Relevant Files
@@ -58,7 +60,7 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
 - Scripts:
   - [`../../game/app_state.gd`](../../game/app_state.gd)
   - [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
-  - [`../../game/landmark_trigger.gd`](../../game/landmark_trigger.gd)
+  - [`../../game/story_subject_area.gd`](../../game/story_subject_area.gd)
   - [`../../main.gd`](../../main.gd)
   - [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
   - [`../../ui/screens/pause_overlay.gd`](../../ui/screens/pause_overlay.gd)
@@ -76,17 +78,17 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
   - `AppState.landmark_progress_changed("piano_ferry", progress)` — on intro and clue resolution
   - `AppState.melody_hint_shown(text)` — when the harbor clue is inspected
 - Signals consumed:
-  - `AppState.landmark_progress_changed` — consumed by the ferry `LandmarkTrigger`
+  - `AppState.landmark_progress_changed` — consumed by the ferry `StorySubjectArea2D` through StoryEvent presence sync
 - Data flow:
   - player talks to `ferry_caretaker` beat 0 -> landmark advances to `introduced`
-  - player presses `R` at `HarborRefrain` -> `activate_landmark_trigger` -> `harbor_clue_found = true` -> objective points back to Lian
-  - player talks to `ferry_caretaker` beat 1 -> gate passes -> Trinity Church unlocks -> `_resolve_piano_ferry()` unlocks the journal and marks the first lead
+  - player presses `R` at `HarborRefrain` -> `StorySubjectArea2D` builds subject context -> `AppState.activate_story_subject("landmark:piano_ferry.harbor_refrain", "collect", ...)` -> `StoryEventService` applies the authored ferry binding -> `harbor_clue_found = true` and the objective points back to Lian
+  - player talks to `ferry_caretaker` beat 1 -> gate passes -> Trinity Church unlocks -> `StoryEventService.notify_world_event("landmark_reward:piano_ferry", ...)` unlocks the journal and marks the first lead
 
 ## Contracts / Boundaries
 
 - The `landmark_progress["piano_ferry"]` shape (`state`, `harbor_clue_found`) is part of the Landmark Progress Contract in `contracts.md`.
 - `main.gd` should gate journal opening through `AppState.is_journal_unlocked()` rather than duplicating local tutorial state.
-- `LandmarkTrigger` must not write `AppState` fields directly.
+- `StorySubjectArea2D` must not write `AppState` fields directly.
 
 ## Validation
 
