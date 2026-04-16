@@ -19,7 +19,6 @@ const STORY_EVENT_CATALOG := preload("res://game/story_event_catalog.gd")
 
 @export var story_action: String = ""
 @export var display_name: String = ""
-@export_multiline var melody_hint: String = ""
 @export var debug_draw := false
 @export var debug_color: Color = Color(0.28, 0.82, 0.96, 0.35)
 
@@ -129,16 +128,6 @@ func get_display_name() -> String:
 	return _fallback_display_name()
 
 
-func get_melody_hint() -> String:
-	var explicit_hint := melody_hint.strip_edges()
-	if !explicit_hint.is_empty():
-		return explicit_hint
-	var runtime_hint := String(_runtime_subject_metadata().get("melody_hint", "")).strip_edges()
-	if !runtime_hint.is_empty():
-		return runtime_hint
-	return String(_subject_metadata().get("melody_hint", "")).strip_edges()
-
-
 func get_interaction_priority() -> int:
 	match get_story_action():
 		"collect", "perform":
@@ -155,9 +144,6 @@ func build_story_subject_context() -> Dictionary:
 	var resolved_display_name := get_display_name()
 	if !resolved_display_name.is_empty():
 		context["display_name"] = resolved_display_name
-	var resolved_hint := get_melody_hint()
-	if !resolved_hint.is_empty():
-		context["melody_hint"] = resolved_hint
 	return context
 
 
@@ -268,9 +254,6 @@ func _build_base_story_subject_context() -> Dictionary:
 	var explicit_name := display_name.strip_edges()
 	if !explicit_name.is_empty():
 		context["display_name"] = explicit_name
-	var explicit_hint := melody_hint.strip_edges()
-	if !explicit_hint.is_empty():
-		context["melody_hint"] = explicit_hint
 	return context
 
 

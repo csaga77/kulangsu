@@ -28,7 +28,7 @@ static func build_event_tree() -> Array[Dictionary]:
 												"harbor_clue_found": true,
 											},
 										},
-										"melody_hint_from_context": true,
+										"melody_hint_text": _harbor_refrain_melody_hint_text(),
 										"landmark_audio_cue_request": _landmark_audio_cue_request(
 											"piano_ferry",
 											"piano_ferry",
@@ -193,7 +193,6 @@ static func build_subject_metadata_definitions() -> Array[Dictionary]:
 			"subject_id": "landmark:piano_ferry.harbor_refrain",
 			"default_action": "collect",
 			"display_name": "Harbor Clue",
-			"melody_hint": "The old piano crate answers the ferry ropes with a patient two-note pulse.",
 			"presence_rules": [
 				_presence_visible_rule(10, {"landmark_state": {"piano_ferry": "introduced"}}),
 				_presence_hidden_rule(),
@@ -203,7 +202,6 @@ static func build_subject_metadata_definitions() -> Array[Dictionary]:
 			"subject_id": "landmark:trinity_church.steps",
 			"default_action": "collect",
 			"display_name": "Choir Cue (Steps)",
-			"melody_hint": "A low bell tone echoes from the old stone steps...",
 			"presence_rules": [
 				_presence_hidden_rule(100, _progress_contains_all("trinity_church", "cues_collected", ["steps"])),
 				_presence_visible_rule(
@@ -220,7 +218,6 @@ static func build_subject_metadata_definitions() -> Array[Dictionary]:
 			"subject_id": "landmark:trinity_church.garden",
 			"default_action": "collect",
 			"display_name": "Choir Cue (Garden)",
-			"melody_hint": "A bright chime rises from the garden wall...",
 			"presence_rules": [
 				_presence_hidden_rule(100, _progress_contains_all("trinity_church", "cues_collected", ["garden"])),
 				_presence_visible_rule(
@@ -237,7 +234,6 @@ static func build_subject_metadata_definitions() -> Array[Dictionary]:
 			"subject_id": "landmark:trinity_church.yard",
 			"default_action": "collect",
 			"display_name": "Choir Cue (Yard)",
-			"melody_hint": "A warm hum lingers in the quiet yard...",
 			"presence_rules": [
 				_presence_hidden_rule(100, _progress_contains_all("trinity_church", "cues_collected", ["yard"])),
 				_presence_visible_rule(
@@ -254,7 +250,6 @@ static func build_subject_metadata_definitions() -> Array[Dictionary]:
 			"subject_id": "landmark:trinity_church.choir_chime",
 			"default_action": "perform",
 			"display_name": "Choir Chime",
-			"melody_hint": "The bell tower waits for the three choir cues to settle together...",
 			"presence_rules": [
 				_presence_hidden_rule(
 					100,
@@ -328,7 +323,6 @@ static func build_subject_metadata_definitions() -> Array[Dictionary]:
 			"subject_id": "landmark:long_shan_tunnel.light_pocket_south",
 			"default_action": "collect",
 			"display_name": "Lit Pocket",
-			"melody_hint": "The tunnel air steadies where the lantern light gathers.",
 			"presence_rules": [
 				_presence_hidden_rule(
 					100,
@@ -342,7 +336,6 @@ static func build_subject_metadata_definitions() -> Array[Dictionary]:
 			"subject_id": "landmark:long_shan_tunnel.light_pocket_north",
 			"default_action": "collect",
 			"display_name": "Lit Pocket",
-			"melody_hint": "Ren's route holds together once the next lantern pocket answers back.",
 			"presence_rules": [
 				_presence_hidden_rule(
 					100,
@@ -381,7 +374,6 @@ static func build_subject_metadata_definitions() -> Array[Dictionary]:
 			"subject_id": "landmark:festival_stage.harbor_stage",
 			"default_action": "perform",
 			"display_name": "Festival Stage",
-			"melody_hint": "The plaza answers back all at once as the harbor finally carries the full melody.",
 			"presence_rules": [
 				_presence_visible_rule(10, _landmark_state_conditions("festival_stage", ["available"])),
 				_presence_hidden_rule(),
@@ -530,7 +522,7 @@ static func _trinity_cue_collect_effects(trigger_id: String) -> Dictionary:
 			},
 		},
 		"save_status": "Found: {display_name}",
-		"melody_hint_from_context": true,
+		"melody_hint_text": _trinity_cue_melody_hint_text(trigger_id),
 		"landmark_audio_cue_request": _landmark_audio_cue_request(
 			"trinity_church",
 			"trinity_church",
@@ -569,7 +561,7 @@ static func _trinity_chime_bindings() -> Array[Dictionary]:
 				},
 			},
 			"effects": {
-				"melody_hint_from_context": true,
+				"melody_hint_text": _trinity_chime_melody_hint_text(),
 				"landmark_audio_cue_request": _landmark_audio_cue_request(
 					"trinity_church",
 					"trinity_church",
@@ -710,7 +702,6 @@ static func _bi_shan_chamber_bindings() -> Array[Dictionary]:
 				},
 			},
 			"effects": {
-				"melody_hint_from_context": true,
 				"landmark_audio_cue_request": _landmark_audio_cue_request(
 					"bi_shan_tunnel",
 					"bi_shan_tunnel",
@@ -851,7 +842,7 @@ static func _long_shan_checkpoint_effects(trigger_id: String) -> Dictionary:
 				"checkpoints_collected": [trigger_id],
 			},
 		},
-		"melody_hint_from_context": true,
+		"melody_hint_text": _long_shan_checkpoint_melody_hint_text(trigger_id),
 		"landmark_audio_cue_request": _landmark_audio_cue_request(
 			"long_shan_tunnel",
 			"long_shan_tunnel",
@@ -877,7 +868,6 @@ static func _long_shan_exit_bindings() -> Array[Dictionary]:
 				},
 			},
 			"effects": {
-				"melody_hint_from_context": true,
 				"landmark_audio_cue_request": _landmark_audio_cue_request(
 					"long_shan_tunnel",
 					"long_shan_tunnel",
@@ -1002,7 +992,7 @@ static func _festival_stage_bindings() -> Array[Dictionary]:
 				"landmark_state": {"festival_stage": "available"},
 			},
 			"effects": {
-				"melody_hint_from_context": true,
+				"melody_hint_text": _festival_stage_melody_hint_text(),
 				"landmark_audio_cue_request": _landmark_audio_cue_request(
 					"festival_stage",
 					"festival_stage",
@@ -1016,6 +1006,40 @@ static func _festival_stage_bindings() -> Array[Dictionary]:
 			"consumes_interaction": false,
 		},
 	]
+
+
+static func _harbor_refrain_melody_hint_text() -> String:
+	return "The old piano crate answers the ferry ropes with a patient two-note pulse."
+
+
+static func _trinity_cue_melody_hint_text(trigger_id: String) -> String:
+	match trigger_id:
+		"steps":
+			return "A low bell tone echoes from the old stone steps..."
+		"garden":
+			return "A bright chime rises from the garden wall..."
+		"yard":
+			return "A warm hum lingers in the quiet yard..."
+		_:
+			return ""
+
+
+static func _trinity_chime_melody_hint_text() -> String:
+	return "The bell tower waits for the three choir cues to settle together..."
+
+
+static func _long_shan_checkpoint_melody_hint_text(trigger_id: String) -> String:
+	match trigger_id:
+		"light_pocket_south":
+			return "The tunnel air steadies where the lantern light gathers."
+		"light_pocket_north":
+			return "Ren's route holds together once the next lantern pocket answers back."
+		_:
+			return ""
+
+
+static func _festival_stage_melody_hint_text() -> String:
+	return "The plaza answers back all at once as the harbor finally carries the full melody."
 
 
 static func _trinity_chime_completion_bindings() -> Array[Dictionary]:

@@ -24,7 +24,7 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
 - When the trigger fires:
   - `landmark_progress["piano_ferry"]["harbor_clue_found"]` becomes `true`
   - landmark state advances to `resolved`
-  - the clue emits one short `melody_hint`
+  - the authored StoryEvent effect emits one short `melody_hint`
   - objective updates to return to Caretaker Lian
 - `ferry_caretaker` beat 1 is gated on `"gate": "piano_ferry_harbor_clue"`. Before the gate passes, she repeats the harbor-clue fallback.
 - When beat 1 fires:
@@ -76,7 +76,7 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
 
 - Signals emitted:
   - `AppState.landmark_progress_changed("piano_ferry", progress)` — on intro and clue resolution
-  - `AppState.melody_hint_shown(text)` — when the harbor clue is inspected
+  - `AppState.melody_hint_shown(text)` — when the harbor clue StoryEvent effect emits its flavour line
 - Signals consumed:
   - `AppState.landmark_progress_changed` — consumed by the ferry `StorySubjectArea2D` through StoryEvent presence sync
 - Data flow:

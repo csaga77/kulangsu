@@ -11,8 +11,7 @@ func _init(owner: Node) -> void:
 func activate_landmark_trigger(
 	_landmark_id: String,
 	_trigger_id: String,
-	_display_name: String,
-	_melody_hint: String = ""
+	_display_name: String
 ) -> bool:
 	return false
 

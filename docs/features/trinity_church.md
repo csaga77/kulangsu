@@ -23,7 +23,7 @@ The mood should stay calm throughout. There is no timer and no hard fail state. 
   - `steps` has no prerequisite.
   - `garden` requires `steps`.
   - `yard` requires `steps` and `garden`.
-- Each cue carries a `melody_hint` export — flavour text shown on-screen when collected (e.g. "A low bell tone echoes from the old stone steps..."). This gives the player incremental melody feedback during the pickup walk.
+- Each cue's authored StoryEvent effect emits one short `melody_hint` line when collected (e.g. "A low bell tone echoes from the old stone steps..."). This gives the player incremental melody feedback during the pickup walk without pushing melody-only text into `StorySubjectArea2D`.
 - Landmark state advances to `in_progress` on first cue collection.
 - After the third cue, `AppState` emits one extra chime-flavoured `melody_hint` and redirects the objective to the `choir_chime` trigger near the steps.
 - The choir chime is its own `StorySubjectArea2D` node. It only becomes usable once `steps`, `garden`, and `yard` are all present in `cues_collected`.
@@ -89,7 +89,7 @@ The mood should stay calm throughout. There is no timer and no hard fail state. 
 
 - Signals emitted:
   - `AppState.landmark_progress_changed("trinity_church", progress)` — on any cue collection or state advance
-  - `AppState.melody_hint_shown(text)` — on each cue collection (carries the trigger's `melody_hint` flavour text)
+  - `AppState.melody_hint_shown(text)` — on each cue collection (emitted by the authored cue-collection StoryEvent effects)
   - `AppState.melody_prompt_requested(request)` — when the choir chime is activated after all three cues are found
   - `AppState.melody_progress_changed("festival_melody", state)` — on Mei's final arc resolution
   - `AppState.fragments_changed(found, total)` — on arc resolution (via set_melody_progress)

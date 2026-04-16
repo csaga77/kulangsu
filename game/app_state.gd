@@ -1417,30 +1417,27 @@ func _request_landmark_audio_cue(
 ## subjects from ids instead of walking through a StorySubjectArea2D instance.
 ## Returns true only when the current authored StoryEvent binding consumes the
 ## interaction immediately.
-func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_name: String, melody_hint: String = "") -> bool:
+func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_name: String) -> bool:
 	if m_story_event_service != null:
 		var story_result: Dictionary = m_story_event_service.activate_authored_landmark_subject(
 			landmark_id,
 			trigger_id,
-			display_name,
-			melody_hint
+			display_name
 		)
 		if bool(story_result.get("handled", false)):
 			return bool(story_result.get("consumed", false))
-	return _activate_legacy_landmark_trigger(landmark_id, trigger_id, display_name, melody_hint)
+	return _activate_legacy_landmark_trigger(landmark_id, trigger_id, display_name)
 
 
 func _activate_legacy_landmark_trigger(
 	landmark_id: String,
 	trigger_id: String,
-	display_name: String,
-	melody_hint: String = ""
+	display_name: String
 ) -> bool:
 	return m_landmark_progression.activate_landmark_trigger(
 		landmark_id,
 		trigger_id,
-		display_name,
-		melody_hint
+		display_name
 	)
 
 

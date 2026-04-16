@@ -76,7 +76,7 @@ The external GDD's `Sunlight Rock` and `Zheng Chenggong Statue` are not part of 
 - NPC system:
   - strong current fit
   - residents are already the main source of local clues, trust, and objective nudges
-  - current `melody_hint` text is narrative-facing color, not a deeper mechanical link back into melody ids yet
+  - current `melody_hint` text is narrative-facing color emitted by authored StoryEvent effects, not a deeper mechanical link back into melody ids yet
 - Audio system:
   - a scene-owned BGM controller now runs from `scenes/game_main.gd` through `game/bgm_manager.gd`, using a 12-track weighted pool from `game/bgm_catalog.gd`
   - the current V1 BGM pass keys off location plus melody progress, with fixed defaults for time, season, and weather

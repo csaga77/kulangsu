@@ -7,6 +7,7 @@ const StorySubjectArea2D = preload("res://game/story_subject_area.gd")
 
 var m_failures := PackedStringArray()
 var m_prompt_requests: Array[Dictionary] = []
+var m_melody_hints: Array[String] = []
 
 
 func _app_state():
@@ -20,6 +21,8 @@ func _ready() -> void:
 func _run() -> void:
 	if !_app_state().melody_prompt_requested.is_connected(_on_melody_prompt_requested):
 		_app_state().melody_prompt_requested.connect(_on_melody_prompt_requested)
+	if !_app_state().melody_hint_shown.is_connected(_on_melody_hint_shown):
+		_app_state().melody_hint_shown.connect(_on_melody_hint_shown)
 
 	_app_state().override_story_autosave_path_for_tests(TEST_AUTOSAVE_PATH)
 	_app_state().clear_story_autosave_for_tests()
@@ -34,6 +37,10 @@ func _run() -> void:
 	_assert_true(
 		harbor_trigger.get_story_action() == "collect",
 		"StorySubjectArea2D resolves the default collect action from StoryEvent metadata"
+	)
+	_assert_true(
+		!harbor_trigger.build_story_subject_context().has("melody_hint"),
+		"StorySubjectArea2D keeps melody-specific flavour text out of the generic world-subject context"
 	)
 	var choir_trigger := StorySubjectArea2D.new()
 	choir_trigger.subject_id = "landmark:trinity_church.choir_chime"
@@ -56,6 +63,7 @@ func _run() -> void:
 
 	_app_state().configure_new_game()
 	m_prompt_requests.clear()
+	m_melody_hints.clear()
 	_progress_through_landmark_spine_via_story_subjects()
 
 	_app_state().configure_new_game()
@@ -140,6 +148,7 @@ func _run() -> void:
 
 func _progress_through_ferry_opening() -> void:
 	_app_state().activate_story_subject("npc:ferry_caretaker", "talk")
+	var melody_hint_count_before := m_melody_hints.size()
 	var harbor_result: Dictionary = _app_state().activate_story_subject(
 		"landmark:piano_ferry.harbor_refrain",
 		"collect",
@@ -148,6 +157,17 @@ func _progress_through_ferry_opening() -> void:
 	_assert_true(
 		bool(harbor_result.get("consumed", false)),
 		"StoryEvent landmark activation routes the harbor refrain through the generic subject API"
+	)
+	_assert_true(
+		m_melody_hints.size() == melody_hint_count_before + 1,
+		"Harbor refrain still emits melody flavour text through an authored StoryEvent effect"
+	)
+	var latest_melody_hint := ""
+	if m_melody_hints.size() > melody_hint_count_before:
+		latest_melody_hint = m_melody_hints[m_melody_hints.size() - 1]
+	_assert_true(
+		latest_melody_hint.contains("patient two-note pulse"),
+		"Harbor refrain melody flavour text now comes from the authored StoryEvent effect payload"
 	)
 	_app_state().activate_story_subject("npc:ferry_caretaker", "talk")
 
@@ -415,3 +435,7 @@ func _assert_true(condition: bool, label: String) -> void:
 
 func _on_melody_prompt_requested(request: Dictionary) -> void:
 	m_prompt_requests.append(request.duplicate(true))
+
+
+func _on_melody_hint_shown(text: String) -> void:
+	m_melody_hints.append(text)

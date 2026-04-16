@@ -247,8 +247,8 @@ Current contract:
 - `AppState.landmark_progress_changed(landmark_id, progress)` fires whenever any landmark's entry changes
 - `AppState.get_landmark_progress(landmark_id)` and `get_landmark_state(landmark_id)` are the read API
 - `AppState.set_landmark_progress(landmark_id, progress)` and `advance_landmark_state(landmark_id, new_state)` are the write API
-- `AppState.activate_landmark_trigger(landmark_id, trigger_id, display_name, melody_hint)` now exists as a compatibility bridge for tests or legacy callers; runtime world interaction goes through `StorySubjectArea2D` nodes and `AppState.activate_story_subject(...)`, which first offers the interaction to `game/story_event_service.gd` as the stable subject id `landmark:<landmark_id>.<trigger_id>`
-- `AppState.melody_hint_shown(text)` fires when a trigger with a non-empty `melody_hint` is collected; the HUD subscribes to display the flavour text on-screen
+- `AppState.activate_landmark_trigger(landmark_id, trigger_id, display_name)` now exists as a compatibility bridge for tests or legacy callers; runtime world interaction goes through `StorySubjectArea2D` nodes and `AppState.activate_story_subject(...)`, which first offers the interaction to `game/story_event_service.gd` as the stable subject id `landmark:<landmark_id>.<trigger_id>`
+- `AppState.melody_hint_shown(text)` fires when a melody-specific StoryEvent effect emits flavour text; the HUD subscribes to display it on-screen without making `StorySubjectArea2D` carry melody-only metadata
 - successful landmark interactions may also emit `AppState.landmark_audio_cue_requested(cue_id, context)` so the world scene can play a local motif without relying on `melody_hint_shown` text alone
 - `AppState.set_all_landmark_progress(progress)` sets multiple landmarks at once; used by `configure_*` methods
 - Resident dialogue beats may carry `"unlock_landmark"` to unlock a landmark when the beat fires, and `"gate"` / `"gate_fallback"` to block a beat until a landmark condition is satisfied

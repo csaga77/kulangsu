@@ -140,14 +140,12 @@ func sync_story_route_dependent_landmarks(event_id: String = "") -> void:
 func activate_authored_landmark_subject(
 	landmark_id: String,
 	trigger_id: String,
-	display_name: String,
-	melody_hint: String = ""
+	display_name: String
 ) -> Dictionary:
 	var subject_id := build_landmark_subject_id(landmark_id, trigger_id)
 	var action := default_landmark_action(landmark_id, trigger_id)
 	var context := build_context(subject_id, {
 		"display_name": display_name,
-		"melody_hint": melody_hint,
 		"landmark_id": landmark_id,
 		"trigger_id": trigger_id,
 		"action": action,
@@ -426,11 +424,6 @@ func apply_effects(payload: Dictionary, context: Dictionary = {}) -> void:
 		if !bool(reward_result.get("handled", false)):
 			m_owner._resolve_landmark(landmark_reward)
 
-	if bool(formatted_payload.get("melody_hint_from_context", false)):
-		var melody_hint_text := String(resolved_context.get("melody_hint", "")).strip_edges()
-		if !melody_hint_text.is_empty():
-			m_owner._emit_melody_hint_shown(melody_hint_text)
-
 	var landmark_audio_cue_request = formatted_payload.get("landmark_audio_cue_request", {})
 	if landmark_audio_cue_request is Dictionary:
 		var cue_id := String(landmark_audio_cue_request.get("cue_id", ""))
@@ -673,8 +666,7 @@ func _activate_landmark_subject(
 	var consumed: bool = m_owner._activate_legacy_landmark_trigger(
 		String(description.get("landmark_id", "")),
 		String(description.get("trigger_id", "")),
-		display_name,
-		String(context.get("melody_hint", ""))
+		display_name
 	)
 	description["consumed"] = consumed
 	description["handled"] = true
@@ -716,7 +708,6 @@ func _resolve_subject_metadata(subject_id: String, action: String, context: Dict
 	var metadata := _get_subject_metadata(normalized_subject)
 	var resolved_action := String(context.get("action", action)).strip_edges().to_lower()
 	var resolved_display_name := String(context.get("display_name", "")).strip_edges()
-	var resolved_melody_hint := String(context.get("melody_hint", "")).strip_edges()
 	var active_binding := _pick_subject_binding_for_metadata(normalized_subject, resolved_action, context)
 	var binding_metadata := {}
 	var raw_binding_metadata = active_binding.get("subject_metadata", {})
@@ -729,17 +720,11 @@ func _resolve_subject_metadata(subject_id: String, action: String, context: Dict
 			resolved_display_name = String(
 				binding_metadata.get("display_name", active_binding.get("display_name", ""))
 			).strip_edges()
-		if resolved_melody_hint.is_empty():
-			resolved_melody_hint = String(
-				binding_metadata.get("melody_hint", active_binding.get("melody_hint", ""))
-			).strip_edges()
 	if !metadata.is_empty():
 		if resolved_action.is_empty():
 			resolved_action = String(metadata.get("default_action", "")).strip_edges().to_lower()
 		if resolved_display_name.is_empty():
 			resolved_display_name = String(metadata.get("display_name", "")).strip_edges()
-		if resolved_melody_hint.is_empty():
-			resolved_melody_hint = String(metadata.get("melody_hint", "")).strip_edges()
 	else:
 		if resolved_display_name.is_empty():
 			resolved_display_name = _fallback_subject_display_name(normalized_subject)
@@ -754,7 +739,6 @@ func _resolve_subject_metadata(subject_id: String, action: String, context: Dict
 		"subject_id": normalized_subject,
 		"action": resolved_action,
 		"display_name": resolved_display_name,
-		"melody_hint": resolved_melody_hint,
 	})
 	var resolved_metadata := metadata.duplicate(true)
 	if !binding_metadata.is_empty():
@@ -762,7 +746,6 @@ func _resolve_subject_metadata(subject_id: String, action: String, context: Dict
 	resolved_metadata["subject_id"] = normalized_subject
 	resolved_metadata["action"] = resolved_action
 	resolved_metadata["display_name"] = resolved_display_name
-	resolved_metadata["melody_hint"] = resolved_melody_hint
 	if !active_binding.is_empty():
 		resolved_metadata["active_binding"] = active_binding.duplicate(true)
 	resolved_metadata.merge(_resolve_subject_presence(resolved_metadata, metadata_context), true)
@@ -801,9 +784,6 @@ func _build_subject_context(subject_id: String, action: String, metadata: Dictio
 	var display_name := String(metadata.get("display_name", context.get("display_name", ""))).strip_edges()
 	if !display_name.is_empty():
 		merged_context["display_name"] = display_name
-	var resolved_melody_hint := String(metadata.get("melody_hint", context.get("melody_hint", ""))).strip_edges()
-	if !resolved_melody_hint.is_empty():
-		merged_context["melody_hint"] = resolved_melody_hint
 	return merged_context
 
 

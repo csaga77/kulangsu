@@ -247,7 +247,7 @@ This direction implies the following refactor target:
 - current non-resident inspect text in `story_world_reactivity.gd` should move into the same StoryEvent-driven subject model
 - `game_main.gd` should become a thin interaction router into the director
 - scene-owned interaction geometry should remain scene-authored, while world-subject behavior should stay in the generic `StorySubjectArea2D` + StoryEvent metadata layer instead of bespoke trigger/inspectable scripts
-- a `StorySubjectArea2D` instance should represent a stable physical hotspot in the world; different StoryEvents may reuse that same `subject_id`, with active binding metadata deciding the current action, label, hint, and visibility
+- a `StorySubjectArea2D` instance should represent a stable physical hotspot in the world; different StoryEvents may reuse that same `subject_id`, with active binding metadata deciding the current action, label, and visibility while story-specific flavour text stays in the authored event effects
 - the current route ledger and UI route categories should remain player-facing views, even if their backing state is generated from active `StoryEventDefinition` trees and published facts
 
 ### Concrete Runtime Spec
