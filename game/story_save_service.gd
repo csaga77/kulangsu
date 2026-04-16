@@ -74,6 +74,7 @@ func configure_new_game() -> void:
 	m_owner.set_save_status("Autosave: story start saved")
 	m_owner.set_landmarks(m_owner._default_landmarks())
 	m_owner.set_open_shortcuts(PackedStringArray())
+	m_owner.clear_resident_routine_overrides()
 	m_owner.set_resident_profiles(m_owner._default_resident_profiles())
 	m_owner.set_melody_progress(m_owner._build_story_melody_progress("new_game"))
 	m_owner.set_all_landmark_progress(m_owner._build_landmark_progress("new_game"))
@@ -116,6 +117,7 @@ func configure_free_walk() -> void:
 	m_owner.set_save_status("Free Walk: sandbox ready")
 	m_owner.set_landmarks(m_owner._default_landmarks())
 	m_owner.set_open_shortcuts(PackedStringArray())
+	m_owner.clear_resident_routine_overrides()
 	m_owner.set_resident_profiles(m_owner._default_resident_profiles())
 	m_owner.set_melody_progress(m_owner._build_story_melody_progress("free_walk"))
 	m_owner.set_all_landmark_progress(m_owner._build_landmark_progress("free_walk"))
@@ -150,6 +152,7 @@ func _build_story_autosave_payload() -> Dictionary:
 		"manual_pinned_lead_id": m_owner._manual_pinned_lead_id,
 		"open_shortcuts": m_owner.get_open_shortcuts(),
 		"resident_profiles": m_owner.resident_profiles.duplicate(true),
+		"resident_routine_overrides": m_owner.get_all_resident_routine_overrides(),
 		"player_profile": m_owner.get_player_profile(),
 		"equipped_player_costume_id": m_owner.get_equipped_player_costume_id(),
 		"ending_summary": m_owner.ending_summary.duplicate(true),
@@ -208,6 +211,7 @@ func _normalize_story_autosave_payload(payload: Dictionary) -> Dictionary:
 		"manual_pinned_lead_id": String(payload.get("manual_pinned_lead_id", "")),
 		"open_shortcuts": payload.get("open_shortcuts", []),
 		"resident_profiles": payload.get("resident_profiles", {}),
+		"resident_routine_overrides": payload.get("resident_routine_overrides", {}),
 		"player_profile": payload.get("player_profile", m_owner.PLAYER_APPEARANCE_CATALOG_SCRIPT.default_profile()),
 		"equipped_player_costume_id": String(payload.get("equipped_player_costume_id", m_owner.PLAYER_COSTUME_CATALOG_SCRIPT.default_costume_id())),
 		"ending_summary": payload.get("ending_summary", m_owner.ending_summary),
@@ -296,6 +300,9 @@ func _apply_story_autosave_payload(payload: Dictionary) -> bool:
 	m_owner.set_landmarks(m_owner._default_landmarks())
 	m_owner.set_open_shortcuts(payload.get("open_shortcuts", []))
 	m_owner.set_resident_profiles(_normalize_saved_resident_profiles(payload.get("resident_profiles", {})))
+	m_owner.set_resident_routine_overrides(
+		_normalize_saved_resident_routine_overrides(payload.get("resident_routine_overrides", {}))
+	)
 	m_owner.set_melody_progress(payload.get("melody_progress", {}))
 	m_owner.set_all_landmark_progress(_normalize_saved_landmark_progress(payload.get("landmark_progress", {})))
 	m_owner.set_summary(_normalize_saved_summary(payload.get("ending_summary", {})))
@@ -312,3 +319,20 @@ func _apply_story_autosave_payload(payload: Dictionary) -> bool:
 	m_owner._update_summary_counts()
 	refresh_story_autosave_metadata()
 	return true
+
+
+func _normalize_saved_resident_routine_overrides(saved_overrides: Variant) -> Dictionary:
+	var normalized: Dictionary = {}
+	if !(saved_overrides is Dictionary):
+		return normalized
+
+	for resident_id in (saved_overrides as Dictionary).keys():
+		var override_value = (saved_overrides as Dictionary).get(resident_id)
+		if !(override_value is Dictionary):
+			continue
+		var resident_key := String(resident_id).strip_edges()
+		if resident_key.is_empty():
+			continue
+		normalized[resident_key] = (override_value as Dictionary).duplicate(true)
+
+	return normalized

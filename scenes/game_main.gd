@@ -483,6 +483,8 @@ func _connect_ui_signals() -> void:
 		_app_state().story_milestone.connect(_on_story_milestone)
 	if !_app_state().landmark_audio_cue_requested.is_connected(_on_landmark_audio_cue_requested):
 		_app_state().landmark_audio_cue_requested.connect(_on_landmark_audio_cue_requested)
+	if !_app_state().resident_routine_override_changed.is_connected(_on_resident_routine_override_changed):
+		_app_state().resident_routine_override_changed.connect(_on_resident_routine_override_changed)
 	if !_app_state().prompt_volume_changed.is_connected(_on_prompt_volume_changed):
 		_app_state().prompt_volume_changed.connect(_on_prompt_volume_changed)
 
@@ -625,7 +627,11 @@ func _on_inspect_requested() -> void:
 	var resident_controller := _get_resident_controller(m_closest_object)
 	if resident_controller != null:
 		var resident_id := resident_controller.get_resident_id()
-		var interaction = _app_state().interact_with_resident(resident_id)
+		var interaction = _app_state().activate_story_subject(
+			"npc:%s" % resident_id,
+			"talk",
+			_build_story_subject_context(m_closest_object, {"resident_id": resident_id})
+		)
 		var resident_name = _app_state().get_resident_display_name(resident_id)
 		var dialogue_line := String(interaction.get("line", ""))
 
@@ -653,13 +659,12 @@ func _on_inspect_requested() -> void:
 
 	var story_inspectable := _get_story_inspectable(m_closest_object)
 	if story_inspectable != null:
-		_app_state().set_save_status(
-			STORY_WORLD_REACTIVITY_SCRIPT.build_inspect_text(
-				_app_state(),
-				story_inspectable.inspectable_id,
-				story_inspectable.display_name
-			)
+		var inspect_result: Dictionary = _app_state().activate_story_subject(
+			STORY_WORLD_REACTIVITY_SCRIPT.build_subject_id(story_inspectable.inspectable_id),
+			"inspect",
+			_build_story_subject_context(m_closest_object, {"display_name": story_inspectable.display_name})
 		)
+		_app_state().set_save_status(String(inspect_result.get("text", "Inspect: %s" % story_inspectable.display_name)))
 		return
 
 	var display_name := _display_name_for_node(m_closest_object)
@@ -927,6 +932,35 @@ func _story_event_status_text(event_id: String) -> String:
 			return ""
 
 
+func _on_resident_routine_override_changed(resident_id: String, _routine_override: Dictionary) -> void:
+	var resident := _find_resident_actor(resident_id)
+	if resident == null or m_route_resolver == null:
+		return
+
+	var spawn_config: Dictionary = _app_state().get_resident_spawn_config(resident_id)
+	var anchor_id := String(spawn_config.get("anchor_id", ""))
+	var anchor_node := m_spawn_anchor_nodes.get(anchor_id) as Node2D
+	if is_instance_valid(anchor_node):
+		var spawn_offset: Vector2 = spawn_config.get("offset", Vector2.ZERO)
+		resident.global_position = m_route_resolver.resolve_actor_anchor_position(resident, anchor_node, spawn_offset)
+		m_route_resolver.apply_anchor_level_to_actor(resident, anchor_node)
+		resident.direction = float(spawn_config.get("direction", resident.direction))
+		if spawn_config.has("mood"):
+			resident.facial_mood = int(spawn_config.get("mood", resident.facial_mood)) as HumanBody2D.FacialMoodEnum
+
+	var controller := resident.controller as NPCController
+	if controller != null:
+		var movement_config: Dictionary = m_route_resolver.build_resident_movement_config(
+			resident_id,
+			resident,
+			_app_state().get_resident_movement_config(resident_id)
+		)
+		controller.configure_movement(movement_config)
+
+	_sync_tunnel_resident_visibility()
+	_sync_debug_drawer_config()
+
+
 func _apply_player_costume() -> void:
 	if !is_instance_valid(m_player):
 		return
@@ -953,3 +987,29 @@ func _get_story_inspectable(target: Node2D) -> StoryInspectable:
 	if !is_instance_valid(target):
 		return null
 	return target as StoryInspectable
+
+
+func _find_resident_actor(resident_id: String) -> HumanBody2D:
+	if !is_instance_valid(m_resident_root):
+		return null
+	for child in m_resident_root.get_children():
+		var resident := child as HumanBody2D
+		if resident == null:
+			continue
+		var controller := resident.controller as NPCController
+		if controller == null:
+			continue
+		if controller.get_resident_id() == resident_id:
+			return resident
+	return null
+
+
+func _build_story_subject_context(target: Node2D, extra_context: Dictionary = {}) -> Dictionary:
+	var context := extra_context.duplicate(true)
+	context["location"] = _app_state().location
+	if is_instance_valid(target):
+		context["display_name"] = context.get("display_name", _display_name_for_node(target))
+		context["world_position"] = target.global_position
+		if target is LevelArea2D:
+			context["level_id"] = (target as LevelArea2D).get_resolved_level_id()
+	return context

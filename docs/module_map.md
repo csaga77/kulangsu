@@ -6,7 +6,7 @@ Read [`design_brief.md`](design_brief.md) and [`architecture.md`](architecture.m
 
 - [`../project.godot`](../project.godot) - Godot project configuration, input map, and main scene
 - [`../main.tscn`](../main.tscn) / [`../main.gd`](../main.gd) - app startup and overlay flow
-- [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - main island scene, world integration, and shared overworld weather host registration
+- [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - main island scene, world integration, shared overworld weather host registration, and story-subject routing for resident talk plus scene-owned inspectables
 - [`../weather/`](../weather) - weather-specific top-level folder for reusable overlays, the global weather manager/runtime, and the dedicated weather sandbox
 - [`../weather/weather_manager.gd`](../weather/weather_manager.gd) - global overworld weather manager that instantiates runtime weather rigs, owns preset cycling, and applies synced wind across registered rain, fog, and cloud-shadow targets
 - [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd) - runtime lookup helper for the global scene-owned `WeatherManager`
@@ -29,8 +29,9 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../terrain/island_generation_profile.tres`](../terrain/island_generation_profile.tres) - shared authored terrain profile resource referenced by `terrain.tscn` so direct terrain validation and `game_main` use the same rules
 - [`../terrain/water_layer_setup.gd`](../terrain/water_layer_setup.gd) - shared water `TileMapLayer` setup used by runtime terrain and the focused water sandbox
 - [`../terrain/terrain_generation_profile.gd`](../terrain/terrain_generation_profile.gd) / [`../terrain/terrain_mask_rule.gd`](../terrain/terrain_mask_rule.gd) - terrain mask legend, per-color semantics, and generated-layer paint defaults
-- [`../game/app_state.gd`](../game/app_state.gd) - shared UI/progression-facing state plus the compatibility shell that composes profile, journal, autosave, and landmark helpers
+- [`../game/app_state.gd`](../game/app_state.gd) - shared UI/progression-facing state plus the compatibility shell that composes profile, journal, autosave, landmark, and StoryEvent helpers
 - [`../game/app_runtime.gd`](../game/app_runtime.gd) - scene-owned runtime lookup for `AppStateService` and the live `"player"` group member
+- [`../game/story_event_service.gd`](../game/story_event_service.gd) - first-pass generic StoryEvent bridge for subject-based interactions, shared condition matching, candidate selection, and shared effect application
 - [`../weather/weather_manager.gd`](../weather/weather_manager.gd) - global scene-owned weather service for overworld preset cycling, runtime weather-rig instancing, and synced wind application
 - [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd) - runtime lookup helper for `WeatherManager`
 - [`../game/landmark_trigger_catalog.gd`](../game/landmark_trigger_catalog.gd) - canonical authored `landmark_id` list plus valid `trigger_id` values per landmark; shared by inspector dropdowns and runtime progression validation
@@ -40,7 +41,7 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../game/audio_settings_service.gd`](../game/audio_settings_service.gd) - owns runtime volume/text-speed state while `AppState` keeps the shell-facing API and signals
 - [`../game/resident_interaction_service.gd`](../game/resident_interaction_service.gd) - applies resident dialogue beats, conditional beats, trust milestones, route refresh, and resident-facing autosave side effects behind `AppState` facades
 - [`../game/story_route_graph.gd`](../game/story_route_graph.gd) - canonical seasonal route definitions, event definitions, lead selection, endgame trigger logic, and tone-tag assembly
-- [`../game/story_world_reactivity.gd`](../game/story_world_reactivity.gd) / [`../game/story_inspectable.gd`](../game/story_inspectable.gd) - resolves route-aware non-resident inspection text for `StoryInspectable` areas authored in the ferry, church, and Bagua landmark scenes
+- [`../game/story_world_reactivity.gd`](../game/story_world_reactivity.gd) / [`../game/story_inspectable.gd`](../game/story_inspectable.gd) - resolves route-aware non-resident inspection text for `StoryInspectable` areas authored in the ferry, church, and Bagua landmark scenes and exposes stable `inspectable:` subject ids to the StoryEvent bridge
 - [`../game/landmark_progression.gd`](../game/landmark_progression.gd) - landmark trigger handling, melody prompt requests, fragment awards, and harbor-performance completion flow
 - [`../game/landmark_cue_loader.gd`](../game/landmark_cue_loader.gd) - shared one-shot landmark cue loader/cache that decodes shipped Vorbis `.ogg` cues directly instead of relying on editor import state
 - [`../game/bgm_catalog.gd`](../game/bgm_catalog.gd) / [`../game/bgm_manager.gd`](../game/bgm_manager.gd) - seed-pool BGM definitions plus scene-owned weighted playback and transition logic for overworld music
@@ -121,6 +122,7 @@ Be careful about renames or moves here because scene and resource references can
 - [`../game/tests/persistence/test_story_state_persistence.tscn`](../game/tests/persistence/test_story_state_persistence.tscn) - focused persistence regression covering unknown `story_flags` plus save/load restoration for override-backed resident profiles
 - [`../game/tests/story_routes/test_story_routes.tscn`](../game/tests/story_routes/test_story_routes.tscn) - focused seasonal-route regression covering concurrent route seeds, manual lead pinning persistence, non-landmark seasonal progression, guarded endgame activation, and final-act save/restore
 - [`../game/tests/story_routes/test_story_reactivity.tscn`](../game/tests/story_routes/test_story_reactivity.tscn) - focused cross-route resident reactivity regression covering winter-memory, Spring Festival aftermath, future-choice, second-summer, and preservation-perspective follow-through
+- [`../game/tests/story_routes/test_story_event_service.tscn`](../game/tests/story_routes/test_story_event_service.tscn) - focused StoryEvent bridge regression covering subject-based resident talk, inspectable resolution, and live resident routine overrides inside `game_main`
 - [`../scenes/tests/test_level_resolution.tscn`](../scenes/tests/test_level_resolution.tscn) - focused relative-level resolution and inherited room-level sandbox
 - [`../scenes/tests/test_portal_overlap.tscn`](../scenes/tests/test_portal_overlap.tscn) - focused multi-actor portal transition regression test
 - [`../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn`](../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn) - focused Bagua base-to-ground portal integration for `level_id` actor transitions

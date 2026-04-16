@@ -52,12 +52,16 @@ Current contract:
 - composed helper scripts emit `AppState`-owned signals back through bridge methods on `AppState` itself so the public signal contract stays centralized and GDScript static analysis can still verify those signals are live
 - `AppState` now owns the one-slot story autosave contract, current safe resume anchor, and the `configure_new_game()`, `configure_continue()`, `configure_free_walk()`, `save_story_autosave()`, `clear_story_autosave()`, and `set_story_resume_checkpoint(...)` bridge methods used by the shell and world scene; `game/story_save_service.gd` owns the active read/write implementation
 - `AppState` also keeps the landmark bridge methods (`activate_landmark_trigger(...)`, prompt-request/completion facades) and resident/audio facades even when helper scripts own the implementation, so runtime callers and tests continue to target the same shared-state contract
+- `AppState` now composes `game/story_event_service.gd` and exposes `describe_story_subject(subject_id, action, context)`, `activate_story_subject(subject_id, action, context)`, `notify_story_world_event(event_id, payload, context)`, `pick_story_candidate(candidates, context)`, `matches_story_conditions(conditions, context)`, and `apply_story_effects(payload, context)` as the shared StoryEvent bridge
+- `activate_story_subject(...)` is now the generic interaction entry point for resident talk and scene-authored `StoryInspectable` inspect surfaces; the current subject taxonomy includes `npc:<resident_id>` and `inspectable:<inspectable_id>`
+- `apply_story_effects(...)` is the shared write path for resident beats and future StoryEvent bindings; current supported effect channels include objective/hint/save-status updates, `season_phase`, landmark unlock/state/reward changes, `story_flags`, `story_event`, `pin_lead_id`, resident routine overrides, resident routine override clearing, and story milestones
 - `game/story_route_graph.gd` owns canonical route definitions, event definitions, lead selection, endgame-trigger evaluation, ending-behavior classification, and baseline ending-tone tag generation
 - the app shell and world hint logic may query `AppState.is_journal_unlocked()` and `AppState.build_input_hint(...)` to keep the early tutorial flow and controls text aligned
 - world and UI code rely on resident getters for resident ids, definitions, display names, appearance configs, spawn configs, movement configs, behavior configs, ambient speech, resident journal text, and full resident profiles when optional movement metadata is needed
 - `ResidentCatalog` may merge external `.tres` resident definitions from `res://game/residents/definitions/`; matching ids override built-ins and `include_in_catalog = false` keeps a resource out of the runtime roster
 - `interact_with_resident()` checks a resident's `conditional_beats` (priority-sorted, condition-gated) before falling through to the linear `dialogue_beats` spine
 - resident conditional gating may now read `season_phase`, `story_flags`, route state, route score, and endgame-active state
+- `resident_routine_override_changed(resident_id, routine_override)` is the world-facing signal for live resident route changes; `get_resident_spawn_config(...)`, `get_resident_movement_config(...)`, and `get_resident_behavior_config(...)` now merge base authored data with any active override, and story autosave persists those overrides through continue/load
 - UI code can now rely on melody getters, journal helpers, `build_map_journal_text()`, `get_open_shortcuts()`, `can_practice_melody(...)`, `request_melody_practice(...)`, and `complete_prompt_request(...)` for melody-facing and dependable-route player context
 - `ui/screens/journal_overlay.gd` and `ui/screens/player_customization_overlay.gd` are the live consumers of `game/journal_builder.gd`
 - HUD and journal code now treat one active lead as the primary player-facing objective while the journal exposes the broader live route list
@@ -68,6 +72,33 @@ Governance:
 - keep shared cross-screen state here
 - do not move scene-local behavior into `AppState` without a strong reason
 - if signal names, payload shapes, or key state fields change, update this file and the affected feature docs
+
+## StoryEvent Boundary
+
+Reference:
+
+- [`event_story_system_design.md`](event_story_system_design.md)
+
+Owned by:
+
+- [`../game/app_state.gd`](../game/app_state.gd)
+- [`../game/story_event_service.gd`](../game/story_event_service.gd)
+- [`../game/resident_interaction_service.gd`](../game/resident_interaction_service.gd)
+- [`../game/story_world_reactivity.gd`](../game/story_world_reactivity.gd)
+
+Current contract:
+
+- story-facing world interactions now flow through stable `subject_id + action` pairs instead of route-specific scene callbacks
+- `StoryEventService` owns generic context building, shared condition matching, priority-based candidate selection, and shared effect application, while `story_route_graph.gd`, resident data, and existing landmark helpers remain the current canonical source for route/event meaning
+- resident conditional beats now resolve through `pick_story_candidate(...)` and apply their side effects through `apply_story_effects(...)` rather than keeping separate copies of condition/effect logic
+- non-resident inspect text now resolves through `StoryWorldReactivity.resolve_inspect_result(...)`, which builds stable `inspectable:` subject ids and reuses the shared condition matcher
+- resident routine overrides are the first live world-state effect channel driven through the shared StoryEvent boundary; the world scene listens for override changes and reapplies spawn anchor, level, and movement state to live resident actors
+- the current route ledger remains the player-facing progression view, while the longer-term goal is still to migrate route families into authored recursive StoryEvent definitions and a published-fact ledger
+
+Governance:
+
+- do not let future route implementations bypass the generic subject/fact model by adding direct route-to-route service calls unless there is a proven ownership need
+- prefer optional capability adapters and published facts over hardcoded calls between individual story families
 
 ## Weather Runtime Contract
 
@@ -121,10 +152,12 @@ Current contract:
 
 - `scenes/game_main.gd` maps landmarks plus resident spawn/movement anchors, reacts to controller events, syncs player tunnel context into `AppState`, and delegates route resolution, resident spawning, tunnel context, and debug route drawing to focused helper scripts under `scenes/`
 - `scenes/game_main.gd` instantiates `ResidentNPC` actors from `AppState.get_resident_definition(...)` and then applies world-specific spawn, level, and route resolution
+- `scenes/game_main.gd` now routes resident talk and `StoryInspectable` inspect actions through `AppState.activate_story_subject(...)`, while still owning closest-target selection, world prompt presentation, and fallback generic inspect text
 - `scenes/game_main.gd` also owns mapping the live player position onto safe story resume anchors for autosave and continue
 - `scenes/game_main.gd` registers overworld weather hosts plus the terrain spawn layer with `WeatherManager`, which instantiates the active rain, fog, cloud-shadow, and ground-impact nodes at runtime
 - `scenes/game_main.tscn` keeps the player and resident instances under one shared y-sorted actor layer rooted at `actors`
 - player inspect and talk prompts flow from the nearest nearby same-layer resident or landmark cue through controller signals into `AppState`
+- `scenes/game_main.gd` listens for `resident_routine_override_changed(...)` and reapplies the shared spawn-anchor, level, and movement pipeline to already spawned residents when story state changes their routine
 - landmark naming and location sync depend on known nodes in the main scene
 - player tunnel context must only become active after the player reaches the tunnel interior level; overlapping the tunnel footprint on the surface must not count as tunnel entry
 

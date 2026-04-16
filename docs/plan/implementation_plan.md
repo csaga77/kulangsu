@@ -14,7 +14,9 @@ Shipped foundations:
 - four canonical routes: family, study, preservation, melody
 - one pinned HUD lead plus multi-route journal view
 - route graph and endgame trigger logic in `game/story_route_graph.gd`
+- first-pass StoryEvent runtime in `game/story_event_service.gd`, including subject-based resident talk and inspectable routing through `AppState`
 - save/load support for seasonal story state, route state, lead pinning, and endgame state
+- story-driven resident routine overrides that persist through autosave/continue and reapply to live actors in `game_main`
 - resident gating against `season_phase`, route state, and `story_flags`
 - guarded final-act start with `spring_festival_resolved` as the earliest allowed endgame threshold
 - `AppState` composition pattern with extracted helpers for profile, journal, save, landmark progression, resident interaction, audio settings, and story routes
@@ -63,6 +65,7 @@ Current pressure points:
 - most resident definitions, dialogue spines, and conditional beats still live in `resident_catalog.gd`; only the first override resources have moved into per-resident `.tres` files
 - `AppState` still carries a broad facade/signal surface, including many one-line forwarding methods that are useful for compatibility but still add maintenance cost
 - `StorySaveService` and `LandmarkProgression` remain intentionally tight `AppState` helpers, so future cleanup still needs to preserve the bridge API instead of assuming those helpers are independently reusable modules
+- `StoryEventService` is now live as a shared subject/effect bridge, but it still projects off `story_route_graph.gd`, resident dictionaries, and `story_world_reactivity.gd` instead of authored recursive event definitions plus a published-fact ledger
 - route-content work will keep touching large built-in resident dictionaries until more residents migrate out of the script catalog
 - high-traffic dictionary payloads (landmark progress, melody progress, autosave) are still untyped
 - regression coverage is now strong for landmark, route, resident-interaction, reactivity, and autosave flows, but still lighter around settings/audio behavior and richer world-object reactivity
@@ -136,16 +139,19 @@ First-pass shipped outcome:
 - new conditional beats now react to winter-memory, Spring Festival, future-choice, second-summer, preservation, and resonant-festival state across ferry, church, and Bagua districts
 - `scenes/game_main.gd` now surfaces selected route-event resolutions as world-status feedback instead of leaving those turns only in journal state
 - route-aware inspectables at Piano Ferry, Trinity Church, and Bagua Tower now carry non-resident world reactivity alongside dialogue follow-through
+- first-pass StoryEvent routing now unifies resident talk, inspectable resolution, shared condition matching, and live resident routine overrides behind the `AppState` story-subject bridge
 - route progress now changes more of what the island feels like without requiring landmark-only progression
 
 Still open:
 
 - extend route-state changes into inspectables, props, ambient audio, district dressing, and more non-resident surfaces
+- migrate landmark triggers and broader route authoring into recursive StoryEvent definitions so the route graph stops being the only canonical progression source
 - keep widening cross-district follow-through so major anchors feel visible outside the specific resident who resolved them
 
 Primary files:
 
 - `game/resident_catalog.gd`
+- `game/story_event_service.gd`
 - `game/story_world_reactivity.gd`
 - `architecture/piano_ferry.tscn`
 - `architecture/trinity_church.tscn`
@@ -196,6 +202,7 @@ Primary files:
 First-pass shipped outcome:
 
 - added focused route-reactivity coverage in `game/tests/story_routes/test_story_reactivity.tscn`
+- added focused StoryEvent bridge coverage in `game/tests/story_routes/test_story_event_service.tscn`
 - added arbitrary-flag plus override-backed resident profile persistence coverage in `game/tests/persistence/test_story_state_persistence.tscn`
 - kept the existing seasonal-route, resident-interaction, and autosave regressions green after the content pass
 

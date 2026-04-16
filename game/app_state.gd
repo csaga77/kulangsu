@@ -15,6 +15,7 @@ const JOURNAL_BUILDER_SCRIPT := preload("res://game/journal_builder.gd")
 const PLAYER_PROFILE_SERVICE_SCRIPT := preload("res://game/player_profile_service.gd")
 const STORY_SAVE_SERVICE_SCRIPT := preload("res://game/story_save_service.gd")
 const STORY_ROUTE_GRAPH_SCRIPT := preload("res://game/story_route_graph.gd")
+const STORY_EVENT_SERVICE_SCRIPT := preload("res://game/story_event_service.gd")
 const LANDMARK_PROGRESSION_SCRIPT := preload("res://game/landmark_progression.gd")
 const AUDIO_SETTINGS_SERVICE_SCRIPT := preload("res://game/audio_settings_service.gd")
 const RESIDENT_INTERACTION_SERVICE_SCRIPT := preload("res://game/resident_interaction_service.gd")
@@ -41,6 +42,7 @@ signal landmark_audio_cue_requested(cue_id: String, context: Dictionary)
 signal landmarks_changed(landmarks: PackedStringArray)
 signal residents_changed(residents: PackedStringArray)
 signal resident_profile_changed(resident_id: String, resident: Dictionary)
+signal resident_routine_override_changed(resident_id: String, routine_override: Dictionary)
 signal player_profile_changed(profile: Dictionary)
 signal player_costume_changed(costume_id: String, costume: Dictionary)
 signal player_costumes_changed(unlocked_ids: PackedStringArray, equipped_costume_id: String)
@@ -75,6 +77,7 @@ var open_shortcuts: PackedStringArray = PackedStringArray()
 var residents: PackedStringArray = PackedStringArray()
 var resident_definitions: Dictionary = {}
 var resident_profiles: Dictionary = {}
+var resident_routine_overrides: Dictionary = {}
 var player_profile: Dictionary = PLAYER_APPEARANCE_CATALOG_SCRIPT.default_profile()
 var player_costume_catalog: Dictionary = PLAYER_COSTUME_CATALOG_SCRIPT.build_catalog()
 var unlocked_player_costume_ids: PackedStringArray = PLAYER_COSTUME_CATALOG_SCRIPT.build_unlocked_costume_ids(
@@ -105,6 +108,7 @@ var m_player_profile_service: RefCounted = null
 var m_story_save_service: RefCounted = null
 var m_landmark_progression: RefCounted = null
 var m_story_route_graph: RefCounted = null
+var m_story_event_service: RefCounted = null
 var m_audio_settings_service: RefCounted = null
 var m_resident_interaction_service: RefCounted = null
 
@@ -124,6 +128,7 @@ func _init() -> void:
 	m_story_save_service.set_story_autosave_path(_story_autosave_path)
 	m_landmark_progression = LANDMARK_PROGRESSION_SCRIPT.new(self)
 	m_story_route_graph = STORY_ROUTE_GRAPH_SCRIPT.new(self)
+	m_story_event_service = STORY_EVENT_SERVICE_SCRIPT.new(self)
 	m_audio_settings_service = AUDIO_SETTINGS_SERVICE_SCRIPT.new(self)
 	m_resident_interaction_service = RESIDENT_INTERACTION_SERVICE_SCRIPT.new(self)
 	story_flags = m_story_route_graph.build_default_story_flags()
@@ -422,6 +427,48 @@ func set_resident_profiles(new_profiles: Dictionary) -> void:
 	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
 		resident_profile_changed.emit(resident_id, get_resident_profile(resident_id))
 	_refresh_player_costumes()
+
+
+func get_story_subject_context(subject_id: String = "", extra_context: Dictionary = {}) -> Dictionary:
+	if m_story_event_service == null:
+		return extra_context.duplicate(true)
+	return m_story_event_service.build_context(subject_id, extra_context)
+
+
+func describe_story_subject(subject_id: String, action: String, context: Dictionary = {}) -> Dictionary:
+	if m_story_event_service == null:
+		return {}
+	return m_story_event_service.describe_subject(subject_id, action, context)
+
+
+func activate_story_subject(subject_id: String, action: String, context: Dictionary = {}) -> Dictionary:
+	if m_story_event_service == null:
+		return {}
+	return m_story_event_service.activate_subject(subject_id, action, context)
+
+
+func notify_story_world_event(event_id: String, payload: Dictionary = {}, context: Dictionary = {}) -> Dictionary:
+	if m_story_event_service == null:
+		return {}
+	return m_story_event_service.notify_world_event(event_id, payload, context)
+
+
+func pick_story_candidate(candidates: Array, context: Dictionary = {}) -> Dictionary:
+	if m_story_event_service == null:
+		return {}
+	return m_story_event_service.pick_story_candidate(candidates, context)
+
+
+func matches_story_conditions(conditions_value: Variant, context: Dictionary = {}) -> bool:
+	if m_story_event_service == null:
+		return true
+	return m_story_event_service.matches_conditions(conditions_value, context)
+
+
+func apply_story_effects(payload: Dictionary, context: Dictionary = {}) -> void:
+	if m_story_event_service == null:
+		return
+	m_story_event_service.apply_effects(payload, context)
 
 
 func set_summary(summary: Dictionary) -> void:
@@ -771,41 +818,35 @@ func get_resident_appearance_config(resident_id: String) -> Dictionary:
 
 func get_resident_spawn_config(resident_id: String) -> Dictionary:
 	_ensure_resident_profiles()
-	var definition = get_resident_definition(resident_id)
-	if definition != null:
-		var definition_spawn = definition.get_spawn_config()
-		if !definition_spawn.is_empty():
-			return definition_spawn
-
-	var resident: Dictionary = resident_profiles.get(resident_id, {})
-	var spawn: Dictionary = resident.get("spawn", {})
-	return spawn.duplicate(true)
+	var base_spawn := _get_base_resident_spawn_config(resident_id)
+	var override_data: Variant = get_resident_routine_override(resident_id).get("spawn", {})
+	if override_data is Dictionary and !(override_data as Dictionary).is_empty():
+		var merged_spawn := base_spawn.duplicate(true)
+		merged_spawn.merge((override_data as Dictionary).duplicate(true), true)
+		return merged_spawn
+	return base_spawn
 
 
 func get_resident_movement_config(resident_id: String) -> Dictionary:
 	_ensure_resident_profiles()
-	var definition = get_resident_definition(resident_id)
-	if definition != null:
-		var definition_movement = definition.get_movement_config()
-		if !definition_movement.is_empty():
-			return definition_movement
-
-	var resident: Dictionary = resident_profiles.get(resident_id, {})
-	var movement: Dictionary = resident.get("movement", {})
-	return movement.duplicate(true)
+	var base_movement := _get_base_resident_movement_config(resident_id)
+	var override_data: Variant = get_resident_routine_override(resident_id).get("movement", {})
+	if override_data is Dictionary and !(override_data as Dictionary).is_empty():
+		var merged_movement := base_movement.duplicate(true)
+		merged_movement.merge((override_data as Dictionary).duplicate(true), true)
+		return merged_movement
+	return base_movement
 
 
 func get_resident_behavior_config(resident_id: String) -> Dictionary:
 	_ensure_resident_profiles()
-	var definition = get_resident_definition(resident_id)
-	if definition != null:
-		var definition_behavior = definition.get_behavior_config()
-		if !definition_behavior.is_empty():
-			return definition_behavior
-
-	var resident: Dictionary = resident_profiles.get(resident_id, {})
-	var behavior: Dictionary = resident.get("behavior", {})
-	return behavior.duplicate(true)
+	var base_behavior := _get_base_resident_behavior_config(resident_id)
+	var override_data: Variant = get_resident_routine_override(resident_id).get("behavior", {})
+	if override_data is Dictionary and !(override_data as Dictionary).is_empty():
+		var merged_behavior := base_behavior.duplicate(true)
+		merged_behavior.merge((override_data as Dictionary).duplicate(true), true)
+		return merged_behavior
+	return base_behavior
 
 
 func get_player_profile() -> Dictionary:
@@ -1151,6 +1192,98 @@ func _ensure_resident_profiles() -> void:
 		return
 
 	resident_profiles = _default_resident_profiles()
+
+
+func get_resident_routine_override(resident_id: String) -> Dictionary:
+	return resident_routine_overrides.get(resident_id, {}).duplicate(true)
+
+
+func get_all_resident_routine_overrides() -> Dictionary:
+	return resident_routine_overrides.duplicate(true)
+
+
+func set_resident_routine_overrides(new_overrides: Dictionary) -> void:
+	var previous_ids := resident_routine_overrides.keys()
+	resident_routine_overrides = {}
+	for resident_id in new_overrides.keys():
+		var override_value = new_overrides.get(resident_id)
+		if !(override_value is Dictionary):
+			continue
+		var resident_key := String(resident_id).strip_edges()
+		if resident_key.is_empty():
+			continue
+		resident_routine_overrides[resident_key] = (override_value as Dictionary).duplicate(true)
+		resident_routine_override_changed.emit(resident_key, get_resident_routine_override(resident_key))
+	for resident_id in previous_ids:
+		var resident_key := String(resident_id)
+		if resident_routine_overrides.has(resident_key):
+			continue
+		resident_routine_override_changed.emit(resident_key, {})
+
+
+func set_resident_routine_override(resident_id: String, override_data: Dictionary) -> void:
+	var resident_key := resident_id.strip_edges()
+	if resident_key.is_empty():
+		return
+	if override_data.is_empty():
+		clear_resident_routine_override(resident_key)
+		return
+	resident_routine_overrides[resident_key] = override_data.duplicate(true)
+	resident_routine_override_changed.emit(resident_key, get_resident_routine_override(resident_key))
+
+
+func clear_resident_routine_override(resident_id: String) -> void:
+	var resident_key := resident_id.strip_edges()
+	if resident_key.is_empty():
+		return
+	if !resident_routine_overrides.erase(resident_key):
+		return
+	resident_routine_override_changed.emit(resident_key, {})
+
+
+func clear_resident_routine_overrides() -> void:
+	if resident_routine_overrides.is_empty():
+		return
+	var cleared_ids := resident_routine_overrides.keys()
+	resident_routine_overrides.clear()
+	for resident_id in cleared_ids:
+		resident_routine_override_changed.emit(String(resident_id), {})
+
+
+func _get_base_resident_spawn_config(resident_id: String) -> Dictionary:
+	var definition = get_resident_definition(resident_id)
+	if definition != null:
+		var definition_spawn = definition.get_spawn_config()
+		if !definition_spawn.is_empty():
+			return definition_spawn
+
+	var resident: Dictionary = resident_profiles.get(resident_id, {})
+	var spawn: Dictionary = resident.get("spawn", {})
+	return spawn.duplicate(true)
+
+
+func _get_base_resident_movement_config(resident_id: String) -> Dictionary:
+	var definition = get_resident_definition(resident_id)
+	if definition != null:
+		var definition_movement = definition.get_movement_config()
+		if !definition_movement.is_empty():
+			return definition_movement
+
+	var resident: Dictionary = resident_profiles.get(resident_id, {})
+	var movement: Dictionary = resident.get("movement", {})
+	return movement.duplicate(true)
+
+
+func _get_base_resident_behavior_config(resident_id: String) -> Dictionary:
+	var definition = get_resident_definition(resident_id)
+	if definition != null:
+		var definition_behavior = definition.get_behavior_config()
+		if !definition_behavior.is_empty():
+			return definition_behavior
+
+	var resident: Dictionary = resident_profiles.get(resident_id, {})
+	var behavior: Dictionary = resident.get("behavior", {})
+	return behavior.duplicate(true)
 
 
 # ---------------------------------------------------------------------------

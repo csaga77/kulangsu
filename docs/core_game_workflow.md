@@ -54,6 +54,19 @@ The current canonical routes are:
 - `preservation_inheritance`: architecture, visible memory, inheritance, what should be carried forward
 - `melody_landmarks`: the five-landmark route, restored public music, and island-scale symbolic payoff
 
+These same four routes are also the natural top-level authoring families for the current first-pass generic `StoryEvent` runtime and its longer-term authored event-tree migration.
+
+- each route should map to one top-level `StoryEventDefinition` tree
+- multiple route trees may be active at the same time
+- smaller lines such as parent-care beats should stay nested under their current route family unless the canon later promotes them into a separate top-level route
+
+In the current story shape, that means:
+
+- `family_memory` owns harbor return, church memory, winter reveal, parent-care beats, and Spring Festival family resolution
+- `study_future` owns autumn pressure, shared study strain, future-choice honesty, and second-summer release
+- `preservation_inheritance` owns harbor recognition, tower perspective, and stewardship follow-through
+- `melody_landmarks` owns the five-landmark path and the harbor performance payoff
+
 Each route can be:
 
 - active alongside other routes
@@ -67,6 +80,8 @@ The route ledger tracks:
 - blocked beats
 - next lead
 - cumulative completion score
+
+In other words, the route ledger remains the player-facing progression view, while the current StoryEvent bridge supplies shared interaction routing and reactive text and the longer-term migration can move the underlying beats and facts into authored event trees.
 
 ## Opening State
 
@@ -147,6 +162,15 @@ The current playable slice resolves seasonal anchors mostly through resident int
 - `Window Caretaker Su` gives the melody route a soft post-festival follow-through once the harbor performance settles into ordinary island air
 
 This means the player can currently reach a valid ending by strongly following the family, study, and preservation routes while leaving most of the landmark melody route unfinished.
+
+Under the current first-pass StoryEvent model, these resident beats and landmark-facing inspect beats resolve through the same interaction pipeline entry, even though canonical route progression still comes from the route graph and existing authored beat data:
+
+- NPC talk
+- landmark interaction
+- level-bound inspect surfaces
+- district props and stewardship-facing inspectables
+
+That shared pipeline is what lets one active route change what an NPC says while another active route changes what a landmark or `LevelNode2D`-bound subject says.
 
 ## Current Coverage And Gameplay Gaps
 

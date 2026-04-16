@@ -19,6 +19,7 @@ These files are the current source of truth for the shipped seasonal multi-route
 Use these when you need more depth on a particular slice:
 
 - [`core_gameplay_plays.md`](core_gameplay_plays.md) for repeatable moment-to-moment gameplay patterns
+- [`event_story_system_design.md`](event_story_system_design.md) for the current StoryEvent direction, implementation status, and remaining migration gaps
 - [`ui_design_context.md`](ui_design_context.md) and [`ui_workflow.md`](ui_workflow.md) for UI layout and overlay flow
 - [`features/README.md`](features/README.md) for implementation-facing feature summaries
 - [`submodules.md`](submodules.md) for submodule boundaries and routing

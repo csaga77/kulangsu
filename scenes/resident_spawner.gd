@@ -27,7 +27,7 @@ func spawn_catalog_residents(
 			push_warning("Missing resident definition for resident '%s'." % resident_id)
 			continue
 
-		var spawn_config = resident_definition.get_spawn_config()
+		var spawn_config = app_state.get_resident_spawn_config(resident_id)
 		var anchor_id := String(spawn_config.get("anchor_id", ""))
 		var anchor_node := route_resolver.m_spawn_anchor_nodes.get(anchor_id) as Node2D
 		if !is_instance_valid(anchor_node):
@@ -57,10 +57,9 @@ func spawn_catalog_residents(
 		var movement_config: Dictionary = route_resolver.build_resident_movement_config(
 			resident_id,
 			npc,
-			resident_definition.get_movement_config()
+			app_state.get_resident_movement_config(resident_id)
 		)
-		if !movement_config.is_empty():
-			controller.configure_movement(movement_config)
+		controller.configure_movement(movement_config)
 
 		if tunnel_sync_callback.is_valid() and !npc.global_position_changed.is_connected(tunnel_sync_callback):
 			npc.global_position_changed.connect(tunnel_sync_callback)

@@ -70,6 +70,7 @@ Responsibilities:
 - resident route resolution from authored anchors into runtime world-space waypoints, including tunnel path expansion and portal-direction helper points
 - tunnel interior context, tunnel-resident visibility syncing, and ground-building masking when the player actually enters a tunnel interior
 - lightweight story inspectables authored inside major landmark scenes so route-state changes can surface on non-resident world objects as well as in dialogue without losing level context
+- `scenes/game_main.gd` now routes resident talk and scene-owned `StoryInspectable` inspect actions through stable story subject ids so world nodes keep placement and level context while shared story logic owns response selection and side effects
 - feeding current world context into `AppState`
 
 Boundary:
@@ -84,6 +85,7 @@ Primary files:
 - [`../game/app_state.gd`](../game/app_state.gd)
 - [`../game/melody_catalog.gd`](../game/melody_catalog.gd)
 - [`../game/resident_catalog.gd`](../game/resident_catalog.gd)
+- [`../game/story_event_service.gd`](../game/story_event_service.gd)
 - [`../game/story_route_graph.gd`](../game/story_route_graph.gd)
 - [`../game/audio_settings_service.gd`](../game/audio_settings_service.gd)
 - [`../game/resident_interaction_service.gd`](../game/resident_interaction_service.gd)
@@ -96,10 +98,12 @@ Responsibilities:
 
 - shared mode, chapter, location, objective, hint, save status, and summary data
 - shared seasonal story state: `season_phase`, `route_progress`, `story_flags`, active leads, and endgame state
+- first-pass generic StoryEvent routing now lives in `game/story_event_service.gd`, composed by `AppState`, so subject-based interactions, shared condition matching, and shared effect application stay in one progression boundary
 - shared melody definitions and melody-progress state used by the journal and future performance systems
 - catalog-first seasonal route definitions, event definitions, lead selection, and endgame-trigger logic in `story_route_graph.gd`
 - resident and player-facing catalog data
 - `AppState` now composes focused helper scripts for journal text (`journal_builder.gd`), player profile/costume ownership (`player_profile_service.gd`), story autosave (`story_save_service.gd`), landmark/melody progression (`landmark_progression.gd`), resident dialogue/application (`resident_interaction_service.gd`), and runtime audio/settings state (`audio_settings_service.gd`)
+- resident routine overrides are now part of shared story state so story effects can temporarily redirect spawn, movement, or behavior through the same `AppState` getters and autosave pipeline the rest of the game already uses
 - the app shell now opens the ending overlay from the shared `endgame_started` story milestone instead of relying on the older landmark-only ending assumption
 - lazy resident definition/profile initialization so startup does not eagerly build the full resident runtime just to load the shared state service
 - resident definition resources for appearance, dialogue, routine, and behavior metadata

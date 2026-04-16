@@ -125,6 +125,11 @@ Each phase is advanced by key story anchors rather than by timekeeping UI.
 
 ## The Four Canonical Routes
 
+These are the current top-level story families.
+Smaller lines such as church-memory steps, parent-care beats, or landmark sub-beats belong inside these families unless the canon later promotes them into their own route.
+
+These same families now also back the first-pass generic StoryEvent bridge, even though the fully authored recursive event-tree migration is still ahead.
+
 ### 1. Family and Memory
 
 This is the emotional center of the game.
@@ -135,6 +140,7 @@ It carries:
 - church-linked memory
 - guilt and grace
 - the meaning of returning home
+- parent-care strain and the cost of absence
 - the first Spring Festival without her
 
 The player should feel the movement:
@@ -207,6 +213,8 @@ Its meaning has changed slightly inside the broader architecture:
 - it is optional for baseline completion
 - it remains the most public and musical expression of the island's memory
 
+In current route grouping terms, this landmark line is the `melody_landmarks` family, while its individual landmarks are nested beats inside that family rather than separate top-level routes.
+
 ## Current Seasonal Anchors
 
 The current playable game uses these anchors to move the year:
@@ -230,6 +238,8 @@ Current canonical relationships:
 - preservation gives Spring Festival and family beats more weight
 - landmark resolutions can enrich family, preservation, and ending tone
 - landmark completion should not be required for baseline completion of the year
+
+This also means one world subject may carry different meaning for different active routes at different times. A harbor resident, church surface, tower overlook, or postcard rack can be heard through more than one route without changing the canon route list itself.
 
 ## Current Playable Coverage
 

@@ -41,7 +41,7 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 		m_owner.resident_profiles[resident_id] = resident
 		_sync_known_residents()
 		if is_new_conditional:
-			_apply_resident_beat(conditional_beat)
+			_apply_resident_beat(conditional_beat, resident_id)
 			_emit_trust_milestone_if_max(resident_id, old_cond_trust, int(resident.get("trust", 0)))
 			m_owner._autosave_story_progress()
 		elif !resident_was_known:
@@ -98,7 +98,7 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 	m_owner.resident_profiles[resident_id] = resident
 	_sync_known_residents()
 	if is_new_beat:
-		_apply_resident_beat(beat)
+		_apply_resident_beat(beat, resident_id)
 		m_owner._autosave_story_progress()
 	elif !resident_was_known:
 		m_owner._autosave_story_progress()
@@ -136,56 +136,12 @@ func get_resident_ambient_line(resident_id: String) -> String:
 	return String(ambient_lines[conversation_index])
 
 
-func _apply_resident_beat(beat: Dictionary) -> void:
-	var new_objective := String(beat.get("objective", ""))
-	if !new_objective.is_empty():
-		m_owner.set_objective(new_objective)
-
-	var new_hint := String(beat.get("hint", ""))
-	if !new_hint.is_empty():
-		m_owner.set_hint(new_hint)
-
-	var new_phase := String(beat.get("season_phase", ""))
-	if !new_phase.is_empty():
-		m_owner.set_season_phase(new_phase)
-
-	var new_chapter := String(beat.get("chapter", ""))
-	if !new_chapter.is_empty() and m_owner.mode != "Story":
-		m_owner.set_chapter(new_chapter)
-
-	var new_status := String(beat.get("save_status", ""))
-	if !new_status.is_empty():
-		m_owner.set_save_status(new_status)
-
-	m_owner._update_summary_counts()
-
-	var unlock_landmark := String(beat.get("unlock_landmark", ""))
-	if !unlock_landmark.is_empty():
-		m_owner.advance_landmark_state(unlock_landmark, "available")
-
-	var landmark_states = beat.get("landmark_states", {})
-	if landmark_states is Dictionary:
-		for landmark_id in landmark_states.keys():
-			m_owner.advance_landmark_state(String(landmark_id), String(landmark_states[landmark_id]))
-
-	var landmark_reward := String(beat.get("landmark_reward", ""))
-	if !landmark_reward.is_empty():
-		m_owner._resolve_landmark(landmark_reward)
-
-	var beat_story_flags = beat.get("story_flags", {})
-	if beat_story_flags is Dictionary:
-		for flag_id in beat_story_flags.keys():
-			m_owner.set_story_flag(String(flag_id), beat_story_flags[flag_id])
-
-	var story_event := String(beat.get("story_event", ""))
-	if !story_event.is_empty():
-		m_owner.resolve_story_event(story_event)
-
-	var pin_lead_id := String(beat.get("pin_lead_id", ""))
-	if !pin_lead_id.is_empty():
-		m_owner.pin_story_lead(pin_lead_id)
-
-	m_owner.refresh_story_routes()
+func _apply_resident_beat(beat: Dictionary, resident_id: String = "") -> void:
+	m_owner.apply_story_effects(beat, {
+		"subject_id": "npc:%s" % resident_id,
+		"action": "talk",
+		"resident_id": resident_id,
+	})
 
 
 func _sync_known_residents() -> void:
@@ -276,95 +232,29 @@ func _pick_conditional_beat(_resident_id: String, resident: Dictionary) -> Dicti
 		return {}
 
 	var fired: Array[String] = m_owner._normalize_string_array(resident.get("_fired_conditional_beats", []))
-	var best_beat: Dictionary = {}
-	var best_priority := -1
+	var available_beats: Array = []
 
 	for i in conditional_beats.size():
 		var conditional_beat: Dictionary = conditional_beats[i]
 		var beat_key := "cond_%d" % i
-		conditional_beat["_beat_key"] = beat_key
 
 		if bool(conditional_beat.get("once", false)) and fired.find(beat_key) >= 0:
 			continue
 
-		var conditions: Dictionary = conditional_beat.get("conditions", {})
-		if !_check_conditional_conditions(conditions, resident):
-			continue
+		var candidate := conditional_beat.duplicate(true)
+		candidate["_beat_key"] = beat_key
+		available_beats.append(candidate)
 
-		var priority := int(conditional_beat.get("priority", 0))
-		if priority > best_priority:
-			best_priority = priority
-			best_beat = conditional_beat
-
-	return best_beat
+	return m_owner.pick_story_candidate(available_beats, {
+		"subject_id": "npc:%s" % _resident_id,
+		"action": "talk",
+		"resident_id": _resident_id,
+		"resident": resident,
+	})
 
 
 func _check_conditional_conditions(conditions: Dictionary, resident: Dictionary) -> bool:
-	for key in conditions.keys():
-		match key:
-			"landmark_state":
-				var required_landmarks: Dictionary = conditions[key]
-				for landmark_id in required_landmarks.keys():
-					if m_owner.get_landmark_state(String(landmark_id)) != String(required_landmarks[landmark_id]):
-						return false
-			"melody_state":
-				var required_melodies: Dictionary = conditions[key]
-				for melody_id in required_melodies.keys():
-					var melody: Dictionary = m_owner.get_melody_state(String(melody_id))
-					if String(melody.get("state", "unknown")) != String(required_melodies[melody_id]):
-						return false
-			"fragments_found_min":
-				if m_owner.fragments_found < int(conditions[key]):
-					return false
-			"trust_min":
-				if int(resident.get("trust", 0)) < int(conditions[key]):
-					return false
-			"chapter":
-				if m_owner.chapter != String(conditions[key]):
-					return false
-			"season_phase":
-				var expected_phase: Variant = conditions[key]
-				if expected_phase is Array or expected_phase is PackedStringArray:
-					var allowed_phases: Array[String] = m_owner._normalize_string_array(expected_phase)
-					if allowed_phases.find(m_owner.season_phase) < 0:
-						return false
-				elif m_owner.season_phase != String(expected_phase):
-					return false
-			"mode":
-				if m_owner.mode != String(conditions[key]):
-					return false
-			"resident_known":
-				var required_known: Array = conditions[key] if conditions[key] is Array else []
-				for resident_id in required_known:
-					var other: Dictionary = m_owner.resident_profiles.get(String(resident_id), {})
-					if !bool(other.get("known", false)):
-						return false
-			"story_flag_all":
-				for flag_id_value in conditions[key]:
-					if !bool(m_owner.get_story_flag(String(flag_id_value), false)):
-						return false
-			"story_flag_any":
-				var any_found := false
-				for flag_id_value in conditions[key]:
-					if bool(m_owner.get_story_flag(String(flag_id_value), false)):
-						any_found = true
-						break
-				if !any_found:
-					return false
-			"route_state":
-				var required_routes: Dictionary = conditions[key]
-				for route_id in required_routes.keys():
-					if String(m_owner.get_route_progress(String(route_id)).get("state", "idle")) != String(required_routes[route_id]):
-						return false
-			"route_score_min":
-				var minimum_scores: Dictionary = conditions[key]
-				for route_id in minimum_scores.keys():
-					if int(m_owner.get_route_progress(String(route_id)).get("completion_score", 0)) < int(minimum_scores[route_id]):
-						return false
-			"endgame_active":
-				if bool(m_owner.endgame_state.get("active", false)) != bool(conditions[key]):
-					return false
-	return true
+	return m_owner.matches_story_conditions(conditions, {"resident": resident})
 
 
 func _emit_trust_milestone_if_max(resident_id: String, old_trust: int, new_trust: int) -> void:

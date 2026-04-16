@@ -1,6 +1,8 @@
 class_name StoryWorldReactivity
 extends RefCounted
 
+const SUBJECT_PREFIX := "inspectable:"
+
 const INSPECTABLE_DEFINITIONS := {
 	"harbor_lantern_lines": {
 		"display_name": "Harbor Lantern Lines",
@@ -63,23 +65,74 @@ const INSPECTABLE_DEFINITIONS := {
 }
 
 
-static func build_inspect_text(app_state, inspectable_id: String, display_name: String = "") -> String:
-	var definition: Dictionary = INSPECTABLE_DEFINITIONS.get(inspectable_id, {})
+static func build_subject_id(inspectable_id: String) -> String:
+	var normalized_id := inspectable_id.strip_edges()
+	if normalized_id.is_empty():
+		return ""
+	if normalized_id.begins_with(SUBJECT_PREFIX):
+		return normalized_id
+	return "%s%s" % [SUBJECT_PREFIX, normalized_id]
+
+
+static func inspectable_id_from_subject_id(subject_id: String) -> String:
+	var normalized_subject := subject_id.strip_edges()
+	if normalized_subject.begins_with(SUBJECT_PREFIX):
+		return normalized_subject.substr(SUBJECT_PREFIX.length())
+	return normalized_subject
+
+
+static func get_inspectable_definition(inspectable_id: String) -> Dictionary:
+	return INSPECTABLE_DEFINITIONS.get(inspectable_id, {}).duplicate(true)
+
+
+static func resolve_inspect_result(
+	app_state,
+	inspectable_id: String,
+	display_name: String = "",
+	context: Dictionary = {}
+) -> Dictionary:
+	var definition := get_inspectable_definition(inspectable_id)
 	var resolved_display_name := display_name.strip_edges()
 	if resolved_display_name.is_empty():
 		resolved_display_name = String(definition.get("display_name", inspectable_id))
 
+	var resolved_context := context.duplicate(true)
+	resolved_context["subject_id"] = build_subject_id(inspectable_id)
+	resolved_context["action"] = "inspect"
+	resolved_context["display_name"] = resolved_display_name
+
+	var resolved_text := ""
 	for reaction_value in definition.get("reactions", []):
 		var reaction: Dictionary = reaction_value
-		if !_matches_conditions(app_state, reaction.get("conditions", {})):
+		if !_matches_conditions(app_state, reaction.get("conditions", {}), resolved_context):
 			continue
-		return String(reaction.get("text", "")).replace("{display_name}", resolved_display_name)
+		resolved_text = String(reaction.get("text", ""))
+		break
 
-	var default_text := String(definition.get("default_text", "Inspect: %s" % resolved_display_name))
-	return default_text.replace("{display_name}", resolved_display_name)
+	if resolved_text.is_empty():
+		resolved_text = String(definition.get("default_text", "Inspect: %s" % resolved_display_name))
+
+	resolved_text = resolved_text.replace("{display_name}", resolved_display_name)
+	return {
+		"subject_id": build_subject_id(inspectable_id),
+		"action": "inspect",
+		"inspectable_id": inspectable_id,
+		"display_name": resolved_display_name,
+		"text": resolved_text,
+		"line": resolved_text,
+		"consumed": true,
+		"context": resolved_context,
+	}
 
 
-static func _matches_conditions(app_state, conditions_value: Variant) -> bool:
+static func build_inspect_text(app_state, inspectable_id: String, display_name: String = "") -> String:
+	var result := resolve_inspect_result(app_state, inspectable_id, display_name)
+	if result.is_empty():
+		return "Inspect: %s" % display_name
+	return String(result.get("text", "Inspect: %s" % display_name))
+
+
+static func _matches_conditions(app_state, conditions_value: Variant, context: Dictionary = {}) -> bool:
 	if !(conditions_value is Dictionary):
 		return true
 	var conditions: Dictionary = conditions_value
@@ -87,6 +140,8 @@ static func _matches_conditions(app_state, conditions_value: Variant) -> bool:
 		return true
 	if app_state == null:
 		return false
+	if app_state.has_method("matches_story_conditions"):
+		return bool(app_state.call("matches_story_conditions", conditions, context))
 
 	var expected_phase := String(conditions.get("season_phase", ""))
 	if !expected_phase.is_empty() and String(app_state.season_phase) != expected_phase:
