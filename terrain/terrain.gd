@@ -3,10 +3,14 @@ class_name Terrain
 extends IsometricBlock
 
 const TERRAIN_TILESET := preload("res://resources/tilesets/terrain_0_tiles.tres")
+const COLLISION_TILESET := preload("res://resources/tilesets/collision_tiles.tres")
 const PAVEMENT_TILESET := preload("res://resources/tilesets/pavement_0_tilesets.tres")
 const SYMBOLS_TILESET := preload("res://resources/tilesets/symbols_0_tiles.tres")
 const ISO_TILEMAP_SCRIPT := preload("res://common/isometric_block.gd")
 const WATER_LAYER_SETUP_SCRIPT := preload("res://terrain/water_layer_setup.gd")
+const WATER_COLLISION_SOURCE_ID := 0
+const WATER_COLLISION_TILE_COORDS := Vector2i.ZERO
+const WATER_COLLISION_TILE_ALTERNATIVE := 0
 
 @export var reload: bool = false:
 	set(new_reload):
@@ -19,7 +23,8 @@ const WATER_LAYER_SETUP_SCRIPT := preload("res://terrain/water_layer_setup.gd")
 		if mask_file == new_mask_file:
 			return
 		mask_file = new_mask_file
-		call_deferred("_reload_terrain")
+		if m_is_ready:
+			call_deferred("_reload_terrain")
 
 @export var generation_profile: TerrainGenerationProfile
 
@@ -38,9 +43,11 @@ const WATER_LAYER_SETUP_SCRIPT := preload("res://terrain/water_layer_setup.gd")
 var m_base: TileMapLayer
 var m_streets: TileMapLayer
 var m_water: TileMapLayer
+var m_water_collision: TileMapLayer
 var m_building_mask: TileMapLayer
 var m_is_ready := false
 var m_player :HumanBody2D
+var m_has_generated_from_mask := false
 
 func _ready() -> void:
 	m_is_ready = true
@@ -65,15 +72,8 @@ func _reload_terrain() -> void:
 	_ensure_generated_layers()
 	_paint_terrain_from_mask()
 
-func _tile_map_is_empty(layer: TileMapLayer) -> bool:
-	if not is_instance_valid(layer):
-		return true
-	return layer.get_used_rect().size == Vector2i.ZERO
-
 func _should_generate_terrain() -> bool:
-	if mask_file.is_empty():
-		return false
-	return _tile_map_is_empty(m_base) or _tile_map_is_empty(m_streets) or _tile_map_is_empty(m_water) or _tile_map_is_empty(m_building_mask)
+	return not mask_file.is_empty() and not m_has_generated_from_mask
 
 func _find_generated_layer(parent: Node, layer_name: String) -> TileMapLayer:
 	for child in parent.get_children(true):
@@ -84,6 +84,25 @@ func _find_generated_layer(parent: Node, layer_name: String) -> TileMapLayer:
 func _reset_water_layer_state(layer: TileMapLayer) -> void:
 	layer.name = "water"
 	WATER_LAYER_SETUP_SCRIPT.configure_layer(layer, Vector2.ZERO)
+
+func _reset_water_collision_layer_state(layer: TileMapLayer) -> void:
+	layer.name = "water_collision"
+	layer.visible = false
+	layer.enabled = true
+	layer.collision_enabled = true
+	layer.y_sort_enabled = false
+	layer.z_index = 0
+	layer.position = Vector2.ZERO
+	layer.rotation = 0.0
+	layer.scale = Vector2.ONE
+	layer.modulate = Color.WHITE
+	layer.self_modulate = Color.WHITE
+	layer.material = null
+	layer.use_parent_material = false
+	layer.show_behind_parent = false
+	layer.top_level = false
+	layer.tile_set = COLLISION_TILESET
+	layer.set_script(null)
 
 func _configure_generated_layer(layer: TileMapLayer, layer_name: String, parent: Node, index: int) -> TileMapLayer:
 	if not is_instance_valid(layer):
@@ -107,7 +126,10 @@ func _ensure_generated_layers() -> void:
 	m_water = _configure_generated_layer(_find_generated_layer(self, "water"), "water", self, 1)
 	_reset_water_layer_state(m_water)
 
-	m_building_mask = _configure_generated_layer(_find_generated_layer(self, "building_mask"), "building_mask", self, 2)
+	m_water_collision = _configure_generated_layer(_find_generated_layer(self, "water_collision"), "water_collision", self, 2)
+	_reset_water_collision_layer_state(m_water_collision)
+
+	m_building_mask = _configure_generated_layer(_find_generated_layer(self, "building_mask"), "building_mask", self, 3)
 	m_building_mask.y_sort_enabled = true
 	m_building_mask.tile_set = SYMBOLS_TILESET
 	m_building_mask.set_script(ISO_TILEMAP_SCRIPT)
@@ -123,8 +145,10 @@ func _get_generation_profile() -> TerrainGenerationProfile:
 	return generation_profile
 
 func _paint_terrain_from_mask() -> void:
+	m_has_generated_from_mask = false
 	m_base.clear()
 	m_water.clear()
+	m_water_collision.clear()
 	m_streets.clear()
 	m_building_mask.clear()
 
@@ -155,6 +179,7 @@ func _paint_terrain_from_mask() -> void:
 			var tile_pos := Vector2i(x, y)
 			var pixel: Color = img.get_pixel(x, y)
 			_paint_mask_cell(tile_pos, pixel, profile)
+	m_has_generated_from_mask = true
 	print("_reload_terrain: painted %dx%d from %s" % [width, height, mask_file])
 
 func _paint_mask_cell(tile_pos: Vector2i, pixel: Color, profile: TerrainGenerationProfile) -> void:
@@ -202,6 +227,12 @@ func _paint_water_cell(tile_pos: Vector2i, profile: TerrainGenerationProfile) ->
 		profile.water_source_id,
 		profile.water_tile_coords,
 		profile.water_tile_alternative
+	)
+	m_water_collision.set_cell(
+		tile_pos,
+		WATER_COLLISION_SOURCE_ID,
+		WATER_COLLISION_TILE_COORDS,
+		WATER_COLLISION_TILE_ALTERNATIVE
 	)
 
 func _resolve_base_source_id(rule: TerrainMaskRule, profile: TerrainGenerationProfile) -> int:

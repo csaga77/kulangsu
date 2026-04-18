@@ -2,12 +2,15 @@
 class_name TerrainGenerationProfile
 extends Resource
 
+const FULL_ALPHA_8BIT := 255
+
 @export var base_source_id := 8
 @export var base_tile_coords := Vector2i(1, 0)
 @export var base_tile_alternative := 0
 @export var water_source_id := 8
 @export var water_tile_coords := Vector2i(4, 16)
 @export var water_tile_alternative := 0
+@export_range(1, 255, 1) var land_min_alpha_8bit := FULL_ALPHA_8BIT
 @export var building_mask_source_id := 0
 @export var building_mask_tile_coords := Vector2i(1, 0)
 @export var building_mask_tile_alternative := 0
@@ -57,7 +60,7 @@ func is_valid_profile() -> bool:
 
 
 func is_water_pixel(pixel: Color) -> bool:
-	return pixel.a <= 0.0
+	return _quantize_mask_alpha(pixel.a) < land_min_alpha_8bit
 
 
 func resolve_rule_for_pixel(pixel: Color) -> TerrainMaskRule:
@@ -82,6 +85,7 @@ static func create_default_profile() -> TerrainGenerationProfile:
 	profile.water_source_id = 8
 	profile.water_tile_coords = Vector2i(4, 16)
 	profile.water_tile_alternative = 0
+	profile.land_min_alpha_8bit = FULL_ALPHA_8BIT
 	profile.building_mask_source_id = 0
 	profile.building_mask_tile_coords = Vector2i(1, 0)
 	profile.building_mask_tile_alternative = 0
@@ -135,3 +139,7 @@ static func _build_default_street_neighbor_offsets() -> Array[Vector2i]:
 	offsets.append(Vector2i(1, 0))
 	offsets.append(Vector2i(0, 1))
 	return offsets
+
+
+static func _quantize_mask_alpha(alpha: float) -> int:
+	return clampi(roundi(alpha * float(FULL_ALPHA_8BIT)), 0, FULL_ALPHA_8BIT)
