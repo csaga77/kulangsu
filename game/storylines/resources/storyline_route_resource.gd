@@ -84,8 +84,9 @@ func to_storyline_dict(source_path: String) -> Dictionary:
 
 ## Returns all warnings for this route and its events.
 ## Checks: empty id, empty display_name, duplicate event ids, invalid
-## prerequisite references (cross-checked within this route; inter-route
-## references are validated project-wide in [StorylineRouteBrowser]).
+## fields from nested events, and tone-rule issues. Project-wide prerequisite
+## existence checks live in [StorylineRouteBrowser] so valid cross-route
+## references are not treated as route-local warnings.
 func validate() -> PackedStringArray:
 	var warnings := PackedStringArray()
 
@@ -115,25 +116,6 @@ func validate() -> PackedStringArray:
 		# Delegate per-event validation.
 		for w: String in evt.validate():
 			warnings.append(w)
-
-	# Check intra-route prerequisite references exist.
-	for evt: StorylineEventResource in events:
-		if evt == null:
-			continue
-		for flag: String in evt.story_flags_all:
-			if not flag.strip_edges().is_empty() and not seen_ids.has(flag):
-				# Could be a cross-route reference; just warn if it matches no
-				# known id in this route so the browser can surface it.
-				warnings.append(
-					"[%s] story_flags_all references '%s' which is not in this route (may be cross-route)"
-					% [evt.id, flag]
-				)
-		for flag: String in evt.story_flags_any:
-			if not flag.strip_edges().is_empty() and not seen_ids.has(flag):
-				warnings.append(
-					"[%s] story_flags_any references '%s' which is not in this route (may be cross-route)"
-					% [evt.id, flag]
-				)
 
 	# Validate tone rules.
 	for rule: StorylineEndingToneRule in ending_tone_rules:

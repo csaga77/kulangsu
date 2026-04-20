@@ -860,6 +860,21 @@ func edit_event_in_inspector(event_id: String) -> void:
 	_edit_event_in_inspector(event_id)
 
 
+func _edit_route_in_inspector(route_id: String) -> void:
+	if m_editor_interface == null:
+		return
+
+	var route_resource := _ensure_route_resource_for_editing(route_id)
+	if route_resource == null:
+		return
+
+	m_editor_interface.edit_resource(route_resource)
+
+
+func edit_route_in_inspector(route_id: String) -> void:
+	_edit_route_in_inspector(route_id)
+
+
 func _build_storyline_dict_for_route(route_id: String) -> Dictionary:
 	var route_def: Dictionary = m_route_defs.get(route_id, {})
 	if route_def.is_empty():

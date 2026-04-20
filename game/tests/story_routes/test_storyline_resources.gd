@@ -3,6 +3,10 @@ extends Node
 const ENDING_TONE_RULE_SCRIPT := preload("res://game/storylines/resources/storyline_ending_tone_rule.gd")
 const EVENT_RESOURCE_SCRIPT := preload("res://game/storylines/resources/storyline_event_resource.gd")
 const ROUTE_RESOURCE_SCRIPT := preload("res://game/storylines/resources/storyline_route_resource.gd")
+const INSPECTOR_PLUGIN_SCRIPT := preload("res://addons/storyline_editor/storyline_validator_inspector_plugin.gd")
+const PREREQUISITE_PICKER_PANEL_SCRIPT := preload(
+	"res://addons/storyline_editor/storyline_prerequisite_picker_panel.gd"
+)
 
 var m_failures := PackedStringArray()
 
@@ -42,6 +46,14 @@ func _run() -> void:
 	soft_ending_event.closing_label = "The typed route can keep going after the ending overlay."
 	soft_ending_event.tone_tags = PackedStringArray(["continuity"])
 
+	var cross_route_event: StorylineEventResource = EVENT_RESOURCE_SCRIPT.new()
+	cross_route_event.id = "typed_resource_cross_route"
+	cross_route_event.lead_text = "Let another storyline answer this route."
+	cross_route_event.journal_note = "Cross-route prerequisites should not warn at the route level."
+	cross_route_event.status_text = "A cross-route dependency connected cleanly."
+	cross_route_event.phase_window = PackedStringArray(["winter"])
+	cross_route_event.story_flags_all = PackedStringArray(["winter_memory_reveal"])
+
 	var route_resource: StorylineRouteResource = ROUTE_RESOURCE_SCRIPT.new()
 	route_resource.id = "typed_resource_route"
 	route_resource.display_name = "Typed Resource Route"
@@ -49,16 +61,17 @@ func _run() -> void:
 	route_resource.display_order = 90
 	route_resource.pin_priority = 77
 	route_resource.ending_tone_rules = [tone_rule]
-	route_resource.events = [anchor_event, soft_ending_event]
+	route_resource.events = [anchor_event, soft_ending_event, cross_route_event]
 
 	_assert_true(anchor_event.validate().is_empty(), "Anchor resource event validates cleanly")
 	_assert_true(soft_ending_event.validate().is_empty(), "Soft-ending resource event validates cleanly")
+	_assert_true(cross_route_event.validate().is_empty(), "Cross-route resource event validates cleanly")
 	_assert_true(route_resource.validate().is_empty(), "Typed route resource validates cleanly")
 
 	var storyline_dict: Dictionary = route_resource.to_storyline_dict("res://game/tests/story_routes/typed_resource_route.tres")
 	var route_dict: Dictionary = storyline_dict.get("route", {})
 	var event_dicts: Array = storyline_dict.get("events", [])
-	_assert_true(event_dicts.size() == 2, "Typed route resource converts both events")
+	_assert_true(event_dicts.size() == 3, "Typed route resource converts all events")
 	_assert_true(String(route_dict.get("id", "")) == "typed_resource_route", "Route resource conversion preserves route id")
 	_assert_true(int(route_dict.get("pin_priority", 0)) == 77, "Route resource conversion preserves pin priority")
 
@@ -102,7 +115,7 @@ func _run() -> void:
 		"Route resource reconstruction preserves ending-tone rule count"
 	)
 	_assert_true(
-		reconstructed_route.events.size() == 2,
+		reconstructed_route.events.size() == 3,
 		"Route resource reconstruction preserves event count"
 	)
 	if reconstructed_route.ending_tone_rules.size() == 1:
@@ -111,7 +124,7 @@ func _run() -> void:
 			reconstructed_rule.max_trust_residents_min == 1,
 			"Route resource reconstruction preserves max-trust tone gates"
 		)
-	if reconstructed_route.events.size() == 2:
+	if reconstructed_route.events.size() == 3:
 		var reconstructed_soft_event := reconstructed_route.events[1]
 		_assert_true(
 			reconstructed_soft_event.melody_state.get("trinity_church", "") == "resolved",
@@ -121,6 +134,76 @@ func _run() -> void:
 			reconstructed_soft_event.route_score_min.get("family_memory", 0) == 2,
 			"Route resource reconstruction preserves nested event prerequisites"
 		)
+		var reconstructed_cross_route_event := reconstructed_route.events[2]
+		_assert_true(
+			reconstructed_cross_route_event.story_flags_all.has("winter_memory_reveal"),
+			"Route resource reconstruction preserves cross-route prerequisite flags"
+		)
+
+	_assert_true(
+		INSPECTOR_PLUGIN_SCRIPT != null,
+		"Storyline inspector plugin script loads for editor tooling checks"
+	)
+	_assert_true(
+		PREREQUISITE_PICKER_PANEL_SCRIPT != null,
+		"Storyline prerequisite picker panel script loads for editor tooling checks"
+	)
+	var picker_event: StorylineEventResource = EVENT_RESOURCE_SCRIPT.new()
+	picker_event.id = "typed_picker_anchor"
+	picker_event.lead_text = "Use the prerequisite picker."
+	picker_event.journal_note = "The picker should add and remove prerequisite ids."
+	picker_event.status_text = "Picker state changed."
+	picker_event.phase_window = PackedStringArray(["summer_1"])
+	picker_event.story_flags_any = PackedStringArray(["typed_resource_anchor"])
+
+	var prerequisite_picker = PREREQUISITE_PICKER_PANEL_SCRIPT.new()
+	prerequisite_picker.setup(picker_event)
+	add_child(prerequisite_picker)
+	await get_tree().process_frame
+
+	_assert_true(
+		prerequisite_picker.m_picker_tree != null,
+		"Storyline prerequisite picker builds a route-rooted event tree"
+	)
+	_assert_true(
+		prerequisite_picker.m_bucket_lists.has("story_flags_all"),
+		"Storyline prerequisite picker builds the All bucket UI"
+	)
+	_assert_true(
+		prerequisite_picker.m_bucket_lists.has("story_flags_any"),
+		"Storyline prerequisite picker builds the Any bucket UI"
+	)
+	prerequisite_picker._open_picker_for_bucket("story_flags_all")
+	var picker_root: TreeItem = prerequisite_picker.m_picker_tree.get_root()
+	_assert_true(
+		picker_root != null,
+		"Storyline prerequisite picker populates the chooser tree"
+	)
+	if picker_root != null:
+		var selected_item := _find_tree_item_with_event_id(picker_root, "summer_return_complete")
+		_assert_true(
+			selected_item != null,
+			"Storyline prerequisite picker can find a project event in the chooser tree"
+		)
+		if selected_item != null:
+			prerequisite_picker.m_picker_tree.set_selected(selected_item, 0)
+			prerequisite_picker._confirm_picker_selection()
+			_assert_true(
+				picker_event.story_flags_all.has("summer_return_complete"),
+				"Storyline prerequisite picker adds the selected event to the target bucket"
+			)
+			_assert_true(
+				not picker_event.story_flags_any.has("summer_return_complete"),
+				"Storyline prerequisite picker keeps the opposite bucket clear for the added event"
+			)
+
+	prerequisite_picker._remove_prerequisite("summer_return_complete", "story_flags_all")
+	_assert_true(
+		not picker_event.story_flags_all.has("summer_return_complete"),
+		"Storyline prerequisite picker removes selected events from the target bucket"
+	)
+	prerequisite_picker.queue_free()
+	await get_tree().process_frame
 
 	if m_failures.is_empty():
 		print("PASS: storyline resource schema")
@@ -138,3 +221,19 @@ func _assert_true(condition: bool, label: String) -> void:
 		print("PASS: %s" % label)
 		return
 	m_failures.append("%s." % label)
+
+
+func _find_tree_item_with_event_id(item: TreeItem, event_id: String) -> TreeItem:
+	var metadata: Variant = item.get_metadata(0)
+	if metadata is Dictionary:
+		var metadata_dict := metadata as Dictionary
+		if String(metadata_dict.get("kind", "")) == "event" and String(metadata_dict.get("event_id", "")) == event_id:
+			return item
+
+	var child := item.get_first_child()
+	while child != null:
+		var found := _find_tree_item_with_event_id(child, event_id)
+		if found != null:
+			return found
+		child = child.get_next()
+	return null

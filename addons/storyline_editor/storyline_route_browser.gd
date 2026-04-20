@@ -3,10 +3,9 @@ extends VBoxContainer
 ## Editor dock that lists all known storyline routes and their events.
 ##
 ## Shows:
-##   • Route list (all routes, color-coded, resource vs. .gd-module badge)
-##   • Per-route event tree with prerequisite counts and completion scores
+##   • One combined storyline tree with route root nodes
+##   • Event rows nested under their owning route, with prerequisite child rows
 ##   • Project-wide validation warnings surfaced inline
-##   • Quick-open button to navigate to the backing .tres or .gd file
 ##   • "Show in Graph" button to select the event in the graph editor
 ##
 ## Wire [signal event_show_in_graph_requested] in [StorylineEditorPlugin] to
@@ -14,6 +13,8 @@ extends VBoxContainer
 
 ## Emitted when the user wants to highlight an event in the dependency graph.
 signal event_show_in_graph_requested(event_id: String)
+## Emitted when the user selects a route row and wants to edit the route in the Inspector.
+signal route_inspector_requested(route_id: String)
 ## Emitted when the user selects an event row and wants to edit it in the Inspector.
 signal event_inspector_requested(event_id: String)
 
@@ -34,9 +35,7 @@ const _BADGE_GDSCRIPT  := "◎"
 var m_toolbar: HBoxContainer
 var m_refresh_btn: Button
 var m_new_route_btn: Button
-var m_split: VSplitContainer
 
-var m_route_list: ItemList
 var m_event_tree: Tree
 
 var m_warnings_panel: VBoxContainer
@@ -46,8 +45,6 @@ var m_warnings_scroll: ScrollContainer
 # State
 # ---------------------------------------------------------------------------
 
-## Indexed by ItemList row — route_id for each row.
-var m_route_ids: Array[String] = []
 ## Full catalog data, refreshed on each reload.
 var m_route_defs: Dictionary = {}
 var m_event_defs: Dictionary = {}
@@ -110,61 +107,31 @@ func _build_ui() -> void:
 
 	add_child(HSeparator.new())
 
-	# --- Vertical split: top = route list, bottom = event tree + warnings ---
-	m_split = VSplitContainer.new()
-	m_split.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	add_child(m_split)
-
-	# Route list panel.
-	var route_panel := VBoxContainer.new()
-	route_panel.custom_minimum_size = Vector2(0.0, 120.0)
-	m_split.add_child(route_panel)
-
-	var route_header := Label.new()
-	route_header.text = "  Routes"
-	route_header.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
-	route_panel.add_child(route_header)
-
-	m_route_list = ItemList.new()
-	m_route_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	m_route_list.item_selected.connect(_on_route_selected)
-	route_panel.add_child(m_route_list)
-
-	# Events panel + warnings panel stacked below.
-	var bottom_vbox := VBoxContainer.new()
-	bottom_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	m_split.add_child(bottom_vbox)
-
 	var event_header_row := HBoxContainer.new()
-	bottom_vbox.add_child(event_header_row)
+	add_child(event_header_row)
 
 	var event_header_lbl := Label.new()
-	event_header_lbl.text = "  Events"
+	event_header_lbl.text = "  Story Routes"
 	event_header_lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 	event_header_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	event_header_row.add_child(event_header_lbl)
 
 	m_event_tree = Tree.new()
 	m_event_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	m_event_tree.columns = 3
-	m_event_tree.set_column_title(0, "Event ID")
-	m_event_tree.set_column_title(1, "Score")
-	m_event_tree.set_column_title(2, "Prereqs")
+	m_event_tree.columns = 1
+	m_event_tree.hide_root = true
+	m_event_tree.set_column_title(0, "Route / Event")
 	m_event_tree.set_column_expand(0, true)
-	m_event_tree.set_column_expand(1, false)
-	m_event_tree.set_column_expand(2, false)
-	m_event_tree.set_column_custom_minimum_width(1, 64)
-	m_event_tree.set_column_custom_minimum_width(2, 84)
 	m_event_tree.column_titles_visible = true
 	m_event_tree.item_selected.connect(_on_event_tree_item_selected)
 	m_event_tree.item_activated.connect(_on_event_tree_item_activated)
-	bottom_vbox.add_child(m_event_tree)
+	add_child(m_event_tree)
 
 	# Warnings scroll at the bottom.
 	m_warnings_scroll = ScrollContainer.new()
 	m_warnings_scroll.custom_minimum_size = Vector2(0.0, 72.0)
 	m_warnings_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	bottom_vbox.add_child(m_warnings_scroll)
+	add_child(m_warnings_scroll)
 
 	m_warnings_panel = VBoxContainer.new()
 	m_warnings_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -177,12 +144,8 @@ func _build_ui() -> void:
 
 func _refresh() -> void:
 	_load_catalog_data()
-	_rebuild_route_list()
+	_rebuild_story_tree()
 	_rebuild_warnings_panel()
-	# Reselect first route if nothing was selected.
-	if m_route_list.item_count > 0 and m_route_list.get_selected_items().is_empty():
-		m_route_list.select(0)
-		_on_route_selected(0)
 
 
 func _load_catalog_data() -> void:
@@ -205,40 +168,19 @@ func _load_catalog_data() -> void:
 
 
 # ---------------------------------------------------------------------------
-# Route list
+# Story tree
 # ---------------------------------------------------------------------------
 
-func _rebuild_route_list() -> void:
-	var prev_route := ""
-	var sel := m_route_list.get_selected_items()
-	if sel.size() > 0 and sel[0] < m_route_ids.size():
-		prev_route = m_route_ids[sel[0]]
+func _rebuild_story_tree() -> void:
+	m_event_tree.clear()
+	var root: TreeItem = m_event_tree.create_item()
+	var all_event_ids := _all_event_ids()
 
-	m_route_list.clear()
-	m_route_ids.clear()
-
-	var sorted_ids := _sorted_route_ids()
-	for rid: String in sorted_ids:
-		var rdef: Dictionary = m_route_defs.get(rid, {})
-		var display: String = str(rdef.get("display_name", rid))
-		var source: String = str(m_route_source.get(rid, ""))
-		var badge: String = _BADGE_RESOURCE if source == "resource" else _BADGE_GDSCRIPT
-		var label: String = "%s %s" % [badge, display]
-		var idx: int = m_route_list.add_item(label)
-		m_route_list.set_item_tooltip(idx, _route_tooltip(rid, rdef, source))
-		var color: Color = _ROUTE_COLORS.get(rid, _DEFAULT_ROUTE_COLOR)
-		m_route_list.set_item_custom_fg_color(idx, color)
-		m_route_ids.append(rid)
-
-	# Restore selection.
-	var restore_idx := 0
-	for i: int in m_route_ids.size():
-		if m_route_ids[i] == prev_route:
-			restore_idx = i
-			break
-	if m_route_list.item_count > 0:
-		m_route_list.select(restore_idx)
-		_on_route_selected(restore_idx)
+	for route_id: String in _sorted_route_ids():
+		var route_def: Dictionary = m_route_defs.get(route_id, {})
+		var route_item := _create_route_tree_item(root, route_id, route_def)
+		for event_def: Dictionary in _events_for_route(route_id):
+			_create_event_tree_item(route_item, event_def, all_event_ids)
 
 
 func _route_tooltip(rid: String, rdef: Dictionary, source: String) -> String:
@@ -255,80 +197,73 @@ func _route_tooltip(rid: String, rdef: Dictionary, source: String) -> String:
 
 
 # ---------------------------------------------------------------------------
-# Event tree
+# Combined story tree
 # ---------------------------------------------------------------------------
 
-func _on_route_selected(idx: int) -> void:
-	if idx < 0 or idx >= m_route_ids.size():
-		return
-	_rebuild_event_tree(m_route_ids[idx])
+func _rebuild_event_tree(_route_id: String = "") -> void:
+	_rebuild_story_tree()
 
 
-func _rebuild_event_tree(route_id: String) -> void:
-	m_event_tree.clear()
-	var root: TreeItem = m_event_tree.create_item()
-	root.set_text(0, route_id)
+func _create_route_tree_item(
+	parent: TreeItem, route_id: String, route_def: Dictionary
+) -> TreeItem:
+	var display: String = str(route_def.get("display_name", route_id))
+	var source: String = str(m_route_source.get(route_id, ""))
+	var badge: String = _BADGE_RESOURCE if source == "resource" else _BADGE_GDSCRIPT
+	var route_item := m_event_tree.create_item(parent)
+	route_item.set_text(0, "%s %s" % [badge, display])
+	route_item.set_tooltip_text(0, _route_tooltip(route_id, route_def, source))
+	route_item.set_custom_color(0, _ROUTE_COLORS.get(route_id, _DEFAULT_ROUTE_COLOR))
+	route_item.set_metadata(0, {
+		"kind": "route",
+		"route_id": route_id,
+	})
+	return route_item
 
-	# Collect events for this route in catalog insertion order so the browser
-	# matches the authored event order from resources or legacy modules.
-	var events: Array[Dictionary] = []
-	for eid_var in m_event_defs.keys():
-		var edef: Dictionary = m_event_defs[eid_var] as Dictionary
-		if str(edef.get("route_id", "")) == route_id:
-			events.append(edef)
 
-	var all_event_ids: Dictionary = {}
-	for eid_var in m_event_defs.keys():
-		all_event_ids[str(eid_var)] = true
+func _create_event_tree_item(
+	parent: TreeItem, event_def: Dictionary, all_event_ids: Dictionary
+) -> void:
+	var event_id: String = str(event_def.get("id", ""))
+	var event_item := m_event_tree.create_item(parent)
+	event_item.set_text(0, event_id)
+	event_item.set_tooltip_text(0, str(event_def.get("lead_text", "")))
 
-	for edef: Dictionary in events:
-		var eid: String = str(edef.get("id", ""))
-		var item: TreeItem = m_event_tree.create_item(root)
-		item.set_text(0, eid)
-		item.set_tooltip_text(0, str(edef.get("lead_text", "")))
-		item.set_text(1, str(edef.get("completion_score", 1)))
-		item.set_text_alignment(1, HORIZONTAL_ALIGNMENT_CENTER)
+	var prereqs := _event_prereqs(event_def)
+	event_item.set_metadata(0, {
+		"kind": "event",
+		"event_id": event_id,
+	})
 
-		var prereq_dict = edef.get("prerequisites", {})
-		var prereqs: Array[String] = []
-		if prereq_dict is Dictionary:
-			for key: String in ["story_flags_all", "story_flags_any"]:
-				var flags = (prereq_dict as Dictionary).get(key, [])
-				if flags is Array:
-					for f in (flags as Array):
-						var fs: String = str(f)
-						if not fs.is_empty() and not prereqs.has(fs):
-							prereqs.append(fs)
+	for prereq: String in prereqs:
+		if not all_event_ids.has(prereq):
+			event_item.set_custom_color(0, Color(1.0, 0.6, 0.3))
+			break
 
-		item.set_text(2, str(prereqs.size()))
-		item.set_text_alignment(2, HORIZONTAL_ALIGNMENT_CENTER)
-
-		# Color: dim if all prereqs are unresolved cross-route refs.
-		var has_missing := false
-		for prereq: String in prereqs:
-			if not all_event_ids.has(prereq):
-				has_missing = true
-				break
-		if has_missing:
-			item.set_custom_color(0, Color(1.0, 0.6, 0.3))
-
-		# Add prerequisite child rows.
-		for prereq: String in prereqs:
-			var dep_item: TreeItem = m_event_tree.create_item(item)
-			var exists: bool = all_event_ids.has(prereq)
-			dep_item.set_text(0, "  ← %s" % prereq)
-			dep_item.set_custom_color(0,
-				Color(0.5, 0.5, 0.5) if exists else Color(1.0, 0.5, 0.3)
-			)
-			dep_item.set_tooltip_text(0,
-				"prerequisite — %s" % ("found" if exists else "NOT FOUND in catalog")
-			)
-
-		# Store eid in metadata for double-click.
-		item.set_metadata(0, eid)
+	for prereq: String in prereqs:
+		var prereq_item := m_event_tree.create_item(event_item)
+		var exists: bool = all_event_ids.has(prereq)
+		prereq_item.set_text(0, "  ← %s" % prereq)
+		prereq_item.set_custom_color(
+			0,
+			Color(0.5, 0.5, 0.5) if exists else Color(1.0, 0.5, 0.3)
+		)
+		prereq_item.set_tooltip_text(
+			0,
+			"prerequisite — %s" % ("found" if exists else "NOT FOUND in catalog")
+		)
+		prereq_item.set_metadata(0, {
+			"kind": "prerequisite",
+			"prerequisite_id": prereq,
+		})
 
 
 func _on_event_tree_item_selected() -> void:
+	var route_id := _selected_route_tree_route_id()
+	if not route_id.is_empty():
+		route_inspector_requested.emit(route_id)
+		return
+
 	var eid := _selected_event_tree_event_id()
 	if eid.is_empty():
 		return
@@ -343,10 +278,31 @@ func _on_event_tree_item_activated() -> void:
 
 
 func _selected_event_tree_event_id() -> String:
+	var metadata := _selected_tree_metadata()
+	if metadata.is_empty():
+		return ""
+	if String(metadata.get("kind", "")) != "event":
+		return ""
+	return String(metadata.get("event_id", "")).strip_edges()
+
+
+func _selected_route_tree_route_id() -> String:
+	var metadata := _selected_tree_metadata()
+	if metadata.is_empty():
+		return ""
+	if String(metadata.get("kind", "")) != "route":
+		return ""
+	return String(metadata.get("route_id", "")).strip_edges()
+
+
+func _selected_tree_metadata() -> Dictionary:
 	var item: TreeItem = m_event_tree.get_selected()
 	if item == null:
-		return ""
-	return str(item.get_metadata(0)).strip_edges()
+		return {}
+	var metadata: Variant = item.get_metadata(0)
+	if not (metadata is Dictionary):
+		return {}
+	return metadata as Dictionary
 
 
 # ---------------------------------------------------------------------------
@@ -362,7 +318,7 @@ func _collect_all_warnings() -> void:
 		for w: String in res.validate():
 			m_all_warnings.append("[%s]  %s" % [res.id, w])
 
-	# Cross-route prerequisite check against the full event catalog.
+	# Project-wide prerequisite existence check against the full event catalog.
 	var all_event_ids: Dictionary = {}
 	for eid in m_event_defs.keys():
 		all_event_ids[str(eid)] = true
@@ -479,6 +435,36 @@ func _sorted_route_ids() -> Array[String]:
 		return a < b
 	)
 	return ids
+
+
+func _events_for_route(route_id: String) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for event_id_var in m_event_defs.keys():
+		var event_def: Dictionary = m_event_defs[event_id_var] as Dictionary
+		if str(event_def.get("route_id", "")) == route_id:
+			events.append(event_def)
+	return events
+
+
+func _all_event_ids() -> Dictionary:
+	var all_event_ids: Dictionary = {}
+	for event_id_var in m_event_defs.keys():
+		all_event_ids[str(event_id_var)] = true
+	return all_event_ids
+
+
+func _event_prereqs(event_def: Dictionary) -> Array[String]:
+	var prereqs: Array[String] = []
+	var prereq_dict = event_def.get("prerequisites", {})
+	if prereq_dict is Dictionary:
+		for key: String in ["story_flags_all", "story_flags_any"]:
+			var flags = (prereq_dict as Dictionary).get(key, [])
+			if flags is Array:
+				for flag in flags as Array:
+					var flag_id: String = str(flag).strip_edges()
+					if not flag_id.is_empty() and not prereqs.has(flag_id):
+						prereqs.append(flag_id)
+	return prereqs
 
 
 func _warnings_tooltip(warnings: Array[String]) -> String:

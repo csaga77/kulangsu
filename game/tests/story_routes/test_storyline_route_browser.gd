@@ -14,30 +14,62 @@ func _run() -> void:
 	add_child(route_browser)
 	await get_tree().process_frame
 
+	var route_inspector_requested_ids := PackedStringArray()
+	route_browser.route_inspector_requested.connect(func(route_id: String) -> void:
+		route_inspector_requested_ids.append(route_id)
+	)
+
 	var inspector_requested_ids := PackedStringArray()
 	route_browser.event_inspector_requested.connect(func(event_id: String) -> void:
 		inspector_requested_ids.append(event_id)
 	)
 
 	route_browser._load_catalog_data()
-	route_browser._rebuild_event_tree("family_memory")
+	route_browser._rebuild_story_tree()
+	_assert_true(
+		route_browser.m_event_tree.columns == 1,
+		"Route browser story tree uses a single visible column"
+	)
 	var tree_root: TreeItem = route_browser.m_event_tree.get_root()
-	_assert_true(tree_root != null, "Route browser builds an event tree root for a known route")
+	_assert_true(tree_root != null, "Route browser builds a hidden story tree root")
 	if tree_root != null:
-		var first_event_item: TreeItem = tree_root.get_first_child()
-		_assert_true(first_event_item != null, "Route browser event tree includes selectable event rows")
-		if first_event_item != null:
-			route_browser.m_event_tree.set_selected(first_event_item, 0)
+		var first_route_item: TreeItem = tree_root.get_first_child()
+		_assert_true(first_route_item != null, "Route browser tree includes route root rows")
+		if first_route_item != null:
+			_assert_true(
+				first_route_item.get_text(0).contains("Family and Memory"),
+				"Route browser route roots show the route display name"
+			)
+			route_browser.m_event_tree.set_selected(first_route_item, 0)
 			await get_tree().process_frame
 			_assert_true(
-				inspector_requested_ids.size() == 1,
-				"Route browser selection emits one inspector edit request"
+				route_inspector_requested_ids.size() == 1,
+				"Route browser route selection emits one route inspector edit request"
 			)
-			if inspector_requested_ids.size() == 1:
+			if route_inspector_requested_ids.size() == 1:
 				_assert_true(
-					inspector_requested_ids[0] == "summer_return_complete",
-					"Route browser selection requests inspector editing for the selected event"
+					route_inspector_requested_ids[0] == "family_memory",
+					"Route browser route selection requests inspector editing for the selected route"
 				)
+			_assert_true(
+				inspector_requested_ids.is_empty(),
+				"Route browser route selection does not emit an event inspector edit request"
+			)
+
+			var first_event_item: TreeItem = first_route_item.get_first_child()
+			_assert_true(first_event_item != null, "Route browser event rows live under their route root")
+			if first_event_item != null:
+				route_browser.m_event_tree.set_selected(first_event_item, 0)
+				await get_tree().process_frame
+				_assert_true(
+					inspector_requested_ids.size() == 1,
+					"Route browser event selection emits one inspector edit request"
+				)
+				if inspector_requested_ids.size() == 1:
+					_assert_true(
+						inspector_requested_ids[0] == "summer_return_complete",
+						"Route browser event selection requests inspector editing for the selected event"
+					)
 
 	var sample_warnings: Array[String] = [
 		"[demo_route] first warning",

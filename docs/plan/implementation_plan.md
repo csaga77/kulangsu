@@ -224,11 +224,11 @@ Phases 1–3 shipped:
   - `StorylineCatalog` now loads `.tres` files from `game/storylines/routes/` first; the existing `*_storyline.gd` modules remain the fallback for any route not yet migrated
   - the public API (`build_route_definitions` / `build_event_definitions`) is unchanged so the runtime, journal, and save systems need no edits
 - Phase 2 — inspector-first workflow:
-  - `@tool` `validate()` methods on all three resource classes check for empty ids, duplicate event ids within a route, invalid `phase_window` values, missing `ending_behavior` on endgame events, and intra-route prerequisite cross-reference warnings
-  - `addons/storyline_editor/storyline_validator_inspector_plugin.gd` — `EditorInspectorPlugin` that shows a validation-warning panel and a collapsible known-event-IDs reference picker (click to copy) whenever a `StorylineEventResource` or `StorylineRouteResource` is opened in the Inspector
+  - `@tool` `validate()` methods on all three resource classes check for empty ids, duplicate event ids within a route, invalid `phase_window` values, and missing `ending_behavior` on endgame events, while project-wide prerequisite existence checks remain in the editor tooling so valid cross-route dependencies are not treated as route-local warnings
+  - `addons/storyline_editor/storyline_validator_inspector_plugin.gd` — `EditorInspectorPlugin` that shows a validation-warning panel and swaps `StorylineEventResource` prerequisite editing away from raw `story_flags_all` / `story_flags_any` string arrays into a route-rooted event picker that mirrors the storyline browser
 - Phase 3 — route browser dock:
-  - `addons/storyline_editor/storyline_route_browser.gd` — left-side dock listing all routes with source badges (● resource / ◎ .gd), per-route event tree with prerequisite child rows, project-wide cross-route validation warnings, and a "+ New" button that creates a `StorylineRouteResource` .tres scaffold
-  - selecting an event row emits an inspector-edit request so the plugin opens that `StorylineEventResource` in the Inspector using the same typed-resource promotion flow as the graph editor, while double-clicking still emits `event_show_in_graph_requested` to scroll and highlight the node in the graph editor
+  - `addons/storyline_editor/storyline_route_browser.gd` — left-side dock with one combined storyline tree whose top-level rows are routes with source badges (● resource / ◎ .gd), whose child rows are route events, and whose event children show prerequisite rows; also surfaces project-wide missing-prerequisite validation warnings and provides a "+ New" button that creates a `StorylineRouteResource` .tres scaffold
+  - selecting a route row emits an inspector-edit request so the plugin opens that `StorylineRouteResource` in the Inspector using the same typed-resource promotion flow as the graph editor; selecting an event row does the same for the backing `StorylineEventResource`, while double-clicking an event still emits `event_show_in_graph_requested` to scroll and highlight the node in the graph editor
 
 Phase 4 shipped (first pass):
 
