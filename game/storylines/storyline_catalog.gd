@@ -1,9 +1,25 @@
 class_name StorylineCatalog
 extends RefCounted
+## Central loader for all storyline route and event definitions.
+##
+## Loading priority (highest to lowest):
+##   1. [StorylineRouteResource] .tres files under [constant ROUTE_RESOURCE_DIR].
+##   2. Legacy *_storyline.gd modules under [constant STORYLINE_DIR] — used as a
+##      migration fallback for any route not yet authored as a typed resource.
+##
+## The public API ([method build_route_definitions] / [method build_event_definitions])
+## always returns plain Dictionary values so the runtime, journal, and save
+## systems need no changes as routes migrate from .gd to .tres format.
 
-const STORYLINE_DIR := "res://game/storylines"
-const STORYLINE_SUFFIX := "_storyline.gd"
+const STORYLINE_DIR      := "res://game/storylines"
+const STORYLINE_SUFFIX   := "_storyline.gd"
+## Directory scanned for [StorylineRouteResource] .tres files.
+const ROUTE_RESOURCE_DIR := "res://game/storylines/routes"
 
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
 
 static func route_display_order() -> Array[String]:
 	var route_definitions := build_route_definitions()
@@ -59,26 +75,76 @@ static func build_event_definitions() -> Dictionary:
 	return event_definitions
 
 
+## Loads all [StorylineRouteResource] .tres files found in [constant ROUTE_RESOURCE_DIR].
+## Returns them as Resource objects for use in editor tooling (browser, graph editor).
+## Runtime callers should use [method build_route_definitions] instead.
+static func load_route_resources() -> Array[StorylineRouteResource]:
+	var resources: Array[StorylineRouteResource] = []
+	for path in _discover_route_resource_paths():
+		var res: Resource = load(path)
+		if res is StorylineRouteResource:
+			resources.append(res as StorylineRouteResource)
+		elif res != null:
+			push_warning(
+				"StorylineCatalog: %s is not a StorylineRouteResource (got %s)"
+				% [path, res.get_class()]
+			)
+	return resources
+
+
+# ---------------------------------------------------------------------------
+# Internal loading pipeline
+# ---------------------------------------------------------------------------
+
 static func _load_storyline_modules() -> Array[Dictionary]:
 	var modules: Array[Dictionary] = []
+
+	# --- Priority 1: typed resource files ------------------------------------
+	var resource_route_ids: Dictionary = {}
+	for storyline in _load_route_resource_modules():
+		var route_definition: Dictionary = storyline.get("route", {})
+		var route_id: String = String(route_definition.get("id", "")).strip_edges()
+		if !route_id.is_empty():
+			resource_route_ids[route_id] = true
+		modules.append(storyline)
+
+	# --- Priority 2: legacy .gd modules (skip already-covered routes) --------
 	for path in _discover_storyline_paths():
 		var script: GDScript = load(path) as GDScript
 		if script == null:
 			push_warning("Failed to load storyline module %s" % path)
 			continue
-		if !script.can_instantiate():
-			push_warning("Storyline module %s cannot be instantiated" % path)
-			continue
-		var instance: Object = script.new()
-		if instance == null or !instance.has_method("build_storyline"):
+		if !script.has_method("build_storyline"):
 			push_warning("Storyline module %s is missing build_storyline()" % path)
 			continue
-		var storyline_value = instance.call("build_storyline")
+		var storyline_value = script.call("build_storyline")
 		if !(storyline_value is Dictionary):
 			push_warning("Storyline module %s did not return a Dictionary" % path)
 			continue
-		modules.append(_normalize_storyline(path, storyline_value as Dictionary))
+		var normalized := _normalize_storyline(path, storyline_value as Dictionary)
+		var route_id: String = String(normalized.get("route", {}).get("id", "")).strip_edges()
+		if resource_route_ids.has(route_id):
+			# A typed resource already covers this route — skip the .gd fallback.
+			continue
+		modules.append(normalized)
+
 	modules.sort_custom(_sort_storyline_modules)
+	return modules
+
+
+## Loads and converts [StorylineRouteResource] .tres files into the internal
+## normalized Dictionary format used throughout the pipeline.
+static func _load_route_resource_modules() -> Array[Dictionary]:
+	var modules: Array[Dictionary] = []
+	for path in _discover_route_resource_paths():
+		var res: Resource = load(path)
+		if res is StorylineRouteResource:
+			modules.append((res as StorylineRouteResource).to_storyline_dict(path))
+		elif res != null:
+			push_warning(
+				"StorylineCatalog: %s is not a StorylineRouteResource — skipping"
+				% path
+			)
 	return modules
 
 
@@ -119,6 +185,26 @@ static func _discover_storyline_paths() -> Array[String]:
 	paths.sort()
 	return paths
 
+
+static func _discover_route_resource_paths() -> Array[String]:
+	var paths: Array[String] = []
+	var directory := DirAccess.open(ROUTE_RESOURCE_DIR)
+	if directory == null:
+		return paths
+	directory.list_dir_begin()
+	var file_name := directory.get_next()
+	while !file_name.is_empty():
+		if !directory.current_is_dir() and file_name.ends_with(".tres"):
+			paths.append("%s/%s" % [ROUTE_RESOURCE_DIR, file_name])
+		file_name = directory.get_next()
+	directory.list_dir_end()
+	paths.sort()
+	return paths
+
+
+# ---------------------------------------------------------------------------
+# Sorters
+# ---------------------------------------------------------------------------
 
 static func _sort_route_entries(a: Dictionary, b: Dictionary) -> bool:
 	var order_a := int(a.get("display_order", 9999))

@@ -1,0 +1,55 @@
+[gd_resource type="Resource" script_class="StorylineRouteResource" format=3 uid="uid://30itkcqlihcf"]
+
+[ext_resource type="Script" uid="uid://bssjal5r1kndr" path="res://game/storylines/resources/storyline_ending_tone_rule.gd" id="1_gdvyl"]
+[ext_resource type="Script" uid="uid://bqu32w3oy336b" path="res://game/storylines/resources/storyline_event_resource.gd" id="2_sppxw"]
+[ext_resource type="Script" uid="uid://dn6270j664m1n" path="res://game/storylines/resources/storyline_route_resource.gd" id="3_42eds"]
+
+[sub_resource type="Resource" id="Resource_4473g"]
+script = ExtResource("1_gdvyl")
+min_score = 2
+tag = "inheritance"
+
+[sub_resource type="Resource" id="Resource_sttp1"]
+script = ExtResource("1_gdvyl")
+min_score = 2
+tag = "stewardship"
+helped_residents_min = 4
+
+[sub_resource type="Resource" id="Resource_cafuu"]
+script = ExtResource("2_sppxw")
+id = "preservation_inheritance_seen"
+lead_text = "Speak with Postcard Seller An about why the island's older buildings keep ending up in people's hands."
+journal_note = "The old buildings stop feeling decorative once someone at the harbor treats them like the part of the island people are afraid to lose."
+status_text = "The island's old buildings now read as inheritance rather than background."
+phase_window = PackedStringArray("autumn_study", "winter", "spring_festival", "summer_2")
+pin_priority = 96
+story_flags_all = PackedStringArray("autumn_pressure_named")
+story_flags_any = PackedStringArray()
+resident_known = PackedStringArray()
+tone_tags = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_0b3hb"]
+script = ExtResource("2_sppxw")
+id = "preservation_tower_perspective"
+lead_text = "Climb to Bagua Tower and let Terrace Painter Nian show you how preservation looks once the whole island is in view."
+journal_note = "From the tower, preservation stops sounding sentimental and starts feeling like an island-scale responsibility."
+status_text = "Bagua Tower has turned inheritance into a wider view of what the island still needs kept."
+phase_window = PackedStringArray("autumn_study", "winter", "spring_festival", "summer_2")
+pin_priority = 94
+story_flags_all = PackedStringArray("preservation_inheritance_seen")
+story_flags_any = PackedStringArray()
+landmark_state = {
+"bagua_tower": "available"
+}
+resident_known = PackedStringArray()
+tone_tags = PackedStringArray()
+
+[resource]
+script = ExtResource("3_42eds")
+id = "preservation_inheritance"
+display_name = "Preservation and Inheritance"
+journal_section = "Preservation"
+display_order = 30
+pin_priority = 90
+ending_tone_rules = Array[ExtResource("1_gdvyl")]([SubResource("Resource_4473g"), SubResource("Resource_sttp1")])
+events = Array[ExtResource("2_sppxw")]([SubResource("Resource_cafuu"), SubResource("Resource_0b3hb")])

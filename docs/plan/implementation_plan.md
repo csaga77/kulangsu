@@ -215,12 +215,33 @@ First-pass shipped outcome:
 - added arbitrary-flag plus override-backed resident profile persistence coverage in `game/tests/persistence/test_story_state_persistence.tscn`
 - kept the existing seasonal-route, resident-interaction, and autosave regressions green after the content pass
 
-Still open:
+Phases 1–3 shipped:
 
-- Phase 1: introduce typed storyline `Resource` definitions for route metadata, event metadata, prerequisites, and ending fields, and teach the shared storyline loader to read those resources as the canonical format while the current `.gd` modules remain a migration fallback
-- Phase 2: add an inspector-first editor workflow so authors can create, reorder, validate, and preview storyline beats without hand-editing dictionaries; this phase should include duplicate-id checks, missing-reference checks, phase-window validation, and cross-route dependency pickers
-- Phase 3: add a dedicated editor plugin or dock for route authoring once the resource schema settles, with route summaries, beat lists, dependency browsing, and quick links into related residents, landmarks, or world subjects
-- Phase 4: add an optional `GraphEdit`-based dependency view/editor on top of the same resource model, treating the graph as a visualization and editing surface over shared data rather than as a second source of truth
+- Phase 1 — typed Resource schema:
+  - `game/storylines/resources/storyline_ending_tone_rule.gd` — `StorylineEndingToneRule`
+  - `game/storylines/resources/storyline_event_resource.gd` — `StorylineEventResource` with `to_dict()` and `validate()`
+  - `game/storylines/resources/storyline_route_resource.gd` — `StorylineRouteResource` with `to_storyline_dict()` and `validate()`
+  - `StorylineCatalog` now loads `.tres` files from `game/storylines/routes/` first; the existing `*_storyline.gd` modules remain the fallback for any route not yet migrated
+  - the public API (`build_route_definitions` / `build_event_definitions`) is unchanged so the runtime, journal, and save systems need no edits
+- Phase 2 — inspector-first workflow:
+  - `@tool` `validate()` methods on all three resource classes check for empty ids, duplicate event ids within a route, invalid `phase_window` values, missing `ending_behavior` on endgame events, and intra-route prerequisite cross-reference warnings
+  - `addons/storyline_editor/storyline_validator_inspector_plugin.gd` — `EditorInspectorPlugin` that shows a validation-warning panel and a collapsible known-event-IDs reference picker (click to copy) whenever a `StorylineEventResource` or `StorylineRouteResource` is opened in the Inspector
+- Phase 3 — route browser dock:
+  - `addons/storyline_editor/storyline_route_browser.gd` — left-side dock listing all routes with source badges (● resource / ◎ .gd), per-route event tree with prerequisite child rows, project-wide cross-route validation warnings, and a "+ New" button that creates a `StorylineRouteResource` .tres scaffold
+  - double-clicking an event emits `event_show_in_graph_requested` which the plugin routes to `StorylineGraphEditor.select_event()`, scrolling and highlighting the node in the graph editor
+
+Phase 4 shipped (first pass):
+
+- `addons/storyline_editor/` — GraphEdit-based dependency view added as an editor bottom panel
+- reads live data directly from `StorylineCatalog`; events from all four route modules are shown as color-coded GraphNodes
+- prerequisite edges (`story_flags_all` / `story_flags_any`) are drawn as directed connections; cross-route dependencies visible in "All routes" mode
+- events are laid out in columns by topological depth (longest prerequisite chain), sorted within each column by route display order
+- per-route filter, Refresh button, and graph-first authoring flow without a redundant in-panel details pane; event inspection/editing now happens through the Inspector when a node is selected
+- dependency edges are now editable in the graph: connecting a node adds a hard prerequisite on the target event (`story_flags_all`), disconnecting removes that prerequisite from both `story_flags_all` and `story_flags_any`
+- when a target route still lives in a legacy `*_storyline.gd` module, the first graph edit auto-promotes that route into `game/storylines/routes/<route_id>.tres` and then saves the dependency change there
+- selecting a graph node now resolves the backing `StorylineEventResource` into the Inspector so authors can edit event properties directly from the graph; selecting a legacy-route node auto-promotes that route into `game/storylines/routes/` first so the inspector edits the canonical typed resource
+- graph edits emit a catalog refresh so the route browser updates its source badge and event tree without requiring a manual dock reload
+- manual graph layout now persists per user across editor restarts instead of resetting to auto-layout each session, and the graph toolbar can explicitly re-run automatic layout for the currently visible nodes
 - widen validation around settings/audio behavior and any future typed payload migrations, and keep extending regression coverage as the authoring format evolves
 
 Exit criteria for this workstream:

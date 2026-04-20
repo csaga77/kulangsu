@@ -1,7 +1,7 @@
 extends RefCounted
 
 
-func build_storyline() -> Dictionary:
+static func build_storyline() -> Dictionary:
 	return {
 		"route": {
 			"id": "melody_landmarks",
