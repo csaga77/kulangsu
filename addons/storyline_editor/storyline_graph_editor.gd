@@ -31,10 +31,17 @@ const _ROUTE_COLORS := {
 	"melody_landmarks":        Color(0.61, 0.34, 0.76),   # soft purple
 }
 const _DEFAULT_ROUTE_COLOR := Color(0.52, 0.52, 0.52)
+const _PREREQ_ALL_COLOR := Color(0.95, 0.78, 0.28)
+const _PREREQ_ANY_COLOR := Color(0.48, 0.74, 0.96)
 
 ## Slot type index — all ports use the same type so any output can connect to
 ## any input (GraphEdit only wires same-type ports by default).
 const _SLOT_TYPE := 0
+const _NODE_OUTPUT_SLOT := 0
+const _NODE_ALL_INPUT_SLOT := 1
+const _NODE_ANY_INPUT_SLOT := 2
+const _PREREQ_ALL_KEY := "story_flags_all"
+const _PREREQ_ANY_KEY := "story_flags_any"
 
 ## Layout geometry.
 const _NODE_WIDTH        := 280.0
@@ -80,6 +87,7 @@ var m_node_map: Dictionary = {}
 
 var m_selected_event_id: String = ""
 var m_connection_drag_selected_event_id: String = ""
+var m_graph_rebuild_token: int = 0
 
 # ---------------------------------------------------------------------------
 # Lifecycle
@@ -108,6 +116,7 @@ func setup(editor_interface: EditorInterface) -> void:
 
 func _build_ui() -> void:
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
+	visibility_changed.connect(_on_graph_editor_visibility_changed)
 
 	# --- Toolbar ---
 	m_toolbar = HBoxContainer.new()
@@ -162,6 +171,7 @@ func _build_ui() -> void:
 	m_graph_edit.disconnection_request.connect(_on_disconnection_request)
 	m_graph_edit.node_selected.connect(_on_node_selected)
 	m_graph_edit.node_deselected.connect(_on_node_deselected)
+	m_graph_edit.resized.connect(_on_graph_edit_resized)
 	add_child(m_graph_edit)
 
 
@@ -252,6 +262,8 @@ func _rebuild_graph(capture_layout_positions: bool = true) -> void:
 	if visible.is_empty():
 		return
 
+	m_graph_rebuild_token += 1
+	var rebuild_token := m_graph_rebuild_token
 	var depth_map   := _compute_depths(visible)
 	var placement   := _compute_placement(visible, depth_map)
 
@@ -264,6 +276,7 @@ func _rebuild_graph(capture_layout_positions: bool = true) -> void:
 		_create_event_node(eid, edef, pos)
 
 	_draw_connections(visible)
+	call_deferred("_redraw_connections_after_layout", rebuild_token, visible.duplicate())
 
 
 func _arrange_visible_nodes() -> void:
@@ -445,18 +458,27 @@ func _depth_of(
 ## prerequisites of [param edef].
 func _gather_prereqs(edef: Dictionary) -> Array[String]:
 	var prereqs: Array[String] = []
+	for key: String in [_PREREQ_ALL_KEY, _PREREQ_ANY_KEY]:
+		for prereq: String in _prereq_flags_for_key(edef, key):
+			if not prereqs.has(prereq):
+				prereqs.append(prereq)
+	return prereqs
+
+
+func _prereq_flags_for_key(edef: Dictionary, key: String) -> Array[String]:
+	var prereqs: Array[String] = []
 	var prereq_val = edef.get("prerequisites", {})
 	if not (prereq_val is Dictionary):
 		return prereqs
-	var prereq_dict := prereq_val as Dictionary
-	for key: String in ["story_flags_all", "story_flags_any"]:
-		var flags_val = prereq_dict.get(key, [])
-		if not (flags_val is Array):
-			continue
-		for f_var in (flags_val as Array):
-			var f: String = str(f_var).strip_edges()
-			if not f.is_empty() and not prereqs.has(f):
-				prereqs.append(f)
+
+	var flags_val = (prereq_val as Dictionary).get(key, [])
+	if not (flags_val is Array):
+		return prereqs
+
+	for f_var in flags_val as Array:
+		var f: String = str(f_var).strip_edges()
+		if not f.is_empty():
+			prereqs.append(f)
 	return prereqs
 
 
@@ -514,21 +536,42 @@ func _create_event_node(eid: String, edef: Dictionary, pos: Vector2) -> void:
 	gnode.position_offset = pos
 	gnode.custom_minimum_size = Vector2(_NODE_WIDTH, 0.0)
 
-	# Storyline label — slot 0, carries both the input (left) and output
-	# (right) ports so connections land at the top of the node body.
+	# Storyline label — slot 0, carries the output port so the event can be used
+	# as a prerequisite for other nodes.
 	var route_lbl := Label.new()
 	route_lbl.text = route_display
 	route_lbl.add_theme_color_override("font_color", route_color)
 	route_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	gnode.add_child(route_lbl)
 
-	# Configure slot 0: left input + right output, colored by route.
+	var all_lbl := Label.new()
+	all_lbl.text = "All"
+	all_lbl.add_theme_color_override("font_color", _PREREQ_ALL_COLOR)
+	all_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	gnode.add_child(all_lbl)
+
+	var any_lbl := Label.new()
+	any_lbl.text = "Any"
+	any_lbl.add_theme_color_override("font_color", _PREREQ_ANY_COLOR)
+	any_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	gnode.add_child(any_lbl)
+
+	# Configure slot 0: right output only, colored by route.
 	gnode.set_slot(
-		0,
-		true,  _SLOT_TYPE, route_color,   # left input
+		_NODE_OUTPUT_SLOT,
+		false, _SLOT_TYPE, route_color,   # left input
 		true,  _SLOT_TYPE, route_color    # right output
 	)
-	# Slots 1+ have no ports (default disabled).
+	gnode.set_slot(
+		_NODE_ALL_INPUT_SLOT,
+		true,  _SLOT_TYPE, _PREREQ_ALL_COLOR,
+		false, _SLOT_TYPE, _PREREQ_ALL_COLOR
+	)
+	gnode.set_slot(
+		_NODE_ANY_INPUT_SLOT,
+		true,  _SLOT_TYPE, _PREREQ_ANY_COLOR,
+		false, _SLOT_TYPE, _PREREQ_ANY_COLOR
+	)
 
 	gnode.position_offset_changed.connect(_on_node_position_offset_changed.bind(eid))
 	m_graph_edit.add_child(gnode)
@@ -546,23 +589,103 @@ func _draw_connections(visible_ids: Array[String]) -> void:
 
 	for eid: String in visible_ids:
 		var edef: Dictionary = m_event_defs.get(eid, {})
-		for prereq: String in _gather_prereqs(edef):
+		var target_node: GraphNode = m_node_map.get(eid) as GraphNode
+		if not is_instance_valid(target_node):
+			continue
+		var all_input_port := _find_input_port_index_for_slot(
+			target_node,
+			_NODE_ALL_INPUT_SLOT
+		)
+		var any_input_port := _find_input_port_index_for_slot(
+			target_node,
+			_NODE_ANY_INPUT_SLOT
+		)
+		for prereq: String in _prereq_flags_for_key(edef, _PREREQ_ALL_KEY):
 			if not visible_set.has(prereq):
 				continue
+			var source_node_all: GraphNode = m_node_map.get(prereq) as GraphNode
+			var source_output_port_all := _find_output_port_index_for_slot(
+				source_node_all,
+				_NODE_OUTPUT_SLOT
+			)
+			if not is_instance_valid(source_node_all) or source_output_port_all < 0 or all_input_port < 0:
+				continue
 			# connect_node(from_node, from_port, to_node, to_port)
-			# Arrow: prereq output(right) -> eid input(left)
-			var err: int = m_graph_edit.connect_node(prereq, 0, eid, 0)
+			# Arrow: prereq output(right) -> eid "All" input(left)
+			var err: int = m_graph_edit.connect_node(
+				prereq,
+				source_output_port_all,
+				eid,
+				all_input_port
+			)
 			if err != OK:
 				push_warning(
-					"StorylineGraphEditor: connect_node(%s -> %s) returned %d"
+					"StorylineGraphEditor: connect_node(%s -> %s [All]) returned %d"
+					% [prereq, eid, err]
+				)
+		for prereq: String in _prereq_flags_for_key(edef, _PREREQ_ANY_KEY):
+			if not visible_set.has(prereq):
+				continue
+			var source_node_any: GraphNode = m_node_map.get(prereq) as GraphNode
+			var source_output_port_any := _find_output_port_index_for_slot(
+				source_node_any,
+				_NODE_OUTPUT_SLOT
+			)
+			if not is_instance_valid(source_node_any) or source_output_port_any < 0 or any_input_port < 0:
+				continue
+			var err: int = m_graph_edit.connect_node(
+				prereq,
+				source_output_port_any,
+				eid,
+				any_input_port
+			)
+			if err != OK:
+				push_warning(
+					"StorylineGraphEditor: connect_node(%s -> %s [Any]) returned %d"
 					% [prereq, eid, err]
 				)
 
 
-func _persist_dependency_change(event_id: String, prereq_id: String, should_add: bool) -> void:
+func _redraw_connections_after_layout(
+	rebuild_token: int,
+	visible_ids: Array[String]
+) -> void:
+	if rebuild_token != m_graph_rebuild_token:
+		return
+	if m_node_map.is_empty():
+		return
+	m_graph_edit.clear_connections()
+	_draw_connections(visible_ids)
+	m_graph_edit.queue_redraw()
+
+
+func _schedule_connection_redraw_for_visible_graph() -> void:
+	if m_node_map.is_empty():
+		return
+	if not is_visible_in_tree() or not m_graph_edit.is_visible_in_tree():
+		return
+	call_deferred(
+		"_redraw_connections_after_layout",
+		m_graph_rebuild_token,
+		_visible_event_ids(_current_filter()).duplicate()
+	)
+
+
+func _persist_dependency_change(
+	event_id: String,
+	prereq_id: String,
+	prerequisite_key: String,
+	should_add: bool
+) -> void:
 	event_id = event_id.strip_edges()
 	prereq_id = prereq_id.strip_edges()
 	if event_id.is_empty() or prereq_id.is_empty():
+		return
+	if not [_PREREQ_ALL_KEY, _PREREQ_ANY_KEY].has(prerequisite_key):
+		push_warning(
+			"StorylineGraphEditor: unknown prerequisite bucket '%s'"
+			% prerequisite_key
+		)
 		return
 	if event_id == prereq_id:
 		push_warning("StorylineGraphEditor: ignored self-dependency on '%s'" % event_id)
@@ -599,32 +722,38 @@ func _persist_dependency_change(event_id: String, prereq_id: String, should_add:
 		)
 		return
 
-	var all_flags := target_event.story_flags_all
-	var any_flags := target_event.story_flags_any
+	var all_flags: PackedStringArray = target_event.story_flags_all
+	var any_flags: PackedStringArray = target_event.story_flags_any
+	var target_flags: PackedStringArray = (
+		all_flags if prerequisite_key == _PREREQ_ALL_KEY else any_flags
+	)
+	var other_flags: PackedStringArray = (
+		any_flags if prerequisite_key == _PREREQ_ALL_KEY else all_flags
+	)
 	var changed := false
 	if should_add:
-		if not all_flags.has(prereq_id):
-			all_flags.append(prereq_id)
+		if not target_flags.has(prereq_id):
+			target_flags.append(prereq_id)
 			changed = true
-		var any_idx := any_flags.find(prereq_id)
-		if any_idx >= 0:
-			any_flags.remove_at(any_idx)
+		var other_idx := other_flags.find(prereq_id)
+		if other_idx >= 0:
+			other_flags.remove_at(other_idx)
 			changed = true
 	else:
-		var all_idx := all_flags.find(prereq_id)
-		if all_idx >= 0:
-			all_flags.remove_at(all_idx)
-			changed = true
-		var any_idx := any_flags.find(prereq_id)
-		if any_idx >= 0:
-			any_flags.remove_at(any_idx)
+		var target_idx := target_flags.find(prereq_id)
+		if target_idx >= 0:
+			target_flags.remove_at(target_idx)
 			changed = true
 
 	if not changed:
 		return
 
-	target_event.story_flags_all = all_flags
-	target_event.story_flags_any = any_flags
+	if prerequisite_key == _PREREQ_ALL_KEY:
+		target_event.story_flags_all = target_flags
+		target_event.story_flags_any = other_flags
+	else:
+		target_event.story_flags_all = other_flags
+		target_event.story_flags_any = target_flags
 
 	var save_path := _route_resource_path_for(route_id)
 	var save_error := ResourceSaver.save(route_resource, save_path)
@@ -754,6 +883,24 @@ func _route_resource_path_for(route_id: String) -> String:
 		route_id,
 		"%s/%s.tres" % [StorylineCatalog.ROUTE_RESOURCE_DIR, route_id]
 	))
+
+
+func _find_input_port_index_for_slot(node: GraphNode, slot_index: int) -> int:
+	if not is_instance_valid(node):
+		return -1
+	for port_index in node.get_input_port_count():
+		if node.get_input_port_slot(port_index) == slot_index:
+			return port_index
+	return -1
+
+
+func _find_output_port_index_for_slot(node: GraphNode, slot_index: int) -> int:
+	if not is_instance_valid(node):
+		return -1
+	for port_index in node.get_output_port_count():
+		if node.get_output_port_slot(port_index) == slot_index:
+			return port_index
+	return -1
 
 
 func _find_event_resource(
@@ -901,16 +1048,69 @@ func _on_node_position_offset_changed(event_id: String) -> void:
 		m_layout_positions[event_id] = node.position_offset
 
 
+func _on_graph_editor_visibility_changed() -> void:
+	_schedule_connection_redraw_for_visible_graph()
+
+
+func _on_graph_edit_resized() -> void:
+	_schedule_connection_redraw_for_visible_graph()
+
+
 func _on_connection_request(
-	from_node: StringName, _from_port: int, to_node: StringName, _to_port: int
+	from_node: StringName, _from_port: int, to_node: StringName, to_port: int
 ) -> void:
-	_persist_dependency_change(String(to_node), String(from_node), true)
+	var prerequisite_key := _prerequisite_key_for_input_port(String(to_node), to_port)
+	if prerequisite_key.is_empty():
+		return
+	_persist_dependency_change(
+		String(to_node),
+		String(from_node),
+		prerequisite_key,
+		true
+	)
 
 
 func _on_disconnection_request(
-	from_node: StringName, _from_port: int, to_node: StringName, _to_port: int
+	from_node: StringName, _from_port: int, to_node: StringName, to_port: int
 ) -> void:
-	_persist_dependency_change(String(to_node), String(from_node), false)
+	var prerequisite_key := _prerequisite_key_for_input_port(String(to_node), to_port)
+	if prerequisite_key.is_empty():
+		return
+	_persist_dependency_change(
+		String(to_node),
+		String(from_node),
+		prerequisite_key,
+		false
+	)
+
+
+func _prerequisite_key_for_input_port(to_node_name: String, to_port: int) -> String:
+	var node: GraphNode = m_node_map.get(to_node_name) as GraphNode
+	if not is_instance_valid(node):
+		push_warning(
+			"StorylineGraphEditor: missing target node '%s' for input port %d"
+			% [to_node_name, to_port]
+		)
+		return ""
+	if to_port < 0 or to_port >= node.get_input_port_count():
+		push_warning(
+			"StorylineGraphEditor: unsupported input port %d on '%s'"
+			% [to_port, to_node_name]
+		)
+		return ""
+
+	var slot_index := node.get_input_port_slot(to_port)
+	match slot_index:
+		_NODE_ALL_INPUT_SLOT:
+			return _PREREQ_ALL_KEY
+		_NODE_ANY_INPUT_SLOT:
+			return _PREREQ_ANY_KEY
+		_:
+			push_warning(
+				"StorylineGraphEditor: unsupported prerequisite slot %d on '%s'"
+				% [slot_index, to_node_name]
+			)
+			return ""
 
 
 func _on_node_selected(node: Node) -> void:

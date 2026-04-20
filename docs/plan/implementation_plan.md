@@ -237,7 +237,7 @@ Phase 4 shipped (first pass):
 - prerequisite edges (`story_flags_all` / `story_flags_any`) are drawn as directed connections; cross-route dependencies visible in "All routes" mode
 - events are laid out in columns by topological depth (longest prerequisite chain), sorted within each column by route display order
 - per-route filter, Refresh button, and graph-first authoring flow without a redundant in-panel details pane; event inspection/editing now happens through the Inspector when a node is selected
-- dependency edges are now editable in the graph: connecting a node adds a hard prerequisite on the target event (`story_flags_all`), disconnecting removes that prerequisite from both `story_flags_all` and `story_flags_any`
+- dependency edges are now editable in the graph: each node exposes separate `All` and `Any` input slots, so connecting to `All` writes `story_flags_all`, connecting to `Any` writes `story_flags_any`, and disconnecting removes the prerequisite from the targeted bucket
 - when a target route still lives in a legacy `*_storyline.gd` module, the first graph edit auto-promotes that route into `game/storylines/routes/<route_id>.tres` and then saves the dependency change there
 - selecting a graph node now resolves the backing `StorylineEventResource` into the Inspector so authors can edit event properties directly from the graph; selecting a legacy-route node auto-promotes that route into `game/storylines/routes/` first so the inspector edits the canonical typed resource
 - graph edits emit a catalog refresh so the route browser updates its source badge and event tree without requiring a manual dock reload

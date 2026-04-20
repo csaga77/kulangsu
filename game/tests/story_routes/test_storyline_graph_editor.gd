@@ -29,6 +29,28 @@ func _run() -> void:
 	add_child(graph_editor)
 	await get_tree().process_frame
 	graph_editor._refresh_graph()
+	await get_tree().process_frame
+
+	var visible_event_ids := graph_editor._visible_event_ids("")
+	var expected_initial_connection_count := 0
+	for event_id: String in visible_event_ids:
+		expected_initial_connection_count += graph_editor._gather_prereqs(
+			graph_editor.m_event_defs.get(event_id, {})
+		).size()
+	var initial_connections: Array = graph_editor.m_graph_edit.get_connection_list()
+	_assert_true(
+		initial_connections.size() == expected_initial_connection_count,
+		"Graph editor draws the expected connections on first open"
+	)
+	graph_editor.m_graph_edit.clear_connections()
+	graph_editor._schedule_connection_redraw_for_visible_graph()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var restored_connections: Array = graph_editor.m_graph_edit.get_connection_list()
+	_assert_true(
+		restored_connections.size() == expected_initial_connection_count,
+		"Graph editor can redraw connections after a visible-panel refresh"
+	)
 
 	var layout_anchor: GraphNode = graph_editor.m_node_map.get("summer_return_complete") as GraphNode
 	_assert_true(layout_anchor != null, "Graph editor builds an initial node map")
@@ -42,13 +64,21 @@ func _run() -> void:
 			if child is Label:
 				anchor_labels.append(child as Label)
 		_assert_true(
-			anchor_labels.size() == 1,
-			"Graph editor nodes show only one body label beneath the title"
+			anchor_labels.size() == 3,
+			"Graph editor nodes show storyline plus All and Any connection rows"
 		)
-		if anchor_labels.size() == 1:
+		if anchor_labels.size() == 3:
 			_assert_true(
 				anchor_labels[0].text == "Family and Memory",
 				"Graph editor nodes show the owning storyline in the body"
+			)
+			_assert_true(
+				anchor_labels[1].text == "All",
+				"Graph editor nodes expose an All prerequisite slot"
+			)
+			_assert_true(
+				anchor_labels[2].text == "Any",
+				"Graph editor nodes expose an Any prerequisite slot"
 			)
 		var custom_position := Vector2(640.0, 320.0)
 		layout_anchor.position_offset = custom_position
@@ -60,7 +90,6 @@ func _run() -> void:
 				rebuilt_anchor.position_offset.is_equal_approx(custom_position),
 				"Graph editor rebuild preserves manually arranged node positions"
 			)
-		var visible_event_ids := graph_editor._visible_event_ids("")
 		var auto_depth_map := graph_editor._compute_depths(visible_event_ids)
 		var auto_placement := graph_editor._compute_placement(
 			visible_event_ids,
@@ -149,10 +178,15 @@ func _run() -> void:
 	graph_editor.m_route_resource_paths["family_memory"] = _TEMP_ROUTE_PATH
 	graph_editor.select_event("summer_return_complete", false)
 	graph_editor.m_graph_edit.scroll_offset = Vector2(920.0, 480.0)
-	graph_editor._persist_dependency_change(
-		"spring_festival_prepared",
-		"summer_return_complete",
-		true
+	var summer_return_node := graph_editor.m_node_map.get("summer_return_complete") as GraphNode
+	var spring_prepared_node := graph_editor.m_node_map.get("spring_festival_prepared") as GraphNode
+	var source_output_port := graph_editor._find_output_port_index_for_slot(summer_return_node, 0)
+	var all_input_port := graph_editor._find_input_port_index_for_slot(spring_prepared_node, 1)
+	graph_editor._on_connection_request(
+		&"summer_return_complete",
+		source_output_port,
+		&"spring_festival_prepared",
+		all_input_port
 	)
 	await get_tree().process_frame
 
@@ -182,24 +216,33 @@ func _run() -> void:
 		if prepared_event != null:
 			_assert_true(
 				prepared_event.story_flags_all.has("summer_return_complete"),
-				"Graph editor connect adds the new hard prerequisite"
+				"Graph editor All-slot connect adds the new hard prerequisite"
 			)
 			_assert_true(
 				prepared_event.story_flags_all.has("winter_memory_reveal"),
-				"Graph editor connect preserves existing hard prerequisites"
+				"Graph editor All-slot connect preserves existing hard prerequisites"
 			)
 			_assert_true(
 				prepared_event.story_flags_all.has("preservation_inheritance_seen"),
-				"Graph editor connect keeps cross-route prerequisites intact"
+				"Graph editor All-slot connect keeps cross-route prerequisites intact"
+			)
+			_assert_true(
+				not prepared_event.story_flags_any.has("summer_return_complete"),
+				"Graph editor All-slot connect does not also add an Any prerequisite"
 			)
 
 	graph_editor._load_catalog_data()
 	graph_editor.m_route_resource_paths["family_memory"] = _TEMP_ROUTE_PATH
 	graph_editor.m_graph_edit.scroll_offset = Vector2(780.0, 260.0)
-	graph_editor._persist_dependency_change(
-		"spring_festival_prepared",
-		"summer_return_complete",
-		false
+	summer_return_node = graph_editor.m_node_map.get("summer_return_complete") as GraphNode
+	spring_prepared_node = graph_editor.m_node_map.get("spring_festival_prepared") as GraphNode
+	source_output_port = graph_editor._find_output_port_index_for_slot(summer_return_node, 0)
+	all_input_port = graph_editor._find_input_port_index_for_slot(spring_prepared_node, 1)
+	graph_editor._on_disconnection_request(
+		&"summer_return_complete",
+		source_output_port,
+		&"spring_festival_prepared",
+		all_input_port
 	)
 	await get_tree().process_frame
 
@@ -229,15 +272,88 @@ func _run() -> void:
 		if trimmed_event != null:
 			_assert_true(
 				not trimmed_event.story_flags_all.has("summer_return_complete"),
-				"Graph editor disconnect removes the target prerequisite"
+				"Graph editor All-slot disconnect removes the target prerequisite"
+			)
+			_assert_true(
+				not trimmed_event.story_flags_any.has("summer_return_complete"),
+				"Graph editor All-slot disconnect leaves Any prerequisites cleared"
 			)
 
 	graph_editor._load_catalog_data()
 	graph_editor.m_route_resource_paths["family_memory"] = _TEMP_ROUTE_PATH
-	graph_editor._persist_dependency_change(
-		"summer_return_complete",
-		"spring_festival_prepared",
-		true
+	graph_editor.m_graph_edit.scroll_offset = Vector2(640.0, 180.0)
+	summer_return_node = graph_editor.m_node_map.get("summer_return_complete") as GraphNode
+	spring_prepared_node = graph_editor.m_node_map.get("spring_festival_prepared") as GraphNode
+	source_output_port = graph_editor._find_output_port_index_for_slot(summer_return_node, 0)
+	var any_input_port := graph_editor._find_input_port_index_for_slot(spring_prepared_node, 2)
+	graph_editor._on_connection_request(
+		&"summer_return_complete",
+		source_output_port,
+		&"spring_festival_prepared",
+		any_input_port
+	)
+	await get_tree().process_frame
+
+	var any_route := _load_temp_route()
+	_assert_true(any_route != null, "Graph editor preserves the temp route resource after Any connect")
+	_assert_true(
+		graph_editor.m_graph_edit.scroll_offset.is_equal_approx(Vector2(640.0, 180.0)),
+		"Graph editor preserves scroll position after Any connect"
+	)
+	if any_route != null:
+		var any_event := _find_event(any_route, "spring_festival_prepared")
+		_assert_true(any_event != null, "Any connect keeps the target event editable")
+		if any_event != null:
+			_assert_true(
+				any_event.story_flags_any.has("summer_return_complete"),
+				"Graph editor Any-slot connect adds an optional prerequisite"
+			)
+			_assert_true(
+				not any_event.story_flags_all.has("summer_return_complete"),
+				"Graph editor Any-slot connect does not add a hard prerequisite"
+			)
+
+	graph_editor._load_catalog_data()
+	graph_editor.m_route_resource_paths["family_memory"] = _TEMP_ROUTE_PATH
+	graph_editor.m_graph_edit.scroll_offset = Vector2(610.0, 140.0)
+	summer_return_node = graph_editor.m_node_map.get("summer_return_complete") as GraphNode
+	spring_prepared_node = graph_editor.m_node_map.get("spring_festival_prepared") as GraphNode
+	source_output_port = graph_editor._find_output_port_index_for_slot(summer_return_node, 0)
+	any_input_port = graph_editor._find_input_port_index_for_slot(spring_prepared_node, 2)
+	graph_editor._on_disconnection_request(
+		&"summer_return_complete",
+		source_output_port,
+		&"spring_festival_prepared",
+		any_input_port
+	)
+	await get_tree().process_frame
+
+	var any_trimmed_route := _load_temp_route()
+	_assert_true(any_trimmed_route != null, "Graph editor preserves the temp route resource after Any disconnect")
+	_assert_true(
+		graph_editor.m_graph_edit.scroll_offset.is_equal_approx(Vector2(610.0, 140.0)),
+		"Graph editor preserves scroll position after Any disconnect"
+	)
+	if any_trimmed_route != null:
+		var any_trimmed_event := _find_event(any_trimmed_route, "spring_festival_prepared")
+		_assert_true(any_trimmed_event != null, "Any disconnect keeps the target event editable")
+		if any_trimmed_event != null:
+			_assert_true(
+				not any_trimmed_event.story_flags_any.has("summer_return_complete"),
+				"Graph editor Any-slot disconnect removes the optional prerequisite"
+			)
+
+	graph_editor._load_catalog_data()
+	graph_editor.m_route_resource_paths["family_memory"] = _TEMP_ROUTE_PATH
+	var spring_source_node := graph_editor.m_node_map.get("spring_festival_prepared") as GraphNode
+	var summer_target_node := graph_editor.m_node_map.get("summer_return_complete") as GraphNode
+	var reverse_source_output_port := graph_editor._find_output_port_index_for_slot(spring_source_node, 0)
+	var reverse_all_input_port := graph_editor._find_input_port_index_for_slot(summer_target_node, 1)
+	graph_editor._on_connection_request(
+		&"spring_festival_prepared",
+		reverse_source_output_port,
+		&"summer_return_complete",
+		reverse_all_input_port
 	)
 	await get_tree().process_frame
 
@@ -249,7 +365,7 @@ func _run() -> void:
 		if anchor_event != null:
 			_assert_true(
 				not anchor_event.story_flags_all.has("spring_festival_prepared"),
-				"Graph editor refuses reverse dependencies that would create a cycle"
+				"Graph editor refuses reverse All-slot dependencies that would create a cycle"
 			)
 
 	_cleanup_temp_route()
