@@ -29,11 +29,11 @@ Current shipped subject ids:
 
 Still not migrated:
 
-- authored recursive `StoryEventDefinition` trees for the four top-level route families
-- a director that arbitrates across many active route-family definitions instead of the current shared helpers over route graph, resident data, and inspectable catalogs
+- authored recursive `StoryEventDefinition` trees for the four top-level route families; those route families now live as separate storyline modules under `game/storylines/`, but they are still flat route/event dictionaries rather than nested StoryEvent trees
+- a director that arbitrates across many active route-family definitions instead of the current shared helpers over storyline modules, resident data, and inspectable catalogs
 - landmark-trigger progression still enters through the older `activate_landmark_trigger(...)` compatibility bridge, but the current melody landmark subjects and their prompt-completion/reward follow-through now resolve in authored StoryEvent definitions before any legacy fallback helper in `landmark_progression.gd`
 - broader non-interaction signals beyond the current landmark prompt-completion/reward events moving fully through `notify_story_world_event(...)`
-- a published-fact ledger replacing `story_route_graph.gd` as the canonical progression source
+- a published-fact ledger replacing the current storyline-module plus `story_route_graph.gd` projection as the canonical progression source
 
 ### Goals
 
@@ -87,7 +87,14 @@ Do not turn every nested event into its own service instance unless there is a r
 
 ### Using This With Current Story Lines
 
-With the current content, the generic runtime should be authored around the same top-level route families already present in the playable story and route graph.
+With the current content, the generic runtime should be authored around the same top-level route families already present in the playable story and current storyline modules.
+
+Current authoring contract before the full StoryEvent-tree migration:
+
+- each route family lives in its own `game/storylines/*_storyline.gd` module
+- each module returns one `route` dictionary and an `events` array
+- route events may depend on any other route event by referencing that event id through `prerequisites.story_flags_all` or `prerequisites.story_flags_any`
+- the shared route graph and journal discover storyline modules automatically, so adding a new route family no longer requires editing the central route graph
 
 Use one top-level `StoryEventDefinition` tree for each current canonical route:
 

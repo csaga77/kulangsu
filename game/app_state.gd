@@ -522,9 +522,9 @@ func set_route_progress(route_id: String, progress: Dictionary) -> void:
 
 
 func set_all_route_progress(new_progress: Dictionary) -> void:
-	var route_definitions := STORY_ROUTE_GRAPH_SCRIPT.build_route_definitions()
+	var route_ids := STORY_ROUTE_GRAPH_SCRIPT.route_display_order()
 	route_progress = {}
-	for route_id in route_definitions.keys():
+	for route_id in route_ids:
 		route_progress[route_id] = new_progress.get(route_id, {}).duplicate(true)
 		route_progress_changed.emit(route_id, get_route_progress(route_id))
 
@@ -571,6 +571,12 @@ func get_story_route_definition(route_id: String) -> Dictionary:
 	if m_story_route_graph == null:
 		return {}
 	return m_story_route_graph.get_route_definition(route_id)
+
+
+func get_story_route_ids() -> PackedStringArray:
+	if m_story_route_graph == null:
+		return PackedStringArray()
+	return m_story_route_graph.get_route_ids()
 
 
 func get_story_event_definition(event_id: String) -> Dictionary:

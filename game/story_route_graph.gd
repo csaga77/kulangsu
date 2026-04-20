@@ -11,306 +11,15 @@ func _init(owner: Node) -> void:
 
 
 static func route_display_order() -> Array[String]:
-	return [
-		"family_memory",
-		"study_future",
-		"preservation_inheritance",
-		"melody_landmarks",
-	]
+	return StorylineCatalog.route_display_order()
 
 
 static func build_route_definitions() -> Dictionary:
-	return {
-		"family_memory": {
-			"id": "family_memory",
-			"display_name": "Family and Memory",
-			"pin_priority": 110,
-			"journal_section": "Family",
-		},
-		"study_future": {
-			"id": "study_future",
-			"display_name": "Study and Future",
-			"pin_priority": 100,
-			"journal_section": "Future",
-		},
-		"preservation_inheritance": {
-			"id": "preservation_inheritance",
-			"display_name": "Preservation and Inheritance",
-			"pin_priority": 90,
-			"journal_section": "Preservation",
-		},
-		"melody_landmarks": {
-			"id": "melody_landmarks",
-			"display_name": "Island Melody",
-			"pin_priority": 80,
-			"journal_section": "Landmarks",
-		},
-	}
+	return StorylineCatalog.build_route_definitions()
 
 
 static func build_event_definitions() -> Dictionary:
-	return {
-		"summer_return_complete": {
-			"id": "summer_return_complete",
-			"route_id": "family_memory",
-			"phase_window": ["summer_1", "autumn_study", "winter", "spring_festival", "summer_2"],
-			"prerequisites": {},
-			"lead_text": "Return to Caretaker Lian and let the harbor become a real homecoming.",
-			"journal_note": "The harbor feels familiar, but not easy. Home is close enough to recognize and still hard to hear clearly.",
-			"pin_priority": 115,
-			"completion_score": 1,
-			"status_text": "The harbor return now belongs to this year instead of the last one.",
-		},
-		"trinity_memory_awakened": {
-			"id": "trinity_memory_awakened",
-			"route_id": "family_memory",
-			"phase_window": ["summer_1", "autumn_study", "winter", "spring_festival"],
-			"prerequisites": {
-				"story_flags_all": ["summer_return_complete"],
-			},
-			"lead_text": "Visit Trinity Church and let one clear memory of Grandma return.",
-			"journal_note": "Church memory, guilt, and grace are beginning to sound like part of the same story.",
-			"pin_priority": 108,
-			"completion_score": 1,
-			"status_text": "A church-linked memory of Grandma has started to return clearly.",
-		},
-		"winter_memory_reveal": {
-			"id": "winter_memory_reveal",
-			"route_id": "family_memory",
-			"phase_window": ["autumn_study", "winter", "spring_festival", "summer_2"],
-			"prerequisites": {
-				"story_flags_all": ["trinity_memory_awakened", "autumn_pressure_named"],
-			},
-			"lead_text": "Return to Trinity Church once the pressure settles in and face the memory you kept avoiding.",
-			"journal_note": "The year has grown colder, and the memory that once stayed blurred is becoming harder to outrun.",
-			"pin_priority": 112,
-			"completion_score": 1,
-			"season_phase": "winter",
-			"status_text": "Winter has turned the memory inward and unmistakable.",
-		},
-		"spring_festival_prepared": {
-			"id": "spring_festival_prepared",
-			"route_id": "family_memory",
-			"phase_window": ["winter", "spring_festival", "summer_2"],
-			"prerequisites": {
-				"story_flags_all": ["winter_memory_reveal", "preservation_inheritance_seen"],
-			},
-			"lead_text": "Speak with Tea Vendor Hua about how the harbor is quietly preparing for the first Spring Festival without Grandma.",
-			"journal_note": "Before the holiday can land emotionally, the harbor has to admit it is already bracing for it.",
-			"pin_priority": 118,
-			"completion_score": 1,
-			"status_text": "The harbor has started preparing for Spring Festival in a way that makes the loss impossible to ignore.",
-		},
-		"spring_festival_resolved": {
-			"id": "spring_festival_resolved",
-			"route_id": "family_memory",
-			"phase_window": ["winter", "spring_festival", "summer_2"],
-			"prerequisites": {
-				"story_flags_all": ["spring_festival_prepared"],
-			},
-			"lead_text": "Go back to the harbor and speak with Lian about the first Spring Festival without Grandma.",
-			"journal_note": "The family story, the season, and the island's older memory are finally leaning into the same difficult holiday.",
-			"pin_priority": 120,
-			"completion_score": 2,
-			"season_phase": "spring_festival",
-			"status_text": "The first Spring Festival without Grandma has become the emotional center of the year.",
-		},
-		"autumn_pressure_named": {
-			"id": "autumn_pressure_named",
-			"route_id": "study_future",
-			"phase_window": ["summer_1", "autumn_study", "winter", "spring_festival", "summer_2"],
-			"prerequisites": {
-				"story_flags_all": ["summer_return_complete"],
-			},
-			"lead_text": "Speak with Dock Musician Pei about how the future already feels too loud.",
-			"journal_note": "The exam and everything after it are no longer background pressure. They have started naming themselves openly.",
-			"pin_priority": 105,
-			"completion_score": 1,
-			"season_phase": "autumn_study",
-			"status_text": "Autumn study pressure has become explicit instead of quietly implied.",
-		},
-		"autumn_pressure_shared": {
-			"id": "autumn_pressure_shared",
-			"route_id": "study_future",
-			"phase_window": ["autumn_study", "winter", "spring_festival", "summer_2"],
-			"prerequisites": {
-				"story_flags_all": ["autumn_pressure_named"],
-			},
-			"lead_text": "Speak with Choir Student Lin and hear how the same pressure sounds in someone else's voice.",
-			"journal_note": "The year stops feeling like a private flaw once another student names the same fear out loud.",
-			"pin_priority": 103,
-			"completion_score": 1,
-			"status_text": "Autumn pressure is no longer yours alone; it has become a shared truth of the year.",
-		},
-		"future_commitment_choice": {
-			"id": "future_commitment_choice",
-			"route_id": "study_future",
-			"phase_window": ["spring_festival", "summer_2"],
-			"prerequisites": {
-				"story_flags_all": ["spring_festival_resolved", "autumn_pressure_shared"],
-			},
-			"lead_text": "Return to Pei and name at least one future that belongs to you honestly.",
-			"journal_note": "The real question is no longer what sounds impressive. It is which future still sounds true when the room gets quiet.",
-			"pin_priority": 104,
-			"completion_score": 1,
-			"status_text": "The future no longer sounds like one forced answer. Honesty has entered the choice.",
-		},
-		"future_commitment_witnessed": {
-			"id": "future_commitment_witnessed",
-			"route_id": "study_future",
-			"phase_window": ["spring_festival", "summer_2"],
-			"prerequisites": {
-				"story_flags_all": ["future_commitment_choice"],
-			},
-			"lead_text": "Let Ticket Clerk Min hear what changed, so the harbor can witness the choice before it becomes an ending.",
-			"journal_note": "An honest future sounds different once someone at the harbor recognizes that the decision has already begun to live in you.",
-			"pin_priority": 101,
-			"completion_score": 1,
-			"status_text": "The harbor has witnessed the future you named instead of treating it as a private thought.",
-		},
-		"future_commitment_end": {
-			"id": "future_commitment_end",
-			"route_id": "study_future",
-			"phase_window": ["spring_festival", "summer_2"],
-			"prerequisites": {
-				"story_flags_all": ["future_commitment_witnessed"],
-			},
-			"lead_text": "If this feels like the true turning point, return to Lian and let the harbor close the story around what was finally named.",
-			"journal_note": "An honest commitment can itself become an ending, but only after the harbor has heard it, held it, and answered back.",
-			"pin_priority": 120,
-			"completion_score": 1,
-			"endgame_trigger": "future_commitment_end",
-			"ending_behavior": "end_run",
-			"closing_label": "The harbor no longer asks for certainty. It only asks whether the future you carry is finally your own.",
-			"tone_tags": ["honesty", "turning_point", "harbor"],
-			"status_text": "The harbor has turned into a place where an honest future can become its own ending.",
-		},
-		"summer_exam_complete": {
-			"id": "summer_exam_complete",
-			"route_id": "study_future",
-			"phase_window": ["spring_festival", "summer_2"],
-			"prerequisites": {
-				"story_flags_all": ["future_commitment_choice"],
-			},
-			"lead_text": "Stay with Pei until the exam season breaks open into second summer.",
-			"journal_note": "The exam finally passes, and the question stops being what everyone wanted from you and becomes what still remains after the pressure goes quiet.",
-			"pin_priority": 118,
-			"completion_score": 2,
-			"season_phase": "summer_2",
-			"endgame_trigger": "exam_completed",
-			"ending_behavior": "end_run",
-			"closing_label": "The exam is over. Second summer arrives without certainty, but with a more honest self standing inside it.",
-			"tone_tags": ["release", "second_summer", "honesty"],
-			"status_text": "The exam season has passed, and the year has opened into a second summer.",
-		},
-		"preservation_inheritance_seen": {
-			"id": "preservation_inheritance_seen",
-			"route_id": "preservation_inheritance",
-			"phase_window": ["autumn_study", "winter", "spring_festival", "summer_2"],
-			"prerequisites": {
-				"story_flags_all": ["autumn_pressure_named"],
-			},
-			"lead_text": "Speak with Postcard Seller An about why the island's older buildings keep ending up in people's hands.",
-			"journal_note": "The old buildings stop feeling decorative once someone at the harbor treats them like the part of the island people are afraid to lose.",
-			"pin_priority": 96,
-			"completion_score": 1,
-			"status_text": "The island's old buildings now read as inheritance rather than background.",
-		},
-		"preservation_tower_perspective": {
-			"id": "preservation_tower_perspective",
-			"route_id": "preservation_inheritance",
-			"phase_window": ["autumn_study", "winter", "spring_festival", "summer_2"],
-			"prerequisites": {
-				"story_flags_all": ["preservation_inheritance_seen"],
-				"landmark_state": {"bagua_tower": "available"},
-			},
-			"lead_text": "Climb to Bagua Tower and let Terrace Painter Nian show you how preservation looks once the whole island is in view.",
-			"journal_note": "From the tower, preservation stops sounding sentimental and starts feeling like an island-scale responsibility.",
-			"pin_priority": 94,
-			"completion_score": 1,
-			"status_text": "Bagua Tower has turned inheritance into a wider view of what the island still needs kept.",
-		},
-		"melody_ferry_settled": {
-			"id": "melody_ferry_settled",
-			"route_id": "melody_landmarks",
-			"phase_window": ["summer_1", "autumn_study", "winter", "spring_festival", "summer_2"],
-			"prerequisites": {},
-			"lead_text": "Listen to the harbor refrain and carry it uphill into the island.",
-			"journal_note": "The harbor has offered the first steady pulse. The rest of the island still has to answer it.",
-			"pin_priority": 82,
-			"completion_score": 1,
-			"status_text": "The harbor refrain has settled into the melody route.",
-		},
-		"melody_church_restored": {
-			"id": "melody_church_restored",
-			"route_id": "melody_landmarks",
-			"phase_window": ["summer_1", "autumn_study", "winter", "spring_festival", "summer_2"],
-			"prerequisites": {
-				"story_flags_all": ["melody_ferry_settled"],
-			},
-			"lead_text": "Settle Trinity Church so the bells can answer the harbor clearly.",
-			"journal_note": "The church route is the first full phrase the island gives back.",
-			"pin_priority": 85,
-			"completion_score": 1,
-			"status_text": "Trinity Church has returned one full phrase to the island.",
-		},
-		"melody_bi_shan_restored": {
-			"id": "melody_bi_shan_restored",
-			"route_id": "melody_landmarks",
-			"phase_window": ["summer_1", "autumn_study", "winter", "spring_festival", "summer_2"],
-			"prerequisites": {
-				"story_flags_all": ["melody_church_restored"],
-			},
-			"lead_text": "Trace the steadier echo through Bi Shan Tunnel.",
-			"journal_note": "Bi Shan turns a hidden route back into something dependable and shared.",
-			"pin_priority": 83,
-			"completion_score": 1,
-			"status_text": "Bi Shan Tunnel has answered with a steadier route.",
-		},
-		"melody_long_shan_restored": {
-			"id": "melody_long_shan_restored",
-			"route_id": "melody_landmarks",
-			"phase_window": ["summer_1", "autumn_study", "winter", "spring_festival", "summer_2"],
-			"prerequisites": {
-				"story_flags_all": ["melody_church_restored"],
-			},
-			"lead_text": "Walk the Long Shan route patiently enough for someone else to trust it.",
-			"journal_note": "Long Shan turns route-finding into companionship instead of simple navigation.",
-			"pin_priority": 83,
-			"completion_score": 1,
-			"status_text": "Long Shan Tunnel has become a route someone else can believe in.",
-		},
-		"melody_bagua_aligned": {
-			"id": "melody_bagua_aligned",
-			"route_id": "melody_landmarks",
-			"phase_window": ["summer_1", "autumn_study", "winter", "spring_festival", "summer_2"],
-			"prerequisites": {
-				"story_flags_all": ["melody_bi_shan_restored", "melody_long_shan_restored"],
-			},
-			"lead_text": "Carry the steady routes to Bagua Tower and align the island from above.",
-			"journal_note": "The tower turns separate errands into one visible route across the island.",
-			"pin_priority": 86,
-			"completion_score": 1,
-			"status_text": "Bagua Tower has aligned the melody route into one island-scale line.",
-		},
-		"harbor_festival_performed": {
-			"id": "harbor_festival_performed",
-			"route_id": "melody_landmarks",
-			"phase_window": ["spring_festival", "summer_2"],
-			"prerequisites": {
-				"story_flags_all": ["melody_bagua_aligned", "spring_festival_resolved"],
-			},
-			"lead_text": "Return the restored melody to the harbor stage and see what the island remembers in public.",
-			"journal_note": "The island's music returns in public only once the private year has finally caught up with it.",
-			"pin_priority": 98,
-			"completion_score": 2,
-			"endgame_trigger": "harbor_festival_performed",
-			"ending_behavior": "continue_story",
-			"closing_label": "The restored harbor performance is no longer only a festival. It has become the public shape of everything the island remembers.",
-			"tone_tags": ["music", "community", "public_memory"],
-			"status_text": "The harbor has performed the restored melody back into the island.",
-		},
-	}
+	return StorylineCatalog.build_event_definitions()
 
 
 static func build_default_story_flags() -> Dictionary:
@@ -399,6 +108,10 @@ func get_route_definition(route_id: String) -> Dictionary:
 	return build_route_definitions().get(route_id, {}).duplicate(true)
 
 
+func get_route_ids() -> PackedStringArray:
+	return PackedStringArray(route_display_order())
+
+
 func get_event_definition(event_id: String) -> Dictionary:
 	return build_event_definitions().get(event_id, {}).duplicate(true)
 
@@ -421,7 +134,7 @@ func get_route_summary_lines() -> Array[String]:
 	var lines: Array[String] = []
 	var route_definitions: Dictionary = build_route_definitions()
 
-	for route_id in route_definitions.keys():
+	for route_id in route_display_order():
 		var progress: Dictionary = m_owner.route_progress.get(route_id, {})
 		if progress.is_empty():
 			continue
@@ -574,7 +287,7 @@ func _compute_route_snapshot(
 	var route_progress: Dictionary = {}
 	var global_candidates: Array[Dictionary] = []
 
-	for route_id in route_definitions.keys():
+	for route_id in route_display_order():
 		var route_events: Array[String] = []
 		var resolved_ids := PackedStringArray()
 		var available_ids := PackedStringArray()
@@ -705,25 +418,26 @@ func _maybe_start_endgame(preferred_event_id: String) -> void:
 
 func _build_tone_tags(event_definition: Dictionary, ending_choice: String = "") -> PackedStringArray:
 	var tags := PackedStringArray(_normalize_string_array(event_definition.get("tone_tags", [])))
-	var family_score := int(m_owner.route_progress.get("family_memory", {}).get("completion_score", 0))
-	var study_score := int(m_owner.route_progress.get("study_future", {}).get("completion_score", 0))
-	var preservation_score := int(m_owner.route_progress.get("preservation_inheritance", {}).get("completion_score", 0))
-	var melody_score := int(m_owner.route_progress.get("melody_landmarks", {}).get("completion_score", 0))
 	var helped_residents := int(m_owner._count_helped_residents())
 	var max_trust_residents := _count_max_trust_residents()
+	var route_definitions := build_route_definitions()
 
-	if family_score >= 3 and tags.find("grace") < 0:
-		tags.append("grace")
-	if family_score >= 4 and tags.find("care") < 0:
-		tags.append("care")
-	if study_score >= 2 and tags.find("future") < 0:
-		tags.append("future")
-	if preservation_score >= 2 and tags.find("inheritance") < 0:
-		tags.append("inheritance")
-	if preservation_score >= 2 and helped_residents >= 4 and tags.find("stewardship") < 0:
-		tags.append("stewardship")
-	if melody_score >= 4 and tags.find("belonging") < 0:
-		tags.append("belonging")
+	for route_id in route_display_order():
+		var route_definition: Dictionary = route_definitions.get(route_id, {})
+		var route_score := int(m_owner.route_progress.get(route_id, {}).get("completion_score", 0))
+		for rule_value in route_definition.get("ending_tone_rules", []):
+			if !(rule_value is Dictionary):
+				continue
+			var rule: Dictionary = rule_value
+			if route_score < int(rule.get("min_score", 0)):
+				continue
+			if helped_residents < int(rule.get("helped_residents_min", 0)):
+				continue
+			if max_trust_residents < int(rule.get("max_trust_residents_min", 0)):
+				continue
+			var tag := String(rule.get("tag", ""))
+			if !tag.is_empty() and tags.find(tag) < 0:
+				tags.append(tag)
 	if helped_residents >= 6 and tags.find("community") < 0:
 		tags.append("community")
 	if max_trust_residents >= 2 and tags.find("trust") < 0:

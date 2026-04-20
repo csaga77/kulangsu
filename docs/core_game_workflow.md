@@ -163,7 +163,7 @@ The current playable slice resolves seasonal anchors mostly through resident int
 
 This means the player can currently reach a valid ending by strongly following the family, study, and preservation routes while leaving most of the landmark melody route unfinished.
 
-Under the current first-pass StoryEvent model, these resident beats and landmark-facing inspect beats resolve through the same interaction pipeline entry, even though canonical route progression still comes from the route graph and existing authored beat data:
+Under the current first-pass StoryEvent model, these resident beats and landmark-facing inspect beats resolve through the same interaction pipeline entry, even though canonical route progression still comes from the modular storyline definitions projected through `story_route_graph.gd` plus the existing authored beat data:
 
 - NPC talk
 - landmark interaction

@@ -41,7 +41,8 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../game/story_save_service.gd`](../game/story_save_service.gd) - versioned story autosave read/write logic and save metadata refresh
 - [`../game/audio_settings_service.gd`](../game/audio_settings_service.gd) - owns runtime volume/text-speed state while `AppState` keeps the shell-facing API and signals
 - [`../game/resident_interaction_service.gd`](../game/resident_interaction_service.gd) - applies resident dialogue beats, conditional beats, trust milestones, route refresh, and resident-facing autosave side effects behind `AppState` facades
-- [`../game/story_route_graph.gd`](../game/story_route_graph.gd) - canonical seasonal route definitions, event definitions, lead selection, endgame trigger logic, and tone-tag assembly
+- [`../game/story_route_graph.gd`](../game/story_route_graph.gd) - projects modular storyline definitions into route progress, lead selection, endgame trigger logic, and tone-tag assembly
+- [`../game/storylines/`](../game/storylines) - per-route storyline authoring modules plus the shared storyline loader; add new route modules here instead of editing the central route graph
 - [`../game/story_world_reactivity.gd`](../game/story_world_reactivity.gd) - resolves route-aware non-resident inspection text for `inspectable:` world subjects authored through `StorySubjectArea2D` nodes in the ferry, church, and Bagua landmark scenes
 - [`../game/landmark_progression.gd`](../game/landmark_progression.gd) - shared melody-prompt builder plus compatibility/fallback landmark helpers kept behind the `AppState` bridge while the authored StoryEvent tree owns the current melody-landmark interaction and completion spine
 - [`../game/landmark_cue_loader.gd`](../game/landmark_cue_loader.gd) - shared one-shot landmark cue loader/cache that decodes shipped Vorbis `.ogg` cues directly instead of relying on editor import state

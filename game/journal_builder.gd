@@ -111,12 +111,7 @@ static func build_story_routes_journal_text(app_state: Node) -> String:
 		sections.append("Live routes\n%s" % "\n\n".join(PackedStringArray(live_leads)))
 
 	var route_sections: Array[String] = []
-	for route_id in [
-		"family_memory",
-		"study_future",
-		"preservation_inheritance",
-		"melody_landmarks",
-	]:
+	for route_id in app_state.get_story_route_ids():
 		var route_definition: Dictionary = app_state.get_story_route_definition(route_id)
 		var progress: Dictionary = app_state.get_route_progress(route_id)
 		if route_definition.is_empty() or progress.is_empty():

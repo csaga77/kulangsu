@@ -22,6 +22,14 @@ func _run() -> void:
 
 	_app_state().configure_new_game()
 	_assert_true(_app_state().season_phase == "summer_1", "New game starts in Summer 1")
+	_assert_true(_app_state().get_story_route_ids().size() == 4, "Story routes load from modular storyline definitions")
+	var family_prep_definition: Dictionary = _app_state().get_story_event_definition("spring_festival_prepared")
+	var family_prep_prerequisites: Dictionary = family_prep_definition.get("prerequisites", {})
+	_assert_true(String(family_prep_definition.get("route_id", "")) == "family_memory", "Family preparation remains owned by the family storyline module")
+	_assert_true(
+		_normalize_string_array(family_prep_prerequisites.get("story_flags_all", [])).find("preservation_inheritance_seen") >= 0,
+		"Storyline modules can depend on story events authored by other storyline modules"
+	)
 	_assert_true(_app_state().get_available_lead_ids().size() >= 2, "New game seeds multiple live routes")
 	_assert_true(!_app_state().get_active_lead_id().is_empty(), "New game pins one HUD lead")
 
@@ -148,3 +156,15 @@ func _assert_true(condition: bool, label: String) -> void:
 		print("PASS: %s" % label)
 		return
 	m_failures.append("%s." % label)
+
+
+func _normalize_string_array(value: Variant) -> PackedStringArray:
+	var output := PackedStringArray()
+	if value is PackedStringArray:
+		for entry in value:
+			output.append(String(entry))
+		return output
+	if value is Array:
+		for entry in value:
+			output.append(String(entry))
+	return output

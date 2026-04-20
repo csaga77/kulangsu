@@ -88,6 +88,7 @@ Primary files:
 - [`../game/story_event_catalog.gd`](../game/story_event_catalog.gd)
 - [`../game/story_event_service.gd`](../game/story_event_service.gd)
 - [`../game/story_route_graph.gd`](../game/story_route_graph.gd)
+- [`../game/storylines/`](../game/storylines)
 - [`../game/audio_settings_service.gd`](../game/audio_settings_service.gd)
 - [`../game/resident_interaction_service.gd`](../game/resident_interaction_service.gd)
 - [`../game/resident_system/`](../game/resident_system)
@@ -101,7 +102,7 @@ Responsibilities:
 - shared seasonal story state: `season_phase`, `route_progress`, `story_flags`, active leads, and endgame state
 - first-pass generic StoryEvent routing now lives in `game/story_event_service.gd`, composed by `AppState`, while `game/story_event_catalog.gd` now owns the full melody-landmark interaction spine plus its landmark prompt-completion/reward world events: ferry harbor clue and onboarding reward, Trinity cue/chime/reward beats, Bi Shan echoes/chamber/reward, Long Shan entry/checkpoints/exit/reward, Bagua synthesis/reward, and the harbor-stage prompt/performance completion
 - shared melody definitions and melody-progress state used by the journal and future performance systems
-- catalog-first seasonal route definitions, event definitions, lead selection, and endgame-trigger logic in `story_route_graph.gd`
+- modular storyline route/event definitions in `game/storylines/`, with `story_route_graph.gd` projecting them into route progress, lead selection, and endgame-trigger logic
 - resident and player-facing catalog data
 - `AppState` now composes focused helper scripts for journal text (`journal_builder.gd`), player profile/costume ownership (`player_profile_service.gd`), story autosave (`story_save_service.gd`), landmark/melody progression (`landmark_progression.gd`), resident dialogue/application (`resident_interaction_service.gd`), and runtime audio/settings state (`audio_settings_service.gd`)
 - resident routine overrides are now part of shared story state so story effects can temporarily redirect spawn, movement, or behavior through the same `AppState` getters and autosave pipeline the rest of the game already uses
