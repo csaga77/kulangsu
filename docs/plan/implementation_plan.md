@@ -228,7 +228,7 @@ Phases 1–3 shipped:
   - `addons/storyline_editor/storyline_validator_inspector_plugin.gd` — `EditorInspectorPlugin` that shows a validation-warning panel and a collapsible known-event-IDs reference picker (click to copy) whenever a `StorylineEventResource` or `StorylineRouteResource` is opened in the Inspector
 - Phase 3 — route browser dock:
   - `addons/storyline_editor/storyline_route_browser.gd` — left-side dock listing all routes with source badges (● resource / ◎ .gd), per-route event tree with prerequisite child rows, project-wide cross-route validation warnings, and a "+ New" button that creates a `StorylineRouteResource` .tres scaffold
-  - double-clicking an event emits `event_show_in_graph_requested` which the plugin routes to `StorylineGraphEditor.select_event()`, scrolling and highlighting the node in the graph editor
+  - selecting an event row emits an inspector-edit request so the plugin opens that `StorylineEventResource` in the Inspector using the same typed-resource promotion flow as the graph editor, while double-clicking still emits `event_show_in_graph_requested` to scroll and highlight the node in the graph editor
 
 Phase 4 shipped (first pass):
 

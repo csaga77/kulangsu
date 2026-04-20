@@ -14,6 +14,8 @@ extends VBoxContainer
 
 ## Emitted when the user wants to highlight an event in the dependency graph.
 signal event_show_in_graph_requested(event_id: String)
+## Emitted when the user selects an event row and wants to edit it in the Inspector.
+signal event_inspector_requested(event_id: String)
 
 const _ROUTE_COLORS := {
 	"family_memory":            Color(0.95, 0.63, 0.12),
@@ -154,6 +156,7 @@ func _build_ui() -> void:
 	m_event_tree.set_column_custom_minimum_width(1, 64)
 	m_event_tree.set_column_custom_minimum_width(2, 84)
 	m_event_tree.column_titles_visible = true
+	m_event_tree.item_selected.connect(_on_event_tree_item_selected)
 	m_event_tree.item_activated.connect(_on_event_tree_item_activated)
 	bottom_vbox.add_child(m_event_tree)
 
@@ -325,14 +328,25 @@ func _rebuild_event_tree(route_id: String) -> void:
 		item.set_metadata(0, eid)
 
 
-func _on_event_tree_item_activated() -> void:
-	var item: TreeItem = m_event_tree.get_selected()
-	if item == null:
+func _on_event_tree_item_selected() -> void:
+	var eid := _selected_event_tree_event_id()
+	if eid.is_empty():
 		return
-	var eid: String = str(item.get_metadata(0))
+	event_inspector_requested.emit(eid)
+
+
+func _on_event_tree_item_activated() -> void:
+	var eid := _selected_event_tree_event_id()
 	if eid.is_empty():
 		return
 	event_show_in_graph_requested.emit(eid)
+
+
+func _selected_event_tree_event_id() -> String:
+	var item: TreeItem = m_event_tree.get_selected()
+	if item == null:
+		return ""
+	return str(item.get_metadata(0)).strip_edges()
 
 
 # ---------------------------------------------------------------------------

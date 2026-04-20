@@ -856,6 +856,10 @@ func _edit_event_in_inspector(event_id: String) -> void:
 	m_editor_interface.edit_resource(event_resource)
 
 
+func edit_event_in_inspector(event_id: String) -> void:
+	_edit_event_in_inspector(event_id)
+
+
 func _build_storyline_dict_for_route(route_id: String) -> Dictionary:
 	var route_def: Dictionary = m_route_defs.get(route_id, {})
 	if route_def.is_empty():

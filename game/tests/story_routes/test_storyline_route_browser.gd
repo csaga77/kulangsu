@@ -14,6 +14,31 @@ func _run() -> void:
 	add_child(route_browser)
 	await get_tree().process_frame
 
+	var inspector_requested_ids := PackedStringArray()
+	route_browser.event_inspector_requested.connect(func(event_id: String) -> void:
+		inspector_requested_ids.append(event_id)
+	)
+
+	route_browser._load_catalog_data()
+	route_browser._rebuild_event_tree("family_memory")
+	var tree_root: TreeItem = route_browser.m_event_tree.get_root()
+	_assert_true(tree_root != null, "Route browser builds an event tree root for a known route")
+	if tree_root != null:
+		var first_event_item: TreeItem = tree_root.get_first_child()
+		_assert_true(first_event_item != null, "Route browser event tree includes selectable event rows")
+		if first_event_item != null:
+			route_browser.m_event_tree.set_selected(first_event_item, 0)
+			await get_tree().process_frame
+			_assert_true(
+				inspector_requested_ids.size() == 1,
+				"Route browser selection emits one inspector edit request"
+			)
+			if inspector_requested_ids.size() == 1:
+				_assert_true(
+					inspector_requested_ids[0] == "summer_return_complete",
+					"Route browser selection requests inspector editing for the selected event"
+				)
+
 	var sample_warnings: Array[String] = [
 		"[demo_route] first warning",
 		"[demo_event] second warning",

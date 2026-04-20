@@ -37,6 +37,10 @@ func _enter_tree() -> void:
 				m_route_browser.event_show_in_graph_requested.connect(
 					_on_event_show_in_graph_requested
 				)
+			if m_graph_editor != null and m_route_browser.has_signal("event_inspector_requested"):
+				m_route_browser.event_inspector_requested.connect(
+					_on_event_inspector_requested
+				)
 			if m_graph_editor != null and m_graph_editor.has_signal("catalog_changed"):
 				m_graph_editor.catalog_changed.connect(_on_storyline_catalog_changed)
 	elif browser_script != null:
@@ -77,6 +81,13 @@ func _on_event_show_in_graph_requested(event_id: String) -> void:
 	make_bottom_panel_item_visible(m_graph_editor)
 	if m_graph_editor.has_method("select_event"):
 		m_graph_editor.select_event(event_id)
+
+
+func _on_event_inspector_requested(event_id: String) -> void:
+	if m_graph_editor == null:
+		return
+	if m_graph_editor.has_method("edit_event_in_inspector"):
+		m_graph_editor.edit_event_in_inspector(event_id)
 
 
 func _on_storyline_catalog_changed() -> void:
