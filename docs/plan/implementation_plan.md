@@ -68,6 +68,7 @@ Current pressure points:
 - `StorySaveService` and `LandmarkProgression` remain intentionally tight `AppState` helpers, so future cleanup still needs to preserve the bridge API instead of assuming those helpers are independently reusable modules
 - `StoryEventService` is now live as a shared subject/effect bridge, and `story_event_catalog.gd` now owns the full melody-landmark interaction spine plus its landmark prompt-completion/reward world events, but most progression still projects off storyline modules plus `story_route_graph.gd`, resident dictionaries, and `story_world_reactivity.gd` instead of a fuller recursive event definition set plus a published-fact ledger
 - route-content work will keep touching large built-in resident dictionaries until more residents migrate out of the script catalog
+- storyline authoring is now decoupled from the old central route graph, but the current `game/storylines/*.gd` modules are still flat code-authored dictionaries with no editor-native picker workflow, typed schema, or graph view
 - high-traffic dictionary payloads (landmark progress, melody progress, autosave) are still untyped
 - regression coverage is now strong for landmark, route, resident-interaction, reactivity, and autosave flows, but still lighter around settings/audio behavior and richer world-object reactivity
 
@@ -84,7 +85,7 @@ Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but the
 | Workstream 2 | First pass shipped | Priority 2 (world reactivity) |
 | Workstream 3 | First pass shipped | Priority 3 (ending polish after more content) |
 | Workstream 4 | First pass shipped | Lower (polish) |
-| Workstream 5 | First pass shipped | Priority 4 (validation) |
+| Workstream 5 | First pass shipped | Priority 4 (editor workflow), then Priority 5 (validation) |
 | Resident Migration | Partial (6 migrated; remaining require manual `.tres` conversion) | Deferred sidecar (touch when content work needs it) |
 
 ### Priority 1: Route Content Depth (recommended next)
@@ -102,10 +103,16 @@ Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but the
 - turn more of the final-act and departure texture into playable closing movement rather than leaving it mostly in overlays
 - keep sharpening trigger-specific aftermath and ferry framing once more embodied content exists to support it
 
-### Priority 4: Validation Expansion (lower urgency, opportunistic)
+### Priority 4: Storyline Editor Workflow (before major route-count expansion)
+
+- introduce an editor-native, typed storyline data model first, then let the runtime loader/projector read that data without changing route semantics
+- ship inspector-first authoring and validation before any graph view so the source of truth becomes stable before UI polish work starts
+- make cross-route dependencies safe to author through searchable event-id pickers and validation instead of raw string editing
+
+### Priority 5: Validation Expansion (lower urgency, opportunistic)
 
 - widen validation around settings/audio behavior and richer world-state reactivity
-- add focused coverage for future typed payload migrations if that cleanup starts
+- add focused coverage for future typed payload migrations and storyline-editor migrations if that cleanup starts
 
 ### Deferred Sidecar: Resident Migration (manual conversion; not the recommended next focus)
 
@@ -198,10 +205,11 @@ Primary files:
 - `ui/screens/journal_overlay.tscn`
 - `game/journal_builder.gd`
 
-## Workstream 5: Content Tooling And Test Growth
+## Workstream 5: Storyline Editor Workflow, Content Tooling, And Test Growth
 
 First-pass shipped outcome:
 
+- per-route storyline modules now live under `game/storylines/`, so adding or editing a route no longer requires touching the central route graph
 - added focused route-reactivity coverage in `game/tests/story_routes/test_story_reactivity.tscn`
 - added focused StoryEvent bridge coverage in `game/tests/story_routes/test_story_event_service.tscn`
 - added arbitrary-flag plus override-backed resident profile persistence coverage in `game/tests/persistence/test_story_state_persistence.tscn`
@@ -209,11 +217,25 @@ First-pass shipped outcome:
 
 Still open:
 
-- widen validation around settings/audio behavior and any future typed payload migrations
-- consider lightweight authoring helpers and further resident-resource migration once catalog growth starts slowing review velocity
+- Phase 1: introduce typed storyline `Resource` definitions for route metadata, event metadata, prerequisites, and ending fields, and teach the shared storyline loader to read those resources as the canonical format while the current `.gd` modules remain a migration fallback
+- Phase 2: add an inspector-first editor workflow so authors can create, reorder, validate, and preview storyline beats without hand-editing dictionaries; this phase should include duplicate-id checks, missing-reference checks, phase-window validation, and cross-route dependency pickers
+- Phase 3: add a dedicated editor plugin or dock for route authoring once the resource schema settles, with route summaries, beat lists, dependency browsing, and quick links into related residents, landmarks, or world subjects
+- Phase 4: add an optional `GraphEdit`-based dependency view/editor on top of the same resource model, treating the graph as a visualization and editing surface over shared data rather than as a second source of truth
+- widen validation around settings/audio behavior and any future typed payload migrations, and keep extending regression coverage as the authoring format evolves
+
+Exit criteria for this workstream:
+
+- authors can create and edit a storyline in the Godot editor without changing `story_route_graph.gd` or hand-editing raw GDScript dictionaries
+- cross-route event dependencies are selectable and validated from the editor
+- the runtime, journal, and autosave systems keep reading one canonical storyline source of truth
+- any later graph editor writes back to that same source of truth instead of inventing a separate graph-only format
 
 Primary files:
 
+- `game/storylines/storyline_catalog.gd`
+- `game/story_route_graph.gd`
+- planned editor-native storyline resource classes near `game/storylines/`
+- planned editor plugin under `addons/`
 - `game/tests/story_routes/test_story_reactivity.gd`
 - `game/tests/persistence/test_story_state_persistence.gd`
 - `game/tests/story_routes/test_story_routes.gd`
