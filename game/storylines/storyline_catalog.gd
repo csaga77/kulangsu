@@ -92,6 +92,44 @@ static func load_route_resources() -> Array[StorylineRouteResource]:
 	return resources
 
 
+## Returns route source paths keyed by route id for editor tooling.
+## Each entry is a Dictionary with `resource_paths` and `gdscript_paths`.
+static func build_route_source_paths() -> Dictionary:
+	var source_paths: Dictionary = {}
+
+	for path in _discover_route_resource_paths():
+		var res: Resource = load(path)
+		if not (res is StorylineRouteResource):
+			continue
+		var route_id := (res as StorylineRouteResource).id.strip_edges()
+		if route_id.is_empty():
+			continue
+		var route_entry := _ensure_route_source_path_entry(source_paths, route_id)
+		var resource_paths := PackedStringArray(route_entry.get("resource_paths", PackedStringArray()))
+		resource_paths.append(path)
+		route_entry["resource_paths"] = resource_paths
+		source_paths[route_id] = route_entry
+
+	for path in _discover_storyline_paths():
+		var script: GDScript = load(path) as GDScript
+		if script == null or !script.has_method("build_storyline"):
+			continue
+		var storyline_value = script.call("build_storyline")
+		if !(storyline_value is Dictionary):
+			continue
+		var normalized := _normalize_storyline(path, storyline_value as Dictionary)
+		var route_id := String(normalized.get("route", {}).get("id", "")).strip_edges()
+		if route_id.is_empty():
+			continue
+		var route_entry := _ensure_route_source_path_entry(source_paths, route_id)
+		var gdscript_paths := PackedStringArray(route_entry.get("gdscript_paths", PackedStringArray()))
+		gdscript_paths.append(path)
+		route_entry["gdscript_paths"] = gdscript_paths
+		source_paths[route_id] = route_entry
+
+	return source_paths
+
+
 # ---------------------------------------------------------------------------
 # Internal loading pipeline
 # ---------------------------------------------------------------------------
@@ -200,6 +238,15 @@ static func _discover_route_resource_paths() -> Array[String]:
 	directory.list_dir_end()
 	paths.sort()
 	return paths
+
+
+static func _ensure_route_source_path_entry(source_paths: Dictionary, route_id: String) -> Dictionary:
+	if not source_paths.has(route_id):
+		source_paths[route_id] = {
+			"resource_paths": PackedStringArray(),
+			"gdscript_paths": PackedStringArray(),
+		}
+	return source_paths.get(route_id, {}) as Dictionary
 
 
 # ---------------------------------------------------------------------------

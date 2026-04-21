@@ -17,6 +17,10 @@ signal event_show_in_graph_requested(event_id: String)
 signal route_inspector_requested(route_id: String)
 ## Emitted when the user selects an event row and wants to edit it in the Inspector.
 signal event_inspector_requested(event_id: String)
+## Emitted when the user confirms deleting an event row from the browser tree.
+signal event_delete_requested(event_id: String)
+## Emitted when route files are created or deleted and the editor should reload.
+signal catalog_changed
 
 const _ROUTE_COLORS := {
 	"family_memory":            Color(0.95, 0.63, 0.12),
@@ -35,11 +39,16 @@ const _BADGE_GDSCRIPT  := "◎"
 var m_toolbar: HBoxContainer
 var m_refresh_btn: Button
 var m_new_route_btn: Button
+var m_delete_route_btn: Button
 
 var m_event_tree: Tree
 
 var m_warnings_panel: VBoxContainer
 var m_warnings_scroll: ScrollContainer
+var m_delete_route_dialog: ConfirmationDialog
+var m_delete_route_message: Label
+var m_delete_event_dialog: ConfirmationDialog
+var m_delete_event_message: Label
 
 # ---------------------------------------------------------------------------
 # State
@@ -50,6 +59,9 @@ var m_route_defs: Dictionary = {}
 var m_event_defs: Dictionary = {}
 ## Maps route_id -> "resource" | "gdscript" | ""
 var m_route_source: Dictionary = {}
+## Maps route_id -> PackedStringArray[String] of source paths.
+var m_route_resource_paths: Dictionary = {}
+var m_route_gdscript_paths: Dictionary = {}
 ## Project-wide validation warnings: Array[String]
 var m_all_warnings: Array[String] = []
 
@@ -99,6 +111,13 @@ func _build_ui() -> void:
 	m_new_route_btn.pressed.connect(_on_new_route_pressed)
 	m_toolbar.add_child(m_new_route_btn)
 
+	m_delete_route_btn = Button.new()
+	m_delete_route_btn.text = "Delete"
+	m_delete_route_btn.tooltip_text = "Select a route row to delete that storyline."
+	m_delete_route_btn.disabled = true
+	m_delete_route_btn.pressed.connect(_on_delete_route_pressed)
+	m_toolbar.add_child(m_delete_route_btn)
+
 	m_refresh_btn = Button.new()
 	m_refresh_btn.text = "⟳"
 	m_refresh_btn.tooltip_text = "Reload all storyline data from disk"
@@ -137,6 +156,9 @@ func _build_ui() -> void:
 	m_warnings_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	m_warnings_scroll.add_child(m_warnings_panel)
 
+	_ensure_delete_route_dialog()
+	_ensure_delete_event_dialog()
+
 
 # ---------------------------------------------------------------------------
 # Data loading
@@ -146,6 +168,7 @@ func _refresh() -> void:
 	_load_catalog_data()
 	_rebuild_story_tree()
 	_rebuild_warnings_panel()
+	_update_route_delete_button_state()
 
 
 func _load_catalog_data() -> void:
@@ -154,6 +177,8 @@ func _load_catalog_data() -> void:
 
 	# Determine source type for each route.
 	m_route_source.clear()
+	m_route_resource_paths.clear()
+	m_route_gdscript_paths.clear()
 	var resource_route_ids: Dictionary = {}
 	for res: StorylineRouteResource in StorylineCatalog.load_route_resources():
 		resource_route_ids[res.id.strip_edges()] = true
@@ -162,6 +187,17 @@ func _load_catalog_data() -> void:
 			m_route_source[route_id] = "resource"
 		else:
 			m_route_source[route_id] = "gdscript"
+
+	var route_source_paths := StorylineCatalog.build_route_source_paths()
+	for route_id_var in route_source_paths.keys():
+		var route_id := String(route_id_var)
+		var route_entry := route_source_paths.get(route_id, {}) as Dictionary
+		m_route_resource_paths[route_id] = PackedStringArray(
+			route_entry.get("resource_paths", PackedStringArray())
+		)
+		m_route_gdscript_paths[route_id] = PackedStringArray(
+			route_entry.get("gdscript_paths", PackedStringArray())
+		)
 
 	# Run project-wide validation.
 	_collect_all_warnings()
@@ -233,6 +269,7 @@ func _create_event_tree_item(
 	event_item.set_metadata(0, {
 		"kind": "event",
 		"event_id": event_id,
+		"route_id": String(event_def.get("route_id", "")).strip_edges(),
 	})
 
 	for prereq: String in prereqs:
@@ -260,6 +297,7 @@ func _create_event_tree_item(
 
 func _on_event_tree_item_selected() -> void:
 	var route_id := _selected_route_tree_route_id()
+	_update_route_delete_button_state()
 	if not route_id.is_empty():
 		route_inspector_requested.emit(route_id)
 		return
@@ -284,6 +322,15 @@ func _selected_event_tree_event_id() -> String:
 	if String(metadata.get("kind", "")) != "event":
 		return ""
 	return String(metadata.get("event_id", "")).strip_edges()
+
+
+func _selected_event_tree_route_id() -> String:
+	var metadata := _selected_tree_metadata()
+	if metadata.is_empty():
+		return ""
+	if String(metadata.get("kind", "")) != "event":
+		return ""
+	return String(metadata.get("route_id", "")).strip_edges()
 
 
 func _selected_route_tree_route_id() -> String:
@@ -410,6 +457,7 @@ func _on_new_route_pressed() -> void:
 			push_error("StorylineRouteBrowser: failed to save new resource at %s (err=%d)" % [path, err])
 		else:
 			_refresh()
+			catalog_changed.emit()
 			if m_editor_interface != null:
 				m_editor_interface.edit_resource(res)
 		dialog.queue_free()
@@ -417,6 +465,99 @@ func _on_new_route_pressed() -> void:
 	dialog.canceled.connect(func() -> void:
 		dialog.queue_free()
 	)
+
+
+func _on_delete_route_pressed() -> void:
+	var event_id := _selected_event_tree_event_id()
+	if not event_id.is_empty():
+		_on_delete_event_pressed(event_id)
+		return
+
+	var route_id := _selected_route_tree_route_id()
+	if route_id.is_empty():
+		return
+	var deletable_paths := _deletable_route_paths(route_id)
+	if deletable_paths.is_empty():
+		return
+
+	_ensure_delete_route_dialog()
+	var route_name := String(m_route_defs.get(route_id, {}).get("display_name", route_id))
+	if m_delete_route_message != null:
+		m_delete_route_message.text = (
+			"Delete storyline route '%s' and all matching source files? This cannot be undone."
+			% route_name
+		)
+		if m_delete_route_dialog != null:
+			m_delete_route_dialog.set_meta("route_id", route_id)
+			m_delete_route_dialog.popup_centered()
+
+
+func _on_delete_event_pressed(event_id: String = "") -> void:
+	event_id = event_id.strip_edges()
+	if event_id.is_empty():
+		event_id = _selected_event_tree_event_id()
+	if event_id.is_empty():
+		return
+
+	_ensure_delete_event_dialog()
+	if m_delete_event_message != null:
+		m_delete_event_message.text = (
+			"Delete story event '%s'? This cannot be undone." % event_id
+		)
+	if m_delete_event_dialog != null:
+		m_delete_event_dialog.set_meta("event_id", event_id)
+		m_delete_event_dialog.popup_centered()
+
+
+func _confirm_delete_route() -> void:
+	if m_delete_route_dialog == null:
+		return
+
+	var route_id := String(m_delete_route_dialog.get_meta("route_id", "")).strip_edges()
+	m_delete_route_dialog.hide()
+	m_delete_route_dialog.remove_meta("route_id")
+	if route_id.is_empty():
+		return
+
+	var deletion_errors := PackedStringArray()
+	for path: String in _deletable_route_paths(route_id):
+		var absolute_path := ProjectSettings.globalize_path(path)
+		if not FileAccess.file_exists(absolute_path):
+			continue
+		var remove_error := DirAccess.remove_absolute(absolute_path)
+		if remove_error != OK:
+			deletion_errors.append("%s (err=%d)" % [path, remove_error])
+
+	if not deletion_errors.is_empty():
+		push_error(
+			"StorylineRouteBrowser: failed to delete route '%s': %s"
+			% [route_id, ", ".join(deletion_errors)]
+		)
+		return
+
+	if m_editor_interface != null:
+		var inspector := m_editor_interface.get_inspector()
+		if inspector != null and _should_clear_inspector_for_deleted_route(
+			route_id,
+			inspector.get_edited_object()
+		):
+			inspector.edit(null)
+
+	_refresh()
+	catalog_changed.emit()
+
+
+func _confirm_delete_event() -> void:
+	if m_delete_event_dialog == null:
+		return
+
+	var event_id := String(m_delete_event_dialog.get_meta("event_id", "")).strip_edges()
+	m_delete_event_dialog.hide()
+	m_delete_event_dialog.remove_meta("event_id")
+	if event_id.is_empty():
+		return
+
+	event_delete_requested.emit(event_id)
 
 
 # ---------------------------------------------------------------------------
@@ -482,3 +623,97 @@ func _configure_tooltip_label(label: Label, tooltip: String) -> void:
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.mouse_filter = Control.MOUSE_FILTER_STOP
 	label.mouse_default_cursor_shape = Control.CURSOR_HELP
+
+
+func _ensure_delete_route_dialog() -> void:
+	if m_delete_route_dialog != null:
+		return
+
+	m_delete_route_dialog = ConfirmationDialog.new()
+	m_delete_route_dialog.title = "Delete Storyline Route"
+	m_delete_route_dialog.ok_button_text = "Delete"
+	add_child(m_delete_route_dialog)
+
+	m_delete_route_message = Label.new()
+	m_delete_route_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	m_delete_route_message.custom_minimum_size = Vector2(360.0, 0.0)
+	m_delete_route_dialog.add_child(m_delete_route_message)
+
+	m_delete_route_dialog.confirmed.connect(_confirm_delete_route)
+	m_delete_route_dialog.canceled.connect(func() -> void:
+		if m_delete_route_dialog != null:
+			m_delete_route_dialog.remove_meta("route_id")
+	)
+
+
+func _ensure_delete_event_dialog() -> void:
+	if m_delete_event_dialog != null:
+		return
+
+	m_delete_event_dialog = ConfirmationDialog.new()
+	m_delete_event_dialog.title = "Delete Story Event"
+	m_delete_event_dialog.ok_button_text = "Delete"
+	add_child(m_delete_event_dialog)
+
+	m_delete_event_message = Label.new()
+	m_delete_event_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	m_delete_event_message.custom_minimum_size = Vector2(360.0, 0.0)
+	m_delete_event_dialog.add_child(m_delete_event_message)
+
+	m_delete_event_dialog.confirmed.connect(_confirm_delete_event)
+	m_delete_event_dialog.canceled.connect(func() -> void:
+		if m_delete_event_dialog != null:
+			m_delete_event_dialog.remove_meta("event_id")
+	)
+
+
+func _update_route_delete_button_state() -> void:
+	if m_delete_route_btn == null:
+		return
+
+	var event_id := _selected_event_tree_event_id()
+	if not event_id.is_empty():
+		m_delete_route_btn.disabled = false
+		m_delete_route_btn.tooltip_text = "Delete the selected story event after confirmation."
+		return
+
+	var route_id := _selected_route_tree_route_id()
+	var can_delete := not route_id.is_empty() and not _deletable_route_paths(route_id).is_empty()
+	m_delete_route_btn.disabled = not can_delete
+	if route_id.is_empty():
+		m_delete_route_btn.tooltip_text = "Select a route or event row to delete it."
+	elif can_delete:
+		m_delete_route_btn.tooltip_text = "Delete the selected storyline route after confirmation."
+	else:
+		m_delete_route_btn.tooltip_text = "The selected route does not have deletable source files."
+
+
+func _deletable_route_paths(route_id: String) -> PackedStringArray:
+	var delete_paths := PackedStringArray()
+	for resource_path: String in PackedStringArray(m_route_resource_paths.get(route_id, PackedStringArray())):
+		if not resource_path.is_empty() and not delete_paths.has(resource_path):
+			delete_paths.append(resource_path)
+	for script_path: String in PackedStringArray(m_route_gdscript_paths.get(route_id, PackedStringArray())):
+		if not script_path.is_empty() and not delete_paths.has(script_path):
+			delete_paths.append(script_path)
+		var uid_path := "%s.uid" % script_path
+		if FileAccess.file_exists(ProjectSettings.globalize_path(uid_path)) and not delete_paths.has(uid_path):
+			delete_paths.append(uid_path)
+	return delete_paths
+
+
+func _should_clear_inspector_for_deleted_route(
+	route_id: String, edited_object: Object
+) -> bool:
+	route_id = route_id.strip_edges()
+	if route_id.is_empty() or edited_object == null:
+		return false
+	if edited_object is StorylineRouteResource:
+		return (edited_object as StorylineRouteResource).id.strip_edges() == route_id
+	if edited_object is StorylineEventResource:
+		var edited_event_id := (edited_object as StorylineEventResource).id.strip_edges()
+		if edited_event_id.is_empty():
+			return false
+		var event_def: Dictionary = m_event_defs.get(edited_event_id, {})
+		return String(event_def.get("route_id", "")).strip_edges() == route_id
+	return false

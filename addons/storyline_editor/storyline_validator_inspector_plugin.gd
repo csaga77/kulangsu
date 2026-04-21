@@ -10,9 +10,24 @@ extends EditorInspectorPlugin
 ##      replaces raw `story_flags_all` / `story_flags_any` string editing with
 ##      a route-rooted event picker matching the storyline browser.
 
+const _VALIDATION_PANEL_SCRIPT := preload(
+	"res://addons/storyline_editor/storyline_validation_panel.gd"
+)
+const _INSPECTOR_STATUS_BRIDGE_SCRIPT := preload(
+	"res://addons/storyline_editor/storyline_inspector_status_bridge.gd"
+)
 const _PREREQUISITE_PICKER_PANEL_SCRIPT := preload(
 	"res://addons/storyline_editor/storyline_prerequisite_picker_panel.gd"
 )
+const _ROUTE_EVENT_PANEL_SCRIPT := preload(
+	"res://addons/storyline_editor/storyline_route_event_panel.gd"
+)
+
+var m_editor_interface: EditorInterface
+var m_catalog_changed_callback: Callable
+var m_inspector: EditorInspector
+var m_current_validation_panel: Control
+var m_status_bridge: RefCounted
 
 
 # ---------------------------------------------------------------------------
@@ -23,10 +38,32 @@ func _can_handle(object: Object) -> bool:
 	return object is StorylineEventResource or object is StorylineRouteResource
 
 
+func setup(
+	editor_interface: EditorInterface,
+	catalog_changed_callback: Callable = Callable()
+) -> void:
+	m_editor_interface = editor_interface
+	m_catalog_changed_callback = catalog_changed_callback
+	if _INSPECTOR_STATUS_BRIDGE_SCRIPT != null:
+		m_status_bridge = _INSPECTOR_STATUS_BRIDGE_SCRIPT.new()
+		if m_status_bridge != null and m_status_bridge.has_method("setup"):
+			m_status_bridge.setup(null, m_catalog_changed_callback)
+	_connect_inspector_signals()
+
+
+func teardown() -> void:
+	_disconnect_inspector_signals()
+
+
 func _parse_begin(object: Object) -> void:
 	# --- Validation panel ---
-	var validation_box := _build_validation_panel(object)
-	add_custom_control(validation_box)
+	var validation_panel := _VALIDATION_PANEL_SCRIPT.new() as Control
+	if validation_panel != null and validation_panel.has_method("setup"):
+		validation_panel.setup(object)
+		m_current_validation_panel = validation_panel
+		if m_status_bridge != null and m_status_bridge.has_method("set_validation_panel"):
+			m_status_bridge.set_validation_panel(validation_panel)
+		add_custom_control(validation_panel)
 
 	# --- Prerequisite picker for story_flags_all / story_flags_any ---
 	if object is StorylineEventResource:
@@ -34,6 +71,15 @@ func _parse_begin(object: Object) -> void:
 		if prerequisite_picker != null and prerequisite_picker.has_method("setup"):
 			prerequisite_picker.setup(object as StorylineEventResource)
 			add_custom_control(prerequisite_picker)
+	elif object is StorylineRouteResource:
+		var route_event_panel := _ROUTE_EVENT_PANEL_SCRIPT.new() as Control
+		if route_event_panel != null and route_event_panel.has_method("setup"):
+			route_event_panel.setup(
+				object as StorylineRouteResource,
+				m_editor_interface,
+				m_catalog_changed_callback
+			)
+			add_custom_control(route_event_panel)
 
 
 func _parse_property(
@@ -47,89 +93,61 @@ func _parse_property(
 ) -> bool:
 	if object is StorylineEventResource and name in ["story_flags_all", "story_flags_any"]:
 		return true
+	if object is StorylineRouteResource and name == "events":
+		return true
 	return false
 
 
-# ---------------------------------------------------------------------------
-# UI builders
-# ---------------------------------------------------------------------------
+func _connect_inspector_signals() -> void:
+	if m_editor_interface == null:
+		return
+	var inspector := m_editor_interface.get_inspector()
+	if inspector == null:
+		return
 
-func _build_validation_panel(object: Object) -> Control:
-	var container := VBoxContainer.new()
-	container.add_theme_constant_override("separation", 2)
-
-	var header_row := HBoxContainer.new()
-	container.add_child(header_row)
-
-	var header_lbl := Label.new()
-	header_row.add_child(header_lbl)
-
-	var refresh_btn := Button.new()
-	refresh_btn.text = "⟳"
-	refresh_btn.tooltip_text = "Revalidate"
-	refresh_btn.flat = true
-	header_row.add_child(refresh_btn)
-
-	var warning_rows := VBoxContainer.new()
-	warning_rows.add_theme_constant_override("separation", 2)
-	container.add_child(warning_rows)
-
-	refresh_btn.pressed.connect(func() -> void:
-		_populate_validation_panel(header_lbl, warning_rows, object)
-	)
-	_populate_validation_panel(header_lbl, warning_rows, object)
-
-	container.add_child(HSeparator.new())
-	return container
+	m_inspector = inspector
+	if not m_inspector.property_edited.is_connected(_on_inspector_property_edited):
+		m_inspector.property_edited.connect(_on_inspector_property_edited, CONNECT_DEFERRED)
+	if not m_inspector.property_deleted.is_connected(_on_inspector_property_deleted):
+		m_inspector.property_deleted.connect(_on_inspector_property_deleted, CONNECT_DEFERRED)
+	if not m_inspector.edited_object_changed.is_connected(_on_inspector_edited_object_changed):
+		m_inspector.edited_object_changed.connect(
+			_on_inspector_edited_object_changed,
+			CONNECT_DEFERRED
+		)
 
 
-func _populate_validation_panel(
-	header_lbl: Label, warning_rows: VBoxContainer, object: Object
-) -> void:
-	for child: Node in warning_rows.get_children():
-		warning_rows.remove_child(child)
-		child.queue_free()
-
-	var warnings := _warnings_for_object(object)
-	if warnings.is_empty():
-		header_lbl.text = "✓  No validation warnings"
-		_configure_tooltip_label(header_lbl, "No validation warnings.")
-		header_lbl.add_theme_color_override("font_color", Color(0.4, 0.8, 0.4))
-	else:
-		header_lbl.text = "⚠  %d warning%s" % [
-			warnings.size(), "" if warnings.size() == 1 else "s"
-		]
-		_configure_tooltip_label(header_lbl, _warnings_tooltip(warnings))
-		header_lbl.add_theme_color_override("font_color", Color(1.0, 0.75, 0.2))
-		for warning: String in warnings:
-			var warning_lbl := Label.new()
-			warning_lbl.text = "  • " + warning
-			_configure_tooltip_label(warning_lbl, warning)
-			warning_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			warning_lbl.add_theme_color_override("font_color", Color(1.0, 0.6, 0.3))
-			warning_rows.add_child(warning_lbl)
+func _disconnect_inspector_signals() -> void:
+	if m_inspector == null:
+		return
+	if m_inspector.property_edited.is_connected(_on_inspector_property_edited):
+		m_inspector.property_edited.disconnect(_on_inspector_property_edited)
+	if m_inspector.property_deleted.is_connected(_on_inspector_property_deleted):
+		m_inspector.property_deleted.disconnect(_on_inspector_property_deleted)
+	if m_inspector.edited_object_changed.is_connected(_on_inspector_edited_object_changed):
+		m_inspector.edited_object_changed.disconnect(_on_inspector_edited_object_changed)
+	m_inspector = null
 
 
-func _warnings_for_object(object: Object) -> PackedStringArray:
-	if object is StorylineEventResource:
-		return (object as StorylineEventResource).validate()
-	if object is StorylineRouteResource:
-		return (object as StorylineRouteResource).validate()
-	return PackedStringArray()
+func _on_inspector_property_edited(_property: String) -> void:
+	_refresh_storyline_status_for_object(_inspector_edited_object())
 
 
-func _warnings_tooltip(warnings: PackedStringArray) -> String:
-	if warnings.is_empty():
-		return "No warnings."
-
-	var lines := PackedStringArray()
-	for warning: String in warnings:
-		lines.append("• %s" % warning)
-	return "\n".join(lines)
+func _on_inspector_property_deleted(_property: String) -> void:
+	_refresh_storyline_status_for_object(_inspector_edited_object())
 
 
-func _configure_tooltip_label(label: Label, tooltip: String) -> void:
-	label.tooltip_text = tooltip
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.mouse_filter = Control.MOUSE_FILTER_STOP
-	label.mouse_default_cursor_shape = Control.CURSOR_HELP
+func _on_inspector_edited_object_changed() -> void:
+	if m_status_bridge != null and m_status_bridge.has_method("refresh_validation_panel"):
+		m_status_bridge.refresh_validation_panel()
+
+
+func _inspector_edited_object() -> Object:
+	if m_inspector == null:
+		return null
+	return m_inspector.get_edited_object()
+
+
+func _refresh_storyline_status_for_object(object: Object) -> void:
+	if m_status_bridge != null and m_status_bridge.has_method("refresh_storyline_status_for_object"):
+		m_status_bridge.refresh_storyline_status_for_object(object)

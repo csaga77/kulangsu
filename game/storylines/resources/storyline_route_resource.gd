@@ -10,7 +10,8 @@ extends Resource
 ## Author workflow:
 ##   1. Right-click game/storylines/routes/ → New Resource → StorylineRouteResource
 ##   2. Fill in the route metadata fields below.
-##   3. In the [member events] array, add StorylineEventResource sub-resources.
+##   3. Use the inspector's Route Events panel to add [StorylineEventResource]
+##      sub-resources with unique default ids.
 ##   4. Save. The graph editor and route browser refresh on the next Refresh click.
 
 # --- Route identity ----------------------------------------------------------
@@ -41,6 +42,27 @@ extends Resource
 ## Ordered list of events belonging to this route.
 ## [StorylineCatalog] flattens these into the shared event map.
 @export var events: Array[StorylineEventResource] = []
+
+
+## Returns the next unique default event id for this route using the pattern
+## "<route_name>_new_event_<n>".
+func next_default_event_id() -> String:
+	var used_event_ids := _used_event_ids()
+	var base := _default_event_id_base()
+	var index := 1
+	while true:
+		var candidate := "%s_new_event_%d" % [base, index]
+		if not used_event_ids.has(candidate):
+			return candidate
+		index += 1
+	return ""
+
+
+## Creates a new event resource with a unique default id for this route.
+func create_default_event_resource() -> StorylineEventResource:
+	var event_resource := StorylineEventResource.new()
+	event_resource.id = next_default_event_id()
+	return event_resource
 
 
 # ---------------------------------------------------------------------------
@@ -161,3 +183,50 @@ static func from_storyline_dict(value: Dictionary) -> StorylineRouteResource:
 				)
 
 	return route_resource
+
+
+func _used_event_ids() -> Dictionary:
+	var used_event_ids: Dictionary = {}
+	for event_id_var in StorylineCatalog.build_event_definitions().keys():
+		var event_id := String(event_id_var).strip_edges()
+		if not event_id.is_empty():
+			used_event_ids[event_id] = true
+	for event_resource: StorylineEventResource in events:
+		if event_resource == null:
+			continue
+		var event_id := event_resource.id.strip_edges()
+		if not event_id.is_empty():
+			used_event_ids[event_id] = true
+	return used_event_ids
+
+
+func _default_event_id_base() -> String:
+	var route_name := id.strip_edges()
+	if route_name.is_empty():
+		route_name = _normalize_event_id_fragment(display_name)
+	else:
+		route_name = route_name.to_lower()
+	if route_name.is_empty():
+		return "story_route"
+	return route_name
+
+
+static func _normalize_event_id_fragment(value: String) -> String:
+	var normalized := ""
+	var lower_value := value.strip_edges().to_lower()
+	var last_was_separator := false
+	for index: int in lower_value.length():
+		var character := lower_value.substr(index, 1)
+		var code := lower_value.unicode_at(index)
+		var is_lowercase_letter := code >= 97 and code <= 122
+		var is_digit := code >= 48 and code <= 57
+		if is_lowercase_letter or is_digit:
+			normalized += character
+			last_was_separator = false
+		elif not normalized.is_empty() and not last_was_separator:
+			normalized += "_"
+			last_was_separator = true
+
+	while normalized.ends_with("_"):
+		normalized = normalized.substr(0, normalized.length() - 1)
+	return normalized

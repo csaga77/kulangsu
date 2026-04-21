@@ -88,6 +88,8 @@ var m_node_map: Dictionary = {}
 var m_selected_event_id: String = ""
 var m_connection_drag_selected_event_id: String = ""
 var m_graph_rebuild_token: int = 0
+var m_refresh_queued: bool = false
+var m_watched_route_resources: Array[StorylineRouteResource] = []
 
 # ---------------------------------------------------------------------------
 # Lifecycle
@@ -102,12 +104,77 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	_disconnect_route_resource_watchers()
 	_capture_current_layout_positions()
 	_save_persisted_layout_state()
 
 
 func setup(editor_interface: EditorInterface) -> void:
 	m_editor_interface = editor_interface
+
+
+func refresh_from_disk() -> void:
+	_refresh_graph()
+
+
+func delete_event(event_id: String) -> void:
+	event_id = event_id.strip_edges()
+	if event_id.is_empty():
+		return
+
+	var event_def: Dictionary = m_event_defs.get(event_id, {})
+	if event_def.is_empty():
+		_load_catalog_data()
+		event_def = m_event_defs.get(event_id, {})
+		if event_def.is_empty():
+			push_warning("StorylineGraphEditor: unknown event '%s' for deletion" % event_id)
+			return
+
+	var route_id := String(event_def.get("route_id", "")).strip_edges()
+	if route_id.is_empty():
+		push_warning("StorylineGraphEditor: event '%s' has no route_id for deletion" % event_id)
+		return
+
+	var route_resource := _ensure_route_resource_for_editing(route_id)
+	if route_resource == null:
+		push_warning("StorylineGraphEditor: unable to load route resource for deletion '%s'" % route_id)
+		return
+
+	var delete_index := _find_event_resource_index(route_resource, event_id)
+	if delete_index < 0:
+		push_warning(
+			"StorylineGraphEditor: route '%s' has no editable event '%s' to delete'"
+			% [route_id, event_id]
+		)
+		return
+
+	var updated_events: Array[StorylineEventResource] = route_resource.events.duplicate()
+	updated_events.remove_at(delete_index)
+	route_resource.events = updated_events
+
+	var save_path := _route_resource_path_for(route_id)
+	var save_error := ResourceSaver.save(route_resource, save_path)
+	if save_error != OK:
+		push_error(
+			"StorylineGraphEditor: failed to save '%s' after deleting '%s' (err=%d)"
+			% [save_path, event_id, save_error]
+		)
+		return
+
+	route_resource.take_over_path(save_path)
+	m_route_resource_paths[route_id] = save_path
+	_clear_inspector_if_editing_deleted_event(event_id)
+	var preserved_selected_event_id := m_selected_event_id
+	if preserved_selected_event_id == event_id:
+		preserved_selected_event_id = ""
+	var preserved_scroll_offset := m_graph_edit.scroll_offset
+	_refresh_graph()
+	catalog_changed.emit()
+	call_deferred(
+		"_restore_graph_state_after_refresh",
+		preserved_selected_event_id,
+		preserved_scroll_offset
+	)
 
 
 # ---------------------------------------------------------------------------
@@ -189,7 +256,9 @@ func _load_catalog_data() -> void:
 	m_route_defs = StorylineCatalog.build_route_definitions()
 	m_event_defs = StorylineCatalog.build_event_definitions()
 	m_route_resource_paths.clear()
-	for route_resource: StorylineRouteResource in StorylineCatalog.load_route_resources():
+	var route_resources := StorylineCatalog.load_route_resources()
+	_update_route_resource_watchers(route_resources)
+	for route_resource: StorylineRouteResource in route_resources:
 		if route_resource == null:
 			continue
 		var route_id := route_resource.id.strip_edges()
@@ -200,6 +269,59 @@ func _load_catalog_data() -> void:
 			resource_path = _route_resource_path_for(route_id)
 		m_route_resource_paths[route_id] = resource_path
 	_prune_persisted_layout_positions()
+
+
+func _queue_graph_refresh() -> void:
+	if m_refresh_queued:
+		return
+	m_refresh_queued = true
+	call_deferred("_apply_queued_graph_refresh")
+
+
+func _apply_queued_graph_refresh() -> void:
+	m_refresh_queued = false
+	if not is_inside_tree() or m_graph_edit == null:
+		return
+
+	var preserved_selected_event_id := m_selected_event_id
+	var preserved_scroll_offset := m_graph_edit.scroll_offset
+	_refresh_graph()
+	call_deferred(
+		"_restore_graph_state_after_refresh",
+		preserved_selected_event_id,
+		preserved_scroll_offset
+	)
+
+
+func _update_route_resource_watchers(
+	route_resources: Array[StorylineRouteResource]
+) -> void:
+	var watcher_callback := Callable(self, "_on_watched_route_resource_changed")
+	for watched_resource: StorylineRouteResource in m_watched_route_resources:
+		if watched_resource == null or not is_instance_valid(watched_resource):
+			continue
+		if route_resources.has(watched_resource):
+			continue
+		if watched_resource.changed.is_connected(watcher_callback):
+			watched_resource.changed.disconnect(watcher_callback)
+
+	m_watched_route_resources.clear()
+	for route_resource: StorylineRouteResource in route_resources:
+		if route_resource == null:
+			continue
+		if not route_resource.changed.is_connected(watcher_callback):
+			route_resource.changed.connect(watcher_callback, CONNECT_DEFERRED)
+		m_watched_route_resources.append(route_resource)
+
+
+func _disconnect_route_resource_watchers() -> void:
+	var watcher_callback := Callable(self, "_on_watched_route_resource_changed")
+	for watched_resource: StorylineRouteResource in m_watched_route_resources:
+		if watched_resource == null or not is_instance_valid(watched_resource):
+			continue
+		if watched_resource.changed.is_connected(watcher_callback):
+			watched_resource.changed.disconnect(watcher_callback)
+	m_watched_route_resources.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -804,6 +926,13 @@ func _load_or_materialize_route_resource(route_id: String) -> StorylineRouteReso
 
 func _ensure_route_resource_for_editing(route_id: String) -> StorylineRouteResource:
 	var save_path := _route_resource_path_for(route_id)
+	var loaded_route_resource := _find_loaded_route_resource(route_id)
+	if loaded_route_resource != null:
+		var loaded_path := loaded_route_resource.resource_path
+		if not loaded_path.is_empty() and loaded_path == save_path:
+			m_route_resource_paths[route_id] = loaded_path
+			return loaded_route_resource
+
 	var already_exists := ResourceLoader.exists(save_path)
 	var route_resource := _load_or_materialize_route_resource(route_id)
 	if route_resource == null:
@@ -832,17 +961,23 @@ func _ensure_event_resource_for_editing(event_id: String) -> StorylineEventResou
 
 	var event_def: Dictionary = m_event_defs.get(event_id, {})
 	if event_def.is_empty():
-		return null
+		_load_catalog_data()
+		event_def = m_event_defs.get(event_id, {})
+		if event_def.is_empty():
+			return _find_loaded_event_resource(event_id)
 
 	var route_id := String(event_def.get("route_id", "")).strip_edges()
 	if route_id.is_empty():
-		return null
+		return _find_loaded_event_resource(event_id)
 
 	var route_resource := _ensure_route_resource_for_editing(route_id)
 	if route_resource == null:
-		return null
+		return _find_loaded_event_resource(event_id)
 
-	return _find_event_resource(route_resource, event_id)
+	var event_resource := _find_event_resource(route_resource, event_id)
+	if event_resource != null:
+		return event_resource
+	return _find_loaded_event_resource(event_id)
 
 
 func _edit_event_in_inspector(event_id: String) -> void:
@@ -931,6 +1066,64 @@ func _find_event_resource(
 	return null
 
 
+func _find_event_resource_index(
+	route_resource: StorylineRouteResource, event_id: String
+) -> int:
+	for event_index: int in route_resource.events.size():
+		var event_resource := route_resource.events[event_index]
+		if event_resource != null and event_resource.id.strip_edges() == event_id:
+			return event_index
+	return -1
+
+
+func _find_loaded_route_resource(route_id: String) -> StorylineRouteResource:
+	route_id = route_id.strip_edges()
+	if route_id.is_empty():
+		return null
+
+	for route_resource: StorylineRouteResource in StorylineCatalog.load_route_resources():
+		if route_resource != null and route_resource.id.strip_edges() == route_id:
+			return route_resource
+	return null
+
+
+func _find_loaded_event_resource(event_id: String) -> StorylineEventResource:
+	event_id = event_id.strip_edges()
+	if event_id.is_empty():
+		return null
+
+	for route_resource: StorylineRouteResource in StorylineCatalog.load_route_resources():
+		var event_resource := _find_event_resource(route_resource, event_id)
+		if event_resource != null:
+			return event_resource
+	return null
+
+
+func _clear_inspector_if_editing_deleted_event(event_id: String) -> void:
+	if m_editor_interface == null:
+		return
+	var inspector := m_editor_interface.get_inspector()
+	if inspector == null:
+		return
+	if _should_clear_inspector_for_deleted_event(
+		event_id,
+		inspector.get_edited_object()
+	):
+		inspector.edit(null)
+
+
+func _should_clear_inspector_for_deleted_event(
+	event_id: String, edited_object: Object
+) -> bool:
+	event_id = event_id.strip_edges()
+	if event_id.is_empty() or edited_object == null:
+		return false
+	return (
+		edited_object is StorylineEventResource
+		and (edited_object as StorylineEventResource).id.strip_edges() == event_id
+	)
+
+
 func _would_create_cycle(prereq_id: String, event_id: String) -> bool:
 	var adjacency: Dictionary = {}
 	for node_id_var in m_event_defs.keys():
@@ -997,6 +1190,8 @@ func _join_str(arr: Array, sep: String) -> String:
 ## "Show in Graph". Rebuilds first if the event is not currently visible
 ## (e.g. because of the active route filter).
 func select_event(event_id: String, center_view: bool = true) -> void:
+	if not m_event_defs.has(event_id):
+		_refresh_graph()
 	if not m_node_map.has(event_id):
 		# Event may be filtered out — clear the filter and rebuild.
 		m_route_filter.selected = 0
@@ -1025,6 +1220,10 @@ func _restore_graph_state_after_refresh(
 	if not selected_event_id.strip_edges().is_empty():
 		select_event(selected_event_id, false)
 	m_graph_edit.scroll_offset = preserved_scroll_offset
+
+
+func _on_watched_route_resource_changed() -> void:
+	_queue_graph_refresh()
 
 
 func _on_filter_changed(_idx: int) -> void:

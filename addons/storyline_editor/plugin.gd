@@ -4,6 +4,7 @@ extends EditorPlugin
 var m_graph_editor: Control
 var m_route_browser: Control
 var m_inspector_plugin: EditorInspectorPlugin
+var m_catalog_refresh_queued: bool = false
 
 
 func _enter_tree() -> void:
@@ -45,6 +46,12 @@ func _enter_tree() -> void:
 				m_route_browser.event_inspector_requested.connect(
 					_on_event_inspector_requested
 				)
+			if m_graph_editor != null and m_route_browser.has_signal("event_delete_requested"):
+				m_route_browser.event_delete_requested.connect(
+					_on_event_delete_requested
+				)
+			if m_route_browser.has_signal("catalog_changed"):
+				m_route_browser.catalog_changed.connect(_on_storyline_catalog_changed)
 			if m_graph_editor != null and m_graph_editor.has_signal("catalog_changed"):
 				m_graph_editor.catalog_changed.connect(_on_storyline_catalog_changed)
 	elif browser_script != null:
@@ -57,6 +64,11 @@ func _enter_tree() -> void:
 	if inspector_script != null and inspector_script.can_instantiate():
 		m_inspector_plugin = inspector_script.new() as EditorInspectorPlugin
 		if m_inspector_plugin != null:
+			if m_inspector_plugin.has_method("setup"):
+				m_inspector_plugin.setup(
+					get_editor_interface(),
+					Callable(self, "_on_storyline_catalog_changed")
+				)
 			add_inspector_plugin(m_inspector_plugin)
 	elif inspector_script != null:
 		push_warning("StorylineEditorPlugin: inspector plugin script failed to instantiate")
@@ -64,6 +76,8 @@ func _enter_tree() -> void:
 
 func _exit_tree() -> void:
 	if m_inspector_plugin != null:
+		if m_inspector_plugin.has_method("teardown"):
+			m_inspector_plugin.teardown()
 		remove_inspector_plugin(m_inspector_plugin)
 		m_inspector_plugin = null
 
@@ -101,6 +115,23 @@ func _on_route_inspector_requested(route_id: String) -> void:
 		m_graph_editor.edit_route_in_inspector(route_id)
 
 
+func _on_event_delete_requested(event_id: String) -> void:
+	if m_graph_editor == null:
+		return
+	if m_graph_editor.has_method("delete_event"):
+		m_graph_editor.delete_event(event_id)
+
+
 func _on_storyline_catalog_changed() -> void:
+	if m_catalog_refresh_queued:
+		return
+	m_catalog_refresh_queued = true
+	call_deferred("_refresh_storyline_views")
+
+
+func _refresh_storyline_views() -> void:
+	m_catalog_refresh_queued = false
 	if m_route_browser != null and m_route_browser.has_method("refresh_from_disk"):
 		m_route_browser.refresh_from_disk()
+	if m_graph_editor != null and m_graph_editor.has_method("refresh_from_disk"):
+		m_graph_editor.refresh_from_disk()

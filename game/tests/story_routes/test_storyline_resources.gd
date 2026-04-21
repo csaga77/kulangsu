@@ -4,11 +4,21 @@ const ENDING_TONE_RULE_SCRIPT := preload("res://game/storylines/resources/storyl
 const EVENT_RESOURCE_SCRIPT := preload("res://game/storylines/resources/storyline_event_resource.gd")
 const ROUTE_RESOURCE_SCRIPT := preload("res://game/storylines/resources/storyline_route_resource.gd")
 const INSPECTOR_PLUGIN_SCRIPT := preload("res://addons/storyline_editor/storyline_validator_inspector_plugin.gd")
+const VALIDATION_PANEL_SCRIPT := preload(
+	"res://addons/storyline_editor/storyline_validation_panel.gd"
+)
+const INSPECTOR_STATUS_BRIDGE_SCRIPT := preload(
+	"res://addons/storyline_editor/storyline_inspector_status_bridge.gd"
+)
 const PREREQUISITE_PICKER_PANEL_SCRIPT := preload(
 	"res://addons/storyline_editor/storyline_prerequisite_picker_panel.gd"
 )
+const ROUTE_EVENT_PANEL_SCRIPT := preload(
+	"res://addons/storyline_editor/storyline_route_event_panel.gd"
+)
 
 var m_failures := PackedStringArray()
+var m_catalog_refresh_requests: int = 0
 
 
 func _ready() -> void:
@@ -145,9 +155,107 @@ func _run() -> void:
 		"Storyline inspector plugin script loads for editor tooling checks"
 	)
 	_assert_true(
+		VALIDATION_PANEL_SCRIPT != null,
+		"Storyline validation panel script loads for editor tooling checks"
+	)
+	_assert_true(
+		INSPECTOR_STATUS_BRIDGE_SCRIPT != null,
+		"Storyline inspector status bridge script loads for editor tooling checks"
+	)
+	_assert_true(
 		PREREQUISITE_PICKER_PANEL_SCRIPT != null,
 		"Storyline prerequisite picker panel script loads for editor tooling checks"
 	)
+	_assert_true(
+		ROUTE_EVENT_PANEL_SCRIPT != null,
+		"Storyline route event panel script loads for editor tooling checks"
+	)
+
+	var id_route_resource: StorylineRouteResource = ROUTE_RESOURCE_SCRIPT.new()
+	id_route_resource.id = "typed_resource_route"
+	_assert_true(
+		id_route_resource.next_default_event_id() == "typed_resource_route_new_event_1",
+		"Route resources derive their first default event id from the route id"
+	)
+	var existing_default_event: StorylineEventResource = EVENT_RESOURCE_SCRIPT.new()
+	existing_default_event.id = "typed_resource_route_new_event_1"
+	id_route_resource.events = [existing_default_event]
+	_assert_true(
+		id_route_resource.next_default_event_id() == "typed_resource_route_new_event_2",
+		"Route resources increment default event ids to keep them unique"
+	)
+
+	var validation_event: StorylineEventResource = EVENT_RESOURCE_SCRIPT.new()
+	validation_event.id = "typed_validation_event"
+	validation_event.lead_text = "Track validation refresh state."
+	validation_event.journal_note = "The validation panel should refresh after resource edits."
+	validation_event.status_text = "Validation state updated."
+	var validation_panel = VALIDATION_PANEL_SCRIPT.new()
+	validation_panel.setup(validation_event)
+	add_child(validation_panel)
+	await get_tree().process_frame
+
+	_assert_true(
+		validation_panel.m_header_lbl != null,
+		"Storyline validation panel builds its header label"
+	)
+	if validation_panel.m_header_lbl != null:
+		_assert_true(
+			validation_panel.m_header_lbl.text == "⚠  1 warning",
+			"Storyline validation panel shows the initial warning count"
+		)
+
+	validation_event.phase_window = PackedStringArray(["summer_1"])
+	validation_event.emit_changed()
+	await get_tree().process_frame
+	if validation_panel.m_header_lbl != null:
+		_assert_true(
+			validation_panel.m_header_lbl.text == "✓  No validation warnings",
+			"Storyline validation panel refreshes after resource changes"
+		)
+	validation_panel.queue_free()
+	await get_tree().process_frame
+
+	m_catalog_refresh_requests = 0
+	var inspector_refresh_event: StorylineEventResource = EVENT_RESOURCE_SCRIPT.new()
+	inspector_refresh_event.id = "typed_inspector_refresh_event"
+	inspector_refresh_event.lead_text = "Refresh from inspector edits."
+	inspector_refresh_event.journal_note = "Inspector edits should refresh validation and browser state."
+	inspector_refresh_event.status_text = "Inspector refresh state updated."
+	var inspector_refresh_panel = VALIDATION_PANEL_SCRIPT.new()
+	inspector_refresh_panel.setup(inspector_refresh_event)
+	add_child(inspector_refresh_panel)
+	await get_tree().process_frame
+
+	var inspector_status_bridge = INSPECTOR_STATUS_BRIDGE_SCRIPT.new()
+	inspector_status_bridge.setup(
+		inspector_refresh_panel,
+		Callable(self, "_on_catalog_refresh_requested")
+	)
+
+	m_catalog_refresh_requests = 0
+	inspector_status_bridge.refresh_validation_panel()
+	await get_tree().process_frame
+	_assert_true(
+		m_catalog_refresh_requests == 0,
+		"Storyline inspector validation-only refresh does not request a browser/catalog refresh"
+	)
+
+	inspector_refresh_event.phase_window = PackedStringArray(["summer_1"])
+	inspector_status_bridge.refresh_storyline_status_for_object(inspector_refresh_event)
+	await get_tree().process_frame
+	_assert_true(
+		m_catalog_refresh_requests == 1,
+		"Storyline inspector status refresh requests a browser/catalog refresh callback"
+	)
+	if inspector_refresh_panel.m_header_lbl != null:
+		_assert_true(
+			inspector_refresh_panel.m_header_lbl.text == "✓  No validation warnings",
+			"Storyline inspector status refresh updates the validation panel after inspector edits"
+		)
+	inspector_refresh_panel.queue_free()
+	await get_tree().process_frame
+
 	var picker_event: StorylineEventResource = EVENT_RESOURCE_SCRIPT.new()
 	picker_event.id = "typed_picker_anchor"
 	picker_event.lead_text = "Use the prerequisite picker."
@@ -205,6 +313,59 @@ func _run() -> void:
 	prerequisite_picker.queue_free()
 	await get_tree().process_frame
 
+	var route_panel_resource: StorylineRouteResource = ROUTE_RESOURCE_SCRIPT.new()
+	route_panel_resource.id = "typed_panel_route"
+	var route_event_panel = ROUTE_EVENT_PANEL_SCRIPT.new()
+	route_event_panel.setup(route_panel_resource)
+	add_child(route_event_panel)
+	await get_tree().process_frame
+
+	_assert_true(
+		route_event_panel.m_event_rows != null,
+		"Storyline route event panel builds its event list container"
+	)
+	route_event_panel._on_add_event_pressed()
+	_assert_true(
+		route_panel_resource.events.size() == 1,
+		"Storyline route event panel appends a new event resource"
+	)
+	if route_panel_resource.events.size() == 1:
+		_assert_true(
+			route_panel_resource.events[0].id == "typed_panel_route_new_event_1",
+			"Storyline route event panel assigns the first default event id"
+		)
+	route_event_panel._on_add_event_pressed()
+	_assert_true(
+		route_panel_resource.events.size() == 2,
+		"Storyline route event panel can append multiple new events"
+	)
+	if route_panel_resource.events.size() == 2:
+		_assert_true(
+			route_panel_resource.events[1].id == "typed_panel_route_new_event_2",
+			"Storyline route event panel keeps default ids unique across repeated adds"
+		)
+	route_event_panel._on_remove_event_pressed(0)
+	_assert_true(
+		route_panel_resource.events.size() == 2,
+		"Storyline route event panel keeps events intact until delete confirmation"
+	)
+	_assert_true(
+		route_event_panel.m_delete_event_dialog != null,
+		"Storyline route event panel opens a confirmation dialog before deleting an event"
+	)
+	route_event_panel._confirm_delete_event()
+	_assert_true(
+		route_panel_resource.events.size() == 1,
+		"Storyline route event panel removes the event after delete confirmation"
+	)
+	if route_panel_resource.events.size() == 1:
+		_assert_true(
+			route_panel_resource.events[0].id == "typed_panel_route_new_event_2",
+			"Storyline route event panel keeps the remaining event after delete confirmation"
+		)
+	route_event_panel.queue_free()
+	await get_tree().process_frame
+
 	if m_failures.is_empty():
 		print("PASS: storyline resource schema")
 	else:
@@ -237,3 +398,7 @@ func _find_tree_item_with_event_id(item: TreeItem, event_id: String) -> TreeItem
 			return found
 		child = child.get_next()
 	return null
+
+
+func _on_catalog_refresh_requested() -> void:
+	m_catalog_refresh_requests += 1
