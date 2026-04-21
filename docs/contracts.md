@@ -91,9 +91,9 @@ Owned by:
 Current contract:
 
 - story-facing world interactions now flow through stable `subject_id + action` pairs instead of route-specific scene callbacks
-- `StoryEventService` owns generic context building, shared condition matching, priority-based candidate selection, and shared effect application, while storyline modules under `game/storylines/`, resident data, and existing landmark helpers remain the current canonical source for route/event meaning
-- each storyline module under `game/storylines/` returns one `route` definition plus that route's `events`; `story_route_graph.gd` and the journal discover those modules automatically
-- route events may depend on events from any other storyline module by referencing those event ids in `prerequisites.story_flags_all` or `prerequisites.story_flags_any`
+- `StoryEventService` owns generic context building, shared condition matching, priority-based candidate selection, and shared effect application, while typed route resources under `game/storylines/routes/`, resident data, and existing landmark helpers remain the current canonical source for route/event meaning
+- each `StorylineRouteResource` under `game/storylines/routes/` resolves to one `route` definition plus that route's `events`; `story_route_graph.gd` and the journal discover those route resources automatically
+- route events may depend on events from any other route resource by referencing those event ids in `prerequisites.story_flags_all` or `prerequisites.story_flags_any`
 - `game/story_event_catalog.gd` is the authored StoryEvent tree file for the current landmark migration; it now owns the full `melody_landmarks` landmark-interaction subtree
 - resident conditional beats now resolve through `pick_story_candidate(...)` and apply their side effects through `apply_story_effects(...)` rather than keeping separate copies of condition/effect logic
 - `StorySubjectArea2D` is now the shared world-side subject adapter; `game_main.gd` routes all world-subject interactions through `activate_story_subject(...)`, and `StoryEventService` resolves current `landmark:` and `inspectable:` subjects plus landmark reward world events through the authored catalog before any compatibility fallback path

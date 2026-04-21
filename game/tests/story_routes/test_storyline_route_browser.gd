@@ -67,6 +67,10 @@ func _run() -> void:
 		route_browser.m_event_tree.columns == 1,
 		"Route browser story tree uses a single visible column"
 	)
+	_assert_true(
+		not route_browser.m_event_tree.column_titles_visible,
+		"Route browser hides the story tree column title"
+	)
 	var tree_root: TreeItem = route_browser.m_event_tree.get_root()
 	_assert_true(tree_root != null, "Route browser builds a hidden story tree root")
 	if tree_root != null:

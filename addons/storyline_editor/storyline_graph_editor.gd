@@ -8,8 +8,8 @@ extends VBoxContainer
 ## are shown when "All routes" is selected, and graph edits are written back
 ## to the canonical route resource for the target event.
 ##
-## If the target route still lives in a legacy *_storyline.gd module, the
-## first graph edit auto-promotes that route into
+## Compatibility-only: if the target route still lives in a legacy
+## *_storyline.gd module, the first graph edit auto-promotes that route into
 ## game/storylines/routes/<route_id>.tres before saving the new dependency.
 ##
 ## Layout: events are arranged in columns by dependency depth (longest

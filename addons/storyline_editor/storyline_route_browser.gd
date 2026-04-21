@@ -126,22 +126,12 @@ func _build_ui() -> void:
 
 	add_child(HSeparator.new())
 
-	var event_header_row := HBoxContainer.new()
-	add_child(event_header_row)
-
-	var event_header_lbl := Label.new()
-	event_header_lbl.text = "  Story Routes"
-	event_header_lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
-	event_header_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	event_header_row.add_child(event_header_lbl)
-
 	m_event_tree = Tree.new()
 	m_event_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	m_event_tree.columns = 1
 	m_event_tree.hide_root = true
-	m_event_tree.set_column_title(0, "Route / Event")
 	m_event_tree.set_column_expand(0, true)
-	m_event_tree.column_titles_visible = true
+	m_event_tree.column_titles_visible = false
 	m_event_tree.item_selected.connect(_on_event_tree_item_selected)
 	m_event_tree.item_activated.connect(_on_event_tree_item_activated)
 	add_child(m_event_tree)

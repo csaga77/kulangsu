@@ -25,10 +25,10 @@ func _run() -> void:
 	_assert_true(_app_state().get_story_route_ids().size() == 4, "Story routes load from modular storyline definitions")
 	var family_prep_definition: Dictionary = _app_state().get_story_event_definition("spring_festival_prepared")
 	var family_prep_prerequisites: Dictionary = family_prep_definition.get("prerequisites", {})
-	_assert_true(String(family_prep_definition.get("route_id", "")) == "family_memory", "Family preparation remains owned by the family storyline module")
+	_assert_true(String(family_prep_definition.get("route_id", "")) == "family_memory", "Family preparation remains owned by the family storyline route resource")
 	_assert_true(
 		_normalize_string_array(family_prep_prerequisites.get("story_flags_all", [])).find("preservation_inheritance_seen") >= 0,
-		"Storyline modules can depend on story events authored by other storyline modules"
+		"Storyline route resources can depend on story events authored by other routes"
 	)
 	_assert_true(_app_state().get_available_lead_ids().size() >= 2, "New game seeds multiple live routes")
 	_assert_true(!_app_state().get_active_lead_id().is_empty(), "New game pins one HUD lead")

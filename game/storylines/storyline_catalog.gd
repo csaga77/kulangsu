@@ -5,11 +5,12 @@ extends RefCounted
 ## Loading priority (highest to lowest):
 ##   1. [StorylineRouteResource] .tres files under [constant ROUTE_RESOURCE_DIR].
 ##   2. Legacy *_storyline.gd modules under [constant STORYLINE_DIR] — used as a
-##      migration fallback for any route not yet authored as a typed resource.
+##      compatibility-only migration fallback for older routes that still need
+##      conversion.
 ##
 ## The public API ([method build_route_definitions] / [method build_event_definitions])
 ## always returns plain Dictionary values so the runtime, journal, and save
-## systems need no changes as routes migrate from .gd to .tres format.
+## systems need no changes as route content lives in typed `.tres` resources.
 
 const STORYLINE_DIR      := "res://game/storylines"
 const STORYLINE_SUFFIX   := "_storyline.gd"
