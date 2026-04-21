@@ -31,6 +31,10 @@ func _ready() -> void:
 	_build_ui()
 
 
+func refresh() -> void:
+	_rebuild_event_rows()
+
+
 func _build_ui() -> void:
 	if m_route_resource == null:
 		return

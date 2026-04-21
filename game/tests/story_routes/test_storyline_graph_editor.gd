@@ -66,6 +66,18 @@ func _run() -> void:
 		),
 		"Graph editor keeps route resources in the inspector when deleting an event"
 	)
+	_assert_true(
+		graph_editor.m_graph_edit.right_disconnects,
+		"Graph editor enables drag disconnects from output ports"
+	)
+	_assert_true(
+		graph_editor._supports_disconnect_drag_type(0, false),
+		"Graph editor enables drag disconnects from input ports for the storyline slot type"
+	)
+	_assert_true(
+		graph_editor._supports_disconnect_drag_type(0, true),
+		"Graph editor enables drag disconnects from output ports for the storyline slot type"
+	)
 
 	var visible_event_ids := graph_editor._visible_event_ids("")
 	var expected_initial_connection_count := 0

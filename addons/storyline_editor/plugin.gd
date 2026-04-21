@@ -135,3 +135,5 @@ func _refresh_storyline_views() -> void:
 		m_route_browser.refresh_from_disk()
 	if m_graph_editor != null and m_graph_editor.has_method("refresh_from_disk"):
 		m_graph_editor.refresh_from_disk()
+	if m_inspector_plugin != null and m_inspector_plugin.has_method("refresh_storyline_controls"):
+		m_inspector_plugin.refresh_storyline_controls()

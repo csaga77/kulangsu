@@ -263,9 +263,13 @@ func _run() -> void:
 	picker_event.status_text = "Picker state changed."
 	picker_event.phase_window = PackedStringArray(["summer_1"])
 	picker_event.story_flags_any = PackedStringArray(["typed_resource_anchor"])
+	m_catalog_refresh_requests = 0
 
 	var prerequisite_picker = PREREQUISITE_PICKER_PANEL_SCRIPT.new()
-	prerequisite_picker.setup(picker_event)
+	prerequisite_picker.setup(
+		picker_event,
+		Callable(self, "_on_catalog_refresh_requested")
+	)
 	add_child(prerequisite_picker)
 	await get_tree().process_frame
 
@@ -304,12 +308,41 @@ func _run() -> void:
 				not picker_event.story_flags_any.has("summer_return_complete"),
 				"Storyline prerequisite picker keeps the opposite bucket clear for the added event"
 			)
+			await get_tree().process_frame
+			_assert_true(
+				m_catalog_refresh_requests == 1,
+				"Storyline prerequisite picker requests a shared refresh after adding a dependency"
+			)
 
 	prerequisite_picker._remove_prerequisite("summer_return_complete", "story_flags_all")
 	_assert_true(
 		not picker_event.story_flags_all.has("summer_return_complete"),
 		"Storyline prerequisite picker removes selected events from the target bucket"
 	)
+	await get_tree().process_frame
+	_assert_true(
+		m_catalog_refresh_requests == 2,
+		"Storyline prerequisite picker requests a shared refresh after removing a dependency"
+	)
+	picker_event.story_flags_any = PackedStringArray(["winter_memory_reveal"])
+	prerequisite_picker.refresh()
+	var refreshed_any_bucket := prerequisite_picker.m_bucket_lists.get("story_flags_any") as VBoxContainer
+	_assert_true(
+		refreshed_any_bucket != null,
+		"Storyline prerequisite picker can access the Any bucket during refresh checks"
+	)
+	if refreshed_any_bucket != null and refreshed_any_bucket.get_child_count() > 0:
+		var refreshed_row := refreshed_any_bucket.get_child(0) as HBoxContainer
+		_assert_true(
+			refreshed_row != null,
+			"Storyline prerequisite picker refresh rebuilds a dependency row after external changes"
+		)
+		if refreshed_row != null and refreshed_row.get_child_count() > 0:
+			var refreshed_label := refreshed_row.get_child(0) as Label
+			_assert_true(
+				refreshed_label != null and refreshed_label.text == "winter_memory_reveal",
+				"Storyline prerequisite picker refresh syncs externally changed dependencies into the inspector UI"
+			)
 	prerequisite_picker.queue_free()
 	await get_tree().process_frame
 

@@ -27,6 +27,8 @@ var m_editor_interface: EditorInterface
 var m_catalog_changed_callback: Callable
 var m_inspector: EditorInspector
 var m_current_validation_panel: Control
+var m_current_prerequisite_picker: Control
+var m_current_route_event_panel: Control
 var m_status_bridge: RefCounted
 
 
@@ -53,9 +55,16 @@ func setup(
 
 func teardown() -> void:
 	_disconnect_inspector_signals()
+	m_current_validation_panel = null
+	m_current_prerequisite_picker = null
+	m_current_route_event_panel = null
 
 
 func _parse_begin(object: Object) -> void:
+	m_current_validation_panel = null
+	m_current_prerequisite_picker = null
+	m_current_route_event_panel = null
+
 	# --- Validation panel ---
 	var validation_panel := _VALIDATION_PANEL_SCRIPT.new() as Control
 	if validation_panel != null and validation_panel.has_method("setup"):
@@ -69,17 +78,22 @@ func _parse_begin(object: Object) -> void:
 	if object is StorylineEventResource:
 		var prerequisite_picker := _PREREQUISITE_PICKER_PANEL_SCRIPT.new() as Control
 		if prerequisite_picker != null and prerequisite_picker.has_method("setup"):
-			prerequisite_picker.setup(object as StorylineEventResource)
-			add_custom_control(prerequisite_picker)
-	elif object is StorylineRouteResource:
-		var route_event_panel := _ROUTE_EVENT_PANEL_SCRIPT.new() as Control
-		if route_event_panel != null and route_event_panel.has_method("setup"):
-			route_event_panel.setup(
-				object as StorylineRouteResource,
-				m_editor_interface,
+			prerequisite_picker.setup(
+				object as StorylineEventResource,
 				m_catalog_changed_callback
 			)
-			add_custom_control(route_event_panel)
+			m_current_prerequisite_picker = prerequisite_picker
+			add_custom_control(prerequisite_picker)
+		elif object is StorylineRouteResource:
+			var route_event_panel := _ROUTE_EVENT_PANEL_SCRIPT.new() as Control
+			if route_event_panel != null and route_event_panel.has_method("setup"):
+				route_event_panel.setup(
+					object as StorylineRouteResource,
+					m_editor_interface,
+					m_catalog_changed_callback
+				)
+				m_current_route_event_panel = route_event_panel
+				add_custom_control(route_event_panel)
 
 
 func _parse_property(
@@ -151,3 +165,17 @@ func _inspector_edited_object() -> Object:
 func _refresh_storyline_status_for_object(object: Object) -> void:
 	if m_status_bridge != null and m_status_bridge.has_method("refresh_storyline_status_for_object"):
 		m_status_bridge.refresh_storyline_status_for_object(object)
+
+
+func refresh_storyline_controls() -> void:
+	if m_status_bridge != null and m_status_bridge.has_method("refresh_validation_panel"):
+		m_status_bridge.refresh_validation_panel()
+	_refresh_custom_control(m_current_prerequisite_picker)
+	_refresh_custom_control(m_current_route_event_panel)
+
+
+func _refresh_custom_control(control: Control) -> void:
+	if control == null or not is_instance_valid(control):
+		return
+	if control.has_method("refresh"):
+		control.refresh()

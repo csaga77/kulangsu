@@ -4,7 +4,7 @@ extends VBoxContainer
 ##
 ## Shows:
 ##   • One combined storyline tree with route root nodes
-##   • Event rows nested under their owning route, with prerequisite child rows
+##   • Event rows nested under their owning route
 ##   • Project-wide validation warnings surfaced inline
 ##   • "Show in Graph" button to select the event in the graph editor
 ##
@@ -276,23 +276,6 @@ func _create_event_tree_item(
 		if not all_event_ids.has(prereq):
 			event_item.set_custom_color(0, Color(1.0, 0.6, 0.3))
 			break
-
-	for prereq: String in prereqs:
-		var prereq_item := m_event_tree.create_item(event_item)
-		var exists: bool = all_event_ids.has(prereq)
-		prereq_item.set_text(0, "  ← %s" % prereq)
-		prereq_item.set_custom_color(
-			0,
-			Color(0.5, 0.5, 0.5) if exists else Color(1.0, 0.5, 0.3)
-		)
-		prereq_item.set_tooltip_text(
-			0,
-			"prerequisite — %s" % ("found" if exists else "NOT FOUND in catalog")
-		)
-		prereq_item.set_metadata(0, {
-			"kind": "prerequisite",
-			"prerequisite_id": prereq,
-		})
 
 
 func _on_event_tree_item_selected() -> void:

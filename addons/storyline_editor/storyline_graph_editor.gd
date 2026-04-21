@@ -90,6 +90,8 @@ var m_connection_drag_selected_event_id: String = ""
 var m_graph_rebuild_token: int = 0
 var m_refresh_queued: bool = false
 var m_watched_route_resources: Array[StorylineRouteResource] = []
+var m_left_disconnect_types: Dictionary = {}
+var m_right_disconnect_types: Dictionary = {}
 
 # ---------------------------------------------------------------------------
 # Lifecycle
@@ -230,7 +232,6 @@ func _build_ui() -> void:
 	m_graph_edit = GraphEdit.new()
 	m_graph_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	m_graph_edit.size_flags_vertical  = Control.SIZE_EXPAND_FILL
-	m_graph_edit.right_disconnects = true
 	m_graph_edit.show_arrange_button = false
 	m_graph_edit.connection_drag_started.connect(_on_connection_drag_started)
 	m_graph_edit.connection_drag_ended.connect(_on_connection_drag_ended)
@@ -239,6 +240,7 @@ func _build_ui() -> void:
 	m_graph_edit.node_selected.connect(_on_node_selected)
 	m_graph_edit.node_deselected.connect(_on_node_deselected)
 	m_graph_edit.resized.connect(_on_graph_edit_resized)
+	_configure_disconnect_drag()
 	add_child(m_graph_edit)
 
 
@@ -1179,6 +1181,30 @@ func _join_str(arr: Array, sep: String) -> String:
 	for item in arr:
 		parts.append(str(item))
 	return sep.join(parts)
+
+
+func _configure_disconnect_drag() -> void:
+	if m_graph_edit == null:
+		return
+	m_graph_edit.right_disconnects = true
+	_allow_disconnect_drag_type(_SLOT_TYPE, false)
+	_allow_disconnect_drag_type(_SLOT_TYPE, true)
+
+
+func _allow_disconnect_drag_type(slot_type: int, right_side: bool) -> void:
+	if m_graph_edit == null:
+		return
+	if right_side:
+		m_graph_edit.add_valid_right_disconnect_type(slot_type)
+		m_right_disconnect_types[slot_type] = true
+		return
+	m_graph_edit.add_valid_left_disconnect_type(slot_type)
+	m_left_disconnect_types[slot_type] = true
+
+
+func _supports_disconnect_drag_type(slot_type: int, right_side: bool) -> bool:
+	var allowed_types := m_right_disconnect_types if right_side else m_left_disconnect_types
+	return bool(allowed_types.get(slot_type, false))
 
 
 # ---------------------------------------------------------------------------

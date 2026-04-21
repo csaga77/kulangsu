@@ -35,12 +35,24 @@ var m_picker_bucket: String = ""
 var m_route_defs: Dictionary = {}
 var m_event_defs: Dictionary = {}
 var m_route_source: Dictionary = {}
+var m_on_prerequisites_changed: Callable
 
 
-func setup(event_resource: StorylineEventResource) -> void:
+func setup(
+	event_resource: StorylineEventResource,
+	on_prerequisites_changed: Callable = Callable()
+) -> void:
 	m_event_resource = event_resource
+	m_on_prerequisites_changed = on_prerequisites_changed
 	if is_node_ready():
 		_build_ui()
+
+
+func refresh() -> void:
+	_load_catalog_data()
+	_rebuild_all_bucket_rows()
+	if m_picker_dialog != null and m_picker_dialog.visible:
+		_rebuild_picker_tree()
 
 
 func _ready() -> void:
@@ -242,6 +254,7 @@ func _add_prerequisite(event_id: String, bucket_name: String) -> void:
 			_set_property_flags(other_bucket, other_flags)
 
 	_rebuild_all_bucket_rows()
+	_notify_prerequisites_changed()
 
 
 func _remove_prerequisite(event_id: String, bucket_name: String) -> void:
@@ -252,6 +265,7 @@ func _remove_prerequisite(event_id: String, bucket_name: String) -> void:
 	flags.remove_at(flag_index)
 	_set_property_flags(bucket_name, flags)
 	_rebuild_bucket_rows(bucket_name)
+	_notify_prerequisites_changed()
 
 
 func _rebuild_all_bucket_rows() -> void:
@@ -331,3 +345,8 @@ func _other_bucket_name(bucket_name: String) -> String:
 			return "story_flags_all"
 		_:
 			return ""
+
+
+func _notify_prerequisites_changed() -> void:
+	if m_on_prerequisites_changed.is_valid():
+		m_on_prerequisites_changed.call_deferred()

@@ -96,6 +96,10 @@ func _run() -> void:
 			var first_event_item: TreeItem = first_route_item.get_first_child()
 			_assert_true(first_event_item != null, "Route browser event rows live under their route root")
 			if first_event_item != null:
+				_assert_true(
+					first_event_item.get_first_child() == null,
+					"Route browser event rows do not render prerequisite child rows"
+				)
 				route_browser.m_event_tree.set_selected(first_event_item, 0)
 				await get_tree().process_frame
 				_assert_true(
