@@ -99,12 +99,15 @@ func _build_ui() -> void:
 
 	# --- FFmpeg executable ---
 	var ffmpeg_label := Label.new()
-	ffmpeg_label.text = "FFmpeg executable (optional; leave blank to auto-detect):"
+	ffmpeg_label.text = "FFmpeg executable:"
+	ffmpeg_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ffmpeg_label.tooltip_text = "Optional. Leave blank to auto-detect ffmpeg in standard locations."
 	add_child(ffmpeg_label)
 
 	var ffmpeg_row := HBoxContainer.new()
 	m_ffmpeg_edit = LineEdit.new()
 	m_ffmpeg_edit.placeholder_text = "ffmpeg"
+	m_ffmpeg_edit.tooltip_text = ffmpeg_label.tooltip_text
 	m_ffmpeg_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	m_ffmpeg_edit.text_changed.connect(_on_settings_changed)
 	ffmpeg_row.add_child(m_ffmpeg_edit)
@@ -117,12 +120,15 @@ func _build_ui() -> void:
 
 	# --- Source folder ---
 	var src_label := Label.new()
-	src_label.text = "Source folder (absolute path or res:// folder with .mp3 files):"
+	src_label.text = "Source folder:"
+	src_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	src_label.tooltip_text = "Absolute path or res:// folder with .mp3 files."
 	add_child(src_label)
 
 	var src_row := HBoxContainer.new()
 	m_source_edit = LineEdit.new()
 	m_source_edit.placeholder_text = "/Users/you/Music/mp3s"
+	m_source_edit.tooltip_text = src_label.tooltip_text
 	m_source_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	m_source_edit.text_changed.connect(_on_settings_changed)
 	src_row.add_child(m_source_edit)
@@ -135,12 +141,15 @@ func _build_ui() -> void:
 
 	# --- Target folder ---
 	var tgt_label := Label.new()
-	tgt_label.text = "Target folder (res:// path inside the project):"
+	tgt_label.text = "Target folder:"
+	tgt_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tgt_label.tooltip_text = "res:// path inside the project."
 	add_child(tgt_label)
 
 	var tgt_row := HBoxContainer.new()
 	m_target_edit = LineEdit.new()
 	m_target_edit.text = "res://resources/audio/music"
+	m_target_edit.tooltip_text = tgt_label.tooltip_text
 	m_target_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	m_target_edit.text_changed.connect(_on_settings_changed)
 	tgt_row.add_child(m_target_edit)
@@ -154,7 +163,8 @@ func _build_ui() -> void:
 	# --- Quality slider ---
 	var q_row := HBoxContainer.new()
 	var q_label := Label.new()
-	q_label.text = "OGG quality (0-10):"
+	q_label.text = "OGG quality:"
+	q_label.tooltip_text = "0-10 ffmpeg -q:a value. Higher = better quality and larger files."
 	q_row.add_child(q_label)
 
 	m_quality_spin = SpinBox.new()
