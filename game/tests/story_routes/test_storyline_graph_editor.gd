@@ -43,8 +43,14 @@ func _run() -> void:
 	inspected_deleted_event.id = "summer_return_complete"
 	var inspected_other_event := StorylineEventResource.new()
 	inspected_other_event.id = "spring_festival_prepared"
+	var inspected_target_event := StorylineEventResource.new()
+	inspected_target_event.id = "winter_memory_reveal"
 	var inspected_route := StorylineRouteResource.new()
 	inspected_route.id = "family_memory"
+	var updated_target_event := StorylineEventResource.new()
+	updated_target_event.id = "winter_memory_reveal"
+	var updated_target_route := StorylineRouteResource.new()
+	updated_target_route.id = "family_memory"
 	_assert_true(
 		graph_editor._should_clear_inspector_for_deleted_event(
 			"summer_return_complete",
@@ -65,6 +71,30 @@ func _run() -> void:
 			inspected_route
 		),
 		"Graph editor keeps route resources in the inspector when deleting an event"
+	)
+	_assert_true(
+		graph_editor._inspector_resource_to_refresh_for_storyline_change(
+			updated_target_route,
+			updated_target_event,
+			inspected_target_event
+		) == updated_target_event,
+		"Graph editor refreshes the inspector when the edited target event changes"
+	)
+	_assert_true(
+		graph_editor._inspector_resource_to_refresh_for_storyline_change(
+			updated_target_route,
+			updated_target_event,
+			inspected_route
+		) == updated_target_route,
+		"Graph editor refreshes the inspector when the owning route is open"
+	)
+	_assert_true(
+		graph_editor._inspector_resource_to_refresh_for_storyline_change(
+			updated_target_route,
+			updated_target_event,
+			inspected_other_event
+		) == null,
+		"Graph editor leaves unrelated inspected events alone after dependency edits"
 	)
 	_assert_true(
 		graph_editor.m_graph_edit.right_disconnects,

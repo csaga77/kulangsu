@@ -878,6 +878,7 @@ func _persist_dependency_change(
 	else:
 		target_event.story_flags_all = other_flags
 		target_event.story_flags_any = target_flags
+	target_event.emit_changed()
 
 	var save_path := _route_resource_path_for(route_id)
 	var save_error := ResourceSaver.save(route_resource, save_path)
@@ -890,6 +891,7 @@ func _persist_dependency_change(
 
 	route_resource.take_over_path(save_path)
 	m_route_resource_paths[route_id] = save_path
+	_refresh_inspector_for_storyline_change(route_resource, target_event)
 	var preserved_selected_event_id := m_selected_event_id
 	var preserved_scroll_offset := m_graph_edit.scroll_offset
 	_refresh_graph()
@@ -1098,6 +1100,43 @@ func _find_loaded_event_resource(event_id: String) -> StorylineEventResource:
 		var event_resource := _find_event_resource(route_resource, event_id)
 		if event_resource != null:
 			return event_resource
+	return null
+
+
+func _refresh_inspector_for_storyline_change(
+	route_resource: StorylineRouteResource,
+	event_resource: StorylineEventResource
+) -> void:
+	if m_editor_interface == null:
+		return
+	var inspector := m_editor_interface.get_inspector()
+	if inspector == null:
+		return
+	var refresh_resource := _inspector_resource_to_refresh_for_storyline_change(
+		route_resource,
+		event_resource,
+		inspector.get_edited_object()
+	)
+	if refresh_resource == null:
+		return
+	m_editor_interface.edit_resource(refresh_resource)
+
+
+func _inspector_resource_to_refresh_for_storyline_change(
+	route_resource: StorylineRouteResource,
+	event_resource: StorylineEventResource,
+	edited_object: Object
+) -> Resource:
+	if edited_object == null:
+		return null
+	if edited_object is StorylineEventResource and event_resource != null:
+		var edited_event := edited_object as StorylineEventResource
+		if edited_event.id.strip_edges() == event_resource.id.strip_edges():
+			return event_resource
+	if edited_object is StorylineRouteResource and route_resource != null:
+		var edited_route := edited_object as StorylineRouteResource
+		if edited_route.id.strip_edges() == route_resource.id.strip_edges():
+			return route_resource
 	return null
 
 
