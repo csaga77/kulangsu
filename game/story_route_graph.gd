@@ -2,6 +2,7 @@ class_name StoryRouteGraph
 extends RefCounted
 
 const MAX_GLOBAL_LEADS := 4
+const STORY_SEASON_PHASES_SCRIPT := preload("res://game/story_season_phases.gd")
 
 var m_owner: Node = null
 
@@ -41,30 +42,16 @@ static func default_endgame_state() -> Dictionary:
 
 
 static func phase_display_name(phase_id: String) -> String:
-	match phase_id:
-		"summer_1":
-			return "Summer"
-		"autumn_study":
-			return "Autumn / Study"
-		"winter":
-			return "Winter"
-		"spring_festival":
-			return "Spring Festival / Spring"
-		"summer_2":
-			return "Second Summer"
-		"endgame":
-			return "Final Act"
-		_:
-			return "Story"
+	return STORY_SEASON_PHASES_SCRIPT.display_name(phase_id)
 
 
 func build_story_state(state_id: String) -> Dictionary:
 	var flags := build_default_story_flags()
-	var phase := "summer_1"
+	var phase := STORY_SEASON_PHASES_SCRIPT.DEFAULT_PHASE
 	var endgame := default_endgame_state()
 	match state_id:
 		"free_walk":
-			phase = "summer_1"
+			phase = STORY_SEASON_PHASES_SCRIPT.DEFAULT_PHASE
 
 	var route_state := _compute_route_snapshot(flags, phase, endgame, "")
 	return {
@@ -406,7 +393,7 @@ func _maybe_start_endgame(preferred_event_id: String) -> void:
 			"resume_phase_id": String(m_owner.season_phase),
 		}
 		m_owner.set_endgame_state(endgame_state)
-		m_owner.set_season_phase("endgame")
+		m_owner.set_season_phase(STORY_SEASON_PHASES_SCRIPT.ENDGAME)
 		m_owner._emit_story_milestone("endgame_started", {
 			"trigger_event_id": event_id,
 			"trigger_id": trigger_id,

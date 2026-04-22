@@ -3,6 +3,7 @@ extends Node
 const ENDING_TONE_RULE_SCRIPT := preload("res://game/storylines/resources/storyline_ending_tone_rule.gd")
 const EVENT_RESOURCE_SCRIPT := preload("res://game/storylines/resources/storyline_event_resource.gd")
 const ROUTE_RESOURCE_SCRIPT := preload("res://game/storylines/resources/storyline_route_resource.gd")
+const STORY_SEASON_PHASES_SCRIPT := preload("res://game/story_season_phases.gd")
 const INSPECTOR_PLUGIN_SCRIPT := preload("res://addons/storyline_editor/storyline_validator_inspector_plugin.gd")
 const VALIDATION_PANEL_SCRIPT := preload(
 	"res://addons/storyline_editor/storyline_validation_panel.gd"
@@ -72,6 +73,15 @@ func _run() -> void:
 	route_resource.pin_priority = 77
 	route_resource.ending_tone_rules = [tone_rule]
 	route_resource.events = [anchor_event, soft_ending_event, cross_route_event]
+
+	_assert_true(
+		PackedStringArray(EVENT_RESOURCE_SCRIPT.VALID_PHASES) == STORY_SEASON_PHASES_SCRIPT.authorable_phase_ids(),
+		"Storyline event resources reuse the canonical authorable season phase ids"
+	)
+	_assert_true(
+		STORY_SEASON_PHASES_SCRIPT.display_name(STORY_SEASON_PHASES_SCRIPT.SPRING_FESTIVAL) == "Spring Festival / Spring",
+		"Story season phase display names come from the canonical phase catalog"
+	)
 
 	_assert_true(anchor_event.validate().is_empty(), "Anchor resource event validates cleanly")
 	_assert_true(soft_ending_event.validate().is_empty(), "Soft-ending resource event validates cleanly")

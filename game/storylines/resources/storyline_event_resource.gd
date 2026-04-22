@@ -11,10 +11,10 @@ extends Resource
 ## Validation: call [method validate] from the inspector plugin or the route
 ## browser to surface duplicate-id, empty-field, and bad-phase-window errors.
 
+const STORY_SEASON_PHASES_SCRIPT := preload("res://game/story_season_phases.gd")
+
 ## Valid season phase identifiers accepted by the runtime.
-const VALID_PHASES := [
-	"summer_1", "autumn_study", "winter", "spring_festival", "summer_2",
-]
+const VALID_PHASES = STORY_SEASON_PHASES_SCRIPT.AUTHORABLE_PHASE_IDS
 
 ## Stable event identifier — must be unique across the entire project.
 @export var id: String = ""
@@ -31,11 +31,10 @@ const VALID_PHASES := [
 # --- Progression metadata ----------------------------------------------------
 
 ## Which season phases this event is active in.
-## Valid values: summer_1 · autumn_study · winter · spring_festival · summer_2
+## Valid values come from the shared [StorySeasonPhases] catalog.
 @export var phase_window: PackedStringArray = PackedStringArray()
 ## If set, this event is only offered once the season reaches this phase.
-@export_enum("summer_1", "autumn_study", "winter", "spring_festival", "summer_2")
-var season_phase: String = ""
+@export var season_phase: String = ""
 
 ## Weight used to rank this event as the pinned HUD lead.
 @export var pin_priority: int = 0
@@ -124,6 +123,14 @@ func to_dict() -> Dictionary:
 # Validation
 # ---------------------------------------------------------------------------
 
+## Keeps the inspector enum hint in sync with the canonical phase catalog.
+func _validate_property(property: Dictionary) -> void:
+	match String(property.get("name", "")):
+		"phase_window", "season_phase":
+			property["hint"] = PROPERTY_HINT_ENUM
+			property["hint_string"] = STORY_SEASON_PHASES_SCRIPT.AUTHORABLE_PHASE_HINT
+
+
 ## Returns a list of human-readable warnings about this event.
 ## Called by the inspector plugin and the route browser.
 func validate() -> PackedStringArray:
@@ -139,10 +146,10 @@ func validate() -> PackedStringArray:
 		warnings.append("[%s] phase_window is empty — event will never become available" % id)
 	else:
 		for phase: String in phase_window:
-			if not VALID_PHASES.has(phase):
+			if not STORY_SEASON_PHASES_SCRIPT.is_authorable_phase(phase):
 				warnings.append("[%s] unknown phase_window value: '%s'" % [id, phase])
 
-	if not season_phase.is_empty() and not VALID_PHASES.has(season_phase):
+	if not season_phase.is_empty() and not STORY_SEASON_PHASES_SCRIPT.is_authorable_phase(season_phase):
 		warnings.append("[%s] unknown season_phase: '%s'" % [id, season_phase])
 
 	if not endgame_trigger.is_empty() and ending_behavior.is_empty():

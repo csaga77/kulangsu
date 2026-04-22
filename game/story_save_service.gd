@@ -3,6 +3,7 @@ extends RefCounted
 
 const STORY_AUTOSAVE_VERSION := 1
 const STORY_AUTOSAVE_PATH := "user://story_autosave.save"
+const STORY_SEASON_PHASES_SCRIPT := preload("res://game/story_season_phases.gd")
 
 var m_owner: Node = null
 var m_story_autosave_path := STORY_AUTOSAVE_PATH
@@ -188,9 +189,11 @@ func _normalize_story_autosave_payload(payload: Dictionary) -> Dictionary:
 	elif !m_owner._is_story_persistable_mode(normalized_mode):
 		normalized_mode = "Story"
 
-	var normalized_phase := String(payload.get("season_phase", "summer_1"))
+	var normalized_phase := String(
+		payload.get("season_phase", STORY_SEASON_PHASES_SCRIPT.DEFAULT_PHASE)
+	)
 	if normalized_phase == "postgame":
-		normalized_phase = "spring_festival"
+		normalized_phase = STORY_SEASON_PHASES_SCRIPT.DEFAULT_RESUME_PHASE
 
 	return {
 		"version": STORY_AUTOSAVE_VERSION,
@@ -232,7 +235,14 @@ func _build_story_save_metadata_from_payload(payload: Dictionary) -> Dictionary:
 	return {
 		"exists": true,
 		"mode": String(payload.get("mode", "Story")),
-		"chapter": String(payload.get("chapter", m_owner.STORY_ROUTE_GRAPH_SCRIPT.phase_display_name(String(payload.get("season_phase", "summer_1"))))),
+		"chapter": String(
+			payload.get(
+				"chapter",
+				m_owner.STORY_ROUTE_GRAPH_SCRIPT.phase_display_name(
+					String(payload.get("season_phase", STORY_SEASON_PHASES_SCRIPT.DEFAULT_PHASE))
+				)
+			)
+		),
 		"location": String(payload.get("location", resume_location)),
 		"fragments_text": fragments_text,
 		"resume_anchor_id": String(payload.get("story_resume_anchor_id", "")),

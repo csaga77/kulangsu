@@ -15,6 +15,7 @@ const JOURNAL_BUILDER_SCRIPT := preload("res://game/journal_builder.gd")
 const PLAYER_PROFILE_SERVICE_SCRIPT := preload("res://game/player_profile_service.gd")
 const STORY_SAVE_SERVICE_SCRIPT := preload("res://game/story_save_service.gd")
 const STORY_ROUTE_GRAPH_SCRIPT := preload("res://game/story_route_graph.gd")
+const STORY_SEASON_PHASES_SCRIPT := preload("res://game/story_season_phases.gd")
 const STORY_EVENT_SERVICE_SCRIPT := preload("res://game/story_event_service.gd")
 const LANDMARK_PROGRESSION_SCRIPT := preload("res://game/landmark_progression.gd")
 const AUDIO_SETTINGS_SERVICE_SCRIPT := preload("res://game/audio_settings_service.gd")
@@ -62,7 +63,7 @@ signal dialogue_text_speed_changed(speed_percent: float, characters_per_second: 
 
 var mode := "Title"
 var chapter := "Arrival"
-var season_phase := "summer_1"
+var season_phase := STORY_SEASON_PHASES_SCRIPT.DEFAULT_PHASE
 var location := "Piano Ferry"
 var objective := "Find out why the island feels quiet today."
 var hint := "R Inspect   J Journal   Esc Pause"
@@ -330,7 +331,7 @@ func set_chapter(new_chapter: String) -> void:
 func set_season_phase(new_phase: String) -> void:
 	var normalized_phase := new_phase.strip_edges()
 	if normalized_phase.is_empty():
-		normalized_phase = "summer_1"
+		normalized_phase = STORY_SEASON_PHASES_SCRIPT.DEFAULT_PHASE
 	if season_phase == normalized_phase:
 		if mode == "Story" and chapter != get_season_phase_display_name():
 			set_chapter(get_season_phase_display_name())
@@ -670,9 +671,11 @@ func continue_story_after_endgame() -> bool:
 
 	var previous_endgame_state := endgame_state.duplicate(true)
 	var trigger_event_id := String(previous_endgame_state.get("trigger_event_id", ""))
-	var resume_phase_id := String(previous_endgame_state.get("resume_phase_id", "spring_festival"))
-	if resume_phase_id.is_empty() or resume_phase_id == "endgame":
-		resume_phase_id = "spring_festival"
+	var resume_phase_id := String(
+		previous_endgame_state.get("resume_phase_id", STORY_SEASON_PHASES_SCRIPT.DEFAULT_RESUME_PHASE)
+	)
+	if resume_phase_id.is_empty() or resume_phase_id == STORY_SEASON_PHASES_SCRIPT.ENDGAME:
+		resume_phase_id = STORY_SEASON_PHASES_SCRIPT.DEFAULT_RESUME_PHASE
 
 	set_endgame_state(STORY_ROUTE_GRAPH_SCRIPT.default_endgame_state())
 	set_season_phase(resume_phase_id)
@@ -1010,7 +1013,7 @@ func _apply_story_route_state_bundle(state: Dictionary) -> void:
 	_manual_pinned_lead_id = String(state.get("manual_pinned_lead_id", ""))
 	endgame_state = m_story_route_graph.normalize_endgame_state(state.get("endgame_state", {}))
 	endgame_state_changed.emit(endgame_state.duplicate(true))
-	set_season_phase(String(state.get("season_phase", "summer_1")))
+	set_season_phase(String(state.get("season_phase", STORY_SEASON_PHASES_SCRIPT.DEFAULT_PHASE)))
 
 
 func _is_story_persistable_mode(mode_id: String = mode) -> bool:

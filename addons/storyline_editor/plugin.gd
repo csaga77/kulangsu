@@ -1,6 +1,8 @@
 @tool
 extends EditorPlugin
 
+const _ROUTE_BROWSER_DOCK_SLOT := DOCK_SLOT_LEFT_UL
+
 var m_graph_editor: Control
 var m_route_browser: Control
 var m_inspector_plugin: EditorInspectorPlugin
@@ -32,28 +34,31 @@ func _enter_tree() -> void:
 			m_route_browser.name = "Storyline Browser"
 			if m_route_browser.has_method("setup"):
 				m_route_browser.setup(get_editor_interface())
-			add_control_to_dock(DOCK_SLOT_LEFT_BL, m_route_browser)
-			# Wire "Show in Graph" from browser to graph editor.
-			if m_graph_editor != null and m_route_browser.has_signal("event_show_in_graph_requested"):
-				m_route_browser.event_show_in_graph_requested.connect(
-					_on_event_show_in_graph_requested
-				)
-			if m_graph_editor != null and m_route_browser.has_signal("route_inspector_requested"):
-				m_route_browser.route_inspector_requested.connect(
-					_on_route_inspector_requested
-				)
-			if m_graph_editor != null and m_route_browser.has_signal("event_inspector_requested"):
-				m_route_browser.event_inspector_requested.connect(
-					_on_event_inspector_requested
-				)
-			if m_graph_editor != null and m_route_browser.has_signal("event_delete_requested"):
-				m_route_browser.event_delete_requested.connect(
-					_on_event_delete_requested
-				)
-			if m_route_browser.has_signal("catalog_changed"):
-				m_route_browser.catalog_changed.connect(_on_storyline_catalog_changed)
-			if m_graph_editor != null and m_graph_editor.has_signal("catalog_changed"):
-				m_graph_editor.catalog_changed.connect(_on_storyline_catalog_changed)
+			# Match the Scene/Import stack at startup so the dock does not first
+			# appear in a separate left-bottom slot before Godot reapplies the
+			# user's saved editor layout.
+			add_control_to_dock(_ROUTE_BROWSER_DOCK_SLOT, m_route_browser)
+		# Wire "Show in Graph" from browser to graph editor.
+		if m_graph_editor != null and m_route_browser.has_signal("event_show_in_graph_requested"):
+			m_route_browser.event_show_in_graph_requested.connect(
+				_on_event_show_in_graph_requested
+			)
+		if m_graph_editor != null and m_route_browser.has_signal("route_inspector_requested"):
+			m_route_browser.route_inspector_requested.connect(
+				_on_route_inspector_requested
+			)
+		if m_graph_editor != null and m_route_browser.has_signal("event_inspector_requested"):
+			m_route_browser.event_inspector_requested.connect(
+				_on_event_inspector_requested
+			)
+		if m_graph_editor != null and m_route_browser.has_signal("event_delete_requested"):
+			m_route_browser.event_delete_requested.connect(
+				_on_event_delete_requested
+			)
+		if m_route_browser.has_signal("catalog_changed"):
+			m_route_browser.catalog_changed.connect(_on_storyline_catalog_changed)
+		if m_graph_editor != null and m_graph_editor.has_signal("catalog_changed"):
+			m_graph_editor.catalog_changed.connect(_on_storyline_catalog_changed)
 	elif browser_script != null:
 		push_warning("StorylineEditorPlugin: route browser script failed to instantiate")
 
