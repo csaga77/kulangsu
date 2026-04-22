@@ -173,12 +173,41 @@ func _run() -> void:
 		"Storyline inspector status bridge script loads for editor tooling checks"
 	)
 	_assert_true(
+		ROUTE_EVENT_PANEL_SCRIPT != null,
+		"Storyline route event panel script loads for editor tooling checks"
+	)
+	_assert_true(
 		PREREQUISITE_PICKER_PANEL_SCRIPT != null,
 		"Storyline prerequisite picker panel script loads for editor tooling checks"
 	)
+
+	var property_list := anchor_event.get_property_list()
+	var phase_window_property: Dictionary = {}
+	var season_phase_property: Dictionary = {}
+	for property_def_var in property_list:
+		if not (property_def_var is Dictionary):
+			continue
+		var property_def := property_def_var as Dictionary
+		match String(property_def.get("name", "")):
+			"phase_window":
+				phase_window_property = property_def
+			"season_phase":
+				season_phase_property = property_def
 	_assert_true(
-		ROUTE_EVENT_PANEL_SCRIPT != null,
-		"Storyline route event panel script loads for editor tooling checks"
+		int(phase_window_property.get("hint", PROPERTY_HINT_NONE)) == PROPERTY_HINT_ENUM,
+		"Storyline phase_window uses enum-backed inspector hints"
+	)
+	_assert_true(
+		String(phase_window_property.get("hint_string", "")) == STORY_SEASON_PHASES_SCRIPT.AUTHORABLE_PHASE_HINT,
+		"Storyline phase_window exposes the canonical season phase list in the inspector"
+	)
+	_assert_true(
+		int(season_phase_property.get("hint", PROPERTY_HINT_NONE)) == PROPERTY_HINT_ENUM,
+		"Storyline season_phase uses enum-backed inspector hints"
+	)
+	_assert_true(
+		String(season_phase_property.get("hint_string", "")) == STORY_SEASON_PHASES_SCRIPT.AUTHORABLE_PHASE_HINT,
+		"Storyline season_phase reuses the canonical season phase list in the inspector"
 	)
 
 	var id_route_resource: StorylineRouteResource = ROUTE_RESOURCE_SCRIPT.new()

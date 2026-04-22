@@ -84,16 +84,16 @@ func _parse_begin(object: Object) -> void:
 			)
 			m_current_prerequisite_picker = prerequisite_picker
 			add_custom_control(prerequisite_picker)
-		elif object is StorylineRouteResource:
-			var route_event_panel := _ROUTE_EVENT_PANEL_SCRIPT.new() as Control
-			if route_event_panel != null and route_event_panel.has_method("setup"):
-				route_event_panel.setup(
-					object as StorylineRouteResource,
-					m_editor_interface,
-					m_catalog_changed_callback
-				)
-				m_current_route_event_panel = route_event_panel
-				add_custom_control(route_event_panel)
+	elif object is StorylineRouteResource:
+		var route_event_panel := _ROUTE_EVENT_PANEL_SCRIPT.new() as Control
+		if route_event_panel != null and route_event_panel.has_method("setup"):
+			route_event_panel.setup(
+				object as StorylineRouteResource,
+				m_editor_interface,
+				m_catalog_changed_callback
+			)
+			m_current_route_event_panel = route_event_panel
+			add_custom_control(route_event_panel)
 
 
 func _parse_property(
