@@ -92,7 +92,6 @@ func _build_ui() -> void:
 	# --- Title ---
 	var title := Label.new()
 	title.text = "MP3 to OGG Converter"
-	title.add_theme_font_size_override("font_size", 16)
 	add_child(title)
 
 	add_child(HSeparator.new())
