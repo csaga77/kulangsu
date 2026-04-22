@@ -36,6 +36,7 @@ var m_route_defs: Dictionary = {}
 var m_event_defs: Dictionary = {}
 var m_route_source: Dictionary = {}
 var m_on_prerequisites_changed: Callable
+var m_layout_refresh_queued := false
 
 
 func setup(
@@ -53,10 +54,16 @@ func refresh() -> void:
 	_rebuild_all_bucket_rows()
 	if m_picker_dialog != null and m_picker_dialog.visible:
 		_rebuild_picker_tree()
+	_queue_layout_refresh()
 
 
 func _ready() -> void:
 	_build_ui()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_queue_layout_refresh()
 
 
 func _build_ui() -> void:
@@ -65,25 +72,30 @@ func _build_ui() -> void:
 	if get_child_count() > 0:
 		return
 
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	add_theme_constant_override("separation", 6)
 
 	var header := Label.new()
 	header.text = "Prerequisite Events"
+	header.mouse_filter = Control.MOUSE_FILTER_PASS
 	header.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 	add_child(header)
 
 	for bucket in _BUCKETS:
 		var bucket_name := String(bucket.get("name", ""))
 		var section := VBoxContainer.new()
+		section.mouse_filter = Control.MOUSE_FILTER_PASS
 		section.add_theme_constant_override("separation", 4)
 		add_child(section)
 
 		var header_row := HBoxContainer.new()
+		header_row.mouse_filter = Control.MOUSE_FILTER_PASS
 		section.add_child(header_row)
 
 		var title_lbl := Label.new()
 		title_lbl.text = String(bucket.get("title", bucket_name))
+		title_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 		title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		header_row.add_child(title_lbl)
 
@@ -94,6 +106,7 @@ func _build_ui() -> void:
 		header_row.add_child(add_btn)
 
 		var list_box := VBoxContainer.new()
+		list_box.mouse_filter = Control.MOUSE_FILTER_PASS
 		list_box.add_theme_constant_override("separation", 2)
 		section.add_child(list_box)
 		m_bucket_lists[bucket_name] = list_box
@@ -285,8 +298,10 @@ func _rebuild_bucket_rows(bucket_name: String) -> void:
 	if flags.is_empty():
 		var empty_lbl := Label.new()
 		empty_lbl.text = "(none)"
+		empty_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 		empty_lbl.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55))
 		list_box.add_child(empty_lbl)
+		_queue_layout_refresh()
 		return
 
 	var known_event_ids: Dictionary = {}
@@ -295,10 +310,12 @@ func _rebuild_bucket_rows(bucket_name: String) -> void:
 
 	for event_id: String in flags:
 		var row := HBoxContainer.new()
+		row.mouse_filter = Control.MOUSE_FILTER_PASS
 		list_box.add_child(row)
 
 		var event_lbl := Label.new()
 		event_lbl.text = event_id
+		event_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 		event_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		if not known_event_ids.has(event_id):
 			event_lbl.add_theme_color_override("font_color", Color(1.0, 0.6, 0.3))
@@ -310,6 +327,7 @@ func _rebuild_bucket_rows(bucket_name: String) -> void:
 		remove_btn.flat = true
 		remove_btn.pressed.connect(_remove_prerequisite.bind(event_id, bucket_name))
 		row.add_child(remove_btn)
+	_queue_layout_refresh()
 
 
 func _property_flags(bucket_name: String) -> PackedStringArray:
@@ -350,3 +368,34 @@ func _other_bucket_name(bucket_name: String) -> String:
 func _notify_prerequisites_changed() -> void:
 	if m_on_prerequisites_changed.is_valid():
 		m_on_prerequisites_changed.call_deferred()
+
+
+func _queue_layout_refresh() -> void:
+	if m_layout_refresh_queued:
+		return
+	m_layout_refresh_queued = true
+	call_deferred("_refresh_layout_metrics")
+
+
+func _refresh_layout_metrics() -> void:
+	m_layout_refresh_queued = false
+	if not is_inside_tree():
+		return
+	_refresh_control_tree_layout(self)
+	var ancestor: Node = get_parent()
+	while ancestor is Control:
+		var ancestor_control := ancestor as Control
+		if ancestor_control is Container:
+			(ancestor_control as Container).queue_sort()
+		ancestor_control.update_minimum_size()
+		ancestor = ancestor_control.get_parent()
+
+
+func _refresh_control_tree_layout(control: Control) -> void:
+	if control is Container:
+		(control as Container).queue_sort()
+	control.update_minimum_size()
+	for child: Node in control.get_children():
+		var child_control := child as Control
+		if child_control != null:
+			_refresh_control_tree_layout(child_control)

@@ -13,6 +13,7 @@ var m_delete_event_dialog: ConfirmationDialog
 var m_delete_event_message: Label
 var m_pending_delete_event_index: int = -1
 var m_pending_delete_event_id: String = ""
+var m_layout_refresh_queued := false
 
 
 func setup(
@@ -35,20 +36,28 @@ func refresh() -> void:
 	_rebuild_event_rows()
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_queue_layout_refresh()
+
+
 func _build_ui() -> void:
 	if m_route_resource == null:
 		return
 	if get_child_count() > 0:
 		return
 
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	add_theme_constant_override("separation", 6)
 
 	var header_row := HBoxContainer.new()
+	header_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(header_row)
 
 	var title_lbl := Label.new()
 	title_lbl.text = "Route Events"
+	title_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	title_lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header_row.add_child(title_lbl)
@@ -60,6 +69,7 @@ func _build_ui() -> void:
 	header_row.add_child(add_btn)
 
 	m_event_rows = VBoxContainer.new()
+	m_event_rows.mouse_filter = Control.MOUSE_FILTER_PASS
 	m_event_rows.add_theme_constant_override("separation", 4)
 	add_child(m_event_rows)
 
@@ -174,13 +184,16 @@ func _rebuild_event_rows() -> void:
 	if m_route_resource == null or m_route_resource.events.is_empty():
 		var empty_lbl := Label.new()
 		empty_lbl.text = "(no events yet)"
+		empty_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 		empty_lbl.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55))
 		m_event_rows.add_child(empty_lbl)
+		_queue_layout_refresh()
 		return
 
 	for index: int in m_route_resource.events.size():
 		var event_resource := m_route_resource.events[index]
 		var row := HBoxContainer.new()
+		row.mouse_filter = Control.MOUSE_FILTER_PASS
 		row.add_theme_constant_override("separation", 4)
 		m_event_rows.add_child(row)
 
@@ -189,6 +202,7 @@ func _rebuild_event_rows() -> void:
 		if event_resource != null:
 			event_id = event_resource.id.strip_edges()
 		event_lbl.text = event_id if not event_id.is_empty() else "(unnamed event)"
+		event_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 		event_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(event_lbl)
 
@@ -218,6 +232,7 @@ func _rebuild_event_rows() -> void:
 		remove_btn.flat = true
 		remove_btn.pressed.connect(_on_remove_event_pressed.bind(index))
 		row.add_child(remove_btn)
+	_queue_layout_refresh()
 
 
 func _ensure_delete_event_dialog() -> void:
@@ -246,3 +261,34 @@ func _reset_pending_delete_event() -> void:
 func _notify_route_events_changed() -> void:
 	if m_on_route_events_changed.is_valid():
 		m_on_route_events_changed.call()
+
+
+func _queue_layout_refresh() -> void:
+	if m_layout_refresh_queued:
+		return
+	m_layout_refresh_queued = true
+	call_deferred("_refresh_layout_metrics")
+
+
+func _refresh_layout_metrics() -> void:
+	m_layout_refresh_queued = false
+	if not is_inside_tree():
+		return
+	_refresh_control_tree_layout(self)
+	var ancestor: Node = get_parent()
+	while ancestor is Control:
+		var ancestor_control := ancestor as Control
+		if ancestor_control is Container:
+			(ancestor_control as Container).queue_sort()
+		ancestor_control.update_minimum_size()
+		ancestor = ancestor_control.get_parent()
+
+
+func _refresh_control_tree_layout(control: Control) -> void:
+	if control is Container:
+		(control as Container).queue_sort()
+	control.update_minimum_size()
+	for child: Node in control.get_children():
+		var child_control := child as Control
+		if child_control != null:
+			_refresh_control_tree_layout(child_control)

@@ -199,10 +199,18 @@ func _run() -> void:
 		validation_panel.m_header_lbl != null,
 		"Storyline validation panel builds its header label"
 	)
+	_assert_true(
+		validation_panel.mouse_filter == Control.MOUSE_FILTER_PASS,
+		"Storyline validation panel passes mouse input through for inspector scrolling"
+	)
 	if validation_panel.m_header_lbl != null:
 		_assert_true(
 			validation_panel.m_header_lbl.text == "⚠  1 warning",
 			"Storyline validation panel shows the initial warning count"
+		)
+		_assert_true(
+			validation_panel.m_header_lbl.mouse_filter == Control.MOUSE_FILTER_PASS,
+			"Storyline validation labels pass mouse input through for inspector scrolling"
 		)
 
 	validation_event.phase_window = PackedStringArray(["summer_1"])
@@ -214,6 +222,44 @@ func _run() -> void:
 			"Storyline validation panel refreshes after resource changes"
 		)
 	validation_panel.queue_free()
+	await get_tree().process_frame
+
+	var wrapped_warning_event: StorylineEventResource = EVENT_RESOURCE_SCRIPT.new()
+	wrapped_warning_event.id = (
+		"typed_validation_event_with_a_really_long_identifier_that_should_wrap_"
+		+ "inside_a_narrow_storyline_inspector_panel"
+	)
+	var wrapped_warning_panel = VALIDATION_PANEL_SCRIPT.new()
+	wrapped_warning_panel.setup(wrapped_warning_event)
+	add_child(wrapped_warning_panel)
+	await get_tree().process_frame
+
+	var wrapped_warning_label: Label = null
+	if wrapped_warning_panel.m_warning_rows != null and wrapped_warning_panel.m_warning_rows.get_child_count() > 0:
+		wrapped_warning_label = wrapped_warning_panel.m_warning_rows.get_child(0) as Label
+	_assert_true(
+		wrapped_warning_label != null,
+		"Storyline validation panel exposes a warning label for wrapped-width layout checks"
+	)
+	if wrapped_warning_label != null:
+		wrapped_warning_panel.size = Vector2(420.0, 0.0)
+		wrapped_warning_panel._refresh_layout_metrics()
+		await get_tree().process_frame
+		var wide_warning_height := wrapped_warning_label.size.y
+		var wide_panel_min_height := wrapped_warning_panel.get_combined_minimum_size().y
+
+		wrapped_warning_panel.size = Vector2(120.0, 0.0)
+		wrapped_warning_panel._refresh_layout_metrics()
+		await get_tree().process_frame
+		_assert_true(
+			wrapped_warning_label.size.y > wide_warning_height,
+			"Storyline validation panel recalculates wrapped warning heights when inspector width changes"
+		)
+		_assert_true(
+			wrapped_warning_panel.get_combined_minimum_size().y > wide_panel_min_height,
+			"Storyline validation panel updates its minimum size after wrapped warning heights change"
+		)
+	wrapped_warning_panel.queue_free()
 	await get_tree().process_frame
 
 	m_catalog_refresh_requests = 0
@@ -276,6 +322,10 @@ func _run() -> void:
 	_assert_true(
 		prerequisite_picker.m_picker_tree != null,
 		"Storyline prerequisite picker builds a route-rooted event tree"
+	)
+	_assert_true(
+		prerequisite_picker.mouse_filter == Control.MOUSE_FILTER_PASS,
+		"Storyline prerequisite picker passes mouse input through for inspector scrolling"
 	)
 	_assert_true(
 		prerequisite_picker.m_bucket_lists.has("story_flags_all"),
@@ -356,6 +406,10 @@ func _run() -> void:
 	_assert_true(
 		route_event_panel.m_event_rows != null,
 		"Storyline route event panel builds its event list container"
+	)
+	_assert_true(
+		route_event_panel.mouse_filter == Control.MOUSE_FILTER_PASS,
+		"Storyline route event panel passes mouse input through for inspector scrolling"
 	)
 	route_event_panel._on_add_event_pressed()
 	_assert_true(
