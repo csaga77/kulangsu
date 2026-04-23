@@ -1,10 +1,11 @@
 @tool
 extends EditorPlugin
 
-const _ROUTE_BROWSER_DOCK_SLOT := DOCK_SLOT_LEFT_UL
+const _ROUTE_BROWSER_DOCK_SLOT := EditorDock.DOCK_SLOT_LEFT_UL
 
 var m_graph_editor: Control
 var m_route_browser: Control
+var m_route_browser_dock: EditorDock
 var m_inspector_plugin: EditorInspectorPlugin
 var m_catalog_refresh_queued: bool = false
 
@@ -34,10 +35,13 @@ func _enter_tree() -> void:
 			m_route_browser.name = "Storyline Browser"
 			if m_route_browser.has_method("setup"):
 				m_route_browser.setup(get_editor_interface())
-			# Match the Scene/Import stack at startup so the dock does not first
-			# appear in a separate left-bottom slot before Godot reapplies the
-			# user's saved editor layout.
-			add_control_to_dock(_ROUTE_BROWSER_DOCK_SLOT, m_route_browser)
+			m_route_browser_dock = EditorDock.new()
+			m_route_browser_dock.name = "Storyline Browser"
+			m_route_browser_dock.title = "Storyline Browser"
+			m_route_browser_dock.default_slot = _ROUTE_BROWSER_DOCK_SLOT
+			m_route_browser_dock.layout_key = "storyline_browser"
+			m_route_browser_dock.add_child(m_route_browser)
+			add_dock(m_route_browser_dock)
 		# Wire "Show in Graph" from browser to graph editor.
 		if m_graph_editor != null and m_route_browser.has_signal("event_show_in_graph_requested"):
 			m_route_browser.event_show_in_graph_requested.connect(
@@ -86,8 +90,12 @@ func _exit_tree() -> void:
 		remove_inspector_plugin(m_inspector_plugin)
 		m_inspector_plugin = null
 
-	if m_route_browser != null:
-		remove_control_from_docks(m_route_browser)
+	if m_route_browser_dock != null:
+		remove_dock(m_route_browser_dock)
+		m_route_browser_dock.queue_free()
+		m_route_browser_dock = null
+		m_route_browser = null
+	elif m_route_browser != null:
 		m_route_browser.queue_free()
 		m_route_browser = null
 
