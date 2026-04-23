@@ -1,7 +1,7 @@
 @tool
 extends EditorPlugin
 
-const _ROUTE_BROWSER_DOCK_SLOT := EditorDock.DOCK_SLOT_LEFT_UL
+const _ROUTE_BROWSER_DOCK_SLOT := EditorDock.DOCK_SLOT_LEFT_UR
 
 var m_graph_editor: Control
 var m_route_browser: Control
