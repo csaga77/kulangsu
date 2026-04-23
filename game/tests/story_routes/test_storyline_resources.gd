@@ -4,6 +4,7 @@ const ENDING_TONE_RULE_SCRIPT := preload("res://game/storylines/resources/storyl
 const EVENT_RESOURCE_SCRIPT := preload("res://game/storylines/resources/storyline_event_resource.gd")
 const ROUTE_RESOURCE_SCRIPT := preload("res://game/storylines/resources/storyline_route_resource.gd")
 const STORY_SEASON_PHASES_SCRIPT := preload("res://game/story_season_phases.gd")
+const STORYLINE_EDITOR_PLUGIN_SCRIPT := preload("res://addons/storyline_editor/plugin.gd")
 const INSPECTOR_PLUGIN_SCRIPT := preload("res://addons/storyline_editor/storyline_validator_inspector_plugin.gd")
 const VALIDATION_PANEL_SCRIPT := preload(
 	"res://addons/storyline_editor/storyline_validation_panel.gd"
@@ -163,6 +164,10 @@ func _run() -> void:
 			"Route resource reconstruction preserves cross-route prerequisite flags"
 		)
 
+	_assert_true(
+		STORYLINE_EDITOR_PLUGIN_SCRIPT != null,
+		"Storyline editor plugin script loads for editor startup checks"
+	)
 	_assert_true(
 		INSPECTOR_PLUGIN_SCRIPT != null,
 		"Storyline inspector plugin script loads for editor tooling checks"
