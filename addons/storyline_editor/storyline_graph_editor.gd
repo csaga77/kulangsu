@@ -678,6 +678,7 @@ func _create_event_node(eid: String, edef: Dictionary, pos: Vector2) -> void:
 	gnode.title           = eid
 	gnode.position_offset = pos
 	gnode.custom_minimum_size = Vector2(_NODE_WIDTH, 0.0)
+	_tint_graph_node_title(gnode, route_color)
 
 	# Storyline label — slot 0, carries the output port so the event can be used
 	# as a prerequisite for other nodes.
@@ -719,6 +720,18 @@ func _create_event_node(eid: String, edef: Dictionary, pos: Vector2) -> void:
 	gnode.position_offset_changed.connect(_on_node_position_offset_changed.bind(eid))
 	m_graph_edit.add_child(gnode)
 	m_node_map[eid] = gnode
+
+
+func _tint_graph_node_title(gnode: GraphNode, title_color: Color) -> void:
+	if gnode == null:
+		return
+	var titlebar_hbox := gnode.get_titlebar_hbox()
+	if titlebar_hbox == null:
+		return
+	for child: Node in titlebar_hbox.get_children():
+		if child is Label:
+			(child as Label).add_theme_color_override("font_color", title_color)
+			return
 
 
 # ---------------------------------------------------------------------------

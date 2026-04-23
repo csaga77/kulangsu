@@ -146,6 +146,26 @@ func _run() -> void:
 			layout_anchor.title == "summer_return_complete",
 			"Graph editor node titles use the story event id"
 		)
+		var titlebar_hbox := layout_anchor.get_titlebar_hbox()
+		_assert_true(
+			titlebar_hbox != null,
+			"Graph editor nodes expose a title bar container"
+		)
+		if titlebar_hbox != null and titlebar_hbox.get_child_count() > 0:
+			var title_label := titlebar_hbox.get_child(0) as Label
+			_assert_true(
+				title_label != null,
+				"Graph editor title bar keeps a label for the event id"
+			)
+			if title_label != null:
+				var expected_route_color: Color = graph_editor._ROUTE_COLORS.get(
+					"family_memory",
+					graph_editor._DEFAULT_ROUTE_COLOR
+				)
+				_assert_true(
+					title_label.get_theme_color("font_color").is_equal_approx(expected_route_color),
+					"Graph editor colors title text with the owning storyline color"
+				)
 		var anchor_labels: Array[Label] = []
 		for child: Node in layout_anchor.get_children():
 			if child is Label:
