@@ -24,11 +24,56 @@ func _run() -> void:
 	_assert_true(_app_state().season_phase == "summer_1", "New game starts in Summer 1")
 	_assert_true(_app_state().get_story_route_ids().size() == 4, "Story routes load from modular storyline definitions")
 	var family_prep_definition: Dictionary = _app_state().get_story_event_definition("spring_festival_prepared")
-	var family_prep_prerequisites: Dictionary = family_prep_definition.get("prerequisites", {})
 	_assert_true(String(family_prep_definition.get("route_id", "")) == "family_memory", "Family preparation remains owned by the family storyline route resource")
-	_assert_true(
-		_normalize_string_array(family_prep_prerequisites.get("story_flags_all", [])).find("preservation_inheritance_seen") >= 0,
-		"Storyline route resources can depend on story events authored by other routes"
+	_assert_story_flag_all(
+		"trinity_memory_awakened",
+		["summer_return_complete"],
+		"Church memory now unlocks after the harbor return anchor"
+	)
+	_assert_story_flag_all(
+		"autumn_pressure_named",
+		["summer_return_complete"],
+		"Autumn pressure now opens only after the harbor return settles"
+	)
+	_assert_story_flag_all(
+		"preservation_inheritance_seen",
+		["autumn_pressure_named"],
+		"Preservation now starts from the harbor after autumn pressure is named"
+	)
+	_assert_story_flag_all(
+		"winter_memory_reveal",
+		["autumn_pressure_named", "trinity_memory_awakened"],
+		"Winter memory still waits for both the church beat and the autumn turn"
+	)
+	_assert_story_flag_all(
+		"spring_festival_prepared",
+		["preservation_inheritance_seen", "winter_memory_reveal"],
+		"Spring Festival preparation stays tied to both family memory and preservation"
+	)
+	_assert_story_flag_all(
+		"future_commitment_choice",
+		["autumn_pressure_shared", "spring_festival_resolved"],
+		"The future-choice beat stays gated behind shared pressure and Spring Festival"
+	)
+	_assert_story_flag_all(
+		"melody_church_restored",
+		["melody_ferry_settled"],
+		"The Trinity melody beat follows the ferry refrain"
+	)
+	_assert_story_flag_all(
+		"melody_long_shan_restored",
+		["melody_church_restored"],
+		"Long Shan now follows the church restoration instead of skipping ahead"
+	)
+	_assert_story_flag_all(
+		"harbor_festival_performed",
+		["melody_bagua_aligned", "spring_festival_resolved"],
+		"The harbor performance stays gated by Bagua alignment and Spring Festival only"
+	)
+	_assert_story_flag_any(
+		"trinity_memory_awakened",
+		[],
+		"Church memory no longer uses a loose any-of prerequisite"
 	)
 	_assert_true(_app_state().get_available_lead_ids().size() >= 2, "New game seeds multiple live routes")
 	_assert_true(!_app_state().get_active_lead_id().is_empty(), "New game pins one HUD lead")
@@ -158,6 +203,20 @@ func _assert_true(condition: bool, label: String) -> void:
 	m_failures.append("%s." % label)
 
 
+func _assert_story_flag_all(event_id: String, expected: Array[String], label: String) -> void:
+	_assert_true(_event_story_flags(event_id, "story_flags_all") == _sorted_strings(expected), label)
+
+
+func _assert_story_flag_any(event_id: String, expected: Array[String], label: String) -> void:
+	_assert_true(_event_story_flags(event_id, "story_flags_any") == _sorted_strings(expected), label)
+
+
+func _event_story_flags(event_id: String, key: String) -> Array[String]:
+	var definition: Dictionary = _app_state().get_story_event_definition(event_id)
+	var prerequisites: Dictionary = definition.get("prerequisites", {})
+	return _sorted_strings(prerequisites.get(key, []))
+
+
 func _normalize_string_array(value: Variant) -> PackedStringArray:
 	var output := PackedStringArray()
 	if value is PackedStringArray:
@@ -167,4 +226,12 @@ func _normalize_string_array(value: Variant) -> PackedStringArray:
 	if value is Array:
 		for entry in value:
 			output.append(String(entry))
+	return output
+
+
+func _sorted_strings(value: Variant) -> Array[String]:
+	var output: Array[String] = []
+	for entry in _normalize_string_array(value):
+		output.append(String(entry))
+	output.sort()
 	return output
