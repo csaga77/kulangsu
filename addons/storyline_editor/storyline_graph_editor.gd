@@ -52,7 +52,8 @@ const _ROW_HEIGHT        := 120.0
 const _LAYOUT_ORIGIN     := Vector2(20.0, 20.0)
 const _LAYOUT_STATE_SECTION := "storyline_graph"
 const _LAYOUT_STATE_KEY := "positions"
-const _DEFAULT_LAYOUT_STATE_PATH := "user://storyline_editor/graph_layout.cfg"
+const _DEFAULT_LAYOUT_STATE_PATH := "res://game/storylines/storyline_graph_layout.cfg"
+const _LEGACY_LAYOUT_STATE_PATH := "user://storyline_editor/graph_layout.cfg"
 
 # ---------------------------------------------------------------------------
 # UI members
@@ -456,11 +457,25 @@ func _prune_persisted_layout_positions() -> void:
 
 func _load_persisted_layout_state() -> void:
 	m_layout_positions.clear()
+	if _load_layout_positions_from_path(m_layout_state_path):
+		return
+
+	# One-way fallback so existing editor-local layouts can seed the new
+	# checked-in file the first time a project opens after the migration.
+	if m_layout_state_path == _DEFAULT_LAYOUT_STATE_PATH:
+		if _load_layout_positions_from_path(_LEGACY_LAYOUT_STATE_PATH):
+			_save_persisted_layout_state()
+
+
+func _load_layout_positions_from_path(path: String) -> bool:
+	path = path.strip_edges()
+	if path.is_empty():
+		return false
 
 	var config := ConfigFile.new()
-	var load_error := config.load(m_layout_state_path)
+	var load_error := config.load(path)
 	if load_error != OK:
-		return
+		return false
 
 	var positions_value: Variant = config.get_value(
 		_LAYOUT_STATE_SECTION,
@@ -468,8 +483,9 @@ func _load_persisted_layout_state() -> void:
 		{}
 	)
 	if typeof(positions_value) != TYPE_DICTIONARY:
-		return
+		return false
 
+	var loaded_any := false
 	var serialized_positions: Dictionary = positions_value
 	for event_id_var in serialized_positions.keys():
 		var event_id := String(event_id_var).strip_edges()
@@ -478,6 +494,9 @@ func _load_persisted_layout_state() -> void:
 		var position_value = _deserialize_position(serialized_positions[event_id_var])
 		if position_value is Vector2:
 			m_layout_positions[event_id] = position_value
+			loaded_any = true
+
+	return loaded_any or serialized_positions.is_empty()
 
 
 func _save_persisted_layout_state() -> void:

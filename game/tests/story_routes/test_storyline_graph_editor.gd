@@ -5,9 +5,10 @@ const ROUTE_EVENT_PANEL_SCRIPT := preload(
 	"res://addons/storyline_editor/storyline_route_event_panel.gd"
 )
 
+const _CANONICAL_LAYOUT_STATE_PATH := "res://game/storylines/storyline_graph_layout.cfg"
 const _TEMP_DIR := "user://storyline_graph_editor_test"
 const _TEMP_ROUTE_PATH := "user://storyline_graph_editor_test/family_memory.tres"
-const _TEMP_LAYOUT_STATE_PATH := "user://storyline_graph_editor_test/graph_layout.cfg"
+const _TEMP_LAYOUT_STATE_PATH := "res://game/tests/story_routes/__temp_storyline_graph_layout.cfg"
 const _TEMP_SYNC_ROUTE_PATH := "res://game/storylines/routes/__storyline_graph_editor_sync_route.tres"
 const _TEMP_SYNC_ROUTE_ID := "storyline_graph_editor_sync_route"
 const _LIVE_MELODY_ROUTE_PATH := "res://game/storylines/routes/melody_landmarks.tres"
@@ -33,6 +34,14 @@ func _run() -> void:
 	var live_melody_route_snapshot := _read_text_file(_LIVE_MELODY_ROUTE_PATH)
 
 	var graph_editor = GRAPH_EDITOR_SCRIPT.new()
+	_assert_true(
+		graph_editor.m_layout_state_path == _CANONICAL_LAYOUT_STATE_PATH,
+		"Graph editor defaults to the checked-in layout path"
+	)
+	_assert_true(
+		FileAccess.file_exists(ProjectSettings.globalize_path(_CANONICAL_LAYOUT_STATE_PATH)),
+		"Checked-in storyline graph layout file exists"
+	)
 	graph_editor.m_layout_state_path = _TEMP_LAYOUT_STATE_PATH
 	add_child(graph_editor)
 	await get_tree().process_frame

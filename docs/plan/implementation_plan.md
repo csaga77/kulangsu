@@ -241,7 +241,7 @@ Phase 4 shipped (first pass):
 - compatibility-only: if a target route still lives in a legacy `*_storyline.gd` module, the first graph edit auto-promotes that route into `game/storylines/routes/<route_id>.tres` and then saves the dependency change there
 - selecting a graph node now resolves the backing `StorylineEventResource` into the Inspector so authors can edit event properties directly from the graph; if an older legacy route is ever reopened, the graph still auto-promotes it into `game/storylines/routes/` first so the inspector edits the canonical typed resource
 - graph edits emit a catalog refresh so the route browser updates its source badge and event tree without requiring a manual dock reload, and structural route/event changes from the browser or route-event inspector panel now refresh the graph's route filter and visible nodes without a manual graph reload
-- manual graph layout now persists per user across editor restarts instead of resetting to auto-layout each session, and the graph toolbar can explicitly re-run automatic layout for the currently visible nodes
+- manual graph layout now persists in the checked-in `game/storylines/storyline_graph_layout.cfg` file instead of a per-user-only editor cache, so node arrangement changes can be reviewed and committed alongside route edits, and the graph toolbar can explicitly re-run automatic layout for the currently visible nodes
 - widen validation around settings/audio behavior and any future typed payload migrations, and keep extending regression coverage as the authoring format evolves
 
 Exit criteria for this workstream:
