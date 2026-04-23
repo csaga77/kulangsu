@@ -89,19 +89,29 @@ func _process(_delta: float) -> void:
 # ---------------------------------------------------------------------------
 
 func _build_ui() -> void:
+	size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	var content_scroll := ScrollContainer.new()
+	content_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	add_child(content_scroll)
+
+	var content := VBoxContainer.new()
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content_scroll.add_child(content)
+
 	# --- Title ---
 	var title := Label.new()
 	title.text = "MP3 to OGG Converter"
-	add_child(title)
+	content.add_child(title)
 
-	add_child(HSeparator.new())
+	content.add_child(HSeparator.new())
 
 	# --- FFmpeg executable ---
 	var ffmpeg_label := Label.new()
 	ffmpeg_label.text = "FFmpeg executable:"
-	ffmpeg_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ffmpeg_label.tooltip_text = "Optional. Leave blank to auto-detect ffmpeg in standard locations."
-	add_child(ffmpeg_label)
+	content.add_child(ffmpeg_label)
 
 	var ffmpeg_row := HBoxContainer.new()
 	m_ffmpeg_edit = LineEdit.new()
@@ -115,14 +125,13 @@ func _build_ui() -> void:
 	m_ffmpeg_browse.text = "Browse..."
 	m_ffmpeg_browse.pressed.connect(_on_ffmpeg_browse)
 	ffmpeg_row.add_child(m_ffmpeg_browse)
-	add_child(ffmpeg_row)
+	content.add_child(ffmpeg_row)
 
 	# --- Source folder ---
 	var src_label := Label.new()
 	src_label.text = "Source folder:"
-	src_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	src_label.tooltip_text = "Absolute path or res:// folder with .mp3 files."
-	add_child(src_label)
+	content.add_child(src_label)
 
 	var src_row := HBoxContainer.new()
 	m_source_edit = LineEdit.new()
@@ -136,14 +145,13 @@ func _build_ui() -> void:
 	m_source_browse.text = "Browse..."
 	m_source_browse.pressed.connect(_on_source_browse)
 	src_row.add_child(m_source_browse)
-	add_child(src_row)
+	content.add_child(src_row)
 
 	# --- Target folder ---
 	var tgt_label := Label.new()
 	tgt_label.text = "Target folder:"
-	tgt_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tgt_label.tooltip_text = "res:// path inside the project."
-	add_child(tgt_label)
+	content.add_child(tgt_label)
 
 	var tgt_row := HBoxContainer.new()
 	m_target_edit = LineEdit.new()
@@ -157,7 +165,7 @@ func _build_ui() -> void:
 	m_target_browse.text = "Browse..."
 	m_target_browse.pressed.connect(_on_target_browse)
 	tgt_row.add_child(m_target_browse)
-	add_child(tgt_row)
+	content.add_child(tgt_row)
 
 	# --- Quality slider ---
 	var q_row := HBoxContainer.new()
@@ -174,9 +182,9 @@ func _build_ui() -> void:
 	m_quality_spin.tooltip_text = "ffmpeg -q:a value (higher = better quality / larger file)"
 	m_quality_spin.value_changed.connect(_on_quality_changed)
 	q_row.add_child(m_quality_spin)
-	add_child(q_row)
+	content.add_child(q_row)
 
-	add_child(HSeparator.new())
+	content.add_child(HSeparator.new())
 
 	# --- Action buttons ---
 	var action_row := HBoxContainer.new()
@@ -192,19 +200,21 @@ func _build_ui() -> void:
 	m_copy_btn.pressed.connect(_on_copy_output)
 	action_row.add_child(m_copy_btn)
 
-	add_child(action_row)
+	content.add_child(action_row)
 
 	# --- Progress ---
 	m_progress_label = Label.new()
 	m_progress_label.text = "Idle"
-	add_child(m_progress_label)
+	content.add_child(m_progress_label)
 
 	m_progress_bar = ProgressBar.new()
 	m_progress_bar.min_value = 0
 	m_progress_bar.max_value = 1
 	m_progress_bar.value = 0
 	m_progress_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_child(m_progress_bar)
+	content.add_child(m_progress_bar)
+
+	add_child(HSeparator.new())
 
 	# --- Log ---
 	m_log_label = RichTextLabel.new()
@@ -213,7 +223,7 @@ func _build_ui() -> void:
 	m_log_label.shortcut_keys_enabled = true
 	m_log_label.scroll_following = true
 	m_log_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	m_log_label.custom_minimum_size = Vector2(0, 200)
+	m_log_label.custom_minimum_size = Vector2(0, 120)
 	add_child(m_log_label)
 
 	# --- EditorFileDialogs ---
