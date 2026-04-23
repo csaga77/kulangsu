@@ -314,7 +314,7 @@ func _run() -> void:
 		live_test_event.lead_text = "Live event"
 		live_test_event.journal_note = "Created after the graph editor snapshot."
 		live_test_event.status_text = "Live event status."
-		live_test_event.phase_window = PackedStringArray(["summer_1"])
+		live_test_event.phase_window = ["summer_1"]
 
 		var updated_live_events: Array[StorylineEventResource] = live_route_resource.events.duplicate()
 		updated_live_events.append(live_test_event)

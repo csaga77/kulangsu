@@ -6,7 +6,11 @@ extends EditorInspectorPlugin
 ## selected:
 ##   1. A **Validation** panel — shows warnings from [method validate] in red
 ##      so authors see problems without leaving the Inspector.
-##   2. A **Prerequisite picker** for [StorylineEventResource] objects that
+##   2. A **Phase Window** picker for [StorylineEventResource] objects that
+##      is inserted in the normal property order beside `season_phase`, keeps
+##      season-phase selections unique, and disables adding once the
+##      authorable phase list is exhausted.
+##   3. A **Prerequisite picker** for [StorylineEventResource] objects that
 ##      replaces raw `story_flags_all` / `story_flags_any` string editing with
 ##      a route-rooted event picker matching the storyline browser.
 
@@ -19,6 +23,9 @@ const _INSPECTOR_STATUS_BRIDGE_SCRIPT := preload(
 const _PREREQUISITE_PICKER_PANEL_SCRIPT := preload(
 	"res://addons/storyline_editor/storyline_prerequisite_picker_panel.gd"
 )
+const _PHASE_WINDOW_PANEL_SCRIPT := preload(
+	"res://addons/storyline_editor/storyline_phase_window_panel.gd"
+)
 const _ROUTE_EVENT_PANEL_SCRIPT := preload(
 	"res://addons/storyline_editor/storyline_route_event_panel.gd"
 )
@@ -27,6 +34,7 @@ var m_editor_interface: EditorInterface
 var m_catalog_changed_callback: Callable
 var m_inspector: EditorInspector
 var m_current_validation_panel: Control
+var m_current_phase_window_panel: Control
 var m_current_prerequisite_picker: Control
 var m_current_route_event_panel: Control
 var m_status_bridge: RefCounted
@@ -56,12 +64,14 @@ func setup(
 func teardown() -> void:
 	_disconnect_inspector_signals()
 	m_current_validation_panel = null
+	m_current_phase_window_panel = null
 	m_current_prerequisite_picker = null
 	m_current_route_event_panel = null
 
 
 func _parse_begin(object: Object) -> void:
 	m_current_validation_panel = null
+	m_current_phase_window_panel = null
 	m_current_prerequisite_picker = null
 	m_current_route_event_panel = null
 
@@ -74,7 +84,7 @@ func _parse_begin(object: Object) -> void:
 			m_status_bridge.set_validation_panel(validation_panel)
 		add_custom_control(validation_panel)
 
-	# --- Prerequisite picker for story_flags_all / story_flags_any ---
+	# --- Event / route helper panels ---
 	if object is StorylineEventResource:
 		var prerequisite_picker := _PREREQUISITE_PICKER_PANEL_SCRIPT.new() as Control
 		if prerequisite_picker != null and prerequisite_picker.has_method("setup"):
@@ -105,8 +115,21 @@ func _parse_property(
 	_usage_flags: int,
 	_wide: bool
 ) -> bool:
-	if object is StorylineEventResource and name in ["story_flags_all", "story_flags_any"]:
-		return true
+	if object is StorylineEventResource:
+		if name == "phase_window":
+			if m_current_phase_window_panel == null and _PHASE_WINDOW_PANEL_SCRIPT != null:
+				var phase_window_panel := _PHASE_WINDOW_PANEL_SCRIPT.new() as Control
+				if phase_window_panel != null and phase_window_panel.has_method("setup"):
+					phase_window_panel.setup(
+						object as StorylineEventResource,
+						m_catalog_changed_callback
+					)
+					m_current_phase_window_panel = phase_window_panel
+			if m_current_phase_window_panel != null:
+				add_custom_control(m_current_phase_window_panel)
+			return true
+		if name in ["story_flags_all", "story_flags_any"]:
+			return true
 	if object is StorylineRouteResource and name == "events":
 		return true
 	return false
@@ -170,6 +193,7 @@ func _refresh_storyline_status_for_object(object: Object) -> void:
 func refresh_storyline_controls() -> void:
 	if m_status_bridge != null and m_status_bridge.has_method("refresh_validation_panel"):
 		m_status_bridge.refresh_validation_panel()
+	_refresh_custom_control(m_current_phase_window_panel)
 	_refresh_custom_control(m_current_prerequisite_picker)
 	_refresh_custom_control(m_current_route_event_panel)
 

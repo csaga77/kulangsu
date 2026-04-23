@@ -14,6 +14,9 @@ const INSPECTOR_STATUS_BRIDGE_SCRIPT := preload(
 const PREREQUISITE_PICKER_PANEL_SCRIPT := preload(
 	"res://addons/storyline_editor/storyline_prerequisite_picker_panel.gd"
 )
+const PHASE_WINDOW_PANEL_SCRIPT := preload(
+	"res://addons/storyline_editor/storyline_phase_window_panel.gd"
+)
 const ROUTE_EVENT_PANEL_SCRIPT := preload(
 	"res://addons/storyline_editor/storyline_route_event_panel.gd"
 )
@@ -38,14 +41,14 @@ func _run() -> void:
 	anchor_event.lead_text = "Anchor the typed resource route."
 	anchor_event.journal_note = "This event exists to anchor prerequisite references."
 	anchor_event.status_text = "The typed resource anchor resolved."
-	anchor_event.phase_window = PackedStringArray(["summer_1"])
+	anchor_event.phase_window = ["summer_1"]
 
 	var soft_ending_event: StorylineEventResource = EVENT_RESOURCE_SCRIPT.new()
 	soft_ending_event.id = "typed_resource_soft_ending"
 	soft_ending_event.lead_text = "Close the typed resource route with a soft ending."
 	soft_ending_event.journal_note = "The typed resource route carries the full prerequisite schema."
 	soft_ending_event.status_text = "The typed resource route opened a continue-story ending."
-	soft_ending_event.phase_window = PackedStringArray(["spring_festival"])
+	soft_ending_event.phase_window = ["spring_festival"]
 	soft_ending_event.story_flags_all = PackedStringArray(["typed_resource_anchor"])
 	soft_ending_event.story_flags_any = PackedStringArray(["typed_resource_anchor"])
 	soft_ending_event.landmark_state = {"bagua_tower": "available"}
@@ -62,7 +65,7 @@ func _run() -> void:
 	cross_route_event.lead_text = "Let another storyline answer this route."
 	cross_route_event.journal_note = "Cross-route prerequisites should not warn at the route level."
 	cross_route_event.status_text = "A cross-route dependency connected cleanly."
-	cross_route_event.phase_window = PackedStringArray(["winter"])
+	cross_route_event.phase_window = ["winter"]
 	cross_route_event.story_flags_all = PackedStringArray(["winter_memory_reveal"])
 
 	var route_resource: StorylineRouteResource = ROUTE_RESOURCE_SCRIPT.new()
@@ -180,6 +183,10 @@ func _run() -> void:
 		PREREQUISITE_PICKER_PANEL_SCRIPT != null,
 		"Storyline prerequisite picker panel script loads for editor tooling checks"
 	)
+	_assert_true(
+		PHASE_WINDOW_PANEL_SCRIPT != null,
+		"Storyline phase window panel script loads for editor tooling checks"
+	)
 
 	var property_list := anchor_event.get_property_list()
 	var phase_window_property: Dictionary = {}
@@ -194,12 +201,79 @@ func _run() -> void:
 			"season_phase":
 				season_phase_property = property_def
 	_assert_true(
-		int(phase_window_property.get("hint", PROPERTY_HINT_NONE)) == PROPERTY_HINT_ENUM,
-		"Storyline phase_window uses enum-backed inspector hints"
+		int(phase_window_property.get("hint", PROPERTY_HINT_NONE)) == PROPERTY_HINT_TYPE_STRING,
+		"Storyline phase_window uses typed-array inspector hints"
 	)
 	_assert_true(
-		String(phase_window_property.get("hint_string", "")) == STORY_SEASON_PHASES_SCRIPT.AUTHORABLE_PHASE_HINT,
-		"Storyline phase_window exposes the canonical season phase list in the inspector"
+		String(phase_window_property.get("hint_string", "")) == "%d/%d:%s" % [
+			TYPE_STRING,
+			PROPERTY_HINT_ENUM,
+			STORY_SEASON_PHASES_SCRIPT.AUTHORABLE_PHASE_HINT,
+		],
+		"Storyline phase_window exposes the canonical season phase picker for each array element"
+	)
+	anchor_event.phase_window = [
+		STORY_SEASON_PHASES_SCRIPT.SUMMER_1,
+		STORY_SEASON_PHASES_SCRIPT.WINTER,
+		STORY_SEASON_PHASES_SCRIPT.SUMMER_1,
+		"",
+		STORY_SEASON_PHASES_SCRIPT.WINTER,
+	]
+	_assert_true(
+		anchor_event.phase_window == [
+			STORY_SEASON_PHASES_SCRIPT.SUMMER_1,
+			STORY_SEASON_PHASES_SCRIPT.WINTER,
+			STORY_SEASON_PHASES_SCRIPT.SUMMER_1,
+			"",
+			STORY_SEASON_PHASES_SCRIPT.WINTER,
+		],
+		"Storyline phase_window stays a native editable array before normalization"
+	)
+	_assert_true(
+		anchor_event.normalize_phase_window(),
+		"Storyline events can normalize duplicate phase_window entries on demand"
+	)
+	_assert_true(
+		anchor_event.phase_window == [
+			STORY_SEASON_PHASES_SCRIPT.SUMMER_1,
+			STORY_SEASON_PHASES_SCRIPT.WINTER,
+		],
+		"Storyline phase_window normalization removes duplicate and empty entries while preserving order"
+	)
+	var serialized_phase_event := EVENT_RESOURCE_SCRIPT.new()
+	serialized_phase_event.id = "typed_serialized_phase_event"
+	serialized_phase_event.lead_text = "Serialize deduped phases."
+	serialized_phase_event.journal_note = "Serialized phase windows should not keep duplicates."
+	serialized_phase_event.status_text = "Serialized phase window deduped."
+	serialized_phase_event.phase_window = [
+		STORY_SEASON_PHASES_SCRIPT.AUTUMN_STUDY,
+		STORY_SEASON_PHASES_SCRIPT.AUTUMN_STUDY,
+		STORY_SEASON_PHASES_SCRIPT.WINTER,
+	]
+	_assert_true(
+		serialized_phase_event.to_dict().get("phase_window", []) == [
+			STORY_SEASON_PHASES_SCRIPT.AUTUMN_STUDY,
+			STORY_SEASON_PHASES_SCRIPT.WINTER,
+		],
+		"Storyline event serialization deduplicates repeated phase_window entries"
+	)
+	var deduped_event := EVENT_RESOURCE_SCRIPT.from_dict({
+		"id": "typed_deduped_phase_event",
+		"lead_text": "Deduped phases",
+		"journal_note": "Duplicate phases should collapse during reconstruction.",
+		"status_text": "Deduped phase window loaded.",
+		"phase_window": [
+			STORY_SEASON_PHASES_SCRIPT.SPRING_FESTIVAL,
+			STORY_SEASON_PHASES_SCRIPT.SPRING_FESTIVAL,
+			STORY_SEASON_PHASES_SCRIPT.SUMMER_2,
+		],
+	})
+	_assert_true(
+		deduped_event.phase_window == [
+			STORY_SEASON_PHASES_SCRIPT.SPRING_FESTIVAL,
+			STORY_SEASON_PHASES_SCRIPT.SUMMER_2,
+		],
+		"Storyline event reconstruction deduplicates repeated phase_window entries"
 	)
 	_assert_true(
 		int(season_phase_property.get("hint", PROPERTY_HINT_NONE)) == PROPERTY_HINT_ENUM,
@@ -209,6 +283,90 @@ func _run() -> void:
 		String(season_phase_property.get("hint_string", "")) == STORY_SEASON_PHASES_SCRIPT.AUTHORABLE_PHASE_HINT,
 		"Storyline season_phase reuses the canonical season phase list in the inspector"
 	)
+
+	var phase_panel_event: StorylineEventResource = EVENT_RESOURCE_SCRIPT.new()
+	phase_panel_event.id = "typed_phase_panel_event"
+	phase_panel_event.lead_text = "Use the phase window picker."
+	phase_panel_event.journal_note = "The phase window picker should filter already-selected phases."
+	phase_panel_event.status_text = "Phase window picker state changed."
+	phase_panel_event.phase_window = [
+		STORY_SEASON_PHASES_SCRIPT.SUMMER_1,
+		STORY_SEASON_PHASES_SCRIPT.WINTER,
+	]
+	m_catalog_refresh_requests = 0
+
+	var phase_window_panel = PHASE_WINDOW_PANEL_SCRIPT.new()
+	phase_window_panel.setup(
+		phase_panel_event,
+		Callable(self, "_on_catalog_refresh_requested")
+	)
+	add_child(phase_window_panel)
+	await get_tree().process_frame
+
+	_assert_true(
+		phase_window_panel.m_phase_rows != null,
+		"Storyline phase window panel builds its phase list container"
+	)
+	_assert_true(
+		phase_window_panel.m_add_button != null,
+		"Storyline phase window panel builds its add button"
+	)
+	_assert_true(
+		phase_window_panel.mouse_filter == Control.MOUSE_FILTER_PASS,
+		"Storyline phase window panel passes mouse input through for inspector scrolling"
+	)
+	_assert_true(
+		not phase_window_panel.m_add_button.disabled,
+		"Storyline phase window panel allows adding phases while unused values remain"
+	)
+	if phase_window_panel.m_phase_rows != null and phase_window_panel.m_phase_rows.get_child_count() >= 2:
+		var first_phase_row := phase_window_panel.m_phase_rows.get_child(0) as HBoxContainer
+		var second_phase_row := phase_window_panel.m_phase_rows.get_child(1) as HBoxContainer
+		_assert_true(
+			first_phase_row != null and second_phase_row != null,
+			"Storyline phase window panel rebuilds one row per selected phase"
+		)
+		if first_phase_row != null and first_phase_row.get_child_count() > 0:
+			var first_phase_picker := first_phase_row.get_child(0) as OptionButton
+			_assert_true(
+				first_phase_picker != null,
+				"Storyline phase window panel exposes a picker for each selected phase"
+			)
+			if first_phase_picker != null:
+				var first_picker_options := _option_button_item_metadata(first_phase_picker)
+				_assert_true(
+					first_picker_options.has(STORY_SEASON_PHASES_SCRIPT.SUMMER_1),
+					"Storyline phase window panel keeps the current phase available in its own picker"
+				)
+				_assert_true(
+					not first_picker_options.has(STORY_SEASON_PHASES_SCRIPT.WINTER),
+					"Storyline phase window panel hides phases already selected in other rows"
+				)
+
+	phase_window_panel._on_add_phase_pressed()
+	phase_window_panel._on_add_phase_pressed()
+	phase_window_panel._on_add_phase_pressed()
+	_assert_true(
+		phase_panel_event.phase_window == [
+			STORY_SEASON_PHASES_SCRIPT.SUMMER_1,
+			STORY_SEASON_PHASES_SCRIPT.WINTER,
+			STORY_SEASON_PHASES_SCRIPT.AUTUMN_STUDY,
+			STORY_SEASON_PHASES_SCRIPT.SPRING_FESTIVAL,
+			STORY_SEASON_PHASES_SCRIPT.SUMMER_2,
+		],
+		"Storyline phase window panel appends only unselected season phases"
+	)
+	await get_tree().process_frame
+	_assert_true(
+		m_catalog_refresh_requests == 3,
+		"Storyline phase window panel requests shared refreshes after phase additions"
+	)
+	_assert_true(
+		phase_window_panel.m_add_button.disabled,
+		"Storyline phase window panel disables add once every season phase is selected"
+	)
+	phase_window_panel.queue_free()
+	await get_tree().process_frame
 
 	var id_route_resource: StorylineRouteResource = ROUTE_RESOURCE_SCRIPT.new()
 	id_route_resource.id = "typed_resource_route"
@@ -252,7 +410,7 @@ func _run() -> void:
 			"Storyline validation labels pass mouse input through for inspector scrolling"
 		)
 
-	validation_event.phase_window = PackedStringArray(["summer_1"])
+	validation_event.phase_window = ["summer_1"]
 	validation_event.emit_changed()
 	await get_tree().process_frame
 	if validation_panel.m_header_lbl != null:
@@ -326,9 +484,21 @@ func _run() -> void:
 		"Storyline inspector validation-only refresh does not request a browser/catalog refresh"
 	)
 
-	inspector_refresh_event.phase_window = PackedStringArray(["summer_1"])
+	inspector_refresh_event.phase_window = [
+		STORY_SEASON_PHASES_SCRIPT.SUMMER_1,
+		STORY_SEASON_PHASES_SCRIPT.SUMMER_1,
+		"",
+		STORY_SEASON_PHASES_SCRIPT.WINTER,
+	]
 	inspector_status_bridge.refresh_storyline_status_for_object(inspector_refresh_event)
 	await get_tree().process_frame
+	_assert_true(
+		inspector_refresh_event.phase_window == [
+			STORY_SEASON_PHASES_SCRIPT.SUMMER_1,
+			STORY_SEASON_PHASES_SCRIPT.WINTER,
+		],
+		"Storyline inspector status refresh normalizes duplicate and empty phase_window edits"
+	)
 	_assert_true(
 		m_catalog_refresh_requests == 1,
 		"Storyline inspector status refresh requests a browser/catalog refresh callback"
@@ -346,7 +516,7 @@ func _run() -> void:
 	picker_event.lead_text = "Use the prerequisite picker."
 	picker_event.journal_note = "The picker should add and remove prerequisite ids."
 	picker_event.status_text = "Picker state changed."
-	picker_event.phase_window = PackedStringArray(["summer_1"])
+	picker_event.phase_window = ["summer_1"]
 	picker_event.story_flags_any = PackedStringArray(["typed_resource_anchor"])
 	m_catalog_refresh_requests = 0
 
@@ -524,6 +694,15 @@ func _find_tree_item_with_event_id(item: TreeItem, event_id: String) -> TreeItem
 			return found
 		child = child.get_next()
 	return null
+
+
+func _option_button_item_metadata(option_button: OptionButton) -> Dictionary:
+	var items: Dictionary = {}
+	if option_button == null:
+		return items
+	for item_index: int in option_button.item_count:
+		items[String(option_button.get_item_metadata(item_index))] = true
+	return items
 
 
 func _on_catalog_refresh_requested() -> void:

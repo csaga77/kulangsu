@@ -32,7 +32,13 @@ const VALID_PHASES = STORY_SEASON_PHASES_SCRIPT.AUTHORABLE_PHASE_IDS
 
 ## Which season phases this event is active in.
 ## Valid values come from the shared [StorySeasonPhases] catalog.
-@export var phase_window: PackedStringArray = PackedStringArray()
+@export_enum(
+	"summer_1",
+	"autumn_study",
+	"winter",
+	"spring_festival",
+	"summer_2"
+) var phase_window: Array[String] = []
 ## If set, this event is only offered once the season reaches this phase.
 @export var season_phase: String = ""
 
@@ -78,12 +84,13 @@ const VALID_PHASES = STORY_SEASON_PHASES_SCRIPT.AUTHORABLE_PHASE_IDS
 ## Returns a plain Dictionary matching the runtime format expected by
 ## [StorylineCatalog], [StoryRouteGraph], and the journal builder.
 func to_dict() -> Dictionary:
+	var normalized_phase_window := _normalize_phase_window(phase_window)
 	var d: Dictionary = {
 		"id":               id,
 		"lead_text":        lead_text,
 		"journal_note":     journal_note,
 		"status_text":      status_text,
-		"phase_window":     Array(phase_window),
+		"phase_window":     Array(normalized_phase_window),
 		"pin_priority":     pin_priority,
 		"completion_score": completion_score,
 	}
@@ -126,7 +133,7 @@ func to_dict() -> Dictionary:
 ## Keeps the inspector enum hint in sync with the canonical phase catalog.
 func _validate_property(property: Dictionary) -> void:
 	match String(property.get("name", "")):
-		"phase_window", "season_phase":
+		"season_phase":
 			property["hint"] = PROPERTY_HINT_ENUM
 			property["hint_string"] = STORY_SEASON_PHASES_SCRIPT.AUTHORABLE_PHASE_HINT
 
@@ -135,6 +142,7 @@ func _validate_property(property: Dictionary) -> void:
 ## Called by the inspector plugin and the route browser.
 func validate() -> PackedStringArray:
 	var warnings := PackedStringArray()
+	var normalized_phase_window := _normalize_phase_window(phase_window)
 
 	if id.strip_edges().is_empty():
 		warnings.append("id is empty — every event must have a unique stable id")
@@ -142,10 +150,10 @@ func validate() -> PackedStringArray:
 	if lead_text.strip_edges().is_empty():
 		warnings.append("[%s] lead_text is empty" % id)
 
-	if phase_window.is_empty():
+	if normalized_phase_window.is_empty():
 		warnings.append("[%s] phase_window is empty — event will never become available" % id)
 	else:
-		for phase: String in phase_window:
+		for phase: String in normalized_phase_window:
 			if not STORY_SEASON_PHASES_SCRIPT.is_authorable_phase(phase):
 				warnings.append("[%s] unknown phase_window value: '%s'" % [id, phase])
 
@@ -168,7 +176,7 @@ static func from_dict(value: Dictionary) -> StorylineEventResource:
 	event.lead_text = String(value.get("lead_text", ""))
 	event.journal_note = String(value.get("journal_note", ""))
 	event.status_text = String(value.get("status_text", ""))
-	event.phase_window = _to_packed_string_array(value.get("phase_window", []))
+	event.phase_window = _normalize_phase_window(value.get("phase_window", []))
 	event.season_phase = String(value.get("season_phase", "")).strip_edges()
 	event.pin_priority = int(value.get("pin_priority", 0))
 	event.completion_score = int(value.get("completion_score", 1))
@@ -192,6 +200,14 @@ static func from_dict(value: Dictionary) -> StorylineEventResource:
 	return event
 
 
+func normalize_phase_window() -> bool:
+	var normalized_phase_window := _normalize_phase_window(phase_window)
+	if phase_window == normalized_phase_window:
+		return false
+	phase_window = normalized_phase_window
+	return true
+
+
 static func _to_packed_string_array(value: Variant) -> PackedStringArray:
 	var result := PackedStringArray()
 	if value is PackedStringArray:
@@ -204,7 +220,35 @@ static func _to_packed_string_array(value: Variant) -> PackedStringArray:
 	return result
 
 
+static func _to_string_array(value: Variant) -> Array[String]:
+	var result: Array[String] = []
+	if value is PackedStringArray:
+		for item: String in value as PackedStringArray:
+			var text := item.strip_edges()
+			if not text.is_empty():
+				result.append(text)
+		return result
+	if value is Array:
+		for item in value as Array:
+			var text := String(item).strip_edges()
+			if not text.is_empty():
+				result.append(text)
+	return result
+
+
 static func _to_dictionary(value: Variant) -> Dictionary:
 	if value is Dictionary:
 		return (value as Dictionary).duplicate(true)
 	return {}
+
+
+static func _normalize_phase_window(value: Variant) -> Array[String]:
+	var normalized_phases := _to_string_array(value)
+	var unique_phases: Array[String] = []
+	var seen_phases: Dictionary = {}
+	for phase_id: String in normalized_phases:
+		if seen_phases.has(phase_id):
+			continue
+		seen_phases[phase_id] = true
+		unique_phases.append(phase_id)
+	return unique_phases

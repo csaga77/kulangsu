@@ -32,6 +32,11 @@ func refresh_storyline_status_for_object(object: Object) -> void:
 	if not (object is StorylineEventResource or object is StorylineRouteResource):
 		return
 
+	if object is StorylineEventResource:
+		var event_resource := object as StorylineEventResource
+		if event_resource != null and event_resource.normalize_phase_window():
+			event_resource.emit_changed()
+
 	refresh_validation_panel()
 
 	if m_catalog_changed_callback.is_valid():
