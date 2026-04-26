@@ -9,8 +9,9 @@ extends RefCounted
 ##      conversion.
 ##
 ## The public API ([method build_route_definitions] / [method build_event_definitions])
-## always returns plain Dictionary values so the runtime, journal, and save
-## systems need no changes as route content lives in typed `.tres` resources.
+## always returns plain Dictionary values so editor tooling can rebuild directly
+## from authored content. Runtime systems should use [method build_definition_bundle]
+## once and keep an instance-local cache.
 
 const STORYLINE_DIR      := "res://game/storylines"
 const STORYLINE_SUFFIX   := "_storyline.gd"
@@ -23,7 +24,45 @@ const ROUTE_RESOURCE_DIR := "res://game/storylines/routes"
 # ---------------------------------------------------------------------------
 
 static func route_display_order() -> Array[String]:
-	var route_definitions := build_route_definitions()
+	return _route_display_order_from_definitions(build_route_definitions())
+
+
+static func build_definition_bundle() -> Dictionary:
+	var route_definitions := {}
+	var event_definitions := {}
+
+	for storyline in _load_storyline_modules():
+		var route_definition: Dictionary = storyline.get("route", {})
+		var route_id := String(route_definition.get("id", "")).strip_edges()
+		if route_id.is_empty():
+			push_warning("Skipping storyline route without an id")
+			continue
+		if route_definitions.has(route_id):
+			push_warning("Duplicate storyline route id '%s'; keeping the latest definition" % route_id)
+		route_definitions[route_id] = route_definition
+
+		for event_value in storyline.get("events", []):
+			if !(event_value is Dictionary):
+				continue
+			var event_definition: Dictionary = (event_value as Dictionary).duplicate(true)
+			var event_id := String(event_definition.get("id", "")).strip_edges()
+			if event_id.is_empty():
+				push_warning("Skipping storyline event without an id in route '%s'" % route_id)
+				continue
+			if String(event_definition.get("route_id", "")).strip_edges().is_empty():
+				event_definition["route_id"] = route_id
+			if event_definitions.has(event_id):
+				push_warning("Duplicate storyline event id '%s'; keeping the latest definition" % event_id)
+			event_definitions[event_id] = event_definition
+
+	return {
+		"route_definitions": route_definitions,
+		"event_definitions": event_definitions,
+		"route_display_order": _route_display_order_from_definitions(route_definitions),
+	}
+
+
+static func _route_display_order_from_definitions(route_definitions: Dictionary) -> Array[String]:
 	var entries: Array[Dictionary] = []
 	for route_id_variant in route_definitions.keys():
 		var route_id := String(route_id_variant)

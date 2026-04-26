@@ -86,6 +86,21 @@ func _run() -> void:
 		STORY_SEASON_PHASES_SCRIPT.display_name(STORY_SEASON_PHASES_SCRIPT.SPRING_FESTIVAL) == "Spring Festival / Spring",
 		"Story season phase display names come from the canonical phase catalog"
 	)
+	var definition_bundle: Dictionary = StorylineCatalog.build_definition_bundle()
+	var bundled_routes: Dictionary = definition_bundle.get("route_definitions", {})
+	var bundled_events: Dictionary = definition_bundle.get("event_definitions", {})
+	_assert_true(
+		bundled_routes.size() == StorylineCatalog.build_route_definitions().size(),
+		"Storyline definition bundle includes the same routes as the direct route catalog"
+	)
+	_assert_true(
+		bundled_events.size() == StorylineCatalog.build_event_definitions().size(),
+		"Storyline definition bundle includes the same events as the direct event catalog"
+	)
+	_assert_true(
+		String(bundled_events.get("summer_return_complete", {}).get("route_id", "")) == "family_memory",
+		"Storyline definition bundle injects event route ids for runtime caching"
+	)
 
 	_assert_true(anchor_event.validate().is_empty(), "Anchor resource event validates cleanly")
 	_assert_true(soft_ending_event.validate().is_empty(), "Soft-ending resource event validates cleanly")

@@ -5,10 +5,15 @@ const MAX_GLOBAL_LEADS := 4
 const STORY_SEASON_PHASES_SCRIPT := preload("res://game/story_season_phases.gd")
 
 var m_owner: Node = null
+var m_storyline_definitions_loaded := false
+var m_route_definitions: Dictionary = {}
+var m_event_definitions: Dictionary = {}
+var m_route_display_order: Array[String] = []
 
 
 func _init(owner: Node) -> void:
 	m_owner = owner
+	reload_storyline_definitions()
 
 
 static func route_display_order() -> Array[String]:
@@ -23,10 +28,26 @@ static func build_event_definitions() -> Dictionary:
 	return StorylineCatalog.build_event_definitions()
 
 
-static func build_default_story_flags() -> Dictionary:
+func reload_storyline_definitions() -> void:
+	var bundle := StorylineCatalog.build_definition_bundle()
+	m_route_definitions = bundle.get("route_definitions", {}).duplicate(true)
+	m_event_definitions = bundle.get("event_definitions", {}).duplicate(true)
+	m_route_display_order = []
+	for route_id_value in bundle.get("route_display_order", []):
+		m_route_display_order.append(String(route_id_value))
+	m_storyline_definitions_loaded = true
+
+
+func _ensure_storyline_definitions() -> void:
+	if !m_storyline_definitions_loaded:
+		reload_storyline_definitions()
+
+
+func build_default_story_flags() -> Dictionary:
+	_ensure_storyline_definitions()
 	var flags: Dictionary = {}
-	for event_id in build_event_definitions().keys():
-		flags[event_id] = false
+	for event_id_value in m_event_definitions.keys():
+		flags[String(event_id_value)] = false
 	return flags
 
 
@@ -92,15 +113,18 @@ func normalize_endgame_state(value: Variant) -> Dictionary:
 
 
 func get_route_definition(route_id: String) -> Dictionary:
-	return build_route_definitions().get(route_id, {}).duplicate(true)
+	_ensure_storyline_definitions()
+	return m_route_definitions.get(route_id, {}).duplicate(true)
 
 
 func get_route_ids() -> PackedStringArray:
-	return PackedStringArray(route_display_order())
+	_ensure_storyline_definitions()
+	return PackedStringArray(m_route_display_order)
 
 
 func get_event_definition(event_id: String) -> Dictionary:
-	return build_event_definitions().get(event_id, {}).duplicate(true)
+	_ensure_storyline_definitions()
+	return m_event_definitions.get(event_id, {}).duplicate(true)
 
 
 func can_resolve_story_event(event_id: String) -> bool:
@@ -140,10 +164,10 @@ func get_active_lead_text() -> String:
 
 
 func get_route_summary_lines() -> Array[String]:
+	_ensure_storyline_definitions()
 	var lines: Array[String] = []
-	var route_definitions: Dictionary = build_route_definitions()
 
-	for route_id in route_display_order():
+	for route_id in m_route_display_order:
 		var progress: Dictionary = m_owner.route_progress.get(route_id, {})
 		if progress.is_empty():
 			continue
@@ -155,7 +179,7 @@ func get_route_summary_lines() -> Array[String]:
 
 		lines.append(
 			"%s\nState: %s\nCompletion: %d\nNext lead: %s" % [
-				String(route_definitions[route_id].get("display_name", route_id)),
+				String(m_route_definitions.get(route_id, {}).get("display_name", route_id)),
 				String(progress.get("state", "idle")),
 				int(progress.get("completion_score", 0)),
 				next_lead_text,
@@ -243,9 +267,10 @@ func clear_manual_pinned_lead() -> void:
 
 
 func build_route_completion_summary() -> String:
+	_ensure_storyline_definitions()
 	var parts: Array[String] = []
-	for route_id in route_display_order():
-		var route_definition: Dictionary = get_route_definition(route_id)
+	for route_id in m_route_display_order:
+		var route_definition: Dictionary = m_route_definitions.get(route_id, {})
 		var progress: Dictionary = m_owner.route_progress.get(route_id, {})
 		parts.append("%s %d" % [
 			String(route_definition.get("display_name", route_id)),
@@ -293,12 +318,11 @@ func _compute_route_snapshot(
 	endgame: Dictionary,
 	manual_pinned_lead_id: String
 ) -> Dictionary:
-	var route_definitions := build_route_definitions()
-	var event_definitions := build_event_definitions()
+	_ensure_storyline_definitions()
 	var route_progress: Dictionary = {}
 	var global_candidates: Array[Dictionary] = []
 
-	for route_id in route_display_order():
+	for route_id in m_route_display_order:
 		var route_events: Array[String] = []
 		var resolved_ids := PackedStringArray()
 		var available_ids := PackedStringArray()
@@ -307,8 +331,8 @@ func _compute_route_snapshot(
 		var next_priority := -100000
 		var completion_score := 0
 
-		for event_id in event_definitions.keys():
-			var event_definition: Dictionary = event_definitions[event_id]
+		for event_id in m_event_definitions.keys():
+			var event_definition: Dictionary = m_event_definitions[event_id]
 			if String(event_definition.get("route_id", "")) != route_id:
 				continue
 
@@ -323,7 +347,7 @@ func _compute_route_snapshot(
 				continue
 
 			available_ids.append(event_id)
-			var candidate_priority := _event_priority(event_definition, route_definitions.get(route_id, {}))
+			var candidate_priority := _event_priority(event_definition, m_route_definitions.get(route_id, {}))
 			if candidate_priority > next_priority:
 				next_priority = candidate_priority
 				next_lead_id = event_id
@@ -402,6 +426,7 @@ func _build_story_event_availability_inputs() -> Dictionary:
 
 
 func _maybe_start_endgame(preferred_event_id: String) -> void:
+	_ensure_storyline_definitions()
 	if bool(m_owner.endgame_state.get("active", false)):
 		return
 	if !bool(m_owner.story_flags.get("spring_festival_resolved", false)):
@@ -410,7 +435,7 @@ func _maybe_start_endgame(preferred_event_id: String) -> void:
 	var candidate_ids: Array[String] = []
 	if !preferred_event_id.is_empty():
 		candidate_ids.append(preferred_event_id)
-	for event_id in build_event_definitions().keys():
+	for event_id in m_event_definitions.keys():
 		if candidate_ids.find(event_id) >= 0:
 			continue
 		candidate_ids.append(event_id)
@@ -445,13 +470,13 @@ func _maybe_start_endgame(preferred_event_id: String) -> void:
 
 
 func _build_tone_tags(event_definition: Dictionary, ending_choice: String = "") -> PackedStringArray:
+	_ensure_storyline_definitions()
 	var tags := PackedStringArray(_normalize_string_array(event_definition.get("tone_tags", [])))
 	var helped_residents := int(m_owner._count_helped_residents())
 	var max_trust_residents := _count_max_trust_residents()
-	var route_definitions := build_route_definitions()
 
-	for route_id in route_display_order():
-		var route_definition: Dictionary = route_definitions.get(route_id, {})
+	for route_id in m_route_display_order:
+		var route_definition: Dictionary = m_route_definitions.get(route_id, {})
 		var route_score := int(m_owner.route_progress.get(route_id, {}).get("completion_score", 0))
 		for rule_value in route_definition.get("ending_tone_rules", []):
 			if !(rule_value is Dictionary):
@@ -614,10 +639,10 @@ func _route_state_label(
 
 
 func _build_route_mix_entries() -> Array[Dictionary]:
+	_ensure_storyline_definitions()
 	var entries: Array[Dictionary] = []
-	var route_definitions := build_route_definitions()
-	for route_id in route_display_order():
-		var route_definition: Dictionary = route_definitions.get(route_id, {})
+	for route_id in m_route_display_order:
+		var route_definition: Dictionary = m_route_definitions.get(route_id, {})
 		var progress: Dictionary = m_owner.route_progress.get(route_id, {})
 		var score := int(progress.get("completion_score", 0))
 		if score <= 0:

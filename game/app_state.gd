@@ -527,7 +527,11 @@ func set_route_progress(route_id: String, progress: Dictionary) -> void:
 
 
 func set_all_route_progress(new_progress: Dictionary) -> void:
-	var route_ids := STORY_ROUTE_GRAPH_SCRIPT.route_display_order()
+	var route_ids := PackedStringArray()
+	if m_story_route_graph != null:
+		route_ids = m_story_route_graph.get_route_ids()
+	else:
+		route_ids = PackedStringArray(STORY_ROUTE_GRAPH_SCRIPT.route_display_order())
 	route_progress = {}
 	for route_id in route_ids:
 		route_progress[route_id] = new_progress.get(route_id, {}).duplicate(true)
