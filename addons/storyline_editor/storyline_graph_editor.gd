@@ -8,10 +8,6 @@ extends VBoxContainer
 ## are shown when "All routes" is selected, and graph edits are written back
 ## to the canonical route resource for the target event.
 ##
-## Compatibility-only: if the target route still lives in a legacy
-## *_storyline.gd module, the first graph edit auto-promotes that route into
-## game/storylines/routes/<route_id>.tres before saving the new dependency.
-##
 ## Layout: events are arranged in columns by dependency depth (longest
 ## prerequisite chain), sorted within each column by route display_order.
 ## Time flows left to right: prerequisites are always to the left of their
@@ -865,7 +861,7 @@ func _persist_dependency_change(
 		push_warning("StorylineGraphEditor: event '%s' has no route_id" % event_id)
 		return
 
-	var route_resource := _load_or_materialize_route_resource(route_id)
+	var route_resource := _ensure_route_resource_for_editing(route_id)
 	if route_resource == null:
 		push_warning("StorylineGraphEditor: unable to load route resource for '%s'" % route_id)
 		return
@@ -934,32 +930,6 @@ func _persist_dependency_change(
 		preserved_scroll_offset
 	)
 
-
-func _load_or_materialize_route_resource(route_id: String) -> StorylineRouteResource:
-	var save_path := _route_resource_path_for(route_id)
-	if m_route_resource_paths.has(route_id) and ResourceLoader.exists(save_path):
-		var existing_resource := load(save_path)
-		if existing_resource is StorylineRouteResource:
-			return existing_resource as StorylineRouteResource
-
-	var storyline_dict := _build_storyline_dict_for_route(route_id)
-	if storyline_dict.is_empty():
-		return null
-
-	var absolute_dir := ProjectSettings.globalize_path(StorylineCatalog.ROUTE_RESOURCE_DIR)
-	var make_dir_error := DirAccess.make_dir_recursive_absolute(absolute_dir)
-	if make_dir_error != OK and make_dir_error != ERR_ALREADY_EXISTS:
-		push_error(
-			"StorylineGraphEditor: failed to create route resource dir '%s' (err=%d)"
-			% [absolute_dir, make_dir_error]
-		)
-		return null
-
-	var route_resource := StorylineRouteResource.from_storyline_dict(storyline_dict)
-	route_resource.take_over_path(save_path)
-	return route_resource
-
-
 func _ensure_route_resource_for_editing(route_id: String) -> StorylineRouteResource:
 	var save_path := _route_resource_path_for(route_id)
 	var loaded_route_resource := _find_loaded_route_resource(route_id)
@@ -969,25 +939,22 @@ func _ensure_route_resource_for_editing(route_id: String) -> StorylineRouteResou
 			m_route_resource_paths[route_id] = loaded_path
 			return loaded_route_resource
 
-	var already_exists := ResourceLoader.exists(save_path)
-	var route_resource := _load_or_materialize_route_resource(route_id)
-	if route_resource == null:
-		return null
-	if already_exists:
-		return route_resource
-
-	var save_error := ResourceSaver.save(route_resource, save_path)
-	if save_error != OK:
-		push_error(
-			"StorylineGraphEditor: failed to save editable route resource '%s' (err=%d)"
-			% [save_path, save_error]
+	if ResourceLoader.exists(save_path):
+		var existing_resource := ResourceLoader.load(
+			save_path,
+			"",
+			ResourceLoader.CACHE_MODE_REPLACE
 		)
-		return null
+		if existing_resource is StorylineRouteResource:
+			m_route_resource_paths[route_id] = save_path
+			return existing_resource as StorylineRouteResource
 
-	route_resource.take_over_path(save_path)
-	m_route_resource_paths[route_id] = save_path
-	catalog_changed.emit()
-	return route_resource
+	if loaded_route_resource != null:
+		var loaded_path := loaded_route_resource.resource_path
+		if not loaded_path.is_empty():
+			m_route_resource_paths[route_id] = loaded_path
+		return loaded_route_resource
+	return null
 
 
 func _ensure_event_resource_for_editing(event_id: String) -> StorylineEventResource:
@@ -1046,28 +1013,6 @@ func edit_route_in_inspector(route_id: String) -> void:
 	_edit_route_in_inspector(route_id)
 
 
-func _build_storyline_dict_for_route(route_id: String) -> Dictionary:
-	var route_def: Dictionary = m_route_defs.get(route_id, {})
-	if route_def.is_empty():
-		return {}
-
-	var event_dicts: Array[Dictionary] = []
-	for event_id_var in m_event_defs.keys():
-		var event_id := String(event_id_var)
-		var event_def: Dictionary = m_event_defs.get(event_id, {})
-		if String(event_def.get("route_id", "")).strip_edges() != route_id:
-			continue
-		var copied_event := event_def.duplicate(true)
-		copied_event.erase("route_id")
-		event_dicts.append(copied_event)
-
-	return {
-		"path": _route_resource_path_for(route_id),
-		"route": route_def.duplicate(true),
-		"events": event_dicts,
-	}
-
-
 func _route_resource_path_for(route_id: String) -> String:
 	return str(m_route_resource_paths.get(
 		route_id,
@@ -1117,6 +1062,10 @@ func _find_loaded_route_resource(route_id: String) -> StorylineRouteResource:
 	if route_id.is_empty():
 		return null
 
+	for route_resource: StorylineRouteResource in m_watched_route_resources:
+		if route_resource != null and route_resource.id.strip_edges() == route_id:
+			return route_resource
+
 	for route_resource: StorylineRouteResource in StorylineCatalog.load_route_resources():
 		if route_resource != null and route_resource.id.strip_edges() == route_id:
 			return route_resource
@@ -1127,6 +1076,11 @@ func _find_loaded_event_resource(event_id: String) -> StorylineEventResource:
 	event_id = event_id.strip_edges()
 	if event_id.is_empty():
 		return null
+
+	for route_resource: StorylineRouteResource in m_watched_route_resources:
+		var watched_event_resource := _find_event_resource(route_resource, event_id)
+		if watched_event_resource != null:
+			return watched_event_resource
 
 	for route_resource: StorylineRouteResource in StorylineCatalog.load_route_resources():
 		var event_resource := _find_event_resource(route_resource, event_id)

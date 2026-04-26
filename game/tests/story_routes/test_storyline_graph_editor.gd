@@ -264,6 +264,7 @@ func _run() -> void:
 		)
 
 	graph_editor._load_catalog_data()
+	_prepare_temp_route_from_live("family_memory")
 	graph_editor.m_route_resource_paths["family_memory"] = _TEMP_ROUTE_PATH
 	var editable_event := graph_editor._ensure_event_resource_for_editing("spring_festival_prepared")
 	_assert_true(
@@ -277,7 +278,7 @@ func _run() -> void:
 		)
 	_assert_true(
 		FileAccess.file_exists(ProjectSettings.globalize_path(_TEMP_ROUTE_PATH)),
-		"Inspector editing path materializes a saved route resource when needed"
+		"Inspector editing path uses a saved route resource copy"
 	)
 	_cleanup_temp_route()
 
@@ -382,6 +383,7 @@ func _run() -> void:
 		)
 
 	graph_editor._load_catalog_data()
+	_prepare_temp_route_from_live("family_memory")
 	graph_editor.m_route_resource_paths["family_memory"] = _TEMP_ROUTE_PATH
 	graph_editor.select_event("summer_return_complete", false)
 	graph_editor.m_graph_edit.scroll_offset = Vector2(920.0, 480.0)
@@ -397,8 +399,8 @@ func _run() -> void:
 	)
 	await get_tree().process_frame
 
-	var promoted_route := _load_temp_route()
-	_assert_true(promoted_route != null, "Graph editor materializes a legacy route resource on first edit")
+	var edited_route := _load_temp_route()
+	_assert_true(edited_route != null, "Graph editor edits the saved route resource copy on connect")
 	_assert_true(
 		graph_editor.m_graph_edit.scroll_offset.is_equal_approx(Vector2(920.0, 480.0)),
 		"Graph editor preserves scroll position after connect"
@@ -417,9 +419,9 @@ func _run() -> void:
 			not target_after_connect.selected,
 			"Connect does not auto-select the target node"
 		)
-	if promoted_route != null:
-		var prepared_event := _find_event(promoted_route, "spring_festival_prepared")
-		_assert_true(prepared_event != null, "Materialized route preserves the edited target event")
+	if edited_route != null:
+		var prepared_event := _find_event(edited_route, "spring_festival_prepared")
+		_assert_true(prepared_event != null, "Saved route copy preserves the edited target event")
 		if prepared_event != null:
 			_assert_true(
 				prepared_event.story_flags_all.has("summer_return_complete"),
@@ -652,6 +654,22 @@ func _cleanup_temp_sync_route() -> void:
 	if FileAccess.file_exists(abs_path):
 		var remove_error := DirAccess.remove_absolute(abs_path)
 		_assert_true(remove_error == OK, "Graph editor test temp sync route cleanup succeeds")
+
+
+func _prepare_temp_route_from_live(route_id: String) -> void:
+	_cleanup_temp_route()
+	var live_route_resource := _load_live_route_resource(route_id)
+	_assert_true(
+		live_route_resource != null,
+		"Graph editor temp-route test can load %s" % route_id
+	)
+	if live_route_resource == null:
+		return
+	var route_copy := StorylineRouteResource.from_storyline_dict(
+		live_route_resource.to_storyline_dict(_TEMP_ROUTE_PATH)
+	)
+	var save_error := ResourceSaver.save(route_copy, _TEMP_ROUTE_PATH)
+	_assert_true(save_error == OK, "Graph editor temp route copy save succeeds")
 
 
 func _read_text_file(path: String) -> String:

@@ -4,9 +4,7 @@ extends Resource
 ## Typed, inspector-editable definition of a complete storyline route.
 ##
 ## Create one .tres file per route under game/storylines/routes/.
-## [StorylineCatalog] loads these as the canonical format. Legacy
-## *_storyline.gd loading remains only as a compatibility path for older
-## content that still needs migration.
+## [StorylineCatalog] loads these as the canonical format.
 ##
 ## Author workflow:
 ##   1. Right-click game/storylines/routes/ → New Resource → StorylineRouteResource

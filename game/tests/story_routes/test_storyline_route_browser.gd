@@ -5,8 +5,6 @@ const ROUTE_EVENT_PANEL_SCRIPT := preload(
 	"res://addons/storyline_editor/storyline_route_event_panel.gd"
 )
 const _TEMP_DELETE_ROUTE_RESOURCE_PATH := "user://storyline_route_browser_delete_test.tres"
-const _TEMP_DELETE_ROUTE_SCRIPT_PATH := "user://storyline_route_browser_delete_test_storyline.gd"
-const _TEMP_DELETE_ROUTE_UID_PATH := "user://storyline_route_browser_delete_test_storyline.gd.uid"
 
 var m_failures := PackedStringArray()
 
@@ -170,19 +168,13 @@ func _run() -> void:
 
 	_cleanup_temp_route_delete_files()
 	_write_temp_route_delete_file(_TEMP_DELETE_ROUTE_RESOURCE_PATH, "[gd_resource type=\"Resource\" format=3]\n")
-	_write_temp_route_delete_file(_TEMP_DELETE_ROUTE_SCRIPT_PATH, "extends RefCounted\n")
-	_write_temp_route_delete_file(_TEMP_DELETE_ROUTE_UID_PATH, "uid://temporary\n")
 	route_browser.m_route_defs["temp_delete_route"] = {
 		"id": "temp_delete_route",
 		"display_name": "Temp Delete Route",
 		"display_order": 9998,
 	}
-	route_browser.m_route_source["temp_delete_route"] = "resource"
 	route_browser.m_route_resource_paths["temp_delete_route"] = PackedStringArray([
 		_TEMP_DELETE_ROUTE_RESOURCE_PATH,
-	])
-	route_browser.m_route_gdscript_paths["temp_delete_route"] = PackedStringArray([
-		_TEMP_DELETE_ROUTE_SCRIPT_PATH,
 	])
 	route_browser._rebuild_story_tree()
 	await get_tree().process_frame
@@ -207,22 +199,10 @@ func _run() -> void:
 			FileAccess.file_exists(ProjectSettings.globalize_path(_TEMP_DELETE_ROUTE_RESOURCE_PATH)),
 			"Route browser route delete prompt does not delete the resource before confirmation"
 		)
-		_assert_true(
-			FileAccess.file_exists(ProjectSettings.globalize_path(_TEMP_DELETE_ROUTE_SCRIPT_PATH)),
-			"Route browser route delete prompt does not delete the script before confirmation"
-		)
 		route_browser._confirm_delete_route()
 		_assert_true(
 			not FileAccess.file_exists(ProjectSettings.globalize_path(_TEMP_DELETE_ROUTE_RESOURCE_PATH)),
 			"Route browser deletes the selected route resource after confirmation"
-		)
-		_assert_true(
-			not FileAccess.file_exists(ProjectSettings.globalize_path(_TEMP_DELETE_ROUTE_SCRIPT_PATH)),
-			"Route browser deletes the selected route script after confirmation"
-		)
-		_assert_true(
-			not FileAccess.file_exists(ProjectSettings.globalize_path(_TEMP_DELETE_ROUTE_UID_PATH)),
-			"Route browser deletes the selected route script uid after confirmation"
 		)
 		_assert_true(
 			not _tree_contains_route_id(route_browser.m_event_tree, "temp_delete_route"),
@@ -368,8 +348,6 @@ func _write_temp_route_delete_file(path: String, content: String) -> void:
 func _cleanup_temp_route_delete_files() -> void:
 	for path in [
 		_TEMP_DELETE_ROUTE_RESOURCE_PATH,
-		_TEMP_DELETE_ROUTE_SCRIPT_PATH,
-		_TEMP_DELETE_ROUTE_UID_PATH,
 	]:
 		var absolute_path := ProjectSettings.globalize_path(path)
 		if FileAccess.file_exists(absolute_path):

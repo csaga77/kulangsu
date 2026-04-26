@@ -12,8 +12,6 @@ const _ROUTE_COLORS := {
 	"melody_landmarks":         Color(0.61, 0.34, 0.76),
 }
 const _DEFAULT_ROUTE_COLOR := Color(0.55, 0.55, 0.55)
-const _BADGE_RESOURCE := "●"
-const _BADGE_GDSCRIPT := "◎"
 const _BUCKETS := [
 	{
 		"name": "story_flags_all",
@@ -34,7 +32,6 @@ var m_picker_tree: Tree
 var m_picker_bucket: String = ""
 var m_route_defs: Dictionary = {}
 var m_event_defs: Dictionary = {}
-var m_route_source: Dictionary = {}
 var m_on_prerequisites_changed: Callable
 var m_layout_refresh_queued := false
 
@@ -157,22 +154,6 @@ func _open_picker_for_bucket(bucket_name: String) -> void:
 func _load_catalog_data() -> void:
 	m_route_defs = StorylineCatalog.build_route_definitions()
 	m_event_defs = StorylineCatalog.build_event_definitions()
-	m_route_source.clear()
-
-	var resource_route_ids: Dictionary = {}
-	for route_resource: StorylineRouteResource in StorylineCatalog.load_route_resources():
-		if route_resource == null:
-			continue
-		var route_id := route_resource.id.strip_edges()
-		if route_id.is_empty():
-			continue
-		resource_route_ids[route_id] = true
-
-	for route_id_var in m_route_defs.keys():
-		var route_id := String(route_id_var)
-		m_route_source[route_id] = (
-			"resource" if resource_route_ids.has(route_id) else "gdscript"
-		)
 
 
 func _rebuild_picker_tree() -> void:
@@ -185,12 +166,10 @@ func _rebuild_picker_tree() -> void:
 		if route_def.is_empty():
 			continue
 
-		var source: String = String(m_route_source.get(route_id, ""))
-		var badge: String = _BADGE_RESOURCE if source == "resource" else _BADGE_GDSCRIPT
 		var route_item := m_picker_tree.create_item(root)
 		route_item.set_text(
 			0,
-			"%s %s" % [badge, String(route_def.get("display_name", route_id))]
+			String(route_def.get("display_name", route_id))
 		)
 		route_item.set_custom_color(0, _ROUTE_COLORS.get(route_id, _DEFAULT_ROUTE_COLOR))
 		route_item.set_metadata(0, {

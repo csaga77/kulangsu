@@ -29,8 +29,6 @@ const _ROUTE_COLORS := {
 	"melody_landmarks":         Color(0.61, 0.34, 0.76),
 }
 const _DEFAULT_ROUTE_COLOR := Color(0.55, 0.55, 0.55)
-const _BADGE_RESOURCE := "●"
-const _BADGE_GDSCRIPT  := "◎"
 
 # ---------------------------------------------------------------------------
 # UI members
@@ -57,11 +55,8 @@ var m_delete_event_message: Label
 ## Full catalog data, refreshed on each reload.
 var m_route_defs: Dictionary = {}
 var m_event_defs: Dictionary = {}
-## Maps route_id -> "resource" | "gdscript" | ""
-var m_route_source: Dictionary = {}
 ## Maps route_id -> PackedStringArray[String] of source paths.
 var m_route_resource_paths: Dictionary = {}
-var m_route_gdscript_paths: Dictionary = {}
 ## Project-wide validation warnings: Array[String]
 var m_all_warnings: Array[String] = []
 
@@ -164,29 +159,12 @@ func _refresh() -> void:
 func _load_catalog_data() -> void:
 	m_route_defs = StorylineCatalog.build_route_definitions()
 	m_event_defs = StorylineCatalog.build_event_definitions()
-
-	# Determine source type for each route.
-	m_route_source.clear()
 	m_route_resource_paths.clear()
-	m_route_gdscript_paths.clear()
-	var resource_route_ids: Dictionary = {}
-	for res: StorylineRouteResource in StorylineCatalog.load_route_resources():
-		resource_route_ids[res.id.strip_edges()] = true
-	for route_id: String in m_route_defs.keys():
-		if resource_route_ids.has(route_id):
-			m_route_source[route_id] = "resource"
-		else:
-			m_route_source[route_id] = "gdscript"
-
-	var route_source_paths := StorylineCatalog.build_route_source_paths()
-	for route_id_var in route_source_paths.keys():
+	var route_resource_paths := StorylineCatalog.build_route_resource_paths()
+	for route_id_var in route_resource_paths.keys():
 		var route_id := String(route_id_var)
-		var route_entry := route_source_paths.get(route_id, {}) as Dictionary
 		m_route_resource_paths[route_id] = PackedStringArray(
-			route_entry.get("resource_paths", PackedStringArray())
-		)
-		m_route_gdscript_paths[route_id] = PackedStringArray(
-			route_entry.get("gdscript_paths", PackedStringArray())
+			route_resource_paths.get(route_id, PackedStringArray())
 		)
 
 	# Run project-wide validation.
@@ -209,11 +187,10 @@ func _rebuild_story_tree() -> void:
 			_create_event_tree_item(route_item, event_def, all_event_ids)
 
 
-func _route_tooltip(rid: String, rdef: Dictionary, source: String) -> String:
+func _route_tooltip(rid: String, rdef: Dictionary) -> String:
 	var lines: PackedStringArray = PackedStringArray()
 	lines.append("id: %s" % rid)
 	lines.append("display_order: %s" % str(rdef.get("display_order", "?")))
-	lines.append("source: %s" % source)
 	var event_count := 0
 	for edef in m_event_defs.values():
 		if str((edef as Dictionary).get("route_id", "")) == rid:
@@ -234,11 +211,9 @@ func _create_route_tree_item(
 	parent: TreeItem, route_id: String, route_def: Dictionary
 ) -> TreeItem:
 	var display: String = str(route_def.get("display_name", route_id))
-	var source: String = str(m_route_source.get(route_id, ""))
-	var badge: String = _BADGE_RESOURCE if source == "resource" else _BADGE_GDSCRIPT
 	var route_item := m_event_tree.create_item(parent)
-	route_item.set_text(0, "%s %s" % [badge, display])
-	route_item.set_tooltip_text(0, _route_tooltip(route_id, route_def, source))
+	route_item.set_text(0, display)
+	route_item.set_tooltip_text(0, _route_tooltip(route_id, route_def))
 	route_item.set_custom_color(0, _ROUTE_COLORS.get(route_id, _DEFAULT_ROUTE_COLOR))
 	route_item.set_metadata(0, {
 		"kind": "route",
@@ -666,12 +641,6 @@ func _deletable_route_paths(route_id: String) -> PackedStringArray:
 	for resource_path: String in PackedStringArray(m_route_resource_paths.get(route_id, PackedStringArray())):
 		if not resource_path.is_empty() and not delete_paths.has(resource_path):
 			delete_paths.append(resource_path)
-	for script_path: String in PackedStringArray(m_route_gdscript_paths.get(route_id, PackedStringArray())):
-		if not script_path.is_empty() and not delete_paths.has(script_path):
-			delete_paths.append(script_path)
-		var uid_path := "%s.uid" % script_path
-		if FileAccess.file_exists(ProjectSettings.globalize_path(uid_path)) and not delete_paths.has(uid_path):
-			delete_paths.append(uid_path)
 	return delete_paths
 
 
