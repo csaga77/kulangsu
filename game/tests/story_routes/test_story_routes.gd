@@ -75,6 +75,7 @@ func _run() -> void:
 		[],
 		"Church memory no longer uses a loose any-of prerequisite"
 	)
+	_assert_route_score_min_uses_all_route_completion()
 	_assert_true(!_app_state().can_resolve_story_event("future_commitment_choice"), "Blocked story events now report unavailable through the shared route API")
 	var future_choice_blockers: Dictionary = _app_state().get_story_event_blockers("future_commitment_choice")
 	_assert_true(
@@ -115,6 +116,8 @@ func _run() -> void:
 	_assert_true(!pinned_lead_id.is_empty(), "Cycling story leads pins a manual lead selection")
 	_app_state().save_story_autosave()
 	_app_state().configure_free_walk()
+	_assert_true(_app_state().get_available_lead_ids().is_empty(), "Free Walk clears the story lead list")
+	_assert_true(_app_state().get_active_lead_id().is_empty(), "Free Walk clears the active story lead")
 	_assert_true(_app_state().configure_continue(), "Continue restores the story-routes autosave")
 	_assert_true(_app_state().get_active_lead_id() == pinned_lead_id, "Manual lead pinning survives autosave and continue")
 
@@ -238,6 +241,66 @@ func _assert_story_flag_all(event_id: String, expected: Array[String], label: St
 
 func _assert_story_flag_any(event_id: String, expected: Array[String], label: String) -> void:
 	_assert_true(_event_story_flags(event_id, "story_flags_any") == _sorted_strings(expected), label)
+
+
+func _assert_route_score_min_uses_all_route_completion() -> void:
+	var graph: StoryRouteGraph = _app_state().m_story_route_graph
+	var saved_route_definitions := graph.m_route_definitions.duplicate(true)
+	var saved_event_definitions := graph.m_event_definitions.duplicate(true)
+	var saved_route_display_order := graph.m_route_display_order.duplicate()
+
+	graph.m_route_definitions = {
+		"early_route": {
+			"id": "early_route",
+			"display_name": "Early Route",
+			"display_order": 1,
+			"pin_priority": 10,
+		},
+		"late_route": {
+			"id": "late_route",
+			"display_name": "Late Route",
+			"display_order": 2,
+			"pin_priority": 9,
+		},
+	}
+	graph.m_event_definitions = {
+		"early_score_gate": {
+			"id": "early_score_gate",
+			"route_id": "early_route",
+			"lead_text": "This beat depends on a later route score.",
+			"prerequisites": {
+				"route_score_min": {"late_route": 1},
+			},
+		},
+		"late_route_resolved": {
+			"id": "late_route_resolved",
+			"route_id": "late_route",
+			"lead_text": "This later route beat is already complete.",
+			"completion_score": 1,
+		},
+	}
+	graph.m_route_display_order = ["early_route", "late_route"]
+
+	var flags := graph.build_default_story_flags()
+	flags["late_route_resolved"] = true
+	var snapshot: Dictionary = graph._compute_route_snapshot(
+		flags,
+		"summer_1",
+		StoryRouteGraph.default_endgame_state(),
+		"",
+		true
+	)
+	var route_progress: Dictionary = snapshot.get("route_progress", {})
+	var early_route_progress: Dictionary = route_progress.get("early_route", {})
+	var early_available_ids := _normalize_string_array(early_route_progress.get("available_beat_ids", []))
+	_assert_true(
+		early_available_ids.has("early_score_gate"),
+		"Route score gates can see completed scores from later display-order routes"
+	)
+
+	graph.m_route_definitions = saved_route_definitions
+	graph.m_event_definitions = saved_event_definitions
+	graph.m_route_display_order = saved_route_display_order
 
 
 func _event_story_flags(event_id: String, key: String) -> Array[String]:

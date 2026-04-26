@@ -1032,6 +1032,11 @@ func _apply_story_route_state_bundle(state: Dictionary) -> void:
 	story_flags = m_story_route_graph.normalize_story_flags(state.get("story_flags", {}))
 	_manual_pinned_lead_id = String(state.get("manual_pinned_lead_id", ""))
 	endgame_state = m_story_route_graph.normalize_endgame_state(state.get("endgame_state", {}))
+	set_all_route_progress(state.get("route_progress", {}))
+	set_active_leads(
+		String(state.get("active_lead_id", "")),
+		state.get("available_lead_ids", PackedStringArray())
+	)
 	endgame_state_changed.emit(endgame_state.duplicate(true))
 	set_season_phase(String(state.get("season_phase", STORY_SEASON_PHASES_SCRIPT.DEFAULT_PHASE)))
 

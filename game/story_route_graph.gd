@@ -70,11 +70,13 @@ func build_story_state(state_id: String) -> Dictionary:
 	var flags := build_default_story_flags()
 	var phase := STORY_SEASON_PHASES_SCRIPT.DEFAULT_PHASE
 	var endgame := default_endgame_state()
+	var include_story_leads := true
 	match state_id:
 		"free_walk":
 			phase = STORY_SEASON_PHASES_SCRIPT.DEFAULT_PHASE
+			include_story_leads = false
 
-	var route_state := _compute_route_snapshot(flags, phase, endgame, "")
+	var route_state := _compute_route_snapshot(flags, phase, endgame, "", include_story_leads)
 	return {
 		"season_phase": phase,
 		"story_flags": flags,
@@ -194,7 +196,8 @@ func refresh_story_state() -> void:
 		normalize_story_flags(m_owner.story_flags),
 		String(m_owner.season_phase),
 		normalize_endgame_state(m_owner.endgame_state),
-		String(m_owner._manual_pinned_lead_id)
+		String(m_owner._manual_pinned_lead_id),
+		m_owner.mode == "Story"
 	)
 	m_owner.set_all_route_progress(snapshot.get("route_progress", {}))
 	m_owner.set_active_leads(
@@ -316,10 +319,12 @@ func _compute_route_snapshot(
 	flags: Dictionary,
 	phase_id: String,
 	endgame: Dictionary,
-	manual_pinned_lead_id: String
+	manual_pinned_lead_id: String,
+	include_story_leads: bool
 ) -> Dictionary:
 	_ensure_storyline_definitions()
 	var route_progress: Dictionary = {}
+	var completion_snapshot := _build_route_completion_snapshot(flags)
 	var global_candidates: Array[Dictionary] = []
 
 	for route_id in m_route_display_order:
@@ -342,7 +347,7 @@ func _compute_route_snapshot(
 				completion_score += int(event_definition.get("completion_score", 1))
 				continue
 
-			if !_event_is_available(event_definition, flags, phase_id, route_progress):
+			if !_event_is_available(event_definition, flags, phase_id, completion_snapshot):
 				blocked_ids.append(event_id)
 				continue
 
@@ -367,7 +372,7 @@ func _compute_route_snapshot(
 		}
 
 	var available_lead_ids := PackedStringArray()
-	if m_owner.mode != "Story":
+	if !include_story_leads:
 		return {
 			"route_progress": route_progress,
 			"available_lead_ids": available_lead_ids,
@@ -416,13 +421,35 @@ func _build_story_event_availability_inputs() -> Dictionary:
 		flags,
 		phase_id,
 		endgame,
-		String(m_owner._manual_pinned_lead_id)
+		String(m_owner._manual_pinned_lead_id),
+		false
 	)
 	return {
 		"flags": flags,
 		"phase_id": phase_id,
 		"route_progress": snapshot.get("route_progress", {}),
 	}
+
+
+func _build_route_completion_snapshot(flags: Dictionary) -> Dictionary:
+	var route_progress: Dictionary = {}
+	for route_id in m_route_display_order:
+		route_progress[route_id] = {"completion_score": 0}
+
+	for event_id in m_event_definitions.keys():
+		if !bool(flags.get(event_id, false)):
+			continue
+		var event_definition: Dictionary = m_event_definitions[event_id]
+		var route_id := String(event_definition.get("route_id", ""))
+		if route_id.is_empty():
+			continue
+		var progress: Dictionary = route_progress.get(route_id, {"completion_score": 0})
+		progress["completion_score"] = int(progress.get("completion_score", 0)) + int(
+			event_definition.get("completion_score", 1)
+		)
+		route_progress[route_id] = progress
+
+	return route_progress
 
 
 func _maybe_start_endgame(preferred_event_id: String) -> void:
