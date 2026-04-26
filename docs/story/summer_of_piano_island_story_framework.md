@@ -27,11 +27,11 @@ The current playable canon is a seasonal multi-route coming-of-age story.
 
 ## Core Premise
 
-A Year 12 boy returns to Kulangsu during the year that stretches from one summer into the next.
+A Year 12 boy begins a decisive year on Kulangsu, stretching from one summer into the next.
 
-He has grown up on the island, but he no longer hears it cleanly. Grief after his grandmother's death, distance from his parents, exam pressure, uncertainty about the future, and a half-avoided relationship to the island's older buildings have all made home feel familiar and estranged at the same time.
+He has lived on the island since returning with his family in Year 5, and from then on he lived with his grandmother. But after her death at the end of Year 11, the home and island he thought he knew feel changed. Grief, distance from his parents, exam pressure, uncertainty about the future, and a half-avoided relationship to the island's older buildings have all made home feel familiar and estranged at the same time.
 
-When he returns by ferry, the island sounds incomplete.
+Summer 1 is therefore not his first arrival on Kulangsu. It is an emotional re-entry into an island he already lives on: the moment when he begins to hear that familiar places now sound incomplete. The ferry remains important as the island's central image of arrival and departure, reflecting his parents' repeated comings and goings, visitors passing through, and the final question of whether he will leave or stay.
 
 Over the course of the game, the player does not solve one problem. He lives inside several overlapping ones:
 
@@ -111,6 +111,8 @@ After the grandmother passed away peacefully at the end of Year 11, A Po remaine
 - keeps care tangible even when love is difficult to name
 
 ## Seasonal Frame
+
+The current story frame begins with the first summer after Grandma's death. This is not a physical return from years away, but an emotional return to hearing and understanding the island after loss.
 
 The current story frame is:
 
@@ -287,13 +289,13 @@ In current route grouping terms, this landmark line is the `melody_landmarks` fa
 
 The current playable game uses these anchors to move the year:
 
-- `summer_return_complete`
+- `summer_reentry_complete`
 - `autumn_pressure_named`
 - `winter_memory_reveal`
 - `spring_festival_resolved`
 - `summer_exam_complete`
 
-These anchors should always feel like emotional turns in the year, not checklist checkpoints.
+These anchors should always feel like emotional turns in the year, not checklist checkpoints. The summer anchor should be understood as emotional re-entry into the island, not a physical return from elsewhere.
 
 ## Cross-Route Relationship Rules
 
@@ -315,7 +317,7 @@ This section keeps the canon aligned with the game's current playable slice.
 
 The intended story is broader than the currently authored resident and route content. For now, the game expresses each route at different levels of depth:
 
-- `family_memory` currently lands the harbor return, church-linked memory, winter reveal, A Po and parent-care reflection, Spring Festival preparation, and a quieter aftermath beat
+- `family_memory` currently lands the summer emotional re-entry, church-linked memory, winter reveal, A Po and parent-care reflection, Spring Festival preparation, and a quieter aftermath beat
 - `study_future` currently lands the naming of autumn pressure, a shared-pressure social echo, the honest-future turn, harbor witnessing, and the release of second summer
 - `preservation_inheritance` currently lands a harbor recognition beat, the Bagua tower perspective, and follow-through reactions that treat maps and postcards as stewardship rather than scenery
 - `melody_landmarks` currently remains the most embodied route in terms of landmark spaces, musical restoration, public payoff, and soft post-festival resonance
@@ -354,7 +356,7 @@ Ending tone should be shaped by:
 
 ## Story Constraints
 
-- Do not treat the protagonist as a total outsider; he is returning, not arriving for the first time.
+- Do not treat the protagonist as a total outsider or as someone newly arriving after years away; he has lived on Kulangsu since Year 5, and Summer 1 is an emotional re-entry after Grandma's death.
 - Do not flatten the game into only exam drama or only melody restoration.
 - Do not make the island's old buildings decorative background; they matter thematically.
 - Do not force the melody route to become the only valid path to an ending.
