@@ -1,0 +1,66 @@
+[gd_resource type="Resource" load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://game/resident_system/resident_definition.gd" id="1_definition"]
+[ext_resource type="Script" path="res://game/resident_system/resident_appearance_definition.gd" id="2_appearance"]
+[ext_resource type="Script" path="res://game/resident_system/resident_dialogue_definition.gd" id="3_dialogue"]
+[ext_resource type="Script" path="res://game/resident_system/resident_conditional_beat_definition.gd" id="4_conditional"]
+[ext_resource type="Script" path="res://game/resident_system/resident_beat_conditions_definition.gd" id="5_conditions"]
+[ext_resource type="Script" path="res://game/resident_system/resident_routine_definition.gd" id="6_routine"]
+[ext_resource type="Script" path="res://game/resident_system/resident_spawn_definition.gd" id="7_spawn"]
+
+[sub_resource type="Resource" id="ResidentAppearanceDefinition_ferry_porter_jun"]
+script = ExtResource("2_appearance")
+body_type = "male"
+skin = "brown"
+head_path = "head/heads/human/heads_human_male_plump"
+hair_path = "hair/short/hair_parted"
+hair_color = "dark brown"
+shirt_path = "torso/shirts/longsleeve/torso_clothes_longsleeve2_polo"
+shirt_color = "walnut"
+pants_path = "legs/pants/legs_pants2"
+pants_color = "charcoal"
+shoes_path = "feet/shoes/feet_shoes_basic"
+shoes_color = "brown"
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_ferry_porter_jun_cond_a"]
+script = ExtResource("5_conditions")
+extra_conditions = {"story_flag_all": ["summer_exam_complete"]}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_ferry_porter_jun_cond_a"]
+script = ExtResource("4_conditional")
+line = "Second summer changes the cargo lane too. Everyone lifts the same trunks, but nobody is pretending the year still has one answer packed inside it anymore."
+journal_step = "Jun heard second summer arrive as a quieter harbor rhythm instead of one more deadline."
+conditions = SubResource("ResidentBeatConditionsDefinition_ferry_porter_jun_cond_a")
+priority = 20
+once = true
+
+[sub_resource type="Resource" id="ResidentSpawnDefinition_ferry_porter_jun"]
+script = ExtResource("7_spawn")
+anchor_id = "Piano Ferry"
+offset = Vector2(-120, 240)
+direction = -95.0
+mood = 1
+interaction_radius = 72.0
+
+[sub_resource type="Resource" id="ResidentRoutineDefinition_ferry_porter_jun"]
+script = ExtResource("6_routine")
+spawn = SubResource("ResidentSpawnDefinition_ferry_porter_jun")
+
+[sub_resource type="Resource" id="ResidentDialogueDefinition_ferry_porter_jun"]
+script = ExtResource("3_dialogue")
+ambient_lines = PackedStringArray("The carts feel lighter when the harbor has a tune to work with.", "If the ferry ropes start creaking in time again, we will all hear it.")
+dialogue_beats = []
+conditional_beats = [SubResource("ResidentConditionalBeatDefinition_ferry_porter_jun_cond_a")]
+
+[resource]
+script = ExtResource("1_definition")
+id = "ferry_porter_jun"
+include_in_catalog = true
+display_name = "Ferry Porter Jun"
+landmark = "Piano Ferry"
+role = "Stacks trunks by hand and listens for returning ferries by hull rhythm."
+routine_note = "Usually near the cargo lane by the ferry awning."
+melody_hint = "He swears the harbor rhythm is missing one dependable downbeat."
+appearance = SubResource("ResidentAppearanceDefinition_ferry_porter_jun")
+dialogue = SubResource("ResidentDialogueDefinition_ferry_porter_jun")
+routine = SubResource("ResidentRoutineDefinition_ferry_porter_jun")

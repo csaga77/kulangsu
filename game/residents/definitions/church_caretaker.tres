@@ -1,0 +1,140 @@
+[gd_resource type="Resource" load_steps=23 format=3]
+
+[ext_resource type="Script" path="res://game/resident_system/resident_definition.gd" id="1_definition"]
+[ext_resource type="Script" path="res://game/resident_system/resident_appearance_definition.gd" id="2_appearance"]
+[ext_resource type="Script" path="res://game/resident_system/resident_dialogue_definition.gd" id="3_dialogue"]
+[ext_resource type="Script" path="res://game/resident_system/resident_dialogue_beat_definition.gd" id="4_beat"]
+[ext_resource type="Script" path="res://game/resident_system/resident_conditional_beat_definition.gd" id="5_conditional"]
+[ext_resource type="Script" path="res://game/resident_system/resident_beat_conditions_definition.gd" id="6_conditions"]
+[ext_resource type="Script" path="res://game/resident_system/resident_routine_definition.gd" id="7_routine"]
+[ext_resource type="Script" path="res://game/resident_system/resident_spawn_definition.gd" id="8_spawn"]
+
+[sub_resource type="Resource" id="ResidentAppearanceDefinition_church_caretaker"]
+script = ExtResource("2_appearance")
+body_type = "female"
+skin = "olive"
+head_path = "head/heads/human/heads_human_female"
+hair_path = "hair/long/hair_wavy"
+hair_color = "dark brown"
+shirt_path = "torso/shirts/longsleeve/torso_clothes_longsleeve2_cardigan"
+shirt_color = "maroon"
+pants_path = "legs/pants/legs_formal"
+pants_color = "charcoal"
+shoes_path = "feet/shoes/feet_shoes_revised"
+shoes_color = "black"
+
+[sub_resource type="Resource" id="ResidentDialogueBeatDefinition_church_caretaker_a"]
+script = ExtResource("4_beat")
+line = "Three choir cues vanished between rehearsal and dusk. If you can find where the grounds still echo them, we can rebuild the opening phrase together."
+objective = "Find the missing choir cues around Trinity Church."
+journal_step = "Asked for three choir cues hidden in the church grounds."
+hint = "R Talk   J Journal   Esc Pause"
+chapter = "Open Exploration"
+quest_state = "introduced"
+trust_delta = 1
+save_status = "Resident note added: Choir Caretaker Mei"
+gate_fallback = "The church still feels like the next phrase, not the opening one. Let the harbor welcome you home first, then we can listen for the missing choir cues together."
+extra_fields = {"story_event": "trinity_memory_awakened"}
+
+[sub_resource type="Resource" id="ResidentDialogueBeatDefinition_church_caretaker_b"]
+script = ExtResource("4_beat")
+line = "The first cue lingers near the front steps, the second near the side garden, and the last one only returns when the yard goes quiet."
+objective = "Recover the choir cues in order."
+journal_step = "Mapped the likely cue locations to the steps, side garden, and quiet yard."
+quest_state = "in_progress"
+trust_delta = 1
+save_status = "Choir Caretaker Mei clarified the cue order"
+
+[sub_resource type="Resource" id="ResidentDialogueBeatDefinition_church_caretaker_c"]
+script = ExtResource("4_beat")
+line = "Once the choir phrase settles, the tunnels will sound different. Follow whichever echo feels calmer, not louder."
+objective = "Carry the church phrase toward the tunnels."
+journal_step = "Believes the restored church phrase will make the tunnels easier to read."
+quest_state = "resolved"
+trust_delta = 1
+save_status = "Choir Caretaker Mei tied the church clue to the tunnels"
+landmark_reward = "trinity_church"
+gate = "trinity_church_chime"
+gate_fallback = "The choir cues are gathered, but the church phrase still needs to settle at the choir chime near the steps."
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_church_caretaker_cond_a"]
+script = ExtResource("6_conditions")
+required_landmark_states = {"bi_shan_tunnel": "reward_collected"}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_church_caretaker_cond_a"]
+script = ExtResource("5_conditional")
+line = "The tunnel echo came back softer than I expected. When music returns through stone, it always sounds gentler."
+journal_step = "Mei heard the tunnel echo resolve and feels the church phrase sits more naturally now."
+conditions = SubResource("ResidentBeatConditionsDefinition_church_caretaker_cond_a")
+priority = 10
+once = true
+trust_delta = 1
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_church_caretaker_cond_b"]
+script = ExtResource("6_conditions")
+fragments_found_min = 3
+required_known_resident_ids = PackedStringArray("tower_keeper")
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_church_caretaker_cond_b"]
+script = ExtResource("5_conditional")
+line = "Suyin at the tower knows how to read distance. If anyone can line up three separate phrases, it is someone who sees the whole island at once."
+journal_step = "Mei endorsed Tower Keeper Suyin as the person who can synthesize the recovered fragments."
+conditions = SubResource("ResidentBeatConditionsDefinition_church_caretaker_cond_b")
+priority = 20
+once = true
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_church_caretaker_cond_c"]
+script = ExtResource("6_conditions")
+extra_conditions = {"story_flag_all": ["trinity_memory_awakened", "autumn_pressure_named"]}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_church_caretaker_cond_c"]
+script = ExtResource("5_conditional")
+line = "Once the school year tightens, the church does not make the memory kinder. It only makes it impossible to avoid. Some grief waits until winter to speak clearly."
+journal_step = "Mei named the colder turn of the year as the moment memory stops staying gentle and starts speaking plainly."
+extra_fields = {"story_event": "winter_memory_reveal"}
+conditions = SubResource("ResidentBeatConditionsDefinition_church_caretaker_cond_c")
+priority = 25
+once = true
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_church_caretaker_cond_d"]
+script = ExtResource("6_conditions")
+required_melody_states = {"festival_melody": "resonant"}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_church_caretaker_cond_d"]
+script = ExtResource("5_conditional")
+line = "The bells do not need help to settle tonight. Even the empty loft keeps answering the harbor in a softer voice."
+journal_step = "Mei heard the church hold onto the festival melody after the performance ended."
+conditions = SubResource("ResidentBeatConditionsDefinition_church_caretaker_cond_d")
+priority = 30
+once = true
+
+[sub_resource type="Resource" id="ResidentSpawnDefinition_church_caretaker"]
+script = ExtResource("8_spawn")
+anchor_id = "Trinity Church"
+offset = Vector2(-300, 210)
+direction = -130.0
+mood = 2
+interaction_radius = 88.0
+
+[sub_resource type="Resource" id="ResidentRoutineDefinition_church_caretaker"]
+script = ExtResource("7_routine")
+spawn = SubResource("ResidentSpawnDefinition_church_caretaker")
+
+[sub_resource type="Resource" id="ResidentDialogueDefinition_church_caretaker"]
+script = ExtResource("3_dialogue")
+ambient_lines = PackedStringArray("The choir loft sounds empty, but the bells still argue with each other.", "The missing cues were never stolen, only scattered where people stopped listening.", "The church can sing again once the cues return in the right order.")
+dialogue_beats = [SubResource("ResidentDialogueBeatDefinition_church_caretaker_a"), SubResource("ResidentDialogueBeatDefinition_church_caretaker_b"), SubResource("ResidentDialogueBeatDefinition_church_caretaker_c")]
+conditional_beats = [SubResource("ResidentConditionalBeatDefinition_church_caretaker_cond_a"), SubResource("ResidentConditionalBeatDefinition_church_caretaker_cond_b"), SubResource("ResidentConditionalBeatDefinition_church_caretaker_cond_c"), SubResource("ResidentConditionalBeatDefinition_church_caretaker_cond_d")]
+
+[resource]
+script = ExtResource("1_definition")
+id = "church_caretaker"
+include_in_catalog = true
+display_name = "Choir Caretaker Mei"
+landmark = "Trinity Church"
+role = "Maintains the choir loft and keeps track of misplaced hymn fragments."
+routine_note = "Usually on the church steps or inside the front hall."
+melody_hint = "She recognizes broken melody lines by which note the bells refuse to resolve."
+appearance = SubResource("ResidentAppearanceDefinition_church_caretaker")
+dialogue = SubResource("ResidentDialogueDefinition_church_caretaker")
+routine = SubResource("ResidentRoutineDefinition_church_caretaker")

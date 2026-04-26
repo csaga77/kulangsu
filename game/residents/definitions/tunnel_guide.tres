@@ -1,0 +1,173 @@
+[gd_resource type="Resource" load_steps=29 format=3]
+
+[ext_resource type="Script" path="res://game/resident_system/resident_definition.gd" id="1_definition"]
+[ext_resource type="Script" path="res://game/resident_system/resident_appearance_definition.gd" id="2_appearance"]
+[ext_resource type="Script" path="res://game/resident_system/resident_dialogue_definition.gd" id="3_dialogue"]
+[ext_resource type="Script" path="res://game/resident_system/resident_dialogue_beat_definition.gd" id="4_beat"]
+[ext_resource type="Script" path="res://game/resident_system/resident_conditional_beat_definition.gd" id="5_conditional"]
+[ext_resource type="Script" path="res://game/resident_system/resident_beat_conditions_definition.gd" id="6_conditions"]
+[ext_resource type="Script" path="res://game/resident_system/resident_routine_definition.gd" id="7_routine"]
+[ext_resource type="Script" path="res://game/resident_system/resident_spawn_definition.gd" id="8_spawn"]
+[ext_resource type="Script" path="res://game/resident_system/resident_movement_definition.gd" id="9_movement"]
+[ext_resource type="Script" path="res://game/resident_system/resident_route_point_definition.gd" id="10_route_point"]
+
+[sub_resource type="Resource" id="ResidentAppearanceDefinition_tunnel_guide"]
+script = ExtResource("2_appearance")
+body_type = "male"
+skin = "bronze"
+head_path = "head/heads/human/heads_human_male"
+hair_path = "hair/short/hair_bedhead"
+hair_color = "black"
+shirt_path = "torso/shirts/shortsleeve/torso_clothes_tshirt"
+shirt_color = "forest"
+pants_path = "legs/pants/legs_pants"
+pants_color = "walnut"
+shoes_path = "feet/shoes/feet_shoes_revised"
+shoes_color = "leather"
+extra_selections = {"hair/beards/beards_trimmed": "dark brown"}
+
+[sub_resource type="Resource" id="ResidentDialogueBeatDefinition_tunnel_guide_a"]
+script = ExtResource("4_beat")
+line = "I know the way through Long Shan, but not alone. Walk a calm route and stop whenever the light thins too much."
+objective = "Start a calm crossing through Long Shan Tunnel with Ren."
+journal_step = "Needs a calm crossing through Long Shan Tunnel, paced by the lit route."
+hint = "R Talk   J Journal   Esc Pause"
+chapter = "Open Exploration"
+quest_state = "introduced"
+trust_delta = 1
+save_status = "Resident note added: Tunnel Guide Ren"
+landmark_states = {"long_shan_tunnel": "introduced"}
+
+[sub_resource type="Resource" id="ResidentDialogueBeatDefinition_tunnel_guide_b"]
+script = ExtResource("4_beat")
+line = "If I call out, come back to the last lit pocket instead of pushing ahead. The route only works if we can both still hear each other."
+objective = "Move with Ren between the lit pockets through Long Shan Tunnel."
+journal_step = "Explained that the lit pockets, not speed, are what keep the route steady."
+quest_state = "in_progress"
+trust_delta = 1
+save_status = "Tunnel Guide Ren explained the escort rhythm"
+landmark_states = {"long_shan_tunnel": "in_progress"}
+
+[sub_resource type="Resource" id="ResidentDialogueBeatDefinition_tunnel_guide_c"]
+script = ExtResource("4_beat")
+line = "Once we are through, I can finally tell whether the other tunnel still disagrees with this one. If it does, settle Bi Shan first and then come back."
+objective = "Settle Bi Shan Tunnel if its route still feels uncertain, then check back with Ren."
+journal_step = "Waiting to compare Long Shan against Bi Shan before pointing you toward the tower."
+quest_state = "resolved"
+trust_delta = 1
+save_status = "Tunnel Guide Ren wants to compare the two tunnel routes before sending you to the tower"
+gate = "long_shan_exit_reached"
+gate_fallback = "The passage is not done yet. Stay close and keep moving toward the exit."
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_tunnel_guide_cond_a"]
+script = ExtResource("6_conditions")
+required_landmark_states = {"long_shan_tunnel": "reward_collected", "bagua_tower": "locked"}
+fragments_found_min = 3
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_tunnel_guide_cond_a"]
+script = ExtResource("5_conditional")
+line = "Good. Now the tunnels agree instead of arguing. Take that steadier route up to Bagua Tower, and the high rooms should finally make sense of it."
+objective = "Reach Bagua Tower now that both tunnel routes are steady."
+journal_step = "Ren judged the two tunnel routes steady enough to carry up to Bagua Tower."
+save_status = "Tunnel Guide Ren opened the route toward Bagua Tower"
+unlock_landmark = "bagua_tower"
+conditions = SubResource("ResidentBeatConditionsDefinition_tunnel_guide_cond_a")
+priority = 5
+once = true
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_tunnel_guide_cond_b"]
+script = ExtResource("6_conditions")
+required_landmark_states = {"bagua_tower": "reward_collected"}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_tunnel_guide_cond_b"]
+script = ExtResource("5_conditional")
+line = "From the tower, the route sounds patient instead of anxious. I think that is how we knew it was the right crossing."
+journal_step = "Ren felt the tower confirmed the calm route through Long Shan Tunnel."
+conditions = SubResource("ResidentBeatConditionsDefinition_tunnel_guide_cond_b")
+priority = 10
+once = true
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_tunnel_guide_cond_c"]
+script = ExtResource("6_conditions")
+required_melody_states = {"festival_melody": "performed"}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_tunnel_guide_cond_c"]
+script = ExtResource("5_conditional")
+line = "You carried the route all the way back to the harbor. Even the tunnel walls would have listened for that."
+journal_step = "Ren heard that the harbor finally carried the tunnel route out into the open."
+conditions = SubResource("ResidentBeatConditionsDefinition_tunnel_guide_cond_c")
+priority = 20
+once = true
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_tunnel_guide_cond_d"]
+script = ExtResource("6_conditions")
+required_melody_states = {"festival_melody": "resonant"}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_tunnel_guide_cond_d"]
+script = ExtResource("5_conditional")
+line = "Long Shan sounds warmer now. The dark is still the dark, but the route keeps its calm even when no one is proving it anymore."
+journal_step = "Ren felt the tunnel keep its steadier cadence after the festival night quieted down."
+conditions = SubResource("ResidentBeatConditionsDefinition_tunnel_guide_cond_d")
+priority = 30
+once = true
+
+[sub_resource type="Resource" id="ResidentRoutePointDefinition_tunnel_guide_1"]
+script = ExtResource("10_route_point")
+anchor_id = "Long Shan Tunnel South Portal"
+offset = Vector2(-32, 0)
+wait_min_sec = 0.0
+wait_max_sec = 0.0
+
+[sub_resource type="Resource" id="ResidentRoutePointDefinition_tunnel_guide_2"]
+script = ExtResource("10_route_point")
+anchor_id = "Long Shan Tunnel"
+offset = Vector2(-1536, -1072)
+wait_min_sec = 0.0
+wait_max_sec = 0.0
+
+[sub_resource type="Resource" id="ResidentRoutePointDefinition_tunnel_guide_3"]
+script = ExtResource("10_route_point")
+anchor_id = "Long Shan Tunnel North Portal"
+offset = Vector2(-32, 0)
+wait_min_sec = 2.0
+wait_max_sec = 2.0
+
+[sub_resource type="Resource" id="ResidentMovementDefinition_tunnel_guide"]
+script = ExtResource("9_movement")
+route_points = [SubResource("ResidentRoutePointDefinition_tunnel_guide_1"), SubResource("ResidentRoutePointDefinition_tunnel_guide_2"), SubResource("ResidentRoutePointDefinition_tunnel_guide_3")]
+arrival_radius = 24.0
+wait_min_sec = 0.4
+wait_max_sec = 1.0
+ping_pong = true
+
+[sub_resource type="Resource" id="ResidentSpawnDefinition_tunnel_guide"]
+script = ExtResource("8_spawn")
+anchor_id = "Long Shan Tunnel"
+offset = Vector2(-160, 48)
+direction = -110.0
+mood = 5
+interaction_radius = 88.0
+
+[sub_resource type="Resource" id="ResidentRoutineDefinition_tunnel_guide"]
+script = ExtResource("7_routine")
+spawn = SubResource("ResidentSpawnDefinition_tunnel_guide")
+movement = SubResource("ResidentMovementDefinition_tunnel_guide")
+
+[sub_resource type="Resource" id="ResidentDialogueDefinition_tunnel_guide"]
+script = ExtResource("3_dialogue")
+ambient_lines = PackedStringArray("A loud echo is not always the right one. The good routes sound patient.", "If I stop, it means the light ahead no longer feels safe.", "The melody through these tunnels only survives when someone keeps a steady pace.")
+dialogue_beats = [SubResource("ResidentDialogueBeatDefinition_tunnel_guide_a"), SubResource("ResidentDialogueBeatDefinition_tunnel_guide_b"), SubResource("ResidentDialogueBeatDefinition_tunnel_guide_c")]
+conditional_beats = [SubResource("ResidentConditionalBeatDefinition_tunnel_guide_cond_a"), SubResource("ResidentConditionalBeatDefinition_tunnel_guide_cond_b"), SubResource("ResidentConditionalBeatDefinition_tunnel_guide_cond_c"), SubResource("ResidentConditionalBeatDefinition_tunnel_guide_cond_d")]
+
+[resource]
+script = ExtResource("1_definition")
+id = "tunnel_guide"
+include_in_catalog = true
+display_name = "Tunnel Guide Ren"
+landmark = "Long Shan Tunnel"
+role = "Keeps a calm pace from the southern entrance through to the northern mouth, judging routes by how steady they feel."
+routine_note = "Usually moving from the southern entrance through the tunnel to the northern mouth."
+melody_hint = "Ren listens for echoes that stay warm instead of the ones that bounce the farthest."
+appearance = SubResource("ResidentAppearanceDefinition_tunnel_guide")
+dialogue = SubResource("ResidentDialogueDefinition_tunnel_guide")
+routine = SubResource("ResidentRoutineDefinition_tunnel_guide")

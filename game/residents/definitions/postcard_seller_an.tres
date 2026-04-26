@@ -1,0 +1,81 @@
+[gd_resource type="Resource" load_steps=15 format=3]
+
+[ext_resource type="Script" path="res://game/resident_system/resident_definition.gd" id="1_definition"]
+[ext_resource type="Script" path="res://game/resident_system/resident_appearance_definition.gd" id="2_appearance"]
+[ext_resource type="Script" path="res://game/resident_system/resident_dialogue_definition.gd" id="3_dialogue"]
+[ext_resource type="Script" path="res://game/resident_system/resident_conditional_beat_definition.gd" id="4_conditional"]
+[ext_resource type="Script" path="res://game/resident_system/resident_beat_conditions_definition.gd" id="5_conditions"]
+[ext_resource type="Script" path="res://game/resident_system/resident_routine_definition.gd" id="6_routine"]
+[ext_resource type="Script" path="res://game/resident_system/resident_spawn_definition.gd" id="7_spawn"]
+
+[sub_resource type="Resource" id="ResidentAppearanceDefinition_postcard_seller_an"]
+script = ExtResource("2_appearance")
+body_type = "female"
+skin = "amber"
+head_path = "head/heads/human/heads_human_female"
+hair_path = "hair/braids/hair_ponytail"
+hair_color = "strawberry"
+shirt_path = "torso/shirts/shortsleeve/torso_clothes_shortsleeve_polo"
+shirt_color = "rose"
+pants_path = "legs/pants/legs_pants2"
+pants_color = "bluegray"
+shoes_path = "feet/shoes/feet_shoes_basic"
+shoes_color = "tan"
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_postcard_seller_an_cond_a"]
+script = ExtResource("5_conditions")
+extra_conditions = {"story_flag_all": ["autumn_pressure_named"]}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_postcard_seller_an_cond_a"]
+script = ExtResource("4_conditional")
+line = "People buy the old verandas and tower railings more than the beach cards now. I think they are trying to carry home proof that this island still remembers itself. That is how inheritance starts feeling urgent instead of quaint."
+objective = "Climb to Bagua Tower once you can and see how that inheritance changes shape from above."
+journal_step = "An made the island's older buildings feel like the part people are quietly afraid to lose."
+save_status = "Postcard Seller An reframed preservation as something visitors and locals are already trying to hold onto."
+extra_fields = {"story_event": "preservation_inheritance_seen"}
+conditions = SubResource("ResidentBeatConditionsDefinition_postcard_seller_an_cond_a")
+priority = 20
+once = true
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_postcard_seller_an_cond_b"]
+script = ExtResource("5_conditions")
+extra_conditions = {"story_flag_all": ["preservation_tower_perspective"]}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_postcard_seller_an_cond_b"]
+script = ExtResource("4_conditional")
+line = "Once you have seen the island from Bagua, the postcard rack feels almost embarrassed. Little rectangles trying to carry whole verandas, stair rails, and rooflines home. Still, people keep buying them because they know those details matter."
+journal_step = "An treated the postcard rack like proof that people can recognize an inheritance even when they only carry part of it away."
+conditions = SubResource("ResidentBeatConditionsDefinition_postcard_seller_an_cond_b")
+priority = 30
+once = true
+
+[sub_resource type="Resource" id="ResidentSpawnDefinition_postcard_seller_an"]
+script = ExtResource("7_spawn")
+anchor_id = "Piano Ferry"
+offset = Vector2(40, 280)
+direction = -40.0
+mood = 2
+interaction_radius = 72.0
+
+[sub_resource type="Resource" id="ResidentRoutineDefinition_postcard_seller_an"]
+script = ExtResource("6_routine")
+spawn = SubResource("ResidentSpawnDefinition_postcard_seller_an")
+
+[sub_resource type="Resource" id="ResidentDialogueDefinition_postcard_seller_an"]
+script = ExtResource("3_dialogue")
+ambient_lines = PackedStringArray("Tourists always pause longer at the cards that look musical.", "I think people remember this island with their ears first and their eyes second.")
+dialogue_beats = []
+conditional_beats = [SubResource("ResidentConditionalBeatDefinition_postcard_seller_an_cond_a"), SubResource("ResidentConditionalBeatDefinition_postcard_seller_an_cond_b")]
+
+[resource]
+script = ExtResource("1_definition")
+id = "postcard_seller_an"
+include_in_catalog = true
+display_name = "Postcard Seller An"
+landmark = "Piano Ferry"
+role = "Keeps a rotating rack of island postcards and local paper charms."
+routine_note = "Usually beneath a shade umbrella near the notice board."
+melody_hint = "She remembers the island by which postcard customers hum over."
+appearance = SubResource("ResidentAppearanceDefinition_postcard_seller_an")
+dialogue = SubResource("ResidentDialogueDefinition_postcard_seller_an")
+routine = SubResource("ResidentRoutineDefinition_postcard_seller_an")

@@ -1,0 +1,186 @@
+[gd_resource type="Resource" load_steps=29 format=3]
+
+[ext_resource type="Script" path="res://game/resident_system/resident_definition.gd" id="1_definition"]
+[ext_resource type="Script" path="res://game/resident_system/resident_appearance_definition.gd" id="2_appearance"]
+[ext_resource type="Script" path="res://game/resident_system/resident_dialogue_definition.gd" id="3_dialogue"]
+[ext_resource type="Script" path="res://game/resident_system/resident_dialogue_beat_definition.gd" id="4_beat"]
+[ext_resource type="Script" path="res://game/resident_system/resident_conditional_beat_definition.gd" id="5_conditional"]
+[ext_resource type="Script" path="res://game/resident_system/resident_beat_conditions_definition.gd" id="6_conditions"]
+[ext_resource type="Script" path="res://game/resident_system/resident_routine_definition.gd" id="7_routine"]
+[ext_resource type="Script" path="res://game/resident_system/resident_spawn_definition.gd" id="8_spawn"]
+
+[sub_resource type="Resource" id="ResidentAppearanceDefinition_ferry_caretaker"]
+script = ExtResource("2_appearance")
+body_type = "female"
+skin = "light"
+head_path = "head/heads/human/heads_human_female_elderly"
+hair_path = "hair/bob/hair_bob_side_part"
+hair_color = "gray"
+shirt_path = "torso/shirts/longsleeve/torso_clothes_longsleeve2_cardigan"
+shirt_color = "sky"
+pants_path = "legs/pants/legs_formal"
+pants_color = "navy"
+shoes_path = "feet/shoes/feet_shoes_revised"
+shoes_color = "brown"
+
+[sub_resource type="Resource" id="ResidentDialogueBeatDefinition_ferry_caretaker_a"]
+script = ExtResource("4_beat")
+line = "You hear it too, don't you? The island is holding its breath. Listen first to the old piano crate by the notice board. The harbor is keeping the opening pulse there."
+objective = "Inspect the old piano crate near the ferry notice board."
+journal_step = "Asked you to listen to the ferry plaza before chasing the island's larger melody."
+hint = "R Inspect   Esc Pause"
+chapter = "Arrival"
+quest_state = "introduced"
+trust_delta = 1
+save_status = "Caretaker Lian pointed out a harbor clue."
+landmark_states = {"piano_ferry": "introduced"}
+
+[sub_resource type="Resource" id="ResidentDialogueBeatDefinition_ferry_caretaker_b"]
+script = ExtResource("4_beat")
+line = "Good. The harbor kept its part of the melody after all. Take that pulse uphill to Trinity Church; its bells still remember the next phrase, and the journal can hold the route for you now."
+objective = "Speak with the church caretaker."
+journal_step = "Pointed you toward Trinity Church once the harbor refrain settled into a clear lead."
+hint = "R Talk   J Journal   Esc Pause"
+chapter = "First Lead"
+quest_state = "resolved"
+trust_delta = 1
+save_status = "Caretaker Lian marked your first uphill lead."
+unlock_landmark = "trinity_church"
+landmark_reward = "piano_ferry"
+gate = "piano_ferry_harbor_clue"
+gate_fallback = "Before you chase the bells, listen to the old piano crate by the notice board. The harbor is holding the opening pulse there."
+extra_fields = {"story_event": "summer_return_complete"}
+
+[sub_resource type="Resource" id="ResidentDialogueBeatDefinition_ferry_caretaker_c"]
+script = ExtResource("4_beat")
+line = "Bring a real phrase back to the harbor and I'll help the plaza carry it farther than any notice board ever could."
+objective = "Return to the ferry plaza after recovering a fragment."
+journal_step = "Waiting at the harbor for proof that the melody is returning."
+quest_state = "resolved"
+trust_delta = 1
+save_status = "Caretaker Lian is ready to hear the restored phrase"
+gate = "first_fragment_restored"
+gate_fallback = "The plaza is listening. Bring one whole phrase back from the church before we ask the harbor to carry it farther."
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_ferry_caretaker_cond_a"]
+script = ExtResource("6_conditions")
+required_landmark_states = {"trinity_church": "reward_collected"}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_ferry_caretaker_cond_a"]
+script = ExtResource("5_conditional")
+line = "The church phrase came home. The harbor can breathe easier now."
+journal_step = "Lian heard the church fragment return and trusts the melody is mending."
+trust_delta = 1
+conditions = SubResource("ResidentBeatConditionsDefinition_ferry_caretaker_cond_a")
+priority = 10
+once = true
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_ferry_caretaker_cond_b"]
+script = ExtResource("6_conditions")
+required_landmark_states = {"long_shan_tunnel": "reward_collected"}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_ferry_caretaker_cond_b"]
+script = ExtResource("5_conditional")
+line = "You walked someone through the dark. The harbor hears that kind of thing."
+journal_step = "Lian noticed you helped in Long Shan Tunnel."
+trust_delta = 1
+conditions = SubResource("ResidentBeatConditionsDefinition_ferry_caretaker_cond_b")
+priority = 20
+once = true
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_ferry_caretaker_cond_c"]
+script = ExtResource("6_conditions")
+fragments_found_min = 3
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_ferry_caretaker_cond_c"]
+script = ExtResource("5_conditional")
+line = "Three phrases and the plaza is already humming louder. The tower will want to hear them together."
+objective = "Carry the recovered phrases to Bagua Tower."
+journal_step = "Lian urged you toward the tower now that most phrases are in hand."
+conditions = SubResource("ResidentBeatConditionsDefinition_ferry_caretaker_cond_c")
+priority = 30
+once = true
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_ferry_caretaker_cond_d"]
+script = ExtResource("6_conditions")
+extra_conditions = {"story_flag_all": ["winter_memory_reveal"]}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_ferry_caretaker_cond_d"]
+script = ExtResource("5_conditional")
+line = "A Po has been keeping the house warm enough for your parents to return into something gentler than silence. That kind of care holds longer than people admit. It is part of why this winter hurts the way it does."
+journal_step = "Lian tied the winter memory to A Po's care and the parents who keep leaving and returning around it."
+save_status = "Lian named care, absence, and winter as the same family story."
+conditions = SubResource("ResidentBeatConditionsDefinition_ferry_caretaker_cond_d")
+priority = 32
+once = true
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_ferry_caretaker_cond_e"]
+script = ExtResource("6_conditions")
+extra_conditions = {"story_flag_all": ["spring_festival_prepared"]}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_ferry_caretaker_cond_e"]
+script = ExtResource("5_conditional")
+line = "This coming festival will be the first one without your grandmother's place still waiting for her. The harbor knows before the house says it aloud."
+journal_step = "Lian finally spoke of the first Spring Festival without Grandma as something the whole island is already bracing for."
+extra_fields = {"story_event": "spring_festival_resolved"}
+conditions = SubResource("ResidentBeatConditionsDefinition_ferry_caretaker_cond_e")
+priority = 35
+once = true
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_ferry_caretaker_cond_f"]
+script = ExtResource("6_conditions")
+extra_conditions = {"story_flag_all": ["future_commitment_witnessed"]}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_ferry_caretaker_cond_f"]
+script = ExtResource("5_conditional")
+line = "Then let the harbor answer you clearly. A future does not become real only when it is approved. Sometimes it becomes real when you can finally carry it here without apologizing for it."
+objective = "If this turning point feels true, let the harbor close the story here."
+journal_step = "Lian turned the harbor into the place where an honest future could finally be answered back."
+save_status = "Caretaker Lian recognized the harbor as the place where the future-choice route can honestly close."
+extra_fields = {"story_event": "future_commitment_end"}
+conditions = SubResource("ResidentBeatConditionsDefinition_ferry_caretaker_cond_f")
+priority = 38
+once = true
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_ferry_caretaker_cond_g"]
+script = ExtResource("6_conditions")
+required_melody_states = {"festival_melody": "resonant"}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_ferry_caretaker_cond_g"]
+script = ExtResource("5_conditional")
+line = "Listen to the ropes now. The harbor kept the melody after the crowd went home. It is not performing anymore, just breathing on its own."
+journal_step = "Lian noticed the plaza now carries the restored melody even in the quiet after the festival."
+conditions = SubResource("ResidentBeatConditionsDefinition_ferry_caretaker_cond_g")
+priority = 40
+once = true
+
+[sub_resource type="Resource" id="ResidentSpawnDefinition_ferry_caretaker"]
+script = ExtResource("8_spawn")
+anchor_id = "Piano Ferry"
+offset = Vector2(-260, 180)
+direction = -150.0
+mood = 1
+interaction_radius = 88.0
+
+[sub_resource type="Resource" id="ResidentRoutineDefinition_ferry_caretaker"]
+script = ExtResource("7_routine")
+spawn = SubResource("ResidentSpawnDefinition_ferry_caretaker")
+
+[sub_resource type="Resource" id="ResidentDialogueDefinition_ferry_caretaker"]
+script = ExtResource("3_dialogue")
+ambient_lines = PackedStringArray("The plaza still keeps time, even when the island goes quiet.", "The church bells answer the harbor when the wind is kind.", "When the melody returns, the whole square will know before dawn.")
+dialogue_beats = [SubResource("ResidentDialogueBeatDefinition_ferry_caretaker_a"), SubResource("ResidentDialogueBeatDefinition_ferry_caretaker_b"), SubResource("ResidentDialogueBeatDefinition_ferry_caretaker_c")]
+conditional_beats = [SubResource("ResidentConditionalBeatDefinition_ferry_caretaker_cond_a"), SubResource("ResidentConditionalBeatDefinition_ferry_caretaker_cond_b"), SubResource("ResidentConditionalBeatDefinition_ferry_caretaker_cond_c"), SubResource("ResidentConditionalBeatDefinition_ferry_caretaker_cond_d"), SubResource("ResidentConditionalBeatDefinition_ferry_caretaker_cond_e"), SubResource("ResidentConditionalBeatDefinition_ferry_caretaker_cond_f"), SubResource("ResidentConditionalBeatDefinition_ferry_caretaker_cond_g")]
+
+[resource]
+script = ExtResource("1_definition")
+id = "ferry_caretaker"
+include_in_catalog = true
+display_name = "Caretaker Lian"
+landmark = "Piano Ferry"
+role = "Prepares the ferry plaza for arrivals and festival nights."
+routine_note = "Usually near the luggage crates and plaza notice board."
+melody_hint = "She hears the melody as a steady harbor refrain that anchors the rest of the island."
+appearance = SubResource("ResidentAppearanceDefinition_ferry_caretaker")
+dialogue = SubResource("ResidentDialogueDefinition_ferry_caretaker")
+routine = SubResource("ResidentRoutineDefinition_ferry_caretaker")

@@ -1,0 +1,81 @@
+[gd_resource type="Resource" load_steps=15 format=3]
+
+[ext_resource type="Script" path="res://game/resident_system/resident_definition.gd" id="1_definition"]
+[ext_resource type="Script" path="res://game/resident_system/resident_appearance_definition.gd" id="2_appearance"]
+[ext_resource type="Script" path="res://game/resident_system/resident_dialogue_definition.gd" id="3_dialogue"]
+[ext_resource type="Script" path="res://game/resident_system/resident_conditional_beat_definition.gd" id="4_conditional"]
+[ext_resource type="Script" path="res://game/resident_system/resident_beat_conditions_definition.gd" id="5_conditions"]
+[ext_resource type="Script" path="res://game/resident_system/resident_routine_definition.gd" id="6_routine"]
+[ext_resource type="Script" path="res://game/resident_system/resident_spawn_definition.gd" id="7_spawn"]
+
+[sub_resource type="Resource" id="ResidentAppearanceDefinition_tea_vendor_hua"]
+script = ExtResource("2_appearance")
+body_type = "female"
+skin = "taupe"
+head_path = "head/heads/human/heads_human_female"
+hair_path = "hair/bob/hair_relm_short"
+hair_color = "black"
+shirt_path = "torso/shirts/longsleeve/torso_clothes_longsleeve2_scoop"
+shirt_color = "forest"
+pants_path = "legs/pants/legs_formal"
+pants_color = "brown"
+shoes_path = "feet/shoes/feet_shoes_revised"
+shoes_color = "leather"
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_tea_vendor_hua_cond_a"]
+script = ExtResource("5_conditions")
+extra_conditions = {"story_flag_all": ["winter_memory_reveal", "preservation_inheritance_seen"]}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_tea_vendor_hua_cond_a"]
+script = ExtResource("4_conditional")
+line = "I already started steeping extra chrysanthemum for the festival week, and every time I do it I remember your grandmother setting aside the first cup before anyone asked. The harbor has noticed this Spring Festival is arriving differently."
+objective = "Go back to Lian once the harbor's Spring Festival preparations feel impossible to ignore."
+journal_step = "Hua made the Spring Festival feel prepared by the harbor before it was spoken aloud at home."
+save_status = "Tea Vendor Hua turned Spring Festival from an upcoming date into something the harbor is already carrying."
+extra_fields = {"story_event": "spring_festival_prepared"}
+conditions = SubResource("ResidentBeatConditionsDefinition_tea_vendor_hua_cond_a")
+priority = 20
+once = true
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_tea_vendor_hua_cond_b"]
+script = ExtResource("5_conditions")
+extra_conditions = {"story_flag_all": ["spring_festival_resolved"]}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_tea_vendor_hua_cond_b"]
+script = ExtResource("4_conditional")
+line = "I still set out one extra cup before dawn. A Po notices it, I notice that she notices it, and suddenly the whole stall understands what kind of festival week this is."
+journal_step = "Hua marked the festival aftermath through the extra cup everyone notices but nobody needs explained."
+conditions = SubResource("ResidentBeatConditionsDefinition_tea_vendor_hua_cond_b")
+priority = 30
+once = true
+
+[sub_resource type="Resource" id="ResidentSpawnDefinition_tea_vendor_hua"]
+script = ExtResource("7_spawn")
+anchor_id = "Piano Ferry"
+offset = Vector2(320, 140)
+direction = 85.0
+mood = 2
+interaction_radius = 72.0
+
+[sub_resource type="Resource" id="ResidentRoutineDefinition_tea_vendor_hua"]
+script = ExtResource("6_routine")
+spawn = SubResource("ResidentSpawnDefinition_tea_vendor_hua")
+
+[sub_resource type="Resource" id="ResidentDialogueDefinition_tea_vendor_hua"]
+script = ExtResource("3_dialogue")
+ambient_lines = PackedStringArray("My kettle still tries to whistle the opening bar every morning.", "The day the island settles, even the tea steam will rise in time.")
+dialogue_beats = []
+conditional_beats = [SubResource("ResidentConditionalBeatDefinition_tea_vendor_hua_cond_a"), SubResource("ResidentConditionalBeatDefinition_tea_vendor_hua_cond_b")]
+
+[resource]
+script = ExtResource("1_definition")
+id = "tea_vendor_hua"
+include_in_catalog = true
+display_name = "Tea Vendor Hua"
+landmark = "Piano Ferry"
+role = "Keeps warm tea ready for arrivals, porters, and anyone waiting out the mist."
+routine_note = "Usually near the plaza edge where the smell of tea reaches the dock."
+melody_hint = "She says the kettle whistles in a lower key than usual."
+appearance = SubResource("ResidentAppearanceDefinition_tea_vendor_hua")
+dialogue = SubResource("ResidentDialogueDefinition_tea_vendor_hua")
+routine = SubResource("ResidentRoutineDefinition_tea_vendor_hua")
