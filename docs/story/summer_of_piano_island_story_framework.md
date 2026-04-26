@@ -83,6 +83,8 @@ He is preparing for an exam that may define his future while not knowing which f
 
 The family returned to the island when he was in **Year 5**, after job changes forced his parents to leave better positions in the provincial capital and return to his father's hometown.
 
+From that point on, the boy lived with his grandmother on Kulangsu. Home was therefore not only the island in general, but the daily space of Grandma's routines, illness, church-going, small habits, and gradual forgetting.
+
 At around the same time, his grandmother's Alzheimer's had advanced enough that she could no longer care for herself. Because both parents were often away for work, the family hired **A Po**, a woman in her 60s, to help care for both the grandmother and the boy.
 
 After the grandmother passed away peacefully at the end of Year 11, A Po remained the practical emotional anchor of the household.
@@ -167,16 +169,82 @@ performance -> pressure -> confusion -> self-questioning -> honesty -> release
 
 This is the route that teaches the player to read the island differently.
 
-It carries:
+At first, the island's old buildings are familiar but almost invisible to him. Villas, churches, tunnels, lanes, courtyards, gates, tilework, stone walls, balconies, and shaded paths are simply where life happens. As the route develops, he learns that these places carry memory in the same way people do.
+
+This route carries:
 
 - architecture as visible memory
 - old buildings as inheritance, not scenery
+- ordinary houses and ordinary lives as part of island memory
 - the fear of losing what nobody properly noticed in time
+- the cost and labor of keeping fragile places alive
 - the possibility that preservation is also a future-facing choice
 
 The player should feel the movement:
 
 scenery -> attention -> meaning -> inheritance -> responsibility
+
+This route should mirror the grandmother storyline. Just as the boy failed to fully understand Grandma while she was alive, he gradually realizes that the island's buildings may also disappear before people understand what they carried.
+
+#### Preservation Route Characters
+
+Use these characters to keep preservation personal, practical, and dramatic without turning it into a dry history lesson.
+
+**Mr. Lin — retired architecture / art teacher**
+
+Mr. Lin is an elderly teacher who still walks the island with a notebook. At first, the boy may think he is only staring strangely at walls, railings, windows, and tiles. Later, Mr. Lin becomes the mentor who teaches him how to see.
+
+His role is to turn architecture from scenery into language. He should teach through small questions and close observation rather than lectures.
+
+**Mei — young repair apprentice**
+
+Mei is around the boy's age or slightly older. Her family works in traditional building repair: woodwork, tile repair, plaster, stone steps, old windows, and weathered frames.
+
+She gives the route its hands-on reality. To her, preservation is not only beauty; it is dust, leaking roofs, money, time, and difficult work. She turns preservation from appreciation into labor.
+
+**Uncle Zhao — owner of a fading villa**
+
+Uncle Zhao owns an old family villa under pressure from decay, cost, relatives, or possible redevelopment. He should not be a villain. He is tired, practical, and burdened by inheritance.
+
+His role is to show that memory can become heavy when nobody helps carry it. He makes preservation morally complicated rather than sentimental.
+
+**Madam Wei — ordinary resident with an ordinary house**
+
+Madam Wei lives in a modest old house with small details: a repaired door, faded tiles, a courtyard plant, a patched roof, or a worn threshold.
+
+Her role is to remind the player that preservation is not only about famous villas, churches, or towers. Ordinary people and ordinary houses also remember.
+
+**Mr. Huang — modern developer / investor**
+
+Mr. Huang represents modernization, tourism, safety, jobs, and commercial pressure. He should be persuasive and partly reasonable, not cartoonishly evil.
+
+His role is to test whether the boy's care for old places can become thoughtful action rather than simple nostalgia.
+
+**Professor Xu — visiting historian**
+
+Professor Xu knows maps, dates, owners, architectural styles, and migration history. He gives knowledge, but not necessarily intimacy.
+
+His role is to provide historical context carefully, while leaving the boy to supply local care and emotional understanding.
+
+**A Po — hidden preservation character**
+
+A Po should also carry this route because she remembers how people used spaces: which path Grandma took to church, which wall she held when walking, which steps were difficult in rain, which lane had shade, and where daily care happened.
+
+Her role is to connect architecture back to Grandma and make place feel lived rather than displayed.
+
+#### Preservation Route Shape
+
+A strong preservation route can unfold in six stages:
+
+1. The boy walks past old buildings without truly seeing them.
+2. Mr. Lin and Mei teach him to notice form, detail, repair, and use.
+3. A Po or Madam Wei connects a place to Grandma or ordinary island life.
+4. Uncle Zhao's villa or another site faces sale, decay, or redevelopment pressure.
+5. The boy helps document, sketch, interview, repair, compare old stories, or gather memories. He cannot save everything, but he learns to act.
+6. Bagua Tower synthesizes the route by letting him see the island as connected memory rather than isolated scenery.
+
+The route should support gameplay such as inspecting old architectural details, sketching or documenting buildings, talking to elders, helping with small repair tasks, comparing old stories with visible remains, and noticing how places change across the year.
+
 
 ### 4. Melody and Landmarks
 
@@ -260,7 +328,7 @@ The next narrative expansion should stay focused on the gaps that most affect th
 
 1. Deepen `family_memory` with more embodied household scenes around A Po, the parents, and the cost of care so those beats are not carried mostly by dialogue alone.
 2. Expand `study_future` with more lived middle beats and small world responses so the route keeps its year-long pressure shape between the major turning points.
-3. Grow `preservation_inheritance` into stronger district-facing reactions, props, and inspectables so stewardship is visible even when the player is not in a resident conversation.
+3. Grow `preservation_inheritance` into stronger district-facing reactions, props, inspectables, and character-led tasks through Mr. Lin, Mei, Uncle Zhao, Madam Wei, Mr. Huang, Professor Xu, and A Po so stewardship is visible even when the player is not in a resident conversation.
 4. Turn the improved ending and departure language into more playable closing movement once the route-specific copy settles.
 5. Keep `melody_landmarks` optional for completion while giving its resonant follow-through more wandering texture after the public performance.
 
