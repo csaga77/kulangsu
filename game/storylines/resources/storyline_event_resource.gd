@@ -30,7 +30,7 @@ const VALID_PHASES = STORY_SEASON_PHASES_SCRIPT.AUTHORABLE_PHASE_IDS
 
 # --- Progression metadata ----------------------------------------------------
 
-## Which season phases this event is active in.
+## Which season phases this event is active in. Empty means no phase restriction.
 ## Valid values come from the shared [StorySeasonPhases] catalog.
 @export_enum(
 	"summer_1",
@@ -150,12 +150,9 @@ func validate() -> PackedStringArray:
 	if lead_text.strip_edges().is_empty():
 		warnings.append("[%s] lead_text is empty" % id)
 
-	if normalized_phase_window.is_empty():
-		warnings.append("[%s] phase_window is empty — event will never become available" % id)
-	else:
-		for phase: String in normalized_phase_window:
-			if not STORY_SEASON_PHASES_SCRIPT.is_authorable_phase(phase):
-				warnings.append("[%s] unknown phase_window value: '%s'" % [id, phase])
+	for phase: String in normalized_phase_window:
+		if not STORY_SEASON_PHASES_SCRIPT.is_authorable_phase(phase):
+			warnings.append("[%s] unknown phase_window value: '%s'" % [id, phase])
 
 	if not season_phase.is_empty() and not STORY_SEASON_PHASES_SCRIPT.is_authorable_phase(season_phase):
 		warnings.append("[%s] unknown season_phase: '%s'" % [id, season_phase])

@@ -92,6 +92,14 @@ func _run() -> void:
 		"Resident-driven preservation progress survives autosave and continue"
 	)
 
+	_app_state().configure_new_game()
+	_progress_to_exam_ending()
+	var pei_repeat_exam: Dictionary = _app_state().interact_with_resident("dock_musician_pei")
+	_assert_true(
+		String(pei_repeat_exam.get("line", "")).to_lower().contains("exam is finally over"),
+		"Resolved story-event beats replay their authored line instead of reporting the route gate as blocked"
+	)
+
 	_app_state().clear_story_autosave_for_tests()
 
 	if m_failures.is_empty():
@@ -120,6 +128,19 @@ func _restore_first_fragment() -> void:
 	_app_state().activate_landmark_trigger("trinity_church", "choir_chime", "Choir Chime")
 	_app_state().complete_prompt_request({"completion_kind": "trinity_chime"})
 	_app_state().interact_with_resident("church_caretaker")
+
+
+func _progress_to_exam_ending() -> void:
+	_progress_through_ferry_opening()
+	_app_state().interact_with_resident("dock_musician_pei")
+	_app_state().interact_with_resident("postcard_seller_an")
+	_app_state().interact_with_resident("choir_student_lin")
+	_app_state().interact_with_resident("church_caretaker")
+	_app_state().interact_with_resident("church_caretaker")
+	_app_state().interact_with_resident("tea_vendor_hua")
+	_app_state().interact_with_resident("ferry_caretaker")
+	_app_state().interact_with_resident("dock_musician_pei")
+	_app_state().interact_with_resident("dock_musician_pei")
 
 
 func _on_story_milestone(milestone_id: String, context: Dictionary) -> void:

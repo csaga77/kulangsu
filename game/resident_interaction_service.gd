@@ -206,7 +206,9 @@ func _check_beat_availability(beat: Dictionary) -> Dictionary:
 		}
 
 	var story_event := String(beat.get("story_event", "")).strip_edges()
-	if story_event.is_empty() or m_owner.can_resolve_story_event(story_event):
+	if story_event.is_empty() \
+	or bool(m_owner.get_story_flag(story_event, false)) \
+	or m_owner.can_resolve_story_event(story_event):
 		return {"allowed": true}
 
 	return {

@@ -392,6 +392,11 @@ func _run() -> void:
 	validation_event.lead_text = "Track validation refresh state."
 	validation_event.journal_note = "The validation panel should refresh after resource edits."
 	validation_event.status_text = "Validation state updated."
+	_assert_true(
+		validation_event.validate().is_empty(),
+		"Storyline events allow an empty phase_window as an unrestricted season window"
+	)
+	validation_event.phase_window = ["unknown_phase"]
 	var validation_panel = VALIDATION_PANEL_SCRIPT.new()
 	validation_panel.setup(validation_event)
 	add_child(validation_panel)
