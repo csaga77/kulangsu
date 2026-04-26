@@ -3,7 +3,6 @@ extends Node
 
 const GAME_MAIN_SCENE := preload("res://scenes/game_main.tscn")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
-const StorySubjectArea2D = preload("res://game/story_subject_area.gd")
 const BI_SHAN_RESIDENT_IDS := [
 	"echo_sketcher_yan",
 	"mural_restorer_cai",

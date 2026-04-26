@@ -28,7 +28,6 @@ line = "From up here the old buildings stop looking decorative. They start looki
 objective = "Carry that wider view back into the year and notice what the island is asking you to preserve."
 journal_step = "Nian widened the inheritance question from a harbor feeling into an island-scale view."
 save_status = "Terrace Painter Nian widened preservation from a feeling into a responsibility."
-gate = "preservation_tower_ready"
 gate_fallback = "The tower view will land better after someone at the harbor first makes preservation feel urgent rather than picturesque."
 extra_fields = {"story_event": "preservation_tower_perspective"}
 

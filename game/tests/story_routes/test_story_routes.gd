@@ -75,6 +75,34 @@ func _run() -> void:
 		[],
 		"Church memory no longer uses a loose any-of prerequisite"
 	)
+	_assert_true(!_app_state().can_resolve_story_event("future_commitment_choice"), "Blocked story events now report unavailable through the shared route API")
+	var future_choice_blockers: Dictionary = _app_state().get_story_event_blockers("future_commitment_choice")
+	_assert_true(
+		_sorted_strings(future_choice_blockers.get("missing_story_flags_all", [])) == ["autumn_pressure_shared", "spring_festival_resolved"],
+		"Future-choice blockers now come from the canonical storyline prerequisites"
+	)
+	_assert_true(!_app_state().resolve_story_event("future_commitment_choice"), "Direct story-event resolution now refuses blocked route events")
+
+	var pei_opening_too_early: Dictionary = _app_state().interact_with_resident("dock_musician_pei")
+	_assert_true(
+		String(pei_opening_too_early.get("line", "")).to_lower().contains("homecoming"),
+		"Pei now waits for the harbor opening instead of naming autumn pressure too early"
+	)
+	_assert_true(!bool(_app_state().get_story_flag("autumn_pressure_named", false)), "Early Pei talk no longer resolves the autumn-pressure story event")
+	_assert_true(
+		int(_app_state().get_resident_profile("dock_musician_pei").get("conversation_index", 0)) == 0,
+		"Blocked route-gated resident beats no longer advance resident dialogue progress"
+	)
+	var mei_opening_too_early: Dictionary = _app_state().interact_with_resident("church_caretaker")
+	_assert_true(
+		String(mei_opening_too_early.get("line", "")).to_lower().contains("harbor"),
+		"Mei now waits for the harbor opening before starting the church-memory route"
+	)
+	_assert_true(!bool(_app_state().get_story_flag("trinity_memory_awakened", false)), "Early church talk no longer resolves the church-memory story event")
+	_assert_true(
+		int(_app_state().get_resident_profile("church_caretaker").get("conversation_index", 0)) == 0,
+		"Blocked church route beats stay on their current dialogue step"
+	)
 	_assert_true(_app_state().get_available_lead_ids().size() >= 2, "New game seeds multiple live routes")
 	_assert_true(!_app_state().get_active_lead_id().is_empty(), "New game pins one HUD lead")
 
@@ -124,6 +152,7 @@ func _run() -> void:
 	_assert_true(bool(_app_state().get_story_flag("spring_festival_resolved", false)), "Spring festival anchor resolves from the family route")
 	_assert_true(!bool(_app_state().endgame_state.get("active", false)), "Resolving spring festival alone does not start the final act")
 
+	_assert_true(_app_state().can_resolve_story_event("future_commitment_choice"), "The shared route API reports when the future-choice beat becomes available")
 	_app_state().interact_with_resident("dock_musician_pei")
 	_assert_true(bool(_app_state().get_story_flag("future_commitment_choice", false)), "Pei can resolve the future-choice beat once spring and shared pressure are both settled")
 	_assert_true(!bool(_app_state().endgame_state.get("active", false)), "Naming a future does not end the game until a designated major event lands")

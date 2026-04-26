@@ -147,7 +147,7 @@ func complete_melody_performance(melody_id: String) -> void:
 	m_owner.set_save_status("This performance point is not wired yet.")
 
 
-func resolve_landmark(landmark_id: String) -> void:
+func resolve_landmark(_landmark_id: String) -> void:
 	m_owner.set_save_status("This landmark reward is not wired yet.")
 
 

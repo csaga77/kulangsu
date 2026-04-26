@@ -103,6 +103,28 @@ func get_event_definition(event_id: String) -> Dictionary:
 	return build_event_definitions().get(event_id, {}).duplicate(true)
 
 
+func can_resolve_story_event(event_id: String) -> bool:
+	return get_story_event_blockers(event_id).is_empty()
+
+
+func get_story_event_blockers(event_id: String) -> Dictionary:
+	var event_definition := get_event_definition(event_id)
+	if event_definition.is_empty():
+		return {"missing_event": true}
+	if bool(m_owner.story_flags.get(event_id, false)):
+		return {"resolved": true}
+
+	var availability_inputs := _build_story_event_availability_inputs()
+	var availability_flags: Dictionary = availability_inputs.get("flags", {})
+	var availability_route_progress: Dictionary = availability_inputs.get("route_progress", {})
+	return _event_blockers(
+		event_definition,
+		availability_flags,
+		String(availability_inputs.get("phase_id", "")),
+		availability_route_progress
+	)
+
+
 func get_active_lead_text() -> String:
 	if bool(m_owner.endgame_state.get("active", false)):
 		return String(m_owner.endgame_state.get("closing_label", "Take a quiet moment before choosing what comes next."))
@@ -163,6 +185,8 @@ func resolve_story_event(event_id: String) -> bool:
 	if event_definition.is_empty():
 		return false
 	if bool(m_owner.story_flags.get(event_id, false)):
+		return false
+	if !can_resolve_story_event(event_id):
 		return false
 
 	m_owner.set_story_flag(event_id, true)
@@ -360,6 +384,23 @@ func _compute_route_snapshot(
 	}
 
 
+func _build_story_event_availability_inputs() -> Dictionary:
+	var flags := normalize_story_flags(m_owner.story_flags)
+	var phase_id := String(m_owner.season_phase)
+	var endgame := normalize_endgame_state(m_owner.endgame_state)
+	var snapshot := _compute_route_snapshot(
+		flags,
+		phase_id,
+		endgame,
+		String(m_owner._manual_pinned_lead_id)
+	)
+	return {
+		"flags": flags,
+		"phase_id": phase_id,
+		"route_progress": snapshot.get("route_progress", {}),
+	}
+
+
 func _maybe_start_endgame(preferred_event_id: String) -> void:
 	if bool(m_owner.endgame_state.get("active", false)):
 		return
@@ -454,48 +495,99 @@ func _event_is_available(
 	phase_id: String,
 	route_progress: Dictionary
 ) -> bool:
+	return _event_blockers(event_definition, flags, phase_id, route_progress).is_empty()
+
+
+func _event_blockers(
+	event_definition: Dictionary,
+	flags: Dictionary,
+	phase_id: String,
+	route_progress: Dictionary
+) -> Dictionary:
+	var blockers := {}
 	var allowed_phases := _normalize_string_array(event_definition.get("phase_window", []))
 	if !allowed_phases.is_empty() and allowed_phases.find(phase_id) < 0:
-		return false
+		blockers["phase_window"] = {
+			"current": phase_id,
+			"allowed": allowed_phases,
+		}
 
 	var prerequisites: Dictionary = event_definition.get("prerequisites", {})
 	for key in prerequisites.keys():
 		match key:
 			"story_flags_all":
+				var missing_all := PackedStringArray()
 				for flag_id_value in prerequisites[key]:
-					if !bool(flags.get(String(flag_id_value), false)):
-						return false
+					var flag_id := String(flag_id_value)
+					if !bool(flags.get(flag_id, false)):
+						missing_all.append(flag_id)
+				if !missing_all.is_empty():
+					blockers["missing_story_flags_all"] = missing_all
 			"story_flags_any":
 				var found := false
+				var required_any := PackedStringArray()
 				for flag_id_value in prerequisites[key]:
-					if bool(flags.get(String(flag_id_value), false)):
+					var flag_id := String(flag_id_value)
+					required_any.append(flag_id)
+					if bool(flags.get(flag_id, false)):
 						found = true
 						break
 				if !found:
-					return false
+					blockers["missing_story_flags_any"] = required_any
 			"landmark_state":
+				var blocked_landmarks := {}
 				var required_landmarks: Dictionary = prerequisites[key]
 				for landmark_id in required_landmarks.keys():
-					if m_owner.get_landmark_state(String(landmark_id)) != String(required_landmarks[landmark_id]):
-						return false
+					var normalized_landmark_id := String(landmark_id)
+					var expected_state := String(required_landmarks[landmark_id])
+					var actual_state := String(m_owner.get_landmark_state(normalized_landmark_id))
+					if actual_state != expected_state:
+						blocked_landmarks[normalized_landmark_id] = {
+							"expected": expected_state,
+							"actual": actual_state,
+						}
+				if !blocked_landmarks.is_empty():
+					blockers["landmark_state"] = blocked_landmarks
 			"melody_state":
+				var blocked_melodies := {}
 				var required_melodies: Dictionary = prerequisites[key]
 				for melody_id in required_melodies.keys():
-					var melody_state: Dictionary = m_owner.get_melody_state(String(melody_id))
-					if String(melody_state.get("state", "unknown")) != String(required_melodies[melody_id]):
-						return false
+					var normalized_melody_id := String(melody_id)
+					var melody_state: Dictionary = m_owner.get_melody_state(normalized_melody_id)
+					var expected_melody_state := String(required_melodies[melody_id])
+					var actual_melody_state := String(melody_state.get("state", "unknown"))
+					if actual_melody_state != expected_melody_state:
+						blocked_melodies[normalized_melody_id] = {
+							"expected": expected_melody_state,
+							"actual": actual_melody_state,
+						}
+				if !blocked_melodies.is_empty():
+					blockers["melody_state"] = blocked_melodies
 			"resident_known":
+				var missing_residents := PackedStringArray()
 				for resident_id_value in prerequisites[key]:
-					var resident: Dictionary = m_owner.get_resident_profile(String(resident_id_value))
+					var resident_id := String(resident_id_value)
+					var resident: Dictionary = m_owner.get_resident_profile(resident_id)
 					if !bool(resident.get("known", false)):
-						return false
+						missing_residents.append(resident_id)
+				if !missing_residents.is_empty():
+					blockers["resident_known"] = missing_residents
 			"route_score_min":
+				var blocked_routes := {}
 				var required_routes: Dictionary = prerequisites[key]
 				for route_id in required_routes.keys():
-					var current_progress: Dictionary = route_progress.get(String(route_id), {})
-					if int(current_progress.get("completion_score", 0)) < int(required_routes[route_id]):
-						return false
-	return true
+					var normalized_route_id := String(route_id)
+					var current_progress: Dictionary = route_progress.get(normalized_route_id, {})
+					var expected_score := int(required_routes[route_id])
+					var actual_score := int(current_progress.get("completion_score", 0))
+					if actual_score < expected_score:
+						blocked_routes[normalized_route_id] = {
+							"expected": expected_score,
+							"actual": actual_score,
+						}
+				if !blocked_routes.is_empty():
+					blockers["route_score_min"] = blocked_routes
+	return blockers
 
 
 func _event_priority(event_definition: Dictionary, route_definition: Dictionary) -> int:

@@ -22,6 +22,21 @@ func _run() -> void:
 		_app_state().story_milestone.connect(_on_story_milestone)
 
 	_app_state().configure_new_game()
+	var pei_too_early: Dictionary = _app_state().interact_with_resident("dock_musician_pei")
+	_assert_true(
+		String(pei_too_early.get("line", "")).to_lower().contains("homecoming"),
+		"Resident interaction now falls back when a story-event beat is blocked by route prerequisites"
+	)
+	_assert_true(
+		int(_app_state().get_resident_profile("dock_musician_pei").get("conversation_index", 0)) == 0,
+		"Blocked route-gated resident beats do not advance conversation progress"
+	)
+	_assert_true(
+		!bool(_app_state().get_story_flag("autumn_pressure_named", false)),
+		"Blocked route-gated resident beats do not resolve their story event"
+	)
+
+	_app_state().configure_new_game()
 	var lian_intro: Dictionary = _app_state().interact_with_resident("ferry_caretaker")
 	_assert_true(
 		String(lian_intro.get("line", "")).to_lower().contains("old piano crate"),

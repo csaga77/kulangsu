@@ -3,7 +3,6 @@ class_name BaseController
 extends Resource
 
 const BASE_CONTROLLER_APP_RUNTIME := preload("res://game/app_runtime.gd")
-const StorySubjectArea2D = preload("res://game/story_subject_area.gd")
 const DEFAULT_SPEECH_TEXT_CHARACTERS_PER_SECOND := 120.0
 
 enum MoveDirectionEnum {

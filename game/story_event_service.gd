@@ -459,7 +459,7 @@ func apply_effects(payload: Dictionary, context: Dictionary = {}) -> void:
 			m_owner.set_story_flag(String(flag_id), beat_story_flags[flag_id])
 
 	var story_event := String(formatted_payload.get("story_event", ""))
-	if !story_event.is_empty():
+	if !story_event.is_empty() and m_owner.can_resolve_story_event(story_event):
 		m_owner.resolve_story_event(story_event)
 
 	var journal_unlocked_value = formatted_payload.get("journal_unlocked", null)

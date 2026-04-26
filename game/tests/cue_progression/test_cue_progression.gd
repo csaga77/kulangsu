@@ -7,7 +7,6 @@ const PIANO_FERRY_SCENE: PackedScene = preload("res://architecture/piano_ferry.t
 const BAGUA_TOWER_SCENE: PackedScene = preload("res://architecture/bagua_tower/bagua_tower.tscn")
 const TERRAIN_SCENE: PackedScene = preload("res://terrain/terrain.tscn")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
-const StorySubjectArea2D = preload("res://game/story_subject_area.gd")
 
 var m_failures := PackedStringArray()
 var m_milestones := PackedStringArray()

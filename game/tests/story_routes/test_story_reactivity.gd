@@ -3,7 +3,6 @@ extends Node2D
 const TEST_AUTOSAVE_PATH := "user://story_reactivity_test.save"
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const GAME_MAIN_SCENE := preload("res://scenes/game_main.tscn")
-const StorySubjectArea2D = preload("res://game/story_subject_area.gd")
 
 var m_failures := PackedStringArray()
 

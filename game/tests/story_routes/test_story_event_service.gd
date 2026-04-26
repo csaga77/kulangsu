@@ -3,7 +3,6 @@ extends Node2D
 const TEST_AUTOSAVE_PATH := "user://story_event_service_test.save"
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const GAME_MAIN_SCENE := preload("res://scenes/game_main.tscn")
-const StorySubjectArea2D = preload("res://game/story_subject_area.gd")
 
 var m_failures := PackedStringArray()
 var m_prompt_requests: Array[Dictionary] = []
@@ -26,6 +25,13 @@ func _run() -> void:
 
 	_app_state().override_story_autosave_path_for_tests(TEST_AUTOSAVE_PATH)
 	_app_state().clear_story_autosave_for_tests()
+
+	_app_state().configure_new_game()
+	_app_state().apply_story_effects({"story_event": "future_commitment_choice"})
+	_assert_true(
+		!bool(_app_state().get_story_flag("future_commitment_choice", false)),
+		"StoryEvent effects no longer force blocked route events through shared progression"
+	)
 
 	_app_state().configure_new_game()
 	var harbor_trigger := StorySubjectArea2D.new()

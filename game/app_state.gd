@@ -56,9 +56,13 @@ signal route_progress_changed(route_id: String, progress: Dictionary)
 signal active_leads_changed(active_lead_id: String, available_lead_ids: PackedStringArray)
 signal endgame_state_changed(endgame_state: Dictionary)
 signal save_metadata_changed(metadata: Dictionary)
+@warning_ignore("unused_signal")
 signal master_volume_changed(volume_percent: float)
+@warning_ignore("unused_signal")
 signal music_volume_changed(volume_percent: float)
+@warning_ignore("unused_signal")
 signal prompt_volume_changed(volume_percent: float)
+@warning_ignore("unused_signal")
 signal dialogue_text_speed_changed(speed_percent: float, characters_per_second: float)
 
 var mode := "Title"
@@ -584,6 +588,18 @@ func get_story_event_definition(event_id: String) -> Dictionary:
 	if m_story_route_graph == null:
 		return {}
 	return m_story_route_graph.get_event_definition(event_id)
+
+
+func can_resolve_story_event(event_id: String) -> bool:
+	if m_story_route_graph == null:
+		return false
+	return m_story_route_graph.can_resolve_story_event(event_id)
+
+
+func get_story_event_blockers(event_id: String) -> Dictionary:
+	if m_story_route_graph == null:
+		return {"missing_graph": true}
+	return m_story_route_graph.get_story_event_blockers(event_id)
 
 
 func get_active_lead_text() -> String:

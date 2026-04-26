@@ -21,6 +21,16 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 
 	var conditional_beat := _pick_conditional_beat(resident_id, resident)
 	if !conditional_beat.is_empty():
+		var conditional_availability := _check_beat_availability(conditional_beat)
+		if !bool(conditional_availability.get("allowed", true)):
+			m_owner.resident_profiles[resident_id] = resident
+			_sync_known_residents()
+			if !resident_was_known:
+				m_owner._autosave_story_progress()
+			m_owner._refresh_player_costumes()
+			m_owner.resident_profile_changed.emit(resident_id, m_owner.get_resident_profile(resident_id))
+			return {"line": String(conditional_availability.get("fallback", ""))}
+
 		var fired: Array = m_owner._normalize_string_array(resident.get("_fired_conditional_beats", []))
 		var beat_key := String(conditional_beat.get("_beat_key", ""))
 		var is_new_conditional := !beat_key.is_empty() and fired.find(beat_key) < 0
@@ -68,15 +78,15 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 	)
 	var beat: Dictionary = dialogue_beats[beat_index]
 
-	if !_check_beat_gate(beat):
+	var beat_availability := _check_beat_availability(beat)
+	if !bool(beat_availability.get("allowed", true)):
 		m_owner.resident_profiles[resident_id] = resident
 		_sync_known_residents()
 		if !resident_was_known:
 			m_owner._autosave_story_progress()
 		m_owner._refresh_player_costumes()
 		m_owner.resident_profile_changed.emit(resident_id, m_owner.get_resident_profile(resident_id))
-		var fallback := String(beat.get("gate_fallback", ""))
-		return {"line": fallback}
+		return {"line": String(beat_availability.get("fallback", ""))}
 
 	var is_new_beat := beat_index < dialogue_beats.size() - 1 \
 		or int(resident.get("_last_applied_beat", -1)) != beat_index
@@ -188,6 +198,23 @@ func _count_helped_residents() -> int:
 	return count
 
 
+func _check_beat_availability(beat: Dictionary) -> Dictionary:
+	if !_check_beat_gate(beat):
+		return {
+			"allowed": false,
+			"fallback": String(beat.get("gate_fallback", "")),
+		}
+
+	var story_event := String(beat.get("story_event", "")).strip_edges()
+	if story_event.is_empty() or m_owner.can_resolve_story_event(story_event):
+		return {"allowed": true}
+
+	return {
+		"allowed": false,
+		"fallback": _build_story_event_gate_fallback(beat, story_event),
+	}
+
+
 func _check_beat_gate(beat: Dictionary) -> bool:
 	var gate := String(beat.get("gate", ""))
 	if gate.is_empty():
@@ -214,16 +241,23 @@ func _check_beat_gate(beat: Dictionary) -> bool:
 			return m_owner.get_landmark_state("bagua_tower") != "locked"
 		"three_fragments_restored":
 			return m_owner.fragments_found >= 3
-		"future_choice_ready":
-			return bool(m_owner.get_story_flag("spring_festival_resolved", false)) \
-				and bool(m_owner.get_story_flag("autumn_pressure_shared", false))
-		"preservation_tower_ready":
-			return bool(m_owner.get_story_flag("preservation_inheritance_seen", false)) \
-				and m_owner.get_landmark_state("bagua_tower") != "locked"
 		_:
 			if m_owner.story_flags.has(gate):
 				return bool(m_owner.story_flags.get(gate, false))
 	return true
+
+
+func _build_story_event_gate_fallback(beat: Dictionary, story_event: String) -> String:
+	var fallback := String(beat.get("gate_fallback", "")).strip_edges()
+	if !fallback.is_empty():
+		return fallback
+
+	var blockers: Dictionary = m_owner.get_story_event_blockers(story_event)
+	if blockers.has("phase_window"):
+		return "This conversation belongs to another season of the year."
+	if blockers.has("landmark_state"):
+		return "Something out on the island still needs to settle before that conversation can land."
+	return "Something else on the island needs to settle first."
 
 
 func _pick_conditional_beat(_resident_id: String, resident: Dictionary) -> Dictionary:
