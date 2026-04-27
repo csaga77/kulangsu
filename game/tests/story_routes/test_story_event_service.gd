@@ -32,6 +32,23 @@ func _run() -> void:
 		!bool(_app_state().get_story_flag("future_commitment_choice", false)),
 		"StoryEvent effects no longer force blocked route events through shared progression"
 	)
+	_assert_true(_app_state().get_story_day() == 1, "Story time starts on the first story day")
+	_assert_true(_app_state().get_time_of_day() == "morning", "Story time starts in the morning")
+	_assert_true(
+		_app_state().matches_story_conditions({"time_of_day": "morning", "world_hour_min": 7.5, "world_hour_max": 8.5}),
+		"StoryEvent conditions can match the current story time"
+	)
+	_app_state().apply_story_effects({"advance_time": {"advance_to_time_of_day": "afternoon"}})
+	_assert_true(_app_state().get_time_of_day() == "afternoon", "StoryEvent effects can advance to a later day phase")
+	_assert_true(
+		!_app_state().matches_story_conditions({"time_of_day": "morning"}),
+		"Morning-only StoryEvent conditions close after the time phase advances"
+	)
+	_app_state().apply_story_effects({"advance_hours": 10.0})
+	_assert_true(_app_state().get_time_of_day() == "night", "StoryEvent effects can advance by authored hours")
+	_app_state().apply_story_effects({"advance_day": 1})
+	_assert_true(_app_state().get_story_day() == 2, "StoryEvent effects can advance to the next story day")
+	_assert_true(_app_state().get_time_of_day() == "morning", "Advancing the day resets to morning by default")
 
 	_app_state().configure_new_game()
 	var harbor_trigger := StorySubjectArea2D.new()

@@ -39,6 +39,7 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../game/player_profile_service.gd`](../game/player_profile_service.gd) - owns player appearance/profile and unlocked/equipped costume state while preserving `AppState`'s public API
 - [`../game/journal_builder.gd`](../game/journal_builder.gd) - pure journal/setup text builders used by the journal and player setup overlays
 - [`../game/story_save_service.gd`](../game/story_save_service.gd) - versioned story autosave read/write logic and save metadata refresh
+- [`../game/story_time_service.gd`](../game/story_time_service.gd) - lightweight story-time helper for `story_day`, `world_hour`, derived `time_of_day`, and authored time advancement
 - [`../game/story_season_phases.gd`](../game/story_season_phases.gd) - canonical season-phase ids, default progression phases, and player-facing phase labels shared by route resources, the route graph, and autosave/state helpers
 - [`../game/audio_settings_service.gd`](../game/audio_settings_service.gd) - owns runtime volume/text-speed state while `AppState` keeps the shell-facing API and signals
 - [`../game/resident_interaction_service.gd`](../game/resident_interaction_service.gd) - applies resident dialogue beats, conditional beats, trust milestones, route refresh, and resident-facing autosave side effects behind `AppState` facades

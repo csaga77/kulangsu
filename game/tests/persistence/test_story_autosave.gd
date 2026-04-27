@@ -29,6 +29,7 @@ func _run() -> void:
 	_app_state().activate_landmark_trigger("piano_ferry", "harbor_refrain", "Harbor Refrain")
 	_app_state().interact_with_resident("ferry_caretaker")
 	_app_state().set_story_resume_checkpoint("Trinity Church", "Trinity Church")
+	_app_state().apply_story_effects({"advance_time": {"advance_to_time_of_day": "evening"}})
 	_app_state().save_story_autosave()
 
 	var metadata = _app_state().get_story_save_metadata()
@@ -45,6 +46,8 @@ func _run() -> void:
 	_assert_true(_app_state().get_landmark_state("trinity_church") == "available", "Continue restores the next unlocked landmark")
 	_assert_true(_app_state().get_story_resume_anchor_id() == "Trinity Church", "Continue restores the saved resume anchor")
 	_assert_true(_app_state().get_story_resume_location() == "Trinity Church", "Continue restores the saved resume location label")
+	_assert_true(_app_state().get_story_day() == 1, "Continue restores the saved story day")
+	_assert_true(_app_state().get_time_of_day() == "evening", "Continue restores the saved time of day")
 
 	var story_scene := GAME_SCENE.instantiate()
 	add_child(story_scene)

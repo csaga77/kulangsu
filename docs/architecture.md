@@ -87,6 +87,7 @@ Primary files:
 - [`../game/resident_catalog.gd`](../game/resident_catalog.gd)
 - [`../game/story_event_catalog.gd`](../game/story_event_catalog.gd)
 - [`../game/story_event_service.gd`](../game/story_event_service.gd)
+- [`../game/story_time_service.gd`](../game/story_time_service.gd)
 - [`../game/story_route_graph.gd`](../game/story_route_graph.gd)
 - [`../game/storylines/`](../game/storylines)
 - [`../game/audio_settings_service.gd`](../game/audio_settings_service.gd)
@@ -99,12 +100,12 @@ Primary files:
 Responsibilities:
 
 - shared mode, chapter, location, objective, hint, save status, and summary data
-- shared seasonal story state: `season_phase`, `route_progress`, `story_flags`, active leads, and endgame state
+- shared seasonal story state: `season_phase`, `story_day`, `world_hour`, derived `time_of_day`, `route_progress`, `story_flags`, active leads, and endgame state
 - first-pass generic StoryEvent routing now lives in `game/story_event_service.gd`, composed by `AppState`, while `game/story_event_catalog.gd` now owns the full melody-landmark interaction spine plus its landmark prompt-completion/reward world events: ferry harbor clue and onboarding reward, Trinity cue/chime/reward beats, Bi Shan echoes/chamber/reward, Long Shan entry/checkpoints/exit/reward, Bagua synthesis/reward, and the harbor-stage prompt/performance completion
 - shared melody definitions and melody-progress state used by the journal and future performance systems
 - modular storyline route/event definitions in `game/storylines/`, with `story_route_graph.gd` loading them once into a runtime definition cache and projecting them into route progress, lead selection, display-order-independent route-score gates, canonical story-event availability checks, and endgame-trigger logic
 - resident and player-facing catalog data
-- `AppState` now composes focused helper scripts for journal text (`journal_builder.gd`), player profile/costume ownership (`player_profile_service.gd`), story autosave (`story_save_service.gd`), landmark/melody progression (`landmark_progression.gd`), resident dialogue/application (`resident_interaction_service.gd`), and runtime audio/settings state (`audio_settings_service.gd`)
+- `AppState` now composes focused helper scripts for journal text (`journal_builder.gd`), player profile/costume ownership (`player_profile_service.gd`), story autosave (`story_save_service.gd`), lightweight story time (`story_time_service.gd`), landmark/melody progression (`landmark_progression.gd`), resident dialogue/application (`resident_interaction_service.gd`), and runtime audio/settings state (`audio_settings_service.gd`)
 - resident dialogue and shared StoryEvent effects now consume the route graph's story-event availability API instead of duplicating narrative prerequisite rules through custom resident gates
 - resident routine overrides are now part of shared story state so story effects can temporarily redirect spawn, movement, or behavior through the same `AppState` getters and autosave pipeline the rest of the game already uses
 - the app shell now opens the ending overlay from the shared `endgame_started` story milestone instead of relying on the older landmark-only ending assumption

@@ -10,6 +10,7 @@ const APP_RUNTIME := preload("res://game/app_runtime.gd")
 @onready var m_task_label: Label = $ObjectiveCard/Margin/Body/Task
 @onready var m_mode_label: Label = $StatusCard/Margin/Body/Mode
 @onready var m_chapter_label: Label = $StatusCard/Margin/Body/Chapter
+@onready var m_time_label: Label = $StatusCard/Margin/Body/Time
 @onready var m_location_label: Label = $StatusCard/Margin/Body/Location
 @onready var m_fragments_label: Label = $StatusCard/Margin/Body/Fragments
 @onready var m_hint_label: Label = $HintCard/Margin/Hint
@@ -36,6 +37,7 @@ func _bind_state() -> void:
 	_app_state().mode_changed.connect(_refresh_mode)
 	_app_state().chapter_changed.connect(_refresh_chapter)
 	_app_state().season_phase_changed.connect(_refresh_chapter_from_phase)
+	_app_state().story_time_changed.connect(_refresh_time)
 	_app_state().location_changed.connect(_refresh_location)
 	_app_state().fragments_changed.connect(_refresh_fragments)
 	_app_state().hint_changed.connect(_refresh_hint)
@@ -48,6 +50,7 @@ func _refresh_all() -> void:
 	_refresh_objective(_app_state().objective)
 	_refresh_mode(_app_state().mode)
 	_refresh_chapter_from_phase(_app_state().season_phase)
+	_refresh_time(_app_state().get_story_time_state())
 	_refresh_location(_app_state().location)
 	_refresh_fragments(_app_state().fragments_found, _app_state().fragments_total)
 	_refresh_hint(_app_state().hint)
@@ -90,6 +93,10 @@ func _refresh_chapter(value: String) -> void:
 
 func _refresh_chapter_from_phase(_phase_id: String) -> void:
 	m_chapter_label.text = "Season: %s" % _app_state().get_season_phase_display_name()
+
+
+func _refresh_time(_time_state: Dictionary) -> void:
+	m_time_label.text = "Time: %s" % _app_state().get_story_time_label()
 
 
 func _refresh_location(value: String) -> void:

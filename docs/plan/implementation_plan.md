@@ -17,6 +17,7 @@ Shipped foundations:
 - first-pass StoryEvent runtime in `game/story_event_service.gd`, including subject-based resident talk, landmark-trigger routing, and inspectable routing through `AppState`
 - first authored StoryEvent tree file in `game/story_event_catalog.gd`, now owning the full `melody_landmarks` interaction spine: ferry harbor clue, Trinity cue/chime, Bi Shan echoes/chamber, Long Shan entry/checkpoints/exit, Bagua synthesis, and the harbor-stage prompt-open
 - save/load support for seasonal story state, route state, lead pinning, and endgame state
+- first lightweight life-time runtime slice with `story_day`, `world_hour`, derived `time_of_day`, StoryEvent time conditions/effects, journal summary exposure, and autosave persistence
 - story-driven resident routine overrides that persist through autosave/continue and reapply to live actors in `game_main`
 - resident gating against `season_phase`, route state, and `story_flags`
 - guarded final-act start with `spring_festival_resolved` as the earliest allowed endgame threshold
@@ -70,6 +71,7 @@ Current pressure points:
 - route-content work will keep touching large built-in resident dictionaries until more residents migrate out of the script catalog
 - storyline authoring is now decoupled from the old central route graph, but the current `game/storylines/*.gd` modules are still flat code-authored dictionaries with no editor-native picker workflow, typed schema, or graph view
 - high-traffic dictionary payloads (landmark progress, melody progress, autosave) are still untyped
+- missable/transformed moment processing is not implemented yet; the current life-time slice tracks and advances time but does not automatically expire optional beats into missed-state echoes
 - regression coverage is now strong for landmark, route, resident-interaction, reactivity, and autosave flows, but still lighter around settings/audio behavior and richer world-object reactivity
 
 ## What Remains

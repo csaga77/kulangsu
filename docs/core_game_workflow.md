@@ -110,9 +110,11 @@ The ferry opening now seeds multiple routes at once:
 - the melody route through the harbor refrain
 - the study route once Pei becomes relevant
 
-## Seasonal Anchors
+## Story Time And Seasonal Anchors
 
-Time advances through authored anchor beats, not by calendar ticks.
+Kulangsu now has a lightweight story-time layer. `season_phase` still owns the emotional movement of the year, while `story_day`, `world_hour`, and derived `time_of_day` give present-day scenes a smaller daily rhythm.
+
+Time should advance through authored actions and events, not through a hidden real-time countdown. Ordinary route scenes may consume hours or move to another day phase, while major seasonal anchors still move the year into a new `season_phase`.
 
 Current anchors:
 
@@ -201,6 +203,7 @@ It should show:
 - one pinned lead
 - the current task
 - season label
+- day/time label
 - location
 - fragment summary
 - input hint

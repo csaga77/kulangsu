@@ -17,6 +17,7 @@ const STORY_SAVE_SERVICE_SCRIPT := preload("res://game/story_save_service.gd")
 const STORY_ROUTE_GRAPH_SCRIPT := preload("res://game/story_route_graph.gd")
 const STORY_SEASON_PHASES_SCRIPT := preload("res://game/story_season_phases.gd")
 const STORY_EVENT_SERVICE_SCRIPT := preload("res://game/story_event_service.gd")
+const STORY_TIME_SERVICE_SCRIPT := preload("res://game/story_time_service.gd")
 const LANDMARK_PROGRESSION_SCRIPT := preload("res://game/landmark_progression.gd")
 const AUDIO_SETTINGS_SERVICE_SCRIPT := preload("res://game/audio_settings_service.gd")
 const RESIDENT_INTERACTION_SERVICE_SCRIPT := preload("res://game/resident_interaction_service.gd")
@@ -52,6 +53,7 @@ signal summary_changed(summary: Dictionary)
 signal landmark_progress_changed(landmark_id: String, progress: Dictionary)
 signal story_milestone(milestone_id: String, context: Dictionary)
 signal season_phase_changed(phase_id: String)
+signal story_time_changed(time_state: Dictionary)
 signal route_progress_changed(route_id: String, progress: Dictionary)
 signal active_leads_changed(active_lead_id: String, available_lead_ids: PackedStringArray)
 signal endgame_state_changed(endgame_state: Dictionary)
@@ -68,6 +70,9 @@ signal dialogue_text_speed_changed(speed_percent: float, characters_per_second: 
 var mode := "Title"
 var chapter := "Arrival"
 var season_phase := STORY_SEASON_PHASES_SCRIPT.DEFAULT_PHASE
+var story_day := STORY_TIME_SERVICE_SCRIPT.DEFAULT_STORY_DAY
+var world_hour := STORY_TIME_SERVICE_SCRIPT.DEFAULT_WORLD_HOUR
+var time_of_day := STORY_TIME_SERVICE_SCRIPT.time_of_day_for_hour(STORY_TIME_SERVICE_SCRIPT.DEFAULT_WORLD_HOUR)
 var location := "Piano Ferry"
 var objective := "Find out why the island feels quiet today."
 var hint := "R Inspect   J Journal   Esc Pause"
@@ -114,6 +119,7 @@ var m_story_save_service: RefCounted = null
 var m_landmark_progression: RefCounted = null
 var m_story_route_graph: RefCounted = null
 var m_story_event_service: RefCounted = null
+var m_story_time_service: RefCounted = null
 var m_audio_settings_service: RefCounted = null
 var m_resident_interaction_service: RefCounted = null
 
@@ -134,6 +140,7 @@ func _init() -> void:
 	m_landmark_progression = LANDMARK_PROGRESSION_SCRIPT.new(self)
 	m_story_route_graph = STORY_ROUTE_GRAPH_SCRIPT.new(self)
 	m_story_event_service = STORY_EVENT_SERVICE_SCRIPT.new(self)
+	m_story_time_service = STORY_TIME_SERVICE_SCRIPT.new(self)
 	m_audio_settings_service = AUDIO_SETTINGS_SERVICE_SCRIPT.new(self)
 	m_resident_interaction_service = RESIDENT_INTERACTION_SERVICE_SCRIPT.new(self)
 	story_flags = m_story_route_graph.build_default_story_flags()
@@ -349,6 +356,72 @@ func set_season_phase(new_phase: String) -> void:
 
 func get_season_phase_display_name() -> String:
 	return STORY_ROUTE_GRAPH_SCRIPT.phase_display_name(season_phase)
+
+
+func get_story_time_state() -> Dictionary:
+	if m_story_time_service == null:
+		return STORY_TIME_SERVICE_SCRIPT.default_time_state()
+	return m_story_time_service.get_time_state()
+
+
+func set_story_time_state(time_state: Dictionary) -> bool:
+	if m_story_time_service == null:
+		return false
+	return m_story_time_service.set_time_state(time_state)
+
+
+func reset_story_time() -> void:
+	if m_story_time_service == null:
+		return
+	m_story_time_service.reset_time_state()
+
+
+func get_story_day() -> int:
+	return int(get_story_time_state().get("story_day", STORY_TIME_SERVICE_SCRIPT.DEFAULT_STORY_DAY))
+
+
+func get_world_hour() -> float:
+	return float(get_story_time_state().get("world_hour", STORY_TIME_SERVICE_SCRIPT.DEFAULT_WORLD_HOUR))
+
+
+func get_time_of_day() -> String:
+	return String(get_story_time_state().get("time_of_day", STORY_TIME_SERVICE_SCRIPT.TIME_MORNING))
+
+
+func get_time_of_day_display_name() -> String:
+	return STORY_TIME_SERVICE_SCRIPT.display_name(get_time_of_day())
+
+
+func get_story_time_label() -> String:
+	return "Day %d, %s" % [get_story_day(), get_time_of_day_display_name()]
+
+
+func advance_story_hours(hours: float) -> bool:
+	if m_story_time_service == null:
+		return false
+	return m_story_time_service.advance_hours(hours)
+
+
+func advance_story_day(days: int = 1) -> bool:
+	if m_story_time_service == null:
+		return false
+	return m_story_time_service.advance_day(days)
+
+
+func advance_to_time_of_day(target_time_of_day: String) -> bool:
+	if m_story_time_service == null:
+		return false
+	return m_story_time_service.advance_to_time_of_day(target_time_of_day)
+
+
+func apply_story_time_effects(payload: Dictionary) -> bool:
+	if m_story_time_service == null:
+		return false
+	return m_story_time_service.apply_time_effects(payload)
+
+
+func is_world_hour_in_range(min_hour: Variant, max_hour: Variant) -> bool:
+	return STORY_TIME_SERVICE_SCRIPT.hour_is_in_range(get_world_hour(), min_hour, max_hour)
 
 
 func set_location(new_location: String) -> void:
@@ -1099,6 +1172,7 @@ func _update_summary_counts() -> void:
 	summary["fragments"] = "%d / %d" % [fragments_found, fragments_total]
 	summary["residents"] = str(_count_helped_residents())
 	summary["season"] = get_season_phase_display_name()
+	summary["time"] = get_story_time_label()
 	if m_story_route_graph != null:
 		summary["routes"] = m_story_route_graph.build_route_completion_summary()
 	summary["route_emphasis"] = build_route_emphasis_text()
@@ -1230,6 +1304,11 @@ func _emit_player_costumes_changed(unlocked_ids: PackedStringArray, equipped_cos
 
 func _emit_save_metadata_changed(metadata: Dictionary) -> void:
 	save_metadata_changed.emit(metadata)
+
+
+func _emit_story_time_changed(time_state: Dictionary) -> void:
+	story_time_changed.emit(time_state.duplicate(true))
+	_update_summary_counts()
 
 
 func _emit_player_appearance_changed() -> void:

@@ -23,6 +23,9 @@ func build_context(subject_id: String = "", extra_context: Dictionary = {}) -> D
 		"subject_id": subject_id.strip_edges(),
 		"location": String(m_owner.location),
 		"season_phase": String(m_owner.season_phase),
+		"story_day": m_owner.get_story_day(),
+		"world_hour": m_owner.get_world_hour(),
+		"time_of_day": m_owner.get_time_of_day(),
 		"mode": String(m_owner.mode),
 		"active_lead_id": String(m_owner.active_lead_id),
 	}
@@ -208,6 +211,29 @@ func matches_conditions(conditions_value: Variant, context: Dictionary = {}) -> 
 	if !expected_chapter.is_empty() and String(m_owner.chapter) != expected_chapter:
 		return false
 
+	var expected_time_of_day: Variant = conditions.get("time_of_day", null)
+	if expected_time_of_day != null:
+		if expected_time_of_day is Array or expected_time_of_day is PackedStringArray:
+			var allowed_times := PackedStringArray()
+			for time_value in m_owner._normalize_string_array(expected_time_of_day):
+				allowed_times.append(String(time_value).strip_edges().to_lower())
+			if allowed_times.find(m_owner.get_time_of_day()) < 0:
+				return false
+		elif m_owner.get_time_of_day() != String(expected_time_of_day).strip_edges().to_lower():
+			return false
+
+	if conditions.has("story_day_min") and m_owner.get_story_day() < int(conditions.get("story_day_min", 0)):
+		return false
+
+	if conditions.has("story_day_max") and m_owner.get_story_day() > int(conditions.get("story_day_max", 0)):
+		return false
+
+	if conditions.has("world_hour_min") or conditions.has("world_hour_max"):
+		var min_hour: Variant = conditions.get("world_hour_min", 0.0)
+		var max_hour: Variant = conditions.get("world_hour_max", 23.999)
+		if !m_owner.is_world_hour_in_range(min_hour, max_hour):
+			return false
+
 	for flag_value in conditions.get("story_flag_all", []):
 		if !bool(m_owner.get_story_flag(String(flag_value), false)):
 			return false
@@ -353,6 +379,8 @@ func apply_effects(payload: Dictionary, context: Dictionary = {}) -> void:
 	var new_phase := String(formatted_payload.get("season_phase", ""))
 	if !new_phase.is_empty():
 		m_owner.set_season_phase(new_phase)
+
+	m_owner.apply_story_time_effects(formatted_payload)
 
 	var new_chapter := String(formatted_payload.get("chapter", ""))
 	if !new_chapter.is_empty() and m_owner.mode != "Story":

@@ -68,6 +68,7 @@ func configure_new_game() -> void:
 		if m_owner.m_story_route_graph != null else {}
 	m_owner.set_mode("Story")
 	m_owner._apply_story_route_state_bundle(story_state)
+	m_owner.reset_story_time()
 	m_owner.set_location("Piano Ferry")
 	m_owner.set_objective("Find out why the island feels quiet today.")
 	m_owner.set_journal_unlocked(false)
@@ -110,6 +111,7 @@ func configure_free_walk() -> void:
 		if m_owner.m_story_route_graph != null else {}
 	m_owner.set_mode("Free Walk")
 	m_owner._apply_story_route_state_bundle(story_state)
+	m_owner.reset_story_time()
 	m_owner.set_chapter("Free Walk")
 	m_owner.set_location("Piano Ferry")
 	m_owner.set_objective("Wander the island and learn how the first district wants to be introduced.")
@@ -140,6 +142,7 @@ func _build_story_autosave_payload() -> Dictionary:
 		"mode": m_owner.mode,
 		"chapter": m_owner.chapter,
 		"season_phase": m_owner.season_phase,
+		"story_time": m_owner.get_story_time_state(),
 		"location": m_owner.location,
 		"objective": m_owner.objective,
 		"journal_unlocked": m_owner.journal_unlocked,
@@ -201,6 +204,7 @@ func _normalize_story_autosave_payload(payload: Dictionary) -> Dictionary:
 		"mode": normalized_mode,
 		"chapter": String(payload.get("chapter", "Arrival")),
 		"season_phase": normalized_phase,
+		"story_time": m_owner.STORY_TIME_SERVICE_SCRIPT.normalize_time_state(payload.get("story_time", {})),
 		"location": String(payload.get("location", "Piano Ferry")),
 		"objective": String(payload.get("objective", "Find out why the island feels quiet today.")),
 		"journal_unlocked": bool(payload.get("journal_unlocked", true)),
@@ -303,6 +307,8 @@ func _apply_story_autosave_payload(payload: Dictionary) -> bool:
 
 	m_owner.set_mode(String(payload.get("mode", "Story")))
 	m_owner._apply_story_route_state_bundle(payload)
+	var story_time_payload: Dictionary = payload.get("story_time", {})
+	m_owner.set_story_time_state(story_time_payload)
 	m_owner.set_location(String(payload.get("location", m_owner.story_resume_location)))
 	m_owner.set_objective(String(payload.get("objective", m_owner.objective)))
 	m_owner.set_journal_unlocked(bool(payload.get("journal_unlocked", true)))

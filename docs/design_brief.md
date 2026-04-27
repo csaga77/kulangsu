@@ -14,13 +14,13 @@ Read this first. It is the minimum-token design context for new Codex threads.
 2. Open several story routes at once through landmarks and residents.
 3. Follow one pinned lead on the HUD while tracking the wider route ledger in the journal.
 4. Hear, collect, and reconstruct melody fragments from residents and places while also advancing family, study, and preservation beats.
-5. Let seasonal anchors move the year toward a short final act and ending choice.
+5. Let authored story-time and seasonal anchors move the year toward a short final act and ending choice.
 
 ## Core Content Model
 
 - Seasonal multi-route structure rather than one main quest route.
 - The five-landmark melody route remains one major route, not the only route.
-- Progress is tracked through `season_phase`, `route_progress`, `story_flags`, melody fragments, reconstructed melodies, landmarks, residents, location, player appearance, and wardrobe unlocks.
+- Progress is tracked through `season_phase`, lightweight story time (`story_day`, `world_hour`, `time_of_day`), `route_progress`, `story_flags`, melody fragments, reconstructed melodies, landmarks, residents, location, player appearance, and wardrobe unlocks.
 - `chapter` remains a compatibility/display label, not the authoritative progression key.
 - `Free Walk` is a low-pressure exploration mode separate from story progression.
 
