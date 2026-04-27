@@ -123,9 +123,111 @@ The current story frame is:
 5. `Second Summer`
 6. `Final Act`
 
-These are authored emotional phases, not calendar simulation.
+These are authored emotional phases inside a light life-time simulation model. Days, day/night phases, and seasons can progress independently from storyline completion, so the world should feel as if it continues moving even when the player has not completed every available route beat.
 
-Each phase is advanced by key story anchors rather than by timekeeping UI.
+The game should not use a heavy calendar-planner UI, but it should treat the passing year as real enough that some moments only exist during certain seasonal and daily windows. Story events can also move time: a long task may consume an afternoon, a family meal may move evening into night, an exam may skip most of a day, and a major festival or final performance may push the world into a new seasonal phase.
+
+The seasons therefore behave as life-sim time phases with authored emotional meaning. They are not purely story-locked quest gates. Inside each season, day/night cycles provide smaller rhythms of availability, atmosphere, and missable daily texture.
+
+### Seasonal Missability Principle
+
+The game uses seasonal missability as an emotional design principle.
+
+Seasons do not wait for the player. Some scenes, conversations, environmental details, character-intimacy moments, and small acts of care only exist during specific phases of the year. If the player misses them, the game should not fully replace them later. Instead, later scenes should remember the absence.
+
+This supports the central themes of attention, memory, regret, loss, and the impossibility of perfectly preserving every moment.
+
+Design rule:
+
+missable does not mean broken; missable means emotionally transformed.
+
+A missed beat should not usually block the main route. It should change later echoes, relationship tone, regret weight, ending texture, and the player's understanding of what was lost.
+
+Examples of seasonal missability:
+
+- A late-summer A Po memory about where Grandma sat may become a colder winter chair scene if the boy never asked in time.
+- A Spring Festival meal still happens whether the boy is ready or not, but its warmth, silence, and meaning change depending on prior family-memory attention.
+- A repair detail in the preservation route may disappear after autumn work is finished; Mei may later say, quietly, that the boy should have seen it before.
+- Exam pressure continues even if the boy avoids study and future conversations; friends may move ahead without him.
+- A melody fragment found in the right season may feel full and locally grounded, while the same fragment discovered late may feel thinner or less contextual.
+
+Use gentle diegetic signals instead of aggressive expiry warnings. Characters may mention that repairs begin after Mid-Autumn, a parent is home for only two nights, the light falls a certain way only in late summer, or Spring Festival preparation starts soon. The player should feel that time matters without seeing a mechanical countdown.
+
+Recommended split:
+
+- Main route continuity: not missable
+- Seasonal emotional scenes: missable
+- Character intimacy scenes: missable
+- Environmental details and inspectables: missable or seasonally transformed
+- Critical ending access: not missable
+- Ending tone: affected by completed, missed, and transformed moments
+
+The final act should not only ask how much the player completed. It should also ask what the boy noticed, what he missed, what he repaired, what he left unresolved, and what he can now carry.
+
+### Life-Time Simulation And Day / Night Principle
+
+The game uses a light life-time simulation model for present-day world time.
+
+World time normally moves forward through daily phases, days, and seasons. The player chooses how to spend time through ordinary actions such as walking, talking, inspecting, studying, helping residents, sketching buildings, listening for melody cues, joining meals, and resting. These actions can consume time, and accumulated days eventually move the season forward.
+
+Recommended daily phases:
+
+1. `Morning`
+2. `Afternoon`
+3. `Evening`
+4. `Night`
+
+These phases are atmosphere and availability states rather than a rigid timetable. They control available scenes, resident placement, lighting, ambient sound, shop/lane activity, school pressure, household routines, and emotional tone.
+
+Design rule:
+
+world time flows forward; memory time can move backward; authored events can move either.
+
+Use two kinds of time:
+
+- `World Time`: the current season, day, and day/night phase. This is the boy's present life on Kulangsu and normally moves forward.
+- `Memory Time`: recalled past moments reached through dreams, old photographs, objects, music, buildings, stories, or conversations. This can move backward without literally rolling back the world state.
+
+Events may move time in three directions:
+
+1. **Forward within the day** — a school morning becomes afternoon, a repair task consumes the afternoon, or a family meal moves evening into night.
+2. **Forward across days or seasons** — sleep, exams, festival sequences, travel, long recovery periods, and final performances may advance to another day or seasonal phase.
+3. **Backward into memory** — a chair, hymn book, old window, melody phrase, photograph, lane, or conversation may temporarily move the player into an earlier remembered moment.
+
+Backward time should usually mean memory access, not an undo button. The player is not normally rewinding the present world. They are entering partial, selective, emotionally charged memory. After a backward-time event, the world returns to the present, sometimes with the current day phase advanced.
+
+Examples of forward-time events:
+
+- a school day may move morning directly into afternoon
+- a long repair task with Mei may consume the afternoon and open an evening follow-up
+- a family dinner may move evening into night
+- a late-night study session may move to the next morning
+- Spring Festival dinner may advance to the next morning or next phase
+- exam day may skip most ordinary daily activity
+- the final performance may move the story toward the final act
+
+Examples of backward-time events:
+
+- inspecting Grandma's old chair at night may enter a Year 6 afternoon memory near the window
+- an old photograph may briefly return the boy to a family moment before Grandma's illness worsened
+- a restored melody phrase may let the player hear a past festival evening
+- sketching a villa gate may reveal an earlier household celebration or departure scene
+- A Po's story may move the player into a remembered walking route with Grandma
+
+Backward-time events can reveal, deepen, or recontextualize missed moments, but they should not fully erase the consequence of missing them. If the player missed an earlier A Po scene, a later memory may be fragmented, colder, or incomplete. Memory can recover meaning, but it cannot perfectly restore the lost present.
+
+Use event-driven time movement sparingly and clearly. The player should feel that time moved because the action, memory, or emotional turn mattered, not because the game arbitrarily removed control.
+
+Recommended split:
+
+- Ambient day/night flow: independent
+- Accumulated days and seasons: independent enough to make time feel alive
+- Ordinary route scenes: may consume part of a day
+- Major emotional events: may advance day, night, or several days
+- Major seasonal anchors: may advance season
+- Memory events: may move backward into the past, then return to present world time
+- Critical ending access: not blocked by missing ordinary daily scenes
+- Ending texture: affected by what the player noticed, missed, delayed, remembered, or arrived too late to see
 
 ## The Four Canonical Routes
 
@@ -287,7 +389,7 @@ In current route grouping terms, this landmark line is the `melody_landmarks` fa
 
 ## Current Seasonal Anchors
 
-The current playable game uses these anchors to move the year:
+The current playable game still uses major anchors to give each season emotional shape:
 
 - `summer_reentry_complete`
 - `autumn_pressure_named`
@@ -295,7 +397,7 @@ The current playable game uses these anchors to move the year:
 - `spring_festival_resolved`
 - `summer_exam_complete`
 
-These anchors should always feel like emotional turns in the year, not checklist checkpoints. The summer anchor should be understood as emotional re-entry into the island, not a physical return from elsewhere.
+These anchors should feel like emotional turns in the year, not checklist checkpoints. They should shape the season's meaning, but they do not require every optional route beat to be completed before time moves forward. The summer anchor should be understood as emotional re-entry into the island, not a physical return from elsewhere.
 
 ## Cross-Route Relationship Rules
 
@@ -324,6 +426,8 @@ The intended story is broader than the currently authored resident and route con
 
 This means the current playable story already supports the seasonal multi-route structure, but not all canonical emotional lines are equally developed yet.
 
+With the seasonal missability principle, current playable coverage should track both completed and missed moments. A route can continue after a missed seasonal beat, but later reactions should reflect whether the boy noticed, avoided, or arrived too late.
+
 ## Storyline Gap Priorities
 
 The next narrative expansion should stay focused on the gaps that most affect the shape of the year:
@@ -331,8 +435,9 @@ The next narrative expansion should stay focused on the gaps that most affect th
 1. Deepen `family_memory` with more embodied household scenes around A Po, the parents, and the cost of care so those beats are not carried mostly by dialogue alone.
 2. Expand `study_future` with more lived middle beats and small world responses so the route keeps its year-long pressure shape between the major turning points.
 3. Grow `preservation_inheritance` into stronger district-facing reactions, props, inspectables, and character-led tasks through Mr. Lin, Mei, Uncle Zhao, Madam Wei, Mr. Huang, Professor Xu, and A Po so stewardship is visible even when the player is not in a resident conversation.
-4. Turn the improved ending and departure language into more playable closing movement once the route-specific copy settles.
-5. Keep `melody_landmarks` optional for completion while giving its resonant follow-through more wandering texture after the public performance.
+4. Add missed-beat echoes for each route so seasonal absence becomes visible through changed dialogue, props, ambience, and ending tone.
+5. Turn the improved ending and departure language into more playable closing movement once the route-specific copy settles.
+6. Keep `melody_landmarks` optional for completion while giving its resonant follow-through more wandering texture after the public performance.
 
 Until those gaps are filled, the canon should be read as the target story shape rather than a claim that every route already has equal playable weight.
 
@@ -361,4 +466,6 @@ Ending tone should be shaped by:
 - Do not make the island's old buildings decorative background; they matter thematically.
 - Do not force the melody route to become the only valid path to an ending.
 - Do not use a literal calendar planner UI for this story frame.
+- Do not make the day/night cycle a rigid life-sim timetable; use it as an authored atmosphere and availability rhythm.
+- Do not freeze days, nights, or seasons until every route beat is completed; allow daily and seasonal moments to be missed, transformed, and remembered.
 - Do not let the final act start before spring has emotionally settled.
