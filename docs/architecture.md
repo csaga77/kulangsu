@@ -111,7 +111,7 @@ Responsibilities:
 - the app shell now opens the ending overlay from the shared `endgame_started` story milestone instead of relying on the older landmark-only ending assumption
 - lazy resident definition/profile initialization so startup does not eagerly build the full resident runtime just to load the shared state service
 - resident definition resources for appearance, dialogue, routine, and behavior metadata
-- editor-authored resident definition files and templates, including override resources that can replace built-in residents by id
+- all 25 resident definitions are authored as standalone `.tres` files under `game/residents/definitions/`; `ResidentCatalog` loads them at runtime and the built-in definition helpers exist only as infrastructure for the external loading pipeline
 - resident runtime profiles plus resident appearance, spawn, movement, behavior, and journal-facing lookup helpers
 - state that multiple screens or systems need to read consistently
 

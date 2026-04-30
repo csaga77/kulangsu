@@ -50,9 +50,9 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../game/landmark_cue_loader.gd`](../game/landmark_cue_loader.gd) - shared one-shot landmark cue loader/cache that decodes shipped Vorbis `.ogg` cues directly instead of relying on editor import state
 - [`../game/bgm_catalog.gd`](../game/bgm_catalog.gd) / [`../game/bgm_manager.gd`](../game/bgm_manager.gd) - seed-pool BGM definitions plus scene-owned weighted playback and transition logic for overworld music
 - [`../game/melody_catalog.gd`](../game/melody_catalog.gd) - authored melody definitions, onboarding clue sources, fragment sources, and performance-point summaries
-- [`../game/resident_catalog.gd`](../game/resident_catalog.gd) - resident roster and the helper builders that produce resident definitions
+- [`../game/resident_catalog.gd`](../game/resident_catalog.gd) - resident roster ordering, external `.tres` definition loading, and helper builders consumed by the loading pipeline
 - [`../game/resident_system/`](../game/resident_system) - resident definition resources for appearance, dialogue, routine, and behavior metadata
-- [`../game/residents/`](../game/residents) - editor-authored resident definitions, built-in override resources, templates, and the short designer workflow note
+- [`../game/residents/`](../game/residents) - all 25 editor-authored resident `.tres` definitions under `definitions/`, templates, and the short designer workflow note
 - [`../game/player_appearance_catalog.gd`](../game/player_appearance_catalog.gd) / [`../game/player_costume_catalog.gd`](../game/player_costume_catalog.gd) - player customization data
 - [`../weather/overworld_weather_preset.gd`](../weather/overworld_weather_preset.gd) / [`../weather/overworld_weather_preset.tres`](../weather/overworld_weather_preset.tres) - shared default rain/fog/cloud/impact tuning consumed by `game_main` and `test_weather`
 If several screens or systems need the same player-facing state, it probably belongs in `game/app_state.gd`.
@@ -123,7 +123,7 @@ Be careful about renames or moves here because scene and resource references can
 - [`../game/tests/npc_system/test_npc_layer_interaction.tscn`](../game/tests/npc_system/test_npc_layer_interaction.tscn) - focused same-layer NPC targeting and portal-driven z-layer switching sandbox
 - [`../game/tests/npc_system/test_npc_control.tscn`](../game/tests/npc_system/test_npc_control.tscn) - focused routed NPC control regression scene covering Ren's in-tunnel walk-frame playback, nearby talk pause, dialogue reveal, and route resume
 - [`../game/tests/npc_system/test_resident_interaction.tscn`](../game/tests/npc_system/test_resident_interaction.tscn) - focused resident progression regression covering gate fallbacks, trust-max milestones, and a resident-driven autosave/continue path
-- [`../game/tests/npc_system/test_resident_catalog_external_defs.tscn`](../game/tests/npc_system/test_resident_catalog_external_defs.tscn) - focused resident catalog regression covering external `.tres` override parity against the built-in baseline
+- [`../game/tests/npc_system/test_resident_catalog_external_defs.tscn`](../game/tests/npc_system/test_resident_catalog_external_defs.tscn) - focused resident catalog regression covering external `.tres` definition loading, roster completeness, and field-level validation
 - [`../game/tests/npc_system/test_npc_route_collision.tscn`](../game/tests/npc_system/test_npc_route_collision.tscn) - focused routed NPC wall-collision regression scene covering collision-aware route motion against blocking geometry
 - [`../game/tests/npc_system/test_tunnel_visibility.tscn`](../game/tests/npc_system/test_tunnel_visibility.tscn) - focused tunnel-resident spawn, spacing, and tunnel-context visibility regression scene
 - [`../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../game/tests/npc_system/test_tunnel_npc_travel.tscn) - focused tunnel resident route regression scene covering Ren's inside-only Long Shan path plus Nuo's Bi Shan portal-to-surface transition and level-state restoration
