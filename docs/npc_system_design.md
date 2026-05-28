@@ -15,7 +15,7 @@ The live resident flow is:
 
 1. [`../game/resident_catalog.gd`](../game/resident_catalog.gd) defines the built-in resident roster, auto-loads external resident resources from [`../game/residents/definitions/`](../game/residents/definitions), and builds resource-backed `ResidentDefinition` objects plus nested appearance/dialogue/routine resources under [`../game/resident_system/`](../game/resident_system).
 2. [`../game/app_state.gd`](../game/app_state.gd) keeps immutable `resident_definitions`, clones them into mutable runtime `resident_profiles`, lazily initializes both on demand, and exposes all resident-facing getters.
-3. [`../scenes/game_main.gd`](../scenes/game_main.gd) caches supported spawn and route anchors, resolves sparse authored routes into world-space movement points, instantiates [`../characters/resident_npc.tscn`](../characters/resident_npc.tscn), applies the matching definition, and synchronizes tunnel-specific visibility and level state.
+3. [`../scenes/game_main.gd`](../scenes/game_main.gd) caches supported spawn and route anchors, delegates sparse route expansion to [`../scenes/route_resolver.gd`](../scenes/route_resolver.gd), instantiates residents through [`../scenes/resident_spawner.gd`](../scenes/resident_spawner.gd), and synchronizes tunnel-specific visibility and level state through [`../scenes/tunnel_context.gd`](../scenes/tunnel_context.gd).
 4. [`../characters/control/base_controller.gd`](../characters/control/base_controller.gd) filters nearby targets to the same absolute z layer, ignores controller-owned overlap nodes, and lets residents plus landmark cues compete by distance before closest-target or speech logic can use them.
 5. [`../characters/resident_npc.gd`](../characters/resident_npc.gd) applies each resident definition's static appearance to the runtime `HumanBody2D`.
 6. [`../characters/control/npc_controller.gd`](../characters/control/npc_controller.gd) shows the nearby `...` cue, reveals the current talk line after interaction, and follows resolved runtime route points with collision-aware motion except on explicit tunnel/portal bypass helper points.
@@ -60,13 +60,13 @@ This split is intentional: authored content stays in the catalog, mutable progre
 - Tunnel residents now follow a stricter visibility rule than plain same-layer targeting alone.
 - The player only counts as being "in a tunnel" after actually reaching that tunnel's interior level; walking over the tunnel footprint on the surface must not reveal tunnel residents or hide ground buildings.
 - Routed residents use the same interior-only tunnel classification, and actual level changes now come from the same portal overlap logic the player uses.
-- When authored routes cross between a tunnel portal anchor and its paired surface entry anchor, the main scene resolves extra portal-direction waypoints so the resident traverses along the portal axis instead of clipping in from the side.
+- When authored routes cross between a tunnel portal anchor and its paired surface entry anchor, the scene-owned [`../scenes/route_resolver.gd`](../scenes/route_resolver.gd) expands extra portal-direction waypoints so the resident traverses along the portal axis instead of clipping in from the side.
 - Portal-anchored route offsets are resolved in portal-local coordinates so authored points can preserve both through-portal depth and lateral alignment.
 
-### Route Resolution Lives In `game_main.gd`
+### Route Resolution Lives In `RouteResolver`
 
 - Catalog-authored `movement.route_points` are intentionally sparse. They describe anchor ids, local offsets, and wait timing, but they are not the final path the NPC walks.
-- [`../scenes/game_main.gd`](../scenes/game_main.gd) is the one place that resolves those sparse points into a runtime route:
+- [`../scenes/game_main.gd`](../scenes/game_main.gd) owns the spawn-anchor map and passes it into [`../scenes/route_resolver.gd`](../scenes/route_resolver.gd), which resolves those sparse points into a runtime route:
   - validate anchor ids
   - resolve anchor positions into world space
   - snap tunnel anchors back onto walkable tunnel cells
@@ -339,7 +339,7 @@ When the system breaks, start here:
   - Check tunnel masking refresh in [`../common/auto_visibility_node_2d.gd`](../common/auto_visibility_node_2d.gd).
 - Route waypoints look wrong:
   - Check the sparse authored route in [`../game/resident_catalog.gd`](../game/resident_catalog.gd) first.
-  - Then check `_build_resident_movement_config()`, `_resolve_directional_portal_route_position()`, and `_build_tunnel_boundary_transition_points()` in [`../scenes/game_main.gd`](../scenes/game_main.gd).
+  - Then check the spawn-anchor map in [`../scenes/game_main.gd`](../scenes/game_main.gd) and `_build_resident_movement_config()`, `_resolve_directional_portal_route_position()`, and `_build_tunnel_boundary_transition_points()` in [`../scenes/route_resolver.gd`](../scenes/route_resolver.gd).
   - Use the runtime route overlay in [`../scenes/game_main.tscn`](../scenes/game_main.tscn) to compare authored points against the expanded `NPCController.m_route_points`.
 - Journal text looks stale:
   - Check `AppState.interact_with_resident()`, `resident_profile_changed`, and `build_resident_journal_text()`.

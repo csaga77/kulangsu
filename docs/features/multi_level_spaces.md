@@ -49,6 +49,10 @@
   - owns `level_id`, `level_bottom`, and `level_top`
   - derives stair portal masks and `delta_z` from `LevelRegistry`
   - still falls back to hand-authored masks if no valid level data is available
+- [`../../architecture/components/door_2d.gd`](../../architecture/components/door_2d.gd)
+  - owns open/closed presentation for reusable door and window aperture scenes
+  - gates open/close reactions by comparing the entering actor's absolute z layer to the aperture's absolute z layer
+  - does not resolve levels through `LevelRegistry`; it assumes the surrounding landmark or building piece already placed it on the intended floor
 
 ### 3. Global Static Level Data
 
@@ -96,6 +100,7 @@
 
 - Visibility masking remains a separate authored concern.
 - Direct spawn, teleport, or restore into non-base floors should still call `LevelRegistry.apply_level_to_actor(level_id, actor)` explicitly.
+- Door/window open state is currently a simple same-layer enter/exit toggle, not an occupancy-counted state. If multiple actors can overlap one hot area, add overlap tracking and a focused validation scene before relying on it for gameplay-critical doors.
 - If a new landmark needs non-formula level behavior, [`../../common/level_registry.gd`](../../common/level_registry.gd) must be updated.
 
 ## Ownership / Boundaries
@@ -119,6 +124,9 @@
 - [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd)
 - [`../../architecture/components/portal.gd`](../../architecture/components/portal.gd)
 - [`../../architecture/components/steps.gd`](../../architecture/components/steps.gd)
+- [`../../architecture/components/door_2d.gd`](../../architecture/components/door_2d.gd)
+- [`../../architecture/components/wall.gd`](../../architecture/components/wall.gd)
+- [`../../architecture/components/window_wall.gd`](../../architecture/components/window_wall.gd)
 - [`../../scenes/tunnel_context.gd`](../../scenes/tunnel_context.gd)
 - [`../../scenes/route_resolver.gd`](../../scenes/route_resolver.gd)
 - [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
@@ -133,6 +141,9 @@
 - [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn)
 - [`../../scenes/tests/test_level_resolution.tscn`](../../scenes/tests/test_level_resolution.tscn)
 - [`../../scenes/tests/test_portal_overlap.tscn`](../../scenes/tests/test_portal_overlap.tscn)
+- [`../../scenes/tests/test_building_tiles.tscn`](../../scenes/tests/test_building_tiles.tscn)
+- [`../../scenes/tests/test_landmark_cue_loading.tscn`](../../scenes/tests/test_landmark_cue_loading.tscn)
+- [`../../game/tests/cue_progression/test_cue_progression.tscn`](../../game/tests/cue_progression/test_cue_progression.tscn)
 
 ## Validation
 
@@ -143,3 +154,6 @@
 - Validate physical stair traversal with [`../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn`](../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn).
 - Validate tunnel-only visibility swaps, `exterior`/`interior` presentation handoff, and surface-overlap behavior with [`../../game/tests/npc_system/test_tunnel_visibility.tscn`](../../game/tests/npc_system/test_tunnel_visibility.tscn).
 - Validate routed NPC re-entry and tunnel level restoration with [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn).
+- Validate reusable wall, door, and window building-piece loading with [`../../scenes/tests/test_building_tiles.tscn`](../../scenes/tests/test_building_tiles.tscn).
+- Validate landmark cue audio loading with [`../../scenes/tests/test_landmark_cue_loading.tscn`](../../scenes/tests/test_landmark_cue_loading.tscn).
+- Validate canonical landmark progression and cue interaction state with [`../../game/tests/cue_progression/test_cue_progression.tscn`](../../game/tests/cue_progression/test_cue_progression.tscn).
