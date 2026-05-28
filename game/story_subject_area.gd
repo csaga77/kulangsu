@@ -233,6 +233,9 @@ func _runtime_subject_metadata() -> Dictionary:
 
 func _story_state_signal_names() -> PackedStringArray:
 	return PackedStringArray([
+		"mode_changed",
+		"chapter_changed",
+		"story_time_changed",
 		"landmark_progress_changed",
 		"route_progress_changed",
 		"story_milestone",

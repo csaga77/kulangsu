@@ -31,7 +31,7 @@ Still not migrated:
 
 - authored recursive `StoryEventDefinition` trees for the four top-level route families; those route families now live as separate typed route resources under `game/storylines/routes/`, but they are still flat route/event dictionaries rather than nested StoryEvent trees
 - a director that arbitrates across many active route-family definitions instead of the current shared helpers over typed route resources, resident data, and inspectable catalogs
-- landmark-trigger progression still enters through the older `activate_landmark_trigger(...)` compatibility bridge, but the current melody landmark subjects and their prompt-completion/reward follow-through now resolve in authored StoryEvent definitions before any legacy fallback helper in `landmark_progression.gd`
+- legacy direct landmark-trigger calls can still enter through `activate_landmark_trigger(...)`, but runtime interaction and regression coverage now use stable `landmark:` subjects through `activate_story_subject(...)`; the current melody landmark subjects and their prompt-completion/reward follow-through resolve in authored StoryEvent definitions before any legacy fallback helper in `landmark_progression.gd`
 - broader non-interaction signals beyond the current landmark prompt-completion/reward events moving fully through `notify_story_world_event(...)`
 - a published-fact ledger replacing the current storyline-module plus `story_route_graph.gd` projection as the canonical progression source
 

@@ -33,7 +33,7 @@ func _run() -> void:
 	_assert_true(!_app_state().can_practice_melody("festival_melody"), "Practice stays locked until at least two true fragments are restored")
 
 	_app_state().interact_with_resident("ferry_caretaker")
-	_app_state().activate_landmark_trigger("piano_ferry", "harbor_refrain", "Harbor Clue")
+	_activate_landmark_subject("piano_ferry", "harbor_refrain", "Harbor Clue")
 	_app_state().interact_with_resident("ferry_caretaker")
 	_assert_true(_app_state().is_journal_unlocked(), "Journal unlocks after the ferry handoff")
 	_assert_true(_app_state().fragments_found == 0, "Ferry onboarding does not count as a fragment")
@@ -41,11 +41,11 @@ func _run() -> void:
 
 	_app_state().interact_with_resident("church_caretaker")
 	_app_state().interact_with_resident("church_caretaker")
-	_app_state().activate_landmark_trigger("trinity_church", "steps", "Steps")
-	_app_state().activate_landmark_trigger("trinity_church", "garden", "Garden")
-	_app_state().activate_landmark_trigger("trinity_church", "yard", "Yard")
+	_activate_landmark_subject("trinity_church", "steps", "Steps")
+	_activate_landmark_subject("trinity_church", "garden", "Garden")
+	_activate_landmark_subject("trinity_church", "yard", "Yard")
 	var trinity_requests_before := m_prompt_requests.size()
-	var chime_consumed = _app_state().activate_landmark_trigger("trinity_church", "choir_chime", "Choir Chime")
+	var chime_consumed = _activate_landmark_subject("trinity_church", "choir_chime", "Choir Chime")
 	_assert_true(!chime_consumed, "Trinity choir chime waits for prompt confirmation before resolution")
 	_assert_true(m_prompt_requests.size() == trinity_requests_before + 1, "Trinity choir chime requests the prompt once all cues are gathered")
 	_assert_true(_app_state().fragments_found == 0, "Trinity does not award a fragment before the choir chime settles")
@@ -56,11 +56,11 @@ func _run() -> void:
 	_assert_true(_app_state().get_landmark_state("bi_shan_tunnel") == "available", "Bi Shan unlocks after Trinity")
 	_assert_true(_app_state().get_landmark_state("long_shan_tunnel") == "available", "Long Shan unlocks after Trinity")
 
-	_app_state().activate_landmark_trigger("bi_shan_tunnel", "echo_a", "Echo A")
-	_app_state().activate_landmark_trigger("bi_shan_tunnel", "echo_b", "Echo B")
-	_app_state().activate_landmark_trigger("bi_shan_tunnel", "echo_c", "Echo C")
+	_activate_landmark_subject("bi_shan_tunnel", "echo_a", "Echo A")
+	_activate_landmark_subject("bi_shan_tunnel", "echo_b", "Echo B")
+	_activate_landmark_subject("bi_shan_tunnel", "echo_c", "Echo C")
 	var bi_shan_requests_before := m_prompt_requests.size()
-	var chamber_consumed = _app_state().activate_landmark_trigger("bi_shan_tunnel", "chamber", "Mural Chamber")
+	var chamber_consumed = _activate_landmark_subject("bi_shan_tunnel", "chamber", "Mural Chamber")
 	_assert_true(!chamber_consumed, "Bi Shan chamber waits for prompt confirmation before resolution")
 	_assert_true(m_prompt_requests.size() == bi_shan_requests_before + 1, "Bi Shan chamber requests the prompt once all echoes are gathered")
 	_app_state().complete_prompt_request(m_prompt_requests[m_prompt_requests.size() - 1])
@@ -74,13 +74,13 @@ func _run() -> void:
 	_app_state().request_melody_practice("festival_melody")
 	_assert_true(m_prompt_requests.size() == practice_requests_before + 1, "Journal practice requests the melody prompt once reconstructed")
 
-	_app_state().activate_landmark_trigger("long_shan_tunnel", "tunnel_entry", "Entry")
+	_activate_landmark_subject("long_shan_tunnel", "tunnel_entry", "Entry")
 	_app_state().interact_with_resident("tunnel_guide")
 	_app_state().interact_with_resident("tunnel_guide")
-	_app_state().activate_landmark_trigger("long_shan_tunnel", "light_pocket_south", "Lit Pocket")
-	_app_state().activate_landmark_trigger("long_shan_tunnel", "light_pocket_north", "Lit Pocket")
+	_activate_landmark_subject("long_shan_tunnel", "light_pocket_south", "Lit Pocket")
+	_activate_landmark_subject("long_shan_tunnel", "light_pocket_north", "Lit Pocket")
 	var long_shan_requests_before := m_prompt_requests.size()
-	var exit_consumed = _app_state().activate_landmark_trigger("long_shan_tunnel", "tunnel_exit", "Exit")
+	var exit_consumed = _activate_landmark_subject("long_shan_tunnel", "tunnel_exit", "Exit")
 	_assert_true(!exit_consumed, "Long Shan exit waits for prompt confirmation before resolution")
 	_assert_true(m_prompt_requests.size() == long_shan_requests_before + 1, "Long Shan exit requests the route prompt after both lit pockets")
 	_app_state().complete_prompt_request(m_prompt_requests[m_prompt_requests.size() - 1])
@@ -92,7 +92,7 @@ func _run() -> void:
 
 	_app_state().interact_with_resident("tower_keeper")
 	_app_state().interact_with_resident("tower_keeper")
-	_app_state().activate_landmark_trigger("bagua_tower", "synthesis_chamber", "Synthesis Chamber")
+	_activate_landmark_subject("bagua_tower", "synthesis_chamber", "Synthesis Chamber")
 	_app_state().interact_with_resident("tower_keeper")
 	_assert_true(_app_state().fragments_found == 4, "Bagua awards the fourth fragment")
 	_assert_true(_app_state().get_landmark_state("festival_stage") == "locked", "Festival stage stays locked until Spring Festival is emotionally ready")
@@ -107,7 +107,7 @@ func _run() -> void:
 	_assert_true(_app_state().get_landmark_state("festival_stage") == "available", "Festival stage unlocks once Bagua and Spring Festival are both resolved")
 
 	var festival_requests_before := m_prompt_requests.size()
-	var stage_consumed = _app_state().activate_landmark_trigger("festival_stage", "harbor_stage", "Festival Stage")
+	var stage_consumed = _activate_landmark_subject("festival_stage", "harbor_stage", "Festival Stage")
 	_assert_true(!stage_consumed, "Festival stage waits for prompt confirmation before completion")
 	_assert_true(m_prompt_requests.size() == festival_requests_before + 1, "Festival stage requests the melody prompt")
 	_assert_true(!bool(_app_state().get_melody_state("festival_melody").get("performed", false)), "Festival stage does not mark the melody performed before prompt success")
@@ -123,30 +123,30 @@ func _run() -> void:
 
 	_app_state().configure_new_game()
 	_app_state().interact_with_resident("ferry_caretaker")
-	_app_state().activate_landmark_trigger("piano_ferry", "harbor_refrain", "Harbor Clue")
+	_activate_landmark_subject("piano_ferry", "harbor_refrain", "Harbor Clue")
 	_app_state().interact_with_resident("ferry_caretaker")
 	_app_state().interact_with_resident("church_caretaker")
 	_app_state().interact_with_resident("church_caretaker")
-	_app_state().activate_landmark_trigger("trinity_church", "steps", "Steps")
-	_app_state().activate_landmark_trigger("trinity_church", "garden", "Garden")
-	_app_state().activate_landmark_trigger("trinity_church", "yard", "Yard")
-	_app_state().activate_landmark_trigger("trinity_church", "choir_chime", "Choir Chime")
+	_activate_landmark_subject("trinity_church", "steps", "Steps")
+	_activate_landmark_subject("trinity_church", "garden", "Garden")
+	_activate_landmark_subject("trinity_church", "yard", "Yard")
+	_activate_landmark_subject("trinity_church", "choir_chime", "Choir Chime")
 	_app_state().complete_prompt_request({"completion_kind": "trinity_chime"})
 	_app_state().interact_with_resident("church_caretaker")
-	_app_state().activate_landmark_trigger("long_shan_tunnel", "tunnel_entry", "Entry")
+	_activate_landmark_subject("long_shan_tunnel", "tunnel_entry", "Entry")
 	_app_state().interact_with_resident("tunnel_guide")
 	_app_state().interact_with_resident("tunnel_guide")
-	_app_state().activate_landmark_trigger("long_shan_tunnel", "light_pocket_south", "Lit Pocket")
-	_app_state().activate_landmark_trigger("long_shan_tunnel", "light_pocket_north", "Lit Pocket")
-	_app_state().activate_landmark_trigger("long_shan_tunnel", "tunnel_exit", "Exit")
+	_activate_landmark_subject("long_shan_tunnel", "light_pocket_south", "Lit Pocket")
+	_activate_landmark_subject("long_shan_tunnel", "light_pocket_north", "Lit Pocket")
+	_activate_landmark_subject("long_shan_tunnel", "tunnel_exit", "Exit")
 	_app_state().complete_prompt_request({"completion_kind": "long_shan_route"})
 	var ren_midgame = _app_state().interact_with_resident("tunnel_guide")
 	_assert_true(_app_state().get_landmark_state("bagua_tower") == "locked", "Long Shan alone does not unlock Bagua")
 	_assert_true(String(ren_midgame.get("objective", _app_state().objective)).contains("Bi Shan"), "Ren redirects the player to Bi Shan when the other tunnel is still unresolved")
-	_app_state().activate_landmark_trigger("bi_shan_tunnel", "echo_a", "Echo A")
-	_app_state().activate_landmark_trigger("bi_shan_tunnel", "echo_b", "Echo B")
-	_app_state().activate_landmark_trigger("bi_shan_tunnel", "echo_c", "Echo C")
-	_app_state().activate_landmark_trigger("bi_shan_tunnel", "chamber", "Mural Chamber")
+	_activate_landmark_subject("bi_shan_tunnel", "echo_a", "Echo A")
+	_activate_landmark_subject("bi_shan_tunnel", "echo_b", "Echo B")
+	_activate_landmark_subject("bi_shan_tunnel", "echo_c", "Echo C")
+	_activate_landmark_subject("bi_shan_tunnel", "chamber", "Mural Chamber")
 	_app_state().complete_prompt_request({"completion_kind": "bi_shan_chamber"})
 	_app_state().interact_with_resident("tunnel_guide")
 	_assert_true(_app_state().get_landmark_state("bagua_tower") == "available", "Ren unlocks Bagua once both tunnel routes are steady")
@@ -314,6 +314,17 @@ func _find_subject_areas_with_prefix(root: Node, prefix: String) -> Array[StoryS
 			continue
 		matches.append(subject_area)
 	return matches
+
+
+func _activate_landmark_subject(landmark_id: String, trigger_id: String, display_name: String) -> bool:
+	var subject_id := "landmark:%s.%s" % [landmark_id, trigger_id]
+	var context := {"display_name": display_name}
+	var metadata: Dictionary = _app_state().describe_story_subject_metadata(subject_id, context)
+	var action := String(metadata.get("action", "")).strip_edges().to_lower()
+	if action.is_empty():
+		action = "inspect"
+	var result: Dictionary = _app_state().activate_story_subject(subject_id, action, context)
+	return bool(result.get("consumed", false))
 
 
 func _assert_true(condition: bool, label: String) -> void:

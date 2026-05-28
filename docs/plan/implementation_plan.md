@@ -27,7 +27,7 @@ Shipped foundations:
 - shared overworld weather preset resource consumed by both `game_main` and the focused weather sandbox
 - BGM weighted selection with 12-track catalog, commitment window, silence gaps, and landmark cue ducking
 - landmark audio cues for all five canonical landmarks plus the festival stage
-- first resident override resources shipped through `game/residents/definitions/`
+- all 25 resident definitions shipped as external resources under `game/residents/definitions/`
 - differentiated ending and departure copy for exam, honest-future, and harbor-performance routes, including soft-ending stay-versus-leave text
 - added cross-route resident follow-through across harbor, church, and Bagua districts after winter-memory, preservation, future-choice, second-summer, and resonant-festival beats
 - scene-level milestone status feedback for major route events so world-state changes are not only visible in journal text
@@ -60,16 +60,15 @@ Current practical coverage:
 
 ## Architecture Reality Check
 
-`AppState` (about 1.3k lines, 30 signals) is still the shared state hub. The Workstream 0 cleanup shipped first, and the follow-on content/HUD/ending pass now builds on that bridge surface cleanly. The next monolith is `resident_catalog.gd` (about 1.6k lines), which is still where most route growth lands until more residents move into per-definition resources.
+`AppState` (about 1.6k lines, 30 signals) is still the shared state hub. The Workstream 0 cleanup shipped first, and the follow-on content/HUD/ending pass now builds on that bridge surface cleanly. `resident_catalog.gd` is now a loader/normalizer over external resident resources rather than the main route-content monolith.
 
 Current pressure points:
 
-- most resident definitions, dialogue spines, and conditional beats still live in `resident_catalog.gd`; only the first override resources have moved into per-resident `.tres` files
 - `AppState` still carries a broad facade/signal surface, including many one-line forwarding methods that are useful for compatibility but still add maintenance cost
 - `StorySaveService` and `LandmarkProgression` remain intentionally tight `AppState` helpers, so future cleanup still needs to preserve the bridge API instead of assuming those helpers are independently reusable modules
-- `StoryEventService` is now live as a shared subject/effect bridge, and `story_event_catalog.gd` now owns the full melody-landmark interaction spine plus its landmark prompt-completion/reward world events, but most progression still projects off typed storyline route resources plus `story_route_graph.gd`, resident dictionaries, and `story_world_reactivity.gd` instead of a fuller recursive event definition set plus a published-fact ledger
-- route-content work will keep touching large built-in resident dictionaries until more residents migrate out of the script catalog
-- storyline authoring is now decoupled from the old central route graph, but the current `game/storylines/*.gd` modules are still flat code-authored dictionaries with no editor-native picker workflow, typed schema, or graph view
+- `StoryEventService` is now live as a shared subject/effect bridge, and `story_event_catalog.gd` now owns the full melody-landmark interaction spine plus its landmark prompt-completion/reward world events, but progression still spans typed storyline route resources, resident resources, the StoryEvent catalog, and `story_world_reactivity.gd` instead of one fuller recursive event definition set plus a published-fact ledger
+- StoryEvent catalog validation now checks authored `story_event` effect references against typed route resources, but subject/world-event bindings themselves are still authored in GDScript rather than editor-native resources
+- `activate_landmark_trigger(...)` remains as a compatibility bridge, but regression coverage should prefer `activate_story_subject(...)` or packed-scene `StorySubjectArea2D` dispatch for landmark beats
 - high-traffic dictionary payloads (landmark progress, melody progress, autosave) are still untyped
 - missable/transformed moment processing is not implemented yet; the current life-time slice tracks and advances time but does not automatically expire optional beats into missed-state echoes
 - regression coverage is now strong for landmark, route, resident-interaction, reactivity, and autosave flows, but still lighter around settings/audio behavior and richer world-object reactivity
@@ -155,7 +154,7 @@ First-pass shipped outcome:
 Still open:
 
 - extend route-state changes into inspectables, props, ambient audio, district dressing, and more non-resident surfaces
-- migrate landmark triggers and broader route authoring into recursive StoryEvent definitions so typed storyline route resources plus the route graph projection stop being the only canonical progression source
+- move landmark subject/world-event bindings toward typed StoryEvent resources, or keep expanding validation so authored bindings, route events, subject metadata, and resident effects cannot drift silently
 - keep widening cross-district follow-through so major anchors feel visible outside the specific resident who resolved them
 
 Primary files:
@@ -272,7 +271,7 @@ Shipped outcome:
 - runtime settings state lives in `game/audio_settings_service.gd`
 - `StorySaveService` owns the active payload pipeline plus `configure_new_game()`, `configure_continue()`, and `configure_free_walk()` implementation while `AppState` keeps the public bridge methods
 - the shared default overworld weather tuning now lives in `weather/overworld_weather_preset.tres`, consumed by both `scenes/game_main.gd` and `weather/tests/test_weather.gd`
-- the resident catalog split has started with resource overrides under `game/residents/definitions/`
+- all resident definitions now live as external resources under `game/residents/definitions/`, with `resident_catalog.gd` kept as the loader/normalizer bridge
 
 Verification now in repo:
 

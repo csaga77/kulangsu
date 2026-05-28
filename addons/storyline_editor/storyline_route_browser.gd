@@ -313,6 +313,9 @@ func _collect_all_warnings() -> void:
 		for w: String in res.validate():
 			m_all_warnings.append("[%s]  %s" % [res.id, w])
 
+	for warning: String in StoryEventCatalog.validate_story_event_references(m_event_defs):
+		m_all_warnings.append("[StoryEventCatalog]  %s" % warning)
+
 	# Project-wide prerequisite existence check against the full event catalog.
 	var all_event_ids: Dictionary = {}
 	for eid in m_event_defs.keys():

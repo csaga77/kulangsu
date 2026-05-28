@@ -224,8 +224,19 @@ func _run() -> void:
 
 func _progress_through_ferry_opening() -> void:
 	_app_state().interact_with_resident("ferry_caretaker")
-	_app_state().activate_landmark_trigger("piano_ferry", "harbor_refrain", "Harbor Clue")
+	_activate_landmark_subject("piano_ferry", "harbor_refrain", "Harbor Clue")
 	_app_state().interact_with_resident("ferry_caretaker")
+
+
+func _activate_landmark_subject(landmark_id: String, trigger_id: String, display_name: String) -> bool:
+	var subject_id := "landmark:%s.%s" % [landmark_id, trigger_id]
+	var context := {"display_name": display_name}
+	var metadata: Dictionary = _app_state().describe_story_subject_metadata(subject_id, context)
+	var action := String(metadata.get("action", "")).strip_edges().to_lower()
+	if action.is_empty():
+		action = "inspect"
+	var result: Dictionary = _app_state().activate_story_subject(subject_id, action, context)
+	return bool(result.get("consumed", false))
 
 
 func _assert_true(condition: bool, label: String) -> void:

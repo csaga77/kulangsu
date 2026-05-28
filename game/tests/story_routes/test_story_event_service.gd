@@ -3,6 +3,7 @@ extends Node2D
 const TEST_AUTOSAVE_PATH := "user://story_event_service_test.save"
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const GAME_MAIN_SCENE := preload("res://scenes/game_main.tscn")
+const STORY_EVENT_CATALOG := preload("res://game/story_event_catalog.gd")
 
 var m_failures := PackedStringArray()
 var m_prompt_requests: Array[Dictionary] = []
@@ -26,6 +27,12 @@ func _run() -> void:
 	_app_state().override_story_autosave_path_for_tests(TEST_AUTOSAVE_PATH)
 	_app_state().clear_story_autosave_for_tests()
 
+	var story_event_reference_warnings := STORY_EVENT_CATALOG.validate_story_event_references()
+	_assert_true(
+		story_event_reference_warnings.is_empty(),
+		"StoryEvent catalog effects only reference canonical storyline route events"
+	)
+
 	_app_state().configure_new_game()
 	_app_state().apply_story_effects({"story_event": "future_commitment_choice"})
 	_assert_true(
@@ -38,7 +45,34 @@ func _run() -> void:
 		_app_state().matches_story_conditions({"time_of_day": "morning", "world_hour_min": 7.5, "world_hour_max": 8.5}),
 		"StoryEvent conditions can match the current story time"
 	)
+	_app_state().m_story_event_service.m_subject_metadata_index["inspectable:test_morning_marker"] = {
+		"subject_id": "inspectable:test_morning_marker",
+		"default_action": "inspect",
+		"display_name": "Morning Marker",
+		"presence_rules": [
+			{
+				"priority": 10,
+				"conditions": {"time_of_day": "morning"},
+				"visible": true,
+				"targetable": true,
+			},
+			{
+				"priority": 0,
+				"visible": false,
+				"targetable": false,
+			},
+		],
+	}
+	var timed_subject := StorySubjectArea2D.new()
+	timed_subject.subject_id = "inspectable:test_morning_marker"
+	add_child(timed_subject)
+	await get_tree().process_frame
+	_assert_true(timed_subject.visible, "StorySubjectArea2D time-gated presence starts visible in matching time")
 	_app_state().apply_story_effects({"advance_time": {"advance_to_time_of_day": "afternoon"}})
+	await get_tree().process_frame
+	_assert_true(!timed_subject.visible, "StorySubjectArea2D time-gated presence refreshes when story time changes")
+	timed_subject.queue_free()
+	await get_tree().process_frame
 	_assert_true(_app_state().get_time_of_day() == "afternoon", "StoryEvent effects can advance to a later day phase")
 	_assert_true(
 		!_app_state().matches_story_conditions({"time_of_day": "morning"}),

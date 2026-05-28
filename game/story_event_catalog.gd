@@ -182,6 +182,21 @@ static func build_world_subject_enum_hint(include_unset: bool = true) -> String:
 	return ",".join(options)
 
 
+static func validate_story_event_references(event_definitions: Dictionary = {}) -> PackedStringArray:
+	var known_event_ids := {}
+	var definitions := event_definitions
+	if definitions.is_empty():
+		definitions = StorylineCatalog.build_event_definitions()
+	for event_id_value in definitions.keys():
+		var event_id := String(event_id_value).strip_edges()
+		if !event_id.is_empty():
+			known_event_ids[event_id] = true
+
+	var warnings := PackedStringArray()
+	_collect_story_event_reference_warnings(build_event_tree(), known_event_ids, [], warnings)
+	return warnings
+
+
 static func build_subject_metadata_definitions() -> Array[Dictionary]:
 	return [
 		_inspect_subject_metadata("harbor_lantern_lines", "Harbor Lantern Lines"),
@@ -436,6 +451,80 @@ static func _append_world_event_bindings(nodes: Array, index: Dictionary, path: 
 			index[event_id] = bindings
 
 		_append_world_event_bindings(node.get("children", []), index, next_path)
+
+
+static func _collect_story_event_reference_warnings(
+	nodes: Array,
+	known_event_ids: Dictionary,
+	path: Array[String],
+	warnings: PackedStringArray
+) -> void:
+	for node_value in nodes:
+		if !(node_value is Dictionary):
+			continue
+		var node: Dictionary = node_value
+		var node_id := String(node.get("id", "")).strip_edges()
+		var next_path: Array[String] = path.duplicate()
+		if !node_id.is_empty():
+			next_path.append(node_id)
+		var event_path := ".".join(next_path)
+
+		for binding_value in node.get("subject_bindings", []):
+			if !(binding_value is Dictionary):
+				continue
+			var binding: Dictionary = binding_value
+			var subject_id := String(binding.get("subject_id", "")).strip_edges()
+			var action := String(binding.get("action", "")).strip_edges().to_lower()
+			var origin := "%s subject %s %s" % [event_path, subject_id, action]
+			_collect_effect_story_event_references(
+				binding.get("effects", {}),
+				known_event_ids,
+				origin.strip_edges(),
+				warnings
+			)
+
+		for world_binding_value in node.get("world_event_bindings", []):
+			if !(world_binding_value is Dictionary):
+				continue
+			var world_binding: Dictionary = world_binding_value
+			var event_id := String(world_binding.get("event_id", "")).strip_edges()
+			var origin := "%s world event %s" % [event_path, event_id]
+			_collect_effect_story_event_references(
+				world_binding.get("effects", {}),
+				known_event_ids,
+				origin.strip_edges(),
+				warnings
+			)
+
+		_collect_story_event_reference_warnings(
+			node.get("children", []),
+			known_event_ids,
+			next_path,
+			warnings
+		)
+
+
+static func _collect_effect_story_event_references(
+	value: Variant,
+	known_event_ids: Dictionary,
+	origin: String,
+	warnings: PackedStringArray
+) -> void:
+	if value is Dictionary:
+		var payload: Dictionary = value
+		var story_event_id := String(payload.get("story_event", "")).strip_edges()
+		if !story_event_id.is_empty() and !known_event_ids.has(story_event_id):
+			warnings.append("%s references missing story_event '%s'" % [origin, story_event_id])
+		for key in payload.keys():
+			var nested_value = payload[key]
+			if nested_value is Dictionary or nested_value is Array:
+				_collect_effect_story_event_references(nested_value, known_event_ids, origin, warnings)
+		return
+
+	if value is Array:
+		for nested_value in value:
+			if nested_value is Dictionary or nested_value is Array:
+				_collect_effect_story_event_references(nested_value, known_event_ids, origin, warnings)
 
 
 static func _binding_key(subject_id: String, action: String) -> String:
