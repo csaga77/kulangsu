@@ -1,0 +1,29 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scenes/tests/test_low_poly_terrain_3d.gd" id="1_scene"]
+[ext_resource type="Script" path="res://terrain/low_poly_terrain_3d.gd" id="2_terrain"]
+[ext_resource type="Resource" path="res://terrain/island_generation_profile.tres" id="3_profile"]
+
+[node name="test_low_poly_terrain_3d" type="Node3D"]
+script = ExtResource("1_scene")
+
+[node name="LowPolyTerrain3D" type="Node3D" parent="."]
+script = ExtResource("2_terrain")
+mask_file = "res://design/gulangyu_map_mini_export.png"
+generation_profile = ExtResource("3_profile")
+sample_stride = 4
+cell_size = 1.0
+land_height = 0.24
+street_lift = 0.025
+building_footprint_lift = 0.12
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 72, 78, 72)
+projection = 1
+size = 126.0
+current = true
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48, 72, 28)
+light_energy = 2.0
+shadow_enabled = true

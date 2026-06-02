@@ -38,6 +38,7 @@
 - [`../../terrain/terrain_mask_rule.gd`](../../terrain/terrain_mask_rule.gd) owns per-color terrain semantics and per-rule tile overrides.
 - [`../../resources/materials/water.tres`](../../resources/materials/water.tres) and [`../../resources/materials/water.gdshader`](../../resources/materials/water.gdshader) still own water appearance, not mask semantics.
 - [`../../resources/tilesets/collision_tiles.tres`](../../resources/tilesets/collision_tiles.tres) owns the hidden collision-only tile used by the generated shoreline blocker layer.
+- [`../../terrain/low_poly_terrain_3d.gd`](../../terrain/low_poly_terrain_3d.gd) owns the parallel low-poly 3D terrain prototype. It reuses this terrain profile and mask semantics, but it is not part of the runtime 2D overworld contract yet.
 
 ## Relevant Files
 
@@ -50,9 +51,11 @@
 - [`../../terrain/terrain.gd`](../../terrain/terrain.gd)
 - [`../../terrain/terrain_generation_profile.gd`](../../terrain/terrain_generation_profile.gd)
 - [`../../terrain/terrain_mask_rule.gd`](../../terrain/terrain_mask_rule.gd)
+- [`../../terrain/low_poly_terrain_3d.gd`](../../terrain/low_poly_terrain_3d.gd)
 - Assets:
 - [`../../design/gulangyu_map_mini_export.png`](../../design/gulangyu_map_mini_export.png)
 - Related docs:
+- [`low_poly_terrain_3d.md`](low_poly_terrain_3d.md)
 - [`terrain_water_rendering.md`](terrain_water_rendering.md)
 - [`../architecture.md`](../architecture.md)
 - [`../module_map.md`](../module_map.md)
@@ -87,6 +90,7 @@
 - Visually verify land fill, street connectivity, building masking, coastline water placement, and that the player stops at the shoreline.
 - For water-only tuning, use [`../../scenes/tests/test_water_render.tscn`](../../scenes/tests/test_water_render.tscn) before rechecking the full terrain scene.
 - For full integration changes that affect landmark readability or masking, validate through [`../../scenes/game_main.tscn`](../../scenes/game_main.tscn).
+- For the parallel low-poly 3D prototype, validate [`../../scenes/tests/test_low_poly_terrain_3d.tscn`](../../scenes/tests/test_low_poly_terrain_3d.tscn). It should load without errors and log the sampled-cell terrain summary.
 
 ## Out Of Scope
 
