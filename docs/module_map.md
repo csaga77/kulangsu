@@ -63,8 +63,11 @@ If you are changing how terrain mask colors map to layers, start with the terrai
 
 - [`../characters/`](../characters) - player and NPC scenes plus sprite systems
 - [`../characters/resident_npc.gd`](../characters/resident_npc.gd) / [`../characters/resident_npc.tscn`](../characters/resident_npc.tscn) - runtime resident actor that applies a `ResidentDefinition` on top of `HumanBody2D`
-- [`../characters/tests/`](../characters/tests) - direct character smoke scenes such as `HumanBody2D`
+- [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd) / [`../characters/human_body_3d.tscn`](../characters/human_body_3d.tscn) - parallel low-poly 3D actor adapter prototype for future 3D world slices; not wired into the runtime 2D overworld yet
+- [`../characters/tests/`](../characters/tests) - direct character smoke scenes such as `HumanBody2D` and `HumanBody3D`
 - [`../characters/control/`](../characters/control) - controllers, resident presentation hookup, and interaction behavior
+- [`../characters/control/base_controller_3d.gd`](../characters/control/base_controller_3d.gd) - shared 3D controller base for `HumanBody3D` lifecycle, movement flags, and movement helper methods
+- [`../characters/control/player_controller_3d.gd`](../characters/control/player_controller_3d.gd) - first playable 3D input adapter for `HumanBody3D`, using the existing input map on the XZ plane
 - [`../characters/control/bt/`](../characters/control/bt) - behavior-tree framework
 - [`../characters/universal_lpc/`](../characters/universal_lpc) - Universal LPC metadata tooling, source-asset audit helpers, runtime sprite composition, and related helpers
 - [`../characters/universal_lpc/tests/`](../characters/universal_lpc/tests) - Universal LPC metadata, source-asset audit, and composition validation tooling
@@ -119,6 +122,7 @@ Be careful about renames or moves here because scene and resource references can
 - [`../scenes/tests/`](../scenes/tests) - ad hoc prototype and validation scenes
 - [`../weather/tests/`](../weather/tests) - dedicated weather validation scenes and tuning sandboxes
 - [`../characters/tests/test_human_body_2d.tscn`](../characters/tests/test_human_body_2d.tscn) - direct `HumanBody2D` smoke sandbox with player-controller wiring
+- [`../characters/tests/test_human_body_3d.tscn`](../characters/tests/test_human_body_3d.tscn) - direct `HumanBody3D` adapter smoke scene covering configuration, flat direction, movement velocity, jump state, and ground footprint behavior
 - [`../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn`](../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn) - Universal LPC metadata and sprite-composition validation tool
 - [`../characters/universal_lpc/tests/test_universal_lpc_asset_audit.tscn`](../characters/universal_lpc/tests/test_universal_lpc_asset_audit.tscn) - focused Universal LPC source-sheet audit for missing animation rows, JSON/source mismatches, and player-facing AI target triage
 - [`../game/tests/npc_system/test_npc_layer_interaction.tscn`](../game/tests/npc_system/test_npc_layer_interaction.tscn) - focused same-layer NPC targeting and portal-driven z-layer switching sandbox
@@ -172,6 +176,7 @@ Use these when you need a focused validation target instead of the full project 
 - [`features/npc_system.md`](features/npc_system.md) - implementation-facing summary of the resident/NPC system
 - [`features/terrain_system.md`](features/terrain_system.md) - terrain generation ownership, mask-rule workflow, and extension guide
 - [`features/low_poly_terrain_3d.md`](features/low_poly_terrain_3d.md) - current low-poly 3D terrain prototype scope, ownership, and validation notes
+- [`features/low_poly_actor_3d.md`](features/low_poly_actor_3d.md) - current low-poly 3D actor adapter prototype scope, ownership, and validation notes
 - [`features/weather_rendering.md`](features/weather_rendering.md) - current weather-system design, ownership, extension guide, and focused validation notes for the tilemap-backed sandbox
 - [`features/terrain_water_rendering.md`](features/terrain_water_rendering.md) - terrain water rendering and validation notes
 - [`features/`](features) - feature specs
@@ -217,6 +222,9 @@ Useful searches when locating code:
 - `test_weather` for the focused weather sandbox and control panel
 - `water_tint` for the water shader and material
 - `LowPolyTerrain3D` for the parallel terrain-mask-to-3D prototype
+- `HumanBody3D` for the parallel low-poly 3D actor adapter prototype
+- `BaseController3D` for the shared 3D controller base
+- `PlayerController3D` for the parallel 3D player-input adapter prototype
 - `source_control_report` for the repo-local and shared Git inspection helpers
 - `source_control_ops` for the repo-local and shared Git mutation helpers
 - `token_efficiency` for helper ROI and audit cadence review
