@@ -4,7 +4,7 @@
 
 - Provide a first 3D actor adapter for the low-poly exploration prototype.
 - Mirror the important `HumanBody2D` runtime concepts without changing the current 2D overworld actor stack.
-- Keep resident, controller, and story integration out of scope until a 3D world slice needs them.
+- Keep resident, NPC, and story integration out of scope until a 3D world slice needs them.
 
 ## Current Status
 
@@ -46,6 +46,14 @@
 - The optional `controller` slot accepts `BaseController3D` resources such as `PlayerController3D`; the existing 2D `BaseController` should not be assigned to it.
 - `PlayerController3D` consumes the existing input map: `ui_left`, `ui_right`, `ui_up`, `ui_down`, `ui_walk`, `ui_jump`, and `ui_inspect`.
 - `camera_relative_movement` can align movement to the active `Camera3D`; when disabled, movement is world-aligned on XZ.
+- Actor placement in generated terrain must use the future mask-pixel to 3D-world coordinate adapter instead of scene-local guessed offsets.
+
+## Visual Style Contract
+
+- Keep the block mannequin as the default prototype body until the terrain-plus-player validation scene proves scale, movement, and camera framing.
+- Decide between block mannequin, billboarded LPC sprites, or real low-poly character meshes before resident/NPC integration starts.
+- Character colors should remain simple material slots derived from the existing high-level appearance dictionary until a final 3D character asset direction is chosen.
+- Preserve strong directional readability in orthographic camera views; pose, face marker, body proportions, and shadow/readability matter more than animation polish at this stage.
 
 ## Validation
 
@@ -63,5 +71,7 @@ PASS: HumanBody3D adapter smoke test
 
 ## Next Steps
 
-- Add a 3D interaction-area adapter after the first 3D landmark hotspot exists.
+- Add the shared mask-pixel to 3D-world coordinate adapter before placing 3D landmarks, actors, or interaction hotspots.
+- Add a combined low-poly world validation scene with terrain, land collision, `HumanBody3D`, `PlayerController3D`, and a playable camera.
+- Tune actor scale, movement speed, and camera-relative movement inside that combined scene before adding landmark hotspots.
 - Decide whether the first 3D resident slice should use this block mannequin, billboarded LPC sprites, or a real low-poly character mesh.

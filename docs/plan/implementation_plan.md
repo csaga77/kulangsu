@@ -46,6 +46,12 @@ Regression coverage now includes:
 - BGM lazy catalog validation and location-fallback variety
 - portal/level transitions across Bagua Tower, tunnels, and multi-level spaces
 
+Parallel low-poly 3D prototypes now exist as exploratory sidecar work, not as part of the current runtime overworld:
+
+- `LowPolyTerrain3D` samples the existing terrain mask/profile into coarse land, shoreline, water, street, building-footprint, and optional collision meshes
+- `HumanBody3D`, `BaseController3D`, and `PlayerController3D` mirror the main actor/controller concepts on the XZ plane
+- focused terrain and actor smoke scenes validate those prototypes independently
+
 ## Content Reality Check
 
 The architecture and authored content are now much closer together, but route density is still uneven.
@@ -71,11 +77,12 @@ Current pressure points:
 - `activate_landmark_trigger(...)` remains as a compatibility bridge, but regression coverage should prefer `activate_story_subject(...)` or packed-scene `StorySubjectArea2D` dispatch for landmark beats
 - high-traffic dictionary payloads (landmark progress, melody progress, autosave) are still untyped
 - missable/transformed moment processing is not implemented yet; the current life-time slice tracks and advances time but does not automatically expire optional beats into missed-state echoes
+- the parallel low-poly 3D terrain and actor prototypes do not yet have a shared coordinate adapter, combined terrain-plus-player validation scene, or committed visual-style contract
 - regression coverage is now strong for landmark, route, resident-interaction, reactivity, and autosave flows, but still lighter around settings/audio behavior and richer world-object reactivity
 
 ## What Remains
 
-Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but they are still active tracks rather than fully finished bodies of work. The next phase is no longer the architecture pass itself; it is about deepening those content and polish workstreams until the remaining embodied-scene, world-reactivity, and closing-movement gaps are closed. Resident migration remains useful sidecar cleanup, but it is not the recommended next focus while the manual conversion path is still relatively expensive.
+Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but they are still active tracks rather than fully finished bodies of work. The next phase is no longer the architecture pass itself; it is about deepening those content and polish workstreams until the remaining embodied-scene, world-reactivity, and closing-movement gaps are closed. The low-poly 3D prototype is a parallel exploration lane and should stay outside the runtime overworld until its coordinate, visual, and playability contracts are proven. Resident migration remains useful sidecar cleanup, but it is not the recommended next focus while the manual conversion path is still relatively expensive.
 
 ### Status Summary
 
@@ -87,6 +94,7 @@ Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but the
 | Workstream 3 | First pass shipped | Priority 3 (ending polish after more content) |
 | Workstream 4 | First pass shipped | Lower (polish) |
 | Workstream 5 | First pass shipped | Priority 4 (editor workflow), then Priority 5 (validation) |
+| Low-Poly 3D Prototype | Terrain and actor/controller sidecars shipped | Parallel sidecar (coordinate adapter, combined world validation, visual contract) |
 | Resident Migration | Partial (6 migrated; remaining require manual `.tres` conversion) | Deferred sidecar (touch when content work needs it) |
 
 ### Priority 1: Route Content Depth (recommended next)
@@ -114,6 +122,35 @@ Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but the
 
 - widen validation around settings/audio behavior and richer world-state reactivity
 - add focused coverage for future typed payload migrations and storyline-editor migrations if that cleanup starts
+
+### Parallel Sidecar: Low-Poly 3D Prototype
+
+The low-poly 3D prototype is an exploration lane for the island presentation, not a replacement for the current 2D playable flow yet.
+
+First-pass shipped outcome:
+
+- the terrain mask can generate a coarse low-poly island mesh with water, land, shoreline sides, streets, building footprints, and optional land collision
+- `HumanBody3D` exposes familiar actor fields and methods such as direction, walking/running state, configuration, movement, jump, ground footprint, and global-position change signaling
+- `BaseController3D` and `PlayerController3D` mirror the 2D controller hierarchy while staying separate from the 2D runtime controller classes
+
+Still open:
+
+- define a compact visual-style contract for camera angle, projection, palette, lighting, water, terrain chunkiness, landmark silhouettes, building volumes, and character-rendering direction
+- add a stable coordinate adapter between terrain-mask pixels, current 2D map positions, and 3D XZ world positions before placing landmarks, residents, story anchors, or interaction hotspots
+- add a combined `test_low_poly_world_3d.tscn` scene that validates terrain, land collision, `HumanBody3D`, `PlayerController3D`, and camera framing together
+- decide whether the current coarse sampling should remain the intended visual style or whether streets/building footprints need cleaner extraction before gameplay placement starts
+- add 3D landmark placeholders and interaction areas only after the coordinate adapter and combined playability scene are stable
+
+Primary files:
+
+- `terrain/low_poly_terrain_3d.gd`
+- `scenes/tests/test_low_poly_terrain_3d.tscn`
+- `characters/human_body_3d.gd`
+- `characters/control/base_controller_3d.gd`
+- `characters/control/player_controller_3d.gd`
+- `characters/tests/test_human_body_3d.tscn`
+- `docs/features/low_poly_terrain_3d.md`
+- `docs/features/low_poly_actor_3d.md`
 
 ### Deferred Sidecar: Resident Migration (manual conversion; not the recommended next focus)
 
