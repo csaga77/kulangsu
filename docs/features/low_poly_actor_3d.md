@@ -13,6 +13,7 @@
 - [`../../characters/control/base_controller_3d.gd`](../../characters/control/base_controller_3d.gd) defines `class_name BaseController3D`, the shared 3D controller base for `HumanBody3D`.
 - [`../../characters/control/player_controller_3d.gd`](../../characters/control/player_controller_3d.gd) defines `class_name PlayerController3D`, a first playable input adapter that extends `BaseController3D`.
 - [`../../characters/tests/test_human_body_3d.tscn`](../../characters/tests/test_human_body_3d.tscn) is the focused smoke scene.
+- [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn) validates the actor, controller, generated terrain collision, coordinate adapter, and camera together.
 - The current visual is a generated low-poly block mannequin assembled from simple `BoxMesh` parts.
 - The actor exposes familiar adapter fields and methods:
   - `direction`
@@ -46,7 +47,7 @@
 - The optional `controller` slot accepts `BaseController3D` resources such as `PlayerController3D`; the existing 2D `BaseController` should not be assigned to it.
 - `PlayerController3D` consumes the existing input map: `ui_left`, `ui_right`, `ui_up`, `ui_down`, `ui_walk`, `ui_jump`, and `ui_inspect`.
 - `camera_relative_movement` can align movement to the active `Camera3D`; when disabled, movement is world-aligned on XZ.
-- Actor placement in generated terrain must use the future mask-pixel to 3D-world coordinate adapter instead of scene-local guessed offsets.
+- Actor placement in generated terrain must use `LowPolyWorldCoordinates3D` instead of scene-local guessed offsets.
 
 ## Visual Style Contract
 
@@ -69,9 +70,16 @@
 PASS: HumanBody3D adapter smoke test
 ```
 
+- Run the combined low-poly world validation after actor scale, movement, camera, or terrain-collision changes:
+
+```sh
+"/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://scenes/tests/test_low_poly_world_3d.tscn --quit-after 1
+```
+
+- Confirm the scene logs `PASS: LowPolyWorld3D smoke test`.
+
 ## Next Steps
 
-- Add the shared mask-pixel to 3D-world coordinate adapter before placing 3D landmarks, actors, or interaction hotspots.
-- Add a combined low-poly world validation scene with terrain, land collision, `HumanBody3D`, `PlayerController3D`, and a playable camera.
-- Tune actor scale, movement speed, and camera-relative movement inside that combined scene before adding landmark hotspots.
+- Tune actor scale, movement speed, and camera-relative movement inside the combined world scene before adding landmark hotspots.
+- Add 3D landmark placeholder volumes through `LowPolyWorldCoordinates3D` before adding interaction behavior.
 - Decide whether the first 3D resident slice should use this block mannequin, billboarded LPC sprites, or a real low-poly character mesh.

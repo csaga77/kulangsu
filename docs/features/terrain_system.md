@@ -39,6 +39,7 @@
 - [`../../resources/materials/water.tres`](../../resources/materials/water.tres) and [`../../resources/materials/water.gdshader`](../../resources/materials/water.gdshader) still own water appearance, not mask semantics.
 - [`../../resources/tilesets/collision_tiles.tres`](../../resources/tilesets/collision_tiles.tres) owns the hidden collision-only tile used by the generated shoreline blocker layer.
 - [`../../terrain/low_poly_terrain_3d.gd`](../../terrain/low_poly_terrain_3d.gd) owns the parallel low-poly 3D terrain prototype. It reuses this terrain profile and mask semantics, but it is not part of the runtime 2D overworld contract yet.
+- [`../../terrain/low_poly_world_coordinates_3d.gd`](../../terrain/low_poly_world_coordinates_3d.gd) owns terrain-mask-pixel to low-poly 3D world-position conversion for prototype placement work.
 
 ## Relevant Files
 
@@ -91,6 +92,7 @@
 - For water-only tuning, use [`../../scenes/tests/test_water_render.tscn`](../../scenes/tests/test_water_render.tscn) before rechecking the full terrain scene.
 - For full integration changes that affect landmark readability or masking, validate through [`../../scenes/game_main.tscn`](../../scenes/game_main.tscn).
 - For the parallel low-poly 3D prototype, validate [`../../scenes/tests/test_low_poly_terrain_3d.tscn`](../../scenes/tests/test_low_poly_terrain_3d.tscn). It should load without errors and log the sampled-cell terrain summary.
+- For combined low-poly terrain/player/camera changes, validate [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn). It should log `PASS: LowPolyWorld3D smoke test`.
 
 ## Out Of Scope
 

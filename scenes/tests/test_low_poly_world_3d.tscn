@@ -1,0 +1,42 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scenes/tests/test_low_poly_world_3d.gd" id="1_scene"]
+[ext_resource type="Script" path="res://terrain/low_poly_terrain_3d.gd" id="2_terrain"]
+[ext_resource type="Resource" path="res://terrain/island_generation_profile.tres" id="3_profile"]
+[ext_resource type="PackedScene" path="res://characters/human_body_3d.tscn" id="4_actor"]
+[ext_resource type="Script" path="res://characters/control/player_controller_3d.gd" id="5_controller"]
+
+[sub_resource type="Resource" id="Resource_player_controller_3d"]
+script = ExtResource("5_controller")
+camera_relative_movement = true
+
+[node name="test_low_poly_world_3d" type="Node3D"]
+script = ExtResource("1_scene")
+
+[node name="LowPolyTerrain3D" type="Node3D" parent="."]
+script = ExtResource("2_terrain")
+mask_file = "res://design/gulangyu_map_mini_export.png"
+generation_profile = ExtResource("3_profile")
+sample_stride = 4
+cell_size = 1.0
+land_height = 0.24
+street_lift = 0.025
+building_footprint_lift = 0.12
+generate_collision = true
+
+[node name="human_body_3d" parent="." instance=ExtResource("4_actor")]
+draw_bounding_box = true
+walk_speed = 3.6
+run_speed = 6.6
+controller = SubResource("Resource_player_controller_3d")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.777146, 0.62932, 0, -0.62932, 0.777146, 18, 22, 18)
+projection = 1
+size = 34.0
+current = true
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 28, 44, 18)
+light_energy = 2.0
+shadow_enabled = true

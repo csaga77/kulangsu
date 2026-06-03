@@ -132,19 +132,22 @@ First-pass shipped outcome:
 - the terrain mask can generate a coarse low-poly island mesh with water, land, shoreline sides, streets, building footprints, and optional land collision
 - `HumanBody3D` exposes familiar actor fields and methods such as direction, walking/running state, configuration, movement, jump, ground footprint, and global-position change signaling
 - `BaseController3D` and `PlayerController3D` mirror the 2D controller hierarchy while staying separate from the 2D runtime controller classes
+- `LowPolyWorldCoordinates3D` provides the first shared terrain-mask-pixel to 3D XZ world-position adapter
+- `test_low_poly_world_3d.tscn` validates terrain, land collision, `HumanBody3D`, `PlayerController3D`, coordinate round-tripping, movement, and camera framing together
 
 Still open:
 
-- define a compact visual-style contract for camera angle, projection, palette, lighting, water, terrain chunkiness, landmark silhouettes, building volumes, and character-rendering direction
-- add a stable coordinate adapter between terrain-mask pixels, current 2D map positions, and 3D XZ world positions before placing landmarks, residents, story anchors, or interaction hotspots
-- add a combined `test_low_poly_world_3d.tscn` scene that validates terrain, land collision, `HumanBody3D`, `PlayerController3D`, and camera framing together
+- tune the initial visual-style contract through the combined world scene, especially camera angle, projection, palette, lighting, water, terrain chunkiness, actor scale, and movement speed
+- extend the coordinate adapter only through shared methods before placing landmarks, residents, story anchors, or interaction hotspots
 - decide whether the current coarse sampling should remain the intended visual style or whether streets/building footprints need cleaner extraction before gameplay placement starts
 - add 3D landmark placeholders and interaction areas only after the coordinate adapter and combined playability scene are stable
 
 Primary files:
 
 - `terrain/low_poly_terrain_3d.gd`
+- `terrain/low_poly_world_coordinates_3d.gd`
 - `scenes/tests/test_low_poly_terrain_3d.tscn`
+- `scenes/tests/test_low_poly_world_3d.tscn`
 - `characters/human_body_3d.gd`
 - `characters/control/base_controller_3d.gd`
 - `characters/control/player_controller_3d.gd`

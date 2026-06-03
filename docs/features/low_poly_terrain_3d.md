@@ -19,7 +19,8 @@
   - building footprint overlays
   - optional land collision
 - The scene uses an orthographic `Camera3D` and a simple directional light for a first low-poly island read.
-- The prototype does not yet provide the canonical coordinate adapter needed for 3D landmark anchors, resident spawns, story resume anchors, or interaction hotspots.
+- [`../../terrain/low_poly_world_coordinates_3d.gd`](../../terrain/low_poly_world_coordinates_3d.gd) defines `class_name LowPolyWorldCoordinates3D`, the shared terrain-mask-pixel to 3D XZ world-position adapter.
+- [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn) combines the terrain, land collision, `HumanBody3D`, `PlayerController3D`, coordinate round-tripping, and camera framing in one playable validation slice.
 
 ## Ownership
 
@@ -37,7 +38,7 @@
 - The prototype should remain coarse and fast enough to regenerate in editor or headless validation.
 - Generated mesh and collision nodes are runtime/editor transient children marked with metadata; they should not become serialized child content in the scene.
 - Terrain sampling currently lets street or building pixels win the whole sampled cell. Treat that chunkiness as prototype style until a deliberate readability pass decides otherwise.
-- Any placement work must go through an explicit mask-pixel to 3D-world coordinate adapter instead of duplicating the current grid-centering math in landmark, actor, or story code.
+- Any placement work must go through `LowPolyWorldCoordinates3D` instead of duplicating the current grid-centering math in landmark, actor, or story code.
 
 ## Visual Style Contract
 
@@ -51,8 +52,8 @@
 
 - Use `sample_stride` to trade mask fidelity against mesh density.
 - Use `cell_size`, `land_height`, `street_lift`, and `building_footprint_lift` to tune the island scale and low-poly read.
-- Add a stable 2D-mask-pixel to 3D-world coordinate adapter before wiring landmarks, residents, interaction hotspots, or story resume anchors.
-- The next validation scene should combine terrain, land collision, `HumanBody3D`, `PlayerController3D`, and camera framing instead of validating terrain and actor behavior separately forever.
+- Extend `LowPolyWorldCoordinates3D` with shared conversion helpers before wiring landmarks, residents, interaction hotspots, or story resume anchors.
+- Use the combined world scene to tune terrain scale, land collision, actor scale, camera framing, and material readability together.
 - If this evolves into a real gameplay terrain layer, update this doc with navigation, landmark anchors, weather, and story-resume contracts.
 
 ## Validation
@@ -70,4 +71,14 @@ LowPolyTerrain3D: built 512x512 source mask into 128x128 sampled cells ...
 ```
 
 - Visual validation should check that the island silhouette, water/land split, streets, and building footprint overlays are readable from the orthographic camera.
-- Future combined validation should use `test_low_poly_world_3d.tscn` or an equivalent scene name once the coordinate adapter and playable 3D slice exist.
+- Run the combined validation scene after coordinate, collision, player movement, or camera changes:
+
+```sh
+"/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://scenes/tests/test_low_poly_world_3d.tscn --quit-after 1
+```
+
+- Confirm the scene logs:
+
+```text
+PASS: LowPolyWorld3D smoke test
+```

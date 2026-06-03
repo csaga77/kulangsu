@@ -1,0 +1,168 @@
+@tool
+extends Node3D
+
+const LowPolyWorldCoordinates3DScript = preload("res://terrain/low_poly_world_coordinates_3d.gd")
+const BaseController3DScript = preload("res://characters/control/base_controller_3d.gd")
+
+@onready var m_terrain: Node3D = $LowPolyTerrain3D
+@onready var m_actor: CharacterBody3D = $human_body_3d
+@onready var m_camera: Camera3D = $Camera3D
+@onready var m_sun: DirectionalLight3D = $Sun
+
+var m_coordinates: LowPolyWorldCoordinates3DScript = LowPolyWorldCoordinates3DScript.new()
+var m_spawn_mask_pixel := Vector2i.ZERO
+
+
+func _ready() -> void:
+	if is_instance_valid(m_camera):
+		m_camera.current = true
+	if is_instance_valid(m_sun):
+		m_sun.look_at(Vector3(-20.0, -18.0, -8.0), Vector3.UP)
+
+	if Engine.is_editor_hint():
+		return
+
+	call_deferred("_run_smoke_checks")
+
+
+func _run_smoke_checks() -> void:
+	var failures: Array[String] = []
+	_configure_world(failures)
+	_validate_world(failures)
+
+	if failures.is_empty():
+		print("PASS: LowPolyWorld3D smoke test")
+	else:
+		for failure in failures:
+			push_error(failure)
+
+
+func _configure_world(failures: Array[String]) -> void:
+	if !is_instance_valid(m_terrain):
+		failures.append("missing LowPolyTerrain3D")
+		return
+	if !is_instance_valid(m_actor):
+		failures.append("missing HumanBody3D actor")
+		return
+
+	m_coordinates.configure_from_terrain(m_terrain)
+
+	var profile := _resolve_generation_profile(failures)
+	var image := _load_mask_image(failures)
+	if profile == null or image == null:
+		return
+
+	m_spawn_mask_pixel = _find_land_spawn_pixel(image, profile)
+	var sample_cell := m_coordinates.mask_pixel_to_sample_cell(m_spawn_mask_pixel)
+	var land_height: float = float(m_terrain.get("land_height"))
+	m_actor.global_position = m_coordinates.sample_cell_to_world_center(sample_cell, land_height + 0.04)
+
+	_frame_camera()
+
+
+func _validate_world(failures: Array[String]) -> void:
+	if !is_instance_valid(m_terrain) or !is_instance_valid(m_actor):
+		return
+
+	if m_coordinates.resolve_source_size() == Vector2i.ZERO:
+		failures.append("coordinate adapter did not resolve a source size")
+
+	if m_terrain.get_node_or_null("LandMesh") == null:
+		failures.append("LowPolyTerrain3D did not generate LandMesh")
+	if m_terrain.get_node_or_null("TerrainCollision") == null:
+		failures.append("LowPolyTerrain3D did not generate TerrainCollision")
+
+	var controller: Variant = m_actor.get("controller")
+	if controller == null:
+		failures.append("HumanBody3D is missing PlayerController3D")
+	elif !(controller is BaseController3DScript):
+		failures.append("HumanBody3D controller does not extend BaseController3D")
+
+	var sample_mask_pixel := Vector2(float(m_spawn_mask_pixel.x), float(m_spawn_mask_pixel.y))
+	var sample_world := m_coordinates.mask_pixel_to_world_position(sample_mask_pixel, 0.0)
+	var round_tripped_pixel := m_coordinates.world_position_to_mask_pixel(sample_world)
+	if sample_mask_pixel.distance_to(round_tripped_pixel) > 0.001:
+		failures.append("coordinate adapter mask/world round trip drifted")
+
+	var actor_cell := m_coordinates.world_position_to_sample_cell(m_actor.global_position)
+	if actor_cell != m_coordinates.mask_pixel_to_sample_cell(m_spawn_mask_pixel):
+		failures.append("HumanBody3D did not spawn in the expected terrain sample cell")
+
+	var original_position := m_actor.global_position
+	m_actor.move_with_speed(Vector3.RIGHT, 0.5)
+	if m_actor.velocity.x <= 0.0:
+		failures.append("HumanBody3D did not apply movement velocity in combined world scene")
+	m_actor.global_position = original_position
+	m_actor.move_with_speed(Vector3.ZERO, 0.0)
+
+	if !is_instance_valid(m_camera):
+		failures.append("missing Camera3D")
+	elif m_camera.projection != Camera3D.PROJECTION_ORTHOGONAL:
+		failures.append("LowPolyWorld3D camera should be orthographic")
+
+
+func _frame_camera() -> void:
+	if !is_instance_valid(m_camera) or !is_instance_valid(m_actor):
+		return
+
+	m_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	m_camera.size = 34.0
+	m_camera.global_position = m_actor.global_position + Vector3(18.0, 22.0, 18.0)
+	m_camera.look_at(m_actor.global_position + Vector3(0.0, 0.8, 0.0), Vector3.UP)
+
+
+func _resolve_generation_profile(failures: Array[String]) -> TerrainGenerationProfile:
+	var terrain_profile: Variant = m_terrain.get("generation_profile")
+	var profile := terrain_profile as TerrainGenerationProfile
+	if profile == null:
+		profile = TerrainGenerationProfile.create_default_profile()
+
+	profile.ensure_defaults()
+	if !profile.is_valid_profile():
+		failures.append("terrain generation profile is invalid")
+		return null
+	return profile
+
+
+func _load_mask_image(failures: Array[String]) -> Image:
+	var mask_file_value: Variant = m_terrain.get("mask_file")
+	var mask_file := String(mask_file_value)
+	if mask_file.is_empty():
+		failures.append("LowPolyTerrain3D is missing mask_file")
+		return null
+
+	var image := Image.new()
+	var load_error := image.load(mask_file)
+	if load_error != OK:
+		failures.append("failed to load terrain mask: %s" % mask_file)
+		return null
+
+	if image.is_compressed():
+		image.decompress()
+	if image.get_format() != Image.FORMAT_RGBA8:
+		image.convert(Image.FORMAT_RGBA8)
+	return image
+
+
+func _find_land_spawn_pixel(image: Image, profile: TerrainGenerationProfile) -> Vector2i:
+	var source_size := image.get_size()
+	var center := Vector2i(source_size.x / 2, source_size.y / 2)
+	var step: int = maxi(int(m_terrain.get("sample_stride")), 1)
+	var max_radius := maxi(source_size.x, source_size.y)
+
+	for radius in range(0, max_radius, step):
+		var min_x: int = maxi(center.x - radius, 0)
+		var max_x: int = mini(center.x + radius, source_size.x - 1)
+		var min_y: int = maxi(center.y - radius, 0)
+		var max_y: int = mini(center.y + radius, source_size.y - 1)
+
+		for y in range(min_y, max_y + 1, step):
+			for x in range(min_x, max_x + 1, step):
+				var is_edge := x == min_x or x == max_x or y == min_y or y == max_y
+				if !is_edge:
+					continue
+				var pixel := image.get_pixel(x, y)
+				if !profile.is_water_pixel(pixel):
+					return Vector2i(x, y)
+
+	return center
