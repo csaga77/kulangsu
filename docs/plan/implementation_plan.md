@@ -131,7 +131,7 @@ The low-poly 3D prototype is an exploration lane for the island presentation, no
 First-pass shipped outcome:
 
 - the terrain mask can generate a coarse low-poly island mesh with water, land, shoreline sides, streets, building footprints, and optional land collision
-- `HumanBody3D` exposes familiar actor fields and methods such as direction, walking/running state, configuration, movement, jump, ground footprint, and global-position change signaling
+- `HumanBody3D` exposes familiar actor fields and methods such as direction, walking/running state, tunable body height/radius, configuration, movement, jump, ground footprint, and global-position change signaling, plus first-pass contact shadow and procedural walk/run motion polish
 - `BaseController3D` and `PlayerController3D` mirror the 2D controller hierarchy while staying separate from the 2D runtime controller classes
 - `LowPolyWorldCoordinates3D` provides the first shared terrain-mask-pixel to 3D XZ world-position adapter, including helpers for rough conversion from authored 2D isometric positions
 - `LowPolyArtStyle3D` plus `low_poly_postcard_diorama_style.tres` provide the first Painted Postcard Diorama palette, camera, sunlight, and landmark-color preset
@@ -140,7 +140,7 @@ First-pass shipped outcome:
 
 Still open:
 
-- tune the initial visual-style contract through the combined world scene, especially camera angle, projection, follow offset, palette, lighting, water, terrain chunkiness, landmark proxy scale, actor scale, and movement speed
+- tune the initial visual-style contract through the combined world scene, especially camera angle, projection, follow offset, palette, lighting, water, terrain chunkiness, landmark proxy scale, actor movement feel, and camera-relative control
 - keep extending placement only through shared `LowPolyWorldCoordinates3D` methods before adding residents, story anchors, or interaction hotspots
 - decide whether the current coarse sampling should remain the intended visual style or whether streets/building footprints need cleaner extraction before gameplay placement starts
 - add 3D interaction areas only after the five-placeholder landmark blockout and combined playability scene stay visually stable

@@ -186,6 +186,7 @@ Owned by:
 - [`../terrain/low_poly_world_coordinates_3d.gd`](../terrain/low_poly_world_coordinates_3d.gd)
 - [`../terrain/low_poly_art_style_3d.gd`](../terrain/low_poly_art_style_3d.gd)
 - [`../architecture/low_poly/low_poly_landmark_proxy_3d.gd`](../architecture/low_poly/low_poly_landmark_proxy_3d.gd)
+- [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd)
 - [`../scenes/tests/test_low_poly_world_3d.tscn`](../scenes/tests/test_low_poly_world_3d.tscn)
 
 Current contract:
@@ -194,6 +195,8 @@ Current contract:
 - `LowPolyWorldCoordinates3D` owns terrain-mask-pixel to 3D XZ conversion plus rough 2D isometric-position to mask-pixel conversion for authored landmark blockouts
 - landmark, actor, story-anchor, and future hotspot placement must use `LowPolyWorldCoordinates3D` instead of duplicating grid-centering or isometric conversion math
 - the current five canonical `LowPolyLandmarkProxy3D` nodes are non-interactive visual blockouts snapped to nearby land, not authoritative gameplay hotspots
+- `HumanBody3D.body_height` and `HumanBody3D.body_radius` are the current low-poly actor shape contract; they update generated visuals, capsule collision, bounding box, and ground footprint together
+- `HumanBody3D` may use procedural readability polish such as contact shadows, bob, and limb swing, but it remains a prototype actor until the 3D asset direction is chosen
 - low-poly palette, camera, lighting, and landmark colors should flow through `LowPolyArtStyle3D` presets while the art direction is exploratory
 
 Governance:

@@ -53,6 +53,37 @@ func _validate_actor_api(failures: Array[String]) -> void:
 	if m_actor.get_configuration() != sample_configuration:
 		failures.append("configuration round trip failed")
 
+	m_actor.set("body_height", 1.84)
+	m_actor.set("body_radius", 0.32)
+	m_actor.set("contact_shadow_radius", 0.44)
+	var local_box: AABB = m_actor.get_local_bounding_box()
+	if !is_equal_approx(local_box.size.y, 1.84):
+		failures.append("body height export did not update local bounding box")
+	if !is_equal_approx(local_box.size.x, 0.64):
+		failures.append("body radius export did not update local bounding box")
+
+	var collision_shape := m_actor.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	var capsule: CapsuleShape3D = null
+	if collision_shape != null:
+		capsule = collision_shape.shape as CapsuleShape3D
+	if capsule == null:
+		failures.append("HumanBody3D did not configure capsule collision")
+	else:
+		if !is_equal_approx(capsule.radius, 0.32):
+			failures.append("body radius export did not update capsule radius")
+		if !is_equal_approx(capsule.height, 1.84):
+			failures.append("body height export did not update capsule height")
+
+	var visual_root := m_actor.get_node_or_null("VisualRoot") as Node3D
+	if visual_root == null:
+		failures.append("HumanBody3D did not create VisualRoot")
+	else:
+		for part_name in ["LeftArm", "RightArm", "FaceMarker", "DirectionMarker"]:
+			if visual_root.get_node_or_null(part_name) == null:
+				failures.append("HumanBody3D did not create %s" % part_name)
+	if m_actor.get_node_or_null("ContactShadow") == null:
+		failures.append("HumanBody3D did not create ContactShadow")
+
 	m_actor.set_direction_vector(Vector3(0.0, 0.0, 1.0))
 	m_actor.is_walking = true
 	m_actor.is_running = false
@@ -62,6 +93,14 @@ func _validate_actor_api(failures: Array[String]) -> void:
 	m_actor.is_running = true
 	if m_actor.get_current_animation_name() != "run-s":
 		failures.append("expected run-s animation state")
+
+	if visual_root != null:
+		m_actor.call("_process_visual_motion", 0.11)
+		if visual_root.position.y <= 0.0:
+			failures.append("procedural movement bob did not lift VisualRoot")
+		var left_leg := visual_root.get_node_or_null("LeftLeg") as MeshInstance3D
+		if left_leg == null or is_equal_approx(left_leg.rotation.x, 0.0):
+			failures.append("procedural movement did not swing the legs")
 
 	m_actor.move_with_speed(Vector3(1.0, 0.0, 0.0), 2.0)
 	if m_actor.velocity.x <= 0.0:
@@ -74,3 +113,5 @@ func _validate_actor_api(failures: Array[String]) -> void:
 	var ground_rect: Rect2 = m_actor.get_ground_rect()
 	if ground_rect.size.x <= 0.0 or ground_rect.size.y <= 0.0:
 		failures.append("ground rect has invalid size")
+	if !is_equal_approx(ground_rect.size.x, 0.64) or !is_equal_approx(ground_rect.size.y, 0.64):
+		failures.append("ground rect did not reflect tuned body radius")

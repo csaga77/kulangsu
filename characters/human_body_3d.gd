@@ -61,6 +61,40 @@ enum FacialActionEnum {
 @export var walk_speed := DEFAULT_WALK_SPEED
 @export var run_speed := DEFAULT_RUN_SPEED
 
+@export_range(0.8, 3.0, 0.01) var body_height := DEFAULT_BODY_HEIGHT:
+	set(value):
+		var clamped_height := maxf(value, 0.8)
+		if is_equal_approx(body_height, clamped_height):
+			return
+		body_height = clamped_height
+		_sync_body_profile()
+
+@export_range(0.12, 1.0, 0.01) var body_radius := DEFAULT_BODY_RADIUS:
+	set(value):
+		var clamped_radius := maxf(value, 0.12)
+		if is_equal_approx(body_radius, clamped_radius):
+			return
+		body_radius = clamped_radius
+		_sync_body_profile()
+
+@export_group("Movement Polish")
+@export_range(0.0, 0.2, 0.005) var walk_bob_height := 0.035
+@export_range(0.0, 0.28, 0.005) var run_bob_height := 0.065
+@export_range(0.1, 10.0, 0.1) var walk_animation_cadence := 3.2
+@export_range(0.1, 12.0, 0.1) var run_animation_cadence := 5.2
+@export_range(0.0, 35.0, 0.5) var leg_swing_degrees := 13.0
+@export var contact_shadow_enabled := true:
+	set(value):
+		if contact_shadow_enabled == value:
+			return
+		contact_shadow_enabled = value
+		_sync_contact_shadow()
+@export_range(0.0, 1.5, 0.01) var contact_shadow_radius := 0.38:
+	set(value):
+		contact_shadow_radius = maxf(value, 0.0)
+		_sync_contact_shadow()
+
+@export_group("Face")
 @export var facial_mood: FacialMoodEnum = FacialMoodEnum.NORMAL:
 	set(value):
 		if facial_mood == value:
@@ -95,17 +129,22 @@ var m_last_global_position := Vector3.ZERO
 var m_is_currently_jumping := false
 var m_jump_timer := 0.0
 var m_current_animation_name := "idle-s"
+var m_motion_phase := 0.0
 
 var m_visual_root: Node3D = null
 var m_body_part: MeshInstance3D = null
 var m_head_part: MeshInstance3D = null
 var m_hair_part: MeshInstance3D = null
 var m_torso_part: MeshInstance3D = null
+var m_left_arm_part: MeshInstance3D = null
+var m_right_arm_part: MeshInstance3D = null
 var m_left_leg_part: MeshInstance3D = null
 var m_right_leg_part: MeshInstance3D = null
 var m_left_shoe_part: MeshInstance3D = null
 var m_right_shoe_part: MeshInstance3D = null
 var m_face_marker_part: MeshInstance3D = null
+var m_direction_marker_part: MeshInstance3D = null
+var m_contact_shadow_part: MeshInstance3D = null
 var m_debug_box_part: MeshInstance3D = null
 var m_collision_shape: CollisionShape3D = null
 
@@ -206,8 +245,8 @@ func set_flat_position(flat_position: Vector2) -> void:
 
 func get_local_bounding_box() -> AABB:
 	return AABB(
-		Vector3(-DEFAULT_BODY_RADIUS, 0.0, -DEFAULT_BODY_RADIUS),
-		Vector3(DEFAULT_BODY_RADIUS * 2.0, DEFAULT_BODY_HEIGHT, DEFAULT_BODY_RADIUS * 2.0)
+		Vector3(-body_radius, 0.0, -body_radius),
+		Vector3(body_radius * 2.0, body_height, body_radius * 2.0)
 	)
 
 
@@ -219,8 +258,8 @@ func get_bounding_box() -> AABB:
 
 func get_local_ground_rect() -> Rect2:
 	return Rect2(
-		Vector2(-DEFAULT_BODY_RADIUS, -DEFAULT_BODY_RADIUS),
-		Vector2(DEFAULT_BODY_RADIUS * 2.0, DEFAULT_BODY_RADIUS * 2.0)
+		Vector2(-body_radius, -body_radius),
+		Vector2(body_radius * 2.0, body_radius * 2.0)
 	)
 
 
@@ -237,6 +276,7 @@ func get_current_animation_name() -> String:
 func _process(delta: float) -> void:
 	_process_controller(delta)
 	_process_jump(delta)
+	_process_visual_motion(delta)
 	if !m_last_global_position.is_equal_approx(global_position):
 		m_last_global_position = global_position
 		global_position_changed.emit()
@@ -313,7 +353,44 @@ func _apply_visual_offset() -> void:
 		var t := clampf(m_jump_timer / JUMP_DURATION, 0.0, 1.0)
 		var parabola := 1.0 - pow(2.0 * t - 1.0, 2.0)
 		jump_y = JUMP_HEIGHT * parabola
-	m_visual_root.position = Vector3(0.0, jump_y, 0.0)
+	m_visual_root.position = Vector3(0.0, jump_y + _get_motion_bob_y(), 0.0)
+
+
+func _process_visual_motion(delta: float) -> void:
+	if is_walking:
+		var cadence := run_animation_cadence if is_running else walk_animation_cadence
+		m_motion_phase = fposmod(m_motion_phase + delta * TAU * cadence, TAU)
+	else:
+		m_motion_phase = 0.0
+
+	_apply_visual_offset()
+	_sync_limb_motion()
+
+
+func _get_motion_bob_y() -> float:
+	if !is_walking:
+		return 0.0
+	var bob_height := run_bob_height if is_running else walk_bob_height
+	return (sin((m_motion_phase * 2.0) - (PI * 0.5)) + 1.0) * 0.5 * bob_height
+
+
+func _sync_limb_motion() -> void:
+	var swing := 0.0
+	if is_walking:
+		swing = sin(m_motion_phase) * deg_to_rad(leg_swing_degrees)
+
+	_set_part_rotation_x(m_left_leg_part, swing)
+	_set_part_rotation_x(m_right_leg_part, -swing)
+	_set_part_rotation_x(m_left_shoe_part, swing * 0.65)
+	_set_part_rotation_x(m_right_shoe_part, -swing * 0.65)
+	_set_part_rotation_x(m_left_arm_part, -swing * 0.55)
+	_set_part_rotation_x(m_right_arm_part, swing * 0.55)
+
+
+func _set_part_rotation_x(part: MeshInstance3D, rotation_x: float) -> void:
+	if !is_instance_valid(part):
+		return
+	part.rotation.x = rotation_x
 
 
 func _sync_visual_rotation() -> void:
@@ -335,9 +412,7 @@ func _ensure_collision_shape() -> void:
 	if capsule == null:
 		capsule = CapsuleShape3D.new()
 		m_collision_shape.shape = capsule
-	capsule.radius = DEFAULT_BODY_RADIUS
-	capsule.height = DEFAULT_BODY_HEIGHT
-	m_collision_shape.position = Vector3(0.0, DEFAULT_BODY_HEIGHT * 0.5, 0.0)
+	_sync_collision_shape()
 
 
 func _ensure_visual_nodes() -> void:
@@ -349,16 +424,21 @@ func _ensure_visual_nodes() -> void:
 		if Engine.is_editor_hint():
 			m_visual_root.owner = null
 
+	m_contact_shadow_part = _ensure_contact_shadow_part()
 	m_body_part = _ensure_box_part("Body", Vector3(0.46, 0.58, 0.30), Vector3(0.0, 0.92, 0.0))
 	m_torso_part = _ensure_box_part("Torso", Vector3(0.52, 0.42, 0.34), Vector3(0.0, 1.02, 0.0))
 	m_head_part = _ensure_box_part("Head", Vector3(0.34, 0.34, 0.32), Vector3(0.0, 1.48, 0.0))
 	m_hair_part = _ensure_box_part("Hair", Vector3(0.37, 0.15, 0.34), Vector3(0.0, 1.67, -0.01))
+	m_left_arm_part = _ensure_box_part("LeftArm", Vector3(0.14, 0.50, 0.18), Vector3(-0.39, 0.92, 0.0))
+	m_right_arm_part = _ensure_box_part("RightArm", Vector3(0.14, 0.50, 0.18), Vector3(0.39, 0.92, 0.0))
 	m_left_leg_part = _ensure_box_part("LeftLeg", Vector3(0.18, 0.54, 0.20), Vector3(-0.13, 0.41, 0.0))
 	m_right_leg_part = _ensure_box_part("RightLeg", Vector3(0.18, 0.54, 0.20), Vector3(0.13, 0.41, 0.0))
 	m_left_shoe_part = _ensure_box_part("LeftShoe", Vector3(0.22, 0.12, 0.28), Vector3(-0.13, 0.08, 0.04))
 	m_right_shoe_part = _ensure_box_part("RightShoe", Vector3(0.22, 0.12, 0.28), Vector3(0.13, 0.08, 0.04))
-	m_face_marker_part = _ensure_box_part("FaceMarker", Vector3(0.16, 0.055, 0.035), Vector3(0.0, 1.49, 0.175))
-	m_debug_box_part = _ensure_box_part("DebugBox", Vector3(DEFAULT_BODY_RADIUS * 2.0, DEFAULT_BODY_HEIGHT, DEFAULT_BODY_RADIUS * 2.0), Vector3(0.0, DEFAULT_BODY_HEIGHT * 0.5, 0.0))
+	m_face_marker_part = _ensure_box_part("FaceMarker", Vector3(0.20, 0.065, 0.04), Vector3(0.0, 1.49, 0.175))
+	m_direction_marker_part = _ensure_box_part("DirectionMarker", Vector3(0.065, 0.16, 0.045), Vector3(0.0, 1.38, 0.178))
+	m_debug_box_part = _ensure_box_part("DebugBox", Vector3(body_radius * 2.0, body_height, body_radius * 2.0), Vector3(0.0, body_height * 0.5, 0.0))
+	_sync_body_profile()
 
 
 func _ensure_box_part(part_name: String, size: Vector3, local_position: Vector3) -> MeshInstance3D:
@@ -380,6 +460,99 @@ func _ensure_box_part(part_name: String, size: Vector3, local_position: Vector3)
 	return part
 
 
+func _ensure_contact_shadow_part() -> MeshInstance3D:
+	var part := get_node_or_null("ContactShadow") as MeshInstance3D
+	if part == null:
+		part = MeshInstance3D.new()
+		part.name = "ContactShadow"
+		add_child(part)
+		move_child(part, 0)
+		if Engine.is_editor_hint():
+			part.owner = null
+
+	var cylinder_mesh := part.mesh as CylinderMesh
+	if cylinder_mesh == null:
+		cylinder_mesh = CylinderMesh.new()
+		part.mesh = cylinder_mesh
+	cylinder_mesh.radial_segments = 16
+	cylinder_mesh.rings = 1
+	_sync_contact_shadow()
+	return part
+
+
+func _sync_body_profile() -> void:
+	_sync_collision_shape()
+	_sync_visual_profile()
+	_sync_debug_box()
+	_sync_contact_shadow()
+
+
+func _sync_collision_shape() -> void:
+	if !is_instance_valid(m_collision_shape):
+		return
+	var capsule := m_collision_shape.shape as CapsuleShape3D
+	if capsule == null:
+		return
+	capsule.radius = body_radius
+	capsule.height = body_height
+	m_collision_shape.position = Vector3(0.0, body_height * 0.5, 0.0)
+
+
+func _sync_visual_profile() -> void:
+	if !is_instance_valid(m_visual_root):
+		return
+
+	_sync_box_part(m_body_part, Vector3(0.46, 0.58, 0.30), Vector3(0.0, 0.92, 0.0))
+	_sync_box_part(m_torso_part, Vector3(0.52, 0.42, 0.34), Vector3(0.0, 1.02, 0.0))
+	_sync_box_part(m_head_part, Vector3(0.34, 0.34, 0.32), Vector3(0.0, 1.48, 0.0))
+	_sync_box_part(m_hair_part, Vector3(0.37, 0.15, 0.34), Vector3(0.0, 1.67, -0.01))
+	_sync_box_part(m_left_arm_part, Vector3(0.14, 0.50, 0.18), Vector3(-0.39, 0.92, 0.0))
+	_sync_box_part(m_right_arm_part, Vector3(0.14, 0.50, 0.18), Vector3(0.39, 0.92, 0.0))
+	_sync_box_part(m_left_leg_part, Vector3(0.18, 0.54, 0.20), Vector3(-0.13, 0.41, 0.0))
+	_sync_box_part(m_right_leg_part, Vector3(0.18, 0.54, 0.20), Vector3(0.13, 0.41, 0.0))
+	_sync_box_part(m_left_shoe_part, Vector3(0.22, 0.12, 0.28), Vector3(-0.13, 0.08, 0.04))
+	_sync_box_part(m_right_shoe_part, Vector3(0.22, 0.12, 0.28), Vector3(0.13, 0.08, 0.04))
+	_sync_box_part(m_face_marker_part, Vector3(0.20, 0.065, 0.04), Vector3(0.0, 1.49, 0.175))
+	_sync_box_part(m_direction_marker_part, Vector3(0.065, 0.16, 0.045), Vector3(0.0, 1.38, 0.178))
+
+
+func _sync_box_part(part: MeshInstance3D, base_size: Vector3, base_position: Vector3) -> void:
+	if !is_instance_valid(part):
+		return
+	var box_mesh := part.mesh as BoxMesh
+	if box_mesh == null:
+		return
+
+	var height_scale := body_height / DEFAULT_BODY_HEIGHT
+	var radius_scale := body_radius / DEFAULT_BODY_RADIUS
+	box_mesh.size = Vector3(
+		base_size.x * radius_scale,
+		base_size.y * height_scale,
+		base_size.z * radius_scale
+	)
+	part.position = Vector3(
+		base_position.x * radius_scale,
+		base_position.y * height_scale,
+		base_position.z * radius_scale
+	)
+
+
+func _sync_contact_shadow() -> void:
+	if !is_instance_valid(m_contact_shadow_part):
+		return
+
+	m_contact_shadow_part.visible = contact_shadow_enabled
+	m_contact_shadow_part.position = Vector3(0.0, 0.012, 0.0)
+	var cylinder_mesh := m_contact_shadow_part.mesh as CylinderMesh
+	if cylinder_mesh != null:
+		var radius := maxf(contact_shadow_radius, body_radius * 1.25)
+		cylinder_mesh.top_radius = radius
+		cylinder_mesh.bottom_radius = radius
+		cylinder_mesh.height = 0.014
+
+	_apply_material(m_contact_shadow_part, Color(0.07, 0.08, 0.09, 0.28), true)
+
+
 func _apply_configuration_colors() -> void:
 	var selections: Dictionary = m_cached_configuration.get("selections", {})
 	if typeof(selections) == TYPE_DICTIONARY:
@@ -393,6 +566,8 @@ func _apply_configuration_colors() -> void:
 	_apply_material(m_head_part, m_skin_color)
 	_apply_material(m_hair_part, m_hair_color)
 	_apply_material(m_torso_part, m_shirt_color)
+	_apply_material(m_left_arm_part, m_shirt_color)
+	_apply_material(m_right_arm_part, m_shirt_color)
 	_apply_material(m_left_leg_part, m_pants_color)
 	_apply_material(m_right_leg_part, m_pants_color)
 	_apply_material(m_left_shoe_part, m_shoe_color)
@@ -441,6 +616,7 @@ func _update_face_marker() -> void:
 
 	m_face_marker_part.visible = facial_action != FacialActionEnum.BLINK
 	_apply_material(m_face_marker_part, face_color)
+	_apply_material(m_direction_marker_part, face_color)
 
 
 func _sync_debug_box() -> void:
@@ -448,6 +624,10 @@ func _sync_debug_box() -> void:
 		return
 	m_debug_box_part.visible = draw_bounding_box
 	var debug_color := Color(0.2, 0.75, 1.0, 0.18)
+	var box_mesh := m_debug_box_part.mesh as BoxMesh
+	if box_mesh != null:
+		box_mesh.size = Vector3(body_radius * 2.0, body_height, body_radius * 2.0)
+	m_debug_box_part.position = Vector3(0.0, body_height * 0.5, 0.0)
 	_apply_material(m_debug_box_part, debug_color, true)
 
 

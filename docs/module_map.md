@@ -65,7 +65,7 @@ If you are changing how terrain mask colors map to layers, start with the terrai
 
 - [`../characters/`](../characters) - player and NPC scenes plus sprite systems
 - [`../characters/resident_npc.gd`](../characters/resident_npc.gd) / [`../characters/resident_npc.tscn`](../characters/resident_npc.tscn) - runtime resident actor that applies a `ResidentDefinition` on top of `HumanBody2D`
-- [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd) / [`../characters/human_body_3d.tscn`](../characters/human_body_3d.tscn) - parallel low-poly 3D actor adapter prototype for future 3D world slices; not wired into the runtime 2D overworld yet
+- [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd) / [`../characters/human_body_3d.tscn`](../characters/human_body_3d.tscn) - parallel low-poly 3D actor adapter prototype with tunable block-body proportions, contact shadow, and procedural walk/run readability polish; not wired into the runtime 2D overworld yet
 - [`../characters/tests/`](../characters/tests) - direct character smoke scenes such as `HumanBody2D` and `HumanBody3D`
 - [`../characters/control/`](../characters/control) - controllers, resident presentation hookup, and interaction behavior
 - [`../characters/control/base_controller_3d.gd`](../characters/control/base_controller_3d.gd) - shared 3D controller base for `HumanBody3D` lifecycle, movement flags, and movement helper methods
@@ -229,7 +229,7 @@ Useful searches when locating code:
 - `LowPolyArtStyle3D` for low-poly 3D palette, camera, lighting, and landmark-color presets
 - `LowPolyWorldCoordinates3D` for terrain-mask-pixel and rough 2D isometric-position to low-poly 3D world-position conversion
 - `LowPolyLandmarkProxy3D` for postcard-diorama landmark proxy volumes and placeholder silhouettes
-- `HumanBody3D` for the parallel low-poly 3D actor adapter prototype
+- `HumanBody3D` for the parallel low-poly 3D actor adapter prototype with tunable body shape and first-pass procedural movement readability
 - `BaseController3D` for the shared 3D controller base
 - `PlayerController3D` for the parallel 3D player-input adapter prototype
 - `source_control_report` for the repo-local and shared Git inspection helpers

@@ -30,9 +30,15 @@ building_footprint_lift = 0.12
 generate_collision = true
 
 [node name="human_body_3d" parent="." instance=ExtResource("4_actor")]
-draw_bounding_box = true
+draw_bounding_box = false
 walk_speed = 3.6
 run_speed = 6.6
+body_height = 1.62
+body_radius = 0.25
+walk_bob_height = 0.03
+run_bob_height = 0.055
+leg_swing_degrees = 12.0
+contact_shadow_radius = 0.35
 controller = SubResource("Resource_player_controller_3d")
 
 [node name="Landmarks" type="Node3D" parent="."]

@@ -14,11 +14,13 @@
 - [`../../characters/control/player_controller_3d.gd`](../../characters/control/player_controller_3d.gd) defines `class_name PlayerController3D`, a first playable input adapter that extends `BaseController3D`.
 - [`../../characters/tests/test_human_body_3d.tscn`](../../characters/tests/test_human_body_3d.tscn) is the focused smoke scene.
 - [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn) validates the actor, controller, generated terrain collision, coordinate adapter, `Camera3DController`, style preset, five canonical postcard landmark proxies, and camera together.
-- The current visual is a generated low-poly block mannequin assembled from simple `BoxMesh` parts.
+- The current visual is a generated low-poly block mannequin assembled from simple `BoxMesh` parts, with tunable body height/radius, contact shadow, stronger facing markers, and procedural walk/run bob plus limb swing.
 - The actor exposes familiar adapter fields and methods:
   - `direction`
   - `is_walking`
   - `is_running`
+  - `body_height`
+  - `body_radius`
   - `facial_mood`
   - `facial_action`
   - `configuration`
@@ -44,6 +46,7 @@
 - `configuration` accepts the same high-level appearance dictionary shape used by the 2D LPC actor. The 3D prototype maps recognized variant names to a small material palette instead of composing sprite layers.
 - `move(...)` and `move_with_speed(...)` consume XZ-plane `Vector3` directions.
 - `get_ground_rect()` returns an XZ-plane `Rect2` footprint for future adapter code; it is not a drop-in replacement for 2D physics queries.
+- `body_height` and `body_radius` update the generated low-poly body, capsule collision shape, local bounding box, and ground footprint together.
 - The optional `controller` slot accepts `BaseController3D` resources such as `PlayerController3D`; the existing 2D `BaseController` should not be assigned to it.
 - `PlayerController3D` consumes the existing input map: `ui_left`, `ui_right`, `ui_up`, `ui_down`, `ui_walk`, `ui_jump`, and `ui_inspect`.
 - `camera_relative_movement` can align movement to the active `Camera3D`; when disabled, movement is world-aligned on XZ.
@@ -51,7 +54,7 @@
 
 ## Visual Style Contract
 
-- Keep the block mannequin as the default prototype body until the terrain-plus-player validation scene proves scale, movement, and camera framing.
+- Keep the tunable block mannequin as the default prototype body until the terrain-plus-player validation scene proves scale, movement, and camera framing.
 - Decide between block mannequin, billboarded LPC sprites, or real low-poly character meshes before resident/NPC integration starts.
 - Character colors should remain simple material slots derived from the existing high-level appearance dictionary until a final 3D character asset direction is chosen.
 - Preserve strong directional readability in orthographic camera views; pose, face marker, body proportions, and shadow/readability matter more than animation polish at this stage.
@@ -81,6 +84,6 @@ PASS: HumanBody3D adapter smoke test
 
 ## Next Steps
 
-- Tune actor scale, movement speed, camera-relative movement, and `Camera3DController` follow offset inside the combined world scene before adding landmark hotspots.
+- Continue tuning actor movement speed, camera-relative movement, and `Camera3DController` follow offset inside the combined world scene before adding landmark hotspots.
 - Keep landmark behavior non-interactive until the five-proxy blockout is visually readable at the intended camera scale.
 - Decide whether the first 3D resident slice should use this block mannequin, billboarded LPC sprites, or a real low-poly character mesh.
