@@ -92,12 +92,20 @@ func mask_pixel_to_world_position(mask_pixel: Vector2, height: float = 0.0) -> V
 	)
 
 
+func world2d_to_world3d(position_2d: Vector2, elevation: float = 0.0) -> Vector3:
+	return mask_pixel_to_world_position(position_2d, elevation)
+
+
 func world_position_to_mask_pixel(world_position: Vector3) -> Vector2:
 	var origin := get_world_origin()
 	return Vector2(
 		((world_position.x - origin.x) / cell_size) * float(sample_stride),
 		((world_position.z - origin.z) / cell_size) * float(sample_stride)
 	)
+
+
+func world3d_to_world2d(world_position: Vector3) -> Vector2:
+	return world_position_to_mask_pixel(world_position)
 
 
 func mask_pixel_to_sample_cell(mask_pixel: Vector2i) -> Vector2i:

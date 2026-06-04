@@ -3,6 +3,7 @@ class_name LowPolyTerrain3D
 extends Node3D
 
 const GENERATED_META := &"low_poly_terrain_generated"
+const LowPolyArtStyle3DScript = preload("res://terrain/low_poly_art_style_3d.gd")
 
 enum TerrainCellKind {
 	WATER,
@@ -29,6 +30,13 @@ enum TerrainCellKind {
 		if generation_profile == new_profile:
 			return
 		generation_profile = new_profile
+		_request_rebuild()
+
+@export var art_style: LowPolyArtStyle3DScript:
+	set(new_style):
+		if art_style == new_style:
+			return
+		art_style = new_style
 		_request_rebuild()
 
 @export_range(1, 32, 1) var sample_stride := 4:
@@ -322,14 +330,14 @@ func _build_meshes_from_grid(grid: Array[Array], source_width: int, source_heigh
 						collision_faces
 					)
 
-	_add_mesh_instance("WaterMesh", water_builder, _build_material("Low Poly Water", water_color, true))
-	_add_mesh_instance("LandMesh", land_builder, _build_material("Low Poly Land", land_color, false))
-	_add_mesh_instance("ShorelineMesh", shoreline_builder, _build_material("Low Poly Shoreline", shoreline_color, false))
-	_add_mesh_instance("StreetMesh", street_builder, _build_material("Low Poly Streets", street_color, false))
+	_add_mesh_instance("WaterMesh", water_builder, _build_material("Low Poly Water", _resolve_style_color("water_color", water_color), true))
+	_add_mesh_instance("LandMesh", land_builder, _build_material("Low Poly Land", _resolve_style_color("land_color", land_color), false))
+	_add_mesh_instance("ShorelineMesh", shoreline_builder, _build_material("Low Poly Shoreline", _resolve_style_color("shoreline_color", shoreline_color), false))
+	_add_mesh_instance("StreetMesh", street_builder, _build_material("Low Poly Streets", _resolve_style_color("street_color", street_color), false))
 	_add_mesh_instance(
 		"BuildingFootprintMesh",
 		building_builder,
-		_build_material("Low Poly Building Footprints", building_footprint_color, false)
+		_build_material("Low Poly Building Footprints", _resolve_style_color("building_footprint_color", building_footprint_color), false)
 	)
 
 	if generate_collision:
@@ -527,6 +535,15 @@ func _build_material(name_value: String, color: Color, transparent: bool) -> Sta
 	if transparent or color.a < 0.99:
 		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	return material
+
+
+func _resolve_style_color(property_name: StringName, fallback: Color) -> Color:
+	if art_style == null:
+		return fallback
+	var value: Variant = art_style.get(property_name)
+	if value is Color:
+		return value
+	return fallback
 
 
 func _clear_generated_children() -> void:

@@ -1,0 +1,25 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://terrain/low_poly_art_style_3d.gd" id="1_style"]
+
+[resource]
+script = ExtResource("1_style")
+land_color = Color(0.53, 0.71, 0.49, 1)
+shoreline_color = Color(0.34, 0.49, 0.41, 1)
+street_color = Color(0.85, 0.78, 0.63, 1)
+building_footprint_color = Color(0.77, 0.58, 0.43, 1)
+water_color = Color(0.38, 0.66, 0.83, 0.82)
+camera_follow_offset = Vector3(20, 23, 18)
+camera_look_at_offset = Vector3(0, 0.9, 0)
+camera_orthographic_size = 36.0
+min_camera_orthographic_size = 12.0
+max_camera_orthographic_size = 82.0
+sun_color = Color(1, 0.91, 0.78, 1)
+sun_energy = 2.35
+sun_position = Vector3(28, 44, 18)
+sun_look_at = Vector3(-20, -18, -8)
+sun_shadows_enabled = true
+landmark_wall_color = Color(0.88, 0.79, 0.62, 1)
+landmark_roof_color = Color(0.70, 0.28, 0.18, 1)
+landmark_trim_color = Color(0.96, 0.88, 0.72, 1)
+landmark_pier_color = Color(0.50, 0.36, 0.24, 1)

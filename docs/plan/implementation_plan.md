@@ -133,19 +133,24 @@ First-pass shipped outcome:
 - `HumanBody3D` exposes familiar actor fields and methods such as direction, walking/running state, configuration, movement, jump, ground footprint, and global-position change signaling
 - `BaseController3D` and `PlayerController3D` mirror the 2D controller hierarchy while staying separate from the 2D runtime controller classes
 - `LowPolyWorldCoordinates3D` provides the first shared terrain-mask-pixel to 3D XZ world-position adapter
-- `test_low_poly_world_3d.tscn` validates terrain, land collision, `HumanBody3D`, `PlayerController3D`, `Camera3DController`, coordinate round-tripping, movement, and camera framing together
+- `LowPolyArtStyle3D` plus `low_poly_postcard_diorama_style.tres` provide the first Painted Postcard Diorama palette, camera, sunlight, and landmark-color preset
+- `LowPolyLandmarkProxy3D` provides the first simple reusable postcard landmark-volume generator
+- `test_low_poly_world_3d.tscn` validates terrain, land collision, `HumanBody3D`, `PlayerController3D`, `Camera3DController`, the style preset, the postcard landmark proxy, coordinate round-tripping, movement, and camera framing together
 
 Still open:
 
-- tune the initial visual-style contract through the combined world scene, especially camera angle, projection, follow offset, palette, lighting, water, terrain chunkiness, actor scale, and movement speed
+- tune the initial visual-style contract through the combined world scene, especially camera angle, projection, follow offset, palette, lighting, water, terrain chunkiness, landmark proxy scale, actor scale, and movement speed
 - extend the coordinate adapter only through shared methods before placing landmarks, residents, story anchors, or interaction hotspots
 - decide whether the current coarse sampling should remain the intended visual style or whether streets/building footprints need cleaner extraction before gameplay placement starts
-- add 3D landmark placeholders and interaction areas only after the coordinate adapter and combined playability scene are stable
+- expand 3D landmark proxy coverage and add interaction areas only after the coordinate adapter and combined playability scene stay stable
 
 Primary files:
 
 - `terrain/low_poly_terrain_3d.gd`
+- `terrain/low_poly_art_style_3d.gd`
+- `terrain/low_poly_postcard_diorama_style.tres`
 - `terrain/low_poly_world_coordinates_3d.gd`
+- `architecture/low_poly/low_poly_landmark_proxy_3d.gd`
 - `scenes/tests/test_low_poly_terrain_3d.tscn`
 - `scenes/tests/test_low_poly_world_3d.tscn`
 - `characters/human_body_3d.gd`

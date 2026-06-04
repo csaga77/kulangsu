@@ -27,6 +27,7 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - connects terrain, the shared actor layer, manager-owned overworld weather, tunnel-based weather suppression, landmarks, tunnel interior context, resident route resolution, and residents to the UI
 - [`../terrain/terrain.tscn`](../terrain/terrain.tscn) / [`../terrain/terrain.gd`](../terrain/terrain.gd) - island terrain, generated helper layers, water rendering setup, and the ground-layer masking hooks used by tunnel interiors
 - [`../terrain/low_poly_terrain_3d.gd`](../terrain/low_poly_terrain_3d.gd) - parallel low-poly 3D terrain prototype that samples the existing terrain mask/profile into land, shoreline, water, street, building-footprint, and optional collision meshes
+- [`../terrain/low_poly_art_style_3d.gd`](../terrain/low_poly_art_style_3d.gd) / [`../terrain/low_poly_postcard_diorama_style.tres`](../terrain/low_poly_postcard_diorama_style.tres) - shared low-poly style preset schema plus the current Painted Postcard Diorama palette, camera, sunlight, and landmark-color preset
 - [`../terrain/low_poly_world_coordinates_3d.gd`](../terrain/low_poly_world_coordinates_3d.gd) - shared coordinate adapter for converting terrain mask pixels to low-poly 3D XZ world positions
 - [`../terrain/island_generation_profile.tres`](../terrain/island_generation_profile.tres) - shared authored terrain profile resource referenced by `terrain.tscn` so direct terrain validation and `game_main` use the same rules
 - [`../terrain/water_layer_setup.gd`](../terrain/water_layer_setup.gd) - shared water `TileMapLayer` setup used by runtime terrain and the focused water sandbox
@@ -79,6 +80,7 @@ Put player control, NPC behavior, interaction prompts, and behavior-tree work he
 ## Landmark And World Content
 
 - [`../architecture/`](../architecture) - landmark scenes such as Bagua Tower, tunnels, church, and ferry content
+- [`../architecture/low_poly/`](../architecture/low_poly) - low-poly 3D landmark proxy/prototype pieces for the parallel 3D exploration lane
 - [`../architecture/components/`](../architecture/components) - reusable world-building pieces such as portals and stairs
 - [`../architecture/bagua_tower/tests/`](../architecture/bagua_tower/tests) - Bagua Tower-specific validation scenes and scripts
 - [`../common/`](../common) - shared world nodes, effects, visibility helpers, level helpers, and common world-facing UI primitives
@@ -150,7 +152,7 @@ Be careful about renames or moves here because scene and resource references can
 - [`../weather/tests/test_weather.tscn`](../weather/tests/test_weather.tscn) - focused weather tuning sandbox with tilemap-backed water/terrain, manager-attached fog/rain/cloud/impact passes, a thunder-flash pass, a tabbed weather control panel split into `Wind`, `Rain`, `Fog`, and `Cloud` tuning groups with per-pass `Sync With Wind` toggles, actor readability checks, temporary foreground occluder proxies, and a parity check against the shared overworld weather preset
 - [`../scenes/tests/test_water_render.tscn`](../scenes/tests/test_water_render.tscn) - focused water color, wave, transparency, and refraction sandbox
 - [`../scenes/tests/test_low_poly_terrain_3d.tscn`](../scenes/tests/test_low_poly_terrain_3d.tscn) - focused 3D terrain prototype scene that validates the existing terrain mask/profile can produce a coarse low-poly island read
-- [`../scenes/tests/test_low_poly_world_3d.tscn`](../scenes/tests/test_low_poly_world_3d.tscn) - combined low-poly 3D validation slice covering terrain generation, land collision, coordinate round-tripping, `HumanBody3D`, `PlayerController3D`, `Camera3DController`, and camera framing
+- [`../scenes/tests/test_low_poly_world_3d.tscn`](../scenes/tests/test_low_poly_world_3d.tscn) - combined low-poly 3D Painted Postcard Diorama validation slice covering terrain generation, land collision, coordinate round-tripping, `HumanBody3D`, `PlayerController3D`, `Camera3DController`, style preset wiring, postcard landmark proxy generation, and camera framing
 - [`../game/tests/npc_system/test_scene.tscn`](../game/tests/npc_system/test_scene.tscn) - focused resident speech, talk, and journal sandbox
 - [`../game/grid_board_game/test_grid_board_game.tscn`](../game/grid_board_game/test_grid_board_game.tscn)
 - [`../game/grid_board_game/test_terminal_turn_state.tscn`](../game/grid_board_game/test_terminal_turn_state.tscn)
@@ -224,7 +226,9 @@ Useful searches when locating code:
 - `test_weather` for the focused weather sandbox and control panel
 - `water_tint` for the water shader and material
 - `LowPolyTerrain3D` for the parallel terrain-mask-to-3D prototype
+- `LowPolyArtStyle3D` for low-poly 3D palette, camera, lighting, and landmark-color presets
 - `LowPolyWorldCoordinates3D` for terrain-mask-pixel to low-poly 3D world-position conversion
+- `LowPolyLandmarkProxy3D` for postcard-diorama landmark proxy volumes
 - `HumanBody3D` for the parallel low-poly 3D actor adapter prototype
 - `BaseController3D` for the shared 3D controller base
 - `PlayerController3D` for the parallel 3D player-input adapter prototype
