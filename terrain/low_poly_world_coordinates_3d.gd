@@ -17,6 +17,10 @@ extends Resource
 	set(new_cell_size):
 		cell_size = maxf(new_cell_size, 0.1)
 
+@export var isometric_tile_size := Vector2(64.0, 32.0):
+	set(new_tile_size):
+		isometric_tile_size = Vector2(maxf(new_tile_size.x, 0.001), maxf(new_tile_size.y, 0.001))
+
 @export var source_size := Vector2i.ZERO:
 	set(new_source_size):
 		source_size = Vector2i(maxi(new_source_size.x, 0), maxi(new_source_size.y, 0))
@@ -106,6 +110,24 @@ func world_position_to_mask_pixel(world_position: Vector3) -> Vector2:
 
 func world3d_to_world2d(world_position: Vector3) -> Vector2:
 	return world_position_to_mask_pixel(world_position)
+
+
+func isometric_position_to_mask_pixel(isometric_position: Vector2) -> Vector2:
+	var half_tile_size := isometric_tile_size * 0.5
+	var diagonal_x := isometric_position.x / half_tile_size.x
+	var diagonal_y := isometric_position.y / half_tile_size.y
+	return Vector2(
+		(diagonal_y + diagonal_x) * 0.5,
+		(diagonal_y - diagonal_x) * 0.5
+	)
+
+
+func mask_pixel_to_isometric_position(mask_pixel: Vector2) -> Vector2:
+	var half_tile_size := isometric_tile_size * 0.5
+	return Vector2(
+		(mask_pixel.x - mask_pixel.y) * half_tile_size.x,
+		(mask_pixel.x + mask_pixel.y) * half_tile_size.y
+	)
 
 
 func mask_pixel_to_sample_cell(mask_pixel: Vector2i) -> Vector2i:

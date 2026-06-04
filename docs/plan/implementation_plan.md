@@ -50,7 +50,8 @@ Parallel low-poly 3D prototypes now exist as exploratory sidecar work, not as pa
 
 - `LowPolyTerrain3D` samples the existing terrain mask/profile into coarse land, shoreline, water, street, building-footprint, and optional collision meshes
 - `HumanBody3D`, `BaseController3D`, and `PlayerController3D` mirror the main actor/controller concepts on the XZ plane
-- focused terrain and actor smoke scenes validate those prototypes independently
+- `LowPolyWorldCoordinates3D`, `LowPolyArtStyle3D`, `Camera3DController`, and `LowPolyLandmarkProxy3D` now support the combined Painted Postcard Diorama validation scene with five canonical low-poly landmark placeholders
+- focused terrain, actor, and combined low-poly world smoke scenes validate those prototypes
 
 ## Content Reality Check
 
@@ -77,7 +78,7 @@ Current pressure points:
 - `activate_landmark_trigger(...)` remains as a compatibility bridge, but regression coverage should prefer `activate_story_subject(...)` or packed-scene `StorySubjectArea2D` dispatch for landmark beats
 - high-traffic dictionary payloads (landmark progress, melody progress, autosave) are still untyped
 - missable/transformed moment processing is not implemented yet; the current life-time slice tracks and advances time but does not automatically expire optional beats into missed-state echoes
-- the parallel low-poly 3D terrain and actor prototypes do not yet have a shared coordinate adapter, combined terrain-plus-player validation scene, or committed visual-style contract
+- the parallel low-poly 3D prototype now has a shared coordinate adapter, combined terrain-plus-player validation scene, style preset, and five-landmark proxy blockout, but still needs visual tuning before runtime integration should be considered
 - regression coverage is now strong for landmark, route, resident-interaction, reactivity, and autosave flows, but still lighter around settings/audio behavior and richer world-object reactivity
 
 ## What Remains
@@ -132,17 +133,17 @@ First-pass shipped outcome:
 - the terrain mask can generate a coarse low-poly island mesh with water, land, shoreline sides, streets, building footprints, and optional land collision
 - `HumanBody3D` exposes familiar actor fields and methods such as direction, walking/running state, configuration, movement, jump, ground footprint, and global-position change signaling
 - `BaseController3D` and `PlayerController3D` mirror the 2D controller hierarchy while staying separate from the 2D runtime controller classes
-- `LowPolyWorldCoordinates3D` provides the first shared terrain-mask-pixel to 3D XZ world-position adapter
+- `LowPolyWorldCoordinates3D` provides the first shared terrain-mask-pixel to 3D XZ world-position adapter, including helpers for rough conversion from authored 2D isometric positions
 - `LowPolyArtStyle3D` plus `low_poly_postcard_diorama_style.tres` provide the first Painted Postcard Diorama palette, camera, sunlight, and landmark-color preset
-- `LowPolyLandmarkProxy3D` provides the first simple reusable postcard landmark-volume generator
-- `test_low_poly_world_3d.tscn` validates terrain, land collision, `HumanBody3D`, `PlayerController3D`, `Camera3DController`, the style preset, the postcard landmark proxy, coordinate round-tripping, movement, and camera framing together
+- `LowPolyLandmarkProxy3D` provides the first simple reusable postcard landmark-volume generator for house, church, tunnel, and tower placeholders
+- `test_low_poly_world_3d.tscn` validates terrain, land collision, `HumanBody3D`, `PlayerController3D`, `Camera3DController`, the style preset, five canonical postcard landmark proxies, coordinate round-tripping, movement, and camera framing together
 
 Still open:
 
 - tune the initial visual-style contract through the combined world scene, especially camera angle, projection, follow offset, palette, lighting, water, terrain chunkiness, landmark proxy scale, actor scale, and movement speed
-- extend the coordinate adapter only through shared methods before placing landmarks, residents, story anchors, or interaction hotspots
+- keep extending placement only through shared `LowPolyWorldCoordinates3D` methods before adding residents, story anchors, or interaction hotspots
 - decide whether the current coarse sampling should remain the intended visual style or whether streets/building footprints need cleaner extraction before gameplay placement starts
-- expand 3D landmark proxy coverage and add interaction areas only after the coordinate adapter and combined playability scene stay stable
+- add 3D interaction areas only after the five-placeholder landmark blockout and combined playability scene stay visually stable
 
 Primary files:
 

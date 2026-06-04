@@ -35,14 +35,52 @@ walk_speed = 3.6
 run_speed = 6.6
 controller = SubResource("Resource_player_controller_3d")
 
-[node name="PianoFerryProxy" type="Node3D" parent="."]
+[node name="Landmarks" type="Node3D" parent="."]
+
+[node name="PianoFerryProxy" type="Node3D" parent="Landmarks"]
 script = ExtResource("8_landmark_proxy")
-landmark_id = "piano_ferry_postcard"
+landmark_id = "piano_ferry"
 art_style = ExtResource("7_style")
 building_size = Vector3(2.5, 1.2, 1.65)
 roof_height = 0.55
 pier_size = Vector3(3.2, 0.14, 1.05)
 pier_offset = Vector3(0, 0, 1.35)
+
+[node name="TrinityChurchProxy" type="Node3D" parent="Landmarks"]
+script = ExtResource("8_landmark_proxy")
+landmark_id = "trinity_church"
+silhouette = 1
+art_style = ExtResource("7_style")
+building_size = Vector3(2.4, 1.55, 1.85)
+roof_height = 0.64
+show_pier = false
+
+[node name="BiShanTunnelProxy" type="Node3D" parent="Landmarks"]
+script = ExtResource("8_landmark_proxy")
+landmark_id = "bi_shan_tunnel"
+silhouette = 2
+art_style = ExtResource("7_style")
+building_size = Vector3(2.6, 0.95, 1.7)
+roof_height = 0.42
+show_pier = false
+
+[node name="LongShanTunnelProxy" type="Node3D" parent="Landmarks"]
+script = ExtResource("8_landmark_proxy")
+landmark_id = "long_shan_tunnel"
+silhouette = 2
+art_style = ExtResource("7_style")
+building_size = Vector3(2.9, 1.05, 1.85)
+roof_height = 0.48
+show_pier = false
+
+[node name="BaguaTowerProxy" type="Node3D" parent="Landmarks"]
+script = ExtResource("8_landmark_proxy")
+landmark_id = "bagua_tower"
+silhouette = 3
+art_style = ExtResource("7_style")
+building_size = Vector3(1.75, 0.95, 1.75)
+roof_height = 0.58
+show_pier = false
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.777146, 0.62932, 0, -0.62932, 0.777146, 18, 22, 18)

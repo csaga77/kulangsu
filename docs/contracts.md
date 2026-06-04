@@ -178,6 +178,29 @@ Governance:
 - keep scene-specific world wiring local to `scenes/game_main.gd` unless it becomes a reusable subsystem; reusable overworld helpers should live under `scenes/`
 - document node-path, actor-layer, or spawn-anchor naming assumptions if new systems depend on them
 
+## Low-Poly 3D Prototype Contract
+
+Owned by:
+
+- [`../terrain/low_poly_terrain_3d.gd`](../terrain/low_poly_terrain_3d.gd)
+- [`../terrain/low_poly_world_coordinates_3d.gd`](../terrain/low_poly_world_coordinates_3d.gd)
+- [`../terrain/low_poly_art_style_3d.gd`](../terrain/low_poly_art_style_3d.gd)
+- [`../architecture/low_poly/low_poly_landmark_proxy_3d.gd`](../architecture/low_poly/low_poly_landmark_proxy_3d.gd)
+- [`../scenes/tests/test_low_poly_world_3d.tscn`](../scenes/tests/test_low_poly_world_3d.tscn)
+
+Current contract:
+
+- the low-poly 3D prototype remains a sidecar validation lane and must not be wired into `game_main.tscn` until a deliberate 3D world-integration phase starts
+- `LowPolyWorldCoordinates3D` owns terrain-mask-pixel to 3D XZ conversion plus rough 2D isometric-position to mask-pixel conversion for authored landmark blockouts
+- landmark, actor, story-anchor, and future hotspot placement must use `LowPolyWorldCoordinates3D` instead of duplicating grid-centering or isometric conversion math
+- the current five canonical `LowPolyLandmarkProxy3D` nodes are non-interactive visual blockouts snapped to nearby land, not authoritative gameplay hotspots
+- low-poly palette, camera, lighting, and landmark colors should flow through `LowPolyArtStyle3D` presets while the art direction is exploratory
+
+Governance:
+
+- keep prototype placement, style, and validation docs in sync with [`features/low_poly_terrain_3d.md`](features/low_poly_terrain_3d.md) and [`features/low_poly_actor_3d.md`](features/low_poly_actor_3d.md)
+- update this contract before treating low-poly landmarks as runtime story subjects or save/resume anchors
+
 ## Multi-Level Scene Contract
 
 Owned by:

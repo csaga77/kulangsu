@@ -21,9 +21,9 @@
 - The scene uses an orthographic `Camera3D` and a simple directional light for a first low-poly island read.
 - [`../../terrain/low_poly_art_style_3d.gd`](../../terrain/low_poly_art_style_3d.gd) defines `class_name LowPolyArtStyle3D`, the shared style-preset resource for terrain palette, camera, lighting, and landmark colors.
 - [`../../terrain/low_poly_postcard_diorama_style.tres`](../../terrain/low_poly_postcard_diorama_style.tres) is the first Painted Postcard Diorama preset.
-- [`../../terrain/low_poly_world_coordinates_3d.gd`](../../terrain/low_poly_world_coordinates_3d.gd) defines `class_name LowPolyWorldCoordinates3D`, the shared terrain-mask-pixel to 3D XZ world-position adapter.
-- [`../../architecture/low_poly/low_poly_landmark_proxy_3d.gd`](../../architecture/low_poly/low_poly_landmark_proxy_3d.gd) defines `class_name LowPolyLandmarkProxy3D`, a simple reusable landmark-volume generator for early postcard-diorama silhouettes.
-- [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn) combines the terrain, land collision, `HumanBody3D`, `PlayerController3D`, `Camera3DController`, `LowPolyLandmarkProxy3D`, coordinate round-tripping, and camera framing in one playable Painted Postcard Diorama validation slice.
+- [`../../terrain/low_poly_world_coordinates_3d.gd`](../../terrain/low_poly_world_coordinates_3d.gd) defines `class_name LowPolyWorldCoordinates3D`, the shared terrain-mask-pixel to 3D XZ world-position adapter, including helpers for rough 2D isometric authored positions.
+- [`../../architecture/low_poly/low_poly_landmark_proxy_3d.gd`](../../architecture/low_poly/low_poly_landmark_proxy_3d.gd) defines `class_name LowPolyLandmarkProxy3D`, a simple reusable landmark-volume generator for early postcard-diorama house, church, tunnel, and tower silhouettes.
+- [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn) combines the terrain, land collision, `HumanBody3D`, `PlayerController3D`, `Camera3DController`, the five canonical `LowPolyLandmarkProxy3D` placeholders, coordinate round-tripping, and camera framing in one playable Painted Postcard Diorama validation slice.
 
 ## Ownership
 
@@ -41,7 +41,7 @@
 - The prototype should remain coarse and fast enough to regenerate in editor or headless validation.
 - Generated mesh and collision nodes are runtime/editor transient children marked with metadata; they should not become serialized child content in the scene.
 - Terrain sampling currently lets street or building pixels win the whole sampled cell. Treat that chunkiness as prototype style until a deliberate readability pass decides otherwise.
-- Any placement work must go through `LowPolyWorldCoordinates3D` instead of duplicating the current grid-centering math in landmark, actor, or story code.
+- Any placement work must go through `LowPolyWorldCoordinates3D` instead of duplicating the current grid-centering or isometric-position conversion math in landmark, actor, or story code.
 - Style tuning should flow through `LowPolyArtStyle3D` presets before hardcoding scene-local color, camera, or lighting values.
 
 ## Visual Style Contract
@@ -51,15 +51,15 @@
 - Prefer simple low-poly volume and silhouette clarity over texture detail.
 - Keep water, land, streets, and building footprints as separate mesh/material passes until the intended art direction is proven.
 - Treat landmark buildings as future silhouette anchors, not as terrain-mask side effects.
-- Use `LowPolyLandmarkProxy3D` for first-pass landmark massing before replacing proxies with bespoke low-poly landmark meshes.
+- Use the five canonical `LowPolyLandmarkProxy3D` placeholders for first-pass landmark massing before replacing proxies with bespoke low-poly landmark meshes.
 
 ## Extension Notes
 
 - Use `sample_stride` to trade mask fidelity against mesh density.
 - Use `cell_size`, `land_height`, `street_lift`, and `building_footprint_lift` to tune the island scale and low-poly read.
 - Tune palette, camera, sunlight, and proxy landmark colors through `low_poly_postcard_diorama_style.tres` while this scene remains the golden slice.
-- Extend `LowPolyWorldCoordinates3D` with shared conversion helpers before wiring landmarks, residents, interaction hotspots, or story resume anchors.
-- Use the combined world scene to tune terrain scale, land collision, actor scale, `Camera3DController` follow offset, and material readability together.
+- Use the combined world scene to tune terrain scale, land collision, actor scale, `Camera3DController` follow offset, landmark placeholder scale, and material readability together.
+- Add interaction areas only after the five-placeholder blockout stays readable and the coordinate adapter placement contract remains stable.
 - If this evolves into a real gameplay terrain layer, update this doc with navigation, landmark anchors, weather, and story-resume contracts.
 
 ## Validation

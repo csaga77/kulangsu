@@ -13,7 +13,7 @@
 - [`../../characters/control/base_controller_3d.gd`](../../characters/control/base_controller_3d.gd) defines `class_name BaseController3D`, the shared 3D controller base for `HumanBody3D`.
 - [`../../characters/control/player_controller_3d.gd`](../../characters/control/player_controller_3d.gd) defines `class_name PlayerController3D`, a first playable input adapter that extends `BaseController3D`.
 - [`../../characters/tests/test_human_body_3d.tscn`](../../characters/tests/test_human_body_3d.tscn) is the focused smoke scene.
-- [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn) validates the actor, controller, generated terrain collision, coordinate adapter, `Camera3DController`, style preset, postcard landmark proxy, and camera together.
+- [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn) validates the actor, controller, generated terrain collision, coordinate adapter, `Camera3DController`, style preset, five canonical postcard landmark proxies, and camera together.
 - The current visual is a generated low-poly block mannequin assembled from simple `BoxMesh` parts.
 - The actor exposes familiar adapter fields and methods:
   - `direction`
@@ -55,7 +55,7 @@
 - Decide between block mannequin, billboarded LPC sprites, or real low-poly character meshes before resident/NPC integration starts.
 - Character colors should remain simple material slots derived from the existing high-level appearance dictionary until a final 3D character asset direction is chosen.
 - Preserve strong directional readability in orthographic camera views; pose, face marker, body proportions, and shadow/readability matter more than animation polish at this stage.
-- Tune the player against the style-preset camera and landmark proxy before changing the actor asset direction.
+- Tune the player against the style-preset camera and five-landmark proxy blockout before changing the actor asset direction.
 
 ## Validation
 
@@ -82,5 +82,5 @@ PASS: HumanBody3D adapter smoke test
 ## Next Steps
 
 - Tune actor scale, movement speed, camera-relative movement, and `Camera3DController` follow offset inside the combined world scene before adding landmark hotspots.
-- Expand the `LowPolyLandmarkProxy3D` slice to cover the next recognizable landmark silhouette before adding interaction behavior.
+- Keep landmark behavior non-interactive until the five-proxy blockout is visually readable at the intended camera scale.
 - Decide whether the first 3D resident slice should use this block mannequin, billboarded LPC sprites, or a real low-poly character mesh.

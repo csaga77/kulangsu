@@ -28,3 +28,4 @@ extends Resource
 @export var landmark_roof_color := Color(0.70, 0.28, 0.18, 1.0)
 @export var landmark_trim_color := Color(0.96, 0.88, 0.72, 1.0)
 @export var landmark_pier_color := Color(0.50, 0.36, 0.24, 1.0)
+@export var landmark_shadow_color := Color(0.18, 0.19, 0.23, 1.0)
