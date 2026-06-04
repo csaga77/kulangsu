@@ -99,6 +99,12 @@ func _validate_world(failures: Array[String]) -> void:
 
 	if m_terrain.get_node_or_null("LandMesh") == null:
 		failures.append("LowPolyTerrain3D did not generate LandMesh")
+	if m_terrain.get_node_or_null("WaterMesh") == null:
+		failures.append("LowPolyTerrain3D did not generate WaterMesh")
+	if m_terrain.get_node_or_null("WaterSurfaceLayerMesh") == null:
+		failures.append("LowPolyTerrain3D did not generate WaterSurfaceLayerMesh")
+	if m_terrain.get_node_or_null("WaterShorelineMesh") == null:
+		failures.append("LowPolyTerrain3D did not generate WaterShorelineMesh")
 	if m_terrain.get_node_or_null("TerrainCollision") == null:
 		failures.append("LowPolyTerrain3D did not generate TerrainCollision")
 

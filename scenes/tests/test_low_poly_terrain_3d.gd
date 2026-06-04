@@ -52,6 +52,7 @@ func _run_smoke_checks() -> void:
 		failures.append("missing LowPolyTerrain3D")
 	else:
 		_validate_heightmap_terrain(failures)
+		_validate_water_rendering(failures)
 
 	if failures.is_empty():
 		print("PASS: LowPolyTerrain3D heightmap smoke test")
@@ -86,6 +87,50 @@ func _validate_heightmap_terrain(failures: Array[String]) -> void:
 		failures.append("sample cell height did not include heightmap offset")
 
 
+func _validate_water_rendering(failures: Array[String]) -> void:
+	var water_mesh := m_terrain.get_node_or_null("WaterMesh") as MeshInstance3D
+	if water_mesh == null:
+		failures.append("LowPolyTerrain3D did not generate WaterMesh")
+		return
+	if water_mesh.mesh == null:
+		failures.append("LowPolyTerrain3D WaterMesh is missing mesh data")
+		return
+
+	if !_mesh_has_vertex_colors(water_mesh.mesh):
+		failures.append("LowPolyTerrain3D WaterMesh is missing low-poly vertex colors")
+
+	var height_range := _get_mesh_height_range(water_mesh.mesh)
+	if height_range.y - height_range.x <= 0.005:
+		failures.append("LowPolyTerrain3D WaterMesh did not create faceted water height variation")
+
+	var surface_layer_mesh := m_terrain.get_node_or_null("WaterSurfaceLayerMesh") as MeshInstance3D
+	if surface_layer_mesh == null:
+		failures.append("LowPolyTerrain3D did not generate WaterSurfaceLayerMesh")
+	elif surface_layer_mesh.mesh == null:
+		failures.append("LowPolyTerrain3D WaterSurfaceLayerMesh is missing mesh data")
+	else:
+		_validate_surface_layer(surface_layer_mesh, failures)
+
+	var shoreline_mesh := m_terrain.get_node_or_null("WaterShorelineMesh") as MeshInstance3D
+	if shoreline_mesh == null:
+		failures.append("LowPolyTerrain3D did not generate WaterShorelineMesh")
+	elif shoreline_mesh.mesh == null:
+		failures.append("LowPolyTerrain3D WaterShorelineMesh is missing mesh data")
+
+
+func _validate_surface_layer(surface_layer_mesh: MeshInstance3D, failures: Array[String]) -> void:
+	var material := surface_layer_mesh.material_override as StandardMaterial3D
+	if material == null:
+		failures.append("LowPolyTerrain3D WaterSurfaceLayerMesh is missing its material")
+	elif material.albedo_color.a >= 0.99:
+		failures.append("LowPolyTerrain3D WaterSurfaceLayerMesh should be semi-transparent")
+
+	var height_range := _get_mesh_height_range(surface_layer_mesh.mesh)
+	var water_height := float(m_terrain.get("water_height"))
+	if height_range.x <= water_height:
+		failures.append("LowPolyTerrain3D WaterSurfaceLayerMesh was not lifted above water height")
+
+
 func _get_mesh_height_range(mesh: Mesh) -> Vector2:
 	var min_height := INF
 	var max_height := -INF
@@ -113,4 +158,13 @@ func _mesh_has_sloped_triangles(mesh: Mesh) -> bool:
 			var max_height := maxf(a.y, maxf(b.y, c.y))
 			if max_height - min_height > 0.001:
 				return true
+	return false
+
+
+func _mesh_has_vertex_colors(mesh: Mesh) -> bool:
+	for surface_index in range(mesh.get_surface_count()):
+		var arrays := mesh.surface_get_arrays(surface_index)
+		var colors_value: Variant = arrays[Mesh.ARRAY_COLOR]
+		if colors_value is PackedColorArray and colors_value.size() > 0:
+			return true
 	return false

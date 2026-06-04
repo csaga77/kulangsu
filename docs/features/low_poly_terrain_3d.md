@@ -12,7 +12,9 @@
 - [`../../terrain/low_poly_terrain_3d.gd`](../../terrain/low_poly_terrain_3d.gd) reads the same terrain mask and `TerrainGenerationProfile` resource used by the 2D terrain generator.
 - [`../../scenes/tests/test_low_poly_terrain_3d.tscn`](../../scenes/tests/test_low_poly_terrain_3d.tscn) is the focused validation scene.
 - The prototype samples the `512 x 512` mask into coarse cells, then builds separate 3D meshes for:
-  - water
+  - faceted low-poly water
+  - semi-transparent water surface layer
+  - shoreline water highlight bands
   - smooth low-poly land
   - shoreline side walls
   - street overlays
@@ -20,7 +22,7 @@
   - optional land collision
 - An optional grayscale `heightmap_file` can add terrain elevation offsets on top of `land_height`; by default those sampled heights are lightly smoothed into a connected sloped land mesh instead of block terraces.
 - The scene uses an orthographic `Camera3D` and a simple directional light for a first low-poly island read.
-- [`../../terrain/low_poly_art_style_3d.gd`](../../terrain/low_poly_art_style_3d.gd) defines `class_name LowPolyArtStyle3D`, the shared style-preset resource for terrain palette, camera, lighting, and landmark colors.
+- [`../../terrain/low_poly_art_style_3d.gd`](../../terrain/low_poly_art_style_3d.gd) defines `class_name LowPolyArtStyle3D`, the shared style-preset resource for terrain palette, faceted water colors/tuning, camera, lighting, and landmark colors.
 - [`../../terrain/low_poly_postcard_diorama_style.tres`](../../terrain/low_poly_postcard_diorama_style.tres) is the first Painted Postcard Diorama preset.
 - [`../../terrain/low_poly_world_coordinates_3d.gd`](../../terrain/low_poly_world_coordinates_3d.gd) defines `class_name LowPolyWorldCoordinates3D`, the shared terrain-mask-pixel to 3D XZ world-position adapter, including helpers for rough 2D isometric authored positions.
 - [`../../architecture/low_poly/low_poly_landmark_proxy_3d.gd`](../../architecture/low_poly/low_poly_landmark_proxy_3d.gd) defines `class_name LowPolyLandmarkProxy3D`, a simple reusable landmark-volume generator for early postcard-diorama house, church, tunnel, and tower silhouettes.
@@ -50,6 +52,9 @@
 - Any placement work must go through `LowPolyWorldCoordinates3D` instead of duplicating the current grid-centering or isometric-position conversion math in landmark, actor, or story code.
 - Actor, landmark, and future hotspot placement should query `LowPolyTerrain3D.get_sample_cell_height(...)` after terrain generation when a heightmap is active.
 - Style tuning should flow through `LowPolyArtStyle3D` presets before hardcoding scene-local color, camera, or lighting values.
+- The low-poly water pass generates a vertex-colored `WaterMesh`, a semi-transparent `WaterSurfaceLayerMesh` lifted over the same water area, and a separate translucent `WaterShorelineMesh`; all stay transient generated children like the land, street, and collision helper nodes.
+- Water facets may slope downward from `water_height` for a low-poly surface read, but should not rise above `water_height` by default so they do not cover low shoreline land.
+- The water surface layer should stay only slightly above `water_height`, below the shoreline highlight lift by default, so it reads as a calm glassy sheet without hiding the shoreline band.
 - Editing values inside an assigned `LowPolyArtStyle3D` preset is manual-apply by design: press the exported `rebuild` control or call the relevant rebuild method after style edits. The prototype does not need automatic resource-change rebuilds.
 
 ## Visual Style Contract
@@ -58,7 +63,8 @@
 - Let the player orbit the orthographic camera around the actor for inspection, while keeping zoom and follow behavior intact.
 - Use a calm, readable material palette: soft water, clear land/street/building contrast, and enough shoreline shadow/color separation to preserve the island silhouette.
 - Prefer simple low-poly volume and silhouette clarity over texture detail.
-- Keep water, land, streets, and building footprints as separate mesh/material passes until the intended art direction is proven.
+- Keep water, the water surface layer, water shoreline highlights, land, streets, and building footprints as separate mesh/material passes until the intended art direction is proven.
+- Keep water treatment restrained: faceted height variation, vertex-color depth/shimmer, and narrow shoreline highlight bands should support the harbor-storybook atmosphere rather than becoming large waves or foam effects.
 - Treat landmark buildings as future silhouette anchors, not as terrain-mask side effects.
 - Use the five canonical `LowPolyLandmarkProxy3D` placeholders for first-pass landmark massing before replacing proxies with bespoke low-poly landmark meshes.
 
@@ -67,6 +73,7 @@
 - Use `sample_stride` to trade mask fidelity against mesh density.
 - Use `cell_size`, `land_height`, `smooth_land_surface`, `height_smoothing_passes`, `street_lift`, and `building_footprint_lift` to tune the island scale and low-poly read.
 - Use `heightmap_file`, `heightmap_min_offset`, and `heightmap_max_offset` to prototype island slopes, terraces, or hills without changing terrain mask semantics.
+- Use `water_deep_color`, `water_surface_layer_color`, `water_shoreline_color`, `water_highlight_color`, `water_wave_depth`, `water_wave_frequency`, `water_shoreline_band_ratio`, `water_shoreline_lift`, and `water_surface_layer_lift` on the terrain node or shared style preset to tune the 3D water read.
 - After assigning or editing heightmap settings in the editor, manually rebuild affected terrain nodes before judging the elevation result.
 - Tune palette, camera, sunlight, and proxy landmark colors through `low_poly_postcard_diorama_style.tres` while this scene remains the golden slice.
 - After editing the style preset, manually rebuild affected terrain/proxy nodes or reload the validation scene before judging the new visual read.
@@ -89,7 +96,7 @@ LowPolyTerrain3D: built 512x512 source mask into 128x128 sampled cells ...
 PASS: LowPolyTerrain3D heightmap smoke test
 ```
 
-- Visual validation should check that the island silhouette, water/land split, sloped heightmap elevation, streets, and building footprint overlays are readable from the orthographic camera.
+- Visual validation should check that the island silhouette, water/land split, faceted water surface, semi-transparent top water layer, shoreline water highlights, sloped heightmap elevation, streets, and building footprint overlays are readable from the orthographic camera.
 - Run the combined validation scene after coordinate, collision, player movement, or camera changes:
 
 ```sh
