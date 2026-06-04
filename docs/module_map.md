@@ -26,7 +26,7 @@ Put new menu, overlay, HUD, or shell-flow work here.
 
 - [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - connects terrain, the shared actor layer, manager-owned overworld weather, tunnel-based weather suppression, landmarks, tunnel interior context, resident route resolution, and residents to the UI
 - [`../terrain/terrain.tscn`](../terrain/terrain.tscn) / [`../terrain/terrain.gd`](../terrain/terrain.gd) - island terrain, generated helper layers, water rendering setup, and the ground-layer masking hooks used by tunnel interiors
-- [`../terrain/low_poly_terrain_3d.gd`](../terrain/low_poly_terrain_3d.gd) - parallel low-poly 3D terrain prototype that samples the existing terrain mask/profile into land, shoreline, water, street, building-footprint, and optional collision meshes
+- [`../terrain/low_poly_terrain_3d.gd`](../terrain/low_poly_terrain_3d.gd) - parallel low-poly 3D terrain prototype that samples the existing terrain mask/profile into smooth land, shoreline, water, street, building-footprint, optional heightmap elevation, and optional collision meshes
 - [`../terrain/low_poly_art_style_3d.gd`](../terrain/low_poly_art_style_3d.gd) / [`../terrain/low_poly_postcard_diorama_style.tres`](../terrain/low_poly_postcard_diorama_style.tres) - shared low-poly style preset schema plus the current Painted Postcard Diorama palette, camera, sunlight, and landmark-color preset
 - [`../terrain/low_poly_world_coordinates_3d.gd`](../terrain/low_poly_world_coordinates_3d.gd) - shared coordinate adapter for converting terrain mask pixels and rough 2D isometric authored positions to low-poly 3D XZ world positions
 - [`../terrain/island_generation_profile.tres`](../terrain/island_generation_profile.tres) - shared authored terrain profile resource referenced by `terrain.tscn` so direct terrain validation and `game_main` use the same rules
@@ -225,7 +225,7 @@ Useful searches when locating code:
 - `WeatherManager` for the overworld's global weather-cycle and wind-sync service
 - `test_weather` for the focused weather sandbox and control panel
 - `water_tint` for the water shader and material
-- `LowPolyTerrain3D` for the parallel terrain-mask-to-3D prototype
+- `LowPolyTerrain3D` for the parallel terrain-mask-to-3D prototype, including optional heightmap elevation sampling and smooth low-poly land-surface generation
 - `LowPolyArtStyle3D` for low-poly 3D palette, camera, lighting, and landmark-color presets
 - `LowPolyWorldCoordinates3D` for terrain-mask-pixel and rough 2D isometric-position to low-poly 3D world-position conversion
 - `LowPolyLandmarkProxy3D` for postcard-diorama landmark proxy volumes and placeholder silhouettes

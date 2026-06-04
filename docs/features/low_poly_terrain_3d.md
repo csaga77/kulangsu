@@ -13,11 +13,12 @@
 - [`../../scenes/tests/test_low_poly_terrain_3d.tscn`](../../scenes/tests/test_low_poly_terrain_3d.tscn) is the focused validation scene.
 - The prototype samples the `512 x 512` mask into coarse cells, then builds separate 3D meshes for:
   - water
-  - land
+  - smooth low-poly land
   - shoreline side walls
   - street overlays
   - building footprint overlays
   - optional land collision
+- An optional grayscale `heightmap_file` can add terrain elevation offsets on top of `land_height`; by default those sampled heights are lightly smoothed into a connected sloped land mesh instead of block terraces.
 - The scene uses an orthographic `Camera3D` and a simple directional light for a first low-poly island read.
 - [`../../terrain/low_poly_art_style_3d.gd`](../../terrain/low_poly_art_style_3d.gd) defines `class_name LowPolyArtStyle3D`, the shared style-preset resource for terrain palette, camera, lighting, and landmark colors.
 - [`../../terrain/low_poly_postcard_diorama_style.tres`](../../terrain/low_poly_postcard_diorama_style.tres) is the first Painted Postcard Diorama preset.
@@ -41,8 +42,15 @@
 - The prototype should remain coarse and fast enough to regenerate in editor or headless validation.
 - Generated mesh and collision nodes are runtime/editor transient children marked with metadata; they should not become serialized child content in the scene.
 - Terrain sampling currently lets street or building pixels win the whole sampled cell. Treat that chunkiness as prototype style until a deliberate readability pass decides otherwise.
+- Heightmaps are sampled at the same coarse cell resolution as the terrain mask, then `smooth_land_surface` builds connected low-poly surface facets by averaging adjacent cell heights at shared corners.
+- `height_smoothing_passes` applies a small land-only blur before mesh creation. Keep it low so the terrain reads as simple low-poly slopes rather than noisy per-pixel relief.
+- Turning `smooth_land_surface` off preserves the old block/terrace style with internal vertical height walls.
+- Black heightmap pixels map to `heightmap_min_offset`, white pixels map to `heightmap_max_offset`, and the result is added to `land_height`; water remains at `water_height`.
+- Assigning `heightmap_file` or editing heightmap min/max offsets is manual-apply by design: press the exported `rebuild` control or call `rebuild_from_source()` after those edits. This prevents large or imported heightmap images from rebuilding during the Inspector assignment itself.
 - Any placement work must go through `LowPolyWorldCoordinates3D` instead of duplicating the current grid-centering or isometric-position conversion math in landmark, actor, or story code.
+- Actor, landmark, and future hotspot placement should query `LowPolyTerrain3D.get_sample_cell_height(...)` after terrain generation when a heightmap is active.
 - Style tuning should flow through `LowPolyArtStyle3D` presets before hardcoding scene-local color, camera, or lighting values.
+- Editing values inside an assigned `LowPolyArtStyle3D` preset is manual-apply by design: press the exported `rebuild` control or call the relevant rebuild method after style edits. The prototype does not need automatic resource-change rebuilds.
 
 ## Visual Style Contract
 
@@ -56,8 +64,11 @@
 ## Extension Notes
 
 - Use `sample_stride` to trade mask fidelity against mesh density.
-- Use `cell_size`, `land_height`, `street_lift`, and `building_footprint_lift` to tune the island scale and low-poly read.
+- Use `cell_size`, `land_height`, `smooth_land_surface`, `height_smoothing_passes`, `street_lift`, and `building_footprint_lift` to tune the island scale and low-poly read.
+- Use `heightmap_file`, `heightmap_min_offset`, and `heightmap_max_offset` to prototype island slopes, terraces, or hills without changing terrain mask semantics.
+- After assigning or editing heightmap settings in the editor, manually rebuild affected terrain nodes before judging the elevation result.
 - Tune palette, camera, sunlight, and proxy landmark colors through `low_poly_postcard_diorama_style.tres` while this scene remains the golden slice.
+- After editing the style preset, manually rebuild affected terrain/proxy nodes or reload the validation scene before judging the new visual read.
 - Use the combined world scene to tune terrain scale, land collision, actor scale, `Camera3DController` follow offset, landmark placeholder scale, and material readability together.
 - Add interaction areas only after the five-placeholder blockout stays readable and the coordinate adapter placement contract remains stable.
 - If this evolves into a real gameplay terrain layer, update this doc with navigation, landmark anchors, weather, and story-resume contracts.
@@ -74,9 +85,10 @@
 
 ```text
 LowPolyTerrain3D: built 512x512 source mask into 128x128 sampled cells ...
+PASS: LowPolyTerrain3D heightmap smoke test
 ```
 
-- Visual validation should check that the island silhouette, water/land split, streets, and building footprint overlays are readable from the orthographic camera.
+- Visual validation should check that the island silhouette, water/land split, sloped heightmap elevation, streets, and building footprint overlays are readable from the orthographic camera.
 - Run the combined validation scene after coordinate, collision, player movement, or camera changes:
 
 ```sh

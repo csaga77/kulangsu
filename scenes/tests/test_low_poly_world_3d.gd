@@ -83,7 +83,8 @@ func _configure_world(failures: Array[String]) -> void:
 	m_spawn_mask_pixel = _find_land_spawn_pixel(image, profile)
 	var sample_cell := m_coordinates.mask_pixel_to_sample_cell(m_spawn_mask_pixel)
 	var land_height: float = float(m_terrain.get("land_height"))
-	m_actor.global_position = m_coordinates.sample_cell_to_world_center(sample_cell, land_height + 0.04)
+	var spawn_height := _get_terrain_sample_height(sample_cell, land_height)
+	m_actor.global_position = m_coordinates.sample_cell_to_world_center(sample_cell, spawn_height + 0.04)
 	_place_landmarks(image, profile, land_height)
 
 	_snap_camera_controller()
@@ -200,7 +201,8 @@ func _place_landmarks(image: Image, profile: TerrainGenerationProfile, land_heig
 			Vector2i(roundi(mask_pixel.x), roundi(mask_pixel.y))
 		)
 		var landmark_cell := m_coordinates.mask_pixel_to_sample_cell(snapped_mask_pixel)
-		proxy.global_position = m_coordinates.sample_cell_to_world_center(landmark_cell, land_height)
+		var landmark_height := _get_terrain_sample_height(landmark_cell, land_height)
+		proxy.global_position = m_coordinates.sample_cell_to_world_center(landmark_cell, landmark_height)
 		proxy.set_meta(LANDMARK_MASK_META, snapped_mask_pixel)
 
 
@@ -250,6 +252,14 @@ func _snap_camera_controller() -> void:
 		return
 	if m_camera_controller.has_method("snap_to_target"):
 		m_camera_controller.call("snap_to_target")
+
+
+func _get_terrain_sample_height(sample_cell: Vector2i, fallback: float) -> float:
+	if !is_instance_valid(m_terrain):
+		return fallback
+	if !m_terrain.has_method("get_sample_cell_height"):
+		return fallback
+	return float(m_terrain.call("get_sample_cell_height", sample_cell))
 
 
 func _resolve_generation_profile(failures: Array[String]) -> TerrainGenerationProfile:
