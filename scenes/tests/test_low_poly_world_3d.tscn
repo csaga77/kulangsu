@@ -1,10 +1,11 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scenes/tests/test_low_poly_world_3d.gd" id="1_scene"]
 [ext_resource type="Script" path="res://terrain/low_poly_terrain_3d.gd" id="2_terrain"]
 [ext_resource type="Resource" path="res://terrain/island_generation_profile.tres" id="3_profile"]
 [ext_resource type="PackedScene" path="res://characters/human_body_3d.tscn" id="4_actor"]
 [ext_resource type="Script" path="res://characters/control/player_controller_3d.gd" id="5_controller"]
+[ext_resource type="Script" path="res://godot_common/scenes/camera_3d_controller.gd" id="6_camera_controller"]
 
 [sub_resource type="Resource" id="Resource_player_controller_3d"]
 script = ExtResource("5_controller")
@@ -35,6 +36,17 @@ transform = Transform3D(1, 0, 0, 0, 0.777146, 0.62932, 0, -0.62932, 0.777146, 18
 projection = 1
 size = 34.0
 current = true
+
+[node name="Camera3DController" type="Node" parent="." node_paths=PackedStringArray("camera", "target_node")]
+script = ExtResource("6_camera_controller")
+camera = NodePath("../Camera3D")
+target_node = NodePath("../human_body_3d")
+follow_offset = Vector3(18, 22, 18)
+look_at_offset = Vector3(0, 0.8, 0)
+orthographic_size = 34.0
+min_orthographic_size = 10.0
+max_orthographic_size = 80.0
+zoom_step = 2.0
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 28, 44, 18)

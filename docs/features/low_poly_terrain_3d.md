@@ -20,7 +20,7 @@
   - optional land collision
 - The scene uses an orthographic `Camera3D` and a simple directional light for a first low-poly island read.
 - [`../../terrain/low_poly_world_coordinates_3d.gd`](../../terrain/low_poly_world_coordinates_3d.gd) defines `class_name LowPolyWorldCoordinates3D`, the shared terrain-mask-pixel to 3D XZ world-position adapter.
-- [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn) combines the terrain, land collision, `HumanBody3D`, `PlayerController3D`, coordinate round-tripping, and camera framing in one playable validation slice.
+- [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn) combines the terrain, land collision, `HumanBody3D`, `PlayerController3D`, `Camera3DController`, coordinate round-tripping, and camera framing in one playable validation slice.
 
 ## Ownership
 
@@ -53,7 +53,7 @@
 - Use `sample_stride` to trade mask fidelity against mesh density.
 - Use `cell_size`, `land_height`, `street_lift`, and `building_footprint_lift` to tune the island scale and low-poly read.
 - Extend `LowPolyWorldCoordinates3D` with shared conversion helpers before wiring landmarks, residents, interaction hotspots, or story resume anchors.
-- Use the combined world scene to tune terrain scale, land collision, actor scale, camera framing, and material readability together.
+- Use the combined world scene to tune terrain scale, land collision, actor scale, `Camera3DController` follow offset, and material readability together.
 - If this evolves into a real gameplay terrain layer, update this doc with navigation, landmark anchors, weather, and story-resume contracts.
 
 ## Validation

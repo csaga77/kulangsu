@@ -133,11 +133,11 @@ First-pass shipped outcome:
 - `HumanBody3D` exposes familiar actor fields and methods such as direction, walking/running state, configuration, movement, jump, ground footprint, and global-position change signaling
 - `BaseController3D` and `PlayerController3D` mirror the 2D controller hierarchy while staying separate from the 2D runtime controller classes
 - `LowPolyWorldCoordinates3D` provides the first shared terrain-mask-pixel to 3D XZ world-position adapter
-- `test_low_poly_world_3d.tscn` validates terrain, land collision, `HumanBody3D`, `PlayerController3D`, coordinate round-tripping, movement, and camera framing together
+- `test_low_poly_world_3d.tscn` validates terrain, land collision, `HumanBody3D`, `PlayerController3D`, `Camera3DController`, coordinate round-tripping, movement, and camera framing together
 
 Still open:
 
-- tune the initial visual-style contract through the combined world scene, especially camera angle, projection, palette, lighting, water, terrain chunkiness, actor scale, and movement speed
+- tune the initial visual-style contract through the combined world scene, especially camera angle, projection, follow offset, palette, lighting, water, terrain chunkiness, actor scale, and movement speed
 - extend the coordinate adapter only through shared methods before placing landmarks, residents, story anchors, or interaction hotspots
 - decide whether the current coarse sampling should remain the intended visual style or whether streets/building footprints need cleaner extraction before gameplay placement starts
 - add 3D landmark placeholders and interaction areas only after the coordinate adapter and combined playability scene are stable

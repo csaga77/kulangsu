@@ -7,6 +7,7 @@ const BaseController3DScript = preload("res://characters/control/base_controller
 @onready var m_terrain: Node3D = $LowPolyTerrain3D
 @onready var m_actor: CharacterBody3D = $human_body_3d
 @onready var m_camera: Camera3D = $Camera3D
+@onready var m_camera_controller: Node = $Camera3DController
 @onready var m_sun: DirectionalLight3D = $Sun
 
 var m_coordinates: LowPolyWorldCoordinates3DScript = LowPolyWorldCoordinates3DScript.new()
@@ -57,7 +58,7 @@ func _configure_world(failures: Array[String]) -> void:
 	var land_height: float = float(m_terrain.get("land_height"))
 	m_actor.global_position = m_coordinates.sample_cell_to_world_center(sample_cell, land_height + 0.04)
 
-	_frame_camera()
+	_snap_camera_controller()
 
 
 func _validate_world(failures: Array[String]) -> void:
@@ -100,15 +101,20 @@ func _validate_world(failures: Array[String]) -> void:
 	elif m_camera.projection != Camera3D.PROJECTION_ORTHOGONAL:
 		failures.append("LowPolyWorld3D camera should be orthographic")
 
+	if !is_instance_valid(m_camera_controller):
+		failures.append("missing Camera3DController")
+	else:
+		if m_camera_controller.get("camera") != m_camera:
+			failures.append("Camera3DController is not targeting Camera3D")
+		if m_camera_controller.get("target_node") != m_actor:
+			failures.append("Camera3DController is not following HumanBody3D")
 
-func _frame_camera() -> void:
-	if !is_instance_valid(m_camera) or !is_instance_valid(m_actor):
+
+func _snap_camera_controller() -> void:
+	if !is_instance_valid(m_camera_controller):
 		return
-
-	m_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	m_camera.size = 34.0
-	m_camera.global_position = m_actor.global_position + Vector3(18.0, 22.0, 18.0)
-	m_camera.look_at(m_actor.global_position + Vector3(0.0, 0.8, 0.0), Vector3.UP)
+	if m_camera_controller.has_method("snap_to_target"):
+		m_camera_controller.call("snap_to_target")
 
 
 func _resolve_generation_profile(failures: Array[String]) -> TerrainGenerationProfile:
