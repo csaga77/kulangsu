@@ -159,6 +159,7 @@ func _validate_world(failures: Array[String]) -> void:
 			failures.append("Camera3DController is not targeting Camera3D")
 		if m_camera_controller.get("target_node") != m_actor:
 			failures.append("Camera3DController is not following HumanBody3D")
+		_validate_camera_rotation(failures)
 
 
 func _apply_art_style() -> void:
@@ -252,6 +253,19 @@ func _snap_camera_controller() -> void:
 		return
 	if m_camera_controller.has_method("snap_to_target"):
 		m_camera_controller.call("snap_to_target")
+
+
+func _validate_camera_rotation(failures: Array[String]) -> void:
+	if !m_camera_controller.has_method("rotate_yaw"):
+		failures.append("Camera3DController is missing orbit rotation support")
+		return
+
+	var original_yaw := float(m_camera_controller.get("orbit_yaw_degrees"))
+	m_camera_controller.call("rotate_yaw", 12.0)
+	var rotated_yaw := float(m_camera_controller.get("orbit_yaw_degrees"))
+	if !is_equal_approx(rotated_yaw, wrapf(original_yaw + 12.0, -180.0, 180.0)):
+		failures.append("Camera3DController did not apply orbit yaw rotation")
+	m_camera_controller.set("orbit_yaw_degrees", original_yaw)
 
 
 func _get_terrain_sample_height(sample_cell: Vector2i, fallback: float) -> float:
