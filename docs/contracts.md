@@ -194,10 +194,13 @@ Current contract:
 - the low-poly 3D prototype remains a sidecar validation lane and must not be wired into `game_main.tscn` until a deliberate 3D world-integration phase starts
 - `LowPolyWorldCoordinates3D` owns terrain-mask-pixel to 3D XZ conversion plus rough 2D isometric-position to mask-pixel conversion for authored landmark blockouts
 - landmark, actor, story-anchor, and future hotspot placement must use `LowPolyWorldCoordinates3D` instead of duplicating grid-centering or isometric conversion math
-- `LowPolyTerrain3D` owns optional grayscale heightmap sampling; black maps to `heightmap_min_offset`, white maps to `heightmap_max_offset`, offsets are added to `land_height`, and water remains flat at `water_height`
+- `LowPolyTerrain3D` owns optional grayscale heightmap sampling; black maps to `heightmap_min_offset`, white maps to `heightmap_max_offset`, and offsets are added to `land_height`
+- when `heightmap_expands_land_to_source` is enabled with an assigned heightmap, the heightmap dimensions become the generated terrain source, mask water does not clip land, and mask colors only upgrade cells to street or building-footprint overlays
+- when heightmap expansion is disabled or no heightmap is assigned, mask water remains flat at `water_height`
 - by default, heightmapped land is generated as a connected low-poly surface with shared-corner height averaging and a small land-only smoothing pass; `smooth_land_surface = false` is the opt-out for the older block/terrace profile
-- heightmap file and offset edits are manual-apply: assigning the image or tuning min/max must not automatically rebuild in the editor; use the exported rebuild control or `rebuild_from_source()`
-- height-aware placement must query generated terrain sample heights through `LowPolyTerrain3D.get_sample_cell_height(...)` after rebuild instead of assuming global `land_height`
+- heightmap file, expansion-mode, and offset edits are manual-apply: assigning the image, toggling `heightmap_expands_land_to_source`, or tuning min/max must not automatically rebuild in the editor; use the exported rebuild control or `rebuild_from_source()`
+- height-aware placement must query generated terrain heights through `LowPolyTerrain3D.get_world_surface_height(...)` or `LowPolyTerrain3D.get_sample_cell_height(...)` after rebuild instead of assuming global `land_height`
+- the combined low-poly world scene owns actor terrain-follow wiring: it keeps the player actor's ground Y synced to `LowPolyTerrain3D.get_world_surface_height(...)` plus a small clearance while `HumanBody3D` remains terrain-agnostic
 - the current five canonical `LowPolyLandmarkProxy3D` nodes are non-interactive visual blockouts snapped to nearby land, not authoritative gameplay hotspots
 - `HumanBody3D.body_height` and `HumanBody3D.body_radius` are the current low-poly actor shape contract; they update generated visuals, capsule collision, bounding box, and ground footprint together
 - `HumanBody3D` may use procedural readability polish such as contact shadows, bob, and limb swing, but it remains a prototype actor until the 3D asset direction is chosen

@@ -95,6 +95,12 @@ enum TerrainCellKind {
 		height_smoothing_passes = clamped_passes
 		_request_rebuild()
 
+@export var heightmap_expands_land_to_source := true:
+	set(new_expands_land):
+		if heightmap_expands_land_to_source == new_expands_land:
+			return
+		heightmap_expands_land_to_source = new_expands_land
+
 @export_range(-4.0, 4.0, 0.01) var heightmap_min_offset := 0.0:
 	set(new_offset):
 		if is_equal_approx(heightmap_min_offset, new_offset):
@@ -237,6 +243,7 @@ enum TerrainCellKind {
 var m_is_ready := false
 var m_rebuild_queued := false
 var m_sample_grid: Array[Array] = []
+var m_source_size := Vector2i.ZERO
 
 
 func _ready() -> void:
@@ -290,36 +297,61 @@ func get_sample_cell_kind(sample_cell: Vector2i) -> TerrainCellKind:
 	return cell.kind
 
 
+func get_world_surface_height(world_position: Vector3) -> float:
+	if m_sample_grid.is_empty():
+		return land_height
+
+	var grid_size := Vector2i(m_sample_grid[0].size(), m_sample_grid.size())
+	var origin_offset := _get_grid_origin_offset(grid_size)
+	var grid_position := Vector2(
+		(world_position.x - origin_offset.x) / cell_size,
+		(world_position.z - origin_offset.z) / cell_size
+	)
+	var sample_cell := Vector2i(
+		clampi(floori(grid_position.x), 0, grid_size.x - 1),
+		clampi(floori(grid_position.y), 0, grid_size.y - 1)
+	)
+	var local_x := clampf(grid_position.x - float(sample_cell.x), 0.0, 1.0)
+	var local_z := clampf(grid_position.y - float(sample_cell.y), 0.0, 1.0)
+	var cell := m_sample_grid[sample_cell.y][sample_cell.x] as _TerrainCell
+	if cell == null:
+		return land_height
+	if cell.kind == TerrainCellKind.WATER:
+		return water_height
+	return _get_cell_surface_height(m_sample_grid, sample_cell.x, sample_cell.y, cell.height, local_x, local_z)
+
+
+func get_source_size() -> Vector2i:
+	return m_source_size
+
+
 func _rebuild_from_source() -> void:
 	m_rebuild_queued = false
 	_clear_generated_children()
 	m_sample_grid.clear()
-
-	if mask_file.is_empty():
-		push_warning("LowPolyTerrain3D requires a mask_file.")
-		return
+	m_source_size = Vector2i.ZERO
 
 	var profile := _get_generation_profile()
 	if profile == null:
 		return
 
-	var image := Image.new()
-	var load_error := image.load(mask_file)
-	if load_error != OK:
-		push_error("LowPolyTerrain3D failed to load mask image: %s (err=%d)" % [mask_file, load_error])
+	var heightmap_image := _load_heightmap_image()
+	var mask_image := _load_mask_image()
+	if mask_image == null and heightmap_image == null:
+		push_warning("LowPolyTerrain3D requires a mask_file or heightmap_file.")
 		return
 
-	if image.is_compressed():
-		image.decompress()
-	if image.get_format() != Image.FORMAT_RGBA8:
-		image.convert(Image.FORMAT_RGBA8)
+	var source_size := _resolve_generation_source_size(mask_image, heightmap_image)
+	if source_size == Vector2i.ZERO:
+		push_warning("LowPolyTerrain3D could not resolve a terrain source size.")
+		return
 
-	var heightmap_image := _load_heightmap_image()
-	var grid := _build_sample_grid(image, profile, heightmap_image)
+	var grid := _build_sample_grid(mask_image, profile, heightmap_image, source_size)
 	if smooth_land_surface:
 		_smooth_sample_grid_heights(grid, height_smoothing_passes)
 	m_sample_grid = grid
-	_build_meshes_from_grid(grid, image.get_width(), image.get_height())
+	m_source_size = source_size
+	_build_meshes_from_grid(grid, source_size.x, source_size.y)
 
 
 func _get_generation_profile() -> TerrainGenerationProfile:
@@ -330,6 +362,23 @@ func _get_generation_profile() -> TerrainGenerationProfile:
 	if !profile.is_valid_profile():
 		return null
 	return profile
+
+
+func _load_mask_image() -> Image:
+	if mask_file.is_empty():
+		return null
+
+	var image := Image.new()
+	var load_error := image.load(mask_file)
+	if load_error != OK:
+		push_error("LowPolyTerrain3D failed to load mask image: %s (err=%d)" % [mask_file, load_error])
+		return null
+
+	if image.is_compressed():
+		image.decompress()
+	if image.get_format() != Image.FORMAT_RGBA8:
+		image.convert(Image.FORMAT_RGBA8)
+	return image
 
 
 func _load_heightmap_image() -> Image:
@@ -347,24 +396,42 @@ func _load_heightmap_image() -> Image:
 	return image
 
 
-func _build_sample_grid(image: Image, profile: TerrainGenerationProfile, heightmap_image: Image) -> Array[Array]:
+func _resolve_generation_source_size(mask_image: Image, heightmap_image: Image) -> Vector2i:
+	if heightmap_expands_land_to_source and heightmap_image != null:
+		return heightmap_image.get_size()
+	if mask_image != null:
+		return mask_image.get_size()
+	if heightmap_image != null:
+		return heightmap_image.get_size()
+	return Vector2i.ZERO
+
+
+func _heightmap_fills_source_land(heightmap_image: Image) -> bool:
+	return heightmap_expands_land_to_source and heightmap_image != null
+
+
+func _build_sample_grid(
+	mask_image: Image,
+	profile: TerrainGenerationProfile,
+	heightmap_image: Image,
+	source_size: Vector2i
+) -> Array[Array]:
 	var grid: Array[Array] = []
-	var width := image.get_width()
-	var height := image.get_height()
-	var grid_width := ceili(float(width) / float(sample_stride))
-	var grid_height := ceili(float(height) / float(sample_stride))
+	var grid_width := ceili(float(source_size.x) / float(sample_stride))
+	var grid_height := ceili(float(source_size.y) / float(sample_stride))
+	var heightmap_fills_land := _heightmap_fills_source_land(heightmap_image)
 
 	for grid_y in range(grid_height):
 		var row: Array[_TerrainCell] = []
 		var start_y := grid_y * sample_stride
 		for grid_x in range(grid_width):
 			var start_x := grid_x * sample_stride
-			var kind := _classify_sample_block(image, profile, start_x, start_y)
+			var kind := _classify_sample_block(mask_image, profile, source_size, start_x, start_y, heightmap_fills_land)
 			var sample_height := land_height
 			if kind != TerrainCellKind.WATER:
-				var end_x := mini(start_x + sample_stride, width)
-				var end_y := mini(start_y + sample_stride, height)
-				sample_height += _sample_heightmap_offset(heightmap_image, Vector2i(width, height), start_x, start_y, end_x, end_y)
+				var end_x := mini(start_x + sample_stride, source_size.x)
+				var end_y := mini(start_y + sample_stride, source_size.y)
+				sample_height += _sample_heightmap_offset(heightmap_image, source_size, start_x, start_y, end_x, end_y)
 			row.append(_TerrainCell.new(kind, sample_height))
 		grid.append(row)
 
@@ -415,18 +482,23 @@ func _smooth_sample_grid_heights(grid: Array[Array], smoothing_passes: int) -> v
 func _classify_sample_block(
 	image: Image,
 	profile: TerrainGenerationProfile,
+	source_size: Vector2i,
 	start_x: int,
-	start_y: int
+	start_y: int,
+	fill_water_as_land: bool
 ) -> TerrainCellKind:
-	var end_x := mini(start_x + sample_stride, image.get_width())
-	var end_y := mini(start_y + sample_stride, image.get_height())
+	if image == null:
+		return TerrainCellKind.LAND if fill_water_as_land else TerrainCellKind.WATER
+
+	var end_x := mini(start_x + sample_stride, source_size.x)
+	var end_y := mini(start_y + sample_stride, source_size.y)
 	var land_count := 0
 	var street_count := 0
 	var building_count := 0
 
 	for y in range(start_y, end_y):
 		for x in range(start_x, end_x):
-			var pixel := image.get_pixel(x, y)
+			var pixel := _sample_image_at_source_pixel(image, source_size, x, y)
 			if profile.is_water_pixel(pixel):
 				continue
 
@@ -440,13 +512,26 @@ func _classify_sample_block(
 			if rule.paint_building_mask:
 				building_count += 1
 
-	if land_count <= 0:
-		return TerrainCellKind.WATER
 	if street_count > 0:
 		return TerrainCellKind.STREET
 	if building_count > 0:
 		return TerrainCellKind.BUILDING
-	return TerrainCellKind.LAND
+	if land_count > 0:
+		return TerrainCellKind.LAND
+	if fill_water_as_land:
+		return TerrainCellKind.LAND
+	return TerrainCellKind.WATER
+
+
+func _sample_image_at_source_pixel(image: Image, source_size: Vector2i, source_x: int, source_y: int) -> Color:
+	var image_width := image.get_width()
+	var image_height := image.get_height()
+	if image_width <= 0 or image_height <= 0 or source_size.x <= 0 or source_size.y <= 0:
+		return Color.TRANSPARENT
+
+	var image_x := clampi(floori((float(source_x) + 0.5) / float(source_size.x) * float(image_width)), 0, image_width - 1)
+	var image_y := clampi(floori((float(source_y) + 0.5) / float(source_size.y) * float(image_height)), 0, image_height - 1)
+	return image.get_pixel(image_x, image_y)
 
 
 func _sample_heightmap_offset(
@@ -480,11 +565,7 @@ func _build_meshes_from_grid(grid: Array[Array], source_width: int, source_heigh
 
 	var grid_height := grid.size()
 	var grid_width := grid[0].size()
-	var origin_offset := Vector3(
-		-float(grid_width) * cell_size * 0.5,
-		0.0,
-		-float(grid_height) * cell_size * 0.5
-	)
+	var origin_offset := _get_grid_origin_offset(Vector2i(grid_width, grid_height))
 
 	var land_builder := _MeshBuildState.new()
 	var shoreline_builder := _MeshBuildState.new()
@@ -625,9 +706,17 @@ func _build_meshes_from_grid(grid: Array[Array], source_width: int, source_heigh
 
 	if print_summary:
 		print(
-			"LowPolyTerrain3D: built %dx%d source mask into %dx%d sampled cells (%d land, %d street, %d building, %d water)."
+			"LowPolyTerrain3D: built %dx%d source into %dx%d sampled cells (%d land, %d street, %d building, %d water)."
 			% [source_width, source_height, grid_width, grid_height, land_cells, street_cells, building_cells, water_cells]
 		)
+
+
+func _get_grid_origin_offset(grid_size: Vector2i) -> Vector3:
+	return Vector3(
+		-float(grid_size.x) * cell_size * 0.5,
+		0.0,
+		-float(grid_size.y) * cell_size * 0.5
+	)
 
 
 func _append_land_cell(

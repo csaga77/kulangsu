@@ -26,7 +26,7 @@ Put new menu, overlay, HUD, or shell-flow work here.
 
 - [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - connects terrain, the shared actor layer, manager-owned overworld weather, tunnel-based weather suppression, landmarks, tunnel interior context, resident route resolution, and residents to the UI
 - [`../terrain/terrain.tscn`](../terrain/terrain.tscn) / [`../terrain/terrain.gd`](../terrain/terrain.gd) - island terrain, generated helper layers, water rendering setup, and the ground-layer masking hooks used by tunnel interiors
-- [`../terrain/low_poly_terrain_3d.gd`](../terrain/low_poly_terrain_3d.gd) - parallel low-poly 3D terrain prototype that samples the existing terrain mask/profile into smooth land, faceted vertex-colored water, a semi-transparent water surface layer, water shoreline highlights, shoreline side walls, street, building-footprint, optional heightmap elevation, and optional collision meshes
+- [`../terrain/low_poly_terrain_3d.gd`](../terrain/low_poly_terrain_3d.gd) - parallel low-poly 3D terrain prototype that samples the existing terrain mask/profile and optional full-source heightmap into smooth land, faceted vertex-colored water when mask-clipped, a semi-transparent water surface layer, water shoreline highlights, shoreline side walls, street, building-footprint, optional heightmap elevation, and optional collision meshes
 - [`../terrain/low_poly_art_style_3d.gd`](../terrain/low_poly_art_style_3d.gd) / [`../terrain/low_poly_postcard_diorama_style.tres`](../terrain/low_poly_postcard_diorama_style.tres) - shared low-poly style preset schema plus the current Painted Postcard Diorama palette, water tuning, camera, sunlight, and landmark-color preset
 - [`../terrain/low_poly_world_coordinates_3d.gd`](../terrain/low_poly_world_coordinates_3d.gd) - shared coordinate adapter for converting terrain mask pixels and rough 2D isometric authored positions to low-poly 3D XZ world positions
 - [`../terrain/island_generation_profile.tres`](../terrain/island_generation_profile.tres) - shared authored terrain profile resource referenced by `terrain.tscn` so direct terrain validation and `game_main` use the same rules
@@ -152,7 +152,7 @@ Be careful about renames or moves here because scene and resource references can
 - [`../weather/tests/test_weather.tscn`](../weather/tests/test_weather.tscn) - focused weather tuning sandbox with tilemap-backed water/terrain, manager-attached fog/rain/cloud/impact passes, a thunder-flash pass, a tabbed weather control panel split into `Wind`, `Rain`, `Fog`, and `Cloud` tuning groups with per-pass `Sync With Wind` toggles, actor readability checks, temporary foreground occluder proxies, and a parity check against the shared overworld weather preset
 - [`../scenes/tests/test_water_render.tscn`](../scenes/tests/test_water_render.tscn) - focused water color, wave, transparency, and refraction sandbox
 - [`../scenes/tests/test_low_poly_terrain_3d.tscn`](../scenes/tests/test_low_poly_terrain_3d.tscn) - focused 3D terrain prototype scene that validates the existing terrain mask/profile can produce a coarse low-poly island read
-- [`../scenes/tests/test_low_poly_world_3d.tscn`](../scenes/tests/test_low_poly_world_3d.tscn) - combined low-poly 3D Painted Postcard Diorama validation slice covering terrain generation, land collision, coordinate round-tripping, `HumanBody3D`, `PlayerController3D`, `Camera3DController`, style preset wiring, five canonical postcard landmark proxies, and camera framing
+- [`../scenes/tests/test_low_poly_world_3d.tscn`](../scenes/tests/test_low_poly_world_3d.tscn) - combined low-poly 3D Painted Postcard Diorama validation slice covering terrain generation, land collision, coordinate round-tripping, terrain-following `HumanBody3D`, `PlayerController3D`, `Camera3DController`, style preset wiring, five canonical postcard landmark proxies, and camera framing
 - [`../game/tests/npc_system/test_scene.tscn`](../game/tests/npc_system/test_scene.tscn) - focused resident speech, talk, and journal sandbox
 - [`../game/grid_board_game/test_grid_board_game.tscn`](../game/grid_board_game/test_grid_board_game.tscn)
 - [`../game/grid_board_game/test_terminal_turn_state.tscn`](../game/grid_board_game/test_terminal_turn_state.tscn)
@@ -225,7 +225,7 @@ Useful searches when locating code:
 - `WeatherManager` for the overworld's global weather-cycle and wind-sync service
 - `test_weather` for the focused weather sandbox and control panel
 - `water_tint` for the water shader and material
-- `LowPolyTerrain3D` for the parallel terrain-mask-to-3D prototype, including optional heightmap elevation sampling and smooth low-poly land-surface generation
+- `LowPolyTerrain3D` for the parallel terrain-mask/heightmap-to-3D prototype, including optional full-heightmap land expansion, heightmap elevation sampling, and smooth low-poly land-surface generation
 - `LowPolyArtStyle3D` for low-poly 3D palette, camera, lighting, and landmark-color presets
 - `LowPolyWorldCoordinates3D` for terrain-mask-pixel and rough 2D isometric-position to low-poly 3D world-position conversion
 - `LowPolyLandmarkProxy3D` for postcard-diorama landmark proxy volumes and placeholder silhouettes

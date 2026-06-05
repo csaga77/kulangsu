@@ -2,16 +2,16 @@
 
 ## Goal
 
-- Explore whether the existing Kulangsu terrain mask can drive a calm low-poly 3D island presentation.
+- Explore whether the existing Kulangsu terrain mask and heightmap can drive a calm low-poly 3D island presentation.
 - Keep the experiment parallel to the current 2D overworld so the playable `game_main` flow remains stable.
 - Reuse current terrain semantics instead of inventing a separate mask legend.
 - Establish the terrain side of the low-poly visual style before any runtime 3D world integration.
 
 ## Current Status
 
-- [`../../terrain/low_poly_terrain_3d.gd`](../../terrain/low_poly_terrain_3d.gd) reads the same terrain mask and `TerrainGenerationProfile` resource used by the 2D terrain generator.
+- [`../../terrain/low_poly_terrain_3d.gd`](../../terrain/low_poly_terrain_3d.gd) reads the same terrain mask and `TerrainGenerationProfile` resource used by the 2D terrain generator, while allowing the heightmap to define the full low-poly land source area.
 - [`../../scenes/tests/test_low_poly_terrain_3d.tscn`](../../scenes/tests/test_low_poly_terrain_3d.tscn) is the focused validation scene.
-- The prototype samples the `512 x 512` mask into coarse cells, then builds separate 3D meshes for:
+- The prototype samples the terrain source into coarse cells, then builds separate 3D meshes for:
   - faceted low-poly water
   - semi-transparent water surface layer
   - shoreline water highlight bands
@@ -20,13 +20,14 @@
   - street overlays
   - building footprint overlays
   - optional land collision
-- An optional grayscale `heightmap_file` can add terrain elevation offsets on top of `land_height`; by default those sampled heights are lightly smoothed into a connected sloped land mesh instead of block terraces.
+- An optional grayscale `heightmap_file` can add terrain elevation offsets on top of `land_height`; by default it also expands land to the full heightmap source instead of clipping land to the mask.
+- When `heightmap_expands_land_to_source` is enabled, the mask is still sampled for street and building-footprint colors, but mask water no longer removes land from the heightmap-driven terrain.
 - The scene uses an orthographic `Camera3D` and a simple directional light for a first low-poly island read.
 - [`../../terrain/low_poly_art_style_3d.gd`](../../terrain/low_poly_art_style_3d.gd) defines `class_name LowPolyArtStyle3D`, the shared style-preset resource for terrain palette, faceted water colors/tuning, camera, lighting, and landmark colors.
 - [`../../terrain/low_poly_postcard_diorama_style.tres`](../../terrain/low_poly_postcard_diorama_style.tres) is the first Painted Postcard Diorama preset.
 - [`../../terrain/low_poly_world_coordinates_3d.gd`](../../terrain/low_poly_world_coordinates_3d.gd) defines `class_name LowPolyWorldCoordinates3D`, the shared terrain-mask-pixel to 3D XZ world-position adapter, including helpers for rough 2D isometric authored positions.
 - [`../../architecture/low_poly/low_poly_landmark_proxy_3d.gd`](../../architecture/low_poly/low_poly_landmark_proxy_3d.gd) defines `class_name LowPolyLandmarkProxy3D`, a simple reusable landmark-volume generator for early postcard-diorama house, church, tunnel, and tower silhouettes.
-- [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn) combines the terrain, land collision, `HumanBody3D`, `PlayerController3D`, `Camera3DController`, the five canonical `LowPolyLandmarkProxy3D` placeholders, coordinate round-tripping, camera orbit rotation, and camera framing in one playable Painted Postcard Diorama validation slice.
+- [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn) combines the terrain, land collision, terrain-following `HumanBody3D`, `PlayerController3D`, `Camera3DController`, the five canonical `LowPolyLandmarkProxy3D` placeholders, coordinate round-tripping, camera orbit rotation, and camera framing in one playable Painted Postcard Diorama validation slice.
 
 ## Ownership
 
@@ -37,7 +38,8 @@
 
 ## Contracts
 
-- The prototype must treat water the same way as the 2D terrain generator: pixels below `land_min_alpha_8bit` are water.
+- Without heightmap expansion, the prototype treats water the same way as the 2D terrain generator: pixels below `land_min_alpha_8bit` are water.
+- With `heightmap_expands_land_to_source` enabled and a heightmap assigned, the heightmap dimensions become the generated terrain source and every sampled heightmap cell is land unless the mask upgrades it to a street or building footprint.
 - Opaque blue terrain-rule pixels become street overlays.
 - Opaque red terrain-rule pixels become building footprint overlays.
 - Other opaque land pixels become low-poly land.
@@ -47,10 +49,10 @@
 - Heightmaps are sampled at the same coarse cell resolution as the terrain mask, then `smooth_land_surface` builds connected low-poly surface facets by averaging adjacent cell heights at shared corners.
 - `height_smoothing_passes` applies a small land-only blur before mesh creation. Keep it low so the terrain reads as simple low-poly slopes rather than noisy per-pixel relief.
 - Turning `smooth_land_surface` off preserves the old block/terrace style with internal vertical height walls.
-- Black heightmap pixels map to `heightmap_min_offset`, white pixels map to `heightmap_max_offset`, and the result is added to `land_height`; water remains at `water_height`.
-- Assigning `heightmap_file` or editing heightmap min/max offsets is manual-apply by design: press the exported `rebuild` control or call `rebuild_from_source()` after those edits. This prevents large or imported heightmap images from rebuilding during the Inspector assignment itself.
+- Black heightmap pixels map to `heightmap_min_offset`, white pixels map to `heightmap_max_offset`, and the result is added to `land_height`; water remains at `water_height` only for mask-clipped cells.
+- Assigning `heightmap_file`, editing `heightmap_expands_land_to_source`, or editing heightmap min/max offsets is manual-apply by design: press the exported `rebuild` control or call `rebuild_from_source()` after those edits. This prevents large or imported heightmap images from rebuilding during the Inspector assignment itself.
 - Any placement work must go through `LowPolyWorldCoordinates3D` instead of duplicating the current grid-centering or isometric-position conversion math in landmark, actor, or story code.
-- Actor, landmark, and future hotspot placement should query `LowPolyTerrain3D.get_sample_cell_height(...)` after terrain generation when a heightmap is active.
+- Actor, landmark, and future hotspot placement should query `LowPolyTerrain3D.get_world_surface_height(...)` or `LowPolyTerrain3D.get_sample_cell_height(...)` after terrain generation when a heightmap is active. Moving actors in the combined world scene should keep their ground Y synced from the world-surface query rather than preserving a fixed spawn height.
 - Style tuning should flow through `LowPolyArtStyle3D` presets before hardcoding scene-local color, camera, or lighting values.
 - The low-poly water pass generates a vertex-colored `WaterMesh`, a semi-transparent `WaterSurfaceLayerMesh` lifted over the same water area, and a separate translucent `WaterShorelineMesh`; all stay transient generated children like the land, street, and collision helper nodes.
 - Water facets may slope downward from `water_height` for a low-poly surface read, but should not rise above `water_height` by default so they do not cover low shoreline land.
@@ -72,7 +74,7 @@
 
 - Use `sample_stride` to trade mask fidelity against mesh density.
 - Use `cell_size`, `land_height`, `smooth_land_surface`, `height_smoothing_passes`, `street_lift`, and `building_footprint_lift` to tune the island scale and low-poly read.
-- Use `heightmap_file`, `heightmap_min_offset`, and `heightmap_max_offset` to prototype island slopes, terraces, or hills without changing terrain mask semantics.
+- Use `heightmap_file`, `heightmap_expands_land_to_source`, `heightmap_min_offset`, and `heightmap_max_offset` to prototype full heightmap land, mask-clipped islands, terraces, or hills without changing terrain mask semantics.
 - Use `water_deep_color`, `water_surface_layer_color`, `water_shoreline_color`, `water_highlight_color`, `water_wave_depth`, `water_wave_frequency`, `water_shoreline_band_ratio`, `water_shoreline_lift`, and `water_surface_layer_lift` on the terrain node or shared style preset to tune the 3D water read.
 - After assigning or editing heightmap settings in the editor, manually rebuild affected terrain nodes before judging the elevation result.
 - Tune palette, camera, sunlight, and proxy landmark colors through `low_poly_postcard_diorama_style.tres` while this scene remains the golden slice.
@@ -92,11 +94,11 @@
 - Confirm the scene loads and logs a summary like:
 
 ```text
-LowPolyTerrain3D: built 512x512 source mask into 128x128 sampled cells ...
+LowPolyTerrain3D: built 512x512 source into 128x128 sampled cells ...
 PASS: LowPolyTerrain3D heightmap smoke test
 ```
 
-- Visual validation should check that the island silhouette, water/land split, faceted water surface, semi-transparent top water layer, shoreline water highlights, sloped heightmap elevation, streets, and building footprint overlays are readable from the orthographic camera.
+- Visual validation should check that full-heightmap land or the mask-clipped water/land split, faceted water surface when present, semi-transparent top water layer when present, shoreline water highlights when present, sloped heightmap elevation, streets, and building footprint overlays are readable from the orthographic camera.
 - Run the combined validation scene after coordinate, collision, player movement, or camera changes:
 
 ```sh

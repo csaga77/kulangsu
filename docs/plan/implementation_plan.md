@@ -48,7 +48,7 @@ Regression coverage now includes:
 
 Parallel low-poly 3D prototypes now exist as exploratory sidecar work, not as part of the current runtime overworld:
 
-- `LowPolyTerrain3D` samples the existing terrain mask/profile into coarse land, shoreline, water, street, building-footprint, optional grayscale heightmap elevation, and optional collision meshes
+- `LowPolyTerrain3D` samples the existing terrain mask/profile plus optional full-source heightmap land into coarse land, shoreline, water when mask-clipped, street, building-footprint, optional grayscale heightmap elevation, and optional collision meshes
 - `HumanBody3D`, `BaseController3D`, and `PlayerController3D` mirror the main actor/controller concepts on the XZ plane
 - `LowPolyWorldCoordinates3D`, `LowPolyArtStyle3D`, `Camera3DController`, and `LowPolyLandmarkProxy3D` now support the combined Painted Postcard Diorama validation scene with five canonical low-poly landmark placeholders
 - focused terrain, actor, and combined low-poly world smoke scenes validate those prototypes
@@ -130,13 +130,13 @@ The low-poly 3D prototype is an exploration lane for the island presentation, no
 
 First-pass shipped outcome:
 
-- the terrain mask can generate a coarse low-poly island mesh with water, smooth land, shoreline sides, streets, building footprints, optional grayscale heightmap elevation, and optional land collision
+- the terrain mask and optional full-source heightmap can generate a coarse low-poly island mesh with water when mask-clipped, smooth land, shoreline sides, streets, building footprints, optional grayscale heightmap elevation, and optional land collision
 - `HumanBody3D` exposes familiar actor fields and methods such as direction, walking/running state, tunable body height/radius, configuration, movement, jump, ground footprint, and global-position change signaling, plus first-pass contact shadow and procedural walk/run motion polish
 - `BaseController3D` and `PlayerController3D` mirror the 2D controller hierarchy while staying separate from the 2D runtime controller classes
 - `LowPolyWorldCoordinates3D` provides the first shared terrain-mask-pixel to 3D XZ world-position adapter, including helpers for rough conversion from authored 2D isometric positions
 - `LowPolyArtStyle3D` plus `low_poly_postcard_diorama_style.tres` provide the first Painted Postcard Diorama palette, camera, sunlight, and landmark-color preset
 - `LowPolyLandmarkProxy3D` provides the first simple reusable postcard landmark-volume generator for house, church, tunnel, and tower placeholders
-- `test_low_poly_world_3d.tscn` validates terrain, land collision, `HumanBody3D`, `PlayerController3D`, `Camera3DController`, the style preset, five canonical postcard landmark proxies, coordinate round-tripping, movement, and camera framing together
+- `test_low_poly_world_3d.tscn` validates terrain, land collision, terrain-following `HumanBody3D`, `PlayerController3D`, `Camera3DController`, the style preset, five canonical postcard landmark proxies, coordinate round-tripping, movement, and camera framing together
 
 Still open:
 

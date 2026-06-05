@@ -45,6 +45,12 @@ func configure_from_terrain(terrain: Node) -> void:
 	if terrain_cell_size is float or terrain_cell_size is int:
 		cell_size = float(terrain_cell_size)
 
+	if terrain.has_method("get_source_size"):
+		var terrain_source_size: Variant = terrain.call("get_source_size")
+		if terrain_source_size is Vector2i:
+			source_size = terrain_source_size
+			return
+
 	source_size = Vector2i.ZERO
 
 
