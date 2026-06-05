@@ -64,7 +64,7 @@ Responsibilities:
 - mask-driven terrain generation and generated helper-layer lifecycle
 - shared authored terrain-profile resource used by both direct terrain validation and the gameplay scene instance
 - terrain mask legend, per-color semantics, and street-connect defaults
-- parallel low-poly 3D terrain and layered faceted water prototyping, shared style presets, canonical postcard landmark proxying, and shared terrain-mask-pixel/isometric-position to 3D-world coordinate conversion
+- parallel low-poly 3D terrain with heightmap-level water and visible seabed prototyping, shared style presets, canonical postcard landmark proxying, and shared terrain-mask-pixel/isometric-position to 3D-world coordinate conversion
 - player spawn and camera context
 - shared overworld weather host registration for reusable cloud-shadow, rain, fog, and ground-impact rendering
 - global weather-manager ownership for runtime weather-rig instancing, overworld random weather cycling, and shared wind sync across reusable rain/fog/cloud passes

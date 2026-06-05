@@ -6,6 +6,7 @@ const BaseController3DScript = preload("res://characters/control/base_controller
 const LowPolyArtStyle3DScript = preload("res://terrain/low_poly_art_style_3d.gd")
 const LowPolyLandmarkProxy3DScript = preload("res://architecture/low_poly/low_poly_landmark_proxy_3d.gd")
 const LANDMARK_MASK_META := &"low_poly_landmark_mask_pixel"
+const TERRAIN_KIND_WATER := 0
 const LANDMARK_PLACEMENTS := [
 	{
 		"path": "Landmarks/PianoFerryProxy",
@@ -112,16 +113,13 @@ func _validate_world(failures: Array[String]) -> void:
 
 	if m_terrain.get_node_or_null("LandMesh") == null:
 		failures.append("LowPolyTerrain3D did not generate LandMesh")
-	if _terrain_expands_heightmap_land():
-		if m_terrain.get_node_or_null("WaterMesh") != null:
-			failures.append("heightmap-expanded LowPolyTerrain3D should not generate mask-clipped water")
-	else:
-		if m_terrain.get_node_or_null("WaterMesh") == null:
-			failures.append("LowPolyTerrain3D did not generate WaterMesh")
-		if m_terrain.get_node_or_null("WaterSurfaceLayerMesh") == null:
-			failures.append("LowPolyTerrain3D did not generate WaterSurfaceLayerMesh")
-		if m_terrain.get_node_or_null("WaterShorelineMesh") == null:
-			failures.append("LowPolyTerrain3D did not generate WaterShorelineMesh")
+	if m_terrain.get_node_or_null("WaterMesh") == null:
+		var water_context := "heightmap-level" if _terrain_expands_heightmap_land() else "mask-clipped"
+		failures.append("LowPolyTerrain3D did not generate %s WaterMesh" % water_context)
+	if m_terrain.get_node_or_null("WaterSurfaceLayerMesh") == null:
+		failures.append("LowPolyTerrain3D did not generate WaterSurfaceLayerMesh")
+	if m_terrain.get_node_or_null("WaterShorelineMesh") == null:
+		failures.append("LowPolyTerrain3D did not generate WaterShorelineMesh")
 	if m_terrain.get_node_or_null("TerrainCollision") == null:
 		failures.append("LowPolyTerrain3D did not generate TerrainCollision")
 
@@ -152,6 +150,7 @@ func _validate_world(failures: Array[String]) -> void:
 	if actor_cell != m_coordinates.mask_pixel_to_sample_cell(m_spawn_mask_pixel):
 		failures.append("HumanBody3D did not spawn in the expected terrain sample cell")
 	_validate_actor_terrain_elevation(failures)
+	_validate_actor_water_cell_terrain_elevation(failures)
 
 	if float(m_actor.get("body_height")) <= 0.0:
 		failures.append("HumanBody3D body height tuning is invalid")
@@ -323,6 +322,57 @@ func _validate_actor_terrain_elevation(failures: Array[String]) -> void:
 	if !is_equal_approx(m_actor.global_position.y, expected_height):
 		failures.append("HumanBody3D did not follow LowPolyTerrain3D elevation")
 	m_actor.global_position = original_position
+
+
+func _validate_actor_water_cell_terrain_elevation(failures: Array[String]) -> void:
+	if !_terrain_expands_heightmap_land():
+		return
+	if !m_terrain.has_method("get_sample_cell_kind"):
+		return
+
+	var water_cell := _find_heightmap_water_probe_cell()
+	if water_cell == Vector2i(-1, -1):
+		failures.append("LowPolyWorld3D could not find a heightmap water cell with land elevation")
+		return
+
+	var fallback_land_height: float = float(m_terrain.get("land_height"))
+	var water_height: float = float(m_terrain.get("water_height"))
+	var terrain_height := _get_terrain_sample_height(water_cell, fallback_land_height)
+	if terrain_height >= water_height - 0.005:
+		failures.append("LowPolyTerrain3D water cells did not expose land elevation for actor placement")
+		return
+
+	var original_position := m_actor.global_position
+	var probe_position := m_coordinates.sample_cell_to_world_center(water_cell, -3.0)
+	var expected_height := _get_terrain_world_height(probe_position, water_cell, fallback_land_height) + actor_terrain_clearance
+	if expected_height >= water_height + actor_terrain_clearance - 0.005:
+		failures.append("HumanBody3D water-cell terrain target used water height instead of land elevation")
+		m_actor.global_position = original_position
+		return
+
+	m_actor.global_position = probe_position
+	_apply_actor_terrain_elevation()
+	if !is_equal_approx(m_actor.global_position.y, expected_height):
+		failures.append("HumanBody3D did not follow land elevation in heightmap water")
+	m_actor.global_position = original_position
+
+
+func _find_heightmap_water_probe_cell() -> Vector2i:
+	var grid_size := m_coordinates.get_grid_size()
+	if grid_size == Vector2i.ZERO:
+		return Vector2i(-1, -1)
+
+	var fallback_land_height: float = float(m_terrain.get("land_height"))
+	var water_height: float = float(m_terrain.get("water_height"))
+	for y in range(grid_size.y):
+		for x in range(grid_size.x):
+			var sample_cell := Vector2i(x, y)
+			if int(m_terrain.call("get_sample_cell_kind", sample_cell)) != TERRAIN_KIND_WATER:
+				continue
+			var terrain_height := _get_terrain_sample_height(sample_cell, fallback_land_height)
+			if terrain_height < water_height - 0.02:
+				return sample_cell
+	return Vector2i(-1, -1)
 
 
 func _find_terrain_height_probe_cell() -> Vector2i:

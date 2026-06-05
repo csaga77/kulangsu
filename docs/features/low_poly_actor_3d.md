@@ -51,7 +51,7 @@
 - `PlayerController3D` consumes the existing input map: `ui_left`, `ui_right`, `ui_up`, `ui_down`, `ui_walk`, `ui_jump`, and `ui_inspect`.
 - `camera_relative_movement` can align movement to the active `Camera3D`; when disabled, movement is world-aligned on XZ.
 - Actor placement in generated terrain must use `LowPolyWorldCoordinates3D` instead of scene-local guessed offsets.
-- Terrain elevation following is owned by the combined low-poly world scene. It samples `LowPolyTerrain3D.get_world_surface_height(...)` for the actor's current XZ position and applies a small clearance to `HumanBody3D.global_position.y`; `HumanBody3D` itself stays terrain-agnostic.
+- Terrain elevation following is owned by the combined low-poly world scene. It samples `LowPolyTerrain3D.get_world_surface_height(...)` for the actor's current XZ position and applies a small clearance to `HumanBody3D.global_position.y`; in heightmap-expanded water this currently means land/seabed elevation rather than the visual water plane, while `HumanBody3D` itself stays terrain-agnostic.
 
 ## Visual Style Contract
 

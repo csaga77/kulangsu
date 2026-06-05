@@ -42,6 +42,8 @@ func _configure_heightmap_smoke(expands_land_to_source: bool) -> void:
 
 	m_terrain.set("heightmap_file", TEST_HEIGHTMAP_PATH)
 	m_terrain.set("heightmap_expands_land_to_source", expands_land_to_source)
+	m_terrain.set("water_height", 0.18)
+	m_terrain.set("land_height", 0.0)
 	m_terrain.set("heightmap_min_offset", 0.0)
 	m_terrain.set("heightmap_max_offset", 0.42)
 	if m_terrain.has_method("rebuild_from_source"):
@@ -103,24 +105,45 @@ func _validate_heightmap_source_expansion(failures: Array[String]) -> void:
 	if source_size != Vector2i(32, 32):
 		failures.append("heightmap-expanded terrain did not use the heightmap dimensions as its source size")
 
-	if m_terrain.get_node_or_null("WaterMesh") != null:
-		failures.append("heightmap-expanded terrain should not generate mask-clipped water")
+	if m_terrain.get_node_or_null("WaterMesh") == null:
+		failures.append("heightmap-expanded terrain did not generate heightmap-level water")
+	if m_terrain.get_node_or_null("ShorelineMesh") != null:
+		failures.append("heightmap-expanded terrain should continue land into seabed without vertical shoreline walls")
 
+	var water_height := float(m_terrain.get("water_height"))
 	var sample_stride := maxi(int(m_terrain.get("sample_stride")), 1)
 	var grid_size := Vector2i(
 		ceili(float(source_size.x) / float(sample_stride)),
 		ceili(float(source_size.y) / float(sample_stride))
 	)
-	var sample_cells: Array[Vector2i] = [
-		Vector2i.ZERO,
-		Vector2i(grid_size.x - 1, 0),
-		Vector2i(0, grid_size.y - 1),
-		Vector2i(grid_size.x - 1, grid_size.y - 1),
-	]
-	for sample_cell in sample_cells:
-		var kind := int(m_terrain.call("get_sample_cell_kind", sample_cell))
-		if kind == TERRAIN_KIND_WATER:
-			failures.append("heightmap-expanded terrain left source cell %s as water" % sample_cell)
+	var low_sample := Vector2i.ZERO
+	var high_sample := Vector2i(grid_size.x - 1, grid_size.y - 1)
+	if int(m_terrain.call("get_sample_cell_kind", low_sample)) != TERRAIN_KIND_WATER:
+		failures.append("heightmap-expanded terrain did not mark low heightmap samples as water")
+	if int(m_terrain.call("get_sample_cell_kind", high_sample)) == TERRAIN_KIND_WATER:
+		failures.append("heightmap-expanded terrain marked high heightmap samples as water")
+	var low_sample_height := float(m_terrain.call("get_sample_cell_height", low_sample))
+	if low_sample_height >= water_height - 0.005:
+		failures.append("heightmap-expanded water samples should report land elevation below water level")
+
+	var water_mesh := m_terrain.get_node_or_null("WaterMesh") as MeshInstance3D
+	var shoreline_land_sample := _find_land_cell_adjacent_to_water(grid_size)
+	if shoreline_land_sample == Vector2i(-1, -1):
+		failures.append("heightmap-expanded terrain did not expose a shoreline land sample")
+	elif water_mesh == null or water_mesh.mesh == null:
+		failures.append("heightmap-expanded terrain did not generate WaterMesh for shoreline overlap checks")
+	elif !_mesh_has_water_cell_corners(water_mesh.mesh, shoreline_land_sample, grid_size):
+		failures.append("heightmap-expanded water did not overlap one adjacent shoreline land cell")
+
+	var land_mesh := m_terrain.get_node_or_null("LandMesh") as MeshInstance3D
+	if land_mesh == null or land_mesh.mesh == null:
+		failures.append("heightmap-expanded terrain did not keep seabed terrain in LandMesh")
+	else:
+		var land_height_range := _get_mesh_height_range(land_mesh.mesh)
+		if land_height_range.x >= water_height - 0.005:
+			failures.append("heightmap-expanded terrain did not draw seabed below water level")
+		if land_height_range.y <= water_height + 0.05:
+			failures.append("heightmap-expanded terrain did not preserve dry land above water level")
 
 
 func _validate_water_rendering(failures: Array[String]) -> void:
@@ -136,8 +159,15 @@ func _validate_water_rendering(failures: Array[String]) -> void:
 		failures.append("LowPolyTerrain3D WaterMesh is missing low-poly vertex colors")
 
 	var height_range := _get_mesh_height_range(water_mesh.mesh)
-	if height_range.y - height_range.x <= 0.005:
-		failures.append("LowPolyTerrain3D WaterMesh did not create faceted water height variation")
+	var water_height := float(m_terrain.get("water_height"))
+	if absf(height_range.x - water_height) > 0.002 or absf(height_range.y - water_height) > 0.002:
+		failures.append("LowPolyTerrain3D WaterMesh should be drawn flat at water height")
+
+	var material := water_mesh.material_override as StandardMaterial3D
+	if material == null:
+		failures.append("LowPolyTerrain3D WaterMesh is missing its material")
+	elif material.albedo_color.a >= 0.75:
+		failures.append("LowPolyTerrain3D WaterMesh should be semi-transparent enough to reveal seabed")
 
 	var surface_layer_mesh := m_terrain.get_node_or_null("WaterSurfaceLayerMesh") as MeshInstance3D
 	if surface_layer_mesh == null:
@@ -203,4 +233,86 @@ func _mesh_has_vertex_colors(mesh: Mesh) -> bool:
 		var colors_value: Variant = arrays[Mesh.ARRAY_COLOR]
 		if colors_value is PackedColorArray and colors_value.size() > 0:
 			return true
+	return false
+
+
+func _find_land_cell_adjacent_to_water(grid_size: Vector2i) -> Vector2i:
+	if !m_terrain.has_method("get_sample_cell_kind"):
+		return Vector2i(-1, -1)
+
+	var fallback_cell := Vector2i(-1, -1)
+	for y in range(grid_size.y):
+		for x in range(grid_size.x):
+			var sample_cell := Vector2i(x, y)
+			if int(m_terrain.call("get_sample_cell_kind", sample_cell)) == TERRAIN_KIND_WATER:
+				continue
+			var water_neighbors := _count_water_neighbors(sample_cell, grid_size)
+			if water_neighbors <= 0:
+				continue
+			if fallback_cell == Vector2i(-1, -1):
+				fallback_cell = sample_cell
+			if water_neighbors == 1 and _has_cardinal_water_neighbor(sample_cell, grid_size):
+				return sample_cell
+	return fallback_cell
+
+
+func _count_water_neighbors(sample_cell: Vector2i, grid_size: Vector2i) -> int:
+	var water_neighbors := 0
+	for y in range(sample_cell.y - 1, sample_cell.y + 2):
+		for x in range(sample_cell.x - 1, sample_cell.x + 2):
+			if x == sample_cell.x and y == sample_cell.y:
+				continue
+			if x < 0 or x >= grid_size.x or y < 0 or y >= grid_size.y:
+				continue
+			if int(m_terrain.call("get_sample_cell_kind", Vector2i(x, y))) == TERRAIN_KIND_WATER:
+				water_neighbors += 1
+	return water_neighbors
+
+
+func _has_cardinal_water_neighbor(sample_cell: Vector2i, grid_size: Vector2i) -> bool:
+	var neighbor_offsets: Array[Vector2i] = [
+		Vector2i(0, -1),
+		Vector2i(1, 0),
+		Vector2i(0, 1),
+		Vector2i(-1, 0),
+	]
+	for neighbor_offset in neighbor_offsets:
+		var neighbor_cell := sample_cell + neighbor_offset
+		if neighbor_cell.x < 0 or neighbor_cell.x >= grid_size.x or neighbor_cell.y < 0 or neighbor_cell.y >= grid_size.y:
+			continue
+		if int(m_terrain.call("get_sample_cell_kind", neighbor_cell)) == TERRAIN_KIND_WATER:
+			return true
+	return false
+
+
+func _mesh_has_water_cell_corners(mesh: Mesh, sample_cell: Vector2i, grid_size: Vector2i) -> bool:
+	var cell_size := float(m_terrain.get("cell_size"))
+	var origin := Vector2(
+		-float(grid_size.x) * cell_size * 0.5,
+		-float(grid_size.y) * cell_size * 0.5
+	)
+	var min_x := origin.x + float(sample_cell.x) * cell_size
+	var max_x := min_x + cell_size
+	var min_z := origin.y + float(sample_cell.y) * cell_size
+	var max_z := min_z + cell_size
+	var corners: Array[Vector2] = [
+		Vector2(min_x, min_z),
+		Vector2(max_x, min_z),
+		Vector2(max_x, max_z),
+		Vector2(min_x, max_z),
+	]
+	var water_height := float(m_terrain.get("water_height"))
+	for corner in corners:
+		if !_mesh_has_vertex_at_water_corner(mesh, corner, water_height):
+			return false
+	return true
+
+
+func _mesh_has_vertex_at_water_corner(mesh: Mesh, corner: Vector2, water_height: float) -> bool:
+	for surface_index in range(mesh.get_surface_count()):
+		var arrays := mesh.surface_get_arrays(surface_index)
+		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		for vertex in vertices:
+			if absf(vertex.x - corner.x) <= 0.002 and absf(vertex.z - corner.y) <= 0.002 and absf(vertex.y - water_height) <= 0.002:
+				return true
 	return false

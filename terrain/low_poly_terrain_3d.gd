@@ -155,35 +155,35 @@ enum TerrainCellKind {
 		building_footprint_color = new_color
 		_request_rebuild()
 
-@export var water_color: Color = Color(0.42, 0.68, 0.83, 0.78):
+@export var water_color: Color = Color(0.42, 0.68, 0.83, 0.46):
 	set(new_color):
 		if water_color == new_color:
 			return
 		water_color = new_color
 		_request_rebuild()
 
-@export var water_deep_color: Color = Color(0.24, 0.48, 0.67, 0.86):
+@export var water_deep_color: Color = Color(0.24, 0.48, 0.67, 0.54):
 	set(new_color):
 		if water_deep_color == new_color:
 			return
 		water_deep_color = new_color
 		_request_rebuild()
 
-@export var water_surface_layer_color: Color = Color(0.72, 0.90, 0.96, 0.30):
+@export var water_surface_layer_color: Color = Color(0.72, 0.90, 0.96, 0.24):
 	set(new_color):
 		if water_surface_layer_color == new_color:
 			return
 		water_surface_layer_color = new_color
 		_request_rebuild()
 
-@export var water_shoreline_color: Color = Color(0.60, 0.83, 0.88, 0.72):
+@export var water_shoreline_color: Color = Color(0.60, 0.83, 0.88, 0.50):
 	set(new_color):
 		if water_shoreline_color == new_color:
 			return
 		water_shoreline_color = new_color
 		_request_rebuild()
 
-@export var water_highlight_color: Color = Color(0.86, 0.96, 0.98, 0.54):
+@export var water_highlight_color: Color = Color(0.86, 0.96, 0.98, 0.40):
 	set(new_color):
 		if water_highlight_color == new_color:
 			return
@@ -230,6 +230,14 @@ enum TerrainCellKind {
 		water_surface_layer_lift = clamped_lift
 		_request_rebuild()
 
+@export_range(0, 4, 1) var water_land_overlap_cells := 1:
+	set(new_overlap_cells):
+		var clamped_overlap := clampi(new_overlap_cells, 0, 4)
+		if water_land_overlap_cells == clamped_overlap:
+			return
+		water_land_overlap_cells = clamped_overlap
+		_request_rebuild()
+
 @export var generate_collision := true:
 	set(new_generate_collision):
 		if generate_collision == new_generate_collision:
@@ -244,6 +252,7 @@ var m_is_ready := false
 var m_rebuild_queued := false
 var m_sample_grid: Array[Array] = []
 var m_source_size := Vector2i.ZERO
+var m_heightmap_defines_water_area := false
 
 
 func _ready() -> void:
@@ -278,8 +287,26 @@ func get_sample_cell_height(sample_cell: Vector2i) -> float:
 	if cell == null:
 		return land_height
 	if cell.kind == TerrainCellKind.WATER:
-		return water_height
-	return _get_cell_surface_height(m_sample_grid, clamped_cell.x, clamped_cell.y, cell.height, 0.5, 0.5)
+		if !m_heightmap_defines_water_area:
+			return water_height
+		return _get_cell_surface_height(
+			m_sample_grid,
+			clamped_cell.x,
+			clamped_cell.y,
+			cell.height,
+			0.5,
+			0.5,
+			true
+		)
+	return _get_cell_surface_height(
+		m_sample_grid,
+		clamped_cell.x,
+		clamped_cell.y,
+		cell.height,
+		0.5,
+		0.5,
+		m_heightmap_defines_water_area
+	)
 
 
 func get_sample_cell_kind(sample_cell: Vector2i) -> TerrainCellKind:
@@ -317,8 +344,26 @@ func get_world_surface_height(world_position: Vector3) -> float:
 	if cell == null:
 		return land_height
 	if cell.kind == TerrainCellKind.WATER:
-		return water_height
-	return _get_cell_surface_height(m_sample_grid, sample_cell.x, sample_cell.y, cell.height, local_x, local_z)
+		if !m_heightmap_defines_water_area:
+			return water_height
+		return _get_cell_surface_height(
+			m_sample_grid,
+			sample_cell.x,
+			sample_cell.y,
+			cell.height,
+			local_x,
+			local_z,
+			true
+		)
+	return _get_cell_surface_height(
+		m_sample_grid,
+		sample_cell.x,
+		sample_cell.y,
+		cell.height,
+		local_x,
+		local_z,
+		m_heightmap_defines_water_area
+	)
 
 
 func get_source_size() -> Vector2i:
@@ -330,6 +375,7 @@ func _rebuild_from_source() -> void:
 	_clear_generated_children()
 	m_sample_grid.clear()
 	m_source_size = Vector2i.ZERO
+	m_heightmap_defines_water_area = false
 
 	var profile := _get_generation_profile()
 	if profile == null:
@@ -347,11 +393,15 @@ func _rebuild_from_source() -> void:
 		return
 
 	var grid := _build_sample_grid(mask_image, profile, heightmap_image, source_size)
+	var heightmap_defines_water_area := _heightmap_fills_source_land(heightmap_image)
 	if smooth_land_surface:
-		_smooth_sample_grid_heights(grid, height_smoothing_passes)
+		_smooth_sample_grid_heights(grid, height_smoothing_passes, heightmap_defines_water_area)
+	if heightmap_defines_water_area:
+		_apply_heightmap_water_level(grid)
 	m_sample_grid = grid
 	m_source_size = source_size
-	_build_meshes_from_grid(grid, source_size.x, source_size.y)
+	m_heightmap_defines_water_area = heightmap_defines_water_area
+	_build_meshes_from_grid(grid, source_size.x, source_size.y, heightmap_defines_water_area)
 
 
 func _get_generation_profile() -> TerrainGenerationProfile:
@@ -428,9 +478,9 @@ func _build_sample_grid(
 			var start_x := grid_x * sample_stride
 			var kind := _classify_sample_block(mask_image, profile, source_size, start_x, start_y, heightmap_fills_land)
 			var sample_height := land_height
-			if kind != TerrainCellKind.WATER:
-				var end_x := mini(start_x + sample_stride, source_size.x)
-				var end_y := mini(start_y + sample_stride, source_size.y)
+			var end_x := mini(start_x + sample_stride, source_size.x)
+			var end_y := mini(start_y + sample_stride, source_size.y)
+			if kind != TerrainCellKind.WATER or heightmap_fills_land:
 				sample_height += _sample_heightmap_offset(heightmap_image, source_size, start_x, start_y, end_x, end_y)
 			row.append(_TerrainCell.new(kind, sample_height))
 		grid.append(row)
@@ -438,7 +488,7 @@ func _build_sample_grid(
 	return grid
 
 
-func _smooth_sample_grid_heights(grid: Array[Array], smoothing_passes: int) -> void:
+func _smooth_sample_grid_heights(grid: Array[Array], smoothing_passes: int, include_water_cells: bool) -> void:
 	if grid.is_empty() or smoothing_passes <= 0:
 		return
 
@@ -452,7 +502,7 @@ func _smooth_sample_grid_heights(grid: Array[Array], smoothing_passes: int) -> v
 			smoothed_row.resize(grid_width)
 			for x in range(grid_width):
 				var cell := grid[y][x] as _TerrainCell
-				if cell == null or cell.kind == TerrainCellKind.WATER:
+				if cell == null or (cell.kind == TerrainCellKind.WATER and !include_water_cells):
 					smoothed_row[x] = water_height
 					continue
 
@@ -460,9 +510,12 @@ func _smooth_sample_grid_heights(grid: Array[Array], smoothing_passes: int) -> v
 				var sample_count := 0
 				for sample_y in range(y - 1, y + 2):
 					for sample_x in range(x - 1, x + 2):
-						if _is_water_or_outside(grid, sample_x, sample_y):
+						if _is_outside_grid(grid, sample_x, sample_y):
 							continue
-						total_height += _get_cell_height(grid, sample_x, sample_y)
+						var sample_cell := grid[sample_y][sample_x] as _TerrainCell
+						if sample_cell == null or (sample_cell.kind == TerrainCellKind.WATER and !include_water_cells):
+							continue
+						total_height += sample_cell.height
 						sample_count += 1
 
 				if sample_count <= 0:
@@ -474,9 +527,21 @@ func _smooth_sample_grid_heights(grid: Array[Array], smoothing_passes: int) -> v
 		for y in range(grid_height):
 			for x in range(grid_width):
 				var cell := grid[y][x] as _TerrainCell
-				if cell == null or cell.kind == TerrainCellKind.WATER:
+				if cell == null or (cell.kind == TerrainCellKind.WATER and !include_water_cells):
 					continue
 				cell.height = smoothed_rows[y][x]
+
+
+func _apply_heightmap_water_level(grid: Array[Array]) -> void:
+	for row in grid:
+		for cell_value: Variant in row:
+			var cell := cell_value as _TerrainCell
+			if cell == null:
+				continue
+			if cell.height <= water_height + HEIGHT_EPSILON:
+				cell.kind = TerrainCellKind.WATER
+			elif cell.kind == TerrainCellKind.WATER:
+				cell.kind = TerrainCellKind.LAND
 
 
 func _classify_sample_block(
@@ -559,7 +624,12 @@ func _sample_heightmap_offset(
 	return lerpf(heightmap_min_offset, heightmap_max_offset, normalized_height)
 
 
-func _build_meshes_from_grid(grid: Array[Array], source_width: int, source_height: int) -> void:
+func _build_meshes_from_grid(
+	grid: Array[Array],
+	source_width: int,
+	source_height: int,
+	heightmap_defines_water_area: bool
+) -> void:
 	if grid.is_empty():
 		return
 
@@ -576,11 +646,13 @@ func _build_meshes_from_grid(grid: Array[Array], source_width: int, source_heigh
 	var building_builder := _MeshBuildState.new()
 	var collision_faces := PackedVector3Array()
 	var water_rendering := _build_water_rendering()
+	var water_render_grid := _build_water_render_grid(grid)
 
 	var land_cells := 0
 	var street_cells := 0
 	var building_cells := 0
 	var water_cells := 0
+	var water_render_cells := 0
 
 	for y in range(grid_height):
 		for x in range(grid_width):
@@ -596,30 +668,26 @@ func _build_meshes_from_grid(grid: Array[Array], source_width: int, source_heigh
 			match kind:
 				TerrainCellKind.WATER:
 					water_cells += 1
-					_append_water_cell(
-						grid,
-						x,
-						y,
-						min_x,
-						max_x,
-						min_z,
-						max_z,
-						water_builder,
-						water_shoreline_builder,
-						water_rendering
-					)
-					_append_water_surface_layer(
-						water_surface_layer_builder,
-						min_x,
-						max_x,
-						min_z,
-						max_z,
-						water_rendering
-					)
+					if cell.height < water_height - HEIGHT_EPSILON:
+						var seabed_corner_heights := _get_cell_corner_heights(grid, x, y, cell.height, true)
+						_append_terrain_surface_cell(
+							land_builder,
+							min_x,
+							max_x,
+							min_z,
+							max_z,
+							seabed_corner_heights
+						)
 				TerrainCellKind.STREET:
 					street_cells += 1
 					land_cells += 1
-					var street_corner_heights := _get_cell_corner_heights(grid, x, y, cell.height)
+					var street_corner_heights := _get_cell_corner_heights(
+						grid,
+						x,
+						y,
+						cell.height,
+						heightmap_defines_water_area
+					)
 					_append_land_cell(
 						grid,
 						x,
@@ -632,13 +700,20 @@ func _build_meshes_from_grid(grid: Array[Array], source_width: int, source_heigh
 						street_corner_heights,
 						land_builder,
 						shoreline_builder,
-						collision_faces
+						collision_faces,
+						!heightmap_defines_water_area
 					)
 					_append_inset_surface_quad(street_builder, min_x, max_x, min_z, max_z, street_corner_heights, street_lift, 0.08)
 				TerrainCellKind.BUILDING:
 					building_cells += 1
 					land_cells += 1
-					var building_corner_heights := _get_cell_corner_heights(grid, x, y, cell.height)
+					var building_corner_heights := _get_cell_corner_heights(
+						grid,
+						x,
+						y,
+						cell.height,
+						heightmap_defines_water_area
+					)
 					_append_land_cell(
 						grid,
 						x,
@@ -651,7 +726,8 @@ func _build_meshes_from_grid(grid: Array[Array], source_width: int, source_heigh
 						building_corner_heights,
 						land_builder,
 						shoreline_builder,
-						collision_faces
+						collision_faces,
+						!heightmap_defines_water_area
 					)
 					_append_inset_surface_quad(
 						building_builder,
@@ -665,7 +741,13 @@ func _build_meshes_from_grid(grid: Array[Array], source_width: int, source_heigh
 					)
 				_:
 					land_cells += 1
-					var land_corner_heights := _get_cell_corner_heights(grid, x, y, cell.height)
+					var land_corner_heights := _get_cell_corner_heights(
+						grid,
+						x,
+						y,
+						cell.height,
+						heightmap_defines_water_area
+					)
 					_append_land_cell(
 						grid,
 						x,
@@ -678,8 +760,33 @@ func _build_meshes_from_grid(grid: Array[Array], source_width: int, source_heigh
 						land_corner_heights,
 						land_builder,
 						shoreline_builder,
-						collision_faces
+						collision_faces,
+						!heightmap_defines_water_area
 					)
+
+			if _is_water_render_cell(water_render_grid, x, y):
+				water_render_cells += 1
+				_append_water_cell(
+					grid,
+					water_render_grid,
+					x,
+					y,
+					min_x,
+					max_x,
+					min_z,
+					max_z,
+					water_builder,
+					water_shoreline_builder,
+					water_rendering
+				)
+				_append_water_surface_layer(
+					water_surface_layer_builder,
+					min_x,
+					max_x,
+					min_z,
+					max_z,
+					water_rendering
+				)
 
 	_add_mesh_instance("WaterMesh", water_builder, _build_water_material("Low Poly Water", water_rendering.material_alpha))
 	_add_mesh_instance(
@@ -706,9 +813,41 @@ func _build_meshes_from_grid(grid: Array[Array], source_width: int, source_heigh
 
 	if print_summary:
 		print(
-			"LowPolyTerrain3D: built %dx%d source into %dx%d sampled cells (%d land, %d street, %d building, %d water)."
-			% [source_width, source_height, grid_width, grid_height, land_cells, street_cells, building_cells, water_cells]
+			"LowPolyTerrain3D: built %dx%d source into %dx%d sampled cells (%d land, %d street, %d building, %d water, %d water render)."
+			% [source_width, source_height, grid_width, grid_height, land_cells, street_cells, building_cells, water_cells, water_render_cells]
 		)
+
+
+func _build_water_render_grid(grid: Array[Array]) -> Array[PackedByteArray]:
+	var render_grid: Array[PackedByteArray] = []
+	if grid.is_empty():
+		return render_grid
+
+	var grid_height := grid.size()
+	var grid_width := grid[0].size()
+	for _y in range(grid_height):
+		var row := PackedByteArray()
+		row.resize(grid_width)
+		render_grid.append(row)
+
+	var overlap_cells := maxi(water_land_overlap_cells, 0)
+	for y in range(grid_height):
+		for x in range(grid_width):
+			var cell := grid[y][x] as _TerrainCell
+			if cell == null or cell.kind != TerrainCellKind.WATER:
+				continue
+			var min_y := maxi(y - overlap_cells, 0)
+			var max_y := mini(y + overlap_cells, grid_height - 1)
+			var min_x := maxi(x - overlap_cells, 0)
+			var max_x := mini(x + overlap_cells, grid_width - 1)
+			for render_y in range(min_y, max_y + 1):
+				for render_x in range(min_x, max_x + 1):
+					if _is_land_cell(grid, render_x, render_y) or (render_x == x and render_y == y):
+						var render_row := render_grid[render_y]
+						render_row[render_x] = 1
+						render_grid[render_y] = render_row
+
+	return render_grid
 
 
 func _get_grid_origin_offset(grid_size: Vector2i) -> Vector3:
@@ -731,14 +870,19 @@ func _append_land_cell(
 	corner_heights: PackedFloat32Array,
 	land_builder: _MeshBuildState,
 	shoreline_builder: _MeshBuildState,
-	collision_faces: PackedVector3Array
+	collision_faces: PackedVector3Array,
+	draw_shoreline_sides: bool
 ) -> void:
-	var a := Vector3(min_x, corner_heights[CORNER_NW], min_z)
-	var b := Vector3(max_x, corner_heights[CORNER_NE], min_z)
-	var c := Vector3(max_x, corner_heights[CORNER_SE], max_z)
-	var d := Vector3(min_x, corner_heights[CORNER_SW], max_z)
+	var vertices := _get_surface_cell_vertices(min_x, max_x, min_z, max_z, corner_heights)
+	var a := vertices[CORNER_NW]
+	var b := vertices[CORNER_NE]
+	var c := vertices[CORNER_SE]
+	var d := vertices[CORNER_SW]
 	_append_surface_quad(land_builder, a, b, c, d)
 	_append_collision_quad(collision_faces, a, b, c, d)
+
+	if !draw_shoreline_sides:
+		return
 
 	if _is_water_or_outside(grid, x, y - 1):
 		_append_side_quad(
@@ -822,6 +966,39 @@ func _append_land_cell(
 			)
 
 
+func _append_terrain_surface_cell(
+	builder: _MeshBuildState,
+	min_x: float,
+	max_x: float,
+	min_z: float,
+	max_z: float,
+	corner_heights: PackedFloat32Array
+) -> void:
+	var vertices := _get_surface_cell_vertices(min_x, max_x, min_z, max_z, corner_heights)
+	_append_surface_quad(
+		builder,
+		vertices[CORNER_NW],
+		vertices[CORNER_NE],
+		vertices[CORNER_SE],
+		vertices[CORNER_SW]
+	)
+
+
+func _get_surface_cell_vertices(
+	min_x: float,
+	max_x: float,
+	min_z: float,
+	max_z: float,
+	corner_heights: PackedFloat32Array
+) -> PackedVector3Array:
+	return PackedVector3Array([
+		Vector3(min_x, corner_heights[CORNER_NW], min_z),
+		Vector3(max_x, corner_heights[CORNER_NE], min_z),
+		Vector3(max_x, corner_heights[CORNER_SE], max_z),
+		Vector3(min_x, corner_heights[CORNER_SW], max_z),
+	])
+
+
 func _append_top_quad(builder: _MeshBuildState, min_x: float, max_x: float, min_z: float, max_z: float, height: float) -> void:
 	_append_quad(
 		builder,
@@ -835,6 +1012,7 @@ func _append_top_quad(builder: _MeshBuildState, min_x: float, max_x: float, min_
 
 func _append_water_cell(
 	grid: Array[Array],
+	water_render_grid: Array[PackedByteArray],
 	x: int,
 	y: int,
 	min_x: float,
@@ -845,15 +1023,16 @@ func _append_water_cell(
 	water_shoreline_builder: _MeshBuildState,
 	rendering: _WaterRendering
 ) -> void:
-	var a := Vector3(min_x, _get_water_corner_height(x, y, rendering), min_z)
-	var b := Vector3(max_x, _get_water_corner_height(x + 1, y, rendering), min_z)
-	var c := Vector3(max_x, _get_water_corner_height(x + 1, y + 1, rendering), max_z)
-	var d := Vector3(min_x, _get_water_corner_height(x, y + 1, rendering), max_z)
-	var shoreline_factor := _get_water_shoreline_factor(grid, x, y)
+	var a := Vector3(min_x, water_height, min_z)
+	var b := Vector3(max_x, water_height, min_z)
+	var c := Vector3(max_x, water_height, max_z)
+	var d := Vector3(min_x, water_height, max_z)
+	var shoreline_factor := _get_water_shoreline_factor(grid, water_render_grid, x, y)
 	_append_colored_surface_triangle(water_builder, a, b, c, _get_water_face_color(x, y, 0, shoreline_factor, rendering))
 	_append_colored_surface_triangle(water_builder, a, c, d, _get_water_face_color(x, y, 1, shoreline_factor, rendering))
 	_append_water_shoreline_bands(
 		grid,
+		water_render_grid,
 		x,
 		y,
 		min_x,
@@ -880,6 +1059,7 @@ func _append_water_surface_layer(
 
 func _append_water_shoreline_bands(
 	grid: Array[Array],
+	water_render_grid: Array[PackedByteArray],
 	x: int,
 	y: int,
 	min_x: float,
@@ -894,7 +1074,7 @@ func _append_water_shoreline_bands(
 
 	var band_width := (max_x - min_x) * rendering.shoreline_band_ratio
 	var band_height := water_height + rendering.shoreline_lift
-	if _is_land_cell(grid, x, y - 1):
+	if _is_visible_water_shoreline_edge(grid, water_render_grid, x, y - 1):
 		_append_colored_top_quad(
 			builder,
 			min_x,
@@ -904,7 +1084,7 @@ func _append_water_shoreline_bands(
 			band_height,
 			rendering.shoreline_color
 		)
-	if _is_land_cell(grid, x + 1, y):
+	if _is_visible_water_shoreline_edge(grid, water_render_grid, x + 1, y):
 		_append_colored_top_quad(
 			builder,
 			max_x - band_width,
@@ -914,7 +1094,7 @@ func _append_water_shoreline_bands(
 			band_height,
 			rendering.shoreline_color
 		)
-	if _is_land_cell(grid, x, y + 1):
+	if _is_visible_water_shoreline_edge(grid, water_render_grid, x, y + 1):
 		_append_colored_top_quad(
 			builder,
 			min_x,
@@ -924,7 +1104,7 @@ func _append_water_shoreline_bands(
 			band_height,
 			rendering.shoreline_color
 		)
-	if _is_land_cell(grid, x - 1, y):
+	if _is_visible_water_shoreline_edge(grid, water_render_grid, x - 1, y):
 		_append_colored_top_quad(
 			builder,
 			min_x,
@@ -1079,26 +1259,41 @@ func _append_collision_quad(faces: PackedVector3Array, a: Vector3, b: Vector3, c
 	faces.append(d)
 
 
-func _get_cell_corner_heights(grid: Array[Array], x: int, y: int, fallback_height: float) -> PackedFloat32Array:
+func _get_cell_corner_heights(
+	grid: Array[Array],
+	x: int,
+	y: int,
+	fallback_height: float,
+	include_water_cells := false
+) -> PackedFloat32Array:
 	if !smooth_land_surface:
 		return PackedFloat32Array([fallback_height, fallback_height, fallback_height, fallback_height])
 
 	return PackedFloat32Array([
-		_get_corner_height(grid, x, y, fallback_height),
-		_get_corner_height(grid, x + 1, y, fallback_height),
-		_get_corner_height(grid, x + 1, y + 1, fallback_height),
-		_get_corner_height(grid, x, y + 1, fallback_height),
+		_get_corner_height(grid, x, y, fallback_height, include_water_cells),
+		_get_corner_height(grid, x + 1, y, fallback_height, include_water_cells),
+		_get_corner_height(grid, x + 1, y + 1, fallback_height, include_water_cells),
+		_get_corner_height(grid, x, y + 1, fallback_height, include_water_cells),
 	])
 
 
-func _get_corner_height(grid: Array[Array], corner_x: int, corner_y: int, fallback_height: float) -> float:
+func _get_corner_height(
+	grid: Array[Array],
+	corner_x: int,
+	corner_y: int,
+	fallback_height: float,
+	include_water_cells: bool
+) -> float:
 	var total_height := 0.0
 	var sample_count := 0
 	for y in range(corner_y - 1, corner_y + 1):
 		for x in range(corner_x - 1, corner_x + 1):
-			if _is_water_or_outside(grid, x, y):
+			if _is_outside_grid(grid, x, y):
 				continue
-			total_height += _get_cell_height(grid, x, y)
+			var cell := grid[y][x] as _TerrainCell
+			if cell == null or (cell.kind == TerrainCellKind.WATER and !include_water_cells):
+				continue
+			total_height += cell.height
 			sample_count += 1
 
 	if sample_count <= 0:
@@ -1112,9 +1307,10 @@ func _get_cell_surface_height(
 	y: int,
 	fallback_height: float,
 	local_x: float,
-	local_z: float
+	local_z: float,
+	include_water_cells := false
 ) -> float:
-	var corner_heights := _get_cell_corner_heights(grid, x, y, fallback_height)
+	var corner_heights := _get_cell_corner_heights(grid, x, y, fallback_height, include_water_cells)
 	return _interpolate_quad_height(corner_heights, local_x, local_z)
 
 
@@ -1134,13 +1330,25 @@ func _calculate_surface_normal(a: Vector3, b: Vector3, c: Vector3) -> Vector3:
 	return normal
 
 
-func _is_water_or_outside(grid: Array[Array], x: int, y: int) -> bool:
+func _is_outside_grid(grid: Array[Array], x: int, y: int) -> bool:
 	if y < 0 or y >= grid.size():
 		return true
-	if x < 0 or x >= grid[y].size():
+	return x < 0 or x >= grid[y].size()
+
+
+func _is_water_or_outside(grid: Array[Array], x: int, y: int) -> bool:
+	if _is_outside_grid(grid, x, y):
 		return true
 	var cell := grid[y][x] as _TerrainCell
 	return cell == null or cell.kind == TerrainCellKind.WATER
+
+
+func _is_water_render_cell(water_render_grid: Array[PackedByteArray], x: int, y: int) -> bool:
+	if y < 0 or y >= water_render_grid.size():
+		return false
+	if x < 0 or x >= water_render_grid[y].size():
+		return false
+	return water_render_grid[y][x] != 0
 
 
 func _is_land_cell(grid: Array[Array], x: int, y: int) -> bool:
@@ -1152,28 +1360,31 @@ func _is_land_cell(grid: Array[Array], x: int, y: int) -> bool:
 	return cell != null and cell.kind != TerrainCellKind.WATER
 
 
-func _get_water_shoreline_factor(grid: Array[Array], x: int, y: int) -> float:
+func _is_visible_water_shoreline_edge(
+	grid: Array[Array],
+	water_render_grid: Array[PackedByteArray],
+	x: int,
+	y: int
+) -> bool:
+	return _is_land_cell(grid, x, y) and !_is_water_render_cell(water_render_grid, x, y)
+
+
+func _get_water_shoreline_factor(
+	grid: Array[Array],
+	water_render_grid: Array[PackedByteArray],
+	x: int,
+	y: int
+) -> float:
 	var shoreline_weight := 0.0
 	for sample_y in range(y - 1, y + 2):
 		for sample_x in range(x - 1, x + 2):
 			if sample_x == x and sample_y == y:
 				continue
-			if !_is_land_cell(grid, sample_x, sample_y):
+			if !_is_visible_water_shoreline_edge(grid, water_render_grid, sample_x, sample_y):
 				continue
 			var is_cardinal := sample_x == x or sample_y == y
 			shoreline_weight += 2.0 if is_cardinal else 1.0
 	return clampf(shoreline_weight / 6.0, 0.0, 1.0)
-
-
-func _get_water_corner_height(corner_x: int, corner_y: int, rendering: _WaterRendering) -> float:
-	if rendering.wave_depth <= 0.0:
-		return water_height
-
-	var frequency := rendering.wave_frequency
-	var wave_a := sin(float(corner_x) * frequency + float(corner_y) * 0.71)
-	var wave_b := sin((float(corner_x) - float(corner_y)) * frequency * 0.63)
-	var normalized_wave := clampf((wave_a + wave_b + 2.0) * 0.25, 0.0, 1.0)
-	return water_height - rendering.wave_depth * normalized_wave
 
 
 func _get_water_face_color(
@@ -1187,14 +1398,15 @@ func _get_water_face_color(
 	var color := rendering.deep_color.lerp(rendering.base_color, base_blend)
 	color = color.lerp(rendering.shoreline_color, shoreline_factor * 0.28)
 
-	var shimmer := _stable_water_noise(x, y, triangle_index)
-	var highlight_strength := clampf((shimmer - 0.62) / 0.38, 0.0, 1.0) * 0.18
+	var shimmer := _stable_water_noise(x, y, triangle_index, rendering.wave_frequency)
+	var shimmer_strength := clampf(0.06 + rendering.wave_depth * 2.0, 0.06, 0.22)
+	var highlight_strength := clampf((shimmer - 0.62) / 0.38, 0.0, 1.0) * shimmer_strength
 	color = color.lerp(rendering.highlight_color, highlight_strength)
 	return color
 
 
-func _stable_water_noise(x: int, y: int, salt: int) -> float:
-	var seed := float(x) * 12.9898 + float(y) * 78.233 + float(salt) * 37.719
+func _stable_water_noise(x: int, y: int, salt: int, frequency: float) -> float:
+	var seed := float(x) * 12.9898 * frequency + float(y) * 78.233 * frequency + float(salt) * 37.719
 	var value := sin(seed) * 43758.5453
 	return value - floorf(value)
 
@@ -1277,7 +1489,7 @@ func _build_water_rendering() -> _WaterRendering:
 	rendering.surface_layer_color = _resolve_style_color(&"water_surface_layer_color", water_surface_layer_color)
 	rendering.shoreline_color = _resolve_style_color(&"water_shoreline_color", water_shoreline_color)
 	rendering.highlight_color = _resolve_style_color(&"water_highlight_color", water_highlight_color)
-	rendering.material_alpha = maxf(rendering.base_color.a, rendering.deep_color.a)
+	rendering.material_alpha = clampf(maxf(rendering.base_color.a, rendering.deep_color.a), 0.0, 0.62)
 	rendering.wave_depth = maxf(_resolve_style_float(&"water_wave_depth", water_wave_depth), 0.0)
 	rendering.wave_frequency = maxf(_resolve_style_float(&"water_wave_frequency", water_wave_frequency), 0.05)
 	rendering.shoreline_band_ratio = clampf(
@@ -1333,12 +1545,12 @@ class _TerrainCell:
 
 
 class _WaterRendering:
-	var base_color := Color(0.42, 0.68, 0.83, 0.78)
-	var deep_color := Color(0.24, 0.48, 0.67, 0.86)
-	var surface_layer_color := Color(0.72, 0.90, 0.96, 0.30)
-	var shoreline_color := Color(0.60, 0.83, 0.88, 0.72)
-	var highlight_color := Color(0.86, 0.96, 0.98, 0.54)
-	var material_alpha := 0.86
+	var base_color := Color(0.42, 0.68, 0.83, 0.46)
+	var deep_color := Color(0.24, 0.48, 0.67, 0.54)
+	var surface_layer_color := Color(0.72, 0.90, 0.96, 0.24)
+	var shoreline_color := Color(0.60, 0.83, 0.88, 0.50)
+	var highlight_color := Color(0.86, 0.96, 0.98, 0.40)
+	var material_alpha := 0.54
 	var wave_depth := 0.045
 	var wave_frequency := 0.48
 	var shoreline_band_ratio := 0.18
