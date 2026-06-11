@@ -4,6 +4,7 @@ extends Node3D
 const HUMAN_BODY_3D_SCENE := preload("res://characters/human_body_3d.tscn")
 const REQUIRED_COLLISION_ITEMS := [
 	"Primitive_Floor",
+	"Primitive_Stairs",
 	"Primitive_Wall",
 ]
 const PLAYER_START := Vector3(0.0, 1.0, -11.0)
@@ -15,6 +16,19 @@ const PROBE_GROUNDING_VELOCITY := -0.5
 const MAX_BLOCKED_TRAVEL := 3.0
 const MAX_VERTICAL_DRIFT := 0.15
 const MAX_WALL_NORMAL_Y := 0.75
+const STAIR_PROBE_START := Vector3(0.0, 1.0, -13.5)
+const STAIR_PROBE_SPEEDS: Array[float] = [2.4, 4.0, 7.5]
+const STAIR_UP_FRAMES := 70
+const STAIR_DOWN_FRAMES := 75
+const STAIR_SETTLE_FRAMES := 8
+const MIN_STAIR_CLIMB_HEIGHT := 2.0
+const MIN_STAIR_HORIZONTAL_TRAVEL := 2.0
+const MAX_STAIR_RETURN_HEIGHT := 0.35
+const STAIR_PROBE_GROUNDING_VELOCITY := -2.0
+const MIN_STAIR_DOWN_FLOOR_FRAMES := 50
+const MAX_STAIR_DOWN_UNGROUNDED_RUN := 8
+const MAX_STAIR_DESCENT_DIP := 0.25
+const MAX_STAIR_FRAME_DROP := 0.8
 
 @onready var m_grid: GridMap = $GridMap
 @onready var m_player: HumanBody3D = $human_body_3d
@@ -40,6 +54,7 @@ func _run_smoke_checks() -> void:
 	_validate_scene_nodes(failures)
 	_validate_mesh_library_collision(failures)
 	await _validate_character_building_collision(failures)
+	await _validate_character_stair_navigation(failures)
 
 	_reset_player()
 	if failures.is_empty():
@@ -138,3 +153,125 @@ func _validate_character_building_collision(failures: Array[String]) -> void:
 		failures.append("HumanBody3D probe did not report a slide collision against the building")
 
 	probe.queue_free()
+
+
+func _validate_character_stair_navigation(failures: Array[String]) -> void:
+	if !is_instance_valid(m_grid):
+		return
+
+	for stair_probe_speed in STAIR_PROBE_SPEEDS:
+		await _validate_character_stair_navigation_at_speed(failures, stair_probe_speed)
+
+
+func _validate_character_stair_navigation_at_speed(
+	failures: Array[String],
+	stair_probe_speed: float
+) -> void:
+	var probe := HUMAN_BODY_3D_SCENE.instantiate() as HumanBody3D
+	if probe == null:
+		_append_stair_failure(failures, stair_probe_speed, "failed to instantiate")
+		return
+
+	probe.name = "CharacterStairProbe%.1f" % stair_probe_speed
+	probe.visible = false
+	probe.body_radius = 0.28
+	probe.body_height = 1.72
+	add_child(probe)
+
+	await get_tree().physics_frame
+	probe.global_position = STAIR_PROBE_START
+	probe.velocity = Vector3.ZERO
+	for i in range(8):
+		probe.velocity.y = STAIR_PROBE_GROUNDING_VELOCITY
+		probe.move_with_speed(Vector3.ZERO, 0.0)
+		await get_tree().physics_frame
+
+	var start_position := probe.global_position
+	var started_on_floor := probe.is_on_floor()
+	var max_up_y := start_position.y
+	for i in range(STAIR_UP_FRAMES):
+		probe.velocity.y = STAIR_PROBE_GROUNDING_VELOCITY
+		probe.move_with_speed(Vector3.FORWARD, stair_probe_speed)
+		max_up_y = maxf(max_up_y, probe.global_position.y)
+		await get_tree().physics_frame
+
+	var top_position := probe.global_position
+	var down_floor_frames := 0
+	var longest_ungrounded_run := 0
+	var ungrounded_run := 0
+	var min_down_y := top_position.y
+	var max_down_frame_drop := 0.0
+	for i in range(STAIR_DOWN_FRAMES):
+		var before_y := probe.global_position.y
+		probe.velocity.y = STAIR_PROBE_GROUNDING_VELOCITY
+		probe.move_with_speed(Vector3.BACK, stair_probe_speed)
+		min_down_y = minf(min_down_y, probe.global_position.y)
+		max_down_frame_drop = maxf(max_down_frame_drop, before_y - probe.global_position.y)
+		if probe.is_on_floor():
+			down_floor_frames += 1
+			ungrounded_run = 0
+		else:
+			ungrounded_run += 1
+			longest_ungrounded_run = maxi(longest_ungrounded_run, ungrounded_run)
+		await get_tree().physics_frame
+
+	for i in range(STAIR_SETTLE_FRAMES):
+		probe.velocity.y = STAIR_PROBE_GROUNDING_VELOCITY
+		probe.move_with_speed(Vector3.ZERO, 0.0)
+		await get_tree().physics_frame
+
+	var final_position := probe.global_position
+	if !started_on_floor:
+		_append_stair_failure(failures, stair_probe_speed, "did not start on the lower landing")
+	if max_up_y - start_position.y < MIN_STAIR_CLIMB_HEIGHT:
+		_append_stair_failure(
+			failures,
+			stair_probe_speed,
+			"only climbed %.2f units" % (max_up_y - start_position.y)
+		)
+	if start_position.z - top_position.z < MIN_STAIR_HORIZONTAL_TRAVEL:
+		_append_stair_failure(failures, stair_probe_speed, "did not advance up the stairs")
+	if top_position.y - final_position.y < MIN_STAIR_CLIMB_HEIGHT:
+		_append_stair_failure(
+			failures,
+			stair_probe_speed,
+			"did not descend after climbing the stairs"
+		)
+	if absf(final_position.y - start_position.y) > MAX_STAIR_RETURN_HEIGHT:
+		_append_stair_failure(
+			failures,
+			stair_probe_speed,
+			"did not return to the lower landing height"
+		)
+	if down_floor_frames < MIN_STAIR_DOWN_FLOOR_FRAMES:
+		_append_stair_failure(
+			failures,
+			stair_probe_speed,
+			"was grounded for only %d down-stair frames" % down_floor_frames
+		)
+	if longest_ungrounded_run > MAX_STAIR_DOWN_UNGROUNDED_RUN:
+		_append_stair_failure(
+			failures,
+			stair_probe_speed,
+			"lost stair support for %d consecutive frames" % longest_ungrounded_run
+		)
+	if start_position.y - min_down_y > MAX_STAIR_DESCENT_DIP:
+		_append_stair_failure(
+			failures,
+			stair_probe_speed,
+			"dipped below the lower landing while descending"
+		)
+	if max_down_frame_drop > MAX_STAIR_FRAME_DROP:
+		_append_stair_failure(
+			failures,
+			stair_probe_speed,
+			"dropped %.2f units in one down-stair frame" % max_down_frame_drop
+		)
+	if !probe.is_on_floor():
+		_append_stair_failure(failures, stair_probe_speed, "did not settle on the lower landing")
+
+	probe.queue_free()
+
+
+func _append_stair_failure(failures: Array[String], stair_probe_speed: float, message: String) -> void:
+	failures.append("HumanBody3D stair probe at %.1f speed %s" % [stair_probe_speed, message])

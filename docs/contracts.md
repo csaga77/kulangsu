@@ -205,6 +205,7 @@ Current contract:
 - the combined low-poly world scene owns actor terrain-follow wiring: it keeps the player actor's ground Y synced to `LowPolyTerrain3D.get_world_surface_height(...)` plus a small clearance, so the actor follows land/seabed elevation for now while `HumanBody3D` remains terrain-agnostic
 - the current five canonical `LowPolyLandmarkProxy3D` nodes are non-interactive visual blockouts snapped to nearby land, not authoritative gameplay hotspots
 - `HumanBody3D.body_height` and `HumanBody3D.body_radius` are the current low-poly actor shape contract; they update generated visuals, capsule collision, bounding box, and ground footprint together
+- `HumanBody3D.max_step_height`, `HumanBody3D.floor_snap_distance`, and `HumanBody3D.grounding_speed` tune prototype 3D navigation over floor meshes, including GridMap stair treads; solid wall geometry must still block traversal instead of being bypassed by stair support
 - `HumanBody3D` may use procedural readability polish such as contact shadows, bob, and limb swing, but it remains a prototype actor until the 3D asset direction is chosen
 - low-poly palette, camera, lighting, and landmark colors should flow through `LowPolyArtStyle3D` presets while the art direction is exploratory
 - `LowPolyArtStyle3D` preset field edits are manual-apply: use exported rebuild controls, deliberate rebuild calls, or scene reloads after style changes rather than adding automatic resource-change rebuild behavior

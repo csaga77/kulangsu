@@ -11,6 +11,14 @@ const JUMP_DURATION := 0.55
 const JUMP_HEIGHT := 0.48
 const DEFAULT_BODY_HEIGHT := 1.72
 const DEFAULT_BODY_RADIUS := 0.28
+const STEP_FLOOR_PROBE_MARGIN := 0.08
+const STEP_FLOOR_SIDE_PROBE_SCALE := 0.72
+const STEP_FLOOR_FORWARD_FAR_SCALE := 2.0
+const STEP_FLOOR_CAST_MARGIN := 0.16
+const MIN_STEP_FLOOR_ADJUSTMENT := 0.002
+const MIN_STEP_BLOCKED_PROGRESS_RATIO := 0.35
+const MAX_STEP_LATERAL_DRIFT_RATIO := 0.1
+const FLOOR_SAMPLE_MISSING := -INF
 const BaseController3DScript = preload("res://characters/control/base_controller_3d.gd")
 
 enum FacialMoodEnum {
@@ -94,6 +102,14 @@ enum FacialActionEnum {
 		contact_shadow_radius = maxf(value, 0.0)
 		_sync_contact_shadow()
 
+@export_group("3D Navigation")
+@export_range(0.0, 1.0, 0.01) var max_step_height := 0.72
+@export_range(0.0, 2.0, 0.01) var floor_snap_distance := 0.72:
+	set(value):
+		floor_snap_distance = maxf(value, 0.0)
+		floor_snap_length = floor_snap_distance
+@export_range(0.0, 5.0, 0.05) var grounding_speed := 1.6
+
 @export_group("Face")
 @export var facial_mood: FacialMoodEnum = FacialMoodEnum.NORMAL:
 	set(value):
@@ -130,6 +146,8 @@ var m_is_currently_jumping := false
 var m_jump_timer := 0.0
 var m_current_animation_name := "idle-s"
 var m_motion_phase := 0.0
+var m_last_step_direction := Vector3.ZERO
+var m_step_snap_grounded := false
 
 var m_visual_root: Node3D = null
 var m_body_part: MeshInstance3D = null
@@ -173,6 +191,7 @@ const PALETTE := {
 
 
 func _ready() -> void:
+	floor_snap_length = floor_snap_distance
 	_ensure_collision_shape()
 	_ensure_visual_nodes()
 	_apply_configuration_colors()
@@ -211,7 +230,229 @@ func move_with_speed(direction_vector: Vector3, movement_speed: float) -> void:
 		flat_direction = flat_direction.normalized()
 	velocity.x = flat_direction.x * movement_speed
 	velocity.z = flat_direction.z * movement_speed
+	var grounded_before_move := is_on_floor() or m_step_snap_grounded
+	if grounded_before_move and !m_is_currently_jumping:
+		velocity.y = -grounding_speed
+	var start_position := global_position
+	var horizontal_motion := Vector3(velocity.x, 0.0, velocity.z) * get_physics_process_delta_time()
+	var step_direction := Vector3.ZERO
+	if horizontal_motion.length_squared() > 0.000001:
+		step_direction = horizontal_motion.normalized()
+		m_last_step_direction = step_direction
+	elif m_last_step_direction.length_squared() > 0.000001:
+		step_direction = m_last_step_direction
 	move_and_slide()
+	m_step_snap_grounded = is_on_floor()
+	if grounded_before_move and step_direction.length_squared() > 0.000001:
+		if _snap_to_walkable_step_floor(start_position, horizontal_motion, step_direction):
+			m_step_snap_grounded = true
+
+
+func _snap_to_walkable_step_floor(
+	start_position: Vector3,
+	horizontal_motion: Vector3,
+	horizontal_direction: Vector3
+) -> bool:
+	if max_step_height <= 0.0 and floor_snap_distance <= 0.0:
+		return false
+
+	horizontal_direction = Vector3(horizontal_direction.x, 0.0, horizontal_direction.z)
+	if horizontal_direction.length_squared() <= 0.000001:
+		return false
+	horizontal_direction = horizontal_direction.normalized()
+
+	var reference_y := maxf(start_position.y, global_position.y)
+	var snap_position := global_position
+	var floor_y := _find_walkable_step_floor_y(snap_position, horizontal_direction, reference_y)
+	var requested_distance := horizontal_motion.length()
+	var actual_motion := Vector3(
+		global_position.x - start_position.x,
+		0.0,
+		global_position.z - start_position.z
+	)
+	var actual_forward_distance := actual_motion.dot(horizontal_direction)
+	var actual_lateral_motion := actual_motion - (horizontal_direction * actual_forward_distance)
+	var target_position := Vector3(
+		start_position.x + horizontal_motion.x,
+		global_position.y,
+		start_position.z + horizontal_motion.z
+	)
+	var target_floor_y := NAN
+	if requested_distance > 0.0:
+		target_floor_y = _find_walkable_step_floor_y(target_position, horizontal_direction, reference_y)
+
+	if !is_nan(target_floor_y):
+		var should_use_target_position := is_nan(floor_y)
+		should_use_target_position = should_use_target_position or absf(target_floor_y - floor_y) > MIN_STEP_FLOOR_ADJUSTMENT
+		should_use_target_position = should_use_target_position or actual_forward_distance < requested_distance * MIN_STEP_BLOCKED_PROGRESS_RATIO
+		should_use_target_position = should_use_target_position or actual_lateral_motion.length() > requested_distance * MAX_STEP_LATERAL_DRIFT_RATIO
+		if should_use_target_position:
+			var target_floor_delta_from_start := target_floor_y - start_position.y
+			if (
+				target_floor_delta_from_start <= max_step_height + MIN_STEP_FLOOR_ADJUSTMENT
+				and target_floor_delta_from_start >= -(floor_snap_distance + MIN_STEP_FLOOR_ADJUSTMENT)
+			):
+				var target_snap_position := Vector3(target_position.x, target_floor_y, target_position.z)
+				if _can_place_body_at(target_snap_position):
+					snap_position = target_snap_position
+					floor_y = target_floor_y
+
+	if is_nan(floor_y) and requested_distance > 0.0 and actual_forward_distance < requested_distance * MIN_STEP_BLOCKED_PROGRESS_RATIO:
+		target_floor_y = _find_walkable_step_floor_y(target_position, horizontal_direction, reference_y)
+		if !is_nan(target_floor_y):
+			var target_snap_position := Vector3(target_position.x, target_floor_y, target_position.z)
+			if _can_place_body_at(target_snap_position):
+				snap_position = target_snap_position
+				floor_y = target_floor_y
+
+	if is_nan(floor_y):
+		var start_floor_y := _find_walkable_step_floor_y(start_position, horizontal_direction, reference_y)
+		if !is_nan(start_floor_y):
+			var start_snap_position := Vector3(start_position.x, start_floor_y, start_position.z)
+			if _can_place_body_at(start_snap_position):
+				global_position = start_snap_position
+				velocity.x = 0.0
+				velocity.z = 0.0
+				velocity.y = minf(velocity.y, 0.0)
+				return true
+		return false
+
+	var floor_delta_from_start := floor_y - start_position.y
+	if floor_delta_from_start > max_step_height + MIN_STEP_FLOOR_ADJUSTMENT:
+		return false
+	if floor_delta_from_start < -(floor_snap_distance + MIN_STEP_FLOOR_ADJUSTMENT):
+		return false
+
+	var vertical_adjustment := floor_y - global_position.y
+	var horizontal_adjustment := Vector3(
+		snap_position.x - global_position.x,
+		0.0,
+		snap_position.z - global_position.z
+	)
+	if (
+		absf(vertical_adjustment) <= MIN_STEP_FLOOR_ADJUSTMENT
+		and horizontal_adjustment.length_squared() <= 0.000001
+	):
+		return false
+
+	global_position = Vector3(snap_position.x, floor_y, snap_position.z)
+	if vertical_adjustment > 0.0:
+		velocity.y = 0.0
+	else:
+		velocity.y = minf(velocity.y, 0.0)
+	return true
+
+
+func _find_walkable_step_floor_y(
+	body_position: Vector3,
+	horizontal_direction: Vector3,
+	reference_y: float
+) -> float:
+	var side_direction := Vector3(-horizontal_direction.z, 0.0, horizontal_direction.x)
+	var forward_reach := body_radius + STEP_FLOOR_PROBE_MARGIN
+	var side_reach := body_radius * STEP_FLOOR_SIDE_PROBE_SCALE
+	var cast_top_y := reference_y + max_step_height + STEP_FLOOR_CAST_MARGIN
+	var cast_bottom_y := reference_y - floor_snap_distance - STEP_FLOOR_CAST_MARGIN
+	var min_floor_normal_y := cos(floor_max_angle)
+
+	var center_floor_y := _sample_walkable_floor_y(
+		body_position,
+		cast_top_y,
+		cast_bottom_y,
+		min_floor_normal_y
+	)
+	var side_floor_y := maxf(
+		_sample_walkable_floor_y(
+			body_position + (side_direction * side_reach),
+			cast_top_y,
+			cast_bottom_y,
+			min_floor_normal_y
+		),
+		_sample_walkable_floor_y(
+			body_position - (side_direction * side_reach),
+			cast_top_y,
+			cast_bottom_y,
+			min_floor_normal_y
+		)
+	)
+
+	var body_support_y := maxf(center_floor_y, side_floor_y)
+	var forward_near_floor_y := _sample_walkable_floor_y(
+		body_position + (horizontal_direction * forward_reach),
+		cast_top_y,
+		cast_bottom_y,
+		min_floor_normal_y
+	)
+	var forward_far_floor_y := _sample_walkable_floor_y(
+		body_position + (horizontal_direction * forward_reach * STEP_FLOOR_FORWARD_FAR_SCALE),
+		cast_top_y,
+		cast_bottom_y,
+		min_floor_normal_y
+	)
+	var forward_floor_y := _resolve_forward_step_floor_y(
+		forward_near_floor_y,
+		forward_far_floor_y,
+		body_support_y
+	)
+	if body_support_y == FLOOR_SAMPLE_MISSING:
+		if forward_floor_y == FLOOR_SAMPLE_MISSING:
+			return NAN
+		return forward_floor_y
+
+	if forward_floor_y > body_support_y + MIN_STEP_FLOOR_ADJUSTMENT:
+		return forward_floor_y
+
+	if center_floor_y < body_support_y - MIN_STEP_FLOOR_ADJUSTMENT:
+		if forward_floor_y < body_support_y - MIN_STEP_FLOOR_ADJUSTMENT:
+			return center_floor_y
+		return body_support_y
+
+	return body_support_y
+
+
+func _sample_walkable_floor_y(
+	sample_position: Vector3,
+	cast_top_y: float,
+	cast_bottom_y: float,
+	min_floor_normal_y: float
+) -> float:
+	var query := PhysicsRayQueryParameters3D.create(
+		Vector3(sample_position.x, cast_top_y, sample_position.z),
+		Vector3(sample_position.x, cast_bottom_y, sample_position.z)
+	)
+	query.exclude = [get_rid()]
+	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var hit: Dictionary = space.intersect_ray(query)
+	if hit.is_empty():
+		return FLOOR_SAMPLE_MISSING
+
+	var hit_normal: Vector3 = hit.get("normal", Vector3.ZERO)
+	if hit_normal.y < min_floor_normal_y:
+		return FLOOR_SAMPLE_MISSING
+
+	var hit_position: Vector3 = hit.get("position", Vector3.ZERO)
+	return hit_position.y
+
+
+func _resolve_forward_step_floor_y(near_floor_y: float, far_floor_y: float, body_support_y: float) -> float:
+	if near_floor_y == FLOOR_SAMPLE_MISSING:
+		return far_floor_y
+	if far_floor_y == FLOOR_SAMPLE_MISSING:
+		return near_floor_y
+	if body_support_y == FLOOR_SAMPLE_MISSING:
+		return maxf(near_floor_y, far_floor_y)
+
+	if far_floor_y < body_support_y - MIN_STEP_FLOOR_ADJUSTMENT:
+		return far_floor_y
+	if near_floor_y < body_support_y - MIN_STEP_FLOOR_ADJUSTMENT:
+		return far_floor_y
+	return maxf(near_floor_y, far_floor_y)
+
+
+func _can_place_body_at(candidate_position: Vector3) -> bool:
+	var candidate_transform := global_transform
+	candidate_transform.origin = candidate_position
+	return !test_move(candidate_transform, Vector3.ZERO)
 
 
 func jump() -> void:

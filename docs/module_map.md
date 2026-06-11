@@ -65,7 +65,7 @@ If you are changing how terrain mask colors map to layers, start with the terrai
 
 - [`../characters/`](../characters) - player and NPC scenes plus sprite systems
 - [`../characters/resident_npc.gd`](../characters/resident_npc.gd) / [`../characters/resident_npc.tscn`](../characters/resident_npc.tscn) - runtime resident actor that applies a `ResidentDefinition` on top of `HumanBody2D`
-- [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd) / [`../characters/human_body_3d.tscn`](../characters/human_body_3d.tscn) - parallel low-poly 3D actor adapter prototype with tunable block-body proportions, contact shadow, and procedural walk/run readability polish; not wired into the runtime 2D overworld yet
+- [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd) / [`../characters/human_body_3d.tscn`](../characters/human_body_3d.tscn) - parallel low-poly 3D actor adapter prototype with tunable block-body proportions, contact shadow, stair/floor-snap navigation, and procedural walk/run readability polish; not wired into the runtime 2D overworld yet
 - [`../characters/tests/`](../characters/tests) - direct character smoke scenes such as `HumanBody2D` and `HumanBody3D`
 - [`../characters/control/`](../characters/control) - controllers, resident presentation hookup, and interaction behavior
 - [`../characters/control/base_controller_3d.gd`](../characters/control/base_controller_3d.gd) - shared 3D controller base for `HumanBody3D` lifecycle, movement flags, and movement helper methods
@@ -144,7 +144,7 @@ Be careful about renames or moves here because scene and resource references can
 - [`../game/tests/story_routes/test_story_event_service.tscn`](../game/tests/story_routes/test_story_event_service.tscn) - focused StoryEvent bridge regression covering subject-based resident talk, landmark-trigger activation, inspectable resolution, and live resident routine overrides inside `game_main`
 - [`../scenes/tests/test_level_resolution.tscn`](../scenes/tests/test_level_resolution.tscn) - focused relative-level resolution and inherited room-level sandbox
 - [`../scenes/tests/test_portal_overlap.tscn`](../scenes/tests/test_portal_overlap.tscn) - focused multi-actor portal transition regression test
-- [`../scenes/tests/test_building_tiles.tscn`](../scenes/tests/test_building_tiles.tscn) - focused reusable wall, door, and window building-piece loading sandbox with GridMap floor/wall collision and `HumanBody3D` building-collision validation
+- [`../scenes/tests/test_building_tiles.tscn`](../scenes/tests/test_building_tiles.tscn) - focused reusable wall, door, window, and stair building-piece loading sandbox with GridMap floor/wall/stair collision plus `HumanBody3D` wall-blocking and stair-traversal validation
 - [`../scenes/tests/test_landmark_cue_loading.tscn`](../scenes/tests/test_landmark_cue_loading.tscn) - focused landmark cue audio loader/cache smoke test
 - [`../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn`](../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn) - focused Bagua base-to-ground portal integration for `level_id` actor transitions
 - [`../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn`](../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn) - full Bagua Tower ascent, descent, and upper-floor visibility integration test
