@@ -274,12 +274,15 @@ func get_current_animation_name() -> String:
 
 
 func _process(delta: float) -> void:
-	_process_controller(delta)
 	_process_jump(delta)
 	_process_visual_motion(delta)
 	if !m_last_global_position.is_equal_approx(global_position):
 		m_last_global_position = global_position
 		global_position_changed.emit()
+
+
+func _physics_process(delta: float) -> void:
+	_process_controller(delta)
 
 
 func _setup_controller() -> void:

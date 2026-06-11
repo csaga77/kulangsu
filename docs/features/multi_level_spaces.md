@@ -154,6 +154,6 @@
 - Validate physical stair traversal with [`../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn`](../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn).
 - Validate tunnel-only visibility swaps, `exterior`/`interior` presentation handoff, and surface-overlap behavior with [`../../game/tests/npc_system/test_tunnel_visibility.tscn`](../../game/tests/npc_system/test_tunnel_visibility.tscn).
 - Validate routed NPC re-entry and tunnel level restoration with [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn).
-- Validate reusable wall, door, and window building-piece loading with [`../../scenes/tests/test_building_tiles.tscn`](../../scenes/tests/test_building_tiles.tscn).
+- Validate reusable wall, door, window building-piece loading, GridMap floor/wall collision, and `HumanBody3D` building collision with [`../../scenes/tests/test_building_tiles.tscn`](../../scenes/tests/test_building_tiles.tscn).
 - Validate landmark cue audio loading with [`../../scenes/tests/test_landmark_cue_loading.tscn`](../../scenes/tests/test_landmark_cue_loading.tscn).
 - Validate canonical landmark progression and cue interaction state with [`../../game/tests/cue_progression/test_cue_progression.tscn`](../../game/tests/cue_progression/test_cue_progression.tscn).

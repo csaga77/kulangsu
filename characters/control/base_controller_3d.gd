@@ -79,8 +79,7 @@ func stop_moving() -> void:
 	move_direction = MoveDirectionEnum.MOVE_IDLE
 	if is_instance_valid(m_character):
 		m_character.set("is_walking", false)
-		if m_character.has_method("move_with_speed"):
-			m_character.call("move_with_speed", Vector3.ZERO, 0.0)
+		m_character.set("velocity", Vector3.ZERO)
 
 
 func is_moving() -> bool:
