@@ -11,7 +11,8 @@
 - Authors enable the `Low-Poly Building Editor` plugin, use its dock to choose `Wall`, `Prop`, or `Window`, and place content directly in the 3D viewport.
 - Wall drawing supports click-start/click-end and click-drag-release flows with live snapped preview geometry.
 - Prop and window placement uses translucent green/red previews before committing nodes.
-- The prop palette folder is configurable in the dock, defaults to `res://assets`, and includes `.tscn`, `.scn`, `.gltf`, and `.glb` scene assets.
+- While the cursor is over a 3D viewport, `R` rotates the prop preview in 90-degree steps (prop mode only) and `Escape` or right-click cancels the active preview.
+- The prop palette folder is configurable in the dock, defaults to `res://assets`, and includes `.tscn`, `.scn`, `.gltf`, and `.glb` scene assets. The configured folder persists across editor sessions via editor project metadata.
 
 ## Rules
 
@@ -20,16 +21,17 @@
 - Wall drawing snaps to `BuildingEditor3D.grid_step` and can lock to 45-degree increments for eight-way wall direction.
 - New wall spans merge into an existing collinear wall of matching thickness and height when their ranges overlap.
 - `BuildingOpening3D` children create rectangular wall holes without boolean operations. The wall compiles a split box-grid mesh around all openings.
+- Window openings stay axis-aligned to their wall face; opening rotation is not supported, so the frame visual always matches the cut rectangle.
 - Wall meshes duplicate vertices per face, carry vertex colors, and use rough flat materials for hard low-poly face breaks.
 - Wall mesh normals point outward, triangle winding follows Godot's `BoxMesh` convention, and wall materials use backface culling so lighting follows the generated face normals.
 - Generated collision children are editor/runtime rebuild artifacts and should not be edited by hand.
 
 ## Edge Cases
 
-- A wall shorter than half the active grid step is ignored.
+- A wall shorter than half the active grid step, with an absolute floor of 0.1 units, is ignored.
 - Window openings are rejected when they leave the wall bounds or overlap another opening.
 - Prop placement can fall back to the ground plane when no procedural wall target exists.
-- The first wall or placement action can create a `BuildingEditor3D` coordinator if the scene has none.
+- The first wall click or placement commit can create a `BuildingEditor3D` coordinator if the scene has none. Hover previews never mutate the scene or undo history.
 - If the configured folder is missing, the prop palette falls back to `res://assets` when available, then `res://`.
 
 ## Architecture / Ownership
@@ -45,7 +47,7 @@
 ## Relevant Files
 
 - Scenes: `scenes/tests/test_low_poly_building_editor_3d.tscn`
-- Scripts: `addons/low_poly_building_editor/plugin.gd`, `building_editor_3d.gd`, `procedural_wall_3d.gd`, `building_opening_3d.gd`, `low_poly_building_editor_dock.gd`
+- Scripts: `addons/low_poly_building_editor/plugin.gd`, `building_editor_3d.gd`, `procedural_wall_3d.gd`, `building_opening_3d.gd`, `low_poly_building_editor_dock.gd`, `viewport_input_overlay.gd`, `viewport_input_capture.gd`
 - Related docs: `docs/module_map.md`, `docs/contracts.md`
 
 ## Signals / Nodes / Data Flow
@@ -63,8 +65,9 @@
 
 ## Validation
 
-- Headless smoke scene: `scenes/tests/test_low_poly_building_editor_3d.tscn`
+- Headless smoke scene: `scenes/tests/test_low_poly_building_editor_3d.tscn` (covers mesh conventions, opening rules, snapping, and merge detection including height-mismatch rejection).
 - Manual editor validation: enable the plugin, create a coordinator, draw overlapping walls, place a window on a wall, and confirm undo/redo restores the wall mesh and child hierarchy.
+- Place a prop on a wall positioned away from the scene origin and confirm the committed prop lands exactly where the preview showed.
 - Confirm generated wall mesh has vertex colors and generated collision.
 
 ## Out Of Scope
