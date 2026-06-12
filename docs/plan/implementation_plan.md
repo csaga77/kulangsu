@@ -49,7 +49,7 @@ Regression coverage now includes:
 Parallel low-poly 3D prototypes now exist as exploratory sidecar work, not as part of the current runtime overworld:
 
 - `LowPolyTerrain3D` samples the existing terrain mask/profile plus optional full-source heightmap into coarse land, shoreline, heightmap-level or mask-clipped water with visual adjacent-land overlap, continuous visible seabed terrain, street, building-footprint, optional grayscale heightmap elevation, and optional collision meshes
-- `HumanBody3D`, `BaseController3D`, and `PlayerController3D` mirror the main actor/controller concepts on the XZ plane
+- `HumanBody3D`, `BaseController3D`, and `PlayerController3D` mirror the main actor/controller concepts on the XZ plane; `LowPolyCharacterConfig` and `ProceduralLowPolyCharacterRig` add the first optional seeded runtime-generated character path
 - `LowPolyWorldCoordinates3D`, `LowPolyArtStyle3D`, `Camera3DController`, and `LowPolyLandmarkProxy3D` now support the combined Painted Postcard Diorama validation scene with five canonical low-poly landmark placeholders
 - focused terrain, actor, and combined low-poly world smoke scenes validate those prototypes
 
@@ -78,7 +78,7 @@ Current pressure points:
 - `activate_landmark_trigger(...)` remains as a compatibility bridge, but regression coverage should prefer `activate_story_subject(...)` or packed-scene `StorySubjectArea2D` dispatch for landmark beats
 - high-traffic dictionary payloads (landmark progress, melody progress, autosave) are still untyped
 - missable/transformed moment processing is not implemented yet; the current life-time slice tracks and advances time but does not automatically expire optional beats into missed-state echoes
-- the parallel low-poly 3D prototype now has a shared coordinate adapter, combined terrain-plus-player validation scene, style preset, and five-landmark proxy blockout, but still needs visual tuning before runtime integration should be considered
+- the parallel low-poly 3D prototype now has a shared coordinate adapter, combined terrain-plus-player validation scene, style preset, five-landmark proxy blockout, and optional seeded procedural character rig, but still needs visible skinned deformation and visual tuning before runtime integration should be considered
 - regression coverage is now strong for landmark, route, resident-interaction, reactivity, and autosave flows, but still lighter around settings/audio behavior and richer world-object reactivity
 
 ## What Remains
@@ -131,7 +131,9 @@ The low-poly 3D prototype is an exploration lane for the island presentation, no
 First-pass shipped outcome:
 
 - the terrain mask and optional full-source heightmap can generate a coarse low-poly island mesh with heightmap-level or mask-clipped water, flat semi-transparent water at `water_height`, one-ring visual water overlap onto shoreline land, continuous visible seabed terrain, smooth land, mask-clipped shoreline sides, streets, building footprints, optional grayscale heightmap elevation, and optional land collision
-- `HumanBody3D` exposes familiar actor fields and methods such as direction, walking/running state, tunable body height/radius, configuration, movement, jump, ground footprint, and global-position change signaling, plus first-pass contact shadow and procedural walk/run motion polish
+- `HumanBody3D` exposes familiar actor fields and methods such as direction, walking/running state, tunable body height/radius, configuration, movement, jump, ground footprint, and global-position change signaling, plus first-pass contact shadow, procedural walk/run motion polish, and an opt-in seeded procedural rig mode
+- `LowPolyCharacterConfig` deterministically maps a seed string into body proportions, palette choices, and asymmetry flags
+- `ProceduralLowPolyCharacterRig` generates a `Skeleton3D`, flat-shaded vertex-color body surface, and head/hand `BoneAttachment3D` nodes at runtime, without external baked mesh, texture, or animation assets
 - `BaseController3D` and `PlayerController3D` mirror the 2D controller hierarchy while staying separate from the 2D runtime controller classes
 - `LowPolyWorldCoordinates3D` provides the first shared terrain-mask-pixel to 3D XZ world-position adapter, including helpers for rough conversion from authored 2D isometric positions
 - `LowPolyArtStyle3D` plus `low_poly_postcard_diorama_style.tres` provide the first Painted Postcard Diorama palette, camera, sunlight, and landmark-color preset
@@ -141,6 +143,7 @@ First-pass shipped outcome:
 Still open:
 
 - tune the initial visual-style contract through the combined world scene, especially camera angle, projection, follow offset, palette, lighting, water, terrain chunkiness, landmark proxy scale, actor movement feel, and camera-relative control
+- bind the generated procedural character body to its skeleton, then add terrain-aware foot placement and secondary attachment inertia
 - keep extending placement only through shared `LowPolyWorldCoordinates3D` methods before adding residents, story anchors, or interaction hotspots
 - decide whether the current coarse sampling should remain the intended visual style or whether streets/building footprints need cleaner extraction before gameplay placement starts
 - add 3D interaction areas only after the five-placeholder landmark blockout and combined playability scene stay visually stable
@@ -155,6 +158,8 @@ Primary files:
 - `scenes/tests/test_low_poly_terrain_3d.tscn`
 - `scenes/tests/test_low_poly_world_3d.tscn`
 - `characters/human_body_3d.gd`
+- `characters/low_poly_character_config.gd`
+- `characters/procedural_low_poly_character_rig.gd`
 - `characters/control/base_controller_3d.gd`
 - `characters/control/player_controller_3d.gd`
 - `characters/tests/test_human_body_3d.tscn`

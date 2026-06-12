@@ -187,6 +187,8 @@ Owned by:
 - [`../terrain/low_poly_art_style_3d.gd`](../terrain/low_poly_art_style_3d.gd)
 - [`../architecture/low_poly/low_poly_landmark_proxy_3d.gd`](../architecture/low_poly/low_poly_landmark_proxy_3d.gd)
 - [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd)
+- [`../characters/low_poly_character_config.gd`](../characters/low_poly_character_config.gd)
+- [`../characters/procedural_low_poly_character_rig.gd`](../characters/procedural_low_poly_character_rig.gd)
 - [`../scenes/tests/test_low_poly_world_3d.tscn`](../scenes/tests/test_low_poly_world_3d.tscn)
 
 Current contract:
@@ -205,7 +207,13 @@ Current contract:
 - the combined low-poly world scene owns actor terrain-follow wiring: it keeps the player actor's ground Y synced to `LowPolyTerrain3D.get_world_surface_height(...)` plus a small clearance, so the actor follows land/seabed elevation for now while `HumanBody3D` remains terrain-agnostic
 - the current five canonical `LowPolyLandmarkProxy3D` nodes are non-interactive visual blockouts snapped to nearby land, not authoritative gameplay hotspots
 - `HumanBody3D.body_height` and `HumanBody3D.body_radius` are the current low-poly actor shape contract; they update generated visuals, capsule collision, bounding box, and ground footprint together
+- `HumanBody3D.use_procedural_rig` is an opt-in visual path: it shows `VisualRoot/ProceduralLowPolyCharacterRig` and hides the legacy block-body parts, while the block mannequin remains the default prototype body
+- `HumanBody3D.procedural_seed` feeds `LowPolyCharacterConfig`; identical seed strings must produce identical body proportions, palette choices, and asymmetry flags, while different seeds should vary those generated values
+- `ProceduralLowPolyCharacterRig` owns the runtime hierarchy `Node3D -> Skeleton3D -> BodySurface/HeadAttachment/LeftHandAttachment/RightHandAttachment`; attachment consumers should use the named bone attachments instead of depending on generated mesh internals
+- procedural character visuals use flat-shaded vertex-color mesh generation plus high-roughness, specular-disabled material settings; do not introduce external baked mesh, texture, or animation assets for this prototype path without updating the feature contract
+- the current procedural body surface is not yet skinned to its skeleton; mathematical locomotion currently drives bone pose and attachment targets, with visible skinned deformation, foot IK, and inertia drifts deferred to later character-system work
 - `HumanBody3D.max_step_height`, `HumanBody3D.floor_snap_distance`, and `HumanBody3D.grounding_speed` tune prototype 3D navigation over floor meshes, including GridMap stair treads; solid wall geometry must still block traversal instead of being bypassed by stair support
+- `HumanBody3D` must not run manual stair/floor reacquisition while `m_is_currently_jumping` is active; jump-state grounded checks intentionally return false so repeated visual jumps on stair crests cannot reuse stale stair directions and pull the actor onto the wrong floor sample
 - `HumanBody3D` may use procedural readability polish such as contact shadows, bob, and limb swing, but it remains a prototype actor until the 3D asset direction is chosen
 - low-poly palette, camera, lighting, and landmark colors should flow through `LowPolyArtStyle3D` presets while the art direction is exploratory
 - `LowPolyArtStyle3D` preset field edits are manual-apply: use exported rebuild controls, deliberate rebuild calls, or scene reloads after style changes rather than adding automatic resource-change rebuild behavior

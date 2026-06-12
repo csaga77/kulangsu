@@ -10,17 +10,22 @@
 
 - [`../../characters/human_body_3d.gd`](../../characters/human_body_3d.gd) defines `class_name HumanBody3D`.
 - [`../../characters/human_body_3d.tscn`](../../characters/human_body_3d.tscn) is the minimal actor scene.
+- [`../../characters/low_poly_character_config.gd`](../../characters/low_poly_character_config.gd) defines deterministic seed-driven body proportions, palette choices, and asymmetry flags.
+- [`../../characters/procedural_low_poly_character_rig.gd`](../../characters/procedural_low_poly_character_rig.gd) defines the optional runtime-generated low-poly character rig with `Skeleton3D`, a flat-shaded vertex-color body surface, and head/hand bone attachments.
 - [`../../characters/control/base_controller_3d.gd`](../../characters/control/base_controller_3d.gd) defines `class_name BaseController3D`, the shared 3D controller base for `HumanBody3D`.
 - [`../../characters/control/player_controller_3d.gd`](../../characters/control/player_controller_3d.gd) defines `class_name PlayerController3D`, a first playable input adapter that extends `BaseController3D`.
-- [`../../characters/tests/test_human_body_3d.tscn`](../../characters/tests/test_human_body_3d.tscn) is the focused smoke scene covering actor API parity, current-frame controller input, placement occupancy, and step-up/step-down navigation.
+- [`../../characters/tests/test_human_body_3d.tscn`](../../characters/tests/test_human_body_3d.tscn) is the focused smoke scene covering actor API parity, current-frame controller input, placement occupancy, step-up/step-down navigation, deterministic procedural rig generation, skeleton attachments, vertex colors, and mathematical walk motion.
 - [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn) validates the actor, controller, generated terrain collision, terrain-height following, coordinate adapter, `Camera3DController` follow/zoom/orbit behavior, style preset, five canonical postcard landmark proxies, and camera together.
-- The current visual is a generated low-poly block mannequin assembled from simple `BoxMesh` parts, with tunable body height/radius, contact shadow, stronger facing markers, and procedural walk/run bob plus limb swing.
+- The default visual remains a generated low-poly block mannequin assembled from simple `BoxMesh` parts, with tunable body height/radius, contact shadow, stronger facing markers, and procedural walk/run bob plus limb swing.
+- `HumanBody3D.use_procedural_rig` can switch the actor to the optional seeded procedural character rig. The rig is runtime-generated from code and does not depend on external mesh, texture, animation, or keyframe assets.
 - The actor exposes familiar adapter fields and methods:
   - `direction`
   - `is_walking`
   - `is_running`
   - `body_height`
   - `body_radius`
+  - `use_procedural_rig`
+  - `procedural_seed`
   - `facial_mood`
   - `facial_action`
   - `configuration`
@@ -37,6 +42,8 @@
 
 - The runtime 2D actor remains [`../../characters/human_body_2d.gd`](../../characters/human_body_2d.gd).
 - The 3D prototype actor is owned by [`../../characters/human_body_3d.gd`](../../characters/human_body_3d.gd).
+- Seeded procedural character parameters are owned by [`../../characters/low_poly_character_config.gd`](../../characters/low_poly_character_config.gd).
+- Optional procedural character mesh, skeleton, and attachment-node generation are owned by [`../../characters/procedural_low_poly_character_rig.gd`](../../characters/procedural_low_poly_character_rig.gd).
 - The existing `ResidentNPC`, `BaseController`, `PlayerController`, and `NPCController` remain 2D-only.
 - `BaseController3D` and `PlayerController3D` mirror the 2D controller hierarchy while staying separate from `BaseController` and `PlayerController` because they use `Vector3`, `CharacterBody3D`, and XZ-plane movement.
 - Do not wire `HumanBody3D` into `game_main.tscn` until a deliberate 3D world-integration phase starts.
@@ -45,6 +52,12 @@
 
 - `direction` uses the same flat-angle convention as `HumanBody2D`: `0` points east, `90` points south, `180` points west, and `270` points north.
 - `configuration` accepts the same high-level appearance dictionary shape used by the 2D LPC actor. The 3D prototype maps recognized variant names to a small material palette instead of composing sprite layers.
+- `use_procedural_rig` is opt-in. When enabled, `HumanBody3D` hides the legacy block-body parts and shows `VisualRoot/ProceduralLowPolyCharacterRig`; when disabled, the legacy block mannequin remains the visible prototype body.
+- `procedural_seed` must produce deterministic `LowPolyCharacterConfig` output for the same alphanumeric string and meaningfully different output for different strings.
+- `LowPolyCharacterConfig` currently owns height modifier, limb thickness, head scale, torso mass, main/accent/skin/hair colors, per-side limb scale, and per-side accent flags.
+- `ProceduralLowPolyCharacterRig` must keep the authored runtime hierarchy `Node3D -> Skeleton3D -> BodySurface/HeadAttachment/LeftHandAttachment/RightHandAttachment` so future attachments can target named bones without inspecting mesh internals.
+- `ProceduralLowPolyCharacterRig` generates a flat-shaded `ArrayMesh` with per-vertex albedo colors and a high-roughness, specular-disabled material. Dedicated UV texture files should not be introduced for this prototype path.
+- The current procedural body surface is generated as a single visual mesh and is not yet skinned to the skeleton. Mathematical locomotion updates skeleton bone poses and attachment targets first; visible skinned deformation is a future step.
 - `move(...)` and `move_with_speed(...)` consume XZ-plane `Vector3` directions.
 - `get_ground_rect()` returns an XZ-plane `Rect2` footprint for future adapter code; it is not a drop-in replacement for 2D physics queries.
 - `is_grounded()` is the preferred 3D actor grounded check because it includes both Godot floor contact and the actor's manual stair/floor snap support.
@@ -54,14 +67,16 @@
 - `PlayerController3D` reads input before the base controller applies movement so starts and stops affect the current controller tick.
 - `camera_relative_movement` can align movement to the active `Camera3D`; when disabled, movement is world-aligned on XZ.
 - Stair/floor snapping may move the actor vertically or horizontally only after the current capsule shape is checked against the physics space at the candidate placement. The resolver favors a nearer higher stair face while climbing and a farther lower floor while descending so stairs do not snap the actor back to a previous landing.
+- Manual stair/floor reacquisition is suspended while the actor is in its visual jump state, and `is_grounded()` reports false during that jump window. This prevents stale stair directions from pulling the actor to an older lower floor or a forward stair sample while the player repeatedly jumps near stair crests.
 - Actor placement in generated terrain must use `LowPolyWorldCoordinates3D` instead of scene-local guessed offsets.
 - Terrain elevation following is owned by the combined low-poly world scene. It samples `LowPolyTerrain3D.get_world_surface_height(...)` for the actor's current XZ position and applies a small clearance to `HumanBody3D.global_position.y`; in heightmap-expanded water this currently means land/seabed elevation rather than the visual water plane, while `HumanBody3D` itself stays terrain-agnostic.
+- Dynamic foot IK, terrain-adaptive hip offsets, and weight-based inertia drifts are not implemented yet. Keep those in the procedural rig layer when they are added so controller and terrain ownership stay clean.
 
 ## Visual Style Contract
 
-- Keep the tunable block mannequin as the default prototype body until the terrain-plus-player validation scene proves scale, movement, and camera framing.
-- Decide between block mannequin, billboarded LPC sprites, or real low-poly character meshes before resident/NPC integration starts.
-- Character colors should remain simple material slots derived from the existing high-level appearance dictionary until a final 3D character asset direction is chosen.
+- Keep the tunable block mannequin as the default prototype body until the seeded procedural rig is visually proven in the terrain-plus-player validation scene.
+- The current preferred 3D character direction is now runtime procedural low-poly mesh generation, but resident/NPC integration should still wait for skinned deformation, terrain foot adaptation, and camera readability validation.
+- Character colors should remain generated vertex-color/material values derived from high-level appearance or seed configuration until a final 3D character customization contract is chosen.
 - Preserve strong directional readability in orthographic camera views; pose, face marker, body proportions, and shadow/readability matter more than animation polish at this stage.
 - Tune the player against the style-preset camera and five-landmark proxy blockout before changing the actor asset direction.
 
@@ -89,6 +104,7 @@ PASS: HumanBody3D adapter smoke test
 
 ## Next Steps
 
-- Continue tuning actor movement speed, camera-relative movement, `Camera3DController` follow offset, and camera orbit feel inside the combined world scene before adding landmark hotspots.
-- Keep landmark behavior non-interactive until the five-proxy blockout is visually readable at the intended camera scale.
-- Decide whether the first 3D resident slice should use this block mannequin, billboarded LPC sprites, or a real low-poly character mesh.
+- Skin or otherwise bind the generated body surface to the procedural skeleton so mathematical locomotion visibly deforms the character body, not only attachment targets.
+- Add terrain-aware foot targets and hip offsets inside `ProceduralLowPolyCharacterRig` after the current stair/floor snap behavior remains stable.
+- Add secondary inertia offsets for hands, hair, and future clothing/gear attachments once the attachment nodes carry visible child geometry.
+- Tune actor movement speed, camera-relative movement, `Camera3DController` follow offset, and camera orbit feel with the procedural rig enabled inside the combined world scene before adding landmark hotspots.

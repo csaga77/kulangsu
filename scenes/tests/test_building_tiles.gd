@@ -30,6 +30,11 @@ const MIN_STAIR_DOWN_FLOOR_FRAMES := 50
 const MAX_STAIR_DOWN_UNGROUNDED_RUN := 8
 const MAX_STAIR_DESCENT_DIP := 0.25
 const MAX_STAIR_FRAME_DROP := 0.8
+const STAIR_JUMP_CYCLES := 4
+const STAIR_JUMP_FRAMES := 40
+const MAX_STAIR_JUMP_FLOOR_GAP := 0.12
+const MAX_STAIR_JUMP_FRAME_DROP := 0.25
+const FLOOR_SAMPLE_MISSING := -INF
 
 @onready var m_grid: GridMap = $GridMap
 @onready var m_player: HumanBody3D = $human_body_3d
@@ -57,6 +62,7 @@ func _run_smoke_checks() -> void:
 	_validate_mesh_library_collision(failures)
 	await _validate_character_building_collision(failures)
 	await _validate_character_stair_navigation(failures)
+	await _validate_character_stair_jump_stability(failures)
 
 	_reset_player()
 	if failures.is_empty():
@@ -284,10 +290,84 @@ func _validate_character_stair_navigation_at_speed(
 	probe.queue_free()
 
 
+func _validate_character_stair_jump_stability(failures: Array[String]) -> void:
+	var probe := HUMAN_BODY_3D_SCENE.instantiate() as HumanBody3D
+	if probe == null:
+		failures.append("HumanBody3D stair jump probe failed to instantiate")
+		return
+
+	probe.name = "CharacterStairJumpProbe"
+	probe.visible = false
+	probe.body_radius = 0.28
+	probe.body_height = 1.72
+	add_child(probe)
+
+	await get_tree().physics_frame
+	probe.global_position = STAIR_PROBE_START
+	probe.velocity = Vector3.ZERO
+	for i in range(8):
+		probe.velocity.y = STAIR_PROBE_GROUNDING_VELOCITY
+		probe.move_with_speed(Vector3.ZERO, 0.0)
+		await get_tree().physics_frame
+
+	for i in range(STAIR_UP_FRAMES):
+		probe.velocity.y = STAIR_PROBE_GROUNDING_VELOCITY
+		probe.move_with_speed(Vector3.FORWARD, PROBE_SPEED)
+		await get_tree().physics_frame
+
+	var top_floor_y := _sample_probe_floor_y(probe)
+	if top_floor_y == FLOOR_SAMPLE_MISSING:
+		failures.append("HumanBody3D stair jump probe could not sample the top stair floor")
+		probe.queue_free()
+		return
+
+	var max_floor_gap := 0.0
+	var max_frame_drop := 0.0
+	for cycle in range(STAIR_JUMP_CYCLES):
+		probe.jump()
+		for i in range(STAIR_JUMP_FRAMES):
+			var before_y := probe.global_position.y
+			probe.move_with_speed(Vector3.ZERO, 0.0)
+			var floor_y := _sample_probe_floor_y(probe)
+			if floor_y != FLOOR_SAMPLE_MISSING:
+				max_floor_gap = maxf(max_floor_gap, absf(probe.global_position.y - floor_y))
+			max_frame_drop = maxf(max_frame_drop, before_y - probe.global_position.y)
+			await get_tree().physics_frame
+
+	if max_floor_gap > MAX_STAIR_JUMP_FLOOR_GAP:
+		failures.append(
+			"HumanBody3D stair jump probe floated %.2f units away from the floor" % max_floor_gap
+		)
+	if max_frame_drop > MAX_STAIR_JUMP_FRAME_DROP:
+		failures.append(
+			"HumanBody3D stair jump probe snapped down %.2f units during repeated jumps" % max_frame_drop
+		)
+	if !_is_probe_grounded(probe):
+		failures.append("HumanBody3D stair jump probe did not settle grounded after repeated jumps")
+
+	probe.queue_free()
+
+
 func _is_probe_grounded(probe: HumanBody3D) -> bool:
 	if probe.has_method("is_grounded"):
 		return bool(probe.call("is_grounded"))
 	return probe.is_on_floor()
+
+
+func _sample_probe_floor_y(probe: HumanBody3D) -> float:
+	var query := PhysicsRayQueryParameters3D.create(
+		probe.global_position + Vector3.UP,
+		probe.global_position + (Vector3.DOWN * 3.0)
+	)
+	query.exclude = [probe.get_rid()]
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return FLOOR_SAMPLE_MISSING
+	var hit_normal: Vector3 = hit.get("normal", Vector3.ZERO)
+	if hit_normal.y <= MAX_WALL_NORMAL_Y:
+		return FLOOR_SAMPLE_MISSING
+	var hit_position: Vector3 = hit.get("position", Vector3.ZERO)
+	return hit_position.y
 
 
 func _append_stair_failure(failures: Array[String], stair_probe_speed: float, message: String) -> void:

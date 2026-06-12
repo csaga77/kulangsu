@@ -21,6 +21,7 @@ const MAX_STEP_LATERAL_DRIFT_RATIO := 0.1
 const PLACEMENT_QUERY_FLOOR_CLEARANCE := 0.01
 const FLOOR_SAMPLE_MISSING := -INF
 const BaseController3DScript = preload("res://characters/control/base_controller_3d.gd")
+const ProceduralLowPolyCharacterRigScript = preload("res://characters/procedural_low_poly_character_rig.gd")
 
 enum FacialMoodEnum {
 	MANUAL = 0,
@@ -111,6 +112,24 @@ enum FacialActionEnum {
 		floor_snap_length = floor_snap_distance
 @export_range(0.0, 5.0, 0.05) var grounding_speed := 1.6
 
+@export_group("Procedural Low Poly")
+@export var use_procedural_rig := false:
+	set(value):
+		if use_procedural_rig == value:
+			return
+		use_procedural_rig = value
+		_sync_procedural_rig()
+
+@export var procedural_seed := "kulangsu_player":
+	set(value):
+		var normalized_seed := value
+		if normalized_seed.is_empty():
+			normalized_seed = "kulangsu_player"
+		if procedural_seed == normalized_seed:
+			return
+		procedural_seed = normalized_seed
+		_sync_procedural_rig()
+
 @export_group("Face")
 @export var facial_mood: FacialMoodEnum = FacialMoodEnum.NORMAL:
 	set(value):
@@ -166,6 +185,7 @@ var m_direction_marker_part: MeshInstance3D = null
 var m_contact_shadow_part: MeshInstance3D = null
 var m_debug_box_part: MeshInstance3D = null
 var m_collision_shape: CollisionShape3D = null
+var m_procedural_rig: Node3D = null
 
 var m_skin_color := Color(0.86, 0.64, 0.48, 1.0)
 var m_hair_color := Color(0.30, 0.18, 0.10, 1.0)
@@ -234,14 +254,14 @@ func move_with_speed(direction_vector: Vector3, movement_speed: float) -> void:
 	var grounded_before_move := is_grounded()
 	if grounded_before_move and !m_is_currently_jumping:
 		velocity.y = -grounding_speed
-	var can_reacquire_floor := grounded_before_move or (velocity.y <= 0.0 and !m_is_currently_jumping)
+	var can_reacquire_floor := !m_is_currently_jumping and (grounded_before_move or velocity.y <= 0.0)
 	var start_position := global_position
 	var horizontal_motion := Vector3(velocity.x, 0.0, velocity.z) * get_physics_process_delta_time()
 	var step_direction := Vector3.ZERO
 	if horizontal_motion.length_squared() > 0.000001:
 		step_direction = horizontal_motion.normalized()
 		m_last_step_direction = step_direction
-	elif m_last_step_direction.length_squared() > 0.000001:
+	elif velocity.y < -MIN_STEP_FLOOR_ADJUSTMENT and m_last_step_direction.length_squared() > 0.000001:
 		step_direction = m_last_step_direction
 	move_and_slide()
 	m_step_snap_grounded = is_on_floor()
@@ -318,14 +338,20 @@ func _snap_to_walkable_step_floor(
 	if is_nan(floor_y):
 		var start_floor_y := _find_walkable_step_floor_y(start_position, horizontal_direction, reference_y)
 		if !is_nan(start_floor_y):
-			var start_snap_position := Vector3(start_position.x, start_floor_y, start_position.z)
-			if _can_place_body_at(start_snap_position):
-				global_position = start_snap_position
-				velocity.x = 0.0
-				velocity.z = 0.0
-				velocity.y = minf(velocity.y, 0.0)
-				_refresh_floor_state_after_manual_snap()
-				return true
+			var would_drop_to_older_floor := (
+				requested_distance > MIN_STEP_FLOOR_ADJUSTMENT
+				and actual_forward_distance >= requested_distance * MIN_STEP_BLOCKED_PROGRESS_RATIO
+				and start_floor_y < start_position.y - MIN_STEP_FLOOR_ADJUSTMENT
+			)
+			if !would_drop_to_older_floor:
+				var start_snap_position := Vector3(start_position.x, start_floor_y, start_position.z)
+				if _can_place_body_at(start_snap_position):
+					global_position = start_snap_position
+					velocity.x = 0.0
+					velocity.z = 0.0
+					velocity.y = minf(velocity.y, 0.0)
+					_refresh_floor_state_after_manual_snap()
+					return true
 		return false
 
 	var floor_delta_from_start := floor_y - start_position.y
@@ -504,12 +530,13 @@ func jump() -> void:
 	if m_is_currently_jumping:
 		return
 	m_is_currently_jumping = true
+	m_step_snap_grounded = false
 	m_jump_timer = 0.0
 	_update_state()
 
 
 func is_grounded() -> bool:
-	return is_on_floor() or m_step_snap_grounded
+	return !m_is_currently_jumping and (is_on_floor() or m_step_snap_grounded)
 
 
 func get_direction_vector() -> Vector3:
@@ -658,6 +685,8 @@ func _process_visual_motion(delta: float) -> void:
 
 	_apply_visual_offset()
 	_sync_limb_motion()
+	if use_procedural_rig and is_instance_valid(m_procedural_rig) and m_procedural_rig.has_method("process_motion"):
+		m_procedural_rig.call("process_motion", delta, is_walking, is_running, m_is_currently_jumping)
 
 
 func _get_motion_bob_y() -> float:
@@ -731,6 +760,7 @@ func _ensure_visual_nodes() -> void:
 	m_face_marker_part = _ensure_box_part("FaceMarker", Vector3(0.20, 0.065, 0.04), Vector3(0.0, 1.49, 0.175))
 	m_direction_marker_part = _ensure_box_part("DirectionMarker", Vector3(0.065, 0.16, 0.045), Vector3(0.0, 1.38, 0.178))
 	m_debug_box_part = _ensure_box_part("DebugBox", Vector3(body_radius * 2.0, body_height, body_radius * 2.0), Vector3(0.0, body_height * 0.5, 0.0))
+	m_procedural_rig = _ensure_procedural_rig()
 	_sync_body_profile()
 
 
@@ -751,6 +781,18 @@ func _ensure_box_part(part_name: String, size: Vector3, local_position: Vector3)
 	box_mesh.size = size
 	part.position = local_position
 	return part
+
+
+func _ensure_procedural_rig() -> Node3D:
+	var parent := m_visual_root if is_instance_valid(m_visual_root) else self
+	var rig := parent.get_node_or_null("ProceduralLowPolyCharacterRig") as Node3D
+	if rig == null:
+		rig = ProceduralLowPolyCharacterRigScript.new()
+		rig.name = "ProceduralLowPolyCharacterRig"
+		parent.add_child(rig)
+		if Engine.is_editor_hint():
+			rig.owner = null
+	return rig
 
 
 func _ensure_contact_shadow_part() -> MeshInstance3D:
@@ -778,6 +820,7 @@ func _sync_body_profile() -> void:
 	_sync_visual_profile()
 	_sync_debug_box()
 	_sync_contact_shadow()
+	_sync_procedural_rig()
 
 
 func _sync_collision_shape() -> void:
@@ -807,6 +850,41 @@ func _sync_visual_profile() -> void:
 	_sync_box_part(m_right_shoe_part, Vector3(0.22, 0.12, 0.28), Vector3(0.13, 0.08, 0.04))
 	_sync_box_part(m_face_marker_part, Vector3(0.20, 0.065, 0.04), Vector3(0.0, 1.49, 0.175))
 	_sync_box_part(m_direction_marker_part, Vector3(0.065, 0.16, 0.045), Vector3(0.0, 1.38, 0.178))
+	_sync_legacy_visual_visibility()
+
+
+func _sync_procedural_rig() -> void:
+	if !is_instance_valid(m_procedural_rig):
+		if !is_instance_valid(m_visual_root):
+			return
+		m_procedural_rig = _ensure_procedural_rig()
+	if !is_instance_valid(m_procedural_rig):
+		return
+
+	m_procedural_rig.visible = use_procedural_rig
+	if m_procedural_rig.has_method("configure_from_seed"):
+		m_procedural_rig.call("configure_from_seed", procedural_seed, body_height, body_radius)
+	_sync_legacy_visual_visibility()
+
+
+func _sync_legacy_visual_visibility() -> void:
+	var legacy_visible := !use_procedural_rig
+	for part in [
+		m_body_part,
+		m_head_part,
+		m_hair_part,
+		m_torso_part,
+		m_left_arm_part,
+		m_right_arm_part,
+		m_left_leg_part,
+		m_right_leg_part,
+		m_left_shoe_part,
+		m_right_shoe_part,
+		m_face_marker_part,
+		m_direction_marker_part,
+	]:
+		if is_instance_valid(part):
+			part.visible = legacy_visible
 
 
 func _sync_box_part(part: MeshInstance3D, base_size: Vector3, base_position: Vector3) -> void:
