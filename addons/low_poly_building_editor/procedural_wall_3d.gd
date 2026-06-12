@@ -196,6 +196,7 @@ func rebuild_wall_mesh() -> void:
 
 	if vertices.is_empty():
 		mesh = null
+		m_opening_signature = _build_opening_signature()
 		m_is_rebuilding = false
 		return
 

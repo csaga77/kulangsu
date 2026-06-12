@@ -76,6 +76,7 @@ func find_merge_target(
 	local_start: Vector3,
 	local_end: Vector3,
 	thickness: float,
+	height: float,
 	ignored_wall: Node = null
 ) -> Dictionary:
 	var new_axis := _flat_direction(local_start, local_end)
@@ -89,6 +90,8 @@ func find_merge_target(
 		if wall == ignored_wall:
 			continue
 		if !is_equal_approx(wall.wall_thickness, thickness):
+			continue
+		if !is_equal_approx(wall.wall_height, height):
 			continue
 		var existing_axis := _flat_direction(wall.start_point, wall.end_point)
 		if existing_axis == Vector2.ZERO:

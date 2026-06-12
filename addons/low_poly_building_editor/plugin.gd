@@ -125,7 +125,7 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 			if key_event.keycode == KEY_ESCAPE:
 				_cancel_active_preview()
 				return _handled()
-			if key_event.keycode == KEY_R and (m_tool_mode == MODE_PROP or m_tool_mode == MODE_WINDOW):
+			if key_event.keycode == KEY_R and m_tool_mode == MODE_PROP:
 				m_prop_rotation_y += PI * 0.5
 				return _handled()
 
@@ -146,13 +146,13 @@ func is_building_tool_active() -> bool:
 	return m_tool_mode != MODE_SELECT
 
 
-func _handle_viewport_overlay_input(camera: Camera3D, event: InputEvent) -> bool:
+func handle_viewport_overlay_input(camera: Camera3D, event: InputEvent) -> bool:
 	if m_tool_mode == MODE_SELECT:
 		return false
 	return _forward_3d_gui_input(camera, event) != EditorPlugin.AFTER_GUI_INPUT_PASS
 
 
-func _notify_viewport_overlay_event(event_name: String) -> void:
+func notify_viewport_overlay_event(event_name: String) -> void:
 	_set_status("Viewport overlay captured %s." % event_name)
 
 
@@ -282,7 +282,13 @@ func _commit_wall(coordinator: BuildingEditor3DScript, local_start: Vector3, loc
 
 	_apply_wall_settings_to_coordinator(coordinator)
 	var thickness := float(m_wall_settings["thickness"])
-	var merge := coordinator.find_merge_target(local_start, local_end, thickness, m_wall_preview)
+	var merge := coordinator.find_merge_target(
+		local_start,
+		local_end,
+		thickness,
+		float(m_wall_settings["height"]),
+		m_wall_preview
+	)
 	var undo_redo := get_undo_redo()
 	if !merge.is_empty():
 		var target := merge["wall"] as ProceduralWall3DScript
@@ -348,7 +354,7 @@ func _update_window_preview(wall: ProceduralWall3DScript, hit: Dictionary) -> vo
 	local_hit.y = clampf(local_hit.y, 0.0, wall.wall_height)
 	local_hit.z = face_sign * (wall.wall_thickness * 0.5 + 0.035)
 	opening.position = local_hit
-	opening.rotation = Vector3(0.0, m_prop_rotation_y, 0.0)
+	opening.rotation = Vector3.ZERO
 	var center := Vector2(local_hit.x, local_hit.y)
 	var size := Vector2(opening.opening_width, opening.opening_height)
 	m_preview_valid = wall.can_place_opening(center, size, 0.04, opening)
@@ -377,7 +383,7 @@ func _update_prop_preview(wall: ProceduralWall3DScript, hit: Dictionary) -> void
 
 	var parent := wall as Node
 	if parent == null:
-		parent = _get_or_create_coordinator(true)
+		parent = _get_or_create_coordinator(false)
 	if parent == null:
 		parent = get_editor_interface().get_edited_scene_root()
 	if parent == null:
@@ -411,7 +417,7 @@ func _commit_placement() -> void:
 		return
 
 	if m_tool_mode == MODE_WINDOW:
-		var opening_preview := m_prop_preview as BuildingOpening3D
+		var opening_preview := m_prop_preview as BuildingOpening3DScript
 		var wall := m_preview_parent as ProceduralWall3DScript
 		if opening_preview == null or wall == null:
 			return
@@ -439,14 +445,22 @@ func _commit_placement() -> void:
 	if prop == null:
 		return
 	prop.name = scene_path.get_file().get_basename()
-	prop.transform = m_prop_preview.transform
-	prop.global_transform = m_prop_preview.global_transform
 	var scene_root := get_editor_interface().get_edited_scene_root()
+	var parent: Node = m_preview_parent
+	if parent == scene_root and !(parent is BuildingEditor3DScript):
+		var coordinator := _get_or_create_coordinator(true)
+		if coordinator != null:
+			parent = coordinator
+	var parent_3d := parent as Node3D
+	if parent_3d != null:
+		prop.transform = parent_3d.global_transform.affine_inverse() * m_prop_preview.global_transform
+	else:
+		prop.transform = m_prop_preview.global_transform
 	var undo_redo := get_undo_redo()
 	undo_redo.create_action("Place Building Prop")
 	undo_redo.add_do_reference(prop)
-	undo_redo.add_do_method(self, "_do_add_node", m_preview_parent, prop, scene_root, true)
-	undo_redo.add_undo_method(self, "_undo_remove_node", m_preview_parent, prop)
+	undo_redo.add_do_method(self, "_do_add_node", parent, prop, scene_root, true)
+	undo_redo.add_undo_method(self, "_undo_remove_node", parent, prop)
 	undo_redo.commit_action()
 	_set_status("Placed prop.")
 

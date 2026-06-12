@@ -16,8 +16,13 @@ func _input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventKey:
-		var camera := _get_first_camera()
-		if camera != null and bool(m_plugin.call("_handle_viewport_overlay_input", camera, event)):
+		var key_viewport_state := _find_viewport_state(get_viewport().get_mouse_position())
+		if key_viewport_state.is_empty():
+			return
+		var key_camera := key_viewport_state["camera"] as Camera3D
+		if key_camera == null:
+			return
+		if bool(m_plugin.call("handle_viewport_overlay_input", key_camera, event)):
 			get_viewport().set_input_as_handled()
 		return
 
@@ -38,7 +43,7 @@ func _input(event: InputEvent) -> void:
 		local_mouse.position = Vector2(viewport_state["local_position"])
 		local_mouse.global_position = local_mouse.position
 
-	if bool(m_plugin.call("_handle_viewport_overlay_input", camera_3d, local_event)):
+	if bool(m_plugin.call("handle_viewport_overlay_input", camera_3d, local_event)):
 		get_viewport().set_input_as_handled()
 
 
@@ -66,14 +71,3 @@ func _find_viewport_state(mouse_position: Vector2) -> Dictionary:
 			"local_position": mouse_position - rect.position,
 		}
 	return {}
-
-
-func _get_first_camera() -> Camera3D:
-	for index in range(4):
-		var sub_viewport := EditorInterface.get_editor_viewport_3d(index)
-		if sub_viewport == null:
-			continue
-		var camera := sub_viewport.get_camera_3d()
-		if camera != null:
-			return camera
-	return null

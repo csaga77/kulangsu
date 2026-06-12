@@ -18,7 +18,7 @@
 - `BuildingEditor3D` is the coordinator node for one building assembly.
 - `ProceduralWall3D` stores its parent-local `start_point` and `end_point`; its node transform and mesh are rebuilt from those endpoints.
 - Wall drawing snaps to `BuildingEditor3D.grid_step` and can lock to 45-degree increments for eight-way wall direction.
-- New wall spans merge into an existing collinear wall of matching thickness when their ranges overlap.
+- New wall spans merge into an existing collinear wall of matching thickness and height when their ranges overlap.
 - `BuildingOpening3D` children create rectangular wall holes without boolean operations. The wall compiles a split box-grid mesh around all openings.
 - Wall meshes duplicate vertices per face, carry vertex colors, and use rough flat materials for hard low-poly face breaks.
 - Wall mesh normals point outward, triangle winding follows Godot's `BoxMesh` convention, and wall materials use backface culling so lighting follows the generated face normals.

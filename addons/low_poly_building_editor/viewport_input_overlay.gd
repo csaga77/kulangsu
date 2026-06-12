@@ -27,17 +27,17 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	if m_plugin == null or !is_instance_valid(m_plugin):
 		return
-	if event is InputEventMouseButton and m_plugin.has_method("_notify_viewport_overlay_event"):
+	if event is InputEventMouseButton and m_plugin.has_method("notify_viewport_overlay_event"):
 		var mouse_button := event as InputEventMouseButton
 		if mouse_button.button_index == MOUSE_BUTTON_LEFT:
 			m_plugin.call(
-				"_notify_viewport_overlay_event",
+				"notify_viewport_overlay_event",
 				"press" if mouse_button.pressed else "release"
 			)
 	var camera := _get_sub_viewport_camera()
 	if camera == null:
 		return
-	var handled := bool(m_plugin.call("_handle_viewport_overlay_input", camera, event))
+	var handled := bool(m_plugin.call("handle_viewport_overlay_input", camera, event))
 	if handled:
 		accept_event()
 
