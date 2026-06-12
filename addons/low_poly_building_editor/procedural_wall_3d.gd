@@ -3,7 +3,14 @@ class_name ProceduralWall3D
 extends MeshInstance3D
 
 const GENERATED_META := &"procedural_wall_generated"
+const PREVIEW_META := &"building_editor_preview"
+const OPENING_META := &"building_editor_opening"
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
+const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
+const MergedWallMeshBuilderScript = preload("res://addons/low_poly_building_editor/merged_wall_mesh_builder.gd")
+
+const SEGMENT_ASSIGN_MARGIN := 0.25
+const SEGMENT_ASSIGN_DEPTH := 0.2
 
 @export var rebuild := false:
 	set(value):
@@ -46,6 +53,14 @@ const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/b
 		if wall_color == value:
 			return
 		wall_color = value
+		_request_rebuild()
+
+## Additional merged wall spans absorbed from intersecting walls. Points are
+## parent-local, like start_point/end_point. The node transform and primary
+## span stay derived from start_point/end_point.
+@export var extra_segments: Array[WallSegment3D] = []:
+	set(value):
+		extra_segments = value
 		_request_rebuild()
 
 @export var build_on_ready := true
@@ -119,21 +134,56 @@ func get_wall_direction() -> Vector3:
 	return flat_delta.normalized()
 
 
-func can_place_opening(center: Vector2, size: Vector2, clearance: float = 0.03, ignored_node: Node = null) -> bool:
+func get_segment_count() -> int:
+	return 1 + extra_segments.size()
+
+
+## Segment 0 is the primary span synthesized from this node's exports; the
+## rest map to extra_segments. Points are parent-local for every index.
+func get_segment(index: int) -> WallSegment3DScript:
+	if index <= 0 or index > extra_segments.size():
+		var primary := WallSegment3DScript.new()
+		primary.start_point = start_point
+		primary.end_point = end_point
+		primary.thickness = wall_thickness
+		primary.height = wall_height
+		primary.color = wall_color
+		return primary
+	return extra_segments[index - 1]
+
+
+## Frame of a segment expressed in this node's local space. Segment 0 is the
+## identity because the node transform is derived from the primary span.
+func get_segment_local_frame(index: int) -> Transform3D:
+	if index <= 0 or index > extra_segments.size():
+		return Transform3D.IDENTITY
+	return transform.affine_inverse() * extra_segments[index - 1].get_frame()
+
+
+func can_place_opening(
+	center: Vector2,
+	size: Vector2,
+	clearance: float = 0.03,
+	ignored_node: Node = null,
+	segment_index: int = 0
+) -> bool:
 	if size.x <= 0.0 or size.y <= 0.0:
 		return false
-	var wall_length := get_wall_length()
+	var segment := get_segment(segment_index)
+	var segment_length := segment.get_length()
 	var candidate := Rect2(center - size * 0.5, size)
 	if candidate.position.x < clearance:
 		return false
-	if candidate.end.x > wall_length - clearance:
+	if candidate.end.x > segment_length - clearance:
 		return false
 	if candidate.position.y < clearance:
 		return false
-	if candidate.end.y > wall_height - clearance:
+	if candidate.end.y > segment.height - clearance:
 		return false
 
-	for opening in _collect_openings(ignored_node):
+	var rects_per_segment := _assigned_opening_rects(ignored_node)
+	var rects: Array[Rect2] = rects_per_segment[clampi(segment_index, 0, rects_per_segment.size() - 1)]
+	for opening in rects:
 		if candidate.grow(clearance).intersects(opening):
 			return false
 	return true
@@ -145,54 +195,27 @@ func rebuild_wall_mesh() -> void:
 	_sync_transform_from_points()
 	_clear_generated_children()
 
-	var wall_length := get_wall_length()
-	if wall_length <= 0.001:
-		mesh = null
-		m_opening_signature = _build_opening_signature()
-		m_is_rebuilding = false
-		return
-
-	var openings := _collect_openings()
-	var x_cuts: Array[float] = [0.0, wall_length]
-	var y_cuts: Array[float] = [0.0, wall_height]
-	for opening in openings:
-		x_cuts.append(clampf(opening.position.x, 0.0, wall_length))
-		x_cuts.append(clampf(opening.end.x, 0.0, wall_length))
-		y_cuts.append(clampf(opening.position.y, 0.0, wall_height))
-		y_cuts.append(clampf(opening.end.y, 0.0, wall_height))
-	x_cuts = _sorted_unique_floats(x_cuts)
-	y_cuts = _sorted_unique_floats(y_cuts)
+	var segments: Array[WallSegment3DScript] = []
+	var frames: Array[Transform3D] = []
+	for index in range(get_segment_count()):
+		segments.append(get_segment(index))
+		frames.append(get_segment_local_frame(index))
 
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
 	var collision_faces := PackedVector3Array()
-	var half_thickness := wall_thickness * 0.5
-
-	for x_index in range(x_cuts.size() - 1):
-		var x0 := x_cuts[x_index]
-		var x1 := x_cuts[x_index + 1]
-		if x1 - x0 <= 0.001:
-			continue
-		for y_index in range(y_cuts.size() - 1):
-			var y0 := y_cuts[y_index]
-			var y1 := y_cuts[y_index + 1]
-			if y1 - y0 <= 0.001:
-				continue
-			var center := Vector2((x0 + x1) * 0.5, (y0 + y1) * 0.5)
-			if _point_inside_opening(center, openings):
-				continue
-			_append_box(
-				vertices,
-				normals,
-				colors,
-				indices,
-				collision_faces,
-				Vector3(x0, y0, -half_thickness),
-				Vector3(x1, y1, half_thickness),
-				wall_color
-			)
+	MergedWallMeshBuilderScript.append_segments(
+		segments,
+		frames,
+		_assigned_opening_rects(),
+		vertices,
+		normals,
+		colors,
+		indices,
+		collision_faces
+	)
 
 	if vertices.is_empty():
 		mesh = null
@@ -238,131 +261,74 @@ func _sync_transform_from_points() -> void:
 	transform = Transform3D(basis, start_point)
 
 
-func _collect_openings(ignored_node: Node = null) -> Array[Rect2]:
-	var openings: Array[Rect2] = []
-	var wall_length := get_wall_length()
+## One Array[Rect2] per segment, mapping each child opening to the nearest
+## segment face. Rects are padded by opening_padding and clamped to the
+## segment span, ready for mesh-cut consumption.
+func _assigned_opening_rects(ignored_node: Node = null) -> Array:
+	var rects_per_segment: Array = []
+	for index in range(get_segment_count()):
+		var empty: Array[Rect2] = []
+		rects_per_segment.append(empty)
 	for child in get_children():
 		if child == ignored_node:
 			continue
 		if child.has_meta(GENERATED_META):
 			continue
-		var rect := _opening_rect_from_child(child)
-		if rect.size.x <= 0.0 or rect.size.y <= 0.0:
-			continue
-		var padded_rect := Rect2(
-			rect.position - Vector2(opening_padding, opening_padding),
-			rect.size + Vector2(opening_padding * 2.0, opening_padding * 2.0)
-		)
-		var x0 := clampf(padded_rect.position.x, 0.0, wall_length)
-		var x1 := clampf(padded_rect.end.x, 0.0, wall_length)
-		var y0 := clampf(padded_rect.position.y, 0.0, wall_height)
-		var y1 := clampf(padded_rect.end.y, 0.0, wall_height)
-		if x1 - x0 <= 0.001 or y1 - y0 <= 0.001:
-			continue
-		openings.append(Rect2(Vector2(x0, y0), Vector2(x1 - x0, y1 - y0)))
-	openings.sort_custom(_sort_rects_by_x)
-	return openings
-
-
-func _opening_rect_from_child(child: Node) -> Rect2:
-	if child is BuildingOpening3DScript:
-		var typed_opening := child as BuildingOpening3DScript
-		return typed_opening.get_opening_rect()
-	if child.has_meta(&"building_editor_opening"):
 		var child_3d := child as Node3D
 		if child_3d == null:
-			return Rect2()
+			continue
+		var size := _opening_size_from_child(child)
+		if size.x <= 0.0 or size.y <= 0.0:
+			continue
+		var segment_index := _best_segment_for_position(child_3d.position)
+		var segment := get_segment(segment_index)
+		var frame := get_segment_local_frame(segment_index)
+		var local := frame.affine_inverse() * child_3d.position
+		var padded := Rect2(
+			Vector2(local.x, local.y) - size * 0.5 - Vector2(opening_padding, opening_padding),
+			size + Vector2(opening_padding * 2.0, opening_padding * 2.0)
+		)
+		var segment_length := segment.get_length()
+		var x0 := clampf(padded.position.x, 0.0, segment_length)
+		var x1 := clampf(padded.end.x, 0.0, segment_length)
+		var y0 := clampf(padded.position.y, 0.0, segment.height)
+		var y1 := clampf(padded.end.y, 0.0, segment.height)
+		if x1 - x0 <= 0.001 or y1 - y0 <= 0.001:
+			continue
+		var rects: Array[Rect2] = rects_per_segment[segment_index]
+		rects.append(Rect2(Vector2(x0, y0), Vector2(x1 - x0, y1 - y0)))
+	return rects_per_segment
+
+
+func _best_segment_for_position(local_position: Vector3) -> int:
+	var best_index := 0
+	var best_depth := INF
+	for index in range(get_segment_count()):
+		var segment := get_segment(index)
+		var frame := get_segment_local_frame(index)
+		var local := frame.affine_inverse() * local_position
+		if local.x < -SEGMENT_ASSIGN_MARGIN or local.x > segment.get_length() + SEGMENT_ASSIGN_MARGIN:
+			continue
+		if local.y < -SEGMENT_ASSIGN_MARGIN or local.y > segment.height + SEGMENT_ASSIGN_MARGIN:
+			continue
+		var depth := absf(local.z)
+		if depth > segment.thickness * 0.5 + SEGMENT_ASSIGN_DEPTH:
+			continue
+		if depth < best_depth:
+			best_depth = depth
+			best_index = index
+	return best_index
+
+
+func _opening_size_from_child(child: Node) -> Vector2:
+	if child is BuildingOpening3DScript:
+		var typed_opening := child as BuildingOpening3DScript
+		return Vector2(typed_opening.opening_width, typed_opening.opening_height)
+	if child.has_meta(OPENING_META):
 		var width := float(child.get_meta(&"opening_width", 1.0))
 		var height := float(child.get_meta(&"opening_height", 1.0))
-		var size := Vector2(maxf(width, 0.0), maxf(height, 0.0))
-		var center := Vector2(child_3d.position.x, child_3d.position.y)
-		return Rect2(center - size * 0.5, size)
-	return Rect2()
-
-
-func _sort_rects_by_x(a: Rect2, b: Rect2) -> bool:
-	if is_equal_approx(a.position.x, b.position.x):
-		return a.position.y < b.position.y
-	return a.position.x < b.position.x
-
-
-func _sorted_unique_floats(values: Array[float]) -> Array[float]:
-	values.sort()
-	var result: Array[float] = []
-	for value in values:
-		if result.is_empty() or absf(result[result.size() - 1] - value) > 0.001:
-			result.append(value)
-	return result
-
-
-func _point_inside_opening(point: Vector2, openings: Array[Rect2]) -> bool:
-	for opening in openings:
-		if opening.has_point(point):
-			return true
-	return false
-
-
-func _append_box(
-	vertices: PackedVector3Array,
-	normals: PackedVector3Array,
-	colors: PackedColorArray,
-	indices: PackedInt32Array,
-	collision_faces: PackedVector3Array,
-	min_corner: Vector3,
-	max_corner: Vector3,
-	color: Color
-) -> void:
-	var p000 := Vector3(min_corner.x, min_corner.y, min_corner.z)
-	var p001 := Vector3(min_corner.x, min_corner.y, max_corner.z)
-	var p010 := Vector3(min_corner.x, max_corner.y, min_corner.z)
-	var p011 := Vector3(min_corner.x, max_corner.y, max_corner.z)
-	var p100 := Vector3(max_corner.x, min_corner.y, min_corner.z)
-	var p101 := Vector3(max_corner.x, min_corner.y, max_corner.z)
-	var p110 := Vector3(max_corner.x, max_corner.y, min_corner.z)
-	var p111 := Vector3(max_corner.x, max_corner.y, max_corner.z)
-
-	_append_quad(vertices, normals, colors, indices, collision_faces, p001, p101, p111, p011, color)
-	_append_quad(vertices, normals, colors, indices, collision_faces, p100, p000, p010, p110, color)
-	_append_quad(vertices, normals, colors, indices, collision_faces, p000, p001, p011, p010, color)
-	_append_quad(vertices, normals, colors, indices, collision_faces, p101, p100, p110, p111, color)
-	_append_quad(vertices, normals, colors, indices, collision_faces, p011, p111, p110, p010, color)
-	_append_quad(vertices, normals, colors, indices, collision_faces, p000, p100, p101, p001, color)
-
-
-func _append_quad(
-	vertices: PackedVector3Array,
-	normals: PackedVector3Array,
-	colors: PackedColorArray,
-	indices: PackedInt32Array,
-	collision_faces: PackedVector3Array,
-	a: Vector3,
-	b: Vector3,
-	c: Vector3,
-	d: Vector3,
-	color: Color
-) -> void:
-	var normal := (b - a).cross(c - a).normalized()
-	var start_index := vertices.size()
-	vertices.append(a)
-	vertices.append(b)
-	vertices.append(c)
-	vertices.append(d)
-	for index in range(4):
-		normals.append(normal)
-		colors.append(color)
-	indices.append(start_index)
-	indices.append(start_index + 2)
-	indices.append(start_index + 1)
-	indices.append(start_index)
-	indices.append(start_index + 3)
-	indices.append(start_index + 2)
-
-	collision_faces.append(a)
-	collision_faces.append(c)
-	collision_faces.append(b)
-	collision_faces.append(a)
-	collision_faces.append(d)
-	collision_faces.append(c)
+		return Vector2(maxf(width, 0.0), maxf(height, 0.0))
+	return Vector2.ZERO
 
 
 func _add_collision_body(collision_faces: PackedVector3Array) -> void:
@@ -416,22 +382,37 @@ func _on_child_tree_changed(_child: Node) -> void:
 
 func _build_opening_signature() -> String:
 	var parts := PackedStringArray()
+	for segment in extra_segments:
+		if segment == null:
+			continue
+		parts.append(
+			"seg:%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f" % [
+				segment.start_point.x,
+				segment.start_point.y,
+				segment.start_point.z,
+				segment.end_point.x,
+				segment.end_point.y,
+				segment.end_point.z,
+				segment.thickness,
+				segment.height,
+			]
+		)
 	for child in get_children():
 		if child.has_meta(GENERATED_META):
 			continue
 		var child_3d := child as Node3D
 		if child_3d == null:
 			continue
-		var rect := _opening_rect_from_child(child)
-		if rect.size == Vector2.ZERO:
+		var size := _opening_size_from_child(child)
+		if size == Vector2.ZERO:
 			continue
 		parts.append(
 			"%.3f,%.3f,%.3f,%.3f,%.3f" % [
-				rect.position.x,
-				rect.position.y,
-				rect.size.x,
-				rect.size.y,
+				child_3d.position.x,
+				child_3d.position.y,
 				child_3d.position.z,
+				size.x,
+				size.y,
 			]
 		)
 	return "|".join(parts)

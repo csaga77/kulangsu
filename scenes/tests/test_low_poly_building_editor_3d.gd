@@ -4,6 +4,7 @@ extends Node3D
 const BuildingEditor3DScript = preload("res://addons/low_poly_building_editor/building_editor_3d.gd")
 const ProceduralWall3DScript = preload("res://addons/low_poly_building_editor/procedural_wall_3d.gd")
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
+const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
 
 var m_failures: Array[String] = []
 
@@ -41,6 +42,7 @@ func _run_smoke_checks() -> void:
 	_validate_opening_rules(wall)
 	_validate_snapping(coordinator)
 	_validate_merge_detection(coordinator)
+	_validate_intersection_merge()
 
 	for failure in m_failures:
 		push_error(failure)
@@ -136,3 +138,105 @@ func _validate_merge_detection(coordinator: BuildingEditor3DScript) -> void:
 	preview.queue_free()
 	if !ignored_merge.is_empty():
 		m_failures.append("BuildingEditor3D treated the active wall preview as a merge target")
+
+
+func _validate_intersection_merge() -> void:
+	var coordinator := BuildingEditor3DScript.new() as BuildingEditor3DScript
+	coordinator.name = "MergeCoordinator"
+	coordinator.position = Vector3(0.0, 0.0, 40.0)
+	add_child(coordinator)
+	coordinator.grid_step = 0.5
+
+	var wall_color := Color(0.78, 0.68, 0.54, 1.0)
+	var survivor := coordinator.create_wall_node(
+		Vector3(-2.0, 0.0, 0.0), Vector3(2.0, 0.0, 0.0), 2.4, 0.22, wall_color
+	)
+	coordinator.add_child(survivor)
+
+	var crossing_hits: Array = coordinator.find_intersecting_walls(
+		Vector3(0.0, 0.0, -2.0), Vector3(0.0, 0.0, 2.0), 0.22
+	)
+	if crossing_hits.size() != 1 or crossing_hits[0] != survivor:
+		m_failures.append("BuildingEditor3D did not detect a crossing wall span as intersecting")
+	var far_hits: Array = coordinator.find_intersecting_walls(
+		Vector3(10.0, 0.0, 0.0), Vector3(14.0, 0.0, 0.0), 0.22
+	)
+	if !far_hits.is_empty():
+		m_failures.append("BuildingEditor3D flagged a distant wall span as intersecting")
+
+	var crossing := WallSegment3DScript.new()
+	crossing.start_point = Vector3(0.0, 0.0, -2.0)
+	crossing.end_point = Vector3(0.0, 0.0, 2.0)
+	crossing.thickness = 0.22
+	crossing.height = 2.4
+	crossing.color = wall_color
+	var segments: Array[WallSegment3DScript] = []
+	WallSegment3DScript.merge_into(segments, crossing, 0.125)
+	survivor.extra_segments = segments
+	survivor.rebuild_wall_mesh()
+
+	if survivor.get_segment_count() != 2:
+		m_failures.append("ProceduralWall3D did not keep the absorbed crossing segment")
+	if survivor.mesh == null or survivor.mesh.get_surface_count() <= 0:
+		m_failures.append("Multi-segment ProceduralWall3D did not generate a merged mesh")
+		return
+	if survivor.get_node_or_null("WallCollision") == null:
+		m_failures.append("Multi-segment ProceduralWall3D did not generate collision")
+
+	var top_area := _up_facing_area(survivor.mesh as ArrayMesh, 2.4)
+	var expected_area := 4.0 * 0.22 + 4.0 * 0.22 - 0.22 * 0.22
+	if absf(top_area - expected_area) > 0.05:
+		m_failures.append(
+			"Merged wall top cap area %.4f deviates from expected %.4f" % [top_area, expected_area]
+		)
+
+	var collinear_segments: Array[WallSegment3DScript] = []
+	var span_a := WallSegment3DScript.new()
+	span_a.start_point = Vector3.ZERO
+	span_a.end_point = Vector3(4.0, 0.0, 0.0)
+	collinear_segments.append(span_a)
+	var span_b := WallSegment3DScript.new()
+	span_b.start_point = Vector3(2.0, 0.0, 0.0)
+	span_b.end_point = Vector3(6.0, 0.0, 0.0)
+	WallSegment3DScript.merge_into(collinear_segments, span_b, 0.125)
+	if collinear_segments.size() != 1:
+		m_failures.append("WallSegment3D.merge_into did not extend a collinear overlapping span")
+	elif collinear_segments[0].end_point.distance_to(Vector3(6.0, 0.0, 0.0)) > 0.001:
+		m_failures.append("WallSegment3D.merge_into did not extend to the outer end point")
+
+	var opening_frame: Transform3D = survivor.get_segment_local_frame(1)
+	var opening := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	opening.name = "MergedSegmentOpening"
+	opening.opening_width = 1.0
+	opening.opening_height = 1.0
+	opening.position = opening_frame * Vector3(1.0, 1.1, 0.145)
+	survivor.add_child(opening)
+	survivor.rebuild_wall_mesh()
+
+	if survivor.can_place_opening(Vector2(1.0, 1.1), Vector2(0.8, 0.8), 0.03, null, 1):
+		m_failures.append("Multi-segment wall allowed an overlapping opening on an extra segment")
+	if !survivor.can_place_opening(Vector2(3.0, 1.1), Vector2(0.6, 0.8), 0.03, null, 1):
+		m_failures.append("Multi-segment wall rejected a valid opening on an extra segment")
+
+
+func _up_facing_area(array_mesh: ArrayMesh, expected_height: float) -> float:
+	if array_mesh == null or array_mesh.get_surface_count() <= 0:
+		return 0.0
+	var arrays := array_mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	var area := 0.0
+	for triangle_start in range(0, indices.size(), 3):
+		var i0 := indices[triangle_start]
+		var i1 := indices[triangle_start + 1]
+		var i2 := indices[triangle_start + 2]
+		if normals[i0].dot(Vector3.UP) < 0.9:
+			continue
+		if absf(vertices[i0].y - expected_height) > 0.01:
+			continue
+		var a := vertices[i0]
+		var b := vertices[i1]
+		var c := vertices[i2]
+		area += ((b - a).cross(c - a)).length() * 0.5
+	return area

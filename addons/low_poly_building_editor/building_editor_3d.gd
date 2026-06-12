@@ -3,6 +3,9 @@ class_name BuildingEditor3D
 extends Node3D
 
 const ProceduralWall3DScript = preload("res://addons/low_poly_building_editor/procedural_wall_3d.gd")
+const MergedWallMeshBuilderScript = preload("res://addons/low_poly_building_editor/merged_wall_mesh_builder.gd")
+
+const INTERSECT_BASE_TOLERANCE := 0.01
 
 @export_range(0.05, 8.0, 0.05) var grid_step := 0.5:
 	set(value):
@@ -12,6 +15,7 @@ const ProceduralWall3DScript = preload("res://addons/low_poly_building_editor/pr
 @export_range(0.1, 20.0, 0.01) var default_wall_height := 2.4
 @export_range(0.03, 4.0, 0.01) var default_wall_thickness := 0.22
 @export var default_wall_color := Color(0.78, 0.68, 0.54, 1.0)
+@export var merge_intersecting := true
 
 
 func snap_local_position(local_position: Vector3) -> Vector3:
@@ -126,6 +130,36 @@ func find_merge_target(
 			"end": Vector3(merged_end_2d.x, wall.start_point.y, merged_end_2d.y),
 		}
 	return {}
+
+
+## Walls whose footprints (primary span or any extra segment) overlap the
+## candidate span on the same base plane. Preview-tagged walls are skipped.
+func find_intersecting_walls(
+	local_start: Vector3,
+	local_end: Vector3,
+	thickness: float,
+	ignored_wall: Node = null
+) -> Array[ProceduralWall3DScript]:
+	var hits: Array[ProceduralWall3DScript] = []
+	var candidate := MergedWallMeshBuilderScript.footprint_from_points(local_start, local_end, thickness)
+	if candidate.is_empty():
+		return hits
+	for wall in get_wall_nodes():
+		if wall == ignored_wall:
+			continue
+		if wall.has_meta(ProceduralWall3DScript.PREVIEW_META):
+			continue
+		for segment_index in range(wall.get_segment_count()):
+			var segment := wall.get_segment(segment_index)
+			if absf(segment.start_point.y - local_start.y) > INTERSECT_BASE_TOLERANCE:
+				continue
+			var footprint := MergedWallMeshBuilderScript.footprint_from_points(
+				segment.start_point, segment.end_point, segment.thickness
+			)
+			if MergedWallMeshBuilderScript.footprints_overlap(candidate, footprint):
+				hits.append(wall)
+				break
+	return hits
 
 
 func _flat_direction(local_start: Vector3, local_end: Vector3) -> Vector2:

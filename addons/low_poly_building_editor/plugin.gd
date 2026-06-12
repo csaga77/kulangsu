@@ -9,6 +9,7 @@ const MODE_WINDOW := "window"
 const BuildingEditor3DScript = preload("res://addons/low_poly_building_editor/building_editor_3d.gd")
 const ProceduralWall3DScript = preload("res://addons/low_poly_building_editor/procedural_wall_3d.gd")
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
+const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
 const DockScript = preload("res://addons/low_poly_building_editor/low_poly_building_editor_dock.gd")
 const ViewportInputOverlayScript = preload("res://addons/low_poly_building_editor/viewport_input_overlay.gd")
 const ViewportInputCaptureScript = preload("res://addons/low_poly_building_editor/viewport_input_capture.gd")
@@ -231,6 +232,7 @@ func _create_wall_preview(coordinator: BuildingEditor3DScript) -> void:
 	_clear_wall_preview()
 	m_wall_preview = ProceduralWall3DScript.new() as ProceduralWall3DScript
 	m_wall_preview.name = "WallPreview"
+	m_wall_preview.set_meta(ProceduralWall3DScript.PREVIEW_META, true)
 	m_wall_preview.wall_height = float(m_wall_settings["height"])
 	m_wall_preview.wall_thickness = float(m_wall_settings["thickness"])
 	var preview_color := Color(m_wall_settings["color"])
@@ -302,6 +304,12 @@ func _commit_wall(coordinator: BuildingEditor3DScript, local_start: Vector3, loc
 		_set_status("Merged wall span.")
 		return
 
+	if coordinator.merge_intersecting:
+		var targets := coordinator.find_intersecting_walls(local_start, local_end, thickness, m_wall_preview)
+		if !targets.is_empty():
+			_commit_absorbed_wall(coordinator, targets, local_start, local_end)
+			return
+
 	var wall := coordinator.create_wall_node(
 		local_start,
 		local_end,
@@ -316,6 +324,129 @@ func _commit_wall(coordinator: BuildingEditor3DScript, local_start: Vector3, loc
 	undo_redo.add_undo_method(self, "_undo_remove_node", coordinator, wall)
 	undo_redo.commit_action()
 	_set_status("Created wall: %.2f units." % local_start.distance_to(local_end))
+
+
+func _commit_absorbed_wall(
+	coordinator: BuildingEditor3DScript,
+	targets: Array[ProceduralWall3DScript],
+	local_start: Vector3,
+	local_end: Vector3
+) -> void:
+	var survivor := targets[0]
+	var tolerance := maxf(coordinator.grid_step * 0.25, 0.03)
+
+	var old_segments: Array[WallSegment3DScript] = survivor.extra_segments
+	var combined: Array[WallSegment3DScript] = []
+	for segment in old_segments:
+		combined.append(segment.duplicate() as WallSegment3DScript)
+
+	var removed: Array = []
+	var moved: Array = []
+	var moved_parents: Array = []
+	var moved_transforms: Array = []
+	for target_index in range(1, targets.size()):
+		var other := targets[target_index]
+		for segment_index in range(other.get_segment_count()):
+			var segment := other.get_segment(segment_index).duplicate() as WallSegment3DScript
+			WallSegment3DScript.merge_into(combined, segment, tolerance)
+		removed.append(other)
+		for child in other.get_children():
+			if child.has_meta(ProceduralWall3DScript.GENERATED_META):
+				continue
+			var child_3d := child as Node3D
+			if child_3d == null:
+				continue
+			moved.append(child_3d)
+			moved_parents.append(other)
+			moved_transforms.append(child_3d.transform)
+
+	var drawn := WallSegment3DScript.new()
+	drawn.start_point = local_start
+	drawn.end_point = local_end
+	drawn.thickness = float(m_wall_settings["thickness"])
+	drawn.height = float(m_wall_settings["height"])
+	drawn.color = Color(m_wall_settings["color"])
+	WallSegment3DScript.merge_into(combined, drawn, tolerance)
+
+	var scene_root := get_editor_interface().get_edited_scene_root()
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Merge Intersecting Walls")
+	for node in removed:
+		undo_redo.add_undo_reference(node)
+	undo_redo.add_do_method(self, "_do_absorb_walls", survivor, combined, removed, moved, scene_root)
+	undo_redo.add_undo_method(
+		self,
+		"_undo_absorb_walls",
+		survivor,
+		old_segments,
+		removed,
+		moved,
+		moved_parents,
+		moved_transforms,
+		coordinator,
+		scene_root
+	)
+	undo_redo.commit_action()
+	_set_status("Merged %d wall spans into %s." % [targets.size(), survivor.name])
+
+
+func _do_absorb_walls(
+	survivor: ProceduralWall3DScript,
+	segments: Array[WallSegment3DScript],
+	removed: Array,
+	moved: Array,
+	scene_root: Node
+) -> void:
+	for child in moved:
+		var child_3d := child as Node3D
+		if child_3d == null:
+			continue
+		var child_global := child_3d.global_transform
+		if child_3d.get_parent() != null:
+			child_3d.get_parent().remove_child(child_3d)
+		survivor.add_child(child_3d)
+		child_3d.global_transform = child_global
+		_set_owner_recursive(child_3d, scene_root)
+	for node in removed:
+		var node_typed := node as Node
+		if node_typed != null and node_typed.get_parent() != null:
+			node_typed.get_parent().remove_child(node_typed)
+	survivor.extra_segments = segments
+	survivor.rebuild_wall_mesh()
+	_select_node(survivor)
+
+
+func _undo_absorb_walls(
+	survivor: ProceduralWall3DScript,
+	old_segments: Array[WallSegment3DScript],
+	removed: Array,
+	moved: Array,
+	moved_parents: Array,
+	moved_transforms: Array,
+	coordinator: BuildingEditor3DScript,
+	scene_root: Node
+) -> void:
+	for node in removed:
+		var node_typed := node as Node
+		if node_typed != null and node_typed.get_parent() == null:
+			coordinator.add_child(node_typed)
+			_set_owner_recursive(node_typed, scene_root)
+	for index in range(moved.size()):
+		var child_3d := moved[index] as Node3D
+		if child_3d == null:
+			continue
+		if child_3d.get_parent() != null:
+			child_3d.get_parent().remove_child(child_3d)
+		var old_parent := moved_parents[index] as Node
+		old_parent.add_child(child_3d)
+		child_3d.transform = moved_transforms[index]
+		_set_owner_recursive(child_3d, scene_root)
+	survivor.extra_segments = old_segments
+	survivor.rebuild_wall_mesh()
+	for node in removed:
+		var node_typed := node as Node
+		if node_typed != null and node_typed.has_method("rebuild_wall_mesh"):
+			node_typed.rebuild_wall_mesh()
 
 
 func _update_placement_preview(camera: Camera3D, mouse_position: Vector2) -> void:
@@ -335,29 +466,32 @@ func _update_window_preview(wall: ProceduralWall3DScript, hit: Dictionary) -> vo
 		_set_status("Window openings need a wall target.")
 		m_preview_valid = false
 		return
+	var segment_index := int(hit.get("segment", 0))
+	var segment := wall.get_segment(segment_index)
+	var frame := wall.get_segment_local_frame(segment_index)
+
 	if !(m_prop_preview is BuildingOpening3DScript):
 		_clear_prop_preview()
 		m_prop_preview = BuildingOpening3DScript.new() as BuildingOpening3DScript
 		m_prop_preview.name = "WindowOpeningPreview"
 		(m_prop_preview as BuildingOpening3DScript).build_on_ready = true
-		(m_prop_preview as BuildingOpening3DScript).frame_depth = wall.wall_thickness + 0.04
+		(m_prop_preview as BuildingOpening3DScript).frame_depth = segment.thickness + 0.04
 		_set_preview_parent(m_prop_preview, wall)
 
 	var opening := m_prop_preview as BuildingOpening3DScript
 	opening.opening_width = float(m_window_settings["width"])
 	opening.opening_height = float(m_window_settings["height"])
 	opening.frame_thickness = float(m_window_settings["frame_thickness"])
-	opening.frame_depth = wall.wall_thickness + 0.04
-	var local_hit := wall.to_local(Vector3(hit["position"]))
+	opening.frame_depth = segment.thickness + 0.04
+	var local_hit := frame.affine_inverse() * wall.to_local(Vector3(hit["position"]))
 	var face_sign := 1.0 if local_hit.z >= 0.0 else -1.0
-	local_hit.x = clampf(local_hit.x, 0.0, wall.get_wall_length())
-	local_hit.y = clampf(local_hit.y, 0.0, wall.wall_height)
-	local_hit.z = face_sign * (wall.wall_thickness * 0.5 + 0.035)
-	opening.position = local_hit
-	opening.rotation = Vector3.ZERO
+	local_hit.x = clampf(local_hit.x, 0.0, segment.get_length())
+	local_hit.y = clampf(local_hit.y, 0.0, segment.height)
+	local_hit.z = face_sign * (segment.thickness * 0.5 + 0.035)
+	opening.transform = Transform3D(frame.basis, frame * local_hit)
 	var center := Vector2(local_hit.x, local_hit.y)
 	var size := Vector2(opening.opening_width, opening.opening_height)
-	m_preview_valid = wall.can_place_opening(center, size, 0.04, opening)
+	m_preview_valid = wall.can_place_opening(center, size, 0.04, opening, segment_index)
 	opening.frame_color = Color(0.20, 0.88, 0.36, 0.72) if m_preview_valid else Color(0.95, 0.20, 0.16, 0.72)
 	m_preview_wall = wall
 	_set_status("Window ready." if m_preview_valid else "Window overlaps or leaves the wall span.")
@@ -393,11 +527,16 @@ func _update_prop_preview(wall: ProceduralWall3DScript, hit: Dictionary) -> void
 
 	_set_preview_parent(m_prop_preview, parent)
 	if wall != null:
-		var local_hit := wall.to_local(Vector3(hit["position"]))
+		var segment_index := int(hit.get("segment", 0))
+		var segment := wall.get_segment(segment_index)
+		var frame := wall.get_segment_local_frame(segment_index)
+		var local_hit := frame.affine_inverse() * wall.to_local(Vector3(hit["position"]))
 		var face_sign := 1.0 if local_hit.z >= 0.0 else -1.0
-		local_hit.z = face_sign * (wall.wall_thickness * 0.5 + 0.04)
-		m_prop_preview.position = local_hit
-		m_prop_preview.rotation = Vector3(0.0, m_prop_rotation_y, 0.0)
+		local_hit.z = face_sign * (segment.thickness * 0.5 + 0.04)
+		m_prop_preview.transform = Transform3D(
+			frame.basis * Basis(Vector3.UP, m_prop_rotation_y),
+			frame * local_hit
+		)
 	else:
 		var snapped_world := _snap_world_position(Vector3(hit["position"]))
 		m_prop_preview.global_position = snapped_world
@@ -551,33 +690,43 @@ func _intersect_wall_box(
 	origin: Vector3,
 	direction: Vector3
 ) -> Dictionary:
-	var wall_length := wall.get_wall_length()
-	if wall_length <= 0.001:
-		return {}
+	var best_hit: Dictionary = {}
+	var best_distance := INF
+	for segment_index in range(wall.get_segment_count()):
+		var segment := wall.get_segment(segment_index)
+		var segment_length := segment.get_length()
+		if segment_length <= 0.001:
+			continue
+		var world_frame := wall.global_transform * wall.get_segment_local_frame(segment_index)
+		var inverse_frame := world_frame.affine_inverse()
+		var local_origin := inverse_frame * origin
+		var local_direction := (inverse_frame.basis * direction)
+		if local_direction.length_squared() <= 0.000001:
+			continue
+		local_direction = local_direction.normalized()
 
-	var local_origin := wall.to_local(origin)
-	var local_end := wall.to_local(origin + direction)
-	var local_direction := local_end - local_origin
-	if local_direction.length_squared() <= 0.000001:
-		return {}
-	local_direction = local_direction.normalized()
+		var half_thickness := segment.thickness * 0.5
+		var min_corner := Vector3(0.0, 0.0, -half_thickness)
+		var max_corner := Vector3(segment_length, segment.height, half_thickness)
+		var hit := _intersect_aabb_ray(local_origin, local_direction, min_corner, max_corner)
+		if hit.is_empty():
+			continue
 
-	var half_thickness := wall.wall_thickness * 0.5
-	var min_corner := Vector3(0.0, 0.0, -half_thickness)
-	var max_corner := Vector3(wall_length, wall.wall_height, half_thickness)
-	var hit := _intersect_aabb_ray(local_origin, local_direction, min_corner, max_corner)
-	if hit.is_empty():
-		return {}
-
-	var local_hit := Vector3(hit["position"])
-	var local_normal := _nearest_box_normal(local_hit, min_corner, max_corner)
-	var global_hit := wall.to_global(local_hit)
-	return {
-		"position": global_hit,
-		"normal": (wall.global_transform.basis * local_normal).normalized(),
-		"collider": wall,
-		"distance": origin.distance_to(global_hit),
-	}
+		var local_hit := Vector3(hit["position"])
+		var local_normal := _nearest_box_normal(local_hit, min_corner, max_corner)
+		var global_hit := world_frame * local_hit
+		var distance := origin.distance_to(global_hit)
+		if distance >= best_distance:
+			continue
+		best_distance = distance
+		best_hit = {
+			"position": global_hit,
+			"normal": (world_frame.basis * local_normal).normalized(),
+			"collider": wall,
+			"segment": segment_index,
+			"distance": distance,
+		}
+	return best_hit
 
 
 func _intersect_aabb_ray(

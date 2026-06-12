@@ -20,6 +20,8 @@
 - `ProceduralWall3D` stores its parent-local `start_point` and `end_point`; its node transform and mesh are rebuilt from those endpoints.
 - Wall drawing snaps to `BuildingEditor3D.grid_step` and can lock to 45-degree increments for eight-way wall direction.
 - New wall spans merge into an existing collinear wall of matching thickness and height when their ranges overlap.
+- Non-collinear walls that intersect (crossings, T-junctions, corners) collapse on commit into one surviving `ProceduralWall3D`: the other walls' spans are stored as typed `WallSegment3D` resources in `extra_segments`, their openings and props reparent to the survivor, and the other wall nodes are removed. The survivor rebuilds one combined mesh whose faces are clipped in plan space, so junctions render without buried interior geometry or z-fighting caps. Toggle via `BuildingEditor3D.merge_intersecting` (default on).
+- Window/prop placement and viewport picking are segment-aware: raycasts test every segment of a wall and previews align to the hit segment's frame.
 - `BuildingOpening3D` children create rectangular wall holes without boolean operations. The wall compiles a split box-grid mesh around all openings.
 - Window openings stay axis-aligned to their wall face; opening rotation is not supported, so the frame visual always matches the cut rectangle.
 - Wall meshes duplicate vertices per face, carry vertex colors, and use rough flat materials for hard low-poly face breaks.
@@ -32,6 +34,10 @@
 - Window openings are rejected when they leave the wall bounds or overlap another opening.
 - Prop placement can fall back to the ground plane when no procedural wall target exists.
 - The first wall click or placement commit can create a `BuildingEditor3D` coordinator if the scene has none. Hover previews never mutate the scene or undo history.
+- Preview walls are tagged with preview metadata and never participate in intersection merging.
+- Wall spans whose base heights differ by more than 0.01 units are not merged; they stay separate nodes.
+- Undoing an intersection merge restores the removed wall nodes, their children, and the survivor's previous segment list.
+- Absorbed collinear spans of matching thickness and height extend an existing segment instead of stacking a duplicate span.
 - If the configured folder is missing, the prop palette falls back to `res://assets` when available, then `res://`.
 
 ## Architecture / Ownership
@@ -40,14 +46,17 @@
 - The plugin owns dock UI, viewport input forwarding, previews, and undo/redo packing.
 - A lightweight 3D viewport overlay plus root-level editor input capture handle placement clicks while a building tool is active so Godot's default select/transform mouse handling does not compete with wall, prop, or window placement.
 - Viewport picking uses editor-time ray math against procedural wall boxes plus a ground-plane fallback, avoiding `direct_space_state` access during editor GUI input.
-- `BuildingEditor3D` owns snapping, default wall settings, wall lookup, and merge target detection.
+- `BuildingEditor3D` owns snapping, default wall settings, wall lookup, collinear merge target detection, and intersecting-wall detection for commits.
+- `ProceduralWall3D` owns its primary span plus absorbed `extra_segments`, opening-to-segment assignment, and the combined mesh/collision rebuild.
+- `MergedWallMeshBuilder` (`merged_wall_mesh_builder.gd`) owns the plan-space clipping math that produces combined multi-segment geometry.
+- `WallSegment3D` (`wall_segment_3d.gd`) is the typed resource for one wall span, including the static collinear segment-merge helper.
 - `ProceduralWall3D` owns generated mesh, vertex colors, collision, and opening-driven rebuilds.
 - `BuildingOpening3D` owns the visible window frame marker and the dimensions consumed by wall mesh generation.
 
 ## Relevant Files
 
 - Scenes: `scenes/tests/test_low_poly_building_editor_3d.tscn`
-- Scripts: `addons/low_poly_building_editor/plugin.gd`, `building_editor_3d.gd`, `procedural_wall_3d.gd`, `building_opening_3d.gd`, `low_poly_building_editor_dock.gd`, `viewport_input_overlay.gd`, `viewport_input_capture.gd`
+- Scripts: `addons/low_poly_building_editor/plugin.gd`, `building_editor_3d.gd`, `procedural_wall_3d.gd`, `building_opening_3d.gd`, `wall_segment_3d.gd`, `merged_wall_mesh_builder.gd`, `low_poly_building_editor_dock.gd`, `viewport_input_overlay.gd`, `viewport_input_capture.gd`
 - Related docs: `docs/module_map.md`, `docs/contracts.md`
 
 ## Signals / Nodes / Data Flow
@@ -55,7 +64,8 @@
 - Dock signals update active tool mode and wall/prop/window settings.
 - The plugin forwards 3D viewport mouse/key input while a building tool is active.
 - The plugin commits scene mutations through `EditorUndoRedoManager`.
-- `ProceduralWall3D` watches direct child opening signatures in editor mode and rebuilds when opening nodes move or change size.
+- `ProceduralWall3D` watches direct child opening signatures and segment data in editor mode and rebuilds when openings move or segments change.
+- Wall raycast hits carry a `segment` index so window and prop previews can target the correct span of a merged wall.
 
 ## Contracts / Boundaries
 
@@ -65,13 +75,13 @@
 
 ## Validation
 
-- Headless smoke scene: `scenes/tests/test_low_poly_building_editor_3d.tscn` (covers mesh conventions, opening rules, snapping, and merge detection including height-mismatch rejection).
+- Headless smoke scene: `scenes/tests/test_low_poly_building_editor_3d.tscn` (covers mesh conventions, opening rules, snapping, merge detection including height-mismatch rejection, intersection detection, multi-segment merged geometry with correct top-cap area, collinear segment extension, and opening placement on extra segments).
 - Manual editor validation: enable the plugin, create a coordinator, draw overlapping walls, place a window on a wall, and confirm undo/redo restores the wall mesh and child hierarchy.
 - Place a prop on a wall positioned away from the scene origin and confirm the committed prop lands exactly where the preview showed.
 - Confirm generated wall mesh has vertex colors and generated collision.
 
 ## Out Of Scope
 
-- Perpendicular T-junction cutting and automatic corner cleanup.
+- True 3D CSG boolean unions; intersection baking clips in plan space and assumes walls in a group share a base plane.
 - Rich asset thumbnails beyond the basic scene palette list.
 - Runtime gameplay interaction with authored low-poly buildings.
