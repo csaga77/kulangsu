@@ -209,6 +209,25 @@ Boundary:
 
 - Extend the owning feature folder before creating duplicate logic elsewhere.
 
+### Editor Tooling
+
+Primary folders:
+
+- [`../addons/low_poly_building_editor/`](../addons/low_poly_building_editor)
+- [`../addons/mp3_to_ogg/`](../addons/mp3_to_ogg)
+- [`../addons/storyline_editor/`](../addons/storyline_editor)
+
+Responsibilities:
+
+- project-local editor tooling for authoring content and validating assets
+- low-poly building blockout authoring through normal scene nodes, including grid-snapped walls, window openings, generated wall collision, and prop placement
+- audio conversion and storyline graph/route editing workflows
+
+Boundary:
+
+- Editor plugins are authoring helpers. They should not become runtime gameplay services or be wired into `main.tscn`.
+- Building-editor-generated content should remain ordinary scene-owned nodes under `BuildingEditor3D` coordinators.
+
 ### Submodule Layer
 
 Primary folders:

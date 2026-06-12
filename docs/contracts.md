@@ -215,6 +215,30 @@ Governance:
 - keep prototype placement, style, and validation docs in sync with [`features/low_poly_terrain_3d.md`](features/low_poly_terrain_3d.md) and [`features/low_poly_actor_3d.md`](features/low_poly_actor_3d.md)
 - update this contract before treating low-poly landmarks as runtime story subjects or save/resume anchors
 
+## Low-Poly Building Editor Contract
+
+Owned by:
+
+- [`../addons/low_poly_building_editor/building_editor_3d.gd`](../addons/low_poly_building_editor/building_editor_3d.gd)
+- [`../addons/low_poly_building_editor/procedural_wall_3d.gd`](../addons/low_poly_building_editor/procedural_wall_3d.gd)
+- [`../addons/low_poly_building_editor/building_opening_3d.gd`](../addons/low_poly_building_editor/building_opening_3d.gd)
+- [`../addons/low_poly_building_editor/plugin.gd`](../addons/low_poly_building_editor/plugin.gd)
+
+Current contract:
+
+- the building editor is a Godot editor plugin and must stay out of the runtime app shell
+- `BuildingEditor3D` is the scene-owned coordinator for a building assembly; it owns grid snapping, eight-way drawing constraints, default wall settings, wall lookup, and collinear merge detection
+- `ProceduralWall3D` stores parent-local `start_point` and `end_point`, derives its transform from those endpoints, and rebuilds a flat low-poly mesh plus generated collision from its exported dimensions and direct child openings
+- `BuildingOpening3D` is the persistent child node used for window holes; its `opening_width`, `opening_height`, and local position define the opening rectangle consumed by the wall mesh compiler
+- new overlapping collinear walls of matching thickness merge by extending the retained wall endpoints instead of creating duplicate spans
+- generated wall collision and opening frame parts are rebuild artifacts identified by metadata; they are not author-facing source nodes
+- placed wall, prop, and opening mutations must go through `EditorUndoRedoManager` so undo/redo restores scene hierarchy and rebuilt wall meshes together
+
+Governance:
+
+- keep this contract and [`features/low_poly_building_editor.md`](features/low_poly_building_editor.md) in sync when endpoint storage, opening semantics, generated collision, merge behavior, or editor interaction changes
+- do not treat `BuildingEditor3D` buildings as runtime story targets or save/resume anchors without updating the low-poly 3D prototype contract and the relevant gameplay docs
+
 ## Multi-Level Scene Contract
 
 Owned by:
