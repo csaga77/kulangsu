@@ -31,7 +31,9 @@
 ## Edge Cases
 
 - A wall shorter than half the active grid step, with an absolute floor of 0.1 units, is ignored.
-- Window openings are rejected when they leave the wall bounds or overlap another opening.
+- Window openings are rejected when they leave the wall bounds, overlap another opening, or straddle another segment of the merged wall (the crossing segment's solid mass would block the hole).
+- Child openings are assigned to the segment whose face shell they sit on (distance to the face, not the centerline), so openings near junctions stay on the wall they were placed against; the window tool also pins the hit segment index as metadata, with geometric assignment as fallback.
+- The window preview re-parents to whichever wall is hovered, so moving between separate walls in window mode places against the correct node.
 - Prop placement can fall back to the ground plane when no procedural wall target exists.
 - The first wall click or placement commit can create a `BuildingEditor3D` coordinator if the scene has none. Hover previews never mutate the scene or undo history.
 - Preview walls are tagged with preview metadata and never participate in intersection merging.
@@ -75,7 +77,7 @@
 
 ## Validation
 
-- Headless smoke scene: `scenes/tests/test_low_poly_building_editor_3d.tscn` (covers mesh conventions, opening rules, snapping, merge detection including height-mismatch rejection, intersection detection, multi-segment merged geometry with correct top-cap area, collinear segment extension, and opening placement on extra segments).
+- Headless smoke scene: `scenes/tests/test_low_poly_building_editor_3d.tscn` (covers mesh conventions, opening rules, snapping, merge detection including height-mismatch rejection, intersection detection, multi-segment merged geometry with correct top-cap area, collinear segment extension, opening placement on extra segments, junction-adjacent segment assignment, and junction-straddling rejection).
 - Manual editor validation: enable the plugin, create a coordinator, draw overlapping walls, place a window on a wall, and confirm undo/redo restores the wall mesh and child hierarchy.
 - Place a prop on a wall positioned away from the scene origin and confirm the committed prop lands exactly where the preview showed.
 - Confirm generated wall mesh has vertex colors and generated collision.

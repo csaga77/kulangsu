@@ -476,9 +476,10 @@ func _update_window_preview(wall: ProceduralWall3DScript, hit: Dictionary) -> vo
 		m_prop_preview.name = "WindowOpeningPreview"
 		(m_prop_preview as BuildingOpening3DScript).build_on_ready = true
 		(m_prop_preview as BuildingOpening3DScript).frame_depth = segment.thickness + 0.04
-		_set_preview_parent(m_prop_preview, wall)
+	_set_preview_parent(m_prop_preview, wall)
 
 	var opening := m_prop_preview as BuildingOpening3DScript
+	opening.set_meta(ProceduralWall3DScript.SEGMENT_INDEX_META, segment_index)
 	opening.opening_width = float(m_window_settings["width"])
 	opening.opening_height = float(m_window_settings["height"])
 	opening.frame_thickness = float(m_window_settings["frame_thickness"])
@@ -569,6 +570,10 @@ func _commit_placement() -> void:
 		opening.frame_color = Color(0.86, 0.92, 0.94, 1.0)
 		opening.position = opening_preview.position
 		opening.rotation = opening_preview.rotation
+		opening.set_meta(
+			ProceduralWall3DScript.SEGMENT_INDEX_META,
+			int(opening_preview.get_meta(ProceduralWall3DScript.SEGMENT_INDEX_META, 0))
+		)
 		var scene_root := get_editor_interface().get_edited_scene_root()
 		var undo_redo := get_undo_redo()
 		undo_redo.create_action("Place Wall Opening")

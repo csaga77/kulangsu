@@ -5,6 +5,7 @@ extends MeshInstance3D
 const GENERATED_META := &"procedural_wall_generated"
 const PREVIEW_META := &"building_editor_preview"
 const OPENING_META := &"building_editor_opening"
+const SEGMENT_INDEX_META := &"wall_segment_index"
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
 const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
 const MergedWallMeshBuilderScript = preload("res://addons/low_poly_building_editor/merged_wall_mesh_builder.gd")
@@ -181,6 +182,23 @@ func can_place_opening(
 	if candidate.end.y > segment.height - clearance:
 		return false
 
+	var frame := get_segment_local_frame(segment_index)
+	var opening_plan := MergedWallMeshBuilderScript.span_plan_rect(
+		frame, candidate.position.x, candidate.end.x, segment.thickness * 0.5
+	)
+	for other_index in range(get_segment_count()):
+		if other_index == segment_index:
+			continue
+		var other := get_segment(other_index)
+		if candidate.position.y >= other.height - 0.001:
+			continue
+		var other_frame := get_segment_local_frame(other_index)
+		if MergedWallMeshBuilderScript.footprints_overlap(
+			opening_plan,
+			MergedWallMeshBuilderScript.segment_footprint(other, other_frame)
+		):
+			return false
+
 	var rects_per_segment := _assigned_opening_rects(ignored_node)
 	var rects: Array[Rect2] = rects_per_segment[clampi(segment_index, 0, rects_per_segment.size() - 1)]
 	for opening in rects:
@@ -280,7 +298,7 @@ func _assigned_opening_rects(ignored_node: Node = null) -> Array:
 		var size := _opening_size_from_child(child)
 		if size.x <= 0.0 or size.y <= 0.0:
 			continue
-		var segment_index := _best_segment_for_position(child_3d.position)
+		var segment_index := _segment_index_for_child(child, child_3d.position)
 		var segment := get_segment(segment_index)
 		var frame := get_segment_local_frame(segment_index)
 		var local := frame.affine_inverse() * child_3d.position
@@ -300,24 +318,51 @@ func _assigned_opening_rects(ignored_node: Node = null) -> Array:
 	return rects_per_segment
 
 
+## Public lookup used by tools and tests: which segment does a child opening
+## belong to? Prefers a valid pinned SEGMENT_INDEX_META, then the segment
+## whose face shell the position sits closest to.
+func get_opening_segment_index(child: Node) -> int:
+	var child_3d := child as Node3D
+	if child_3d == null:
+		return 0
+	return _segment_index_for_child(child, child_3d.position)
+
+
+func _segment_index_for_child(child: Node, local_position: Vector3) -> int:
+	var pinned := int(child.get_meta(SEGMENT_INDEX_META, -1))
+	if pinned >= 0 and pinned < get_segment_count() and _segment_matches_position(local_position, pinned):
+		return pinned
+	return _best_segment_for_position(local_position)
+
+
 func _best_segment_for_position(local_position: Vector3) -> int:
 	var best_index := 0
-	var best_depth := INF
+	var best_score := INF
 	for index in range(get_segment_count()):
+		if !_segment_matches_position(local_position, index):
+			continue
 		var segment := get_segment(index)
 		var frame := get_segment_local_frame(index)
 		var local := frame.affine_inverse() * local_position
-		if local.x < -SEGMENT_ASSIGN_MARGIN or local.x > segment.get_length() + SEGMENT_ASSIGN_MARGIN:
-			continue
-		if local.y < -SEGMENT_ASSIGN_MARGIN or local.y > segment.height + SEGMENT_ASSIGN_MARGIN:
-			continue
-		var depth := absf(local.z)
-		if depth > segment.thickness * 0.5 + SEGMENT_ASSIGN_DEPTH:
-			continue
-		if depth < best_depth:
-			best_depth = depth
+		# Distance to the face shell, not the centerline: an opening sitting
+		# on this segment's face scores ~0 here but ~thickness/2 against a
+		# crossing segment whose centerline it happens to touch.
+		var score := absf(absf(local.z) - segment.thickness * 0.5)
+		if score < best_score:
+			best_score = score
 			best_index = index
 	return best_index
+
+
+func _segment_matches_position(local_position: Vector3, index: int) -> bool:
+	var segment := get_segment(index)
+	var frame := get_segment_local_frame(index)
+	var local := frame.affine_inverse() * local_position
+	if local.x < -SEGMENT_ASSIGN_MARGIN or local.x > segment.get_length() + SEGMENT_ASSIGN_MARGIN:
+		return false
+	if local.y < -SEGMENT_ASSIGN_MARGIN or local.y > segment.height + SEGMENT_ASSIGN_MARGIN:
+		return false
+	return absf(local.z) <= segment.thickness * 0.5 + SEGMENT_ASSIGN_DEPTH
 
 
 func _opening_size_from_child(child: Node) -> Vector2:

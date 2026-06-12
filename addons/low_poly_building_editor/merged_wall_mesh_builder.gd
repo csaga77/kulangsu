@@ -44,6 +44,25 @@ static func segment_footprint(segment: WallSegment3D, frame: Transform3D) -> Pac
 	return corners
 
 
+## Plan-space rectangle of a sub-span of a segment (e.g. an opening's slice
+## through the wall thickness), in the same space as segment footprints.
+static func span_plan_rect(
+	frame: Transform3D,
+	x0: float,
+	x1: float,
+	half_thickness: float
+) -> PackedVector2Array:
+	var corners := PackedVector2Array([
+		_plan_point(frame, x0, -half_thickness),
+		_plan_point(frame, x1, -half_thickness),
+		_plan_point(frame, x1, half_thickness),
+		_plan_point(frame, x0, half_thickness),
+	])
+	if _signed_area(corners) < 0.0:
+		corners.reverse()
+	return corners
+
+
 static func footprints_overlap(a: PackedVector2Array, b: PackedVector2Array) -> bool:
 	if a.is_empty() or b.is_empty():
 		return false

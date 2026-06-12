@@ -218,6 +218,27 @@ func _validate_intersection_merge() -> void:
 	if !survivor.can_place_opening(Vector2(3.0, 1.1), Vector2(0.6, 0.8), 0.03, null, 1):
 		m_failures.append("Multi-segment wall rejected a valid opening on an extra segment")
 
+	# Openings sitting on the primary span's face near the junction must stay
+	# assigned to the primary span, not the crossing segment whose centerline
+	# they happen to be close to (wall-local junction is at x = 2).
+	var junction_opening := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	junction_opening.name = "JunctionOpening"
+	junction_opening.opening_width = 0.6
+	junction_opening.opening_height = 0.6
+	junction_opening.position = Vector3(2.05, 1.1, 0.145)
+	survivor.add_child(junction_opening)
+	if survivor.get_opening_segment_index(junction_opening) != 0:
+		m_failures.append("Opening near a junction was assigned to the crossing segment")
+	survivor.remove_child(junction_opening)
+	junction_opening.free()
+
+	# A window straddling the junction would be blocked by the crossing
+	# segment's solid mass, so placement must be rejected.
+	if survivor.can_place_opening(Vector2(2.0, 1.1), Vector2(0.8, 0.8), 0.03, null, 0):
+		m_failures.append("Opening straddling a junction was not rejected")
+	if !survivor.can_place_opening(Vector2(0.8, 1.1), Vector2(0.6, 0.8), 0.03, null, 0):
+		m_failures.append("Valid primary-span opening away from the junction was rejected")
+
 
 func _up_facing_area(array_mesh: ArrayMesh, expected_height: float) -> float:
 	if array_mesh == null or array_mesh.get_surface_count() <= 0:
