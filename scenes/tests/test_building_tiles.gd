@@ -25,6 +25,7 @@ const MIN_STAIR_CLIMB_HEIGHT := 2.0
 const MIN_STAIR_HORIZONTAL_TRAVEL := 2.0
 const MAX_STAIR_RETURN_HEIGHT := 0.35
 const STAIR_PROBE_GROUNDING_VELOCITY := -2.0
+const MAX_STAIR_UP_FRAME_DROP := 0.20
 const MIN_STAIR_DOWN_FLOOR_FRAMES := 50
 const MAX_STAIR_DOWN_UNGROUNDED_RUN := 8
 const MAX_STAIR_DESCENT_DIP := 0.25
@@ -130,7 +131,7 @@ func _validate_character_building_collision(failures: Array[String]) -> void:
 		await get_tree().physics_frame
 
 	var start_position := probe.global_position
-	var started_on_floor := probe.is_on_floor()
+	var started_on_floor := _is_probe_grounded(probe)
 	var saw_wall_collision := false
 	for i in range(PROBE_FRAMES):
 		probe.velocity.y = PROBE_GROUNDING_VELOCITY
@@ -188,11 +189,14 @@ func _validate_character_stair_navigation_at_speed(
 		await get_tree().physics_frame
 
 	var start_position := probe.global_position
-	var started_on_floor := probe.is_on_floor()
+	var started_on_floor := _is_probe_grounded(probe)
 	var max_up_y := start_position.y
+	var max_up_frame_drop := 0.0
 	for i in range(STAIR_UP_FRAMES):
+		var before_y := probe.global_position.y
 		probe.velocity.y = STAIR_PROBE_GROUNDING_VELOCITY
 		probe.move_with_speed(Vector3.FORWARD, stair_probe_speed)
+		max_up_frame_drop = maxf(max_up_frame_drop, before_y - probe.global_position.y)
 		max_up_y = maxf(max_up_y, probe.global_position.y)
 		await get_tree().physics_frame
 
@@ -208,7 +212,7 @@ func _validate_character_stair_navigation_at_speed(
 		probe.move_with_speed(Vector3.BACK, stair_probe_speed)
 		min_down_y = minf(min_down_y, probe.global_position.y)
 		max_down_frame_drop = maxf(max_down_frame_drop, before_y - probe.global_position.y)
-		if probe.is_on_floor():
+		if _is_probe_grounded(probe):
 			down_floor_frames += 1
 			ungrounded_run = 0
 		else:
@@ -232,6 +236,12 @@ func _validate_character_stair_navigation_at_speed(
 		)
 	if start_position.z - top_position.z < MIN_STAIR_HORIZONTAL_TRAVEL:
 		_append_stair_failure(failures, stair_probe_speed, "did not advance up the stairs")
+	if max_up_frame_drop > MAX_STAIR_UP_FRAME_DROP:
+		_append_stair_failure(
+			failures,
+			stair_probe_speed,
+			"snapped down %.2f units in one up-stair frame" % max_up_frame_drop
+		)
 	if top_position.y - final_position.y < MIN_STAIR_CLIMB_HEIGHT:
 		_append_stair_failure(
 			failures,
@@ -268,10 +278,16 @@ func _validate_character_stair_navigation_at_speed(
 			stair_probe_speed,
 			"dropped %.2f units in one down-stair frame" % max_down_frame_drop
 		)
-	if !probe.is_on_floor():
+	if !_is_probe_grounded(probe):
 		_append_stair_failure(failures, stair_probe_speed, "did not settle on the lower landing")
 
 	probe.queue_free()
+
+
+func _is_probe_grounded(probe: HumanBody3D) -> bool:
+	if probe.has_method("is_grounded"):
+		return bool(probe.call("is_grounded"))
+	return probe.is_on_floor()
 
 
 func _append_stair_failure(failures: Array[String], stair_probe_speed: float, message: String) -> void:

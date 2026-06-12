@@ -12,8 +12,6 @@ signal inspect_requested
 
 
 func _process(delta: float) -> void:
-	super._process(delta)
-
 	if m_character == null or !is_instance_valid(m_character):
 		return
 
@@ -33,6 +31,8 @@ func _process(delta: float) -> void:
 	if Input.is_action_just_pressed(inspect_action):
 		inspect_requested.emit()
 		inspect()
+
+	super._process(delta)
 
 
 func _resolve_movement_direction(input_vector: Vector2) -> Vector3:

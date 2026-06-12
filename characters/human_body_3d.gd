@@ -18,6 +18,7 @@ const STEP_FLOOR_CAST_MARGIN := 0.16
 const MIN_STEP_FLOOR_ADJUSTMENT := 0.002
 const MIN_STEP_BLOCKED_PROGRESS_RATIO := 0.35
 const MAX_STEP_LATERAL_DRIFT_RATIO := 0.1
+const PLACEMENT_QUERY_FLOOR_CLEARANCE := 0.01
 const FLOOR_SAMPLE_MISSING := -INF
 const BaseController3DScript = preload("res://characters/control/base_controller_3d.gd")
 
@@ -230,9 +231,10 @@ func move_with_speed(direction_vector: Vector3, movement_speed: float) -> void:
 		flat_direction = flat_direction.normalized()
 	velocity.x = flat_direction.x * movement_speed
 	velocity.z = flat_direction.z * movement_speed
-	var grounded_before_move := is_on_floor() or m_step_snap_grounded
+	var grounded_before_move := is_grounded()
 	if grounded_before_move and !m_is_currently_jumping:
 		velocity.y = -grounding_speed
+	var can_reacquire_floor := grounded_before_move or (velocity.y <= 0.0 and !m_is_currently_jumping)
 	var start_position := global_position
 	var horizontal_motion := Vector3(velocity.x, 0.0, velocity.z) * get_physics_process_delta_time()
 	var step_direction := Vector3.ZERO
@@ -243,7 +245,7 @@ func move_with_speed(direction_vector: Vector3, movement_speed: float) -> void:
 		step_direction = m_last_step_direction
 	move_and_slide()
 	m_step_snap_grounded = is_on_floor()
-	if grounded_before_move and step_direction.length_squared() > 0.000001:
+	if can_reacquire_floor and step_direction.length_squared() > 0.000001:
 		if _snap_to_walkable_step_floor(start_position, horizontal_motion, step_direction):
 			m_step_snap_grounded = true
 
@@ -272,6 +274,7 @@ func _snap_to_walkable_step_floor(
 	)
 	var actual_forward_distance := actual_motion.dot(horizontal_direction)
 	var actual_lateral_motion := actual_motion - (horizontal_direction * actual_forward_distance)
+	var target_position_blocked := false
 	var target_position := Vector3(
 		start_position.x + horizontal_motion.x,
 		global_position.y,
@@ -296,6 +299,8 @@ func _snap_to_walkable_step_floor(
 				if _can_place_body_at(target_snap_position):
 					snap_position = target_snap_position
 					floor_y = target_floor_y
+				else:
+					target_position_blocked = true
 
 	if is_nan(floor_y) and requested_distance > 0.0 and actual_forward_distance < requested_distance * MIN_STEP_BLOCKED_PROGRESS_RATIO:
 		target_floor_y = _find_walkable_step_floor_y(target_position, horizontal_direction, reference_y)
@@ -304,6 +309,11 @@ func _snap_to_walkable_step_floor(
 			if _can_place_body_at(target_snap_position):
 				snap_position = target_snap_position
 				floor_y = target_floor_y
+			else:
+				target_position_blocked = true
+
+	if target_position_blocked and actual_forward_distance < requested_distance * MIN_STEP_BLOCKED_PROGRESS_RATIO:
+		return false
 
 	if is_nan(floor_y):
 		var start_floor_y := _find_walkable_step_floor_y(start_position, horizontal_direction, reference_y)
@@ -314,6 +324,7 @@ func _snap_to_walkable_step_floor(
 				velocity.x = 0.0
 				velocity.z = 0.0
 				velocity.y = minf(velocity.y, 0.0)
+				_refresh_floor_state_after_manual_snap()
 				return true
 		return false
 
@@ -335,12 +346,23 @@ func _snap_to_walkable_step_floor(
 	):
 		return false
 
-	global_position = Vector3(snap_position.x, floor_y, snap_position.z)
+	var final_snap_position := Vector3(snap_position.x, floor_y, snap_position.z)
+	if !_can_place_body_at(final_snap_position):
+		return false
+
+	global_position = final_snap_position
 	if vertical_adjustment > 0.0:
 		velocity.y = 0.0
 	else:
 		velocity.y = minf(velocity.y, 0.0)
+	_refresh_floor_state_after_manual_snap()
 	return true
+
+
+func _refresh_floor_state_after_manual_snap() -> void:
+	if floor_snap_length <= 0.0 or m_is_currently_jumping:
+		return
+	apply_floor_snap()
 
 
 func _find_walkable_step_floor_y(
@@ -442,6 +464,8 @@ func _resolve_forward_step_floor_y(near_floor_y: float, far_floor_y: float, body
 	if body_support_y == FLOOR_SAMPLE_MISSING:
 		return maxf(near_floor_y, far_floor_y)
 
+	if near_floor_y > body_support_y + MIN_STEP_FLOOR_ADJUSTMENT:
+		return near_floor_y
 	if far_floor_y < body_support_y - MIN_STEP_FLOOR_ADJUSTMENT:
 		return far_floor_y
 	if near_floor_y < body_support_y - MIN_STEP_FLOOR_ADJUSTMENT:
@@ -452,7 +476,28 @@ func _resolve_forward_step_floor_y(near_floor_y: float, far_floor_y: float, body
 func _can_place_body_at(candidate_position: Vector3) -> bool:
 	var candidate_transform := global_transform
 	candidate_transform.origin = candidate_position
-	return !test_move(candidate_transform, Vector3.ZERO)
+	if !is_inside_tree():
+		return !test_move(candidate_transform, Vector3.ZERO)
+	if !is_instance_valid(m_collision_shape):
+		return !test_move(candidate_transform, Vector3.ZERO)
+	if m_collision_shape.disabled or m_collision_shape.shape == null:
+		return !test_move(candidate_transform, Vector3.ZERO)
+
+	var world := get_world_3d()
+	if world == null:
+		return !test_move(candidate_transform, Vector3.ZERO)
+
+	candidate_transform.origin.y += PLACEMENT_QUERY_FLOOR_CLEARANCE
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = m_collision_shape.shape
+	query.transform = candidate_transform * m_collision_shape.transform
+	query.collision_mask = collision_mask
+	query.collide_with_bodies = true
+	query.collide_with_areas = false
+	query.exclude = [get_rid()]
+
+	var overlaps: Array[Dictionary] = world.direct_space_state.intersect_shape(query, 1)
+	return overlaps.is_empty()
 
 
 func jump() -> void:
@@ -461,6 +506,10 @@ func jump() -> void:
 	m_is_currently_jumping = true
 	m_jump_timer = 0.0
 	_update_state()
+
+
+func is_grounded() -> bool:
+	return is_on_floor() or m_step_snap_grounded
 
 
 func get_direction_vector() -> Vector3:
