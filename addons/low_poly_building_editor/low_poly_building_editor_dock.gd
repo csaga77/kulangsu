@@ -35,6 +35,7 @@ var m_scene_dialog: EditorFileDialog
 var m_window_width_spin: SpinBox
 var m_window_height_spin: SpinBox
 var m_window_frame_spin: SpinBox
+var m_window_sill_spin: SpinBox
 var m_palette_paths: PackedStringArray = PackedStringArray()
 
 
@@ -242,6 +243,11 @@ func _build_window_controls(parent: VBoxContainer) -> void:
 	_add_labeled_control(parent, "Frame:", m_window_frame_spin)
 	m_window_frame_spin.value_changed.connect(_on_window_setting_changed)
 
+	m_window_sill_spin = _make_spin(0.0, 10.0, 0.01, 0.9)
+	m_window_sill_spin.tooltip_text = "Height of the opening's bottom edge above the wall base."
+	_add_labeled_control(parent, "Sill:", m_window_sill_spin)
+	m_window_sill_spin.value_changed.connect(_on_window_setting_changed)
+
 
 func _make_spin(min_value: float, max_value: float, step: float, value: float) -> SpinBox:
 	var spin := SpinBox.new()
@@ -362,6 +368,7 @@ func _emit_window_settings() -> void:
 		"width": float(m_window_width_spin.value),
 		"height": float(m_window_height_spin.value),
 		"frame_thickness": float(m_window_frame_spin.value),
+		"sill_height": float(m_window_sill_spin.value),
 	})
 
 
@@ -463,6 +470,7 @@ func _load_persisted_settings() -> void:
 
 	var state: Dictionary = state_variant
 	m_palette_root_edit.text = str(state.get("prop_palette_root", m_palette_root_edit.text))
+	m_window_sill_spin.value = float(state.get("window_sill_height", m_window_sill_spin.value))
 
 
 func _save_persisted_settings() -> void:
@@ -472,4 +480,5 @@ func _save_persisted_settings() -> void:
 
 	editor_settings.set_project_metadata(PROJECT_METADATA_SECTION, PROJECT_METADATA_KEY, {
 		"prop_palette_root": _get_configured_palette_root(),
+		"window_sill_height": float(m_window_sill_spin.value) if m_window_sill_spin != null else 0.9,
 	})

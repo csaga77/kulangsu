@@ -34,6 +34,7 @@ var m_window_settings := {
 	"width": 1.0,
 	"height": 1.0,
 	"frame_thickness": 0.08,
+	"sill_height": 0.9,
 }
 var m_wall_start_local := Vector3.ZERO
 var m_wall_end_local := Vector3.ZERO
@@ -486,8 +487,10 @@ func _update_window_preview(wall: ProceduralWall3DScript, hit: Dictionary) -> vo
 	opening.frame_depth = segment.thickness + 0.04
 	var local_hit := frame.affine_inverse() * wall.to_local(Vector3(hit["position"]))
 	var face_sign := 1.0 if local_hit.z >= 0.0 else -1.0
-	local_hit.x = clampf(local_hit.x, 0.0, segment.get_length())
-	local_hit.y = clampf(local_hit.y, 0.0, segment.height)
+	var grid_step := _active_grid_step(wall)
+	local_hit.x = clampf(roundf(local_hit.x / grid_step) * grid_step, 0.0, segment.get_length())
+	var sill_height := maxf(float(m_window_settings.get("sill_height", 0.9)), 0.0)
+	local_hit.y = sill_height + opening.opening_height * 0.5
 	local_hit.z = face_sign * (segment.thickness * 0.5 + 0.035)
 	opening.transform = Transform3D(frame.basis, frame * local_hit)
 	var center := Vector2(local_hit.x, local_hit.y)
@@ -872,6 +875,13 @@ func _apply_wall_settings_to_coordinator(coordinator: BuildingEditor3DScript) ->
 	coordinator.default_wall_height = float(m_wall_settings["height"])
 	coordinator.default_wall_thickness = float(m_wall_settings["thickness"])
 	coordinator.default_wall_color = Color(m_wall_settings["color"])
+
+
+func _active_grid_step(wall: ProceduralWall3DScript) -> float:
+	var coordinator := _find_coordinator_from_node(wall)
+	if coordinator != null:
+		return maxf(coordinator.grid_step, 0.05)
+	return maxf(float(m_wall_settings["grid_step"]), 0.05)
 
 
 func _snap_world_position(world_position: Vector3) -> Vector3:

@@ -24,6 +24,7 @@
 - Window/prop placement and viewport picking are segment-aware: raycasts test every segment of a wall and previews align to the hit segment's frame.
 - `BuildingOpening3D` children create rectangular wall holes without boolean operations. The wall compiles a split box-grid mesh around all openings.
 - Window openings stay axis-aligned to their wall face; opening rotation is not supported, so the frame visual always matches the cut rectangle.
+- Window placement snaps horizontally to the coordinator's grid step, and the opening's bottom edge sits at the configurable sill height from the dock (persisted with the dock state, default 0.9) instead of following the cursor's vertical position.
 - Wall meshes duplicate vertices per face, carry vertex colors, and use rough flat materials for hard low-poly face breaks.
 - Wall mesh normals point outward, triangle winding follows Godot's `BoxMesh` convention, and wall materials use backface culling so lighting follows the generated face normals.
 - Generated collision children are editor/runtime rebuild artifacts and should not be edited by hand.
