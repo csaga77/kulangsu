@@ -47,6 +47,11 @@ var m_prop_rotation_y := 0.0
 var m_preview_valid := false
 var m_preview_parent: Node
 var m_preview_wall: ProceduralWall3DScript
+var m_dragging_wall: ProceduralWall3DScript
+var m_drag_wall_old_start: Vector3
+var m_drag_wall_old_end: Vector3
+var m_drag_wall_anchor_local: Vector3
+var m_drag_wall_hover: ProceduralWall3DScript
 var m_dragging_opening: BuildingOpening3DScript
 var m_drag_old_position: Vector3
 var m_drag_old_segment: int
@@ -167,10 +172,17 @@ func notify_viewport_overlay_event(event_name: String) -> void:
 
 
 func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
+	if m_dragging_wall != null:
+		return _handle_wall_drag_input(camera, event)
+
 	if event is InputEventMouseMotion:
 		if m_is_drawing_wall:
 			_update_wall_preview(camera, (event as InputEventMouseMotion).position)
 			return _handled()
+		var hover_wall := _find_wall_under_cursor(camera, (event as InputEventMouseMotion).position)
+		_update_wall_hover(hover_wall)
+		if hover_wall != null:
+			_set_status("Click and drag to move wall.")
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
 
 	if !(event is InputEventMouseButton):
@@ -192,6 +204,13 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 
 	if mouse_button.button_index != MOUSE_BUTTON_LEFT or !mouse_button.pressed:
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
+
+	if !m_is_drawing_wall:
+		var hit_wall := _find_wall_under_cursor(camera, mouse_button.position)
+		if hit_wall != null:
+			_clear_wall_hover()
+			_start_wall_drag(hit_wall, camera, mouse_button.position)
+			return _handled()
 
 	var coordinator := _get_or_create_coordinator(true)
 	if coordinator == null:
@@ -216,6 +235,21 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 	_clear_wall_preview()
 	m_is_drawing_wall = false
 	m_wall_has_valid_preview = false
+	return _handled()
+
+
+func _handle_wall_drag_input(camera: Camera3D, event: InputEvent) -> int:
+	if event is InputEventMouseMotion:
+		_update_wall_drag(camera, (event as InputEventMouseMotion).position)
+		return _handled()
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_LEFT and !mb.pressed:
+			_commit_wall_drag()
+			return _handled()
+		if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+			_cancel_wall_drag()
+			return _handled()
 	return _handled()
 
 
@@ -983,6 +1017,94 @@ func _clear_prop_preview() -> void:
 	m_preview_valid = false
 
 
+func _find_wall_under_cursor(camera: Camera3D, mouse_pos: Vector2) -> ProceduralWall3DScript:
+	var hit := _raycast_world(camera, mouse_pos)
+	return _find_wall_from_collider(hit.get("collider"))
+
+
+func _update_wall_hover(wall: ProceduralWall3DScript) -> void:
+	if wall == m_drag_wall_hover:
+		return
+	_clear_wall_hover()
+	if wall == null:
+		return
+	m_drag_wall_hover = wall
+	wall.material_override = _build_preview_material(Color(0.20, 0.60, 1.0, 0.55))
+
+
+func _clear_wall_hover() -> void:
+	if m_drag_wall_hover == null:
+		return
+	if is_instance_valid(m_drag_wall_hover):
+		m_drag_wall_hover.material_override = null
+	m_drag_wall_hover = null
+
+
+func _start_wall_drag(wall: ProceduralWall3DScript, camera: Camera3D, mouse_pos: Vector2) -> void:
+	m_dragging_wall = wall
+	m_drag_wall_old_start = wall.start_point
+	m_drag_wall_old_end = wall.end_point
+	var coordinator := _find_coordinator_from_node(wall)
+	var hit := _raycast_world(camera, mouse_pos, false)
+	m_drag_wall_anchor_local = (
+		coordinator.to_local(Vector3(hit["position"])) if coordinator != null
+		else Vector3(hit["position"])
+	)
+	wall.material_override = _build_preview_material(Color(0.20, 0.60, 1.0, 0.55))
+	_set_status("Dragging wall — release to commit, Escape to cancel.")
+
+
+func _update_wall_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
+	if m_dragging_wall == null or !is_instance_valid(m_dragging_wall):
+		m_dragging_wall = null
+		return
+	var coordinator := _find_coordinator_from_node(m_dragging_wall)
+	var hit := _raycast_world(camera, mouse_pos, false)
+	var hit_local: Vector3 = (
+		coordinator.to_local(Vector3(hit["position"])) if coordinator != null
+		else Vector3(hit["position"])
+	)
+	var raw_delta := hit_local - m_drag_wall_anchor_local
+	var step := _active_grid_step(m_dragging_wall)
+	var snapped_delta := Vector3(
+		roundf(raw_delta.x / step) * step,
+		0.0,
+		roundf(raw_delta.z / step) * step
+	)
+	m_dragging_wall.set_wall_endpoints(
+		m_drag_wall_old_start + snapped_delta,
+		m_drag_wall_old_end + snapped_delta
+	)
+	_set_status("Release to commit.")
+
+
+func _commit_wall_drag() -> void:
+	if m_dragging_wall == null:
+		return
+	var wall := m_dragging_wall
+	var new_start := wall.start_point
+	var new_end := wall.end_point
+	var old_start := m_drag_wall_old_start
+	var old_end := m_drag_wall_old_end
+	m_dragging_wall = null
+	wall.material_override = null
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Move Procedural Wall")
+	undo_redo.add_do_method(wall, "set_wall_endpoints", new_start, new_end)
+	undo_redo.add_undo_method(wall, "set_wall_endpoints", old_start, old_end)
+	undo_redo.commit_action()
+	_set_status("Moved wall.")
+
+
+func _cancel_wall_drag() -> void:
+	if m_dragging_wall == null:
+		return
+	if is_instance_valid(m_dragging_wall):
+		m_dragging_wall.set_wall_endpoints(m_drag_wall_old_start, m_drag_wall_old_end)
+		m_dragging_wall.material_override = null
+	m_dragging_wall = null
+
+
 func _find_opening_under_cursor(camera: Camera3D, mouse_pos: Vector2) -> BuildingOpening3DScript:
 	var hit := _raycast_world(camera, mouse_pos)
 	var wall := _find_wall_from_collider(hit.get("collider"))
@@ -1165,6 +1287,8 @@ func _clear_viewport_overlays() -> void:
 
 
 func _cancel_active_preview() -> void:
+	_cancel_wall_drag()
+	_clear_wall_hover()
 	_cancel_window_drag()
 	_clear_drag_hover()
 	_clear_wall_preview()
