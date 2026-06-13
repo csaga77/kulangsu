@@ -7,6 +7,8 @@ const BODY_SURFACE_NAME := "BodySurface"
 const HEAD_ATTACHMENT_NAME := "HeadAttachment"
 const LEFT_HAND_ATTACHMENT_NAME := "LeftHandAttachment"
 const RIGHT_HAND_ATTACHMENT_NAME := "RightHandAttachment"
+const STYLE_MODEL_ID := "stylized_low_poly_avatar_v1"
+const STYLE_FACE_DETAIL_PRIMITIVES := 3
 
 const BONE_HIPS := "Hips"
 const BONE_SPINE := "Spine"
@@ -96,6 +98,23 @@ func get_motion_snapshot() -> Dictionary:
 		"right_leg_pitch": snappedf(m_right_leg_pitch, 0.0001),
 		"left_arm_pitch": snappedf(m_left_arm_pitch, 0.0001),
 		"right_arm_pitch": snappedf(m_right_arm_pitch, 0.0001),
+	}
+
+
+func get_style_snapshot() -> Dictionary:
+	var proportions := _resolve_proportions()
+	var effective_height := float(proportions["effective_height"])
+	return {
+		"model_id": STYLE_MODEL_ID,
+		"anatomy": "simplified",
+		"proportions": "cartoon",
+		"silhouette": "simple_readable",
+		"face_detail_primitives": STYLE_FACE_DETAIL_PRIMITIVES,
+		"material_profile": "flat_vertex_color",
+		"uses_external_assets": false,
+		"head_height_ratio": snappedf(float(proportions["head_height"]) / effective_height, 0.0001),
+		"torso_height_ratio": snappedf(float(proportions["torso_height"]) / effective_height, 0.0001),
+		"leg_height_ratio": snappedf(float(proportions["leg_height"]) / effective_height, 0.0001),
 	}
 
 
@@ -283,10 +302,12 @@ func _rebuild_body_mesh() -> void:
 	var shoulder_y := hip_y + torso_height * 0.74
 	var arm_x := shoulder_width * 0.58
 	var eye_color := Color(0.08, 0.065, 0.05, 1.0)
-	var cheek_color := m_config.skin_color.lightened(0.12)
 	var belt_color := m_config.hair_color.darkened(0.28)
 	var shoe_color := m_config.hair_color.darkened(0.36)
-	var collar_color := m_config.skin_color.lightened(0.06)
+	var shirt_color := m_config.accent_color
+	var lapel_color := m_config.main_color.lightened(0.08)
+	var tie_color := m_config.hair_color.darkened(0.42)
+	var mouth_color := m_config.skin_color.darkened(0.34)
 	var trim_color := m_config.accent_color.lightened(0.08)
 
 	_add_tapered_box(
@@ -310,8 +331,10 @@ func _rebuild_body_mesh() -> void:
 		m_config.main_color
 	)
 	_add_box(vertices, normals, colors, Vector3(0.0, hip_y + torso_height * 0.39, torso_front_z), Vector3(hip_width * 1.02, torso_height * 0.075, 0.034), belt_color)
-	_add_box(vertices, normals, colors, Vector3(-shoulder_width * 0.12, hip_y + torso_height * 0.77, torso_front_z + 0.006), Vector3(shoulder_width * 0.25, torso_height * 0.11, 0.035), collar_color)
-	_add_box(vertices, normals, colors, Vector3(shoulder_width * 0.16, hip_y + torso_height * 0.66, torso_front_z + 0.008), Vector3(shoulder_width * 0.13, torso_height * 0.30, 0.038), trim_color)
+	_add_box(vertices, normals, colors, Vector3(0.0, hip_y + torso_height * 0.74, torso_front_z + 0.008), Vector3(shoulder_width * 0.24, torso_height * 0.22, 0.038), shirt_color)
+	_add_box(vertices, normals, colors, Vector3(0.0, hip_y + torso_height * 0.60, torso_front_z + 0.012), Vector3(shoulder_width * 0.085, torso_height * 0.30, 0.042), tie_color)
+	_add_box(vertices, normals, colors, Vector3(-shoulder_width * 0.20, hip_y + torso_height * 0.65, torso_front_z + 0.006), Vector3(shoulder_width * 0.12, torso_height * 0.35, 0.035), lapel_color)
+	_add_box(vertices, normals, colors, Vector3(shoulder_width * 0.20, hip_y + torso_height * 0.65, torso_front_z + 0.006), Vector3(shoulder_width * 0.12, torso_height * 0.35, 0.035), lapel_color)
 	_add_box(vertices, normals, colors, Vector3(0.0, hip_y + torso_height * 0.06, torso_front_z), Vector3(hip_width * 0.94, torso_height * 0.10, 0.036), trim_color.darkened(0.08))
 
 	_add_tapered_box(
@@ -340,10 +363,7 @@ func _rebuild_body_mesh() -> void:
 	_add_box(vertices, normals, colors, Vector3(head_width * 0.12, head_y + head_height * 0.27, face_z), Vector3(head_width * 0.20, head_height * 0.14, 0.035), m_config.hair_color)
 	_add_box(vertices, normals, colors, Vector3(-head_width * 0.18, head_y + head_height * 0.04, face_z + 0.004), Vector3(head_width * 0.095, head_height * 0.06, 0.038), eye_color)
 	_add_box(vertices, normals, colors, Vector3(head_width * 0.18, head_y + head_height * 0.04, face_z + 0.004), Vector3(head_width * 0.095, head_height * 0.06, 0.038), eye_color)
-	_add_box(vertices, normals, colors, Vector3(0.0, head_y - head_height * 0.11, face_z + 0.005), Vector3(head_width * 0.16, head_height * 0.055, 0.040), m_config.skin_color.darkened(0.12))
-	_add_box(vertices, normals, colors, Vector3(0.0, head_y - head_height * 0.27, face_z + 0.006), Vector3(head_width * 0.22, head_height * 0.045, 0.040), trim_color.darkened(0.18))
-	_add_box(vertices, normals, colors, Vector3(-head_width * 0.31, head_y - head_height * 0.08, face_z + 0.003), Vector3(head_width * 0.10, head_height * 0.07, 0.034), cheek_color)
-	_add_box(vertices, normals, colors, Vector3(head_width * 0.31, head_y - head_height * 0.08, face_z + 0.003), Vector3(head_width * 0.10, head_height * 0.07, 0.034), cheek_color)
+	_add_box(vertices, normals, colors, Vector3(0.0, head_y - head_height * 0.22, face_z + 0.006), Vector3(head_width * 0.22, head_height * 0.045, 0.040), mouth_color)
 
 	_add_tapered_box(vertices, normals, colors, Vector3(-arm_x, shoulder_y - upper_arm_length * 0.46, 0.0), Vector2(mirrored_left_width * 0.86, mirrored_left_width * 0.74), Vector2(mirrored_left_width * 1.12, mirrored_left_width * 0.92), upper_arm_length * 0.92, left_limb_color)
 	_add_tapered_box(vertices, normals, colors, Vector3(-arm_x, shoulder_y - upper_arm_length - forearm_length * 0.44, 0.0), Vector2(mirrored_left_width * 0.74, mirrored_left_width * 0.68), Vector2(mirrored_left_width * 0.94, mirrored_left_width * 0.78), forearm_length * 0.88, left_limb_color.darkened(0.08))
@@ -389,17 +409,35 @@ func _reset_pose() -> void:
 
 func _resolve_proportions() -> Dictionary:
 	var effective_height := m_body_height * m_config.height_modifier
-	var radius_scale := m_body_radius / 0.28
-	var torso_height := effective_height * 0.42
+	var head_t := inverse_lerp(
+		LowPolyCharacterConfig.MIN_HEAD_SCALE,
+		LowPolyCharacterConfig.MAX_HEAD_SCALE,
+		m_config.head_scale
+	)
+	var torso_t := inverse_lerp(
+		LowPolyCharacterConfig.MIN_TORSO_MASS,
+		LowPolyCharacterConfig.MAX_TORSO_MASS,
+		m_config.torso_mass
+	)
+	var limb_t := inverse_lerp(
+		LowPolyCharacterConfig.MIN_LIMB_THICKNESS,
+		LowPolyCharacterConfig.MAX_LIMB_THICKNESS,
+		m_config.limb_thickness
+	)
+	var cartoon_head_scale := lerpf(0.88, 1.18, clampf(head_t, 0.0, 1.0))
+	var torso_height := effective_height * 0.37
 	var leg_height := effective_height * 0.40
-	var head_height := effective_height * 0.18 * m_config.head_scale
+	var head_height := effective_height * 0.22 * cartoon_head_scale
 	var hip_y := leg_height
-	var shoulder_width := m_body_radius * 1.9 * m_config.torso_mass
+	var shoulder_width := m_body_radius * lerpf(1.62, 2.05, clampf(torso_t, 0.0, 1.0))
 	var hip_width := m_body_radius * 1.35
-	var limb_width := m_body_radius * 0.46 * m_config.limb_thickness
+	var limb_width := m_body_radius * lerpf(0.38, 0.66, clampf(limb_t, 0.0, 1.0))
+	var head_width := maxf(m_body_radius * 1.34 * cartoon_head_scale, shoulder_width * 0.56)
+	var head_depth := maxf(m_body_radius * 1.12 * cartoon_head_scale, m_body_radius * 1.02)
 	return {
 		"effective_height": effective_height,
 		"hip_y": hip_y,
+		"leg_height": leg_height,
 		"torso_height": torso_height,
 		"upper_leg_length": leg_height * 0.52,
 		"lower_leg_length": leg_height * 0.48,
@@ -410,8 +448,8 @@ func _resolve_proportions() -> Dictionary:
 		"forearm_length": effective_height * 0.17,
 		"head_y": hip_y + torso_height + head_height * 0.45,
 		"head_height": head_height,
-		"head_width": m_body_radius * 1.18 * m_config.head_scale * radius_scale,
-		"head_depth": m_body_radius * 1.02 * m_config.head_scale * radius_scale,
+		"head_width": head_width,
+		"head_depth": head_depth,
 		"shoulder_width": shoulder_width,
 		"hip_width": hip_width,
 		"limb_width": limb_width,

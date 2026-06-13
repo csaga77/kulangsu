@@ -66,8 +66,8 @@ If you are changing how terrain mask colors map to layers, start with the terrai
 - [`../characters/`](../characters) - player and NPC scenes plus sprite systems
 - [`../characters/resident_npc.gd`](../characters/resident_npc.gd) / [`../characters/resident_npc.tscn`](../characters/resident_npc.tscn) - runtime resident actor that applies a `ResidentDefinition` on top of `HumanBody2D`
 - [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd) / [`../characters/human_body_3d.tscn`](../characters/human_body_3d.tscn) - parallel low-poly 3D actor adapter prototype with tunable block-body proportions, optional seeded procedural rig mode, contact shadow, stair/floor-snap navigation, and procedural walk/run readability polish; not wired into the runtime 2D overworld yet
-- [`../characters/low_poly_character_config.gd`](../characters/low_poly_character_config.gd) - deterministic seed-to-character config resource for low-poly 3D height, limb thickness, head scale, torso mass, palette, and asymmetry flags
-- [`../characters/procedural_low_poly_character_rig.gd`](../characters/procedural_low_poly_character_rig.gd) - optional runtime-generated stylized low-poly 3D character rig with `Skeleton3D`, flat-shaded vertex-color `BodySurface`, computed face normals, and head/hand `BoneAttachment3D` nodes
+- [`../characters/low_poly_character_config.gd`](../characters/low_poly_character_config.gd) - deterministic seed-to-character config resource for low-poly 3D profile ids, height, limb thickness, head scale, torso mass, palette, and asymmetry flags; the default `kulangsu_player` seed maps to the formal reference avatar
+- [`../characters/procedural_low_poly_character_rig.gd`](../characters/procedural_low_poly_character_rig.gd) - optional runtime-generated stylized low-poly 3D character rig with cartoon proportions, simplified angular anatomy, flat-shaded vertex-color `BodySurface`, computed face normals, style snapshot metadata, and head/hand `BoneAttachment3D` nodes
 - [`../characters/tests/`](../characters/tests) - direct character smoke scenes such as `HumanBody2D` and `HumanBody3D`
 - [`../characters/control/`](../characters/control) - controllers, resident presentation hookup, and interaction behavior
 - [`../characters/control/base_controller_3d.gd`](../characters/control/base_controller_3d.gd) - shared 3D controller base for `HumanBody3D` lifecycle, movement flags, and movement helper methods
@@ -234,8 +234,8 @@ Useful searches when locating code:
 - `LowPolyWorldCoordinates3D` for terrain-mask-pixel and rough 2D isometric-position to low-poly 3D world-position conversion
 - `LowPolyLandmarkProxy3D` for postcard-diorama landmark proxy volumes and placeholder silhouettes
 - `HumanBody3D` for the parallel low-poly 3D actor adapter prototype with tunable body shape, optional seeded procedural rig mode, and first-pass procedural movement readability
-- `ProceduralLowPolyCharacterRig` for the runtime-generated stylized low-poly character skeleton, flat-shaded mesh, vertex colors, computed face normals, and attachment nodes
-- `LowPolyCharacterConfig` for deterministic seed-driven low-poly character proportions, palette, and asymmetry flags
+- `ProceduralLowPolyCharacterRig` for the runtime-generated stylized low-poly character skeleton, simplified cartoon mesh, vertex colors, computed face normals, style snapshot, and attachment nodes
+- `LowPolyCharacterConfig` for deterministic seed-driven low-poly character profile ids, proportions, palette, and asymmetry flags
 - `BaseController3D` for the shared 3D controller base
 - `PlayerController3D` for the parallel 3D player-input adapter prototype
 - `source_control_report` for the repo-local and shared Git inspection helpers

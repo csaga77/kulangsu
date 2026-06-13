@@ -45,7 +45,7 @@ floor_snap_length = 0.72
 walk_bob_height = 0.02
 run_bob_height = 0.04
 use_procedural_rig = true
-procedural_seed = "kulangsu-player-preview"
+procedural_seed = "kulangsu_player"
 
 [node name="VariantLine" type="Node3D" parent="." unique_id=1834424149]
 

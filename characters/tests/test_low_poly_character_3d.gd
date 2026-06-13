@@ -1,6 +1,6 @@
 extends Node3D
 
-const PRIMARY_SEED := "kulangsu-player-preview"
+const PRIMARY_SEED := "kulangsu_player"
 const VARIANT_SEEDS: Array[String] = [
 	"harbor-hero-42",
 	"piano-island-guide",
@@ -126,6 +126,10 @@ func _validate_preview_actor(failures: Array[String], actor: HumanBody3D) -> voi
 		failures.append("%s is missing ProceduralLowPolyCharacterRig" % actor.name)
 		return
 
+	var config_snapshot: Dictionary = rig.call("get_config_snapshot")
+	if String(actor.get("procedural_seed")) == PRIMARY_SEED:
+		_validate_default_reference_config(failures, actor.name, config_snapshot)
+
 	var skeleton := rig.get_node_or_null("Skeleton3D") as Skeleton3D
 	if skeleton == null:
 		failures.append("%s rig is missing Skeleton3D" % actor.name)
@@ -141,6 +145,8 @@ func _validate_preview_actor(failures: Array[String], actor: HumanBody3D) -> voi
 	]:
 		if rig.get_node_or_null(attachment_path) == null:
 			failures.append("%s rig is missing %s" % [actor.name, attachment_path])
+
+	_validate_style_snapshot(failures, actor.name, rig.call("get_style_snapshot"))
 
 	var body_surface := rig.get_node_or_null("Skeleton3D/BodySurface") as MeshInstance3D
 	if body_surface == null or body_surface.mesh == null:
@@ -169,6 +175,9 @@ func _validate_preview_actor(failures: Array[String], actor: HumanBody3D) -> voi
 	else:
 		_validate_renderer_facing_winding(failures, actor.name, vertices, normals)
 
+	if body_surface.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
+		failures.append("%s rig body surface should not cast character self-shadows" % actor.name)
+
 	var material := body_surface.get_active_material(0) as StandardMaterial3D
 	if material == null:
 		failures.append("%s rig is missing StandardMaterial3D" % actor.name)
@@ -179,6 +188,12 @@ func _validate_preview_actor(failures: Array[String], actor: HumanBody3D) -> voi
 			failures.append("%s rig material albedo is darkening vertex colors" % actor.name)
 		if material.cull_mode != BaseMaterial3D.CULL_BACK:
 			failures.append("%s rig material should cull backfaces" % actor.name)
+		if material.roughness < 0.95:
+			failures.append("%s rig material should stay clean and matte" % actor.name)
+		if material.specular_mode != BaseMaterial3D.SPECULAR_DISABLED:
+			failures.append("%s rig material should disable specular highlights" % actor.name)
+		if !material.disable_receive_shadows:
+			failures.append("%s rig material should avoid shadow-darkened vertex colors" % actor.name)
 
 	rig.call("process_motion", 0.18, true, false, false)
 	var motion_snapshot: Dictionary = rig.call("get_motion_snapshot")
@@ -198,6 +213,52 @@ func _get_unique_color_count(colors: PackedColorArray) -> int:
 	for color in colors:
 		unique_colors[color.to_html()] = true
 	return unique_colors.size()
+
+
+func _validate_default_reference_config(
+	failures: Array[String],
+	actor_name: String,
+	config_snapshot: Dictionary
+) -> void:
+	if String(config_snapshot.get("profile_id", "")) != LowPolyCharacterConfig.FORMAL_REFERENCE_PROFILE_ID:
+		failures.append("%s default config should use the formal reference profile" % actor_name)
+	if String(config_snapshot.get("main_color", "")) != LowPolyCharacterConfig.FORMAL_REFERENCE_MAIN_COLOR.to_html():
+		failures.append("%s default config should use a dark suit color" % actor_name)
+	if String(config_snapshot.get("accent_color", "")) != LowPolyCharacterConfig.FORMAL_REFERENCE_ACCENT_COLOR.to_html():
+		failures.append("%s default config should use a light shirt color" % actor_name)
+	if String(config_snapshot.get("skin_color", "")) != LowPolyCharacterConfig.FORMAL_REFERENCE_SKIN_COLOR.to_html():
+		failures.append("%s default config should use the formal reference skin tone" % actor_name)
+	if String(config_snapshot.get("hair_color", "")) != LowPolyCharacterConfig.FORMAL_REFERENCE_HAIR_COLOR.to_html():
+		failures.append("%s default config should use short dark-brown hair" % actor_name)
+	if float(config_snapshot.get("limb_thickness", 1.0)) >= 0.85:
+		failures.append("%s default config should keep the reference avatar slim" % actor_name)
+	if float(config_snapshot.get("height_modifier", 1.0)) <= 1.0:
+		failures.append("%s default config should keep the reference avatar slightly tall" % actor_name)
+
+
+func _validate_style_snapshot(
+	failures: Array[String],
+	actor_name: String,
+	style_snapshot: Dictionary
+) -> void:
+	if String(style_snapshot.get("model_id", "")) != "stylized_low_poly_avatar_v1":
+		failures.append("%s rig style snapshot has the wrong model id" % actor_name)
+	if String(style_snapshot.get("anatomy", "")) != "simplified":
+		failures.append("%s rig style snapshot should describe simplified anatomy" % actor_name)
+	if String(style_snapshot.get("proportions", "")) != "cartoon":
+		failures.append("%s rig style snapshot should describe cartoon proportions" % actor_name)
+	if String(style_snapshot.get("silhouette", "")) != "simple_readable":
+		failures.append("%s rig style snapshot should describe a readable silhouette" % actor_name)
+	if String(style_snapshot.get("material_profile", "")) != "flat_vertex_color":
+		failures.append("%s rig style snapshot should describe flat vertex-color materials" % actor_name)
+	if bool(style_snapshot.get("uses_external_assets", true)):
+		failures.append("%s rig style snapshot should remain procedural asset-free" % actor_name)
+	if int(style_snapshot.get("face_detail_primitives", 999)) > 3:
+		failures.append("%s rig style snapshot should keep facial details minimal" % actor_name)
+	if float(style_snapshot.get("head_height_ratio", 0.0)) < 0.19:
+		failures.append("%s rig head ratio is too small for cartoon readability" % actor_name)
+	if float(style_snapshot.get("torso_height_ratio", 0.0)) >= 0.42:
+		failures.append("%s rig torso ratio is too realistic for the stylized profile" % actor_name)
 
 
 func _validate_renderer_facing_winding(

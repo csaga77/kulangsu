@@ -2,6 +2,14 @@
 class_name LowPolyCharacterConfig
 extends Resource
 
+const DEFAULT_SEED_TEXT := "kulangsu_player"
+const SEEDED_VARIANT_PROFILE_ID := "seeded_variant"
+const FORMAL_REFERENCE_PROFILE_ID := "formal_reference_avatar"
+const FORMAL_REFERENCE_MAIN_COLOR := Color(0.13, 0.15, 0.16, 1.0)
+const FORMAL_REFERENCE_ACCENT_COLOR := Color(0.92, 0.90, 0.84, 1.0)
+const FORMAL_REFERENCE_SKIN_COLOR := Color(0.82, 0.58, 0.40, 1.0)
+const FORMAL_REFERENCE_HAIR_COLOR := Color(0.22, 0.12, 0.055, 1.0)
+
 const MIN_HEIGHT_MODIFIER := 0.7
 const MAX_HEIGHT_MODIFIER := 1.4
 const MIN_LIMB_THICKNESS := 0.5
@@ -11,15 +19,16 @@ const MAX_HEAD_SCALE := 1.5
 const MIN_TORSO_MASS := 0.8
 const MAX_TORSO_MASS := 1.8
 
-@export var seed_text := ""
-@export_range(MIN_HEIGHT_MODIFIER, MAX_HEIGHT_MODIFIER, 0.01) var height_modifier := 1.0
-@export_range(MIN_LIMB_THICKNESS, MAX_LIMB_THICKNESS, 0.01) var limb_thickness := 1.0
-@export_range(MIN_HEAD_SCALE, MAX_HEAD_SCALE, 0.01) var head_scale := 1.0
-@export_range(MIN_TORSO_MASS, MAX_TORSO_MASS, 0.01) var torso_mass := 1.0
-@export var main_color := Color(0.18, 0.52, 0.58, 1.0)
-@export var accent_color := Color(0.83, 0.66, 0.30, 1.0)
-@export var skin_color := Color(0.84, 0.63, 0.45, 1.0)
-@export var hair_color := Color(0.25, 0.16, 0.10, 1.0)
+@export var profile_id := FORMAL_REFERENCE_PROFILE_ID
+@export var seed_text := DEFAULT_SEED_TEXT
+@export_range(MIN_HEIGHT_MODIFIER, MAX_HEIGHT_MODIFIER, 0.01) var height_modifier := 1.08
+@export_range(MIN_LIMB_THICKNESS, MAX_LIMB_THICKNESS, 0.01) var limb_thickness := 0.72
+@export_range(MIN_HEAD_SCALE, MAX_HEAD_SCALE, 0.01) var head_scale := 1.08
+@export_range(MIN_TORSO_MASS, MAX_TORSO_MASS, 0.01) var torso_mass := 0.92
+@export var main_color := FORMAL_REFERENCE_MAIN_COLOR
+@export var accent_color := FORMAL_REFERENCE_ACCENT_COLOR
+@export var skin_color := FORMAL_REFERENCE_SKIN_COLOR
+@export var hair_color := FORMAL_REFERENCE_HAIR_COLOR
 @export var left_limb_scale := 1.0
 @export var right_limb_scale := 1.0
 @export var left_accent_flag := false
@@ -30,8 +39,13 @@ static func from_seed(seed_value: Variant) -> LowPolyCharacterConfig:
 	var cfg := LowPolyCharacterConfig.new()
 	cfg.seed_text = str(seed_value)
 	if cfg.seed_text.is_empty():
-		cfg.seed_text = "kulangsu"
+		cfg.seed_text = DEFAULT_SEED_TEXT
 
+	if _is_default_profile_seed(cfg.seed_text):
+		cfg._apply_formal_reference_profile()
+		return cfg
+
+	cfg.profile_id = SEEDED_VARIANT_PROFILE_ID
 	cfg.height_modifier = _range(cfg.seed_text, "height", MIN_HEIGHT_MODIFIER, MAX_HEIGHT_MODIFIER)
 	cfg.limb_thickness = _range(cfg.seed_text, "limb_thickness", MIN_LIMB_THICKNESS, MAX_LIMB_THICKNESS)
 	cfg.head_scale = _range(cfg.seed_text, "head_scale", MIN_HEAD_SCALE, MAX_HEAD_SCALE)
@@ -46,6 +60,7 @@ static func from_seed(seed_value: Variant) -> LowPolyCharacterConfig:
 
 func to_dictionary() -> Dictionary:
 	return {
+		"profile_id": profile_id,
 		"seed_text": seed_text,
 		"height_modifier": snappedf(height_modifier, 0.0001),
 		"limb_thickness": snappedf(limb_thickness, 0.0001),
@@ -60,6 +75,22 @@ func to_dictionary() -> Dictionary:
 		"left_accent_flag": left_accent_flag,
 		"right_accent_flag": right_accent_flag,
 	}
+
+
+func _apply_formal_reference_profile() -> void:
+	profile_id = FORMAL_REFERENCE_PROFILE_ID
+	height_modifier = 1.08
+	limb_thickness = 0.72
+	head_scale = 1.08
+	torso_mass = 0.92
+	main_color = FORMAL_REFERENCE_MAIN_COLOR
+	accent_color = FORMAL_REFERENCE_ACCENT_COLOR
+	skin_color = FORMAL_REFERENCE_SKIN_COLOR
+	hair_color = FORMAL_REFERENCE_HAIR_COLOR
+	left_limb_scale = 0.98
+	right_limb_scale = 1.02
+	left_accent_flag = false
+	right_accent_flag = false
 
 
 func _apply_seed_palette() -> void:
@@ -87,6 +118,10 @@ func _apply_seed_palette() -> void:
 
 static func _range(seed_text_value: String, salt: String, minimum: float, maximum: float) -> float:
 	return lerpf(minimum, maximum, _unit(seed_text_value, salt))
+
+
+static func _is_default_profile_seed(seed_text_value: String) -> bool:
+	return seed_text_value == DEFAULT_SEED_TEXT
 
 
 static func _unit(seed_text_value: String, salt: String) -> float:

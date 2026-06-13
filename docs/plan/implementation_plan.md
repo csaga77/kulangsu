@@ -132,8 +132,8 @@ First-pass shipped outcome:
 
 - the terrain mask and optional full-source heightmap can generate a coarse low-poly island mesh with heightmap-level or mask-clipped water, flat semi-transparent water at `water_height`, one-ring visual water overlap onto shoreline land, continuous visible seabed terrain, smooth land, mask-clipped shoreline sides, streets, building footprints, optional grayscale heightmap elevation, and optional land collision
 - `HumanBody3D` exposes familiar actor fields and methods such as direction, walking/running state, tunable body height/radius, configuration, movement, jump, ground footprint, and global-position change signaling, plus first-pass contact shadow, procedural walk/run motion polish, and an opt-in seeded procedural rig mode
-- `LowPolyCharacterConfig` deterministically maps a seed string into body proportions, palette choices, and asymmetry flags
-- `ProceduralLowPolyCharacterRig` generates a `Skeleton3D`, stylized flat-shaded vertex-color body surface, and head/hand `BoneAttachment3D` nodes at runtime, without external baked mesh, texture, or animation assets
+- `LowPolyCharacterConfig` deterministically maps a seed string into body proportions, palette choices, profile ids, and asymmetry flags, with the default `kulangsu_player` seed pinned to the formal dark-suit reference avatar
+- `ProceduralLowPolyCharacterRig` generates a `Skeleton3D`, stylized flat-shaded vertex-color body surface with simplified anatomy, cartoon proportions, minimal facial detail, and head/hand `BoneAttachment3D` nodes at runtime, without external baked mesh, texture, or animation assets
 - `BaseController3D` and `PlayerController3D` mirror the 2D controller hierarchy while staying separate from the 2D runtime controller classes
 - `LowPolyWorldCoordinates3D` provides the first shared terrain-mask-pixel to 3D XZ world-position adapter, including helpers for rough conversion from authored 2D isometric positions
 - `LowPolyArtStyle3D` plus `low_poly_postcard_diorama_style.tres` provide the first Painted Postcard Diorama palette, camera, sunlight, and landmark-color preset
