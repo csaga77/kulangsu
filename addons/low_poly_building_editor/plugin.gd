@@ -47,6 +47,14 @@ var m_prop_rotation_y := 0.0
 var m_preview_valid := false
 var m_preview_parent: Node
 var m_preview_wall: ProceduralWall3DScript
+var m_dragging_opening: BuildingOpening3DScript
+var m_drag_old_position: Vector3
+var m_drag_old_segment: int
+var m_drag_target_segment: int
+var m_drag_face_sign := 1.0
+var m_drag_valid := false
+var m_drag_hover_opening: BuildingOpening3DScript
+var m_drag_hover_old_color: Color
 
 
 func _enter_tree() -> void:
@@ -212,8 +220,20 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 
 
 func _handle_placement_input(camera: Camera3D, event: InputEvent) -> int:
+	if m_tool_mode == MODE_WINDOW and m_dragging_opening != null:
+		return _handle_window_drag_input(camera, event)
+
 	if event is InputEventMouseMotion:
-		_update_placement_preview(camera, (event as InputEventMouseMotion).position)
+		var mouse_pos := (event as InputEventMouseMotion).position
+		if m_tool_mode == MODE_WINDOW:
+			var hover := _find_opening_under_cursor(camera, mouse_pos)
+			_update_hover_highlight(hover)
+			if hover != null:
+				_clear_prop_preview()
+				_set_status("Click and drag to reposition.")
+				return _handled()
+			_clear_drag_hover()
+		_update_placement_preview(camera, mouse_pos)
 		return _handled() if m_prop_preview != null else EditorPlugin.AFTER_GUI_INPUT_PASS
 
 	if !(event is InputEventMouseButton):
@@ -223,9 +243,31 @@ func _handle_placement_input(camera: Camera3D, event: InputEvent) -> int:
 	if mouse_button.button_index != MOUSE_BUTTON_LEFT or !mouse_button.pressed:
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
 
+	if m_tool_mode == MODE_WINDOW:
+		var hit_opening := _find_opening_under_cursor(camera, mouse_button.position)
+		if hit_opening != null:
+			_clear_drag_hover()
+			_start_window_drag(hit_opening)
+			return _handled()
+
 	_update_placement_preview(camera, mouse_button.position)
 	if m_preview_valid:
 		_commit_placement()
+	return _handled()
+
+
+func _handle_window_drag_input(camera: Camera3D, event: InputEvent) -> int:
+	if event is InputEventMouseMotion:
+		_update_window_drag(camera, (event as InputEventMouseMotion).position)
+		return _handled()
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_LEFT and !mb.pressed:
+			_commit_window_drag()
+			return _handled()
+		if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+			_cancel_window_drag()
+			return _handled()
 	return _handled()
 
 
@@ -941,6 +983,147 @@ func _clear_prop_preview() -> void:
 	m_preview_valid = false
 
 
+func _find_opening_under_cursor(camera: Camera3D, mouse_pos: Vector2) -> BuildingOpening3DScript:
+	var hit := _raycast_world(camera, mouse_pos)
+	var wall := _find_wall_from_collider(hit.get("collider"))
+	if wall == null:
+		return null
+	var hit_world := Vector3(hit["position"])
+	var best: BuildingOpening3DScript = null
+	var best_dist := INF
+	for child in wall.get_children():
+		if child.has_meta(ProceduralWall3DScript.GENERATED_META):
+			continue
+		var opening := child as BuildingOpening3DScript
+		if opening == null or opening == m_prop_preview:
+			continue
+		var pick_radius := maxf(opening.opening_width, opening.opening_height) * 0.5 + 0.15
+		var dist := hit_world.distance_to(opening.global_position)
+		if dist < pick_radius and dist < best_dist:
+			best_dist = dist
+			best = opening
+	return best
+
+
+func _update_hover_highlight(opening: BuildingOpening3DScript) -> void:
+	if opening == m_drag_hover_opening:
+		return
+	_clear_drag_hover()
+	if opening == null:
+		return
+	m_drag_hover_opening = opening
+	m_drag_hover_old_color = opening.frame_color
+	opening.frame_color = Color(0.20, 0.60, 1.0, 0.9)
+
+
+func _clear_drag_hover() -> void:
+	if m_drag_hover_opening == null:
+		return
+	if is_instance_valid(m_drag_hover_opening):
+		m_drag_hover_opening.frame_color = m_drag_hover_old_color
+	m_drag_hover_opening = null
+
+
+func _start_window_drag(opening: BuildingOpening3DScript) -> void:
+	_clear_prop_preview()
+	m_dragging_opening = opening
+	m_drag_old_position = opening.position
+	m_drag_old_segment = int(opening.get_meta(ProceduralWall3DScript.SEGMENT_INDEX_META, 0))
+	m_drag_target_segment = m_drag_old_segment
+	m_drag_valid = true
+	var wall := opening.get_parent() as ProceduralWall3DScript
+	if wall != null:
+		var frame := wall.get_segment_local_frame(m_drag_target_segment)
+		var local_pos := frame.affine_inverse() * opening.position
+		m_drag_face_sign = signf(local_pos.z) if absf(local_pos.z) > 0.001 else 1.0
+	else:
+		m_drag_face_sign = 1.0
+	opening.frame_color = Color(0.20, 0.60, 1.0, 0.9)
+	_set_status("Dragging window — release to commit, Escape to cancel.")
+
+
+func _update_window_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
+	if m_dragging_opening == null or !is_instance_valid(m_dragging_opening):
+		m_dragging_opening = null
+		return
+	var wall := m_dragging_opening.get_parent() as ProceduralWall3DScript
+	if wall == null:
+		_cancel_window_drag()
+		return
+	var hit := _raycast_world(camera, mouse_pos)
+	var hit_wall := _find_wall_from_collider(hit.get("collider"))
+	if hit_wall != wall:
+		m_dragging_opening.frame_color = Color(0.95, 0.20, 0.16, 0.9)
+		m_drag_valid = false
+		_set_status("Drag within the same wall.")
+		return
+	var segment := wall.get_segment(m_drag_target_segment)
+	var frame := wall.get_segment_local_frame(m_drag_target_segment)
+	var local_hit := frame.affine_inverse() * wall.to_local(Vector3(hit["position"]))
+	var grid_step := _active_grid_step(wall)
+	local_hit.x = clampf(roundf(local_hit.x / grid_step) * grid_step, 0.0, segment.get_length())
+	var sill_height := maxf(float(m_window_settings.get("sill_height", 0.9)), 0.0)
+	local_hit.y = sill_height + m_dragging_opening.opening_height * 0.5
+	local_hit.z = m_drag_face_sign * (segment.thickness * 0.5 + 0.035)
+	m_dragging_opening.transform = Transform3D(frame.basis, frame * local_hit)
+	var center := Vector2(local_hit.x, local_hit.y)
+	var size := Vector2(m_dragging_opening.opening_width, m_dragging_opening.opening_height)
+	m_drag_valid = wall.can_place_opening(center, size, 0.04, m_dragging_opening, m_drag_target_segment)
+	m_dragging_opening.frame_color = (
+		Color(0.20, 0.60, 1.0, 0.9) if m_drag_valid else Color(0.95, 0.20, 0.16, 0.9)
+	)
+	_set_status("Release to commit." if m_drag_valid else "Position overlaps or is out of bounds.")
+
+
+func _commit_window_drag() -> void:
+	if m_dragging_opening == null:
+		return
+	var wall := m_dragging_opening.get_parent() as ProceduralWall3DScript
+	if wall == null or !m_drag_valid:
+		_cancel_window_drag()
+		if !m_drag_valid:
+			_set_status("Cannot place window there — move canceled.")
+		return
+	var new_position := m_dragging_opening.position
+	var old_position := m_drag_old_position
+	var old_segment := m_drag_old_segment
+	var target_segment := m_drag_target_segment
+	var opening := m_dragging_opening
+	m_dragging_opening = null
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Move Wall Opening")
+	undo_redo.add_do_method(self, "_do_move_opening", opening, new_position, target_segment, wall)
+	undo_redo.add_undo_method(self, "_do_move_opening", opening, old_position, old_segment, wall)
+	undo_redo.commit_action()
+	opening.frame_color = Color(0.86, 0.92, 0.94, 1.0)
+	_set_status("Moved window opening.")
+
+
+func _cancel_window_drag() -> void:
+	if m_dragging_opening == null:
+		return
+	if is_instance_valid(m_dragging_opening):
+		m_dragging_opening.position = m_drag_old_position
+		m_dragging_opening.set_meta(ProceduralWall3DScript.SEGMENT_INDEX_META, m_drag_old_segment)
+		m_dragging_opening.frame_color = Color(0.86, 0.92, 0.94, 1.0)
+		var wall := m_dragging_opening.get_parent() as ProceduralWall3DScript
+		if wall != null:
+			wall.rebuild_wall_mesh()
+	m_dragging_opening = null
+	m_drag_valid = false
+
+
+func _do_move_opening(
+	opening: BuildingOpening3DScript,
+	new_pos: Vector3,
+	segment_index: int,
+	wall: ProceduralWall3DScript
+) -> void:
+	opening.position = new_pos
+	opening.set_meta(ProceduralWall3DScript.SEGMENT_INDEX_META, segment_index)
+	wall.rebuild_wall_mesh()
+
+
 func _attach_viewport_overlays() -> void:
 	_clear_viewport_overlays()
 	for index in range(4):
@@ -982,6 +1165,8 @@ func _clear_viewport_overlays() -> void:
 
 
 func _cancel_active_preview() -> void:
+	_cancel_window_drag()
+	_clear_drag_hover()
 	_clear_wall_preview()
 	_clear_prop_preview()
 	m_is_drawing_wall = false
