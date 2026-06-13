@@ -271,26 +271,104 @@ func _rebuild_body_mesh() -> void:
 	var lower_leg_center_y := float(proportions["lower_leg_center_y"])
 	var upper_leg_length := float(proportions["upper_leg_length"])
 	var lower_leg_length := float(proportions["lower_leg_length"])
-	var arm_length := float(proportions["arm_length"])
+	var upper_arm_length := float(proportions["upper_arm_length"])
+	var forearm_length := float(proportions["forearm_length"])
 	var limb_width := float(proportions["limb_width"])
 	var mirrored_left_width := limb_width * m_config.left_limb_scale
 	var mirrored_right_width := limb_width * m_config.right_limb_scale
 	var left_limb_color := m_config.accent_color if m_config.left_accent_flag else m_config.main_color
 	var right_limb_color := m_config.accent_color if m_config.right_accent_flag else m_config.main_color
+	var face_z := head_depth * 0.53
+	var torso_front_z := depth * 0.54
+	var shoulder_y := hip_y + torso_height * 0.74
+	var arm_x := shoulder_width * 0.58
+	var eye_color := Color(0.08, 0.065, 0.05, 1.0)
+	var cheek_color := m_config.skin_color.lightened(0.12)
+	var belt_color := m_config.hair_color.darkened(0.28)
+	var shoe_color := m_config.hair_color.darkened(0.36)
+	var collar_color := m_config.skin_color.lightened(0.06)
+	var trim_color := m_config.accent_color.lightened(0.08)
 
-	_add_box(vertices, normals, colors, Vector3(0.0, hip_y + torso_height * 0.24, 0.0), Vector3(hip_width, torso_height * 0.48, depth), m_config.main_color.darkened(0.08))
-	_add_box(vertices, normals, colors, Vector3(0.0, hip_y + torso_height * 0.63, 0.0), Vector3(shoulder_width, torso_height * 0.62, depth * 1.04), m_config.main_color)
-	_add_box(vertices, normals, colors, Vector3(0.0, head_y, 0.02), Vector3(head_width, head_height, head_depth), m_config.skin_color)
-	_add_box(vertices, normals, colors, Vector3(0.0, head_y + head_height * 0.45, -0.01), Vector3(head_width * 1.08, head_height * 0.24, head_depth * 1.05), m_config.hair_color)
-	_add_box(vertices, normals, colors, Vector3(0.0, head_y, head_depth * 0.54), Vector3(head_width * 0.46, head_height * 0.12, 0.035), Color(0.08, 0.07, 0.06, 1.0))
-	_add_box(vertices, normals, colors, Vector3(0.0, head_y - head_height * 0.28, head_depth * 0.55), Vector3(head_width * 0.14, head_height * 0.22, 0.04), m_config.accent_color)
+	_add_tapered_box(
+		vertices,
+		normals,
+		colors,
+		Vector3(0.0, hip_y + torso_height * 0.20, 0.0),
+		Vector2(hip_width * 1.04, depth * 1.08),
+		Vector2(hip_width * 0.92, depth * 0.96),
+		torso_height * 0.40,
+		m_config.main_color.darkened(0.12)
+	)
+	_add_tapered_box(
+		vertices,
+		normals,
+		colors,
+		Vector3(0.0, hip_y + torso_height * 0.60, 0.0),
+		Vector2(hip_width * 0.96, depth * 0.96),
+		Vector2(shoulder_width * 1.05, depth * 1.10),
+		torso_height * 0.58,
+		m_config.main_color
+	)
+	_add_box(vertices, normals, colors, Vector3(0.0, hip_y + torso_height * 0.39, torso_front_z), Vector3(hip_width * 1.02, torso_height * 0.075, 0.034), belt_color)
+	_add_box(vertices, normals, colors, Vector3(-shoulder_width * 0.12, hip_y + torso_height * 0.77, torso_front_z + 0.006), Vector3(shoulder_width * 0.25, torso_height * 0.11, 0.035), collar_color)
+	_add_box(vertices, normals, colors, Vector3(shoulder_width * 0.16, hip_y + torso_height * 0.66, torso_front_z + 0.008), Vector3(shoulder_width * 0.13, torso_height * 0.30, 0.038), trim_color)
+	_add_box(vertices, normals, colors, Vector3(0.0, hip_y + torso_height * 0.06, torso_front_z), Vector3(hip_width * 0.94, torso_height * 0.10, 0.036), trim_color.darkened(0.08))
 
-	_add_box(vertices, normals, colors, Vector3(-shoulder_width * 0.62, hip_y + torso_height * 0.44, 0.0), Vector3(mirrored_left_width, arm_length, mirrored_left_width * 0.86), left_limb_color)
-	_add_box(vertices, normals, colors, Vector3(shoulder_width * 0.62, hip_y + torso_height * 0.44, 0.0), Vector3(mirrored_right_width, arm_length, mirrored_right_width * 0.86), right_limb_color)
-	_add_box(vertices, normals, colors, Vector3(-hip_width * 0.28, upper_leg_center_y, 0.0), Vector3(mirrored_left_width * 1.08, upper_leg_length, mirrored_left_width), left_limb_color.darkened(0.12))
-	_add_box(vertices, normals, colors, Vector3(hip_width * 0.28, upper_leg_center_y, 0.0), Vector3(mirrored_right_width * 1.08, upper_leg_length, mirrored_right_width), right_limb_color.darkened(0.12))
-	_add_box(vertices, normals, colors, Vector3(-hip_width * 0.28, lower_leg_center_y, 0.0), Vector3(mirrored_left_width * 0.92, lower_leg_length, mirrored_left_width * 0.9), left_limb_color.darkened(0.22))
-	_add_box(vertices, normals, colors, Vector3(hip_width * 0.28, lower_leg_center_y, 0.0), Vector3(mirrored_right_width * 0.92, lower_leg_length, mirrored_right_width * 0.9), right_limb_color.darkened(0.22))
+	_add_tapered_box(
+		vertices,
+		normals,
+		colors,
+		Vector3(0.0, head_y, 0.02),
+		Vector2(head_width * 1.04, head_depth),
+		Vector2(head_width * 0.90, head_depth * 0.92),
+		head_height,
+		m_config.skin_color
+	)
+	_add_tapered_box(
+		vertices,
+		normals,
+		colors,
+		Vector3(0.0, head_y + head_height * 0.43, -0.01),
+		Vector2(head_width * 1.10, head_depth * 1.06),
+		Vector2(head_width * 0.88, head_depth * 0.96),
+		head_height * 0.26,
+		m_config.hair_color
+	)
+	_add_box(vertices, normals, colors, Vector3(-head_width * 0.46, head_y + head_height * 0.04, 0.01), Vector3(head_width * 0.17, head_height * 0.50, head_depth * 0.68), m_config.hair_color.darkened(0.04))
+	_add_box(vertices, normals, colors, Vector3(head_width * 0.46, head_y + head_height * 0.04, 0.01), Vector3(head_width * 0.17, head_height * 0.50, head_depth * 0.68), m_config.hair_color.darkened(0.04))
+	_add_box(vertices, normals, colors, Vector3(-head_width * 0.18, head_y + head_height * 0.25, face_z), Vector3(head_width * 0.24, head_height * 0.16, 0.035), m_config.hair_color)
+	_add_box(vertices, normals, colors, Vector3(head_width * 0.12, head_y + head_height * 0.27, face_z), Vector3(head_width * 0.20, head_height * 0.14, 0.035), m_config.hair_color)
+	_add_box(vertices, normals, colors, Vector3(-head_width * 0.18, head_y + head_height * 0.04, face_z + 0.004), Vector3(head_width * 0.095, head_height * 0.06, 0.038), eye_color)
+	_add_box(vertices, normals, colors, Vector3(head_width * 0.18, head_y + head_height * 0.04, face_z + 0.004), Vector3(head_width * 0.095, head_height * 0.06, 0.038), eye_color)
+	_add_box(vertices, normals, colors, Vector3(0.0, head_y - head_height * 0.11, face_z + 0.005), Vector3(head_width * 0.16, head_height * 0.055, 0.040), m_config.skin_color.darkened(0.12))
+	_add_box(vertices, normals, colors, Vector3(0.0, head_y - head_height * 0.27, face_z + 0.006), Vector3(head_width * 0.22, head_height * 0.045, 0.040), trim_color.darkened(0.18))
+	_add_box(vertices, normals, colors, Vector3(-head_width * 0.31, head_y - head_height * 0.08, face_z + 0.003), Vector3(head_width * 0.10, head_height * 0.07, 0.034), cheek_color)
+	_add_box(vertices, normals, colors, Vector3(head_width * 0.31, head_y - head_height * 0.08, face_z + 0.003), Vector3(head_width * 0.10, head_height * 0.07, 0.034), cheek_color)
+
+	_add_tapered_box(vertices, normals, colors, Vector3(-arm_x, shoulder_y - upper_arm_length * 0.46, 0.0), Vector2(mirrored_left_width * 0.86, mirrored_left_width * 0.74), Vector2(mirrored_left_width * 1.12, mirrored_left_width * 0.92), upper_arm_length * 0.92, left_limb_color)
+	_add_tapered_box(vertices, normals, colors, Vector3(-arm_x, shoulder_y - upper_arm_length - forearm_length * 0.44, 0.0), Vector2(mirrored_left_width * 0.74, mirrored_left_width * 0.68), Vector2(mirrored_left_width * 0.94, mirrored_left_width * 0.78), forearm_length * 0.88, left_limb_color.darkened(0.08))
+	_add_box(vertices, normals, colors, Vector3(-arm_x, shoulder_y - upper_arm_length - forearm_length * 0.92, 0.02), Vector3(mirrored_left_width * 0.86, forearm_length * 0.22, mirrored_left_width * 0.80), m_config.skin_color)
+
+	_add_tapered_box(vertices, normals, colors, Vector3(arm_x, shoulder_y - upper_arm_length * 0.46, 0.0), Vector2(mirrored_right_width * 0.86, mirrored_right_width * 0.74), Vector2(mirrored_right_width * 1.12, mirrored_right_width * 0.92), upper_arm_length * 0.92, right_limb_color)
+	_add_tapered_box(vertices, normals, colors, Vector3(arm_x, shoulder_y - upper_arm_length - forearm_length * 0.44, 0.0), Vector2(mirrored_right_width * 0.74, mirrored_right_width * 0.68), Vector2(mirrored_right_width * 0.94, mirrored_right_width * 0.78), forearm_length * 0.88, right_limb_color.darkened(0.08))
+	_add_box(vertices, normals, colors, Vector3(arm_x, shoulder_y - upper_arm_length - forearm_length * 0.92, 0.02), Vector3(mirrored_right_width * 0.86, forearm_length * 0.22, mirrored_right_width * 0.80), m_config.skin_color)
+
+	_add_tapered_box(vertices, normals, colors, Vector3(-hip_width * 0.28, upper_leg_center_y, 0.0), Vector2(mirrored_left_width * 1.08, mirrored_left_width * 0.98), Vector2(mirrored_left_width * 1.24, mirrored_left_width * 1.04), upper_leg_length, left_limb_color.darkened(0.16))
+	_add_tapered_box(vertices, normals, colors, Vector3(hip_width * 0.28, upper_leg_center_y, 0.0), Vector2(mirrored_right_width * 1.08, mirrored_right_width * 0.98), Vector2(mirrored_right_width * 1.24, mirrored_right_width * 1.04), upper_leg_length, right_limb_color.darkened(0.16))
+	_add_tapered_box(vertices, normals, colors, Vector3(-hip_width * 0.28, lower_leg_center_y, 0.0), Vector2(mirrored_left_width * 0.84, mirrored_left_width * 0.84), Vector2(mirrored_left_width * 1.02, mirrored_left_width * 0.92), lower_leg_length, left_limb_color.darkened(0.26))
+	_add_tapered_box(vertices, normals, colors, Vector3(hip_width * 0.28, lower_leg_center_y, 0.0), Vector2(mirrored_right_width * 0.84, mirrored_right_width * 0.84), Vector2(mirrored_right_width * 1.02, mirrored_right_width * 0.92), lower_leg_length, right_limb_color.darkened(0.26))
+	_add_box(vertices, normals, colors, Vector3(-hip_width * 0.28, lower_leg_center_y - lower_leg_length * 0.52, 0.045), Vector3(mirrored_left_width * 1.18, lower_leg_length * 0.20, mirrored_left_width * 1.34), shoe_color)
+	_add_box(vertices, normals, colors, Vector3(hip_width * 0.28, lower_leg_center_y - lower_leg_length * 0.52, 0.045), Vector3(mirrored_right_width * 1.18, lower_leg_length * 0.20, mirrored_right_width * 1.34), shoe_color)
+
+	if m_config.left_accent_flag:
+		_add_box(vertices, normals, colors, Vector3(-arm_x, shoulder_y + upper_arm_length * 0.06, 0.0), Vector3(mirrored_left_width * 1.40, upper_arm_length * 0.18, mirrored_left_width * 1.04), trim_color)
+	else:
+		_add_box(vertices, normals, colors, Vector3(-arm_x, shoulder_y - upper_arm_length - forearm_length * 0.14, torso_front_z * 0.65), Vector3(mirrored_left_width * 0.88, forearm_length * 0.12, 0.032), trim_color.darkened(0.05))
+
+	if m_config.right_accent_flag:
+		_add_box(vertices, normals, colors, Vector3(arm_x, shoulder_y + upper_arm_length * 0.06, 0.0), Vector3(mirrored_right_width * 1.40, upper_arm_length * 0.18, mirrored_right_width * 1.04), trim_color)
+	else:
+		_add_box(vertices, normals, colors, Vector3(arm_x, shoulder_y - upper_arm_length - forearm_length * 0.14, torso_front_z * 0.65), Vector3(mirrored_right_width * 0.88, forearm_length * 0.12, 0.032), trim_color.darkened(0.05))
 
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
@@ -368,6 +446,38 @@ func _add_box(
 	_add_face(vertices, normals, colors, corners[0], corners[1], corners[5], corners[4], Vector3.DOWN, color)
 
 
+func _add_tapered_box(
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	center: Vector3,
+	bottom_size: Vector2,
+	top_size: Vector2,
+	height: float,
+	color: Color
+) -> void:
+	var bottom_half := bottom_size * 0.5
+	var top_half := top_size * 0.5
+	var bottom_y := center.y - height * 0.5
+	var top_y := center.y + height * 0.5
+	var corners := [
+		Vector3(center.x - bottom_half.x, bottom_y, center.z - bottom_half.y),
+		Vector3(center.x + bottom_half.x, bottom_y, center.z - bottom_half.y),
+		Vector3(center.x + top_half.x, top_y, center.z - top_half.y),
+		Vector3(center.x - top_half.x, top_y, center.z - top_half.y),
+		Vector3(center.x - bottom_half.x, bottom_y, center.z + bottom_half.y),
+		Vector3(center.x + bottom_half.x, bottom_y, center.z + bottom_half.y),
+		Vector3(center.x + top_half.x, top_y, center.z + top_half.y),
+		Vector3(center.x - top_half.x, top_y, center.z + top_half.y),
+	]
+	_add_face(vertices, normals, colors, corners[4], corners[5], corners[6], corners[7], Vector3.BACK, color)
+	_add_face(vertices, normals, colors, corners[1], corners[0], corners[3], corners[2], Vector3.FORWARD, color)
+	_add_face(vertices, normals, colors, corners[0], corners[4], corners[7], corners[3], Vector3.LEFT, color)
+	_add_face(vertices, normals, colors, corners[5], corners[1], corners[2], corners[6], Vector3.RIGHT, color)
+	_add_face(vertices, normals, colors, corners[3], corners[7], corners[6], corners[2], Vector3.UP, color)
+	_add_face(vertices, normals, colors, corners[0], corners[1], corners[5], corners[4], Vector3.DOWN, color)
+
+
 func _add_face(
 	vertices: PackedVector3Array,
 	normals: PackedVector3Array,
@@ -379,9 +489,12 @@ func _add_face(
 	normal: Vector3,
 	color: Color
 ) -> void:
+	var face_normal := (b - a).cross(c - a).normalized()
+	if face_normal.length_squared() <= 0.000001:
+		face_normal = normal.normalized()
 	for vertex in [a, c, b, a, d, c]:
 		vertices.append(vertex)
-		normals.append(normal)
+		normals.append(face_normal)
 		colors.append(color)
 
 

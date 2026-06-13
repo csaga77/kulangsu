@@ -156,10 +156,14 @@ func _validate_preview_actor(failures: Array[String], actor: HumanBody3D) -> voi
 	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 	if vertices.is_empty():
 		failures.append("%s rig generated an empty mesh" % actor.name)
+	elif vertices.size() < 1000:
+		failures.append("%s rig generated too little geometry for the stylized model" % actor.name)
 	if colors.size() != vertices.size():
 		failures.append("%s rig did not assign per-vertex colors" % actor.name)
 	elif _get_max_color_luminance(colors) <= 0.08:
 		failures.append("%s rig generated black or near-black vertex colors" % actor.name)
+	elif _get_unique_color_count(colors) < 8:
+		failures.append("%s rig generated too few color regions for the stylized model" % actor.name)
 	if normals.size() != vertices.size():
 		failures.append("%s rig did not assign flat normals" % actor.name)
 	else:
@@ -187,6 +191,13 @@ func _get_max_color_luminance(colors: PackedColorArray) -> float:
 	for color in colors:
 		max_luminance = maxf(max_luminance, color.get_luminance())
 	return max_luminance
+
+
+func _get_unique_color_count(colors: PackedColorArray) -> int:
+	var unique_colors := {}
+	for color in colors:
+		unique_colors[color.to_html()] = true
+	return unique_colors.size()
 
 
 func _validate_renderer_facing_winding(

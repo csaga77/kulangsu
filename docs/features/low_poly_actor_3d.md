@@ -11,7 +11,7 @@
 - [`../../characters/human_body_3d.gd`](../../characters/human_body_3d.gd) defines `class_name HumanBody3D`.
 - [`../../characters/human_body_3d.tscn`](../../characters/human_body_3d.tscn) is the minimal actor scene.
 - [`../../characters/low_poly_character_config.gd`](../../characters/low_poly_character_config.gd) defines deterministic seed-driven body proportions, palette choices, and asymmetry flags.
-- [`../../characters/procedural_low_poly_character_rig.gd`](../../characters/procedural_low_poly_character_rig.gd) defines the optional runtime-generated low-poly character rig with `Skeleton3D`, a flat-shaded vertex-color body surface, and head/hand bone attachments.
+- [`../../characters/procedural_low_poly_character_rig.gd`](../../characters/procedural_low_poly_character_rig.gd) defines the optional runtime-generated low-poly character rig with `Skeleton3D`, a stylized flat-shaded vertex-color body surface, and head/hand bone attachments.
 - [`../../characters/control/base_controller_3d.gd`](../../characters/control/base_controller_3d.gd) defines `class_name BaseController3D`, the shared 3D controller base for `HumanBody3D`.
 - [`../../characters/control/player_controller_3d.gd`](../../characters/control/player_controller_3d.gd) defines `class_name PlayerController3D`, a first playable input adapter that extends `BaseController3D`.
 - [`../../characters/tests/test_human_body_3d.tscn`](../../characters/tests/test_human_body_3d.tscn) is the focused smoke scene covering actor API parity, current-frame controller input, placement occupancy, step-up/step-down navigation, deterministic procedural rig generation, skeleton attachments, vertex colors, and mathematical walk motion.
@@ -19,6 +19,7 @@
 - [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn) validates the actor, controller, generated terrain collision, terrain-height following, coordinate adapter, `Camera3DController` follow/zoom/orbit behavior, style preset, five canonical postcard landmark proxies, and camera together.
 - The default visual remains a generated low-poly block mannequin assembled from simple `BoxMesh` parts, with tunable body height/radius, contact shadow, stronger facing markers, and procedural walk/run bob plus limb swing.
 - `HumanBody3D.use_procedural_rig` can switch the actor to the optional seeded procedural character rig. The rig is runtime-generated from code and does not depend on external mesh, texture, animation, or keyframe assets.
+- The procedural rig now generates a stylized character silhouette from code: tapered torso and head forms, separate upper/lower limbs, hands, boots, hair locks/fringe, face details, collar/belt trim, and seed-driven accent pieces.
 - The actor exposes familiar adapter fields and methods:
   - `direction`
   - `is_walking`
@@ -57,8 +58,8 @@
 - `procedural_seed` must produce deterministic `LowPolyCharacterConfig` output for the same alphanumeric string and meaningfully different output for different strings.
 - `LowPolyCharacterConfig` currently owns height modifier, limb thickness, head scale, torso mass, main/accent/skin/hair colors, per-side limb scale, and per-side accent flags.
 - `ProceduralLowPolyCharacterRig` must keep the authored runtime hierarchy `Node3D -> Skeleton3D -> BodySurface/HeadAttachment/LeftHandAttachment/RightHandAttachment` so future attachments can target named bones without inspecting mesh internals.
-- `ProceduralLowPolyCharacterRig` generates a flat-shaded `ArrayMesh` with per-vertex albedo colors and a high-roughness, specular-disabled material. Dedicated UV texture files should not be introduced for this prototype path.
-- The current procedural body surface is generated as a single visual mesh and is not yet skinned to the skeleton. Mathematical locomotion updates skeleton bone poses and attachment targets first; visible skinned deformation is a future step.
+- `ProceduralLowPolyCharacterRig` generates a stylized flat-shaded `ArrayMesh` with per-vertex albedo colors, computed face normals, renderer-facing triangle winding, and a high-roughness, specular-disabled material. Dedicated UV texture files should not be introduced for this prototype path.
+- The current procedural body surface is generated as a single stylized visual mesh and is not yet skinned to the skeleton. Mathematical locomotion updates skeleton bone poses and attachment targets first; visible skinned deformation is a future step.
 - `move(...)` and `move_with_speed(...)` consume XZ-plane `Vector3` directions.
 - `get_ground_rect()` returns an XZ-plane `Rect2` footprint for future adapter code; it is not a drop-in replacement for 2D physics queries.
 - `is_grounded()` is the preferred 3D actor grounded check because it includes both Godot floor contact and the actor's manual stair/floor snap support.
@@ -76,7 +77,7 @@
 ## Visual Style Contract
 
 - Keep the tunable block mannequin as the default prototype body until the seeded procedural rig is visually proven in the terrain-plus-player validation scene.
-- The current preferred 3D character direction is now runtime procedural low-poly mesh generation, but resident/NPC integration should still wait for skinned deformation, terrain foot adaptation, and camera readability validation.
+- The current preferred 3D character direction is now runtime procedural low-poly mesh generation with a stylized, readable model, but resident/NPC integration should still wait for skinned deformation, terrain foot adaptation, and camera readability validation.
 - Character colors should remain generated vertex-color/material values derived from high-level appearance or seed configuration until a final 3D character customization contract is chosen.
 - Preserve strong directional readability in orthographic camera views; pose, face marker, body proportions, and shadow/readability matter more than animation polish at this stage.
 - Tune the player against the style-preset camera and five-landmark proxy blockout before changing the actor asset direction.
