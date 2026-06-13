@@ -15,6 +15,7 @@
 - [`../../characters/control/base_controller_3d.gd`](../../characters/control/base_controller_3d.gd) defines `class_name BaseController3D`, the shared 3D controller base for `HumanBody3D`.
 - [`../../characters/control/player_controller_3d.gd`](../../characters/control/player_controller_3d.gd) defines `class_name PlayerController3D`, a first playable input adapter that extends `BaseController3D`.
 - [`../../characters/tests/test_human_body_3d.tscn`](../../characters/tests/test_human_body_3d.tscn) is the focused smoke scene covering actor API parity, current-frame controller input, placement occupancy, step-up/step-down navigation, deterministic procedural rig generation, skeleton attachments, vertex colors, and mathematical walk motion.
+- [`../../characters/tests/test_low_poly_character_3d.tscn`](../../characters/tests/test_low_poly_character_3d.tscn) is the direct procedural-character preview scene with an animated primary character, seeded variants, camera, light, and smoke coverage for generated rig structure and mesh data.
 - [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn) validates the actor, controller, generated terrain collision, terrain-height following, coordinate adapter, `Camera3DController` follow/zoom/orbit behavior, style preset, five canonical postcard landmark proxies, and camera together.
 - The default visual remains a generated low-poly block mannequin assembled from simple `BoxMesh` parts, with tunable body height/radius, contact shadow, stronger facing markers, and procedural walk/run bob plus limb swing.
 - `HumanBody3D.use_procedural_rig` can switch the actor to the optional seeded procedural character rig. The rig is runtime-generated from code and does not depend on external mesh, texture, animation, or keyframe assets.
@@ -93,6 +94,14 @@
 ```text
 PASS: HumanBody3D adapter smoke test
 ```
+
+- Run the direct procedural-character preview and smoke scene:
+
+```sh
+"/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://characters/tests/test_low_poly_character_3d.tscn --quit-after 1
+```
+
+- Confirm the scene logs `PASS: LowPolyCharacter3D smoke test`. Open the same scene in the editor or run it normally to inspect the animated seeded character preview.
 
 - Run the combined low-poly world validation after actor scale, movement, camera, or terrain-collision changes:
 

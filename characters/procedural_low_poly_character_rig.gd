@@ -172,6 +172,7 @@ func _ensure_nodes() -> void:
 		m_body_surface.name = BODY_SURFACE_NAME
 		m_skeleton.add_child(m_body_surface)
 		_assign_editor_owner(m_body_surface)
+	m_body_surface.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 	m_head_attachment = _ensure_attachment(HEAD_ATTACHMENT_NAME, BONE_HEAD)
 	m_left_hand_attachment = _ensure_attachment(LEFT_HAND_ATTACHMENT_NAME, BONE_LEFT_HAND)
@@ -359,8 +360,8 @@ func _add_box(
 		center + Vector3(half.x, half.y, half.z),
 		center + Vector3(-half.x, half.y, half.z),
 	]
-	_add_face(vertices, normals, colors, corners[4], corners[5], corners[6], corners[7], Vector3.FORWARD, color)
-	_add_face(vertices, normals, colors, corners[1], corners[0], corners[3], corners[2], Vector3.BACK, color)
+	_add_face(vertices, normals, colors, corners[4], corners[5], corners[6], corners[7], Vector3.BACK, color)
+	_add_face(vertices, normals, colors, corners[1], corners[0], corners[3], corners[2], Vector3.FORWARD, color)
 	_add_face(vertices, normals, colors, corners[0], corners[4], corners[7], corners[3], Vector3.LEFT, color)
 	_add_face(vertices, normals, colors, corners[5], corners[1], corners[2], corners[6], Vector3.RIGHT, color)
 	_add_face(vertices, normals, colors, corners[3], corners[7], corners[6], corners[2], Vector3.UP, color)
@@ -378,7 +379,7 @@ func _add_face(
 	normal: Vector3,
 	color: Color
 ) -> void:
-	for vertex in [a, b, c, a, c, d]:
+	for vertex in [a, c, b, a, d, c]:
 		vertices.append(vertex)
 		normals.append(normal)
 		colors.append(color)
@@ -387,9 +388,12 @@ func _add_face(
 func _get_material() -> StandardMaterial3D:
 	if m_material == null:
 		m_material = StandardMaterial3D.new()
+		m_material.albedo_color = Color.WHITE
 		m_material.vertex_color_use_as_albedo = true
+		m_material.cull_mode = BaseMaterial3D.CULL_BACK
 		m_material.roughness = 1.0
 		m_material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+		m_material.disable_receive_shadows = true
 	return m_material
 
 

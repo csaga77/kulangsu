@@ -138,6 +138,7 @@ First-pass shipped outcome:
 - `LowPolyWorldCoordinates3D` provides the first shared terrain-mask-pixel to 3D XZ world-position adapter, including helpers for rough conversion from authored 2D isometric positions
 - `LowPolyArtStyle3D` plus `low_poly_postcard_diorama_style.tres` provide the first Painted Postcard Diorama palette, camera, sunlight, and landmark-color preset
 - `LowPolyLandmarkProxy3D` provides the first simple reusable postcard landmark-volume generator for house, church, tunnel, and tower placeholders
+- `test_low_poly_character_3d.tscn` provides a direct procedural-character preview with an animated seeded character, variant row, and smoke coverage for generated rig/mesh structure
 - `test_low_poly_world_3d.tscn` validates terrain, land collision, terrain-following `HumanBody3D`, `PlayerController3D`, `Camera3DController`, the style preset, five canonical postcard landmark proxies, coordinate round-tripping, movement, and camera framing together
 
 Still open:
@@ -163,6 +164,7 @@ Primary files:
 - `characters/control/base_controller_3d.gd`
 - `characters/control/player_controller_3d.gd`
 - `characters/tests/test_human_body_3d.tscn`
+- `characters/tests/test_low_poly_character_3d.tscn`
 - `docs/features/low_poly_terrain_3d.md`
 - `docs/features/low_poly_actor_3d.md`
 
