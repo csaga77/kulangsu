@@ -51,15 +51,23 @@ var m_dragging_wall: ProceduralWall3DScript
 var m_drag_wall_old_start: Vector3
 var m_drag_wall_old_end: Vector3
 var m_drag_wall_anchor_local: Vector3
+var m_drag_wall_endpoint := -1   # -1=full move, 0=start pt, 1=end pt
 var m_drag_wall_hover: ProceduralWall3DScript
+var m_drag_wall_hover_endpoint := -1
 var m_dragging_opening: BuildingOpening3DScript
 var m_drag_old_position: Vector3
 var m_drag_old_segment: int
 var m_drag_target_segment: int
 var m_drag_face_sign := 1.0
 var m_drag_valid := false
+var m_drag_opening_edge := -1    # -1=move, 0=left, 1=right, 2=bottom, 3=top
+var m_drag_opening_old_width := 0.0
+var m_drag_opening_old_height := 0.0
+var m_drag_resize_anchor_2d := Vector2.ZERO
+var m_drag_resize_center_2d := Vector2.ZERO
 var m_drag_hover_opening: BuildingOpening3DScript
 var m_drag_hover_old_color: Color
+var m_drag_hover_edge := -1
 
 
 func _enter_tree() -> void:
@@ -179,10 +187,15 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 		if m_is_drawing_wall:
 			_update_wall_preview(camera, (event as InputEventMouseMotion).position)
 			return _handled()
-		var hover_wall := _find_wall_under_cursor(camera, (event as InputEventMouseMotion).position)
-		_update_wall_hover(hover_wall)
+		var pick := _find_wall_pick(camera, (event as InputEventMouseMotion).position)
+		var hover_wall := pick.get("wall") as ProceduralWall3DScript
+		var hover_ep := int(pick.get("endpoint", -1))
+		_update_wall_hover(hover_wall, hover_ep)
 		if hover_wall != null:
-			_set_status("Click and drag to move wall.")
+			_set_status(
+				"Click and drag endpoint to resize." if hover_ep >= 0
+				else "Click and drag to move wall."
+			)
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
 
 	if !(event is InputEventMouseButton):
@@ -206,10 +219,11 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
 
 	if !m_is_drawing_wall:
-		var hit_wall := _find_wall_under_cursor(camera, mouse_button.position)
+		var pick := _find_wall_pick(camera, mouse_button.position)
+		var hit_wall := pick.get("wall") as ProceduralWall3DScript
 		if hit_wall != null:
 			_clear_wall_hover()
-			_start_wall_drag(hit_wall, camera, mouse_button.position)
+			_start_wall_drag(hit_wall, camera, mouse_button.position, int(pick.get("endpoint", -1)))
 			return _handled()
 
 	var coordinator := _get_or_create_coordinator(true)
@@ -260,11 +274,16 @@ func _handle_placement_input(camera: Camera3D, event: InputEvent) -> int:
 	if event is InputEventMouseMotion:
 		var mouse_pos := (event as InputEventMouseMotion).position
 		if m_tool_mode == MODE_WINDOW:
-			var hover := _find_opening_under_cursor(camera, mouse_pos)
-			_update_hover_highlight(hover)
-			if hover != null:
+			var pick := _find_opening_pick(camera, mouse_pos)
+			var hover_opening := pick.get("opening") as BuildingOpening3DScript
+			var hover_edge := int(pick.get("edge", -1))
+			_update_hover_highlight(hover_opening, hover_edge)
+			if hover_opening != null:
 				_clear_prop_preview()
-				_set_status("Click and drag to reposition.")
+				_set_status(
+					"Click and drag edge to resize." if hover_edge >= 0
+					else "Click and drag to reposition."
+				)
 				return _handled()
 			_clear_drag_hover()
 		_update_placement_preview(camera, mouse_pos)
@@ -278,10 +297,11 @@ func _handle_placement_input(camera: Camera3D, event: InputEvent) -> int:
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
 
 	if m_tool_mode == MODE_WINDOW:
-		var hit_opening := _find_opening_under_cursor(camera, mouse_button.position)
+		var pick := _find_opening_pick(camera, mouse_button.position)
+		var hit_opening := pick.get("opening") as BuildingOpening3DScript
 		if hit_opening != null:
 			_clear_drag_hover()
-			_start_window_drag(hit_opening)
+			_start_window_drag(hit_opening, int(pick.get("edge", -1)), pick.get("wall") as ProceduralWall3DScript)
 			return _handled()
 
 	_update_placement_preview(camera, mouse_button.position)
@@ -1017,19 +1037,34 @@ func _clear_prop_preview() -> void:
 	m_preview_valid = false
 
 
-func _find_wall_under_cursor(camera: Camera3D, mouse_pos: Vector2) -> ProceduralWall3DScript:
+func _find_wall_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
 	var hit := _raycast_world(camera, mouse_pos)
-	return _find_wall_from_collider(hit.get("collider"))
+	var wall := _find_wall_from_collider(hit.get("collider"))
+	if wall == null:
+		return {}
+	var hit_world := Vector3(hit["position"])
+	var coordinator := _find_coordinator_from_node(wall)
+	if coordinator != null:
+		var ep_radius := 0.4
+		var start_world := coordinator.to_global(wall.start_point)
+		var end_world := coordinator.to_global(wall.end_point)
+		if hit_world.distance_to(start_world) < ep_radius:
+			return {"wall": wall, "endpoint": 0}
+		if hit_world.distance_to(end_world) < ep_radius:
+			return {"wall": wall, "endpoint": 1}
+	return {"wall": wall, "endpoint": -1}
 
 
-func _update_wall_hover(wall: ProceduralWall3DScript) -> void:
-	if wall == m_drag_wall_hover:
+func _update_wall_hover(wall: ProceduralWall3DScript, endpoint: int) -> void:
+	if wall == m_drag_wall_hover and endpoint == m_drag_wall_hover_endpoint:
 		return
 	_clear_wall_hover()
 	if wall == null:
 		return
 	m_drag_wall_hover = wall
-	wall.material_override = _build_preview_material(Color(0.20, 0.60, 1.0, 0.55))
+	m_drag_wall_hover_endpoint = endpoint
+	var color := Color(1.0, 0.85, 0.20, 0.65) if endpoint >= 0 else Color(0.20, 0.60, 1.0, 0.55)
+	wall.material_override = _build_preview_material(color)
 
 
 func _clear_wall_hover() -> void:
@@ -1038,20 +1073,29 @@ func _clear_wall_hover() -> void:
 	if is_instance_valid(m_drag_wall_hover):
 		m_drag_wall_hover.material_override = null
 	m_drag_wall_hover = null
+	m_drag_wall_hover_endpoint = -1
 
 
-func _start_wall_drag(wall: ProceduralWall3DScript, camera: Camera3D, mouse_pos: Vector2) -> void:
+func _start_wall_drag(
+	wall: ProceduralWall3DScript,
+	camera: Camera3D,
+	mouse_pos: Vector2,
+	endpoint: int
+) -> void:
 	m_dragging_wall = wall
 	m_drag_wall_old_start = wall.start_point
 	m_drag_wall_old_end = wall.end_point
+	m_drag_wall_endpoint = endpoint
 	var coordinator := _find_coordinator_from_node(wall)
 	var hit := _raycast_world(camera, mouse_pos, false)
 	m_drag_wall_anchor_local = (
 		coordinator.to_local(Vector3(hit["position"])) if coordinator != null
 		else Vector3(hit["position"])
 	)
-	wall.material_override = _build_preview_material(Color(0.20, 0.60, 1.0, 0.55))
-	_set_status("Dragging wall — release to commit, Escape to cancel.")
+	var color := Color(1.0, 0.85, 0.20, 0.75) if endpoint >= 0 else Color(0.20, 0.60, 1.0, 0.55)
+	wall.material_override = _build_preview_material(color)
+	var action := "endpoint" if endpoint >= 0 else "wall"
+	_set_status("Dragging %s — release to commit, Escape to cancel." % action)
 
 
 func _update_wall_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
@@ -1064,18 +1108,33 @@ func _update_wall_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 		coordinator.to_local(Vector3(hit["position"])) if coordinator != null
 		else Vector3(hit["position"])
 	)
-	var raw_delta := hit_local - m_drag_wall_anchor_local
 	var step := _active_grid_step(m_dragging_wall)
-	var snapped_delta := Vector3(
-		roundf(raw_delta.x / step) * step,
-		0.0,
-		roundf(raw_delta.z / step) * step
-	)
-	m_dragging_wall.set_wall_endpoints(
-		m_drag_wall_old_start + snapped_delta,
-		m_drag_wall_old_end + snapped_delta
-	)
-	_set_status("Release to commit.")
+
+	if m_drag_wall_endpoint >= 0:
+		# Resize: move only the dragged endpoint, snapped to grid
+		var snapped := Vector3(
+			roundf(hit_local.x / step) * step,
+			0.0,
+			roundf(hit_local.z / step) * step
+		)
+		if m_drag_wall_endpoint == 0:
+			m_dragging_wall.set_wall_endpoints(snapped, m_drag_wall_old_end)
+		else:
+			m_dragging_wall.set_wall_endpoints(m_drag_wall_old_start, snapped)
+		_set_status("Release to commit endpoint.")
+	else:
+		# Full move: translate both endpoints by snapped delta
+		var raw_delta := hit_local - m_drag_wall_anchor_local
+		var snapped_delta := Vector3(
+			roundf(raw_delta.x / step) * step,
+			0.0,
+			roundf(raw_delta.z / step) * step
+		)
+		m_dragging_wall.set_wall_endpoints(
+			m_drag_wall_old_start + snapped_delta,
+			m_drag_wall_old_end + snapped_delta
+		)
+		_set_status("Release to commit.")
 
 
 func _commit_wall_drag() -> void:
@@ -1105,37 +1164,62 @@ func _cancel_wall_drag() -> void:
 	m_dragging_wall = null
 
 
-func _find_opening_under_cursor(camera: Camera3D, mouse_pos: Vector2) -> BuildingOpening3DScript:
+func _find_opening_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
 	var hit := _raycast_world(camera, mouse_pos)
 	var wall := _find_wall_from_collider(hit.get("collider"))
 	if wall == null:
-		return null
+		return {}
 	var hit_world := Vector3(hit["position"])
-	var best: BuildingOpening3DScript = null
-	var best_dist := INF
 	for child in wall.get_children():
 		if child.has_meta(ProceduralWall3DScript.GENERATED_META):
 			continue
 		var opening := child as BuildingOpening3DScript
 		if opening == null or opening == m_prop_preview:
 			continue
-		var pick_radius := maxf(opening.opening_width, opening.opening_height) * 0.5 + 0.15
-		var dist := hit_world.distance_to(opening.global_position)
-		if dist < pick_radius and dist < best_dist:
-			best_dist = dist
-			best = opening
-	return best
+		var pick_radius := maxf(opening.opening_width, opening.opening_height) * 0.5 + 0.2
+		if hit_world.distance_to(opening.global_position) > pick_radius:
+			continue
+		# Convert hit to opening's segment-local 2D space
+		var seg_idx := wall.get_opening_segment_index(opening)
+		var frame := wall.get_segment_local_frame(seg_idx)
+		var local_hit := frame.affine_inverse() * wall.to_local(hit_world)
+		var local_center := frame.affine_inverse() * opening.position
+		var rel := Vector2(local_hit.x - local_center.x, local_hit.y - local_center.y)
+		var half_w := opening.opening_width * 0.5
+		var half_h := opening.opening_height * 0.5
+		var edge_zone := minf(0.22, minf(half_w, half_h) * 0.4)
+		# Center zone → move
+		if absf(rel.x) < half_w - edge_zone and absf(rel.y) < half_h - edge_zone:
+			return {"opening": opening, "edge": -1, "wall": wall}
+		# Nearest edge
+		var candidates := [
+			[absf(rel.x + half_w), 0],  # left
+			[absf(rel.x - half_w), 1],  # right
+			[absf(rel.y + half_h), 2],  # bottom
+			[absf(rel.y - half_h), 3],  # top
+		]
+		var best_edge := 0
+		var best_d := INF
+		for c in candidates:
+			if float(c[0]) < best_d:
+				best_d = float(c[0])
+				best_edge = int(c[1])
+		return {"opening": opening, "edge": best_edge, "wall": wall}
+	return {}
 
 
-func _update_hover_highlight(opening: BuildingOpening3DScript) -> void:
-	if opening == m_drag_hover_opening:
+func _update_hover_highlight(opening: BuildingOpening3DScript, edge: int) -> void:
+	if opening == m_drag_hover_opening and edge == m_drag_hover_edge:
 		return
 	_clear_drag_hover()
 	if opening == null:
 		return
 	m_drag_hover_opening = opening
 	m_drag_hover_old_color = opening.frame_color
-	opening.frame_color = Color(0.20, 0.60, 1.0, 0.9)
+	m_drag_hover_edge = edge
+	opening.frame_color = (
+		Color(1.0, 0.85, 0.20, 0.9) if edge >= 0 else Color(0.20, 0.60, 1.0, 0.9)
+	)
 
 
 func _clear_drag_hover() -> void:
@@ -1144,24 +1228,38 @@ func _clear_drag_hover() -> void:
 	if is_instance_valid(m_drag_hover_opening):
 		m_drag_hover_opening.frame_color = m_drag_hover_old_color
 	m_drag_hover_opening = null
+	m_drag_hover_edge = -1
 
 
-func _start_window_drag(opening: BuildingOpening3DScript) -> void:
+func _start_window_drag(
+	opening: BuildingOpening3DScript,
+	edge: int,
+	wall_hint: ProceduralWall3DScript
+) -> void:
 	_clear_prop_preview()
 	m_dragging_opening = opening
 	m_drag_old_position = opening.position
+	m_drag_opening_old_width = opening.opening_width
+	m_drag_opening_old_height = opening.opening_height
 	m_drag_old_segment = int(opening.get_meta(ProceduralWall3DScript.SEGMENT_INDEX_META, 0))
 	m_drag_target_segment = m_drag_old_segment
+	m_drag_opening_edge = edge
 	m_drag_valid = true
 	var wall := opening.get_parent() as ProceduralWall3DScript
+	if wall == null:
+		wall = wall_hint
 	if wall != null:
 		var frame := wall.get_segment_local_frame(m_drag_target_segment)
 		var local_pos := frame.affine_inverse() * opening.position
 		m_drag_face_sign = signf(local_pos.z) if absf(local_pos.z) > 0.001 else 1.0
+		m_drag_resize_center_2d = Vector2(local_pos.x, local_pos.y)
+		m_drag_resize_anchor_2d = m_drag_resize_center_2d
 	else:
 		m_drag_face_sign = 1.0
-	opening.frame_color = Color(0.20, 0.60, 1.0, 0.9)
-	_set_status("Dragging window — release to commit, Escape to cancel.")
+	var color := Color(1.0, 0.85, 0.20, 0.9) if edge >= 0 else Color(0.20, 0.60, 1.0, 0.9)
+	opening.frame_color = color
+	var action := "edge" if edge >= 0 else "window"
+	_set_status("Dragging %s — release to commit, Escape to cancel." % action)
 
 
 func _update_window_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
@@ -1183,17 +1281,48 @@ func _update_window_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 	var frame := wall.get_segment_local_frame(m_drag_target_segment)
 	var local_hit := frame.affine_inverse() * wall.to_local(Vector3(hit["position"]))
 	var grid_step := _active_grid_step(wall)
-	local_hit.x = clampf(roundf(local_hit.x / grid_step) * grid_step, 0.0, segment.get_length())
-	var sill_height := maxf(float(m_window_settings.get("sill_height", 0.9)), 0.0)
-	local_hit.y = sill_height + m_dragging_opening.opening_height * 0.5
-	local_hit.z = m_drag_face_sign * (segment.thickness * 0.5 + 0.035)
-	m_dragging_opening.transform = Transform3D(frame.basis, frame * local_hit)
-	var center := Vector2(local_hit.x, local_hit.y)
-	var size := Vector2(m_dragging_opening.opening_width, m_dragging_opening.opening_height)
-	m_drag_valid = wall.can_place_opening(center, size, 0.04, m_dragging_opening, m_drag_target_segment)
-	m_dragging_opening.frame_color = (
-		Color(0.20, 0.60, 1.0, 0.9) if m_drag_valid else Color(0.95, 0.20, 0.16, 0.9)
-	)
+
+	if m_drag_opening_edge >= 0:
+		# Resize mode: adjust width or height based on which edge is dragged
+		var hit_2d := Vector2(local_hit.x, local_hit.y)
+		var delta := hit_2d - m_drag_resize_anchor_2d
+		var new_width := m_drag_opening_old_width
+		var new_height := m_drag_opening_old_height
+		match m_drag_opening_edge:
+			0:  # left edge: moving left increases width
+				new_width = maxf(roundf((m_drag_opening_old_width - 2.0 * delta.x) / grid_step) * grid_step, grid_step)
+			1:  # right edge: moving right increases width
+				new_width = maxf(roundf((m_drag_opening_old_width + 2.0 * delta.x) / grid_step) * grid_step, grid_step)
+			2:  # bottom edge: moving down increases height
+				new_height = maxf(roundf((m_drag_opening_old_height - 2.0 * delta.y) / grid_step) * grid_step, grid_step)
+			3:  # top edge: moving up increases height
+				new_height = maxf(roundf((m_drag_opening_old_height + 2.0 * delta.y) / grid_step) * grid_step, grid_step)
+		m_dragging_opening.opening_width = new_width
+		m_dragging_opening.opening_height = new_height
+		# Keep center position fixed (sill constraint: re-apply to Y)
+		var sill_height := maxf(float(m_window_settings.get("sill_height", 0.9)), 0.0)
+		var center_local := Vector3(
+			m_drag_resize_center_2d.x,
+			sill_height + new_height * 0.5,
+			m_drag_face_sign * (segment.thickness * 0.5 + 0.035)
+		)
+		m_dragging_opening.transform = Transform3D(frame.basis, frame * center_local)
+		var center_2d := Vector2(center_local.x, center_local.y)
+		var size := Vector2(new_width, new_height)
+		m_drag_valid = wall.can_place_opening(center_2d, size, 0.04, m_dragging_opening, m_drag_target_segment)
+	else:
+		# Move mode
+		local_hit.x = clampf(roundf(local_hit.x / grid_step) * grid_step, 0.0, segment.get_length())
+		var sill_height := maxf(float(m_window_settings.get("sill_height", 0.9)), 0.0)
+		local_hit.y = sill_height + m_dragging_opening.opening_height * 0.5
+		local_hit.z = m_drag_face_sign * (segment.thickness * 0.5 + 0.035)
+		m_dragging_opening.transform = Transform3D(frame.basis, frame * local_hit)
+		var center := Vector2(local_hit.x, local_hit.y)
+		var size := Vector2(m_dragging_opening.opening_width, m_dragging_opening.opening_height)
+		m_drag_valid = wall.can_place_opening(center, size, 0.04, m_dragging_opening, m_drag_target_segment)
+
+	var ok_color := Color(1.0, 0.85, 0.20, 0.9) if m_drag_opening_edge >= 0 else Color(0.20, 0.60, 1.0, 0.9)
+	m_dragging_opening.frame_color = ok_color if m_drag_valid else Color(0.95, 0.20, 0.16, 0.9)
 	_set_status("Release to commit." if m_drag_valid else "Position overlaps or is out of bounds.")
 
 
@@ -1204,21 +1333,31 @@ func _commit_window_drag() -> void:
 	if wall == null or !m_drag_valid:
 		_cancel_window_drag()
 		if !m_drag_valid:
-			_set_status("Cannot place window there — move canceled.")
+			_set_status("Cannot place window there — canceled.")
 		return
-	var new_position := m_dragging_opening.position
+	var opening := m_dragging_opening
+	var new_position := opening.position
+	var new_width := opening.opening_width
+	var new_height := opening.opening_height
 	var old_position := m_drag_old_position
+	var old_width := m_drag_opening_old_width
+	var old_height := m_drag_opening_old_height
 	var old_segment := m_drag_old_segment
 	var target_segment := m_drag_target_segment
-	var opening := m_dragging_opening
 	m_dragging_opening = null
 	var undo_redo := get_undo_redo()
-	undo_redo.create_action("Move Wall Opening")
-	undo_redo.add_do_method(self, "_do_move_opening", opening, new_position, target_segment, wall)
-	undo_redo.add_undo_method(self, "_do_move_opening", opening, old_position, old_segment, wall)
+	if m_drag_opening_edge >= 0:
+		undo_redo.create_action("Resize Wall Opening")
+		undo_redo.add_do_method(self, "_do_resize_opening", opening, new_position, new_width, new_height, wall)
+		undo_redo.add_undo_method(self, "_do_resize_opening", opening, old_position, old_width, old_height, wall)
+	else:
+		undo_redo.create_action("Move Wall Opening")
+		undo_redo.add_do_method(self, "_do_move_opening", opening, new_position, target_segment, wall)
+		undo_redo.add_undo_method(self, "_do_move_opening", opening, old_position, old_segment, wall)
 	undo_redo.commit_action()
 	opening.frame_color = Color(0.86, 0.92, 0.94, 1.0)
-	_set_status("Moved window opening.")
+	_set_status("Resized window opening." if m_drag_opening_edge >= 0 else "Moved window opening.")
+	m_drag_opening_edge = -1
 
 
 func _cancel_window_drag() -> void:
@@ -1226,6 +1365,8 @@ func _cancel_window_drag() -> void:
 		return
 	if is_instance_valid(m_dragging_opening):
 		m_dragging_opening.position = m_drag_old_position
+		m_dragging_opening.opening_width = m_drag_opening_old_width
+		m_dragging_opening.opening_height = m_drag_opening_old_height
 		m_dragging_opening.set_meta(ProceduralWall3DScript.SEGMENT_INDEX_META, m_drag_old_segment)
 		m_dragging_opening.frame_color = Color(0.86, 0.92, 0.94, 1.0)
 		var wall := m_dragging_opening.get_parent() as ProceduralWall3DScript
@@ -1233,6 +1374,7 @@ func _cancel_window_drag() -> void:
 			wall.rebuild_wall_mesh()
 	m_dragging_opening = null
 	m_drag_valid = false
+	m_drag_opening_edge = -1
 
 
 func _do_move_opening(
@@ -1243,6 +1385,19 @@ func _do_move_opening(
 ) -> void:
 	opening.position = new_pos
 	opening.set_meta(ProceduralWall3DScript.SEGMENT_INDEX_META, segment_index)
+	wall.rebuild_wall_mesh()
+
+
+func _do_resize_opening(
+	opening: BuildingOpening3DScript,
+	new_pos: Vector3,
+	new_width: float,
+	new_height: float,
+	wall: ProceduralWall3DScript
+) -> void:
+	opening.position = new_pos
+	opening.opening_width = new_width
+	opening.opening_height = new_height
 	wall.rebuild_wall_mesh()
 
 
