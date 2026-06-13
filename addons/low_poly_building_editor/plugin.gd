@@ -50,10 +50,18 @@ var m_preview_wall: ProceduralWall3DScript
 var m_dragging_wall: ProceduralWall3DScript
 var m_drag_wall_old_start: Vector3
 var m_drag_wall_old_end: Vector3
+var m_drag_wall_old_segments: Array[WallSegment3DScript] = []
 var m_drag_wall_anchor_local: Vector3
+var m_drag_wall_segment_index := 0
 var m_drag_wall_endpoint := -1   # -1=full move, 0=start pt, 1=end pt
 var m_drag_wall_hover: ProceduralWall3DScript
+var m_drag_wall_hover_material: Material
+var m_drag_wall_hover_segment := 0
 var m_drag_wall_hover_endpoint := -1
+var m_drag_wall_hover_has_joint := false
+var m_drag_wall_hover_joint_position := Vector3.ZERO
+var m_drag_wall_hover_joint_marker: MeshInstance3D
+var m_drag_wall_active_material: Material
 var m_dragging_opening: BuildingOpening3DScript
 var m_drag_old_position: Vector3
 var m_drag_old_segment: int
@@ -189,11 +197,17 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 			return _handled()
 		var pick := _find_wall_pick(camera, (event as InputEventMouseMotion).position)
 		var hover_wall := pick.get("wall") as ProceduralWall3DScript
+		var hover_segment := int(pick.get("segment", 0))
 		var hover_ep := int(pick.get("endpoint", -1))
-		_update_wall_hover(hover_wall, hover_ep)
+		var hover_joint_position := Vector3.ZERO
+		if pick.has("joint_position"):
+			hover_joint_position = Vector3(pick["joint_position"])
+		var hover_has_joint := bool(pick.get("joint", false))
+		_update_wall_hover(hover_wall, hover_segment, hover_ep, hover_joint_position, hover_has_joint)
 		if hover_wall != null:
 			_set_status(
-				"Click and drag endpoint to resize." if hover_ep >= 0
+				"Click and drag joint endpoint to resize." if hover_has_joint
+				else "Click and drag endpoint to resize." if hover_ep >= 0
 				else "Click and drag to move wall."
 			)
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
@@ -223,7 +237,13 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 		var hit_wall := pick.get("wall") as ProceduralWall3DScript
 		if hit_wall != null:
 			_clear_wall_hover()
-			_start_wall_drag(hit_wall, camera, mouse_button.position, int(pick.get("endpoint", -1)))
+			_start_wall_drag(
+				hit_wall,
+				camera,
+				mouse_button.position,
+				int(pick.get("segment", 0)),
+				int(pick.get("endpoint", -1))
+			)
 			return _handled()
 
 	var coordinator := _get_or_create_coordinator(true)
@@ -430,23 +450,54 @@ func _commit_absorbed_wall(
 	local_end: Vector3
 ) -> void:
 	var survivor := targets[0]
-	var tolerance := maxf(coordinator.grid_step * 0.25, 0.03)
+	var drawn := WallSegment3DScript.new()
+	drawn.start_point = local_start
+	drawn.end_point = local_end
+	drawn.thickness = float(m_wall_settings["thickness"])
+	drawn.height = float(m_wall_settings["height"])
+	drawn.color = Color(m_wall_settings["color"])
+	var removed: Array[ProceduralWall3DScript] = []
+	for target_index in range(1, targets.size()):
+		removed.append(targets[target_index])
+	var added: Array[WallSegment3DScript] = [drawn]
+	_commit_merged_wall_group(
+		coordinator,
+		survivor,
+		removed,
+		added,
+		survivor.start_point,
+		survivor.end_point,
+		_duplicate_segments(survivor.extra_segments),
+		"Merge Intersecting Walls",
+		"Merged wall spans into %s." % survivor.name
+	)
 
-	var old_segments: Array[WallSegment3DScript] = survivor.extra_segments
-	var combined: Array[WallSegment3DScript] = []
-	for segment in old_segments:
-		combined.append(segment.duplicate() as WallSegment3DScript)
 
-	var removed: Array = []
+func _commit_merged_wall_group(
+	coordinator: BuildingEditor3DScript,
+	survivor: ProceduralWall3DScript,
+	removed: Array[ProceduralWall3DScript],
+	added_segments: Array[WallSegment3DScript],
+	undo_start: Vector3,
+	undo_end: Vector3,
+	undo_segments: Array[WallSegment3DScript],
+	action_name: String,
+	status: String
+) -> void:
+	var merged_segments := _build_merged_wall_segments(coordinator, survivor, removed, added_segments)
+	if merged_segments.is_empty():
+		_set_status("Wall is too short.")
+		return
+	var primary := merged_segments[0]
+	var extra_segments: Array[WallSegment3DScript] = []
+	for segment_index in range(1, merged_segments.size()):
+		extra_segments.append(merged_segments[segment_index].duplicate() as WallSegment3DScript)
+
+	var scene_root := get_editor_interface().get_edited_scene_root()
 	var moved: Array = []
 	var moved_parents: Array = []
 	var moved_transforms: Array = []
-	for target_index in range(1, targets.size()):
-		var other := targets[target_index]
-		for segment_index in range(other.get_segment_count()):
-			var segment := other.get_segment(segment_index).duplicate() as WallSegment3DScript
-			WallSegment3DScript.merge_into(combined, segment, tolerance)
-		removed.append(other)
+	for other in removed:
 		for child in other.get_children():
 			if child.has_meta(ProceduralWall3DScript.GENERATED_META):
 				continue
@@ -457,25 +508,28 @@ func _commit_absorbed_wall(
 			moved_parents.append(other)
 			moved_transforms.append(child_3d.transform)
 
-	var drawn := WallSegment3DScript.new()
-	drawn.start_point = local_start
-	drawn.end_point = local_end
-	drawn.thickness = float(m_wall_settings["thickness"])
-	drawn.height = float(m_wall_settings["height"])
-	drawn.color = Color(m_wall_settings["color"])
-	WallSegment3DScript.merge_into(combined, drawn, tolerance)
-
-	var scene_root := get_editor_interface().get_edited_scene_root()
 	var undo_redo := get_undo_redo()
-	undo_redo.create_action("Merge Intersecting Walls")
+	undo_redo.create_action(action_name)
 	for node in removed:
 		undo_redo.add_undo_reference(node)
-	undo_redo.add_do_method(self, "_do_absorb_walls", survivor, combined, removed, moved, scene_root)
+	undo_redo.add_do_method(
+		self,
+		"_do_absorb_walls",
+		survivor,
+		primary.start_point,
+		primary.end_point,
+		extra_segments,
+		removed,
+		moved,
+		scene_root
+	)
 	undo_redo.add_undo_method(
 		self,
 		"_undo_absorb_walls",
 		survivor,
-		old_segments,
+		undo_start,
+		undo_end,
+		_duplicate_segments(undo_segments),
 		removed,
 		moved,
 		moved_parents,
@@ -484,11 +538,31 @@ func _commit_absorbed_wall(
 		scene_root
 	)
 	undo_redo.commit_action()
-	_set_status("Merged %d wall spans into %s." % [targets.size(), survivor.name])
+	_set_status(status)
+
+
+func _build_merged_wall_segments(
+	coordinator: BuildingEditor3DScript,
+	survivor: ProceduralWall3DScript,
+	removed: Array[ProceduralWall3DScript],
+	added_segments: Array[WallSegment3DScript]
+) -> Array[WallSegment3DScript]:
+	var tolerance := maxf(coordinator.grid_step * 0.25, 0.03)
+	var combined: Array[WallSegment3DScript] = []
+	for segment in _duplicate_wall_segments(survivor):
+		WallSegment3DScript.merge_into(combined, segment, tolerance)
+	for other in removed:
+		for segment in _duplicate_wall_segments(other):
+			WallSegment3DScript.merge_into(combined, segment, tolerance)
+	for segment in added_segments:
+		WallSegment3DScript.merge_into(combined, segment.duplicate() as WallSegment3DScript, tolerance)
+	return WallSegment3DScript.split_at_intersections(combined, tolerance)
 
 
 func _do_absorb_walls(
 	survivor: ProceduralWall3DScript,
+	new_start: Vector3,
+	new_end: Vector3,
 	segments: Array[WallSegment3DScript],
 	removed: Array,
 	moved: Array,
@@ -508,13 +582,14 @@ func _do_absorb_walls(
 		var node_typed := node as Node
 		if node_typed != null and node_typed.get_parent() != null:
 			node_typed.get_parent().remove_child(node_typed)
-	survivor.extra_segments = segments
-	survivor.rebuild_wall_mesh()
+	_apply_wall_geometry(survivor, new_start, new_end, segments)
 	_select_node(survivor)
 
 
 func _undo_absorb_walls(
 	survivor: ProceduralWall3DScript,
+	old_start: Vector3,
+	old_end: Vector3,
 	old_segments: Array[WallSegment3DScript],
 	removed: Array,
 	moved: Array,
@@ -538,8 +613,7 @@ func _undo_absorb_walls(
 		old_parent.add_child(child_3d)
 		child_3d.transform = moved_transforms[index]
 		_set_owner_recursive(child_3d, scene_root)
-	survivor.extra_segments = old_segments
-	survivor.rebuild_wall_mesh()
+	_apply_wall_geometry(survivor, old_start, old_end, old_segments)
 	for node in removed:
 		var node_typed := node as Node
 		if node_typed != null and node_typed.has_method("rebuild_wall_mesh"):
@@ -980,6 +1054,229 @@ func _active_grid_step(wall: ProceduralWall3DScript) -> float:
 	return maxf(float(m_wall_settings["grid_step"]), 0.05)
 
 
+func _apply_wall_geometry(
+	wall: ProceduralWall3DScript,
+	new_start: Vector3,
+	new_end: Vector3,
+	segments: Array[WallSegment3DScript]
+) -> void:
+	wall.start_point = new_start
+	wall.end_point = new_end
+	wall.extra_segments = _duplicate_segments(segments)
+	wall.rebuild_wall_mesh()
+
+
+func _do_set_wall_geometry(
+	wall: ProceduralWall3DScript,
+	new_start: Vector3,
+	new_end: Vector3,
+	segments: Array[WallSegment3DScript],
+	select_after: bool
+) -> void:
+	if wall == null or !is_instance_valid(wall):
+		return
+	_apply_wall_geometry(wall, new_start, new_end, segments)
+	if select_after:
+		_select_node(wall)
+
+
+func _duplicate_segments(segments: Array) -> Array[WallSegment3DScript]:
+	var copies: Array[WallSegment3DScript] = []
+	for segment in segments:
+		var typed_segment := segment as WallSegment3DScript
+		if typed_segment == null:
+			continue
+		copies.append(typed_segment.duplicate() as WallSegment3DScript)
+	return copies
+
+
+func _duplicate_wall_segments(wall: ProceduralWall3DScript) -> Array[WallSegment3DScript]:
+	var segments: Array[WallSegment3DScript] = []
+	for segment_index in range(wall.get_segment_count()):
+		var segment := wall.get_segment(segment_index)
+		if segment == null:
+			continue
+		segments.append(segment.duplicate() as WallSegment3DScript)
+	return segments
+
+
+func _normalized_wall_geometry(wall: ProceduralWall3DScript) -> Dictionary:
+	var coordinator := _find_coordinator_from_node(wall)
+	var tolerance := maxf(_active_grid_step(wall) * 0.25, 0.03)
+	if coordinator != null:
+		tolerance = maxf(coordinator.grid_step * 0.25, 0.03)
+	var combined: Array[WallSegment3DScript] = []
+	for segment in _duplicate_wall_segments(wall):
+		WallSegment3DScript.merge_into(combined, segment, tolerance)
+	var split_segments := WallSegment3DScript.split_at_intersections(combined, tolerance)
+	return _wall_geometry_from_segments(split_segments)
+
+
+func _wall_geometry_from_segments(segments: Array) -> Dictionary:
+	if segments.is_empty():
+		return {}
+	var primary := segments[0] as WallSegment3DScript
+	if primary == null:
+		return {}
+	var extras: Array[WallSegment3DScript] = []
+	for segment_index in range(1, segments.size()):
+		var segment := segments[segment_index] as WallSegment3DScript
+		if segment == null:
+			continue
+		extras.append(segment.duplicate() as WallSegment3DScript)
+	return {
+		"start": primary.start_point,
+		"end": primary.end_point,
+		"segments": extras,
+	}
+
+
+func _wall_segment_zero_epsilon(wall: ProceduralWall3DScript) -> float:
+	return maxf(_active_grid_step(wall) * 0.01, 0.001)
+
+
+func _is_dragged_wall_span_zero_length(wall: ProceduralWall3DScript) -> bool:
+	if wall == null:
+		return false
+	var segment_index := clampi(m_drag_wall_segment_index, 0, wall.get_segment_count() - 1)
+	var segment := wall.get_segment(segment_index)
+	if segment == null:
+		return false
+	return segment.get_length() <= _wall_segment_zero_epsilon(wall)
+
+
+func _wall_geometry_without_segment(
+	wall: ProceduralWall3DScript,
+	removed_segment_index: int
+) -> Dictionary:
+	var remaining: Array[WallSegment3DScript] = []
+	var zero_epsilon := _wall_segment_zero_epsilon(wall)
+	for segment_index in range(wall.get_segment_count()):
+		if segment_index == removed_segment_index:
+			continue
+		var segment := wall.get_segment(segment_index).duplicate() as WallSegment3DScript
+		if segment == null or segment.get_length() <= zero_epsilon:
+			continue
+		remaining.append(segment)
+	if remaining.is_empty():
+		return {}
+	return _wall_geometry_from_segments(remaining)
+
+
+func _commit_delete_zero_length_wall_segment(
+	wall: ProceduralWall3DScript,
+	geometry: Dictionary,
+	old_start: Vector3,
+	old_end: Vector3,
+	old_segments: Array[WallSegment3DScript]
+) -> void:
+	var next_segments: Array[WallSegment3DScript] = geometry["segments"]
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Delete Wall Segment")
+	undo_redo.add_do_method(
+		self,
+		"_do_set_wall_geometry",
+		wall,
+		Vector3(geometry["start"]),
+		Vector3(geometry["end"]),
+		next_segments,
+		true
+	)
+	undo_redo.add_undo_method(self, "_do_set_wall_geometry", wall, old_start, old_end, old_segments, true)
+	undo_redo.commit_action()
+	_set_status("Deleted zero-length wall segment.")
+
+
+func _commit_delete_zero_length_wall(
+	wall: ProceduralWall3DScript,
+	old_start: Vector3,
+	old_end: Vector3,
+	old_segments: Array[WallSegment3DScript]
+) -> void:
+	var parent := wall.get_parent()
+	var scene_root := get_editor_interface().get_edited_scene_root()
+	if parent == null or scene_root == null:
+		_apply_wall_geometry(wall, old_start, old_end, old_segments)
+		_set_status("Wall is too short.")
+		return
+	_apply_wall_geometry(wall, old_start, old_end, old_segments)
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Delete Procedural Wall")
+	undo_redo.add_undo_reference(wall)
+	undo_redo.add_do_method(self, "_undo_remove_node", parent, wall)
+	undo_redo.add_undo_method(self, "_do_add_node", parent, wall, scene_root, true)
+	undo_redo.commit_action()
+	_set_status("Deleted zero-length wall.")
+
+
+func _apply_drag_wall_endpoint(snapped_position: Vector3) -> void:
+	if m_dragging_wall == null:
+		return
+	var extras := _duplicate_segments(m_drag_wall_old_segments)
+	var new_start := m_drag_wall_old_start
+	var new_end := m_drag_wall_old_end
+	if m_drag_wall_segment_index <= 0:
+		snapped_position.y = m_drag_wall_old_start.y
+		if m_drag_wall_endpoint == 0:
+			new_start = snapped_position
+		else:
+			new_end = snapped_position
+	else:
+		var extra_index := m_drag_wall_segment_index - 1
+		if extra_index >= 0 and extra_index < extras.size():
+			var segment := extras[extra_index]
+			snapped_position.y = segment.start_point.y
+			if m_drag_wall_endpoint == 0:
+				segment.start_point = snapped_position
+			else:
+				segment.end_point = snapped_position
+	_apply_wall_geometry(m_dragging_wall, new_start, new_end, extras)
+
+
+func _translate_drag_wall_geometry(delta: Vector3) -> void:
+	if m_dragging_wall == null:
+		return
+	var extras := _duplicate_segments(m_drag_wall_old_segments)
+	for segment in extras:
+		segment.start_point += delta
+		segment.end_point += delta
+	_apply_wall_geometry(
+		m_dragging_wall,
+		m_drag_wall_old_start + delta,
+		m_drag_wall_old_end + delta,
+		extras
+	)
+
+
+func _is_dragged_wall_span_long_enough(wall: ProceduralWall3DScript) -> bool:
+	if wall == null:
+		return false
+	var segment_index := clampi(m_drag_wall_segment_index, 0, wall.get_segment_count() - 1)
+	var segment := wall.get_segment(segment_index)
+	if segment == null:
+		return false
+	return _is_wall_span_long_enough(segment.start_point, segment.end_point)
+
+
+func _find_intersecting_targets_for_wall(
+	coordinator: BuildingEditor3DScript,
+	wall: ProceduralWall3DScript
+) -> Array[ProceduralWall3DScript]:
+	var targets: Array[ProceduralWall3DScript] = []
+	for segment in _duplicate_wall_segments(wall):
+		var hits := coordinator.find_intersecting_walls(
+			segment.start_point,
+			segment.end_point,
+			segment.thickness,
+			wall
+		)
+		for candidate in hits:
+			if candidate == wall or targets.has(candidate):
+				continue
+			targets.append(candidate)
+	return targets
+
+
 func _snap_world_position(world_position: Vector3) -> Vector3:
 	var coordinator := _get_or_create_coordinator(false)
 	if coordinator != null:
@@ -1043,49 +1340,189 @@ func _find_wall_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
 	if wall == null:
 		return {}
 	var hit_world := Vector3(hit["position"])
-	var coordinator := _find_coordinator_from_node(wall)
-	if coordinator != null:
-		var ep_radius := 0.4
-		var start_world := coordinator.to_global(wall.start_point)
-		var end_world := coordinator.to_global(wall.end_point)
-		if hit_world.distance_to(start_world) < ep_radius:
-			return {"wall": wall, "endpoint": 0}
-		if hit_world.distance_to(end_world) < ep_radius:
-			return {"wall": wall, "endpoint": 1}
-	return {"wall": wall, "endpoint": -1}
+	var ep_radius := 0.4
+	var segment_hint := int(hit.get("segment", 0))
+	var wall_parent := wall.get_parent() as Node3D
+	var hit_parent_local := wall_parent.to_local(hit_world) if wall_parent != null else wall.to_local(hit_world)
+	for offset in range(wall.get_segment_count()):
+		var segment_index := (segment_hint + offset) % wall.get_segment_count()
+		var segment := wall.get_segment(segment_index)
+		if _hit_near_wall_endpoint(hit_parent_local, segment.start_point, segment, ep_radius):
+			var start_joint := _wall_joint_info(wall, segment.start_point)
+			return {
+				"wall": wall,
+				"segment": segment_index,
+				"endpoint": 0,
+				"joint": bool(start_joint["joint"]),
+				"joint_position": start_joint["position"],
+			}
+		if _hit_near_wall_endpoint(hit_parent_local, segment.end_point, segment, ep_radius):
+			var end_joint := _wall_joint_info(wall, segment.end_point)
+			return {
+				"wall": wall,
+				"segment": segment_index,
+				"endpoint": 1,
+				"joint": bool(end_joint["joint"]),
+				"joint_position": end_joint["position"],
+			}
+	return {"wall": wall, "segment": segment_hint, "endpoint": -1}
 
 
-func _update_wall_hover(wall: ProceduralWall3DScript, endpoint: int) -> void:
-	if wall == m_drag_wall_hover and endpoint == m_drag_wall_hover_endpoint:
+func _hit_near_wall_endpoint(
+	hit_parent_local: Vector3,
+	endpoint: Vector3,
+	segment: WallSegment3DScript,
+	radius: float
+) -> bool:
+	if hit_parent_local.y < endpoint.y - radius or hit_parent_local.y > endpoint.y + segment.height + radius:
+		return false
+	var hit_2d := Vector2(hit_parent_local.x, hit_parent_local.z)
+	var endpoint_2d := Vector2(endpoint.x, endpoint.z)
+	return hit_2d.distance_to(endpoint_2d) <= radius
+
+
+func _wall_joint_info(wall: ProceduralWall3DScript, endpoint: Vector3) -> Dictionary:
+	var tolerance := maxf(_active_grid_step(wall) * 0.05, 0.03)
+	var count := 0
+	var total := Vector3.ZERO
+	for segment_index in range(wall.get_segment_count()):
+		var segment := wall.get_segment(segment_index)
+		if segment.start_point.distance_to(endpoint) <= tolerance:
+			count += 1
+			total += segment.start_point
+		if segment.end_point.distance_to(endpoint) <= tolerance:
+			count += 1
+			total += segment.end_point
+	var position := endpoint
+	if count > 0:
+		position = total / float(count)
+	return {
+		"joint": count >= 2,
+		"position": position,
+		"count": count,
+	}
+
+
+func _update_wall_hover(
+	wall: ProceduralWall3DScript,
+	segment_index: int,
+	endpoint: int,
+	joint_position: Vector3,
+	has_joint: bool
+) -> void:
+	if (
+		wall == m_drag_wall_hover
+		and segment_index == m_drag_wall_hover_segment
+		and endpoint == m_drag_wall_hover_endpoint
+		and has_joint == m_drag_wall_hover_has_joint
+		and (!has_joint or joint_position.distance_to(m_drag_wall_hover_joint_position) <= 0.001)
+	):
 		return
 	_clear_wall_hover()
 	if wall == null:
 		return
 	m_drag_wall_hover = wall
+	m_drag_wall_hover_segment = segment_index
 	m_drag_wall_hover_endpoint = endpoint
+	m_drag_wall_hover_has_joint = has_joint
+	m_drag_wall_hover_joint_position = joint_position
+	m_drag_wall_hover_material = wall.material_override
 	var color := Color(1.0, 0.85, 0.20, 0.65) if endpoint >= 0 else Color(0.20, 0.60, 1.0, 0.55)
 	wall.material_override = _build_preview_material(color)
+	if has_joint:
+		_show_wall_joint_hover(wall, joint_position)
 
 
 func _clear_wall_hover() -> void:
+	_clear_wall_joint_hover()
 	if m_drag_wall_hover == null:
 		return
 	if is_instance_valid(m_drag_wall_hover):
-		m_drag_wall_hover.material_override = null
+		m_drag_wall_hover.material_override = m_drag_wall_hover_material
 	m_drag_wall_hover = null
+	m_drag_wall_hover_material = null
+	m_drag_wall_hover_segment = 0
 	m_drag_wall_hover_endpoint = -1
+	m_drag_wall_hover_has_joint = false
+	m_drag_wall_hover_joint_position = Vector3.ZERO
+
+
+func _show_wall_joint_hover(wall: ProceduralWall3DScript, joint_position: Vector3) -> void:
+	_clear_wall_joint_hover()
+	if wall == null or !is_instance_valid(wall):
+		return
+	var marker := MeshInstance3D.new()
+	marker.name = "WallJointHover"
+	marker.set_meta(ProceduralWall3DScript.GENERATED_META, true)
+	var mesh := SphereMesh.new()
+	var radius := maxf(wall.wall_thickness * 0.85, 0.16)
+	mesh.radius = radius
+	mesh.height = radius * 2.0
+	mesh.radial_segments = 16
+	mesh.rings = 8
+	marker.mesh = mesh
+	marker.material_override = _build_joint_hover_material()
+	wall.add_child(marker)
+	marker.owner = null
+	var display_position := joint_position
+	display_position.y += _wall_joint_hover_height(wall, joint_position)
+	marker.position = _wall_parent_local_to_wall_local(wall, display_position)
+	m_drag_wall_hover_joint_marker = marker
+
+
+func _clear_wall_joint_hover() -> void:
+	if m_drag_wall_hover_joint_marker != null and is_instance_valid(m_drag_wall_hover_joint_marker):
+		m_drag_wall_hover_joint_marker.queue_free()
+	m_drag_wall_hover_joint_marker = null
+
+
+func _wall_joint_hover_height(wall: ProceduralWall3DScript, joint_position: Vector3) -> float:
+	var tolerance := maxf(_active_grid_step(wall) * 0.05, 0.03)
+	var height := 0.0
+	for segment_index in range(wall.get_segment_count()):
+		var segment := wall.get_segment(segment_index)
+		if (
+			segment.start_point.distance_to(joint_position) <= tolerance
+			or segment.end_point.distance_to(joint_position) <= tolerance
+		):
+			height = maxf(height, segment.height)
+	if height <= 0.0:
+		height = wall.wall_height
+	return height * 0.55
+
+
+func _wall_parent_local_to_wall_local(wall: ProceduralWall3DScript, parent_local_position: Vector3) -> Vector3:
+	var wall_parent := wall.get_parent() as Node3D
+	if wall_parent == null:
+		return wall.to_local(parent_local_position)
+	return wall.to_local(wall_parent.to_global(parent_local_position))
+
+
+func _build_joint_hover_material() -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(1.0, 0.46, 0.05, 0.95)
+	material.emission_enabled = true
+	material.emission = Color(1.0, 0.34, 0.02, 1.0)
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return material
 
 
 func _start_wall_drag(
 	wall: ProceduralWall3DScript,
 	camera: Camera3D,
 	mouse_pos: Vector2,
+	segment_index: int,
 	endpoint: int
 ) -> void:
 	m_dragging_wall = wall
 	m_drag_wall_old_start = wall.start_point
 	m_drag_wall_old_end = wall.end_point
+	m_drag_wall_old_segments = _duplicate_segments(wall.extra_segments)
+	m_drag_wall_segment_index = clampi(segment_index, 0, wall.get_segment_count() - 1)
 	m_drag_wall_endpoint = endpoint
+	m_drag_wall_active_material = wall.material_override
 	var coordinator := _find_coordinator_from_node(wall)
 	var hit := _raycast_world(camera, mouse_pos, false)
 	m_drag_wall_anchor_local = (
@@ -1117,11 +1554,23 @@ func _update_wall_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 			0.0,
 			roundf(hit_local.z / step) * step
 		)
-		if m_drag_wall_endpoint == 0:
-			m_dragging_wall.set_wall_endpoints(snapped, m_drag_wall_old_end)
+		_apply_drag_wall_endpoint(snapped)
+		var zero_span := _is_dragged_wall_span_zero_length(m_dragging_wall)
+		var valid_span := _is_dragged_wall_span_long_enough(m_dragging_wall)
+		var drag_color := Color(1.0, 0.85, 0.20, 0.75)
+		if zero_span:
+			drag_color = Color(1.0, 0.46, 0.05, 0.75)
+		elif !valid_span:
+			drag_color = Color(0.95, 0.20, 0.16, 0.72)
+		m_dragging_wall.material_override = _build_preview_material(drag_color)
+		if zero_span:
+			_set_status(
+				"Release to delete segment."
+				if m_dragging_wall.get_segment_count() > 1
+				else "Release to delete wall."
+			)
 		else:
-			m_dragging_wall.set_wall_endpoints(m_drag_wall_old_start, snapped)
-		_set_status("Release to commit endpoint.")
+			_set_status("Release to commit endpoint." if valid_span else "Wall is too short.")
 	else:
 		# Full move: translate both endpoints by snapped delta
 		var raw_delta := hit_local - m_drag_wall_anchor_local
@@ -1130,10 +1579,7 @@ func _update_wall_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 			0.0,
 			roundf(raw_delta.z / step) * step
 		)
-		m_dragging_wall.set_wall_endpoints(
-			m_drag_wall_old_start + snapped_delta,
-			m_drag_wall_old_end + snapped_delta
-		)
+		_translate_drag_wall_geometry(snapped_delta)
 		_set_status("Release to commit.")
 
 
@@ -1143,15 +1589,63 @@ func _commit_wall_drag() -> void:
 	var wall := m_dragging_wall
 	var new_start := wall.start_point
 	var new_end := wall.end_point
+	var new_segments := _duplicate_segments(wall.extra_segments)
 	var old_start := m_drag_wall_old_start
 	var old_end := m_drag_wall_old_end
+	var old_segments := _duplicate_segments(m_drag_wall_old_segments)
 	m_dragging_wall = null
-	wall.material_override = null
+	wall.material_override = m_drag_wall_active_material
+	m_drag_wall_active_material = null
+	if m_drag_wall_endpoint >= 0 and _is_dragged_wall_span_zero_length(wall):
+		var deletion_geometry := _wall_geometry_without_segment(wall, m_drag_wall_segment_index)
+		if deletion_geometry.is_empty():
+			_commit_delete_zero_length_wall(wall, old_start, old_end, old_segments)
+		else:
+			_commit_delete_zero_length_wall_segment(wall, deletion_geometry, old_start, old_end, old_segments)
+		m_drag_wall_old_segments.clear()
+		m_drag_wall_segment_index = 0
+		m_drag_wall_endpoint = -1
+		return
+	if !_is_dragged_wall_span_long_enough(wall):
+		_apply_wall_geometry(wall, old_start, old_end, old_segments)
+		m_drag_wall_old_segments.clear()
+		m_drag_wall_segment_index = 0
+		m_drag_wall_endpoint = -1
+		_set_status("Wall is too short.")
+		return
+	var coordinator := _find_coordinator_from_node(wall)
+	if coordinator != null and coordinator.merge_intersecting:
+		var targets := _find_intersecting_targets_for_wall(coordinator, wall)
+		if !targets.is_empty():
+			var no_added_segments: Array[WallSegment3DScript] = []
+			_commit_merged_wall_group(
+				coordinator,
+				wall,
+				targets,
+				no_added_segments,
+				old_start,
+				old_end,
+				old_segments,
+				"Move And Merge Procedural Wall",
+				"Moved and merged wall."
+			)
+			m_drag_wall_old_segments.clear()
+			m_drag_wall_segment_index = 0
+			m_drag_wall_endpoint = -1
+			return
+	var normalized_geometry := _normalized_wall_geometry(wall)
+	if !normalized_geometry.is_empty():
+		new_start = Vector3(normalized_geometry["start"])
+		new_end = Vector3(normalized_geometry["end"])
+		new_segments = normalized_geometry["segments"]
 	var undo_redo := get_undo_redo()
 	undo_redo.create_action("Move Procedural Wall")
-	undo_redo.add_do_method(wall, "set_wall_endpoints", new_start, new_end)
-	undo_redo.add_undo_method(wall, "set_wall_endpoints", old_start, old_end)
+	undo_redo.add_do_method(self, "_do_set_wall_geometry", wall, new_start, new_end, new_segments, true)
+	undo_redo.add_undo_method(self, "_do_set_wall_geometry", wall, old_start, old_end, old_segments, true)
 	undo_redo.commit_action()
+	m_drag_wall_old_segments.clear()
+	m_drag_wall_segment_index = 0
+	m_drag_wall_endpoint = -1
 	_set_status("Moved wall.")
 
 
@@ -1159,9 +1653,13 @@ func _cancel_wall_drag() -> void:
 	if m_dragging_wall == null:
 		return
 	if is_instance_valid(m_dragging_wall):
-		m_dragging_wall.set_wall_endpoints(m_drag_wall_old_start, m_drag_wall_old_end)
-		m_dragging_wall.material_override = null
+		_apply_wall_geometry(m_dragging_wall, m_drag_wall_old_start, m_drag_wall_old_end, m_drag_wall_old_segments)
+		m_dragging_wall.material_override = m_drag_wall_active_material
 	m_dragging_wall = null
+	m_drag_wall_old_segments.clear()
+	m_drag_wall_segment_index = 0
+	m_drag_wall_endpoint = -1
+	m_drag_wall_active_material = null
 
 
 func _find_opening_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:

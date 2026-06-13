@@ -170,13 +170,26 @@ func _validate_intersection_merge() -> void:
 	crossing.thickness = 0.22
 	crossing.height = 2.4
 	crossing.color = wall_color
-	var segments: Array[WallSegment3DScript] = []
-	WallSegment3DScript.merge_into(segments, crossing, 0.125)
-	survivor.extra_segments = segments
+	var split_source: Array[WallSegment3DScript] = [survivor.get_segment(0), crossing]
+	var split_segments := WallSegment3DScript.split_at_intersections(split_source, 0.125)
+	if split_segments.size() != 4:
+		m_failures.append("WallSegment3D did not split a crossing into four editable spans")
+	if _endpoint_count(split_segments, Vector3.ZERO) != 4:
+		m_failures.append("WallSegment3D did not create shared endpoints at the crossing point")
+	if _endpoint_count_for_axis(split_segments, Vector3.ZERO, Vector2.RIGHT) != 2:
+		m_failures.append("WallSegment3D did not add endpoints to the intersected horizontal segment")
+	if _endpoint_count_for_axis(split_segments, Vector3.ZERO, Vector2.DOWN) != 2:
+		m_failures.append("WallSegment3D did not add endpoints to the crossing vertical segment")
+	var split_primary := split_segments[0]
+	var split_extras: Array[WallSegment3DScript] = []
+	for split_index in range(1, split_segments.size()):
+		split_extras.append(split_segments[split_index])
+	survivor.set_wall_endpoints(split_primary.start_point, split_primary.end_point)
+	survivor.extra_segments = split_extras
 	survivor.rebuild_wall_mesh()
 
-	if survivor.get_segment_count() != 2:
-		m_failures.append("ProceduralWall3D did not keep the absorbed crossing segment")
+	if survivor.get_segment_count() != 4:
+		m_failures.append("ProceduralWall3D did not keep the split absorbed crossing segments")
 	if survivor.mesh == null or survivor.mesh.get_surface_count() <= 0:
 		m_failures.append("Multi-segment ProceduralWall3D did not generate a merged mesh")
 		return
@@ -215,7 +228,7 @@ func _validate_intersection_merge() -> void:
 
 	if survivor.can_place_opening(Vector2(1.0, 1.1), Vector2(0.8, 0.8), 0.03, null, 1):
 		m_failures.append("Multi-segment wall allowed an overlapping opening on an extra segment")
-	if !survivor.can_place_opening(Vector2(3.0, 1.1), Vector2(0.6, 0.8), 0.03, null, 1):
+	if !survivor.can_place_opening(Vector2(1.8, 1.1), Vector2(0.25, 0.8), 0.03, null, 1):
 		m_failures.append("Multi-segment wall rejected a valid opening on an extra segment")
 
 	# Openings sitting on the primary span's face near the junction must stay
@@ -261,3 +274,36 @@ func _up_facing_area(array_mesh: ArrayMesh, expected_height: float) -> float:
 		var c := vertices[i2]
 		area += ((b - a).cross(c - a)).length() * 0.5
 	return area
+
+
+func _endpoint_count(segments: Array, point: Vector3) -> int:
+	var count := 0
+	for segment in segments:
+		var typed_segment := segment as WallSegment3DScript
+		if typed_segment == null:
+			continue
+		if typed_segment.start_point.distance_to(point) <= 0.001:
+			count += 1
+		if typed_segment.end_point.distance_to(point) <= 0.001:
+			count += 1
+	return count
+
+
+func _endpoint_count_for_axis(segments: Array, point: Vector3, axis: Vector2) -> int:
+	var count := 0
+	var normalized_axis := axis.normalized()
+	for segment in segments:
+		var typed_segment := segment as WallSegment3DScript
+		if typed_segment == null:
+			continue
+		var segment_axis := Vector2(
+			typed_segment.end_point.x - typed_segment.start_point.x,
+			typed_segment.end_point.z - typed_segment.start_point.z
+		).normalized()
+		if absf(segment_axis.dot(normalized_axis)) < 0.999:
+			continue
+		if typed_segment.start_point.distance_to(point) <= 0.001:
+			count += 1
+		if typed_segment.end_point.distance_to(point) <= 0.001:
+			count += 1
+	return count

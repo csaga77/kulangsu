@@ -178,6 +178,27 @@ Governance:
 - keep scene-specific world wiring local to `scenes/game_main.gd` unless it becomes a reusable subsystem; reusable overworld helpers should live under `scenes/`
 - document node-path, actor-layer, or spawn-anchor naming assumptions if new systems depend on them
 
+## Low-Poly Building Editor Contract
+
+Owned by:
+
+- [`../addons/low_poly_building_editor/plugin.gd`](../addons/low_poly_building_editor/plugin.gd)
+- [`../addons/low_poly_building_editor/building_editor_3d.gd`](../addons/low_poly_building_editor/building_editor_3d.gd)
+- [`../addons/low_poly_building_editor/procedural_wall_3d.gd`](../addons/low_poly_building_editor/procedural_wall_3d.gd)
+- [`../addons/low_poly_building_editor/wall_segment_3d.gd`](../addons/low_poly_building_editor/wall_segment_3d.gd)
+
+Current contract:
+
+- `BuildingEditor3D` owns grid snapping, wall lookup, collinear merge detection, and intersecting-wall detection for editor commits.
+- `ProceduralWall3D` stores one primary parent-local span in `start_point/end_point` plus any absorbed spans as `WallSegment3D` entries in `extra_segments`.
+- non-collinear wall crossings merge into one surviving `ProceduralWall3D`; all participating spans, including already-intersected spans, are split at their centerline intersection points so the junctions become real segment endpoints that editor drag tools can resize.
+- wall drag edits are segment-aware: dragging an endpoint changes only the picked segment endpoint, dragging a wall body translates the whole merged wall, zero-length endpoint drags delete the collapsed segment or wall node through undo/redo, and drag commits normalize same-wall intersections plus reuse the intersection merge/split path when the edited wall crosses another wall.
+
+Governance:
+
+- keep building-editor scene mutations undoable through `EditorUndoRedoManager`.
+- if wall endpoint storage, segment splitting, child reparenting, or merge undo behavior changes, update this file and [`features/low_poly_building_editor.md`](features/low_poly_building_editor.md).
+
 ## Low-Poly 3D Prototype Contract
 
 Owned by:
@@ -238,12 +259,13 @@ Current contract:
 
 - the building editor is a Godot editor plugin and must stay out of the runtime app shell
 - `BuildingEditor3D` is the scene-owned coordinator for a building assembly; it owns grid snapping, eight-way drawing constraints, default wall settings, wall lookup, and collinear merge detection
-- `ProceduralWall3D` stores parent-local `start_point` and `end_point` for its primary span plus typed `WallSegment3D` resources in `extra_segments` for absorbed intersecting spans; the node transform derives from the primary span, and one combined low-poly mesh plus generated collision rebuilds from all segments and direct child openings
+- `ProceduralWall3D` stores parent-local `start_point` and `end_point` for its primary span plus typed `WallSegment3D` resources in `extra_segments` for absorbed intersecting spans; the node transform derives from the primary span, zero-length endpoint drags can promote an extra span to primary when the old primary is deleted, and one combined low-poly mesh plus generated collision rebuilds from all segments and direct child openings
 - `BuildingOpening3D` is the persistent child node used for window holes; its `opening_width`, `opening_height`, and local position define the opening rectangle consumed by the wall mesh compiler, mapped to the nearest wall segment
 - new overlapping collinear walls of matching thickness and height merge by extending the retained wall endpoints instead of creating duplicate spans
-- non-collinear intersecting walls sharing a base plane collapse on commit into one surviving `ProceduralWall3D`: the other walls' spans become `extra_segments`, their openings and props reparent to the survivor, and the other wall nodes are removed; undo restores the original nodes
+- non-collinear intersecting walls sharing a base plane collapse on commit into one surviving `ProceduralWall3D`: every participating span is split at the intersection point, the other walls' spans become `extra_segments`, their openings and props reparent to the survivor, and the other wall nodes are removed; undo restores the original nodes
 - generated wall collision and opening frame parts are rebuild artifacts identified by metadata; they are not author-facing source nodes
 - placed wall, prop, and opening mutations must go through `EditorUndoRedoManager` so undo/redo restores scene hierarchy and rebuilt wall meshes together
+- deleting a zero-length wall segment, including deletion of the final segment's wall node, must go through `EditorUndoRedoManager`
 
 Governance:
 
