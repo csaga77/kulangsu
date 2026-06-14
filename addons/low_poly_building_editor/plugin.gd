@@ -54,6 +54,10 @@ var m_drag_wall_old_segments: Array[WallSegment3DScript] = []
 var m_drag_wall_anchor_local: Vector3
 var m_drag_wall_segment_index := 0
 var m_drag_wall_endpoint := -1   # -1=full move, 0=start pt, 1=end pt
+var m_drag_wall_joint_origin := Vector3.ZERO
+var m_drag_wall_dragging_joint := false
+var m_drag_wall_detaching_joint := false
+var m_drag_wall_has_connection_snap := false
 var m_drag_wall_hover: ProceduralWall3DScript
 var m_drag_wall_hover_material: Material
 var m_drag_wall_hover_segment := 0
@@ -206,7 +210,7 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 		_update_wall_hover(hover_wall, hover_segment, hover_ep, hover_joint_position, hover_has_joint)
 		if hover_wall != null:
 			_set_status(
-				"Click and drag joint endpoint to resize." if hover_has_joint
+				"Drag joint to move connected walls. Option-drag to disconnect." if hover_has_joint
 				else "Click and drag endpoint to resize." if hover_ep >= 0
 				else "Click and drag to move wall."
 			)
@@ -242,7 +246,8 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 				camera,
 				mouse_button.position,
 				int(pick.get("segment", 0)),
-				int(pick.get("endpoint", -1))
+				int(pick.get("endpoint", -1)),
+				bool(mouse_button.alt_pressed)
 			)
 			return _handled()
 
@@ -1213,24 +1218,19 @@ func _apply_drag_wall_endpoint(snapped_position: Vector3) -> void:
 	if m_dragging_wall == null:
 		return
 	var extras := _duplicate_segments(m_drag_wall_old_segments)
-	var new_start := m_drag_wall_old_start
-	var new_end := m_drag_wall_old_end
-	if m_drag_wall_segment_index <= 0:
-		snapped_position.y = m_drag_wall_old_start.y
-		if m_drag_wall_endpoint == 0:
-			new_start = snapped_position
-		else:
-			new_end = snapped_position
-	else:
-		var extra_index := m_drag_wall_segment_index - 1
-		if extra_index >= 0 and extra_index < extras.size():
-			var segment := extras[extra_index]
-			snapped_position.y = segment.start_point.y
-			if m_drag_wall_endpoint == 0:
-				segment.start_point = snapped_position
-			else:
-				segment.end_point = snapped_position
-	_apply_wall_geometry(m_dragging_wall, new_start, new_end, extras)
+	_apply_wall_geometry(m_dragging_wall, m_drag_wall_old_start, m_drag_wall_old_end, extras)
+	if m_drag_wall_dragging_joint:
+		m_dragging_wall.move_connected_endpoint(
+			m_drag_wall_joint_origin,
+			snapped_position,
+			_wall_joint_tolerance(m_dragging_wall)
+		)
+		return
+	m_dragging_wall.move_segment_endpoint(
+		m_drag_wall_segment_index,
+		m_drag_wall_endpoint,
+		snapped_position
+	)
 
 
 func _translate_drag_wall_geometry(delta: Vector3) -> void:
@@ -1382,7 +1382,7 @@ func _hit_near_wall_endpoint(
 
 
 func _wall_joint_info(wall: ProceduralWall3DScript, endpoint: Vector3) -> Dictionary:
-	var tolerance := maxf(_active_grid_step(wall) * 0.05, 0.03)
+	var tolerance := _wall_joint_tolerance(wall)
 	var count := 0
 	var total := Vector3.ZERO
 	for segment_index in range(wall.get_segment_count()):
@@ -1400,6 +1400,89 @@ func _wall_joint_info(wall: ProceduralWall3DScript, endpoint: Vector3) -> Dictio
 		"joint": count >= 2,
 		"position": position,
 		"count": count,
+	}
+
+
+func _wall_joint_tolerance(wall: ProceduralWall3DScript) -> float:
+	return maxf(_active_grid_step(wall) * 0.05, 0.03)
+
+
+func _wall_connection_snap_radius(wall: ProceduralWall3DScript) -> float:
+	return maxf(maxf(_active_grid_step(wall) * 0.45, wall.wall_thickness * 1.25), 0.08)
+
+
+func _drag_wall_endpoint_position(
+	wall: ProceduralWall3DScript,
+	segment_index: int,
+	endpoint: int
+) -> Vector3:
+	if wall == null or wall.get_segment_count() <= 0:
+		return Vector3.ZERO
+	var segment := wall.get_segment(clampi(segment_index, 0, wall.get_segment_count() - 1))
+	if segment == null:
+		return Vector3.ZERO
+	return segment.start_point if endpoint == 0 else segment.end_point
+
+
+func _snap_drag_wall_endpoint_to_connection(snapped_position: Vector3) -> Vector3:
+	m_drag_wall_has_connection_snap = false
+	if m_dragging_wall == null or m_drag_wall_endpoint < 0 or m_drag_wall_dragging_joint:
+		return snapped_position
+	var target := _nearest_wall_connection_endpoint(
+		m_dragging_wall,
+		snapped_position,
+		_wall_connection_snap_radius(m_dragging_wall)
+	)
+	if target.is_empty():
+		return snapped_position
+	var target_position := Vector3(target["position"])
+	m_drag_wall_has_connection_snap = true
+	return Vector3(target_position.x, snapped_position.y, target_position.z)
+
+
+func _nearest_wall_connection_endpoint(
+	wall: ProceduralWall3DScript,
+	position: Vector3,
+	radius: float
+) -> Dictionary:
+	var candidates: Array[ProceduralWall3DScript] = []
+	var coordinator := _find_coordinator_from_node(wall)
+	if coordinator != null:
+		candidates = coordinator.get_wall_nodes()
+	else:
+		candidates.append(wall)
+	var best_distance := radius
+	var best_position := Vector3.ZERO
+	var found := false
+	for candidate_wall in candidates:
+		if candidate_wall == null or !is_instance_valid(candidate_wall):
+			continue
+		if candidate_wall.has_meta(ProceduralWall3DScript.PREVIEW_META):
+			continue
+		for segment_index in range(candidate_wall.get_segment_count()):
+			var segment := candidate_wall.get_segment(segment_index)
+			var endpoints := [segment.start_point, segment.end_point]
+			for endpoint_index in range(endpoints.size()):
+				if (
+					candidate_wall == wall
+					and segment_index == m_drag_wall_segment_index
+					and endpoint_index == m_drag_wall_endpoint
+				):
+					continue
+				var endpoint := Vector3(endpoints[endpoint_index])
+				if absf(endpoint.y - position.y) > 0.01:
+					continue
+				var distance := Vector2(endpoint.x - position.x, endpoint.z - position.z).length()
+				if distance > best_distance:
+					continue
+				best_distance = distance
+				best_position = endpoint
+				found = true
+	if !found:
+		return {}
+	return {
+		"position": best_position,
+		"distance": best_distance,
 	}
 
 
@@ -1477,7 +1560,7 @@ func _clear_wall_joint_hover() -> void:
 
 
 func _wall_joint_hover_height(wall: ProceduralWall3DScript, joint_position: Vector3) -> float:
-	var tolerance := maxf(_active_grid_step(wall) * 0.05, 0.03)
+	var tolerance := _wall_joint_tolerance(wall)
 	var height := 0.0
 	for segment_index in range(wall.get_segment_count()):
 		var segment := wall.get_segment(segment_index)
@@ -1514,7 +1597,8 @@ func _start_wall_drag(
 	camera: Camera3D,
 	mouse_pos: Vector2,
 	segment_index: int,
-	endpoint: int
+	endpoint: int,
+	disconnect_joint: bool = false
 ) -> void:
 	m_dragging_wall = wall
 	m_drag_wall_old_start = wall.start_point
@@ -1522,6 +1606,18 @@ func _start_wall_drag(
 	m_drag_wall_old_segments = _duplicate_segments(wall.extra_segments)
 	m_drag_wall_segment_index = clampi(segment_index, 0, wall.get_segment_count() - 1)
 	m_drag_wall_endpoint = endpoint
+	m_drag_wall_joint_origin = Vector3.ZERO
+	m_drag_wall_dragging_joint = false
+	m_drag_wall_detaching_joint = false
+	m_drag_wall_has_connection_snap = false
+	if endpoint >= 0:
+		m_drag_wall_joint_origin = _drag_wall_endpoint_position(wall, m_drag_wall_segment_index, endpoint)
+		var is_shared_joint := wall.count_connected_endpoints(
+			m_drag_wall_joint_origin,
+			_wall_joint_tolerance(wall)
+		) >= 2
+		m_drag_wall_dragging_joint = is_shared_joint and !disconnect_joint
+		m_drag_wall_detaching_joint = is_shared_joint and disconnect_joint
 	m_drag_wall_active_material = wall.material_override
 	var coordinator := _find_coordinator_from_node(wall)
 	var hit := _raycast_world(camera, mouse_pos, false)
@@ -1529,9 +1625,19 @@ func _start_wall_drag(
 		coordinator.to_local(Vector3(hit["position"])) if coordinator != null
 		else Vector3(hit["position"])
 	)
-	var color := Color(1.0, 0.85, 0.20, 0.75) if endpoint >= 0 else Color(0.20, 0.60, 1.0, 0.55)
+	var color := (
+		Color(1.0, 0.46, 0.05, 0.75) if m_drag_wall_dragging_joint
+		else Color(1.0, 0.85, 0.20, 0.75) if endpoint >= 0
+		else Color(0.20, 0.60, 1.0, 0.55)
+	)
 	wall.material_override = _build_preview_material(color)
-	var action := "endpoint" if endpoint >= 0 else "wall"
+	var action := (
+		"joint"
+		if m_drag_wall_dragging_joint
+		else "detached endpoint" if m_drag_wall_detaching_joint
+		else "endpoint" if endpoint >= 0
+		else "wall"
+	)
 	_set_status("Dragging %s — release to commit, Escape to cancel." % action)
 
 
@@ -1548,20 +1654,22 @@ func _update_wall_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 	var step := _active_grid_step(m_dragging_wall)
 
 	if m_drag_wall_endpoint >= 0:
-		# Resize: move only the dragged endpoint, snapped to grid
 		var snapped := Vector3(
 			roundf(hit_local.x / step) * step,
 			0.0,
 			roundf(hit_local.z / step) * step
 		)
+		snapped = _snap_drag_wall_endpoint_to_connection(snapped)
 		_apply_drag_wall_endpoint(snapped)
 		var zero_span := _is_dragged_wall_span_zero_length(m_dragging_wall)
 		var valid_span := _is_dragged_wall_span_long_enough(m_dragging_wall)
-		var drag_color := Color(1.0, 0.85, 0.20, 0.75)
+		var drag_color := Color(1.0, 0.46, 0.05, 0.75) if m_drag_wall_dragging_joint else Color(1.0, 0.85, 0.20, 0.75)
 		if zero_span:
 			drag_color = Color(1.0, 0.46, 0.05, 0.75)
 		elif !valid_span:
 			drag_color = Color(0.95, 0.20, 0.16, 0.72)
+		elif m_drag_wall_has_connection_snap:
+			drag_color = Color(0.20, 0.88, 0.36, 0.75)
 		m_dragging_wall.material_override = _build_preview_material(drag_color)
 		if zero_span:
 			_set_status(
@@ -1570,7 +1678,16 @@ func _update_wall_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 				else "Release to delete wall."
 			)
 		else:
-			_set_status("Release to commit endpoint." if valid_span else "Wall is too short.")
+			var drag_target := "joint" if m_drag_wall_dragging_joint else "endpoint"
+			if valid_span:
+				if m_drag_wall_has_connection_snap:
+					_set_status("Release to connect endpoint.")
+				elif m_drag_wall_detaching_joint:
+					_set_status("Release to disconnect endpoint.")
+				else:
+					_set_status("Release to commit %s." % drag_target)
+			else:
+				_set_status("Wall is too short.")
 	else:
 		# Full move: translate both endpoints by snapped delta
 		var raw_delta := hit_local - m_drag_wall_anchor_local
@@ -1593,6 +1710,9 @@ func _commit_wall_drag() -> void:
 	var old_start := m_drag_wall_old_start
 	var old_end := m_drag_wall_old_end
 	var old_segments := _duplicate_segments(m_drag_wall_old_segments)
+	var was_joint_drag := m_drag_wall_dragging_joint
+	var was_detaching_joint := m_drag_wall_detaching_joint
+	var was_connection_snap := m_drag_wall_has_connection_snap
 	m_dragging_wall = null
 	wall.material_override = m_drag_wall_active_material
 	m_drag_wall_active_material = null
@@ -1605,12 +1725,20 @@ func _commit_wall_drag() -> void:
 		m_drag_wall_old_segments.clear()
 		m_drag_wall_segment_index = 0
 		m_drag_wall_endpoint = -1
+		m_drag_wall_joint_origin = Vector3.ZERO
+		m_drag_wall_dragging_joint = false
+		m_drag_wall_detaching_joint = false
+		m_drag_wall_has_connection_snap = false
 		return
 	if !_is_dragged_wall_span_long_enough(wall):
 		_apply_wall_geometry(wall, old_start, old_end, old_segments)
 		m_drag_wall_old_segments.clear()
 		m_drag_wall_segment_index = 0
 		m_drag_wall_endpoint = -1
+		m_drag_wall_joint_origin = Vector3.ZERO
+		m_drag_wall_dragging_joint = false
+		m_drag_wall_detaching_joint = false
+		m_drag_wall_has_connection_snap = false
 		_set_status("Wall is too short.")
 		return
 	var coordinator := _find_coordinator_from_node(wall)
@@ -1632,6 +1760,10 @@ func _commit_wall_drag() -> void:
 			m_drag_wall_old_segments.clear()
 			m_drag_wall_segment_index = 0
 			m_drag_wall_endpoint = -1
+			m_drag_wall_joint_origin = Vector3.ZERO
+			m_drag_wall_dragging_joint = false
+			m_drag_wall_detaching_joint = false
+			m_drag_wall_has_connection_snap = false
 			return
 	var normalized_geometry := _normalized_wall_geometry(wall)
 	if !normalized_geometry.is_empty():
@@ -1646,7 +1778,18 @@ func _commit_wall_drag() -> void:
 	m_drag_wall_old_segments.clear()
 	m_drag_wall_segment_index = 0
 	m_drag_wall_endpoint = -1
-	_set_status("Moved wall.")
+	m_drag_wall_joint_origin = Vector3.ZERO
+	m_drag_wall_dragging_joint = false
+	m_drag_wall_detaching_joint = false
+	m_drag_wall_has_connection_snap = false
+	if was_connection_snap:
+		_set_status("Connected wall endpoint.")
+	elif was_detaching_joint:
+		_set_status("Disconnected wall endpoint.")
+	elif was_joint_drag:
+		_set_status("Moved wall joint.")
+	else:
+		_set_status("Moved wall.")
 
 
 func _cancel_wall_drag() -> void:
@@ -1659,6 +1802,10 @@ func _cancel_wall_drag() -> void:
 	m_drag_wall_old_segments.clear()
 	m_drag_wall_segment_index = 0
 	m_drag_wall_endpoint = -1
+	m_drag_wall_joint_origin = Vector3.ZERO
+	m_drag_wall_dragging_joint = false
+	m_drag_wall_detaching_joint = false
+	m_drag_wall_has_connection_snap = false
 	m_drag_wall_active_material = null
 
 

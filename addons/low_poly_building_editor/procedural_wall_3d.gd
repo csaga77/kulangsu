@@ -153,6 +153,68 @@ func get_segment(index: int) -> WallSegment3DScript:
 	return extra_segments[index - 1]
 
 
+func count_connected_endpoints(endpoint: Vector3, tolerance: float) -> int:
+	var count := 0
+	if _endpoint_matches(start_point, endpoint, tolerance):
+		count += 1
+	if _endpoint_matches(end_point, endpoint, tolerance):
+		count += 1
+	for segment in extra_segments:
+		if segment == null:
+			continue
+		if _endpoint_matches(segment.start_point, endpoint, tolerance):
+			count += 1
+		if _endpoint_matches(segment.end_point, endpoint, tolerance):
+			count += 1
+	return count
+
+
+func move_connected_endpoint(old_endpoint: Vector3, new_endpoint: Vector3, tolerance: float) -> int:
+	var moved_count := 0
+	if _endpoint_matches(start_point, old_endpoint, tolerance):
+		start_point = _endpoint_with_preserved_height(start_point, new_endpoint)
+		moved_count += 1
+	if _endpoint_matches(end_point, old_endpoint, tolerance):
+		end_point = _endpoint_with_preserved_height(end_point, new_endpoint)
+		moved_count += 1
+	for segment in extra_segments:
+		if segment == null:
+			continue
+		if _endpoint_matches(segment.start_point, old_endpoint, tolerance):
+			segment.start_point = _endpoint_with_preserved_height(segment.start_point, new_endpoint)
+			moved_count += 1
+		if _endpoint_matches(segment.end_point, old_endpoint, tolerance):
+			segment.end_point = _endpoint_with_preserved_height(segment.end_point, new_endpoint)
+			moved_count += 1
+	if moved_count > 0:
+		rebuild_wall_mesh()
+	return moved_count
+
+
+func move_segment_endpoint(segment_index: int, endpoint: int, new_endpoint: Vector3) -> bool:
+	if endpoint != 0 and endpoint != 1:
+		return false
+	if segment_index <= 0:
+		if endpoint == 0:
+			start_point = _endpoint_with_preserved_height(start_point, new_endpoint)
+		else:
+			end_point = _endpoint_with_preserved_height(end_point, new_endpoint)
+		rebuild_wall_mesh()
+		return true
+	var extra_index := segment_index - 1
+	if extra_index < 0 or extra_index >= extra_segments.size():
+		return false
+	var segment := extra_segments[extra_index]
+	if segment == null:
+		return false
+	if endpoint == 0:
+		segment.start_point = _endpoint_with_preserved_height(segment.start_point, new_endpoint)
+	else:
+		segment.end_point = _endpoint_with_preserved_height(segment.end_point, new_endpoint)
+	rebuild_wall_mesh()
+	return true
+
+
 ## Frame of a segment expressed in this node's local space. Segment 0 is the
 ## identity because the node transform is derived from the primary span.
 func get_segment_local_frame(index: int) -> Transform3D:
@@ -267,6 +329,14 @@ func _request_rebuild() -> void:
 		return
 	m_rebuild_queued = true
 	call_deferred("rebuild_wall_mesh")
+
+
+func _endpoint_matches(first: Vector3, second: Vector3, tolerance: float) -> bool:
+	return first.distance_to(second) <= maxf(tolerance, 0.0)
+
+
+func _endpoint_with_preserved_height(endpoint: Vector3, target: Vector3) -> Vector3:
+	return Vector3(target.x, endpoint.y, target.z)
 
 
 func _sync_transform_from_points() -> void:
