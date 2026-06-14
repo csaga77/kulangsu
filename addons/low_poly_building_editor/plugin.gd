@@ -51,6 +51,7 @@ var m_dragging_wall: ProceduralWall3DScript
 var m_drag_wall_old_start: Vector3
 var m_drag_wall_old_end: Vector3
 var m_drag_wall_old_segments: Array[WallSegment3DScript] = []
+var m_drag_wall_opening_anchors: Array = []
 var m_drag_wall_anchor_local: Vector3
 var m_drag_wall_segment_index := 0
 var m_drag_wall_endpoint := -1   # -1=full move, 0=start pt, 1=end pt
@@ -212,7 +213,7 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 			_set_status(
 				"Drag joint to move connected walls. Option-drag to disconnect." if hover_has_joint
 				else "Click and drag endpoint to resize." if hover_ep >= 0
-				else "Click and drag to move wall."
+				else "Click and drag to move wall. Shift-click to add joint."
 			)
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
 
@@ -240,6 +241,13 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 		var pick := _find_wall_pick(camera, mouse_button.position)
 		var hit_wall := pick.get("wall") as ProceduralWall3DScript
 		if hit_wall != null:
+			if mouse_button.shift_pressed and int(pick.get("endpoint", -1)) < 0:
+				_commit_add_wall_joint(
+					hit_wall,
+					int(pick.get("segment", 0)),
+					Vector3(pick.get("position", hit_wall.global_position))
+				)
+				return _handled()
 			_clear_wall_hover()
 			_start_wall_drag(
 				hit_wall,
@@ -1063,12 +1071,10 @@ func _apply_wall_geometry(
 	wall: ProceduralWall3DScript,
 	new_start: Vector3,
 	new_end: Vector3,
-	segments: Array[WallSegment3DScript]
+	segments: Array[WallSegment3DScript],
+	opening_anchors: Array = []
 ) -> void:
-	wall.start_point = new_start
-	wall.end_point = new_end
-	wall.extra_segments = _duplicate_segments(segments)
-	wall.rebuild_wall_mesh()
+	wall.set_wall_geometry(new_start, new_end, _duplicate_segments(segments), opening_anchors)
 
 
 func _do_set_wall_geometry(
@@ -1081,6 +1087,24 @@ func _do_set_wall_geometry(
 	if wall == null or !is_instance_valid(wall):
 		return
 	_apply_wall_geometry(wall, new_start, new_end, segments)
+	if select_after:
+		_select_node(wall)
+
+
+func _do_set_wall_geometry_preserving_children(
+	wall: ProceduralWall3DScript,
+	new_start: Vector3,
+	new_end: Vector3,
+	segments: Array[WallSegment3DScript],
+	select_after: bool
+) -> void:
+	if wall == null or !is_instance_valid(wall):
+		return
+	wall.set_wall_geometry_preserving_child_transforms(
+		new_start,
+		new_end,
+		_duplicate_segments(segments)
+	)
 	if select_after:
 		_select_node(wall)
 
@@ -1112,7 +1136,7 @@ func _normalized_wall_geometry(wall: ProceduralWall3DScript) -> Dictionary:
 		tolerance = maxf(coordinator.grid_step * 0.25, 0.03)
 	var combined: Array[WallSegment3DScript] = []
 	for segment in _duplicate_wall_segments(wall):
-		WallSegment3DScript.merge_into(combined, segment, tolerance)
+		WallSegment3DScript.merge_into(combined, segment, tolerance, false)
 	var split_segments := WallSegment3DScript.split_at_intersections(combined, tolerance)
 	return _wall_geometry_from_segments(split_segments)
 
@@ -1168,6 +1192,58 @@ func _wall_geometry_without_segment(
 	return _wall_geometry_from_segments(remaining)
 
 
+func _commit_add_wall_joint(
+	wall: ProceduralWall3DScript,
+	segment_index: int,
+	hit_world: Vector3
+) -> void:
+	if wall == null or !is_instance_valid(wall):
+		return
+	var hit_parent_local := _wall_world_to_parent_local(wall, hit_world)
+	var coordinator := _find_coordinator_from_node(wall)
+	if coordinator != null:
+		hit_parent_local = coordinator.snap_local_position(hit_parent_local)
+	var minimum_piece_length := maxf(_active_grid_step(wall) * 0.5, 0.1)
+	var geometry := wall.split_segment_geometry(segment_index, hit_parent_local, minimum_piece_length)
+	if geometry.is_empty():
+		_set_status("Joint is too close to an endpoint.")
+		return
+	var old_start := wall.start_point
+	var old_end := wall.end_point
+	var old_segments := _duplicate_segments(wall.extra_segments)
+	var new_segments: Array[WallSegment3DScript] = geometry["segments"]
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Add Wall Joint")
+	undo_redo.add_do_method(
+		self,
+		"_do_set_wall_geometry_preserving_children",
+		wall,
+		Vector3(geometry["start"]),
+		Vector3(geometry["end"]),
+		new_segments,
+		true
+	)
+	undo_redo.add_undo_method(
+		self,
+		"_do_set_wall_geometry_preserving_children",
+		wall,
+		old_start,
+		old_end,
+		old_segments,
+		true
+	)
+	undo_redo.commit_action()
+	_clear_wall_hover()
+	_set_status("Added wall joint.")
+
+
+func _wall_world_to_parent_local(wall: ProceduralWall3DScript, world_position: Vector3) -> Vector3:
+	var wall_parent := wall.get_parent() as Node3D
+	if wall_parent != null:
+		return wall_parent.to_local(world_position)
+	return wall.to_local(world_position)
+
+
 func _commit_delete_zero_length_wall_segment(
 	wall: ProceduralWall3DScript,
 	geometry: Dictionary,
@@ -1218,7 +1294,13 @@ func _apply_drag_wall_endpoint(snapped_position: Vector3) -> void:
 	if m_dragging_wall == null:
 		return
 	var extras := _duplicate_segments(m_drag_wall_old_segments)
-	_apply_wall_geometry(m_dragging_wall, m_drag_wall_old_start, m_drag_wall_old_end, extras)
+	_apply_wall_geometry(
+		m_dragging_wall,
+		m_drag_wall_old_start,
+		m_drag_wall_old_end,
+		extras,
+		m_drag_wall_opening_anchors
+	)
 	if m_drag_wall_dragging_joint:
 		m_dragging_wall.move_connected_endpoint(
 			m_drag_wall_joint_origin,
@@ -1244,7 +1326,8 @@ func _translate_drag_wall_geometry(delta: Vector3) -> void:
 		m_dragging_wall,
 		m_drag_wall_old_start + delta,
 		m_drag_wall_old_end + delta,
-		extras
+		extras,
+		m_drag_wall_opening_anchors
 	)
 
 
@@ -1355,6 +1438,7 @@ func _find_wall_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
 				"endpoint": 0,
 				"joint": bool(start_joint["joint"]),
 				"joint_position": start_joint["position"],
+				"position": hit_world,
 			}
 		if _hit_near_wall_endpoint(hit_parent_local, segment.end_point, segment, ep_radius):
 			var end_joint := _wall_joint_info(wall, segment.end_point)
@@ -1364,8 +1448,9 @@ func _find_wall_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
 				"endpoint": 1,
 				"joint": bool(end_joint["joint"]),
 				"joint_position": end_joint["position"],
+				"position": hit_world,
 			}
-	return {"wall": wall, "segment": segment_hint, "endpoint": -1}
+	return {"wall": wall, "segment": segment_hint, "endpoint": -1, "position": hit_world}
 
 
 func _hit_near_wall_endpoint(
@@ -1604,6 +1689,7 @@ func _start_wall_drag(
 	m_drag_wall_old_start = wall.start_point
 	m_drag_wall_old_end = wall.end_point
 	m_drag_wall_old_segments = _duplicate_segments(wall.extra_segments)
+	m_drag_wall_opening_anchors = wall.capture_opening_segment_anchors()
 	m_drag_wall_segment_index = clampi(segment_index, 0, wall.get_segment_count() - 1)
 	m_drag_wall_endpoint = endpoint
 	m_drag_wall_joint_origin = Vector3.ZERO
@@ -1644,6 +1730,8 @@ func _start_wall_drag(
 func _update_wall_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 	if m_dragging_wall == null or !is_instance_valid(m_dragging_wall):
 		m_dragging_wall = null
+		m_drag_wall_old_segments.clear()
+		m_drag_wall_opening_anchors.clear()
 		return
 	var coordinator := _find_coordinator_from_node(m_dragging_wall)
 	var hit := _raycast_world(camera, mouse_pos, false)
@@ -1723,6 +1811,7 @@ func _commit_wall_drag() -> void:
 		else:
 			_commit_delete_zero_length_wall_segment(wall, deletion_geometry, old_start, old_end, old_segments)
 		m_drag_wall_old_segments.clear()
+		m_drag_wall_opening_anchors.clear()
 		m_drag_wall_segment_index = 0
 		m_drag_wall_endpoint = -1
 		m_drag_wall_joint_origin = Vector3.ZERO
@@ -1731,8 +1820,9 @@ func _commit_wall_drag() -> void:
 		m_drag_wall_has_connection_snap = false
 		return
 	if !_is_dragged_wall_span_long_enough(wall):
-		_apply_wall_geometry(wall, old_start, old_end, old_segments)
+		_apply_wall_geometry(wall, old_start, old_end, old_segments, m_drag_wall_opening_anchors)
 		m_drag_wall_old_segments.clear()
+		m_drag_wall_opening_anchors.clear()
 		m_drag_wall_segment_index = 0
 		m_drag_wall_endpoint = -1
 		m_drag_wall_joint_origin = Vector3.ZERO
@@ -1758,6 +1848,7 @@ func _commit_wall_drag() -> void:
 				"Moved and merged wall."
 			)
 			m_drag_wall_old_segments.clear()
+			m_drag_wall_opening_anchors.clear()
 			m_drag_wall_segment_index = 0
 			m_drag_wall_endpoint = -1
 			m_drag_wall_joint_origin = Vector3.ZERO
@@ -1776,6 +1867,7 @@ func _commit_wall_drag() -> void:
 	undo_redo.add_undo_method(self, "_do_set_wall_geometry", wall, old_start, old_end, old_segments, true)
 	undo_redo.commit_action()
 	m_drag_wall_old_segments.clear()
+	m_drag_wall_opening_anchors.clear()
 	m_drag_wall_segment_index = 0
 	m_drag_wall_endpoint = -1
 	m_drag_wall_joint_origin = Vector3.ZERO
@@ -1796,10 +1888,17 @@ func _cancel_wall_drag() -> void:
 	if m_dragging_wall == null:
 		return
 	if is_instance_valid(m_dragging_wall):
-		_apply_wall_geometry(m_dragging_wall, m_drag_wall_old_start, m_drag_wall_old_end, m_drag_wall_old_segments)
+		_apply_wall_geometry(
+			m_dragging_wall,
+			m_drag_wall_old_start,
+			m_drag_wall_old_end,
+			m_drag_wall_old_segments,
+			m_drag_wall_opening_anchors
+		)
 		m_dragging_wall.material_override = m_drag_wall_active_material
 	m_dragging_wall = null
 	m_drag_wall_old_segments.clear()
+	m_drag_wall_opening_anchors.clear()
 	m_drag_wall_segment_index = 0
 	m_drag_wall_endpoint = -1
 	m_drag_wall_joint_origin = Vector3.ZERO

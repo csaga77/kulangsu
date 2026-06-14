@@ -119,8 +119,11 @@ func _process(delta: float) -> void:
 
 
 func set_wall_endpoints(new_start: Vector3, new_end: Vector3) -> void:
+	var opening_anchors := capture_opening_segment_anchors()
 	start_point = new_start
 	end_point = new_end
+	_sync_transform_from_points()
+	restore_opening_segment_anchors(opening_anchors)
 	rebuild_wall_mesh()
 
 
@@ -170,6 +173,7 @@ func count_connected_endpoints(endpoint: Vector3, tolerance: float) -> int:
 
 
 func move_connected_endpoint(old_endpoint: Vector3, new_endpoint: Vector3, tolerance: float) -> int:
+	var opening_anchors := capture_opening_segment_anchors()
 	var moved_count := 0
 	if _endpoint_matches(start_point, old_endpoint, tolerance):
 		start_point = _endpoint_with_preserved_height(start_point, new_endpoint)
@@ -187,6 +191,8 @@ func move_connected_endpoint(old_endpoint: Vector3, new_endpoint: Vector3, toler
 			segment.end_point = _endpoint_with_preserved_height(segment.end_point, new_endpoint)
 			moved_count += 1
 	if moved_count > 0:
+		_sync_transform_from_points()
+		restore_opening_segment_anchors(opening_anchors)
 		rebuild_wall_mesh()
 	return moved_count
 
@@ -194,11 +200,14 @@ func move_connected_endpoint(old_endpoint: Vector3, new_endpoint: Vector3, toler
 func move_segment_endpoint(segment_index: int, endpoint: int, new_endpoint: Vector3) -> bool:
 	if endpoint != 0 and endpoint != 1:
 		return false
+	var opening_anchors := capture_opening_segment_anchors()
 	if segment_index <= 0:
 		if endpoint == 0:
 			start_point = _endpoint_with_preserved_height(start_point, new_endpoint)
 		else:
 			end_point = _endpoint_with_preserved_height(end_point, new_endpoint)
+		_sync_transform_from_points()
+		restore_opening_segment_anchors(opening_anchors)
 		rebuild_wall_mesh()
 		return true
 	var extra_index := segment_index - 1
@@ -211,8 +220,131 @@ func move_segment_endpoint(segment_index: int, endpoint: int, new_endpoint: Vect
 		segment.start_point = _endpoint_with_preserved_height(segment.start_point, new_endpoint)
 	else:
 		segment.end_point = _endpoint_with_preserved_height(segment.end_point, new_endpoint)
+	_sync_transform_from_points()
+	restore_opening_segment_anchors(opening_anchors)
 	rebuild_wall_mesh()
 	return true
+
+
+func set_wall_geometry(
+	new_start: Vector3,
+	new_end: Vector3,
+	segments: Array[WallSegment3D],
+	opening_anchors: Array = []
+) -> void:
+	var anchors := opening_anchors
+	if anchors.is_empty():
+		anchors = capture_opening_segment_anchors()
+	start_point = new_start
+	end_point = new_end
+	extra_segments = segments
+	_sync_transform_from_points()
+	restore_opening_segment_anchors(anchors)
+	rebuild_wall_mesh()
+
+
+func set_wall_geometry_preserving_child_transforms(
+	new_start: Vector3,
+	new_end: Vector3,
+	segments: Array[WallSegment3D]
+) -> void:
+	var child_transforms := _capture_direct_child_global_transforms()
+	start_point = new_start
+	end_point = new_end
+	extra_segments = segments
+	_sync_transform_from_points()
+	_restore_direct_child_global_transforms(child_transforms)
+	rebuild_wall_mesh()
+
+
+func split_segment_geometry(
+	segment_index: int,
+	split_point: Vector3,
+	minimum_piece_length: float = 0.001
+) -> Dictionary:
+	if segment_index < 0 or segment_index >= get_segment_count():
+		return {}
+	var source_segment := get_segment(segment_index)
+	if source_segment == null:
+		return {}
+	var split_on_segment := _project_point_to_segment(source_segment, split_point)
+	var first_length := _flat_distance(source_segment.start_point, split_on_segment)
+	var second_length := _flat_distance(split_on_segment, source_segment.end_point)
+	if first_length < minimum_piece_length or second_length < minimum_piece_length:
+		return {}
+
+	var split_segments: Array[WallSegment3D] = []
+	for index in range(get_segment_count()):
+		var segment := get_segment(index).duplicate() as WallSegment3DScript
+		if segment == null:
+			continue
+		if index != segment_index:
+			split_segments.append(segment)
+			continue
+		var first := segment.duplicate() as WallSegment3DScript
+		first.end_point = split_on_segment
+		var second := segment.duplicate() as WallSegment3DScript
+		second.start_point = split_on_segment
+		split_segments.append(first)
+		split_segments.append(second)
+	return _geometry_from_segment_list(split_segments)
+
+
+func split_segment_at_point(
+	segment_index: int,
+	split_point: Vector3,
+	minimum_piece_length: float = 0.001
+) -> bool:
+	var geometry := split_segment_geometry(segment_index, split_point, minimum_piece_length)
+	if geometry.is_empty():
+		return false
+	set_wall_geometry_preserving_child_transforms(
+		Vector3(geometry["start"]),
+		Vector3(geometry["end"]),
+		geometry["segments"]
+	)
+	return true
+
+
+func capture_opening_segment_anchors() -> Array:
+	var anchors := []
+	for child in get_children():
+		if child.has_meta(GENERATED_META):
+			continue
+		var child_3d := child as Node3D
+		if child_3d == null:
+			continue
+		var size := _opening_size_from_child(child)
+		if size.x <= 0.0 or size.y <= 0.0:
+			continue
+		var segment_index := get_opening_segment_index(child)
+		var frame := get_segment_local_frame(segment_index)
+		anchors.append({
+			"node": child,
+			"segment_index": segment_index,
+			"local_position": frame.affine_inverse() * child_3d.position,
+		})
+	return anchors
+
+
+func restore_opening_segment_anchors(opening_anchors: Array) -> void:
+	for anchor in opening_anchors:
+		var child := anchor.get("node") as Node
+		if child == null or !is_instance_valid(child) or child.get_parent() != self:
+			continue
+		var child_3d := child as Node3D
+		if child_3d == null:
+			continue
+		var segment_index := clampi(
+			int(anchor.get("segment_index", 0)),
+			0,
+			maxi(get_segment_count() - 1, 0)
+		)
+		var local_position: Vector3 = anchor.get("local_position", Vector3.ZERO)
+		local_position = _clamped_opening_local_position(child, segment_index, local_position)
+		var frame := get_segment_local_frame(segment_index)
+		child_3d.transform = Transform3D(frame.basis, frame * local_position)
+		child.set_meta(SEGMENT_INDEX_META, segment_index)
 
 
 ## Frame of a segment expressed in this node's local space. Segment 0 is the
@@ -339,6 +471,67 @@ func _endpoint_with_preserved_height(endpoint: Vector3, target: Vector3) -> Vect
 	return Vector3(target.x, endpoint.y, target.z)
 
 
+func _flat_distance(first: Vector3, second: Vector3) -> float:
+	return Vector2(second.x - first.x, second.z - first.z).length()
+
+
+func _project_point_to_segment(segment: WallSegment3DScript, point: Vector3) -> Vector3:
+	var length := segment.get_length()
+	if length <= 0.000001:
+		return segment.start_point
+	var start_2d := Vector2(segment.start_point.x, segment.start_point.z)
+	var end_2d := Vector2(segment.end_point.x, segment.end_point.z)
+	var axis := (end_2d - start_2d).normalized()
+	var point_2d := Vector2(point.x, point.z)
+	var distance := clampf((point_2d - start_2d).dot(axis), 0.0, length)
+	var projected := start_2d + axis * distance
+	return Vector3(projected.x, segment.start_point.y, projected.y)
+
+
+func _geometry_from_segment_list(segments: Array[WallSegment3D]) -> Dictionary:
+	if segments.is_empty():
+		return {}
+	var primary := segments[0] as WallSegment3DScript
+	if primary == null:
+		return {}
+	var extras: Array[WallSegment3D] = []
+	for index in range(1, segments.size()):
+		var segment := segments[index] as WallSegment3DScript
+		if segment == null:
+			continue
+		extras.append(segment.duplicate() as WallSegment3DScript)
+	return {
+		"start": primary.start_point,
+		"end": primary.end_point,
+		"segments": extras,
+	}
+
+
+func _capture_direct_child_global_transforms() -> Array:
+	var transforms := []
+	for child in get_children():
+		if child.has_meta(GENERATED_META):
+			continue
+		var child_3d := child as Node3D
+		if child_3d == null:
+			continue
+		transforms.append({
+			"node": child_3d,
+			"global_transform": child_3d.global_transform,
+		})
+	return transforms
+
+
+func _restore_direct_child_global_transforms(child_transforms: Array) -> void:
+	for entry in child_transforms:
+		var child := entry.get("node") as Node3D
+		if child == null or !is_instance_valid(child) or child.get_parent() != self:
+			continue
+		child.global_transform = entry.get("global_transform", child.global_transform)
+		if _opening_size_from_child(child).x > 0.0:
+			child.set_meta(SEGMENT_INDEX_META, get_opening_segment_index(child))
+
+
 func _sync_transform_from_points() -> void:
 	var direction := get_wall_direction()
 	var side := direction.cross(Vector3.UP)
@@ -444,6 +637,30 @@ func _opening_size_from_child(child: Node) -> Vector2:
 		var height := float(child.get_meta(&"opening_height", 1.0))
 		return Vector2(maxf(width, 0.0), maxf(height, 0.0))
 	return Vector2.ZERO
+
+
+func _clamped_opening_local_position(
+	child: Node,
+	segment_index: int,
+	local_position: Vector3
+) -> Vector3:
+	var segment := get_segment(segment_index)
+	var size := _opening_size_from_child(child)
+	if segment == null or size.x <= 0.0 or size.y <= 0.0:
+		return local_position
+	var half_width := size.x * 0.5
+	var half_height := size.y * 0.5
+	if segment.get_length() > size.x:
+		local_position.x = clampf(local_position.x, half_width, segment.get_length() - half_width)
+	else:
+		local_position.x = segment.get_length() * 0.5
+	if segment.height > size.y:
+		local_position.y = clampf(local_position.y, half_height, segment.height - half_height)
+	else:
+		local_position.y = segment.height * 0.5
+	var face_sign := signf(local_position.z) if absf(local_position.z) > 0.001 else 1.0
+	local_position.z = face_sign * maxf(absf(local_position.z), segment.thickness * 0.5)
+	return local_position
 
 
 func _add_collision_body(collision_faces: PackedVector3Array) -> void:

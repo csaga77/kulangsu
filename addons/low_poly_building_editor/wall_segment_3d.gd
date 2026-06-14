@@ -23,7 +23,8 @@ func get_length() -> float:
 static func merge_into(
 	segments: Array[WallSegment3D],
 	candidate: WallSegment3D,
-	tolerance: float
+	tolerance: float,
+	merge_touching: bool = true
 ) -> bool:
 	var candidate_axis := _flat_axis(candidate.start_point, candidate.end_point)
 	if candidate_axis == Vector2.ZERO:
@@ -52,7 +53,11 @@ static func merge_into(
 		var end_projection := (candidate_end - origin).dot(axis)
 		var projected_min := minf(start_projection, end_projection)
 		var projected_max := maxf(start_projection, end_projection)
-		if maxf(0.0, projected_min) > minf(segment_length, projected_max) + tolerance:
+		var overlap_min := maxf(0.0, projected_min)
+		var overlap_max := minf(segment_length, projected_max)
+		if overlap_min > overlap_max + tolerance:
+			continue
+		if !merge_touching and overlap_max - overlap_min <= tolerance:
 			continue
 		var merged_min := minf(0.0, projected_min)
 		var merged_max := maxf(segment_length, projected_max)

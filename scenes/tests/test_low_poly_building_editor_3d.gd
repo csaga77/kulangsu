@@ -40,9 +40,11 @@ func _run_smoke_checks() -> void:
 
 	_validate_wall_mesh(wall)
 	_validate_opening_rules(wall)
+	_validate_opening_follows_wall_segment()
 	_validate_snapping(coordinator)
 	_validate_merge_detection(coordinator)
 	_validate_intersection_merge()
+	_validate_add_wall_joint()
 	_validate_joint_endpoint_drag()
 	_validate_joint_disconnect_connect()
 	_validate_mitered_joint()
@@ -96,6 +98,54 @@ func _validate_opening_rules(wall: ProceduralWall3DScript) -> void:
 		m_failures.append("ProceduralWall3D allowed an overlapping window opening")
 	if !wall.can_place_opening(open_center, Vector2(0.6, 0.8)):
 		m_failures.append("ProceduralWall3D rejected a valid non-overlapping opening")
+
+
+func _validate_opening_follows_wall_segment() -> void:
+	var wall := ProceduralWall3DScript.new() as ProceduralWall3DScript
+	wall.name = "OpeningFollowWall"
+	wall.build_on_ready = false
+	wall.start_point = Vector3.ZERO
+	wall.end_point = Vector3(4.0, 0.0, 0.0)
+	wall.wall_height = 2.4
+	wall.wall_thickness = 0.22
+	wall.wall_color = Color(0.78, 0.68, 0.54, 1.0)
+	add_child(wall)
+
+	var branch := WallSegment3DScript.new()
+	branch.start_point = Vector3(2.0, 0.0, 0.0)
+	branch.end_point = Vector3(2.0, 0.0, 2.0)
+	branch.height = wall.wall_height
+	branch.thickness = wall.wall_thickness
+	branch.color = wall.wall_color
+	var extras: Array[WallSegment3DScript] = [branch]
+	wall.extra_segments = extras
+
+	var opening := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	opening.name = "FollowingOpening"
+	opening.opening_width = 0.5
+	opening.opening_height = 0.5
+	var opening_anchor := Vector3(1.0, 1.1, wall.wall_thickness * 0.5 + 0.035)
+	var old_frame := wall.get_segment_local_frame(1)
+	wall.add_child(opening)
+	opening.transform = Transform3D(old_frame.basis, old_frame * opening_anchor)
+	opening.set_meta(ProceduralWall3DScript.SEGMENT_INDEX_META, 1)
+	wall.rebuild_wall_mesh()
+
+	var old_position := opening.position
+	if !wall.move_segment_endpoint(1, 1, Vector3(3.0, 0.0, 2.0)):
+		m_failures.append("ProceduralWall3D could not move an opening-bearing segment endpoint")
+		return
+	var new_frame := wall.get_segment_local_frame(1)
+	var local_after := new_frame.affine_inverse() * opening.position
+	if local_after.distance_to(opening_anchor) > 0.001:
+		m_failures.append("Window opening did not preserve its segment-local anchor after wall edit")
+	var expected_position := new_frame * opening_anchor
+	if opening.position.distance_to(expected_position) > 0.001:
+		m_failures.append("Window opening did not follow the edited wall segment")
+	if opening.position.distance_to(old_position) <= 0.001:
+		m_failures.append("Window opening stayed in its old wall-local position after segment rotation")
+	if wall.get_opening_segment_index(opening) != 1:
+		m_failures.append("Window opening lost its segment assignment after wall edit")
 
 
 func _validate_snapping(coordinator: BuildingEditor3DScript) -> void:
@@ -258,6 +308,59 @@ func _validate_intersection_merge() -> void:
 		m_failures.append("Opening straddling a junction was not rejected")
 	if !survivor.can_place_opening(Vector2(0.8, 1.1), Vector2(0.6, 0.8), 0.03, null, 0):
 		m_failures.append("Valid primary-span opening away from the junction was rejected")
+
+
+func _validate_add_wall_joint() -> void:
+	var wall := ProceduralWall3DScript.new() as ProceduralWall3DScript
+	wall.name = "AddJointWall"
+	wall.build_on_ready = false
+	wall.start_point = Vector3.ZERO
+	wall.end_point = Vector3(4.0, 0.0, 0.0)
+	wall.wall_height = 2.4
+	wall.wall_thickness = 0.22
+	wall.wall_color = Color(0.78, 0.68, 0.54, 1.0)
+	add_child(wall)
+
+	var opening := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	opening.name = "JointSplitOpening"
+	opening.opening_width = 0.5
+	opening.opening_height = 0.5
+	opening.position = Vector3(3.0, 1.1, wall.wall_thickness * 0.5 + 0.035)
+	opening.set_meta(ProceduralWall3DScript.SEGMENT_INDEX_META, 0)
+	wall.add_child(opening)
+	wall.rebuild_wall_mesh()
+
+	var old_opening_position := opening.global_position
+	if !wall.split_segment_at_point(0, Vector3(2.0, 0.0, 0.0), 0.1):
+		m_failures.append("ProceduralWall3D could not add a joint to a wall span")
+		return
+	if wall.get_segment_count() != 2:
+		m_failures.append("ProceduralWall3D joint insertion did not split the wall into two segments")
+	if wall.count_connected_endpoints(Vector3(2.0, 0.0, 0.0), 0.03) != 2:
+		m_failures.append("ProceduralWall3D joint insertion did not create a shared endpoint")
+	if opening.global_position.distance_to(old_opening_position) > 0.001:
+		m_failures.append("ProceduralWall3D joint insertion moved an existing window opening")
+	if wall.get_opening_segment_index(opening) != 1:
+		m_failures.append("ProceduralWall3D joint insertion did not reassign opening to split segment")
+
+	var moved_joint := Vector3(2.0, 0.0, 1.0)
+	var moved_count := wall.move_connected_endpoint(Vector3(2.0, 0.0, 0.0), moved_joint, 0.03)
+	if moved_count != 2:
+		m_failures.append("ProceduralWall3D added joint moved %d endpoints instead of 2" % moved_count)
+	if wall.count_connected_endpoints(moved_joint, 0.03) != 2:
+		m_failures.append("ProceduralWall3D added joint did not stay editable after dragging")
+
+	var touching_segments: Array[WallSegment3DScript] = []
+	var first := WallSegment3DScript.new()
+	first.start_point = Vector3.ZERO
+	first.end_point = Vector3(2.0, 0.0, 0.0)
+	touching_segments.append(first)
+	var second := WallSegment3DScript.new()
+	second.start_point = Vector3(2.0, 0.0, 0.0)
+	second.end_point = Vector3(4.0, 0.0, 0.0)
+	WallSegment3DScript.merge_into(touching_segments, second, 0.125, false)
+	if touching_segments.size() != 2:
+		m_failures.append("WallSegment3D collapsed an intentional end-to-end joint")
 
 
 func _validate_mitered_joint() -> void:
