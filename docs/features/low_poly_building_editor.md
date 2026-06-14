@@ -9,6 +9,7 @@
 
 - This is a developer-facing tool, not runtime player UI.
 - Authors enable the `Low-Poly Building Editor` plugin, use its dock to choose `Wall`, `Prop`, or `Window`, and place content directly in the 3D viewport.
+- The dock's top section shows shortcuts for the currently selected tool, followed by live status text.
 - Wall drawing supports click-start/click-end and click-drag-release flows with live snapped preview geometry.
 - Prop and window placement uses translucent green/red previews before committing nodes.
 - While the cursor is over a 3D viewport, `R` rotates the prop preview in 90-degree steps (prop mode only) and `Escape` or right-click cancels the active preview.

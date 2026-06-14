@@ -16,11 +16,15 @@ const DEFAULT_PROP_PALETTE_ROOT := "res://assets"
 const PROP_SCENE_EXTENSIONS := [".tscn", ".scn", ".gltf", ".glb"]
 const PROJECT_METADATA_SECTION := "low_poly_building_editor"
 const PROJECT_METADATA_KEY := "dock_state"
+const SHORTCUTS_SELECT_TEXT := "Shortcuts\nSelect: normal Godot editor selection and transform tools are active."
+const SHORTCUTS_WALL_TEXT := "Shortcuts\nDrag empty space to draw a wall.\nDrag wall body to move it.\nDrag endpoint or joint to edit.\nShift-click wall body to add joint.\nOption/Alt-drag shared joint to disconnect.\nEsc or right-click cancels."
+const SHORTCUTS_PROP_TEXT := "Shortcuts\nSelect a palette item, then click to place.\nR rotates the preview by 90 degrees.\nEsc or right-click cancels."
+const SHORTCUTS_WINDOW_TEXT := "Shortcuts\nClick a wall to place a window.\nDrag window center to move.\nDrag window edge to resize.\nEsc or right-click cancels."
 
 var m_editor_interface: EditorInterface
 var m_mode_option: OptionButton
+var m_shortcuts_label: Label
 var m_status_label: Label
-var m_coordinator_label: Label
 var m_grid_spin: SpinBox
 var m_wall_height_spin: SpinBox
 var m_wall_thickness_spin: SpinBox
@@ -62,9 +66,7 @@ func set_status(text: String) -> void:
 
 
 func set_active_coordinator_path(path_text: String) -> void:
-	if m_coordinator_label == null:
-		return
-	m_coordinator_label.text = "Coordinator: %s" % path_text if !path_text.is_empty() else "Coordinator: none"
+	pass
 
 
 func _build_ui() -> void:
@@ -79,19 +81,15 @@ func _build_ui() -> void:
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(content)
 
-	var title := Label.new()
-	title.text = "Low-Poly Building Editor"
-	content.add_child(title)
+	m_shortcuts_label = Label.new()
+	m_shortcuts_label.text = _shortcut_text_for_mode(MODE_SELECT)
+	m_shortcuts_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(m_shortcuts_label)
 
 	m_status_label = Label.new()
 	m_status_label.text = "Select a tool."
 	m_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	content.add_child(m_status_label)
-
-	m_coordinator_label = Label.new()
-	m_coordinator_label.text = "Coordinator: none"
-	m_coordinator_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	content.add_child(m_coordinator_label)
 
 	content.add_child(HSeparator.new())
 
@@ -271,7 +269,26 @@ func _add_labeled_control(parent: VBoxContainer, label_text: String, control: Co
 
 func _on_mode_selected(index: int) -> void:
 	var mode := String(m_mode_option.get_item_metadata(index))
+	_update_shortcuts_for_mode(mode)
 	tool_mode_changed.emit(mode)
+
+
+func _update_shortcuts_for_mode(mode: String) -> void:
+	if m_shortcuts_label == null:
+		return
+	m_shortcuts_label.text = _shortcut_text_for_mode(mode)
+
+
+func _shortcut_text_for_mode(mode: String) -> String:
+	match mode:
+		MODE_WALL:
+			return SHORTCUTS_WALL_TEXT
+		MODE_PROP:
+			return SHORTCUTS_PROP_TEXT
+		MODE_WINDOW:
+			return SHORTCUTS_WINDOW_TEXT
+		_:
+			return SHORTCUTS_SELECT_TEXT
 
 
 func _on_create_coordinator() -> void:
@@ -386,11 +403,6 @@ func _scan_palette() -> void:
 		var label := path.get_file().get_basename()
 		m_palette_list.add_item(label, scene_icon)
 		m_palette_list.set_item_tooltip(m_palette_list.get_item_count() - 1, path)
-	var warning := String(root_state.get("warning", ""))
-	if warning.is_empty():
-		set_status("Palette: %d scene assets from %s" % [m_palette_paths.size(), palette_root])
-	else:
-		set_status("%s Palette: %d scene assets from %s" % [warning, m_palette_paths.size(), palette_root])
 
 
 func _collect_scene_paths(path: String, results: PackedStringArray) -> void:
