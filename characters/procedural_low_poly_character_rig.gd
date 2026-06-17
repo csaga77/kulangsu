@@ -9,6 +9,7 @@ const LEFT_HAND_ATTACHMENT_NAME := "LeftHandAttachment"
 const RIGHT_HAND_ATTACHMENT_NAME := "RightHandAttachment"
 const STYLE_MODEL_ID := "stylized_low_poly_avatar_v1"
 const STYLE_FACE_DETAIL_PRIMITIVES := 3
+const PROFILE_SIDES := 8
 
 const BONE_HIPS := "Hips"
 const BONE_SPINE := "Spine"
@@ -70,6 +71,7 @@ var m_head_attachment: BoneAttachment3D = null
 var m_left_hand_attachment: BoneAttachment3D = null
 var m_right_hand_attachment: BoneAttachment3D = null
 var m_material: StandardMaterial3D = null
+var m_profile := PackedVector2Array()
 
 
 func _ready() -> void:
@@ -107,7 +109,7 @@ func get_style_snapshot() -> Dictionary:
 	return {
 		"model_id": STYLE_MODEL_ID,
 		"anatomy": "simplified",
-		"proportions": "cartoon",
+		"proportions": "stylized_realistic",
 		"silhouette": "simple_readable",
 		"face_detail_primitives": STYLE_FACE_DETAIL_PRIMITIVES,
 		"material_profile": "flat_vertex_color",
@@ -293,102 +295,127 @@ func _rebuild_body_mesh() -> void:
 	var upper_arm_length := float(proportions["upper_arm_length"])
 	var forearm_length := float(proportions["forearm_length"])
 	var limb_width := float(proportions["limb_width"])
-	var mirrored_left_width := limb_width * m_config.left_limb_scale
-	var mirrored_right_width := limb_width * m_config.right_limb_scale
-	var left_limb_color := m_config.accent_color if m_config.left_accent_flag else m_config.main_color
-	var right_limb_color := m_config.accent_color if m_config.right_accent_flag else m_config.main_color
-	var face_z := head_depth * 0.53
-	var torso_front_z := depth * 0.54
+	var left_width := limb_width * m_config.left_limb_scale
+	var right_width := limb_width * m_config.right_limb_scale
+	var leg_height := float(proportions["leg_height"])
+	var face_front_z := head_depth * 0.55
 	var shoulder_y := hip_y + torso_height * 0.74
-	var arm_x := shoulder_width * 0.58
+
+	# Outfit palette derived from the casual adult-male reference design.
+	var jacket_color := m_config.main_color
+	var jacket_dark := jacket_color.darkened(0.14)
+	var jacket_light := jacket_color.lightened(0.16)
+	var tee_color := m_config.accent_color
+	var pants_color := m_config.pants_color
+	var pants_cuff := pants_color.lightened(0.14)
+	var boots_color := m_config.boots_color
+	var boots_sole := boots_color.darkened(0.24)
+	var skin_color := m_config.skin_color
+	var hair_color := m_config.hair_color
+	var hair_dark := hair_color.darkened(0.14)
+	var brow_color := hair_color.darkened(0.05)
 	var eye_color := Color(0.08, 0.065, 0.05, 1.0)
-	var belt_color := m_config.hair_color.darkened(0.28)
-	var shoe_color := m_config.hair_color.darkened(0.36)
-	var shirt_color := m_config.accent_color
-	var lapel_color := m_config.main_color.lightened(0.08)
-	var tie_color := m_config.hair_color.darkened(0.42)
-	var mouth_color := m_config.skin_color.darkened(0.34)
-	var trim_color := m_config.accent_color.lightened(0.08)
+	var nose_color := skin_color.darkened(0.05)
+	var mouth_color := skin_color.darkened(0.32)
 
-	_add_tapered_box(
-		vertices,
-		normals,
-		colors,
-		Vector3(0.0, hip_y + torso_height * 0.20, 0.0),
-		Vector2(hip_width * 1.04, depth * 1.08),
-		Vector2(hip_width * 0.92, depth * 0.96),
-		torso_height * 0.40,
-		m_config.main_color.darkened(0.12)
-	)
-	_add_tapered_box(
-		vertices,
-		normals,
-		colors,
-		Vector3(0.0, hip_y + torso_height * 0.60, 0.0),
-		Vector2(hip_width * 0.96, depth * 0.96),
-		Vector2(shoulder_width * 1.05, depth * 1.10),
-		torso_height * 0.58,
-		m_config.main_color
-	)
-	_add_box(vertices, normals, colors, Vector3(0.0, hip_y + torso_height * 0.39, torso_front_z), Vector3(hip_width * 1.02, torso_height * 0.075, 0.034), belt_color)
-	_add_box(vertices, normals, colors, Vector3(0.0, hip_y + torso_height * 0.74, torso_front_z + 0.008), Vector3(shoulder_width * 0.24, torso_height * 0.22, 0.038), shirt_color)
-	_add_box(vertices, normals, colors, Vector3(0.0, hip_y + torso_height * 0.60, torso_front_z + 0.012), Vector3(shoulder_width * 0.085, torso_height * 0.30, 0.042), tie_color)
-	_add_box(vertices, normals, colors, Vector3(-shoulder_width * 0.20, hip_y + torso_height * 0.65, torso_front_z + 0.006), Vector3(shoulder_width * 0.12, torso_height * 0.35, 0.035), lapel_color)
-	_add_box(vertices, normals, colors, Vector3(shoulder_width * 0.20, hip_y + torso_height * 0.65, torso_front_z + 0.006), Vector3(shoulder_width * 0.12, torso_height * 0.35, 0.035), lapel_color)
-	_add_box(vertices, normals, colors, Vector3(0.0, hip_y + torso_height * 0.06, torso_front_z), Vector3(hip_width * 0.94, torso_height * 0.10, 0.036), trim_color.darkened(0.08))
+	# --- Pelvis / pants seat (faceted octagonal prism) ---
+	_add_loft(vertices, normals, colors, [
+		_ring(hip_y - leg_height * 0.02, 0.0, 0.0, hip_width * 0.50, depth * 0.52),
+		_ring(hip_y + torso_height * 0.06, 0.0, 0.0, hip_width * 0.55, depth * 0.58),
+		_ring(hip_y + torso_height * 0.20, 0.0, 0.0, hip_width * 0.50, depth * 0.54),
+	], pants_color, true, false)
 
-	_add_tapered_box(
-		vertices,
-		normals,
-		colors,
-		Vector3(0.0, head_y, 0.02),
-		Vector2(head_width * 1.04, head_depth),
-		Vector2(head_width * 0.90, head_depth * 0.92),
-		head_height,
-		m_config.skin_color
-	)
-	_add_tapered_box(
-		vertices,
-		normals,
-		colors,
-		Vector3(0.0, head_y + head_height * 0.43, -0.01),
-		Vector2(head_width * 1.10, head_depth * 1.06),
-		Vector2(head_width * 0.88, head_depth * 0.96),
-		head_height * 0.26,
-		m_config.hair_color
-	)
-	_add_box(vertices, normals, colors, Vector3(-head_width * 0.46, head_y + head_height * 0.04, 0.01), Vector3(head_width * 0.17, head_height * 0.50, head_depth * 0.68), m_config.hair_color.darkened(0.04))
-	_add_box(vertices, normals, colors, Vector3(head_width * 0.46, head_y + head_height * 0.04, 0.01), Vector3(head_width * 0.17, head_height * 0.50, head_depth * 0.68), m_config.hair_color.darkened(0.04))
-	_add_box(vertices, normals, colors, Vector3(-head_width * 0.18, head_y + head_height * 0.25, face_z), Vector3(head_width * 0.24, head_height * 0.16, 0.035), m_config.hair_color)
-	_add_box(vertices, normals, colors, Vector3(head_width * 0.12, head_y + head_height * 0.27, face_z), Vector3(head_width * 0.20, head_height * 0.14, 0.035), m_config.hair_color)
-	_add_box(vertices, normals, colors, Vector3(-head_width * 0.18, head_y + head_height * 0.04, face_z + 0.004), Vector3(head_width * 0.095, head_height * 0.06, 0.038), eye_color)
-	_add_box(vertices, normals, colors, Vector3(head_width * 0.18, head_y + head_height * 0.04, face_z + 0.004), Vector3(head_width * 0.095, head_height * 0.06, 0.038), eye_color)
-	_add_box(vertices, normals, colors, Vector3(0.0, head_y - head_height * 0.22, face_z + 0.006), Vector3(head_width * 0.22, head_height * 0.045, 0.040), mouth_color)
+	# --- Fitted jacket torso (lofted shell, clean crew neckline) ---
+	_add_loft(vertices, normals, colors, [
+		_ring(hip_y + torso_height * 0.20, 0.0, 0.0, hip_width * 0.52, depth * 0.56),
+		_ring(hip_y + torso_height * 0.42, 0.0, 0.0, shoulder_width * 0.46, depth * 0.60),
+		_ring(hip_y + torso_height * 0.62, 0.0, 0.0, shoulder_width * 0.52, depth * 0.64),
+		_ring(hip_y + torso_height * 0.78, 0.0, 0.0, shoulder_width * 0.56, depth * 0.58),
+		_ring(hip_y + torso_height * 0.92, 0.0, 0.0, shoulder_width * 0.30, depth * 0.38),
+	], jacket_color, false, true)
 
-	_add_tapered_box(vertices, normals, colors, Vector3(-arm_x, shoulder_y - upper_arm_length * 0.46, 0.0), Vector2(mirrored_left_width * 0.86, mirrored_left_width * 0.74), Vector2(mirrored_left_width * 1.12, mirrored_left_width * 0.92), upper_arm_length * 0.92, left_limb_color)
-	_add_tapered_box(vertices, normals, colors, Vector3(-arm_x, shoulder_y - upper_arm_length - forearm_length * 0.44, 0.0), Vector2(mirrored_left_width * 0.74, mirrored_left_width * 0.68), Vector2(mirrored_left_width * 0.94, mirrored_left_width * 0.78), forearm_length * 0.88, left_limb_color.darkened(0.08))
-	_add_box(vertices, normals, colors, Vector3(-arm_x, shoulder_y - upper_arm_length - forearm_length * 0.92, 0.02), Vector3(mirrored_left_width * 0.86, forearm_length * 0.22, mirrored_left_width * 0.80), m_config.skin_color)
+	# --- Flush cream tee V at the open neckline ---
+	_add_outward_quad(vertices, normals, colors,
+		Vector3(-shoulder_width * 0.10, hip_y + torso_height * 0.55, depth * 0.66),
+		Vector3(shoulder_width * 0.10, hip_y + torso_height * 0.55, depth * 0.66),
+		Vector3(shoulder_width * 0.20, hip_y + torso_height * 0.90, depth * 0.60),
+		Vector3(-shoulder_width * 0.20, hip_y + torso_height * 0.90, depth * 0.60),
+		Vector3.BACK, tee_color)
 
-	_add_tapered_box(vertices, normals, colors, Vector3(arm_x, shoulder_y - upper_arm_length * 0.46, 0.0), Vector2(mirrored_right_width * 0.86, mirrored_right_width * 0.74), Vector2(mirrored_right_width * 1.12, mirrored_right_width * 0.92), upper_arm_length * 0.92, right_limb_color)
-	_add_tapered_box(vertices, normals, colors, Vector3(arm_x, shoulder_y - upper_arm_length - forearm_length * 0.44, 0.0), Vector2(mirrored_right_width * 0.74, mirrored_right_width * 0.68), Vector2(mirrored_right_width * 0.94, mirrored_right_width * 0.78), forearm_length * 0.88, right_limb_color.darkened(0.08))
-	_add_box(vertices, normals, colors, Vector3(arm_x, shoulder_y - upper_arm_length - forearm_length * 0.92, 0.02), Vector3(mirrored_right_width * 0.86, forearm_length * 0.22, mirrored_right_width * 0.80), m_config.skin_color)
+	# --- Short faceted neck (overlaps the jacket neckline) ---
+	_add_limb(vertices, normals, colors, 0.0, 0.0, head_y - head_height * 0.30, hip_y + torso_height * 0.90, head_width * 0.26, head_width * 0.30, skin_color, false, false)
 
-	_add_tapered_box(vertices, normals, colors, Vector3(-hip_width * 0.28, upper_leg_center_y, 0.0), Vector2(mirrored_left_width * 1.08, mirrored_left_width * 0.98), Vector2(mirrored_left_width * 1.24, mirrored_left_width * 1.04), upper_leg_length, left_limb_color.darkened(0.16))
-	_add_tapered_box(vertices, normals, colors, Vector3(hip_width * 0.28, upper_leg_center_y, 0.0), Vector2(mirrored_right_width * 1.08, mirrored_right_width * 0.98), Vector2(mirrored_right_width * 1.24, mirrored_right_width * 1.04), upper_leg_length, right_limb_color.darkened(0.16))
-	_add_tapered_box(vertices, normals, colors, Vector3(-hip_width * 0.28, lower_leg_center_y, 0.0), Vector2(mirrored_left_width * 0.84, mirrored_left_width * 0.84), Vector2(mirrored_left_width * 1.02, mirrored_left_width * 0.92), lower_leg_length, left_limb_color.darkened(0.26))
-	_add_tapered_box(vertices, normals, colors, Vector3(hip_width * 0.28, lower_leg_center_y, 0.0), Vector2(mirrored_right_width * 0.84, mirrored_right_width * 0.84), Vector2(mirrored_right_width * 1.02, mirrored_right_width * 0.92), lower_leg_length, right_limb_color.darkened(0.26))
-	_add_box(vertices, normals, colors, Vector3(-hip_width * 0.28, lower_leg_center_y - lower_leg_length * 0.52, 0.045), Vector3(mirrored_left_width * 1.18, lower_leg_length * 0.20, mirrored_left_width * 1.34), shoe_color)
-	_add_box(vertices, normals, colors, Vector3(hip_width * 0.28, lower_leg_center_y - lower_leg_length * 0.52, 0.045), Vector3(mirrored_right_width * 1.18, lower_leg_length * 0.20, mirrored_right_width * 1.34), shoe_color)
+	# --- Faceted head (lofted skull, compressed lower face) ---
+	_add_loft(vertices, normals, colors, [
+		_ring(head_y - head_height * 0.34, 0.0, 0.01, head_width * 0.32, head_depth * 0.36),
+		_ring(head_y - head_height * 0.18, 0.0, 0.02, head_width * 0.44, head_depth * 0.47),
+		_ring(head_y + head_height * 0.00, 0.0, 0.02, head_width * 0.50, head_depth * 0.50),
+		_ring(head_y + head_height * 0.18, 0.0, 0.01, head_width * 0.50, head_depth * 0.50),
+		_ring(head_y + head_height * 0.34, 0.0, 0.00, head_width * 0.46, head_depth * 0.47),
+		_ring(head_y + head_height * 0.48, 0.0, 0.00, head_width * 0.32, head_depth * 0.34),
+	], skin_color, true, true)
+	for s in [-1.0, 1.0]:
+		_add_box(vertices, normals, colors, Vector3(s * head_width * 0.50, head_y - head_height * 0.02, 0.0), Vector3(head_width * 0.08, head_height * 0.20, head_depth * 0.30), skin_color)
 
-	if m_config.left_accent_flag:
-		_add_box(vertices, normals, colors, Vector3(-arm_x, shoulder_y + upper_arm_length * 0.06, 0.0), Vector3(mirrored_left_width * 1.40, upper_arm_length * 0.18, mirrored_left_width * 1.04), trim_color)
-	else:
-		_add_box(vertices, normals, colors, Vector3(-arm_x, shoulder_y - upper_arm_length - forearm_length * 0.14, torso_front_z * 0.65), Vector3(mirrored_left_width * 0.88, forearm_length * 0.12, 0.032), trim_color.darkened(0.05))
+	# --- Faceted hair: shell, fringe, spiky tufts ---
+	_add_loft(vertices, normals, colors, [
+		_ring(head_y + head_height * 0.10, 0.0, -0.005, head_width * 0.52, head_depth * 0.52),
+		_ring(head_y + head_height * 0.34, 0.0, -0.005, head_width * 0.50, head_depth * 0.50),
+		_ring(head_y + head_height * 0.50, 0.0, -0.01, head_width * 0.34, head_depth * 0.36),
+	], hair_color, false, false)
+	_add_outward_quad(vertices, normals, colors,
+		Vector3(-head_width * 0.40, head_y + head_height * 0.10, head_depth * 0.42),
+		Vector3(head_width * 0.40, head_y + head_height * 0.10, head_depth * 0.42),
+		Vector3(head_width * 0.42, head_y + head_height * 0.30, head_depth * 0.30),
+		Vector3(-head_width * 0.42, head_y + head_height * 0.30, head_depth * 0.30),
+		Vector3.BACK, hair_color)
+	var spikes := [
+		[-0.22, 0.55, 0.10, hair_color],
+		[0.0, 0.62, -0.02, hair_color],
+		[0.24, 0.54, 0.06, hair_dark],
+		[-0.05, 0.50, 0.30, hair_color],
+		[0.34, 0.40, 0.0, hair_dark],
+		[-0.34, 0.42, 0.0, hair_color],
+	]
+	for spike in spikes:
+		var sx: float = spike[0]
+		var sy: float = spike[1]
+		var sz: float = spike[2]
+		var spike_color: Color = spike[3]
+		var bx := sx * head_width
+		var by := head_y + head_height * sy
+		var bz := sz * head_depth
+		var spike_w := head_width * 0.20
+		var spike_d := head_depth * 0.20
+		_add_pyramid(vertices, normals, colors,
+			Vector3(bx + sx * head_width * 0.25, by + head_height * 0.26, bz + sz * head_depth * 0.20),
+			Vector3(bx - spike_w, by - head_height * 0.05, bz - spike_d),
+			Vector3(bx + spike_w, by - head_height * 0.05, bz - spike_d),
+			Vector3(bx + spike_w, by - head_height * 0.05, bz + spike_d),
+			Vector3(bx - spike_w, by - head_height * 0.05, bz + spike_d),
+			spike_color)
 
-	if m_config.right_accent_flag:
-		_add_box(vertices, normals, colors, Vector3(arm_x, shoulder_y + upper_arm_length * 0.06, 0.0), Vector3(mirrored_right_width * 1.40, upper_arm_length * 0.18, mirrored_right_width * 1.04), trim_color)
-	else:
-		_add_box(vertices, normals, colors, Vector3(arm_x, shoulder_y - upper_arm_length - forearm_length * 0.14, torso_front_z * 0.65), Vector3(mirrored_right_width * 0.88, forearm_length * 0.12, 0.032), trim_color.darkened(0.05))
+	# --- Face features (flat decals on the face surface, not protruding boxes) ---
+	var decal_z := face_front_z + 0.004
+	for s in [-1.0, 1.0]:
+		_add_face_decal(vertices, normals, colors, s * head_width * 0.17, head_y + head_height * 0.06, head_width * 0.10, head_height * 0.05, decal_z, eye_color)
+		_add_face_decal(vertices, normals, colors, s * head_width * 0.16, head_y + head_height * 0.17, head_width * 0.12, head_height * 0.025, decal_z, brow_color)
+	_add_pyramid(vertices, normals, colors,
+		Vector3(0.0, head_y - head_height * 0.03, face_front_z + 0.028),
+		Vector3(-head_width * 0.05, head_y - head_height * 0.13, face_front_z),
+		Vector3(head_width * 0.05, head_y - head_height * 0.13, face_front_z),
+		Vector3(head_width * 0.04, head_y - head_height * 0.03, face_front_z),
+		Vector3(-head_width * 0.04, head_y - head_height * 0.03, face_front_z),
+		nose_color)
+	_add_face_decal(vertices, normals, colors, 0.0, head_y - head_height * 0.20, head_width * 0.15, head_height * 0.03, decal_z, mouth_color)
+
+	# --- Arms (jacket sleeves rolled to the forearm) ---
+	_add_arm(vertices, normals, colors, -shoulder_width * 0.50, left_width, shoulder_y, upper_arm_length, forearm_length, jacket_color, jacket_dark, jacket_light, skin_color)
+	_add_arm(vertices, normals, colors, shoulder_width * 0.50, right_width, shoulder_y, upper_arm_length, forearm_length, jacket_color, jacket_dark, jacket_light, skin_color)
+
+	# --- Legs (pants, rolled cuffs, boots) ---
+	_add_leg(vertices, normals, colors, -hip_width * 0.30, left_width, upper_leg_center_y, lower_leg_center_y, upper_leg_length, lower_leg_length, pants_color, pants_cuff, boots_color, boots_sole)
+	_add_leg(vertices, normals, colors, hip_width * 0.30, right_width, upper_leg_center_y, lower_leg_center_y, upper_leg_length, lower_leg_length, pants_color, pants_cuff, boots_color, boots_sole)
 
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
@@ -424,16 +451,17 @@ func _resolve_proportions() -> Dictionary:
 		LowPolyCharacterConfig.MAX_LIMB_THICKNESS,
 		m_config.limb_thickness
 	)
+	# Slimmer adult-male proportions (~6.3 heads tall) matching the reference sheet.
 	var cartoon_head_scale := lerpf(0.88, 1.18, clampf(head_t, 0.0, 1.0))
-	var torso_height := effective_height * 0.37
-	var leg_height := effective_height * 0.40
-	var head_height := effective_height * 0.22 * cartoon_head_scale
+	var torso_height := effective_height * 0.34
+	var leg_height := effective_height * 0.46
+	var head_height := effective_height * 0.145 * cartoon_head_scale
 	var hip_y := leg_height
-	var shoulder_width := m_body_radius * lerpf(1.62, 2.05, clampf(torso_t, 0.0, 1.0))
-	var hip_width := m_body_radius * 1.35
-	var limb_width := m_body_radius * lerpf(0.38, 0.66, clampf(limb_t, 0.0, 1.0))
-	var head_width := maxf(m_body_radius * 1.34 * cartoon_head_scale, shoulder_width * 0.56)
-	var head_depth := maxf(m_body_radius * 1.12 * cartoon_head_scale, m_body_radius * 1.02)
+	var shoulder_width := m_body_radius * lerpf(1.45, 1.88, clampf(torso_t, 0.0, 1.0))
+	var hip_width := m_body_radius * 1.18
+	var limb_width := m_body_radius * lerpf(0.34, 0.58, clampf(limb_t, 0.0, 1.0))
+	var head_width := maxf(m_body_radius * 1.02 * cartoon_head_scale, shoulder_width * 0.50)
+	var head_depth := maxf(m_body_radius * 0.92 * cartoon_head_scale, m_body_radius * 0.84)
 	return {
 		"effective_height": effective_height,
 		"hip_y": hip_y,
@@ -455,6 +483,238 @@ func _resolve_proportions() -> Dictionary:
 		"limb_width": limb_width,
 		"depth": m_body_radius * 1.16,
 	}
+
+
+func _add_arm(
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	arm_x: float,
+	limb: float,
+	shoulder_y: float,
+	upper_arm_length: float,
+	forearm_length: float,
+	sleeve_color: Color,
+	sleeve_shade: Color,
+	cuff_color: Color,
+	skin: Color
+) -> void:
+	var elbow_y := shoulder_y - upper_arm_length
+	# Upper sleeve (jacket).
+	_add_limb(vertices, normals, colors, arm_x, 0.0, shoulder_y, elbow_y, limb * 0.62, limb * 0.52, sleeve_color, false, true)
+	# Lower sleeve, rolled short (jacket shade).
+	_add_limb(vertices, normals, colors, arm_x, 0.0, elbow_y, elbow_y - forearm_length * 0.40, limb * 0.52, limb * 0.48, sleeve_shade, false, false)
+	# Rolled cuff band (lighter, flared).
+	_add_loft(vertices, normals, colors, [
+		_ring(elbow_y - forearm_length * 0.52, arm_x, 0.0, limb * 0.56, limb * 0.56),
+		_ring(elbow_y - forearm_length * 0.40, arm_x, 0.0, limb * 0.50, limb * 0.50),
+	], cuff_color, false, false)
+	# Bare forearm (skin) below the roll.
+	_add_limb(vertices, normals, colors, arm_x, 0.0, elbow_y - forearm_length * 0.52, elbow_y - forearm_length * 0.86, limb * 0.46, limb * 0.40, skin, false, false)
+	# Hand (skin).
+	_add_limb(vertices, normals, colors, arm_x, 0.01, elbow_y - forearm_length * 0.86, elbow_y - forearm_length * 1.02, limb * 0.44, limb * 0.42, skin, true, true)
+
+
+func _add_leg(
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	leg_x: float,
+	limb: float,
+	upper_leg_center_y: float,
+	lower_leg_center_y: float,
+	upper_leg_length: float,
+	lower_leg_length: float,
+	pants_color: Color,
+	cuff_color: Color,
+	boots_color: Color,
+	sole_color: Color
+) -> void:
+	var ankle_y := lower_leg_center_y - lower_leg_length * 0.5
+	# Thigh (pants).
+	_add_limb(vertices, normals, colors, leg_x, 0.0, upper_leg_center_y + upper_leg_length * 0.5, upper_leg_center_y - upper_leg_length * 0.5, limb * 0.66, limb * 0.56, pants_color, false, false)
+	# Shin (pants), from the knee down to above the ankle (meets the thigh).
+	_add_limb(vertices, normals, colors, leg_x, 0.0, lower_leg_center_y + lower_leg_length * 0.52, lower_leg_center_y - lower_leg_length * 0.20, limb * 0.56, limb * 0.48, pants_color, false, false)
+	# Rolled cuff at the bottom of the pant leg.
+	_add_loft(vertices, normals, colors, [
+		_ring(lower_leg_center_y - lower_leg_length * 0.32, leg_x, 0.0, limb * 0.60, limb * 0.58),
+		_ring(lower_leg_center_y - lower_leg_length * 0.20, leg_x, 0.0, limb * 0.52, limb * 0.50),
+	], cuff_color, false, false)
+	# Boot shaft over the ankle.
+	_add_limb(vertices, normals, colors, leg_x, 0.02, ankle_y + lower_leg_length * 0.20, ankle_y - lower_leg_length * 0.02, limb * 0.56, limb * 0.58, boots_color, false, true)
+	# Boot foot extending forward.
+	_add_box(vertices, normals, colors, Vector3(leg_x, ankle_y - lower_leg_length * 0.08, 0.07), Vector3(limb * 1.25, lower_leg_length * 0.16, limb * 1.55), boots_color)
+	# Sole.
+	_add_box(vertices, normals, colors, Vector3(leg_x, ankle_y - lower_leg_length * 0.14, 0.07), Vector3(limb * 1.28, lower_leg_length * 0.06, limb * 1.60), sole_color)
+
+
+func _get_profile() -> PackedVector2Array:
+	if m_profile.size() == PROFILE_SIDES:
+		return m_profile
+	m_profile = PackedVector2Array()
+	for i in range(PROFILE_SIDES):
+		var angle := deg_to_rad(22.5 + 45.0 * float(i))
+		m_profile.append(Vector2(cos(angle), sin(angle)))
+	return m_profile
+
+
+func _ring(y: float, cx: float, cz: float, rx: float, rz: float) -> PackedVector3Array:
+	var ring := PackedVector3Array()
+	for direction in _get_profile():
+		ring.append(Vector3(cx + direction.x * rx, y, cz + direction.y * rz))
+	return ring
+
+
+func _ring_center(ring: PackedVector3Array) -> Vector3:
+	if ring.is_empty():
+		return Vector3.ZERO
+	var center := Vector3.ZERO
+	for point in ring:
+		center += point
+	return center / float(ring.size())
+
+
+func _add_loft(
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	rings: Array,
+	color: Color,
+	cap_bottom: bool,
+	cap_top: bool
+) -> void:
+	if rings.is_empty():
+		return
+	var sides := PROFILE_SIDES
+	for r in range(rings.size() - 1):
+		var lower: PackedVector3Array = rings[r]
+		var upper: PackedVector3Array = rings[r + 1]
+		for i in range(sides):
+			var j := (i + 1) % sides
+			_add_face(vertices, normals, colors, lower[i], upper[i], upper[j], lower[j], Vector3.UP, color)
+	if cap_bottom:
+		var first_ring: PackedVector3Array = rings[0]
+		var bottom_center := _ring_center(first_ring)
+		for i in range(sides):
+			var j := (i + 1) % sides
+			_add_outward_tri(vertices, normals, colors, bottom_center, first_ring[i], first_ring[j], Vector3.DOWN, color)
+	if cap_top:
+		var last_ring: PackedVector3Array = rings[rings.size() - 1]
+		var top_center := _ring_center(last_ring)
+		for i in range(sides):
+			var j := (i + 1) % sides
+			_add_outward_tri(vertices, normals, colors, top_center, last_ring[i], last_ring[j], Vector3.UP, color)
+
+
+func _add_limb(
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	x: float,
+	z: float,
+	y_top: float,
+	y_bottom: float,
+	r_top: float,
+	r_bottom: float,
+	color: Color,
+	cap_bottom: bool,
+	cap_top: bool
+) -> void:
+	_add_loft(vertices, normals, colors, [
+		_ring(y_bottom, x, z, r_bottom, r_bottom),
+		_ring(y_top, x, z, r_top, r_top),
+	], color, cap_bottom, cap_top)
+
+
+func _add_tri(
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	a: Vector3,
+	b: Vector3,
+	c: Vector3,
+	color: Color
+) -> void:
+	var face_normal := (b - a).cross(c - a).normalized()
+	if face_normal.length_squared() <= 0.000001:
+		face_normal = Vector3.UP
+	for vertex in [a, c, b]:
+		vertices.append(vertex)
+		normals.append(face_normal)
+		colors.append(color)
+
+
+func _add_outward_tri(
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	a: Vector3,
+	b: Vector3,
+	c: Vector3,
+	outward: Vector3,
+	color: Color
+) -> void:
+	if (b - a).cross(c - a).dot(outward) < 0.0:
+		_add_tri(vertices, normals, colors, a, c, b, color)
+	else:
+		_add_tri(vertices, normals, colors, a, b, c, color)
+
+
+func _add_outward_quad(
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	a: Vector3,
+	b: Vector3,
+	c: Vector3,
+	d: Vector3,
+	outward: Vector3,
+	color: Color
+) -> void:
+	if (b - a).cross(c - a).dot(outward) < 0.0:
+		_add_face(vertices, normals, colors, a, d, c, b, outward, color)
+	else:
+		_add_face(vertices, normals, colors, a, b, c, d, outward, color)
+
+
+func _add_face_decal(
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	cx: float,
+	cy: float,
+	w: float,
+	h: float,
+	z: float,
+	color: Color
+) -> void:
+	_add_outward_quad(vertices, normals, colors,
+		Vector3(cx - w * 0.5, cy - h * 0.5, z),
+		Vector3(cx + w * 0.5, cy - h * 0.5, z),
+		Vector3(cx + w * 0.5, cy + h * 0.5, z),
+		Vector3(cx - w * 0.5, cy + h * 0.5, z),
+		Vector3.BACK, color)
+
+
+func _add_pyramid(
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	apex: Vector3,
+	b0: Vector3,
+	b1: Vector3,
+	b2: Vector3,
+	b3: Vector3,
+	color: Color
+) -> void:
+	var base := [b0, b1, b2, b3]
+	var base_center := (b0 + b1 + b2 + b3) * 0.25
+	for i in range(4):
+		var p0: Vector3 = base[i]
+		var p1: Vector3 = base[(i + 1) % 4]
+		var triangle_center := (apex + p0 + p1) / 3.0
+		_add_outward_tri(vertices, normals, colors, apex, p0, p1, triangle_center - base_center, color)
+	_add_outward_quad(vertices, normals, colors, b0, b1, b2, b3, base_center - apex, color)
 
 
 func _add_box(

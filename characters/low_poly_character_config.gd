@@ -4,11 +4,16 @@ extends Resource
 
 const DEFAULT_SEED_TEXT := "kulangsu_player"
 const SEEDED_VARIANT_PROFILE_ID := "seeded_variant"
-const FORMAL_REFERENCE_PROFILE_ID := "formal_reference_avatar"
-const FORMAL_REFERENCE_MAIN_COLOR := Color(0.13, 0.15, 0.16, 1.0)
-const FORMAL_REFERENCE_ACCENT_COLOR := Color(0.92, 0.90, 0.84, 1.0)
-const FORMAL_REFERENCE_SKIN_COLOR := Color(0.82, 0.58, 0.40, 1.0)
-const FORMAL_REFERENCE_HAIR_COLOR := Color(0.22, 0.12, 0.055, 1.0)
+# Casual "adult male" reference avatar: open denim-blue jacket over a cream tee,
+# tan rolled-cuff pants, and brown boots. Constant names are kept stable because
+# only this file and the smoke test reference them.
+const FORMAL_REFERENCE_PROFILE_ID := "adult_male_reference"
+const FORMAL_REFERENCE_MAIN_COLOR := Color(0.17, 0.30, 0.52, 1.0)
+const FORMAL_REFERENCE_ACCENT_COLOR := Color(0.92, 0.88, 0.78, 1.0)
+const FORMAL_REFERENCE_SKIN_COLOR := Color(0.85, 0.62, 0.46, 1.0)
+const FORMAL_REFERENCE_HAIR_COLOR := Color(0.28, 0.17, 0.09, 1.0)
+const FORMAL_REFERENCE_PANTS_COLOR := Color(0.55, 0.39, 0.23, 1.0)
+const FORMAL_REFERENCE_BOOTS_COLOR := Color(0.30, 0.19, 0.11, 1.0)
 
 const MIN_HEIGHT_MODIFIER := 0.7
 const MAX_HEIGHT_MODIFIER := 1.4
@@ -29,6 +34,8 @@ const MAX_TORSO_MASS := 1.8
 @export var accent_color := FORMAL_REFERENCE_ACCENT_COLOR
 @export var skin_color := FORMAL_REFERENCE_SKIN_COLOR
 @export var hair_color := FORMAL_REFERENCE_HAIR_COLOR
+@export var pants_color := FORMAL_REFERENCE_PANTS_COLOR
+@export var boots_color := FORMAL_REFERENCE_BOOTS_COLOR
 @export var left_limb_scale := 1.0
 @export var right_limb_scale := 1.0
 @export var left_accent_flag := false
@@ -70,6 +77,8 @@ func to_dictionary() -> Dictionary:
 		"accent_color": accent_color.to_html(),
 		"skin_color": skin_color.to_html(),
 		"hair_color": hair_color.to_html(),
+		"pants_color": pants_color.to_html(),
+		"boots_color": boots_color.to_html(),
 		"left_limb_scale": snappedf(left_limb_scale, 0.0001),
 		"right_limb_scale": snappedf(right_limb_scale, 0.0001),
 		"left_accent_flag": left_accent_flag,
@@ -87,6 +96,8 @@ func _apply_formal_reference_profile() -> void:
 	accent_color = FORMAL_REFERENCE_ACCENT_COLOR
 	skin_color = FORMAL_REFERENCE_SKIN_COLOR
 	hair_color = FORMAL_REFERENCE_HAIR_COLOR
+	pants_color = FORMAL_REFERENCE_PANTS_COLOR
+	boots_color = FORMAL_REFERENCE_BOOTS_COLOR
 	left_limb_scale = 0.98
 	right_limb_scale = 1.02
 	left_accent_flag = false
@@ -114,6 +125,8 @@ func _apply_seed_palette() -> void:
 	accent_color = Color.from_hsv(accent_hue, accent_saturation, accent_value, 1.0)
 	skin_color = Color.from_hsv(_range(seed_text, "skin_hue", 0.055, 0.095), _range(seed_text, "skin_sat", 0.30, 0.46), _range(seed_text, "skin_value", 0.62, 0.86), 1.0)
 	hair_color = Color.from_hsv(_range(seed_text, "hair_hue", 0.035, 0.095), _range(seed_text, "hair_sat", 0.35, 0.68), _range(seed_text, "hair_value", 0.16, 0.36), 1.0)
+	pants_color = Color.from_hsv(_range(seed_text, "pants_hue", 0.06, 0.13), _range(seed_text, "pants_sat", 0.32, 0.62), _range(seed_text, "pants_value", 0.38, 0.62), 1.0)
+	boots_color = Color.from_hsv(_range(seed_text, "boots_hue", 0.045, 0.09), _range(seed_text, "boots_sat", 0.40, 0.70), _range(seed_text, "boots_value", 0.18, 0.34), 1.0)
 
 
 static func _range(seed_text_value: String, salt: String, minimum: float, maximum: float) -> float:

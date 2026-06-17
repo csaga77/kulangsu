@@ -136,13 +136,15 @@ func _validate_actor_api(failures: Array[String]) -> void:
 func _validate_procedural_low_poly_rig(failures: Array[String], visual_root: Node3D) -> void:
 	var original_use_rig := bool(m_actor.get("use_procedural_rig"))
 	var original_seed := String(m_actor.get("procedural_seed"))
+	var original_use_model := bool(m_actor.get("use_character_model"))
 
+	m_actor.set("use_character_model", false)
 	m_actor.set("procedural_seed", "harbor-hero-42")
 	m_actor.set("use_procedural_rig", true)
 	var rig := visual_root.get_node_or_null("ProceduralLowPolyCharacterRig") as Node3D
 	if rig == null:
 		failures.append("HumanBody3D did not create ProceduralLowPolyCharacterRig")
-		_restore_procedural_rig_state(original_use_rig, original_seed)
+		_restore_procedural_rig_state(original_use_rig, original_seed, original_use_model)
 		return
 	if !rig.visible:
 		failures.append("HumanBody3D did not show the procedural rig when enabled")
@@ -198,12 +200,13 @@ func _validate_procedural_low_poly_rig(failures: Array[String], visual_root: Nod
 	if absf(float(motion_snapshot.get("left_leg_pitch", 0.0))) <= 0.001:
 		failures.append("ProceduralLowPolyCharacterRig did not produce mathematical walk motion")
 
-	_restore_procedural_rig_state(original_use_rig, original_seed)
+	_restore_procedural_rig_state(original_use_rig, original_seed, original_use_model)
 
 
-func _restore_procedural_rig_state(use_rig: bool, seed: String) -> void:
+func _restore_procedural_rig_state(use_rig: bool, seed: String, use_model: bool) -> void:
 	m_actor.set("procedural_seed", seed)
 	m_actor.set("use_procedural_rig", use_rig)
+	m_actor.set("use_character_model", use_model)
 
 
 func _validate_player_controller_input_order(failures: Array[String], controller: Variant) -> void:

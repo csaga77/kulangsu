@@ -22,6 +22,8 @@ const PLACEMENT_QUERY_FLOOR_CLEARANCE := 0.01
 const FLOOR_SAMPLE_MISSING := -INF
 const BaseController3DScript = preload("res://characters/control/base_controller_3d.gd")
 const ProceduralLowPolyCharacterRigScript = preload("res://characters/procedural_low_poly_character_rig.gd")
+const CharacterModelScene: PackedScene = preload("res://assets/characters/3d_cartoon_boy_figure.glb")
+const DEFAULT_CHARACTER_MODEL_HEIGHT := 0.998
 
 enum FacialMoodEnum {
 	MANUAL = 0,
@@ -130,6 +132,48 @@ enum FacialActionEnum {
 		procedural_seed = normalized_seed
 		_sync_procedural_rig()
 
+@export_group("Character Model")
+@export var use_character_model := true:
+	set(value):
+		if use_character_model == value:
+			return
+		use_character_model = value
+		_sync_character_model()
+		_sync_procedural_rig()
+
+@export var character_model_scene: PackedScene = CharacterModelScene:
+	set(value):
+		if character_model_scene == value:
+			return
+		character_model_scene = value
+		_rebuild_character_model()
+
+@export_range(0.1, 4.0, 0.001) var character_model_height := DEFAULT_CHARACTER_MODEL_HEIGHT:
+	set(value):
+		character_model_height = maxf(value, 0.1)
+		_sync_character_model()
+
+# The GLB faces along the X axis in its own space; -90° about Y turns it to the rig's +Z forward.
+@export_range(-180.0, 180.0, 1.0) var character_model_yaw_offset := -90.0:
+	set(value):
+		character_model_yaw_offset = value
+		_sync_character_model()
+
+# Auto-plant the model's lowest point at the foot origin; this nudge lifts/lowers it further.
+@export var character_model_auto_ground := true:
+	set(value):
+		character_model_auto_ground = value
+		_sync_character_model()
+
+@export_range(-0.5, 0.5, 0.001) var character_model_y_offset := 0.0:
+	set(value):
+		character_model_y_offset = value
+		_sync_character_model()
+
+@export var model_idle_animation := "idle"
+@export var model_walk_animation := "walk"
+@export var model_run_animation := "run"
+
 @export_group("Face")
 @export var facial_mood: FacialMoodEnum = FacialMoodEnum.NORMAL:
 	set(value):
@@ -186,6 +230,8 @@ var m_contact_shadow_part: MeshInstance3D = null
 var m_debug_box_part: MeshInstance3D = null
 var m_collision_shape: CollisionShape3D = null
 var m_procedural_rig: Node3D = null
+var m_character_model: Node3D = null
+var m_model_animation_player: AnimationPlayer = null
 
 var m_skin_color := Color(0.86, 0.64, 0.48, 1.0)
 var m_hair_color := Color(0.30, 0.18, 0.10, 1.0)
@@ -652,6 +698,7 @@ func _update_state() -> void:
 		base_animation_name = "jump"
 
 	m_current_animation_name = "%s-%s" % [base_animation_name, _get_direction_suffix()]
+	_sync_model_animation()
 
 
 func _get_direction_suffix() -> String:
@@ -795,6 +842,141 @@ func _ensure_procedural_rig() -> Node3D:
 	return rig
 
 
+func _ensure_character_model() -> Node3D:
+	var parent := m_visual_root if is_instance_valid(m_visual_root) else self
+	var model := parent.get_node_or_null("CharacterModel") as Node3D
+	if model == null:
+		model = Node3D.new()
+		model.name = "CharacterModel"
+		parent.add_child(model)
+		if Engine.is_editor_hint():
+			model.owner = null
+	if model.get_child_count() == 0 and character_model_scene != null:
+		var instance := character_model_scene.instantiate()
+		model.add_child(instance)
+		if Engine.is_editor_hint():
+			instance.owner = null
+	return model
+
+
+func _rebuild_character_model() -> void:
+	if is_instance_valid(m_character_model):
+		m_character_model.queue_free()
+		m_character_model = null
+	if is_inside_tree():
+		_sync_character_model()
+
+
+func _sync_character_model() -> void:
+	if not use_character_model:
+		if is_instance_valid(m_character_model):
+			m_character_model.visible = false
+		_sync_legacy_visual_visibility()
+		return
+	if not is_instance_valid(m_character_model):
+		if not is_instance_valid(m_visual_root):
+			return
+		m_character_model = _ensure_character_model()
+	if not is_instance_valid(m_character_model):
+		return
+	m_character_model.visible = true
+	var scale_factor := body_height / maxf(character_model_height, 0.01)
+	m_character_model.scale = Vector3.ONE * scale_factor
+	m_character_model.rotation.y = deg_to_rad(character_model_yaw_offset)
+	m_character_model.position = Vector3.ZERO
+	_align_model_feet()
+	if not is_instance_valid(m_model_animation_player):
+		m_model_animation_player = _find_animation_player(m_character_model)
+	if is_instance_valid(m_procedural_rig):
+		m_procedural_rig.visible = false
+	_sync_legacy_visual_visibility()
+	_sync_model_animation()
+
+
+func _find_animation_player(node: Node) -> AnimationPlayer:
+	if node is AnimationPlayer:
+		return node
+	for child in node.get_children():
+		var found := _find_animation_player(child)
+		if found != null:
+			return found
+	return null
+
+
+func _collect_mesh_instances(node: Node, into: Array[MeshInstance3D]) -> void:
+	if node is MeshInstance3D:
+		into.append(node)
+	for child in node.get_children():
+		_collect_mesh_instances(child, into)
+
+
+# Plant the model so its lowest rendered point sits at the foot origin (+ manual nudge).
+func _align_model_feet() -> void:
+	if not is_instance_valid(m_character_model):
+		return
+	if not character_model_auto_ground:
+		m_character_model.position.y = character_model_y_offset
+		return
+	if not is_inside_tree() or not is_instance_valid(m_visual_root):
+		return
+	var meshes: Array[MeshInstance3D] = []
+	_collect_mesh_instances(m_character_model, meshes)
+	if meshes.is_empty():
+		m_character_model.position.y = character_model_y_offset
+		return
+	var inv_root := m_visual_root.global_transform.affine_inverse()
+	var lowest := INF
+	for mesh_instance in meshes:
+		var aabb := mesh_instance.get_aabb()
+		var to_root := inv_root * mesh_instance.global_transform
+		for i in range(8):
+			var corner := aabb.position + Vector3(
+				aabb.size.x * float(i & 1),
+				aabb.size.y * float((i >> 1) & 1),
+				aabb.size.z * float((i >> 2) & 1))
+			lowest = minf(lowest, (to_root * corner).y)
+	if lowest == INF:
+		lowest = 0.0
+	m_character_model.position.y = character_model_y_offset - lowest
+
+
+func _sync_model_animation() -> void:
+	if not use_character_model:
+		return
+	if not is_instance_valid(m_model_animation_player):
+		return
+	var target := _match_model_animation(_desired_model_animation())
+	if target.is_empty():
+		return
+	var animation := m_model_animation_player.get_animation(target)
+	if animation != null and animation.loop_mode == Animation.LOOP_NONE:
+		animation.loop_mode = Animation.LOOP_LINEAR
+	if m_model_animation_player.current_animation != target:
+		m_model_animation_player.play(target, 0.15)
+
+
+func _desired_model_animation() -> String:
+	if is_walking and is_running:
+		return model_run_animation
+	if is_walking:
+		return model_walk_animation
+	return model_idle_animation
+
+
+func _match_model_animation(animation_name: String) -> String:
+	if animation_name.is_empty() or not is_instance_valid(m_model_animation_player):
+		return ""
+	if m_model_animation_player.has_animation(animation_name):
+		return animation_name
+	var lowered := animation_name.to_lower()
+	for entry in m_model_animation_player.get_animation_list():
+		var candidate := String(entry)
+		var candidate_lower := candidate.to_lower()
+		if candidate_lower == lowered or candidate_lower.ends_with("/" + lowered):
+			return candidate
+	return ""
+
+
 func _ensure_contact_shadow_part() -> MeshInstance3D:
 	var part := get_node_or_null("ContactShadow") as MeshInstance3D
 	if part == null:
@@ -821,6 +1003,7 @@ func _sync_body_profile() -> void:
 	_sync_debug_box()
 	_sync_contact_shadow()
 	_sync_procedural_rig()
+	_sync_character_model()
 
 
 func _sync_collision_shape() -> void:
@@ -861,14 +1044,14 @@ func _sync_procedural_rig() -> void:
 	if !is_instance_valid(m_procedural_rig):
 		return
 
-	m_procedural_rig.visible = use_procedural_rig
+	m_procedural_rig.visible = use_procedural_rig and not use_character_model
 	if m_procedural_rig.has_method("configure_from_seed"):
 		m_procedural_rig.call("configure_from_seed", procedural_seed, body_height, body_radius)
 	_sync_legacy_visual_visibility()
 
 
 func _sync_legacy_visual_visibility() -> void:
-	var legacy_visible := !use_procedural_rig
+	var legacy_visible := !use_procedural_rig and !use_character_model
 	for part in [
 		m_body_part,
 		m_head_part,

@@ -44,8 +44,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.65)
 floor_snap_length = 0.72
 walk_bob_height = 0.02
 run_bob_height = 0.04
-use_procedural_rig = true
-procedural_seed = "kulangsu_player"
+use_character_model = true
 
 [node name="VariantLine" type="Node3D" parent="." unique_id=1834424149]
 
@@ -57,7 +56,7 @@ body_height = 1.4104
 body_radius = 0.2296
 walk_bob_height = 0.0164
 run_bob_height = 0.0328
-use_procedural_rig = true
+use_character_model = true
 procedural_seed = "harbor-hero-42"
 
 [node name="SeedVariant2" parent="VariantLine" unique_id=1031644354 instance=ExtResource("2_actor")]
@@ -68,7 +67,7 @@ body_height = 1.4104
 body_radius = 0.2296
 walk_bob_height = 0.0164
 run_bob_height = 0.0328
-use_procedural_rig = true
+use_character_model = true
 procedural_seed = "piano-island-guide"
 
 [node name="SeedVariant3" parent="VariantLine" unique_id=423962482 instance=ExtResource("2_actor")]
@@ -79,7 +78,7 @@ body_height = 1.4104
 body_radius = 0.2296
 walk_bob_height = 0.0164
 run_bob_height = 0.0328
-use_procedural_rig = true
+use_character_model = true
 procedural_seed = "bagua-stair-runner"
 
 [node name="SeedVariant4" parent="VariantLine" unique_id=1870257389 instance=ExtResource("2_actor")]
@@ -90,7 +89,7 @@ body_height = 1.4104
 body_radius = 0.2296
 walk_bob_height = 0.0164
 run_bob_height = 0.0328
-use_procedural_rig = true
+use_character_model = true
 procedural_seed = "ferry-arrival-summer"
 
 [node name="Camera3D" type="Camera3D" parent="." unique_id=266037145]
@@ -103,7 +102,7 @@ size = 5.1
 transform = Transform3D(0.81915206, -0.32898992, 0.4698463, 0, 0.81915206, 0.57357645, -0.57357645, -0.4698463, 0.67101014, 0, 0, 0)
 light_energy = 2.3
 
-[node name="FillLight" type="DirectionalLight3D" parent="."]
+[node name="FillLight" type="DirectionalLight3D" parent="." unique_id=287535667]
 transform = Transform3D(-0.81915206, 0.32898992, -0.4698463, 0, 0.81915206, 0.57357645, 0.57357645, 0.4698463, -0.67101014, 0, 0, 0)
 light_color = Color(0.78, 0.86, 1, 1)
 light_energy = 0.45
