@@ -1,7 +1,10 @@
 [gd_scene format=3 uid="uid://cfrcjv76v3c4g"]
 
 [ext_resource type="Script" uid="uid://dmg4qwx0rchm6" path="res://characters/human_body_3d.gd" id="1_human_body_3d"]
+[ext_resource type="PackedScene" uid="uid://cj76on5u2fumb" path="res://assets/characters/male_0.glb" id="2_gei5k"]
 
 [node name="human_body_3d" type="CharacterBody3D" unique_id=771716252]
 floor_snap_length = 0.72
 script = ExtResource("1_human_body_3d")
+body_height = 1.8900000000000001
+character_model_scene = ExtResource("2_gei5k")

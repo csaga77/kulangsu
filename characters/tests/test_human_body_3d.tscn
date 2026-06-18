@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://bxeg6vdfij4oi" path="res://characters/tests/test_human_body_3d.gd" id="1_test"]
 [ext_resource type="PackedScene" uid="uid://cfrcjv76v3c4g" path="res://characters/human_body_3d.tscn" id="2_actor"]
 [ext_resource type="Script" uid="uid://cam6vob3l5ttk" path="res://characters/control/player_controller_3d.gd" id="3_controller"]
-[ext_resource type="PackedScene" uid="uid://bllxl5c2848fq" path="res://assets/characters/boy.glb" id="3_wunak"]
 
 [sub_resource type="Resource" id="Resource_player_controller_3d"]
 script = ExtResource("3_controller")
@@ -25,7 +24,6 @@ script = ExtResource("1_test")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, 0)
 draw_bounding_box = true
 body_height = 1.53
-character_model_scene = ExtResource("3_wunak")
 controller = SubResource("Resource_player_controller_3d")
 
 [node name="Camera3D" type="Camera3D" parent="human_body_3d" unique_id=698208426]
