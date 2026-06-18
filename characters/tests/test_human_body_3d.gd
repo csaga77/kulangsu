@@ -13,7 +13,7 @@ const STEP_DOWN_START := Vector3(42.0, STEP_FIXTURE_HEIGHT, 0.0)
 const STEP_DOWN_MOTION := Vector3(0.90, 0.0, 0.0)
 
 @onready var m_actor: CharacterBody3D = $human_body_3d
-@onready var m_camera: Camera3D = $Camera3D
+@onready var m_camera: Camera3D = $human_body_3d/Camera3D
 
 
 func _ready() -> void:

@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://bwcsoxx4x8mse"]
 
 [ext_resource type="Script" uid="uid://bxeg6vdfij4oi" path="res://characters/tests/test_human_body_3d.gd" id="1_test"]
-[ext_resource type="PackedScene" path="res://characters/human_body_3d.tscn" id="2_actor"]
+[ext_resource type="PackedScene" uid="uid://cfrcjv76v3c4g" path="res://characters/human_body_3d.tscn" id="2_actor"]
 [ext_resource type="Script" uid="uid://cam6vob3l5ttk" path="res://characters/control/player_controller_3d.gd" id="3_controller"]
 
 [sub_resource type="Resource" id="Resource_player_controller_3d"]
@@ -22,7 +22,6 @@ script = ExtResource("1_test")
 
 [node name="human_body_3d" parent="." unique_id=711893711 instance=ExtResource("2_actor")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, 0)
-floor_snap_length = 0.72
 draw_bounding_box = true
 controller = SubResource("Resource_player_controller_3d")
 
@@ -34,11 +33,11 @@ size = 3.1
 
 [node name="Floor" type="StaticBody3D" parent="." unique_id=1924986030]
 
-[node name="FloorMesh" type="MeshInstance3D" parent="Floor"]
+[node name="FloorMesh" type="MeshInstance3D" parent="Floor" unique_id=953793260]
 material_override = SubResource("StandardMaterial3D_floor")
 mesh = SubResource("BoxMesh_floor")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Floor"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Floor" unique_id=873497779]
 shape = SubResource("BoxShape3D_floor")
 
 [node name="Sun" type="DirectionalLight3D" parent="." unique_id=1567471487]
