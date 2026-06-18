@@ -65,9 +65,8 @@ If you are changing how terrain mask colors map to layers, start with the terrai
 
 - [`../characters/`](../characters) - player and NPC scenes plus sprite systems
 - [`../characters/resident_npc.gd`](../characters/resident_npc.gd) / [`../characters/resident_npc.tscn`](../characters/resident_npc.tscn) - runtime resident actor that applies a `ResidentDefinition` on top of `HumanBody2D`
-- [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd) / [`../characters/human_body_3d.tscn`](../characters/human_body_3d.tscn) - parallel low-poly 3D actor adapter prototype with tunable block-body proportions, optional seeded procedural rig mode, contact shadow, stair/floor-snap navigation, and procedural walk/run readability polish; not wired into the runtime 2D overworld yet
-- [`../characters/low_poly_character_config.gd`](../characters/low_poly_character_config.gd) - deterministic seed-to-character config resource for low-poly 3D profile ids, height, limb thickness, head scale, torso mass, palette, and asymmetry flags; the default `kulangsu_player` seed maps to the formal reference avatar
-- [`../characters/procedural_low_poly_character_rig.gd`](../characters/procedural_low_poly_character_rig.gd) - optional runtime-generated stylized low-poly 3D character rig with cartoon proportions, simplified angular anatomy, flat-shaded vertex-color `BodySurface`, computed face normals, style snapshot metadata, and head/hand `BoneAttachment3D` nodes
+- [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd) / [`../characters/human_body_3d.tscn`](../characters/human_body_3d.tscn) - parallel low-poly 3D actor adapter prototype that renders a premade GLB character model by default (scaled, yaw-corrected, auto-grounded, with idle/walk/run animation), keeps a tunable block-body mannequin as a fallback, and adds contact shadow plus stair/floor-snap navigation; not wired into the runtime 2D overworld yet
+- [`../assets/characters/3d_cartoon_boy_figure.glb`](../assets/characters/3d_cartoon_boy_figure.glb) - premade skinned, textured low-poly character model (~2k triangles) with `idle`, `walk`, and `run` animation clips; the default `HumanBody3D` visual
 - [`../characters/tests/`](../characters/tests) - direct character smoke scenes such as `HumanBody2D` and `HumanBody3D`
 - [`../characters/control/`](../characters/control) - controllers, resident presentation hookup, and interaction behavior
 - [`../characters/control/base_controller_3d.gd`](../characters/control/base_controller_3d.gd) - shared 3D controller base for `HumanBody3D` lifecycle, movement flags, and movement helper methods
@@ -128,8 +127,7 @@ Be careful about renames or moves here because scene and resource references can
 - [`../scenes/tests/`](../scenes/tests) - ad hoc prototype and validation scenes
 - [`../weather/tests/`](../weather/tests) - dedicated weather validation scenes and tuning sandboxes
 - [`../characters/tests/test_human_body_2d.tscn`](../characters/tests/test_human_body_2d.tscn) - direct `HumanBody2D` smoke sandbox with player-controller wiring
-- [`../characters/tests/test_human_body_3d.tscn`](../characters/tests/test_human_body_3d.tscn) - direct `HumanBody3D` adapter smoke scene covering configuration, flat direction, movement velocity, current-frame controller input, safe capsule placement, step-up/step-down behavior, jump state, ground footprint behavior, and optional seeded procedural rig generation
-- [`../characters/tests/test_low_poly_character_3d.tscn`](../characters/tests/test_low_poly_character_3d.tscn) - direct procedural low-poly 3D character preview and smoke scene covering seeded variants, generated rig hierarchy, flat vertex-color mesh data, and mathematical walk motion
+- [`../characters/tests/test_human_body_3d.tscn`](../characters/tests/test_human_body_3d.tscn) - direct `HumanBody3D` adapter smoke scene covering configuration, flat direction, movement velocity, current-frame controller input, safe capsule placement, step-up/step-down behavior, jump state, ground footprint behavior, and character-model structure (instanced model, mesh, material, animation clips)
 - [`../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn`](../characters/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn) - Universal LPC metadata and sprite-composition validation tool
 - [`../characters/universal_lpc/tests/test_universal_lpc_asset_audit.tscn`](../characters/universal_lpc/tests/test_universal_lpc_asset_audit.tscn) - focused Universal LPC source-sheet audit for missing animation rows, JSON/source mismatches, and player-facing AI target triage
 - [`../game/tests/npc_system/test_npc_layer_interaction.tscn`](../game/tests/npc_system/test_npc_layer_interaction.tscn) - focused same-layer NPC targeting and portal-driven z-layer switching sandbox
@@ -233,9 +231,7 @@ Useful searches when locating code:
 - `LowPolyArtStyle3D` for low-poly 3D palette, camera, lighting, and landmark-color presets
 - `LowPolyWorldCoordinates3D` for terrain-mask-pixel and rough 2D isometric-position to low-poly 3D world-position conversion
 - `LowPolyLandmarkProxy3D` for postcard-diorama landmark proxy volumes and placeholder silhouettes
-- `HumanBody3D` for the parallel low-poly 3D actor adapter prototype with tunable body shape, optional seeded procedural rig mode, and first-pass procedural movement readability
-- `ProceduralLowPolyCharacterRig` for the runtime-generated stylized low-poly character skeleton, simplified cartoon mesh, vertex colors, computed face normals, style snapshot, and attachment nodes
-- `LowPolyCharacterConfig` for deterministic seed-driven low-poly character profile ids, proportions, palette, and asymmetry flags
+- `HumanBody3D` for the parallel low-poly 3D actor adapter prototype that renders a premade GLB character model with idle/walk/run animation and keeps a tunable block-body fallback
 - `BaseController3D` for the shared 3D controller base
 - `PlayerController3D` for the parallel 3D player-input adapter prototype
 - `source_control_report` for the repo-local and shared Git inspection helpers

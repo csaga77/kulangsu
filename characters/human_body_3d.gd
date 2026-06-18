@@ -21,7 +21,6 @@ const MAX_STEP_LATERAL_DRIFT_RATIO := 0.1
 const PLACEMENT_QUERY_FLOOR_CLEARANCE := 0.01
 const FLOOR_SAMPLE_MISSING := -INF
 const BaseController3DScript = preload("res://characters/control/base_controller_3d.gd")
-const ProceduralLowPolyCharacterRigScript = preload("res://characters/procedural_low_poly_character_rig.gd")
 const CharacterModelScene: PackedScene = preload("res://assets/characters/3d_cartoon_boy_figure.glb")
 const DEFAULT_CHARACTER_MODEL_HEIGHT := 0.998
 
@@ -114,24 +113,6 @@ enum FacialActionEnum {
 		floor_snap_length = floor_snap_distance
 @export_range(0.0, 5.0, 0.05) var grounding_speed := 1.6
 
-@export_group("Procedural Low Poly")
-@export var use_procedural_rig := false:
-	set(value):
-		if use_procedural_rig == value:
-			return
-		use_procedural_rig = value
-		_sync_procedural_rig()
-
-@export var procedural_seed := "kulangsu_player":
-	set(value):
-		var normalized_seed := value
-		if normalized_seed.is_empty():
-			normalized_seed = "kulangsu_player"
-		if procedural_seed == normalized_seed:
-			return
-		procedural_seed = normalized_seed
-		_sync_procedural_rig()
-
 @export_group("Character Model")
 @export var use_character_model := true:
 	set(value):
@@ -139,7 +120,6 @@ enum FacialActionEnum {
 			return
 		use_character_model = value
 		_sync_character_model()
-		_sync_procedural_rig()
 
 @export var character_model_scene: PackedScene = CharacterModelScene:
 	set(value):
@@ -229,7 +209,6 @@ var m_direction_marker_part: MeshInstance3D = null
 var m_contact_shadow_part: MeshInstance3D = null
 var m_debug_box_part: MeshInstance3D = null
 var m_collision_shape: CollisionShape3D = null
-var m_procedural_rig: Node3D = null
 var m_character_model: Node3D = null
 var m_model_animation_player: AnimationPlayer = null
 
@@ -732,8 +711,6 @@ func _process_visual_motion(delta: float) -> void:
 
 	_apply_visual_offset()
 	_sync_limb_motion()
-	if use_procedural_rig and is_instance_valid(m_procedural_rig) and m_procedural_rig.has_method("process_motion"):
-		m_procedural_rig.call("process_motion", delta, is_walking, is_running, m_is_currently_jumping)
 
 
 func _get_motion_bob_y() -> float:
@@ -807,7 +784,6 @@ func _ensure_visual_nodes() -> void:
 	m_face_marker_part = _ensure_box_part("FaceMarker", Vector3(0.20, 0.065, 0.04), Vector3(0.0, 1.49, 0.175))
 	m_direction_marker_part = _ensure_box_part("DirectionMarker", Vector3(0.065, 0.16, 0.045), Vector3(0.0, 1.38, 0.178))
 	m_debug_box_part = _ensure_box_part("DebugBox", Vector3(body_radius * 2.0, body_height, body_radius * 2.0), Vector3(0.0, body_height * 0.5, 0.0))
-	m_procedural_rig = _ensure_procedural_rig()
 	_sync_body_profile()
 
 
@@ -828,18 +804,6 @@ func _ensure_box_part(part_name: String, size: Vector3, local_position: Vector3)
 	box_mesh.size = size
 	part.position = local_position
 	return part
-
-
-func _ensure_procedural_rig() -> Node3D:
-	var parent := m_visual_root if is_instance_valid(m_visual_root) else self
-	var rig := parent.get_node_or_null("ProceduralLowPolyCharacterRig") as Node3D
-	if rig == null:
-		rig = ProceduralLowPolyCharacterRigScript.new()
-		rig.name = "ProceduralLowPolyCharacterRig"
-		parent.add_child(rig)
-		if Engine.is_editor_hint():
-			rig.owner = null
-	return rig
 
 
 func _ensure_character_model() -> Node3D:
@@ -887,8 +851,6 @@ func _sync_character_model() -> void:
 	_align_model_feet()
 	if not is_instance_valid(m_model_animation_player):
 		m_model_animation_player = _find_animation_player(m_character_model)
-	if is_instance_valid(m_procedural_rig):
-		m_procedural_rig.visible = false
 	_sync_legacy_visual_visibility()
 	_sync_model_animation()
 
@@ -1002,7 +964,6 @@ func _sync_body_profile() -> void:
 	_sync_visual_profile()
 	_sync_debug_box()
 	_sync_contact_shadow()
-	_sync_procedural_rig()
 	_sync_character_model()
 
 
@@ -1036,22 +997,8 @@ func _sync_visual_profile() -> void:
 	_sync_legacy_visual_visibility()
 
 
-func _sync_procedural_rig() -> void:
-	if !is_instance_valid(m_procedural_rig):
-		if !is_instance_valid(m_visual_root):
-			return
-		m_procedural_rig = _ensure_procedural_rig()
-	if !is_instance_valid(m_procedural_rig):
-		return
-
-	m_procedural_rig.visible = use_procedural_rig and not use_character_model
-	if m_procedural_rig.has_method("configure_from_seed"):
-		m_procedural_rig.call("configure_from_seed", procedural_seed, body_height, body_radius)
-	_sync_legacy_visual_visibility()
-
-
 func _sync_legacy_visual_visibility() -> void:
-	var legacy_visible := !use_procedural_rig and !use_character_model
+	var legacy_visible := !use_character_model
 	for part in [
 		m_body_part,
 		m_head_part,
@@ -1168,7 +1115,7 @@ func _update_face_marker() -> void:
 		_:
 			face_color = Color(0.08, 0.07, 0.06, 1.0)
 
-	m_face_marker_part.visible = facial_action != FacialActionEnum.BLINK
+	m_face_marker_part.visible = not use_character_model and facial_action != FacialActionEnum.BLINK
 	_apply_material(m_face_marker_part, face_color)
 	_apply_material(m_direction_marker_part, face_color)
 

@@ -109,11 +109,8 @@ func _validate_actor_api(failures: Array[String]) -> void:
 	if visual_root != null:
 		m_actor.call("_process_visual_motion", 0.11)
 		if visual_root.position.y <= 0.0:
-			failures.append("procedural movement bob did not lift VisualRoot")
-		var left_leg := visual_root.get_node_or_null("LeftLeg") as MeshInstance3D
-		if left_leg == null or is_equal_approx(left_leg.rotation.x, 0.0):
-			failures.append("procedural movement did not swing the legs")
-		_validate_procedural_low_poly_rig(failures, visual_root)
+			failures.append("walk movement bob did not lift VisualRoot")
+		_validate_character_model(failures, visual_root)
 
 	m_actor.move_with_speed(Vector3(1.0, 0.0, 0.0), 2.0)
 	if m_actor.velocity.x <= 0.0:
@@ -133,80 +130,57 @@ func _validate_actor_api(failures: Array[String]) -> void:
 		failures.append("ground rect did not reflect tuned body radius")
 
 
-func _validate_procedural_low_poly_rig(failures: Array[String], visual_root: Node3D) -> void:
-	var original_use_rig := bool(m_actor.get("use_procedural_rig"))
-	var original_seed := String(m_actor.get("procedural_seed"))
-	var original_use_model := bool(m_actor.get("use_character_model"))
+func _validate_character_model(failures: Array[String], visual_root: Node3D) -> void:
+	if not bool(m_actor.get("use_character_model")):
+		failures.append("HumanBody3D should default to the character model")
 
-	m_actor.set("use_character_model", false)
-	m_actor.set("procedural_seed", "harbor-hero-42")
-	m_actor.set("use_procedural_rig", true)
-	var rig := visual_root.get_node_or_null("ProceduralLowPolyCharacterRig") as Node3D
-	if rig == null:
-		failures.append("HumanBody3D did not create ProceduralLowPolyCharacterRig")
-		_restore_procedural_rig_state(original_use_rig, original_seed, original_use_model)
+	var model := visual_root.get_node_or_null("CharacterModel") as Node3D
+	if model == null:
+		failures.append("HumanBody3D did not instance the CharacterModel")
 		return
-	if !rig.visible:
-		failures.append("HumanBody3D did not show the procedural rig when enabled")
+	if not model.visible:
+		failures.append("HumanBody3D character model is not visible")
+	if model.get_child_count() == 0:
+		failures.append("HumanBody3D character model has no instanced scene")
+		return
+
+	var mesh_instance := _find_mesh_instance(model)
+	if mesh_instance == null or mesh_instance.mesh == null or mesh_instance.mesh.get_surface_count() <= 0:
+		failures.append("HumanBody3D character model has no renderable mesh")
+	elif mesh_instance.get_active_material(0) == null:
+		failures.append("HumanBody3D character model is missing its material")
+
+	var anim := _find_animation_player(model)
+	if anim == null:
+		failures.append("HumanBody3D character model has no AnimationPlayer")
+	else:
+		for clip in ["idle", "walk", "run"]:
+			if not anim.has_animation(clip):
+				failures.append("HumanBody3D character model is missing the %s animation" % clip)
+
 	var legacy_left_leg := visual_root.get_node_or_null("LeftLeg") as MeshInstance3D
 	if legacy_left_leg != null and legacy_left_leg.visible:
-		failures.append("HumanBody3D did not hide legacy visual parts when procedural rig is enabled")
-
-	var skeleton := rig.get_node_or_null("Skeleton3D") as Skeleton3D
-	if skeleton == null:
-		failures.append("ProceduralLowPolyCharacterRig is missing Skeleton3D")
-	else:
-		for bone_name in ["Hips", "Spine", "Head", "LeftHand", "RightHand", "LeftUpperLeg", "RightUpperLeg"]:
-			if skeleton.find_bone(bone_name) < 0:
-				failures.append("ProceduralLowPolyCharacterRig is missing bone %s" % bone_name)
-
-	for attachment_path in [
-		"Skeleton3D/HeadAttachment",
-		"Skeleton3D/LeftHandAttachment",
-		"Skeleton3D/RightHandAttachment",
-	]:
-		if rig.get_node_or_null(attachment_path) == null:
-			failures.append("ProceduralLowPolyCharacterRig is missing %s" % attachment_path)
-
-	var body_surface := rig.get_node_or_null("Skeleton3D/BodySurface") as MeshInstance3D
-	if body_surface == null:
-		failures.append("ProceduralLowPolyCharacterRig is missing BodySurface mesh")
-	elif body_surface.mesh == null or body_surface.mesh.get_surface_count() <= 0:
-		failures.append("ProceduralLowPolyCharacterRig did not generate a body mesh surface")
-	else:
-		var arrays := body_surface.mesh.surface_get_arrays(0)
-		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-		var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
-		var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
-		if vertices.size() <= 0:
-			failures.append("ProceduralLowPolyCharacterRig generated an empty body mesh")
-		if colors.size() != vertices.size():
-			failures.append("ProceduralLowPolyCharacterRig did not assign per-vertex colors")
-		if normals.size() != vertices.size():
-			failures.append("ProceduralLowPolyCharacterRig did not assign flat normals")
-
-	var first_snapshot: Dictionary = rig.call("get_config_snapshot")
-	m_actor.set("procedural_seed", "harbor-hero-42")
-	var repeat_snapshot: Dictionary = rig.call("get_config_snapshot")
-	m_actor.set("procedural_seed", "harbor-hero-43")
-	var changed_snapshot: Dictionary = rig.call("get_config_snapshot")
-	if first_snapshot != repeat_snapshot:
-		failures.append("ProceduralLowPolyCharacterRig seed output is not deterministic")
-	if first_snapshot == changed_snapshot:
-		failures.append("ProceduralLowPolyCharacterRig did not vary output across seeds")
-
-	rig.call("process_motion", 0.18, true, false, false)
-	var motion_snapshot: Dictionary = rig.call("get_motion_snapshot")
-	if absf(float(motion_snapshot.get("left_leg_pitch", 0.0))) <= 0.001:
-		failures.append("ProceduralLowPolyCharacterRig did not produce mathematical walk motion")
-
-	_restore_procedural_rig_state(original_use_rig, original_seed, original_use_model)
+		failures.append("HumanBody3D should hide legacy block parts in model mode")
 
 
-func _restore_procedural_rig_state(use_rig: bool, seed: String, use_model: bool) -> void:
-	m_actor.set("procedural_seed", seed)
-	m_actor.set("use_procedural_rig", use_rig)
-	m_actor.set("use_character_model", use_model)
+func _find_mesh_instance(node: Node) -> MeshInstance3D:
+	if node is MeshInstance3D:
+		return node
+	for child in node.get_children():
+		var found := _find_mesh_instance(child)
+		if found != null:
+			return found
+	return null
+
+
+func _find_animation_player(node: Node) -> AnimationPlayer:
+	if node is AnimationPlayer:
+		return node
+	for child in node.get_children():
+		var found := _find_animation_player(child)
+		if found != null:
+			return found
+	return null
 
 
 func _validate_player_controller_input_order(failures: Array[String], controller: Variant) -> void:
