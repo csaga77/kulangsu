@@ -34,7 +34,7 @@
 - The current runtime 2D terrain remains owned by [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn) and [`../../terrain/terrain.gd`](../../terrain/terrain.gd).
 - The 3D prototype is owned by [`../../terrain/low_poly_terrain_3d.gd`](../../terrain/low_poly_terrain_3d.gd) and the focused test scene under [`../../scenes/tests/`](../../scenes/tests).
 - Terrain mask meaning remains owned by [`../../terrain/terrain_generation_profile.gd`](../../terrain/terrain_generation_profile.gd), [`../../terrain/terrain_mask_rule.gd`](../../terrain/terrain_mask_rule.gd), and [`../../terrain/island_generation_profile.tres`](../../terrain/island_generation_profile.tres).
-- Do not route story, save state, resident spawning, or main-scene weather through this prototype until an explicit 3D world-integration phase starts.
+- Do not route story, save state, resident spawning, or main-scene weather through this prototype until the parallel 3D lane has green combined smoke tests, accepted visual QA screenshots, a stable interaction contract, an acceptable performance budget, and a written story/resident ownership plan.
 
 ## Contracts
 
@@ -100,6 +100,7 @@ PASS: LowPolyTerrain3D heightmap smoke test
 ```
 
 - Visual validation should check that heightmap-expanded water follows `water_height`, the transparent water plane reveals seabed terrain, dry land continues into the seabed without vertical walls, the rendered water footprint overlaps one adjacent shoreline land cell by default, mask-clipped water/land split still works, the semi-transparent top water layer and shoreline highlights remain readable, and sloped heightmap elevation, streets, and building footprint overlays are clear from the orthographic camera.
+- Screenshot QA should capture the combined world scene from its fixed validation camera and confirm the render is nonblank, the player is readable, all five landmark proxies are visible enough for blockout review, water/seabed layering is legible, and terrain or UI elements do not incoherently overlap.
 - Run the combined validation scene after coordinate, collision, player movement, or camera changes:
 
 ```sh

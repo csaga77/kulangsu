@@ -83,7 +83,7 @@ Current pressure points:
 
 ## What Remains
 
-Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but they are still active tracks rather than fully finished bodies of work. The next phase is no longer the architecture pass itself; it is about deepening those content and polish workstreams until the remaining embodied-scene, world-reactivity, and closing-movement gaps are closed. The low-poly 3D prototype is a parallel exploration lane and should stay outside the runtime overworld until its coordinate, visual, and playability contracts are proven. Resident migration remains useful sidecar cleanup, but it is not the recommended next focus while the manual conversion path is still relatively expensive.
+Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but they are still active tracks rather than fully finished bodies of work. The next phase is no longer the architecture pass itself; it is about deepening those content and polish workstreams until the remaining embodied-scene, world-reactivity, and closing-movement gaps are closed. The low-poly 3D prototype is a parallel exploration lane and should stay outside the runtime overworld until its visual QA, interaction, performance, and story/resident integration gates are proven. Resident migration remains useful sidecar cleanup, but it is not the recommended next focus while the manual conversion path is still relatively expensive.
 
 ### Status Summary
 
@@ -95,7 +95,7 @@ Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but the
 | Workstream 3 | First pass shipped | Priority 3 (ending polish after more content) |
 | Workstream 4 | First pass shipped | Lower (polish) |
 | Workstream 5 | First pass shipped | Priority 4 (editor workflow), then Priority 5 (validation) |
-| Low-Poly 3D Prototype | Terrain and actor/controller sidecars shipped | Parallel sidecar (coordinate adapter, combined world validation, visual contract) |
+| Low-Poly 3D Prototype | Terrain, actor/controller, coordinate/style, landmark proxy, and combined-world sidecars shipped | Parallel sidecar (visual tuning, screenshot QA, interaction prototype, performance/integration gates) |
 | Resident Migration | Partial (6 migrated; remaining require manual `.tres` conversion) | Deferred sidecar (touch when content work needs it) |
 
 ### Priority 1: Route Content Depth (recommended next)
@@ -141,10 +141,12 @@ First-pass shipped outcome:
 Still open:
 
 - tune the initial visual-style contract through the combined world scene, especially camera angle, projection, follow offset, palette, lighting, water, terrain chunkiness, landmark proxy scale, actor movement feel, and camera-relative control
-- map additional model animation clips (jump, gestures) to actor states, then tune in-game integration and foot/terrain readability
+- capture fixed-camera visual QA screenshots for the combined world scene, checking player readability, landmark visibility, water/seabed clarity, and nonblank/no-overlap rendering
+- validate any optional model clips beyond `idle`/`walk`/`run` before mapping them to jump, gesture, or idle states, then tune in-game integration and foot/terrain readability
 - keep extending placement only through shared `LowPolyWorldCoordinates3D` methods before adding residents, story anchors, or interaction hotspots
 - decide whether the current coarse sampling should remain the intended visual style or whether streets/building footprints need cleaner extraction before gameplay placement starts
-- add 3D interaction areas only after the five-placeholder landmark blockout and combined playability scene stay visually stable
+- add a non-story 3D interaction-area prototype only after the five-placeholder landmark blockout and combined playability scene stay visually stable
+- require explicit runtime-integration gates before touching `game_main.tscn`: green combined smoke tests, accepted visual QA screenshots, a stable interaction contract, an acceptable performance budget, and a written story/resident ownership plan
 
 Primary files:
 

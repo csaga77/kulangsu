@@ -10,7 +10,7 @@
 
 - [`../../characters/human_body_3d.gd`](../../characters/human_body_3d.gd) defines `class_name HumanBody3D`.
 - [`../../characters/human_body_3d.tscn`](../../characters/human_body_3d.tscn) is the minimal actor scene.
-- [`../../assets/characters/`](../../assets/characters) holds the premade low-poly character models (skinned, textured, ~2k triangles each), each carrying `idle`, `walk`, `run`, `dance`, `scared`, and `wave_goodbye` clips. [`boy.glb`](../../assets/characters/boy.glb) is the default actor visual; [`female.glb`](../../assets/characters/female.glb) and [`male.glb`](../../assets/characters/male.glb) are interchangeable alternates assignable through `character_model_scene` (all share the same height and feet-at-origin pivot).
+- [`../../assets/characters/`](../../assets/characters) holds the premade low-poly character models (skinned, textured, ~2k triangles each). The current validated locomotion baseline is `idle`, `walk`, and `run`; imported models may include extra clips such as `dance`, `scared`, or `wave_goodbye`, but those must be validated before gameplay use. [`boy.glb`](../../assets/characters/boy.glb) is the default actor visual; [`female.glb`](../../assets/characters/female.glb) and [`male.glb`](../../assets/characters/male.glb) are interchangeable alternates assignable through `character_model_scene` (all share the same height and feet-at-origin pivot).
 - [`../../characters/control/base_controller_3d.gd`](../../characters/control/base_controller_3d.gd) defines `class_name BaseController3D`, the shared 3D controller base for `HumanBody3D`.
 - [`../../characters/control/player_controller_3d.gd`](../../characters/control/player_controller_3d.gd) defines `class_name PlayerController3D`, a first playable input adapter that extends `BaseController3D`.
 - [`../../characters/tests/test_human_body_3d.tscn`](../../characters/tests/test_human_body_3d.tscn) is the focused smoke scene covering actor API parity, current-frame controller input, placement occupancy, step-up/step-down navigation, and character-model structure (instanced model, mesh, material, and `idle`/`walk`/`run` animation clips).
@@ -49,7 +49,7 @@
 - The character model asset lives in [`../../assets/characters/`](../../assets/characters); `HumanBody3D` owns its instancing, scaling, orientation, grounding, and animation mapping.
 - The existing `ResidentNPC`, `BaseController`, `PlayerController`, and `NPCController` remain 2D-only.
 - `BaseController3D` and `PlayerController3D` mirror the 2D controller hierarchy while staying separate from `BaseController` and `PlayerController` because they use `Vector3`, `CharacterBody3D`, and XZ-plane movement.
-- Do not wire `HumanBody3D` into `game_main.tscn` until a deliberate 3D world-integration phase starts.
+- Do not wire `HumanBody3D` into `game_main.tscn` until the parallel 3D lane has green combined smoke tests, accepted visual QA screenshots, a stable interaction contract, an acceptable performance budget, and a written story/resident ownership plan.
 
 ## Contracts
 
@@ -103,6 +103,6 @@ PASS: HumanBody3D adapter smoke test
 
 ## Next Steps
 
-- Map additional model clips (for example `jump`, `wave_goodbye`) to actor states such as the jump window or idle gestures.
+- Audit and validate any optional imported clips beyond `idle`, `walk`, and `run`, then map accepted clips to actor states such as the jump window or idle gestures.
 - Tune actor movement speed, camera-relative movement, `Camera3DController` follow offset, and camera orbit feel with the model inside the combined world scene before adding landmark hotspots.
 - Decide a final 3D character customization contract (swappable models, tints, or accessories) before wiring residents and NPCs to the 3D actor.

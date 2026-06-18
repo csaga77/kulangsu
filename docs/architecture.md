@@ -83,7 +83,7 @@ Boundary:
 
 - Keep scene-specific world integration here instead of scattering it across UI files or unrelated helpers.
 - Keep terrain semantics in terrain profile/rule resources instead of hard-coding new mask-color branches directly into unrelated systems.
-- Keep low-poly 3D terrain and coordinate work in the prototype lane until an explicit 3D world-integration phase starts.
+- Keep low-poly 3D terrain and coordinate work in the prototype lane until the 3D sidecar has green combined smoke tests, accepted visual QA screenshots, a stable interaction contract, an acceptable performance budget, and a written story/resident ownership plan.
 - Keep low-poly 3D palette, water tuning, camera, lighting, and proxy-landmark tuning in `LowPolyArtStyle3D` resources while the art direction is still exploratory.
 
 ### Shared State And Catalogs

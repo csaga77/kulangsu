@@ -215,7 +215,7 @@ Owned by:
 
 Current contract:
 
-- the low-poly 3D prototype remains a sidecar validation lane and must not be wired into `game_main.tscn` until a deliberate 3D world-integration phase starts
+- the low-poly 3D prototype remains a sidecar validation lane and must not be wired into `game_main.tscn` until it has green combined smoke tests, accepted visual QA screenshots, a stable interaction contract, an acceptable performance budget, and a written story/resident ownership plan
 - `LowPolyWorldCoordinates3D` owns terrain-mask-pixel to 3D XZ conversion plus rough 2D isometric-position to mask-pixel conversion for authored landmark blockouts
 - landmark, actor, story-anchor, and future hotspot placement must use `LowPolyWorldCoordinates3D` instead of duplicating grid-centering or isometric conversion math
 - `LowPolyTerrain3D` owns optional grayscale heightmap sampling; black maps to `heightmap_min_offset`, white maps to `heightmap_max_offset`, and offsets are added to `land_height`
@@ -231,7 +231,7 @@ Current contract:
 - `HumanBody3D.body_height` and `HumanBody3D.body_radius` are the current low-poly actor shape contract; they update generated visuals, capsule collision, bounding box, and ground footprint together
 - `HumanBody3D.use_character_model` defaults to `true`: it shows the instanced `VisualRoot/CharacterModel` and hides the legacy block-body parts; set it to `false` to fall back to the block mannequin
 - the default character model is `assets/characters/boy.glb`, with `female.glb` and `male.glb` as interchangeable alternates (same height and `idle`/`walk`/`run` clips); the selected model is scaled by `body_height / character_model_height`, rotated by `character_model_yaw_offset` to face the rig's `+Z` forward, and planted so its lowest rendered point sits at the foot origin (`character_model_auto_ground` plus the manual `character_model_y_offset`)
-- locomotion drives the model `AnimationPlayer`: `model_idle_animation` / `model_walk_animation` / `model_run_animation` map to standing/walking/running and loop with a short crossfade; clip names resolve case-insensitively against the imported animation list
+- locomotion drives the model `AnimationPlayer`: `model_idle_animation` / `model_walk_animation` / `model_run_animation` map to standing/walking/running and loop with a short crossfade; clip names resolve case-insensitively against the imported animation list; optional imported clips beyond `idle`/`walk`/`run` must be validated before being bound to gameplay states
 - `HumanBody3D.max_step_height`, `HumanBody3D.floor_snap_distance`, and `HumanBody3D.grounding_speed` tune prototype 3D navigation over floor meshes, including GridMap stair treads; solid wall geometry must still block traversal instead of being bypassed by stair support
 - `HumanBody3D` must not run manual stair/floor reacquisition while `m_is_currently_jumping` is active; jump-state grounded checks intentionally return false so repeated visual jumps on stair crests cannot reuse stale stair directions and pull the actor onto the wrong floor sample
 - `HumanBody3D` may use readability polish such as contact shadows and movement bob, but it remains a prototype actor until the 3D asset direction is finalized
