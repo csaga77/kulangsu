@@ -2,17 +2,20 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://01kxjkmwaqo3"
-path.s3tc="res://.godot/imported/3d_cartoon_boy_figure_3d_cartoon_boy_figure_basecolor.jpg-462df9e878223568c73b4763587806c9.s3tc.ctex"
+uid="uid://dvluxgq60738x"
+path.s3tc="res://.godot/imported/boy_3d_cartoon_boy_figure_basecolor.jpg-0fe4f2bc76324325e1ace997abe0a8c8.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
+generator_parameters={
+"md5": "fdd5f3f38dea0a8d7032b3c7b3a31cf3"
+}
 
 [deps]
 
-source_file="res://assets/characters/3d_cartoon_boy_figure_3d_cartoon_boy_figure_basecolor.jpg"
-dest_files=["res://.godot/imported/3d_cartoon_boy_figure_3d_cartoon_boy_figure_basecolor.jpg-462df9e878223568c73b4763587806c9.s3tc.ctex"]
+source_file="res://assets/characters/boy_3d_cartoon_boy_figure_basecolor.jpg"
+dest_files=["res://.godot/imported/boy_3d_cartoon_boy_figure_basecolor.jpg-0fe4f2bc76324325e1ace997abe0a8c8.s3tc.ctex"]
 
 [params]
 

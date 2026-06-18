@@ -21,7 +21,7 @@ const MAX_STEP_LATERAL_DRIFT_RATIO := 0.1
 const PLACEMENT_QUERY_FLOOR_CLEARANCE := 0.01
 const FLOOR_SAMPLE_MISSING := -INF
 const BaseController3DScript = preload("res://characters/control/base_controller_3d.gd")
-const CharacterModelScene: PackedScene = preload("res://assets/characters/3d_cartoon_boy_figure.glb")
+const CharacterModelScene: PackedScene = preload("res://assets/characters/boy.glb")
 const DEFAULT_CHARACTER_MODEL_HEIGHT := 0.998
 
 enum FacialMoodEnum {
