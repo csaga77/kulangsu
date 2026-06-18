@@ -210,7 +210,7 @@ Owned by:
 - [`../terrain/low_poly_art_style_3d.gd`](../terrain/low_poly_art_style_3d.gd)
 - [`../architecture/low_poly/low_poly_landmark_proxy_3d.gd`](../architecture/low_poly/low_poly_landmark_proxy_3d.gd)
 - [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd)
-- [`../assets/characters/3d_cartoon_boy_figure.glb`](../assets/characters/3d_cartoon_boy_figure.glb)
+- [`../assets/characters/boy.glb`](../assets/characters/boy.glb) (default model; `female.glb` and `male.glb` are alternates)
 - [`../scenes/tests/test_low_poly_world_3d.tscn`](../scenes/tests/test_low_poly_world_3d.tscn)
 
 Current contract:
@@ -230,7 +230,7 @@ Current contract:
 - the current five canonical `LowPolyLandmarkProxy3D` nodes are non-interactive visual blockouts snapped to nearby land, not authoritative gameplay hotspots
 - `HumanBody3D.body_height` and `HumanBody3D.body_radius` are the current low-poly actor shape contract; they update generated visuals, capsule collision, bounding box, and ground footprint together
 - `HumanBody3D.use_character_model` defaults to `true`: it shows the instanced `VisualRoot/CharacterModel` and hides the legacy block-body parts; set it to `false` to fall back to the block mannequin
-- the character model (`assets/characters/3d_cartoon_boy_figure.glb`) is scaled by `body_height / character_model_height`, rotated by `character_model_yaw_offset` to face the rig's `+Z` forward, and planted so its lowest rendered point sits at the foot origin (`character_model_auto_ground` plus the manual `character_model_y_offset`)
+- the default character model is `assets/characters/boy.glb`, with `female.glb` and `male.glb` as interchangeable alternates (same height and `idle`/`walk`/`run` clips); the selected model is scaled by `body_height / character_model_height`, rotated by `character_model_yaw_offset` to face the rig's `+Z` forward, and planted so its lowest rendered point sits at the foot origin (`character_model_auto_ground` plus the manual `character_model_y_offset`)
 - locomotion drives the model `AnimationPlayer`: `model_idle_animation` / `model_walk_animation` / `model_run_animation` map to standing/walking/running and loop with a short crossfade; clip names resolve case-insensitively against the imported animation list
 - `HumanBody3D.max_step_height`, `HumanBody3D.floor_snap_distance`, and `HumanBody3D.grounding_speed` tune prototype 3D navigation over floor meshes, including GridMap stair treads; solid wall geometry must still block traversal instead of being bypassed by stair support
 - `HumanBody3D` must not run manual stair/floor reacquisition while `m_is_currently_jumping` is active; jump-state grounded checks intentionally return false so repeated visual jumps on stair crests cannot reuse stale stair directions and pull the actor onto the wrong floor sample

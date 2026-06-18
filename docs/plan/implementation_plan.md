@@ -156,7 +156,7 @@ Primary files:
 - `scenes/tests/test_low_poly_terrain_3d.tscn`
 - `scenes/tests/test_low_poly_world_3d.tscn`
 - `characters/human_body_3d.gd`
-- `assets/characters/3d_cartoon_boy_figure.glb`
+- `assets/characters/boy.glb` (default; `female.glb`, `male.glb` alternates)
 - `characters/control/base_controller_3d.gd`
 - `characters/control/player_controller_3d.gd`
 - `characters/tests/test_human_body_3d.tscn`

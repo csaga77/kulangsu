@@ -21,6 +21,8 @@ const MAX_STEP_LATERAL_DRIFT_RATIO := 0.1
 const PLACEMENT_QUERY_FLOOR_CLEARANCE := 0.01
 const FLOOR_SAMPLE_MISSING := -INF
 const BaseController3DScript = preload("res://characters/control/base_controller_3d.gd")
+# Default character model. Alternate models (female.glb, male.glb) live alongside
+# it in assets/characters and can be assigned through character_model_scene.
 const CharacterModelScene: PackedScene = preload("res://assets/characters/boy.glb")
 const DEFAULT_CHARACTER_MODEL_HEIGHT := 0.998
 
