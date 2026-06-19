@@ -156,10 +156,8 @@ func _validate_world(failures: Array[String]) -> void:
 		failures.append("HumanBody3D body height tuning is invalid")
 	if float(m_actor.get("body_radius")) <= 0.0:
 		failures.append("HumanBody3D body radius tuning is invalid")
-	if m_actor.get_node_or_null("ContactShadow") == null:
-		failures.append("HumanBody3D did not create a contact shadow")
-	if m_actor.get_node_or_null("VisualRoot/DirectionMarker") == null:
-		failures.append("HumanBody3D did not create a direction marker")
+	if m_actor.get_node_or_null("VisualRoot/CharacterModel") == null:
+		failures.append("HumanBody3D did not instance the character model")
 
 	_validate_landmark_proxies(failures)
 

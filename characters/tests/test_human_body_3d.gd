@@ -67,7 +67,6 @@ func _validate_actor_api(failures: Array[String]) -> void:
 
 	m_actor.set("body_height", 1.84)
 	m_actor.set("body_radius", 0.32)
-	m_actor.set("contact_shadow_radius", 0.44)
 	var local_box: AABB = m_actor.get_local_bounding_box()
 	if !is_equal_approx(local_box.size.y, 1.84):
 		failures.append("body height export did not update local bounding box")
@@ -89,12 +88,8 @@ func _validate_actor_api(failures: Array[String]) -> void:
 	var visual_root := m_actor.get_node_or_null("VisualRoot") as Node3D
 	if visual_root == null:
 		failures.append("HumanBody3D did not create VisualRoot")
-	else:
-		for part_name in ["LeftArm", "RightArm", "FaceMarker", "DirectionMarker"]:
-			if visual_root.get_node_or_null(part_name) == null:
-				failures.append("HumanBody3D did not create %s" % part_name)
-	if m_actor.get_node_or_null("ContactShadow") == null:
-		failures.append("HumanBody3D did not create ContactShadow")
+	elif visual_root.get_node_or_null("DebugBox") == null:
+		failures.append("HumanBody3D did not create the DebugBox under VisualRoot")
 
 	m_actor.set_direction_vector(Vector3(0.0, 0.0, 1.0))
 	m_actor.is_walking = true
@@ -131,9 +126,6 @@ func _validate_actor_api(failures: Array[String]) -> void:
 
 
 func _validate_character_model(failures: Array[String], visual_root: Node3D) -> void:
-	if not bool(m_actor.get("use_character_model")):
-		failures.append("HumanBody3D should default to the character model")
-
 	var model := visual_root.get_node_or_null("CharacterModel") as Node3D
 	if model == null:
 		failures.append("HumanBody3D did not instance the CharacterModel")
@@ -158,9 +150,80 @@ func _validate_character_model(failures: Array[String], visual_root: Node3D) -> 
 			if not anim.has_animation(clip):
 				failures.append("HumanBody3D character model is missing the %s animation" % clip)
 
-	var legacy_left_leg := visual_root.get_node_or_null("LeftLeg") as MeshInstance3D
-	if legacy_left_leg != null and legacy_left_leg.visible:
-		failures.append("HumanBody3D should hide legacy block parts in model mode")
+	_validate_hair_model(failures, model)
+
+
+func _validate_hair_model(failures: Array[String], model: Node3D) -> void:
+	if not bool(m_actor.get("use_hair_model")):
+		failures.append("HumanBody3D should default to using the hair model")
+
+	var skeleton := _find_skeleton(model)
+	if skeleton == null:
+		failures.append("HumanBody3D character model has no Skeleton3D for hair attachment")
+		return
+
+	var attach_bone := String(m_actor.get("hair_attach_bone"))
+	if skeleton.find_bone(attach_bone) < 0:
+		failures.append("HumanBody3D hair attach bone '%s' is missing from the skeleton" % attach_bone)
+		return
+
+	var attachment := skeleton.get_node_or_null("HairAttachment") as BoneAttachment3D
+	if attachment == null:
+		failures.append("HumanBody3D did not create the hair BoneAttachment3D")
+		return
+	if attachment.bone_name != attach_bone:
+		failures.append("HumanBody3D hair attachment is bound to the wrong bone")
+
+	var hair_model := attachment.get_node_or_null("HairModel") as Node3D
+	if hair_model == null:
+		failures.append("HumanBody3D did not create the separate HairModel node")
+		return
+	if not hair_model.visible:
+		failures.append("HumanBody3D hair model is not visible")
+	if hair_model.get_child_count() == 0:
+		failures.append("HumanBody3D hair model has no instanced scene")
+		return
+	if _find_mesh_instance(hair_model) == null:
+		failures.append("HumanBody3D hair model has no renderable mesh")
+
+	# Toggling use_hair_model off should hide the hair node.
+	m_actor.set("use_hair_model", false)
+	if hair_model.visible:
+		failures.append("HumanBody3D did not hide the hair model when use_hair_model is off")
+	m_actor.set("use_hair_model", true)
+	if not hair_model.visible:
+		failures.append("HumanBody3D did not re-show the hair model when use_hair_model is on")
+
+	_validate_skeleton_debug(failures, skeleton)
+
+
+func _validate_skeleton_debug(failures: Array[String], skeleton: Skeleton3D) -> void:
+	if bool(m_actor.get("draw_skeleton_bones")):
+		failures.append("HumanBody3D should not draw skeleton bones by default")
+
+	m_actor.set("draw_skeleton_bones", true)
+	var debug_part := skeleton.get_node_or_null("SkeletonDebug") as MeshInstance3D
+	if debug_part == null:
+		failures.append("HumanBody3D did not create the SkeletonDebug node when enabled")
+	else:
+		if not debug_part.visible:
+			failures.append("HumanBody3D skeleton debug draw is not visible when enabled")
+		var debug_mesh := debug_part.mesh as ImmediateMesh
+		if debug_mesh == null or debug_mesh.get_surface_count() <= 0:
+			failures.append("HumanBody3D skeleton debug draw produced no bone lines")
+		m_actor.set("draw_skeleton_bones", false)
+		if debug_part.visible:
+			failures.append("HumanBody3D did not hide skeleton debug draw when disabled")
+
+
+func _find_skeleton(node: Node) -> Skeleton3D:
+	if node is Skeleton3D:
+		return node
+	for child in node.get_children():
+		var found := _find_skeleton(child)
+		if found != null:
+			return found
+	return null
 
 
 func _find_mesh_instance(node: Node) -> MeshInstance3D:

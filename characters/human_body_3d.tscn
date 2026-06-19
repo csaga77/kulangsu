@@ -6,5 +6,7 @@
 [node name="human_body_3d" type="CharacterBody3D" unique_id=771716252]
 floor_snap_length = 0.72
 script = ExtResource("1_human_body_3d")
-body_height = 1.8900000000000001
+body_height = 1.84
+body_radius = 0.29000000000000004
 character_model_scene = ExtResource("2_gei5k")
+hair_model_yaw_offset = 90.0

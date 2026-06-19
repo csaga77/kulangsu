@@ -13,25 +13,31 @@
 - [`../../assets/characters/`](../../assets/characters) holds the premade low-poly character models (skinned, textured, ~2k triangles each). The current validated locomotion baseline is `idle`, `walk`, and `run`; imported models may include extra clips such as `dance`, `scared`, or `wave_goodbye`, but those must be validated before gameplay use. [`boy.glb`](../../assets/characters/boy.glb) is the default actor visual; [`female.glb`](../../assets/characters/female.glb) and [`male.glb`](../../assets/characters/male.glb) are interchangeable alternates assignable through `character_model_scene` (all share the same height and feet-at-origin pivot).
 - [`../../characters/control/base_controller_3d.gd`](../../characters/control/base_controller_3d.gd) defines `class_name BaseController3D`, the shared 3D controller base for `HumanBody3D`.
 - [`../../characters/control/player_controller_3d.gd`](../../characters/control/player_controller_3d.gd) defines `class_name PlayerController3D`, a first playable input adapter that extends `BaseController3D`.
-- [`../../characters/tests/test_human_body_3d.tscn`](../../characters/tests/test_human_body_3d.tscn) is the focused smoke scene covering actor API parity, current-frame controller input, placement occupancy, step-up/step-down navigation, and character-model structure (instanced model, mesh, material, and `idle`/`walk`/`run` animation clips).
+- [`../../characters/tests/test_human_body_3d.tscn`](../../characters/tests/test_human_body_3d.tscn) is the focused smoke scene covering actor API parity, current-frame controller input, placement occupancy, step-up/step-down navigation, character-model structure (instanced model, mesh, material, and `idle`/`walk`/`run` animation clips), and hair-node structure (head-bone `BoneAttachment3D`, instanced `HairModel` mesh, and `use_hair_model` visibility toggle).
 - [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn) validates the actor, controller, generated terrain collision, terrain-height following, coordinate adapter, `Camera3DController` follow/zoom/orbit behavior, style preset, five canonical postcard landmark proxies, and camera together.
 - `HumanBody3D` instances the GLB model under `VisualRoot/CharacterModel`, scales it to `body_height`, rotates it to face the rig's forward axis, and auto-plants its lowest point at the foot origin.
-- A simple `BoxMesh` block mannequin remains in the actor as a fallback visual; it is only shown when `use_character_model` is set to `false`.
+- A separate hair model is instanced in its own `HairModel` node under a `HairAttachment` `BoneAttachment3D` bound to the character model's `Head` bone, so the hair tracks head animation and can be swapped independently of the body. It defaults to [`spiky_hair.glb`](../../assets/characters/spiky_hair.glb).
+- The GLB model is the actor's only visual body; there is no procedural block-mannequin fallback. The actor's procedurally-generated geometry is limited to the optional `DebugBox` bounding-box gizmo and the optional skeleton bone-debug lines.
 - The actor exposes familiar adapter fields and methods:
   - `direction`
   - `is_walking`
   - `is_running`
   - `body_height`
   - `body_radius`
-  - `use_character_model`
   - `character_model_scene`
   - `character_model_height`
   - `character_model_yaw_offset`
   - `character_model_auto_ground`
   - `character_model_y_offset`
+  - `use_hair_model`
+  - `hair_model_scene`
+  - `hair_attach_bone`
+  - `hair_model_scale`
+  - `hair_model_offset`
+  - `hair_model_yaw_offset`
+  - `draw_skeleton_bones`
+  - `skeleton_debug_color`
   - `model_idle_animation` / `model_walk_animation` / `model_run_animation`
-  - `facial_mood`
-  - `facial_action`
   - `configuration`
   - `move(...)`
   - `move_with_speed(...)`
@@ -54,9 +60,10 @@
 ## Contracts
 
 - `direction` uses the same flat-angle convention as `HumanBody2D`: `0` points east, `90` points south, `180` points west, and `270` points north.
-- `configuration` accepts the same high-level appearance dictionary shape used by the 2D LPC actor. The 3D prototype maps recognized variant names to a small material palette used by the fallback block mannequin.
-- `use_character_model` defaults to `true`. When enabled, `HumanBody3D` shows `VisualRoot/CharacterModel` and hides the legacy block-body parts; when disabled, the legacy block mannequin is the visible prototype body.
+- `configuration` accepts and round-trips the same high-level appearance dictionary shape used by the 2D LPC actor (stored and re-emitted via `configuration_changed`). The 3D actor no longer maps it to per-part colors, since the procedural block mannequin that consumed those selections has been removed; appearance comes from the GLB model and hair instead.
 - `character_model_scene` is the `PackedScene` instanced for the model and defaults to `boy.glb` (swap in `female.glb` or `male.glb` for a different character). The model is scaled by `body_height / character_model_height`, rotated by `character_model_yaw_offset` (default `-90` so the model's authored facing aligns with the rig's `+Z` forward), and vertically planted so its lowest rendered point sits at the foot origin when `character_model_auto_ground` is on, with `character_model_y_offset` as an additional manual nudge.
+- `use_hair_model` defaults to `true`. When enabled (and the GLB character model is active), `HumanBody3D` instances `hair_model_scene` into a dedicated `HairModel` node under a `HairAttachment` `BoneAttachment3D` on the skeleton bone named by `hair_attach_bone` (default `Head`), so the hair follows head animation. `hair_model_scene` defaults to `spiky_hair.glb` and can be swapped per instance; `hair_model_scale`, `hair_model_offset`, and `hair_model_yaw_offset` fine-tune placement in bone-local space.
+- `draw_skeleton_bones` is an editor/runtime debug toggle (default `false`). When enabled with the GLB model active, `HumanBody3D` draws the character model's `Skeleton3D` as bone lines in a `SkeletonDebug` `ImmediateMesh` parented under the skeleton, refreshed every frame so it tracks animation; `skeleton_debug_color` sets the line color. Useful for verifying the hair attach bone.
 - Locomotion drives the model's `AnimationPlayer`: `idle` when standing, `walk` when walking, and `run` when running, looped with a short crossfade. Clip names come from `model_idle_animation` / `model_walk_animation` / `model_run_animation` and resolve case-insensitively against the imported animation list.
 - The character model carries its own mesh, texture, skeleton, and animation clips; no runtime mesh generation or per-vertex color authoring is involved.
 - `move(...)` and `move_with_speed(...)` consume XZ-plane `Vector3` directions.

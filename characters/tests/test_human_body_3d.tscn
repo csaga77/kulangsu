@@ -22,7 +22,6 @@ script = ExtResource("1_test")
 
 [node name="human_body_3d" parent="." unique_id=711893711 instance=ExtResource("2_actor")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, 0)
-draw_bounding_box = true
 body_height = 1.53
 controller = SubResource("Resource_player_controller_3d")
 

@@ -35,8 +35,6 @@ body_height = 1.62
 body_radius = 0.25
 walk_bob_height = 0.03
 run_bob_height = 0.055
-leg_swing_degrees = 12.0
-contact_shadow_radius = 0.35
 controller = SubResource("Resource_player_controller_3d")
 
 [node name="Landmarks" type="Node3D" parent="." unique_id=728919585]

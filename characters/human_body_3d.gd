@@ -25,23 +25,10 @@ const BaseController3DScript = preload("res://characters/control/base_controller
 # it in assets/characters and can be assigned through character_model_scene.
 const CharacterModelScene: PackedScene = preload("res://assets/characters/boy.glb")
 const DEFAULT_CHARACTER_MODEL_HEIGHT := 0.998
-
-enum FacialMoodEnum {
-	MANUAL = 0,
-	NORMAL = 1,
-	SMILE = 2,
-	BLUSH = 3,
-	ANGRY = 4,
-	SAD = 5,
-	SHAME = 6,
-	SHOCK = 7,
-}
-
-enum FacialActionEnum {
-	NONE = 0,
-	BLINK = 1,
-	ROLLING_EYES = 2,
-}
+# Default hair model attached to the character model's head bone. Swap it per
+# instance through hair_model_scene; alternate hair GLBs live in assets/characters.
+const HairModelScene: PackedScene = preload("res://assets/characters/spiky_hair.glb")
+const DEFAULT_HAIR_ATTACH_BONE := "Head"
 
 @export var draw_bounding_box := false:
 	set(value):
@@ -49,6 +36,23 @@ enum FacialActionEnum {
 			return
 		draw_bounding_box = value
 		_sync_debug_box()
+
+# Draws the character model's skeleton as bone lines for rig debugging (e.g.
+# verifying the hair attach bone). Updated every frame so it tracks animation.
+@export var draw_skeleton_bones := false:
+	set(value):
+		if draw_skeleton_bones == value:
+			return
+		draw_skeleton_bones = value
+		_sync_skeleton_debug()
+
+@export var skeleton_debug_color := Color(0.1, 1.0, 0.45, 1.0):
+	set(value):
+		skeleton_debug_color = value
+		if is_instance_valid(m_skeleton_debug_material):
+			m_skeleton_debug_material.albedo_color = value
+		if draw_skeleton_bones:
+			_update_skeleton_debug()
 
 @export var direction: float = 90.0:
 	set(value):
@@ -95,17 +99,6 @@ enum FacialActionEnum {
 @export_range(0.0, 0.28, 0.005) var run_bob_height := 0.065
 @export_range(0.1, 10.0, 0.1) var walk_animation_cadence := 3.2
 @export_range(0.1, 12.0, 0.1) var run_animation_cadence := 5.2
-@export_range(0.0, 35.0, 0.5) var leg_swing_degrees := 13.0
-@export var contact_shadow_enabled := true:
-	set(value):
-		if contact_shadow_enabled == value:
-			return
-		contact_shadow_enabled = value
-		_sync_contact_shadow()
-@export_range(0.0, 1.5, 0.01) var contact_shadow_radius := 0.38:
-	set(value):
-		contact_shadow_radius = maxf(value, 0.0)
-		_sync_contact_shadow()
 
 @export_group("3D Navigation")
 @export_range(0.0, 1.0, 0.01) var max_step_height := 0.72
@@ -116,13 +109,6 @@ enum FacialActionEnum {
 @export_range(0.0, 5.0, 0.05) var grounding_speed := 1.6
 
 @export_group("Character Model")
-@export var use_character_model := true:
-	set(value):
-		if use_character_model == value:
-			return
-		use_character_model = value
-		_sync_character_model()
-
 @export var character_model_scene: PackedScene = CharacterModelScene:
 	set(value):
 		if character_model_scene == value:
@@ -156,20 +142,46 @@ enum FacialActionEnum {
 @export var model_walk_animation := "walk"
 @export var model_run_animation := "run"
 
-@export_group("Face")
-@export var facial_mood: FacialMoodEnum = FacialMoodEnum.NORMAL:
+@export_group("Hair Model")
+# Hair lives in its own node attached to the character model's head bone, so it
+# rides along with head animation and can be swapped independently of the body.
+@export var use_hair_model := true:
 	set(value):
-		if facial_mood == value:
+		if use_hair_model == value:
 			return
-		facial_mood = value
-		_update_face_marker()
+		use_hair_model = value
+		_sync_hair_model()
 
-@export var facial_action: FacialActionEnum = FacialActionEnum.NONE:
+@export var hair_model_scene: PackedScene = HairModelScene:
 	set(value):
-		if facial_action == value:
+		if hair_model_scene == value:
 			return
-		facial_action = value
-		_update_face_marker()
+		hair_model_scene = value
+		_rebuild_hair_model()
+
+# Bone on the character model's Skeleton3D that the hair node tracks.
+@export var hair_attach_bone := DEFAULT_HAIR_ATTACH_BONE:
+	set(value):
+		if hair_attach_bone == value:
+			return
+		hair_attach_bone = value
+		_rebuild_hair_model()
+
+@export_range(0.05, 5.0, 0.001) var hair_model_scale := 1.0:
+	set(value):
+		hair_model_scale = maxf(value, 0.01)
+		_sync_hair_model()
+
+# Fine placement of the hair relative to the attach bone (bone-local space).
+@export var hair_model_offset := Vector3.ZERO:
+	set(value):
+		hair_model_offset = value
+		_sync_hair_model()
+
+@export_range(-180.0, 180.0, 1.0) var hair_model_yaw_offset := 0.0:
+	set(value):
+		hair_model_yaw_offset = value
+		_sync_hair_model()
 
 @export var configuration: Dictionary:
 	get:
@@ -196,55 +208,21 @@ var m_last_step_direction := Vector3.ZERO
 var m_step_snap_grounded := false
 
 var m_visual_root: Node3D = null
-var m_body_part: MeshInstance3D = null
-var m_head_part: MeshInstance3D = null
-var m_hair_part: MeshInstance3D = null
-var m_torso_part: MeshInstance3D = null
-var m_left_arm_part: MeshInstance3D = null
-var m_right_arm_part: MeshInstance3D = null
-var m_left_leg_part: MeshInstance3D = null
-var m_right_leg_part: MeshInstance3D = null
-var m_left_shoe_part: MeshInstance3D = null
-var m_right_shoe_part: MeshInstance3D = null
-var m_face_marker_part: MeshInstance3D = null
-var m_direction_marker_part: MeshInstance3D = null
-var m_contact_shadow_part: MeshInstance3D = null
 var m_debug_box_part: MeshInstance3D = null
 var m_collision_shape: CollisionShape3D = null
 var m_character_model: Node3D = null
 var m_model_animation_player: AnimationPlayer = null
-
-var m_skin_color := Color(0.86, 0.64, 0.48, 1.0)
-var m_hair_color := Color(0.30, 0.18, 0.10, 1.0)
-var m_shirt_color := Color(0.16, 0.54, 0.57, 1.0)
-var m_pants_color := Color(0.18, 0.21, 0.23, 1.0)
-var m_shoe_color := Color(0.32, 0.20, 0.12, 1.0)
-
-const PALETTE := {
-	"light": Color(0.86, 0.64, 0.48, 1.0),
-	"tan": Color(0.70, 0.48, 0.32, 1.0),
-	"brown": Color(0.38, 0.23, 0.14, 1.0),
-	"chestnut": Color(0.37, 0.18, 0.08, 1.0),
-	"blonde": Color(0.82, 0.65, 0.33, 1.0),
-	"black": Color(0.06, 0.06, 0.06, 1.0),
-	"charcoal": Color(0.16, 0.18, 0.20, 1.0),
-	"teal": Color(0.10, 0.48, 0.50, 1.0),
-	"leather": Color(0.39, 0.24, 0.13, 1.0),
-	"blue": Color(0.19, 0.34, 0.68, 1.0),
-	"green": Color(0.24, 0.48, 0.26, 1.0),
-	"red": Color(0.66, 0.18, 0.16, 1.0),
-	"white": Color(0.90, 0.88, 0.82, 1.0),
-	"gray": Color(0.44, 0.45, 0.45, 1.0),
-}
+var m_hair_model: Node3D = null
+var m_hair_attachment: BoneAttachment3D = null
+var m_skeleton_debug_part: MeshInstance3D = null
+var m_skeleton_debug_material: StandardMaterial3D = null
 
 
 func _ready() -> void:
 	floor_snap_length = floor_snap_distance
 	_ensure_collision_shape()
 	_ensure_visual_nodes()
-	_apply_configuration_colors()
 	_update_state()
-	_update_face_marker()
 	_sync_debug_box()
 	m_has_ready = true
 	m_last_global_position = global_position
@@ -263,7 +241,6 @@ func set_configuration(new_configuration: Dictionary) -> void:
 	if m_cached_configuration == new_configuration:
 		return
 	m_cached_configuration = new_configuration.duplicate(true)
-	_apply_configuration_colors()
 	configuration_changed.emit(get_configuration())
 
 
@@ -620,6 +597,8 @@ func get_current_animation_name() -> String:
 func _process(delta: float) -> void:
 	_process_jump(delta)
 	_process_visual_motion(delta)
+	if draw_skeleton_bones:
+		_update_skeleton_debug()
 	if !m_last_global_position.is_equal_approx(global_position):
 		m_last_global_position = global_position
 		global_position_changed.emit()
@@ -712,7 +691,6 @@ func _process_visual_motion(delta: float) -> void:
 		m_motion_phase = 0.0
 
 	_apply_visual_offset()
-	_sync_limb_motion()
 
 
 func _get_motion_bob_y() -> float:
@@ -720,25 +698,6 @@ func _get_motion_bob_y() -> float:
 		return 0.0
 	var bob_height := run_bob_height if is_running else walk_bob_height
 	return (sin((m_motion_phase * 2.0) - (PI * 0.5)) + 1.0) * 0.5 * bob_height
-
-
-func _sync_limb_motion() -> void:
-	var swing := 0.0
-	if is_walking:
-		swing = sin(m_motion_phase) * deg_to_rad(leg_swing_degrees)
-
-	_set_part_rotation_x(m_left_leg_part, swing)
-	_set_part_rotation_x(m_right_leg_part, -swing)
-	_set_part_rotation_x(m_left_shoe_part, swing * 0.65)
-	_set_part_rotation_x(m_right_shoe_part, -swing * 0.65)
-	_set_part_rotation_x(m_left_arm_part, -swing * 0.55)
-	_set_part_rotation_x(m_right_arm_part, swing * 0.55)
-
-
-func _set_part_rotation_x(part: MeshInstance3D, rotation_x: float) -> void:
-	if !is_instance_valid(part):
-		return
-	part.rotation.x = rotation_x
 
 
 func _sync_visual_rotation() -> void:
@@ -772,39 +731,21 @@ func _ensure_visual_nodes() -> void:
 		if Engine.is_editor_hint():
 			m_visual_root.owner = null
 
-	m_contact_shadow_part = _ensure_contact_shadow_part()
-	m_body_part = _ensure_box_part("Body", Vector3(0.46, 0.58, 0.30), Vector3(0.0, 0.92, 0.0))
-	m_torso_part = _ensure_box_part("Torso", Vector3(0.52, 0.42, 0.34), Vector3(0.0, 1.02, 0.0))
-	m_head_part = _ensure_box_part("Head", Vector3(0.34, 0.34, 0.32), Vector3(0.0, 1.48, 0.0))
-	m_hair_part = _ensure_box_part("Hair", Vector3(0.37, 0.15, 0.34), Vector3(0.0, 1.67, -0.01))
-	m_left_arm_part = _ensure_box_part("LeftArm", Vector3(0.14, 0.50, 0.18), Vector3(-0.39, 0.92, 0.0))
-	m_right_arm_part = _ensure_box_part("RightArm", Vector3(0.14, 0.50, 0.18), Vector3(0.39, 0.92, 0.0))
-	m_left_leg_part = _ensure_box_part("LeftLeg", Vector3(0.18, 0.54, 0.20), Vector3(-0.13, 0.41, 0.0))
-	m_right_leg_part = _ensure_box_part("RightLeg", Vector3(0.18, 0.54, 0.20), Vector3(0.13, 0.41, 0.0))
-	m_left_shoe_part = _ensure_box_part("LeftShoe", Vector3(0.22, 0.12, 0.28), Vector3(-0.13, 0.08, 0.04))
-	m_right_shoe_part = _ensure_box_part("RightShoe", Vector3(0.22, 0.12, 0.28), Vector3(0.13, 0.08, 0.04))
-	m_face_marker_part = _ensure_box_part("FaceMarker", Vector3(0.20, 0.065, 0.04), Vector3(0.0, 1.49, 0.175))
-	m_direction_marker_part = _ensure_box_part("DirectionMarker", Vector3(0.065, 0.16, 0.045), Vector3(0.0, 1.38, 0.178))
-	m_debug_box_part = _ensure_box_part("DebugBox", Vector3(body_radius * 2.0, body_height, body_radius * 2.0), Vector3(0.0, body_height * 0.5, 0.0))
+	m_debug_box_part = _ensure_debug_box_part()
 	_sync_body_profile()
 
 
-func _ensure_box_part(part_name: String, size: Vector3, local_position: Vector3) -> MeshInstance3D:
+func _ensure_debug_box_part() -> MeshInstance3D:
 	var parent := m_visual_root if is_instance_valid(m_visual_root) else self
-	var part := parent.get_node_or_null(part_name) as MeshInstance3D
+	var part := parent.get_node_or_null("DebugBox") as MeshInstance3D
 	if part == null:
 		part = MeshInstance3D.new()
-		part.name = part_name
+		part.name = "DebugBox"
+		part.mesh = BoxMesh.new()
+		part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		parent.add_child(part)
 		if Engine.is_editor_hint():
 			part.owner = null
-
-	var box_mesh := part.mesh as BoxMesh
-	if box_mesh == null:
-		box_mesh = BoxMesh.new()
-		part.mesh = box_mesh
-	box_mesh.size = size
-	part.position = local_position
 	return part
 
 
@@ -829,16 +770,16 @@ func _rebuild_character_model() -> void:
 	if is_instance_valid(m_character_model):
 		m_character_model.queue_free()
 		m_character_model = null
+	# The hair node and skeleton debug draw live under the model's skeleton, so
+	# they are freed alongside it.
+	m_hair_model = null
+	m_hair_attachment = null
+	m_skeleton_debug_part = null
 	if is_inside_tree():
 		_sync_character_model()
 
 
 func _sync_character_model() -> void:
-	if not use_character_model:
-		if is_instance_valid(m_character_model):
-			m_character_model.visible = false
-		_sync_legacy_visual_visibility()
-		return
 	if not is_instance_valid(m_character_model):
 		if not is_instance_valid(m_visual_root):
 			return
@@ -853,8 +794,9 @@ func _sync_character_model() -> void:
 	_align_model_feet()
 	if not is_instance_valid(m_model_animation_player):
 		m_model_animation_player = _find_animation_player(m_character_model)
-	_sync_legacy_visual_visibility()
 	_sync_model_animation()
+	_sync_hair_model()
+	_sync_skeleton_debug()
 
 
 func _find_animation_player(node: Node) -> AnimationPlayer:
@@ -865,6 +807,151 @@ func _find_animation_player(node: Node) -> AnimationPlayer:
 		if found != null:
 			return found
 	return null
+
+
+func _find_skeleton(node: Node) -> Skeleton3D:
+	if node is Skeleton3D:
+		return node
+	for child in node.get_children():
+		var found := _find_skeleton(child)
+		if found != null:
+			return found
+	return null
+
+
+func _rebuild_hair_model() -> void:
+	if is_instance_valid(m_hair_model):
+		m_hair_model.queue_free()
+		m_hair_model = null
+	if is_inside_tree():
+		_sync_hair_model()
+
+
+func _sync_hair_model() -> void:
+	if not use_hair_model or hair_model_scene == null:
+		_hide_hair_model()
+		return
+	if not is_instance_valid(m_character_model):
+		_hide_hair_model()
+		return
+	var attachment := _ensure_hair_attachment()
+	if attachment == null:
+		_hide_hair_model()
+		return
+	_ensure_hair_model(attachment)
+	if not is_instance_valid(m_hair_model):
+		return
+	m_hair_model.visible = true
+	m_hair_model.position = hair_model_offset
+	m_hair_model.rotation = Vector3(0.0, deg_to_rad(hair_model_yaw_offset), 0.0)
+	m_hair_model.scale = Vector3.ONE * hair_model_scale
+
+
+func _hide_hair_model() -> void:
+	if is_instance_valid(m_hair_model):
+		m_hair_model.visible = false
+
+
+func _ensure_hair_attachment() -> BoneAttachment3D:
+	var skeleton := _find_skeleton(m_character_model)
+	if skeleton == null:
+		return null
+	if skeleton.find_bone(hair_attach_bone) < 0:
+		return null
+	if is_instance_valid(m_hair_attachment) and m_hair_attachment.get_parent() != skeleton:
+		m_hair_attachment = null
+	if not is_instance_valid(m_hair_attachment):
+		m_hair_attachment = skeleton.get_node_or_null("HairAttachment") as BoneAttachment3D
+	if not is_instance_valid(m_hair_attachment):
+		m_hair_attachment = BoneAttachment3D.new()
+		m_hair_attachment.name = "HairAttachment"
+		skeleton.add_child(m_hair_attachment)
+		if Engine.is_editor_hint():
+			m_hair_attachment.owner = null
+	m_hair_attachment.bone_name = hair_attach_bone
+	return m_hair_attachment
+
+
+func _ensure_hair_model(parent: Node3D) -> void:
+	if is_instance_valid(m_hair_model) and m_hair_model.get_parent() != parent:
+		m_hair_model.queue_free()
+		m_hair_model = null
+	if not is_instance_valid(m_hair_model):
+		m_hair_model = parent.get_node_or_null("HairModel") as Node3D
+	if not is_instance_valid(m_hair_model):
+		m_hair_model = Node3D.new()
+		m_hair_model.name = "HairModel"
+		parent.add_child(m_hair_model)
+		if Engine.is_editor_hint():
+			m_hair_model.owner = null
+	if m_hair_model.get_child_count() == 0 and hair_model_scene != null:
+		var instance := hair_model_scene.instantiate()
+		m_hair_model.add_child(instance)
+		if Engine.is_editor_hint():
+			instance.owner = null
+
+
+func _sync_skeleton_debug() -> void:
+	var skeleton: Skeleton3D = null
+	if is_instance_valid(m_character_model):
+		skeleton = _find_skeleton(m_character_model)
+	if skeleton == null or not draw_skeleton_bones:
+		if is_instance_valid(m_skeleton_debug_part):
+			m_skeleton_debug_part.visible = false
+		return
+	if not is_instance_valid(m_skeleton_debug_part) or m_skeleton_debug_part.get_parent() != skeleton:
+		m_skeleton_debug_part = _ensure_skeleton_debug_part(skeleton)
+	m_skeleton_debug_part.visible = true
+	_update_skeleton_debug()
+
+
+func _ensure_skeleton_debug_part(skeleton: Skeleton3D) -> MeshInstance3D:
+	var part := skeleton.get_node_or_null("SkeletonDebug") as MeshInstance3D
+	if part == null:
+		part = MeshInstance3D.new()
+		part.name = "SkeletonDebug"
+		part.mesh = ImmediateMesh.new()
+		part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		skeleton.add_child(part)
+		if Engine.is_editor_hint():
+			part.owner = null
+	if m_skeleton_debug_material == null:
+		m_skeleton_debug_material = StandardMaterial3D.new()
+		m_skeleton_debug_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m_skeleton_debug_material.vertex_color_use_as_albedo = true
+		m_skeleton_debug_material.no_depth_test = true
+		m_skeleton_debug_material.albedo_color = skeleton_debug_color
+	part.material_override = m_skeleton_debug_material
+	return part
+
+
+func _update_skeleton_debug() -> void:
+	if not is_instance_valid(m_skeleton_debug_part):
+		return
+	var mesh := m_skeleton_debug_part.mesh as ImmediateMesh
+	if mesh == null:
+		return
+	var skeleton := m_skeleton_debug_part.get_parent() as Skeleton3D
+	if skeleton == null:
+		return
+	mesh.clear_surfaces()
+	var bone_count := skeleton.get_bone_count()
+	if bone_count <= 0:
+		return
+	# Bone poses are in skeleton-local space; the debug mesh is a child of the
+	# skeleton with an identity transform, so they map directly to mesh vertices.
+	mesh.surface_begin(Mesh.PRIMITIVE_LINES)
+	for bone_index in range(bone_count):
+		var parent_index := skeleton.get_bone_parent(bone_index)
+		if parent_index < 0:
+			continue
+		var parent_origin := skeleton.get_bone_global_pose(parent_index).origin
+		var child_origin := skeleton.get_bone_global_pose(bone_index).origin
+		mesh.surface_set_color(skeleton_debug_color)
+		mesh.surface_add_vertex(parent_origin)
+		mesh.surface_set_color(skeleton_debug_color)
+		mesh.surface_add_vertex(child_origin)
+	mesh.surface_end()
 
 
 func _collect_mesh_instances(node: Node, into: Array[MeshInstance3D]) -> void:
@@ -905,8 +992,6 @@ func _align_model_feet() -> void:
 
 
 func _sync_model_animation() -> void:
-	if not use_character_model:
-		return
 	if not is_instance_valid(m_model_animation_player):
 		return
 	var target := _match_model_animation(_desired_model_animation())
@@ -941,31 +1026,9 @@ func _match_model_animation(animation_name: String) -> String:
 	return ""
 
 
-func _ensure_contact_shadow_part() -> MeshInstance3D:
-	var part := get_node_or_null("ContactShadow") as MeshInstance3D
-	if part == null:
-		part = MeshInstance3D.new()
-		part.name = "ContactShadow"
-		add_child(part)
-		move_child(part, 0)
-		if Engine.is_editor_hint():
-			part.owner = null
-
-	var cylinder_mesh := part.mesh as CylinderMesh
-	if cylinder_mesh == null:
-		cylinder_mesh = CylinderMesh.new()
-		part.mesh = cylinder_mesh
-	cylinder_mesh.radial_segments = 16
-	cylinder_mesh.rings = 1
-	_sync_contact_shadow()
-	return part
-
-
 func _sync_body_profile() -> void:
 	_sync_collision_shape()
-	_sync_visual_profile()
 	_sync_debug_box()
-	_sync_contact_shadow()
 	_sync_character_model()
 
 
@@ -978,148 +1041,6 @@ func _sync_collision_shape() -> void:
 	capsule.radius = body_radius
 	capsule.height = body_height
 	m_collision_shape.position = Vector3(0.0, body_height * 0.5, 0.0)
-
-
-func _sync_visual_profile() -> void:
-	if !is_instance_valid(m_visual_root):
-		return
-
-	_sync_box_part(m_body_part, Vector3(0.46, 0.58, 0.30), Vector3(0.0, 0.92, 0.0))
-	_sync_box_part(m_torso_part, Vector3(0.52, 0.42, 0.34), Vector3(0.0, 1.02, 0.0))
-	_sync_box_part(m_head_part, Vector3(0.34, 0.34, 0.32), Vector3(0.0, 1.48, 0.0))
-	_sync_box_part(m_hair_part, Vector3(0.37, 0.15, 0.34), Vector3(0.0, 1.67, -0.01))
-	_sync_box_part(m_left_arm_part, Vector3(0.14, 0.50, 0.18), Vector3(-0.39, 0.92, 0.0))
-	_sync_box_part(m_right_arm_part, Vector3(0.14, 0.50, 0.18), Vector3(0.39, 0.92, 0.0))
-	_sync_box_part(m_left_leg_part, Vector3(0.18, 0.54, 0.20), Vector3(-0.13, 0.41, 0.0))
-	_sync_box_part(m_right_leg_part, Vector3(0.18, 0.54, 0.20), Vector3(0.13, 0.41, 0.0))
-	_sync_box_part(m_left_shoe_part, Vector3(0.22, 0.12, 0.28), Vector3(-0.13, 0.08, 0.04))
-	_sync_box_part(m_right_shoe_part, Vector3(0.22, 0.12, 0.28), Vector3(0.13, 0.08, 0.04))
-	_sync_box_part(m_face_marker_part, Vector3(0.20, 0.065, 0.04), Vector3(0.0, 1.49, 0.175))
-	_sync_box_part(m_direction_marker_part, Vector3(0.065, 0.16, 0.045), Vector3(0.0, 1.38, 0.178))
-	_sync_legacy_visual_visibility()
-
-
-func _sync_legacy_visual_visibility() -> void:
-	var legacy_visible := !use_character_model
-	for part in [
-		m_body_part,
-		m_head_part,
-		m_hair_part,
-		m_torso_part,
-		m_left_arm_part,
-		m_right_arm_part,
-		m_left_leg_part,
-		m_right_leg_part,
-		m_left_shoe_part,
-		m_right_shoe_part,
-		m_face_marker_part,
-		m_direction_marker_part,
-	]:
-		if is_instance_valid(part):
-			part.visible = legacy_visible
-
-
-func _sync_box_part(part: MeshInstance3D, base_size: Vector3, base_position: Vector3) -> void:
-	if !is_instance_valid(part):
-		return
-	var box_mesh := part.mesh as BoxMesh
-	if box_mesh == null:
-		return
-
-	var height_scale := body_height / DEFAULT_BODY_HEIGHT
-	var radius_scale := body_radius / DEFAULT_BODY_RADIUS
-	box_mesh.size = Vector3(
-		base_size.x * radius_scale,
-		base_size.y * height_scale,
-		base_size.z * radius_scale
-	)
-	part.position = Vector3(
-		base_position.x * radius_scale,
-		base_position.y * height_scale,
-		base_position.z * radius_scale
-	)
-
-
-func _sync_contact_shadow() -> void:
-	if !is_instance_valid(m_contact_shadow_part):
-		return
-
-	m_contact_shadow_part.visible = contact_shadow_enabled
-	m_contact_shadow_part.position = Vector3(0.0, 0.012, 0.0)
-	var cylinder_mesh := m_contact_shadow_part.mesh as CylinderMesh
-	if cylinder_mesh != null:
-		var radius := maxf(contact_shadow_radius, body_radius * 1.25)
-		cylinder_mesh.top_radius = radius
-		cylinder_mesh.bottom_radius = radius
-		cylinder_mesh.height = 0.014
-
-	_apply_material(m_contact_shadow_part, Color(0.07, 0.08, 0.09, 0.28), true)
-
-
-func _apply_configuration_colors() -> void:
-	var selections: Dictionary = m_cached_configuration.get("selections", {})
-	if typeof(selections) == TYPE_DICTIONARY:
-		m_skin_color = _resolve_selection_color(selections, ["body/body", "head/heads"], m_skin_color)
-		m_hair_color = _resolve_selection_color(selections, ["hair/"], m_hair_color)
-		m_shirt_color = _resolve_selection_color(selections, ["torso/"], m_shirt_color)
-		m_pants_color = _resolve_selection_color(selections, ["legs/"], m_pants_color)
-		m_shoe_color = _resolve_selection_color(selections, ["feet/", "shoes"], m_shoe_color)
-
-	_apply_material(m_body_part, m_skin_color)
-	_apply_material(m_head_part, m_skin_color)
-	_apply_material(m_hair_part, m_hair_color)
-	_apply_material(m_torso_part, m_shirt_color)
-	_apply_material(m_left_arm_part, m_shirt_color)
-	_apply_material(m_right_arm_part, m_shirt_color)
-	_apply_material(m_left_leg_part, m_pants_color)
-	_apply_material(m_right_leg_part, m_pants_color)
-	_apply_material(m_left_shoe_part, m_shoe_color)
-	_apply_material(m_right_shoe_part, m_shoe_color)
-	_update_face_marker()
-	_sync_debug_box()
-
-
-func _resolve_selection_color(selections: Dictionary, key_fragments: Array[String], fallback: Color) -> Color:
-	for key_value in selections.keys():
-		var key := String(key_value)
-		for fragment in key_fragments:
-			if key.find(fragment) < 0:
-				continue
-			return _color_for_variant(String(selections[key_value]), fallback)
-	return fallback
-
-
-func _color_for_variant(variant: String, fallback: Color) -> Color:
-	var normalized_variant := variant.to_lower().replace("_", "").replace("-", "").replace(" ", "")
-	for key in PALETTE.keys():
-		var normalized_key := String(key).to_lower().replace("_", "").replace("-", "").replace(" ", "")
-		if normalized_variant == normalized_key:
-			return PALETTE[key]
-	return fallback
-
-
-func _update_face_marker() -> void:
-	if !is_instance_valid(m_face_marker_part):
-		return
-
-	var face_color := Color(0.08, 0.07, 0.06, 1.0)
-	match int(facial_mood):
-		int(FacialMoodEnum.SMILE):
-			face_color = Color(0.18, 0.10, 0.05, 1.0)
-		int(FacialMoodEnum.BLUSH):
-			face_color = Color(0.85, 0.34, 0.42, 1.0)
-		int(FacialMoodEnum.ANGRY):
-			face_color = Color(0.58, 0.08, 0.06, 1.0)
-		int(FacialMoodEnum.SAD):
-			face_color = Color(0.13, 0.25, 0.58, 1.0)
-		int(FacialMoodEnum.SHOCK):
-			face_color = Color(0.95, 0.78, 0.18, 1.0)
-		_:
-			face_color = Color(0.08, 0.07, 0.06, 1.0)
-
-	m_face_marker_part.visible = not use_character_model and facial_action != FacialActionEnum.BLINK
-	_apply_material(m_face_marker_part, face_color)
-	_apply_material(m_direction_marker_part, face_color)
 
 
 func _sync_debug_box() -> void:
