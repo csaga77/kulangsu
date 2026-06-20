@@ -236,7 +236,7 @@ Current contract:
 - locomotion drives the model `AnimationPlayer`: `model_idle_animation` / `model_walk_animation` / `model_run_animation` map to standing/walking/running and loop with a short crossfade; clip names resolve case-insensitively against the imported animation list; optional imported clips beyond `idle`/`walk`/`run` must be validated before being bound to gameplay states
 - `HumanBody3D.max_step_height`, `HumanBody3D.floor_snap_distance`, and `HumanBody3D.grounding_speed` tune prototype 3D navigation over floor meshes, including GridMap stair treads; solid wall geometry must still block traversal instead of being bypassed by stair support
 - `HumanBody3D` must not run manual stair/floor reacquisition while `m_is_currently_jumping` is active; jump-state grounded checks intentionally return false so repeated visual jumps on stair crests cannot reuse stale stair directions and pull the actor onto the wrong floor sample
-- `HumanBody3D` may use readability polish such as movement bob, but it remains a prototype actor until the 3D asset direction is finalized
+- `HumanBody3D` locomotion is conveyed entirely by the GLB model's `idle`/`walk`/`run` animation clips; the actor adds no procedural walk/run bob (the only scripted `VisualRoot` offset is the jump arc). It remains a prototype actor until the 3D asset direction is finalized
 - low-poly palette, camera, lighting, and landmark colors should flow through `LowPolyArtStyle3D` presets while the art direction is exploratory
 - `LowPolyArtStyle3D` preset field edits are manual-apply: use exported rebuild controls, deliberate rebuild calls, or scene reloads after style changes rather than adding automatic resource-change rebuild behavior
 

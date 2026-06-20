@@ -29,6 +29,14 @@ const DEFAULT_CHARACTER_MODEL_HEIGHT := 0.998
 # instance through hair_model_scene; alternate hair GLBs live in assets/characters.
 const HairModelScene: PackedScene = preload("res://assets/characters/spiky_hair.glb")
 const DEFAULT_HAIR_ATTACH_BONE := "Head"
+# Default pants model attached to the character model's pelvis bone. Swap it per
+# instance through pants_model_scene; alternate pants GLBs live in assets/characters.
+const PantsModelScene: PackedScene = preload("res://assets/characters/pants.glb")
+const DEFAULT_PANTS_ATTACH_BONE := "Pelvis"
+# Default jacket model attached to the character model's upper-spine bone. Swap it
+# per instance through jacket_model_scene; alternate jacket GLBs live in assets/characters.
+const JacketModelScene: PackedScene = preload("res://assets/characters/jacket.glb")
+const DEFAULT_JACKET_ATTACH_BONE := "Spine02"
 
 @export var draw_bounding_box := false:
 	set(value):
@@ -93,12 +101,6 @@ const DEFAULT_HAIR_ATTACH_BONE := "Head"
 			return
 		body_radius = clamped_radius
 		_sync_body_profile()
-
-@export_group("Movement Polish")
-@export_range(0.0, 0.2, 0.005) var walk_bob_height := 0.035
-@export_range(0.0, 0.28, 0.005) var run_bob_height := 0.065
-@export_range(0.1, 10.0, 0.1) var walk_animation_cadence := 3.2
-@export_range(0.1, 12.0, 0.1) var run_animation_cadence := 5.2
 
 @export_group("3D Navigation")
 @export_range(0.0, 1.0, 0.01) var max_step_height := 0.72
@@ -183,6 +185,88 @@ const DEFAULT_HAIR_ATTACH_BONE := "Head"
 		hair_model_yaw_offset = value
 		_sync_hair_model()
 
+@export_group("Pants Model")
+# Pants live in their own node attached to the character model's pelvis bone, so
+# they ride along with lower-body motion and can be swapped independently of the body.
+@export var use_pants_model := true:
+	set(value):
+		if use_pants_model == value:
+			return
+		use_pants_model = value
+		_sync_pants_model()
+
+@export var pants_model_scene: PackedScene = PantsModelScene:
+	set(value):
+		if pants_model_scene == value:
+			return
+		pants_model_scene = value
+		_rebuild_pants_model()
+
+# Bone on the character model's Skeleton3D that the pants node tracks.
+@export var pants_attach_bone := DEFAULT_PANTS_ATTACH_BONE:
+	set(value):
+		if pants_attach_bone == value:
+			return
+		pants_attach_bone = value
+		_rebuild_pants_model()
+
+@export_range(0.05, 5.0, 0.001) var pants_model_scale := 1.0:
+	set(value):
+		pants_model_scale = maxf(value, 0.01)
+		_sync_pants_model()
+
+# Fine placement of the pants relative to the attach bone (bone-local space).
+@export var pants_model_offset := Vector3.ZERO:
+	set(value):
+		pants_model_offset = value
+		_sync_pants_model()
+
+@export_range(-180.0, 180.0, 1.0) var pants_model_yaw_offset := 0.0:
+	set(value):
+		pants_model_yaw_offset = value
+		_sync_pants_model()
+
+@export_group("Jacket Model")
+# The jacket lives in its own node attached to the character model's upper-spine
+# bone, so it rides along with torso motion and can be swapped independently of the body.
+@export var use_jacket_model := true:
+	set(value):
+		if use_jacket_model == value:
+			return
+		use_jacket_model = value
+		_sync_jacket_model()
+
+@export var jacket_model_scene: PackedScene = JacketModelScene:
+	set(value):
+		if jacket_model_scene == value:
+			return
+		jacket_model_scene = value
+		_rebuild_jacket_model()
+
+# Bone on the character model's Skeleton3D that the jacket node tracks.
+@export var jacket_attach_bone := DEFAULT_JACKET_ATTACH_BONE:
+	set(value):
+		if jacket_attach_bone == value:
+			return
+		jacket_attach_bone = value
+		_rebuild_jacket_model()
+
+@export_range(0.05, 5.0, 0.001) var jacket_model_scale := 1.0:
+	set(value):
+		jacket_model_scale = maxf(value, 0.01)
+		_sync_jacket_model()
+
+# Fine placement of the jacket relative to the attach bone (bone-local space).
+@export var jacket_model_offset := Vector3.ZERO:
+	set(value):
+		jacket_model_offset = value
+		_sync_jacket_model()
+
+@export_range(-180.0, 180.0, 1.0) var jacket_model_yaw_offset := 0.0:
+	set(value):
+		jacket_model_yaw_offset = value
+		_sync_jacket_model()
+
 @export var configuration: Dictionary:
 	get:
 		return get_configuration()
@@ -203,7 +287,6 @@ var m_last_global_position := Vector3.ZERO
 var m_is_currently_jumping := false
 var m_jump_timer := 0.0
 var m_current_animation_name := "idle-s"
-var m_motion_phase := 0.0
 var m_last_step_direction := Vector3.ZERO
 var m_step_snap_grounded := false
 
@@ -214,6 +297,10 @@ var m_character_model: Node3D = null
 var m_model_animation_player: AnimationPlayer = null
 var m_hair_model: Node3D = null
 var m_hair_attachment: BoneAttachment3D = null
+var m_pants_model: Node3D = null
+var m_pants_attachment: BoneAttachment3D = null
+var m_jacket_model: Node3D = null
+var m_jacket_attachment: BoneAttachment3D = null
 var m_skeleton_debug_part: MeshInstance3D = null
 var m_skeleton_debug_material: StandardMaterial3D = null
 
@@ -596,7 +683,6 @@ func get_current_animation_name() -> String:
 
 func _process(delta: float) -> void:
 	_process_jump(delta)
-	_process_visual_motion(delta)
 	if draw_skeleton_bones:
 		_update_skeleton_debug()
 	if !m_last_global_position.is_equal_approx(global_position):
@@ -680,24 +766,7 @@ func _apply_visual_offset() -> void:
 		var t := clampf(m_jump_timer / JUMP_DURATION, 0.0, 1.0)
 		var parabola := 1.0 - pow(2.0 * t - 1.0, 2.0)
 		jump_y = JUMP_HEIGHT * parabola
-	m_visual_root.position = Vector3(0.0, jump_y + _get_motion_bob_y(), 0.0)
-
-
-func _process_visual_motion(delta: float) -> void:
-	if is_walking:
-		var cadence := run_animation_cadence if is_running else walk_animation_cadence
-		m_motion_phase = fposmod(m_motion_phase + delta * TAU * cadence, TAU)
-	else:
-		m_motion_phase = 0.0
-
-	_apply_visual_offset()
-
-
-func _get_motion_bob_y() -> float:
-	if !is_walking:
-		return 0.0
-	var bob_height := run_bob_height if is_running else walk_bob_height
-	return (sin((m_motion_phase * 2.0) - (PI * 0.5)) + 1.0) * 0.5 * bob_height
+	m_visual_root.position = Vector3(0.0, jump_y, 0.0)
 
 
 func _sync_visual_rotation() -> void:
@@ -774,6 +843,10 @@ func _rebuild_character_model() -> void:
 	# they are freed alongside it.
 	m_hair_model = null
 	m_hair_attachment = null
+	m_pants_model = null
+	m_pants_attachment = null
+	m_jacket_model = null
+	m_jacket_attachment = null
 	m_skeleton_debug_part = null
 	if is_inside_tree():
 		_sync_character_model()
@@ -796,6 +869,8 @@ func _sync_character_model() -> void:
 		m_model_animation_player = _find_animation_player(m_character_model)
 	_sync_model_animation()
 	_sync_hair_model()
+	_sync_pants_model()
+	_sync_jacket_model()
 	_sync_skeleton_debug()
 
 
@@ -887,6 +962,150 @@ func _ensure_hair_model(parent: Node3D) -> void:
 	if m_hair_model.get_child_count() == 0 and hair_model_scene != null:
 		var instance := hair_model_scene.instantiate()
 		m_hair_model.add_child(instance)
+		if Engine.is_editor_hint():
+			instance.owner = null
+
+
+func _rebuild_pants_model() -> void:
+	if is_instance_valid(m_pants_model):
+		m_pants_model.queue_free()
+		m_pants_model = null
+	if is_inside_tree():
+		_sync_pants_model()
+
+
+func _sync_pants_model() -> void:
+	if not use_pants_model or pants_model_scene == null:
+		_hide_pants_model()
+		return
+	if not is_instance_valid(m_character_model):
+		_hide_pants_model()
+		return
+	var attachment := _ensure_pants_attachment()
+	if attachment == null:
+		_hide_pants_model()
+		return
+	_ensure_pants_model(attachment)
+	if not is_instance_valid(m_pants_model):
+		return
+	m_pants_model.visible = true
+	m_pants_model.position = pants_model_offset
+	m_pants_model.rotation = Vector3(0.0, deg_to_rad(pants_model_yaw_offset), 0.0)
+	m_pants_model.scale = Vector3.ONE * pants_model_scale
+
+
+func _hide_pants_model() -> void:
+	if is_instance_valid(m_pants_model):
+		m_pants_model.visible = false
+
+
+func _ensure_pants_attachment() -> BoneAttachment3D:
+	var skeleton := _find_skeleton(m_character_model)
+	if skeleton == null:
+		return null
+	if skeleton.find_bone(pants_attach_bone) < 0:
+		return null
+	if is_instance_valid(m_pants_attachment) and m_pants_attachment.get_parent() != skeleton:
+		m_pants_attachment = null
+	if not is_instance_valid(m_pants_attachment):
+		m_pants_attachment = skeleton.get_node_or_null("PantsAttachment") as BoneAttachment3D
+	if not is_instance_valid(m_pants_attachment):
+		m_pants_attachment = BoneAttachment3D.new()
+		m_pants_attachment.name = "PantsAttachment"
+		skeleton.add_child(m_pants_attachment)
+		if Engine.is_editor_hint():
+			m_pants_attachment.owner = null
+	m_pants_attachment.bone_name = pants_attach_bone
+	return m_pants_attachment
+
+
+func _ensure_pants_model(parent: Node3D) -> void:
+	if is_instance_valid(m_pants_model) and m_pants_model.get_parent() != parent:
+		m_pants_model.queue_free()
+		m_pants_model = null
+	if not is_instance_valid(m_pants_model):
+		m_pants_model = parent.get_node_or_null("PantsModel") as Node3D
+	if not is_instance_valid(m_pants_model):
+		m_pants_model = Node3D.new()
+		m_pants_model.name = "PantsModel"
+		parent.add_child(m_pants_model)
+		if Engine.is_editor_hint():
+			m_pants_model.owner = null
+	if m_pants_model.get_child_count() == 0 and pants_model_scene != null:
+		var instance := pants_model_scene.instantiate()
+		m_pants_model.add_child(instance)
+		if Engine.is_editor_hint():
+			instance.owner = null
+
+
+func _rebuild_jacket_model() -> void:
+	if is_instance_valid(m_jacket_model):
+		m_jacket_model.queue_free()
+		m_jacket_model = null
+	if is_inside_tree():
+		_sync_jacket_model()
+
+
+func _sync_jacket_model() -> void:
+	if not use_jacket_model or jacket_model_scene == null:
+		_hide_jacket_model()
+		return
+	if not is_instance_valid(m_character_model):
+		_hide_jacket_model()
+		return
+	var attachment := _ensure_jacket_attachment()
+	if attachment == null:
+		_hide_jacket_model()
+		return
+	_ensure_jacket_model(attachment)
+	if not is_instance_valid(m_jacket_model):
+		return
+	m_jacket_model.visible = true
+	m_jacket_model.position = jacket_model_offset
+	m_jacket_model.rotation = Vector3(0.0, deg_to_rad(jacket_model_yaw_offset), 0.0)
+	m_jacket_model.scale = Vector3.ONE * jacket_model_scale
+
+
+func _hide_jacket_model() -> void:
+	if is_instance_valid(m_jacket_model):
+		m_jacket_model.visible = false
+
+
+func _ensure_jacket_attachment() -> BoneAttachment3D:
+	var skeleton := _find_skeleton(m_character_model)
+	if skeleton == null:
+		return null
+	if skeleton.find_bone(jacket_attach_bone) < 0:
+		return null
+	if is_instance_valid(m_jacket_attachment) and m_jacket_attachment.get_parent() != skeleton:
+		m_jacket_attachment = null
+	if not is_instance_valid(m_jacket_attachment):
+		m_jacket_attachment = skeleton.get_node_or_null("JacketAttachment") as BoneAttachment3D
+	if not is_instance_valid(m_jacket_attachment):
+		m_jacket_attachment = BoneAttachment3D.new()
+		m_jacket_attachment.name = "JacketAttachment"
+		skeleton.add_child(m_jacket_attachment)
+		if Engine.is_editor_hint():
+			m_jacket_attachment.owner = null
+	m_jacket_attachment.bone_name = jacket_attach_bone
+	return m_jacket_attachment
+
+
+func _ensure_jacket_model(parent: Node3D) -> void:
+	if is_instance_valid(m_jacket_model) and m_jacket_model.get_parent() != parent:
+		m_jacket_model.queue_free()
+		m_jacket_model = null
+	if not is_instance_valid(m_jacket_model):
+		m_jacket_model = parent.get_node_or_null("JacketModel") as Node3D
+	if not is_instance_valid(m_jacket_model):
+		m_jacket_model = Node3D.new()
+		m_jacket_model.name = "JacketModel"
+		parent.add_child(m_jacket_model)
+		if Engine.is_editor_hint():
+			m_jacket_model.owner = null
+	if m_jacket_model.get_child_count() == 0 and jacket_model_scene != null:
+		var instance := jacket_model_scene.instantiate()
+		m_jacket_model.add_child(instance)
 		if Engine.is_editor_hint():
 			instance.owner = null
 

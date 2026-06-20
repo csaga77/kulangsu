@@ -10,3 +10,5 @@ body_height = 1.84
 body_radius = 0.29000000000000004
 character_model_scene = ExtResource("2_gei5k")
 hair_model_yaw_offset = 90.0
+pants_model_yaw_offset = 90.0
+jacket_model_yaw_offset = 90.0

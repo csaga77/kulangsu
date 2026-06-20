@@ -102,9 +102,8 @@ func _validate_actor_api(failures: Array[String]) -> void:
 		failures.append("expected run-s animation state")
 
 	if visual_root != null:
-		m_actor.call("_process_visual_motion", 0.11)
-		if visual_root.position.y <= 0.0:
-			failures.append("walk movement bob did not lift VisualRoot")
+		if not is_equal_approx(visual_root.position.y, 0.0):
+			failures.append("VisualRoot should rest at y=0 while walking (no procedural bob)")
 		_validate_character_model(failures, visual_root)
 
 	m_actor.move_with_speed(Vector3(1.0, 0.0, 0.0), 2.0)
@@ -194,7 +193,83 @@ func _validate_hair_model(failures: Array[String], model: Node3D) -> void:
 	if not hair_model.visible:
 		failures.append("HumanBody3D did not re-show the hair model when use_hair_model is on")
 
+	_validate_pants_model(failures, model, skeleton)
+	_validate_jacket_model(failures, model, skeleton)
 	_validate_skeleton_debug(failures, skeleton)
+
+
+func _validate_pants_model(failures: Array[String], _model: Node3D, skeleton: Skeleton3D) -> void:
+	if not bool(m_actor.get("use_pants_model")):
+		failures.append("HumanBody3D should default to using the pants model")
+
+	var attach_bone := String(m_actor.get("pants_attach_bone"))
+	if skeleton.find_bone(attach_bone) < 0:
+		failures.append("HumanBody3D pants attach bone '%s' is missing from the skeleton" % attach_bone)
+		return
+
+	var attachment := skeleton.get_node_or_null("PantsAttachment") as BoneAttachment3D
+	if attachment == null:
+		failures.append("HumanBody3D did not create the pants BoneAttachment3D")
+		return
+	if attachment.bone_name != attach_bone:
+		failures.append("HumanBody3D pants attachment is bound to the wrong bone")
+
+	var pants_model := attachment.get_node_or_null("PantsModel") as Node3D
+	if pants_model == null:
+		failures.append("HumanBody3D did not create the separate PantsModel node")
+		return
+	if not pants_model.visible:
+		failures.append("HumanBody3D pants model is not visible")
+	if pants_model.get_child_count() == 0:
+		failures.append("HumanBody3D pants model has no instanced scene")
+		return
+	if _find_mesh_instance(pants_model) == null:
+		failures.append("HumanBody3D pants model has no renderable mesh")
+
+	# Toggling use_pants_model off should hide the pants node.
+	m_actor.set("use_pants_model", false)
+	if pants_model.visible:
+		failures.append("HumanBody3D did not hide the pants model when use_pants_model is off")
+	m_actor.set("use_pants_model", true)
+	if not pants_model.visible:
+		failures.append("HumanBody3D did not re-show the pants model when use_pants_model is on")
+
+
+func _validate_jacket_model(failures: Array[String], _model: Node3D, skeleton: Skeleton3D) -> void:
+	if not bool(m_actor.get("use_jacket_model")):
+		failures.append("HumanBody3D should default to using the jacket model")
+
+	var attach_bone := String(m_actor.get("jacket_attach_bone"))
+	if skeleton.find_bone(attach_bone) < 0:
+		failures.append("HumanBody3D jacket attach bone '%s' is missing from the skeleton" % attach_bone)
+		return
+
+	var attachment := skeleton.get_node_or_null("JacketAttachment") as BoneAttachment3D
+	if attachment == null:
+		failures.append("HumanBody3D did not create the jacket BoneAttachment3D")
+		return
+	if attachment.bone_name != attach_bone:
+		failures.append("HumanBody3D jacket attachment is bound to the wrong bone")
+
+	var jacket_model := attachment.get_node_or_null("JacketModel") as Node3D
+	if jacket_model == null:
+		failures.append("HumanBody3D did not create the separate JacketModel node")
+		return
+	if not jacket_model.visible:
+		failures.append("HumanBody3D jacket model is not visible")
+	if jacket_model.get_child_count() == 0:
+		failures.append("HumanBody3D jacket model has no instanced scene")
+		return
+	if _find_mesh_instance(jacket_model) == null:
+		failures.append("HumanBody3D jacket model has no renderable mesh")
+
+	# Toggling use_jacket_model off should hide the jacket node.
+	m_actor.set("use_jacket_model", false)
+	if jacket_model.visible:
+		failures.append("HumanBody3D did not hide the jacket model when use_jacket_model is off")
+	m_actor.set("use_jacket_model", true)
+	if not jacket_model.visible:
+		failures.append("HumanBody3D did not re-show the jacket model when use_jacket_model is on")
 
 
 func _validate_skeleton_debug(failures: Array[String], skeleton: Skeleton3D) -> void:
