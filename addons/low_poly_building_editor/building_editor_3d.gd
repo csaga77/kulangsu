@@ -93,6 +93,8 @@ func find_merge_target(
 	for wall in get_wall_nodes():
 		if wall == ignored_wall:
 			continue
+		if absf(wall.start_point.y - local_start.y) > INTERSECT_BASE_TOLERANCE:
+			continue
 		if !is_equal_approx(wall.wall_thickness, thickness):
 			continue
 		if !is_equal_approx(wall.wall_height, height):

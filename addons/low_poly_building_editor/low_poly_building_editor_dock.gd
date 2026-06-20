@@ -25,8 +25,8 @@ var m_editor_interface: EditorInterface
 var m_mode_option: OptionButton
 var m_shortcuts_label: Label
 var m_status_label: Label
-var m_coordinator_label: Label
 var m_grid_spin: SpinBox
+var m_wall_base_height_spin: SpinBox
 var m_wall_height_spin: SpinBox
 var m_wall_thickness_spin: SpinBox
 var m_wall_color_picker: ColorPickerButton
@@ -42,7 +42,6 @@ var m_window_height_spin: SpinBox
 var m_window_frame_spin: SpinBox
 var m_window_sill_spin: SpinBox
 var m_palette_paths: PackedStringArray = PackedStringArray()
-var m_active_coordinator_path := ""
 
 
 func setup(editor_interface: EditorInterface) -> void:
@@ -67,9 +66,8 @@ func set_status(text: String) -> void:
 		m_status_label.text = text
 
 
-func set_active_coordinator_path(path_text: String) -> void:
-	m_active_coordinator_path = path_text.strip_edges()
-	_update_coordinator_label()
+func set_active_coordinator_path(_path_text: String) -> void:
+	pass
 
 
 func _build_ui() -> void:
@@ -93,11 +91,6 @@ func _build_ui() -> void:
 	m_status_label.text = "Select a tool."
 	m_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	content.add_child(m_status_label)
-
-	m_coordinator_label = Label.new()
-	m_coordinator_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	content.add_child(m_coordinator_label)
-	_update_coordinator_label()
 
 	content.add_child(HSeparator.new())
 
@@ -156,6 +149,11 @@ func _build_wall_controls(parent: VBoxContainer) -> void:
 	m_grid_spin = _make_spin(0.05, 8.0, 0.05, 0.5)
 	_add_labeled_control(parent, "Grid:", m_grid_spin)
 	m_grid_spin.value_changed.connect(_on_wall_setting_changed)
+
+	m_wall_base_height_spin = _make_spin(-20.0, 20.0, 0.01, 0.0)
+	m_wall_base_height_spin.tooltip_text = "Parent-local Y height for new wall bases."
+	_add_labeled_control(parent, "Base Y:", m_wall_base_height_spin)
+	m_wall_base_height_spin.value_changed.connect(_on_wall_setting_changed)
 
 	m_wall_height_spin = _make_spin(0.1, 6.0, 0.05, 2.4)
 	_add_labeled_control(parent, "Height:", m_wall_height_spin)
@@ -374,6 +372,7 @@ func _emit_all_settings() -> void:
 func _emit_wall_settings() -> void:
 	wall_settings_changed.emit({
 		"grid_step": float(m_grid_spin.value),
+		"base_height": float(m_wall_base_height_spin.value),
 		"height": float(m_wall_height_spin.value),
 		"thickness": float(m_wall_thickness_spin.value),
 		"color": m_wall_color_picker.color,
@@ -395,17 +394,6 @@ func _emit_window_settings() -> void:
 		"frame_thickness": float(m_window_frame_spin.value),
 		"sill_height": float(m_window_sill_spin.value),
 	})
-
-
-func _update_coordinator_label() -> void:
-	if m_coordinator_label == null:
-		return
-	if m_active_coordinator_path.is_empty():
-		m_coordinator_label.text = "Coordinator: None"
-		m_coordinator_label.tooltip_text = ""
-	else:
-		m_coordinator_label.text = "Coordinator: %s" % m_active_coordinator_path
-		m_coordinator_label.tooltip_text = m_active_coordinator_path
 
 
 func _scan_palette() -> void:
@@ -501,6 +489,7 @@ func _load_persisted_settings() -> void:
 
 	var state: Dictionary = state_variant
 	m_palette_root_edit.text = str(state.get("prop_palette_root", m_palette_root_edit.text))
+	m_wall_base_height_spin.value = float(state.get("wall_base_height", m_wall_base_height_spin.value))
 	m_window_sill_spin.value = float(state.get("window_sill_height", m_window_sill_spin.value))
 
 
@@ -511,5 +500,6 @@ func _save_persisted_settings() -> void:
 
 	editor_settings.set_project_metadata(PROJECT_METADATA_SECTION, PROJECT_METADATA_KEY, {
 		"prop_palette_root": _get_configured_palette_root(),
+		"wall_base_height": float(m_wall_base_height_spin.value) if m_wall_base_height_spin != null else 0.0,
 		"window_sill_height": float(m_window_sill_spin.value) if m_window_sill_spin != null else 0.9,
 	})

@@ -10,7 +10,7 @@
 - This is a developer-facing tool, not runtime player UI.
 - Authors enable the `Low-Poly Building Editor` plugin, use its dock to choose `Wall`, `Prop`, or `Window`, and place content directly in the 3D viewport.
 - The dock's top section shows shortcuts for the currently selected tool, followed by live status text.
-- Wall drawing supports click-start/click-end and click-drag-release flows with live snapped preview geometry.
+- Wall drawing supports click-start/click-end and click-drag-release flows with live snapped preview geometry; new walls draw on the dock's persisted parent-local base Y plane.
 - Prop and window placement uses translucent green/red previews before committing nodes.
 - While the cursor is over a 3D viewport, `R` rotates the prop preview in 90-degree steps (prop mode only) and `Escape` or right-click cancels the active preview.
 - The prop palette folder is configurable in the dock, defaults to `res://assets`, and includes `.tscn`, `.scn`, `.gltf`, and `.glb` scene assets. The configured folder persists across editor sessions via editor project metadata.
@@ -19,7 +19,7 @@
 
 - `BuildingEditor3D` is the coordinator node for one building assembly.
 - `ProceduralWall3D` stores its parent-local `start_point` and `end_point`; its node transform and mesh are rebuilt from those endpoints.
-- Wall drawing snaps to `BuildingEditor3D.grid_step` and can lock to 45-degree increments for eight-way wall direction.
+- Wall drawing snaps to `BuildingEditor3D.grid_step`, preserves the configured base Y height for new endpoints, and can lock to 45-degree increments for eight-way wall direction.
 - New wall spans merge into an existing collinear wall of matching thickness and height when their ranges overlap.
 - Non-collinear walls that intersect (crossings, T-junctions, corners) collapse on commit into one surviving `ProceduralWall3D`: every participating span is split at centerline intersections, including the segment being intersected, stored as typed `WallSegment3D` resources in `extra_segments`, their openings and props reparent to the survivor, and the other wall nodes are removed. The survivor rebuilds one combined mesh whose faces are clipped and whose shared endpoints are mitered by extending wall side faces to their endpoint-direction side-line intersections without adding butt-style joint caps; drawing the same physical spans in the opposite start/end direction produces the same miter points. Top and bottom caps stay tied to wall footprints, with targeted overlap clipping at joins, so split 3+ joins render filled while enclosed wall loops keep their room interiors open. Toggle via `BuildingEditor3D.merge_intersecting` (default on).
 - Window/prop placement and viewport picking are segment-aware: raycasts test every segment of a wall and previews align to the hit segment's frame.

@@ -42,6 +42,7 @@ func _run_smoke_checks() -> void:
 	_validate_opening_rules(wall)
 	_validate_opening_follows_wall_segment()
 	_validate_snapping(coordinator)
+	_validate_wall_base_height(coordinator)
 	_validate_merge_detection(coordinator)
 	_validate_intersection_merge()
 	_validate_add_wall_joint()
@@ -157,6 +158,22 @@ func _validate_snapping(coordinator: BuildingEditor3DScript) -> void:
 		m_failures.append("BuildingEditor3D did not constrain diagonal drawing to 45 degrees")
 
 
+func _validate_wall_base_height(coordinator: BuildingEditor3DScript) -> void:
+	var base_y := 1.25
+	var elevated := coordinator.create_wall_node(
+		Vector3(0.0, base_y, 8.0),
+		Vector3(4.0, base_y, 8.0),
+		2.4,
+		0.22,
+		Color(0.78, 0.68, 0.54, 1.0)
+	)
+	coordinator.add_child(elevated)
+	if absf(elevated.start_point.y - base_y) > 0.001 or absf(elevated.end_point.y - base_y) > 0.001:
+		m_failures.append("ProceduralWall3D did not preserve elevated wall base endpoints")
+	if absf(elevated.position.y - base_y) > 0.001:
+		m_failures.append("ProceduralWall3D did not place wall transform at elevated base height")
+
+
 func _validate_merge_detection(coordinator: BuildingEditor3DScript) -> void:
 	var merge: Dictionary = coordinator.find_merge_target(Vector3(2.0, 0.0, 0.0), Vector3(6.0, 0.0, 0.0), 0.22, 2.4)
 	if merge.is_empty():
@@ -174,6 +191,15 @@ func _validate_merge_detection(coordinator: BuildingEditor3DScript) -> void:
 	)
 	if !height_mismatch.is_empty():
 		m_failures.append("BuildingEditor3D merged walls with mismatched heights")
+
+	var base_mismatch: Dictionary = coordinator.find_merge_target(
+		Vector3(2.0, 1.25, 0.0),
+		Vector3(6.0, 1.25, 0.0),
+		0.22,
+		2.4
+	)
+	if !base_mismatch.is_empty():
+		m_failures.append("BuildingEditor3D merged walls with mismatched base heights")
 
 	var preview := coordinator.create_wall_node(
 		Vector3(8.0, 0.0, 0.0),

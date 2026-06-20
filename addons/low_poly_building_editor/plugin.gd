@@ -22,6 +22,7 @@ var m_viewport_overlays: Array[Control] = []
 var m_tool_mode := MODE_SELECT
 var m_wall_settings := {
 	"grid_step": 0.5,
+	"base_height": 0.0,
 	"height": 2.4,
 	"thickness": 0.22,
 	"color": Color(0.78, 0.68, 0.54, 1.0),
@@ -272,9 +273,7 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 		_set_status("Open or create a scene before drawing walls.")
 		return _handled()
 
-	var hit := _raycast_world(camera, mouse_button.position, false)
-	var local_position := coordinator.to_local(Vector3(hit["position"]))
-	var snapped_local := coordinator.snap_local_position(local_position)
+	var snapped_local := _wall_draw_local_from_mouse(coordinator, camera, mouse_button.position)
 	if !m_is_drawing_wall:
 		m_wall_start_local = snapped_local
 		m_wall_end_local = snapped_local
@@ -287,7 +286,7 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 		_set_status("Wall mouse press captured. Drag and release, or click another point.")
 		return _handled()
 
-	var local_end := coordinator.constrain_wall_end(m_wall_start_local, snapped_local)
+	var local_end := _constrain_wall_end_on_base(coordinator, m_wall_start_local, snapped_local)
 	_commit_wall(coordinator, m_wall_start_local, local_end)
 	_clear_wall_preview()
 	_reset_wall_drawing_state()
@@ -388,9 +387,8 @@ func _update_wall_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 	var coordinator := m_wall_preview.get_parent() as BuildingEditor3DScript
 	if coordinator == null:
 		return
-	var hit := _raycast_world(camera, mouse_position, false)
-	var local_position := coordinator.to_local(Vector3(hit["position"]))
-	var local_end := coordinator.constrain_wall_end(m_wall_start_local, local_position)
+	var local_position := _wall_draw_local_from_mouse(coordinator, camera, mouse_position)
+	var local_end := _constrain_wall_end_on_base(coordinator, m_wall_start_local, local_position)
 	m_wall_end_local = local_end
 	m_wall_has_valid_preview = _is_wall_span_long_enough(m_wall_start_local, local_end)
 	m_wall_preview.set_wall_endpoints(m_wall_start_local, local_end)
@@ -403,9 +401,57 @@ func _resolve_wall_end_from_mouse(
 	camera: Camera3D,
 	mouse_position: Vector2
 ) -> Vector3:
+	var local_position := _wall_draw_local_from_mouse(coordinator, camera, mouse_position)
+	return _constrain_wall_end_on_base(coordinator, m_wall_start_local, local_position)
+
+
+func _wall_base_height() -> float:
+	return float(m_wall_settings.get("base_height", 0.0))
+
+
+func _wall_draw_local_from_mouse(
+	coordinator: BuildingEditor3DScript,
+	camera: Camera3D,
+	mouse_position: Vector2
+) -> Vector3:
+	var base_y := _wall_base_height()
+	var origin := camera.project_ray_origin(mouse_position)
+	var direction := camera.project_ray_normal(mouse_position)
+	var local_origin := coordinator.to_local(origin)
+	var local_direction := coordinator.global_transform.basis.inverse() * direction
+	if local_direction.length_squared() > 0.000001:
+		local_direction = local_direction.normalized()
+		if absf(local_direction.y) > 0.001:
+			var distance_to_plane := (base_y - local_origin.y) / local_direction.y
+			if distance_to_plane > 0.0:
+				return _snap_wall_draw_local(
+					coordinator,
+					local_origin + local_direction * distance_to_plane,
+					base_y
+				)
+
 	var hit := _raycast_world(camera, mouse_position, false)
-	var local_position := coordinator.to_local(Vector3(hit["position"]))
-	return coordinator.constrain_wall_end(m_wall_start_local, local_position)
+	return _snap_wall_draw_local(coordinator, coordinator.to_local(Vector3(hit["position"])), base_y)
+
+
+func _snap_wall_draw_local(
+	coordinator: BuildingEditor3DScript,
+	local_position: Vector3,
+	base_y: float
+) -> Vector3:
+	var snapped := coordinator.snap_local_position(local_position)
+	snapped.y = base_y
+	return snapped
+
+
+func _constrain_wall_end_on_base(
+	coordinator: BuildingEditor3DScript,
+	start_local: Vector3,
+	target_local: Vector3
+) -> Vector3:
+	var constrained := coordinator.constrain_wall_end(start_local, target_local)
+	constrained.y = start_local.y
+	return constrained
 
 
 func _get_active_wall_coordinator() -> BuildingEditor3DScript:
