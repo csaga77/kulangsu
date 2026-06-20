@@ -12,8 +12,8 @@ const INTERSECT_BASE_TOLERANCE := 0.01
 		grid_step = maxf(value, 0.05)
 
 @export var lock_to_8_way := true
-@export_range(0.1, 20.0, 0.01) var default_wall_height := 2.4
-@export_range(0.03, 4.0, 0.01) var default_wall_thickness := 0.22
+@export_range(0.1, 6.0, 0.05, "or_greater") var default_wall_height := 2.4
+@export_range(0.03, 1.0, 0.01, "or_greater") var default_wall_thickness := 0.22
 @export var default_wall_color := Color(0.78, 0.68, 0.54, 1.0)
 @export var merge_intersecting := true
 

@@ -13,6 +13,7 @@ const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_
 const DockScript = preload("res://addons/low_poly_building_editor/low_poly_building_editor_dock.gd")
 const ViewportInputOverlayScript = preload("res://addons/low_poly_building_editor/viewport_input_overlay.gd")
 const ViewportInputCaptureScript = preload("res://addons/low_poly_building_editor/viewport_input_capture.gd")
+const WALL_DRAG_COMMIT_DISTANCE := 6.0
 
 var m_dock: Control
 var m_editor_dock: EditorDock
@@ -38,7 +39,9 @@ var m_window_settings := {
 }
 var m_wall_start_local := Vector3.ZERO
 var m_wall_end_local := Vector3.ZERO
+var m_wall_start_screen_position := Vector2.ZERO
 var m_wall_has_valid_preview := false
+var m_wall_release_commits_preview := false
 var m_is_drawing_wall := false
 var m_wall_preview: ProceduralWall3DScript
 var m_prop_preview: Node3D
@@ -197,10 +200,13 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 		return _handle_wall_drag_input(camera, event)
 
 	if event is InputEventMouseMotion:
+		var mouse_motion := event as InputEventMouseMotion
 		if m_is_drawing_wall:
-			_update_wall_preview(camera, (event as InputEventMouseMotion).position)
+			_update_wall_preview(camera, mouse_motion.position)
+			if mouse_motion.position.distance_to(m_wall_start_screen_position) >= WALL_DRAG_COMMIT_DISTANCE:
+				m_wall_release_commits_preview = true
 			return _handled()
-		var pick := _find_wall_pick(camera, (event as InputEventMouseMotion).position)
+		var pick := _find_wall_pick(camera, mouse_motion.position)
 		var hover_wall := pick.get("wall") as ProceduralWall3DScript
 		var hover_segment := int(pick.get("segment", 0))
 		var hover_ep := int(pick.get("endpoint", -1))
@@ -222,6 +228,9 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 
 	var mouse_button := event as InputEventMouseButton
 	if mouse_button.button_index == MOUSE_BUTTON_LEFT and !mouse_button.pressed and m_is_drawing_wall:
+		if !m_wall_release_commits_preview:
+			_set_status("Click another point to place wall, or drag from the start point and release.")
+			return _handled()
 		_set_status("Wall mouse release captured.")
 		var release_coordinator := _get_active_wall_coordinator()
 		if release_coordinator != null:
@@ -230,8 +239,7 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 				release_end = _resolve_wall_end_from_mouse(release_coordinator, camera, mouse_button.position)
 			_commit_wall(release_coordinator, m_wall_start_local, release_end)
 		_clear_wall_preview()
-		m_is_drawing_wall = false
-		m_wall_has_valid_preview = false
+		_reset_wall_drawing_state()
 		return _handled()
 
 	if mouse_button.button_index != MOUSE_BUTTON_LEFT or !mouse_button.pressed:
@@ -270,7 +278,9 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 	if !m_is_drawing_wall:
 		m_wall_start_local = snapped_local
 		m_wall_end_local = snapped_local
+		m_wall_start_screen_position = mouse_button.position
 		m_wall_has_valid_preview = false
+		m_wall_release_commits_preview = false
 		m_is_drawing_wall = true
 		_create_wall_preview(coordinator)
 		_update_wall_preview(camera, mouse_button.position)
@@ -280,8 +290,7 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 	var local_end := coordinator.constrain_wall_end(m_wall_start_local, snapped_local)
 	_commit_wall(coordinator, m_wall_start_local, local_end)
 	_clear_wall_preview()
-	m_is_drawing_wall = false
-	m_wall_has_valid_preview = false
+	_reset_wall_drawing_state()
 	return _handled()
 
 
@@ -1407,6 +1416,13 @@ func _clear_wall_preview() -> void:
 	m_wall_preview = null
 
 
+func _reset_wall_drawing_state() -> void:
+	m_is_drawing_wall = false
+	m_wall_has_valid_preview = false
+	m_wall_release_commits_preview = false
+	m_wall_start_screen_position = Vector2.ZERO
+
+
 func _clear_prop_preview() -> void:
 	if m_prop_preview != null and is_instance_valid(m_prop_preview):
 		m_prop_preview.queue_free()
@@ -2021,6 +2037,9 @@ func _update_window_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 		m_drag_valid = false
 		_set_status("Drag within the same wall.")
 		return
+	var hit_segment := clampi(int(hit.get("segment", m_drag_target_segment)), 0, wall.get_segment_count() - 1)
+	if m_drag_opening_edge < 0:
+		m_drag_target_segment = hit_segment
 	var segment := wall.get_segment(m_drag_target_segment)
 	var frame := wall.get_segment_local_frame(m_drag_target_segment)
 	var local_hit := frame.affine_inverse() * wall.to_local(Vector3(hit["position"]))
@@ -2056,6 +2075,7 @@ func _update_window_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 		m_drag_valid = wall.can_place_opening(center_2d, size, 0.04, m_dragging_opening, m_drag_target_segment)
 	else:
 		# Move mode
+		m_drag_face_sign = signf(local_hit.z) if absf(local_hit.z) > 0.001 else m_drag_face_sign
 		local_hit.x = clampf(roundf(local_hit.x / grid_step) * grid_step, 0.0, segment.get_length())
 		var sill_height := maxf(float(m_window_settings.get("sill_height", 0.9)), 0.0)
 		local_hit.y = sill_height + m_dragging_opening.opening_height * 0.5
@@ -2192,8 +2212,7 @@ func _cancel_active_preview() -> void:
 	_clear_drag_hover()
 	_clear_wall_preview()
 	_clear_prop_preview()
-	m_is_drawing_wall = false
-	m_wall_has_valid_preview = false
+	_reset_wall_drawing_state()
 	_set_status("Tool preview canceled.")
 
 

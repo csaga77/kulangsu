@@ -25,6 +25,7 @@ var m_editor_interface: EditorInterface
 var m_mode_option: OptionButton
 var m_shortcuts_label: Label
 var m_status_label: Label
+var m_coordinator_label: Label
 var m_grid_spin: SpinBox
 var m_wall_height_spin: SpinBox
 var m_wall_thickness_spin: SpinBox
@@ -41,6 +42,7 @@ var m_window_height_spin: SpinBox
 var m_window_frame_spin: SpinBox
 var m_window_sill_spin: SpinBox
 var m_palette_paths: PackedStringArray = PackedStringArray()
+var m_active_coordinator_path := ""
 
 
 func setup(editor_interface: EditorInterface) -> void:
@@ -66,7 +68,8 @@ func set_status(text: String) -> void:
 
 
 func set_active_coordinator_path(path_text: String) -> void:
-	pass
+	m_active_coordinator_path = path_text.strip_edges()
+	_update_coordinator_label()
 
 
 func _build_ui() -> void:
@@ -90,6 +93,11 @@ func _build_ui() -> void:
 	m_status_label.text = "Select a tool."
 	m_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	content.add_child(m_status_label)
+
+	m_coordinator_label = Label.new()
+	m_coordinator_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(m_coordinator_label)
+	_update_coordinator_label()
 
 	content.add_child(HSeparator.new())
 
@@ -149,11 +157,11 @@ func _build_wall_controls(parent: VBoxContainer) -> void:
 	_add_labeled_control(parent, "Grid:", m_grid_spin)
 	m_grid_spin.value_changed.connect(_on_wall_setting_changed)
 
-	m_wall_height_spin = _make_spin(0.1, 20.0, 0.01, 2.4)
+	m_wall_height_spin = _make_spin(0.1, 6.0, 0.05, 2.4)
 	_add_labeled_control(parent, "Height:", m_wall_height_spin)
 	m_wall_height_spin.value_changed.connect(_on_wall_setting_changed)
 
-	m_wall_thickness_spin = _make_spin(0.03, 4.0, 0.01, 0.22)
+	m_wall_thickness_spin = _make_spin(0.03, 1.0, 0.01, 0.22)
 	_add_labeled_control(parent, "Thickness:", m_wall_thickness_spin)
 	m_wall_thickness_spin.value_changed.connect(_on_wall_setting_changed)
 
@@ -387,6 +395,17 @@ func _emit_window_settings() -> void:
 		"frame_thickness": float(m_window_frame_spin.value),
 		"sill_height": float(m_window_sill_spin.value),
 	})
+
+
+func _update_coordinator_label() -> void:
+	if m_coordinator_label == null:
+		return
+	if m_active_coordinator_path.is_empty():
+		m_coordinator_label.text = "Coordinator: None"
+		m_coordinator_label.tooltip_text = ""
+	else:
+		m_coordinator_label.text = "Coordinator: %s" % m_active_coordinator_path
+		m_coordinator_label.tooltip_text = m_active_coordinator_path
 
 
 func _scan_palette() -> void:

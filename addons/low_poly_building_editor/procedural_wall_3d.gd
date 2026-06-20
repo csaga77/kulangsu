@@ -12,6 +12,7 @@ const MergedWallMeshBuilderScript = preload("res://addons/low_poly_building_edit
 
 const SEGMENT_ASSIGN_MARGIN := 0.25
 const SEGMENT_ASSIGN_DEPTH := 0.2
+const EDITOR_REBUILD_DELAY_SECONDS := 0.12
 
 @export var rebuild := false:
 	set(value):
@@ -33,7 +34,7 @@ const SEGMENT_ASSIGN_DEPTH := 0.2
 		end_point = value
 		_request_rebuild()
 
-@export_range(0.1, 20.0, 0.01) var wall_height := 2.4:
+@export_range(0.1, 6.0, 0.05, "or_greater") var wall_height := 2.4:
 	set(value):
 		var clamped_value := maxf(value, 0.1)
 		if is_equal_approx(wall_height, clamped_value):
@@ -41,7 +42,7 @@ const SEGMENT_ASSIGN_DEPTH := 0.2
 		wall_height = clamped_value
 		_request_rebuild()
 
-@export_range(0.03, 4.0, 0.01) var wall_thickness := 0.22:
+@export_range(0.03, 1.0, 0.01, "or_greater") var wall_thickness := 0.22:
 	set(value):
 		var clamped_value := maxf(value, 0.03)
 		if is_equal_approx(wall_thickness, clamped_value):
@@ -82,6 +83,8 @@ const SEGMENT_ASSIGN_DEPTH := 0.2
 
 var m_is_ready := false
 var m_rebuild_queued := false
+var m_rebuild_delay_seconds := 0.0
+var m_visual_rebuild_pending := false
 var m_opening_signature := ""
 var m_signature_timer := 0.0
 var m_is_rebuilding := false
@@ -107,6 +110,17 @@ func _exit_tree() -> void:
 
 func _process(delta: float) -> void:
 	if !Engine.is_editor_hint():
+		return
+	if m_rebuild_queued:
+		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+			m_rebuild_delay_seconds = EDITOR_REBUILD_DELAY_SECONDS
+			if m_visual_rebuild_pending:
+				m_visual_rebuild_pending = false
+				rebuild_wall_mesh(false)
+			return
+		m_rebuild_delay_seconds -= delta
+		if m_rebuild_delay_seconds <= 0.0:
+			rebuild_wall_mesh()
 		return
 	m_signature_timer += delta
 	if m_signature_timer < 0.2:
@@ -401,11 +415,15 @@ func can_place_opening(
 	return true
 
 
-func rebuild_wall_mesh() -> void:
-	m_rebuild_queued = false
+func rebuild_wall_mesh(rebuild_collision: bool = true) -> void:
+	if rebuild_collision:
+		m_rebuild_queued = false
+		m_rebuild_delay_seconds = 0.0
+		m_visual_rebuild_pending = false
 	m_is_rebuilding = true
 	_sync_transform_from_points()
-	_clear_generated_children()
+	if rebuild_collision:
+		_clear_generated_children()
 
 	var segments: Array[WallSegment3DScript] = []
 	var frames: Array[Transform3D] = []
@@ -442,12 +460,10 @@ func rebuild_wall_mesh() -> void:
 	arrays[Mesh.ARRAY_COLOR] = colors
 	arrays[Mesh.ARRAY_INDEX] = indices
 
-	var array_mesh := ArrayMesh.new()
-	array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	mesh = array_mesh
-	material_override = _build_wall_material(wall_color)
+	_update_wall_mesh_resource(arrays)
+	_sync_wall_material()
 
-	if generate_collision:
+	if rebuild_collision and generate_collision:
 		_add_collision_body(collision_faces)
 
 	m_opening_signature = _build_opening_signature()
@@ -457,10 +473,41 @@ func rebuild_wall_mesh() -> void:
 func _request_rebuild() -> void:
 	if !m_is_ready:
 		return
+	if Engine.is_editor_hint():
+		m_rebuild_queued = true
+		m_visual_rebuild_pending = true
+		m_rebuild_delay_seconds = EDITOR_REBUILD_DELAY_SECONDS
+		return
 	if m_rebuild_queued:
 		return
 	m_rebuild_queued = true
 	call_deferred("rebuild_wall_mesh")
+
+
+func _update_wall_mesh_resource(arrays: Array) -> void:
+	var array_mesh := mesh as ArrayMesh
+	if array_mesh == null:
+		array_mesh = ArrayMesh.new()
+		mesh = array_mesh
+	else:
+		array_mesh.clear_surfaces()
+	array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+
+
+func _sync_wall_material() -> void:
+	var material := material_override as StandardMaterial3D
+	if material == null:
+		material_override = _build_wall_material(wall_color)
+		return
+	material.albedo_color = Color(1.0, 1.0, 1.0, wall_color.a)
+	material.vertex_color_use_as_albedo = true
+	material.roughness = 0.94
+	material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+	material.cull_mode = BaseMaterial3D.CULL_BACK
+	material.transparency = (
+		BaseMaterial3D.TRANSPARENCY_ALPHA if wall_color.a < 0.99
+		else BaseMaterial3D.TRANSPARENCY_DISABLED
+	)
 
 
 func _endpoint_matches(first: Vector3, second: Vector3, tolerance: float) -> bool:

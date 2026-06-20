@@ -8,8 +8,8 @@ extends Resource
 
 @export var start_point := Vector3.ZERO
 @export var end_point := Vector3(4.0, 0.0, 0.0)
-@export_range(0.03, 4.0, 0.01) var thickness := 0.22
-@export_range(0.1, 20.0, 0.01) var height := 2.4
+@export_range(0.03, 1.0, 0.01, "or_greater") var thickness := 0.22
+@export_range(0.1, 6.0, 0.05, "or_greater") var height := 2.4
 @export var color := Color(0.78, 0.68, 0.54, 1.0)
 
 
