@@ -25,6 +25,9 @@ var m_editor_interface: EditorInterface
 var m_mode_option: OptionButton
 var m_shortcuts_label: Label
 var m_status_label: Label
+var m_wall_section: VBoxContainer
+var m_prop_section: VBoxContainer
+var m_window_section: VBoxContainer
 var m_grid_spin: SpinBox
 var m_wall_base_height_spin: SpinBox
 var m_wall_height_spin: SpinBox
@@ -118,12 +121,13 @@ func _build_ui() -> void:
 	coordinator_button.pressed.connect(_on_create_coordinator)
 	content.add_child(coordinator_button)
 
-	content.add_child(HSeparator.new())
-	_build_wall_controls(content)
-	content.add_child(HSeparator.new())
-	_build_prop_controls(content)
-	content.add_child(HSeparator.new())
-	_build_window_controls(content)
+	m_wall_section = _make_tool_section(content)
+	_build_wall_controls(m_wall_section)
+	m_prop_section = _make_tool_section(content)
+	_build_prop_controls(m_prop_section)
+	m_window_section = _make_tool_section(content)
+	_build_window_controls(m_window_section)
+	_update_visible_tool_section(MODE_SELECT)
 
 	m_scene_dialog = EditorFileDialog.new()
 	m_scene_dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_FILE
@@ -139,6 +143,14 @@ func _build_ui() -> void:
 	m_palette_root_dialog.title = "Select prop palette folder"
 	m_palette_root_dialog.dir_selected.connect(_on_palette_root_selected)
 	add_child(m_palette_root_dialog)
+
+
+func _make_tool_section(parent: VBoxContainer) -> VBoxContainer:
+	var section := VBoxContainer.new()
+	section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	section.add_child(HSeparator.new())
+	parent.add_child(section)
+	return section
 
 
 func _build_wall_controls(parent: VBoxContainer) -> void:
@@ -276,6 +288,7 @@ func _add_labeled_control(parent: VBoxContainer, label_text: String, control: Co
 func _on_mode_selected(index: int) -> void:
 	var mode := String(m_mode_option.get_item_metadata(index))
 	_update_shortcuts_for_mode(mode)
+	_update_visible_tool_section(mode)
 	tool_mode_changed.emit(mode)
 
 
@@ -295,6 +308,15 @@ func _shortcut_text_for_mode(mode: String) -> String:
 			return SHORTCUTS_WINDOW_TEXT
 		_:
 			return SHORTCUTS_SELECT_TEXT
+
+
+func _update_visible_tool_section(mode: String) -> void:
+	if m_wall_section != null:
+		m_wall_section.visible = mode == MODE_WALL
+	if m_prop_section != null:
+		m_prop_section.visible = mode == MODE_PROP
+	if m_window_section != null:
+		m_window_section.visible = mode == MODE_WINDOW
 
 
 func _on_create_coordinator() -> void:
