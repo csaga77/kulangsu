@@ -8,10 +8,10 @@
 ## User / Player Experience
 
 - This is a developer-facing tool, not runtime player UI.
-- Authors enable the `Low-Poly Building Editor` plugin, use its dock to choose `Wall`, `Prop`, or `Window`, and place content directly in the 3D viewport.
+- Authors enable the `Low-Poly Building Editor` plugin, use its dock to choose `Wall`, `Prop`, `Door`, or `Window`, and place content directly in the 3D viewport.
 - The dock's top section shows shortcuts for the currently selected tool, followed by live status text and only that tool's properties/configuration section.
 - Wall drawing supports click-start/click-end and click-drag-release flows with live snapped preview geometry; new walls draw on the dock's persisted parent-local base Y plane.
-- Prop and window placement uses translucent green/red previews before committing nodes.
+- Prop, door, and window placement uses translucent green/red previews before committing nodes.
 - While the cursor is over a 3D viewport, `R` rotates the prop preview in 90-degree steps (prop mode only) and `Escape` or right-click cancels the active preview.
 - The prop palette folder is configurable in the dock, defaults to `res://assets`, and includes `.tscn`, `.scn`, `.gltf`, and `.glb` scene assets. The configured folder persists across editor sessions via editor project metadata.
 
@@ -24,10 +24,12 @@
 - Non-collinear walls that intersect (crossings, T-junctions, corners) collapse on commit into one surviving `ProceduralWall3D`: every participating span is split at centerline intersections, including the segment being intersected, stored as typed `WallSegment3D` resources in `extra_segments`, their openings and props reparent to the survivor, and the other wall nodes are removed. The survivor rebuilds one combined mesh whose faces are clipped and whose shared endpoints are mitered by extending wall side faces to their endpoint-direction side-line intersections without adding butt-style joint caps; drawing the same physical spans in the opposite start/end direction produces the same miter points. Top and bottom caps stay tied to wall footprints, with targeted overlap clipping at joins, so split 3+ joins render filled while enclosed wall loops keep their room interiors open. Toggle via `BuildingEditor3D.merge_intersecting` (default on).
 - Window/prop placement and viewport picking are segment-aware: raycasts test every segment of a wall and previews align to the hit segment's frame.
 - `BuildingOpening3D` children create rectangular wall holes without boolean operations. The wall compiles a split box-grid mesh around all openings.
-- Window openings stay axis-aligned to their wall face; opening rotation is not supported, so the frame visual always matches the cut rectangle.
+- Window placement can create single windows, double windows, or frame-only openings. Window variants keep the full frame and add one or two translucent generated pane meshes inside the opening.
+- Door placement uses the same segment-aware opening workflow as windows, but cuts openings down to the wall base and can place single doors, double doors, single door frames, or double door frames. Door frames omit the bottom frame piece; door variants add one or two generated panel meshes inside the opening.
+- Window and door openings stay axis-aligned to their wall face; opening rotation is not supported, so the frame visual always matches the cut rectangle.
 - Window openings keep their segment-local position and face alignment when wall endpoints, joints, absorbed segments, or whole walls are dragged.
-- Window placement snaps horizontally to the coordinator's grid step, and the opening's bottom edge sits at the configurable sill height from the dock (persisted with the dock state, default 0.9) instead of following the cursor's vertical position.
-- In Window tool mode, hovering over a placed opening highlights it blue (center) or yellow (edge). Clicking and dragging the center repositions it; dragging an edge resizes it — left/right edges adjust width symmetrically, top/bottom edges adjust height (Y locks to sill + half-height). Both snap to grid. Releasing commits via undo/redo; Escape or right-click cancels.
+- Window placement snaps horizontally to the coordinator's grid step, and the opening's bottom edge sits at the configurable sill height from the dock (persisted with the dock state, default 0.9) instead of following the cursor's vertical position. The selected window style and dimensions persist with the dock state.
+- In Window or Door tool mode, hovering over a placed opening highlights it blue (center) or yellow (edge). Clicking and dragging the center repositions it; dragging an edge resizes it — left/right edges adjust width symmetrically, top/bottom edges adjust height (Y locks to the opening's sill + half-height). Both snap to grid. Releasing commits via undo/redo; Escape or right-click cancels.
 - In Wall tool mode, hovering near any primary or absorbed segment endpoint highlights it yellow (resize); hovering a shared joint endpoint also shows an orange joint marker; hovering the middle highlights blue (move). Shift-clicking the middle of a wall span inserts a joint at the snapped hit point, splitting that span into two connected segments. Dragging an isolated endpoint moves only that endpoint (grid-snapped); dragging a shared joint endpoint moves every connected segment endpoint at that joint; Option/Alt-dragging a shared joint endpoint detaches only the picked segment endpoint; dragging any single endpoint near another endpoint or joint snaps it there to connect. Dragging the middle translates the whole merged wall. If an endpoint drag collapses a span to zero length, release deletes that segment, promoting another span to the primary segment when needed; collapsing the only span deletes the wall node. If a drag edit crosses another wall or another segment in the same merged wall, all participating spans are normalized so the crossing point becomes a new editable endpoint on both the crossing and intersected segments.
 - Wall meshes duplicate vertices per face, carry vertex colors, and use rough flat materials for hard low-poly face breaks.
 - Wall mesh normals point outward, triangle winding follows Godot's `BoxMesh` convention, and wall materials use backface culling so lighting follows the generated face normals.
@@ -37,9 +39,9 @@
 
 - A wall shorter than half the active grid step, with an absolute floor of 0.1 units, is ignored.
 - Dragging an existing segment to exactly zero length deletes it through undo/redo; nonzero spans below the minimum length are still rejected and restored.
-- Window openings are rejected when they leave the wall bounds, overlap another opening, or straddle another segment of the merged wall (the crossing segment's solid mass would block the hole).
+- Window and door openings are rejected when they leave the wall bounds, overlap another opening, or straddle another segment of the merged wall (the crossing segment's solid mass would block the hole). Doors are allowed to touch the wall base; windows keep bottom clearance from the base.
 - Child openings are assigned to the segment whose face shell they sit on (distance to the face, not the centerline), so openings near junctions stay on the wall they were placed against; the window tool also pins the hit segment index as metadata, with geometric assignment as fallback.
-- The window preview re-parents to whichever wall is hovered, so moving between separate walls in window mode places against the correct node.
+- The opening preview re-parents to whichever wall is hovered, so moving between separate walls in window or door mode places against the correct node.
 - Prop placement can fall back to the ground plane when no procedural wall target exists.
 - The first wall click or placement commit can create a `BuildingEditor3D` coordinator if the scene has none. Hover previews never mutate the scene or undo history.
 - Preview walls are tagged with preview metadata and never participate in intersection merging.
@@ -59,7 +61,7 @@
 - `MergedWallMeshBuilder` (`merged_wall_mesh_builder.gd`) owns the plan-space clipping math that produces combined multi-segment geometry.
 - `WallSegment3D` (`wall_segment_3d.gd`) is the typed resource for one wall span, including static helpers for collinear segment merging and intersection splitting.
 - `ProceduralWall3D` owns generated mesh, vertex colors, collision, and opening-driven rebuilds.
-- `BuildingOpening3D` owns the visible window frame marker and the dimensions consumed by wall mesh generation.
+- `BuildingOpening3D` owns the visible window/door frame, window-pane, or door-panel marker and the dimensions consumed by wall mesh generation.
 
 ## Relevant Files
 
@@ -84,7 +86,7 @@
 
 ## Validation
 
-- Headless smoke scene: `scenes/tests/test_low_poly_building_editor_3d.tscn` (covers mesh conventions, opening rules, opening anchors following edited segments, snapping, merge detection including height-mismatch rejection, intersection detection, intersection splitting into editable endpoints, manual joint insertion, joint endpoint movement across connected segments, endpoint detach/reconnect behavior, connected wall top-cap preservation, multi-segment merged geometry with correct top-cap area, collinear segment extension, opening placement on extra segments, junction-adjacent segment assignment, and junction-straddling rejection).
+- Headless smoke scene: `scenes/tests/test_low_poly_building_editor_3d.tscn` (covers mesh conventions, opening rules, door base-edge allowance and double-panel generation, double-window pane generation, opening anchors following edited segments, snapping, merge detection including height-mismatch rejection, intersection detection, intersection splitting into editable endpoints, manual joint insertion, joint endpoint movement across connected segments, endpoint detach/reconnect behavior, connected wall top-cap preservation, multi-segment merged geometry with correct top-cap area, collinear segment extension, opening placement on extra segments, junction-adjacent segment assignment, and junction-straddling rejection).
 - Manual editor validation: enable the plugin, create a coordinator, draw overlapping walls, place a window on a wall, and confirm undo/redo restores the wall mesh and child hierarchy.
 - Place a prop on a wall positioned away from the scene origin and confirm the committed prop lands exactly where the preview showed.
 - Confirm generated wall mesh has vertex colors and generated collision.

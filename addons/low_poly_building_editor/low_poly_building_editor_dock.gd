@@ -5,12 +5,14 @@ signal tool_mode_changed(mode: String)
 signal wall_settings_changed(settings: Dictionary)
 signal prop_settings_changed(settings: Dictionary)
 signal window_settings_changed(settings: Dictionary)
+signal door_settings_changed(settings: Dictionary)
 signal create_coordinator_requested()
 
 const MODE_SELECT := "select"
 const MODE_WALL := "wall"
 const MODE_PROP := "prop"
 const MODE_WINDOW := "window"
+const MODE_DOOR := "door"
 const MAX_PALETTE_ITEMS := 120
 const DEFAULT_PROP_PALETTE_ROOT := "res://assets"
 const PROP_SCENE_EXTENSIONS := [".tscn", ".scn", ".gltf", ".glb"]
@@ -20,6 +22,7 @@ const SHORTCUTS_SELECT_TEXT := "Shortcuts\nSelect: normal Godot editor selection
 const SHORTCUTS_WALL_TEXT := "Shortcuts\nDrag empty space to draw a wall.\nDrag wall body to move it.\nDrag endpoint or joint to edit.\nShift-click wall body to add joint.\nOption/Alt-drag shared joint to disconnect.\nEsc or right-click cancels."
 const SHORTCUTS_PROP_TEXT := "Shortcuts\nSelect a palette item, then click to place.\nR rotates the preview by 90 degrees.\nEsc or right-click cancels."
 const SHORTCUTS_WINDOW_TEXT := "Shortcuts\nClick a wall to place a window.\nDrag window center to move.\nDrag window edge to resize.\nEsc or right-click cancels."
+const SHORTCUTS_DOOR_TEXT := "Shortcuts\nSelect a door style, then click a wall to place.\nDrag door center to move.\nDrag door edge to resize.\nEsc or right-click cancels."
 
 var m_editor_interface: EditorInterface
 var m_mode_option: OptionButton
@@ -28,6 +31,7 @@ var m_status_label: Label
 var m_wall_section: VBoxContainer
 var m_prop_section: VBoxContainer
 var m_window_section: VBoxContainer
+var m_door_section: VBoxContainer
 var m_grid_spin: SpinBox
 var m_wall_base_height_spin: SpinBox
 var m_wall_height_spin: SpinBox
@@ -40,10 +44,15 @@ var m_prop_clearance_spin: SpinBox
 var m_palette_list: ItemList
 var m_palette_root_dialog: EditorFileDialog
 var m_scene_dialog: EditorFileDialog
+var m_window_style_option: OptionButton
 var m_window_width_spin: SpinBox
 var m_window_height_spin: SpinBox
 var m_window_frame_spin: SpinBox
 var m_window_sill_spin: SpinBox
+var m_door_style_option: OptionButton
+var m_door_width_spin: SpinBox
+var m_door_height_spin: SpinBox
+var m_door_frame_spin: SpinBox
 var m_palette_paths: PackedStringArray = PackedStringArray()
 
 
@@ -110,8 +119,10 @@ func _build_ui() -> void:
 	m_mode_option.set_item_metadata(1, MODE_WALL)
 	m_mode_option.add_item("Prop", 2)
 	m_mode_option.set_item_metadata(2, MODE_PROP)
-	m_mode_option.add_item("Window", 3)
-	m_mode_option.set_item_metadata(3, MODE_WINDOW)
+	m_mode_option.add_item("Door", 3)
+	m_mode_option.set_item_metadata(3, MODE_DOOR)
+	m_mode_option.add_item("Window", 4)
+	m_mode_option.set_item_metadata(4, MODE_WINDOW)
 	m_mode_option.item_selected.connect(_on_mode_selected)
 	mode_row.add_child(m_mode_option)
 	content.add_child(mode_row)
@@ -125,6 +136,8 @@ func _build_ui() -> void:
 	_build_wall_controls(m_wall_section)
 	m_prop_section = _make_tool_section(content)
 	_build_prop_controls(m_prop_section)
+	m_door_section = _make_tool_section(content)
+	_build_door_controls(m_door_section)
 	m_window_section = _make_tool_section(content)
 	_build_window_controls(m_window_section)
 	_update_visible_tool_section(MODE_SELECT)
@@ -247,7 +260,18 @@ func _build_window_controls(parent: VBoxContainer) -> void:
 	header.text = "Window Opening"
 	parent.add_child(header)
 
-	m_window_width_spin = _make_spin(0.1, 8.0, 0.01, 1.0)
+	m_window_style_option = OptionButton.new()
+	m_window_style_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	m_window_style_option.add_item("Single Window", 0)
+	m_window_style_option.set_item_metadata(0, "single_window")
+	m_window_style_option.add_item("Double Window", 1)
+	m_window_style_option.set_item_metadata(1, "double_window")
+	m_window_style_option.add_item("Window Frame", 2)
+	m_window_style_option.set_item_metadata(2, "frame")
+	m_window_style_option.item_selected.connect(_on_window_style_selected)
+	_add_labeled_control(parent, "Style:", m_window_style_option)
+
+	m_window_width_spin = _make_spin(0.1, 8.0, 0.01, _window_default_width("single_window"))
 	_add_labeled_control(parent, "Width:", m_window_width_spin)
 	m_window_width_spin.value_changed.connect(_on_window_setting_changed)
 
@@ -263,6 +287,37 @@ func _build_window_controls(parent: VBoxContainer) -> void:
 	m_window_sill_spin.tooltip_text = "Height of the opening's bottom edge above the wall base."
 	_add_labeled_control(parent, "Sill:", m_window_sill_spin)
 	m_window_sill_spin.value_changed.connect(_on_window_setting_changed)
+
+
+func _build_door_controls(parent: VBoxContainer) -> void:
+	var header := Label.new()
+	header.text = "Door Opening"
+	parent.add_child(header)
+
+	m_door_style_option = OptionButton.new()
+	m_door_style_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	m_door_style_option.add_item("Single Door", 0)
+	m_door_style_option.set_item_metadata(0, "single_door")
+	m_door_style_option.add_item("Double Door", 1)
+	m_door_style_option.set_item_metadata(1, "double_door")
+	m_door_style_option.add_item("Single Door Frame", 2)
+	m_door_style_option.set_item_metadata(2, "single_frame")
+	m_door_style_option.add_item("Double Door Frame", 3)
+	m_door_style_option.set_item_metadata(3, "double_frame")
+	m_door_style_option.item_selected.connect(_on_door_style_selected)
+	_add_labeled_control(parent, "Style:", m_door_style_option)
+
+	m_door_width_spin = _make_spin(0.3, 8.0, 0.01, _door_default_width("single_door"))
+	_add_labeled_control(parent, "Width:", m_door_width_spin)
+	m_door_width_spin.value_changed.connect(_on_door_setting_changed)
+
+	m_door_height_spin = _make_spin(0.3, 8.0, 0.01, 2.1)
+	_add_labeled_control(parent, "Height:", m_door_height_spin)
+	m_door_height_spin.value_changed.connect(_on_door_setting_changed)
+
+	m_door_frame_spin = _make_spin(0.01, 1.0, 0.01, 0.08)
+	_add_labeled_control(parent, "Frame:", m_door_frame_spin)
+	m_door_frame_spin.value_changed.connect(_on_door_setting_changed)
 
 
 func _make_spin(min_value: float, max_value: float, step: float, value: float) -> SpinBox:
@@ -306,6 +361,8 @@ func _shortcut_text_for_mode(mode: String) -> String:
 			return SHORTCUTS_PROP_TEXT
 		MODE_WINDOW:
 			return SHORTCUTS_WINDOW_TEXT
+		MODE_DOOR:
+			return SHORTCUTS_DOOR_TEXT
 		_:
 			return SHORTCUTS_SELECT_TEXT
 
@@ -317,6 +374,8 @@ func _update_visible_tool_section(mode: String) -> void:
 		m_prop_section.visible = mode == MODE_PROP
 	if m_window_section != null:
 		m_window_section.visible = mode == MODE_WINDOW
+	if m_door_section != null:
+		m_door_section.visible = mode == MODE_DOOR
 
 
 func _on_create_coordinator() -> void:
@@ -385,10 +444,29 @@ func _on_window_setting_changed(_value: float) -> void:
 	_emit_window_settings()
 
 
+func _on_window_style_selected(_index: int) -> void:
+	var style := _selected_window_style()
+	if m_window_width_spin != null:
+		m_window_width_spin.value = _window_default_width(style)
+	_emit_window_settings()
+
+
+func _on_door_style_selected(_index: int) -> void:
+	var style := _selected_door_style()
+	if m_door_width_spin != null:
+		m_door_width_spin.value = _door_default_width(style)
+	_emit_door_settings()
+
+
+func _on_door_setting_changed(_value: float) -> void:
+	_emit_door_settings()
+
+
 func _emit_all_settings() -> void:
 	_emit_wall_settings()
 	_emit_prop_settings()
 	_emit_window_settings()
+	_emit_door_settings()
 
 
 func _emit_wall_settings() -> void:
@@ -411,11 +489,61 @@ func _emit_prop_settings() -> void:
 
 func _emit_window_settings() -> void:
 	window_settings_changed.emit({
+		"style": _selected_window_style(),
 		"width": float(m_window_width_spin.value),
 		"height": float(m_window_height_spin.value),
 		"frame_thickness": float(m_window_frame_spin.value),
 		"sill_height": float(m_window_sill_spin.value),
 	})
+
+
+func _selected_window_style() -> String:
+	if m_window_style_option == null or m_window_style_option.selected < 0:
+		return "single_window"
+	return String(m_window_style_option.get_item_metadata(m_window_style_option.selected))
+
+
+func _select_window_style(style: String) -> void:
+	if m_window_style_option == null:
+		return
+	for index in range(m_window_style_option.get_item_count()):
+		if String(m_window_style_option.get_item_metadata(index)) == style:
+			m_window_style_option.select(index)
+			return
+	m_window_style_option.select(0)
+
+
+func _window_default_width(style: String) -> float:
+	return 1.8 if style == "double_window" else 1.0
+
+
+func _emit_door_settings() -> void:
+	door_settings_changed.emit({
+		"style": _selected_door_style(),
+		"width": float(m_door_width_spin.value),
+		"height": float(m_door_height_spin.value),
+		"frame_thickness": float(m_door_frame_spin.value),
+	})
+
+
+func _selected_door_style() -> String:
+	if m_door_style_option == null or m_door_style_option.selected < 0:
+		return "single_door"
+	return String(m_door_style_option.get_item_metadata(m_door_style_option.selected))
+
+
+func _select_door_style(style: String) -> void:
+	if m_door_style_option == null:
+		return
+	for index in range(m_door_style_option.get_item_count()):
+		if String(m_door_style_option.get_item_metadata(index)) == style:
+			m_door_style_option.select(index)
+			return
+	m_door_style_option.select(0)
+
+
+func _door_default_width(style: String) -> float:
+	return 1.6 if style.begins_with("double") else 0.9
 
 
 func _scan_palette() -> void:
@@ -512,7 +640,17 @@ func _load_persisted_settings() -> void:
 	var state: Dictionary = state_variant
 	m_palette_root_edit.text = str(state.get("prop_palette_root", m_palette_root_edit.text))
 	m_wall_base_height_spin.value = float(state.get("wall_base_height", m_wall_base_height_spin.value))
+	var window_style := str(state.get("window_style", _selected_window_style()))
+	_select_window_style(window_style)
+	m_window_width_spin.value = float(state.get("window_width", _window_default_width(window_style)))
+	m_window_height_spin.value = float(state.get("window_height", m_window_height_spin.value))
+	m_window_frame_spin.value = float(state.get("window_frame_thickness", m_window_frame_spin.value))
 	m_window_sill_spin.value = float(state.get("window_sill_height", m_window_sill_spin.value))
+	var door_style := str(state.get("door_style", _selected_door_style()))
+	_select_door_style(door_style)
+	m_door_width_spin.value = float(state.get("door_width", _door_default_width(door_style)))
+	m_door_height_spin.value = float(state.get("door_height", m_door_height_spin.value))
+	m_door_frame_spin.value = float(state.get("door_frame_thickness", m_door_frame_spin.value))
 
 
 func _save_persisted_settings() -> void:
@@ -523,5 +661,13 @@ func _save_persisted_settings() -> void:
 	editor_settings.set_project_metadata(PROJECT_METADATA_SECTION, PROJECT_METADATA_KEY, {
 		"prop_palette_root": _get_configured_palette_root(),
 		"wall_base_height": float(m_wall_base_height_spin.value) if m_wall_base_height_spin != null else 0.0,
+		"window_style": _selected_window_style(),
+		"window_width": float(m_window_width_spin.value) if m_window_width_spin != null else 1.0,
+		"window_height": float(m_window_height_spin.value) if m_window_height_spin != null else 1.0,
+		"window_frame_thickness": float(m_window_frame_spin.value) if m_window_frame_spin != null else 0.08,
 		"window_sill_height": float(m_window_sill_spin.value) if m_window_sill_spin != null else 0.9,
+		"door_style": _selected_door_style(),
+		"door_width": float(m_door_width_spin.value) if m_door_width_spin != null else 0.9,
+		"door_height": float(m_door_height_spin.value) if m_door_height_spin != null else 2.1,
+		"door_frame_thickness": float(m_door_frame_spin.value) if m_door_frame_spin != null else 0.08,
 	})

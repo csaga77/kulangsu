@@ -40,6 +40,8 @@ func _run_smoke_checks() -> void:
 
 	_validate_wall_mesh(wall)
 	_validate_opening_rules(wall)
+	_validate_door_opening_rules(wall)
+	_validate_window_style_visuals()
 	_validate_opening_follows_wall_segment()
 	_validate_snapping(coordinator)
 	_validate_wall_base_height(coordinator)
@@ -99,6 +101,50 @@ func _validate_opening_rules(wall: ProceduralWall3DScript) -> void:
 		m_failures.append("ProceduralWall3D allowed an overlapping window opening")
 	if !wall.can_place_opening(open_center, Vector2(0.6, 0.8)):
 		m_failures.append("ProceduralWall3D rejected a valid non-overlapping opening")
+
+
+func _validate_door_opening_rules(wall: ProceduralWall3DScript) -> void:
+	var door_center := Vector2(0.8, 1.05)
+	var door_size := Vector2(0.9, 2.1)
+	if wall.can_place_opening(door_center, door_size, 0.03, null, 0):
+		m_failures.append("ProceduralWall3D allowed a floor-touching door without base-edge allowance")
+	if !wall.can_place_opening(door_center, door_size, 0.03, null, 0, true):
+		m_failures.append("ProceduralWall3D rejected a valid floor-touching door opening")
+
+	var door := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	door.name = "DoubleDoorOpening"
+	door.opening_width = 1.6
+	door.opening_height = 2.1
+	door.show_bottom_frame = false
+	door.door_panel_count = 2
+	add_child(door)
+	if door.get_node_or_null("BottomFrame") != null:
+		m_failures.append("BuildingOpening3D generated a bottom frame for a door frame")
+	if door.get_node_or_null("LeftDoorPanel") == null or door.get_node_or_null("RightDoorPanel") == null:
+		m_failures.append("BuildingOpening3D did not generate double door panels")
+
+
+func _validate_window_style_visuals() -> void:
+	var double_window := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	double_window.name = "DoubleWindowOpening"
+	double_window.opening_width = 1.8
+	double_window.opening_height = 1.0
+	double_window.window_pane_count = 2
+	add_child(double_window)
+	if double_window.get_node_or_null("BottomFrame") == null:
+		m_failures.append("BuildingOpening3D did not keep bottom frame for a window")
+	if (
+		double_window.get_node_or_null("LeftWindowPane") == null
+		or double_window.get_node_or_null("RightWindowPane") == null
+	):
+		m_failures.append("BuildingOpening3D did not generate double window panes")
+
+	var window_frame := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	window_frame.name = "WindowFrameOpening"
+	window_frame.window_pane_count = 0
+	add_child(window_frame)
+	if window_frame.get_node_or_null("WindowPane") != null:
+		m_failures.append("BuildingOpening3D generated panes for a frame-only window")
 
 
 func _validate_opening_follows_wall_segment() -> void:

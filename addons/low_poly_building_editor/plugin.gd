@@ -6,6 +6,7 @@ const MODE_SELECT := "select"
 const MODE_WALL := "wall"
 const MODE_PROP := "prop"
 const MODE_WINDOW := "window"
+const MODE_DOOR := "door"
 const BuildingEditor3DScript = preload("res://addons/low_poly_building_editor/building_editor_3d.gd")
 const ProceduralWall3DScript = preload("res://addons/low_poly_building_editor/procedural_wall_3d.gd")
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
@@ -14,6 +15,8 @@ const DockScript = preload("res://addons/low_poly_building_editor/low_poly_build
 const ViewportInputOverlayScript = preload("res://addons/low_poly_building_editor/viewport_input_overlay.gd")
 const ViewportInputCaptureScript = preload("res://addons/low_poly_building_editor/viewport_input_capture.gd")
 const WALL_DRAG_COMMIT_DISTANCE := 6.0
+const OPENING_SILL_META := &"building_opening_sill_height"
+const OPENING_ALLOW_BASE_META := &"building_opening_allow_base_edge"
 
 var m_dock: Control
 var m_editor_dock: EditorDock
@@ -33,10 +36,17 @@ var m_prop_settings := {
 	"clearance": 0.25,
 }
 var m_window_settings := {
+	"style": "single_window",
 	"width": 1.0,
 	"height": 1.0,
 	"frame_thickness": 0.08,
 	"sill_height": 0.9,
+}
+var m_door_settings := {
+	"style": "single_door",
+	"width": 0.9,
+	"height": 2.1,
+	"frame_thickness": 0.08,
 }
 var m_wall_start_local := Vector3.ZERO
 var m_wall_end_local := Vector3.ZERO
@@ -116,6 +126,7 @@ func _enter_tree() -> void:
 	m_dock.connect("wall_settings_changed", Callable(self, "_on_wall_settings_changed"))
 	m_dock.connect("prop_settings_changed", Callable(self, "_on_prop_settings_changed"))
 	m_dock.connect("window_settings_changed", Callable(self, "_on_window_settings_changed"))
+	m_dock.connect("door_settings_changed", Callable(self, "_on_door_settings_changed"))
 	m_dock.connect("create_coordinator_requested", Callable(self, "_on_create_coordinator_requested"))
 
 	m_editor_dock = EditorDock.new()
@@ -177,13 +188,17 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 
 	if m_tool_mode == MODE_WALL:
 		return _handle_wall_input(camera, event)
-	if m_tool_mode == MODE_PROP or m_tool_mode == MODE_WINDOW:
+	if m_tool_mode == MODE_PROP or _is_opening_tool():
 		return _handle_placement_input(camera, event)
 	return EditorPlugin.AFTER_GUI_INPUT_PASS
 
 
 func is_building_tool_active() -> bool:
 	return m_tool_mode != MODE_SELECT
+
+
+func _is_opening_tool() -> bool:
+	return m_tool_mode == MODE_WINDOW or m_tool_mode == MODE_DOOR
 
 
 func handle_viewport_overlay_input(camera: Camera3D, event: InputEvent) -> bool:
@@ -309,12 +324,12 @@ func _handle_wall_drag_input(camera: Camera3D, event: InputEvent) -> int:
 
 
 func _handle_placement_input(camera: Camera3D, event: InputEvent) -> int:
-	if m_tool_mode == MODE_WINDOW and m_dragging_opening != null:
+	if _is_opening_tool() and m_dragging_opening != null:
 		return _handle_window_drag_input(camera, event)
 
 	if event is InputEventMouseMotion:
 		var mouse_pos := (event as InputEventMouseMotion).position
-		if m_tool_mode == MODE_WINDOW:
+		if _is_opening_tool():
 			var pick := _find_opening_pick(camera, mouse_pos)
 			var hover_opening := pick.get("opening") as BuildingOpening3DScript
 			var hover_edge := int(pick.get("edge", -1))
@@ -323,7 +338,7 @@ func _handle_placement_input(camera: Camera3D, event: InputEvent) -> int:
 				_clear_prop_preview()
 				_set_status(
 					"Click and drag edge to resize." if hover_edge >= 0
-					else "Click and drag to reposition."
+					else "Click and drag to move opening."
 				)
 				return _handled()
 			_clear_drag_hover()
@@ -337,7 +352,7 @@ func _handle_placement_input(camera: Camera3D, event: InputEvent) -> int:
 	if mouse_button.button_index != MOUSE_BUTTON_LEFT or !mouse_button.pressed:
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
 
-	if m_tool_mode == MODE_WINDOW:
+	if _is_opening_tool():
 		var pick := _find_opening_pick(camera, mouse_button.position)
 		var hit_opening := pick.get("opening") as BuildingOpening3DScript
 		if hit_opening != null:
@@ -692,17 +707,19 @@ func _update_placement_preview(camera: Camera3D, mouse_position: Vector2) -> voi
 	var hit := _raycast_world(camera, mouse_position)
 	var wall := _find_wall_from_collider(hit.get("collider"))
 
-	if m_tool_mode == MODE_WINDOW:
-		_update_window_preview(wall, hit)
+	if _is_opening_tool():
+		_update_opening_preview(wall, hit)
 		return
 
 	_update_prop_preview(wall, hit)
 
 
-func _update_window_preview(wall: ProceduralWall3DScript, hit: Dictionary) -> void:
+func _update_opening_preview(wall: ProceduralWall3DScript, hit: Dictionary) -> void:
+	var settings := _active_opening_settings()
+	var label := String(settings["label"])
 	if wall == null:
 		_clear_prop_preview()
-		_set_status("Window openings need a wall target.")
+		_set_status("%s openings need a wall target." % label)
 		m_preview_valid = false
 		return
 	var segment_index := int(hit.get("segment", 0))
@@ -712,31 +729,111 @@ func _update_window_preview(wall: ProceduralWall3DScript, hit: Dictionary) -> vo
 	if !(m_prop_preview is BuildingOpening3DScript):
 		_clear_prop_preview()
 		m_prop_preview = BuildingOpening3DScript.new() as BuildingOpening3DScript
-		m_prop_preview.name = "WindowOpeningPreview"
 		(m_prop_preview as BuildingOpening3DScript).build_on_ready = true
-		(m_prop_preview as BuildingOpening3DScript).frame_depth = segment.thickness + 0.04
 	_set_preview_parent(m_prop_preview, wall)
 
 	var opening := m_prop_preview as BuildingOpening3DScript
+	opening.name = "%sPreview" % String(settings["node_name"])
 	opening.set_meta(ProceduralWall3DScript.SEGMENT_INDEX_META, segment_index)
-	opening.opening_width = float(m_window_settings["width"])
-	opening.opening_height = float(m_window_settings["height"])
-	opening.frame_thickness = float(m_window_settings["frame_thickness"])
-	opening.frame_depth = segment.thickness + 0.04
+	_apply_opening_settings(opening, settings, segment.thickness + 0.04)
 	var local_hit := frame.affine_inverse() * wall.to_local(Vector3(hit["position"]))
 	var face_sign := 1.0 if local_hit.z >= 0.0 else -1.0
 	var grid_step := _active_grid_step(wall)
 	local_hit.x = clampf(roundf(local_hit.x / grid_step) * grid_step, 0.0, segment.get_length())
-	var sill_height := maxf(float(m_window_settings.get("sill_height", 0.9)), 0.0)
+	var sill_height := maxf(float(settings["sill_height"]), 0.0)
 	local_hit.y = sill_height + opening.opening_height * 0.5
 	local_hit.z = face_sign * (segment.thickness * 0.5 + 0.035)
 	opening.transform = Transform3D(frame.basis, frame * local_hit)
+	opening.set_meta(OPENING_SILL_META, sill_height)
+	opening.set_meta(OPENING_ALLOW_BASE_META, bool(settings["allow_base_edge"]))
 	var center := Vector2(local_hit.x, local_hit.y)
 	var size := Vector2(opening.opening_width, opening.opening_height)
-	m_preview_valid = wall.can_place_opening(center, size, 0.04, opening, segment_index)
+	m_preview_valid = wall.can_place_opening(
+		center,
+		size,
+		0.04,
+		opening,
+		segment_index,
+		bool(settings["allow_base_edge"])
+	)
 	opening.frame_color = Color(0.20, 0.88, 0.36, 0.72) if m_preview_valid else Color(0.95, 0.20, 0.16, 0.72)
 	m_preview_wall = wall
-	_set_status("Window ready." if m_preview_valid else "Window overlaps or leaves the wall span.")
+	_set_status("%s ready." % label if m_preview_valid else "%s overlaps or leaves the wall span." % label)
+
+
+func _apply_opening_settings(opening: BuildingOpening3DScript, settings: Dictionary, frame_depth: float) -> void:
+	opening.opening_width = float(settings["width"])
+	opening.opening_height = float(settings["height"])
+	opening.frame_thickness = float(settings["frame_thickness"])
+	opening.frame_depth = frame_depth
+	opening.show_bottom_frame = bool(settings["show_bottom_frame"])
+	opening.door_panel_count = int(settings["door_panel_count"])
+	opening.door_panel_depth = float(settings["door_panel_depth"])
+	opening.door_panel_color = Color(settings["door_panel_color"])
+	opening.window_pane_count = int(settings["window_pane_count"])
+	opening.window_pane_depth = float(settings["window_pane_depth"])
+	opening.window_pane_color = Color(settings["window_pane_color"])
+
+
+func _active_opening_settings() -> Dictionary:
+	if m_tool_mode == MODE_DOOR:
+		var style := String(m_door_settings.get("style", "single_door"))
+		var is_double := style.begins_with("double")
+		var is_frame_only := style.ends_with("_frame")
+		var label := "Double Door" if is_double else "Single Door"
+		if is_frame_only:
+			label += " Frame"
+		var panel_count := 0
+		if !is_frame_only:
+			panel_count = 2 if is_double else 1
+		var default_width := 1.6 if is_double else 0.9
+		var node_name := label.replace(" ", "") + "Opening"
+		return {
+			"label": label,
+			"node_name": node_name,
+			"width": float(m_door_settings.get("width", default_width)),
+			"height": float(m_door_settings.get("height", 2.1)),
+			"frame_thickness": float(m_door_settings.get("frame_thickness", 0.08)),
+			"sill_height": 0.0,
+			"show_bottom_frame": false,
+			"door_panel_count": panel_count,
+			"door_panel_depth": 0.05,
+			"door_panel_color": Color(0.50, 0.34, 0.20, 1.0),
+			"window_pane_count": 0,
+			"window_pane_depth": 0.03,
+			"window_pane_color": Color(0.58, 0.82, 0.95, 0.52),
+			"allow_base_edge": true,
+		}
+
+	var style := String(m_window_settings.get("style", "single_window"))
+	var is_double := style == "double_window"
+	var is_frame_only := style == "frame"
+	var label := "Single Window"
+	if is_double:
+		label = "Double Window"
+	if is_frame_only:
+		label = "Window Frame"
+	var pane_count := 0
+	if !is_frame_only:
+		pane_count = 2 if is_double else 1
+	var default_width := 1.8 if is_double else 1.0
+	var node_name := label.replace(" ", "") + "Opening"
+	return {
+		"label": label,
+		"node_name": node_name,
+		"width": float(m_window_settings.get("width", default_width)),
+		"height": float(m_window_settings["height"]),
+		"frame_thickness": float(m_window_settings["frame_thickness"]),
+		"sill_height": maxf(float(m_window_settings.get("sill_height", 0.9)), 0.0),
+		"show_bottom_frame": true,
+		"door_panel_count": 0,
+		"door_panel_depth": 0.05,
+		"door_panel_color": Color(0.50, 0.34, 0.20, 1.0),
+		"window_pane_count": pane_count,
+		"window_pane_depth": 0.03,
+		"window_pane_color": Color(0.58, 0.82, 0.95, 0.52),
+		"allow_base_edge": false,
+	}
 
 
 func _update_prop_preview(wall: ProceduralWall3DScript, hit: Dictionary) -> void:
@@ -797,23 +894,39 @@ func _commit_placement() -> void:
 	if m_prop_preview == null or m_preview_parent == null:
 		return
 
-	if m_tool_mode == MODE_WINDOW:
+	if _is_opening_tool():
+		var settings := _active_opening_settings()
 		var opening_preview := m_prop_preview as BuildingOpening3DScript
 		var wall := m_preview_parent as ProceduralWall3DScript
 		if opening_preview == null or wall == null:
 			return
 		var opening := BuildingOpening3DScript.new() as BuildingOpening3DScript
-		opening.name = "WindowOpening"
+		opening.name = String(settings["node_name"])
 		opening.opening_width = opening_preview.opening_width
 		opening.opening_height = opening_preview.opening_height
 		opening.frame_thickness = opening_preview.frame_thickness
 		opening.frame_depth = opening_preview.frame_depth
 		opening.frame_color = Color(0.86, 0.92, 0.94, 1.0)
+		opening.show_bottom_frame = opening_preview.show_bottom_frame
+		opening.door_panel_count = opening_preview.door_panel_count
+		opening.door_panel_depth = opening_preview.door_panel_depth
+		opening.door_panel_color = opening_preview.door_panel_color
+		opening.window_pane_count = opening_preview.window_pane_count
+		opening.window_pane_depth = opening_preview.window_pane_depth
+		opening.window_pane_color = opening_preview.window_pane_color
 		opening.position = opening_preview.position
 		opening.rotation = opening_preview.rotation
 		opening.set_meta(
 			ProceduralWall3DScript.SEGMENT_INDEX_META,
 			int(opening_preview.get_meta(ProceduralWall3DScript.SEGMENT_INDEX_META, 0))
+		)
+		opening.set_meta(
+			OPENING_SILL_META,
+			float(opening_preview.get_meta(OPENING_SILL_META, settings["sill_height"]))
+		)
+		opening.set_meta(
+			OPENING_ALLOW_BASE_META,
+			bool(opening_preview.get_meta(OPENING_ALLOW_BASE_META, settings["allow_base_edge"]))
 		)
 		var scene_root := get_editor_interface().get_edited_scene_root()
 		var undo_redo := get_undo_redo()
@@ -822,7 +935,7 @@ func _commit_placement() -> void:
 		undo_redo.add_do_method(self, "_do_add_node_and_rebuild", wall, opening, scene_root, true)
 		undo_redo.add_undo_method(self, "_undo_remove_node_and_rebuild", wall, opening)
 		undo_redo.commit_action()
-		_set_status("Placed window opening.")
+		_set_status("Placed %s." % String(settings["label"]).to_lower())
 		return
 
 	var scene_path := String(m_prop_settings["scene_path"])
@@ -2064,7 +2177,7 @@ func _start_window_drag(
 		m_drag_face_sign = 1.0
 	var color := Color(1.0, 0.85, 0.20, 0.9) if edge >= 0 else Color(0.20, 0.60, 1.0, 0.9)
 	opening.frame_color = color
-	var action := "edge" if edge >= 0 else "window"
+	var action := "edge" if edge >= 0 else "opening"
 	_set_status("Dragging %s — release to commit, Escape to cancel." % action)
 
 
@@ -2109,7 +2222,7 @@ func _update_window_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 		m_dragging_opening.opening_width = new_width
 		m_dragging_opening.opening_height = new_height
 		# Keep center position fixed (sill constraint: re-apply to Y)
-		var sill_height := maxf(float(m_window_settings.get("sill_height", 0.9)), 0.0)
+		var sill_height := _opening_sill_height(m_dragging_opening)
 		var center_local := Vector3(
 			m_drag_resize_center_2d.x,
 			sill_height + new_height * 0.5,
@@ -2118,18 +2231,32 @@ func _update_window_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 		m_dragging_opening.transform = Transform3D(frame.basis, frame * center_local)
 		var center_2d := Vector2(center_local.x, center_local.y)
 		var size := Vector2(new_width, new_height)
-		m_drag_valid = wall.can_place_opening(center_2d, size, 0.04, m_dragging_opening, m_drag_target_segment)
+		m_drag_valid = wall.can_place_opening(
+			center_2d,
+			size,
+			0.04,
+			m_dragging_opening,
+			m_drag_target_segment,
+			_opening_allow_base_edge(m_dragging_opening)
+		)
 	else:
 		# Move mode
 		m_drag_face_sign = signf(local_hit.z) if absf(local_hit.z) > 0.001 else m_drag_face_sign
 		local_hit.x = clampf(roundf(local_hit.x / grid_step) * grid_step, 0.0, segment.get_length())
-		var sill_height := maxf(float(m_window_settings.get("sill_height", 0.9)), 0.0)
+		var sill_height := _opening_sill_height(m_dragging_opening)
 		local_hit.y = sill_height + m_dragging_opening.opening_height * 0.5
 		local_hit.z = m_drag_face_sign * (segment.thickness * 0.5 + 0.035)
 		m_dragging_opening.transform = Transform3D(frame.basis, frame * local_hit)
 		var center := Vector2(local_hit.x, local_hit.y)
 		var size := Vector2(m_dragging_opening.opening_width, m_dragging_opening.opening_height)
-		m_drag_valid = wall.can_place_opening(center, size, 0.04, m_dragging_opening, m_drag_target_segment)
+		m_drag_valid = wall.can_place_opening(
+			center,
+			size,
+			0.04,
+			m_dragging_opening,
+			m_drag_target_segment,
+			_opening_allow_base_edge(m_dragging_opening)
+		)
 
 	var ok_color := Color(1.0, 0.85, 0.20, 0.9) if m_drag_opening_edge >= 0 else Color(0.20, 0.60, 1.0, 0.9)
 	m_dragging_opening.frame_color = ok_color if m_drag_valid else Color(0.95, 0.20, 0.16, 0.9)
@@ -2143,7 +2270,7 @@ func _commit_window_drag() -> void:
 	if wall == null or !m_drag_valid:
 		_cancel_window_drag()
 		if !m_drag_valid:
-			_set_status("Cannot place window there — canceled.")
+			_set_status("Cannot place opening there — canceled.")
 		return
 	var opening := m_dragging_opening
 	var new_position := opening.position
@@ -2166,8 +2293,20 @@ func _commit_window_drag() -> void:
 		undo_redo.add_undo_method(self, "_do_move_opening", opening, old_position, old_segment, wall)
 	undo_redo.commit_action()
 	opening.frame_color = Color(0.86, 0.92, 0.94, 1.0)
-	_set_status("Resized window opening." if m_drag_opening_edge >= 0 else "Moved window opening.")
+	_set_status("Resized wall opening." if m_drag_opening_edge >= 0 else "Moved wall opening.")
 	m_drag_opening_edge = -1
+
+
+func _opening_sill_height(opening: BuildingOpening3DScript) -> float:
+	if opening != null and opening.has_meta(OPENING_SILL_META):
+		return maxf(float(opening.get_meta(OPENING_SILL_META)), 0.0)
+	return 0.0 if m_tool_mode == MODE_DOOR else maxf(float(m_window_settings.get("sill_height", 0.9)), 0.0)
+
+
+func _opening_allow_base_edge(opening: BuildingOpening3DScript) -> bool:
+	if opening != null and opening.has_meta(OPENING_ALLOW_BASE_META):
+		return bool(opening.get_meta(OPENING_ALLOW_BASE_META))
+	return m_tool_mode == MODE_DOOR
 
 
 func _cancel_window_drag() -> void:
@@ -2360,6 +2499,11 @@ func _on_prop_settings_changed(settings: Dictionary) -> void:
 
 func _on_window_settings_changed(settings: Dictionary) -> void:
 	m_window_settings = settings.duplicate(true)
+
+
+func _on_door_settings_changed(settings: Dictionary) -> void:
+	m_door_settings = settings.duplicate(true)
+	_clear_prop_preview()
 
 
 func _on_create_coordinator_requested() -> void:

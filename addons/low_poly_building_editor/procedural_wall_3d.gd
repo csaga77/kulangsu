@@ -374,7 +374,8 @@ func can_place_opening(
 	size: Vector2,
 	clearance: float = 0.03,
 	ignored_node: Node = null,
-	segment_index: int = 0
+	segment_index: int = 0,
+	allow_base_edge: bool = false
 ) -> bool:
 	if size.x <= 0.0 or size.y <= 0.0:
 		return false
@@ -385,7 +386,10 @@ func can_place_opening(
 		return false
 	if candidate.end.x > segment_length - clearance:
 		return false
-	if candidate.position.y < clearance:
+	if allow_base_edge:
+		if candidate.position.y < -0.001:
+			return false
+	elif candidate.position.y < clearance:
 		return false
 	if candidate.end.y > segment.height - clearance:
 		return false
