@@ -201,38 +201,50 @@ func _validate_hair_model(failures: Array[String], model: Node3D) -> void:
 func _validate_pants_model(failures: Array[String], _model: Node3D, skeleton: Skeleton3D) -> void:
 	if not bool(m_actor.get("use_pants_model")):
 		failures.append("HumanBody3D should default to using the pants model")
+	if not bool(m_actor.get("pants_skinned")):
+		failures.append("HumanBody3D pants should default to skinned so they animate with the legs")
 
-	var attach_bone := String(m_actor.get("pants_attach_bone"))
-	if skeleton.find_bone(attach_bone) < 0:
-		failures.append("HumanBody3D pants attach bone '%s' is missing from the skeleton" % attach_bone)
+	var skinned := skeleton.get_node_or_null("PantsSkinnedMesh") as MeshInstance3D
+	if skinned == null:
+		failures.append("HumanBody3D did not create the skinned PantsSkinnedMesh under the skeleton")
+		return
+	if not skinned.visible:
+		failures.append("HumanBody3D skinned pants mesh is not visible")
+
+	var pants_mesh := skinned.mesh
+	if pants_mesh == null or pants_mesh.get_surface_count() <= 0:
+		failures.append("HumanBody3D skinned pants mesh has no surfaces")
+		return
+	if (pants_mesh.surface_get_format(0) & Mesh.ARRAY_FORMAT_BONES) == 0:
+		failures.append("HumanBody3D skinned pants mesh has no per-vertex bone weights")
+	if (pants_mesh.surface_get_format(0) & Mesh.ARRAY_FORMAT_WEIGHTS) == 0:
+		failures.append("HumanBody3D skinned pants mesh has no per-vertex weights")
+
+	var skin := skinned.skin
+	if skin == null or skin.get_bind_count() <= 0:
+		failures.append("HumanBody3D skinned pants mesh has no skin binds")
 		return
 
-	var attachment := skeleton.get_node_or_null("PantsAttachment") as BoneAttachment3D
-	if attachment == null:
-		failures.append("HumanBody3D did not create the pants BoneAttachment3D")
-		return
-	if attachment.bone_name != attach_bone:
-		failures.append("HumanBody3D pants attachment is bound to the wrong bone")
+	var bound_to_legs := false
+	for bind_index in range(skin.get_bind_count()):
+		var bind_name := String(skin.get_bind_name(bind_index))
+		if bind_name == "":
+			var bone_index := skin.get_bind_bone(bind_index)
+			if bone_index >= 0:
+				bind_name = skeleton.get_bone_name(bone_index)
+		if bind_name in ["L_Thigh", "R_Thigh", "L_Calf", "R_Calf"]:
+			bound_to_legs = true
+	if not bound_to_legs:
+		failures.append("HumanBody3D skinned pants are not bound to any leg bones")
 
-	var pants_model := attachment.get_node_or_null("PantsModel") as Node3D
-	if pants_model == null:
-		failures.append("HumanBody3D did not create the separate PantsModel node")
-		return
-	if not pants_model.visible:
-		failures.append("HumanBody3D pants model is not visible")
-	if pants_model.get_child_count() == 0:
-		failures.append("HumanBody3D pants model has no instanced scene")
-		return
-	if _find_mesh_instance(pants_model) == null:
-		failures.append("HumanBody3D pants model has no renderable mesh")
-
-	# Toggling use_pants_model off should hide the pants node.
+	# Toggling use_pants_model off should hide the skinned pants.
 	m_actor.set("use_pants_model", false)
-	if pants_model.visible:
-		failures.append("HumanBody3D did not hide the pants model when use_pants_model is off")
+	if skinned.visible:
+		failures.append("HumanBody3D did not hide the skinned pants when use_pants_model is off")
 	m_actor.set("use_pants_model", true)
-	if not pants_model.visible:
-		failures.append("HumanBody3D did not re-show the pants model when use_pants_model is on")
+	var skinned_again := skeleton.get_node_or_null("PantsSkinnedMesh") as MeshInstance3D
+	if skinned_again == null or not skinned_again.visible:
+		failures.append("HumanBody3D did not re-show the skinned pants when use_pants_model is on")
 
 
 func _validate_jacket_model(failures: Array[String], _model: Node3D, skeleton: Skeleton3D) -> void:

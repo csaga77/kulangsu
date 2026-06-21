@@ -33,6 +33,9 @@ const DEFAULT_HAIR_ATTACH_BONE := "Head"
 # instance through pants_model_scene; alternate pants GLBs live in assets/characters.
 const PantsModelScene: PackedScene = preload("res://assets/characters/pants.glb")
 const DEFAULT_PANTS_ATTACH_BONE := "Pelvis"
+# Spatial-hash settings for transferring body skin weights onto pants vertices.
+const SKIN_TRANSFER_CELL_SIZE := 0.04
+const SKIN_TRANSFER_MAX_RING := 8
 # Default jacket model attached to the character model's upper-spine bone. Swap it
 # per instance through jacket_model_scene; alternate jacket GLBs live in assets/characters.
 const JacketModelScene: PackedScene = preload("res://assets/characters/jacket.glb")
@@ -202,7 +205,20 @@ const DEFAULT_JACKET_ATTACH_BONE := "Spine02"
 		pants_model_scene = value
 		_rebuild_pants_model()
 
-# Bone on the character model's Skeleton3D that the pants node tracks.
+# When true, the pants mesh is skinned to the character skeleton's lower-body
+# bones at runtime so it deforms with the legs, instead of riding rigidly on a
+# single bone. The attach-bone / offset / scale / yaw fields below are reused as
+# the rest-pose alignment that seats the unskinned source mesh before weighting.
+@export var pants_skinned := true:
+	set(value):
+		if pants_skinned == value:
+			return
+		pants_skinned = value
+		_rebuild_pants_model()
+
+# Bone on the character model's Skeleton3D that the pants node tracks in rigid mode
+# (pants_skinned = false). Unused in skinned mode, which maps the source mesh straight
+# into the body's bind space and transfers the body's own per-vertex bone weights.
 @export var pants_attach_bone := DEFAULT_PANTS_ATTACH_BONE:
 	set(value):
 		if pants_attach_bone == value:
@@ -299,6 +315,7 @@ var m_hair_model: Node3D = null
 var m_hair_attachment: BoneAttachment3D = null
 var m_pants_model: Node3D = null
 var m_pants_attachment: BoneAttachment3D = null
+var m_pants_skinned_mesh: MeshInstance3D = null
 var m_jacket_model: Node3D = null
 var m_jacket_attachment: BoneAttachment3D = null
 var m_skeleton_debug_part: MeshInstance3D = null
@@ -845,6 +862,7 @@ func _rebuild_character_model() -> void:
 	m_hair_attachment = null
 	m_pants_model = null
 	m_pants_attachment = null
+	m_pants_skinned_mesh = null
 	m_jacket_model = null
 	m_jacket_attachment = null
 	m_skeleton_debug_part = null
@@ -970,6 +988,9 @@ func _rebuild_pants_model() -> void:
 	if is_instance_valid(m_pants_model):
 		m_pants_model.queue_free()
 		m_pants_model = null
+	if is_instance_valid(m_pants_skinned_mesh):
+		m_pants_skinned_mesh.free()
+		m_pants_skinned_mesh = null
 	if is_inside_tree():
 		_sync_pants_model()
 
@@ -981,9 +1002,26 @@ func _sync_pants_model() -> void:
 	if not is_instance_valid(m_character_model):
 		_hide_pants_model()
 		return
+	if pants_skinned:
+		_sync_pants_skinned()
+	else:
+		_sync_pants_rigid()
+
+
+func _hide_pants_model() -> void:
+	if is_instance_valid(m_pants_model):
+		m_pants_model.visible = false
+	if is_instance_valid(m_pants_skinned_mesh):
+		m_pants_skinned_mesh.visible = false
+
+
+func _sync_pants_rigid() -> void:
+	if is_instance_valid(m_pants_skinned_mesh):
+		m_pants_skinned_mesh.visible = false
 	var attachment := _ensure_pants_attachment()
 	if attachment == null:
-		_hide_pants_model()
+		if is_instance_valid(m_pants_model):
+			m_pants_model.visible = false
 		return
 	_ensure_pants_model(attachment)
 	if not is_instance_valid(m_pants_model):
@@ -994,9 +1032,272 @@ func _sync_pants_model() -> void:
 	m_pants_model.scale = Vector3.ONE * pants_model_scale
 
 
-func _hide_pants_model() -> void:
+func _sync_pants_skinned() -> void:
 	if is_instance_valid(m_pants_model):
 		m_pants_model.visible = false
+	var skeleton := _find_skeleton(m_character_model)
+	if skeleton == null:
+		_hide_pants_model()
+		return
+	# Rebuild from scratch so alignment tweaks (offset/scale/yaw/bone) re-bake.
+	if is_instance_valid(m_pants_skinned_mesh):
+		m_pants_skinned_mesh.free()
+		m_pants_skinned_mesh = null
+	var stale := skeleton.get_node_or_null("PantsSkinnedMesh")
+	if stale != null:
+		stale.free()
+	m_pants_skinned_mesh = _build_pants_skinned_mesh(skeleton)
+	if is_instance_valid(m_pants_skinned_mesh):
+		m_pants_skinned_mesh.visible = true
+
+
+# Bakes the unskinned pants source mesh into the body mesh's local (bind) space and
+# skins it by transferring the body mesh's own bone weights onto each pants vertex
+# (nearest point on the body surface), so the pants wrap and deform exactly like the
+# legs they cover. Returns a skinned MeshInstance3D parented under the skeleton.
+func _build_pants_skinned_mesh(skeleton: Skeleton3D) -> MeshInstance3D:
+	# Source of truth for skinning: the body's authored weights and skin binds.
+	var body_mesh_instance := _find_skinned_mesh_instance(m_character_model)
+	if body_mesh_instance == null:
+		return null
+	var body_samples := _gather_body_skin_samples(body_mesh_instance)
+	var body_positions: PackedVector3Array = body_samples["positions"]
+	if body_positions.is_empty():
+		return null
+	var body_bones: PackedInt32Array = body_samples["bones"]
+	var body_weights: PackedFloat32Array = body_samples["weights"]
+	var bones_per_vertex: int = body_samples["bpv"]
+	var body_hash := _build_point_hash(body_positions)
+
+	# Reuse the body's skin so transferred bone indices map to the same binds.
+	var skin := _clone_body_skin(body_mesh_instance, skeleton)
+	if skin == null or skin.get_bind_count() <= 0:
+		return null
+
+	# The pants source mesh is authored in the character model's space (same as the
+	# body), so it maps straight in -- no bone anchor. Only yaw / scale / manual offset.
+	var offset_basis := Basis(Vector3.UP, deg_to_rad(pants_model_yaw_offset)).scaled(Vector3.ONE * pants_model_scale)
+	var align := Transform3D(offset_basis, pants_model_offset)
+
+	# A skinned mesh's vertices must live in the body mesh's local (bind) space, so the
+	# cloned skin's bind poses apply correctly. Map the character-model-space placement
+	# into the body mesh's local space. Use local (not global) transforms so this is
+	# correct even when built during _ready before global transforms have propagated.
+	var model_to_body_local := _transform_relative_to(body_mesh_instance, m_character_model).affine_inverse()
+	align = model_to_body_local * align
+
+	var source := pants_model_scene.instantiate()
+	var mesh_instances: Array[MeshInstance3D] = []
+	_collect_mesh_instances(source, mesh_instances)
+	var skinned_mesh := ArrayMesh.new()
+	for mesh_instance in mesh_instances:
+		var source_mesh := mesh_instance.mesh
+		if source_mesh == null:
+			continue
+		var full := align * _relative_transform(mesh_instance, source)
+		var normal_basis := full.basis
+		for surface_index in range(source_mesh.get_surface_count()):
+			var arrays := source_mesh.surface_get_arrays(surface_index)
+			var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			if vertices.is_empty():
+				continue
+			var normals_in: Variant = arrays[Mesh.ARRAY_NORMAL]
+			var has_normals := normals_in is PackedVector3Array and (normals_in as PackedVector3Array).size() == vertices.size()
+			var baked_vertices := PackedVector3Array()
+			baked_vertices.resize(vertices.size())
+			var baked_normals := PackedVector3Array()
+			if has_normals:
+				baked_normals.resize(vertices.size())
+			var bone_indices := PackedInt32Array()
+			var bone_weights := PackedFloat32Array()
+			bone_indices.resize(vertices.size() * bones_per_vertex)
+			bone_weights.resize(vertices.size() * bones_per_vertex)
+			for vertex_index in range(vertices.size()):
+				var baked := full * vertices[vertex_index]
+				# Match the closest body-surface point in rest pose for weighting.
+				var nearest := _nearest_point_index(baked, body_positions, body_hash)
+				if has_normals:
+					baked_normals[vertex_index] = (normal_basis * (normals_in as PackedVector3Array)[vertex_index]).normalized()
+				baked_vertices[vertex_index] = baked
+				var out_base := vertex_index * bones_per_vertex
+				if nearest >= 0:
+					var in_base := nearest * bones_per_vertex
+					for k in range(bones_per_vertex):
+						bone_indices[out_base + k] = body_bones[in_base + k]
+						bone_weights[out_base + k] = body_weights[in_base + k]
+				else:
+					bone_indices[out_base] = 0
+					bone_weights[out_base] = 1.0
+			arrays[Mesh.ARRAY_VERTEX] = baked_vertices
+			if has_normals:
+				arrays[Mesh.ARRAY_NORMAL] = baked_normals
+			arrays[Mesh.ARRAY_BONES] = bone_indices
+			arrays[Mesh.ARRAY_WEIGHTS] = bone_weights
+			var surface_flags := 0
+			if bones_per_vertex == 8:
+				surface_flags = Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS
+			skinned_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, surface_flags)
+			var material := source_mesh.surface_get_material(surface_index)
+			if material == null:
+				material = mesh_instance.get_active_material(surface_index)
+			if material != null:
+				skinned_mesh.surface_set_material(skinned_mesh.get_surface_count() - 1, material)
+	source.queue_free()
+
+	if skinned_mesh.get_surface_count() == 0:
+		return null
+
+	var skinned_instance := MeshInstance3D.new()
+	skinned_instance.name = "PantsSkinnedMesh"
+	skinned_instance.mesh = skinned_mesh
+	skeleton.add_child(skinned_instance)
+	skinned_instance.skin = skin
+	skinned_instance.skeleton = NodePath("..")
+	if Engine.is_editor_hint():
+		skinned_instance.owner = null
+	return skinned_instance
+
+
+# First MeshInstance3D under node whose mesh carries per-vertex bone weights.
+func _find_skinned_mesh_instance(node: Node) -> MeshInstance3D:
+	if node is MeshInstance3D:
+		var candidate := node as MeshInstance3D
+		var mesh := candidate.mesh
+		if mesh != null:
+			for surface_index in range(mesh.get_surface_count()):
+				if (mesh.surface_get_format(surface_index) & Mesh.ARRAY_FORMAT_BONES) != 0:
+					return candidate
+	for child in node.get_children():
+		var found := _find_skinned_mesh_instance(child)
+		if found != null:
+			return found
+	return null
+
+
+# Collects the body mesh's vertices (in skeleton space) with their bone indices and
+# weights so they can be transferred to nearby pants vertices.
+func _gather_body_skin_samples(body_mesh_instance: MeshInstance3D) -> Dictionary:
+	# Keep body vertices in the mesh's own local (bind) space -- the space the skin's
+	# bind poses are authored for, and the space we bake the pants into for matching.
+	var mesh := body_mesh_instance.mesh
+	var positions := PackedVector3Array()
+	var bones := PackedInt32Array()
+	var weights := PackedFloat32Array()
+	var bones_per_vertex := 4
+	for surface_index in range(mesh.get_surface_count()):
+		var arrays := mesh.surface_get_arrays(surface_index)
+		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var surface_bones: Variant = arrays[Mesh.ARRAY_BONES]
+		var surface_weights: Variant = arrays[Mesh.ARRAY_WEIGHTS]
+		if vertices.is_empty() or not (surface_bones is PackedInt32Array) or not (surface_weights is PackedFloat32Array):
+			continue
+		var typed_bones: PackedInt32Array = surface_bones
+		var typed_weights: PackedFloat32Array = surface_weights
+		bones_per_vertex = typed_bones.size() / vertices.size()
+		positions.append_array(vertices)
+		bones.append_array(typed_bones)
+		weights.append_array(typed_weights)
+	return {"positions": positions, "bones": bones, "weights": weights, "bpv": bones_per_vertex}
+
+
+# Duplicate the body's skin (or derive one from the skeleton rest) so transferred
+# bone indices resolve to identical bind poses.
+func _clone_body_skin(body_mesh_instance: MeshInstance3D, skeleton: Skeleton3D) -> Skin:
+	var body_skin := body_mesh_instance.skin
+	if body_skin != null and body_skin.get_bind_count() > 0:
+		var cloned := Skin.new()
+		var bind_count := body_skin.get_bind_count()
+		cloned.set_bind_count(bind_count)
+		for bind_index in range(bind_count):
+			cloned.set_bind_pose(bind_index, body_skin.get_bind_pose(bind_index))
+			# Imported skins bind by name (skins/use_named_skins); preserve whichever
+			# the source used so every bind still resolves to a bone.
+			var bind_name := body_skin.get_bind_name(bind_index)
+			if String(bind_name) != "":
+				cloned.set_bind_name(bind_index, bind_name)
+			else:
+				cloned.set_bind_bone(bind_index, body_skin.get_bind_bone(bind_index))
+		return cloned
+	return skeleton.create_skin_from_rest_transforms()
+
+
+func _build_point_hash(positions: PackedVector3Array) -> Dictionary:
+	var cell_hash: Dictionary = {}
+	for index in range(positions.size()):
+		var key := _point_cell_key(positions[index])
+		if not cell_hash.has(key):
+			cell_hash[key] = PackedInt32Array()
+		(cell_hash[key] as PackedInt32Array).append(index)
+	return cell_hash
+
+
+func _point_cell_key(point: Vector3) -> Vector3i:
+	return Vector3i(
+		int(floor(point.x / SKIN_TRANSFER_CELL_SIZE)),
+		int(floor(point.y / SKIN_TRANSFER_CELL_SIZE)),
+		int(floor(point.z / SKIN_TRANSFER_CELL_SIZE))
+	)
+
+
+# Nearest body point to the query, searching outward through hash cells.
+func _nearest_point_index(point: Vector3, positions: PackedVector3Array, cell_hash: Dictionary) -> int:
+	if positions.is_empty():
+		return -1
+	var base := _point_cell_key(point)
+	var best := -1
+	var best_distance := INF
+	var radius := 0
+	while radius <= SKIN_TRANSFER_MAX_RING:
+		for dx in range(-radius, radius + 1):
+			for dy in range(-radius, radius + 1):
+				for dz in range(-radius, radius + 1):
+					# Only scan the new shell added at this radius.
+					if absi(dx) != radius and absi(dy) != radius and absi(dz) != radius:
+						continue
+					var key := base + Vector3i(dx, dy, dz)
+					if not cell_hash.has(key):
+						continue
+					for index in (cell_hash[key] as PackedInt32Array):
+						var distance := point.distance_squared_to(positions[index])
+						if distance < best_distance:
+							best_distance = distance
+							best = index
+		# Found something and scanned one extra ring for safety: accept it.
+		if best >= 0 and radius >= 2:
+			return best
+		radius += 1
+	if best >= 0:
+		return best
+	# Fallback to a full scan if the hash search came up empty.
+	for index in range(positions.size()):
+		var distance := point.distance_squared_to(positions[index])
+		if distance < best_distance:
+			best_distance = distance
+			best = index
+	return best
+
+
+func _relative_transform(node: Node3D, root: Node) -> Transform3D:
+	var result := Transform3D.IDENTITY
+	var current: Node = node
+	while current is Node3D:
+		result = (current as Node3D).transform * result
+		if current == root:
+			break
+		current = current.get_parent()
+	return result
+
+
+# Transform of node expressed in ancestor's local space (node-local -> ancestor-local),
+# multiplying local transforms up to but NOT including ancestor. Valid before global
+# transforms have propagated.
+func _transform_relative_to(node: Node3D, ancestor: Node) -> Transform3D:
+	var result := Transform3D.IDENTITY
+	var current: Node = node
+	while current is Node3D and current != ancestor:
+		result = (current as Node3D).transform * result
+		current = current.get_parent()
+	return result
 
 
 func _ensure_pants_attachment() -> BoneAttachment3D:

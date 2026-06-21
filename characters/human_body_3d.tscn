@@ -6,9 +6,12 @@
 [node name="human_body_3d" type="CharacterBody3D" unique_id=771716252]
 floor_snap_length = 0.72
 script = ExtResource("1_human_body_3d")
+draw_skeleton_bones = true
 body_height = 1.84
 body_radius = 0.29000000000000004
 character_model_scene = ExtResource("2_gei5k")
 hair_model_yaw_offset = 90.0
-pants_model_yaw_offset = 90.0
+pants_model_scale = 1.1
+pants_model_offset = Vector3(-0.02, -0.01, 0)
+use_jacket_model = false
 jacket_model_yaw_offset = 90.0
