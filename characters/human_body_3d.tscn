@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://cfrcjv76v3c4g"]
 
 [ext_resource type="Script" uid="uid://dmg4qwx0rchm6" path="res://characters/human_body_3d.gd" id="1_human_body_3d"]
-[ext_resource type="PackedScene" uid="uid://cj76on5u2fumb" path="res://assets/characters/male_0.glb" id="2_gei5k"]
 
 [node name="human_body_3d" type="CharacterBody3D" unique_id=771716252]
 floor_snap_length = 0.72
@@ -9,8 +8,8 @@ script = ExtResource("1_human_body_3d")
 draw_skeleton_bones = true
 body_height = 1.84
 body_radius = 0.29000000000000004
-character_model_scene = ExtResource("2_gei5k")
 hair_model_yaw_offset = 90.0
+use_pants_model = false
 pants_model_scale = 1.1
 pants_model_offset = Vector3(-0.02, -0.01, 0)
 use_jacket_model = false
