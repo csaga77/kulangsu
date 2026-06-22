@@ -4,17 +4,24 @@ extends EditorPlugin
 const _DOCK_SLOT := EditorDock.DOCK_SLOT_RIGHT_UL
 const MODE_SELECT := "select"
 const MODE_WALL := "wall"
+const MODE_FLOOR := "floor"
 const MODE_PROP := "prop"
 const MODE_WINDOW := "window"
 const MODE_DOOR := "door"
 const BuildingEditor3DScript = preload("res://addons/low_poly_building_editor/building_editor_3d.gd")
 const ProceduralWall3DScript = preload("res://addons/low_poly_building_editor/procedural_wall_3d.gd")
+const ProceduralFloor3DScript = preload("res://addons/low_poly_building_editor/procedural_floor_3d.gd")
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
 const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
 const DockScript = preload("res://addons/low_poly_building_editor/low_poly_building_editor_dock.gd")
 const ViewportInputOverlayScript = preload("res://addons/low_poly_building_editor/viewport_input_overlay.gd")
 const ViewportInputCaptureScript = preload("res://addons/low_poly_building_editor/viewport_input_capture.gd")
 const WALL_DRAG_COMMIT_DISTANCE := 6.0
+const FLOOR_EDIT_MOVE := 0
+const FLOOR_EDIT_MIN_X := 1
+const FLOOR_EDIT_MAX_X := 2
+const FLOOR_EDIT_MIN_Z := 4
+const FLOOR_EDIT_MAX_Z := 8
 const OPENING_SILL_META := &"building_opening_sill_height"
 const OPENING_ALLOW_BASE_META := &"building_opening_allow_base_edge"
 
@@ -30,6 +37,12 @@ var m_wall_settings := {
 	"thickness": 0.22,
 	"color": Color(0.78, 0.68, 0.54, 1.0),
 	"lock_8_way": true,
+}
+var m_floor_settings := {
+	"grid_step": 0.5,
+	"base_height": 0.0,
+	"thickness": 0.12,
+	"color": Color(0.46, 0.40, 0.32, 1.0),
 }
 var m_prop_settings := {
 	"scene_path": "",
@@ -55,6 +68,22 @@ var m_wall_has_valid_preview := false
 var m_wall_release_commits_preview := false
 var m_is_drawing_wall := false
 var m_wall_preview: ProceduralWall3DScript
+var m_floor_start_local := Vector3.ZERO
+var m_floor_end_local := Vector3.ZERO
+var m_floor_start_screen_position := Vector2.ZERO
+var m_floor_has_valid_preview := false
+var m_floor_release_commits_preview := false
+var m_is_drawing_floor := false
+var m_floor_preview: ProceduralFloor3DScript
+var m_dragging_floor: ProceduralFloor3DScript
+var m_drag_floor_old_start := Vector3.ZERO
+var m_drag_floor_old_end := Vector3.ZERO
+var m_drag_floor_anchor_local := Vector3.ZERO
+var m_drag_floor_edit_mask := FLOOR_EDIT_MOVE
+var m_drag_floor_active_material: Material
+var m_drag_floor_hover: ProceduralFloor3DScript
+var m_drag_floor_hover_material: Material
+var m_drag_floor_hover_edit_mask := FLOOR_EDIT_MOVE
 var m_prop_preview: Node3D
 var m_prop_preview_path := ""
 var m_prop_rotation_y := 0.0
@@ -111,6 +140,12 @@ func _enter_tree() -> void:
 		_get_editor_icon(&"MeshInstance3D")
 	)
 	add_custom_type(
+		"ProceduralFloor3D",
+		"MeshInstance3D",
+		ProceduralFloor3DScript,
+		_get_editor_icon(&"MeshInstance3D")
+	)
+	add_custom_type(
 		"BuildingOpening3D",
 		"Node3D",
 		BuildingOpening3DScript,
@@ -124,6 +159,7 @@ func _enter_tree() -> void:
 		m_dock.setup(get_editor_interface())
 	m_dock.connect("tool_mode_changed", Callable(self, "_on_tool_mode_changed"))
 	m_dock.connect("wall_settings_changed", Callable(self, "_on_wall_settings_changed"))
+	m_dock.connect("floor_settings_changed", Callable(self, "_on_floor_settings_changed"))
 	m_dock.connect("prop_settings_changed", Callable(self, "_on_prop_settings_changed"))
 	m_dock.connect("window_settings_changed", Callable(self, "_on_window_settings_changed"))
 	m_dock.connect("door_settings_changed", Callable(self, "_on_door_settings_changed"))
@@ -143,7 +179,10 @@ func _enter_tree() -> void:
 
 
 func _exit_tree() -> void:
+	_cancel_floor_drag()
+	_clear_floor_hover()
 	_clear_wall_preview()
+	_clear_floor_preview()
 	_clear_prop_preview()
 	_clear_viewport_overlays()
 	_clear_input_capture()
@@ -158,6 +197,7 @@ func _exit_tree() -> void:
 		m_dock.queue_free()
 		m_dock = null
 	remove_custom_type("BuildingOpening3D")
+	remove_custom_type("ProceduralFloor3D")
 	remove_custom_type("ProceduralWall3D")
 	remove_custom_type("BuildingEditor3D")
 
@@ -188,6 +228,8 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 
 	if m_tool_mode == MODE_WALL:
 		return _handle_wall_input(camera, event)
+	if m_tool_mode == MODE_FLOOR:
+		return _handle_floor_input(camera, event)
 	if m_tool_mode == MODE_PROP or _is_opening_tool():
 		return _handle_placement_input(camera, event)
 	return EditorPlugin.AFTER_GUI_INPUT_PASS
@@ -524,6 +566,385 @@ func _commit_wall(coordinator: BuildingEditor3DScript, local_start: Vector3, loc
 	undo_redo.add_undo_method(self, "_undo_remove_node", coordinator, wall)
 	undo_redo.commit_action()
 	_set_status("Created wall: %.2f units." % local_start.distance_to(local_end))
+
+
+func _handle_floor_input(camera: Camera3D, event: InputEvent) -> int:
+	if m_dragging_floor != null:
+		return _handle_floor_drag_input(camera, event)
+
+	if event is InputEventMouseMotion:
+		var mouse_motion := event as InputEventMouseMotion
+		if m_is_drawing_floor:
+			_update_floor_preview(camera, mouse_motion.position)
+			if mouse_motion.position.distance_to(m_floor_start_screen_position) >= WALL_DRAG_COMMIT_DISTANCE:
+				m_floor_release_commits_preview = true
+			return _handled()
+		var floor_pick := _find_floor_pick(camera, mouse_motion.position)
+		var hover_floor := floor_pick.get("floor") as ProceduralFloor3DScript
+		var edit_mask := int(floor_pick.get("edit_mask", FLOOR_EDIT_MOVE))
+		_update_floor_hover(hover_floor, edit_mask)
+		if hover_floor != null:
+			_set_status(
+				"Drag floor corner to resize." if _floor_edit_mask_is_corner(edit_mask)
+				else "Drag floor edge to resize." if edit_mask != FLOOR_EDIT_MOVE
+				else "Drag floor body to move."
+			)
+		return EditorPlugin.AFTER_GUI_INPUT_PASS
+
+	if !(event is InputEventMouseButton):
+		return EditorPlugin.AFTER_GUI_INPUT_PASS
+
+	var mouse_button := event as InputEventMouseButton
+	if mouse_button.button_index == MOUSE_BUTTON_LEFT and !mouse_button.pressed and m_is_drawing_floor:
+		if !m_floor_release_commits_preview:
+			_set_status("Click the opposite corner to place floor, or drag from the first corner and release.")
+			return _handled()
+		var release_coordinator := _get_active_floor_coordinator()
+		if release_coordinator != null:
+			var release_end := m_floor_end_local
+			if !m_floor_has_valid_preview:
+				release_end = _floor_draw_local_from_mouse(release_coordinator, camera, mouse_button.position)
+			_commit_floor(release_coordinator, m_floor_start_local, release_end)
+		_clear_floor_preview()
+		_reset_floor_drawing_state()
+		return _handled()
+
+	if mouse_button.button_index != MOUSE_BUTTON_LEFT or !mouse_button.pressed:
+		return EditorPlugin.AFTER_GUI_INPUT_PASS
+
+	if !m_is_drawing_floor:
+		var floor_pick := _find_floor_pick(camera, mouse_button.position)
+		var hit_floor := floor_pick.get("floor") as ProceduralFloor3DScript
+		if hit_floor != null:
+			_clear_floor_hover()
+			_start_floor_drag(hit_floor, camera, mouse_button.position, int(floor_pick.get("edit_mask", FLOOR_EDIT_MOVE)))
+			return _handled()
+
+	var coordinator := _get_or_create_coordinator(true)
+	if coordinator == null:
+		_set_status("Open or create a scene before drawing floors.")
+		return _handled()
+	_apply_floor_settings_to_coordinator(coordinator)
+
+	var snapped_local := _floor_draw_local_from_mouse(coordinator, camera, mouse_button.position)
+	if !m_is_drawing_floor:
+		m_floor_start_local = snapped_local
+		m_floor_end_local = snapped_local
+		m_floor_start_screen_position = mouse_button.position
+		m_floor_has_valid_preview = false
+		m_floor_release_commits_preview = false
+		m_is_drawing_floor = true
+		_create_floor_preview(coordinator)
+		_update_floor_preview(camera, mouse_button.position)
+		_set_status("Floor first corner captured. Drag and release, or click the opposite corner.")
+		return _handled()
+
+	_commit_floor(coordinator, m_floor_start_local, snapped_local)
+	_clear_floor_preview()
+	_reset_floor_drawing_state()
+	return _handled()
+
+
+func _create_floor_preview(coordinator: BuildingEditor3DScript) -> void:
+	_clear_floor_preview()
+	_apply_floor_settings_to_coordinator(coordinator)
+	m_floor_preview = ProceduralFloor3DScript.new() as ProceduralFloor3DScript
+	m_floor_preview.name = "FloorPreview"
+	m_floor_preview.set_meta(ProceduralFloor3DScript.PREVIEW_META, true)
+	m_floor_preview.floor_thickness = float(m_floor_settings["thickness"])
+	var preview_color := Color(m_floor_settings["color"])
+	preview_color.a = 0.44
+	m_floor_preview.floor_color = preview_color
+	m_floor_preview.generate_collision = false
+	coordinator.add_child(m_floor_preview)
+	m_floor_preview.owner = null
+
+
+func _update_floor_preview(camera: Camera3D, mouse_position: Vector2) -> void:
+	if m_floor_preview == null:
+		return
+	var coordinator := m_floor_preview.get_parent() as BuildingEditor3DScript
+	if coordinator == null:
+		return
+	var local_end := _floor_draw_local_from_mouse(coordinator, camera, mouse_position)
+	m_floor_end_local = local_end
+	m_floor_has_valid_preview = _is_floor_span_large_enough(m_floor_start_local, local_end)
+	m_floor_preview.set_floor_corners(m_floor_start_local, local_end)
+	if m_floor_has_valid_preview:
+		var size := m_floor_preview.get_floor_size()
+		_set_status("Release or click to place floor: %.2f x %.2f." % [size.x, size.y])
+
+
+func _floor_base_height() -> float:
+	return float(m_floor_settings.get("base_height", 0.0))
+
+
+func _floor_draw_local_from_mouse(
+	coordinator: BuildingEditor3DScript,
+	camera: Camera3D,
+	mouse_position: Vector2
+) -> Vector3:
+	var base_y := _floor_base_height()
+	var origin := camera.project_ray_origin(mouse_position)
+	var direction := camera.project_ray_normal(mouse_position)
+	var local_origin := coordinator.to_local(origin)
+	var local_direction := coordinator.global_transform.basis.inverse() * direction
+	if local_direction.length_squared() > 0.000001:
+		local_direction = local_direction.normalized()
+		if absf(local_direction.y) > 0.001:
+			var distance_to_plane := (base_y - local_origin.y) / local_direction.y
+			if distance_to_plane > 0.0:
+				return _snap_floor_draw_local(
+					coordinator,
+					local_origin + local_direction * distance_to_plane,
+					base_y
+				)
+
+	var hit := _raycast_world(camera, mouse_position, false)
+	return _snap_floor_draw_local(coordinator, coordinator.to_local(Vector3(hit["position"])), base_y)
+
+
+func _snap_floor_draw_local(
+	coordinator: BuildingEditor3DScript,
+	local_position: Vector3,
+	base_y: float
+) -> Vector3:
+	var snapped := coordinator.snap_local_position(local_position)
+	snapped.y = base_y
+	return snapped
+
+
+func _get_active_floor_coordinator() -> BuildingEditor3DScript:
+	if m_floor_preview != null and is_instance_valid(m_floor_preview):
+		var preview_parent := m_floor_preview.get_parent() as BuildingEditor3DScript
+		if preview_parent != null:
+			return preview_parent
+	return _get_or_create_coordinator(false)
+
+
+func _commit_floor(coordinator: BuildingEditor3DScript, local_start: Vector3, local_end: Vector3) -> void:
+	if !_is_floor_span_large_enough(local_start, local_end):
+		_set_status("Floor is too small.")
+		return
+
+	_apply_floor_settings_to_coordinator(coordinator)
+	var floor := coordinator.create_floor_node(
+		local_start,
+		local_end,
+		float(m_floor_settings["thickness"]),
+		Color(m_floor_settings["color"])
+	)
+	var scene_root := get_editor_interface().get_edited_scene_root()
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Create Procedural Floor")
+	undo_redo.add_do_reference(floor)
+	undo_redo.add_do_method(self, "_do_add_node", coordinator, floor, scene_root, true)
+	undo_redo.add_undo_method(self, "_undo_remove_node", coordinator, floor)
+	undo_redo.commit_action()
+	var size := floor.get_floor_size()
+	_set_status("Created floor: %.2f x %.2f units." % [size.x, size.y])
+
+
+func _handle_floor_drag_input(camera: Camera3D, event: InputEvent) -> int:
+	if event is InputEventMouseMotion:
+		_update_floor_drag(camera, (event as InputEventMouseMotion).position)
+		return _handled()
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_LEFT and !mb.pressed:
+			_commit_floor_drag()
+			return _handled()
+		if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+			_cancel_floor_drag()
+			return _handled()
+	return _handled()
+
+
+func _start_floor_drag(
+	floor: ProceduralFloor3DScript,
+	camera: Camera3D,
+	mouse_pos: Vector2,
+	edit_mask: int
+) -> void:
+	m_dragging_floor = floor
+	m_drag_floor_old_start = floor.start_point
+	m_drag_floor_old_end = floor.end_point
+	m_drag_floor_edit_mask = edit_mask
+	m_drag_floor_active_material = floor.material_override
+	m_drag_floor_anchor_local = _floor_plane_local_from_mouse(floor, camera, mouse_pos)
+	floor.material_override = _build_preview_material(_floor_drag_color(edit_mask, true))
+	_select_node(floor)
+	_set_status("Dragging floor %s - release to commit, Escape to cancel." % _floor_edit_label(edit_mask))
+
+
+func _update_floor_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
+	if m_dragging_floor == null or !is_instance_valid(m_dragging_floor):
+		_reset_floor_drag_state()
+		return
+	var floor := m_dragging_floor
+	var hit_local := _floor_plane_local_from_mouse(floor, camera, mouse_pos)
+	var new_start := m_drag_floor_old_start
+	var new_end := m_drag_floor_old_end
+	if m_drag_floor_edit_mask == FLOOR_EDIT_MOVE:
+		var step := _active_floor_grid_step(floor)
+		var raw_delta := hit_local - m_drag_floor_anchor_local
+		var snapped_delta := Vector3(
+			roundf(raw_delta.x / step) * step,
+			0.0,
+			roundf(raw_delta.z / step) * step
+		)
+		new_start = m_drag_floor_old_start + snapped_delta
+		new_end = m_drag_floor_old_end + snapped_delta
+	else:
+		var snapped := _snap_floor_edit_local(floor, hit_local)
+		var resized := _resized_floor_points(snapped)
+		new_start = Vector3(resized["start"])
+		new_end = Vector3(resized["end"])
+
+	floor.set_floor_corners(new_start, new_end)
+	var valid := _is_floor_span_large_enough(new_start, new_end)
+	floor.material_override = _build_preview_material(
+		_floor_drag_color(m_drag_floor_edit_mask, valid)
+	)
+	if valid:
+		var size := floor.get_floor_size()
+		_set_status("Release to commit floor %s: %.2f x %.2f." % [_floor_edit_label(m_drag_floor_edit_mask), size.x, size.y])
+	else:
+		_set_status("Floor is too small.")
+
+
+func _commit_floor_drag() -> void:
+	if m_dragging_floor == null:
+		return
+	var floor := m_dragging_floor
+	var old_start := m_drag_floor_old_start
+	var old_end := m_drag_floor_old_end
+	var new_start := floor.start_point
+	var new_end := floor.end_point
+	var edit_mask := m_drag_floor_edit_mask
+	floor.material_override = m_drag_floor_active_material
+	if !_is_floor_span_large_enough(new_start, new_end):
+		floor.set_floor_corners(old_start, old_end)
+		_reset_floor_drag_state()
+		_set_status("Floor is too small.")
+		return
+	if old_start.distance_to(new_start) <= 0.001 and old_end.distance_to(new_end) <= 0.001:
+		_reset_floor_drag_state()
+		_set_status("Floor unchanged.")
+		return
+
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Move Procedural Floor" if edit_mask == FLOOR_EDIT_MOVE else "Resize Procedural Floor")
+	undo_redo.add_do_method(floor, "set_floor_corners", new_start, new_end)
+	undo_redo.add_do_method(self, "_select_node", floor)
+	undo_redo.add_undo_method(floor, "set_floor_corners", old_start, old_end)
+	undo_redo.commit_action()
+	_reset_floor_drag_state()
+	var size := floor.get_floor_size()
+	_set_status("Edited floor: %.2f x %.2f units." % [size.x, size.y])
+
+
+func _cancel_floor_drag() -> void:
+	if m_dragging_floor == null:
+		return
+	if is_instance_valid(m_dragging_floor):
+		m_dragging_floor.set_floor_corners(m_drag_floor_old_start, m_drag_floor_old_end)
+		m_dragging_floor.material_override = m_drag_floor_active_material
+	_reset_floor_drag_state()
+	_set_status("Floor edit canceled.")
+
+
+func _resized_floor_points(snapped_hit: Vector3) -> Dictionary:
+	var min_x := minf(m_drag_floor_old_start.x, m_drag_floor_old_end.x)
+	var max_x := maxf(m_drag_floor_old_start.x, m_drag_floor_old_end.x)
+	var min_z := minf(m_drag_floor_old_start.z, m_drag_floor_old_end.z)
+	var max_z := maxf(m_drag_floor_old_start.z, m_drag_floor_old_end.z)
+	if (m_drag_floor_edit_mask & FLOOR_EDIT_MIN_X) != 0:
+		min_x = snapped_hit.x
+	if (m_drag_floor_edit_mask & FLOOR_EDIT_MAX_X) != 0:
+		max_x = snapped_hit.x
+	if (m_drag_floor_edit_mask & FLOOR_EDIT_MIN_Z) != 0:
+		min_z = snapped_hit.z
+	if (m_drag_floor_edit_mask & FLOOR_EDIT_MAX_Z) != 0:
+		max_z = snapped_hit.z
+	var sorted_min_x := minf(min_x, max_x)
+	var sorted_max_x := maxf(min_x, max_x)
+	var sorted_min_z := minf(min_z, max_z)
+	var sorted_max_z := maxf(min_z, max_z)
+	var base_y := m_drag_floor_old_start.y
+	return {
+		"start": Vector3(sorted_min_x, base_y, sorted_min_z),
+		"end": Vector3(sorted_max_x, base_y, sorted_max_z),
+	}
+
+
+func _floor_plane_local_from_mouse(
+	floor: ProceduralFloor3DScript,
+	camera: Camera3D,
+	mouse_position: Vector2
+) -> Vector3:
+	var parent_3d := floor.get_parent() as Node3D
+	var base_y := floor.start_point.y
+	var origin := camera.project_ray_origin(mouse_position)
+	var direction := camera.project_ray_normal(mouse_position)
+	var local_origin := parent_3d.to_local(origin) if parent_3d != null else origin
+	var local_direction := (
+		parent_3d.global_transform.basis.inverse() * direction
+		if parent_3d != null
+		else direction
+	)
+	if local_direction.length_squared() > 0.000001:
+		local_direction = local_direction.normalized()
+		if absf(local_direction.y) > 0.001:
+			var distance_to_plane := (base_y - local_origin.y) / local_direction.y
+			if distance_to_plane > 0.0:
+				return local_origin + local_direction * distance_to_plane
+	return floor.start_point
+
+
+func _snap_floor_edit_local(floor: ProceduralFloor3DScript, local_position: Vector3) -> Vector3:
+	var step := _active_floor_grid_step(floor)
+	return Vector3(
+		roundf(local_position.x / step) * step,
+		floor.start_point.y,
+		roundf(local_position.z / step) * step
+	)
+
+
+func _floor_drag_color(edit_mask: int, valid: bool) -> Color:
+	if !valid:
+		return Color(0.95, 0.20, 0.16, 0.72)
+	if edit_mask == FLOOR_EDIT_MOVE:
+		return Color(0.20, 0.60, 1.0, 0.55)
+	return Color(1.0, 0.85, 0.20, 0.72)
+
+
+func _floor_edit_label(edit_mask: int) -> String:
+	if edit_mask == FLOOR_EDIT_MOVE:
+		return "body"
+	return "corner" if _floor_edit_mask_is_corner(edit_mask) else "edge"
+
+
+func _floor_edit_mask_is_corner(edit_mask: int) -> bool:
+	var edits_x := (edit_mask & FLOOR_EDIT_MIN_X) != 0 or (edit_mask & FLOOR_EDIT_MAX_X) != 0
+	var edits_z := (edit_mask & FLOOR_EDIT_MIN_Z) != 0 or (edit_mask & FLOOR_EDIT_MAX_Z) != 0
+	return edits_x and edits_z
+
+
+func _active_floor_grid_step(floor: ProceduralFloor3DScript) -> float:
+	var coordinator := _find_coordinator_from_node(floor)
+	if coordinator != null:
+		return maxf(coordinator.grid_step, 0.05)
+	return maxf(float(m_floor_settings["grid_step"]), 0.05)
+
+
+func _reset_floor_drag_state() -> void:
+	m_dragging_floor = null
+	m_drag_floor_old_start = Vector3.ZERO
+	m_drag_floor_old_end = Vector3.ZERO
+	m_drag_floor_anchor_local = Vector3.ZERO
+	m_drag_floor_edit_mask = FLOOR_EDIT_MOVE
+	m_drag_floor_active_material = null
 
 
 func _commit_absorbed_wall(
@@ -1037,6 +1458,101 @@ func _raycast_procedural_walls(origin: Vector3, direction: Vector3) -> Dictionar
 	return best_hit
 
 
+func _find_floor_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
+	var origin := camera.project_ray_origin(mouse_pos)
+	var direction := camera.project_ray_normal(mouse_pos)
+	var hit := _raycast_procedural_floors(origin, direction)
+	if hit.is_empty():
+		return {}
+	var floor := hit.get("floor") as ProceduralFloor3DScript
+	if floor == null:
+		return {}
+	var local_position := Vector3(hit.get("local_position", Vector3.ZERO))
+	hit["edit_mask"] = _floor_edit_mask_for_local_hit(floor, local_position)
+	return hit
+
+
+func _raycast_procedural_floors(origin: Vector3, direction: Vector3) -> Dictionary:
+	var scene_root := get_editor_interface().get_edited_scene_root()
+	if scene_root == null:
+		return {}
+
+	var floors: Array[ProceduralFloor3DScript] = []
+	_collect_scene_floors(scene_root, floors)
+
+	var best_hit: Dictionary = {}
+	var best_distance := INF
+	for floor in floors:
+		if !is_instance_valid(floor) or floor == m_floor_preview:
+			continue
+		if floor.has_meta(ProceduralFloor3DScript.PREVIEW_META):
+			continue
+		var hit := _intersect_floor_box(floor, origin, direction)
+		if hit.is_empty():
+			continue
+		var distance := float(hit["distance"])
+		if distance < best_distance:
+			best_distance = distance
+			best_hit = hit
+	return best_hit
+
+
+func _collect_scene_floors(node: Node, floors: Array[ProceduralFloor3DScript]) -> void:
+	if node is ProceduralFloor3DScript:
+		floors.append(node as ProceduralFloor3DScript)
+	for child in node.get_children():
+		_collect_scene_floors(child, floors)
+
+
+func _intersect_floor_box(
+	floor: ProceduralFloor3DScript,
+	origin: Vector3,
+	direction: Vector3
+) -> Dictionary:
+	var size := floor.get_floor_size()
+	if size.x <= 0.001 or size.y <= 0.001:
+		return {}
+	var inverse_frame := floor.global_transform.affine_inverse()
+	var local_origin := inverse_frame * origin
+	var local_direction := inverse_frame.basis * direction
+	if local_direction.length_squared() <= 0.000001:
+		return {}
+	local_direction = local_direction.normalized()
+
+	var min_corner := Vector3(0.0, -floor.floor_thickness, 0.0)
+	var max_corner := Vector3(size.x, 0.0, size.y)
+	var hit := _intersect_aabb_ray(local_origin, local_direction, min_corner, max_corner)
+	if hit.is_empty():
+		return {}
+
+	var local_hit := Vector3(hit["position"])
+	var local_normal := _nearest_box_normal(local_hit, min_corner, max_corner)
+	var global_hit := floor.global_transform * local_hit
+	return {
+		"floor": floor,
+		"position": global_hit,
+		"local_position": local_hit,
+		"normal": (floor.global_transform.basis * local_normal).normalized(),
+		"collider": floor,
+		"distance": origin.distance_to(global_hit),
+	}
+
+
+func _floor_edit_mask_for_local_hit(floor: ProceduralFloor3DScript, local_hit: Vector3) -> int:
+	var size := floor.get_floor_size()
+	var radius := maxf(_active_floor_grid_step(floor) * 0.35, 0.16)
+	var edit_mask := FLOOR_EDIT_MOVE
+	var min_x_distance := absf(local_hit.x)
+	var max_x_distance := absf(size.x - local_hit.x)
+	if minf(min_x_distance, max_x_distance) <= radius:
+		edit_mask |= FLOOR_EDIT_MIN_X if min_x_distance <= max_x_distance else FLOOR_EDIT_MAX_X
+	var min_z_distance := absf(local_hit.z)
+	var max_z_distance := absf(size.y - local_hit.z)
+	if minf(min_z_distance, max_z_distance) <= radius:
+		edit_mask |= FLOOR_EDIT_MIN_Z if min_z_distance <= max_z_distance else FLOOR_EDIT_MAX_Z
+	return edit_mask
+
+
 func _collect_scene_walls(node: Node, walls: Array[ProceduralWall3DScript]) -> void:
 	if node is ProceduralWall3DScript:
 		walls.append(node as ProceduralWall3DScript)
@@ -1226,6 +1742,12 @@ func _apply_wall_settings_to_coordinator(coordinator: BuildingEditor3DScript) ->
 	coordinator.default_wall_height = float(m_wall_settings["height"])
 	coordinator.default_wall_thickness = float(m_wall_settings["thickness"])
 	coordinator.default_wall_color = Color(m_wall_settings["color"])
+
+
+func _apply_floor_settings_to_coordinator(coordinator: BuildingEditor3DScript) -> void:
+	coordinator.grid_step = float(m_floor_settings["grid_step"])
+	coordinator.default_floor_thickness = float(m_floor_settings["thickness"])
+	coordinator.default_floor_color = Color(m_floor_settings["color"])
 
 
 func _active_grid_step(wall: ProceduralWall3DScript) -> float:
@@ -1569,10 +2091,38 @@ func _build_preview_material(color: Color) -> StandardMaterial3D:
 	return material
 
 
+func _update_floor_hover(floor: ProceduralFloor3DScript, edit_mask: int) -> void:
+	if floor == m_drag_floor_hover and edit_mask == m_drag_floor_hover_edit_mask:
+		return
+	_clear_floor_hover()
+	if floor == null:
+		return
+	m_drag_floor_hover = floor
+	m_drag_floor_hover_edit_mask = edit_mask
+	m_drag_floor_hover_material = floor.material_override
+	floor.material_override = _build_preview_material(_floor_drag_color(edit_mask, true))
+
+
+func _clear_floor_hover() -> void:
+	if m_drag_floor_hover == null:
+		return
+	if is_instance_valid(m_drag_floor_hover):
+		m_drag_floor_hover.material_override = m_drag_floor_hover_material
+	m_drag_floor_hover = null
+	m_drag_floor_hover_material = null
+	m_drag_floor_hover_edit_mask = FLOOR_EDIT_MOVE
+
+
 func _clear_wall_preview() -> void:
 	if m_wall_preview != null and is_instance_valid(m_wall_preview):
 		m_wall_preview.queue_free()
 	m_wall_preview = null
+
+
+func _clear_floor_preview() -> void:
+	if m_floor_preview != null and is_instance_valid(m_floor_preview):
+		m_floor_preview.queue_free()
+	m_floor_preview = null
 
 
 func _reset_wall_drawing_state() -> void:
@@ -1580,6 +2130,13 @@ func _reset_wall_drawing_state() -> void:
 	m_wall_has_valid_preview = false
 	m_wall_release_commits_preview = false
 	m_wall_start_screen_position = Vector2.ZERO
+
+
+func _reset_floor_drawing_state() -> void:
+	m_is_drawing_floor = false
+	m_floor_has_valid_preview = false
+	m_floor_release_commits_preview = false
+	m_floor_start_screen_position = Vector2.ZERO
 
 
 func _clear_prop_preview() -> void:
@@ -2393,16 +2950,28 @@ func _clear_viewport_overlays() -> void:
 func _cancel_active_preview() -> void:
 	_cancel_wall_drag()
 	_clear_wall_hover()
+	_cancel_floor_drag()
+	_clear_floor_hover()
 	_cancel_window_drag()
 	_clear_drag_hover()
 	_clear_wall_preview()
+	_clear_floor_preview()
 	_clear_prop_preview()
 	_reset_wall_drawing_state()
+	_reset_floor_drawing_state()
 	_set_status("Tool preview canceled.")
 
 
 func _is_wall_span_long_enough(local_start: Vector3, local_end: Vector3) -> bool:
 	return local_start.distance_to(local_end) >= maxf(float(m_wall_settings["grid_step"]) * 0.5, 0.1)
+
+
+func _is_floor_span_large_enough(local_start: Vector3, local_end: Vector3) -> bool:
+	var minimum_size := maxf(float(m_floor_settings["grid_step"]) * 0.5, 0.1)
+	return (
+		absf(local_end.x - local_start.x) >= minimum_size
+		and absf(local_end.z - local_start.z) >= minimum_size
+	)
 
 
 func _do_add_node(parent: Node, node: Node, scene_root: Node, select_after_add: bool) -> void:
@@ -2431,7 +3000,11 @@ func _undo_remove_node_and_rebuild(parent: Node, node: Node) -> void:
 
 
 func _set_owner_recursive(node: Node, scene_root: Node) -> void:
-	if node.has_meta(ProceduralWall3DScript.GENERATED_META) or node.has_meta(BuildingOpening3DScript.GENERATED_META):
+	if (
+		node.has_meta(ProceduralWall3DScript.GENERATED_META)
+		or node.has_meta(ProceduralFloor3DScript.GENERATED_META)
+		or node.has_meta(BuildingOpening3DScript.GENERATED_META)
+	):
 		node.owner = null
 	else:
 		node.owner = scene_root
@@ -2482,6 +3055,12 @@ func _on_tool_mode_changed(mode: String) -> void:
 	_cancel_active_preview()
 	if m_tool_mode != MODE_SELECT:
 		_activate_3d_editor_context()
+	var coordinator := _get_or_create_coordinator(false)
+	if coordinator != null:
+		if m_tool_mode == MODE_FLOOR:
+			_apply_floor_settings_to_coordinator(coordinator)
+		elif m_tool_mode == MODE_WALL:
+			_apply_wall_settings_to_coordinator(coordinator)
 	_set_status("Select a tool." if mode == MODE_SELECT else "Active tool: %s" % mode.capitalize())
 
 
@@ -2490,6 +3069,14 @@ func _on_wall_settings_changed(settings: Dictionary) -> void:
 	var coordinator := _get_or_create_coordinator(false)
 	if coordinator != null:
 		_apply_wall_settings_to_coordinator(coordinator)
+
+
+func _on_floor_settings_changed(settings: Dictionary) -> void:
+	m_floor_settings = settings.duplicate(true)
+	_clear_floor_preview()
+	var coordinator := _get_or_create_coordinator(false)
+	if coordinator != null and m_tool_mode == MODE_FLOOR:
+		_apply_floor_settings_to_coordinator(coordinator)
 
 
 func _on_prop_settings_changed(settings: Dictionary) -> void:

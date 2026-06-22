@@ -3,6 +3,7 @@ extends VBoxContainer
 
 signal tool_mode_changed(mode: String)
 signal wall_settings_changed(settings: Dictionary)
+signal floor_settings_changed(settings: Dictionary)
 signal prop_settings_changed(settings: Dictionary)
 signal window_settings_changed(settings: Dictionary)
 signal door_settings_changed(settings: Dictionary)
@@ -10,6 +11,7 @@ signal create_coordinator_requested()
 
 const MODE_SELECT := "select"
 const MODE_WALL := "wall"
+const MODE_FLOOR := "floor"
 const MODE_PROP := "prop"
 const MODE_WINDOW := "window"
 const MODE_DOOR := "door"
@@ -20,6 +22,7 @@ const PROJECT_METADATA_SECTION := "low_poly_building_editor"
 const PROJECT_METADATA_KEY := "dock_state"
 const SHORTCUTS_SELECT_TEXT := "Shortcuts\nSelect: normal Godot editor selection and transform tools are active."
 const SHORTCUTS_WALL_TEXT := "Shortcuts\nDrag empty space to draw a wall.\nDrag wall body to move it.\nDrag endpoint or joint to edit.\nShift-click wall body to add joint.\nOption/Alt-drag shared joint to disconnect.\nEsc or right-click cancels."
+const SHORTCUTS_FLOOR_TEXT := "Shortcuts\nDrag empty space to draw a floor rectangle.\nClick one corner, then click the opposite corner to place.\nDrag floor body to move it.\nDrag floor edge or corner to resize.\nEsc or right-click cancels."
 const SHORTCUTS_PROP_TEXT := "Shortcuts\nSelect a palette item, then click to place.\nR rotates the preview by 90 degrees.\nEsc or right-click cancels."
 const SHORTCUTS_WINDOW_TEXT := "Shortcuts\nClick a wall to place a window.\nDrag window center to move.\nDrag window edge to resize.\nEsc or right-click cancels."
 const SHORTCUTS_DOOR_TEXT := "Shortcuts\nSelect a door style, then click a wall to place.\nDrag door center to move.\nDrag door edge to resize.\nEsc or right-click cancels."
@@ -29,6 +32,7 @@ var m_mode_option: OptionButton
 var m_shortcuts_label: Label
 var m_status_label: Label
 var m_wall_section: VBoxContainer
+var m_floor_section: VBoxContainer
 var m_prop_section: VBoxContainer
 var m_window_section: VBoxContainer
 var m_door_section: VBoxContainer
@@ -38,6 +42,10 @@ var m_wall_height_spin: SpinBox
 var m_wall_thickness_spin: SpinBox
 var m_wall_color_picker: ColorPickerButton
 var m_lock_8_way_check: CheckBox
+var m_floor_grid_spin: SpinBox
+var m_floor_base_height_spin: SpinBox
+var m_floor_thickness_spin: SpinBox
+var m_floor_color_picker: ColorPickerButton
 var m_palette_root_edit: LineEdit
 var m_prop_path_edit: LineEdit
 var m_prop_clearance_spin: SpinBox
@@ -117,12 +125,14 @@ func _build_ui() -> void:
 	m_mode_option.set_item_metadata(0, MODE_SELECT)
 	m_mode_option.add_item("Wall", 1)
 	m_mode_option.set_item_metadata(1, MODE_WALL)
-	m_mode_option.add_item("Prop", 2)
-	m_mode_option.set_item_metadata(2, MODE_PROP)
-	m_mode_option.add_item("Door", 3)
-	m_mode_option.set_item_metadata(3, MODE_DOOR)
-	m_mode_option.add_item("Window", 4)
-	m_mode_option.set_item_metadata(4, MODE_WINDOW)
+	m_mode_option.add_item("Floor", 2)
+	m_mode_option.set_item_metadata(2, MODE_FLOOR)
+	m_mode_option.add_item("Prop", 3)
+	m_mode_option.set_item_metadata(3, MODE_PROP)
+	m_mode_option.add_item("Door", 4)
+	m_mode_option.set_item_metadata(4, MODE_DOOR)
+	m_mode_option.add_item("Window", 5)
+	m_mode_option.set_item_metadata(5, MODE_WINDOW)
 	m_mode_option.item_selected.connect(_on_mode_selected)
 	mode_row.add_child(m_mode_option)
 	content.add_child(mode_row)
@@ -134,6 +144,8 @@ func _build_ui() -> void:
 
 	m_wall_section = _make_tool_section(content)
 	_build_wall_controls(m_wall_section)
+	m_floor_section = _make_tool_section(content)
+	_build_floor_controls(m_floor_section)
 	m_prop_section = _make_tool_section(content)
 	_build_prop_controls(m_prop_section)
 	m_door_section = _make_tool_section(content)
@@ -198,6 +210,30 @@ func _build_wall_controls(parent: VBoxContainer) -> void:
 	m_lock_8_way_check.button_pressed = true
 	m_lock_8_way_check.toggled.connect(_on_wall_lock_changed)
 	parent.add_child(m_lock_8_way_check)
+
+
+func _build_floor_controls(parent: VBoxContainer) -> void:
+	var header := Label.new()
+	header.text = "Floor"
+	parent.add_child(header)
+
+	m_floor_grid_spin = _make_spin(0.05, 8.0, 0.05, 0.5)
+	_add_labeled_control(parent, "Grid:", m_floor_grid_spin)
+	m_floor_grid_spin.value_changed.connect(_on_floor_setting_changed)
+
+	m_floor_base_height_spin = _make_spin(-20.0, 20.0, 0.01, 0.0)
+	m_floor_base_height_spin.tooltip_text = "Parent-local Y height for new floor top surfaces."
+	_add_labeled_control(parent, "Base Y:", m_floor_base_height_spin)
+	m_floor_base_height_spin.value_changed.connect(_on_floor_setting_changed)
+
+	m_floor_thickness_spin = _make_spin(0.01, 2.0, 0.01, 0.12)
+	_add_labeled_control(parent, "Thickness:", m_floor_thickness_spin)
+	m_floor_thickness_spin.value_changed.connect(_on_floor_setting_changed)
+
+	m_floor_color_picker = ColorPickerButton.new()
+	m_floor_color_picker.color = Color(0.46, 0.40, 0.32, 1.0)
+	m_floor_color_picker.color_changed.connect(_on_floor_color_changed)
+	_add_labeled_control(parent, "Color:", m_floor_color_picker)
 
 
 func _build_prop_controls(parent: VBoxContainer) -> void:
@@ -357,6 +393,8 @@ func _shortcut_text_for_mode(mode: String) -> String:
 	match mode:
 		MODE_WALL:
 			return SHORTCUTS_WALL_TEXT
+		MODE_FLOOR:
+			return SHORTCUTS_FLOOR_TEXT
 		MODE_PROP:
 			return SHORTCUTS_PROP_TEXT
 		MODE_WINDOW:
@@ -370,6 +408,8 @@ func _shortcut_text_for_mode(mode: String) -> String:
 func _update_visible_tool_section(mode: String) -> void:
 	if m_wall_section != null:
 		m_wall_section.visible = mode == MODE_WALL
+	if m_floor_section != null:
+		m_floor_section.visible = mode == MODE_FLOOR
 	if m_prop_section != null:
 		m_prop_section.visible = mode == MODE_PROP
 	if m_window_section != null:
@@ -432,6 +472,14 @@ func _on_wall_lock_changed(_pressed: bool) -> void:
 	_emit_wall_settings()
 
 
+func _on_floor_setting_changed(_value: float) -> void:
+	_emit_floor_settings()
+
+
+func _on_floor_color_changed(_color: Color) -> void:
+	_emit_floor_settings()
+
+
 func _on_prop_setting_changed(_value: String) -> void:
 	_emit_prop_settings()
 
@@ -464,6 +512,7 @@ func _on_door_setting_changed(_value: float) -> void:
 
 func _emit_all_settings() -> void:
 	_emit_wall_settings()
+	_emit_floor_settings()
 	_emit_prop_settings()
 	_emit_window_settings()
 	_emit_door_settings()
@@ -477,6 +526,15 @@ func _emit_wall_settings() -> void:
 		"thickness": float(m_wall_thickness_spin.value),
 		"color": m_wall_color_picker.color,
 		"lock_8_way": m_lock_8_way_check.button_pressed,
+	})
+
+
+func _emit_floor_settings() -> void:
+	floor_settings_changed.emit({
+		"grid_step": float(m_floor_grid_spin.value),
+		"base_height": float(m_floor_base_height_spin.value),
+		"thickness": float(m_floor_thickness_spin.value),
+		"color": m_floor_color_picker.color,
 	})
 
 
@@ -640,6 +698,12 @@ func _load_persisted_settings() -> void:
 	var state: Dictionary = state_variant
 	m_palette_root_edit.text = str(state.get("prop_palette_root", m_palette_root_edit.text))
 	m_wall_base_height_spin.value = float(state.get("wall_base_height", m_wall_base_height_spin.value))
+	m_floor_grid_spin.value = float(state.get("floor_grid_step", m_floor_grid_spin.value))
+	m_floor_base_height_spin.value = float(state.get("floor_base_height", m_floor_base_height_spin.value))
+	m_floor_thickness_spin.value = float(state.get("floor_thickness", m_floor_thickness_spin.value))
+	var floor_color_variant: Variant = state.get("floor_color", m_floor_color_picker.color)
+	if floor_color_variant is Color:
+		m_floor_color_picker.color = floor_color_variant
 	var window_style := str(state.get("window_style", _selected_window_style()))
 	_select_window_style(window_style)
 	m_window_width_spin.value = float(state.get("window_width", _window_default_width(window_style)))
@@ -661,6 +725,10 @@ func _save_persisted_settings() -> void:
 	editor_settings.set_project_metadata(PROJECT_METADATA_SECTION, PROJECT_METADATA_KEY, {
 		"prop_palette_root": _get_configured_palette_root(),
 		"wall_base_height": float(m_wall_base_height_spin.value) if m_wall_base_height_spin != null else 0.0,
+		"floor_grid_step": float(m_floor_grid_spin.value) if m_floor_grid_spin != null else 0.5,
+		"floor_base_height": float(m_floor_base_height_spin.value) if m_floor_base_height_spin != null else 0.0,
+		"floor_thickness": float(m_floor_thickness_spin.value) if m_floor_thickness_spin != null else 0.12,
+		"floor_color": m_floor_color_picker.color if m_floor_color_picker != null else Color(0.46, 0.40, 0.32, 1.0),
 		"window_style": _selected_window_style(),
 		"window_width": float(m_window_width_spin.value) if m_window_width_spin != null else 1.0,
 		"window_height": float(m_window_height_spin.value) if m_window_height_spin != null else 1.0,

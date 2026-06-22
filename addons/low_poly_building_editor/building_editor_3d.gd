@@ -3,6 +3,7 @@ class_name BuildingEditor3D
 extends Node3D
 
 const ProceduralWall3DScript = preload("res://addons/low_poly_building_editor/procedural_wall_3d.gd")
+const ProceduralFloor3DScript = preload("res://addons/low_poly_building_editor/procedural_floor_3d.gd")
 const MergedWallMeshBuilderScript = preload("res://addons/low_poly_building_editor/merged_wall_mesh_builder.gd")
 
 const INTERSECT_BASE_TOLERANCE := 0.01
@@ -15,6 +16,8 @@ const INTERSECT_BASE_TOLERANCE := 0.01
 @export_range(0.1, 6.0, 0.05, "or_greater") var default_wall_height := 2.4
 @export_range(0.03, 1.0, 0.01, "or_greater") var default_wall_thickness := 0.22
 @export var default_wall_color := Color(0.78, 0.68, 0.54, 1.0)
+@export_range(0.01, 2.0, 0.01, "or_greater") var default_floor_thickness := 0.12
+@export var default_floor_color := Color(0.46, 0.40, 0.32, 1.0)
 @export var merge_intersecting := true
 
 
@@ -68,12 +71,38 @@ func create_wall_node(
 	return wall
 
 
+func create_floor_node(
+	local_start: Vector3,
+	local_end: Vector3,
+	thickness: float = default_floor_thickness,
+	color: Color = default_floor_color
+) -> ProceduralFloor3DScript:
+	var floor := ProceduralFloor3DScript.new() as ProceduralFloor3DScript
+	floor.name = _unique_floor_name()
+	floor.start_point = local_start
+	floor.end_point = Vector3(local_end.x, local_start.y, local_end.z)
+	floor.floor_thickness = thickness
+	floor.floor_color = color
+	floor.build_on_ready = true
+	floor.generate_collision = true
+	floor.rebuild_floor_mesh()
+	return floor
+
+
 func get_wall_nodes() -> Array[ProceduralWall3DScript]:
 	var walls: Array[ProceduralWall3DScript] = []
 	for child in get_children():
 		if child is ProceduralWall3DScript:
 			walls.append(child)
 	return walls
+
+
+func get_floor_nodes() -> Array[ProceduralFloor3DScript]:
+	var floors: Array[ProceduralFloor3DScript] = []
+	for child in get_children():
+		if child is ProceduralFloor3DScript:
+			floors.append(child as ProceduralFloor3DScript)
+	return floors
 
 
 func find_merge_target(
@@ -182,4 +211,13 @@ func _unique_wall_name() -> String:
 	while has_node(candidate):
 		index += 1
 		candidate = "ProceduralWall3D%d" % index
+	return candidate
+
+
+func _unique_floor_name() -> String:
+	var index := get_floor_nodes().size() + 1
+	var candidate := "ProceduralFloor3D%d" % index
+	while has_node(candidate):
+		index += 1
+		candidate = "ProceduralFloor3D%d" % index
 	return candidate

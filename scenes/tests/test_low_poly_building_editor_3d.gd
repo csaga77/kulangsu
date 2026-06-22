@@ -3,6 +3,7 @@ extends Node3D
 
 const BuildingEditor3DScript = preload("res://addons/low_poly_building_editor/building_editor_3d.gd")
 const ProceduralWall3DScript = preload("res://addons/low_poly_building_editor/procedural_wall_3d.gd")
+const ProceduralFloor3DScript = preload("res://addons/low_poly_building_editor/procedural_floor_3d.gd")
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
 const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
 
@@ -45,6 +46,7 @@ func _run_smoke_checks() -> void:
 	_validate_opening_follows_wall_segment()
 	_validate_snapping(coordinator)
 	_validate_wall_base_height(coordinator)
+	_validate_floor_node(coordinator)
 	_validate_merge_detection(coordinator)
 	_validate_intersection_merge()
 	_validate_add_wall_joint()
@@ -218,6 +220,66 @@ func _validate_wall_base_height(coordinator: BuildingEditor3DScript) -> void:
 		m_failures.append("ProceduralWall3D did not preserve elevated wall base endpoints")
 	if absf(elevated.position.y - base_y) > 0.001:
 		m_failures.append("ProceduralWall3D did not place wall transform at elevated base height")
+
+
+func _validate_floor_node(coordinator: BuildingEditor3DScript) -> void:
+	var top_y := 1.25
+	var floor := coordinator.create_floor_node(
+		Vector3(0.0, top_y, 12.0),
+		Vector3(3.0, top_y, 14.0),
+		0.18,
+		Color(0.46, 0.40, 0.32, 1.0)
+	)
+	coordinator.add_child(floor)
+	if floor.mesh == null:
+		m_failures.append("ProceduralFloor3D did not generate a mesh")
+		return
+	if floor.mesh.get_surface_count() <= 0:
+		m_failures.append("ProceduralFloor3D mesh has no surfaces")
+		return
+
+	var size := floor.get_floor_size()
+	if absf(size.x - 3.0) > 0.001 or absf(size.y - 2.0) > 0.001:
+		m_failures.append("ProceduralFloor3D returned the wrong footprint size: %s" % str(size))
+	if floor.position.distance_to(Vector3(0.0, top_y, 12.0)) > 0.001:
+		m_failures.append("ProceduralFloor3D did not place its transform at the floor top corner")
+
+	var arrays := floor.mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	if vertices.is_empty():
+		m_failures.append("ProceduralFloor3D mesh has no vertices")
+	if normals.size() != vertices.size():
+		m_failures.append("ProceduralFloor3D mesh is missing per-vertex normal data")
+	if colors.size() != vertices.size():
+		m_failures.append("ProceduralFloor3D mesh is missing per-vertex color data")
+	if !normals.is_empty() and normals[0].dot(Vector3.UP) < 0.999:
+		m_failures.append("ProceduralFloor3D top face normal is not upward")
+	if indices.size() >= 3 and !normals.is_empty():
+		var a := vertices[indices[0]]
+		var b := vertices[indices[1]]
+		var c := vertices[indices[2]]
+		var winding_normal := (b - a).cross(c - a).normalized()
+		if winding_normal.dot(normals[indices[0]]) > -0.999:
+			m_failures.append("ProceduralFloor3D triangle winding does not match Godot BoxMesh convention")
+	var min_y := INF
+	var max_y := -INF
+	for vertex in vertices:
+		min_y = minf(min_y, vertex.y)
+		max_y = maxf(max_y, vertex.y)
+	if absf(max_y) > 0.001 or absf(min_y + 0.18) > 0.001:
+		m_failures.append("ProceduralFloor3D did not extend thickness downward from the top surface")
+	if floor.get_node_or_null("FloorCollision") == null:
+		m_failures.append("ProceduralFloor3D did not generate collision for placed floors")
+
+	floor.set_floor_corners(Vector3(1.0, top_y, 12.5), Vector3(4.5, top_y, 15.0))
+	var edited_size := floor.get_floor_size()
+	if absf(edited_size.x - 3.5) > 0.001 or absf(edited_size.y - 2.5) > 0.001:
+		m_failures.append("ProceduralFloor3D did not resize from edited corners: %s" % str(edited_size))
+	if floor.position.distance_to(Vector3(1.0, top_y, 12.5)) > 0.001:
+		m_failures.append("ProceduralFloor3D did not move transform after edited corners")
 
 
 func _validate_merge_detection(coordinator: BuildingEditor3DScript) -> void:
