@@ -4,6 +4,7 @@ extends Node3D
 const BuildingEditor3DScript = preload("res://addons/low_poly_building_editor/building_editor_3d.gd")
 const ProceduralWall3DScript = preload("res://addons/low_poly_building_editor/procedural_wall_3d.gd")
 const ProceduralFloor3DScript = preload("res://addons/low_poly_building_editor/procedural_floor_3d.gd")
+const ProceduralPillar3DScript = preload("res://addons/low_poly_building_editor/procedural_pillar_3d.gd")
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
 const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
 
@@ -47,6 +48,7 @@ func _run_smoke_checks() -> void:
 	_validate_snapping(coordinator)
 	_validate_wall_base_height(coordinator)
 	_validate_floor_node(coordinator)
+	_validate_pillar_node(coordinator)
 	_validate_merge_detection(coordinator)
 	_validate_intersection_merge()
 	_validate_add_wall_joint()
@@ -280,6 +282,147 @@ func _validate_floor_node(coordinator: BuildingEditor3DScript) -> void:
 		m_failures.append("ProceduralFloor3D did not resize from edited corners: %s" % str(edited_size))
 	if floor.position.distance_to(Vector3(1.0, top_y, 12.5)) > 0.001:
 		m_failures.append("ProceduralFloor3D did not move transform after edited corners")
+
+
+func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:
+	var base_y := 0.75
+	var pillar := coordinator.create_pillar_node(
+		Vector3(6.0, base_y, 12.0),
+		0.35,
+		2.8,
+		6,
+		"round",
+		Color(0.70, 0.64, 0.52, 1.0)
+	)
+	coordinator.add_child(pillar)
+	if pillar.mesh == null:
+		m_failures.append("ProceduralPillar3D did not generate a mesh")
+		return
+	if pillar.mesh.get_surface_count() <= 0:
+		m_failures.append("ProceduralPillar3D mesh has no surfaces")
+		return
+	if pillar.position.distance_to(Vector3(6.0, base_y, 12.0)) > 0.001:
+		m_failures.append("ProceduralPillar3D did not place its transform at the base point")
+
+	var arrays := pillar.mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	if vertices.size() != pillar.side_count * 10:
+		m_failures.append("ProceduralPillar3D generated the wrong low-poly vertex count")
+	if normals.size() != vertices.size():
+		m_failures.append("ProceduralPillar3D mesh is missing per-vertex normal data")
+	if colors.size() != vertices.size():
+		m_failures.append("ProceduralPillar3D mesh is missing per-vertex color data")
+	if !_has_normal_near(normals, Vector3.UP):
+		m_failures.append("ProceduralPillar3D mesh is missing top normals")
+	if !_has_normal_near(normals, Vector3.DOWN):
+		m_failures.append("ProceduralPillar3D mesh is missing bottom normals")
+	if !_has_horizontal_pillar_normal(normals):
+		m_failures.append("ProceduralPillar3D mesh is missing side normals")
+	if indices.size() >= 3 and !normals.is_empty():
+		var a := vertices[indices[0]]
+		var b := vertices[indices[1]]
+		var c := vertices[indices[2]]
+		var winding_normal := (b - a).cross(c - a).normalized()
+		if winding_normal.dot(normals[indices[0]]) > -0.999:
+			m_failures.append("ProceduralPillar3D triangle winding does not match Godot BoxMesh convention")
+	if pillar.get_node_or_null("PillarCollision") == null:
+		m_failures.append("ProceduralPillar3D did not generate collision for placed pillars")
+
+	pillar.set_pillar_base_and_radius(Vector3(7.0, base_y, 13.0), 0.5)
+	if pillar.position.distance_to(Vector3(7.0, base_y, 13.0)) > 0.001:
+		m_failures.append("ProceduralPillar3D did not move transform after edited base point")
+	if absf(pillar.pillar_radius - 0.5) > 0.001:
+		m_failures.append("ProceduralPillar3D did not resize edited radius")
+
+	var square := coordinator.create_pillar_node(
+		Vector3(8.0, base_y, 12.0),
+		0.4,
+		2.4,
+		12,
+		"square",
+		Color(0.70, 0.64, 0.52, 1.0)
+	)
+	coordinator.add_child(square)
+	if square.get_pillar_style() != "square":
+		m_failures.append("ProceduralPillar3D did not store square style")
+	if _mesh_vertex_count(square) != 40:
+		m_failures.append("ProceduralPillar3D square style did not force four low-poly sides")
+
+	var octagonal := coordinator.create_pillar_node(
+		Vector3(9.0, base_y, 12.0),
+		0.4,
+		2.4,
+		5,
+		"octagonal",
+		Color(0.70, 0.64, 0.52, 1.0)
+	)
+	coordinator.add_child(octagonal)
+	if _mesh_vertex_count(octagonal) != 80:
+		m_failures.append("ProceduralPillar3D octagonal style did not force eight low-poly sides")
+
+	var tapered := coordinator.create_pillar_node(
+		Vector3(10.0, base_y, 12.0),
+		0.5,
+		2.4,
+		8,
+		"tapered",
+		Color(0.70, 0.64, 0.52, 1.0)
+	)
+	coordinator.add_child(tapered)
+	if _pillar_max_radius_at_y(tapered, 2.4) >= _pillar_max_radius_at_y(tapered, 0.0):
+		m_failures.append("ProceduralPillar3D tapered style did not narrow the top radius")
+
+	var custom_radii := coordinator.create_pillar_node(
+		Vector3(10.5, base_y, 12.0),
+		0.45,
+		2.4,
+		8,
+		"round",
+		Color(0.70, 0.64, 0.52, 1.0),
+		0.0,
+		0.0,
+		0.0,
+		0.0,
+		0.18
+	)
+	coordinator.add_child(custom_radii)
+	if absf(custom_radii.upper_radius - 0.18) > 0.001:
+		m_failures.append("ProceduralPillar3D did not store custom upper radius")
+	if _pillar_max_radius_at_y(custom_radii, 2.4) >= _pillar_max_radius_at_y(custom_radii, 0.0):
+		m_failures.append("ProceduralPillar3D custom upper radius did not narrow the top")
+	if absf(_pillar_max_radius_at_y(custom_radii, 2.4) - 0.18) > 0.001:
+		m_failures.append("ProceduralPillar3D custom upper radius did not generate the requested top radius")
+
+	var rimmed := coordinator.create_pillar_node(
+		Vector3(11.0, base_y, 12.0),
+		0.35,
+		2.4,
+		8,
+		"round",
+		Color(0.70, 0.64, 0.52, 1.0),
+		0.16,
+		0.08,
+		0.20,
+		0.10
+	)
+	coordinator.add_child(rimmed)
+	if _mesh_vertex_count(rimmed) != rimmed.side_count * 26:
+		m_failures.append("ProceduralPillar3D rimmed style did not add expected rim geometry")
+	if _pillar_max_radius_at_y(rimmed, 0.0) <= rimmed.pillar_radius:
+		m_failures.append("ProceduralPillar3D lower rim did not expand the base radius")
+	if _pillar_max_radius_at_y(rimmed, 2.4) <= rimmed.pillar_radius:
+		m_failures.append("ProceduralPillar3D upper rim did not expand the top radius")
+	if rimmed.get_outer_radius() <= rimmed.pillar_radius:
+		m_failures.append("ProceduralPillar3D outer radius did not include rim outsets")
+	var rim_collision_shape := rimmed.get_node_or_null("PillarCollision/CollisionShape3D") as CollisionShape3D
+	var rim_collision: CylinderShape3D = null
+	if rim_collision_shape != null:
+		rim_collision = rim_collision_shape.shape as CylinderShape3D
+	if rim_collision == null or rim_collision.radius + 0.001 < rimmed.get_outer_radius():
+		m_failures.append("ProceduralPillar3D rimmed collision did not cover the outer rim")
 
 
 func _validate_merge_detection(coordinator: BuildingEditor3DScript) -> void:
@@ -1020,6 +1163,43 @@ func _has_mesh_vertex_with_normal_near(
 		if vertices[index].distance_to(expected) > tolerance:
 			continue
 		if normals[index].dot(expected_normal) > 0.98:
+			return true
+	return false
+
+
+func _has_normal_near(normals: PackedVector3Array, expected_normal: Vector3) -> bool:
+	for normal in normals:
+		if normal.dot(expected_normal) > 0.98:
+			return true
+	return false
+
+
+func _mesh_vertex_count(mesh_instance: MeshInstance3D) -> int:
+	if mesh_instance == null or mesh_instance.mesh == null or mesh_instance.mesh.get_surface_count() <= 0:
+		return 0
+	var arrays := mesh_instance.mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	return vertices.size()
+
+
+func _pillar_max_radius_at_y(pillar: ProceduralPillar3DScript, expected_y: float) -> float:
+	if pillar.mesh == null or pillar.mesh.get_surface_count() <= 0:
+		return 0.0
+	var arrays := pillar.mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var max_radius := 0.0
+	for vertex in vertices:
+		if absf(vertex.y - expected_y) > 0.001:
+			continue
+		max_radius = maxf(max_radius, Vector2(vertex.x, vertex.z).length())
+	return max_radius
+
+
+func _has_horizontal_pillar_normal(normals: PackedVector3Array) -> bool:
+	for normal in normals:
+		if absf(normal.y) > 0.01:
+			continue
+		if normal.length_squared() > 0.98:
 			return true
 	return false
 

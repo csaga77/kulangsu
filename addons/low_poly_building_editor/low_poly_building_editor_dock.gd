@@ -4,6 +4,7 @@ extends VBoxContainer
 signal tool_mode_changed(mode: String)
 signal wall_settings_changed(settings: Dictionary)
 signal floor_settings_changed(settings: Dictionary)
+signal pillar_settings_changed(settings: Dictionary)
 signal prop_settings_changed(settings: Dictionary)
 signal window_settings_changed(settings: Dictionary)
 signal door_settings_changed(settings: Dictionary)
@@ -12,6 +13,7 @@ signal create_coordinator_requested()
 const MODE_SELECT := "select"
 const MODE_WALL := "wall"
 const MODE_FLOOR := "floor"
+const MODE_PILLAR := "pillar"
 const MODE_PROP := "prop"
 const MODE_WINDOW := "window"
 const MODE_DOOR := "door"
@@ -23,6 +25,7 @@ const PROJECT_METADATA_KEY := "dock_state"
 const SHORTCUTS_SELECT_TEXT := "Shortcuts\nSelect: normal Godot editor selection and transform tools are active."
 const SHORTCUTS_WALL_TEXT := "Shortcuts\nDrag empty space to draw a wall.\nDrag wall body to move it.\nDrag endpoint or joint to edit.\nShift-click wall body to add joint.\nOption/Alt-drag shared joint to disconnect.\nEsc or right-click cancels."
 const SHORTCUTS_FLOOR_TEXT := "Shortcuts\nDrag empty space to draw a floor rectangle.\nClick one corner, then click the opposite corner to place.\nDrag floor body to move it.\nDrag floor edge or corner to resize.\nEsc or right-click cancels."
+const SHORTCUTS_PILLAR_TEXT := "Shortcuts\nClick empty space to place a pillar.\nDrag pillar body to move it.\nDrag pillar edge to resize its radius.\nEsc or right-click cancels."
 const SHORTCUTS_PROP_TEXT := "Shortcuts\nSelect a palette item, then click to place.\nR rotates the preview by 90 degrees.\nEsc or right-click cancels."
 const SHORTCUTS_WINDOW_TEXT := "Shortcuts\nClick a wall to place a window.\nDrag window center to move.\nDrag window edge to resize.\nEsc or right-click cancels."
 const SHORTCUTS_DOOR_TEXT := "Shortcuts\nSelect a door style, then click a wall to place.\nDrag door center to move.\nDrag door edge to resize.\nEsc or right-click cancels."
@@ -33,6 +36,7 @@ var m_shortcuts_label: Label
 var m_status_label: Label
 var m_wall_section: VBoxContainer
 var m_floor_section: VBoxContainer
+var m_pillar_section: VBoxContainer
 var m_prop_section: VBoxContainer
 var m_window_section: VBoxContainer
 var m_door_section: VBoxContainer
@@ -46,6 +50,18 @@ var m_floor_grid_spin: SpinBox
 var m_floor_base_height_spin: SpinBox
 var m_floor_thickness_spin: SpinBox
 var m_floor_color_picker: ColorPickerButton
+var m_pillar_grid_spin: SpinBox
+var m_pillar_style_option: OptionButton
+var m_pillar_base_height_spin: SpinBox
+var m_pillar_radius_spin: SpinBox
+var m_pillar_upper_radius_spin: SpinBox
+var m_pillar_height_spin: SpinBox
+var m_pillar_sides_spin: SpinBox
+var m_pillar_lower_rim_height_spin: SpinBox
+var m_pillar_lower_rim_outset_spin: SpinBox
+var m_pillar_upper_rim_height_spin: SpinBox
+var m_pillar_upper_rim_outset_spin: SpinBox
+var m_pillar_color_picker: ColorPickerButton
 var m_palette_root_edit: LineEdit
 var m_prop_path_edit: LineEdit
 var m_prop_clearance_spin: SpinBox
@@ -127,12 +143,14 @@ func _build_ui() -> void:
 	m_mode_option.set_item_metadata(1, MODE_WALL)
 	m_mode_option.add_item("Floor", 2)
 	m_mode_option.set_item_metadata(2, MODE_FLOOR)
-	m_mode_option.add_item("Prop", 3)
-	m_mode_option.set_item_metadata(3, MODE_PROP)
-	m_mode_option.add_item("Door", 4)
-	m_mode_option.set_item_metadata(4, MODE_DOOR)
-	m_mode_option.add_item("Window", 5)
-	m_mode_option.set_item_metadata(5, MODE_WINDOW)
+	m_mode_option.add_item("Pillar", 3)
+	m_mode_option.set_item_metadata(3, MODE_PILLAR)
+	m_mode_option.add_item("Prop", 4)
+	m_mode_option.set_item_metadata(4, MODE_PROP)
+	m_mode_option.add_item("Door", 5)
+	m_mode_option.set_item_metadata(5, MODE_DOOR)
+	m_mode_option.add_item("Window", 6)
+	m_mode_option.set_item_metadata(6, MODE_WINDOW)
 	m_mode_option.item_selected.connect(_on_mode_selected)
 	mode_row.add_child(m_mode_option)
 	content.add_child(mode_row)
@@ -146,6 +164,8 @@ func _build_ui() -> void:
 	_build_wall_controls(m_wall_section)
 	m_floor_section = _make_tool_section(content)
 	_build_floor_controls(m_floor_section)
+	m_pillar_section = _make_tool_section(content)
+	_build_pillar_controls(m_pillar_section)
 	m_prop_section = _make_tool_section(content)
 	_build_prop_controls(m_prop_section)
 	m_door_section = _make_tool_section(content)
@@ -234,6 +254,77 @@ func _build_floor_controls(parent: VBoxContainer) -> void:
 	m_floor_color_picker.color = Color(0.46, 0.40, 0.32, 1.0)
 	m_floor_color_picker.color_changed.connect(_on_floor_color_changed)
 	_add_labeled_control(parent, "Color:", m_floor_color_picker)
+
+
+func _build_pillar_controls(parent: VBoxContainer) -> void:
+	var header := Label.new()
+	header.text = "Pillar"
+	parent.add_child(header)
+
+	m_pillar_grid_spin = _make_spin(0.05, 8.0, 0.05, 0.5)
+	_add_labeled_control(parent, "Grid:", m_pillar_grid_spin)
+	m_pillar_grid_spin.value_changed.connect(_on_pillar_setting_changed)
+
+	m_pillar_style_option = OptionButton.new()
+	m_pillar_style_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	m_pillar_style_option.add_item("Round", 0)
+	m_pillar_style_option.set_item_metadata(0, "round")
+	m_pillar_style_option.add_item("Square", 1)
+	m_pillar_style_option.set_item_metadata(1, "square")
+	m_pillar_style_option.add_item("Octagonal", 2)
+	m_pillar_style_option.set_item_metadata(2, "octagonal")
+	m_pillar_style_option.add_item("Tapered", 3)
+	m_pillar_style_option.set_item_metadata(3, "tapered")
+	m_pillar_style_option.item_selected.connect(_on_pillar_style_selected)
+	_add_labeled_control(parent, "Style:", m_pillar_style_option)
+
+	m_pillar_base_height_spin = _make_spin(-20.0, 20.0, 0.01, 0.0)
+	m_pillar_base_height_spin.tooltip_text = "Parent-local Y height for new pillar bases."
+	_add_labeled_control(parent, "Base Y:", m_pillar_base_height_spin)
+	m_pillar_base_height_spin.value_changed.connect(_on_pillar_setting_changed)
+
+	m_pillar_radius_spin = _make_spin(0.05, 4.0, 0.01, 0.25)
+	m_pillar_radius_spin.tooltip_text = "Lower body radius."
+	_add_labeled_control(parent, "Lower Radius:", m_pillar_radius_spin)
+	m_pillar_radius_spin.value_changed.connect(_on_pillar_setting_changed)
+
+	m_pillar_upper_radius_spin = _make_spin(0.0, 4.0, 0.01, 0.0)
+	m_pillar_upper_radius_spin.tooltip_text = "Upper body radius. Set to 0 to use the selected style's default top radius."
+	_add_labeled_control(parent, "Upper Radius:", m_pillar_upper_radius_spin)
+	m_pillar_upper_radius_spin.value_changed.connect(_on_pillar_setting_changed)
+
+	m_pillar_height_spin = _make_spin(0.1, 12.0, 0.05, 2.4)
+	_add_labeled_control(parent, "Height:", m_pillar_height_spin)
+	m_pillar_height_spin.value_changed.connect(_on_pillar_setting_changed)
+
+	m_pillar_sides_spin = _make_spin(3.0, 24.0, 1.0, 8.0)
+	_add_labeled_control(parent, "Sides:", m_pillar_sides_spin)
+	m_pillar_sides_spin.value_changed.connect(_on_pillar_setting_changed)
+
+	m_pillar_lower_rim_height_spin = _make_spin(0.0, 2.0, 0.01, 0.12)
+	m_pillar_lower_rim_height_spin.tooltip_text = "Lower rim band height. Set height or outset to 0 to disable it."
+	_add_labeled_control(parent, "Lower Rim H:", m_pillar_lower_rim_height_spin)
+	m_pillar_lower_rim_height_spin.value_changed.connect(_on_pillar_setting_changed)
+
+	m_pillar_lower_rim_outset_spin = _make_spin(0.0, 2.0, 0.01, 0.05)
+	m_pillar_lower_rim_outset_spin.tooltip_text = "Lower rim radius added beyond the pillar body."
+	_add_labeled_control(parent, "Lower Rim Out:", m_pillar_lower_rim_outset_spin)
+	m_pillar_lower_rim_outset_spin.value_changed.connect(_on_pillar_setting_changed)
+
+	m_pillar_upper_rim_height_spin = _make_spin(0.0, 2.0, 0.01, 0.12)
+	m_pillar_upper_rim_height_spin.tooltip_text = "Upper rim band height. Set height or outset to 0 to disable it."
+	_add_labeled_control(parent, "Upper Rim H:", m_pillar_upper_rim_height_spin)
+	m_pillar_upper_rim_height_spin.value_changed.connect(_on_pillar_setting_changed)
+
+	m_pillar_upper_rim_outset_spin = _make_spin(0.0, 2.0, 0.01, 0.05)
+	m_pillar_upper_rim_outset_spin.tooltip_text = "Upper rim radius added beyond the pillar body."
+	_add_labeled_control(parent, "Upper Rim Out:", m_pillar_upper_rim_outset_spin)
+	m_pillar_upper_rim_outset_spin.value_changed.connect(_on_pillar_setting_changed)
+
+	m_pillar_color_picker = ColorPickerButton.new()
+	m_pillar_color_picker.color = Color(0.70, 0.64, 0.52, 1.0)
+	m_pillar_color_picker.color_changed.connect(_on_pillar_color_changed)
+	_add_labeled_control(parent, "Color:", m_pillar_color_picker)
 
 
 func _build_prop_controls(parent: VBoxContainer) -> void:
@@ -395,6 +486,8 @@ func _shortcut_text_for_mode(mode: String) -> String:
 			return SHORTCUTS_WALL_TEXT
 		MODE_FLOOR:
 			return SHORTCUTS_FLOOR_TEXT
+		MODE_PILLAR:
+			return SHORTCUTS_PILLAR_TEXT
 		MODE_PROP:
 			return SHORTCUTS_PROP_TEXT
 		MODE_WINDOW:
@@ -410,6 +503,8 @@ func _update_visible_tool_section(mode: String) -> void:
 		m_wall_section.visible = mode == MODE_WALL
 	if m_floor_section != null:
 		m_floor_section.visible = mode == MODE_FLOOR
+	if m_pillar_section != null:
+		m_pillar_section.visible = mode == MODE_PILLAR
 	if m_prop_section != null:
 		m_prop_section.visible = mode == MODE_PROP
 	if m_window_section != null:
@@ -480,6 +575,18 @@ func _on_floor_color_changed(_color: Color) -> void:
 	_emit_floor_settings()
 
 
+func _on_pillar_setting_changed(_value: float) -> void:
+	_emit_pillar_settings()
+
+
+func _on_pillar_style_selected(_index: int) -> void:
+	_emit_pillar_settings()
+
+
+func _on_pillar_color_changed(_color: Color) -> void:
+	_emit_pillar_settings()
+
+
 func _on_prop_setting_changed(_value: String) -> void:
 	_emit_prop_settings()
 
@@ -513,6 +620,7 @@ func _on_door_setting_changed(_value: float) -> void:
 func _emit_all_settings() -> void:
 	_emit_wall_settings()
 	_emit_floor_settings()
+	_emit_pillar_settings()
 	_emit_prop_settings()
 	_emit_window_settings()
 	_emit_door_settings()
@@ -536,6 +644,39 @@ func _emit_floor_settings() -> void:
 		"thickness": float(m_floor_thickness_spin.value),
 		"color": m_floor_color_picker.color,
 	})
+
+
+func _emit_pillar_settings() -> void:
+	pillar_settings_changed.emit({
+		"grid_step": float(m_pillar_grid_spin.value),
+		"style": _selected_pillar_style(),
+		"base_height": float(m_pillar_base_height_spin.value),
+		"radius": float(m_pillar_radius_spin.value),
+		"upper_radius": float(m_pillar_upper_radius_spin.value),
+		"height": float(m_pillar_height_spin.value),
+		"sides": int(roundf(m_pillar_sides_spin.value)),
+		"lower_rim_height": float(m_pillar_lower_rim_height_spin.value),
+		"lower_rim_outset": float(m_pillar_lower_rim_outset_spin.value),
+		"upper_rim_height": float(m_pillar_upper_rim_height_spin.value),
+		"upper_rim_outset": float(m_pillar_upper_rim_outset_spin.value),
+		"color": m_pillar_color_picker.color,
+	})
+
+
+func _selected_pillar_style() -> String:
+	if m_pillar_style_option == null or m_pillar_style_option.selected < 0:
+		return "round"
+	return String(m_pillar_style_option.get_item_metadata(m_pillar_style_option.selected))
+
+
+func _select_pillar_style(style: String) -> void:
+	if m_pillar_style_option == null:
+		return
+	for index in range(m_pillar_style_option.get_item_count()):
+		if String(m_pillar_style_option.get_item_metadata(index)) == style:
+			m_pillar_style_option.select(index)
+			return
+	m_pillar_style_option.select(0)
 
 
 func _emit_prop_settings() -> void:
@@ -704,6 +845,20 @@ func _load_persisted_settings() -> void:
 	var floor_color_variant: Variant = state.get("floor_color", m_floor_color_picker.color)
 	if floor_color_variant is Color:
 		m_floor_color_picker.color = floor_color_variant
+	m_pillar_grid_spin.value = float(state.get("pillar_grid_step", m_pillar_grid_spin.value))
+	_select_pillar_style(str(state.get("pillar_style", _selected_pillar_style())))
+	m_pillar_base_height_spin.value = float(state.get("pillar_base_height", m_pillar_base_height_spin.value))
+	m_pillar_radius_spin.value = float(state.get("pillar_radius", m_pillar_radius_spin.value))
+	m_pillar_upper_radius_spin.value = float(state.get("pillar_upper_radius", m_pillar_upper_radius_spin.value))
+	m_pillar_height_spin.value = float(state.get("pillar_height", m_pillar_height_spin.value))
+	m_pillar_sides_spin.value = float(state.get("pillar_sides", m_pillar_sides_spin.value))
+	m_pillar_lower_rim_height_spin.value = float(state.get("pillar_lower_rim_height", m_pillar_lower_rim_height_spin.value))
+	m_pillar_lower_rim_outset_spin.value = float(state.get("pillar_lower_rim_outset", m_pillar_lower_rim_outset_spin.value))
+	m_pillar_upper_rim_height_spin.value = float(state.get("pillar_upper_rim_height", m_pillar_upper_rim_height_spin.value))
+	m_pillar_upper_rim_outset_spin.value = float(state.get("pillar_upper_rim_outset", m_pillar_upper_rim_outset_spin.value))
+	var pillar_color_variant: Variant = state.get("pillar_color", m_pillar_color_picker.color)
+	if pillar_color_variant is Color:
+		m_pillar_color_picker.color = pillar_color_variant
 	var window_style := str(state.get("window_style", _selected_window_style()))
 	_select_window_style(window_style)
 	m_window_width_spin.value = float(state.get("window_width", _window_default_width(window_style)))
@@ -729,6 +884,18 @@ func _save_persisted_settings() -> void:
 		"floor_base_height": float(m_floor_base_height_spin.value) if m_floor_base_height_spin != null else 0.0,
 		"floor_thickness": float(m_floor_thickness_spin.value) if m_floor_thickness_spin != null else 0.12,
 		"floor_color": m_floor_color_picker.color if m_floor_color_picker != null else Color(0.46, 0.40, 0.32, 1.0),
+		"pillar_grid_step": float(m_pillar_grid_spin.value) if m_pillar_grid_spin != null else 0.5,
+		"pillar_style": _selected_pillar_style(),
+		"pillar_base_height": float(m_pillar_base_height_spin.value) if m_pillar_base_height_spin != null else 0.0,
+		"pillar_radius": float(m_pillar_radius_spin.value) if m_pillar_radius_spin != null else 0.25,
+		"pillar_upper_radius": float(m_pillar_upper_radius_spin.value) if m_pillar_upper_radius_spin != null else 0.0,
+		"pillar_height": float(m_pillar_height_spin.value) if m_pillar_height_spin != null else 2.4,
+		"pillar_sides": int(roundf(m_pillar_sides_spin.value)) if m_pillar_sides_spin != null else 8,
+		"pillar_lower_rim_height": float(m_pillar_lower_rim_height_spin.value) if m_pillar_lower_rim_height_spin != null else 0.12,
+		"pillar_lower_rim_outset": float(m_pillar_lower_rim_outset_spin.value) if m_pillar_lower_rim_outset_spin != null else 0.05,
+		"pillar_upper_rim_height": float(m_pillar_upper_rim_height_spin.value) if m_pillar_upper_rim_height_spin != null else 0.12,
+		"pillar_upper_rim_outset": float(m_pillar_upper_rim_outset_spin.value) if m_pillar_upper_rim_outset_spin != null else 0.05,
+		"pillar_color": m_pillar_color_picker.color if m_pillar_color_picker != null else Color(0.70, 0.64, 0.52, 1.0),
 		"window_style": _selected_window_style(),
 		"window_width": float(m_window_width_spin.value) if m_window_width_spin != null else 1.0,
 		"window_height": float(m_window_height_spin.value) if m_window_height_spin != null else 1.0,

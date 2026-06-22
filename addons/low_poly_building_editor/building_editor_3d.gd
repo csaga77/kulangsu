@@ -4,6 +4,7 @@ extends Node3D
 
 const ProceduralWall3DScript = preload("res://addons/low_poly_building_editor/procedural_wall_3d.gd")
 const ProceduralFloor3DScript = preload("res://addons/low_poly_building_editor/procedural_floor_3d.gd")
+const ProceduralPillar3DScript = preload("res://addons/low_poly_building_editor/procedural_pillar_3d.gd")
 const MergedWallMeshBuilderScript = preload("res://addons/low_poly_building_editor/merged_wall_mesh_builder.gd")
 
 const INTERSECT_BASE_TOLERANCE := 0.01
@@ -18,6 +19,16 @@ const INTERSECT_BASE_TOLERANCE := 0.01
 @export var default_wall_color := Color(0.78, 0.68, 0.54, 1.0)
 @export_range(0.01, 2.0, 0.01, "or_greater") var default_floor_thickness := 0.12
 @export var default_floor_color := Color(0.46, 0.40, 0.32, 1.0)
+@export_range(0.05, 4.0, 0.01, "or_greater") var default_pillar_radius := 0.25
+@export_range(0.0, 4.0, 0.01, "or_greater") var default_pillar_upper_radius := 0.0
+@export_range(0.1, 12.0, 0.05, "or_greater") var default_pillar_height := 2.4
+@export_range(3, 24, 1) var default_pillar_sides := 8
+@export var default_pillar_style := "round"
+@export_range(0.0, 2.0, 0.01, "or_greater") var default_pillar_lower_rim_height := 0.0
+@export_range(0.0, 2.0, 0.01, "or_greater") var default_pillar_lower_rim_outset := 0.0
+@export_range(0.0, 2.0, 0.01, "or_greater") var default_pillar_upper_rim_height := 0.0
+@export_range(0.0, 2.0, 0.01, "or_greater") var default_pillar_upper_rim_outset := 0.0
+@export var default_pillar_color := Color(0.70, 0.64, 0.52, 1.0)
 @export var merge_intersecting := true
 
 
@@ -89,6 +100,38 @@ func create_floor_node(
 	return floor
 
 
+func create_pillar_node(
+	local_base: Vector3,
+	radius: float = default_pillar_radius,
+	height: float = default_pillar_height,
+	sides: int = default_pillar_sides,
+	style: String = default_pillar_style,
+	color: Color = default_pillar_color,
+	lower_rim_height: float = default_pillar_lower_rim_height,
+	lower_rim_outset: float = default_pillar_lower_rim_outset,
+	upper_rim_height: float = default_pillar_upper_rim_height,
+	upper_rim_outset: float = default_pillar_upper_rim_outset,
+	upper_radius: float = default_pillar_upper_radius
+) -> ProceduralPillar3DScript:
+	var pillar := ProceduralPillar3DScript.new() as ProceduralPillar3DScript
+	pillar.name = _unique_pillar_name()
+	pillar.base_point = local_base
+	pillar.pillar_radius = radius
+	pillar.upper_radius = upper_radius
+	pillar.pillar_height = height
+	pillar.side_count = sides
+	pillar.set_pillar_style(style)
+	pillar.pillar_color = color
+	pillar.lower_rim_height = lower_rim_height
+	pillar.lower_rim_outset = lower_rim_outset
+	pillar.upper_rim_height = upper_rim_height
+	pillar.upper_rim_outset = upper_rim_outset
+	pillar.build_on_ready = true
+	pillar.generate_collision = true
+	pillar.rebuild_pillar_mesh()
+	return pillar
+
+
 func get_wall_nodes() -> Array[ProceduralWall3DScript]:
 	var walls: Array[ProceduralWall3DScript] = []
 	for child in get_children():
@@ -103,6 +146,14 @@ func get_floor_nodes() -> Array[ProceduralFloor3DScript]:
 		if child is ProceduralFloor3DScript:
 			floors.append(child as ProceduralFloor3DScript)
 	return floors
+
+
+func get_pillar_nodes() -> Array[ProceduralPillar3DScript]:
+	var pillars: Array[ProceduralPillar3DScript] = []
+	for child in get_children():
+		if child is ProceduralPillar3DScript:
+			pillars.append(child as ProceduralPillar3DScript)
+	return pillars
 
 
 func find_merge_target(
@@ -220,4 +271,13 @@ func _unique_floor_name() -> String:
 	while has_node(candidate):
 		index += 1
 		candidate = "ProceduralFloor3D%d" % index
+	return candidate
+
+
+func _unique_pillar_name() -> String:
+	var index := get_pillar_nodes().size() + 1
+	var candidate := "ProceduralPillar3D%d" % index
+	while has_node(candidate):
+		index += 1
+		candidate = "ProceduralPillar3D%d" % index
 	return candidate
