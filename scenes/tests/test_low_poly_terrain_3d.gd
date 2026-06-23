@@ -173,10 +173,10 @@ func _validate_water_rendering(failures: Array[String]) -> void:
 	if absf(height_range.x - water_height) > 0.002 or absf(height_range.y - water_height) > 0.002:
 		failures.append("LowPolyTerrain3D WaterMesh should be drawn flat at water height")
 
-	var material := water_mesh.material_override as StandardMaterial3D
+	var material := water_mesh.material_override as ShaderMaterial
 	if material == null:
-		failures.append("LowPolyTerrain3D WaterMesh is missing its material")
-	elif material.albedo_color.a >= 0.75:
+		failures.append("LowPolyTerrain3D WaterMesh is missing its animated shader material")
+	elif float(material.get_shader_parameter(&"water_opacity")) >= 0.75:
 		failures.append("LowPolyTerrain3D WaterMesh should be semi-transparent enough to reveal seabed")
 
 	var surface_layer_mesh := m_terrain.get_node_or_null("WaterSurfaceLayerMesh") as MeshInstance3D

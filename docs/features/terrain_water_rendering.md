@@ -1,5 +1,12 @@
 # Terrain Water Rendering
 
+> Scope: this doc covers the **2D overworld** water — a generated `TileMapLayer`
+> driven by the `canvas_item` shader in `resources/materials/water.gdshader`.
+> The parallel **low-poly 3D** prototype renders water as procedural meshes with
+> the spatial shader `resources/materials/water_3d.gdshader`; that path is owned
+> by [`low_poly_terrain_3d.md`](low_poly_terrain_3d.md). The two systems are
+> independent and intentionally not shared.
+
 ## Goal
 
 - Keep the island coastline readable and calm without breaking isometric tile seams.

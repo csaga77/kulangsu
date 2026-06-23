@@ -4,6 +4,7 @@ extends Node3D
 
 const GENERATED_META := &"low_poly_terrain_generated"
 const LowPolyArtStyle3DScript = preload("res://terrain/low_poly_art_style_3d.gd")
+const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 const HEIGHT_EPSILON := 0.001
 const CORNER_NW := 0
 const CORNER_NE := 1
@@ -563,17 +564,18 @@ func _build_meshes_from_grid(
 					water_rendering
 				)
 
-	_add_mesh_instance("WaterMesh", water_builder, _build_water_material("Low Poly Water", water_rendering.material_alpha))
-	_add_mesh_instance(
-		"WaterSurfaceLayerMesh",
-		water_surface_layer_builder,
-		_build_material("Low Poly Water Surface Layer", water_rendering.surface_layer_color, true)
-	)
-	_add_mesh_instance(
-		"WaterShorelineMesh",
-		water_shoreline_builder,
-		_build_material("Low Poly Water Shoreline", water_rendering.shoreline_color, true)
-	)
+	# Transparent water draws bottom-up via render_priority so the body, foam
+	# bands, and surface gloss composite in a stable order regardless of camera
+	# angle (geometry lifts alone are too small to guarantee sort order).
+	var water_material := _build_water_material("Low Poly Water", water_rendering)
+	water_material.render_priority = 0
+	_add_mesh_instance("WaterMesh", water_builder, water_material)
+	var water_shoreline_material := _build_material("Low Poly Water Shoreline", water_rendering.shoreline_color, true)
+	water_shoreline_material.render_priority = 1
+	_add_mesh_instance("WaterShorelineMesh", water_shoreline_builder, water_shoreline_material)
+	var water_surface_layer_material := _build_material("Low Poly Water Surface Layer", water_rendering.surface_layer_color, true)
+	water_surface_layer_material.render_priority = 2
+	_add_mesh_instance("WaterSurfaceLayerMesh", water_surface_layer_builder, water_surface_layer_material)
 	_add_mesh_instance("LandMesh", land_builder, _build_material("Low Poly Land", _resolve_style_color(&"land_color"), false))
 	_add_mesh_instance("ShorelineMesh", shoreline_builder, _build_material("Low Poly Shoreline", _resolve_style_color(&"shoreline_color"), false))
 	_add_mesh_instance("StreetMesh", street_builder, _build_material("Low Poly Streets", _resolve_style_color(&"street_color"), false))
@@ -1191,7 +1193,7 @@ func _get_cell_height(grid: Array[Array], x: int, y: int) -> float:
 	return cell.height
 
 
-func _add_mesh_instance(name_value: String, builder: _MeshBuildState, material: StandardMaterial3D) -> void:
+func _add_mesh_instance(name_value: String, builder: _MeshBuildState, material: Material) -> void:
 	if builder.vertices.is_empty():
 		return
 
@@ -1247,9 +1249,18 @@ func _build_material(name_value: String, color: Color, transparent: bool) -> Sta
 	return material
 
 
-func _build_water_material(name_value: String, alpha: float) -> StandardMaterial3D:
-	var material := _build_material(name_value, Color(1.0, 1.0, 1.0, alpha), true)
-	material.vertex_color_use_as_albedo = true
+func _build_water_material(name_value: String, rendering: _WaterRendering) -> ShaderMaterial:
+	# Animated low-poly water: vertex-color albedo plus a calm shimmer and a
+	# moving specular glint (see resources/materials/water_3d.gdshader).
+	var material := ShaderMaterial.new()
+	material.resource_name = name_value
+	material.shader = WATER_SHADER
+	material.set_shader_parameter(&"highlight_color", rendering.highlight_color)
+	material.set_shader_parameter(&"highlight_strength", clampf(0.12 + rendering.wave_depth * 2.0, 0.1, 0.35))
+	material.set_shader_parameter(&"wave_frequency", rendering.wave_frequency)
+	material.set_shader_parameter(&"wave_strength", rendering.wave_depth)
+	material.set_shader_parameter(&"wave_speed", rendering.wave_speed)
+	material.set_shader_parameter(&"water_opacity", rendering.material_alpha)
 	return material
 
 
@@ -1263,6 +1274,7 @@ func _build_water_rendering() -> _WaterRendering:
 	rendering.material_alpha = clampf(maxf(rendering.base_color.a, rendering.deep_color.a), 0.0, 0.62)
 	rendering.wave_depth = maxf(_resolve_style_float(&"water_wave_depth"), 0.0)
 	rendering.wave_frequency = maxf(_resolve_style_float(&"water_wave_frequency"), 0.05)
+	rendering.wave_speed = maxf(_resolve_style_float(&"water_wave_speed"), 0.0)
 	rendering.shoreline_band_ratio = clampf(
 		_resolve_style_float(&"water_shoreline_band_ratio"),
 		0.0,
@@ -1319,6 +1331,7 @@ class _WaterRendering:
 	var material_alpha := 0.54
 	var wave_depth := 0.045
 	var wave_frequency := 0.48
+	var wave_speed := 0.6
 	var shoreline_band_ratio := 0.18
 	var shoreline_lift := 0.006
 	var surface_layer_lift := 0.003
