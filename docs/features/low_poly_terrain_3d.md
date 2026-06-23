@@ -53,7 +53,7 @@
 - Assigning `heightmap_file`, editing `heightmap_expands_land_to_source`, or editing heightmap min/max offsets is manual-apply by design: press the exported `rebuild` control or call `rebuild_from_source()` after those edits. This prevents large or imported heightmap images from rebuilding during the Inspector assignment itself.
 - Any placement work must go through `LowPolyWorldCoordinates3D` instead of duplicating the current grid-centering or isometric-position conversion math in landmark, actor, or story code.
 - Actor, landmark, and future hotspot placement should query `LowPolyTerrain3D.get_world_surface_height(...)` or `LowPolyTerrain3D.get_sample_cell_height(...)` after terrain generation when a heightmap is active. In heightmap-expanded water, those queries currently return the underlying land/seabed elevation rather than the visual water plane so moving actors follow terrain height for now.
-- Style tuning should flow through `LowPolyArtStyle3D` presets before hardcoding scene-local color, camera, or lighting values.
+- Style tuning flows through `LowPolyArtStyle3D` presets, which are the single source of truth for the terrain palette and water tuning. The terrain node no longer exports its own `land_color`, `shoreline_color`, `street_color`, `building_footprint_color`, or the `water_*` color/wave/shoreline/surface-layer values; assign an `art_style`, or rely on the built-in default style when none is assigned.
 - The low-poly water pass generates a vertex-colored semi-transparent `WaterMesh` flat at `water_height`, a semi-transparent `WaterSurfaceLayerMesh` lifted over the same water area, and a separate translucent `WaterShorelineMesh`; all stay transient generated children like the land, street, and collision helper nodes.
 - `water_land_overlap_cells` expands only the rendered water footprint, defaulting to one adjacent land-cell ring so the water plane visually connects into the shoreline without converting those cells to water for terrain height, collision, or placement queries.
 - Heightmap-expanded water cells keep their underlying terrain surface in `LandMesh` when the sampled height is below `water_height`, and dry land samples include neighboring submerged heights at shared corners so land continues into the seabed instead of ending at a vertical shoreline wall.
@@ -76,7 +76,7 @@
 - Use `sample_stride` to trade mask fidelity against mesh density.
 - Use `cell_size`, `land_height`, `smooth_land_surface`, `height_smoothing_passes`, `street_lift`, and `building_footprint_lift` to tune the island scale and low-poly read.
 - Use `heightmap_file`, `heightmap_expands_land_to_source`, `heightmap_min_offset`, `heightmap_max_offset`, and `water_height` to prototype full heightmap land, mask-clipped islands, terraces, hills, sea level, and exposed coastlines without changing terrain mask semantics.
-- Use `water_color`, `water_deep_color`, `water_surface_layer_color`, `water_shoreline_color`, `water_highlight_color`, `water_wave_depth`, `water_wave_frequency`, `water_land_overlap_cells`, `water_shoreline_band_ratio`, `water_shoreline_lift`, and `water_surface_layer_lift` on the terrain node or shared style preset to tune the 3D water tint, transparency, shoreline overlap, shimmer, and shoreline read.
+- Use `water_color`, `water_deep_color`, `water_surface_layer_color`, `water_shoreline_color`, `water_highlight_color`, `water_wave_depth`, `water_wave_frequency`, `water_shoreline_band_ratio`, `water_shoreline_lift`, and `water_surface_layer_lift` on the shared `LowPolyArtStyle3D` style preset to tune the 3D water tint, transparency, shimmer, and shoreline read. `water_land_overlap_cells` stays on the terrain node since it controls geometry footprint, not palette.
 - After assigning or editing heightmap settings in the editor, manually rebuild affected terrain nodes before judging the elevation result.
 - Tune palette, camera, sunlight, and proxy landmark colors through `low_poly_postcard_diorama_style.tres` while this scene remains the golden slice.
 - After editing the style preset, manually rebuild affected terrain/proxy nodes or reload the validation scene before judging the new visual read.
@@ -95,6 +95,8 @@ Addressed:
 - The heightmap image is normalized to `FORMAT_RGBA8` on load, matching the mask path.
 - The exported `rebuild` toggle routes through `_request_rebuild()` so it respects readiness and the queued-rebuild guard instead of issuing a redundant deferred build.
 - `test_low_poly_terrain_3d.gd` now also covers the non-expanded mask-clipped path (synthetic water-border mask), asserting land/water/shoreline meshes and water/land cell classification.
+- Terrain palette and water tuning are no longer duplicated between the terrain node and `LowPolyArtStyle3D`. The node-level color/water exports were removed and all values resolve through `_effective_style()` (assigned `art_style`, else a built-in default style), so a scene can no longer set a node color that the style silently overrides. The previously dead `water_color` override in `test_low_poly_world_3d.tscn` was removed.
+- Heightmap elevation sampling reads through the same cached `_ImagePixelReader` RGBA8 buffer as the mask path instead of calling `Image.get_pixel` per cell.
 
 Known tradeoffs left as-is for the prototype:
 

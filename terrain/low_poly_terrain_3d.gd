@@ -127,108 +127,12 @@ enum TerrainCellKind {
 		building_footprint_lift = new_lift
 		_request_rebuild()
 
-@export var land_color := Color(0.48, 0.71, 0.47, 1.0):
-	set(new_color):
-		if land_color == new_color:
-			return
-		land_color = new_color
-		_request_rebuild()
-
-@export var shoreline_color := Color(0.32, 0.47, 0.32, 1.0):
-	set(new_color):
-		if shoreline_color == new_color:
-			return
-		shoreline_color = new_color
-		_request_rebuild()
-
-@export var street_color := Color(0.80, 0.74, 0.62, 1.0):
-	set(new_color):
-		if street_color == new_color:
-			return
-		street_color = new_color
-		_request_rebuild()
-
-@export var building_footprint_color := Color(0.72, 0.52, 0.38, 1.0):
-	set(new_color):
-		if building_footprint_color == new_color:
-			return
-		building_footprint_color = new_color
-		_request_rebuild()
-
-@export var water_color: Color = Color(0.42, 0.68, 0.83, 0.46):
-	set(new_color):
-		if water_color == new_color:
-			return
-		water_color = new_color
-		_request_rebuild()
-
-@export var water_deep_color: Color = Color(0.24, 0.48, 0.67, 0.54):
-	set(new_color):
-		if water_deep_color == new_color:
-			return
-		water_deep_color = new_color
-		_request_rebuild()
-
-@export var water_surface_layer_color: Color = Color(0.72, 0.90, 0.96, 0.24):
-	set(new_color):
-		if water_surface_layer_color == new_color:
-			return
-		water_surface_layer_color = new_color
-		_request_rebuild()
-
-@export var water_shoreline_color: Color = Color(0.60, 0.83, 0.88, 0.50):
-	set(new_color):
-		if water_shoreline_color == new_color:
-			return
-		water_shoreline_color = new_color
-		_request_rebuild()
-
-@export var water_highlight_color: Color = Color(0.86, 0.96, 0.98, 0.40):
-	set(new_color):
-		if water_highlight_color == new_color:
-			return
-		water_highlight_color = new_color
-		_request_rebuild()
-
-@export_range(0.0, 0.2, 0.005) var water_wave_depth: float = 0.045:
-	set(new_depth):
-		var clamped_depth := maxf(new_depth, 0.0)
-		if is_equal_approx(water_wave_depth, clamped_depth):
-			return
-		water_wave_depth = clamped_depth
-		_request_rebuild()
-
-@export_range(0.05, 4.0, 0.05) var water_wave_frequency: float = 0.48:
-	set(new_frequency):
-		var clamped_frequency := maxf(new_frequency, 0.05)
-		if is_equal_approx(water_wave_frequency, clamped_frequency):
-			return
-		water_wave_frequency = clamped_frequency
-		_request_rebuild()
-
-@export_range(0.0, 0.45, 0.01) var water_shoreline_band_ratio: float = 0.18:
-	set(new_ratio):
-		var clamped_ratio := clampf(new_ratio, 0.0, 0.45)
-		if is_equal_approx(water_shoreline_band_ratio, clamped_ratio):
-			return
-		water_shoreline_band_ratio = clamped_ratio
-		_request_rebuild()
-
-@export_range(0.0, 0.05, 0.001) var water_shoreline_lift: float = 0.006:
-	set(new_lift):
-		var clamped_lift := maxf(new_lift, 0.0)
-		if is_equal_approx(water_shoreline_lift, clamped_lift):
-			return
-		water_shoreline_lift = clamped_lift
-		_request_rebuild()
-
-@export_range(0.0, 0.05, 0.001) var water_surface_layer_lift: float = 0.003:
-	set(new_lift):
-		var clamped_lift := maxf(new_lift, 0.0)
-		if is_equal_approx(water_surface_layer_lift, clamped_lift):
-			return
-		water_surface_layer_lift = clamped_lift
-		_request_rebuild()
+# Terrain palette and water tuning (land_color, shoreline_color, street_color,
+# building_footprint_color, water_color, water_deep_color, water_surface_layer_color,
+# water_shoreline_color, water_highlight_color, water_wave_depth, water_wave_frequency,
+# water_shoreline_band_ratio, water_shoreline_lift, water_surface_layer_lift) now live
+# only on LowPolyArtStyle3D. Assign `art_style` to override them; otherwise a built-in
+# default style is used. See _effective_style().
 
 @export_range(0, 4, 1) var water_land_overlap_cells := 1:
 	set(new_overlap_cells):
@@ -253,6 +157,7 @@ var m_rebuild_queued := false
 var m_sample_grid: Array[Array] = []
 var m_source_size := Vector2i.ZERO
 var m_heightmap_defines_water_area := false
+var m_default_style: LowPolyArtStyle3DScript = null
 
 
 func _ready() -> void:
@@ -473,6 +378,7 @@ func _build_sample_grid(
 	var grid_height := ceili(float(source_size.y) / float(sample_stride))
 	var heightmap_fills_land := _heightmap_fills_source_land(heightmap_image)
 	var mask_reader := _ImagePixelReader.new(mask_image) if mask_image != null else null
+	var heightmap_reader := _ImagePixelReader.new(heightmap_image) if heightmap_image != null else null
 
 	for grid_y in range(grid_height):
 		var row: Array[_TerrainCell] = []
@@ -484,7 +390,7 @@ func _build_sample_grid(
 			var end_x := mini(start_x + sample_stride, source_size.x)
 			var end_y := mini(start_y + sample_stride, source_size.y)
 			if kind != TerrainCellKind.WATER or heightmap_fills_land:
-				sample_height += _sample_heightmap_offset(heightmap_image, source_size, start_x, start_y, end_x, end_y)
+				sample_height += _sample_heightmap_offset(heightmap_reader, source_size, start_x, start_y, end_x, end_y)
 			row.append(_TerrainCell.new(kind, sample_height))
 		grid.append(row)
 
@@ -603,18 +509,18 @@ func _sample_image_at_source_pixel(mask_reader: _ImagePixelReader, source_size: 
 
 
 func _sample_heightmap_offset(
-	heightmap_image: Image,
+	heightmap_reader: _ImagePixelReader,
 	source_size: Vector2i,
 	start_x: int,
 	start_y: int,
 	end_x: int,
 	end_y: int
 ) -> float:
-	if heightmap_image == null:
+	if heightmap_reader == null:
 		return 0.0
 
-	var heightmap_width := heightmap_image.get_width()
-	var heightmap_height := heightmap_image.get_height()
+	var heightmap_width := heightmap_reader.width
+	var heightmap_height := heightmap_reader.height
 	if heightmap_width <= 0 or heightmap_height <= 0 or source_size.x <= 0 or source_size.y <= 0:
 		return 0.0
 
@@ -622,7 +528,7 @@ func _sample_heightmap_offset(
 	var center_y := (float(start_y) + float(end_y)) * 0.5
 	var sample_x := clampi(floori(center_x / float(source_size.x) * float(heightmap_width)), 0, heightmap_width - 1)
 	var sample_y := clampi(floori(center_y / float(source_size.y) * float(heightmap_height)), 0, heightmap_height - 1)
-	var pixel := heightmap_image.get_pixel(sample_x, sample_y)
+	var pixel := heightmap_reader.get_pixel(sample_x, sample_y)
 	var normalized_height := pixel.r * 0.2126 + pixel.g * 0.7152 + pixel.b * 0.0722
 	return lerpf(heightmap_min_offset, heightmap_max_offset, normalized_height)
 
@@ -802,13 +708,13 @@ func _build_meshes_from_grid(
 		water_shoreline_builder,
 		_build_material("Low Poly Water Shoreline", water_rendering.shoreline_color, true)
 	)
-	_add_mesh_instance("LandMesh", land_builder, _build_material("Low Poly Land", _resolve_style_color("land_color", land_color), false))
-	_add_mesh_instance("ShorelineMesh", shoreline_builder, _build_material("Low Poly Shoreline", _resolve_style_color("shoreline_color", shoreline_color), false))
-	_add_mesh_instance("StreetMesh", street_builder, _build_material("Low Poly Streets", _resolve_style_color("street_color", street_color), false))
+	_add_mesh_instance("LandMesh", land_builder, _build_material("Low Poly Land", _resolve_style_color(&"land_color"), false))
+	_add_mesh_instance("ShorelineMesh", shoreline_builder, _build_material("Low Poly Shoreline", _resolve_style_color(&"shoreline_color"), false))
+	_add_mesh_instance("StreetMesh", street_builder, _build_material("Low Poly Streets", _resolve_style_color(&"street_color"), false))
 	_add_mesh_instance(
 		"BuildingFootprintMesh",
 		building_builder,
-		_build_material("Low Poly Building Footprints", _resolve_style_color("building_footprint_color", building_footprint_color), false)
+		_build_material("Low Poly Building Footprints", _resolve_style_color(&"building_footprint_color"), false)
 	)
 
 	if generate_collision:
@@ -1483,40 +1389,44 @@ func _build_water_material(name_value: String, alpha: float) -> StandardMaterial
 
 func _build_water_rendering() -> _WaterRendering:
 	var rendering := _WaterRendering.new()
-	rendering.base_color = _resolve_style_color(&"water_color", water_color)
-	rendering.deep_color = _resolve_style_color(&"water_deep_color", water_deep_color)
-	rendering.surface_layer_color = _resolve_style_color(&"water_surface_layer_color", water_surface_layer_color)
-	rendering.shoreline_color = _resolve_style_color(&"water_shoreline_color", water_shoreline_color)
-	rendering.highlight_color = _resolve_style_color(&"water_highlight_color", water_highlight_color)
+	rendering.base_color = _resolve_style_color(&"water_color")
+	rendering.deep_color = _resolve_style_color(&"water_deep_color")
+	rendering.surface_layer_color = _resolve_style_color(&"water_surface_layer_color")
+	rendering.shoreline_color = _resolve_style_color(&"water_shoreline_color")
+	rendering.highlight_color = _resolve_style_color(&"water_highlight_color")
 	rendering.material_alpha = clampf(maxf(rendering.base_color.a, rendering.deep_color.a), 0.0, 0.62)
-	rendering.wave_depth = maxf(_resolve_style_float(&"water_wave_depth", water_wave_depth), 0.0)
-	rendering.wave_frequency = maxf(_resolve_style_float(&"water_wave_frequency", water_wave_frequency), 0.05)
+	rendering.wave_depth = maxf(_resolve_style_float(&"water_wave_depth"), 0.0)
+	rendering.wave_frequency = maxf(_resolve_style_float(&"water_wave_frequency"), 0.05)
 	rendering.shoreline_band_ratio = clampf(
-		_resolve_style_float(&"water_shoreline_band_ratio", water_shoreline_band_ratio),
+		_resolve_style_float(&"water_shoreline_band_ratio"),
 		0.0,
 		0.45
 	)
-	rendering.shoreline_lift = maxf(_resolve_style_float(&"water_shoreline_lift", water_shoreline_lift), 0.0)
-	rendering.surface_layer_lift = maxf(_resolve_style_float(&"water_surface_layer_lift", water_surface_layer_lift), 0.0)
+	rendering.shoreline_lift = maxf(_resolve_style_float(&"water_shoreline_lift"), 0.0)
+	rendering.surface_layer_lift = maxf(_resolve_style_float(&"water_surface_layer_lift"), 0.0)
 	return rendering
 
 
-func _resolve_style_color(property_name: StringName, fallback: Color) -> Color:
-	if art_style == null:
-		return fallback
-	var value: Variant = art_style.get(property_name)
+func _effective_style() -> LowPolyArtStyle3DScript:
+	if art_style != null:
+		return art_style
+	if m_default_style == null:
+		m_default_style = LowPolyArtStyle3DScript.new()
+	return m_default_style
+
+
+func _resolve_style_color(property_name: StringName) -> Color:
+	var value: Variant = _effective_style().get(property_name)
 	if value is Color:
 		return value
-	return fallback
+	return Color.MAGENTA
 
 
-func _resolve_style_float(property_name: StringName, fallback: float) -> float:
-	if art_style == null:
-		return fallback
-	var value: Variant = art_style.get(property_name)
+func _resolve_style_float(property_name: StringName) -> float:
+	var value: Variant = _effective_style().get(property_name)
 	if value is float or value is int:
 		return float(value)
-	return fallback
+	return 0.0
 
 
 func _clear_generated_children() -> void:

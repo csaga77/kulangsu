@@ -26,7 +26,6 @@ land_height = 0.0
 heightmap_max_offset = 10.0
 street_lift = 0.025
 building_footprint_lift = 0.12
-water_color = Color(0.41960785, 0.6784314, 0.83137256, 0.25882354)
 
 [node name="human_body_3d" parent="." unique_id=2009012188 instance=ExtResource("4_actor")]
 walk_speed = 3.6
