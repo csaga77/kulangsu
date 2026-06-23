@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://cd3avftss2u63" path="res://scenes/tests/test_low_poly_world_3d.gd" id="1_scene"]
 [ext_resource type="Script" uid="uid://bfok58q8akl8d" path="res://terrain/low_poly_terrain_3d.gd" id="2_terrain"]
 [ext_resource type="Resource" uid="uid://cot8hhxh0v0h8" path="res://terrain/island_generation_profile.tres" id="3_profile"]
-[ext_resource type="PackedScene" path="res://characters/human_body_3d.tscn" id="4_actor"]
+[ext_resource type="PackedScene" uid="uid://cfrcjv76v3c4g" path="res://characters/human_body_3d.tscn" id="4_actor"]
 [ext_resource type="Script" uid="uid://cam6vob3l5ttk" path="res://characters/control/player_controller_3d.gd" id="5_controller"]
 [ext_resource type="Script" uid="uid://3w3tvo6fg0sa" path="res://godot_common/scenes/camera_3d_controller.gd" id="6_camera_controller"]
 [ext_resource type="Resource" path="res://terrain/low_poly_postcard_diorama_style.tres" id="7_style"]

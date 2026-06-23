@@ -85,11 +85,14 @@ func get_grid_size() -> Vector2i:
 
 
 func get_world_origin() -> Vector3:
-	var grid_size := get_grid_size()
+	return compute_world_origin(get_grid_size(), cell_size)
+
+
+static func compute_world_origin(grid_size: Vector2i, world_cell_size: float) -> Vector3:
 	return Vector3(
-		-float(grid_size.x) * cell_size * 0.5,
+		-float(grid_size.x) * world_cell_size * 0.5,
 		0.0,
-		-float(grid_size.y) * cell_size * 0.5
+		-float(grid_size.y) * world_cell_size * 0.5
 	)
 
 

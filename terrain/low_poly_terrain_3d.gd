@@ -21,7 +21,7 @@ enum TerrainCellKind {
 	set(value):
 		if !value:
 			return
-		call_deferred("_rebuild_from_source")
+		_request_rebuild()
 
 @export_file_path("*.png") var mask_file: String = "res://design/gulangyu_map_mini_export.png":
 	set(new_mask_file):
@@ -443,6 +443,8 @@ func _load_heightmap_image() -> Image:
 
 	if image.is_compressed():
 		image.decompress()
+	if image.get_format() != Image.FORMAT_RGBA8:
+		image.convert(Image.FORMAT_RGBA8)
 	return image
 
 
@@ -470,13 +472,14 @@ func _build_sample_grid(
 	var grid_width := ceili(float(source_size.x) / float(sample_stride))
 	var grid_height := ceili(float(source_size.y) / float(sample_stride))
 	var heightmap_fills_land := _heightmap_fills_source_land(heightmap_image)
+	var mask_reader := _ImagePixelReader.new(mask_image) if mask_image != null else null
 
 	for grid_y in range(grid_height):
 		var row: Array[_TerrainCell] = []
 		var start_y := grid_y * sample_stride
 		for grid_x in range(grid_width):
 			var start_x := grid_x * sample_stride
-			var kind := _classify_sample_block(mask_image, profile, source_size, start_x, start_y, heightmap_fills_land)
+			var kind := _classify_sample_block(mask_reader, profile, source_size, start_x, start_y, heightmap_fills_land)
 			var sample_height := land_height
 			var end_x := mini(start_x + sample_stride, source_size.x)
 			var end_y := mini(start_y + sample_stride, source_size.y)
@@ -503,7 +506,7 @@ func _smooth_sample_grid_heights(grid: Array[Array], smoothing_passes: int, incl
 			for x in range(grid_width):
 				var cell := grid[y][x] as _TerrainCell
 				if cell == null or (cell.kind == TerrainCellKind.WATER and !include_water_cells):
-					smoothed_row[x] = water_height
+					# Land-only smoothing skips water cells; their slot is never read back.
 					continue
 
 				var total_height := 0.0
@@ -545,14 +548,14 @@ func _apply_heightmap_water_level(grid: Array[Array]) -> void:
 
 
 func _classify_sample_block(
-	image: Image,
+	mask_reader: _ImagePixelReader,
 	profile: TerrainGenerationProfile,
 	source_size: Vector2i,
 	start_x: int,
 	start_y: int,
 	fill_water_as_land: bool
 ) -> TerrainCellKind:
-	if image == null:
+	if mask_reader == null:
 		return TerrainCellKind.LAND if fill_water_as_land else TerrainCellKind.WATER
 
 	var end_x := mini(start_x + sample_stride, source_size.x)
@@ -563,7 +566,7 @@ func _classify_sample_block(
 
 	for y in range(start_y, end_y):
 		for x in range(start_x, end_x):
-			var pixel := _sample_image_at_source_pixel(image, source_size, x, y)
+			var pixel := _sample_image_at_source_pixel(mask_reader, source_size, x, y)
 			if profile.is_water_pixel(pixel):
 				continue
 
@@ -588,15 +591,15 @@ func _classify_sample_block(
 	return TerrainCellKind.WATER
 
 
-func _sample_image_at_source_pixel(image: Image, source_size: Vector2i, source_x: int, source_y: int) -> Color:
-	var image_width := image.get_width()
-	var image_height := image.get_height()
+func _sample_image_at_source_pixel(mask_reader: _ImagePixelReader, source_size: Vector2i, source_x: int, source_y: int) -> Color:
+	var image_width := mask_reader.width
+	var image_height := mask_reader.height
 	if image_width <= 0 or image_height <= 0 or source_size.x <= 0 or source_size.y <= 0:
 		return Color.TRANSPARENT
 
 	var image_x := clampi(floori((float(source_x) + 0.5) / float(source_size.x) * float(image_width)), 0, image_width - 1)
 	var image_y := clampi(floori((float(source_y) + 0.5) / float(source_size.y) * float(image_height)), 0, image_height - 1)
-	return image.get_pixel(image_x, image_y)
+	return mask_reader.get_pixel(image_x, image_y)
 
 
 func _sample_heightmap_offset(
@@ -851,11 +854,7 @@ func _build_water_render_grid(grid: Array[Array]) -> Array[PackedByteArray]:
 
 
 func _get_grid_origin_offset(grid_size: Vector2i) -> Vector3:
-	return Vector3(
-		-float(grid_size.x) * cell_size * 0.5,
-		0.0,
-		-float(grid_size.y) * cell_size * 0.5
-	)
+	return LowPolyWorldCoordinates3D.compute_world_origin(grid_size, cell_size)
 
 
 func _append_land_cell(
@@ -1526,6 +1525,21 @@ func _clear_generated_children() -> void:
 			continue
 		remove_child(child)
 		child.queue_free()
+
+
+class _ImagePixelReader:
+	var data: PackedByteArray
+	var width: int
+	var height: int
+
+	func _init(image: Image) -> void:
+		width = image.get_width()
+		height = image.get_height()
+		data = image.get_data()
+
+	func get_pixel(x: int, y: int) -> Color:
+		var index := (y * width + x) * 4
+		return Color8(data[index], data[index + 1], data[index + 2], data[index + 3])
 
 
 class _MeshBuildState:

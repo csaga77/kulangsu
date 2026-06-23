@@ -84,6 +84,24 @@
 - Add interaction areas only after the five-placeholder blockout stays readable and the coordinate adapter placement contract remains stable.
 - If this evolves into a real gameplay terrain layer, update this doc with navigation, landmark anchors, weather, and story-resume contracts.
 
+## Review Notes
+
+Findings from a code review of the generator, recorded for follow-up.
+
+Addressed:
+
+- Mask classification reads pixels through a cached RGBA8 byte buffer (`_ImagePixelReader`) instead of per-pixel `Image.get_pixel`, which removes the main per-rebuild hot-loop cost at full-resolution masks.
+- Grid centering math now has a single source of truth: `LowPolyWorldCoordinates3D.compute_world_origin(...)`. Both the coordinate adapter and `LowPolyTerrain3D._get_grid_origin_offset` call it so mesh placement and actor/landmark placement cannot silently desync.
+- The heightmap image is normalized to `FORMAT_RGBA8` on load, matching the mask path.
+- The exported `rebuild` toggle routes through `_request_rebuild()` so it respects readiness and the queued-rebuild guard instead of issuing a redundant deferred build.
+- `test_low_poly_terrain_3d.gd` now also covers the non-expanded mask-clipped path (synthetic water-border mask), asserting land/water/shoreline meshes and water/land cell classification.
+
+Known tradeoffs left as-is for the prototype:
+
+- Water, the water surface layer, and the shoreline bands are three semi-transparent passes with `CULL_DISABLED`; expect some transparency sort flicker at grazing angles. Acceptable for the current calm-water look.
+- `_calculate_surface_normal` forces facet normals upward (`normal.y >= 0`). With flat low-poly shading this is fine for near-horizontal terrain but can mis-light very steep heightmap facets; revisit only if slopes read wrong.
+- Terrain sampling still lets a single street or building pixel win an entire sampled cell (existing documented chunkiness).
+
 ## Validation
 
 - Run:

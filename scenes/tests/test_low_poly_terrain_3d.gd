@@ -2,6 +2,7 @@
 extends Node3D
 
 const TEST_HEIGHTMAP_PATH := "user://low_poly_terrain_3d_heightmap_smoke.png"
+const TEST_MASK_PATH := "user://low_poly_terrain_3d_mask_smoke.png"
 const TERRAIN_KIND_WATER := 0
 
 @onready var m_terrain: Node3D = $LowPolyTerrain3D
@@ -59,6 +60,8 @@ func _run_smoke_checks() -> void:
 		_validate_heightmap_source_expansion(failures)
 		_configure_heightmap_smoke(false)
 		_validate_water_rendering(failures)
+		_configure_mask_clipped_smoke()
+		_validate_mask_clipped_generation(failures)
 
 	if failures.is_empty():
 		print("PASS: LowPolyTerrain3D heightmap smoke test")
@@ -195,6 +198,66 @@ func _validate_surface_layer(surface_layer_mesh: MeshInstance3D, failures: Array
 	var water_height := float(m_terrain.get("water_height"))
 	if height_range.x <= water_height:
 		failures.append("LowPolyTerrain3D WaterSurfaceLayerMesh was not lifted above water height")
+
+
+func _configure_mask_clipped_smoke() -> void:
+	if Engine.is_editor_hint():
+		return
+	if !is_instance_valid(m_terrain):
+		return
+
+	# Synthetic mask: transparent (water) 4-cell border ring around opaque white (land).
+	var image := Image.create(32, 32, false, Image.FORMAT_RGBA8)
+	for y in range(image.get_height()):
+		for x in range(image.get_width()):
+			var is_border := x < 4 or y < 4 or x >= 28 or y >= 28
+			var alpha := 0.0 if is_border else 1.0
+			image.set_pixel(x, y, Color(1.0, 1.0, 1.0, alpha))
+
+	var save_error := image.save_png(TEST_MASK_PATH)
+	if save_error != OK:
+		push_error("failed to write low-poly terrain mask smoke image")
+		return
+
+	m_terrain.set("mask_file", TEST_MASK_PATH)
+	m_terrain.set("heightmap_file", "")
+	m_terrain.set("heightmap_expands_land_to_source", false)
+	m_terrain.set("water_height", 0.0)
+	m_terrain.set("land_height", 0.22)
+	if m_terrain.has_method("rebuild_from_source"):
+		m_terrain.call("rebuild_from_source")
+
+
+func _validate_mask_clipped_generation(failures: Array[String]) -> void:
+	var land_mesh := m_terrain.get_node_or_null("LandMesh") as MeshInstance3D
+	if land_mesh == null or land_mesh.mesh == null:
+		failures.append("mask-clipped terrain did not generate LandMesh")
+	var water_mesh := m_terrain.get_node_or_null("WaterMesh") as MeshInstance3D
+	if water_mesh == null or water_mesh.mesh == null:
+		failures.append("mask-clipped terrain did not generate WaterMesh")
+	var shoreline_mesh := m_terrain.get_node_or_null("ShorelineMesh") as MeshInstance3D
+	if shoreline_mesh == null or shoreline_mesh.mesh == null:
+		failures.append("mask-clipped terrain did not generate shoreline side walls")
+
+	if !m_terrain.has_method("get_source_size") or !m_terrain.has_method("get_sample_cell_kind"):
+		failures.append("LowPolyTerrain3D is missing source/kind query methods")
+		return
+
+	var source_size := Vector2i(m_terrain.call("get_source_size"))
+	if source_size != Vector2i(32, 32):
+		failures.append("mask-clipped terrain did not use the mask dimensions as its source size")
+
+	var sample_stride := maxi(int(m_terrain.get("sample_stride")), 1)
+	var grid_size := Vector2i(
+		ceili(float(source_size.x) / float(sample_stride)),
+		ceili(float(source_size.y) / float(sample_stride))
+	)
+	if int(m_terrain.call("get_sample_cell_kind", Vector2i.ZERO)) != TERRAIN_KIND_WATER:
+		failures.append("mask-clipped terrain did not mark transparent border pixels as water")
+
+	var center_cell := Vector2i(grid_size.x / 2, grid_size.y / 2)
+	if int(m_terrain.call("get_sample_cell_kind", center_cell)) == TERRAIN_KIND_WATER:
+		failures.append("mask-clipped terrain marked the opaque land interior as water")
 
 
 func _get_mesh_height_range(mesh: Mesh) -> Vector2:
