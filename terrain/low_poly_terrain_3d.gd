@@ -10,13 +10,6 @@ const CORNER_NE := 1
 const CORNER_SE := 2
 const CORNER_SW := 3
 
-enum TerrainCellKind {
-	WATER,
-	LAND,
-	STREET,
-	BUILDING,
-}
-
 @export var rebuild: bool = false:
 	set(value):
 		if !value:
@@ -188,10 +181,10 @@ func get_sample_cell_height(sample_cell: Vector2i) -> float:
 		clampi(sample_cell.x, 0, grid_size.x - 1),
 		clampi(sample_cell.y, 0, grid_size.y - 1)
 	)
-	var cell := m_sample_grid[clamped_cell.y][clamped_cell.x] as _TerrainCell
+	var cell := m_sample_grid[clamped_cell.y][clamped_cell.x] as LowPolyTerrainCell
 	if cell == null:
 		return land_height
-	if cell.kind == TerrainCellKind.WATER:
+	if cell.kind == LowPolyTerrainCell.Kind.WATER:
 		if !m_heightmap_defines_water_area:
 			return water_height
 		return _get_cell_surface_height(
@@ -214,18 +207,18 @@ func get_sample_cell_height(sample_cell: Vector2i) -> float:
 	)
 
 
-func get_sample_cell_kind(sample_cell: Vector2i) -> TerrainCellKind:
+func get_sample_cell_kind(sample_cell: Vector2i) -> LowPolyTerrainCell.Kind:
 	if m_sample_grid.is_empty():
-		return TerrainCellKind.WATER
+		return LowPolyTerrainCell.Kind.WATER
 
 	var grid_size := Vector2i(m_sample_grid[0].size(), m_sample_grid.size())
 	var clamped_cell := Vector2i(
 		clampi(sample_cell.x, 0, grid_size.x - 1),
 		clampi(sample_cell.y, 0, grid_size.y - 1)
 	)
-	var cell := m_sample_grid[clamped_cell.y][clamped_cell.x] as _TerrainCell
+	var cell := m_sample_grid[clamped_cell.y][clamped_cell.x] as LowPolyTerrainCell
 	if cell == null:
-		return TerrainCellKind.WATER
+		return LowPolyTerrainCell.Kind.WATER
 	return cell.kind
 
 
@@ -245,10 +238,10 @@ func get_world_surface_height(world_position: Vector3) -> float:
 	)
 	var local_x := clampf(grid_position.x - float(sample_cell.x), 0.0, 1.0)
 	var local_z := clampf(grid_position.y - float(sample_cell.y), 0.0, 1.0)
-	var cell := m_sample_grid[sample_cell.y][sample_cell.x] as _TerrainCell
+	var cell := m_sample_grid[sample_cell.y][sample_cell.x] as LowPolyTerrainCell
 	if cell == null:
 		return land_height
-	if cell.kind == TerrainCellKind.WATER:
+	if cell.kind == LowPolyTerrainCell.Kind.WATER:
 		if !m_heightmap_defines_water_area:
 			return water_height
 		return _get_cell_surface_height(
@@ -269,6 +262,39 @@ func get_world_surface_height(world_position: Vector3) -> float:
 		local_z,
 		m_heightmap_defines_water_area
 	)
+
+
+func get_world_water_surface_height(world_position: Vector3) -> float:
+	# Visible top surface for placement: the flat water plane over water cells (in
+	# both mask-clipped and heightmap-expanded modes) and the land surface
+	# elsewhere. Unlike get_world_surface_height, this never returns the submerged
+	# seabed elevation, so callers can rest actors, boats, or hotspots on the water
+	# plane instead of sinking them to the seabed.
+	if m_sample_grid.is_empty():
+		return water_height
+
+	var grid_size := Vector2i(m_sample_grid[0].size(), m_sample_grid.size())
+	var origin_offset := _get_grid_origin_offset(grid_size)
+	var grid_position := Vector2(
+		(world_position.x - origin_offset.x) / cell_size,
+		(world_position.z - origin_offset.z) / cell_size
+	)
+	var sample_cell := Vector2i(
+		clampi(floori(grid_position.x), 0, grid_size.x - 1),
+		clampi(floori(grid_position.y), 0, grid_size.y - 1)
+	)
+	var cell := m_sample_grid[sample_cell.y][sample_cell.x] as LowPolyTerrainCell
+	if cell == null or cell.kind == LowPolyTerrainCell.Kind.WATER:
+		return water_height
+	return get_world_surface_height(world_position)
+
+
+func get_sample_cell_water_surface_height(sample_cell: Vector2i) -> float:
+	# Sample-cell companion to get_world_water_surface_height: the water plane over
+	# water cells, the land surface otherwise.
+	if get_sample_cell_kind(sample_cell) == LowPolyTerrainCell.Kind.WATER:
+		return water_height
+	return get_sample_cell_height(sample_cell)
 
 
 func get_source_size() -> Vector2i:
@@ -297,16 +323,26 @@ func _rebuild_from_source() -> void:
 		push_warning("LowPolyTerrain3D could not resolve a terrain source size.")
 		return
 
-	var grid := _build_sample_grid(mask_image, profile, heightmap_image, source_size)
-	var heightmap_defines_water_area := _heightmap_fills_source_land(heightmap_image)
-	if smooth_land_surface:
-		_smooth_sample_grid_heights(grid, height_smoothing_passes, heightmap_defines_water_area)
-	if heightmap_defines_water_area:
-		_apply_heightmap_water_level(grid)
+	var sampler := _build_sampler()
+	var grid := sampler.build_grid(mask_image, profile, heightmap_image, source_size)
+	var heightmap_defines_water_area := sampler.heightmap_fills_source_land(heightmap_image)
 	m_sample_grid = grid
 	m_source_size = source_size
 	m_heightmap_defines_water_area = heightmap_defines_water_area
 	_build_meshes_from_grid(grid, source_size.x, source_size.y, heightmap_defines_water_area)
+
+
+func _build_sampler() -> LowPolyTerrainSampler:
+	var sampler := LowPolyTerrainSampler.new()
+	sampler.sample_stride = sample_stride
+	sampler.land_height = land_height
+	sampler.water_height = water_height
+	sampler.smooth_land_surface = smooth_land_surface
+	sampler.height_smoothing_passes = height_smoothing_passes
+	sampler.heightmap_min_offset = heightmap_min_offset
+	sampler.heightmap_max_offset = heightmap_max_offset
+	sampler.heightmap_expands_land_to_source = heightmap_expands_land_to_source
+	return sampler
 
 
 func _get_generation_profile() -> TerrainGenerationProfile:
@@ -363,176 +399,6 @@ func _resolve_generation_source_size(mask_image: Image, heightmap_image: Image) 
 	return Vector2i.ZERO
 
 
-func _heightmap_fills_source_land(heightmap_image: Image) -> bool:
-	return heightmap_expands_land_to_source and heightmap_image != null
-
-
-func _build_sample_grid(
-	mask_image: Image,
-	profile: TerrainGenerationProfile,
-	heightmap_image: Image,
-	source_size: Vector2i
-) -> Array[Array]:
-	var grid: Array[Array] = []
-	var grid_width := ceili(float(source_size.x) / float(sample_stride))
-	var grid_height := ceili(float(source_size.y) / float(sample_stride))
-	var heightmap_fills_land := _heightmap_fills_source_land(heightmap_image)
-	var mask_reader := _ImagePixelReader.new(mask_image) if mask_image != null else null
-	var heightmap_reader := _ImagePixelReader.new(heightmap_image) if heightmap_image != null else null
-
-	for grid_y in range(grid_height):
-		var row: Array[_TerrainCell] = []
-		var start_y := grid_y * sample_stride
-		for grid_x in range(grid_width):
-			var start_x := grid_x * sample_stride
-			var kind := _classify_sample_block(mask_reader, profile, source_size, start_x, start_y, heightmap_fills_land)
-			var sample_height := land_height
-			var end_x := mini(start_x + sample_stride, source_size.x)
-			var end_y := mini(start_y + sample_stride, source_size.y)
-			if kind != TerrainCellKind.WATER or heightmap_fills_land:
-				sample_height += _sample_heightmap_offset(heightmap_reader, source_size, start_x, start_y, end_x, end_y)
-			row.append(_TerrainCell.new(kind, sample_height))
-		grid.append(row)
-
-	return grid
-
-
-func _smooth_sample_grid_heights(grid: Array[Array], smoothing_passes: int, include_water_cells: bool) -> void:
-	if grid.is_empty() or smoothing_passes <= 0:
-		return
-
-	var grid_height := grid.size()
-	var grid_width := grid[0].size()
-
-	for _pass_index in range(smoothing_passes):
-		var smoothed_rows: Array[PackedFloat32Array] = []
-		for y in range(grid_height):
-			var smoothed_row := PackedFloat32Array()
-			smoothed_row.resize(grid_width)
-			for x in range(grid_width):
-				var cell := grid[y][x] as _TerrainCell
-				if cell == null or (cell.kind == TerrainCellKind.WATER and !include_water_cells):
-					# Land-only smoothing skips water cells; their slot is never read back.
-					continue
-
-				var total_height := 0.0
-				var sample_count := 0
-				for sample_y in range(y - 1, y + 2):
-					for sample_x in range(x - 1, x + 2):
-						if _is_outside_grid(grid, sample_x, sample_y):
-							continue
-						var sample_cell := grid[sample_y][sample_x] as _TerrainCell
-						if sample_cell == null or (sample_cell.kind == TerrainCellKind.WATER and !include_water_cells):
-							continue
-						total_height += sample_cell.height
-						sample_count += 1
-
-				if sample_count <= 0:
-					smoothed_row[x] = cell.height
-				else:
-					smoothed_row[x] = total_height / float(sample_count)
-			smoothed_rows.append(smoothed_row)
-
-		for y in range(grid_height):
-			for x in range(grid_width):
-				var cell := grid[y][x] as _TerrainCell
-				if cell == null or (cell.kind == TerrainCellKind.WATER and !include_water_cells):
-					continue
-				cell.height = smoothed_rows[y][x]
-
-
-func _apply_heightmap_water_level(grid: Array[Array]) -> void:
-	for row in grid:
-		for cell_value: Variant in row:
-			var cell := cell_value as _TerrainCell
-			if cell == null:
-				continue
-			if cell.height <= water_height + HEIGHT_EPSILON:
-				cell.kind = TerrainCellKind.WATER
-			elif cell.kind == TerrainCellKind.WATER:
-				cell.kind = TerrainCellKind.LAND
-
-
-func _classify_sample_block(
-	mask_reader: _ImagePixelReader,
-	profile: TerrainGenerationProfile,
-	source_size: Vector2i,
-	start_x: int,
-	start_y: int,
-	fill_water_as_land: bool
-) -> TerrainCellKind:
-	if mask_reader == null:
-		return TerrainCellKind.LAND if fill_water_as_land else TerrainCellKind.WATER
-
-	var end_x := mini(start_x + sample_stride, source_size.x)
-	var end_y := mini(start_y + sample_stride, source_size.y)
-	var land_count := 0
-	var street_count := 0
-	var building_count := 0
-
-	for y in range(start_y, end_y):
-		for x in range(start_x, end_x):
-			var pixel := _sample_image_at_source_pixel(mask_reader, source_size, x, y)
-			if profile.is_water_pixel(pixel):
-				continue
-
-			var rule := profile.resolve_rule_for_pixel(pixel)
-			if rule == null:
-				continue
-
-			land_count += 1
-			if rule.paint_street:
-				street_count += 1
-			if rule.paint_building_mask:
-				building_count += 1
-
-	if street_count > 0:
-		return TerrainCellKind.STREET
-	if building_count > 0:
-		return TerrainCellKind.BUILDING
-	if land_count > 0:
-		return TerrainCellKind.LAND
-	if fill_water_as_land:
-		return TerrainCellKind.LAND
-	return TerrainCellKind.WATER
-
-
-func _sample_image_at_source_pixel(mask_reader: _ImagePixelReader, source_size: Vector2i, source_x: int, source_y: int) -> Color:
-	var image_width := mask_reader.width
-	var image_height := mask_reader.height
-	if image_width <= 0 or image_height <= 0 or source_size.x <= 0 or source_size.y <= 0:
-		return Color.TRANSPARENT
-
-	var image_x := clampi(floori((float(source_x) + 0.5) / float(source_size.x) * float(image_width)), 0, image_width - 1)
-	var image_y := clampi(floori((float(source_y) + 0.5) / float(source_size.y) * float(image_height)), 0, image_height - 1)
-	return mask_reader.get_pixel(image_x, image_y)
-
-
-func _sample_heightmap_offset(
-	heightmap_reader: _ImagePixelReader,
-	source_size: Vector2i,
-	start_x: int,
-	start_y: int,
-	end_x: int,
-	end_y: int
-) -> float:
-	if heightmap_reader == null:
-		return 0.0
-
-	var heightmap_width := heightmap_reader.width
-	var heightmap_height := heightmap_reader.height
-	if heightmap_width <= 0 or heightmap_height <= 0 or source_size.x <= 0 or source_size.y <= 0:
-		return 0.0
-
-	var center_x := (float(start_x) + float(end_x)) * 0.5
-	var center_y := (float(start_y) + float(end_y)) * 0.5
-	var sample_x := clampi(floori(center_x / float(source_size.x) * float(heightmap_width)), 0, heightmap_width - 1)
-	var sample_y := clampi(floori(center_y / float(source_size.y) * float(heightmap_height)), 0, heightmap_height - 1)
-	var pixel := heightmap_reader.get_pixel(sample_x, sample_y)
-	var normalized_height := pixel.r * 0.2126 + pixel.g * 0.7152 + pixel.b * 0.0722
-	return lerpf(heightmap_min_offset, heightmap_max_offset, normalized_height)
-
-
 func _build_meshes_from_grid(
 	grid: Array[Array],
 	source_width: int,
@@ -565,17 +431,17 @@ func _build_meshes_from_grid(
 
 	for y in range(grid_height):
 		for x in range(grid_width):
-			var cell := grid[y][x] as _TerrainCell
+			var cell := grid[y][x] as LowPolyTerrainCell
 			if cell == null:
 				continue
-			var kind: TerrainCellKind = cell.kind
+			var kind: LowPolyTerrainCell.Kind = cell.kind
 			var min_x := origin_offset.x + float(x) * cell_size
 			var max_x := min_x + cell_size
 			var min_z := origin_offset.z + float(y) * cell_size
 			var max_z := min_z + cell_size
 
 			match kind:
-				TerrainCellKind.WATER:
+				LowPolyTerrainCell.Kind.WATER:
 					water_cells += 1
 					if cell.height < water_height - HEIGHT_EPSILON:
 						var seabed_corner_heights := _get_cell_corner_heights(grid, x, y, cell.height, true)
@@ -587,7 +453,7 @@ func _build_meshes_from_grid(
 							max_z,
 							seabed_corner_heights
 						)
-				TerrainCellKind.STREET:
+				LowPolyTerrainCell.Kind.STREET:
 					street_cells += 1
 					land_cells += 1
 					var street_corner_heights := _get_cell_corner_heights(
@@ -613,7 +479,7 @@ func _build_meshes_from_grid(
 						!heightmap_defines_water_area
 					)
 					_append_inset_surface_quad(street_builder, min_x, max_x, min_z, max_z, street_corner_heights, street_lift, 0.08)
-				TerrainCellKind.BUILDING:
+				LowPolyTerrainCell.Kind.BUILDING:
 					building_cells += 1
 					land_cells += 1
 					var building_corner_heights := _get_cell_corner_heights(
@@ -742,8 +608,8 @@ func _build_water_render_grid(grid: Array[Array]) -> Array[PackedByteArray]:
 	var overlap_cells := maxi(water_land_overlap_cells, 0)
 	for y in range(grid_height):
 		for x in range(grid_width):
-			var cell := grid[y][x] as _TerrainCell
-			if cell == null or cell.kind != TerrainCellKind.WATER:
+			var cell := grid[y][x] as LowPolyTerrainCell
+			if cell == null or cell.kind != LowPolyTerrainCell.Kind.WATER:
 				continue
 			var min_y := maxi(y - overlap_cells, 0)
 			var max_y := mini(y + overlap_cells, grid_height - 1)
@@ -1195,8 +1061,8 @@ func _get_corner_height(
 		for x in range(corner_x - 1, corner_x + 1):
 			if _is_outside_grid(grid, x, y):
 				continue
-			var cell := grid[y][x] as _TerrainCell
-			if cell == null or (cell.kind == TerrainCellKind.WATER and !include_water_cells):
+			var cell := grid[y][x] as LowPolyTerrainCell
+			if cell == null or (cell.kind == LowPolyTerrainCell.Kind.WATER and !include_water_cells):
 				continue
 			total_height += cell.height
 			sample_count += 1
@@ -1244,8 +1110,8 @@ func _is_outside_grid(grid: Array[Array], x: int, y: int) -> bool:
 func _is_water_or_outside(grid: Array[Array], x: int, y: int) -> bool:
 	if _is_outside_grid(grid, x, y):
 		return true
-	var cell := grid[y][x] as _TerrainCell
-	return cell == null or cell.kind == TerrainCellKind.WATER
+	var cell := grid[y][x] as LowPolyTerrainCell
+	return cell == null or cell.kind == LowPolyTerrainCell.Kind.WATER
 
 
 func _is_water_render_cell(water_render_grid: Array[PackedByteArray], x: int, y: int) -> bool:
@@ -1261,8 +1127,8 @@ func _is_land_cell(grid: Array[Array], x: int, y: int) -> bool:
 		return false
 	if x < 0 or x >= grid[y].size():
 		return false
-	var cell := grid[y][x] as _TerrainCell
-	return cell != null and cell.kind != TerrainCellKind.WATER
+	var cell := grid[y][x] as LowPolyTerrainCell
+	return cell != null and cell.kind != LowPolyTerrainCell.Kind.WATER
 
 
 func _is_visible_water_shoreline_edge(
@@ -1319,7 +1185,7 @@ func _stable_water_noise(x: int, y: int, salt: int, frequency: float) -> float:
 func _get_cell_height(grid: Array[Array], x: int, y: int) -> float:
 	if _is_water_or_outside(grid, x, y):
 		return water_height
-	var cell := grid[y][x] as _TerrainCell
+	var cell := grid[y][x] as LowPolyTerrainCell
 	if cell == null:
 		return water_height
 	return cell.height
@@ -1437,35 +1303,11 @@ func _clear_generated_children() -> void:
 		child.queue_free()
 
 
-class _ImagePixelReader:
-	var data: PackedByteArray
-	var width: int
-	var height: int
-
-	func _init(image: Image) -> void:
-		width = image.get_width()
-		height = image.get_height()
-		data = image.get_data()
-
-	func get_pixel(x: int, y: int) -> Color:
-		var index := (y * width + x) * 4
-		return Color8(data[index], data[index + 1], data[index + 2], data[index + 3])
-
-
 class _MeshBuildState:
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
-
-
-class _TerrainCell:
-	var kind: int
-	var height: float
-
-	func _init(cell_kind: int, cell_height: float) -> void:
-		kind = cell_kind
-		height = cell_height
 
 
 class _WaterRendering:

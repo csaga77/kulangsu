@@ -129,6 +129,13 @@ func _validate_heightmap_source_expansion(failures: Array[String]) -> void:
 	if low_sample_height >= water_height - 0.005:
 		failures.append("heightmap-expanded water samples should report land elevation below water level")
 
+	if !m_terrain.has_method("get_sample_cell_water_surface_height"):
+		failures.append("LowPolyTerrain3D is missing get_sample_cell_water_surface_height")
+	else:
+		var low_sample_water_surface := float(m_terrain.call("get_sample_cell_water_surface_height", low_sample))
+		if !is_equal_approx(low_sample_water_surface, water_height):
+			failures.append("water-surface query should report the flat water plane over water cells")
+
 	var water_mesh := m_terrain.get_node_or_null("WaterMesh") as MeshInstance3D
 	var shoreline_land_sample := _find_land_cell_adjacent_to_water(grid_size)
 	if shoreline_land_sample == Vector2i(-1, -1):
