@@ -319,6 +319,97 @@ static func hip_roof_run_for_size(size: Vector2, overhang: float) -> float:
 	return maxf(shortest_depth * 0.5 + maxf(overhang, 0.0), 0.0)
 
 
+static func hip_roof_ridge_points_for_size(
+	size: Vector2,
+	overhang: float,
+	angle_degrees: float
+) -> PackedVector3Array:
+	var resolved_overhang := maxf(overhang, 0.0)
+	var x0 := -resolved_overhang
+	var x1 := maxf(size.x, 0.0) + resolved_overhang
+	var z0 := -resolved_overhang
+	var z1 := maxf(size.y, 0.0) + resolved_overhang
+	var render_width := maxf(x1 - x0, 0.0)
+	var render_depth := maxf(z1 - z0, 0.0)
+	var run := minf(render_width, render_depth) * 0.5
+	var height := roof_height_for_angle_degrees(run, angle_degrees)
+	if render_width >= render_depth:
+		var center_z := (z0 + z1) * 0.5
+		return PackedVector3Array([
+			Vector3(x0 + run, height, center_z),
+			Vector3(x1 - run, height, center_z),
+		])
+	var center_x := (x0 + x1) * 0.5
+	return PackedVector3Array([
+		Vector3(center_x, height, z0 + run),
+		Vector3(center_x, height, z1 - run),
+	])
+
+
+static func _hip_roof_face_polygons_for_size(
+	size: Vector2,
+	overhang: float,
+	angle_degrees: float
+) -> Array[PackedVector3Array]:
+	var resolved_overhang := maxf(overhang, 0.0)
+	var x0 := -resolved_overhang
+	var x1 := maxf(size.x, 0.0) + resolved_overhang
+	var z0 := -resolved_overhang
+	var z1 := maxf(size.y, 0.0) + resolved_overhang
+	var render_width := maxf(x1 - x0, 0.0)
+	var render_depth := maxf(z1 - z0, 0.0)
+	var p0 := Vector3(x0, 0.0, z0)
+	var p1 := Vector3(x1, 0.0, z0)
+	var p2 := Vector3(x1, 0.0, z1)
+	var p3 := Vector3(x0, 0.0, z1)
+	var ridge_points := hip_roof_ridge_points_for_size(size, resolved_overhang, angle_degrees)
+	var ridge_start := ridge_points[0]
+	var ridge_end := ridge_points[1]
+	var faces: Array[PackedVector3Array] = []
+	if ridge_start.distance_to(ridge_end) <= RECT_EPSILON:
+		faces.append(PackedVector3Array([p0, ridge_start, p1]))
+		faces.append(PackedVector3Array([p1, ridge_start, p2]))
+		faces.append(PackedVector3Array([p2, ridge_start, p3]))
+		faces.append(PackedVector3Array([p3, ridge_start, p0]))
+		return faces
+	if render_width >= render_depth:
+		faces.append(PackedVector3Array([p0, ridge_start, ridge_end, p1]))
+		faces.append(PackedVector3Array([p1, ridge_end, p2]))
+		faces.append(PackedVector3Array([p3, p2, ridge_end, ridge_start]))
+		faces.append(PackedVector3Array([p0, p3, ridge_start]))
+	else:
+		faces.append(PackedVector3Array([p0, ridge_start, p1]))
+		faces.append(PackedVector3Array([p1, ridge_start, ridge_end, p2]))
+		faces.append(PackedVector3Array([p2, ridge_end, p3]))
+		faces.append(PackedVector3Array([p0, p3, ridge_end, ridge_start]))
+	return faces
+
+
+static func _triangles_for_roof_face(face_vertices: PackedVector3Array) -> Array[PackedVector3Array]:
+	var triangles: Array[PackedVector3Array] = []
+	if face_vertices.size() < 3:
+		return triangles
+	for index in range(1, face_vertices.size() - 1):
+		triangles.append(PackedVector3Array([
+			face_vertices[0],
+			face_vertices[index],
+			face_vertices[index + 1],
+		]))
+	return triangles
+
+
+static func _plane_points_for_roof_face(face_vertices: PackedVector3Array) -> PackedVector3Array:
+	for first_index in range(face_vertices.size() - 2):
+		for second_index in range(first_index + 1, face_vertices.size() - 1):
+			for third_index in range(second_index + 1, face_vertices.size()):
+				var first := face_vertices[first_index]
+				var second := face_vertices[second_index]
+				var third := face_vertices[third_index]
+				if (second - first).cross(third - first).length_squared() > RECT_EPSILON * RECT_EPSILON:
+					return PackedVector3Array([first, second, third])
+	return PackedVector3Array()
+
+
 static func roof_generated_height_for_style(
 	style: String,
 	size: Vector2,
@@ -356,15 +447,12 @@ static func roof_surface_height_for_style(
 		STYLE_SHED:
 			return height * clampf((clamped_z - min_z) / maxf(max_z - min_z, RECT_EPSILON), 0.0, 1.0)
 		STYLE_HIP:
-			var x_fraction := minf(
-				(clamped_x - min_x) / maxf((max_x - min_x) * 0.5, RECT_EPSILON),
-				(max_x - clamped_x) / maxf((max_x - min_x) * 0.5, RECT_EPSILON)
+			var run := hip_roof_run_for_size(size, resolved_overhang)
+			var distance_to_eave := minf(
+				minf(clamped_x - min_x, max_x - clamped_x),
+				minf(clamped_z - min_z, max_z - clamped_z)
 			)
-			var z_fraction := minf(
-				(clamped_z - min_z) / maxf((max_z - min_z) * 0.5, RECT_EPSILON),
-				(max_z - clamped_z) / maxf((max_z - min_z) * 0.5, RECT_EPSILON)
-			)
-			return height * clampf(minf(x_fraction, z_fraction), 0.0, 1.0)
+			return height * clampf(distance_to_eave / maxf(run, RECT_EPSILON), 0.0, 1.0)
 		STYLE_GABLE:
 			var center_z := (min_z + max_z) * 0.5
 			var half_depth := maxf((max_z - min_z) * 0.5, RECT_EPSILON)
@@ -396,15 +484,12 @@ static func roof_top_triangles_for_style(
 			triangles.append(PackedVector3Array([p0, p3, p2]))
 			triangles.append(PackedVector3Array([p0, p2, p1]))
 		STYLE_HIP:
-			var p0 := Vector3(x0, 0.0, z0)
-			var p1 := Vector3(x1, 0.0, z0)
-			var p2 := Vector3(x1, 0.0, z1)
-			var p3 := Vector3(x0, 0.0, z1)
-			var apex := Vector3(center_x, height, center_z)
-			triangles.append(PackedVector3Array([p0, apex, p1]))
-			triangles.append(PackedVector3Array([p1, apex, p2]))
-			triangles.append(PackedVector3Array([p2, apex, p3]))
-			triangles.append(PackedVector3Array([p3, apex, p0]))
+			for face_vertices in _hip_roof_face_polygons_for_size(
+				full_size,
+				resolved_overhang,
+				angle_degrees
+			):
+				triangles.append_array(_triangles_for_roof_face(face_vertices))
 		STYLE_GABLE:
 			var p0 := Vector3(x0, 0.0, z0)
 			var p1 := Vector3(x1, 0.0, z0)
@@ -452,15 +537,14 @@ static func roof_top_faces_for_style(
 				"plane": PackedVector3Array([p0, p3, p2]),
 			})
 		STYLE_HIP:
-			var p0 := Vector3(x0, 0.0, z0)
-			var p1 := Vector3(x1, 0.0, z0)
-			var p2 := Vector3(x1, 0.0, z1)
-			var p3 := Vector3(x0, 0.0, z1)
-			var apex := Vector3(center_x, height, center_z)
-			faces.append({"vertices": PackedVector3Array([p0, apex, p1]), "plane": PackedVector3Array([p0, apex, p1])})
-			faces.append({"vertices": PackedVector3Array([p1, apex, p2]), "plane": PackedVector3Array([p1, apex, p2])})
-			faces.append({"vertices": PackedVector3Array([p2, apex, p3]), "plane": PackedVector3Array([p2, apex, p3])})
-			faces.append({"vertices": PackedVector3Array([p3, apex, p0]), "plane": PackedVector3Array([p3, apex, p0])})
+			for face_vertices in _hip_roof_face_polygons_for_size(
+				full_size,
+				resolved_overhang,
+				angle_degrees
+			):
+				var plane_points := _plane_points_for_roof_face(face_vertices)
+				if plane_points.size() == 3:
+					faces.append({"vertices": face_vertices, "plane": plane_points})
 		STYLE_GABLE:
 			var p0 := Vector3(x0, 0.0, z0)
 			var p1 := Vector3(x1, 0.0, z0)
@@ -635,19 +719,51 @@ func _append_roof_geometry(
 			top_triangles = [PackedInt32Array([0, 3, 2]), PackedInt32Array([0, 2, 1])]
 			boundary = PackedInt32Array([0, 1, 2, 3])
 		STYLE_HIP:
+			var p0 := Vector3(x0, 0.0, z0)
+			var p1 := Vector3(x1, 0.0, z0)
+			var p2 := Vector3(x1, 0.0, z1)
+			var p3 := Vector3(x0, 0.0, z1)
+			var ridge_points := hip_roof_ridge_points_for_size(
+				Vector2(width, depth),
+				overhang,
+				roof_height
+			)
+			var ridge_start := ridge_points[0]
+			var ridge_end := ridge_points[1]
 			top_points = [
-				Vector3(x0, 0.0, z0),
-				Vector3(x1, 0.0, z0),
-				Vector3(x1, 0.0, z1),
-				Vector3(x0, 0.0, z1),
-				Vector3(center_x, height, center_z),
+				p0,
+				p1,
+				p2,
+				p3,
+				ridge_start,
 			]
-			top_triangles = [
-				PackedInt32Array([0, 4, 1]),
-				PackedInt32Array([1, 4, 2]),
-				PackedInt32Array([2, 4, 3]),
-				PackedInt32Array([3, 4, 0]),
-			]
+			if ridge_start.distance_to(ridge_end) <= RECT_EPSILON:
+				top_triangles = [
+					PackedInt32Array([0, 4, 1]),
+					PackedInt32Array([1, 4, 2]),
+					PackedInt32Array([2, 4, 3]),
+					PackedInt32Array([3, 4, 0]),
+				]
+			else:
+				top_points.append(ridge_end)
+				if (x1 - x0) >= (z1 - z0):
+					top_triangles = [
+						PackedInt32Array([0, 4, 5]),
+						PackedInt32Array([0, 5, 1]),
+						PackedInt32Array([1, 5, 2]),
+						PackedInt32Array([3, 2, 5]),
+						PackedInt32Array([3, 5, 4]),
+						PackedInt32Array([0, 3, 4]),
+					]
+				else:
+					top_triangles = [
+						PackedInt32Array([0, 4, 1]),
+						PackedInt32Array([1, 4, 5]),
+						PackedInt32Array([1, 5, 2]),
+						PackedInt32Array([2, 5, 3]),
+						PackedInt32Array([0, 3, 5]),
+						PackedInt32Array([0, 5, 4]),
+					]
 			boundary = PackedInt32Array([0, 1, 2, 3])
 		STYLE_GABLE:
 			top_points = [

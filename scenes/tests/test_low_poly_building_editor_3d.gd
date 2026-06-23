@@ -587,7 +587,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 
 	var hip := coordinator.create_roof_node(
 		Vector3(26.0, base_y, 12.0),
-		Vector3(29.0, base_y, 15.0),
+		Vector3(31.0, base_y, 15.0),
 		"hip",
 		TEST_ROOF_ALT_ANGLE_DEGREES,
 		0.12,
@@ -595,7 +595,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		Color(0.50, 0.34, 0.25, 1.0)
 	)
 	coordinator.add_child(hip)
-	if _mesh_vertex_count(hip) != 40:
+	if _mesh_vertex_count(hip) != 52:
 		m_failures.append("ProceduralRoof3D hip style generated the wrong vertex count")
 	if !_has_roof_sloped_normal(hip):
 		m_failures.append("ProceduralRoof3D hip style is missing sloped roof normals")
@@ -606,6 +606,41 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	)
 	if !_has_mesh_vertex_y_near(hip, expected_hip_height, 0.001):
 		m_failures.append("ProceduralRoof3D hip style did not calculate height from angle degrees")
+	var hip_ridge_points := ProceduralRoof3DScript.hip_roof_ridge_points_for_size(
+		hip.get_roof_size(),
+		hip.roof_overhang,
+		hip.get_roof_angle_degrees()
+	)
+	if hip_ridge_points.size() != 2:
+		m_failures.append("ProceduralRoof3D hip style did not report a ridge line")
+	else:
+		if absf(hip_ridge_points[0].y - hip_ridge_points[1].y) > 0.001:
+			m_failures.append("ProceduralRoof3D hip ridge is not horizontal")
+		if hip_ridge_points[0].distance_to(hip_ridge_points[1]) <= 0.001:
+			m_failures.append("ProceduralRoof3D rectangular hip roof collapsed to one apex")
+		if !_has_mesh_vertex_near(hip.mesh as ArrayMesh, hip_ridge_points[0], 0.001):
+			m_failures.append("ProceduralRoof3D hip mesh is missing the first ridge endpoint")
+		if !_has_mesh_vertex_near(hip.mesh as ArrayMesh, hip_ridge_points[1], 0.001):
+			m_failures.append("ProceduralRoof3D hip mesh is missing the second ridge endpoint")
+	var hip_faces := ProceduralRoof3DScript.roof_top_faces_for_style(
+		"hip",
+		hip.get_roof_size(),
+		hip.roof_overhang,
+		hip.get_roof_angle_degrees()
+	)
+	var triangular_hip_faces := 0
+	var trapezoid_hip_faces := 0
+	for hip_face in hip_faces:
+		var hip_face_vertices := PackedVector3Array(hip_face["vertices"])
+		if hip_face_vertices.size() == 3:
+			triangular_hip_faces += 1
+		elif hip_face_vertices.size() == 4:
+			trapezoid_hip_faces += 1
+		var hip_face_angle := _roof_face_angle_degrees(PackedVector3Array(hip_face["plane"]))
+		if absf(hip_face_angle - TEST_ROOF_ALT_ANGLE_DEGREES) > 0.01:
+			m_failures.append("ProceduralRoof3D hip face angle changed from configured degrees")
+	if triangular_hip_faces != 2 or trapezoid_hip_faces != 2:
+		m_failures.append("ProceduralRoof3D hip style did not generate two triangular and two trapezoid faces")
 
 	var angle_roof := coordinator.create_roof_node(
 		Vector3(30.0, base_y, 16.0),
@@ -1812,6 +1847,13 @@ func _has_roof_downward_normal(normals: PackedVector3Array) -> bool:
 		if normal.y < -0.45:
 			return true
 	return false
+
+
+func _roof_face_angle_degrees(plane_points: PackedVector3Array) -> float:
+	if plane_points.size() < 3:
+		return -1.0
+	var normal := (plane_points[1] - plane_points[0]).cross(plane_points[2] - plane_points[0]).normalized()
+	return rad_to_deg(acos(clampf(absf(normal.y), 0.0, 1.0)))
 
 
 func _mesh_vertex_count(mesh_instance: MeshInstance3D) -> int:
