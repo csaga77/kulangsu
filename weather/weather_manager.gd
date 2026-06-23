@@ -13,6 +13,11 @@ class WeatherRig:
 	var ground_impacts: RainGroundImpacts = null
 
 
+## Emitted whenever the live applied wind changes (during transitions or via
+## set_registered_wind). Consumers such as the low-poly water can follow this
+## without coupling back into the weather system.
+signal wind_changed(wind_angle_degrees: float, wind_strength: float)
+
 enum CyclePhase {
 	HOLD,
 	TRANSITION,
@@ -115,6 +120,8 @@ var m_current_preset_id := DEFAULT_PRESET_ID
 var m_phase: CyclePhase = CyclePhase.HOLD
 var m_phase_elapsed := 0.0
 var m_phase_duration := 0.0
+var m_applied_wind_angle_degrees := 72.0
+var m_applied_wind_strength := 0.0
 
 
 func _ready() -> void:
@@ -544,6 +551,35 @@ func _apply_synced_wind(wind_angle_degrees: float, wind_strength: float) -> void
 	if is_instance_valid(m_cloud_shadow_overlay) and m_sync_cloud_with_wind:
 		m_cloud_shadow_overlay.wind_angle_degrees = wind_angle_degrees
 		m_cloud_shadow_overlay.wind_strength = wind_strength
+
+	# Publish the live applied wind so non-overlay consumers (e.g. low-poly 3D
+	# water) can follow it without registering as a weather overlay.
+	if (
+		not is_equal_approx(m_applied_wind_angle_degrees, wind_angle_degrees)
+		or not is_equal_approx(m_applied_wind_strength, wind_strength)
+	):
+		m_applied_wind_angle_degrees = wind_angle_degrees
+		m_applied_wind_strength = wind_strength
+		wind_changed.emit(wind_angle_degrees, wind_strength)
+
+
+## Live applied wind: { "wind_angle_degrees": float, "wind_strength": float }.
+## wind_strength is the raw weather magnitude; normalize with
+## get_reference_wind_strength() before driving 0..1 consumers.
+func get_current_wind() -> Dictionary:
+	return {
+		"wind_angle_degrees": m_applied_wind_angle_degrees,
+		"wind_strength": m_applied_wind_strength,
+	}
+
+
+## Largest wind_strength across the weather presets, a stable reference for
+## normalizing raw wind into 0..1.
+func get_reference_wind_strength() -> float:
+	var reference := 0.0
+	for preset in WEATHER_PRESETS:
+		reference = maxf(reference, float(preset.get("wind_strength", 0.0)))
+	return maxf(reference, 1.0)
 
 
 func _get_registered_wind_state() -> Dictionary:

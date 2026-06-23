@@ -159,6 +159,7 @@ If you need to change something, start here:
 - The current preset list covers calm haze, mist, light rain, steady rain, and a gustier shower.
 - It interpolates rain density, rain drop speed/size, fog density, fog height, fog drift speed, wind angle, and wind strength.
 - It owns the synced wind application into rain, fog, and cloud-shadow targets, so gameplay scenes and the weather sandbox do not need their own per-pass wind propagation helpers.
+- It publishes the live applied wind for non-overlay consumers via the `wind_changed(wind_angle_degrees, wind_strength)` signal plus the `get_current_wind()` and `get_reference_wind_strength()` getters. These are read-only outputs; consumers (such as the low-poly 3D water through `terrain/low_poly_water_wind_adapter.gd`) follow them without registering as a weather overlay or coupling back into the manager.
 - The random cycle currently affects the playable overworld only. The weather sandbox reuses the manager for wind-sync behavior while keeping `cycles_enabled = false` so it remains a predictable tuning environment.
 - If future work needs authored districts, chapters, or forecast control, replace the preset selection policy in `WeatherManager` instead of pushing that logic down into `RainOverlay` or `FogOverlay`.
 

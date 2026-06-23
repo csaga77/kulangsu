@@ -41,10 +41,14 @@ const LANDMARK_PLACEMENTS := [
 @export_range(0.0, 1.0, 0.01) var actor_terrain_clearance := 0.04
 
 const WIND_DEMO_ENABLED := true
+const WEATHER_RUNTIME := preload("res://weather/weather_runtime.gd")
+const WATER_WIND_ADAPTER := preload("res://terrain/low_poly_water_wind_adapter.gd")
 
 var m_coordinates: LowPolyWorldCoordinates3DScript = LowPolyWorldCoordinates3DScript.new()
 var m_spawn_mask_pixel := Vector2i.ZERO
 var m_wind_demo_elapsed := 0.0
+var m_weather_manager: WeatherManager = null
+var m_wind_adapter: LowPolyWaterWindAdapter = null
 
 
 func _ready() -> void:
@@ -56,7 +60,23 @@ func _ready() -> void:
 		return
 
 	_connect_actor_terrain_elevation()
+	_setup_weather_wind()
 	call_deferred("_run_smoke_checks")
+
+
+func _setup_weather_wind() -> void:
+	# Drive the water's wind from the global WeatherManager through the decoupled
+	# adapter. LowPolyTerrain3D never references the weather system itself.
+	if !is_instance_valid(m_terrain):
+		return
+	m_weather_manager = WEATHER_RUNTIME.get_weather_manager(self) as WeatherManager
+	if m_weather_manager == null:
+		return
+	# This 3D slice has no 2D weather overlays to cycle, so we feed the manager a
+	# gusting stand-in below instead of the real cycle.
+	m_weather_manager.cycles_enabled = false
+	m_wind_adapter = WATER_WIND_ADAPTER.new()
+	m_wind_adapter.bind(m_weather_manager, m_terrain)
 
 
 func _process(delta: float) -> void:
@@ -67,28 +87,65 @@ func _process(delta: float) -> void:
 
 
 func _drive_demo_wind(delta: float) -> void:
-	# Stand-in for a weather-driven wind: slowly swing the direction and gust the
-	# strength so the water visibly responds. In production, map WeatherManager
-	# wind (wind_angle_degrees plus a normalized wind speed) onto set_wind(),
-	# keeping LowPolyTerrain3D decoupled from the weather system.
-	if !WIND_DEMO_ENABLED or !is_instance_valid(m_terrain) or !m_terrain.has_method("set_wind"):
+	# Stand-in for the live weather cycle: push gusting wind into the global
+	# WeatherManager (raw strength, like a real preset). The bound adapter maps it
+	# onto the water, exercising the real weather -> adapter -> water path. Once
+	# the 3D lane is cleared to consume weather, drop this and let the manager
+	# cycle on its own.
+	if !WIND_DEMO_ENABLED or m_weather_manager == null:
 		return
 	m_wind_demo_elapsed += delta
-	var angle := 40.0 + 60.0 * sin(m_wind_demo_elapsed * 0.08)
-	var gust := clampf(0.5 + 0.45 * sin(m_wind_demo_elapsed * 0.35), 0.0, 1.0)
-	m_terrain.call("set_wind", angle, gust)
+	# Keep direction stable like the real presets (~58-72 deg, changing only
+	# slowly): a narrow, very slow drift. Gust the strength faster than the angle.
+	var angle := 65.0 + 8.0 * sin(m_wind_demo_elapsed * 0.02)
+	var reference := m_weather_manager.get_reference_wind_strength()
+	var raw := clampf(0.45 + 0.4 * sin(m_wind_demo_elapsed * 0.15), 0.0, 1.0) * reference
+	m_weather_manager.set_registered_wind(angle, raw)
 
 
 func _run_smoke_checks() -> void:
 	var failures: Array[String] = []
 	_configure_world(failures)
 	_validate_world(failures)
+	_validate_weather_wind(failures)
 
 	if failures.is_empty():
 		print("PASS: LowPolyWorld3D smoke test")
 	else:
 		for failure in failures:
 			push_error(failure)
+
+
+func _validate_weather_wind(failures: Array[String]) -> void:
+	if m_weather_manager == null:
+		failures.append("LowPolyWorld3D did not acquire a WeatherManager")
+		return
+	if m_wind_adapter == null:
+		failures.append("LowPolyWorld3D did not bind the water wind adapter")
+		return
+	if !is_instance_valid(m_terrain):
+		return
+
+	# Push max weather wind through the manager; the adapter should normalize it
+	# to 1.0 and reach the water. The 0 -> reference step guarantees a change so
+	# wind_changed fires regardless of prior demo state.
+	var reference := m_weather_manager.get_reference_wind_strength()
+	m_weather_manager.set_registered_wind(95.0, 0.0)
+	m_weather_manager.set_registered_wind(95.0, reference)
+
+	var water_mesh := m_terrain.get_node_or_null("WaterMesh") as MeshInstance3D
+	if water_mesh == null:
+		failures.append("LowPolyWorld3D has no WaterMesh to verify wind wiring")
+		return
+	var material := water_mesh.material_override as ShaderMaterial
+	if material == null:
+		failures.append("WaterMesh is missing its wave ShaderMaterial")
+		return
+	var strength := float(material.get_shader_parameter(&"wind_strength"))
+	if !is_equal_approx(strength, 1.0):
+		failures.append(
+			"weather wind did not reach the water (expected normalized 1.0, got %0.3f)" % strength
+		)
 
 
 func _configure_world(failures: Array[String]) -> void:
