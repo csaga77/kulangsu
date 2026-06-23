@@ -148,11 +148,14 @@ func _build_ui() -> void:
 	content.add_child(HSeparator.new())
 
 	var mode_row := HBoxContainer.new()
+	mode_row.tooltip_text = "Choose the active building editor tool. Only settings for the selected tool are shown."
 	var mode_label := Label.new()
 	mode_label.text = "Tool:"
+	mode_label.tooltip_text = mode_row.tooltip_text
 	mode_row.add_child(mode_label)
 
 	m_mode_option = OptionButton.new()
+	m_mode_option.tooltip_text = mode_row.tooltip_text
 	m_mode_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	m_mode_option.add_item("Select", 0)
 	m_mode_option.set_item_metadata(0, MODE_SELECT)
@@ -225,7 +228,7 @@ func _build_wall_controls(parent: VBoxContainer) -> void:
 	parent.add_child(header)
 
 	m_grid_spin = _make_spin(0.05, 8.0, 0.05, 0.5)
-	_add_labeled_control(parent, "Grid:", m_grid_spin)
+	_add_labeled_control(parent, "Grid:", m_grid_spin, "Snap size for drawing and editing wall endpoints.")
 	m_grid_spin.value_changed.connect(_on_wall_setting_changed)
 
 	m_wall_base_height_spin = _make_spin(-20.0, 20.0, 0.01, 0.0)
@@ -234,19 +237,20 @@ func _build_wall_controls(parent: VBoxContainer) -> void:
 	m_wall_base_height_spin.value_changed.connect(_on_wall_setting_changed)
 
 	m_wall_height_spin = _make_spin(0.1, 6.0, 0.05, 2.4)
-	_add_labeled_control(parent, "Height:", m_wall_height_spin)
+	_add_labeled_control(parent, "Height:", m_wall_height_spin, "Vertical height of newly drawn walls.")
 	m_wall_height_spin.value_changed.connect(_on_wall_setting_changed)
 
 	m_wall_thickness_spin = _make_spin(0.03, 1.0, 0.01, 0.22)
-	_add_labeled_control(parent, "Thickness:", m_wall_thickness_spin)
+	_add_labeled_control(parent, "Thickness:", m_wall_thickness_spin, "Depth of the wall measured across its center line.")
 	m_wall_thickness_spin.value_changed.connect(_on_wall_setting_changed)
 
 	m_wall_color_picker = _make_color_picker(Color(0.78, 0.68, 0.54, 1.0))
 	m_wall_color_picker.color_changed.connect(_on_wall_color_changed)
-	_add_labeled_control(parent, "Color:", m_wall_color_picker)
+	_add_labeled_control(parent, "Color:", m_wall_color_picker, "Vertex color applied to newly drawn walls.")
 
 	m_lock_8_way_check = CheckBox.new()
 	m_lock_8_way_check.text = "8-way lock"
+	m_lock_8_way_check.tooltip_text = "Constrain new wall spans to horizontal, vertical, and diagonal directions."
 	m_lock_8_way_check.button_pressed = true
 	m_lock_8_way_check.toggled.connect(_on_wall_lock_changed)
 	parent.add_child(m_lock_8_way_check)
@@ -258,7 +262,7 @@ func _build_floor_controls(parent: VBoxContainer) -> void:
 	parent.add_child(header)
 
 	m_floor_grid_spin = _make_spin(0.05, 8.0, 0.05, 0.5)
-	_add_labeled_control(parent, "Grid:", m_floor_grid_spin)
+	_add_labeled_control(parent, "Grid:", m_floor_grid_spin, "Snap size for drawing and editing floor rectangles.")
 	m_floor_grid_spin.value_changed.connect(_on_floor_setting_changed)
 
 	m_floor_base_height_spin = _make_spin(-20.0, 20.0, 0.01, 0.0)
@@ -267,12 +271,12 @@ func _build_floor_controls(parent: VBoxContainer) -> void:
 	m_floor_base_height_spin.value_changed.connect(_on_floor_setting_changed)
 
 	m_floor_thickness_spin = _make_spin(0.01, 2.0, 0.01, 0.12)
-	_add_labeled_control(parent, "Thickness:", m_floor_thickness_spin)
+	_add_labeled_control(parent, "Thickness:", m_floor_thickness_spin, "Thickness extending downward from the floor top surface.")
 	m_floor_thickness_spin.value_changed.connect(_on_floor_setting_changed)
 
 	m_floor_color_picker = _make_color_picker(Color(0.46, 0.40, 0.32, 1.0))
 	m_floor_color_picker.color_changed.connect(_on_floor_color_changed)
-	_add_labeled_control(parent, "Color:", m_floor_color_picker)
+	_add_labeled_control(parent, "Color:", m_floor_color_picker, "Vertex color applied to newly drawn floors.")
 
 
 func _build_pillar_controls(parent: VBoxContainer) -> void:
@@ -281,7 +285,7 @@ func _build_pillar_controls(parent: VBoxContainer) -> void:
 	parent.add_child(header)
 
 	m_pillar_grid_spin = _make_spin(0.05, 8.0, 0.05, 0.5)
-	_add_labeled_control(parent, "Grid:", m_pillar_grid_spin)
+	_add_labeled_control(parent, "Grid:", m_pillar_grid_spin, "Snap size for placing and moving pillars.")
 	m_pillar_grid_spin.value_changed.connect(_on_pillar_setting_changed)
 
 	m_pillar_style_option = OptionButton.new()
@@ -295,7 +299,7 @@ func _build_pillar_controls(parent: VBoxContainer) -> void:
 	m_pillar_style_option.add_item("Tapered", 3)
 	m_pillar_style_option.set_item_metadata(3, "tapered")
 	m_pillar_style_option.item_selected.connect(_on_pillar_style_selected)
-	_add_labeled_control(parent, "Style:", m_pillar_style_option)
+	_add_labeled_control(parent, "Style:", m_pillar_style_option, "Pillar body shape used for newly placed pillars.")
 
 	m_pillar_base_height_spin = _make_spin(-20.0, 20.0, 0.01, 0.0)
 	m_pillar_base_height_spin.tooltip_text = "Parent-local Y height for new pillar bases."
@@ -313,11 +317,11 @@ func _build_pillar_controls(parent: VBoxContainer) -> void:
 	m_pillar_upper_radius_spin.value_changed.connect(_on_pillar_setting_changed)
 
 	m_pillar_height_spin = _make_spin(0.1, 12.0, 0.05, 2.4)
-	_add_labeled_control(parent, "Height:", m_pillar_height_spin)
+	_add_labeled_control(parent, "Height:", m_pillar_height_spin, "Vertical height of newly placed pillars.")
 	m_pillar_height_spin.value_changed.connect(_on_pillar_setting_changed)
 
 	m_pillar_sides_spin = _make_spin(3.0, 24.0, 1.0, 8.0)
-	_add_labeled_control(parent, "Sides:", m_pillar_sides_spin)
+	_add_labeled_control(parent, "Sides:", m_pillar_sides_spin, "Number of sides used by round and tapered pillar styles.")
 	m_pillar_sides_spin.value_changed.connect(_on_pillar_setting_changed)
 
 	m_pillar_lower_rim_height_spin = _make_spin(0.0, 2.0, 0.01, 0.12)
@@ -342,7 +346,7 @@ func _build_pillar_controls(parent: VBoxContainer) -> void:
 
 	m_pillar_color_picker = _make_color_picker(Color(0.70, 0.64, 0.52, 1.0))
 	m_pillar_color_picker.color_changed.connect(_on_pillar_color_changed)
-	_add_labeled_control(parent, "Color:", m_pillar_color_picker)
+	_add_labeled_control(parent, "Color:", m_pillar_color_picker, "Vertex color applied to newly placed pillars.")
 
 
 func _build_roof_controls(parent: VBoxContainer) -> void:
@@ -351,7 +355,7 @@ func _build_roof_controls(parent: VBoxContainer) -> void:
 	parent.add_child(header)
 
 	m_roof_grid_spin = _make_spin(0.05, 8.0, 0.05, 0.5)
-	_add_labeled_control(parent, "Grid:", m_roof_grid_spin)
+	_add_labeled_control(parent, "Grid:", m_roof_grid_spin, "Snap size for drawing and editing roof footprints.")
 	m_roof_grid_spin.value_changed.connect(_on_roof_setting_changed)
 
 	m_roof_style_option = OptionButton.new()
@@ -366,7 +370,7 @@ func _build_roof_controls(parent: VBoxContainer) -> void:
 	m_roof_style_option.set_item_metadata(3, "hip")
 	m_roof_style_option.select(2)
 	m_roof_style_option.item_selected.connect(_on_roof_style_selected)
-	_add_labeled_control(parent, "Style:", m_roof_style_option)
+	_add_labeled_control(parent, "Style:", m_roof_style_option, "Roof shape used for newly drawn roof footprints.")
 
 	m_roof_base_height_spin = _make_spin(-20.0, 20.0, 0.01, 2.4)
 	m_roof_base_height_spin.tooltip_text = "Parent-local Y height for new roof eaves."
@@ -379,11 +383,11 @@ func _build_roof_controls(parent: VBoxContainer) -> void:
 	m_roof_height_spin.value_changed.connect(_on_roof_setting_changed)
 
 	m_roof_thickness_spin = _make_spin(0.02, 2.0, 0.01, 0.12)
-	_add_labeled_control(parent, "Thickness:", m_roof_thickness_spin)
+	_add_labeled_control(parent, "Thickness:", m_roof_thickness_spin, "Thickness extending downward from the generated roof surface.")
 	m_roof_thickness_spin.value_changed.connect(_on_roof_setting_changed)
 
 	m_roof_overhang_spin = _make_spin(0.0, 4.0, 0.01, 0.2)
-	_add_labeled_control(parent, "Overhang:", m_roof_overhang_spin)
+	_add_labeled_control(parent, "Overhang:", m_roof_overhang_spin, "Distance the roof eaves extend beyond the drawn footprint.")
 	m_roof_overhang_spin.value_changed.connect(_on_roof_setting_changed)
 
 	m_roof_rotation_spin = _make_spin(-180.0, 180.0, 1.0, 0.0)
@@ -393,7 +397,7 @@ func _build_roof_controls(parent: VBoxContainer) -> void:
 
 	m_roof_color_picker = _make_color_picker(Color(0.50, 0.34, 0.25, 1.0))
 	m_roof_color_picker.color_changed.connect(_on_roof_color_changed)
-	_add_labeled_control(parent, "Color:", m_roof_color_picker)
+	_add_labeled_control(parent, "Color:", m_roof_color_picker, "Vertex color applied to newly drawn roofs.")
 
 	m_roof_wireframe_check = CheckBox.new()
 	m_roof_wireframe_check.text = "Debug triangle wireframe"
@@ -411,6 +415,7 @@ func _build_prop_controls(parent: VBoxContainer) -> void:
 	var palette_root_label := Label.new()
 	palette_root_label.text = "Folder:"
 	palette_root_label.custom_minimum_size = Vector2(84.0, 0.0)
+	palette_root_label.tooltip_text = "Resource folder scanned for prop palette scene files."
 	palette_root_row.add_child(palette_root_label)
 
 	m_palette_root_edit = LineEdit.new()
@@ -424,6 +429,7 @@ func _build_prop_controls(parent: VBoxContainer) -> void:
 
 	var palette_root_browse := Button.new()
 	palette_root_browse.text = "Browse"
+	palette_root_browse.tooltip_text = "Choose the folder scanned by the prop palette."
 	palette_root_browse.pressed.connect(_on_browse_palette_root)
 	palette_root_row.add_child(palette_root_browse)
 	parent.add_child(palette_root_row)
@@ -431,29 +437,33 @@ func _build_prop_controls(parent: VBoxContainer) -> void:
 	var scene_row := HBoxContainer.new()
 	m_prop_path_edit = LineEdit.new()
 	m_prop_path_edit.placeholder_text = DEFAULT_PROP_PALETTE_ROOT.path_join("...")
+	m_prop_path_edit.tooltip_text = "Scene file placed by the Prop tool."
 	m_prop_path_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	m_prop_path_edit.text_changed.connect(_on_prop_setting_changed)
 	scene_row.add_child(m_prop_path_edit)
 
 	var browse_button := Button.new()
 	browse_button.text = "Browse"
+	browse_button.tooltip_text = "Choose a prop scene file to place."
 	browse_button.pressed.connect(_on_browse_scene)
 	scene_row.add_child(browse_button)
 	parent.add_child(scene_row)
 
 	var scan_button := Button.new()
 	scan_button.text = "Rescan Palette"
+	scan_button.tooltip_text = "Refresh the prop palette list from the configured folder."
 	scan_button.pressed.connect(_scan_palette)
 	parent.add_child(scan_button)
 
 	m_palette_list = ItemList.new()
 	m_palette_list.custom_minimum_size = Vector2(0, 180)
+	m_palette_list.tooltip_text = "Prop scene files found in the configured palette folder."
 	m_palette_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	m_palette_list.item_selected.connect(_on_palette_item_selected)
 	parent.add_child(m_palette_list)
 
 	m_prop_clearance_spin = _make_spin(0.0, 5.0, 0.05, 0.25)
-	_add_labeled_control(parent, "Clearance:", m_prop_clearance_spin)
+	_add_labeled_control(parent, "Clearance:", m_prop_clearance_spin, "Forward offset from the wall face when placing props on walls.")
 	m_prop_clearance_spin.value_changed.connect(_on_prop_clearance_changed)
 
 
@@ -471,18 +481,18 @@ func _build_window_controls(parent: VBoxContainer) -> void:
 	m_window_style_option.add_item("Window Frame", 2)
 	m_window_style_option.set_item_metadata(2, "frame")
 	m_window_style_option.item_selected.connect(_on_window_style_selected)
-	_add_labeled_control(parent, "Style:", m_window_style_option)
+	_add_labeled_control(parent, "Style:", m_window_style_option, "Window opening or frame style to place on a wall.")
 
 	m_window_width_spin = _make_spin(0.1, 8.0, 0.01, _window_default_width("single_window"))
-	_add_labeled_control(parent, "Width:", m_window_width_spin)
+	_add_labeled_control(parent, "Width:", m_window_width_spin, "Opening width measured along the wall.")
 	m_window_width_spin.value_changed.connect(_on_window_setting_changed)
 
 	m_window_height_spin = _make_spin(0.1, 8.0, 0.01, 1.0)
-	_add_labeled_control(parent, "Height:", m_window_height_spin)
+	_add_labeled_control(parent, "Height:", m_window_height_spin, "Opening height measured upward from the sill.")
 	m_window_height_spin.value_changed.connect(_on_window_setting_changed)
 
 	m_window_frame_spin = _make_spin(0.01, 1.0, 0.01, 0.08)
-	_add_labeled_control(parent, "Frame:", m_window_frame_spin)
+	_add_labeled_control(parent, "Frame:", m_window_frame_spin, "Visible frame thickness around the opening.")
 	m_window_frame_spin.value_changed.connect(_on_window_setting_changed)
 
 	m_window_sill_spin = _make_spin(0.0, 10.0, 0.01, 0.9)
@@ -507,18 +517,18 @@ func _build_door_controls(parent: VBoxContainer) -> void:
 	m_door_style_option.add_item("Double Door Frame", 3)
 	m_door_style_option.set_item_metadata(3, "double_frame")
 	m_door_style_option.item_selected.connect(_on_door_style_selected)
-	_add_labeled_control(parent, "Style:", m_door_style_option)
+	_add_labeled_control(parent, "Style:", m_door_style_option, "Door opening or frame style to place on a wall.")
 
 	m_door_width_spin = _make_spin(0.3, 8.0, 0.01, _door_default_width("single_door"))
-	_add_labeled_control(parent, "Width:", m_door_width_spin)
+	_add_labeled_control(parent, "Width:", m_door_width_spin, "Door opening width measured along the wall.")
 	m_door_width_spin.value_changed.connect(_on_door_setting_changed)
 
 	m_door_height_spin = _make_spin(0.3, 8.0, 0.01, 2.1)
-	_add_labeled_control(parent, "Height:", m_door_height_spin)
+	_add_labeled_control(parent, "Height:", m_door_height_spin, "Door opening height measured from the wall base.")
 	m_door_height_spin.value_changed.connect(_on_door_setting_changed)
 
 	m_door_frame_spin = _make_spin(0.01, 1.0, 0.01, 0.08)
-	_add_labeled_control(parent, "Frame:", m_door_frame_spin)
+	_add_labeled_control(parent, "Frame:", m_door_frame_spin, "Visible frame thickness around the door opening.")
 	m_door_frame_spin.value_changed.connect(_on_door_setting_changed)
 
 
@@ -594,11 +604,23 @@ func _make_color_swatch_texture(color: Color) -> Texture2D:
 	return ImageTexture.create_from_image(image)
 
 
-func _add_labeled_control(parent: VBoxContainer, label_text: String, control: Control) -> void:
+func _add_labeled_control(
+	parent: VBoxContainer,
+	label_text: String,
+	control: Control,
+	description: String = ""
+) -> void:
 	var row := HBoxContainer.new()
 	var label := Label.new()
 	label.text = label_text
 	label.custom_minimum_size = Vector2(84.0, 0.0)
+	var tooltip := description.strip_edges()
+	if tooltip.is_empty():
+		tooltip = control.tooltip_text.strip_edges()
+	if !tooltip.is_empty():
+		row.tooltip_text = tooltip
+		label.tooltip_text = tooltip
+		control.tooltip_text = tooltip
 	row.add_child(label)
 	row.add_child(control)
 	parent.add_child(row)
