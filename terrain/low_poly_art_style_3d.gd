@@ -12,12 +12,12 @@ extends Resource
 @export var water_surface_layer_color: Color = Color(0.72, 0.90, 0.96, 0.24)
 @export var water_shoreline_color: Color = Color(0.60, 0.83, 0.88, 0.50)
 @export var water_highlight_color: Color = Color(0.86, 0.96, 0.98, 0.40)
-# water_wave_depth: visual depth of the animated surface waves (shading-normal tilt).
-@export_range(0.0, 0.2, 0.005) var water_wave_depth: float = 0.045
-# water_wave_frequency: spatial frequency of the animated surface waves.
-@export_range(0.05, 4.0, 0.05) var water_wave_frequency: float = 0.48
-# water_wave_speed: how fast the shimmer and specular glint animate.
-@export_range(0.0, 3.0, 0.05) var water_wave_speed: float = 0.6
+# water_wave_depth: vertical wave amplitude in world units (literal wave height).
+@export_range(0.0, 1.0, 0.01) var water_wave_depth: float = 0.35
+# water_wave_frequency: spatial frequency of the waves (higher = shorter wavelength).
+@export_range(0.05, 4.0, 0.05) var water_wave_frequency: float = 0.9
+# water_wave_speed: how fast the waves animate.
+@export_range(0.0, 4.0, 0.05) var water_wave_speed: float = 1.5
 @export_range(0.0, 0.45, 0.01) var water_shoreline_band_ratio: float = 0.18
 # Lifts stack the transparent water layers: body (0) < shoreline foam < surface gloss.
 @export_range(0.0, 0.05, 0.001) var water_shoreline_lift: float = 0.010
