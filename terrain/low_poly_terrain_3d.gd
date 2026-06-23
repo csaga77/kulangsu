@@ -146,12 +146,28 @@ const CORNER_SW := 3
 @export var build_on_ready := true
 @export var print_summary := true
 
+@export_group("Wind")
+## Horizontal direction the water waves travel, in degrees. Drive this from
+## weather (e.g. WeatherManager wind_angle_degrees) via set_wind(); the
+## prototype stays decoupled from the weather system.
+@export_range(0.0, 360.0, 1.0) var wind_angle_degrees := 72.0:
+	set(value):
+		wind_angle_degrees = wrapf(value, 0.0, 360.0)
+		_apply_wind_to_water()
+## Normalized wind strength: 0 = near-calm ripple, 1 = full choppy seas. Map a
+## raw weather wind speed into 0..1 before passing it in.
+@export_range(0.0, 1.0, 0.01) var wind_strength := 0.5:
+	set(value):
+		wind_strength = clampf(value, 0.0, 1.0)
+		_apply_wind_to_water()
+
 var m_is_ready := false
 var m_rebuild_queued := false
 var m_sample_grid: Array[Array] = []
 var m_source_size := Vector2i.ZERO
 var m_heightmap_defines_water_area := false
 var m_default_style: LowPolyArtStyle3DScript = null
+var m_water_materials: Array[ShaderMaterial] = []
 
 
 func _ready() -> void:
@@ -566,21 +582,26 @@ func _build_meshes_from_grid(
 
 	# All three transparent water layers run the same wave shader so they
 	# displace together; render_priority keeps a stable composite order (body <
-	# foam < gloss) regardless of camera angle.
+	# foam < gloss) regardless of camera angle. Cache the materials so live wind
+	# updates (set_wind) can retune them without rebuilding the meshes.
+	m_water_materials.clear()
 	var water_material := _build_water_material(
 		"Low Poly Water", water_rendering, true, water_rendering.base_color, water_rendering.material_alpha
 	)
 	water_material.render_priority = 0
+	m_water_materials.append(water_material)
 	_add_mesh_instance("WaterMesh", water_builder, water_material)
 	var water_shoreline_material := _build_water_material(
 		"Low Poly Water Shoreline", water_rendering, false, water_rendering.shoreline_color, 1.0
 	)
 	water_shoreline_material.render_priority = 1
+	m_water_materials.append(water_shoreline_material)
 	_add_mesh_instance("WaterShorelineMesh", water_shoreline_builder, water_shoreline_material)
 	var water_surface_layer_material := _build_water_material(
 		"Low Poly Water Surface Layer", water_rendering, false, water_rendering.surface_layer_color, 1.0
 	)
 	water_surface_layer_material.render_priority = 2
+	m_water_materials.append(water_surface_layer_material)
 	_add_mesh_instance("WaterSurfaceLayerMesh", water_surface_layer_builder, water_surface_layer_material)
 	_add_mesh_instance("LandMesh", land_builder, _build_material("Low Poly Land", _resolve_style_color(&"land_color"), false))
 	_add_mesh_instance("ShorelineMesh", shoreline_builder, _build_material("Low Poly Shoreline", _resolve_style_color(&"shoreline_color"), false))
@@ -1276,7 +1297,34 @@ func _build_water_material(
 	material.set_shader_parameter(&"wave_speed", rendering.wave_speed)
 	material.set_shader_parameter(&"highlight_color", rendering.highlight_color)
 	material.set_shader_parameter(&"highlight_strength", clampf(0.14 + rendering.wave_depth * 0.3, 0.1, 0.4))
+	material.set_shader_parameter(&"wind_dir", _wind_direction())
+	material.set_shader_parameter(&"wind_strength", wind_strength)
 	return material
+
+
+## Set the water wind live without rebuilding meshes. wind_angle is in degrees
+## (horizontal wave travel direction); normalized_strength is 0..1. Intended to
+## be driven by weather (e.g. map WeatherManager wind to these), keeping this
+## prototype decoupled from the weather system.
+func set_wind(wind_angle: float, normalized_strength: float) -> void:
+	# Assigning the exported properties runs their setters, which retune the
+	# cached water materials via _apply_wind_to_water().
+	wind_angle_degrees = wind_angle
+	wind_strength = normalized_strength
+
+
+func _wind_direction() -> Vector2:
+	var radians := deg_to_rad(wind_angle_degrees)
+	return Vector2(cos(radians), sin(radians))
+
+
+func _apply_wind_to_water() -> void:
+	var direction := _wind_direction()
+	for material in m_water_materials:
+		if material == null:
+			continue
+		material.set_shader_parameter(&"wind_dir", direction)
+		material.set_shader_parameter(&"wind_strength", wind_strength)
 
 
 func _build_water_rendering() -> _WaterRendering:

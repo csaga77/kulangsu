@@ -40,8 +40,11 @@ const LANDMARK_PLACEMENTS := [
 @export var art_style: LowPolyArtStyle3DScript
 @export_range(0.0, 1.0, 0.01) var actor_terrain_clearance := 0.04
 
+const WIND_DEMO_ENABLED := true
+
 var m_coordinates: LowPolyWorldCoordinates3DScript = LowPolyWorldCoordinates3DScript.new()
 var m_spawn_mask_pixel := Vector2i.ZERO
+var m_wind_demo_elapsed := 0.0
 
 
 func _ready() -> void:
@@ -56,10 +59,24 @@ func _ready() -> void:
 	call_deferred("_run_smoke_checks")
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	_apply_actor_terrain_elevation()
+	_drive_demo_wind(delta)
+
+
+func _drive_demo_wind(delta: float) -> void:
+	# Stand-in for a weather-driven wind: slowly swing the direction and gust the
+	# strength so the water visibly responds. In production, map WeatherManager
+	# wind (wind_angle_degrees plus a normalized wind speed) onto set_wind(),
+	# keeping LowPolyTerrain3D decoupled from the weather system.
+	if !WIND_DEMO_ENABLED or !is_instance_valid(m_terrain) or !m_terrain.has_method("set_wind"):
+		return
+	m_wind_demo_elapsed += delta
+	var angle := 40.0 + 60.0 * sin(m_wind_demo_elapsed * 0.08)
+	var gust := clampf(0.5 + 0.45 * sin(m_wind_demo_elapsed * 0.35), 0.0, 1.0)
+	m_terrain.call("set_wind", angle, gust)
 
 
 func _run_smoke_checks() -> void:

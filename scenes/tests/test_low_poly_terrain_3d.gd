@@ -60,6 +60,7 @@ func _run_smoke_checks() -> void:
 		_validate_heightmap_source_expansion(failures)
 		_configure_heightmap_smoke(false)
 		_validate_water_rendering(failures)
+		_validate_wind_control(failures)
 		_configure_mask_clipped_smoke()
 		_validate_mask_clipped_generation(failures)
 
@@ -208,6 +209,29 @@ func _validate_surface_layer(surface_layer_mesh: MeshInstance3D, failures: Array
 	var water_height := float(m_terrain.get("water_height"))
 	if height_range.x <= water_height:
 		failures.append("LowPolyTerrain3D WaterSurfaceLayerMesh was not lifted above water height")
+
+
+func _validate_wind_control(failures: Array[String]) -> void:
+	if !m_terrain.has_method("set_wind"):
+		failures.append("LowPolyTerrain3D is missing set_wind")
+		return
+
+	m_terrain.call("set_wind", 123.0, 0.9)
+
+	var water_mesh_names := ["WaterMesh", "WaterShorelineMesh", "WaterSurfaceLayerMesh"]
+	for mesh_name in water_mesh_names:
+		var mesh := m_terrain.get_node_or_null(mesh_name) as MeshInstance3D
+		if mesh == null:
+			continue
+		var material := mesh.material_override as ShaderMaterial
+		if material == null:
+			failures.append("%s is missing its wave ShaderMaterial" % mesh_name)
+			continue
+		if !is_equal_approx(float(material.get_shader_parameter(&"wind_strength")), 0.9):
+			failures.append("set_wind did not update %s wind_strength" % mesh_name)
+		var direction: Vector2 = material.get_shader_parameter(&"wind_dir")
+		if direction.length() <= 0.001:
+			failures.append("set_wind left %s wind_dir unset" % mesh_name)
 
 
 func _configure_mask_clipped_smoke() -> void:

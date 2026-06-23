@@ -38,6 +38,13 @@ uniform float wave_depth : hint_range(0.0, 1.0) = 0.35;
 uniform float wave_frequency : hint_range(0.05, 4.0) = 0.9;
 uniform float wave_speed : hint_range(0.0, 4.0) = 1.5;
 
+// Wind, set live from LowPolyTerrain3D.set_wind() (which weather can drive).
+//   wind_dir      : horizontal (XZ) direction the waves travel.
+//   wind_strength : 0 = near-calm ripple, 1 = full choppy seas. Scales
+//                   amplitude, speed, and choppiness on top of the base tuning.
+uniform vec2 wind_dir = vec2(1.0, 0.0);
+uniform float wind_strength : hint_range(0.0, 1.0) = 0.5;
+
 // Foam/crest brightening on steep wave faces.
 uniform vec4 highlight_color : source_color = vec4(0.86, 0.96, 0.98, 1.0);
 uniform float highlight_strength : hint_range(0.0, 0.6) = 0.22;
@@ -47,24 +54,35 @@ uniform float water_specular : hint_range(0.0, 1.0) = 0.6;
 
 varying vec3 v_world_normal;
 
+vec2 rotate2(vec2 v, float a) {
+	float c = cos(a);
+	float s = sin(a);
+	return vec2(c * v.x - s * v.y, s * v.x + c * v.y);
+}
+
 // Returns (height, dH/dx, dH/dz) for world-space position p at time t.
-// Three crossing directional waves give a choppy, multi-directional surface.
+// Three crossing waves fan out around the wind direction; wind_strength scales
+// amplitude, speed, and high-frequency choppiness on top of the base tuning.
 vec3 wave_field(vec2 p, float t) {
-	vec2 d1 = normalize(vec2(1.0, 0.25));
-	vec2 d2 = normalize(vec2(-0.35, 1.0));
-	vec2 d3 = normalize(vec2(0.8, -0.6));
+	vec2 wd = normalize(wind_dir + vec2(1e-5, 0.0));
+	vec2 d1 = wd;
+	vec2 d2 = rotate2(wd, 0.6);
+	vec2 d3 = rotate2(wd, -0.9);
+
+	float amp = wave_depth * mix(0.15, 1.0, wind_strength);
+	float spd = wave_speed * mix(0.4, 1.0, wind_strength);
 
 	float k1 = 0.55 * wave_frequency;
 	float k2 = 0.90 * wave_frequency;
-	float k3 = 1.50 * wave_frequency;
+	float k3 = 1.50 * wave_frequency * mix(0.8, 1.3, wind_strength);
 
-	float a1 = wave_depth;
-	float a2 = wave_depth * 0.55;
-	float a3 = wave_depth * 0.30;
+	float a1 = amp;
+	float a2 = amp * 0.55;
+	float a3 = amp * mix(0.15, 0.5, wind_strength);
 
-	float p1 = dot(p, d1) * k1 + t * wave_speed;
-	float p2 = dot(p, d2) * k2 + t * wave_speed * 1.3;
-	float p3 = dot(p, d3) * k3 + t * wave_speed * 1.7;
+	float p1 = dot(p, d1) * k1 + t * spd;
+	float p2 = dot(p, d2) * k2 + t * spd * 1.3;
+	float p3 = dot(p, d3) * k3 + t * spd * 1.7;
 
 	float h = a1 * sin(p1) + a2 * sin(p2) + a3 * sin(p3);
 	float dhdx = a1 * cos(p1) * k1 * d1.x + a2 * cos(p2) * k2 * d2.x + a3 * cos(p3) * k3 * d3.x;
