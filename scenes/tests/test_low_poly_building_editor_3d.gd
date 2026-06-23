@@ -2,10 +2,10 @@
 extends Node3D
 
 const BuildingEditor3DScript = preload("res://addons/low_poly_building_editor/building_editor_3d.gd")
-const ProceduralWall3DScript = preload("res://addons/low_poly_building_editor/procedural_wall_3d.gd")
-const ProceduralFloor3DScript = preload("res://addons/low_poly_building_editor/procedural_floor_3d.gd")
-const ProceduralPillar3DScript = preload("res://addons/low_poly_building_editor/procedural_pillar_3d.gd")
-const ProceduralRoof3DScript = preload("res://addons/low_poly_building_editor/procedural_roof_3d.gd")
+const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
+const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
+const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
+const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
 const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
 const TEST_ROOF_ANGLE_DEGREES := 40.0
@@ -72,12 +72,12 @@ func _run_smoke_checks() -> void:
 	get_tree().quit(0 if m_failures.is_empty() else 1)
 
 
-func _validate_wall_mesh(wall: ProceduralWall3DScript) -> void:
+func _validate_wall_mesh(wall: Wall3DScript) -> void:
 	if wall.mesh == null:
-		m_failures.append("ProceduralWall3D did not generate a mesh")
+		m_failures.append("Wall3D did not generate a mesh")
 		return
 	if wall.mesh.get_surface_count() <= 0:
-		m_failures.append("ProceduralWall3D mesh has no surfaces")
+		m_failures.append("Wall3D mesh has no surfaces")
 		return
 	var arrays := wall.mesh.surface_get_arrays(0)
 	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
@@ -85,40 +85,40 @@ func _validate_wall_mesh(wall: ProceduralWall3DScript) -> void:
 	var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
 	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
 	if vertices.is_empty():
-		m_failures.append("ProceduralWall3D mesh has no vertices")
+		m_failures.append("Wall3D mesh has no vertices")
 	if normals.size() != vertices.size():
-		m_failures.append("ProceduralWall3D mesh is missing per-vertex normal data")
+		m_failures.append("Wall3D mesh is missing per-vertex normal data")
 	if colors.size() != vertices.size():
-		m_failures.append("ProceduralWall3D mesh is missing per-vertex color data")
+		m_failures.append("Wall3D mesh is missing per-vertex color data")
 	if !normals.is_empty() and normals[0].dot(Vector3.BACK) < 0.999:
-		m_failures.append("ProceduralWall3D primary outside face normal is inverted")
+		m_failures.append("Wall3D primary outside face normal is inverted")
 	if indices.size() >= 3 and !normals.is_empty():
 		var a := vertices[indices[0]]
 		var b := vertices[indices[1]]
 		var c := vertices[indices[2]]
 		var winding_normal := (b - a).cross(c - a).normalized()
 		if winding_normal.dot(normals[indices[0]]) > -0.999:
-			m_failures.append("ProceduralWall3D triangle winding does not match Godot BoxMesh convention")
+			m_failures.append("Wall3D triangle winding does not match Godot BoxMesh convention")
 	if wall.get_node_or_null("WallCollision") == null:
-		m_failures.append("ProceduralWall3D did not generate collision for editor raycasts")
+		m_failures.append("Wall3D did not generate collision for editor raycasts")
 
 
-func _validate_opening_rules(wall: ProceduralWall3DScript) -> void:
+func _validate_opening_rules(wall: Wall3DScript) -> void:
 	var overlapping_center := Vector2(2.0, 1.1)
 	var open_center := Vector2(3.35, 1.1)
 	if wall.can_place_opening(overlapping_center, Vector2(0.8, 0.8)):
-		m_failures.append("ProceduralWall3D allowed an overlapping window opening")
+		m_failures.append("Wall3D allowed an overlapping window opening")
 	if !wall.can_place_opening(open_center, Vector2(0.6, 0.8)):
-		m_failures.append("ProceduralWall3D rejected a valid non-overlapping opening")
+		m_failures.append("Wall3D rejected a valid non-overlapping opening")
 
 
-func _validate_door_opening_rules(wall: ProceduralWall3DScript) -> void:
+func _validate_door_opening_rules(wall: Wall3DScript) -> void:
 	var door_center := Vector2(0.8, 1.05)
 	var door_size := Vector2(0.9, 2.1)
 	if wall.can_place_opening(door_center, door_size, 0.03, null, 0):
-		m_failures.append("ProceduralWall3D allowed a floor-touching door without base-edge allowance")
+		m_failures.append("Wall3D allowed a floor-touching door without base-edge allowance")
 	if !wall.can_place_opening(door_center, door_size, 0.03, null, 0, true):
-		m_failures.append("ProceduralWall3D rejected a valid floor-touching door opening")
+		m_failures.append("Wall3D rejected a valid floor-touching door opening")
 
 	var door := BuildingOpening3DScript.new() as BuildingOpening3DScript
 	door.name = "DoubleDoorOpening"
@@ -157,7 +157,7 @@ func _validate_window_style_visuals() -> void:
 
 
 func _validate_opening_follows_wall_segment() -> void:
-	var wall := ProceduralWall3DScript.new() as ProceduralWall3DScript
+	var wall := Wall3DScript.new() as Wall3DScript
 	wall.name = "OpeningFollowWall"
 	wall.build_on_ready = false
 	wall.start_point = Vector3.ZERO
@@ -184,12 +184,12 @@ func _validate_opening_follows_wall_segment() -> void:
 	var old_frame := wall.get_segment_local_frame(1)
 	wall.add_child(opening)
 	opening.transform = Transform3D(old_frame.basis, old_frame * opening_anchor)
-	opening.set_meta(ProceduralWall3DScript.SEGMENT_INDEX_META, 1)
+	opening.set_meta(Wall3DScript.SEGMENT_INDEX_META, 1)
 	wall.rebuild_wall_mesh()
 
 	var old_position := opening.position
 	if !wall.move_segment_endpoint(1, 1, Vector3(3.0, 0.0, 2.0)):
-		m_failures.append("ProceduralWall3D could not move an opening-bearing segment endpoint")
+		m_failures.append("Wall3D could not move an opening-bearing segment endpoint")
 		return
 	var new_frame := wall.get_segment_local_frame(1)
 	var local_after := new_frame.affine_inverse() * opening.position
@@ -224,9 +224,9 @@ func _validate_wall_base_height(coordinator: BuildingEditor3DScript) -> void:
 	)
 	coordinator.add_child(elevated)
 	if absf(elevated.start_point.y - base_y) > 0.001 or absf(elevated.end_point.y - base_y) > 0.001:
-		m_failures.append("ProceduralWall3D did not preserve elevated wall base endpoints")
+		m_failures.append("Wall3D did not preserve elevated wall base endpoints")
 	if absf(elevated.position.y - base_y) > 0.001:
-		m_failures.append("ProceduralWall3D did not place wall transform at elevated base height")
+		m_failures.append("Wall3D did not place wall transform at elevated base height")
 
 
 func _validate_floor_node(coordinator: BuildingEditor3DScript) -> void:
@@ -239,17 +239,17 @@ func _validate_floor_node(coordinator: BuildingEditor3DScript) -> void:
 	)
 	coordinator.add_child(floor)
 	if floor.mesh == null:
-		m_failures.append("ProceduralFloor3D did not generate a mesh")
+		m_failures.append("Floor3D did not generate a mesh")
 		return
 	if floor.mesh.get_surface_count() <= 0:
-		m_failures.append("ProceduralFloor3D mesh has no surfaces")
+		m_failures.append("Floor3D mesh has no surfaces")
 		return
 
 	var size := floor.get_floor_size()
 	if absf(size.x - 3.0) > 0.001 or absf(size.y - 2.0) > 0.001:
-		m_failures.append("ProceduralFloor3D returned the wrong footprint size: %s" % str(size))
+		m_failures.append("Floor3D returned the wrong footprint size: %s" % str(size))
 	if floor.position.distance_to(Vector3(0.0, top_y, 12.0)) > 0.001:
-		m_failures.append("ProceduralFloor3D did not place its transform at the floor top corner")
+		m_failures.append("Floor3D did not place its transform at the floor top corner")
 
 	var arrays := floor.mesh.surface_get_arrays(0)
 	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
@@ -257,36 +257,36 @@ func _validate_floor_node(coordinator: BuildingEditor3DScript) -> void:
 	var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
 	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
 	if vertices.is_empty():
-		m_failures.append("ProceduralFloor3D mesh has no vertices")
+		m_failures.append("Floor3D mesh has no vertices")
 	if normals.size() != vertices.size():
-		m_failures.append("ProceduralFloor3D mesh is missing per-vertex normal data")
+		m_failures.append("Floor3D mesh is missing per-vertex normal data")
 	if colors.size() != vertices.size():
-		m_failures.append("ProceduralFloor3D mesh is missing per-vertex color data")
+		m_failures.append("Floor3D mesh is missing per-vertex color data")
 	if !normals.is_empty() and normals[0].dot(Vector3.UP) < 0.999:
-		m_failures.append("ProceduralFloor3D top face normal is not upward")
+		m_failures.append("Floor3D top face normal is not upward")
 	if indices.size() >= 3 and !normals.is_empty():
 		var a := vertices[indices[0]]
 		var b := vertices[indices[1]]
 		var c := vertices[indices[2]]
 		var winding_normal := (b - a).cross(c - a).normalized()
 		if winding_normal.dot(normals[indices[0]]) > -0.999:
-			m_failures.append("ProceduralFloor3D triangle winding does not match Godot BoxMesh convention")
+			m_failures.append("Floor3D triangle winding does not match Godot BoxMesh convention")
 	var min_y := INF
 	var max_y := -INF
 	for vertex in vertices:
 		min_y = minf(min_y, vertex.y)
 		max_y = maxf(max_y, vertex.y)
 	if absf(max_y) > 0.001 or absf(min_y + 0.18) > 0.001:
-		m_failures.append("ProceduralFloor3D did not extend thickness downward from the top surface")
+		m_failures.append("Floor3D did not extend thickness downward from the top surface")
 	if floor.get_node_or_null("FloorCollision") == null:
-		m_failures.append("ProceduralFloor3D did not generate collision for placed floors")
+		m_failures.append("Floor3D did not generate collision for placed floors")
 
 	floor.set_floor_corners(Vector3(1.0, top_y, 12.5), Vector3(4.5, top_y, 15.0))
 	var edited_size := floor.get_floor_size()
 	if absf(edited_size.x - 3.5) > 0.001 or absf(edited_size.y - 2.5) > 0.001:
-		m_failures.append("ProceduralFloor3D did not resize from edited corners: %s" % str(edited_size))
+		m_failures.append("Floor3D did not resize from edited corners: %s" % str(edited_size))
 	if floor.position.distance_to(Vector3(1.0, top_y, 12.5)) > 0.001:
-		m_failures.append("ProceduralFloor3D did not move transform after edited corners")
+		m_failures.append("Floor3D did not move transform after edited corners")
 
 
 func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:
@@ -301,13 +301,13 @@ func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:
 	)
 	coordinator.add_child(pillar)
 	if pillar.mesh == null:
-		m_failures.append("ProceduralPillar3D did not generate a mesh")
+		m_failures.append("Pillar3D did not generate a mesh")
 		return
 	if pillar.mesh.get_surface_count() <= 0:
-		m_failures.append("ProceduralPillar3D mesh has no surfaces")
+		m_failures.append("Pillar3D mesh has no surfaces")
 		return
 	if pillar.position.distance_to(Vector3(6.0, base_y, 12.0)) > 0.001:
-		m_failures.append("ProceduralPillar3D did not place its transform at the base point")
+		m_failures.append("Pillar3D did not place its transform at the base point")
 
 	var arrays := pillar.mesh.surface_get_arrays(0)
 	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
@@ -315,32 +315,32 @@ func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:
 	var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
 	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
 	if vertices.size() != pillar.side_count * 10:
-		m_failures.append("ProceduralPillar3D generated the wrong low-poly vertex count")
+		m_failures.append("Pillar3D generated the wrong low-poly vertex count")
 	if normals.size() != vertices.size():
-		m_failures.append("ProceduralPillar3D mesh is missing per-vertex normal data")
+		m_failures.append("Pillar3D mesh is missing per-vertex normal data")
 	if colors.size() != vertices.size():
-		m_failures.append("ProceduralPillar3D mesh is missing per-vertex color data")
+		m_failures.append("Pillar3D mesh is missing per-vertex color data")
 	if !_has_normal_near(normals, Vector3.UP):
-		m_failures.append("ProceduralPillar3D mesh is missing top normals")
+		m_failures.append("Pillar3D mesh is missing top normals")
 	if !_has_normal_near(normals, Vector3.DOWN):
-		m_failures.append("ProceduralPillar3D mesh is missing bottom normals")
+		m_failures.append("Pillar3D mesh is missing bottom normals")
 	if !_has_horizontal_pillar_normal(normals):
-		m_failures.append("ProceduralPillar3D mesh is missing side normals")
+		m_failures.append("Pillar3D mesh is missing side normals")
 	if indices.size() >= 3 and !normals.is_empty():
 		var a := vertices[indices[0]]
 		var b := vertices[indices[1]]
 		var c := vertices[indices[2]]
 		var winding_normal := (b - a).cross(c - a).normalized()
 		if winding_normal.dot(normals[indices[0]]) > -0.999:
-			m_failures.append("ProceduralPillar3D triangle winding does not match Godot BoxMesh convention")
+			m_failures.append("Pillar3D triangle winding does not match Godot BoxMesh convention")
 	if pillar.get_node_or_null("PillarCollision") == null:
-		m_failures.append("ProceduralPillar3D did not generate collision for placed pillars")
+		m_failures.append("Pillar3D did not generate collision for placed pillars")
 
 	pillar.set_pillar_base_and_radius(Vector3(7.0, base_y, 13.0), 0.5)
 	if pillar.position.distance_to(Vector3(7.0, base_y, 13.0)) > 0.001:
-		m_failures.append("ProceduralPillar3D did not move transform after edited base point")
+		m_failures.append("Pillar3D did not move transform after edited base point")
 	if absf(pillar.pillar_radius - 0.5) > 0.001:
-		m_failures.append("ProceduralPillar3D did not resize edited radius")
+		m_failures.append("Pillar3D did not resize edited radius")
 
 	var square := coordinator.create_pillar_node(
 		Vector3(8.0, base_y, 12.0),
@@ -352,9 +352,9 @@ func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:
 	)
 	coordinator.add_child(square)
 	if square.get_pillar_style() != "square":
-		m_failures.append("ProceduralPillar3D did not store square style")
+		m_failures.append("Pillar3D did not store square style")
 	if _mesh_vertex_count(square) != 40:
-		m_failures.append("ProceduralPillar3D square style did not force four low-poly sides")
+		m_failures.append("Pillar3D square style did not force four low-poly sides")
 
 	var octagonal := coordinator.create_pillar_node(
 		Vector3(9.0, base_y, 12.0),
@@ -366,7 +366,7 @@ func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:
 	)
 	coordinator.add_child(octagonal)
 	if _mesh_vertex_count(octagonal) != 80:
-		m_failures.append("ProceduralPillar3D octagonal style did not force eight low-poly sides")
+		m_failures.append("Pillar3D octagonal style did not force eight low-poly sides")
 
 	var tapered := coordinator.create_pillar_node(
 		Vector3(10.0, base_y, 12.0),
@@ -378,7 +378,7 @@ func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:
 	)
 	coordinator.add_child(tapered)
 	if _pillar_max_radius_at_y(tapered, 2.4) >= _pillar_max_radius_at_y(tapered, 0.0):
-		m_failures.append("ProceduralPillar3D tapered style did not narrow the top radius")
+		m_failures.append("Pillar3D tapered style did not narrow the top radius")
 
 	var custom_radii := coordinator.create_pillar_node(
 		Vector3(10.5, base_y, 12.0),
@@ -395,11 +395,11 @@ func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:
 	)
 	coordinator.add_child(custom_radii)
 	if absf(custom_radii.upper_radius - 0.18) > 0.001:
-		m_failures.append("ProceduralPillar3D did not store custom upper radius")
+		m_failures.append("Pillar3D did not store custom upper radius")
 	if _pillar_max_radius_at_y(custom_radii, 2.4) >= _pillar_max_radius_at_y(custom_radii, 0.0):
-		m_failures.append("ProceduralPillar3D custom upper radius did not narrow the top")
+		m_failures.append("Pillar3D custom upper radius did not narrow the top")
 	if absf(_pillar_max_radius_at_y(custom_radii, 2.4) - 0.18) > 0.001:
-		m_failures.append("ProceduralPillar3D custom upper radius did not generate the requested top radius")
+		m_failures.append("Pillar3D custom upper radius did not generate the requested top radius")
 
 	var rimmed := coordinator.create_pillar_node(
 		Vector3(11.0, base_y, 12.0),
@@ -415,19 +415,19 @@ func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:
 	)
 	coordinator.add_child(rimmed)
 	if _mesh_vertex_count(rimmed) != rimmed.side_count * 26:
-		m_failures.append("ProceduralPillar3D rimmed style did not add expected rim geometry")
+		m_failures.append("Pillar3D rimmed style did not add expected rim geometry")
 	if _pillar_max_radius_at_y(rimmed, 0.0) <= rimmed.pillar_radius:
-		m_failures.append("ProceduralPillar3D lower rim did not expand the base radius")
+		m_failures.append("Pillar3D lower rim did not expand the base radius")
 	if _pillar_max_radius_at_y(rimmed, 2.4) <= rimmed.pillar_radius:
-		m_failures.append("ProceduralPillar3D upper rim did not expand the top radius")
+		m_failures.append("Pillar3D upper rim did not expand the top radius")
 	if rimmed.get_outer_radius() <= rimmed.pillar_radius:
-		m_failures.append("ProceduralPillar3D outer radius did not include rim outsets")
+		m_failures.append("Pillar3D outer radius did not include rim outsets")
 	var rim_collision_shape := rimmed.get_node_or_null("PillarCollision/CollisionShape3D") as CollisionShape3D
 	var rim_collision: CylinderShape3D = null
 	if rim_collision_shape != null:
 		rim_collision = rim_collision_shape.shape as CylinderShape3D
 	if rim_collision == null or rim_collision.radius + 0.001 < rimmed.get_outer_radius():
-		m_failures.append("ProceduralPillar3D rimmed collision did not cover the outer rim")
+		m_failures.append("Pillar3D rimmed collision did not cover the outer rim")
 
 
 func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
@@ -443,13 +443,13 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	)
 	coordinator.add_child(roof)
 	if roof.mesh == null:
-		m_failures.append("ProceduralRoof3D did not generate a mesh")
+		m_failures.append("Roof3D did not generate a mesh")
 		return
 	if roof.mesh.get_surface_count() <= 0:
-		m_failures.append("ProceduralRoof3D mesh has no surfaces")
+		m_failures.append("Roof3D mesh has no surfaces")
 		return
 	if roof.position.distance_to(Vector3(12.0, base_y, 12.0)) > 0.001:
-		m_failures.append("ProceduralRoof3D did not place its transform at the minimum footprint corner")
+		m_failures.append("Roof3D did not place its transform at the minimum footprint corner")
 
 	var arrays := roof.mesh.surface_get_arrays(0)
 	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
@@ -457,73 +457,73 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
 	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
 	if vertices.size() != 48:
-		m_failures.append("ProceduralRoof3D gable style generated the wrong low-poly vertex count")
+		m_failures.append("Roof3D gable style generated the wrong low-poly vertex count")
 	if normals.size() != vertices.size():
-		m_failures.append("ProceduralRoof3D mesh is missing per-vertex normal data")
+		m_failures.append("Roof3D mesh is missing per-vertex normal data")
 	if colors.size() != vertices.size():
-		m_failures.append("ProceduralRoof3D mesh is missing per-vertex color data")
+		m_failures.append("Roof3D mesh is missing per-vertex color data")
 	if !_has_roof_upward_normal(normals):
-		m_failures.append("ProceduralRoof3D mesh is missing upward roof normals")
+		m_failures.append("Roof3D mesh is missing upward roof normals")
 	if !_has_roof_downward_normal(normals):
-		m_failures.append("ProceduralRoof3D mesh is missing underside normals")
+		m_failures.append("Roof3D mesh is missing underside normals")
 	if !_roof_underside_normals_are_down(roof):
-		m_failures.append("ProceduralRoof3D underside triangle normals are inverted")
+		m_failures.append("Roof3D underside triangle normals are inverted")
 	if !_has_horizontal_pillar_normal(normals):
-		m_failures.append("ProceduralRoof3D mesh is missing fascia normals")
+		m_failures.append("Roof3D mesh is missing fascia normals")
 	if indices.size() >= 3 and !normals.is_empty():
 		var a := vertices[indices[0]]
 		var b := vertices[indices[1]]
 		var c := vertices[indices[2]]
 		var winding_normal := (b - a).cross(c - a).normalized()
 		if winding_normal.dot(normals[indices[0]]) > -0.999:
-			m_failures.append("ProceduralRoof3D triangle winding does not match Godot BoxMesh convention")
+			m_failures.append("Roof3D triangle winding does not match Godot BoxMesh convention")
 	if roof.get_node_or_null("RoofCollision") == null:
-		m_failures.append("ProceduralRoof3D did not generate collision for placed roofs")
-	if roof.get_node_or_null(ProceduralRoof3DScript.TRIANGLE_WIREFRAME_NODE_NAME) != null:
-		m_failures.append("ProceduralRoof3D generated a triangle wireframe when debug was disabled")
+		m_failures.append("Roof3D did not generate collision for placed roofs")
+	if roof.get_node_or_null(Roof3DScript.TRIANGLE_WIREFRAME_NODE_NAME) != null:
+		m_failures.append("Roof3D generated a triangle wireframe when debug was disabled")
 	roof.debug_show_triangle_wireframe = true
 	roof.rebuild_roof_mesh()
 	if !_roof_wireframe_matches_triangle_indices(roof):
-		m_failures.append("ProceduralRoof3D debug triangle wireframe did not match generated triangles")
+		m_failures.append("Roof3D debug triangle wireframe did not match generated triangles")
 	roof.debug_show_triangle_wireframe = false
 	roof.rebuild_roof_mesh()
-	if roof.get_node_or_null(ProceduralRoof3DScript.TRIANGLE_WIREFRAME_NODE_NAME) != null:
-		m_failures.append("ProceduralRoof3D did not clear debug triangle wireframe when disabled")
+	if roof.get_node_or_null(Roof3DScript.TRIANGLE_WIREFRAME_NODE_NAME) != null:
+		m_failures.append("Roof3D did not clear debug triangle wireframe when disabled")
 	if roof.get_roof_bounds_min().distance_to(Vector3(-0.25, -0.16, -0.25)) > 0.001:
-		m_failures.append("ProceduralRoof3D bounds did not include overhang and thickness")
-	var expected_roof_ridge_height := ProceduralRoof3DScript.gable_height_for_angle_degrees(
+		m_failures.append("Roof3D bounds did not include overhang and thickness")
+	var expected_roof_ridge_height := Roof3DScript.gable_height_for_angle_degrees(
 		roof.get_roof_size().y,
 		roof.roof_overhang,
 		roof.get_roof_angle_degrees()
 	)
 	if roof.get_roof_bounds_max().distance_to(Vector3(4.25, expected_roof_ridge_height, 3.25)) > 0.001:
-		m_failures.append("ProceduralRoof3D bounds did not include overhang and gable ridge height")
+		m_failures.append("Roof3D bounds did not include overhang and gable ridge height")
 	roof.roof_thickness = 0.38
 	roof.rebuild_roof_mesh()
 	if absf(roof.get_roof_bounds_min().y + 0.38) > 0.001:
-		m_failures.append("ProceduralRoof3D bounds did not react to roof thickness changes")
+		m_failures.append("Roof3D bounds did not react to roof thickness changes")
 	if !_has_mesh_vertex_y_near(roof, -0.38, 0.001):
-		m_failures.append("ProceduralRoof3D mesh did not react to roof thickness changes")
+		m_failures.append("Roof3D mesh did not react to roof thickness changes")
 	roof.roof_thickness = 0.16
 	roof.rebuild_roof_mesh()
 
 	roof.set_roof_corners(Vector3(13.0, base_y, 12.5), Vector3(17.0, base_y, 16.0))
 	if roof.position.distance_to(Vector3(13.0, base_y, 12.5)) > 0.001:
-		m_failures.append("ProceduralRoof3D did not move transform after edited corners")
+		m_failures.append("Roof3D did not move transform after edited corners")
 	if roof.get_roof_size().distance_to(Vector2(4.0, 3.5)) > 0.001:
-		m_failures.append("ProceduralRoof3D did not resize edited footprint")
+		m_failures.append("Roof3D did not resize edited footprint")
 	var old_roof_center := roof.get_roof_center_point()
 	roof.set_roof_rotation_around_center(90.0)
 	if absf(angle_difference(deg_to_rad(roof.roof_rotation_degrees), deg_to_rad(90.0))) > deg_to_rad(0.5):
-		m_failures.append("ProceduralRoof3D did not store edited roof rotation")
+		m_failures.append("Roof3D did not store edited roof rotation")
 	if roof.get_roof_center_point().distance_to(old_roof_center) > 0.001:
-		m_failures.append("ProceduralRoof3D did not preserve footprint center when rotating")
+		m_failures.append("Roof3D did not preserve footprint center when rotating")
 	if roof.transform.basis.is_equal_approx(Basis.IDENTITY):
-		m_failures.append("ProceduralRoof3D did not apply rotation to its transform")
+		m_failures.append("Roof3D did not apply rotation to its transform")
 
 	var drawn_base_start := Vector3(18.0, base_y, 16.0)
 	var drawn_base_end := Vector3(21.0, base_y, 20.0)
-	var drawn_base_points := ProceduralRoof3DScript.roof_corners_from_base_points(
+	var drawn_base_points := Roof3DScript.roof_corners_from_base_points(
 		drawn_base_start,
 		drawn_base_end,
 		45.0
@@ -540,9 +540,9 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	)
 	coordinator.add_child(drawn_base_roof)
 	if !_roof_base_has_corner_near(drawn_base_roof, drawn_base_start):
-		m_failures.append("ProceduralRoof3D rotated draw base did not preserve the first draw point")
+		m_failures.append("Roof3D rotated draw base did not preserve the first draw point")
 	if !_roof_base_has_corner_near(drawn_base_roof, drawn_base_end):
-		m_failures.append("ProceduralRoof3D rotated draw base did not preserve the current draw point")
+		m_failures.append("Roof3D rotated draw base did not preserve the current draw point")
 
 	var flat := coordinator.create_roof_node(
 		Vector3(18.0, base_y, 12.0),
@@ -555,13 +555,13 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	)
 	coordinator.add_child(flat)
 	if flat.get_roof_style() != "flat":
-		m_failures.append("ProceduralRoof3D did not store flat style")
+		m_failures.append("Roof3D did not store flat style")
 	if _mesh_vertex_count(flat) != 28:
-		m_failures.append("ProceduralRoof3D flat style generated the wrong vertex count")
+		m_failures.append("Roof3D flat style generated the wrong vertex count")
 	var flat_arrays := flat.mesh.surface_get_arrays(0)
 	var flat_normals: PackedVector3Array = flat_arrays[Mesh.ARRAY_NORMAL]
 	if !_has_normal_near(flat_normals, Vector3.UP):
-		m_failures.append("ProceduralRoof3D flat style is missing a flat top normal")
+		m_failures.append("Roof3D flat style is missing a flat top normal")
 
 	var shed := coordinator.create_roof_node(
 		Vector3(22.0, base_y, 12.0),
@@ -574,16 +574,16 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	)
 	coordinator.add_child(shed)
 	if _mesh_vertex_count(shed) != 28:
-		m_failures.append("ProceduralRoof3D shed style generated the wrong vertex count")
+		m_failures.append("Roof3D shed style generated the wrong vertex count")
 	if !_has_roof_sloped_normal(shed):
-		m_failures.append("ProceduralRoof3D shed style is missing sloped roof normals")
-	var expected_shed_height := ProceduralRoof3DScript.shed_height_for_angle_degrees(
+		m_failures.append("Roof3D shed style is missing sloped roof normals")
+	var expected_shed_height := Roof3DScript.shed_height_for_angle_degrees(
 		shed.get_roof_size().y,
 		shed.roof_overhang,
 		shed.get_roof_angle_degrees()
 	)
 	if !_has_mesh_vertex_y_near(shed, expected_shed_height, 0.001):
-		m_failures.append("ProceduralRoof3D shed style did not calculate height from angle degrees")
+		m_failures.append("Roof3D shed style did not calculate height from angle degrees")
 
 	var hip := coordinator.create_roof_node(
 		Vector3(26.0, base_y, 12.0),
@@ -596,33 +596,33 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	)
 	coordinator.add_child(hip)
 	if _mesh_vertex_count(hip) != 52:
-		m_failures.append("ProceduralRoof3D hip style generated the wrong vertex count")
+		m_failures.append("Roof3D hip style generated the wrong vertex count")
 	if !_has_roof_sloped_normal(hip):
-		m_failures.append("ProceduralRoof3D hip style is missing sloped roof normals")
-	var expected_hip_height := ProceduralRoof3DScript.hip_height_for_angle_degrees(
+		m_failures.append("Roof3D hip style is missing sloped roof normals")
+	var expected_hip_height := Roof3DScript.hip_height_for_angle_degrees(
 		hip.get_roof_size(),
 		hip.roof_overhang,
 		hip.get_roof_angle_degrees()
 	)
 	if !_has_mesh_vertex_y_near(hip, expected_hip_height, 0.001):
-		m_failures.append("ProceduralRoof3D hip style did not calculate height from angle degrees")
-	var hip_ridge_points := ProceduralRoof3DScript.hip_roof_ridge_points_for_size(
+		m_failures.append("Roof3D hip style did not calculate height from angle degrees")
+	var hip_ridge_points := Roof3DScript.hip_roof_ridge_points_for_size(
 		hip.get_roof_size(),
 		hip.roof_overhang,
 		hip.get_roof_angle_degrees()
 	)
 	if hip_ridge_points.size() != 2:
-		m_failures.append("ProceduralRoof3D hip style did not report a ridge line")
+		m_failures.append("Roof3D hip style did not report a ridge line")
 	else:
 		if absf(hip_ridge_points[0].y - hip_ridge_points[1].y) > 0.001:
-			m_failures.append("ProceduralRoof3D hip ridge is not horizontal")
+			m_failures.append("Roof3D hip ridge is not horizontal")
 		if hip_ridge_points[0].distance_to(hip_ridge_points[1]) <= 0.001:
-			m_failures.append("ProceduralRoof3D rectangular hip roof collapsed to one apex")
+			m_failures.append("Roof3D rectangular hip roof collapsed to one apex")
 		if !_has_mesh_vertex_near(hip.mesh as ArrayMesh, hip_ridge_points[0], 0.001):
-			m_failures.append("ProceduralRoof3D hip mesh is missing the first ridge endpoint")
+			m_failures.append("Roof3D hip mesh is missing the first ridge endpoint")
 		if !_has_mesh_vertex_near(hip.mesh as ArrayMesh, hip_ridge_points[1], 0.001):
-			m_failures.append("ProceduralRoof3D hip mesh is missing the second ridge endpoint")
-	var hip_faces := ProceduralRoof3DScript.roof_top_faces_for_style(
+			m_failures.append("Roof3D hip mesh is missing the second ridge endpoint")
+	var hip_faces := Roof3DScript.roof_top_faces_for_style(
 		"hip",
 		hip.get_roof_size(),
 		hip.roof_overhang,
@@ -638,9 +638,9 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 			trapezoid_hip_faces += 1
 		var hip_face_angle := _roof_face_angle_degrees(PackedVector3Array(hip_face["plane"]))
 		if absf(hip_face_angle - TEST_ROOF_ALT_ANGLE_DEGREES) > 0.01:
-			m_failures.append("ProceduralRoof3D hip face angle changed from configured degrees")
+			m_failures.append("Roof3D hip face angle changed from configured degrees")
 	if triangular_hip_faces != 2 or trapezoid_hip_faces != 2:
-		m_failures.append("ProceduralRoof3D hip style did not generate two triangular and two trapezoid faces")
+		m_failures.append("Roof3D hip style did not generate two triangular and two trapezoid faces")
 
 	var half_hip := coordinator.create_roof_node(
 		Vector3(46.0, base_y, 12.0),
@@ -656,32 +656,32 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	)
 	coordinator.add_child(half_hip)
 	if _mesh_vertex_count(half_hip) != 100:
-		m_failures.append("ProceduralRoof3D half-hip style generated the wrong vertex count")
+		m_failures.append("Roof3D half-hip style generated the wrong vertex count")
 	if !_roof_surface_normals_are_not_down(half_hip):
-		m_failures.append("ProceduralRoof3D half-hip visible surface normals point downward")
-	var plain_half_hip_ridge := ProceduralRoof3DScript.hip_roof_ridge_points_for_size(
+		m_failures.append("Roof3D half-hip visible surface normals point downward")
+	var plain_half_hip_ridge := Roof3DScript.hip_roof_ridge_points_for_size(
 		half_hip.get_roof_size(),
 		half_hip.roof_overhang,
 		half_hip.get_roof_angle_degrees()
 	)
-	var clipped_half_hip_ridge := ProceduralRoof3DScript.hip_roof_ridge_points_for_size(
+	var clipped_half_hip_ridge := Roof3DScript.hip_roof_ridge_points_for_size(
 		half_hip.get_roof_size(),
 		half_hip.roof_overhang,
 		half_hip.get_roof_angle_degrees(),
 		half_hip.hip_gable_height
 	)
 	if clipped_half_hip_ridge.size() != 2:
-		m_failures.append("ProceduralRoof3D half-hip style did not report a ridge line")
+		m_failures.append("Roof3D half-hip style did not report a ridge line")
 	else:
 		if clipped_half_hip_ridge[0].x >= plain_half_hip_ridge[0].x:
-			m_failures.append("ProceduralRoof3D half-hip did not extend the ridge start")
+			m_failures.append("Roof3D half-hip did not extend the ridge start")
 		if clipped_half_hip_ridge[1].x <= plain_half_hip_ridge[1].x:
-			m_failures.append("ProceduralRoof3D half-hip did not extend the ridge end")
+			m_failures.append("Roof3D half-hip did not extend the ridge end")
 		if !_has_mesh_vertex_near(half_hip.mesh as ArrayMesh, clipped_half_hip_ridge[0], 0.001):
-			m_failures.append("ProceduralRoof3D half-hip mesh is missing the first extended ridge endpoint")
+			m_failures.append("Roof3D half-hip mesh is missing the first extended ridge endpoint")
 		if !_has_mesh_vertex_near(half_hip.mesh as ArrayMesh, clipped_half_hip_ridge[1], 0.001):
-			m_failures.append("ProceduralRoof3D half-hip mesh is missing the second extended ridge endpoint")
-	var half_hip_height := ProceduralRoof3DScript.hip_height_for_angle_degrees(
+			m_failures.append("Roof3D half-hip mesh is missing the second extended ridge endpoint")
+	var half_hip_height := Roof3DScript.hip_height_for_angle_degrees(
 		half_hip.get_roof_size(),
 		half_hip.roof_overhang,
 		half_hip.get_roof_angle_degrees()
@@ -694,12 +694,12 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		half_hip_center_z - half_hip_extension
 	)
 	if !_has_mesh_vertex_near(half_hip.mesh as ArrayMesh, half_hip_gable_base, 0.001):
-		m_failures.append("ProceduralRoof3D half-hip mesh is missing the clipped gable base")
+		m_failures.append("Roof3D half-hip mesh is missing the clipped gable base")
 	if absf(half_hip.get_roof_height_at_local_render_point(Vector2(clipped_half_hip_ridge[0].x, half_hip_center_z)) - half_hip_height) > 0.001:
-		m_failures.append("ProceduralRoof3D half-hip ridge height changed from the hip peak")
+		m_failures.append("Roof3D half-hip ridge height changed from the hip peak")
 	if absf(half_hip.get_roof_height_at_local_render_point(Vector2(half_hip_gable_base.x, half_hip_gable_base.z)) - half_hip_gable_base.y) > 0.001:
-		m_failures.append("ProceduralRoof3D half-hip clipped gable base does not follow configured drop")
-	var half_hip_faces := ProceduralRoof3DScript.roof_top_faces_for_style(
+		m_failures.append("Roof3D half-hip clipped gable base does not follow configured drop")
+	var half_hip_faces := Roof3DScript.roof_top_faces_for_style(
 		"hip",
 		half_hip.get_roof_size(),
 		half_hip.roof_overhang,
@@ -715,9 +715,9 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		else:
 			half_hip_sloped_faces += 1
 			if absf(half_hip_face_angle - TEST_ROOF_ALT_ANGLE_DEGREES) > 0.01:
-				m_failures.append("ProceduralRoof3D half-hip sloped face angle changed from configured degrees")
+				m_failures.append("Roof3D half-hip sloped face angle changed from configured degrees")
 	if half_hip_sloped_faces != 4 or half_hip_vertical_faces != 2:
-		m_failures.append("ProceduralRoof3D half-hip did not generate four sloped faces and two clipped gables")
+		m_failures.append("Roof3D half-hip did not generate four sloped faces and two clipped gables")
 
 	var angle_roof := coordinator.create_roof_node(
 		Vector3(40.0, base_y, 16.0),
@@ -738,17 +738,17 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		angle_roof.roof_height,
 		preserved_angle_covers
 	)
-	var expected_resized_ridge_height := ProceduralRoof3DScript.gable_height_for_angle_degrees(
+	var expected_resized_ridge_height := Roof3DScript.gable_height_for_angle_degrees(
 		angle_roof.get_roof_size().y,
 		angle_roof.roof_overhang,
 		original_angle_degrees
 	)
 	if absf(angle_roof.get_roof_angle_degrees() - original_angle_degrees) > 0.001:
-		m_failures.append("ProceduralRoof3D gable angle changed after depth-preserving resize")
+		m_failures.append("Roof3D gable angle changed after depth-preserving resize")
 	if !is_equal_approx(angle_roof.roof_height, original_angle_degrees):
-		m_failures.append("ProceduralRoof3D did not keep the stored gable angle")
+		m_failures.append("Roof3D did not keep the stored gable angle")
 	if !_has_mesh_vertex_y_near(angle_roof, expected_resized_ridge_height, 0.001):
-		m_failures.append("ProceduralRoof3D did not recalculate gable ridge height from angle degrees")
+		m_failures.append("Roof3D did not recalculate gable ridge height from angle degrees")
 
 	var merge_color := Color(0.42, 0.30, 0.22, 1.0)
 	var merge_target := coordinator.create_roof_node(
@@ -774,7 +774,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		0.0
 	)
 	if merge.is_empty():
-		m_failures.append("ProceduralRoof3D did not detect an intersecting roof merge target")
+		m_failures.append("Roof3D did not detect an intersecting roof merge target")
 	else:
 		var covered_rects: Array[Rect2] = []
 		for rect in merge["covered_rects"]:
@@ -786,14 +786,14 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		var expected_overlap := Rect2(Vector2(-0.25, -0.25), Vector2(1.5, 2.5))
 		var covered_overlap_area := _covered_polygon_area(covered_polygons)
 		if covered_overlap_area <= 0.001:
-			m_failures.append("ProceduralRoof3D merge cover did not include any expected under-roof area")
+			m_failures.append("Roof3D merge cover did not include any expected under-roof area")
 		if covered_overlap_area >= expected_overlap.get_area() - 0.001:
-			m_failures.append("ProceduralRoof3D merge cover removed the whole overlap instead of only the under-roof area")
+			m_failures.append("Roof3D merge cover removed the whole overlap instead of only the under-roof area")
 		if covered_polygons.is_empty():
-			m_failures.append("ProceduralRoof3D merge cover did not report polygon regions")
+			m_failures.append("Roof3D merge cover did not report polygon regions")
 		if covered_polygons.size() > 8 or _polygon_vertex_count(covered_polygons) > 48:
 			m_failures.append(
-				"ProceduralRoof3D merge cover created too many small polygon pieces: %d polygons, %d vertices"
+				"Roof3D merge cover created too many small polygon pieces: %d polygons, %d vertices"
 				% [covered_polygons.size(), _polygon_vertex_count(covered_polygons)]
 			)
 		if !_cover_polygons_sample_under_other_roof(
@@ -806,7 +806,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 			0.0,
 			coordinator.get_roof_nodes()
 		):
-			m_failures.append("ProceduralRoof3D merge cover removed sampled roof surface above another roof")
+			m_failures.append("Roof3D merge cover removed sampled roof surface above another roof")
 		var clipped_merge_roof := coordinator.create_roof_node(
 			merge_candidate_start,
 			merge_candidate_end,
@@ -818,11 +818,11 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		)
 		clipped_merge_roof.set_covered_regions(covered_rects, typed_covered_polygons)
 		if !_has_internal_roof_fascia_facing_cover(clipped_merge_roof, typed_covered_polygons):
-			m_failures.append("ProceduralRoof3D clipped roof intersection-cut normals point the wrong way")
+			m_failures.append("Roof3D clipped roof intersection-cut normals point the wrong way")
 		if !_roof_underside_normals_are_down(clipped_merge_roof):
-			m_failures.append("ProceduralRoof3D clipped roof underside normals are inverted")
+			m_failures.append("Roof3D clipped roof underside normals are inverted")
 		if !_has_mesh_vertex_y_near(clipped_merge_roof, -0.42, 0.001):
-			m_failures.append("ProceduralRoof3D clipped roof mesh did not use configured thickness")
+			m_failures.append("Roof3D clipped roof mesh did not use configured thickness")
 		clipped_merge_roof.free()
 
 	var angle_merge := coordinator.find_roof_merge_target(
@@ -836,7 +836,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		0.0
 	)
 	if angle_merge.is_empty():
-		m_failures.append("ProceduralRoof3D did not clip gables with matching angle")
+		m_failures.append("Roof3D did not clip gables with matching angle")
 	var angle_mismatch := coordinator.find_roof_merge_target(
 		Vector3(33.0, base_y, 13.0),
 		Vector3(36.0, base_y, 17.0),
@@ -848,7 +848,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		0.0
 	)
 	if angle_mismatch.is_empty():
-		m_failures.append("ProceduralRoof3D did not clip gables with different angles")
+		m_failures.append("Roof3D did not clip gables with different angles")
 
 	var clipped := coordinator.create_roof_node(
 		Vector3(37.0, base_y, 12.0),
@@ -863,11 +863,11 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	clipped.set_covered_rects(clipped_covers)
 	coordinator.add_child(clipped)
 	if clipped.get_covered_rects().size() != 1:
-		m_failures.append("ProceduralRoof3D did not store covered roof footprint areas")
+		m_failures.append("Roof3D did not store covered roof footprint areas")
 	if clipped.get_visible_footprint_rects().size() != 4:
-		m_failures.append("ProceduralRoof3D did not report the visible clipped footprint pieces")
+		m_failures.append("Roof3D did not report the visible clipped footprint pieces")
 	if _mesh_vertex_count(clipped) <= 28:
-		m_failures.append("ProceduralRoof3D did not split clipped roof geometry into visible pieces")
+		m_failures.append("Roof3D did not split clipped roof geometry into visible pieces")
 
 	var clipped_gable := coordinator.create_roof_node(
 		Vector3(37.0, base_y, 16.0),
@@ -882,14 +882,14 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	clipped_gable.set_covered_rects(clipped_gable_covers)
 	coordinator.add_child(clipped_gable)
 	if !_has_roof_sloped_normal(clipped_gable):
-		m_failures.append("ProceduralRoof3D clipped gable lost its sloped roof normals")
-	var clipped_gable_ridge_height := ProceduralRoof3DScript.gable_height_for_angle_degrees(
+		m_failures.append("Roof3D clipped gable lost its sloped roof normals")
+	var clipped_gable_ridge_height := Roof3DScript.gable_height_for_angle_degrees(
 		clipped_gable.get_roof_size().y,
 		clipped_gable.roof_overhang,
 		clipped_gable.get_roof_angle_degrees()
 	)
 	if !_has_mesh_vertex_y_near(clipped_gable, clipped_gable_ridge_height, 0.001):
-		m_failures.append("ProceduralRoof3D clipped gable lost its ridge-height vertices")
+		m_failures.append("Roof3D clipped gable lost its ridge-height vertices")
 
 	var mismatch := coordinator.find_roof_merge_target(
 		Vector3(33.0, base_y, 14.0),
@@ -902,7 +902,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		0.0
 	)
 	if mismatch.is_empty():
-		m_failures.append("ProceduralRoof3D did not clip roofs with different styles")
+		m_failures.append("Roof3D did not clip roofs with different styles")
 	var rotation_mismatch := coordinator.find_roof_merge_target(
 		Vector3(33.0, base_y, 14.0),
 		Vector3(36.0, base_y, 17.0),
@@ -914,16 +914,16 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		90.0
 	)
 	if rotation_mismatch.is_empty():
-		m_failures.append("ProceduralRoof3D did not clip roofs with different rotations")
+		m_failures.append("Roof3D did not clip roofs with different rotations")
 	else:
 		var rotation_polygons: Array = rotation_mismatch["covered_polygons"]
 		if rotation_polygons.is_empty():
-			m_failures.append("ProceduralRoof3D rotated intersection did not report polygon cover regions")
+			m_failures.append("Roof3D rotated intersection did not report polygon cover regions")
 		if !_cover_polygons_have_non_axis_edge(rotation_polygons):
-			m_failures.append("ProceduralRoof3D rotated intersection kept a zigzag axis-aligned cover edge")
+			m_failures.append("Roof3D rotated intersection kept a zigzag axis-aligned cover edge")
 		if rotation_polygons.size() > 8 or _polygon_vertex_count(rotation_polygons) > 48:
 			m_failures.append(
-				"ProceduralRoof3D rotated intersection created too many small polygon pieces: %d polygons, %d vertices"
+				"Roof3D rotated intersection created too many small polygon pieces: %d polygons, %d vertices"
 				% [rotation_polygons.size(), _polygon_vertex_count(rotation_polygons)]
 			)
 	var near_rotation_mismatch := coordinator.find_roof_merge_target(
@@ -937,7 +937,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		0.25
 	)
 	if near_rotation_mismatch.is_empty():
-		m_failures.append("ProceduralRoof3D did not clip roofs with near-but-not-equal rotations")
+		m_failures.append("Roof3D did not clip roofs with near-but-not-equal rotations")
 
 	var rotated_merge_target := coordinator.create_roof_node(
 		Vector3(40.0, base_y, 12.0),
@@ -963,15 +963,15 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		90.0
 	)
 	if rotated_merge.is_empty():
-		m_failures.append("ProceduralRoof3D did not detect an intersecting rotated roof merge target")
+		m_failures.append("Roof3D did not detect an intersecting rotated roof merge target")
 	else:
 		if rotated_merge["roof"] != rotated_merge_target:
-			m_failures.append("ProceduralRoof3D rotated merge target selected the wrong roof")
+			m_failures.append("Roof3D rotated merge target selected the wrong roof")
 		if absf(angle_difference(deg_to_rad(float(rotated_merge["rotation_degrees"])), deg_to_rad(90.0))) > deg_to_rad(0.5):
-			m_failures.append("ProceduralRoof3D rotated merge did not preserve roof rotation")
+			m_failures.append("Roof3D rotated merge did not preserve roof rotation")
 		var rotated_covers: Array = rotated_merge["covered_rects"]
 		if rotated_covers.is_empty():
-			m_failures.append("ProceduralRoof3D rotated merge did not report covered roof geometry")
+			m_failures.append("Roof3D rotated merge did not report covered roof geometry")
 
 	var full_cover_target := coordinator.create_roof_node(
 		Vector3(50.0, base_y, 20.0),
@@ -994,7 +994,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		0.0
 	)
 	if full_cover.is_empty():
-		m_failures.append("ProceduralRoof3D did not detect fully covered matching roof geometry")
+		m_failures.append("Roof3D did not detect fully covered matching roof geometry")
 	else:
 		var full_cover_rects: Array[Rect2] = []
 		var full_cover_polygons: Array[PackedVector2Array] = []
@@ -1011,7 +1011,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 			full_cover_rects,
 			full_cover_polygons
 		):
-			m_failures.append("ProceduralRoof3D treated fully covered roof geometry as visible")
+			m_failures.append("Roof3D treated fully covered roof geometry as visible")
 		var duplicate_full_cover := coordinator.create_roof_node(
 			Vector3(50.0, base_y, 20.0),
 			Vector3(54.0, base_y, 24.0),
@@ -1023,7 +1023,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		)
 		duplicate_full_cover.set_covered_regions(full_cover_rects, full_cover_polygons)
 		if duplicate_full_cover.has_visible_roof_geometry():
-			m_failures.append("ProceduralRoof3D generated visible mesh for a fully covered roof")
+			m_failures.append("Roof3D generated visible mesh for a fully covered roof")
 		duplicate_full_cover.free()
 
 	var touch_target := coordinator.create_roof_node(
@@ -1047,12 +1047,12 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		0.0
 	)
 	if touch_merge.is_empty():
-		m_failures.append("ProceduralRoof3D did not merge touching roof overhang geometry")
+		m_failures.append("Roof3D did not merge touching roof overhang geometry")
 	else:
 		var touch_values: Array = touch_merge["covered_rects"]
 		var touch_cover: Rect2 = touch_values[0]
 		if absf(touch_cover.position.x + 0.25) > 0.001 or absf(touch_cover.size.x - 0.5) > 0.001:
-			m_failures.append("ProceduralRoof3D touching overhang cover has the wrong X range")
+			m_failures.append("Roof3D touching overhang cover has the wrong X range")
 
 	var gap_merge := coordinator.find_roof_merge_target(
 		Vector3(54.3, base_y, 12.0),
@@ -1065,12 +1065,12 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		0.0
 	)
 	if gap_merge.is_empty():
-		m_failures.append("ProceduralRoof3D did not merge separated but overlapping roof overhang geometry")
+		m_failures.append("Roof3D did not merge separated but overlapping roof overhang geometry")
 	else:
 		var gap_values: Array = gap_merge["covered_rects"]
 		var gap_cover: Rect2 = gap_values[0]
 		if absf(gap_cover.position.x + 0.25) > 0.001 or absf(gap_cover.size.x - 0.2) > 0.001:
-			m_failures.append("ProceduralRoof3D separated overhang cover has the wrong X range")
+			m_failures.append("Roof3D separated overhang cover has the wrong X range")
 
 	var stale_covering := coordinator.create_roof_node(
 		Vector3(60.0, base_y, 12.0),
@@ -1110,11 +1110,11 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	stale_clipped.set_covered_regions(stale_rects, stale_polygons)
 	coordinator.add_child(stale_clipped)
 	if stale_clipped.get_covered_rects().is_empty():
-		m_failures.append("ProceduralRoof3D stale-cover setup did not create an initial clip")
+		m_failures.append("Roof3D stale-cover setup did not create an initial clip")
 	stale_covering.set_roof_corners(Vector3(70.0, base_y, 12.0), Vector3(74.0, base_y, 15.0))
 	coordinator.refresh_roof_covered_rects()
 	if !stale_clipped.get_covered_rects().is_empty():
-		m_failures.append("ProceduralRoof3D did not clear stale roof covers after refresh")
+		m_failures.append("Roof3D did not clear stale roof covers after refresh")
 
 
 func _validate_merge_detection(coordinator: BuildingEditor3DScript) -> void:
@@ -1215,12 +1215,12 @@ func _validate_intersection_merge() -> void:
 	survivor.rebuild_wall_mesh()
 
 	if survivor.get_segment_count() != 4:
-		m_failures.append("ProceduralWall3D did not keep the split absorbed crossing segments")
+		m_failures.append("Wall3D did not keep the split absorbed crossing segments")
 	if survivor.mesh == null or survivor.mesh.get_surface_count() <= 0:
-		m_failures.append("Multi-segment ProceduralWall3D did not generate a merged mesh")
+		m_failures.append("Multi-segment Wall3D did not generate a merged mesh")
 		return
 	if survivor.get_node_or_null("WallCollision") == null:
-		m_failures.append("Multi-segment ProceduralWall3D did not generate collision")
+		m_failures.append("Multi-segment Wall3D did not generate collision")
 
 	var top_area := _up_facing_area(survivor.mesh as ArrayMesh, 2.4)
 	var expected_area := 4.0 * 0.22 + 4.0 * 0.22 - 0.22 * 0.22
@@ -1326,7 +1326,7 @@ func _validate_wall_instance_intersection_clipping() -> void:
 
 
 func _validate_add_wall_joint() -> void:
-	var wall := ProceduralWall3DScript.new() as ProceduralWall3DScript
+	var wall := Wall3DScript.new() as Wall3DScript
 	wall.name = "AddJointWall"
 	wall.build_on_ready = false
 	wall.start_point = Vector3.ZERO
@@ -1341,29 +1341,29 @@ func _validate_add_wall_joint() -> void:
 	opening.opening_width = 0.5
 	opening.opening_height = 0.5
 	opening.position = Vector3(3.0, 1.1, wall.wall_thickness * 0.5 + 0.035)
-	opening.set_meta(ProceduralWall3DScript.SEGMENT_INDEX_META, 0)
+	opening.set_meta(Wall3DScript.SEGMENT_INDEX_META, 0)
 	wall.add_child(opening)
 	wall.rebuild_wall_mesh()
 
 	var old_opening_position := opening.global_position
 	if !wall.split_segment_at_point(0, Vector3(2.0, 0.0, 0.0), 0.1):
-		m_failures.append("ProceduralWall3D could not add a joint to a wall span")
+		m_failures.append("Wall3D could not add a joint to a wall span")
 		return
 	if wall.get_segment_count() != 2:
-		m_failures.append("ProceduralWall3D joint insertion did not split the wall into two segments")
+		m_failures.append("Wall3D joint insertion did not split the wall into two segments")
 	if wall.count_connected_endpoints(Vector3(2.0, 0.0, 0.0), 0.03) != 2:
-		m_failures.append("ProceduralWall3D joint insertion did not create a shared endpoint")
+		m_failures.append("Wall3D joint insertion did not create a shared endpoint")
 	if opening.global_position.distance_to(old_opening_position) > 0.001:
-		m_failures.append("ProceduralWall3D joint insertion moved an existing window opening")
+		m_failures.append("Wall3D joint insertion moved an existing window opening")
 	if wall.get_opening_segment_index(opening) != 1:
-		m_failures.append("ProceduralWall3D joint insertion did not reassign opening to split segment")
+		m_failures.append("Wall3D joint insertion did not reassign opening to split segment")
 
 	var moved_joint := Vector3(2.0, 0.0, 1.0)
 	var moved_count := wall.move_connected_endpoint(Vector3(2.0, 0.0, 0.0), moved_joint, 0.03)
 	if moved_count != 2:
-		m_failures.append("ProceduralWall3D added joint moved %d endpoints instead of 2" % moved_count)
+		m_failures.append("Wall3D added joint moved %d endpoints instead of 2" % moved_count)
 	if wall.count_connected_endpoints(moved_joint, 0.03) != 2:
-		m_failures.append("ProceduralWall3D added joint did not stay editable after dragging")
+		m_failures.append("Wall3D added joint did not stay editable after dragging")
 
 	var touching_segments: Array[WallSegment3DScript] = []
 	var first := WallSegment3DScript.new()
@@ -1379,7 +1379,7 @@ func _validate_add_wall_joint() -> void:
 
 
 func _validate_mitered_joint() -> void:
-	var corner := ProceduralWall3DScript.new() as ProceduralWall3DScript
+	var corner := Wall3DScript.new() as Wall3DScript
 	corner.name = "MiteredCorner"
 	corner.build_on_ready = false
 	corner.start_point = Vector3.ZERO
@@ -1456,7 +1456,7 @@ func _validate_mitered_joint() -> void:
 	if _has_diagonal_wall_normal(corner.mesh as ArrayMesh):
 		m_failures.append("Mitered wall joint generated an unwanted diagonal joint cap")
 
-	var end_start_corner := ProceduralWall3DScript.new() as ProceduralWall3DScript
+	var end_start_corner := Wall3DScript.new() as Wall3DScript
 	end_start_corner.name = "MiteredEndStartCorner"
 	end_start_corner.build_on_ready = false
 	end_start_corner.start_point = Vector3(-2.0, 0.0, 0.0)
@@ -1586,8 +1586,8 @@ func _create_miter_test_wall(
 	primary_end: Vector3,
 	partner_start: Vector3,
 	partner_end: Vector3
-) -> ProceduralWall3DScript:
-	var corner := ProceduralWall3DScript.new() as ProceduralWall3DScript
+) -> Wall3DScript:
+	var corner := Wall3DScript.new() as Wall3DScript
 	corner.name = wall_name
 	corner.build_on_ready = false
 	corner.start_point = primary_start
@@ -1610,7 +1610,7 @@ func _create_miter_test_wall(
 
 
 func _validate_joint_endpoint_drag() -> void:
-	var wall := ProceduralWall3DScript.new() as ProceduralWall3DScript
+	var wall := Wall3DScript.new() as Wall3DScript
 	wall.name = "JointDragWall"
 	wall.build_on_ready = false
 	wall.start_point = Vector3.ZERO
@@ -1644,23 +1644,23 @@ func _validate_joint_endpoint_drag() -> void:
 	var moved_joint := Vector3(1.0, 0.0, 1.0)
 	var moved_count := wall.move_connected_endpoint(Vector3.ZERO, moved_joint, 0.03)
 	if moved_count != 3:
-		m_failures.append("ProceduralWall3D joint drag moved %d endpoints instead of 3" % moved_count)
+		m_failures.append("Wall3D joint drag moved %d endpoints instead of 3" % moved_count)
 	if wall.count_connected_endpoints(moved_joint, 0.03) != 3:
-		m_failures.append("ProceduralWall3D joint drag did not preserve a shared editable endpoint")
+		m_failures.append("Wall3D joint drag did not preserve a shared editable endpoint")
 	if wall.start_point.distance_to(moved_joint) > 0.001:
-		m_failures.append("ProceduralWall3D joint drag did not move the primary endpoint")
+		m_failures.append("Wall3D joint drag did not move the primary endpoint")
 	if wall.extra_segments[0].start_point.distance_to(moved_joint) > 0.001:
-		m_failures.append("ProceduralWall3D joint drag did not move the first connected segment")
+		m_failures.append("Wall3D joint drag did not move the first connected segment")
 	if wall.extra_segments[1].start_point.distance_to(moved_joint) > 0.001:
-		m_failures.append("ProceduralWall3D joint drag did not move the second connected segment")
+		m_failures.append("Wall3D joint drag did not move the second connected segment")
 	if wall.end_point.distance_to(Vector3(2.0, 0.0, 0.0)) > 0.001:
-		m_failures.append("ProceduralWall3D joint drag moved an unconnected primary endpoint")
+		m_failures.append("Wall3D joint drag moved an unconnected primary endpoint")
 	if wall.extra_segments[2].start_point.distance_to(Vector3(4.0, 0.0, 0.0)) > 0.001:
-		m_failures.append("ProceduralWall3D joint drag moved an unrelated segment endpoint")
+		m_failures.append("Wall3D joint drag moved an unrelated segment endpoint")
 
 
 func _validate_joint_disconnect_connect() -> void:
-	var wall := ProceduralWall3DScript.new() as ProceduralWall3DScript
+	var wall := Wall3DScript.new() as Wall3DScript
 	wall.name = "JointConnectWall"
 	wall.build_on_ready = false
 	wall.start_point = Vector3.ZERO
@@ -1687,22 +1687,22 @@ func _validate_joint_disconnect_connect() -> void:
 
 	var detached := Vector3(1.0, 0.0, 1.0)
 	if !wall.move_segment_endpoint(1, 0, detached):
-		m_failures.append("ProceduralWall3D could not detach a single endpoint from a joint")
+		m_failures.append("Wall3D could not detach a single endpoint from a joint")
 	if wall.count_connected_endpoints(Vector3.ZERO, 0.03) != 2:
-		m_failures.append("ProceduralWall3D detach did not leave the other joint endpoints connected")
+		m_failures.append("Wall3D detach did not leave the other joint endpoints connected")
 	if wall.count_connected_endpoints(detached, 0.03) != 1:
-		m_failures.append("ProceduralWall3D detach did not isolate the moved endpoint")
+		m_failures.append("Wall3D detach did not isolate the moved endpoint")
 	if wall.extra_segments[1].start_point.distance_to(Vector3.ZERO) > 0.001:
-		m_failures.append("ProceduralWall3D detach moved a different connected endpoint")
+		m_failures.append("Wall3D detach moved a different connected endpoint")
 
 	if !wall.move_segment_endpoint(1, 0, Vector3.ZERO):
-		m_failures.append("ProceduralWall3D could not reconnect a single endpoint to a joint")
+		m_failures.append("Wall3D could not reconnect a single endpoint to a joint")
 	if wall.count_connected_endpoints(Vector3.ZERO, 0.03) != 3:
-		m_failures.append("ProceduralWall3D reconnect did not restore the shared joint")
+		m_failures.append("Wall3D reconnect did not restore the shared joint")
 
 
 func _validate_connected_wall_top_caps() -> void:
-	var wall := ProceduralWall3DScript.new() as ProceduralWall3DScript
+	var wall := Wall3DScript.new() as Wall3DScript
 	wall.name = "ConnectedTopCaps"
 	wall.build_on_ready = false
 	wall.start_point = Vector3.ZERO
@@ -1741,7 +1741,7 @@ func _validate_connected_wall_top_caps() -> void:
 
 
 func _validate_multi_wall_joint_fill() -> void:
-	var joint := ProceduralWall3DScript.new() as ProceduralWall3DScript
+	var joint := Wall3DScript.new() as Wall3DScript
 	joint.name = "ThreeWallJoint"
 	joint.build_on_ready = false
 	joint.start_point = Vector3.ZERO
@@ -1794,7 +1794,7 @@ func _validate_multi_wall_joint_fill() -> void:
 
 
 func _validate_enclosed_wall_loop_caps() -> void:
-	var loop := ProceduralWall3DScript.new() as ProceduralWall3DScript
+	var loop := Wall3DScript.new() as Wall3DScript
 	loop.name = "EnclosedWallLoop"
 	loop.build_on_ready = false
 	loop.start_point = Vector3.ZERO
@@ -1871,7 +1871,7 @@ func _has_mesh_vertex_near(array_mesh: ArrayMesh, expected: Vector3, tolerance: 
 
 
 func _has_world_mesh_vertex_near(
-	wall: ProceduralWall3DScript,
+	wall: Wall3DScript,
 	expected: Vector3,
 	tolerance: float
 ) -> bool:
@@ -1952,10 +1952,10 @@ func _has_mesh_vertex_y_near(mesh_instance: MeshInstance3D, expected_y: float, t
 	return false
 
 
-func _roof_wireframe_matches_triangle_indices(roof: ProceduralRoof3DScript) -> bool:
+func _roof_wireframe_matches_triangle_indices(roof: Roof3DScript) -> bool:
 	if roof == null or roof.mesh == null or roof.mesh.get_surface_count() <= 0:
 		return false
-	var wireframe := roof.get_node_or_null(ProceduralRoof3DScript.TRIANGLE_WIREFRAME_NODE_NAME) as MeshInstance3D
+	var wireframe := roof.get_node_or_null(Roof3DScript.TRIANGLE_WIREFRAME_NODE_NAME) as MeshInstance3D
 	if wireframe == null or wireframe.mesh == null or wireframe.mesh.get_surface_count() <= 0:
 		return false
 	var roof_arrays := roof.mesh.surface_get_arrays(0)
@@ -1999,7 +1999,7 @@ func _cover_polygons_sample_under_other_roof(
 	candidate_angle_degrees: float,
 	candidate_overhang: float,
 	candidate_rotation_degrees: float,
-	other_roofs: Array[ProceduralRoof3DScript]
+	other_roofs: Array[Roof3DScript]
 ) -> bool:
 	var candidate_size := Vector2(absf(candidate_end.x - candidate_start.x), absf(candidate_end.z - candidate_start.z))
 	var candidate_anchor := Vector3(
@@ -2011,7 +2011,7 @@ func _cover_polygons_sample_under_other_roof(
 	for polygon_variant in polygons:
 		var polygon := _polygon_from_variant(polygon_variant)
 		for point in _polygon_sample_points(polygon):
-			var candidate_height := ProceduralRoof3DScript.roof_surface_height_for_style(
+			var candidate_height := Roof3DScript.roof_surface_height_for_style(
 				candidate_style,
 				candidate_size,
 				candidate_overhang,
@@ -2060,7 +2060,7 @@ func _polygon_sample_points(polygon: PackedVector2Array) -> Array[Vector2]:
 func _sample_is_under_any_roof(
 	parent_point: Vector3,
 	candidate_top_y: float,
-	other_roofs: Array[ProceduralRoof3DScript]
+	other_roofs: Array[Roof3DScript]
 ) -> bool:
 	for other_roof in other_roofs:
 		var other_basis_inverse := Basis(Vector3.UP, deg_to_rad(other_roof.roof_rotation_degrees)).inverse()
@@ -2084,7 +2084,7 @@ func _rect_contains_point_inclusive(rect: Rect2, point: Vector2) -> bool:
 	)
 
 
-func _roof_underside_normals_are_down(roof: ProceduralRoof3DScript) -> bool:
+func _roof_underside_normals_are_down(roof: Roof3DScript) -> bool:
 	if roof == null or roof.mesh == null or roof.mesh.get_surface_count() <= 0:
 		return false
 	var arrays := roof.mesh.surface_get_arrays(0)
@@ -2108,7 +2108,7 @@ func _roof_underside_normals_are_down(roof: ProceduralRoof3DScript) -> bool:
 	return found_underside
 
 
-func _roof_surface_normals_are_not_down(roof: ProceduralRoof3DScript) -> bool:
+func _roof_surface_normals_are_not_down(roof: Roof3DScript) -> bool:
 	if roof == null or roof.mesh == null or roof.mesh.get_surface_count() <= 0:
 		return false
 	var arrays := roof.mesh.surface_get_arrays(0)
@@ -2132,13 +2132,13 @@ func _roof_surface_normals_are_not_down(roof: ProceduralRoof3DScript) -> bool:
 	return found_surface
 
 
-func _roof_vertex_is_on_underside(roof: ProceduralRoof3DScript, vertex: Vector3) -> bool:
+func _roof_vertex_is_on_underside(roof: Roof3DScript, vertex: Vector3) -> bool:
 	var surface_height := roof.get_roof_height_at_local_render_point(Vector2(vertex.x, vertex.z))
 	return absf(vertex.y - (surface_height - roof.roof_thickness)) <= 0.002
 
 
 func _has_internal_roof_fascia_facing_cover(
-	roof: ProceduralRoof3DScript,
+	roof: Roof3DScript,
 	cover_polygons: Array[PackedVector2Array]
 ) -> bool:
 	if roof == null or roof.mesh == null or roof.mesh.get_surface_count() <= 0:
@@ -2211,7 +2211,7 @@ func _has_roof_sloped_normal(mesh_instance: MeshInstance3D) -> bool:
 	return false
 
 
-func _roof_base_has_corner_near(roof: ProceduralRoof3DScript, expected_corner: Vector3) -> bool:
+func _roof_base_has_corner_near(roof: Roof3DScript, expected_corner: Vector3) -> bool:
 	var basis := Basis(Vector3.UP, deg_to_rad(roof.roof_rotation_degrees))
 	var size := roof.get_roof_size()
 	var anchor := roof.get_roof_anchor_point()
@@ -2227,7 +2227,7 @@ func _roof_base_has_corner_near(roof: ProceduralRoof3DScript, expected_corner: V
 	return false
 
 
-func _pillar_max_radius_at_y(pillar: ProceduralPillar3DScript, expected_y: float) -> float:
+func _pillar_max_radius_at_y(pillar: Pillar3DScript, expected_y: float) -> float:
 	if pillar.mesh == null or pillar.mesh.get_surface_count() <= 0:
 		return 0.0
 	var arrays := pillar.mesh.surface_get_arrays(0)
@@ -2262,7 +2262,7 @@ func _has_diagonal_wall_normal(array_mesh: ArrayMesh) -> bool:
 	return false
 
 
-func _has_world_diagonal_wall_normal(wall: ProceduralWall3DScript) -> bool:
+func _has_world_diagonal_wall_normal(wall: Wall3DScript) -> bool:
 	if wall.mesh == null or wall.mesh.get_surface_count() <= 0:
 		return false
 	var arrays := wall.mesh.surface_get_arrays(0)
@@ -2276,7 +2276,7 @@ func _has_world_diagonal_wall_normal(wall: ProceduralWall3DScript) -> bool:
 	return false
 
 
-func _world_boundary_edge_count(wall: ProceduralWall3DScript) -> int:
+func _world_boundary_edge_count(wall: Wall3DScript) -> int:
 	if wall.mesh == null or wall.mesh.get_surface_count() <= 0:
 		return 0
 	var arrays := wall.mesh.surface_get_arrays(0)

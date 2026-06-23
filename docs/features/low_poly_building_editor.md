@@ -21,17 +21,17 @@
 ## Rules
 
 - `BuildingEditor3D` is the coordinator node for one building assembly.
-- `ProceduralWall3D` stores its parent-local `start_point` and `end_point`; its node transform and mesh are rebuilt from those endpoints.
-- `ProceduralFloor3D` stores opposite parent-local footprint corners in `start_point` and `end_point`; its node transform and mesh are rebuilt from those corners with thickness extending downward from the configured top surface.
-- `ProceduralPillar3D` stores its parent-local `base_point`; its node transform and low-poly mesh are rebuilt from that base, lower radius, optional upper radius override, height, side count, style, upper/lower rim height and outset, and color.
-- `ProceduralRoof3D` stores opposite parent-local footprint corners in `start_point` and `end_point`; its node transform and low-poly mesh are rebuilt from those corners with style, roof face angle in degrees, thickness, overhang, Y rotation, color, and any covered render regions.
+- `Wall3D` stores its parent-local `start_point` and `end_point`; its node transform and mesh are rebuilt from those endpoints.
+- `Floor3D` stores opposite parent-local footprint corners in `start_point` and `end_point`; its node transform and mesh are rebuilt from those corners with thickness extending downward from the configured top surface.
+- `Pillar3D` stores its parent-local `base_point`; its node transform and low-poly mesh are rebuilt from that base, lower radius, optional upper radius override, height, side count, style, upper/lower rim height and outset, and color.
+- `Roof3D` stores opposite parent-local footprint corners in `start_point` and `end_point`; its node transform and low-poly mesh are rebuilt from those corners with style, roof face angle in degrees, thickness, overhang, Y rotation, color, and any covered render regions.
 - Wall drawing snaps to `BuildingEditor3D.grid_step`, preserves the configured base Y height for new endpoints, and can lock to 45-degree increments for eight-way wall direction.
 - Floor drawing snaps to `BuildingEditor3D.grid_step`, preserves the configured base Y height as the floor's top surface, and creates one persistent floor node per committed rectangle.
 - In Floor tool mode, hovering over a placed floor highlights it blue for body moves and yellow for edge/corner resizes. Dragging the body translates the floor; dragging an edge resizes one footprint axis; dragging a corner resizes both axes. Edits snap to the active Floor grid, preserve the floor's existing top-surface Y, reject zero-area slabs, and commit through undo/redo.
 - Pillar placement snaps to `BuildingEditor3D.grid_step`, preserves the configured base Y height, and creates one persistent pillar node per committed click. Built-in pillar styles are `Round`, `Square`, `Octagonal`, and `Tapered`; square and octagonal styles force their side counts, while round and tapered use the configured side count. The lower radius controls the base body radius, and the upper radius controls the top body radius when nonzero; `0` keeps the selected style's default top radius. Upper and lower rim controls set each rim band's height and radius outset; setting either rim value to `0` disables that rim. In Pillar tool mode, hovering over a placed pillar highlights it blue for body moves and yellow for radius resizes. Dragging the body translates the pillar; dragging the edge resizes its lower radius and scales a custom upper radius to preserve the pillar profile. Edits snap to the active Pillar grid, preserve the existing base Y, reject undersized radii, and commit through undo/redo.
 - Roof drawing snaps to `BuildingEditor3D.grid_step`, preserves the configured base Y height as the roof eave plane, and creates one persistent roof node per committed rectangle. The first draw point and current draw point define opposite corners of the roof's rotated base footprint; the roof style then derives overhang, generated height, and style-specific top geometry from that base. Built-in roof styles are `Flat`, `Shed`, `Gable`, and `Hip`; shed, gable, and hip roofs use the configured face angle in degrees and derive their generated height from the relevant roof run, while flat roofs ignore the value. Hip roofs use a simple hipped form with a horizontal ridge along the longer footprint axis, two shorter triangular faces, and two longer trapezoid faces; square footprints degenerate to a centered apex while keeping all face angles equal. The hip Gable Drop setting turns the same hip shape into a half-hip or jerkinhead by clipping the ridge ends downward from the peak; positive values extend the ridge as needed to preserve the configured face angle, while `0` keeps the simple hip form. Roof thickness extends downward from the generated top surfaces, and overhang expands the roof beyond the committed footprint. The dock's Rotation value sets the starting Y rotation for new roofs; while drawing, `R` rotates the preview by 90 degrees and `Shift+R` rotates the opposite direction. The Roof debug triangle wireframe checkbox overlays a generated `RoofTriangleWireframe` line mesh from the final roof triangle index buffer for previews and newly created roofs. Same-eave roofs keep separate authored footprints, while overlap clipping compares roof surface heights across planar roof faces and removes only polygon render regions that sit under another roof, including overhang-to-overhang contact across different styles, angles, rotations, and materials. Face-level clipping keeps straight intersection edges instead of stair-stepping them through tiny rectangle fragments, and clipped edges receive fascia faces so roof thickness remains visible along cuts. Fully covered new or edited roofs are rejected instead of creating invisible authored nodes. In Roof tool mode, hovering over a placed roof highlights it blue for body moves and yellow for edge/corner resizes. Pressing `R` or `Shift+R` while hovering or selecting a placed roof rotates it around its footprint center through undo/redo. Dragging the body translates the roof; dragging an edge resizes one footprint axis in the roof's rotated local frame; dragging a corner resizes both axes. Gable edits keep the stored angle so the roof face angle stays fixed while the ridge height moves with footprint depth. Edits snap to the active Roof grid, preserve the existing eave-plane Y, reject zero-area roofs, recompute same-eave height-aware render-area clipping for the edited roof and sibling roofs, and commit through undo/redo.
 - New wall spans merge into an existing collinear wall of matching thickness and height when their ranges overlap.
-- Non-collinear walls that intersect (crossings, T-junctions, corners) remain separate `ProceduralWall3D` instances. When `BuildingEditor3D.merge_intersecting` is on (default), the coordinator refreshes geometry-only sibling clip segments after wall creation, edits, undo, redo, and scene load. Each wall rebuilds only its own authored spans while using sibling spans on the same base plane as non-rendered cutters, removing buried side and cap geometry without reparenting children or deleting the other wall node. Same-height cap overlap resolves by scene order so only one wall owns the shared top/bottom cap area.
+- Non-collinear walls that intersect (crossings, T-junctions, corners) remain separate `Wall3D` instances. When `BuildingEditor3D.merge_intersecting` is on (default), the coordinator refreshes geometry-only sibling clip segments after wall creation, edits, undo, redo, and scene load. Each wall rebuilds only its own authored spans while using sibling spans on the same base plane as non-rendered cutters, removing buried side and cap geometry without reparenting children or deleting the other wall node. Same-height cap overlap resolves by scene order so only one wall owns the shared top/bottom cap area.
 - Window/prop placement and viewport picking are segment-aware: raycasts test every segment of a wall and previews align to the hit segment's frame.
 - `BuildingOpening3D` children create rectangular wall holes without boolean operations. The wall compiles a split box-grid mesh around all openings.
 - Window placement can create single windows, double windows, or frame-only openings. Window variants keep the full frame and add one or two translucent generated pane meshes inside the opening.
@@ -59,14 +59,14 @@
 - Window and door openings are rejected when they leave the wall bounds, overlap another opening, or straddle another authored segment or sibling intersection clip (the crossing wall's solid mass would block the hole). Doors are allowed to touch the wall base; windows keep bottom clearance from the base.
 - Child openings are assigned to the segment whose face shell they sit on (distance to the face, not the centerline), so openings near junctions stay on the wall they were placed against; the window tool also pins the hit segment index as metadata, with geometric assignment as fallback.
 - The opening preview re-parents to whichever wall is hovered, so moving between separate walls in window or door mode places against the correct node.
-- Prop placement can fall back to the ground plane when no procedural wall target exists.
+- Prop placement can fall back to the ground plane when no wall target exists.
 - The first wall click or placement commit can create a `BuildingEditor3D` coordinator if the scene has none. Hover previews never mutate the scene or undo history.
 - The first floor click can create a `BuildingEditor3D` coordinator if the scene has none. Floor previews never mutate the scene or undo history.
 - The first pillar click can create a `BuildingEditor3D` coordinator if the scene has none. Pillar hover previews never mutate the scene or undo history.
 - The first roof click can create a `BuildingEditor3D` coordinator if the scene has none. Roof previews never mutate the scene or undo history.
-- Editing an existing floor uses editor-time ray math against procedural floor boxes and does not access physics `direct_space_state` during GUI input.
-- Editing an existing pillar uses editor-time ray math against finite procedural cylinders and does not access physics `direct_space_state` during GUI input.
-- Editing an existing roof uses editor-time ray math against procedural roof bounds and does not access physics `direct_space_state` during GUI input.
+- Editing an existing floor uses editor-time ray math against floor boxes and does not access physics `direct_space_state` during GUI input.
+- Editing an existing pillar uses editor-time ray math against finite cylinders and does not access physics `direct_space_state` during GUI input.
+- Editing an existing roof uses editor-time ray math against roof bounds and does not access physics `direct_space_state` during GUI input.
 - Preview walls are tagged with preview metadata and never participate in intersection clipping.
 - Wall spans whose base heights differ by more than 0.01 units are not merged; they stay separate nodes.
 - Undoing or redoing wall creation, edits, and deletion refreshes sibling clip geometry so separate intersecting wall nodes keep their own children and authored spans.
@@ -78,24 +78,24 @@
 - The editor plugin lives under `addons/low_poly_building_editor/`.
 - The plugin owns dock UI, viewport input forwarding, previews, and undo/redo packing.
 - A lightweight 3D viewport overlay plus root-level editor input capture handle placement clicks while a building tool is active so Godot's default select/transform mouse handling does not compete with wall, prop, or window placement.
-- Viewport picking uses editor-time ray math against procedural wall boxes, floor boxes, finite pillar cylinders, and roof bounds plus a ground-plane fallback, avoiding `direct_space_state` access during editor GUI input.
+- Viewport picking uses editor-time ray math against wall boxes, floor boxes, finite pillar cylinders, and roof bounds plus a ground-plane fallback, avoiding `direct_space_state` access during editor GUI input.
 - `BuildingEditor3D` owns snapping, default wall settings, wall lookup, collinear merge target detection, and geometry-only intersecting-wall clip refresh.
 - `BuildingEditor3D` owns default floor settings and floor node creation alongside wall defaults.
 - `BuildingEditor3D` owns default pillar settings and pillar node creation alongside wall and floor defaults.
 - `BuildingEditor3D` owns default roof settings, roof node creation, and same-eave roof overlap clipping alongside wall, floor, and pillar defaults.
-- `ProceduralWall3D` owns its primary span plus authored `extra_segments`, transient sibling clip segments, opening-to-segment assignment, and the mesh/collision rebuild.
-- `ProceduralFloor3D` owns its rectangular slab mesh, vertex colors, material, and generated collision.
-- `ProceduralPillar3D` owns its low-poly cylinder mesh, vertex colors, material, and generated collision.
-- `ProceduralRoof3D` owns its low-poly roof mesh, vertex colors, material, and generated collision.
+- `Wall3D` owns its primary span plus authored `extra_segments`, transient sibling clip segments, opening-to-segment assignment, and the mesh/collision rebuild.
+- `Floor3D` owns its rectangular slab mesh, vertex colors, material, and generated collision.
+- `Pillar3D` owns its low-poly cylinder mesh, vertex colors, material, and generated collision.
+- `Roof3D` owns its low-poly roof mesh, vertex colors, material, and generated collision.
 - `MergedWallMeshBuilder` (`merged_wall_mesh_builder.gd`) owns the plan-space clipping math that can render a subset of wall segments while using all supplied same-plane segments as cutters.
 - `WallSegment3D` (`wall_segment_3d.gd`) is the typed resource for one wall span, including static helpers for collinear segment merging and intersection splitting.
-- `ProceduralWall3D` owns generated mesh, vertex colors, collision, and opening-driven rebuilds.
+- `Wall3D` owns generated mesh, vertex colors, collision, and opening-driven rebuilds.
 - `BuildingOpening3D` owns the visible window/door frame, window-pane, or door-panel marker and the dimensions consumed by wall mesh generation.
 
 ## Relevant Files
 
 - Scenes: `scenes/tests/test_low_poly_building_editor_3d.tscn`
-- Scripts: `addons/low_poly_building_editor/plugin.gd`, `building_editor_3d.gd`, `procedural_wall_3d.gd`, `procedural_floor_3d.gd`, `procedural_pillar_3d.gd`, `procedural_roof_3d.gd`, `building_opening_3d.gd`, `wall_segment_3d.gd`, `merged_wall_mesh_builder.gd`, `low_poly_building_editor_dock.gd`, `viewport_input_overlay.gd`, `viewport_input_capture.gd`
+- Scripts: `addons/low_poly_building_editor/plugin.gd`, `building_editor_3d.gd`, `wall_3d.gd`, `floor_3d.gd`, `pillar_3d.gd`, `roof_3d.gd`, `building_opening_3d.gd`, `wall_segment_3d.gd`, `merged_wall_mesh_builder.gd`, `low_poly_building_editor_dock.gd`, `viewport_input_overlay.gd`, `viewport_input_capture.gd`
 - Related docs: `docs/module_map.md`, `docs/contracts.md`
 
 ## Signals / Nodes / Data Flow
@@ -103,8 +103,8 @@
 - Dock signals update active tool mode and wall/floor/pillar/roof/prop/window settings.
 - The plugin forwards 3D viewport mouse/key input while a building tool is active.
 - The plugin commits scene mutations through `EditorUndoRedoManager`.
-- `ProceduralWall3D` watches direct child opening signatures and segment data in editor mode and rebuilds when openings move or segments change.
-- `ProceduralWall3D` captures direct child opening anchors before wall geometry edits and restores them into the updated segment frame so windows follow edited walls.
+- `Wall3D` watches direct child opening signatures and segment data in editor mode and rebuilds when openings move or segments change.
+- `Wall3D` captures direct child opening anchors before wall geometry edits and restores them into the updated segment frame so windows follow edited walls.
 - Wall raycast hits carry a `segment` index so window and prop previews can target the correct authored span.
 
 ## Contracts / Boundaries

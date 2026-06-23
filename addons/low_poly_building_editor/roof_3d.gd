@@ -1,8 +1,8 @@
 @tool
-class_name ProceduralRoof3D
+class_name Roof3D
 extends MeshInstance3D
 
-const GENERATED_META := &"procedural_roof_generated"
+const GENERATED_META := &"roof_generated"
 const PREVIEW_META := &"building_editor_preview"
 const STYLE_FLAT := "flat"
 const STYLE_SHED := "shed"

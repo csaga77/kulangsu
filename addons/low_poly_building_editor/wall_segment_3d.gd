@@ -2,9 +2,9 @@
 class_name WallSegment3D
 extends Resource
 
-## One straight wall span stored inside a ProceduralWall3D node. Points are in
+## One straight wall span stored inside a Wall3D node. Points are in
 ## the owning coordinator's parent-local space; the segment's render frame is
-## derived from them the same way ProceduralWall3D derives its transform.
+## derived from them the same way Wall3D derives its transform.
 
 @export var start_point := Vector3.ZERO
 @export var end_point := Vector3(4.0, 0.0, 0.0)

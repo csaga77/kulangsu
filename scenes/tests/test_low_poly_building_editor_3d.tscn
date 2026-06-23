@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://x2506i2l5pe7" path="res://scenes/tests/test_low_poly_building_editor_3d.gd" id="1_test"]
 [ext_resource type="Script" uid="uid://d0wnnw8bbd7l6" path="res://addons/low_poly_building_editor/building_editor_3d.gd" id="2_r6pl2"]
-[ext_resource type="Script" uid="uid://d0ohvd4itx6co" path="res://addons/low_poly_building_editor/procedural_roof_3d.gd" id="3_ry4tq"]
+[ext_resource type="Script" uid="uid://d0ohvd4itx6co" path="res://addons/low_poly_building_editor/roof_3d.gd" id="3_ry4tq"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_m1ui2"]
 specular_mode = 2
@@ -48,7 +48,7 @@ script = ExtResource("2_r6pl2")
 default_roof_height = 45.0
 default_roof_rotation_degrees = 90.0
 
-[node name="ProceduralRoof3D2" type="MeshInstance3D" parent="BuildingEditor3D" unique_id=1782047026]
+[node name="Roof3D2" type="MeshInstance3D" parent="BuildingEditor3D" unique_id=1782047026]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -17.999996, 2.4, -292.5)
 material_override = SubResource("StandardMaterial3D_m1ui2")
 mesh = SubResource("ArrayMesh_twmld")
@@ -58,7 +58,7 @@ end_point = Vector3(189.50002, 2.4, -122)
 roof_height = 45.0
 roof_rotation_degrees = 90.0
 
-[node name="ProceduralRoof3D3" type="MeshInstance3D" parent="BuildingEditor3D" unique_id=920058877]
+[node name="Roof3D3" type="MeshInstance3D" parent="BuildingEditor3D" unique_id=920058877]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 213, 2.4, -299.50003)
 material_override = SubResource("StandardMaterial3D_s735c")
 mesh = SubResource("ArrayMesh_ey01b")

@@ -2,10 +2,10 @@
 class_name BuildingEditor3D
 extends Node3D
 
-const ProceduralWall3DScript = preload("res://addons/low_poly_building_editor/procedural_wall_3d.gd")
-const ProceduralFloor3DScript = preload("res://addons/low_poly_building_editor/procedural_floor_3d.gd")
-const ProceduralPillar3DScript = preload("res://addons/low_poly_building_editor/procedural_pillar_3d.gd")
-const ProceduralRoof3DScript = preload("res://addons/low_poly_building_editor/procedural_roof_3d.gd")
+const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
+const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
+const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
+const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
 const MergedWallMeshBuilderScript = preload("res://addons/low_poly_building_editor/merged_wall_mesh_builder.gd")
 
 const INTERSECT_BASE_TOLERANCE := 0.01
@@ -82,8 +82,8 @@ func create_wall_node(
 	height: float = default_wall_height,
 	thickness: float = default_wall_thickness,
 	color: Color = default_wall_color
-) -> ProceduralWall3DScript:
-	var wall := ProceduralWall3DScript.new() as ProceduralWall3DScript
+) -> Wall3DScript:
+	var wall := Wall3DScript.new() as Wall3DScript
 	wall.name = _unique_wall_name()
 	wall.start_point = local_start
 	wall.end_point = local_end
@@ -101,8 +101,8 @@ func create_floor_node(
 	local_end: Vector3,
 	thickness: float = default_floor_thickness,
 	color: Color = default_floor_color
-) -> ProceduralFloor3DScript:
-	var floor := ProceduralFloor3DScript.new() as ProceduralFloor3DScript
+) -> Floor3DScript:
+	var floor := Floor3DScript.new() as Floor3DScript
 	floor.name = _unique_floor_name()
 	floor.start_point = local_start
 	floor.end_point = Vector3(local_end.x, local_start.y, local_end.z)
@@ -126,8 +126,8 @@ func create_pillar_node(
 	upper_rim_height: float = default_pillar_upper_rim_height,
 	upper_rim_outset: float = default_pillar_upper_rim_outset,
 	upper_radius: float = default_pillar_upper_radius
-) -> ProceduralPillar3DScript:
-	var pillar := ProceduralPillar3DScript.new() as ProceduralPillar3DScript
+) -> Pillar3DScript:
+	var pillar := Pillar3DScript.new() as Pillar3DScript
 	pillar.name = _unique_pillar_name()
 	pillar.base_point = local_base
 	pillar.pillar_radius = radius
@@ -157,8 +157,8 @@ func create_roof_node(
 	rotation_degrees: float = default_roof_rotation_degrees,
 	debug_wireframe: bool = default_roof_debug_wireframe,
 	hip_gable_height: float = default_roof_hip_gable_height
-) -> ProceduralRoof3DScript:
-	var roof := ProceduralRoof3DScript.new() as ProceduralRoof3DScript
+) -> Roof3DScript:
+	var roof := Roof3DScript.new() as Roof3DScript
 	roof.name = _unique_roof_name()
 	roof.start_point = local_start
 	roof.end_point = Vector3(local_end.x, local_start.y, local_end.z)
@@ -176,35 +176,35 @@ func create_roof_node(
 	return roof
 
 
-func get_wall_nodes() -> Array[ProceduralWall3DScript]:
-	var walls: Array[ProceduralWall3DScript] = []
+func get_wall_nodes() -> Array[Wall3DScript]:
+	var walls: Array[Wall3DScript] = []
 	for child in get_children():
-		if child is ProceduralWall3DScript:
+		if child is Wall3DScript:
 			walls.append(child)
 	return walls
 
 
-func get_floor_nodes() -> Array[ProceduralFloor3DScript]:
-	var floors: Array[ProceduralFloor3DScript] = []
+func get_floor_nodes() -> Array[Floor3DScript]:
+	var floors: Array[Floor3DScript] = []
 	for child in get_children():
-		if child is ProceduralFloor3DScript:
-			floors.append(child as ProceduralFloor3DScript)
+		if child is Floor3DScript:
+			floors.append(child as Floor3DScript)
 	return floors
 
 
-func get_pillar_nodes() -> Array[ProceduralPillar3DScript]:
-	var pillars: Array[ProceduralPillar3DScript] = []
+func get_pillar_nodes() -> Array[Pillar3DScript]:
+	var pillars: Array[Pillar3DScript] = []
 	for child in get_children():
-		if child is ProceduralPillar3DScript:
-			pillars.append(child as ProceduralPillar3DScript)
+		if child is Pillar3DScript:
+			pillars.append(child as Pillar3DScript)
 	return pillars
 
 
-func get_roof_nodes() -> Array[ProceduralRoof3DScript]:
-	var roofs: Array[ProceduralRoof3DScript] = []
+func get_roof_nodes() -> Array[Roof3DScript]:
+	var roofs: Array[Roof3DScript] = []
 	for child in get_children():
-		if child is ProceduralRoof3DScript:
-			roofs.append(child as ProceduralRoof3DScript)
+		if child is Roof3DScript:
+			roofs.append(child as Roof3DScript)
 	return roofs
 
 
@@ -321,7 +321,7 @@ func refresh_wall_intersection_clips() -> void:
 	var walls := get_wall_nodes()
 	for wall_index in range(walls.size()):
 		var wall := walls[wall_index]
-		if wall.has_meta(ProceduralWall3DScript.PREVIEW_META) or !merge_intersecting:
+		if wall.has_meta(Wall3DScript.PREVIEW_META) or !merge_intersecting:
 			wall.clear_intersection_clip_segments()
 			continue
 		var before_segments: Array[WallSegment3D] = []
@@ -330,7 +330,7 @@ func refresh_wall_intersection_clips() -> void:
 			if other_index == wall_index:
 				continue
 			var other := walls[other_index]
-			if other.has_meta(ProceduralWall3DScript.PREVIEW_META):
+			if other.has_meta(Wall3DScript.PREVIEW_META):
 				continue
 			for segment_index in range(other.get_segment_count()):
 				var segment := other.get_segment(segment_index)
@@ -345,7 +345,7 @@ func refresh_wall_intersection_clips() -> void:
 
 func refresh_roof_covered_rects() -> void:
 	for roof in get_roof_nodes():
-		if roof.has_meta(ProceduralRoof3DScript.PREVIEW_META):
+		if roof.has_meta(Roof3DScript.PREVIEW_META):
 			continue
 		var cover_regions := compute_roof_cover_regions(
 			roof.start_point,
@@ -388,13 +388,13 @@ func _find_roof_cover_data(
 	var new_rect := _roof_render_rect(new_size, overhang)
 	var covered_rects: Array[Rect2] = []
 	var covered_polygons: Array[PackedVector2Array] = []
-	var first_target: ProceduralRoof3DScript = null
+	var first_target: Roof3DScript = null
 	var candidate_seen := false
 	for roof in get_roof_nodes():
 		if roof == ignored_roof:
 			candidate_seen = true
 			continue
-		if roof.has_meta(ProceduralRoof3DScript.PREVIEW_META):
+		if roof.has_meta(Roof3DScript.PREVIEW_META):
 			continue
 		if absf(roof.start_point.y - local_start.y) > INTERSECT_BASE_TOLERANCE:
 			continue
@@ -450,19 +450,19 @@ func _roof_polygons_under_other_roof(
 	candidate_angle_degrees: float,
 	candidate_overhang: float,
 	candidate_hip_gable_height: float,
-	other_roof: ProceduralRoof3DScript,
+	other_roof: Roof3DScript,
 	overlap_rect: Rect2,
 	other_before_candidate: bool
 ) -> Array[PackedVector2Array]:
 	var polygons: Array[PackedVector2Array] = []
-	var candidate_faces := ProceduralRoof3DScript.roof_top_faces_for_style(
+	var candidate_faces := Roof3DScript.roof_top_faces_for_style(
 		candidate_style,
 		candidate_size,
 		candidate_overhang,
 		candidate_angle_degrees,
 		candidate_hip_gable_height
 	)
-	var other_faces := ProceduralRoof3DScript.roof_top_faces_for_style(
+	var other_faces := Roof3DScript.roof_top_faces_for_style(
 		other_roof.get_roof_style(),
 		other_roof.get_roof_size(),
 		other_roof.roof_overhang,
@@ -864,15 +864,15 @@ func find_intersecting_walls(
 	local_end: Vector3,
 	thickness: float,
 	ignored_wall: Node = null
-) -> Array[ProceduralWall3DScript]:
-	var hits: Array[ProceduralWall3DScript] = []
+) -> Array[Wall3DScript]:
+	var hits: Array[Wall3DScript] = []
 	var candidate := MergedWallMeshBuilderScript.footprint_from_points(local_start, local_end, thickness)
 	if candidate.is_empty():
 		return hits
 	for wall in get_wall_nodes():
 		if wall == ignored_wall:
 			continue
-		if wall.has_meta(ProceduralWall3DScript.PREVIEW_META):
+		if wall.has_meta(Wall3DScript.PREVIEW_META):
 			continue
 		for segment_index in range(wall.get_segment_count()):
 			var segment := wall.get_segment(segment_index)
@@ -887,7 +887,7 @@ func find_intersecting_walls(
 	return hits
 
 
-func _wall_clip_segment_relevant(wall: ProceduralWall3DScript, clip_segment: WallSegment3D) -> bool:
+func _wall_clip_segment_relevant(wall: Wall3DScript, clip_segment: WallSegment3D) -> bool:
 	if wall == null or clip_segment == null:
 		return false
 	for own_index in range(wall.get_segment_count()):
@@ -913,37 +913,37 @@ func _line_distance(origin: Vector2, axis: Vector2, point: Vector2) -> float:
 
 func _unique_wall_name() -> String:
 	var index := get_wall_nodes().size() + 1
-	var candidate := "ProceduralWall3D%d" % index
+	var candidate := "Wall3D%d" % index
 	while has_node(candidate):
 		index += 1
-		candidate = "ProceduralWall3D%d" % index
+		candidate = "Wall3D%d" % index
 	return candidate
 
 
 func _unique_floor_name() -> String:
 	var index := get_floor_nodes().size() + 1
-	var candidate := "ProceduralFloor3D%d" % index
+	var candidate := "Floor3D%d" % index
 	while has_node(candidate):
 		index += 1
-		candidate = "ProceduralFloor3D%d" % index
+		candidate = "Floor3D%d" % index
 	return candidate
 
 
 func _unique_pillar_name() -> String:
 	var index := get_pillar_nodes().size() + 1
-	var candidate := "ProceduralPillar3D%d" % index
+	var candidate := "Pillar3D%d" % index
 	while has_node(candidate):
 		index += 1
-		candidate = "ProceduralPillar3D%d" % index
+		candidate = "Pillar3D%d" % index
 	return candidate
 
 
 func _unique_roof_name() -> String:
 	var index := get_roof_nodes().size() + 1
-	var candidate := "ProceduralRoof3D%d" % index
+	var candidate := "Roof3D%d" % index
 	while has_node(candidate):
 		index += 1
-		candidate = "ProceduralRoof3D%d" % index
+		candidate = "Roof3D%d" % index
 	return candidate
 
 

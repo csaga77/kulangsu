@@ -11,10 +11,10 @@ const MODE_PROP := "prop"
 const MODE_WINDOW := "window"
 const MODE_DOOR := "door"
 const BuildingEditor3DScript = preload("res://addons/low_poly_building_editor/building_editor_3d.gd")
-const ProceduralWall3DScript = preload("res://addons/low_poly_building_editor/procedural_wall_3d.gd")
-const ProceduralFloor3DScript = preload("res://addons/low_poly_building_editor/procedural_floor_3d.gd")
-const ProceduralPillar3DScript = preload("res://addons/low_poly_building_editor/procedural_pillar_3d.gd")
-const ProceduralRoof3DScript = preload("res://addons/low_poly_building_editor/procedural_roof_3d.gd")
+const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
+const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
+const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
+const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
 const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
 const DockScript = preload("res://addons/low_poly_building_editor/low_poly_building_editor_dock.gd")
@@ -99,33 +99,33 @@ var m_wall_start_screen_position := Vector2.ZERO
 var m_wall_has_valid_preview := false
 var m_wall_release_commits_preview := false
 var m_is_drawing_wall := false
-var m_wall_preview: ProceduralWall3DScript
+var m_wall_preview: Wall3DScript
 var m_floor_start_local := Vector3.ZERO
 var m_floor_end_local := Vector3.ZERO
 var m_floor_start_screen_position := Vector2.ZERO
 var m_floor_has_valid_preview := false
 var m_floor_release_commits_preview := false
 var m_is_drawing_floor := false
-var m_floor_preview: ProceduralFloor3DScript
-var m_dragging_floor: ProceduralFloor3DScript
+var m_floor_preview: Floor3DScript
+var m_dragging_floor: Floor3DScript
 var m_drag_floor_old_start := Vector3.ZERO
 var m_drag_floor_old_end := Vector3.ZERO
 var m_drag_floor_anchor_local := Vector3.ZERO
 var m_drag_floor_edit_mask := FLOOR_EDIT_MOVE
 var m_drag_floor_active_material: Material
-var m_drag_floor_hover: ProceduralFloor3DScript
+var m_drag_floor_hover: Floor3DScript
 var m_drag_floor_hover_material: Material
 var m_drag_floor_hover_edit_mask := FLOOR_EDIT_MOVE
-var m_pillar_preview: ProceduralPillar3DScript
+var m_pillar_preview: Pillar3DScript
 var m_pillar_preview_valid := false
-var m_dragging_pillar: ProceduralPillar3DScript
+var m_dragging_pillar: Pillar3DScript
 var m_drag_pillar_old_base := Vector3.ZERO
 var m_drag_pillar_old_radius := 0.0
 var m_drag_pillar_old_upper_radius := 0.0
 var m_drag_pillar_anchor_local := Vector3.ZERO
 var m_drag_pillar_edit_mode := PILLAR_EDIT_MOVE
 var m_drag_pillar_active_material: Material
-var m_drag_pillar_hover: ProceduralPillar3DScript
+var m_drag_pillar_hover: Pillar3DScript
 var m_drag_pillar_hover_material: Material
 var m_drag_pillar_hover_edit_mode := PILLAR_EDIT_MOVE
 var m_roof_start_local := Vector3.ZERO
@@ -135,8 +135,8 @@ var m_roof_has_valid_preview := false
 var m_roof_release_commits_preview := false
 var m_roof_draw_rotation_degrees := 0.0
 var m_is_drawing_roof := false
-var m_roof_preview: ProceduralRoof3DScript
-var m_dragging_roof: ProceduralRoof3DScript
+var m_roof_preview: Roof3DScript
+var m_dragging_roof: Roof3DScript
 var m_drag_roof_old_start := Vector3.ZERO
 var m_drag_roof_old_end := Vector3.ZERO
 var m_drag_roof_old_rotation_degrees := 0.0
@@ -147,7 +147,7 @@ var m_drag_roof_anchor_local := Vector3.ZERO
 var m_drag_roof_plane_y := 0.0
 var m_drag_roof_edit_mask := FLOOR_EDIT_MOVE
 var m_drag_roof_active_material: Material
-var m_drag_roof_hover: ProceduralRoof3DScript
+var m_drag_roof_hover: Roof3DScript
 var m_drag_roof_hover_material: Material
 var m_drag_roof_hover_edit_mask := FLOOR_EDIT_MOVE
 var m_prop_preview: Node3D
@@ -155,8 +155,8 @@ var m_prop_preview_path := ""
 var m_prop_rotation_y := 0.0
 var m_preview_valid := false
 var m_preview_parent: Node
-var m_preview_wall: ProceduralWall3DScript
-var m_dragging_wall: ProceduralWall3DScript
+var m_preview_wall: Wall3DScript
+var m_dragging_wall: Wall3DScript
 var m_drag_wall_old_start: Vector3
 var m_drag_wall_old_end: Vector3
 var m_drag_wall_old_segments: Array[WallSegment3DScript] = []
@@ -168,7 +168,7 @@ var m_drag_wall_joint_origin := Vector3.ZERO
 var m_drag_wall_dragging_joint := false
 var m_drag_wall_detaching_joint := false
 var m_drag_wall_has_connection_snap := false
-var m_drag_wall_hover: ProceduralWall3DScript
+var m_drag_wall_hover: Wall3DScript
 var m_drag_wall_hover_material: Material
 var m_drag_wall_hover_segment := 0
 var m_drag_wall_hover_endpoint := -1
@@ -200,27 +200,27 @@ func _enter_tree() -> void:
 		_get_editor_icon(&"Node3D")
 	)
 	add_custom_type(
-		"ProceduralWall3D",
+		"Wall3D",
 		"MeshInstance3D",
-		ProceduralWall3DScript,
+		Wall3DScript,
 		_get_editor_icon(&"MeshInstance3D")
 	)
 	add_custom_type(
-		"ProceduralFloor3D",
+		"Floor3D",
 		"MeshInstance3D",
-		ProceduralFloor3DScript,
+		Floor3DScript,
 		_get_editor_icon(&"MeshInstance3D")
 	)
 	add_custom_type(
-		"ProceduralPillar3D",
+		"Pillar3D",
 		"MeshInstance3D",
-		ProceduralPillar3DScript,
+		Pillar3DScript,
 		_get_editor_icon(&"MeshInstance3D")
 	)
 	add_custom_type(
-		"ProceduralRoof3D",
+		"Roof3D",
 		"MeshInstance3D",
-		ProceduralRoof3DScript,
+		Roof3DScript,
 		_get_editor_icon(&"MeshInstance3D")
 	)
 	add_custom_type(
@@ -283,10 +283,10 @@ func _exit_tree() -> void:
 		m_dock.queue_free()
 		m_dock = null
 	remove_custom_type("BuildingOpening3D")
-	remove_custom_type("ProceduralRoof3D")
-	remove_custom_type("ProceduralPillar3D")
-	remove_custom_type("ProceduralFloor3D")
-	remove_custom_type("ProceduralWall3D")
+	remove_custom_type("Roof3D")
+	remove_custom_type("Pillar3D")
+	remove_custom_type("Floor3D")
+	remove_custom_type("Wall3D")
 	remove_custom_type("BuildingEditor3D")
 
 
@@ -359,7 +359,7 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 				m_wall_release_commits_preview = true
 			return _handled()
 		var pick := _find_wall_pick(camera, mouse_motion.position)
-		var hover_wall := pick.get("wall") as ProceduralWall3DScript
+		var hover_wall := pick.get("wall") as Wall3DScript
 		var hover_segment := int(pick.get("segment", 0))
 		var hover_ep := int(pick.get("endpoint", -1))
 		var hover_joint_position := Vector3.ZERO
@@ -399,7 +399,7 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 
 	if !m_is_drawing_wall:
 		var pick := _find_wall_pick(camera, mouse_button.position)
-		var hit_wall := pick.get("wall") as ProceduralWall3DScript
+		var hit_wall := pick.get("wall") as Wall3DScript
 		if hit_wall != null:
 			if mouse_button.shift_pressed and int(pick.get("endpoint", -1)) < 0:
 				_commit_add_wall_joint(
@@ -493,7 +493,7 @@ func _handle_placement_input(camera: Camera3D, event: InputEvent) -> int:
 		var hit_opening := pick.get("opening") as BuildingOpening3DScript
 		if hit_opening != null:
 			_clear_drag_hover()
-			_start_window_drag(hit_opening, int(pick.get("edge", -1)), pick.get("wall") as ProceduralWall3DScript)
+			_start_window_drag(hit_opening, int(pick.get("edge", -1)), pick.get("wall") as Wall3DScript)
 			return _handled()
 
 	_update_placement_preview(camera, mouse_button.position)
@@ -519,9 +519,9 @@ func _handle_window_drag_input(camera: Camera3D, event: InputEvent) -> int:
 
 func _create_wall_preview(coordinator: BuildingEditor3DScript) -> void:
 	_clear_wall_preview()
-	m_wall_preview = ProceduralWall3DScript.new() as ProceduralWall3DScript
+	m_wall_preview = Wall3DScript.new() as Wall3DScript
 	m_wall_preview.name = "WallPreview"
-	m_wall_preview.set_meta(ProceduralWall3DScript.PREVIEW_META, true)
+	m_wall_preview.set_meta(Wall3DScript.PREVIEW_META, true)
 	m_wall_preview.wall_height = float(m_wall_settings["height"])
 	m_wall_preview.wall_thickness = float(m_wall_settings["thickness"])
 	var preview_color := Color(m_wall_settings["color"])
@@ -629,10 +629,10 @@ func _commit_wall(coordinator: BuildingEditor3DScript, local_start: Vector3, loc
 	)
 	var undo_redo := get_undo_redo()
 	if !merge.is_empty():
-		var target := merge["wall"] as ProceduralWall3DScript
+		var target := merge["wall"] as Wall3DScript
 		var old_start := target.start_point
 		var old_end := target.end_point
-		undo_redo.create_action("Merge Procedural Wall")
+		undo_redo.create_action("Merge Wall")
 		undo_redo.add_do_method(
 			self,
 			"_set_wall_endpoints_and_refresh_intersections",
@@ -668,7 +668,7 @@ func _commit_wall(coordinator: BuildingEditor3DScript, local_start: Vector3, loc
 		Color(m_wall_settings["color"])
 	)
 	var scene_root := get_editor_interface().get_edited_scene_root()
-	undo_redo.create_action("Create Procedural Wall")
+	undo_redo.create_action("Create Wall")
 	undo_redo.add_do_reference(wall)
 	undo_redo.add_do_method(
 		self,
@@ -699,7 +699,7 @@ func _handle_floor_input(camera: Camera3D, event: InputEvent) -> int:
 				m_floor_release_commits_preview = true
 			return _handled()
 		var floor_pick := _find_floor_pick(camera, mouse_motion.position)
-		var hover_floor := floor_pick.get("floor") as ProceduralFloor3DScript
+		var hover_floor := floor_pick.get("floor") as Floor3DScript
 		var edit_mask := int(floor_pick.get("edit_mask", FLOOR_EDIT_MOVE))
 		_update_floor_hover(hover_floor, edit_mask)
 		if hover_floor != null:
@@ -733,7 +733,7 @@ func _handle_floor_input(camera: Camera3D, event: InputEvent) -> int:
 
 	if !m_is_drawing_floor:
 		var floor_pick := _find_floor_pick(camera, mouse_button.position)
-		var hit_floor := floor_pick.get("floor") as ProceduralFloor3DScript
+		var hit_floor := floor_pick.get("floor") as Floor3DScript
 		if hit_floor != null:
 			_clear_floor_hover()
 			_start_floor_drag(hit_floor, camera, mouse_button.position, int(floor_pick.get("edit_mask", FLOOR_EDIT_MOVE)))
@@ -767,9 +767,9 @@ func _handle_floor_input(camera: Camera3D, event: InputEvent) -> int:
 func _create_floor_preview(coordinator: BuildingEditor3DScript) -> void:
 	_clear_floor_preview()
 	_apply_floor_settings_to_coordinator(coordinator)
-	m_floor_preview = ProceduralFloor3DScript.new() as ProceduralFloor3DScript
+	m_floor_preview = Floor3DScript.new() as Floor3DScript
 	m_floor_preview.name = "FloorPreview"
-	m_floor_preview.set_meta(ProceduralFloor3DScript.PREVIEW_META, true)
+	m_floor_preview.set_meta(Floor3DScript.PREVIEW_META, true)
 	m_floor_preview.floor_thickness = float(m_floor_settings["thickness"])
 	var preview_color := Color(m_floor_settings["color"])
 	preview_color.a = 0.44
@@ -855,7 +855,7 @@ func _commit_floor(coordinator: BuildingEditor3DScript, local_start: Vector3, lo
 	)
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	var undo_redo := get_undo_redo()
-	undo_redo.create_action("Create Procedural Floor")
+	undo_redo.create_action("Create Floor")
 	undo_redo.add_do_reference(floor)
 	undo_redo.add_do_method(self, "_do_add_node", coordinator, floor, scene_root, true)
 	undo_redo.add_undo_method(self, "_undo_remove_node", coordinator, floor)
@@ -880,7 +880,7 @@ func _handle_floor_drag_input(camera: Camera3D, event: InputEvent) -> int:
 
 
 func _start_floor_drag(
-	floor: ProceduralFloor3DScript,
+	floor: Floor3DScript,
 	camera: Camera3D,
 	mouse_pos: Vector2,
 	edit_mask: int
@@ -953,7 +953,7 @@ func _commit_floor_drag() -> void:
 		return
 
 	var undo_redo := get_undo_redo()
-	undo_redo.create_action("Move Procedural Floor" if edit_mask == FLOOR_EDIT_MOVE else "Resize Procedural Floor")
+	undo_redo.create_action("Move Floor" if edit_mask == FLOOR_EDIT_MOVE else "Resize Floor")
 	undo_redo.add_do_method(floor, "set_floor_corners", new_start, new_end)
 	undo_redo.add_do_method(self, "_select_node", floor)
 	undo_redo.add_undo_method(floor, "set_floor_corners", old_start, old_end)
@@ -998,7 +998,7 @@ func _resized_floor_points(snapped_hit: Vector3) -> Dictionary:
 
 
 func _floor_plane_local_from_mouse(
-	floor: ProceduralFloor3DScript,
+	floor: Floor3DScript,
 	camera: Camera3D,
 	mouse_position: Vector2
 ) -> Vector3:
@@ -1021,7 +1021,7 @@ func _floor_plane_local_from_mouse(
 	return floor.start_point
 
 
-func _snap_floor_edit_local(floor: ProceduralFloor3DScript, local_position: Vector3) -> Vector3:
+func _snap_floor_edit_local(floor: Floor3DScript, local_position: Vector3) -> Vector3:
 	var step := _active_floor_grid_step(floor)
 	return Vector3(
 		roundf(local_position.x / step) * step,
@@ -1050,7 +1050,7 @@ func _floor_edit_mask_is_corner(edit_mask: int) -> bool:
 	return edits_x and edits_z
 
 
-func _active_floor_grid_step(floor: ProceduralFloor3DScript) -> float:
+func _active_floor_grid_step(floor: Floor3DScript) -> float:
 	var coordinator := _find_coordinator_from_node(floor)
 	if coordinator != null:
 		return maxf(coordinator.grid_step, 0.05)
@@ -1078,7 +1078,7 @@ func _handle_roof_input(camera: Camera3D, event: InputEvent) -> int:
 				m_roof_release_commits_preview = true
 			return _handled()
 		var roof_pick := _find_roof_pick(camera, mouse_motion.position)
-		var hover_roof := roof_pick.get("roof") as ProceduralRoof3DScript
+		var hover_roof := roof_pick.get("roof") as Roof3DScript
 		var edit_mask := int(roof_pick.get("edit_mask", FLOOR_EDIT_MOVE))
 		_update_roof_hover(hover_roof, edit_mask)
 		if hover_roof != null:
@@ -1112,7 +1112,7 @@ func _handle_roof_input(camera: Camera3D, event: InputEvent) -> int:
 
 	if !m_is_drawing_roof:
 		var roof_pick := _find_roof_pick(camera, mouse_button.position)
-		var hit_roof := roof_pick.get("roof") as ProceduralRoof3DScript
+		var hit_roof := roof_pick.get("roof") as Roof3DScript
 		if hit_roof != null:
 			_clear_roof_hover()
 			_start_roof_drag(hit_roof, camera, mouse_button.position, int(roof_pick.get("edit_mask", FLOOR_EDIT_MOVE)))
@@ -1147,9 +1147,9 @@ func _handle_roof_input(camera: Camera3D, event: InputEvent) -> int:
 func _create_roof_preview(coordinator: BuildingEditor3DScript) -> void:
 	_clear_roof_preview()
 	_apply_roof_settings_to_coordinator(coordinator)
-	m_roof_preview = ProceduralRoof3DScript.new() as ProceduralRoof3DScript
+	m_roof_preview = Roof3DScript.new() as Roof3DScript
 	m_roof_preview.name = "RoofPreview"
-	m_roof_preview.set_meta(ProceduralRoof3DScript.PREVIEW_META, true)
+	m_roof_preview.set_meta(Roof3DScript.PREVIEW_META, true)
 	m_roof_preview.set_roof_style(String(m_roof_settings["style"]))
 	m_roof_preview.roof_height = float(m_roof_settings["height"])
 	m_roof_preview.roof_thickness = float(m_roof_settings["thickness"])
@@ -1173,7 +1173,7 @@ func _update_roof_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 		return
 	var local_end := _roof_draw_local_from_mouse(coordinator, camera, mouse_position)
 	m_roof_end_local = local_end
-	var roof_points := ProceduralRoof3DScript.roof_corners_from_base_points(
+	var roof_points := Roof3DScript.roof_corners_from_base_points(
 		m_roof_start_local,
 		local_end,
 		m_roof_draw_rotation_degrees
@@ -1248,7 +1248,7 @@ func _handle_roof_rotation_key(key_event: InputEventKey) -> int:
 	if m_is_drawing_roof:
 		m_roof_draw_rotation_degrees = _normalize_degrees(m_roof_draw_rotation_degrees + delta)
 		if m_roof_preview != null and is_instance_valid(m_roof_preview):
-			var roof_points := ProceduralRoof3DScript.roof_corners_from_base_points(
+			var roof_points := Roof3DScript.roof_corners_from_base_points(
 				m_roof_start_local,
 				m_roof_end_local,
 				m_roof_draw_rotation_degrees
@@ -1273,17 +1273,17 @@ func _handle_roof_rotation_key(key_event: InputEventKey) -> int:
 	return _handled()
 
 
-func _selected_roof_for_rotation() -> ProceduralRoof3DScript:
+func _selected_roof_for_rotation() -> Roof3DScript:
 	var selection := get_editor_interface().get_selection()
 	if selection == null:
 		return null
 	for node in selection.get_selected_nodes():
-		if node is ProceduralRoof3DScript:
-			return node as ProceduralRoof3DScript
+		if node is Roof3DScript:
+			return node as Roof3DScript
 	return null
 
 
-func _commit_roof_rotation(roof: ProceduralRoof3DScript, delta_degrees: float) -> void:
+func _commit_roof_rotation(roof: Roof3DScript, delta_degrees: float) -> void:
 	if roof == null or !is_instance_valid(roof):
 		return
 	var old_start := roof.start_point
@@ -1339,7 +1339,7 @@ func _commit_roof_rotation(roof: ProceduralRoof3DScript, delta_degrees: float) -
 	_clear_roof_hover()
 
 	var undo_redo := get_undo_redo()
-	undo_redo.create_action("Rotate Procedural Roof")
+	undo_redo.create_action("Rotate Roof")
 	undo_redo.add_do_method(
 		self,
 		"_set_roof_state_and_refresh",
@@ -1369,7 +1369,7 @@ func _commit_roof_rotation(roof: ProceduralRoof3DScript, delta_degrees: float) -
 	_set_status("Rotated roof to %.0f degrees." % new_rotation)
 
 
-func _roof_state_rotated_around_center(roof: ProceduralRoof3DScript, rotation_degrees: float) -> Dictionary:
+func _roof_state_rotated_around_center(roof: Roof3DScript, rotation_degrees: float) -> Dictionary:
 	var size := roof.get_roof_size()
 	var center := roof.get_roof_center_point()
 	var anchor := center - _roof_rotation_basis(rotation_degrees) * Vector3(size.x * 0.5, 0.0, size.y * 0.5)
@@ -1385,7 +1385,7 @@ func _commit_roof(
 	draw_end: Vector3,
 	rotation_degrees: float
 ) -> void:
-	var roof_points := ProceduralRoof3DScript.roof_corners_from_base_points(draw_start, draw_end, rotation_degrees)
+	var roof_points := Roof3DScript.roof_corners_from_base_points(draw_start, draw_end, rotation_degrees)
 	var local_start := Vector3(roof_points["start"])
 	var local_end := Vector3(roof_points["end"])
 	if !_is_roof_span_large_enough(local_start, local_end):
@@ -1434,7 +1434,7 @@ func _commit_roof(
 		return
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	var undo_redo := get_undo_redo()
-	undo_redo.create_action("Create Procedural Roof")
+	undo_redo.create_action("Create Roof")
 	undo_redo.add_do_reference(roof)
 	undo_redo.add_do_method(self, "_do_add_node_and_refresh_roofs", coordinator, roof, scene_root, true, coordinator)
 	undo_redo.add_undo_method(self, "_undo_remove_node_and_refresh_roofs", coordinator, roof, coordinator)
@@ -1462,7 +1462,7 @@ func _handle_roof_drag_input(camera: Camera3D, event: InputEvent) -> int:
 
 
 func _start_roof_drag(
-	roof: ProceduralRoof3DScript,
+	roof: Roof3DScript,
 	camera: Camera3D,
 	mouse_pos: Vector2,
 	edit_mask: int
@@ -1638,7 +1638,7 @@ func _commit_roof_drag() -> void:
 			return
 
 	var undo_redo := get_undo_redo()
-	undo_redo.create_action("Move Procedural Roof" if edit_mask == FLOOR_EDIT_MOVE else "Resize Procedural Roof")
+	undo_redo.create_action("Move Roof" if edit_mask == FLOOR_EDIT_MOVE else "Resize Roof")
 	undo_redo.add_do_method(
 		self,
 		"_set_roof_state_and_refresh",
@@ -1690,7 +1690,7 @@ func _cancel_roof_drag() -> void:
 	_set_status("Roof edit canceled.")
 
 
-func _resized_roof_points(roof: ProceduralRoof3DScript, roof_local_hit: Vector3) -> Dictionary:
+func _resized_roof_points(roof: Roof3DScript, roof_local_hit: Vector3) -> Dictionary:
 	var old_size := Vector2(
 		absf(m_drag_roof_old_end.x - m_drag_roof_old_start.x),
 		absf(m_drag_roof_old_end.z - m_drag_roof_old_start.z)
@@ -1731,7 +1731,7 @@ func _resized_roof_points(roof: ProceduralRoof3DScript, roof_local_hit: Vector3)
 
 
 func _roof_plane_local_from_mouse(
-	roof: ProceduralRoof3DScript,
+	roof: Roof3DScript,
 	camera: Camera3D,
 	mouse_position: Vector2
 ) -> Vector3:
@@ -1739,7 +1739,7 @@ func _roof_plane_local_from_mouse(
 
 
 func _roof_plane_local_from_mouse_at_y(
-	roof: ProceduralRoof3DScript,
+	roof: Roof3DScript,
 	camera: Camera3D,
 	mouse_position: Vector2,
 	plane_y: float
@@ -1763,7 +1763,7 @@ func _roof_plane_local_from_mouse_at_y(
 
 
 func _roof_drag_plane_y_from_mouse(
-	roof: ProceduralRoof3DScript,
+	roof: Roof3DScript,
 	camera: Camera3D,
 	mouse_position: Vector2
 ) -> float:
@@ -1788,7 +1788,7 @@ func _roof_edit_local_from_parent_position(local_position: Vector3) -> Vector3:
 	return drag_frame.affine_inverse() * local_position
 
 
-func _snap_roof_footprint_edge(roof: ProceduralRoof3DScript, value: float) -> float:
+func _snap_roof_footprint_edge(roof: Roof3DScript, value: float) -> float:
 	var step := _active_roof_grid_step(roof)
 	return roundf(value / step) * step
 
@@ -1813,7 +1813,7 @@ func _roof_edit_mask_is_corner(edit_mask: int) -> bool:
 	return edits_x and edits_z
 
 
-func _active_roof_grid_step(roof: ProceduralRoof3DScript) -> float:
+func _active_roof_grid_step(roof: Roof3DScript) -> float:
 	var coordinator := _find_coordinator_from_node(roof)
 	if coordinator != null:
 		return maxf(coordinator.grid_step, 0.05)
@@ -1874,7 +1874,7 @@ func _handle_pillar_input(camera: Camera3D, event: InputEvent) -> int:
 	if event is InputEventMouseMotion:
 		var mouse_pos := (event as InputEventMouseMotion).position
 		var pillar_pick := _find_pillar_pick(camera, mouse_pos)
-		var hover_pillar := pillar_pick.get("pillar") as ProceduralPillar3DScript
+		var hover_pillar := pillar_pick.get("pillar") as Pillar3DScript
 		var edit_mode := int(pillar_pick.get("edit_mode", PILLAR_EDIT_MOVE))
 		_update_pillar_hover(hover_pillar, edit_mode)
 		if hover_pillar != null:
@@ -1895,7 +1895,7 @@ func _handle_pillar_input(camera: Camera3D, event: InputEvent) -> int:
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
 
 	var pillar_pick := _find_pillar_pick(camera, mouse_button.position)
-	var hit_pillar := pillar_pick.get("pillar") as ProceduralPillar3DScript
+	var hit_pillar := pillar_pick.get("pillar") as Pillar3DScript
 	if hit_pillar != null:
 		_clear_pillar_preview()
 		_clear_pillar_hover()
@@ -1916,9 +1916,9 @@ func _handle_pillar_input(camera: Camera3D, event: InputEvent) -> int:
 func _create_pillar_preview(coordinator: BuildingEditor3DScript) -> void:
 	_clear_pillar_preview()
 	_apply_pillar_settings_to_coordinator(coordinator)
-	m_pillar_preview = ProceduralPillar3DScript.new() as ProceduralPillar3DScript
+	m_pillar_preview = Pillar3DScript.new() as Pillar3DScript
 	m_pillar_preview.name = "PillarPreview"
-	m_pillar_preview.set_meta(ProceduralPillar3DScript.PREVIEW_META, true)
+	m_pillar_preview.set_meta(Pillar3DScript.PREVIEW_META, true)
 	m_pillar_preview.pillar_radius = float(m_pillar_settings["radius"])
 	m_pillar_preview.upper_radius = float(m_pillar_settings["upper_radius"])
 	m_pillar_preview.pillar_height = float(m_pillar_settings["height"])
@@ -2030,7 +2030,7 @@ func _commit_pillar() -> void:
 	)
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	var undo_redo := get_undo_redo()
-	undo_redo.create_action("Create Procedural Pillar")
+	undo_redo.create_action("Create Pillar")
 	undo_redo.add_do_reference(pillar)
 	undo_redo.add_do_method(self, "_do_add_node", coordinator, pillar, scene_root, true)
 	undo_redo.add_undo_method(self, "_undo_remove_node", coordinator, pillar)
@@ -2054,7 +2054,7 @@ func _handle_pillar_drag_input(camera: Camera3D, event: InputEvent) -> int:
 
 
 func _start_pillar_drag(
-	pillar: ProceduralPillar3DScript,
+	pillar: Pillar3DScript,
 	camera: Camera3D,
 	mouse_pos: Vector2,
 	edit_mode: int
@@ -2129,7 +2129,7 @@ func _commit_pillar_drag() -> void:
 		return
 
 	var undo_redo := get_undo_redo()
-	undo_redo.create_action("Move Procedural Pillar" if edit_mode == PILLAR_EDIT_MOVE else "Resize Procedural Pillar")
+	undo_redo.create_action("Move Pillar" if edit_mode == PILLAR_EDIT_MOVE else "Resize Pillar")
 	undo_redo.add_do_method(pillar, "set_pillar_base_and_radii", new_base, new_radius, new_upper_radius)
 	undo_redo.add_do_method(self, "_select_node", pillar)
 	undo_redo.add_undo_method(pillar, "set_pillar_base_and_radii", old_base, old_radius, old_upper_radius)
@@ -2153,7 +2153,7 @@ func _cancel_pillar_drag() -> void:
 
 
 func _pillar_plane_local_from_mouse(
-	pillar: ProceduralPillar3DScript,
+	pillar: Pillar3DScript,
 	camera: Camera3D,
 	mouse_position: Vector2
 ) -> Vector3:
@@ -2176,7 +2176,7 @@ func _pillar_plane_local_from_mouse(
 	return pillar.base_point
 
 
-func _snap_pillar_radius(pillar: ProceduralPillar3DScript, radius: float) -> float:
+func _snap_pillar_radius(pillar: Pillar3DScript, radius: float) -> float:
 	var step := maxf(_active_pillar_grid_step(pillar) * 0.5, 0.05)
 	return maxf(roundf(radius / step) * step, 0.05)
 
@@ -2191,7 +2191,7 @@ func _pillar_edit_label(edit_mode: int) -> String:
 	return "radius" if edit_mode == PILLAR_EDIT_RADIUS else "body"
 
 
-func _active_pillar_grid_step(pillar: ProceduralPillar3DScript) -> float:
+func _active_pillar_grid_step(pillar: Pillar3DScript) -> float:
 	var coordinator := _find_coordinator_from_node(pillar)
 	if coordinator != null:
 		return maxf(coordinator.grid_step, 0.05)
@@ -2223,7 +2223,7 @@ func _update_placement_preview(camera: Camera3D, mouse_position: Vector2) -> voi
 	_update_prop_preview(wall, hit)
 
 
-func _update_opening_preview(wall: ProceduralWall3DScript, hit: Dictionary) -> void:
+func _update_opening_preview(wall: Wall3DScript, hit: Dictionary) -> void:
 	var settings := _active_opening_settings()
 	var label := String(settings["label"])
 	if wall == null:
@@ -2243,7 +2243,7 @@ func _update_opening_preview(wall: ProceduralWall3DScript, hit: Dictionary) -> v
 
 	var opening := m_prop_preview as BuildingOpening3DScript
 	opening.name = "%sPreview" % String(settings["node_name"])
-	opening.set_meta(ProceduralWall3DScript.SEGMENT_INDEX_META, segment_index)
+	opening.set_meta(Wall3DScript.SEGMENT_INDEX_META, segment_index)
 	_apply_opening_settings(opening, settings, segment.thickness + 0.04)
 	var local_hit := frame.affine_inverse() * wall.to_local(Vector3(hit["position"]))
 	var face_sign := 1.0 if local_hit.z >= 0.0 else -1.0
@@ -2345,7 +2345,7 @@ func _active_opening_settings() -> Dictionary:
 	}
 
 
-func _update_prop_preview(wall: ProceduralWall3DScript, hit: Dictionary) -> void:
+func _update_prop_preview(wall: Wall3DScript, hit: Dictionary) -> void:
 	var scene_path := String(m_prop_settings["scene_path"])
 	if scene_path.is_empty() or !ResourceLoader.exists(scene_path):
 		_clear_prop_preview()
@@ -2406,7 +2406,7 @@ func _commit_placement() -> void:
 	if _is_opening_tool():
 		var settings := _active_opening_settings()
 		var opening_preview := m_prop_preview as BuildingOpening3DScript
-		var wall := m_preview_parent as ProceduralWall3DScript
+		var wall := m_preview_parent as Wall3DScript
 		if opening_preview == null or wall == null:
 			return
 		var opening := BuildingOpening3DScript.new() as BuildingOpening3DScript
@@ -2426,8 +2426,8 @@ func _commit_placement() -> void:
 		opening.position = opening_preview.position
 		opening.rotation = opening_preview.rotation
 		opening.set_meta(
-			ProceduralWall3DScript.SEGMENT_INDEX_META,
-			int(opening_preview.get_meta(ProceduralWall3DScript.SEGMENT_INDEX_META, 0))
+			Wall3DScript.SEGMENT_INDEX_META,
+			int(opening_preview.get_meta(Wall3DScript.SEGMENT_INDEX_META, 0))
 		)
 		opening.set_meta(
 			OPENING_SILL_META,
@@ -2492,7 +2492,7 @@ func _validate_prop_preview(parent: Node, preview: Node3D) -> bool:
 		var child_3d := child as Node3D
 		if child_3d == null:
 			continue
-		if child.has_meta(ProceduralWall3DScript.GENERATED_META):
+		if child.has_meta(Wall3DScript.GENERATED_META):
 			continue
 		if child_3d.global_position.distance_to(preview.global_position) < clearance:
 			return false
@@ -2507,7 +2507,7 @@ func _raycast_world(
 	var origin := camera.project_ray_origin(mouse_position)
 	var direction := camera.project_ray_normal(mouse_position)
 	if include_walls:
-		var wall_hit := _raycast_procedural_walls(origin, direction)
+		var wall_hit := _raycast_walls(origin, direction)
 		if !wall_hit.is_empty():
 			return wall_hit
 
@@ -2523,12 +2523,12 @@ func _raycast_world(
 	}
 
 
-func _raycast_procedural_walls(origin: Vector3, direction: Vector3) -> Dictionary:
+func _raycast_walls(origin: Vector3, direction: Vector3) -> Dictionary:
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	if scene_root == null:
 		return {}
 
-	var walls: Array[ProceduralWall3DScript] = []
+	var walls: Array[Wall3DScript] = []
 	_collect_scene_walls(scene_root, walls)
 
 	var best_hit: Dictionary = {}
@@ -2549,10 +2549,10 @@ func _raycast_procedural_walls(origin: Vector3, direction: Vector3) -> Dictionar
 func _find_floor_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
 	var origin := camera.project_ray_origin(mouse_pos)
 	var direction := camera.project_ray_normal(mouse_pos)
-	var hit := _raycast_procedural_floors(origin, direction)
+	var hit := _raycast_floors(origin, direction)
 	if hit.is_empty():
 		return {}
-	var floor := hit.get("floor") as ProceduralFloor3DScript
+	var floor := hit.get("floor") as Floor3DScript
 	if floor == null:
 		return {}
 	var local_position := Vector3(hit.get("local_position", Vector3.ZERO))
@@ -2560,12 +2560,12 @@ func _find_floor_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
 	return hit
 
 
-func _raycast_procedural_floors(origin: Vector3, direction: Vector3) -> Dictionary:
+func _raycast_floors(origin: Vector3, direction: Vector3) -> Dictionary:
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	if scene_root == null:
 		return {}
 
-	var floors: Array[ProceduralFloor3DScript] = []
+	var floors: Array[Floor3DScript] = []
 	_collect_scene_floors(scene_root, floors)
 
 	var best_hit: Dictionary = {}
@@ -2573,7 +2573,7 @@ func _raycast_procedural_floors(origin: Vector3, direction: Vector3) -> Dictiona
 	for floor in floors:
 		if !is_instance_valid(floor) or floor == m_floor_preview:
 			continue
-		if floor.has_meta(ProceduralFloor3DScript.PREVIEW_META):
+		if floor.has_meta(Floor3DScript.PREVIEW_META):
 			continue
 		var hit := _intersect_floor_box(floor, origin, direction)
 		if hit.is_empty():
@@ -2585,15 +2585,15 @@ func _raycast_procedural_floors(origin: Vector3, direction: Vector3) -> Dictiona
 	return best_hit
 
 
-func _collect_scene_floors(node: Node, floors: Array[ProceduralFloor3DScript]) -> void:
-	if node is ProceduralFloor3DScript:
-		floors.append(node as ProceduralFloor3DScript)
+func _collect_scene_floors(node: Node, floors: Array[Floor3DScript]) -> void:
+	if node is Floor3DScript:
+		floors.append(node as Floor3DScript)
 	for child in node.get_children():
 		_collect_scene_floors(child, floors)
 
 
 func _intersect_floor_box(
-	floor: ProceduralFloor3DScript,
+	floor: Floor3DScript,
 	origin: Vector3,
 	direction: Vector3
 ) -> Dictionary:
@@ -2626,7 +2626,7 @@ func _intersect_floor_box(
 	}
 
 
-func _floor_edit_mask_for_local_hit(floor: ProceduralFloor3DScript, local_hit: Vector3) -> int:
+func _floor_edit_mask_for_local_hit(floor: Floor3DScript, local_hit: Vector3) -> int:
 	var size := floor.get_floor_size()
 	var radius := maxf(_active_floor_grid_step(floor) * 0.35, 0.16)
 	var edit_mask := FLOOR_EDIT_MOVE
@@ -2644,10 +2644,10 @@ func _floor_edit_mask_for_local_hit(floor: ProceduralFloor3DScript, local_hit: V
 func _find_roof_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
 	var origin := camera.project_ray_origin(mouse_pos)
 	var direction := camera.project_ray_normal(mouse_pos)
-	var hit := _raycast_procedural_roofs(origin, direction)
+	var hit := _raycast_roofs(origin, direction)
 	if hit.is_empty():
 		return {}
-	var roof := hit.get("roof") as ProceduralRoof3DScript
+	var roof := hit.get("roof") as Roof3DScript
 	if roof == null:
 		return {}
 	var local_position := Vector3(hit.get("local_position", Vector3.ZERO))
@@ -2655,12 +2655,12 @@ func _find_roof_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
 	return hit
 
 
-func _raycast_procedural_roofs(origin: Vector3, direction: Vector3) -> Dictionary:
+func _raycast_roofs(origin: Vector3, direction: Vector3) -> Dictionary:
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	if scene_root == null:
 		return {}
 
-	var roofs: Array[ProceduralRoof3DScript] = []
+	var roofs: Array[Roof3DScript] = []
 	_collect_scene_roofs(scene_root, roofs)
 
 	var best_hit: Dictionary = {}
@@ -2668,7 +2668,7 @@ func _raycast_procedural_roofs(origin: Vector3, direction: Vector3) -> Dictionar
 	for roof in roofs:
 		if !is_instance_valid(roof) or roof == m_roof_preview:
 			continue
-		if roof.has_meta(ProceduralRoof3DScript.PREVIEW_META):
+		if roof.has_meta(Roof3DScript.PREVIEW_META):
 			continue
 		var hit := _intersect_roof_bounds(roof, origin, direction)
 		if hit.is_empty():
@@ -2680,15 +2680,15 @@ func _raycast_procedural_roofs(origin: Vector3, direction: Vector3) -> Dictionar
 	return best_hit
 
 
-func _collect_scene_roofs(node: Node, roofs: Array[ProceduralRoof3DScript]) -> void:
-	if node is ProceduralRoof3DScript:
-		roofs.append(node as ProceduralRoof3DScript)
+func _collect_scene_roofs(node: Node, roofs: Array[Roof3DScript]) -> void:
+	if node is Roof3DScript:
+		roofs.append(node as Roof3DScript)
 	for child in node.get_children():
 		_collect_scene_roofs(child, roofs)
 
 
 func _intersect_roof_bounds(
-	roof: ProceduralRoof3DScript,
+	roof: Roof3DScript,
 	origin: Vector3,
 	direction: Vector3
 ) -> Dictionary:
@@ -2721,7 +2721,7 @@ func _intersect_roof_bounds(
 	}
 
 
-func _roof_edit_mask_for_local_hit(roof: ProceduralRoof3DScript, local_hit: Vector3) -> int:
+func _roof_edit_mask_for_local_hit(roof: Roof3DScript, local_hit: Vector3) -> int:
 	var size := roof.get_roof_size()
 	var overhang := maxf(roof.roof_overhang, 0.0)
 	var radius := maxf(_active_roof_grid_step(roof) * 0.35, 0.16)
@@ -2740,10 +2740,10 @@ func _roof_edit_mask_for_local_hit(roof: ProceduralRoof3DScript, local_hit: Vect
 func _find_pillar_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
 	var origin := camera.project_ray_origin(mouse_pos)
 	var direction := camera.project_ray_normal(mouse_pos)
-	var hit := _raycast_procedural_pillars(origin, direction)
+	var hit := _raycast_pillars(origin, direction)
 	if hit.is_empty():
 		return {}
-	var pillar := hit.get("pillar") as ProceduralPillar3DScript
+	var pillar := hit.get("pillar") as Pillar3DScript
 	if pillar == null:
 		return {}
 	var local_position := Vector3(hit.get("local_position", Vector3.ZERO))
@@ -2751,12 +2751,12 @@ func _find_pillar_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
 	return hit
 
 
-func _raycast_procedural_pillars(origin: Vector3, direction: Vector3) -> Dictionary:
+func _raycast_pillars(origin: Vector3, direction: Vector3) -> Dictionary:
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	if scene_root == null:
 		return {}
 
-	var pillars: Array[ProceduralPillar3DScript] = []
+	var pillars: Array[Pillar3DScript] = []
 	_collect_scene_pillars(scene_root, pillars)
 
 	var best_hit: Dictionary = {}
@@ -2764,7 +2764,7 @@ func _raycast_procedural_pillars(origin: Vector3, direction: Vector3) -> Diction
 	for pillar in pillars:
 		if !is_instance_valid(pillar) or pillar == m_pillar_preview:
 			continue
-		if pillar.has_meta(ProceduralPillar3DScript.PREVIEW_META):
+		if pillar.has_meta(Pillar3DScript.PREVIEW_META):
 			continue
 		var hit := _intersect_pillar_cylinder(pillar, origin, direction)
 		if hit.is_empty():
@@ -2776,15 +2776,15 @@ func _raycast_procedural_pillars(origin: Vector3, direction: Vector3) -> Diction
 	return best_hit
 
 
-func _collect_scene_pillars(node: Node, pillars: Array[ProceduralPillar3DScript]) -> void:
-	if node is ProceduralPillar3DScript:
-		pillars.append(node as ProceduralPillar3DScript)
+func _collect_scene_pillars(node: Node, pillars: Array[Pillar3DScript]) -> void:
+	if node is Pillar3DScript:
+		pillars.append(node as Pillar3DScript)
 	for child in node.get_children():
 		_collect_scene_pillars(child, pillars)
 
 
 func _intersect_pillar_cylinder(
-	pillar: ProceduralPillar3DScript,
+	pillar: Pillar3DScript,
 	origin: Vector3,
 	direction: Vector3
 ) -> Dictionary:
@@ -2839,7 +2839,7 @@ func _intersect_pillar_cylinder(
 
 func _append_pillar_side_hit_candidate(
 	candidates: Array[Dictionary],
-	pillar: ProceduralPillar3DScript,
+	pillar: Pillar3DScript,
 	local_origin: Vector3,
 	local_direction: Vector3,
 	t: float
@@ -2861,7 +2861,7 @@ func _append_pillar_side_hit_candidate(
 
 func _append_pillar_cap_hit_candidate(
 	candidates: Array[Dictionary],
-	pillar: ProceduralPillar3DScript,
+	pillar: Pillar3DScript,
 	local_origin: Vector3,
 	local_direction: Vector3,
 	cap_y: float,
@@ -2882,7 +2882,7 @@ func _append_pillar_cap_hit_candidate(
 	})
 
 
-func _pillar_edit_mode_for_local_hit(pillar: ProceduralPillar3DScript, local_hit: Vector3) -> int:
+func _pillar_edit_mode_for_local_hit(pillar: Pillar3DScript, local_hit: Vector3) -> int:
 	var radius := Vector2(local_hit.x, local_hit.z).length()
 	var edge_tolerance := maxf(_active_pillar_grid_step(pillar) * 0.25, 0.08)
 	if (
@@ -2893,15 +2893,15 @@ func _pillar_edit_mode_for_local_hit(pillar: ProceduralPillar3DScript, local_hit
 	return PILLAR_EDIT_MOVE
 
 
-func _collect_scene_walls(node: Node, walls: Array[ProceduralWall3DScript]) -> void:
-	if node is ProceduralWall3DScript:
-		walls.append(node as ProceduralWall3DScript)
+func _collect_scene_walls(node: Node, walls: Array[Wall3DScript]) -> void:
+	if node is Wall3DScript:
+		walls.append(node as Wall3DScript)
 	for child in node.get_children():
 		_collect_scene_walls(child, walls)
 
 
 func _intersect_wall_box(
-	wall: ProceduralWall3DScript,
+	wall: Wall3DScript,
 	origin: Vector3,
 	direction: Vector3
 ) -> Dictionary:
@@ -3023,11 +3023,11 @@ func _nearest_box_normal(point: Vector3, min_corner: Vector3, max_corner: Vector
 	return best_normal
 
 
-func _find_wall_from_collider(collider: Variant) -> ProceduralWall3DScript:
+func _find_wall_from_collider(collider: Variant) -> Wall3DScript:
 	var node := collider as Node
 	while node != null:
-		if node is ProceduralWall3DScript:
-			return node as ProceduralWall3DScript
+		if node is Wall3DScript:
+			return node as Wall3DScript
 		node = node.get_parent()
 	return null
 
@@ -3116,7 +3116,7 @@ func _apply_roof_settings_to_coordinator(coordinator: BuildingEditor3DScript) ->
 	coordinator.default_roof_debug_wireframe = bool(m_roof_settings.get("debug_wireframe", false))
 
 
-func _active_grid_step(wall: ProceduralWall3DScript) -> float:
+func _active_grid_step(wall: Wall3DScript) -> float:
 	var coordinator := _find_coordinator_from_node(wall)
 	if coordinator != null:
 		return maxf(coordinator.grid_step, 0.05)
@@ -3124,7 +3124,7 @@ func _active_grid_step(wall: ProceduralWall3DScript) -> float:
 
 
 func _apply_wall_geometry(
-	wall: ProceduralWall3DScript,
+	wall: Wall3DScript,
 	new_start: Vector3,
 	new_end: Vector3,
 	segments: Array[WallSegment3DScript],
@@ -3139,7 +3139,7 @@ func _refresh_wall_intersections(coordinator: BuildingEditor3DScript) -> void:
 
 
 func _set_wall_endpoints_and_refresh_intersections(
-	wall: ProceduralWall3DScript,
+	wall: Wall3DScript,
 	new_start: Vector3,
 	new_end: Vector3,
 	coordinator: BuildingEditor3DScript
@@ -3151,7 +3151,7 @@ func _set_wall_endpoints_and_refresh_intersections(
 
 
 func _do_set_wall_geometry(
-	wall: ProceduralWall3DScript,
+	wall: Wall3DScript,
 	new_start: Vector3,
 	new_end: Vector3,
 	segments: Array[WallSegment3DScript],
@@ -3165,7 +3165,7 @@ func _do_set_wall_geometry(
 
 
 func _do_set_wall_geometry_and_refresh_intersections(
-	wall: ProceduralWall3DScript,
+	wall: Wall3DScript,
 	new_start: Vector3,
 	new_end: Vector3,
 	segments: Array[WallSegment3DScript],
@@ -3177,7 +3177,7 @@ func _do_set_wall_geometry_and_refresh_intersections(
 
 
 func _do_set_wall_geometry_preserving_children(
-	wall: ProceduralWall3DScript,
+	wall: Wall3DScript,
 	new_start: Vector3,
 	new_end: Vector3,
 	segments: Array[WallSegment3DScript],
@@ -3195,7 +3195,7 @@ func _do_set_wall_geometry_preserving_children(
 
 
 func _do_set_wall_geometry_preserving_children_and_refresh_intersections(
-	wall: ProceduralWall3DScript,
+	wall: Wall3DScript,
 	new_start: Vector3,
 	new_end: Vector3,
 	segments: Array[WallSegment3DScript],
@@ -3216,7 +3216,7 @@ func _duplicate_segments(segments: Array) -> Array[WallSegment3DScript]:
 	return copies
 
 
-func _duplicate_wall_segments(wall: ProceduralWall3DScript) -> Array[WallSegment3DScript]:
+func _duplicate_wall_segments(wall: Wall3DScript) -> Array[WallSegment3DScript]:
 	var segments: Array[WallSegment3DScript] = []
 	for segment_index in range(wall.get_segment_count()):
 		var segment := wall.get_segment(segment_index)
@@ -3226,7 +3226,7 @@ func _duplicate_wall_segments(wall: ProceduralWall3DScript) -> Array[WallSegment
 	return segments
 
 
-func _normalized_wall_geometry(wall: ProceduralWall3DScript) -> Dictionary:
+func _normalized_wall_geometry(wall: Wall3DScript) -> Dictionary:
 	var coordinator := _find_coordinator_from_node(wall)
 	var tolerance := maxf(_active_grid_step(wall) * 0.25, 0.03)
 	if coordinator != null:
@@ -3257,11 +3257,11 @@ func _wall_geometry_from_segments(segments: Array) -> Dictionary:
 	}
 
 
-func _wall_segment_zero_epsilon(wall: ProceduralWall3DScript) -> float:
+func _wall_segment_zero_epsilon(wall: Wall3DScript) -> float:
 	return maxf(_active_grid_step(wall) * 0.01, 0.001)
 
 
-func _is_dragged_wall_span_zero_length(wall: ProceduralWall3DScript) -> bool:
+func _is_dragged_wall_span_zero_length(wall: Wall3DScript) -> bool:
 	if wall == null:
 		return false
 	var segment_index := clampi(m_drag_wall_segment_index, 0, wall.get_segment_count() - 1)
@@ -3272,7 +3272,7 @@ func _is_dragged_wall_span_zero_length(wall: ProceduralWall3DScript) -> bool:
 
 
 func _wall_geometry_without_segment(
-	wall: ProceduralWall3DScript,
+	wall: Wall3DScript,
 	removed_segment_index: int
 ) -> Dictionary:
 	var remaining: Array[WallSegment3DScript] = []
@@ -3290,7 +3290,7 @@ func _wall_geometry_without_segment(
 
 
 func _commit_add_wall_joint(
-	wall: ProceduralWall3DScript,
+	wall: Wall3DScript,
 	segment_index: int,
 	hit_world: Vector3
 ) -> void:
@@ -3336,7 +3336,7 @@ func _commit_add_wall_joint(
 	_set_status("Added wall joint.")
 
 
-func _wall_world_to_parent_local(wall: ProceduralWall3DScript, world_position: Vector3) -> Vector3:
+func _wall_world_to_parent_local(wall: Wall3DScript, world_position: Vector3) -> Vector3:
 	var wall_parent := wall.get_parent() as Node3D
 	if wall_parent != null:
 		return wall_parent.to_local(world_position)
@@ -3344,7 +3344,7 @@ func _wall_world_to_parent_local(wall: ProceduralWall3DScript, world_position: V
 
 
 func _commit_delete_zero_length_wall_segment(
-	wall: ProceduralWall3DScript,
+	wall: Wall3DScript,
 	geometry: Dictionary,
 	old_start: Vector3,
 	old_end: Vector3,
@@ -3379,7 +3379,7 @@ func _commit_delete_zero_length_wall_segment(
 
 
 func _commit_delete_zero_length_wall(
-	wall: ProceduralWall3DScript,
+	wall: Wall3DScript,
 	old_start: Vector3,
 	old_end: Vector3,
 	old_segments: Array[WallSegment3DScript]
@@ -3393,7 +3393,7 @@ func _commit_delete_zero_length_wall(
 		return
 	_apply_wall_geometry(wall, old_start, old_end, old_segments)
 	var undo_redo := get_undo_redo()
-	undo_redo.create_action("Delete Procedural Wall")
+	undo_redo.create_action("Delete Wall")
 	undo_redo.add_undo_reference(wall)
 	undo_redo.add_do_method(self, "_undo_remove_node_and_refresh_wall_intersections", parent, wall, coordinator)
 	undo_redo.add_undo_method(
@@ -3450,7 +3450,7 @@ func _translate_drag_wall_geometry(delta: Vector3) -> void:
 	)
 
 
-func _is_dragged_wall_span_long_enough(wall: ProceduralWall3DScript) -> bool:
+func _is_dragged_wall_span_long_enough(wall: Wall3DScript) -> bool:
 	if wall == null:
 		return false
 	var segment_index := clampi(m_drag_wall_segment_index, 0, wall.get_segment_count() - 1)
@@ -3462,9 +3462,9 @@ func _is_dragged_wall_span_long_enough(wall: ProceduralWall3DScript) -> bool:
 
 func _find_intersecting_targets_for_wall(
 	coordinator: BuildingEditor3DScript,
-	wall: ProceduralWall3DScript
-) -> Array[ProceduralWall3DScript]:
-	var targets: Array[ProceduralWall3DScript] = []
+	wall: Wall3DScript
+) -> Array[Wall3DScript]:
+	var targets: Array[Wall3DScript] = []
 	for segment in _duplicate_wall_segments(wall):
 		var hits := coordinator.find_intersecting_walls(
 			segment.start_point,
@@ -3520,7 +3520,7 @@ func _build_preview_material(color: Color) -> StandardMaterial3D:
 	return material
 
 
-func _update_floor_hover(floor: ProceduralFloor3DScript, edit_mask: int) -> void:
+func _update_floor_hover(floor: Floor3DScript, edit_mask: int) -> void:
 	if floor == m_drag_floor_hover and edit_mask == m_drag_floor_hover_edit_mask:
 		return
 	_clear_floor_hover()
@@ -3542,7 +3542,7 @@ func _clear_floor_hover() -> void:
 	m_drag_floor_hover_edit_mask = FLOOR_EDIT_MOVE
 
 
-func _update_roof_hover(roof: ProceduralRoof3DScript, edit_mask: int) -> void:
+func _update_roof_hover(roof: Roof3DScript, edit_mask: int) -> void:
 	if roof == m_drag_roof_hover and edit_mask == m_drag_roof_hover_edit_mask:
 		return
 	_clear_roof_hover()
@@ -3564,7 +3564,7 @@ func _clear_roof_hover() -> void:
 	m_drag_roof_hover_edit_mask = FLOOR_EDIT_MOVE
 
 
-func _update_pillar_hover(pillar: ProceduralPillar3DScript, edit_mode: int) -> void:
+func _update_pillar_hover(pillar: Pillar3DScript, edit_mode: int) -> void:
 	if pillar == m_drag_pillar_hover and edit_mode == m_drag_pillar_hover_edit_mode:
 		return
 	_clear_pillar_hover()
@@ -3692,7 +3692,7 @@ func _hit_near_wall_endpoint(
 	return hit_2d.distance_to(endpoint_2d) <= radius
 
 
-func _wall_joint_info(wall: ProceduralWall3DScript, endpoint: Vector3) -> Dictionary:
+func _wall_joint_info(wall: Wall3DScript, endpoint: Vector3) -> Dictionary:
 	var tolerance := _wall_joint_tolerance(wall)
 	var count := 0
 	var total := Vector3.ZERO
@@ -3714,16 +3714,16 @@ func _wall_joint_info(wall: ProceduralWall3DScript, endpoint: Vector3) -> Dictio
 	}
 
 
-func _wall_joint_tolerance(wall: ProceduralWall3DScript) -> float:
+func _wall_joint_tolerance(wall: Wall3DScript) -> float:
 	return maxf(_active_grid_step(wall) * 0.05, 0.03)
 
 
-func _wall_connection_snap_radius(wall: ProceduralWall3DScript) -> float:
+func _wall_connection_snap_radius(wall: Wall3DScript) -> float:
 	return maxf(maxf(_active_grid_step(wall) * 0.45, wall.wall_thickness * 1.25), 0.08)
 
 
 func _drag_wall_endpoint_position(
-	wall: ProceduralWall3DScript,
+	wall: Wall3DScript,
 	segment_index: int,
 	endpoint: int
 ) -> Vector3:
@@ -3752,11 +3752,11 @@ func _snap_drag_wall_endpoint_to_connection(snapped_position: Vector3) -> Vector
 
 
 func _nearest_wall_connection_endpoint(
-	wall: ProceduralWall3DScript,
+	wall: Wall3DScript,
 	position: Vector3,
 	radius: float
 ) -> Dictionary:
-	var candidates: Array[ProceduralWall3DScript] = []
+	var candidates: Array[Wall3DScript] = []
 	var coordinator := _find_coordinator_from_node(wall)
 	if coordinator != null:
 		candidates = coordinator.get_wall_nodes()
@@ -3768,7 +3768,7 @@ func _nearest_wall_connection_endpoint(
 	for candidate_wall in candidates:
 		if candidate_wall == null or !is_instance_valid(candidate_wall):
 			continue
-		if candidate_wall.has_meta(ProceduralWall3DScript.PREVIEW_META):
+		if candidate_wall.has_meta(Wall3DScript.PREVIEW_META):
 			continue
 		for segment_index in range(candidate_wall.get_segment_count()):
 			var segment := candidate_wall.get_segment(segment_index)
@@ -3798,7 +3798,7 @@ func _nearest_wall_connection_endpoint(
 
 
 func _update_wall_hover(
-	wall: ProceduralWall3DScript,
+	wall: Wall3DScript,
 	segment_index: int,
 	endpoint: int,
 	joint_position: Vector3,
@@ -3841,13 +3841,13 @@ func _clear_wall_hover() -> void:
 	m_drag_wall_hover_joint_position = Vector3.ZERO
 
 
-func _show_wall_joint_hover(wall: ProceduralWall3DScript, joint_position: Vector3) -> void:
+func _show_wall_joint_hover(wall: Wall3DScript, joint_position: Vector3) -> void:
 	_clear_wall_joint_hover()
 	if wall == null or !is_instance_valid(wall):
 		return
 	var marker := MeshInstance3D.new()
 	marker.name = "WallJointHover"
-	marker.set_meta(ProceduralWall3DScript.GENERATED_META, true)
+	marker.set_meta(Wall3DScript.GENERATED_META, true)
 	var mesh := SphereMesh.new()
 	var radius := maxf(wall.wall_thickness * 0.85, 0.16)
 	mesh.radius = radius
@@ -3870,7 +3870,7 @@ func _clear_wall_joint_hover() -> void:
 	m_drag_wall_hover_joint_marker = null
 
 
-func _wall_joint_hover_height(wall: ProceduralWall3DScript, joint_position: Vector3) -> float:
+func _wall_joint_hover_height(wall: Wall3DScript, joint_position: Vector3) -> float:
 	var tolerance := _wall_joint_tolerance(wall)
 	var height := 0.0
 	for segment_index in range(wall.get_segment_count()):
@@ -3885,7 +3885,7 @@ func _wall_joint_hover_height(wall: ProceduralWall3DScript, joint_position: Vect
 	return height * 0.55
 
 
-func _wall_parent_local_to_wall_local(wall: ProceduralWall3DScript, parent_local_position: Vector3) -> Vector3:
+func _wall_parent_local_to_wall_local(wall: Wall3DScript, parent_local_position: Vector3) -> Vector3:
 	var wall_parent := wall.get_parent() as Node3D
 	if wall_parent == null:
 		return wall.to_local(parent_local_position)
@@ -3904,7 +3904,7 @@ func _build_joint_hover_material() -> StandardMaterial3D:
 
 
 func _start_wall_drag(
-	wall: ProceduralWall3DScript,
+	wall: Wall3DScript,
 	camera: Camera3D,
 	mouse_pos: Vector2,
 	segment_index: int,
@@ -4067,7 +4067,7 @@ func _commit_wall_drag() -> void:
 		new_end = Vector3(normalized_geometry["end"])
 		new_segments = normalized_geometry["segments"]
 	var undo_redo := get_undo_redo()
-	undo_redo.create_action("Move Procedural Wall")
+	undo_redo.create_action("Move Wall")
 	undo_redo.add_do_method(
 		self,
 		"_do_set_wall_geometry_and_refresh_intersections",
@@ -4140,7 +4140,7 @@ func _find_opening_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
 		return {}
 	var hit_world := Vector3(hit["position"])
 	for child in wall.get_children():
-		if child.has_meta(ProceduralWall3DScript.GENERATED_META):
+		if child.has_meta(Wall3DScript.GENERATED_META):
 			continue
 		var opening := child as BuildingOpening3DScript
 		if opening == null or opening == m_prop_preview:
@@ -4203,18 +4203,18 @@ func _clear_drag_hover() -> void:
 func _start_window_drag(
 	opening: BuildingOpening3DScript,
 	edge: int,
-	wall_hint: ProceduralWall3DScript
+	wall_hint: Wall3DScript
 ) -> void:
 	_clear_prop_preview()
 	m_dragging_opening = opening
 	m_drag_old_position = opening.position
 	m_drag_opening_old_width = opening.opening_width
 	m_drag_opening_old_height = opening.opening_height
-	m_drag_old_segment = int(opening.get_meta(ProceduralWall3DScript.SEGMENT_INDEX_META, 0))
+	m_drag_old_segment = int(opening.get_meta(Wall3DScript.SEGMENT_INDEX_META, 0))
 	m_drag_target_segment = m_drag_old_segment
 	m_drag_opening_edge = edge
 	m_drag_valid = true
-	var wall := opening.get_parent() as ProceduralWall3DScript
+	var wall := opening.get_parent() as Wall3DScript
 	if wall == null:
 		wall = wall_hint
 	if wall != null:
@@ -4235,7 +4235,7 @@ func _update_window_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 	if m_dragging_opening == null or !is_instance_valid(m_dragging_opening):
 		m_dragging_opening = null
 		return
-	var wall := m_dragging_opening.get_parent() as ProceduralWall3DScript
+	var wall := m_dragging_opening.get_parent() as Wall3DScript
 	if wall == null:
 		_cancel_window_drag()
 		return
@@ -4316,7 +4316,7 @@ func _update_window_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 func _commit_window_drag() -> void:
 	if m_dragging_opening == null:
 		return
-	var wall := m_dragging_opening.get_parent() as ProceduralWall3DScript
+	var wall := m_dragging_opening.get_parent() as Wall3DScript
 	if wall == null or !m_drag_valid:
 		_cancel_window_drag()
 		if !m_drag_valid:
@@ -4366,9 +4366,9 @@ func _cancel_window_drag() -> void:
 		m_dragging_opening.position = m_drag_old_position
 		m_dragging_opening.opening_width = m_drag_opening_old_width
 		m_dragging_opening.opening_height = m_drag_opening_old_height
-		m_dragging_opening.set_meta(ProceduralWall3DScript.SEGMENT_INDEX_META, m_drag_old_segment)
+		m_dragging_opening.set_meta(Wall3DScript.SEGMENT_INDEX_META, m_drag_old_segment)
 		m_dragging_opening.frame_color = Color(0.86, 0.92, 0.94, 1.0)
-		var wall := m_dragging_opening.get_parent() as ProceduralWall3DScript
+		var wall := m_dragging_opening.get_parent() as Wall3DScript
 		if wall != null:
 			wall.rebuild_wall_mesh()
 	m_dragging_opening = null
@@ -4380,10 +4380,10 @@ func _do_move_opening(
 	opening: BuildingOpening3DScript,
 	new_pos: Vector3,
 	segment_index: int,
-	wall: ProceduralWall3DScript
+	wall: Wall3DScript
 ) -> void:
 	opening.position = new_pos
-	opening.set_meta(ProceduralWall3DScript.SEGMENT_INDEX_META, segment_index)
+	opening.set_meta(Wall3DScript.SEGMENT_INDEX_META, segment_index)
 	wall.rebuild_wall_mesh()
 
 
@@ -4392,7 +4392,7 @@ func _do_resize_opening(
 	new_pos: Vector3,
 	new_width: float,
 	new_height: float,
-	wall: ProceduralWall3DScript
+	wall: Wall3DScript
 ) -> void:
 	opening.position = new_pos
 	opening.opening_width = new_width
@@ -4546,7 +4546,7 @@ func _undo_remove_node_and_refresh_roofs(parent: Node, node: Node, coordinator: 
 
 
 func _set_roof_state_and_refresh(
-	roof: ProceduralRoof3DScript,
+	roof: Roof3DScript,
 	new_start: Vector3,
 	new_end: Vector3,
 	new_rotation: float,
@@ -4571,7 +4571,7 @@ func _set_roof_state_and_refresh(
 
 func _roof_layout_would_hide_any_roof(
 	coordinator: BuildingEditor3DScript,
-	roof: ProceduralRoof3DScript,
+	roof: Roof3DScript,
 	new_start: Vector3,
 	new_end: Vector3,
 	new_rotation: float,
@@ -4607,14 +4607,14 @@ func _roof_layout_would_hide_any_roof(
 	coordinator.refresh_roof_covered_rects()
 	var hides_roof := false
 	for roof_node in coordinator.get_roof_nodes():
-		if roof_node.has_meta(ProceduralRoof3DScript.PREVIEW_META):
+		if roof_node.has_meta(Roof3DScript.PREVIEW_META):
 			continue
 		if !roof_node.has_visible_roof_geometry():
 			hides_roof = true
 			break
 
 	for snapshot in snapshots:
-		var snapshot_roof := snapshot["roof"] as ProceduralRoof3DScript
+		var snapshot_roof := snapshot["roof"] as Roof3DScript
 		if snapshot_roof == null or !is_instance_valid(snapshot_roof):
 			continue
 		var snapshot_covers: Array[Rect2] = []
@@ -4636,10 +4636,10 @@ func _roof_layout_would_hide_any_roof(
 
 func _set_owner_recursive(node: Node, scene_root: Node) -> void:
 	if (
-		node.has_meta(ProceduralWall3DScript.GENERATED_META)
-		or node.has_meta(ProceduralFloor3DScript.GENERATED_META)
-		or node.has_meta(ProceduralPillar3DScript.GENERATED_META)
-		or node.has_meta(ProceduralRoof3DScript.GENERATED_META)
+		node.has_meta(Wall3DScript.GENERATED_META)
+		or node.has_meta(Floor3DScript.GENERATED_META)
+		or node.has_meta(Pillar3DScript.GENERATED_META)
+		or node.has_meta(Roof3DScript.GENERATED_META)
 		or node.has_meta(BuildingOpening3DScript.GENERATED_META)
 	):
 		node.owner = null

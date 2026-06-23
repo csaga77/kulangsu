@@ -2,7 +2,7 @@
 class_name MergedWallMeshBuilder
 extends RefCounted
 
-## Static mesh-construction helpers for multi-segment ProceduralWall3D nodes.
+## Static mesh-construction helpers for multi-segment Wall3D nodes.
 ## Builds combined geometry for a set of wall segments, clipping faces and
 ## mitering shared endpoints in plan (XZ) space so junctions render without
 ## buried interior geometry, square butt seams, or z-fighting caps. Segments

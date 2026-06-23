@@ -1,8 +1,8 @@
 @tool
-class_name ProceduralPillar3D
+class_name Pillar3D
 extends MeshInstance3D
 
-const GENERATED_META := &"procedural_pillar_generated"
+const GENERATED_META := &"pillar_generated"
 const PREVIEW_META := &"building_editor_preview"
 const STYLE_ROUND := "round"
 const STYLE_SQUARE := "square"

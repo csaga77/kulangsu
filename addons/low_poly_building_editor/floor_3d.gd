@@ -1,8 +1,8 @@
 @tool
-class_name ProceduralFloor3D
+class_name Floor3D
 extends MeshInstance3D
 
-const GENERATED_META := &"procedural_floor_generated"
+const GENERATED_META := &"floor_generated"
 const PREVIEW_META := &"building_editor_preview"
 
 @export var rebuild := false:

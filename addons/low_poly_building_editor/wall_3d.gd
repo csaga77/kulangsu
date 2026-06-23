@@ -1,8 +1,8 @@
 @tool
-class_name ProceduralWall3D
+class_name Wall3D
 extends MeshInstance3D
 
-const GENERATED_META := &"procedural_wall_generated"
+const GENERATED_META := &"wall_generated"
 const PREVIEW_META := &"building_editor_preview"
 const OPENING_META := &"building_editor_opening"
 const SEGMENT_INDEX_META := &"wall_segment_index"
