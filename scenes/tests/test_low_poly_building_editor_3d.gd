@@ -55,6 +55,7 @@ func _run_smoke_checks() -> void:
 	_validate_roof_node(coordinator)
 	_validate_merge_detection(coordinator)
 	_validate_intersection_merge()
+	_validate_wall_instance_intersection_clipping()
 	_validate_add_wall_joint()
 	_validate_joint_endpoint_drag()
 	_validate_joint_disconnect_connect()
@@ -1164,6 +1165,52 @@ func _validate_intersection_merge() -> void:
 		m_failures.append("Opening straddling a junction was not rejected")
 	if !survivor.can_place_opening(Vector2(0.8, 1.1), Vector2(0.6, 0.8), 0.03, null, 0):
 		m_failures.append("Valid primary-span opening away from the junction was rejected")
+
+
+func _validate_wall_instance_intersection_clipping() -> void:
+	var coordinator := BuildingEditor3DScript.new() as BuildingEditor3DScript
+	coordinator.name = "WallClipCoordinator"
+	coordinator.position = Vector3(0.0, 0.0, 48.0)
+	add_child(coordinator)
+	coordinator.grid_step = 0.5
+
+	var wall_color := Color(0.78, 0.68, 0.54, 1.0)
+	var horizontal := coordinator.create_wall_node(
+		Vector3(-2.0, 0.0, 0.0), Vector3(2.0, 0.0, 0.0), 2.4, 0.22, wall_color
+	)
+	coordinator.add_child(horizontal)
+	var vertical := coordinator.create_wall_node(
+		Vector3(0.0, 0.0, -2.0), Vector3(0.0, 0.0, 2.0), 2.4, 0.22, wall_color
+	)
+	coordinator.add_child(vertical)
+	coordinator.refresh_wall_intersection_clips()
+
+	if horizontal.get_parent() != coordinator or vertical.get_parent() != coordinator:
+		m_failures.append("Intersecting wall clipping removed a wall instance")
+	if horizontal.get_segment_count() != 1 or vertical.get_segment_count() != 1:
+		m_failures.append("Intersecting wall clipping absorbed segments into a wall instance")
+	if horizontal.get_intersection_clip_segment_count() != 1:
+		m_failures.append("Horizontal wall did not receive the crossing wall as geometry-only clip data")
+	if vertical.get_intersection_clip_segment_count() != 1:
+		m_failures.append("Vertical wall did not receive the crossing wall as geometry-only clip data")
+	if horizontal.mesh == null or vertical.mesh == null:
+		m_failures.append("Geometry-only intersecting wall clipping did not generate both meshes")
+		return
+
+	var total_top_area := (
+		_up_facing_area(horizontal.mesh as ArrayMesh, horizontal.wall_height)
+		+ _up_facing_area(vertical.mesh as ArrayMesh, vertical.wall_height)
+	)
+	var expected_top_area := 4.0 * 0.22 + 4.0 * 0.22 - 0.22 * 0.22
+	if absf(total_top_area - expected_top_area) > 0.02:
+		m_failures.append(
+			"Separate intersecting wall top caps %.4f deviate from clipped expected %.4f"
+			% [total_top_area, expected_top_area]
+		)
+	if horizontal.can_place_opening(Vector2(2.0, 1.1), Vector2(0.4, 0.6), 0.03, null, 0):
+		m_failures.append("Separate intersecting wall allowed an opening through sibling wall geometry")
+	if !horizontal.can_place_opening(Vector2(0.6, 1.1), Vector2(0.3, 0.6), 0.03, null, 0):
+		m_failures.append("Separate intersecting wall rejected an opening away from sibling geometry")
 
 
 func _validate_add_wall_joint() -> void:

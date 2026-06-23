@@ -80,7 +80,8 @@ static func append_segments(
 	normals: PackedVector3Array,
 	colors: PackedColorArray,
 	indices: PackedInt32Array,
-	collision_faces: PackedVector3Array
+	collision_faces: PackedVector3Array,
+	render_segment_indices: Array = []
 ) -> void:
 	var footprints: Array[PackedVector2Array] = []
 	var deflated: Array[PackedVector2Array] = []
@@ -91,7 +92,7 @@ static func append_segments(
 		miter_plans.append(miter_plan)
 		footprints.append(footprint)
 		deflated.append(_deflate(footprint, VERTICAL_CLIP_DEFLATE))
-	for index in range(segments.size()):
+	for index in _render_segment_indices(segments.size(), render_segment_indices):
 		var rects: Array[Rect2] = []
 		if index < opening_rects.size():
 			rects = opening_rects[index]
@@ -109,6 +110,22 @@ static func append_segments(
 			indices,
 			collision_faces
 		)
+
+
+static func _render_segment_indices(segment_count: int, requested_indices: Array) -> Array[int]:
+	var result: Array[int] = []
+	if requested_indices.is_empty():
+		for index in range(segment_count):
+			result.append(index)
+		return result
+	for requested in requested_indices:
+		var index := int(requested)
+		if index < 0 or index >= segment_count:
+			continue
+		if result.has(index):
+			continue
+		result.append(index)
+	return result
 
 
 static func _append_segment_geometry(
@@ -130,7 +147,7 @@ static func _append_segment_geometry(
 	if segment_length <= MIN_SPAN:
 		return
 	var x_cuts := _cut_values(opening_rects, segment_length, segment.height, true)
-	var y_cuts := _cut_values(opening_rects, segment_length, segment.height, false)
+	var y_cuts := _cut_values(opening_rects, segment_length, segment.height, false, segments, segment_index)
 	var half_thickness := segment.thickness * 0.5
 	for x_index in range(x_cuts.size() - 1):
 		var x0 := x_cuts[x_index]
@@ -472,7 +489,9 @@ static func _cut_values(
 	openings: Array[Rect2],
 	segment_length: float,
 	segment_height: float,
-	horizontal: bool
+	horizontal: bool,
+	segments: Array[WallSegment3D] = [],
+	segment_index: int = -1
 ) -> Array[float]:
 	var values: Array[float] = [0.0, segment_length if horizontal else segment_height]
 	for opening in openings:
@@ -482,6 +501,13 @@ static func _cut_values(
 		else:
 			values.append(clampf(opening.position.y, 0.0, segment_height))
 			values.append(clampf(opening.end.y, 0.0, segment_height))
+	if !horizontal:
+		for other_index in range(segments.size()):
+			if other_index == segment_index:
+				continue
+			var other_height := segments[other_index].height
+			if other_height > MIN_SPAN and other_height < segment_height - MIN_SPAN:
+				values.append(other_height)
 	values.sort()
 	var result: Array[float] = []
 	for value in values:

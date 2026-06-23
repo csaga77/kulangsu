@@ -57,9 +57,9 @@ const EDITOR_REBUILD_DELAY_SECONDS := 0.12
 		wall_color = value
 		_request_rebuild()
 
-## Additional merged wall spans absorbed from intersecting walls. Points are
-## parent-local, like start_point/end_point. The node transform and primary
-## span stay derived from start_point/end_point.
+## Additional authored wall spans for manual joints and legacy multi-segment
+## walls. Points are parent-local, like start_point/end_point. The node
+## transform and primary span stay derived from start_point/end_point.
 @export var extra_segments: Array[WallSegment3D] = []:
 	set(value):
 		extra_segments = value
@@ -88,6 +88,8 @@ var m_visual_rebuild_pending := false
 var m_opening_signature := ""
 var m_signature_timer := 0.0
 var m_is_rebuilding := false
+var m_intersection_clip_segments_before: Array[WallSegment3D] = []
+var m_intersection_clip_segments_after: Array[WallSegment3D] = []
 
 
 func _ready() -> void:
@@ -168,6 +170,24 @@ func get_segment(index: int) -> WallSegment3DScript:
 		primary.color = wall_color
 		return primary
 	return extra_segments[index - 1]
+
+
+func set_intersection_clip_segments(before_segments: Array, after_segments: Array) -> void:
+	m_intersection_clip_segments_before = _duplicate_segment_resources(before_segments)
+	m_intersection_clip_segments_after = _duplicate_segment_resources(after_segments)
+	rebuild_wall_mesh()
+
+
+func clear_intersection_clip_segments() -> void:
+	if m_intersection_clip_segments_before.is_empty() and m_intersection_clip_segments_after.is_empty():
+		return
+	m_intersection_clip_segments_before.clear()
+	m_intersection_clip_segments_after.clear()
+	rebuild_wall_mesh()
+
+
+func get_intersection_clip_segment_count() -> int:
+	return m_intersection_clip_segments_before.size() + m_intersection_clip_segments_after.size()
 
 
 func count_connected_endpoints(endpoint: Vector3, tolerance: float) -> int:
@@ -410,6 +430,17 @@ func can_place_opening(
 			MergedWallMeshBuilderScript.segment_footprint(other, other_frame)
 		):
 			return false
+	for clip_segment in _all_intersection_clip_segments():
+		if clip_segment == null:
+			continue
+		if candidate.position.y >= clip_segment.height - 0.001:
+			continue
+		var clip_frame := transform.affine_inverse() * clip_segment.get_frame()
+		if MergedWallMeshBuilderScript.footprints_overlap(
+			opening_plan,
+			MergedWallMeshBuilderScript.segment_footprint(clip_segment, clip_frame)
+		):
+			return false
 
 	var rects_per_segment := _assigned_opening_rects(ignored_node)
 	var rects: Array[Rect2] = rects_per_segment[clampi(segment_index, 0, rects_per_segment.size() - 1)]
@@ -429,11 +460,35 @@ func rebuild_wall_mesh(rebuild_collision: bool = true) -> void:
 	if rebuild_collision:
 		_clear_generated_children()
 
-	var segments: Array[WallSegment3DScript] = []
+	var segments: Array[WallSegment3D] = []
 	var frames: Array[Transform3D] = []
+	var opening_rects: Array = []
+	var render_segment_indices: Array[int] = []
+	for clip_segment in m_intersection_clip_segments_before:
+		if clip_segment == null:
+			continue
+		segments.append(clip_segment)
+		frames.append(transform.affine_inverse() * clip_segment.get_frame())
+		var empty_rects: Array[Rect2] = []
+		opening_rects.append(empty_rects)
+	var own_segment_start_index := segments.size()
+	var assigned_openings := _assigned_opening_rects()
 	for index in range(get_segment_count()):
 		segments.append(get_segment(index))
 		frames.append(get_segment_local_frame(index))
+		if index < assigned_openings.size():
+			opening_rects.append(assigned_openings[index])
+		else:
+			var empty_own_rects: Array[Rect2] = []
+			opening_rects.append(empty_own_rects)
+		render_segment_indices.append(own_segment_start_index + index)
+	for clip_segment in m_intersection_clip_segments_after:
+		if clip_segment == null:
+			continue
+		segments.append(clip_segment)
+		frames.append(transform.affine_inverse() * clip_segment.get_frame())
+		var empty_after_rects: Array[Rect2] = []
+		opening_rects.append(empty_after_rects)
 
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
@@ -443,12 +498,13 @@ func rebuild_wall_mesh(rebuild_collision: bool = true) -> void:
 	MergedWallMeshBuilderScript.append_segments(
 		segments,
 		frames,
-		_assigned_opening_rects(),
+		opening_rects,
 		vertices,
 		normals,
 		colors,
 		indices,
-		collision_faces
+		collision_faces,
+		render_segment_indices
 	)
 
 	if vertices.is_empty():
@@ -556,6 +612,23 @@ func _geometry_from_segment_list(segments: Array[WallSegment3D]) -> Dictionary:
 		"end": primary.end_point,
 		"segments": extras,
 	}
+
+
+func _duplicate_segment_resources(segments: Array) -> Array[WallSegment3D]:
+	var copies: Array[WallSegment3D] = []
+	for segment in segments:
+		var typed_segment := segment as WallSegment3DScript
+		if typed_segment == null:
+			continue
+		copies.append(typed_segment.duplicate() as WallSegment3DScript)
+	return copies
+
+
+func _all_intersection_clip_segments() -> Array[WallSegment3D]:
+	var segments: Array[WallSegment3D] = []
+	segments.append_array(m_intersection_clip_segments_before)
+	segments.append_array(m_intersection_clip_segments_after)
+	return segments
 
 
 func _capture_direct_child_global_transforms() -> Array:

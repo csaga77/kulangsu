@@ -41,6 +41,10 @@ const ROOF_COVER_HEIGHT_EPSILON := 0.01
 @export var merge_intersecting := true
 
 
+func _ready() -> void:
+	call_deferred("refresh_wall_intersection_clips")
+
+
 func snap_local_position(local_position: Vector3) -> Vector3:
 	var step := maxf(grid_step, 0.05)
 	return Vector3(
@@ -302,6 +306,32 @@ func roof_has_visible_cover_area(
 	if !cover_polygons.is_empty():
 		return _cover_polygons_leave_area(_roof_render_rect(size, overhang), cover_polygons)
 	return !_visible_roof_rects(_roof_render_rect(size, overhang), covers).is_empty()
+
+
+func refresh_wall_intersection_clips() -> void:
+	var walls := get_wall_nodes()
+	for wall_index in range(walls.size()):
+		var wall := walls[wall_index]
+		if wall.has_meta(ProceduralWall3DScript.PREVIEW_META) or !merge_intersecting:
+			wall.clear_intersection_clip_segments()
+			continue
+		var before_segments: Array[WallSegment3D] = []
+		var after_segments: Array[WallSegment3D] = []
+		for other_index in range(walls.size()):
+			if other_index == wall_index:
+				continue
+			var other := walls[other_index]
+			if other.has_meta(ProceduralWall3DScript.PREVIEW_META):
+				continue
+			for segment_index in range(other.get_segment_count()):
+				var segment := other.get_segment(segment_index)
+				if !_wall_clip_segment_relevant(wall, segment):
+					continue
+				if other_index < wall_index:
+					before_segments.append(segment)
+				else:
+					after_segments.append(segment)
+		wall.set_intersection_clip_segments(before_segments, after_segments)
 
 
 func refresh_roof_covered_rects() -> void:
@@ -840,6 +870,18 @@ func find_intersecting_walls(
 				hits.append(wall)
 				break
 	return hits
+
+
+func _wall_clip_segment_relevant(wall: ProceduralWall3DScript, clip_segment: WallSegment3D) -> bool:
+	if wall == null or clip_segment == null:
+		return false
+	for own_index in range(wall.get_segment_count()):
+		var own_segment := wall.get_segment(own_index)
+		if own_segment == null:
+			continue
+		if absf(own_segment.start_point.y - clip_segment.start_point.y) <= INTERSECT_BASE_TOLERANCE:
+			return true
+	return false
 
 
 func _flat_direction(local_start: Vector3, local_end: Vector3) -> Vector2:

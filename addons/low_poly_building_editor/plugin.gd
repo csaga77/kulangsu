@@ -632,18 +632,32 @@ func _commit_wall(coordinator: BuildingEditor3DScript, local_start: Vector3, loc
 		var old_start := target.start_point
 		var old_end := target.end_point
 		undo_redo.create_action("Merge Procedural Wall")
-		undo_redo.add_do_method(target, "set_wall_endpoints", merge["start"], merge["end"])
-		undo_redo.add_undo_method(target, "set_wall_endpoints", old_start, old_end)
+		undo_redo.add_do_method(
+			self,
+			"_set_wall_endpoints_and_refresh_intersections",
+			target,
+			merge["start"],
+			merge["end"],
+			coordinator
+		)
+		undo_redo.add_undo_method(
+			self,
+			"_set_wall_endpoints_and_refresh_intersections",
+			target,
+			old_start,
+			old_end,
+			coordinator
+		)
 		undo_redo.commit_action()
 		_select_node(target)
 		_set_status("Merged wall span.")
 		return
 
+	var intersects_existing_wall := false
 	if coordinator.merge_intersecting:
 		var targets := coordinator.find_intersecting_walls(local_start, local_end, thickness, m_wall_preview)
 		if !targets.is_empty():
-			_commit_absorbed_wall(coordinator, targets, local_start, local_end)
-			return
+			intersects_existing_wall = true
 
 	var wall := coordinator.create_wall_node(
 		local_start,
@@ -655,10 +669,21 @@ func _commit_wall(coordinator: BuildingEditor3DScript, local_start: Vector3, loc
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	undo_redo.create_action("Create Procedural Wall")
 	undo_redo.add_do_reference(wall)
-	undo_redo.add_do_method(self, "_do_add_node", coordinator, wall, scene_root, true)
-	undo_redo.add_undo_method(self, "_undo_remove_node", coordinator, wall)
+	undo_redo.add_do_method(
+		self,
+		"_do_add_node_and_refresh_wall_intersections",
+		coordinator,
+		wall,
+		scene_root,
+		true,
+		coordinator
+	)
+	undo_redo.add_undo_method(self, "_undo_remove_node_and_refresh_wall_intersections", coordinator, wall, coordinator)
 	undo_redo.commit_action()
-	_set_status("Created wall: %.2f units." % local_start.distance_to(local_end))
+	if intersects_existing_wall:
+		_set_status("Created clipped wall: %.2f units." % local_start.distance_to(local_end))
+	else:
+		_set_status("Created wall: %.2f units." % local_start.distance_to(local_end))
 
 
 func _handle_floor_input(camera: Camera3D, event: InputEvent) -> int:
@@ -2179,183 +2204,6 @@ func _reset_pillar_drag_state() -> void:
 	m_drag_pillar_active_material = null
 
 
-func _commit_absorbed_wall(
-	coordinator: BuildingEditor3DScript,
-	targets: Array[ProceduralWall3DScript],
-	local_start: Vector3,
-	local_end: Vector3
-) -> void:
-	var survivor := targets[0]
-	var drawn := WallSegment3DScript.new()
-	drawn.start_point = local_start
-	drawn.end_point = local_end
-	drawn.thickness = float(m_wall_settings["thickness"])
-	drawn.height = float(m_wall_settings["height"])
-	drawn.color = Color(m_wall_settings["color"])
-	var removed: Array[ProceduralWall3DScript] = []
-	for target_index in range(1, targets.size()):
-		removed.append(targets[target_index])
-	var added: Array[WallSegment3DScript] = [drawn]
-	_commit_merged_wall_group(
-		coordinator,
-		survivor,
-		removed,
-		added,
-		survivor.start_point,
-		survivor.end_point,
-		_duplicate_segments(survivor.extra_segments),
-		"Merge Intersecting Walls",
-		"Merged wall spans into %s." % survivor.name
-	)
-
-
-func _commit_merged_wall_group(
-	coordinator: BuildingEditor3DScript,
-	survivor: ProceduralWall3DScript,
-	removed: Array[ProceduralWall3DScript],
-	added_segments: Array[WallSegment3DScript],
-	undo_start: Vector3,
-	undo_end: Vector3,
-	undo_segments: Array[WallSegment3DScript],
-	action_name: String,
-	status: String
-) -> void:
-	var merged_segments := _build_merged_wall_segments(coordinator, survivor, removed, added_segments)
-	if merged_segments.is_empty():
-		_set_status("Wall is too short.")
-		return
-	var primary := merged_segments[0]
-	var extra_segments: Array[WallSegment3DScript] = []
-	for segment_index in range(1, merged_segments.size()):
-		extra_segments.append(merged_segments[segment_index].duplicate() as WallSegment3DScript)
-
-	var scene_root := get_editor_interface().get_edited_scene_root()
-	var moved: Array = []
-	var moved_parents: Array = []
-	var moved_transforms: Array = []
-	for other in removed:
-		for child in other.get_children():
-			if child.has_meta(ProceduralWall3DScript.GENERATED_META):
-				continue
-			var child_3d := child as Node3D
-			if child_3d == null:
-				continue
-			moved.append(child_3d)
-			moved_parents.append(other)
-			moved_transforms.append(child_3d.transform)
-
-	var undo_redo := get_undo_redo()
-	undo_redo.create_action(action_name)
-	for node in removed:
-		undo_redo.add_undo_reference(node)
-	undo_redo.add_do_method(
-		self,
-		"_do_absorb_walls",
-		survivor,
-		primary.start_point,
-		primary.end_point,
-		extra_segments,
-		removed,
-		moved,
-		scene_root
-	)
-	undo_redo.add_undo_method(
-		self,
-		"_undo_absorb_walls",
-		survivor,
-		undo_start,
-		undo_end,
-		_duplicate_segments(undo_segments),
-		removed,
-		moved,
-		moved_parents,
-		moved_transforms,
-		coordinator,
-		scene_root
-	)
-	undo_redo.commit_action()
-	_set_status(status)
-
-
-func _build_merged_wall_segments(
-	coordinator: BuildingEditor3DScript,
-	survivor: ProceduralWall3DScript,
-	removed: Array[ProceduralWall3DScript],
-	added_segments: Array[WallSegment3DScript]
-) -> Array[WallSegment3DScript]:
-	var tolerance := maxf(coordinator.grid_step * 0.25, 0.03)
-	var combined: Array[WallSegment3DScript] = []
-	for segment in _duplicate_wall_segments(survivor):
-		WallSegment3DScript.merge_into(combined, segment, tolerance)
-	for other in removed:
-		for segment in _duplicate_wall_segments(other):
-			WallSegment3DScript.merge_into(combined, segment, tolerance)
-	for segment in added_segments:
-		WallSegment3DScript.merge_into(combined, segment.duplicate() as WallSegment3DScript, tolerance)
-	return WallSegment3DScript.split_at_intersections(combined, tolerance)
-
-
-func _do_absorb_walls(
-	survivor: ProceduralWall3DScript,
-	new_start: Vector3,
-	new_end: Vector3,
-	segments: Array[WallSegment3DScript],
-	removed: Array,
-	moved: Array,
-	scene_root: Node
-) -> void:
-	for child in moved:
-		var child_3d := child as Node3D
-		if child_3d == null:
-			continue
-		var child_global := child_3d.global_transform
-		if child_3d.get_parent() != null:
-			child_3d.get_parent().remove_child(child_3d)
-		survivor.add_child(child_3d)
-		child_3d.global_transform = child_global
-		_set_owner_recursive(child_3d, scene_root)
-	for node in removed:
-		var node_typed := node as Node
-		if node_typed != null and node_typed.get_parent() != null:
-			node_typed.get_parent().remove_child(node_typed)
-	_apply_wall_geometry(survivor, new_start, new_end, segments)
-	_select_node(survivor)
-
-
-func _undo_absorb_walls(
-	survivor: ProceduralWall3DScript,
-	old_start: Vector3,
-	old_end: Vector3,
-	old_segments: Array[WallSegment3DScript],
-	removed: Array,
-	moved: Array,
-	moved_parents: Array,
-	moved_transforms: Array,
-	coordinator: BuildingEditor3DScript,
-	scene_root: Node
-) -> void:
-	for node in removed:
-		var node_typed := node as Node
-		if node_typed != null and node_typed.get_parent() == null:
-			coordinator.add_child(node_typed)
-			_set_owner_recursive(node_typed, scene_root)
-	for index in range(moved.size()):
-		var child_3d := moved[index] as Node3D
-		if child_3d == null:
-			continue
-		if child_3d.get_parent() != null:
-			child_3d.get_parent().remove_child(child_3d)
-		var old_parent := moved_parents[index] as Node
-		old_parent.add_child(child_3d)
-		child_3d.transform = moved_transforms[index]
-		_set_owner_recursive(child_3d, scene_root)
-	_apply_wall_geometry(survivor, old_start, old_end, old_segments)
-	for node in removed:
-		var node_typed := node as Node
-		if node_typed != null and node_typed.has_method("rebuild_wall_mesh"):
-			node_typed.rebuild_wall_mesh()
-
-
 func _update_placement_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 	var hit := _raycast_world(camera, mouse_position)
 	var wall := _find_wall_from_collider(hit.get("collider"))
@@ -3276,6 +3124,23 @@ func _apply_wall_geometry(
 	wall.set_wall_geometry(new_start, new_end, _duplicate_segments(segments), opening_anchors)
 
 
+func _refresh_wall_intersections(coordinator: BuildingEditor3DScript) -> void:
+	if coordinator != null and is_instance_valid(coordinator):
+		coordinator.refresh_wall_intersection_clips()
+
+
+func _set_wall_endpoints_and_refresh_intersections(
+	wall: ProceduralWall3DScript,
+	new_start: Vector3,
+	new_end: Vector3,
+	coordinator: BuildingEditor3DScript
+) -> void:
+	if wall == null or !is_instance_valid(wall):
+		return
+	wall.set_wall_endpoints(new_start, new_end)
+	_refresh_wall_intersections(coordinator)
+
+
 func _do_set_wall_geometry(
 	wall: ProceduralWall3DScript,
 	new_start: Vector3,
@@ -3288,6 +3153,18 @@ func _do_set_wall_geometry(
 	_apply_wall_geometry(wall, new_start, new_end, segments)
 	if select_after:
 		_select_node(wall)
+
+
+func _do_set_wall_geometry_and_refresh_intersections(
+	wall: ProceduralWall3DScript,
+	new_start: Vector3,
+	new_end: Vector3,
+	segments: Array[WallSegment3DScript],
+	select_after: bool,
+	coordinator: BuildingEditor3DScript
+) -> void:
+	_do_set_wall_geometry(wall, new_start, new_end, segments, select_after)
+	_refresh_wall_intersections(coordinator)
 
 
 func _do_set_wall_geometry_preserving_children(
@@ -3306,6 +3183,18 @@ func _do_set_wall_geometry_preserving_children(
 	)
 	if select_after:
 		_select_node(wall)
+
+
+func _do_set_wall_geometry_preserving_children_and_refresh_intersections(
+	wall: ProceduralWall3DScript,
+	new_start: Vector3,
+	new_end: Vector3,
+	segments: Array[WallSegment3DScript],
+	select_after: bool,
+	coordinator: BuildingEditor3DScript
+) -> void:
+	_do_set_wall_geometry_preserving_children(wall, new_start, new_end, segments, select_after)
+	_refresh_wall_intersections(coordinator)
 
 
 func _duplicate_segments(segments: Array) -> Array[WallSegment3DScript]:
@@ -3415,21 +3304,23 @@ func _commit_add_wall_joint(
 	undo_redo.create_action("Add Wall Joint")
 	undo_redo.add_do_method(
 		self,
-		"_do_set_wall_geometry_preserving_children",
+		"_do_set_wall_geometry_preserving_children_and_refresh_intersections",
 		wall,
 		Vector3(geometry["start"]),
 		Vector3(geometry["end"]),
 		new_segments,
-		true
+		true,
+		coordinator
 	)
 	undo_redo.add_undo_method(
 		self,
-		"_do_set_wall_geometry_preserving_children",
+		"_do_set_wall_geometry_preserving_children_and_refresh_intersections",
 		wall,
 		old_start,
 		old_end,
 		old_segments,
-		true
+		true,
+		coordinator
 	)
 	undo_redo.commit_action()
 	_clear_wall_hover()
@@ -3451,18 +3342,29 @@ func _commit_delete_zero_length_wall_segment(
 	old_segments: Array[WallSegment3DScript]
 ) -> void:
 	var next_segments: Array[WallSegment3DScript] = geometry["segments"]
+	var coordinator := _find_coordinator_from_node(wall)
 	var undo_redo := get_undo_redo()
 	undo_redo.create_action("Delete Wall Segment")
 	undo_redo.add_do_method(
 		self,
-		"_do_set_wall_geometry",
+		"_do_set_wall_geometry_and_refresh_intersections",
 		wall,
 		Vector3(geometry["start"]),
 		Vector3(geometry["end"]),
 		next_segments,
-		true
+		true,
+		coordinator
 	)
-	undo_redo.add_undo_method(self, "_do_set_wall_geometry", wall, old_start, old_end, old_segments, true)
+	undo_redo.add_undo_method(
+		self,
+		"_do_set_wall_geometry_and_refresh_intersections",
+		wall,
+		old_start,
+		old_end,
+		old_segments,
+		true,
+		coordinator
+	)
 	undo_redo.commit_action()
 	_set_status("Deleted zero-length wall segment.")
 
@@ -3474,6 +3376,7 @@ func _commit_delete_zero_length_wall(
 	old_segments: Array[WallSegment3DScript]
 ) -> void:
 	var parent := wall.get_parent()
+	var coordinator := parent as BuildingEditor3DScript
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	if parent == null or scene_root == null:
 		_apply_wall_geometry(wall, old_start, old_end, old_segments)
@@ -3483,8 +3386,16 @@ func _commit_delete_zero_length_wall(
 	var undo_redo := get_undo_redo()
 	undo_redo.create_action("Delete Procedural Wall")
 	undo_redo.add_undo_reference(wall)
-	undo_redo.add_do_method(self, "_undo_remove_node", parent, wall)
-	undo_redo.add_undo_method(self, "_do_add_node", parent, wall, scene_root, true)
+	undo_redo.add_do_method(self, "_undo_remove_node_and_refresh_wall_intersections", parent, wall, coordinator)
+	undo_redo.add_undo_method(
+		self,
+		"_do_add_node_and_refresh_wall_intersections",
+		parent,
+		wall,
+		scene_root,
+		true,
+		coordinator
+	)
 	undo_redo.commit_action()
 	_set_status("Deleted zero-length wall.")
 
@@ -4138,30 +4049,9 @@ func _commit_wall_drag() -> void:
 		_set_status("Wall is too short.")
 		return
 	var coordinator := _find_coordinator_from_node(wall)
+	var intersects_after_move := false
 	if coordinator != null and coordinator.merge_intersecting:
-		var targets := _find_intersecting_targets_for_wall(coordinator, wall)
-		if !targets.is_empty():
-			var no_added_segments: Array[WallSegment3DScript] = []
-			_commit_merged_wall_group(
-				coordinator,
-				wall,
-				targets,
-				no_added_segments,
-				old_start,
-				old_end,
-				old_segments,
-				"Move And Merge Procedural Wall",
-				"Moved and merged wall."
-			)
-			m_drag_wall_old_segments.clear()
-			m_drag_wall_opening_anchors.clear()
-			m_drag_wall_segment_index = 0
-			m_drag_wall_endpoint = -1
-			m_drag_wall_joint_origin = Vector3.ZERO
-			m_drag_wall_dragging_joint = false
-			m_drag_wall_detaching_joint = false
-			m_drag_wall_has_connection_snap = false
-			return
+		intersects_after_move = !_find_intersecting_targets_for_wall(coordinator, wall).is_empty()
 	var normalized_geometry := _normalized_wall_geometry(wall)
 	if !normalized_geometry.is_empty():
 		new_start = Vector3(normalized_geometry["start"])
@@ -4169,8 +4059,26 @@ func _commit_wall_drag() -> void:
 		new_segments = normalized_geometry["segments"]
 	var undo_redo := get_undo_redo()
 	undo_redo.create_action("Move Procedural Wall")
-	undo_redo.add_do_method(self, "_do_set_wall_geometry", wall, new_start, new_end, new_segments, true)
-	undo_redo.add_undo_method(self, "_do_set_wall_geometry", wall, old_start, old_end, old_segments, true)
+	undo_redo.add_do_method(
+		self,
+		"_do_set_wall_geometry_and_refresh_intersections",
+		wall,
+		new_start,
+		new_end,
+		new_segments,
+		true,
+		coordinator
+	)
+	undo_redo.add_undo_method(
+		self,
+		"_do_set_wall_geometry_and_refresh_intersections",
+		wall,
+		old_start,
+		old_end,
+		old_segments,
+		true,
+		coordinator
+	)
 	undo_redo.commit_action()
 	m_drag_wall_old_segments.clear()
 	m_drag_wall_opening_anchors.clear()
@@ -4186,6 +4094,8 @@ func _commit_wall_drag() -> void:
 		_set_status("Disconnected wall endpoint.")
 	elif was_joint_drag:
 		_set_status("Moved wall joint.")
+	elif intersects_after_move:
+		_set_status("Moved wall and clipped intersections.")
 	else:
 		_set_status("Moved wall.")
 
@@ -4577,6 +4487,17 @@ func _do_add_node_and_rebuild(parent: Node, node: Node, scene_root: Node, select
 		parent.rebuild_wall_mesh()
 
 
+func _do_add_node_and_refresh_wall_intersections(
+	parent: Node,
+	node: Node,
+	scene_root: Node,
+	select_after_add: bool,
+	coordinator: BuildingEditor3DScript
+) -> void:
+	_do_add_node(parent, node, scene_root, select_after_add)
+	_refresh_wall_intersections(coordinator)
+
+
 func _do_add_node_and_refresh_roofs(
 	parent: Node,
 	node: Node,
@@ -4598,6 +4519,15 @@ func _undo_remove_node_and_rebuild(parent: Node, node: Node) -> void:
 	_undo_remove_node(parent, node)
 	if parent.has_method("rebuild_wall_mesh"):
 		parent.rebuild_wall_mesh()
+
+
+func _undo_remove_node_and_refresh_wall_intersections(
+	parent: Node,
+	node: Node,
+	coordinator: BuildingEditor3DScript
+) -> void:
+	_undo_remove_node(parent, node)
+	_refresh_wall_intersections(coordinator)
 
 
 func _undo_remove_node_and_refresh_roofs(parent: Node, node: Node, coordinator: BuildingEditor3DScript) -> void:
