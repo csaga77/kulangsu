@@ -71,6 +71,7 @@ var m_roof_settings := {
 	"height": 40.0,
 	"thickness": 0.12,
 	"overhang": 0.2,
+	"hip_gable_height": 0.0,
 	"rotation_degrees": 0.0,
 	"color": Color(0.50, 0.34, 0.25, 1.0),
 	"debug_wireframe": false,
@@ -1153,6 +1154,7 @@ func _create_roof_preview(coordinator: BuildingEditor3DScript) -> void:
 	m_roof_preview.roof_height = float(m_roof_settings["height"])
 	m_roof_preview.roof_thickness = float(m_roof_settings["thickness"])
 	m_roof_preview.roof_overhang = float(m_roof_settings["overhang"])
+	m_roof_preview.hip_gable_height = float(m_roof_settings.get("hip_gable_height", 0.0))
 	m_roof_preview.roof_rotation_degrees = m_roof_draw_rotation_degrees
 	var preview_color := Color(m_roof_settings["color"])
 	preview_color.a = 0.46
@@ -1183,6 +1185,7 @@ func _update_roof_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 	m_roof_preview.roof_height = float(m_roof_settings["height"])
 	m_roof_preview.roof_thickness = float(m_roof_settings["thickness"])
 	m_roof_preview.roof_overhang = float(m_roof_settings["overhang"])
+	m_roof_preview.hip_gable_height = float(m_roof_settings.get("hip_gable_height", 0.0))
 	m_roof_preview.debug_show_triangle_wireframe = bool(m_roof_settings.get("debug_wireframe", false))
 	m_roof_preview.set_roof_corners_and_rotation(roof_start, roof_end, m_roof_draw_rotation_degrees)
 	if m_roof_has_valid_preview:
@@ -1307,7 +1310,8 @@ func _commit_roof_rotation(roof: ProceduralRoof3DScript, delta_degrees: float) -
 			roof.roof_color,
 			new_rotation,
 			roof,
-			true
+			true,
+			roof.hip_gable_height
 		)
 		new_covered_rects = _roof_covered_rects_from_regions(cover_regions)
 		new_covered_polygons = _roof_covered_polygons_from_regions(cover_regions)
@@ -1393,6 +1397,7 @@ func _commit_roof(
 	var height := float(m_roof_settings["height"])
 	var thickness := float(m_roof_settings["thickness"])
 	var overhang := float(m_roof_settings["overhang"])
+	var hip_gable_height := float(m_roof_settings.get("hip_gable_height", 0.0))
 	var color := Color(m_roof_settings["color"])
 	var normalized_rotation := _normalize_degrees(rotation_degrees)
 	var merge := coordinator.find_roof_merge_target(
@@ -1404,7 +1409,8 @@ func _commit_roof(
 		overhang,
 		color,
 		normalized_rotation,
-		m_roof_preview
+		m_roof_preview,
+		hip_gable_height
 	)
 	var covered_rects := _roof_covered_rects_from_regions(merge)
 	var covered_polygons := _roof_covered_polygons_from_regions(merge)
@@ -1418,7 +1424,8 @@ func _commit_roof(
 		overhang,
 		color,
 		normalized_rotation,
-		bool(m_roof_settings.get("debug_wireframe", false))
+		bool(m_roof_settings.get("debug_wireframe", false)),
+		hip_gable_height
 	)
 	if !covered_rects.is_empty() or !covered_polygons.is_empty():
 		roof.set_covered_regions(covered_rects, covered_polygons)
@@ -1585,7 +1592,8 @@ func _commit_roof_drag() -> void:
 			roof.roof_color,
 			roof.roof_rotation_degrees,
 			roof,
-			true
+			true,
+			roof.hip_gable_height
 		)
 		new_covered_rects = _roof_covered_rects_from_regions(cover_regions)
 		new_covered_polygons = _roof_covered_polygons_from_regions(cover_regions)
@@ -3102,6 +3110,7 @@ func _apply_roof_settings_to_coordinator(coordinator: BuildingEditor3DScript) ->
 	coordinator.default_roof_height = float(m_roof_settings["height"])
 	coordinator.default_roof_thickness = float(m_roof_settings["thickness"])
 	coordinator.default_roof_overhang = float(m_roof_settings["overhang"])
+	coordinator.default_roof_hip_gable_height = float(m_roof_settings.get("hip_gable_height", 0.0))
 	coordinator.default_roof_rotation_degrees = float(m_roof_settings.get("rotation_degrees", 0.0))
 	coordinator.default_roof_color = Color(m_roof_settings["color"])
 	coordinator.default_roof_debug_wireframe = bool(m_roof_settings.get("debug_wireframe", false))

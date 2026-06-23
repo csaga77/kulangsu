@@ -642,9 +642,86 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	if triangular_hip_faces != 2 or trapezoid_hip_faces != 2:
 		m_failures.append("ProceduralRoof3D hip style did not generate two triangular and two trapezoid faces")
 
+	var half_hip := coordinator.create_roof_node(
+		Vector3(46.0, base_y, 12.0),
+		Vector3(51.0, base_y, 15.0),
+		"hip",
+		TEST_ROOF_ALT_ANGLE_DEGREES,
+		0.12,
+		0.15,
+		Color(0.50, 0.34, 0.25, 1.0),
+		0.0,
+		false,
+		0.4
+	)
+	coordinator.add_child(half_hip)
+	if _mesh_vertex_count(half_hip) != 100:
+		m_failures.append("ProceduralRoof3D half-hip style generated the wrong vertex count")
+	if !_roof_surface_normals_are_not_down(half_hip):
+		m_failures.append("ProceduralRoof3D half-hip visible surface normals point downward")
+	var plain_half_hip_ridge := ProceduralRoof3DScript.hip_roof_ridge_points_for_size(
+		half_hip.get_roof_size(),
+		half_hip.roof_overhang,
+		half_hip.get_roof_angle_degrees()
+	)
+	var clipped_half_hip_ridge := ProceduralRoof3DScript.hip_roof_ridge_points_for_size(
+		half_hip.get_roof_size(),
+		half_hip.roof_overhang,
+		half_hip.get_roof_angle_degrees(),
+		half_hip.hip_gable_height
+	)
+	if clipped_half_hip_ridge.size() != 2:
+		m_failures.append("ProceduralRoof3D half-hip style did not report a ridge line")
+	else:
+		if clipped_half_hip_ridge[0].x >= plain_half_hip_ridge[0].x:
+			m_failures.append("ProceduralRoof3D half-hip did not extend the ridge start")
+		if clipped_half_hip_ridge[1].x <= plain_half_hip_ridge[1].x:
+			m_failures.append("ProceduralRoof3D half-hip did not extend the ridge end")
+		if !_has_mesh_vertex_near(half_hip.mesh as ArrayMesh, clipped_half_hip_ridge[0], 0.001):
+			m_failures.append("ProceduralRoof3D half-hip mesh is missing the first extended ridge endpoint")
+		if !_has_mesh_vertex_near(half_hip.mesh as ArrayMesh, clipped_half_hip_ridge[1], 0.001):
+			m_failures.append("ProceduralRoof3D half-hip mesh is missing the second extended ridge endpoint")
+	var half_hip_height := ProceduralRoof3DScript.hip_height_for_angle_degrees(
+		half_hip.get_roof_size(),
+		half_hip.roof_overhang,
+		half_hip.get_roof_angle_degrees()
+	)
+	var half_hip_extension := half_hip.hip_gable_height / tan(deg_to_rad(half_hip.get_roof_angle_degrees()))
+	var half_hip_center_z := half_hip.get_roof_size().y * 0.5
+	var half_hip_gable_base := Vector3(
+		clipped_half_hip_ridge[0].x,
+		half_hip_height - half_hip.hip_gable_height,
+		half_hip_center_z - half_hip_extension
+	)
+	if !_has_mesh_vertex_near(half_hip.mesh as ArrayMesh, half_hip_gable_base, 0.001):
+		m_failures.append("ProceduralRoof3D half-hip mesh is missing the clipped gable base")
+	if absf(half_hip.get_roof_height_at_local_render_point(Vector2(clipped_half_hip_ridge[0].x, half_hip_center_z)) - half_hip_height) > 0.001:
+		m_failures.append("ProceduralRoof3D half-hip ridge height changed from the hip peak")
+	if absf(half_hip.get_roof_height_at_local_render_point(Vector2(half_hip_gable_base.x, half_hip_gable_base.z)) - half_hip_gable_base.y) > 0.001:
+		m_failures.append("ProceduralRoof3D half-hip clipped gable base does not follow configured drop")
+	var half_hip_faces := ProceduralRoof3DScript.roof_top_faces_for_style(
+		"hip",
+		half_hip.get_roof_size(),
+		half_hip.roof_overhang,
+		half_hip.get_roof_angle_degrees(),
+		half_hip.hip_gable_height
+	)
+	var half_hip_sloped_faces := 0
+	var half_hip_vertical_faces := 0
+	for half_hip_face in half_hip_faces:
+		var half_hip_face_angle := _roof_face_angle_degrees(PackedVector3Array(half_hip_face["plane"]))
+		if half_hip_face_angle > 89.0:
+			half_hip_vertical_faces += 1
+		else:
+			half_hip_sloped_faces += 1
+			if absf(half_hip_face_angle - TEST_ROOF_ALT_ANGLE_DEGREES) > 0.01:
+				m_failures.append("ProceduralRoof3D half-hip sloped face angle changed from configured degrees")
+	if half_hip_sloped_faces != 4 or half_hip_vertical_faces != 2:
+		m_failures.append("ProceduralRoof3D half-hip did not generate four sloped faces and two clipped gables")
+
 	var angle_roof := coordinator.create_roof_node(
-		Vector3(30.0, base_y, 16.0),
-		Vector3(34.0, base_y, 19.0),
+		Vector3(40.0, base_y, 16.0),
+		Vector3(44.0, base_y, 19.0),
 		"gable",
 		TEST_ROOF_ANGLE_DEGREES,
 		0.12,
@@ -2029,6 +2106,30 @@ func _roof_underside_normals_are_down(roof: ProceduralRoof3DScript) -> bool:
 		if normals[indices[index]].y >= -0.25:
 			return false
 	return found_underside
+
+
+func _roof_surface_normals_are_not_down(roof: ProceduralRoof3DScript) -> bool:
+	if roof == null or roof.mesh == null or roof.mesh.get_surface_count() <= 0:
+		return false
+	var arrays := roof.mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	var found_surface := false
+	for index in range(0, indices.size(), 3):
+		var first := vertices[indices[index]]
+		var second := vertices[indices[index + 1]]
+		var third := vertices[indices[index + 2]]
+		if (
+			_roof_vertex_is_on_underside(roof, first)
+			and _roof_vertex_is_on_underside(roof, second)
+			and _roof_vertex_is_on_underside(roof, third)
+		):
+			continue
+		found_surface = true
+		if normals[indices[index]].y < -0.01:
+			return false
+	return found_surface
 
 
 func _roof_vertex_is_on_underside(roof: ProceduralRoof3DScript, vertex: Vector3) -> bool:

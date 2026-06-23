@@ -35,6 +35,7 @@ const ROOF_COVER_HEIGHT_EPSILON := 0.01
 @export_range(0.0, 89.0, 1.0) var default_roof_height := 40.0
 @export_range(0.02, 2.0, 0.01, "or_greater") var default_roof_thickness := 0.12
 @export_range(0.0, 4.0, 0.01, "or_greater") var default_roof_overhang := 0.2
+@export_range(0.0, 20.0, 0.01, "or_greater") var default_roof_hip_gable_height := 0.0
 @export_range(-180.0, 180.0, 1.0) var default_roof_rotation_degrees := 0.0
 @export var default_roof_color := Color(0.50, 0.34, 0.25, 1.0)
 @export var default_roof_debug_wireframe := false
@@ -154,7 +155,8 @@ func create_roof_node(
 	overhang: float = default_roof_overhang,
 	color: Color = default_roof_color,
 	rotation_degrees: float = default_roof_rotation_degrees,
-	debug_wireframe: bool = default_roof_debug_wireframe
+	debug_wireframe: bool = default_roof_debug_wireframe,
+	hip_gable_height: float = default_roof_hip_gable_height
 ) -> ProceduralRoof3DScript:
 	var roof := ProceduralRoof3DScript.new() as ProceduralRoof3DScript
 	roof.name = _unique_roof_name()
@@ -164,6 +166,7 @@ func create_roof_node(
 	roof.roof_height = height
 	roof.roof_thickness = thickness
 	roof.roof_overhang = overhang
+	roof.hip_gable_height = hip_gable_height
 	roof.roof_color = color
 	roof.roof_rotation_degrees = rotation_degrees
 	roof.build_on_ready = true
@@ -214,7 +217,8 @@ func find_roof_merge_target(
 	overhang: float,
 	color: Color,
 	rotation_degrees: float = 0.0,
-	ignored_roof: Node = null
+	ignored_roof: Node = null,
+	hip_gable_height: float = 0.0
 ) -> Dictionary:
 	return _find_roof_cover_data(
 		local_start,
@@ -226,7 +230,8 @@ func find_roof_merge_target(
 		color,
 		rotation_degrees,
 		ignored_roof,
-		false
+		false,
+		hip_gable_height
 	)
 
 
@@ -240,7 +245,8 @@ func compute_roof_covered_rects(
 	color: Color,
 	rotation_degrees: float = 0.0,
 	ignored_roof: Node = null,
-	only_before_ignored_roof := false
+	only_before_ignored_roof := false,
+	hip_gable_height: float = 0.0
 ) -> Array[Rect2]:
 	var cover_data := compute_roof_cover_regions(
 		local_start,
@@ -252,7 +258,8 @@ func compute_roof_covered_rects(
 		color,
 		rotation_degrees,
 		ignored_roof,
-		only_before_ignored_roof
+		only_before_ignored_roof,
+		hip_gable_height
 	)
 	var rects: Array[Rect2] = []
 	for rect in cover_data.get("covered_rects", []):
@@ -270,7 +277,8 @@ func compute_roof_cover_regions(
 	color: Color,
 	rotation_degrees: float = 0.0,
 	ignored_roof: Node = null,
-	only_before_ignored_roof := false
+	only_before_ignored_roof := false,
+	hip_gable_height: float = 0.0
 ) -> Dictionary:
 	return _find_roof_cover_data(
 		local_start,
@@ -282,7 +290,8 @@ func compute_roof_cover_regions(
 		color,
 		rotation_degrees,
 		ignored_roof,
-		only_before_ignored_roof
+		only_before_ignored_roof,
+		hip_gable_height
 	)
 
 
@@ -348,7 +357,8 @@ func refresh_roof_covered_rects() -> void:
 			roof.roof_color,
 			roof.roof_rotation_degrees,
 			roof,
-			true
+			true,
+			roof.hip_gable_height
 		)
 		roof.set_covered_regions(
 			_roof_covered_rects_from_regions(cover_regions),
@@ -366,7 +376,8 @@ func _find_roof_cover_data(
 	_color: Color,
 	rotation_degrees: float,
 	ignored_roof: Node,
-	_only_before_ignored_roof: bool
+	_only_before_ignored_roof: bool,
+	hip_gable_height: float
 ) -> Dictionary:
 	var new_size := Vector2(absf(local_end.x - local_start.x), absf(local_end.z - local_start.z))
 	if new_size.x <= 0.001 or new_size.y <= 0.001:
@@ -408,6 +419,7 @@ func _find_roof_cover_data(
 				style,
 				height,
 				overhang,
+				hip_gable_height,
 				roof,
 				covered_rect,
 				other_before_candidate
@@ -437,6 +449,7 @@ func _roof_polygons_under_other_roof(
 	candidate_style: String,
 	candidate_angle_degrees: float,
 	candidate_overhang: float,
+	candidate_hip_gable_height: float,
 	other_roof: ProceduralRoof3DScript,
 	overlap_rect: Rect2,
 	other_before_candidate: bool
@@ -446,13 +459,15 @@ func _roof_polygons_under_other_roof(
 		candidate_style,
 		candidate_size,
 		candidate_overhang,
-		candidate_angle_degrees
+		candidate_angle_degrees,
+		candidate_hip_gable_height
 	)
 	var other_faces := ProceduralRoof3DScript.roof_top_faces_for_style(
 		other_roof.get_roof_style(),
 		other_roof.get_roof_size(),
 		other_roof.roof_overhang,
-		other_roof.roof_height
+		other_roof.roof_height,
+		other_roof.hip_gable_height
 	)
 	var candidate_inverse := candidate_basis.inverse()
 	var other_anchor := other_roof.get_roof_anchor_point()

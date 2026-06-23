@@ -76,6 +76,7 @@ var m_roof_base_height_spin: SpinBox
 var m_roof_height_spin: SpinBox
 var m_roof_thickness_spin: SpinBox
 var m_roof_overhang_spin: SpinBox
+var m_roof_hip_gable_height_spin: SpinBox
 var m_roof_rotation_spin: SpinBox
 var m_roof_color_picker: ColorPickerButton
 var m_roof_wireframe_check: CheckBox
@@ -389,6 +390,15 @@ func _build_roof_controls(parent: VBoxContainer) -> void:
 	m_roof_overhang_spin = _make_spin(0.0, 4.0, 0.01, 0.2)
 	_add_labeled_control(parent, "Overhang:", m_roof_overhang_spin, "Distance the roof eaves extend beyond the drawn footprint.")
 	m_roof_overhang_spin.value_changed.connect(_on_roof_setting_changed)
+
+	m_roof_hip_gable_height_spin = _make_spin(0.0, 20.0, 0.01, 0.0)
+	_add_labeled_control(
+		parent,
+		"Gable Drop:",
+		m_roof_hip_gable_height_spin,
+		"Vertical drop from a hip roof peak to the clipped gable base. Positive values extend the ridge while keeping roof faces at the selected angle."
+	)
+	m_roof_hip_gable_height_spin.value_changed.connect(_on_roof_setting_changed)
 
 	m_roof_rotation_spin = _make_spin(-180.0, 180.0, 1.0, 0.0)
 	m_roof_rotation_spin.tooltip_text = "Starting Y rotation for new roofs, in degrees."
@@ -855,6 +865,7 @@ func _emit_roof_settings() -> void:
 		"height": float(m_roof_height_spin.value),
 		"thickness": float(m_roof_thickness_spin.value),
 		"overhang": float(m_roof_overhang_spin.value),
+		"hip_gable_height": float(m_roof_hip_gable_height_spin.value),
 		"rotation_degrees": float(m_roof_rotation_spin.value),
 		"color": m_roof_color_picker.color,
 		"debug_wireframe": m_roof_wireframe_check.button_pressed,
@@ -1079,6 +1090,9 @@ func _load_persisted_settings() -> void:
 	m_roof_height_spin.value = _stored_roof_angle_degrees(state)
 	m_roof_thickness_spin.value = float(state.get("roof_thickness", m_roof_thickness_spin.value))
 	m_roof_overhang_spin.value = float(state.get("roof_overhang", m_roof_overhang_spin.value))
+	m_roof_hip_gable_height_spin.value = float(
+		state.get("roof_hip_gable_height", m_roof_hip_gable_height_spin.value)
+	)
 	m_roof_rotation_spin.value = float(state.get("roof_rotation_degrees", m_roof_rotation_spin.value))
 	var roof_color_variant: Variant = state.get("roof_color", m_roof_color_picker.color)
 	if roof_color_variant is Color:
@@ -1138,6 +1152,7 @@ func _save_persisted_settings() -> void:
 		"roof_height": float(m_roof_height_spin.value) if m_roof_height_spin != null else DEFAULT_ROOF_ANGLE_DEGREES,
 		"roof_thickness": float(m_roof_thickness_spin.value) if m_roof_thickness_spin != null else 0.12,
 		"roof_overhang": float(m_roof_overhang_spin.value) if m_roof_overhang_spin != null else 0.2,
+		"roof_hip_gable_height": float(m_roof_hip_gable_height_spin.value) if m_roof_hip_gable_height_spin != null else 0.0,
 		"roof_rotation_degrees": float(m_roof_rotation_spin.value) if m_roof_rotation_spin != null else 0.0,
 		"roof_color": m_roof_color_picker.color if m_roof_color_picker != null else Color(0.50, 0.34, 0.25, 1.0),
 		"roof_debug_wireframe": m_roof_wireframe_check.button_pressed if m_roof_wireframe_check != null else false,
