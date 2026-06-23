@@ -26,6 +26,8 @@ const PROJECT_METADATA_SECTION := "low_poly_building_editor"
 const PROJECT_METADATA_KEY := "dock_state"
 const DEFAULT_ROOF_ANGLE_DEGREES := 40.0
 const LEGACY_ROOF_VALUE_MAX := 8.0
+const COLOR_SWATCH_ICON_SIZE := 16
+const COLOR_SWATCH_MIN_WIDTH := 34.0
 const SHORTCUTS_SELECT_TEXT := "Shortcuts\nSelect: normal Godot editor selection and transform tools are active."
 const SHORTCUTS_WALL_TEXT := "Shortcuts\nDrag empty space to draw a wall.\nDrag wall body to move it.\nDrag endpoint or joint to edit.\nShift-click wall body to add joint.\nOption/Alt-drag shared joint to disconnect.\nEsc or right-click cancels."
 const SHORTCUTS_FLOOR_TEXT := "Shortcuts\nDrag empty space to draw a floor rectangle.\nClick one corner, then click the opposite corner to place.\nDrag floor body to move it.\nDrag floor edge or corner to resize.\nEsc or right-click cancels."
@@ -239,8 +241,7 @@ func _build_wall_controls(parent: VBoxContainer) -> void:
 	_add_labeled_control(parent, "Thickness:", m_wall_thickness_spin)
 	m_wall_thickness_spin.value_changed.connect(_on_wall_setting_changed)
 
-	m_wall_color_picker = ColorPickerButton.new()
-	m_wall_color_picker.color = Color(0.78, 0.68, 0.54, 1.0)
+	m_wall_color_picker = _make_color_picker(Color(0.78, 0.68, 0.54, 1.0))
 	m_wall_color_picker.color_changed.connect(_on_wall_color_changed)
 	_add_labeled_control(parent, "Color:", m_wall_color_picker)
 
@@ -269,8 +270,7 @@ func _build_floor_controls(parent: VBoxContainer) -> void:
 	_add_labeled_control(parent, "Thickness:", m_floor_thickness_spin)
 	m_floor_thickness_spin.value_changed.connect(_on_floor_setting_changed)
 
-	m_floor_color_picker = ColorPickerButton.new()
-	m_floor_color_picker.color = Color(0.46, 0.40, 0.32, 1.0)
+	m_floor_color_picker = _make_color_picker(Color(0.46, 0.40, 0.32, 1.0))
 	m_floor_color_picker.color_changed.connect(_on_floor_color_changed)
 	_add_labeled_control(parent, "Color:", m_floor_color_picker)
 
@@ -340,8 +340,7 @@ func _build_pillar_controls(parent: VBoxContainer) -> void:
 	_add_labeled_control(parent, "Upper Rim Out:", m_pillar_upper_rim_outset_spin)
 	m_pillar_upper_rim_outset_spin.value_changed.connect(_on_pillar_setting_changed)
 
-	m_pillar_color_picker = ColorPickerButton.new()
-	m_pillar_color_picker.color = Color(0.70, 0.64, 0.52, 1.0)
+	m_pillar_color_picker = _make_color_picker(Color(0.70, 0.64, 0.52, 1.0))
 	m_pillar_color_picker.color_changed.connect(_on_pillar_color_changed)
 	_add_labeled_control(parent, "Color:", m_pillar_color_picker)
 
@@ -392,8 +391,7 @@ func _build_roof_controls(parent: VBoxContainer) -> void:
 	_add_labeled_control(parent, "Rotation:", m_roof_rotation_spin)
 	m_roof_rotation_spin.value_changed.connect(_on_roof_setting_changed)
 
-	m_roof_color_picker = ColorPickerButton.new()
-	m_roof_color_picker.color = Color(0.50, 0.34, 0.25, 1.0)
+	m_roof_color_picker = _make_color_picker(Color(0.50, 0.34, 0.25, 1.0))
 	m_roof_color_picker.color_changed.connect(_on_roof_color_changed)
 	_add_labeled_control(parent, "Color:", m_roof_color_picker)
 
@@ -534,6 +532,68 @@ func _make_spin(min_value: float, max_value: float, step: float, value: float) -
 	return spin
 
 
+func _make_color_picker(initial_color: Color) -> ColorPickerButton:
+	var picker := ColorPickerButton.new()
+	picker.color = initial_color
+	picker.text = " "
+	picker.tooltip_text = "Choose color"
+	picker.custom_minimum_size = Vector2(COLOR_SWATCH_MIN_WIDTH, 0.0)
+	picker.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	picker.size_flags_vertical = Control.SIZE_FILL
+	picker.resized.connect(_on_color_picker_resized.bind(picker))
+	_update_color_picker_icon(picker)
+	return picker
+
+
+func _on_color_picker_resized(picker: ColorPickerButton) -> void:
+	_sync_color_picker_minimum_width(picker)
+
+
+func _update_color_picker_icon(picker: ColorPickerButton) -> void:
+	if picker == null:
+		return
+	picker.icon = _make_color_swatch_texture(picker.color)
+	_sync_color_picker_minimum_width(picker)
+
+
+func _sync_color_picker_minimum_width(picker: ColorPickerButton) -> void:
+	if picker == null:
+		return
+	var required_width := maxf(
+		COLOR_SWATCH_MIN_WIDTH,
+		ceilf(maxf(picker.get_combined_minimum_size().y, picker.size.y))
+	)
+	if is_equal_approx(picker.custom_minimum_size.x, required_width) and is_zero_approx(picker.custom_minimum_size.y):
+		return
+	picker.custom_minimum_size = Vector2(required_width, 0.0)
+
+
+func _refresh_color_picker_icons() -> void:
+	_update_color_picker_icon(m_wall_color_picker)
+	_update_color_picker_icon(m_floor_color_picker)
+	_update_color_picker_icon(m_pillar_color_picker)
+	_update_color_picker_icon(m_roof_color_picker)
+
+
+func _make_color_swatch_texture(color: Color) -> Texture2D:
+	var size := COLOR_SWATCH_ICON_SIZE
+	var image := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	var opaque_color := Color(color.r, color.g, color.b, 1.0)
+	for y in range(size):
+		for x in range(size):
+			var checker_dark := (int(x / 4) + int(y / 4)) % 2 == 0
+			var checker_color := Color(0.64, 0.64, 0.64, 1.0) if checker_dark else Color(0.86, 0.86, 0.86, 1.0)
+			image.set_pixel(x, y, checker_color.lerp(opaque_color, color.a))
+	var luminance := color.r * 0.299 + color.g * 0.587 + color.b * 0.114
+	var border_color := Color(0.0, 0.0, 0.0, 0.85) if luminance > 0.58 else Color(1.0, 1.0, 1.0, 0.85)
+	for index in range(size):
+		image.set_pixel(index, 0, border_color)
+		image.set_pixel(index, size - 1, border_color)
+		image.set_pixel(0, index, border_color)
+		image.set_pixel(size - 1, index, border_color)
+	return ImageTexture.create_from_image(image)
+
+
 func _add_labeled_control(parent: VBoxContainer, label_text: String, control: Control) -> void:
 	var row := HBoxContainer.new()
 	var label := Label.new()
@@ -641,6 +701,7 @@ func _on_wall_setting_changed(_value: float) -> void:
 
 
 func _on_wall_color_changed(_color: Color) -> void:
+	_update_color_picker_icon(m_wall_color_picker)
 	_emit_wall_settings()
 
 
@@ -653,6 +714,7 @@ func _on_floor_setting_changed(_value: float) -> void:
 
 
 func _on_floor_color_changed(_color: Color) -> void:
+	_update_color_picker_icon(m_floor_color_picker)
 	_emit_floor_settings()
 
 
@@ -665,6 +727,7 @@ func _on_pillar_style_selected(_index: int) -> void:
 
 
 func _on_pillar_color_changed(_color: Color) -> void:
+	_update_color_picker_icon(m_pillar_color_picker)
 	_emit_pillar_settings()
 
 
@@ -677,6 +740,7 @@ func _on_roof_style_selected(_index: int) -> void:
 
 
 func _on_roof_color_changed(_color: Color) -> void:
+	_update_color_picker_icon(m_roof_color_picker)
 	_emit_roof_settings()
 
 
@@ -1009,6 +1073,7 @@ func _load_persisted_settings() -> void:
 	m_door_width_spin.value = float(state.get("door_width", _door_default_width(door_style)))
 	m_door_height_spin.value = float(state.get("door_height", m_door_height_spin.value))
 	m_door_frame_spin.value = float(state.get("door_frame_thickness", m_door_frame_spin.value))
+	_refresh_color_picker_icons()
 
 
 func _stored_roof_angle_degrees(state: Dictionary) -> float:
