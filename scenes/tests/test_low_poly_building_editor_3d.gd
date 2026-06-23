@@ -568,10 +568,51 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	else:
 		if merge["roof"] != merge_target:
 			m_failures.append("ProceduralRoof3D merge target selected the wrong roof")
-		if Vector3(merge["start"]).distance_to(Vector3(30.0, base_y, 12.0)) > 0.001:
-			m_failures.append("ProceduralRoof3D merge did not preserve the minimum footprint corner")
-		if Vector3(merge["end"]).distance_to(Vector3(36.0, base_y, 17.0)) > 0.001:
-			m_failures.append("ProceduralRoof3D merge did not expand to the maximum footprint corner")
+		var covered_rects: Array = merge["covered_rects"]
+		if covered_rects.size() != 1:
+			m_failures.append("ProceduralRoof3D merge did not report one covered render area")
+		else:
+			var covered_rect: Rect2 = covered_rects[0]
+			if covered_rect.position.distance_to(Vector2(-0.25, -0.25)) > 0.001:
+				m_failures.append("ProceduralRoof3D merge cover did not include matching overhang start")
+			if covered_rect.size.distance_to(Vector2(1.5, 1.5)) > 0.001:
+				m_failures.append("ProceduralRoof3D merge cover did not include matching overhang size")
+
+	var clipped := coordinator.create_roof_node(
+		Vector3(37.0, base_y, 12.0),
+		Vector3(40.0, base_y, 15.0),
+		"flat",
+		0.0,
+		0.12,
+		0.0,
+		merge_color
+	)
+	var clipped_covers: Array[Rect2] = [Rect2(Vector2(1.0, 1.0), Vector2(1.0, 1.0))]
+	clipped.set_covered_rects(clipped_covers)
+	coordinator.add_child(clipped)
+	if clipped.get_covered_rects().size() != 1:
+		m_failures.append("ProceduralRoof3D did not store covered roof footprint areas")
+	if clipped.get_visible_footprint_rects().size() != 4:
+		m_failures.append("ProceduralRoof3D did not report the visible clipped footprint pieces")
+	if _mesh_vertex_count(clipped) <= 28:
+		m_failures.append("ProceduralRoof3D did not split clipped roof geometry into visible pieces")
+
+	var clipped_gable := coordinator.create_roof_node(
+		Vector3(37.0, base_y, 16.0),
+		Vector3(41.0, base_y, 20.0),
+		"gable",
+		0.9,
+		0.12,
+		0.2,
+		merge_color
+	)
+	var clipped_gable_covers: Array[Rect2] = [Rect2(Vector2.ZERO, Vector2(1.0, 1.0))]
+	clipped_gable.set_covered_rects(clipped_gable_covers)
+	coordinator.add_child(clipped_gable)
+	if !_has_roof_sloped_normal(clipped_gable):
+		m_failures.append("ProceduralRoof3D clipped gable lost its sloped roof normals")
+	if !_has_mesh_vertex_y_near(clipped_gable, 0.9, 0.001):
+		m_failures.append("ProceduralRoof3D clipped gable lost its ridge-height vertices")
 
 	var mismatch := coordinator.find_roof_merge_target(
 		Vector3(33.0, base_y, 14.0),
@@ -597,6 +638,18 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	)
 	if !rotation_mismatch.is_empty():
 		m_failures.append("ProceduralRoof3D merged roofs with different rotations")
+	var near_rotation_mismatch := coordinator.find_roof_merge_target(
+		Vector3(33.0, base_y, 14.0),
+		Vector3(36.0, base_y, 17.0),
+		"gable",
+		0.9,
+		0.16,
+		0.25,
+		merge_color,
+		0.25
+	)
+	if !near_rotation_mismatch.is_empty():
+		m_failures.append("ProceduralRoof3D merged roofs with near-but-not-equal rotations")
 
 	var rotated_merge_target := coordinator.create_roof_node(
 		Vector3(40.0, base_y, 12.0),
@@ -628,6 +681,141 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 			m_failures.append("ProceduralRoof3D rotated merge target selected the wrong roof")
 		if absf(angle_difference(deg_to_rad(float(rotated_merge["rotation_degrees"])), deg_to_rad(90.0))) > deg_to_rad(0.5):
 			m_failures.append("ProceduralRoof3D rotated merge did not preserve roof rotation")
+		var rotated_covers: Array = rotated_merge["covered_rects"]
+		if rotated_covers.is_empty():
+			m_failures.append("ProceduralRoof3D rotated merge did not report covered roof geometry")
+
+	var full_cover_target := coordinator.create_roof_node(
+		Vector3(50.0, base_y, 20.0),
+		Vector3(54.0, base_y, 24.0),
+		"flat",
+		0.0,
+		0.12,
+		0.2,
+		merge_color
+	)
+	coordinator.add_child(full_cover_target)
+	var full_cover := coordinator.find_roof_merge_target(
+		Vector3(50.0, base_y, 20.0),
+		Vector3(54.0, base_y, 24.0),
+		"flat",
+		0.0,
+		0.12,
+		0.2,
+		merge_color,
+		0.0
+	)
+	if full_cover.is_empty():
+		m_failures.append("ProceduralRoof3D did not detect fully covered matching roof geometry")
+	else:
+		var full_cover_rects: Array[Rect2] = []
+		var full_cover_values: Array = full_cover["covered_rects"]
+		for rect in full_cover_values:
+			full_cover_rects.append(rect)
+		if coordinator.roof_has_visible_render_area(
+			Vector3(50.0, base_y, 20.0),
+			Vector3(54.0, base_y, 24.0),
+			0.2,
+			full_cover_rects
+		):
+			m_failures.append("ProceduralRoof3D treated fully covered roof geometry as visible")
+		var duplicate_full_cover := coordinator.create_roof_node(
+			Vector3(50.0, base_y, 20.0),
+			Vector3(54.0, base_y, 24.0),
+			"flat",
+			0.0,
+			0.12,
+			0.2,
+			merge_color
+		)
+		duplicate_full_cover.set_covered_rects(full_cover_rects)
+		if duplicate_full_cover.has_visible_roof_geometry():
+			m_failures.append("ProceduralRoof3D generated visible mesh for a fully covered roof")
+		duplicate_full_cover.free()
+
+	var touch_target := coordinator.create_roof_node(
+		Vector3(50.0, base_y, 12.0),
+		Vector3(54.0, base_y, 15.0),
+		"gable",
+		0.9,
+		0.16,
+		0.25,
+		merge_color
+	)
+	coordinator.add_child(touch_target)
+	var touch_merge := coordinator.find_roof_merge_target(
+		Vector3(54.0, base_y, 12.0),
+		Vector3(58.0, base_y, 15.0),
+		"gable",
+		0.9,
+		0.16,
+		0.25,
+		merge_color,
+		0.0
+	)
+	if touch_merge.is_empty():
+		m_failures.append("ProceduralRoof3D did not merge touching roof overhang geometry")
+	else:
+		var touch_values: Array = touch_merge["covered_rects"]
+		var touch_cover: Rect2 = touch_values[0]
+		if absf(touch_cover.position.x + 0.25) > 0.001 or absf(touch_cover.size.x - 0.5) > 0.001:
+			m_failures.append("ProceduralRoof3D touching overhang cover has the wrong X range")
+
+	var gap_merge := coordinator.find_roof_merge_target(
+		Vector3(54.3, base_y, 12.0),
+		Vector3(58.3, base_y, 15.0),
+		"gable",
+		0.9,
+		0.16,
+		0.25,
+		merge_color,
+		0.0
+	)
+	if gap_merge.is_empty():
+		m_failures.append("ProceduralRoof3D did not merge separated but overlapping roof overhang geometry")
+	else:
+		var gap_values: Array = gap_merge["covered_rects"]
+		var gap_cover: Rect2 = gap_values[0]
+		if absf(gap_cover.position.x + 0.25) > 0.001 or absf(gap_cover.size.x - 0.2) > 0.001:
+			m_failures.append("ProceduralRoof3D separated overhang cover has the wrong X range")
+
+	var stale_covering := coordinator.create_roof_node(
+		Vector3(60.0, base_y, 12.0),
+		Vector3(64.0, base_y, 15.0),
+		"gable",
+		0.9,
+		0.16,
+		0.25,
+		merge_color
+	)
+	coordinator.add_child(stale_covering)
+	var stale_clipped := coordinator.create_roof_node(
+		Vector3(63.0, base_y, 14.0),
+		Vector3(66.0, base_y, 17.0),
+		"gable",
+		0.9,
+		0.16,
+		0.25,
+		merge_color
+	)
+	var stale_covers := coordinator.compute_roof_covered_rects(
+		stale_clipped.start_point,
+		stale_clipped.end_point,
+		stale_clipped.get_roof_style(),
+		stale_clipped.roof_height,
+		stale_clipped.roof_thickness,
+		stale_clipped.roof_overhang,
+		stale_clipped.roof_color,
+		stale_clipped.roof_rotation_degrees
+	)
+	stale_clipped.set_covered_rects(stale_covers)
+	coordinator.add_child(stale_clipped)
+	if stale_clipped.get_covered_rects().is_empty():
+		m_failures.append("ProceduralRoof3D stale-cover setup did not create an initial clip")
+	stale_covering.set_roof_corners(Vector3(70.0, base_y, 12.0), Vector3(74.0, base_y, 15.0))
+	coordinator.refresh_roof_covered_rects()
+	if !stale_clipped.get_covered_rects().is_empty():
+		m_failures.append("ProceduralRoof3D did not clear stale roof covers after refresh")
 
 
 func _validate_merge_detection(coordinator: BuildingEditor3DScript) -> void:
@@ -1399,6 +1587,17 @@ func _mesh_vertex_count(mesh_instance: MeshInstance3D) -> int:
 	var arrays := mesh_instance.mesh.surface_get_arrays(0)
 	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 	return vertices.size()
+
+
+func _has_mesh_vertex_y_near(mesh_instance: MeshInstance3D, expected_y: float, tolerance: float) -> bool:
+	if mesh_instance == null or mesh_instance.mesh == null or mesh_instance.mesh.get_surface_count() <= 0:
+		return false
+	var arrays := mesh_instance.mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	for vertex in vertices:
+		if absf(vertex.y - expected_y) <= tolerance:
+			return true
+	return false
 
 
 func _has_roof_sloped_normal(mesh_instance: MeshInstance3D) -> bool:

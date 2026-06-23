@@ -9,6 +9,7 @@ const STYLE_SHED := "shed"
 const STYLE_GABLE := "gable"
 const STYLE_HIP := "hip"
 const VALID_STYLES := [STYLE_FLAT, STYLE_SHED, STYLE_GABLE, STYLE_HIP]
+const RECT_EPSILON := 0.001
 
 @export var rebuild := false:
 	set(value):
@@ -77,6 +78,11 @@ const VALID_STYLES := [STYLE_FLAT, STYLE_SHED, STYLE_GABLE, STYLE_HIP]
 		roof_color = value
 		_request_rebuild()
 
+@export var covered_rects: Array[Rect2] = []:
+	set(value):
+		covered_rects = _sanitize_covered_rects(value)
+		_request_rebuild()
+
 @export var build_on_ready := true
 @export var generate_collision := true:
 	set(value):
@@ -108,6 +114,65 @@ func set_roof_corners_and_rotation(new_start: Vector3, new_end: Vector3, new_rot
 	roof_rotation_degrees = new_rotation_degrees
 	_sync_transform_from_points()
 	rebuild_roof_mesh()
+
+
+func set_roof_corners_rotation_and_covers(
+	new_start: Vector3,
+	new_end: Vector3,
+	new_rotation_degrees: float,
+	new_covered_rects: Array[Rect2]
+) -> void:
+	start_point = new_start
+	end_point = Vector3(new_end.x, new_start.y, new_end.z)
+	roof_rotation_degrees = new_rotation_degrees
+	covered_rects = new_covered_rects
+	_sync_transform_from_points()
+	rebuild_roof_mesh()
+
+
+func set_covered_rects(new_covered_rects: Array[Rect2]) -> void:
+	covered_rects = new_covered_rects
+	rebuild_roof_mesh()
+
+
+func get_covered_rects() -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	for rect in covered_rects:
+		rects.append(rect)
+	return rects
+
+
+func get_visible_footprint_rects() -> Array[Rect2]:
+	var size := get_roof_size()
+	if size.x <= RECT_EPSILON or size.y <= RECT_EPSILON:
+		return []
+	var footprint_rect := Rect2(Vector2.ZERO, size)
+	var visible_footprint_rects: Array[Rect2] = []
+	for render_rect in get_visible_render_rects():
+		var footprint_piece := _rect_intersection(footprint_rect, render_rect)
+		if _rect_has_area(footprint_piece):
+			visible_footprint_rects.append(footprint_piece)
+	return visible_footprint_rects
+
+
+func get_roof_render_rect() -> Rect2:
+	var size := get_roof_size()
+	var overhang := maxf(roof_overhang, 0.0)
+	return Rect2(
+		Vector2(-overhang, -overhang),
+		Vector2(size.x + overhang * 2.0, size.y + overhang * 2.0)
+	)
+
+
+func get_visible_render_rects() -> Array[Rect2]:
+	var size := get_roof_size()
+	if size.x <= RECT_EPSILON or size.y <= RECT_EPSILON:
+		return []
+	return _visible_roof_rects(get_roof_render_rect(), covered_rects)
+
+
+func has_visible_roof_geometry() -> bool:
+	return !get_visible_render_rects().is_empty()
 
 
 func set_roof_rotation_degrees(new_rotation_degrees: float) -> void:
@@ -183,7 +248,16 @@ func rebuild_roof_mesh(rebuild_collision: bool = true) -> void:
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
-	_append_roof_geometry(size.x, size.y, vertices, normals, colors, indices)
+	var full_render_rect := get_roof_render_rect()
+	var visible_rects := get_visible_render_rects()
+	if visible_rects.is_empty():
+		mesh = null
+		return
+	if visible_rects.size() == 1 and _rects_match(visible_rects[0], full_render_rect):
+		_append_roof_geometry(size.x, size.y, vertices, normals, colors, indices)
+	else:
+		for visible_rect in visible_rects:
+			_append_roof_piece_geometry(size, visible_rect, vertices, normals, colors, indices)
 
 	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
@@ -333,6 +407,359 @@ func _append_roof_geometry(
 			edge_end + bottom_offset,
 			edge_start + bottom_offset
 		)
+
+
+func _append_roof_piece_geometry(
+	full_size: Vector2,
+	render_rect: Rect2,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	var bottom_offset := Vector3(0.0, -roof_thickness, 0.0)
+	for top_triangle in _roof_top_triangles(full_size):
+		var clipped_top := _clip_polygon_to_rect(top_triangle, render_rect)
+		_append_polygon_triangles(clipped_top, false, vertices, normals, colors, indices)
+		var clipped_bottom: Array[Vector3] = []
+		for point in clipped_top:
+			clipped_bottom.append(point + bottom_offset)
+		_append_polygon_triangles(clipped_bottom, true, vertices, normals, colors, indices)
+	_append_roof_outer_sides(full_size, render_rect, vertices, normals, colors, indices)
+
+
+func _roof_top_triangles(full_size: Vector2) -> Array[PackedVector3Array]:
+	var overhang := maxf(roof_overhang, 0.0)
+	var x0 := -overhang
+	var x1 := full_size.x + overhang
+	var z0 := -overhang
+	var z1 := full_size.y + overhang
+	var center_x := (x0 + x1) * 0.5
+	var center_z := (z0 + z1) * 0.5
+	var height := _effective_roof_height()
+	var triangles: Array[PackedVector3Array] = []
+	match get_roof_style():
+		STYLE_SHED:
+			var p0 := Vector3(x0, 0.0, z0)
+			var p1 := Vector3(x1, 0.0, z0)
+			var p2 := Vector3(x1, height, z1)
+			var p3 := Vector3(x0, height, z1)
+			triangles.append(PackedVector3Array([p0, p3, p2]))
+			triangles.append(PackedVector3Array([p0, p2, p1]))
+		STYLE_HIP:
+			var p0 := Vector3(x0, 0.0, z0)
+			var p1 := Vector3(x1, 0.0, z0)
+			var p2 := Vector3(x1, 0.0, z1)
+			var p3 := Vector3(x0, 0.0, z1)
+			var apex := Vector3(center_x, height, center_z)
+			triangles.append(PackedVector3Array([p0, apex, p1]))
+			triangles.append(PackedVector3Array([p1, apex, p2]))
+			triangles.append(PackedVector3Array([p2, apex, p3]))
+			triangles.append(PackedVector3Array([p3, apex, p0]))
+		STYLE_GABLE:
+			var p0 := Vector3(x0, 0.0, z0)
+			var p1 := Vector3(x1, 0.0, z0)
+			var p2 := Vector3(x1, 0.0, z1)
+			var p3 := Vector3(x0, 0.0, z1)
+			var ridge_left := Vector3(x0, height, center_z)
+			var ridge_right := Vector3(x1, height, center_z)
+			triangles.append(PackedVector3Array([p0, ridge_left, ridge_right]))
+			triangles.append(PackedVector3Array([p0, ridge_right, p1]))
+			triangles.append(PackedVector3Array([p3, p2, ridge_right]))
+			triangles.append(PackedVector3Array([p3, ridge_right, ridge_left]))
+		_:
+			var p0 := Vector3(x0, 0.0, z0)
+			var p1 := Vector3(x1, 0.0, z0)
+			var p2 := Vector3(x1, 0.0, z1)
+			var p3 := Vector3(x0, 0.0, z1)
+			triangles.append(PackedVector3Array([p0, p3, p2]))
+			triangles.append(PackedVector3Array([p0, p2, p1]))
+	return triangles
+
+
+func _clip_polygon_to_rect(polygon: PackedVector3Array, rect: Rect2) -> Array[Vector3]:
+	var points: Array[Vector3] = []
+	for point in polygon:
+		points.append(point)
+	points = _clip_polygon_axis(points, rect.position.x, 0, true)
+	points = _clip_polygon_axis(points, rect.position.x + rect.size.x, 0, false)
+	points = _clip_polygon_axis(points, rect.position.y, 2, true)
+	points = _clip_polygon_axis(points, rect.position.y + rect.size.y, 2, false)
+	return points
+
+
+func _clip_polygon_axis(
+	points: Array[Vector3],
+	boundary: float,
+	axis: int,
+	keep_greater: bool
+) -> Array[Vector3]:
+	if points.is_empty():
+		return []
+	var clipped: Array[Vector3] = []
+	var previous := points[points.size() - 1]
+	var previous_inside := _is_point_inside_clip(previous, boundary, axis, keep_greater)
+	for current in points:
+		var current_inside := _is_point_inside_clip(current, boundary, axis, keep_greater)
+		if current_inside != previous_inside:
+			clipped.append(_interpolate_clip_intersection(previous, current, boundary, axis))
+		if current_inside:
+			clipped.append(current)
+		previous = current
+		previous_inside = current_inside
+	return clipped
+
+
+func _is_point_inside_clip(point: Vector3, boundary: float, axis: int, keep_greater: bool) -> bool:
+	var value := point.x if axis == 0 else point.z
+	if keep_greater:
+		return value >= boundary - RECT_EPSILON
+	return value <= boundary + RECT_EPSILON
+
+
+func _interpolate_clip_intersection(from_point: Vector3, to_point: Vector3, boundary: float, axis: int) -> Vector3:
+	var from_value := from_point.x if axis == 0 else from_point.z
+	var to_value := to_point.x if axis == 0 else to_point.z
+	var denominator := to_value - from_value
+	if absf(denominator) <= RECT_EPSILON:
+		return from_point
+	var weight := clampf((boundary - from_value) / denominator, 0.0, 1.0)
+	return from_point.lerp(to_point, weight)
+
+
+func _append_polygon_triangles(
+	polygon: Array[Vector3],
+	reverse_order: bool,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	if polygon.size() < 3:
+		return
+	for index in range(1, polygon.size() - 1):
+		if reverse_order:
+			_append_triangle_auto(vertices, normals, colors, indices, polygon[0], polygon[index + 1], polygon[index])
+		else:
+			_append_triangle_auto(vertices, normals, colors, indices, polygon[0], polygon[index], polygon[index + 1])
+
+
+func _append_roof_outer_sides(
+	full_size: Vector2,
+	render_rect: Rect2,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	var full_render_rect := get_roof_render_rect()
+	var full_render_min := full_render_rect.position
+	var full_render_max := full_render_rect.position + full_render_rect.size
+	var render_min := render_rect.position
+	var render_max := render_rect.position + render_rect.size
+	if absf(render_min.y - full_render_min.y) <= RECT_EPSILON:
+		_append_roof_side_polyline(
+			_roof_edge_points_for_axis(full_size, render_min.x, render_max.x, render_min.y, true, true),
+			vertices,
+			normals,
+			colors,
+			indices
+		)
+	if absf(render_max.x - full_render_max.x) <= RECT_EPSILON:
+		_append_roof_side_polyline(
+			_roof_edge_points_for_axis(full_size, render_min.y, render_max.y, render_max.x, false, true),
+			vertices,
+			normals,
+			colors,
+			indices
+		)
+	if absf(render_max.y - full_render_max.y) <= RECT_EPSILON:
+		_append_roof_side_polyline(
+			_roof_edge_points_for_axis(full_size, render_max.x, render_min.x, render_max.y, true, true),
+			vertices,
+			normals,
+			colors,
+			indices
+		)
+	if absf(render_min.x - full_render_min.x) <= RECT_EPSILON:
+		_append_roof_side_polyline(
+			_roof_edge_points_for_axis(full_size, render_max.y, render_min.y, render_min.x, false, true),
+			vertices,
+			normals,
+			colors,
+			indices
+		)
+
+
+func _roof_edge_points_for_axis(
+	full_size: Vector2,
+	start_value: float,
+	end_value: float,
+	fixed_value: float,
+	axis_is_x: bool,
+	include_style_splits: bool
+) -> Array[Vector3]:
+	var values := _edge_axis_values(full_size, start_value, end_value, axis_is_x, include_style_splits)
+	var points: Array[Vector3] = []
+	for value in values:
+		var x := value if axis_is_x else fixed_value
+		var z := fixed_value if axis_is_x else value
+		points.append(Vector3(x, _roof_height_at(full_size, x, z), z))
+	return points
+
+
+func _edge_axis_values(
+	full_size: Vector2,
+	start_value: float,
+	end_value: float,
+	axis_is_x: bool,
+	include_style_splits: bool
+) -> Array[float]:
+	var min_value := minf(start_value, end_value)
+	var max_value := maxf(start_value, end_value)
+	var values: Array[float] = [start_value, end_value]
+	if include_style_splits and !axis_is_x and get_roof_style() == STYLE_GABLE:
+		var center_z := full_size.y * 0.5
+		if center_z > min_value + RECT_EPSILON and center_z < max_value - RECT_EPSILON:
+			values.append(center_z)
+	values.sort()
+	if start_value > end_value:
+		values.reverse()
+	return values
+
+
+func _append_roof_side_polyline(
+	points: Array[Vector3],
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	if points.size() < 2:
+		return
+	var bottom_offset := Vector3(0.0, -roof_thickness, 0.0)
+	for index in range(points.size() - 1):
+		var edge_start := points[index]
+		var edge_end := points[index + 1]
+		_append_quad_auto(
+			vertices,
+			normals,
+			colors,
+			indices,
+			edge_start,
+			edge_end,
+			edge_end + bottom_offset,
+			edge_start + bottom_offset
+		)
+
+
+func _roof_height_at(full_size: Vector2, x: float, z: float) -> float:
+	var height := _effective_roof_height()
+	if height <= 0.0:
+		return 0.0
+	var overhang := maxf(roof_overhang, 0.0)
+	var min_x := -overhang
+	var max_x := full_size.x + overhang
+	var min_z := -overhang
+	var max_z := full_size.y + overhang
+	var clamped_x := clampf(x, min_x, max_x)
+	var clamped_z := clampf(z, min_z, max_z)
+	match get_roof_style():
+		STYLE_SHED:
+			return height * clampf((clamped_z - min_z) / maxf(max_z - min_z, RECT_EPSILON), 0.0, 1.0)
+		STYLE_HIP:
+			var x_fraction := minf(
+				(clamped_x - min_x) / maxf((max_x - min_x) * 0.5, RECT_EPSILON),
+				(max_x - clamped_x) / maxf((max_x - min_x) * 0.5, RECT_EPSILON)
+			)
+			var z_fraction := minf(
+				(clamped_z - min_z) / maxf((max_z - min_z) * 0.5, RECT_EPSILON),
+				(max_z - clamped_z) / maxf((max_z - min_z) * 0.5, RECT_EPSILON)
+			)
+			return height * clampf(minf(x_fraction, z_fraction), 0.0, 1.0)
+		STYLE_GABLE:
+			var center_z := (min_z + max_z) * 0.5
+			var half_depth := maxf((max_z - min_z) * 0.5, RECT_EPSILON)
+			return height * clampf(1.0 - absf(clamped_z - center_z) / half_depth, 0.0, 1.0)
+		_:
+			return 0.0
+
+
+func _visible_roof_rects(full_rect: Rect2, covers: Array[Rect2]) -> Array[Rect2]:
+	var visible_rects: Array[Rect2] = [full_rect]
+	for cover in covers:
+		var clipped_cover := _rect_intersection(full_rect, cover)
+		if !_rect_has_area(clipped_cover):
+			continue
+		var next_visible_rects: Array[Rect2] = []
+		for visible_rect in visible_rects:
+			next_visible_rects.append_array(_subtract_rect(visible_rect, clipped_cover))
+		visible_rects = next_visible_rects
+		if visible_rects.is_empty():
+			break
+	return visible_rects
+
+
+func _subtract_rect(source: Rect2, cover: Rect2) -> Array[Rect2]:
+	var overlap := _rect_intersection(source, cover)
+	if !_rect_has_area(overlap):
+		return [source]
+
+	var source_min := source.position
+	var source_max := source.position + source.size
+	var overlap_min := overlap.position
+	var overlap_max := overlap.position + overlap.size
+	var rects: Array[Rect2] = []
+	_append_visible_rect(rects, Rect2(
+		Vector2(source_min.x, source_min.y),
+		Vector2(overlap_min.x - source_min.x, source.size.y)
+	))
+	_append_visible_rect(rects, Rect2(
+		Vector2(overlap_max.x, source_min.y),
+		Vector2(source_max.x - overlap_max.x, source.size.y)
+	))
+	_append_visible_rect(rects, Rect2(
+		Vector2(overlap_min.x, source_min.y),
+		Vector2(overlap.size.x, overlap_min.y - source_min.y)
+	))
+	_append_visible_rect(rects, Rect2(
+		Vector2(overlap_min.x, overlap_max.y),
+		Vector2(overlap.size.x, source_max.y - overlap_max.y)
+	))
+	return rects
+
+
+func _append_visible_rect(rects: Array[Rect2], rect: Rect2) -> void:
+	if _rect_has_area(rect):
+		rects.append(rect)
+
+
+func _rect_intersection(first: Rect2, second: Rect2) -> Rect2:
+	var first_max := first.position + first.size
+	var second_max := second.position + second.size
+	var min_point := Vector2(maxf(first.position.x, second.position.x), maxf(first.position.y, second.position.y))
+	var max_point := Vector2(minf(first_max.x, second_max.x), minf(first_max.y, second_max.y))
+	return Rect2(min_point, Vector2(max_point.x - min_point.x, max_point.y - min_point.y))
+
+
+func _rect_has_area(rect: Rect2) -> bool:
+	return rect.size.x > RECT_EPSILON and rect.size.y > RECT_EPSILON
+
+
+func _rects_match(first: Rect2, second: Rect2) -> bool:
+	return (
+		first.position.distance_to(second.position) <= RECT_EPSILON
+		and first.size.distance_to(second.size) <= RECT_EPSILON
+	)
+
+
+func _sanitize_covered_rects(rects: Array[Rect2]) -> Array[Rect2]:
+	var sanitized: Array[Rect2] = []
+	for rect in rects:
+		if !_rect_has_area(rect):
+			continue
+		sanitized.append(rect)
+	return sanitized
 
 
 func _effective_roof_height() -> float:

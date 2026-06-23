@@ -208,12 +208,100 @@ func find_roof_merge_target(
 	rotation_degrees: float = 0.0,
 	ignored_roof: Node = null
 ) -> Dictionary:
-	var new_rect := _roof_rect_from_points(local_start, local_end)
-	if new_rect.size.x <= 0.001 or new_rect.size.y <= 0.001:
+	return _find_roof_cover_data(
+		local_start,
+		local_end,
+		style,
+		height,
+		thickness,
+		overhang,
+		color,
+		rotation_degrees,
+		ignored_roof,
+		false
+	)
+
+
+func compute_roof_covered_rects(
+	local_start: Vector3,
+	local_end: Vector3,
+	style: String,
+	height: float,
+	thickness: float,
+	overhang: float,
+	color: Color,
+	rotation_degrees: float = 0.0,
+	ignored_roof: Node = null,
+	only_before_ignored_roof := false
+) -> Array[Rect2]:
+	var cover_data := _find_roof_cover_data(
+		local_start,
+		local_end,
+		style,
+		height,
+		thickness,
+		overhang,
+		color,
+		rotation_degrees,
+		ignored_roof,
+		only_before_ignored_roof
+	)
+	var rects: Array[Rect2] = []
+	for rect in cover_data.get("covered_rects", []):
+		rects.append(rect)
+	return rects
+
+
+func roof_has_visible_render_area(local_start: Vector3, local_end: Vector3, overhang: float, covers: Array[Rect2]) -> bool:
+	var size := Vector2(absf(local_end.x - local_start.x), absf(local_end.z - local_start.z))
+	if size.x <= 0.001 or size.y <= 0.001:
+		return false
+	return !_visible_roof_rects(_roof_render_rect(size, overhang), covers).is_empty()
+
+
+func refresh_roof_covered_rects() -> void:
+	for roof in get_roof_nodes():
+		if roof.has_meta(ProceduralRoof3DScript.PREVIEW_META):
+			continue
+		var rects := compute_roof_covered_rects(
+			roof.start_point,
+			roof.end_point,
+			roof.get_roof_style(),
+			roof.roof_height,
+			roof.roof_thickness,
+			roof.roof_overhang,
+			roof.roof_color,
+			roof.roof_rotation_degrees,
+			roof,
+			true
+		)
+		roof.set_covered_rects(rects)
+
+
+func _find_roof_cover_data(
+	local_start: Vector3,
+	local_end: Vector3,
+	style: String,
+	height: float,
+	thickness: float,
+	overhang: float,
+	color: Color,
+	rotation_degrees: float,
+	ignored_roof: Node,
+	only_before_ignored_roof: bool
+) -> Dictionary:
+	var new_size := Vector2(absf(local_end.x - local_start.x), absf(local_end.z - local_start.z))
+	if new_size.x <= 0.001 or new_size.y <= 0.001:
 		return {}
 	var new_rotation := _normalize_degrees(rotation_degrees)
+	var new_anchor := _roof_anchor_from_points(local_start, local_end)
+	var new_rect := _roof_render_rect(new_size, overhang)
+	var covered_rects: Array[Rect2] = []
+	var first_target: ProceduralRoof3DScript = null
 	for roof in get_roof_nodes():
 		if roof == ignored_roof:
+			if only_before_ignored_roof:
+				break
 			continue
 		if roof.has_meta(ProceduralRoof3DScript.PREVIEW_META):
 			continue
@@ -232,36 +320,27 @@ func find_roof_merge_target(
 		if !_angles_match(roof.roof_rotation_degrees, new_rotation):
 			continue
 		var existing_anchor := roof.get_roof_anchor_point()
-		var existing_size := roof.get_roof_size()
-		var existing_rect := Rect2(Vector2.ZERO, existing_size)
-		var projected_new_rect := _roof_projected_rect_from_points(
-			local_start,
-			local_end,
-			new_rotation,
-			existing_anchor,
-			roof.roof_rotation_degrees
-		)
-		var existing_merge_rect := existing_rect.grow(maxf(roof.roof_overhang, 0.0))
-		var new_merge_rect := projected_new_rect.grow(maxf(overhang, 0.0))
-		if !existing_merge_rect.intersects(new_merge_rect, true):
-			continue
-		var merged_rect := existing_rect.merge(projected_new_rect)
-		var merged_anchor := existing_anchor + _rotation_basis(roof.roof_rotation_degrees) * Vector3(
-			merged_rect.position.x,
-			0.0,
-			merged_rect.position.y
-		)
-		return {
-			"roof": roof,
-			"start": Vector3(merged_anchor.x, roof.start_point.y, merged_anchor.z),
-			"end": Vector3(
-				merged_anchor.x + merged_rect.size.x,
-				roof.start_point.y,
-				merged_anchor.z + merged_rect.size.y
-			),
-			"rotation_degrees": roof.roof_rotation_degrees,
-		}
-	return {}
+		for visible_rect in roof.get_visible_render_rects():
+			var projected_existing_rect := _roof_projected_rect_from_local_rect(
+				existing_anchor,
+				roof.roof_rotation_degrees,
+				visible_rect,
+				new_anchor,
+				new_rotation
+			)
+			var covered_rect := _rect_intersection(new_rect, projected_existing_rect)
+			if covered_rect.size.x <= 0.001 or covered_rect.size.y <= 0.001:
+				continue
+			if first_target == null:
+				first_target = roof
+			covered_rects.append(covered_rect)
+	if first_target == null:
+		return {}
+	return {
+		"roof": first_target,
+		"covered_rects": covered_rects,
+		"rotation_degrees": new_rotation,
+	}
 
 
 func find_merge_target(
@@ -400,34 +479,42 @@ func _unique_roof_name() -> String:
 	return candidate
 
 
-func _roof_rect_from_points(first: Vector3, second: Vector3) -> Rect2:
-	var min_x := minf(first.x, second.x)
-	var min_z := minf(first.z, second.z)
-	var max_x := maxf(first.x, second.x)
-	var max_z := maxf(first.z, second.z)
-	return Rect2(Vector2(min_x, min_z), Vector2(max_x - min_x, max_z - min_z))
-
-
 func _roof_anchor_from_points(first: Vector3, second: Vector3) -> Vector3:
 	return Vector3(minf(first.x, second.x), first.y, minf(first.z, second.z))
 
 
-func _roof_projected_rect_from_points(
-	first: Vector3,
-	second: Vector3,
+func _roof_render_rect(size: Vector2, overhang: float) -> Rect2:
+	var resolved_overhang := maxf(overhang, 0.0)
+	return Rect2(
+		Vector2(-resolved_overhang, -resolved_overhang),
+		Vector2(size.x + resolved_overhang * 2.0, size.y + resolved_overhang * 2.0)
+	)
+
+
+func _roof_projected_rect_from_local_rect(
+	source_anchor: Vector3,
 	rotation_degrees: float,
+	source_rect: Rect2,
 	frame_origin: Vector3,
 	frame_rotation_degrees: float
 ) -> Rect2:
-	var source_anchor := _roof_anchor_from_points(first, second)
-	var source_size := Vector2(absf(second.x - first.x), absf(second.z - first.z))
 	var source_basis := _rotation_basis(rotation_degrees)
 	var frame_inverse := _rotation_basis(frame_rotation_degrees).inverse()
+	var source_min := source_rect.position
+	var source_max := source_rect.position + source_rect.size
 	var projected_points := [
-		frame_inverse * (source_anchor - frame_origin),
-		frame_inverse * (source_anchor + source_basis * Vector3(source_size.x, 0.0, 0.0) - frame_origin),
-		frame_inverse * (source_anchor + source_basis * Vector3(source_size.x, 0.0, source_size.y) - frame_origin),
-		frame_inverse * (source_anchor + source_basis * Vector3(0.0, 0.0, source_size.y) - frame_origin),
+		frame_inverse * (
+			source_anchor + source_basis * Vector3(source_min.x, 0.0, source_min.y) - frame_origin
+		),
+		frame_inverse * (
+			source_anchor + source_basis * Vector3(source_max.x, 0.0, source_min.y) - frame_origin
+		),
+		frame_inverse * (
+			source_anchor + source_basis * Vector3(source_max.x, 0.0, source_max.y) - frame_origin
+		),
+		frame_inverse * (
+			source_anchor + source_basis * Vector3(source_min.x, 0.0, source_max.y) - frame_origin
+		),
 	]
 	var min_x := INF
 	var min_z := INF
@@ -442,6 +529,67 @@ func _roof_projected_rect_from_points(
 	return Rect2(Vector2(min_x, min_z), Vector2(max_x - min_x, max_z - min_z))
 
 
+func _rect_intersection(first: Rect2, second: Rect2) -> Rect2:
+	var first_max := first.position + first.size
+	var second_max := second.position + second.size
+	var min_point := Vector2(maxf(first.position.x, second.position.x), maxf(first.position.y, second.position.y))
+	var max_point := Vector2(minf(first_max.x, second_max.x), minf(first_max.y, second_max.y))
+	return Rect2(min_point, Vector2(max_point.x - min_point.x, max_point.y - min_point.y))
+
+
+func _visible_roof_rects(full_rect: Rect2, covers: Array[Rect2]) -> Array[Rect2]:
+	var visible_rects: Array[Rect2] = [full_rect]
+	for cover in covers:
+		var clipped_cover := _rect_intersection(full_rect, cover)
+		if !_rect_has_area(clipped_cover):
+			continue
+		var next_visible_rects: Array[Rect2] = []
+		for visible_rect in visible_rects:
+			next_visible_rects.append_array(_subtract_rect(visible_rect, clipped_cover))
+		visible_rects = next_visible_rects
+		if visible_rects.is_empty():
+			break
+	return visible_rects
+
+
+func _subtract_rect(source: Rect2, cover: Rect2) -> Array[Rect2]:
+	var overlap := _rect_intersection(source, cover)
+	if !_rect_has_area(overlap):
+		return [source]
+
+	var source_min := source.position
+	var source_max := source.position + source.size
+	var overlap_min := overlap.position
+	var overlap_max := overlap.position + overlap.size
+	var rects: Array[Rect2] = []
+	_append_visible_rect(rects, Rect2(
+		Vector2(source_min.x, source_min.y),
+		Vector2(overlap_min.x - source_min.x, source.size.y)
+	))
+	_append_visible_rect(rects, Rect2(
+		Vector2(overlap_max.x, source_min.y),
+		Vector2(source_max.x - overlap_max.x, source.size.y)
+	))
+	_append_visible_rect(rects, Rect2(
+		Vector2(overlap_min.x, source_min.y),
+		Vector2(overlap.size.x, overlap_min.y - source_min.y)
+	))
+	_append_visible_rect(rects, Rect2(
+		Vector2(overlap_min.x, overlap_max.y),
+		Vector2(overlap.size.x, source_max.y - overlap_max.y)
+	))
+	return rects
+
+
+func _append_visible_rect(rects: Array[Rect2], rect: Rect2) -> void:
+	if _rect_has_area(rect):
+		rects.append(rect)
+
+
+func _rect_has_area(rect: Rect2) -> bool:
+	return rect.size.x > 0.001 and rect.size.y > 0.001
+
+
 func _rotation_basis(rotation_degrees: float) -> Basis:
 	return Basis(Vector3.UP, deg_to_rad(_normalize_degrees(rotation_degrees)))
 
@@ -454,7 +602,7 @@ func _normalize_degrees(value: float) -> float:
 
 
 func _angles_match(first: float, second: float) -> bool:
-	return absf(angle_difference(deg_to_rad(first), deg_to_rad(second))) <= deg_to_rad(0.5)
+	return is_equal_approx(_normalize_degrees(first), _normalize_degrees(second))
 
 
 func _colors_match(first: Color, second: Color) -> bool:

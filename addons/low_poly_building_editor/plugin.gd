@@ -138,6 +138,7 @@ var m_dragging_roof: ProceduralRoof3DScript
 var m_drag_roof_old_start := Vector3.ZERO
 var m_drag_roof_old_end := Vector3.ZERO
 var m_drag_roof_old_rotation_degrees := 0.0
+var m_drag_roof_old_covered_rects: Array[Rect2] = []
 var m_drag_roof_anchor_local := Vector3.ZERO
 var m_drag_roof_edit_mask := FLOOR_EDIT_MOVE
 var m_drag_roof_active_material: Material
@@ -1243,21 +1244,57 @@ func _commit_roof_rotation(roof: ProceduralRoof3DScript, delta_degrees: float) -
 	var old_start := roof.start_point
 	var old_end := roof.end_point
 	var old_rotation := roof.roof_rotation_degrees
+	var old_covered_rects := roof.get_covered_rects()
 	var new_rotation := _normalize_degrees(old_rotation + delta_degrees)
 	var rotated_state := _roof_state_rotated_around_center(roof, new_rotation)
+	var new_start := Vector3(rotated_state["start"])
+	var new_end := Vector3(rotated_state["end"])
+	var new_covered_rects: Array[Rect2] = []
+	var coordinator := _find_coordinator_from_node(roof)
+	if coordinator != null:
+		new_covered_rects = coordinator.compute_roof_covered_rects(
+			new_start,
+			new_end,
+			roof.get_roof_style(),
+			roof.roof_height,
+			roof.roof_thickness,
+			roof.roof_overhang,
+			roof.roof_color,
+			new_rotation,
+			roof,
+			true
+		)
+		if !coordinator.roof_has_visible_render_area(new_start, new_end, roof.roof_overhang, new_covered_rects):
+			_set_status("Rotated roof would be fully covered.")
+			return
+		if _roof_layout_would_hide_any_roof(coordinator, roof, new_start, new_end, new_rotation, new_covered_rects):
+			_set_status("Rotated roof would fully cover another roof.")
+			return
 	_clear_roof_hover()
 
 	var undo_redo := get_undo_redo()
 	undo_redo.create_action("Rotate Procedural Roof")
 	undo_redo.add_do_method(
+		self,
+		"_set_roof_state_and_refresh",
 		roof,
-		"set_roof_corners_and_rotation",
-		rotated_state["start"],
-		rotated_state["end"],
-		new_rotation
+		new_start,
+		new_end,
+		new_rotation,
+		new_covered_rects,
+		coordinator
 	)
 	undo_redo.add_do_method(self, "_select_node", roof)
-	undo_redo.add_undo_method(roof, "set_roof_corners_and_rotation", old_start, old_end, old_rotation)
+	undo_redo.add_undo_method(
+		self,
+		"_set_roof_state_and_refresh",
+		roof,
+		old_start,
+		old_end,
+		old_rotation,
+		old_covered_rects,
+		coordinator
+	)
 	undo_redo.commit_action()
 	_set_status("Rotated roof to %.0f degrees." % new_rotation)
 
@@ -1300,28 +1337,7 @@ func _commit_roof(
 		normalized_rotation,
 		m_roof_preview
 	)
-	var undo_redo := get_undo_redo()
-	if !merge.is_empty():
-		var target := merge["roof"] as ProceduralRoof3DScript
-		if target != null:
-			var old_start := target.start_point
-			var old_end := target.end_point
-			var old_rotation := target.roof_rotation_degrees
-			var target_rotation := float(merge.get("rotation_degrees", target.roof_rotation_degrees))
-			undo_redo.create_action("Merge Procedural Roof")
-			undo_redo.add_do_method(
-				target,
-				"set_roof_corners_and_rotation",
-				merge["start"],
-				merge["end"],
-				target_rotation
-			)
-			undo_redo.add_do_method(self, "_select_node", target)
-			undo_redo.add_undo_method(target, "set_roof_corners_and_rotation", old_start, old_end, old_rotation)
-			undo_redo.commit_action()
-			var merged_size := target.get_roof_size()
-			_set_status("Merged roof footprint: %.2f x %.2f units." % [merged_size.x, merged_size.y])
-			return
+	var covered_rects := _roof_covered_rects_from_merge(merge)
 
 	var roof := coordinator.create_roof_node(
 		local_start,
@@ -1333,14 +1349,23 @@ func _commit_roof(
 		color,
 		normalized_rotation
 	)
+	if !covered_rects.is_empty():
+		roof.set_covered_rects(covered_rects)
+	if !roof.has_visible_roof_geometry():
+		_set_status("Roof is fully covered by compatible roof geometry.")
+		return
 	var scene_root := get_editor_interface().get_edited_scene_root()
+	var undo_redo := get_undo_redo()
 	undo_redo.create_action("Create Procedural Roof")
 	undo_redo.add_do_reference(roof)
-	undo_redo.add_do_method(self, "_do_add_node", coordinator, roof, scene_root, true)
-	undo_redo.add_undo_method(self, "_undo_remove_node", coordinator, roof)
+	undo_redo.add_do_method(self, "_do_add_node_and_refresh_roofs", coordinator, roof, scene_root, true, coordinator)
+	undo_redo.add_undo_method(self, "_undo_remove_node_and_refresh_roofs", coordinator, roof, coordinator)
 	undo_redo.commit_action()
 	var size := roof.get_roof_size()
-	_set_status("Created roof: %.2f x %.2f units." % [size.x, size.y])
+	if covered_rects.is_empty():
+		_set_status("Created roof: %.2f x %.2f units." % [size.x, size.y])
+	else:
+		_set_status("Created clipped roof: %.2f x %.2f units." % [size.x, size.y])
 
 
 func _handle_roof_drag_input(camera: Camera3D, event: InputEvent) -> int:
@@ -1368,6 +1393,7 @@ func _start_roof_drag(
 	m_drag_roof_old_start = roof.start_point
 	m_drag_roof_old_end = roof.end_point
 	m_drag_roof_old_rotation_degrees = roof.roof_rotation_degrees
+	m_drag_roof_old_covered_rects = roof.get_covered_rects()
 	m_drag_roof_edit_mask = edit_mask
 	m_drag_roof_active_material = roof.material_override
 	m_drag_roof_anchor_local = _roof_plane_local_from_mouse(roof, camera, mouse_pos)
@@ -1400,7 +1426,13 @@ func _update_roof_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 		new_start = Vector3(resized["start"])
 		new_end = Vector3(resized["end"])
 
-	roof.set_roof_corners_and_rotation(new_start, new_end, m_drag_roof_old_rotation_degrees)
+	var preview_covered_rects: Array[Rect2] = []
+	roof.set_roof_corners_rotation_and_covers(
+		new_start,
+		new_end,
+		m_drag_roof_old_rotation_degrees,
+		preview_covered_rects
+	)
 	var valid := _is_roof_span_large_enough(new_start, new_end)
 	roof.material_override = _build_preview_material(
 		_roof_drag_color(m_drag_roof_edit_mask, valid)
@@ -1419,13 +1451,17 @@ func _commit_roof_drag() -> void:
 	var old_start := m_drag_roof_old_start
 	var old_end := m_drag_roof_old_end
 	var old_rotation := m_drag_roof_old_rotation_degrees
+	var old_covered_rects := m_drag_roof_old_covered_rects
 	var new_start := roof.start_point
 	var new_end := roof.end_point
 	var new_rotation := roof.roof_rotation_degrees
 	var edit_mask := m_drag_roof_edit_mask
+	var coordinator := _find_coordinator_from_node(roof)
 	roof.material_override = m_drag_roof_active_material
 	if !_is_roof_span_large_enough(new_start, new_end):
-		roof.set_roof_corners_and_rotation(old_start, old_end, old_rotation)
+		roof.set_roof_corners_rotation_and_covers(old_start, old_end, old_rotation, old_covered_rects)
+		if coordinator != null:
+			coordinator.refresh_roof_covered_rects()
 		_reset_roof_drag_state()
 		_set_status("Roof is too small.")
 		return
@@ -1434,13 +1470,16 @@ func _commit_roof_drag() -> void:
 		and old_end.distance_to(new_end) <= 0.001
 		and _angles_match(old_rotation, new_rotation)
 	):
+		roof.set_roof_corners_rotation_and_covers(old_start, old_end, old_rotation, old_covered_rects)
+		if coordinator != null:
+			coordinator.refresh_roof_covered_rects()
 		_reset_roof_drag_state()
 		_set_status("Roof unchanged.")
 		return
 
-	var coordinator := _find_coordinator_from_node(roof)
+	var new_covered_rects: Array[Rect2] = []
 	if coordinator != null:
-		var merge := coordinator.find_roof_merge_target(
+		new_covered_rects = coordinator.compute_roof_covered_rects(
 			new_start,
 			new_end,
 			roof.get_roof_style(),
@@ -1449,68 +1488,61 @@ func _commit_roof_drag() -> void:
 			roof.roof_overhang,
 			roof.roof_color,
 			roof.roof_rotation_degrees,
-			roof
+			roof,
+			true
 		)
-		if !merge.is_empty():
-			var target := merge["roof"] as ProceduralRoof3DScript
-			if target != null:
-				var target_old_start := target.start_point
-				var target_old_end := target.end_point
-				var target_old_rotation := target.roof_rotation_degrees
-				var target_rotation := float(merge.get("rotation_degrees", target.roof_rotation_degrees))
-				var scene_root := get_editor_interface().get_edited_scene_root()
-				var merge_undo_redo := get_undo_redo()
-				merge_undo_redo.create_action("Merge Procedural Roofs")
-				merge_undo_redo.add_undo_reference(roof)
-				merge_undo_redo.add_do_method(
-					target,
-					"set_roof_corners_and_rotation",
-					merge["start"],
-					merge["end"],
-					target_rotation
-				)
-				merge_undo_redo.add_do_method(self, "_undo_remove_node", coordinator, roof)
-				merge_undo_redo.add_do_method(self, "_select_node", target)
-				merge_undo_redo.add_undo_method(self, "_do_add_node", coordinator, roof, scene_root, false)
-				merge_undo_redo.add_undo_method(
-					roof,
-					"set_roof_corners_and_rotation",
-					old_start,
-					old_end,
-					old_rotation
-				)
-				merge_undo_redo.add_undo_method(
-					target,
-					"set_roof_corners_and_rotation",
-					target_old_start,
-					target_old_end,
-					target_old_rotation
-				)
-				merge_undo_redo.commit_action()
-				_reset_roof_drag_state()
-				var merged_size := target.get_roof_size()
-				_set_status("Merged roof footprints: %.2f x %.2f units." % [merged_size.x, merged_size.y])
-				return
+		if !coordinator.roof_has_visible_render_area(new_start, new_end, roof.roof_overhang, new_covered_rects):
+			roof.set_roof_corners_rotation_and_covers(old_start, old_end, old_rotation, old_covered_rects)
+			_reset_roof_drag_state()
+			_set_status("Roof would be fully covered.")
+			return
+		if _roof_layout_would_hide_any_roof(coordinator, roof, new_start, new_end, new_rotation, new_covered_rects):
+			roof.set_roof_corners_rotation_and_covers(old_start, old_end, old_rotation, old_covered_rects)
+			_reset_roof_drag_state()
+			_set_status("Roof edit would fully cover another roof.")
+			return
 
 	var undo_redo := get_undo_redo()
 	undo_redo.create_action("Move Procedural Roof" if edit_mask == FLOOR_EDIT_MOVE else "Resize Procedural Roof")
-	undo_redo.add_do_method(roof, "set_roof_corners_and_rotation", new_start, new_end, new_rotation)
+	undo_redo.add_do_method(
+		self,
+		"_set_roof_state_and_refresh",
+		roof,
+		new_start,
+		new_end,
+		new_rotation,
+		new_covered_rects,
+		coordinator
+	)
 	undo_redo.add_do_method(self, "_select_node", roof)
-	undo_redo.add_undo_method(roof, "set_roof_corners_and_rotation", old_start, old_end, old_rotation)
+	undo_redo.add_undo_method(
+		self,
+		"_set_roof_state_and_refresh",
+		roof,
+		old_start,
+		old_end,
+		old_rotation,
+		old_covered_rects,
+		coordinator
+	)
 	undo_redo.commit_action()
 	_reset_roof_drag_state()
 	var size := roof.get_roof_size()
-	_set_status("Edited roof: %.2f x %.2f units." % [size.x, size.y])
+	if new_covered_rects.is_empty():
+		_set_status("Edited roof: %.2f x %.2f units." % [size.x, size.y])
+	else:
+		_set_status("Edited clipped roof: %.2f x %.2f units." % [size.x, size.y])
 
 
 func _cancel_roof_drag() -> void:
 	if m_dragging_roof == null:
 		return
 	if is_instance_valid(m_dragging_roof):
-		m_dragging_roof.set_roof_corners_and_rotation(
+		m_dragging_roof.set_roof_corners_rotation_and_covers(
 			m_drag_roof_old_start,
 			m_drag_roof_old_end,
-			m_drag_roof_old_rotation_degrees
+			m_drag_roof_old_rotation_degrees,
+			m_drag_roof_old_covered_rects
 		)
 		m_dragging_roof.material_override = m_drag_roof_active_material
 	_reset_roof_drag_state()
@@ -1623,6 +1655,15 @@ func _active_roof_grid_step(roof: ProceduralRoof3DScript) -> float:
 	return maxf(float(m_roof_settings["grid_step"]), 0.05)
 
 
+func _roof_covered_rects_from_merge(merge: Dictionary) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if merge.is_empty():
+		return rects
+	for rect in merge.get("covered_rects", []):
+		rects.append(rect)
+	return rects
+
+
 func _roof_rotation_basis(rotation_degrees: float) -> Basis:
 	return Basis(Vector3.UP, deg_to_rad(_normalize_degrees(rotation_degrees)))
 
@@ -1643,6 +1684,7 @@ func _reset_roof_drag_state() -> void:
 	m_drag_roof_old_start = Vector3.ZERO
 	m_drag_roof_old_end = Vector3.ZERO
 	m_drag_roof_old_rotation_degrees = 0.0
+	m_drag_roof_old_covered_rects = []
 	m_drag_roof_anchor_local = Vector3.ZERO
 	m_drag_roof_edit_mask = FLOOR_EDIT_MOVE
 	m_drag_roof_active_material = null
@@ -4390,6 +4432,18 @@ func _do_add_node_and_rebuild(parent: Node, node: Node, scene_root: Node, select
 		parent.rebuild_wall_mesh()
 
 
+func _do_add_node_and_refresh_roofs(
+	parent: Node,
+	node: Node,
+	scene_root: Node,
+	select_after_add: bool,
+	coordinator: BuildingEditor3DScript
+) -> void:
+	_do_add_node(parent, node, scene_root, select_after_add)
+	if coordinator != null and is_instance_valid(coordinator):
+		coordinator.refresh_roof_covered_rects()
+
+
 func _undo_remove_node(parent: Node, node: Node) -> void:
 	if node.get_parent() == parent:
 		parent.remove_child(node)
@@ -4399,6 +4453,76 @@ func _undo_remove_node_and_rebuild(parent: Node, node: Node) -> void:
 	_undo_remove_node(parent, node)
 	if parent.has_method("rebuild_wall_mesh"):
 		parent.rebuild_wall_mesh()
+
+
+func _undo_remove_node_and_refresh_roofs(parent: Node, node: Node, coordinator: BuildingEditor3DScript) -> void:
+	_undo_remove_node(parent, node)
+	if coordinator != null and is_instance_valid(coordinator):
+		coordinator.refresh_roof_covered_rects()
+
+
+func _set_roof_state_and_refresh(
+	roof: ProceduralRoof3DScript,
+	new_start: Vector3,
+	new_end: Vector3,
+	new_rotation: float,
+	new_covered_rects: Array[Rect2],
+	coordinator: BuildingEditor3DScript
+) -> void:
+	if roof == null or !is_instance_valid(roof):
+		return
+	roof.set_roof_corners_rotation_and_covers(new_start, new_end, new_rotation, new_covered_rects)
+	if coordinator != null and is_instance_valid(coordinator):
+		coordinator.refresh_roof_covered_rects()
+
+
+func _roof_layout_would_hide_any_roof(
+	coordinator: BuildingEditor3DScript,
+	roof: ProceduralRoof3DScript,
+	new_start: Vector3,
+	new_end: Vector3,
+	new_rotation: float,
+	new_covered_rects: Array[Rect2]
+) -> bool:
+	if coordinator == null or !is_instance_valid(coordinator):
+		return false
+	if roof == null or !is_instance_valid(roof):
+		return false
+
+	var snapshots: Array[Dictionary] = []
+	for roof_node in coordinator.get_roof_nodes():
+		snapshots.append({
+			"roof": roof_node,
+			"start": roof_node.start_point,
+			"end": roof_node.end_point,
+			"rotation": roof_node.roof_rotation_degrees,
+			"covered_rects": roof_node.get_covered_rects(),
+		})
+
+	roof.set_roof_corners_rotation_and_covers(new_start, new_end, new_rotation, new_covered_rects)
+	coordinator.refresh_roof_covered_rects()
+	var hides_roof := false
+	for roof_node in coordinator.get_roof_nodes():
+		if roof_node.has_meta(ProceduralRoof3DScript.PREVIEW_META):
+			continue
+		if !roof_node.has_visible_roof_geometry():
+			hides_roof = true
+			break
+
+	for snapshot in snapshots:
+		var snapshot_roof := snapshot["roof"] as ProceduralRoof3DScript
+		if snapshot_roof == null or !is_instance_valid(snapshot_roof):
+			continue
+		var snapshot_covers: Array[Rect2] = []
+		for rect in snapshot.get("covered_rects", []):
+			snapshot_covers.append(rect)
+		snapshot_roof.set_roof_corners_rotation_and_covers(
+			Vector3(snapshot["start"]),
+			Vector3(snapshot["end"]),
+			float(snapshot["rotation"]),
+			snapshot_covers
+		)
+	return hides_roof
 
 
 func _set_owner_recursive(node: Node, scene_root: Node) -> void:
