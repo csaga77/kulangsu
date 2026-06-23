@@ -1389,12 +1389,12 @@ class _WaterRendering:
 	var base_color := Color(0.42, 0.68, 0.83, 0.46)
 	var deep_color := Color(0.24, 0.48, 0.67, 0.54)
 	var surface_layer_color := Color(0.72, 0.90, 0.96, 0.24)
-	var shoreline_color := Color(0.60, 0.83, 0.88, 0.50)
+	var shoreline_color := Color(0.95, 0.98, 1.0, 0.85)
 	var highlight_color := Color(0.86, 0.96, 0.98, 0.40)
 	var material_alpha := 0.54
 	var wave_depth := 0.35
 	var wave_frequency := 0.9
 	var wave_speed := 1.5
-	var shoreline_band_ratio := 0.18
-	var shoreline_lift := 0.006
-	var surface_layer_lift := 0.003
+	var shoreline_band_ratio := 0.30
+	var shoreline_lift := 0.040
+	var surface_layer_lift := 0.050

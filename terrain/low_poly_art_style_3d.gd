@@ -10,7 +10,7 @@ extends Resource
 @export var water_color: Color = Color(0.38, 0.66, 0.82, 0.46)
 @export var water_deep_color: Color = Color(0.24, 0.48, 0.67, 0.54)
 @export var water_surface_layer_color: Color = Color(0.72, 0.90, 0.96, 0.24)
-@export var water_shoreline_color: Color = Color(0.60, 0.83, 0.88, 0.50)
+@export var water_shoreline_color: Color = Color(0.95, 0.98, 1.0, 0.85)
 @export var water_highlight_color: Color = Color(0.86, 0.96, 0.98, 0.40)
 # water_wave_depth: vertical wave amplitude in world units (literal wave height).
 @export_range(0.0, 1.0, 0.01) var water_wave_depth: float = 0.35
@@ -18,10 +18,11 @@ extends Resource
 @export_range(0.05, 4.0, 0.05) var water_wave_frequency: float = 0.9
 # water_wave_speed: how fast the waves animate.
 @export_range(0.0, 4.0, 0.05) var water_wave_speed: float = 1.5
-@export_range(0.0, 0.45, 0.01) var water_shoreline_band_ratio: float = 0.18
+@export_range(0.0, 0.45, 0.01) var water_shoreline_band_ratio: float = 0.30
 # Lifts stack the transparent water layers: body (0) < shoreline foam < surface gloss.
-@export_range(0.0, 0.05, 0.001) var water_shoreline_lift: float = 0.010
-@export_range(0.0, 0.05, 0.001) var water_surface_layer_lift: float = 0.018
+# The foam lift also helps the surf clear the shore over wave troughs.
+@export_range(0.0, 0.08, 0.001) var water_shoreline_lift: float = 0.040
+@export_range(0.0, 0.08, 0.001) var water_surface_layer_lift: float = 0.050
 
 @export_group("Camera")
 @export var camera_follow_offset := Vector3(20.0, 23.0, 18.0)
