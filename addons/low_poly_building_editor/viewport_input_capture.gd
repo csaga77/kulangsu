@@ -63,11 +63,20 @@ func _find_viewport_state(mouse_position: Vector2) -> Dictionary:
 		var control := sub_viewport.get_parent() as Control
 		if control == null:
 			continue
+		# Only the currently shown 3D viewport(s) should capture input. Unused
+		# split-view viewports and the whole spatial editor (when another main
+		# screen is active) keep stale global rects that can otherwise overlap
+		# docks and other panels, so skip anything not visible on screen.
+		if !control.is_visible_in_tree():
+			continue
 		var rect := control.get_global_rect()
 		if !rect.has_point(mouse_position):
 			continue
+		var camera := sub_viewport.get_camera_3d()
+		if camera == null:
+			continue
 		return {
-			"camera": sub_viewport.get_camera_3d(),
+			"camera": camera,
 			"local_position": mouse_position - rect.position,
 		}
 	return {}

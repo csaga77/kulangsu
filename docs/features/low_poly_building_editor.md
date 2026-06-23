@@ -77,7 +77,7 @@
 
 - The editor plugin lives under `addons/low_poly_building_editor/`.
 - The plugin owns dock UI, viewport input forwarding, previews, and undo/redo packing.
-- A lightweight 3D viewport overlay plus root-level editor input capture handle placement clicks while a building tool is active so Godot's default select/transform mouse handling does not compete with wall, prop, or window placement.
+- A lightweight 3D viewport overlay plus root-level editor input capture handle placement clicks while a building tool is active so Godot's default select/transform mouse handling does not compete with wall, prop, or window placement. The root-level capture only acts over a 3D viewport that is currently visible on screen, so clicks in docks, the bottom panel, or other main screens (and hidden split-view viewports) are never intercepted.
 - Viewport picking uses editor-time ray math against wall boxes, floor boxes, finite pillar cylinders, and roof bounds plus a ground-plane fallback, avoiding `direct_space_state` access during editor GUI input.
 - `BuildingEditor3D` owns snapping, default wall settings, wall lookup, collinear merge target detection, and geometry-only intersecting-wall clip refresh.
 - `BuildingEditor3D` owns default floor settings and floor node creation alongside wall defaults.
