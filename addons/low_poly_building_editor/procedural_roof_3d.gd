@@ -10,6 +10,7 @@ const STYLE_GABLE := "gable"
 const STYLE_HIP := "hip"
 const VALID_STYLES := [STYLE_FLAT, STYLE_SHED, STYLE_GABLE, STYLE_HIP]
 const RECT_EPSILON := 0.001
+const MAX_ROOF_ANGLE_DEGREES := 89.0
 
 @export var rebuild := false:
 	set(value):
@@ -39,9 +40,9 @@ const RECT_EPSILON := 0.001
 		roof_style_index = clamped_value
 		_request_rebuild()
 
-@export_range(0.0, 8.0, 0.05, "or_greater") var roof_height := 0.8:
+@export_range(0.0, 89.0, 1.0) var roof_height := 40.0:
 	set(value):
-		var clamped_value := maxf(value, 0.0)
+		var clamped_value := _clamped_roof_angle_degrees(value)
 		if is_equal_approx(roof_height, clamped_value):
 			return
 		roof_height = clamped_value
@@ -122,9 +123,26 @@ func set_roof_corners_rotation_and_covers(
 	new_rotation_degrees: float,
 	new_covered_rects: Array[Rect2]
 ) -> void:
+	set_roof_corners_rotation_height_and_covers(
+		new_start,
+		new_end,
+		new_rotation_degrees,
+		roof_height,
+		new_covered_rects
+	)
+
+
+func set_roof_corners_rotation_height_and_covers(
+	new_start: Vector3,
+	new_end: Vector3,
+	new_rotation_degrees: float,
+	new_height: float,
+	new_covered_rects: Array[Rect2]
+) -> void:
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
 	roof_rotation_degrees = new_rotation_degrees
+	roof_height = new_height
 	covered_rects = new_covered_rects
 	_sync_transform_from_points()
 	rebuild_roof_mesh()
@@ -208,6 +226,55 @@ func get_roof_style() -> String:
 
 func get_roof_size() -> Vector2:
 	return Vector2(absf(end_point.x - start_point.x), absf(end_point.z - start_point.z))
+
+
+func get_roof_angle_degrees() -> float:
+	return _clamped_roof_angle_degrees(roof_height)
+
+
+static func roof_height_for_angle_degrees(run: float, angle_degrees: float) -> float:
+	return maxf(run, 0.0) * tan(deg_to_rad(_clamped_roof_angle_degrees(angle_degrees)))
+
+
+static func shed_height_for_angle_degrees(depth: float, overhang: float, angle_degrees: float) -> float:
+	return roof_height_for_angle_degrees(shed_roof_run_for_depth(depth, overhang), angle_degrees)
+
+
+static func shed_roof_run_for_depth(depth: float, overhang: float) -> float:
+	return maxf(depth, 0.0) + maxf(overhang, 0.0) * 2.0
+
+
+static func gable_height_for_angle_degrees(depth: float, overhang: float, angle_degrees: float) -> float:
+	return roof_height_for_angle_degrees(gable_roof_run_for_depth(depth, overhang), angle_degrees)
+
+
+static func gable_roof_run_for_depth(depth: float, overhang: float) -> float:
+	return maxf(maxf(depth, 0.0) * 0.5 + maxf(overhang, 0.0), 0.0)
+
+
+static func hip_height_for_angle_degrees(size: Vector2, overhang: float, angle_degrees: float) -> float:
+	return roof_height_for_angle_degrees(hip_roof_run_for_size(size, overhang), angle_degrees)
+
+
+static func hip_roof_run_for_size(size: Vector2, overhang: float) -> float:
+	var shortest_depth := minf(maxf(size.x, 0.0), maxf(size.y, 0.0))
+	return maxf(shortest_depth * 0.5 + maxf(overhang, 0.0), 0.0)
+
+
+static func roof_corners_from_base_points(base_start: Vector3, base_end: Vector3, rotation_degrees: float) -> Dictionary:
+	var basis := Basis(Vector3.UP, deg_to_rad(_normalize_degrees_static(rotation_degrees)))
+	var flat_delta := Vector3(base_end.x - base_start.x, 0.0, base_end.z - base_start.z)
+	var local_delta := basis.inverse() * flat_delta
+	var min_x := minf(0.0, local_delta.x)
+	var max_x := maxf(0.0, local_delta.x)
+	var min_z := minf(0.0, local_delta.z)
+	var max_z := maxf(0.0, local_delta.z)
+	var anchor := base_start + basis * Vector3(min_x, 0.0, min_z)
+	var size := Vector2(max_x - min_x, max_z - min_z)
+	return {
+		"start": Vector3(anchor.x, base_start.y, anchor.z),
+		"end": Vector3(anchor.x + size.x, base_start.y, anchor.z + size.y),
+	}
 
 
 func get_roof_anchor_point() -> Vector3:
@@ -314,7 +381,7 @@ func _append_roof_geometry(
 	var z1 := depth + overhang
 	var center_x := (x0 + x1) * 0.5
 	var center_z := (z0 + z1) * 0.5
-	var height := _effective_roof_height()
+	var height := _effective_roof_height_for_size(Vector2(width, depth))
 	var top_points: Array[Vector3] = []
 	var top_triangles: Array[PackedInt32Array] = []
 	var boundary := PackedInt32Array()
@@ -436,7 +503,7 @@ func _roof_top_triangles(full_size: Vector2) -> Array[PackedVector3Array]:
 	var z1 := full_size.y + overhang
 	var center_x := (x0 + x1) * 0.5
 	var center_z := (z0 + z1) * 0.5
-	var height := _effective_roof_height()
+	var height := _effective_roof_height_for_size(full_size)
 	var triangles: Array[PackedVector3Array] = []
 	match get_roof_style():
 		STYLE_SHED:
@@ -654,7 +721,7 @@ func _append_roof_side_polyline(
 
 
 func _roof_height_at(full_size: Vector2, x: float, z: float) -> float:
-	var height := _effective_roof_height()
+	var height := _effective_roof_height_for_size(full_size)
 	if height <= 0.0:
 		return 0.0
 	var overhang := maxf(roof_overhang, 0.0)
@@ -763,9 +830,29 @@ func _sanitize_covered_rects(rects: Array[Rect2]) -> Array[Rect2]:
 
 
 func _effective_roof_height() -> float:
-	if get_roof_style() == STYLE_FLAT:
-		return 0.0
-	return maxf(roof_height, 0.0)
+	return _effective_roof_height_for_size(get_roof_size())
+
+
+func _effective_roof_height_for_size(size: Vector2) -> float:
+	match get_roof_style():
+		STYLE_SHED:
+			return shed_height_for_angle_degrees(size.y, roof_overhang, roof_height)
+		STYLE_GABLE:
+			return gable_height_for_angle_degrees(size.y, roof_overhang, roof_height)
+		STYLE_HIP:
+			return hip_height_for_angle_degrees(size, roof_overhang, roof_height)
+	return 0.0
+
+
+static func _clamped_roof_angle_degrees(angle_degrees: float) -> float:
+	return clampf(angle_degrees, 0.0, MAX_ROOF_ANGLE_DEGREES)
+
+
+static func _normalize_degrees_static(value: float) -> float:
+	var normalized := fposmod(value + 180.0, 360.0) - 180.0
+	if is_equal_approx(normalized, -180.0):
+		return 180.0
+	return normalized
 
 
 func _style_index_from_name(style: String) -> int:

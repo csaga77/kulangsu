@@ -24,6 +24,8 @@ const DEFAULT_PROP_PALETTE_ROOT := "res://assets"
 const PROP_SCENE_EXTENSIONS := [".tscn", ".scn", ".gltf", ".glb"]
 const PROJECT_METADATA_SECTION := "low_poly_building_editor"
 const PROJECT_METADATA_KEY := "dock_state"
+const DEFAULT_ROOF_ANGLE_DEGREES := 40.0
+const LEGACY_ROOF_VALUE_MAX := 8.0
 const SHORTCUTS_SELECT_TEXT := "Shortcuts\nSelect: normal Godot editor selection and transform tools are active."
 const SHORTCUTS_WALL_TEXT := "Shortcuts\nDrag empty space to draw a wall.\nDrag wall body to move it.\nDrag endpoint or joint to edit.\nShift-click wall body to add joint.\nOption/Alt-drag shared joint to disconnect.\nEsc or right-click cancels."
 const SHORTCUTS_FLOOR_TEXT := "Shortcuts\nDrag empty space to draw a floor rectangle.\nClick one corner, then click the opposite corner to place.\nDrag floor body to move it.\nDrag floor edge or corner to resize.\nEsc or right-click cancels."
@@ -371,9 +373,9 @@ func _build_roof_controls(parent: VBoxContainer) -> void:
 	_add_labeled_control(parent, "Base Y:", m_roof_base_height_spin)
 	m_roof_base_height_spin.value_changed.connect(_on_roof_setting_changed)
 
-	m_roof_height_spin = _make_spin(0.0, 8.0, 0.05, 0.8)
-	m_roof_height_spin.tooltip_text = "Roof rise above the eave/base plane. Flat roofs ignore this."
-	_add_labeled_control(parent, "Rise:", m_roof_height_spin)
+	m_roof_height_spin = _make_spin(0.0, 89.0, 1.0, DEFAULT_ROOF_ANGLE_DEGREES)
+	m_roof_height_spin.tooltip_text = "Roof face angle in degrees for shed, gable, and hip roofs. Flat roofs ignore it."
+	_add_labeled_control(parent, "Angle:", m_roof_height_spin)
 	m_roof_height_spin.value_changed.connect(_on_roof_setting_changed)
 
 	m_roof_thickness_spin = _make_spin(0.02, 2.0, 0.01, 0.12)
@@ -976,7 +978,7 @@ func _load_persisted_settings() -> void:
 	m_roof_grid_spin.value = float(state.get("roof_grid_step", m_roof_grid_spin.value))
 	_select_roof_style(str(state.get("roof_style", _selected_roof_style())))
 	m_roof_base_height_spin.value = float(state.get("roof_base_height", m_roof_base_height_spin.value))
-	m_roof_height_spin.value = float(state.get("roof_height", m_roof_height_spin.value))
+	m_roof_height_spin.value = _stored_roof_angle_degrees(state)
 	m_roof_thickness_spin.value = float(state.get("roof_thickness", m_roof_thickness_spin.value))
 	m_roof_overhang_spin.value = float(state.get("roof_overhang", m_roof_overhang_spin.value))
 	m_roof_rotation_spin.value = float(state.get("roof_rotation_degrees", m_roof_rotation_spin.value))
@@ -994,6 +996,15 @@ func _load_persisted_settings() -> void:
 	m_door_width_spin.value = float(state.get("door_width", _door_default_width(door_style)))
 	m_door_height_spin.value = float(state.get("door_height", m_door_height_spin.value))
 	m_door_frame_spin.value = float(state.get("door_frame_thickness", m_door_frame_spin.value))
+
+
+func _stored_roof_angle_degrees(state: Dictionary) -> float:
+	if state.has("roof_angle_degrees"):
+		return float(state["roof_angle_degrees"])
+	var legacy_value := float(state.get("roof_height", m_roof_height_spin.value))
+	if legacy_value > 0.0 and legacy_value <= LEGACY_ROOF_VALUE_MAX:
+		return rad_to_deg(atan(legacy_value))
+	return legacy_value
 
 
 func _save_persisted_settings() -> void:
@@ -1023,7 +1034,8 @@ func _save_persisted_settings() -> void:
 		"roof_grid_step": float(m_roof_grid_spin.value) if m_roof_grid_spin != null else 0.5,
 		"roof_style": _selected_roof_style(),
 		"roof_base_height": float(m_roof_base_height_spin.value) if m_roof_base_height_spin != null else 2.4,
-		"roof_height": float(m_roof_height_spin.value) if m_roof_height_spin != null else 0.8,
+		"roof_angle_degrees": float(m_roof_height_spin.value) if m_roof_height_spin != null else DEFAULT_ROOF_ANGLE_DEGREES,
+		"roof_height": float(m_roof_height_spin.value) if m_roof_height_spin != null else DEFAULT_ROOF_ANGLE_DEGREES,
 		"roof_thickness": float(m_roof_thickness_spin.value) if m_roof_thickness_spin != null else 0.12,
 		"roof_overhang": float(m_roof_overhang_spin.value) if m_roof_overhang_spin != null else 0.2,
 		"roof_rotation_degrees": float(m_roof_rotation_spin.value) if m_roof_rotation_spin != null else 0.0,

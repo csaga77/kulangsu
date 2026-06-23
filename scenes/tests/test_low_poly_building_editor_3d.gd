@@ -8,6 +8,8 @@ const ProceduralPillar3DScript = preload("res://addons/low_poly_building_editor/
 const ProceduralRoof3DScript = preload("res://addons/low_poly_building_editor/procedural_roof_3d.gd")
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
 const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
+const TEST_ROOF_ANGLE_DEGREES := 40.0
+const TEST_ROOF_ALT_ANGLE_DEGREES := 30.0
 
 var m_failures: Array[String] = []
 
@@ -433,7 +435,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		Vector3(12.0, base_y, 12.0),
 		Vector3(16.0, base_y, 15.0),
 		"gable",
-		0.9,
+		TEST_ROOF_ANGLE_DEGREES,
 		0.16,
 		0.25,
 		Color(0.50, 0.34, 0.25, 1.0)
@@ -476,8 +478,13 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		m_failures.append("ProceduralRoof3D did not generate collision for placed roofs")
 	if roof.get_roof_bounds_min().distance_to(Vector3(-0.25, -0.16, -0.25)) > 0.001:
 		m_failures.append("ProceduralRoof3D bounds did not include overhang and thickness")
-	if roof.get_roof_bounds_max().distance_to(Vector3(4.25, 0.9, 3.25)) > 0.001:
-		m_failures.append("ProceduralRoof3D bounds did not include overhang and roof rise")
+	var expected_roof_ridge_height := ProceduralRoof3DScript.gable_height_for_angle_degrees(
+		roof.get_roof_size().y,
+		roof.roof_overhang,
+		roof.get_roof_angle_degrees()
+	)
+	if roof.get_roof_bounds_max().distance_to(Vector3(4.25, expected_roof_ridge_height, 3.25)) > 0.001:
+		m_failures.append("ProceduralRoof3D bounds did not include overhang and gable ridge height")
 
 	roof.set_roof_corners(Vector3(13.0, base_y, 12.5), Vector3(17.0, base_y, 16.0))
 	if roof.position.distance_to(Vector3(13.0, base_y, 12.5)) > 0.001:
@@ -492,6 +499,29 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		m_failures.append("ProceduralRoof3D did not preserve footprint center when rotating")
 	if roof.transform.basis.is_equal_approx(Basis.IDENTITY):
 		m_failures.append("ProceduralRoof3D did not apply rotation to its transform")
+
+	var drawn_base_start := Vector3(18.0, base_y, 16.0)
+	var drawn_base_end := Vector3(21.0, base_y, 20.0)
+	var drawn_base_points := ProceduralRoof3DScript.roof_corners_from_base_points(
+		drawn_base_start,
+		drawn_base_end,
+		45.0
+	)
+	var drawn_base_roof := coordinator.create_roof_node(
+		Vector3(drawn_base_points["start"]),
+		Vector3(drawn_base_points["end"]),
+		"gable",
+		TEST_ROOF_ANGLE_DEGREES,
+		0.12,
+		0.2,
+		Color(0.50, 0.34, 0.25, 1.0),
+		45.0
+	)
+	coordinator.add_child(drawn_base_roof)
+	if !_roof_base_has_corner_near(drawn_base_roof, drawn_base_start):
+		m_failures.append("ProceduralRoof3D rotated draw base did not preserve the first draw point")
+	if !_roof_base_has_corner_near(drawn_base_roof, drawn_base_end):
+		m_failures.append("ProceduralRoof3D rotated draw base did not preserve the current draw point")
 
 	var flat := coordinator.create_roof_node(
 		Vector3(18.0, base_y, 12.0),
@@ -516,7 +546,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		Vector3(22.0, base_y, 12.0),
 		Vector3(25.0, base_y, 14.0),
 		"shed",
-		0.75,
+		TEST_ROOF_ALT_ANGLE_DEGREES,
 		0.12,
 		0.1,
 		Color(0.50, 0.34, 0.25, 1.0)
@@ -526,12 +556,19 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		m_failures.append("ProceduralRoof3D shed style generated the wrong vertex count")
 	if !_has_roof_sloped_normal(shed):
 		m_failures.append("ProceduralRoof3D shed style is missing sloped roof normals")
+	var expected_shed_height := ProceduralRoof3DScript.shed_height_for_angle_degrees(
+		shed.get_roof_size().y,
+		shed.roof_overhang,
+		shed.get_roof_angle_degrees()
+	)
+	if !_has_mesh_vertex_y_near(shed, expected_shed_height, 0.001):
+		m_failures.append("ProceduralRoof3D shed style did not calculate height from angle degrees")
 
 	var hip := coordinator.create_roof_node(
 		Vector3(26.0, base_y, 12.0),
 		Vector3(29.0, base_y, 15.0),
 		"hip",
-		0.9,
+		TEST_ROOF_ALT_ANGLE_DEGREES,
 		0.12,
 		0.15,
 		Color(0.50, 0.34, 0.25, 1.0)
@@ -541,13 +578,51 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		m_failures.append("ProceduralRoof3D hip style generated the wrong vertex count")
 	if !_has_roof_sloped_normal(hip):
 		m_failures.append("ProceduralRoof3D hip style is missing sloped roof normals")
+	var expected_hip_height := ProceduralRoof3DScript.hip_height_for_angle_degrees(
+		hip.get_roof_size(),
+		hip.roof_overhang,
+		hip.get_roof_angle_degrees()
+	)
+	if !_has_mesh_vertex_y_near(hip, expected_hip_height, 0.001):
+		m_failures.append("ProceduralRoof3D hip style did not calculate height from angle degrees")
+
+	var angle_roof := coordinator.create_roof_node(
+		Vector3(30.0, base_y, 16.0),
+		Vector3(34.0, base_y, 19.0),
+		"gable",
+		TEST_ROOF_ANGLE_DEGREES,
+		0.12,
+		0.25,
+		Color(0.50, 0.34, 0.25, 1.0)
+	)
+	coordinator.add_child(angle_roof)
+	var original_angle_degrees := angle_roof.get_roof_angle_degrees()
+	var preserved_angle_covers: Array[Rect2] = []
+	angle_roof.set_roof_corners_rotation_height_and_covers(
+		angle_roof.start_point,
+		angle_roof.start_point + Vector3(4.0, 0.0, 6.0),
+		angle_roof.roof_rotation_degrees,
+		angle_roof.roof_height,
+		preserved_angle_covers
+	)
+	var expected_resized_ridge_height := ProceduralRoof3DScript.gable_height_for_angle_degrees(
+		angle_roof.get_roof_size().y,
+		angle_roof.roof_overhang,
+		original_angle_degrees
+	)
+	if absf(angle_roof.get_roof_angle_degrees() - original_angle_degrees) > 0.001:
+		m_failures.append("ProceduralRoof3D gable angle changed after depth-preserving resize")
+	if !is_equal_approx(angle_roof.roof_height, original_angle_degrees):
+		m_failures.append("ProceduralRoof3D did not keep the stored gable angle")
+	if !_has_mesh_vertex_y_near(angle_roof, expected_resized_ridge_height, 0.001):
+		m_failures.append("ProceduralRoof3D did not recalculate gable ridge height from angle degrees")
 
 	var merge_color := Color(0.42, 0.30, 0.22, 1.0)
 	var merge_target := coordinator.create_roof_node(
 		Vector3(30.0, base_y, 12.0),
 		Vector3(34.0, base_y, 15.0),
 		"gable",
-		0.9,
+		TEST_ROOF_ANGLE_DEGREES,
 		0.16,
 		0.25,
 		merge_color
@@ -557,7 +632,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		Vector3(33.0, base_y, 14.0),
 		Vector3(36.0, base_y, 17.0),
 		"gable",
-		0.9,
+		TEST_ROOF_ANGLE_DEGREES,
 		0.16,
 		0.25,
 		merge_color,
@@ -577,6 +652,31 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 				m_failures.append("ProceduralRoof3D merge cover did not include matching overhang start")
 			if covered_rect.size.distance_to(Vector2(1.5, 1.5)) > 0.001:
 				m_failures.append("ProceduralRoof3D merge cover did not include matching overhang size")
+
+	var angle_merge := coordinator.find_roof_merge_target(
+		Vector3(33.0, base_y, 13.0),
+		Vector3(36.0, base_y, 17.0),
+		"gable",
+		merge_target.get_roof_angle_degrees(),
+		0.16,
+		0.25,
+		merge_color,
+		0.0
+	)
+	if angle_merge.is_empty():
+		m_failures.append("ProceduralRoof3D did not merge gables with matching angle")
+	var angle_mismatch := coordinator.find_roof_merge_target(
+		Vector3(33.0, base_y, 13.0),
+		Vector3(36.0, base_y, 17.0),
+		"gable",
+		TEST_ROOF_ALT_ANGLE_DEGREES,
+		0.16,
+		0.25,
+		merge_color,
+		0.0
+	)
+	if !angle_mismatch.is_empty():
+		m_failures.append("ProceduralRoof3D merged gables with different angles")
 
 	var clipped := coordinator.create_roof_node(
 		Vector3(37.0, base_y, 12.0),
@@ -601,7 +701,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		Vector3(37.0, base_y, 16.0),
 		Vector3(41.0, base_y, 20.0),
 		"gable",
-		0.9,
+		TEST_ROOF_ANGLE_DEGREES,
 		0.12,
 		0.2,
 		merge_color
@@ -611,14 +711,19 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	coordinator.add_child(clipped_gable)
 	if !_has_roof_sloped_normal(clipped_gable):
 		m_failures.append("ProceduralRoof3D clipped gable lost its sloped roof normals")
-	if !_has_mesh_vertex_y_near(clipped_gable, 0.9, 0.001):
+	var clipped_gable_ridge_height := ProceduralRoof3DScript.gable_height_for_angle_degrees(
+		clipped_gable.get_roof_size().y,
+		clipped_gable.roof_overhang,
+		clipped_gable.get_roof_angle_degrees()
+	)
+	if !_has_mesh_vertex_y_near(clipped_gable, clipped_gable_ridge_height, 0.001):
 		m_failures.append("ProceduralRoof3D clipped gable lost its ridge-height vertices")
 
 	var mismatch := coordinator.find_roof_merge_target(
 		Vector3(33.0, base_y, 14.0),
 		Vector3(36.0, base_y, 17.0),
 		"hip",
-		0.9,
+		TEST_ROOF_ANGLE_DEGREES,
 		0.16,
 		0.25,
 		merge_color,
@@ -630,7 +735,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		Vector3(33.0, base_y, 14.0),
 		Vector3(36.0, base_y, 17.0),
 		"gable",
-		0.9,
+		TEST_ROOF_ANGLE_DEGREES,
 		0.16,
 		0.25,
 		merge_color,
@@ -642,7 +747,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		Vector3(33.0, base_y, 14.0),
 		Vector3(36.0, base_y, 17.0),
 		"gable",
-		0.9,
+		TEST_ROOF_ANGLE_DEGREES,
 		0.16,
 		0.25,
 		merge_color,
@@ -655,7 +760,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		Vector3(40.0, base_y, 12.0),
 		Vector3(44.0, base_y, 15.0),
 		"gable",
-		0.9,
+		TEST_ROOF_ANGLE_DEGREES,
 		0.16,
 		0.25,
 		merge_color,
@@ -668,7 +773,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		rotated_new_start,
 		rotated_new_start + Vector3(4.0, 0.0, 3.0),
 		"gable",
-		0.9,
+		TEST_ROOF_ANGLE_DEGREES,
 		0.16,
 		0.25,
 		merge_color,
@@ -737,7 +842,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		Vector3(50.0, base_y, 12.0),
 		Vector3(54.0, base_y, 15.0),
 		"gable",
-		0.9,
+		TEST_ROOF_ANGLE_DEGREES,
 		0.16,
 		0.25,
 		merge_color
@@ -747,7 +852,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		Vector3(54.0, base_y, 12.0),
 		Vector3(58.0, base_y, 15.0),
 		"gable",
-		0.9,
+		TEST_ROOF_ANGLE_DEGREES,
 		0.16,
 		0.25,
 		merge_color,
@@ -765,7 +870,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		Vector3(54.3, base_y, 12.0),
 		Vector3(58.3, base_y, 15.0),
 		"gable",
-		0.9,
+		TEST_ROOF_ANGLE_DEGREES,
 		0.16,
 		0.25,
 		merge_color,
@@ -783,7 +888,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		Vector3(60.0, base_y, 12.0),
 		Vector3(64.0, base_y, 15.0),
 		"gable",
-		0.9,
+		TEST_ROOF_ANGLE_DEGREES,
 		0.16,
 		0.25,
 		merge_color
@@ -793,7 +898,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		Vector3(63.0, base_y, 14.0),
 		Vector3(66.0, base_y, 17.0),
 		"gable",
-		0.9,
+		TEST_ROOF_ANGLE_DEGREES,
 		0.16,
 		0.25,
 		merge_color
@@ -1607,6 +1712,22 @@ func _has_roof_sloped_normal(mesh_instance: MeshInstance3D) -> bool:
 	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 	for normal in normals:
 		if normal.y > 0.25 and normal.y < 0.98:
+			return true
+	return false
+
+
+func _roof_base_has_corner_near(roof: ProceduralRoof3DScript, expected_corner: Vector3) -> bool:
+	var basis := Basis(Vector3.UP, deg_to_rad(roof.roof_rotation_degrees))
+	var size := roof.get_roof_size()
+	var anchor := roof.get_roof_anchor_point()
+	var corners := [
+		anchor,
+		anchor + basis * Vector3(size.x, 0.0, 0.0),
+		anchor + basis * Vector3(size.x, 0.0, size.y),
+		anchor + basis * Vector3(0.0, 0.0, size.y),
+	]
+	for corner in corners:
+		if Vector3(corner).distance_to(expected_corner) <= 0.001:
 			return true
 	return false
 
