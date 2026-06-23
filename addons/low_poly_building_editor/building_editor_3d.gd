@@ -5,6 +5,7 @@ extends Node3D
 const ProceduralWall3DScript = preload("res://addons/low_poly_building_editor/procedural_wall_3d.gd")
 const ProceduralFloor3DScript = preload("res://addons/low_poly_building_editor/procedural_floor_3d.gd")
 const ProceduralPillar3DScript = preload("res://addons/low_poly_building_editor/procedural_pillar_3d.gd")
+const ProceduralRoof3DScript = preload("res://addons/low_poly_building_editor/procedural_roof_3d.gd")
 const MergedWallMeshBuilderScript = preload("res://addons/low_poly_building_editor/merged_wall_mesh_builder.gd")
 
 const INTERSECT_BASE_TOLERANCE := 0.01
@@ -29,6 +30,12 @@ const INTERSECT_BASE_TOLERANCE := 0.01
 @export_range(0.0, 2.0, 0.01, "or_greater") var default_pillar_upper_rim_height := 0.0
 @export_range(0.0, 2.0, 0.01, "or_greater") var default_pillar_upper_rim_outset := 0.0
 @export var default_pillar_color := Color(0.70, 0.64, 0.52, 1.0)
+@export var default_roof_style := "gable"
+@export_range(0.0, 8.0, 0.05, "or_greater") var default_roof_height := 0.8
+@export_range(0.02, 2.0, 0.01, "or_greater") var default_roof_thickness := 0.12
+@export_range(0.0, 4.0, 0.01, "or_greater") var default_roof_overhang := 0.2
+@export_range(-180.0, 180.0, 1.0) var default_roof_rotation_degrees := 0.0
+@export var default_roof_color := Color(0.50, 0.34, 0.25, 1.0)
 @export var merge_intersecting := true
 
 
@@ -132,6 +139,32 @@ func create_pillar_node(
 	return pillar
 
 
+func create_roof_node(
+	local_start: Vector3,
+	local_end: Vector3,
+	style: String = default_roof_style,
+	height: float = default_roof_height,
+	thickness: float = default_roof_thickness,
+	overhang: float = default_roof_overhang,
+	color: Color = default_roof_color,
+	rotation_degrees: float = default_roof_rotation_degrees
+) -> ProceduralRoof3DScript:
+	var roof := ProceduralRoof3DScript.new() as ProceduralRoof3DScript
+	roof.name = _unique_roof_name()
+	roof.start_point = local_start
+	roof.end_point = Vector3(local_end.x, local_start.y, local_end.z)
+	roof.set_roof_style(style)
+	roof.roof_height = height
+	roof.roof_thickness = thickness
+	roof.roof_overhang = overhang
+	roof.roof_color = color
+	roof.roof_rotation_degrees = rotation_degrees
+	roof.build_on_ready = true
+	roof.generate_collision = true
+	roof.rebuild_roof_mesh()
+	return roof
+
+
 func get_wall_nodes() -> Array[ProceduralWall3DScript]:
 	var walls: Array[ProceduralWall3DScript] = []
 	for child in get_children():
@@ -154,6 +187,81 @@ func get_pillar_nodes() -> Array[ProceduralPillar3DScript]:
 		if child is ProceduralPillar3DScript:
 			pillars.append(child as ProceduralPillar3DScript)
 	return pillars
+
+
+func get_roof_nodes() -> Array[ProceduralRoof3DScript]:
+	var roofs: Array[ProceduralRoof3DScript] = []
+	for child in get_children():
+		if child is ProceduralRoof3DScript:
+			roofs.append(child as ProceduralRoof3DScript)
+	return roofs
+
+
+func find_roof_merge_target(
+	local_start: Vector3,
+	local_end: Vector3,
+	style: String,
+	height: float,
+	thickness: float,
+	overhang: float,
+	color: Color,
+	rotation_degrees: float = 0.0,
+	ignored_roof: Node = null
+) -> Dictionary:
+	var new_rect := _roof_rect_from_points(local_start, local_end)
+	if new_rect.size.x <= 0.001 or new_rect.size.y <= 0.001:
+		return {}
+	var new_rotation := _normalize_degrees(rotation_degrees)
+	for roof in get_roof_nodes():
+		if roof == ignored_roof:
+			continue
+		if roof.has_meta(ProceduralRoof3DScript.PREVIEW_META):
+			continue
+		if absf(roof.start_point.y - local_start.y) > INTERSECT_BASE_TOLERANCE:
+			continue
+		if roof.get_roof_style() != style:
+			continue
+		if !is_equal_approx(roof.roof_height, height):
+			continue
+		if !is_equal_approx(roof.roof_thickness, thickness):
+			continue
+		if !is_equal_approx(roof.roof_overhang, overhang):
+			continue
+		if !_colors_match(roof.roof_color, color):
+			continue
+		if !_angles_match(roof.roof_rotation_degrees, new_rotation):
+			continue
+		var existing_anchor := roof.get_roof_anchor_point()
+		var existing_size := roof.get_roof_size()
+		var existing_rect := Rect2(Vector2.ZERO, existing_size)
+		var projected_new_rect := _roof_projected_rect_from_points(
+			local_start,
+			local_end,
+			new_rotation,
+			existing_anchor,
+			roof.roof_rotation_degrees
+		)
+		var existing_merge_rect := existing_rect.grow(maxf(roof.roof_overhang, 0.0))
+		var new_merge_rect := projected_new_rect.grow(maxf(overhang, 0.0))
+		if !existing_merge_rect.intersects(new_merge_rect, true):
+			continue
+		var merged_rect := existing_rect.merge(projected_new_rect)
+		var merged_anchor := existing_anchor + _rotation_basis(roof.roof_rotation_degrees) * Vector3(
+			merged_rect.position.x,
+			0.0,
+			merged_rect.position.y
+		)
+		return {
+			"roof": roof,
+			"start": Vector3(merged_anchor.x, roof.start_point.y, merged_anchor.z),
+			"end": Vector3(
+				merged_anchor.x + merged_rect.size.x,
+				roof.start_point.y,
+				merged_anchor.z + merged_rect.size.y
+			),
+			"rotation_degrees": roof.roof_rotation_degrees,
+		}
+	return {}
 
 
 func find_merge_target(
@@ -281,3 +389,78 @@ func _unique_pillar_name() -> String:
 		index += 1
 		candidate = "ProceduralPillar3D%d" % index
 	return candidate
+
+
+func _unique_roof_name() -> String:
+	var index := get_roof_nodes().size() + 1
+	var candidate := "ProceduralRoof3D%d" % index
+	while has_node(candidate):
+		index += 1
+		candidate = "ProceduralRoof3D%d" % index
+	return candidate
+
+
+func _roof_rect_from_points(first: Vector3, second: Vector3) -> Rect2:
+	var min_x := minf(first.x, second.x)
+	var min_z := minf(first.z, second.z)
+	var max_x := maxf(first.x, second.x)
+	var max_z := maxf(first.z, second.z)
+	return Rect2(Vector2(min_x, min_z), Vector2(max_x - min_x, max_z - min_z))
+
+
+func _roof_anchor_from_points(first: Vector3, second: Vector3) -> Vector3:
+	return Vector3(minf(first.x, second.x), first.y, minf(first.z, second.z))
+
+
+func _roof_projected_rect_from_points(
+	first: Vector3,
+	second: Vector3,
+	rotation_degrees: float,
+	frame_origin: Vector3,
+	frame_rotation_degrees: float
+) -> Rect2:
+	var source_anchor := _roof_anchor_from_points(first, second)
+	var source_size := Vector2(absf(second.x - first.x), absf(second.z - first.z))
+	var source_basis := _rotation_basis(rotation_degrees)
+	var frame_inverse := _rotation_basis(frame_rotation_degrees).inverse()
+	var projected_points := [
+		frame_inverse * (source_anchor - frame_origin),
+		frame_inverse * (source_anchor + source_basis * Vector3(source_size.x, 0.0, 0.0) - frame_origin),
+		frame_inverse * (source_anchor + source_basis * Vector3(source_size.x, 0.0, source_size.y) - frame_origin),
+		frame_inverse * (source_anchor + source_basis * Vector3(0.0, 0.0, source_size.y) - frame_origin),
+	]
+	var min_x := INF
+	var min_z := INF
+	var max_x := -INF
+	var max_z := -INF
+	for point in projected_points:
+		var projected := point as Vector3
+		min_x = minf(min_x, projected.x)
+		min_z = minf(min_z, projected.z)
+		max_x = maxf(max_x, projected.x)
+		max_z = maxf(max_z, projected.z)
+	return Rect2(Vector2(min_x, min_z), Vector2(max_x - min_x, max_z - min_z))
+
+
+func _rotation_basis(rotation_degrees: float) -> Basis:
+	return Basis(Vector3.UP, deg_to_rad(_normalize_degrees(rotation_degrees)))
+
+
+func _normalize_degrees(value: float) -> float:
+	var normalized := fposmod(value + 180.0, 360.0) - 180.0
+	if is_equal_approx(normalized, -180.0):
+		return 180.0
+	return normalized
+
+
+func _angles_match(first: float, second: float) -> bool:
+	return absf(angle_difference(deg_to_rad(first), deg_to_rad(second))) <= deg_to_rad(0.5)
+
+
+func _colors_match(first: Color, second: Color) -> bool:
+	return (
+		is_equal_approx(first.r, second.r)
+		and is_equal_approx(first.g, second.g)
+		and is_equal_approx(first.b, second.b)
+		and is_equal_approx(first.a, second.a)
+	)

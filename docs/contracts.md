@@ -187,14 +187,16 @@ Owned by:
 - [`../addons/low_poly_building_editor/procedural_wall_3d.gd`](../addons/low_poly_building_editor/procedural_wall_3d.gd)
 - [`../addons/low_poly_building_editor/procedural_floor_3d.gd`](../addons/low_poly_building_editor/procedural_floor_3d.gd)
 - [`../addons/low_poly_building_editor/procedural_pillar_3d.gd`](../addons/low_poly_building_editor/procedural_pillar_3d.gd)
+- [`../addons/low_poly_building_editor/procedural_roof_3d.gd`](../addons/low_poly_building_editor/procedural_roof_3d.gd)
 - [`../addons/low_poly_building_editor/wall_segment_3d.gd`](../addons/low_poly_building_editor/wall_segment_3d.gd)
 
 Current contract:
 
-- `BuildingEditor3D` owns grid snapping, default floor, pillar, and wall settings, floor/pillar/wall creation, wall lookup, collinear merge detection, and intersecting-wall detection for editor commits.
+- `BuildingEditor3D` owns grid snapping, default floor, pillar, roof, and wall settings, floor/pillar/roof/wall creation, wall lookup, collinear wall merge detection, compatible roof merge detection, and intersecting-wall detection for editor commits.
 - `ProceduralWall3D` stores one primary parent-local span in `start_point/end_point` plus any absorbed spans as `WallSegment3D` entries in `extra_segments`.
 - `ProceduralFloor3D` stores opposite parent-local footprint corners in `start_point/end_point`, derives its transform from the minimum X/Z top corner, extends thickness downward from the configured top surface Y, and rebuilds one low-poly mesh plus generated collision. Floor tool edits move the body or resize edges/corners on the active floor grid, preserve the existing top-surface Y, and commit through undo/redo.
 - `ProceduralPillar3D` stores one parent-local base point plus lower radius, optional upper radius override, height, side count, style, upper/lower rim height and outset, and color; the node transform derives from the base point, one styled low-poly pillar mesh plus generated collision rebuilds from those properties, and Pillar tool edits move the body or resize radius on the active pillar grid while preserving base Y and committing through undo/redo.
+- `ProceduralRoof3D` stores opposite parent-local footprint corners in `start_point/end_point`, derives its transform from the minimum X/Z eave corner plus `roof_rotation_degrees`, and rebuilds one styled low-poly roof mesh plus generated collision from style, rise, thickness, overhang, rotation, and color. Roof tool edits move the body, resize edges/corners on the active roof grid in the roof's rotated local frame, rotate around the footprint center, preserve the existing eave-plane Y, merge compatible intersecting roofs into one expanded footprint when rotation also matches, and commit through undo/redo.
 - non-collinear wall crossings merge into one surviving `ProceduralWall3D`; all participating spans, including already-intersected spans, are split at their centerline intersection points so the junctions become real segment endpoints that editor drag tools can resize.
 - merged wall meshes miter shared non-collinear endpoints by extending wall side faces to their endpoint-direction side-line intersections without adding butt-style joint caps, keep those miter points invariant when the same span is drawn in the opposite start/end direction, keep top and bottom caps tied to wall footprints with targeted overlap clipping so 3+ split joins render filled while enclosed wall loops keep their room interiors open, and clip overlapping faces in plan space so crossings, T-junctions, and corners avoid square butt seams, open miter gaps, and z-fighting caps.
 - wall drag edits are segment-aware: Shift-clicking a wall body inserts a joint by splitting that span into two connected segments, dragging an isolated endpoint changes only the picked segment endpoint, dragging a shared joint endpoint changes every connected segment endpoint at that joint, Option/Alt-dragging a shared joint endpoint disconnects only the picked endpoint, dragging a single endpoint near another endpoint or joint snaps it there to connect, dragging a wall body translates the whole merged wall, zero-length endpoint drags delete the collapsed segment or wall node through undo/redo, and drag commits normalize same-wall intersections plus reuse the intersection merge/split path when the edited wall crosses another wall.
@@ -203,7 +205,7 @@ Current contract:
 Governance:
 
 - keep building-editor scene mutations undoable through `EditorUndoRedoManager`.
-- if wall endpoint storage, floor corner storage, pillar base/radius storage, segment splitting, child reparenting, or merge undo behavior changes, update this file and [`features/low_poly_building_editor.md`](features/low_poly_building_editor.md).
+- if wall endpoint storage, floor corner storage, pillar base/radius storage, roof footprint storage, segment splitting, child reparenting, or merge undo behavior changes, update this file and [`features/low_poly_building_editor.md`](features/low_poly_building_editor.md).
 
 ## Low-Poly 3D Prototype Contract
 
@@ -257,6 +259,7 @@ Owned by:
 - [`../addons/low_poly_building_editor/procedural_wall_3d.gd`](../addons/low_poly_building_editor/procedural_wall_3d.gd)
 - [`../addons/low_poly_building_editor/procedural_floor_3d.gd`](../addons/low_poly_building_editor/procedural_floor_3d.gd)
 - [`../addons/low_poly_building_editor/procedural_pillar_3d.gd`](../addons/low_poly_building_editor/procedural_pillar_3d.gd)
+- [`../addons/low_poly_building_editor/procedural_roof_3d.gd`](../addons/low_poly_building_editor/procedural_roof_3d.gd)
 - [`../addons/low_poly_building_editor/building_opening_3d.gd`](../addons/low_poly_building_editor/building_opening_3d.gd)
 - [`../addons/low_poly_building_editor/wall_segment_3d.gd`](../addons/low_poly_building_editor/wall_segment_3d.gd)
 - [`../addons/low_poly_building_editor/merged_wall_mesh_builder.gd`](../addons/low_poly_building_editor/merged_wall_mesh_builder.gd)
@@ -265,20 +268,21 @@ Owned by:
 Current contract:
 
 - the building editor is a Godot editor plugin and must stay out of the runtime app shell
-- `BuildingEditor3D` is the scene-owned coordinator for a building assembly; it owns grid snapping, eight-way drawing constraints, default wall, floor, and pillar settings, floor/pillar/wall creation, wall lookup, and collinear merge detection
+- `BuildingEditor3D` is the scene-owned coordinator for a building assembly; it owns grid snapping, eight-way drawing constraints, default wall, floor, pillar, and roof settings, floor/pillar/roof/wall creation, wall lookup, collinear wall merge detection, and compatible roof merge detection
 - `ProceduralWall3D` stores parent-local `start_point` and `end_point` for its primary span plus typed `WallSegment3D` resources in `extra_segments` for absorbed intersecting spans and manually inserted joints; the node transform derives from the primary span, shared joint endpoint drags move every connected segment endpoint together, single endpoint drags can disconnect from or reconnect to a shared joint, zero-length endpoint drags can promote an extra span to primary when the old primary is deleted, and one combined low-poly mesh plus generated collision rebuilds from all segments and direct child openings
 - `ProceduralFloor3D` stores opposite parent-local footprint corners in `start_point/end_point`; the node transform derives from the minimum X/Z top corner, thickness extends downward from the top surface, and one low-poly rectangular slab mesh plus generated collision rebuilds from those corners. Floor tool edits move the body or resize edges/corners on the active floor grid, preserve the existing top-surface Y, reject zero-area slabs, and commit through undo/redo
 - `ProceduralPillar3D` stores a parent-local `base_point` plus lower radius, optional upper radius override, height, side count, style, upper/lower rim height and outset, and color; the node transform derives from the base point, and one styled low-poly pillar mesh plus generated collision rebuilds from those properties. Pillar tool edits move the body or resize radius on the active pillar grid, preserve the existing base Y, reject undersized radii, and commit through undo/redo
+- `ProceduralRoof3D` stores opposite parent-local footprint corners in `start_point/end_point`; the node transform derives from the minimum X/Z eave corner plus `roof_rotation_degrees`, and one styled low-poly roof mesh plus generated collision rebuilds from style, rise, thickness, overhang, rotation, and color. Roof tool edits move the body, resize edges/corners on the active roof grid in the roof's rotated local frame, rotate around the footprint center, preserve the existing eave-plane Y, reject zero-area roofs, merge compatible intersecting roofs into one expanded footprint when rotation also matches, and commit through undo/redo
 - `BuildingOpening3D` is the persistent child node used for window and door holes; its `opening_width`, `opening_height`, and segment-local position define the opening rectangle consumed by the wall mesh compiler, mapped to the nearest wall segment and restored into that segment's updated frame when wall geometry changes. Window variants may add one or two generated pane meshes, and door variants may omit the generated bottom frame and add one or two generated panel meshes, while still using the same opening rectangle contract.
 - new overlapping collinear walls of matching thickness and height merge by extending the retained wall endpoints instead of creating duplicate spans
 - non-collinear intersecting walls sharing a base plane collapse on commit into one surviving `ProceduralWall3D`: every participating span is split at the intersection point, the other walls' spans become `extra_segments`, their openings and props reparent to the survivor, the rebuilt mesh miters shared endpoints by extending wall side faces to their endpoint-direction side-line intersections without butt-style joint caps so reversed draw direction keeps the same physical miter points, keeps top and bottom caps tied to wall footprints with targeted overlap clipping so 3+ split joins render filled while enclosed wall loops keep their room interiors open, and clips overlaps in plan space, and the other wall nodes are removed; undo restores the original nodes
-- generated wall/floor/pillar collision and opening frame parts are rebuild artifacts identified by metadata; they are not author-facing source nodes
-- placed wall, floor, pillar, prop, and opening mutations must go through `EditorUndoRedoManager` so undo/redo restores scene hierarchy and rebuilt meshes together
+- generated wall/floor/pillar/roof collision and opening frame parts are rebuild artifacts identified by metadata; they are not author-facing source nodes
+- placed wall, floor, pillar, roof, prop, and opening mutations must go through `EditorUndoRedoManager` so undo/redo restores scene hierarchy and rebuilt meshes together
 - deleting a zero-length wall segment, including deletion of the final segment's wall node, must go through `EditorUndoRedoManager`
 
 Governance:
 
-- keep this contract and [`features/low_poly_building_editor.md`](features/low_poly_building_editor.md) in sync when endpoint storage, floor corner storage, pillar base/radius storage, opening semantics, generated collision, merge behavior, or editor interaction changes
+- keep this contract and [`features/low_poly_building_editor.md`](features/low_poly_building_editor.md) in sync when endpoint storage, floor corner storage, pillar base/radius storage, roof footprint storage, opening semantics, generated collision, merge behavior, or editor interaction changes
 - do not treat `BuildingEditor3D` buildings as runtime story targets or save/resume anchors without updating the low-poly 3D prototype contract and the relevant gameplay docs
 
 ## Multi-Level Scene Contract

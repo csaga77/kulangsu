@@ -6,6 +6,7 @@ const MODE_SELECT := "select"
 const MODE_WALL := "wall"
 const MODE_FLOOR := "floor"
 const MODE_PILLAR := "pillar"
+const MODE_ROOF := "roof"
 const MODE_PROP := "prop"
 const MODE_WINDOW := "window"
 const MODE_DOOR := "door"
@@ -13,6 +14,7 @@ const BuildingEditor3DScript = preload("res://addons/low_poly_building_editor/bu
 const ProceduralWall3DScript = preload("res://addons/low_poly_building_editor/procedural_wall_3d.gd")
 const ProceduralFloor3DScript = preload("res://addons/low_poly_building_editor/procedural_floor_3d.gd")
 const ProceduralPillar3DScript = preload("res://addons/low_poly_building_editor/procedural_pillar_3d.gd")
+const ProceduralRoof3DScript = preload("res://addons/low_poly_building_editor/procedural_roof_3d.gd")
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
 const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
 const DockScript = preload("res://addons/low_poly_building_editor/low_poly_building_editor_dock.gd")
@@ -61,6 +63,16 @@ var m_pillar_settings := {
 	"upper_rim_height": 0.12,
 	"upper_rim_outset": 0.05,
 	"color": Color(0.70, 0.64, 0.52, 1.0),
+}
+var m_roof_settings := {
+	"grid_step": 0.5,
+	"style": "gable",
+	"base_height": 2.4,
+	"height": 0.8,
+	"thickness": 0.12,
+	"overhang": 0.2,
+	"rotation_degrees": 0.0,
+	"color": Color(0.50, 0.34, 0.25, 1.0),
 }
 var m_prop_settings := {
 	"scene_path": "",
@@ -114,6 +126,24 @@ var m_drag_pillar_active_material: Material
 var m_drag_pillar_hover: ProceduralPillar3DScript
 var m_drag_pillar_hover_material: Material
 var m_drag_pillar_hover_edit_mode := PILLAR_EDIT_MOVE
+var m_roof_start_local := Vector3.ZERO
+var m_roof_end_local := Vector3.ZERO
+var m_roof_start_screen_position := Vector2.ZERO
+var m_roof_has_valid_preview := false
+var m_roof_release_commits_preview := false
+var m_roof_draw_rotation_degrees := 0.0
+var m_is_drawing_roof := false
+var m_roof_preview: ProceduralRoof3DScript
+var m_dragging_roof: ProceduralRoof3DScript
+var m_drag_roof_old_start := Vector3.ZERO
+var m_drag_roof_old_end := Vector3.ZERO
+var m_drag_roof_old_rotation_degrees := 0.0
+var m_drag_roof_anchor_local := Vector3.ZERO
+var m_drag_roof_edit_mask := FLOOR_EDIT_MOVE
+var m_drag_roof_active_material: Material
+var m_drag_roof_hover: ProceduralRoof3DScript
+var m_drag_roof_hover_material: Material
+var m_drag_roof_hover_edit_mask := FLOOR_EDIT_MOVE
 var m_prop_preview: Node3D
 var m_prop_preview_path := ""
 var m_prop_rotation_y := 0.0
@@ -182,6 +212,12 @@ func _enter_tree() -> void:
 		_get_editor_icon(&"MeshInstance3D")
 	)
 	add_custom_type(
+		"ProceduralRoof3D",
+		"MeshInstance3D",
+		ProceduralRoof3DScript,
+		_get_editor_icon(&"MeshInstance3D")
+	)
+	add_custom_type(
 		"BuildingOpening3D",
 		"Node3D",
 		BuildingOpening3DScript,
@@ -197,6 +233,7 @@ func _enter_tree() -> void:
 	m_dock.connect("wall_settings_changed", Callable(self, "_on_wall_settings_changed"))
 	m_dock.connect("floor_settings_changed", Callable(self, "_on_floor_settings_changed"))
 	m_dock.connect("pillar_settings_changed", Callable(self, "_on_pillar_settings_changed"))
+	m_dock.connect("roof_settings_changed", Callable(self, "_on_roof_settings_changed"))
 	m_dock.connect("prop_settings_changed", Callable(self, "_on_prop_settings_changed"))
 	m_dock.connect("window_settings_changed", Callable(self, "_on_window_settings_changed"))
 	m_dock.connect("door_settings_changed", Callable(self, "_on_door_settings_changed"))
@@ -220,9 +257,12 @@ func _exit_tree() -> void:
 	_clear_floor_hover()
 	_cancel_pillar_drag()
 	_clear_pillar_hover()
+	_cancel_roof_drag()
+	_clear_roof_hover()
 	_clear_wall_preview()
 	_clear_floor_preview()
 	_clear_pillar_preview()
+	_clear_roof_preview()
 	_clear_prop_preview()
 	_clear_viewport_overlays()
 	_clear_input_capture()
@@ -237,6 +277,7 @@ func _exit_tree() -> void:
 		m_dock.queue_free()
 		m_dock = null
 	remove_custom_type("BuildingOpening3D")
+	remove_custom_type("ProceduralRoof3D")
 	remove_custom_type("ProceduralPillar3D")
 	remove_custom_type("ProceduralFloor3D")
 	remove_custom_type("ProceduralWall3D")
@@ -257,6 +298,8 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 			if key_event.keycode == KEY_ESCAPE:
 				_cancel_active_preview()
 				return _handled()
+			if key_event.keycode == KEY_R and m_tool_mode == MODE_ROOF:
+				return _handle_roof_rotation_key(key_event)
 			if key_event.keycode == KEY_R and m_tool_mode == MODE_PROP:
 				m_prop_rotation_y += PI * 0.5
 				return _handled()
@@ -273,6 +316,8 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 		return _handle_floor_input(camera, event)
 	if m_tool_mode == MODE_PILLAR:
 		return _handle_pillar_input(camera, event)
+	if m_tool_mode == MODE_ROOF:
+		return _handle_roof_input(camera, event)
 	if m_tool_mode == MODE_PROP or _is_opening_tool():
 		return _handle_placement_input(camera, event)
 	return EditorPlugin.AFTER_GUI_INPUT_PASS
@@ -988,6 +1033,619 @@ func _reset_floor_drag_state() -> void:
 	m_drag_floor_anchor_local = Vector3.ZERO
 	m_drag_floor_edit_mask = FLOOR_EDIT_MOVE
 	m_drag_floor_active_material = null
+
+
+func _handle_roof_input(camera: Camera3D, event: InputEvent) -> int:
+	if m_dragging_roof != null:
+		return _handle_roof_drag_input(camera, event)
+
+	if event is InputEventMouseMotion:
+		var mouse_motion := event as InputEventMouseMotion
+		if m_is_drawing_roof:
+			_update_roof_preview(camera, mouse_motion.position)
+			if mouse_motion.position.distance_to(m_roof_start_screen_position) >= WALL_DRAG_COMMIT_DISTANCE:
+				m_roof_release_commits_preview = true
+			return _handled()
+		var roof_pick := _find_roof_pick(camera, mouse_motion.position)
+		var hover_roof := roof_pick.get("roof") as ProceduralRoof3DScript
+		var edit_mask := int(roof_pick.get("edit_mask", FLOOR_EDIT_MOVE))
+		_update_roof_hover(hover_roof, edit_mask)
+		if hover_roof != null:
+			_set_status(
+				"Drag roof corner to resize." if _roof_edit_mask_is_corner(edit_mask)
+				else "Drag roof edge to resize." if edit_mask != FLOOR_EDIT_MOVE
+				else "Drag roof body to move."
+			)
+		return EditorPlugin.AFTER_GUI_INPUT_PASS
+
+	if !(event is InputEventMouseButton):
+		return EditorPlugin.AFTER_GUI_INPUT_PASS
+
+	var mouse_button := event as InputEventMouseButton
+	if mouse_button.button_index == MOUSE_BUTTON_LEFT and !mouse_button.pressed and m_is_drawing_roof:
+		if !m_roof_release_commits_preview:
+			_set_status("Click the opposite corner to place roof, or drag from the first corner and release.")
+			return _handled()
+		var release_coordinator := _get_active_roof_coordinator()
+		if release_coordinator != null:
+			var release_end := m_roof_end_local
+			if !m_roof_has_valid_preview:
+				release_end = _roof_draw_local_from_mouse(release_coordinator, camera, mouse_button.position)
+			_commit_roof(release_coordinator, m_roof_start_local, release_end, m_roof_draw_rotation_degrees)
+		_clear_roof_preview()
+		_reset_roof_drawing_state()
+		return _handled()
+
+	if mouse_button.button_index != MOUSE_BUTTON_LEFT or !mouse_button.pressed:
+		return EditorPlugin.AFTER_GUI_INPUT_PASS
+
+	if !m_is_drawing_roof:
+		var roof_pick := _find_roof_pick(camera, mouse_button.position)
+		var hit_roof := roof_pick.get("roof") as ProceduralRoof3DScript
+		if hit_roof != null:
+			_clear_roof_hover()
+			_start_roof_drag(hit_roof, camera, mouse_button.position, int(roof_pick.get("edit_mask", FLOOR_EDIT_MOVE)))
+			return _handled()
+
+	var coordinator := _get_or_create_coordinator(true)
+	if coordinator == null:
+		_set_status("Open or create a scene before drawing roofs.")
+		return _handled()
+	_apply_roof_settings_to_coordinator(coordinator)
+
+	var snapped_local := _roof_draw_local_from_mouse(coordinator, camera, mouse_button.position)
+	if !m_is_drawing_roof:
+		m_roof_start_local = snapped_local
+		m_roof_end_local = snapped_local
+		m_roof_start_screen_position = mouse_button.position
+		m_roof_has_valid_preview = false
+		m_roof_release_commits_preview = false
+		m_roof_draw_rotation_degrees = _normalize_degrees(float(m_roof_settings.get("rotation_degrees", 0.0)))
+		m_is_drawing_roof = true
+		_create_roof_preview(coordinator)
+		_update_roof_preview(camera, mouse_button.position)
+		_set_status("Roof first corner captured. Drag and release, or click the opposite corner.")
+		return _handled()
+
+	_commit_roof(coordinator, m_roof_start_local, snapped_local, m_roof_draw_rotation_degrees)
+	_clear_roof_preview()
+	_reset_roof_drawing_state()
+	return _handled()
+
+
+func _create_roof_preview(coordinator: BuildingEditor3DScript) -> void:
+	_clear_roof_preview()
+	_apply_roof_settings_to_coordinator(coordinator)
+	m_roof_preview = ProceduralRoof3DScript.new() as ProceduralRoof3DScript
+	m_roof_preview.name = "RoofPreview"
+	m_roof_preview.set_meta(ProceduralRoof3DScript.PREVIEW_META, true)
+	m_roof_preview.set_roof_style(String(m_roof_settings["style"]))
+	m_roof_preview.roof_height = float(m_roof_settings["height"])
+	m_roof_preview.roof_thickness = float(m_roof_settings["thickness"])
+	m_roof_preview.roof_overhang = float(m_roof_settings["overhang"])
+	m_roof_preview.roof_rotation_degrees = m_roof_draw_rotation_degrees
+	var preview_color := Color(m_roof_settings["color"])
+	preview_color.a = 0.46
+	m_roof_preview.roof_color = preview_color
+	m_roof_preview.generate_collision = false
+	coordinator.add_child(m_roof_preview)
+	m_roof_preview.owner = null
+
+
+func _update_roof_preview(camera: Camera3D, mouse_position: Vector2) -> void:
+	if m_roof_preview == null:
+		return
+	var coordinator := m_roof_preview.get_parent() as BuildingEditor3DScript
+	if coordinator == null:
+		return
+	var local_end := _roof_draw_local_from_mouse(coordinator, camera, mouse_position)
+	m_roof_end_local = local_end
+	m_roof_has_valid_preview = _is_roof_span_large_enough(m_roof_start_local, local_end)
+	m_roof_preview.set_roof_style(String(m_roof_settings["style"]))
+	m_roof_preview.roof_height = float(m_roof_settings["height"])
+	m_roof_preview.roof_thickness = float(m_roof_settings["thickness"])
+	m_roof_preview.roof_overhang = float(m_roof_settings["overhang"])
+	m_roof_preview.roof_rotation_degrees = m_roof_draw_rotation_degrees
+	m_roof_preview.set_roof_corners(m_roof_start_local, local_end)
+	if m_roof_has_valid_preview:
+		var size := m_roof_preview.get_roof_size()
+		_set_status(
+			"Release or click to place roof: %.2f x %.2f, %.0f deg." %
+			[size.x, size.y, m_roof_draw_rotation_degrees]
+		)
+
+
+func _roof_base_height() -> float:
+	return float(m_roof_settings.get("base_height", 2.4))
+
+
+func _roof_draw_local_from_mouse(
+	coordinator: BuildingEditor3DScript,
+	camera: Camera3D,
+	mouse_position: Vector2
+) -> Vector3:
+	var base_y := _roof_base_height()
+	var origin := camera.project_ray_origin(mouse_position)
+	var direction := camera.project_ray_normal(mouse_position)
+	var local_origin := coordinator.to_local(origin)
+	var local_direction := coordinator.global_transform.basis.inverse() * direction
+	if local_direction.length_squared() > 0.000001:
+		local_direction = local_direction.normalized()
+		if absf(local_direction.y) > 0.001:
+			var distance_to_plane := (base_y - local_origin.y) / local_direction.y
+			if distance_to_plane > 0.0:
+				return _snap_roof_draw_local(
+					coordinator,
+					local_origin + local_direction * distance_to_plane,
+					base_y
+				)
+
+	var hit := _raycast_world(camera, mouse_position, false)
+	return _snap_roof_draw_local(coordinator, coordinator.to_local(Vector3(hit["position"])), base_y)
+
+
+func _snap_roof_draw_local(
+	coordinator: BuildingEditor3DScript,
+	local_position: Vector3,
+	base_y: float
+) -> Vector3:
+	var snapped := coordinator.snap_local_position(local_position)
+	snapped.y = base_y
+	return snapped
+
+
+func _get_active_roof_coordinator() -> BuildingEditor3DScript:
+	if m_roof_preview != null and is_instance_valid(m_roof_preview):
+		var preview_parent := m_roof_preview.get_parent() as BuildingEditor3DScript
+		if preview_parent != null:
+			return preview_parent
+	return _get_or_create_coordinator(false)
+
+
+func _handle_roof_rotation_key(key_event: InputEventKey) -> int:
+	var delta := -90.0 if key_event.shift_pressed else 90.0
+	if m_is_drawing_roof:
+		m_roof_draw_rotation_degrees = _normalize_degrees(m_roof_draw_rotation_degrees + delta)
+		if m_roof_preview != null and is_instance_valid(m_roof_preview):
+			m_roof_preview.set_roof_corners_and_rotation(
+				m_roof_start_local,
+				m_roof_end_local,
+				m_roof_draw_rotation_degrees
+			)
+		_set_status("Roof preview rotation: %.0f degrees." % m_roof_draw_rotation_degrees)
+		return _handled()
+
+	if m_dragging_roof != null:
+		_set_status("Release the roof edit before rotating.")
+		return _handled()
+
+	var roof := m_drag_roof_hover if is_instance_valid(m_drag_roof_hover) else _selected_roof_for_rotation()
+	if roof == null:
+		_set_status("Hover or select a roof to rotate it.")
+		return _handled()
+	_commit_roof_rotation(roof, delta)
+	return _handled()
+
+
+func _selected_roof_for_rotation() -> ProceduralRoof3DScript:
+	var selection := get_editor_interface().get_selection()
+	if selection == null:
+		return null
+	for node in selection.get_selected_nodes():
+		if node is ProceduralRoof3DScript:
+			return node as ProceduralRoof3DScript
+	return null
+
+
+func _commit_roof_rotation(roof: ProceduralRoof3DScript, delta_degrees: float) -> void:
+	if roof == null or !is_instance_valid(roof):
+		return
+	var old_start := roof.start_point
+	var old_end := roof.end_point
+	var old_rotation := roof.roof_rotation_degrees
+	var new_rotation := _normalize_degrees(old_rotation + delta_degrees)
+	var rotated_state := _roof_state_rotated_around_center(roof, new_rotation)
+	_clear_roof_hover()
+
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Rotate Procedural Roof")
+	undo_redo.add_do_method(
+		roof,
+		"set_roof_corners_and_rotation",
+		rotated_state["start"],
+		rotated_state["end"],
+		new_rotation
+	)
+	undo_redo.add_do_method(self, "_select_node", roof)
+	undo_redo.add_undo_method(roof, "set_roof_corners_and_rotation", old_start, old_end, old_rotation)
+	undo_redo.commit_action()
+	_set_status("Rotated roof to %.0f degrees." % new_rotation)
+
+
+func _roof_state_rotated_around_center(roof: ProceduralRoof3DScript, rotation_degrees: float) -> Dictionary:
+	var size := roof.get_roof_size()
+	var center := roof.get_roof_center_point()
+	var anchor := center - _roof_rotation_basis(rotation_degrees) * Vector3(size.x * 0.5, 0.0, size.y * 0.5)
+	return {
+		"start": anchor,
+		"end": anchor + Vector3(size.x, 0.0, size.y),
+	}
+
+
+func _commit_roof(
+	coordinator: BuildingEditor3DScript,
+	local_start: Vector3,
+	local_end: Vector3,
+	rotation_degrees: float
+) -> void:
+	if !_is_roof_span_large_enough(local_start, local_end):
+		_set_status("Roof is too small.")
+		return
+
+	_apply_roof_settings_to_coordinator(coordinator)
+	var style := String(m_roof_settings["style"])
+	var height := float(m_roof_settings["height"])
+	var thickness := float(m_roof_settings["thickness"])
+	var overhang := float(m_roof_settings["overhang"])
+	var color := Color(m_roof_settings["color"])
+	var normalized_rotation := _normalize_degrees(rotation_degrees)
+	var merge := coordinator.find_roof_merge_target(
+		local_start,
+		local_end,
+		style,
+		height,
+		thickness,
+		overhang,
+		color,
+		normalized_rotation,
+		m_roof_preview
+	)
+	var undo_redo := get_undo_redo()
+	if !merge.is_empty():
+		var target := merge["roof"] as ProceduralRoof3DScript
+		if target != null:
+			var old_start := target.start_point
+			var old_end := target.end_point
+			var old_rotation := target.roof_rotation_degrees
+			var target_rotation := float(merge.get("rotation_degrees", target.roof_rotation_degrees))
+			undo_redo.create_action("Merge Procedural Roof")
+			undo_redo.add_do_method(
+				target,
+				"set_roof_corners_and_rotation",
+				merge["start"],
+				merge["end"],
+				target_rotation
+			)
+			undo_redo.add_do_method(self, "_select_node", target)
+			undo_redo.add_undo_method(target, "set_roof_corners_and_rotation", old_start, old_end, old_rotation)
+			undo_redo.commit_action()
+			var merged_size := target.get_roof_size()
+			_set_status("Merged roof footprint: %.2f x %.2f units." % [merged_size.x, merged_size.y])
+			return
+
+	var roof := coordinator.create_roof_node(
+		local_start,
+		local_end,
+		style,
+		height,
+		thickness,
+		overhang,
+		color,
+		normalized_rotation
+	)
+	var scene_root := get_editor_interface().get_edited_scene_root()
+	undo_redo.create_action("Create Procedural Roof")
+	undo_redo.add_do_reference(roof)
+	undo_redo.add_do_method(self, "_do_add_node", coordinator, roof, scene_root, true)
+	undo_redo.add_undo_method(self, "_undo_remove_node", coordinator, roof)
+	undo_redo.commit_action()
+	var size := roof.get_roof_size()
+	_set_status("Created roof: %.2f x %.2f units." % [size.x, size.y])
+
+
+func _handle_roof_drag_input(camera: Camera3D, event: InputEvent) -> int:
+	if event is InputEventMouseMotion:
+		_update_roof_drag(camera, (event as InputEventMouseMotion).position)
+		return _handled()
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_LEFT and !mb.pressed:
+			_commit_roof_drag()
+			return _handled()
+		if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+			_cancel_roof_drag()
+			return _handled()
+	return _handled()
+
+
+func _start_roof_drag(
+	roof: ProceduralRoof3DScript,
+	camera: Camera3D,
+	mouse_pos: Vector2,
+	edit_mask: int
+) -> void:
+	m_dragging_roof = roof
+	m_drag_roof_old_start = roof.start_point
+	m_drag_roof_old_end = roof.end_point
+	m_drag_roof_old_rotation_degrees = roof.roof_rotation_degrees
+	m_drag_roof_edit_mask = edit_mask
+	m_drag_roof_active_material = roof.material_override
+	m_drag_roof_anchor_local = _roof_plane_local_from_mouse(roof, camera, mouse_pos)
+	roof.material_override = _build_preview_material(_roof_drag_color(edit_mask, true))
+	_select_node(roof)
+	_set_status("Dragging roof %s - release to commit, Escape to cancel." % _roof_edit_label(edit_mask))
+
+
+func _update_roof_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
+	if m_dragging_roof == null or !is_instance_valid(m_dragging_roof):
+		_reset_roof_drag_state()
+		return
+	var roof := m_dragging_roof
+	var hit_local := _roof_plane_local_from_mouse(roof, camera, mouse_pos)
+	var new_start := m_drag_roof_old_start
+	var new_end := m_drag_roof_old_end
+	if m_drag_roof_edit_mask == FLOOR_EDIT_MOVE:
+		var step := _active_roof_grid_step(roof)
+		var raw_delta := hit_local - m_drag_roof_anchor_local
+		var snapped_delta := Vector3(
+			roundf(raw_delta.x / step) * step,
+			0.0,
+			roundf(raw_delta.z / step) * step
+		)
+		new_start = m_drag_roof_old_start + snapped_delta
+		new_end = m_drag_roof_old_end + snapped_delta
+	else:
+		var snapped := _snap_roof_edit_local(roof, hit_local)
+		var resized := _resized_roof_points(snapped)
+		new_start = Vector3(resized["start"])
+		new_end = Vector3(resized["end"])
+
+	roof.set_roof_corners_and_rotation(new_start, new_end, m_drag_roof_old_rotation_degrees)
+	var valid := _is_roof_span_large_enough(new_start, new_end)
+	roof.material_override = _build_preview_material(
+		_roof_drag_color(m_drag_roof_edit_mask, valid)
+	)
+	if valid:
+		var size := roof.get_roof_size()
+		_set_status("Release to commit roof %s: %.2f x %.2f." % [_roof_edit_label(m_drag_roof_edit_mask), size.x, size.y])
+	else:
+		_set_status("Roof is too small.")
+
+
+func _commit_roof_drag() -> void:
+	if m_dragging_roof == null:
+		return
+	var roof := m_dragging_roof
+	var old_start := m_drag_roof_old_start
+	var old_end := m_drag_roof_old_end
+	var old_rotation := m_drag_roof_old_rotation_degrees
+	var new_start := roof.start_point
+	var new_end := roof.end_point
+	var new_rotation := roof.roof_rotation_degrees
+	var edit_mask := m_drag_roof_edit_mask
+	roof.material_override = m_drag_roof_active_material
+	if !_is_roof_span_large_enough(new_start, new_end):
+		roof.set_roof_corners_and_rotation(old_start, old_end, old_rotation)
+		_reset_roof_drag_state()
+		_set_status("Roof is too small.")
+		return
+	if (
+		old_start.distance_to(new_start) <= 0.001
+		and old_end.distance_to(new_end) <= 0.001
+		and _angles_match(old_rotation, new_rotation)
+	):
+		_reset_roof_drag_state()
+		_set_status("Roof unchanged.")
+		return
+
+	var coordinator := _find_coordinator_from_node(roof)
+	if coordinator != null:
+		var merge := coordinator.find_roof_merge_target(
+			new_start,
+			new_end,
+			roof.get_roof_style(),
+			roof.roof_height,
+			roof.roof_thickness,
+			roof.roof_overhang,
+			roof.roof_color,
+			roof.roof_rotation_degrees,
+			roof
+		)
+		if !merge.is_empty():
+			var target := merge["roof"] as ProceduralRoof3DScript
+			if target != null:
+				var target_old_start := target.start_point
+				var target_old_end := target.end_point
+				var target_old_rotation := target.roof_rotation_degrees
+				var target_rotation := float(merge.get("rotation_degrees", target.roof_rotation_degrees))
+				var scene_root := get_editor_interface().get_edited_scene_root()
+				var merge_undo_redo := get_undo_redo()
+				merge_undo_redo.create_action("Merge Procedural Roofs")
+				merge_undo_redo.add_undo_reference(roof)
+				merge_undo_redo.add_do_method(
+					target,
+					"set_roof_corners_and_rotation",
+					merge["start"],
+					merge["end"],
+					target_rotation
+				)
+				merge_undo_redo.add_do_method(self, "_undo_remove_node", coordinator, roof)
+				merge_undo_redo.add_do_method(self, "_select_node", target)
+				merge_undo_redo.add_undo_method(self, "_do_add_node", coordinator, roof, scene_root, false)
+				merge_undo_redo.add_undo_method(
+					roof,
+					"set_roof_corners_and_rotation",
+					old_start,
+					old_end,
+					old_rotation
+				)
+				merge_undo_redo.add_undo_method(
+					target,
+					"set_roof_corners_and_rotation",
+					target_old_start,
+					target_old_end,
+					target_old_rotation
+				)
+				merge_undo_redo.commit_action()
+				_reset_roof_drag_state()
+				var merged_size := target.get_roof_size()
+				_set_status("Merged roof footprints: %.2f x %.2f units." % [merged_size.x, merged_size.y])
+				return
+
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Move Procedural Roof" if edit_mask == FLOOR_EDIT_MOVE else "Resize Procedural Roof")
+	undo_redo.add_do_method(roof, "set_roof_corners_and_rotation", new_start, new_end, new_rotation)
+	undo_redo.add_do_method(self, "_select_node", roof)
+	undo_redo.add_undo_method(roof, "set_roof_corners_and_rotation", old_start, old_end, old_rotation)
+	undo_redo.commit_action()
+	_reset_roof_drag_state()
+	var size := roof.get_roof_size()
+	_set_status("Edited roof: %.2f x %.2f units." % [size.x, size.y])
+
+
+func _cancel_roof_drag() -> void:
+	if m_dragging_roof == null:
+		return
+	if is_instance_valid(m_dragging_roof):
+		m_dragging_roof.set_roof_corners_and_rotation(
+			m_drag_roof_old_start,
+			m_drag_roof_old_end,
+			m_drag_roof_old_rotation_degrees
+		)
+		m_dragging_roof.material_override = m_drag_roof_active_material
+	_reset_roof_drag_state()
+	_set_status("Roof edit canceled.")
+
+
+func _resized_roof_points(snapped_hit: Vector3) -> Dictionary:
+	var old_size := Vector2(
+		absf(m_drag_roof_old_end.x - m_drag_roof_old_start.x),
+		absf(m_drag_roof_old_end.z - m_drag_roof_old_start.z)
+	)
+	var min_x := 0.0
+	var max_x := old_size.x
+	var min_z := 0.0
+	var max_z := old_size.y
+	if (m_drag_roof_edit_mask & FLOOR_EDIT_MIN_X) != 0:
+		min_x = snapped_hit.x
+	if (m_drag_roof_edit_mask & FLOOR_EDIT_MAX_X) != 0:
+		max_x = snapped_hit.x
+	if (m_drag_roof_edit_mask & FLOOR_EDIT_MIN_Z) != 0:
+		min_z = snapped_hit.z
+	if (m_drag_roof_edit_mask & FLOOR_EDIT_MAX_Z) != 0:
+		max_z = snapped_hit.z
+	var sorted_min_x := minf(min_x, max_x)
+	var sorted_max_x := maxf(min_x, max_x)
+	var sorted_min_z := minf(min_z, max_z)
+	var sorted_max_z := maxf(min_z, max_z)
+	var base_y := m_drag_roof_old_start.y
+	var old_anchor := Vector3(
+		minf(m_drag_roof_old_start.x, m_drag_roof_old_end.x),
+		base_y,
+		minf(m_drag_roof_old_start.z, m_drag_roof_old_end.z)
+	)
+	var rotated_anchor := old_anchor + _roof_rotation_basis(m_drag_roof_old_rotation_degrees) * Vector3(
+		sorted_min_x,
+		0.0,
+		sorted_min_z
+	)
+	var resized_size := Vector2(sorted_max_x - sorted_min_x, sorted_max_z - sorted_min_z)
+	return {
+		"start": rotated_anchor,
+		"end": rotated_anchor + Vector3(resized_size.x, 0.0, resized_size.y),
+	}
+
+
+func _roof_plane_local_from_mouse(
+	roof: ProceduralRoof3DScript,
+	camera: Camera3D,
+	mouse_position: Vector2
+) -> Vector3:
+	var parent_3d := roof.get_parent() as Node3D
+	var base_y := roof.start_point.y
+	var origin := camera.project_ray_origin(mouse_position)
+	var direction := camera.project_ray_normal(mouse_position)
+	var local_origin := parent_3d.to_local(origin) if parent_3d != null else origin
+	var local_direction := (
+		parent_3d.global_transform.basis.inverse() * direction
+		if parent_3d != null
+		else direction
+	)
+	if local_direction.length_squared() > 0.000001:
+		local_direction = local_direction.normalized()
+		if absf(local_direction.y) > 0.001:
+			var distance_to_plane := (base_y - local_origin.y) / local_direction.y
+			if distance_to_plane > 0.0:
+				return local_origin + local_direction * distance_to_plane
+	return roof.start_point
+
+
+func _snap_roof_edit_local(roof: ProceduralRoof3DScript, local_position: Vector3) -> Vector3:
+	var step := _active_roof_grid_step(roof)
+	var drag_anchor := Vector3(
+		minf(m_drag_roof_old_start.x, m_drag_roof_old_end.x),
+		m_drag_roof_old_start.y,
+		minf(m_drag_roof_old_start.z, m_drag_roof_old_end.z)
+	)
+	var drag_frame := Transform3D(_roof_rotation_basis(m_drag_roof_old_rotation_degrees), drag_anchor)
+	var roof_local := drag_frame.affine_inverse() * local_position
+	return Vector3(
+		roundf(roof_local.x / step) * step,
+		0.0,
+		roundf(roof_local.z / step) * step
+	)
+
+
+func _roof_drag_color(edit_mask: int, valid: bool) -> Color:
+	if !valid:
+		return Color(0.95, 0.20, 0.16, 0.72)
+	if edit_mask == FLOOR_EDIT_MOVE:
+		return Color(0.20, 0.60, 1.0, 0.55)
+	return Color(1.0, 0.85, 0.20, 0.72)
+
+
+func _roof_edit_label(edit_mask: int) -> String:
+	if edit_mask == FLOOR_EDIT_MOVE:
+		return "body"
+	return "corner" if _roof_edit_mask_is_corner(edit_mask) else "edge"
+
+
+func _roof_edit_mask_is_corner(edit_mask: int) -> bool:
+	var edits_x := (edit_mask & FLOOR_EDIT_MIN_X) != 0 or (edit_mask & FLOOR_EDIT_MAX_X) != 0
+	var edits_z := (edit_mask & FLOOR_EDIT_MIN_Z) != 0 or (edit_mask & FLOOR_EDIT_MAX_Z) != 0
+	return edits_x and edits_z
+
+
+func _active_roof_grid_step(roof: ProceduralRoof3DScript) -> float:
+	var coordinator := _find_coordinator_from_node(roof)
+	if coordinator != null:
+		return maxf(coordinator.grid_step, 0.05)
+	return maxf(float(m_roof_settings["grid_step"]), 0.05)
+
+
+func _roof_rotation_basis(rotation_degrees: float) -> Basis:
+	return Basis(Vector3.UP, deg_to_rad(_normalize_degrees(rotation_degrees)))
+
+
+func _normalize_degrees(value: float) -> float:
+	var normalized := fposmod(value + 180.0, 360.0) - 180.0
+	if is_equal_approx(normalized, -180.0):
+		return 180.0
+	return normalized
+
+
+func _angles_match(first: float, second: float) -> bool:
+	return absf(angle_difference(deg_to_rad(first), deg_to_rad(second))) <= deg_to_rad(0.5)
+
+
+func _reset_roof_drag_state() -> void:
+	m_dragging_roof = null
+	m_drag_roof_old_start = Vector3.ZERO
+	m_drag_roof_old_end = Vector3.ZERO
+	m_drag_roof_old_rotation_degrees = 0.0
+	m_drag_roof_anchor_local = Vector3.ZERO
+	m_drag_roof_edit_mask = FLOOR_EDIT_MOVE
+	m_drag_roof_active_material = null
 
 
 func _handle_pillar_input(camera: Camera3D, event: InputEvent) -> int:
@@ -1941,6 +2599,102 @@ func _floor_edit_mask_for_local_hit(floor: ProceduralFloor3DScript, local_hit: V
 	return edit_mask
 
 
+func _find_roof_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
+	var origin := camera.project_ray_origin(mouse_pos)
+	var direction := camera.project_ray_normal(mouse_pos)
+	var hit := _raycast_procedural_roofs(origin, direction)
+	if hit.is_empty():
+		return {}
+	var roof := hit.get("roof") as ProceduralRoof3DScript
+	if roof == null:
+		return {}
+	var local_position := Vector3(hit.get("local_position", Vector3.ZERO))
+	hit["edit_mask"] = _roof_edit_mask_for_local_hit(roof, local_position)
+	return hit
+
+
+func _raycast_procedural_roofs(origin: Vector3, direction: Vector3) -> Dictionary:
+	var scene_root := get_editor_interface().get_edited_scene_root()
+	if scene_root == null:
+		return {}
+
+	var roofs: Array[ProceduralRoof3DScript] = []
+	_collect_scene_roofs(scene_root, roofs)
+
+	var best_hit: Dictionary = {}
+	var best_distance := INF
+	for roof in roofs:
+		if !is_instance_valid(roof) or roof == m_roof_preview:
+			continue
+		if roof.has_meta(ProceduralRoof3DScript.PREVIEW_META):
+			continue
+		var hit := _intersect_roof_bounds(roof, origin, direction)
+		if hit.is_empty():
+			continue
+		var distance := float(hit["distance"])
+		if distance < best_distance:
+			best_distance = distance
+			best_hit = hit
+	return best_hit
+
+
+func _collect_scene_roofs(node: Node, roofs: Array[ProceduralRoof3DScript]) -> void:
+	if node is ProceduralRoof3DScript:
+		roofs.append(node as ProceduralRoof3DScript)
+	for child in node.get_children():
+		_collect_scene_roofs(child, roofs)
+
+
+func _intersect_roof_bounds(
+	roof: ProceduralRoof3DScript,
+	origin: Vector3,
+	direction: Vector3
+) -> Dictionary:
+	var size := roof.get_roof_size()
+	if size.x <= 0.001 or size.y <= 0.001:
+		return {}
+	var inverse_frame := roof.global_transform.affine_inverse()
+	var local_origin := inverse_frame * origin
+	var local_direction := inverse_frame.basis * direction
+	if local_direction.length_squared() <= 0.000001:
+		return {}
+	local_direction = local_direction.normalized()
+
+	var min_corner := roof.get_roof_bounds_min()
+	var max_corner := roof.get_roof_bounds_max()
+	var hit := _intersect_aabb_ray(local_origin, local_direction, min_corner, max_corner)
+	if hit.is_empty():
+		return {}
+
+	var local_hit := Vector3(hit["position"])
+	var local_normal := _nearest_box_normal(local_hit, min_corner, max_corner)
+	var global_hit := roof.global_transform * local_hit
+	return {
+		"roof": roof,
+		"position": global_hit,
+		"local_position": local_hit,
+		"normal": (roof.global_transform.basis * local_normal).normalized(),
+		"collider": roof,
+		"distance": origin.distance_to(global_hit),
+	}
+
+
+func _roof_edit_mask_for_local_hit(roof: ProceduralRoof3DScript, local_hit: Vector3) -> int:
+	var size := roof.get_roof_size()
+	var overhang := maxf(roof.roof_overhang, 0.0)
+	var radius := maxf(_active_roof_grid_step(roof) * 0.35, 0.16)
+	var edit_mask := FLOOR_EDIT_MOVE
+	var min_x_distance := absf(local_hit.x + overhang)
+	var max_x_distance := absf(size.x + overhang - local_hit.x)
+	if minf(min_x_distance, max_x_distance) <= radius:
+		edit_mask |= FLOOR_EDIT_MIN_X if min_x_distance <= max_x_distance else FLOOR_EDIT_MAX_X
+	var min_z_distance := absf(local_hit.z + overhang)
+	var max_z_distance := absf(size.y + overhang - local_hit.z)
+	if minf(min_z_distance, max_z_distance) <= radius:
+		edit_mask |= FLOOR_EDIT_MIN_Z if min_z_distance <= max_z_distance else FLOOR_EDIT_MAX_Z
+	return edit_mask
+
+
 func _find_pillar_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
 	var origin := camera.project_ray_origin(mouse_pos)
 	var direction := camera.project_ray_normal(mouse_pos)
@@ -2308,6 +3062,16 @@ func _apply_pillar_settings_to_coordinator(coordinator: BuildingEditor3DScript) 
 	coordinator.default_pillar_color = Color(m_pillar_settings["color"])
 
 
+func _apply_roof_settings_to_coordinator(coordinator: BuildingEditor3DScript) -> void:
+	coordinator.grid_step = float(m_roof_settings["grid_step"])
+	coordinator.default_roof_style = String(m_roof_settings["style"])
+	coordinator.default_roof_height = float(m_roof_settings["height"])
+	coordinator.default_roof_thickness = float(m_roof_settings["thickness"])
+	coordinator.default_roof_overhang = float(m_roof_settings["overhang"])
+	coordinator.default_roof_rotation_degrees = float(m_roof_settings.get("rotation_degrees", 0.0))
+	coordinator.default_roof_color = Color(m_roof_settings["color"])
+
+
 func _active_grid_step(wall: ProceduralWall3DScript) -> float:
 	var coordinator := _find_coordinator_from_node(wall)
 	if coordinator != null:
@@ -2671,6 +3435,28 @@ func _clear_floor_hover() -> void:
 	m_drag_floor_hover_edit_mask = FLOOR_EDIT_MOVE
 
 
+func _update_roof_hover(roof: ProceduralRoof3DScript, edit_mask: int) -> void:
+	if roof == m_drag_roof_hover and edit_mask == m_drag_roof_hover_edit_mask:
+		return
+	_clear_roof_hover()
+	if roof == null:
+		return
+	m_drag_roof_hover = roof
+	m_drag_roof_hover_edit_mask = edit_mask
+	m_drag_roof_hover_material = roof.material_override
+	roof.material_override = _build_preview_material(_roof_drag_color(edit_mask, true))
+
+
+func _clear_roof_hover() -> void:
+	if m_drag_roof_hover == null:
+		return
+	if is_instance_valid(m_drag_roof_hover):
+		m_drag_roof_hover.material_override = m_drag_roof_hover_material
+	m_drag_roof_hover = null
+	m_drag_roof_hover_material = null
+	m_drag_roof_hover_edit_mask = FLOOR_EDIT_MOVE
+
+
 func _update_pillar_hover(pillar: ProceduralPillar3DScript, edit_mode: int) -> void:
 	if pillar == m_drag_pillar_hover and edit_mode == m_drag_pillar_hover_edit_mode:
 		return
@@ -2712,6 +3498,12 @@ func _clear_pillar_preview() -> void:
 	m_pillar_preview_valid = false
 
 
+func _clear_roof_preview() -> void:
+	if m_roof_preview != null and is_instance_valid(m_roof_preview):
+		m_roof_preview.queue_free()
+	m_roof_preview = null
+
+
 func _reset_wall_drawing_state() -> void:
 	m_is_drawing_wall = false
 	m_wall_has_valid_preview = false
@@ -2724,6 +3516,14 @@ func _reset_floor_drawing_state() -> void:
 	m_floor_has_valid_preview = false
 	m_floor_release_commits_preview = false
 	m_floor_start_screen_position = Vector2.ZERO
+
+
+func _reset_roof_drawing_state() -> void:
+	m_is_drawing_roof = false
+	m_roof_has_valid_preview = false
+	m_roof_release_commits_preview = false
+	m_roof_start_screen_position = Vector2.ZERO
+	m_roof_draw_rotation_degrees = _normalize_degrees(float(m_roof_settings.get("rotation_degrees", 0.0)))
 
 
 func _clear_prop_preview() -> void:
@@ -3541,14 +4341,18 @@ func _cancel_active_preview() -> void:
 	_clear_floor_hover()
 	_cancel_pillar_drag()
 	_clear_pillar_hover()
+	_cancel_roof_drag()
+	_clear_roof_hover()
 	_cancel_window_drag()
 	_clear_drag_hover()
 	_clear_wall_preview()
 	_clear_floor_preview()
 	_clear_pillar_preview()
+	_clear_roof_preview()
 	_clear_prop_preview()
 	_reset_wall_drawing_state()
 	_reset_floor_drawing_state()
+	_reset_roof_drawing_state()
 	_set_status("Tool preview canceled.")
 
 
@@ -3558,6 +4362,14 @@ func _is_wall_span_long_enough(local_start: Vector3, local_end: Vector3) -> bool
 
 func _is_floor_span_large_enough(local_start: Vector3, local_end: Vector3) -> bool:
 	var minimum_size := maxf(float(m_floor_settings["grid_step"]) * 0.5, 0.1)
+	return (
+		absf(local_end.x - local_start.x) >= minimum_size
+		and absf(local_end.z - local_start.z) >= minimum_size
+	)
+
+
+func _is_roof_span_large_enough(local_start: Vector3, local_end: Vector3) -> bool:
+	var minimum_size := maxf(float(m_roof_settings["grid_step"]) * 0.5, 0.1)
 	return (
 		absf(local_end.x - local_start.x) >= minimum_size
 		and absf(local_end.z - local_start.z) >= minimum_size
@@ -3594,6 +4406,7 @@ func _set_owner_recursive(node: Node, scene_root: Node) -> void:
 		node.has_meta(ProceduralWall3DScript.GENERATED_META)
 		or node.has_meta(ProceduralFloor3DScript.GENERATED_META)
 		or node.has_meta(ProceduralPillar3DScript.GENERATED_META)
+		or node.has_meta(ProceduralRoof3DScript.GENERATED_META)
 		or node.has_meta(BuildingOpening3DScript.GENERATED_META)
 	):
 		node.owner = null
@@ -3652,6 +4465,8 @@ func _on_tool_mode_changed(mode: String) -> void:
 			_apply_floor_settings_to_coordinator(coordinator)
 		elif m_tool_mode == MODE_PILLAR:
 			_apply_pillar_settings_to_coordinator(coordinator)
+		elif m_tool_mode == MODE_ROOF:
+			_apply_roof_settings_to_coordinator(coordinator)
 		elif m_tool_mode == MODE_WALL:
 			_apply_wall_settings_to_coordinator(coordinator)
 	_set_status("Select a tool." if mode == MODE_SELECT else "Active tool: %s" % mode.capitalize())
@@ -3678,6 +4493,14 @@ func _on_pillar_settings_changed(settings: Dictionary) -> void:
 	var coordinator := _get_or_create_coordinator(false)
 	if coordinator != null and m_tool_mode == MODE_PILLAR:
 		_apply_pillar_settings_to_coordinator(coordinator)
+
+
+func _on_roof_settings_changed(settings: Dictionary) -> void:
+	m_roof_settings = settings.duplicate(true)
+	_clear_roof_preview()
+	var coordinator := _get_or_create_coordinator(false)
+	if coordinator != null and m_tool_mode == MODE_ROOF:
+		_apply_roof_settings_to_coordinator(coordinator)
 
 
 func _on_prop_settings_changed(settings: Dictionary) -> void:
