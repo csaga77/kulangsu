@@ -1,69 +1,19 @@
-[gd_scene format=4 uid="uid://cfu4p15moomn"]
+[gd_scene format=3 uid="uid://cfu4p15moomn"]
 
 [ext_resource type="Script" uid="uid://x2506i2l5pe7" path="res://scenes/tests/test_low_poly_building_editor_3d.gd" id="1_test"]
 [ext_resource type="Script" uid="uid://d0wnnw8bbd7l6" path="res://addons/low_poly_building_editor/building_editor_3d.gd" id="2_r6pl2"]
-[ext_resource type="Script" uid="uid://d0ohvd4itx6co" path="res://addons/low_poly_building_editor/roof_3d.gd" id="3_ry4tq"]
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_m1ui2"]
-specular_mode = 2
-vertex_color_use_as_albedo = true
-roughness = 0.94
-
-[sub_resource type="ArrayMesh" id="ArrayMesh_twmld"]
-_surfaces = [{
-"aabb": AABB(-0.2, -0.12, -0.2, 207.90001, 85.57, 170.9),
-"attribute_data": PackedByteArray("f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//"),
-"format": 34359742479,
-"index_count": 60,
-"index_data": PackedByteArray("AAACAAEAAwAFAAQABgAIAAcACQALAAoADAAOAA0ADwARABAAEgAUABMAFQAXABYAGAAaABkAGAAbABoAHAAeAB0AHAAfAB4AIAAiACEAIAAjACIAJAAmACUAJAAnACYAKAAqACkAKAArACoALAAuAC0ALAAvAC4A"),
-"primitive": 3,
-"uv_scale": Vector4(0, 0, 0, 0),
-"vertex_count": 48,
-"vertex_data": PackedByteArray("zcxMvgAAAADNzEy+zcxMvmbmqkIAgKpCNLNPQ2bmqkIAgKpCzcxMvgAAAADNzEy+NLNPQ2bmqkIAgKpCNLNPQwAAAADNzEy+zcxMvgAAAAAzsypDNLNPQwAAAAAzsypDNLNPQ2bmqkIAgKpCzcxMvgAAAAAzsypDNLNPQ2bmqkIAgKpCzcxMvmbmqkIAgKpCzcxMvo/C9b3NzEy+NLNPQ/WoqkIAgKpCzcxMvvWoqkIAgKpCzcxMvo/C9b3NzEy+NLNPQ4/C9b3NzEy+NLNPQ/WoqkIAgKpCzcxMvo/C9b0zsypDNLNPQ/WoqkIAgKpCNLNPQ4/C9b0zsypDzcxMvo/C9b0zsypDzcxMvvWoqkIAgKpCNLNPQ/WoqkIAgKpCzcxMvgAAAADNzEy+NLNPQwAAAADNzEy+NLNPQ4/C9b3NzEy+zcxMvo/C9b3NzEy+NLNPQwAAAADNzEy+NLNPQ2bmqkIAgKpCNLNPQ/WoqkIAgKpCNLNPQ4/C9b3NzEy+NLNPQ2bmqkIAgKpCNLNPQwAAAAAzsypDNLNPQ4/C9b0zsypDNLNPQ/WoqkIAgKpCNLNPQwAAAAAzsypDzcxMvgAAAAAzsypDzcxMvo/C9b0zsypDNLNPQ4/C9b0zsypDzcxMvgAAAAAzsypDzcxMvmbmqkIAgKpCzcxMvvWoqkIAgKpCzcxMvo/C9b0zsypDzcxMvmbmqkIAgKpCzcxMvgAAAADNzEy+zcxMvo/C9b3NzEy+zcxMvvWoqkIAgKpC/7///6oqVJX/v///qipUlf+///+qKlSV/7///6oqVJX/v///qipUlf+///+qKlSV/3//v1RVqar/f/+/VFWpqv9//79UVamq/3//v1RVqar/f/+/VFWpqv9//79UVamq/3//P6oqVJX/f/8/qipUlf9//z+qKlSV/3//P6oqVJX/f/8/qipUlf9//z+qKlSV/78AAFRVqar/vwAAVFWpqv+/AABUVamq/78AAFRVqar/vwAAVFWpqv+/AABUVamq//////9/AID//////38AgP//////fwCA//////9/AID///9//3//v////3//f/+/////f/9//7////9//3//v////3//f/+/////f/9//7////9//3//v////3//f/+//3//f/9/AID/f/9//38AgP9//3//fwCA/3//f/9/AIAAAP9//3//vwAA/3//f/+/AAD/f/9//78AAP9//3//vwAA/3//f/+/AAD/f/9//78AAP9//3//vwAA/3//f/+/")
-}]
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_s735c"]
-specular_mode = 2
-vertex_color_use_as_albedo = true
-roughness = 0.94
-
-[sub_resource type="ArrayMesh" id="ArrayMesh_ey01b"]
-_surfaces = [{
-"aabb": AABB(-0.2, -0.12, -0.2, 360.90002, 61.32, 122.399994),
-"attribute_data": PackedByteArray("f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//f1Y//39WP/9/Vj//"),
-"format": 34359742479,
-"index_count": 60,
-"index_data": PackedByteArray("AAACAAEAAwAFAAQABgAIAAcACQALAAoADAAOAA0ADwARABAAEgAUABMAFQAXABYAGAAaABkAGAAbABoAHAAeAB0AHAAfAB4AIAAiACEAIAAjACIAJAAmACUAJAAnACYAKAAqACkAKAArACoALAAuAC0ALAAvAC4A"),
-"primitive": 3,
-"uv_scale": Vector4(0, 0, 0, 0),
-"vertex_count": 48,
-"vertex_data": PackedByteArray("zcxMvgAAAADNzEy+zcxMvs3MdEIAAHRCmlm0Q83MdEIAAHRCzcxMvgAAAADNzEy+mlm0Q83MdEIAAHRCmlm0QwAAAADNzEy+zcxMvgAAAABmZvRCmlm0QwAAAABmZvRCmlm0Q83MdEIAAHRCzcxMvgAAAABmZvRCmlm0Q83MdEIAAHRCzcxMvs3MdEIAAHRCzcxMvo/C9b3NzEy+mlm0Q+xRdEIAAHRCzcxMvuxRdEIAAHRCzcxMvo/C9b3NzEy+mlm0Q4/C9b3NzEy+mlm0Q+xRdEIAAHRCzcxMvo/C9b1mZvRCmlm0Q+xRdEIAAHRCmlm0Q4/C9b1mZvRCzcxMvo/C9b1mZvRCzcxMvuxRdEIAAHRCmlm0Q+xRdEIAAHRCzcxMvgAAAADNzEy+mlm0QwAAAADNzEy+mlm0Q4/C9b3NzEy+zcxMvo/C9b3NzEy+mlm0QwAAAADNzEy+mlm0Q83MdEIAAHRCmlm0Q+xRdEIAAHRCmlm0Q4/C9b3NzEy+mlm0Q83MdEIAAHRCmlm0QwAAAABmZvRCmlm0Q4/C9b1mZvRCmlm0Q+xRdEIAAHRCmlm0QwAAAABmZvRCzcxMvgAAAABmZvRCzcxMvo/C9b1mZvRCmlm0Q4/C9b1mZvRCzcxMvgAAAABmZvRCzcxMvs3MdEIAAHRCzcxMvuxRdEIAAHRCzcxMvo/C9b1mZvRCzcxMvs3MdEIAAHRCzcxMvgAAAADNzEy+zcxMvo/C9b3NzEy+zcxMvuxRdEIAAHRC/7///6oqVJX/v///qipUlf+///+qKlSV/7///6oqVJX/v///qipUlf+///+qKlSV/3//v1VVqar/f/+/VVWpqv9//79VVamq/3//v1VVqar/f/+/VVWpqv9//79VVamq/3//P6oqVJX/f/8/qipUlf9//z+qKlSV/3//P6oqVJX/f/8/qipUlf9//z+qKlSV/78AAFVVqar/vwAAVVWpqv+/AABVVamq/78AAFVVqar/vwAAVVWpqv+/AABVVamq//////9/AID//////38AgP//////fwCA//////9/AID///9//3//v////3//f/+/////f/9//7////9//3//v////3//f/+/////f/9//7////9//3//v////3//f/+//3//f/9/AID/f/9//38AgP9//3//fwCA/3//f/9/AIAAAP9//3//vwAA/3//f/+/AAD/f/9//78AAP9//3//vwAA/3//f/+/AAD/f/9//78AAP9//3//vwAA/3//f/+/")
-}]
 
 [node name="test_low_poly_building_editor_3d" type="Node3D" unique_id=2026190119]
 script = ExtResource("1_test")
 
 [node name="BuildingEditor3D" type="Node3D" parent="." unique_id=251857457]
 script = ExtResource("2_r6pl2")
-default_roof_height = 45.0
-default_roof_rotation_degrees = 90.0
-
-[node name="Roof3D2" type="MeshInstance3D" parent="BuildingEditor3D" unique_id=1782047026]
-transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -17.999996, 2.4, -292.5)
-material_override = SubResource("StandardMaterial3D_m1ui2")
-mesh = SubResource("ArrayMesh_twmld")
-script = ExtResource("3_ry4tq")
-start_point = Vector3(-17.999996, 2.4, -292.5)
-end_point = Vector3(189.50002, 2.4, -122)
-roof_height = 45.0
-roof_rotation_degrees = 90.0
-
-[node name="Roof3D3" type="MeshInstance3D" parent="BuildingEditor3D" unique_id=920058877]
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 213, 2.4, -299.50003)
-material_override = SubResource("StandardMaterial3D_s735c")
-mesh = SubResource("ArrayMesh_ey01b")
-script = ExtResource("3_ry4tq")
-start_point = Vector3(213, 2.4, -299.50003)
-end_point = Vector3(573.5, 2.4, -177.50003)
-roof_height = 45.0
-roof_rotation_degrees = 180.0
+default_pillar_style = "square"
+default_pillar_lower_rim_height = 0.12
+default_pillar_lower_rim_outset = 0.05
+default_pillar_upper_rim_height = 0.12
+default_pillar_upper_rim_outset = 0.05
+default_roof_style = "hip"
+default_roof_height = 25.0
+default_roof_hip_gable_height = 1.0
+default_roof_debug_wireframe = true

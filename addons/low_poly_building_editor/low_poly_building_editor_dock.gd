@@ -643,6 +643,28 @@ func _on_mode_selected(index: int) -> void:
 	tool_mode_changed.emit(mode)
 
 
+func select_tool_mode(mode: String) -> void:
+	# Programmatic entry point (used by the 3D viewport toolbar) that mirrors a
+	# user choosing a tool in the dock's option button.
+	var index := _index_for_tool_mode(mode)
+	if index < 0:
+		return
+	if m_mode_option != null:
+		m_mode_option.select(index)
+	_update_shortcuts_for_mode(mode)
+	_update_visible_tool_section(mode)
+	tool_mode_changed.emit(mode)
+
+
+func _index_for_tool_mode(mode: String) -> int:
+	if m_mode_option == null:
+		return -1
+	for i in range(m_mode_option.item_count):
+		if String(m_mode_option.get_item_metadata(i)) == mode:
+			return i
+	return -1
+
+
 func _update_shortcuts_for_mode(mode: String) -> void:
 	if m_shortcuts_label == null:
 		return

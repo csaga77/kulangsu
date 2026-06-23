@@ -8,7 +8,9 @@
 ## User / Player Experience
 
 - This is a developer-facing tool, not runtime player UI.
-- Authors enable the `Low-Poly Building Editor` plugin, use its dock to choose `Wall`, `Floor`, `Pillar`, `Roof`, `Prop`, `Door`, or `Window`, and place content directly in the 3D viewport.
+- Authors enable the `Low-Poly Building Editor` plugin, then choose `Wall`, `Floor`, `Pillar`, `Roof`, `Prop`, `Door`, or `Window` from either the dock's tool dropdown or the building tool buttons added to the 3D viewport toolbar, and place content directly in the 3D viewport.
+- The 3D viewport toolbar exposes one toggle button per building tool (next to Godot's native Select/Move/Rotate/Scale buttons) so authors can switch tools without moving focus to the dock; the toolbar and dock stay in sync, so selecting a tool in either place updates both.
+- The building tool buttons are mutually exclusive with the native 3D viewport selection modes (Select, Move, Rotate, Scale): activating a building tool clears the native mode highlight, and clicking any native mode button (or its shortcut) deactivates the building tool and returns to that native mode. The native `Select` mode is the resting "no building tool" state, so the toolbar does not duplicate a Select button.
 - The dock's top section shows shortcuts for the currently selected tool, followed by live status text and only that tool's properties/configuration section.
 - Wall drawing supports click-start/click-end and click-drag-release flows with live snapped preview geometry; new walls draw on the dock's persisted parent-local base Y plane.
 - Floor drawing supports click-corner/click-corner and click-drag-release flows with live snapped preview geometry; new floors are rectangular slabs whose top surface sits on the dock's persisted parent-local base Y plane.
@@ -76,7 +78,9 @@
 ## Architecture / Ownership
 
 - The editor plugin lives under `addons/low_poly_building_editor/`.
-- The plugin owns dock UI, viewport input forwarding, previews, and undo/redo packing.
+- The plugin owns dock UI, the 3D viewport toolbar tool selection (added to `CONTAINER_SPATIAL_EDITOR_MENU`), viewport input forwarding, previews, and undo/redo packing.
+- The dock owns the canonical tool-mode selection state; the viewport toolbar drives it through the dock's `select_tool_mode()` entry point, and the plugin's `_on_tool_mode_changed` handler reflects the active mode back onto the toolbar buttons.
+- The plugin keeps building tools mutually exclusive with the native viewport modes by locating the native toggle buttons in the spatial editor menu bar: it clears their highlight while a building tool is active and listens to their `pressed` signal to deactivate the building tool when a native mode is chosen. If the native buttons cannot be located, the toolbar still works on its own without enforcing the exclusivity.
 - A lightweight 3D viewport overlay plus root-level editor input capture handle placement clicks while a building tool is active so Godot's default select/transform mouse handling does not compete with wall, prop, or window placement. The root-level capture only acts over a 3D viewport that is currently visible on screen, so clicks in docks, the bottom panel, or other main screens (and hidden split-view viewports) are never intercepted.
 - Viewport picking uses editor-time ray math against wall boxes, floor boxes, finite pillar cylinders, and roof bounds plus a ground-plane fallback, avoiding `direct_space_state` access during editor GUI input.
 - `BuildingEditor3D` owns snapping, default wall settings, wall lookup, collinear merge target detection, and geometry-only intersecting-wall clip refresh.
@@ -100,7 +104,7 @@
 
 ## Signals / Nodes / Data Flow
 
-- Dock signals update active tool mode and wall/floor/pillar/roof/prop/window settings.
+- Dock signals update active tool mode and wall/floor/pillar/roof/prop/window settings; the 3D viewport toolbar buttons call the dock's `select_tool_mode()` so the same `tool_mode_changed` signal carries selections from either UI.
 - The plugin forwards 3D viewport mouse/key input while a building tool is active.
 - The plugin commits scene mutations through `EditorUndoRedoManager`.
 - `Wall3D` watches direct child opening signatures and segment data in editor mode and rebuilds when openings move or segments change.

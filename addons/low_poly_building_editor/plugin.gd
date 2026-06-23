@@ -30,11 +30,32 @@ const PILLAR_EDIT_MOVE := 0
 const PILLAR_EDIT_RADIUS := 1
 const OPENING_SILL_META := &"building_opening_sill_height"
 const OPENING_ALLOW_BASE_META := &"building_opening_allow_base_edge"
+# Temporary diagnostic: writes the 3D toolbar tree to native_buttons_debug.log
+# when the native mode buttons cannot be located. Remove once exclusivity works.
+const DEBUG_NATIVE_BUTTONS := true
+
+# The native 3D viewport Select mode is the "no building tool" state, so the
+# toolbar only exposes the building tools and stays mutually exclusive with the
+# native Select/Move/Rotate/Scale buttons.
+const TOOLBAR_TOOLS := [
+	{"mode": MODE_WALL, "label": "Wall", "tooltip": "Draw grid-snapped walls."},
+	{"mode": MODE_FLOOR, "label": "Floor", "tooltip": "Draw rectangular floor slabs."},
+	{"mode": MODE_PILLAR, "label": "Pillar", "tooltip": "Place low-poly pillars."},
+	{"mode": MODE_ROOF, "label": "Roof", "tooltip": "Draw low-poly roofs."},
+	{"mode": MODE_PROP, "label": "Prop", "tooltip": "Place prop scenes."},
+	{"mode": MODE_DOOR, "label": "Door", "tooltip": "Cut door openings."},
+	{"mode": MODE_WINDOW, "label": "Window", "tooltip": "Cut window openings."},
+]
 
 var m_dock: Control
 var m_editor_dock: EditorDock
 var m_input_capture: Node
 var m_viewport_overlays: Array[Control] = []
+var m_viewport_toolbar: HBoxContainer
+var m_toolbar_buttons := {}
+var m_native_tool_buttons: Array[Button] = []
+var m_native_active_button: Button
+var m_handling_native_click := false
 var m_tool_mode := MODE_SELECT
 var m_wall_settings := {
 	"grid_step": 0.5,
@@ -252,6 +273,7 @@ func _enter_tree() -> void:
 	m_editor_dock.layout_key = "low_poly_building_editor"
 	m_editor_dock.add_child(m_dock)
 	add_dock(m_editor_dock)
+	_build_viewport_toolbar()
 	scene_changed.connect(_on_scene_changed)
 	_refresh_dock_context()
 	_attach_input_capture()
@@ -271,6 +293,7 @@ func _exit_tree() -> void:
 	_clear_roof_preview()
 	_clear_prop_preview()
 	_clear_viewport_overlays()
+	_clear_viewport_toolbar()
 	_clear_input_capture()
 	if scene_changed.is_connected(_on_scene_changed):
 		scene_changed.disconnect(_on_scene_changed)
@@ -4656,6 +4679,228 @@ func _select_node(node: Node) -> void:
 	get_editor_interface().edit_node(node)
 
 
+func _build_viewport_toolbar() -> void:
+	if m_viewport_toolbar != null:
+		return
+	m_viewport_toolbar = HBoxContainer.new()
+	m_viewport_toolbar.name = "LowPolyBuildingEditorToolbar"
+
+	m_viewport_toolbar.add_child(VSeparator.new())
+
+	var title := Label.new()
+	title.text = "Building:"
+	title.tooltip_text = "Low-Poly Building Editor tool selection."
+	m_viewport_toolbar.add_child(title)
+
+	m_toolbar_buttons.clear()
+	for tool_info in TOOLBAR_TOOLS:
+		var mode := String(tool_info["mode"])
+		var button := Button.new()
+		button.toggle_mode = true
+		button.flat = true
+		button.text = String(tool_info["label"])
+		button.tooltip_text = String(tool_info["tooltip"])
+		button.focus_mode = Control.FOCUS_NONE
+		button.set_pressed_no_signal(mode == m_tool_mode)
+		button.pressed.connect(_on_toolbar_tool_selected.bind(mode))
+		m_viewport_toolbar.add_child(button)
+		m_toolbar_buttons[mode] = button
+
+	add_control_to_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, m_viewport_toolbar)
+	# Defer so the control is reparented into the spatial editor menu bar before
+	# we look up the native Select/Move/Rotate/Scale buttons beside it.
+	_collect_native_tool_buttons.call_deferred()
+
+
+func _clear_viewport_toolbar() -> void:
+	_release_native_tool_buttons()
+	if m_viewport_toolbar == null:
+		return
+	remove_control_from_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, m_viewport_toolbar)
+	m_viewport_toolbar.queue_free()
+	m_viewport_toolbar = null
+	m_toolbar_buttons.clear()
+
+
+func _on_toolbar_tool_selected(mode: String) -> void:
+	# Route through the dock so its option button, shortcuts, and visible tool
+	# section stay in sync; the dock re-emits tool_mode_changed back to us.
+	if m_dock != null and m_dock.has_method("select_tool_mode"):
+		m_dock.call("select_tool_mode", mode)
+	else:
+		_on_tool_mode_changed(mode)
+
+
+func _sync_toolbar_tool_mode(mode: String) -> void:
+	# Setting button_pressed without a signal keeps the building buttons a radio
+	# set without looping back through "pressed".
+	for tool_mode in m_toolbar_buttons:
+		var button: Button = m_toolbar_buttons[tool_mode]
+		if button != null:
+			button.set_pressed_no_signal(tool_mode == mode)
+	_sync_native_tool_buttons(mode)
+
+
+func _collect_native_tool_buttons() -> void:
+	# Find the native Select/Move/Rotate/Scale mode buttons so the building tools
+	# can stay mutually exclusive with them. Their layout/order in the spatial
+	# editor toolbar is not guaranteed, so search the menu bar and climb a few
+	# ancestors until the buttons are located rather than assuming positions.
+	_release_native_tool_buttons()
+	if m_viewport_toolbar == null:
+		return
+	var search_root: Node = m_viewport_toolbar.get_parent()
+	var found: Array[Button] = []
+	var hops := 0
+	while search_root != null and hops < 6:
+		found = _find_native_mode_buttons(search_root)
+		if found.size() >= 2:
+			break
+		search_root = search_root.get_parent()
+		hops += 1
+	for native_button in found:
+		m_native_tool_buttons.append(native_button)
+		if not native_button.pressed.is_connected(_on_native_tool_pressed):
+			native_button.pressed.connect(_on_native_tool_pressed)
+	if DEBUG_NATIVE_BUTTONS:
+		_dump_native_button_debug()
+	if m_native_tool_buttons.is_empty():
+		push_warning("Low-Poly Building Editor: could not locate the native 3D viewport mode buttons; building-tool exclusivity is disabled.")
+		return
+	_update_native_active_button()
+	_sync_native_tool_buttons(m_tool_mode)
+
+
+func _find_native_mode_buttons(root: Node) -> Array[Button]:
+	var result: Array[Button] = []
+	if root == null or root == m_viewport_toolbar:
+		return result
+	for child in root.get_children():
+		if child == m_viewport_toolbar:
+			continue
+		if child is Button and child.get_class() == "Button" and (child as Button).toggle_mode:
+			if _is_native_mode_button(child as Button):
+				result.append(child as Button)
+		result.append_array(_find_native_mode_buttons(child))
+	return result
+
+
+func _is_native_mode_button(button: Button) -> bool:
+	# Match by the Select/Move/Rotate/Scale shortcut keys (Q/W/E/R) first, which
+	# is locale-independent. The buttons are icon-only, so their label only shows
+	# up in the effective tooltip (get_tooltip), not in tooltip_text.
+	if _button_has_unmodified_shortcut_key(button, [KEY_Q, KEY_W, KEY_E, KEY_R]):
+		return true
+	var tip := button.get_tooltip(Vector2.ZERO).to_lower()
+	return (
+		tip.contains("select mode")
+		or tip.contains("move mode")
+		or tip.contains("rotate mode")
+		or tip.contains("scale mode")
+	)
+
+
+func _button_has_unmodified_shortcut_key(button: Button, keys: Array) -> bool:
+	var shortcut := button.shortcut
+	if shortcut == null:
+		return false
+	for event in shortcut.events:
+		if event is InputEventKey:
+			var key_event := event as InputEventKey
+			if key_event.shift_pressed or key_event.ctrl_pressed or key_event.alt_pressed or key_event.meta_pressed:
+				continue
+			if keys.has(key_event.keycode) or keys.has(key_event.physical_keycode):
+				return true
+	return false
+
+
+func _dump_native_button_debug() -> void:
+	var lines := PackedStringArray()
+	lines.append("toolbar parent: %s" % str(m_viewport_toolbar.get_parent()))
+	lines.append("matched native buttons: %d" % m_native_tool_buttons.size())
+	for matched in m_native_tool_buttons:
+		lines.append("  MATCH tip='%s' shortcut='%s' pressed=%s" % [
+			matched.get_tooltip(Vector2.ZERO),
+			"" if matched.shortcut == null else matched.shortcut.get_as_text(),
+			str(matched.button_pressed),
+		])
+	var ancestor: Node = m_viewport_toolbar.get_parent()
+	for i in range(3):
+		if ancestor == null:
+			break
+		lines.append("=== ancestor[%d]: %s (%s) ===" % [i, ancestor.name, ancestor.get_class()])
+		_dump_node_tree(ancestor, 0, lines)
+		ancestor = ancestor.get_parent()
+	var file := FileAccess.open("res://addons/low_poly_building_editor/native_buttons_debug.log", FileAccess.WRITE)
+	if file != null:
+		file.store_string("\n".join(lines))
+		file.close()
+
+
+func _dump_node_tree(node: Node, depth: int, lines: PackedStringArray) -> void:
+	if depth > 4:
+		return
+	for child in node.get_children():
+		var info := "  ".repeat(depth + 1) + "%s [%s]" % [child.name, child.get_class()]
+		if child is Button:
+			var btn := child as Button
+			info += " toggle=%s pressed=%s text='%s' tip='%s' shortcut='%s'" % [
+				str(btn.toggle_mode),
+				str(btn.button_pressed),
+				btn.text,
+				btn.get_tooltip(Vector2.ZERO),
+				"" if btn.shortcut == null else btn.shortcut.get_as_text(),
+			]
+		lines.append(info)
+		_dump_node_tree(child, depth + 1, lines)
+
+
+func _release_native_tool_buttons() -> void:
+	for native_button in m_native_tool_buttons:
+		if native_button != null and is_instance_valid(native_button):
+			if native_button.pressed.is_connected(_on_native_tool_pressed):
+				native_button.pressed.disconnect(_on_native_tool_pressed)
+	m_native_tool_buttons.clear()
+	m_native_active_button = null
+
+
+func _on_native_tool_pressed() -> void:
+	# A native viewport selection mode was chosen; deactivate any building tool
+	# so the two button sets stay mutually exclusive.
+	_update_native_active_button()
+	if m_tool_mode == MODE_SELECT:
+		return
+	m_handling_native_click = true
+	if m_dock != null and m_dock.has_method("select_tool_mode"):
+		m_dock.call("select_tool_mode", MODE_SELECT)
+	else:
+		_on_tool_mode_changed(MODE_SELECT)
+	m_handling_native_click = false
+
+
+func _update_native_active_button() -> void:
+	for native_button in m_native_tool_buttons:
+		if native_button != null and is_instance_valid(native_button) and native_button.button_pressed:
+			m_native_active_button = native_button
+			return
+
+
+func _sync_native_tool_buttons(mode: String) -> void:
+	if m_native_tool_buttons.is_empty():
+		return
+	if mode == MODE_SELECT:
+		# A native click already reflects the user's choice; only restore the
+		# native highlight when a building tool is cleared from our own UI.
+		if m_handling_native_click:
+			return
+		if m_native_active_button != null and is_instance_valid(m_native_active_button):
+			m_native_active_button.set_pressed_no_signal(true)
+	else:
+		for native_button in m_native_tool_buttons:
+			if native_button != null and is_instance_valid(native_button):
+				native_button.set_pressed_no_signal(false)
+
+
 func _get_editor_icon(icon_name: StringName) -> Texture2D:
 	var base_control := get_editor_interface().get_base_control()
 	if base_control == null:
@@ -4689,6 +4934,7 @@ func _refresh_dock_context() -> void:
 
 func _on_tool_mode_changed(mode: String) -> void:
 	m_tool_mode = mode
+	_sync_toolbar_tool_mode(mode)
 	_cancel_active_preview()
 	if m_tool_mode != MODE_SELECT:
 		_activate_3d_editor_context()
