@@ -11,6 +11,7 @@ const STYLE_HIP := "hip"
 const VALID_STYLES := [STYLE_FLAT, STYLE_SHED, STYLE_GABLE, STYLE_HIP]
 const RECT_EPSILON := 0.001
 const MAX_ROOF_ANGLE_DEGREES := 89.0
+const TRIANGLE_WIREFRAME_NODE_NAME := "RoofTriangleWireframe"
 
 @export var rebuild := false:
 	set(value):
@@ -84,12 +85,31 @@ const MAX_ROOF_ANGLE_DEGREES := 89.0
 		covered_rects = _sanitize_covered_rects(value)
 		_request_rebuild()
 
+@export var covered_polygons: Array[PackedVector2Array] = []:
+	set(value):
+		covered_polygons = _sanitize_covered_polygons(value)
+		_request_rebuild()
+
 @export var build_on_ready := true
 @export var generate_collision := true:
 	set(value):
 		if generate_collision == value:
 			return
 		generate_collision = value
+		_request_rebuild()
+
+@export var debug_show_triangle_wireframe := false:
+	set(value):
+		if debug_show_triangle_wireframe == value:
+			return
+		debug_show_triangle_wireframe = value
+		_request_rebuild()
+
+@export var debug_triangle_wireframe_color := Color(0.05, 0.95, 1.0, 1.0):
+	set(value):
+		if debug_triangle_wireframe_color == value:
+			return
+		debug_triangle_wireframe_color = value
 		_request_rebuild()
 
 var m_is_ready := false
@@ -121,14 +141,16 @@ func set_roof_corners_rotation_and_covers(
 	new_start: Vector3,
 	new_end: Vector3,
 	new_rotation_degrees: float,
-	new_covered_rects: Array[Rect2]
+	new_covered_rects: Array[Rect2],
+	new_covered_polygons: Array[PackedVector2Array] = []
 ) -> void:
 	set_roof_corners_rotation_height_and_covers(
 		new_start,
 		new_end,
 		new_rotation_degrees,
 		roof_height,
-		new_covered_rects
+		new_covered_rects,
+		new_covered_polygons
 	)
 
 
@@ -137,19 +159,31 @@ func set_roof_corners_rotation_height_and_covers(
 	new_end: Vector3,
 	new_rotation_degrees: float,
 	new_height: float,
-	new_covered_rects: Array[Rect2]
+	new_covered_rects: Array[Rect2],
+	new_covered_polygons: Array[PackedVector2Array] = []
 ) -> void:
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
 	roof_rotation_degrees = new_rotation_degrees
 	roof_height = new_height
 	covered_rects = new_covered_rects
+	covered_polygons = new_covered_polygons
 	_sync_transform_from_points()
 	rebuild_roof_mesh()
 
 
 func set_covered_rects(new_covered_rects: Array[Rect2]) -> void:
 	covered_rects = new_covered_rects
+	covered_polygons = []
+	rebuild_roof_mesh()
+
+
+func set_covered_regions(
+	new_covered_rects: Array[Rect2],
+	new_covered_polygons: Array[PackedVector2Array]
+) -> void:
+	covered_rects = new_covered_rects
+	covered_polygons = new_covered_polygons
 	rebuild_roof_mesh()
 
 
@@ -158,6 +192,13 @@ func get_covered_rects() -> Array[Rect2]:
 	for rect in covered_rects:
 		rects.append(rect)
 	return rects
+
+
+func get_covered_polygons() -> Array[PackedVector2Array]:
+	var polygons: Array[PackedVector2Array] = []
+	for polygon in covered_polygons:
+		polygons.append(PackedVector2Array(polygon))
+	return polygons
 
 
 func get_visible_footprint_rects() -> Array[Rect2]:
@@ -186,10 +227,17 @@ func get_visible_render_rects() -> Array[Rect2]:
 	var size := get_roof_size()
 	if size.x <= RECT_EPSILON or size.y <= RECT_EPSILON:
 		return []
+	if !covered_polygons.is_empty():
+		return _visible_roof_polygon_bounds(size, covered_polygons)
 	return _visible_roof_rects(get_roof_render_rect(), covered_rects)
 
 
 func has_visible_roof_geometry() -> bool:
+	var size := get_roof_size()
+	if size.x <= RECT_EPSILON or size.y <= RECT_EPSILON:
+		return false
+	if !covered_polygons.is_empty():
+		return _has_visible_roof_polygon_area(size, covered_polygons)
 	return !get_visible_render_rects().is_empty()
 
 
@@ -228,6 +276,16 @@ func get_roof_size() -> Vector2:
 	return Vector2(absf(end_point.x - start_point.x), absf(end_point.z - start_point.z))
 
 
+func get_roof_height_at_local_render_point(local_render_point: Vector2) -> float:
+	return roof_surface_height_for_style(
+		get_roof_style(),
+		get_roof_size(),
+		roof_overhang,
+		roof_height,
+		local_render_point
+	)
+
+
 func get_roof_angle_degrees() -> float:
 	return _clamped_roof_angle_degrees(roof_height)
 
@@ -259,6 +317,175 @@ static func hip_height_for_angle_degrees(size: Vector2, overhang: float, angle_d
 static func hip_roof_run_for_size(size: Vector2, overhang: float) -> float:
 	var shortest_depth := minf(maxf(size.x, 0.0), maxf(size.y, 0.0))
 	return maxf(shortest_depth * 0.5 + maxf(overhang, 0.0), 0.0)
+
+
+static func roof_generated_height_for_style(
+	style: String,
+	size: Vector2,
+	overhang: float,
+	angle_degrees: float
+) -> float:
+	match style:
+		STYLE_SHED:
+			return shed_height_for_angle_degrees(size.y, overhang, angle_degrees)
+		STYLE_GABLE:
+			return gable_height_for_angle_degrees(size.y, overhang, angle_degrees)
+		STYLE_HIP:
+			return hip_height_for_angle_degrees(size, overhang, angle_degrees)
+	return 0.0
+
+
+static func roof_surface_height_for_style(
+	style: String,
+	size: Vector2,
+	overhang: float,
+	angle_degrees: float,
+	local_render_point: Vector2
+) -> float:
+	var height := roof_generated_height_for_style(style, size, overhang, angle_degrees)
+	if height <= 0.0:
+		return 0.0
+	var resolved_overhang := maxf(overhang, 0.0)
+	var min_x := -resolved_overhang
+	var max_x := size.x + resolved_overhang
+	var min_z := -resolved_overhang
+	var max_z := size.y + resolved_overhang
+	var clamped_x := clampf(local_render_point.x, min_x, max_x)
+	var clamped_z := clampf(local_render_point.y, min_z, max_z)
+	match style:
+		STYLE_SHED:
+			return height * clampf((clamped_z - min_z) / maxf(max_z - min_z, RECT_EPSILON), 0.0, 1.0)
+		STYLE_HIP:
+			var x_fraction := minf(
+				(clamped_x - min_x) / maxf((max_x - min_x) * 0.5, RECT_EPSILON),
+				(max_x - clamped_x) / maxf((max_x - min_x) * 0.5, RECT_EPSILON)
+			)
+			var z_fraction := minf(
+				(clamped_z - min_z) / maxf((max_z - min_z) * 0.5, RECT_EPSILON),
+				(max_z - clamped_z) / maxf((max_z - min_z) * 0.5, RECT_EPSILON)
+			)
+			return height * clampf(minf(x_fraction, z_fraction), 0.0, 1.0)
+		STYLE_GABLE:
+			var center_z := (min_z + max_z) * 0.5
+			var half_depth := maxf((max_z - min_z) * 0.5, RECT_EPSILON)
+			return height * clampf(1.0 - absf(clamped_z - center_z) / half_depth, 0.0, 1.0)
+	return 0.0
+
+
+static func roof_top_triangles_for_style(
+	style: String,
+	full_size: Vector2,
+	overhang: float,
+	angle_degrees: float
+) -> Array[PackedVector3Array]:
+	var resolved_overhang := maxf(overhang, 0.0)
+	var x0 := -resolved_overhang
+	var x1 := full_size.x + resolved_overhang
+	var z0 := -resolved_overhang
+	var z1 := full_size.y + resolved_overhang
+	var center_x := (x0 + x1) * 0.5
+	var center_z := (z0 + z1) * 0.5
+	var height := roof_generated_height_for_style(style, full_size, resolved_overhang, angle_degrees)
+	var triangles: Array[PackedVector3Array] = []
+	match style:
+		STYLE_SHED:
+			var p0 := Vector3(x0, 0.0, z0)
+			var p1 := Vector3(x1, 0.0, z0)
+			var p2 := Vector3(x1, height, z1)
+			var p3 := Vector3(x0, height, z1)
+			triangles.append(PackedVector3Array([p0, p3, p2]))
+			triangles.append(PackedVector3Array([p0, p2, p1]))
+		STYLE_HIP:
+			var p0 := Vector3(x0, 0.0, z0)
+			var p1 := Vector3(x1, 0.0, z0)
+			var p2 := Vector3(x1, 0.0, z1)
+			var p3 := Vector3(x0, 0.0, z1)
+			var apex := Vector3(center_x, height, center_z)
+			triangles.append(PackedVector3Array([p0, apex, p1]))
+			triangles.append(PackedVector3Array([p1, apex, p2]))
+			triangles.append(PackedVector3Array([p2, apex, p3]))
+			triangles.append(PackedVector3Array([p3, apex, p0]))
+		STYLE_GABLE:
+			var p0 := Vector3(x0, 0.0, z0)
+			var p1 := Vector3(x1, 0.0, z0)
+			var p2 := Vector3(x1, 0.0, z1)
+			var p3 := Vector3(x0, 0.0, z1)
+			var ridge_left := Vector3(x0, height, center_z)
+			var ridge_right := Vector3(x1, height, center_z)
+			triangles.append(PackedVector3Array([p0, ridge_left, ridge_right]))
+			triangles.append(PackedVector3Array([p0, ridge_right, p1]))
+			triangles.append(PackedVector3Array([p3, p2, ridge_right]))
+			triangles.append(PackedVector3Array([p3, ridge_right, ridge_left]))
+		_:
+			var p0 := Vector3(x0, 0.0, z0)
+			var p1 := Vector3(x1, 0.0, z0)
+			var p2 := Vector3(x1, 0.0, z1)
+			var p3 := Vector3(x0, 0.0, z1)
+			triangles.append(PackedVector3Array([p0, p3, p2]))
+			triangles.append(PackedVector3Array([p0, p2, p1]))
+	return triangles
+
+
+static func roof_top_faces_for_style(
+	style: String,
+	full_size: Vector2,
+	overhang: float,
+	angle_degrees: float
+) -> Array[Dictionary]:
+	var resolved_overhang := maxf(overhang, 0.0)
+	var x0 := -resolved_overhang
+	var x1 := full_size.x + resolved_overhang
+	var z0 := -resolved_overhang
+	var z1 := full_size.y + resolved_overhang
+	var center_x := (x0 + x1) * 0.5
+	var center_z := (z0 + z1) * 0.5
+	var height := roof_generated_height_for_style(style, full_size, resolved_overhang, angle_degrees)
+	var faces: Array[Dictionary] = []
+	match style:
+		STYLE_SHED:
+			var p0 := Vector3(x0, 0.0, z0)
+			var p1 := Vector3(x1, 0.0, z0)
+			var p2 := Vector3(x1, height, z1)
+			var p3 := Vector3(x0, height, z1)
+			faces.append({
+				"vertices": PackedVector3Array([p0, p3, p2, p1]),
+				"plane": PackedVector3Array([p0, p3, p2]),
+			})
+		STYLE_HIP:
+			var p0 := Vector3(x0, 0.0, z0)
+			var p1 := Vector3(x1, 0.0, z0)
+			var p2 := Vector3(x1, 0.0, z1)
+			var p3 := Vector3(x0, 0.0, z1)
+			var apex := Vector3(center_x, height, center_z)
+			faces.append({"vertices": PackedVector3Array([p0, apex, p1]), "plane": PackedVector3Array([p0, apex, p1])})
+			faces.append({"vertices": PackedVector3Array([p1, apex, p2]), "plane": PackedVector3Array([p1, apex, p2])})
+			faces.append({"vertices": PackedVector3Array([p2, apex, p3]), "plane": PackedVector3Array([p2, apex, p3])})
+			faces.append({"vertices": PackedVector3Array([p3, apex, p0]), "plane": PackedVector3Array([p3, apex, p0])})
+		STYLE_GABLE:
+			var p0 := Vector3(x0, 0.0, z0)
+			var p1 := Vector3(x1, 0.0, z0)
+			var p2 := Vector3(x1, 0.0, z1)
+			var p3 := Vector3(x0, 0.0, z1)
+			var ridge_left := Vector3(x0, height, center_z)
+			var ridge_right := Vector3(x1, height, center_z)
+			faces.append({
+				"vertices": PackedVector3Array([p0, ridge_left, ridge_right, p1]),
+				"plane": PackedVector3Array([p0, ridge_left, ridge_right]),
+			})
+			faces.append({
+				"vertices": PackedVector3Array([p3, p2, ridge_right, ridge_left]),
+				"plane": PackedVector3Array([p3, p2, ridge_right]),
+			})
+		_:
+			var p0 := Vector3(x0, 0.0, z0)
+			var p1 := Vector3(x1, 0.0, z0)
+			var p2 := Vector3(x1, 0.0, z1)
+			var p3 := Vector3(x0, 0.0, z1)
+			faces.append({
+				"vertices": PackedVector3Array([p0, p3, p2, p1]),
+				"plane": PackedVector3Array([p0, p3, p2]),
+			})
+	return faces
 
 
 static func roof_corners_from_base_points(base_start: Vector3, base_end: Vector3, rotation_degrees: float) -> Dictionary:
@@ -316,15 +543,23 @@ func rebuild_roof_mesh(rebuild_collision: bool = true) -> void:
 	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
 	var full_render_rect := get_roof_render_rect()
-	var visible_rects := get_visible_render_rects()
-	if visible_rects.is_empty():
+	var sanitized_polygons := _sanitize_covered_polygons(covered_polygons)
+	if !sanitized_polygons.is_empty():
+		_append_roof_polygon_clip_geometry(size, sanitized_polygons, vertices, normals, colors, indices)
+	else:
+		var visible_rects := get_visible_render_rects()
+		if visible_rects.is_empty():
+			mesh = null
+			return
+		if visible_rects.size() == 1 and _rects_match(visible_rects[0], full_render_rect):
+			_append_roof_geometry(size.x, size.y, vertices, normals, colors, indices)
+		else:
+			for visible_rect in visible_rects:
+				_append_roof_piece_geometry(size, visible_rect, vertices, normals, colors, indices)
+
+	if vertices.is_empty() or indices.is_empty():
 		mesh = null
 		return
-	if visible_rects.size() == 1 and _rects_match(visible_rects[0], full_render_rect):
-		_append_roof_geometry(size.x, size.y, vertices, normals, colors, indices)
-	else:
-		for visible_rect in visible_rects:
-			_append_roof_piece_geometry(size, visible_rect, vertices, normals, colors, indices)
 
 	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
@@ -335,6 +570,9 @@ func rebuild_roof_mesh(rebuild_collision: bool = true) -> void:
 
 	_update_roof_mesh_resource(arrays)
 	_sync_roof_material()
+
+	if debug_show_triangle_wireframe:
+		_add_triangle_wireframe(vertices, indices)
 
 	if rebuild_collision and generate_collision:
 		_add_collision_body(vertices, indices)
@@ -495,53 +733,201 @@ func _append_roof_piece_geometry(
 	_append_roof_outer_sides(full_size, render_rect, vertices, normals, colors, indices)
 
 
+func _append_roof_polygon_clip_geometry(
+	full_size: Vector2,
+	cover_polygons: Array[PackedVector2Array],
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	var bottom_offset := Vector3(0.0, -roof_thickness, 0.0)
+	var visible_polygons: Array = []
+	for top_triangle in _roof_top_triangles(full_size):
+		var pieces: Array = [_packed_vector3_to_array(top_triangle)]
+		for cover_polygon in cover_polygons:
+			var next_pieces: Array = []
+			for piece in pieces:
+				next_pieces.append_array(_subtract_cover_polygon(piece, cover_polygon))
+			pieces = next_pieces
+			if pieces.is_empty():
+				break
+		for piece in pieces:
+			if !_polygon3_has_area(piece):
+				continue
+			visible_polygons.append(piece)
+			_append_polygon_triangles(piece, false, vertices, normals, colors, indices)
+			var clipped_bottom: Array[Vector3] = []
+			for point in piece:
+				clipped_bottom.append(Vector3(point) + bottom_offset)
+			_append_polygon_triangles(clipped_bottom, true, vertices, normals, colors, indices)
+	_append_roof_polygon_boundary_sides(visible_polygons, vertices, normals, colors, indices)
+
+
+func _packed_vector3_to_array(points: PackedVector3Array) -> Array[Vector3]:
+	var array: Array[Vector3] = []
+	for point in points:
+		array.append(point)
+	return array
+
+
+func _subtract_cover_polygon(source_polygon: Array, cover_polygon: PackedVector2Array) -> Array:
+	if source_polygon.size() < 3:
+		return []
+	var clip_polygon := _normalized_polygon2(cover_polygon)
+	if clip_polygon.size() < 3:
+		return [source_polygon]
+
+	var remaining: Array = []
+	var inside_pieces: Array = [source_polygon]
+	for edge_index in range(clip_polygon.size()):
+		var edge_start := clip_polygon[edge_index]
+		var edge_end := clip_polygon[(edge_index + 1) % clip_polygon.size()]
+		var next_inside_pieces: Array = []
+		for piece in inside_pieces:
+			var outside_piece := _clip_roof_polygon_by_cover_edge(piece, edge_start, edge_end, false)
+			if _polygon3_has_area(outside_piece):
+				remaining.append(outside_piece)
+			var inside_piece := _clip_roof_polygon_by_cover_edge(piece, edge_start, edge_end, true)
+			if _polygon3_has_area(inside_piece):
+				next_inside_pieces.append(inside_piece)
+		inside_pieces = next_inside_pieces
+		if inside_pieces.is_empty():
+			break
+	return remaining
+
+
+func _clip_roof_polygon_by_cover_edge(
+	points: Array,
+	edge_start: Vector2,
+	edge_end: Vector2,
+	keep_inside: bool
+) -> Array[Vector3]:
+	if points.is_empty():
+		return []
+	var clipped: Array[Vector3] = []
+	var previous := Vector3(points[points.size() - 1])
+	var previous_side := _cover_edge_side(previous, edge_start, edge_end)
+	var previous_inside := previous_side >= -RECT_EPSILON
+	for current_variant in points:
+		var current := Vector3(current_variant)
+		var current_side := _cover_edge_side(current, edge_start, edge_end)
+		var current_inside := current_side >= -RECT_EPSILON
+		var previous_kept := previous_inside if keep_inside else !previous_inside
+		var current_kept := current_inside if keep_inside else !current_inside
+		if current_kept != previous_kept:
+			clipped.append(_interpolate_cover_edge_intersection(previous, current, previous_side, current_side))
+		if current_kept:
+			clipped.append(current)
+		previous = current
+		previous_side = current_side
+		previous_inside = current_inside
+	return _dedupe_polygon3(clipped)
+
+
+func _cover_edge_side(point: Vector3, edge_start: Vector2, edge_end: Vector2) -> float:
+	var edge := edge_end - edge_start
+	var offset := Vector2(point.x, point.z) - edge_start
+	return edge.x * offset.y - edge.y * offset.x
+
+
+func _interpolate_cover_edge_intersection(
+	from_point: Vector3,
+	to_point: Vector3,
+	from_side: float,
+	to_side: float
+) -> Vector3:
+	var denominator := from_side - to_side
+	if absf(denominator) <= RECT_EPSILON:
+		return from_point
+	var weight := clampf(from_side / denominator, 0.0, 1.0)
+	return from_point.lerp(to_point, weight)
+
+
+func _normalized_polygon2(polygon: PackedVector2Array) -> PackedVector2Array:
+	var normalized := PackedVector2Array()
+	for point in polygon:
+		if normalized.size() > 0 and normalized[normalized.size() - 1].distance_to(point) <= RECT_EPSILON:
+			continue
+		normalized.append(point)
+	if normalized.size() > 1 and normalized[0].distance_to(normalized[normalized.size() - 1]) <= RECT_EPSILON:
+		normalized.remove_at(normalized.size() - 1)
+	if _polygon2_signed_area(normalized) < 0.0:
+		normalized.reverse()
+	return normalized
+
+
+func _dedupe_polygon3(points: Array[Vector3]) -> Array[Vector3]:
+	var deduped: Array[Vector3] = []
+	for point in points:
+		if deduped.size() > 0 and deduped[deduped.size() - 1].distance_to(point) <= RECT_EPSILON:
+			continue
+		deduped.append(point)
+	if deduped.size() > 1 and deduped[0].distance_to(deduped[deduped.size() - 1]) <= RECT_EPSILON:
+		deduped.pop_back()
+	return deduped
+
+
+func _append_roof_polygon_boundary_sides(
+	visible_polygons: Array,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	var edge_counts := {}
+	var edge_records: Array[Dictionary] = []
+	for polygon in visible_polygons:
+		for edge_index in range(polygon.size()):
+			var edge_start := Vector3(polygon[edge_index])
+			var edge_end := Vector3(polygon[(edge_index + 1) % polygon.size()])
+			if edge_start.distance_to(edge_end) <= RECT_EPSILON:
+				continue
+			var edge_key := _roof_polygon_boundary_edge_key(edge_start, edge_end)
+			edge_counts[edge_key] = int(edge_counts.get(edge_key, 0)) + 1
+			edge_records.append({
+				"key": edge_key,
+				"start": edge_start,
+				"end": edge_end,
+			})
+
+	var bottom_offset := Vector3(0.0, -roof_thickness, 0.0)
+	for edge_record in edge_records:
+		var edge_key := String(edge_record["key"])
+		if int(edge_counts.get(edge_key, 0)) != 1:
+			continue
+		var edge_start := Vector3(edge_record["start"])
+		var edge_end := Vector3(edge_record["end"])
+		_append_quad_auto(
+			vertices,
+			normals,
+			colors,
+			indices,
+			edge_end,
+			edge_start,
+			edge_start + bottom_offset,
+			edge_end + bottom_offset
+		)
+
+
+func _roof_polygon_boundary_edge_key(first: Vector3, second: Vector3) -> String:
+	var first_key := _roof_polygon_boundary_point_key(first)
+	var second_key := _roof_polygon_boundary_point_key(second)
+	if first_key <= second_key:
+		return "%s|%s" % [first_key, second_key]
+	return "%s|%s" % [second_key, first_key]
+
+
+func _roof_polygon_boundary_point_key(point: Vector3) -> String:
+	return "%d,%d,%d" % [
+		roundi(point.x / RECT_EPSILON),
+		roundi(point.y / RECT_EPSILON),
+		roundi(point.z / RECT_EPSILON),
+	]
+
+
 func _roof_top_triangles(full_size: Vector2) -> Array[PackedVector3Array]:
-	var overhang := maxf(roof_overhang, 0.0)
-	var x0 := -overhang
-	var x1 := full_size.x + overhang
-	var z0 := -overhang
-	var z1 := full_size.y + overhang
-	var center_x := (x0 + x1) * 0.5
-	var center_z := (z0 + z1) * 0.5
-	var height := _effective_roof_height_for_size(full_size)
-	var triangles: Array[PackedVector3Array] = []
-	match get_roof_style():
-		STYLE_SHED:
-			var p0 := Vector3(x0, 0.0, z0)
-			var p1 := Vector3(x1, 0.0, z0)
-			var p2 := Vector3(x1, height, z1)
-			var p3 := Vector3(x0, height, z1)
-			triangles.append(PackedVector3Array([p0, p3, p2]))
-			triangles.append(PackedVector3Array([p0, p2, p1]))
-		STYLE_HIP:
-			var p0 := Vector3(x0, 0.0, z0)
-			var p1 := Vector3(x1, 0.0, z0)
-			var p2 := Vector3(x1, 0.0, z1)
-			var p3 := Vector3(x0, 0.0, z1)
-			var apex := Vector3(center_x, height, center_z)
-			triangles.append(PackedVector3Array([p0, apex, p1]))
-			triangles.append(PackedVector3Array([p1, apex, p2]))
-			triangles.append(PackedVector3Array([p2, apex, p3]))
-			triangles.append(PackedVector3Array([p3, apex, p0]))
-		STYLE_GABLE:
-			var p0 := Vector3(x0, 0.0, z0)
-			var p1 := Vector3(x1, 0.0, z0)
-			var p2 := Vector3(x1, 0.0, z1)
-			var p3 := Vector3(x0, 0.0, z1)
-			var ridge_left := Vector3(x0, height, center_z)
-			var ridge_right := Vector3(x1, height, center_z)
-			triangles.append(PackedVector3Array([p0, ridge_left, ridge_right]))
-			triangles.append(PackedVector3Array([p0, ridge_right, p1]))
-			triangles.append(PackedVector3Array([p3, p2, ridge_right]))
-			triangles.append(PackedVector3Array([p3, ridge_right, ridge_left]))
-		_:
-			var p0 := Vector3(x0, 0.0, z0)
-			var p1 := Vector3(x1, 0.0, z0)
-			var p2 := Vector3(x1, 0.0, z1)
-			var p3 := Vector3(x0, 0.0, z1)
-			triangles.append(PackedVector3Array([p0, p3, p2]))
-			triangles.append(PackedVector3Array([p0, p2, p1]))
-	return triangles
+	return roof_top_triangles_for_style(get_roof_style(), full_size, roof_overhang, roof_height)
 
 
 func _clip_polygon_to_rect(polygon: PackedVector3Array, rect: Rect2) -> Array[Vector3]:
@@ -721,35 +1107,13 @@ func _append_roof_side_polyline(
 
 
 func _roof_height_at(full_size: Vector2, x: float, z: float) -> float:
-	var height := _effective_roof_height_for_size(full_size)
-	if height <= 0.0:
-		return 0.0
-	var overhang := maxf(roof_overhang, 0.0)
-	var min_x := -overhang
-	var max_x := full_size.x + overhang
-	var min_z := -overhang
-	var max_z := full_size.y + overhang
-	var clamped_x := clampf(x, min_x, max_x)
-	var clamped_z := clampf(z, min_z, max_z)
-	match get_roof_style():
-		STYLE_SHED:
-			return height * clampf((clamped_z - min_z) / maxf(max_z - min_z, RECT_EPSILON), 0.0, 1.0)
-		STYLE_HIP:
-			var x_fraction := minf(
-				(clamped_x - min_x) / maxf((max_x - min_x) * 0.5, RECT_EPSILON),
-				(max_x - clamped_x) / maxf((max_x - min_x) * 0.5, RECT_EPSILON)
-			)
-			var z_fraction := minf(
-				(clamped_z - min_z) / maxf((max_z - min_z) * 0.5, RECT_EPSILON),
-				(max_z - clamped_z) / maxf((max_z - min_z) * 0.5, RECT_EPSILON)
-			)
-			return height * clampf(minf(x_fraction, z_fraction), 0.0, 1.0)
-		STYLE_GABLE:
-			var center_z := (min_z + max_z) * 0.5
-			var half_depth := maxf((max_z - min_z) * 0.5, RECT_EPSILON)
-			return height * clampf(1.0 - absf(clamped_z - center_z) / half_depth, 0.0, 1.0)
-		_:
-			return 0.0
+	return roof_surface_height_for_style(
+		get_roof_style(),
+		full_size,
+		roof_overhang,
+		roof_height,
+		Vector2(x, z)
+	)
 
 
 func _visible_roof_rects(full_rect: Rect2, covers: Array[Rect2]) -> Array[Rect2]:
@@ -765,6 +1129,48 @@ func _visible_roof_rects(full_rect: Rect2, covers: Array[Rect2]) -> Array[Rect2]
 		if visible_rects.is_empty():
 			break
 	return visible_rects
+
+
+func _visible_roof_polygon_bounds(
+	full_size: Vector2,
+	covers: Array[PackedVector2Array]
+) -> Array[Rect2]:
+	var bounds: Array[Rect2] = []
+	for polygon in _visible_roof_polygons(full_size, covers):
+		var polygon_bounds := _polygon3_bounds(polygon)
+		if _rect_has_area(polygon_bounds):
+			bounds.append(polygon_bounds)
+	return bounds
+
+
+func _has_visible_roof_polygon_area(
+	full_size: Vector2,
+	covers: Array[PackedVector2Array]
+) -> bool:
+	for polygon in _visible_roof_polygons(full_size, covers):
+		if _polygon3_has_area(polygon):
+			return true
+	return false
+
+
+func _visible_roof_polygons(
+	full_size: Vector2,
+	covers: Array[PackedVector2Array]
+) -> Array:
+	var visible_polygons: Array = []
+	for top_triangle in _roof_top_triangles(full_size):
+		var pieces: Array = [_packed_vector3_to_array(top_triangle)]
+		for cover in covers:
+			var next_pieces: Array = []
+			for piece in pieces:
+				next_pieces.append_array(_subtract_cover_polygon(piece, cover))
+			pieces = next_pieces
+			if pieces.is_empty():
+				break
+		for piece in pieces:
+			if _polygon3_has_area(piece):
+				visible_polygons.append(piece)
+	return visible_polygons
 
 
 func _subtract_rect(source: Rect2, cover: Rect2) -> Array[Rect2]:
@@ -829,19 +1235,62 @@ func _sanitize_covered_rects(rects: Array[Rect2]) -> Array[Rect2]:
 	return sanitized
 
 
+func _sanitize_covered_polygons(polygons: Array[PackedVector2Array]) -> Array[PackedVector2Array]:
+	var sanitized: Array[PackedVector2Array] = []
+	for polygon in polygons:
+		var normalized := _normalized_polygon2(polygon)
+		if absf(_polygon2_signed_area(normalized)) <= RECT_EPSILON:
+			continue
+		sanitized.append(normalized)
+	return sanitized
+
+
+func _polygon3_bounds(polygon: Array) -> Rect2:
+	if polygon.is_empty():
+		return Rect2()
+	var min_x := INF
+	var min_z := INF
+	var max_x := -INF
+	var max_z := -INF
+	for point_variant in polygon:
+		var point := Vector3(point_variant)
+		min_x = minf(min_x, point.x)
+		min_z = minf(min_z, point.z)
+		max_x = maxf(max_x, point.x)
+		max_z = maxf(max_z, point.z)
+	return Rect2(Vector2(min_x, min_z), Vector2(max_x - min_x, max_z - min_z))
+
+
+func _polygon3_has_area(polygon: Array) -> bool:
+	if polygon.size() < 3:
+		return false
+	return absf(_polygon3_signed_area(polygon)) > RECT_EPSILON
+
+
+func _polygon3_signed_area(polygon: Array) -> float:
+	var area := 0.0
+	for index in range(polygon.size()):
+		var current := Vector3(polygon[index])
+		var next := Vector3(polygon[(index + 1) % polygon.size()])
+		area += current.x * next.z - next.x * current.z
+	return area * 0.5
+
+
+func _polygon2_signed_area(polygon: PackedVector2Array) -> float:
+	var area := 0.0
+	for index in range(polygon.size()):
+		var current := polygon[index]
+		var next := polygon[(index + 1) % polygon.size()]
+		area += current.x * next.y - next.x * current.y
+	return area * 0.5
+
+
 func _effective_roof_height() -> float:
 	return _effective_roof_height_for_size(get_roof_size())
 
 
 func _effective_roof_height_for_size(size: Vector2) -> float:
-	match get_roof_style():
-		STYLE_SHED:
-			return shed_height_for_angle_degrees(size.y, roof_overhang, roof_height)
-		STYLE_GABLE:
-			return gable_height_for_angle_degrees(size.y, roof_overhang, roof_height)
-		STYLE_HIP:
-			return hip_height_for_angle_degrees(size, roof_overhang, roof_height)
-	return 0.0
+	return roof_generated_height_for_style(get_roof_style(), size, roof_overhang, roof_height)
 
 
 static func _clamped_roof_angle_degrees(angle_degrees: float) -> float:
@@ -973,6 +1422,52 @@ func _build_roof_material(color: Color) -> StandardMaterial3D:
 	material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	material.cull_mode = BaseMaterial3D.CULL_BACK
 	if color.a < 0.99:
+		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	return material
+
+
+func _add_triangle_wireframe(vertices: PackedVector3Array, indices: PackedInt32Array) -> void:
+	var line_vertices := PackedVector3Array()
+	for index in range(0, indices.size(), 3):
+		var a := vertices[indices[index]]
+		var b := vertices[indices[index + 1]]
+		var c := vertices[indices[index + 2]]
+		_append_wireframe_edge(line_vertices, a, b)
+		_append_wireframe_edge(line_vertices, b, c)
+		_append_wireframe_edge(line_vertices, c, a)
+	if line_vertices.is_empty():
+		return
+
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = line_vertices
+
+	var wire_mesh := ArrayMesh.new()
+	wire_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, arrays)
+
+	var instance := MeshInstance3D.new()
+	instance.name = TRIANGLE_WIREFRAME_NODE_NAME
+	instance.mesh = wire_mesh
+	instance.material_override = _build_triangle_wireframe_material()
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	instance.set_meta(GENERATED_META, true)
+	add_child(instance)
+	if Engine.is_editor_hint():
+		instance.owner = null
+
+
+func _append_wireframe_edge(line_vertices: PackedVector3Array, start: Vector3, end: Vector3) -> void:
+	line_vertices.append(start)
+	line_vertices.append(end)
+
+
+func _build_triangle_wireframe_material() -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = debug_triangle_wireframe_color
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	material.set("no_depth_test", true)
+	if debug_triangle_wireframe_color.a < 0.99:
 		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	return material
 

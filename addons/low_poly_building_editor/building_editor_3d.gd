@@ -9,6 +9,7 @@ const ProceduralRoof3DScript = preload("res://addons/low_poly_building_editor/pr
 const MergedWallMeshBuilderScript = preload("res://addons/low_poly_building_editor/merged_wall_mesh_builder.gd")
 
 const INTERSECT_BASE_TOLERANCE := 0.01
+const ROOF_COVER_HEIGHT_EPSILON := 0.01
 
 @export_range(0.05, 8.0, 0.05) var grid_step := 0.5:
 	set(value):
@@ -36,6 +37,7 @@ const INTERSECT_BASE_TOLERANCE := 0.01
 @export_range(0.0, 4.0, 0.01, "or_greater") var default_roof_overhang := 0.2
 @export_range(-180.0, 180.0, 1.0) var default_roof_rotation_degrees := 0.0
 @export var default_roof_color := Color(0.50, 0.34, 0.25, 1.0)
+@export var default_roof_debug_wireframe := false
 @export var merge_intersecting := true
 
 
@@ -147,7 +149,8 @@ func create_roof_node(
 	thickness: float = default_roof_thickness,
 	overhang: float = default_roof_overhang,
 	color: Color = default_roof_color,
-	rotation_degrees: float = default_roof_rotation_degrees
+	rotation_degrees: float = default_roof_rotation_degrees,
+	debug_wireframe: bool = default_roof_debug_wireframe
 ) -> ProceduralRoof3DScript:
 	var roof := ProceduralRoof3DScript.new() as ProceduralRoof3DScript
 	roof.name = _unique_roof_name()
@@ -161,6 +164,7 @@ func create_roof_node(
 	roof.roof_rotation_degrees = rotation_degrees
 	roof.build_on_ready = true
 	roof.generate_collision = true
+	roof.debug_show_triangle_wireframe = debug_wireframe
 	roof.rebuild_roof_mesh()
 	return roof
 
@@ -234,7 +238,7 @@ func compute_roof_covered_rects(
 	ignored_roof: Node = null,
 	only_before_ignored_roof := false
 ) -> Array[Rect2]:
-	var cover_data := _find_roof_cover_data(
+	var cover_data := compute_roof_cover_regions(
 		local_start,
 		local_end,
 		style,
@@ -252,6 +256,32 @@ func compute_roof_covered_rects(
 	return rects
 
 
+func compute_roof_cover_regions(
+	local_start: Vector3,
+	local_end: Vector3,
+	style: String,
+	height: float,
+	thickness: float,
+	overhang: float,
+	color: Color,
+	rotation_degrees: float = 0.0,
+	ignored_roof: Node = null,
+	only_before_ignored_roof := false
+) -> Dictionary:
+	return _find_roof_cover_data(
+		local_start,
+		local_end,
+		style,
+		height,
+		thickness,
+		overhang,
+		color,
+		rotation_degrees,
+		ignored_roof,
+		only_before_ignored_roof
+	)
+
+
 func roof_has_visible_render_area(local_start: Vector3, local_end: Vector3, overhang: float, covers: Array[Rect2]) -> bool:
 	var size := Vector2(absf(local_end.x - local_start.x), absf(local_end.z - local_start.z))
 	if size.x <= 0.001 or size.y <= 0.001:
@@ -259,11 +289,26 @@ func roof_has_visible_render_area(local_start: Vector3, local_end: Vector3, over
 	return !_visible_roof_rects(_roof_render_rect(size, overhang), covers).is_empty()
 
 
+func roof_has_visible_cover_area(
+	local_start: Vector3,
+	local_end: Vector3,
+	overhang: float,
+	covers: Array[Rect2],
+	cover_polygons: Array[PackedVector2Array]
+) -> bool:
+	var size := Vector2(absf(local_end.x - local_start.x), absf(local_end.z - local_start.z))
+	if size.x <= 0.001 or size.y <= 0.001:
+		return false
+	if !cover_polygons.is_empty():
+		return _cover_polygons_leave_area(_roof_render_rect(size, overhang), cover_polygons)
+	return !_visible_roof_rects(_roof_render_rect(size, overhang), covers).is_empty()
+
+
 func refresh_roof_covered_rects() -> void:
 	for roof in get_roof_nodes():
 		if roof.has_meta(ProceduralRoof3DScript.PREVIEW_META):
 			continue
-		var rects := compute_roof_covered_rects(
+		var cover_regions := compute_roof_cover_regions(
 			roof.start_point,
 			roof.end_point,
 			roof.get_roof_style(),
@@ -275,7 +320,10 @@ func refresh_roof_covered_rects() -> void:
 			roof,
 			true
 		)
-		roof.set_covered_rects(rects)
+		roof.set_covered_regions(
+			_roof_covered_rects_from_regions(cover_regions),
+			_roof_covered_polygons_from_regions(cover_regions)
+		)
 
 
 func _find_roof_cover_data(
@@ -283,44 +331,35 @@ func _find_roof_cover_data(
 	local_end: Vector3,
 	style: String,
 	height: float,
-	thickness: float,
+	_thickness: float,
 	overhang: float,
-	color: Color,
+	_color: Color,
 	rotation_degrees: float,
 	ignored_roof: Node,
-	only_before_ignored_roof: bool
+	_only_before_ignored_roof: bool
 ) -> Dictionary:
 	var new_size := Vector2(absf(local_end.x - local_start.x), absf(local_end.z - local_start.z))
 	if new_size.x <= 0.001 or new_size.y <= 0.001:
 		return {}
 	var new_rotation := _normalize_degrees(rotation_degrees)
 	var new_anchor := _roof_anchor_from_points(local_start, local_end)
+	var new_basis := _rotation_basis(new_rotation)
 	var new_rect := _roof_render_rect(new_size, overhang)
 	var covered_rects: Array[Rect2] = []
+	var covered_polygons: Array[PackedVector2Array] = []
 	var first_target: ProceduralRoof3DScript = null
+	var candidate_seen := false
 	for roof in get_roof_nodes():
 		if roof == ignored_roof:
-			if only_before_ignored_roof:
-				break
+			candidate_seen = true
 			continue
 		if roof.has_meta(ProceduralRoof3DScript.PREVIEW_META):
 			continue
 		if absf(roof.start_point.y - local_start.y) > INTERSECT_BASE_TOLERANCE:
 			continue
-		if roof.get_roof_style() != style:
-			continue
-		if !is_equal_approx(roof.roof_height, height):
-			continue
-		if !is_equal_approx(roof.roof_thickness, thickness):
-			continue
-		if !is_equal_approx(roof.roof_overhang, overhang):
-			continue
-		if !_colors_match(roof.roof_color, color):
-			continue
-		if !_angles_match(roof.roof_rotation_degrees, new_rotation):
-			continue
+		var other_before_candidate := !candidate_seen
 		var existing_anchor := roof.get_roof_anchor_point()
-		for visible_rect in roof.get_visible_render_rects():
+		for visible_rect in [roof.get_roof_render_rect()]:
 			var projected_existing_rect := _roof_projected_rect_from_local_rect(
 				existing_anchor,
 				roof.roof_rotation_degrees,
@@ -331,16 +370,388 @@ func _find_roof_cover_data(
 			var covered_rect := _rect_intersection(new_rect, projected_existing_rect)
 			if covered_rect.size.x <= 0.001 or covered_rect.size.y <= 0.001:
 				continue
+			var under_polygons := _roof_polygons_under_other_roof(
+				new_anchor,
+				new_basis,
+				local_start.y,
+				new_size,
+				style,
+				height,
+				overhang,
+				roof,
+				covered_rect,
+				other_before_candidate
+			)
+			if under_polygons.is_empty():
+				continue
 			if first_target == null:
 				first_target = roof
-			covered_rects.append(covered_rect)
+			for polygon in under_polygons:
+				covered_polygons.append(polygon)
+				covered_rects.append(_polygon_bounds(polygon))
 	if first_target == null:
 		return {}
 	return {
 		"roof": first_target,
 		"covered_rects": covered_rects,
+		"covered_polygons": covered_polygons,
 		"rotation_degrees": new_rotation,
 	}
+
+
+func _roof_polygons_under_other_roof(
+	candidate_anchor: Vector3,
+	candidate_basis: Basis,
+	candidate_base_y: float,
+	candidate_size: Vector2,
+	candidate_style: String,
+	candidate_angle_degrees: float,
+	candidate_overhang: float,
+	other_roof: ProceduralRoof3DScript,
+	overlap_rect: Rect2,
+	other_before_candidate: bool
+) -> Array[PackedVector2Array]:
+	var polygons: Array[PackedVector2Array] = []
+	var candidate_faces := ProceduralRoof3DScript.roof_top_faces_for_style(
+		candidate_style,
+		candidate_size,
+		candidate_overhang,
+		candidate_angle_degrees
+	)
+	var other_faces := ProceduralRoof3DScript.roof_top_faces_for_style(
+		other_roof.get_roof_style(),
+		other_roof.get_roof_size(),
+		other_roof.roof_overhang,
+		other_roof.roof_height
+	)
+	var candidate_inverse := candidate_basis.inverse()
+	var other_anchor := other_roof.get_roof_anchor_point()
+	var other_basis := _rotation_basis(other_roof.roof_rotation_degrees)
+	var overlap_polygon := _rect_polygon(overlap_rect)
+	for candidate_face in candidate_faces:
+		var candidate_world_triangle := _triangle_with_base_y(
+			PackedVector3Array(candidate_face["plane"]),
+			candidate_base_y
+		)
+		var candidate_polygon := _face_polygon(PackedVector3Array(candidate_face["vertices"]))
+		candidate_polygon = _clip_polygon_by_convex_polygon(candidate_polygon, overlap_polygon)
+		if absf(_polygon_signed_area(candidate_polygon)) <= 0.0001:
+			continue
+		for other_face in other_faces:
+			var other_projected_triangle := _project_roof_triangle_to_candidate_frame(
+				PackedVector3Array(other_face["plane"]),
+				other_anchor,
+				other_basis,
+				candidate_anchor,
+				candidate_inverse,
+				other_roof.start_point.y
+			)
+			var other_polygon := _project_roof_face_polygon_to_candidate_frame(
+				PackedVector3Array(other_face["vertices"]),
+				other_anchor,
+				other_basis,
+				candidate_anchor,
+				candidate_inverse
+			)
+			var intersection := _clip_polygon_by_convex_polygon(candidate_polygon, other_polygon)
+			if absf(_polygon_signed_area(intersection)) <= 0.0001:
+				continue
+			var under_polygon := _clip_polygon_under_triangle_pair(
+				intersection,
+				candidate_world_triangle,
+				other_projected_triangle,
+				other_before_candidate
+			)
+			if absf(_polygon_signed_area(under_polygon)) <= 0.0001:
+				continue
+			polygons.append(_normalize_polygon(under_polygon))
+	return polygons
+
+
+func _face_polygon(face_vertices: PackedVector3Array) -> PackedVector2Array:
+	var polygon := PackedVector2Array()
+	for point in face_vertices:
+		polygon.append(Vector2(point.x, point.z))
+	return _normalize_polygon(polygon)
+
+
+func _triangle_with_base_y(triangle: PackedVector3Array, base_y: float) -> PackedVector3Array:
+	var points := PackedVector3Array()
+	for point in triangle:
+		points.append(Vector3(point.x, base_y + point.y, point.z))
+	return points
+
+
+func _project_roof_face_polygon_to_candidate_frame(
+	face_vertices: PackedVector3Array,
+	other_anchor: Vector3,
+	other_basis: Basis,
+	candidate_anchor: Vector3,
+	candidate_inverse: Basis
+) -> PackedVector2Array:
+	var polygon := PackedVector2Array()
+	for point in face_vertices:
+		var parent_point := other_anchor + other_basis * Vector3(point.x, 0.0, point.z)
+		var candidate_local := candidate_inverse * (parent_point - candidate_anchor)
+		polygon.append(Vector2(candidate_local.x, candidate_local.z))
+	return _normalize_polygon(polygon)
+
+
+func _project_roof_triangle_to_candidate_frame(
+	triangle: PackedVector3Array,
+	other_anchor: Vector3,
+	other_basis: Basis,
+	candidate_anchor: Vector3,
+	candidate_inverse: Basis,
+	other_base_y: float
+) -> PackedVector3Array:
+	var points := PackedVector3Array()
+	for point in triangle:
+		var parent_point := other_anchor + other_basis * Vector3(point.x, 0.0, point.z)
+		var candidate_local := candidate_inverse * (parent_point - candidate_anchor)
+		points.append(Vector3(candidate_local.x, other_base_y + point.y, candidate_local.z))
+	return points
+
+
+func _clip_polygon_under_triangle_pair(
+	polygon: PackedVector2Array,
+	candidate_triangle: PackedVector3Array,
+	other_triangle: PackedVector3Array,
+	other_before_candidate: bool
+) -> PackedVector2Array:
+	if polygon.is_empty():
+		return PackedVector2Array()
+	var threshold := -ROOF_COVER_HEIGHT_EPSILON if other_before_candidate else ROOF_COVER_HEIGHT_EPSILON
+	var diff_points: Array[Vector3] = []
+	for point in polygon:
+		var candidate_y := _triangle_height_at_point(candidate_triangle, point)
+		var other_y := _triangle_height_at_point(other_triangle, point)
+		diff_points.append(Vector3(point.x, other_y - candidate_y, point.y))
+	var clipped: Array[Vector3] = []
+	var previous := diff_points[diff_points.size() - 1]
+	var previous_inside := previous.y >= threshold
+	for current in diff_points:
+		var current_inside := current.y >= threshold
+		if current_inside != previous_inside:
+			clipped.append(_interpolate_height_threshold(previous, current, threshold))
+		if current_inside:
+			clipped.append(current)
+		previous = current
+		previous_inside = current_inside
+	var result := PackedVector2Array()
+	for point in clipped:
+		result.append(Vector2(point.x, point.z))
+	return _normalize_polygon(result)
+
+
+func _triangle_height_at_point(triangle: PackedVector3Array, point: Vector2) -> float:
+	if triangle.size() < 3:
+		return 0.0
+	var a := Vector2(triangle[0].x, triangle[0].z)
+	var b := Vector2(triangle[1].x, triangle[1].z)
+	var c := Vector2(triangle[2].x, triangle[2].z)
+	var denominator := (
+		(b.y - c.y) * (a.x - c.x)
+		+ (c.x - b.x) * (a.y - c.y)
+	)
+	if absf(denominator) <= 0.000001:
+		return (triangle[0].y + triangle[1].y + triangle[2].y) / 3.0
+	var weight_a := (
+		(b.y - c.y) * (point.x - c.x)
+		+ (c.x - b.x) * (point.y - c.y)
+	) / denominator
+	var weight_b := (
+		(c.y - a.y) * (point.x - c.x)
+		+ (a.x - c.x) * (point.y - c.y)
+	) / denominator
+	var weight_c := 1.0 - weight_a - weight_b
+	return triangle[0].y * weight_a + triangle[1].y * weight_b + triangle[2].y * weight_c
+
+
+func _interpolate_height_threshold(from_point: Vector3, to_point: Vector3, threshold: float) -> Vector3:
+	var denominator := to_point.y - from_point.y
+	if absf(denominator) <= 0.000001:
+		return from_point
+	var weight := clampf((threshold - from_point.y) / denominator, 0.0, 1.0)
+	return from_point.lerp(to_point, weight)
+
+
+func _triangle_polygon(triangle: PackedVector3Array) -> PackedVector2Array:
+	var polygon := PackedVector2Array()
+	for point in triangle:
+		polygon.append(Vector2(point.x, point.z))
+	return _normalize_polygon(polygon)
+
+
+func _rect_polygon(rect: Rect2) -> PackedVector2Array:
+	var rect_min := rect.position
+	var rect_max := rect.position + rect.size
+	return PackedVector2Array([
+		rect_min,
+		Vector2(rect_max.x, rect_min.y),
+		rect_max,
+		Vector2(rect_min.x, rect_max.y),
+	])
+
+
+func _clip_polygon_by_convex_polygon(subject: PackedVector2Array, clip_polygon: PackedVector2Array) -> PackedVector2Array:
+	var clipped := _normalize_polygon(subject)
+	var clip := _normalize_polygon(clip_polygon)
+	for edge_index in range(clip.size()):
+		clipped = _clip_polygon_by_edge(clipped, clip[edge_index], clip[(edge_index + 1) % clip.size()])
+		if clipped.is_empty():
+			break
+	return clipped
+
+
+func _clip_polygon_by_edge(subject: PackedVector2Array, edge_start: Vector2, edge_end: Vector2) -> PackedVector2Array:
+	if subject.is_empty():
+		return PackedVector2Array()
+	var clipped := PackedVector2Array()
+	var previous := subject[subject.size() - 1]
+	var previous_side := _edge_side(previous, edge_start, edge_end)
+	var previous_inside := previous_side >= -0.0001
+	for current in subject:
+		var current_side := _edge_side(current, edge_start, edge_end)
+		var current_inside := current_side >= -0.0001
+		if current_inside != previous_inside:
+			clipped.append(_interpolate_edge_intersection(previous, current, previous_side, current_side))
+		if current_inside:
+			clipped.append(current)
+		previous = current
+		previous_side = current_side
+		previous_inside = current_inside
+	return _normalize_polygon(clipped)
+
+
+func _edge_side(point: Vector2, edge_start: Vector2, edge_end: Vector2) -> float:
+	var edge := edge_end - edge_start
+	var offset := point - edge_start
+	return edge.x * offset.y - edge.y * offset.x
+
+
+func _interpolate_edge_intersection(from_point: Vector2, to_point: Vector2, from_side: float, to_side: float) -> Vector2:
+	var denominator := from_side - to_side
+	if absf(denominator) <= 0.000001:
+		return from_point
+	var weight := clampf(from_side / denominator, 0.0, 1.0)
+	return from_point.lerp(to_point, weight)
+
+
+func _normalize_polygon(polygon: PackedVector2Array) -> PackedVector2Array:
+	var normalized := PackedVector2Array()
+	for point in polygon:
+		if normalized.size() > 0 and normalized[normalized.size() - 1].distance_to(point) <= 0.0001:
+			continue
+		normalized.append(point)
+	if normalized.size() > 1 and normalized[0].distance_to(normalized[normalized.size() - 1]) <= 0.0001:
+		normalized.remove_at(normalized.size() - 1)
+	if _polygon_signed_area(normalized) < 0.0:
+		normalized.reverse()
+	return normalized
+
+
+func _polygon_signed_area(polygon: PackedVector2Array) -> float:
+	var area := 0.0
+	for index in range(polygon.size()):
+		var current := polygon[index]
+		var next := polygon[(index + 1) % polygon.size()]
+		area += current.x * next.y - next.x * current.y
+	return area * 0.5
+
+
+func _polygon_bounds(polygon: PackedVector2Array) -> Rect2:
+	if polygon.is_empty():
+		return Rect2()
+	var min_x := INF
+	var min_y := INF
+	var max_x := -INF
+	var max_y := -INF
+	for point in polygon:
+		min_x = minf(min_x, point.x)
+		min_y = minf(min_y, point.y)
+		max_x = maxf(max_x, point.x)
+		max_y = maxf(max_y, point.y)
+	return Rect2(Vector2(min_x, min_y), Vector2(max_x - min_x, max_y - min_y))
+
+
+func _cover_polygons_leave_area(full_rect: Rect2, covers: Array[PackedVector2Array]) -> bool:
+	var visible: Array[PackedVector2Array] = [_rect_polygon(full_rect)]
+	for cover in covers:
+		var next_visible: Array[PackedVector2Array] = []
+		for polygon in visible:
+			next_visible.append_array(_subtract_polygon(polygon, cover))
+		visible = next_visible
+		if visible.is_empty():
+			return false
+	for polygon in visible:
+		if absf(_polygon_signed_area(polygon)) > 0.0001:
+			return true
+	return false
+
+
+func _subtract_polygon(subject: PackedVector2Array, cover: PackedVector2Array) -> Array[PackedVector2Array]:
+	var clip := _normalize_polygon(cover)
+	if clip.size() < 3:
+		return [subject]
+	var remaining: Array[PackedVector2Array] = []
+	var inside_pieces: Array[PackedVector2Array] = [_normalize_polygon(subject)]
+	for edge_index in range(clip.size()):
+		var edge_start := clip[edge_index]
+		var edge_end := clip[(edge_index + 1) % clip.size()]
+		var next_inside: Array[PackedVector2Array] = []
+		for piece in inside_pieces:
+			var outside_piece := _clip_polygon_by_edge_side(piece, edge_start, edge_end, false)
+			if absf(_polygon_signed_area(outside_piece)) > 0.0001:
+				remaining.append(outside_piece)
+			var inside_piece := _clip_polygon_by_edge_side(piece, edge_start, edge_end, true)
+			if absf(_polygon_signed_area(inside_piece)) > 0.0001:
+				next_inside.append(inside_piece)
+		inside_pieces = next_inside
+		if inside_pieces.is_empty():
+			break
+	return remaining
+
+
+func _clip_polygon_by_edge_side(
+	subject: PackedVector2Array,
+	edge_start: Vector2,
+	edge_end: Vector2,
+	keep_inside: bool
+) -> PackedVector2Array:
+	if subject.is_empty():
+		return PackedVector2Array()
+	var clipped := PackedVector2Array()
+	var previous := subject[subject.size() - 1]
+	var previous_side := _edge_side(previous, edge_start, edge_end)
+	var previous_inside := previous_side >= -0.0001
+	for current in subject:
+		var current_side := _edge_side(current, edge_start, edge_end)
+		var current_inside := current_side >= -0.0001
+		var previous_kept := previous_inside if keep_inside else !previous_inside
+		var current_kept := current_inside if keep_inside else !current_inside
+		if current_kept != previous_kept:
+			clipped.append(_interpolate_edge_intersection(previous, current, previous_side, current_side))
+		if current_kept:
+			clipped.append(current)
+		previous = current
+		previous_side = current_side
+		previous_inside = current_inside
+	return _normalize_polygon(clipped)
+
+
+func _roof_covered_rects_from_regions(regions: Dictionary) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	for rect in regions.get("covered_rects", []):
+		rects.append(rect)
+	return rects
+
+
+func _roof_covered_polygons_from_regions(regions: Dictionary) -> Array[PackedVector2Array]:
+	var polygons: Array[PackedVector2Array] = []
+	for polygon in regions.get("covered_polygons", []):
+		polygons.append(PackedVector2Array(polygon))
+	return polygons
 
 
 func find_merge_target(
@@ -535,6 +946,16 @@ func _rect_intersection(first: Rect2, second: Rect2) -> Rect2:
 	var min_point := Vector2(maxf(first.position.x, second.position.x), maxf(first.position.y, second.position.y))
 	var max_point := Vector2(minf(first_max.x, second_max.x), minf(first_max.y, second_max.y))
 	return Rect2(min_point, Vector2(max_point.x - min_point.x, max_point.y - min_point.y))
+
+
+func _rect_contains_point(rect: Rect2, point: Vector2) -> bool:
+	var max_point := rect.position + rect.size
+	return (
+		point.x >= rect.position.x - 0.001
+		and point.y >= rect.position.y - 0.001
+		and point.x <= max_point.x + 0.001
+		and point.y <= max_point.y + 0.001
+	)
 
 
 func _visible_roof_rects(full_rect: Rect2, covers: Array[Rect2]) -> Array[Rect2]:

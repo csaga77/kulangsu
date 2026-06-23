@@ -76,6 +76,7 @@ var m_roof_thickness_spin: SpinBox
 var m_roof_overhang_spin: SpinBox
 var m_roof_rotation_spin: SpinBox
 var m_roof_color_picker: ColorPickerButton
+var m_roof_wireframe_check: CheckBox
 var m_palette_root_edit: LineEdit
 var m_prop_path_edit: LineEdit
 var m_prop_clearance_spin: SpinBox
@@ -396,6 +397,12 @@ func _build_roof_controls(parent: VBoxContainer) -> void:
 	m_roof_color_picker.color_changed.connect(_on_roof_color_changed)
 	_add_labeled_control(parent, "Color:", m_roof_color_picker)
 
+	m_roof_wireframe_check = CheckBox.new()
+	m_roof_wireframe_check.text = "Debug triangle wireframe"
+	m_roof_wireframe_check.tooltip_text = "Show the generated roof triangle edges for previews and newly created roofs."
+	m_roof_wireframe_check.toggled.connect(_on_roof_wireframe_changed)
+	parent.add_child(m_roof_wireframe_check)
+
 
 func _build_prop_controls(parent: VBoxContainer) -> void:
 	var header := Label.new()
@@ -673,6 +680,10 @@ func _on_roof_color_changed(_color: Color) -> void:
 	_emit_roof_settings()
 
 
+func _on_roof_wireframe_changed(_pressed: bool) -> void:
+	_emit_roof_settings()
+
+
 func _on_prop_setting_changed(_value: String) -> void:
 	_emit_prop_settings()
 
@@ -760,6 +771,7 @@ func _emit_roof_settings() -> void:
 		"overhang": float(m_roof_overhang_spin.value),
 		"rotation_degrees": float(m_roof_rotation_spin.value),
 		"color": m_roof_color_picker.color,
+		"debug_wireframe": m_roof_wireframe_check.button_pressed,
 	})
 
 
@@ -985,6 +997,7 @@ func _load_persisted_settings() -> void:
 	var roof_color_variant: Variant = state.get("roof_color", m_roof_color_picker.color)
 	if roof_color_variant is Color:
 		m_roof_color_picker.color = roof_color_variant
+	m_roof_wireframe_check.button_pressed = bool(state.get("roof_debug_wireframe", m_roof_wireframe_check.button_pressed))
 	var window_style := str(state.get("window_style", _selected_window_style()))
 	_select_window_style(window_style)
 	m_window_width_spin.value = float(state.get("window_width", _window_default_width(window_style)))
@@ -1040,6 +1053,7 @@ func _save_persisted_settings() -> void:
 		"roof_overhang": float(m_roof_overhang_spin.value) if m_roof_overhang_spin != null else 0.2,
 		"roof_rotation_degrees": float(m_roof_rotation_spin.value) if m_roof_rotation_spin != null else 0.0,
 		"roof_color": m_roof_color_picker.color if m_roof_color_picker != null else Color(0.50, 0.34, 0.25, 1.0),
+		"roof_debug_wireframe": m_roof_wireframe_check.button_pressed if m_roof_wireframe_check != null else false,
 		"window_style": _selected_window_style(),
 		"window_width": float(m_window_width_spin.value) if m_window_width_spin != null else 1.0,
 		"window_height": float(m_window_height_spin.value) if m_window_height_spin != null else 1.0,

@@ -73,6 +73,7 @@ var m_roof_settings := {
 	"overhang": 0.2,
 	"rotation_degrees": 0.0,
 	"color": Color(0.50, 0.34, 0.25, 1.0),
+	"debug_wireframe": false,
 }
 var m_prop_settings := {
 	"scene_path": "",
@@ -140,6 +141,7 @@ var m_drag_roof_old_end := Vector3.ZERO
 var m_drag_roof_old_rotation_degrees := 0.0
 var m_drag_roof_old_height := 0.0
 var m_drag_roof_old_covered_rects: Array[Rect2] = []
+var m_drag_roof_old_covered_polygons: Array[PackedVector2Array] = []
 var m_drag_roof_anchor_local := Vector3.ZERO
 var m_drag_roof_plane_y := 0.0
 var m_drag_roof_edit_mask := FLOOR_EDIT_MOVE
@@ -1131,6 +1133,7 @@ func _create_roof_preview(coordinator: BuildingEditor3DScript) -> void:
 	preview_color.a = 0.46
 	m_roof_preview.roof_color = preview_color
 	m_roof_preview.generate_collision = false
+	m_roof_preview.debug_show_triangle_wireframe = bool(m_roof_settings.get("debug_wireframe", false))
 	coordinator.add_child(m_roof_preview)
 	m_roof_preview.owner = null
 
@@ -1155,6 +1158,7 @@ func _update_roof_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 	m_roof_preview.roof_height = float(m_roof_settings["height"])
 	m_roof_preview.roof_thickness = float(m_roof_settings["thickness"])
 	m_roof_preview.roof_overhang = float(m_roof_settings["overhang"])
+	m_roof_preview.debug_show_triangle_wireframe = bool(m_roof_settings.get("debug_wireframe", false))
 	m_roof_preview.set_roof_corners_and_rotation(roof_start, roof_end, m_roof_draw_rotation_degrees)
 	if m_roof_has_valid_preview:
 		var size := m_roof_preview.get_roof_size()
@@ -1259,14 +1263,16 @@ func _commit_roof_rotation(roof: ProceduralRoof3DScript, delta_degrees: float) -
 	var old_rotation := roof.roof_rotation_degrees
 	var old_height := roof.roof_height
 	var old_covered_rects := roof.get_covered_rects()
+	var old_covered_polygons := roof.get_covered_polygons()
 	var new_rotation := _normalize_degrees(old_rotation + delta_degrees)
 	var rotated_state := _roof_state_rotated_around_center(roof, new_rotation)
 	var new_start := Vector3(rotated_state["start"])
 	var new_end := Vector3(rotated_state["end"])
 	var new_covered_rects: Array[Rect2] = []
+	var new_covered_polygons: Array[PackedVector2Array] = []
 	var coordinator := _find_coordinator_from_node(roof)
 	if coordinator != null:
-		new_covered_rects = coordinator.compute_roof_covered_rects(
+		var cover_regions := coordinator.compute_roof_cover_regions(
 			new_start,
 			new_end,
 			roof.get_roof_style(),
@@ -1278,7 +1284,15 @@ func _commit_roof_rotation(roof: ProceduralRoof3DScript, delta_degrees: float) -
 			roof,
 			true
 		)
-		if !coordinator.roof_has_visible_render_area(new_start, new_end, roof.roof_overhang, new_covered_rects):
+		new_covered_rects = _roof_covered_rects_from_regions(cover_regions)
+		new_covered_polygons = _roof_covered_polygons_from_regions(cover_regions)
+		if !coordinator.roof_has_visible_cover_area(
+			new_start,
+			new_end,
+			roof.roof_overhang,
+			new_covered_rects,
+			new_covered_polygons
+		):
 			_set_status("Rotated roof would be fully covered.")
 			return
 		if _roof_layout_would_hide_any_roof(
@@ -1288,7 +1302,8 @@ func _commit_roof_rotation(roof: ProceduralRoof3DScript, delta_degrees: float) -
 			new_end,
 			new_rotation,
 			old_height,
-			new_covered_rects
+			new_covered_rects,
+			new_covered_polygons
 		):
 			_set_status("Rotated roof would fully cover another roof.")
 			return
@@ -1305,6 +1320,7 @@ func _commit_roof_rotation(roof: ProceduralRoof3DScript, delta_degrees: float) -
 		new_rotation,
 		old_height,
 		new_covered_rects,
+		new_covered_polygons,
 		coordinator
 	)
 	undo_redo.add_do_method(self, "_select_node", roof)
@@ -1317,6 +1333,7 @@ func _commit_roof_rotation(roof: ProceduralRoof3DScript, delta_degrees: float) -
 		old_rotation,
 		old_height,
 		old_covered_rects,
+		old_covered_polygons,
 		coordinator
 	)
 	undo_redo.commit_action()
@@ -1364,7 +1381,8 @@ func _commit_roof(
 		normalized_rotation,
 		m_roof_preview
 	)
-	var covered_rects := _roof_covered_rects_from_merge(merge)
+	var covered_rects := _roof_covered_rects_from_regions(merge)
+	var covered_polygons := _roof_covered_polygons_from_regions(merge)
 
 	var roof := coordinator.create_roof_node(
 		local_start,
@@ -1374,12 +1392,13 @@ func _commit_roof(
 		thickness,
 		overhang,
 		color,
-		normalized_rotation
+		normalized_rotation,
+		bool(m_roof_settings.get("debug_wireframe", false))
 	)
-	if !covered_rects.is_empty():
-		roof.set_covered_rects(covered_rects)
+	if !covered_rects.is_empty() or !covered_polygons.is_empty():
+		roof.set_covered_regions(covered_rects, covered_polygons)
 	if !roof.has_visible_roof_geometry():
-		_set_status("Roof is fully covered by compatible roof geometry.")
+		_set_status("Roof is fully covered by overlapping roof geometry.")
 		return
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	var undo_redo := get_undo_redo()
@@ -1422,6 +1441,7 @@ func _start_roof_drag(
 	m_drag_roof_old_rotation_degrees = roof.roof_rotation_degrees
 	m_drag_roof_old_height = roof.roof_height
 	m_drag_roof_old_covered_rects = roof.get_covered_rects()
+	m_drag_roof_old_covered_polygons = roof.get_covered_polygons()
 	m_drag_roof_edit_mask = edit_mask
 	m_drag_roof_active_material = roof.material_override
 	m_drag_roof_plane_y = _roof_drag_plane_y_from_mouse(roof, camera, mouse_pos)
@@ -1456,12 +1476,14 @@ func _update_roof_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 		new_end = Vector3(resized["end"])
 
 	var preview_covered_rects: Array[Rect2] = []
+	var preview_covered_polygons: Array[PackedVector2Array] = []
 	roof.set_roof_corners_rotation_height_and_covers(
 		new_start,
 		new_end,
 		m_drag_roof_old_rotation_degrees,
 		m_drag_roof_old_height,
-		preview_covered_rects
+		preview_covered_rects,
+		preview_covered_polygons
 	)
 	var valid := _is_roof_span_large_enough(new_start, new_end)
 	roof.material_override = _build_preview_material(
@@ -1483,6 +1505,7 @@ func _commit_roof_drag() -> void:
 	var old_rotation := m_drag_roof_old_rotation_degrees
 	var old_height := m_drag_roof_old_height
 	var old_covered_rects := m_drag_roof_old_covered_rects
+	var old_covered_polygons := m_drag_roof_old_covered_polygons
 	var new_start := roof.start_point
 	var new_end := roof.end_point
 	var new_rotation := roof.roof_rotation_degrees
@@ -1491,7 +1514,14 @@ func _commit_roof_drag() -> void:
 	var coordinator := _find_coordinator_from_node(roof)
 	roof.material_override = m_drag_roof_active_material
 	if !_is_roof_span_large_enough(new_start, new_end):
-		roof.set_roof_corners_rotation_height_and_covers(old_start, old_end, old_rotation, old_height, old_covered_rects)
+		roof.set_roof_corners_rotation_height_and_covers(
+			old_start,
+			old_end,
+			old_rotation,
+			old_height,
+			old_covered_rects,
+			old_covered_polygons
+		)
 		if coordinator != null:
 			coordinator.refresh_roof_covered_rects()
 		_reset_roof_drag_state()
@@ -1503,7 +1533,14 @@ func _commit_roof_drag() -> void:
 			and _angles_match(old_rotation, new_rotation)
 			and is_equal_approx(old_height, new_height)
 	):
-		roof.set_roof_corners_rotation_height_and_covers(old_start, old_end, old_rotation, old_height, old_covered_rects)
+		roof.set_roof_corners_rotation_height_and_covers(
+			old_start,
+			old_end,
+			old_rotation,
+			old_height,
+			old_covered_rects,
+			old_covered_polygons
+		)
 		if coordinator != null:
 			coordinator.refresh_roof_covered_rects()
 		_reset_roof_drag_state()
@@ -1511,8 +1548,9 @@ func _commit_roof_drag() -> void:
 		return
 
 	var new_covered_rects: Array[Rect2] = []
+	var new_covered_polygons: Array[PackedVector2Array] = []
 	if coordinator != null:
-		new_covered_rects = coordinator.compute_roof_covered_rects(
+		var cover_regions := coordinator.compute_roof_cover_regions(
 			new_start,
 			new_end,
 			roof.get_roof_style(),
@@ -1524,8 +1562,23 @@ func _commit_roof_drag() -> void:
 			roof,
 			true
 		)
-		if !coordinator.roof_has_visible_render_area(new_start, new_end, roof.roof_overhang, new_covered_rects):
-			roof.set_roof_corners_rotation_height_and_covers(old_start, old_end, old_rotation, old_height, old_covered_rects)
+		new_covered_rects = _roof_covered_rects_from_regions(cover_regions)
+		new_covered_polygons = _roof_covered_polygons_from_regions(cover_regions)
+		if !coordinator.roof_has_visible_cover_area(
+			new_start,
+			new_end,
+			roof.roof_overhang,
+			new_covered_rects,
+			new_covered_polygons
+		):
+			roof.set_roof_corners_rotation_height_and_covers(
+				old_start,
+				old_end,
+				old_rotation,
+				old_height,
+				old_covered_rects,
+				old_covered_polygons
+			)
 			_reset_roof_drag_state()
 			_set_status("Roof would be fully covered.")
 			return
@@ -1536,9 +1589,17 @@ func _commit_roof_drag() -> void:
 			new_end,
 			new_rotation,
 			new_height,
-			new_covered_rects
+			new_covered_rects,
+			new_covered_polygons
 		):
-			roof.set_roof_corners_rotation_height_and_covers(old_start, old_end, old_rotation, old_height, old_covered_rects)
+			roof.set_roof_corners_rotation_height_and_covers(
+				old_start,
+				old_end,
+				old_rotation,
+				old_height,
+				old_covered_rects,
+				old_covered_polygons
+			)
 			_reset_roof_drag_state()
 			_set_status("Roof edit would fully cover another roof.")
 			return
@@ -1554,6 +1615,7 @@ func _commit_roof_drag() -> void:
 		new_rotation,
 		new_height,
 		new_covered_rects,
+		new_covered_polygons,
 		coordinator
 	)
 	undo_redo.add_do_method(self, "_select_node", roof)
@@ -1566,6 +1628,7 @@ func _commit_roof_drag() -> void:
 		old_rotation,
 		old_height,
 		old_covered_rects,
+		old_covered_polygons,
 		coordinator
 	)
 	undo_redo.commit_action()
@@ -1586,7 +1649,8 @@ func _cancel_roof_drag() -> void:
 			m_drag_roof_old_end,
 			m_drag_roof_old_rotation_degrees,
 			m_drag_roof_old_height,
-			m_drag_roof_old_covered_rects
+			m_drag_roof_old_covered_rects,
+			m_drag_roof_old_covered_polygons
 		)
 		m_dragging_roof.material_override = m_drag_roof_active_material
 	_reset_roof_drag_state()
@@ -1723,13 +1787,22 @@ func _active_roof_grid_step(roof: ProceduralRoof3DScript) -> float:
 	return maxf(float(m_roof_settings["grid_step"]), 0.05)
 
 
-func _roof_covered_rects_from_merge(merge: Dictionary) -> Array[Rect2]:
+func _roof_covered_rects_from_regions(regions: Dictionary) -> Array[Rect2]:
 	var rects: Array[Rect2] = []
-	if merge.is_empty():
+	if regions.is_empty():
 		return rects
-	for rect in merge.get("covered_rects", []):
+	for rect in regions.get("covered_rects", []):
 		rects.append(rect)
 	return rects
+
+
+func _roof_covered_polygons_from_regions(regions: Dictionary) -> Array[PackedVector2Array]:
+	var polygons: Array[PackedVector2Array] = []
+	if regions.is_empty():
+		return polygons
+	for polygon in regions.get("covered_polygons", []):
+		polygons.append(PackedVector2Array(polygon))
+	return polygons
 
 
 func _roof_rotation_basis(rotation_degrees: float) -> Basis:
@@ -1754,6 +1827,7 @@ func _reset_roof_drag_state() -> void:
 	m_drag_roof_old_rotation_degrees = 0.0
 	m_drag_roof_old_height = 0.0
 	m_drag_roof_old_covered_rects = []
+	m_drag_roof_old_covered_polygons = []
 	m_drag_roof_anchor_local = Vector3.ZERO
 	m_drag_roof_plane_y = 0.0
 	m_drag_roof_edit_mask = FLOOR_EDIT_MOVE
@@ -3182,6 +3256,7 @@ func _apply_roof_settings_to_coordinator(coordinator: BuildingEditor3DScript) ->
 	coordinator.default_roof_overhang = float(m_roof_settings["overhang"])
 	coordinator.default_roof_rotation_degrees = float(m_roof_settings.get("rotation_degrees", 0.0))
 	coordinator.default_roof_color = Color(m_roof_settings["color"])
+	coordinator.default_roof_debug_wireframe = bool(m_roof_settings.get("debug_wireframe", false))
 
 
 func _active_grid_step(wall: ProceduralWall3DScript) -> float:
@@ -4538,11 +4613,19 @@ func _set_roof_state_and_refresh(
 	new_rotation: float,
 	new_height: float,
 	new_covered_rects: Array[Rect2],
+	new_covered_polygons: Array[PackedVector2Array],
 	coordinator: BuildingEditor3DScript
 ) -> void:
 	if roof == null or !is_instance_valid(roof):
 		return
-	roof.set_roof_corners_rotation_height_and_covers(new_start, new_end, new_rotation, new_height, new_covered_rects)
+	roof.set_roof_corners_rotation_height_and_covers(
+		new_start,
+		new_end,
+		new_rotation,
+		new_height,
+		new_covered_rects,
+		new_covered_polygons
+	)
 	if coordinator != null and is_instance_valid(coordinator):
 		coordinator.refresh_roof_covered_rects()
 
@@ -4554,7 +4637,8 @@ func _roof_layout_would_hide_any_roof(
 	new_end: Vector3,
 	new_rotation: float,
 	new_height: float,
-	new_covered_rects: Array[Rect2]
+	new_covered_rects: Array[Rect2],
+	new_covered_polygons: Array[PackedVector2Array]
 ) -> bool:
 	if coordinator == null or !is_instance_valid(coordinator):
 		return false
@@ -4570,6 +4654,7 @@ func _roof_layout_would_hide_any_roof(
 			"rotation": roof_node.roof_rotation_degrees,
 			"height": roof_node.roof_height,
 			"covered_rects": roof_node.get_covered_rects(),
+			"covered_polygons": roof_node.get_covered_polygons(),
 		})
 
 	roof.set_roof_corners_rotation_height_and_covers(
@@ -4577,7 +4662,8 @@ func _roof_layout_would_hide_any_roof(
 		new_end,
 		new_rotation,
 		new_height,
-		new_covered_rects
+		new_covered_rects,
+		new_covered_polygons
 	)
 	coordinator.refresh_roof_covered_rects()
 	var hides_roof := false
@@ -4595,12 +4681,16 @@ func _roof_layout_would_hide_any_roof(
 		var snapshot_covers: Array[Rect2] = []
 		for rect in snapshot.get("covered_rects", []):
 			snapshot_covers.append(rect)
+		var snapshot_polygons: Array[PackedVector2Array] = []
+		for polygon in snapshot.get("covered_polygons", []):
+			snapshot_polygons.append(PackedVector2Array(polygon))
 		snapshot_roof.set_roof_corners_rotation_height_and_covers(
 			Vector3(snapshot["start"]),
 			Vector3(snapshot["end"]),
 			float(snapshot["rotation"]),
 			float(snapshot["height"]),
-			snapshot_covers
+			snapshot_covers,
+			snapshot_polygons
 		)
 	return hides_roof
 
