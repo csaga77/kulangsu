@@ -33,7 +33,7 @@ window/stretch/scale_mode="integer"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/asset_placer/plugin.cfg", "res://addons/low_poly_building_editor/plugin.cfg", "res://addons/mp3_to_ogg/plugin.cfg", "res://addons/storyline_editor/plugin.cfg")
+enabled=PackedStringArray("res://addons/low_poly_building_editor/plugin.cfg", "res://addons/storyline_editor/plugin.cfg")
 
 [global_group]
 
