@@ -31,12 +31,33 @@ const PILLAR_EDIT_RADIUS := 1
 const OPENING_SILL_META := &"building_opening_sill_height"
 const OPENING_ALLOW_BASE_META := &"building_opening_allow_base_edge"
 # Temporary diagnostic: writes the 3D toolbar tree to native_buttons_debug.log
-# when the native mode buttons cannot be located. Remove once exclusivity works.
-const DEBUG_NATIVE_BUTTONS := true
+# when enabled.
+const DEBUG_NATIVE_BUTTONS := false
+const NATIVE_ICON_SELECT := &"ToolSelect"
+const NATIVE_ICON_TRANSFORM := &"Transform"
+const NATIVE_ICON_TRANSFORM_ALTERNATE := &"ToolTriangle"
+const NATIVE_ICON_MOVE := &"ToolMove"
+const NATIVE_ICON_ROTATE := &"ToolRotate"
+const NATIVE_ICON_SCALE := &"ToolScale"
+const NATIVE_MODE_TRANSFORM := &"transform"
+const NATIVE_MODE_MOVE := &"move"
+const NATIVE_MODE_ROTATE := &"rotate"
+const NATIVE_MODE_SCALE := &"scale"
+const NATIVE_MODE_SELECT := &"select"
+const NATIVE_SHORTCUT_TRANSFORM := KEY_Q
+const NATIVE_SHORTCUT_MOVE := KEY_W
+const NATIVE_SHORTCUT_ROTATE := KEY_E
+const NATIVE_SHORTCUT_SCALE := KEY_R
+const NATIVE_SHORTCUT_SELECT := KEY_V
+const NATIVE_TIPS_SELECT := ["select mode", "select tool"]
+const NATIVE_TIPS_TRANSFORM := ["transform mode", "transform"]
+const NATIVE_TIPS_MOVE := ["move mode", "move"]
+const NATIVE_TIPS_ROTATE := ["rotate mode", "rotate"]
+const NATIVE_TIPS_SCALE := ["scale mode", "scale"]
 
 # The native 3D viewport Select mode is the "no building tool" state, so the
 # toolbar only exposes the building tools and stays mutually exclusive with the
-# native Select/Move/Rotate/Scale buttons.
+# native Transform/Move/Rotate/Scale/Select buttons.
 const TOOLBAR_TOOLS := [
 	{"mode": MODE_WALL, "label": "Wall", "tooltip": "Draw grid-snapped walls."},
 	{"mode": MODE_FLOOR, "label": "Floor", "tooltip": "Draw rectangular floor slabs."},
@@ -54,6 +75,7 @@ var m_viewport_overlays: Array[Control] = []
 var m_viewport_toolbar: HBoxContainer
 var m_toolbar_buttons := {}
 var m_native_tool_buttons: Array[Button] = []
+var m_native_select_button: Button
 var m_native_active_button: Button
 var m_handling_native_click := false
 var m_tool_mode := MODE_SELECT
@@ -4708,18 +4730,40 @@ func _build_viewport_toolbar() -> void:
 
 	add_control_to_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, m_viewport_toolbar)
 	# Defer so the control is reparented into the spatial editor menu bar before
-	# we look up the native Select/Move/Rotate/Scale buttons beside it.
+	# we look up the native Transform/Move/Rotate/Scale/Select buttons beside it.
 	_collect_native_tool_buttons.call_deferred()
+	set_process(true)
+	set_process_input(true)
 
 
 func _clear_viewport_toolbar() -> void:
 	_release_native_tool_buttons()
 	if m_viewport_toolbar == null:
 		return
+	set_process(false)
+	set_process_input(false)
 	remove_control_from_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, m_viewport_toolbar)
 	m_viewport_toolbar.queue_free()
 	m_viewport_toolbar = null
 	m_toolbar_buttons.clear()
+
+
+func _process(_delta: float) -> void:
+	if m_tool_mode != MODE_SELECT:
+		_clear_native_tool_button_highlights()
+
+
+func _input(event: InputEvent) -> void:
+	if m_tool_mode == MODE_SELECT:
+		return
+	if event is InputEventMouseButton:
+		var mouse_button := event as InputEventMouseButton
+		if (
+			mouse_button.button_index == MOUSE_BUTTON_LEFT
+			and mouse_button.pressed
+			and _event_hits_native_select_button(mouse_button)
+		):
+			_on_native_tool_button_chosen(_get_native_select_button())
 
 
 func _on_toolbar_tool_selected(mode: String) -> void:
@@ -4742,26 +4786,27 @@ func _sync_toolbar_tool_mode(mode: String) -> void:
 
 
 func _collect_native_tool_buttons() -> void:
-	# Find the native Select/Move/Rotate/Scale mode buttons so the building tools
-	# can stay mutually exclusive with them. Their layout/order in the spatial
-	# editor toolbar is not guaranteed, so search the menu bar and climb a few
-	# ancestors until the buttons are located rather than assuming positions.
+	# Find the native Transform/Move/Rotate/Scale/Select mode buttons so the
+	# building tools can stay mutually exclusive with them. Godot's toolbar
+	# layout can move, so match each native button by icon name first, then by
+	# its tooltip text, then by its native shortcut.
 	_release_native_tool_buttons()
 	if m_viewport_toolbar == null:
 		return
-	var search_root: Node = m_viewport_toolbar.get_parent()
-	var found: Array[Button] = []
-	var hops := 0
-	while search_root != null and hops < 6:
-		found = _find_native_mode_buttons(search_root)
-		if found.size() >= 2:
-			break
-		search_root = search_root.get_parent()
-		hops += 1
-	for native_button in found:
+	var found := _find_native_mode_buttons_from_node_3d_editor()
+	m_native_select_button = found.get(NATIVE_MODE_SELECT) as Button
+	for native_button in _native_button_values(found):
+		if m_native_tool_buttons.has(native_button):
+			continue
 		m_native_tool_buttons.append(native_button)
-		if not native_button.pressed.is_connected(_on_native_tool_pressed):
-			native_button.pressed.connect(_on_native_tool_pressed)
+		var native_pressed := Callable(self, "_on_native_tool_button_chosen").bind(native_button)
+		var native_gui_input := Callable(self, "_on_native_tool_button_gui_input").bind(native_button)
+		if not native_button.pressed.is_connected(native_pressed):
+			native_button.pressed.connect(native_pressed)
+		if not native_button.button_down.is_connected(native_pressed):
+			native_button.button_down.connect(native_pressed)
+		if not native_button.gui_input.is_connected(native_gui_input):
+			native_button.gui_input.connect(native_gui_input)
 	if DEBUG_NATIVE_BUTTONS:
 		_dump_native_button_debug()
 	if m_native_tool_buttons.is_empty():
@@ -4771,36 +4816,200 @@ func _collect_native_tool_buttons() -> void:
 	_sync_native_tool_buttons(m_tool_mode)
 
 
-func _find_native_mode_buttons(root: Node) -> Array[Button]:
-	var result: Array[Button] = []
-	if root == null or root == m_viewport_toolbar:
-		return result
-	for child in root.get_children():
-		if child == m_viewport_toolbar:
-			continue
-		if child is Button and child.get_class() == "Button" and (child as Button).toggle_mode:
-			if _is_native_mode_button(child as Button):
-				result.append(child as Button)
-		result.append_array(_find_native_mode_buttons(child))
-	return result
+func _find_native_mode_buttons_from_node_3d_editor() -> Dictionary:
+	var editor_base := get_editor_interface().get_base_control()
+	if editor_base == null:
+		return {}
+	var node_3d_editors := _find_nodes_by_class_name(editor_base, "Node3DEditor")
+	for node in node_3d_editors:
+		var native_buttons := _find_native_mode_buttons_in_node_3d_editor_node(node)
+		if _native_button_map_is_complete(native_buttons):
+			return native_buttons
+	return {}
 
 
-func _is_native_mode_button(button: Button) -> bool:
-	# Match by the Select/Move/Rotate/Scale shortcut keys (Q/W/E/R) first, which
-	# is locale-independent. The buttons are icon-only, so their label only shows
-	# up in the effective tooltip (get_tooltip), not in tooltip_text.
-	if _button_has_unmodified_shortcut_key(button, [KEY_Q, KEY_W, KEY_E, KEY_R]):
-		return true
-	var tip := button.get_tooltip(Vector2.ZERO).to_lower()
-	return (
-		tip.contains("select mode")
-		or tip.contains("move mode")
-		or tip.contains("rotate mode")
-		or tip.contains("scale mode")
+func _find_native_mode_buttons_in_node_3d_editor_node(root: Node) -> Dictionary:
+	var buttons := _find_buttons(root)
+	var native_buttons := {}
+	native_buttons[NATIVE_MODE_TRANSFORM] = _find_button_by_icon_tip_or_shortcut(
+		buttons,
+		[NATIVE_ICON_TRANSFORM, NATIVE_ICON_TRANSFORM_ALTERNATE],
+		NATIVE_TIPS_TRANSFORM,
+		NATIVE_SHORTCUT_TRANSFORM
 	)
+	native_buttons[NATIVE_MODE_MOVE] = _find_button_by_icon_tip_or_shortcut(
+		buttons,
+		[NATIVE_ICON_MOVE],
+		NATIVE_TIPS_MOVE,
+		NATIVE_SHORTCUT_MOVE
+	)
+	native_buttons[NATIVE_MODE_ROTATE] = _find_button_by_icon_tip_or_shortcut(
+		buttons,
+		[NATIVE_ICON_ROTATE],
+		NATIVE_TIPS_ROTATE,
+		NATIVE_SHORTCUT_ROTATE
+	)
+	native_buttons[NATIVE_MODE_SCALE] = _find_button_by_icon_tip_or_shortcut(
+		buttons,
+		[NATIVE_ICON_SCALE],
+		NATIVE_TIPS_SCALE,
+		NATIVE_SHORTCUT_SCALE
+	)
+	native_buttons[NATIVE_MODE_SELECT] = _find_button_by_icon_tip_or_shortcut(
+		buttons,
+		[NATIVE_ICON_SELECT],
+		NATIVE_TIPS_SELECT,
+		NATIVE_SHORTCUT_SELECT
+	)
+	if !_native_button_map_is_complete(native_buttons):
+		return {}
+	if !_native_buttons_are_unique(_native_button_values(native_buttons)):
+		return {}
+	return native_buttons
 
 
-func _button_has_unmodified_shortcut_key(button: Button, keys: Array) -> bool:
+func _find_button_by_icon_tip_or_shortcut(
+	buttons: Array[Button],
+	icon_names: Array[StringName],
+	tip_patterns: Array,
+	shortcut_key: int
+) -> Button:
+	var icon_button := _find_button_with_icon_names(buttons, icon_names)
+	if icon_button != null:
+		return icon_button
+	var tip_button := _find_button_with_tip_text(buttons, tip_patterns)
+	if tip_button != null:
+		return tip_button
+	return _find_button_with_shortcut_key(buttons, shortcut_key)
+
+
+func _find_button_with_icon_names(buttons: Array[Button], icon_names: Array[StringName]) -> Button:
+	for icon_name in icon_names:
+		var button := _find_button_with_icon_name(buttons, icon_name)
+		if button != null:
+			return button
+	return null
+
+
+func _find_button_with_icon_name(buttons: Array[Button], icon_name: StringName) -> Button:
+	for button in buttons:
+		if button != null and is_instance_valid(button) and _button_has_icon_name(button, icon_name):
+			return button
+	return null
+
+
+func _find_button_with_tip_text(buttons: Array[Button], tip_patterns: Array) -> Button:
+	for button in buttons:
+		if button != null and is_instance_valid(button) and _button_tip_contains_any(button, tip_patterns):
+			return button
+	return null
+
+
+func _find_button_with_shortcut_key(buttons: Array[Button], shortcut_key: int) -> Button:
+	for button in buttons:
+		if (
+			button != null
+			and is_instance_valid(button)
+			and button.toggle_mode
+			and _button_has_unmodified_shortcut_key(button, shortcut_key)
+		):
+			return button
+	return null
+
+
+func _native_button_map_is_complete(native_buttons: Dictionary) -> bool:
+	for mode in [
+		NATIVE_MODE_TRANSFORM,
+		NATIVE_MODE_MOVE,
+		NATIVE_MODE_ROTATE,
+		NATIVE_MODE_SCALE,
+		NATIVE_MODE_SELECT,
+	]:
+		if !native_buttons.has(mode):
+			return false
+		var button := native_buttons[mode] as Button
+		if button == null or !is_instance_valid(button):
+			return false
+	return true
+
+
+func _native_button_values(native_buttons: Dictionary) -> Array[Button]:
+	var buttons: Array[Button] = []
+	for mode in native_buttons:
+		var button := native_buttons[mode] as Button
+		if button != null and is_instance_valid(button):
+			buttons.append(button)
+	return buttons
+
+
+func _native_buttons_are_unique(buttons: Array[Button]) -> bool:
+	for i in range(buttons.size()):
+		for j in range(i + 1, buttons.size()):
+			if buttons[i] == buttons[j]:
+				return false
+	return true
+
+
+func _button_has_icon_name(button: Button, icon_name: StringName) -> bool:
+	if button.icon == null:
+		return false
+	var expected_icon := _get_editor_icon(icon_name)
+	if expected_icon != null and button.icon == expected_icon:
+		return true
+	var icon_name_text := String(icon_name).to_lower()
+	var icon_resource_name := String(button.icon.resource_name).to_lower()
+	var icon_resource_path := button.icon.resource_path.to_lower()
+	return icon_resource_name.contains(icon_name_text) or icon_resource_path.contains(icon_name_text)
+
+
+func _find_nodes_by_class_name(node: Node, class_name_text: String) -> Array[Node]:
+	var results: Array[Node] = []
+	if node.is_class(class_name_text):
+		results.append(node)
+	for child in node.get_children():
+		results.append_array(_find_nodes_by_class_name(child, class_name_text))
+	return results
+
+
+func _find_buttons(root: Node) -> Array[Button]:
+	var buttons: Array[Button] = []
+	if root is Button:
+		buttons.append(root as Button)
+	for child in root.get_children():
+		buttons.append_array(_find_buttons(child))
+	return buttons
+
+
+func _is_native_select_button(button: Button) -> bool:
+	if _button_has_icon_name(button, NATIVE_ICON_SELECT):
+		return true
+	if _button_tip_contains_any(button, NATIVE_TIPS_SELECT):
+		return true
+	return _button_has_unmodified_shortcut_key(button, NATIVE_SHORTCUT_SELECT)
+
+
+func _find_native_select_button(buttons: Array[Button]) -> Button:
+	for button in buttons:
+		if button != null and is_instance_valid(button) and _is_native_select_button(button):
+			return button
+	return null
+
+
+func _button_tip_contains_any(button: Button, tip_patterns: Array) -> bool:
+	if button == null or !button.toggle_mode:
+		return false
+	var tip_text := "%s\n%s" % [button.tooltip_text, button.get_tooltip(Vector2.ZERO)]
+	var tip_lower := tip_text.to_lower()
+	for pattern in tip_patterns:
+		var pattern_text := String(pattern).to_lower()
+		if !pattern_text.is_empty() and tip_lower.contains(pattern_text):
+			return true
+	return false
+
+
+func _button_has_unmodified_shortcut_key(button: Button, shortcut_key: int) -> bool:
+	if button == null:
+		return false
 	var shortcut := button.shortcut
 	if shortcut == null:
 		return false
@@ -4809,7 +5018,7 @@ func _button_has_unmodified_shortcut_key(button: Button, keys: Array) -> bool:
 			var key_event := event as InputEventKey
 			if key_event.shift_pressed or key_event.ctrl_pressed or key_event.alt_pressed or key_event.meta_pressed:
 				continue
-			if keys.has(key_event.keycode) or keys.has(key_event.physical_keycode):
+			if key_event.keycode == shortcut_key or key_event.physical_keycode == shortcut_key:
 				return true
 	return false
 
@@ -4819,9 +5028,10 @@ func _dump_native_button_debug() -> void:
 	lines.append("toolbar parent: %s" % str(m_viewport_toolbar.get_parent()))
 	lines.append("matched native buttons: %d" % m_native_tool_buttons.size())
 	for matched in m_native_tool_buttons:
-		lines.append("  MATCH tip='%s' shortcut='%s' pressed=%s" % [
+		lines.append("  MATCH tip='%s' shortcut='%s' icon='%s' pressed=%s" % [
 			matched.get_tooltip(Vector2.ZERO),
 			"" if matched.shortcut == null else matched.shortcut.get_as_text(),
+			_button_icon_debug_text(matched),
 			str(matched.button_pressed),
 		])
 	var ancestor: Node = m_viewport_toolbar.get_parent()
@@ -4844,30 +5054,54 @@ func _dump_node_tree(node: Node, depth: int, lines: PackedStringArray) -> void:
 		var info := "  ".repeat(depth + 1) + "%s [%s]" % [child.name, child.get_class()]
 		if child is Button:
 			var btn := child as Button
-			info += " toggle=%s pressed=%s text='%s' tip='%s' shortcut='%s'" % [
+			info += " toggle=%s pressed=%s text='%s' tip='%s' shortcut='%s' icon='%s'" % [
 				str(btn.toggle_mode),
 				str(btn.button_pressed),
 				btn.text,
 				btn.get_tooltip(Vector2.ZERO),
 				"" if btn.shortcut == null else btn.shortcut.get_as_text(),
+				_button_icon_debug_text(btn),
 			]
 		lines.append(info)
 		_dump_node_tree(child, depth + 1, lines)
 
 
+func _button_icon_debug_text(button: Button) -> String:
+	if button == null or button.icon == null:
+		return ""
+	return "%s|%s" % [String(button.icon.resource_name), button.icon.resource_path]
+
+
 func _release_native_tool_buttons() -> void:
 	for native_button in m_native_tool_buttons:
 		if native_button != null and is_instance_valid(native_button):
-			if native_button.pressed.is_connected(_on_native_tool_pressed):
-				native_button.pressed.disconnect(_on_native_tool_pressed)
+			var native_pressed := Callable(self, "_on_native_tool_button_chosen").bind(native_button)
+			var native_gui_input := Callable(self, "_on_native_tool_button_gui_input").bind(native_button)
+			if native_button.pressed.is_connected(native_pressed):
+				native_button.pressed.disconnect(native_pressed)
+			if native_button.button_down.is_connected(native_pressed):
+				native_button.button_down.disconnect(native_pressed)
+			if native_button.gui_input.is_connected(native_gui_input):
+				native_button.gui_input.disconnect(native_gui_input)
 	m_native_tool_buttons.clear()
+	m_native_select_button = null
 	m_native_active_button = null
 
 
-func _on_native_tool_pressed() -> void:
+func _on_native_tool_button_gui_input(event: InputEvent, native_button: Button) -> void:
+	if event is InputEventMouseButton:
+		var mouse_button := event as InputEventMouseButton
+		if mouse_button.button_index == MOUSE_BUTTON_LEFT and mouse_button.pressed:
+			_on_native_tool_button_chosen(native_button)
+
+
+func _on_native_tool_button_chosen(native_button: Button) -> void:
 	# A native viewport selection mode was chosen; deactivate any building tool
 	# so the two button sets stay mutually exclusive.
-	_update_native_active_button()
+	if native_button != null and is_instance_valid(native_button):
+		m_native_active_button = native_button
+	else:
+		_update_native_active_button()
 	if m_tool_mode == MODE_SELECT:
 		return
 	m_handling_native_click = true
@@ -4893,12 +5127,48 @@ func _sync_native_tool_buttons(mode: String) -> void:
 		# native highlight when a building tool is cleared from our own UI.
 		if m_handling_native_click:
 			return
-		if m_native_active_button != null and is_instance_valid(m_native_active_button):
+		var select_button := _get_native_select_button()
+		if select_button != null:
+			_clear_native_tool_button_highlights()
+			select_button.set_pressed_no_signal(true)
+			m_native_active_button = select_button
+		elif m_native_active_button != null and is_instance_valid(m_native_active_button):
 			m_native_active_button.set_pressed_no_signal(true)
 	else:
-		for native_button in m_native_tool_buttons:
-			if native_button != null and is_instance_valid(native_button):
-				native_button.set_pressed_no_signal(false)
+		_queue_native_tool_button_highlight_clear()
+
+
+func _get_native_select_button() -> Button:
+	if m_native_select_button != null and is_instance_valid(m_native_select_button):
+		return m_native_select_button
+	m_native_select_button = _find_native_select_button(m_native_tool_buttons)
+	return m_native_select_button
+
+
+func _event_hits_native_select_button(mouse_button: InputEventMouseButton) -> bool:
+	var select_button := _get_native_select_button()
+	if select_button == null or !select_button.is_visible_in_tree():
+		return false
+	return select_button.get_global_rect().has_point(mouse_button.position)
+
+
+func _queue_native_tool_button_highlight_clear() -> void:
+	_clear_native_tool_button_highlights()
+	call_deferred("_clear_native_tool_button_highlights_if_building_tool_active")
+	if is_inside_tree():
+		var timer := get_tree().create_timer(0.05)
+		timer.timeout.connect(_clear_native_tool_button_highlights_if_building_tool_active)
+
+
+func _clear_native_tool_button_highlights_if_building_tool_active() -> void:
+	if m_tool_mode != MODE_SELECT:
+		_clear_native_tool_button_highlights()
+
+
+func _clear_native_tool_button_highlights() -> void:
+	for native_button in m_native_tool_buttons:
+		if native_button != null and is_instance_valid(native_button):
+			native_button.set_pressed_no_signal(false)
 
 
 func _get_editor_icon(icon_name: StringName) -> Texture2D:
