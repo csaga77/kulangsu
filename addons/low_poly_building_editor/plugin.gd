@@ -54,18 +54,55 @@ const NATIVE_TIPS_TRANSFORM := ["transform mode", "transform"]
 const NATIVE_TIPS_MOVE := ["move mode", "move"]
 const NATIVE_TIPS_ROTATE := ["rotate mode", "rotate"]
 const NATIVE_TIPS_SCALE := ["scale mode", "scale"]
+const TOOLBAR_BUTTON_MINIMUM_SIZE := Vector2(28.0, 28.0)
+const TOOLBAR_FALLBACK_ICON_SIZE := Vector2i(24, 24)
 
 # The native 3D viewport Select mode is the "no building tool" state, so the
 # toolbar only exposes the building tools and stays mutually exclusive with the
 # native Transform/Move/Rotate/Scale/Select buttons.
 const TOOLBAR_TOOLS := [
-	{"mode": MODE_WALL, "label": "Wall", "tooltip": "Draw grid-snapped walls."},
-	{"mode": MODE_FLOOR, "label": "Floor", "tooltip": "Draw rectangular floor slabs."},
-	{"mode": MODE_PILLAR, "label": "Pillar", "tooltip": "Place low-poly pillars."},
-	{"mode": MODE_ROOF, "label": "Roof", "tooltip": "Draw low-poly roofs."},
-	{"mode": MODE_PROP, "label": "Prop", "tooltip": "Place prop scenes."},
-	{"mode": MODE_DOOR, "label": "Door", "tooltip": "Cut door openings."},
-	{"mode": MODE_WINDOW, "label": "Window", "tooltip": "Cut window openings."},
+	{
+		"mode": MODE_WALL,
+		"label": "Wall",
+		"tooltip": "Draw grid-snapped walls.",
+		"generated_icon": true,
+	},
+	{
+		"mode": MODE_FLOOR,
+		"label": "Floor",
+		"tooltip": "Draw rectangular floor slabs.",
+		"generated_icon": true,
+	},
+	{
+		"mode": MODE_PILLAR,
+		"label": "Pillar",
+		"tooltip": "Place low-poly pillars.",
+		"generated_icon": true,
+	},
+	{
+		"mode": MODE_ROOF,
+		"label": "Roof",
+		"tooltip": "Draw low-poly roofs.",
+		"generated_icon": true,
+	},
+	{
+		"mode": MODE_DOOR,
+		"label": "Door",
+		"tooltip": "Cut door openings.",
+		"generated_icon": true,
+	},
+	{
+		"mode": MODE_WINDOW,
+		"label": "Window",
+		"tooltip": "Cut window openings.",
+		"generated_icon": true,
+	},
+	{
+		"mode": MODE_PROP,
+		"label": "Prop",
+		"tooltip": "Place prop scenes.",
+		"generated_icon": true,
+	},
 ]
 
 var m_dock: Control
@@ -74,6 +111,7 @@ var m_input_capture: Node
 var m_viewport_overlays: Array[Control] = []
 var m_viewport_toolbar: HBoxContainer
 var m_toolbar_buttons := {}
+var m_toolbar_icon_cache := {}
 var m_native_tool_buttons: Array[Button] = []
 var m_native_select_button: Button
 var m_native_active_button: Button
@@ -4709,19 +4747,16 @@ func _build_viewport_toolbar() -> void:
 
 	m_viewport_toolbar.add_child(VSeparator.new())
 
-	var title := Label.new()
-	title.text = "Building:"
-	title.tooltip_text = "Low-Poly Building Editor tool selection."
-	m_viewport_toolbar.add_child(title)
-
 	m_toolbar_buttons.clear()
 	for tool_info in TOOLBAR_TOOLS:
 		var mode := String(tool_info["mode"])
+		var label := String(tool_info["label"])
 		var button := Button.new()
 		button.toggle_mode = true
 		button.flat = true
-		button.text = String(tool_info["label"])
-		button.tooltip_text = String(tool_info["tooltip"])
+		button.icon = _get_toolbar_tool_icon(tool_info)
+		button.custom_minimum_size = TOOLBAR_BUTTON_MINIMUM_SIZE
+		button.tooltip_text = "%s: %s" % [label, String(tool_info["tooltip"])]
 		button.focus_mode = Control.FOCUS_NONE
 		button.set_pressed_no_signal(mode == m_tool_mode)
 		button.pressed.connect(_on_toolbar_tool_selected.bind(mode))
@@ -5171,13 +5206,148 @@ func _clear_native_tool_button_highlights() -> void:
 			native_button.set_pressed_no_signal(false)
 
 
-func _get_editor_icon(icon_name: StringName) -> Texture2D:
+func _get_toolbar_tool_icon(tool_info: Dictionary) -> Texture2D:
+	if bool(tool_info.get("generated_icon", false)):
+		return _make_toolbar_tool_icon(String(tool_info.get("mode", "")))
+	var icon_names: Array = tool_info.get("icons", [])
+	for icon_name in icon_names:
+		var icon := _get_editor_icon(StringName(icon_name), false)
+		if icon != null:
+			return icon
+	return _make_toolbar_tool_icon(String(tool_info.get("mode", "")))
+
+
+func _make_toolbar_tool_icon(mode: String) -> Texture2D:
+	if m_toolbar_icon_cache.has(mode):
+		return m_toolbar_icon_cache[mode]
+	var image := Image.create(
+		TOOLBAR_FALLBACK_ICON_SIZE.x,
+		TOOLBAR_FALLBACK_ICON_SIZE.y,
+		false,
+		Image.FORMAT_RGBA8
+	)
+	image.fill(Color(0.0, 0.0, 0.0, 0.0))
+	var color := Color.WHITE
+	match mode:
+		MODE_WALL:
+			_draw_icon_rect_outline(image, Rect2i(3, 7, 18, 12), color, 2)
+			_draw_icon_line(image, Vector2i(4, 11), Vector2i(20, 11), color, 1)
+			_draw_icon_line(image, Vector2i(4, 15), Vector2i(20, 15), color, 1)
+			_draw_icon_line(image, Vector2i(9, 8), Vector2i(9, 10), color, 1)
+			_draw_icon_line(image, Vector2i(15, 8), Vector2i(15, 10), color, 1)
+			_draw_icon_line(image, Vector2i(6, 12), Vector2i(6, 14), color, 1)
+			_draw_icon_line(image, Vector2i(12, 12), Vector2i(12, 14), color, 1)
+			_draw_icon_line(image, Vector2i(18, 12), Vector2i(18, 14), color, 1)
+			_draw_icon_line(image, Vector2i(9, 16), Vector2i(9, 18), color, 1)
+			_draw_icon_line(image, Vector2i(15, 16), Vector2i(15, 18), color, 1)
+		MODE_FLOOR:
+			_draw_icon_line(image, Vector2i(12, 4), Vector2i(21, 10), color, 2)
+			_draw_icon_line(image, Vector2i(21, 10), Vector2i(12, 17), color, 2)
+			_draw_icon_line(image, Vector2i(12, 17), Vector2i(3, 10), color, 2)
+			_draw_icon_line(image, Vector2i(3, 10), Vector2i(12, 4), color, 2)
+			_draw_icon_line(image, Vector2i(3, 10), Vector2i(21, 10), color, 1)
+			_draw_icon_line(image, Vector2i(12, 4), Vector2i(12, 17), color, 1)
+		MODE_PILLAR:
+			_draw_icon_line(image, Vector2i(7, 8), Vector2i(9, 5), color, 2)
+			_draw_icon_line(image, Vector2i(9, 5), Vector2i(15, 5), color, 2)
+			_draw_icon_line(image, Vector2i(15, 5), Vector2i(17, 8), color, 2)
+			_draw_icon_line(image, Vector2i(7, 8), Vector2i(7, 17), color, 2)
+			_draw_icon_line(image, Vector2i(17, 8), Vector2i(17, 17), color, 2)
+			_draw_icon_line(image, Vector2i(7, 17), Vector2i(9, 20), color, 2)
+			_draw_icon_line(image, Vector2i(9, 20), Vector2i(15, 20), color, 2)
+			_draw_icon_line(image, Vector2i(15, 20), Vector2i(17, 17), color, 2)
+		MODE_ROOF:
+			_draw_icon_line(image, Vector2i(3, 14), Vector2i(12, 5), color, 2)
+			_draw_icon_line(image, Vector2i(12, 5), Vector2i(21, 14), color, 2)
+			_draw_icon_line(image, Vector2i(5, 14), Vector2i(19, 14), color, 2)
+			_draw_icon_line(image, Vector2i(7, 14), Vector2i(7, 19), color, 1)
+			_draw_icon_line(image, Vector2i(17, 14), Vector2i(17, 19), color, 1)
+			_draw_icon_line(image, Vector2i(7, 19), Vector2i(17, 19), color, 1)
+		MODE_PROP:
+			_draw_icon_cube(image, color)
+		MODE_DOOR:
+			_draw_icon_line(image, Vector2i(7, 20), Vector2i(7, 8), color, 2)
+			_draw_icon_line(image, Vector2i(7, 8), Vector2i(12, 4), color, 2)
+			_draw_icon_line(image, Vector2i(12, 4), Vector2i(17, 8), color, 2)
+			_draw_icon_line(image, Vector2i(17, 8), Vector2i(17, 20), color, 2)
+			_draw_icon_line(image, Vector2i(5, 20), Vector2i(19, 20), color, 2)
+			_draw_icon_line(image, Vector2i(10, 9), Vector2i(10, 18), color, 1)
+			image.fill_rect(Rect2i(14, 13, 2, 2), color)
+		MODE_WINDOW:
+			_draw_icon_rect_outline(image, Rect2i(4, 5, 16, 13), color, 2)
+			_draw_icon_line(image, Vector2i(12, 6), Vector2i(12, 17), color, 2)
+			_draw_icon_line(image, Vector2i(5, 12), Vector2i(19, 12), color, 2)
+			_draw_icon_line(image, Vector2i(3, 20), Vector2i(21, 20), color, 2)
+			_draw_icon_line(image, Vector2i(5, 18), Vector2i(19, 18), color, 1)
+		_:
+			_draw_icon_cube(image, color)
+	var texture := ImageTexture.create_from_image(image)
+	m_toolbar_icon_cache[mode] = texture
+	return texture
+
+
+func _draw_icon_cube(image: Image, color: Color) -> void:
+	_draw_icon_rect_outline(image, Rect2i(5, 9, 11, 10), color, 2)
+	_draw_icon_line(image, Vector2i(5, 9), Vector2i(9, 5), color, 1)
+	_draw_icon_line(image, Vector2i(16, 9), Vector2i(20, 5), color, 1)
+	_draw_icon_line(image, Vector2i(9, 5), Vector2i(20, 5), color, 1)
+	_draw_icon_line(image, Vector2i(20, 5), Vector2i(20, 15), color, 1)
+	_draw_icon_line(image, Vector2i(16, 19), Vector2i(20, 15), color, 1)
+
+
+func _draw_icon_rect_outline(image: Image, rect: Rect2i, color: Color, width := 1) -> void:
+	var left := rect.position.x
+	var top := rect.position.y
+	var right := rect.position.x + rect.size.x - 1
+	var bottom := rect.position.y + rect.size.y - 1
+	_draw_icon_line(image, Vector2i(left, top), Vector2i(right, top), color, width)
+	_draw_icon_line(image, Vector2i(right, top), Vector2i(right, bottom), color, width)
+	_draw_icon_line(image, Vector2i(right, bottom), Vector2i(left, bottom), color, width)
+	_draw_icon_line(image, Vector2i(left, bottom), Vector2i(left, top), color, width)
+
+
+func _draw_icon_line(image: Image, start: Vector2i, end: Vector2i, color: Color, width := 1) -> void:
+	var x0 := start.x
+	var y0 := start.y
+	var x1 := end.x
+	var y1 := end.y
+	var dx: int = abs(x1 - x0)
+	var dy: int = abs(y1 - y0)
+	var sx := 1 if x0 < x1 else -1
+	var sy := 1 if y0 < y1 else -1
+	var err := dx - dy
+	while true:
+		_draw_icon_dot(image, x0, y0, color, width)
+		if x0 == x1 and y0 == y1:
+			break
+		var e2 := err * 2
+		if e2 > -dy:
+			err -= dy
+			x0 += sx
+		if e2 < dx:
+			err += dx
+			y0 += sy
+
+
+func _draw_icon_dot(image: Image, x: int, y: int, color: Color, width: int) -> void:
+	for px in range(x, x + width):
+		for py in range(y, y + width):
+			if (
+				px >= 0
+				and py >= 0
+				and px < TOOLBAR_FALLBACK_ICON_SIZE.x
+				and py < TOOLBAR_FALLBACK_ICON_SIZE.y
+			):
+				image.set_pixel(px, py, color)
+
+
+func _get_editor_icon(icon_name: StringName, fallback_to_node_3d := true) -> Texture2D:
 	var base_control := get_editor_interface().get_base_control()
 	if base_control == null:
 		return null
 	if base_control.has_theme_icon(icon_name, &"EditorIcons"):
 		return base_control.get_theme_icon(icon_name, &"EditorIcons")
-	if base_control.has_theme_icon(&"Node3D", &"EditorIcons"):
+	if fallback_to_node_3d and base_control.has_theme_icon(&"Node3D", &"EditorIcons"):
 		return base_control.get_theme_icon(&"Node3D", &"EditorIcons")
 	return null
 

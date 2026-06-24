@@ -8,8 +8,8 @@
 ## User / Player Experience
 
 - This is a developer-facing tool, not runtime player UI.
-- Authors enable the `Low-Poly Building Editor` plugin, then choose `Wall`, `Floor`, `Pillar`, `Roof`, `Prop`, `Door`, or `Window` from either the dock's tool dropdown or the building tool buttons added to the 3D viewport toolbar, and place content directly in the 3D viewport.
-- The 3D viewport toolbar exposes one toggle button per building tool (next to Godot's native Transform/Move/Rotate/Scale/Select buttons) so authors can switch tools without moving focus to the dock; the toolbar and dock stay in sync, so selecting a tool in either place updates both.
+- Authors enable the `Low-Poly Building Editor` plugin, then choose `Wall`, `Floor`, `Pillar`, `Roof`, `Door`, `Window`, or `Prop` from either the dock's tool dropdown or the building tool buttons added to the 3D viewport toolbar, and place content directly in the 3D viewport.
+- The 3D viewport toolbar exposes one icon-only toggle button per building tool (next to Godot's native Transform/Move/Rotate/Scale/Select buttons, with tool names in hover tooltips) so authors can switch tools without moving focus to the dock; the toolbar and dock stay in sync, so selecting a tool in either place updates both.
 - The building tool buttons are mutually exclusive with the native 3D viewport selection modes (Transform, Move, Rotate, Scale, Select): activating a building tool clears the native mode highlight, and clicking any native mode button (or its shortcut) deactivates the building tool and returns to that native mode. The native `Select` mode is the resting "no building tool" state, so the toolbar does not duplicate a Select button.
 - The dock's top section shows shortcuts for the currently selected tool, followed by live status text and only that tool's properties/configuration section.
 - Wall drawing supports click-start/click-end and click-drag-release flows with live snapped preview geometry; new walls draw on the dock's persisted parent-local base Y plane.
