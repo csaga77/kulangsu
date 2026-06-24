@@ -54,8 +54,42 @@ const NATIVE_TIPS_TRANSFORM := ["transform mode", "transform"]
 const NATIVE_TIPS_MOVE := ["move mode", "move"]
 const NATIVE_TIPS_ROTATE := ["rotate mode", "rotate"]
 const NATIVE_TIPS_SCALE := ["scale mode", "scale"]
-const TOOLBAR_BUTTON_MINIMUM_SIZE := Vector2(28.0, 28.0)
+const TOOLBAR_BUTTON_MINIMUM_SIZE := Vector2(32.0, 32.0)
 const TOOLBAR_FALLBACK_ICON_SIZE := Vector2i(24, 24)
+const BUTTON_STYLEBOX_THEME_ITEMS := [
+	&"normal",
+	&"hover",
+	&"pressed",
+	&"disabled",
+	&"focus",
+	&"hover_pressed",
+]
+const BUTTON_COLOR_THEME_ITEMS := [
+	&"font_color",
+	&"font_hover_color",
+	&"font_pressed_color",
+	&"font_disabled_color",
+	&"font_focus_color",
+	&"font_hover_pressed_color",
+	&"font_outline_color",
+	&"icon_normal_color",
+	&"icon_hover_color",
+	&"icon_pressed_color",
+	&"icon_disabled_color",
+	&"icon_focus_color",
+	&"icon_hover_pressed_color",
+]
+const BUTTON_CONSTANT_THEME_ITEMS := [
+	&"h_separation",
+	&"icon_max_width",
+	&"outline_size",
+]
+const BUTTON_FONT_THEME_ITEMS := [
+	&"font",
+]
+const BUTTON_FONT_SIZE_THEME_ITEMS := [
+	&"font_size",
+]
 
 # The native 3D viewport Select mode is the "no building tool" state, so the
 # toolbar only exposes the building tools and stays mutually exclusive with the
@@ -112,6 +146,7 @@ var m_viewport_overlays: Array[Control] = []
 var m_viewport_toolbar: HBoxContainer
 var m_toolbar_buttons := {}
 var m_toolbar_icon_cache := {}
+var m_toolbar_icon_size := TOOLBAR_FALLBACK_ICON_SIZE
 var m_native_tool_buttons: Array[Button] = []
 var m_native_select_button: Button
 var m_native_active_button: Button
@@ -335,6 +370,7 @@ func _enter_tree() -> void:
 	add_dock(m_editor_dock)
 	_build_viewport_toolbar()
 	scene_changed.connect(_on_scene_changed)
+	_connect_editor_selection()
 	_refresh_dock_context()
 	_attach_input_capture()
 	_attach_viewport_overlays.call_deferred()
@@ -355,6 +391,7 @@ func _exit_tree() -> void:
 	_clear_viewport_overlays()
 	_clear_viewport_toolbar()
 	_clear_input_capture()
+	_disconnect_editor_selection()
 	if scene_changed.is_connected(_on_scene_changed):
 		scene_changed.disconnect(_on_scene_changed)
 	if m_editor_dock != null:
@@ -4739,25 +4776,79 @@ func _select_node(node: Node) -> void:
 	get_editor_interface().edit_node(node)
 
 
+func _connect_editor_selection() -> void:
+	var selection := get_editor_interface().get_selection()
+	if selection == null:
+		return
+	if !selection.selection_changed.is_connected(_on_editor_selection_changed):
+		selection.selection_changed.connect(_on_editor_selection_changed)
+
+
+func _disconnect_editor_selection() -> void:
+	var selection := get_editor_interface().get_selection()
+	if selection == null:
+		return
+	if selection.selection_changed.is_connected(_on_editor_selection_changed):
+		selection.selection_changed.disconnect(_on_editor_selection_changed)
+
+
+func _tool_mode_for_selected_building_node() -> String:
+	var selection := get_editor_interface().get_selection()
+	if selection == null:
+		return ""
+	for node in selection.get_selected_nodes():
+		var mode := _tool_mode_for_building_node(node)
+		if !mode.is_empty():
+			return mode
+	return ""
+
+
+func _tool_mode_for_building_node(node: Node) -> String:
+	if node == null:
+		return ""
+	if node is Wall3DScript:
+		return MODE_WALL
+	if node is Floor3DScript:
+		return MODE_FLOOR
+	if node is Pillar3DScript:
+		return MODE_PILLAR
+	if node is Roof3DScript:
+		return MODE_ROOF
+	if node is BuildingOpening3DScript:
+		return _tool_mode_for_opening_node(node as BuildingOpening3DScript)
+	return ""
+
+
+func _tool_mode_for_opening_node(opening: BuildingOpening3DScript) -> String:
+	if opening == null:
+		return ""
+	if opening.door_panel_count > 0:
+		return MODE_DOOR
+	if !opening.show_bottom_frame:
+		return MODE_DOOR
+	if opening.has_meta(OPENING_ALLOW_BASE_META) and bool(opening.get_meta(OPENING_ALLOW_BASE_META)):
+		return MODE_DOOR
+	return MODE_WINDOW
+
+
 func _build_viewport_toolbar() -> void:
 	if m_viewport_toolbar != null:
 		return
 	m_viewport_toolbar = HBoxContainer.new()
 	m_viewport_toolbar.name = "LowPolyBuildingEditorToolbar"
-
-	m_viewport_toolbar.add_child(VSeparator.new())
+	m_viewport_toolbar.mouse_filter = Control.MOUSE_FILTER_PASS
 
 	m_toolbar_buttons.clear()
 	for tool_info in TOOLBAR_TOOLS:
 		var mode := String(tool_info["mode"])
 		var label := String(tool_info["label"])
 		var button := Button.new()
+		button.name = "LowPolyBuildingEditor%sButton" % label
 		button.toggle_mode = true
-		button.flat = true
 		button.icon = _get_toolbar_tool_icon(tool_info)
-		button.custom_minimum_size = TOOLBAR_BUTTON_MINIMUM_SIZE
 		button.tooltip_text = "%s: %s" % [label, String(tool_info["tooltip"])]
 		button.focus_mode = Control.FOCUS_NONE
+		_apply_toolbar_button_style(button)
 		button.set_pressed_no_signal(mode == m_tool_mode)
 		button.pressed.connect(_on_toolbar_tool_selected.bind(mode))
 		m_viewport_toolbar.add_child(button)
@@ -4802,6 +4893,12 @@ func _input(event: InputEvent) -> void:
 
 
 func _on_toolbar_tool_selected(mode: String) -> void:
+	_select_tool_mode(mode)
+
+
+func _select_tool_mode(mode: String) -> void:
+	if mode.is_empty():
+		return
 	# Route through the dock so its option button, shortcuts, and visible tool
 	# section stay in sync; the dock re-emits tool_mode_changed back to us.
 	if m_dock != null and m_dock.has_method("select_tool_mode"):
@@ -4830,6 +4927,10 @@ func _collect_native_tool_buttons() -> void:
 		return
 	var found := _find_native_mode_buttons_from_node_3d_editor()
 	m_native_select_button = found.get(NATIVE_MODE_SELECT) as Button
+	var native_reference := found.get(NATIVE_MODE_MOVE) as Button
+	_apply_native_toolbar_box_layout(native_reference)
+	_apply_native_toolbar_icon_size(native_reference)
+	_apply_native_toolbar_button_style(native_reference)
 	for native_button in _native_button_values(found):
 		if m_native_tool_buttons.has(native_button):
 			continue
@@ -4849,6 +4950,109 @@ func _collect_native_tool_buttons() -> void:
 		return
 	_update_native_active_button()
 	_sync_native_tool_buttons(m_tool_mode)
+
+
+func _apply_native_toolbar_box_layout(reference_button: Button) -> void:
+	if m_viewport_toolbar == null or reference_button == null or !is_instance_valid(reference_button):
+		return
+	var native_toolbar_parent := _find_toolbar_box_parent(reference_button)
+	if native_toolbar_parent == null:
+		return
+	m_viewport_toolbar.add_theme_constant_override(
+		"separation",
+		native_toolbar_parent.get_theme_constant("separation")
+	)
+
+
+func _find_toolbar_box_parent(button: Button) -> HBoxContainer:
+	var node := button.get_parent()
+	while node != null:
+		if node is HBoxContainer:
+			return node as HBoxContainer
+		node = node.get_parent()
+	return null
+
+
+func _apply_native_toolbar_button_style(reference_button: Button) -> void:
+	for tool_mode in m_toolbar_buttons:
+		_apply_toolbar_button_style(m_toolbar_buttons[tool_mode], reference_button)
+
+
+func _apply_native_toolbar_icon_size(reference_button: Button) -> void:
+	if reference_button == null or !is_instance_valid(reference_button):
+		return
+	var native_icon_size := _get_native_toolbar_icon_size(reference_button)
+	if native_icon_size == m_toolbar_icon_size:
+		return
+	m_toolbar_icon_size = native_icon_size
+	m_toolbar_icon_cache.clear()
+	for tool_mode in m_toolbar_buttons:
+		var button := m_toolbar_buttons[tool_mode] as Button
+		if button != null and is_instance_valid(button):
+			button.icon = _make_toolbar_tool_icon(String(tool_mode))
+
+
+func _get_native_toolbar_icon_size(reference_button: Button) -> Vector2i:
+	if reference_button.icon != null:
+		var icon_size := reference_button.icon.get_size()
+		if icon_size.x > 0.0 and icon_size.y > 0.0:
+			return Vector2i(roundi(icon_size.x), roundi(icon_size.y))
+	if reference_button.has_theme_constant(&"icon_max_width"):
+		var icon_max_width := reference_button.get_theme_constant(&"icon_max_width")
+		if icon_max_width > 0:
+			return Vector2i(icon_max_width, icon_max_width)
+	return TOOLBAR_FALLBACK_ICON_SIZE
+
+
+func _apply_toolbar_button_style(button: Button, reference_button: Button = null) -> void:
+	if button == null:
+		return
+	button.theme_type_variation = &"ToolButton"
+	button.custom_minimum_size = TOOLBAR_BUTTON_MINIMUM_SIZE
+	button.flat = false
+	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	if reference_button == null or !is_instance_valid(reference_button):
+		return
+	button.theme = reference_button.theme
+	button.theme_type_variation = reference_button.theme_type_variation
+	button.custom_minimum_size = _get_native_toolbar_button_size(reference_button)
+	button.flat = reference_button.flat
+	button.alignment = reference_button.alignment
+	button.icon_alignment = reference_button.icon_alignment
+	button.vertical_icon_alignment = reference_button.vertical_icon_alignment
+	button.expand_icon = reference_button.expand_icon
+	_copy_button_theme_items(reference_button, button)
+
+
+func _get_native_toolbar_button_size(reference_button: Button) -> Vector2:
+	if reference_button.custom_minimum_size.x > 0.0 and reference_button.custom_minimum_size.y > 0.0:
+		return reference_button.custom_minimum_size
+	if reference_button.size.x > 0.0 and reference_button.size.y > 0.0:
+		return reference_button.size
+	var combined_minimum := reference_button.get_combined_minimum_size()
+	if combined_minimum.x > 0.0 and combined_minimum.y > 0.0:
+		return combined_minimum
+	return TOOLBAR_BUTTON_MINIMUM_SIZE
+
+
+func _copy_button_theme_items(source: Button, target: Button) -> void:
+	for item in BUTTON_STYLEBOX_THEME_ITEMS:
+		if source.has_theme_stylebox(item):
+			target.add_theme_stylebox_override(item, source.get_theme_stylebox(item))
+	for item in BUTTON_COLOR_THEME_ITEMS:
+		if source.has_theme_color(item):
+			target.add_theme_color_override(item, source.get_theme_color(item))
+	for item in BUTTON_CONSTANT_THEME_ITEMS:
+		if source.has_theme_constant(item):
+			target.add_theme_constant_override(item, source.get_theme_constant(item))
+	for item in BUTTON_FONT_THEME_ITEMS:
+		if source.has_theme_font(item):
+			target.add_theme_font_override(item, source.get_theme_font(item))
+	for item in BUTTON_FONT_SIZE_THEME_ITEMS:
+		if source.has_theme_font_size(item):
+			target.add_theme_font_size_override(item, source.get_theme_font_size(item))
 
 
 func _find_native_mode_buttons_from_node_3d_editor() -> Dictionary:
@@ -5060,7 +5264,7 @@ func _button_has_unmodified_shortcut_key(button: Button, shortcut_key: int) -> b
 
 func _dump_native_button_debug() -> void:
 	var lines := PackedStringArray()
-	lines.append("toolbar parent: %s" % str(m_viewport_toolbar.get_parent()))
+	lines.append("toolbar parent: %s" % str(null if m_viewport_toolbar == null else m_viewport_toolbar.get_parent()))
 	lines.append("matched native buttons: %d" % m_native_tool_buttons.size())
 	for matched in m_native_tool_buttons:
 		lines.append("  MATCH tip='%s' shortcut='%s' icon='%s' pressed=%s" % [
@@ -5069,7 +5273,7 @@ func _dump_native_button_debug() -> void:
 			_button_icon_debug_text(matched),
 			str(matched.button_pressed),
 		])
-	var ancestor: Node = m_viewport_toolbar.get_parent()
+	var ancestor: Node = null if m_viewport_toolbar == null else m_viewport_toolbar.get_parent()
 	for i in range(3):
 		if ancestor == null:
 			break
@@ -5281,6 +5485,8 @@ func _make_toolbar_tool_icon(mode: String) -> Texture2D:
 			_draw_icon_line(image, Vector2i(5, 18), Vector2i(19, 18), color, 1)
 		_:
 			_draw_icon_cube(image, color)
+	if m_toolbar_icon_size != TOOLBAR_FALLBACK_ICON_SIZE:
+		image.resize(m_toolbar_icon_size.x, m_toolbar_icon_size.y, Image.INTERPOLATE_NEAREST)
 	var texture := ImageTexture.create_from_image(image)
 	m_toolbar_icon_cache[mode] = texture
 	return texture
@@ -5445,6 +5651,14 @@ func _on_create_coordinator_requested() -> void:
 func _on_scene_changed(_scene_root: Node) -> void:
 	_cancel_active_preview()
 	_refresh_dock_context()
+
+
+func _on_editor_selection_changed() -> void:
+	_refresh_dock_context()
+	var selected_tool_mode := _tool_mode_for_selected_building_node()
+	if selected_tool_mode.is_empty() or selected_tool_mode == m_tool_mode:
+		return
+	_select_tool_mode(selected_tool_mode)
 
 
 func _activate_3d_editor_context() -> void:
