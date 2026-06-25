@@ -79,9 +79,7 @@ Keep shared/common documentation guidance in `agent_tools/`. Add rules here only
 
 If a change introduces or significantly changes a feature, system behavior, module structure, or architecture, update the relevant docs in the same patch whenever practical.
 
-Editor plugins under `addons/` own their documentation. Every plugin must keep a `README.md` at its root folder as the entry point, with detailed design, feature, and contract docs in that plugin's own `docs/` folder (for example `addons/low_poly_building_editor/README.md` and `addons/low_poly_building_editor/docs/`), not in the top-level `docs/` tree. The project-level `docs/` files (`architecture.md`, `module_map.md`, `contracts.md`, and `docs/features/`) should keep only a short pointer to the plugin's docs rather than duplicating its details.
-
-For third-party (vendored) addons such as `addons/asset_placer/`, do not write project-authored docs or edit the addon in place; the root `README.md` only needs a short note identifying it as vendored (upstream author, version, license, purpose), and updates should come from upstream.
+Plugin/addon documentation follows the generic rule in `agent_tools/AGENTS.md`: each plugin under `addons/` keeps its docs in its own folder (root `README.md` plus a `docs/` folder), and the top-level `docs/` only point to them.
 
 If work implements or materially completes a planned item from `docs/plan/implementation_plan.md`, update the implementation plan and every affected canonical doc in the same patch. Do not leave the plan marked as complete while related workflow, story, feature, module-map, or planning-index docs still describe the old state.
 
@@ -94,7 +92,6 @@ At minimum:
 - Update `docs/contracts.md` when interfaces, data flow, public APIs, or cross-module expectations change.
 - Update `docs/release_policy.md` when release/versioning practice or submodule pinning policy changes.
 - Add or update a feature spec under `docs/features/` when a gameplay feature, UI flow, reusable module, or important system behavior changes.
-- Keep a `README.md` at every plugin's root folder under `addons/<plugin>/`, with detailed docs in `addons/<plugin>/docs/`; leave only one-line pointers to them from `docs/architecture.md`, `docs/module_map.md`, `docs/contracts.md`, and `docs/features/`.
 - Update `docs/design_brief.md` if the quick-start product framing changes materially.
 - Update `docs/plan/implementation_plan.md` and `docs/plan/README.md` when shipped work changes the current roadmap, completed-workstream status, or planning entry points.
 - Update related canonical docs such as `docs/core_game_workflow.md`, `docs/core_gameplay_plays.md`, `docs/story/summer_of_piano_island_story_framework.md`, and any affected validation references when a planned feature or workstream lands.
