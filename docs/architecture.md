@@ -216,12 +216,17 @@ Primary folders:
 - [`../addons/low_poly_building_editor/`](../addons/low_poly_building_editor)
 - [`../addons/mp3_to_ogg/`](../addons/mp3_to_ogg)
 - [`../addons/storyline_editor/`](../addons/storyline_editor)
+- [`../addons/asset_browser/`](../addons/asset_browser)
+- [`../addons/asset_placer/`](../addons/asset_placer) (third-party, vendored)
+
+Each plugin documents itself in its own root `README.md` (with deeper docs under the plugin's `docs/` when needed); see those for full descriptions.
 
 Responsibilities:
 
 - project-local editor tooling for authoring content and validating assets
-- low-poly building blockout authoring through normal scene nodes, including grid-snapped walls, floors with internal holes, stairs, openings, roof/wall generated-geometry clipping, generated collision, and prop placement
-- audio conversion and storyline graph/route editing workflows
+- low-poly building blockout authoring through normal scene nodes (see [`../addons/low_poly_building_editor/README.md`](../addons/low_poly_building_editor/README.md))
+- audio conversion (see [`../addons/mp3_to_ogg/README.md`](../addons/mp3_to_ogg/README.md)) and storyline graph/route editing (see [`../addons/storyline_editor/README.md`](../addons/storyline_editor/README.md))
+- scene-asset browsing/placement (see [`../addons/asset_browser/README.md`](../addons/asset_browser/README.md) and the vendored [`../addons/asset_placer/README.md`](../addons/asset_placer/README.md))
 
 Boundary:
 

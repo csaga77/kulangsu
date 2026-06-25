@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://cfu4p15moomn"]
 
-[ext_resource type="Script" uid="uid://x2506i2l5pe7" path="res://scenes/tests/test_low_poly_building_editor_3d.gd" id="1_test"]
+[ext_resource type="Script" uid="uid://x2506i2l5pe7" path="res://addons/low_poly_building_editor/test_low_poly_building_editor_3d.gd" id="1_test"]
 [ext_resource type="Script" uid="uid://d0wnnw8bbd7l6" path="res://addons/low_poly_building_editor/building_editor_3d.gd" id="2_r6pl2"]
 
 [node name="test_low_poly_building_editor_3d" type="Node3D" unique_id=2026190119]
