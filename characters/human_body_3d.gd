@@ -229,17 +229,23 @@ const DEFAULT_JACKET_ATTACH_BONE := "Spine02"
 @export_range(0.05, 5.0, 0.001) var pants_model_scale := 1.0:
 	set(value):
 		pants_model_scale = maxf(value, 0.01)
+		# Scale is baked into the skinned mesh, so invalidate it to force a re-bake.
+		_invalidate_pants_skin()
 		_sync_pants_model()
 
 # Fine placement of the pants relative to the attach bone (bone-local space).
 @export var pants_model_offset := Vector3.ZERO:
 	set(value):
 		pants_model_offset = value
+		# Offset is baked into the skinned mesh, so invalidate it to force a re-bake.
+		_invalidate_pants_skin()
 		_sync_pants_model()
 
 @export_range(-180.0, 180.0, 1.0) var pants_model_yaw_offset := 0.0:
 	set(value):
 		pants_model_yaw_offset = value
+		# Yaw is baked into the skinned mesh, so invalidate it to force a re-bake.
+		_invalidate_pants_skin()
 		_sync_pants_model()
 
 @export_group("Jacket Model")
@@ -302,7 +308,6 @@ var m_has_ready := false
 var m_last_global_position := Vector3.ZERO
 var m_is_currently_jumping := false
 var m_jump_timer := 0.0
-var m_current_animation_name := "idle-s"
 var m_last_step_direction := Vector3.ZERO
 var m_step_snap_grounded := false
 
@@ -695,7 +700,9 @@ func get_ground_rect() -> Rect2:
 
 
 func get_current_animation_name() -> String:
-	return m_current_animation_name
+	if is_instance_valid(m_model_animation_player):
+		return m_model_animation_player.current_animation
+	return ""
 
 
 func _process(delta: float) -> void:
@@ -750,29 +757,7 @@ func _process_jump(delta: float) -> void:
 func _update_state() -> void:
 	_sync_visual_rotation()
 	_apply_visual_offset()
-
-	var base_animation_name := "walk"
-	if !is_walking:
-		base_animation_name = "idle"
-	elif is_running:
-		base_animation_name = "run"
-
-	if m_is_currently_jumping:
-		base_animation_name = "jump"
-
-	m_current_animation_name = "%s-%s" % [base_animation_name, _get_direction_suffix()]
 	_sync_model_animation()
-
-
-func _get_direction_suffix() -> String:
-	var normalized_direction := fposmod(direction, 360.0)
-	if normalized_direction <= 45.01 or normalized_direction >= 314.09:
-		return "e"
-	if normalized_direction >= 135.0 and normalized_direction <= 225.0:
-		return "w"
-	if normalized_direction >= 45.0 and normalized_direction <= 135.0:
-		return "s"
-	return "n"
 
 
 func _apply_visual_offset() -> void:
@@ -1035,20 +1020,32 @@ func _sync_pants_rigid() -> void:
 func _sync_pants_skinned() -> void:
 	if is_instance_valid(m_pants_model):
 		m_pants_model.visible = false
+	# The bake is expensive (per-vertex weight transfer), so reuse an already-baked
+	# mesh and only rebuild when it has been invalidated. Inputs that change the bake
+	# (source mesh, scale/offset/yaw) clear m_pants_skinned_mesh via
+	# _invalidate_pants_skin / _rebuild_pants_model; a model swap nulls it in
+	# _rebuild_character_model. Cheap syncs (visibility, body height) just re-show it.
+	if is_instance_valid(m_pants_skinned_mesh):
+		m_pants_skinned_mesh.visible = true
+		return
 	var skeleton := _find_skeleton(m_character_model)
 	if skeleton == null:
 		_hide_pants_model()
 		return
-	# Rebuild from scratch so alignment tweaks (offset/scale/yaw/bone) re-bake.
-	if is_instance_valid(m_pants_skinned_mesh):
-		m_pants_skinned_mesh.free()
-		m_pants_skinned_mesh = null
 	var stale := skeleton.get_node_or_null("PantsSkinnedMesh")
 	if stale != null:
 		stale.free()
 	m_pants_skinned_mesh = _build_pants_skinned_mesh(skeleton)
 	if is_instance_valid(m_pants_skinned_mesh):
 		m_pants_skinned_mesh.visible = true
+
+
+# Drops the baked skinned-pants mesh so the next sync re-bakes it. Call after
+# changing any input that the bake depends on (alignment scale/offset/yaw).
+func _invalidate_pants_skin() -> void:
+	if is_instance_valid(m_pants_skinned_mesh):
+		m_pants_skinned_mesh.free()
+		m_pants_skinned_mesh = null
 
 
 # Bakes the unskinned pants source mesh into the body mesh's local (bind) space and
