@@ -5,6 +5,7 @@ const _DOCK_SLOT := EditorDock.DOCK_SLOT_RIGHT_UL
 const MODE_SELECT := "select"
 const MODE_WALL := "wall"
 const MODE_FLOOR := "floor"
+const MODE_STAIRS := "stairs"
 const MODE_PILLAR := "pillar"
 const MODE_ROOF := "roof"
 const MODE_PROP := "prop"
@@ -13,6 +14,7 @@ const MODE_DOOR := "door"
 const BuildingEditor3DScript = preload("res://addons/low_poly_building_editor/building_editor_3d.gd")
 const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
 const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
+const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.gd")
 const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
 const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
@@ -108,6 +110,12 @@ const TOOLBAR_TOOLS := [
 		"generated_icon": true,
 	},
 	{
+		"mode": MODE_STAIRS,
+		"label": "Stairs",
+		"tooltip": "Draw stepped stair blocks.",
+		"generated_icon": true,
+	},
+	{
 		"mode": MODE_PILLAR,
 		"label": "Pillar",
 		"tooltip": "Place low-poly pillars.",
@@ -165,6 +173,15 @@ var m_floor_settings := {
 	"base_height": 0.0,
 	"thickness": 0.12,
 	"color": Color(0.46, 0.40, 0.32, 1.0),
+}
+var m_stair_settings := {
+	"grid_step": 0.5,
+	"base_height": 0.0,
+	"height": 1.2,
+	"step_count": 6,
+	"thickness": 0.12,
+	"rotation_degrees": 0.0,
+	"color": Color(0.52, 0.46, 0.38, 1.0),
 }
 var m_pillar_settings := {
 	"grid_step": 0.5,
@@ -232,6 +249,25 @@ var m_drag_floor_active_material: Material
 var m_drag_floor_hover: Floor3DScript
 var m_drag_floor_hover_material: Material
 var m_drag_floor_hover_edit_mask := FLOOR_EDIT_MOVE
+var m_stair_start_local := Vector3.ZERO
+var m_stair_end_local := Vector3.ZERO
+var m_stair_start_screen_position := Vector2.ZERO
+var m_stair_has_valid_preview := false
+var m_stair_release_commits_preview := false
+var m_stair_draw_rotation_degrees := 0.0
+var m_is_drawing_stair := false
+var m_stair_preview: Stairs3DScript
+var m_dragging_stair: Stairs3DScript
+var m_drag_stair_old_start := Vector3.ZERO
+var m_drag_stair_old_end := Vector3.ZERO
+var m_drag_stair_old_rotation_degrees := 0.0
+var m_drag_stair_anchor_local := Vector3.ZERO
+var m_drag_stair_plane_y := 0.0
+var m_drag_stair_edit_mask := FLOOR_EDIT_MOVE
+var m_drag_stair_active_material: Material
+var m_drag_stair_hover: Stairs3DScript
+var m_drag_stair_hover_material: Material
+var m_drag_stair_hover_edit_mask := FLOOR_EDIT_MOVE
 var m_pillar_preview: Pillar3DScript
 var m_pillar_preview_valid := false
 var m_dragging_pillar: Pillar3DScript
@@ -328,6 +364,12 @@ func _enter_tree() -> void:
 		_get_editor_icon(&"MeshInstance3D")
 	)
 	add_custom_type(
+		"Stairs3D",
+		"MeshInstance3D",
+		Stairs3DScript,
+		_get_editor_icon(&"MeshInstance3D")
+	)
+	add_custom_type(
 		"Pillar3D",
 		"MeshInstance3D",
 		Pillar3DScript,
@@ -354,6 +396,7 @@ func _enter_tree() -> void:
 	m_dock.connect("tool_mode_changed", Callable(self, "_on_tool_mode_changed"))
 	m_dock.connect("wall_settings_changed", Callable(self, "_on_wall_settings_changed"))
 	m_dock.connect("floor_settings_changed", Callable(self, "_on_floor_settings_changed"))
+	m_dock.connect("stair_settings_changed", Callable(self, "_on_stair_settings_changed"))
 	m_dock.connect("pillar_settings_changed", Callable(self, "_on_pillar_settings_changed"))
 	m_dock.connect("roof_settings_changed", Callable(self, "_on_roof_settings_changed"))
 	m_dock.connect("prop_settings_changed", Callable(self, "_on_prop_settings_changed"))
@@ -379,12 +422,15 @@ func _enter_tree() -> void:
 func _exit_tree() -> void:
 	_cancel_floor_drag()
 	_clear_floor_hover()
+	_cancel_stair_drag()
+	_clear_stair_hover()
 	_cancel_pillar_drag()
 	_clear_pillar_hover()
 	_cancel_roof_drag()
 	_clear_roof_hover()
 	_clear_wall_preview()
 	_clear_floor_preview()
+	_clear_stair_preview()
 	_clear_pillar_preview()
 	_clear_roof_preview()
 	_clear_prop_preview()
@@ -405,6 +451,7 @@ func _exit_tree() -> void:
 	remove_custom_type("BuildingOpening3D")
 	remove_custom_type("Roof3D")
 	remove_custom_type("Pillar3D")
+	remove_custom_type("Stairs3D")
 	remove_custom_type("Floor3D")
 	remove_custom_type("Wall3D")
 	remove_custom_type("BuildingEditor3D")
@@ -424,6 +471,8 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 			if key_event.keycode == KEY_ESCAPE:
 				_cancel_active_preview()
 				return _handled()
+			if key_event.keycode == KEY_R and m_tool_mode == MODE_STAIRS:
+				return _handle_stair_rotation_key(key_event)
 			if key_event.keycode == KEY_R and m_tool_mode == MODE_ROOF:
 				return _handle_roof_rotation_key(key_event)
 			if key_event.keycode == KEY_R and m_tool_mode == MODE_PROP:
@@ -440,6 +489,8 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 		return _handle_wall_input(camera, event)
 	if m_tool_mode == MODE_FLOOR:
 		return _handle_floor_input(camera, event)
+	if m_tool_mode == MODE_STAIRS:
+		return _handle_stair_input(camera, event)
 	if m_tool_mode == MODE_PILLAR:
 		return _handle_pillar_input(camera, event)
 	if m_tool_mode == MODE_ROOF:
@@ -1184,6 +1235,548 @@ func _reset_floor_drag_state() -> void:
 	m_drag_floor_anchor_local = Vector3.ZERO
 	m_drag_floor_edit_mask = FLOOR_EDIT_MOVE
 	m_drag_floor_active_material = null
+
+
+func _handle_stair_input(camera: Camera3D, event: InputEvent) -> int:
+	if m_dragging_stair != null:
+		return _handle_stair_drag_input(camera, event)
+
+	if event is InputEventMouseMotion:
+		var mouse_motion := event as InputEventMouseMotion
+		if m_is_drawing_stair:
+			_update_stair_preview(camera, mouse_motion.position)
+			if mouse_motion.position.distance_to(m_stair_start_screen_position) >= WALL_DRAG_COMMIT_DISTANCE:
+				m_stair_release_commits_preview = true
+			return _handled()
+		var stair_pick := _find_stair_pick(camera, mouse_motion.position)
+		var hover_stair := stair_pick.get("stair") as Stairs3DScript
+		var edit_mask := int(stair_pick.get("edit_mask", FLOOR_EDIT_MOVE))
+		_update_stair_hover(hover_stair, edit_mask)
+		if hover_stair != null:
+			_set_status(
+				"Drag stairs corner to resize." if _stair_edit_mask_is_corner(edit_mask)
+				else "Drag stairs edge to resize." if edit_mask != FLOOR_EDIT_MOVE
+				else "Drag stairs body to move."
+			)
+		return EditorPlugin.AFTER_GUI_INPUT_PASS
+
+	if !(event is InputEventMouseButton):
+		return EditorPlugin.AFTER_GUI_INPUT_PASS
+
+	var mouse_button := event as InputEventMouseButton
+	if mouse_button.button_index == MOUSE_BUTTON_LEFT and !mouse_button.pressed and m_is_drawing_stair:
+		if !m_stair_release_commits_preview:
+			_set_status("Click the opposite corner to place stairs, or drag from the first corner and release.")
+			return _handled()
+		var release_coordinator := _get_active_stair_coordinator()
+		if release_coordinator != null:
+			var release_end := m_stair_end_local
+			if !m_stair_has_valid_preview:
+				release_end = _stair_draw_local_from_mouse(release_coordinator, camera, mouse_button.position)
+			_commit_stairs(release_coordinator, m_stair_start_local, release_end, m_stair_draw_rotation_degrees)
+		_clear_stair_preview()
+		_reset_stair_drawing_state()
+		return _handled()
+
+	if mouse_button.button_index != MOUSE_BUTTON_LEFT or !mouse_button.pressed:
+		return EditorPlugin.AFTER_GUI_INPUT_PASS
+
+	if !m_is_drawing_stair:
+		var stair_pick := _find_stair_pick(camera, mouse_button.position)
+		var hit_stair := stair_pick.get("stair") as Stairs3DScript
+		if hit_stair != null:
+			_clear_stair_hover()
+			_start_stair_drag(hit_stair, camera, mouse_button.position, int(stair_pick.get("edit_mask", FLOOR_EDIT_MOVE)))
+			return _handled()
+
+	var coordinator := _get_or_create_coordinator(true)
+	if coordinator == null:
+		_set_status("Open or create a scene before drawing stairs.")
+		return _handled()
+	_apply_stair_settings_to_coordinator(coordinator)
+
+	var snapped_local := _stair_draw_local_from_mouse(coordinator, camera, mouse_button.position)
+	if !m_is_drawing_stair:
+		m_stair_start_local = snapped_local
+		m_stair_end_local = snapped_local
+		m_stair_start_screen_position = mouse_button.position
+		m_stair_has_valid_preview = false
+		m_stair_release_commits_preview = false
+		m_stair_draw_rotation_degrees = _normalize_degrees(float(m_stair_settings.get("rotation_degrees", 0.0)))
+		m_is_drawing_stair = true
+		_create_stair_preview(coordinator)
+		_update_stair_preview(camera, mouse_button.position)
+		_set_status("Stairs first corner captured. Drag and release, or click the opposite corner.")
+		return _handled()
+
+	_commit_stairs(coordinator, m_stair_start_local, snapped_local, m_stair_draw_rotation_degrees)
+	_clear_stair_preview()
+	_reset_stair_drawing_state()
+	return _handled()
+
+
+func _create_stair_preview(coordinator: BuildingEditor3DScript) -> void:
+	_clear_stair_preview()
+	_apply_stair_settings_to_coordinator(coordinator)
+	m_stair_preview = Stairs3DScript.new() as Stairs3DScript
+	m_stair_preview.name = "StairsPreview"
+	m_stair_preview.set_meta(Stairs3DScript.PREVIEW_META, true)
+	m_stair_preview.stair_height = float(m_stair_settings["height"])
+	m_stair_preview.step_count = int(m_stair_settings["step_count"])
+	m_stair_preview.stair_thickness = float(m_stair_settings["thickness"])
+	m_stair_preview.stair_rotation_degrees = m_stair_draw_rotation_degrees
+	var preview_color := Color(m_stair_settings["color"])
+	preview_color.a = 0.46
+	m_stair_preview.stair_color = preview_color
+	m_stair_preview.generate_collision = false
+	coordinator.add_child(m_stair_preview)
+	m_stair_preview.owner = null
+
+
+func _update_stair_preview(camera: Camera3D, mouse_position: Vector2) -> void:
+	if m_stair_preview == null:
+		return
+	var coordinator := m_stair_preview.get_parent() as BuildingEditor3DScript
+	if coordinator == null:
+		return
+	var local_end := _stair_draw_local_from_mouse(coordinator, camera, mouse_position)
+	m_stair_end_local = local_end
+	var stair_points := Stairs3DScript.stair_corners_from_base_points(
+		m_stair_start_local,
+		local_end,
+		m_stair_draw_rotation_degrees
+	)
+	var stair_start := Vector3(stair_points["start"])
+	var stair_end := Vector3(stair_points["end"])
+	m_stair_has_valid_preview = _is_stair_span_large_enough(stair_start, stair_end)
+	m_stair_preview.stair_height = float(m_stair_settings["height"])
+	m_stair_preview.step_count = int(m_stair_settings["step_count"])
+	m_stair_preview.stair_thickness = float(m_stair_settings["thickness"])
+	m_stair_preview.set_stair_corners_and_rotation(stair_start, stair_end, m_stair_draw_rotation_degrees)
+	if m_stair_has_valid_preview:
+		var size := m_stair_preview.get_stair_size()
+		_set_status(
+			"Release or click to place stairs: %.2f x %.2f, %.0f deg." %
+			[size.x, size.y, m_stair_draw_rotation_degrees]
+		)
+
+
+func _stair_base_height() -> float:
+	return float(m_stair_settings.get("base_height", 0.0))
+
+
+func _stair_draw_local_from_mouse(
+	coordinator: BuildingEditor3DScript,
+	camera: Camera3D,
+	mouse_position: Vector2
+) -> Vector3:
+	var base_y := _stair_base_height()
+	var origin := camera.project_ray_origin(mouse_position)
+	var direction := camera.project_ray_normal(mouse_position)
+	var local_origin := coordinator.to_local(origin)
+	var local_direction := coordinator.global_transform.basis.inverse() * direction
+	if local_direction.length_squared() > 0.000001:
+		local_direction = local_direction.normalized()
+		if absf(local_direction.y) > 0.001:
+			var distance_to_plane := (base_y - local_origin.y) / local_direction.y
+			if distance_to_plane > 0.0:
+				return _snap_stair_draw_local(
+					coordinator,
+					local_origin + local_direction * distance_to_plane,
+					base_y
+				)
+
+	var hit := _raycast_world(camera, mouse_position, false)
+	return _snap_stair_draw_local(coordinator, coordinator.to_local(Vector3(hit["position"])), base_y)
+
+
+func _snap_stair_draw_local(
+	coordinator: BuildingEditor3DScript,
+	local_position: Vector3,
+	base_y: float
+) -> Vector3:
+	var snapped := coordinator.snap_local_position(local_position)
+	snapped.y = base_y
+	return snapped
+
+
+func _get_active_stair_coordinator() -> BuildingEditor3DScript:
+	if m_stair_preview != null and is_instance_valid(m_stair_preview):
+		var preview_parent := m_stair_preview.get_parent() as BuildingEditor3DScript
+		if preview_parent != null:
+			return preview_parent
+	return _get_or_create_coordinator(false)
+
+
+func _handle_stair_rotation_key(key_event: InputEventKey) -> int:
+	var delta := -90.0 if key_event.shift_pressed else 90.0
+	if m_is_drawing_stair:
+		m_stair_draw_rotation_degrees = _normalize_degrees(m_stair_draw_rotation_degrees + delta)
+		if m_stair_preview != null and is_instance_valid(m_stair_preview):
+			var stair_points := Stairs3DScript.stair_corners_from_base_points(
+				m_stair_start_local,
+				m_stair_end_local,
+				m_stair_draw_rotation_degrees
+			)
+			m_stair_preview.set_stair_corners_and_rotation(
+				Vector3(stair_points["start"]),
+				Vector3(stair_points["end"]),
+				m_stair_draw_rotation_degrees
+			)
+		_set_status("Stairs preview rotation: %.0f degrees." % m_stair_draw_rotation_degrees)
+		return _handled()
+
+	if m_dragging_stair != null:
+		_set_status("Release the stairs edit before rotating.")
+		return _handled()
+
+	var stair := m_drag_stair_hover if is_instance_valid(m_drag_stair_hover) else _selected_stair_for_rotation()
+	if stair == null:
+		_set_status("Hover or select stairs to rotate them.")
+		return _handled()
+	_commit_stair_rotation(stair, delta)
+	return _handled()
+
+
+func _selected_stair_for_rotation() -> Stairs3DScript:
+	var selection := get_editor_interface().get_selection()
+	if selection == null:
+		return null
+	for node in selection.get_selected_nodes():
+		if node is Stairs3DScript:
+			return node as Stairs3DScript
+	return null
+
+
+func _commit_stair_rotation(stair: Stairs3DScript, delta_degrees: float) -> void:
+	if stair == null or !is_instance_valid(stair):
+		return
+	var old_start := stair.start_point
+	var old_end := stair.end_point
+	var old_rotation := stair.stair_rotation_degrees
+	var new_rotation := _normalize_degrees(old_rotation + delta_degrees)
+	var rotated_state := _stair_state_rotated_around_center(stair, new_rotation)
+	var new_start := Vector3(rotated_state["start"])
+	var new_end := Vector3(rotated_state["end"])
+	_clear_stair_hover()
+
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Rotate Stairs")
+	undo_redo.add_do_method(stair, "set_stair_corners_and_rotation", new_start, new_end, new_rotation)
+	undo_redo.add_do_method(self, "_select_node", stair)
+	undo_redo.add_undo_method(stair, "set_stair_corners_and_rotation", old_start, old_end, old_rotation)
+	undo_redo.commit_action()
+	_set_status("Rotated stairs to %.0f degrees." % new_rotation)
+
+
+func _stair_state_rotated_around_center(stair: Stairs3DScript, rotation_degrees: float) -> Dictionary:
+	var size := stair.get_stair_size()
+	var center := stair.get_stair_center_point()
+	var anchor := center - _stair_rotation_basis(rotation_degrees) * Vector3(size.x * 0.5, 0.0, size.y * 0.5)
+	return {
+		"start": anchor,
+		"end": anchor + Vector3(size.x, 0.0, size.y),
+	}
+
+
+func _commit_stairs(
+	coordinator: BuildingEditor3DScript,
+	draw_start: Vector3,
+	draw_end: Vector3,
+	rotation_degrees: float
+) -> void:
+	var stair_points := Stairs3DScript.stair_corners_from_base_points(draw_start, draw_end, rotation_degrees)
+	var local_start := Vector3(stair_points["start"])
+	var local_end := Vector3(stair_points["end"])
+	if !_is_stair_span_large_enough(local_start, local_end):
+		_set_status("Stairs footprint is too small.")
+		return
+
+	_apply_stair_settings_to_coordinator(coordinator)
+	var normalized_rotation := _normalize_degrees(rotation_degrees)
+	var stairs := coordinator.create_stairs_node(
+		local_start,
+		local_end,
+		float(m_stair_settings["height"]),
+		int(m_stair_settings["step_count"]),
+		float(m_stair_settings["thickness"]),
+		Color(m_stair_settings["color"]),
+		normalized_rotation
+	)
+	var scene_root := get_editor_interface().get_edited_scene_root()
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Create Stairs")
+	undo_redo.add_do_reference(stairs)
+	undo_redo.add_do_method(self, "_do_add_node", coordinator, stairs, scene_root, true)
+	undo_redo.add_undo_method(self, "_undo_remove_node", coordinator, stairs)
+	undo_redo.commit_action()
+	var size := stairs.get_stair_size()
+	_set_status("Created stairs: %.2f x %.2f units." % [size.x, size.y])
+
+
+func _handle_stair_drag_input(camera: Camera3D, event: InputEvent) -> int:
+	if event is InputEventMouseMotion:
+		_update_stair_drag(camera, (event as InputEventMouseMotion).position)
+		return _handled()
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_LEFT and !mb.pressed:
+			_commit_stair_drag()
+			return _handled()
+		if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+			_cancel_stair_drag()
+			return _handled()
+	return _handled()
+
+
+func _start_stair_drag(
+	stair: Stairs3DScript,
+	camera: Camera3D,
+	mouse_pos: Vector2,
+	edit_mask: int
+) -> void:
+	m_dragging_stair = stair
+	m_drag_stair_old_start = stair.start_point
+	m_drag_stair_old_end = stair.end_point
+	m_drag_stair_old_rotation_degrees = stair.stair_rotation_degrees
+	m_drag_stair_edit_mask = edit_mask
+	m_drag_stair_active_material = stair.material_override
+	m_drag_stair_plane_y = _stair_drag_plane_y_from_mouse(stair, camera, mouse_pos)
+	m_drag_stair_anchor_local = _stair_plane_local_from_mouse_at_y(stair, camera, mouse_pos, m_drag_stair_plane_y)
+	stair.material_override = _build_preview_material(_stair_drag_color(edit_mask, true))
+	_select_node(stair)
+	_set_status("Dragging stairs %s - release to commit, Escape to cancel." % _stair_edit_label(edit_mask))
+
+
+func _update_stair_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
+	if m_dragging_stair == null or !is_instance_valid(m_dragging_stair):
+		_reset_stair_drag_state()
+		return
+	var stair := m_dragging_stair
+	var hit_local := _stair_plane_local_from_mouse_at_y(stair, camera, mouse_pos, m_drag_stair_plane_y)
+	var new_start := m_drag_stair_old_start
+	var new_end := m_drag_stair_old_end
+	if m_drag_stair_edit_mask == FLOOR_EDIT_MOVE:
+		var step := _active_stair_grid_step(stair)
+		var raw_delta := hit_local - m_drag_stair_anchor_local
+		var snapped_delta := Vector3(
+			roundf(raw_delta.x / step) * step,
+			0.0,
+			roundf(raw_delta.z / step) * step
+		)
+		new_start = m_drag_stair_old_start + snapped_delta
+		new_end = m_drag_stair_old_end + snapped_delta
+	else:
+		var stair_local := _stair_edit_local_from_parent_position(hit_local)
+		var resized := _resized_stair_points(stair, stair_local)
+		new_start = Vector3(resized["start"])
+		new_end = Vector3(resized["end"])
+
+	stair.set_stair_corners_and_rotation(new_start, new_end, m_drag_stair_old_rotation_degrees)
+	var valid := _is_stair_span_large_enough(new_start, new_end)
+	stair.material_override = _build_preview_material(
+		_stair_drag_color(m_drag_stair_edit_mask, valid)
+	)
+	if valid:
+		var size := stair.get_stair_size()
+		_set_status("Release to commit stairs %s: %.2f x %.2f." % [_stair_edit_label(m_drag_stair_edit_mask), size.x, size.y])
+	else:
+		_set_status("Stairs footprint is too small.")
+
+
+func _commit_stair_drag() -> void:
+	if m_dragging_stair == null:
+		return
+	var stair := m_dragging_stair
+	var old_start := m_drag_stair_old_start
+	var old_end := m_drag_stair_old_end
+	var old_rotation := m_drag_stair_old_rotation_degrees
+	var new_start := stair.start_point
+	var new_end := stair.end_point
+	var new_rotation := stair.stair_rotation_degrees
+	var edit_mask := m_drag_stair_edit_mask
+	stair.material_override = m_drag_stair_active_material
+	if !_is_stair_span_large_enough(new_start, new_end):
+		stair.set_stair_corners_and_rotation(old_start, old_end, old_rotation)
+		_reset_stair_drag_state()
+		_set_status("Stairs footprint is too small.")
+		return
+	if (
+			old_start.distance_to(new_start) <= 0.001
+			and old_end.distance_to(new_end) <= 0.001
+			and _angles_match(old_rotation, new_rotation)
+	):
+		_reset_stair_drag_state()
+		_set_status("Stairs unchanged.")
+		return
+
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Move Stairs" if edit_mask == FLOOR_EDIT_MOVE else "Resize Stairs")
+	undo_redo.add_do_method(stair, "set_stair_corners_and_rotation", new_start, new_end, new_rotation)
+	undo_redo.add_do_method(self, "_select_node", stair)
+	undo_redo.add_undo_method(stair, "set_stair_corners_and_rotation", old_start, old_end, old_rotation)
+	undo_redo.commit_action()
+	_reset_stair_drag_state()
+	var size := stair.get_stair_size()
+	_set_status("Edited stairs: %.2f x %.2f units." % [size.x, size.y])
+
+
+func _cancel_stair_drag() -> void:
+	if m_dragging_stair == null:
+		return
+	if is_instance_valid(m_dragging_stair):
+		m_dragging_stair.set_stair_corners_and_rotation(
+			m_drag_stair_old_start,
+			m_drag_stair_old_end,
+			m_drag_stair_old_rotation_degrees
+		)
+		m_dragging_stair.material_override = m_drag_stair_active_material
+	_reset_stair_drag_state()
+	_set_status("Stairs edit canceled.")
+
+
+func _resized_stair_points(stair: Stairs3DScript, stair_local_hit: Vector3) -> Dictionary:
+	var old_size := Vector2(
+		absf(m_drag_stair_old_end.x - m_drag_stair_old_start.x),
+		absf(m_drag_stair_old_end.z - m_drag_stair_old_start.z)
+	)
+	var min_x := 0.0
+	var max_x := old_size.x
+	var min_z := 0.0
+	var max_z := old_size.y
+	if (m_drag_stair_edit_mask & FLOOR_EDIT_MIN_X) != 0:
+		min_x = _snap_stair_footprint_edge(stair, stair_local_hit.x)
+	if (m_drag_stair_edit_mask & FLOOR_EDIT_MAX_X) != 0:
+		max_x = _snap_stair_footprint_edge(stair, stair_local_hit.x)
+	if (m_drag_stair_edit_mask & FLOOR_EDIT_MIN_Z) != 0:
+		min_z = _snap_stair_footprint_edge(stair, stair_local_hit.z)
+	if (m_drag_stair_edit_mask & FLOOR_EDIT_MAX_Z) != 0:
+		max_z = _snap_stair_footprint_edge(stair, stair_local_hit.z)
+	var sorted_min_x := minf(min_x, max_x)
+	var sorted_max_x := maxf(min_x, max_x)
+	var sorted_min_z := minf(min_z, max_z)
+	var sorted_max_z := maxf(min_z, max_z)
+	var base_y := m_drag_stair_old_start.y
+	var old_anchor := Vector3(
+		minf(m_drag_stair_old_start.x, m_drag_stair_old_end.x),
+		base_y,
+		minf(m_drag_stair_old_start.z, m_drag_stair_old_end.z)
+	)
+	var rotated_anchor := old_anchor + _stair_rotation_basis(m_drag_stair_old_rotation_degrees) * Vector3(
+		sorted_min_x,
+		0.0,
+		sorted_min_z
+	)
+	var resized_size := Vector2(sorted_max_x - sorted_min_x, sorted_max_z - sorted_min_z)
+	return {
+		"start": rotated_anchor,
+		"end": rotated_anchor + Vector3(resized_size.x, 0.0, resized_size.y),
+	}
+
+
+func _stair_plane_local_from_mouse(
+	stair: Stairs3DScript,
+	camera: Camera3D,
+	mouse_position: Vector2
+) -> Vector3:
+	return _stair_plane_local_from_mouse_at_y(stair, camera, mouse_position, stair.start_point.y)
+
+
+func _stair_plane_local_from_mouse_at_y(
+	stair: Stairs3DScript,
+	camera: Camera3D,
+	mouse_position: Vector2,
+	plane_y: float
+) -> Vector3:
+	var parent_3d := stair.get_parent() as Node3D
+	var origin := camera.project_ray_origin(mouse_position)
+	var direction := camera.project_ray_normal(mouse_position)
+	var local_origin := parent_3d.to_local(origin) if parent_3d != null else origin
+	var local_direction := (
+		parent_3d.global_transform.basis.inverse() * direction
+		if parent_3d != null
+		else direction
+	)
+	if local_direction.length_squared() > 0.000001:
+		local_direction = local_direction.normalized()
+		if absf(local_direction.y) > 0.001:
+			var distance_to_plane := (plane_y - local_origin.y) / local_direction.y
+			if distance_to_plane > 0.0:
+				return local_origin + local_direction * distance_to_plane
+	return stair.start_point
+
+
+func _stair_drag_plane_y_from_mouse(
+	stair: Stairs3DScript,
+	camera: Camera3D,
+	mouse_position: Vector2
+) -> float:
+	var origin := camera.project_ray_origin(mouse_position)
+	var direction := camera.project_ray_normal(mouse_position)
+	var hit := _intersect_stair_bounds(stair, origin, direction)
+	if hit.is_empty():
+		return stair.start_point.y
+	var hit_position := Vector3(hit.get("position", stair.global_position))
+	var parent_3d := stair.get_parent() as Node3D
+	var parent_position := parent_3d.to_local(hit_position) if parent_3d != null else hit_position
+	return parent_position.y
+
+
+func _stair_edit_local_from_parent_position(local_position: Vector3) -> Vector3:
+	var drag_anchor := Vector3(
+		minf(m_drag_stair_old_start.x, m_drag_stair_old_end.x),
+		m_drag_stair_old_start.y,
+		minf(m_drag_stair_old_start.z, m_drag_stair_old_end.z)
+	)
+	var drag_frame := Transform3D(_stair_rotation_basis(m_drag_stair_old_rotation_degrees), drag_anchor)
+	return drag_frame.affine_inverse() * local_position
+
+
+func _snap_stair_footprint_edge(stair: Stairs3DScript, value: float) -> float:
+	var step := _active_stair_grid_step(stair)
+	return roundf(value / step) * step
+
+
+func _stair_drag_color(edit_mask: int, valid: bool) -> Color:
+	if !valid:
+		return Color(0.95, 0.20, 0.16, 0.72)
+	if edit_mask == FLOOR_EDIT_MOVE:
+		return Color(0.20, 0.60, 1.0, 0.55)
+	return Color(1.0, 0.85, 0.20, 0.72)
+
+
+func _stair_edit_label(edit_mask: int) -> String:
+	if edit_mask == FLOOR_EDIT_MOVE:
+		return "body"
+	return "corner" if _stair_edit_mask_is_corner(edit_mask) else "edge"
+
+
+func _stair_edit_mask_is_corner(edit_mask: int) -> bool:
+	var edits_x := (edit_mask & FLOOR_EDIT_MIN_X) != 0 or (edit_mask & FLOOR_EDIT_MAX_X) != 0
+	var edits_z := (edit_mask & FLOOR_EDIT_MIN_Z) != 0 or (edit_mask & FLOOR_EDIT_MAX_Z) != 0
+	return edits_x and edits_z
+
+
+func _active_stair_grid_step(stair: Stairs3DScript) -> float:
+	var coordinator := _find_coordinator_from_node(stair)
+	if coordinator != null:
+		return maxf(coordinator.grid_step, 0.05)
+	return maxf(float(m_stair_settings["grid_step"]), 0.05)
+
+
+func _stair_rotation_basis(rotation_degrees: float) -> Basis:
+	return Basis(Vector3.UP, deg_to_rad(_normalize_degrees(rotation_degrees)))
+
+
+func _reset_stair_drag_state() -> void:
+	m_dragging_stair = null
+	m_drag_stair_old_start = Vector3.ZERO
+	m_drag_stair_old_end = Vector3.ZERO
+	m_drag_stair_old_rotation_degrees = 0.0
+	m_drag_stair_anchor_local = Vector3.ZERO
+	m_drag_stair_plane_y = 0.0
+	m_drag_stair_edit_mask = FLOOR_EDIT_MOVE
+	m_drag_stair_active_material = null
 
 
 func _handle_roof_input(camera: Camera3D, event: InputEvent) -> int:
@@ -2761,6 +3354,101 @@ func _floor_edit_mask_for_local_hit(floor: Floor3DScript, local_hit: Vector3) ->
 	return edit_mask
 
 
+func _find_stair_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
+	var origin := camera.project_ray_origin(mouse_pos)
+	var direction := camera.project_ray_normal(mouse_pos)
+	var hit := _raycast_stairs(origin, direction)
+	if hit.is_empty():
+		return {}
+	var stair := hit.get("stair") as Stairs3DScript
+	if stair == null:
+		return {}
+	var local_position := Vector3(hit.get("local_position", Vector3.ZERO))
+	hit["edit_mask"] = _stair_edit_mask_for_local_hit(stair, local_position)
+	return hit
+
+
+func _raycast_stairs(origin: Vector3, direction: Vector3) -> Dictionary:
+	var scene_root := get_editor_interface().get_edited_scene_root()
+	if scene_root == null:
+		return {}
+
+	var stairs_nodes: Array[Stairs3DScript] = []
+	_collect_scene_stairs(scene_root, stairs_nodes)
+
+	var best_hit: Dictionary = {}
+	var best_distance := INF
+	for stair in stairs_nodes:
+		if !is_instance_valid(stair) or stair == m_stair_preview:
+			continue
+		if stair.has_meta(Stairs3DScript.PREVIEW_META):
+			continue
+		var hit := _intersect_stair_bounds(stair, origin, direction)
+		if hit.is_empty():
+			continue
+		var distance := float(hit["distance"])
+		if distance < best_distance:
+			best_distance = distance
+			best_hit = hit
+	return best_hit
+
+
+func _collect_scene_stairs(node: Node, stairs_nodes: Array[Stairs3DScript]) -> void:
+	if node is Stairs3DScript:
+		stairs_nodes.append(node as Stairs3DScript)
+	for child in node.get_children():
+		_collect_scene_stairs(child, stairs_nodes)
+
+
+func _intersect_stair_bounds(
+	stair: Stairs3DScript,
+	origin: Vector3,
+	direction: Vector3
+) -> Dictionary:
+	var size := stair.get_stair_size()
+	if size.x <= 0.001 or size.y <= 0.001:
+		return {}
+	var inverse_frame := stair.global_transform.affine_inverse()
+	var local_origin := inverse_frame * origin
+	var local_direction := inverse_frame.basis * direction
+	if local_direction.length_squared() <= 0.000001:
+		return {}
+	local_direction = local_direction.normalized()
+
+	var min_corner := stair.get_stair_bounds_min()
+	var max_corner := stair.get_stair_bounds_max()
+	var hit := _intersect_aabb_ray(local_origin, local_direction, min_corner, max_corner)
+	if hit.is_empty():
+		return {}
+
+	var local_hit := Vector3(hit["position"])
+	var local_normal := _nearest_box_normal(local_hit, min_corner, max_corner)
+	var global_hit := stair.global_transform * local_hit
+	return {
+		"stair": stair,
+		"position": global_hit,
+		"local_position": local_hit,
+		"normal": (stair.global_transform.basis * local_normal).normalized(),
+		"collider": stair,
+		"distance": origin.distance_to(global_hit),
+	}
+
+
+func _stair_edit_mask_for_local_hit(stair: Stairs3DScript, local_hit: Vector3) -> int:
+	var size := stair.get_stair_size()
+	var radius := maxf(_active_stair_grid_step(stair) * 0.35, 0.16)
+	var edit_mask := FLOOR_EDIT_MOVE
+	var min_x_distance := absf(local_hit.x)
+	var max_x_distance := absf(size.x - local_hit.x)
+	if minf(min_x_distance, max_x_distance) <= radius:
+		edit_mask |= FLOOR_EDIT_MIN_X if min_x_distance <= max_x_distance else FLOOR_EDIT_MAX_X
+	var min_z_distance := absf(local_hit.z)
+	var max_z_distance := absf(size.y - local_hit.z)
+	if minf(min_z_distance, max_z_distance) <= radius:
+		edit_mask |= FLOOR_EDIT_MIN_Z if min_z_distance <= max_z_distance else FLOOR_EDIT_MAX_Z
+	return edit_mask
+
+
 func _find_roof_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
 	var origin := camera.project_ray_origin(mouse_pos)
 	var direction := camera.project_ray_normal(mouse_pos)
@@ -3208,6 +3896,15 @@ func _apply_floor_settings_to_coordinator(coordinator: BuildingEditor3DScript) -
 	coordinator.grid_step = float(m_floor_settings["grid_step"])
 	coordinator.default_floor_thickness = float(m_floor_settings["thickness"])
 	coordinator.default_floor_color = Color(m_floor_settings["color"])
+
+
+func _apply_stair_settings_to_coordinator(coordinator: BuildingEditor3DScript) -> void:
+	coordinator.grid_step = float(m_stair_settings["grid_step"])
+	coordinator.default_stair_height = float(m_stair_settings["height"])
+	coordinator.default_stair_step_count = int(m_stair_settings["step_count"])
+	coordinator.default_stair_thickness = float(m_stair_settings["thickness"])
+	coordinator.default_stair_rotation_degrees = float(m_stair_settings.get("rotation_degrees", 0.0))
+	coordinator.default_stair_color = Color(m_stair_settings["color"])
 
 
 func _apply_pillar_settings_to_coordinator(coordinator: BuildingEditor3DScript) -> void:
@@ -3662,6 +4359,28 @@ func _clear_floor_hover() -> void:
 	m_drag_floor_hover_edit_mask = FLOOR_EDIT_MOVE
 
 
+func _update_stair_hover(stair: Stairs3DScript, edit_mask: int) -> void:
+	if stair == m_drag_stair_hover and edit_mask == m_drag_stair_hover_edit_mask:
+		return
+	_clear_stair_hover()
+	if stair == null:
+		return
+	m_drag_stair_hover = stair
+	m_drag_stair_hover_edit_mask = edit_mask
+	m_drag_stair_hover_material = stair.material_override
+	stair.material_override = _build_preview_material(_stair_drag_color(edit_mask, true))
+
+
+func _clear_stair_hover() -> void:
+	if m_drag_stair_hover == null:
+		return
+	if is_instance_valid(m_drag_stair_hover):
+		m_drag_stair_hover.material_override = m_drag_stair_hover_material
+	m_drag_stair_hover = null
+	m_drag_stair_hover_material = null
+	m_drag_stair_hover_edit_mask = FLOOR_EDIT_MOVE
+
+
 func _update_roof_hover(roof: Roof3DScript, edit_mask: int) -> void:
 	if roof == m_drag_roof_hover and edit_mask == m_drag_roof_hover_edit_mask:
 		return
@@ -3718,6 +4437,12 @@ func _clear_floor_preview() -> void:
 	m_floor_preview = null
 
 
+func _clear_stair_preview() -> void:
+	if m_stair_preview != null and is_instance_valid(m_stair_preview):
+		m_stair_preview.queue_free()
+	m_stair_preview = null
+
+
 func _clear_pillar_preview() -> void:
 	if m_pillar_preview != null and is_instance_valid(m_pillar_preview):
 		m_pillar_preview.queue_free()
@@ -3743,6 +4468,14 @@ func _reset_floor_drawing_state() -> void:
 	m_floor_has_valid_preview = false
 	m_floor_release_commits_preview = false
 	m_floor_start_screen_position = Vector2.ZERO
+
+
+func _reset_stair_drawing_state() -> void:
+	m_is_drawing_stair = false
+	m_stair_has_valid_preview = false
+	m_stair_release_commits_preview = false
+	m_stair_start_screen_position = Vector2.ZERO
+	m_stair_draw_rotation_degrees = _normalize_degrees(float(m_stair_settings.get("rotation_degrees", 0.0)))
 
 
 func _reset_roof_drawing_state() -> void:
@@ -4565,6 +5298,8 @@ func _cancel_active_preview() -> void:
 	_clear_wall_hover()
 	_cancel_floor_drag()
 	_clear_floor_hover()
+	_cancel_stair_drag()
+	_clear_stair_hover()
 	_cancel_pillar_drag()
 	_clear_pillar_hover()
 	_cancel_roof_drag()
@@ -4573,11 +5308,13 @@ func _cancel_active_preview() -> void:
 	_clear_drag_hover()
 	_clear_wall_preview()
 	_clear_floor_preview()
+	_clear_stair_preview()
 	_clear_pillar_preview()
 	_clear_roof_preview()
 	_clear_prop_preview()
 	_reset_wall_drawing_state()
 	_reset_floor_drawing_state()
+	_reset_stair_drawing_state()
 	_reset_roof_drawing_state()
 	_set_status("Tool preview canceled.")
 
@@ -4588,6 +5325,14 @@ func _is_wall_span_long_enough(local_start: Vector3, local_end: Vector3) -> bool
 
 func _is_floor_span_large_enough(local_start: Vector3, local_end: Vector3) -> bool:
 	var minimum_size := maxf(float(m_floor_settings["grid_step"]) * 0.5, 0.1)
+	return (
+		absf(local_end.x - local_start.x) >= minimum_size
+		and absf(local_end.z - local_start.z) >= minimum_size
+	)
+
+
+func _is_stair_span_large_enough(local_start: Vector3, local_end: Vector3) -> bool:
+	var minimum_size := maxf(float(m_stair_settings["grid_step"]) * 0.5, 0.1)
 	return (
 		absf(local_end.x - local_start.x) >= minimum_size
 		and absf(local_end.z - local_start.z) >= minimum_size
@@ -4758,6 +5503,7 @@ func _set_owner_recursive(node: Node, scene_root: Node) -> void:
 	if (
 		node.has_meta(Wall3DScript.GENERATED_META)
 		or node.has_meta(Floor3DScript.GENERATED_META)
+		or node.has_meta(Stairs3DScript.GENERATED_META)
 		or node.has_meta(Pillar3DScript.GENERATED_META)
 		or node.has_meta(Roof3DScript.GENERATED_META)
 		or node.has_meta(BuildingOpening3DScript.GENERATED_META)
@@ -4810,6 +5556,8 @@ func _tool_mode_for_building_node(node: Node) -> String:
 		return MODE_WALL
 	if node is Floor3DScript:
 		return MODE_FLOOR
+	if node is Stairs3DScript:
+		return MODE_STAIRS
 	if node is Pillar3DScript:
 		return MODE_PILLAR
 	if node is Roof3DScript:
@@ -4958,6 +5706,8 @@ func _apply_native_toolbar_box_layout(reference_button: Button) -> void:
 	var native_toolbar_parent := _find_toolbar_box_parent(reference_button)
 	if native_toolbar_parent == null:
 		return
+	m_viewport_toolbar.theme = native_toolbar_parent.theme
+	m_viewport_toolbar.theme_type_variation = native_toolbar_parent.theme_type_variation
 	m_viewport_toolbar.add_theme_constant_override(
 		"separation",
 		native_toolbar_parent.get_theme_constant("separation")
@@ -5451,6 +6201,16 @@ func _make_toolbar_tool_icon(mode: String) -> Texture2D:
 			_draw_icon_line(image, Vector2i(3, 10), Vector2i(12, 4), color, 2)
 			_draw_icon_line(image, Vector2i(3, 10), Vector2i(21, 10), color, 1)
 			_draw_icon_line(image, Vector2i(12, 4), Vector2i(12, 17), color, 1)
+		MODE_STAIRS:
+			_draw_icon_line(image, Vector2i(4, 18), Vector2i(8, 18), color, 2)
+			_draw_icon_line(image, Vector2i(8, 18), Vector2i(8, 14), color, 2)
+			_draw_icon_line(image, Vector2i(8, 14), Vector2i(12, 14), color, 2)
+			_draw_icon_line(image, Vector2i(12, 14), Vector2i(12, 10), color, 2)
+			_draw_icon_line(image, Vector2i(12, 10), Vector2i(16, 10), color, 2)
+			_draw_icon_line(image, Vector2i(16, 10), Vector2i(16, 6), color, 2)
+			_draw_icon_line(image, Vector2i(16, 6), Vector2i(20, 6), color, 2)
+			_draw_icon_line(image, Vector2i(4, 20), Vector2i(20, 20), color, 1)
+			_draw_icon_line(image, Vector2i(20, 6), Vector2i(20, 20), color, 1)
 		MODE_PILLAR:
 			_draw_icon_line(image, Vector2i(7, 8), Vector2i(9, 5), color, 2)
 			_draw_icon_line(image, Vector2i(9, 5), Vector2i(15, 5), color, 2)
@@ -5588,6 +6348,8 @@ func _on_tool_mode_changed(mode: String) -> void:
 	if coordinator != null:
 		if m_tool_mode == MODE_FLOOR:
 			_apply_floor_settings_to_coordinator(coordinator)
+		elif m_tool_mode == MODE_STAIRS:
+			_apply_stair_settings_to_coordinator(coordinator)
 		elif m_tool_mode == MODE_PILLAR:
 			_apply_pillar_settings_to_coordinator(coordinator)
 		elif m_tool_mode == MODE_ROOF:
@@ -5610,6 +6372,14 @@ func _on_floor_settings_changed(settings: Dictionary) -> void:
 	var coordinator := _get_or_create_coordinator(false)
 	if coordinator != null and m_tool_mode == MODE_FLOOR:
 		_apply_floor_settings_to_coordinator(coordinator)
+
+
+func _on_stair_settings_changed(settings: Dictionary) -> void:
+	m_stair_settings = settings.duplicate(true)
+	_clear_stair_preview()
+	var coordinator := _get_or_create_coordinator(false)
+	if coordinator != null and m_tool_mode == MODE_STAIRS:
+		_apply_stair_settings_to_coordinator(coordinator)
 
 
 func _on_pillar_settings_changed(settings: Dictionary) -> void:

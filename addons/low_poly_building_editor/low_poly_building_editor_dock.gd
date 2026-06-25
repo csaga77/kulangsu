@@ -4,6 +4,7 @@ extends VBoxContainer
 signal tool_mode_changed(mode: String)
 signal wall_settings_changed(settings: Dictionary)
 signal floor_settings_changed(settings: Dictionary)
+signal stair_settings_changed(settings: Dictionary)
 signal pillar_settings_changed(settings: Dictionary)
 signal roof_settings_changed(settings: Dictionary)
 signal prop_settings_changed(settings: Dictionary)
@@ -14,6 +15,7 @@ signal create_coordinator_requested()
 const MODE_SELECT := "select"
 const MODE_WALL := "wall"
 const MODE_FLOOR := "floor"
+const MODE_STAIRS := "stairs"
 const MODE_PILLAR := "pillar"
 const MODE_ROOF := "roof"
 const MODE_PROP := "prop"
@@ -31,6 +33,7 @@ const COLOR_SWATCH_MIN_WIDTH := 34.0
 const SHORTCUTS_SELECT_TEXT := "Shortcuts\nSelect: normal Godot editor selection and transform tools are active."
 const SHORTCUTS_WALL_TEXT := "Shortcuts\nDrag empty space to draw a wall.\nDrag wall body to move it.\nDrag endpoint or joint to edit.\nShift-click wall body to add joint.\nOption/Alt-drag shared joint to disconnect.\nEsc or right-click cancels."
 const SHORTCUTS_FLOOR_TEXT := "Shortcuts\nDrag empty space to draw a floor rectangle.\nClick one corner, then click the opposite corner to place.\nDrag floor body to move it.\nDrag floor edge or corner to resize.\nEsc or right-click cancels."
+const SHORTCUTS_STAIRS_TEXT := "Shortcuts\nDrag empty space to draw a stair rectangle.\nClick one corner, then click the opposite corner to place.\nR rotates the preview or hovered stairs by 90 degrees.\nShift+R rotates the opposite direction.\nDrag stairs body to move it.\nDrag stairs edge or corner to resize.\nEsc or right-click cancels."
 const SHORTCUTS_PILLAR_TEXT := "Shortcuts\nClick empty space to place a pillar.\nDrag pillar body to move it.\nDrag pillar edge to resize its radius.\nEsc or right-click cancels."
 const SHORTCUTS_ROOF_TEXT := "Shortcuts\nDrag empty space to draw a roof rectangle.\nClick one corner, then click the opposite corner to place.\nR rotates the preview or hovered roof by 90 degrees.\nShift+R rotates the opposite direction.\nDrag roof body to move it.\nDrag roof edge or corner to resize.\nEsc or right-click cancels."
 const SHORTCUTS_PROP_TEXT := "Shortcuts\nSelect a palette item, then click to place.\nR rotates the preview by 90 degrees.\nEsc or right-click cancels."
@@ -43,6 +46,7 @@ var m_shortcuts_label: Label
 var m_status_label: Label
 var m_wall_section: VBoxContainer
 var m_floor_section: VBoxContainer
+var m_stair_section: VBoxContainer
 var m_pillar_section: VBoxContainer
 var m_roof_section: VBoxContainer
 var m_prop_section: VBoxContainer
@@ -58,6 +62,13 @@ var m_floor_grid_spin: SpinBox
 var m_floor_base_height_spin: SpinBox
 var m_floor_thickness_spin: SpinBox
 var m_floor_color_picker: ColorPickerButton
+var m_stair_grid_spin: SpinBox
+var m_stair_base_height_spin: SpinBox
+var m_stair_height_spin: SpinBox
+var m_stair_step_count_spin: SpinBox
+var m_stair_thickness_spin: SpinBox
+var m_stair_rotation_spin: SpinBox
+var m_stair_color_picker: ColorPickerButton
 var m_pillar_grid_spin: SpinBox
 var m_pillar_style_option: OptionButton
 var m_pillar_base_height_spin: SpinBox
@@ -164,16 +175,18 @@ func _build_ui() -> void:
 	m_mode_option.set_item_metadata(1, MODE_WALL)
 	m_mode_option.add_item("Floor", 2)
 	m_mode_option.set_item_metadata(2, MODE_FLOOR)
-	m_mode_option.add_item("Pillar", 3)
-	m_mode_option.set_item_metadata(3, MODE_PILLAR)
-	m_mode_option.add_item("Roof", 4)
-	m_mode_option.set_item_metadata(4, MODE_ROOF)
-	m_mode_option.add_item("Prop", 5)
-	m_mode_option.set_item_metadata(5, MODE_PROP)
-	m_mode_option.add_item("Door", 6)
-	m_mode_option.set_item_metadata(6, MODE_DOOR)
-	m_mode_option.add_item("Window", 7)
-	m_mode_option.set_item_metadata(7, MODE_WINDOW)
+	m_mode_option.add_item("Stairs", 3)
+	m_mode_option.set_item_metadata(3, MODE_STAIRS)
+	m_mode_option.add_item("Pillar", 4)
+	m_mode_option.set_item_metadata(4, MODE_PILLAR)
+	m_mode_option.add_item("Roof", 5)
+	m_mode_option.set_item_metadata(5, MODE_ROOF)
+	m_mode_option.add_item("Prop", 6)
+	m_mode_option.set_item_metadata(6, MODE_PROP)
+	m_mode_option.add_item("Door", 7)
+	m_mode_option.set_item_metadata(7, MODE_DOOR)
+	m_mode_option.add_item("Window", 8)
+	m_mode_option.set_item_metadata(8, MODE_WINDOW)
 	m_mode_option.item_selected.connect(_on_mode_selected)
 	mode_row.add_child(m_mode_option)
 	content.add_child(mode_row)
@@ -187,6 +200,8 @@ func _build_ui() -> void:
 	_build_wall_controls(m_wall_section)
 	m_floor_section = _make_tool_section(content)
 	_build_floor_controls(m_floor_section)
+	m_stair_section = _make_tool_section(content)
+	_build_stair_controls(m_stair_section)
 	m_pillar_section = _make_tool_section(content)
 	_build_pillar_controls(m_pillar_section)
 	m_roof_section = _make_tool_section(content)
@@ -278,6 +293,42 @@ func _build_floor_controls(parent: VBoxContainer) -> void:
 	m_floor_color_picker = _make_color_picker(Color(0.46, 0.40, 0.32, 1.0))
 	m_floor_color_picker.color_changed.connect(_on_floor_color_changed)
 	_add_labeled_control(parent, "Color:", m_floor_color_picker, "Vertex color applied to newly drawn floors.")
+
+
+func _build_stair_controls(parent: VBoxContainer) -> void:
+	var header := Label.new()
+	header.text = "Stairs"
+	parent.add_child(header)
+
+	m_stair_grid_spin = _make_spin(0.05, 8.0, 0.05, 0.5)
+	_add_labeled_control(parent, "Grid:", m_stair_grid_spin, "Snap size for drawing and editing stair footprints.")
+	m_stair_grid_spin.value_changed.connect(_on_stair_setting_changed)
+
+	m_stair_base_height_spin = _make_spin(-20.0, 20.0, 0.01, 0.0)
+	m_stair_base_height_spin.tooltip_text = "Parent-local Y height for the lower stair entry."
+	_add_labeled_control(parent, "Base Y:", m_stair_base_height_spin)
+	m_stair_base_height_spin.value_changed.connect(_on_stair_setting_changed)
+
+	m_stair_height_spin = _make_spin(0.05, 20.0, 0.01, 1.2)
+	_add_labeled_control(parent, "Height:", m_stair_height_spin, "Total climb height from the lower entry to the top tread.")
+	m_stair_height_spin.value_changed.connect(_on_stair_setting_changed)
+
+	m_stair_step_count_spin = _make_spin(1.0, 64.0, 1.0, 6.0)
+	_add_labeled_control(parent, "Steps:", m_stair_step_count_spin, "Number of risers/treads generated across the drawn stair run.")
+	m_stair_step_count_spin.value_changed.connect(_on_stair_setting_changed)
+
+	m_stair_thickness_spin = _make_spin(0.0, 2.0, 0.01, 0.12)
+	_add_labeled_control(parent, "Thickness:", m_stair_thickness_spin, "Solid underside thickness extending below the lower stair entry.")
+	m_stair_thickness_spin.value_changed.connect(_on_stair_setting_changed)
+
+	m_stair_rotation_spin = _make_spin(-180.0, 180.0, 1.0, 0.0)
+	m_stair_rotation_spin.tooltip_text = "Starting Y rotation for new stairs, in degrees."
+	_add_labeled_control(parent, "Rotation:", m_stair_rotation_spin)
+	m_stair_rotation_spin.value_changed.connect(_on_stair_setting_changed)
+
+	m_stair_color_picker = _make_color_picker(Color(0.52, 0.46, 0.38, 1.0))
+	m_stair_color_picker.color_changed.connect(_on_stair_color_changed)
+	_add_labeled_control(parent, "Color:", m_stair_color_picker, "Vertex color applied to newly drawn stairs.")
 
 
 func _build_pillar_controls(parent: VBoxContainer) -> void:
@@ -591,6 +642,7 @@ func _sync_color_picker_minimum_width(picker: ColorPickerButton) -> void:
 func _refresh_color_picker_icons() -> void:
 	_update_color_picker_icon(m_wall_color_picker)
 	_update_color_picker_icon(m_floor_color_picker)
+	_update_color_picker_icon(m_stair_color_picker)
 	_update_color_picker_icon(m_pillar_color_picker)
 	_update_color_picker_icon(m_roof_color_picker)
 
@@ -677,6 +729,8 @@ func _shortcut_text_for_mode(mode: String) -> String:
 			return SHORTCUTS_WALL_TEXT
 		MODE_FLOOR:
 			return SHORTCUTS_FLOOR_TEXT
+		MODE_STAIRS:
+			return SHORTCUTS_STAIRS_TEXT
 		MODE_PILLAR:
 			return SHORTCUTS_PILLAR_TEXT
 		MODE_ROOF:
@@ -696,6 +750,8 @@ func _update_visible_tool_section(mode: String) -> void:
 		m_wall_section.visible = mode == MODE_WALL
 	if m_floor_section != null:
 		m_floor_section.visible = mode == MODE_FLOOR
+	if m_stair_section != null:
+		m_stair_section.visible = mode == MODE_STAIRS
 	if m_pillar_section != null:
 		m_pillar_section.visible = mode == MODE_PILLAR
 	if m_roof_section != null:
@@ -772,6 +828,15 @@ func _on_floor_color_changed(_color: Color) -> void:
 	_emit_floor_settings()
 
 
+func _on_stair_setting_changed(_value: float) -> void:
+	_emit_stair_settings()
+
+
+func _on_stair_color_changed(_color: Color) -> void:
+	_update_color_picker_icon(m_stair_color_picker)
+	_emit_stair_settings()
+
+
 func _on_pillar_setting_changed(_value: float) -> void:
 	_emit_pillar_settings()
 
@@ -835,6 +900,7 @@ func _on_door_setting_changed(_value: float) -> void:
 func _emit_all_settings() -> void:
 	_emit_wall_settings()
 	_emit_floor_settings()
+	_emit_stair_settings()
 	_emit_pillar_settings()
 	_emit_roof_settings()
 	_emit_prop_settings()
@@ -859,6 +925,18 @@ func _emit_floor_settings() -> void:
 		"base_height": float(m_floor_base_height_spin.value),
 		"thickness": float(m_floor_thickness_spin.value),
 		"color": m_floor_color_picker.color,
+	})
+
+
+func _emit_stair_settings() -> void:
+	stair_settings_changed.emit({
+		"grid_step": float(m_stair_grid_spin.value),
+		"base_height": float(m_stair_base_height_spin.value),
+		"height": float(m_stair_height_spin.value),
+		"step_count": int(roundf(m_stair_step_count_spin.value)),
+		"thickness": float(m_stair_thickness_spin.value),
+		"rotation_degrees": float(m_stair_rotation_spin.value),
+		"color": m_stair_color_picker.color,
 	})
 
 
@@ -1092,6 +1170,15 @@ func _load_persisted_settings() -> void:
 	var floor_color_variant: Variant = state.get("floor_color", m_floor_color_picker.color)
 	if floor_color_variant is Color:
 		m_floor_color_picker.color = floor_color_variant
+	m_stair_grid_spin.value = float(state.get("stair_grid_step", m_stair_grid_spin.value))
+	m_stair_base_height_spin.value = float(state.get("stair_base_height", m_stair_base_height_spin.value))
+	m_stair_height_spin.value = float(state.get("stair_height", m_stair_height_spin.value))
+	m_stair_step_count_spin.value = float(state.get("stair_step_count", m_stair_step_count_spin.value))
+	m_stair_thickness_spin.value = float(state.get("stair_thickness", m_stair_thickness_spin.value))
+	m_stair_rotation_spin.value = float(state.get("stair_rotation_degrees", m_stair_rotation_spin.value))
+	var stair_color_variant: Variant = state.get("stair_color", m_stair_color_picker.color)
+	if stair_color_variant is Color:
+		m_stair_color_picker.color = stair_color_variant
 	m_pillar_grid_spin.value = float(state.get("pillar_grid_step", m_pillar_grid_spin.value))
 	_select_pillar_style(str(state.get("pillar_style", _selected_pillar_style())))
 	m_pillar_base_height_spin.value = float(state.get("pillar_base_height", m_pillar_base_height_spin.value))
@@ -1155,6 +1242,13 @@ func _save_persisted_settings() -> void:
 		"floor_base_height": float(m_floor_base_height_spin.value) if m_floor_base_height_spin != null else 0.0,
 		"floor_thickness": float(m_floor_thickness_spin.value) if m_floor_thickness_spin != null else 0.12,
 		"floor_color": m_floor_color_picker.color if m_floor_color_picker != null else Color(0.46, 0.40, 0.32, 1.0),
+		"stair_grid_step": float(m_stair_grid_spin.value) if m_stair_grid_spin != null else 0.5,
+		"stair_base_height": float(m_stair_base_height_spin.value) if m_stair_base_height_spin != null else 0.0,
+		"stair_height": float(m_stair_height_spin.value) if m_stair_height_spin != null else 1.2,
+		"stair_step_count": int(roundf(m_stair_step_count_spin.value)) if m_stair_step_count_spin != null else 6,
+		"stair_thickness": float(m_stair_thickness_spin.value) if m_stair_thickness_spin != null else 0.12,
+		"stair_rotation_degrees": float(m_stair_rotation_spin.value) if m_stair_rotation_spin != null else 0.0,
+		"stair_color": m_stair_color_picker.color if m_stair_color_picker != null else Color(0.52, 0.46, 0.38, 1.0),
 		"pillar_grid_step": float(m_pillar_grid_spin.value) if m_pillar_grid_spin != null else 0.5,
 		"pillar_style": _selected_pillar_style(),
 		"pillar_base_height": float(m_pillar_base_height_spin.value) if m_pillar_base_height_spin != null else 0.0,

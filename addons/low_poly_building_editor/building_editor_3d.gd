@@ -4,6 +4,7 @@ extends Node3D
 
 const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
 const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
+const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.gd")
 const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
 const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
 const MergedWallMeshBuilderScript = preload("res://addons/low_poly_building_editor/merged_wall_mesh_builder.gd")
@@ -21,6 +22,11 @@ const ROOF_COVER_HEIGHT_EPSILON := 0.01
 @export var default_wall_color := Color(0.78, 0.68, 0.54, 1.0)
 @export_range(0.01, 2.0, 0.01, "or_greater") var default_floor_thickness := 0.12
 @export var default_floor_color := Color(0.46, 0.40, 0.32, 1.0)
+@export_range(0.05, 20.0, 0.01, "or_greater") var default_stair_height := 1.2
+@export_range(1, 64, 1) var default_stair_step_count := 6
+@export_range(0.0, 2.0, 0.01, "or_greater") var default_stair_thickness := 0.12
+@export_range(-180.0, 180.0, 1.0) var default_stair_rotation_degrees := 0.0
+@export var default_stair_color := Color(0.52, 0.46, 0.38, 1.0)
 @export_range(0.05, 4.0, 0.01, "or_greater") var default_pillar_radius := 0.25
 @export_range(0.0, 4.0, 0.01, "or_greater") var default_pillar_upper_radius := 0.0
 @export_range(0.1, 12.0, 0.05, "or_greater") var default_pillar_height := 2.4
@@ -114,6 +120,30 @@ func create_floor_node(
 	return floor
 
 
+func create_stairs_node(
+	local_start: Vector3,
+	local_end: Vector3,
+	height: float = default_stair_height,
+	step_count: int = default_stair_step_count,
+	thickness: float = default_stair_thickness,
+	color: Color = default_stair_color,
+	rotation_degrees: float = default_stair_rotation_degrees
+) -> Stairs3DScript:
+	var stairs := Stairs3DScript.new() as Stairs3DScript
+	stairs.name = _unique_stairs_name()
+	stairs.start_point = local_start
+	stairs.end_point = Vector3(local_end.x, local_start.y, local_end.z)
+	stairs.stair_height = height
+	stairs.step_count = step_count
+	stairs.stair_thickness = thickness
+	stairs.stair_color = color
+	stairs.stair_rotation_degrees = rotation_degrees
+	stairs.build_on_ready = true
+	stairs.generate_collision = true
+	stairs.rebuild_stairs_mesh()
+	return stairs
+
+
 func create_pillar_node(
 	local_base: Vector3,
 	radius: float = default_pillar_radius,
@@ -190,6 +220,14 @@ func get_floor_nodes() -> Array[Floor3DScript]:
 		if child is Floor3DScript:
 			floors.append(child as Floor3DScript)
 	return floors
+
+
+func get_stairs_nodes() -> Array[Stairs3DScript]:
+	var stairs_nodes: Array[Stairs3DScript] = []
+	for child in get_children():
+		if child is Stairs3DScript:
+			stairs_nodes.append(child as Stairs3DScript)
+	return stairs_nodes
 
 
 func get_pillar_nodes() -> Array[Pillar3DScript]:
@@ -926,6 +964,15 @@ func _unique_floor_name() -> String:
 	while has_node(candidate):
 		index += 1
 		candidate = "Floor3D%d" % index
+	return candidate
+
+
+func _unique_stairs_name() -> String:
+	var index := get_stairs_nodes().size() + 1
+	var candidate := "Stairs3D%d" % index
+	while has_node(candidate):
+		index += 1
+		candidate = "Stairs3D%d" % index
 	return candidate
 
 

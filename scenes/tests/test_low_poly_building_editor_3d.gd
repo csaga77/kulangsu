@@ -4,6 +4,7 @@ extends Node3D
 const BuildingEditor3DScript = preload("res://addons/low_poly_building_editor/building_editor_3d.gd")
 const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
 const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
+const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.gd")
 const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
 const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
@@ -51,6 +52,7 @@ func _run_smoke_checks() -> void:
 	_validate_snapping(coordinator)
 	_validate_wall_base_height(coordinator)
 	_validate_floor_node(coordinator)
+	_validate_stairs_node(coordinator)
 	_validate_pillar_node(coordinator)
 	_validate_roof_node(coordinator)
 	_validate_merge_detection(coordinator)
@@ -287,6 +289,83 @@ func _validate_floor_node(coordinator: BuildingEditor3DScript) -> void:
 		m_failures.append("Floor3D did not resize from edited corners: %s" % str(edited_size))
 	if floor.position.distance_to(Vector3(1.0, top_y, 12.5)) > 0.001:
 		m_failures.append("Floor3D did not move transform after edited corners")
+
+
+func _validate_stairs_node(coordinator: BuildingEditor3DScript) -> void:
+	var base_y := 0.75
+	var stairs := coordinator.create_stairs_node(
+		Vector3(0.0, base_y, 16.0),
+		Vector3(3.0, base_y, 20.0),
+		1.2,
+		4,
+		0.16,
+		Color(0.52, 0.46, 0.38, 1.0)
+	)
+	coordinator.add_child(stairs)
+	if stairs.mesh == null:
+		m_failures.append("Stairs3D did not generate a mesh")
+		return
+	if stairs.mesh.get_surface_count() <= 0:
+		m_failures.append("Stairs3D mesh has no surfaces")
+		return
+
+	var size := stairs.get_stair_size()
+	if absf(size.x - 3.0) > 0.001 or absf(size.y - 4.0) > 0.001:
+		m_failures.append("Stairs3D returned the wrong footprint size: %s" % str(size))
+	if stairs.position.distance_to(Vector3(0.0, base_y, 16.0)) > 0.001:
+		m_failures.append("Stairs3D did not place its transform at the lower footprint corner")
+	if absf(stairs.get_step_rise() - 0.3) > 0.001:
+		m_failures.append("Stairs3D calculated the wrong step rise")
+	if absf(stairs.get_step_run() - 1.0) > 0.001:
+		m_failures.append("Stairs3D calculated the wrong step run")
+
+	var arrays := stairs.mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	if vertices.is_empty():
+		m_failures.append("Stairs3D mesh has no vertices")
+	if normals.size() != vertices.size():
+		m_failures.append("Stairs3D mesh is missing per-vertex normal data")
+	if colors.size() != vertices.size():
+		m_failures.append("Stairs3D mesh is missing per-vertex color data")
+	if _mesh_vertex_count(stairs) != 66:
+		m_failures.append("Stairs3D generated the wrong stepped vertex count")
+	if !_has_normal_near(normals, Vector3.UP):
+		m_failures.append("Stairs3D mesh is missing tread normals")
+	if !_has_normal_near(normals, Vector3.FORWARD):
+		m_failures.append("Stairs3D mesh is missing riser normals")
+	if !_has_normal_near(normals, Vector3.LEFT) or !_has_normal_near(normals, Vector3.RIGHT):
+		m_failures.append("Stairs3D mesh is missing side normals")
+	if !_has_mesh_vertex_y_near(stairs, 1.2, 0.001):
+		m_failures.append("Stairs3D mesh did not reach the configured stair height")
+	if !_has_mesh_vertex_y_near(stairs, -0.16, 0.001):
+		m_failures.append("Stairs3D mesh did not extend underside thickness downward")
+	if indices.size() >= 3 and !normals.is_empty():
+		var a := vertices[indices[0]]
+		var b := vertices[indices[1]]
+		var c := vertices[indices[2]]
+		var winding_normal := (b - a).cross(c - a).normalized()
+		if winding_normal.dot(normals[indices[0]]) > -0.999:
+			m_failures.append("Stairs3D triangle winding does not match Godot BoxMesh convention")
+	if stairs.get_node_or_null("StairsCollision") == null:
+		m_failures.append("Stairs3D did not generate collision for placed stairs")
+
+	stairs.set_stair_corners(Vector3(1.0, base_y, 16.5), Vector3(4.5, base_y, 21.0))
+	var edited_size := stairs.get_stair_size()
+	if absf(edited_size.x - 3.5) > 0.001 or absf(edited_size.y - 4.5) > 0.001:
+		m_failures.append("Stairs3D did not resize from edited corners: %s" % str(edited_size))
+	if stairs.position.distance_to(Vector3(1.0, base_y, 16.5)) > 0.001:
+		m_failures.append("Stairs3D did not move transform after edited corners")
+	var old_stair_center := stairs.get_stair_center_point()
+	stairs.set_stair_rotation_around_center(90.0)
+	if absf(angle_difference(deg_to_rad(stairs.stair_rotation_degrees), deg_to_rad(90.0))) > deg_to_rad(0.5):
+		m_failures.append("Stairs3D did not store edited stair rotation")
+	if stairs.get_stair_center_point().distance_to(old_stair_center) > 0.001:
+		m_failures.append("Stairs3D did not preserve footprint center when rotating")
+	if stairs.transform.basis.is_equal_approx(Basis.IDENTITY):
+		m_failures.append("Stairs3D did not apply rotation to its transform")
 
 
 func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:
