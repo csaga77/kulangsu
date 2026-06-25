@@ -284,6 +284,56 @@ func _validate_floor_node(coordinator: BuildingEditor3DScript) -> void:
 	if floor.get_node_or_null("FloorCollision") == null:
 		m_failures.append("Floor3D did not generate collision for placed floors")
 
+	var floor_holes: Array[Rect2] = [Rect2(Vector2(1.0, 0.5), Vector2(1.0, 0.75))]
+	if !floor.can_add_floor_hole_rect(floor_holes[0]):
+		m_failures.append("Floor3D rejected a valid interior floor hole")
+	floor.set_floor_holes(floor_holes)
+	if floor.get_floor_holes().size() != 1:
+		m_failures.append("Floor3D did not store a valid floor hole")
+	var holed_mesh := floor.mesh as ArrayMesh
+	if _has_horizontal_face_covering_plan_point(holed_mesh, Vector2(1.5, 0.9), 0.0):
+		m_failures.append("Floor3D kept a top face over a floor hole")
+	if !_has_horizontal_face_covering_plan_point(holed_mesh, Vector2(0.5, 0.3), 0.0):
+		m_failures.append("Floor3D removed solid top floor geometry outside the hole")
+	if !_has_mesh_vertex_with_normal_near(holed_mesh, Vector3(1.0, 0.0, 0.5), Vector3.RIGHT, 0.001):
+		m_failures.append("Floor3D hole is missing its inner left side face")
+	if !_has_mesh_vertex_with_normal_near(holed_mesh, Vector3(2.0, 0.0, 0.5), Vector3.LEFT, 0.001):
+		m_failures.append("Floor3D hole is missing its inner right side face")
+	var intersecting_hole := Rect2(Vector2(1.5, 0.75), Vector2(1.0, 0.75))
+	if !floor.can_add_floor_hole_rect(intersecting_hole):
+		m_failures.append("Floor3D rejected an intersecting mergeable floor hole")
+	floor.set_floor_holes([floor_holes[0], intersecting_hole])
+	var merged_holes := floor.get_floor_holes()
+	if merged_holes.size() != 3:
+		m_failures.append("Floor3D did not preserve merged floor hole shape")
+	else:
+		if !_has_rect_near(merged_holes, Rect2(Vector2(1.0, 0.5), Vector2(1.0, 0.25))):
+			m_failures.append("Floor3D merged floor hole lost the lower-left run")
+		if !_has_rect_near(merged_holes, Rect2(Vector2(1.0, 0.75), Vector2(1.5, 0.5))):
+			m_failures.append("Floor3D merged floor hole lost the shared middle run")
+		if !_has_rect_near(merged_holes, Rect2(Vector2(1.5, 1.25), Vector2(1.0, 0.25))):
+			m_failures.append("Floor3D merged floor hole lost the upper-right run")
+	var merged_mesh := floor.mesh as ArrayMesh
+	if !_has_horizontal_face_covering_plan_point(merged_mesh, Vector2(2.25, 0.6), 0.0):
+		m_failures.append("Floor3D overcut a solid corner while merging floor holes")
+	if !_has_horizontal_face_covering_plan_point(merged_mesh, Vector2(1.25, 1.4), 0.0):
+		m_failures.append("Floor3D overcut the opposite solid corner while merging floor holes")
+	if _has_horizontal_face_covering_plan_point(merged_mesh, Vector2(2.25, 1.4), 0.0):
+		m_failures.append("Floor3D kept a top face over a merged floor hole")
+	if !_has_mesh_vertex_with_normal_near(merged_mesh, Vector3(2.5, 0.0, 0.75), Vector3.LEFT, 0.001):
+		m_failures.append("Floor3D merged hole is missing its outer right side face")
+	if (
+		_has_vertical_face_covering_plan_edge_point(merged_mesh, Vector2(1.25, 0.75), Vector3.FORWARD)
+		or _has_vertical_face_covering_plan_edge_point(merged_mesh, Vector2(1.25, 0.75), Vector3.BACK)
+	):
+		m_failures.append("Floor3D kept an internal side face between merged floor holes")
+	if floor.can_add_floor_hole_rect(Rect2(Vector2(0.0, 0.5), Vector2(0.5, 0.5))):
+		m_failures.append("Floor3D allowed a hole touching the outer floor edge")
+	if !floor.floor_holes_fit_size(floor.get_floor_size()):
+		m_failures.append("Floor3D reported its valid stored hole as outside the floor")
+	if floor.floor_holes_fit_size(Vector2(1.5, 1.0)):
+		m_failures.append("Floor3D did not detect a resize that would invalidate a stored hole")
+
 	floor.set_floor_corners(Vector3(1.0, top_y, 12.5), Vector3(4.5, top_y, 15.0))
 	var edited_size := floor.get_floor_size()
 	if absf(edited_size.x - 3.5) > 0.001 or absf(edited_size.y - 2.5) > 0.001:
@@ -2049,6 +2099,66 @@ func _has_mesh_vertex_with_normal_near(
 		if normals[index].dot(expected_normal) > 0.98:
 			return true
 	return false
+
+
+func _has_rect_near(rects: Array[Rect2], expected: Rect2) -> bool:
+	for rect in rects:
+		if rect.position.distance_to(expected.position) > 0.001:
+			continue
+		if rect.size.distance_to(expected.size) <= 0.001:
+			return true
+	return false
+
+
+func _has_vertical_face_covering_plan_edge_point(
+	array_mesh: ArrayMesh,
+	point: Vector2,
+	expected_normal: Vector3
+) -> bool:
+	if array_mesh == null or array_mesh.get_surface_count() <= 0:
+		return false
+	var arrays := array_mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	for triangle_start in range(0, indices.size(), 3):
+		var i0 := indices[triangle_start]
+		var i1 := indices[triangle_start + 1]
+		var i2 := indices[triangle_start + 2]
+		if normals[i0].dot(expected_normal) < 0.98:
+			continue
+		var a := vertices[i0]
+		var b := vertices[i1]
+		var c := vertices[i2]
+		if absf(expected_normal.x) > 0.9:
+			if (
+				absf(a.x - point.x) > 0.001
+				or absf(b.x - point.x) > 0.001
+				or absf(c.x - point.x) > 0.001
+			):
+				continue
+			if _triangle_range_contains(a.z, b.z, c.z, point.y) and _triangle_range_spans_y(a, b, c):
+				return true
+		elif absf(expected_normal.z) > 0.9:
+			if (
+				absf(a.z - point.y) > 0.001
+				or absf(b.z - point.y) > 0.001
+				or absf(c.z - point.y) > 0.001
+			):
+				continue
+			if _triangle_range_contains(a.x, b.x, c.x, point.x) and _triangle_range_spans_y(a, b, c):
+				return true
+	return false
+
+
+func _triangle_range_contains(a: float, b: float, c: float, value: float) -> bool:
+	return value >= minf(a, minf(b, c)) - 0.001 and value <= maxf(a, maxf(b, c)) + 0.001
+
+
+func _triangle_range_spans_y(a: Vector3, b: Vector3, c: Vector3) -> bool:
+	var min_y := minf(a.y, minf(b.y, c.y))
+	var max_y := maxf(a.y, maxf(b.y, c.y))
+	return min_y < -0.01 and max_y > -0.001
 
 
 func _has_normal_near(normals: PackedVector3Array, expected_normal: Vector3) -> bool:

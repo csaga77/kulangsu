@@ -28,6 +28,8 @@ const FLOOR_EDIT_MIN_X := 1
 const FLOOR_EDIT_MAX_X := 2
 const FLOOR_EDIT_MIN_Z := 4
 const FLOOR_EDIT_MAX_Z := 8
+const FLOOR_TYPE_SOLID := "solid"
+const FLOOR_TYPE_HOLE := "hole"
 const PILLAR_EDIT_MOVE := 0
 const PILLAR_EDIT_RADIUS := 1
 const OPENING_SILL_META := &"building_opening_sill_height"
@@ -170,6 +172,7 @@ var m_wall_settings := {
 }
 var m_floor_settings := {
 	"grid_step": 0.5,
+	"type": FLOOR_TYPE_SOLID,
 	"base_height": 0.0,
 	"thickness": 0.12,
 	"color": Color(0.46, 0.40, 0.32, 1.0),
@@ -874,11 +877,16 @@ func _handle_floor_input(camera: Camera3D, event: InputEvent) -> int:
 		var edit_mask := int(floor_pick.get("edit_mask", FLOOR_EDIT_MOVE))
 		_update_floor_hover(hover_floor, edit_mask)
 		if hover_floor != null:
-			_set_status(
-				"Drag floor corner to resize." if _floor_edit_mask_is_corner(edit_mask)
-				else "Drag floor edge to resize." if edit_mask != FLOOR_EDIT_MOVE
-				else "Drag floor body to move."
-			)
+			if _is_floor_hole_mode():
+				_set_status("Drag to draw a floor hole inside the highlighted floor.")
+			else:
+				_set_status(
+					"Drag floor corner to resize." if _floor_edit_mask_is_corner(edit_mask)
+					else "Drag floor edge to resize." if edit_mask != FLOOR_EDIT_MOVE
+					else "Drag floor body to move."
+				)
+		elif _is_floor_hole_mode():
+			_set_status("Draw a hole fully inside an existing floor.")
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
 
 	if !(event is InputEventMouseButton):
@@ -887,7 +895,11 @@ func _handle_floor_input(camera: Camera3D, event: InputEvent) -> int:
 	var mouse_button := event as InputEventMouseButton
 	if mouse_button.button_index == MOUSE_BUTTON_LEFT and !mouse_button.pressed and m_is_drawing_floor:
 		if !m_floor_release_commits_preview:
-			_set_status("Click the opposite corner to place floor, or drag from the first corner and release.")
+			_set_status(
+				"Click the opposite corner to cut floor hole, or drag from the first corner and release."
+				if _is_floor_hole_mode()
+				else "Click the opposite corner to place floor, or drag from the first corner and release."
+			)
 			return _handled()
 		var release_coordinator := _get_active_floor_coordinator()
 		if release_coordinator != null:
@@ -902,7 +914,7 @@ func _handle_floor_input(camera: Camera3D, event: InputEvent) -> int:
 	if mouse_button.button_index != MOUSE_BUTTON_LEFT or !mouse_button.pressed:
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
 
-	if !m_is_drawing_floor:
+	if !m_is_drawing_floor and !_is_floor_hole_mode():
 		var floor_pick := _find_floor_pick(camera, mouse_button.position)
 		var hit_floor := floor_pick.get("floor") as Floor3DScript
 		if hit_floor != null:
@@ -926,7 +938,11 @@ func _handle_floor_input(camera: Camera3D, event: InputEvent) -> int:
 		m_is_drawing_floor = true
 		_create_floor_preview(coordinator)
 		_update_floor_preview(camera, mouse_button.position)
-		_set_status("Floor first corner captured. Drag and release, or click the opposite corner.")
+		_set_status(
+			"Floor hole first corner captured. Drag and release, or click the opposite corner."
+			if _is_floor_hole_mode()
+			else "Floor first corner captured. Drag and release, or click the opposite corner."
+		)
 		return _handled()
 
 	_commit_floor(coordinator, m_floor_start_local, snapped_local)
@@ -942,7 +958,11 @@ func _create_floor_preview(coordinator: BuildingEditor3DScript) -> void:
 	m_floor_preview.name = "FloorPreview"
 	m_floor_preview.set_meta(Floor3DScript.PREVIEW_META, true)
 	m_floor_preview.floor_thickness = float(m_floor_settings["thickness"])
-	var preview_color := Color(m_floor_settings["color"])
+	var preview_color := (
+		Color(0.95, 0.20, 0.16, 1.0)
+		if _is_floor_hole_mode()
+		else Color(m_floor_settings["color"])
+	)
 	preview_color.a = 0.44
 	m_floor_preview.floor_color = preview_color
 	m_floor_preview.generate_collision = false
@@ -962,11 +982,26 @@ func _update_floor_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 	m_floor_preview.set_floor_corners(m_floor_start_local, local_end)
 	if m_floor_has_valid_preview:
 		var size := m_floor_preview.get_floor_size()
-		_set_status("Release or click to place floor: %.2f x %.2f." % [size.x, size.y])
+		if _is_floor_hole_mode():
+			var target_floor := _find_floor_for_hole(coordinator, m_floor_start_local, local_end)
+			if target_floor != null:
+				_set_status("Release or click to cut floor hole: %.2f x %.2f." % [size.x, size.y])
+			else:
+				_set_status("Draw the hole fully inside one existing floor.")
+		else:
+			_set_status("Release or click to place floor: %.2f x %.2f." % [size.x, size.y])
 
 
 func _floor_base_height() -> float:
 	return float(m_floor_settings.get("base_height", 0.0))
+
+
+func _floor_tool_type() -> String:
+	return str(m_floor_settings.get("type", FLOOR_TYPE_SOLID))
+
+
+func _is_floor_hole_mode() -> bool:
+	return _floor_tool_type() == FLOOR_TYPE_HOLE
 
 
 func _floor_draw_local_from_mouse(
@@ -977,6 +1012,18 @@ func _floor_draw_local_from_mouse(
 	var base_y := _floor_base_height()
 	var origin := camera.project_ray_origin(mouse_position)
 	var direction := camera.project_ray_normal(mouse_position)
+	if _is_floor_hole_mode():
+		if m_is_drawing_floor:
+			base_y = m_floor_start_local.y
+		var floor_hit := _raycast_floors(origin, direction)
+		var hit_floor := floor_hit.get("floor") as Floor3DScript
+		if hit_floor != null:
+			base_y = hit_floor.start_point.y
+			return _snap_floor_draw_local(
+				coordinator,
+				coordinator.to_local(Vector3(floor_hit["position"])),
+				base_y
+			)
 	var local_origin := coordinator.to_local(origin)
 	var local_direction := coordinator.global_transform.basis.inverse() * direction
 	if local_direction.length_squared() > 0.000001:
@@ -1016,6 +1063,9 @@ func _commit_floor(coordinator: BuildingEditor3DScript, local_start: Vector3, lo
 	if !_is_floor_span_large_enough(local_start, local_end):
 		_set_status("Floor is too small.")
 		return
+	if _is_floor_hole_mode():
+		_commit_floor_hole(coordinator, local_start, local_end)
+		return
 
 	_apply_floor_settings_to_coordinator(coordinator)
 	var floor := coordinator.create_floor_node(
@@ -1033,6 +1083,84 @@ func _commit_floor(coordinator: BuildingEditor3DScript, local_start: Vector3, lo
 	undo_redo.commit_action()
 	var size := floor.get_floor_size()
 	_set_status("Created floor: %.2f x %.2f units." % [size.x, size.y])
+
+
+func _commit_floor_hole(
+	coordinator: BuildingEditor3DScript,
+	local_start: Vector3,
+	local_end: Vector3
+) -> void:
+	var target_floor := _find_floor_for_hole(coordinator, local_start, local_end)
+	if target_floor == null:
+		_set_status("Draw the hole fully inside one existing floor.")
+		return
+
+	var hole_rect := target_floor.get_floor_hole_rect_from_parent_corners(local_start, local_end)
+	if !target_floor.can_add_floor_hole_rect(hole_rect):
+		_set_status("Floor hole must stay fully inside the floor.")
+		return
+
+	var old_holes := target_floor.get_floor_holes()
+	var intersects_existing_hole := target_floor.floor_hole_rect_intersects_existing(hole_rect)
+	var new_holes := target_floor.get_floor_holes_merged_with_rect(hole_rect)
+	if _floor_hole_arrays_match(old_holes, new_holes):
+		_set_status("Floor hole already covers that area.")
+		return
+
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Create Floor Hole")
+	undo_redo.add_do_method(target_floor, "set_floor_holes", new_holes)
+	undo_redo.add_do_method(self, "_select_node", target_floor)
+	undo_redo.add_undo_method(target_floor, "set_floor_holes", old_holes)
+	undo_redo.add_undo_method(self, "_select_node", target_floor)
+	undo_redo.commit_action()
+	var hole_size := hole_rect.size
+	if intersects_existing_hole:
+		_set_status("Merged floor hole: %.2f x %.2f units." % [hole_size.x, hole_size.y])
+	else:
+		_set_status("Cut floor hole: %.2f x %.2f units." % [hole_size.x, hole_size.y])
+
+
+func _find_floor_for_hole(
+	coordinator: BuildingEditor3DScript,
+	local_start: Vector3,
+	local_end: Vector3
+) -> Floor3DScript:
+	if coordinator == null:
+		return null
+
+	var floors: Array[Floor3DScript] = []
+	_collect_scene_floors(coordinator, floors)
+	var best_floor: Floor3DScript = null
+	var best_area := INF
+	var height_tolerance := maxf(float(m_floor_settings["grid_step"]) * 0.05, 0.01)
+	for floor in floors:
+		if !is_instance_valid(floor) or floor == m_floor_preview:
+			continue
+		if floor.has_meta(Floor3DScript.PREVIEW_META):
+			continue
+		if absf(floor.start_point.y - local_start.y) > height_tolerance:
+			continue
+		var hole_rect := floor.get_floor_hole_rect_from_parent_corners(local_start, local_end)
+		if !floor.can_add_floor_hole_rect(hole_rect):
+			continue
+		var floor_size := floor.get_floor_size()
+		var floor_area := floor_size.x * floor_size.y
+		if best_floor == null or floor_area < best_area:
+			best_floor = floor
+			best_area = floor_area
+	return best_floor
+
+
+func _floor_hole_arrays_match(a: Array[Rect2], b: Array[Rect2]) -> bool:
+	if a.size() != b.size():
+		return false
+	for index in range(a.size()):
+		if a[index].position.distance_to(b[index].position) > 0.001:
+			return false
+		if a[index].size.distance_to(b[index].size) > 0.001:
+			return false
+	return true
 
 
 func _handle_floor_drag_input(camera: Camera3D, event: InputEvent) -> int:
@@ -1092,13 +1220,16 @@ func _update_floor_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 		new_end = Vector3(resized["end"])
 
 	floor.set_floor_corners(new_start, new_end)
-	var valid := _is_floor_span_large_enough(new_start, new_end)
+	var holes_fit := _floor_holes_fit_for_points(floor, new_start, new_end)
+	var valid := _is_floor_span_large_enough(new_start, new_end) and holes_fit
 	floor.material_override = _build_preview_material(
 		_floor_drag_color(m_drag_floor_edit_mask, valid)
 	)
 	if valid:
 		var size := floor.get_floor_size()
 		_set_status("Release to commit floor %s: %.2f x %.2f." % [_floor_edit_label(m_drag_floor_edit_mask), size.x, size.y])
+	elif !holes_fit:
+		_set_status("Floor resize would move a hole outside the floor.")
 	else:
 		_set_status("Floor is too small.")
 
@@ -1117,6 +1248,11 @@ func _commit_floor_drag() -> void:
 		floor.set_floor_corners(old_start, old_end)
 		_reset_floor_drag_state()
 		_set_status("Floor is too small.")
+		return
+	if !_floor_holes_fit_for_points(floor, new_start, new_end):
+		floor.set_floor_corners(old_start, old_end)
+		_reset_floor_drag_state()
+		_set_status("Floor resize would move a hole outside the floor.")
 		return
 	if old_start.distance_to(new_start) <= 0.001 and old_end.distance_to(new_end) <= 0.001:
 		_reset_floor_drag_state()
@@ -1219,6 +1355,14 @@ func _floor_edit_mask_is_corner(edit_mask: int) -> bool:
 	var edits_x := (edit_mask & FLOOR_EDIT_MIN_X) != 0 or (edit_mask & FLOOR_EDIT_MAX_X) != 0
 	var edits_z := (edit_mask & FLOOR_EDIT_MIN_Z) != 0 or (edit_mask & FLOOR_EDIT_MAX_Z) != 0
 	return edits_x and edits_z
+
+
+func _floor_holes_fit_for_points(floor: Floor3DScript, local_start: Vector3, local_end: Vector3) -> bool:
+	if floor == null:
+		return true
+	return floor.floor_holes_fit_size(
+		Vector2(absf(local_end.x - local_start.x), absf(local_end.z - local_start.z))
+	)
 
 
 func _active_floor_grid_step(floor: Floor3DScript) -> float:
@@ -3327,6 +3471,8 @@ func _intersect_floor_box(
 		return {}
 
 	var local_hit := Vector3(hit["position"])
+	if floor.has_floor_hole_at_local_point(Vector2(local_hit.x, local_hit.z)):
+		return {}
 	var local_normal := _nearest_box_normal(local_hit, min_corner, max_corner)
 	var global_hit := floor.global_transform * local_hit
 	return {

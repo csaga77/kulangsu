@@ -220,7 +220,7 @@ Primary folders:
 Responsibilities:
 
 - project-local editor tooling for authoring content and validating assets
-- low-poly building blockout authoring through normal scene nodes, including grid-snapped walls, floors, stairs, openings, roof/wall generated-geometry clipping, generated collision, and prop placement
+- low-poly building blockout authoring through normal scene nodes, including grid-snapped walls, floors with internal holes, stairs, openings, roof/wall generated-geometry clipping, generated collision, and prop placement
 - audio conversion and storyline graph/route editing workflows
 
 Boundary:
