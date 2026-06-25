@@ -11,6 +11,7 @@ const MergedWallMeshBuilderScript = preload("res://addons/low_poly_building_edit
 
 const INTERSECT_BASE_TOLERANCE := 0.01
 const ROOF_COVER_HEIGHT_EPSILON := 0.01
+const GEOMETRY_CLIP_REFRESH_INTERVAL_SECONDS := 0.2
 
 @export_range(0.05, 8.0, 0.05) var grid_step := 0.5:
 	set(value):
@@ -47,9 +48,28 @@ const ROOF_COVER_HEIGHT_EPSILON := 0.01
 @export var default_roof_debug_wireframe := false
 @export var merge_intersecting := true
 
+var m_geometry_clip_signature := ""
+var m_geometry_clip_refresh_timer := 0.0
+
 
 func _ready() -> void:
-	call_deferred("refresh_wall_intersection_clips")
+	set_process(Engine.is_editor_hint())
+	m_geometry_clip_signature = _build_geometry_clip_signature()
+	call_deferred("refresh_building_geometry_clips")
+
+
+func _process(delta: float) -> void:
+	if !Engine.is_editor_hint():
+		return
+	m_geometry_clip_refresh_timer += delta
+	if m_geometry_clip_refresh_timer < GEOMETRY_CLIP_REFRESH_INTERVAL_SECONDS:
+		return
+	m_geometry_clip_refresh_timer = 0.0
+	var signature := _build_geometry_clip_signature()
+	if signature == m_geometry_clip_signature:
+		return
+	m_geometry_clip_signature = signature
+	refresh_building_geometry_clips()
 
 
 func snap_local_position(local_position: Vector3) -> Vector3:
@@ -359,26 +379,27 @@ func refresh_wall_intersection_clips() -> void:
 	var walls := get_wall_nodes()
 	for wall_index in range(walls.size()):
 		var wall := walls[wall_index]
-		if wall.has_meta(Wall3DScript.PREVIEW_META) or !merge_intersecting:
+		if wall.has_meta(Wall3DScript.PREVIEW_META):
 			wall.clear_intersection_clip_segments()
 			continue
 		var before_segments: Array[WallSegment3D] = []
 		var after_segments: Array[WallSegment3D] = []
-		for other_index in range(walls.size()):
-			if other_index == wall_index:
-				continue
-			var other := walls[other_index]
-			if other.has_meta(Wall3DScript.PREVIEW_META):
-				continue
-			for segment_index in range(other.get_segment_count()):
-				var segment := other.get_segment(segment_index)
-				if !_wall_clip_segment_relevant(wall, segment):
+		if merge_intersecting:
+			for other_index in range(walls.size()):
+				if other_index == wall_index:
 					continue
-				if other_index < wall_index:
-					before_segments.append(segment)
-				else:
-					after_segments.append(segment)
-		wall.set_intersection_clip_segments(before_segments, after_segments)
+				var other := walls[other_index]
+				if other.has_meta(Wall3DScript.PREVIEW_META):
+					continue
+				for segment_index in range(other.get_segment_count()):
+					var segment := other.get_segment(segment_index)
+					if !_wall_clip_segment_relevant(wall, segment):
+						continue
+					if other_index < wall_index:
+						before_segments.append(segment)
+					else:
+						after_segments.append(segment)
+		wall.set_geometry_clip_data(before_segments, after_segments, _roof_clip_surfaces_for_wall(wall))
 
 
 func refresh_roof_covered_rects() -> void:
@@ -402,6 +423,126 @@ func refresh_roof_covered_rects() -> void:
 			_roof_covered_rects_from_regions(cover_regions),
 			_roof_covered_polygons_from_regions(cover_regions)
 		)
+
+
+func refresh_building_geometry_clips() -> void:
+	refresh_roof_covered_rects()
+	refresh_wall_intersection_clips()
+	m_geometry_clip_signature = _build_geometry_clip_signature()
+
+
+func _roof_clip_surfaces_for_wall(wall: Wall3DScript) -> Array[Dictionary]:
+	var surfaces: Array[Dictionary] = []
+	if wall == null or !is_instance_valid(wall):
+		return surfaces
+	var wall_parent_min_y := INF
+	var wall_parent_max_y := -INF
+	for segment_index in range(wall.get_segment_count()):
+		var segment := wall.get_segment(segment_index)
+		if segment == null:
+			continue
+		wall_parent_min_y = minf(wall_parent_min_y, segment.start_point.y)
+		wall_parent_max_y = maxf(wall_parent_max_y, segment.start_point.y + segment.height)
+	if wall_parent_max_y < wall_parent_min_y:
+		return surfaces
+	var wall_inverse := wall.transform.affine_inverse()
+	for roof in get_roof_nodes():
+		if roof.has_meta(Roof3DScript.PREVIEW_META):
+			continue
+		if !roof.has_visible_roof_geometry():
+			continue
+		var roof_visible_polygons := _roof_visible_render_polygons(roof)
+		if roof_visible_polygons.is_empty():
+			continue
+		var roof_bottom_min := roof.start_point.y - roof.roof_thickness
+		var roof_bottom_max := (
+			roof.start_point.y
+			+ Roof3DScript.roof_generated_height_for_style(
+				roof.get_roof_style(),
+				roof.get_roof_size(),
+				roof.roof_overhang,
+				roof.roof_height
+			)
+			- roof.roof_thickness
+		)
+		if wall_parent_max_y <= roof_bottom_min + INTERSECT_BASE_TOLERANCE:
+			continue
+		if wall_parent_min_y >= roof_bottom_max - INTERSECT_BASE_TOLERANCE:
+			continue
+		if !_wall_overlaps_roof_visible_plan(wall, roof, roof_visible_polygons):
+			continue
+		var roof_basis := _rotation_basis(roof.roof_rotation_degrees)
+		var roof_basis_in_wall := wall_inverse.basis * roof_basis
+		var roof_origin_in_wall := wall_inverse * roof.get_roof_anchor_point()
+		surfaces.append({
+			"origin": roof_origin_in_wall,
+			"origin_y": roof_origin_in_wall.y,
+			"basis": roof_basis_in_wall,
+			"inverse_basis": roof_basis_in_wall.inverse(),
+			"style": roof.get_roof_style(),
+			"size": roof.get_roof_size(),
+			"overhang": roof.roof_overhang,
+			"angle_degrees": roof.roof_height,
+			"hip_gable_height": roof.hip_gable_height,
+			"thickness": roof.roof_thickness,
+			"visible_polygons": roof_visible_polygons,
+		})
+	return surfaces
+
+
+func _wall_overlaps_roof_visible_plan(
+	wall: Wall3DScript,
+	roof: Roof3DScript,
+	roof_visible_polygons: Array[PackedVector2Array]
+) -> bool:
+	var roof_parent_polygons := _roof_visible_polygons_to_parent_plan(roof, roof_visible_polygons)
+	for segment_index in range(wall.get_segment_count()):
+		var segment := wall.get_segment(segment_index)
+		if segment == null:
+			continue
+		var segment_footprint := MergedWallMeshBuilderScript.segment_footprint(segment, segment.get_frame())
+		if segment_footprint.is_empty():
+			continue
+		for roof_polygon in roof_parent_polygons:
+			if MergedWallMeshBuilderScript.footprints_overlap(segment_footprint, roof_polygon):
+				return true
+	return false
+
+
+func _roof_visible_render_polygons(roof: Roof3DScript) -> Array[PackedVector2Array]:
+	var visible_polygons: Array[PackedVector2Array] = []
+	if roof == null or !is_instance_valid(roof):
+		return visible_polygons
+	var cover_polygons := roof.get_covered_polygons()
+	if cover_polygons.is_empty():
+		for rect in roof.get_visible_render_rects():
+			visible_polygons.append(_rect_polygon(rect))
+		return visible_polygons
+	visible_polygons.append(_rect_polygon(roof.get_roof_render_rect()))
+	for cover_polygon in cover_polygons:
+		var next_visible: Array[PackedVector2Array] = []
+		for visible_polygon in visible_polygons:
+			next_visible.append_array(_subtract_polygon(visible_polygon, cover_polygon))
+		visible_polygons = next_visible
+		if visible_polygons.is_empty():
+			break
+	return visible_polygons
+
+
+func _roof_visible_polygons_to_parent_plan(
+	roof: Roof3D,
+	roof_visible_polygons: Array[PackedVector2Array]
+) -> Array[PackedVector2Array]:
+	var parent_polygons: Array[PackedVector2Array] = []
+	var anchor := roof.get_roof_anchor_point()
+	var basis := _rotation_basis(roof.roof_rotation_degrees)
+	for polygon in roof_visible_polygons:
+		var parent_polygon := PackedVector2Array()
+		for point in polygon:
+			var parent_point := anchor + basis * Vector3(point.x, 0.0, point.y)
+			parent_polygon.append(Vector2(parent_point.x, parent_point.z))
+		parent_polygons.append(_normalize_polygon(parent_polygon))
+	return parent_polygons
 
 
 func _find_roof_cover_data(
@@ -935,6 +1076,50 @@ func _wall_clip_segment_relevant(wall: Wall3DScript, clip_segment: WallSegment3D
 		if absf(own_segment.start_point.y - clip_segment.start_point.y) <= INTERSECT_BASE_TOLERANCE:
 			return true
 	return false
+
+
+func _build_geometry_clip_signature() -> String:
+	var parts: Array[String] = []
+	for wall in get_wall_nodes():
+		if wall.has_meta(Wall3DScript.PREVIEW_META):
+			continue
+		parts.append("wall:%s" % wall.name)
+		parts.append(_signature_float(wall.wall_height))
+		parts.append(_signature_float(wall.wall_thickness))
+		for segment_index in range(wall.get_segment_count()):
+			var segment := wall.get_segment(segment_index)
+			if segment == null:
+				continue
+			parts.append("segment:%d" % segment_index)
+			parts.append(_signature_vector3(segment.start_point))
+			parts.append(_signature_vector3(segment.end_point))
+			parts.append(_signature_float(segment.height))
+			parts.append(_signature_float(segment.thickness))
+	for roof in get_roof_nodes():
+		if roof.has_meta(Roof3DScript.PREVIEW_META):
+			continue
+		parts.append("roof:%s" % roof.name)
+		parts.append(_signature_vector3(roof.start_point))
+		parts.append(_signature_vector3(roof.end_point))
+		parts.append(roof.get_roof_style())
+		parts.append(_signature_float(roof.roof_height))
+		parts.append(_signature_float(roof.roof_thickness))
+		parts.append(_signature_float(roof.roof_overhang))
+		parts.append(_signature_float(roof.roof_rotation_degrees))
+		parts.append(_signature_float(roof.hip_gable_height))
+	return "|".join(parts)
+
+
+func _signature_vector3(value: Vector3) -> String:
+	return "%s,%s,%s" % [
+		_signature_float(value.x),
+		_signature_float(value.y),
+		_signature_float(value.z),
+	]
+
+
+func _signature_float(value: float) -> String:
+	return "%0.4f" % value
 
 
 func _flat_direction(local_start: Vector3, local_end: Vector3) -> Vector2:

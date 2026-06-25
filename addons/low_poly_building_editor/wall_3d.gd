@@ -90,6 +90,7 @@ var m_signature_timer := 0.0
 var m_is_rebuilding := false
 var m_intersection_clip_segments_before: Array[WallSegment3D] = []
 var m_intersection_clip_segments_after: Array[WallSegment3D] = []
+var m_roof_clip_surfaces: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -178,16 +179,32 @@ func set_intersection_clip_segments(before_segments: Array, after_segments: Arra
 	rebuild_wall_mesh()
 
 
+func set_geometry_clip_data(before_segments: Array, after_segments: Array, roof_surfaces: Array) -> void:
+	m_intersection_clip_segments_before = _duplicate_segment_resources(before_segments)
+	m_intersection_clip_segments_after = _duplicate_segment_resources(after_segments)
+	m_roof_clip_surfaces = _duplicate_roof_clip_surfaces(roof_surfaces)
+	rebuild_wall_mesh()
+
+
 func clear_intersection_clip_segments() -> void:
-	if m_intersection_clip_segments_before.is_empty() and m_intersection_clip_segments_after.is_empty():
+	if (
+			m_intersection_clip_segments_before.is_empty()
+			and m_intersection_clip_segments_after.is_empty()
+			and m_roof_clip_surfaces.is_empty()
+	):
 		return
 	m_intersection_clip_segments_before.clear()
 	m_intersection_clip_segments_after.clear()
+	m_roof_clip_surfaces.clear()
 	rebuild_wall_mesh()
 
 
 func get_intersection_clip_segment_count() -> int:
 	return m_intersection_clip_segments_before.size() + m_intersection_clip_segments_after.size()
+
+
+func get_roof_clip_surface_count() -> int:
+	return m_roof_clip_surfaces.size()
 
 
 func count_connected_endpoints(endpoint: Vector3, tolerance: float) -> int:
@@ -504,7 +521,8 @@ func rebuild_wall_mesh(rebuild_collision: bool = true) -> void:
 		colors,
 		indices,
 		collision_faces,
-		render_segment_indices
+		render_segment_indices,
+		m_roof_clip_surfaces
 	)
 
 	if vertices.is_empty():
@@ -621,6 +639,15 @@ func _duplicate_segment_resources(segments: Array) -> Array[WallSegment3D]:
 		if typed_segment == null:
 			continue
 		copies.append(typed_segment.duplicate() as WallSegment3DScript)
+	return copies
+
+
+func _duplicate_roof_clip_surfaces(surfaces: Array) -> Array[Dictionary]:
+	var copies: Array[Dictionary] = []
+	for surface in surfaces:
+		if !(surface is Dictionary):
+			continue
+		copies.append((surface as Dictionary).duplicate(true))
 	return copies
 
 

@@ -2,6 +2,8 @@
 class_name MergedWallMeshBuilder
 extends RefCounted
 
+const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
+
 ## Static mesh-construction helpers for multi-segment Wall3D nodes.
 ## Builds combined geometry for a set of wall segments, clipping faces and
 ## mitering shared endpoints in plan (XZ) space so junctions render without
@@ -14,6 +16,7 @@ const VERTICAL_CLIP_DEFLATE := 0.0
 const MIN_OVERLAP_AREA := 0.000001
 const MIN_SPAN := 0.001
 const MITER_LIMIT_MULTIPLIER := 4.0
+const ROOF_CLIP_INFINITY := 1000000.0
 
 
 static func footprint_from_points(
@@ -81,7 +84,8 @@ static func append_segments(
 	colors: PackedColorArray,
 	indices: PackedInt32Array,
 	collision_faces: PackedVector3Array,
-	render_segment_indices: Array = []
+	render_segment_indices: Array = [],
+	roof_clips: Array = []
 ) -> void:
 	var footprints: Array[PackedVector2Array] = []
 	var deflated: Array[PackedVector2Array] = []
@@ -108,7 +112,8 @@ static func append_segments(
 			normals,
 			colors,
 			indices,
-			collision_faces
+			collision_faces,
+			roof_clips
 		)
 
 
@@ -140,7 +145,8 @@ static func _append_segment_geometry(
 	normals: PackedVector3Array,
 	colors: PackedColorArray,
 	indices: PackedInt32Array,
-	collision_faces: PackedVector3Array
+	collision_faces: PackedVector3Array,
+	roof_clips: Array
 ) -> void:
 	var segment := segments[segment_index]
 	var segment_length := segment.get_length()
@@ -175,7 +181,8 @@ static func _append_segment_geometry(
 				normals,
 				colors,
 				indices,
-				collision_faces
+				collision_faces,
+				roof_clips
 			)
 
 
@@ -192,7 +199,8 @@ static func _append_cell(
 	normals: PackedVector3Array,
 	colors: PackedColorArray,
 	indices: PackedInt32Array,
-	collision_faces: PackedVector3Array
+	collision_faces: PackedVector3Array,
+	roof_clips: Array
 ) -> void:
 	var frame := frames[segment_index]
 	var color := segments[segment_index].color
@@ -241,12 +249,12 @@ static func _append_cell(
 	_append_vertical_face(
 		segments, segment_index, deflated, side_clip_exceptions, frame,
 		start_plus.x, start_plus.y, end_plus.x, end_plus.y, y0, y1, side3, color,
-		vertices, normals, colors, indices, collision_faces
+		vertices, normals, colors, indices, collision_faces, roof_clips
 	)
 	_append_vertical_face(
 		segments, segment_index, deflated, side_clip_exceptions, frame,
 		start_minus.x, start_minus.y, end_minus.x, end_minus.y, y0, y1, -side3, color,
-		vertices, normals, colors, indices, collision_faces
+		vertices, normals, colors, indices, collision_faces, roof_clips
 	)
 	var end_cap_normal := dir3
 	if segment_length - x1 <= MIN_SPAN:
@@ -255,7 +263,7 @@ static func _append_cell(
 		_append_vertical_face(
 			segments, segment_index, deflated, [], frame,
 			end_minus.x, end_minus.y, end_plus.x, end_plus.y, y0, y1, end_cap_normal, color,
-			vertices, normals, colors, indices, collision_faces
+			vertices, normals, colors, indices, collision_faces, roof_clips
 		)
 	var start_cap_normal := -dir3
 	if x0 <= MIN_SPAN:
@@ -264,18 +272,18 @@ static func _append_cell(
 		_append_vertical_face(
 			segments, segment_index, deflated, [], frame,
 			start_minus.x, start_minus.y, start_plus.x, start_plus.y, y0, y1, start_cap_normal, color,
-			vertices, normals, colors, indices, collision_faces
+			vertices, normals, colors, indices, collision_faces, roof_clips
 		)
 	var local_polygon := PackedVector2Array([start_minus, end_minus, end_plus, start_plus])
 	_append_horizontal_face_polygon(
 		segments, segment_index, footprints, cap_clip_exceptions, frame,
 		local_polygon, y1, Vector3.UP, color,
-		vertices, normals, colors, indices, collision_faces
+		vertices, normals, colors, indices, collision_faces, roof_clips
 	)
 	_append_horizontal_face_polygon(
 		segments, segment_index, footprints, cap_clip_exceptions, frame,
 		local_polygon, y0, Vector3.DOWN, color,
-		vertices, normals, colors, indices, collision_faces
+		vertices, normals, colors, indices, collision_faces, roof_clips
 	)
 
 
@@ -293,7 +301,8 @@ static func _append_vertical_face(
 	normals: PackedVector3Array,
 	colors: PackedColorArray,
 	indices: PackedInt32Array,
-	collision_faces: PackedVector3Array
+	collision_faces: PackedVector3Array,
+	roof_clips: Array
 ) -> void:
 	var a2 := _plan_point(frame, ax, az)
 	var b2 := _plan_point(frame, bx, bz)
@@ -321,10 +330,136 @@ static func _append_vertical_face(
 			var w2 := polyline[point_index + 1]
 			if w1.distance_to(w2) <= MIN_SPAN:
 				continue
-			_append_vertical_segment(
+			_append_roof_clipped_vertical_segment(
 				w1, w2, frame, y0, y1, face_normal, color,
+				vertices, normals, colors, indices, collision_faces, roof_clips
+			)
+
+
+static func _append_roof_clipped_vertical_segment(
+	w1: Vector2,
+	w2: Vector2,
+	frame: Transform3D,
+	y0: float,
+	y1: float,
+	face_normal: Vector3,
+	color: Color,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array,
+	collision_faces: PackedVector3Array,
+	roof_clips: Array
+) -> void:
+	if roof_clips.is_empty():
+		_append_vertical_segment(
+			w1, w2, frame, y0, y1, face_normal, color,
+			vertices, normals, colors, indices, collision_faces
+		)
+		return
+	var t_values := _roof_vertical_t_values(w1, w2, roof_clips)
+	for index in range(t_values.size() - 1):
+		var t0 := float(t_values[index])
+		var t1 := float(t_values[index + 1])
+		if t1 - t0 <= MIN_SPAN:
+			continue
+		var left := w1.lerp(w2, t0)
+		var right := w1.lerp(w2, t1)
+		var left_limit := _roof_clip_relative_height_at_plan_point(left, frame, roof_clips)
+		var right_limit := _roof_clip_relative_height_at_plan_point(right, frame, roof_clips)
+		var mid_limit := _roof_clip_relative_height_at_plan_point(
+			w1.lerp(w2, (t0 + t1) * 0.5),
+			frame,
+			roof_clips
+		)
+		if mid_limit >= ROOF_CLIP_INFINITY and left_limit >= ROOF_CLIP_INFINITY and right_limit >= ROOF_CLIP_INFINITY:
+			_append_vertical_segment(
+				left, right, frame, y0, y1, face_normal, color,
 				vertices, normals, colors, indices, collision_faces
 			)
+			continue
+		if left_limit >= ROOF_CLIP_INFINITY:
+			left_limit = mid_limit
+		if right_limit >= ROOF_CLIP_INFINITY:
+			right_limit = mid_limit
+		var top_left := minf(y1, left_limit)
+		var top_right := minf(y1, right_limit)
+		if top_left <= y0 + MIN_SPAN and top_right <= y0 + MIN_SPAN:
+			continue
+		var clipped_t0 := t0
+		var clipped_t1 := t1
+		if top_left < y0:
+			var denominator_left := top_right - top_left
+			if absf(denominator_left) <= MIN_SPAN:
+				continue
+			var weight_left := clampf((y0 - top_left) / denominator_left, 0.0, 1.0)
+			clipped_t0 = lerpf(t0, t1, weight_left)
+			top_left = y0
+			left = w1.lerp(w2, clipped_t0)
+		if top_right < y0:
+			var denominator_right := top_left - top_right
+			if absf(denominator_right) <= MIN_SPAN:
+				continue
+			var weight_right := clampf((y0 - top_right) / denominator_right, 0.0, 1.0)
+			clipped_t1 = lerpf(t1, clipped_t0, weight_right)
+			top_right = y0
+			right = w1.lerp(w2, clipped_t1)
+		if clipped_t1 - clipped_t0 <= MIN_SPAN:
+			continue
+		_append_vertical_clipped_piece(
+			left,
+			right,
+			frame,
+			y0,
+			top_left,
+			top_right,
+			face_normal,
+			color,
+			vertices,
+			normals,
+			colors,
+			indices,
+			collision_faces
+		)
+
+
+static func _append_vertical_clipped_piece(
+	left: Vector2,
+	right: Vector2,
+	frame: Transform3D,
+	bottom_y: float,
+	top_left_y: float,
+	top_right_y: float,
+	face_normal: Vector3,
+	color: Color,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array,
+	collision_faces: PackedVector3Array
+) -> void:
+	if maxf(top_left_y, top_right_y) - bottom_y <= MIN_SPAN:
+		return
+	var bottom_left := _lift(left, frame, bottom_y)
+	var bottom_right := _lift(right, frame, bottom_y)
+	var top_right := _lift(right, frame, top_right_y)
+	var top_left := _lift(left, frame, top_left_y)
+	if top_left.distance_to(bottom_left) <= MIN_SPAN:
+		_append_triangle(
+			vertices, normals, colors, indices, collision_faces,
+			bottom_left, bottom_right, top_right, face_normal, color
+		)
+		return
+	if top_right.distance_to(bottom_right) <= MIN_SPAN:
+		_append_triangle(
+			vertices, normals, colors, indices, collision_faces,
+			bottom_left, bottom_right, top_left, face_normal, color
+		)
+		return
+	_append_quad(
+		vertices, normals, colors, indices, collision_faces,
+		bottom_left, bottom_right, top_right, top_left, face_normal, color
+	)
 
 
 static func _append_vertical_segment(
@@ -372,7 +507,8 @@ static func _append_horizontal_face_polygon(
 	normals: PackedVector3Array,
 	colors: PackedColorArray,
 	indices: PackedInt32Array,
-	collision_faces: PackedVector3Array
+	collision_faces: PackedVector3Array,
+	roof_clips: Array
 ) -> void:
 	var footprint := PackedVector2Array()
 	for local_point in local_polygon:
@@ -406,15 +542,305 @@ static func _append_horizontal_face_polygon(
 		if polygons.is_empty():
 			return
 	for polygon in polygons:
-		var triangle_indices := Geometry2D.triangulate_polygon(polygon)
-		for triangle_start in range(0, triangle_indices.size(), 3):
-			var v0 := _lift(polygon[triangle_indices[triangle_start]], frame, y)
-			var v1 := _lift(polygon[triangle_indices[triangle_start + 1]], frame, y)
-			var v2 := _lift(polygon[triangle_indices[triangle_start + 2]], frame, y)
-			_append_triangle(
-				vertices, normals, colors, indices, collision_faces,
-				v0, v1, v2, face_normal, color
+		var visible_polygons := _clip_horizontal_polygon_below_roofs(polygon, frame.origin.y + y, roof_clips)
+		for visible_polygon in visible_polygons:
+			_append_horizontal_plan_polygon_transformed(
+				visible_polygon,
+				frame,
+				y,
+				face_normal,
+				color,
+				vertices,
+				normals,
+				colors,
+				indices,
+				collision_faces
 			)
+
+
+static func _append_horizontal_plan_polygon_transformed(
+	polygon: PackedVector2Array,
+	frame: Transform3D,
+	y: float,
+	face_normal: Vector3,
+	color: Color,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array,
+	collision_faces: PackedVector3Array
+) -> void:
+	if absf(_signed_area(polygon)) <= MIN_OVERLAP_AREA:
+		return
+	var triangle_indices := Geometry2D.triangulate_polygon(polygon)
+	for triangle_start in range(0, triangle_indices.size(), 3):
+		var v0 := _lift(polygon[triangle_indices[triangle_start]], frame, y)
+		var v1 := _lift(polygon[triangle_indices[triangle_start + 1]], frame, y)
+		var v2 := _lift(polygon[triangle_indices[triangle_start + 2]], frame, y)
+		_append_triangle(
+			vertices, normals, colors, indices, collision_faces,
+			v0, v1, v2, face_normal, color
+		)
+
+
+static func _roof_vertical_t_values(w1: Vector2, w2: Vector2, roof_clips: Array) -> Array[float]:
+	var values: Array[float] = [0.0, 1.0]
+	for clip_variant in roof_clips:
+		var clip := clip_variant as Dictionary
+		if clip.is_empty():
+			continue
+		var local_start := _roof_local_point_for_plan(w1, clip)
+		var local_end := _roof_local_point_for_plan(w2, clip)
+		var local_delta := local_end - local_start
+		var polygons: Array = clip.get("visible_polygons", [])
+		for polygon_variant in polygons:
+			var polygon := PackedVector2Array(polygon_variant)
+			for edge_index in range(polygon.size()):
+				var edge_start := polygon[edge_index]
+				var edge_end := polygon[(edge_index + 1) % polygon.size()]
+				var hit := _line_intersection_params(local_start, local_delta, edge_start, edge_end - edge_start)
+				if hit.is_empty():
+					continue
+				var t := float(hit["t"])
+				var u := float(hit["u"])
+				if t > MIN_SPAN and t < 1.0 - MIN_SPAN and u >= -MIN_SPAN and u <= 1.0 + MIN_SPAN:
+					values.append(t)
+		_append_roof_style_break_t_values(local_start, local_end, clip, values)
+	values.sort()
+	var result: Array[float] = []
+	for value in values:
+		var clamped_value := clampf(value, 0.0, 1.0)
+		if result.is_empty() or absf(result[result.size() - 1] - clamped_value) > MIN_SPAN:
+			result.append(clamped_value)
+	return result
+
+
+static func _append_roof_style_break_t_values(
+	local_start: Vector2,
+	local_end: Vector2,
+	clip: Dictionary,
+	values: Array[float]
+) -> void:
+	var style := String(clip.get("style", Roof3DScript.STYLE_FLAT))
+	var size := Vector2(clip.get("size", Vector2.ZERO))
+	var overhang := maxf(float(clip.get("overhang", 0.0)), 0.0)
+	match style:
+		Roof3DScript.STYLE_GABLE:
+			_append_axis_break_t(local_start, local_end, 1, size.y * 0.5, values)
+		Roof3DScript.STYLE_HIP:
+			var ridge_points := Roof3DScript.hip_roof_ridge_points_for_size(
+				size,
+				overhang,
+				float(clip.get("angle_degrees", 0.0)),
+				float(clip.get("hip_gable_height", 0.0))
+			)
+			var min_x := -overhang
+			var max_x := size.x + overhang
+			var min_z := -overhang
+			var max_z := size.y + overhang
+			_append_axis_break_t(local_start, local_end, 0, (min_x + max_x) * 0.5, values)
+			_append_axis_break_t(local_start, local_end, 1, (min_z + max_z) * 0.5, values)
+			for ridge_point in ridge_points:
+				_append_axis_break_t(local_start, local_end, 0, ridge_point.x, values)
+				_append_axis_break_t(local_start, local_end, 1, ridge_point.z, values)
+
+
+static func _append_axis_break_t(
+	local_start: Vector2,
+	local_end: Vector2,
+	axis: int,
+	value: float,
+	values: Array[float]
+) -> void:
+	var from_value := local_start.x if axis == 0 else local_start.y
+	var to_value := local_end.x if axis == 0 else local_end.y
+	var denominator := to_value - from_value
+	if absf(denominator) <= MIN_SPAN:
+		return
+	var t := (value - from_value) / denominator
+	if t > MIN_SPAN and t < 1.0 - MIN_SPAN:
+		values.append(t)
+
+
+static func _roof_clip_relative_height_at_plan_point(
+	point: Vector2,
+	frame: Transform3D,
+	roof_clips: Array
+) -> float:
+	var wall_local_height := _roof_clip_height_at_plan_point(point, roof_clips)
+	if wall_local_height >= ROOF_CLIP_INFINITY:
+		return ROOF_CLIP_INFINITY
+	return wall_local_height - frame.origin.y
+
+
+static func _roof_clip_height_at_plan_point(point: Vector2, roof_clips: Array) -> float:
+	var best_height := ROOF_CLIP_INFINITY
+	for clip_variant in roof_clips:
+		var clip := clip_variant as Dictionary
+		if clip.is_empty():
+			continue
+		var roof_point := _roof_local_point_for_plan(point, clip)
+		if !_roof_clip_contains_local_point(clip, roof_point):
+			continue
+		var roof_height := Roof3DScript.roof_surface_height_for_style(
+			String(clip.get("style", Roof3DScript.STYLE_FLAT)),
+			Vector2(clip.get("size", Vector2.ZERO)),
+			float(clip.get("overhang", 0.0)),
+			float(clip.get("angle_degrees", 0.0)),
+			roof_point,
+			float(clip.get("hip_gable_height", 0.0))
+		)
+		var wall_height := float(clip.get("origin_y", 0.0)) + roof_height - float(clip.get("thickness", 0.0))
+		best_height = minf(best_height, wall_height)
+	return best_height
+
+
+static func _roof_local_point_for_plan(point: Vector2, clip: Dictionary) -> Vector2:
+	var origin := Vector3(clip.get("origin", Vector3.ZERO))
+	var inverse_basis := Basis(clip.get("inverse_basis", Basis.IDENTITY))
+	var local := inverse_basis * (Vector3(point.x, 0.0, point.y) - origin)
+	return Vector2(local.x, local.z)
+
+
+static func _roof_clip_contains_local_point(clip: Dictionary, point: Vector2) -> bool:
+	var polygons: Array = clip.get("visible_polygons", [])
+	for polygon_variant in polygons:
+		var polygon := PackedVector2Array(polygon_variant)
+		if _point_in_polygon(point, polygon):
+			return true
+	return false
+
+
+static func _clip_horizontal_polygon_below_roofs(
+	polygon: PackedVector2Array,
+	wall_local_y: float,
+	roof_clips: Array
+) -> Array[PackedVector2Array]:
+	var result: Array[PackedVector2Array] = [_normalized_positive_polygon(polygon)]
+	if roof_clips.is_empty() or result[0].is_empty():
+		return result
+	for clip_variant in roof_clips:
+		var clip := clip_variant as Dictionary
+		if clip.is_empty():
+			continue
+		for cover in _roof_cover_polygons_above_height(clip, wall_local_y):
+			var next_result: Array[PackedVector2Array] = []
+			for subject in result:
+				for piece in Geometry2D.clip_polygons(subject, cover):
+					var normalized := _normalized_positive_polygon(piece)
+					if !normalized.is_empty():
+						next_result.append(normalized)
+			result = next_result
+			if result.is_empty():
+				return result
+	return result
+
+
+static func _roof_cover_polygons_above_height(
+	clip: Dictionary,
+	wall_local_y: float
+) -> Array[PackedVector2Array]:
+	var covers: Array[PackedVector2Array] = []
+	var threshold_top_y := wall_local_y - float(clip.get("origin_y", 0.0)) + float(clip.get("thickness", 0.0))
+	var faces := Roof3DScript.roof_top_faces_for_style(
+		String(clip.get("style", Roof3DScript.STYLE_FLAT)),
+		Vector2(clip.get("size", Vector2.ZERO)),
+		float(clip.get("overhang", 0.0)),
+		float(clip.get("angle_degrees", 0.0)),
+		float(clip.get("hip_gable_height", 0.0))
+	)
+	var visible_polygons: Array = clip.get("visible_polygons", [])
+	for face in faces:
+		var face_polygon := _clip_roof_face_below_top_height(
+			PackedVector3Array(face["vertices"]),
+			threshold_top_y
+		)
+		if face_polygon.is_empty():
+			continue
+		for visible_variant in visible_polygons:
+			var visible := PackedVector2Array(visible_variant)
+			for piece in Geometry2D.intersect_polygons(face_polygon, visible):
+				var normalized_piece := _normalized_positive_polygon(piece)
+				if normalized_piece.is_empty():
+					continue
+				covers.append(_roof_local_polygon_to_wall_plan(normalized_piece, clip))
+	return covers
+
+
+static func _clip_roof_face_below_top_height(
+	face_vertices: PackedVector3Array,
+	max_top_y: float
+) -> PackedVector2Array:
+	if face_vertices.size() < 3:
+		return PackedVector2Array()
+	var clipped: Array[Vector3] = []
+	var previous := face_vertices[face_vertices.size() - 1]
+	var previous_inside := previous.y <= max_top_y + PLANE_EPSILON
+	for current in face_vertices:
+		var current_inside := current.y <= max_top_y + PLANE_EPSILON
+		if current_inside != previous_inside:
+			clipped.append(_interpolate_roof_height_intersection(previous, current, max_top_y))
+		if current_inside:
+			clipped.append(current)
+		previous = current
+		previous_inside = current_inside
+	var result := PackedVector2Array()
+	for point in clipped:
+		result.append(Vector2(point.x, point.z))
+	return _normalized_positive_polygon(result)
+
+
+static func _interpolate_roof_height_intersection(from_point: Vector3, to_point: Vector3, height: float) -> Vector3:
+	var denominator := to_point.y - from_point.y
+	if absf(denominator) <= MIN_SPAN:
+		return from_point
+	var weight := clampf((height - from_point.y) / denominator, 0.0, 1.0)
+	return from_point.lerp(to_point, weight)
+
+
+static func _roof_local_polygon_to_wall_plan(
+	polygon: PackedVector2Array,
+	clip: Dictionary
+) -> PackedVector2Array:
+	var origin := Vector3(clip.get("origin", Vector3.ZERO))
+	var basis := Basis(clip.get("basis", Basis.IDENTITY))
+	var result := PackedVector2Array()
+	for point in polygon:
+		var wall_point := origin + basis * Vector3(point.x, 0.0, point.y)
+		result.append(Vector2(wall_point.x, wall_point.z))
+	return _normalized_positive_polygon(result)
+
+
+static func _point_in_polygon(point: Vector2, polygon: PackedVector2Array) -> bool:
+	if polygon.size() < 3:
+		return false
+	var inside := false
+	var previous := polygon[polygon.size() - 1]
+	for current in polygon:
+		if _point_on_segment(point, previous, current):
+			return true
+		var crosses := (current.y > point.y) != (previous.y > point.y)
+		if crosses:
+			var denominator := previous.y - current.y
+			if absf(denominator) > MIN_SPAN:
+				var intersect_x := (
+					(previous.x - current.x) * (point.y - current.y) / denominator
+					+ current.x
+				)
+				if point.x < intersect_x + MIN_SPAN:
+					inside = !inside
+		previous = current
+	return inside
+
+
+static func _point_on_segment(point: Vector2, a: Vector2, b: Vector2) -> bool:
+	var segment := b - a
+	var length_squared := segment.length_squared()
+	if length_squared <= MIN_OVERLAP_AREA:
+		return point.distance_to(a) <= MIN_SPAN
+	var t := clampf((point - a).dot(segment) / length_squared, 0.0, 1.0)
+	var closest := a + segment * t
+	return point.distance_to(closest) <= MIN_SPAN
 
 
 static func _append_quad(

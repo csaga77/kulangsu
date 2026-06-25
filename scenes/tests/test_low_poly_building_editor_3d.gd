@@ -58,6 +58,7 @@ func _run_smoke_checks() -> void:
 	_validate_merge_detection(coordinator)
 	_validate_intersection_merge()
 	_validate_wall_instance_intersection_clipping()
+	_validate_roof_wall_clipping()
 	_validate_add_wall_joint()
 	_validate_joint_endpoint_drag()
 	_validate_joint_disconnect_connect()
@@ -1404,6 +1405,72 @@ func _validate_wall_instance_intersection_clipping() -> void:
 		m_failures.append("Separate intersecting wall rejected an opening away from sibling geometry")
 
 
+func _validate_roof_wall_clipping() -> void:
+	var coordinator := BuildingEditor3DScript.new() as BuildingEditor3DScript
+	coordinator.name = "RoofWallClipCoordinator"
+	coordinator.position = Vector3(0.0, 0.0, 56.0)
+	add_child(coordinator)
+
+	var wall_color := Color(0.78, 0.68, 0.54, 1.0)
+	var wall := coordinator.create_wall_node(
+		Vector3(0.0, 0.0, 0.2),
+		Vector3(4.0, 0.0, 0.2),
+		4.0,
+		0.22,
+		wall_color
+	)
+	coordinator.add_child(wall)
+	var roof := coordinator.create_roof_node(
+		Vector3(0.0, 2.4, 0.0),
+		Vector3(4.0, 2.4, 4.0),
+		"gable",
+		45.0,
+		0.20,
+		0.0,
+		Color(0.50, 0.34, 0.25, 1.0)
+	)
+	coordinator.add_child(roof)
+	coordinator.refresh_building_geometry_clips()
+
+	if wall.get_roof_clip_surface_count() != 1:
+		m_failures.append("Wall3D did not receive roof underside clip data")
+	if _wall_has_vertex_above_roof_underside(wall, roof, 0.025):
+		m_failures.append("Wall3D kept geometry above the intersecting roof underside")
+	if wall.get_node_or_null("WallCollision") == null:
+		m_failures.append("Roof-clipped Wall3D lost generated collision")
+
+	roof.set_roof_corners(Vector3(8.0, 2.4, 0.0), Vector3(12.0, 2.4, 4.0))
+	coordinator.refresh_building_geometry_clips()
+	if wall.get_roof_clip_surface_count() != 0:
+		m_failures.append("Wall3D kept stale roof clip data after roof moved away")
+	if !_has_mesh_vertex_y_near(wall, 4.0, 0.001):
+		m_failures.append("Wall3D did not restore full height after roof clip cleared")
+
+	var eave_wall := coordinator.create_wall_node(
+		Vector3(0.0, 0.0, 0.0),
+		Vector3(4.0, 0.0, 0.0),
+		2.8,
+		0.22,
+		wall_color
+	)
+	coordinator.add_child(eave_wall)
+	var eave_roof := coordinator.create_roof_node(
+		Vector3(0.0, 2.4, 0.0),
+		Vector3(4.0, 2.4, 4.0),
+		"gable",
+		45.0,
+		0.20,
+		0.20,
+		Color(0.50, 0.34, 0.25, 1.0)
+	)
+	coordinator.add_child(eave_roof)
+	coordinator.refresh_building_geometry_clips()
+	if eave_wall.get_roof_clip_surface_count() != 1:
+		m_failures.append("Wall3D did not receive roof clip data for an eave-line wall")
+	if _wall_has_vertex_above_roof_underside(eave_wall, eave_roof, 0.025):
+		m_failures.append("Wall3D kept eave-line geometry above the roof underside")
+
+
 func _validate_add_wall_joint() -> void:
 	var wall := Wall3DScript.new() as Wall3DScript
 	wall.name = "AddJointWall"
@@ -2029,6 +2096,47 @@ func _has_mesh_vertex_y_near(mesh_instance: MeshInstance3D, expected_y: float, t
 		if absf(vertex.y - expected_y) <= tolerance:
 			return true
 	return false
+
+
+func _wall_has_vertex_above_roof_underside(
+	wall: Wall3DScript,
+	roof: Roof3DScript,
+	tolerance: float
+) -> bool:
+	if wall == null or roof == null:
+		return false
+	if wall.mesh == null or wall.mesh.get_surface_count() <= 0:
+		return false
+	var arrays := wall.mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var roof_basis := Basis(Vector3.UP, deg_to_rad(roof.roof_rotation_degrees))
+	var roof_inverse := roof_basis.inverse()
+	var roof_anchor := roof.get_roof_anchor_point()
+	var roof_rect := roof.get_roof_render_rect()
+	for vertex in vertices:
+		var parent_point := wall.transform * vertex
+		var roof_local := roof_inverse * (parent_point - roof_anchor)
+		var roof_plan := Vector2(roof_local.x, roof_local.z)
+		if !_rect_contains_point_with_tolerance(roof_rect, roof_plan, 0.001):
+			continue
+		var underside_y := (
+			roof.start_point.y
+			+ roof.get_roof_height_at_local_render_point(roof_plan)
+			- roof.roof_thickness
+		)
+		if parent_point.y > underside_y + tolerance:
+			return true
+	return false
+
+
+func _rect_contains_point_with_tolerance(rect: Rect2, point: Vector2, tolerance: float) -> bool:
+	var rect_max := rect.position + rect.size
+	return (
+		point.x >= rect.position.x - tolerance
+		and point.y >= rect.position.y - tolerance
+		and point.x <= rect_max.x + tolerance
+		and point.y <= rect_max.y + tolerance
+	)
 
 
 func _roof_wireframe_matches_triangle_indices(roof: Roof3DScript) -> bool:
