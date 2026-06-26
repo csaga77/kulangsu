@@ -7,8 +7,10 @@ const REQUIRED_COLLISION_ITEMS := [
 	"Primitive_Stairs",
 	"Primitive_Wall",
 ]
-const PLAYER_START := Vector3(0.0, 1.0, -11.0)
-const PROBE_START := Vector3(1.5, 1.0, -10.0)
+# Spawn just above the Floor3D surface (y=0) so the body settles onto it on the
+# first physics frame instead of dropping in from height.
+const PLAYER_START := Vector3(0.0, 0.1, -11.0)
+const PROBE_START := Vector3(1.5, 0.1, -10.0)
 const PROBE_DIRECTION := Vector3.RIGHT
 const PROBE_SPEED := 4.0
 const PROBE_FRAMES := 90
@@ -16,7 +18,7 @@ const PROBE_GROUNDING_VELOCITY := -0.5
 const MAX_BLOCKED_TRAVEL := 3.0
 const MAX_VERTICAL_DRIFT := 0.15
 const MAX_WALL_NORMAL_Y := 0.75
-const STAIR_PROBE_START := Vector3(0.0, 1.0, -13.5)
+const STAIR_PROBE_START := Vector3(0.0, 0.1, -13.5)
 const STAIR_PROBE_SPEEDS: Array[float] = [2.4, 4.0, 7.5]
 const STAIR_UP_FRAMES := 70
 const STAIR_DOWN_FRAMES := 75
@@ -36,7 +38,6 @@ const MAX_STAIR_JUMP_FLOOR_GAP := 0.12
 const MAX_STAIR_JUMP_FRAME_DROP := 0.25
 const FLOOR_SAMPLE_MISSING := -INF
 
-@onready var m_grid: GridMap = $GridMap
 @onready var m_player: HumanBody3D = $human_body_3d
 @onready var m_camera: Camera3D = $Camera3D
 @onready var m_camera_controller: Node = $Camera3DController
@@ -59,7 +60,6 @@ func _ready() -> void:
 func _run_smoke_checks() -> void:
 	var failures: Array[String] = []
 	_validate_scene_nodes(failures)
-	_validate_mesh_library_collision(failures)
 	await _validate_character_building_collision(failures)
 	await _validate_character_stair_navigation(failures)
 	await _validate_character_stair_jump_stability(failures)
@@ -83,8 +83,6 @@ func _reset_player() -> void:
 
 
 func _validate_scene_nodes(failures: Array[String]) -> void:
-	if !is_instance_valid(m_grid):
-		failures.append("missing GridMap")
 	if !is_instance_valid(m_player):
 		failures.append("missing HumanBody3D player")
 	if !is_instance_valid(m_camera):
@@ -95,27 +93,7 @@ func _validate_scene_nodes(failures: Array[String]) -> void:
 		failures.append("Camera3DController is not following HumanBody3D")
 
 
-func _validate_mesh_library_collision(failures: Array[String]) -> void:
-	if !is_instance_valid(m_grid):
-		return
-
-	var library := m_grid.mesh_library
-	if library == null:
-		failures.append("GridMap is missing a MeshLibrary")
-		return
-
-	for item_name in REQUIRED_COLLISION_ITEMS:
-		var item_id := library.find_item_by_name(item_name)
-		if item_id < 0:
-			failures.append("MeshLibrary is missing %s" % item_name)
-			continue
-		if library.get_item_shapes(item_id).is_empty():
-			failures.append("%s has no MeshLibrary collision shapes" % item_name)
-
-
 func _validate_character_building_collision(failures: Array[String]) -> void:
-	if !is_instance_valid(m_grid):
-		return
 
 	var probe := HUMAN_BODY_3D_SCENE.instantiate() as HumanBody3D
 	if probe == null:
@@ -153,8 +131,6 @@ func _validate_character_building_collision(failures: Array[String]) -> void:
 		failures.append(
 			"HumanBody3D probe moved %.2f units instead of stopping at the building wall" % probe_travel
 		)
-	if !started_on_floor:
-		failures.append("HumanBody3D probe did not collide with the GridMap floor")
 	if absf(probe.global_position.y - start_position.y) > MAX_VERTICAL_DRIFT:
 		failures.append("HumanBody3D probe drifted vertically while testing the wall")
 	if !saw_wall_collision:
@@ -164,8 +140,6 @@ func _validate_character_building_collision(failures: Array[String]) -> void:
 
 
 func _validate_character_stair_navigation(failures: Array[String]) -> void:
-	if !is_instance_valid(m_grid):
-		return
 
 	for stair_probe_speed in STAIR_PROBE_SPEEDS:
 		await _validate_character_stair_navigation_at_speed(failures, stair_probe_speed)

@@ -60,6 +60,17 @@ enum Silhouette {
 
 @export var build_on_ready := true
 
+# Generate static collision for the building parts (wall/body boxes, tower
+# cylinders, and roofs) so the character collides with the landmark instead of
+# walking through it. Mirrors the generate_collision convention used by the
+# low_poly_building_editor modules.
+@export var generate_collision := true:
+	set(value):
+		if generate_collision == value:
+			return
+		generate_collision = value
+		_request_rebuild()
+
 var m_is_ready := false
 var m_rebuild_queued := false
 
@@ -229,6 +240,10 @@ func _add_box(part_name: String, size: Vector3, local_position: Vector3, color: 
 	add_child(instance)
 	if Engine.is_editor_hint():
 		instance.owner = null
+	if generate_collision:
+		var shape := BoxShape3D.new()
+		shape.size = size
+		_attach_part_collision(instance, shape, Vector3.ZERO)
 
 
 func _add_cylinder(part_name: String, radius: float, height: float, local_position: Vector3, color: Color) -> void:
@@ -248,6 +263,11 @@ func _add_cylinder(part_name: String, radius: float, height: float, local_positi
 	add_child(instance)
 	if Engine.is_editor_hint():
 		instance.owner = null
+	if generate_collision:
+		var shape := CylinderShape3D.new()
+		shape.radius = radius
+		shape.height = height
+		_attach_part_collision(instance, shape, Vector3.ZERO)
 
 
 func _add_roof(part_name: String, size: Vector3, local_position: Vector3, color: Color) -> void:
@@ -260,6 +280,10 @@ func _add_roof(part_name: String, size: Vector3, local_position: Vector3, color:
 	add_child(instance)
 	if Engine.is_editor_hint():
 		instance.owner = null
+	if generate_collision:
+		var roof_shape := instance.mesh.create_trimesh_shape()
+		if roof_shape != null:
+			_attach_part_collision(instance, roof_shape, Vector3.ZERO)
 
 
 func _build_gable_roof_mesh(size: Vector3) -> ArrayMesh:
@@ -314,6 +338,31 @@ func _append_triangle(
 	indices.append(start_index)
 	indices.append(start_index + 1)
 	indices.append(start_index + 2)
+
+
+# Parents a StaticBody3D + CollisionShape3D under a generated mesh part so the part
+# blocks the character. The body rides the part's transform and is freed together
+# with the part on rebuild (it lives under a GENERATED_META-tagged child), and is
+# kept owner-less in the editor so it stays a rebuild artifact rather than authored
+# scene data. The default StaticBody3D layer (1) matches the character's collision
+# mask, the same convention the terrain and building-editor collision bodies use.
+func _attach_part_collision(part: Node3D, shape: Shape3D, local_position: Vector3) -> void:
+	if shape == null:
+		return
+	var collision_shape := CollisionShape3D.new()
+	collision_shape.name = "CollisionShape3D"
+	collision_shape.shape = shape
+	collision_shape.position = local_position
+	collision_shape.set_meta(GENERATED_META, true)
+
+	var body := StaticBody3D.new()
+	body.name = "Collision"
+	body.set_meta(GENERATED_META, true)
+	body.add_child(collision_shape)
+	part.add_child(body)
+	if Engine.is_editor_hint():
+		body.owner = null
+		collision_shape.owner = null
 
 
 func _build_material(color: Color) -> StandardMaterial3D:

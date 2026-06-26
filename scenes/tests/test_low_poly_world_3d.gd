@@ -38,7 +38,19 @@ const LANDMARK_PLACEMENTS := [
 @onready var m_landmarks_root: Node3D = $Landmarks
 
 @export var art_style: LowPolyArtStyle3DScript
-@export_range(0.0, 1.0, 0.01) var actor_terrain_clearance := 0.04
+# Small lift applied above the resolved ground surface. Kept at 0 so the actor's
+# feet rest on the floor underneath instead of hovering above it.
+@export_range(0.0, 1.0, 0.01) var actor_terrain_clearance := 0.0
+
+# Downward ground probe: cast from a little above the actor's feet to a little
+# below so the actor is seated on whatever solid surface is directly under it
+# (terrain mesh, pier, or any building part with collision), not on a smooth
+# interpolated terrain height that ignores buildings. UP only needs to cover a
+# small step so the probe never grabs a roof above the actor; DOWN covers walking
+# down slopes and shallow steps before a genuine drop is left to physics.
+const ACTOR_GROUND_PROBE_UP := 0.72
+const ACTOR_GROUND_PROBE_DOWN := 2.5
+const ACTOR_GROUND_TOLERANCE := 0.2
 
 const WIND_DEMO_ENABLED := true
 const WEATHER_RUNTIME := preload("res://weather/weather_runtime.gd")
@@ -327,8 +339,15 @@ func _validate_landmark_proxies(failures: Array[String]) -> void:
 		else:
 			seen_landmark_ids[landmark_id] = true
 
-		if proxy.get_node_or_null("BuildingBody") == null:
+		var building_body := proxy.get_node_or_null("BuildingBody")
+		if building_body == null:
 			failures.append("%s did not generate landmark body" % proxy_name)
+		else:
+			var body_collision := building_body.get_node_or_null("Collision") as StaticBody3D
+			if body_collision == null:
+				failures.append("%s landmark body has no collision for the character to hit" % proxy_name)
+			elif body_collision.get_node_or_null("CollisionShape3D") as CollisionShape3D == null:
+				failures.append("%s landmark body collision is missing its shape" % proxy_name)
 
 		if !proxy.has_meta(LANDMARK_MASK_META):
 			failures.append("%s was not placed through LowPolyWorldCoordinates3D" % proxy_name)
@@ -372,27 +391,59 @@ func _apply_actor_terrain_elevation() -> void:
 	if m_coordinates.resolve_source_size() == Vector2i.ZERO:
 		return
 
-	var sample_cell := m_coordinates.world_position_to_sample_cell(m_actor.global_position)
-	var fallback_land_height: float = float(m_terrain.get("land_height"))
-	var terrain_height := _get_terrain_world_height(m_actor.global_position, sample_cell, fallback_land_height)
+	var ground_height := _resolve_actor_surface_height()
+	if is_nan(ground_height):
+		return
 	var position := m_actor.global_position
-	var target_y := terrain_height + actor_terrain_clearance
+	var target_y := ground_height + actor_terrain_clearance
 	if is_equal_approx(position.y, target_y):
 		return
 	position.y = target_y
 	m_actor.global_position = position
 
 
+# Y of the solid surface directly beneath the actor. A short downward ray against
+# the physics world finds the real collision surface -- terrain mesh, pier, or any
+# building part now that the landmark proxies carry collision -- so the actor
+# stands on whatever it is over rather than hovering at an interpolated terrain
+# height that ignores buildings. Falls back to the sampled terrain height when the
+# ray finds nothing within reach (e.g. over heightmap-water cells with no land
+# collision, or a genuine drop), which preserves land-elevation following there.
+func _resolve_actor_surface_height() -> float:
+	var world := m_actor.get_world_3d()
+	if world != null:
+		var origin := m_actor.global_position
+		var query := PhysicsRayQueryParameters3D.create(
+			origin + Vector3.UP * ACTOR_GROUND_PROBE_UP,
+			origin + Vector3.DOWN * ACTOR_GROUND_PROBE_DOWN
+		)
+		query.collision_mask = m_actor.collision_mask
+		query.collide_with_areas = false
+		query.exclude = [m_actor.get_rid()]
+		var hit := world.direct_space_state.intersect_ray(query)
+		if !hit.is_empty():
+			return float((hit["position"] as Vector3).y)
+	return _resolve_terrain_sample_height()
+
+
+func _resolve_terrain_sample_height() -> float:
+	var sample_cell := m_coordinates.world_position_to_sample_cell(m_actor.global_position)
+	var fallback_land_height: float = float(m_terrain.get("land_height"))
+	return _get_terrain_world_height(m_actor.global_position, sample_cell, fallback_land_height)
+
+
 func _validate_actor_terrain_elevation(failures: Array[String]) -> void:
 	var original_position := m_actor.global_position
 	var probe_cell := _find_terrain_height_probe_cell()
 	var fallback_land_height: float = float(m_terrain.get("land_height"))
-	var probe_position := m_coordinates.sample_cell_to_world_center(probe_cell, -3.0) + Vector3(0.21, 0.0, -0.17)
-	var expected_height := _get_terrain_world_height(probe_position, probe_cell, fallback_land_height) + actor_terrain_clearance
-	m_actor.global_position = probe_position
+	var probe_position := m_coordinates.sample_cell_to_world_center(probe_cell, 0.0) + Vector3(0.21, 0.0, -0.17)
+	var surface_height := _get_terrain_world_height(probe_position, probe_cell, fallback_land_height)
+	# Start above the surface and confirm the actor is seated back down onto it
+	# rather than left hovering in the air.
+	m_actor.global_position = Vector3(probe_position.x, surface_height + 0.5, probe_position.z)
 	_apply_actor_terrain_elevation()
-	if !is_equal_approx(m_actor.global_position.y, expected_height):
-		failures.append("HumanBody3D did not follow LowPolyTerrain3D elevation")
+	if absf(m_actor.global_position.y - (surface_height + actor_terrain_clearance)) > ACTOR_GROUND_TOLERANCE:
+		failures.append("HumanBody3D did not settle onto the terrain surface beneath it")
 	m_actor.global_position = original_position
 
 
@@ -415,17 +466,17 @@ func _validate_actor_water_cell_terrain_elevation(failures: Array[String]) -> vo
 		return
 
 	var original_position := m_actor.global_position
-	var probe_position := m_coordinates.sample_cell_to_world_center(water_cell, -3.0)
-	var expected_height := _get_terrain_world_height(probe_position, water_cell, fallback_land_height) + actor_terrain_clearance
-	if expected_height >= water_height + actor_terrain_clearance - 0.005:
+	var probe_position := m_coordinates.sample_cell_to_world_center(water_cell, 0.0)
+	var land_surface := _get_terrain_world_height(probe_position, water_cell, fallback_land_height)
+	if land_surface >= water_height - 0.005:
 		failures.append("HumanBody3D water-cell terrain target used water height instead of land elevation")
 		m_actor.global_position = original_position
 		return
 
-	m_actor.global_position = probe_position
+	m_actor.global_position = Vector3(probe_position.x, land_surface + 0.5, probe_position.z)
 	_apply_actor_terrain_elevation()
-	if !is_equal_approx(m_actor.global_position.y, expected_height):
-		failures.append("HumanBody3D did not follow land elevation in heightmap water")
+	if absf(m_actor.global_position.y - (land_surface + actor_terrain_clearance)) > ACTOR_GROUND_TOLERANCE:
+		failures.append("HumanBody3D did not settle onto land elevation in heightmap water")
 	m_actor.global_position = original_position
 
 

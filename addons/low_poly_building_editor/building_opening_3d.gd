@@ -56,6 +56,18 @@ const GENERATED_META := &"building_opening_generated"
 		show_bottom_frame = value
 		_request_rebuild()
 
+# Generate static collision for the solid opening parts (frame jambs, door panels,
+# window panes) so the character is blocked by a closed door/window and by the door
+# frame, instead of walking through it. An open doorway (no panels) stays passable
+# because only the edge frame carries collision. Mirrors the generate_collision
+# convention on the other building_editor modules.
+@export var generate_collision := true:
+	set(value):
+		if generate_collision == value:
+			return
+		generate_collision = value
+		_request_rebuild()
+
 @export_range(0, 2, 1) var door_panel_count := 0:
 	set(value):
 		var clamped_value := clampi(value, 0, 2)
@@ -227,6 +239,32 @@ func _add_box(part_name: String, size: Vector3, local_position: Vector3, color: 
 	add_child(instance)
 	if Engine.is_editor_hint():
 		instance.owner = null
+	if generate_collision:
+		_attach_part_collision(instance, size)
+
+
+# Parents a StaticBody3D + box CollisionShape3D under a generated opening part so it
+# blocks the character. The body rides the part's transform and is freed with it on
+# rebuild (it lives under a GENERATED_META-tagged part), and is kept owner-less in the
+# editor so it stays a rebuild artifact. The default StaticBody3D layer (1) matches
+# the character's collision mask, like the other building_editor collision bodies.
+func _attach_part_collision(part: Node3D, size: Vector3) -> void:
+	var shape := BoxShape3D.new()
+	shape.size = size
+
+	var collision_shape := CollisionShape3D.new()
+	collision_shape.name = "CollisionShape3D"
+	collision_shape.shape = shape
+	collision_shape.set_meta(GENERATED_META, true)
+
+	var body := StaticBody3D.new()
+	body.name = "Collision"
+	body.set_meta(GENERATED_META, true)
+	body.add_child(collision_shape)
+	part.add_child(body)
+	if Engine.is_editor_hint():
+		body.owner = null
+		collision_shape.owner = null
 
 
 func _build_material(color: Color) -> StandardMaterial3D:

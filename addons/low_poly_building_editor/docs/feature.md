@@ -108,7 +108,7 @@
 - `MergedWallMeshBuilder` (`merged_wall_mesh_builder.gd`) owns the plan-space clipping math that can render a subset of wall segments while using all supplied same-plane segments as cutters, and the roof underside clipping that removes generated wall faces above visible roof bottoms.
 - `WallSegment3D` (`wall_segment_3d.gd`) is the typed resource for one wall span, including static helpers for collinear segment merging and intersection splitting.
 - `Wall3D` owns generated mesh, vertex colors, collision, and opening-driven rebuilds.
-- `BuildingOpening3D` owns the visible window/door frame, window-pane, or door-panel marker and the dimensions consumed by wall mesh generation.
+- `BuildingOpening3D` owns the visible window/door frame, window-pane, or door-panel marker and the dimensions consumed by wall mesh generation. With `generate_collision` (default on) each solid part (frame jambs, door panels, window panes) also parents a `StaticBody3D`/box `CollisionShape3D` so a closed door/window and the frame block the character; a frame-only opening stays passable because only the edge frame carries collision.
 
 ## Relevant Files
 

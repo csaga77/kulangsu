@@ -79,7 +79,14 @@ func stop_moving() -> void:
 	move_direction = MoveDirectionEnum.MOVE_IDLE
 	if is_instance_valid(m_character):
 		m_character.set("is_walking", false)
-		m_character.set("velocity", Vector3.ZERO)
+		# Zero horizontal velocity but keep the vertical component so the body keeps
+		# falling under gravity (and settling onto the floor) while it has no movement
+		# input, instead of freezing in mid-air.
+		var current_velocity: Variant = m_character.get("velocity")
+		if current_velocity is Vector3:
+			m_character.set("velocity", Vector3(0.0, (current_velocity as Vector3).y, 0.0))
+		else:
+			m_character.set("velocity", Vector3.ZERO)
 
 
 func is_moving() -> bool:

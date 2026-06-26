@@ -9,6 +9,11 @@ const DEFAULT_WALK_SPEED := 4.0
 const DEFAULT_RUN_SPEED := 7.5
 const JUMP_DURATION := 0.55
 const JUMP_HEIGHT := 0.48
+# Downward acceleration applied while the body is airborne (off the floor and not
+# in a cosmetic jump), so a character spawned or walked off an edge above the floor
+# falls and lands instead of hovering. MAX_FALL_SPEED caps the descent.
+const GRAVITY := 16.0
+const MAX_FALL_SPEED := 12.0
 const DEFAULT_BODY_HEIGHT := 1.72
 const DEFAULT_BODY_RADIUS := 0.28
 const STEP_FLOOR_PROBE_MARGIN := 0.08
@@ -19,6 +24,10 @@ const MIN_STEP_FLOOR_ADJUSTMENT := 0.002
 const MIN_STEP_BLOCKED_PROGRESS_RATIO := 0.35
 const MAX_STEP_LATERAL_DRIFT_RATIO := 0.1
 const PLACEMENT_QUERY_FLOOR_CLEARANCE := 0.01
+# The placement overlap test shrinks a copy of the capsule by this much so resting
+# floor contact at the lifted candidate height is not mistaken for a blocking overlap
+# (which would reject a valid step), while still catching genuine wall/body interpenetration.
+const PLACEMENT_QUERY_SHAPE_SHRINK := 0.01
 const FLOOR_SAMPLE_MISSING := -INF
 const BaseController3DScript = preload("res://characters/control/base_controller_3d.gd")
 # Default character model. Alternate models (female.glb, male.glb) live alongside
@@ -306,6 +315,7 @@ const DEFAULT_JACKET_ATTACH_BONE := "Spine02"
 var m_cached_configuration: Dictionary = {}
 var m_has_ready := false
 var m_last_global_position := Vector3.ZERO
+var m_did_move_this_frame := false
 var m_is_currently_jumping := false
 var m_jump_timer := 0.0
 var m_last_step_direction := Vector3.ZERO
@@ -364,9 +374,14 @@ func move_with_speed(direction_vector: Vector3, movement_speed: float) -> void:
 		flat_direction = flat_direction.normalized()
 	velocity.x = flat_direction.x * movement_speed
 	velocity.z = flat_direction.z * movement_speed
+	m_did_move_this_frame = true
 	var grounded_before_move := is_grounded()
 	if grounded_before_move and !m_is_currently_jumping:
 		velocity.y = -grounding_speed
+	elif !m_is_currently_jumping:
+		# Airborne and not in a cosmetic jump: accumulate gravity so the body falls
+		# to the floor instead of walking through the air.
+		velocity.y = maxf(velocity.y - GRAVITY * get_physics_process_delta_time(), -MAX_FALL_SPEED)
 	var can_reacquire_floor := !m_is_currently_jumping and (grounded_before_move or velocity.y <= 0.0)
 	var start_position := global_position
 	var horizontal_motion := Vector3(velocity.x, 0.0, velocity.z) * get_physics_process_delta_time()
@@ -396,9 +411,10 @@ func _snap_to_walkable_step_floor(
 		return false
 	horizontal_direction = horizontal_direction.normalized()
 
-	var reference_y := maxf(start_position.y, global_position.y)
+	var reference_top_y := maxf(start_position.y, global_position.y)
+	var reference_bottom_y := minf(start_position.y, global_position.y)
 	var snap_position := global_position
-	var floor_y := _find_walkable_step_floor_y(snap_position, horizontal_direction, reference_y)
+	var floor_y := _find_walkable_step_floor_y(snap_position, horizontal_direction, reference_top_y, reference_bottom_y)
 	var requested_distance := horizontal_motion.length()
 	var actual_motion := Vector3(
 		global_position.x - start_position.x,
@@ -415,7 +431,7 @@ func _snap_to_walkable_step_floor(
 	)
 	var target_floor_y := NAN
 	if requested_distance > 0.0:
-		target_floor_y = _find_walkable_step_floor_y(target_position, horizontal_direction, reference_y)
+		target_floor_y = _find_walkable_step_floor_y(target_position, horizontal_direction, reference_top_y, reference_bottom_y)
 
 	if !is_nan(target_floor_y):
 		var should_use_target_position := is_nan(floor_y)
@@ -436,7 +452,7 @@ func _snap_to_walkable_step_floor(
 					target_position_blocked = true
 
 	if is_nan(floor_y) and requested_distance > 0.0 and actual_forward_distance < requested_distance * MIN_STEP_BLOCKED_PROGRESS_RATIO:
-		target_floor_y = _find_walkable_step_floor_y(target_position, horizontal_direction, reference_y)
+		target_floor_y = _find_walkable_step_floor_y(target_position, horizontal_direction, reference_top_y, reference_bottom_y)
 		if !is_nan(target_floor_y):
 			var target_snap_position := Vector3(target_position.x, target_floor_y, target_position.z)
 			if _can_place_body_at(target_snap_position):
@@ -449,7 +465,7 @@ func _snap_to_walkable_step_floor(
 		return false
 
 	if is_nan(floor_y):
-		var start_floor_y := _find_walkable_step_floor_y(start_position, horizontal_direction, reference_y)
+		var start_floor_y := _find_walkable_step_floor_y(start_position, horizontal_direction, reference_top_y, reference_bottom_y)
 		if !is_nan(start_floor_y):
 			var would_drop_to_older_floor := (
 				requested_distance > MIN_STEP_FLOOR_ADJUSTMENT
@@ -504,16 +520,23 @@ func _refresh_floor_state_after_manual_snap() -> void:
 	apply_floor_snap()
 
 
+# reference_top_y bounds how far up a step crest may sit (max_step_height above it);
+# reference_bottom_y bounds how far down the cast reaches (floor_snap_distance below
+# it). Passing the lower of start/current y as the bottom reference keeps a floor that
+# the body just climbed away from -- but is still within snap range -- inside the cast
+# window, so undulating terrain does not drop re-grounding after move_and_slide nudges
+# the body upward.
 func _find_walkable_step_floor_y(
 	body_position: Vector3,
 	horizontal_direction: Vector3,
-	reference_y: float
+	reference_top_y: float,
+	reference_bottom_y: float
 ) -> float:
 	var side_direction := Vector3(-horizontal_direction.z, 0.0, horizontal_direction.x)
 	var forward_reach := body_radius + STEP_FLOOR_PROBE_MARGIN
 	var side_reach := body_radius * STEP_FLOOR_SIDE_PROBE_SCALE
-	var cast_top_y := reference_y + max_step_height + STEP_FLOOR_CAST_MARGIN
-	var cast_bottom_y := reference_y - floor_snap_distance - STEP_FLOOR_CAST_MARGIN
+	var cast_top_y := reference_top_y + max_step_height + STEP_FLOOR_CAST_MARGIN
+	var cast_bottom_y := reference_bottom_y - floor_snap_distance - STEP_FLOOR_CAST_MARGIN
 	var min_floor_normal_y := cos(floor_max_angle)
 
 	var center_floor_y := _sample_walkable_floor_y(
@@ -556,9 +579,13 @@ func _find_walkable_step_floor_y(
 		body_support_y
 	)
 	if body_support_y == FLOOR_SAMPLE_MISSING:
-		if forward_floor_y == FLOOR_SAMPLE_MISSING:
-			return NAN
-		return forward_floor_y
+		# Nothing under the body's own footprint (center or either side) within step /
+		# snap range: the actor is standing over a hole or a drop too deep to step down,
+		# so it must fall. Do NOT reach forward to a floor across the gap -- returning the
+		# forward sample here would re-plant the body at that height while it hovers over
+		# the hole. A real step-up keeps the body supported (the center cast reaches up to
+		# max_step_height), so this never blocks climbing.
+		return NAN
 
 	if forward_floor_y > body_support_y + MIN_STEP_FLOOR_ADJUSTMENT:
 		return forward_floor_y
@@ -581,6 +608,14 @@ func _sample_walkable_floor_y(
 		Vector3(sample_position.x, cast_top_y, sample_position.z),
 		Vector3(sample_position.x, cast_bottom_y, sample_position.z)
 	)
+	# Probe only the layers the body actually collides with, matching
+	# _can_place_body_at. Casting against all layers (the ray default) would let
+	# the sampler snap onto -- or be blocked by -- surfaces the capsule never
+	# touches (water/area-style colliders, other characters, decorative bodies),
+	# and a non-walkable first hit on an unrelated layer would mask real ground
+	# just below it.
+	query.collision_mask = collision_mask
+	query.collide_with_areas = false
 	query.exclude = [get_rid()]
 	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
 	var hit: Dictionary = space.intersect_ray(query)
@@ -626,10 +661,18 @@ func _can_place_body_at(candidate_position: Vector3) -> bool:
 	if world == null:
 		return !test_move(candidate_transform, Vector3.ZERO)
 
-	candidate_transform.origin.y += PLACEMENT_QUERY_FLOOR_CLEARANCE
+	var probe_shape := _build_placement_probe_shape()
+	if probe_shape == null:
+		return !test_move(candidate_transform, Vector3.ZERO)
+
+	# Lift by at least the body's collision safe margin so the floor we would rest on
+	# is not counted as an overlap on coarse terrain triangles where a fixed 1 cm nudge
+	# is not enough to clear the contact.
+	candidate_transform.origin.y += maxf(safe_margin, PLACEMENT_QUERY_FLOOR_CLEARANCE)
 	var query := PhysicsShapeQueryParameters3D.new()
-	query.shape = m_collision_shape.shape
+	query.shape = probe_shape
 	query.transform = candidate_transform * m_collision_shape.transform
+	query.margin = 0.0
 	query.collision_mask = collision_mask
 	query.collide_with_bodies = true
 	query.collide_with_areas = false
@@ -637,6 +680,23 @@ func _can_place_body_at(candidate_position: Vector3) -> bool:
 
 	var overlaps: Array[Dictionary] = world.direct_space_state.intersect_shape(query, 1)
 	return overlaps.is_empty()
+
+
+# A copy of the body capsule shrunk by the safe margin, used only for the placement
+# overlap test. Shrinking keeps resting floor/wall contact from registering as a
+# blocking overlap (a fixed lift alone can leave the supporting surface inside the
+# shape on steep or coarse geometry) while still detecting real interpenetration.
+func _build_placement_probe_shape() -> Shape3D:
+	if !is_instance_valid(m_collision_shape):
+		return null
+	var capsule := m_collision_shape.shape as CapsuleShape3D
+	if capsule == null:
+		return m_collision_shape.shape
+	var shrink := maxf(safe_margin, PLACEMENT_QUERY_SHAPE_SHRINK)
+	var probe := CapsuleShape3D.new()
+	probe.radius = maxf(capsule.radius - shrink, 0.01)
+	probe.height = maxf(capsule.height - shrink * 2.0, probe.radius * 2.0)
+	return probe
 
 
 func jump() -> void:
@@ -715,7 +775,32 @@ func _process(delta: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
+	m_did_move_this_frame = false
 	_process_controller(delta)
+	# When a controlled body was not actively moved this frame (idle, or a controller
+	# that issued no move), keep advancing its vertical physics so gravity settles it
+	# onto the floor instead of leaving it hovering. Skipped when there is no
+	# controller (e.g. manually driven test probes) so we never double-step physics.
+	if controller != null and not m_did_move_this_frame:
+		_apply_passive_vertical_motion(delta)
+
+
+# Vertical-only physics step for an idle controlled body: hold horizontal velocity
+# at zero and either keep the gentle grounding press while on the floor or apply
+# gravity while airborne, so the character drops onto and rests on the floor
+# beneath it without any horizontal input.
+func _apply_passive_vertical_motion(delta: float) -> void:
+	velocity.x = 0.0
+	velocity.z = 0.0
+	var grounded_before_move := is_grounded()
+	if grounded_before_move and !m_is_currently_jumping:
+		velocity.y = -grounding_speed
+	elif !m_is_currently_jumping:
+		velocity.y = maxf(velocity.y - GRAVITY * delta, -MAX_FALL_SPEED)
+	move_and_slide()
+	m_step_snap_grounded = is_on_floor()
 
 
 func _setup_controller() -> void:
@@ -1495,14 +1580,32 @@ func _align_model_feet() -> void:
 	var inv_root := m_visual_root.global_transform.affine_inverse()
 	var lowest := INF
 	for mesh_instance in meshes:
-		var aabb := mesh_instance.get_aabb()
 		var to_root := inv_root * mesh_instance.global_transform
-		for i in range(8):
-			var corner := aabb.position + Vector3(
-				aabb.size.x * float(i & 1),
-				aabb.size.y * float((i >> 1) & 1),
-				aabb.size.z * float((i >> 2) & 1))
-			lowest = minf(lowest, (to_root * corner).y)
+		# Measure the true lowest rendered vertex rather than MeshInstance3D.get_aabb().
+		# Imported skinned meshes carry an AABB padded below the feet (headroom for
+		# animation/culling); aligning that padded floor to the foot origin would seat
+		# the bones above the ground and leave the character visibly hovering. The rest-
+		# pose vertices give the real sole position, so the feet land on the floor.
+		var mesh := mesh_instance.mesh
+		var measured := false
+		if mesh != null:
+			for surface_index in range(mesh.get_surface_count()):
+				var arrays := mesh.surface_get_arrays(surface_index)
+				if arrays.size() <= Mesh.ARRAY_VERTEX:
+					continue
+				var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+				for vertex in vertices:
+					lowest = minf(lowest, (to_root * vertex).y)
+					measured = true
+		if not measured:
+			# Fall back to the (possibly padded) AABB when vertex data is unavailable.
+			var aabb := mesh_instance.get_aabb()
+			for i in range(8):
+				var corner := aabb.position + Vector3(
+					aabb.size.x * float(i & 1),
+					aabb.size.y * float((i >> 1) & 1),
+					aabb.size.z * float((i >> 2) & 1))
+				lowest = minf(lowest, (to_root * corner).y)
 	if lowest == INF:
 		lowest = 0.0
 	m_character_model.position.y = character_model_y_offset - lowest
