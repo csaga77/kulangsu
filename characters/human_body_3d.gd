@@ -20,6 +20,7 @@ const STEP_FLOOR_PROBE_MARGIN := 0.08
 const STEP_FLOOR_SIDE_PROBE_SCALE := 0.72
 const STEP_FLOOR_FORWARD_FAR_SCALE := 2.0
 const STEP_FLOOR_CAST_MARGIN := 0.16
+const WALL_SLIDE_INPUT_DOT_THRESHOLD := 0.05
 const MIN_STEP_FLOOR_ADJUSTMENT := 0.002
 const MIN_STEP_BLOCKED_PROGRESS_RATIO := 0.35
 const MAX_STEP_LATERAL_DRIFT_RATIO := 0.1
@@ -392,16 +393,46 @@ func move_with_speed(direction_vector: Vector3, movement_speed: float) -> void:
 	elif velocity.y < -MIN_STEP_FLOOR_ADJUSTMENT and m_last_step_direction.length_squared() > 0.000001:
 		step_direction = m_last_step_direction
 	move_and_slide()
+	var has_blocking_wall_contact := _has_blocking_wall_contact(step_direction)
 	m_step_snap_grounded = is_on_floor()
 	if can_reacquire_floor and step_direction.length_squared() > 0.000001:
-		if _snap_to_walkable_step_floor(start_position, horizontal_motion, step_direction):
+		var preserve_slide_motion := has_blocking_wall_contact
+		if _snap_to_walkable_step_floor(
+			start_position,
+			horizontal_motion,
+			step_direction,
+			!preserve_slide_motion
+		):
 			m_step_snap_grounded = true
+
+
+func _has_blocking_wall_contact(horizontal_direction: Vector3) -> bool:
+	var flat_direction := Vector3(horizontal_direction.x, 0.0, horizontal_direction.z)
+	if flat_direction.length_squared() <= 0.000001:
+		return false
+	flat_direction = flat_direction.normalized()
+	var min_floor_normal_y := cos(floor_max_angle)
+	for collision_index in range(get_slide_collision_count()):
+		var collision := get_slide_collision(collision_index)
+		if collision == null:
+			continue
+		var normal := collision.get_normal()
+		if normal.y >= min_floor_normal_y:
+			continue
+		var flat_normal := Vector3(normal.x, 0.0, normal.z)
+		if flat_normal.length_squared() <= 0.000001:
+			continue
+		flat_normal = flat_normal.normalized()
+		if flat_direction.dot(flat_normal) < -WALL_SLIDE_INPUT_DOT_THRESHOLD:
+			return true
+	return false
 
 
 func _snap_to_walkable_step_floor(
 	start_position: Vector3,
 	horizontal_motion: Vector3,
-	horizontal_direction: Vector3
+	horizontal_direction: Vector3,
+	allow_horizontal_reposition: bool = true
 ) -> bool:
 	if max_step_height <= 0.0 and floor_snap_distance <= 0.0:
 		return false
@@ -430,7 +461,7 @@ func _snap_to_walkable_step_floor(
 		start_position.z + horizontal_motion.z
 	)
 	var target_floor_y := NAN
-	if requested_distance > 0.0:
+	if allow_horizontal_reposition and requested_distance > 0.0:
 		target_floor_y = _find_walkable_step_floor_y(target_position, horizontal_direction, reference_top_y, reference_bottom_y)
 
 	if !is_nan(target_floor_y):
@@ -451,7 +482,12 @@ func _snap_to_walkable_step_floor(
 				else:
 					target_position_blocked = true
 
-	if is_nan(floor_y) and requested_distance > 0.0 and actual_forward_distance < requested_distance * MIN_STEP_BLOCKED_PROGRESS_RATIO:
+	if (
+		allow_horizontal_reposition
+		and is_nan(floor_y)
+		and requested_distance > 0.0
+		and actual_forward_distance < requested_distance * MIN_STEP_BLOCKED_PROGRESS_RATIO
+	):
 		target_floor_y = _find_walkable_step_floor_y(target_position, horizontal_direction, reference_top_y, reference_bottom_y)
 		if !is_nan(target_floor_y):
 			var target_snap_position := Vector3(target_position.x, target_floor_y, target_position.z)

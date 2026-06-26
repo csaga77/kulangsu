@@ -17,6 +17,9 @@ const WALL_COLLISION_PROBE_SPEED := 4.0
 const WALL_COLLISION_PROBE_FRAMES := 90
 const WALL_COLLISION_MAX_TRAVEL := 1.85
 const WALL_COLLISION_MAX_NORMAL_Y := 0.75
+const WALL_COLLISION_SLIDE_FRAMES := 56
+const WALL_COLLISION_SLIDE_MIN_TOTAL_PARALLEL_TRAVEL := 1.6
+const WALL_COLLISION_SLIDE_MIN_CONTACT_PARALLEL_TRAVEL := 0.45
 
 var m_failures: Array[String] = []
 
@@ -306,6 +309,52 @@ func _validate_wall_collision_blocks_character(coordinator: BuildingEditor3DScri
 		m_failures.append("HumanBody3D moved through solid Wall3D collision by %.2f units" % probe_travel)
 	if !saw_wall_collision:
 		m_failures.append("HumanBody3D did not report a slide collision against Wall3D")
+
+	probe.global_position = WALL_COLLISION_TEST_ORIGIN + Vector3(0.0, 0.1, -1.5)
+	probe.velocity = Vector3.ZERO
+	await get_tree().physics_frame
+	for i in range(8):
+		probe.velocity.y = -0.5
+		probe.move_with_speed(Vector3.ZERO, 0.0)
+		await get_tree().physics_frame
+
+	var slide_start_position := probe.global_position
+	var slide_direction := Vector3(1.0, 0.0, 1.0).normalized()
+	var saw_slide_wall_collision := false
+	var first_slide_contact_z := slide_start_position.z
+	var max_parallel_after_contact := 0.0
+	for i in range(WALL_COLLISION_SLIDE_FRAMES):
+		probe.velocity.y = -0.5
+		probe.move_with_speed(slide_direction, WALL_COLLISION_PROBE_SPEED)
+		var frame_saw_wall_collision := false
+		for collision_index in range(probe.get_slide_collision_count()):
+			var collision := probe.get_slide_collision(collision_index)
+			if absf(collision.get_normal().y) <= WALL_COLLISION_MAX_NORMAL_Y:
+				frame_saw_wall_collision = true
+		if frame_saw_wall_collision:
+			if !saw_slide_wall_collision:
+				first_slide_contact_z = probe.global_position.z
+			saw_slide_wall_collision = true
+		if saw_slide_wall_collision:
+			max_parallel_after_contact = maxf(
+				max_parallel_after_contact,
+				probe.global_position.z - first_slide_contact_z
+			)
+		await get_tree().physics_frame
+
+	var slide_parallel_travel := probe.global_position.z - slide_start_position.z
+	var slide_blocked_x := WALL_COLLISION_TEST_ORIGIN.x + WALL_COLLISION_MAX_TRAVEL
+	if probe.global_position.x > slide_blocked_x:
+		m_failures.append("HumanBody3D moved through Wall3D while sliding along it")
+	if !saw_slide_wall_collision:
+		m_failures.append("HumanBody3D did not report a diagonal slide collision against Wall3D")
+	if slide_parallel_travel < WALL_COLLISION_SLIDE_MIN_TOTAL_PARALLEL_TRAVEL:
+		m_failures.append("HumanBody3D only moved %.2f units parallel to Wall3D while sliding" % slide_parallel_travel)
+	if max_parallel_after_contact < WALL_COLLISION_SLIDE_MIN_CONTACT_PARALLEL_TRAVEL:
+		m_failures.append(
+			"HumanBody3D only moved %.2f units parallel to Wall3D after contact"
+			% max_parallel_after_contact
+		)
 
 	probe.queue_free()
 	floor_body.queue_free()
