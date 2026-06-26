@@ -20,6 +20,15 @@ const WALL_COLLISION_MAX_NORMAL_Y := 0.75
 const WALL_COLLISION_SLIDE_FRAMES := 56
 const WALL_COLLISION_SLIDE_MIN_TOTAL_PARALLEL_TRAVEL := 1.6
 const WALL_COLLISION_SLIDE_MIN_CONTACT_PARALLEL_TRAVEL := 0.45
+const STAIRS_SIDE_COLLISION_TEST_ORIGIN := Vector3(36.0, 0.0, 36.0)
+const STAIRS_SIDE_COLLISION_PROBE_SPEED := 4.0
+const STAIRS_SIDE_COLLISION_PROBE_FRAMES := 90
+const STAIRS_SIDE_COLLISION_MAX_TRAVEL := 1.25
+const STAIRS_SIDE_COLLISION_MAX_CLIMB := 0.2
+const STAIRS_SIDE_COLLISION_MAX_NORMAL_Y := 0.75
+const STAIRS_FRONT_CLIMB_PROBE_FRAMES := 100
+const STAIRS_FRONT_CLIMB_MIN_TRAVEL := 3.0
+const STAIRS_FRONT_CLIMB_MIN_HEIGHT := 0.9
 
 var m_failures: Array[String] = []
 
@@ -77,6 +86,7 @@ func _run_smoke_checks() -> void:
 	_validate_multi_wall_joint_fill()
 	_validate_enclosed_wall_loop_caps()
 	await _validate_wall_collision_blocks_character(coordinator)
+	await _validate_stairs_side_collision_blocks_character(coordinator)
 
 	for failure in m_failures:
 		push_error(failure)
@@ -530,6 +540,10 @@ func _validate_stairs_node(coordinator: BuildingEditor3DScript) -> void:
 			m_failures.append("Stairs3D triangle winding does not match Godot BoxMesh convention")
 	if stairs.get_node_or_null("StairsCollision") == null:
 		m_failures.append("Stairs3D did not generate collision for placed stairs")
+	if !_has_box_collision_shape(stairs, "StairsCollision/%s" % Stairs3DScript.LEFT_SIDE_COLLISION_SHAPE_NAME):
+		m_failures.append("Stairs3D did not generate left side-wall collision")
+	if !_has_box_collision_shape(stairs, "StairsCollision/%s" % Stairs3DScript.RIGHT_SIDE_COLLISION_SHAPE_NAME):
+		m_failures.append("Stairs3D did not generate right side-wall collision")
 
 	stairs.set_stair_corners(Vector3(1.0, base_y, 16.5), Vector3(4.5, base_y, 21.0))
 	var edited_size := stairs.get_stair_size()
@@ -545,6 +559,113 @@ func _validate_stairs_node(coordinator: BuildingEditor3DScript) -> void:
 		m_failures.append("Stairs3D did not preserve footprint center when rotating")
 	if stairs.transform.basis.is_equal_approx(Basis.IDENTITY):
 		m_failures.append("Stairs3D did not apply rotation to its transform")
+
+
+func _has_box_collision_shape(root: Node, path: String) -> bool:
+	var collision_shape := root.get_node_or_null(path) as CollisionShape3D
+	return collision_shape != null and collision_shape.shape is BoxShape3D
+
+
+func _validate_stairs_side_collision_blocks_character(coordinator: BuildingEditor3DScript) -> void:
+	var floor_body := StaticBody3D.new()
+	floor_body.name = "StairsSideCollisionProbeFloor"
+	floor_body.set_meta(&"test_generated", true)
+	var floor_shape := CollisionShape3D.new()
+	var floor_box := BoxShape3D.new()
+	floor_box.size = Vector3(8.0, 0.1, 8.0)
+	floor_shape.shape = floor_box
+	floor_shape.position = STAIRS_SIDE_COLLISION_TEST_ORIGIN + Vector3(2.5, -0.05, 0.0)
+	floor_body.add_child(floor_shape)
+	add_child(floor_body)
+
+	var stairs := coordinator.create_stairs_node(
+		STAIRS_SIDE_COLLISION_TEST_ORIGIN + Vector3(2.0, 0.0, -2.0),
+		STAIRS_SIDE_COLLISION_TEST_ORIGIN + Vector3(5.0, 0.0, 2.0),
+		1.2,
+		4,
+		0.16,
+		Color(0.52, 0.46, 0.38, 1.0)
+	)
+	coordinator.add_child(stairs)
+
+	var probe := HUMAN_BODY_3D_SCENE.instantiate() as HumanBody3D
+	if probe == null:
+		m_failures.append("Stairs3D side collision probe could not instantiate HumanBody3D")
+		floor_body.queue_free()
+		stairs.queue_free()
+		return
+	probe.name = "StairsSideCollisionHumanBody3DProbe"
+	probe.visible = false
+	probe.body_radius = 0.28
+	probe.body_height = 1.72
+	add_child(probe)
+	await get_tree().physics_frame
+
+	probe.global_position = STAIRS_SIDE_COLLISION_TEST_ORIGIN + Vector3(0.6, 0.1, 0.0)
+	probe.velocity = Vector3.ZERO
+	for i in range(8):
+		probe.velocity.y = -0.5
+		probe.move_with_speed(Vector3.ZERO, 0.0)
+		await get_tree().physics_frame
+
+	var start_position := probe.global_position
+	var saw_side_collision := false
+	for i in range(STAIRS_SIDE_COLLISION_PROBE_FRAMES):
+		probe.velocity.y = -0.5
+		probe.move_with_speed(Vector3.RIGHT, STAIRS_SIDE_COLLISION_PROBE_SPEED)
+		for collision_index in range(probe.get_slide_collision_count()):
+			var collision := probe.get_slide_collision(collision_index)
+			if absf(collision.get_normal().y) <= STAIRS_SIDE_COLLISION_MAX_NORMAL_Y:
+				saw_side_collision = true
+		await get_tree().physics_frame
+
+	var side_travel := probe.global_position.x - start_position.x
+	var side_climb := probe.global_position.y - start_position.y
+	if side_travel > STAIRS_SIDE_COLLISION_MAX_TRAVEL:
+		m_failures.append("HumanBody3D moved %.2f units into Stairs3D side wall" % side_travel)
+	if side_climb > STAIRS_SIDE_COLLISION_MAX_CLIMB:
+		m_failures.append("HumanBody3D climbed %.2f units onto stairs from the side" % side_climb)
+	if !saw_side_collision:
+		m_failures.append("HumanBody3D did not report side-wall collision against Stairs3D")
+
+	probe.queue_free()
+
+	var climb_probe := HUMAN_BODY_3D_SCENE.instantiate() as HumanBody3D
+	if climb_probe == null:
+		m_failures.append("Stairs3D front climb probe could not instantiate HumanBody3D")
+		floor_body.queue_free()
+		stairs.queue_free()
+		return
+	climb_probe.name = "StairsFrontClimbHumanBody3DProbe"
+	climb_probe.visible = false
+	climb_probe.body_radius = 0.28
+	climb_probe.body_height = 1.72
+	add_child(climb_probe)
+	await get_tree().physics_frame
+
+	climb_probe.global_position = STAIRS_SIDE_COLLISION_TEST_ORIGIN + Vector3(3.5, 0.1, -2.7)
+	climb_probe.velocity = Vector3.ZERO
+	for i in range(8):
+		climb_probe.velocity.y = -0.5
+		climb_probe.move_with_speed(Vector3.ZERO, 0.0)
+		await get_tree().physics_frame
+
+	var climb_start_position := climb_probe.global_position
+	for i in range(STAIRS_FRONT_CLIMB_PROBE_FRAMES):
+		climb_probe.velocity.y = -0.5
+		climb_probe.move_with_speed(Vector3.BACK, STAIRS_SIDE_COLLISION_PROBE_SPEED)
+		await get_tree().physics_frame
+
+	var front_travel := climb_probe.global_position.z - climb_start_position.z
+	var front_climb := climb_probe.global_position.y - climb_start_position.y
+	if front_travel < STAIRS_FRONT_CLIMB_MIN_TRAVEL:
+		m_failures.append("HumanBody3D only advanced %.2f units up Stairs3D from the front" % front_travel)
+	if front_climb < STAIRS_FRONT_CLIMB_MIN_HEIGHT:
+		m_failures.append("HumanBody3D only climbed %.2f units up Stairs3D from the front" % front_climb)
+
+	climb_probe.queue_free()
+	floor_body.queue_free()
+	stairs.queue_free()
 
 
 func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:

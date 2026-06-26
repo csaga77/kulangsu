@@ -401,6 +401,7 @@ func move_with_speed(direction_vector: Vector3, movement_speed: float) -> void:
 			start_position,
 			horizontal_motion,
 			step_direction,
+			!preserve_slide_motion,
 			!preserve_slide_motion
 		):
 			m_step_snap_grounded = true
@@ -432,7 +433,8 @@ func _snap_to_walkable_step_floor(
 	start_position: Vector3,
 	horizontal_motion: Vector3,
 	horizontal_direction: Vector3,
-	allow_horizontal_reposition: bool = true
+	allow_horizontal_reposition: bool = true,
+	allow_forward_floor_probe: bool = true
 ) -> bool:
 	if max_step_height <= 0.0 and floor_snap_distance <= 0.0:
 		return false
@@ -445,7 +447,13 @@ func _snap_to_walkable_step_floor(
 	var reference_top_y := maxf(start_position.y, global_position.y)
 	var reference_bottom_y := minf(start_position.y, global_position.y)
 	var snap_position := global_position
-	var floor_y := _find_walkable_step_floor_y(snap_position, horizontal_direction, reference_top_y, reference_bottom_y)
+	var floor_y := _find_walkable_step_floor_y(
+		snap_position,
+		horizontal_direction,
+		reference_top_y,
+		reference_bottom_y,
+		allow_forward_floor_probe
+	)
 	var requested_distance := horizontal_motion.length()
 	var actual_motion := Vector3(
 		global_position.x - start_position.x,
@@ -462,7 +470,12 @@ func _snap_to_walkable_step_floor(
 	)
 	var target_floor_y := NAN
 	if allow_horizontal_reposition and requested_distance > 0.0:
-		target_floor_y = _find_walkable_step_floor_y(target_position, horizontal_direction, reference_top_y, reference_bottom_y)
+		target_floor_y = _find_walkable_step_floor_y(
+			target_position,
+			horizontal_direction,
+			reference_top_y,
+			reference_bottom_y
+		)
 
 	if !is_nan(target_floor_y):
 		var should_use_target_position := is_nan(floor_y)
@@ -488,7 +501,12 @@ func _snap_to_walkable_step_floor(
 		and requested_distance > 0.0
 		and actual_forward_distance < requested_distance * MIN_STEP_BLOCKED_PROGRESS_RATIO
 	):
-		target_floor_y = _find_walkable_step_floor_y(target_position, horizontal_direction, reference_top_y, reference_bottom_y)
+		target_floor_y = _find_walkable_step_floor_y(
+			target_position,
+			horizontal_direction,
+			reference_top_y,
+			reference_bottom_y
+		)
 		if !is_nan(target_floor_y):
 			var target_snap_position := Vector3(target_position.x, target_floor_y, target_position.z)
 			if _can_place_body_at(target_snap_position):
@@ -501,7 +519,13 @@ func _snap_to_walkable_step_floor(
 		return false
 
 	if is_nan(floor_y):
-		var start_floor_y := _find_walkable_step_floor_y(start_position, horizontal_direction, reference_top_y, reference_bottom_y)
+		var start_floor_y := _find_walkable_step_floor_y(
+			start_position,
+			horizontal_direction,
+			reference_top_y,
+			reference_bottom_y,
+			allow_forward_floor_probe
+		)
 		if !is_nan(start_floor_y):
 			var would_drop_to_older_floor := (
 				requested_distance > MIN_STEP_FLOOR_ADJUSTMENT
@@ -566,7 +590,8 @@ func _find_walkable_step_floor_y(
 	body_position: Vector3,
 	horizontal_direction: Vector3,
 	reference_top_y: float,
-	reference_bottom_y: float
+	reference_bottom_y: float,
+	allow_forward_floor_probe: bool = true
 ) -> float:
 	var side_direction := Vector3(-horizontal_direction.z, 0.0, horizontal_direction.x)
 	var forward_reach := body_radius + STEP_FLOOR_PROBE_MARGIN
@@ -597,6 +622,17 @@ func _find_walkable_step_floor_y(
 	)
 
 	var body_support_y := maxf(center_floor_y, side_floor_y)
+	if body_support_y == FLOOR_SAMPLE_MISSING:
+		# Nothing under the body's own footprint (center or either side) within step /
+		# snap range: the actor is standing over a hole or a drop too deep to step down,
+		# so it must fall. Do NOT reach forward to a floor across the gap -- returning the
+		# forward sample here would re-plant the body at that height while it hovers over
+		# the hole. A real step-up keeps the body supported (the center cast reaches up to
+		# max_step_height), so this never blocks climbing.
+		return NAN
+	if !allow_forward_floor_probe:
+		return body_support_y
+
 	var forward_near_floor_y := _sample_walkable_floor_y(
 		body_position + (horizontal_direction * forward_reach),
 		cast_top_y,
@@ -614,14 +650,6 @@ func _find_walkable_step_floor_y(
 		forward_far_floor_y,
 		body_support_y
 	)
-	if body_support_y == FLOOR_SAMPLE_MISSING:
-		# Nothing under the body's own footprint (center or either side) within step /
-		# snap range: the actor is standing over a hole or a drop too deep to step down,
-		# so it must fall. Do NOT reach forward to a floor across the gap -- returning the
-		# forward sample here would re-plant the body at that height while it hovers over
-		# the hole. A real step-up keeps the body supported (the center cast reaches up to
-		# max_step_height), so this never blocks climbing.
-		return NAN
 
 	if forward_floor_y > body_support_y + MIN_STEP_FLOOR_ADJUSTMENT:
 		return forward_floor_y

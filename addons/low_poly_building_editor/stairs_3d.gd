@@ -4,6 +4,10 @@ extends MeshInstance3D
 
 const GENERATED_META := &"stairs_generated"
 const PREVIEW_META := &"building_editor_preview"
+const SIDE_WALL_COLLISION_THICKNESS := 0.64
+const SIDE_WALL_COLLISION_EXTRA_HEIGHT := 1.8
+const LEFT_SIDE_COLLISION_SHAPE_NAME := "LeftSideCollisionShape3D"
+const RIGHT_SIDE_COLLISION_SHAPE_NAME := "RightSideCollisionShape3D"
 
 @export var rebuild := false:
 	set(value):
@@ -420,10 +424,59 @@ func _add_collision_body(vertices: PackedVector3Array, indices: PackedInt32Array
 	body.name = "StairsCollision"
 	body.set_meta(GENERATED_META, true)
 	body.add_child(collision_shape)
+	_add_side_wall_collision_shapes(body)
 	add_child(body)
 	if Engine.is_editor_hint():
 		body.owner = null
 		collision_shape.owner = null
+		for child in body.get_children():
+			if child != collision_shape:
+				child.owner = null
+
+
+func _add_side_wall_collision_shapes(body: StaticBody3D) -> void:
+	var size := get_stair_size()
+	if size.x <= 0.001 or size.y <= 0.001:
+		return
+	var bottom_y := -maxf(stair_thickness, 0.0)
+	var side_wall_thickness := minf(SIDE_WALL_COLLISION_THICKNESS, size.x * 0.45)
+	var collision_height := maxf(stair_height, 0.05) + SIDE_WALL_COLLISION_EXTRA_HEIGHT - bottom_y
+	var collision_center_y := bottom_y + collision_height * 0.5
+	_add_side_wall_collision_shape(
+		body,
+		LEFT_SIDE_COLLISION_SHAPE_NAME,
+		Vector3(
+			-side_wall_thickness * 0.5,
+			collision_center_y,
+			size.y * 0.5
+		),
+		Vector3(side_wall_thickness, collision_height, size.y)
+	)
+	_add_side_wall_collision_shape(
+		body,
+		RIGHT_SIDE_COLLISION_SHAPE_NAME,
+		Vector3(
+			size.x + side_wall_thickness * 0.5,
+			collision_center_y,
+			size.y * 0.5
+		),
+		Vector3(side_wall_thickness, collision_height, size.y)
+	)
+
+
+func _add_side_wall_collision_shape(
+	body: StaticBody3D,
+	shape_name: String,
+	shape_position: Vector3,
+	shape_size: Vector3
+) -> void:
+	var side_shape := CollisionShape3D.new()
+	side_shape.name = shape_name
+	var box := BoxShape3D.new()
+	box.size = shape_size
+	side_shape.shape = box
+	side_shape.position = shape_position
+	body.add_child(side_shape)
 
 
 func _clear_generated_children() -> void:
