@@ -10,12 +10,12 @@ const REQUIRED_COLLISION_ITEMS := [
 # Spawn just above the Floor3D surface (y=0) so the body settles onto it on the
 # first physics frame instead of dropping in from height.
 const PLAYER_START := Vector3(0.0, 0.1, -11.0)
-const PROBE_START := Vector3(1.5, 0.1, -10.0)
+const PROBE_START := Vector3(5.25, 0.1, -10.0)
 const PROBE_DIRECTION := Vector3.RIGHT
 const PROBE_SPEED := 4.0
 const PROBE_FRAMES := 90
 const PROBE_GROUNDING_VELOCITY := -0.5
-const MAX_BLOCKED_TRAVEL := 3.0
+const MAX_BLOCKED_TRAVEL := 1.85
 const MAX_VERTICAL_DRIFT := 0.15
 const MAX_WALL_NORMAL_Y := 0.75
 const STAIR_PROBE_START := Vector3(0.0, 0.1, -13.5)

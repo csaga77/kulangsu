@@ -9,8 +9,14 @@ const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.
 const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
 const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
+const HUMAN_BODY_3D_SCENE := preload("res://characters/human_body_3d.tscn")
 const TEST_ROOF_ANGLE_DEGREES := 40.0
 const TEST_ROOF_ALT_ANGLE_DEGREES := 30.0
+const WALL_COLLISION_TEST_ORIGIN := Vector3(24.0, 0.0, 36.0)
+const WALL_COLLISION_PROBE_SPEED := 4.0
+const WALL_COLLISION_PROBE_FRAMES := 90
+const WALL_COLLISION_MAX_TRAVEL := 1.85
+const WALL_COLLISION_MAX_NORMAL_Y := 0.75
 
 var m_failures: Array[String] = []
 
@@ -67,6 +73,7 @@ func _run_smoke_checks() -> void:
 	_validate_connected_wall_top_caps()
 	_validate_multi_wall_joint_fill()
 	_validate_enclosed_wall_loop_caps()
+	await _validate_wall_collision_blocks_character(coordinator)
 
 	for failure in m_failures:
 		push_error(failure)
@@ -230,6 +237,78 @@ func _validate_wall_base_height(coordinator: BuildingEditor3DScript) -> void:
 		m_failures.append("Wall3D did not preserve elevated wall base endpoints")
 	if absf(elevated.position.y - base_y) > 0.001:
 		m_failures.append("Wall3D did not place wall transform at elevated base height")
+
+
+func _validate_wall_collision_blocks_character(coordinator: BuildingEditor3DScript) -> void:
+	var floor_body := StaticBody3D.new()
+	floor_body.name = "WallCollisionProbeFloor"
+	floor_body.set_meta(&"test_generated", true)
+	var floor_shape := CollisionShape3D.new()
+	var floor_box := BoxShape3D.new()
+	floor_box.size = Vector3(8.0, 0.1, 8.0)
+	floor_shape.shape = floor_box
+	floor_shape.position = WALL_COLLISION_TEST_ORIGIN + Vector3(0.0, -0.05, 0.0)
+	floor_body.add_child(floor_shape)
+	add_child(floor_body)
+
+	var wall := coordinator.create_wall_node(
+		WALL_COLLISION_TEST_ORIGIN + Vector3(2.0, 0.0, -2.0),
+		WALL_COLLISION_TEST_ORIGIN + Vector3(2.0, 0.0, 2.0),
+		2.4,
+		0.22,
+		Color(0.78, 0.68, 0.54, 1.0)
+	)
+	coordinator.add_child(wall)
+
+	var collision_body := wall.get_node_or_null("WallCollision") as StaticBody3D
+	if collision_body == null:
+		m_failures.append("Wall3D did not generate solid collision for the character")
+		floor_body.queue_free()
+		return
+	var collision_shape := collision_body.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if collision_shape == null or !(collision_shape.shape is BoxShape3D):
+		m_failures.append("Wall3D solid character collision did not use a box blocker")
+		floor_body.queue_free()
+		return
+
+	var probe := HUMAN_BODY_3D_SCENE.instantiate() as HumanBody3D
+	if probe == null:
+		m_failures.append("Wall3D character collision probe could not instantiate HumanBody3D")
+		floor_body.queue_free()
+		return
+	probe.name = "WallCollisionHumanBody3DProbe"
+	probe.visible = false
+	probe.body_radius = 0.28
+	probe.body_height = 1.72
+	add_child(probe)
+	await get_tree().physics_frame
+
+	probe.global_position = WALL_COLLISION_TEST_ORIGIN + Vector3(0.0, 0.1, 0.0)
+	probe.velocity = Vector3.ZERO
+	for i in range(8):
+		probe.velocity.y = -0.5
+		probe.move_with_speed(Vector3.ZERO, 0.0)
+		await get_tree().physics_frame
+
+	var start_position := probe.global_position
+	var saw_wall_collision := false
+	for i in range(WALL_COLLISION_PROBE_FRAMES):
+		probe.velocity.y = -0.5
+		probe.move_with_speed(Vector3.RIGHT, WALL_COLLISION_PROBE_SPEED)
+		for collision_index in range(probe.get_slide_collision_count()):
+			var collision := probe.get_slide_collision(collision_index)
+			if absf(collision.get_normal().y) <= WALL_COLLISION_MAX_NORMAL_Y:
+				saw_wall_collision = true
+		await get_tree().physics_frame
+
+	var probe_travel := start_position.distance_to(probe.global_position)
+	if probe_travel > WALL_COLLISION_MAX_TRAVEL:
+		m_failures.append("HumanBody3D moved through solid Wall3D collision by %.2f units" % probe_travel)
+	if !saw_wall_collision:
+		m_failures.append("HumanBody3D did not report a slide collision against Wall3D")
+
+	probe.queue_free()
+	floor_body.queue_free()
 
 
 func _validate_floor_node(coordinator: BuildingEditor3DScript) -> void:

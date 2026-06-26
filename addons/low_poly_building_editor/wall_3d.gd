@@ -13,6 +13,8 @@ const MergedWallMeshBuilderScript = preload("res://addons/low_poly_building_edit
 const SEGMENT_ASSIGN_MARGIN := 0.25
 const SEGMENT_ASSIGN_DEPTH := 0.2
 const EDITOR_REBUILD_DELAY_SECONDS := 0.12
+const COLLISION_MIN_SPAN := 0.001
+const ROOF_COLLISION_CLIP_INFINITY := 999999.0
 
 @export var rebuild := false:
 	set(value):
@@ -814,25 +816,152 @@ func _clamped_opening_local_position(
 	return local_position
 
 
-func _add_collision_body(collision_faces: PackedVector3Array) -> void:
-	if collision_faces.is_empty():
-		return
-
-	var shape := ConcavePolygonShape3D.new()
-	shape.set_faces(collision_faces)
-
-	var collision_shape := CollisionShape3D.new()
-	collision_shape.name = "CollisionShape3D"
-	collision_shape.shape = shape
-
+func _add_collision_body(_collision_faces: PackedVector3Array) -> void:
 	var body := StaticBody3D.new()
 	body.name = "WallCollision"
 	body.set_meta(GENERATED_META, true)
-	body.add_child(collision_shape)
+	var shape_count := _add_collision_shapes_for_wall_cells(body)
+	if shape_count <= 0:
+		body.free()
+		return
 	add_child(body)
 	if Engine.is_editor_hint():
 		body.owner = null
+
+
+func _add_collision_shapes_for_wall_cells(body: StaticBody3D) -> int:
+	var assigned_openings := _assigned_opening_rects()
+	var shape_count := 0
+	for segment_index in range(get_segment_count()):
+		var segment := get_segment(segment_index)
+		if segment == null:
+			continue
+		var segment_length := segment.get_length()
+		if (
+			segment_length <= COLLISION_MIN_SPAN
+			or segment.height <= COLLISION_MIN_SPAN
+			or segment.thickness <= COLLISION_MIN_SPAN
+		):
+			continue
+		var opening_rects: Array[Rect2] = []
+		if segment_index < assigned_openings.size():
+			opening_rects = assigned_openings[segment_index]
+		var x_cuts := _collision_cut_values(opening_rects, segment_length, true)
+		var y_cuts := _collision_cut_values(opening_rects, segment.height, false)
+		var frame := get_segment_local_frame(segment_index)
+		for x_index in range(x_cuts.size() - 1):
+			var x0 := x_cuts[x_index]
+			var x1 := x_cuts[x_index + 1]
+			if x1 - x0 <= COLLISION_MIN_SPAN:
+				continue
+			for y_index in range(y_cuts.size() - 1):
+				var y0 := y_cuts[y_index]
+				var y1 := y_cuts[y_index + 1]
+				if y1 - y0 <= COLLISION_MIN_SPAN:
+					continue
+				var center := Vector2((x0 + x1) * 0.5, (y0 + y1) * 0.5)
+				if _collision_point_inside_opening(center, opening_rects):
+					continue
+				y1 = _clip_collision_cell_top_to_roofs(frame, x0, x1, y0, y1, segment.thickness)
+				if y1 - y0 <= COLLISION_MIN_SPAN:
+					continue
+				_add_collision_box_shape(
+					body,
+					frame,
+					x0,
+					x1,
+					y0,
+					y1,
+					segment.thickness,
+					shape_count
+				)
+				shape_count += 1
+	return shape_count
+
+
+func _clip_collision_cell_top_to_roofs(
+	frame: Transform3D,
+	x0: float,
+	x1: float,
+	y0: float,
+	y1: float,
+	thickness: float
+) -> float:
+	if m_roof_clip_surfaces.is_empty():
+		return y1
+	var half_thickness := thickness * 0.5
+	var samples := [
+		Vector2((x0 + x1) * 0.5, 0.0),
+		Vector2(x0, -half_thickness),
+		Vector2(x0, half_thickness),
+		Vector2(x1, -half_thickness),
+		Vector2(x1, half_thickness),
+	]
+	var clipped_top := y1
+	for sample in samples:
+		var local_point := frame * Vector3(sample.x, 0.0, sample.y)
+		var plan_point := Vector2(local_point.x, local_point.z)
+		var wall_local_clip_y := MergedWallMeshBuilderScript._roof_clip_height_at_plan_point(
+			plan_point,
+			m_roof_clip_surfaces
+		)
+		if wall_local_clip_y >= ROOF_COLLISION_CLIP_INFINITY:
+			continue
+		clipped_top = minf(clipped_top, wall_local_clip_y - frame.origin.y)
+	return maxf(clipped_top, y0)
+
+
+func _add_collision_box_shape(
+	body: StaticBody3D,
+	frame: Transform3D,
+	x0: float,
+	x1: float,
+	y0: float,
+	y1: float,
+	thickness: float,
+	shape_index: int
+) -> void:
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(x1 - x0, y1 - y0, thickness)
+
+	var collision_shape := CollisionShape3D.new()
+	collision_shape.name = (
+		"CollisionShape3D" if shape_index == 0
+		else "CollisionShape3D%d" % (shape_index + 1)
+	)
+	collision_shape.shape = shape
+	collision_shape.transform = Transform3D(
+		frame.basis,
+		frame * Vector3((x0 + x1) * 0.5, (y0 + y1) * 0.5, 0.0)
+	)
+	collision_shape.set_meta(GENERATED_META, true)
+	body.add_child(collision_shape)
+	if Engine.is_editor_hint():
 		collision_shape.owner = null
+
+
+func _collision_cut_values(openings: Array[Rect2], max_value: float, horizontal: bool) -> Array[float]:
+	var values: Array[float] = [0.0, max_value]
+	for opening in openings:
+		if horizontal:
+			values.append(clampf(opening.position.x, 0.0, max_value))
+			values.append(clampf(opening.end.x, 0.0, max_value))
+		else:
+			values.append(clampf(opening.position.y, 0.0, max_value))
+			values.append(clampf(opening.end.y, 0.0, max_value))
+	values.sort()
+	var result: Array[float] = []
+	for value in values:
+		if result.is_empty() or absf(result[result.size() - 1] - value) > COLLISION_MIN_SPAN:
+			result.append(value)
+	return result
+
+
+func _collision_point_inside_opening(point: Vector2, openings: Array[Rect2]) -> bool:
+	for opening in openings:
+		if opening.has_point(point):
+			return true
+	return false
 
 
 func _build_wall_material(color: Color) -> StandardMaterial3D:

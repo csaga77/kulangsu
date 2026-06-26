@@ -49,7 +49,7 @@
 - Window placement snaps horizontally to the coordinator's grid step, and the opening's bottom edge sits at the configurable sill height from the dock (persisted with the dock state, default 0.9) instead of following the cursor's vertical position. The selected window style and dimensions persist with the dock state.
 - In Window or Door tool mode, hovering over a placed opening highlights it blue (center) or yellow (edge). Clicking and dragging the center repositions it; dragging an edge resizes it — left/right edges adjust width symmetrically, top/bottom edges adjust height (Y locks to the opening's sill + half-height). Both snap to grid. Releasing commits via undo/redo; Escape or right-click cancels.
 - In Wall tool mode, hovering near any primary or extra segment endpoint highlights it yellow (resize); hovering a shared joint endpoint also shows an orange joint marker; hovering the middle highlights blue (move). Shift-clicking the middle of a wall span inserts a joint at the snapped hit point, splitting that span into two connected segments. Dragging an isolated endpoint moves only that endpoint (grid-snapped); dragging a shared joint endpoint moves every connected segment endpoint at that joint; Option/Alt-dragging a shared joint endpoint detaches only the picked segment endpoint; dragging any single endpoint near another endpoint or joint snaps it there to connect. Dragging the middle translates the wall's authored segment set. If an endpoint drag collapses a span to zero length, release deletes that segment, promoting another span to the primary segment when needed; collapsing the only span deletes the wall node. If a drag edit crosses another wall, sibling clip geometry refreshes without merging wall instances; same-wall crossings are still normalized so the crossing point becomes an editable endpoint on both involved segments.
-- Wall meshes duplicate vertices per face, carry vertex colors, and use rough flat materials for hard low-poly face breaks.
+- Wall meshes duplicate vertices per face, carry vertex colors, use rough flat materials for hard low-poly face breaks, and generate opening-aware solid box collision cells so `HumanBody3D` is blocked by both sides of the wall instead of sliding through a thin mesh shell.
 - Floor meshes duplicate vertices per face, carry vertex colors, use rough flat materials, split their top and bottom faces around stored holes, generate vertical inner faces for each hole, and generate concave mesh collision from the slab geometry.
 - Stairs meshes duplicate vertices per face, carry vertex colors, use rough flat materials, expose real horizontal treads and vertical risers, and generate concave mesh collision from the stepped solid.
 - Pillar meshes duplicate vertices per face, carry vertex colors, use rough flat materials, and generate cylinder collision from the outermost body or rim radius and height.
@@ -100,14 +100,14 @@
 - `BuildingEditor3D` owns default stairs settings and stairs node creation alongside wall and floor defaults.
 - `BuildingEditor3D` owns default pillar settings and pillar node creation alongside wall and floor defaults.
 - `BuildingEditor3D` owns default roof settings, roof node creation, and same-eave roof overlap clipping alongside wall, floor, and pillar defaults.
-- `Wall3D` owns its primary span plus authored `extra_segments`, transient sibling and roof clip inputs, opening-to-segment assignment, and the mesh/collision rebuild.
+- `Wall3D` owns its primary span plus authored `extra_segments`, transient sibling and roof clip inputs, opening-to-segment assignment, and the mesh/solid collision rebuild.
 - `Floor3D` owns its rectangular slab mesh, stored rectangular floor holes, vertex colors, material, and generated collision.
 - `Stairs3D` owns its stepped mesh, vertex colors, material, rotation, step count, and generated collision.
 - `Pillar3D` owns its low-poly cylinder mesh, vertex colors, material, and generated collision.
 - `Roof3D` owns its low-poly roof mesh, vertex colors, material, and generated collision.
 - `MergedWallMeshBuilder` (`merged_wall_mesh_builder.gd`) owns the plan-space clipping math that can render a subset of wall segments while using all supplied same-plane segments as cutters, and the roof underside clipping that removes generated wall faces above visible roof bottoms.
 - `WallSegment3D` (`wall_segment_3d.gd`) is the typed resource for one wall span, including static helpers for collinear segment merging and intersection splitting.
-- `Wall3D` owns generated mesh, vertex colors, collision, and opening-driven rebuilds.
+- `Wall3D` owns generated mesh, vertex colors, opening-aware solid collision cells, and opening-driven rebuilds.
 - `BuildingOpening3D` owns the visible window/door frame, window-pane, or door-panel marker and the dimensions consumed by wall mesh generation. With `generate_collision` (default on) each solid part (frame jambs, door panels, window panes) also parents a `StaticBody3D`/box `CollisionShape3D` so a closed door/window and the frame block the character; a frame-only opening stays passable because only the edge frame carries collision.
 
 ## Relevant Files
