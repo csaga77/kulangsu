@@ -39,6 +39,9 @@ const MIN_STAIR_DOWN_GROUNDED_RATIO := 0.65
 const MAX_STAIR_DOWN_UNGROUNDED_RUN := 8
 const MAX_STAIR_DESCENT_DIP := 0.25
 const MAX_STAIR_FRAME_DROP := 0.8
+const STAIR_REVERSAL_CYCLES := 8
+const STAIR_REVERSAL_SIDE_BIAS := 0.18
+const MIN_STAIR_REVERSAL_CLIMB_HEIGHT := 1.8
 const STAIR_JUMP_CYCLES := 4
 const STAIR_JUMP_FRAMES := 40
 const MAX_STAIR_JUMP_FLOOR_GAP := 0.12
@@ -78,6 +81,7 @@ func _run_smoke_checks() -> void:
 	await _validate_character_pushes_rigid_body(failures)
 	await _validate_character_stair_navigation(failures)
 	await _validate_character_climbs_from_riser_contact(failures)
+	await _validate_character_stair_reversal_stability(failures)
 	await _validate_character_stair_jump_stability(failures)
 
 	_reset_player()
@@ -86,6 +90,7 @@ func _run_smoke_checks() -> void:
 	else:
 		for failure in failures:
 			push_error(failure)
+
 	get_tree().quit(0 if failures.is_empty() else 1)
 
 
@@ -409,6 +414,92 @@ func _validate_character_climbs_from_riser_contact(failures: Array[String]) -> v
 		failures.append(
 			"HumanBody3D stair riser-contact probe climbed only %.2f units" % stair_climb
 		)
+
+	probe.queue_free()
+
+
+func _validate_character_stair_reversal_stability(failures: Array[String]) -> void:
+	var probe := HUMAN_BODY_3D_SCENE.instantiate() as HumanBody3D
+	if probe == null:
+		failures.append("HumanBody3D stair reversal probe failed to instantiate")
+		return
+
+	probe.name = "CharacterStairReversalProbe"
+	probe.visible = false
+	probe.body_radius = 0.28
+	probe.body_height = 1.72
+	add_child(probe)
+
+	await get_tree().physics_frame
+	probe.global_position = STAIR_PROBE_START
+	probe.velocity = Vector3.ZERO
+	for i in range(STAIR_SETTLE_FRAMES):
+		probe.velocity.y = STAIR_PROBE_GROUNDING_VELOCITY
+		probe.move_with_speed(Vector3.ZERO, 0.0)
+		await get_tree().physics_frame
+
+	var lower_position := probe.global_position
+	var max_frame_drop := 0.0
+	var longest_ungrounded_run := 0
+	for cycle in range(STAIR_REVERSAL_CYCLES):
+		var side_bias := Vector3.LEFT if cycle % 2 == 0 else Vector3.RIGHT
+		var up_direction := (STAIR_UP_DIRECTION + side_bias * STAIR_REVERSAL_SIDE_BIAS).normalized()
+		var down_direction := (STAIR_DOWN_DIRECTION - side_bias * STAIR_REVERSAL_SIDE_BIAS).normalized()
+
+		var climb_start_y := probe.global_position.y
+		var max_y := climb_start_y
+		for i in range(_stair_frames_for_travel(STAIR_ASCEND_TARGET_PROGRESS, HumanBody3D.DEFAULT_RUN_SPEED)):
+			var before_y := probe.global_position.y
+			probe.velocity.y = STAIR_PROBE_GROUNDING_VELOCITY
+			probe.move_with_speed(up_direction, HumanBody3D.DEFAULT_RUN_SPEED)
+			max_frame_drop = maxf(max_frame_drop, before_y - probe.global_position.y)
+			max_y = maxf(max_y, probe.global_position.y)
+			var climb_progress := (probe.global_position - lower_position).dot(STAIR_UP_DIRECTION)
+			await get_tree().physics_frame
+			if (
+				climb_progress >= STAIR_ASCEND_TARGET_PROGRESS
+				and max_y - climb_start_y >= MIN_STAIR_REVERSAL_CLIMB_HEIGHT
+			):
+				break
+
+		if max_y - climb_start_y < MIN_STAIR_REVERSAL_CLIMB_HEIGHT:
+			failures.append(
+				"HumanBody3D stair reversal cycle %d climbed only %.2f units"
+					% [cycle + 1, max_y - climb_start_y]
+			)
+			break
+
+		var top_position := probe.global_position
+		var ungrounded_run := 0
+		for i in range(_stair_frames_for_travel(STAIR_ASCEND_TARGET_PROGRESS, HumanBody3D.DEFAULT_RUN_SPEED)):
+			var before_y := probe.global_position.y
+			probe.velocity.y = STAIR_PROBE_GROUNDING_VELOCITY
+			probe.move_with_speed(down_direction, HumanBody3D.DEFAULT_RUN_SPEED)
+			max_frame_drop = maxf(max_frame_drop, before_y - probe.global_position.y)
+			if _is_probe_grounded(probe):
+				ungrounded_run = 0
+			else:
+				ungrounded_run += 1
+				longest_ungrounded_run = maxi(longest_ungrounded_run, ungrounded_run)
+			var return_progress := (top_position - probe.global_position).dot(STAIR_UP_DIRECTION)
+			await get_tree().physics_frame
+			if (
+				return_progress >= STAIR_ASCEND_TARGET_PROGRESS - probe.body_radius
+				and probe.global_position.y <= lower_position.y + MAX_STAIR_RETURN_HEIGHT
+			):
+				break
+
+	if max_frame_drop > MAX_STAIR_FRAME_DROP:
+		failures.append(
+			"HumanBody3D stair reversal probe dropped %.2f units in one frame" % max_frame_drop
+		)
+	if longest_ungrounded_run > MAX_STAIR_DOWN_UNGROUNDED_RUN:
+		failures.append(
+			"HumanBody3D stair reversal probe lost support for %d consecutive frames"
+				% longest_ungrounded_run
+		)
+	if absf(probe.global_position.y - lower_position.y) > MAX_STAIR_RETURN_HEIGHT:
+		failures.append("HumanBody3D stair reversal probe did not finish on the lower landing")
 
 	probe.queue_free()
 
