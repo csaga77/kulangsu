@@ -21,6 +21,13 @@ const STEP_FLOOR_SIDE_PROBE_SCALE := 0.72
 const STEP_FLOOR_FORWARD_FAR_SCALE := 2.0
 const STEP_FLOOR_CAST_MARGIN := 0.16
 const WALL_SLIDE_INPUT_DOT_THRESHOLD := 0.05
+const WALL_CONTACT_BLOCKING := 1
+const WALL_CONTACT_STAIR_SIDE := 2
+const STAIR_SIDE_WALL_COLLISION_META := &"stairs_side_wall_collision"
+const STAIR_SIDE_COLLISION_SHAPE_PREFIXES: Array[String] = [
+	"LeftSideCollisionShape3D",
+	"RightSideCollisionShape3D",
+]
 const RIGID_BODY_PUSH_INPUT_DOT_THRESHOLD := 0.05
 const RIGID_BODY_PUSH_SPEED_FACTOR := 0.35
 const RIGID_BODY_PUSH_MAX_EFFECTIVE_MASS := 1.0
@@ -398,26 +405,34 @@ func move_with_speed(direction_vector: Vector3, movement_speed: float) -> void:
 		step_direction = m_last_step_direction
 	move_and_slide()
 	_apply_rigid_body_pushes(step_direction, movement_speed)
-	var has_blocking_wall_contact := _has_blocking_wall_contact(step_direction)
+	var wall_contact_flags := _get_blocking_wall_contact_flags(step_direction)
+	var has_blocking_wall_contact := (wall_contact_flags & WALL_CONTACT_BLOCKING) != 0
+	var has_blocking_stair_side_wall_contact := (wall_contact_flags & WALL_CONTACT_STAIR_SIDE) != 0
 	m_step_snap_grounded = is_on_floor()
 	if can_reacquire_floor and step_direction.length_squared() > 0.000001:
-		var preserve_slide_motion := has_blocking_wall_contact
+		var allow_horizontal_reposition := !has_blocking_wall_contact
+		var allow_forward_step_up := !has_blocking_stair_side_wall_contact
+		# Keep forward probes during wall contact for step-downs, but block their
+		# step-up path only for stair side blockers. A front riser contact is the
+		# normal starting point for stepping up onto the next tread.
 		if _snap_to_walkable_step_floor(
 			start_position,
 			horizontal_motion,
 			step_direction,
-			!preserve_slide_motion,
-			!preserve_slide_motion
+			allow_horizontal_reposition,
+			true,
+			allow_forward_step_up
 		):
 			m_step_snap_grounded = true
 
 
-func _has_blocking_wall_contact(horizontal_direction: Vector3) -> bool:
+func _get_blocking_wall_contact_flags(horizontal_direction: Vector3) -> int:
 	var flat_direction := Vector3(horizontal_direction.x, 0.0, horizontal_direction.z)
 	if flat_direction.length_squared() <= 0.000001:
-		return false
+		return 0
 	flat_direction = flat_direction.normalized()
 	var min_floor_normal_y := cos(floor_max_angle)
+	var flags := 0
 	for collision_index in range(get_slide_collision_count()):
 		var collision := get_slide_collision(collision_index)
 		if collision == null:
@@ -432,6 +447,28 @@ func _has_blocking_wall_contact(horizontal_direction: Vector3) -> bool:
 			continue
 		flat_normal = flat_normal.normalized()
 		if flat_direction.dot(flat_normal) < -WALL_SLIDE_INPUT_DOT_THRESHOLD:
+			flags = flags | WALL_CONTACT_BLOCKING
+			if _is_stair_side_wall_collision(collision):
+				flags = flags | WALL_CONTACT_STAIR_SIDE
+	return flags
+
+
+func _is_stair_side_wall_collision(collision: KinematicCollision3D) -> bool:
+	var collider := collision.get_collider() as CollisionObject3D
+	if collider == null:
+		return false
+	var collider_shape_index := collision.get_collider_shape_index()
+	if collider_shape_index < 0:
+		return false
+	var shape_owner_id := collider.shape_find_owner(collider_shape_index)
+	var shape_owner := collider.shape_owner_get_owner(shape_owner_id) as Node
+	if shape_owner == null:
+		return false
+	if shape_owner.has_meta(STAIR_SIDE_WALL_COLLISION_META):
+		return true
+	var shape_name := String(shape_owner.name)
+	for shape_prefix in STAIR_SIDE_COLLISION_SHAPE_PREFIXES:
+		if shape_name.begins_with(shape_prefix):
 			return true
 	return false
 
@@ -475,7 +512,8 @@ func _snap_to_walkable_step_floor(
 	horizontal_motion: Vector3,
 	horizontal_direction: Vector3,
 	allow_horizontal_reposition: bool = true,
-	allow_forward_floor_probe: bool = true
+	allow_forward_floor_probe: bool = true,
+	allow_forward_step_up: bool = true
 ) -> bool:
 	if max_step_height <= 0.0 and floor_snap_distance <= 0.0:
 		return false
@@ -493,7 +531,8 @@ func _snap_to_walkable_step_floor(
 		horizontal_direction,
 		reference_top_y,
 		reference_bottom_y,
-		allow_forward_floor_probe
+		allow_forward_floor_probe,
+		allow_forward_step_up
 	)
 	var requested_distance := horizontal_motion.length()
 	var actual_motion := Vector3(
@@ -565,7 +604,8 @@ func _snap_to_walkable_step_floor(
 			horizontal_direction,
 			reference_top_y,
 			reference_bottom_y,
-			allow_forward_floor_probe
+			allow_forward_floor_probe,
+			allow_forward_step_up
 		)
 		if !is_nan(start_floor_y):
 			var would_drop_to_older_floor := (
@@ -632,7 +672,8 @@ func _find_walkable_step_floor_y(
 	horizontal_direction: Vector3,
 	reference_top_y: float,
 	reference_bottom_y: float,
-	allow_forward_floor_probe: bool = true
+	allow_forward_floor_probe: bool = true,
+	allow_forward_step_up: bool = true
 ) -> float:
 	var side_direction := Vector3(-horizontal_direction.z, 0.0, horizontal_direction.x)
 	var forward_reach := body_radius + STEP_FLOOR_PROBE_MARGIN
@@ -692,7 +733,9 @@ func _find_walkable_step_floor_y(
 		body_support_y
 	)
 
-	if forward_floor_y > body_support_y + MIN_STEP_FLOOR_ADJUSTMENT:
+	if allow_forward_step_up and forward_floor_y > body_support_y + MIN_STEP_FLOOR_ADJUSTMENT:
+		return forward_floor_y
+	if !allow_forward_step_up and forward_floor_y < body_support_y - MIN_STEP_FLOOR_ADJUSTMENT:
 		return forward_floor_y
 
 	if center_floor_y < body_support_y - MIN_STEP_FLOOR_ADJUSTMENT:

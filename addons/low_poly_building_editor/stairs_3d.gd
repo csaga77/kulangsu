@@ -5,6 +5,7 @@ extends MeshInstance3D
 const GENERATED_META := &"stairs_generated"
 const PREVIEW_META := &"building_editor_preview"
 const SIDE_WALL_COLLISION_THICKNESS := 0.64
+const SIDE_WALL_COLLISION_META := &"stairs_side_wall_collision"
 const LEFT_SIDE_COLLISION_SHAPE_NAME := "LeftSideCollisionShape3D"
 const RIGHT_SIDE_COLLISION_SHAPE_NAME := "RightSideCollisionShape3D"
 
@@ -480,6 +481,7 @@ func _add_side_wall_collision_shape(
 ) -> void:
 	var side_shape := CollisionShape3D.new()
 	side_shape.name = shape_name
+	side_shape.set_meta(SIDE_WALL_COLLISION_META, true)
 	var box := BoxShape3D.new()
 	box.size = shape_size
 	side_shape.shape = box
