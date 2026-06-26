@@ -18,10 +18,12 @@ const PROBE_GROUNDING_VELOCITY := -0.5
 const MAX_BLOCKED_TRAVEL := 1.85
 const MAX_VERTICAL_DRIFT := 0.15
 const MAX_WALL_NORMAL_Y := 0.75
-const STAIR_PROBE_START := Vector3(0.0, 0.1, -13.5)
+const STAIR_PROBE_START := Vector3(5.5, 0.1, 1.0)
+const STAIR_UP_DIRECTION := Vector3.BACK
+const STAIR_DOWN_DIRECTION := Vector3.FORWARD
 const STAIR_PROBE_SPEEDS: Array[float] = [2.4, 4.0, 7.5]
-const STAIR_UP_FRAMES := 70
-const STAIR_DOWN_FRAMES := 75
+const STAIR_UP_FRAMES := 150
+const STAIR_DOWN_FRAMES := 160
 const STAIR_SETTLE_FRAMES := 8
 const MIN_STAIR_CLIMB_HEIGHT := 2.0
 const MIN_STAIR_HORIZONTAL_TRAVEL := 2.0
@@ -36,6 +38,13 @@ const STAIR_JUMP_CYCLES := 4
 const STAIR_JUMP_FRAMES := 40
 const MAX_STAIR_JUMP_FLOOR_GAP := 0.12
 const MAX_STAIR_JUMP_FRAME_DROP := 0.25
+const RIGID_PUSH_TEST_ORIGIN := Vector3(-24.0, 0.0, -8.0)
+const RIGID_PUSH_BALL_RADIUS := 0.4
+const RIGID_PUSH_BALL_MASS := 0.2
+const RIGID_PUSH_PROBE_START := Vector3(-1.45, 0.1, 0.0)
+const RIGID_PUSH_PROBE_SPEED := 4.0
+const RIGID_PUSH_FRAMES := 50
+const MIN_RIGID_PUSH_TRAVEL := 0.45
 const FLOOR_SAMPLE_MISSING := -INF
 
 @onready var m_player: HumanBody3D = $human_body_3d
@@ -61,6 +70,7 @@ func _run_smoke_checks() -> void:
 	var failures: Array[String] = []
 	_validate_scene_nodes(failures)
 	await _validate_character_building_collision(failures)
+	await _validate_character_pushes_rigid_body(failures)
 	await _validate_character_stair_navigation(failures)
 	await _validate_character_stair_jump_stability(failures)
 
@@ -70,6 +80,7 @@ func _run_smoke_checks() -> void:
 	else:
 		for failure in failures:
 			push_error(failure)
+	get_tree().quit(0 if failures.is_empty() else 1)
 
 
 func _reset_player() -> void:
@@ -139,6 +150,73 @@ func _validate_character_building_collision(failures: Array[String]) -> void:
 	probe.queue_free()
 
 
+func _validate_character_pushes_rigid_body(failures: Array[String]) -> void:
+	var floor_body := StaticBody3D.new()
+	floor_body.name = "RigidPushProbeFloor"
+	var floor_shape := CollisionShape3D.new()
+	var floor_box := BoxShape3D.new()
+	floor_box.size = Vector3(7.0, 0.1, 4.0)
+	floor_shape.shape = floor_box
+	floor_shape.position = RIGID_PUSH_TEST_ORIGIN + Vector3(0.0, -0.05, 0.0)
+	floor_body.add_child(floor_shape)
+	add_child(floor_body)
+
+	var ball := RigidBody3D.new()
+	ball.name = "RigidPushProbeBall"
+	ball.mass = RIGID_PUSH_BALL_MASS
+	ball.gravity_scale = 0.0
+	ball.can_sleep = false
+	ball.position = RIGID_PUSH_TEST_ORIGIN + Vector3(0.0, RIGID_PUSH_BALL_RADIUS, 0.0)
+	var ball_shape := CollisionShape3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = RIGID_PUSH_BALL_RADIUS
+	ball_shape.shape = sphere
+	ball.add_child(ball_shape)
+	add_child(ball)
+
+	var probe := HUMAN_BODY_3D_SCENE.instantiate() as HumanBody3D
+	if probe == null:
+		failures.append("failed to instantiate HumanBody3D rigid push probe")
+		floor_body.queue_free()
+		ball.queue_free()
+		return
+
+	probe.name = "CharacterRigidPushProbe"
+	probe.visible = false
+	probe.body_radius = 0.28
+	probe.body_height = 1.72
+	add_child(probe)
+
+	await get_tree().physics_frame
+	probe.global_position = RIGID_PUSH_TEST_ORIGIN + RIGID_PUSH_PROBE_START
+	probe.velocity = Vector3.ZERO
+	for i in range(8):
+		probe.velocity.y = PROBE_GROUNDING_VELOCITY
+		probe.move_with_speed(Vector3.ZERO, 0.0)
+		await get_tree().physics_frame
+
+	var ball_start_x := ball.global_position.x
+	var saw_ball_collision := false
+	for i in range(RIGID_PUSH_FRAMES):
+		probe.velocity.y = PROBE_GROUNDING_VELOCITY
+		probe.move_with_speed(Vector3.RIGHT, RIGID_PUSH_PROBE_SPEED)
+		for collision_index in range(probe.get_slide_collision_count()):
+			var collision := probe.get_slide_collision(collision_index)
+			if collision != null and collision.get_collider() == ball:
+				saw_ball_collision = true
+		await get_tree().physics_frame
+
+	var ball_travel := ball.global_position.x - ball_start_x
+	if !saw_ball_collision:
+		failures.append("HumanBody3D rigid push probe did not collide with the ball")
+	if ball_travel < MIN_RIGID_PUSH_TRAVEL:
+		failures.append("HumanBody3D pushed a RigidBody3D ball only %.2f units" % ball_travel)
+
+	probe.queue_free()
+	ball.queue_free()
+	floor_body.queue_free()
+
+
 func _validate_character_stair_navigation(failures: Array[String]) -> void:
 
 	for stair_probe_speed in STAIR_PROBE_SPEEDS:
@@ -175,7 +253,7 @@ func _validate_character_stair_navigation_at_speed(
 	for i in range(STAIR_UP_FRAMES):
 		var before_y := probe.global_position.y
 		probe.velocity.y = STAIR_PROBE_GROUNDING_VELOCITY
-		probe.move_with_speed(Vector3.FORWARD, stair_probe_speed)
+		probe.move_with_speed(STAIR_UP_DIRECTION, stair_probe_speed)
 		max_up_frame_drop = maxf(max_up_frame_drop, before_y - probe.global_position.y)
 		max_up_y = maxf(max_up_y, probe.global_position.y)
 		await get_tree().physics_frame
@@ -189,7 +267,7 @@ func _validate_character_stair_navigation_at_speed(
 	for i in range(STAIR_DOWN_FRAMES):
 		var before_y := probe.global_position.y
 		probe.velocity.y = STAIR_PROBE_GROUNDING_VELOCITY
-		probe.move_with_speed(Vector3.BACK, stair_probe_speed)
+		probe.move_with_speed(STAIR_DOWN_DIRECTION, stair_probe_speed)
 		min_down_y = minf(min_down_y, probe.global_position.y)
 		max_down_frame_drop = maxf(max_down_frame_drop, before_y - probe.global_position.y)
 		if _is_probe_grounded(probe):
@@ -214,7 +292,8 @@ func _validate_character_stair_navigation_at_speed(
 			stair_probe_speed,
 			"only climbed %.2f units" % (max_up_y - start_position.y)
 		)
-	if start_position.z - top_position.z < MIN_STAIR_HORIZONTAL_TRAVEL:
+	var stair_progress := (top_position - start_position).dot(STAIR_UP_DIRECTION)
+	if stair_progress < MIN_STAIR_HORIZONTAL_TRAVEL:
 		_append_stair_failure(failures, stair_probe_speed, "did not advance up the stairs")
 	if max_up_frame_drop > MAX_STAIR_UP_FRAME_DROP:
 		_append_stair_failure(
@@ -286,7 +365,7 @@ func _validate_character_stair_jump_stability(failures: Array[String]) -> void:
 
 	for i in range(STAIR_UP_FRAMES):
 		probe.velocity.y = STAIR_PROBE_GROUNDING_VELOCITY
-		probe.move_with_speed(Vector3.FORWARD, PROBE_SPEED)
+		probe.move_with_speed(STAIR_UP_DIRECTION, PROBE_SPEED)
 		await get_tree().physics_frame
 
 	var top_floor_y := _sample_probe_floor_y(probe)

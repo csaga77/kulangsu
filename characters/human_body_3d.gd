@@ -21,6 +21,10 @@ const STEP_FLOOR_SIDE_PROBE_SCALE := 0.72
 const STEP_FLOOR_FORWARD_FAR_SCALE := 2.0
 const STEP_FLOOR_CAST_MARGIN := 0.16
 const WALL_SLIDE_INPUT_DOT_THRESHOLD := 0.05
+const RIGID_BODY_PUSH_INPUT_DOT_THRESHOLD := 0.05
+const RIGID_BODY_PUSH_SPEED_FACTOR := 0.35
+const RIGID_BODY_PUSH_MAX_EFFECTIVE_MASS := 1.0
+const RIGID_BODY_PUSH_MAX_IMPULSE := 1.2
 const MIN_STEP_FLOOR_ADJUSTMENT := 0.002
 const MIN_STEP_BLOCKED_PROGRESS_RATIO := 0.35
 const MAX_STEP_LATERAL_DRIFT_RATIO := 0.1
@@ -393,6 +397,7 @@ func move_with_speed(direction_vector: Vector3, movement_speed: float) -> void:
 	elif velocity.y < -MIN_STEP_FLOOR_ADJUSTMENT and m_last_step_direction.length_squared() > 0.000001:
 		step_direction = m_last_step_direction
 	move_and_slide()
+	_apply_rigid_body_pushes(step_direction, movement_speed)
 	var has_blocking_wall_contact := _has_blocking_wall_contact(step_direction)
 	m_step_snap_grounded = is_on_floor()
 	if can_reacquire_floor and step_direction.length_squared() > 0.000001:
@@ -417,6 +422,8 @@ func _has_blocking_wall_contact(horizontal_direction: Vector3) -> bool:
 		var collision := get_slide_collision(collision_index)
 		if collision == null:
 			continue
+		if collision.get_collider() is RigidBody3D:
+			continue
 		var normal := collision.get_normal()
 		if normal.y >= min_floor_normal_y:
 			continue
@@ -427,6 +434,40 @@ func _has_blocking_wall_contact(horizontal_direction: Vector3) -> bool:
 		if flat_direction.dot(flat_normal) < -WALL_SLIDE_INPUT_DOT_THRESHOLD:
 			return true
 	return false
+
+
+func _apply_rigid_body_pushes(horizontal_direction: Vector3, movement_speed: float) -> void:
+	if movement_speed <= 0.0:
+		return
+	var flat_direction := Vector3(horizontal_direction.x, 0.0, horizontal_direction.z)
+	if flat_direction.length_squared() <= 0.000001:
+		return
+	flat_direction = flat_direction.normalized()
+	for collision_index in range(get_slide_collision_count()):
+		var collision := get_slide_collision(collision_index)
+		if collision == null:
+			continue
+		var rigid_body := collision.get_collider() as RigidBody3D
+		if rigid_body == null or rigid_body.freeze:
+			continue
+		var normal := collision.get_normal()
+		var flat_normal := Vector3(normal.x, 0.0, normal.z)
+		if flat_normal.length_squared() <= 0.000001:
+			continue
+		flat_normal = flat_normal.normalized()
+		var push_alignment := flat_direction.dot(-flat_normal)
+		if push_alignment <= RIGID_BODY_PUSH_INPUT_DOT_THRESHOLD:
+			continue
+		var current_speed := rigid_body.linear_velocity.dot(flat_direction)
+		var target_speed_delta := maxf(movement_speed - current_speed, 0.0)
+		if target_speed_delta <= MIN_STEP_FLOOR_ADJUSTMENT:
+			continue
+		var effective_mass := minf(maxf(rigid_body.mass, 0.01), RIGID_BODY_PUSH_MAX_EFFECTIVE_MASS)
+		var impulse_strength := minf(
+			effective_mass * target_speed_delta * RIGID_BODY_PUSH_SPEED_FACTOR * push_alignment,
+			RIGID_BODY_PUSH_MAX_IMPULSE
+		)
+		rigid_body.apply_central_impulse(flat_direction * impulse_strength)
 
 
 func _snap_to_walkable_step_floor(
