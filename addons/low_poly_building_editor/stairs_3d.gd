@@ -5,7 +5,6 @@ extends MeshInstance3D
 const GENERATED_META := &"stairs_generated"
 const PREVIEW_META := &"building_editor_preview"
 const SIDE_WALL_COLLISION_THICKNESS := 0.64
-const SIDE_WALL_COLLISION_EXTRA_HEIGHT := 1.8
 const LEFT_SIDE_COLLISION_SHAPE_NAME := "LeftSideCollisionShape3D"
 const RIGHT_SIDE_COLLISION_SHAPE_NAME := "RightSideCollisionShape3D"
 
@@ -440,28 +439,37 @@ func _add_side_wall_collision_shapes(body: StaticBody3D) -> void:
 		return
 	var bottom_y := -maxf(stair_thickness, 0.0)
 	var side_wall_thickness := minf(SIDE_WALL_COLLISION_THICKNESS, size.x * 0.45)
-	var collision_height := maxf(stair_height, 0.05) + SIDE_WALL_COLLISION_EXTRA_HEIGHT - bottom_y
-	var collision_center_y := bottom_y + collision_height * 0.5
-	_add_side_wall_collision_shape(
-		body,
-		LEFT_SIDE_COLLISION_SHAPE_NAME,
-		Vector3(
-			-side_wall_thickness * 0.5,
-			collision_center_y,
-			size.y * 0.5
-		),
-		Vector3(side_wall_thickness, collision_height, size.y)
-	)
-	_add_side_wall_collision_shape(
-		body,
-		RIGHT_SIDE_COLLISION_SHAPE_NAME,
-		Vector3(
-			size.x + side_wall_thickness * 0.5,
-			collision_center_y,
-			size.y * 0.5
-		),
-		Vector3(side_wall_thickness, collision_height, size.y)
-	)
+	var steps := _effective_step_count()
+	var tread_depth := size.y / float(steps)
+	var rise := maxf(stair_height, 0.05) / float(steps)
+	for step_index in range(steps):
+		var z0 := tread_depth * float(step_index)
+		var z1 := tread_depth * float(step_index + 1)
+		var top_y := rise * float(step_index + 1)
+		var collision_height := top_y - bottom_y
+		var collision_center_y := bottom_y + collision_height * 0.5
+		var collision_center_z := (z0 + z1) * 0.5
+		var shape_suffix := "" if step_index == 0 else "_%d" % (step_index + 1)
+		_add_side_wall_collision_shape(
+			body,
+			LEFT_SIDE_COLLISION_SHAPE_NAME + shape_suffix,
+			Vector3(
+				side_wall_thickness * 0.5,
+				collision_center_y,
+				collision_center_z
+			),
+			Vector3(side_wall_thickness, collision_height, tread_depth)
+		)
+		_add_side_wall_collision_shape(
+			body,
+			RIGHT_SIDE_COLLISION_SHAPE_NAME + shape_suffix,
+			Vector3(
+				size.x - side_wall_thickness * 0.5,
+				collision_center_y,
+				collision_center_z
+			),
+			Vector3(side_wall_thickness, collision_height, tread_depth)
+		)
 
 
 func _add_side_wall_collision_shape(

@@ -29,6 +29,8 @@ const STAIRS_SIDE_COLLISION_MAX_NORMAL_Y := 0.75
 const STAIRS_FRONT_CLIMB_PROBE_FRAMES := 100
 const STAIRS_FRONT_CLIMB_MIN_TRAVEL := 3.0
 const STAIRS_FRONT_CLIMB_MIN_HEIGHT := 0.9
+const STAIRS_SIDE_EXIT_PROBE_FRAMES := 45
+const STAIRS_SIDE_EXIT_MIN_TRAVEL := 1.8
 
 var m_failures: Array[String] = []
 
@@ -544,6 +546,50 @@ func _validate_stairs_node(coordinator: BuildingEditor3DScript) -> void:
 		m_failures.append("Stairs3D did not generate left side-wall collision")
 	if !_has_box_collision_shape(stairs, "StairsCollision/%s" % Stairs3DScript.RIGHT_SIDE_COLLISION_SHAPE_NAME):
 		m_failures.append("Stairs3D did not generate right side-wall collision")
+	if !_has_box_collision_shape(stairs, "StairsCollision/%s_4" % Stairs3DScript.LEFT_SIDE_COLLISION_SHAPE_NAME):
+		m_failures.append("Stairs3D did not generate stepped left side-wall collision")
+	if !_has_box_collision_shape(stairs, "StairsCollision/%s_4" % Stairs3DScript.RIGHT_SIDE_COLLISION_SHAPE_NAME):
+		m_failures.append("Stairs3D did not generate stepped right side-wall collision")
+	var first_side_box := _box_collision_shape(
+		stairs,
+		"StairsCollision/%s" % Stairs3DScript.LEFT_SIDE_COLLISION_SHAPE_NAME
+	)
+	var first_left_side_shape := _collision_shape(
+		stairs,
+		"StairsCollision/%s" % Stairs3DScript.LEFT_SIDE_COLLISION_SHAPE_NAME
+	)
+	var first_right_side_box := _box_collision_shape(
+		stairs,
+		"StairsCollision/%s" % Stairs3DScript.RIGHT_SIDE_COLLISION_SHAPE_NAME
+	)
+	var first_right_side_shape := _collision_shape(
+		stairs,
+		"StairsCollision/%s" % Stairs3DScript.RIGHT_SIDE_COLLISION_SHAPE_NAME
+	)
+	var last_side_box := _box_collision_shape(
+		stairs,
+		"StairsCollision/%s_4" % Stairs3DScript.LEFT_SIDE_COLLISION_SHAPE_NAME
+	)
+	if first_side_box != null:
+		var expected_first_side_height := stairs.get_step_rise() + maxf(stairs.stair_thickness, 0.0)
+		if absf(first_side_box.size.y - expected_first_side_height) > 0.001:
+			m_failures.append("Stairs3D first side-wall collision does not follow first step height")
+		if absf(first_side_box.size.z - stairs.get_step_run()) > 0.001:
+			m_failures.append("Stairs3D first side-wall collision does not follow first step run")
+	if first_side_box != null and first_left_side_shape != null:
+		var left_side_outer_x := first_left_side_shape.position.x - first_side_box.size.x * 0.5
+		if absf(left_side_outer_x) > 0.001:
+			m_failures.append("Stairs3D left side-wall collision extends outside the stair footprint")
+	if first_right_side_box != null and first_right_side_shape != null:
+		var right_side_outer_x := first_right_side_shape.position.x + first_right_side_box.size.x * 0.5
+		if absf(right_side_outer_x - size.x) > 0.001:
+			m_failures.append("Stairs3D right side-wall collision extends outside the stair footprint")
+	if last_side_box != null:
+		var expected_last_side_height := maxf(stairs.stair_height, 0.05) + maxf(stairs.stair_thickness, 0.0)
+		if absf(last_side_box.size.y - expected_last_side_height) > 0.001:
+			m_failures.append("Stairs3D final side-wall collision does not follow top step height")
+		if absf(last_side_box.size.z - stairs.get_step_run()) > 0.001:
+			m_failures.append("Stairs3D final side-wall collision does not follow final step run")
 
 	stairs.set_stair_corners(Vector3(1.0, base_y, 16.5), Vector3(4.5, base_y, 21.0))
 	var edited_size := stairs.get_stair_size()
@@ -562,8 +608,18 @@ func _validate_stairs_node(coordinator: BuildingEditor3DScript) -> void:
 
 
 func _has_box_collision_shape(root: Node, path: String) -> bool:
-	var collision_shape := root.get_node_or_null(path) as CollisionShape3D
-	return collision_shape != null and collision_shape.shape is BoxShape3D
+	return _box_collision_shape(root, path) != null
+
+
+func _box_collision_shape(root: Node, path: String) -> BoxShape3D:
+	var collision_shape := _collision_shape(root, path)
+	if collision_shape == null:
+		return null
+	return collision_shape.shape as BoxShape3D
+
+
+func _collision_shape(root: Node, path: String) -> CollisionShape3D:
+	return root.get_node_or_null(path) as CollisionShape3D
 
 
 func _validate_stairs_side_collision_blocks_character(coordinator: BuildingEditor3DScript) -> void:
@@ -664,6 +720,38 @@ func _validate_stairs_side_collision_blocks_character(coordinator: BuildingEdito
 		m_failures.append("HumanBody3D only climbed %.2f units up Stairs3D from the front" % front_climb)
 
 	climb_probe.queue_free()
+
+	var exit_probe := HUMAN_BODY_3D_SCENE.instantiate() as HumanBody3D
+	if exit_probe == null:
+		m_failures.append("Stairs3D side exit probe could not instantiate HumanBody3D")
+		floor_body.queue_free()
+		stairs.queue_free()
+		return
+	exit_probe.name = "StairsSideExitHumanBody3DProbe"
+	exit_probe.visible = false
+	exit_probe.body_radius = 0.28
+	exit_probe.body_height = 1.72
+	add_child(exit_probe)
+	await get_tree().physics_frame
+
+	exit_probe.global_position = STAIRS_SIDE_COLLISION_TEST_ORIGIN + Vector3(3.5, 1.22, 1.5)
+	exit_probe.velocity = Vector3.ZERO
+	for i in range(10):
+		exit_probe.velocity.y = -0.5
+		exit_probe.move_with_speed(Vector3.ZERO, 0.0)
+		await get_tree().physics_frame
+
+	var exit_start_position := exit_probe.global_position
+	exit_probe.jump()
+	for i in range(STAIRS_SIDE_EXIT_PROBE_FRAMES):
+		exit_probe.move_with_speed(Vector3.LEFT, STAIRS_SIDE_COLLISION_PROBE_SPEED)
+		await get_tree().physics_frame
+
+	var side_exit_travel := exit_start_position.x - exit_probe.global_position.x
+	if side_exit_travel < STAIRS_SIDE_EXIT_MIN_TRAVEL:
+		m_failures.append("HumanBody3D only moved %.2f units when jumping off Stairs3D side" % side_exit_travel)
+
+	exit_probe.queue_free()
 	floor_body.queue_free()
 	stairs.queue_free()
 
