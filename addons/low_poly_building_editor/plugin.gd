@@ -549,7 +549,7 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 			_set_status(
 				"Drag joint to move connected walls. Option-drag to disconnect." if hover_has_joint
 				else "Click and drag endpoint to resize." if hover_ep >= 0
-				else "Click and drag this wall to resize the room."
+				else "Drag a side to resize the room. Option-drag to move the whole room."
 				if hover_wall.is_rectangular_loop(_wall_joint_tolerance(hover_wall))
 				else "Click and drag to move wall. Shift-click to add joint."
 			)
@@ -5073,7 +5073,7 @@ func _start_wall_drag(
 	mouse_pos: Vector2,
 	segment_index: int,
 	endpoint: int,
-	disconnect_joint: bool = false
+	alt_modifier: bool = false
 ) -> void:
 	m_dragging_wall = wall
 	var old_geometry := _wall_geometry_snapshot(wall)
@@ -5090,9 +5090,12 @@ func _start_wall_drag(
 	m_drag_wall_dragging_joint = false
 	m_drag_wall_detaching_joint = false
 	m_drag_wall_has_connection_snap = false
+	var is_room := wall.is_rectangular_loop(_wall_joint_tolerance(wall))
+	# Alt/Option-dragging a room body moves the whole room instead of resizing one side.
 	m_drag_wall_resizing_room_side = (
 		endpoint < 0
-		and wall.is_rectangular_loop(_wall_joint_tolerance(wall))
+		and !alt_modifier
+		and is_room
 	)
 	if endpoint >= 0:
 		m_drag_wall_joint_origin = _drag_wall_endpoint_position(wall, m_drag_wall_segment_index, endpoint)
@@ -5100,8 +5103,8 @@ func _start_wall_drag(
 			m_drag_wall_joint_origin,
 			_wall_joint_tolerance(wall)
 		) >= 2
-		m_drag_wall_dragging_joint = is_shared_joint and !disconnect_joint
-		m_drag_wall_detaching_joint = is_shared_joint and disconnect_joint
+		m_drag_wall_dragging_joint = is_shared_joint and !alt_modifier
+		m_drag_wall_detaching_joint = is_shared_joint and alt_modifier
 	m_drag_wall_active_material = wall.material_override
 	var coordinator := _find_coordinator_from_node(wall)
 	var hit := _raycast_world(camera, mouse_pos, false)
@@ -5121,6 +5124,7 @@ func _start_wall_drag(
 		else "detached endpoint" if m_drag_wall_detaching_joint
 		else "endpoint" if endpoint >= 0
 		else "room wall" if m_drag_wall_resizing_room_side
+		else "room" if is_room
 		else "wall"
 	)
 	_set_status("Dragging %s — release to commit, Escape to cancel." % action)
@@ -5262,7 +5266,12 @@ func _commit_wall_drag() -> void:
 		new_end = Vector3(normalized_geometry["end"])
 		new_segments = normalized_geometry["segments"]
 	var undo_redo := get_undo_redo()
-	undo_redo.create_action("Resize Room" if was_room_resize else "Move Wall")
+	var move_action_name := (
+		"Move Room"
+		if wall.is_rectangular_loop(_wall_joint_tolerance(wall))
+		else "Move Wall"
+	)
+	undo_redo.create_action("Resize Room" if was_room_resize else move_action_name)
 	undo_redo.add_do_method(
 		self,
 		"_do_set_wall_geometry_and_refresh_intersections",
