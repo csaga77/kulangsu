@@ -3195,6 +3195,29 @@ func _validate_collinear_overlap_opening_propagation() -> void:
 	):
 		m_failures.append("Owner wall mesh was not cut within the propagated door frame")
 
+	# A door authored on the owner wall must also propagate the other way, onto
+	# the clipped sibling, so the clipped wall's (unclipped) collision is cut and
+	# does not block the doorway. Owner-local x ~ 5.0 -> clipped-local x ~ 2.0.
+	var owner_door := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	owner_door.name = "OwnerOverlapDoor"
+	owner_door.opening_width = 0.9
+	owner_door.opening_height = 2.1
+	owner_door.position = Vector3(5.0, 1.05, 0.22 * 0.5 + 0.035)
+	owner_door.set_meta(Wall3DScript.SEGMENT_INDEX_META, 0)
+	owner_wall.add_child(owner_door)
+	owner_wall.rebuild_wall_mesh()
+	coordinator.refresh_wall_intersection_clips()
+
+	var clipped_local_door_x := 2.0
+	var clipped_rects := clipped_wall.get_render_opening_rects(0)
+	var found_reverse := false
+	for rect in clipped_rects:
+		if rect.position.x <= clipped_local_door_x and rect.end.x >= clipped_local_door_x:
+			found_reverse = true
+			break
+	if !found_reverse:
+		m_failures.append("Clipped wall did not receive the owner wall's door opening for collision")
+
 
 ## True when the mesh has a near-vertical face whose normal runs along the wall
 ## X axis (a door/window jamb reveal) located near `target_x` and below the

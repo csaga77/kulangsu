@@ -457,13 +457,15 @@ func refresh_wall_intersection_clips() -> void:
 					before_segments.append(segment)
 				else:
 					after_segments.append(segment)
-					# Scene order makes `wall` own the shared span against the
-					# later `other`, so the door/window authored on the clipped
-					# `other` must be cut into this wall's rendered mesh.
-					if is_collinear:
-						_collect_foreign_openings(
-							wall, other, segment_index, other_opening_rects, foreign_openings
-						)
+				# Cut a collinear sibling's openings into this wall regardless of
+				# scene order. Mesh-wise only the scene-earlier owner renders the
+				# shared span, but collision is generated on every collinear wall
+				# (it is not sibling-clipped), so each must carry the opening or
+				# its solid collision fills the doorway.
+				if is_collinear:
+					_collect_foreign_openings(
+						wall, other, segment_index, other_opening_rects, foreign_openings
+					)
 		wall.set_geometry_clip_data(
 			before_segments,
 			after_segments,
