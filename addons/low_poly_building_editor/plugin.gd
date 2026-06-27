@@ -18,6 +18,8 @@ const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.
 const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
 const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
+const Window3DScript = preload("res://addons/low_poly_building_editor/window_3d.gd")
+const Door3DScript = preload("res://addons/low_poly_building_editor/door_3d.gd")
 const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
 const DockScript = preload("res://addons/low_poly_building_editor/low_poly_building_editor_dock.gd")
 const ViewportInputOverlayScript = preload("res://addons/low_poly_building_editor/viewport_input_overlay.gd")
@@ -34,6 +36,43 @@ const FLOOR_TYPE_SOLID := "solid"
 const FLOOR_TYPE_HOLE := "hole"
 const PILLAR_EDIT_MOVE := 0
 const PILLAR_EDIT_RADIUS := 1
+const OPENING_STYLE_SCRIPTS := {
+	"single_window": preload("res://addons/low_poly_building_editor/single_window_3d.gd"),
+	"double_window": preload("res://addons/low_poly_building_editor/double_window_3d.gd"),
+	"grid_window": preload("res://addons/low_poly_building_editor/grid_window_3d.gd"),
+	"louvered_window": preload("res://addons/low_poly_building_editor/louvered_window_3d.gd"),
+	"transom_window": preload("res://addons/low_poly_building_editor/transom_window_3d.gd"),
+	"arched_window": preload("res://addons/low_poly_building_editor/arched_window_3d.gd"),
+	"frame": preload("res://addons/low_poly_building_editor/window_frame_3d.gd"),
+	"single_door": preload("res://addons/low_poly_building_editor/single_door_3d.gd"),
+	"double_door": preload("res://addons/low_poly_building_editor/double_door_3d.gd"),
+	"glazed_door": preload("res://addons/low_poly_building_editor/glazed_door_3d.gd"),
+	"glazed_grid_door": preload("res://addons/low_poly_building_editor/glazed_grid_door_3d.gd"),
+	"panel_door": preload("res://addons/low_poly_building_editor/panel_door_3d.gd"),
+	"dutch_door": preload("res://addons/low_poly_building_editor/dutch_door_3d.gd"),
+	"single_frame": preload("res://addons/low_poly_building_editor/single_door_frame_3d.gd"),
+	"double_frame": preload("res://addons/low_poly_building_editor/double_door_frame_3d.gd"),
+}
+const OPENING_CUSTOM_TYPES := [
+	{"name": "BuildingOpening3D", "script": BuildingOpening3DScript},
+	{"name": "Window3D", "script": Window3DScript},
+	{"name": "SingleWindow3D", "script": OPENING_STYLE_SCRIPTS["single_window"]},
+	{"name": "DoubleWindow3D", "script": OPENING_STYLE_SCRIPTS["double_window"]},
+	{"name": "GridWindow3D", "script": OPENING_STYLE_SCRIPTS["grid_window"]},
+	{"name": "LouveredWindow3D", "script": OPENING_STYLE_SCRIPTS["louvered_window"]},
+	{"name": "TransomWindow3D", "script": OPENING_STYLE_SCRIPTS["transom_window"]},
+	{"name": "ArchedWindow3D", "script": OPENING_STYLE_SCRIPTS["arched_window"]},
+	{"name": "WindowFrame3D", "script": OPENING_STYLE_SCRIPTS["frame"]},
+	{"name": "Door3D", "script": Door3DScript},
+	{"name": "SingleDoor3D", "script": OPENING_STYLE_SCRIPTS["single_door"]},
+	{"name": "DoubleDoor3D", "script": OPENING_STYLE_SCRIPTS["double_door"]},
+	{"name": "GlazedDoor3D", "script": OPENING_STYLE_SCRIPTS["glazed_door"]},
+	{"name": "GlazedGridDoor3D", "script": OPENING_STYLE_SCRIPTS["glazed_grid_door"]},
+	{"name": "PanelDoor3D", "script": OPENING_STYLE_SCRIPTS["panel_door"]},
+	{"name": "DutchDoor3D", "script": OPENING_STYLE_SCRIPTS["dutch_door"]},
+	{"name": "SingleDoorFrame3D", "script": OPENING_STYLE_SCRIPTS["single_frame"]},
+	{"name": "DoubleDoorFrame3D", "script": OPENING_STYLE_SCRIPTS["double_frame"]},
+]
 const OPENING_SILL_META := &"building_opening_sill_height"
 const OPENING_ALLOW_BASE_META := &"building_opening_allow_base_edge"
 # Temporary diagnostic: writes the 3D toolbar tree to native_buttons_debug.log
@@ -392,12 +431,13 @@ func _enter_tree() -> void:
 		Roof3DScript,
 		_get_editor_icon(&"MeshInstance3D")
 	)
-	add_custom_type(
-		"BuildingOpening3D",
-		"Node3D",
-		BuildingOpening3DScript,
-		_get_editor_icon(&"Window")
-	)
+	for opening_type: Dictionary in OPENING_CUSTOM_TYPES:
+		add_custom_type(
+			String(opening_type["name"]),
+			"Node3D",
+			opening_type["script"],
+			_get_editor_icon(&"Window")
+		)
 	set_input_event_forwarding_always_enabled()
 
 	m_dock = DockScript.new() as Control
@@ -459,7 +499,8 @@ func _exit_tree() -> void:
 	elif m_dock != null:
 		m_dock.queue_free()
 		m_dock = null
-	remove_custom_type("BuildingOpening3D")
+	for type_index in range(OPENING_CUSTOM_TYPES.size() - 1, -1, -1):
+		remove_custom_type(String(OPENING_CUSTOM_TYPES[type_index]["name"]))
 	remove_custom_type("Roof3D")
 	remove_custom_type("Pillar3D")
 	remove_custom_type("Stairs3D")
@@ -3193,9 +3234,10 @@ func _update_opening_preview(wall: Wall3DScript, hit: Dictionary) -> void:
 	var segment := wall.get_segment(segment_index)
 	var frame := wall.get_segment_local_frame(segment_index)
 
-	if !(m_prop_preview is BuildingOpening3DScript):
+	var opening_script := _opening_script_for_settings(settings)
+	if m_prop_preview == null or m_prop_preview.get_script() != opening_script:
 		_clear_prop_preview()
-		m_prop_preview = BuildingOpening3DScript.new() as BuildingOpening3DScript
+		m_prop_preview = opening_script.new() as BuildingOpening3DScript
 		(m_prop_preview as BuildingOpening3DScript).build_on_ready = true
 	_set_preview_parent(m_prop_preview, wall)
 
@@ -3240,22 +3282,36 @@ func _apply_opening_settings(opening: BuildingOpening3DScript, settings: Diction
 	opening.frame_sides = int(settings.get("frame_sides", 0))
 	opening.frame_protrusion = float(settings.get("frame_protrusion", 0.02))
 	opening.show_bottom_frame = bool(settings["show_bottom_frame"])
-	opening.door_panel_count = int(settings["door_panel_count"])
-	opening.door_panel_depth = float(settings["door_panel_depth"])
-	opening.door_panel_color = Color(settings["door_panel_color"])
-	opening.window_pane_count = int(settings["window_pane_count"])
-	opening.window_pane_depth = float(settings["window_pane_depth"])
-	opening.window_pane_color = Color(settings["window_pane_color"])
-	opening.pane_grid_rows = int(settings.get("pane_grid_rows", 0))
-	opening.pane_grid_cols = int(settings.get("pane_grid_cols", 0))
-	opening.muntin_thickness = float(settings.get("muntin_thickness", 0.03))
-	opening.louver_count = int(settings.get("louver_count", 0))
-	opening.arch_steps = int(settings.get("arch_steps", 0))
-	opening.transom_ratio = float(settings.get("transom_ratio", 0.0))
-	opening.door_glazing_ratio = float(settings.get("door_glazing_ratio", 0.0))
-	opening.door_inset_rows = int(settings.get("door_inset_rows", 0))
-	opening.door_inset_cols = int(settings.get("door_inset_cols", 0))
-	opening.door_split = bool(settings.get("door_split", false))
+	if opening is Window3DScript:
+		var window := opening as Window3DScript
+		window.window_pane_count = int(settings["window_pane_count"])
+		window.window_pane_depth = float(settings["window_pane_depth"])
+		window.window_pane_color = Color(settings["window_pane_color"])
+		window.pane_grid_rows = int(settings.get("pane_grid_rows", 0))
+		window.pane_grid_cols = int(settings.get("pane_grid_cols", 0))
+		window.muntin_thickness = float(settings.get("muntin_thickness", 0.03))
+		window.louver_count = int(settings.get("louver_count", 0))
+		window.arch_steps = int(settings.get("arch_steps", 0))
+		window.transom_ratio = float(settings.get("transom_ratio", 0.0))
+	elif opening is Door3DScript:
+		var door := opening as Door3DScript
+		door.door_panel_count = int(settings["door_panel_count"])
+		door.door_panel_depth = float(settings["door_panel_depth"])
+		door.door_panel_color = Color(settings["door_panel_color"])
+		door.door_glass_depth = float(settings["window_pane_depth"])
+		door.door_glass_color = Color(settings["window_pane_color"])
+		door.pane_grid_rows = int(settings.get("pane_grid_rows", 0))
+		door.pane_grid_cols = int(settings.get("pane_grid_cols", 0))
+		door.muntin_thickness = float(settings.get("muntin_thickness", 0.03))
+		door.door_glazing_ratio = float(settings.get("door_glazing_ratio", 0.0))
+		door.door_inset_rows = int(settings.get("door_inset_rows", 0))
+		door.door_inset_cols = int(settings.get("door_inset_cols", 0))
+		door.door_split = bool(settings.get("door_split", false))
+
+
+func _opening_script_for_settings(settings: Dictionary) -> Script:
+	var style := String(settings.get("style", ""))
+	return OPENING_STYLE_SCRIPTS.get(style, BuildingOpening3DScript) as Script
 
 
 func _can_place_wall_opening(
@@ -3334,6 +3390,7 @@ func _active_opening_settings() -> Dictionary:
 				split = true
 		var node_name := label.replace(" ", "") + "Opening"
 		return {
+			"style": style,
 			"label": label,
 			"node_name": node_name,
 			"width": float(m_door_settings.get("width", default_width)),
@@ -3401,6 +3458,7 @@ func _active_opening_settings() -> Dictionary:
 			arch = 3
 	var node_name := label.replace(" ", "") + "Opening"
 	return {
+		"style": style,
 		"label": label,
 		"node_name": node_name,
 		"width": float(m_window_settings.get("width", default_width)),
@@ -3494,33 +3552,11 @@ func _commit_placement() -> void:
 		var wall := m_preview_parent as Wall3DScript
 		if opening_preview == null or wall == null:
 			return
-		var opening := BuildingOpening3DScript.new() as BuildingOpening3DScript
+		var opening_script := _opening_script_for_settings(settings)
+		var opening := opening_script.new() as BuildingOpening3DScript
 		opening.name = String(settings["node_name"])
-		opening.opening_width = opening_preview.opening_width
-		opening.opening_height = opening_preview.opening_height
-		opening.frame_thickness = opening_preview.frame_thickness
-		opening.frame_depth = opening_preview.frame_depth
+		_apply_opening_settings(opening, settings, opening_preview.frame_depth)
 		opening.frame_color = Color(0.86, 0.92, 0.94, 1.0)
-		opening.wall_thickness = opening_preview.wall_thickness
-		opening.frame_sides = opening_preview.frame_sides
-		opening.frame_protrusion = opening_preview.frame_protrusion
-		opening.show_bottom_frame = opening_preview.show_bottom_frame
-		opening.door_panel_count = opening_preview.door_panel_count
-		opening.door_panel_depth = opening_preview.door_panel_depth
-		opening.door_panel_color = opening_preview.door_panel_color
-		opening.window_pane_count = opening_preview.window_pane_count
-		opening.window_pane_depth = opening_preview.window_pane_depth
-		opening.window_pane_color = opening_preview.window_pane_color
-		opening.pane_grid_rows = opening_preview.pane_grid_rows
-		opening.pane_grid_cols = opening_preview.pane_grid_cols
-		opening.muntin_thickness = opening_preview.muntin_thickness
-		opening.louver_count = opening_preview.louver_count
-		opening.arch_steps = opening_preview.arch_steps
-		opening.transom_ratio = opening_preview.transom_ratio
-		opening.door_glazing_ratio = opening_preview.door_glazing_ratio
-		opening.door_inset_rows = opening_preview.door_inset_rows
-		opening.door_inset_cols = opening_preview.door_inset_cols
-		opening.door_split = opening_preview.door_split
 		opening.position = opening_preview.position
 		opening.rotation = opening_preview.rotation
 		opening.set_meta(
@@ -6062,13 +6098,20 @@ func _tool_mode_for_building_node(node: Node) -> String:
 func _tool_mode_for_opening_node(opening: BuildingOpening3DScript) -> String:
 	if opening == null:
 		return ""
-	if opening.door_panel_count > 0:
+	if opening is Door3DScript:
 		return MODE_DOOR
-	if !opening.show_bottom_frame:
-		return MODE_DOOR
-	if opening.has_meta(OPENING_ALLOW_BASE_META) and bool(opening.get_meta(OPENING_ALLOW_BASE_META)):
-		return MODE_DOOR
-	return MODE_WINDOW
+	if opening is Window3DScript:
+		return MODE_WINDOW
+	# Metadata fallback keeps legacy frame-only BuildingOpening3D nodes editable.
+	return (
+		MODE_DOOR
+		if !opening.show_bottom_frame
+		or (
+			opening.has_meta(OPENING_ALLOW_BASE_META)
+			and bool(opening.get_meta(OPENING_ALLOW_BASE_META))
+		)
+		else MODE_WINDOW
+	)
 
 
 func _build_viewport_toolbar() -> void:

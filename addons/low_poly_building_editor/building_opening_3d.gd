@@ -66,7 +66,6 @@ enum FrameSides { FRONT, BOTH }
 		frame_sides = value
 		_request_rebuild()
 
-# How far the casing protrudes beyond each covered wall face (BOTH mode).
 @export_range(0.0, 0.5, 0.005) var frame_protrusion := 0.02:
 	set(value):
 		var clamped_value := clampf(value, 0.0, 0.5)
@@ -75,9 +74,8 @@ enum FrameSides { FRONT, BOTH }
 		frame_protrusion = clamped_value
 		_request_rebuild()
 
-# Thickness of the wall this opening is mounted in. Lets a BOTH-sided casing span
-# the wall and protrude past both faces. 0 derives it from frame_depth so
-# openings authored before this property existed still build a valid casing.
+# Thickness of the wall this opening is mounted in. A value of 0 derives the
+# thickness from frame_depth for compatibility with older authored openings.
 @export_range(0.0, 4.0, 0.01) var wall_thickness := 0.0:
 	set(value):
 		var clamped_value := maxf(value, 0.0)
@@ -93,11 +91,6 @@ enum FrameSides { FRONT, BOTH }
 		show_bottom_frame = value
 		_request_rebuild()
 
-# Generate static collision for the solid opening parts (frame jambs, door panels,
-# window panes) so the character is blocked by a closed door/window and by the door
-# frame, instead of walking through it. An open doorway (no panels) stays passable
-# because only the edge frame carries collision. Mirrors the generate_collision
-# convention on the other building_editor modules.
 @export var generate_collision := true:
 	set(value):
 		if generate_collision == value:
@@ -105,149 +98,63 @@ enum FrameSides { FRONT, BOTH }
 		generate_collision = value
 		_request_rebuild()
 
-@export_range(0, 2, 1) var door_panel_count := 0:
-	set(value):
-		var clamped_value := clampi(value, 0, 2)
-		if door_panel_count == clamped_value:
-			return
-		door_panel_count = clamped_value
-		_request_rebuild()
-
-@export_range(0.01, 0.5, 0.01) var door_panel_depth := 0.05:
-	set(value):
-		var clamped_value := maxf(value, 0.01)
-		if is_equal_approx(door_panel_depth, clamped_value):
-			return
-		door_panel_depth = clamped_value
-		_request_rebuild()
-
-@export var door_panel_color := Color(0.50, 0.34, 0.20, 1.0):
-	set(value):
-		if door_panel_color == value:
-			return
-		door_panel_color = value
-		_request_rebuild()
-
-@export_range(0, 2, 1) var window_pane_count := 0:
-	set(value):
-		var clamped_value := clampi(value, 0, 2)
-		if window_pane_count == clamped_value:
-			return
-		window_pane_count = clamped_value
-		_request_rebuild()
-
-@export_range(0.01, 0.5, 0.01) var window_pane_depth := 0.03:
-	set(value):
-		var clamped_value := maxf(value, 0.01)
-		if is_equal_approx(window_pane_depth, clamped_value):
-			return
-		window_pane_depth = clamped_value
-		_request_rebuild()
-
-@export var window_pane_color := Color(0.58, 0.82, 0.95, 0.52):
-	set(value):
-		if window_pane_color == value:
-			return
-		window_pane_color = value
-		_request_rebuild()
-
-# Muntin grid drawn over glass (window panes and glazed door lites). Rows are
-# interior horizontal bars, cols are interior vertical bars; 0/0 leaves a plain pane.
-@export_range(0, 8, 1) var pane_grid_rows := 0:
-	set(value):
-		var clamped_value := clampi(value, 0, 8)
-		if pane_grid_rows == clamped_value:
-			return
-		pane_grid_rows = clamped_value
-		_request_rebuild()
-
-@export_range(0, 8, 1) var pane_grid_cols := 0:
-	set(value):
-		var clamped_value := clampi(value, 0, 8)
-		if pane_grid_cols == clamped_value:
-			return
-		pane_grid_cols = clamped_value
-		_request_rebuild()
-
-@export_range(0.005, 0.3, 0.005) var muntin_thickness := 0.03:
-	set(value):
-		var clamped_value := clampf(value, 0.005, 0.3)
-		if is_equal_approx(muntin_thickness, clamped_value):
-			return
-		muntin_thickness = clamped_value
-		_request_rebuild()
-
-# When > 0, the pane area is filled with this many tilted horizontal slats
-# (a louvered window) instead of a flat glass pane.
-@export_range(0, 16, 1) var louver_count := 0:
-	set(value):
-		var clamped_value := clampi(value, 0, 16)
-		if louver_count == clamped_value:
-			return
-		louver_count = clamped_value
-		_request_rebuild()
-
-# When > 0, the top of the pane gets a stepped low-poly arch (frame-colored
-# corner fillers); 0 keeps a square-topped pane.
-@export_range(0, 6, 1) var arch_steps := 0:
-	set(value):
-		var clamped_value := clampi(value, 0, 6)
-		if arch_steps == clamped_value:
-			return
-		arch_steps = clamped_value
-		_request_rebuild()
-
-# When > 0, a horizontal rail splits this top fraction of the pane into a
-# separate transom light above the main glass.
-@export_range(0.0, 0.9, 0.01) var transom_ratio := 0.0:
-	set(value):
-		var clamped_value := clampf(value, 0.0, 0.9)
-		if is_equal_approx(transom_ratio, clamped_value):
-			return
-		transom_ratio = clamped_value
-		_request_rebuild()
-
-# When > 0, the top fraction of each door panel becomes a translucent glass
-# lite (a glazed door) separated from the solid panel by a rail.
-@export_range(0.0, 0.95, 0.01) var door_glazing_ratio := 0.0:
-	set(value):
-		var clamped_value := clampf(value, 0.0, 0.95)
-		if is_equal_approx(door_glazing_ratio, clamped_value):
-			return
-		door_glazing_ratio = clamped_value
-		_request_rebuild()
-
-# Recessed-panel grid raised on solid door faces (a paneled door). 0 rows or
-# 0 cols leaves a flat door face.
-@export_range(0, 4, 1) var door_inset_rows := 0:
-	set(value):
-		var clamped_value := clampi(value, 0, 4)
-		if door_inset_rows == clamped_value:
-			return
-		door_inset_rows = clamped_value
-		_request_rebuild()
-
-@export_range(0, 3, 1) var door_inset_cols := 0:
-	set(value):
-		var clamped_value := clampi(value, 0, 3)
-		if door_inset_cols == clamped_value:
-			return
-		door_inset_cols = clamped_value
-		_request_rebuild()
-
-# When true, each solid door panel is split horizontally into two stacked
-# leaves with a mid rail (a Dutch/stable door).
-@export var door_split := false:
-	set(value):
-		if door_split == value:
-			return
-		door_split = value
-		_request_rebuild()
-
 @export var build_on_ready := true
 
 var m_is_ready := false
 var m_rebuild_queued := false
+var m_legacy_door_panel_count := 0
+var m_legacy_door_panel_depth := 0.05
+var m_legacy_door_panel_color := Color(0.50, 0.34, 0.20, 1.0)
+
+
+# Storage-only compatibility for scenes authored before door styles became
+# Door3D subclasses. Concrete Door3D nodes use their real exported properties,
+# while a legacy base-class opening can still deserialize and render solid panels.
+func _set(property: StringName, value: Variant) -> bool:
+	match property:
+		&"door_panel_count":
+			m_legacy_door_panel_count = clampi(int(value), 0, 2)
+		&"door_panel_depth":
+			m_legacy_door_panel_depth = maxf(float(value), 0.01)
+		&"door_panel_color":
+			m_legacy_door_panel_color = Color(value)
+		_:
+			return false
+	_request_rebuild()
+	return true
+
+
+func _get(property: StringName) -> Variant:
+	match property:
+		&"door_panel_count":
+			return m_legacy_door_panel_count
+		&"door_panel_depth":
+			return m_legacy_door_panel_depth
+		&"door_panel_color":
+			return m_legacy_door_panel_color
+	return null
+
+
+func _get_property_list() -> Array[Dictionary]:
+	if get_script().resource_path != "res://addons/low_poly_building_editor/building_opening_3d.gd":
+		return []
+	return [
+		{
+			"name": "door_panel_count",
+			"type": TYPE_INT,
+			"usage": PROPERTY_USAGE_STORAGE,
+		},
+		{
+			"name": "door_panel_depth",
+			"type": TYPE_FLOAT,
+			"usage": PROPERTY_USAGE_STORAGE,
+		},
+		{
+			"name": "door_panel_color",
+			"type": TYPE_COLOR,
+			"usage": PROPERTY_USAGE_STORAGE,
+		},
+	]
 
 
 func _ready() -> void:
@@ -263,9 +170,7 @@ func get_opening_rect() -> Rect2:
 
 
 func _request_rebuild() -> void:
-	if !m_is_ready:
-		return
-	if m_rebuild_queued:
+	if !m_is_ready or m_rebuild_queued:
 		return
 	m_rebuild_queued = true
 	call_deferred("_rebuild")
@@ -281,7 +186,6 @@ func _rebuild() -> void:
 	var side_height := opening_height + frame_thickness + bottom_extra
 	var side_y := (frame_thickness - bottom_extra) * 0.5
 	var top_width := opening_width + frame_thickness * 2.0
-
 	var casing := _frame_casing()
 	var casing_depth: float = casing["depth"]
 	var casing_z: float = casing["center_z"]
@@ -311,15 +215,25 @@ func _rebuild() -> void:
 			Vector3(0.0, -half_height - frame_thickness * 0.5, casing_z),
 			frame_color
 		)
-	_add_door_panels()
-	_add_window_panes()
+	_build_opening_content()
 
 
-# Returns the depth and local-z center of the frame casing. FRONT keeps the
-# legacy casing (frame_depth centered on the node origin). BOTH spans the wall
-# and protrudes past both faces, centered on the wall mid-plane: in node-local
-# space the placed face sits at -FRAME_FACE_GAP and the far face at
-# -(thickness + FRAME_FACE_GAP), independent of which face it was placed against.
+# Implemented by Door3D and Window3D. BuildingOpening3D itself remains a useful
+# frame-only opening and owns the wall-cut dimensions shared by every style.
+# Legacy base-class scenes may still render their old solid door panels here.
+func _build_opening_content() -> void:
+	var spans := _leaf_spans(m_legacy_door_panel_count)
+	for index in range(spans.size()):
+		var part_name := _leaf_part_name("DoorPanel", index, spans.size())
+		var rect := spans[index]
+		_add_box(
+			part_name,
+			Vector3(rect.size.x, rect.size.y, m_legacy_door_panel_depth),
+			_rect_center(rect),
+			m_legacy_door_panel_color
+		)
+
+
 func _frame_casing() -> Dictionary:
 	if frame_sides != FrameSides.BOTH:
 		return {"depth": frame_depth, "center_z": 0.0}
@@ -329,28 +243,8 @@ func _frame_casing() -> Dictionary:
 	return {"depth": front_edge - back_edge, "center_z": (front_edge + back_edge) * 0.5}
 
 
-func _add_door_panels() -> void:
-	if door_panel_count <= 0:
-		return
-	var spans := _leaf_spans(door_panel_count)
-	for index in range(spans.size()):
-		var leaf_name := _leaf_part_name("DoorPanel", index, spans.size())
-		_build_door_leaf(leaf_name, spans[index], door_panel_depth, door_panel_color)
-
-
-func _add_window_panes() -> void:
-	if window_pane_count <= 0:
-		return
-	var spans := _leaf_spans(window_pane_count)
-	for index in range(spans.size()):
-		var leaf_name := _leaf_part_name("WindowPane", index, spans.size())
-		_build_glass(leaf_name, spans[index], window_pane_depth, window_pane_color)
-
-
-# Returns one local-space XY Rect2 per leaf: a single full-width leaf, or two
-# split leaves separated by a seam gap. The opening is centered on the origin.
-func _leaf_spans(count: int) -> Array:
-	var spans: Array = []
+func _leaf_spans(count: int) -> Array[Rect2]:
+	var spans: Array[Rect2] = []
 	if count <= 0:
 		return spans
 	var half_width := opening_width * 0.5
@@ -366,90 +260,50 @@ func _leaf_spans(count: int) -> Array:
 	return spans
 
 
-# Keeps the original node naming so existing scenes and tooling stay stable:
-# one leaf uses the base name, two leaves use Left/Right prefixes.
 func _leaf_part_name(base: String, index: int, count: int) -> String:
 	if count <= 1:
 		return base
 	return ("Left" if index == 0 else "Right") + base
 
 
-func _build_door_leaf(part_name: String, rect: Rect2, depth: float, color: Color) -> void:
-	if door_split:
-		var gap := frame_thickness
-		var leaf_height := maxf((rect.size.y - gap) * 0.5, 0.01)
-		var lower := Rect2(rect.position.x, rect.position.y, rect.size.x, leaf_height)
-		var upper := Rect2(rect.position.x, rect.position.y + leaf_height + gap, rect.size.x, leaf_height)
-		_build_door_face("%sLower" % part_name, lower, depth, color)
-		_build_door_face("%sUpper" % part_name, upper, depth, color)
-		_add_box(
-			"%sMidRail" % part_name,
-			Vector3(rect.size.x, gap, depth),
-			Vector3(rect.position.x + rect.size.x * 0.5, rect.position.y + leaf_height + gap * 0.5, 0.0),
-			frame_color,
-			false
-		)
-		return
-	if door_glazing_ratio > 0.0:
-		var rail := frame_thickness
-		var glass_height := maxf(rect.size.y * door_glazing_ratio, 0.01)
-		var solid_height := maxf(rect.size.y - glass_height - rail, 0.01)
-		var solid_rect := Rect2(rect.position.x, rect.position.y, rect.size.x, solid_height)
-		var glass_rect := Rect2(
-			rect.position.x,
-			rect.position.y + solid_height + rail,
-			rect.size.x,
-			maxf(rect.size.y - solid_height - rail, 0.01)
-		)
-		_build_door_face("%sPanel" % part_name, solid_rect, depth, color)
-		_add_box(
-			"%sRail" % part_name,
-			Vector3(rect.size.x, rail, depth),
-			Vector3(rect.position.x + rect.size.x * 0.5, rect.position.y + solid_height + rail * 0.5, 0.0),
-			color,
-			false
-		)
-		_build_glass("%sGlass" % part_name, glass_rect, window_pane_depth, window_pane_color)
-		return
-	_build_door_face(part_name, rect, depth, color)
-
-
-func _build_door_face(part_name: String, rect: Rect2, depth: float, color: Color) -> void:
-	_add_box(part_name, Vector3(rect.size.x, rect.size.y, depth), _rect_center(rect), color)
-	if door_inset_rows <= 0 or door_inset_cols <= 0:
-		return
-	var margin := minf(minf(rect.size.x, rect.size.y) * 0.18, 0.12)
-	var cell_width := (rect.size.x - margin * float(door_inset_cols + 1)) / float(door_inset_cols)
-	var cell_height := (rect.size.y - margin * float(door_inset_rows + 1)) / float(door_inset_rows)
-	if cell_width <= 0.02 or cell_height <= 0.02:
-		return
-	var raise := depth * 0.6
-	for row in range(door_inset_rows):
-		for col in range(door_inset_cols):
-			var px := rect.position.x + margin * float(col + 1) + cell_width * (float(col) + 0.5)
-			var py := rect.position.y + margin * float(row + 1) + cell_height * (float(row) + 0.5)
-			_add_box(
-				"%sInset%d_%d" % [part_name, row, col],
-				Vector3(cell_width, cell_height, depth + raise),
-				Vector3(px, py, 0.0),
-				color,
-				false
-			)
-
-
-# Builds a glass pane in the given rect, with optional louvers, muntin grid,
-# transom rail, and stepped arch top driven by the exported style properties.
-func _build_glass(part_name: String, rect: Rect2, depth: float, color: Color) -> void:
+func _build_glass(
+	part_name: String,
+	rect: Rect2,
+	depth: float,
+	color: Color,
+	pane_grid_rows: int = 0,
+	pane_grid_cols: int = 0,
+	muntin_thickness: float = 0.03,
+	louver_count: int = 0,
+	arch_steps: int = 0,
+	transom_ratio: float = 0.0
+) -> void:
 	if louver_count > 0:
-		_build_louvers(part_name, rect, depth)
+		_build_louvers(part_name, rect, depth, louver_count)
 		return
 	_add_box(part_name, Vector3(rect.size.x, rect.size.y, depth), _rect_center(rect), color)
-	_add_muntins(part_name, rect, depth)
+	_add_muntins(
+		part_name,
+		rect,
+		depth,
+		pane_grid_rows,
+		pane_grid_cols,
+		muntin_thickness,
+		transom_ratio
+	)
 	if arch_steps > 0:
-		_add_arch_fillers(part_name, rect, depth)
+		_add_arch_fillers(part_name, rect, depth, arch_steps)
 
 
-func _add_muntins(part_name: String, rect: Rect2, depth: float) -> void:
+func _add_muntins(
+	part_name: String,
+	rect: Rect2,
+	depth: float,
+	pane_grid_rows: int,
+	pane_grid_cols: int,
+	muntin_thickness: float,
+	transom_ratio: float
+) -> void:
 	var bar_depth := maxf(depth + 0.01, frame_depth * 0.6)
 	var center_x := rect.position.x + rect.size.x * 0.5
 	var center_y := rect.position.y + rect.size.y * 0.5
@@ -463,45 +317,45 @@ func _add_muntins(part_name: String, rect: Rect2, depth: float) -> void:
 			false
 		)
 	for row in range(pane_grid_rows):
-		var ry := rect.position.y + rect.size.y * float(row + 1) / float(pane_grid_rows + 1)
+		var row_y := rect.position.y + rect.size.y * float(row + 1) / float(pane_grid_rows + 1)
 		_add_box(
 			"%sMuntinH%d" % [part_name, row],
 			Vector3(rect.size.x, muntin_thickness, bar_depth),
-			Vector3(center_x, ry, 0.0),
+			Vector3(center_x, row_y, 0.0),
 			frame_color,
 			false
 		)
 	for col in range(pane_grid_cols):
-		var cx := rect.position.x + rect.size.x * float(col + 1) / float(pane_grid_cols + 1)
+		var col_x := rect.position.x + rect.size.x * float(col + 1) / float(pane_grid_cols + 1)
 		_add_box(
 			"%sMuntinV%d" % [part_name, col],
 			Vector3(muntin_thickness, rect.size.y, bar_depth),
-			Vector3(cx, center_y, 0.0),
+			Vector3(col_x, center_y, 0.0),
 			frame_color,
 			false
 		)
 
 
-func _add_arch_fillers(part_name: String, rect: Rect2, depth: float) -> void:
+func _add_arch_fillers(part_name: String, rect: Rect2, depth: float, arch_steps: int) -> void:
 	var zone := minf(rect.size.x * 0.45, rect.size.y * 0.5)
 	if zone <= 0.001 or arch_steps <= 0:
 		return
 	var band_height := zone / float(arch_steps)
 	var fill_depth := maxf(depth + 0.01, frame_depth)
-	for i in range(arch_steps):
-		var fill := zone * (1.0 - float(i) / float(arch_steps))
+	for index in range(arch_steps):
+		var fill := zone * (1.0 - float(index) / float(arch_steps))
 		if fill <= 0.001:
 			continue
-		var y := rect.end.y - band_height * (float(i) + 0.5)
+		var y := rect.end.y - band_height * (float(index) + 0.5)
 		_add_box(
-			"%sArchL%d" % [part_name, i],
+			"%sArchL%d" % [part_name, index],
 			Vector3(fill, band_height, fill_depth),
 			Vector3(rect.position.x + fill * 0.5, y, 0.0),
 			frame_color,
 			false
 		)
 		_add_box(
-			"%sArchR%d" % [part_name, i],
+			"%sArchR%d" % [part_name, index],
 			Vector3(fill, band_height, fill_depth),
 			Vector3(rect.end.x - fill * 0.5, y, 0.0),
 			frame_color,
@@ -509,7 +363,7 @@ func _add_arch_fillers(part_name: String, rect: Rect2, depth: float) -> void:
 		)
 
 
-func _build_louvers(part_name: String, rect: Rect2, depth: float) -> void:
+func _build_louvers(part_name: String, rect: Rect2, depth: float, louver_count: int) -> void:
 	if louver_count <= 0:
 		return
 	var slat_gap := rect.size.y / float(louver_count)
@@ -517,10 +371,10 @@ func _build_louvers(part_name: String, rect: Rect2, depth: float) -> void:
 	var slat_depth := maxf(depth * 2.0, frame_depth)
 	var tilt := Basis(Vector3.RIGHT, deg_to_rad(28.0))
 	var center_x := rect.position.x + rect.size.x * 0.5
-	for i in range(louver_count):
-		var y := rect.position.y + slat_gap * (float(i) + 0.5)
+	for index in range(louver_count):
+		var y := rect.position.y + slat_gap * (float(index) + 0.5)
 		_add_oriented_box(
-			"%sSlat%d" % [part_name, i],
+			"%sSlat%d" % [part_name, index],
 			Vector3(rect.size.x, slat_height, slat_depth),
 			Vector3(center_x, y, 0.0),
 			frame_color,
@@ -575,11 +429,6 @@ func _spawn_box(
 		_attach_part_collision(instance, size)
 
 
-# Parents a StaticBody3D + box CollisionShape3D under a generated opening part so it
-# blocks the character. The body rides the part's transform and is freed with it on
-# rebuild (it lives under a GENERATED_META-tagged part), and is kept owner-less in the
-# editor so it stays a rebuild artifact. The default StaticBody3D layer (1) matches
-# the character's collision mask, like the other building_editor collision bodies.
 func _attach_part_collision(part: Node3D, size: Vector3) -> void:
 	var shape := BoxShape3D.new()
 	shape.size = size

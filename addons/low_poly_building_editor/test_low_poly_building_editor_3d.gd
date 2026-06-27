@@ -8,6 +8,23 @@ const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.
 const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
 const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
+const Window3DScript = preload("res://addons/low_poly_building_editor/window_3d.gd")
+const Door3DScript = preload("res://addons/low_poly_building_editor/door_3d.gd")
+const SingleWindow3DScript = preload("res://addons/low_poly_building_editor/single_window_3d.gd")
+const DoubleWindow3DScript = preload("res://addons/low_poly_building_editor/double_window_3d.gd")
+const GridWindow3DScript = preload("res://addons/low_poly_building_editor/grid_window_3d.gd")
+const LouveredWindow3DScript = preload("res://addons/low_poly_building_editor/louvered_window_3d.gd")
+const TransomWindow3DScript = preload("res://addons/low_poly_building_editor/transom_window_3d.gd")
+const ArchedWindow3DScript = preload("res://addons/low_poly_building_editor/arched_window_3d.gd")
+const WindowFrame3DScript = preload("res://addons/low_poly_building_editor/window_frame_3d.gd")
+const SingleDoor3DScript = preload("res://addons/low_poly_building_editor/single_door_3d.gd")
+const DoubleDoor3DScript = preload("res://addons/low_poly_building_editor/double_door_3d.gd")
+const GlazedDoor3DScript = preload("res://addons/low_poly_building_editor/glazed_door_3d.gd")
+const GlazedGridDoor3DScript = preload("res://addons/low_poly_building_editor/glazed_grid_door_3d.gd")
+const PanelDoor3DScript = preload("res://addons/low_poly_building_editor/panel_door_3d.gd")
+const DutchDoor3DScript = preload("res://addons/low_poly_building_editor/dutch_door_3d.gd")
+const SingleDoorFrame3DScript = preload("res://addons/low_poly_building_editor/single_door_frame_3d.gd")
+const DoubleDoorFrame3DScript = preload("res://addons/low_poly_building_editor/double_door_frame_3d.gd")
 const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
 const HUMAN_BODY_3D_SCENE := preload("res://characters/human_body_3d.tscn")
 const TEST_ROOF_ANGLE_DEGREES := 40.0
@@ -67,6 +84,8 @@ func _run_smoke_checks() -> void:
 
 	_validate_wall_mesh(wall)
 	_validate_opening_rules(wall)
+	_validate_opening_class_hierarchy()
+	_validate_legacy_opening_storage()
 	_validate_door_opening_rules(wall)
 	_validate_window_style_visuals()
 	_validate_new_opening_style_visuals()
@@ -256,6 +275,52 @@ func _validate_opening_rules(wall: Wall3DScript) -> void:
 		m_failures.append("Wall3D rejected a valid non-overlapping opening")
 
 
+func _validate_opening_class_hierarchy() -> void:
+	var window_styles: Array[Script] = [
+		SingleWindow3DScript,
+		DoubleWindow3DScript,
+		GridWindow3DScript,
+		LouveredWindow3DScript,
+		TransomWindow3DScript,
+		ArchedWindow3DScript,
+		WindowFrame3DScript,
+	]
+	for style_script in window_styles:
+		var window: Node = style_script.new() as Node
+		if !(window is Window3DScript) or !(window is BuildingOpening3DScript):
+			m_failures.append("%s does not inherit through Window3D" % style_script.resource_path)
+		window.free()
+
+	var door_styles: Array[Script] = [
+		SingleDoor3DScript,
+		DoubleDoor3DScript,
+		GlazedDoor3DScript,
+		GlazedGridDoor3DScript,
+		PanelDoor3DScript,
+		DutchDoor3DScript,
+		SingleDoorFrame3DScript,
+		DoubleDoorFrame3DScript,
+	]
+	for style_script in door_styles:
+		var door: Node = style_script.new() as Node
+		if !(door is Door3DScript) or !(door is BuildingOpening3DScript):
+			m_failures.append("%s does not inherit through Door3D" % style_script.resource_path)
+		door.free()
+
+
+func _validate_legacy_opening_storage() -> void:
+	var legacy_door := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	legacy_door.name = "LegacyDoubleDoorOpening"
+	legacy_door.show_bottom_frame = false
+	legacy_door.set(&"door_panel_count", 2)
+	add_child(legacy_door)
+	if (
+		legacy_door.get_node_or_null("LeftDoorPanel") == null
+		or legacy_door.get_node_or_null("RightDoorPanel") == null
+	):
+		m_failures.append("BuildingOpening3D did not load legacy stored door panels")
+
+
 func _validate_door_opening_rules(wall: Wall3DScript) -> void:
 	var door_center := Vector2(0.8, 1.05)
 	var door_size := Vector2(0.9, 2.1)
@@ -264,12 +329,10 @@ func _validate_door_opening_rules(wall: Wall3DScript) -> void:
 	if !wall.can_place_opening(door_center, door_size, 0.03, null, 0, true):
 		m_failures.append("Wall3D rejected a valid floor-touching door opening")
 
-	var door := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	var door := DoubleDoor3DScript.new() as Door3DScript
 	door.name = "DoubleDoorOpening"
 	door.opening_width = 1.6
 	door.opening_height = 2.1
-	door.show_bottom_frame = false
-	door.door_panel_count = 2
 	add_child(door)
 	if door.get_node_or_null("BottomFrame") != null:
 		m_failures.append("BuildingOpening3D generated a bottom frame for a door frame")
@@ -278,11 +341,10 @@ func _validate_door_opening_rules(wall: Wall3DScript) -> void:
 
 
 func _validate_window_style_visuals() -> void:
-	var double_window := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	var double_window := DoubleWindow3DScript.new() as Window3DScript
 	double_window.name = "DoubleWindowOpening"
 	double_window.opening_width = 1.8
 	double_window.opening_height = 1.0
-	double_window.window_pane_count = 2
 	add_child(double_window)
 	if double_window.get_node_or_null("BottomFrame") == null:
 		m_failures.append("BuildingOpening3D did not keep bottom frame for a window")
@@ -292,9 +354,8 @@ func _validate_window_style_visuals() -> void:
 	):
 		m_failures.append("BuildingOpening3D did not generate double window panes")
 
-	var window_frame := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	var window_frame := WindowFrame3DScript.new() as Window3DScript
 	window_frame.name = "WindowFrameOpening"
-	window_frame.window_pane_count = 0
 	add_child(window_frame)
 	if window_frame.get_node_or_null("WindowPane") != null:
 		m_failures.append("BuildingOpening3D generated panes for a frame-only window")
@@ -302,13 +363,10 @@ func _validate_window_style_visuals() -> void:
 
 func _validate_new_opening_style_visuals() -> void:
 	# Grid window: a single pane with muntin bars subdividing the glass.
-	var grid_window := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	var grid_window := GridWindow3DScript.new() as Window3DScript
 	grid_window.name = "GridWindowOpening"
 	grid_window.opening_width = 1.0
 	grid_window.opening_height = 1.2
-	grid_window.window_pane_count = 1
-	grid_window.pane_grid_rows = 2
-	grid_window.pane_grid_cols = 1
 	add_child(grid_window)
 	if grid_window.get_node_or_null("WindowPane") == null:
 		m_failures.append("BuildingOpening3D did not generate the grid window glass pane")
@@ -319,10 +377,8 @@ func _validate_new_opening_style_visuals() -> void:
 		m_failures.append("BuildingOpening3D did not generate grid window muntin bars")
 
 	# Louvered window: tilted slats replace the flat glass pane.
-	var louvered_window := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	var louvered_window := LouveredWindow3DScript.new() as Window3DScript
 	louvered_window.name = "LouveredWindowOpening"
-	louvered_window.window_pane_count = 1
-	louvered_window.louver_count = 6
 	add_child(louvered_window)
 	if louvered_window.get_node_or_null("WindowPaneSlat0") == null:
 		m_failures.append("BuildingOpening3D did not generate louver slats")
@@ -330,21 +386,17 @@ func _validate_new_opening_style_visuals() -> void:
 		m_failures.append("BuildingOpening3D kept a flat pane on a louvered window")
 
 	# Transom window: a horizontal rail splits an upper light from the glass.
-	var transom_window := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	var transom_window := TransomWindow3DScript.new() as Window3DScript
 	transom_window.name = "TransomWindowOpening"
-	transom_window.window_pane_count = 1
-	transom_window.transom_ratio = 0.28
 	add_child(transom_window)
 	if transom_window.get_node_or_null("WindowPaneTransomRail") == null:
 		m_failures.append("BuildingOpening3D did not generate the transom rail")
 
 	# Arched window: stepped corner fillers fake a low-poly arch top.
-	var arched_window := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	var arched_window := ArchedWindow3DScript.new() as Window3DScript
 	arched_window.name = "ArchedWindowOpening"
 	arched_window.opening_width = 1.0
 	arched_window.opening_height = 1.4
-	arched_window.window_pane_count = 1
-	arched_window.arch_steps = 3
 	add_child(arched_window)
 	if (
 		arched_window.get_node_or_null("WindowPaneArchL0") == null
@@ -353,13 +405,10 @@ func _validate_new_opening_style_visuals() -> void:
 		m_failures.append("BuildingOpening3D did not generate arched window corner fillers")
 
 	# Glazed door: solid lower panel, a rail, and an upper glass lite.
-	var glazed_door := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	var glazed_door := GlazedDoor3DScript.new() as Door3DScript
 	glazed_door.name = "GlazedDoorOpening"
 	glazed_door.opening_width = 0.9
 	glazed_door.opening_height = 2.1
-	glazed_door.show_bottom_frame = false
-	glazed_door.door_panel_count = 1
-	glazed_door.door_glazing_ratio = 0.55
 	add_child(glazed_door)
 	if (
 		glazed_door.get_node_or_null("DoorPanelPanel") == null
@@ -369,15 +418,10 @@ func _validate_new_opening_style_visuals() -> void:
 		m_failures.append("BuildingOpening3D did not generate glazed door parts")
 
 	# Cross glazed door: the glazed lite is divided by muntin bars.
-	var cross_door := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	var cross_door := GlazedGridDoor3DScript.new() as Door3DScript
 	cross_door.name = "CrossGlazedDoorOpening"
 	cross_door.opening_width = 0.9
 	cross_door.opening_height = 2.1
-	cross_door.show_bottom_frame = false
-	cross_door.door_panel_count = 1
-	cross_door.door_glazing_ratio = 0.55
-	cross_door.pane_grid_rows = 2
-	cross_door.pane_grid_cols = 1
 	add_child(cross_door)
 	if (
 		cross_door.get_node_or_null("DoorPanelGlassMuntinH0") == null
@@ -386,14 +430,10 @@ func _validate_new_opening_style_visuals() -> void:
 		m_failures.append("BuildingOpening3D did not generate cross glazed door muntins")
 
 	# Panel door: raised recessed-panel insets on the solid face.
-	var panel_door := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	var panel_door := PanelDoor3DScript.new() as Door3DScript
 	panel_door.name = "PanelDoorOpening"
 	panel_door.opening_width = 0.9
 	panel_door.opening_height = 2.1
-	panel_door.show_bottom_frame = false
-	panel_door.door_panel_count = 1
-	panel_door.door_inset_rows = 3
-	panel_door.door_inset_cols = 2
 	add_child(panel_door)
 	if panel_door.get_node_or_null("DoorPanel") == null:
 		m_failures.append("BuildingOpening3D did not generate the panel door face")
@@ -401,13 +441,10 @@ func _validate_new_opening_style_visuals() -> void:
 		m_failures.append("BuildingOpening3D did not generate panel door insets")
 
 	# Dutch door: the panel splits into two stacked leaves with a mid rail.
-	var dutch_door := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	var dutch_door := DutchDoor3DScript.new() as Door3DScript
 	dutch_door.name = "DutchDoorOpening"
 	dutch_door.opening_width = 0.9
 	dutch_door.opening_height = 2.1
-	dutch_door.show_bottom_frame = false
-	dutch_door.door_panel_count = 1
-	dutch_door.door_split = true
 	add_child(dutch_door)
 	if (
 		dutch_door.get_node_or_null("DoorPanelLower") == null

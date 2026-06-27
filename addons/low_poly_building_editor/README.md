@@ -5,6 +5,12 @@ viewport tools for walls, floors, stairs, pillars, roofs, openings, and props, a
 normal scene nodes so the result serializes into `.tscn` files. The Wall tool can draw
 either individual spans or enclosed rectangular rooms.
 
+Door and window nodes use a typed opening hierarchy:
+`BuildingOpening3D` owns the shared wall-cut, frame, and collision contract;
+`Window3D` and `Door3D` own their category-specific properties; and each style has
+its own concrete class such as `GridWindow3D`, `GlazedDoor3D`, or
+`DoubleDoorFrame3D`.
+
 This README is the plugin's entry point; the full documentation lives in [`docs/`](docs):
 
 - [`docs/feature.md`](docs/feature.md) — goals, authoring experience, rules, edge cases, ownership, and validation.
