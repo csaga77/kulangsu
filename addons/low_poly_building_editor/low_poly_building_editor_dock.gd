@@ -108,10 +108,12 @@ var m_window_width_spin: SpinBox
 var m_window_height_spin: SpinBox
 var m_window_frame_spin: SpinBox
 var m_window_sill_spin: SpinBox
+var m_window_frame_sides_option: OptionButton
 var m_door_style_option: OptionButton
 var m_door_width_spin: SpinBox
 var m_door_height_spin: SpinBox
 var m_door_frame_spin: SpinBox
+var m_door_frame_sides_option: OptionButton
 var m_palette_paths: PackedStringArray = PackedStringArray()
 
 
@@ -568,8 +570,16 @@ func _build_window_controls(parent: VBoxContainer) -> void:
 	m_window_style_option.set_item_metadata(0, "single_window")
 	m_window_style_option.add_item("Double Window", 1)
 	m_window_style_option.set_item_metadata(1, "double_window")
-	m_window_style_option.add_item("Window Frame", 2)
-	m_window_style_option.set_item_metadata(2, "frame")
+	m_window_style_option.add_item("Grid Window", 2)
+	m_window_style_option.set_item_metadata(2, "grid_window")
+	m_window_style_option.add_item("Louvered Window", 3)
+	m_window_style_option.set_item_metadata(3, "louvered_window")
+	m_window_style_option.add_item("Transom Window", 4)
+	m_window_style_option.set_item_metadata(4, "transom_window")
+	m_window_style_option.add_item("Arched Window", 5)
+	m_window_style_option.set_item_metadata(5, "arched_window")
+	m_window_style_option.add_item("Window Frame", 6)
+	m_window_style_option.set_item_metadata(6, "frame")
 	m_window_style_option.item_selected.connect(_on_window_style_selected)
 	_add_labeled_control(parent, "Style:", m_window_style_option, "Window opening or frame style to place on a wall.")
 
@@ -590,6 +600,10 @@ func _build_window_controls(parent: VBoxContainer) -> void:
 	_add_labeled_control(parent, "Sill:", m_window_sill_spin)
 	m_window_sill_spin.value_changed.connect(_on_window_setting_changed)
 
+	m_window_frame_sides_option = _make_frame_sides_option()
+	_add_labeled_control(parent, "Frame Sides:", m_window_frame_sides_option, "Show the frame casing on just the placed wall face, or on both faces.")
+	m_window_frame_sides_option.item_selected.connect(_on_window_frame_sides_selected)
+
 
 func _build_door_controls(parent: VBoxContainer) -> void:
 	var header := Label.new()
@@ -602,10 +616,18 @@ func _build_door_controls(parent: VBoxContainer) -> void:
 	m_door_style_option.set_item_metadata(0, "single_door")
 	m_door_style_option.add_item("Double Door", 1)
 	m_door_style_option.set_item_metadata(1, "double_door")
-	m_door_style_option.add_item("Single Door Frame", 2)
-	m_door_style_option.set_item_metadata(2, "single_frame")
-	m_door_style_option.add_item("Double Door Frame", 3)
-	m_door_style_option.set_item_metadata(3, "double_frame")
+	m_door_style_option.add_item("Glazed Door", 2)
+	m_door_style_option.set_item_metadata(2, "glazed_door")
+	m_door_style_option.add_item("Cross Glazed Door", 3)
+	m_door_style_option.set_item_metadata(3, "glazed_grid_door")
+	m_door_style_option.add_item("Panel Door", 4)
+	m_door_style_option.set_item_metadata(4, "panel_door")
+	m_door_style_option.add_item("Dutch Door", 5)
+	m_door_style_option.set_item_metadata(5, "dutch_door")
+	m_door_style_option.add_item("Single Door Frame", 6)
+	m_door_style_option.set_item_metadata(6, "single_frame")
+	m_door_style_option.add_item("Double Door Frame", 7)
+	m_door_style_option.set_item_metadata(7, "double_frame")
 	m_door_style_option.item_selected.connect(_on_door_style_selected)
 	_add_labeled_control(parent, "Style:", m_door_style_option, "Door opening or frame style to place on a wall.")
 
@@ -620,6 +642,10 @@ func _build_door_controls(parent: VBoxContainer) -> void:
 	m_door_frame_spin = _make_spin(0.01, 1.0, 0.01, 0.08)
 	_add_labeled_control(parent, "Frame:", m_door_frame_spin, "Visible frame thickness around the door opening.")
 	m_door_frame_spin.value_changed.connect(_on_door_setting_changed)
+
+	m_door_frame_sides_option = _make_frame_sides_option()
+	_add_labeled_control(parent, "Frame Sides:", m_door_frame_sides_option, "Show the frame casing on just the placed wall face, or on both faces.")
+	m_door_frame_sides_option.item_selected.connect(_on_door_frame_sides_selected)
 
 
 func _make_spin(min_value: float, max_value: float, step: float, value: float) -> SpinBox:
@@ -935,6 +961,40 @@ func _on_door_setting_changed(_value: float) -> void:
 	_emit_door_settings()
 
 
+func _on_window_frame_sides_selected(_index: int) -> void:
+	_emit_window_settings()
+
+
+func _on_door_frame_sides_selected(_index: int) -> void:
+	_emit_door_settings()
+
+
+func _make_frame_sides_option() -> OptionButton:
+	var option := OptionButton.new()
+	option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	option.add_item("Placed Side", 0)
+	option.set_item_metadata(0, 0)
+	option.add_item("Both Sides", 1)
+	option.set_item_metadata(1, 1)
+	return option
+
+
+func _selected_frame_sides(option: OptionButton) -> int:
+	if option == null or option.selected < 0:
+		return 0
+	return int(option.get_item_metadata(option.selected))
+
+
+func _select_frame_sides(option: OptionButton, value: int) -> void:
+	if option == null:
+		return
+	for index in range(option.get_item_count()):
+		if int(option.get_item_metadata(index)) == value:
+			option.select(index)
+			return
+	option.select(0)
+
+
 func _emit_all_settings() -> void:
 	_emit_wall_settings()
 	_emit_floor_settings()
@@ -1097,6 +1157,7 @@ func _emit_window_settings() -> void:
 		"height": float(m_window_height_spin.value),
 		"frame_thickness": float(m_window_frame_spin.value),
 		"sill_height": float(m_window_sill_spin.value),
+		"frame_sides": _selected_frame_sides(m_window_frame_sides_option),
 	})
 
 
@@ -1126,6 +1187,7 @@ func _emit_door_settings() -> void:
 		"width": float(m_door_width_spin.value),
 		"height": float(m_door_height_spin.value),
 		"frame_thickness": float(m_door_frame_spin.value),
+		"frame_sides": _selected_frame_sides(m_door_frame_sides_option),
 	})
 
 
@@ -1294,11 +1356,13 @@ func _load_persisted_settings() -> void:
 	m_window_height_spin.value = float(state.get("window_height", m_window_height_spin.value))
 	m_window_frame_spin.value = float(state.get("window_frame_thickness", m_window_frame_spin.value))
 	m_window_sill_spin.value = float(state.get("window_sill_height", m_window_sill_spin.value))
+	_select_frame_sides(m_window_frame_sides_option, int(state.get("window_frame_sides", _selected_frame_sides(m_window_frame_sides_option))))
 	var door_style := str(state.get("door_style", _selected_door_style()))
 	_select_door_style(door_style)
 	m_door_width_spin.value = float(state.get("door_width", _door_default_width(door_style)))
 	m_door_height_spin.value = float(state.get("door_height", m_door_height_spin.value))
 	m_door_frame_spin.value = float(state.get("door_frame_thickness", m_door_frame_spin.value))
+	_select_frame_sides(m_door_frame_sides_option, int(state.get("door_frame_sides", _selected_frame_sides(m_door_frame_sides_option))))
 	_refresh_color_picker_icons()
 
 
@@ -1360,8 +1424,10 @@ func _save_persisted_settings() -> void:
 		"window_height": float(m_window_height_spin.value) if m_window_height_spin != null else 1.0,
 		"window_frame_thickness": float(m_window_frame_spin.value) if m_window_frame_spin != null else 0.08,
 		"window_sill_height": float(m_window_sill_spin.value) if m_window_sill_spin != null else 0.9,
+		"window_frame_sides": _selected_frame_sides(m_window_frame_sides_option),
 		"door_style": _selected_door_style(),
 		"door_width": float(m_door_width_spin.value) if m_door_width_spin != null else 0.9,
 		"door_height": float(m_door_height_spin.value) if m_door_height_spin != null else 2.1,
 		"door_frame_thickness": float(m_door_frame_spin.value) if m_door_frame_spin != null else 0.08,
+		"door_frame_sides": _selected_frame_sides(m_door_frame_sides_option),
 	})

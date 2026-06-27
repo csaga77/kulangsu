@@ -225,12 +225,16 @@ var m_window_settings := {
 	"height": 1.0,
 	"frame_thickness": 0.08,
 	"sill_height": 0.9,
+	"frame_sides": 0,
+	"frame_protrusion": 0.02,
 }
 var m_door_settings := {
 	"style": "single_door",
 	"width": 0.9,
 	"height": 2.1,
 	"frame_thickness": 0.08,
+	"frame_sides": 0,
+	"frame_protrusion": 0.02,
 }
 var m_wall_start_local := Vector3.ZERO
 var m_wall_end_local := Vector3.ZERO
@@ -3230,6 +3234,11 @@ func _apply_opening_settings(opening: BuildingOpening3DScript, settings: Diction
 	opening.opening_height = float(settings["height"])
 	opening.frame_thickness = float(settings["frame_thickness"])
 	opening.frame_depth = frame_depth
+	# frame_depth is passed as the wall thickness plus a small margin (0.04), so
+	# recover the wall thickness for the both-sided casing geometry.
+	opening.wall_thickness = maxf(frame_depth - 0.04, 0.0)
+	opening.frame_sides = int(settings.get("frame_sides", 0))
+	opening.frame_protrusion = float(settings.get("frame_protrusion", 0.02))
 	opening.show_bottom_frame = bool(settings["show_bottom_frame"])
 	opening.door_panel_count = int(settings["door_panel_count"])
 	opening.door_panel_depth = float(settings["door_panel_depth"])
@@ -3237,6 +3246,16 @@ func _apply_opening_settings(opening: BuildingOpening3DScript, settings: Diction
 	opening.window_pane_count = int(settings["window_pane_count"])
 	opening.window_pane_depth = float(settings["window_pane_depth"])
 	opening.window_pane_color = Color(settings["window_pane_color"])
+	opening.pane_grid_rows = int(settings.get("pane_grid_rows", 0))
+	opening.pane_grid_cols = int(settings.get("pane_grid_cols", 0))
+	opening.muntin_thickness = float(settings.get("muntin_thickness", 0.03))
+	opening.louver_count = int(settings.get("louver_count", 0))
+	opening.arch_steps = int(settings.get("arch_steps", 0))
+	opening.transom_ratio = float(settings.get("transom_ratio", 0.0))
+	opening.door_glazing_ratio = float(settings.get("door_glazing_ratio", 0.0))
+	opening.door_inset_rows = int(settings.get("door_inset_rows", 0))
+	opening.door_inset_cols = int(settings.get("door_inset_cols", 0))
+	opening.door_split = bool(settings.get("door_split", false))
 
 
 func _can_place_wall_opening(
@@ -3274,13 +3293,45 @@ func _active_opening_settings() -> Dictionary:
 		var style := String(m_door_settings.get("style", "single_door"))
 		var is_double := style.begins_with("double")
 		var is_frame_only := style.ends_with("_frame")
-		var label := "Double Door" if is_double else "Single Door"
-		if is_frame_only:
-			label += " Frame"
+		var label := "Single Door"
+		match style:
+			"double_door":
+				label = "Double Door"
+			"glazed_door":
+				label = "Glazed Door"
+			"glazed_grid_door":
+				label = "Cross Glazed Door"
+			"panel_door":
+				label = "Panel Door"
+			"dutch_door":
+				label = "Dutch Door"
+			"single_frame":
+				label = "Single Door Frame"
+			"double_frame":
+				label = "Double Door Frame"
 		var panel_count := 0
 		if !is_frame_only:
 			panel_count = 2 if is_double else 1
 		var default_width := 1.6 if is_double else 0.9
+		# Style-specific low-poly detailing.
+		var glazing := 0.0
+		var grid_rows := 0
+		var grid_cols := 0
+		var inset_rows := 0
+		var inset_cols := 0
+		var split := false
+		match style:
+			"glazed_door":
+				glazing = 0.55
+			"glazed_grid_door":
+				glazing = 0.55
+				grid_rows = 2
+				grid_cols = 1
+			"panel_door":
+				inset_rows = 3
+				inset_cols = 2
+			"dutch_door":
+				split = true
 		var node_name := label.replace(" ", "") + "Opening"
 		return {
 			"label": label,
@@ -3288,6 +3339,8 @@ func _active_opening_settings() -> Dictionary:
 			"width": float(m_door_settings.get("width", default_width)),
 			"height": float(m_door_settings.get("height", 2.1)),
 			"frame_thickness": float(m_door_settings.get("frame_thickness", 0.08)),
+			"frame_sides": int(m_door_settings.get("frame_sides", 0)),
+			"frame_protrusion": float(m_door_settings.get("frame_protrusion", 0.02)),
 			"sill_height": 0.0,
 			"show_bottom_frame": false,
 			"door_panel_count": panel_count,
@@ -3296,6 +3349,16 @@ func _active_opening_settings() -> Dictionary:
 			"window_pane_count": 0,
 			"window_pane_depth": 0.03,
 			"window_pane_color": Color(0.58, 0.82, 0.95, 0.52),
+			"pane_grid_rows": grid_rows,
+			"pane_grid_cols": grid_cols,
+			"muntin_thickness": 0.03,
+			"louver_count": 0,
+			"arch_steps": 0,
+			"transom_ratio": 0.0,
+			"door_glazing_ratio": glazing,
+			"door_inset_rows": inset_rows,
+			"door_inset_cols": inset_cols,
+			"door_split": split,
 			"allow_base_edge": true,
 		}
 
@@ -3303,14 +3366,39 @@ func _active_opening_settings() -> Dictionary:
 	var is_double := style == "double_window"
 	var is_frame_only := style == "frame"
 	var label := "Single Window"
-	if is_double:
-		label = "Double Window"
-	if is_frame_only:
-		label = "Window Frame"
+	match style:
+		"double_window":
+			label = "Double Window"
+		"grid_window":
+			label = "Grid Window"
+		"louvered_window":
+			label = "Louvered Window"
+		"transom_window":
+			label = "Transom Window"
+		"arched_window":
+			label = "Arched Window"
+		"frame":
+			label = "Window Frame"
 	var pane_count := 0
 	if !is_frame_only:
 		pane_count = 2 if is_double else 1
 	var default_width := 1.8 if is_double else 1.0
+	# Style-specific low-poly detailing.
+	var grid_rows := 0
+	var grid_cols := 0
+	var louvers := 0
+	var arch := 0
+	var transom := 0.0
+	match style:
+		"grid_window":
+			grid_rows = 2
+			grid_cols = 1
+		"louvered_window":
+			louvers = 6
+		"transom_window":
+			transom = 0.28
+		"arched_window":
+			arch = 3
 	var node_name := label.replace(" ", "") + "Opening"
 	return {
 		"label": label,
@@ -3318,6 +3406,8 @@ func _active_opening_settings() -> Dictionary:
 		"width": float(m_window_settings.get("width", default_width)),
 		"height": float(m_window_settings["height"]),
 		"frame_thickness": float(m_window_settings["frame_thickness"]),
+		"frame_sides": int(m_window_settings.get("frame_sides", 0)),
+		"frame_protrusion": float(m_window_settings.get("frame_protrusion", 0.02)),
 		"sill_height": maxf(float(m_window_settings.get("sill_height", 0.9)), 0.0),
 		"show_bottom_frame": true,
 		"door_panel_count": 0,
@@ -3326,6 +3416,16 @@ func _active_opening_settings() -> Dictionary:
 		"window_pane_count": pane_count,
 		"window_pane_depth": 0.03,
 		"window_pane_color": Color(0.58, 0.82, 0.95, 0.52),
+		"pane_grid_rows": grid_rows,
+		"pane_grid_cols": grid_cols,
+		"muntin_thickness": 0.03,
+		"louver_count": louvers,
+		"arch_steps": arch,
+		"transom_ratio": transom,
+		"door_glazing_ratio": 0.0,
+		"door_inset_rows": 0,
+		"door_inset_cols": 0,
+		"door_split": false,
 		"allow_base_edge": false,
 	}
 
@@ -3401,6 +3501,9 @@ func _commit_placement() -> void:
 		opening.frame_thickness = opening_preview.frame_thickness
 		opening.frame_depth = opening_preview.frame_depth
 		opening.frame_color = Color(0.86, 0.92, 0.94, 1.0)
+		opening.wall_thickness = opening_preview.wall_thickness
+		opening.frame_sides = opening_preview.frame_sides
+		opening.frame_protrusion = opening_preview.frame_protrusion
 		opening.show_bottom_frame = opening_preview.show_bottom_frame
 		opening.door_panel_count = opening_preview.door_panel_count
 		opening.door_panel_depth = opening_preview.door_panel_depth
@@ -3408,6 +3511,16 @@ func _commit_placement() -> void:
 		opening.window_pane_count = opening_preview.window_pane_count
 		opening.window_pane_depth = opening_preview.window_pane_depth
 		opening.window_pane_color = opening_preview.window_pane_color
+		opening.pane_grid_rows = opening_preview.pane_grid_rows
+		opening.pane_grid_cols = opening_preview.pane_grid_cols
+		opening.muntin_thickness = opening_preview.muntin_thickness
+		opening.louver_count = opening_preview.louver_count
+		opening.arch_steps = opening_preview.arch_steps
+		opening.transom_ratio = opening_preview.transom_ratio
+		opening.door_glazing_ratio = opening_preview.door_glazing_ratio
+		opening.door_inset_rows = opening_preview.door_inset_rows
+		opening.door_inset_cols = opening_preview.door_inset_cols
+		opening.door_split = opening_preview.door_split
 		opening.position = opening_preview.position
 		opening.rotation = opening_preview.rotation
 		opening.set_meta(

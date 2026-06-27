@@ -69,6 +69,8 @@ func _run_smoke_checks() -> void:
 	_validate_opening_rules(wall)
 	_validate_door_opening_rules(wall)
 	_validate_window_style_visuals()
+	_validate_new_opening_style_visuals()
+	_validate_frame_sides()
 	_validate_opening_follows_wall_segment()
 	_validate_snapping(coordinator)
 	_validate_wall_base_height(coordinator)
@@ -296,6 +298,162 @@ func _validate_window_style_visuals() -> void:
 	add_child(window_frame)
 	if window_frame.get_node_or_null("WindowPane") != null:
 		m_failures.append("BuildingOpening3D generated panes for a frame-only window")
+
+
+func _validate_new_opening_style_visuals() -> void:
+	# Grid window: a single pane with muntin bars subdividing the glass.
+	var grid_window := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	grid_window.name = "GridWindowOpening"
+	grid_window.opening_width = 1.0
+	grid_window.opening_height = 1.2
+	grid_window.window_pane_count = 1
+	grid_window.pane_grid_rows = 2
+	grid_window.pane_grid_cols = 1
+	add_child(grid_window)
+	if grid_window.get_node_or_null("WindowPane") == null:
+		m_failures.append("BuildingOpening3D did not generate the grid window glass pane")
+	if (
+		grid_window.get_node_or_null("WindowPaneMuntinH0") == null
+		or grid_window.get_node_or_null("WindowPaneMuntinV0") == null
+	):
+		m_failures.append("BuildingOpening3D did not generate grid window muntin bars")
+
+	# Louvered window: tilted slats replace the flat glass pane.
+	var louvered_window := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	louvered_window.name = "LouveredWindowOpening"
+	louvered_window.window_pane_count = 1
+	louvered_window.louver_count = 6
+	add_child(louvered_window)
+	if louvered_window.get_node_or_null("WindowPaneSlat0") == null:
+		m_failures.append("BuildingOpening3D did not generate louver slats")
+	if louvered_window.get_node_or_null("WindowPane") != null:
+		m_failures.append("BuildingOpening3D kept a flat pane on a louvered window")
+
+	# Transom window: a horizontal rail splits an upper light from the glass.
+	var transom_window := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	transom_window.name = "TransomWindowOpening"
+	transom_window.window_pane_count = 1
+	transom_window.transom_ratio = 0.28
+	add_child(transom_window)
+	if transom_window.get_node_or_null("WindowPaneTransomRail") == null:
+		m_failures.append("BuildingOpening3D did not generate the transom rail")
+
+	# Arched window: stepped corner fillers fake a low-poly arch top.
+	var arched_window := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	arched_window.name = "ArchedWindowOpening"
+	arched_window.opening_width = 1.0
+	arched_window.opening_height = 1.4
+	arched_window.window_pane_count = 1
+	arched_window.arch_steps = 3
+	add_child(arched_window)
+	if (
+		arched_window.get_node_or_null("WindowPaneArchL0") == null
+		or arched_window.get_node_or_null("WindowPaneArchR0") == null
+	):
+		m_failures.append("BuildingOpening3D did not generate arched window corner fillers")
+
+	# Glazed door: solid lower panel, a rail, and an upper glass lite.
+	var glazed_door := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	glazed_door.name = "GlazedDoorOpening"
+	glazed_door.opening_width = 0.9
+	glazed_door.opening_height = 2.1
+	glazed_door.show_bottom_frame = false
+	glazed_door.door_panel_count = 1
+	glazed_door.door_glazing_ratio = 0.55
+	add_child(glazed_door)
+	if (
+		glazed_door.get_node_or_null("DoorPanelPanel") == null
+		or glazed_door.get_node_or_null("DoorPanelGlass") == null
+		or glazed_door.get_node_or_null("DoorPanelRail") == null
+	):
+		m_failures.append("BuildingOpening3D did not generate glazed door parts")
+
+	# Cross glazed door: the glazed lite is divided by muntin bars.
+	var cross_door := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	cross_door.name = "CrossGlazedDoorOpening"
+	cross_door.opening_width = 0.9
+	cross_door.opening_height = 2.1
+	cross_door.show_bottom_frame = false
+	cross_door.door_panel_count = 1
+	cross_door.door_glazing_ratio = 0.55
+	cross_door.pane_grid_rows = 2
+	cross_door.pane_grid_cols = 1
+	add_child(cross_door)
+	if (
+		cross_door.get_node_or_null("DoorPanelGlassMuntinH0") == null
+		or cross_door.get_node_or_null("DoorPanelGlassMuntinV0") == null
+	):
+		m_failures.append("BuildingOpening3D did not generate cross glazed door muntins")
+
+	# Panel door: raised recessed-panel insets on the solid face.
+	var panel_door := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	panel_door.name = "PanelDoorOpening"
+	panel_door.opening_width = 0.9
+	panel_door.opening_height = 2.1
+	panel_door.show_bottom_frame = false
+	panel_door.door_panel_count = 1
+	panel_door.door_inset_rows = 3
+	panel_door.door_inset_cols = 2
+	add_child(panel_door)
+	if panel_door.get_node_or_null("DoorPanel") == null:
+		m_failures.append("BuildingOpening3D did not generate the panel door face")
+	if panel_door.get_node_or_null("DoorPanelInset0_0") == null:
+		m_failures.append("BuildingOpening3D did not generate panel door insets")
+
+	# Dutch door: the panel splits into two stacked leaves with a mid rail.
+	var dutch_door := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	dutch_door.name = "DutchDoorOpening"
+	dutch_door.opening_width = 0.9
+	dutch_door.opening_height = 2.1
+	dutch_door.show_bottom_frame = false
+	dutch_door.door_panel_count = 1
+	dutch_door.door_split = true
+	add_child(dutch_door)
+	if (
+		dutch_door.get_node_or_null("DoorPanelLower") == null
+		or dutch_door.get_node_or_null("DoorPanelUpper") == null
+		or dutch_door.get_node_or_null("DoorPanelMidRail") == null
+	):
+		m_failures.append("BuildingOpening3D did not generate split Dutch door leaves")
+
+
+func _validate_frame_sides() -> void:
+	var thickness := 0.3
+	var protrusion := 0.02
+	var face_gap: float = BuildingOpening3DScript.FRAME_FACE_GAP
+
+	# Default FRONT casing keeps the legacy single-sided depth.
+	var front_opening := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	front_opening.name = "FrontFrameOpening"
+	front_opening.frame_depth = thickness + 0.04
+	front_opening.wall_thickness = thickness
+	add_child(front_opening)
+	var front_frame := front_opening.get_node_or_null("LeftFrame") as MeshInstance3D
+	if front_frame == null:
+		m_failures.append("BuildingOpening3D did not generate a frame for a front-sided opening")
+	elif !is_equal_approx((front_frame.mesh as BoxMesh).size.z, thickness + 0.04):
+		m_failures.append("Front-sided frame casing changed its legacy depth")
+
+	# BOTH casing spans the wall and protrudes past both faces.
+	var both_opening := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	both_opening.name = "BothFrameOpening"
+	both_opening.frame_depth = thickness + 0.04
+	both_opening.wall_thickness = thickness
+	both_opening.frame_protrusion = protrusion
+	both_opening.frame_sides = BuildingOpening3DScript.FrameSides.BOTH
+	add_child(both_opening)
+	var both_frame := both_opening.get_node_or_null("LeftFrame") as MeshInstance3D
+	if both_frame == null:
+		m_failures.append("BuildingOpening3D did not generate a frame for a both-sided opening")
+		return
+	var depth: float = (both_frame.mesh as BoxMesh).size.z
+	var center_z := both_frame.position.z
+	var front_extent := center_z + depth * 0.5
+	var back_extent := center_z - depth * 0.5
+	if front_extent <= -face_gap + 0.0001:
+		m_failures.append("Both-sided frame casing does not protrude past the placed wall face")
+	if back_extent >= -(thickness + face_gap) - 0.0001:
+		m_failures.append("Both-sided frame casing does not protrude past the far wall face")
 
 
 func _validate_opening_follows_wall_segment() -> void:
