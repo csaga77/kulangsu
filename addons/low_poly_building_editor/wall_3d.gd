@@ -131,6 +131,12 @@ var m_is_rebuilding := false
 var m_intersection_clip_segments_before: Array[WallSegment3D] = []
 var m_intersection_clip_segments_after: Array[WallSegment3D] = []
 var m_roof_clip_surfaces: Array[Dictionary] = []
+## Openings authored on collinear-overlapping sibling walls whose shared span
+## this wall renders. Each entry is `{ "segment_index": int, "rect": Rect2 }`
+## in this wall's own segment-local space, so the wall that owns the overlap
+## cuts the neighbour's door/window even though the opening node lives on the
+## clipped sibling. Transient rebuild data; never serialized.
+var m_foreign_opening_rects: Array = []
 
 
 func _ready() -> void:
@@ -351,10 +357,16 @@ func set_intersection_clip_segments(before_segments: Array, after_segments: Arra
 	rebuild_wall_mesh()
 
 
-func set_geometry_clip_data(before_segments: Array, after_segments: Array, roof_surfaces: Array) -> void:
+func set_geometry_clip_data(
+	before_segments: Array,
+	after_segments: Array,
+	roof_surfaces: Array,
+	foreign_openings: Array = []
+) -> void:
 	m_intersection_clip_segments_before = _duplicate_segment_resources(before_segments)
 	m_intersection_clip_segments_after = _duplicate_segment_resources(after_segments)
 	m_roof_clip_surfaces = _duplicate_roof_clip_surfaces(roof_surfaces)
+	m_foreign_opening_rects = _duplicate_foreign_openings(foreign_openings)
 	rebuild_wall_mesh()
 
 
@@ -363,11 +375,13 @@ func clear_intersection_clip_segments() -> void:
 			m_intersection_clip_segments_before.is_empty()
 			and m_intersection_clip_segments_after.is_empty()
 			and m_roof_clip_surfaces.is_empty()
+			and m_foreign_opening_rects.is_empty()
 	):
 		return
 	m_intersection_clip_segments_before.clear()
 	m_intersection_clip_segments_after.clear()
 	m_roof_clip_surfaces.clear()
+	m_foreign_opening_rects.clear()
 	rebuild_wall_mesh()
 
 
@@ -607,12 +621,16 @@ func can_place_opening(
 			MergedWallMeshBuilderScript.segment_footprint(other, other_frame)
 		):
 			return false
+	# Collinear overlaps on either side are allowed: the wall that renders the
+	# shared span cuts the opening (its own, or one propagated from the clipped
+	# sibling), so placement no longer depends on scene order. Non-collinear
+	# crossings still block, since that solid mass would fill the hole.
 	if _opening_overlaps_clip_segments(
 		candidate.position.y,
 		opening_plan,
 		segment,
 		m_intersection_clip_segments_before,
-		false
+		true
 	):
 		return false
 	if _opening_overlaps_clip_segments(
@@ -685,7 +703,7 @@ func rebuild_wall_mesh(rebuild_collision: bool = true) -> void:
 		var empty_rects: Array[Rect2] = []
 		opening_rects.append(empty_rects)
 	var own_segment_start_index := compiled_segments.size()
-	var assigned_openings := _assigned_opening_rects()
+	var assigned_openings := _assigned_opening_rects(null, true)
 	for index in range(get_segment_count()):
 		compiled_segments.append(get_segment(index))
 		frames.append(get_segment_local_frame(index))
@@ -887,6 +905,49 @@ func _duplicate_segment_resources(segments: Array) -> Array[WallSegment3D]:
 	return copies
 
 
+func _duplicate_foreign_openings(entries: Array) -> Array:
+	var copies: Array = []
+	for entry in entries:
+		if !(entry is Dictionary):
+			continue
+		var segment_index := int((entry as Dictionary).get("segment_index", -1))
+		var rect_variant: Variant = (entry as Dictionary).get("rect", null)
+		if segment_index < 0 or !(rect_variant is Rect2):
+			continue
+		copies.append({
+			"segment_index": segment_index,
+			"rect": rect_variant as Rect2,
+		})
+	return copies
+
+
+## Per-segment opening rects authored directly on this wall (no propagated
+## sibling openings), in each segment's local space. Used by the coordinator to
+## forward this wall's openings onto a collinear sibling that renders the
+## shared span.
+func get_assigned_opening_rects() -> Array:
+	return _assigned_opening_rects()
+
+
+## Change-detection key covering this wall's segments and authored openings.
+## The coordinator folds it into its geometry-clip signature so moving or
+## resizing an opening on one wall refreshes a collinear sibling that renders
+## the shared span.
+func get_opening_signature() -> String:
+	return _build_opening_signature()
+
+
+## Per-segment opening rects actually cut into the rendered mesh for a segment,
+## including openings propagated from collinear sibling walls.
+func get_render_opening_rects(segment_index: int) -> Array[Rect2]:
+	var per_segment := _assigned_opening_rects(null, true)
+	if segment_index < 0 or segment_index >= per_segment.size():
+		var empty: Array[Rect2] = []
+		return empty
+	var result: Array[Rect2] = per_segment[segment_index]
+	return result
+
+
 func _duplicate_roof_clip_surfaces(surfaces: Array) -> Array[Dictionary]:
 	var copies: Array[Dictionary] = []
 	for surface in surfaces:
@@ -945,7 +1006,7 @@ func _sync_transform_from_points() -> void:
 ## One Array[Rect2] per segment, mapping each child opening to the nearest
 ## segment face. Rects are padded by opening_padding and clamped to the
 ## segment span, ready for mesh-cut consumption.
-func _assigned_opening_rects(ignored_node: Node = null) -> Array:
+func _assigned_opening_rects(ignored_node: Node = null, include_foreign: bool = false) -> Array:
 	var rects_per_segment: Array = []
 	for index in range(get_segment_count()):
 		var empty: Array[Rect2] = []
@@ -980,7 +1041,34 @@ func _assigned_opening_rects(ignored_node: Node = null) -> Array:
 			continue
 		var rects: Array[Rect2] = rects_per_segment[segment_index]
 		rects.append(Rect2(Vector2(x0, y0), Vector2(x1 - x0, y1 - y0)))
+	if include_foreign:
+		_append_foreign_opening_rects(rects_per_segment)
 	return rects_per_segment
+
+
+## Merge openings propagated from collinear sibling walls into the per-segment
+## rects, clamped to each owning segment's span. Lets the wall that renders a
+## shared collinear span cut a door/window authored on the clipped sibling.
+func _append_foreign_opening_rects(rects_per_segment: Array) -> void:
+	for entry in m_foreign_opening_rects:
+		if !(entry is Dictionary):
+			continue
+		var segment_index := int((entry as Dictionary).get("segment_index", -1))
+		if segment_index < 0 or segment_index >= rects_per_segment.size():
+			continue
+		var segment := get_segment(segment_index)
+		if segment == null:
+			continue
+		var rect: Rect2 = (entry as Dictionary)["rect"]
+		var segment_length := segment.get_length()
+		var x0 := clampf(rect.position.x, 0.0, segment_length)
+		var x1 := clampf(rect.end.x, 0.0, segment_length)
+		var y0 := clampf(rect.position.y, 0.0, segment.height)
+		var y1 := clampf(rect.end.y, 0.0, segment.height)
+		if x1 - x0 <= 0.001 or y1 - y0 <= 0.001:
+			continue
+		var rects: Array[Rect2] = rects_per_segment[segment_index]
+		rects.append(Rect2(Vector2(x0, y0), Vector2(x1 - x0, y1 - y0)))
 
 
 ## Public lookup used by tools and tests: which segment does a child opening
@@ -1081,7 +1169,7 @@ func _add_collision_body(_collision_faces: PackedVector3Array) -> void:
 
 
 func _add_collision_shapes_for_wall_cells(body: StaticBody3D) -> int:
-	var assigned_openings := _assigned_opening_rects()
+	var assigned_openings := _assigned_opening_rects(null, true)
 	var shape_count := 0
 	for segment_index in range(get_segment_count()):
 		var segment := get_segment(segment_index)

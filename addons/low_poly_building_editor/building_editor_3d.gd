@@ -438,23 +438,91 @@ func refresh_wall_intersection_clips() -> void:
 			continue
 		var before_segments: Array[WallSegment3D] = []
 		var after_segments: Array[WallSegment3D] = []
+		var foreign_openings: Array = []
 		for other_index in range(walls.size()):
 			if other_index == wall_index:
 				continue
 			var other := walls[other_index]
 			if other.has_meta(Wall3DScript.PREVIEW_META):
 				continue
+			var other_opening_rects := other.get_assigned_opening_rects()
 			for segment_index in range(other.get_segment_count()):
 				var segment := other.get_segment(segment_index)
+				var is_collinear := _wall_has_collinear_overlap(wall, segment)
 				if !_wall_clip_segment_relevant(wall, segment):
 					continue
-				if !merge_intersecting and !_wall_has_collinear_overlap(wall, segment):
+				if !merge_intersecting and !is_collinear:
 					continue
 				if other_index < wall_index:
 					before_segments.append(segment)
 				else:
 					after_segments.append(segment)
-		wall.set_geometry_clip_data(before_segments, after_segments, _roof_clip_surfaces_for_wall(wall))
+					# Scene order makes `wall` own the shared span against the
+					# later `other`, so the door/window authored on the clipped
+					# `other` must be cut into this wall's rendered mesh.
+					if is_collinear:
+						_collect_foreign_openings(
+							wall, other, segment_index, other_opening_rects, foreign_openings
+						)
+		wall.set_geometry_clip_data(
+			before_segments,
+			after_segments,
+			_roof_clip_surfaces_for_wall(wall),
+			foreign_openings
+		)
+
+
+## Maps each opening authored on `neighbour`'s `neighbour_segment_index` span
+## into `owner`'s collinear segment-local space and appends it to `out` as
+## `{ "segment_index": int, "rect": Rect2 }`. Both walls share the coordinator's
+## space, so segment frames are compared directly. Only the owner segment that
+## is collinear-overlapping the neighbour segment receives the openings.
+func _collect_foreign_openings(
+	owner: Wall3DScript,
+	neighbour: Wall3DScript,
+	neighbour_segment_index: int,
+	neighbour_opening_rects: Array,
+	out: Array
+) -> void:
+	if neighbour_segment_index < 0 or neighbour_segment_index >= neighbour_opening_rects.size():
+		return
+	var neighbour_rects: Array = neighbour_opening_rects[neighbour_segment_index]
+	if neighbour_rects.is_empty():
+		return
+	var neighbour_segment := neighbour.get_segment(neighbour_segment_index)
+	if neighbour_segment == null:
+		return
+	var neighbour_frame := neighbour_segment.get_frame()
+	var neighbour_axis := neighbour_frame.basis.x
+	for owner_index in range(owner.get_segment_count()):
+		var owner_segment := owner.get_segment(owner_index)
+		if owner_segment == null:
+			continue
+		if !WallSegment3DScript.shares_collinear_overlap(owner_segment, neighbour_segment):
+			continue
+		var owner_frame := owner_segment.get_frame()
+		var owner_axis := owner_frame.basis.x
+		var owner_length := owner_segment.get_length()
+		var base_delta := neighbour_segment.start_point.y - owner_segment.start_point.y
+		for rect_variant in neighbour_rects:
+			var rect := rect_variant as Rect2
+			var near_point := neighbour_frame.origin + neighbour_axis * rect.position.x
+			var far_point := neighbour_frame.origin + neighbour_axis * rect.end.x
+			var owner_x_near := (near_point - owner_frame.origin).dot(owner_axis)
+			var owner_x_far := (far_point - owner_frame.origin).dot(owner_axis)
+			var x_low := clampf(minf(owner_x_near, owner_x_far), 0.0, owner_length)
+			var x_high := clampf(maxf(owner_x_near, owner_x_far), 0.0, owner_length)
+			if x_high - x_low <= INTERSECT_BASE_TOLERANCE:
+				continue
+			var y_low := clampf(rect.position.y + base_delta, 0.0, owner_segment.height)
+			var y_high := clampf(rect.end.y + base_delta, 0.0, owner_segment.height)
+			if y_high - y_low <= INTERSECT_BASE_TOLERANCE:
+				continue
+			out.append({
+				"segment_index": owner_index,
+				"rect": Rect2(Vector2(x_low, y_low), Vector2(x_high - x_low, y_high - y_low)),
+			})
+		return
 
 
 func refresh_roof_covered_rects() -> void:
@@ -1157,7 +1225,6 @@ func can_place_wall_opening(
 		target.thickness * 0.5
 	)
 	var walls := get_wall_nodes()
-	var target_wall_index := walls.find(wall)
 	for other_wall_index in range(walls.size()):
 		var other_wall := walls[other_wall_index]
 		if other_wall == wall or other_wall.has_meta(Wall3DScript.PREVIEW_META):
@@ -1176,11 +1243,10 @@ func can_place_wall_opening(
 				other.thickness
 			)
 			if MergedWallMeshBuilderScript.footprints_overlap(candidate_plan, other_plan):
-				if (
-					target_wall_index >= 0
-					and target_wall_index < other_wall_index
-					and WallSegment3DScript.shares_collinear_overlap(target, other)
-				):
+				# Matching collinear overlap on either wall is fine: the wall that
+				# renders the shared span cuts the opening (its own or one
+				# propagated from the clipped sibling). Other overlaps still block.
+				if WallSegment3DScript.shares_collinear_overlap(target, other):
 					continue
 				return false
 	return true
@@ -1225,6 +1291,7 @@ func _build_geometry_clip_signature() -> String:
 			parts.append(_signature_vector3(segment.end_point))
 			parts.append(_signature_float(segment.height))
 			parts.append(_signature_float(segment.thickness))
+		parts.append("openings:%s" % wall.get_opening_signature())
 	for roof in get_roof_nodes():
 		if roof.has_meta(Roof3DScript.PREVIEW_META):
 			continue

@@ -90,6 +90,7 @@ func _run_smoke_checks() -> void:
 	_validate_multi_wall_joint_fill()
 	_validate_enclosed_wall_loop_caps()
 	_validate_overlapping_room_wall_clipping()
+	_validate_collinear_overlap_opening_propagation()
 	await _validate_wall_collision_blocks_character(coordinator)
 	await _validate_stairs_side_collision_blocks_character(coordinator)
 
@@ -2531,13 +2532,13 @@ func _validate_overlapping_room_wall_clipping() -> void:
 		Vector2(0.8, 0.8)
 	):
 		m_failures.append("BuildingEditor3D rejected an opening on the first room's shared wall")
-	if coordinator.can_place_wall_opening(
+	if !coordinator.can_place_wall_opening(
 		second_room,
 		0,
 		Vector2(1.5, 1.1),
 		Vector2(0.8, 0.8)
 	):
-		m_failures.append("BuildingEditor3D allowed an opening on the clipped duplicate room wall")
+		m_failures.append("BuildingEditor3D blocked an opening on the clipped collinear shared wall")
 	if !coordinator.can_place_wall_opening(
 		first_room,
 		0,
@@ -3137,6 +3138,95 @@ func _vertex_key(vertex: Vector3) -> String:
 		int(round(vertex.y * 1000.0)),
 		int(round(vertex.z * 1000.0)),
 	]
+
+
+func _validate_collinear_overlap_opening_propagation() -> void:
+	var coordinator := BuildingEditor3DScript.new() as BuildingEditor3DScript
+	coordinator.name = "CollinearOpeningCoordinator"
+	coordinator.position = Vector3(0.0, 0.0, 96.0)
+	add_child(coordinator)
+	var wall_color := Color(0.78, 0.68, 0.54, 1.0)
+	# Earlier scene-order wall owns the shared span; later wall is clipped there.
+	var owner_wall := coordinator.create_wall_node(
+		Vector3.ZERO, Vector3(6.0, 0.0, 0.0), 2.4, 0.22, wall_color
+	)
+	coordinator.add_child(owner_wall)
+	var clipped_wall := coordinator.create_wall_node(
+		Vector3(3.0, 0.0, 0.0), Vector3(9.0, 0.0, 0.0), 2.4, 0.22, wall_color
+	)
+	coordinator.add_child(clipped_wall)
+	coordinator.refresh_wall_intersection_clips()
+
+	# Placement is allowed on the clipped (later) wall along the collinear overlap.
+	if !coordinator.can_place_wall_opening(
+		clipped_wall, 0, Vector2(1.5, 1.1), Vector2(0.8, 0.8)
+	):
+		m_failures.append("Opening placement blocked on the clipped collinear wall overlap")
+
+	# Door authored on the clipped (later) wall, inside the overlap (world x ~ 4.5).
+	var door := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	door.name = "OverlapDoor"
+	door.opening_width = 0.9
+	door.opening_height = 2.1
+	door.position = Vector3(1.5, 1.05, 0.22 * 0.5 + 0.035)
+	door.set_meta(Wall3DScript.SEGMENT_INDEX_META, 0)
+	clipped_wall.add_child(door)
+	clipped_wall.rebuild_wall_mesh()
+	coordinator.refresh_wall_intersection_clips()
+
+	# The owner wall must now carry the propagated opening on its shared segment.
+	var owner_local_door_x := 4.5
+	var owner_rects := owner_wall.get_render_opening_rects(0)
+	var found_propagated := false
+	for rect in owner_rects:
+		if rect.position.x <= owner_local_door_x and rect.end.x >= owner_local_door_x:
+			found_propagated = true
+			break
+	if !found_propagated:
+		m_failures.append("Owner wall did not receive the collinear sibling's door opening")
+
+	# And the owner's rendered mesh must show a cut: a reveal/jamb face (normal
+	# along the wall axis) at the door edges within the overlap, not just the
+	# segment end caps at x=0 and x=6.
+	var door_point := coordinator.to_global(Vector3(4.5, 1.0, 0.0))
+	var owner_local := owner_wall.to_local(door_point)
+	if !_has_axis_reveal_face(
+		owner_wall.mesh as ArrayMesh, owner_local.x, 0.6, 2.0
+	):
+		m_failures.append("Owner wall mesh was not cut within the propagated door frame")
+
+
+## True when the mesh has a near-vertical face whose normal runs along the wall
+## X axis (a door/window jamb reveal) located near `target_x` and below the
+## given height band, ignoring the wall's end caps far from the door.
+func _has_axis_reveal_face(
+	array_mesh: ArrayMesh,
+	target_x: float,
+	min_height: float,
+	max_height: float
+) -> bool:
+	if array_mesh == null or array_mesh.get_surface_count() <= 0:
+		return false
+	var arrays := array_mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	for triangle_start in range(0, indices.size(), 3):
+		var i0 := indices[triangle_start]
+		var i1 := indices[triangle_start + 1]
+		var i2 := indices[triangle_start + 2]
+		if absf(normals[i0].x) < 0.9:
+			continue
+		var mean_x := (vertices[i0].x + vertices[i1].x + vertices[i2].x) / 3.0
+		# The two jambs sit ~half the door width either side of centre; the wall
+		# end caps (x=0 and x=6) stay well outside this band.
+		if absf(mean_x - target_x) > 0.7:
+			continue
+		var mean_y := (vertices[i0].y + vertices[i1].y + vertices[i2].y) / 3.0
+		if mean_y < min_height or mean_y > max_height:
+			continue
+		return true
+	return false
 
 
 func _has_horizontal_face_covering_plan_point(
