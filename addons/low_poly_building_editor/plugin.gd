@@ -3278,7 +3278,7 @@ func _update_opening_preview(wall: Wall3DScript, hit: Dictionary) -> void:
 	var sill_height := maxf(float(settings["sill_height"]), 0.0)
 	local_hit.y = sill_height + opening.opening_height * 0.5
 	local_hit.z = face_sign * (segment.thickness * 0.5 + 0.035)
-	opening.transform = Transform3D(frame.basis, frame * local_hit)
+	opening.transform = Transform3D(_opening_basis_for_face(frame.basis, face_sign), frame * local_hit)
 	opening.set_meta(OPENING_SILL_META, sill_height)
 	opening.set_meta(OPENING_ALLOW_BASE_META, bool(settings["allow_base_edge"]))
 	var center := Vector2(local_hit.x, local_hit.y)
@@ -3313,6 +3313,17 @@ func _apply_opening_settings(opening: BuildingOpening3DScript, settings: Diction
 func _opening_script_for_settings(settings: Dictionary) -> Script:
 	var style := String(settings.get("style", ""))
 	return OPENING_STYLE_SCRIPTS.get(style, BuildingOpening3DScript) as Script
+
+
+# The both-sided frame casing (BuildingOpening3D._frame_casing) assumes the wall
+# lies in the opening's local -Z half. Openings placed against the far wall face
+# only flip their position via face_sign, not their orientation, so without this
+# their -Z points away from the wall and the casing protrudes on one face only.
+# Rotate 180 deg about local up so -Z always faces into the wall.
+func _opening_basis_for_face(basis: Basis, face_sign: float) -> Basis:
+	if face_sign < 0.0:
+		return basis * Basis(Vector3.UP, PI)
+	return basis
 
 
 func _can_place_wall_opening(
@@ -5561,7 +5572,9 @@ func _update_window_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 			sill_height + new_height * 0.5,
 			m_drag_face_sign * (segment.thickness * 0.5 + 0.035)
 		)
-		m_dragging_opening.transform = Transform3D(frame.basis, frame * center_local)
+		m_dragging_opening.transform = Transform3D(
+			_opening_basis_for_face(frame.basis, m_drag_face_sign), frame * center_local
+		)
 		var center_2d := Vector2(center_local.x, center_local.y)
 		var size := Vector2(new_width, new_height)
 		m_drag_valid = _can_place_wall_opening(
@@ -5580,7 +5593,9 @@ func _update_window_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 		var sill_height := _opening_sill_height(m_dragging_opening)
 		local_hit.y = sill_height + m_dragging_opening.opening_height * 0.5
 		local_hit.z = m_drag_face_sign * (segment.thickness * 0.5 + 0.035)
-		m_dragging_opening.transform = Transform3D(frame.basis, frame * local_hit)
+		m_dragging_opening.transform = Transform3D(
+			_opening_basis_for_face(frame.basis, m_drag_face_sign), frame * local_hit
+		)
 		var center := Vector2(local_hit.x, local_hit.y)
 		var size := Vector2(m_dragging_opening.opening_width, m_dragging_opening.opening_height)
 		m_drag_valid = _can_place_wall_opening(
