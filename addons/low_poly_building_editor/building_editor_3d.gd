@@ -9,6 +9,18 @@ const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.
 const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
 const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
 const MergedWallMeshBuilderScript = preload("res://addons/low_poly_building_editor/merged_wall_mesh_builder.gd")
+const PILLAR_STYLE_SCRIPTS := {
+	"round": preload("res://addons/low_poly_building_editor/round_pillar_3d.gd"),
+	"square": preload("res://addons/low_poly_building_editor/square_pillar_3d.gd"),
+	"octagonal": preload("res://addons/low_poly_building_editor/octagonal_pillar_3d.gd"),
+	"tapered": preload("res://addons/low_poly_building_editor/tapered_pillar_3d.gd"),
+}
+const ROOF_STYLE_SCRIPTS := {
+	"flat": preload("res://addons/low_poly_building_editor/flat_roof_3d.gd"),
+	"shed": preload("res://addons/low_poly_building_editor/shed_roof_3d.gd"),
+	"gable": preload("res://addons/low_poly_building_editor/gable_roof_3d.gd"),
+	"hip": preload("res://addons/low_poly_building_editor/hip_roof_3d.gd"),
+}
 
 const INTERSECT_BASE_TOLERANCE := 0.01
 const ROOF_COVER_HEIGHT_EPSILON := 0.01
@@ -231,14 +243,14 @@ func create_pillar_node(
 	upper_rim_outset: float = default_pillar_upper_rim_outset,
 	upper_radius: float = default_pillar_upper_radius
 ) -> Pillar3DScript:
-	var pillar := Pillar3DScript.new() as Pillar3DScript
+	var pillar := instantiate_pillar_style(style)
 	pillar.name = _unique_pillar_name()
 	pillar.base_point = local_base
 	pillar.pillar_radius = radius
 	pillar.upper_radius = upper_radius
 	pillar.pillar_height = height
-	pillar.side_count = sides
-	pillar.set_pillar_style(style)
+	if style == "round" or style == "tapered":
+		pillar.set(&"side_count", sides)
 	pillar.pillar_color = color
 	pillar.lower_rim_height = lower_rim_height
 	pillar.lower_rim_outset = lower_rim_outset
@@ -248,6 +260,15 @@ func create_pillar_node(
 	pillar.generate_collision = true
 	pillar.rebuild_pillar_mesh()
 	return pillar
+
+
+func instantiate_pillar_style(style: String) -> Pillar3DScript:
+	var normalized_style := style.strip_edges().to_lower()
+	var pillar_script := PILLAR_STYLE_SCRIPTS.get(
+		normalized_style,
+		PILLAR_STYLE_SCRIPTS["round"]
+	) as Script
+	return pillar_script.new() as Pillar3DScript
 
 
 func create_roof_node(
@@ -262,15 +283,14 @@ func create_roof_node(
 	debug_wireframe: bool = default_roof_debug_wireframe,
 	hip_gable_height: float = default_roof_hip_gable_height
 ) -> Roof3DScript:
-	var roof := Roof3DScript.new() as Roof3DScript
+	var roof := instantiate_roof_style(style)
 	roof.name = _unique_roof_name()
 	roof.start_point = local_start
 	roof.end_point = Vector3(local_end.x, local_start.y, local_end.z)
-	roof.set_roof_style(style)
-	roof.roof_height = height
+	roof.set_roof_angle_degrees(height)
 	roof.roof_thickness = thickness
 	roof.roof_overhang = overhang
-	roof.hip_gable_height = hip_gable_height
+	roof.set_hip_gable_height(hip_gable_height)
 	roof.roof_color = color
 	roof.roof_rotation_degrees = rotation_degrees
 	roof.build_on_ready = true
@@ -278,6 +298,15 @@ func create_roof_node(
 	roof.debug_show_triangle_wireframe = debug_wireframe
 	roof.rebuild_roof_mesh()
 	return roof
+
+
+func instantiate_roof_style(style: String) -> Roof3DScript:
+	var normalized_style := style.strip_edges().to_lower()
+	var roof_script := ROOF_STYLE_SCRIPTS.get(
+		normalized_style,
+		ROOF_STYLE_SCRIPTS["gable"]
+	) as Script
+	return roof_script.new() as Roof3DScript
 
 
 func get_wall_nodes() -> Array[Wall3DScript]:
@@ -535,14 +564,14 @@ func refresh_roof_covered_rects() -> void:
 			roof.start_point,
 			roof.end_point,
 			roof.get_roof_style(),
-			roof.roof_height,
+			roof.get_roof_angle_degrees(),
 			roof.roof_thickness,
 			roof.roof_overhang,
 			roof.roof_color,
 			roof.roof_rotation_degrees,
 			roof,
 			true,
-			roof.hip_gable_height
+			roof.get_hip_gable_height()
 		)
 		roof.set_covered_regions(
 			_roof_covered_rects_from_regions(cover_regions),
@@ -586,7 +615,7 @@ func _roof_clip_surfaces_for_wall(wall: Wall3DScript) -> Array[Dictionary]:
 				roof.get_roof_style(),
 				roof.get_roof_size(),
 				roof.roof_overhang,
-				roof.roof_height
+				roof.get_roof_angle_degrees()
 			)
 			- roof.roof_thickness
 		)
@@ -607,8 +636,8 @@ func _roof_clip_surfaces_for_wall(wall: Wall3DScript) -> Array[Dictionary]:
 			"style": roof.get_roof_style(),
 			"size": roof.get_roof_size(),
 			"overhang": roof.roof_overhang,
-			"angle_degrees": roof.roof_height,
-			"hip_gable_height": roof.hip_gable_height,
+			"angle_degrees": roof.get_roof_angle_degrees(),
+			"hip_gable_height": roof.get_hip_gable_height(),
 			"thickness": roof.roof_thickness,
 			"visible_polygons": roof_visible_polygons,
 		})
@@ -770,8 +799,8 @@ func _roof_polygons_under_other_roof(
 		other_roof.get_roof_style(),
 		other_roof.get_roof_size(),
 		other_roof.roof_overhang,
-		other_roof.roof_height,
-		other_roof.hip_gable_height
+		other_roof.get_roof_angle_degrees(),
+		other_roof.get_hip_gable_height()
 	)
 	var candidate_inverse := candidate_basis.inverse()
 	var other_anchor := other_roof.get_roof_anchor_point()
@@ -1301,11 +1330,11 @@ func _build_geometry_clip_signature() -> String:
 		parts.append(_signature_vector3(roof.start_point))
 		parts.append(_signature_vector3(roof.end_point))
 		parts.append(roof.get_roof_style())
-		parts.append(_signature_float(roof.roof_height))
+		parts.append(_signature_float(roof.get_roof_angle_degrees()))
 		parts.append(_signature_float(roof.roof_thickness))
 		parts.append(_signature_float(roof.roof_overhang))
 		parts.append(_signature_float(roof.roof_rotation_degrees))
-		parts.append(_signature_float(roof.hip_gable_height))
+		parts.append(_signature_float(roof.get_hip_gable_height()))
 	return "|".join(parts)
 
 

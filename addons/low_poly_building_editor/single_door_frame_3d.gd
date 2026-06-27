@@ -5,4 +5,3 @@ extends Door3D
 
 func _init() -> void:
 	super()
-	door_panel_count = 0

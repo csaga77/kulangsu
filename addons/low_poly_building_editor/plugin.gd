@@ -73,6 +73,16 @@ const OPENING_CUSTOM_TYPES := [
 	{"name": "SingleDoorFrame3D", "script": OPENING_STYLE_SCRIPTS["single_frame"]},
 	{"name": "DoubleDoorFrame3D", "script": OPENING_STYLE_SCRIPTS["double_frame"]},
 ]
+const BUILDING_STYLE_CUSTOM_TYPES := [
+	{"name": "RoundPillar3D", "script": preload("res://addons/low_poly_building_editor/round_pillar_3d.gd")},
+	{"name": "SquarePillar3D", "script": preload("res://addons/low_poly_building_editor/square_pillar_3d.gd")},
+	{"name": "OctagonalPillar3D", "script": preload("res://addons/low_poly_building_editor/octagonal_pillar_3d.gd")},
+	{"name": "TaperedPillar3D", "script": preload("res://addons/low_poly_building_editor/tapered_pillar_3d.gd")},
+	{"name": "FlatRoof3D", "script": preload("res://addons/low_poly_building_editor/flat_roof_3d.gd")},
+	{"name": "ShedRoof3D", "script": preload("res://addons/low_poly_building_editor/shed_roof_3d.gd")},
+	{"name": "GableRoof3D", "script": preload("res://addons/low_poly_building_editor/gable_roof_3d.gd")},
+	{"name": "HipRoof3D", "script": preload("res://addons/low_poly_building_editor/hip_roof_3d.gd")},
+]
 const OPENING_SILL_META := &"building_opening_sill_height"
 const OPENING_ALLOW_BASE_META := &"building_opening_allow_base_edge"
 # Temporary diagnostic: writes the 3D toolbar tree to native_buttons_debug.log
@@ -431,6 +441,13 @@ func _enter_tree() -> void:
 		Roof3DScript,
 		_get_editor_icon(&"MeshInstance3D")
 	)
+	for style_type: Dictionary in BUILDING_STYLE_CUSTOM_TYPES:
+		add_custom_type(
+			String(style_type["name"]),
+			"MeshInstance3D",
+			style_type["script"],
+			_get_editor_icon(&"MeshInstance3D")
+		)
 	for opening_type: Dictionary in OPENING_CUSTOM_TYPES:
 		add_custom_type(
 			String(opening_type["name"]),
@@ -501,6 +518,8 @@ func _exit_tree() -> void:
 		m_dock = null
 	for type_index in range(OPENING_CUSTOM_TYPES.size() - 1, -1, -1):
 		remove_custom_type(String(OPENING_CUSTOM_TYPES[type_index]["name"]))
+	for type_index in range(BUILDING_STYLE_CUSTOM_TYPES.size() - 1, -1, -1):
+		remove_custom_type(String(BUILDING_STYLE_CUSTOM_TYPES[type_index]["name"]))
 	remove_custom_type("Roof3D")
 	remove_custom_type("Pillar3D")
 	remove_custom_type("Stairs3D")
@@ -2146,14 +2165,13 @@ func _handle_roof_input(camera: Camera3D, event: InputEvent) -> int:
 func _create_roof_preview(coordinator: BuildingEditor3DScript) -> void:
 	_clear_roof_preview()
 	_apply_roof_settings_to_coordinator(coordinator)
-	m_roof_preview = Roof3DScript.new() as Roof3DScript
+	m_roof_preview = coordinator.instantiate_roof_style(String(m_roof_settings["style"]))
 	m_roof_preview.name = "RoofPreview"
 	m_roof_preview.set_meta(Roof3DScript.PREVIEW_META, true)
-	m_roof_preview.set_roof_style(String(m_roof_settings["style"]))
-	m_roof_preview.roof_height = float(m_roof_settings["height"])
+	m_roof_preview.set_roof_angle_degrees(float(m_roof_settings["height"]))
 	m_roof_preview.roof_thickness = float(m_roof_settings["thickness"])
 	m_roof_preview.roof_overhang = float(m_roof_settings["overhang"])
-	m_roof_preview.hip_gable_height = float(m_roof_settings.get("hip_gable_height", 0.0))
+	m_roof_preview.set_hip_gable_height(float(m_roof_settings.get("hip_gable_height", 0.0)))
 	m_roof_preview.roof_rotation_degrees = m_roof_draw_rotation_degrees
 	var preview_color := Color(m_roof_settings["color"])
 	preview_color.a = 0.46
@@ -2170,6 +2188,11 @@ func _update_roof_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 	var coordinator := m_roof_preview.get_parent() as BuildingEditor3DScript
 	if coordinator == null:
 		return
+	var selected_style := String(m_roof_settings["style"])
+	if m_roof_preview.get_roof_style() != selected_style:
+		_create_roof_preview(coordinator)
+		if m_roof_preview == null:
+			return
 	var local_end := _roof_draw_local_from_mouse(coordinator, camera, mouse_position)
 	m_roof_end_local = local_end
 	var roof_points := Roof3DScript.roof_corners_from_base_points(
@@ -2180,11 +2203,10 @@ func _update_roof_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 	var roof_start := Vector3(roof_points["start"])
 	var roof_end := Vector3(roof_points["end"])
 	m_roof_has_valid_preview = _is_roof_span_large_enough(roof_start, roof_end)
-	m_roof_preview.set_roof_style(String(m_roof_settings["style"]))
-	m_roof_preview.roof_height = float(m_roof_settings["height"])
+	m_roof_preview.set_roof_angle_degrees(float(m_roof_settings["height"]))
 	m_roof_preview.roof_thickness = float(m_roof_settings["thickness"])
 	m_roof_preview.roof_overhang = float(m_roof_settings["overhang"])
-	m_roof_preview.hip_gable_height = float(m_roof_settings.get("hip_gable_height", 0.0))
+	m_roof_preview.set_hip_gable_height(float(m_roof_settings.get("hip_gable_height", 0.0)))
 	m_roof_preview.debug_show_triangle_wireframe = bool(m_roof_settings.get("debug_wireframe", false))
 	m_roof_preview.set_roof_corners_and_rotation(roof_start, roof_end, m_roof_draw_rotation_degrees)
 	if m_roof_has_valid_preview:
@@ -2288,7 +2310,7 @@ func _commit_roof_rotation(roof: Roof3DScript, delta_degrees: float) -> void:
 	var old_start := roof.start_point
 	var old_end := roof.end_point
 	var old_rotation := roof.roof_rotation_degrees
-	var old_height := roof.roof_height
+	var old_height := roof.get_roof_angle_degrees()
 	var old_covered_rects := roof.get_covered_rects()
 	var old_covered_polygons := roof.get_covered_polygons()
 	var new_rotation := _normalize_degrees(old_rotation + delta_degrees)
@@ -2303,14 +2325,14 @@ func _commit_roof_rotation(roof: Roof3DScript, delta_degrees: float) -> void:
 			new_start,
 			new_end,
 			roof.get_roof_style(),
-			roof.roof_height,
+			roof.get_roof_angle_degrees(),
 			roof.roof_thickness,
 			roof.roof_overhang,
 			roof.roof_color,
 			new_rotation,
 			roof,
 			true,
-			roof.hip_gable_height
+			roof.get_hip_gable_height()
 		)
 		new_covered_rects = _roof_covered_rects_from_regions(cover_regions)
 		new_covered_polygons = _roof_covered_polygons_from_regions(cover_regions)
@@ -2470,7 +2492,7 @@ func _start_roof_drag(
 	m_drag_roof_old_start = roof.start_point
 	m_drag_roof_old_end = roof.end_point
 	m_drag_roof_old_rotation_degrees = roof.roof_rotation_degrees
-	m_drag_roof_old_height = roof.roof_height
+	m_drag_roof_old_height = roof.get_roof_angle_degrees()
 	m_drag_roof_old_covered_rects = roof.get_covered_rects()
 	m_drag_roof_old_covered_polygons = roof.get_covered_polygons()
 	m_drag_roof_edit_mask = edit_mask
@@ -2540,7 +2562,7 @@ func _commit_roof_drag() -> void:
 	var new_start := roof.start_point
 	var new_end := roof.end_point
 	var new_rotation := roof.roof_rotation_degrees
-	var new_height := roof.roof_height
+	var new_height := roof.get_roof_angle_degrees()
 	var edit_mask := m_drag_roof_edit_mask
 	var coordinator := _find_coordinator_from_node(roof)
 	roof.material_override = m_drag_roof_active_material
@@ -2592,7 +2614,7 @@ func _commit_roof_drag() -> void:
 			roof.roof_rotation_degrees,
 			roof,
 			true,
-			roof.hip_gable_height
+			roof.get_hip_gable_height()
 		)
 		new_covered_rects = _roof_covered_rects_from_regions(cover_regions)
 		new_covered_polygons = _roof_covered_polygons_from_regions(cover_regions)
@@ -2915,14 +2937,16 @@ func _handle_pillar_input(camera: Camera3D, event: InputEvent) -> int:
 func _create_pillar_preview(coordinator: BuildingEditor3DScript) -> void:
 	_clear_pillar_preview()
 	_apply_pillar_settings_to_coordinator(coordinator)
-	m_pillar_preview = Pillar3DScript.new() as Pillar3DScript
+	m_pillar_preview = coordinator.instantiate_pillar_style(
+		String(m_pillar_settings["style"])
+	)
 	m_pillar_preview.name = "PillarPreview"
 	m_pillar_preview.set_meta(Pillar3DScript.PREVIEW_META, true)
 	m_pillar_preview.pillar_radius = float(m_pillar_settings["radius"])
 	m_pillar_preview.upper_radius = float(m_pillar_settings["upper_radius"])
 	m_pillar_preview.pillar_height = float(m_pillar_settings["height"])
-	m_pillar_preview.side_count = int(m_pillar_settings["sides"])
-	m_pillar_preview.set_pillar_style(String(m_pillar_settings["style"]))
+	if m_pillar_preview.get_pillar_style() == "round" or m_pillar_preview.get_pillar_style() == "tapered":
+		m_pillar_preview.set(&"side_count", int(m_pillar_settings["sides"]))
 	m_pillar_preview.set_pillar_rims(
 		float(m_pillar_settings["lower_rim_height"]),
 		float(m_pillar_settings["lower_rim_outset"]),
@@ -2946,14 +2970,16 @@ func _update_pillar_preview(camera: Camera3D, mouse_position: Vector2, create_if
 		return
 	if m_pillar_preview == null:
 		_create_pillar_preview(coordinator)
+	elif m_pillar_preview.get_pillar_style() != String(m_pillar_settings["style"]):
+		_create_pillar_preview(coordinator)
 	_apply_pillar_settings_to_coordinator(coordinator)
 	var local_base := _pillar_draw_local_from_mouse(coordinator, camera, mouse_position)
 	m_pillar_preview.set_pillar_base_position(local_base)
 	m_pillar_preview.pillar_radius = float(m_pillar_settings["radius"])
 	m_pillar_preview.upper_radius = float(m_pillar_settings["upper_radius"])
 	m_pillar_preview.pillar_height = float(m_pillar_settings["height"])
-	m_pillar_preview.side_count = int(m_pillar_settings["sides"])
-	m_pillar_preview.set_pillar_style(String(m_pillar_settings["style"]))
+	if m_pillar_preview.get_pillar_style() == "round" or m_pillar_preview.get_pillar_style() == "tapered":
+		m_pillar_preview.set(&"side_count", int(m_pillar_settings["sides"]))
 	m_pillar_preview.set_pillar_rims(
 		float(m_pillar_settings["lower_rim_height"]),
 		float(m_pillar_settings["lower_rim_outset"]),
@@ -3282,31 +3308,6 @@ func _apply_opening_settings(opening: BuildingOpening3DScript, settings: Diction
 	opening.frame_sides = int(settings.get("frame_sides", 0))
 	opening.frame_protrusion = float(settings.get("frame_protrusion", 0.02))
 	opening.show_bottom_frame = bool(settings["show_bottom_frame"])
-	if opening is Window3DScript:
-		var window := opening as Window3DScript
-		window.window_pane_count = int(settings["window_pane_count"])
-		window.window_pane_depth = float(settings["window_pane_depth"])
-		window.window_pane_color = Color(settings["window_pane_color"])
-		window.pane_grid_rows = int(settings.get("pane_grid_rows", 0))
-		window.pane_grid_cols = int(settings.get("pane_grid_cols", 0))
-		window.muntin_thickness = float(settings.get("muntin_thickness", 0.03))
-		window.louver_count = int(settings.get("louver_count", 0))
-		window.arch_steps = int(settings.get("arch_steps", 0))
-		window.transom_ratio = float(settings.get("transom_ratio", 0.0))
-	elif opening is Door3DScript:
-		var door := opening as Door3DScript
-		door.door_panel_count = int(settings["door_panel_count"])
-		door.door_panel_depth = float(settings["door_panel_depth"])
-		door.door_panel_color = Color(settings["door_panel_color"])
-		door.door_glass_depth = float(settings["window_pane_depth"])
-		door.door_glass_color = Color(settings["window_pane_color"])
-		door.pane_grid_rows = int(settings.get("pane_grid_rows", 0))
-		door.pane_grid_cols = int(settings.get("pane_grid_cols", 0))
-		door.muntin_thickness = float(settings.get("muntin_thickness", 0.03))
-		door.door_glazing_ratio = float(settings.get("door_glazing_ratio", 0.0))
-		door.door_inset_rows = int(settings.get("door_inset_rows", 0))
-		door.door_inset_cols = int(settings.get("door_inset_cols", 0))
-		door.door_split = bool(settings.get("door_split", false))
 
 
 func _opening_script_for_settings(settings: Dictionary) -> Script:
@@ -3348,7 +3349,6 @@ func _active_opening_settings() -> Dictionary:
 	if m_tool_mode == MODE_DOOR:
 		var style := String(m_door_settings.get("style", "single_door"))
 		var is_double := style.begins_with("double")
-		var is_frame_only := style.ends_with("_frame")
 		var label := "Single Door"
 		match style:
 			"double_door":
@@ -3365,29 +3365,7 @@ func _active_opening_settings() -> Dictionary:
 				label = "Single Door Frame"
 			"double_frame":
 				label = "Double Door Frame"
-		var panel_count := 0
-		if !is_frame_only:
-			panel_count = 2 if is_double else 1
 		var default_width := 1.6 if is_double else 0.9
-		# Style-specific low-poly detailing.
-		var glazing := 0.0
-		var grid_rows := 0
-		var grid_cols := 0
-		var inset_rows := 0
-		var inset_cols := 0
-		var split := false
-		match style:
-			"glazed_door":
-				glazing = 0.55
-			"glazed_grid_door":
-				glazing = 0.55
-				grid_rows = 2
-				grid_cols = 1
-			"panel_door":
-				inset_rows = 3
-				inset_cols = 2
-			"dutch_door":
-				split = true
 		var node_name := label.replace(" ", "") + "Opening"
 		return {
 			"style": style,
@@ -3400,28 +3378,11 @@ func _active_opening_settings() -> Dictionary:
 			"frame_protrusion": float(m_door_settings.get("frame_protrusion", 0.02)),
 			"sill_height": 0.0,
 			"show_bottom_frame": false,
-			"door_panel_count": panel_count,
-			"door_panel_depth": 0.05,
-			"door_panel_color": Color(0.50, 0.34, 0.20, 1.0),
-			"window_pane_count": 0,
-			"window_pane_depth": 0.03,
-			"window_pane_color": Color(0.58, 0.82, 0.95, 0.52),
-			"pane_grid_rows": grid_rows,
-			"pane_grid_cols": grid_cols,
-			"muntin_thickness": 0.03,
-			"louver_count": 0,
-			"arch_steps": 0,
-			"transom_ratio": 0.0,
-			"door_glazing_ratio": glazing,
-			"door_inset_rows": inset_rows,
-			"door_inset_cols": inset_cols,
-			"door_split": split,
 			"allow_base_edge": true,
 		}
 
 	var style := String(m_window_settings.get("style", "single_window"))
 	var is_double := style == "double_window"
-	var is_frame_only := style == "frame"
 	var label := "Single Window"
 	match style:
 		"double_window":
@@ -3436,26 +3397,7 @@ func _active_opening_settings() -> Dictionary:
 			label = "Arched Window"
 		"frame":
 			label = "Window Frame"
-	var pane_count := 0
-	if !is_frame_only:
-		pane_count = 2 if is_double else 1
 	var default_width := 1.8 if is_double else 1.0
-	# Style-specific low-poly detailing.
-	var grid_rows := 0
-	var grid_cols := 0
-	var louvers := 0
-	var arch := 0
-	var transom := 0.0
-	match style:
-		"grid_window":
-			grid_rows = 2
-			grid_cols = 1
-		"louvered_window":
-			louvers = 6
-		"transom_window":
-			transom = 0.28
-		"arched_window":
-			arch = 3
 	var node_name := label.replace(" ", "") + "Opening"
 	return {
 		"style": style,
@@ -3468,22 +3410,6 @@ func _active_opening_settings() -> Dictionary:
 		"frame_protrusion": float(m_window_settings.get("frame_protrusion", 0.02)),
 		"sill_height": maxf(float(m_window_settings.get("sill_height", 0.9)), 0.0),
 		"show_bottom_frame": true,
-		"door_panel_count": 0,
-		"door_panel_depth": 0.05,
-		"door_panel_color": Color(0.50, 0.34, 0.20, 1.0),
-		"window_pane_count": pane_count,
-		"window_pane_depth": 0.03,
-		"window_pane_color": Color(0.58, 0.82, 0.95, 0.52),
-		"pane_grid_rows": grid_rows,
-		"pane_grid_cols": grid_cols,
-		"muntin_thickness": 0.03,
-		"louver_count": louvers,
-		"arch_steps": arch,
-		"transom_ratio": transom,
-		"door_glazing_ratio": 0.0,
-		"door_inset_rows": 0,
-		"door_inset_cols": 0,
-		"door_split": false,
 		"allow_base_edge": false,
 	}
 
@@ -5984,7 +5910,7 @@ func _roof_layout_would_hide_any_roof(
 			"start": roof_node.start_point,
 			"end": roof_node.end_point,
 			"rotation": roof_node.roof_rotation_degrees,
-			"height": roof_node.roof_height,
+			"height": roof_node.get_roof_angle_degrees(),
 			"covered_rects": roof_node.get_covered_rects(),
 			"covered_polygons": roof_node.get_covered_polygons(),
 		})

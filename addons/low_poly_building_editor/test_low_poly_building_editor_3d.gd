@@ -7,6 +7,11 @@ const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd
 const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.gd")
 const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
 const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
+const RoundPillar3DScript = preload("res://addons/low_poly_building_editor/round_pillar_3d.gd")
+const SquarePillar3DScript = preload("res://addons/low_poly_building_editor/square_pillar_3d.gd")
+const FlatRoof3DScript = preload("res://addons/low_poly_building_editor/flat_roof_3d.gd")
+const GableRoof3DScript = preload("res://addons/low_poly_building_editor/gable_roof_3d.gd")
+const HipRoof3DScript = preload("res://addons/low_poly_building_editor/hip_roof_3d.gd")
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
 const Window3DScript = preload("res://addons/low_poly_building_editor/window_3d.gd")
 const Door3DScript = preload("res://addons/low_poly_building_editor/door_3d.gd")
@@ -85,6 +90,10 @@ func _run_smoke_checks() -> void:
 	_validate_wall_mesh(wall)
 	_validate_opening_rules(wall)
 	_validate_opening_class_hierarchy()
+	_validate_door_style_property_ownership()
+	_validate_window_style_property_ownership()
+	_validate_pillar_style_property_ownership()
+	_validate_roof_style_property_ownership()
 	_validate_legacy_opening_storage()
 	_validate_door_opening_rules(wall)
 	_validate_window_style_visuals()
@@ -306,6 +315,181 @@ func _validate_opening_class_hierarchy() -> void:
 		if !(door is Door3DScript) or !(door is BuildingOpening3DScript):
 			m_failures.append("%s does not inherit through Door3D" % style_script.resource_path)
 		door.free()
+
+
+func _validate_door_style_property_ownership() -> void:
+	var base_door := Door3DScript.new() as Door3DScript
+	var style_only_properties: Array[StringName] = [
+		&"door_panel_count",
+		&"door_panel_depth",
+		&"door_panel_color",
+		&"door_glazing_ratio",
+		&"door_glass_depth",
+		&"door_glass_color",
+		&"pane_grid_rows",
+		&"pane_grid_cols",
+		&"muntin_thickness",
+		&"door_inset_rows",
+		&"door_inset_cols",
+		&"door_split",
+	]
+	for property_name in style_only_properties:
+		if _has_editor_property(base_door, property_name):
+			m_failures.append("Door3D still exposes style-only property %s" % property_name)
+	base_door.free()
+
+	var single_door := SingleDoor3DScript.new() as Door3DScript
+	for property_name in [&"door_panel_depth", &"door_panel_color"]:
+		if !_has_editor_property(single_door, property_name):
+			m_failures.append("SingleDoor3D is missing shared leaf property %s" % property_name)
+	single_door.free()
+
+	var door_frame := DoubleDoorFrame3DScript.new() as Door3DScript
+	for property_name in [&"door_panel_depth", &"door_panel_color"]:
+		if _has_editor_property(door_frame, property_name):
+			m_failures.append("DoubleDoorFrame3D exposes unused leaf property %s" % property_name)
+	door_frame.free()
+
+	var glazed_door := GlazedDoor3DScript.new() as Door3DScript
+	for property_name in [&"door_glazing_ratio", &"door_glass_depth", &"door_glass_color"]:
+		if !_has_editor_property(glazed_door, property_name):
+			m_failures.append("GlazedDoor3D is missing style property %s" % property_name)
+	glazed_door.free()
+
+	var grid_door := GlazedGridDoor3DScript.new() as Door3DScript
+	for property_name in [&"pane_grid_rows", &"pane_grid_cols", &"muntin_thickness"]:
+		if !_has_editor_property(grid_door, property_name):
+			m_failures.append("GlazedGridDoor3D is missing style property %s" % property_name)
+	grid_door.free()
+
+	var panel_door := PanelDoor3DScript.new() as Door3DScript
+	for property_name in [&"door_inset_rows", &"door_inset_cols"]:
+		if !_has_editor_property(panel_door, property_name):
+			m_failures.append("PanelDoor3D is missing style property %s" % property_name)
+	panel_door.free()
+
+
+func _validate_window_style_property_ownership() -> void:
+	var base_window := Window3DScript.new() as Window3DScript
+	var style_only_properties: Array[StringName] = [
+		&"window_pane_count",
+		&"window_pane_depth",
+		&"window_pane_color",
+		&"pane_grid_rows",
+		&"pane_grid_cols",
+		&"muntin_thickness",
+		&"louver_count",
+		&"louver_depth",
+		&"arch_steps",
+		&"transom_ratio",
+	]
+	for property_name in style_only_properties:
+		if _has_editor_property(base_window, property_name):
+			m_failures.append("Window3D still exposes style-only property %s" % property_name)
+	base_window.free()
+
+	var single_window := SingleWindow3DScript.new() as Window3DScript
+	for property_name in [&"window_pane_depth", &"window_pane_color"]:
+		if !_has_editor_property(single_window, property_name):
+			m_failures.append("SingleWindow3D is missing shared pane property %s" % property_name)
+	single_window.free()
+
+	var window_frame := WindowFrame3DScript.new() as Window3DScript
+	for property_name in [&"window_pane_depth", &"window_pane_color"]:
+		if _has_editor_property(window_frame, property_name):
+			m_failures.append("WindowFrame3D exposes unused pane property %s" % property_name)
+	window_frame.free()
+
+	var grid_window := GridWindow3DScript.new() as Window3DScript
+	for property_name in [&"pane_grid_rows", &"pane_grid_cols", &"muntin_thickness"]:
+		if !_has_editor_property(grid_window, property_name):
+			m_failures.append("GridWindow3D is missing style property %s" % property_name)
+	grid_window.free()
+
+	var louvered_window := LouveredWindow3DScript.new() as Window3DScript
+	for property_name in [&"louver_count", &"louver_depth"]:
+		if !_has_editor_property(louvered_window, property_name):
+			m_failures.append("LouveredWindow3D is missing style property %s" % property_name)
+	if _has_editor_property(louvered_window, &"window_pane_color"):
+		m_failures.append("LouveredWindow3D exposes an unused pane color")
+	louvered_window.free()
+
+	var transom_window := TransomWindow3DScript.new() as Window3DScript
+	if !_has_editor_property(transom_window, &"transom_ratio"):
+		m_failures.append("TransomWindow3D is missing its transom ratio")
+	transom_window.free()
+
+	var arched_window := ArchedWindow3DScript.new() as Window3DScript
+	if !_has_editor_property(arched_window, &"arch_steps"):
+		m_failures.append("ArchedWindow3D is missing its arch steps")
+	arched_window.free()
+
+
+func _has_editor_property(object: Object, property_name: StringName) -> bool:
+	for property: Dictionary in object.get_property_list():
+		if StringName(property.get("name", &"")) != property_name:
+			continue
+		return (int(property.get("usage", 0)) & PROPERTY_USAGE_EDITOR) != 0
+	return false
+
+
+func _validate_pillar_style_property_ownership() -> void:
+	var base_pillar := Pillar3DScript.new() as Pillar3DScript
+	var round_pillar := RoundPillar3DScript.new() as Pillar3DScript
+	var square_pillar := SquarePillar3DScript.new() as Pillar3DScript
+	if _has_editor_property(base_pillar, &"side_count"):
+		m_failures.append("Pillar3D still exposes variable-sided style property side_count")
+	base_pillar.rebuild_pillar_mesh()
+	if base_pillar.mesh != null:
+		m_failures.append("Pillar3D base generated concrete style geometry")
+	if !_has_editor_property(round_pillar, &"side_count"):
+		m_failures.append("RoundPillar3D is missing variable-sided property side_count")
+	if _has_editor_property(square_pillar, &"side_count"):
+		m_failures.append("SquarePillar3D exposes unused variable-sided property side_count")
+	var coordinator := BuildingEditor3DScript.new() as BuildingEditor3DScript
+	var factory_square := coordinator.instantiate_pillar_style("square")
+	if factory_square.get_script() != SquarePillar3DScript:
+		m_failures.append("Pillar style factory did not instantiate SquarePillar3D")
+	factory_square.free()
+	coordinator.free()
+	base_pillar.free()
+	round_pillar.free()
+	square_pillar.free()
+
+
+func _validate_roof_style_property_ownership() -> void:
+	var base_roof := Roof3DScript.new() as Roof3DScript
+	var flat_roof := FlatRoof3DScript.new() as Roof3DScript
+	var gable_roof := GableRoof3DScript.new() as Roof3DScript
+	var hip_roof := HipRoof3DScript.new() as Roof3DScript
+	for property_name in [&"roof_style_index", &"roof_height", &"hip_gable_height"]:
+		if _has_editor_property(base_roof, property_name):
+			m_failures.append("Roof3D still exposes style-only property %s" % property_name)
+	base_roof.rebuild_roof_mesh()
+	if base_roof.mesh != null:
+		m_failures.append("Roof3D base generated concrete style geometry")
+	if _has_editor_property(flat_roof, &"roof_height"):
+		m_failures.append("FlatRoof3D exposes unused sloped-roof property roof_height")
+	if !_has_editor_property(gable_roof, &"roof_height"):
+		m_failures.append("GableRoof3D is missing shared sloped-roof property roof_height")
+	if _has_editor_property(gable_roof, &"hip_gable_height"):
+		m_failures.append("GableRoof3D exposes hip-only property hip_gable_height")
+	if !_has_editor_property(hip_roof, &"hip_gable_height"):
+		m_failures.append("HipRoof3D is missing hip-only property hip_gable_height")
+	var coordinator := BuildingEditor3DScript.new() as BuildingEditor3DScript
+	var factory_flat := coordinator.instantiate_roof_style("flat")
+	var factory_hip := coordinator.instantiate_roof_style("hip")
+	if factory_flat.get_script() != FlatRoof3DScript:
+		m_failures.append("Roof style factory did not instantiate FlatRoof3D")
+	if factory_hip.get_script() != HipRoof3DScript:
+		m_failures.append("Roof style factory did not instantiate HipRoof3D")
+	factory_flat.free()
+	factory_hip.free()
+	coordinator.free()
+	base_roof.free()
+	flat_roof.free()
+	gable_roof.free()
+	hip_roof.free()
 
 
 func _validate_legacy_opening_storage() -> void:
@@ -1093,7 +1277,7 @@ func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:
 	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 	var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
 	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
-	if vertices.size() != pillar.side_count * 10:
+	if vertices.size() != pillar._effective_side_count() * 10:
 		m_failures.append("Pillar3D generated the wrong low-poly vertex count")
 	if normals.size() != vertices.size():
 		m_failures.append("Pillar3D mesh is missing per-vertex normal data")
@@ -1193,7 +1377,7 @@ func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:
 		0.10
 	)
 	coordinator.add_child(rimmed)
-	if _mesh_vertex_count(rimmed) != rimmed.side_count * 26:
+	if _mesh_vertex_count(rimmed) != rimmed._effective_side_count() * 26:
 		m_failures.append("Pillar3D rimmed style did not add expected rim geometry")
 	if _pillar_max_radius_at_y(rimmed, 0.0) <= rimmed.pillar_radius:
 		m_failures.append("Pillar3D lower rim did not expand the base radius")
@@ -1447,7 +1631,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		half_hip.get_roof_size(),
 		half_hip.roof_overhang,
 		half_hip.get_roof_angle_degrees(),
-		half_hip.hip_gable_height
+		half_hip.get_hip_gable_height()
 	)
 	if clipped_half_hip_ridge.size() != 2:
 		m_failures.append("Roof3D half-hip style did not report a ridge line")
@@ -1465,11 +1649,11 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		half_hip.roof_overhang,
 		half_hip.get_roof_angle_degrees()
 	)
-	var half_hip_extension := half_hip.hip_gable_height / tan(deg_to_rad(half_hip.get_roof_angle_degrees()))
+	var half_hip_extension := half_hip.get_hip_gable_height() / tan(deg_to_rad(half_hip.get_roof_angle_degrees()))
 	var half_hip_center_z := half_hip.get_roof_size().y * 0.5
 	var half_hip_gable_base := Vector3(
 		clipped_half_hip_ridge[0].x,
-		half_hip_height - half_hip.hip_gable_height,
+		half_hip_height - half_hip.get_hip_gable_height(),
 		half_hip_center_z - half_hip_extension
 	)
 	if !_has_mesh_vertex_near(half_hip.mesh as ArrayMesh, half_hip_gable_base, 0.001):
@@ -1483,7 +1667,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		half_hip.get_roof_size(),
 		half_hip.roof_overhang,
 		half_hip.get_roof_angle_degrees(),
-		half_hip.hip_gable_height
+		half_hip.get_hip_gable_height()
 	)
 	var half_hip_sloped_faces := 0
 	var half_hip_vertical_faces := 0
@@ -1514,7 +1698,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		angle_roof.start_point,
 		angle_roof.start_point + Vector3(4.0, 0.0, 6.0),
 		angle_roof.roof_rotation_degrees,
-		angle_roof.roof_height,
+		angle_roof.get_roof_angle_degrees(),
 		preserved_angle_covers
 	)
 	var expected_resized_ridge_height := Roof3DScript.gable_height_for_angle_degrees(
@@ -1524,7 +1708,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	)
 	if absf(angle_roof.get_roof_angle_degrees() - original_angle_degrees) > 0.001:
 		m_failures.append("Roof3D gable angle changed after depth-preserving resize")
-	if !is_equal_approx(angle_roof.roof_height, original_angle_degrees):
+	if !is_equal_approx(angle_roof.get_roof_angle_degrees(), original_angle_degrees):
 		m_failures.append("Roof3D did not keep the stored gable angle")
 	if !_has_mesh_vertex_y_near(angle_roof, expected_resized_ridge_height, 0.001):
 		m_failures.append("Roof3D did not recalculate gable ridge height from angle degrees")
@@ -1874,7 +2058,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		stale_clipped.start_point,
 		stale_clipped.end_point,
 		stale_clipped.get_roof_style(),
-		stale_clipped.roof_height,
+		stale_clipped.get_roof_angle_degrees(),
 		stale_clipped.roof_thickness,
 		stale_clipped.roof_overhang,
 		stale_clipped.roof_color,

@@ -1,9 +1,12 @@
 @tool
 class_name DoubleDoor3D
-extends Door3D
+extends "res://addons/low_poly_building_editor/door_leaf_3d.gd"
 
 
 func _init() -> void:
 	super()
 	opening_width = 1.6
-	door_panel_count = 2
+
+
+func _build_opening_content() -> void:
+	_build_solid_door_leaves(2)

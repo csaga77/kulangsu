@@ -5,11 +5,11 @@ viewport tools for walls, floors, stairs, pillars, roofs, openings, and props, a
 normal scene nodes so the result serializes into `.tscn` files. The Wall tool can draw
 either individual spans or enclosed rectangular rooms.
 
-Door and window nodes use a typed opening hierarchy:
-`BuildingOpening3D` owns the shared wall-cut, frame, and collision contract;
-`Window3D` and `Door3D` own their category-specific properties; and each style has
-its own concrete class such as `GridWindow3D`, `GlazedDoor3D`, or
-`DoubleDoorFrame3D`.
+Styled blocks use typed hierarchies. Their base classes own only universal state and
+low-level generation infrastructure; optional intermediate layers own properties shared
+by a genuine subset; and concrete pillar, roof, window, and door styles own their style
+identity, style controls, and geometry. See the normative future-block pattern in
+[`docs/contract.md`](docs/contract.md#building-block-style-pattern).
 
 This README is the plugin's entry point; the full documentation lives in [`docs/`](docs):
 

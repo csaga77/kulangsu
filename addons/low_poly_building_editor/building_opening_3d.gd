@@ -3,6 +3,9 @@ class_name BuildingOpening3D
 extends Node3D
 
 const GENERATED_META := &"building_opening_generated"
+const LegacyDoorGeometry = preload(
+	"res://addons/low_poly_building_editor/legacy_door_geometry_3d.gd"
+)
 
 # Gap between the opening node origin and the wall face it is placed against.
 # Mirrors the placement offset applied by the editor plugin so the frame casing
@@ -220,18 +223,15 @@ func _rebuild() -> void:
 
 # Implemented by Door3D and Window3D. BuildingOpening3D itself remains a useful
 # frame-only opening and owns the wall-cut dimensions shared by every style.
-# Legacy base-class scenes may still render their old solid door panels here.
+# Legacy base-class scenes delegate their old solid panels to a compatibility
+# geometry helper so style geometry does not live in this shared base.
 func _build_opening_content() -> void:
-	var spans := _leaf_spans(m_legacy_door_panel_count)
-	for index in range(spans.size()):
-		var part_name := _leaf_part_name("DoorPanel", index, spans.size())
-		var rect := spans[index]
-		_add_box(
-			part_name,
-			Vector3(rect.size.x, rect.size.y, m_legacy_door_panel_depth),
-			_rect_center(rect),
-			m_legacy_door_panel_color
-		)
+	LegacyDoorGeometry.build(
+		self,
+		m_legacy_door_panel_count,
+		m_legacy_door_panel_depth,
+		m_legacy_door_panel_color
+	)
 
 
 func _frame_casing() -> Dictionary:
@@ -266,120 +266,8 @@ func _leaf_part_name(base: String, index: int, count: int) -> String:
 	return ("Left" if index == 0 else "Right") + base
 
 
-func _build_glass(
-	part_name: String,
-	rect: Rect2,
-	depth: float,
-	color: Color,
-	pane_grid_rows: int = 0,
-	pane_grid_cols: int = 0,
-	muntin_thickness: float = 0.03,
-	louver_count: int = 0,
-	arch_steps: int = 0,
-	transom_ratio: float = 0.0
-) -> void:
-	if louver_count > 0:
-		_build_louvers(part_name, rect, depth, louver_count)
-		return
+func _add_glass(part_name: String, rect: Rect2, depth: float, color: Color) -> void:
 	_add_box(part_name, Vector3(rect.size.x, rect.size.y, depth), _rect_center(rect), color)
-	_add_muntins(
-		part_name,
-		rect,
-		depth,
-		pane_grid_rows,
-		pane_grid_cols,
-		muntin_thickness,
-		transom_ratio
-	)
-	if arch_steps > 0:
-		_add_arch_fillers(part_name, rect, depth, arch_steps)
-
-
-func _add_muntins(
-	part_name: String,
-	rect: Rect2,
-	depth: float,
-	pane_grid_rows: int,
-	pane_grid_cols: int,
-	muntin_thickness: float,
-	transom_ratio: float
-) -> void:
-	var bar_depth := maxf(depth + 0.01, frame_depth * 0.6)
-	var center_x := rect.position.x + rect.size.x * 0.5
-	var center_y := rect.position.y + rect.size.y * 0.5
-	if transom_ratio > 0.0:
-		var split_y := rect.end.y - rect.size.y * transom_ratio
-		_add_box(
-			"%sTransomRail" % part_name,
-			Vector3(rect.size.x, muntin_thickness, bar_depth),
-			Vector3(center_x, split_y, 0.0),
-			frame_color,
-			false
-		)
-	for row in range(pane_grid_rows):
-		var row_y := rect.position.y + rect.size.y * float(row + 1) / float(pane_grid_rows + 1)
-		_add_box(
-			"%sMuntinH%d" % [part_name, row],
-			Vector3(rect.size.x, muntin_thickness, bar_depth),
-			Vector3(center_x, row_y, 0.0),
-			frame_color,
-			false
-		)
-	for col in range(pane_grid_cols):
-		var col_x := rect.position.x + rect.size.x * float(col + 1) / float(pane_grid_cols + 1)
-		_add_box(
-			"%sMuntinV%d" % [part_name, col],
-			Vector3(muntin_thickness, rect.size.y, bar_depth),
-			Vector3(col_x, center_y, 0.0),
-			frame_color,
-			false
-		)
-
-
-func _add_arch_fillers(part_name: String, rect: Rect2, depth: float, arch_steps: int) -> void:
-	var zone := minf(rect.size.x * 0.45, rect.size.y * 0.5)
-	if zone <= 0.001 or arch_steps <= 0:
-		return
-	var band_height := zone / float(arch_steps)
-	var fill_depth := maxf(depth + 0.01, frame_depth)
-	for index in range(arch_steps):
-		var fill := zone * (1.0 - float(index) / float(arch_steps))
-		if fill <= 0.001:
-			continue
-		var y := rect.end.y - band_height * (float(index) + 0.5)
-		_add_box(
-			"%sArchL%d" % [part_name, index],
-			Vector3(fill, band_height, fill_depth),
-			Vector3(rect.position.x + fill * 0.5, y, 0.0),
-			frame_color,
-			false
-		)
-		_add_box(
-			"%sArchR%d" % [part_name, index],
-			Vector3(fill, band_height, fill_depth),
-			Vector3(rect.end.x - fill * 0.5, y, 0.0),
-			frame_color,
-			false
-		)
-
-
-func _build_louvers(part_name: String, rect: Rect2, depth: float, louver_count: int) -> void:
-	if louver_count <= 0:
-		return
-	var slat_gap := rect.size.y / float(louver_count)
-	var slat_height := slat_gap * 0.92
-	var slat_depth := maxf(depth * 2.0, frame_depth)
-	var tilt := Basis(Vector3.RIGHT, deg_to_rad(28.0))
-	var center_x := rect.position.x + rect.size.x * 0.5
-	for index in range(louver_count):
-		var y := rect.position.y + slat_gap * (float(index) + 0.5)
-		_add_oriented_box(
-			"%sSlat%d" % [part_name, index],
-			Vector3(rect.size.x, slat_height, slat_depth),
-			Vector3(center_x, y, 0.0),
-			frame_color,
-			tilt
-		)
 
 
 func _rect_center(rect: Rect2) -> Vector3:

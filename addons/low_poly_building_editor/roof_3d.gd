@@ -8,10 +8,12 @@ const STYLE_FLAT := "flat"
 const STYLE_SHED := "shed"
 const STYLE_GABLE := "gable"
 const STYLE_HIP := "hip"
-const VALID_STYLES := [STYLE_FLAT, STYLE_SHED, STYLE_GABLE, STYLE_HIP]
 const RECT_EPSILON := 0.001
 const MAX_ROOF_ANGLE_DEGREES := 89.0
 const TRIANGLE_WIREFRAME_NODE_NAME := "RoofTriangleWireframe"
+const RoofStyleGeometryFactory := preload(
+	"res://addons/low_poly_building_editor/roof_style_geometry_factory_3d.gd"
+)
 
 @export var rebuild := false:
 	set(value):
@@ -33,22 +35,6 @@ const TRIANGLE_WIREFRAME_NODE_NAME := "RoofTriangleWireframe"
 		end_point = value
 		_request_rebuild()
 
-@export_enum("Flat:0", "Shed:1", "Gable:2", "Hip:3") var roof_style_index := 2:
-	set(value):
-		var clamped_value := clampi(value, 0, VALID_STYLES.size() - 1)
-		if roof_style_index == clamped_value:
-			return
-		roof_style_index = clamped_value
-		_request_rebuild()
-
-@export_range(0.0, 89.0, 1.0) var roof_height := 40.0:
-	set(value):
-		var clamped_value := _clamped_roof_angle_degrees(value)
-		if is_equal_approx(roof_height, clamped_value):
-			return
-		roof_height = clamped_value
-		_request_rebuild()
-
 @export_range(0.02, 2.0, 0.01, "or_greater") var roof_thickness := 0.12:
 	set(value):
 		var clamped_value := maxf(value, 0.02)
@@ -63,14 +49,6 @@ const TRIANGLE_WIREFRAME_NODE_NAME := "RoofTriangleWireframe"
 		if is_equal_approx(roof_overhang, clamped_value):
 			return
 		roof_overhang = clamped_value
-		_request_rebuild()
-
-@export_range(0.0, 20.0, 0.01, "or_greater") var hip_gable_height := 0.0:
-	set(value):
-		var clamped_value := maxf(value, 0.0)
-		if is_equal_approx(hip_gable_height, clamped_value):
-			return
-		hip_gable_height = clamped_value
 		_request_rebuild()
 
 @export_range(-180.0, 180.0, 1.0) var roof_rotation_degrees := 0.0:
@@ -156,7 +134,7 @@ func set_roof_corners_rotation_and_covers(
 		new_start,
 		new_end,
 		new_rotation_degrees,
-		roof_height,
+		get_roof_angle_degrees(),
 		new_covered_rects,
 		new_covered_polygons
 	)
@@ -173,7 +151,7 @@ func set_roof_corners_rotation_height_and_covers(
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
 	roof_rotation_degrees = new_rotation_degrees
-	roof_height = new_height
+	set_roof_angle_degrees(new_height)
 	covered_rects = new_covered_rects
 	covered_polygons = new_covered_polygons
 	_sync_transform_from_points()
@@ -271,13 +249,8 @@ func set_roof_rotation_around_center(new_rotation_degrees: float) -> void:
 	)
 
 
-func set_roof_style(style: String) -> void:
-	roof_style_index = _style_index_from_name(style)
-	rebuild_roof_mesh()
-
-
 func get_roof_style() -> String:
-	return String(VALID_STYLES[clampi(roof_style_index, 0, VALID_STYLES.size() - 1)])
+	return ""
 
 
 func get_roof_size() -> Vector2:
@@ -285,18 +258,33 @@ func get_roof_size() -> Vector2:
 
 
 func get_roof_height_at_local_render_point(local_render_point: Vector2) -> float:
-	return roof_surface_height_for_style(
-		get_roof_style(),
+	return _get_style_geometry().surface_height(
 		get_roof_size(),
 		roof_overhang,
-		roof_height,
+		get_roof_angle_degrees(),
 		local_render_point,
-		hip_gable_height
+		get_hip_gable_height()
 	)
 
 
 func get_roof_angle_degrees() -> float:
-	return _clamped_roof_angle_degrees(roof_height)
+	return 0.0
+
+
+func set_roof_angle_degrees(_angle_degrees: float) -> void:
+	pass
+
+
+func get_hip_gable_height() -> float:
+	return 0.0
+
+
+func set_hip_gable_height(_height: float) -> void:
+	pass
+
+
+func _get_style_geometry() -> RefCounted:
+	return RoofStyleGeometryFactory.create(get_roof_style())
 
 
 static func roof_height_for_angle_degrees(run: float, angle_degrees: float) -> float:
@@ -304,28 +292,35 @@ static func roof_height_for_angle_degrees(run: float, angle_degrees: float) -> f
 
 
 static func shed_height_for_angle_degrees(depth: float, overhang: float, angle_degrees: float) -> float:
-	return roof_height_for_angle_degrees(shed_roof_run_for_depth(depth, overhang), angle_degrees)
+	return RoofStyleGeometryFactory.create(STYLE_SHED).generated_height(
+		Vector2(0.0, depth),
+		overhang,
+		angle_degrees
+	)
 
 
 static func shed_roof_run_for_depth(depth: float, overhang: float) -> float:
-	return maxf(depth, 0.0) + maxf(overhang, 0.0) * 2.0
+	return RoofStyleGeometryFactory.create(STYLE_SHED).roof_run(Vector2(0.0, depth), overhang)
 
 
 static func gable_height_for_angle_degrees(depth: float, overhang: float, angle_degrees: float) -> float:
-	return roof_height_for_angle_degrees(gable_roof_run_for_depth(depth, overhang), angle_degrees)
+	return RoofStyleGeometryFactory.create(STYLE_GABLE).generated_height(
+		Vector2(0.0, depth),
+		overhang,
+		angle_degrees
+	)
 
 
 static func gable_roof_run_for_depth(depth: float, overhang: float) -> float:
-	return maxf(maxf(depth, 0.0) * 0.5 + maxf(overhang, 0.0), 0.0)
+	return RoofStyleGeometryFactory.create(STYLE_GABLE).roof_run(Vector2(0.0, depth), overhang)
 
 
 static func hip_height_for_angle_degrees(size: Vector2, overhang: float, angle_degrees: float) -> float:
-	return roof_height_for_angle_degrees(hip_roof_run_for_size(size, overhang), angle_degrees)
+	return RoofStyleGeometryFactory.create(STYLE_HIP).generated_height(size, overhang, angle_degrees)
 
 
 static func hip_roof_run_for_size(size: Vector2, overhang: float) -> float:
-	var shortest_depth := minf(maxf(size.x, 0.0), maxf(size.y, 0.0))
-	return maxf(shortest_depth * 0.5 + maxf(overhang, 0.0), 0.0)
+	return RoofStyleGeometryFactory.create(STYLE_HIP).roof_run(size, overhang)
 
 
 static func hip_roof_ridge_points_for_size(
@@ -334,113 +329,12 @@ static func hip_roof_ridge_points_for_size(
 	angle_degrees: float,
 	gable_height_from_peak: float = 0.0
 ) -> PackedVector3Array:
-	var resolved_overhang := maxf(overhang, 0.0)
-	var x0 := -resolved_overhang
-	var x1 := maxf(size.x, 0.0) + resolved_overhang
-	var z0 := -resolved_overhang
-	var z1 := maxf(size.y, 0.0) + resolved_overhang
-	var render_width := maxf(x1 - x0, 0.0)
-	var render_depth := maxf(z1 - z0, 0.0)
-	var run := minf(render_width, render_depth) * 0.5
-	var height := roof_height_for_angle_degrees(run, angle_degrees)
-	var ridge_extension := _hip_roof_gable_extension(run, height, angle_degrees, gable_height_from_peak)
-	if render_width >= render_depth:
-		var center_z := (z0 + z1) * 0.5
-		return PackedVector3Array([
-			Vector3(x0 + run - ridge_extension, height, center_z),
-			Vector3(x1 - run + ridge_extension, height, center_z),
-		])
-	var center_x := (x0 + x1) * 0.5
-	return PackedVector3Array([
-		Vector3(center_x, height, z0 + run - ridge_extension),
-		Vector3(center_x, height, z1 - run + ridge_extension),
-	])
-
-
-static func _hip_roof_gable_extension(
-	run: float,
-	roof_height: float,
-	angle_degrees: float,
-	gable_height_from_peak: float
-) -> float:
-	var clamped_drop := clampf(maxf(gable_height_from_peak, 0.0), 0.0, maxf(roof_height, 0.0))
-	if clamped_drop <= RECT_EPSILON:
-		return 0.0
-	var slope := tan(deg_to_rad(_clamped_roof_angle_degrees(angle_degrees)))
-	if slope <= RECT_EPSILON:
-		return 0.0
-	return minf(clamped_drop / slope, maxf(run, 0.0))
-
-
-static func _hip_roof_face_polygons_for_size(
-	size: Vector2,
-	overhang: float,
-	angle_degrees: float,
-	gable_height_from_peak: float = 0.0
-) -> Array[PackedVector3Array]:
-	var resolved_overhang := maxf(overhang, 0.0)
-	var x0 := -resolved_overhang
-	var x1 := maxf(size.x, 0.0) + resolved_overhang
-	var z0 := -resolved_overhang
-	var z1 := maxf(size.y, 0.0) + resolved_overhang
-	var render_width := maxf(x1 - x0, 0.0)
-	var render_depth := maxf(z1 - z0, 0.0)
-	var run := minf(render_width, render_depth) * 0.5
-	var height := roof_height_for_angle_degrees(run, angle_degrees)
-	var gable_drop := clampf(maxf(gable_height_from_peak, 0.0), 0.0, height)
-	var ridge_extension := _hip_roof_gable_extension(run, height, angle_degrees, gable_drop)
-	var p0 := Vector3(x0, 0.0, z0)
-	var p1 := Vector3(x1, 0.0, z0)
-	var p2 := Vector3(x1, 0.0, z1)
-	var p3 := Vector3(x0, 0.0, z1)
-	var ridge_points := hip_roof_ridge_points_for_size(size, resolved_overhang, angle_degrees, gable_drop)
-	var ridge_start := ridge_points[0]
-	var ridge_end := ridge_points[1]
-	var faces: Array[PackedVector3Array] = []
-	if gable_drop <= RECT_EPSILON and ridge_start.distance_to(ridge_end) <= RECT_EPSILON:
-		faces.append(PackedVector3Array([p0, ridge_start, p1]))
-		faces.append(PackedVector3Array([p1, ridge_start, p2]))
-		faces.append(PackedVector3Array([p2, ridge_start, p3]))
-		faces.append(PackedVector3Array([p3, ridge_start, p0]))
-		return faces
-	if gable_drop > RECT_EPSILON and ridge_extension > RECT_EPSILON:
-		var gable_base_height := height - gable_drop
-		if render_width >= render_depth:
-			var center_z := (z0 + z1) * 0.5
-			var left_front := Vector3(ridge_start.x, gable_base_height, center_z - ridge_extension)
-			var left_back := Vector3(ridge_start.x, gable_base_height, center_z + ridge_extension)
-			var right_front := Vector3(ridge_end.x, gable_base_height, center_z - ridge_extension)
-			var right_back := Vector3(ridge_end.x, gable_base_height, center_z + ridge_extension)
-			faces.append(PackedVector3Array([left_front, ridge_start, ridge_end, right_front, p1, p0]))
-			faces.append(PackedVector3Array([p1, right_front, right_back, p2]))
-			faces.append(PackedVector3Array([right_back, ridge_end, ridge_start, left_back, p3, p2]))
-			faces.append(PackedVector3Array([p0, p3, left_back, left_front]))
-			faces.append(PackedVector3Array([left_front, left_back, ridge_start]))
-			faces.append(PackedVector3Array([right_front, ridge_end, right_back]))
-		else:
-			var center_x := (x0 + x1) * 0.5
-			var front_left := Vector3(center_x - ridge_extension, gable_base_height, ridge_start.z)
-			var front_right := Vector3(center_x + ridge_extension, gable_base_height, ridge_start.z)
-			var back_left := Vector3(center_x - ridge_extension, gable_base_height, ridge_end.z)
-			var back_right := Vector3(center_x + ridge_extension, gable_base_height, ridge_end.z)
-			faces.append(PackedVector3Array([p0, front_left, front_right, p1]))
-			faces.append(PackedVector3Array([front_right, ridge_start, ridge_end, back_right, p2, p1]))
-			faces.append(PackedVector3Array([p2, back_right, back_left, p3]))
-			faces.append(PackedVector3Array([back_left, ridge_end, ridge_start, front_left, p0, p3]))
-			faces.append(PackedVector3Array([front_left, ridge_start, front_right]))
-			faces.append(PackedVector3Array([back_left, back_right, ridge_end]))
-		return faces
-	if render_width >= render_depth:
-		faces.append(PackedVector3Array([p0, ridge_start, ridge_end, p1]))
-		faces.append(PackedVector3Array([p1, ridge_end, p2]))
-		faces.append(PackedVector3Array([p3, p2, ridge_end, ridge_start]))
-		faces.append(PackedVector3Array([p0, p3, ridge_start]))
-	else:
-		faces.append(PackedVector3Array([p0, ridge_start, p1]))
-		faces.append(PackedVector3Array([p1, ridge_start, ridge_end, p2]))
-		faces.append(PackedVector3Array([p2, ridge_end, p3]))
-		faces.append(PackedVector3Array([p0, p3, ridge_end, ridge_start]))
-	return faces
+	return RoofStyleGeometryFactory.create(STYLE_HIP).ridge_points(
+		size,
+		overhang,
+		angle_degrees,
+		gable_height_from_peak
+	)
 
 
 static func _triangles_for_roof_face(face_vertices: PackedVector3Array) -> Array[PackedVector3Array]:
@@ -474,14 +368,7 @@ static func roof_generated_height_for_style(
 	overhang: float,
 	angle_degrees: float
 ) -> float:
-	match style:
-		STYLE_SHED:
-			return shed_height_for_angle_degrees(size.y, overhang, angle_degrees)
-		STYLE_GABLE:
-			return gable_height_for_angle_degrees(size.y, overhang, angle_degrees)
-		STYLE_HIP:
-			return hip_height_for_angle_degrees(size, overhang, angle_degrees)
-	return 0.0
+	return RoofStyleGeometryFactory.create(style).generated_height(size, overhang, angle_degrees)
 
 
 static func roof_surface_height_for_style(
@@ -492,52 +379,13 @@ static func roof_surface_height_for_style(
 	local_render_point: Vector2,
 	gable_height_from_peak: float = 0.0
 ) -> float:
-	var height := roof_generated_height_for_style(style, size, overhang, angle_degrees)
-	if height <= 0.0:
-		return 0.0
-	var resolved_overhang := maxf(overhang, 0.0)
-	var min_x := -resolved_overhang
-	var max_x := size.x + resolved_overhang
-	var min_z := -resolved_overhang
-	var max_z := size.y + resolved_overhang
-	var clamped_x := clampf(local_render_point.x, min_x, max_x)
-	var clamped_z := clampf(local_render_point.y, min_z, max_z)
-	match style:
-		STYLE_SHED:
-			return height * clampf((clamped_z - min_z) / maxf(max_z - min_z, RECT_EPSILON), 0.0, 1.0)
-		STYLE_HIP:
-			var run := hip_roof_run_for_size(size, resolved_overhang)
-			var slope := height / maxf(run, RECT_EPSILON)
-			var ridge_extension := _hip_roof_gable_extension(
-				run,
-				height,
-				angle_degrees,
-				gable_height_from_peak
-			)
-			var cross_distance := 0.0
-			var axis_height := height
-			if (max_x - min_x) >= (max_z - min_z):
-				var ridge_start_x := min_x + run - ridge_extension
-				var ridge_end_x := max_x - run + ridge_extension
-				cross_distance = minf(clamped_z - min_z, max_z - clamped_z)
-				if clamped_x < ridge_start_x - RECT_EPSILON:
-					axis_height = minf(axis_height, (clamped_x - min_x) * slope)
-				elif clamped_x > ridge_end_x + RECT_EPSILON:
-					axis_height = minf(axis_height, (max_x - clamped_x) * slope)
-			else:
-				var ridge_start_z := min_z + run - ridge_extension
-				var ridge_end_z := max_z - run + ridge_extension
-				cross_distance = minf(clamped_x - min_x, max_x - clamped_x)
-				if clamped_z < ridge_start_z - RECT_EPSILON:
-					axis_height = minf(axis_height, (clamped_z - min_z) * slope)
-				elif clamped_z > ridge_end_z + RECT_EPSILON:
-					axis_height = minf(axis_height, (max_z - clamped_z) * slope)
-			return clampf(minf(cross_distance * slope, axis_height), 0.0, height)
-		STYLE_GABLE:
-			var center_z := (min_z + max_z) * 0.5
-			var half_depth := maxf((max_z - min_z) * 0.5, RECT_EPSILON)
-			return height * clampf(1.0 - absf(clamped_z - center_z) / half_depth, 0.0, 1.0)
-	return 0.0
+	return RoofStyleGeometryFactory.create(style).surface_height(
+		size,
+		overhang,
+		angle_degrees,
+		local_render_point,
+		gable_height_from_peak
+	)
 
 
 static func roof_top_triangles_for_style(
@@ -547,50 +395,12 @@ static func roof_top_triangles_for_style(
 	angle_degrees: float,
 	gable_height_from_peak: float = 0.0
 ) -> Array[PackedVector3Array]:
-	var resolved_overhang := maxf(overhang, 0.0)
-	var x0 := -resolved_overhang
-	var x1 := full_size.x + resolved_overhang
-	var z0 := -resolved_overhang
-	var z1 := full_size.y + resolved_overhang
-	var center_x := (x0 + x1) * 0.5
-	var center_z := (z0 + z1) * 0.5
-	var height := roof_generated_height_for_style(style, full_size, resolved_overhang, angle_degrees)
-	var triangles: Array[PackedVector3Array] = []
-	match style:
-		STYLE_SHED:
-			var p0 := Vector3(x0, 0.0, z0)
-			var p1 := Vector3(x1, 0.0, z0)
-			var p2 := Vector3(x1, height, z1)
-			var p3 := Vector3(x0, height, z1)
-			triangles.append(PackedVector3Array([p0, p3, p2]))
-			triangles.append(PackedVector3Array([p0, p2, p1]))
-		STYLE_HIP:
-			for face_vertices in _hip_roof_face_polygons_for_size(
-				full_size,
-				resolved_overhang,
-				angle_degrees,
-				gable_height_from_peak
-			):
-				triangles.append_array(_triangles_for_roof_face(face_vertices))
-		STYLE_GABLE:
-			var p0 := Vector3(x0, 0.0, z0)
-			var p1 := Vector3(x1, 0.0, z0)
-			var p2 := Vector3(x1, 0.0, z1)
-			var p3 := Vector3(x0, 0.0, z1)
-			var ridge_left := Vector3(x0, height, center_z)
-			var ridge_right := Vector3(x1, height, center_z)
-			triangles.append(PackedVector3Array([p0, ridge_left, ridge_right]))
-			triangles.append(PackedVector3Array([p0, ridge_right, p1]))
-			triangles.append(PackedVector3Array([p3, p2, ridge_right]))
-			triangles.append(PackedVector3Array([p3, ridge_right, ridge_left]))
-		_:
-			var p0 := Vector3(x0, 0.0, z0)
-			var p1 := Vector3(x1, 0.0, z0)
-			var p2 := Vector3(x1, 0.0, z1)
-			var p3 := Vector3(x0, 0.0, z1)
-			triangles.append(PackedVector3Array([p0, p3, p2]))
-			triangles.append(PackedVector3Array([p0, p2, p1]))
-	return triangles
+	return RoofStyleGeometryFactory.create(style).top_triangles(
+		full_size,
+		overhang,
+		angle_degrees,
+		gable_height_from_peak
+	)
 
 
 static func roof_top_faces_for_style(
@@ -600,60 +410,12 @@ static func roof_top_faces_for_style(
 	angle_degrees: float,
 	gable_height_from_peak: float = 0.0
 ) -> Array[Dictionary]:
-	var resolved_overhang := maxf(overhang, 0.0)
-	var x0 := -resolved_overhang
-	var x1 := full_size.x + resolved_overhang
-	var z0 := -resolved_overhang
-	var z1 := full_size.y + resolved_overhang
-	var center_x := (x0 + x1) * 0.5
-	var center_z := (z0 + z1) * 0.5
-	var height := roof_generated_height_for_style(style, full_size, resolved_overhang, angle_degrees)
-	var faces: Array[Dictionary] = []
-	match style:
-		STYLE_SHED:
-			var p0 := Vector3(x0, 0.0, z0)
-			var p1 := Vector3(x1, 0.0, z0)
-			var p2 := Vector3(x1, height, z1)
-			var p3 := Vector3(x0, height, z1)
-			faces.append({
-				"vertices": PackedVector3Array([p0, p3, p2, p1]),
-				"plane": PackedVector3Array([p0, p3, p2]),
-			})
-		STYLE_HIP:
-			for face_vertices in _hip_roof_face_polygons_for_size(
-				full_size,
-				resolved_overhang,
-				angle_degrees,
-				gable_height_from_peak
-			):
-				var plane_points := _plane_points_for_roof_face(face_vertices)
-				if plane_points.size() == 3:
-					faces.append({"vertices": face_vertices, "plane": plane_points})
-		STYLE_GABLE:
-			var p0 := Vector3(x0, 0.0, z0)
-			var p1 := Vector3(x1, 0.0, z0)
-			var p2 := Vector3(x1, 0.0, z1)
-			var p3 := Vector3(x0, 0.0, z1)
-			var ridge_left := Vector3(x0, height, center_z)
-			var ridge_right := Vector3(x1, height, center_z)
-			faces.append({
-				"vertices": PackedVector3Array([p0, ridge_left, ridge_right, p1]),
-				"plane": PackedVector3Array([p0, ridge_left, ridge_right]),
-			})
-			faces.append({
-				"vertices": PackedVector3Array([p3, p2, ridge_right, ridge_left]),
-				"plane": PackedVector3Array([p3, p2, ridge_right]),
-			})
-		_:
-			var p0 := Vector3(x0, 0.0, z0)
-			var p1 := Vector3(x1, 0.0, z0)
-			var p2 := Vector3(x1, 0.0, z1)
-			var p3 := Vector3(x0, 0.0, z1)
-			faces.append({
-				"vertices": PackedVector3Array([p0, p3, p2, p1]),
-				"plane": PackedVector3Array([p0, p3, p2]),
-			})
-	return faces
+	return RoofStyleGeometryFactory.create(style).top_faces(
+		full_size,
+		overhang,
+		angle_degrees,
+		gable_height_from_peak
+	)
 
 
 static func roof_corners_from_base_points(base_start: Vector3, base_end: Vector3, rotation_degrees: float) -> Dictionary:
@@ -700,6 +462,9 @@ func rebuild_roof_mesh(rebuild_collision: bool = true) -> void:
 	_sync_transform_from_points()
 	if rebuild_collision:
 		_clear_generated_children()
+	if get_roof_style().is_empty():
+		mesh = null
+		return
 
 	var size := get_roof_size()
 	if size.x <= 0.001 or size.y <= 0.001:
@@ -780,67 +545,15 @@ func _append_roof_geometry(
 	colors: PackedColorArray,
 	indices: PackedInt32Array
 ) -> void:
-	var overhang := maxf(roof_overhang, 0.0)
-	var x0 := -overhang
-	var x1 := width + overhang
-	var z0 := -overhang
-	var z1 := depth + overhang
-	var center_x := (x0 + x1) * 0.5
-	var center_z := (z0 + z1) * 0.5
-	var height := _effective_roof_height_for_size(Vector2(width, depth))
-	var top_points: Array[Vector3] = []
-	var top_triangles: Array[PackedInt32Array] = []
-	var boundary := PackedInt32Array()
-
-	match get_roof_style():
-		STYLE_SHED:
-			top_points = [
-				Vector3(x0, 0.0, z0),
-				Vector3(x1, 0.0, z0),
-				Vector3(x1, height, z1),
-				Vector3(x0, height, z1),
-			]
-			top_triangles = [PackedInt32Array([0, 3, 2]), PackedInt32Array([0, 2, 1])]
-			boundary = PackedInt32Array([0, 1, 2, 3])
-		STYLE_HIP:
-			var p0 := Vector3(x0, 0.0, z0)
-			var p1 := Vector3(x1, 0.0, z0)
-			var p2 := Vector3(x1, 0.0, z1)
-			var p3 := Vector3(x0, 0.0, z1)
-			top_points = [p0, p1, p2, p3]
-			for face_vertices in _hip_roof_face_polygons_for_size(
-				Vector2(width, depth),
-				overhang,
-				roof_height,
-				hip_gable_height
-			):
-				_append_roof_face_indices(face_vertices, top_points, top_triangles)
-			boundary = PackedInt32Array([0, 1, 2, 3])
-		STYLE_GABLE:
-			top_points = [
-				Vector3(x0, 0.0, z0),
-				Vector3(x1, 0.0, z0),
-				Vector3(x1, 0.0, z1),
-				Vector3(x0, 0.0, z1),
-				Vector3(x0, height, center_z),
-				Vector3(x1, height, center_z),
-			]
-			top_triangles = [
-				PackedInt32Array([0, 4, 5]),
-				PackedInt32Array([0, 5, 1]),
-				PackedInt32Array([3, 2, 5]),
-				PackedInt32Array([3, 5, 4]),
-			]
-			boundary = PackedInt32Array([0, 1, 5, 2, 3, 4])
-		_:
-			top_points = [
-				Vector3(x0, 0.0, z0),
-				Vector3(x1, 0.0, z0),
-				Vector3(x1, 0.0, z1),
-				Vector3(x0, 0.0, z1),
-			]
-			top_triangles = [PackedInt32Array([0, 3, 2]), PackedInt32Array([0, 2, 1])]
-			boundary = PackedInt32Array([0, 1, 2, 3])
+	var topology: Dictionary = _get_style_geometry().topology(
+		Vector2(width, depth),
+		roof_overhang,
+		get_roof_angle_degrees(),
+		get_hip_gable_height()
+	)
+	var top_points: Array[Vector3] = topology["points"]
+	var top_triangles: Array[PackedInt32Array] = topology["triangles"]
+	var boundary := PackedInt32Array(topology["boundary"])
 
 	for triangle in top_triangles:
 		_append_triangle_auto(
@@ -1108,12 +821,11 @@ func _roof_polygon_boundary_point_key(point: Vector3) -> String:
 
 
 func _roof_top_triangles(full_size: Vector2) -> Array[PackedVector3Array]:
-	return roof_top_triangles_for_style(
-		get_roof_style(),
+	return _get_style_geometry().top_triangles(
 		full_size,
 		roof_overhang,
-		roof_height,
-		hip_gable_height
+		get_roof_angle_degrees(),
+		get_hip_gable_height()
 	)
 
 
@@ -1255,17 +967,13 @@ func _edge_axis_values(
 	axis_is_x: bool,
 	include_style_splits: bool
 ) -> Array[float]:
-	var min_value := minf(start_value, end_value)
-	var max_value := maxf(start_value, end_value)
-	var values: Array[float] = [start_value, end_value]
-	if include_style_splits and !axis_is_x and get_roof_style() == STYLE_GABLE:
-		var center_z := full_size.y * 0.5
-		if center_z > min_value + RECT_EPSILON and center_z < max_value - RECT_EPSILON:
-			values.append(center_z)
-	values.sort()
-	if start_value > end_value:
-		values.reverse()
-	return values
+	return _get_style_geometry().edge_axis_values(
+		full_size,
+		start_value,
+		end_value,
+		axis_is_x,
+		include_style_splits
+	)
 
 
 func _append_roof_side_polyline(
@@ -1294,13 +1002,12 @@ func _append_roof_side_polyline(
 
 
 func _roof_height_at(full_size: Vector2, x: float, z: float) -> float:
-	return roof_surface_height_for_style(
-		get_roof_style(),
+	return _get_style_geometry().surface_height(
 		full_size,
 		roof_overhang,
-		roof_height,
+		get_roof_angle_degrees(),
 		Vector2(x, z),
-		hip_gable_height
+		get_hip_gable_height()
 	)
 
 
@@ -1478,7 +1185,7 @@ func _effective_roof_height() -> float:
 
 
 func _effective_roof_height_for_size(size: Vector2) -> float:
-	return roof_generated_height_for_style(get_roof_style(), size, roof_overhang, roof_height)
+	return _get_style_geometry().generated_height(size, roof_overhang, get_roof_angle_degrees())
 
 
 static func _clamped_roof_angle_degrees(angle_degrees: float) -> float:
@@ -1490,14 +1197,6 @@ static func _normalize_degrees_static(value: float) -> float:
 	if is_equal_approx(normalized, -180.0):
 		return 180.0
 	return normalized
-
-
-func _style_index_from_name(style: String) -> int:
-	var normalized := style.strip_edges().to_lower()
-	for index in range(VALID_STYLES.size()):
-		if String(VALID_STYLES[index]) == normalized:
-			return index
-	return 2
 
 
 func _append_triangle_auto(

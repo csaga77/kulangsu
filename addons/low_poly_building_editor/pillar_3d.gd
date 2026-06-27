@@ -4,11 +4,6 @@ extends MeshInstance3D
 
 const GENERATED_META := &"pillar_generated"
 const PREVIEW_META := &"building_editor_preview"
-const STYLE_ROUND := "round"
-const STYLE_SQUARE := "square"
-const STYLE_OCTAGONAL := "octagonal"
-const STYLE_TAPERED := "tapered"
-const VALID_STYLES := [STYLE_ROUND, STYLE_SQUARE, STYLE_OCTAGONAL, STYLE_TAPERED]
 
 @export var rebuild := false:
 	set(value):
@@ -45,22 +40,6 @@ const VALID_STYLES := [STYLE_ROUND, STYLE_SQUARE, STYLE_OCTAGONAL, STYLE_TAPERED
 		if is_equal_approx(pillar_height, clamped_value):
 			return
 		pillar_height = clamped_value
-		_request_rebuild()
-
-@export_range(3, 24, 1) var side_count := 8:
-	set(value):
-		var clamped_value := clampi(value, 3, 24)
-		if side_count == clamped_value:
-			return
-		side_count = clamped_value
-		_request_rebuild()
-
-@export_enum("Round:0", "Square:1", "Octagonal:2", "Tapered:3") var pillar_style_index := 0:
-	set(value):
-		var clamped_value := clampi(value, 0, VALID_STYLES.size() - 1)
-		if pillar_style_index == clamped_value:
-			return
-		pillar_style_index = clamped_value
 		_request_rebuild()
 
 @export_range(0.0, 2.0, 0.01, "or_greater") var lower_rim_height := 0.0:
@@ -149,11 +128,6 @@ func set_pillar_radii(new_lower_radius: float, new_upper_radius: float) -> void:
 	rebuild_pillar_mesh()
 
 
-func set_pillar_style(style: String) -> void:
-	pillar_style_index = _style_index_from_name(style)
-	rebuild_pillar_mesh()
-
-
 func set_pillar_rims(
 	new_lower_height: float,
 	new_lower_outset: float,
@@ -168,7 +142,7 @@ func set_pillar_rims(
 
 
 func get_pillar_style() -> String:
-	return String(VALID_STYLES[clampi(pillar_style_index, 0, VALID_STYLES.size() - 1)])
+	return ""
 
 
 func get_outer_radius() -> float:
@@ -187,6 +161,9 @@ func rebuild_pillar_mesh(rebuild_collision: bool = true) -> void:
 	_sync_transform_from_base()
 	if rebuild_collision:
 		_clear_generated_children()
+	if get_pillar_style().is_empty():
+		mesh = null
+		return
 
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
@@ -318,26 +295,18 @@ func _ring_point(angle: float, y: float, radius: float) -> Vector3:
 
 
 func _effective_side_count() -> int:
-	match get_pillar_style():
-		STYLE_SQUARE:
-			return 4
-		STYLE_OCTAGONAL:
-			return 8
-		_:
-			return clampi(side_count, 3, 24)
+	return 0
 
 
 func _effective_angle_offset(sides: int) -> float:
-	if get_pillar_style() == STYLE_SQUARE:
-		return PI * 0.25
+	if sides <= 0:
+		return 0.0
 	return PI / float(sides)
 
 
 func _effective_top_radius() -> float:
 	if upper_radius > 0.0001:
 		return upper_radius
-	if get_pillar_style() == STYLE_TAPERED:
-		return pillar_radius * 0.72
 	return pillar_radius
 
 
@@ -374,14 +343,6 @@ func _lower_rim_outer_radius(effective_height: float) -> float:
 func _upper_rim_outer_radius(effective_height: float) -> float:
 	var start_y := maxf(pillar_height - effective_height, 0.0)
 	return maxf(_body_radius_at_y(start_y), _body_radius_at_y(pillar_height)) + upper_rim_outset
-
-
-func _style_index_from_name(style: String) -> int:
-	var normalized := style.strip_edges().to_lower()
-	for index in range(VALID_STYLES.size()):
-		if String(VALID_STYLES[index]) == normalized:
-			return index
-	return 0
 
 
 func _append_frustum_side(
