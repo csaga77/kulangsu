@@ -71,7 +71,8 @@ func _ready() -> void:
 	if is_instance_valid(m_camera_controller) and m_camera_controller.has_method("snap_to_target"):
 		m_camera_controller.call_deferred("snap_to_target")
 
-	call_deferred("_run_smoke_checks")
+	if DisplayServer.get_name() == "headless":
+		call_deferred("_run_smoke_checks")
 
 
 func _run_smoke_checks() -> void:
