@@ -17,6 +17,45 @@ func get_length() -> float:
 	return Vector2(end_point.x - start_point.x, end_point.z - start_point.z).length()
 
 
+static func shares_collinear_overlap(
+	first: WallSegment3D,
+	second: WallSegment3D,
+	tolerance: float = 0.002
+) -> bool:
+	if first == null or second == null:
+		return false
+	if !is_equal_approx(first.thickness, second.thickness):
+		return false
+	var resolved_tolerance := maxf(tolerance, 0.001)
+	if absf(first.start_point.y - second.start_point.y) > resolved_tolerance:
+		return false
+	var first_start := Vector2(first.start_point.x, first.start_point.z)
+	var first_end := Vector2(first.end_point.x, first.end_point.z)
+	var second_start := Vector2(second.start_point.x, second.start_point.z)
+	var second_end := Vector2(second.end_point.x, second.end_point.z)
+	var first_delta := first_end - first_start
+	var second_delta := second_end - second_start
+	var first_length := first_delta.length()
+	var second_length := second_delta.length()
+	if first_length <= resolved_tolerance or second_length <= resolved_tolerance:
+		return false
+	var first_axis := first_delta / first_length
+	var second_axis := second_delta / second_length
+	if absf(first_axis.dot(second_axis)) < 0.999:
+		return false
+	if absf((second_start - first_start).cross(first_axis)) > resolved_tolerance:
+		return false
+	var second_min := minf(
+		(second_start - first_start).dot(first_axis),
+		(second_end - first_start).dot(first_axis)
+	)
+	var second_max := maxf(
+		(second_start - first_start).dot(first_axis),
+		(second_end - first_start).dot(first_axis)
+	)
+	return minf(first_length, second_max) - maxf(0.0, second_min) > resolved_tolerance
+
+
 ## Collinear-merges `candidate` into an existing entry of `segments` when
 ## axis, line offset, thickness, height, and base match within tolerance and
 ## the ranges overlap; otherwise appends it. Returns true when extended.

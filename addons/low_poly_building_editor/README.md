@@ -2,7 +2,8 @@
 
 Godot editor plugin for grid-snapped low-poly building authoring — an editor dock plus 3D
 viewport tools for walls, floors, stairs, pillars, roofs, openings, and props, authored as
-normal scene nodes so the result serializes into `.tscn` files.
+normal scene nodes so the result serializes into `.tscn` files. The Wall tool can draw
+either individual spans or enclosed rectangular rooms.
 
 This README is the plugin's entry point; the full documentation lives in [`docs/`](docs):
 

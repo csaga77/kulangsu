@@ -28,6 +28,8 @@ const FLOOR_EDIT_MIN_X := 1
 const FLOOR_EDIT_MAX_X := 2
 const FLOOR_EDIT_MIN_Z := 4
 const FLOOR_EDIT_MAX_Z := 8
+const WALL_TYPE_WALL := "wall"
+const WALL_TYPE_ROOM := "room"
 const FLOOR_TYPE_SOLID := "solid"
 const FLOOR_TYPE_HOLE := "hole"
 const PILLAR_EDIT_MOVE := 0
@@ -164,6 +166,7 @@ var m_handling_native_click := false
 var m_tool_mode := MODE_SELECT
 var m_wall_settings := {
 	"grid_step": 0.5,
+	"type": WALL_TYPE_WALL,
 	"base_height": 0.0,
 	"height": 2.4,
 	"thickness": 0.22,
@@ -323,6 +326,7 @@ var m_drag_wall_joint_origin := Vector3.ZERO
 var m_drag_wall_dragging_joint := false
 var m_drag_wall_detaching_joint := false
 var m_drag_wall_has_connection_snap := false
+var m_drag_wall_resizing_room_side := false
 var m_drag_wall_hover: Wall3DScript
 var m_drag_wall_hover_material: Material
 var m_drag_wall_hover_segment := 0
@@ -545,6 +549,8 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 			_set_status(
 				"Drag joint to move connected walls. Option-drag to disconnect." if hover_has_joint
 				else "Click and drag endpoint to resize." if hover_ep >= 0
+				else "Click and drag this wall to resize the room."
+				if hover_wall.is_rectangular_loop(_wall_joint_tolerance(hover_wall))
 				else "Click and drag to move wall. Shift-click to add joint."
 			)
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
@@ -555,9 +561,13 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 	var mouse_button := event as InputEventMouseButton
 	if mouse_button.button_index == MOUSE_BUTTON_LEFT and !mouse_button.pressed and m_is_drawing_wall:
 		if !m_wall_release_commits_preview:
-			_set_status("Click another point to place wall, or drag from the start point and release.")
+			_set_status(
+				"Click the opposite corner to place room, or drag from the start point and release."
+				if _is_room_wall_mode()
+				else "Click another point to place wall, or drag from the start point and release."
+			)
 			return _handled()
-		_set_status("Wall mouse release captured.")
+		_set_status("%s mouse release captured." % _wall_draw_label())
 		var release_coordinator := _get_active_wall_coordinator()
 		if release_coordinator != null:
 			var release_end := m_wall_end_local
@@ -608,7 +618,13 @@ func _handle_wall_input(camera: Camera3D, event: InputEvent) -> int:
 		m_is_drawing_wall = true
 		_create_wall_preview(coordinator)
 		_update_wall_preview(camera, mouse_button.position)
-		_set_status("Wall mouse press captured. Drag and release, or click another point.")
+		_set_status(
+			"%s mouse press captured. Drag and release, or click %s."
+			% [
+				_wall_draw_label(),
+				"the opposite corner" if _is_room_wall_mode() else "another point",
+			]
+		)
 		return _handled()
 
 	var local_end := _constrain_wall_end_on_base(coordinator, m_wall_start_local, snapped_local)
@@ -715,10 +731,29 @@ func _update_wall_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 	var local_position := _wall_draw_local_from_mouse(coordinator, camera, mouse_position)
 	var local_end := _constrain_wall_end_on_base(coordinator, m_wall_start_local, local_position)
 	m_wall_end_local = local_end
-	m_wall_has_valid_preview = _is_wall_span_long_enough(m_wall_start_local, local_end)
-	m_wall_preview.set_wall_endpoints(m_wall_start_local, local_end)
+	m_wall_has_valid_preview = _is_wall_draw_valid(m_wall_start_local, local_end)
+	_set_wall_preview_geometry(m_wall_start_local, local_end)
 	if m_wall_has_valid_preview:
-		_set_status("Release or click to place wall.")
+		_set_status("Release or click to place room." if _is_room_wall_mode() else "Release or click to place wall.")
+
+
+func _set_wall_preview_geometry(local_start: Vector3, local_end: Vector3) -> void:
+	if m_wall_preview == null:
+		return
+	if !_is_room_wall_mode():
+		m_wall_preview.set_wall_geometry(local_start, local_end, [])
+		return
+	var segments := BuildingEditor3DScript.room_segments_from_corners(
+		local_start,
+		local_end,
+		float(m_wall_settings["height"]),
+		float(m_wall_settings["thickness"]),
+		m_wall_preview.wall_color
+	)
+	var extras: Array[WallSegment3DScript] = []
+	for index in range(1, segments.size()):
+		extras.append(segments[index])
+	m_wall_preview.set_wall_geometry(segments[0].start_point, segments[0].end_point, extras)
 
 
 func _resolve_wall_end_from_mouse(
@@ -774,6 +809,8 @@ func _constrain_wall_end_on_base(
 	start_local: Vector3,
 	target_local: Vector3
 ) -> Vector3:
+	if _is_room_wall_mode():
+		return Vector3(target_local.x, start_local.y, target_local.z)
 	var constrained := coordinator.constrain_wall_end(start_local, target_local)
 	constrained.y = start_local.y
 	return constrained
@@ -788,12 +825,15 @@ func _get_active_wall_coordinator() -> BuildingEditor3DScript:
 
 
 func _commit_wall(coordinator: BuildingEditor3DScript, local_start: Vector3, local_end: Vector3) -> void:
-	if !_is_wall_span_long_enough(local_start, local_end):
-		_set_status("Wall is too short.")
+	if !_is_wall_draw_valid(local_start, local_end):
+		_set_status("Room is too small." if _is_room_wall_mode() else "Wall is too short.")
 		return
 
 	_apply_wall_settings_to_coordinator(coordinator)
 	var thickness := float(m_wall_settings["thickness"])
+	if _is_room_wall_mode():
+		_commit_room(coordinator, local_start, local_end, thickness)
+		return
 	var merge := coordinator.find_merge_target(
 		local_start,
 		local_end,
@@ -804,8 +844,11 @@ func _commit_wall(coordinator: BuildingEditor3DScript, local_start: Vector3, loc
 	var undo_redo := get_undo_redo()
 	if !merge.is_empty():
 		var target := merge["wall"] as Wall3DScript
-		var old_start := target.start_point
-		var old_end := target.end_point
+		var target_primary := target.get_segment(0)
+		if target_primary == null:
+			return
+		var old_start := target_primary.start_point
+		var old_end := target_primary.end_point
 		undo_redo.create_action("Merge Wall")
 		undo_redo.add_do_method(
 			self,
@@ -859,6 +902,60 @@ func _commit_wall(coordinator: BuildingEditor3DScript, local_start: Vector3, loc
 		_set_status("Created clipped wall: %.2f units." % local_start.distance_to(local_end))
 	else:
 		_set_status("Created wall: %.2f units." % local_start.distance_to(local_end))
+
+
+func _commit_room(
+	coordinator: BuildingEditor3DScript,
+	local_start: Vector3,
+	local_end: Vector3,
+	thickness: float
+) -> void:
+	var wall := coordinator.create_room_node(
+		local_start,
+		local_end,
+		float(m_wall_settings["height"]),
+		thickness,
+		Color(m_wall_settings["color"])
+	)
+	var intersects_existing_wall := false
+	if coordinator.merge_intersecting:
+		for segment_index in range(wall.get_segment_count()):
+			var segment := wall.get_segment(segment_index)
+			if !coordinator.find_intersecting_walls(
+				segment.start_point,
+				segment.end_point,
+				segment.thickness,
+				m_wall_preview
+			).is_empty():
+				intersects_existing_wall = true
+				break
+	var scene_root := get_editor_interface().get_edited_scene_root()
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Create Room")
+	undo_redo.add_do_reference(wall)
+	undo_redo.add_do_method(
+		self,
+		"_do_add_node_and_refresh_wall_intersections",
+		coordinator,
+		wall,
+		scene_root,
+		true,
+		coordinator
+	)
+	undo_redo.add_undo_method(
+		self,
+		"_undo_remove_node_and_refresh_wall_intersections",
+		coordinator,
+		wall,
+		coordinator
+	)
+	undo_redo.commit_action()
+	var room_size := Vector2(absf(local_end.x - local_start.x), absf(local_end.z - local_start.z))
+	_set_status(
+		"Created clipped room: %.2f x %.2f." % [room_size.x, room_size.y]
+		if intersects_existing_wall
+		else "Created room: %.2f x %.2f." % [room_size.x, room_size.y]
+	)
 
 
 func _handle_floor_input(camera: Camera3D, event: InputEvent) -> int:
@@ -3114,12 +3211,13 @@ func _update_opening_preview(wall: Wall3DScript, hit: Dictionary) -> void:
 	opening.set_meta(OPENING_ALLOW_BASE_META, bool(settings["allow_base_edge"]))
 	var center := Vector2(local_hit.x, local_hit.y)
 	var size := Vector2(opening.opening_width, opening.opening_height)
-	m_preview_valid = wall.can_place_opening(
+	m_preview_valid = _can_place_wall_opening(
+		wall,
+		segment_index,
 		center,
 		size,
 		0.04,
 		opening,
-		segment_index,
 		bool(settings["allow_base_edge"])
 	)
 	opening.frame_color = Color(0.20, 0.88, 0.36, 0.72) if m_preview_valid else Color(0.95, 0.20, 0.16, 0.72)
@@ -3139,6 +3237,36 @@ func _apply_opening_settings(opening: BuildingOpening3DScript, settings: Diction
 	opening.window_pane_count = int(settings["window_pane_count"])
 	opening.window_pane_depth = float(settings["window_pane_depth"])
 	opening.window_pane_color = Color(settings["window_pane_color"])
+
+
+func _can_place_wall_opening(
+	wall: Wall3DScript,
+	segment_index: int,
+	center: Vector2,
+	size: Vector2,
+	clearance: float,
+	ignored_opening: Node,
+	allow_base_edge: bool
+) -> bool:
+	var coordinator := _find_coordinator_from_node(wall)
+	if coordinator != null:
+		return coordinator.can_place_wall_opening(
+			wall,
+			segment_index,
+			center,
+			size,
+			clearance,
+			ignored_opening,
+			allow_base_edge
+		)
+	return wall.can_place_opening(
+		center,
+		size,
+		clearance,
+		ignored_opening,
+		segment_index,
+		allow_base_edge
+	)
 
 
 func _active_opening_settings() -> Dictionary:
@@ -4220,6 +4348,12 @@ func _wall_geometry_from_segments(segments: Array) -> Dictionary:
 	}
 
 
+func _wall_geometry_snapshot(wall: Wall3DScript) -> Dictionary:
+	if wall == null:
+		return {}
+	return _wall_geometry_from_segments(_duplicate_wall_segments(wall))
+
+
 func _wall_segment_zero_epsilon(wall: Wall3DScript) -> float:
 	return maxf(_active_grid_step(wall) * 0.01, 0.001)
 
@@ -4268,9 +4402,12 @@ func _commit_add_wall_joint(
 	if geometry.is_empty():
 		_set_status("Joint is too close to an endpoint.")
 		return
-	var old_start := wall.start_point
-	var old_end := wall.end_point
-	var old_segments := _duplicate_segments(wall.extra_segments)
+	var old_geometry := _wall_geometry_snapshot(wall)
+	if old_geometry.is_empty():
+		return
+	var old_start := Vector3(old_geometry["start"])
+	var old_end := Vector3(old_geometry["end"])
+	var old_segments: Array[WallSegment3DScript] = old_geometry["segments"]
 	var new_segments: Array[WallSegment3DScript] = geometry["segments"]
 	var undo_redo := get_undo_redo()
 	undo_redo.create_action("Add Wall Joint")
@@ -4413,6 +4550,24 @@ func _translate_drag_wall_geometry(delta: Vector3) -> void:
 	)
 
 
+func _resize_drag_room_side(delta: Vector3) -> void:
+	if m_dragging_wall == null:
+		return
+	var extras := _duplicate_segments(m_drag_wall_old_segments)
+	_apply_wall_geometry(
+		m_dragging_wall,
+		m_drag_wall_old_start,
+		m_drag_wall_old_end,
+		extras,
+		m_drag_wall_opening_anchors
+	)
+	m_dragging_wall.move_rectangular_loop_side(
+		m_drag_wall_segment_index,
+		delta,
+		_wall_joint_tolerance(m_dragging_wall)
+	)
+
+
 func _is_dragged_wall_span_long_enough(wall: Wall3DScript) -> bool:
 	if wall == null:
 		return false
@@ -4421,6 +4576,16 @@ func _is_dragged_wall_span_long_enough(wall: Wall3DScript) -> bool:
 	if segment == null:
 		return false
 	return _is_wall_span_long_enough(segment.start_point, segment.end_point)
+
+
+func _are_dragged_wall_spans_long_enough(wall: Wall3DScript) -> bool:
+	if wall == null:
+		return false
+	for segment_index in range(wall.get_segment_count()):
+		var segment := wall.get_segment(segment_index)
+		if segment == null or !_is_wall_span_long_enough(segment.start_point, segment.end_point):
+			return false
+	return true
 
 
 func _find_intersecting_targets_for_wall(
@@ -4911,9 +5076,13 @@ func _start_wall_drag(
 	disconnect_joint: bool = false
 ) -> void:
 	m_dragging_wall = wall
-	m_drag_wall_old_start = wall.start_point
-	m_drag_wall_old_end = wall.end_point
-	m_drag_wall_old_segments = _duplicate_segments(wall.extra_segments)
+	var old_geometry := _wall_geometry_snapshot(wall)
+	if old_geometry.is_empty():
+		m_dragging_wall = null
+		return
+	m_drag_wall_old_start = Vector3(old_geometry["start"])
+	m_drag_wall_old_end = Vector3(old_geometry["end"])
+	m_drag_wall_old_segments = old_geometry["segments"]
 	m_drag_wall_opening_anchors = wall.capture_opening_segment_anchors()
 	m_drag_wall_segment_index = clampi(segment_index, 0, wall.get_segment_count() - 1)
 	m_drag_wall_endpoint = endpoint
@@ -4921,6 +5090,10 @@ func _start_wall_drag(
 	m_drag_wall_dragging_joint = false
 	m_drag_wall_detaching_joint = false
 	m_drag_wall_has_connection_snap = false
+	m_drag_wall_resizing_room_side = (
+		endpoint < 0
+		and wall.is_rectangular_loop(_wall_joint_tolerance(wall))
+	)
 	if endpoint >= 0:
 		m_drag_wall_joint_origin = _drag_wall_endpoint_position(wall, m_drag_wall_segment_index, endpoint)
 		var is_shared_joint := wall.count_connected_endpoints(
@@ -4947,6 +5120,7 @@ func _start_wall_drag(
 		if m_drag_wall_dragging_joint
 		else "detached endpoint" if m_drag_wall_detaching_joint
 		else "endpoint" if endpoint >= 0
+		else "room wall" if m_drag_wall_resizing_room_side
 		else "wall"
 	)
 	_set_status("Dragging %s — release to commit, Escape to cancel." % action)
@@ -4957,6 +5131,7 @@ func _update_wall_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 		m_dragging_wall = null
 		m_drag_wall_old_segments.clear()
 		m_drag_wall_opening_anchors.clear()
+		m_drag_wall_resizing_room_side = false
 		return
 	var coordinator := _find_coordinator_from_node(m_dragging_wall)
 	var hit := _raycast_world(camera, mouse_pos, false)
@@ -5002,30 +5177,44 @@ func _update_wall_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 			else:
 				_set_status("Wall is too short.")
 	else:
-		# Full move: translate both endpoints by snapped delta
 		var raw_delta := hit_local - m_drag_wall_anchor_local
 		var snapped_delta := Vector3(
 			roundf(raw_delta.x / step) * step,
 			0.0,
 			roundf(raw_delta.z / step) * step
 		)
-		_translate_drag_wall_geometry(snapped_delta)
-		_set_status("Release to commit.")
+		if m_drag_wall_resizing_room_side:
+			_resize_drag_room_side(snapped_delta)
+			var room_valid := _are_dragged_wall_spans_long_enough(m_dragging_wall)
+			m_dragging_wall.material_override = _build_preview_material(
+				Color(0.20, 0.60, 1.0, 0.55)
+				if room_valid
+				else Color(0.95, 0.20, 0.16, 0.72)
+			)
+			_set_status("Release to resize room." if room_valid else "Room is too small.")
+		else:
+			_translate_drag_wall_geometry(snapped_delta)
+			_set_status("Release to commit.")
 
 
 func _commit_wall_drag() -> void:
 	if m_dragging_wall == null:
 		return
 	var wall := m_dragging_wall
-	var new_start := wall.start_point
-	var new_end := wall.end_point
-	var new_segments := _duplicate_segments(wall.extra_segments)
+	var new_geometry := _wall_geometry_snapshot(wall)
+	if new_geometry.is_empty():
+		_cancel_wall_drag()
+		return
+	var new_start := Vector3(new_geometry["start"])
+	var new_end := Vector3(new_geometry["end"])
+	var new_segments: Array[WallSegment3DScript] = new_geometry["segments"]
 	var old_start := m_drag_wall_old_start
 	var old_end := m_drag_wall_old_end
 	var old_segments := _duplicate_segments(m_drag_wall_old_segments)
 	var was_joint_drag := m_drag_wall_dragging_joint
 	var was_detaching_joint := m_drag_wall_detaching_joint
 	var was_connection_snap := m_drag_wall_has_connection_snap
+	var was_room_resize := m_drag_wall_resizing_room_side
 	m_dragging_wall = null
 	wall.material_override = m_drag_wall_active_material
 	m_drag_wall_active_material = null
@@ -5043,8 +5232,14 @@ func _commit_wall_drag() -> void:
 		m_drag_wall_dragging_joint = false
 		m_drag_wall_detaching_joint = false
 		m_drag_wall_has_connection_snap = false
+		m_drag_wall_resizing_room_side = false
 		return
-	if !_is_dragged_wall_span_long_enough(wall):
+	var wall_geometry_valid := (
+		_are_dragged_wall_spans_long_enough(wall)
+		if was_room_resize
+		else _is_dragged_wall_span_long_enough(wall)
+	)
+	if !wall_geometry_valid:
 		_apply_wall_geometry(wall, old_start, old_end, old_segments, m_drag_wall_opening_anchors)
 		m_drag_wall_old_segments.clear()
 		m_drag_wall_opening_anchors.clear()
@@ -5054,7 +5249,8 @@ func _commit_wall_drag() -> void:
 		m_drag_wall_dragging_joint = false
 		m_drag_wall_detaching_joint = false
 		m_drag_wall_has_connection_snap = false
-		_set_status("Wall is too short.")
+		m_drag_wall_resizing_room_side = false
+		_set_status("Room is too small." if was_room_resize else "Wall is too short.")
 		return
 	var coordinator := _find_coordinator_from_node(wall)
 	var intersects_after_move := false
@@ -5066,7 +5262,7 @@ func _commit_wall_drag() -> void:
 		new_end = Vector3(normalized_geometry["end"])
 		new_segments = normalized_geometry["segments"]
 	var undo_redo := get_undo_redo()
-	undo_redo.create_action("Move Wall")
+	undo_redo.create_action("Resize Room" if was_room_resize else "Move Wall")
 	undo_redo.add_do_method(
 		self,
 		"_do_set_wall_geometry_and_refresh_intersections",
@@ -5096,7 +5292,10 @@ func _commit_wall_drag() -> void:
 	m_drag_wall_dragging_joint = false
 	m_drag_wall_detaching_joint = false
 	m_drag_wall_has_connection_snap = false
-	if was_connection_snap:
+	m_drag_wall_resizing_room_side = false
+	if was_room_resize:
+		_set_status("Resized room.")
+	elif was_connection_snap:
 		_set_status("Connected wall endpoint.")
 	elif was_detaching_joint:
 		_set_status("Disconnected wall endpoint.")
@@ -5129,6 +5328,7 @@ func _cancel_wall_drag() -> void:
 	m_drag_wall_dragging_joint = false
 	m_drag_wall_detaching_joint = false
 	m_drag_wall_has_connection_snap = false
+	m_drag_wall_resizing_room_side = false
 	m_drag_wall_active_material = null
 
 
@@ -5280,12 +5480,13 @@ func _update_window_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 		m_dragging_opening.transform = Transform3D(frame.basis, frame * center_local)
 		var center_2d := Vector2(center_local.x, center_local.y)
 		var size := Vector2(new_width, new_height)
-		m_drag_valid = wall.can_place_opening(
+		m_drag_valid = _can_place_wall_opening(
+			wall,
+			m_drag_target_segment,
 			center_2d,
 			size,
 			0.04,
 			m_dragging_opening,
-			m_drag_target_segment,
 			_opening_allow_base_edge(m_dragging_opening)
 		)
 	else:
@@ -5298,12 +5499,13 @@ func _update_window_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 		m_dragging_opening.transform = Transform3D(frame.basis, frame * local_hit)
 		var center := Vector2(local_hit.x, local_hit.y)
 		var size := Vector2(m_dragging_opening.opening_width, m_dragging_opening.opening_height)
-		m_drag_valid = wall.can_place_opening(
+		m_drag_valid = _can_place_wall_opening(
+			wall,
+			m_drag_target_segment,
 			center,
 			size,
 			0.04,
 			m_dragging_opening,
-			m_drag_target_segment,
 			_opening_allow_base_edge(m_dragging_opening)
 		)
 
@@ -5467,6 +5669,28 @@ func _cancel_active_preview() -> void:
 
 func _is_wall_span_long_enough(local_start: Vector3, local_end: Vector3) -> bool:
 	return local_start.distance_to(local_end) >= maxf(float(m_wall_settings["grid_step"]) * 0.5, 0.1)
+
+
+func _is_wall_draw_valid(local_start: Vector3, local_end: Vector3) -> bool:
+	if !_is_room_wall_mode():
+		return _is_wall_span_long_enough(local_start, local_end)
+	var minimum_size := maxf(float(m_wall_settings["grid_step"]) * 0.5, 0.1)
+	return (
+		absf(local_end.x - local_start.x) >= minimum_size
+		and absf(local_end.z - local_start.z) >= minimum_size
+	)
+
+
+func _wall_tool_type() -> String:
+	return str(m_wall_settings.get("type", WALL_TYPE_WALL))
+
+
+func _is_room_wall_mode() -> bool:
+	return _wall_tool_type() == WALL_TYPE_ROOM
+
+
+func _wall_draw_label() -> String:
+	return "Room" if _is_room_wall_mode() else "Wall"
 
 
 func _is_floor_span_large_enough(local_start: Vector3, local_end: Vector3) -> bool:
@@ -6506,7 +6730,11 @@ func _on_tool_mode_changed(mode: String) -> void:
 
 
 func _on_wall_settings_changed(settings: Dictionary) -> void:
+	var previous_type := _wall_tool_type()
 	m_wall_settings = settings.duplicate(true)
+	if _wall_tool_type() != previous_type:
+		_clear_wall_preview()
+		_reset_wall_drawing_state()
 	var coordinator := _get_or_create_coordinator(false)
 	if coordinator != null:
 		_apply_wall_settings_to_coordinator(coordinator)

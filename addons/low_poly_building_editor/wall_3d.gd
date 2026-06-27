@@ -16,24 +16,50 @@ const EDITOR_REBUILD_DELAY_SECONDS := 0.12
 const COLLISION_MIN_SPAN := 0.001
 const ROOF_COLLISION_CLIP_INFINITY := 999999.0
 
+var m_legacy_start_point := Vector3.ZERO
+var m_legacy_end_point := Vector3(4.0, 0.0, 0.0)
+var m_legacy_extra_segments: Array[WallSegment3D] = []
+
 @export var rebuild := false:
 	set(value):
 		if !value:
 			return
 		call_deferred("rebuild_wall_mesh")
 
-@export var start_point := Vector3.ZERO:
+## Canonical authored geometry. Segment zero supplies the node transform;
+## an empty array is a valid wall with no generated mesh or collision.
+@export var segments: Array[WallSegment3D] = []:
 	set(value):
-		if start_point.is_equal_approx(value):
-			return
-		start_point = value
+		segments = value
+		_sync_legacy_defaults_from_primary()
 		_request_rebuild()
 
-@export var end_point := Vector3(4.0, 0.0, 0.0):
+## Hidden compatibility aliases for scenes authored before `segments` became
+## canonical. New scenes serialize only the exported `segments` array.
+var start_point := Vector3.ZERO:
+	get:
+		return (
+			segments[0].start_point
+			if !segments.is_empty() and segments[0] != null
+			else m_legacy_start_point
+		)
 	set(value):
-		if end_point.is_equal_approx(value):
-			return
-		end_point = value
+		m_legacy_start_point = value
+		_ensure_legacy_primary_segment()
+		segments[0].start_point = value
+		_request_rebuild()
+
+var end_point := Vector3(4.0, 0.0, 0.0):
+	get:
+		return (
+			segments[0].end_point
+			if !segments.is_empty() and segments[0] != null
+			else m_legacy_end_point
+		)
+	set(value):
+		m_legacy_end_point = value
+		_ensure_legacy_primary_segment()
+		segments[0].end_point = value
 		_request_rebuild()
 
 @export_range(0.1, 6.0, 0.05, "or_greater") var wall_height := 2.4:
@@ -42,6 +68,8 @@ const ROOF_COLLISION_CLIP_INFINITY := 999999.0
 		if is_equal_approx(wall_height, clamped_value):
 			return
 		wall_height = clamped_value
+		if !segments.is_empty() and segments[0] != null:
+			segments[0].height = clamped_value
 		_request_rebuild()
 
 @export_range(0.03, 1.0, 0.01, "or_greater") var wall_thickness := 0.22:
@@ -50,6 +78,8 @@ const ROOF_COLLISION_CLIP_INFINITY := 999999.0
 		if is_equal_approx(wall_thickness, clamped_value):
 			return
 		wall_thickness = clamped_value
+		if !segments.is_empty() and segments[0] != null:
+			segments[0].thickness = clamped_value
 		_request_rebuild()
 
 @export var wall_color := Color(0.78, 0.68, 0.54, 1.0):
@@ -57,14 +87,22 @@ const ROOF_COLLISION_CLIP_INFINITY := 999999.0
 		if wall_color == value:
 			return
 		wall_color = value
+		if !segments.is_empty() and segments[0] != null:
+			segments[0].color = value
 		_request_rebuild()
 
-## Additional authored wall spans for manual joints and legacy multi-segment
-## walls. Points are parent-local, like start_point/end_point. The node
-## transform and primary span stay derived from start_point/end_point.
-@export var extra_segments: Array[WallSegment3D] = []:
+var extra_segments: Array[WallSegment3D] = []:
+	get:
+		var extras: Array[WallSegment3D] = []
+		for index in range(1, segments.size()):
+			extras.append(segments[index])
+		return extras
 	set(value):
-		extra_segments = value
+		m_legacy_extra_segments = value
+		_ensure_legacy_primary_segment()
+		segments.resize(1)
+		for segment in value:
+			segments.append(segment)
 		_request_rebuild()
 
 @export var build_on_ready := true
@@ -137,8 +175,35 @@ func _process(delta: float) -> void:
 	rebuild_wall_mesh()
 
 
+func _ensure_legacy_primary_segment() -> void:
+	if !segments.is_empty() and segments[0] != null:
+		return
+	var primary := WallSegment3DScript.new() as WallSegment3D
+	primary.start_point = m_legacy_start_point
+	primary.end_point = m_legacy_end_point
+	primary.height = wall_height
+	primary.thickness = wall_thickness
+	primary.color = wall_color
+	if segments.is_empty():
+		segments.append(primary)
+	else:
+		segments[0] = primary
+
+
+func _sync_legacy_defaults_from_primary() -> void:
+	if segments.is_empty() or segments[0] == null:
+		return
+	var primary := segments[0]
+	m_legacy_start_point = primary.start_point
+	m_legacy_end_point = primary.end_point
+	wall_height = primary.height
+	wall_thickness = primary.thickness
+	wall_color = primary.color
+
+
 func set_wall_endpoints(new_start: Vector3, new_end: Vector3) -> void:
 	var opening_anchors := capture_opening_segment_anchors()
+	_ensure_legacy_primary_segment()
 	start_point = new_start
 	end_point = new_end
 	_sync_transform_from_points()
@@ -147,32 +212,137 @@ func set_wall_endpoints(new_start: Vector3, new_end: Vector3) -> void:
 
 
 func get_wall_length() -> float:
-	return Vector2(end_point.x - start_point.x, end_point.z - start_point.z).length()
+	var primary := get_segment(0)
+	return primary.get_length() if primary != null else 0.0
 
 
 func get_wall_direction() -> Vector3:
-	var flat_delta := Vector3(end_point.x - start_point.x, 0.0, end_point.z - start_point.z)
+	var primary := get_segment(0)
+	if primary == null:
+		return Vector3.RIGHT
+	var flat_delta := Vector3(
+		primary.end_point.x - primary.start_point.x,
+		0.0,
+		primary.end_point.z - primary.start_point.z
+	)
 	if flat_delta.length_squared() <= 0.000001:
 		return Vector3.RIGHT
 	return flat_delta.normalized()
 
 
 func get_segment_count() -> int:
-	return 1 + extra_segments.size()
+	return segments.size()
 
 
-## Segment 0 is the primary span synthesized from this node's exports; the
-## rest map to extra_segments. Points are parent-local for every index.
 func get_segment(index: int) -> WallSegment3DScript:
-	if index <= 0 or index > extra_segments.size():
-		var primary := WallSegment3DScript.new()
-		primary.start_point = start_point
-		primary.end_point = end_point
-		primary.thickness = wall_thickness
-		primary.height = wall_height
-		primary.color = wall_color
-		return primary
-	return extra_segments[index - 1]
+	if index < 0 or index >= segments.size():
+		return null
+	return segments[index]
+
+
+func is_rectangular_loop(tolerance: float = 0.001) -> bool:
+	if get_segment_count() != 4:
+		return false
+	var resolved_tolerance := maxf(tolerance, 0.001)
+	var min_x := INF
+	var max_x := -INF
+	var min_z := INF
+	var max_z := -INF
+	var base_y := get_segment(0).start_point.y
+	for index in range(get_segment_count()):
+		var segment := get_segment(index)
+		if segment == null:
+			return false
+		if (
+			absf(segment.start_point.y - base_y) > resolved_tolerance
+			or absf(segment.end_point.y - base_y) > resolved_tolerance
+		):
+			return false
+		min_x = minf(min_x, minf(segment.start_point.x, segment.end_point.x))
+		max_x = maxf(max_x, maxf(segment.start_point.x, segment.end_point.x))
+		min_z = minf(min_z, minf(segment.start_point.z, segment.end_point.z))
+		max_z = maxf(max_z, maxf(segment.start_point.z, segment.end_point.z))
+	if max_x - min_x <= resolved_tolerance or max_z - min_z <= resolved_tolerance:
+		return false
+
+	var corners: Array[Vector3] = [
+		Vector3(min_x, base_y, min_z),
+		Vector3(max_x, base_y, min_z),
+		Vector3(max_x, base_y, max_z),
+		Vector3(min_x, base_y, max_z),
+	]
+	for corner in corners:
+		if count_connected_endpoints(corner, resolved_tolerance) != 2:
+			return false
+	for index in range(get_segment_count()):
+		var segment := get_segment(index)
+		var horizontal := (
+			absf(segment.start_point.z - segment.end_point.z) <= resolved_tolerance
+			and absf(absf(segment.end_point.x - segment.start_point.x) - (max_x - min_x))
+			<= resolved_tolerance
+			and (
+				absf(segment.start_point.z - min_z) <= resolved_tolerance
+				or absf(segment.start_point.z - max_z) <= resolved_tolerance
+			)
+		)
+		var vertical := (
+			absf(segment.start_point.x - segment.end_point.x) <= resolved_tolerance
+			and absf(absf(segment.end_point.z - segment.start_point.z) - (max_z - min_z))
+			<= resolved_tolerance
+			and (
+				absf(segment.start_point.x - min_x) <= resolved_tolerance
+				or absf(segment.start_point.x - max_x) <= resolved_tolerance
+			)
+		)
+		if !horizontal and !vertical:
+			return false
+	return true
+
+
+func move_rectangular_loop_side(
+	segment_index: int,
+	offset: Vector3,
+	tolerance: float = 0.001
+) -> bool:
+	if !is_rectangular_loop(tolerance):
+		return false
+	if segment_index < 0 or segment_index >= get_segment_count():
+		return false
+	var selected := get_segment(segment_index)
+	var direction := Vector3(
+		selected.end_point.x - selected.start_point.x,
+		0.0,
+		selected.end_point.z - selected.start_point.z
+	)
+	if direction.length_squared() <= 0.000001:
+		return false
+	direction = direction.normalized()
+	var perpendicular := Vector3(-direction.z, 0.0, direction.x)
+	var projected_offset := perpendicular * offset.dot(perpendicular)
+	var selected_start := selected.start_point
+	var selected_end := selected.end_point
+	var opening_anchors := capture_opening_segment_anchors()
+	for segment in segments:
+		if segment == null:
+			continue
+		segment.start_point = _offset_room_corner(
+			segment.start_point,
+			selected_start,
+			selected_end,
+			projected_offset,
+			tolerance
+		)
+		segment.end_point = _offset_room_corner(
+			segment.end_point,
+			selected_start,
+			selected_end,
+			projected_offset,
+			tolerance
+		)
+	_sync_transform_from_points()
+	restore_opening_segment_anchors(opening_anchors)
+	rebuild_wall_mesh()
+	return true
 
 
 func set_intersection_clip_segments(before_segments: Array, after_segments: Array) -> void:
@@ -211,11 +381,7 @@ func get_roof_clip_surface_count() -> int:
 
 func count_connected_endpoints(endpoint: Vector3, tolerance: float) -> int:
 	var count := 0
-	if _endpoint_matches(start_point, endpoint, tolerance):
-		count += 1
-	if _endpoint_matches(end_point, endpoint, tolerance):
-		count += 1
-	for segment in extra_segments:
+	for segment in segments:
 		if segment == null:
 			continue
 		if _endpoint_matches(segment.start_point, endpoint, tolerance):
@@ -228,13 +394,7 @@ func count_connected_endpoints(endpoint: Vector3, tolerance: float) -> int:
 func move_connected_endpoint(old_endpoint: Vector3, new_endpoint: Vector3, tolerance: float) -> int:
 	var opening_anchors := capture_opening_segment_anchors()
 	var moved_count := 0
-	if _endpoint_matches(start_point, old_endpoint, tolerance):
-		start_point = _endpoint_with_preserved_height(start_point, new_endpoint)
-		moved_count += 1
-	if _endpoint_matches(end_point, old_endpoint, tolerance):
-		end_point = _endpoint_with_preserved_height(end_point, new_endpoint)
-		moved_count += 1
-	for segment in extra_segments:
+	for segment in segments:
 		if segment == null:
 			continue
 		if _endpoint_matches(segment.start_point, old_endpoint, tolerance):
@@ -253,20 +413,10 @@ func move_connected_endpoint(old_endpoint: Vector3, new_endpoint: Vector3, toler
 func move_segment_endpoint(segment_index: int, endpoint: int, new_endpoint: Vector3) -> bool:
 	if endpoint != 0 and endpoint != 1:
 		return false
-	var opening_anchors := capture_opening_segment_anchors()
-	if segment_index <= 0:
-		if endpoint == 0:
-			start_point = _endpoint_with_preserved_height(start_point, new_endpoint)
-		else:
-			end_point = _endpoint_with_preserved_height(end_point, new_endpoint)
-		_sync_transform_from_points()
-		restore_opening_segment_anchors(opening_anchors)
-		rebuild_wall_mesh()
-		return true
-	var extra_index := segment_index - 1
-	if extra_index < 0 or extra_index >= extra_segments.size():
+	if segment_index < 0 or segment_index >= segments.size():
 		return false
-	var segment := extra_segments[extra_index]
+	var opening_anchors := capture_opening_segment_anchors()
+	var segment := segments[segment_index]
 	if segment == null:
 		return false
 	if endpoint == 0:
@@ -288,9 +438,10 @@ func set_wall_geometry(
 	var anchors := opening_anchors
 	if anchors.is_empty():
 		anchors = capture_opening_segment_anchors()
-	start_point = new_start
-	end_point = new_end
-	extra_segments = segments
+	var primary := _segment_for_updated_span(new_start, new_end)
+	var all_segments: Array[WallSegment3D] = [primary]
+	all_segments.append_array(segments)
+	self.segments = all_segments
 	_sync_transform_from_points()
 	restore_opening_segment_anchors(anchors)
 	rebuild_wall_mesh()
@@ -302,9 +453,10 @@ func set_wall_geometry_preserving_child_transforms(
 	segments: Array[WallSegment3D]
 ) -> void:
 	var child_transforms := _capture_direct_child_global_transforms()
-	start_point = new_start
-	end_point = new_end
-	extra_segments = segments
+	var primary := _segment_for_updated_span(new_start, new_end)
+	var all_segments: Array[WallSegment3D] = [primary]
+	all_segments.append_array(segments)
+	self.segments = all_segments
 	_sync_transform_from_points()
 	_restore_direct_child_global_transforms(child_transforms)
 	rebuild_wall_mesh()
@@ -381,6 +533,8 @@ func capture_opening_segment_anchors() -> Array:
 
 
 func restore_opening_segment_anchors(opening_anchors: Array) -> void:
+	if segments.is_empty():
+		return
 	for anchor in opening_anchors:
 		var child := anchor.get("node") as Node
 		if child == null or !is_instance_valid(child) or child.get_parent() != self:
@@ -403,9 +557,11 @@ func restore_opening_segment_anchors(opening_anchors: Array) -> void:
 ## Frame of a segment expressed in this node's local space. Segment 0 is the
 ## identity because the node transform is derived from the primary span.
 func get_segment_local_frame(index: int) -> Transform3D:
-	if index <= 0 or index > extra_segments.size():
+	if index < 0 or index >= segments.size():
 		return Transform3D.IDENTITY
-	return transform.affine_inverse() * extra_segments[index - 1].get_frame()
+	if index == 0:
+		return Transform3D.IDENTITY
+	return transform.affine_inverse() * segments[index].get_frame()
 
 
 func can_place_opening(
@@ -419,6 +575,8 @@ func can_place_opening(
 	if size.x <= 0.0 or size.y <= 0.0:
 		return false
 	var segment := get_segment(segment_index)
+	if segment == null:
+		return false
 	var segment_length := segment.get_length()
 	var candidate := Rect2(center - size * 0.5, size)
 	if candidate.position.x < clearance:
@@ -449,17 +607,22 @@ func can_place_opening(
 			MergedWallMeshBuilderScript.segment_footprint(other, other_frame)
 		):
 			return false
-	for clip_segment in _all_intersection_clip_segments():
-		if clip_segment == null:
-			continue
-		if candidate.position.y >= clip_segment.height - 0.001:
-			continue
-		var clip_frame := transform.affine_inverse() * clip_segment.get_frame()
-		if MergedWallMeshBuilderScript.footprints_overlap(
-			opening_plan,
-			MergedWallMeshBuilderScript.segment_footprint(clip_segment, clip_frame)
-		):
-			return false
+	if _opening_overlaps_clip_segments(
+		candidate.position.y,
+		opening_plan,
+		segment,
+		m_intersection_clip_segments_before,
+		false
+	):
+		return false
+	if _opening_overlaps_clip_segments(
+		candidate.position.y,
+		opening_plan,
+		segment,
+		m_intersection_clip_segments_after,
+		true
+	):
+		return false
 
 	var rects_per_segment := _assigned_opening_rects(ignored_node)
 	var rects: Array[Rect2] = rects_per_segment[clampi(segment_index, 0, rects_per_segment.size() - 1)]
@@ -467,6 +630,32 @@ func can_place_opening(
 		if candidate.grow(clearance).intersects(opening):
 			return false
 	return true
+
+
+func _opening_overlaps_clip_segments(
+	opening_min_y: float,
+	opening_plan: PackedVector2Array,
+	target_segment: WallSegment3D,
+	clip_segments: Array[WallSegment3D],
+	allow_owned_collinear_overlap: bool
+) -> bool:
+	for clip_segment in clip_segments:
+		if clip_segment == null:
+			continue
+		if (
+			allow_owned_collinear_overlap
+			and WallSegment3DScript.shares_collinear_overlap(target_segment, clip_segment)
+		):
+			continue
+		if opening_min_y >= clip_segment.height - 0.001:
+			continue
+		var clip_frame := transform.affine_inverse() * clip_segment.get_frame()
+		if MergedWallMeshBuilderScript.footprints_overlap(
+			opening_plan,
+			MergedWallMeshBuilderScript.segment_footprint(clip_segment, clip_frame)
+		):
+			return true
+	return false
 
 
 func rebuild_wall_mesh(rebuild_collision: bool = true) -> void:
@@ -478,22 +667,27 @@ func rebuild_wall_mesh(rebuild_collision: bool = true) -> void:
 	_sync_transform_from_points()
 	if rebuild_collision:
 		_clear_generated_children()
+	if segments.is_empty():
+		mesh = null
+		m_opening_signature = _build_opening_signature()
+		m_is_rebuilding = false
+		return
 
-	var segments: Array[WallSegment3D] = []
+	var compiled_segments: Array[WallSegment3D] = []
 	var frames: Array[Transform3D] = []
 	var opening_rects: Array = []
 	var render_segment_indices: Array[int] = []
 	for clip_segment in m_intersection_clip_segments_before:
 		if clip_segment == null:
 			continue
-		segments.append(clip_segment)
+		compiled_segments.append(clip_segment)
 		frames.append(transform.affine_inverse() * clip_segment.get_frame())
 		var empty_rects: Array[Rect2] = []
 		opening_rects.append(empty_rects)
-	var own_segment_start_index := segments.size()
+	var own_segment_start_index := compiled_segments.size()
 	var assigned_openings := _assigned_opening_rects()
 	for index in range(get_segment_count()):
-		segments.append(get_segment(index))
+		compiled_segments.append(get_segment(index))
 		frames.append(get_segment_local_frame(index))
 		if index < assigned_openings.size():
 			opening_rects.append(assigned_openings[index])
@@ -504,7 +698,7 @@ func rebuild_wall_mesh(rebuild_collision: bool = true) -> void:
 	for clip_segment in m_intersection_clip_segments_after:
 		if clip_segment == null:
 			continue
-		segments.append(clip_segment)
+		compiled_segments.append(clip_segment)
 		frames.append(transform.affine_inverse() * clip_segment.get_frame())
 		var empty_after_rects: Array[Rect2] = []
 		opening_rects.append(empty_after_rects)
@@ -515,7 +709,7 @@ func rebuild_wall_mesh(rebuild_collision: bool = true) -> void:
 	var indices := PackedInt32Array()
 	var collision_faces := PackedVector3Array()
 	MergedWallMeshBuilderScript.append_segments(
-		segments,
+		compiled_segments,
 		frames,
 		opening_rects,
 		vertices,
@@ -575,17 +769,19 @@ func _update_wall_mesh_resource(arrays: Array) -> void:
 
 
 func _sync_wall_material() -> void:
+	var primary := get_segment(0)
+	var material_color := primary.color if primary != null else wall_color
 	var material := material_override as StandardMaterial3D
 	if material == null:
-		material_override = _build_wall_material(wall_color)
+		material_override = _build_wall_material(material_color)
 		return
-	material.albedo_color = Color(1.0, 1.0, 1.0, wall_color.a)
+	material.albedo_color = Color(1.0, 1.0, 1.0, material_color.a)
 	material.vertex_color_use_as_albedo = true
 	material.roughness = 0.94
 	material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	material.cull_mode = BaseMaterial3D.CULL_BACK
 	material.transparency = (
-		BaseMaterial3D.TRANSPARENCY_ALPHA if wall_color.a < 0.99
+		BaseMaterial3D.TRANSPARENCY_ALPHA if material_color.a < 0.99
 		else BaseMaterial3D.TRANSPARENCY_DISABLED
 	)
 
@@ -596,6 +792,53 @@ func _endpoint_matches(first: Vector3, second: Vector3, tolerance: float) -> boo
 
 func _endpoint_with_preserved_height(endpoint: Vector3, target: Vector3) -> Vector3:
 	return Vector3(target.x, endpoint.y, target.z)
+
+
+func _segment_for_updated_span(new_start: Vector3, new_end: Vector3) -> WallSegment3D:
+	for source in segments:
+		if source == null:
+			continue
+		if !_point_on_segment_span(source, new_start) or !_point_on_segment_span(source, new_end):
+			continue
+		var preserved := source.duplicate() as WallSegment3D
+		preserved.start_point = new_start
+		preserved.end_point = new_end
+		return preserved
+	var primary := WallSegment3DScript.new() as WallSegment3D
+	primary.start_point = new_start
+	primary.end_point = new_end
+	primary.height = wall_height
+	primary.thickness = wall_thickness
+	primary.color = wall_color
+	return primary
+
+
+func _point_on_segment_span(segment: WallSegment3D, point: Vector3) -> bool:
+	if absf(segment.start_point.y - point.y) > 0.01:
+		return false
+	var start := Vector2(segment.start_point.x, segment.start_point.z)
+	var end := Vector2(segment.end_point.x, segment.end_point.z)
+	var target := Vector2(point.x, point.z)
+	var span := end - start
+	var length_squared := span.length_squared()
+	if length_squared <= 0.000001:
+		return target.distance_to(start) <= 0.001
+	var projection := (target - start).dot(span) / length_squared
+	if projection < -0.001 or projection > 1.001:
+		return false
+	return target.distance_to(start + span * clampf(projection, 0.0, 1.0)) <= 0.001
+
+
+func _offset_room_corner(
+	point: Vector3,
+	first_corner: Vector3,
+	second_corner: Vector3,
+	offset: Vector3,
+	tolerance: float
+) -> Vector3:
+	if _endpoint_matches(point, first_corner, tolerance) or _endpoint_matches(point, second_corner, tolerance):
+		return point + offset
+	return point
 
 
 func _flat_distance(first: Vector3, second: Vector3) -> float:
@@ -686,13 +929,17 @@ func _restore_direct_child_global_transforms(child_transforms: Array) -> void:
 
 
 func _sync_transform_from_points() -> void:
+	var primary := get_segment(0)
+	if primary == null:
+		transform = Transform3D.IDENTITY
+		return
 	var direction := get_wall_direction()
 	var side := direction.cross(Vector3.UP)
 	if side.length_squared() <= 0.000001:
 		side = Vector3.BACK
 	side = side.normalized()
 	var basis := Basis(direction, Vector3.UP, side).orthonormalized()
-	transform = Transform3D(basis, start_point)
+	transform = Transform3D(basis, primary.start_point)
 
 
 ## One Array[Rect2] per segment, mapping each child opening to the nearest
@@ -703,6 +950,8 @@ func _assigned_opening_rects(ignored_node: Node = null) -> Array:
 	for index in range(get_segment_count()):
 		var empty: Array[Rect2] = []
 		rects_per_segment.append(empty)
+	if rects_per_segment.is_empty():
+		return rects_per_segment
 	for child in get_children():
 		if child == ignored_node:
 			continue
@@ -772,6 +1021,8 @@ func _best_segment_for_position(local_position: Vector3) -> int:
 
 func _segment_matches_position(local_position: Vector3, index: int) -> bool:
 	var segment := get_segment(index)
+	if segment == null:
+		return false
 	var frame := get_segment_local_frame(index)
 	var local := frame.affine_inverse() * local_position
 	if local.x < -SEGMENT_ASSIGN_MARGIN or local.x > segment.get_length() + SEGMENT_ASSIGN_MARGIN:
@@ -994,7 +1245,7 @@ func _on_child_tree_changed(_child: Node) -> void:
 
 func _build_opening_signature() -> String:
 	var parts := PackedStringArray()
-	for segment in extra_segments:
+	for segment in segments:
 		if segment == null:
 			continue
 		parts.append(

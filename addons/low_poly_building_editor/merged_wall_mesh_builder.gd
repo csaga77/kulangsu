@@ -312,6 +312,15 @@ static func _append_vertical_face(
 			continue
 		if clip_exceptions.has(other_index):
 			continue
+		if (
+			other_index > segment_index
+			and WallSegment3D.shares_collinear_overlap(
+				segments[segment_index],
+				segments[other_index],
+				PLANE_EPSILON
+			)
+		):
+			continue
 		if deflated[other_index].is_empty():
 			continue
 		if y1 > segments[other_index].height + PLANE_EPSILON:

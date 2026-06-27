@@ -42,6 +42,7 @@ func _ready() -> void:
 
 
 func _run_smoke_checks() -> void:
+	_validate_empty_wall_segments()
 	var coordinator := BuildingEditor3DScript.new() as BuildingEditor3DScript
 	coordinator.name = "BuildingEditor3D"
 	add_child(coordinator)
@@ -71,6 +72,7 @@ func _run_smoke_checks() -> void:
 	_validate_opening_follows_wall_segment()
 	_validate_snapping(coordinator)
 	_validate_wall_base_height(coordinator)
+	_validate_room_node(coordinator)
 	_validate_floor_node(coordinator)
 	_validate_stairs_node(coordinator)
 	_validate_pillar_node(coordinator)
@@ -87,6 +89,7 @@ func _run_smoke_checks() -> void:
 	_validate_connected_wall_top_caps()
 	_validate_multi_wall_joint_fill()
 	_validate_enclosed_wall_loop_caps()
+	_validate_overlapping_room_wall_clipping()
 	await _validate_wall_collision_blocks_character(coordinator)
 	await _validate_stairs_side_collision_blocks_character(coordinator)
 
@@ -95,6 +98,55 @@ func _run_smoke_checks() -> void:
 	if m_failures.is_empty():
 		print("PASS: LowPolyBuildingEditor3D smoke test")
 	get_tree().quit(0 if m_failures.is_empty() else 1)
+
+
+func _validate_empty_wall_segments() -> void:
+	var wall := Wall3DScript.new() as Wall3DScript
+	wall.name = "EmptyWall"
+	wall.build_on_ready = false
+	add_child(wall)
+	wall.rebuild_wall_mesh()
+	if wall.get_segment_count() != 0 or !wall.segments.is_empty():
+		m_failures.append("Wall3D did not allow an empty canonical segments array")
+	if wall.mesh != null or wall.get_node_or_null("WallCollision") != null:
+		m_failures.append("Wall3D generated geometry for an empty segments array")
+	var has_exported_segments := false
+	var has_exported_extra_segments := false
+	for property in wall.get_property_list():
+		var property_name := String(property.get("name", ""))
+		var usage := int(property.get("usage", 0))
+		if property_name == "segments" and (usage & PROPERTY_USAGE_EDITOR) != 0:
+			has_exported_segments = true
+		if property_name == "extra_segments" and (usage & PROPERTY_USAGE_EDITOR) != 0:
+			has_exported_extra_segments = true
+	if !has_exported_segments:
+		m_failures.append("Wall3D segments property is not exported in the inspector")
+	if has_exported_extra_segments:
+		m_failures.append("Wall3D still exports the legacy Extra Segments property")
+	var authored_segment := WallSegment3DScript.new() as WallSegment3D
+	authored_segment.start_point = Vector3.ZERO
+	authored_segment.end_point = Vector3(4.0, 0.0, 0.0)
+	authored_segment.height = 3.1
+	authored_segment.thickness = 0.35
+	authored_segment.color = Color(0.24, 0.52, 0.74, 1.0)
+	var authored_segments: Array[WallSegment3D] = [authored_segment]
+	wall.segments = authored_segments
+	var split_geometry := wall.split_segment_geometry(0, Vector3(2.0, 0.0, 0.0), 0.1)
+	wall.set_wall_geometry(
+		Vector3(split_geometry["start"]),
+		Vector3(split_geometry["end"]),
+		split_geometry["segments"]
+	)
+	if wall.get_segment_count() != 2:
+		m_failures.append("Wall3D canonical segments did not retain a split wall")
+	for segment_index in range(wall.get_segment_count()):
+		var segment := wall.get_segment(segment_index)
+		if (
+			!is_equal_approx(segment.height, 3.1)
+			or !is_equal_approx(segment.thickness, 0.35)
+			or segment.color != authored_segment.color
+		):
+			m_failures.append("Wall3D geometry edit lost per-segment authored properties")
 
 
 func _validate_wall_mesh(wall: Wall3DScript) -> void:
@@ -126,6 +178,70 @@ func _validate_wall_mesh(wall: Wall3DScript) -> void:
 			m_failures.append("Wall3D triangle winding does not match Godot BoxMesh convention")
 	if wall.get_node_or_null("WallCollision") == null:
 		m_failures.append("Wall3D did not generate collision for editor raycasts")
+
+
+func _validate_room_node(coordinator: BuildingEditor3DScript) -> void:
+	var room := coordinator.create_room_node(
+		Vector3(8.0, 0.5, 8.0),
+		Vector3(12.0, 0.5, 11.0),
+		2.8,
+		0.3,
+		Color(0.62, 0.54, 0.44, 1.0)
+	)
+	coordinator.add_child(room)
+	if !room.name.begins_with("Room3D"):
+		m_failures.append("BuildingEditor3D did not give an enclosed room a room name")
+	if room.get_segment_count() != 4:
+		m_failures.append("BuildingEditor3D room did not create four wall spans")
+	if room.segments.size() != 4:
+		m_failures.append("BuildingEditor3D room did not store every span in Wall3D.segments")
+	var expected_corners: Array[Vector3] = [
+		Vector3(8.0, 0.5, 8.0),
+		Vector3(12.0, 0.5, 8.0),
+		Vector3(12.0, 0.5, 11.0),
+		Vector3(8.0, 0.5, 11.0),
+	]
+	for corner in expected_corners:
+		if room.count_connected_endpoints(corner, 0.001) != 2:
+			m_failures.append("BuildingEditor3D room walls are not enclosed at %s" % corner)
+	for segment_index in range(room.get_segment_count()):
+		var segment := room.get_segment(segment_index)
+		if !is_equal_approx(segment.height, 2.8):
+			m_failures.append("BuildingEditor3D room wall lost its configured height")
+		if !is_equal_approx(segment.thickness, 0.3):
+			m_failures.append("BuildingEditor3D room wall lost its configured thickness")
+	if room.mesh == null:
+		m_failures.append("BuildingEditor3D room did not generate a wall mesh")
+	if room.get_node_or_null("WallCollision") == null:
+		m_failures.append("BuildingEditor3D room did not generate wall collision")
+	if !room.is_rectangular_loop():
+		m_failures.append("Wall3D did not recognize a generated room as a rectangular loop")
+	var room_opening := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	room_opening.name = "RoomResizeWindow"
+	room_opening.opening_width = 0.8
+	room_opening.opening_height = 0.8
+	room_opening.position = room.get_segment_local_frame(1) * Vector3(1.5, 1.1, 0.185)
+	room_opening.set_meta(Wall3DScript.SEGMENT_INDEX_META, 1)
+	room.add_child(room_opening)
+	room.rebuild_wall_mesh()
+	var old_opening_parent_position := room.transform * room_opening.position
+	if !room.move_rectangular_loop_side(1, Vector3(1.0, 0.0, 1.0)):
+		m_failures.append("Wall3D could not resize a rectangular room from one wall")
+	else:
+		var expected_resized_corners: Array[Vector3] = [
+			Vector3(8.0, 0.5, 8.0),
+			Vector3(13.0, 0.5, 8.0),
+			Vector3(13.0, 0.5, 11.0),
+			Vector3(8.0, 0.5, 11.0),
+		]
+		for corner in expected_resized_corners:
+			if room.count_connected_endpoints(corner, 0.001) != 2:
+				m_failures.append("Room side resize did not preserve corner connection at %s" % corner)
+		if room.count_connected_endpoints(Vector3(12.0, 0.5, 8.0), 0.001) != 0:
+			m_failures.append("Room side resize moved along the selected wall instead of only perpendicular to it")
+		var opening_parent_position := room.transform * room_opening.position
+		if opening_parent_position.distance_to(old_opening_parent_position + Vector3.RIGHT) > 0.001:
+			m_failures.append("Room side resize did not preserve the opening anchor on the moved wall")
 
 
 func _validate_opening_rules(wall: Wall3DScript) -> void:
@@ -2367,6 +2483,83 @@ func _validate_enclosed_wall_loop_caps() -> void:
 		m_failures.append("Enclosed wall loop lost the south wall top cap")
 	if _has_horizontal_face_covering_plan_point(mesh, Vector2(1.0, 1.0), loop.wall_height):
 		m_failures.append("Enclosed wall loop filled the room interior instead of keeping only walls")
+
+
+func _validate_overlapping_room_wall_clipping() -> void:
+	var coordinator := BuildingEditor3DScript.new() as BuildingEditor3DScript
+	coordinator.name = "OverlappingRoomCoordinator"
+	coordinator.position = Vector3(0.0, 0.0, 72.0)
+	add_child(coordinator)
+	var wall_color := Color(0.78, 0.68, 0.54, 1.0)
+	var first_room := coordinator.create_room_node(
+		Vector3.ZERO,
+		Vector3(6.0, 0.0, 4.0),
+		2.4,
+		0.22,
+		wall_color
+	)
+	coordinator.add_child(first_room)
+	var second_room := coordinator.create_room_node(
+		Vector3(3.0, 0.0, 4.0),
+		Vector3(8.0, 0.0, 8.0),
+		2.4,
+		0.22,
+		wall_color
+	)
+	coordinator.add_child(second_room)
+	coordinator.refresh_wall_intersection_clips()
+
+	var shared_wall_point := Vector3(4.5, 0.0, 4.0)
+	var first_local := first_room.transform.affine_inverse() * shared_wall_point
+	var second_local := second_room.transform.affine_inverse() * shared_wall_point
+	if !_has_horizontal_face_covering_plan_point(
+		first_room.mesh as ArrayMesh,
+		Vector2(first_local.x, first_local.z),
+		first_room.wall_height
+	):
+		m_failures.append("Earlier room lost the shared overlapping wall geometry")
+	if _has_horizontal_face_covering_plan_point(
+		second_room.mesh as ArrayMesh,
+		Vector2(second_local.x, second_local.z),
+		second_room.wall_height
+	):
+		m_failures.append("Later room kept duplicate geometry along the shared overlapping wall")
+	if !coordinator.can_place_wall_opening(
+		first_room,
+		2,
+		Vector2(1.5, 1.1),
+		Vector2(0.8, 0.8)
+	):
+		m_failures.append("BuildingEditor3D rejected an opening on the first room's shared wall")
+	if coordinator.can_place_wall_opening(
+		second_room,
+		0,
+		Vector2(1.5, 1.1),
+		Vector2(0.8, 0.8)
+	):
+		m_failures.append("BuildingEditor3D allowed an opening on the clipped duplicate room wall")
+	if !coordinator.can_place_wall_opening(
+		first_room,
+		0,
+		Vector2(2.0, 1.1),
+		Vector2(0.8, 0.8)
+	):
+		m_failures.append("BuildingEditor3D rejected an opening on a non-overlapping room wall")
+	coordinator.merge_intersecting = false
+	coordinator.refresh_wall_intersection_clips()
+	if !coordinator.can_place_wall_opening(
+		first_room,
+		2,
+		Vector2(1.5, 1.1),
+		Vector2(0.8, 0.8)
+	):
+		m_failures.append("Shared room wall rejected an opening after generic intersection clipping was disabled")
+	if _has_horizontal_face_covering_plan_point(
+		second_room.mesh as ArrayMesh,
+		Vector2(second_local.x, second_local.z),
+		second_room.wall_height
+	):
+		m_failures.append("Shared room wall duplicate returned when generic intersection clipping was disabled")
 
 
 func _up_facing_area(array_mesh: ArrayMesh, expected_height: float) -> float:

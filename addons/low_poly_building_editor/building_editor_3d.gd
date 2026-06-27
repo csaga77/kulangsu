@@ -3,6 +3,7 @@ class_name BuildingEditor3D
 extends Node3D
 
 const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
+const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
 const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
 const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.gd")
 const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
@@ -111,13 +112,66 @@ func create_wall_node(
 ) -> Wall3DScript:
 	var wall := Wall3DScript.new() as Wall3DScript
 	wall.name = _unique_wall_name()
-	wall.start_point = local_start
-	wall.end_point = local_end
 	wall.wall_height = height
 	wall.wall_thickness = thickness
 	wall.wall_color = color
+	var segment := WallSegment3DScript.new() as WallSegment3D
+	segment.start_point = local_start
+	segment.end_point = local_end
+	segment.height = height
+	segment.thickness = thickness
+	segment.color = color
+	var wall_segments: Array[WallSegment3D] = [segment]
+	wall.segments = wall_segments
 	wall.build_on_ready = true
 	wall.generate_collision = true
+	wall.rebuild_wall_mesh()
+	return wall
+
+
+static func room_segments_from_corners(
+	local_start: Vector3,
+	local_end: Vector3,
+	height: float,
+	thickness: float,
+	color: Color
+) -> Array[WallSegment3D]:
+	var base_y := local_start.y
+	var corners: Array[Vector3] = [
+		Vector3(local_start.x, base_y, local_start.z),
+		Vector3(local_end.x, base_y, local_start.z),
+		Vector3(local_end.x, base_y, local_end.z),
+		Vector3(local_start.x, base_y, local_end.z),
+	]
+	var segments: Array[WallSegment3D] = []
+	for index in range(corners.size()):
+		var segment := WallSegment3DScript.new() as WallSegment3D
+		segment.start_point = corners[index]
+		segment.end_point = corners[(index + 1) % corners.size()]
+		segment.height = height
+		segment.thickness = thickness
+		segment.color = color
+		segments.append(segment)
+	return segments
+
+
+func create_room_node(
+	local_start: Vector3,
+	local_end: Vector3,
+	height: float = default_wall_height,
+	thickness: float = default_wall_thickness,
+	color: Color = default_wall_color
+) -> Wall3DScript:
+	var segments := room_segments_from_corners(local_start, local_end, height, thickness, color)
+	var wall := create_wall_node(
+		segments[0].start_point,
+		segments[0].end_point,
+		height,
+		thickness,
+		color
+	)
+	wall.name = _unique_room_name()
+	wall.segments = segments
 	wall.rebuild_wall_mesh()
 	return wall
 
@@ -384,21 +438,22 @@ func refresh_wall_intersection_clips() -> void:
 			continue
 		var before_segments: Array[WallSegment3D] = []
 		var after_segments: Array[WallSegment3D] = []
-		if merge_intersecting:
-			for other_index in range(walls.size()):
-				if other_index == wall_index:
+		for other_index in range(walls.size()):
+			if other_index == wall_index:
+				continue
+			var other := walls[other_index]
+			if other.has_meta(Wall3DScript.PREVIEW_META):
+				continue
+			for segment_index in range(other.get_segment_count()):
+				var segment := other.get_segment(segment_index)
+				if !_wall_clip_segment_relevant(wall, segment):
 					continue
-				var other := walls[other_index]
-				if other.has_meta(Wall3DScript.PREVIEW_META):
+				if !merge_intersecting and !_wall_has_collinear_overlap(wall, segment):
 					continue
-				for segment_index in range(other.get_segment_count()):
-					var segment := other.get_segment(segment_index)
-					if !_wall_clip_segment_relevant(wall, segment):
-						continue
-					if other_index < wall_index:
-						before_segments.append(segment)
-					else:
-						after_segments.append(segment)
+				if other_index < wall_index:
+					before_segments.append(segment)
+				else:
+					after_segments.append(segment)
 		wall.set_geometry_clip_data(before_segments, after_segments, _roof_clip_surfaces_for_wall(wall))
 
 
@@ -995,22 +1050,25 @@ func find_merge_target(
 	for wall in get_wall_nodes():
 		if wall == ignored_wall:
 			continue
-		if absf(wall.start_point.y - local_start.y) > INTERSECT_BASE_TOLERANCE:
+		var primary := wall.get_segment(0)
+		if primary == null:
 			continue
-		if !is_equal_approx(wall.wall_thickness, thickness):
+		if absf(primary.start_point.y - local_start.y) > INTERSECT_BASE_TOLERANCE:
 			continue
-		if !is_equal_approx(wall.wall_height, height):
+		if !is_equal_approx(primary.thickness, thickness):
 			continue
-		var existing_axis := _flat_direction(wall.start_point, wall.end_point)
+		if !is_equal_approx(primary.height, height):
+			continue
+		var existing_axis := _flat_direction(primary.start_point, primary.end_point)
 		if existing_axis == Vector2.ZERO:
 			continue
 		if absf(existing_axis.dot(new_axis)) < 0.999:
 			continue
 
-		var origin := Vector2(wall.start_point.x, wall.start_point.z)
+		var origin := Vector2(primary.start_point.x, primary.start_point.z)
 		var existing_length := Vector2(
-			wall.end_point.x - wall.start_point.x,
-			wall.end_point.z - wall.start_point.z
+			primary.end_point.x - primary.start_point.x,
+			primary.end_point.z - primary.start_point.z
 		).length()
 		var new_start_distance := _line_distance(origin, existing_axis, new_start_2d)
 		var new_end_distance := _line_distance(origin, existing_axis, new_end_2d)
@@ -1030,8 +1088,8 @@ func find_merge_target(
 		var merged_end_2d := origin + existing_axis * merged_max
 		return {
 			"wall": wall,
-			"start": Vector3(merged_start_2d.x, wall.start_point.y, merged_start_2d.y),
-			"end": Vector3(merged_end_2d.x, wall.start_point.y, merged_end_2d.y),
+			"start": Vector3(merged_start_2d.x, primary.start_point.y, merged_start_2d.y),
+			"end": Vector3(merged_end_2d.x, primary.start_point.y, merged_end_2d.y),
 		}
 	return {}
 
@@ -1066,6 +1124,68 @@ func find_intersecting_walls(
 	return hits
 
 
+func can_place_wall_opening(
+	wall: Wall3DScript,
+	segment_index: int,
+	center: Vector2,
+	size: Vector2,
+	clearance: float = 0.03,
+	ignored_opening: Node = null,
+	allow_base_edge: bool = false
+) -> bool:
+	if wall == null or wall.get_parent() != self:
+		return false
+	if !wall.can_place_opening(
+		center,
+		size,
+		clearance,
+		ignored_opening,
+		segment_index,
+		allow_base_edge
+	):
+		return false
+	var target := wall.get_segment(segment_index)
+	if target == null:
+		return false
+	var candidate := Rect2(center - size * 0.5, size)
+	var candidate_min_y := target.start_point.y + candidate.position.y
+	var candidate_max_y := target.start_point.y + candidate.end.y
+	var candidate_plan := MergedWallMeshBuilderScript.span_plan_rect(
+		target.get_frame(),
+		candidate.position.x,
+		candidate.end.x,
+		target.thickness * 0.5
+	)
+	var walls := get_wall_nodes()
+	var target_wall_index := walls.find(wall)
+	for other_wall_index in range(walls.size()):
+		var other_wall := walls[other_wall_index]
+		if other_wall == wall or other_wall.has_meta(Wall3DScript.PREVIEW_META):
+			continue
+		for other_index in range(other_wall.get_segment_count()):
+			var other := other_wall.get_segment(other_index)
+			if other == null:
+				continue
+			var other_min_y := other.start_point.y
+			var other_max_y := other.start_point.y + other.height
+			if candidate_max_y <= other_min_y + 0.001 or candidate_min_y >= other_max_y - 0.001:
+				continue
+			var other_plan := MergedWallMeshBuilderScript.footprint_from_points(
+				other.start_point,
+				other.end_point,
+				other.thickness
+			)
+			if MergedWallMeshBuilderScript.footprints_overlap(candidate_plan, other_plan):
+				if (
+					target_wall_index >= 0
+					and target_wall_index < other_wall_index
+					and WallSegment3DScript.shares_collinear_overlap(target, other)
+				):
+					continue
+				return false
+	return true
+
+
 func _wall_clip_segment_relevant(wall: Wall3DScript, clip_segment: WallSegment3D) -> bool:
 	if wall == null or clip_segment == null:
 		return false
@@ -1074,6 +1194,16 @@ func _wall_clip_segment_relevant(wall: Wall3DScript, clip_segment: WallSegment3D
 		if own_segment == null:
 			continue
 		if absf(own_segment.start_point.y - clip_segment.start_point.y) <= INTERSECT_BASE_TOLERANCE:
+			return true
+	return false
+
+
+func _wall_has_collinear_overlap(wall: Wall3DScript, candidate: WallSegment3D) -> bool:
+	if wall == null or candidate == null:
+		return false
+	for segment_index in range(wall.get_segment_count()):
+		var segment := wall.get_segment(segment_index)
+		if WallSegment3DScript.shares_collinear_overlap(segment, candidate):
 			return true
 	return false
 
@@ -1140,6 +1270,15 @@ func _unique_wall_name() -> String:
 	while has_node(candidate):
 		index += 1
 		candidate = "Wall3D%d" % index
+	return candidate
+
+
+func _unique_room_name() -> String:
+	var index := 1
+	var candidate := "Room3D%d" % index
+	while has_node(candidate):
+		index += 1
+		candidate = "Room3D%d" % index
 	return candidate
 
 

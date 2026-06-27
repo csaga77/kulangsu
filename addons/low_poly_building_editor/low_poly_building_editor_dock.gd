@@ -28,12 +28,14 @@ const PROJECT_METADATA_SECTION := "low_poly_building_editor"
 const PROJECT_METADATA_KEY := "dock_state"
 const DEFAULT_ROOF_ANGLE_DEGREES := 40.0
 const LEGACY_ROOF_VALUE_MAX := 8.0
+const WALL_TYPE_WALL := "wall"
+const WALL_TYPE_ROOM := "room"
 const FLOOR_TYPE_SOLID := "solid"
 const FLOOR_TYPE_HOLE := "hole"
 const COLOR_SWATCH_ICON_SIZE := 16
 const COLOR_SWATCH_MIN_WIDTH := 34.0
 const SHORTCUTS_SELECT_TEXT := "Shortcuts\nSelect: normal Godot editor selection and transform tools are active."
-const SHORTCUTS_WALL_TEXT := "Shortcuts\nDrag empty space to draw a wall.\nDrag wall body to move it.\nDrag endpoint or joint to edit.\nShift-click wall body to add joint.\nOption/Alt-drag shared joint to disconnect.\nEsc or right-click cancels."
+const SHORTCUTS_WALL_TEXT := "Shortcuts\nUse Wall Type to choose a single wall or enclosed room.\nDrag empty space to draw a wall span or room rectangle.\nClick once, then click the endpoint or opposite room corner.\nDrag a room side to resize in one direction.\nDrag other wall bodies to move them.\nDrag endpoint or joint to edit.\nShift-click wall body to add joint.\nOption/Alt-drag shared joint to disconnect.\nEsc or right-click cancels."
 const SHORTCUTS_FLOOR_TEXT := "Shortcuts\nUse Floor Type to choose solid slab or hole.\nDrag empty space to draw a floor rectangle.\nClick one corner, then click the opposite corner to place or cut.\nDrag floor body to move it.\nDrag floor edge or corner to resize.\nEsc or right-click cancels."
 const SHORTCUTS_STAIRS_TEXT := "Shortcuts\nDrag empty space to draw a stair rectangle.\nClick one corner, then click the opposite corner to place.\nR rotates the preview or hovered stairs by 90 degrees.\nShift+R rotates the opposite direction.\nDrag stairs body to move it.\nDrag stairs edge or corner to resize.\nEsc or right-click cancels."
 const SHORTCUTS_PILLAR_TEXT := "Shortcuts\nClick empty space to place a pillar.\nDrag pillar body to move it.\nDrag pillar edge to resize its radius.\nEsc or right-click cancels."
@@ -54,6 +56,7 @@ var m_roof_section: VBoxContainer
 var m_prop_section: VBoxContainer
 var m_window_section: VBoxContainer
 var m_door_section: VBoxContainer
+var m_wall_type_option: OptionButton
 var m_grid_spin: SpinBox
 var m_wall_base_height_spin: SpinBox
 var m_wall_height_spin: SpinBox
@@ -245,6 +248,19 @@ func _build_wall_controls(parent: VBoxContainer) -> void:
 	var header := Label.new()
 	header.text = "Wall"
 	parent.add_child(header)
+
+	m_wall_type_option = OptionButton.new()
+	m_wall_type_option.add_item("Wall", 0)
+	m_wall_type_option.set_item_metadata(0, WALL_TYPE_WALL)
+	m_wall_type_option.add_item("Room", 1)
+	m_wall_type_option.set_item_metadata(1, WALL_TYPE_ROOM)
+	m_wall_type_option.item_selected.connect(_on_wall_type_selected)
+	_add_labeled_control(
+		parent,
+		"Type:",
+		m_wall_type_option,
+		"Draw one wall span or four connected walls enclosing a rectangular room."
+	)
 
 	m_grid_spin = _make_spin(0.05, 8.0, 0.05, 0.5)
 	_add_labeled_control(parent, "Grid:", m_grid_spin, "Snap size for drawing and editing wall endpoints.")
@@ -823,6 +839,11 @@ func _on_wall_setting_changed(_value: float) -> void:
 	_emit_wall_settings()
 
 
+func _on_wall_type_selected(_index: int) -> void:
+	_update_wall_type_controls()
+	_emit_wall_settings()
+
+
 func _on_wall_color_changed(_color: Color) -> void:
 	_update_color_picker_icon(m_wall_color_picker)
 	_emit_wall_settings()
@@ -928,6 +949,7 @@ func _emit_all_settings() -> void:
 func _emit_wall_settings() -> void:
 	wall_settings_changed.emit({
 		"grid_step": float(m_grid_spin.value),
+		"type": _selected_wall_type(),
 		"base_height": float(m_wall_base_height_spin.value),
 		"height": float(m_wall_height_spin.value),
 		"thickness": float(m_wall_thickness_spin.value),
@@ -988,6 +1010,29 @@ func _emit_roof_settings() -> void:
 		"color": m_roof_color_picker.color,
 		"debug_wireframe": m_roof_wireframe_check.button_pressed,
 	})
+
+
+func _selected_wall_type() -> String:
+	if m_wall_type_option == null or m_wall_type_option.selected < 0:
+		return WALL_TYPE_WALL
+	return String(m_wall_type_option.get_item_metadata(m_wall_type_option.selected))
+
+
+func _select_wall_type(wall_type: String) -> void:
+	if m_wall_type_option == null:
+		return
+	for index in range(m_wall_type_option.get_item_count()):
+		if String(m_wall_type_option.get_item_metadata(index)) == wall_type:
+			m_wall_type_option.select(index)
+			_update_wall_type_controls()
+			return
+	m_wall_type_option.select(0)
+	_update_wall_type_controls()
+
+
+func _update_wall_type_controls() -> void:
+	if m_lock_8_way_check != null:
+		m_lock_8_way_check.disabled = _selected_wall_type() == WALL_TYPE_ROOM
 
 
 func _selected_floor_type() -> String:
@@ -1197,6 +1242,7 @@ func _load_persisted_settings() -> void:
 
 	var state: Dictionary = state_variant
 	m_palette_root_edit.text = str(state.get("prop_palette_root", m_palette_root_edit.text))
+	_select_wall_type(str(state.get("wall_type", _selected_wall_type())))
 	m_wall_base_height_spin.value = float(state.get("wall_base_height", m_wall_base_height_spin.value))
 	_select_floor_type(str(state.get("floor_type", _selected_floor_type())))
 	m_floor_grid_spin.value = float(state.get("floor_grid_step", m_floor_grid_spin.value))
@@ -1272,6 +1318,7 @@ func _save_persisted_settings() -> void:
 
 	editor_settings.set_project_metadata(PROJECT_METADATA_SECTION, PROJECT_METADATA_KEY, {
 		"prop_palette_root": _get_configured_palette_root(),
+		"wall_type": _selected_wall_type(),
 		"wall_base_height": float(m_wall_base_height_spin.value) if m_wall_base_height_spin != null else 0.0,
 		"floor_type": _selected_floor_type(),
 		"floor_grid_step": float(m_floor_grid_spin.value) if m_floor_grid_spin != null else 0.5,
