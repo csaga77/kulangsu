@@ -27,7 +27,8 @@
 - [`../../terrain/low_poly_postcard_diorama_style.tres`](../../terrain/low_poly_postcard_diorama_style.tres) is the first Painted Postcard Diorama preset.
 - [`../../terrain/low_poly_world_coordinates_3d.gd`](../../terrain/low_poly_world_coordinates_3d.gd) defines `class_name LowPolyWorldCoordinates3D`, the shared terrain-mask-pixel to 3D XZ world-position adapter, including helpers for rough 2D isometric authored positions.
 - [`../../architecture/low_poly/low_poly_landmark_proxy_3d.gd`](../../architecture/low_poly/low_poly_landmark_proxy_3d.gd) defines `class_name LowPolyLandmarkProxy3D`, a simple reusable landmark-volume generator for early postcard-diorama house, church, tunnel, and tower silhouettes. Each generated part (wall/body boxes, tower cylinders, gable roofs) also parents static collision by default (`generate_collision`) so the character is blocked by the landmark walls and roof.
-- [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn) combines the terrain, land collision, terrain-following `HumanBody3D`, `PlayerController3D`, `Camera3DController`, the five canonical `LowPolyLandmarkProxy3D` placeholders, coordinate round-tripping, camera orbit rotation, and camera framing in one playable Painted Postcard Diorama validation slice.
+- [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn) combines the terrain, land collision, terrain-following `HumanBody3D`, `PlayerController3D`, `Camera3DController`, the five canonical `LowPolyLandmarkProxy3D` placeholders, coordinate round-tripping, camera orbit rotation, target-occluder fading, and camera framing in one playable Painted Postcard Diorama validation slice.
+- [`../../scenes/tests/test_camera_3d_occlusion.tscn`](../../scenes/tests/test_camera_3d_occlusion.tscn) is the focused camera-occlusion regression for multiple blockers, target exclusion, and exact transparency restoration.
 
 ## Ownership
 
@@ -67,6 +68,7 @@
 
 - Keep the first 3D read orthographic, gently elevated, and island-focused rather than switching to a free camera too early.
 - Let the player orbit the orthographic camera around the actor for inspection, while keeping zoom and follow behavior intact.
+- Keep automatic target-occluder transparency enabled so collision-backed landmark parts between the camera and player fade without material replacement; tune the fade and query through `Camera3DController` exports.
 - Use a calm, readable material palette: soft water, clear land/street/building contrast, and enough shoreline shadow/color separation to preserve the island silhouette.
 - Prefer simple low-poly volume and silhouette clarity over texture detail.
 - Keep water, the water surface layer, water shoreline highlights, land, streets, and building footprints as separate mesh/material passes until the intended art direction is proven.
@@ -135,4 +137,10 @@ PASS: LowPolyTerrain3D heightmap smoke test
 
 ```text
 PASS: LowPolyWorld3D smoke test
+```
+
+- Run the focused camera-occlusion regression after changing `Camera3DController` transparency or ray-query behavior:
+
+```sh
+"/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://scenes/tests/test_camera_3d_occlusion.tscn
 ```
