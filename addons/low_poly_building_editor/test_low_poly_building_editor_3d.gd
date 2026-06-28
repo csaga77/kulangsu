@@ -1,7 +1,8 @@
 @tool
 extends Node3D
 
-const BuildingEditor3DScript = preload("res://addons/low_poly_building_editor/building_editor_3d.gd")
+const Building3DScript = preload("res://addons/low_poly_building_editor/building_3d.gd")
+const BuildingFactoryScript = preload("res://addons/low_poly_building_editor/building_factory.gd")
 const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
 const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
 const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.gd")
@@ -65,12 +66,12 @@ func _ready() -> void:
 
 func _run_smoke_checks() -> void:
 	_validate_empty_wall_segments()
-	var coordinator := BuildingEditor3DScript.new() as BuildingEditor3DScript
-	coordinator.name = "BuildingEditor3D"
+	_validate_building_root_ownership()
+	var coordinator := Building3DScript.new() as Building3DScript
+	coordinator.name = "Building3D"
 	add_child(coordinator)
-	coordinator.grid_step = 0.5
 
-	var wall := coordinator.create_wall_node(
+	var wall := BuildingFactoryScript.create_wall_node(coordinator,
 		Vector3.ZERO,
 		Vector3(4.0, 0.0, 0.0),
 		2.4,
@@ -127,8 +128,34 @@ func _run_smoke_checks() -> void:
 	for failure in m_failures:
 		push_error(failure)
 	if m_failures.is_empty():
-		print("PASS: LowPolyBuildingEditor3D smoke test")
+		print("PASS: LowPolyBuilding3D smoke test")
 	get_tree().quit(0 if m_failures.is_empty() else 1)
+
+
+func _validate_building_root_ownership() -> void:
+	var building := Building3DScript.new() as Building3DScript
+	var editor_default_names := [
+		&"grid_step",
+		&"lock_to_8_way",
+		&"default_wall_height",
+		&"default_floor_thickness",
+		&"default_stair_height",
+		&"default_pillar_height",
+		&"default_roof_style",
+	]
+	for property in building.get_property_list():
+		var property_name := StringName(property.get("name", ""))
+		if editor_default_names.has(property_name):
+			m_failures.append("Building3D still exposes editor default property %s" % property_name)
+	var detached_wall := BuildingFactoryScript.create_wall_node(
+		building,
+		Vector3.ZERO,
+		Vector3.RIGHT
+	)
+	if detached_wall.get_parent() != null:
+		m_failures.append("BuildingFactory parented a wall instead of returning a detached node")
+	detached_wall.free()
+	building.free()
 
 
 func _validate_empty_wall_segments() -> void:
@@ -211,8 +238,8 @@ func _validate_wall_mesh(wall: Wall3DScript) -> void:
 		m_failures.append("Wall3D did not generate collision for editor raycasts")
 
 
-func _validate_room_node(coordinator: BuildingEditor3DScript) -> void:
-	var room := coordinator.create_room_node(
+func _validate_room_node(coordinator: Building3DScript) -> void:
+	var room := BuildingFactoryScript.create_room_node(coordinator,
 		Vector3(8.0, 0.5, 8.0),
 		Vector3(12.0, 0.5, 11.0),
 		2.8,
@@ -221,11 +248,11 @@ func _validate_room_node(coordinator: BuildingEditor3DScript) -> void:
 	)
 	coordinator.add_child(room)
 	if !room.name.begins_with("Room3D"):
-		m_failures.append("BuildingEditor3D did not give an enclosed room a room name")
+		m_failures.append("Building3D did not give an enclosed room a room name")
 	if room.get_segment_count() != 4:
-		m_failures.append("BuildingEditor3D room did not create four wall spans")
+		m_failures.append("Building3D room did not create four wall spans")
 	if room.segments.size() != 4:
-		m_failures.append("BuildingEditor3D room did not store every span in Wall3D.segments")
+		m_failures.append("Building3D room did not store every span in Wall3D.segments")
 	var expected_corners: Array[Vector3] = [
 		Vector3(8.0, 0.5, 8.0),
 		Vector3(12.0, 0.5, 8.0),
@@ -234,17 +261,17 @@ func _validate_room_node(coordinator: BuildingEditor3DScript) -> void:
 	]
 	for corner in expected_corners:
 		if room.count_connected_endpoints(corner, 0.001) != 2:
-			m_failures.append("BuildingEditor3D room walls are not enclosed at %s" % corner)
+			m_failures.append("Building3D room walls are not enclosed at %s" % corner)
 	for segment_index in range(room.get_segment_count()):
 		var segment := room.get_segment(segment_index)
 		if !is_equal_approx(segment.height, 2.8):
-			m_failures.append("BuildingEditor3D room wall lost its configured height")
+			m_failures.append("Building3D room wall lost its configured height")
 		if !is_equal_approx(segment.thickness, 0.3):
-			m_failures.append("BuildingEditor3D room wall lost its configured thickness")
+			m_failures.append("Building3D room wall lost its configured thickness")
 	if room.mesh == null:
-		m_failures.append("BuildingEditor3D room did not generate a wall mesh")
+		m_failures.append("Building3D room did not generate a wall mesh")
 	if room.get_node_or_null("WallCollision") == null:
-		m_failures.append("BuildingEditor3D room did not generate wall collision")
+		m_failures.append("Building3D room did not generate wall collision")
 	if !room.is_rectangular_loop():
 		m_failures.append("Wall3D did not recognize a generated room as a rectangular loop")
 	var room_opening := BuildingOpening3DScript.new() as BuildingOpening3DScript
@@ -446,8 +473,8 @@ func _validate_pillar_style_property_ownership() -> void:
 		m_failures.append("RoundPillar3D is missing variable-sided property side_count")
 	if _has_editor_property(square_pillar, &"side_count"):
 		m_failures.append("SquarePillar3D exposes unused variable-sided property side_count")
-	var coordinator := BuildingEditor3DScript.new() as BuildingEditor3DScript
-	var factory_square := coordinator.instantiate_pillar_style("square")
+	var coordinator := Building3DScript.new() as Building3DScript
+	var factory_square := BuildingFactoryScript.instantiate_pillar_style("square")
 	if factory_square.get_script() != SquarePillar3DScript:
 		m_failures.append("Pillar style factory did not instantiate SquarePillar3D")
 	factory_square.free()
@@ -476,9 +503,9 @@ func _validate_roof_style_property_ownership() -> void:
 		m_failures.append("GableRoof3D exposes hip-only property hip_gable_height")
 	if !_has_editor_property(hip_roof, &"hip_gable_height"):
 		m_failures.append("HipRoof3D is missing hip-only property hip_gable_height")
-	var coordinator := BuildingEditor3DScript.new() as BuildingEditor3DScript
-	var factory_flat := coordinator.instantiate_roof_style("flat")
-	var factory_hip := coordinator.instantiate_roof_style("hip")
+	var coordinator := Building3DScript.new() as Building3DScript
+	var factory_flat := BuildingFactoryScript.instantiate_roof_style("flat")
+	var factory_hip := BuildingFactoryScript.instantiate_roof_style("hip")
 	if factory_flat.get_script() != FlatRoof3DScript:
 		m_failures.append("Roof style factory did not instantiate FlatRoof3D")
 	if factory_hip.get_script() != HipRoof3DScript:
@@ -725,18 +752,23 @@ func _validate_opening_follows_wall_segment() -> void:
 		m_failures.append("Window opening lost its segment assignment after wall edit")
 
 
-func _validate_snapping(coordinator: BuildingEditor3DScript) -> void:
-	var snapped: Vector3 = coordinator.snap_local_position(Vector3(0.26, 0.0, 0.74))
+func _validate_snapping(coordinator: Building3DScript) -> void:
+	var snapped := BuildingFactoryScript.snap_local_position(Vector3(0.26, 0.0, 0.74), 0.5)
 	if snapped != Vector3(0.5, 0.0, 0.5):
-		m_failures.append("BuildingEditor3D grid snapping returned %s" % str(snapped))
-	var constrained: Vector3 = coordinator.constrain_wall_end(Vector3.ZERO, Vector3(1.1, 0.0, 0.8))
+		m_failures.append("BuildingFactory grid snapping returned %s" % str(snapped))
+	var constrained := BuildingFactoryScript.constrain_wall_end(
+		Vector3.ZERO,
+		Vector3(1.1, 0.0, 0.8),
+		0.5,
+		true
+	)
 	if !is_equal_approx(absf(constrained.x), absf(constrained.z)):
-		m_failures.append("BuildingEditor3D did not constrain diagonal drawing to 45 degrees")
+		m_failures.append("BuildingFactory did not constrain diagonal drawing to 45 degrees")
 
 
-func _validate_wall_base_height(coordinator: BuildingEditor3DScript) -> void:
+func _validate_wall_base_height(coordinator: Building3DScript) -> void:
 	var base_y := 1.25
-	var elevated := coordinator.create_wall_node(
+	var elevated := BuildingFactoryScript.create_wall_node(coordinator,
 		Vector3(0.0, base_y, 8.0),
 		Vector3(4.0, base_y, 8.0),
 		2.4,
@@ -750,7 +782,7 @@ func _validate_wall_base_height(coordinator: BuildingEditor3DScript) -> void:
 		m_failures.append("Wall3D did not place wall transform at elevated base height")
 
 
-func _validate_wall_collision_blocks_character(coordinator: BuildingEditor3DScript) -> void:
+func _validate_wall_collision_blocks_character(coordinator: Building3DScript) -> void:
 	var floor_body := StaticBody3D.new()
 	floor_body.name = "WallCollisionProbeFloor"
 	floor_body.set_meta(&"test_generated", true)
@@ -762,7 +794,7 @@ func _validate_wall_collision_blocks_character(coordinator: BuildingEditor3DScri
 	floor_body.add_child(floor_shape)
 	add_child(floor_body)
 
-	var wall := coordinator.create_wall_node(
+	var wall := BuildingFactoryScript.create_wall_node(coordinator,
 		WALL_COLLISION_TEST_ORIGIN + Vector3(2.0, 0.0, -2.0),
 		WALL_COLLISION_TEST_ORIGIN + Vector3(2.0, 0.0, 2.0),
 		2.4,
@@ -868,9 +900,9 @@ func _validate_wall_collision_blocks_character(coordinator: BuildingEditor3DScri
 	floor_body.queue_free()
 
 
-func _validate_floor_node(coordinator: BuildingEditor3DScript) -> void:
+func _validate_floor_node(coordinator: Building3DScript) -> void:
 	var top_y := 1.25
-	var floor := coordinator.create_floor_node(
+	var floor := BuildingFactoryScript.create_floor_node(coordinator,
 		Vector3(0.0, top_y, 12.0),
 		Vector3(3.0, top_y, 14.0),
 		0.18,
@@ -978,9 +1010,9 @@ func _validate_floor_node(coordinator: BuildingEditor3DScript) -> void:
 		m_failures.append("Floor3D did not move transform after edited corners")
 
 
-func _validate_stairs_node(coordinator: BuildingEditor3DScript) -> void:
+func _validate_stairs_node(coordinator: Building3DScript) -> void:
 	var base_y := 0.75
-	var stairs := coordinator.create_stairs_node(
+	var stairs := BuildingFactoryScript.create_stairs_node(coordinator,
 		Vector3(0.0, base_y, 16.0),
 		Vector3(3.0, base_y, 20.0),
 		1.2,
@@ -1118,7 +1150,7 @@ func _collision_shape(root: Node, path: String) -> CollisionShape3D:
 	return root.get_node_or_null(path) as CollisionShape3D
 
 
-func _validate_stairs_side_collision_blocks_character(coordinator: BuildingEditor3DScript) -> void:
+func _validate_stairs_side_collision_blocks_character(coordinator: Building3DScript) -> void:
 	var floor_body := StaticBody3D.new()
 	floor_body.name = "StairsSideCollisionProbeFloor"
 	floor_body.set_meta(&"test_generated", true)
@@ -1130,7 +1162,7 @@ func _validate_stairs_side_collision_blocks_character(coordinator: BuildingEdito
 	floor_body.add_child(floor_shape)
 	add_child(floor_body)
 
-	var stairs := coordinator.create_stairs_node(
+	var stairs := BuildingFactoryScript.create_stairs_node(coordinator,
 		STAIRS_SIDE_COLLISION_TEST_ORIGIN + Vector3(2.0, 0.0, -2.0),
 		STAIRS_SIDE_COLLISION_TEST_ORIGIN + Vector3(5.0, 0.0, 2.0),
 		1.2,
@@ -1252,9 +1284,9 @@ func _validate_stairs_side_collision_blocks_character(coordinator: BuildingEdito
 	stairs.queue_free()
 
 
-func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:
+func _validate_pillar_node(coordinator: Building3DScript) -> void:
 	var base_y := 0.75
-	var pillar := coordinator.create_pillar_node(
+	var pillar := BuildingFactoryScript.create_pillar_node(coordinator,
 		Vector3(6.0, base_y, 12.0),
 		0.35,
 		2.8,
@@ -1305,7 +1337,7 @@ func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:
 	if absf(pillar.pillar_radius - 0.5) > 0.001:
 		m_failures.append("Pillar3D did not resize edited radius")
 
-	var square := coordinator.create_pillar_node(
+	var square := BuildingFactoryScript.create_pillar_node(coordinator,
 		Vector3(8.0, base_y, 12.0),
 		0.4,
 		2.4,
@@ -1319,7 +1351,7 @@ func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:
 	if _mesh_vertex_count(square) != 40:
 		m_failures.append("Pillar3D square style did not force four low-poly sides")
 
-	var octagonal := coordinator.create_pillar_node(
+	var octagonal := BuildingFactoryScript.create_pillar_node(coordinator,
 		Vector3(9.0, base_y, 12.0),
 		0.4,
 		2.4,
@@ -1331,7 +1363,7 @@ func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:
 	if _mesh_vertex_count(octagonal) != 80:
 		m_failures.append("Pillar3D octagonal style did not force eight low-poly sides")
 
-	var tapered := coordinator.create_pillar_node(
+	var tapered := BuildingFactoryScript.create_pillar_node(coordinator,
 		Vector3(10.0, base_y, 12.0),
 		0.5,
 		2.4,
@@ -1343,7 +1375,7 @@ func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:
 	if _pillar_max_radius_at_y(tapered, 2.4) >= _pillar_max_radius_at_y(tapered, 0.0):
 		m_failures.append("Pillar3D tapered style did not narrow the top radius")
 
-	var custom_radii := coordinator.create_pillar_node(
+	var custom_radii := BuildingFactoryScript.create_pillar_node(coordinator,
 		Vector3(10.5, base_y, 12.0),
 		0.45,
 		2.4,
@@ -1364,7 +1396,7 @@ func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:
 	if absf(_pillar_max_radius_at_y(custom_radii, 2.4) - 0.18) > 0.001:
 		m_failures.append("Pillar3D custom upper radius did not generate the requested top radius")
 
-	var rimmed := coordinator.create_pillar_node(
+	var rimmed := BuildingFactoryScript.create_pillar_node(coordinator,
 		Vector3(11.0, base_y, 12.0),
 		0.35,
 		2.4,
@@ -1393,9 +1425,9 @@ func _validate_pillar_node(coordinator: BuildingEditor3DScript) -> void:
 		m_failures.append("Pillar3D rimmed collision did not cover the outer rim")
 
 
-func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
+func _validate_roof_node(coordinator: Building3DScript) -> void:
 	var base_y := 3.0
-	var roof := coordinator.create_roof_node(
+	var roof := BuildingFactoryScript.create_roof_node(coordinator,
 		Vector3(12.0, base_y, 12.0),
 		Vector3(16.0, base_y, 15.0),
 		"gable",
@@ -1491,7 +1523,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		drawn_base_end,
 		45.0
 	)
-	var drawn_base_roof := coordinator.create_roof_node(
+	var drawn_base_roof := BuildingFactoryScript.create_roof_node(coordinator,
 		Vector3(drawn_base_points["start"]),
 		Vector3(drawn_base_points["end"]),
 		"gable",
@@ -1507,7 +1539,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	if !_roof_base_has_corner_near(drawn_base_roof, drawn_base_end):
 		m_failures.append("Roof3D rotated draw base did not preserve the current draw point")
 
-	var flat := coordinator.create_roof_node(
+	var flat := BuildingFactoryScript.create_roof_node(coordinator,
 		Vector3(18.0, base_y, 12.0),
 		Vector3(21.0, base_y, 14.0),
 		"flat",
@@ -1526,7 +1558,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	if !_has_normal_near(flat_normals, Vector3.UP):
 		m_failures.append("Roof3D flat style is missing a flat top normal")
 
-	var shed := coordinator.create_roof_node(
+	var shed := BuildingFactoryScript.create_roof_node(coordinator,
 		Vector3(22.0, base_y, 12.0),
 		Vector3(25.0, base_y, 14.0),
 		"shed",
@@ -1548,7 +1580,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	if !_has_mesh_vertex_y_near(shed, expected_shed_height, 0.001):
 		m_failures.append("Roof3D shed style did not calculate height from angle degrees")
 
-	var hip := coordinator.create_roof_node(
+	var hip := BuildingFactoryScript.create_roof_node(coordinator,
 		Vector3(26.0, base_y, 12.0),
 		Vector3(31.0, base_y, 15.0),
 		"hip",
@@ -1605,7 +1637,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	if triangular_hip_faces != 2 or trapezoid_hip_faces != 2:
 		m_failures.append("Roof3D hip style did not generate two triangular and two trapezoid faces")
 
-	var half_hip := coordinator.create_roof_node(
+	var half_hip := BuildingFactoryScript.create_roof_node(coordinator,
 		Vector3(46.0, base_y, 12.0),
 		Vector3(51.0, base_y, 15.0),
 		"hip",
@@ -1682,7 +1714,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	if half_hip_sloped_faces != 4 or half_hip_vertical_faces != 2:
 		m_failures.append("Roof3D half-hip did not generate four sloped faces and two clipped gables")
 
-	var angle_roof := coordinator.create_roof_node(
+	var angle_roof := BuildingFactoryScript.create_roof_node(coordinator,
 		Vector3(40.0, base_y, 16.0),
 		Vector3(44.0, base_y, 19.0),
 		"gable",
@@ -1714,7 +1746,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		m_failures.append("Roof3D did not recalculate gable ridge height from angle degrees")
 
 	var merge_color := Color(0.42, 0.30, 0.22, 1.0)
-	var merge_target := coordinator.create_roof_node(
+	var merge_target := BuildingFactoryScript.create_roof_node(coordinator,
 		Vector3(30.0, base_y, 12.0),
 		Vector3(34.0, base_y, 15.0),
 		"gable",
@@ -1770,7 +1802,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 			coordinator.get_roof_nodes()
 		):
 			m_failures.append("Roof3D merge cover removed sampled roof surface above another roof")
-		var clipped_merge_roof := coordinator.create_roof_node(
+		var clipped_merge_roof := BuildingFactoryScript.create_roof_node(coordinator,
 			merge_candidate_start,
 			merge_candidate_end,
 			"gable",
@@ -1813,7 +1845,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	if angle_mismatch.is_empty():
 		m_failures.append("Roof3D did not clip gables with different angles")
 
-	var clipped := coordinator.create_roof_node(
+	var clipped := BuildingFactoryScript.create_roof_node(coordinator,
 		Vector3(37.0, base_y, 12.0),
 		Vector3(40.0, base_y, 15.0),
 		"flat",
@@ -1832,7 +1864,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	if _mesh_vertex_count(clipped) <= 28:
 		m_failures.append("Roof3D did not split clipped roof geometry into visible pieces")
 
-	var clipped_gable := coordinator.create_roof_node(
+	var clipped_gable := BuildingFactoryScript.create_roof_node(coordinator,
 		Vector3(37.0, base_y, 16.0),
 		Vector3(41.0, base_y, 20.0),
 		"gable",
@@ -1902,7 +1934,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 	if near_rotation_mismatch.is_empty():
 		m_failures.append("Roof3D did not clip roofs with near-but-not-equal rotations")
 
-	var rotated_merge_target := coordinator.create_roof_node(
+	var rotated_merge_target := BuildingFactoryScript.create_roof_node(coordinator,
 		Vector3(40.0, base_y, 12.0),
 		Vector3(44.0, base_y, 15.0),
 		"gable",
@@ -1936,7 +1968,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		if rotated_covers.is_empty():
 			m_failures.append("Roof3D rotated merge did not report covered roof geometry")
 
-	var full_cover_target := coordinator.create_roof_node(
+	var full_cover_target := BuildingFactoryScript.create_roof_node(coordinator,
 		Vector3(50.0, base_y, 20.0),
 		Vector3(54.0, base_y, 24.0),
 		"flat",
@@ -1975,7 +2007,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 			full_cover_polygons
 		):
 			m_failures.append("Roof3D treated fully covered roof geometry as visible")
-		var duplicate_full_cover := coordinator.create_roof_node(
+		var duplicate_full_cover := BuildingFactoryScript.create_roof_node(coordinator,
 			Vector3(50.0, base_y, 20.0),
 			Vector3(54.0, base_y, 24.0),
 			"flat",
@@ -1989,7 +2021,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 			m_failures.append("Roof3D generated visible mesh for a fully covered roof")
 		duplicate_full_cover.free()
 
-	var touch_target := coordinator.create_roof_node(
+	var touch_target := BuildingFactoryScript.create_roof_node(coordinator,
 		Vector3(50.0, base_y, 12.0),
 		Vector3(54.0, base_y, 15.0),
 		"gable",
@@ -2035,7 +2067,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		if absf(gap_cover.position.x + 0.25) > 0.001 or absf(gap_cover.size.x - 0.2) > 0.001:
 			m_failures.append("Roof3D separated overhang cover has the wrong X range")
 
-	var stale_covering := coordinator.create_roof_node(
+	var stale_covering := BuildingFactoryScript.create_roof_node(coordinator,
 		Vector3(60.0, base_y, 12.0),
 		Vector3(64.0, base_y, 15.0),
 		"gable",
@@ -2045,7 +2077,7 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		merge_color
 	)
 	coordinator.add_child(stale_covering)
-	var stale_clipped := coordinator.create_roof_node(
+	var stale_clipped := BuildingFactoryScript.create_roof_node(coordinator,
 		Vector3(63.0, base_y, 14.0),
 		Vector3(66.0, base_y, 17.0),
 		"gable",
@@ -2080,14 +2112,14 @@ func _validate_roof_node(coordinator: BuildingEditor3DScript) -> void:
 		m_failures.append("Roof3D did not clear stale roof covers after refresh")
 
 
-func _validate_merge_detection(coordinator: BuildingEditor3DScript) -> void:
+func _validate_merge_detection(coordinator: Building3DScript) -> void:
 	var merge: Dictionary = coordinator.find_merge_target(Vector3(2.0, 0.0, 0.0), Vector3(6.0, 0.0, 0.0), 0.22, 2.4)
 	if merge.is_empty():
-		m_failures.append("BuildingEditor3D did not find an overlapping collinear merge target")
+		m_failures.append("Building3D did not find an overlapping collinear merge target")
 		return
 	var merged_end := Vector3(merge["end"])
 	if merged_end.distance_to(Vector3(6.0, 0.0, 0.0)) > 0.001:
-		m_failures.append("BuildingEditor3D merge target did not extend to the outer end point")
+		m_failures.append("Building3D merge target did not extend to the outer end point")
 
 	var height_mismatch: Dictionary = coordinator.find_merge_target(
 		Vector3(2.0, 0.0, 0.0),
@@ -2096,7 +2128,7 @@ func _validate_merge_detection(coordinator: BuildingEditor3DScript) -> void:
 		3.0
 	)
 	if !height_mismatch.is_empty():
-		m_failures.append("BuildingEditor3D merged walls with mismatched heights")
+		m_failures.append("Building3D merged walls with mismatched heights")
 
 	var base_mismatch: Dictionary = coordinator.find_merge_target(
 		Vector3(2.0, 1.25, 0.0),
@@ -2105,9 +2137,9 @@ func _validate_merge_detection(coordinator: BuildingEditor3DScript) -> void:
 		2.4
 	)
 	if !base_mismatch.is_empty():
-		m_failures.append("BuildingEditor3D merged walls with mismatched base heights")
+		m_failures.append("Building3D merged walls with mismatched base heights")
 
-	var preview := coordinator.create_wall_node(
+	var preview := BuildingFactoryScript.create_wall_node(coordinator,
 		Vector3(8.0, 0.0, 0.0),
 		Vector3(10.0, 0.0, 0.0),
 		2.4,
@@ -2126,18 +2158,17 @@ func _validate_merge_detection(coordinator: BuildingEditor3DScript) -> void:
 	coordinator.remove_child(preview)
 	preview.queue_free()
 	if !ignored_merge.is_empty():
-		m_failures.append("BuildingEditor3D treated the active wall preview as a merge target")
+		m_failures.append("Building3D treated the active wall preview as a merge target")
 
 
 func _validate_intersection_merge() -> void:
-	var coordinator := BuildingEditor3DScript.new() as BuildingEditor3DScript
+	var coordinator := Building3DScript.new() as Building3DScript
 	coordinator.name = "MergeCoordinator"
 	coordinator.position = Vector3(0.0, 0.0, 40.0)
 	add_child(coordinator)
-	coordinator.grid_step = 0.5
 
 	var wall_color := Color(0.78, 0.68, 0.54, 1.0)
-	var survivor := coordinator.create_wall_node(
+	var survivor := BuildingFactoryScript.create_wall_node(coordinator,
 		Vector3(-2.0, 0.0, 0.0), Vector3(2.0, 0.0, 0.0), 2.4, 0.22, wall_color
 	)
 	coordinator.add_child(survivor)
@@ -2146,12 +2177,12 @@ func _validate_intersection_merge() -> void:
 		Vector3(0.0, 0.0, -2.0), Vector3(0.0, 0.0, 2.0), 0.22
 	)
 	if crossing_hits.size() != 1 or crossing_hits[0] != survivor:
-		m_failures.append("BuildingEditor3D did not detect a crossing wall span as intersecting")
+		m_failures.append("Building3D did not detect a crossing wall span as intersecting")
 	var far_hits: Array = coordinator.find_intersecting_walls(
 		Vector3(10.0, 0.0, 0.0), Vector3(14.0, 0.0, 0.0), 0.22
 	)
 	if !far_hits.is_empty():
-		m_failures.append("BuildingEditor3D flagged a distant wall span as intersecting")
+		m_failures.append("Building3D flagged a distant wall span as intersecting")
 
 	var crossing := WallSegment3DScript.new()
 	crossing.start_point = Vector3(0.0, 0.0, -2.0)
@@ -2243,18 +2274,17 @@ func _validate_intersection_merge() -> void:
 
 
 func _validate_wall_instance_intersection_clipping() -> void:
-	var coordinator := BuildingEditor3DScript.new() as BuildingEditor3DScript
+	var coordinator := Building3DScript.new() as Building3DScript
 	coordinator.name = "WallClipCoordinator"
 	coordinator.position = Vector3(0.0, 0.0, 48.0)
 	add_child(coordinator)
-	coordinator.grid_step = 0.5
 
 	var wall_color := Color(0.78, 0.68, 0.54, 1.0)
-	var horizontal := coordinator.create_wall_node(
+	var horizontal := BuildingFactoryScript.create_wall_node(coordinator,
 		Vector3(-2.0, 0.0, 0.0), Vector3(2.0, 0.0, 0.0), 2.4, 0.22, wall_color
 	)
 	coordinator.add_child(horizontal)
-	var vertical := coordinator.create_wall_node(
+	var vertical := BuildingFactoryScript.create_wall_node(coordinator,
 		Vector3(0.0, 0.0, -2.0), Vector3(0.0, 0.0, 2.0), 2.4, 0.22, wall_color
 	)
 	coordinator.add_child(vertical)
@@ -2289,13 +2319,13 @@ func _validate_wall_instance_intersection_clipping() -> void:
 
 
 func _validate_roof_wall_clipping() -> void:
-	var coordinator := BuildingEditor3DScript.new() as BuildingEditor3DScript
+	var coordinator := Building3DScript.new() as Building3DScript
 	coordinator.name = "RoofWallClipCoordinator"
 	coordinator.position = Vector3(0.0, 0.0, 56.0)
 	add_child(coordinator)
 
 	var wall_color := Color(0.78, 0.68, 0.54, 1.0)
-	var wall := coordinator.create_wall_node(
+	var wall := BuildingFactoryScript.create_wall_node(coordinator,
 		Vector3(0.0, 0.0, 0.2),
 		Vector3(4.0, 0.0, 0.2),
 		4.0,
@@ -2303,7 +2333,7 @@ func _validate_roof_wall_clipping() -> void:
 		wall_color
 	)
 	coordinator.add_child(wall)
-	var roof := coordinator.create_roof_node(
+	var roof := BuildingFactoryScript.create_roof_node(coordinator,
 		Vector3(0.0, 2.4, 0.0),
 		Vector3(4.0, 2.4, 4.0),
 		"gable",
@@ -2329,7 +2359,7 @@ func _validate_roof_wall_clipping() -> void:
 	if !_has_mesh_vertex_y_near(wall, 4.0, 0.001):
 		m_failures.append("Wall3D did not restore full height after roof clip cleared")
 
-	var eave_wall := coordinator.create_wall_node(
+	var eave_wall := BuildingFactoryScript.create_wall_node(coordinator,
 		Vector3(0.0, 0.0, 0.0),
 		Vector3(4.0, 0.0, 0.0),
 		2.8,
@@ -2337,7 +2367,7 @@ func _validate_roof_wall_clipping() -> void:
 		wall_color
 	)
 	coordinator.add_child(eave_wall)
-	var eave_roof := coordinator.create_roof_node(
+	var eave_roof := BuildingFactoryScript.create_roof_node(coordinator,
 		Vector3(0.0, 2.4, 0.0),
 		Vector3(4.0, 2.4, 4.0),
 		"gable",
@@ -2866,12 +2896,12 @@ func _validate_enclosed_wall_loop_caps() -> void:
 
 
 func _validate_overlapping_room_wall_clipping() -> void:
-	var coordinator := BuildingEditor3DScript.new() as BuildingEditor3DScript
+	var coordinator := Building3DScript.new() as Building3DScript
 	coordinator.name = "OverlappingRoomCoordinator"
 	coordinator.position = Vector3(0.0, 0.0, 72.0)
 	add_child(coordinator)
 	var wall_color := Color(0.78, 0.68, 0.54, 1.0)
-	var first_room := coordinator.create_room_node(
+	var first_room := BuildingFactoryScript.create_room_node(coordinator,
 		Vector3.ZERO,
 		Vector3(6.0, 0.0, 4.0),
 		2.4,
@@ -2879,7 +2909,7 @@ func _validate_overlapping_room_wall_clipping() -> void:
 		wall_color
 	)
 	coordinator.add_child(first_room)
-	var second_room := coordinator.create_room_node(
+	var second_room := BuildingFactoryScript.create_room_node(coordinator,
 		Vector3(3.0, 0.0, 4.0),
 		Vector3(8.0, 0.0, 8.0),
 		2.4,
@@ -2910,22 +2940,21 @@ func _validate_overlapping_room_wall_clipping() -> void:
 		Vector2(1.5, 1.1),
 		Vector2(0.8, 0.8)
 	):
-		m_failures.append("BuildingEditor3D rejected an opening on the first room's shared wall")
+		m_failures.append("Building3D rejected an opening on the first room's shared wall")
 	if !coordinator.can_place_wall_opening(
 		second_room,
 		0,
 		Vector2(1.5, 1.1),
 		Vector2(0.8, 0.8)
 	):
-		m_failures.append("BuildingEditor3D blocked an opening on the clipped collinear shared wall")
+		m_failures.append("Building3D blocked an opening on the clipped collinear shared wall")
 	if !coordinator.can_place_wall_opening(
 		first_room,
 		0,
 		Vector2(2.0, 1.1),
 		Vector2(0.8, 0.8)
 	):
-		m_failures.append("BuildingEditor3D rejected an opening on a non-overlapping room wall")
-	coordinator.merge_intersecting = false
+		m_failures.append("Building3D rejected an opening on a non-overlapping room wall")
 	coordinator.refresh_wall_intersection_clips()
 	if !coordinator.can_place_wall_opening(
 		first_room,
@@ -2933,7 +2962,7 @@ func _validate_overlapping_room_wall_clipping() -> void:
 		Vector2(1.5, 1.1),
 		Vector2(0.8, 0.8)
 	):
-		m_failures.append("Shared room wall rejected an opening after generic intersection clipping was disabled")
+		m_failures.append("Shared room wall rejected an opening after intersection clipping refresh")
 	if _has_horizontal_face_covering_plan_point(
 		second_room.mesh as ArrayMesh,
 		Vector2(second_local.x, second_local.z),
@@ -3520,17 +3549,17 @@ func _vertex_key(vertex: Vector3) -> String:
 
 
 func _validate_collinear_overlap_opening_propagation() -> void:
-	var coordinator := BuildingEditor3DScript.new() as BuildingEditor3DScript
+	var coordinator := Building3DScript.new() as Building3DScript
 	coordinator.name = "CollinearOpeningCoordinator"
 	coordinator.position = Vector3(0.0, 0.0, 96.0)
 	add_child(coordinator)
 	var wall_color := Color(0.78, 0.68, 0.54, 1.0)
 	# Earlier scene-order wall owns the shared span; later wall is clipped there.
-	var owner_wall := coordinator.create_wall_node(
+	var owner_wall := BuildingFactoryScript.create_wall_node(coordinator,
 		Vector3.ZERO, Vector3(6.0, 0.0, 0.0), 2.4, 0.22, wall_color
 	)
 	coordinator.add_child(owner_wall)
-	var clipped_wall := coordinator.create_wall_node(
+	var clipped_wall := BuildingFactoryScript.create_wall_node(coordinator,
 		Vector3(3.0, 0.0, 0.0), Vector3(9.0, 0.0, 0.0), 2.4, 0.22, wall_color
 	)
 	coordinator.add_child(clipped_wall)

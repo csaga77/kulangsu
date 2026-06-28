@@ -5,6 +5,11 @@ viewport tools for walls, floors, stairs, pillars, roofs, openings, and props, a
 normal scene nodes so the result serializes into `.tscn` files. The Wall tool can draw
 either individual spans or enclosed rectangular rooms.
 
+`Building3D` is the scene-owned assembly root and carries no editor-tool configuration;
+the editor dock owns temporary tool defaults. `BuildingFactory` creates and names
+building blocks, while transient wall and roof geometry resolvers perform intersection,
+overlap, opening-propagation, and clipping calculations.
+
 Styled blocks use typed hierarchies. Their base classes own only universal state and
 low-level generation infrastructure; optional intermediate layers own properties shared
 by a genuine subset; and concrete pillar, roof, window, and door styles own their style

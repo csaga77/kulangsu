@@ -231,7 +231,7 @@ Responsibilities:
 Boundary:
 
 - Editor plugins are authoring helpers. They should not become runtime gameplay services or be wired into `main.tscn`.
-- Building-editor-generated content should remain ordinary scene-owned nodes under `BuildingEditor3D` coordinators.
+- Building-editor-generated content should remain ordinary scene-owned nodes under `Building3D` coordinators.
 
 ### Submodule Layer
 

@@ -11,7 +11,8 @@ const MODE_ROOF := "roof"
 const MODE_PROP := "prop"
 const MODE_WINDOW := "window"
 const MODE_DOOR := "door"
-const BuildingEditor3DScript = preload("res://addons/low_poly_building_editor/building_editor_3d.gd")
+const Building3DScript = preload("res://addons/low_poly_building_editor/building_3d.gd")
+const BuildingFactoryScript = preload("res://addons/low_poly_building_editor/building_factory.gd")
 const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
 const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
 const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.gd")
@@ -406,9 +407,9 @@ var m_drag_hover_edge := -1
 
 func _enter_tree() -> void:
 	add_custom_type(
-		"BuildingEditor3D",
+		"Building3D",
 		"Node3D",
-		BuildingEditor3DScript,
+		Building3DScript,
 		_get_editor_icon(&"Node3D")
 	)
 	add_custom_type(
@@ -525,7 +526,7 @@ func _exit_tree() -> void:
 	remove_custom_type("Stairs3D")
 	remove_custom_type("Floor3D")
 	remove_custom_type("Wall3D")
-	remove_custom_type("BuildingEditor3D")
+	remove_custom_type("Building3D")
 
 
 func _handles(object: Object) -> bool:
@@ -771,7 +772,7 @@ func _handle_window_drag_input(camera: Camera3D, event: InputEvent) -> int:
 	return _handled()
 
 
-func _create_wall_preview(coordinator: BuildingEditor3DScript) -> void:
+func _create_wall_preview(coordinator: Building3DScript) -> void:
 	_clear_wall_preview()
 	m_wall_preview = Wall3DScript.new() as Wall3DScript
 	m_wall_preview.name = "WallPreview"
@@ -789,7 +790,7 @@ func _create_wall_preview(coordinator: BuildingEditor3DScript) -> void:
 func _update_wall_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 	if m_wall_preview == null:
 		return
-	var coordinator := m_wall_preview.get_parent() as BuildingEditor3DScript
+	var coordinator := m_wall_preview.get_parent() as Building3DScript
 	if coordinator == null:
 		return
 	var local_position := _wall_draw_local_from_mouse(coordinator, camera, mouse_position)
@@ -807,7 +808,7 @@ func _set_wall_preview_geometry(local_start: Vector3, local_end: Vector3) -> voi
 	if !_is_room_wall_mode():
 		m_wall_preview.set_wall_geometry(local_start, local_end, [])
 		return
-	var segments := BuildingEditor3DScript.room_segments_from_corners(
+	var segments := BuildingFactoryScript.room_segments_from_corners(
 		local_start,
 		local_end,
 		float(m_wall_settings["height"]),
@@ -821,7 +822,7 @@ func _set_wall_preview_geometry(local_start: Vector3, local_end: Vector3) -> voi
 
 
 func _resolve_wall_end_from_mouse(
-	coordinator: BuildingEditor3DScript,
+	coordinator: Building3DScript,
 	camera: Camera3D,
 	mouse_position: Vector2
 ) -> Vector3:
@@ -834,7 +835,7 @@ func _wall_base_height() -> float:
 
 
 func _wall_draw_local_from_mouse(
-	coordinator: BuildingEditor3DScript,
+	coordinator: Building3DScript,
 	camera: Camera3D,
 	mouse_position: Vector2
 ) -> Vector3:
@@ -859,41 +860,48 @@ func _wall_draw_local_from_mouse(
 
 
 func _snap_wall_draw_local(
-	coordinator: BuildingEditor3DScript,
+	_coordinator: Building3DScript,
 	local_position: Vector3,
 	base_y: float
 ) -> Vector3:
-	var snapped := coordinator.snap_local_position(local_position)
+	var snapped := BuildingFactoryScript.snap_local_position(
+		local_position,
+		float(m_wall_settings["grid_step"])
+	)
 	snapped.y = base_y
 	return snapped
 
 
 func _constrain_wall_end_on_base(
-	coordinator: BuildingEditor3DScript,
+	_coordinator: Building3DScript,
 	start_local: Vector3,
 	target_local: Vector3
 ) -> Vector3:
 	if _is_room_wall_mode():
 		return Vector3(target_local.x, start_local.y, target_local.z)
-	var constrained := coordinator.constrain_wall_end(start_local, target_local)
+	var constrained := BuildingFactoryScript.constrain_wall_end(
+		start_local,
+		target_local,
+		float(m_wall_settings["grid_step"]),
+		bool(m_wall_settings["lock_8_way"])
+	)
 	constrained.y = start_local.y
 	return constrained
 
 
-func _get_active_wall_coordinator() -> BuildingEditor3DScript:
+func _get_active_wall_coordinator() -> Building3DScript:
 	if m_wall_preview != null and is_instance_valid(m_wall_preview):
-		var preview_parent := m_wall_preview.get_parent() as BuildingEditor3DScript
+		var preview_parent := m_wall_preview.get_parent() as Building3DScript
 		if preview_parent != null:
 			return preview_parent
 	return _get_or_create_coordinator(false)
 
 
-func _commit_wall(coordinator: BuildingEditor3DScript, local_start: Vector3, local_end: Vector3) -> void:
+func _commit_wall(coordinator: Building3DScript, local_start: Vector3, local_end: Vector3) -> void:
 	if !_is_wall_draw_valid(local_start, local_end):
 		_set_status("Room is too small." if _is_room_wall_mode() else "Wall is too short.")
 		return
 
-	_apply_wall_settings_to_coordinator(coordinator)
 	var thickness := float(m_wall_settings["thickness"])
 	if _is_room_wall_mode():
 		_commit_room(coordinator, local_start, local_end, thickness)
@@ -903,7 +911,8 @@ func _commit_wall(coordinator: BuildingEditor3DScript, local_start: Vector3, loc
 		local_end,
 		thickness,
 		float(m_wall_settings["height"]),
-		m_wall_preview
+		m_wall_preview,
+		float(m_wall_settings["grid_step"])
 	)
 	var undo_redo := get_undo_redo()
 	if !merge.is_empty():
@@ -936,12 +945,11 @@ func _commit_wall(coordinator: BuildingEditor3DScript, local_start: Vector3, loc
 		return
 
 	var intersects_existing_wall := false
-	if coordinator.merge_intersecting:
-		var targets := coordinator.find_intersecting_walls(local_start, local_end, thickness, m_wall_preview)
-		if !targets.is_empty():
-			intersects_existing_wall = true
+	var targets := coordinator.find_intersecting_walls(local_start, local_end, thickness, m_wall_preview)
+	if !targets.is_empty():
+		intersects_existing_wall = true
 
-	var wall := coordinator.create_wall_node(
+	var wall := BuildingFactoryScript.create_wall_node(coordinator,
 		local_start,
 		local_end,
 		float(m_wall_settings["height"]),
@@ -969,12 +977,12 @@ func _commit_wall(coordinator: BuildingEditor3DScript, local_start: Vector3, loc
 
 
 func _commit_room(
-	coordinator: BuildingEditor3DScript,
+	coordinator: Building3DScript,
 	local_start: Vector3,
 	local_end: Vector3,
 	thickness: float
 ) -> void:
-	var wall := coordinator.create_room_node(
+	var wall := BuildingFactoryScript.create_room_node(coordinator,
 		local_start,
 		local_end,
 		float(m_wall_settings["height"]),
@@ -982,17 +990,16 @@ func _commit_room(
 		Color(m_wall_settings["color"])
 	)
 	var intersects_existing_wall := false
-	if coordinator.merge_intersecting:
-		for segment_index in range(wall.get_segment_count()):
-			var segment := wall.get_segment(segment_index)
-			if !coordinator.find_intersecting_walls(
-				segment.start_point,
-				segment.end_point,
-				segment.thickness,
-				m_wall_preview
-			).is_empty():
-				intersects_existing_wall = true
-				break
+	for segment_index in range(wall.get_segment_count()):
+		var segment := wall.get_segment(segment_index)
+		if !coordinator.find_intersecting_walls(
+			segment.start_point,
+			segment.end_point,
+			segment.thickness,
+			m_wall_preview
+		).is_empty():
+			intersects_existing_wall = true
+			break
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	var undo_redo := get_undo_redo()
 	undo_redo.create_action("Create Room")
@@ -1087,7 +1094,6 @@ func _handle_floor_input(camera: Camera3D, event: InputEvent) -> int:
 	if coordinator == null:
 		_set_status("Open or create a scene before drawing floors.")
 		return _handled()
-	_apply_floor_settings_to_coordinator(coordinator)
 
 	var snapped_local := _floor_draw_local_from_mouse(coordinator, camera, mouse_button.position)
 	if !m_is_drawing_floor:
@@ -1112,9 +1118,8 @@ func _handle_floor_input(camera: Camera3D, event: InputEvent) -> int:
 	return _handled()
 
 
-func _create_floor_preview(coordinator: BuildingEditor3DScript) -> void:
+func _create_floor_preview(coordinator: Building3DScript) -> void:
 	_clear_floor_preview()
-	_apply_floor_settings_to_coordinator(coordinator)
 	m_floor_preview = Floor3DScript.new() as Floor3DScript
 	m_floor_preview.name = "FloorPreview"
 	m_floor_preview.set_meta(Floor3DScript.PREVIEW_META, true)
@@ -1134,7 +1139,7 @@ func _create_floor_preview(coordinator: BuildingEditor3DScript) -> void:
 func _update_floor_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 	if m_floor_preview == null:
 		return
-	var coordinator := m_floor_preview.get_parent() as BuildingEditor3DScript
+	var coordinator := m_floor_preview.get_parent() as Building3DScript
 	if coordinator == null:
 		return
 	var local_end := _floor_draw_local_from_mouse(coordinator, camera, mouse_position)
@@ -1166,7 +1171,7 @@ func _is_floor_hole_mode() -> bool:
 
 
 func _floor_draw_local_from_mouse(
-	coordinator: BuildingEditor3DScript,
+	coordinator: Building3DScript,
 	camera: Camera3D,
 	mouse_position: Vector2
 ) -> Vector3:
@@ -1203,24 +1208,27 @@ func _floor_draw_local_from_mouse(
 
 
 func _snap_floor_draw_local(
-	coordinator: BuildingEditor3DScript,
+	_coordinator: Building3DScript,
 	local_position: Vector3,
 	base_y: float
 ) -> Vector3:
-	var snapped := coordinator.snap_local_position(local_position)
+	var snapped := BuildingFactoryScript.snap_local_position(
+		local_position,
+		float(m_floor_settings["grid_step"])
+	)
 	snapped.y = base_y
 	return snapped
 
 
-func _get_active_floor_coordinator() -> BuildingEditor3DScript:
+func _get_active_floor_coordinator() -> Building3DScript:
 	if m_floor_preview != null and is_instance_valid(m_floor_preview):
-		var preview_parent := m_floor_preview.get_parent() as BuildingEditor3DScript
+		var preview_parent := m_floor_preview.get_parent() as Building3DScript
 		if preview_parent != null:
 			return preview_parent
 	return _get_or_create_coordinator(false)
 
 
-func _commit_floor(coordinator: BuildingEditor3DScript, local_start: Vector3, local_end: Vector3) -> void:
+func _commit_floor(coordinator: Building3DScript, local_start: Vector3, local_end: Vector3) -> void:
 	if !_is_floor_span_large_enough(local_start, local_end):
 		_set_status("Floor is too small.")
 		return
@@ -1228,8 +1236,7 @@ func _commit_floor(coordinator: BuildingEditor3DScript, local_start: Vector3, lo
 		_commit_floor_hole(coordinator, local_start, local_end)
 		return
 
-	_apply_floor_settings_to_coordinator(coordinator)
-	var floor := coordinator.create_floor_node(
+	var floor := BuildingFactoryScript.create_floor_node(coordinator,
 		local_start,
 		local_end,
 		float(m_floor_settings["thickness"]),
@@ -1247,7 +1254,7 @@ func _commit_floor(coordinator: BuildingEditor3DScript, local_start: Vector3, lo
 
 
 func _commit_floor_hole(
-	coordinator: BuildingEditor3DScript,
+	coordinator: Building3DScript,
 	local_start: Vector3,
 	local_end: Vector3
 ) -> void:
@@ -1283,7 +1290,7 @@ func _commit_floor_hole(
 
 
 func _find_floor_for_hole(
-	coordinator: BuildingEditor3DScript,
+	coordinator: Building3DScript,
 	local_start: Vector3,
 	local_end: Vector3
 ) -> Floor3DScript:
@@ -1526,10 +1533,7 @@ func _floor_holes_fit_for_points(floor: Floor3DScript, local_start: Vector3, loc
 	)
 
 
-func _active_floor_grid_step(floor: Floor3DScript) -> float:
-	var coordinator := _find_coordinator_from_node(floor)
-	if coordinator != null:
-		return maxf(coordinator.grid_step, 0.05)
+func _active_floor_grid_step(_floor: Floor3DScript) -> float:
 	return maxf(float(m_floor_settings["grid_step"]), 0.05)
 
 
@@ -1598,7 +1602,6 @@ func _handle_stair_input(camera: Camera3D, event: InputEvent) -> int:
 	if coordinator == null:
 		_set_status("Open or create a scene before drawing stairs.")
 		return _handled()
-	_apply_stair_settings_to_coordinator(coordinator)
 
 	var snapped_local := _stair_draw_local_from_mouse(coordinator, camera, mouse_button.position)
 	if !m_is_drawing_stair:
@@ -1620,9 +1623,8 @@ func _handle_stair_input(camera: Camera3D, event: InputEvent) -> int:
 	return _handled()
 
 
-func _create_stair_preview(coordinator: BuildingEditor3DScript) -> void:
+func _create_stair_preview(coordinator: Building3DScript) -> void:
 	_clear_stair_preview()
-	_apply_stair_settings_to_coordinator(coordinator)
 	m_stair_preview = Stairs3DScript.new() as Stairs3DScript
 	m_stair_preview.name = "StairsPreview"
 	m_stair_preview.set_meta(Stairs3DScript.PREVIEW_META, true)
@@ -1641,7 +1643,7 @@ func _create_stair_preview(coordinator: BuildingEditor3DScript) -> void:
 func _update_stair_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 	if m_stair_preview == null:
 		return
-	var coordinator := m_stair_preview.get_parent() as BuildingEditor3DScript
+	var coordinator := m_stair_preview.get_parent() as Building3DScript
 	if coordinator == null:
 		return
 	var local_end := _stair_draw_local_from_mouse(coordinator, camera, mouse_position)
@@ -1671,7 +1673,7 @@ func _stair_base_height() -> float:
 
 
 func _stair_draw_local_from_mouse(
-	coordinator: BuildingEditor3DScript,
+	coordinator: Building3DScript,
 	camera: Camera3D,
 	mouse_position: Vector2
 ) -> Vector3:
@@ -1696,18 +1698,21 @@ func _stair_draw_local_from_mouse(
 
 
 func _snap_stair_draw_local(
-	coordinator: BuildingEditor3DScript,
+	_coordinator: Building3DScript,
 	local_position: Vector3,
 	base_y: float
 ) -> Vector3:
-	var snapped := coordinator.snap_local_position(local_position)
+	var snapped := BuildingFactoryScript.snap_local_position(
+		local_position,
+		float(m_stair_settings["grid_step"])
+	)
 	snapped.y = base_y
 	return snapped
 
 
-func _get_active_stair_coordinator() -> BuildingEditor3DScript:
+func _get_active_stair_coordinator() -> Building3DScript:
 	if m_stair_preview != null and is_instance_valid(m_stair_preview):
-		var preview_parent := m_stair_preview.get_parent() as BuildingEditor3DScript
+		var preview_parent := m_stair_preview.get_parent() as Building3DScript
 		if preview_parent != null:
 			return preview_parent
 	return _get_or_create_coordinator(false)
@@ -1785,7 +1790,7 @@ func _stair_state_rotated_around_center(stair: Stairs3DScript, rotation_degrees:
 
 
 func _commit_stairs(
-	coordinator: BuildingEditor3DScript,
+	coordinator: Building3DScript,
 	draw_start: Vector3,
 	draw_end: Vector3,
 	rotation_degrees: float
@@ -1797,9 +1802,8 @@ func _commit_stairs(
 		_set_status("Stairs footprint is too small.")
 		return
 
-	_apply_stair_settings_to_coordinator(coordinator)
 	var normalized_rotation := _normalize_degrees(rotation_degrees)
-	var stairs := coordinator.create_stairs_node(
+	var stairs := BuildingFactoryScript.create_stairs_node(coordinator,
 		local_start,
 		local_end,
 		float(m_stair_settings["height"]),
@@ -2062,10 +2066,7 @@ func _stair_edit_mask_is_corner(edit_mask: int) -> bool:
 	return edits_x and edits_z
 
 
-func _active_stair_grid_step(stair: Stairs3DScript) -> float:
-	var coordinator := _find_coordinator_from_node(stair)
-	if coordinator != null:
-		return maxf(coordinator.grid_step, 0.05)
+func _active_stair_grid_step(_stair: Stairs3DScript) -> float:
 	return maxf(float(m_stair_settings["grid_step"]), 0.05)
 
 
@@ -2140,7 +2141,6 @@ func _handle_roof_input(camera: Camera3D, event: InputEvent) -> int:
 	if coordinator == null:
 		_set_status("Open or create a scene before drawing roofs.")
 		return _handled()
-	_apply_roof_settings_to_coordinator(coordinator)
 
 	var snapped_local := _roof_draw_local_from_mouse(coordinator, camera, mouse_button.position)
 	if !m_is_drawing_roof:
@@ -2162,10 +2162,9 @@ func _handle_roof_input(camera: Camera3D, event: InputEvent) -> int:
 	return _handled()
 
 
-func _create_roof_preview(coordinator: BuildingEditor3DScript) -> void:
+func _create_roof_preview(coordinator: Building3DScript) -> void:
 	_clear_roof_preview()
-	_apply_roof_settings_to_coordinator(coordinator)
-	m_roof_preview = coordinator.instantiate_roof_style(String(m_roof_settings["style"]))
+	m_roof_preview = BuildingFactoryScript.instantiate_roof_style(String(m_roof_settings["style"]))
 	m_roof_preview.name = "RoofPreview"
 	m_roof_preview.set_meta(Roof3DScript.PREVIEW_META, true)
 	m_roof_preview.set_roof_angle_degrees(float(m_roof_settings["height"]))
@@ -2185,7 +2184,7 @@ func _create_roof_preview(coordinator: BuildingEditor3DScript) -> void:
 func _update_roof_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 	if m_roof_preview == null:
 		return
-	var coordinator := m_roof_preview.get_parent() as BuildingEditor3DScript
+	var coordinator := m_roof_preview.get_parent() as Building3DScript
 	if coordinator == null:
 		return
 	var selected_style := String(m_roof_settings["style"])
@@ -2222,7 +2221,7 @@ func _roof_base_height() -> float:
 
 
 func _roof_draw_local_from_mouse(
-	coordinator: BuildingEditor3DScript,
+	coordinator: Building3DScript,
 	camera: Camera3D,
 	mouse_position: Vector2
 ) -> Vector3:
@@ -2247,18 +2246,21 @@ func _roof_draw_local_from_mouse(
 
 
 func _snap_roof_draw_local(
-	coordinator: BuildingEditor3DScript,
+	_coordinator: Building3DScript,
 	local_position: Vector3,
 	base_y: float
 ) -> Vector3:
-	var snapped := coordinator.snap_local_position(local_position)
+	var snapped := BuildingFactoryScript.snap_local_position(
+		local_position,
+		float(m_roof_settings["grid_step"])
+	)
 	snapped.y = base_y
 	return snapped
 
 
-func _get_active_roof_coordinator() -> BuildingEditor3DScript:
+func _get_active_roof_coordinator() -> Building3DScript:
 	if m_roof_preview != null and is_instance_valid(m_roof_preview):
-		var preview_parent := m_roof_preview.get_parent() as BuildingEditor3DScript
+		var preview_parent := m_roof_preview.get_parent() as Building3DScript
 		if preview_parent != null:
 			return preview_parent
 	return _get_or_create_coordinator(false)
@@ -2401,7 +2403,7 @@ func _roof_state_rotated_around_center(roof: Roof3DScript, rotation_degrees: flo
 
 
 func _commit_roof(
-	coordinator: BuildingEditor3DScript,
+	coordinator: Building3DScript,
 	draw_start: Vector3,
 	draw_end: Vector3,
 	rotation_degrees: float
@@ -2413,7 +2415,6 @@ func _commit_roof(
 		_set_status("Roof is too small.")
 		return
 
-	_apply_roof_settings_to_coordinator(coordinator)
 	var style := String(m_roof_settings["style"])
 	var height := float(m_roof_settings["height"])
 	var thickness := float(m_roof_settings["thickness"])
@@ -2436,7 +2437,7 @@ func _commit_roof(
 	var covered_rects := _roof_covered_rects_from_regions(merge)
 	var covered_polygons := _roof_covered_polygons_from_regions(merge)
 
-	var roof := coordinator.create_roof_node(
+	var roof := BuildingFactoryScript.create_roof_node(coordinator,
 		local_start,
 		local_end,
 		style,
@@ -2834,10 +2835,7 @@ func _roof_edit_mask_is_corner(edit_mask: int) -> bool:
 	return edits_x and edits_z
 
 
-func _active_roof_grid_step(roof: Roof3DScript) -> float:
-	var coordinator := _find_coordinator_from_node(roof)
-	if coordinator != null:
-		return maxf(coordinator.grid_step, 0.05)
+func _active_roof_grid_step(_roof: Roof3DScript) -> float:
 	return maxf(float(m_roof_settings["grid_step"]), 0.05)
 
 
@@ -2934,10 +2932,9 @@ func _handle_pillar_input(camera: Camera3D, event: InputEvent) -> int:
 	return _handled()
 
 
-func _create_pillar_preview(coordinator: BuildingEditor3DScript) -> void:
+func _create_pillar_preview(coordinator: Building3DScript) -> void:
 	_clear_pillar_preview()
-	_apply_pillar_settings_to_coordinator(coordinator)
-	m_pillar_preview = coordinator.instantiate_pillar_style(
+	m_pillar_preview = BuildingFactoryScript.instantiate_pillar_style(
 		String(m_pillar_settings["style"])
 	)
 	m_pillar_preview.name = "PillarPreview"
@@ -2972,7 +2969,6 @@ func _update_pillar_preview(camera: Camera3D, mouse_position: Vector2, create_if
 		_create_pillar_preview(coordinator)
 	elif m_pillar_preview.get_pillar_style() != String(m_pillar_settings["style"]):
 		_create_pillar_preview(coordinator)
-	_apply_pillar_settings_to_coordinator(coordinator)
 	var local_base := _pillar_draw_local_from_mouse(coordinator, camera, mouse_position)
 	m_pillar_preview.set_pillar_base_position(local_base)
 	m_pillar_preview.pillar_radius = float(m_pillar_settings["radius"])
@@ -2995,7 +2991,7 @@ func _pillar_base_height() -> float:
 
 
 func _pillar_draw_local_from_mouse(
-	coordinator: BuildingEditor3DScript,
+	coordinator: Building3DScript,
 	camera: Camera3D,
 	mouse_position: Vector2
 ) -> Vector3:
@@ -3020,11 +3016,14 @@ func _pillar_draw_local_from_mouse(
 
 
 func _snap_pillar_draw_local(
-	coordinator: BuildingEditor3DScript,
+	_coordinator: Building3DScript,
 	local_position: Vector3,
 	base_y: float
 ) -> Vector3:
-	var snapped := coordinator.snap_local_position(local_position)
+	var snapped := BuildingFactoryScript.snap_local_position(
+		local_position,
+		float(m_pillar_settings["grid_step"])
+	)
 	snapped.y = base_y
 	return snapped
 
@@ -3032,15 +3031,14 @@ func _snap_pillar_draw_local(
 func _commit_pillar() -> void:
 	if m_pillar_preview == null:
 		return
-	var coordinator := m_pillar_preview.get_parent() as BuildingEditor3DScript
+	var coordinator := m_pillar_preview.get_parent() as Building3DScript
 	if coordinator == null:
 		return
 	if !_is_pillar_radius_valid(m_pillar_preview.pillar_radius):
 		_set_status("Pillar radius is too small.")
 		return
 
-	_apply_pillar_settings_to_coordinator(coordinator)
-	var pillar := coordinator.create_pillar_node(
+	var pillar := BuildingFactoryScript.create_pillar_node(coordinator,
 		m_pillar_preview.base_point,
 		float(m_pillar_settings["radius"]),
 		float(m_pillar_settings["height"]),
@@ -3216,10 +3214,7 @@ func _pillar_edit_label(edit_mode: int) -> String:
 	return "radius" if edit_mode == PILLAR_EDIT_RADIUS else "body"
 
 
-func _active_pillar_grid_step(pillar: Pillar3DScript) -> float:
-	var coordinator := _find_coordinator_from_node(pillar)
-	if coordinator != null:
-		return maxf(coordinator.grid_step, 0.05)
+func _active_pillar_grid_step(_pillar: Pillar3DScript) -> float:
 	return maxf(float(m_pillar_settings["grid_step"]), 0.05)
 
 
@@ -3525,7 +3520,7 @@ func _commit_placement() -> void:
 	prop.name = scene_path.get_file().get_basename()
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	var parent: Node = m_preview_parent
-	if parent == scene_root and !(parent is BuildingEditor3DScript):
+	if parent == scene_root and !(parent is Building3DScript):
 		var coordinator := _get_or_create_coordinator(true)
 		if coordinator != null:
 			parent = coordinator
@@ -4200,7 +4195,7 @@ func _find_wall_from_collider(collider: Variant) -> Wall3DScript:
 	return null
 
 
-func _get_or_create_coordinator(create_if_missing: bool) -> BuildingEditor3DScript:
+func _get_or_create_coordinator(create_if_missing: bool) -> Building3DScript:
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	if scene_root == null:
 		return null
@@ -4212,11 +4207,10 @@ func _get_or_create_coordinator(create_if_missing: bool) -> BuildingEditor3DScri
 	var existing := _find_first_coordinator(scene_root)
 	if existing != null or !create_if_missing:
 		return existing
-	var coordinator := BuildingEditor3DScript.new() as BuildingEditor3DScript
-	coordinator.name = "BuildingEditor3D"
-	_apply_wall_settings_to_coordinator(coordinator)
+	var coordinator := Building3DScript.new() as Building3DScript
+	coordinator.name = "Building3D"
 	var undo_redo := get_undo_redo()
-	undo_redo.create_action("Create Building Editor")
+	undo_redo.create_action("Create Building")
 	undo_redo.add_do_reference(coordinator)
 	undo_redo.add_do_method(self, "_do_add_node", scene_root, coordinator, scene_root, true)
 	undo_redo.add_undo_method(self, "_undo_remove_node", scene_root, coordinator)
@@ -4225,18 +4219,18 @@ func _get_or_create_coordinator(create_if_missing: bool) -> BuildingEditor3DScri
 	return coordinator
 
 
-func _find_coordinator_from_node(node: Node) -> BuildingEditor3DScript:
+func _find_coordinator_from_node(node: Node) -> Building3DScript:
 	var cursor := node
 	while cursor != null:
-		if cursor is BuildingEditor3DScript:
-			return cursor as BuildingEditor3DScript
+		if cursor is Building3DScript:
+			return cursor as Building3DScript
 		cursor = cursor.get_parent()
 	return null
 
 
-func _find_first_coordinator(root: Node) -> BuildingEditor3DScript:
-	if root is BuildingEditor3DScript:
-		return root as BuildingEditor3DScript
+func _find_first_coordinator(root: Node) -> Building3DScript:
+	if root is Building3DScript:
+		return root as Building3DScript
 	for child in root.get_children():
 		var found := _find_first_coordinator(child)
 		if found != null:
@@ -4244,59 +4238,7 @@ func _find_first_coordinator(root: Node) -> BuildingEditor3DScript:
 	return null
 
 
-func _apply_wall_settings_to_coordinator(coordinator: BuildingEditor3DScript) -> void:
-	coordinator.grid_step = float(m_wall_settings["grid_step"])
-	coordinator.lock_to_8_way = bool(m_wall_settings["lock_8_way"])
-	coordinator.default_wall_height = float(m_wall_settings["height"])
-	coordinator.default_wall_thickness = float(m_wall_settings["thickness"])
-	coordinator.default_wall_color = Color(m_wall_settings["color"])
-
-
-func _apply_floor_settings_to_coordinator(coordinator: BuildingEditor3DScript) -> void:
-	coordinator.grid_step = float(m_floor_settings["grid_step"])
-	coordinator.default_floor_thickness = float(m_floor_settings["thickness"])
-	coordinator.default_floor_color = Color(m_floor_settings["color"])
-
-
-func _apply_stair_settings_to_coordinator(coordinator: BuildingEditor3DScript) -> void:
-	coordinator.grid_step = float(m_stair_settings["grid_step"])
-	coordinator.default_stair_height = float(m_stair_settings["height"])
-	coordinator.default_stair_step_count = int(m_stair_settings["step_count"])
-	coordinator.default_stair_thickness = float(m_stair_settings["thickness"])
-	coordinator.default_stair_rotation_degrees = float(m_stair_settings.get("rotation_degrees", 0.0))
-	coordinator.default_stair_color = Color(m_stair_settings["color"])
-
-
-func _apply_pillar_settings_to_coordinator(coordinator: BuildingEditor3DScript) -> void:
-	coordinator.grid_step = float(m_pillar_settings["grid_step"])
-	coordinator.default_pillar_radius = float(m_pillar_settings["radius"])
-	coordinator.default_pillar_upper_radius = float(m_pillar_settings["upper_radius"])
-	coordinator.default_pillar_height = float(m_pillar_settings["height"])
-	coordinator.default_pillar_sides = int(m_pillar_settings["sides"])
-	coordinator.default_pillar_style = String(m_pillar_settings["style"])
-	coordinator.default_pillar_lower_rim_height = float(m_pillar_settings["lower_rim_height"])
-	coordinator.default_pillar_lower_rim_outset = float(m_pillar_settings["lower_rim_outset"])
-	coordinator.default_pillar_upper_rim_height = float(m_pillar_settings["upper_rim_height"])
-	coordinator.default_pillar_upper_rim_outset = float(m_pillar_settings["upper_rim_outset"])
-	coordinator.default_pillar_color = Color(m_pillar_settings["color"])
-
-
-func _apply_roof_settings_to_coordinator(coordinator: BuildingEditor3DScript) -> void:
-	coordinator.grid_step = float(m_roof_settings["grid_step"])
-	coordinator.default_roof_style = String(m_roof_settings["style"])
-	coordinator.default_roof_height = float(m_roof_settings["height"])
-	coordinator.default_roof_thickness = float(m_roof_settings["thickness"])
-	coordinator.default_roof_overhang = float(m_roof_settings["overhang"])
-	coordinator.default_roof_hip_gable_height = float(m_roof_settings.get("hip_gable_height", 0.0))
-	coordinator.default_roof_rotation_degrees = float(m_roof_settings.get("rotation_degrees", 0.0))
-	coordinator.default_roof_color = Color(m_roof_settings["color"])
-	coordinator.default_roof_debug_wireframe = bool(m_roof_settings.get("debug_wireframe", false))
-
-
 func _active_grid_step(wall: Wall3DScript) -> float:
-	var coordinator := _find_coordinator_from_node(wall)
-	if coordinator != null:
-		return maxf(coordinator.grid_step, 0.05)
 	return maxf(float(m_wall_settings["grid_step"]), 0.05)
 
 
@@ -4310,7 +4252,7 @@ func _apply_wall_geometry(
 	wall.set_wall_geometry(new_start, new_end, _duplicate_segments(segments), opening_anchors)
 
 
-func _refresh_wall_intersections(coordinator: BuildingEditor3DScript) -> void:
+func _refresh_wall_intersections(coordinator: Building3DScript) -> void:
 	if coordinator != null and is_instance_valid(coordinator):
 		coordinator.refresh_wall_intersection_clips()
 
@@ -4319,7 +4261,7 @@ func _set_wall_endpoints_and_refresh_intersections(
 	wall: Wall3DScript,
 	new_start: Vector3,
 	new_end: Vector3,
-	coordinator: BuildingEditor3DScript
+	coordinator: Building3DScript
 ) -> void:
 	if wall == null or !is_instance_valid(wall):
 		return
@@ -4347,7 +4289,7 @@ func _do_set_wall_geometry_and_refresh_intersections(
 	new_end: Vector3,
 	segments: Array[WallSegment3DScript],
 	select_after: bool,
-	coordinator: BuildingEditor3DScript
+	coordinator: Building3DScript
 ) -> void:
 	_do_set_wall_geometry(wall, new_start, new_end, segments, select_after)
 	_refresh_wall_intersections(coordinator)
@@ -4377,7 +4319,7 @@ func _do_set_wall_geometry_preserving_children_and_refresh_intersections(
 	new_end: Vector3,
 	segments: Array[WallSegment3DScript],
 	select_after: bool,
-	coordinator: BuildingEditor3DScript
+	coordinator: Building3DScript
 ) -> void:
 	_do_set_wall_geometry_preserving_children(wall, new_start, new_end, segments, select_after)
 	_refresh_wall_intersections(coordinator)
@@ -4404,10 +4346,7 @@ func _duplicate_wall_segments(wall: Wall3DScript) -> Array[WallSegment3DScript]:
 
 
 func _normalized_wall_geometry(wall: Wall3DScript) -> Dictionary:
-	var coordinator := _find_coordinator_from_node(wall)
 	var tolerance := maxf(_active_grid_step(wall) * 0.25, 0.03)
-	if coordinator != null:
-		tolerance = maxf(coordinator.grid_step * 0.25, 0.03)
 	var combined: Array[WallSegment3DScript] = []
 	for segment in _duplicate_wall_segments(wall):
 		WallSegment3DScript.merge_into(combined, segment, tolerance, false)
@@ -4482,7 +4421,10 @@ func _commit_add_wall_joint(
 	var hit_parent_local := _wall_world_to_parent_local(wall, hit_world)
 	var coordinator := _find_coordinator_from_node(wall)
 	if coordinator != null:
-		hit_parent_local = coordinator.snap_local_position(hit_parent_local)
+		hit_parent_local = BuildingFactoryScript.snap_local_position(
+			hit_parent_local,
+			float(m_wall_settings["grid_step"])
+		)
 	var minimum_piece_length := maxf(_active_grid_step(wall) * 0.5, 0.1)
 	var geometry := wall.split_segment_geometry(segment_index, hit_parent_local, minimum_piece_length)
 	if geometry.is_empty():
@@ -4571,7 +4513,7 @@ func _commit_delete_zero_length_wall(
 	old_segments: Array[WallSegment3DScript]
 ) -> void:
 	var parent := wall.get_parent()
-	var coordinator := parent as BuildingEditor3DScript
+	var coordinator := parent as Building3DScript
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	if parent == null or scene_root == null:
 		_apply_wall_geometry(wall, old_start, old_end, old_segments)
@@ -4675,7 +4617,7 @@ func _are_dragged_wall_spans_long_enough(wall: Wall3DScript) -> bool:
 
 
 func _find_intersecting_targets_for_wall(
-	coordinator: BuildingEditor3DScript,
+	coordinator: Building3DScript,
 	wall: Wall3DScript
 ) -> Array[Wall3DScript]:
 	var targets: Array[Wall3DScript] = []
@@ -4695,14 +4637,8 @@ func _find_intersecting_targets_for_wall(
 
 func _snap_world_position(world_position: Vector3) -> Vector3:
 	var coordinator := _get_or_create_coordinator(false)
-	if coordinator != null:
-		return coordinator.snap_world_position(world_position)
 	var step := maxf(float(m_wall_settings["grid_step"]), 0.05)
-	return Vector3(
-		roundf(world_position.x / step) * step,
-		roundf(world_position.y / step) * step,
-		roundf(world_position.z / step) * step
-	)
+	return BuildingFactoryScript.snap_world_position(coordinator, world_position, step)
 
 
 func _set_preview_parent(preview: Node3D, parent: Node) -> void:
@@ -5344,7 +5280,7 @@ func _commit_wall_drag() -> void:
 		return
 	var coordinator := _find_coordinator_from_node(wall)
 	var intersects_after_move := false
-	if coordinator != null and coordinator.merge_intersecting:
+	if coordinator != null:
 		intersects_after_move = !_find_intersecting_targets_for_wall(coordinator, wall).is_empty()
 	var normalized_geometry := _normalized_wall_geometry(wall)
 	if !normalized_geometry.is_empty():
@@ -5835,7 +5771,7 @@ func _do_add_node_and_refresh_wall_intersections(
 	node: Node,
 	scene_root: Node,
 	select_after_add: bool,
-	coordinator: BuildingEditor3DScript
+	coordinator: Building3DScript
 ) -> void:
 	_do_add_node(parent, node, scene_root, select_after_add)
 	_refresh_wall_intersections(coordinator)
@@ -5846,7 +5782,7 @@ func _do_add_node_and_refresh_roofs(
 	node: Node,
 	scene_root: Node,
 	select_after_add: bool,
-	coordinator: BuildingEditor3DScript
+	coordinator: Building3DScript
 ) -> void:
 	_do_add_node(parent, node, scene_root, select_after_add)
 	if coordinator != null and is_instance_valid(coordinator):
@@ -5867,13 +5803,13 @@ func _undo_remove_node_and_rebuild(parent: Node, node: Node) -> void:
 func _undo_remove_node_and_refresh_wall_intersections(
 	parent: Node,
 	node: Node,
-	coordinator: BuildingEditor3DScript
+	coordinator: Building3DScript
 ) -> void:
 	_undo_remove_node(parent, node)
 	_refresh_wall_intersections(coordinator)
 
 
-func _undo_remove_node_and_refresh_roofs(parent: Node, node: Node, coordinator: BuildingEditor3DScript) -> void:
+func _undo_remove_node_and_refresh_roofs(parent: Node, node: Node, coordinator: Building3DScript) -> void:
 	_undo_remove_node(parent, node)
 	if coordinator != null and is_instance_valid(coordinator):
 		coordinator.refresh_roof_covered_rects()
@@ -5887,7 +5823,7 @@ func _set_roof_state_and_refresh(
 	new_height: float,
 	new_covered_rects: Array[Rect2],
 	new_covered_polygons: Array[PackedVector2Array],
-	coordinator: BuildingEditor3DScript
+	coordinator: Building3DScript
 ) -> void:
 	if roof == null or !is_instance_valid(roof):
 		return
@@ -5904,7 +5840,7 @@ func _set_roof_state_and_refresh(
 
 
 func _roof_layout_would_hide_any_roof(
-	coordinator: BuildingEditor3DScript,
+	coordinator: Building3DScript,
 	roof: Roof3DScript,
 	new_start: Vector3,
 	new_end: Vector3,
@@ -6820,18 +6756,6 @@ func _on_tool_mode_changed(mode: String) -> void:
 	_cancel_active_preview()
 	if m_tool_mode != MODE_SELECT:
 		_activate_3d_editor_context()
-	var coordinator := _get_or_create_coordinator(false)
-	if coordinator != null:
-		if m_tool_mode == MODE_FLOOR:
-			_apply_floor_settings_to_coordinator(coordinator)
-		elif m_tool_mode == MODE_STAIRS:
-			_apply_stair_settings_to_coordinator(coordinator)
-		elif m_tool_mode == MODE_PILLAR:
-			_apply_pillar_settings_to_coordinator(coordinator)
-		elif m_tool_mode == MODE_ROOF:
-			_apply_roof_settings_to_coordinator(coordinator)
-		elif m_tool_mode == MODE_WALL:
-			_apply_wall_settings_to_coordinator(coordinator)
 	_set_status("Select a tool." if mode == MODE_SELECT else "Active tool: %s" % mode.capitalize())
 
 
@@ -6841,41 +6765,26 @@ func _on_wall_settings_changed(settings: Dictionary) -> void:
 	if _wall_tool_type() != previous_type:
 		_clear_wall_preview()
 		_reset_wall_drawing_state()
-	var coordinator := _get_or_create_coordinator(false)
-	if coordinator != null:
-		_apply_wall_settings_to_coordinator(coordinator)
 
 
 func _on_floor_settings_changed(settings: Dictionary) -> void:
 	m_floor_settings = settings.duplicate(true)
 	_clear_floor_preview()
-	var coordinator := _get_or_create_coordinator(false)
-	if coordinator != null and m_tool_mode == MODE_FLOOR:
-		_apply_floor_settings_to_coordinator(coordinator)
 
 
 func _on_stair_settings_changed(settings: Dictionary) -> void:
 	m_stair_settings = settings.duplicate(true)
 	_clear_stair_preview()
-	var coordinator := _get_or_create_coordinator(false)
-	if coordinator != null and m_tool_mode == MODE_STAIRS:
-		_apply_stair_settings_to_coordinator(coordinator)
 
 
 func _on_pillar_settings_changed(settings: Dictionary) -> void:
 	m_pillar_settings = settings.duplicate(true)
 	_clear_pillar_preview()
-	var coordinator := _get_or_create_coordinator(false)
-	if coordinator != null and m_tool_mode == MODE_PILLAR:
-		_apply_pillar_settings_to_coordinator(coordinator)
 
 
 func _on_roof_settings_changed(settings: Dictionary) -> void:
 	m_roof_settings = settings.duplicate(true)
 	_clear_roof_preview()
-	var coordinator := _get_or_create_coordinator(false)
-	if coordinator != null and m_tool_mode == MODE_ROOF:
-		_apply_roof_settings_to_coordinator(coordinator)
 
 
 func _on_prop_settings_changed(settings: Dictionary) -> void:
@@ -6895,7 +6804,7 @@ func _on_door_settings_changed(settings: Dictionary) -> void:
 func _on_create_coordinator_requested() -> void:
 	var coordinator := _get_or_create_coordinator(true)
 	if coordinator != null:
-		_set_status("Coordinator ready.")
+		_set_status("Building ready.")
 
 
 func _on_scene_changed(_scene_root: Node) -> void:
