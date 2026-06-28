@@ -25,7 +25,7 @@
 ## Rules
 
 - `Building3D` is the root node for one building assembly.
-- `Wall3D` stores zero or more parent-local `WallSegment3D` resources in `segments`; segment zero supplies the node transform, and an empty array produces no wall mesh or collision.
+- `Wall3D` stores zero or more parent-local `WallSegment3D` resources in `segments`; segment zero supplies the node transform, node-level height/thickness/color changes apply to every segment, and an empty array produces no wall mesh or collision.
 - `Floor3D` stores opposite parent-local footprint corners in `start_point` and `end_point` plus optional local-space rectangular `floor_holes`; its node transform and mesh are rebuilt from those corners with thickness extending downward from the configured top surface.
 - `Stairs3D` stores opposite parent-local footprint corners in `start_point` and `end_point`; its node transform is rebuilt from the minimum X/Z lower-entry corner plus `stair_rotation_degrees`, and its mesh is rebuilt from total height, step count, underside thickness, and color.
 - `Pillar3D` stores universal pillar state and mesh/collision infrastructure. Concrete round, square, octagonal, and tapered classes identify each serialized style; only the variable-sided round/tapered branch exposes `side_count`.

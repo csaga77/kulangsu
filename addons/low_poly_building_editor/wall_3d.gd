@@ -21,6 +21,7 @@ const ROOF_COLLISION_CLIP_INFINITY := 999999.0
 var m_legacy_start_point := Vector3.ZERO
 var m_legacy_end_point := Vector3(4.0, 0.0, 0.0)
 var m_legacy_extra_segments: Array[WallSegment3D] = []
+var m_syncing_legacy_defaults := false
 
 @export var rebuild := false:
 	set(value):
@@ -70,30 +71,45 @@ var end_point := Vector3(4.0, 0.0, 0.0):
 @export_range(0.1, 6.0, 0.05, "or_greater") var wall_height := 2.4:
 	set(value):
 		var clamped_value := maxf(value, 0.1)
-		if is_equal_approx(wall_height, clamped_value):
+		if (
+			is_equal_approx(wall_height, clamped_value)
+			and (m_syncing_legacy_defaults or _segments_have_height(clamped_value))
+		):
 			return
 		wall_height = clamped_value
-		if !segments.is_empty() and segments[0] != null:
-			segments[0].height = clamped_value
+		if !m_syncing_legacy_defaults:
+			for segment in segments:
+				if segment != null:
+					segment.height = clamped_value
 		_request_rebuild()
 
 @export_range(0.03, 1.0, 0.01, "or_greater") var wall_thickness := 0.22:
 	set(value):
 		var clamped_value := maxf(value, 0.03)
-		if is_equal_approx(wall_thickness, clamped_value):
+		if (
+			is_equal_approx(wall_thickness, clamped_value)
+			and (m_syncing_legacy_defaults or _segments_have_thickness(clamped_value))
+		):
 			return
 		wall_thickness = clamped_value
-		if !segments.is_empty() and segments[0] != null:
-			segments[0].thickness = clamped_value
+		if !m_syncing_legacy_defaults:
+			for segment in segments:
+				if segment != null:
+					segment.thickness = clamped_value
 		_request_rebuild()
 
 @export var wall_color := Color(0.78, 0.68, 0.54, 1.0):
 	set(value):
-		if wall_color == value:
+		if (
+			wall_color == value
+			and (m_syncing_legacy_defaults or _segments_have_color(value))
+		):
 			return
 		wall_color = value
-		if !segments.is_empty() and segments[0] != null:
-			segments[0].color = value
+		if !m_syncing_legacy_defaults:
+			for segment in segments:
+				if segment != null:
+					segment.color = value
 		_request_rebuild()
 
 var extra_segments: Array[WallSegment3D] = []:
@@ -198,9 +214,32 @@ func _sync_legacy_defaults_from_primary() -> void:
 	var primary := segments[0]
 	m_legacy_start_point = primary.start_point
 	m_legacy_end_point = primary.end_point
+	m_syncing_legacy_defaults = true
 	wall_height = primary.height
 	wall_thickness = primary.thickness
 	wall_color = primary.color
+	m_syncing_legacy_defaults = false
+
+
+func _segments_have_height(value: float) -> bool:
+	for segment in segments:
+		if segment != null and !is_equal_approx(segment.height, value):
+			return false
+	return true
+
+
+func _segments_have_thickness(value: float) -> bool:
+	for segment in segments:
+		if segment != null and !is_equal_approx(segment.thickness, value):
+			return false
+	return true
+
+
+func _segments_have_color(value: Color) -> bool:
+	for segment in segments:
+		if segment != null and segment.color != value:
+			return false
+	return true
 
 
 func set_wall_endpoints(new_start: Vector3, new_end: Vector3) -> void:

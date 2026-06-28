@@ -270,6 +270,14 @@ func _validate_room_node(coordinator: Building3DScript) -> void:
 			m_failures.append("Building3D room wall lost its configured height")
 		if !is_equal_approx(segment.thickness, 0.3):
 			m_failures.append("Building3D room wall lost its configured thickness")
+	room.wall_height = 3.2
+	for segment_index in range(room.get_segment_count()):
+		if !is_equal_approx(room.get_segment(segment_index).height, 3.2):
+			m_failures.append("Wall3D room height change did not update every wall span")
+	room.get_segment(2).height = 2.8
+	room.wall_height = 3.2
+	if !is_equal_approx(room.get_segment(2).height, 3.2):
+		m_failures.append("Wall3D room height did not repair a stale wall span")
 	if room.mesh == null:
 		m_failures.append("Building3D room did not generate a wall mesh")
 	if room.get_node_or_null("WallCollision") == null:
