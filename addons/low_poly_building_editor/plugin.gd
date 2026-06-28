@@ -54,6 +54,25 @@ const OPENING_STYLE_SCRIPTS := {
 	"single_frame": preload("res://addons/low_poly_building_editor/single_door_frame_3d.gd"),
 	"double_frame": preload("res://addons/low_poly_building_editor/double_door_frame_3d.gd"),
 }
+const OPENING_STYLE_PROPERTY_NAMES: Array[StringName] = [
+	&"window_pane_depth",
+	&"window_pane_color",
+	&"pane_grid_rows",
+	&"pane_grid_cols",
+	&"muntin_thickness",
+	&"louver_count",
+	&"louver_depth",
+	&"transom_ratio",
+	&"transom_rail_thickness",
+	&"arch_steps",
+	&"door_panel_depth",
+	&"door_panel_color",
+	&"door_glazing_ratio",
+	&"door_glass_depth",
+	&"door_glass_color",
+	&"door_inset_rows",
+	&"door_inset_cols",
+]
 const OPENING_CUSTOM_TYPES := [
 	{"name": "BuildingOpening3D", "script": BuildingOpening3DScript},
 	{"name": "Window3D", "script": Window3DScript},
@@ -277,6 +296,17 @@ var m_window_settings := {
 	"sill_height": 0.9,
 	"frame_sides": 0,
 	"frame_protrusion": 0.02,
+	"frame_color": Color(0.86, 0.92, 0.94, 1.0),
+	"window_pane_depth": 0.03,
+	"window_pane_color": Color(0.58, 0.82, 0.95, 0.52),
+	"pane_grid_rows": 2,
+	"pane_grid_cols": 1,
+	"muntin_thickness": 0.03,
+	"louver_count": 6,
+	"louver_depth": 0.03,
+	"transom_ratio": 0.28,
+	"transom_rail_thickness": 0.03,
+	"arch_steps": 3,
 }
 var m_door_settings := {
 	"style": "single_door",
@@ -285,6 +315,17 @@ var m_door_settings := {
 	"frame_thickness": 0.08,
 	"frame_sides": 0,
 	"frame_protrusion": 0.02,
+	"frame_color": Color(0.86, 0.92, 0.94, 1.0),
+	"door_panel_depth": 0.05,
+	"door_panel_color": Color(0.50, 0.34, 0.20, 1.0),
+	"door_glazing_ratio": 0.55,
+	"door_glass_depth": 0.03,
+	"door_glass_color": Color(0.58, 0.82, 0.95, 0.52),
+	"pane_grid_rows": 2,
+	"pane_grid_cols": 1,
+	"muntin_thickness": 0.03,
+	"door_inset_rows": 3,
+	"door_inset_cols": 2,
 }
 var m_wall_start_local := Vector3.ZERO
 var m_wall_end_local := Vector3.ZERO
@@ -398,6 +439,7 @@ var m_drag_valid := false
 var m_drag_opening_edge := -1    # -1=move, 0=left, 1=right, 2=bottom, 3=top
 var m_drag_opening_old_width := 0.0
 var m_drag_opening_old_height := 0.0
+var m_drag_opening_old_frame_color := Color.WHITE
 var m_drag_resize_anchor_2d := Vector2.ZERO
 var m_drag_resize_center_2d := Vector2.ZERO
 var m_drag_hover_opening: BuildingOpening3DScript
@@ -3302,7 +3344,19 @@ func _apply_opening_settings(opening: BuildingOpening3DScript, settings: Diction
 	opening.wall_thickness = maxf(frame_depth - 0.04, 0.0)
 	opening.frame_sides = int(settings.get("frame_sides", 0))
 	opening.frame_protrusion = float(settings.get("frame_protrusion", 0.02))
+	opening.frame_color = Color(settings.get("frame_color", Color(0.86, 0.92, 0.94, 1.0)))
 	opening.show_bottom_frame = bool(settings["show_bottom_frame"])
+	for property_name in OPENING_STYLE_PROPERTY_NAMES:
+		var setting_key := String(property_name)
+		if settings.has(setting_key) and _object_has_property(opening, property_name):
+			opening.set(property_name, settings[setting_key])
+
+
+func _object_has_property(object: Object, property_name: StringName) -> bool:
+	for property in object.get_property_list():
+		if StringName(property.get("name", "")) == property_name:
+			return true
+	return false
 
 
 func _opening_script_for_settings(settings: Dictionary) -> Script:
@@ -3382,6 +3436,17 @@ func _active_opening_settings() -> Dictionary:
 			"frame_thickness": float(m_door_settings.get("frame_thickness", 0.08)),
 			"frame_sides": int(m_door_settings.get("frame_sides", 0)),
 			"frame_protrusion": float(m_door_settings.get("frame_protrusion", 0.02)),
+			"frame_color": Color(m_door_settings.get("frame_color", Color(0.86, 0.92, 0.94, 1.0))),
+			"door_panel_depth": float(m_door_settings.get("door_panel_depth", 0.05)),
+			"door_panel_color": Color(m_door_settings.get("door_panel_color", Color(0.50, 0.34, 0.20, 1.0))),
+			"door_glazing_ratio": float(m_door_settings.get("door_glazing_ratio", 0.55)),
+			"door_glass_depth": float(m_door_settings.get("door_glass_depth", 0.03)),
+			"door_glass_color": Color(m_door_settings.get("door_glass_color", Color(0.58, 0.82, 0.95, 0.52))),
+			"pane_grid_rows": int(m_door_settings.get("pane_grid_rows", 2)),
+			"pane_grid_cols": int(m_door_settings.get("pane_grid_cols", 1)),
+			"muntin_thickness": float(m_door_settings.get("muntin_thickness", 0.03)),
+			"door_inset_rows": int(m_door_settings.get("door_inset_rows", 3)),
+			"door_inset_cols": int(m_door_settings.get("door_inset_cols", 2)),
 			"sill_height": 0.0,
 			"show_bottom_frame": false,
 			"allow_base_edge": true,
@@ -3414,6 +3479,17 @@ func _active_opening_settings() -> Dictionary:
 		"frame_thickness": float(m_window_settings["frame_thickness"]),
 		"frame_sides": int(m_window_settings.get("frame_sides", 0)),
 		"frame_protrusion": float(m_window_settings.get("frame_protrusion", 0.02)),
+		"frame_color": Color(m_window_settings.get("frame_color", Color(0.86, 0.92, 0.94, 1.0))),
+		"window_pane_depth": float(m_window_settings.get("window_pane_depth", 0.03)),
+		"window_pane_color": Color(m_window_settings.get("window_pane_color", Color(0.58, 0.82, 0.95, 0.52))),
+		"pane_grid_rows": int(m_window_settings.get("pane_grid_rows", 2)),
+		"pane_grid_cols": int(m_window_settings.get("pane_grid_cols", 1)),
+		"muntin_thickness": float(m_window_settings.get("muntin_thickness", 0.03)),
+		"louver_count": int(m_window_settings.get("louver_count", 6)),
+		"louver_depth": float(m_window_settings.get("louver_depth", 0.03)),
+		"transom_ratio": float(m_window_settings.get("transom_ratio", 0.28)),
+		"transom_rail_thickness": float(m_window_settings.get("transom_rail_thickness", 0.03)),
+		"arch_steps": int(m_window_settings.get("arch_steps", 3)),
 		"sill_height": maxf(float(m_window_settings.get("sill_height", 0.9)), 0.0),
 		"show_bottom_frame": true,
 		"allow_base_edge": false,
@@ -3488,7 +3564,7 @@ func _commit_placement() -> void:
 		var opening := opening_script.new() as BuildingOpening3DScript
 		opening.name = String(settings["node_name"])
 		_apply_opening_settings(opening, settings, opening_preview.frame_depth)
-		opening.frame_color = Color(0.86, 0.92, 0.94, 1.0)
+		opening.frame_color = Color(settings.get("frame_color", Color(0.86, 0.92, 0.94, 1.0)))
 		opening.position = opening_preview.position
 		opening.rotation = opening_preview.rotation
 		opening.set_meta(
@@ -5440,6 +5516,9 @@ func _start_window_drag(
 	m_drag_old_position = opening.position
 	m_drag_opening_old_width = opening.opening_width
 	m_drag_opening_old_height = opening.opening_height
+	m_drag_opening_old_frame_color = (
+		m_drag_hover_old_color if opening == m_drag_hover_opening else opening.frame_color
+	)
 	m_drag_old_segment = int(opening.get_meta(Wall3DScript.SEGMENT_INDEX_META, 0))
 	m_drag_target_segment = m_drag_old_segment
 	m_drag_opening_edge = edge
@@ -5578,7 +5657,7 @@ func _commit_window_drag() -> void:
 		undo_redo.add_do_method(self, "_do_move_opening", opening, new_position, target_segment, wall)
 		undo_redo.add_undo_method(self, "_do_move_opening", opening, old_position, old_segment, wall)
 	undo_redo.commit_action()
-	opening.frame_color = Color(0.86, 0.92, 0.94, 1.0)
+	opening.frame_color = m_drag_opening_old_frame_color
 	_set_status("Resized wall opening." if m_drag_opening_edge >= 0 else "Moved wall opening.")
 	m_drag_opening_edge = -1
 
@@ -5603,7 +5682,7 @@ func _cancel_window_drag() -> void:
 		m_dragging_opening.opening_width = m_drag_opening_old_width
 		m_dragging_opening.opening_height = m_drag_opening_old_height
 		m_dragging_opening.set_meta(Wall3DScript.SEGMENT_INDEX_META, m_drag_old_segment)
-		m_dragging_opening.frame_color = Color(0.86, 0.92, 0.94, 1.0)
+		m_dragging_opening.frame_color = m_drag_opening_old_frame_color
 		var wall := m_dragging_opening.get_parent() as Wall3DScript
 		if wall != null:
 			wall.rebuild_wall_mesh()

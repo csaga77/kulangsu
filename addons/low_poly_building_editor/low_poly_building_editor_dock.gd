@@ -46,7 +46,6 @@ const SHORTCUTS_DOOR_TEXT := "Shortcuts\nSelect a door style, then click a wall 
 
 var m_editor_interface: EditorInterface
 var m_mode_option: OptionButton
-var m_shortcuts_label: Label
 var m_status_label: Label
 var m_wall_section: VBoxContainer
 var m_floor_section: VBoxContainer
@@ -87,6 +86,8 @@ var m_pillar_lower_rim_outset_spin: SpinBox
 var m_pillar_upper_rim_height_spin: SpinBox
 var m_pillar_upper_rim_outset_spin: SpinBox
 var m_pillar_color_picker: ColorPickerButton
+var m_pillar_style_header: Label
+var m_pillar_sides_row: HBoxContainer
 var m_roof_grid_spin: SpinBox
 var m_roof_style_option: OptionButton
 var m_roof_base_height_spin: SpinBox
@@ -97,6 +98,9 @@ var m_roof_hip_gable_height_spin: SpinBox
 var m_roof_rotation_spin: SpinBox
 var m_roof_color_picker: ColorPickerButton
 var m_roof_wireframe_check: CheckBox
+var m_roof_style_header: Label
+var m_roof_angle_row: HBoxContainer
+var m_roof_hip_gable_height_row: HBoxContainer
 var m_palette_root_edit: LineEdit
 var m_prop_path_edit: LineEdit
 var m_prop_clearance_spin: SpinBox
@@ -107,13 +111,41 @@ var m_window_style_option: OptionButton
 var m_window_width_spin: SpinBox
 var m_window_height_spin: SpinBox
 var m_window_frame_spin: SpinBox
+var m_window_frame_protrusion_spin: SpinBox
+var m_window_frame_color_picker: ColorPickerButton
 var m_window_sill_spin: SpinBox
 var m_window_frame_sides_option: OptionButton
+var m_window_style_header: Label
+var m_window_style_rows: Dictionary = {}
+var m_window_pane_depth_spin: SpinBox
+var m_window_pane_color_picker: ColorPickerButton
+var m_window_grid_rows_spin: SpinBox
+var m_window_grid_cols_spin: SpinBox
+var m_window_muntin_thickness_spin: SpinBox
+var m_window_louver_count_spin: SpinBox
+var m_window_louver_depth_spin: SpinBox
+var m_window_transom_ratio_spin: SpinBox
+var m_window_transom_rail_spin: SpinBox
+var m_window_arch_steps_spin: SpinBox
 var m_door_style_option: OptionButton
 var m_door_width_spin: SpinBox
 var m_door_height_spin: SpinBox
 var m_door_frame_spin: SpinBox
+var m_door_frame_protrusion_spin: SpinBox
+var m_door_frame_color_picker: ColorPickerButton
 var m_door_frame_sides_option: OptionButton
+var m_door_style_header: Label
+var m_door_style_rows: Dictionary = {}
+var m_door_panel_depth_spin: SpinBox
+var m_door_panel_color_picker: ColorPickerButton
+var m_door_glazing_ratio_spin: SpinBox
+var m_door_glass_depth_spin: SpinBox
+var m_door_glass_color_picker: ColorPickerButton
+var m_door_grid_rows_spin: SpinBox
+var m_door_grid_cols_spin: SpinBox
+var m_door_muntin_thickness_spin: SpinBox
+var m_door_inset_rows_spin: SpinBox
+var m_door_inset_cols_spin: SpinBox
 var m_palette_paths: PackedStringArray = PackedStringArray()
 
 
@@ -155,11 +187,6 @@ func _build_ui() -> void:
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(content)
 
-	m_shortcuts_label = Label.new()
-	m_shortcuts_label.text = _shortcut_text_for_mode(MODE_SELECT)
-	m_shortcuts_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	content.add_child(m_shortcuts_label)
-
 	m_status_label = Label.new()
 	m_status_label.text = "Select a tool."
 	m_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -168,14 +195,12 @@ func _build_ui() -> void:
 	content.add_child(HSeparator.new())
 
 	var mode_row := HBoxContainer.new()
-	mode_row.tooltip_text = "Choose the active building editor tool. Only settings for the selected tool are shown."
 	var mode_label := Label.new()
 	mode_label.text = "Tool:"
-	mode_label.tooltip_text = mode_row.tooltip_text
 	mode_row.add_child(mode_label)
 
 	m_mode_option = OptionButton.new()
-	m_mode_option.tooltip_text = mode_row.tooltip_text
+	m_mode_option.tooltip_text = _shortcut_text_for_mode(MODE_SELECT)
 	m_mode_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	m_mode_option.add_item("Select", 0)
 	m_mode_option.set_item_metadata(0, MODE_SELECT)
@@ -248,7 +273,7 @@ func _make_tool_section(parent: VBoxContainer) -> VBoxContainer:
 
 func _build_wall_controls(parent: VBoxContainer) -> void:
 	var header := Label.new()
-	header.text = "Wall"
+	header.text = "Wall Defaults"
 	parent.add_child(header)
 
 	m_wall_type_option = OptionButton.new()
@@ -295,7 +320,7 @@ func _build_wall_controls(parent: VBoxContainer) -> void:
 
 func _build_floor_controls(parent: VBoxContainer) -> void:
 	var header := Label.new()
-	header.text = "Floor"
+	header.text = "Floor Defaults"
 	parent.add_child(header)
 
 	m_floor_type_option = OptionButton.new()
@@ -328,7 +353,7 @@ func _build_floor_controls(parent: VBoxContainer) -> void:
 
 func _build_stair_controls(parent: VBoxContainer) -> void:
 	var header := Label.new()
-	header.text = "Stairs"
+	header.text = "Stairs Defaults"
 	parent.add_child(header)
 
 	m_stair_grid_spin = _make_spin(0.05, 8.0, 0.05, 0.5)
@@ -364,7 +389,7 @@ func _build_stair_controls(parent: VBoxContainer) -> void:
 
 func _build_pillar_controls(parent: VBoxContainer) -> void:
 	var header := Label.new()
-	header.text = "Pillar"
+	header.text = "Pillar Defaults"
 	parent.add_child(header)
 
 	m_pillar_grid_spin = _make_spin(0.05, 8.0, 0.05, 0.5)
@@ -403,10 +428,6 @@ func _build_pillar_controls(parent: VBoxContainer) -> void:
 	_add_labeled_control(parent, "Height:", m_pillar_height_spin, "Vertical height of newly placed pillars.")
 	m_pillar_height_spin.value_changed.connect(_on_pillar_setting_changed)
 
-	m_pillar_sides_spin = _make_spin(3.0, 24.0, 1.0, 8.0)
-	_add_labeled_control(parent, "Sides:", m_pillar_sides_spin, "Number of sides used by round and tapered pillar styles.")
-	m_pillar_sides_spin.value_changed.connect(_on_pillar_setting_changed)
-
 	m_pillar_lower_rim_height_spin = _make_spin(0.0, 2.0, 0.01, 0.12)
 	m_pillar_lower_rim_height_spin.tooltip_text = "Lower rim band height. Set height or outset to 0 to disable it."
 	_add_labeled_control(parent, "Lower Rim H:", m_pillar_lower_rim_height_spin)
@@ -431,10 +452,21 @@ func _build_pillar_controls(parent: VBoxContainer) -> void:
 	m_pillar_color_picker.color_changed.connect(_on_pillar_color_changed)
 	_add_labeled_control(parent, "Color:", m_pillar_color_picker, "Vertex color applied to newly placed pillars.")
 
+	m_pillar_style_header = _add_style_properties_header(parent)
+	m_pillar_sides_spin = _make_spin(3.0, 24.0, 1.0, 8.0)
+	m_pillar_sides_row = _add_labeled_control(
+		parent,
+		"Sides:",
+		m_pillar_sides_spin,
+		"Number of sides used by round and tapered pillar styles."
+	)
+	m_pillar_sides_spin.value_changed.connect(_on_pillar_setting_changed)
+	_update_pillar_style_controls()
+
 
 func _build_roof_controls(parent: VBoxContainer) -> void:
 	var header := Label.new()
-	header.text = "Roof"
+	header.text = "Roof Defaults"
 	parent.add_child(header)
 
 	m_roof_grid_spin = _make_spin(0.05, 8.0, 0.05, 0.5)
@@ -460,11 +492,6 @@ func _build_roof_controls(parent: VBoxContainer) -> void:
 	_add_labeled_control(parent, "Base Y:", m_roof_base_height_spin)
 	m_roof_base_height_spin.value_changed.connect(_on_roof_setting_changed)
 
-	m_roof_height_spin = _make_spin(0.0, 89.0, 1.0, DEFAULT_ROOF_ANGLE_DEGREES)
-	m_roof_height_spin.tooltip_text = "Roof face angle in degrees for shed, gable, and hip roofs. Flat roofs ignore it."
-	_add_labeled_control(parent, "Angle:", m_roof_height_spin)
-	m_roof_height_spin.value_changed.connect(_on_roof_setting_changed)
-
 	m_roof_thickness_spin = _make_spin(0.02, 2.0, 0.01, 0.12)
 	_add_labeled_control(parent, "Thickness:", m_roof_thickness_spin, "Thickness extending downward from the generated roof surface.")
 	m_roof_thickness_spin.value_changed.connect(_on_roof_setting_changed)
@@ -472,15 +499,6 @@ func _build_roof_controls(parent: VBoxContainer) -> void:
 	m_roof_overhang_spin = _make_spin(0.0, 4.0, 0.01, 0.2)
 	_add_labeled_control(parent, "Overhang:", m_roof_overhang_spin, "Distance the roof eaves extend beyond the drawn footprint.")
 	m_roof_overhang_spin.value_changed.connect(_on_roof_setting_changed)
-
-	m_roof_hip_gable_height_spin = _make_spin(0.0, 20.0, 0.01, 0.0)
-	_add_labeled_control(
-		parent,
-		"Gable Drop:",
-		m_roof_hip_gable_height_spin,
-		"Vertical drop from a hip roof peak to the clipped gable base. Positive values extend the ridge while keeping roof faces at the selected angle."
-	)
-	m_roof_hip_gable_height_spin.value_changed.connect(_on_roof_setting_changed)
 
 	m_roof_rotation_spin = _make_spin(-180.0, 180.0, 1.0, 0.0)
 	m_roof_rotation_spin.tooltip_text = "Starting Y rotation for new roofs, in degrees."
@@ -496,6 +514,22 @@ func _build_roof_controls(parent: VBoxContainer) -> void:
 	m_roof_wireframe_check.tooltip_text = "Show the generated roof triangle edges for previews and newly created roofs."
 	m_roof_wireframe_check.toggled.connect(_on_roof_wireframe_changed)
 	parent.add_child(m_roof_wireframe_check)
+
+	m_roof_style_header = _add_style_properties_header(parent)
+	m_roof_height_spin = _make_spin(0.0, 89.0, 1.0, DEFAULT_ROOF_ANGLE_DEGREES)
+	m_roof_height_spin.tooltip_text = "Roof face angle in degrees for shed, gable, and hip roofs."
+	m_roof_angle_row = _add_labeled_control(parent, "Angle:", m_roof_height_spin)
+	m_roof_height_spin.value_changed.connect(_on_roof_setting_changed)
+
+	m_roof_hip_gable_height_spin = _make_spin(0.0, 20.0, 0.01, 0.0)
+	m_roof_hip_gable_height_row = _add_labeled_control(
+		parent,
+		"Gable Drop:",
+		m_roof_hip_gable_height_spin,
+		"Vertical drop from a hip roof peak to the clipped gable base. Positive values extend the ridge while keeping roof faces at the selected angle."
+	)
+	m_roof_hip_gable_height_spin.value_changed.connect(_on_roof_setting_changed)
+	_update_roof_style_controls()
 
 
 func _build_prop_controls(parent: VBoxContainer) -> void:
@@ -561,7 +595,7 @@ func _build_prop_controls(parent: VBoxContainer) -> void:
 
 func _build_window_controls(parent: VBoxContainer) -> void:
 	var header := Label.new()
-	header.text = "Window Opening"
+	header.text = "Window Defaults"
 	parent.add_child(header)
 
 	m_window_style_option = OptionButton.new()
@@ -595,6 +629,19 @@ func _build_window_controls(parent: VBoxContainer) -> void:
 	_add_labeled_control(parent, "Frame:", m_window_frame_spin, "Visible frame thickness around the opening.")
 	m_window_frame_spin.value_changed.connect(_on_window_setting_changed)
 
+	m_window_frame_protrusion_spin = _make_spin(0.0, 0.5, 0.005, 0.02)
+	_add_labeled_control(
+		parent,
+		"Frame Outset:",
+		m_window_frame_protrusion_spin,
+		"Distance the frame casing projects beyond the wall face."
+	)
+	m_window_frame_protrusion_spin.value_changed.connect(_on_window_setting_changed)
+
+	m_window_frame_color_picker = _make_color_picker(Color(0.86, 0.92, 0.94, 1.0))
+	_add_labeled_control(parent, "Frame Color:", m_window_frame_color_picker, "Color of the window frame casing.")
+	m_window_frame_color_picker.color_changed.connect(_on_window_style_color_changed)
+
 	m_window_sill_spin = _make_spin(0.0, 10.0, 0.01, 0.9)
 	m_window_sill_spin.tooltip_text = "Height of the opening's bottom edge above the wall base."
 	_add_labeled_control(parent, "Sill:", m_window_sill_spin)
@@ -604,10 +651,73 @@ func _build_window_controls(parent: VBoxContainer) -> void:
 	_add_labeled_control(parent, "Frame Sides:", m_window_frame_sides_option, "Show the frame casing on just the placed wall face, or on both faces.")
 	m_window_frame_sides_option.item_selected.connect(_on_window_frame_sides_selected)
 
+	m_window_style_header = _add_style_properties_header(parent)
+
+	m_window_pane_depth_spin = _make_spin(0.01, 0.5, 0.01, 0.03)
+	m_window_style_rows["pane_depth"] = _add_labeled_control(
+		parent, "Pane Depth:", m_window_pane_depth_spin, "Depth of generated window glass."
+	)
+	m_window_pane_depth_spin.value_changed.connect(_on_window_setting_changed)
+
+	m_window_pane_color_picker = _make_color_picker(Color(0.58, 0.82, 0.95, 0.52))
+	m_window_style_rows["pane_color"] = _add_labeled_control(
+		parent, "Pane Color:", m_window_pane_color_picker, "Color and opacity of generated window glass."
+	)
+	m_window_pane_color_picker.color_changed.connect(_on_window_style_color_changed)
+
+	m_window_grid_rows_spin = _make_spin(0.0, 8.0, 1.0, 2.0)
+	m_window_style_rows["grid_rows"] = _add_labeled_control(
+		parent, "Grid Rows:", m_window_grid_rows_spin, "Horizontal muntin rows inside a grid window."
+	)
+	m_window_grid_rows_spin.value_changed.connect(_on_window_setting_changed)
+
+	m_window_grid_cols_spin = _make_spin(0.0, 8.0, 1.0, 1.0)
+	m_window_style_rows["grid_cols"] = _add_labeled_control(
+		parent, "Grid Cols:", m_window_grid_cols_spin, "Vertical muntin columns inside a grid window."
+	)
+	m_window_grid_cols_spin.value_changed.connect(_on_window_setting_changed)
+
+	m_window_muntin_thickness_spin = _make_spin(0.005, 0.3, 0.005, 0.03)
+	m_window_style_rows["muntin"] = _add_labeled_control(
+		parent, "Muntin:", m_window_muntin_thickness_spin, "Thickness of grid-window muntin bars."
+	)
+	m_window_muntin_thickness_spin.value_changed.connect(_on_window_setting_changed)
+
+	m_window_louver_count_spin = _make_spin(1.0, 16.0, 1.0, 6.0)
+	m_window_style_rows["louver_count"] = _add_labeled_control(
+		parent, "Louvers:", m_window_louver_count_spin, "Number of horizontal louver slats."
+	)
+	m_window_louver_count_spin.value_changed.connect(_on_window_setting_changed)
+
+	m_window_louver_depth_spin = _make_spin(0.01, 0.5, 0.01, 0.03)
+	m_window_style_rows["louver_depth"] = _add_labeled_control(
+		parent, "Louver Depth:", m_window_louver_depth_spin, "Depth of generated louver slats."
+	)
+	m_window_louver_depth_spin.value_changed.connect(_on_window_setting_changed)
+
+	m_window_transom_ratio_spin = _make_spin(0.0, 0.9, 0.01, 0.28)
+	m_window_style_rows["transom_ratio"] = _add_labeled_control(
+		parent, "Transom Ratio:", m_window_transom_ratio_spin, "Fraction of the pane height above the transom rail."
+	)
+	m_window_transom_ratio_spin.value_changed.connect(_on_window_setting_changed)
+
+	m_window_transom_rail_spin = _make_spin(0.005, 0.3, 0.005, 0.03)
+	m_window_style_rows["transom_rail"] = _add_labeled_control(
+		parent, "Transom Rail:", m_window_transom_rail_spin, "Thickness of the transom rail."
+	)
+	m_window_transom_rail_spin.value_changed.connect(_on_window_setting_changed)
+
+	m_window_arch_steps_spin = _make_spin(1.0, 6.0, 1.0, 3.0)
+	m_window_style_rows["arch_steps"] = _add_labeled_control(
+		parent, "Arch Steps:", m_window_arch_steps_spin, "Number of stepped bands forming the window arch."
+	)
+	m_window_arch_steps_spin.value_changed.connect(_on_window_setting_changed)
+	_update_window_style_controls()
+
 
 func _build_door_controls(parent: VBoxContainer) -> void:
 	var header := Label.new()
-	header.text = "Door Opening"
+	header.text = "Door Defaults"
 	parent.add_child(header)
 
 	m_door_style_option = OptionButton.new()
@@ -643,9 +753,85 @@ func _build_door_controls(parent: VBoxContainer) -> void:
 	_add_labeled_control(parent, "Frame:", m_door_frame_spin, "Visible frame thickness around the door opening.")
 	m_door_frame_spin.value_changed.connect(_on_door_setting_changed)
 
+	m_door_frame_protrusion_spin = _make_spin(0.0, 0.5, 0.005, 0.02)
+	_add_labeled_control(
+		parent,
+		"Frame Outset:",
+		m_door_frame_protrusion_spin,
+		"Distance the frame casing projects beyond the wall face."
+	)
+	m_door_frame_protrusion_spin.value_changed.connect(_on_door_setting_changed)
+
+	m_door_frame_color_picker = _make_color_picker(Color(0.86, 0.92, 0.94, 1.0))
+	_add_labeled_control(parent, "Frame Color:", m_door_frame_color_picker, "Color of the door frame casing.")
+	m_door_frame_color_picker.color_changed.connect(_on_door_style_color_changed)
+
 	m_door_frame_sides_option = _make_frame_sides_option()
 	_add_labeled_control(parent, "Frame Sides:", m_door_frame_sides_option, "Show the frame casing on just the placed wall face, or on both faces.")
 	m_door_frame_sides_option.item_selected.connect(_on_door_frame_sides_selected)
+
+	m_door_style_header = _add_style_properties_header(parent)
+
+	m_door_panel_depth_spin = _make_spin(0.01, 0.5, 0.01, 0.05)
+	m_door_style_rows["panel_depth"] = _add_labeled_control(
+		parent, "Panel Depth:", m_door_panel_depth_spin, "Depth of generated solid door leaves."
+	)
+	m_door_panel_depth_spin.value_changed.connect(_on_door_setting_changed)
+
+	m_door_panel_color_picker = _make_color_picker(Color(0.50, 0.34, 0.20, 1.0))
+	m_door_style_rows["panel_color"] = _add_labeled_control(
+		parent, "Panel Color:", m_door_panel_color_picker, "Color of generated door leaves."
+	)
+	m_door_panel_color_picker.color_changed.connect(_on_door_style_color_changed)
+
+	m_door_glazing_ratio_spin = _make_spin(0.0, 0.95, 0.01, 0.55)
+	m_door_style_rows["glazing_ratio"] = _add_labeled_control(
+		parent, "Glazing Ratio:", m_door_glazing_ratio_spin, "Fraction of each glazed door leaf occupied by glass."
+	)
+	m_door_glazing_ratio_spin.value_changed.connect(_on_door_setting_changed)
+
+	m_door_glass_depth_spin = _make_spin(0.01, 0.5, 0.01, 0.03)
+	m_door_style_rows["glass_depth"] = _add_labeled_control(
+		parent, "Glass Depth:", m_door_glass_depth_spin, "Depth of generated door glass."
+	)
+	m_door_glass_depth_spin.value_changed.connect(_on_door_setting_changed)
+
+	m_door_glass_color_picker = _make_color_picker(Color(0.58, 0.82, 0.95, 0.52))
+	m_door_style_rows["glass_color"] = _add_labeled_control(
+		parent, "Glass Color:", m_door_glass_color_picker, "Color and opacity of generated door glass."
+	)
+	m_door_glass_color_picker.color_changed.connect(_on_door_style_color_changed)
+
+	m_door_grid_rows_spin = _make_spin(0.0, 8.0, 1.0, 2.0)
+	m_door_style_rows["grid_rows"] = _add_labeled_control(
+		parent, "Grid Rows:", m_door_grid_rows_spin, "Horizontal muntin rows inside a cross-glazed door."
+	)
+	m_door_grid_rows_spin.value_changed.connect(_on_door_setting_changed)
+
+	m_door_grid_cols_spin = _make_spin(0.0, 8.0, 1.0, 1.0)
+	m_door_style_rows["grid_cols"] = _add_labeled_control(
+		parent, "Grid Cols:", m_door_grid_cols_spin, "Vertical muntin columns inside a cross-glazed door."
+	)
+	m_door_grid_cols_spin.value_changed.connect(_on_door_setting_changed)
+
+	m_door_muntin_thickness_spin = _make_spin(0.005, 0.3, 0.005, 0.03)
+	m_door_style_rows["muntin"] = _add_labeled_control(
+		parent, "Muntin:", m_door_muntin_thickness_spin, "Thickness of cross-glazed muntin bars."
+	)
+	m_door_muntin_thickness_spin.value_changed.connect(_on_door_setting_changed)
+
+	m_door_inset_rows_spin = _make_spin(0.0, 4.0, 1.0, 3.0)
+	m_door_style_rows["inset_rows"] = _add_labeled_control(
+		parent, "Inset Rows:", m_door_inset_rows_spin, "Rows of raised inset details on a panel door."
+	)
+	m_door_inset_rows_spin.value_changed.connect(_on_door_setting_changed)
+
+	m_door_inset_cols_spin = _make_spin(0.0, 3.0, 1.0, 2.0)
+	m_door_style_rows["inset_cols"] = _add_labeled_control(
+		parent, "Inset Cols:", m_door_inset_cols_spin, "Columns of raised inset details on a panel door."
+	)
+	m_door_inset_cols_spin.value_changed.connect(_on_door_setting_changed)
+	_update_door_style_controls()
 
 
 func _make_spin(min_value: float, max_value: float, step: float, value: float) -> SpinBox:
@@ -700,6 +886,11 @@ func _refresh_color_picker_icons() -> void:
 	_update_color_picker_icon(m_stair_color_picker)
 	_update_color_picker_icon(m_pillar_color_picker)
 	_update_color_picker_icon(m_roof_color_picker)
+	_update_color_picker_icon(m_window_frame_color_picker)
+	_update_color_picker_icon(m_window_pane_color_picker)
+	_update_color_picker_icon(m_door_frame_color_picker)
+	_update_color_picker_icon(m_door_panel_color_picker)
+	_update_color_picker_icon(m_door_glass_color_picker)
 
 
 func _make_color_swatch_texture(color: Color) -> Texture2D:
@@ -726,7 +917,7 @@ func _add_labeled_control(
 	label_text: String,
 	control: Control,
 	description: String = ""
-) -> void:
+) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	var label := Label.new()
 	label.text = label_text
@@ -741,11 +932,19 @@ func _add_labeled_control(
 	row.add_child(label)
 	row.add_child(control)
 	parent.add_child(row)
+	return row
+
+
+func _add_style_properties_header(parent: VBoxContainer) -> Label:
+	var header := Label.new()
+	header.text = "Style Properties"
+	parent.add_child(header)
+	return header
 
 
 func _on_mode_selected(index: int) -> void:
 	var mode := String(m_mode_option.get_item_metadata(index))
-	_update_shortcuts_for_mode(mode)
+	_update_tool_tooltip_for_mode(mode)
 	_update_visible_tool_section(mode)
 	tool_mode_changed.emit(mode)
 
@@ -758,7 +957,7 @@ func select_tool_mode(mode: String) -> void:
 		return
 	if m_mode_option != null:
 		m_mode_option.select(index)
-	_update_shortcuts_for_mode(mode)
+	_update_tool_tooltip_for_mode(mode)
 	_update_visible_tool_section(mode)
 	tool_mode_changed.emit(mode)
 
@@ -772,10 +971,10 @@ func _index_for_tool_mode(mode: String) -> int:
 	return -1
 
 
-func _update_shortcuts_for_mode(mode: String) -> void:
-	if m_shortcuts_label == null:
+func _update_tool_tooltip_for_mode(mode: String) -> void:
+	if m_mode_option == null:
 		return
-	m_shortcuts_label.text = _shortcut_text_for_mode(mode)
+	m_mode_option.tooltip_text = _shortcut_text_for_mode(mode)
 
 
 func _shortcut_text_for_mode(mode: String) -> String:
@@ -906,6 +1105,7 @@ func _on_pillar_setting_changed(_value: float) -> void:
 
 
 func _on_pillar_style_selected(_index: int) -> void:
+	_update_pillar_style_controls()
 	_emit_pillar_settings()
 
 
@@ -919,6 +1119,7 @@ func _on_roof_setting_changed(_value: float) -> void:
 
 
 func _on_roof_style_selected(_index: int) -> void:
+	_update_roof_style_controls()
 	_emit_roof_settings()
 
 
@@ -947,6 +1148,7 @@ func _on_window_style_selected(_index: int) -> void:
 	var style := _selected_window_style()
 	if m_window_width_spin != null:
 		m_window_width_spin.value = _window_default_width(style)
+	_update_window_style_controls()
 	_emit_window_settings()
 
 
@@ -954,10 +1156,24 @@ func _on_door_style_selected(_index: int) -> void:
 	var style := _selected_door_style()
 	if m_door_width_spin != null:
 		m_door_width_spin.value = _door_default_width(style)
+	_update_door_style_controls()
 	_emit_door_settings()
 
 
 func _on_door_setting_changed(_value: float) -> void:
+	_emit_door_settings()
+
+
+func _on_window_style_color_changed(_color: Color) -> void:
+	_update_color_picker_icon(m_window_frame_color_picker)
+	_update_color_picker_icon(m_window_pane_color_picker)
+	_emit_window_settings()
+
+
+func _on_door_style_color_changed(_color: Color) -> void:
+	_update_color_picker_icon(m_door_frame_color_picker)
+	_update_color_picker_icon(m_door_panel_color_picker)
+	_update_color_picker_icon(m_door_glass_color_picker)
 	_emit_door_settings()
 
 
@@ -1123,8 +1339,18 @@ func _select_pillar_style(style: String) -> void:
 	for index in range(m_pillar_style_option.get_item_count()):
 		if String(m_pillar_style_option.get_item_metadata(index)) == style:
 			m_pillar_style_option.select(index)
+			_update_pillar_style_controls()
 			return
 	m_pillar_style_option.select(0)
+	_update_pillar_style_controls()
+
+
+func _update_pillar_style_controls() -> void:
+	var has_side_count := _selected_pillar_style() in ["round", "tapered"]
+	if m_pillar_style_header != null:
+		m_pillar_style_header.visible = has_side_count
+	if m_pillar_sides_row != null:
+		m_pillar_sides_row.visible = has_side_count
 
 
 func _selected_roof_style() -> String:
@@ -1139,8 +1365,22 @@ func _select_roof_style(style: String) -> void:
 	for index in range(m_roof_style_option.get_item_count()):
 		if String(m_roof_style_option.get_item_metadata(index)) == style:
 			m_roof_style_option.select(index)
+			_update_roof_style_controls()
 			return
 	m_roof_style_option.select(2)
+	_update_roof_style_controls()
+
+
+func _update_roof_style_controls() -> void:
+	var style := _selected_roof_style()
+	var has_angle := style != "flat"
+	var has_gable_drop := style == "hip"
+	if m_roof_style_header != null:
+		m_roof_style_header.visible = has_angle or has_gable_drop
+	if m_roof_angle_row != null:
+		m_roof_angle_row.visible = has_angle
+	if m_roof_hip_gable_height_row != null:
+		m_roof_hip_gable_height_row.visible = has_gable_drop
 
 
 func _emit_prop_settings() -> void:
@@ -1156,8 +1396,20 @@ func _emit_window_settings() -> void:
 		"width": float(m_window_width_spin.value),
 		"height": float(m_window_height_spin.value),
 		"frame_thickness": float(m_window_frame_spin.value),
+		"frame_protrusion": float(m_window_frame_protrusion_spin.value),
+		"frame_color": m_window_frame_color_picker.color,
 		"sill_height": float(m_window_sill_spin.value),
 		"frame_sides": _selected_frame_sides(m_window_frame_sides_option),
+		"window_pane_depth": float(m_window_pane_depth_spin.value),
+		"window_pane_color": m_window_pane_color_picker.color,
+		"pane_grid_rows": int(roundf(m_window_grid_rows_spin.value)),
+		"pane_grid_cols": int(roundf(m_window_grid_cols_spin.value)),
+		"muntin_thickness": float(m_window_muntin_thickness_spin.value),
+		"louver_count": int(roundf(m_window_louver_count_spin.value)),
+		"louver_depth": float(m_window_louver_depth_spin.value),
+		"transom_ratio": float(m_window_transom_ratio_spin.value),
+		"transom_rail_thickness": float(m_window_transom_rail_spin.value),
+		"arch_steps": int(roundf(m_window_arch_steps_spin.value)),
 	})
 
 
@@ -1173,8 +1425,29 @@ func _select_window_style(style: String) -> void:
 	for index in range(m_window_style_option.get_item_count()):
 		if String(m_window_style_option.get_item_metadata(index)) == style:
 			m_window_style_option.select(index)
+			_update_window_style_controls()
 			return
 	m_window_style_option.select(0)
+	_update_window_style_controls()
+
+
+func _update_window_style_controls() -> void:
+	var style := _selected_window_style()
+	var visible_keys: Array[String] = []
+	if style in ["single_window", "double_window", "grid_window", "transom_window", "arched_window"]:
+		visible_keys.append_array(["pane_depth", "pane_color"])
+	match style:
+		"grid_window":
+			visible_keys.append_array(["grid_rows", "grid_cols", "muntin"])
+		"louvered_window":
+			visible_keys.append_array(["louver_count", "louver_depth"])
+		"transom_window":
+			visible_keys.append_array(["transom_ratio", "transom_rail"])
+		"arched_window":
+			visible_keys.append("arch_steps")
+	_set_style_rows_visible(m_window_style_rows, visible_keys)
+	if m_window_style_header != null:
+		m_window_style_header.visible = !visible_keys.is_empty()
 
 
 func _window_default_width(style: String) -> float:
@@ -1187,7 +1460,19 @@ func _emit_door_settings() -> void:
 		"width": float(m_door_width_spin.value),
 		"height": float(m_door_height_spin.value),
 		"frame_thickness": float(m_door_frame_spin.value),
+		"frame_protrusion": float(m_door_frame_protrusion_spin.value),
+		"frame_color": m_door_frame_color_picker.color,
 		"frame_sides": _selected_frame_sides(m_door_frame_sides_option),
+		"door_panel_depth": float(m_door_panel_depth_spin.value),
+		"door_panel_color": m_door_panel_color_picker.color,
+		"door_glazing_ratio": float(m_door_glazing_ratio_spin.value),
+		"door_glass_depth": float(m_door_glass_depth_spin.value),
+		"door_glass_color": m_door_glass_color_picker.color,
+		"pane_grid_rows": int(roundf(m_door_grid_rows_spin.value)),
+		"pane_grid_cols": int(roundf(m_door_grid_cols_spin.value)),
+		"muntin_thickness": float(m_door_muntin_thickness_spin.value),
+		"door_inset_rows": int(roundf(m_door_inset_rows_spin.value)),
+		"door_inset_cols": int(roundf(m_door_inset_cols_spin.value)),
 	})
 
 
@@ -1203,8 +1488,34 @@ func _select_door_style(style: String) -> void:
 	for index in range(m_door_style_option.get_item_count()):
 		if String(m_door_style_option.get_item_metadata(index)) == style:
 			m_door_style_option.select(index)
+			_update_door_style_controls()
 			return
 	m_door_style_option.select(0)
+	_update_door_style_controls()
+
+
+func _update_door_style_controls() -> void:
+	var style := _selected_door_style()
+	var visible_keys: Array[String] = []
+	if style not in ["single_frame", "double_frame"]:
+		visible_keys.append_array(["panel_depth", "panel_color"])
+	if style in ["glazed_door", "glazed_grid_door"]:
+		visible_keys.append_array(["glazing_ratio", "glass_depth", "glass_color"])
+	if style == "glazed_grid_door":
+		visible_keys.append_array(["grid_rows", "grid_cols", "muntin"])
+	if style == "panel_door":
+		visible_keys.append_array(["inset_rows", "inset_cols"])
+	_set_style_rows_visible(m_door_style_rows, visible_keys)
+	if m_door_style_header != null:
+		m_door_style_header.visible = !visible_keys.is_empty()
+
+
+func _set_style_rows_visible(rows: Dictionary, visible_keys: Array[String]) -> void:
+	for key_variant in rows:
+		var key := String(key_variant)
+		var row := rows[key_variant] as Control
+		if row != null:
+			row.visible = visible_keys.has(key)
 
 
 func _door_default_width(style: String) -> float:
@@ -1355,14 +1666,58 @@ func _load_persisted_settings() -> void:
 	m_window_width_spin.value = float(state.get("window_width", _window_default_width(window_style)))
 	m_window_height_spin.value = float(state.get("window_height", m_window_height_spin.value))
 	m_window_frame_spin.value = float(state.get("window_frame_thickness", m_window_frame_spin.value))
+	m_window_frame_protrusion_spin.value = float(
+		state.get("window_frame_protrusion", m_window_frame_protrusion_spin.value)
+	)
+	var window_frame_color_variant: Variant = state.get("window_frame_color", m_window_frame_color_picker.color)
+	if window_frame_color_variant is Color:
+		m_window_frame_color_picker.color = window_frame_color_variant
 	m_window_sill_spin.value = float(state.get("window_sill_height", m_window_sill_spin.value))
 	_select_frame_sides(m_window_frame_sides_option, int(state.get("window_frame_sides", _selected_frame_sides(m_window_frame_sides_option))))
+	m_window_pane_depth_spin.value = float(state.get("window_pane_depth", m_window_pane_depth_spin.value))
+	var window_pane_color_variant: Variant = state.get("window_pane_color", m_window_pane_color_picker.color)
+	if window_pane_color_variant is Color:
+		m_window_pane_color_picker.color = window_pane_color_variant
+	m_window_grid_rows_spin.value = float(state.get("window_pane_grid_rows", m_window_grid_rows_spin.value))
+	m_window_grid_cols_spin.value = float(state.get("window_pane_grid_cols", m_window_grid_cols_spin.value))
+	m_window_muntin_thickness_spin.value = float(
+		state.get("window_muntin_thickness", m_window_muntin_thickness_spin.value)
+	)
+	m_window_louver_count_spin.value = float(state.get("window_louver_count", m_window_louver_count_spin.value))
+	m_window_louver_depth_spin.value = float(state.get("window_louver_depth", m_window_louver_depth_spin.value))
+	m_window_transom_ratio_spin.value = float(state.get("window_transom_ratio", m_window_transom_ratio_spin.value))
+	m_window_transom_rail_spin.value = float(state.get("window_transom_rail", m_window_transom_rail_spin.value))
+	m_window_arch_steps_spin.value = float(state.get("window_arch_steps", m_window_arch_steps_spin.value))
 	var door_style := str(state.get("door_style", _selected_door_style()))
 	_select_door_style(door_style)
 	m_door_width_spin.value = float(state.get("door_width", _door_default_width(door_style)))
 	m_door_height_spin.value = float(state.get("door_height", m_door_height_spin.value))
 	m_door_frame_spin.value = float(state.get("door_frame_thickness", m_door_frame_spin.value))
+	m_door_frame_protrusion_spin.value = float(
+		state.get("door_frame_protrusion", m_door_frame_protrusion_spin.value)
+	)
+	var door_frame_color_variant: Variant = state.get("door_frame_color", m_door_frame_color_picker.color)
+	if door_frame_color_variant is Color:
+		m_door_frame_color_picker.color = door_frame_color_variant
 	_select_frame_sides(m_door_frame_sides_option, int(state.get("door_frame_sides", _selected_frame_sides(m_door_frame_sides_option))))
+	m_door_panel_depth_spin.value = float(state.get("door_panel_depth", m_door_panel_depth_spin.value))
+	var door_panel_color_variant: Variant = state.get("door_panel_color", m_door_panel_color_picker.color)
+	if door_panel_color_variant is Color:
+		m_door_panel_color_picker.color = door_panel_color_variant
+	m_door_glazing_ratio_spin.value = float(state.get("door_glazing_ratio", m_door_glazing_ratio_spin.value))
+	m_door_glass_depth_spin.value = float(state.get("door_glass_depth", m_door_glass_depth_spin.value))
+	var door_glass_color_variant: Variant = state.get("door_glass_color", m_door_glass_color_picker.color)
+	if door_glass_color_variant is Color:
+		m_door_glass_color_picker.color = door_glass_color_variant
+	m_door_grid_rows_spin.value = float(state.get("door_pane_grid_rows", m_door_grid_rows_spin.value))
+	m_door_grid_cols_spin.value = float(state.get("door_pane_grid_cols", m_door_grid_cols_spin.value))
+	m_door_muntin_thickness_spin.value = float(
+		state.get("door_muntin_thickness", m_door_muntin_thickness_spin.value)
+	)
+	m_door_inset_rows_spin.value = float(state.get("door_inset_rows", m_door_inset_rows_spin.value))
+	m_door_inset_cols_spin.value = float(state.get("door_inset_cols", m_door_inset_cols_spin.value))
+	_update_window_style_controls()
+	_update_door_style_controls()
 	_refresh_color_picker_icons()
 
 
@@ -1423,11 +1778,35 @@ func _save_persisted_settings() -> void:
 		"window_width": float(m_window_width_spin.value) if m_window_width_spin != null else 1.0,
 		"window_height": float(m_window_height_spin.value) if m_window_height_spin != null else 1.0,
 		"window_frame_thickness": float(m_window_frame_spin.value) if m_window_frame_spin != null else 0.08,
+		"window_frame_protrusion": float(m_window_frame_protrusion_spin.value) if m_window_frame_protrusion_spin != null else 0.02,
+		"window_frame_color": m_window_frame_color_picker.color if m_window_frame_color_picker != null else Color(0.86, 0.92, 0.94, 1.0),
 		"window_sill_height": float(m_window_sill_spin.value) if m_window_sill_spin != null else 0.9,
 		"window_frame_sides": _selected_frame_sides(m_window_frame_sides_option),
+		"window_pane_depth": float(m_window_pane_depth_spin.value) if m_window_pane_depth_spin != null else 0.03,
+		"window_pane_color": m_window_pane_color_picker.color if m_window_pane_color_picker != null else Color(0.58, 0.82, 0.95, 0.52),
+		"window_pane_grid_rows": int(roundf(m_window_grid_rows_spin.value)) if m_window_grid_rows_spin != null else 2,
+		"window_pane_grid_cols": int(roundf(m_window_grid_cols_spin.value)) if m_window_grid_cols_spin != null else 1,
+		"window_muntin_thickness": float(m_window_muntin_thickness_spin.value) if m_window_muntin_thickness_spin != null else 0.03,
+		"window_louver_count": int(roundf(m_window_louver_count_spin.value)) if m_window_louver_count_spin != null else 6,
+		"window_louver_depth": float(m_window_louver_depth_spin.value) if m_window_louver_depth_spin != null else 0.03,
+		"window_transom_ratio": float(m_window_transom_ratio_spin.value) if m_window_transom_ratio_spin != null else 0.28,
+		"window_transom_rail": float(m_window_transom_rail_spin.value) if m_window_transom_rail_spin != null else 0.03,
+		"window_arch_steps": int(roundf(m_window_arch_steps_spin.value)) if m_window_arch_steps_spin != null else 3,
 		"door_style": _selected_door_style(),
 		"door_width": float(m_door_width_spin.value) if m_door_width_spin != null else 0.9,
 		"door_height": float(m_door_height_spin.value) if m_door_height_spin != null else 2.1,
 		"door_frame_thickness": float(m_door_frame_spin.value) if m_door_frame_spin != null else 0.08,
+		"door_frame_protrusion": float(m_door_frame_protrusion_spin.value) if m_door_frame_protrusion_spin != null else 0.02,
+		"door_frame_color": m_door_frame_color_picker.color if m_door_frame_color_picker != null else Color(0.86, 0.92, 0.94, 1.0),
 		"door_frame_sides": _selected_frame_sides(m_door_frame_sides_option),
+		"door_panel_depth": float(m_door_panel_depth_spin.value) if m_door_panel_depth_spin != null else 0.05,
+		"door_panel_color": m_door_panel_color_picker.color if m_door_panel_color_picker != null else Color(0.50, 0.34, 0.20, 1.0),
+		"door_glazing_ratio": float(m_door_glazing_ratio_spin.value) if m_door_glazing_ratio_spin != null else 0.55,
+		"door_glass_depth": float(m_door_glass_depth_spin.value) if m_door_glass_depth_spin != null else 0.03,
+		"door_glass_color": m_door_glass_color_picker.color if m_door_glass_color_picker != null else Color(0.58, 0.82, 0.95, 0.52),
+		"door_pane_grid_rows": int(roundf(m_door_grid_rows_spin.value)) if m_door_grid_rows_spin != null else 2,
+		"door_pane_grid_cols": int(roundf(m_door_grid_cols_spin.value)) if m_door_grid_cols_spin != null else 1,
+		"door_muntin_thickness": float(m_door_muntin_thickness_spin.value) if m_door_muntin_thickness_spin != null else 0.03,
+		"door_inset_rows": int(roundf(m_door_inset_rows_spin.value)) if m_door_inset_rows_spin != null else 3,
+		"door_inset_cols": int(roundf(m_door_inset_cols_spin.value)) if m_door_inset_cols_spin != null else 2,
 	})
