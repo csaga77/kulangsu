@@ -67,6 +67,7 @@ func _ready() -> void:
 func _run_smoke_checks() -> void:
 	_validate_empty_wall_segments()
 	_validate_building_root_ownership()
+	_validate_multiple_building_roots()
 	_validate_serialized_building_mesh_caches()
 	var coordinator := Building3DScript.new() as Building3DScript
 	coordinator.name = "Building3D"
@@ -158,6 +159,50 @@ func _validate_building_root_ownership() -> void:
 		m_failures.append("BuildingFactory parented a wall instead of returning a detached node")
 	detached_wall.free()
 	building.free()
+
+
+func _validate_multiple_building_roots() -> void:
+	var scene := Node3D.new()
+	scene.name = "MultipleBuildingScene"
+	add_child(scene)
+	var first := Building3DScript.new() as Building3DScript
+	first.name = "Building3D"
+	scene.add_child(first)
+	var second := Building3DScript.new() as Building3DScript
+	second.name = "Building3D2"
+	scene.add_child(second)
+	var first_wall := BuildingFactoryScript.create_wall_node(
+		first,
+		Vector3(0.0, 0.0, 0.2),
+		Vector3(4.0, 0.0, 0.2),
+		4.0
+	)
+	first.add_child(first_wall)
+	var second_wall := BuildingFactoryScript.create_wall_node(
+		second,
+		Vector3(0.0, 0.0, 0.2),
+		Vector3(4.0, 0.0, 0.2),
+		4.0
+	)
+	second.add_child(second_wall)
+	var second_roof := BuildingFactoryScript.create_roof_node(
+		second,
+		Vector3(0.0, 2.4, 0.0),
+		Vector3(4.0, 2.4, 4.0),
+		"gable"
+	)
+	second.add_child(second_roof)
+	first.refresh_building_geometry_clips()
+	second.refresh_building_geometry_clips()
+	if first.get_wall_nodes() != [first_wall] or first.get_roof_nodes().size() != 0:
+		m_failures.append("Building3D included parts owned by a sibling building root")
+	if second.get_wall_nodes() != [second_wall] or second.get_roof_nodes() != [second_roof]:
+		m_failures.append("Building3D did not retain its own independently authored parts")
+	if first_wall.get_roof_clip_surface_count() != 0:
+		m_failures.append("A roof clipped a wall owned by another Building3D root")
+	if second_wall.get_roof_clip_surface_count() != 1:
+		m_failures.append("A Building3D roof did not clip a wall in the same root")
+	scene.queue_free()
 
 
 func _validate_empty_wall_segments() -> void:
@@ -2329,7 +2374,7 @@ func _validate_wall_instance_intersection_clipping() -> void:
 
 
 func _validate_serialized_building_mesh_caches() -> void:
-	var source_root := Node3D.new()
+	var source_root := Building3DScript.new() as Building3DScript
 	source_root.name = "CachedBuildingParts"
 	var source_wall := BuildingFactoryScript.create_wall_node(
 		source_root,
@@ -2432,10 +2477,13 @@ func _validate_serialized_building_mesh_caches() -> void:
 
 	var changed_instance := packed_scene.instantiate() as Node3D
 	var changed_wall := changed_instance.get_node("CachedWall") as Wall3DScript
-	var changed_segment := changed_wall.get_segment(0).duplicate() as WallSegment3D
+	var cached_segment := cached_wall.get_segment(0)
+	var changed_segment := changed_wall.get_segment(0)
+	if cached_segment == changed_segment:
+		m_failures.append("Packed Building3D instances shared a WallSegment3D resource")
 	changed_segment.end_point = Vector3(5.0, 0.0, 0.0)
-	var changed_segments: Array[WallSegment3D] = [changed_segment]
-	changed_wall.segments = changed_segments
+	if cached_segment.end_point.is_equal_approx(changed_segment.end_point):
+		m_failures.append("Editing one Building3D instance changed another instance's wall")
 	var changed_floor := changed_instance.get_node("CachedFloor") as Floor3DScript
 	changed_floor.floor_thickness += 0.05
 	var changed_stairs := changed_instance.get_node("CachedStairs") as Stairs3DScript

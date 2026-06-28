@@ -10,6 +10,11 @@ the editor dock owns temporary tool defaults. `BuildingFactory` creates and name
 building blocks, while transient wall and roof geometry resolvers perform intersection,
 overlap, opening-propagation, and clipping calculations.
 
+A scene can contain multiple independent `Building3D` roots or packed building scene
+instances. **Add Building** creates and selects a new root; selecting any building root
+or one of its authored descendants makes that building the target for subsequent tool
+operations. Geometry merging and clipping never cross between building roots.
+
 Styled blocks use typed hierarchies. Their base classes own only universal state and
 low-level generation infrastructure; optional intermediate layers own properties shared
 by a genuine subset; and concrete pillar, roof, window, and door styles own their style

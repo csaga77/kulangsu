@@ -8,6 +8,11 @@ signal geometry_changed
 ## the owning coordinator's parent-local space; the segment's render frame is
 ## derived from them the same way Wall3D derives its transform.
 
+
+func _init() -> void:
+	resource_local_to_scene = true
+
+
 @export var start_point := Vector3.ZERO:
 	set(value):
 		if start_point.is_equal_approx(value):

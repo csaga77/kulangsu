@@ -233,6 +233,7 @@ var m_native_select_button: Button
 var m_native_active_button: Button
 var m_handling_native_click := false
 var m_tool_mode := MODE_SELECT
+var m_active_coordinator: Building3DScript
 var m_wall_settings := {
 	"grid_step": 0.5,
 	"type": WALL_TYPE_WALL,
@@ -4280,16 +4281,23 @@ func _get_or_create_coordinator(create_if_missing: bool) -> Building3DScript:
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	if scene_root == null:
 		return null
-	var selected_nodes := get_editor_interface().get_selection().get_selected_nodes()
-	for node in selected_nodes:
-		var coordinator := _find_coordinator_from_node(node)
-		if coordinator != null:
-			return coordinator
-	var existing := _find_first_coordinator(scene_root)
-	if existing != null or !create_if_missing:
-		return existing
+	var selected := _find_selected_coordinator()
+	if selected != null:
+		m_active_coordinator = selected
+	elif !_coordinator_belongs_to_scene(m_active_coordinator, scene_root):
+		m_active_coordinator = _find_first_coordinator(scene_root)
+	if m_active_coordinator != null or !create_if_missing:
+		return m_active_coordinator
+	return _create_coordinator()
+
+
+func _create_coordinator() -> Building3DScript:
+	var scene_root := get_editor_interface().get_edited_scene_root()
+	if scene_root == null:
+		return null
 	var coordinator := Building3DScript.new() as Building3DScript
-	coordinator.name = "Building3D"
+	coordinator.name = _unique_coordinator_name(scene_root)
+	m_active_coordinator = coordinator
 	var undo_redo := get_undo_redo()
 	undo_redo.create_action("Create Building")
 	undo_redo.add_do_reference(coordinator)
@@ -4298,6 +4306,44 @@ func _get_or_create_coordinator(create_if_missing: bool) -> Building3DScript:
 	undo_redo.commit_action()
 	_refresh_dock_context()
 	return coordinator
+
+
+func _find_selected_coordinator() -> Building3DScript:
+	var selection := get_editor_interface().get_selection()
+	if selection == null:
+		return null
+	for node in selection.get_selected_nodes():
+		var coordinator := _find_coordinator_from_node(node)
+		if coordinator != null:
+			return coordinator
+	return null
+
+
+func _coordinator_belongs_to_scene(coordinator: Building3DScript, scene_root: Node) -> bool:
+	if coordinator == null or !is_instance_valid(coordinator) or scene_root == null:
+		return false
+	return coordinator == scene_root or scene_root.is_ancestor_of(coordinator)
+
+
+func _unique_coordinator_name(scene_root: Node) -> String:
+	const BASE_NAME := "Building3D"
+	if !_scene_has_coordinator_name(scene_root, BASE_NAME):
+		return BASE_NAME
+	var index := 2
+	var candidate := "%s%d" % [BASE_NAME, index]
+	while _scene_has_coordinator_name(scene_root, candidate):
+		index += 1
+		candidate = "%s%d" % [BASE_NAME, index]
+	return candidate
+
+
+func _scene_has_coordinator_name(root: Node, candidate: String) -> bool:
+	if root is Building3DScript and String(root.name) == candidate:
+		return true
+	for child in root.get_children():
+		if _scene_has_coordinator_name(child, candidate):
+			return true
+	return false
 
 
 func _find_coordinator_from_node(node: Node) -> Building3DScript:
@@ -6899,17 +6945,23 @@ func _on_door_settings_changed(settings: Dictionary) -> void:
 
 
 func _on_create_coordinator_requested() -> void:
-	var coordinator := _get_or_create_coordinator(true)
+	_cancel_active_preview()
+	var coordinator := _create_coordinator()
 	if coordinator != null:
-		_set_status("Building ready.")
+		_set_status("%s ready." % coordinator.name)
 
 
 func _on_scene_changed(_scene_root: Node) -> void:
+	m_active_coordinator = null
 	_cancel_active_preview()
 	_refresh_dock_context()
 
 
 func _on_editor_selection_changed() -> void:
+	var selected_coordinator := _find_selected_coordinator()
+	if selected_coordinator != null and selected_coordinator != m_active_coordinator:
+		_cancel_active_preview()
+		m_active_coordinator = selected_coordinator
 	_refresh_dock_context()
 	var selected_tool_mode := _tool_mode_for_selected_building_node()
 	if selected_tool_mode.is_empty() or selected_tool_mode == m_tool_mode:

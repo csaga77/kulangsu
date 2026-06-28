@@ -225,7 +225,8 @@ func _build_ui() -> void:
 	content.add_child(mode_row)
 
 	var coordinator_button := Button.new()
-	coordinator_button.text = "Create Building"
+	coordinator_button.text = "Add Building"
+	coordinator_button.tooltip_text = "Add and select a new Building3D root."
 	coordinator_button.pressed.connect(_on_create_coordinator)
 	content.add_child(coordinator_button)
 
