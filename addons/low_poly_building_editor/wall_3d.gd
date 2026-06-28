@@ -1,6 +1,8 @@
 @tool
 class_name Wall3D
-extends MeshInstance3D
+extends "res://addons/low_poly_building_editor/building_mesh_3d.gd"
+
+signal source_geometry_changed
 
 const GENERATED_META := &"wall_generated"
 const PREVIEW_META := &"building_editor_preview"
@@ -30,9 +32,12 @@ var m_legacy_extra_segments: Array[WallSegment3D] = []
 ## an empty array is a valid wall with no generated mesh or collision.
 @export var segments: Array[WallSegment3D] = []:
 	set(value):
+		_disconnect_segment_signals(segments)
 		segments = value
+		_connect_segment_signals(segments)
 		_sync_legacy_defaults_from_primary()
 		_request_rebuild()
+		source_geometry_changed.emit()
 
 ## Hidden compatibility aliases for scenes authored before `segments` became
 ## canonical. New scenes serialize only the exported `segments` array.
@@ -100,10 +105,10 @@ var extra_segments: Array[WallSegment3D] = []:
 	set(value):
 		m_legacy_extra_segments = value
 		_ensure_legacy_primary_segment()
-		segments.resize(1)
+		var updated_segments: Array[WallSegment3D] = [segments[0]]
 		for segment in value:
-			segments.append(segment)
-		_request_rebuild()
+			updated_segments.append(segment)
+		self.segments = updated_segments
 
 @export var build_on_ready := true
 @export var generate_collision := true:
@@ -123,14 +128,14 @@ var extra_segments: Array[WallSegment3D] = []:
 
 var m_is_ready := false
 var m_rebuild_queued := false
-var m_rebuild_delay_seconds := 0.0
 var m_visual_rebuild_pending := false
-var m_opening_signature := ""
-var m_signature_timer := 0.0
+var m_editor_rebuild_revision := 0
 var m_is_rebuilding := false
 var m_intersection_clip_segments_before: Array[WallSegment3D] = []
 var m_intersection_clip_segments_after: Array[WallSegment3D] = []
 var m_roof_clip_surfaces: Array[Dictionary] = []
+var m_clip_data_initialized := false
+var m_current_clip_signature := 0
 ## Openings authored on collinear-overlapping sibling walls whose shared span
 ## this wall renders. Each entry is `{ "segment_index": int, "rect": Rect2 }`
 ## in this wall's own segment-local space, so the wall that owns the overlap
@@ -141,44 +146,32 @@ var m_foreign_opening_rects: Array = []
 
 func _ready() -> void:
 	m_is_ready = true
-	if !child_entered_tree.is_connected(_on_child_tree_changed):
-		child_entered_tree.connect(_on_child_tree_changed)
-	if !child_exiting_tree.is_connected(_on_child_tree_changed):
-		child_exiting_tree.connect(_on_child_tree_changed)
-	set_process(Engine.is_editor_hint())
+	_connect_segment_signals(segments)
+	for child in get_children():
+		_connect_opening_signal(child)
+	if !child_entered_tree.is_connected(_on_child_entered_tree):
+		child_entered_tree.connect(_on_child_entered_tree)
+	if !child_exiting_tree.is_connected(_on_child_exiting_tree):
+		child_exiting_tree.connect(_on_child_exiting_tree)
 	if build_on_ready:
-		rebuild_wall_mesh()
+		_sync_transform_from_points()
+		if _saved_mesh_matches_current_authored_geometry():
+			_sync_wall_material()
+			_rebuild_collision_from_cached_mesh()
+		else:
+			rebuild_wall_mesh()
 
 
 func _exit_tree() -> void:
-	if child_entered_tree.is_connected(_on_child_tree_changed):
-		child_entered_tree.disconnect(_on_child_tree_changed)
-	if child_exiting_tree.is_connected(_on_child_tree_changed):
-		child_exiting_tree.disconnect(_on_child_tree_changed)
-
-
-func _process(delta: float) -> void:
-	if !Engine.is_editor_hint():
-		return
-	if m_rebuild_queued:
-		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-			m_rebuild_delay_seconds = EDITOR_REBUILD_DELAY_SECONDS
-			if m_visual_rebuild_pending:
-				m_visual_rebuild_pending = false
-				rebuild_wall_mesh(false)
-			return
-		m_rebuild_delay_seconds -= delta
-		if m_rebuild_delay_seconds <= 0.0:
-			rebuild_wall_mesh()
-		return
-	m_signature_timer += delta
-	if m_signature_timer < 0.2:
-		return
-	m_signature_timer = 0.0
-	var signature := _build_opening_signature()
-	if signature == m_opening_signature:
-		return
-	rebuild_wall_mesh()
+	m_editor_rebuild_revision += 1
+	m_visual_rebuild_pending = false
+	_disconnect_segment_signals(segments)
+	for child in get_children():
+		_disconnect_opening_signal(child)
+	if child_entered_tree.is_connected(_on_child_entered_tree):
+		child_entered_tree.disconnect(_on_child_entered_tree)
+	if child_exiting_tree.is_connected(_on_child_exiting_tree):
+		child_exiting_tree.disconnect(_on_child_exiting_tree)
 
 
 func _ensure_legacy_primary_segment() -> void:
@@ -191,9 +184,12 @@ func _ensure_legacy_primary_segment() -> void:
 	primary.thickness = wall_thickness
 	primary.color = wall_color
 	if segments.is_empty():
-		segments.append(primary)
+		var initial_segments: Array[WallSegment3D] = [primary]
+		self.segments = initial_segments
 	else:
-		segments[0] = primary
+		var updated_segments := segments.duplicate()
+		updated_segments[0] = primary
+		self.segments = updated_segments
 
 
 func _sync_legacy_defaults_from_primary() -> void:
@@ -208,10 +204,13 @@ func _sync_legacy_defaults_from_primary() -> void:
 
 
 func set_wall_endpoints(new_start: Vector3, new_end: Vector3) -> void:
+	var previous_signature := _authored_mesh_source_signature()
 	var opening_anchors := capture_opening_segment_anchors()
 	_ensure_legacy_primary_segment()
 	start_point = new_start
 	end_point = new_end
+	if _authored_mesh_source_signature() == previous_signature:
+		return
 	_sync_transform_from_points()
 	restore_opening_segment_anchors(opening_anchors)
 	rebuild_wall_mesh()
@@ -352,9 +351,12 @@ func move_rectangular_loop_side(
 
 
 func set_intersection_clip_segments(before_segments: Array, after_segments: Array) -> void:
-	m_intersection_clip_segments_before = _duplicate_segment_resources(before_segments)
-	m_intersection_clip_segments_after = _duplicate_segment_resources(after_segments)
-	rebuild_wall_mesh()
+	set_geometry_clip_data(
+		before_segments,
+		after_segments,
+		m_roof_clip_surfaces,
+		m_foreign_opening_rects
+	)
 
 
 func set_geometry_clip_data(
@@ -363,26 +365,35 @@ func set_geometry_clip_data(
 	roof_surfaces: Array,
 	foreign_openings: Array = []
 ) -> void:
+	var next_clip_signature := _geometry_clip_data_signature(
+		before_segments,
+		after_segments,
+		roof_surfaces,
+		foreign_openings
+	)
+	var clip_data_changed := (
+		!m_clip_data_initialized
+		or next_clip_signature != m_current_clip_signature
+	)
+	var mesh_is_current := (
+		mesh != null
+		and m_generated_mesh_source_signature == _authored_mesh_source_signature()
+		and m_generated_mesh_clip_signature == next_clip_signature
+	)
 	m_intersection_clip_segments_before = _duplicate_segment_resources(before_segments)
 	m_intersection_clip_segments_after = _duplicate_segment_resources(after_segments)
 	m_roof_clip_surfaces = _duplicate_roof_clip_surfaces(roof_surfaces)
 	m_foreign_opening_rects = _duplicate_foreign_openings(foreign_openings)
-	rebuild_wall_mesh()
+	m_current_clip_signature = next_clip_signature
+	m_clip_data_initialized = true
+	if !mesh_is_current:
+		rebuild_wall_mesh()
+	elif clip_data_changed:
+		_rebuild_collision_from_cached_mesh()
 
 
 func clear_intersection_clip_segments() -> void:
-	if (
-			m_intersection_clip_segments_before.is_empty()
-			and m_intersection_clip_segments_after.is_empty()
-			and m_roof_clip_surfaces.is_empty()
-			and m_foreign_opening_rects.is_empty()
-	):
-		return
-	m_intersection_clip_segments_before.clear()
-	m_intersection_clip_segments_after.clear()
-	m_roof_clip_surfaces.clear()
-	m_foreign_opening_rects.clear()
-	rebuild_wall_mesh()
+	set_geometry_clip_data([], [], [], [])
 
 
 func get_intersection_clip_segment_count() -> int:
@@ -677,9 +688,10 @@ func _opening_overlaps_clip_segments(
 
 
 func rebuild_wall_mesh(rebuild_collision: bool = true) -> void:
+	_begin_generated_mesh_rebuild()
 	if rebuild_collision:
+		m_editor_rebuild_revision += 1
 		m_rebuild_queued = false
-		m_rebuild_delay_seconds = 0.0
 		m_visual_rebuild_pending = false
 	m_is_rebuilding = true
 	_sync_transform_from_points()
@@ -687,7 +699,6 @@ func rebuild_wall_mesh(rebuild_collision: bool = true) -> void:
 		_clear_generated_children()
 	if segments.is_empty():
 		mesh = null
-		m_opening_signature = _build_opening_signature()
 		m_is_rebuilding = false
 		return
 
@@ -741,7 +752,6 @@ func rebuild_wall_mesh(rebuild_collision: bool = true) -> void:
 
 	if vertices.is_empty():
 		mesh = null
-		m_opening_signature = _build_opening_signature()
 		m_is_rebuilding = false
 		return
 
@@ -754,11 +764,23 @@ func rebuild_wall_mesh(rebuild_collision: bool = true) -> void:
 
 	_update_wall_mesh_resource(arrays)
 	_sync_wall_material()
+	var source_signature := _authored_mesh_source_signature()
+	var clip_signature := _geometry_clip_data_signature(
+		m_intersection_clip_segments_before,
+		m_intersection_clip_segments_after,
+		m_roof_clip_surfaces,
+		m_foreign_opening_rects
+	)
+	_record_generated_mesh_cache(
+		source_signature,
+		clip_signature,
+		1 if !m_roof_clip_surfaces.is_empty() else 0
+	)
+	m_current_clip_signature = clip_signature
 
 	if rebuild_collision and generate_collision:
 		_add_collision_body(collision_faces)
 
-	m_opening_signature = _build_opening_signature()
 	m_is_rebuilding = false
 
 
@@ -767,8 +789,13 @@ func _request_rebuild() -> void:
 		return
 	if Engine.is_editor_hint():
 		m_rebuild_queued = true
-		m_visual_rebuild_pending = true
-		m_rebuild_delay_seconds = EDITOR_REBUILD_DELAY_SECONDS
+		m_editor_rebuild_revision += 1
+		var revision := m_editor_rebuild_revision
+		if !m_visual_rebuild_pending:
+			m_visual_rebuild_pending = true
+			call_deferred("_flush_editor_visual_rebuild")
+		var timer := get_tree().create_timer(EDITOR_REBUILD_DELAY_SECONDS)
+		timer.timeout.connect(_on_editor_rebuild_timeout.bind(revision))
 		return
 	if m_rebuild_queued:
 		return
@@ -776,20 +803,29 @@ func _request_rebuild() -> void:
 	call_deferred("rebuild_wall_mesh")
 
 
+func _flush_editor_visual_rebuild() -> void:
+	if !m_rebuild_queued or !m_visual_rebuild_pending:
+		return
+	m_visual_rebuild_pending = false
+	rebuild_wall_mesh(false)
+
+
+func _on_editor_rebuild_timeout(revision: int) -> void:
+	if revision != m_editor_rebuild_revision or !m_rebuild_queued:
+		return
+	rebuild_wall_mesh()
+
+
 func _update_wall_mesh_resource(arrays: Array) -> void:
-	var array_mesh := mesh as ArrayMesh
-	if array_mesh == null:
-		array_mesh = ArrayMesh.new()
-		mesh = array_mesh
-	else:
-		array_mesh.clear_surfaces()
-	array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	_replace_generated_mesh_surface(arrays)
 
 
 func _sync_wall_material() -> void:
 	var primary := get_segment(0)
 	var material_color := primary.color if primary != null else wall_color
-	var material := material_override as StandardMaterial3D
+	var material := _scene_local_material_for_write(
+		material_override as StandardMaterial3D
+	)
 	if material == null:
 		material_override = _build_wall_material(material_color)
 		return
@@ -905,6 +941,94 @@ func _duplicate_segment_resources(segments: Array) -> Array[WallSegment3D]:
 	return copies
 
 
+func _saved_mesh_matches_current_authored_geometry() -> bool:
+	if mesh == null:
+		return false
+	if m_generated_mesh_source_signature != _authored_mesh_source_signature():
+		return false
+	if get_parent() is Building3D:
+		return true
+	return m_generated_mesh_clip_signature == _geometry_clip_data_signature([], [], [], [])
+
+
+func _authored_mesh_source_signature() -> int:
+	var segment_payload := []
+	for segment in segments:
+		if segment == null:
+			segment_payload.append(null)
+			continue
+		segment_payload.append([
+			segment.start_point,
+			segment.end_point,
+			segment.height,
+			segment.thickness,
+			segment.color,
+		])
+	return hash([
+		segment_payload,
+		_assigned_opening_rects(),
+	])
+
+
+func _geometry_clip_data_signature(
+	before_segments: Array,
+	after_segments: Array,
+	roof_surfaces: Array,
+	foreign_openings: Array
+) -> int:
+	var roof_payload := []
+	for surface_variant in roof_surfaces:
+		if !(surface_variant is Dictionary):
+			continue
+		var surface := surface_variant as Dictionary
+		var visible_polygons := []
+		for polygon_variant in surface.get("visible_polygons", []):
+			visible_polygons.append(PackedVector2Array(polygon_variant))
+		roof_payload.append([
+			Vector3(surface.get("origin", Vector3.ZERO)),
+			float(surface.get("origin_y", 0.0)),
+			Basis(surface.get("basis", Basis.IDENTITY)),
+			String(surface.get("style", "")),
+			Vector2(surface.get("size", Vector2.ZERO)),
+			float(surface.get("overhang", 0.0)),
+			float(surface.get("angle_degrees", 0.0)),
+			float(surface.get("hip_gable_height", 0.0)),
+			float(surface.get("thickness", 0.0)),
+			visible_polygons,
+		])
+	var foreign_payload := []
+	for entry_variant in foreign_openings:
+		if !(entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		foreign_payload.append([
+			int(entry.get("segment_index", -1)),
+			Rect2(entry.get("rect", Rect2())),
+		])
+	return hash([
+		_segment_clip_signature_payload(before_segments),
+		_segment_clip_signature_payload(after_segments),
+		roof_payload,
+		foreign_payload,
+	])
+
+
+func _segment_clip_signature_payload(source_segments: Array) -> Array:
+	var payload := []
+	for segment_variant in source_segments:
+		var segment := segment_variant as WallSegment3DScript
+		if segment == null:
+			continue
+		payload.append([
+			segment.start_point,
+			segment.end_point,
+			segment.height,
+			segment.thickness,
+			segment.color,
+		])
+	return payload
+
+
 func _duplicate_foreign_openings(entries: Array) -> Array:
 	var copies: Array = []
 	for entry in entries:
@@ -927,14 +1051,6 @@ func _duplicate_foreign_openings(entries: Array) -> Array:
 ## shared span.
 func get_assigned_opening_rects() -> Array:
 	return _assigned_opening_rects()
-
-
-## Change-detection key covering this wall's segments and authored openings.
-## The coordinator folds it into its geometry-clip signature so moving or
-## resizing an opening on one wall refreshes a collinear sibling that renders
-## the shared span.
-func get_opening_signature() -> String:
-	return _build_opening_signature()
 
 
 ## Per-segment opening rects actually cut into the rendered mesh for a segment,
@@ -1155,17 +1271,52 @@ func _clamped_opening_local_position(
 	return local_position
 
 
-func _add_collision_body(_collision_faces: PackedVector3Array) -> void:
+func _rebuild_collision_from_cached_mesh() -> void:
+	_clear_generated_children()
+	if !generate_collision or mesh == null:
+		return
+	_add_collision_body(
+		_cached_mesh_triangle_faces(),
+		_generated_mesh_cache_has_flag(1) or !m_roof_clip_surfaces.is_empty()
+	)
+
+
+func _add_collision_body(
+	collision_faces: PackedVector3Array,
+	use_roof_clipped_faces := false
+) -> void:
 	var body := StaticBody3D.new()
 	body.name = "WallCollision"
 	body.set_meta(GENERATED_META, true)
-	var shape_count := _add_collision_shapes_for_wall_cells(body)
+	var shape_count := 0
+	if use_roof_clipped_faces or !m_roof_clip_surfaces.is_empty():
+		shape_count = _add_roof_clipped_collision_shape(body, collision_faces)
+	else:
+		shape_count = _add_collision_shapes_for_wall_cells(body)
 	if shape_count <= 0:
 		body.free()
 		return
 	add_child(body)
 	if Engine.is_editor_hint():
 		body.owner = null
+
+
+func _add_roof_clipped_collision_shape(
+	body: StaticBody3D,
+	collision_faces: PackedVector3Array
+) -> int:
+	if collision_faces.size() < 3:
+		return 0
+	var shape := ConcavePolygonShape3D.new()
+	shape.set_faces(collision_faces)
+	var collision_shape := CollisionShape3D.new()
+	collision_shape.name = "CollisionShape3D"
+	collision_shape.shape = shape
+	collision_shape.set_meta(GENERATED_META, true)
+	body.add_child(collision_shape)
+	if Engine.is_editor_hint():
+		collision_shape.owner = null
+	return 1
 
 
 func _add_collision_shapes_for_wall_cells(body: StaticBody3D) -> int:
@@ -1305,6 +1456,7 @@ func _collision_point_inside_opening(point: Vector2, openings: Array[Rect2]) -> 
 
 func _build_wall_material(color: Color) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
+	material.resource_local_to_scene = true
 	material.albedo_color = Color(1.0, 1.0, 1.0, color.a)
 	material.vertex_color_use_as_albedo = true
 	material.roughness = 0.94
@@ -1323,47 +1475,72 @@ func _clear_generated_children() -> void:
 		child.free()
 
 
-func _on_child_tree_changed(_child: Node) -> void:
-	if m_is_rebuilding:
+func _connect_segment_signals(source_segments: Array[WallSegment3D]) -> void:
+	for segment in source_segments:
+		if segment == null:
+			continue
+		if !segment.changed.is_connected(_on_segment_resource_changed):
+			segment.changed.connect(_on_segment_resource_changed)
+		if !segment.geometry_changed.is_connected(_on_segment_geometry_changed):
+			segment.geometry_changed.connect(_on_segment_geometry_changed)
+
+
+func _disconnect_segment_signals(source_segments: Array[WallSegment3D]) -> void:
+	for segment in source_segments:
+		if segment == null:
+			continue
+		if segment.changed.is_connected(_on_segment_resource_changed):
+			segment.changed.disconnect(_on_segment_resource_changed)
+		if segment.geometry_changed.is_connected(_on_segment_geometry_changed):
+			segment.geometry_changed.disconnect(_on_segment_geometry_changed)
+
+
+func _connect_opening_signal(child: Node) -> void:
+	var opening := child as BuildingOpening3D
+	if opening == null:
 		return
-	if _child != null and _child.has_meta(GENERATED_META):
+	if !opening.opening_geometry_changed.is_connected(_on_opening_geometry_changed):
+		opening.opening_geometry_changed.connect(_on_opening_geometry_changed)
+
+
+func _disconnect_opening_signal(child: Node) -> void:
+	var opening := child as BuildingOpening3D
+	if opening == null:
 		return
+	if opening.opening_geometry_changed.is_connected(_on_opening_geometry_changed):
+		opening.opening_geometry_changed.disconnect(_on_opening_geometry_changed)
+
+
+func _on_segment_resource_changed() -> void:
 	_request_rebuild()
 
 
-func _build_opening_signature() -> String:
-	var parts := PackedStringArray()
-	for segment in segments:
-		if segment == null:
-			continue
-		parts.append(
-			"seg:%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f" % [
-				segment.start_point.x,
-				segment.start_point.y,
-				segment.start_point.z,
-				segment.end_point.x,
-				segment.end_point.y,
-				segment.end_point.z,
-				segment.thickness,
-				segment.height,
-			]
-		)
-	for child in get_children():
-		if child.has_meta(GENERATED_META):
-			continue
-		var child_3d := child as Node3D
-		if child_3d == null:
-			continue
-		var size := _opening_size_from_child(child)
-		if size == Vector2.ZERO:
-			continue
-		parts.append(
-			"%.3f,%.3f,%.3f,%.3f,%.3f" % [
-				child_3d.position.x,
-				child_3d.position.y,
-				child_3d.position.z,
-				size.x,
-				size.y,
-			]
-		)
-	return "|".join(parts)
+func _on_segment_geometry_changed() -> void:
+	source_geometry_changed.emit()
+
+
+func _on_opening_geometry_changed() -> void:
+	_request_rebuild()
+	source_geometry_changed.emit()
+
+
+func _on_child_entered_tree(child: Node) -> void:
+	if m_is_rebuilding:
+		return
+	if child == null or child.has_meta(GENERATED_META):
+		return
+	_connect_opening_signal(child)
+	_request_rebuild()
+	if child is BuildingOpening3D:
+		source_geometry_changed.emit()
+
+
+func _on_child_exiting_tree(child: Node) -> void:
+	if m_is_rebuilding:
+		return
+	if child == null or child.has_meta(GENERATED_META):
+		return
+	_disconnect_opening_signal(child)
+	_request_rebuild()
+	if child is BuildingOpening3D:
+		source_geometry_changed.emit()

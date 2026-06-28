@@ -153,7 +153,15 @@ static func _append_segment_geometry(
 	if segment_length <= MIN_SPAN:
 		return
 	var x_cuts := _cut_values(opening_rects, segment_length, segment.height, true)
-	var y_cuts := _cut_values(opening_rects, segment_length, segment.height, false, segments, segment_index)
+	var y_cuts := _cut_values(
+		opening_rects,
+		segment_length,
+		segment.height,
+		false,
+		segments,
+		segment_index,
+		footprints
+	)
 	var half_thickness := segment.thickness * 0.5
 	for x_index in range(x_cuts.size() - 1):
 		var x0 := x_cuts[x_index]
@@ -366,7 +374,7 @@ static func _append_roof_clipped_vertical_segment(
 			vertices, normals, colors, indices, collision_faces
 		)
 		return
-	var t_values := _roof_vertical_t_values(w1, w2, roof_clips)
+	var t_values := _roof_vertical_t_values(w1, w2, frame, y0, y1, roof_clips)
 	for index in range(t_values.size() - 1):
 		var t0 := float(t_values[index])
 		var t1 := float(t_values[index + 1])
@@ -465,6 +473,13 @@ static func _append_vertical_clipped_piece(
 			bottom_left, bottom_right, top_left, face_normal, color
 		)
 		return
+	if ((bottom_right - bottom_left).cross(top_right - bottom_left)).dot(face_normal) < 0.0:
+		var swap_bottom := bottom_left
+		bottom_left = bottom_right
+		bottom_right = swap_bottom
+		var swap_top := top_right
+		top_right = top_left
+		top_left = swap_top
 	_append_quad(
 		vertices, normals, colors, indices, collision_faces,
 		bottom_left, bottom_right, top_right, top_left, face_normal, color
@@ -524,6 +539,39 @@ static func _append_horizontal_face_polygon(
 		footprint.append(_plan_point(frame, local_point.x, local_point.y))
 	if _signed_area(footprint) < 0.0:
 		footprint.reverse()
+	var polygons := _horizontal_face_plan_polygons(
+		segments,
+		segment_index,
+		footprints,
+		clip_exceptions,
+		footprint,
+		y
+	)
+	for polygon in polygons:
+		var visible_polygons := _clip_horizontal_polygon_below_roofs(polygon, frame.origin.y + y, roof_clips)
+		for visible_polygon in visible_polygons:
+			_append_horizontal_plan_polygon_transformed(
+				visible_polygon,
+				frame,
+				y,
+				face_normal,
+				color,
+				vertices,
+				normals,
+				colors,
+				indices,
+				collision_faces
+			)
+
+
+static func _horizontal_face_plan_polygons(
+	segments: Array[WallSegment3D],
+	segment_index: int,
+	footprints: Array[PackedVector2Array],
+	clip_exceptions: Array,
+	footprint: PackedVector2Array,
+	y: float
+) -> Array[PackedVector2Array]:
 	var polygons: Array[PackedVector2Array] = [footprint]
 	for other_index in range(segments.size()):
 		if other_index == segment_index:
@@ -549,22 +597,8 @@ static func _append_horizontal_face_polygon(
 					remaining.append(normalized)
 		polygons = remaining
 		if polygons.is_empty():
-			return
-	for polygon in polygons:
-		var visible_polygons := _clip_horizontal_polygon_below_roofs(polygon, frame.origin.y + y, roof_clips)
-		for visible_polygon in visible_polygons:
-			_append_horizontal_plan_polygon_transformed(
-				visible_polygon,
-				frame,
-				y,
-				face_normal,
-				color,
-				vertices,
-				normals,
-				colors,
-				indices,
-				collision_faces
-			)
+			return polygons
+	return polygons
 
 
 static func _append_horizontal_plan_polygon_transformed(
@@ -592,7 +626,14 @@ static func _append_horizontal_plan_polygon_transformed(
 		)
 
 
-static func _roof_vertical_t_values(w1: Vector2, w2: Vector2, roof_clips: Array) -> Array[float]:
+static func _roof_vertical_t_values(
+	w1: Vector2,
+	w2: Vector2,
+	frame: Transform3D,
+	y0: float,
+	y1: float,
+	roof_clips: Array
+) -> Array[float]:
 	var values: Array[float] = [0.0, 1.0]
 	for clip_variant in roof_clips:
 		var clip := clip_variant as Dictionary
@@ -614,7 +655,41 @@ static func _roof_vertical_t_values(w1: Vector2, w2: Vector2, roof_clips: Array)
 				var u := float(hit["u"])
 				if t > MIN_SPAN and t < 1.0 - MIN_SPAN and u >= -MIN_SPAN and u <= 1.0 + MIN_SPAN:
 					values.append(t)
-		_append_roof_style_break_t_values(local_start, local_end, clip, values)
+			_append_roof_style_break_t_values(local_start, local_end, clip, values)
+	values = _sorted_unique_unit_values(values)
+	var height_breaks := values.duplicate()
+	for index in range(values.size() - 1):
+		var t0 := float(values[index])
+		var t1 := float(values[index + 1])
+		var left := w1.lerp(w2, t0)
+		var right := w1.lerp(w2, t1)
+		var left_height := _roof_clip_relative_height_at_plan_point(left, frame, roof_clips)
+		var right_height := _roof_clip_relative_height_at_plan_point(right, frame, roof_clips)
+		if left_height >= ROOF_CLIP_INFINITY or right_height >= ROOF_CLIP_INFINITY:
+			continue
+		_append_linear_height_break_t(t0, t1, left_height, right_height, y0, height_breaks)
+		_append_linear_height_break_t(t0, t1, left_height, right_height, y1, height_breaks)
+	return _sorted_unique_unit_values(height_breaks)
+
+
+static func _append_linear_height_break_t(
+	t0: float,
+	t1: float,
+	from_height: float,
+	to_height: float,
+	target_height: float,
+	values: Array
+) -> void:
+	var denominator := to_height - from_height
+	if absf(denominator) <= MIN_SPAN:
+		return
+	var weight := (target_height - from_height) / denominator
+	if weight <= MIN_SPAN or weight >= 1.0 - MIN_SPAN:
+		return
+	values.append(lerpf(t0, t1, weight))
+
+
+static func _sorted_unique_unit_values(values: Array) -> Array[float]:
 	values.sort()
 	var result: Array[float] = []
 	for value in values:
@@ -926,7 +1001,8 @@ static func _cut_values(
 	segment_height: float,
 	horizontal: bool,
 	segments: Array[WallSegment3D] = [],
-	segment_index: int = -1
+	segment_index: int = -1,
+	footprints: Array[PackedVector2Array] = []
 ) -> Array[float]:
 	var values: Array[float] = [0.0, segment_length if horizontal else segment_height]
 	for opening in openings:
@@ -939,6 +1015,13 @@ static func _cut_values(
 	if !horizontal:
 		for other_index in range(segments.size()):
 			if other_index == segment_index:
+				continue
+			if (
+				segment_index >= 0
+				and segment_index < footprints.size()
+				and other_index < footprints.size()
+				and !footprints_overlap(footprints[segment_index], footprints[other_index])
+			):
 				continue
 			var other_height := segments[other_index].height
 			if other_height > MIN_SPAN and other_height < segment_height - MIN_SPAN:

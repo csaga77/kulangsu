@@ -1,6 +1,6 @@
 @tool
 class_name Floor3D
-extends MeshInstance3D
+extends "res://addons/low_poly_building_editor/building_mesh_3d.gd"
 
 const GENERATED_META := &"floor_generated"
 const PREVIEW_META := &"building_editor_preview"
@@ -69,12 +69,20 @@ var m_rebuild_queued := false
 func _ready() -> void:
 	m_is_ready = true
 	if build_on_ready:
-		rebuild_floor_mesh()
+		_sync_transform_from_points()
+		if _generated_mesh_cache_matches(_floor_mesh_source_signature()):
+			_sync_floor_material()
+			_rebuild_collision_from_cached_mesh()
+		else:
+			rebuild_floor_mesh()
 
 
 func set_floor_corners(new_start: Vector3, new_end: Vector3) -> void:
+	var previous_signature := _floor_mesh_source_signature()
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
+	if _floor_mesh_source_signature() == previous_signature:
+		return
 	_sync_transform_from_points()
 	rebuild_floor_mesh()
 
@@ -84,10 +92,13 @@ func set_floor_corners_and_holes(
 	new_end: Vector3,
 	new_holes: Array[Rect2]
 ) -> void:
+	var previous_signature := _floor_mesh_source_signature()
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
-	_sync_transform_from_points()
 	m_floor_holes = _sanitize_floor_holes(new_holes, get_floor_size())
+	if _floor_mesh_source_signature() == previous_signature:
+		return
+	_sync_transform_from_points()
 	rebuild_floor_mesh()
 
 
@@ -159,6 +170,7 @@ func get_floor_size() -> Vector2:
 
 
 func rebuild_floor_mesh(rebuild_collision: bool = true) -> void:
+	_begin_generated_mesh_rebuild()
 	if rebuild_collision:
 		m_rebuild_queued = false
 	_sync_transform_from_points()
@@ -187,6 +199,7 @@ func rebuild_floor_mesh(rebuild_collision: bool = true) -> void:
 
 	_update_floor_mesh_resource(arrays)
 	_sync_floor_material()
+	_record_generated_mesh_cache(_floor_mesh_source_signature())
 
 	if rebuild_collision and generate_collision:
 		_add_collision_body(collision_faces)
@@ -197,6 +210,22 @@ func _request_rebuild() -> void:
 		return
 	m_rebuild_queued = true
 	call_deferred("rebuild_floor_mesh")
+
+
+func _floor_mesh_source_signature() -> int:
+	return hash([
+		start_point,
+		end_point,
+		get_floor_holes(),
+		floor_thickness,
+		floor_color,
+	])
+
+
+func _rebuild_collision_from_cached_mesh() -> void:
+	_clear_generated_children()
+	if generate_collision:
+		_add_collision_body(_cached_mesh_triangle_faces())
 
 
 func _sync_transform_from_points() -> void:
@@ -893,17 +922,13 @@ func _rect_end(rect: Rect2) -> Vector2:
 
 
 func _update_floor_mesh_resource(arrays: Array) -> void:
-	var array_mesh := mesh as ArrayMesh
-	if array_mesh == null:
-		array_mesh = ArrayMesh.new()
-		mesh = array_mesh
-	else:
-		array_mesh.clear_surfaces()
-	array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	_replace_generated_mesh_surface(arrays)
 
 
 func _sync_floor_material() -> void:
-	var material := material_override as StandardMaterial3D
+	var material := _scene_local_material_for_write(
+		material_override as StandardMaterial3D
+	)
 	if material == null:
 		material_override = _build_floor_material(floor_color)
 		return
@@ -920,6 +945,7 @@ func _sync_floor_material() -> void:
 
 func _build_floor_material(color: Color) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
+	material.resource_local_to_scene = true
 	material.albedo_color = Color(1.0, 1.0, 1.0, color.a)
 	material.vertex_color_use_as_albedo = true
 	material.roughness = 0.94

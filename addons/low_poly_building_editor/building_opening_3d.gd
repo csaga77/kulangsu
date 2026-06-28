@@ -2,6 +2,8 @@
 class_name BuildingOpening3D
 extends Node3D
 
+signal opening_geometry_changed
+
 const GENERATED_META := &"building_opening_generated"
 const LegacyDoorGeometry = preload(
 	"res://addons/low_poly_building_editor/legacy_door_geometry_3d.gd"
@@ -30,6 +32,7 @@ enum FrameSides { FRONT, BOTH }
 			return
 		opening_width = clamped_value
 		_request_rebuild()
+		opening_geometry_changed.emit()
 
 @export_range(0.1, 12.0, 0.01) var opening_height := 1.0:
 	set(value):
@@ -38,6 +41,7 @@ enum FrameSides { FRONT, BOTH }
 			return
 		opening_height = clamped_value
 		_request_rebuild()
+		opening_geometry_changed.emit()
 
 @export_range(0.01, 1.0, 0.01) var frame_thickness := 0.08:
 	set(value):
@@ -108,6 +112,9 @@ var m_rebuild_queued := false
 var m_legacy_door_panel_count := 0
 var m_legacy_door_panel_depth := 0.05
 var m_legacy_door_panel_color := Color(0.50, 0.34, 0.20, 1.0)
+var m_geometry_rebuild_count := 0
+@export_storage var m_generated_part_cache_signature := 0
+@export_storage var m_generated_part_cache: Array[Dictionary] = []
 
 
 # Storage-only compatibility for scenes authored before door styles became
@@ -161,15 +168,31 @@ func _get_property_list() -> Array[Dictionary]:
 
 
 func _ready() -> void:
+	set_notify_local_transform(true)
 	m_is_ready = true
 	if build_on_ready:
-		_rebuild()
+		if (
+			!m_generated_part_cache.is_empty()
+			and m_generated_part_cache_signature == _opening_geometry_source_signature()
+		):
+			_restore_generated_parts_from_cache()
+		else:
+			_rebuild()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_LOCAL_TRANSFORM_CHANGED and m_is_ready:
+		opening_geometry_changed.emit()
 
 
 func get_opening_rect() -> Rect2:
 	var size := Vector2(opening_width, opening_height)
 	var center := Vector2(position.x, position.y)
 	return Rect2(center - size * 0.5, size)
+
+
+func get_geometry_rebuild_count() -> int:
+	return m_geometry_rebuild_count
 
 
 func _request_rebuild() -> void:
@@ -180,8 +203,10 @@ func _request_rebuild() -> void:
 
 
 func _rebuild() -> void:
+	m_geometry_rebuild_count += 1
 	m_rebuild_queued = false
 	_clear_generated_children()
+	m_generated_part_cache.clear()
 
 	var half_width := opening_width * 0.5
 	var half_height := opening_height * 0.5
@@ -219,6 +244,7 @@ func _rebuild() -> void:
 			frame_color
 		)
 	_build_opening_content()
+	m_generated_part_cache_signature = _opening_geometry_source_signature()
 
 
 # Implemented by Door3D and Window3D. BuildingOpening3D itself remains a useful
@@ -301,20 +327,67 @@ func _spawn_box(
 	color: Color,
 	with_collision: bool
 ) -> void:
-	var mesh := BoxMesh.new()
-	mesh.size = size
+	var part_mesh := BoxMesh.new()
+	part_mesh.size = size
+	part_mesh.resource_local_to_scene = true
+	var descriptor := {
+		"name": part_name,
+		"mesh": part_mesh,
+		"transform": local_transform,
+		"material": _build_material(color),
+		"collision_size": size if with_collision else Vector3.ZERO,
+	}
+	m_generated_part_cache.append(descriptor)
+	_instantiate_generated_part(descriptor)
 
+
+func _instantiate_generated_part(descriptor: Dictionary) -> void:
 	var instance := MeshInstance3D.new()
-	instance.name = part_name
-	instance.mesh = mesh
-	instance.transform = local_transform
-	instance.material_override = _build_material(color)
+	instance.name = String(descriptor.get("name", "Part"))
+	instance.mesh = descriptor.get("mesh") as Mesh
+	instance.transform = Transform3D(descriptor.get("transform", Transform3D.IDENTITY))
+	instance.material_override = descriptor.get("material") as Material
 	instance.set_meta(GENERATED_META, true)
 	add_child(instance)
 	if Engine.is_editor_hint():
 		instance.owner = null
-	if generate_collision and with_collision:
-		_attach_part_collision(instance, size)
+	var collision_size := Vector3(descriptor.get("collision_size", Vector3.ZERO))
+	if generate_collision and collision_size != Vector3.ZERO:
+		_attach_part_collision(instance, collision_size)
+
+
+func _restore_generated_parts_from_cache() -> void:
+	_clear_generated_children()
+	for descriptor in m_generated_part_cache:
+		_instantiate_generated_part(descriptor)
+
+
+func _opening_geometry_source_signature() -> int:
+	var payload := [String(get_script().resource_path)]
+	var excluded := {
+		&"rebuild": true,
+		&"build_on_ready": true,
+		&"generate_collision": true,
+		&"m_generated_part_cache_signature": true,
+		&"m_generated_part_cache": true,
+	}
+	for property in get_property_list():
+		var usage := int(property.get("usage", 0))
+		if (
+			(usage & PROPERTY_USAGE_STORAGE) == 0
+			or (usage & PROPERTY_USAGE_SCRIPT_VARIABLE) == 0
+		):
+			continue
+		var property_name := StringName(property.get("name", ""))
+		if excluded.has(property_name):
+			continue
+		payload.append([property_name, get(property_name)])
+	payload.append([
+		m_legacy_door_panel_count,
+		m_legacy_door_panel_depth,
+		m_legacy_door_panel_color,
+	])
+	return hash(payload)
 
 
 func _attach_part_collision(part: Node3D, size: Vector3) -> void:
@@ -338,6 +411,7 @@ func _attach_part_collision(part: Node3D, size: Vector3) -> void:
 
 func _build_material(color: Color) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
+	material.resource_local_to_scene = true
 	material.albedo_color = color
 	material.roughness = 0.9
 	material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED

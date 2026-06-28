@@ -11,6 +11,7 @@ const StyleGeometry := preload("res://addons/low_poly_building_editor/hip_roof_g
 			return
 		hip_gable_height = clamped_value
 		_request_rebuild()
+		source_geometry_changed.emit()
 
 
 func get_roof_style() -> String:

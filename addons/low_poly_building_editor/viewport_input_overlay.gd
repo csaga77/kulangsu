@@ -2,6 +2,7 @@
 extends Control
 
 var m_plugin: EditorPlugin
+var m_is_active := false
 
 
 func setup(plugin: EditorPlugin) -> void:
@@ -12,18 +13,47 @@ func setup(plugin: EditorPlugin) -> void:
 	offset_right = 0.0
 	offset_bottom = 0.0
 	z_index = 4096
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	set_process(true)
+	set_active(
+		m_plugin != null
+		and is_instance_valid(m_plugin)
+		and m_plugin.has_method("is_building_tool_active")
+		and bool(m_plugin.call("is_building_tool_active"))
+	)
 
 
-func _process(_delta: float) -> void:
-	mouse_filter = Control.MOUSE_FILTER_STOP if _is_building_tool_active() else Control.MOUSE_FILTER_IGNORE
-	if get_parent() != null:
+func _ready() -> void:
+	var parent := get_parent()
+	if parent != null and !parent.child_order_changed.is_connected(_on_parent_child_order_changed):
+		parent.child_order_changed.connect(_on_parent_child_order_changed)
+	_ensure_front()
+
+
+func _exit_tree() -> void:
+	var parent := get_parent()
+	if parent != null and parent.child_order_changed.is_connected(_on_parent_child_order_changed):
+		parent.child_order_changed.disconnect(_on_parent_child_order_changed)
+
+
+func set_active(active: bool) -> void:
+	m_is_active = active
+	mouse_filter = Control.MOUSE_FILTER_STOP if active else Control.MOUSE_FILTER_IGNORE
+	if active:
+		_ensure_front()
+
+
+func _on_parent_child_order_changed() -> void:
+	_ensure_front()
+
+
+func _ensure_front() -> void:
+	if !m_is_active or get_parent() == null:
+		return
+	if get_index() != get_parent().get_child_count() - 1:
 		move_to_front()
 
 
 func _gui_input(event: InputEvent) -> void:
-	if !_is_building_tool_active():
+	if !m_is_active:
 		return
 	if m_plugin == null or !is_instance_valid(m_plugin):
 		return
@@ -40,14 +70,6 @@ func _gui_input(event: InputEvent) -> void:
 	var handled := bool(m_plugin.call("handle_viewport_overlay_input", camera, event))
 	if handled:
 		accept_event()
-
-
-func _is_building_tool_active() -> bool:
-	if m_plugin == null or !is_instance_valid(m_plugin):
-		return false
-	if !m_plugin.has_method("is_building_tool_active"):
-		return false
-	return bool(m_plugin.call("is_building_tool_active"))
 
 
 func _get_sub_viewport_camera() -> Camera3D:

@@ -67,6 +67,7 @@ func _ready() -> void:
 func _run_smoke_checks() -> void:
 	_validate_empty_wall_segments()
 	_validate_building_root_ownership()
+	_validate_serialized_building_mesh_caches()
 	var coordinator := Building3DScript.new() as Building3DScript
 	coordinator.name = "Building3D"
 	add_child(coordinator)
@@ -122,6 +123,7 @@ func _run_smoke_checks() -> void:
 	_validate_enclosed_wall_loop_caps()
 	_validate_overlapping_room_wall_clipping()
 	_validate_collinear_overlap_opening_propagation()
+	await _validate_event_driven_geometry_refresh()
 	await _validate_wall_collision_blocks_character(coordinator)
 	await _validate_stairs_side_collision_blocks_character(coordinator)
 
@@ -2318,6 +2320,271 @@ func _validate_wall_instance_intersection_clipping() -> void:
 		m_failures.append("Separate intersecting wall rejected an opening away from sibling geometry")
 
 
+func _validate_serialized_building_mesh_caches() -> void:
+	var source_root := Node3D.new()
+	source_root.name = "CachedBuildingParts"
+	var source_wall := BuildingFactoryScript.create_wall_node(
+		source_root,
+		Vector3.ZERO,
+		Vector3(4.0, 0.0, 0.0),
+		2.4,
+		0.22,
+		Color(0.78, 0.68, 0.54, 1.0)
+	)
+	source_wall.name = "CachedWall"
+	source_root.add_child(source_wall)
+	source_wall.owner = source_root
+	var source_floor := BuildingFactoryScript.create_floor_node(
+		source_root,
+		Vector3(0.0, 0.0, 2.0),
+		Vector3(3.0, 0.0, 5.0)
+	)
+	source_floor.name = "CachedFloor"
+	source_root.add_child(source_floor)
+	source_floor.owner = source_root
+	var source_stairs := BuildingFactoryScript.create_stairs_node(
+		source_root,
+		Vector3(5.0, 0.0, 0.0),
+		Vector3(7.0, 0.0, 4.0)
+	)
+	source_stairs.name = "CachedStairs"
+	source_root.add_child(source_stairs)
+	source_stairs.owner = source_root
+	var source_pillar := BuildingFactoryScript.create_pillar_node(
+		source_root,
+		Vector3(9.0, 0.0, 0.0),
+		0.3,
+		2.4,
+		8,
+		"round"
+	)
+	source_pillar.name = "CachedPillar"
+	source_root.add_child(source_pillar)
+	source_pillar.owner = source_root
+	var source_roof := BuildingFactoryScript.create_roof_node(
+		source_root,
+		Vector3(11.0, 2.4, 0.0),
+		Vector3(15.0, 2.4, 4.0),
+		"gable"
+	)
+	source_roof.name = "CachedRoof"
+	source_root.add_child(source_roof)
+	source_roof.owner = source_root
+	var source_opening := SingleWindow3DScript.new() as BuildingOpening3DScript
+	source_opening.name = "CachedOpening"
+	source_opening._rebuild()
+	source_root.add_child(source_opening)
+	source_opening.owner = source_root
+	var packed_scene := PackedScene.new()
+	if packed_scene.pack(source_root) != OK:
+		m_failures.append("Could not pack the serialized building-mesh cache regression scene")
+		source_root.free()
+		return
+	source_root.free()
+
+	var cached_instance := packed_scene.instantiate() as Node3D
+	add_child(cached_instance)
+	var cached_mesh_nodes := [
+		cached_instance.get_node("CachedWall"),
+		cached_instance.get_node("CachedFloor"),
+		cached_instance.get_node("CachedStairs"),
+		cached_instance.get_node("CachedPillar"),
+		cached_instance.get_node("CachedRoof"),
+	]
+	for cached_node in cached_mesh_nodes:
+		if cached_node.get_mesh_rebuild_count() != 0:
+			m_failures.append(
+				"Loading an unchanged serialized %s rebuilt its cached mesh"
+				% cached_node.get_class()
+			)
+	var cached_opening := cached_instance.get_node("CachedOpening") as BuildingOpening3DScript
+	if cached_opening.get_geometry_rebuild_count() != 0:
+		m_failures.append("Loading an unchanged opening rebuilt its cached part geometry")
+	if cached_opening.get_node_or_null("WindowPane") == null:
+		m_failures.append("Loading a cached window did not restore its generated pane")
+	var cached_wall := cached_instance.get_node("CachedWall") as Wall3DScript
+	var cached_floor := cached_instance.get_node("CachedFloor") as Floor3DScript
+	var cached_stairs := cached_instance.get_node("CachedStairs") as Stairs3DScript
+	var cached_pillar := cached_instance.get_node("CachedPillar") as Pillar3DScript
+	var cached_roof := cached_instance.get_node("CachedRoof") as Roof3DScript
+	cached_wall.set_wall_endpoints(cached_wall.start_point, cached_wall.end_point)
+	cached_floor.set_floor_corners(cached_floor.start_point, cached_floor.end_point)
+	cached_stairs.set_stair_rotation_degrees(cached_stairs.stair_rotation_degrees)
+	cached_pillar.set_pillar_radius(cached_pillar.pillar_radius)
+	cached_roof.set_covered_regions(
+		cached_roof.get_covered_rects(),
+		cached_roof.get_covered_polygons()
+	)
+	for cached_node in cached_mesh_nodes:
+		if cached_node.get_mesh_rebuild_count() != 0:
+			m_failures.append(
+				"An unchanged %s setter rebuilt cached geometry"
+				% cached_node.get_class()
+			)
+
+	var changed_instance := packed_scene.instantiate() as Node3D
+	var changed_wall := changed_instance.get_node("CachedWall") as Wall3DScript
+	var changed_segment := changed_wall.get_segment(0).duplicate() as WallSegment3D
+	changed_segment.end_point = Vector3(5.0, 0.0, 0.0)
+	var changed_segments: Array[WallSegment3D] = [changed_segment]
+	changed_wall.segments = changed_segments
+	var changed_floor := changed_instance.get_node("CachedFloor") as Floor3DScript
+	changed_floor.floor_thickness += 0.05
+	var changed_stairs := changed_instance.get_node("CachedStairs") as Stairs3DScript
+	changed_stairs.step_count += 1
+	var changed_pillar := changed_instance.get_node("CachedPillar") as Pillar3DScript
+	changed_pillar.pillar_radius += 0.05
+	var changed_roof := changed_instance.get_node("CachedRoof") as Roof3DScript
+	changed_roof.roof_overhang += 0.05
+	var changed_opening := changed_instance.get_node("CachedOpening") as SingleWindow3DScript
+	changed_opening.window_pane_depth += 0.02
+	add_child(changed_instance)
+	var changed_mesh_nodes := [
+		changed_wall,
+		changed_floor,
+		changed_stairs,
+		changed_pillar,
+		changed_roof,
+	]
+	for changed_node in changed_mesh_nodes:
+		if changed_node.get_mesh_rebuild_count() == 0:
+			m_failures.append(
+				"Loading a changed %s reused stale cached geometry"
+				% changed_node.get_class()
+			)
+	for index in range(cached_mesh_nodes.size()):
+		if cached_mesh_nodes[index].mesh == changed_mesh_nodes[index].mesh:
+			m_failures.append(
+				"Rebuilding %s mutated a mesh resource shared with another scene instance"
+				% changed_mesh_nodes[index].get_class()
+			)
+	if changed_opening.get_geometry_rebuild_count() == 0:
+		m_failures.append("Loading a changed opening reused stale cached part geometry")
+	var cached_pane := cached_opening.get_node_or_null("WindowPane") as MeshInstance3D
+	var changed_pane := changed_opening.get_node_or_null("WindowPane") as MeshInstance3D
+	if cached_pane != null and changed_pane != null and cached_pane.mesh == changed_pane.mesh:
+		m_failures.append("Rebuilding an opening reused a part mesh from another scene instance")
+
+
+func _validate_event_driven_geometry_refresh() -> void:
+	var coordinator := Building3DScript.new() as Building3DScript
+	coordinator.name = "EventDrivenGeometryCoordinator"
+	add_child(coordinator)
+	var wall_color := Color(0.78, 0.68, 0.54, 1.0)
+	var horizontal := BuildingFactoryScript.create_wall_node(
+		coordinator,
+		Vector3(-2.0, 0.0, 0.0),
+		Vector3(2.0, 0.0, 0.0),
+		4.0,
+		0.22,
+		wall_color
+	)
+	var horizontal_build_count := horizontal.get_mesh_rebuild_count()
+	coordinator.add_child(horizontal)
+	if horizontal.get_mesh_rebuild_count() != horizontal_build_count:
+		m_failures.append("Wall3D rebuilt an already-current serialized mesh in _ready()")
+	var vertical := BuildingFactoryScript.create_wall_node(
+		coordinator,
+		Vector3(0.0, 0.0, -2.0),
+		Vector3(0.0, 0.0, 2.0),
+		4.0,
+		0.22,
+		wall_color
+	)
+	coordinator.add_child(vertical)
+	await _wait_for_geometry_refresh()
+	if horizontal.get_intersection_clip_segment_count() != 1:
+		m_failures.append("Signal-driven refresh did not assign an intersecting wall clip")
+	var unchanged_horizontal_build_count := horizontal.get_mesh_rebuild_count()
+	var unchanged_vertical_build_count := vertical.get_mesh_rebuild_count()
+	coordinator.refresh_building_geometry_clips()
+	if (
+		horizontal.get_mesh_rebuild_count() != unchanged_horizontal_build_count
+		or vertical.get_mesh_rebuild_count() != unchanged_vertical_build_count
+	):
+		m_failures.append("Unchanged clipping conditions rebuilt wall meshes")
+
+	var vertical_segment := vertical.get_segment(0)
+	vertical_segment.start_point = Vector3(6.0, 8.0, -2.0)
+	vertical_segment.end_point = Vector3(6.0, 8.0, 2.0)
+	await _wait_for_geometry_refresh()
+	if horizontal.get_intersection_clip_segment_count() != 0:
+		m_failures.append("Segment geometry signal did not clear a stale wall clip")
+	if horizontal.get_mesh_rebuild_count() <= unchanged_horizontal_build_count:
+		m_failures.append("Changed wall clipping conditions did not rebuild the affected mesh")
+
+	var roof := BuildingFactoryScript.create_roof_node(
+		coordinator,
+		Vector3(-2.0, 2.4, -2.0),
+		Vector3(2.0, 2.4, 2.0),
+		"gable",
+		40.0,
+		0.2,
+		0.0,
+		Color(0.50, 0.34, 0.25, 1.0)
+	)
+	coordinator.add_child(roof)
+	await _wait_for_geometry_refresh()
+	if horizontal.get_roof_clip_surface_count() == 0:
+		m_failures.append("Signal-driven refresh did not assign a roof clip surface")
+	var roof_clipped_build_count := horizontal.get_mesh_rebuild_count()
+	var unchanged_roof_build_count := roof.get_mesh_rebuild_count()
+	coordinator.refresh_building_geometry_clips()
+	if horizontal.get_mesh_rebuild_count() != roof_clipped_build_count:
+		m_failures.append("Unchanged roof clipping conditions rebuilt a wall mesh")
+	if roof.get_mesh_rebuild_count() != unchanged_roof_build_count:
+		m_failures.append("Unchanged roof cover conditions rebuilt a roof mesh")
+	roof.set_roof_corners(Vector3(8.0, 2.4, -2.0), Vector3(12.0, 2.4, 2.0))
+	await _wait_for_geometry_refresh()
+	if horizontal.get_roof_clip_surface_count() != 0:
+		m_failures.append("Roof geometry signal did not clear a stale wall clip surface")
+	if horizontal.get_mesh_rebuild_count() <= roof_clipped_build_count:
+		m_failures.append("Changed roof clipping conditions did not rebuild the affected mesh")
+
+	var owner_wall := BuildingFactoryScript.create_wall_node(
+		coordinator,
+		Vector3(0.0, 0.0, 8.0),
+		Vector3(6.0, 0.0, 8.0),
+		2.4,
+		0.22,
+		wall_color
+	)
+	coordinator.add_child(owner_wall)
+	var clipped_wall := BuildingFactoryScript.create_wall_node(
+		coordinator,
+		Vector3(3.0, 0.0, 8.0),
+		Vector3(9.0, 0.0, 8.0),
+		2.4,
+		0.22,
+		wall_color
+	)
+	coordinator.add_child(clipped_wall)
+	var opening := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	opening.opening_width = 0.8
+	opening.opening_height = 0.8
+	opening.position = Vector3(1.5, 1.1, 0.145)
+	opening.set_meta(Wall3DScript.SEGMENT_INDEX_META, 0)
+	clipped_wall.add_child(opening)
+	await _wait_for_geometry_refresh()
+	var initial_rects := owner_wall.get_render_opening_rects(0)
+	if initial_rects.is_empty():
+		m_failures.append("Opening child signal did not propagate a collinear wall cut")
+		return
+	var initial_center_x := initial_rects[0].get_center().x
+	opening.position.x += 0.5
+	await _wait_for_geometry_refresh()
+	var moved_rects := owner_wall.get_render_opening_rects(0)
+	if moved_rects.is_empty():
+		m_failures.append("Opening transform signal removed its propagated wall cut")
+	elif absf(moved_rects[0].get_center().x - initial_center_x - 0.5) > 0.001:
+		m_failures.append("Opening transform signal did not move its propagated wall cut")
+
+
+func _wait_for_geometry_refresh() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+
 func _validate_roof_wall_clipping() -> void:
 	var coordinator := Building3DScript.new() as Building3DScript
 	coordinator.name = "RoofWallClipCoordinator"
@@ -2351,6 +2618,87 @@ func _validate_roof_wall_clipping() -> void:
 		m_failures.append("Wall3D kept geometry above the intersecting roof underside")
 	if wall.get_node_or_null("WallCollision") == null:
 		m_failures.append("Roof-clipped Wall3D lost generated collision")
+
+	var gable_end_wall := BuildingFactoryScript.create_wall_node(
+		coordinator,
+		Vector3(18.0, 0.0, 0.2),
+		Vector3(18.0, 0.0, 3.8),
+		5.0,
+		0.22,
+		wall_color
+	)
+	coordinator.add_child(gable_end_wall)
+	var gable_end_roof := BuildingFactoryScript.create_roof_node(
+		coordinator,
+		Vector3(16.0, 2.4, 0.0),
+		Vector3(20.0, 2.4, 4.0),
+		"gable",
+		45.0,
+		0.20,
+		0.0,
+		Color(0.50, 0.34, 0.25, 1.0)
+	)
+	coordinator.add_child(gable_end_roof)
+	coordinator.refresh_building_geometry_clips()
+	if _wall_has_sloped_up_face(gable_end_wall):
+		m_failures.append("Gable-end wall generated hidden roof-closure triangles")
+	var retained_surface_samples := [
+		{
+			"point": coordinator.to_global(Vector3(17.89, 1.0, 0.6)),
+			"normal": Vector3.LEFT,
+		},
+		{
+			"point": coordinator.to_global(Vector3(17.89, 3.5, 2.0)),
+			"normal": Vector3.LEFT,
+		},
+		{
+			"point": coordinator.to_global(Vector3(17.89, 1.0, 3.4)),
+			"normal": Vector3.LEFT,
+		},
+		{
+			"point": coordinator.to_global(Vector3(18.11, 1.0, 0.6)),
+			"normal": Vector3.RIGHT,
+		},
+		{
+			"point": coordinator.to_global(Vector3(18.11, 3.5, 2.0)),
+			"normal": Vector3.RIGHT,
+		},
+		{
+			"point": coordinator.to_global(Vector3(18.11, 1.0, 3.4)),
+			"normal": Vector3.RIGHT,
+		},
+	]
+	for retained_sample in retained_surface_samples:
+		var retained_point: Vector3 = retained_sample["point"]
+		var retained_normal: Vector3 = retained_sample["normal"]
+		if !_wall_mesh_contains_surface_point(gable_end_wall, retained_point):
+			m_failures.append(
+				"Gable clipping removed wall geometry below the roof at %s"
+				% retained_point
+			)
+		elif !_wall_mesh_contains_surface_point(
+			gable_end_wall,
+			retained_point,
+			0.002,
+			retained_normal
+		):
+			m_failures.append(
+				"Gable-clipped exterior wall face has the wrong normal at %s"
+				% retained_point
+			)
+	if (
+		!_wall_face_winding_matches_normal(gable_end_wall, Vector3.LEFT)
+		or !_wall_face_winding_matches_normal(gable_end_wall, Vector3.RIGHT)
+	):
+		m_failures.append("Gable-clipped exterior wall face winding does not match its normal")
+	var gable_collision := gable_end_wall.get_node_or_null(
+		"WallCollision/CollisionShape3D"
+	) as CollisionShape3D
+	if (
+		gable_collision == null
+		or !(gable_collision.shape is ConcavePolygonShape3D)
+	):
+		m_failures.append("Gable-clipped wall collision did not preserve the sloped wall volume")
 
 	roof.set_roof_corners(Vector3(8.0, 2.4, 0.0), Vector3(12.0, 2.4, 4.0))
 	coordinator.refresh_building_geometry_clips()
@@ -3510,6 +3858,100 @@ func _has_world_diagonal_wall_normal(wall: Wall3DScript) -> bool:
 		if maxf(absf(world_normal.dot(Vector3.RIGHT)), absf(world_normal.dot(Vector3.BACK))) < 0.98:
 			return true
 	return false
+
+
+func _wall_has_sloped_up_face(wall: Wall3DScript) -> bool:
+	if wall.mesh == null or wall.mesh.get_surface_count() <= 0:
+		return false
+	var arrays := wall.mesh.surface_get_arrays(0)
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	for normal in normals:
+		var world_normal := (wall.global_transform.basis * normal).normalized()
+		if world_normal.y <= 0.1 or world_normal.y >= 0.999:
+			continue
+		if maxf(absf(world_normal.x), absf(world_normal.z)) > 0.1:
+			return true
+	return false
+
+
+func _wall_mesh_contains_surface_point(
+	wall: Wall3DScript,
+	world_point: Vector3,
+	tolerance: float = 0.002,
+	expected_world_normal: Vector3 = Vector3.ZERO
+) -> bool:
+	if wall.mesh == null or wall.mesh.get_surface_count() <= 0:
+		return false
+	var arrays := wall.mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	for triangle_start in range(0, indices.size(), 3):
+		var first_index := indices[triangle_start]
+		var a := wall.global_transform * vertices[first_index]
+		var b := wall.global_transform * vertices[indices[triangle_start + 1]]
+		var c := wall.global_transform * vertices[indices[triangle_start + 2]]
+		if expected_world_normal != Vector3.ZERO:
+			var world_normal := (
+				wall.global_transform.basis * normals[first_index]
+			).normalized()
+			if world_normal.dot(expected_world_normal.normalized()) < 0.98:
+				continue
+		var normal := (b - a).cross(c - a)
+		var normal_length := normal.length()
+		if normal_length <= 0.000001:
+			continue
+		if absf((world_point - a).dot(normal / normal_length)) > tolerance:
+			continue
+		var v0 := b - a
+		var v1 := c - a
+		var v2 := world_point - a
+		var dot00 := v0.dot(v0)
+		var dot01 := v0.dot(v1)
+		var dot11 := v1.dot(v1)
+		var dot20 := v2.dot(v0)
+		var dot21 := v2.dot(v1)
+		var denominator := dot00 * dot11 - dot01 * dot01
+		if absf(denominator) <= 0.000001:
+			continue
+		var weight_b := (dot11 * dot20 - dot01 * dot21) / denominator
+		var weight_c := (dot00 * dot21 - dot01 * dot20) / denominator
+		var weight_a := 1.0 - weight_b - weight_c
+		if (
+			weight_a >= -tolerance
+			and weight_b >= -tolerance
+			and weight_c >= -tolerance
+		):
+			return true
+	return false
+
+
+func _wall_face_winding_matches_normal(
+	wall: Wall3DScript,
+	expected_world_normal: Vector3
+) -> bool:
+	if wall.mesh == null or wall.mesh.get_surface_count() <= 0:
+		return false
+	var arrays := wall.mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	var found_face := false
+	for triangle_start in range(0, indices.size(), 3):
+		var first_index := indices[triangle_start]
+		var world_normal := (
+			wall.global_transform.basis * normals[first_index]
+		).normalized()
+		if world_normal.dot(expected_world_normal.normalized()) < 0.98:
+			continue
+		found_face = true
+		var a := wall.global_transform * vertices[first_index]
+		var b := wall.global_transform * vertices[indices[triangle_start + 1]]
+		var c := wall.global_transform * vertices[indices[triangle_start + 2]]
+		var winding_normal := (b - a).cross(c - a).normalized()
+		if winding_normal.dot(world_normal) > -0.98:
+			return false
+	return found_face
 
 
 func _world_boundary_edge_count(wall: Wall3DScript) -> int:

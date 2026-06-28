@@ -8,6 +8,7 @@ extends "res://addons/low_poly_building_editor/roof_3d.gd"
 			return
 		roof_height = clamped_value
 		_request_rebuild()
+		source_geometry_changed.emit()
 
 
 func get_roof_angle_degrees() -> float:

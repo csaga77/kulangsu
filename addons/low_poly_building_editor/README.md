@@ -16,6 +16,11 @@ by a genuine subset; and concrete pillar, roof, window, and door styles own thei
 identity, style controls, and geometry. See the normative future-block pattern in
 [`docs/contract.md`](docs/contract.md#building-block-style-pattern).
 
+Serialized generated meshes are validated caches. Walls, floors, stairs, pillars, and
+roofs share `BuildingMesh3D` cache signatures; windows and doors cache their generated
+part meshes. Loading reuses matching geometry while recreating unsaved collision/debug
+children, and authored or clipping changes invalidate only the affected cache.
+
 This README is the plugin's entry point; the full documentation lives in [`docs/`](docs):
 
 - [`docs/feature.md`](docs/feature.md) — goals, authoring experience, rules, edge cases, ownership, and validation.

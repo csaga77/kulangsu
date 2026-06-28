@@ -2,30 +2,31 @@
 class_name Building3D
 extends Node3D
 
-const GEOMETRY_CLIP_REFRESH_INTERVAL_SECONDS := 0.2
-
-var m_geometry_clip_signature := ""
-var m_geometry_clip_refresh_timer := 0.0
+var m_geometry_clip_refresh_queued := false
 
 
 func _ready() -> void:
-	set_process(Engine.is_editor_hint())
-	m_geometry_clip_signature = _build_geometry_clip_signature()
-	call_deferred("refresh_building_geometry_clips")
+	for child in get_children():
+		_connect_geometry_source(child)
+	if !child_entered_tree.is_connected(_on_child_entered_tree):
+		child_entered_tree.connect(_on_child_entered_tree)
+	if !child_exiting_tree.is_connected(_on_child_exiting_tree):
+		child_exiting_tree.connect(_on_child_exiting_tree)
+	if !child_order_changed.is_connected(_on_child_order_changed):
+		child_order_changed.connect(_on_child_order_changed)
+	request_geometry_clip_refresh()
 
 
-func _process(delta: float) -> void:
-	if !Engine.is_editor_hint():
-		return
-	m_geometry_clip_refresh_timer += delta
-	if m_geometry_clip_refresh_timer < GEOMETRY_CLIP_REFRESH_INTERVAL_SECONDS:
-		return
-	m_geometry_clip_refresh_timer = 0.0
-	var signature := _build_geometry_clip_signature()
-	if signature == m_geometry_clip_signature:
-		return
-	m_geometry_clip_signature = signature
-	refresh_building_geometry_clips()
+func _exit_tree() -> void:
+	m_geometry_clip_refresh_queued = false
+	for child in get_children():
+		_disconnect_geometry_source(child)
+	if child_entered_tree.is_connected(_on_child_entered_tree):
+		child_entered_tree.disconnect(_on_child_entered_tree)
+	if child_exiting_tree.is_connected(_on_child_exiting_tree):
+		child_exiting_tree.disconnect(_on_child_exiting_tree)
+	if child_order_changed.is_connected(_on_child_order_changed):
+		child_order_changed.disconnect(_on_child_order_changed)
 
 
 func get_wall_nodes() -> Array[Wall3D]:
@@ -230,51 +231,77 @@ func _create_wall_geometry_resolver(grid_step: float = 0.5) -> WallGeometryResol
 
 
 func refresh_building_geometry_clips() -> void:
+	m_geometry_clip_refresh_queued = false
 	refresh_roof_covered_rects()
 	refresh_wall_intersection_clips()
-	m_geometry_clip_signature = _build_geometry_clip_signature()
 
 
-func _build_geometry_clip_signature() -> String:
-	var parts: Array[String] = []
-	for wall in get_wall_nodes():
+func request_geometry_clip_refresh() -> void:
+	if m_geometry_clip_refresh_queued:
+		return
+	m_geometry_clip_refresh_queued = true
+	call_deferred("_flush_geometry_clip_refresh")
+
+
+func _flush_geometry_clip_refresh() -> void:
+	if !m_geometry_clip_refresh_queued:
+		return
+	refresh_building_geometry_clips()
+
+
+func _connect_geometry_source(child: Node) -> void:
+	var wall := child as Wall3D
+	if wall != null:
 		if wall.has_meta(Wall3D.PREVIEW_META):
-			continue
-		parts.append("wall:%s" % wall.name)
-		parts.append(_signature_float(wall.wall_height))
-		parts.append(_signature_float(wall.wall_thickness))
-		for segment_index in range(wall.get_segment_count()):
-			var segment := wall.get_segment(segment_index)
-			if segment == null:
-				continue
-			parts.append("segment:%d" % segment_index)
-			parts.append(_signature_vector3(segment.start_point))
-			parts.append(_signature_vector3(segment.end_point))
-			parts.append(_signature_float(segment.height))
-			parts.append(_signature_float(segment.thickness))
-		parts.append("openings:%s" % wall.get_opening_signature())
-	for roof in get_roof_nodes():
-		if roof.has_meta(Roof3D.PREVIEW_META):
-			continue
-		parts.append("roof:%s" % roof.name)
-		parts.append(_signature_vector3(roof.start_point))
-		parts.append(_signature_vector3(roof.end_point))
-		parts.append(roof.get_roof_style())
-		parts.append(_signature_float(roof.get_roof_angle_degrees()))
-		parts.append(_signature_float(roof.roof_thickness))
-		parts.append(_signature_float(roof.roof_overhang))
-		parts.append(_signature_float(roof.roof_rotation_degrees))
-		parts.append(_signature_float(roof.get_hip_gable_height()))
-	return "|".join(parts)
+			return
+		if !wall.source_geometry_changed.is_connected(_on_source_geometry_changed):
+			wall.source_geometry_changed.connect(_on_source_geometry_changed)
+		return
+	var roof := child as Roof3D
+	if roof == null or roof.has_meta(Roof3D.PREVIEW_META):
+		return
+	if !roof.source_geometry_changed.is_connected(_on_source_geometry_changed):
+		roof.source_geometry_changed.connect(_on_source_geometry_changed)
 
 
-func _signature_vector3(value: Vector3) -> String:
-	return "%s,%s,%s" % [
-		_signature_float(value.x),
-		_signature_float(value.y),
-		_signature_float(value.z),
-	]
+func _disconnect_geometry_source(child: Node) -> void:
+	var wall := child as Wall3D
+	if wall != null:
+		if wall.source_geometry_changed.is_connected(_on_source_geometry_changed):
+			wall.source_geometry_changed.disconnect(_on_source_geometry_changed)
+		return
+	var roof := child as Roof3D
+	if roof == null:
+		return
+	if roof.source_geometry_changed.is_connected(_on_source_geometry_changed):
+		roof.source_geometry_changed.disconnect(_on_source_geometry_changed)
 
 
-func _signature_float(value: float) -> String:
-	return "%0.4f" % value
+func _on_source_geometry_changed() -> void:
+	request_geometry_clip_refresh()
+
+
+func _on_child_entered_tree(child: Node) -> void:
+	if !_is_authored_geometry_source(child):
+		return
+	_connect_geometry_source(child)
+	request_geometry_clip_refresh()
+
+
+func _on_child_exiting_tree(child: Node) -> void:
+	if !_is_authored_geometry_source(child):
+		return
+	_disconnect_geometry_source(child)
+	request_geometry_clip_refresh()
+
+
+func _on_child_order_changed() -> void:
+	request_geometry_clip_refresh()
+
+
+func _is_authored_geometry_source(child: Node) -> bool:
+	if child is Wall3D:
+		return !child.has_meta(Wall3D.PREVIEW_META)
+	if child is Roof3D:
+		return !child.has_meta(Roof3D.PREVIEW_META)
+	return false

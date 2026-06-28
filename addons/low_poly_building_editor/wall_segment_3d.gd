@@ -2,15 +2,51 @@
 class_name WallSegment3D
 extends Resource
 
+signal geometry_changed
+
 ## One straight wall span stored inside a Wall3D node. Points are in
 ## the owning coordinator's parent-local space; the segment's render frame is
 ## derived from them the same way Wall3D derives its transform.
 
-@export var start_point := Vector3.ZERO
-@export var end_point := Vector3(4.0, 0.0, 0.0)
-@export_range(0.03, 1.0, 0.01, "or_greater") var thickness := 0.22
-@export_range(0.1, 6.0, 0.05, "or_greater") var height := 2.4
-@export var color := Color(0.78, 0.68, 0.54, 1.0)
+@export var start_point := Vector3.ZERO:
+	set(value):
+		if start_point.is_equal_approx(value):
+			return
+		start_point = value
+		_emit_geometry_changed()
+
+@export var end_point := Vector3(4.0, 0.0, 0.0):
+	set(value):
+		if end_point.is_equal_approx(value):
+			return
+		end_point = value
+		_emit_geometry_changed()
+
+@export_range(0.03, 1.0, 0.01, "or_greater") var thickness := 0.22:
+	set(value):
+		if is_equal_approx(thickness, value):
+			return
+		thickness = value
+		_emit_geometry_changed()
+
+@export_range(0.1, 6.0, 0.05, "or_greater") var height := 2.4:
+	set(value):
+		if is_equal_approx(height, value):
+			return
+		height = value
+		_emit_geometry_changed()
+
+@export var color := Color(0.78, 0.68, 0.54, 1.0):
+	set(value):
+		if color == value:
+			return
+		color = value
+		emit_changed()
+
+
+func _emit_geometry_changed() -> void:
+	emit_changed()
+	geometry_changed.emit()
 
 
 func get_length() -> float:

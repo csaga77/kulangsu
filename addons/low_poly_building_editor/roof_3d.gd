@@ -1,6 +1,8 @@
 @tool
 class_name Roof3D
-extends MeshInstance3D
+extends "res://addons/low_poly_building_editor/building_mesh_3d.gd"
+
+signal source_geometry_changed
 
 const GENERATED_META := &"roof_generated"
 const PREVIEW_META := &"building_editor_preview"
@@ -27,6 +29,7 @@ const RoofStyleGeometryFactory := preload(
 			return
 		start_point = value
 		_request_rebuild()
+		source_geometry_changed.emit()
 
 @export var end_point := Vector3(4.0, 0.0, 4.0):
 	set(value):
@@ -34,6 +37,7 @@ const RoofStyleGeometryFactory := preload(
 			return
 		end_point = value
 		_request_rebuild()
+		source_geometry_changed.emit()
 
 @export_range(0.02, 2.0, 0.01, "or_greater") var roof_thickness := 0.12:
 	set(value):
@@ -42,6 +46,7 @@ const RoofStyleGeometryFactory := preload(
 			return
 		roof_thickness = clamped_value
 		_request_rebuild()
+		source_geometry_changed.emit()
 
 @export_range(0.0, 4.0, 0.01, "or_greater") var roof_overhang := 0.2:
 	set(value):
@@ -50,6 +55,7 @@ const RoofStyleGeometryFactory := preload(
 			return
 		roof_overhang = clamped_value
 		_request_rebuild()
+		source_geometry_changed.emit()
 
 @export_range(-180.0, 180.0, 1.0) var roof_rotation_degrees := 0.0:
 	set(value):
@@ -58,6 +64,7 @@ const RoofStyleGeometryFactory := preload(
 			return
 		roof_rotation_degrees = normalized_value
 		_request_rebuild()
+		source_geometry_changed.emit()
 
 @export var roof_color := Color(0.50, 0.34, 0.25, 1.0):
 	set(value):
@@ -68,12 +75,18 @@ const RoofStyleGeometryFactory := preload(
 
 @export var covered_rects: Array[Rect2] = []:
 	set(value):
-		covered_rects = _sanitize_covered_rects(value)
+		var sanitized := _sanitize_covered_rects(value)
+		if hash(covered_rects) == hash(sanitized):
+			return
+		covered_rects = sanitized
 		_request_rebuild()
 
 @export var covered_polygons: Array[PackedVector2Array] = []:
 	set(value):
-		covered_polygons = _sanitize_covered_polygons(value)
+		var sanitized := _sanitize_covered_polygons(value)
+		if hash(covered_polygons) == hash(sanitized):
+			return
+		covered_polygons = sanitized
 		_request_rebuild()
 
 @export var build_on_ready := true
@@ -105,20 +118,34 @@ var m_rebuild_queued := false
 func _ready() -> void:
 	m_is_ready = true
 	if build_on_ready:
-		rebuild_roof_mesh()
+		_sync_transform_from_points()
+		if _generated_mesh_cache_matches(
+			_roof_mesh_source_signature(),
+			_roof_mesh_clip_signature()
+		):
+			_sync_roof_material()
+			_rebuild_generated_children_from_cached_mesh()
+		else:
+			rebuild_roof_mesh()
 
 
 func set_roof_corners(new_start: Vector3, new_end: Vector3) -> void:
+	var previous_signature := _roof_mesh_source_signature()
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
+	if _roof_mesh_source_signature() == previous_signature:
+		return
 	_sync_transform_from_points()
 	rebuild_roof_mesh()
 
 
 func set_roof_corners_and_rotation(new_start: Vector3, new_end: Vector3, new_rotation_degrees: float) -> void:
+	var previous_signature := _roof_mesh_source_signature()
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
 	roof_rotation_degrees = new_rotation_degrees
+	if _roof_mesh_source_signature() == previous_signature:
+		return
 	_sync_transform_from_points()
 	rebuild_roof_mesh()
 
@@ -148,29 +175,40 @@ func set_roof_corners_rotation_height_and_covers(
 	new_covered_rects: Array[Rect2],
 	new_covered_polygons: Array[PackedVector2Array] = []
 ) -> void:
+	var previous_source_signature := _roof_mesh_source_signature()
+	var previous_clip_signature := _roof_mesh_clip_signature()
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
 	roof_rotation_degrees = new_rotation_degrees
 	set_roof_angle_degrees(new_height)
 	covered_rects = new_covered_rects
 	covered_polygons = new_covered_polygons
+	if (
+		_roof_mesh_source_signature() == previous_source_signature
+		and _roof_mesh_clip_signature() == previous_clip_signature
+	):
+		return
 	_sync_transform_from_points()
 	rebuild_roof_mesh()
 
 
 func set_covered_rects(new_covered_rects: Array[Rect2]) -> void:
+	var previous_signature := _roof_mesh_clip_signature()
 	covered_rects = new_covered_rects
 	covered_polygons = []
-	rebuild_roof_mesh()
+	if _roof_mesh_clip_signature() != previous_signature:
+		rebuild_roof_mesh()
 
 
 func set_covered_regions(
 	new_covered_rects: Array[Rect2],
 	new_covered_polygons: Array[PackedVector2Array]
 ) -> void:
+	var previous_signature := _roof_mesh_clip_signature()
 	covered_rects = new_covered_rects
 	covered_polygons = new_covered_polygons
-	rebuild_roof_mesh()
+	if _roof_mesh_clip_signature() != previous_signature:
+		rebuild_roof_mesh()
 
 
 func get_covered_rects() -> Array[Rect2]:
@@ -228,7 +266,10 @@ func has_visible_roof_geometry() -> bool:
 
 
 func set_roof_rotation_degrees(new_rotation_degrees: float) -> void:
+	var previous_signature := _roof_mesh_source_signature()
 	roof_rotation_degrees = new_rotation_degrees
+	if _roof_mesh_source_signature() == previous_signature:
+		return
 	_sync_transform_from_points()
 	rebuild_roof_mesh()
 
@@ -457,6 +498,7 @@ func get_roof_bounds_max() -> Vector3:
 
 
 func rebuild_roof_mesh(rebuild_collision: bool = true) -> void:
+	_begin_generated_mesh_rebuild()
 	if rebuild_collision:
 		m_rebuild_queued = false
 	_sync_transform_from_points()
@@ -503,6 +545,10 @@ func rebuild_roof_mesh(rebuild_collision: bool = true) -> void:
 
 	_update_roof_mesh_resource(arrays)
 	_sync_roof_material()
+	_record_generated_mesh_cache(
+		_roof_mesh_source_signature(),
+		_roof_mesh_clip_signature()
+	)
 
 	if debug_show_triangle_wireframe:
 		_add_triangle_wireframe(vertices, indices)
@@ -516,6 +562,39 @@ func _request_rebuild() -> void:
 		return
 	m_rebuild_queued = true
 	call_deferred("rebuild_roof_mesh")
+
+
+func _roof_mesh_source_signature() -> int:
+	return hash([
+		get_roof_style(),
+		start_point,
+		end_point,
+		roof_thickness,
+		roof_overhang,
+		roof_rotation_degrees,
+		roof_color,
+		get_roof_angle_degrees(),
+		get_hip_gable_height(),
+		debug_show_triangle_wireframe,
+		debug_triangle_wireframe_color,
+	])
+
+
+func _roof_mesh_clip_signature() -> int:
+	return hash([
+		covered_rects,
+		covered_polygons,
+	])
+
+
+func _rebuild_generated_children_from_cached_mesh() -> void:
+	_clear_generated_children()
+	var vertices := _cached_mesh_vertices()
+	var indices := _cached_mesh_indices()
+	if debug_show_triangle_wireframe:
+		_add_triangle_wireframe(vertices, indices)
+	if generate_collision:
+		_add_collision_body(vertices, indices)
 
 
 func _sync_transform_from_points() -> void:
@@ -1276,17 +1355,13 @@ func _append_triangle(
 
 
 func _update_roof_mesh_resource(arrays: Array) -> void:
-	var array_mesh := mesh as ArrayMesh
-	if array_mesh == null:
-		array_mesh = ArrayMesh.new()
-		mesh = array_mesh
-	else:
-		array_mesh.clear_surfaces()
-	array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	_replace_generated_mesh_surface(arrays)
 
 
 func _sync_roof_material() -> void:
-	var material := material_override as StandardMaterial3D
+	var material := _scene_local_material_for_write(
+		material_override as StandardMaterial3D
+	)
 	if material == null:
 		material_override = _build_roof_material(roof_color)
 		return
@@ -1303,6 +1378,7 @@ func _sync_roof_material() -> void:
 
 func _build_roof_material(color: Color) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
+	material.resource_local_to_scene = true
 	material.albedo_color = Color(1.0, 1.0, 1.0, color.a)
 	material.vertex_color_use_as_albedo = true
 	material.roughness = 0.94

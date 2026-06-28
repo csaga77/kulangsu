@@ -2619,7 +2619,7 @@ func _commit_roof_drag() -> void:
 			old_covered_polygons
 		)
 		if coordinator != null:
-			coordinator.refresh_roof_covered_rects()
+			coordinator.refresh_building_geometry_clips()
 		_reset_roof_drag_state()
 		_set_status("Roof is too small.")
 		return
@@ -2638,7 +2638,7 @@ func _commit_roof_drag() -> void:
 			old_covered_polygons
 		)
 		if coordinator != null:
-			coordinator.refresh_roof_covered_rects()
+			coordinator.refresh_building_geometry_clips()
 		_reset_roof_drag_state()
 		_set_status("Roof unchanged.")
 		return
@@ -2676,6 +2676,7 @@ func _commit_roof_drag() -> void:
 				old_covered_rects,
 				old_covered_polygons
 			)
+			coordinator.refresh_building_geometry_clips()
 			_reset_roof_drag_state()
 			_set_status("Roof would be fully covered.")
 			return
@@ -2697,6 +2698,7 @@ func _commit_roof_drag() -> void:
 				old_covered_rects,
 				old_covered_polygons
 			)
+			coordinator.refresh_building_geometry_clips()
 			_reset_roof_drag_state()
 			_set_status("Roof edit would fully cover another roof.")
 			return
@@ -2740,6 +2742,7 @@ func _commit_roof_drag() -> void:
 func _cancel_roof_drag() -> void:
 	if m_dragging_roof == null:
 		return
+	var coordinator := _find_coordinator_from_node(m_dragging_roof)
 	if is_instance_valid(m_dragging_roof):
 		m_dragging_roof.set_roof_corners_rotation_height_and_covers(
 			m_drag_roof_old_start,
@@ -2750,6 +2753,8 @@ func _cancel_roof_drag() -> void:
 			m_drag_roof_old_covered_polygons
 		)
 		m_dragging_roof.material_override = m_drag_roof_active_material
+		if coordinator != null:
+			coordinator.refresh_building_geometry_clips()
 	_reset_roof_drag_state()
 	_set_status("Roof edit canceled.")
 
@@ -4330,7 +4335,7 @@ func _apply_wall_geometry(
 
 func _refresh_wall_intersections(coordinator: Building3DScript) -> void:
 	if coordinator != null and is_instance_valid(coordinator):
-		coordinator.refresh_wall_intersection_clips()
+		coordinator.refresh_building_geometry_clips()
 
 
 func _set_wall_endpoints_and_refresh_intersections(
@@ -5417,6 +5422,7 @@ func _commit_wall_drag() -> void:
 func _cancel_wall_drag() -> void:
 	if m_dragging_wall == null:
 		return
+	var coordinator := _find_coordinator_from_node(m_dragging_wall)
 	if is_instance_valid(m_dragging_wall):
 		_apply_wall_geometry(
 			m_dragging_wall,
@@ -5426,6 +5432,8 @@ func _cancel_wall_drag() -> void:
 			m_drag_wall_opening_anchors
 		)
 		m_dragging_wall.material_override = m_drag_wall_active_material
+		if coordinator != null:
+			coordinator.refresh_building_geometry_clips()
 	m_dragging_wall = null
 	m_drag_wall_old_segments.clear()
 	m_drag_wall_opening_anchors.clear()
@@ -5729,8 +5737,9 @@ func _attach_viewport_overlays() -> void:
 		if overlay.has_method("setup"):
 			overlay.setup(self)
 		viewport_control.add_child(overlay)
-		overlay.move_to_front()
 		m_viewport_overlays.append(overlay)
+		if overlay.has_method("set_active"):
+			overlay.call("set_active", m_tool_mode != MODE_SELECT)
 
 
 func _attach_input_capture() -> void:
@@ -5865,7 +5874,7 @@ func _do_add_node_and_refresh_roofs(
 ) -> void:
 	_do_add_node(parent, node, scene_root, select_after_add)
 	if coordinator != null and is_instance_valid(coordinator):
-		coordinator.refresh_roof_covered_rects()
+		coordinator.refresh_building_geometry_clips()
 
 
 func _undo_remove_node(parent: Node, node: Node) -> void:
@@ -5891,7 +5900,7 @@ func _undo_remove_node_and_refresh_wall_intersections(
 func _undo_remove_node_and_refresh_roofs(parent: Node, node: Node, coordinator: Building3DScript) -> void:
 	_undo_remove_node(parent, node)
 	if coordinator != null and is_instance_valid(coordinator):
-		coordinator.refresh_roof_covered_rects()
+		coordinator.refresh_building_geometry_clips()
 
 
 func _set_roof_state_and_refresh(
@@ -5915,7 +5924,7 @@ func _set_roof_state_and_refresh(
 		new_covered_polygons
 	)
 	if coordinator != null and is_instance_valid(coordinator):
-		coordinator.refresh_roof_covered_rects()
+		coordinator.refresh_building_geometry_clips()
 
 
 func _roof_layout_would_hide_any_roof(
@@ -6097,7 +6106,6 @@ func _build_viewport_toolbar() -> void:
 	# Defer so the control is reparented into the spatial editor menu bar before
 	# we look up the native Transform/Move/Rotate/Scale/Select buttons beside it.
 	_collect_native_tool_buttons.call_deferred()
-	set_process(true)
 	set_process_input(true)
 
 
@@ -6105,17 +6113,11 @@ func _clear_viewport_toolbar() -> void:
 	_release_native_tool_buttons()
 	if m_viewport_toolbar == null:
 		return
-	set_process(false)
 	set_process_input(false)
 	remove_control_from_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, m_viewport_toolbar)
 	m_viewport_toolbar.queue_free()
 	m_viewport_toolbar = null
 	m_toolbar_buttons.clear()
-
-
-func _process(_delta: float) -> void:
-	if m_tool_mode != MODE_SELECT:
-		_clear_native_tool_button_highlights()
 
 
 func _input(event: InputEvent) -> void:
@@ -6175,11 +6177,14 @@ func _collect_native_tool_buttons() -> void:
 			continue
 		m_native_tool_buttons.append(native_button)
 		var native_pressed := Callable(self, "_on_native_tool_button_chosen").bind(native_button)
+		var native_toggled := Callable(self, "_on_native_tool_button_toggled").bind(native_button)
 		var native_gui_input := Callable(self, "_on_native_tool_button_gui_input").bind(native_button)
 		if not native_button.pressed.is_connected(native_pressed):
 			native_button.pressed.connect(native_pressed)
 		if not native_button.button_down.is_connected(native_pressed):
 			native_button.button_down.connect(native_pressed)
+		if not native_button.toggled.is_connected(native_toggled):
+			native_button.toggled.connect(native_toggled)
 		if not native_button.gui_input.is_connected(native_gui_input):
 			native_button.gui_input.connect(native_gui_input)
 	if DEBUG_NATIVE_BUTTONS:
@@ -6556,11 +6561,14 @@ func _release_native_tool_buttons() -> void:
 	for native_button in m_native_tool_buttons:
 		if native_button != null and is_instance_valid(native_button):
 			var native_pressed := Callable(self, "_on_native_tool_button_chosen").bind(native_button)
+			var native_toggled := Callable(self, "_on_native_tool_button_toggled").bind(native_button)
 			var native_gui_input := Callable(self, "_on_native_tool_button_gui_input").bind(native_button)
 			if native_button.pressed.is_connected(native_pressed):
 				native_button.pressed.disconnect(native_pressed)
 			if native_button.button_down.is_connected(native_pressed):
 				native_button.button_down.disconnect(native_pressed)
+			if native_button.toggled.is_connected(native_toggled):
+				native_button.toggled.disconnect(native_toggled)
 			if native_button.gui_input.is_connected(native_gui_input):
 				native_button.gui_input.disconnect(native_gui_input)
 	m_native_tool_buttons.clear()
@@ -6573,6 +6581,11 @@ func _on_native_tool_button_gui_input(event: InputEvent, native_button: Button) 
 		var mouse_button := event as InputEventMouseButton
 		if mouse_button.button_index == MOUSE_BUTTON_LEFT and mouse_button.pressed:
 			_on_native_tool_button_chosen(native_button)
+
+
+func _on_native_tool_button_toggled(toggled_on: bool, native_button: Button) -> void:
+	if toggled_on:
+		_on_native_tool_button_chosen(native_button)
 
 
 func _on_native_tool_button_chosen(native_button: Button) -> void:
@@ -6635,9 +6648,6 @@ func _event_hits_native_select_button(mouse_button: InputEventMouseButton) -> bo
 func _queue_native_tool_button_highlight_clear() -> void:
 	_clear_native_tool_button_highlights()
 	call_deferred("_clear_native_tool_button_highlights_if_building_tool_active")
-	if is_inside_tree():
-		var timer := get_tree().create_timer(0.05)
-		timer.timeout.connect(_clear_native_tool_button_highlights_if_building_tool_active)
 
 
 func _clear_native_tool_button_highlights_if_building_tool_active() -> void:
@@ -6832,10 +6842,18 @@ func _refresh_dock_context() -> void:
 func _on_tool_mode_changed(mode: String) -> void:
 	m_tool_mode = mode
 	_sync_toolbar_tool_mode(mode)
+	_sync_viewport_overlay_state()
 	_cancel_active_preview()
 	if m_tool_mode != MODE_SELECT:
 		_activate_3d_editor_context()
 	_set_status("Select a tool." if mode == MODE_SELECT else "Active tool: %s" % mode.capitalize())
+
+
+func _sync_viewport_overlay_state() -> void:
+	var active := m_tool_mode != MODE_SELECT
+	for overlay in m_viewport_overlays:
+		if is_instance_valid(overlay) and overlay.has_method("set_active"):
+			overlay.call("set_active", active)
 
 
 func _on_wall_settings_changed(settings: Dictionary) -> void:

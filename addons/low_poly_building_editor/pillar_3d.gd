@@ -1,6 +1,6 @@
 @tool
 class_name Pillar3D
-extends MeshInstance3D
+extends "res://addons/low_poly_building_editor/building_mesh_3d.gd"
 
 const GENERATED_META := &"pillar_generated"
 const PREVIEW_META := &"building_editor_preview"
@@ -96,18 +96,28 @@ var m_rebuild_queued := false
 func _ready() -> void:
 	m_is_ready = true
 	if build_on_ready:
-		rebuild_pillar_mesh()
+		_sync_transform_from_base()
+		if _generated_mesh_cache_matches(_pillar_mesh_source_signature()):
+			_sync_pillar_material()
+			_rebuild_collision_from_cached_mesh()
+		else:
+			rebuild_pillar_mesh()
 
 
 func set_pillar_base_position(new_base_point: Vector3) -> void:
+	var previous_signature := _pillar_mesh_source_signature()
 	base_point = new_base_point
+	if _pillar_mesh_source_signature() == previous_signature:
+		return
 	_sync_transform_from_base()
 	rebuild_pillar_mesh()
 
 
 func set_pillar_radius(new_radius: float) -> void:
+	var previous_signature := _pillar_mesh_source_signature()
 	pillar_radius = new_radius
-	rebuild_pillar_mesh()
+	if _pillar_mesh_source_signature() != previous_signature:
+		rebuild_pillar_mesh()
 
 
 func set_pillar_base_and_radius(new_base_point: Vector3, new_radius: float) -> void:
@@ -115,17 +125,22 @@ func set_pillar_base_and_radius(new_base_point: Vector3, new_radius: float) -> v
 
 
 func set_pillar_base_and_radii(new_base_point: Vector3, new_lower_radius: float, new_upper_radius: float) -> void:
+	var previous_signature := _pillar_mesh_source_signature()
 	base_point = new_base_point
 	pillar_radius = new_lower_radius
 	upper_radius = new_upper_radius
+	if _pillar_mesh_source_signature() == previous_signature:
+		return
 	_sync_transform_from_base()
 	rebuild_pillar_mesh()
 
 
 func set_pillar_radii(new_lower_radius: float, new_upper_radius: float) -> void:
+	var previous_signature := _pillar_mesh_source_signature()
 	pillar_radius = new_lower_radius
 	upper_radius = new_upper_radius
-	rebuild_pillar_mesh()
+	if _pillar_mesh_source_signature() != previous_signature:
+		rebuild_pillar_mesh()
 
 
 func set_pillar_rims(
@@ -134,11 +149,13 @@ func set_pillar_rims(
 	new_upper_height: float,
 	new_upper_outset: float
 ) -> void:
+	var previous_signature := _pillar_mesh_source_signature()
 	lower_rim_height = new_lower_height
 	lower_rim_outset = new_lower_outset
 	upper_rim_height = new_upper_height
 	upper_rim_outset = new_upper_outset
-	rebuild_pillar_mesh()
+	if _pillar_mesh_source_signature() != previous_signature:
+		rebuild_pillar_mesh()
 
 
 func get_pillar_style() -> String:
@@ -156,6 +173,7 @@ func get_outer_radius() -> float:
 
 
 func rebuild_pillar_mesh(rebuild_collision: bool = true) -> void:
+	_begin_generated_mesh_rebuild()
 	if rebuild_collision:
 		m_rebuild_queued = false
 	_sync_transform_from_base()
@@ -180,6 +198,7 @@ func rebuild_pillar_mesh(rebuild_collision: bool = true) -> void:
 
 	_update_pillar_mesh_resource(arrays)
 	_sync_pillar_material()
+	_record_generated_mesh_cache(_pillar_mesh_source_signature())
 
 	if rebuild_collision and generate_collision:
 		_add_collision_body()
@@ -190,6 +209,28 @@ func _request_rebuild() -> void:
 		return
 	m_rebuild_queued = true
 	call_deferred("rebuild_pillar_mesh")
+
+
+func _pillar_mesh_source_signature() -> int:
+	return hash([
+		get_pillar_style(),
+		_effective_side_count(),
+		base_point,
+		pillar_radius,
+		upper_radius,
+		pillar_height,
+		lower_rim_height,
+		lower_rim_outset,
+		upper_rim_height,
+		upper_rim_outset,
+		pillar_color,
+	])
+
+
+func _rebuild_collision_from_cached_mesh() -> void:
+	_clear_generated_children()
+	if generate_collision:
+		_add_collision_body()
 
 
 func _sync_transform_from_base() -> void:
@@ -455,17 +496,13 @@ func _append_triangle(
 
 
 func _update_pillar_mesh_resource(arrays: Array) -> void:
-	var array_mesh := mesh as ArrayMesh
-	if array_mesh == null:
-		array_mesh = ArrayMesh.new()
-		mesh = array_mesh
-	else:
-		array_mesh.clear_surfaces()
-	array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	_replace_generated_mesh_surface(arrays)
 
 
 func _sync_pillar_material() -> void:
-	var material := material_override as StandardMaterial3D
+	var material := _scene_local_material_for_write(
+		material_override as StandardMaterial3D
+	)
 	if material == null:
 		material_override = _build_pillar_material(pillar_color)
 		return
@@ -482,6 +519,7 @@ func _sync_pillar_material() -> void:
 
 func _build_pillar_material(color: Color) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
+	material.resource_local_to_scene = true
 	material.albedo_color = Color(1.0, 1.0, 1.0, color.a)
 	material.vertex_color_use_as_albedo = true
 	material.roughness = 0.94

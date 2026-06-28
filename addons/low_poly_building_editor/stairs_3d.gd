@@ -1,6 +1,6 @@
 @tool
 class_name Stairs3D
-extends MeshInstance3D
+extends "res://addons/low_poly_building_editor/building_mesh_3d.gd"
 
 const GENERATED_META := &"stairs_generated"
 const PREVIEW_META := &"building_editor_preview"
@@ -83,12 +83,20 @@ var m_rebuild_queued := false
 func _ready() -> void:
 	m_is_ready = true
 	if build_on_ready:
-		rebuild_stairs_mesh()
+		_sync_transform_from_points()
+		if _generated_mesh_cache_matches(_stairs_mesh_source_signature()):
+			_sync_stairs_material()
+			_rebuild_collision_from_cached_mesh()
+		else:
+			rebuild_stairs_mesh()
 
 
 func set_stair_corners(new_start: Vector3, new_end: Vector3) -> void:
+	var previous_signature := _stairs_mesh_source_signature()
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
+	if _stairs_mesh_source_signature() == previous_signature:
+		return
 	_sync_transform_from_points()
 	rebuild_stairs_mesh()
 
@@ -98,15 +106,21 @@ func set_stair_corners_and_rotation(
 	new_end: Vector3,
 	new_rotation_degrees: float
 ) -> void:
+	var previous_signature := _stairs_mesh_source_signature()
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
 	stair_rotation_degrees = new_rotation_degrees
+	if _stairs_mesh_source_signature() == previous_signature:
+		return
 	_sync_transform_from_points()
 	rebuild_stairs_mesh()
 
 
 func set_stair_rotation_degrees(new_rotation_degrees: float) -> void:
+	var previous_signature := _stairs_mesh_source_signature()
 	stair_rotation_degrees = new_rotation_degrees
+	if _stairs_mesh_source_signature() == previous_signature:
+		return
 	_sync_transform_from_points()
 	rebuild_stairs_mesh()
 
@@ -176,6 +190,7 @@ static func stair_corners_from_base_points(base_start: Vector3, base_end: Vector
 
 
 func rebuild_stairs_mesh(rebuild_collision: bool = true) -> void:
+	_begin_generated_mesh_rebuild()
 	if rebuild_collision:
 		m_rebuild_queued = false
 	_sync_transform_from_points()
@@ -202,6 +217,7 @@ func rebuild_stairs_mesh(rebuild_collision: bool = true) -> void:
 
 	_update_stairs_mesh_resource(arrays)
 	_sync_stairs_material()
+	_record_generated_mesh_cache(_stairs_mesh_source_signature())
 
 	if rebuild_collision and generate_collision:
 		_add_collision_body(vertices, indices)
@@ -212,6 +228,24 @@ func _request_rebuild() -> void:
 		return
 	m_rebuild_queued = true
 	call_deferred("rebuild_stairs_mesh")
+
+
+func _stairs_mesh_source_signature() -> int:
+	return hash([
+		start_point,
+		end_point,
+		stair_height,
+		step_count,
+		stair_thickness,
+		stair_rotation_degrees,
+		stair_color,
+	])
+
+
+func _rebuild_collision_from_cached_mesh() -> void:
+	_clear_generated_children()
+	if generate_collision:
+		_add_collision_body(_cached_mesh_vertices(), _cached_mesh_indices())
 
 
 func _sync_transform_from_points() -> void:
@@ -367,17 +401,13 @@ func _append_quad(
 
 
 func _update_stairs_mesh_resource(arrays: Array) -> void:
-	var array_mesh := mesh as ArrayMesh
-	if array_mesh == null:
-		array_mesh = ArrayMesh.new()
-		mesh = array_mesh
-	else:
-		array_mesh.clear_surfaces()
-	array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	_replace_generated_mesh_surface(arrays)
 
 
 func _sync_stairs_material() -> void:
-	var material := material_override as StandardMaterial3D
+	var material := _scene_local_material_for_write(
+		material_override as StandardMaterial3D
+	)
 	if material == null:
 		material_override = _build_stairs_material(stair_color)
 		return
@@ -394,6 +424,7 @@ func _sync_stairs_material() -> void:
 
 func _build_stairs_material(color: Color) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
+	material.resource_local_to_scene = true
 	material.albedo_color = Color(1.0, 1.0, 1.0, color.a)
 	material.vertex_color_use_as_albedo = true
 	material.roughness = 0.94
