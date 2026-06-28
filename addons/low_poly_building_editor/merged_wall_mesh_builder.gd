@@ -389,7 +389,7 @@ static func _append_roof_clipped_vertical_segment(
 			frame,
 			roof_clips
 		)
-		if mid_limit >= ROOF_CLIP_INFINITY and left_limit >= ROOF_CLIP_INFINITY and right_limit >= ROOF_CLIP_INFINITY:
+		if mid_limit >= ROOF_CLIP_INFINITY:
 			_append_vertical_segment(
 				left, right, frame, y0, y1, face_normal, color,
 				vertices, normals, colors, indices, collision_faces

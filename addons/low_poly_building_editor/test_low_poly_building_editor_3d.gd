@@ -2708,6 +2708,41 @@ func _validate_roof_wall_clipping() -> void:
 	):
 		m_failures.append("Gable-clipped wall collision did not preserve the sloped wall volume")
 
+	var partial_wall := BuildingFactoryScript.create_wall_node(
+		coordinator,
+		Vector3(0.0, 0.0, 12.0),
+		Vector3(10.0, 0.0, 12.0),
+		4.0,
+		0.22,
+		wall_color
+	)
+	coordinator.add_child(partial_wall)
+	var partial_roof := BuildingFactoryScript.create_roof_node(
+		coordinator,
+		Vector3(3.0, 2.5, 11.0),
+		Vector3(7.0, 2.5, 13.0),
+		"flat",
+		0.0,
+		0.20,
+		0.0,
+		Color(0.50, 0.34, 0.25, 1.0)
+	)
+	coordinator.add_child(partial_roof)
+	coordinator.refresh_building_geometry_clips()
+	for exposed_x in [1.0, 9.0]:
+		var exposed_point := coordinator.to_global(Vector3(exposed_x, 3.5, 11.89))
+		if !_wall_mesh_contains_surface_point(partial_wall, exposed_point):
+			m_failures.append(
+				"Middle roof clipping damaged the uncovered wall at x=%s"
+				% exposed_x
+			)
+	var covered_high_point := coordinator.to_global(Vector3(5.0, 3.5, 11.89))
+	if _wall_mesh_contains_surface_point(partial_wall, covered_high_point):
+		m_failures.append("Middle roof clipping kept wall geometry above the roof")
+	var covered_low_point := coordinator.to_global(Vector3(5.0, 2.0, 11.89))
+	if !_wall_mesh_contains_surface_point(partial_wall, covered_low_point):
+		m_failures.append("Middle roof clipping removed the retained wall below the roof")
+
 	roof.set_roof_corners(Vector3(8.0, 2.4, 0.0), Vector3(12.0, 2.4, 4.0))
 	coordinator.refresh_building_geometry_clips()
 	if wall.get_roof_clip_surface_count() != 0:
