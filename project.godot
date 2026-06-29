@@ -124,3 +124,7 @@ ui_inspect={
 [rendering]
 
 textures/canvas_textures/default_texture_filter=0
+
+[tripo_bridge]
+
+last_cleanup="2026-06-29T10:18:24"
