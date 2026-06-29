@@ -225,7 +225,7 @@ Responsibilities:
 
 - project-local editor tooling for authoring content and validating assets
 - low-poly building blockout authoring through normal scene nodes (see [`../addons/low_poly_building_editor/README.md`](../addons/low_poly_building_editor/README.md))
-- deterministic, versioned JSON-to-scene low-poly building generation for agents and batch authoring, kept inside the building-editor addon
+- deterministic, versioned JSON-to-scene low-poly building generation plus graphical seeded-variant thumbnails/contact sheets for agents and batch authoring, kept inside the building-editor addon
 - audio conversion (see [`../addons/mp3_to_ogg/README.md`](../addons/mp3_to_ogg/README.md)) and storyline graph/route editing (see [`../addons/storyline_editor/README.md`](../addons/storyline_editor/README.md))
 - scene-asset browsing/placement (see [`../addons/asset_browser/README.md`](../addons/asset_browser/README.md) and the vendored [`../addons/asset_placer/README.md`](../addons/asset_placer/README.md))
 

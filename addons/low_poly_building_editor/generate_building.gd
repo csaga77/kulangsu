@@ -61,31 +61,7 @@ func _run(arguments: PackedStringArray) -> int:
 
 
 func _load_spec(path: String) -> Dictionary:
-	var errors: Array[String] = []
-	if !FileAccess.file_exists(path):
-		errors.append("Spec file does not exist: %s" % path)
-		return {"spec": null, "errors": errors}
-	var file := FileAccess.open(path, FileAccess.READ)
-	if file == null:
-		errors.append("Could not open spec file: %s" % path)
-		return {"spec": null, "errors": errors}
-	var parser := JSON.new()
-	var parse_error := parser.parse(file.get_as_text())
-	if parse_error != OK:
-		errors.append(
-			"JSON parse error at line %d: %s"
-			% [parser.get_error_line(), parser.get_error_message()]
-		)
-		return {"spec": null, "errors": errors}
-	if !(parser.data is Dictionary):
-		errors.append("The building spec JSON root must be an object.")
-		return {"spec": null, "errors": errors}
-	var spec := BuildingSpecScript.new() as BuildingSpecScript
-	errors.append_array(spec.apply_dictionary(parser.data))
-	return {
-		"spec": spec,
-		"errors": errors,
-	}
+	return BuildingSpecCompilerScript.load_json_spec(path)
 
 
 func _parse_options(arguments: PackedStringArray) -> Dictionary:

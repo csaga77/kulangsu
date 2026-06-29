@@ -50,13 +50,41 @@ gable, or hip roof. A style value of `random` resolves deterministically from `s
 The command prints the same machine-readable report it optionally writes to `--report`.
 Invalid specs and buildings that cannot fit their entrance do not produce a scene.
 
+### Visual Variant Batches
+
+[`generate_variants.gd`](generate_variants.gd) expands one base spec across consecutive
+seeds, saves every editable scene and isometric thumbnail, and writes a manifest plus a
+contact sheet for AI or human ranking:
+
+```sh
+godot --path . --audio-driver Dummy \
+  --script addons/low_poly_building_editor/generate_variants.gd -- \
+  --spec res://addons/low_poly_building_editor/examples/seeded_villa.json \
+  --output-dir res://generated/buildings/villa_variants \
+  --count 12
+```
+
+Thumbnail generation requires a graphical rendering driver, so this command intentionally
+does not use `--headless` (Godot's macOS headless display exposes only the dummy renderer).
+Automation may launch a tiny off-screen window with Godot's `--resolution` and `--position`
+options. Each manifest entry maps a seed and resolved parameters to its `.tscn` and `.png`;
+`contact_sheet.png` preserves manifest order.
+
+Run [`test_building_variants_gallery_3d.tscn`](test_building_variants_gallery_3d.tscn)
+to inspect the included 12-seed example as a live 4×3 scene. `N` and `P` compile adjacent
+seed batches, `R` restores seeds 18432–18443, and the mouse wheel adjusts the orthographic
+camera. Each generated root retains its resolved generator values as metadata for runtime
+inspection.
+
 This README is the plugin's entry point; the full documentation lives in [`docs/`](docs):
 
 - [`docs/feature.md`](docs/feature.md) — goals, authoring experience, rules, edge cases, ownership, and validation.
 - [`docs/contract.md`](docs/contract.md) — stable contract and governance for the plugin's nodes, storage, and editor interaction.
 
 The focused smoke scene is
-[`test_low_poly_building_editor_3d.tscn`](test_low_poly_building_editor_3d.tscn). The
+[`test_low_poly_building_editor_3d.tscn`](test_low_poly_building_editor_3d.tscn), and the
+interactive generator gallery is
+[`test_building_variants_gallery_3d.tscn`](test_building_variants_gallery_3d.tscn). The
 project-level [`../../docs/module_map.md`](../../docs/module_map.md),
 [`../../docs/architecture.md`](../../docs/architecture.md), and
 [`../../docs/contracts.md`](../../docs/contracts.md) keep one-line pointers here.

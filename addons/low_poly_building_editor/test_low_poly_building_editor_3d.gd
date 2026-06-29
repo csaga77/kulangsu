@@ -7,6 +7,9 @@ const BuildingSpecScript = preload("res://addons/low_poly_building_editor/buildi
 const BuildingSpecCompilerScript = preload(
 	"res://addons/low_poly_building_editor/building_spec_compiler.gd"
 )
+const BuildingThumbnailRendererScript = preload(
+	"res://addons/low_poly_building_editor/building_thumbnail_renderer.gd"
+)
 const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
 const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
 const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.gd")
@@ -75,6 +78,7 @@ func _run_smoke_checks() -> void:
 	_validate_serialized_building_mesh_caches()
 	_validate_opening_factory()
 	_validate_building_spec_compiler()
+	_validate_building_contact_sheet()
 	var coordinator := Building3DScript.new() as Building3DScript
 	coordinator.name = "Building3D"
 	add_child(coordinator)
@@ -236,6 +240,15 @@ func _validate_opening_factory() -> void:
 
 
 func _validate_building_spec_compiler() -> void:
+	var file_load_result := BuildingSpecCompilerScript.load_json_spec(
+		"res://addons/low_poly_building_editor/examples/seeded_villa.json"
+	)
+	var file_load_errors: Array = file_load_result.get("errors", [])
+	if !file_load_errors.is_empty() or file_load_result.get("spec") == null:
+		m_failures.append(
+			"BuildingSpecCompiler could not load the documented JSON example: %s"
+			% file_load_errors
+		)
 	var data := {
 		"schema_version": 1,
 		"generator_version": 1,
@@ -314,6 +327,40 @@ func _validate_building_spec_compiler() -> void:
 		m_failures.append("BuildingSpec accepted an unsupported window style")
 	first_building.free()
 	second_building.free()
+
+
+func _validate_building_contact_sheet() -> void:
+	var first_path := "user://__building_thumbnail_rgb.png"
+	var second_path := "user://__building_thumbnail_rgba.png"
+	var sheet_path := "user://__building_thumbnail_sheet.png"
+	var first := Image.create(8, 6, false, Image.FORMAT_RGB8)
+	first.fill(Color(0.8, 0.3, 0.2, 1.0))
+	var second := Image.create(8, 6, false, Image.FORMAT_RGBA8)
+	second.fill(Color(0.2, 0.4, 0.8, 1.0))
+	if first.save_png(first_path) != OK or second.save_png(second_path) != OK:
+		m_failures.append("Could not create contact-sheet test images")
+	else:
+		var error := BuildingThumbnailRendererScript.create_contact_sheet(
+			PackedStringArray([first_path, second_path]),
+			sheet_path,
+			2
+		)
+		if error != OK:
+			m_failures.append(
+				"BuildingThumbnailRenderer could not compose mixed-format images"
+			)
+		else:
+			var sheet := Image.load_from_file(
+				ProjectSettings.globalize_path(sheet_path)
+			)
+			if sheet == null or sheet.get_size() != Vector2i(52, 30):
+				m_failures.append(
+					"BuildingThumbnailRenderer contact sheet has the wrong size"
+				)
+	for path in [first_path, second_path, sheet_path]:
+		var absolute_path := ProjectSettings.globalize_path(path)
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(absolute_path)
 
 
 func _validate_multiple_building_roots() -> void:
