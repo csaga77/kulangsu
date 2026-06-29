@@ -8,6 +8,7 @@ const FLOOR_HOLE_EDGE_EPSILON := 0.001
 const FLOOR_HOLE_MIN_SIZE := 0.001
 
 var m_floor_holes: Array[Rect2] = []
+var m_floor_hole_polygons: Array[PackedVector2Array] = []
 var m_polygon_points: PackedVector3Array = PackedVector3Array()
 
 @export var rebuild := false:
@@ -54,6 +55,16 @@ var m_polygon_points: PackedVector3Array = PackedVector3Array()
 		_request_rebuild()
 	get:
 		return get_floor_holes()
+
+@export var floor_hole_polygons: Array[PackedVector2Array] = []:
+	set(value):
+		var sanitized := _sanitize_floor_hole_polygons(value)
+		if _floor_hole_polygon_arrays_equal(m_floor_hole_polygons, sanitized):
+			return
+		m_floor_hole_polygons = sanitized
+		_request_rebuild()
+	get:
+		return get_floor_hole_polygons()
 
 @export_range(0.01, 2.0, 0.01, "or_greater") var floor_thickness := 0.12:
 	set(value):
@@ -111,6 +122,7 @@ func set_floor_polygon(new_points: PackedVector3Array) -> void:
 	var previous_signature := _floor_mesh_source_signature()
 	m_polygon_points = sanitized
 	m_floor_holes.clear()
+	m_floor_hole_polygons = _sanitize_floor_hole_polygons(m_floor_hole_polygons)
 	_sync_legacy_corners_from_polygon()
 	if _floor_mesh_source_signature() == previous_signature:
 		return
@@ -181,6 +193,67 @@ func set_floor_holes(new_holes: Array[Rect2]) -> void:
 	rebuild_floor_mesh()
 
 
+func set_floor_hole_polygons(new_holes: Array[PackedVector2Array]) -> void:
+	var sanitized := _sanitize_floor_hole_polygons(new_holes)
+	if _floor_hole_polygon_arrays_equal(m_floor_hole_polygons, sanitized):
+		return
+	m_floor_hole_polygons = sanitized
+	rebuild_floor_mesh()
+
+
+func get_floor_hole_polygons() -> Array[PackedVector2Array]:
+	var holes: Array[PackedVector2Array] = []
+	for hole in m_floor_hole_polygons:
+		holes.append(hole.duplicate())
+	return holes
+
+
+func get_all_floor_hole_polygons() -> Array[PackedVector2Array]:
+	var holes := get_floor_hole_polygons()
+	for rect in m_floor_holes:
+		holes.append(_rect_to_polygon(rect))
+	return holes
+
+
+func has_any_floor_holes() -> bool:
+	return !m_floor_holes.is_empty() or !m_floor_hole_polygons.is_empty()
+
+
+func can_add_floor_hole_polygon(polygon: PackedVector2Array) -> bool:
+	var candidate := _sanitize_plan_polygon(polygon)
+	return _is_floor_hole_polygon_valid(candidate, get_all_floor_hole_polygons())
+
+
+func can_set_floor_hole_polygon(index: int, polygon: PackedVector2Array) -> bool:
+	if index < 0 or index >= m_floor_hole_polygons.size():
+		return false
+	var existing: Array[PackedVector2Array] = []
+	for rect in m_floor_holes:
+		existing.append(_rect_to_polygon(rect))
+	for hole_index in range(m_floor_hole_polygons.size()):
+		if hole_index != index:
+			existing.append(m_floor_hole_polygons[hole_index])
+	return _is_floor_hole_polygon_valid(_sanitize_plan_polygon(polygon), existing)
+
+
+func get_floor_hole_polygon_from_parent_points(
+	parent_points: PackedVector3Array
+) -> PackedVector2Array:
+	var local_polygon := PackedVector2Array()
+	var floor_origin := Vector2(position.x, position.z)
+	for point in parent_points:
+		local_polygon.append(Vector2(point.x, point.z) - floor_origin)
+	return local_polygon
+
+
+func get_floor_hole_polygons_with_added(
+	polygon: PackedVector2Array
+) -> Array[PackedVector2Array]:
+	var holes := get_floor_hole_polygons()
+	holes.append(polygon)
+	return _sanitize_floor_hole_polygons(holes)
+
+
 func get_floor_holes() -> Array[Rect2]:
 	var holes: Array[Rect2] = []
 	for hole in m_floor_holes:
@@ -237,6 +310,9 @@ func has_floor_hole_at_local_point(local_point: Vector2) -> bool:
 			and local_point.y < hole_end.y - FLOOR_HOLE_EDGE_EPSILON
 		):
 			return true
+	for hole in m_floor_hole_polygons:
+		if Geometry2D.is_point_in_polygon(local_point, hole):
+			return true
 	return false
 
 
@@ -265,13 +341,24 @@ func rebuild_floor_mesh(rebuild_collision: bool = true) -> void:
 	var mesh_holes: Array[Rect2] = []
 	if !is_polygon_floor():
 		mesh_holes = _sanitize_floor_holes(m_floor_holes, size)
+	var polygon_holes := get_all_floor_hole_polygons()
 
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
 	var collision_faces := PackedVector3Array()
-	if is_polygon_floor():
+	if !m_floor_hole_polygons.is_empty():
+		_append_polygon_floor_geometry_with_holes(
+			_get_local_outer_polygon(),
+			polygon_holes,
+			vertices,
+			normals,
+			colors,
+			indices,
+			collision_faces
+		)
+	elif is_polygon_floor():
 		_append_polygon_floor_geometry(
 			_get_local_footprint_polygon(),
 			vertices,
@@ -320,6 +407,7 @@ func _floor_mesh_source_signature() -> int:
 		end_point,
 		m_polygon_points,
 		get_floor_holes(),
+		get_floor_hole_polygons(),
 		floor_thickness,
 		floor_color,
 	])
@@ -395,6 +483,199 @@ func _append_polygon_floor_geometry(
 		)
 
 
+func _append_polygon_floor_geometry_with_holes(
+	outer_polygon: PackedVector2Array,
+	holes: Array[PackedVector2Array],
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array,
+	collision_faces: PackedVector3Array
+) -> void:
+	var normalized_outer := _counter_clockwise_polygon(outer_polygon)
+	var visible_polygons: Array[PackedVector2Array] = [normalized_outer]
+	var outer_bounds := _plan_polygon_bounds(normalized_outer)
+	for hole in holes:
+		var cutter := _hole_polygon_with_render_slit(hole, outer_bounds)
+		var next_visible: Array[PackedVector2Array] = []
+		for visible in visible_polygons:
+			for clipped in Geometry2D.clip_polygons(visible, cutter):
+				var normalized_clip := _sanitize_plan_polygon(clipped)
+				if normalized_clip.size() >= 3 and absf(_signed_polygon_area(normalized_clip)) > FLOOR_HOLE_MIN_SIZE:
+					next_visible.append(_counter_clockwise_polygon(normalized_clip))
+		visible_polygons = next_visible
+
+	for visible in visible_polygons:
+		_append_polygon_horizontal_faces(
+			visible,
+			vertices,
+			normals,
+			colors,
+			indices,
+			collision_faces
+		)
+	_append_polygon_boundary_sides(
+		normalized_outer,
+		false,
+		vertices,
+		normals,
+		colors,
+		indices,
+		collision_faces
+	)
+	var merged_outlines := _merge_hole_outlines(holes)
+	for index in range(merged_outlines.size()):
+		# A hole outline nested inside another outline is an enclosed solid
+		# floor island, so its walls face outward like the floor's outer edge.
+		var nested := false
+		for other_index in range(merged_outlines.size()):
+			if other_index == index:
+				continue
+			if _polygon_contains_polygon(merged_outlines[other_index], merged_outlines[index]):
+				nested = !nested
+		_append_polygon_boundary_sides(
+			_counter_clockwise_polygon(merged_outlines[index]),
+			!nested,
+			vertices,
+			normals,
+			colors,
+			indices,
+			collision_faces
+		)
+
+
+func _append_polygon_horizontal_faces(
+	polygon: PackedVector2Array,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array,
+	collision_faces: PackedVector3Array
+) -> void:
+	var triangle_indices := Geometry2D.triangulate_polygon(polygon)
+	for triangle_start in range(0, triangle_indices.size(), 3):
+		var a_2d := polygon[triangle_indices[triangle_start]]
+		var b_2d := polygon[triangle_indices[triangle_start + 1]]
+		var c_2d := polygon[triangle_indices[triangle_start + 2]]
+		var top_a := Vector3(a_2d.x, 0.0, a_2d.y)
+		var top_b := Vector3(b_2d.x, 0.0, b_2d.y)
+		var top_c := Vector3(c_2d.x, 0.0, c_2d.y)
+		_append_triangle(
+			vertices, normals, colors, indices, collision_faces,
+			top_a, top_b, top_c, Vector3.UP
+		)
+		_append_triangle(
+			vertices, normals, colors, indices, collision_faces,
+			top_a + Vector3.DOWN * floor_thickness,
+			top_c + Vector3.DOWN * floor_thickness,
+			top_b + Vector3.DOWN * floor_thickness,
+			Vector3.DOWN
+		)
+
+
+func _append_polygon_boundary_sides(
+	polygon: PackedVector2Array,
+	invert: bool,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array,
+	collision_faces: PackedVector3Array
+) -> void:
+	for point_index in range(polygon.size()):
+		var next_index := (point_index + 1) % polygon.size()
+		var a_2d := polygon[point_index]
+		var b_2d := polygon[next_index]
+		var edge := b_2d - a_2d
+		var outward := Vector3(edge.y, 0.0, -edge.x).normalized()
+		var top_a := Vector3(a_2d.x, 0.0, a_2d.y)
+		var top_b := Vector3(b_2d.x, 0.0, b_2d.y)
+		if invert:
+			_append_quad(
+				vertices, normals, colors, indices, collision_faces,
+				top_b,
+				top_a,
+				top_a + Vector3.DOWN * floor_thickness,
+				top_b + Vector3.DOWN * floor_thickness,
+				-outward
+			)
+		else:
+			_append_quad(
+				vertices, normals, colors, indices, collision_faces,
+				top_a,
+				top_b,
+				top_b + Vector3.DOWN * floor_thickness,
+				top_a + Vector3.DOWN * floor_thickness,
+				outward
+			)
+
+
+func _hole_polygon_with_render_slit(
+	hole: PackedVector2Array,
+	outer_bounds: Rect2
+) -> PackedVector2Array:
+	var normalized := _counter_clockwise_polygon(hole)
+	var rightmost := normalized[0]
+	for point in normalized:
+		if point.x > rightmost.x or (is_equal_approx(point.x, rightmost.x) and point.y < rightmost.y):
+			rightmost = point
+	var slit_half_width := 0.00001
+	var slit := PackedVector2Array([
+		Vector2(rightmost.x - slit_half_width, rightmost.y - slit_half_width),
+		Vector2(outer_bounds.end.x + 0.01, rightmost.y - slit_half_width),
+		Vector2(outer_bounds.end.x + 0.01, rightmost.y + slit_half_width),
+		Vector2(rightmost.x - slit_half_width, rightmost.y + slit_half_width),
+	])
+	var merged := Geometry2D.merge_polygons(normalized, slit)
+	return merged[0] if !merged.is_empty() else normalized
+
+
+func _merge_hole_outlines(holes: Array[PackedVector2Array]) -> Array[PackedVector2Array]:
+	# Combine holes that overlap or share an edge so the shared internal edge is
+	# never walled, leaving one clean opening instead of a stray interior wall.
+	var outlines: Array[PackedVector2Array] = []
+	for hole in holes:
+		if hole.size() >= 3:
+			outlines.append(hole.duplicate())
+	var changed := true
+	while changed:
+		changed = false
+		for i in range(outlines.size()):
+			for j in range(i + 1, outlines.size()):
+				var union := Geometry2D.merge_polygons(outlines[i], outlines[j])
+				if !_hole_outlines_connected(union):
+					continue
+				var combined: Array[PackedVector2Array] = []
+				for piece in union:
+					if piece.size() >= 3:
+						combined.append(piece)
+				outlines.remove_at(j)
+				outlines.remove_at(i)
+				outlines.append_array(combined)
+				changed = true
+				break
+			if changed:
+				break
+	return outlines
+
+
+func _hole_outlines_connected(union: Array[PackedVector2Array]) -> bool:
+	# Only treat holes as merged when their union collapses to a single simple
+	# polygon. Disjoint holes return two boundaries, and a ring of holes returns
+	# an outer boundary plus an enclosed floor island; both must stay separate so
+	# their walls are preserved.
+	return union.size() == 1 and union[0].size() >= 3
+
+
+func _polygon_contains_polygon(outer: PackedVector2Array, inner: PackedVector2Array) -> bool:
+	if outer.size() < 3 or inner.is_empty():
+		return false
+	for point in inner:
+		if !Geometry2D.is_point_in_polygon(point, outer):
+			return false
+	return true
+
+
 func _append_triangle(
 	vertices: PackedVector3Array,
 	normals: PackedVector3Array,
@@ -421,6 +702,18 @@ func _get_local_footprint_polygon() -> PackedVector2Array:
 	for point in m_polygon_points:
 		polygon.append(Vector2(point.x - bounds.position.x, point.z - bounds.position.y))
 	return polygon
+
+
+func _get_local_outer_polygon() -> PackedVector2Array:
+	if is_polygon_floor():
+		return _get_local_footprint_polygon()
+	var size := get_floor_size()
+	return PackedVector2Array([
+		Vector2.ZERO,
+		Vector2(size.x, 0.0),
+		size,
+		Vector2(0.0, size.y),
+	])
 
 
 func _parent_points_to_plan_polygon(points: PackedVector3Array) -> PackedVector2Array:
@@ -456,6 +749,112 @@ func _sanitize_polygon_points(points: PackedVector3Array) -> PackedVector3Array:
 	if sanitized.size() > 1 and sanitized[0].is_equal_approx(sanitized[sanitized.size() - 1]):
 		sanitized.resize(sanitized.size() - 1)
 	return sanitized
+
+
+func _sanitize_plan_polygon(points: PackedVector2Array) -> PackedVector2Array:
+	var sanitized := PackedVector2Array()
+	for point in points:
+		if !sanitized.is_empty() and sanitized[sanitized.size() - 1].distance_to(point) <= FLOOR_HOLE_EDGE_EPSILON:
+			continue
+		sanitized.append(point)
+	if sanitized.size() > 1 and sanitized[0].distance_to(sanitized[sanitized.size() - 1]) <= FLOOR_HOLE_EDGE_EPSILON:
+		sanitized.resize(sanitized.size() - 1)
+	return sanitized
+
+
+func _sanitize_floor_hole_polygons(
+	holes: Array[PackedVector2Array]
+) -> Array[PackedVector2Array]:
+	var sanitized: Array[PackedVector2Array] = []
+	var occupied: Array[PackedVector2Array] = []
+	for rect in m_floor_holes:
+		occupied.append(_rect_to_polygon(rect))
+	for hole in holes:
+		var candidate := _sanitize_plan_polygon(hole)
+		if !_is_floor_hole_polygon_valid(candidate, occupied):
+			continue
+		candidate = _counter_clockwise_polygon(candidate)
+		sanitized.append(candidate)
+		occupied.append(candidate)
+	return sanitized
+
+
+func _is_floor_hole_polygon_valid(
+	candidate: PackedVector2Array,
+	_existing: Array[PackedVector2Array]
+) -> bool:
+	# Holes may overlap or touch each other; overlapping holes are merged into a
+	# single opening at mesh time (see _merge_hole_outlines), matching the union
+	# behavior of legacy rect holes. A hole only has to stay inside the floor
+	# slab and clear of its outer edge.
+	if candidate.size() < 3 or Geometry2D.triangulate_polygon(candidate).is_empty():
+		return false
+	var candidate_area := absf(_signed_polygon_area(candidate))
+	if candidate_area <= FLOOR_HOLE_MIN_SIZE:
+		return false
+	var outer := _counter_clockwise_polygon(_get_local_outer_polygon())
+	var intersection_area := 0.0
+	for clipped in Geometry2D.intersect_polygons(candidate, outer):
+		intersection_area += absf(_signed_polygon_area(clipped))
+	if absf(intersection_area - candidate_area) > FLOOR_HOLE_EDGE_EPSILON:
+		return false
+	for point in candidate:
+		if _distance_to_polygon_boundary(point, outer) <= FLOOR_HOLE_EDGE_EPSILON:
+			return false
+	return true
+
+
+func _distance_to_polygon_boundary(point: Vector2, polygon: PackedVector2Array) -> float:
+	var best := INF
+	for index in range(polygon.size()):
+		var edge_start := polygon[index]
+		var edge_end := polygon[(index + 1) % polygon.size()]
+		var edge := edge_end - edge_start
+		var length_squared := edge.length_squared()
+		var closest := edge_start
+		if length_squared > FLOOR_HOLE_MIN_SIZE:
+			var ratio := clampf((point - edge_start).dot(edge) / length_squared, 0.0, 1.0)
+			closest = edge_start + edge * ratio
+		best = minf(best, point.distance_to(closest))
+	return best
+
+
+func _rect_to_polygon(rect: Rect2) -> PackedVector2Array:
+	var rect_end := rect.end
+	return PackedVector2Array([
+		rect.position,
+		Vector2(rect_end.x, rect.position.y),
+		rect_end,
+		Vector2(rect.position.x, rect_end.y),
+	])
+
+
+func _plan_polygon_bounds(polygon: PackedVector2Array) -> Rect2:
+	if polygon.is_empty():
+		return Rect2()
+	var min_point := polygon[0]
+	var max_point := polygon[0]
+	for point in polygon:
+		min_point.x = minf(min_point.x, point.x)
+		min_point.y = minf(min_point.y, point.y)
+		max_point.x = maxf(max_point.x, point.x)
+		max_point.y = maxf(max_point.y, point.y)
+	return Rect2(min_point, max_point - min_point)
+
+
+func _floor_hole_polygon_arrays_equal(
+	a: Array[PackedVector2Array],
+	b: Array[PackedVector2Array]
+) -> bool:
+	if a.size() != b.size():
+		return false
+	for hole_index in range(a.size()):
+		if a[hole_index].size() != b[hole_index].size():
+			return false
+		for point_index in range(a[hole_index].size()):
+			if a[hole_index][point_index].distance_to(b[hole_index][point_index]) > FLOOR_HOLE_EDGE_EPSILON:
+				return false
+	return true
 
 
 func _sync_legacy_corners_from_polygon() -> void:

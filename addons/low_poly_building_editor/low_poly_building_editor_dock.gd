@@ -328,7 +328,7 @@ func _build_floor_controls(parent: VBoxContainer) -> void:
 	parent.add_child(header)
 
 	m_floor_type_option = OptionButton.new()
-	m_floor_type_option.tooltip_text = "Choose whether the floor tool creates a solid slab or cuts a rectangular hole."
+	m_floor_type_option.tooltip_text = "Choose whether the selected Rectangle/Polygon outline creates a slab or cuts a matching hole."
 	m_floor_type_option.add_item("Solid", 0)
 	m_floor_type_option.set_item_metadata(0, FLOOR_TYPE_SOLID)
 	m_floor_type_option.add_item("Hole", 1)
@@ -1369,7 +1369,7 @@ func _select_floor_style(floor_style: String) -> void:
 
 func _update_floor_type_controls() -> void:
 	if m_floor_style_option != null:
-		m_floor_style_option.disabled = _selected_floor_type() == FLOOR_TYPE_HOLE
+		m_floor_style_option.disabled = false
 
 
 func _selected_pillar_style() -> String:

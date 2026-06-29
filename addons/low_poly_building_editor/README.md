@@ -7,7 +7,8 @@ either individual spans or enclosed rectangular rooms. The Floor tool's Rectangl
 Polygon styles choose only how a new footprint is drawn: two opposite corners or a
 multi-click outline. Both use the same grid-snapped editing gestures afterward. Any
 vertex can be dragged, any edge can move both adjacent vertices, and vertices can be
-inserted with Shift-click on an edge or removed with Option/Alt-click.
+inserted with Shift-click on an edge or removed with Option/Alt-click. Hole uses the
+same Rectangle/Polygon creation choice and the same outline-editing gestures.
 
 `Building3D` is the scene-owned assembly root and carries no editor-tool configuration;
 the editor dock owns temporary tool defaults. `BuildingFactory` creates and names

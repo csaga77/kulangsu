@@ -1262,6 +1262,44 @@ func _validate_floor_node(coordinator: Building3DScript) -> void:
 	if floor.floor_holes_fit_size(Vector2(1.5, 1.0)):
 		m_failures.append("Floor3D did not detect a resize that would invalidate a stored hole")
 
+	# A polygon hole may overlap a rect hole; the two merge into one opening just
+	# like overlapping rect holes do.
+	floor.set_floor_holes([Rect2(Vector2(1.0, 0.5), Vector2(0.75, 0.75))])
+	var rect_overlap_poly := PackedVector2Array([
+		Vector2(1.5, 0.5),
+		Vector2(2.25, 0.5),
+		Vector2(2.25, 1.25),
+		Vector2(1.5, 1.25),
+	])
+	if !floor.can_add_floor_hole_polygon(rect_overlap_poly):
+		m_failures.append("Floor3D rejected a polygon hole overlapping a rect hole")
+	var mixed_polygon_holes: Array[PackedVector2Array] = [rect_overlap_poly]
+	floor.set_floor_hole_polygons(mixed_polygon_holes)
+	if floor.get_floor_hole_polygons().size() != 1:
+		m_failures.append("Floor3D did not store a polygon hole overlapping a rect hole")
+	var mixed_mesh := floor.mesh as ArrayMesh
+	if _has_horizontal_face_covering_plan_point(mixed_mesh, Vector2(1.6, 0.8), 0.0):
+		m_failures.append("Floor3D kept a top face over a merged rect and polygon hole")
+	if _has_horizontal_face_covering_plan_point(mixed_mesh, Vector2(2.0, 0.8), 0.0):
+		m_failures.append("Floor3D kept a top face over the polygon part of a merged hole")
+	if !_has_horizontal_face_covering_plan_point(mixed_mesh, Vector2(2.7, 0.8), 0.0):
+		m_failures.append("Floor3D overcut solid floor beside a merged rect and polygon hole")
+	if (
+		_has_vertical_face_covering_plan_edge_point(mixed_mesh, Vector2(1.75, 0.8), Vector3.RIGHT)
+		or _has_vertical_face_covering_plan_edge_point(mixed_mesh, Vector2(1.75, 0.8), Vector3.LEFT)
+		or _has_vertical_face_covering_plan_edge_point(mixed_mesh, Vector2(1.5, 0.8), Vector3.RIGHT)
+		or _has_vertical_face_covering_plan_edge_point(mixed_mesh, Vector2(1.5, 0.8), Vector3.LEFT)
+	):
+		m_failures.append("Floor3D kept a stray internal wall where a rect and polygon hole merge")
+	if !_has_vertical_face_covering_plan_edge_point(mixed_mesh, Vector2(1.0, 0.8), Vector3.RIGHT):
+		m_failures.append("Floor3D merged rect and polygon hole lost its outer left wall")
+	if !_has_vertical_face_covering_plan_edge_point(mixed_mesh, Vector2(2.25, 0.8), Vector3.LEFT):
+		m_failures.append("Floor3D merged rect and polygon hole lost its outer right wall")
+	var cleared_rect_holes: Array[Rect2] = []
+	floor.set_floor_holes(cleared_rect_holes)
+	var cleared_polygon_holes: Array[PackedVector2Array] = []
+	floor.set_floor_hole_polygons(cleared_polygon_holes)
+
 	floor.set_floor_corners(Vector3(1.0, top_y, 12.5), Vector3(4.5, top_y, 15.0))
 	var edited_size := floor.get_floor_size()
 	if absf(edited_size.x - 3.5) > 0.001 or absf(edited_size.y - 2.5) > 0.001:
@@ -1339,8 +1377,73 @@ func _validate_floor_node(coordinator: Building3DScript) -> void:
 			m_failures.append("Floor3D polygon filled its concave footprint notch")
 	if polygon_floor.get_node_or_null("FloorCollision") == null:
 		m_failures.append("Floor3D polygon did not generate collision")
-	if polygon_floor.can_add_floor_hole_rect(Rect2(Vector2(0.5, 0.5), Vector2(0.5, 0.5))):
-		m_failures.append("Floor3D polygon accepted a rectangle-only floor hole")
+	var polygon_hole := PackedVector2Array([
+		Vector2(0.5, 0.75),
+		Vector2(1.75, 0.75),
+		Vector2(1.1, 2.0),
+	])
+	if !polygon_floor.can_add_floor_hole_polygon(polygon_hole):
+		m_failures.append("Floor3D polygon rejected a valid polygon hole")
+	else:
+		var polygon_holes: Array[PackedVector2Array] = [polygon_hole]
+		polygon_floor.set_floor_hole_polygons(polygon_holes)
+		if polygon_floor.get_floor_hole_polygons().size() != 1:
+			m_failures.append("Floor3D did not store a polygon hole")
+		var polygon_hole_mesh := polygon_floor.mesh as ArrayMesh
+		if _has_horizontal_face_covering_plan_point(polygon_hole_mesh, Vector2(1.1, 1.1), 0.0):
+			m_failures.append("Floor3D kept a top face over a polygon hole")
+		if !_has_horizontal_face_covering_plan_point(polygon_hole_mesh, Vector2(0.25, 0.25), 0.0):
+			m_failures.append("Floor3D polygon hole removed solid floor outside its outline")
+		if !polygon_floor.has_floor_hole_at_local_point(Vector2(1.1, 1.1)):
+			m_failures.append("Floor3D polygon hole picking missed its interior")
+		var inserted_hole := polygon_hole.duplicate()
+		inserted_hole.insert(1, Vector2(1.125, 0.75))
+		if !polygon_floor.can_set_floor_hole_polygon(0, inserted_hole):
+			m_failures.append("Floor3D polygon hole rejected an inserted edge vertex")
+		else:
+			var edited_holes: Array[PackedVector2Array] = [inserted_hole]
+			polygon_floor.set_floor_hole_polygons(edited_holes)
+			var reshaped_hole := inserted_hole.duplicate()
+			reshaped_hole[1] = Vector2(1.125, 0.5)
+			if !polygon_floor.can_set_floor_hole_polygon(0, reshaped_hole):
+				m_failures.append("Floor3D polygon hole rejected a dragged vertex")
+			else:
+				edited_holes[0] = reshaped_hole
+				polygon_floor.set_floor_hole_polygons(edited_holes)
+				if polygon_floor.get_floor_hole_polygons()[0][1].distance_to(Vector2(1.125, 0.5)) > 0.001:
+					m_failures.append("Floor3D polygon hole did not preserve its edited vertex")
+	var adjacent_hole_a := PackedVector2Array([
+		Vector2(0.5, 0.5),
+		Vector2(1.0, 0.5),
+		Vector2(1.0, 2.0),
+		Vector2(0.5, 2.0),
+	])
+	var adjacent_hole_b := PackedVector2Array([
+		Vector2(1.0, 0.5),
+		Vector2(1.5, 0.5),
+		Vector2(1.5, 2.0),
+		Vector2(1.0, 2.0),
+	])
+	var adjacent_holes: Array[PackedVector2Array] = [adjacent_hole_a, adjacent_hole_b]
+	polygon_floor.set_floor_hole_polygons(adjacent_holes)
+	if polygon_floor.get_floor_hole_polygons().size() != 2:
+		m_failures.append("Floor3D did not store two adjacent polygon holes")
+	var adjacent_hole_mesh := polygon_floor.mesh as ArrayMesh
+	if _has_horizontal_face_covering_plan_point(adjacent_hole_mesh, Vector2(0.75, 1.25), 0.0):
+		m_failures.append("Floor3D kept a top face over a merged polygon hole")
+	if _has_horizontal_face_covering_plan_point(adjacent_hole_mesh, Vector2(1.25, 1.25), 0.0):
+		m_failures.append("Floor3D kept a top face over the second merged polygon hole")
+	if (
+		_has_vertical_face_covering_plan_edge_point(adjacent_hole_mesh, Vector2(1.0, 1.25), Vector3.RIGHT)
+		or _has_vertical_face_covering_plan_edge_point(adjacent_hole_mesh, Vector2(1.0, 1.25), Vector3.LEFT)
+	):
+		m_failures.append("Floor3D kept a stray internal wall between merged polygon holes")
+	if !_has_vertical_face_covering_plan_edge_point(adjacent_hole_mesh, Vector2(0.5, 1.25), Vector3.RIGHT):
+		m_failures.append("Floor3D merged polygon hole lost its outer left wall")
+	if !_has_vertical_face_covering_plan_edge_point(adjacent_hole_mesh, Vector2(1.5, 1.25), Vector3.LEFT):
+		m_failures.append("Floor3D merged polygon hole lost its outer right wall")
+	var cleared_holes: Array[PackedVector2Array] = []
+	polygon_floor.set_floor_hole_polygons(cleared_holes)
 	var inserted_polygon_points := PackedVector3Array()
 	for point_index in range(polygon_points.size()):
 		inserted_polygon_points.append(polygon_points[point_index])
@@ -2730,6 +2833,14 @@ func _validate_serialized_building_mesh_caches() -> void:
 	source_polygon_floor.name = "CachedPolygonFloor"
 	source_root.add_child(source_polygon_floor)
 	source_polygon_floor.owner = source_root
+	var cached_source_holes: Array[PackedVector2Array] = [
+		PackedVector2Array([
+			Vector2(0.5, 0.5),
+			Vector2(1.5, 0.5),
+			Vector2(1.0, 1.2),
+		])
+	]
+	source_polygon_floor.set_floor_hole_polygons(cached_source_holes)
 	var source_stairs := BuildingFactoryScript.create_stairs_node(
 		source_root,
 		Vector3(5.0, 0.0, 0.0),
@@ -2794,12 +2905,15 @@ func _validate_serialized_building_mesh_caches() -> void:
 	var cached_wall := cached_instance.get_node("CachedWall") as Wall3DScript
 	var cached_floor := cached_instance.get_node("CachedFloor") as Floor3DScript
 	var cached_polygon_floor := cached_instance.get_node("CachedPolygonFloor") as Floor3DScript
+	if cached_polygon_floor.get_floor_hole_polygons().size() != 1:
+		m_failures.append("Loading a cached polygon floor did not restore its polygon hole")
 	var cached_stairs := cached_instance.get_node("CachedStairs") as Stairs3DScript
 	var cached_pillar := cached_instance.get_node("CachedPillar") as Pillar3DScript
 	var cached_roof := cached_instance.get_node("CachedRoof") as Roof3DScript
 	cached_wall.set_wall_endpoints(cached_wall.start_point, cached_wall.end_point)
 	cached_floor.set_floor_corners(cached_floor.start_point, cached_floor.end_point)
 	cached_polygon_floor.set_floor_polygon(cached_polygon_floor.get_floor_polygon())
+	cached_polygon_floor.set_floor_hole_polygons(cached_polygon_floor.get_floor_hole_polygons())
 	cached_stairs.set_stair_rotation_degrees(cached_stairs.stair_rotation_degrees)
 	cached_pillar.set_pillar_radius(cached_pillar.pillar_radius)
 	cached_roof.set_covered_regions(
