@@ -6,8 +6,6 @@ const GENERATED_META := &"floor_generated"
 const PREVIEW_META := &"building_editor_preview"
 const FLOOR_HOLE_EDGE_EPSILON := 0.001
 const FLOOR_HOLE_MIN_SIZE := 0.001
-const STYLE_RECTANGLE := "rectangle"
-const STYLE_POLYGON := "polygon"
 
 var m_floor_holes: Array[Rect2] = []
 var m_polygon_points: PackedVector3Array = PackedVector3Array()
@@ -32,18 +30,6 @@ var m_polygon_points: PackedVector3Array = PackedVector3Array()
 		end_point = value
 		_request_rebuild()
 
-@export_enum("rectangle", "polygon") var floor_style := STYLE_RECTANGLE:
-	set(value):
-		var normalized := value if value == STYLE_POLYGON else STYLE_RECTANGLE
-		if floor_style == normalized:
-			return
-		floor_style = normalized
-		if floor_style == STYLE_POLYGON:
-			m_floor_holes.clear()
-		else:
-			m_polygon_points = PackedVector3Array()
-		_request_rebuild()
-
 @export var polygon_points: PackedVector3Array = PackedVector3Array():
 	set(value):
 		var sanitized := _sanitize_polygon_points(value)
@@ -51,6 +37,7 @@ var m_polygon_points: PackedVector3Array = PackedVector3Array()
 			return
 		m_polygon_points = sanitized
 		if is_polygon_floor():
+			m_floor_holes.clear()
 			_sync_legacy_corners_from_polygon()
 		_request_rebuild()
 	get:
@@ -110,7 +97,7 @@ func _ready() -> void:
 
 func set_floor_corners(new_start: Vector3, new_end: Vector3) -> void:
 	var previous_signature := _floor_mesh_source_signature()
-	floor_style = STYLE_RECTANGLE
+	m_polygon_points = PackedVector3Array()
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
 	if _floor_mesh_source_signature() == previous_signature:
@@ -122,7 +109,6 @@ func set_floor_corners(new_start: Vector3, new_end: Vector3) -> void:
 func set_floor_polygon(new_points: PackedVector3Array) -> void:
 	var sanitized := _sanitize_polygon_points(new_points)
 	var previous_signature := _floor_mesh_source_signature()
-	floor_style = STYLE_POLYGON
 	m_polygon_points = sanitized
 	m_floor_holes.clear()
 	_sync_legacy_corners_from_polygon()
@@ -137,7 +123,7 @@ func get_floor_polygon() -> PackedVector3Array:
 
 
 func is_polygon_floor() -> bool:
-	return floor_style == STYLE_POLYGON
+	return !m_polygon_points.is_empty()
 
 
 func is_floor_polygon_valid(points: PackedVector3Array = PackedVector3Array()) -> bool:
@@ -175,7 +161,7 @@ func set_floor_corners_and_holes(
 	new_holes: Array[Rect2]
 ) -> void:
 	var previous_signature := _floor_mesh_source_signature()
-	floor_style = STYLE_RECTANGLE
+	m_polygon_points = PackedVector3Array()
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
 	m_floor_holes = _sanitize_floor_holes(new_holes, get_floor_size())
@@ -186,7 +172,9 @@ func set_floor_corners_and_holes(
 
 
 func set_floor_holes(new_holes: Array[Rect2]) -> void:
-	var sanitized := _sanitize_floor_holes(new_holes, get_floor_size())
+	var sanitized: Array[Rect2] = []
+	if !is_polygon_floor():
+		sanitized = _sanitize_floor_holes(new_holes, get_floor_size())
 	if _floor_hole_arrays_equal(m_floor_holes, sanitized):
 		return
 	m_floor_holes = sanitized
@@ -328,7 +316,6 @@ func _request_rebuild() -> void:
 
 func _floor_mesh_source_signature() -> int:
 	return hash([
-		floor_style,
 		start_point,
 		end_point,
 		m_polygon_points,

@@ -31,6 +31,8 @@ const FLOOR_EDIT_MIN_X := 1
 const FLOOR_EDIT_MAX_X := 2
 const FLOOR_EDIT_MIN_Z := 4
 const FLOOR_EDIT_MAX_Z := 8
+const FLOOR_EDIT_POLYGON_VERTEX := 16
+const FLOOR_EDIT_POLYGON_EDGE := 32
 const WALL_TYPE_WALL := "wall"
 const WALL_TYPE_ROOM := "room"
 const FLOOR_TYPE_SOLID := "solid"
@@ -316,6 +318,10 @@ var m_dragging_floor: Floor3DScript
 var m_drag_floor_old_start := Vector3.ZERO
 var m_drag_floor_old_end := Vector3.ZERO
 var m_drag_floor_old_polygon := PackedVector3Array()
+var m_drag_floor_old_holes: Array[Rect2] = []
+var m_drag_floor_started_as_polygon := false
+var m_drag_floor_vertex_index := -1
+var m_drag_floor_edge_index := -1
 var m_drag_floor_anchor_local := Vector3.ZERO
 var m_drag_floor_edit_mask := FLOOR_EDIT_MOVE
 var m_drag_floor_active_material: Material
@@ -1063,7 +1069,11 @@ func _handle_floor_input(camera: Camera3D, event: InputEvent) -> int:
 			if mouse_motion.position.distance_to(m_floor_start_screen_position) >= WALL_DRAG_COMMIT_DISTANCE:
 				m_floor_release_commits_preview = true
 			return _handled()
-		var floor_pick := _find_floor_pick(camera, mouse_motion.position)
+		var floor_pick := (
+			_find_floor_pick(camera, mouse_motion.position)
+			if _is_floor_hole_mode()
+			else _find_floor_edit_pick(camera, mouse_motion.position)
+		)
 		var hover_floor := floor_pick.get("floor") as Floor3DScript
 		var edit_mask := int(floor_pick.get("edit_mask", FLOOR_EDIT_MOVE))
 		_update_floor_hover(hover_floor, edit_mask)
@@ -1071,11 +1081,7 @@ func _handle_floor_input(camera: Camera3D, event: InputEvent) -> int:
 			if _is_floor_hole_mode():
 				_set_status("Drag to draw a floor hole inside the highlighted floor.")
 			else:
-				_set_status(
-					"Drag floor corner to resize." if _floor_edit_mask_is_corner(edit_mask)
-					else "Drag floor edge to resize." if edit_mask != FLOOR_EDIT_MOVE
-					else "Drag floor body to move."
-				)
+				_set_floor_edit_hover_status(hover_floor, edit_mask)
 		elif _is_floor_hole_mode():
 			_set_status("Draw a hole fully inside an existing floor.")
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
@@ -1106,11 +1112,8 @@ func _handle_floor_input(camera: Camera3D, event: InputEvent) -> int:
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
 
 	if !m_is_drawing_floor and !_is_floor_hole_mode():
-		var floor_pick := _find_floor_pick(camera, mouse_button.position)
-		var hit_floor := floor_pick.get("floor") as Floor3DScript
-		if hit_floor != null:
-			_clear_floor_hover()
-			_start_floor_drag(hit_floor, camera, mouse_button.position, int(floor_pick.get("edit_mask", FLOOR_EDIT_MOVE)))
+		var floor_pick := _find_floor_edit_pick(camera, mouse_button.position)
+		if _begin_floor_edit_from_pick(camera, mouse_button, floor_pick):
 			return _handled()
 
 	var coordinator := _get_or_create_coordinator(true)
@@ -1147,11 +1150,12 @@ func _handle_polygon_floor_input(camera: Camera3D, event: InputEvent) -> int:
 		if m_is_drawing_floor:
 			_update_polygon_floor_preview(camera, mouse_motion.position)
 			return _handled()
-		var floor_pick := _find_floor_pick(camera, mouse_motion.position)
+		var floor_pick := _find_floor_edit_pick(camera, mouse_motion.position)
 		var hover_floor := floor_pick.get("floor") as Floor3DScript
-		_update_floor_hover(hover_floor, FLOOR_EDIT_MOVE)
+		var edit_mask := int(floor_pick.get("edit_mask", FLOOR_EDIT_MOVE))
+		_update_floor_hover(hover_floor, edit_mask)
 		if hover_floor != null:
-			_set_status("Drag floor body to move it.")
+			_set_floor_edit_hover_status(hover_floor, edit_mask)
 		else:
 			_set_status("Click the first polygon vertex.")
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
@@ -1163,11 +1167,8 @@ func _handle_polygon_floor_input(camera: Camera3D, event: InputEvent) -> int:
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
 
 	if !m_is_drawing_floor:
-		var floor_pick := _find_floor_pick(camera, mouse_button.position)
-		var hit_floor := floor_pick.get("floor") as Floor3DScript
-		if hit_floor != null:
-			_clear_floor_hover()
-			_start_floor_drag(hit_floor, camera, mouse_button.position, FLOOR_EDIT_MOVE)
+		var floor_pick := _find_floor_edit_pick(camera, mouse_button.position)
+		if _begin_floor_edit_from_pick(camera, mouse_button, floor_pick):
 			return _handled()
 
 	var coordinator := _get_or_create_coordinator(true)
@@ -1256,6 +1257,143 @@ func _commit_floor_polygon(
 		"Created polygon floor: %d vertices, %.2f square units."
 		% [local_points.size(), floor.get_floor_area()]
 	)
+
+
+func _set_floor_edit_hover_status(floor: Floor3DScript, edit_mask: int) -> void:
+	if edit_mask == FLOOR_EDIT_POLYGON_VERTEX:
+		_set_status("Drag vertex to reshape. Option/Alt-click it to remove.")
+		return
+	if edit_mask == FLOOR_EDIT_POLYGON_EDGE:
+		_set_status("Drag edge to reshape. Shift-click it to add a vertex.")
+		return
+	if floor.is_polygon_floor():
+		_set_status("Drag floor body to move it.")
+		return
+	_set_status(
+		"Drag floor corner to resize." if _floor_edit_mask_is_corner(edit_mask)
+		else "Drag floor edge to resize." if edit_mask != FLOOR_EDIT_MOVE
+		else "Drag floor body to move."
+	)
+
+
+func _begin_floor_edit_from_pick(
+	camera: Camera3D,
+	mouse_button: InputEventMouseButton,
+	floor_pick: Dictionary
+) -> bool:
+	var floor := floor_pick.get("floor") as Floor3DScript
+	if floor == null:
+		return false
+	_clear_floor_hover()
+	var edit_mask := int(floor_pick.get("edit_mask", FLOOR_EDIT_MOVE))
+	var vertex_index := int(floor_pick.get("vertex_index", -1))
+	var edge_index := int(floor_pick.get("edge_index", -1))
+	if (
+		edit_mask == FLOOR_EDIT_POLYGON_VERTEX
+		and mouse_button.alt_pressed
+	):
+		_remove_floor_vertex(floor, vertex_index)
+		return true
+	if (
+		edit_mask == FLOOR_EDIT_POLYGON_EDGE
+		and mouse_button.shift_pressed
+	):
+		var hit_parent_position := Vector3(
+			floor_pick.get("parent_position", floor.start_point)
+		)
+		_add_floor_vertex(floor, edge_index, hit_parent_position)
+		return true
+	_start_floor_drag(
+		floor,
+		camera,
+		mouse_button.position,
+		edit_mask,
+		vertex_index,
+		edge_index
+	)
+	return true
+
+
+func _add_floor_vertex(
+	floor: Floor3DScript,
+	edge_index: int,
+	parent_position: Vector3
+) -> void:
+	var old_points := _get_floor_edit_points(floor)
+	if edge_index < 0 or edge_index >= old_points.size():
+		_set_status("No floor edge selected.")
+		return
+	var new_point := _snap_floor_edit_local(floor, parent_position)
+	var edge_start := old_points[edge_index]
+	var edge_end := old_points[(edge_index + 1) % old_points.size()]
+	if new_point.distance_to(edge_start) <= 0.001 or new_point.distance_to(edge_end) <= 0.001:
+		_set_status("New vertex must be between two existing vertices.")
+		return
+	var new_points := PackedVector3Array()
+	for index in range(old_points.size()):
+		new_points.append(old_points[index])
+		if index == edge_index:
+			new_points.append(new_point)
+	if !_is_valid_floor_polygon(new_points):
+		_set_status("That point would make an invalid polygon.")
+		return
+	_commit_floor_points(
+		floor,
+		old_points,
+		new_points,
+		"Add Floor Vertex",
+		"Added floor vertex."
+	)
+
+
+func _remove_floor_vertex(floor: Floor3DScript, vertex_index: int) -> void:
+	var old_points := _get_floor_edit_points(floor)
+	if old_points.size() <= 3:
+		_set_status("A floor must keep at least three vertices.")
+		return
+	if vertex_index < 0 or vertex_index >= old_points.size():
+		_set_status("No floor vertex selected.")
+		return
+	var new_points := PackedVector3Array()
+	for index in range(old_points.size()):
+		if index != vertex_index:
+			new_points.append(old_points[index])
+	if !_is_valid_floor_polygon(new_points):
+		_set_status("Removing that vertex would make an invalid polygon.")
+		return
+	_commit_floor_points(
+		floor,
+		old_points,
+		new_points,
+		"Remove Floor Vertex",
+		"Removed floor vertex."
+	)
+
+
+func _commit_floor_points(
+	floor: Floor3DScript,
+	old_points: PackedVector3Array,
+	new_points: PackedVector3Array,
+	action_name: String,
+	status: String
+) -> void:
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action(action_name)
+	undo_redo.add_do_method(floor, "set_floor_polygon", new_points)
+	undo_redo.add_do_method(self, "_select_node", floor)
+	if floor.is_polygon_floor():
+		undo_redo.add_undo_method(floor, "set_floor_polygon", old_points)
+	else:
+		undo_redo.add_undo_method(
+			floor,
+			"set_floor_corners_and_holes",
+			floor.start_point,
+			floor.end_point,
+			floor.get_floor_holes()
+		)
+	undo_redo.add_undo_method(self, "_select_node", floor)
+	undo_redo.commit_action()
+	_set_status(status)
 
 
 func _create_floor_preview(coordinator: Building3DScript) -> void:
@@ -1384,7 +1522,8 @@ func _commit_floor(coordinator: Building3DScript, local_start: Vector3, local_en
 		_commit_floor_hole(coordinator, local_start, local_end)
 		return
 
-	var floor := BuildingFactoryScript.create_floor_node(coordinator,
+	var floor := BuildingFactoryScript.create_floor_node(
+		coordinator,
 		local_start,
 		local_end,
 		float(m_floor_settings["thickness"]),
@@ -1498,18 +1637,33 @@ func _start_floor_drag(
 	floor: Floor3DScript,
 	camera: Camera3D,
 	mouse_pos: Vector2,
-	edit_mask: int
+	edit_mask: int,
+	vertex_index: int = -1,
+	edge_index: int = -1
 ) -> void:
 	m_dragging_floor = floor
 	m_drag_floor_old_start = floor.start_point
 	m_drag_floor_old_end = floor.end_point
-	m_drag_floor_old_polygon = floor.get_floor_polygon()
-	m_drag_floor_edit_mask = FLOOR_EDIT_MOVE if floor.is_polygon_floor() else edit_mask
+	m_drag_floor_old_polygon = _get_floor_edit_points(floor)
+	m_drag_floor_old_holes = floor.get_floor_holes()
+	m_drag_floor_started_as_polygon = floor.is_polygon_floor()
+	m_drag_floor_edit_mask = edit_mask
+	if vertex_index >= 0:
+		m_drag_floor_edit_mask = FLOOR_EDIT_POLYGON_VERTEX
+	elif edge_index >= 0:
+		m_drag_floor_edit_mask = FLOOR_EDIT_POLYGON_EDGE
+	elif floor.is_polygon_floor():
+		m_drag_floor_edit_mask = FLOOR_EDIT_MOVE
+	m_drag_floor_vertex_index = vertex_index if m_drag_floor_edit_mask == FLOOR_EDIT_POLYGON_VERTEX else -1
+	m_drag_floor_edge_index = edge_index if m_drag_floor_edit_mask == FLOOR_EDIT_POLYGON_EDGE else -1
 	m_drag_floor_active_material = floor.material_override
 	m_drag_floor_anchor_local = _floor_plane_local_from_mouse(floor, camera, mouse_pos)
-	floor.material_override = _build_preview_material(_floor_drag_color(edit_mask, true))
+	floor.material_override = _build_preview_material(_floor_drag_color(m_drag_floor_edit_mask, true))
 	_select_node(floor)
-	_set_status("Dragging floor %s - release to commit, Escape to cancel." % _floor_edit_label(edit_mask))
+	_set_status(
+		"Dragging floor %s - release to commit, Escape to cancel."
+		% _floor_edit_label(m_drag_floor_edit_mask)
+	)
 
 
 func _update_floor_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
@@ -1520,6 +1674,45 @@ func _update_floor_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 	var hit_local := _floor_plane_local_from_mouse(floor, camera, mouse_pos)
 	var new_start := m_drag_floor_old_start
 	var new_end := m_drag_floor_old_end
+	if m_drag_floor_edit_mask == FLOOR_EDIT_POLYGON_VERTEX:
+		var edited_polygon := m_drag_floor_old_polygon.duplicate()
+		if m_drag_floor_vertex_index < 0 or m_drag_floor_vertex_index >= edited_polygon.size():
+			return
+		edited_polygon[m_drag_floor_vertex_index] = _snap_floor_edit_local(floor, hit_local)
+		var valid := _is_valid_floor_polygon(edited_polygon)
+		if valid:
+			floor.set_floor_polygon(edited_polygon)
+			_set_status("Release to commit floor vertex position.")
+		else:
+			_set_status("That position would make the floor invalid.")
+		floor.material_override = _build_preview_material(
+			_floor_drag_color(FLOOR_EDIT_POLYGON_VERTEX, valid)
+		)
+		return
+	if m_drag_floor_edit_mask == FLOOR_EDIT_POLYGON_EDGE:
+		var edited_polygon := m_drag_floor_old_polygon.duplicate()
+		if m_drag_floor_edge_index < 0 or m_drag_floor_edge_index >= edited_polygon.size():
+			return
+		var step := _active_floor_grid_step(floor)
+		var raw_delta := hit_local - m_drag_floor_anchor_local
+		var snapped_delta := Vector3(
+			roundf(raw_delta.x / step) * step,
+			0.0,
+			roundf(raw_delta.z / step) * step
+		)
+		var next_edge_index := (m_drag_floor_edge_index + 1) % edited_polygon.size()
+		edited_polygon[m_drag_floor_edge_index] += snapped_delta
+		edited_polygon[next_edge_index] += snapped_delta
+		var valid := _is_valid_floor_polygon(edited_polygon)
+		if valid:
+			floor.set_floor_polygon(edited_polygon)
+			_set_status("Release to commit floor edge position.")
+		else:
+			_set_status("That position would make the floor invalid.")
+		floor.material_override = _build_preview_material(
+			_floor_drag_color(FLOOR_EDIT_POLYGON_EDGE, valid)
+		)
+		return
 	if floor.is_polygon_floor():
 		var step := _active_floor_grid_step(floor)
 		var raw_delta := hit_local - m_drag_floor_anchor_local
@@ -1580,17 +1773,37 @@ func _commit_floor_drag() -> void:
 	floor.material_override = m_drag_floor_active_material
 	if floor.is_polygon_floor():
 		if old_polygon == new_polygon:
+			_restore_floor_drag_original(floor)
 			_reset_floor_drag_state()
 			_set_status("Floor unchanged.")
 			return
 		var polygon_undo_redo := get_undo_redo()
-		polygon_undo_redo.create_action("Move Floor")
+		var action_name := "Move Floor"
+		if edit_mask == FLOOR_EDIT_POLYGON_VERTEX:
+			action_name = "Edit Floor Vertex"
+		elif edit_mask == FLOOR_EDIT_POLYGON_EDGE:
+			action_name = "Edit Floor Edge"
+		polygon_undo_redo.create_action(action_name)
 		polygon_undo_redo.add_do_method(floor, "set_floor_polygon", new_polygon)
 		polygon_undo_redo.add_do_method(self, "_select_node", floor)
-		polygon_undo_redo.add_undo_method(floor, "set_floor_polygon", old_polygon)
+		if m_drag_floor_started_as_polygon:
+			polygon_undo_redo.add_undo_method(floor, "set_floor_polygon", old_polygon)
+		else:
+			polygon_undo_redo.add_undo_method(
+				floor,
+				"set_floor_corners_and_holes",
+				old_start,
+				old_end,
+				m_drag_floor_old_holes
+			)
 		polygon_undo_redo.commit_action()
 		_reset_floor_drag_state()
-		_set_status("Moved polygon floor.")
+		if edit_mask == FLOOR_EDIT_POLYGON_VERTEX:
+			_set_status("Edited floor vertex.")
+		elif edit_mask == FLOOR_EDIT_POLYGON_EDGE:
+			_set_status("Edited floor edge.")
+		else:
+			_set_status("Moved polygon floor.")
 		return
 	if !_is_floor_span_large_enough(new_start, new_end):
 		floor.set_floor_corners(old_start, old_end)
@@ -1622,13 +1835,21 @@ func _cancel_floor_drag() -> void:
 	if m_dragging_floor == null:
 		return
 	if is_instance_valid(m_dragging_floor):
-		if m_dragging_floor.is_polygon_floor():
-			m_dragging_floor.set_floor_polygon(m_drag_floor_old_polygon)
-		else:
-			m_dragging_floor.set_floor_corners(m_drag_floor_old_start, m_drag_floor_old_end)
+		_restore_floor_drag_original(m_dragging_floor)
 		m_dragging_floor.material_override = m_drag_floor_active_material
 	_reset_floor_drag_state()
 	_set_status("Floor edit canceled.")
+
+
+func _restore_floor_drag_original(floor: Floor3DScript) -> void:
+	if m_drag_floor_started_as_polygon:
+		floor.set_floor_polygon(m_drag_floor_old_polygon)
+	else:
+		floor.set_floor_corners_and_holes(
+			m_drag_floor_old_start,
+			m_drag_floor_old_end,
+			m_drag_floor_old_holes
+		)
 
 
 func _resized_floor_points(snapped_hit: Vector3) -> Dictionary:
@@ -1699,6 +1920,10 @@ func _floor_drag_color(edit_mask: int, valid: bool) -> Color:
 func _floor_edit_label(edit_mask: int) -> String:
 	if edit_mask == FLOOR_EDIT_MOVE:
 		return "body"
+	if edit_mask == FLOOR_EDIT_POLYGON_VERTEX:
+		return "vertex"
+	if edit_mask == FLOOR_EDIT_POLYGON_EDGE:
+		return "edge"
 	return "corner" if _floor_edit_mask_is_corner(edit_mask) else "edge"
 
 
@@ -1725,6 +1950,10 @@ func _reset_floor_drag_state() -> void:
 	m_drag_floor_old_start = Vector3.ZERO
 	m_drag_floor_old_end = Vector3.ZERO
 	m_drag_floor_old_polygon = PackedVector3Array()
+	m_drag_floor_old_holes.clear()
+	m_drag_floor_started_as_polygon = false
+	m_drag_floor_vertex_index = -1
+	m_drag_floor_edge_index = -1
 	m_drag_floor_anchor_local = Vector3.ZERO
 	m_drag_floor_edit_mask = FLOOR_EDIT_MOVE
 	m_drag_floor_active_material = null
@@ -3830,6 +4059,133 @@ func _find_floor_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
 	var local_position := Vector3(hit.get("local_position", Vector3.ZERO))
 	hit["edit_mask"] = _floor_edit_mask_for_local_hit(floor, local_position)
 	return hit
+
+
+func _find_floor_edit_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
+	var handle_pick := _find_floor_handle_pick(camera, mouse_pos)
+	if !handle_pick.is_empty():
+		return handle_pick
+	return _find_floor_pick(camera, mouse_pos)
+
+
+func _find_floor_handle_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
+	var scene_root := get_editor_interface().get_edited_scene_root()
+	if scene_root == null:
+		return {}
+	var floors: Array[Floor3DScript] = []
+	_collect_scene_floors(scene_root, floors)
+	var ray_origin := camera.project_ray_origin(mouse_pos)
+	var ray_direction := camera.project_ray_normal(mouse_pos)
+	var best_vertex_pick: Dictionary = {}
+	var best_vertex_camera_distance := INF
+	var best_edge_pick: Dictionary = {}
+	var best_edge_camera_distance := INF
+	for floor in floors:
+		if !is_instance_valid(floor):
+			continue
+		if floor == m_floor_preview or floor.has_meta(Floor3DScript.PREVIEW_META):
+			continue
+		if !floor.is_polygon_floor() and !floor.get_floor_holes().is_empty():
+			continue
+		var parent_3d := floor.get_parent() as Node3D
+		var local_origin := parent_3d.to_local(ray_origin) if parent_3d != null else ray_origin
+		var local_direction := (
+			parent_3d.global_transform.basis.inverse() * ray_direction
+			if parent_3d != null
+			else ray_direction
+		)
+		if local_direction.length_squared() <= 0.000001:
+			continue
+		local_direction = local_direction.normalized()
+		if absf(local_direction.y) <= 0.001:
+			continue
+		var plane_distance := (floor.start_point.y - local_origin.y) / local_direction.y
+		if plane_distance <= 0.0:
+			continue
+		var parent_hit := local_origin + local_direction * plane_distance
+		var plan_hit := Vector2(parent_hit.x, parent_hit.z)
+		var points := _get_floor_edit_points(floor)
+		var radius := maxf(_active_floor_grid_step(floor) * 0.35, 0.16)
+		var global_hit := (
+			parent_3d.to_global(parent_hit)
+			if parent_3d != null
+			else parent_hit
+		)
+		var camera_distance := ray_origin.distance_to(global_hit)
+		var closest_vertex_index := -1
+		var closest_vertex_distance := INF
+		for vertex_index in range(points.size()):
+			var vertex_plan := Vector2(points[vertex_index].x, points[vertex_index].z)
+			var vertex_distance := plan_hit.distance_to(vertex_plan)
+			if vertex_distance < closest_vertex_distance:
+				closest_vertex_distance = vertex_distance
+				closest_vertex_index = vertex_index
+		if (
+			closest_vertex_index >= 0
+			and closest_vertex_distance <= radius
+			and camera_distance < best_vertex_camera_distance
+		):
+			best_vertex_camera_distance = camera_distance
+			best_vertex_pick = {
+				"floor": floor,
+				"edit_mask": FLOOR_EDIT_POLYGON_VERTEX,
+				"vertex_index": closest_vertex_index,
+				"edge_index": -1,
+				"parent_position": points[closest_vertex_index],
+			}
+
+		var closest_edge_index := -1
+		var closest_edge_distance := INF
+		var closest_edge_point := Vector2.ZERO
+		for edge_index in range(points.size()):
+			var edge_start := Vector2(points[edge_index].x, points[edge_index].z)
+			var edge_end_point := points[(edge_index + 1) % points.size()]
+			var edge_end := Vector2(edge_end_point.x, edge_end_point.z)
+			var edge_point := _closest_point_on_plan_segment(plan_hit, edge_start, edge_end)
+			var edge_distance := plan_hit.distance_to(edge_point)
+			if edge_distance < closest_edge_distance:
+				closest_edge_distance = edge_distance
+				closest_edge_index = edge_index
+				closest_edge_point = edge_point
+		if (
+			closest_edge_index >= 0
+			and closest_edge_distance <= radius
+			and camera_distance < best_edge_camera_distance
+		):
+			best_edge_camera_distance = camera_distance
+			best_edge_pick = {
+				"floor": floor,
+				"edit_mask": FLOOR_EDIT_POLYGON_EDGE,
+				"vertex_index": -1,
+				"edge_index": closest_edge_index,
+				"parent_position": Vector3(
+					closest_edge_point.x,
+					floor.start_point.y,
+					closest_edge_point.y
+				),
+			}
+	if (
+		!best_vertex_pick.is_empty()
+		and (
+			best_edge_pick.is_empty()
+			or best_vertex_camera_distance <= best_edge_camera_distance + 0.01
+		)
+	):
+		return best_vertex_pick
+	return best_edge_pick
+
+
+func _closest_point_on_plan_segment(
+	point: Vector2,
+	segment_start: Vector2,
+	segment_end: Vector2
+) -> Vector2:
+	var segment := segment_end - segment_start
+	var length_squared := segment.length_squared()
+	if length_squared <= 0.000001:
+		return segment_start
+	var ratio := clampf((point - segment_start).dot(segment) / length_squared, 0.0, 1.0)
+	return segment_start + segment * ratio
 
 
 func _raycast_floors(origin: Vector3, direction: Vector3) -> Dictionary:
@@ -6006,6 +6362,26 @@ func _is_valid_floor_polygon(points: PackedVector3Array) -> bool:
 	for point in points:
 		polygon.append(Vector2(point.x, point.z))
 	return !Geometry2D.triangulate_polygon(polygon).is_empty()
+
+
+func _rectangle_floor_points(local_start: Vector3, local_end: Vector3) -> PackedVector3Array:
+	var min_x := minf(local_start.x, local_end.x)
+	var max_x := maxf(local_start.x, local_end.x)
+	var min_z := minf(local_start.z, local_end.z)
+	var max_z := maxf(local_start.z, local_end.z)
+	var base_y := local_start.y
+	return PackedVector3Array([
+		Vector3(min_x, base_y, min_z),
+		Vector3(max_x, base_y, min_z),
+		Vector3(max_x, base_y, max_z),
+		Vector3(min_x, base_y, max_z),
+	])
+
+
+func _get_floor_edit_points(floor: Floor3DScript) -> PackedVector3Array:
+	if floor.is_polygon_floor():
+		return floor.get_floor_polygon()
+	return _rectangle_floor_points(floor.start_point, floor.end_point)
 
 
 func _is_stair_span_large_enough(local_start: Vector3, local_end: Vector3) -> bool:

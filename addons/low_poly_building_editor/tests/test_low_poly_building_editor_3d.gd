@@ -1166,6 +1166,9 @@ func _validate_floor_node(coordinator: Building3DScript) -> void:
 		Color(0.46, 0.40, 0.32, 1.0)
 	)
 	coordinator.add_child(floor)
+	for property in floor.get_property_list():
+		if StringName(property.get("name", "")) == &"floor_style":
+			m_failures.append("Floor3D still exposes the removed floor_style property")
 	if floor.mesh == null:
 		m_failures.append("Floor3D did not generate a mesh")
 		return
@@ -1266,6 +1269,24 @@ func _validate_floor_node(coordinator: Building3DScript) -> void:
 	if floor.position.distance_to(Vector3(1.0, top_y, 12.5)) > 0.001:
 		m_failures.append("Floor3D did not move transform after edited corners")
 
+	var editable_rectangle := BuildingFactoryScript.create_floor_node(
+		coordinator,
+		Vector3(12.0, top_y, 12.0),
+		Vector3(15.0, top_y, 14.0)
+	)
+	coordinator.add_child(editable_rectangle)
+	var editable_rectangle_points := PackedVector3Array([
+		Vector3(12.0, top_y, 12.0),
+		Vector3(15.0, top_y, 12.0),
+		Vector3(16.0, top_y, 15.0),
+		Vector3(12.0, top_y, 14.0),
+	])
+	editable_rectangle.set_floor_polygon(editable_rectangle_points)
+	if !editable_rectangle.is_polygon_floor():
+		m_failures.append("Floor3D rectangle shape edit did not convert to shared polygon editing")
+	if editable_rectangle.get_floor_polygon() != editable_rectangle_points:
+		m_failures.append("Floor3D rectangle shape edit did not preserve its four edited vertices")
+
 	var polygon_points := PackedVector3Array([
 		Vector3(6.0, top_y, 12.0),
 		Vector3(10.0, top_y, 12.0),
@@ -1320,6 +1341,43 @@ func _validate_floor_node(coordinator: Building3DScript) -> void:
 		m_failures.append("Floor3D polygon did not generate collision")
 	if polygon_floor.can_add_floor_hole_rect(Rect2(Vector2(0.5, 0.5), Vector2(0.5, 0.5))):
 		m_failures.append("Floor3D polygon accepted a rectangle-only floor hole")
+	var inserted_polygon_points := PackedVector3Array()
+	for point_index in range(polygon_points.size()):
+		inserted_polygon_points.append(polygon_points[point_index])
+		if point_index == 0:
+			inserted_polygon_points.append(Vector3(8.0, top_y, 12.0))
+	polygon_floor.set_floor_polygon(inserted_polygon_points)
+	if polygon_floor.get_floor_polygon().size() != polygon_points.size() + 1:
+		m_failures.append("Floor3D polygon did not preserve an inserted edge vertex")
+	if absf(polygon_floor.get_floor_area() - 8.0) > 0.001:
+		m_failures.append("Floor3D polygon edge insertion changed the footprint area")
+	var reshaped_polygon_points := polygon_floor.get_floor_polygon()
+	reshaped_polygon_points[1] = Vector3(8.0, top_y, 11.0)
+	if !polygon_floor.is_floor_polygon_valid(reshaped_polygon_points):
+		m_failures.append("Floor3D polygon rejected a valid dragged vertex shape")
+	else:
+		polygon_floor.set_floor_polygon(reshaped_polygon_points)
+		if absf(polygon_floor.get_floor_area() - 10.0) > 0.001:
+			m_failures.append("Floor3D polygon vertex drag did not reshape the footprint")
+	var removed_polygon_points := PackedVector3Array()
+	for point_index in range(reshaped_polygon_points.size()):
+		if point_index != 1:
+			removed_polygon_points.append(reshaped_polygon_points[point_index])
+	if !polygon_floor.is_floor_polygon_valid(removed_polygon_points):
+		m_failures.append("Floor3D polygon rejected a valid vertex removal")
+	else:
+		polygon_floor.set_floor_polygon(removed_polygon_points)
+		if polygon_floor.get_floor_polygon().size() != polygon_points.size():
+			m_failures.append("Floor3D polygon did not remove the selected vertex")
+	var edge_dragged_polygon_points := polygon_floor.get_floor_polygon()
+	edge_dragged_polygon_points[0] += Vector3(0.0, 0.0, -1.0)
+	edge_dragged_polygon_points[1] += Vector3(0.0, 0.0, -1.0)
+	if !polygon_floor.is_floor_polygon_valid(edge_dragged_polygon_points):
+		m_failures.append("Floor3D polygon rejected a valid dragged edge shape")
+	else:
+		polygon_floor.set_floor_polygon(edge_dragged_polygon_points)
+		if absf(polygon_floor.get_floor_area() - 12.0) > 0.001:
+			m_failures.append("Floor3D polygon edge drag did not reshape the footprint")
 	var self_intersecting_polygon := PackedVector3Array([
 		Vector3(0.0, top_y, 0.0),
 		Vector3(2.0, top_y, 2.0),
