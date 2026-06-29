@@ -26,6 +26,30 @@ roofs share `BuildingMesh3D` cache signatures; windows and doors cache their gen
 part meshes. Loading reuses matching geometry while recreating unsaved collision/debug
 children, and authored or clipping changes invalidate only the affected cache.
 
+## Seeded Building Generation
+
+The plugin also provides a deterministic JSON-to-scene path for AI agents and batch
+authoring. [`building_spec.gd`](building_spec.gd) parses and validates the versioned
+input, [`building_spec_compiler.gd`](building_spec_compiler.gd) builds ordinary
+`Building3D` nodes through `BuildingFactory`, and
+[`generate_building.gd`](generate_building.gd) saves the result as an editable `.tscn`.
+
+Generate the included example:
+
+```sh
+godot --headless --path . \
+  --script addons/low_poly_building_editor/generate_building.gd -- \
+  --spec res://addons/low_poly_building_editor/examples/seeded_villa.json \
+  --output res://generated/buildings/seeded_villa.tscn \
+  --report res://generated/buildings/seeded_villa.report.json
+```
+
+Generator version 1 supports one rectangular storey, one required entrance, repeated
+validated facade windows, optional porch pillars, footprint jitter, and one flat, shed,
+gable, or hip roof. A style value of `random` resolves deterministically from `seed`.
+The command prints the same machine-readable report it optionally writes to `--report`.
+Invalid specs and buildings that cannot fit their entrance do not produce a scene.
+
 This README is the plugin's entry point; the full documentation lives in [`docs/`](docs):
 
 - [`docs/feature.md`](docs/feature.md) — goals, authoring experience, rules, edge cases, ownership, and validation.

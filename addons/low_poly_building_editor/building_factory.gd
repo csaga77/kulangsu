@@ -8,19 +8,87 @@ const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd
 const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.gd")
 const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
 const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
+const BuildingOpening3DScript = preload(
+	"res://addons/low_poly_building_editor/building_opening_3d.gd"
+)
 
+const PILLAR_STYLE_KEYS := ["round", "square", "octagonal", "tapered"]
 const PILLAR_STYLE_SCRIPTS := {
 	"round": preload("res://addons/low_poly_building_editor/round_pillar_3d.gd"),
 	"square": preload("res://addons/low_poly_building_editor/square_pillar_3d.gd"),
 	"octagonal": preload("res://addons/low_poly_building_editor/octagonal_pillar_3d.gd"),
 	"tapered": preload("res://addons/low_poly_building_editor/tapered_pillar_3d.gd"),
 }
+const ROOF_STYLE_KEYS := ["flat", "shed", "gable", "hip"]
 const ROOF_STYLE_SCRIPTS := {
 	"flat": preload("res://addons/low_poly_building_editor/flat_roof_3d.gd"),
 	"shed": preload("res://addons/low_poly_building_editor/shed_roof_3d.gd"),
 	"gable": preload("res://addons/low_poly_building_editor/gable_roof_3d.gd"),
 	"hip": preload("res://addons/low_poly_building_editor/hip_roof_3d.gd"),
 }
+const WINDOW_STYLE_KEYS := [
+	"single_window",
+	"double_window",
+	"grid_window",
+	"louvered_window",
+	"transom_window",
+	"arched_window",
+	"frame",
+]
+const DOOR_STYLE_KEYS := [
+	"single_door",
+	"double_door",
+	"glazed_door",
+	"glazed_grid_door",
+	"panel_door",
+	"dutch_door",
+	"single_frame",
+	"double_frame",
+]
+const OPENING_STYLE_SCRIPTS := {
+	"single_window": preload("res://addons/low_poly_building_editor/single_window_3d.gd"),
+	"double_window": preload("res://addons/low_poly_building_editor/double_window_3d.gd"),
+	"grid_window": preload("res://addons/low_poly_building_editor/grid_window_3d.gd"),
+	"louvered_window": preload("res://addons/low_poly_building_editor/louvered_window_3d.gd"),
+	"transom_window": preload("res://addons/low_poly_building_editor/transom_window_3d.gd"),
+	"arched_window": preload("res://addons/low_poly_building_editor/arched_window_3d.gd"),
+	"frame": preload("res://addons/low_poly_building_editor/window_frame_3d.gd"),
+	"single_door": preload("res://addons/low_poly_building_editor/single_door_3d.gd"),
+	"double_door": preload("res://addons/low_poly_building_editor/double_door_3d.gd"),
+	"glazed_door": preload("res://addons/low_poly_building_editor/glazed_door_3d.gd"),
+	"glazed_grid_door": preload(
+		"res://addons/low_poly_building_editor/glazed_grid_door_3d.gd"
+	),
+	"panel_door": preload("res://addons/low_poly_building_editor/panel_door_3d.gd"),
+	"dutch_door": preload("res://addons/low_poly_building_editor/dutch_door_3d.gd"),
+	"single_frame": preload(
+		"res://addons/low_poly_building_editor/single_door_frame_3d.gd"
+	),
+	"double_frame": preload(
+		"res://addons/low_poly_building_editor/double_door_frame_3d.gd"
+	),
+}
+const OPENING_STYLE_PROPERTY_NAMES: Array[StringName] = [
+	&"window_pane_depth",
+	&"window_pane_color",
+	&"pane_grid_rows",
+	&"pane_grid_cols",
+	&"muntin_thickness",
+	&"louver_count",
+	&"louver_depth",
+	&"transom_ratio",
+	&"transom_rail_thickness",
+	&"arch_steps",
+	&"door_panel_depth",
+	&"door_panel_color",
+	&"door_glazing_ratio",
+	&"door_glass_depth",
+	&"door_glass_color",
+	&"door_inset_rows",
+	&"door_inset_cols",
+]
+const OPENING_SILL_META := &"building_opening_sill_height"
+const OPENING_ALLOW_BASE_META := &"building_opening_allow_base_edge"
 
 
 static func snap_local_position(local_position: Vector3, grid_step: float) -> Vector3:
@@ -261,6 +329,174 @@ static func instantiate_roof_style(style: String) -> Roof3DScript:
 		ROOF_STYLE_SCRIPTS["gable"]
 	) as Script
 	return roof_script.new() as Roof3DScript
+
+
+static func get_pillar_style_keys() -> PackedStringArray:
+	return PackedStringArray(PILLAR_STYLE_KEYS)
+
+
+static func get_roof_style_keys() -> PackedStringArray:
+	return PackedStringArray(ROOF_STYLE_KEYS)
+
+
+static func get_opening_style_keys() -> PackedStringArray:
+	var styles := PackedStringArray(WINDOW_STYLE_KEYS)
+	styles.append_array(PackedStringArray(DOOR_STYLE_KEYS))
+	return styles
+
+
+static func get_window_style_keys() -> PackedStringArray:
+	return PackedStringArray(WINDOW_STYLE_KEYS)
+
+
+static func get_door_style_keys() -> PackedStringArray:
+	return PackedStringArray(DOOR_STYLE_KEYS)
+
+
+static func is_pillar_style_supported(style: String) -> bool:
+	return PILLAR_STYLE_SCRIPTS.has(style.strip_edges().to_lower())
+
+
+static func is_roof_style_supported(style: String) -> bool:
+	return ROOF_STYLE_SCRIPTS.has(style.strip_edges().to_lower())
+
+
+static func is_opening_style_supported(style: String) -> bool:
+	return OPENING_STYLE_SCRIPTS.has(style.strip_edges().to_lower())
+
+
+static func is_window_style_supported(style: String) -> bool:
+	return WINDOW_STYLE_KEYS.has(style.strip_edges().to_lower())
+
+
+static func is_door_style_supported(style: String) -> bool:
+	return DOOR_STYLE_KEYS.has(style.strip_edges().to_lower())
+
+
+static func instantiate_opening_style(
+	style: String,
+	strict: bool = false
+) -> BuildingOpening3DScript:
+	var normalized_style := style.strip_edges().to_lower()
+	if strict and !OPENING_STYLE_SCRIPTS.has(normalized_style):
+		return null
+	var opening_script := OPENING_STYLE_SCRIPTS.get(
+		normalized_style,
+		BuildingOpening3DScript
+	) as Script
+	return opening_script.new() as BuildingOpening3DScript
+
+
+static func apply_opening_settings(
+	opening: BuildingOpening3DScript,
+	settings: Dictionary,
+	wall_thickness: float
+) -> void:
+	if opening == null:
+		return
+	opening.opening_width = float(settings.get("width", opening.opening_width))
+	opening.opening_height = float(settings.get("height", opening.opening_height))
+	opening.frame_thickness = float(
+		settings.get("frame_thickness", opening.frame_thickness)
+	)
+	opening.frame_depth = maxf(wall_thickness, 0.0) + 0.04
+	opening.wall_thickness = maxf(wall_thickness, 0.0)
+	opening.frame_sides = int(settings.get("frame_sides", opening.frame_sides))
+	opening.frame_protrusion = float(
+		settings.get("frame_protrusion", opening.frame_protrusion)
+	)
+	opening.frame_color = Color(settings.get("frame_color", opening.frame_color))
+	opening.show_bottom_frame = bool(
+		settings.get("show_bottom_frame", opening.show_bottom_frame)
+	)
+	for property_name in OPENING_STYLE_PROPERTY_NAMES:
+		var setting_key := String(property_name)
+		if settings.has(setting_key) and _object_has_property(opening, property_name):
+			opening.set(property_name, settings[setting_key])
+
+
+static func configure_opening_placement(
+	opening: BuildingOpening3DScript,
+	wall: Wall3DScript,
+	segment_index: int,
+	distance_along_wall: float,
+	sill_height: float,
+	face_sign: float,
+	allow_base_edge: bool
+) -> bool:
+	if opening == null or wall == null:
+		return false
+	var segment := wall.get_segment(segment_index)
+	if segment == null:
+		return false
+	var resolved_face_sign := 1.0 if face_sign >= 0.0 else -1.0
+	var frame := wall.get_segment_local_frame(segment_index)
+	var local_position := Vector3(
+		distance_along_wall,
+		maxf(sill_height, 0.0) + opening.opening_height * 0.5,
+		resolved_face_sign * (
+			segment.thickness * 0.5 + BuildingOpening3DScript.FRAME_FACE_GAP
+		)
+	)
+	opening.transform = Transform3D(
+		opening_basis_for_face(frame.basis, resolved_face_sign),
+		frame * local_position
+	)
+	opening.set_meta(Wall3DScript.SEGMENT_INDEX_META, segment_index)
+	opening.set_meta(OPENING_SILL_META, maxf(sill_height, 0.0))
+	opening.set_meta(OPENING_ALLOW_BASE_META, allow_base_edge)
+	return true
+
+
+static func create_opening_node(
+	wall: Wall3DScript,
+	segment_index: int,
+	distance_along_wall: float,
+	sill_height: float,
+	face_sign: float,
+	settings: Dictionary,
+	strict_style: bool = false
+) -> BuildingOpening3DScript:
+	if wall == null:
+		return null
+	var segment := wall.get_segment(segment_index)
+	if segment == null:
+		return null
+	var style := String(settings.get("style", ""))
+	var opening := instantiate_opening_style(style, strict_style)
+	if opening == null:
+		return null
+	var name_prefix := String(settings.get("node_name", "BuildingOpening3D"))
+	opening.name = _unique_child_name(wall, name_prefix)
+	apply_opening_settings(opening, settings, segment.thickness)
+	var allow_base_edge := bool(settings.get("allow_base_edge", false))
+	if !configure_opening_placement(
+		opening,
+		wall,
+		segment_index,
+		distance_along_wall,
+		sill_height,
+		face_sign,
+		allow_base_edge
+	):
+		opening.free()
+		return null
+	opening.build_on_ready = true
+	opening.generate_collision = true
+	return opening
+
+
+static func opening_basis_for_face(basis: Basis, face_sign: float) -> Basis:
+	if face_sign < 0.0:
+		return basis * Basis(Vector3.UP, PI)
+	return basis
+
+
+static func _object_has_property(object: Object, property_name: StringName) -> bool:
+	for property in object.get_property_list():
+		if StringName(property.get("name", "")) == property_name:
+			return true
+	return false
 
 
 static func _unique_child_name(building: Node, prefix: String) -> String:

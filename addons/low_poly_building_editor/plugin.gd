@@ -37,42 +37,7 @@ const FLOOR_TYPE_SOLID := "solid"
 const FLOOR_TYPE_HOLE := "hole"
 const PILLAR_EDIT_MOVE := 0
 const PILLAR_EDIT_RADIUS := 1
-const OPENING_STYLE_SCRIPTS := {
-	"single_window": preload("res://addons/low_poly_building_editor/single_window_3d.gd"),
-	"double_window": preload("res://addons/low_poly_building_editor/double_window_3d.gd"),
-	"grid_window": preload("res://addons/low_poly_building_editor/grid_window_3d.gd"),
-	"louvered_window": preload("res://addons/low_poly_building_editor/louvered_window_3d.gd"),
-	"transom_window": preload("res://addons/low_poly_building_editor/transom_window_3d.gd"),
-	"arched_window": preload("res://addons/low_poly_building_editor/arched_window_3d.gd"),
-	"frame": preload("res://addons/low_poly_building_editor/window_frame_3d.gd"),
-	"single_door": preload("res://addons/low_poly_building_editor/single_door_3d.gd"),
-	"double_door": preload("res://addons/low_poly_building_editor/double_door_3d.gd"),
-	"glazed_door": preload("res://addons/low_poly_building_editor/glazed_door_3d.gd"),
-	"glazed_grid_door": preload("res://addons/low_poly_building_editor/glazed_grid_door_3d.gd"),
-	"panel_door": preload("res://addons/low_poly_building_editor/panel_door_3d.gd"),
-	"dutch_door": preload("res://addons/low_poly_building_editor/dutch_door_3d.gd"),
-	"single_frame": preload("res://addons/low_poly_building_editor/single_door_frame_3d.gd"),
-	"double_frame": preload("res://addons/low_poly_building_editor/double_door_frame_3d.gd"),
-}
-const OPENING_STYLE_PROPERTY_NAMES: Array[StringName] = [
-	&"window_pane_depth",
-	&"window_pane_color",
-	&"pane_grid_rows",
-	&"pane_grid_cols",
-	&"muntin_thickness",
-	&"louver_count",
-	&"louver_depth",
-	&"transom_ratio",
-	&"transom_rail_thickness",
-	&"arch_steps",
-	&"door_panel_depth",
-	&"door_panel_color",
-	&"door_glazing_ratio",
-	&"door_glass_depth",
-	&"door_glass_color",
-	&"door_inset_rows",
-	&"door_inset_cols",
-]
+const OPENING_STYLE_SCRIPTS := BuildingFactoryScript.OPENING_STYLE_SCRIPTS
 const OPENING_CUSTOM_TYPES := [
 	{"name": "BuildingOpening3D", "script": BuildingOpening3DScript},
 	{"name": "Window3D", "script": Window3DScript},
@@ -103,8 +68,8 @@ const BUILDING_STYLE_CUSTOM_TYPES := [
 	{"name": "GableRoof3D", "script": preload("res://addons/low_poly_building_editor/gable_roof_3d.gd")},
 	{"name": "HipRoof3D", "script": preload("res://addons/low_poly_building_editor/hip_roof_3d.gd")},
 ]
-const OPENING_SILL_META := &"building_opening_sill_height"
-const OPENING_ALLOW_BASE_META := &"building_opening_allow_base_edge"
+const OPENING_SILL_META := BuildingFactoryScript.OPENING_SILL_META
+const OPENING_ALLOW_BASE_META := BuildingFactoryScript.OPENING_ALLOW_BASE_META
 # Temporary diagnostic: writes the 3D toolbar tree to native_buttons_debug.log
 # when enabled.
 const DEBUG_NATIVE_BUTTONS := false
@@ -3341,28 +3306,11 @@ func _update_opening_preview(wall: Wall3DScript, hit: Dictionary) -> void:
 
 
 func _apply_opening_settings(opening: BuildingOpening3DScript, settings: Dictionary, frame_depth: float) -> void:
-	opening.opening_width = float(settings["width"])
-	opening.opening_height = float(settings["height"])
-	opening.frame_thickness = float(settings["frame_thickness"])
-	opening.frame_depth = frame_depth
-	# frame_depth is passed as the wall thickness plus a small margin (0.04), so
-	# recover the wall thickness for the both-sided casing geometry.
-	opening.wall_thickness = maxf(frame_depth - 0.04, 0.0)
-	opening.frame_sides = int(settings.get("frame_sides", 0))
-	opening.frame_protrusion = float(settings.get("frame_protrusion", 0.02))
-	opening.frame_color = Color(settings.get("frame_color", Color(0.86, 0.92, 0.94, 1.0)))
-	opening.show_bottom_frame = bool(settings["show_bottom_frame"])
-	for property_name in OPENING_STYLE_PROPERTY_NAMES:
-		var setting_key := String(property_name)
-		if settings.has(setting_key) and _object_has_property(opening, property_name):
-			opening.set(property_name, settings[setting_key])
-
-
-func _object_has_property(object: Object, property_name: StringName) -> bool:
-	for property in object.get_property_list():
-		if StringName(property.get("name", "")) == property_name:
-			return true
-	return false
+	BuildingFactoryScript.apply_opening_settings(
+		opening,
+		settings,
+		maxf(frame_depth - 0.04, 0.0)
+	)
 
 
 func _opening_script_for_settings(settings: Dictionary) -> Script:
@@ -3376,9 +3324,7 @@ func _opening_script_for_settings(settings: Dictionary) -> Script:
 # their -Z points away from the wall and the casing protrudes on one face only.
 # Rotate 180 deg about local up so -Z always faces into the wall.
 func _opening_basis_for_face(basis: Basis, face_sign: float) -> Basis:
-	if face_sign < 0.0:
-		return basis * Basis(Vector3.UP, PI)
-	return basis
+	return BuildingFactoryScript.opening_basis_for_face(basis, face_sign)
 
 
 func _can_place_wall_opening(
@@ -3566,25 +3512,27 @@ func _commit_placement() -> void:
 		var wall := m_preview_parent as Wall3DScript
 		if opening_preview == null or wall == null:
 			return
-		var opening_script := _opening_script_for_settings(settings)
-		var opening := opening_script.new() as BuildingOpening3DScript
+		var segment_index := int(
+			opening_preview.get_meta(Wall3DScript.SEGMENT_INDEX_META, 0)
+		)
+		var frame := wall.get_segment_local_frame(segment_index)
+		var segment_local := frame.affine_inverse() * opening_preview.position
+		var sill_height := float(
+			opening_preview.get_meta(OPENING_SILL_META, settings["sill_height"])
+		)
+		var opening := BuildingFactoryScript.create_opening_node(
+			wall,
+			segment_index,
+			segment_local.x,
+			sill_height,
+			1.0 if segment_local.z >= 0.0 else -1.0,
+			settings,
+			true
+		)
+		if opening == null:
+			_set_status("Could not create the selected opening style.")
+			return
 		opening.name = String(settings["node_name"])
-		_apply_opening_settings(opening, settings, opening_preview.frame_depth)
-		opening.frame_color = Color(settings.get("frame_color", Color(0.86, 0.92, 0.94, 1.0)))
-		opening.position = opening_preview.position
-		opening.rotation = opening_preview.rotation
-		opening.set_meta(
-			Wall3DScript.SEGMENT_INDEX_META,
-			int(opening_preview.get_meta(Wall3DScript.SEGMENT_INDEX_META, 0))
-		)
-		opening.set_meta(
-			OPENING_SILL_META,
-			float(opening_preview.get_meta(OPENING_SILL_META, settings["sill_height"]))
-		)
-		opening.set_meta(
-			OPENING_ALLOW_BASE_META,
-			bool(opening_preview.get_meta(OPENING_ALLOW_BASE_META, settings["allow_base_edge"]))
-		)
 		var scene_root := get_editor_interface().get_edited_scene_root()
 		var undo_redo := get_undo_redo()
 		undo_redo.create_action("Place Wall Opening")

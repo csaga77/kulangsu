@@ -3,6 +3,10 @@ extends Node3D
 
 const Building3DScript = preload("res://addons/low_poly_building_editor/building_3d.gd")
 const BuildingFactoryScript = preload("res://addons/low_poly_building_editor/building_factory.gd")
+const BuildingSpecScript = preload("res://addons/low_poly_building_editor/building_spec.gd")
+const BuildingSpecCompilerScript = preload(
+	"res://addons/low_poly_building_editor/building_spec_compiler.gd"
+)
 const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
 const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
 const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.gd")
@@ -69,6 +73,8 @@ func _run_smoke_checks() -> void:
 	_validate_building_root_ownership()
 	_validate_multiple_building_roots()
 	_validate_serialized_building_mesh_caches()
+	_validate_opening_factory()
+	_validate_building_spec_compiler()
 	var coordinator := Building3DScript.new() as Building3DScript
 	coordinator.name = "Building3D"
 	add_child(coordinator)
@@ -159,6 +165,155 @@ func _validate_building_root_ownership() -> void:
 		m_failures.append("BuildingFactory parented a wall instead of returning a detached node")
 	detached_wall.free()
 	building.free()
+
+
+func _validate_opening_factory() -> void:
+	if !BuildingFactoryScript.is_window_style_supported("grid_window"):
+		m_failures.append("BuildingFactory did not publish its window style registry")
+	if !BuildingFactoryScript.is_door_style_supported("glazed_door"):
+		m_failures.append("BuildingFactory did not publish its door style registry")
+	if BuildingFactoryScript.is_opening_style_supported("imaginary_window"):
+		m_failures.append("BuildingFactory accepted an unknown opening style")
+
+	var building := Building3DScript.new() as Building3DScript
+	var room := BuildingFactoryScript.create_room_node(
+		building,
+		Vector3.ZERO,
+		Vector3(6.0, 0.0, 5.0)
+	)
+	building.add_child(room)
+	var settings := {
+		"style": "grid_window",
+		"node_name": "FactoryWindow",
+		"width": 1.2,
+		"height": 1.1,
+		"frame_color": Color(0.92, 0.94, 0.96, 1.0),
+		"window_pane_color": Color(0.4, 0.7, 0.9, 0.5),
+		"pane_grid_rows": 3,
+		"pane_grid_cols": 2,
+		"show_bottom_frame": true,
+		"allow_base_edge": false,
+	}
+	var opening := BuildingFactoryScript.create_opening_node(
+		room,
+		1,
+		2.0,
+		0.9,
+		-1.0,
+		settings,
+		true
+	)
+	if opening == null:
+		m_failures.append("BuildingFactory could not create a valid typed opening")
+	else:
+		if opening.get_script() != GridWindow3DScript:
+			m_failures.append("BuildingFactory opening style did not select GridWindow3D")
+		if opening.get_parent() != null:
+			m_failures.append("BuildingFactory parented an opening instead of returning it detached")
+		if int(opening.get_meta(Wall3DScript.SEGMENT_INDEX_META, -1)) != 1:
+			m_failures.append("BuildingFactory opening did not retain its target wall segment")
+		if !is_equal_approx(
+			float(opening.get_meta(BuildingFactoryScript.OPENING_SILL_META, -1.0)),
+			0.9
+		):
+			m_failures.append("BuildingFactory opening did not retain its sill height")
+		if opening.frame_depth <= room.get_segment(1).thickness:
+			m_failures.append("BuildingFactory opening frame did not span the target wall")
+		opening.free()
+	var invalid := BuildingFactoryScript.create_opening_node(
+		room,
+		0,
+		2.0,
+		0.9,
+		-1.0,
+		{"style": "imaginary_window"},
+		true
+	)
+	if invalid != null:
+		m_failures.append("BuildingFactory strict opening creation accepted an unknown style")
+		invalid.free()
+	building.free()
+
+
+func _validate_building_spec_compiler() -> void:
+	var data := {
+		"schema_version": 1,
+		"generator_version": 1,
+		"name": "CompilerTestBuilding",
+		"seed": 90210,
+		"grid_step": 0.5,
+		"footprint_cells": [16, 12],
+		"storeys": 1,
+		"variation": {"footprint_jitter_cells": [2, 2]},
+		"facade": {
+			"door_style": "glazed_door",
+			"entrance_segment": -1,
+			"window_style": "random",
+			"window_count_per_wall": 2,
+			"porch_pillars": true,
+			"pillar_style": "square",
+		},
+		"roof": {"style": "random"},
+	}
+	var first_spec := BuildingSpecScript.new() as BuildingSpecScript
+	var parse_errors := first_spec.apply_dictionary(data)
+	if !parse_errors.is_empty():
+		m_failures.append("BuildingSpec rejected a valid generator spec: %s" % parse_errors)
+		return
+	var first_result := BuildingSpecCompilerScript.compile(first_spec)
+	var first_errors: Array = first_result.get("errors", [])
+	var first_building := first_result.get("building") as Building3DScript
+	if !first_errors.is_empty() or first_building == null:
+		m_failures.append("BuildingSpecCompiler failed a valid spec: %s" % first_errors)
+		return
+
+	var second_spec := BuildingSpecScript.new() as BuildingSpecScript
+	second_spec.apply_dictionary(data)
+	var second_result := BuildingSpecCompilerScript.compile(second_spec)
+	var second_building := second_result.get("building") as Building3DScript
+	if second_building == null:
+		m_failures.append("BuildingSpecCompiler could not repeat a valid generation")
+		first_building.free()
+		return
+	var first_resolved: Dictionary = first_result.get("resolved", {})
+	var second_resolved: Dictionary = second_result.get("resolved", {})
+	if first_resolved != second_resolved:
+		m_failures.append("BuildingSpecCompiler produced different output for the same seed")
+	if first_building.get_wall_nodes().size() != 1:
+		m_failures.append("BuildingSpecCompiler did not create one exterior room shell")
+	if first_building.get_roof_nodes().size() != 1:
+		m_failures.append("BuildingSpecCompiler did not create one roof")
+	var generated_room := first_building.get_wall_nodes()[0]
+	var door_count := 0
+	var window_count := 0
+	for child in generated_room.get_children():
+		if child is Door3DScript:
+			door_count += 1
+		elif child is Window3DScript:
+			window_count += 1
+	if door_count != 1:
+		m_failures.append("BuildingSpecCompiler did not create exactly one entrance")
+	if window_count <= 0:
+		m_failures.append("BuildingSpecCompiler did not create facade windows")
+
+	var packed := PackedScene.new()
+	if packed.pack(first_building) != OK:
+		m_failures.append("BuildingSpecCompiler result could not be packed as a scene")
+	else:
+		var instance := packed.instantiate() as Building3DScript
+		if instance == null or instance.get_wall_nodes().size() != 1:
+			m_failures.append("Packed generated building did not restore its authored shell")
+		if instance != null:
+			instance.free()
+
+	var invalid_spec := BuildingSpecScript.new() as BuildingSpecScript
+	var invalid_errors := invalid_spec.apply_dictionary({
+		"facade": {"window_style": "imaginary_window"},
+	})
+	if invalid_errors.is_empty():
+		m_failures.append("BuildingSpec accepted an unsupported window style")
+	first_building.free()
+	second_building.free()
 
 
 func _validate_multiple_building_roots() -> void:
