@@ -24,7 +24,6 @@ script = ExtResource("1_test")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, 0)
 draw_skeleton_bones = false
 body_height = 1.53
-use_jacket_model = false
 controller = SubResource("Resource_player_controller_3d")
 
 [node name="Camera3D" type="Camera3D" parent="human_body_3d" unique_id=698208426]

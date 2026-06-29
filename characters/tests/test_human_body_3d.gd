@@ -11,6 +11,24 @@ const BLOCKED_STEP_MOTION := Vector3(0.80, 0.0, 0.0)
 const BLOCKED_STEP_TARGET := BLOCKED_STEP_START + BLOCKED_STEP_MOTION + Vector3(0.0, STEP_FIXTURE_HEIGHT, 0.0)
 const STEP_DOWN_START := Vector3(42.0, STEP_FIXTURE_HEIGHT, 0.0)
 const STEP_DOWN_MOTION := Vector3(0.90, 0.0, 0.0)
+const REMOVED_ACCESSORY_PROPERTIES: Array[StringName] = [
+	&"use_hair_model",
+	&"hair_model_scene",
+	&"use_pants_model",
+	&"pants_model_scene",
+	&"pants_skinned",
+	&"use_jacket_model",
+	&"jacket_model_scene",
+]
+const REMOVED_ACCESSORY_NODES: Array[String] = [
+	"HairAttachment",
+	"HairModel",
+	"PantsAttachment",
+	"PantsModel",
+	"PantsSkinnedMesh",
+	"JacketAttachment",
+	"JacketModel",
+]
 
 @onready var m_actor: CharacterBody3D = $human_body_3d
 @onready var m_camera: Camera3D = $human_body_3d/Camera3D
@@ -55,9 +73,6 @@ func _validate_actor_api(failures: Array[String]) -> void:
 		"selections": {
 			"body/body": "light",
 			"feet/shoes/feet_shoes_basic": "brown",
-			"hair/short/hair_bangs": "chestnut",
-			"legs/pants/legs_pants": "charcoal",
-			"torso/shirts/longsleeve/torso_clothes_longsleeve": "teal",
 		},
 	}
 
@@ -94,12 +109,12 @@ func _validate_actor_api(failures: Array[String]) -> void:
 	m_actor.set_direction_vector(Vector3(0.0, 0.0, 1.0))
 	m_actor.is_walking = true
 	m_actor.is_running = false
-	if m_actor.get_current_animation_name() != "walk-s":
-		failures.append("expected walk-s animation state")
+	if !_matches_model_animation(m_actor.get_current_animation_name(), "walk"):
+		failures.append("expected walk model animation")
 
 	m_actor.is_running = true
-	if m_actor.get_current_animation_name() != "run-s":
-		failures.append("expected run-s animation state")
+	if !_matches_model_animation(m_actor.get_current_animation_name(), "run"):
+		failures.append("expected run model animation")
 
 	if visual_root != null:
 		if not is_equal_approx(visual_root.position.y, 0.0):
@@ -114,8 +129,8 @@ func _validate_actor_api(failures: Array[String]) -> void:
 	_validate_step_navigation(failures)
 
 	m_actor.jump()
-	if !m_actor.get_current_animation_name().begins_with("jump-"):
-		failures.append("jump did not switch animation state")
+	if m_actor.is_grounded():
+		failures.append("jump should suspend the grounded state")
 
 	var ground_rect: Rect2 = m_actor.get_ground_rect()
 	if ground_rect.size.x <= 0.0 or ground_rect.size.y <= 0.0:
@@ -149,139 +164,24 @@ func _validate_character_model(failures: Array[String], visual_root: Node3D) -> 
 			if not anim.has_animation(clip):
 				failures.append("HumanBody3D character model is missing the %s animation" % clip)
 
-	_validate_hair_model(failures, model)
-
-
-func _validate_hair_model(failures: Array[String], model: Node3D) -> void:
-	if not bool(m_actor.get("use_hair_model")):
-		failures.append("HumanBody3D should default to using the hair model")
-
 	var skeleton := _find_skeleton(model)
 	if skeleton == null:
-		failures.append("HumanBody3D character model has no Skeleton3D for hair attachment")
+		failures.append("HumanBody3D character model has no Skeleton3D")
 		return
-
-	var attach_bone := String(m_actor.get("hair_attach_bone"))
-	if skeleton.find_bone(attach_bone) < 0:
-		failures.append("HumanBody3D hair attach bone '%s' is missing from the skeleton" % attach_bone)
-		return
-
-	var attachment := skeleton.get_node_or_null("HairAttachment") as BoneAttachment3D
-	if attachment == null:
-		failures.append("HumanBody3D did not create the hair BoneAttachment3D")
-		return
-	if attachment.bone_name != attach_bone:
-		failures.append("HumanBody3D hair attachment is bound to the wrong bone")
-
-	var hair_model := attachment.get_node_or_null("HairModel") as Node3D
-	if hair_model == null:
-		failures.append("HumanBody3D did not create the separate HairModel node")
-		return
-	if not hair_model.visible:
-		failures.append("HumanBody3D hair model is not visible")
-	if hair_model.get_child_count() == 0:
-		failures.append("HumanBody3D hair model has no instanced scene")
-		return
-	if _find_mesh_instance(hair_model) == null:
-		failures.append("HumanBody3D hair model has no renderable mesh")
-
-	# Toggling use_hair_model off should hide the hair node.
-	m_actor.set("use_hair_model", false)
-	if hair_model.visible:
-		failures.append("HumanBody3D did not hide the hair model when use_hair_model is off")
-	m_actor.set("use_hair_model", true)
-	if not hair_model.visible:
-		failures.append("HumanBody3D did not re-show the hair model when use_hair_model is on")
-
-	_validate_pants_model(failures, model, skeleton)
-	_validate_jacket_model(failures, model, skeleton)
+	_validate_single_model_visual(failures, model)
 	_validate_skeleton_debug(failures, skeleton)
 
 
-func _validate_pants_model(failures: Array[String], _model: Node3D, skeleton: Skeleton3D) -> void:
-	if not bool(m_actor.get("use_pants_model")):
-		failures.append("HumanBody3D should default to using the pants model")
-	if not bool(m_actor.get("pants_skinned")):
-		failures.append("HumanBody3D pants should default to skinned so they animate with the legs")
-
-	var skinned := skeleton.get_node_or_null("PantsSkinnedMesh") as MeshInstance3D
-	if skinned == null:
-		failures.append("HumanBody3D did not create the skinned PantsSkinnedMesh under the skeleton")
-		return
-	if not skinned.visible:
-		failures.append("HumanBody3D skinned pants mesh is not visible")
-
-	var pants_mesh := skinned.mesh
-	if pants_mesh == null or pants_mesh.get_surface_count() <= 0:
-		failures.append("HumanBody3D skinned pants mesh has no surfaces")
-		return
-	if (pants_mesh.surface_get_format(0) & Mesh.ARRAY_FORMAT_BONES) == 0:
-		failures.append("HumanBody3D skinned pants mesh has no per-vertex bone weights")
-	if (pants_mesh.surface_get_format(0) & Mesh.ARRAY_FORMAT_WEIGHTS) == 0:
-		failures.append("HumanBody3D skinned pants mesh has no per-vertex weights")
-
-	var skin := skinned.skin
-	if skin == null or skin.get_bind_count() <= 0:
-		failures.append("HumanBody3D skinned pants mesh has no skin binds")
-		return
-
-	var bound_to_legs := false
-	for bind_index in range(skin.get_bind_count()):
-		var bind_name := String(skin.get_bind_name(bind_index))
-		if bind_name == "":
-			var bone_index := skin.get_bind_bone(bind_index)
-			if bone_index >= 0:
-				bind_name = skeleton.get_bone_name(bone_index)
-		if bind_name in ["L_Thigh", "R_Thigh", "L_Calf", "R_Calf"]:
-			bound_to_legs = true
-	if not bound_to_legs:
-		failures.append("HumanBody3D skinned pants are not bound to any leg bones")
-
-	# Toggling use_pants_model off should hide the skinned pants.
-	m_actor.set("use_pants_model", false)
-	if skinned.visible:
-		failures.append("HumanBody3D did not hide the skinned pants when use_pants_model is off")
-	m_actor.set("use_pants_model", true)
-	var skinned_again := skeleton.get_node_or_null("PantsSkinnedMesh") as MeshInstance3D
-	if skinned_again == null or not skinned_again.visible:
-		failures.append("HumanBody3D did not re-show the skinned pants when use_pants_model is on")
-
-
-func _validate_jacket_model(failures: Array[String], _model: Node3D, skeleton: Skeleton3D) -> void:
-	if not bool(m_actor.get("use_jacket_model")):
-		failures.append("HumanBody3D should default to using the jacket model")
-
-	var attach_bone := String(m_actor.get("jacket_attach_bone"))
-	if skeleton.find_bone(attach_bone) < 0:
-		failures.append("HumanBody3D jacket attach bone '%s' is missing from the skeleton" % attach_bone)
-		return
-
-	var attachment := skeleton.get_node_or_null("JacketAttachment") as BoneAttachment3D
-	if attachment == null:
-		failures.append("HumanBody3D did not create the jacket BoneAttachment3D")
-		return
-	if attachment.bone_name != attach_bone:
-		failures.append("HumanBody3D jacket attachment is bound to the wrong bone")
-
-	var jacket_model := attachment.get_node_or_null("JacketModel") as Node3D
-	if jacket_model == null:
-		failures.append("HumanBody3D did not create the separate JacketModel node")
-		return
-	if not jacket_model.visible:
-		failures.append("HumanBody3D jacket model is not visible")
-	if jacket_model.get_child_count() == 0:
-		failures.append("HumanBody3D jacket model has no instanced scene")
-		return
-	if _find_mesh_instance(jacket_model) == null:
-		failures.append("HumanBody3D jacket model has no renderable mesh")
-
-	# Toggling use_jacket_model off should hide the jacket node.
-	m_actor.set("use_jacket_model", false)
-	if jacket_model.visible:
-		failures.append("HumanBody3D did not hide the jacket model when use_jacket_model is off")
-	m_actor.set("use_jacket_model", true)
-	if not jacket_model.visible:
-		failures.append("HumanBody3D did not re-show the jacket model when use_jacket_model is on")
+func _validate_single_model_visual(failures: Array[String], model: Node3D) -> void:
+	var property_names: Dictionary[StringName, bool] = {}
+	for property_data in m_actor.get_property_list():
+		property_names[StringName(property_data.get("name", ""))] = true
+	for property_name in REMOVED_ACCESSORY_PROPERTIES:
+		if property_names.has(property_name):
+			failures.append("HumanBody3D still exposes removed accessory property %s" % property_name)
+	for node_name in REMOVED_ACCESSORY_NODES:
+		if model.find_child(node_name, true, false) != null:
+			failures.append("HumanBody3D still creates removed accessory node %s" % node_name)
 
 
 func _validate_skeleton_debug(failures: Array[String], skeleton: Skeleton3D) -> void:
@@ -331,6 +231,12 @@ func _find_animation_player(node: Node) -> AnimationPlayer:
 		if found != null:
 			return found
 	return null
+
+
+func _matches_model_animation(actual_name: String, expected_name: String) -> bool:
+	var actual_lower := actual_name.to_lower()
+	var expected_lower := expected_name.to_lower()
+	return actual_lower == expected_lower or actual_lower.ends_with("/" + expected_lower)
 
 
 func _validate_player_controller_input_order(failures: Array[String], controller: Variant) -> void:
@@ -425,7 +331,7 @@ func _ensure_navigation_fixtures() -> void:
 	_add_static_box_fixture(root, "StepUpBlock", Vector3(1.40, STEP_FIXTURE_HEIGHT, 2.0), Vector3(12.75, STEP_FIXTURE_HEIGHT * 0.5, 0.0))
 	_add_static_box_fixture(root, "BlockedBaseFloor", Vector3(6.0, 0.10, 3.0), Vector3(32.0, -0.05, 0.0))
 	_add_static_box_fixture(root, "BlockedStepBlock", Vector3(1.40, STEP_FIXTURE_HEIGHT, 2.0), Vector3(32.75, STEP_FIXTURE_HEIGHT * 0.5, 0.0))
-	_add_static_box_fixture(root, "BlockedSideObstacle", Vector3(0.90, 1.60, 0.40), Vector3(32.45, 0.80, 0.35))
+	_add_static_box_fixture(root, "BlockedSideObstacle", Vector3(0.90, 1.60, 0.60), Vector3(32.45, 0.80, 0.0))
 	_add_static_box_fixture(root, "StepDownBaseFloor", Vector3(6.0, 0.10, 3.0), Vector3(42.0, -0.05, 0.0))
 	_add_static_box_fixture(root, "StepDownPlatform", Vector3(1.20, STEP_FIXTURE_HEIGHT, 2.0), Vector3(41.85, STEP_FIXTURE_HEIGHT * 0.5, 0.0))
 

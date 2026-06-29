@@ -67,8 +67,8 @@ If you are changing how terrain mask colors map to layers, start with the terrai
 
 - [`../characters/`](../characters) - player and NPC scenes plus sprite systems
 - [`../characters/resident_npc.gd`](../characters/resident_npc.gd) / [`../characters/resident_npc.tscn`](../characters/resident_npc.tscn) - runtime resident actor that applies a `ResidentDefinition` on top of `HumanBody2D`
-- [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd) / [`../characters/human_body_3d.tscn`](../characters/human_body_3d.tscn) - parallel low-poly 3D actor adapter prototype that renders a premade GLB character model (scaled, yaw-corrected, auto-grounded, with idle/walk/run animation) plus a head-bone-attached hair model, with optional debug bounding-box and skeleton bone-debug draws and stair/floor-snap navigation; the procedural block-body mannequin and contact shadow have been removed; not wired into the runtime 2D overworld yet
-- [`../assets/characters/`](../assets/characters) - premade skinned, textured low-poly character models (~2k triangles each); `idle`/`walk`/`run` are the current validated baseline clips, optional imported clips such as `dance`, `scared`, or `wave_goodbye` must be validated before gameplay use, and `boy.glb` is the default `HumanBody3D` visual with `female.glb` and `male.glb` as interchangeable alternates
+- [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd) / [`../characters/human_body_3d.tscn`](../characters/human_body_3d.tscn) - parallel low-poly 3D actor adapter prototype that renders one integrated premade GLB character model (scaled, yaw-corrected, auto-grounded, with idle/walk/run animation), with optional debug bounding-box and skeleton bone-debug draws and stair/floor-snap navigation; separate hair/clothing attachment and runtime skin-transfer logic have been removed; not wired into the runtime 2D overworld yet
+- [`../assets/characters/`](../assets/characters) - premade skinned, textured low-poly character models; `idle`/`walk`/`run` are the current validated baseline clips, optional imported clips such as `dance`, `scared`, or `wave_goodbye` must be validated before gameplay use, and `male.glb` is the default `HumanBody3D` visual with `boy.glb` and `female.glb` as interchangeable alternates
 - [`../characters/tests/`](../characters/tests) - direct character smoke scenes such as `HumanBody2D` and `HumanBody3D`
 - [`../characters/control/`](../characters/control) - controllers, resident presentation hookup, and interaction behavior
 - [`../characters/control/base_controller_3d.gd`](../characters/control/base_controller_3d.gd) - shared 3D controller base for `HumanBody3D` lifecycle, movement flags, and movement helper methods
@@ -234,7 +234,7 @@ Useful searches when locating code:
 - `LowPolyArtStyle3D` for low-poly 3D palette, camera, lighting, and landmark-color presets
 - `LowPolyWorldCoordinates3D` for terrain-mask-pixel and rough 2D isometric-position to low-poly 3D world-position conversion
 - `LowPolyLandmarkProxy3D` for postcard-diorama landmark proxy volumes and placeholder silhouettes
-- `HumanBody3D` for the parallel low-poly 3D actor adapter prototype that renders a premade GLB character model with idle/walk/run animation plus a head-bone-attached hair model (no procedural block-body fallback)
+- `HumanBody3D` for the parallel low-poly 3D actor adapter prototype that renders one integrated premade GLB character model with idle/walk/run animation and no procedural body or separate clothing/hair attachment layer
 - `BaseController3D` for the shared 3D controller base
 - `PlayerController3D` for the parallel 3D player-input adapter prototype
 - `source_control_report` for the repo-local and shared Git inspection helpers
