@@ -1,0 +1,92 @@
+[gd_scene format=3 uid="uid://km5hrrsq5cb"]
+
+[ext_resource type="Script" uid="uid://bfr8g5d3cxdka" path="res://scenes/tests/test_building_tour_3d.gd" id="1_scene"]
+[ext_resource type="PackedScene" uid="uid://cfrcjv76v3c4g" path="res://characters/human_body_3d.tscn" id="3_player"]
+[ext_resource type="Script" uid="uid://cam6vob3l5ttk" path="res://characters/control/player_controller_3d.gd" id="4_player_controller"]
+[ext_resource type="Script" uid="uid://3w3tvo6fg0sa" path="res://godot_common/scenes/camera_3d_controller.gd" id="5_camera_controller"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
+albedo_color = Color(0.46, 0.56, 0.48, 1)
+roughness = 0.95
+
+[sub_resource type="BoxMesh" id="BoxMesh_ground"]
+material = SubResource("StandardMaterial3D_ground")
+size = Vector3(44, 0.3, 34)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
+size = Vector3(44, 0.3, 34)
+
+[sub_resource type="Resource" id="Resource_player_controller"]
+script = ExtResource("4_player_controller")
+camera_relative_movement = true
+
+[sub_resource type="Environment" id="Environment_tour"]
+background_mode = 1
+background_color = Color(0.73, 0.81, 0.84, 1)
+ambient_light_source = 3
+ambient_light_color = Color(0.88, 0.92, 0.94, 1)
+ambient_light_energy = 0.72
+
+[node name="TestBuildingTour3D" type="Node3D" unique_id=292976201]
+script = ExtResource("1_scene")
+
+[node name="BuildingContainer" type="Node3D" parent="." unique_id=668456635]
+
+[node name="Ground" type="MeshInstance3D" parent="." unique_id=189259589]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.15, 3)
+mesh = SubResource("BoxMesh_ground")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="Ground" unique_id=1533079665]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground/StaticBody3D" unique_id=988862449]
+shape = SubResource("BoxShape3D_ground")
+
+[node name="Player" parent="." unique_id=1917270485 instance=ExtResource("3_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, -7)
+draw_skeleton_bones = false
+walk_speed = 3.4
+run_speed = 6.0
+body_height = 1.68
+body_radius = 0.27
+controller = SubResource("Resource_player_controller")
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=1745836389]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 15, -25)
+projection = 1
+current = true
+size = 24.0
+
+[node name="Camera3DController" type="Node" parent="." unique_id=1757985705 node_paths=PackedStringArray("camera", "target_node")]
+script = ExtResource("5_camera_controller")
+can_pan = false
+camera = NodePath("../Camera3D")
+target_node = NodePath("../Player")
+follow_offset = Vector3(14, 15, -18)
+look_at_offset = Vector3(0, 1, 0)
+orthographic_size = 24.0
+min_orthographic_size = 7.0
+max_orthographic_size = 42.0
+zoom_step = 1.5
+occluder_transparency = 0.48
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=431477212]
+transform = Transform3D(-0.88663185, -0.36443615, 0.2847287, -5.1364086e-09, 0.61566156, 0.78801084, -0.4624762, 0.6986754, -0.54586506, 0, 0, 0)
+light_color = Color(1, 0.92, 0.82, 1)
+light_energy = 2.2
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=980691898]
+environment = SubResource("Environment_tour")
+
+[node name="Instructions" type="CanvasLayer" parent="." unique_id=1073574233]
+
+[node name="Panel" type="PanelContainer" parent="Instructions" unique_id=1048532928]
+offset_left = 18.0
+offset_top = 18.0
+offset_right = 608.0
+offset_bottom = 92.0
+
+[node name="Label" type="Label" parent="Instructions/Panel" unique_id=599184378]
+layout_mode = 2
+text = "Generic Building Tour
+WASD / arrows move • Shift walks • Space jumps • Right-drag rotates • Mouse wheel zooms • Esc exits"

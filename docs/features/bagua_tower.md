@@ -56,13 +56,17 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
 - `scenes/game_main.gd` routes R-inspect on tower world subjects through the shared `activate_story_subject(...)` path.
 - `resident_catalog.gd` owns the authored beat gates and `landmark_states` fields for `tower_keeper`.
 - `bagua_tower.tscn` owns the synthesis chamber world subject inside the reusable tower scene, while StoryEvent bindings decide when that hotspot is visible and what it does.
+- `bagua_tower_stylized_3d.tscn` is a standalone, reference-photo-derived low-poly concept generated through the Low-Poly Building Editor API. It is editable building content for the parallel 3D exploration lane and is not wired into the current 2D landmark or story flow.
 
 ## Relevant Files
 
 - Scenes:
   - [`../../architecture/bagua_tower/bagua_tower.tscn`](../../architecture/bagua_tower/bagua_tower.tscn)
+  - [`../../architecture/bagua_tower/bagua_tower_stylized_3d.tscn`](../../architecture/bagua_tower/bagua_tower_stylized_3d.tscn)
+  - [`../../scenes/tests/test_building_tour_3d.tscn`](../../scenes/tests/test_building_tour_3d.tscn)
   - [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn)
 - Scripts:
+  - [`../../architecture/bagua_tower/generate_stylized_3d.gd`](../../architecture/bagua_tower/generate_stylized_3d.gd)
   - [`../../game/story_subject_area.gd`](../../game/story_subject_area.gd)
   - [`../../game/app_state.gd`](../../game/app_state.gd)
   - [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
@@ -99,6 +103,7 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
 
 ## Validation
 
+- Run `scenes/tests/test_building_tour_3d.tscn` with its `building_scene` set to the stylized Bagua Tower to tour the standalone 3D concept. Use WASD or the arrow keys to move, hold Shift to walk, press Space to jump, right-drag to orbit, and use the mouse wheel to zoom.
 - Run the game, complete the Long Shan Tunnel arc and talk to Ren once more. Confirm bagua_tower advances to `available`.
 - Talk to tower_keeper (beats 0 and 1). Confirm landmark advances to `in_progress` and the synthesis chamber trigger appears at the top.
 - Climb to the chamber with fewer than 3 fragments. Confirm the "not yet direction" status line appears.
