@@ -6,8 +6,11 @@ const GENERATED_META := &"floor_generated"
 const PREVIEW_META := &"building_editor_preview"
 const FLOOR_HOLE_EDGE_EPSILON := 0.001
 const FLOOR_HOLE_MIN_SIZE := 0.001
+const STYLE_RECTANGLE := "rectangle"
+const STYLE_POLYGON := "polygon"
 
 var m_floor_holes: Array[Rect2] = []
+var m_polygon_points: PackedVector3Array = PackedVector3Array()
 
 @export var rebuild := false:
 	set(value):
@@ -29,9 +32,35 @@ var m_floor_holes: Array[Rect2] = []
 		end_point = value
 		_request_rebuild()
 
+@export_enum("rectangle", "polygon") var floor_style := STYLE_RECTANGLE:
+	set(value):
+		var normalized := value if value == STYLE_POLYGON else STYLE_RECTANGLE
+		if floor_style == normalized:
+			return
+		floor_style = normalized
+		if floor_style == STYLE_POLYGON:
+			m_floor_holes.clear()
+		else:
+			m_polygon_points = PackedVector3Array()
+		_request_rebuild()
+
+@export var polygon_points: PackedVector3Array = PackedVector3Array():
+	set(value):
+		var sanitized := _sanitize_polygon_points(value)
+		if m_polygon_points == sanitized:
+			return
+		m_polygon_points = sanitized
+		if is_polygon_floor():
+			_sync_legacy_corners_from_polygon()
+		_request_rebuild()
+	get:
+		return m_polygon_points.duplicate()
+
 @export var floor_holes: Array[Rect2] = []:
 	set(value):
-		var sanitized := _sanitize_floor_holes(value, get_floor_size())
+		var sanitized: Array[Rect2] = []
+		if !is_polygon_floor():
+			sanitized = _sanitize_floor_holes(value, get_floor_size())
 		if _floor_hole_arrays_equal(m_floor_holes, sanitized):
 			return
 		m_floor_holes = sanitized
@@ -67,6 +96,8 @@ var m_rebuild_queued := false
 
 
 func _ready() -> void:
+	if is_polygon_floor():
+		_sync_legacy_corners_from_polygon()
 	m_is_ready = true
 	if build_on_ready:
 		_sync_transform_from_points()
@@ -79,6 +110,7 @@ func _ready() -> void:
 
 func set_floor_corners(new_start: Vector3, new_end: Vector3) -> void:
 	var previous_signature := _floor_mesh_source_signature()
+	floor_style = STYLE_RECTANGLE
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
 	if _floor_mesh_source_signature() == previous_signature:
@@ -87,12 +119,63 @@ func set_floor_corners(new_start: Vector3, new_end: Vector3) -> void:
 	rebuild_floor_mesh()
 
 
+func set_floor_polygon(new_points: PackedVector3Array) -> void:
+	var sanitized := _sanitize_polygon_points(new_points)
+	var previous_signature := _floor_mesh_source_signature()
+	floor_style = STYLE_POLYGON
+	m_polygon_points = sanitized
+	m_floor_holes.clear()
+	_sync_legacy_corners_from_polygon()
+	if _floor_mesh_source_signature() == previous_signature:
+		return
+	_sync_transform_from_points()
+	rebuild_floor_mesh()
+
+
+func get_floor_polygon() -> PackedVector3Array:
+	return m_polygon_points.duplicate()
+
+
+func is_polygon_floor() -> bool:
+	return floor_style == STYLE_POLYGON
+
+
+func is_floor_polygon_valid(points: PackedVector3Array = PackedVector3Array()) -> bool:
+	var candidate := _sanitize_polygon_points(points if !points.is_empty() else m_polygon_points)
+	if candidate.size() < 3:
+		return false
+	var local_polygon := _parent_points_to_plan_polygon(candidate)
+	if absf(_signed_polygon_area(local_polygon)) <= FLOOR_HOLE_MIN_SIZE:
+		return false
+	return !Geometry2D.triangulate_polygon(local_polygon).is_empty()
+
+
+func get_floor_area() -> float:
+	if is_polygon_floor():
+		return absf(_signed_polygon_area(_parent_points_to_plan_polygon(m_polygon_points)))
+	var size := get_floor_size()
+	return size.x * size.y
+
+
+func contains_local_plan_point(local_point: Vector2) -> bool:
+	if !is_polygon_floor():
+		var size := get_floor_size()
+		return (
+			local_point.x >= -FLOOR_HOLE_EDGE_EPSILON
+			and local_point.y >= -FLOOR_HOLE_EDGE_EPSILON
+			and local_point.x <= size.x + FLOOR_HOLE_EDGE_EPSILON
+			and local_point.y <= size.y + FLOOR_HOLE_EDGE_EPSILON
+		)
+	return Geometry2D.is_point_in_polygon(local_point, _get_local_footprint_polygon())
+
+
 func set_floor_corners_and_holes(
 	new_start: Vector3,
 	new_end: Vector3,
 	new_holes: Array[Rect2]
 ) -> void:
 	var previous_signature := _floor_mesh_source_signature()
+	floor_style = STYLE_RECTANGLE
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
 	m_floor_holes = _sanitize_floor_holes(new_holes, get_floor_size())
@@ -130,6 +213,8 @@ func can_add_floor_hole_from_parent_corners(parent_start: Vector3, parent_end: V
 
 
 func can_add_floor_hole_rect(rect: Rect2) -> bool:
+	if is_polygon_floor():
+		return false
 	var normalized := _normalized_rect(rect)
 	return _is_floor_hole_rect_valid_for_size(normalized, get_floor_size())
 
@@ -149,6 +234,8 @@ func floor_hole_rect_intersects_existing(rect: Rect2) -> bool:
 
 
 func floor_holes_fit_size(size: Vector2) -> bool:
+	if is_polygon_floor():
+		return m_floor_holes.is_empty()
 	return _floor_hole_arrays_equal(m_floor_holes, _sanitize_floor_holes(m_floor_holes, size))
 
 
@@ -166,6 +253,9 @@ func has_floor_hole_at_local_point(local_point: Vector2) -> bool:
 
 
 func get_floor_size() -> Vector2:
+	if is_polygon_floor() and !m_polygon_points.is_empty():
+		var bounds := _polygon_parent_bounds(m_polygon_points)
+		return bounds.size
 	return Vector2(absf(end_point.x - start_point.x), absf(end_point.z - start_point.z))
 
 
@@ -181,14 +271,38 @@ func rebuild_floor_mesh(rebuild_collision: bool = true) -> void:
 	if size.x <= 0.001 or size.y <= 0.001:
 		mesh = null
 		return
-	var mesh_holes := _sanitize_floor_holes(m_floor_holes, size)
+	if is_polygon_floor() and !is_floor_polygon_valid():
+		mesh = null
+		return
+	var mesh_holes: Array[Rect2] = []
+	if !is_polygon_floor():
+		mesh_holes = _sanitize_floor_holes(m_floor_holes, size)
 
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
 	var collision_faces := PackedVector3Array()
-	_append_floor_geometry(size.x, size.y, mesh_holes, vertices, normals, colors, indices, collision_faces)
+	if is_polygon_floor():
+		_append_polygon_floor_geometry(
+			_get_local_footprint_polygon(),
+			vertices,
+			normals,
+			colors,
+			indices,
+			collision_faces
+		)
+	else:
+		_append_floor_geometry(
+			size.x,
+			size.y,
+			mesh_holes,
+			vertices,
+			normals,
+			colors,
+			indices,
+			collision_faces
+		)
 
 	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
@@ -214,8 +328,10 @@ func _request_rebuild() -> void:
 
 func _floor_mesh_source_signature() -> int:
 	return hash([
+		floor_style,
 		start_point,
 		end_point,
+		m_polygon_points,
 		get_floor_holes(),
 		floor_thickness,
 		floor_color,
@@ -229,9 +345,155 @@ func _rebuild_collision_from_cached_mesh() -> void:
 
 
 func _sync_transform_from_points() -> void:
+	if is_polygon_floor() and !m_polygon_points.is_empty():
+		var bounds := _polygon_parent_bounds(m_polygon_points)
+		transform = Transform3D(
+			Basis.IDENTITY,
+			Vector3(bounds.position.x, m_polygon_points[0].y, bounds.position.y)
+		)
+		return
 	var min_x := minf(start_point.x, end_point.x)
 	var min_z := minf(start_point.z, end_point.z)
 	transform = Transform3D(Basis.IDENTITY, Vector3(min_x, start_point.y, min_z))
+
+
+func _append_polygon_floor_geometry(
+	polygon: PackedVector2Array,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array,
+	collision_faces: PackedVector3Array
+) -> void:
+	var normalized := _counter_clockwise_polygon(polygon)
+	var triangle_indices := Geometry2D.triangulate_polygon(normalized)
+	for triangle_start in range(0, triangle_indices.size(), 3):
+		var a_2d := normalized[triangle_indices[triangle_start]]
+		var b_2d := normalized[triangle_indices[triangle_start + 1]]
+		var c_2d := normalized[triangle_indices[triangle_start + 2]]
+		var top_a := Vector3(a_2d.x, 0.0, a_2d.y)
+		var top_b := Vector3(b_2d.x, 0.0, b_2d.y)
+		var top_c := Vector3(c_2d.x, 0.0, c_2d.y)
+		_append_triangle(
+			vertices, normals, colors, indices, collision_faces,
+			top_a, top_b, top_c, Vector3.UP
+		)
+		_append_triangle(
+			vertices, normals, colors, indices, collision_faces,
+			top_a + Vector3.DOWN * floor_thickness,
+			top_c + Vector3.DOWN * floor_thickness,
+			top_b + Vector3.DOWN * floor_thickness,
+			Vector3.DOWN
+		)
+
+	for point_index in range(normalized.size()):
+		var next_index := (point_index + 1) % normalized.size()
+		var a_2d := normalized[point_index]
+		var b_2d := normalized[next_index]
+		var edge := b_2d - a_2d
+		var outward := Vector3(edge.y, 0.0, -edge.x).normalized()
+		var top_a := Vector3(a_2d.x, 0.0, a_2d.y)
+		var top_b := Vector3(b_2d.x, 0.0, b_2d.y)
+		_append_quad(
+			vertices,
+			normals,
+			colors,
+			indices,
+			collision_faces,
+			top_a,
+			top_b,
+			top_b + Vector3.DOWN * floor_thickness,
+			top_a + Vector3.DOWN * floor_thickness,
+			outward
+		)
+
+
+func _append_triangle(
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array,
+	collision_faces: PackedVector3Array,
+	a: Vector3,
+	b: Vector3,
+	c: Vector3,
+	normal: Vector3
+) -> void:
+	var base := vertices.size()
+	vertices.append_array(PackedVector3Array([a, b, c]))
+	for _index in range(3):
+		normals.append(normal)
+		colors.append(floor_color)
+	indices.append_array(PackedInt32Array([base, base + 1, base + 2]))
+	collision_faces.append_array(PackedVector3Array([a, b, c]))
+
+
+func _get_local_footprint_polygon() -> PackedVector2Array:
+	var bounds := _polygon_parent_bounds(m_polygon_points)
+	var polygon := PackedVector2Array()
+	for point in m_polygon_points:
+		polygon.append(Vector2(point.x - bounds.position.x, point.z - bounds.position.y))
+	return polygon
+
+
+func _parent_points_to_plan_polygon(points: PackedVector3Array) -> PackedVector2Array:
+	var polygon := PackedVector2Array()
+	for point in points:
+		polygon.append(Vector2(point.x, point.z))
+	return polygon
+
+
+func _polygon_parent_bounds(points: PackedVector3Array) -> Rect2:
+	if points.is_empty():
+		return Rect2()
+	var min_point := Vector2(points[0].x, points[0].z)
+	var max_point := min_point
+	for point in points:
+		min_point.x = minf(min_point.x, point.x)
+		min_point.y = minf(min_point.y, point.z)
+		max_point.x = maxf(max_point.x, point.x)
+		max_point.y = maxf(max_point.y, point.z)
+	return Rect2(min_point, max_point - min_point)
+
+
+func _sanitize_polygon_points(points: PackedVector3Array) -> PackedVector3Array:
+	var sanitized := PackedVector3Array()
+	if points.is_empty():
+		return sanitized
+	var base_y := points[0].y
+	for point in points:
+		var flattened := Vector3(point.x, base_y, point.z)
+		if !sanitized.is_empty() and sanitized[sanitized.size() - 1].is_equal_approx(flattened):
+			continue
+		sanitized.append(flattened)
+	if sanitized.size() > 1 and sanitized[0].is_equal_approx(sanitized[sanitized.size() - 1]):
+		sanitized.resize(sanitized.size() - 1)
+	return sanitized
+
+
+func _sync_legacy_corners_from_polygon() -> void:
+	if m_polygon_points.is_empty():
+		return
+	var bounds := _polygon_parent_bounds(m_polygon_points)
+	var base_y := m_polygon_points[0].y
+	start_point = Vector3(bounds.position.x, base_y, bounds.position.y)
+	end_point = Vector3(bounds.end.x, base_y, bounds.end.y)
+
+
+func _signed_polygon_area(polygon: PackedVector2Array) -> float:
+	var twice_area := 0.0
+	for index in range(polygon.size()):
+		var point := polygon[index]
+		var next := polygon[(index + 1) % polygon.size()]
+		twice_area += point.x * next.y - next.x * point.y
+	return twice_area * 0.5
+
+
+func _counter_clockwise_polygon(polygon: PackedVector2Array) -> PackedVector2Array:
+	var normalized := polygon.duplicate()
+	if _signed_polygon_area(normalized) < 0.0:
+		normalized.reverse()
+	return normalized
 
 
 func _append_floor_geometry(

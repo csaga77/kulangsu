@@ -3,7 +3,9 @@
 Godot editor plugin for grid-snapped low-poly building authoring — an editor dock plus 3D
 viewport tools for walls, floors, stairs, pillars, roofs, openings, and props, authored as
 normal scene nodes so the result serializes into `.tscn` files. The Wall tool can draw
-either individual spans or enclosed rectangular rooms.
+either individual spans or enclosed rectangular rooms. The Floor tool offers rectangular
+and multi-vertex polygon slab styles; polygon vertices are grid-snapped and saved as
+ordinary `Floor3D` authored data.
 
 `Building3D` is the scene-owned assembly root and carries no editor-tool configuration;
 the editor dock owns temporary tool defaults. `BuildingFactory` creates and names
@@ -70,7 +72,7 @@ Automation may launch a tiny off-screen window with Godot's `--resolution` and `
 options. Each manifest entry maps a seed and resolved parameters to its `.tscn` and `.png`;
 `contact_sheet.png` preserves manifest order.
 
-Run [`test_building_variants_gallery_3d.tscn`](test_building_variants_gallery_3d.tscn)
+Run [`tests/test_building_variants_gallery_3d.tscn`](tests/test_building_variants_gallery_3d.tscn)
 to inspect the included 12-seed example as a live 4×3 scene. `N` and `P` compile adjacent
 seed batches, `R` restores seeds 18432–18443, and the mouse wheel adjusts the orthographic
 camera. Each generated root retains its resolved generator values as metadata for runtime
@@ -82,10 +84,10 @@ This README is the plugin's entry point; the full documentation lives in [`docs/
 - [`docs/contract.md`](docs/contract.md) — stable contract and governance for the plugin's nodes, storage, and editor interaction.
 
 The focused smoke scene is
-[`test_low_poly_building_editor_3d.tscn`](test_low_poly_building_editor_3d.tscn), the focused
+[`tests/test_low_poly_building_editor_3d.tscn`](tests/test_low_poly_building_editor_3d.tscn), the focused
 dome smoke scene is [`tests/test_dome_roof_3d.tscn`](tests/test_dome_roof_3d.tscn), and the
 interactive generator gallery is
-[`test_building_variants_gallery_3d.tscn`](test_building_variants_gallery_3d.tscn). The
+[`tests/test_building_variants_gallery_3d.tscn`](tests/test_building_variants_gallery_3d.tscn). The
 project-level [`../../docs/module_map.md`](../../docs/module_map.md),
 [`../../docs/architecture.md`](../../docs/architecture.md), and
 [`../../docs/contracts.md`](../../docs/contracts.md) keep one-line pointers here.

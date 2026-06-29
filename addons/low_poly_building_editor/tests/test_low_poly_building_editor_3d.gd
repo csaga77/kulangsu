@@ -1266,6 +1266,69 @@ func _validate_floor_node(coordinator: Building3DScript) -> void:
 	if floor.position.distance_to(Vector3(1.0, top_y, 12.5)) > 0.001:
 		m_failures.append("Floor3D did not move transform after edited corners")
 
+	var polygon_points := PackedVector3Array([
+		Vector3(6.0, top_y, 12.0),
+		Vector3(10.0, top_y, 12.0),
+		Vector3(10.0, top_y, 13.0),
+		Vector3(8.0, top_y, 13.0),
+		Vector3(8.0, top_y, 15.0),
+		Vector3(6.0, top_y, 15.0),
+	])
+	var polygon_floor := BuildingFactoryScript.create_floor_polygon_node(
+		coordinator,
+		polygon_points,
+		0.2,
+		Color(0.42, 0.38, 0.30, 1.0)
+	)
+	coordinator.add_child(polygon_floor)
+	if !polygon_floor.is_polygon_floor():
+		m_failures.append("Floor3D polygon factory did not preserve the polygon style")
+	if polygon_floor.get_floor_polygon() != polygon_points:
+		m_failures.append("Floor3D polygon factory did not preserve authored vertices")
+	if polygon_floor.position.distance_to(Vector3(6.0, top_y, 12.0)) > 0.001:
+		m_failures.append("Floor3D polygon transform did not use its minimum footprint corner")
+	if polygon_floor.get_floor_size().distance_to(Vector2(4.0, 3.0)) > 0.001:
+		m_failures.append("Floor3D polygon returned the wrong footprint bounds")
+	if absf(polygon_floor.get_floor_area() - 8.0) > 0.001:
+		m_failures.append("Floor3D polygon returned the wrong concave footprint area")
+	if !polygon_floor.contains_local_plan_point(Vector2(1.0, 2.0)):
+		m_failures.append("Floor3D polygon picking rejected a solid footprint point")
+	if polygon_floor.contains_local_plan_point(Vector2(3.0, 2.0)):
+		m_failures.append("Floor3D polygon picking accepted a point inside the concave notch")
+	if polygon_floor.mesh == null or polygon_floor.mesh.get_surface_count() == 0:
+		m_failures.append("Floor3D polygon did not generate a mesh")
+	else:
+		var polygon_mesh := polygon_floor.mesh as ArrayMesh
+		var polygon_arrays := polygon_mesh.surface_get_arrays(0)
+		var polygon_vertices: PackedVector3Array = polygon_arrays[Mesh.ARRAY_VERTEX]
+		var polygon_normals: PackedVector3Array = polygon_arrays[Mesh.ARRAY_NORMAL]
+		var polygon_indices: PackedInt32Array = polygon_arrays[Mesh.ARRAY_INDEX]
+		if !polygon_normals.is_empty() and polygon_normals[0].dot(Vector3.UP) < 0.999:
+			m_failures.append("Floor3D polygon top face normal is not upward")
+		if polygon_indices.size() >= 3:
+			var polygon_a := polygon_vertices[polygon_indices[0]]
+			var polygon_b := polygon_vertices[polygon_indices[1]]
+			var polygon_c := polygon_vertices[polygon_indices[2]]
+			var polygon_winding := (polygon_b - polygon_a).cross(polygon_c - polygon_a).normalized()
+			if polygon_winding.dot(polygon_normals[polygon_indices[0]]) > -0.999:
+				m_failures.append("Floor3D polygon winding does not match the mesh convention")
+		if !_has_horizontal_face_covering_plan_point(polygon_mesh, Vector2(1.0, 2.0), 0.0):
+			m_failures.append("Floor3D polygon lost a solid concave-footprint region")
+		if _has_horizontal_face_covering_plan_point(polygon_mesh, Vector2(3.0, 2.0), 0.0):
+			m_failures.append("Floor3D polygon filled its concave footprint notch")
+	if polygon_floor.get_node_or_null("FloorCollision") == null:
+		m_failures.append("Floor3D polygon did not generate collision")
+	if polygon_floor.can_add_floor_hole_rect(Rect2(Vector2(0.5, 0.5), Vector2(0.5, 0.5))):
+		m_failures.append("Floor3D polygon accepted a rectangle-only floor hole")
+	var self_intersecting_polygon := PackedVector3Array([
+		Vector3(0.0, top_y, 0.0),
+		Vector3(2.0, top_y, 2.0),
+		Vector3(0.0, top_y, 2.0),
+		Vector3(2.0, top_y, 0.0),
+	])
+	if polygon_floor.is_floor_polygon_valid(self_intersecting_polygon):
+		m_failures.append("Floor3D accepted a self-intersecting polygon")
+
 
 func _validate_stairs_node(coordinator: Building3DScript) -> void:
 	var base_y := 0.75
@@ -2597,6 +2660,18 @@ func _validate_serialized_building_mesh_caches() -> void:
 	source_floor.name = "CachedFloor"
 	source_root.add_child(source_floor)
 	source_floor.owner = source_root
+	var source_polygon_floor := BuildingFactoryScript.create_floor_polygon_node(
+		source_root,
+		PackedVector3Array([
+			Vector3(0.0, 0.0, 7.0),
+			Vector3(3.0, 0.0, 7.0),
+			Vector3(2.0, 0.0, 9.0),
+			Vector3(0.0, 0.0, 9.0),
+		])
+	)
+	source_polygon_floor.name = "CachedPolygonFloor"
+	source_root.add_child(source_polygon_floor)
+	source_polygon_floor.owner = source_root
 	var source_stairs := BuildingFactoryScript.create_stairs_node(
 		source_root,
 		Vector3(5.0, 0.0, 0.0),
@@ -2642,6 +2717,7 @@ func _validate_serialized_building_mesh_caches() -> void:
 	var cached_mesh_nodes := [
 		cached_instance.get_node("CachedWall"),
 		cached_instance.get_node("CachedFloor"),
+		cached_instance.get_node("CachedPolygonFloor"),
 		cached_instance.get_node("CachedStairs"),
 		cached_instance.get_node("CachedPillar"),
 		cached_instance.get_node("CachedRoof"),
@@ -2659,11 +2735,13 @@ func _validate_serialized_building_mesh_caches() -> void:
 		m_failures.append("Loading a cached window did not restore its generated pane")
 	var cached_wall := cached_instance.get_node("CachedWall") as Wall3DScript
 	var cached_floor := cached_instance.get_node("CachedFloor") as Floor3DScript
+	var cached_polygon_floor := cached_instance.get_node("CachedPolygonFloor") as Floor3DScript
 	var cached_stairs := cached_instance.get_node("CachedStairs") as Stairs3DScript
 	var cached_pillar := cached_instance.get_node("CachedPillar") as Pillar3DScript
 	var cached_roof := cached_instance.get_node("CachedRoof") as Roof3DScript
 	cached_wall.set_wall_endpoints(cached_wall.start_point, cached_wall.end_point)
 	cached_floor.set_floor_corners(cached_floor.start_point, cached_floor.end_point)
+	cached_polygon_floor.set_floor_polygon(cached_polygon_floor.get_floor_polygon())
 	cached_stairs.set_stair_rotation_degrees(cached_stairs.stair_rotation_degrees)
 	cached_pillar.set_pillar_radius(cached_pillar.pillar_radius)
 	cached_roof.set_covered_regions(
@@ -2688,6 +2766,10 @@ func _validate_serialized_building_mesh_caches() -> void:
 		m_failures.append("Editing one Building3D instance changed another instance's wall")
 	var changed_floor := changed_instance.get_node("CachedFloor") as Floor3DScript
 	changed_floor.floor_thickness += 0.05
+	var changed_polygon_floor := changed_instance.get_node("CachedPolygonFloor") as Floor3DScript
+	var changed_polygon_points := changed_polygon_floor.get_floor_polygon()
+	changed_polygon_points[2].x += 0.5
+	changed_polygon_floor.set_floor_polygon(changed_polygon_points)
 	var changed_stairs := changed_instance.get_node("CachedStairs") as Stairs3DScript
 	changed_stairs.step_count += 1
 	var changed_pillar := changed_instance.get_node("CachedPillar") as Pillar3DScript
@@ -2700,6 +2782,7 @@ func _validate_serialized_building_mesh_caches() -> void:
 	var changed_mesh_nodes := [
 		changed_wall,
 		changed_floor,
+		changed_polygon_floor,
 		changed_stairs,
 		changed_pillar,
 		changed_roof,

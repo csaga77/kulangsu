@@ -225,6 +225,22 @@ static func create_floor_node(
 	return floor
 
 
+static func create_floor_polygon_node(
+	building: Node,
+	local_points: PackedVector3Array,
+	thickness: float = 0.12,
+	color: Color = Color(0.46, 0.40, 0.32, 1.0)
+) -> Floor3DScript:
+	var floor := Floor3DScript.new() as Floor3DScript
+	floor.name = _unique_child_name(building, "Floor3D")
+	floor.floor_thickness = thickness
+	floor.floor_color = color
+	floor.build_on_ready = true
+	floor.generate_collision = true
+	floor.set_floor_polygon(local_points)
+	return floor
+
+
 static func create_stairs_node(
 	building: Node,
 	local_start: Vector3,

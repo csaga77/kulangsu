@@ -32,11 +32,13 @@ const WALL_TYPE_WALL := "wall"
 const WALL_TYPE_ROOM := "room"
 const FLOOR_TYPE_SOLID := "solid"
 const FLOOR_TYPE_HOLE := "hole"
+const FLOOR_STYLE_RECTANGLE := "rectangle"
+const FLOOR_STYLE_POLYGON := "polygon"
 const COLOR_SWATCH_ICON_SIZE := 16
 const COLOR_SWATCH_MIN_WIDTH := 34.0
 const SHORTCUTS_SELECT_TEXT := "Shortcuts\nSelect: normal Godot editor selection and transform tools are active."
 const SHORTCUTS_WALL_TEXT := "Shortcuts\nUse Wall Type to choose a single wall or enclosed room.\nDrag empty space to draw a wall span or room rectangle.\nClick once, then click the endpoint or opposite room corner.\nDrag a room side to resize in one direction.\nOption/Alt-drag a room to move the whole room.\nDrag other wall bodies to move them.\nDrag endpoint or joint to edit.\nShift-click wall body to add joint.\nOption/Alt-drag shared joint to disconnect.\nEsc or right-click cancels."
-const SHORTCUTS_FLOOR_TEXT := "Shortcuts\nUse Floor Type to choose solid slab or hole.\nDrag empty space to draw a floor rectangle.\nClick one corner, then click the opposite corner to place or cut.\nDrag floor body to move it.\nDrag floor edge or corner to resize.\nEsc or right-click cancels."
+const SHORTCUTS_FLOOR_TEXT := "Shortcuts\nUse Floor Type to choose solid slab or hole.\nRectangle: drag, or click two opposite corners.\nPolygon: click each vertex; click the first vertex or press Enter to close.\nDrag a floor body to move it.\nRectangle edges and corners can be resized.\nEsc or right-click cancels."
 const SHORTCUTS_STAIRS_TEXT := "Shortcuts\nDrag empty space to draw a stair rectangle.\nClick one corner, then click the opposite corner to place.\nR rotates the preview or hovered stairs by 90 degrees.\nShift+R rotates the opposite direction.\nDrag stairs body to move it.\nDrag stairs edge or corner to resize.\nEsc or right-click cancels."
 const SHORTCUTS_PILLAR_TEXT := "Shortcuts\nClick empty space to place a pillar.\nDrag pillar body to move it.\nDrag pillar edge to resize its radius.\nEsc or right-click cancels."
 const SHORTCUTS_ROOF_TEXT := "Shortcuts\nDrag empty space to draw a roof rectangle.\nClick one corner, then click the opposite corner to place.\nR rotates the preview or hovered roof by 90 degrees.\nShift+R rotates the opposite direction.\nDrag roof body to move it.\nDrag roof edge or corner to resize.\nEsc or right-click cancels."
@@ -63,6 +65,7 @@ var m_wall_thickness_spin: SpinBox
 var m_wall_color_picker: ColorPickerButton
 var m_lock_8_way_check: CheckBox
 var m_floor_type_option: OptionButton
+var m_floor_style_option: OptionButton
 var m_floor_grid_spin: SpinBox
 var m_floor_base_height_spin: SpinBox
 var m_floor_thickness_spin: SpinBox
@@ -334,8 +337,18 @@ func _build_floor_controls(parent: VBoxContainer) -> void:
 	m_floor_type_option.item_selected.connect(_on_floor_type_selected)
 	_add_labeled_control(parent, "Type:", m_floor_type_option)
 
+	m_floor_style_option = OptionButton.new()
+	m_floor_style_option.tooltip_text = "Choose a two-corner rectangle or a multi-vertex polygon footprint."
+	m_floor_style_option.add_item("Rectangle", 0)
+	m_floor_style_option.set_item_metadata(0, FLOOR_STYLE_RECTANGLE)
+	m_floor_style_option.add_item("Polygon", 1)
+	m_floor_style_option.set_item_metadata(1, FLOOR_STYLE_POLYGON)
+	m_floor_style_option.select(0)
+	m_floor_style_option.item_selected.connect(_on_floor_style_selected)
+	_add_labeled_control(parent, "Style:", m_floor_style_option)
+
 	m_floor_grid_spin = _make_spin(0.05, 8.0, 0.05, 0.5)
-	_add_labeled_control(parent, "Grid:", m_floor_grid_spin, "Snap size for drawing and editing floor rectangles.")
+	_add_labeled_control(parent, "Grid:", m_floor_grid_spin, "Snap size for drawing and editing floor footprints.")
 	m_floor_grid_spin.value_changed.connect(_on_floor_setting_changed)
 
 	m_floor_base_height_spin = _make_spin(-20.0, 20.0, 0.01, 0.0)
@@ -1082,6 +1095,11 @@ func _on_wall_lock_changed(_pressed: bool) -> void:
 
 
 func _on_floor_type_selected(_index: int) -> void:
+	_update_floor_type_controls()
+	_emit_floor_settings()
+
+
+func _on_floor_style_selected(_index: int) -> void:
 	_emit_floor_settings()
 
 
@@ -1241,6 +1259,7 @@ func _emit_floor_settings() -> void:
 	floor_settings_changed.emit({
 		"grid_step": float(m_floor_grid_spin.value),
 		"type": _selected_floor_type(),
+		"style": _selected_floor_style(),
 		"base_height": float(m_floor_base_height_spin.value),
 		"thickness": float(m_floor_thickness_spin.value),
 		"color": m_floor_color_picker.color,
@@ -1326,8 +1345,31 @@ func _select_floor_type(floor_type: String) -> void:
 	for index in range(m_floor_type_option.get_item_count()):
 		if String(m_floor_type_option.get_item_metadata(index)) == floor_type:
 			m_floor_type_option.select(index)
+			_update_floor_type_controls()
 			return
 	m_floor_type_option.select(0)
+	_update_floor_type_controls()
+
+
+func _selected_floor_style() -> String:
+	if m_floor_style_option == null or m_floor_style_option.selected < 0:
+		return FLOOR_STYLE_RECTANGLE
+	return String(m_floor_style_option.get_item_metadata(m_floor_style_option.selected))
+
+
+func _select_floor_style(floor_style: String) -> void:
+	if m_floor_style_option == null:
+		return
+	for index in range(m_floor_style_option.get_item_count()):
+		if String(m_floor_style_option.get_item_metadata(index)) == floor_style:
+			m_floor_style_option.select(index)
+			return
+	m_floor_style_option.select(0)
+
+
+func _update_floor_type_controls() -> void:
+	if m_floor_style_option != null:
+		m_floor_style_option.disabled = _selected_floor_type() == FLOOR_TYPE_HOLE
 
 
 func _selected_pillar_style() -> String:
@@ -1621,6 +1663,7 @@ func _load_persisted_settings() -> void:
 	_select_wall_type(str(state.get("wall_type", _selected_wall_type())))
 	m_wall_base_height_spin.value = float(state.get("wall_base_height", m_wall_base_height_spin.value))
 	_select_floor_type(str(state.get("floor_type", _selected_floor_type())))
+	_select_floor_style(str(state.get("floor_style", _selected_floor_style())))
 	m_floor_grid_spin.value = float(state.get("floor_grid_step", m_floor_grid_spin.value))
 	m_floor_base_height_spin.value = float(state.get("floor_base_height", m_floor_base_height_spin.value))
 	m_floor_thickness_spin.value = float(state.get("floor_thickness", m_floor_thickness_spin.value))
@@ -1743,6 +1786,7 @@ func _save_persisted_settings() -> void:
 		"wall_type": _selected_wall_type(),
 		"wall_base_height": float(m_wall_base_height_spin.value) if m_wall_base_height_spin != null else 0.0,
 		"floor_type": _selected_floor_type(),
+		"floor_style": _selected_floor_style(),
 		"floor_grid_step": float(m_floor_grid_spin.value) if m_floor_grid_spin != null else 0.5,
 		"floor_base_height": float(m_floor_base_height_spin.value) if m_floor_base_height_spin != null else 0.0,
 		"floor_thickness": float(m_floor_thickness_spin.value) if m_floor_thickness_spin != null else 0.12,
