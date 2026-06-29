@@ -13,6 +13,7 @@ Common agent rules, shared workflow guidance, and reusable runbook conventions b
 - Read `docs/release_policy.md` before changing versioning, release preparation, or submodule pinning practices.
 - Use `docs/features/README.md` and `docs/features/template.md` when you add or significantly change a feature.
 - For an editor plugin under `addons/`, read that plugin's root `README.md` first, then its `docs/` folder (for example `addons/low_poly_building_editor/README.md` and `addons/low_poly_building_editor/docs/`); plugin-specific docs live there, and the top-level `docs/` files only point to them.
+- For reference-photo, AI-assisted, or batch-generated stylized buildings, use the project-local Building API in `addons/low_poly_building_editor/`: start with its `README.md` and `docs/contract.md`, author a versioned `BuildingSpec` JSON file, then use `generate_building.gd` for an editable `.tscn` or `generate_variants.gd` for rendered variants and a contact sheet.
 - Read `agent_tools/AGENTS.md` for generic agent behavior and reusable runbook guidance.
 - If a task touches a submodule directly, read `docs/submodules.md` first, then open that submodule's own `AGENTS.md` and repo docs before changing anything inside it.
 
