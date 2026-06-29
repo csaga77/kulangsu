@@ -360,34 +360,17 @@ func _add_drum(building: Building3DScript) -> void:
 
 
 func _add_dome(building: Building3DScript) -> void:
-	var center_xz := Vector2(0.0, 6.1)
-	var tiers: Array[Vector3] = [
-		Vector3(2.86, 2.72, 0.42),
-		Vector3(2.72, 2.40, 0.52),
-		Vector3(2.40, 1.92, 0.55),
-		Vector3(1.92, 1.34, 0.52),
-		Vector3(1.34, 0.72, 0.46),
-		Vector3(0.72, 0.18, 0.34),
-	]
-	var base_y := 11.39
-	for index in range(tiers.size()):
-		var tier := tiers[index]
-		var dome_piece := BuildingFactoryScript.create_pillar_node(
-			building,
-			Vector3(center_xz.x, base_y, center_xz.y),
-			tier.x,
-			tier.z,
-			24,
-			"round",
-			DOME_RED,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			tier.y
-		)
-		_attach(building, dome_piece, building, "DomeTier%02d" % (index + 1))
-		base_y += tier.z
+	_add_roof(
+		building,
+		"DomeRoof",
+		Vector3(-2.86, 11.39, 3.24),
+		Vector3(2.86, 11.39, 8.96),
+		"dome",
+		45.0,
+		0.16,
+		0.0,
+		DOME_RED
+	)
 
 
 func _add_room(

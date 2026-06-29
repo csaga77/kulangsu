@@ -1,6 +1,6 @@
-[gd_scene load_steps=5 format=3 uid="uid://bcqkphluygg3f"]
+[gd_scene format=3 uid="uid://bcqkphluygg3f"]
 
-[ext_resource type="Script" path="res://addons/low_poly_building_editor/test_building_variants_gallery_3d.gd" id="1_gallery"]
+[ext_resource type="Script" uid="uid://dir3ia5s640aa" path="res://addons/low_poly_building_editor/tests/test_building_variants_gallery_3d.gd" id="1_gallery"]
 
 [sub_resource type="Environment" id="Environment_gallery"]
 background_mode = 1

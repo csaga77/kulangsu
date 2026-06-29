@@ -484,6 +484,8 @@ func _build_roof_controls(parent: VBoxContainer) -> void:
 	m_roof_style_option.set_item_metadata(2, "gable")
 	m_roof_style_option.add_item("Hip", 3)
 	m_roof_style_option.set_item_metadata(3, "hip")
+	m_roof_style_option.add_item("Dome", 4)
+	m_roof_style_option.set_item_metadata(4, "dome")
 	m_roof_style_option.select(2)
 	m_roof_style_option.item_selected.connect(_on_roof_style_selected)
 	_add_labeled_control(parent, "Style:", m_roof_style_option, "Roof shape used for newly drawn roof footprints.")
@@ -518,7 +520,7 @@ func _build_roof_controls(parent: VBoxContainer) -> void:
 
 	m_roof_style_header = _add_style_properties_header(parent)
 	m_roof_height_spin = _make_spin(0.0, 89.0, 1.0, DEFAULT_ROOF_ANGLE_DEGREES)
-	m_roof_height_spin.tooltip_text = "Roof face angle in degrees for shed, gable, and hip roofs."
+	m_roof_height_spin.tooltip_text = "Roof face angle in degrees for shed, gable, hip, and dome roofs. A 45-degree dome is hemispherical on a square footprint."
 	m_roof_angle_row = _add_labeled_control(parent, "Angle:", m_roof_height_spin)
 	m_roof_height_spin.value_changed.connect(_on_roof_setting_changed)
 

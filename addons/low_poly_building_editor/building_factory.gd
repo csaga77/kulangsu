@@ -19,12 +19,13 @@ const PILLAR_STYLE_SCRIPTS := {
 	"octagonal": preload("res://addons/low_poly_building_editor/octagonal_pillar_3d.gd"),
 	"tapered": preload("res://addons/low_poly_building_editor/tapered_pillar_3d.gd"),
 }
-const ROOF_STYLE_KEYS := ["flat", "shed", "gable", "hip"]
+const ROOF_STYLE_KEYS := ["flat", "shed", "gable", "hip", "dome"]
 const ROOF_STYLE_SCRIPTS := {
 	"flat": preload("res://addons/low_poly_building_editor/flat_roof_3d.gd"),
 	"shed": preload("res://addons/low_poly_building_editor/shed_roof_3d.gd"),
 	"gable": preload("res://addons/low_poly_building_editor/gable_roof_3d.gd"),
 	"hip": preload("res://addons/low_poly_building_editor/hip_roof_3d.gd"),
+	"dome": preload("res://addons/low_poly_building_editor/dome_roof_3d.gd"),
 }
 const WINDOW_STYLE_KEYS := [
 	"single_window",

@@ -10,6 +10,7 @@ const STYLE_FLAT := "flat"
 const STYLE_SHED := "shed"
 const STYLE_GABLE := "gable"
 const STYLE_HIP := "hip"
+const STYLE_DOME := "dome"
 const RECT_EPSILON := 0.001
 const MAX_ROOF_ANGLE_DEGREES := 89.0
 const TRIANGLE_WIREFRAME_NODE_NAME := "RoofTriangleWireframe"
@@ -362,6 +363,14 @@ static func hip_height_for_angle_degrees(size: Vector2, overhang: float, angle_d
 
 static func hip_roof_run_for_size(size: Vector2, overhang: float) -> float:
 	return RoofStyleGeometryFactory.create(STYLE_HIP).roof_run(size, overhang)
+
+
+static func dome_height_for_angle_degrees(size: Vector2, overhang: float, angle_degrees: float) -> float:
+	return RoofStyleGeometryFactory.create(STYLE_DOME).generated_height(size, overhang, angle_degrees)
+
+
+static func dome_roof_run_for_size(size: Vector2, overhang: float) -> float:
+	return RoofStyleGeometryFactory.create(STYLE_DOME).roof_run(size, overhang)
 
 
 static func hip_roof_ridge_points_for_size(

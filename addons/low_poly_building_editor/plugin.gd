@@ -67,6 +67,7 @@ const BUILDING_STYLE_CUSTOM_TYPES := [
 	{"name": "ShedRoof3D", "script": preload("res://addons/low_poly_building_editor/shed_roof_3d.gd")},
 	{"name": "GableRoof3D", "script": preload("res://addons/low_poly_building_editor/gable_roof_3d.gd")},
 	{"name": "HipRoof3D", "script": preload("res://addons/low_poly_building_editor/hip_roof_3d.gd")},
+	{"name": "DomeRoof3D", "script": preload("res://addons/low_poly_building_editor/dome_roof_3d.gd")},
 ]
 const OPENING_SILL_META := BuildingFactoryScript.OPENING_SILL_META
 const OPENING_ALLOW_BASE_META := BuildingFactoryScript.OPENING_ALLOW_BASE_META

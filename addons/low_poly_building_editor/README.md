@@ -46,7 +46,7 @@ godot --headless --path . \
 
 Generator version 1 supports one rectangular storey, one required entrance, repeated
 validated facade windows, optional porch pillars, footprint jitter, and one flat, shed,
-gable, or hip roof. A style value of `random` resolves deterministically from `seed`.
+gable, hip, or dome roof. A style value of `random` resolves deterministically from `seed`.
 The command prints the same machine-readable report it optionally writes to `--report`.
 Invalid specs and buildings that cannot fit their entrance do not produce a scene.
 
@@ -82,7 +82,8 @@ This README is the plugin's entry point; the full documentation lives in [`docs/
 - [`docs/contract.md`](docs/contract.md) — stable contract and governance for the plugin's nodes, storage, and editor interaction.
 
 The focused smoke scene is
-[`test_low_poly_building_editor_3d.tscn`](test_low_poly_building_editor_3d.tscn), and the
+[`test_low_poly_building_editor_3d.tscn`](test_low_poly_building_editor_3d.tscn), the focused
+dome smoke scene is [`tests/test_dome_roof_3d.tscn`](tests/test_dome_roof_3d.tscn), and the
 interactive generator gallery is
 [`test_building_variants_gallery_3d.tscn`](test_building_variants_gallery_3d.tscn). The
 project-level [`../../docs/module_map.md`](../../docs/module_map.md),
