@@ -247,6 +247,7 @@ var m_pillar_settings := {
 var m_roof_settings := {
 	"grid_step": 0.5,
 	"style": "gable",
+	"footprint_style": FLOOR_STYLE_RECTANGLE,
 	"base_height": 2.4,
 	"height": 40.0,
 	"thickness": 0.12,
@@ -369,9 +370,14 @@ var m_roof_release_commits_preview := false
 var m_roof_draw_rotation_degrees := 0.0
 var m_is_drawing_roof := false
 var m_roof_preview: Roof3DScript
+var m_roof_polygon_points := PackedVector3Array()
 var m_dragging_roof: Roof3DScript
 var m_drag_roof_old_start := Vector3.ZERO
 var m_drag_roof_old_end := Vector3.ZERO
+var m_drag_roof_old_polygon := PackedVector3Array()
+var m_drag_roof_started_as_polygon := false
+var m_drag_roof_vertex_index := -1
+var m_drag_roof_edge_index := -1
 var m_drag_roof_old_rotation_degrees := 0.0
 var m_drag_roof_old_height := 0.0
 var m_drag_roof_old_covered_rects: Array[Rect2] = []
@@ -567,10 +573,12 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 				return _handled()
 			if (
 				(key_event.keycode == KEY_ENTER or key_event.keycode == KEY_KP_ENTER)
-				and m_tool_mode == MODE_FLOOR
 			):
-				if _is_polygon_floor_mode() and m_is_drawing_floor:
+				if m_tool_mode == MODE_FLOOR and _is_polygon_floor_mode() and m_is_drawing_floor:
 					_finish_polygon_floor()
+					return _handled()
+				if m_tool_mode == MODE_ROOF and _is_polygon_roof_mode() and m_is_drawing_roof:
+					_finish_polygon_roof()
 					return _handled()
 			if key_event.keycode == KEY_R and m_tool_mode == MODE_STAIRS:
 				return _handle_stair_rotation_key(key_event)
@@ -2737,6 +2745,8 @@ func _reset_stair_drag_state() -> void:
 func _handle_roof_input(camera: Camera3D, event: InputEvent) -> int:
 	if m_dragging_roof != null:
 		return _handle_roof_drag_input(camera, event)
+	if _is_polygon_roof_mode():
+		return _handle_polygon_roof_input(camera, event)
 
 	if event is InputEventMouseMotion:
 		var mouse_motion := event as InputEventMouseMotion
@@ -2745,16 +2755,12 @@ func _handle_roof_input(camera: Camera3D, event: InputEvent) -> int:
 			if mouse_motion.position.distance_to(m_roof_start_screen_position) >= WALL_DRAG_COMMIT_DISTANCE:
 				m_roof_release_commits_preview = true
 			return _handled()
-		var roof_pick := _find_roof_pick(camera, mouse_motion.position)
+		var roof_pick := _find_roof_edit_pick(camera, mouse_motion.position)
 		var hover_roof := roof_pick.get("roof") as Roof3DScript
 		var edit_mask := int(roof_pick.get("edit_mask", FLOOR_EDIT_MOVE))
 		_update_roof_hover(hover_roof, edit_mask)
 		if hover_roof != null:
-			_set_status(
-				"Drag roof corner to resize." if _roof_edit_mask_is_corner(edit_mask)
-				else "Drag roof edge to resize." if edit_mask != FLOOR_EDIT_MOVE
-				else "Drag roof body to move."
-			)
+			_set_roof_edit_hover_status(hover_roof, edit_mask)
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
 
 	if !(event is InputEventMouseButton):
@@ -2779,11 +2785,8 @@ func _handle_roof_input(camera: Camera3D, event: InputEvent) -> int:
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
 
 	if !m_is_drawing_roof:
-		var roof_pick := _find_roof_pick(camera, mouse_button.position)
-		var hit_roof := roof_pick.get("roof") as Roof3DScript
-		if hit_roof != null:
-			_clear_roof_hover()
-			_start_roof_drag(hit_roof, camera, mouse_button.position, int(roof_pick.get("edit_mask", FLOOR_EDIT_MOVE)))
+		var roof_pick := _find_roof_edit_pick(camera, mouse_button.position)
+		if _begin_roof_edit_from_pick(camera, mouse_button, roof_pick):
 			return _handled()
 
 	var coordinator := _get_or_create_coordinator(true)
@@ -2809,6 +2812,156 @@ func _handle_roof_input(camera: Camera3D, event: InputEvent) -> int:
 	_clear_roof_preview()
 	_reset_roof_drawing_state()
 	return _handled()
+
+
+func _handle_polygon_roof_input(camera: Camera3D, event: InputEvent) -> int:
+	if event is InputEventMouseMotion:
+		var mouse_motion := event as InputEventMouseMotion
+		if m_is_drawing_roof:
+			_update_polygon_roof_preview(camera, mouse_motion.position)
+			return _handled()
+		var roof_pick := _find_roof_edit_pick(camera, mouse_motion.position)
+		var hover_roof := roof_pick.get("roof") as Roof3DScript
+		var edit_mask := int(roof_pick.get("edit_mask", FLOOR_EDIT_MOVE))
+		_update_roof_hover(hover_roof, edit_mask)
+		if hover_roof != null:
+			_set_roof_edit_hover_status(hover_roof, edit_mask)
+		else:
+			_set_status("Click the first Flat roof polygon vertex.")
+		return EditorPlugin.AFTER_GUI_INPUT_PASS
+
+	if !(event is InputEventMouseButton):
+		return EditorPlugin.AFTER_GUI_INPUT_PASS
+	var mouse_button := event as InputEventMouseButton
+	if mouse_button.button_index != MOUSE_BUTTON_LEFT or !mouse_button.pressed:
+		return EditorPlugin.AFTER_GUI_INPUT_PASS
+
+	if !m_is_drawing_roof:
+		var roof_pick := _find_roof_edit_pick(camera, mouse_button.position)
+		if _begin_roof_edit_from_pick(camera, mouse_button, roof_pick):
+			return _handled()
+
+	var coordinator := _get_or_create_coordinator(true)
+	if coordinator == null:
+		_set_status("Open or create a scene before drawing roofs.")
+		return _handled()
+	var snapped_local := _roof_draw_local_from_mouse(coordinator, camera, mouse_button.position)
+	if !m_is_drawing_roof:
+		m_is_drawing_roof = true
+		m_roof_polygon_points = PackedVector3Array([snapped_local])
+		m_roof_draw_rotation_degrees = 0.0
+		_create_roof_preview(coordinator)
+		_update_polygon_roof_preview(camera, mouse_button.position)
+		_set_status("Roof polygon vertex 1 captured. Click more vertices, then click the first vertex or press Enter.")
+		return _handled()
+
+	if (
+		m_roof_polygon_points.size() >= 3
+		and snapped_local.distance_to(m_roof_polygon_points[0])
+			<= maxf(float(m_roof_settings["grid_step"]) * 0.25, 0.05)
+	):
+		_finish_polygon_roof()
+		return _handled()
+	if snapped_local.distance_to(m_roof_polygon_points[m_roof_polygon_points.size() - 1]) <= 0.001:
+		_set_status("Choose a different point for the next roof vertex.")
+		return _handled()
+
+	var candidate := m_roof_polygon_points.duplicate()
+	candidate.append(snapped_local)
+	if candidate.size() >= 3 and !_is_valid_roof_polygon(candidate):
+		_set_status("That vertex would make an invalid or self-intersecting roof polygon.")
+		return _handled()
+	m_roof_polygon_points = candidate
+	_update_polygon_roof_preview(camera, mouse_button.position)
+	_set_status(
+		"Roof polygon vertex %d captured. Click the first vertex or press Enter to close."
+		% m_roof_polygon_points.size()
+	)
+	return _handled()
+
+
+func _update_polygon_roof_preview(camera: Camera3D, mouse_position: Vector2) -> void:
+	if m_roof_preview == null:
+		return
+	var coordinator := m_roof_preview.get_parent() as Building3DScript
+	if coordinator == null:
+		return
+	var hover_point := _roof_draw_local_from_mouse(coordinator, camera, mouse_position)
+	var preview_points := m_roof_polygon_points.duplicate()
+	if preview_points.is_empty() or !preview_points[preview_points.size() - 1].is_equal_approx(hover_point):
+		preview_points.append(hover_point)
+	m_roof_preview.set_roof_polygon(preview_points)
+	m_roof_has_valid_preview = _is_valid_roof_polygon(preview_points)
+
+
+func _finish_polygon_roof() -> void:
+	var coordinator := _get_active_roof_coordinator()
+	if coordinator == null or !_is_valid_roof_polygon(m_roof_polygon_points):
+		_set_status("A roof polygon needs at least three non-intersecting vertices.")
+		return
+	_commit_roof_polygon(coordinator, m_roof_polygon_points)
+	_clear_roof_preview()
+	_reset_roof_drawing_state()
+
+
+func _commit_roof_polygon(
+	coordinator: Building3DScript,
+	local_points: PackedVector3Array
+) -> void:
+	if !_is_valid_roof_polygon(local_points):
+		_set_status("Flat roof polygon is invalid.")
+		return
+	var bounds := _roof_polygon_parent_bounds(local_points)
+	var local_start := Vector3(bounds.position.x, local_points[0].y, bounds.position.y)
+	var local_end := Vector3(bounds.end.x, local_points[0].y, bounds.end.y)
+	var merge := coordinator.find_roof_merge_target(
+		local_start,
+		local_end,
+		Roof3DScript.STYLE_FLAT,
+		0.0,
+		float(m_roof_settings["thickness"]),
+		float(m_roof_settings["overhang"]),
+		Color(m_roof_settings["color"]),
+		0.0,
+		m_roof_preview
+	)
+	var roof := BuildingFactoryScript.create_flat_roof_polygon_node(
+		coordinator,
+		local_points,
+		float(m_roof_settings["thickness"]),
+		float(m_roof_settings["overhang"]),
+		Color(m_roof_settings["color"]),
+		bool(m_roof_settings.get("debug_wireframe", false))
+	)
+	var covered_rects := _roof_covered_rects_from_regions(merge)
+	var covered_polygons := _roof_covered_polygons_from_regions(merge)
+	if !covered_rects.is_empty() or !covered_polygons.is_empty():
+		roof.set_covered_regions(covered_rects, covered_polygons)
+	if !roof.has_visible_roof_geometry():
+		_set_status("Flat roof polygon is fully covered by overlapping roof geometry.")
+		return
+	var scene_root := get_editor_interface().get_edited_scene_root()
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Create Polygon Flat Roof")
+	undo_redo.add_do_reference(roof)
+	undo_redo.add_do_method(
+		self,
+		"_do_add_node_and_refresh_roofs",
+		coordinator,
+		roof,
+		scene_root,
+		true,
+		coordinator
+	)
+	undo_redo.add_undo_method(
+		self,
+		"_undo_remove_node_and_refresh_roofs",
+		coordinator,
+		roof,
+		coordinator
+	)
+	undo_redo.commit_action()
+	_set_status("Created Flat roof polygon: %d vertices." % local_points.size())
 
 
 func _create_roof_preview(coordinator: Building3DScript) -> void:
@@ -2867,6 +3020,14 @@ func _update_roof_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 
 func _roof_base_height() -> float:
 	return float(m_roof_settings.get("base_height", 2.4))
+
+
+func _is_polygon_roof_mode() -> bool:
+	return (
+		String(m_roof_settings.get("style", "")) == Roof3DScript.STYLE_FLAT
+		and String(m_roof_settings.get("footprint_style", FLOOR_STYLE_RECTANGLE))
+			== FLOOR_STYLE_POLYGON
+	)
 
 
 func _roof_draw_local_from_mouse(
@@ -2940,6 +3101,9 @@ func _handle_roof_rotation_key(key_event: InputEventKey) -> int:
 	var roof := m_drag_roof_hover if is_instance_valid(m_drag_roof_hover) else _selected_roof_for_rotation()
 	if roof == null:
 		_set_status("Hover or select a roof to rotate it.")
+		return _handled()
+	if roof.is_polygon_roof():
+		_set_status("Polygon Flat roofs rotate by dragging their vertices or edges.")
 		return _handled()
 	_commit_roof_rotation(roof, delta)
 	return _handled()
@@ -3117,6 +3281,177 @@ func _commit_roof(
 		_set_status("Created clipped roof: %.2f x %.2f units." % [size.x, size.y])
 
 
+func _set_roof_edit_hover_status(roof: Roof3DScript, edit_mask: int) -> void:
+	if edit_mask == FLOOR_EDIT_POLYGON_VERTEX:
+		_set_status("Drag roof vertex to reshape. Option/Alt-click it to remove.")
+	elif edit_mask == FLOOR_EDIT_POLYGON_EDGE:
+		_set_status("Drag roof edge to reshape. Shift-click it to add a vertex.")
+	elif roof.is_polygon_roof():
+		_set_status("Drag roof body to move it.")
+	else:
+		_set_status(
+			"Drag roof corner to resize." if _roof_edit_mask_is_corner(edit_mask)
+			else "Drag roof edge to resize." if edit_mask != FLOOR_EDIT_MOVE
+			else "Drag roof body to move."
+		)
+
+
+func _begin_roof_edit_from_pick(
+	camera: Camera3D,
+	mouse_button: InputEventMouseButton,
+	roof_pick: Dictionary
+) -> bool:
+	var roof := roof_pick.get("roof") as Roof3DScript
+	if roof == null:
+		return false
+	_clear_roof_hover()
+	var edit_mask := int(roof_pick.get("edit_mask", FLOOR_EDIT_MOVE))
+	var vertex_index := int(roof_pick.get("vertex_index", -1))
+	var edge_index := int(roof_pick.get("edge_index", -1))
+	if edit_mask == FLOOR_EDIT_POLYGON_VERTEX and mouse_button.alt_pressed:
+		_remove_roof_vertex(roof, vertex_index)
+		return true
+	if edit_mask == FLOOR_EDIT_POLYGON_EDGE and mouse_button.shift_pressed:
+		_add_roof_vertex(
+			roof,
+			edge_index,
+			Vector3(roof_pick.get("parent_position", roof.start_point))
+		)
+		return true
+	_start_roof_drag(
+		roof,
+		camera,
+		mouse_button.position,
+		edit_mask,
+		vertex_index,
+		edge_index
+	)
+	return true
+
+
+func _add_roof_vertex(
+	roof: Roof3DScript,
+	edge_index: int,
+	parent_position: Vector3
+) -> void:
+	if roof.get_roof_style() != Roof3DScript.STYLE_FLAT:
+		return
+	var old_points := _get_roof_edit_points(roof)
+	if edge_index < 0 or edge_index >= old_points.size():
+		_set_status("No roof edge selected.")
+		return
+	var new_point := _snap_roof_edit_point(roof, parent_position)
+	var edge_start := old_points[edge_index]
+	var edge_end := old_points[(edge_index + 1) % old_points.size()]
+	if new_point.distance_to(edge_start) <= 0.001 or new_point.distance_to(edge_end) <= 0.001:
+		_set_status("New vertex must be between two existing roof vertices.")
+		return
+	var new_points := PackedVector3Array()
+	for index in range(old_points.size()):
+		new_points.append(old_points[index])
+		if index == edge_index:
+			new_points.append(new_point)
+	if !_is_valid_roof_polygon(new_points):
+		_set_status("That point would make an invalid roof polygon.")
+		return
+	_commit_roof_points(roof, old_points, new_points, "Add Roof Vertex", "Added roof vertex.")
+
+
+func _remove_roof_vertex(roof: Roof3DScript, vertex_index: int) -> void:
+	if roof.get_roof_style() != Roof3DScript.STYLE_FLAT:
+		return
+	var old_points := _get_roof_edit_points(roof)
+	if old_points.size() <= 3:
+		_set_status("A roof must keep at least three vertices.")
+		return
+	if vertex_index < 0 or vertex_index >= old_points.size():
+		_set_status("No roof vertex selected.")
+		return
+	var new_points := PackedVector3Array()
+	for index in range(old_points.size()):
+		if index != vertex_index:
+			new_points.append(old_points[index])
+	if !_is_valid_roof_polygon(new_points):
+		_set_status("Removing that vertex would make an invalid roof polygon.")
+		return
+	_commit_roof_points(roof, old_points, new_points, "Remove Roof Vertex", "Removed roof vertex.")
+
+
+func _commit_roof_points(
+	roof: Roof3DScript,
+	old_points: PackedVector3Array,
+	new_points: PackedVector3Array,
+	action_name: String,
+	status: String
+) -> void:
+	var coordinator := _find_coordinator_from_node(roof)
+	var started_as_polygon := roof.is_polygon_roof()
+	var old_start := roof.start_point
+	var old_end := roof.end_point
+	var old_rotation := roof.roof_rotation_degrees
+	var old_height := roof.get_roof_angle_degrees()
+	var old_covered_rects := roof.get_covered_rects()
+	var old_covered_polygons := roof.get_covered_polygons()
+	roof.set_roof_polygon(new_points)
+	var layout_valid := true
+	if coordinator != null:
+		coordinator.refresh_roof_covered_rects()
+		for roof_node in coordinator.get_roof_nodes():
+			if roof_node.has_meta(Roof3DScript.PREVIEW_META):
+				continue
+			if !roof_node.has_visible_roof_geometry():
+				layout_valid = false
+				break
+	if started_as_polygon:
+		roof.set_roof_polygon(old_points)
+		roof.set_covered_regions(old_covered_rects, old_covered_polygons)
+	else:
+		roof.set_roof_corners_rotation_height_and_covers(
+			old_start,
+			old_end,
+			old_rotation,
+			old_height,
+			old_covered_rects,
+			old_covered_polygons
+		)
+	if coordinator != null:
+		coordinator.refresh_building_geometry_clips()
+	if !layout_valid:
+		_set_status("Roof edit would fully cover a roof.")
+		return
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action(action_name)
+	undo_redo.add_do_method(self, "_set_roof_polygon_and_refresh", roof, new_points, coordinator)
+	undo_redo.add_do_method(self, "_select_node", roof)
+	if started_as_polygon:
+		undo_redo.add_undo_method(self, "_set_roof_polygon_and_refresh", roof, old_points, coordinator)
+	else:
+		undo_redo.add_undo_method(
+			self,
+			"_set_roof_state_and_refresh",
+			roof,
+			old_start,
+			old_end,
+			old_rotation,
+			old_height,
+			old_covered_rects,
+			old_covered_polygons,
+			coordinator
+		)
+	undo_redo.commit_action()
+	_set_status(status)
+
+
+func _set_roof_polygon_and_refresh(
+	roof: Roof3DScript,
+	points: PackedVector3Array,
+	coordinator: Building3DScript
+) -> void:
+	roof.set_roof_polygon(points)
+	if coordinator != null and is_instance_valid(coordinator):
+		coordinator.refresh_building_geometry_clips()
+
+
 func _handle_roof_drag_input(camera: Camera3D, event: InputEvent) -> int:
 	if event is InputEventMouseMotion:
 		_update_roof_drag(camera, (event as InputEventMouseMotion).position)
@@ -3136,22 +3471,41 @@ func _start_roof_drag(
 	roof: Roof3DScript,
 	camera: Camera3D,
 	mouse_pos: Vector2,
-	edit_mask: int
+	edit_mask: int,
+	vertex_index: int = -1,
+	edge_index: int = -1
 ) -> void:
 	m_dragging_roof = roof
 	m_drag_roof_old_start = roof.start_point
 	m_drag_roof_old_end = roof.end_point
+	m_drag_roof_old_polygon = _get_roof_edit_points(roof)
+	m_drag_roof_started_as_polygon = roof.is_polygon_roof()
 	m_drag_roof_old_rotation_degrees = roof.roof_rotation_degrees
 	m_drag_roof_old_height = roof.get_roof_angle_degrees()
 	m_drag_roof_old_covered_rects = roof.get_covered_rects()
 	m_drag_roof_old_covered_polygons = roof.get_covered_polygons()
 	m_drag_roof_edit_mask = edit_mask
+	if vertex_index >= 0:
+		m_drag_roof_edit_mask = FLOOR_EDIT_POLYGON_VERTEX
+	elif edge_index >= 0:
+		m_drag_roof_edit_mask = FLOOR_EDIT_POLYGON_EDGE
+	elif roof.is_polygon_roof():
+		m_drag_roof_edit_mask = FLOOR_EDIT_MOVE
+	m_drag_roof_vertex_index = (
+		vertex_index if m_drag_roof_edit_mask == FLOOR_EDIT_POLYGON_VERTEX else -1
+	)
+	m_drag_roof_edge_index = (
+		edge_index if m_drag_roof_edit_mask == FLOOR_EDIT_POLYGON_EDGE else -1
+	)
 	m_drag_roof_active_material = roof.material_override
 	m_drag_roof_plane_y = _roof_drag_plane_y_from_mouse(roof, camera, mouse_pos)
 	m_drag_roof_anchor_local = _roof_plane_local_from_mouse_at_y(roof, camera, mouse_pos, m_drag_roof_plane_y)
-	roof.material_override = _build_preview_material(_roof_drag_color(edit_mask, true))
+	roof.material_override = _build_preview_material(_roof_drag_color(m_drag_roof_edit_mask, true))
 	_select_node(roof)
-	_set_status("Dragging roof %s - release to commit, Escape to cancel." % _roof_edit_label(edit_mask))
+	_set_status(
+		"Dragging roof %s - release to commit, Escape to cancel."
+		% _roof_edit_label(m_drag_roof_edit_mask)
+	)
 
 
 func _update_roof_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
@@ -3162,6 +3516,65 @@ func _update_roof_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 	var hit_local := _roof_plane_local_from_mouse_at_y(roof, camera, mouse_pos, m_drag_roof_plane_y)
 	var new_start := m_drag_roof_old_start
 	var new_end := m_drag_roof_old_end
+	if m_drag_roof_edit_mask == FLOOR_EDIT_POLYGON_VERTEX:
+		var edited_polygon := m_drag_roof_old_polygon.duplicate()
+		if m_drag_roof_vertex_index < 0 or m_drag_roof_vertex_index >= edited_polygon.size():
+			return
+		edited_polygon[m_drag_roof_vertex_index] = _snap_roof_edit_point(roof, hit_local)
+		var valid := _is_valid_roof_polygon(edited_polygon)
+		if valid:
+			roof.set_roof_polygon(edited_polygon)
+			roof.set_covered_regions([], [])
+			_set_status("Release to commit roof vertex position.")
+		else:
+			_set_status("That position would make the roof invalid.")
+		roof.material_override = _build_preview_material(
+			_roof_drag_color(FLOOR_EDIT_POLYGON_VERTEX, valid)
+		)
+		return
+	if m_drag_roof_edit_mask == FLOOR_EDIT_POLYGON_EDGE:
+		var edited_polygon := m_drag_roof_old_polygon.duplicate()
+		if m_drag_roof_edge_index < 0 or m_drag_roof_edge_index >= edited_polygon.size():
+			return
+		var step := _active_roof_grid_step(roof)
+		var raw_delta := hit_local - m_drag_roof_anchor_local
+		var snapped_delta := Vector3(
+			roundf(raw_delta.x / step) * step,
+			0.0,
+			roundf(raw_delta.z / step) * step
+		)
+		var next_edge_index := (m_drag_roof_edge_index + 1) % edited_polygon.size()
+		edited_polygon[m_drag_roof_edge_index] += snapped_delta
+		edited_polygon[next_edge_index] += snapped_delta
+		var valid := _is_valid_roof_polygon(edited_polygon)
+		if valid:
+			roof.set_roof_polygon(edited_polygon)
+			roof.set_covered_regions([], [])
+			_set_status("Release to commit roof edge position.")
+		else:
+			_set_status("That position would make the roof invalid.")
+		roof.material_override = _build_preview_material(
+			_roof_drag_color(FLOOR_EDIT_POLYGON_EDGE, valid)
+		)
+		return
+	if roof.is_polygon_roof():
+		var step := _active_roof_grid_step(roof)
+		var raw_delta := hit_local - m_drag_roof_anchor_local
+		var snapped_delta := Vector3(
+			roundf(raw_delta.x / step) * step,
+			0.0,
+			roundf(raw_delta.z / step) * step
+		)
+		var moved_polygon := PackedVector3Array()
+		for point in m_drag_roof_old_polygon:
+			moved_polygon.append(point + snapped_delta)
+		roof.set_roof_polygon(moved_polygon)
+		roof.set_covered_regions([], [])
+		roof.material_override = _build_preview_material(
+			_roof_drag_color(FLOOR_EDIT_MOVE, true)
+		)
+		_set_status("Release to commit polygon roof move.")
+		return
 	if m_drag_roof_edit_mask == FLOOR_EDIT_MOVE:
 		var step := _active_roof_grid_step(roof)
 		var raw_delta := hit_local - m_drag_roof_anchor_local
@@ -3203,6 +3616,9 @@ func _commit_roof_drag() -> void:
 	if m_dragging_roof == null:
 		return
 	var roof := m_dragging_roof
+	if roof.is_polygon_roof():
+		_commit_polygon_roof_drag(roof)
+		return
 	var old_start := m_drag_roof_old_start
 	var old_end := m_drag_roof_old_end
 	var old_rotation := m_drag_roof_old_rotation_degrees
@@ -3346,12 +3762,84 @@ func _commit_roof_drag() -> void:
 		_set_status("Edited clipped roof: %.2f x %.2f units." % [size.x, size.y])
 
 
-func _cancel_roof_drag() -> void:
-	if m_dragging_roof == null:
+func _commit_polygon_roof_drag(roof: Roof3DScript) -> void:
+	var new_points := roof.get_roof_polygon()
+	var old_points := m_drag_roof_old_polygon
+	var coordinator := _find_coordinator_from_node(roof)
+	var edit_mask := m_drag_roof_edit_mask
+	roof.material_override = m_drag_roof_active_material
+	if !_is_valid_roof_polygon(new_points):
+		_restore_roof_drag_start(roof, coordinator)
+		_reset_roof_drag_state()
+		_set_status("Roof polygon is invalid.")
 		return
-	var coordinator := _find_coordinator_from_node(m_dragging_roof)
-	if is_instance_valid(m_dragging_roof):
-		m_dragging_roof.set_roof_corners_rotation_height_and_covers(
+	if old_points == new_points and m_drag_roof_started_as_polygon:
+		_restore_roof_drag_start(roof, coordinator)
+		_reset_roof_drag_state()
+		_set_status("Roof unchanged.")
+		return
+	if coordinator != null:
+		coordinator.refresh_roof_covered_rects()
+		for roof_node in coordinator.get_roof_nodes():
+			if roof_node.has_meta(Roof3DScript.PREVIEW_META):
+				continue
+			if !roof_node.has_visible_roof_geometry():
+				_restore_roof_drag_start(roof, coordinator)
+				_reset_roof_drag_state()
+				_set_status("Roof edit would fully cover a roof.")
+				return
+	var old_start := m_drag_roof_old_start
+	var old_end := m_drag_roof_old_end
+	var old_rotation := m_drag_roof_old_rotation_degrees
+	var old_height := m_drag_roof_old_height
+	var old_covered_rects := m_drag_roof_old_covered_rects
+	var old_covered_polygons := m_drag_roof_old_covered_polygons
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action(
+		"Move Roof" if edit_mask == FLOOR_EDIT_MOVE
+		else "Edit Roof Vertex" if edit_mask == FLOOR_EDIT_POLYGON_VERTEX
+		else "Edit Roof Edge"
+	)
+	undo_redo.add_do_method(self, "_set_roof_polygon_and_refresh", roof, new_points, coordinator)
+	undo_redo.add_do_method(self, "_select_node", roof)
+	if m_drag_roof_started_as_polygon:
+		undo_redo.add_undo_method(
+			self,
+			"_set_roof_polygon_and_refresh",
+			roof,
+			old_points,
+			coordinator
+		)
+	else:
+		undo_redo.add_undo_method(
+			self,
+			"_set_roof_state_and_refresh",
+			roof,
+			old_start,
+			old_end,
+			old_rotation,
+			old_height,
+			old_covered_rects,
+			old_covered_polygons,
+			coordinator
+		)
+	undo_redo.commit_action()
+	_reset_roof_drag_state()
+	_set_status("Edited Flat roof polygon: %d vertices." % new_points.size())
+
+
+func _restore_roof_drag_start(
+	roof: Roof3DScript,
+	coordinator: Building3DScript
+) -> void:
+	if m_drag_roof_started_as_polygon:
+		roof.set_roof_polygon(m_drag_roof_old_polygon)
+		roof.set_covered_regions(
+			m_drag_roof_old_covered_rects,
+			m_drag_roof_old_covered_polygons
+		)
+	else:
+		roof.set_roof_corners_rotation_height_and_covers(
 			m_drag_roof_old_start,
 			m_drag_roof_old_end,
 			m_drag_roof_old_rotation_degrees,
@@ -3359,9 +3847,17 @@ func _cancel_roof_drag() -> void:
 			m_drag_roof_old_covered_rects,
 			m_drag_roof_old_covered_polygons
 		)
+	if coordinator != null:
+		coordinator.refresh_building_geometry_clips()
+
+
+func _cancel_roof_drag() -> void:
+	if m_dragging_roof == null:
+		return
+	var coordinator := _find_coordinator_from_node(m_dragging_roof)
+	if is_instance_valid(m_dragging_roof):
+		_restore_roof_drag_start(m_dragging_roof, coordinator)
 		m_dragging_roof.material_override = m_drag_roof_active_material
-		if coordinator != null:
-			coordinator.refresh_building_geometry_clips()
 	_reset_roof_drag_state()
 	_set_status("Roof edit canceled.")
 
@@ -3469,6 +3965,15 @@ func _snap_roof_footprint_edge(roof: Roof3DScript, value: float) -> float:
 	return roundf(value / step) * step
 
 
+func _snap_roof_edit_point(roof: Roof3DScript, point: Vector3) -> Vector3:
+	var step := _active_roof_grid_step(roof)
+	return Vector3(
+		roundf(point.x / step) * step,
+		m_drag_roof_old_start.y,
+		roundf(point.z / step) * step
+	)
+
+
 func _roof_drag_color(edit_mask: int, valid: bool) -> Color:
 	if !valid:
 		return Color(0.95, 0.20, 0.16, 0.72)
@@ -3480,6 +3985,10 @@ func _roof_drag_color(edit_mask: int, valid: bool) -> Color:
 func _roof_edit_label(edit_mask: int) -> String:
 	if edit_mask == FLOOR_EDIT_MOVE:
 		return "body"
+	if edit_mask == FLOOR_EDIT_POLYGON_VERTEX:
+		return "vertex"
+	if edit_mask == FLOOR_EDIT_POLYGON_EDGE:
+		return "edge"
 	return "corner" if _roof_edit_mask_is_corner(edit_mask) else "edge"
 
 
@@ -3530,6 +4039,10 @@ func _reset_roof_drag_state() -> void:
 	m_dragging_roof = null
 	m_drag_roof_old_start = Vector3.ZERO
 	m_drag_roof_old_end = Vector3.ZERO
+	m_drag_roof_old_polygon = PackedVector3Array()
+	m_drag_roof_started_as_polygon = false
+	m_drag_roof_vertex_index = -1
+	m_drag_roof_edge_index = -1
 	m_drag_roof_old_rotation_degrees = 0.0
 	m_drag_roof_old_height = 0.0
 	m_drag_roof_old_covered_rects = []
@@ -4705,6 +5218,114 @@ func _stair_edit_mask_for_local_hit(stair: Stairs3DScript, local_hit: Vector3) -
 	return edit_mask
 
 
+func _find_roof_edit_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
+	var handle_pick := _find_roof_handle_pick(camera, mouse_pos)
+	if !handle_pick.is_empty():
+		return handle_pick
+	return _find_roof_pick(camera, mouse_pos)
+
+
+func _find_roof_handle_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
+	var scene_root := get_editor_interface().get_edited_scene_root()
+	if scene_root == null:
+		return {}
+	var roofs: Array[Roof3DScript] = []
+	_collect_scene_roofs(scene_root, roofs)
+	var ray_origin := camera.project_ray_origin(mouse_pos)
+	var ray_direction := camera.project_ray_normal(mouse_pos)
+	var best_vertex_pick: Dictionary = {}
+	var best_vertex_camera_distance := INF
+	var best_edge_pick: Dictionary = {}
+	var best_edge_camera_distance := INF
+	for roof in roofs:
+		if !is_instance_valid(roof) or roof.get_roof_style() != Roof3DScript.STYLE_FLAT:
+			continue
+		if roof == m_roof_preview or roof.has_meta(Roof3DScript.PREVIEW_META):
+			continue
+		var parent_3d := roof.get_parent() as Node3D
+		var local_origin := parent_3d.to_local(ray_origin) if parent_3d != null else ray_origin
+		var local_direction := (
+			parent_3d.global_transform.basis.inverse() * ray_direction
+			if parent_3d != null
+			else ray_direction
+		)
+		if local_direction.length_squared() <= 0.000001:
+			continue
+		local_direction = local_direction.normalized()
+		if absf(local_direction.y) <= 0.001:
+			continue
+		var plane_distance := (roof.start_point.y - local_origin.y) / local_direction.y
+		if plane_distance <= 0.0:
+			continue
+		var parent_hit := local_origin + local_direction * plane_distance
+		var plan_hit := Vector2(parent_hit.x, parent_hit.z)
+		var points := _get_roof_edit_points(roof)
+		var radius := maxf(_active_roof_grid_step(roof) * 0.35, 0.16)
+		var global_hit := parent_3d.to_global(parent_hit) if parent_3d != null else parent_hit
+		var camera_distance := ray_origin.distance_to(global_hit)
+		var closest_vertex_index := -1
+		var closest_vertex_distance := INF
+		for vertex_index in range(points.size()):
+			var vertex_plan := Vector2(points[vertex_index].x, points[vertex_index].z)
+			var vertex_distance := plan_hit.distance_to(vertex_plan)
+			if vertex_distance < closest_vertex_distance:
+				closest_vertex_distance = vertex_distance
+				closest_vertex_index = vertex_index
+		if (
+			closest_vertex_index >= 0
+			and closest_vertex_distance <= radius
+			and camera_distance < best_vertex_camera_distance
+		):
+			best_vertex_camera_distance = camera_distance
+			best_vertex_pick = {
+				"roof": roof,
+				"edit_mask": FLOOR_EDIT_POLYGON_VERTEX,
+				"vertex_index": closest_vertex_index,
+				"edge_index": -1,
+				"parent_position": points[closest_vertex_index],
+			}
+
+		var closest_edge_index := -1
+		var closest_edge_distance := INF
+		var closest_edge_point := Vector2.ZERO
+		for edge_index in range(points.size()):
+			var edge_start := Vector2(points[edge_index].x, points[edge_index].z)
+			var edge_end_point := points[(edge_index + 1) % points.size()]
+			var edge_end := Vector2(edge_end_point.x, edge_end_point.z)
+			var edge_point := _closest_point_on_plan_segment(plan_hit, edge_start, edge_end)
+			var edge_distance := plan_hit.distance_to(edge_point)
+			if edge_distance < closest_edge_distance:
+				closest_edge_distance = edge_distance
+				closest_edge_index = edge_index
+				closest_edge_point = edge_point
+		if (
+			closest_edge_index >= 0
+			and closest_edge_distance <= radius
+			and camera_distance < best_edge_camera_distance
+		):
+			best_edge_camera_distance = camera_distance
+			best_edge_pick = {
+				"roof": roof,
+				"edit_mask": FLOOR_EDIT_POLYGON_EDGE,
+				"vertex_index": -1,
+				"edge_index": closest_edge_index,
+				"parent_position": Vector3(
+					closest_edge_point.x,
+					roof.start_point.y,
+					closest_edge_point.y
+				),
+			}
+	if (
+		!best_vertex_pick.is_empty()
+		and (
+			best_edge_pick.is_empty()
+			or best_vertex_camera_distance <= best_edge_camera_distance + 0.01
+		)
+	):
+		return best_vertex_pick
+	return best_edge_pick
+
+
 func _find_roof_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
 	var origin := camera.project_ray_origin(mouse_pos)
 	var direction := camera.project_ray_normal(mouse_pos)
@@ -4773,6 +5394,8 @@ func _intersect_roof_bounds(
 		return {}
 
 	var local_hit := Vector3(hit["position"])
+	if !roof.contains_local_plan_point(Vector2(local_hit.x, local_hit.z)):
+		return {}
 	var local_normal := _nearest_box_normal(local_hit, min_corner, max_corner)
 	var global_hit := roof.global_transform * local_hit
 	return {
@@ -5763,6 +6386,7 @@ func _reset_roof_drawing_state() -> void:
 	m_roof_has_valid_preview = false
 	m_roof_release_commits_preview = false
 	m_roof_start_screen_position = Vector2.ZERO
+	m_roof_polygon_points = PackedVector3Array()
 	m_roof_draw_rotation_degrees = _normalize_degrees(float(m_roof_settings.get("rotation_degrees", 0.0)))
 
 
@@ -6735,6 +7359,42 @@ func _is_roof_span_large_enough(local_start: Vector3, local_end: Vector3) -> boo
 	)
 
 
+func _is_valid_roof_polygon(points: PackedVector3Array) -> bool:
+	if points.size() < 3:
+		return false
+	var polygon := PackedVector2Array()
+	for point in points:
+		polygon.append(Vector2(point.x, point.z))
+	return !Geometry2D.triangulate_polygon(polygon).is_empty()
+
+
+func _roof_polygon_parent_bounds(points: PackedVector3Array) -> Rect2:
+	if points.is_empty():
+		return Rect2()
+	var min_point := Vector2(points[0].x, points[0].z)
+	var max_point := min_point
+	for point in points:
+		min_point.x = minf(min_point.x, point.x)
+		min_point.y = minf(min_point.y, point.z)
+		max_point.x = maxf(max_point.x, point.x)
+		max_point.y = maxf(max_point.y, point.z)
+	return Rect2(min_point, max_point - min_point)
+
+
+func _get_roof_edit_points(roof: Roof3DScript) -> PackedVector3Array:
+	if roof.is_polygon_roof():
+		return roof.get_roof_polygon()
+	var size := roof.get_roof_size()
+	var anchor := roof.get_roof_anchor_point()
+	var basis := _roof_rotation_basis(roof.roof_rotation_degrees)
+	return PackedVector3Array([
+		anchor,
+		anchor + basis * Vector3(size.x, 0.0, 0.0),
+		anchor + basis * Vector3(size.x, 0.0, size.y),
+		anchor + basis * Vector3(0.0, 0.0, size.y),
+	])
+
+
 func _do_add_node(parent: Node, node: Node, scene_root: Node, select_after_add: bool) -> void:
 	if node.get_parent() != parent:
 		parent.add_child(node)
@@ -6843,6 +7503,7 @@ func _roof_layout_would_hide_any_roof(
 			"roof": roof_node,
 			"start": roof_node.start_point,
 			"end": roof_node.end_point,
+			"polygon": roof_node.get_roof_polygon(),
 			"rotation": roof_node.roof_rotation_degrees,
 			"height": roof_node.get_roof_angle_degrees(),
 			"covered_rects": roof_node.get_covered_rects(),
@@ -6876,14 +7537,19 @@ func _roof_layout_would_hide_any_roof(
 		var snapshot_polygons: Array[PackedVector2Array] = []
 		for polygon in snapshot.get("covered_polygons", []):
 			snapshot_polygons.append(PackedVector2Array(polygon))
-		snapshot_roof.set_roof_corners_rotation_height_and_covers(
-			Vector3(snapshot["start"]),
-			Vector3(snapshot["end"]),
-			float(snapshot["rotation"]),
-			float(snapshot["height"]),
-			snapshot_covers,
-			snapshot_polygons
-		)
+		var snapshot_polygon := PackedVector3Array(snapshot.get("polygon", PackedVector3Array()))
+		if !snapshot_polygon.is_empty():
+			snapshot_roof.set_roof_polygon(snapshot_polygon)
+			snapshot_roof.set_covered_regions(snapshot_covers, snapshot_polygons)
+		else:
+			snapshot_roof.set_roof_corners_rotation_height_and_covers(
+				Vector3(snapshot["start"]),
+				Vector3(snapshot["end"]),
+				float(snapshot["rotation"]),
+				float(snapshot["height"]),
+				snapshot_covers,
+				snapshot_polygons
+			)
 	return hides_roof
 
 

@@ -339,6 +339,26 @@ static func create_roof_node(
 	return roof
 
 
+static func create_flat_roof_polygon_node(
+	building: Node,
+	local_points: PackedVector3Array,
+	thickness: float = 0.12,
+	overhang: float = 0.2,
+	color: Color = Color(0.50, 0.34, 0.25, 1.0),
+	debug_wireframe: bool = false
+) -> Roof3DScript:
+	var roof := instantiate_roof_style("flat")
+	roof.name = _unique_child_name(building, "Roof3D")
+	roof.roof_thickness = thickness
+	roof.roof_overhang = overhang
+	roof.roof_color = color
+	roof.build_on_ready = true
+	roof.generate_collision = true
+	roof.debug_show_triangle_wireframe = debug_wireframe
+	roof.set_roof_polygon(local_points)
+	return roof
+
+
 static func instantiate_roof_style(style: String) -> Roof3DScript:
 	var normalized_style := style.strip_edges().to_lower()
 	var roof_script := ROOF_STYLE_SCRIPTS.get(

@@ -2039,6 +2039,87 @@ func _validate_roof_node(coordinator: Building3DScript) -> void:
 	if !_has_normal_near(flat_normals, Vector3.UP):
 		m_failures.append("Roof3D flat style is missing a flat top normal")
 
+	var polygon_roof_points := PackedVector3Array([
+		Vector3(40.0, base_y, 12.0),
+		Vector3(44.0, base_y, 12.0),
+		Vector3(44.0, base_y, 14.0),
+		Vector3(42.0, base_y, 14.0),
+		Vector3(42.0, base_y, 16.0),
+		Vector3(40.0, base_y, 16.0),
+	])
+	var polygon_roof := BuildingFactoryScript.create_flat_roof_polygon_node(
+		coordinator,
+		polygon_roof_points,
+		0.14,
+		0.25,
+		Color(0.50, 0.34, 0.25, 1.0)
+	)
+	coordinator.add_child(polygon_roof)
+	if !polygon_roof.is_polygon_roof():
+		m_failures.append("FlatRoof3D did not store its polygon footprint")
+	if polygon_roof.get_roof_polygon() != polygon_roof_points:
+		m_failures.append("FlatRoof3D returned the wrong polygon footprint")
+	if polygon_roof.position.distance_to(Vector3(40.0, base_y, 12.0)) > 0.001:
+		m_failures.append("FlatRoof3D polygon transform did not use its minimum footprint corner")
+	if polygon_roof.get_roof_size().distance_to(Vector2(4.0, 4.0)) > 0.001:
+		m_failures.append("FlatRoof3D polygon returned the wrong footprint bounds")
+	var polygon_render_rect := polygon_roof.get_roof_render_rect()
+	if (
+		polygon_render_rect.position.distance_to(Vector2(-0.25, -0.25)) > 0.001
+		or polygon_render_rect.end.distance_to(Vector2(4.25, 4.25)) > 0.001
+	):
+		m_failures.append("FlatRoof3D polygon overhang did not offset its outline")
+	if polygon_roof.mesh == null:
+		m_failures.append("FlatRoof3D polygon did not generate a mesh")
+	if polygon_roof.get_node_or_null("RoofCollision") == null:
+		m_failures.append("FlatRoof3D polygon did not generate collision")
+	if !polygon_roof.contains_local_plan_point(Vector2(1.0, 3.0)):
+		m_failures.append("FlatRoof3D polygon rejected a solid footprint point")
+	if polygon_roof.contains_local_plan_point(Vector2(3.0, 3.0)):
+		m_failures.append("FlatRoof3D polygon filled its concave footprint notch")
+
+	var reshaped_roof_points := polygon_roof.get_roof_polygon()
+	reshaped_roof_points[1] = Vector3(45.0, base_y, 12.0)
+	if !polygon_roof.is_roof_polygon_valid(reshaped_roof_points):
+		m_failures.append("FlatRoof3D rejected a valid vertex edit")
+	else:
+		polygon_roof.set_roof_polygon(reshaped_roof_points)
+		if polygon_roof.get_roof_size().x < 4.99:
+			m_failures.append("FlatRoof3D vertex edit did not reshape the footprint")
+	var inserted_roof_points := polygon_roof.get_roof_polygon()
+	inserted_roof_points.insert(1, Vector3(42.5, base_y, 12.0))
+	polygon_roof.set_roof_polygon(inserted_roof_points)
+	if polygon_roof.get_roof_polygon().size() != polygon_roof_points.size() + 1:
+		m_failures.append("FlatRoof3D did not add a footprint vertex")
+	inserted_roof_points.remove_at(1)
+	polygon_roof.set_roof_polygon(inserted_roof_points)
+	if polygon_roof.get_roof_polygon().size() != polygon_roof_points.size():
+		m_failures.append("FlatRoof3D did not remove a footprint vertex")
+
+	var promoted_flat := BuildingFactoryScript.create_roof_node(
+		coordinator,
+		Vector3(46.0, base_y, 12.0),
+		Vector3(49.0, base_y, 15.0),
+		"flat"
+	)
+	coordinator.add_child(promoted_flat)
+	if promoted_flat.is_polygon_roof():
+		m_failures.append("FlatRoof3D rectangle unexpectedly stored polygon points")
+	promoted_flat.set_roof_polygon(PackedVector3Array([
+		Vector3(46.0, base_y, 12.0),
+		Vector3(49.0, base_y, 12.0),
+		Vector3(49.0, base_y, 15.0),
+		Vector3(46.0, base_y, 15.0),
+	]))
+	if !promoted_flat.is_polygon_roof():
+		m_failures.append("FlatRoof3D rectangle did not promote to shared polygon editing")
+	promoted_flat.set_roof_corners(
+		Vector3(46.0, base_y, 12.0),
+		Vector3(50.0, base_y, 16.0)
+	)
+	if promoted_flat.is_polygon_roof():
+		m_failures.append("FlatRoof3D rectangle setter did not restore rectangle representation")
+
 	var shed := BuildingFactoryScript.create_roof_node(coordinator,
 		Vector3(22.0, base_y, 12.0),
 		Vector3(25.0, base_y, 14.0),

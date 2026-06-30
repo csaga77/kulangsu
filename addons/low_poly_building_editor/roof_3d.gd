@@ -132,16 +132,19 @@ func _ready() -> void:
 
 func set_roof_corners(new_start: Vector3, new_end: Vector3) -> void:
 	var previous_signature := _roof_mesh_source_signature()
+	_clear_roof_polygon()
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
 	if _roof_mesh_source_signature() == previous_signature:
 		return
 	_sync_transform_from_points()
 	rebuild_roof_mesh()
+	source_geometry_changed.emit()
 
 
 func set_roof_corners_and_rotation(new_start: Vector3, new_end: Vector3, new_rotation_degrees: float) -> void:
 	var previous_signature := _roof_mesh_source_signature()
+	_clear_roof_polygon()
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
 	roof_rotation_degrees = new_rotation_degrees
@@ -149,6 +152,7 @@ func set_roof_corners_and_rotation(new_start: Vector3, new_end: Vector3, new_rot
 		return
 	_sync_transform_from_points()
 	rebuild_roof_mesh()
+	source_geometry_changed.emit()
 
 
 func set_roof_corners_rotation_and_covers(
@@ -178,19 +182,20 @@ func set_roof_corners_rotation_height_and_covers(
 ) -> void:
 	var previous_source_signature := _roof_mesh_source_signature()
 	var previous_clip_signature := _roof_mesh_clip_signature()
+	_clear_roof_polygon()
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
 	roof_rotation_degrees = new_rotation_degrees
 	set_roof_angle_degrees(new_height)
 	covered_rects = new_covered_rects
 	covered_polygons = new_covered_polygons
-	if (
-		_roof_mesh_source_signature() == previous_source_signature
-		and _roof_mesh_clip_signature() == previous_clip_signature
-	):
+	var source_changed := _roof_mesh_source_signature() != previous_source_signature
+	if !source_changed and _roof_mesh_clip_signature() == previous_clip_signature:
 		return
 	_sync_transform_from_points()
 	rebuild_roof_mesh()
+	if source_changed:
+		source_geometry_changed.emit()
 
 
 func set_covered_rects(new_covered_rects: Array[Rect2]) -> void:
@@ -295,7 +300,51 @@ func get_roof_style() -> String:
 	return ""
 
 
+func set_roof_polygon(_new_points: PackedVector3Array) -> void:
+	pass
+
+
+func get_roof_polygon() -> PackedVector3Array:
+	return PackedVector3Array()
+
+
+func is_polygon_roof() -> bool:
+	return false
+
+
+func is_roof_polygon_valid(points: PackedVector3Array = PackedVector3Array()) -> bool:
+	var candidate := points if !points.is_empty() else get_roof_polygon()
+	if candidate.size() < 3:
+		return false
+	var local_polygon := PackedVector2Array()
+	for point in candidate:
+		local_polygon.append(Vector2(point.x, point.z))
+	return !Geometry2D.triangulate_polygon(local_polygon).is_empty()
+
+
+func contains_local_plan_point(local_point: Vector2) -> bool:
+	if !is_polygon_roof():
+		var render_rect := get_roof_render_rect()
+		return render_rect.has_point(local_point)
+	for polygon in get_roof_render_polygons():
+		if Geometry2D.is_point_in_polygon(local_point, polygon):
+			return true
+	return false
+
+
+func get_roof_render_polygons() -> Array[PackedVector2Array]:
+	var polygons: Array[PackedVector2Array] = []
+	polygons.append(_rect_polygon(get_roof_render_rect()))
+	return polygons
+
+
+func _clear_roof_polygon() -> void:
+	pass
+
+
 func get_roof_size() -> Vector2:
+	if is_polygon_roof():
+		return _roof_polygon_parent_bounds(get_roof_polygon()).size
 	return Vector2(absf(end_point.x - start_point.x), absf(end_point.z - start_point.z))
 
 
@@ -485,6 +534,10 @@ static func roof_corners_from_base_points(base_start: Vector3, base_end: Vector3
 
 
 func get_roof_anchor_point() -> Vector3:
+	if is_polygon_roof():
+		var points := get_roof_polygon()
+		var bounds := _roof_polygon_parent_bounds(points)
+		return Vector3(bounds.position.x, points[0].y, bounds.position.y)
 	var min_x := minf(start_point.x, end_point.x)
 	var min_z := minf(start_point.z, end_point.z)
 	return Vector3(min_x, start_point.y, min_z)
@@ -496,12 +549,18 @@ func get_roof_center_point() -> Vector3:
 
 
 func get_roof_bounds_min() -> Vector3:
+	if is_polygon_roof():
+		var render_rect := get_roof_render_rect()
+		return Vector3(render_rect.position.x, -roof_thickness, render_rect.position.y)
 	var overhang := maxf(roof_overhang, 0.0)
 	return Vector3(-overhang, -roof_thickness, -overhang)
 
 
 func get_roof_bounds_max() -> Vector3:
 	var size := get_roof_size()
+	if is_polygon_roof():
+		var render_rect := get_roof_render_rect()
+		return Vector3(render_rect.end.x, _effective_roof_height(), render_rect.end.y)
 	var overhang := maxf(roof_overhang, 0.0)
 	return Vector3(size.x + overhang, _effective_roof_height(), size.y + overhang)
 
@@ -521,6 +580,9 @@ func rebuild_roof_mesh(rebuild_collision: bool = true) -> void:
 	if size.x <= 0.001 or size.y <= 0.001:
 		mesh = null
 		return
+	if is_polygon_roof() and !is_roof_polygon_valid():
+		mesh = null
+		return
 
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
@@ -528,7 +590,21 @@ func rebuild_roof_mesh(rebuild_collision: bool = true) -> void:
 	var indices := PackedInt32Array()
 	var full_render_rect := get_roof_render_rect()
 	var sanitized_polygons := _sanitize_covered_polygons(covered_polygons)
-	if !sanitized_polygons.is_empty():
+	if is_polygon_roof():
+		for covered_rect in _sanitize_covered_rects(covered_rects):
+			sanitized_polygons.append(_rect_polygon(covered_rect))
+		if sanitized_polygons.is_empty():
+			_append_polygon_roof_geometry(vertices, normals, colors, indices)
+		else:
+			_append_roof_polygon_clip_geometry(
+				size,
+				sanitized_polygons,
+				vertices,
+				normals,
+				colors,
+				indices
+			)
+	elif !sanitized_polygons.is_empty():
 		_append_roof_polygon_clip_geometry(size, sanitized_polygons, vertices, normals, colors, indices)
 	else:
 		var visible_rects := get_visible_render_rects()
@@ -578,6 +654,7 @@ func _roof_mesh_source_signature() -> int:
 		get_roof_style(),
 		start_point,
 		end_point,
+		get_roof_polygon(),
 		roof_thickness,
 		roof_overhang,
 		roof_rotation_degrees,
@@ -611,6 +688,8 @@ func _sync_transform_from_points() -> void:
 
 
 func _rotation_basis() -> Basis:
+	if is_polygon_roof():
+		return Basis.IDENTITY
 	return _rotation_basis_for_degrees(roof_rotation_degrees)
 
 
@@ -909,12 +988,64 @@ func _roof_polygon_boundary_point_key(point: Vector3) -> String:
 
 
 func _roof_top_triangles(full_size: Vector2) -> Array[PackedVector3Array]:
+	if is_polygon_roof():
+		var triangles: Array[PackedVector3Array] = []
+		for polygon in get_roof_render_polygons():
+			var triangle_indices := Geometry2D.triangulate_polygon(polygon)
+			for triangle_start in range(0, triangle_indices.size(), 3):
+				triangles.append(PackedVector3Array([
+					Vector3(polygon[triangle_indices[triangle_start]].x, 0.0, polygon[triangle_indices[triangle_start]].y),
+					Vector3(polygon[triangle_indices[triangle_start + 1]].x, 0.0, polygon[triangle_indices[triangle_start + 1]].y),
+					Vector3(polygon[triangle_indices[triangle_start + 2]].x, 0.0, polygon[triangle_indices[triangle_start + 2]].y),
+				]))
+		return triangles
 	return _get_style_geometry().top_triangles(
 		full_size,
 		roof_overhang,
 		get_roof_angle_degrees(),
 		get_hip_gable_height()
 	)
+
+
+func _append_polygon_roof_geometry(
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	var visible_polygons: Array = []
+	var bottom_offset := Vector3(0.0, -roof_thickness, 0.0)
+	for top_triangle in _roof_top_triangles(get_roof_size()):
+		var top_points := _packed_vector3_to_array(top_triangle)
+		visible_polygons.append(top_points)
+		_append_polygon_triangles(top_points, false, vertices, normals, colors, indices)
+		var bottom_points: Array[Vector3] = []
+		for point in top_points:
+			bottom_points.append(point + bottom_offset)
+		_append_polygon_triangles(bottom_points, true, vertices, normals, colors, indices)
+	_append_roof_polygon_boundary_sides(visible_polygons, vertices, normals, colors, indices)
+
+
+func _roof_polygon_parent_bounds(points: PackedVector3Array) -> Rect2:
+	if points.is_empty():
+		return Rect2()
+	var min_point := Vector2(points[0].x, points[0].z)
+	var max_point := min_point
+	for point in points:
+		min_point.x = minf(min_point.x, point.x)
+		min_point.y = minf(min_point.y, point.z)
+		max_point.x = maxf(max_point.x, point.x)
+		max_point.y = maxf(max_point.y, point.z)
+	return Rect2(min_point, max_point - min_point)
+
+
+func _rect_polygon(rect: Rect2) -> PackedVector2Array:
+	return PackedVector2Array([
+		rect.position,
+		Vector2(rect.end.x, rect.position.y),
+		rect.end,
+		Vector2(rect.position.x, rect.end.y),
+	])
 
 
 func _clip_polygon_to_rect(polygon: PackedVector3Array, rect: Rect2) -> Array[Vector3]:

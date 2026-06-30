@@ -41,7 +41,7 @@ const SHORTCUTS_WALL_TEXT := "Shortcuts\nUse Wall Type to choose a single wall o
 const SHORTCUTS_FLOOR_TEXT := "Shortcuts\nRectangle and Polygon only change how a floor is created.\nRectangle: drag, or click two opposite corners.\nPolygon: click each vertex; click the first vertex or press Enter to close.\nFor either style, drag any vertex to reshape.\nDrag any edge to move its two vertices.\nShift-click an edge to add a vertex.\nOption/Alt-click a vertex to remove it.\nDrag the floor body to move it.\nEsc or right-click cancels."
 const SHORTCUTS_STAIRS_TEXT := "Shortcuts\nDrag empty space to draw a stair rectangle.\nClick one corner, then click the opposite corner to place.\nR rotates the preview or hovered stairs by 90 degrees.\nShift+R rotates the opposite direction.\nDrag stairs body to move it.\nDrag stairs edge or corner to resize.\nEsc or right-click cancels."
 const SHORTCUTS_PILLAR_TEXT := "Shortcuts\nClick empty space to place a pillar.\nDrag pillar body to move it.\nDrag pillar edge to resize its radius.\nEsc or right-click cancels."
-const SHORTCUTS_ROOF_TEXT := "Shortcuts\nDrag empty space to draw a roof rectangle.\nClick one corner, then click the opposite corner to place.\nR rotates the preview or hovered roof by 90 degrees.\nShift+R rotates the opposite direction.\nDrag roof body to move it.\nDrag roof edge or corner to resize.\nEsc or right-click cancels."
+const SHORTCUTS_ROOF_TEXT := "Shortcuts\nFlat roofs can be created as Rectangle or Polygon footprints.\nRectangle: drag, or click two opposite corners.\nPolygon: click each vertex; click the first vertex or press Enter to close.\nFor either Flat footprint, drag any vertex or edge to reshape.\nShift-click an edge to add a vertex.\nOption/Alt-click a vertex to remove it.\nDrag the roof body to move it.\nR rotates rectangular or pitched roofs by 90 degrees.\nEsc or right-click cancels."
 const SHORTCUTS_PROP_TEXT := "Shortcuts\nSelect a palette item, then click to place.\nR rotates the preview by 90 degrees.\nEsc or right-click cancels."
 const SHORTCUTS_WINDOW_TEXT := "Shortcuts\nClick a wall to place a window.\nDrag window center to move.\nDrag window edge to resize.\nEsc or right-click cancels."
 const SHORTCUTS_DOOR_TEXT := "Shortcuts\nSelect a door style, then click a wall to place.\nDrag door center to move.\nDrag door edge to resize.\nEsc or right-click cancels."
@@ -93,6 +93,8 @@ var m_pillar_style_header: Label
 var m_pillar_sides_row: HBoxContainer
 var m_roof_grid_spin: SpinBox
 var m_roof_style_option: OptionButton
+var m_roof_footprint_option: OptionButton
+var m_roof_footprint_row: HBoxContainer
 var m_roof_base_height_spin: SpinBox
 var m_roof_height_spin: SpinBox
 var m_roof_thickness_spin: SpinBox
@@ -502,6 +504,21 @@ func _build_roof_controls(parent: VBoxContainer) -> void:
 	m_roof_style_option.select(2)
 	m_roof_style_option.item_selected.connect(_on_roof_style_selected)
 	_add_labeled_control(parent, "Style:", m_roof_style_option, "Roof shape used for newly drawn roof footprints.")
+
+	m_roof_footprint_option = OptionButton.new()
+	m_roof_footprint_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	m_roof_footprint_option.add_item("Rectangle", 0)
+	m_roof_footprint_option.set_item_metadata(0, FLOOR_STYLE_RECTANGLE)
+	m_roof_footprint_option.add_item("Polygon", 1)
+	m_roof_footprint_option.set_item_metadata(1, FLOOR_STYLE_POLYGON)
+	m_roof_footprint_option.select(0)
+	m_roof_footprint_option.item_selected.connect(_on_roof_footprint_selected)
+	m_roof_footprint_row = _add_labeled_control(
+		parent,
+		"Footprint:",
+		m_roof_footprint_option,
+		"Rectangle and Polygon only change how a Flat roof is created."
+	)
 
 	m_roof_base_height_spin = _make_spin(-20.0, 20.0, 0.01, 2.4)
 	m_roof_base_height_spin.tooltip_text = "Parent-local Y height for new roof eaves."
@@ -1144,6 +1161,10 @@ func _on_roof_style_selected(_index: int) -> void:
 	_emit_roof_settings()
 
 
+func _on_roof_footprint_selected(_index: int) -> void:
+	_emit_roof_settings()
+
+
 func _on_roof_color_changed(_color: Color) -> void:
 	_update_color_picker_icon(m_roof_color_picker)
 	_emit_roof_settings()
@@ -1299,6 +1320,7 @@ func _emit_roof_settings() -> void:
 	roof_settings_changed.emit({
 		"grid_step": float(m_roof_grid_spin.value),
 		"style": _selected_roof_style(),
+		"footprint_style": _selected_roof_footprint_style(),
 		"base_height": float(m_roof_base_height_spin.value),
 		"height": float(m_roof_height_spin.value),
 		"thickness": float(m_roof_thickness_spin.value),
@@ -1404,6 +1426,22 @@ func _selected_roof_style() -> String:
 	return String(m_roof_style_option.get_item_metadata(m_roof_style_option.selected))
 
 
+func _selected_roof_footprint_style() -> String:
+	if m_roof_footprint_option == null or m_roof_footprint_option.selected < 0:
+		return FLOOR_STYLE_RECTANGLE
+	return String(m_roof_footprint_option.get_item_metadata(m_roof_footprint_option.selected))
+
+
+func _select_roof_footprint_style(style: String) -> void:
+	if m_roof_footprint_option == null:
+		return
+	for index in range(m_roof_footprint_option.get_item_count()):
+		if String(m_roof_footprint_option.get_item_metadata(index)) == style:
+			m_roof_footprint_option.select(index)
+			return
+	m_roof_footprint_option.select(0)
+
+
 func _select_roof_style(style: String) -> void:
 	if m_roof_style_option == null:
 		return
@@ -1420,6 +1458,8 @@ func _update_roof_style_controls() -> void:
 	var style := _selected_roof_style()
 	var has_angle := style != "flat"
 	var has_gable_drop := style == "hip"
+	if m_roof_footprint_row != null:
+		m_roof_footprint_row.visible = style == "flat"
 	if m_roof_style_header != null:
 		m_roof_style_header.visible = has_angle or has_gable_drop
 	if m_roof_angle_row != null:
@@ -1695,6 +1735,9 @@ func _load_persisted_settings() -> void:
 		m_pillar_color_picker.color = pillar_color_variant
 	m_roof_grid_spin.value = float(state.get("roof_grid_step", m_roof_grid_spin.value))
 	_select_roof_style(str(state.get("roof_style", _selected_roof_style())))
+	_select_roof_footprint_style(
+		str(state.get("roof_footprint_style", _selected_roof_footprint_style()))
+	)
 	m_roof_base_height_spin.value = float(state.get("roof_base_height", m_roof_base_height_spin.value))
 	m_roof_height_spin.value = _stored_roof_angle_degrees(state)
 	m_roof_thickness_spin.value = float(state.get("roof_thickness", m_roof_thickness_spin.value))
@@ -1812,6 +1855,7 @@ func _save_persisted_settings() -> void:
 		"pillar_color": m_pillar_color_picker.color if m_pillar_color_picker != null else Color(0.70, 0.64, 0.52, 1.0),
 		"roof_grid_step": float(m_roof_grid_spin.value) if m_roof_grid_spin != null else 0.5,
 		"roof_style": _selected_roof_style(),
+		"roof_footprint_style": _selected_roof_footprint_style(),
 		"roof_base_height": float(m_roof_base_height_spin.value) if m_roof_base_height_spin != null else 2.4,
 		"roof_angle_degrees": float(m_roof_height_spin.value) if m_roof_height_spin != null else DEFAULT_ROOF_ANGLE_DEGREES,
 		"roof_height": float(m_roof_height_spin.value) if m_roof_height_spin != null else DEFAULT_ROOF_ANGLE_DEGREES,

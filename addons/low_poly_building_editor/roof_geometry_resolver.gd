@@ -239,10 +239,13 @@ func _roof_visible_render_polygons(roof: Roof3DScript) -> Array[PackedVector2Arr
 		return visible_polygons
 	var cover_polygons := roof.get_covered_polygons()
 	if cover_polygons.is_empty():
-		for rect in roof.get_visible_render_rects():
-			visible_polygons.append(_rect_polygon(rect))
+		if roof.is_polygon_roof():
+			visible_polygons.append_array(roof.get_roof_render_polygons())
+		else:
+			for rect in roof.get_visible_render_rects():
+				visible_polygons.append(_rect_polygon(rect))
 		return visible_polygons
-	visible_polygons.append(_rect_polygon(roof.get_roof_render_rect()))
+	visible_polygons.append_array(roof.get_roof_render_polygons())
 	for cover_polygon in cover_polygons:
 		var next_visible: Array[PackedVector2Array] = []
 		for visible_polygon in visible_polygons:
@@ -323,6 +326,7 @@ func _find_roof_cover_data(
 				height,
 				overhang,
 				hip_gable_height,
+				ignored_roof as Roof3DScript,
 				roof,
 				covered_rect,
 				other_before_candidate
@@ -353,19 +357,22 @@ func _roof_polygons_under_other_roof(
 	candidate_angle_degrees: float,
 	candidate_overhang: float,
 	candidate_hip_gable_height: float,
+	candidate_roof: Roof3DScript,
 	other_roof: Roof3DScript,
 	overlap_rect: Rect2,
 	other_before_candidate: bool
 ) -> Array[PackedVector2Array]:
 	var polygons: Array[PackedVector2Array] = []
-	var candidate_faces := Roof3DScript.roof_top_faces_for_style(
+	var candidate_faces := _roof_top_faces_for_node_or_style(
+		candidate_roof,
 		candidate_style,
 		candidate_size,
 		candidate_overhang,
 		candidate_angle_degrees,
 		candidate_hip_gable_height
 	)
-	var other_faces := Roof3DScript.roof_top_faces_for_style(
+	var other_faces := _roof_top_faces_for_node_or_style(
+		other_roof,
 		other_roof.get_roof_style(),
 		other_roof.get_roof_size(),
 		other_roof.roof_overhang,
@@ -414,6 +421,35 @@ func _roof_polygons_under_other_roof(
 				continue
 			polygons.append(_normalize_polygon(under_polygon))
 	return polygons
+
+
+func _roof_top_faces_for_node_or_style(
+	roof: Roof3DScript,
+	style: String,
+	size: Vector2,
+	overhang: float,
+	angle_degrees: float,
+	hip_gable_height: float
+) -> Array[Dictionary]:
+	if roof != null and is_instance_valid(roof) and roof.is_polygon_roof():
+		var faces: Array[Dictionary] = []
+		for polygon in roof.get_roof_render_polygons():
+			var triangle_indices := Geometry2D.triangulate_polygon(polygon)
+			for triangle_start in range(0, triangle_indices.size(), 3):
+				var triangle := PackedVector3Array([
+					Vector3(polygon[triangle_indices[triangle_start]].x, 0.0, polygon[triangle_indices[triangle_start]].y),
+					Vector3(polygon[triangle_indices[triangle_start + 1]].x, 0.0, polygon[triangle_indices[triangle_start + 1]].y),
+					Vector3(polygon[triangle_indices[triangle_start + 2]].x, 0.0, polygon[triangle_indices[triangle_start + 2]].y),
+				])
+				faces.append({"vertices": triangle, "plane": triangle})
+		return faces
+	return Roof3DScript.roof_top_faces_for_style(
+		style,
+		size,
+		overhang,
+		angle_degrees,
+		hip_gable_height
+	)
 
 
 func _face_polygon(face_vertices: PackedVector3Array) -> PackedVector2Array:

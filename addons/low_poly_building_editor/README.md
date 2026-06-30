@@ -9,6 +9,9 @@ multi-click outline. Both use the same grid-snapped editing gestures afterward. 
 vertex can be dragged, any edge can move both adjacent vertices, and vertices can be
 inserted with Shift-click on an edge or removed with Option/Alt-click. Hole uses the
 same Rectangle/Polygon creation choice and the same outline-editing gestures.
+Flat roofs follow the same pattern: Rectangle and Polygon change only creation, then
+both expose shared vertex, edge, insertion, removal, and body-drag editing. Other roof
+styles retain their rectangular footprints.
 
 `Building3D` is the scene-owned assembly root and carries no editor-tool configuration;
 the editor dock owns temporary tool defaults. `BuildingFactory` creates and names
