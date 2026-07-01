@@ -8,7 +8,7 @@ const StandardRailGeometry := preload(
 
 const GENERATED_META := &"stairs_generated"
 const PREVIEW_META := &"building_editor_preview"
-const MESH_GEOMETRY_VERSION := 2
+const MESH_GEOMETRY_VERSION := 3
 const SIDE_WALL_COLLISION_THICKNESS := 0.64
 const SIDE_WALL_COLLISION_META := &"stairs_side_wall_collision"
 const LEFT_SIDE_COLLISION_SHAPE_NAME := "LeftSideCollisionShape3D"

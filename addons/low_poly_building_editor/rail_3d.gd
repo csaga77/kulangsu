@@ -8,7 +8,7 @@ const StandardRailGeometry := preload(
 
 const GENERATED_META := &"rail_generated"
 const PREVIEW_META := &"building_editor_preview"
-const MESH_GEOMETRY_VERSION := 2
+const MESH_GEOMETRY_VERSION := 3
 
 @export var rebuild := false:
 	set(value):

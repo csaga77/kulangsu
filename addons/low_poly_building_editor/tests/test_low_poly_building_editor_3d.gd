@@ -1719,11 +1719,14 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	coordinator.add_child(one_rail_stairs)
 	if !one_rail_stairs.left_rail_enabled or one_rail_stairs.right_rail_enabled:
 		m_failures.append("BuildingFactory did not apply the requested single-side rail flags")
-	# The shared standard-rail strategy generates a 112-vertex post/bar assembly
+	# The shared standard-rail strategy generates a 200-vertex post/bar assembly
 	# for this 4-unit run with these dimensions: one top bar box, one lower bar
-	# box, and one 16-vertex open-ended post per tread (4 steps) centered in
-	# the depth direction instead of Rail3D's evenly-spaced distribution.
-	if _mesh_vertex_count(one_rail_stairs) != base_vertex_count + 112:
+	# box, and one 16-vertex open-ended post per tread (4 steps) centered in the
+	# depth direction instead of Rail3D's evenly-spaced distribution. The top
+	# bar's underside is partitioned into 23 aligned quads around the four post
+	# openings, replacing its former single overlapping underside quad without
+	# leaving T-junctions at the welded edges.
+	if _mesh_vertex_count(one_rail_stairs) != base_vertex_count + 200:
 		m_failures.append(
 			"Stairs3D single side rail did not append the shared standard-rail vertex count"
 		)
@@ -1767,7 +1770,7 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 		Color(0.33, 0.28, 0.22, 1.0)
 	)
 	coordinator.add_child(both_rail_stairs)
-	if _mesh_vertex_count(both_rail_stairs) != base_vertex_count + 112 * 2:
+	if _mesh_vertex_count(both_rail_stairs) != base_vertex_count + 200 * 2:
 		m_failures.append(
 			"Stairs3D with both side rails did not append two shared standard-rail vertex counts"
 		)
@@ -1862,13 +1865,14 @@ func _validate_standard_rail_geometry_post_base_heights() -> void:
 		positions,
 		base_heights
 	)
-	# Layout: top bar occupies vertices [0..23] (lower rail is disabled via
-	# lower_rail_height 0.0); each post contributes 16 vertices in
-	# FORWARD/BACK/LEFT/RIGHT face order. Its enclosed UP and hidden DOWN
-	# faces are not emitted.
-	var first_post_start := 24
-	var second_post_start := 40
-	if vertices.size() != 56:
+	# Layout: the top bar occupies vertices [0..71] (20 vertices for its
+	# outer faces plus 52 for thirteen underside quads around two post openings;
+	# lower rail is disabled via lower_rail_height 0.0). Each post then
+	# contributes 16 vertices in FORWARD/BACK/LEFT/RIGHT face order. Its
+	# enclosed UP and hidden DOWN faces are not emitted.
+	var first_post_start := 72
+	var second_post_start := 88
+	if vertices.size() != 104:
 		m_failures.append(
 			"StandardRailGeometry generated an unexpected vertex count for this post layout"
 		)
@@ -1880,19 +1884,41 @@ func _validate_standard_rail_geometry_post_base_heights() -> void:
 		if absf(vertices[second_post_start + offset].y - 0.6) > 0.001:
 			m_failures.append("StandardRailGeometry second post base is not flat at its tread height")
 
-	# The bar's underside follows the rise/length diagonal: at u=0.5 that is
-	# 0.9 + 0.6*(0.5/2.0) = 1.05, and at u=1.5 it is 0.9 + 0.6*(1.5/2.0) =
-	# 1.35. Each post (post_thickness 0.08, so half-width 0.04) reaches the
-	# underside at its uphill edge, adding 0.6*0.04/2.0 = 0.012. That makes
-	# the flat post overlap the sloped bar across its footprint rather than
-	# leaving a wedge-shaped gap: 1.062 and 1.362. These heights live only
-	# on the post side-face top edges; there is no enclosed top-cap face.
-	var top_edge_offsets := PackedInt32Array([2, 3, 5, 6, 9, 10, 14, 15])
-	for offset in top_edge_offsets:
+	# The bar's underside follows the rise/length diagonal. Each post's two
+	# run-side top edges now land on that plane independently: 1.038/1.062
+	# around u=0.5 and 1.338/1.362 around u=1.5. The matching handrail
+	# underside rectangles are absent, creating an exact seam rather than an
+	# overlap or wedge gap.
+	var minimum_run_top_offsets := PackedInt32Array([3, 5, 9, 10])
+	var maximum_run_top_offsets := PackedInt32Array([2, 6, 14, 15])
+	for offset in minimum_run_top_offsets:
+		if absf(vertices[first_post_start + offset].y - 1.038) > 0.001:
+			m_failures.append("StandardRailGeometry first post minimum edge is not welded to the bar")
+		if absf(vertices[second_post_start + offset].y - 1.338) > 0.001:
+			m_failures.append("StandardRailGeometry second post minimum edge is not welded to the bar")
+	for offset in maximum_run_top_offsets:
 		if absf(vertices[first_post_start + offset].y - 1.062) > 0.001:
-			m_failures.append("StandardRailGeometry first post does not merge into the sloped bar")
+			m_failures.append("StandardRailGeometry first post maximum edge is not welded to the bar")
 		if absf(vertices[second_post_start + offset].y - 1.362) > 0.001:
-			m_failures.append("StandardRailGeometry second post does not merge into the sloped bar")
+			m_failures.append("StandardRailGeometry second post maximum edge is not welded to the bar")
+	for triangle_start in range(0, indices.size(), 3):
+		var first_index := indices[triangle_start]
+		if normals[first_index].dot(Vector3.DOWN) < 0.999:
+			continue
+		var centroid := (
+			vertices[first_index]
+			+ vertices[indices[triangle_start + 1]]
+			+ vertices[indices[triangle_start + 2]]
+		) / 3.0
+		for post_position in positions:
+			if (
+				absf(centroid.z - post_position) < 0.039
+				and absf(centroid.x) < 0.039
+			):
+				m_failures.append(
+					"StandardRailGeometry retained a handrail underside triangle inside a post weld"
+				)
+				break
 	for normal_index in range(first_post_start, first_post_start + 16):
 		if normals[normal_index].dot(Vector3.UP) > 0.999:
 			m_failures.append("StandardRailGeometry first post retained an enclosed top face")
@@ -1957,7 +1983,7 @@ func _validate_rail_node(coordinator: Building3DScript) -> void:
 	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 	var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
 	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
-	if vertices.size() != 128:
+	if vertices.size() != 212:
 		m_failures.append("Rail3D generated the wrong standard rail vertex count")
 	if normals.size() != vertices.size():
 		m_failures.append("Rail3D mesh is missing per-vertex normal data")

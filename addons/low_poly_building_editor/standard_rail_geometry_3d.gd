@@ -16,24 +16,19 @@ extends RefCounted
 # from the embedded geometry rather than assumed, so lighting stays correct
 # for both the level and sloped cases.
 #
-# Posts are the exception: each post is appended as a genuinely unsheared,
-# upright box (no shear applied within its own small footprint) so its top
-# and bottom edge planes stay perfectly flat instead of tilting with the
-# run's rise. By default a post's flat base height follows the same rise/length
+# Posts are the exception: each post is appended as a genuinely upright
+# prism whose bottom edge plane stays flat instead of tilting with the run's
+# rise. By default a post's flat base height follows the same rise/length
 # diagonal as the bars (matching a level rail's ground plane when rise is
 # 0.0); callers with a stepped run supply an explicit `post_base_heights`
 # entry per post so its bottom lands exactly on the real surface (for
 # example a stair tread) instead of the smooth diagonal projection. Each
-# post's height is then derived, not fixed. On a level run it reaches the
-# top bar's underside exactly. On a sloped run its flat top reaches the
-# underside at the post's uphill edge, slightly overlapping the bar across
-# the rest of the post footprint so the two volumes genuinely intersect
-# instead of leaving a wedge-shaped gap. The result is clamped so it can
-# never exceed the bar's own top surface even in a degenerate case where a
-# very thick post would otherwise need to be taller than the bar itself.
-# The post's enclosed top and hidden bottom caps are omitted; its side faces
-# still terminate at that derived flat height inside the handrail and at the
-# authored base plane.
+# post's top edge follows the handrail underside across its footprint. The
+# handrail underside is partitioned around matching post openings, so every
+# post/handrail boundary occupies the same positions without overlapping
+# internal faces. The post's enclosed top and hidden bottom caps are omitted;
+# its side faces terminate on that welded boundary and at the authored base
+# plane.
 #
 # Every face's winding is chosen so its geometric winding normal is
 # antiparallel to its stored vertex normal (Godot's front-face convention),
@@ -90,12 +85,19 @@ static func append_rail(
 	var bar_size := minf(maxf(rail_thickness, 0.02), height * 0.5)
 	var top_bottom := maxf(height - bar_size, 0.0)
 
-	_append_sheared_box(
+	var positions := post_positions
+	if positions.is_empty():
+		for ratio in distribute_post_ratios(length, post_spacing):
+			positions.append(length * ratio)
+
+	_append_sheared_bar_with_bottom_openings(
 		vertices, normals, colors, indices,
 		origin, run_axis, up_axis, side_axis, length, rise,
 		Vector3(-post_size * 0.5, top_bottom, -bar_size * 0.5),
 		Vector3(length + post_size * 0.5, height, bar_size * 0.5),
-		color
+		color,
+		positions,
+		post_size
 	)
 
 	var lower_center := clampf(lower_rail_height, bar_size * 0.5, top_bottom - bar_size * 0.5)
@@ -112,10 +114,6 @@ static func append_rail(
 			color
 		)
 
-	var positions := post_positions
-	if positions.is_empty():
-		for ratio in distribute_post_ratios(length, post_spacing):
-			positions.append(length * ratio)
 	for index in range(positions.size()):
 		var u := positions[index]
 		var base_height := 0.0
@@ -123,36 +121,10 @@ static func append_rail(
 			base_height = post_base_heights[index]
 		elif length > 0.001:
 			base_height = rise * (u / length)
-		# The top bar's underside follows the run's rise, while each post
-		# has a flat top. Reaching only the underside height at the post
-		# center would leave a wedge-shaped gap over its uphill half.
-		# Reaching the underside at the uphill edge instead makes the post
-		# overlap the bar across its footprint and therefore merge visually
-		# and physically. Clamp to the bar top so a thick post cannot poke
-		# through the handrail.
-		var half_width_shear := 0.0
-		if length > 0.001:
-			half_width_shear = absf(rise) * post_size * 0.5 / length
-		var bar_bottom_at_u := top_bottom
-		var bar_top_at_u := height
-		if length > 0.001:
-			bar_bottom_at_u += rise * (u / length)
-			bar_top_at_u += rise * (u / length)
-		var post_target_top := minf(bar_bottom_at_u + half_width_shear, bar_top_at_u)
-		var post_max_local_top := maxf(bar_top_at_u - base_height, 0.0)
-		var post_min_local_top := minf(post_size, post_max_local_top)
-		var post_local_top := clampf(post_target_top - base_height, post_min_local_top, post_max_local_top)
-		# Posts embed with zero rise: `base_height` already carries whatever
-		# vertical placement is needed, so the post box itself stays a flat,
-		# upright prism instead of tilting with the run's rise.
-		_append_sheared_box(
+		_append_upright_post_welded_to_handrail(
 			vertices, normals, colors, indices,
-			origin, run_axis, up_axis, side_axis, length, 0.0,
-			Vector3(u - post_size * 0.5, base_height, -post_size * 0.5),
-			Vector3(u + post_size * 0.5, base_height + post_local_top, post_size * 0.5),
-			color,
-			false,
-			false
+			origin, run_axis, up_axis, side_axis, length, rise,
+			u, base_height, top_bottom, post_size, color
 		)
 
 
@@ -273,6 +245,218 @@ static func _append_sheared_box(
 			Vector3(maximum.x, minimum.y, minimum.z),
 			Vector3.DOWN
 		)
+
+
+static func _append_sheared_bar_with_bottom_openings(
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array,
+	origin: Vector3,
+	run_axis: Vector3,
+	up_axis: Vector3,
+	side_axis: Vector3,
+	length: float,
+	rise: float,
+	minimum: Vector3,
+	maximum: Vector3,
+	color: Color,
+	post_positions: PackedFloat32Array,
+	post_size: float
+) -> void:
+	_append_sheared_box(
+		vertices, normals, colors, indices,
+		origin, run_axis, up_axis, side_axis, length, rise,
+		minimum, maximum, color, true, false
+	)
+
+	var hole_min_side := maxf(minimum.z, -post_size * 0.5)
+	var hole_max_side := minf(maximum.z, post_size * 0.5)
+	if hole_max_side - hole_min_side <= 0.001 or post_positions.is_empty():
+		_append_sheared_bottom_quad(
+			vertices, normals, colors, indices,
+			origin, run_axis, up_axis, side_axis, length, rise, color,
+			minimum.x, maximum.x, minimum.y, minimum.z, maximum.z
+		)
+		return
+
+	# Partition every underside strip at every post boundary. That gives each
+	# open post edge an exactly matching handrail edge instead of a T-junction
+	# partway along a longer underside edge. Sorting and advancing one cursor
+	# also merges overlapping post intervals in degenerate layouts.
+	var sorted_positions := Array(post_positions)
+	sorted_positions.sort()
+	var cursor := minimum.x
+	for position_variant in sorted_positions:
+		var position := float(position_variant)
+		var hole_start := maxf(minimum.x, position - post_size * 0.5)
+		var hole_end := minf(maximum.x, position + post_size * 0.5)
+		if hole_end <= cursor + 0.001:
+			continue
+		if hole_start > cursor + 0.001:
+			_append_handrail_bottom_interval(
+				vertices, normals, colors, indices,
+				origin, run_axis, up_axis, side_axis, length, rise, color,
+				cursor, hole_start, minimum.y,
+				minimum.z, hole_min_side, hole_max_side, maximum.z,
+				true
+			)
+		var visible_hole_start := maxf(cursor, hole_start)
+		_append_handrail_bottom_interval(
+			vertices, normals, colors, indices,
+			origin, run_axis, up_axis, side_axis, length, rise, color,
+			visible_hole_start, hole_end, minimum.y,
+			minimum.z, hole_min_side, hole_max_side, maximum.z,
+			false
+		)
+		cursor = maxf(cursor, hole_end)
+		if cursor >= maximum.x - 0.001:
+			break
+	if cursor < maximum.x - 0.001:
+		_append_handrail_bottom_interval(
+			vertices, normals, colors, indices,
+			origin, run_axis, up_axis, side_axis, length, rise, color,
+			cursor, maximum.x, minimum.y,
+			minimum.z, hole_min_side, hole_max_side, maximum.z,
+			true
+		)
+
+
+static func _append_handrail_bottom_interval(
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array,
+	origin: Vector3,
+	run_axis: Vector3,
+	up_axis: Vector3,
+	side_axis: Vector3,
+	length: float,
+	rise: float,
+	color: Color,
+	minimum_run: float,
+	maximum_run: float,
+	height: float,
+	minimum_side: float,
+	hole_minimum_side: float,
+	hole_maximum_side: float,
+	maximum_side: float,
+	include_center: bool
+) -> void:
+	_append_sheared_bottom_quad(
+		vertices, normals, colors, indices,
+		origin, run_axis, up_axis, side_axis, length, rise, color,
+		minimum_run, maximum_run, height, minimum_side, hole_minimum_side
+	)
+	if include_center:
+		_append_sheared_bottom_quad(
+			vertices, normals, colors, indices,
+			origin, run_axis, up_axis, side_axis, length, rise, color,
+			minimum_run, maximum_run, height, hole_minimum_side, hole_maximum_side
+		)
+	_append_sheared_bottom_quad(
+		vertices, normals, colors, indices,
+		origin, run_axis, up_axis, side_axis, length, rise, color,
+		minimum_run, maximum_run, height, hole_maximum_side, maximum_side
+	)
+
+
+static func _append_sheared_bottom_quad(
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array,
+	origin: Vector3,
+	run_axis: Vector3,
+	up_axis: Vector3,
+	side_axis: Vector3,
+	length: float,
+	rise: float,
+	color: Color,
+	minimum_run: float,
+	maximum_run: float,
+	height: float,
+	minimum_side: float,
+	maximum_side: float
+) -> void:
+	if maximum_run - minimum_run <= 0.001 or maximum_side - minimum_side <= 0.001:
+		return
+	_append_sheared_quad(
+		vertices, normals, colors, indices,
+		origin, run_axis, up_axis, side_axis, length, rise, color,
+		Vector3(minimum_run, height, minimum_side),
+		Vector3(minimum_run, height, maximum_side),
+		Vector3(maximum_run, height, maximum_side),
+		Vector3(maximum_run, height, minimum_side),
+		Vector3.DOWN
+	)
+
+
+static func _append_upright_post_welded_to_handrail(
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array,
+	origin: Vector3,
+	run_axis: Vector3,
+	up_axis: Vector3,
+	side_axis: Vector3,
+	length: float,
+	rise: float,
+	position: float,
+	base_height: float,
+	handrail_bottom: float,
+	post_size: float,
+	color: Color
+) -> void:
+	var minimum_run := position - post_size * 0.5
+	var maximum_run := position + post_size * 0.5
+	var minimum_side := -post_size * 0.5
+	var maximum_side := post_size * 0.5
+	var minimum_top := handrail_bottom
+	var maximum_top := handrail_bottom
+	if length > 0.001:
+		minimum_top += rise * (minimum_run / length)
+		maximum_top += rise * (maximum_run / length)
+
+	# Use zero shear for the post itself: only its top boundary follows the
+	# handrail plane, while every bottom corner stays on the authored base.
+	_append_sheared_quad(
+		vertices, normals, colors, indices,
+		origin, run_axis, up_axis, side_axis, length, 0.0, color,
+		Vector3(minimum_run, base_height, minimum_side),
+		Vector3(maximum_run, base_height, minimum_side),
+		Vector3(maximum_run, maximum_top, minimum_side),
+		Vector3(minimum_run, minimum_top, minimum_side),
+		Vector3.FORWARD
+	)
+	_append_sheared_quad(
+		vertices, normals, colors, indices,
+		origin, run_axis, up_axis, side_axis, length, 0.0, color,
+		Vector3(minimum_run, base_height, maximum_side),
+		Vector3(minimum_run, minimum_top, maximum_side),
+		Vector3(maximum_run, maximum_top, maximum_side),
+		Vector3(maximum_run, base_height, maximum_side),
+		Vector3.BACK
+	)
+	_append_sheared_quad(
+		vertices, normals, colors, indices,
+		origin, run_axis, up_axis, side_axis, length, 0.0, color,
+		Vector3(minimum_run, base_height, minimum_side),
+		Vector3(minimum_run, minimum_top, minimum_side),
+		Vector3(minimum_run, minimum_top, maximum_side),
+		Vector3(minimum_run, base_height, maximum_side),
+		Vector3.LEFT
+	)
+	_append_sheared_quad(
+		vertices, normals, colors, indices,
+		origin, run_axis, up_axis, side_axis, length, 0.0, color,
+		Vector3(maximum_run, base_height, minimum_side),
+		Vector3(maximum_run, base_height, maximum_side),
+		Vector3(maximum_run, maximum_top, maximum_side),
+		Vector3(maximum_run, maximum_top, minimum_side),
+		Vector3.RIGHT
+	)
 
 
 static func _append_sheared_quad(
