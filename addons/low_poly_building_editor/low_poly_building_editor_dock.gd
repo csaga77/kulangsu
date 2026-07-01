@@ -38,7 +38,7 @@ const FLOOR_STYLE_POLYGON := "polygon"
 const COLOR_SWATCH_ICON_SIZE := 16
 const COLOR_SWATCH_MIN_WIDTH := 34.0
 const SHORTCUTS_SELECT_TEXT := "Shortcuts\nSelect: normal Godot editor selection and transform tools are active."
-const SHORTCUTS_WALL_TEXT := "Shortcuts\nUse Wall Type to choose a single wall or enclosed room.\nDrag empty space to draw a wall span or room rectangle.\nClick once, then click the endpoint or opposite room corner.\nDrag a room side to resize in one direction.\nOption/Alt-drag a room to move the whole room.\nDrag other wall bodies to move them.\nDrag endpoint or joint to edit.\nShift-click wall body to add joint.\nOption/Alt-drag shared joint to disconnect.\nEsc or right-click cancels."
+const SHORTCUTS_WALL_TEXT := "Shortcuts\nUse Wall Type to choose a single wall or enclosed room.\nRoom Sides sets its connected span count (minimum 3).\nDrag empty space to draw a wall span or room bounds.\nClick once, then click the endpoint or opposite room bound.\nDrag a four-side room wall to resize in one direction.\nOption/Alt-drag a four-side room to move it.\nDrag other wall bodies to move them.\nDrag endpoint or joint to edit.\nShift-click wall body to add joint.\nOption/Alt-drag shared joint to disconnect.\nEsc or right-click cancels."
 const SHORTCUTS_FLOOR_TEXT := "Shortcuts\nRectangle and Polygon only change how a floor is created.\nRectangle: drag, or click two opposite corners.\nPolygon: click each vertex; click the first vertex or press Enter to close.\nFor either style, drag any vertex to reshape.\nDrag any edge to move its two vertices.\nShift-click an edge to add a vertex.\nOption/Alt-click a vertex to remove it.\nDrag the floor body to move it.\nEsc or right-click cancels."
 const SHORTCUTS_STAIRS_TEXT := "Shortcuts\nDrag empty space to draw a stair rectangle.\nClick one corner, then click the opposite corner to place.\nR rotates the preview or hovered stairs by 90 degrees.\nShift+R rotates the opposite direction.\nDrag stairs body to move it.\nDrag stairs edge or corner to resize.\nEsc or right-click cancels."
 const SHORTCUTS_PILLAR_TEXT := "Shortcuts\nClick empty space to place a pillar.\nDrag pillar body to move it.\nDrag pillar edge to resize its radius.\nEsc or right-click cancels."
@@ -63,6 +63,8 @@ var m_window_section: VBoxContainer
 var m_door_section: VBoxContainer
 var m_wall_type_option: OptionButton
 var m_grid_spin: SpinBox
+var m_room_sides_spin: SpinBox
+var m_room_sides_row: HBoxContainer
 var m_wall_base_height_spin: SpinBox
 var m_wall_height_spin: SpinBox
 var m_wall_thickness_spin: SpinBox
@@ -330,8 +332,18 @@ func _build_wall_controls(parent: VBoxContainer) -> void:
 		parent,
 		"Type:",
 		m_wall_type_option,
-		"Draw one wall span or four connected walls enclosing a rectangular room."
+		"Draw one wall span or connected walls enclosing a room."
 	)
+
+	m_room_sides_spin = _make_spin(3.0, 64.0, 1.0, 4.0)
+	m_room_sides_spin.allow_greater = true
+	m_room_sides_row = _add_labeled_control(
+		parent,
+		"Sides:",
+		m_room_sides_spin,
+		"Number of connected wall spans in a new room. Minimum 3."
+	)
+	m_room_sides_spin.value_changed.connect(_on_wall_setting_changed)
 
 	m_grid_spin = _make_spin(0.05, 8.0, 0.05, 0.5)
 	_add_labeled_control(parent, "Grid:", m_grid_spin, "Snap size for drawing and editing wall endpoints.")
@@ -1339,6 +1351,7 @@ func _emit_wall_settings() -> void:
 	wall_settings_changed.emit({
 		"grid_step": float(m_grid_spin.value),
 		"type": _selected_wall_type(),
+		"room_sides": maxi(int(roundf(m_room_sides_spin.value)), 3),
 		"base_height": float(m_wall_base_height_spin.value),
 		"height": float(m_wall_height_spin.value),
 		"thickness": float(m_wall_thickness_spin.value),
@@ -1421,8 +1434,11 @@ func _select_wall_type(wall_type: String) -> void:
 
 
 func _update_wall_type_controls() -> void:
+	var is_room := _selected_wall_type() == WALL_TYPE_ROOM
 	if m_lock_8_way_check != null:
-		m_lock_8_way_check.disabled = _selected_wall_type() == WALL_TYPE_ROOM
+		m_lock_8_way_check.disabled = is_room
+	if m_room_sides_row != null:
+		m_room_sides_row.visible = is_room
 
 
 func _selected_floor_type() -> String:
@@ -1790,6 +1806,10 @@ func _load_persisted_settings() -> void:
 		m_debug_wireframe_color_picker.color = wireframe_color_variant
 	_update_debug_wireframe_controls()
 	_select_wall_type(str(state.get("wall_type", _selected_wall_type())))
+	m_room_sides_spin.value = maxf(
+		float(state.get("wall_room_sides", m_room_sides_spin.value)),
+		3.0
+	)
 	m_wall_base_height_spin.value = float(state.get("wall_base_height", m_wall_base_height_spin.value))
 	_select_floor_type(str(state.get("floor_type", _selected_floor_type())))
 	_select_floor_style(str(state.get("floor_style", _selected_floor_style())))
@@ -1930,6 +1950,11 @@ func _save_persisted_settings() -> void:
 			else Color(0.05, 0.95, 1.0, 1.0)
 		),
 		"wall_type": _selected_wall_type(),
+		"wall_room_sides": (
+			maxi(int(roundf(m_room_sides_spin.value)), 3)
+			if m_room_sides_spin != null
+			else 4
+		),
 		"wall_base_height": float(m_wall_base_height_spin.value) if m_wall_base_height_spin != null else 0.0,
 		"floor_type": _selected_floor_type(),
 		"floor_style": _selected_floor_style(),

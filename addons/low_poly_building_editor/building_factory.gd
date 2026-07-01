@@ -162,15 +162,32 @@ static func room_segments_from_corners(
 	local_end: Vector3,
 	height: float,
 	thickness: float,
-	color: Color
+	color: Color,
+	side_count: int = 4
 ) -> Array[WallSegment3D]:
 	var base_y := local_start.y
-	var corners: Array[Vector3] = [
-		Vector3(local_start.x, base_y, local_start.z),
-		Vector3(local_end.x, base_y, local_start.z),
-		Vector3(local_end.x, base_y, local_end.z),
-		Vector3(local_start.x, base_y, local_end.z),
-	]
+	var resolved_side_count := maxi(side_count, 3)
+	var corners: Array[Vector3] = []
+	if resolved_side_count == 4:
+		corners.assign([
+			Vector3(local_start.x, base_y, local_start.z),
+			Vector3(local_end.x, base_y, local_start.z),
+			Vector3(local_end.x, base_y, local_end.z),
+			Vector3(local_start.x, base_y, local_end.z),
+		])
+	else:
+		var center := Vector3(
+			(local_start.x + local_end.x) * 0.5,
+			base_y,
+			(local_start.z + local_end.z) * 0.5
+		)
+		var radius_x := absf(local_end.x - local_start.x) * 0.5
+		var radius_z := absf(local_end.z - local_start.z) * 0.5
+		for index in range(resolved_side_count):
+			var angle := -PI * 0.5 + TAU * float(index) / float(resolved_side_count)
+			corners.append(
+				center + Vector3(cos(angle) * radius_x, 0.0, sin(angle) * radius_z)
+			)
 	var segments: Array[WallSegment3D] = []
 	for index in range(corners.size()):
 		var segment := WallSegment3DScript.new() as WallSegment3D
@@ -189,9 +206,17 @@ static func create_room_node(
 	local_end: Vector3,
 	height: float = 2.4,
 	thickness: float = 0.22,
-	color: Color = Color(0.78, 0.68, 0.54, 1.0)
+	color: Color = Color(0.78, 0.68, 0.54, 1.0),
+	side_count: int = 4
 ) -> Wall3DScript:
-	var segments := room_segments_from_corners(local_start, local_end, height, thickness, color)
+	var segments := room_segments_from_corners(
+		local_start,
+		local_end,
+		height,
+		thickness,
+		color,
+		side_count
+	)
 	var wall := create_wall_node(
 		building,
 		segments[0].start_point,

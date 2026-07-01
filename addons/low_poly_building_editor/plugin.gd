@@ -214,6 +214,7 @@ var m_display_settings := {
 var m_wall_settings := {
 	"grid_step": 0.5,
 	"type": WALL_TYPE_WALL,
+	"room_sides": 4,
 	"base_height": 0.0,
 	"height": 2.4,
 	"thickness": 0.22,
@@ -860,7 +861,8 @@ func _set_wall_preview_geometry(local_start: Vector3, local_end: Vector3) -> voi
 		local_end,
 		float(m_wall_settings["height"]),
 		float(m_wall_settings["thickness"]),
-		m_wall_preview.wall_color
+		m_wall_preview.wall_color,
+		_room_side_count()
 	)
 	var extras: Array[WallSegment3DScript] = []
 	for index in range(1, segments.size()):
@@ -1034,7 +1036,8 @@ func _commit_room(
 		local_end,
 		float(m_wall_settings["height"]),
 		thickness,
-		Color(m_wall_settings["color"])
+		Color(m_wall_settings["color"]),
+		_room_side_count()
 	)
 	var intersects_existing_wall := false
 	for segment_index in range(wall.get_segment_count()):
@@ -7318,6 +7321,10 @@ func _wall_tool_type() -> String:
 
 func _is_room_wall_mode() -> bool:
 	return _wall_tool_type() == WALL_TYPE_ROOM
+
+
+func _room_side_count() -> int:
+	return maxi(int(m_wall_settings.get("room_sides", 4)), 3)
 
 
 func _wall_draw_label() -> String:

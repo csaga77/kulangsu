@@ -533,6 +533,40 @@ func _validate_room_node(coordinator: Building3DScript) -> void:
 		m_failures.append("Building3D room did not generate a wall mesh")
 	if room.get_node_or_null("WallCollision") == null:
 		m_failures.append("Building3D room did not generate wall collision")
+
+	var triangular_room := BuildingFactoryScript.create_room_node(
+		coordinator,
+		Vector3(14.0, 0.5, 8.0),
+		Vector3(18.0, 0.5, 12.0),
+		2.8,
+		0.3,
+		Color(0.62, 0.54, 0.44, 1.0),
+		2
+	)
+	if triangular_room.get_segment_count() != 3:
+		m_failures.append("BuildingFactory did not enforce the three-side room minimum")
+	for segment_index in range(triangular_room.get_segment_count()):
+		var segment := triangular_room.get_segment(segment_index)
+		if triangular_room.count_connected_endpoints(segment.start_point, 0.001) != 2:
+			m_failures.append("BuildingFactory triangular room is not enclosed")
+	triangular_room.free()
+
+	var pentagonal_room := BuildingFactoryScript.create_room_node(
+		coordinator,
+		Vector3(20.0, 0.5, 8.0),
+		Vector3(25.0, 0.5, 13.0),
+		2.8,
+		0.3,
+		Color(0.62, 0.54, 0.44, 1.0),
+		5
+	)
+	if pentagonal_room.get_segment_count() != 5:
+		m_failures.append("BuildingFactory did not create the configured room side count")
+	for segment_index in range(pentagonal_room.get_segment_count()):
+		var segment := pentagonal_room.get_segment(segment_index)
+		if pentagonal_room.count_connected_endpoints(segment.start_point, 0.001) != 2:
+			m_failures.append("BuildingFactory pentagonal room is not enclosed")
+	pentagonal_room.free()
 	if !room.is_rectangular_loop():
 		m_failures.append("Wall3D did not recognize a generated room as a rectangular loop")
 	var room_opening := BuildingOpening3DScript.new() as BuildingOpening3DScript
