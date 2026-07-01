@@ -1,8 +1,8 @@
 # Low-Poly Building Editor
 
 Godot editor plugin for grid-snapped low-poly building authoring — an editor dock plus 3D
-viewport tools for walls, floors, stairs, pillars, roofs, openings, and props, authored as
-normal scene nodes so the result serializes into `.tscn` files. The Wall tool can draw
+viewport tools for walls, floors, stairs, standard rails, pillars, roofs, openings, and
+props, authored as normal scene nodes so the result serializes into `.tscn` files. The Wall tool can draw
 either individual spans or enclosed rooms with a configurable side count of at least
 three; four sides preserves rectangular-room creation. The Floor tool's Rectangle and
 Polygon styles choose only how a new footprint is drawn: two opposite corners or a
@@ -23,7 +23,7 @@ building blocks, while transient wall and roof geometry resolvers perform inters
 overlap, opening-propagation, and clipping calculations.
 
 The dock's global **Debug Display** controls draw one shared, transient wireframe across
-walls, floors, stairs, pillars, roofs, openings, and placed props. Edges are deduplicated,
+walls, floors, stairs, rails, pillars, roofs, openings, and placed props. Edges are deduplicated,
 depth-tested by default, and can optionally use X-ray mode. Display changes replace only
 the overlay; they never rebuild authored mesh or collision geometry. New
 `BuildingMesh3D` subclasses inherit this behavior automatically.
@@ -39,7 +39,7 @@ by a genuine subset; and concrete pillar, roof, window, and door styles own thei
 identity, style controls, and geometry. See the normative future-block pattern in
 [`docs/contract.md`](docs/contract.md#building-block-style-pattern).
 
-Serialized generated meshes are validated caches. Walls, floors, stairs, pillars, and
+Serialized generated meshes are validated caches. Walls, floors, stairs, rails, pillars, and
 roofs share `BuildingMesh3D` cache signatures; windows and doors cache their generated
 part meshes. Loading reuses matching geometry while recreating unsaved collision/debug
 children, and authored or clipping changes invalidate only the affected cache.

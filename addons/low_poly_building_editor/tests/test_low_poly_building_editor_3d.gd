@@ -16,6 +16,7 @@ const BuildingThumbnailRendererScript = preload(
 const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
 const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
 const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.gd")
+const Rail3DScript = preload("res://addons/low_poly_building_editor/rail_3d.gd")
 const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
 const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
 const RoundPillar3DScript = preload("res://addons/low_poly_building_editor/round_pillar_3d.gd")
@@ -121,6 +122,7 @@ func _run_smoke_checks() -> void:
 	_validate_room_node(coordinator)
 	_validate_floor_node(coordinator)
 	_validate_stairs_node(coordinator)
+	_validate_rail_node(coordinator)
 	_validate_pillar_node(coordinator)
 	_validate_roof_node(coordinator)
 	_validate_shared_debug_wireframes(coordinator)
@@ -1654,6 +1656,69 @@ func _validate_stairs_node(coordinator: Building3DScript) -> void:
 		m_failures.append("Stairs3D did not apply rotation to its transform")
 
 
+func _validate_rail_node(coordinator: Building3DScript) -> void:
+	var base_y := 1.25
+	var rail := BuildingFactoryScript.create_rail_node(
+		coordinator,
+		Vector3(2.0, base_y, 24.0),
+		Vector3(6.0, base_y, 24.0),
+		1.1,
+		1.0,
+		0.08,
+		0.1,
+		0.2,
+		Color(0.33, 0.28, 0.22, 1.0)
+	)
+	if rail.get_parent() != null:
+		m_failures.append("BuildingFactory parented a rail instead of returning a detached node")
+	coordinator.add_child(rail)
+	if rail.mesh == null or rail.mesh.get_surface_count() <= 0:
+		m_failures.append("Rail3D did not generate a mesh")
+		return
+	if rail.position.distance_to(Vector3(2.0, base_y, 24.0)) > 0.001:
+		m_failures.append("Rail3D did not place its transform at the start point")
+	if absf(rail.get_rail_length() - 4.0) > 0.001:
+		m_failures.append("Rail3D did not preserve its authored span length")
+	if rail.get_post_count() != 5:
+		m_failures.append("Rail3D did not distribute posts from the configured maximum spacing")
+
+	var arrays := rail.mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	if vertices.size() != 168:
+		m_failures.append("Rail3D generated the wrong standard rail vertex count")
+	if normals.size() != vertices.size():
+		m_failures.append("Rail3D mesh is missing per-vertex normal data")
+	if colors.size() != vertices.size():
+		m_failures.append("Rail3D mesh is missing per-vertex color data")
+	if !_has_normal_near(normals, Vector3.UP):
+		m_failures.append("Rail3D mesh is missing top-facing rail surfaces")
+	if !_has_normal_near(normals, Vector3.FORWARD):
+		m_failures.append("Rail3D mesh is missing front-facing rail surfaces")
+	if indices.size() >= 3 and !normals.is_empty():
+		var a := vertices[indices[0]]
+		var b := vertices[indices[1]]
+		var c := vertices[indices[2]]
+		var winding_normal := (b - a).cross(c - a).normalized()
+		if winding_normal.dot(normals[indices[0]]) > -0.999:
+			m_failures.append("Rail3D triangle winding does not match Godot BoxMesh convention")
+	if rail.get_node_or_null("RailCollision") == null:
+		m_failures.append("Rail3D did not generate collision")
+
+	rail.set_rail_points(
+		Vector3(3.0, base_y, 25.0),
+		Vector3(7.0, base_y, 29.0)
+	)
+	if rail.position.distance_to(Vector3(3.0, base_y, 25.0)) > 0.001:
+		m_failures.append("Rail3D did not move its transform after endpoint editing")
+	if absf(rail.get_rail_length() - sqrt(32.0)) > 0.001:
+		m_failures.append("Rail3D did not resize after endpoint editing")
+	if rail.transform.basis.is_equal_approx(Basis.IDENTITY):
+		m_failures.append("Rail3D did not orient its local frame along a diagonal span")
+
+
 func _has_box_collision_shape(root: Node, path: String) -> bool:
 	return _box_collision_shape(root, path) != null
 
@@ -2985,9 +3050,17 @@ func _validate_serialized_building_mesh_caches() -> void:
 	source_stairs.name = "CachedStairs"
 	source_root.add_child(source_stairs)
 	source_stairs.owner = source_root
-	var source_pillar := BuildingFactoryScript.create_pillar_node(
+	var source_rail := BuildingFactoryScript.create_rail_node(
 		source_root,
 		Vector3(9.0, 0.0, 0.0),
+		Vector3(13.0, 0.0, 0.0)
+	)
+	source_rail.name = "CachedRail"
+	source_root.add_child(source_rail)
+	source_rail.owner = source_root
+	var source_pillar := BuildingFactoryScript.create_pillar_node(
+		source_root,
+		Vector3(15.0, 0.0, 0.0),
 		0.3,
 		2.4,
 		8,
@@ -2998,8 +3071,8 @@ func _validate_serialized_building_mesh_caches() -> void:
 	source_pillar.owner = source_root
 	var source_roof := BuildingFactoryScript.create_roof_node(
 		source_root,
-		Vector3(11.0, 2.4, 0.0),
-		Vector3(15.0, 2.4, 4.0),
+		Vector3(17.0, 2.4, 0.0),
+		Vector3(21.0, 2.4, 4.0),
 		"gable"
 	)
 	source_roof.name = "CachedRoof"
@@ -3024,6 +3097,7 @@ func _validate_serialized_building_mesh_caches() -> void:
 		cached_instance.get_node("CachedFloor"),
 		cached_instance.get_node("CachedPolygonFloor"),
 		cached_instance.get_node("CachedStairs"),
+		cached_instance.get_node("CachedRail"),
 		cached_instance.get_node("CachedPillar"),
 		cached_instance.get_node("CachedRoof"),
 	]
@@ -3044,6 +3118,7 @@ func _validate_serialized_building_mesh_caches() -> void:
 	if cached_polygon_floor.get_floor_hole_polygons().size() != 1:
 		m_failures.append("Loading a cached polygon floor did not restore its polygon hole")
 	var cached_stairs := cached_instance.get_node("CachedStairs") as Stairs3DScript
+	var cached_rail := cached_instance.get_node("CachedRail") as Rail3DScript
 	var cached_pillar := cached_instance.get_node("CachedPillar") as Pillar3DScript
 	var cached_roof := cached_instance.get_node("CachedRoof") as Roof3DScript
 	cached_wall.set_wall_endpoints(cached_wall.start_point, cached_wall.end_point)
@@ -3051,6 +3126,7 @@ func _validate_serialized_building_mesh_caches() -> void:
 	cached_polygon_floor.set_floor_polygon(cached_polygon_floor.get_floor_polygon())
 	cached_polygon_floor.set_floor_hole_polygons(cached_polygon_floor.get_floor_hole_polygons())
 	cached_stairs.set_stair_rotation_degrees(cached_stairs.stair_rotation_degrees)
+	cached_rail.set_rail_points(cached_rail.start_point, cached_rail.end_point)
 	cached_pillar.set_pillar_radius(cached_pillar.pillar_radius)
 	cached_roof.set_covered_regions(
 		cached_roof.get_covered_rects(),
@@ -3080,6 +3156,8 @@ func _validate_serialized_building_mesh_caches() -> void:
 	changed_polygon_floor.set_floor_polygon(changed_polygon_points)
 	var changed_stairs := changed_instance.get_node("CachedStairs") as Stairs3DScript
 	changed_stairs.step_count += 1
+	var changed_rail := changed_instance.get_node("CachedRail") as Rail3DScript
+	changed_rail.post_spacing += 0.1
 	var changed_pillar := changed_instance.get_node("CachedPillar") as Pillar3DScript
 	changed_pillar.pillar_radius += 0.05
 	var changed_roof := changed_instance.get_node("CachedRoof") as Roof3DScript
@@ -3092,6 +3170,7 @@ func _validate_serialized_building_mesh_caches() -> void:
 		changed_floor,
 		changed_polygon_floor,
 		changed_stairs,
+		changed_rail,
 		changed_pillar,
 		changed_roof,
 	]
@@ -4247,9 +4326,16 @@ func _validate_shared_debug_wireframes(coordinator: Building3DScript) -> void:
 	)
 	test_root.add_child(stairs)
 	nodes.append(stairs)
-	var pillar := BuildingFactoryScript.create_pillar_node(
+	var rail := BuildingFactoryScript.create_rail_node(
 		test_root,
 		Vector3(12.0, 0.0, 0.0),
+		Vector3(15.0, 0.0, 0.0)
+	)
+	test_root.add_child(rail)
+	nodes.append(rail)
+	var pillar := BuildingFactoryScript.create_pillar_node(
+		test_root,
+		Vector3(16.0, 0.0, 0.0),
 		0.3,
 		2.4
 	)
@@ -4257,8 +4343,8 @@ func _validate_shared_debug_wireframes(coordinator: Building3DScript) -> void:
 	nodes.append(pillar)
 	var roof := BuildingFactoryScript.create_roof_node(
 		test_root,
-		Vector3(14.0, 2.4, 0.0),
-		Vector3(18.0, 2.4, 3.0)
+		Vector3(18.0, 2.4, 0.0),
+		Vector3(22.0, 2.4, 3.0)
 	)
 	test_root.add_child(roof)
 	nodes.append(roof)

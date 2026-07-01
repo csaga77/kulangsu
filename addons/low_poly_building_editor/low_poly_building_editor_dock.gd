@@ -5,6 +5,7 @@ signal tool_mode_changed(mode: String)
 signal wall_settings_changed(settings: Dictionary)
 signal floor_settings_changed(settings: Dictionary)
 signal stair_settings_changed(settings: Dictionary)
+signal rail_settings_changed(settings: Dictionary)
 signal pillar_settings_changed(settings: Dictionary)
 signal roof_settings_changed(settings: Dictionary)
 signal prop_settings_changed(settings: Dictionary)
@@ -17,6 +18,7 @@ const MODE_SELECT := "select"
 const MODE_WALL := "wall"
 const MODE_FLOOR := "floor"
 const MODE_STAIRS := "stairs"
+const MODE_RAIL := "rail"
 const MODE_PILLAR := "pillar"
 const MODE_ROOF := "roof"
 const MODE_PROP := "prop"
@@ -41,6 +43,7 @@ const SHORTCUTS_SELECT_TEXT := "Shortcuts\nSelect: normal Godot editor selection
 const SHORTCUTS_WALL_TEXT := "Shortcuts\nUse Wall Type to choose a single wall or enclosed room.\nRoom Sides sets its connected span count (minimum 3).\nDrag empty space to draw a wall span or room bounds.\nClick once, then click the endpoint or opposite room bound.\nDrag a four-side room wall to resize in one direction.\nOption/Alt-drag a four-side room to move it.\nDrag other wall bodies to move them.\nDrag endpoint or joint to edit.\nShift-click wall body to add joint.\nOption/Alt-drag shared joint to disconnect.\nEsc or right-click cancels."
 const SHORTCUTS_FLOOR_TEXT := "Shortcuts\nRectangle and Polygon only change how a floor is created.\nRectangle: drag, or click two opposite corners.\nPolygon: click each vertex; click the first vertex or press Enter to close.\nFor either style, drag any vertex to reshape.\nDrag any edge to move its two vertices.\nShift-click an edge to add a vertex.\nOption/Alt-click a vertex to remove it.\nDrag the floor body to move it.\nEsc or right-click cancels."
 const SHORTCUTS_STAIRS_TEXT := "Shortcuts\nDrag empty space to draw a stair rectangle.\nClick one corner, then click the opposite corner to place.\nR rotates the preview or hovered stairs by 90 degrees.\nShift+R rotates the opposite direction.\nDrag stairs body to move it.\nDrag stairs edge or corner to resize.\nEsc or right-click cancels."
+const SHORTCUTS_RAIL_TEXT := "Shortcuts\nDrag empty space to draw a standard rail.\nClick once, then click the endpoint to place.\nDrag a rail endpoint to resize it.\nDrag the rail body to move it.\nEsc or right-click cancels."
 const SHORTCUTS_PILLAR_TEXT := "Shortcuts\nClick empty space to place a pillar.\nDrag pillar body to move it.\nDrag pillar edge to resize its radius.\nEsc or right-click cancels."
 const SHORTCUTS_ROOF_TEXT := "Shortcuts\nFlat roofs can be created as Rectangle or Polygon footprints.\nRectangle: drag, or click two opposite corners.\nPolygon: click each vertex; click the first vertex or press Enter to close.\nFor either Flat footprint, drag any vertex or edge to reshape.\nShift-click an edge to add a vertex.\nOption/Alt-click a vertex to remove it.\nDrag the roof body to move it.\nR rotates rectangular or pitched roofs by 90 degrees.\nEsc or right-click cancels."
 const SHORTCUTS_PROP_TEXT := "Shortcuts\nSelect a palette item, then click to place.\nR rotates the preview by 90 degrees.\nEsc or right-click cancels."
@@ -56,6 +59,7 @@ var m_debug_wireframe_color_picker: ColorPickerButton
 var m_wall_section: VBoxContainer
 var m_floor_section: VBoxContainer
 var m_stair_section: VBoxContainer
+var m_rail_section: VBoxContainer
 var m_pillar_section: VBoxContainer
 var m_roof_section: VBoxContainer
 var m_prop_section: VBoxContainer
@@ -83,6 +87,14 @@ var m_stair_step_count_spin: SpinBox
 var m_stair_thickness_spin: SpinBox
 var m_stair_rotation_spin: SpinBox
 var m_stair_color_picker: ColorPickerButton
+var m_rail_grid_spin: SpinBox
+var m_rail_base_height_spin: SpinBox
+var m_rail_height_spin: SpinBox
+var m_rail_post_spacing_spin: SpinBox
+var m_rail_post_thickness_spin: SpinBox
+var m_rail_bar_thickness_spin: SpinBox
+var m_rail_lower_height_spin: SpinBox
+var m_rail_color_picker: ColorPickerButton
 var m_pillar_grid_spin: SpinBox
 var m_pillar_style_option: OptionButton
 var m_pillar_base_height_spin: SpinBox
@@ -220,16 +232,18 @@ func _build_ui() -> void:
 	m_mode_option.set_item_metadata(2, MODE_FLOOR)
 	m_mode_option.add_item("Stairs", 3)
 	m_mode_option.set_item_metadata(3, MODE_STAIRS)
-	m_mode_option.add_item("Pillar", 4)
-	m_mode_option.set_item_metadata(4, MODE_PILLAR)
-	m_mode_option.add_item("Roof", 5)
-	m_mode_option.set_item_metadata(5, MODE_ROOF)
-	m_mode_option.add_item("Prop", 6)
-	m_mode_option.set_item_metadata(6, MODE_PROP)
-	m_mode_option.add_item("Door", 7)
-	m_mode_option.set_item_metadata(7, MODE_DOOR)
-	m_mode_option.add_item("Window", 8)
-	m_mode_option.set_item_metadata(8, MODE_WINDOW)
+	m_mode_option.add_item("Rail", 4)
+	m_mode_option.set_item_metadata(4, MODE_RAIL)
+	m_mode_option.add_item("Pillar", 5)
+	m_mode_option.set_item_metadata(5, MODE_PILLAR)
+	m_mode_option.add_item("Roof", 6)
+	m_mode_option.set_item_metadata(6, MODE_ROOF)
+	m_mode_option.add_item("Prop", 7)
+	m_mode_option.set_item_metadata(7, MODE_PROP)
+	m_mode_option.add_item("Door", 8)
+	m_mode_option.set_item_metadata(8, MODE_DOOR)
+	m_mode_option.add_item("Window", 9)
+	m_mode_option.set_item_metadata(9, MODE_WINDOW)
 	m_mode_option.item_selected.connect(_on_mode_selected)
 	mode_row.add_child(m_mode_option)
 	content.add_child(mode_row)
@@ -248,6 +262,8 @@ func _build_ui() -> void:
 	_build_floor_controls(m_floor_section)
 	m_stair_section = _make_tool_section(content)
 	_build_stair_controls(m_stair_section)
+	m_rail_section = _make_tool_section(content)
+	_build_rail_controls(m_rail_section)
 	m_pillar_section = _make_tool_section(content)
 	_build_pillar_controls(m_pillar_section)
 	m_roof_section = _make_tool_section(content)
@@ -451,6 +467,44 @@ func _build_stair_controls(parent: VBoxContainer) -> void:
 	m_stair_color_picker = _make_color_picker(Color(0.52, 0.46, 0.38, 1.0))
 	m_stair_color_picker.color_changed.connect(_on_stair_color_changed)
 	_add_labeled_control(parent, "Color:", m_stair_color_picker, "Vertex color applied to newly drawn stairs.")
+
+
+func _build_rail_controls(parent: VBoxContainer) -> void:
+	var header := Label.new()
+	header.text = "Standard Rail Defaults"
+	parent.add_child(header)
+
+	m_rail_grid_spin = _make_spin(0.05, 8.0, 0.05, 0.5)
+	_add_labeled_control(parent, "Grid:", m_rail_grid_spin, "Snap size for drawing and editing rail endpoints.")
+	m_rail_grid_spin.value_changed.connect(_on_rail_setting_changed)
+
+	m_rail_base_height_spin = _make_spin(-20.0, 20.0, 0.01, 0.0)
+	_add_labeled_control(parent, "Base Y:", m_rail_base_height_spin, "Parent-local Y height for new rail bases.")
+	m_rail_base_height_spin.value_changed.connect(_on_rail_setting_changed)
+
+	m_rail_height_spin = _make_spin(0.2, 4.0, 0.01, 1.0)
+	_add_labeled_control(parent, "Height:", m_rail_height_spin, "Height from the base to the top of the handrail.")
+	m_rail_height_spin.value_changed.connect(_on_rail_setting_changed)
+
+	m_rail_post_spacing_spin = _make_spin(0.1, 8.0, 0.05, 1.0)
+	_add_labeled_control(parent, "Post Spacing:", m_rail_post_spacing_spin, "Maximum spacing between evenly distributed square posts.")
+	m_rail_post_spacing_spin.value_changed.connect(_on_rail_setting_changed)
+
+	m_rail_post_thickness_spin = _make_spin(0.02, 1.0, 0.01, 0.08)
+	_add_labeled_control(parent, "Post Size:", m_rail_post_thickness_spin, "Square width and depth of each post.")
+	m_rail_post_thickness_spin.value_changed.connect(_on_rail_setting_changed)
+
+	m_rail_bar_thickness_spin = _make_spin(0.02, 1.0, 0.01, 0.1)
+	_add_labeled_control(parent, "Rail Size:", m_rail_bar_thickness_spin, "Square width and height of the top and lower rails.")
+	m_rail_bar_thickness_spin.value_changed.connect(_on_rail_setting_changed)
+
+	m_rail_lower_height_spin = _make_spin(0.0, 4.0, 0.01, 0.18)
+	_add_labeled_control(parent, "Lower Rail Y:", m_rail_lower_height_spin, "Center height of the lower horizontal rail. Set to 0 to disable it.")
+	m_rail_lower_height_spin.value_changed.connect(_on_rail_setting_changed)
+
+	m_rail_color_picker = _make_color_picker(Color(0.33, 0.28, 0.22, 1.0))
+	m_rail_color_picker.color_changed.connect(_on_rail_color_changed)
+	_add_labeled_control(parent, "Color:", m_rail_color_picker, "Vertex color applied to newly drawn rails.")
 
 
 func _build_pillar_controls(parent: VBoxContainer) -> void:
@@ -962,6 +1016,7 @@ func _refresh_color_picker_icons() -> void:
 	_update_color_picker_icon(m_wall_color_picker)
 	_update_color_picker_icon(m_floor_color_picker)
 	_update_color_picker_icon(m_stair_color_picker)
+	_update_color_picker_icon(m_rail_color_picker)
 	_update_color_picker_icon(m_pillar_color_picker)
 	_update_color_picker_icon(m_roof_color_picker)
 	_update_color_picker_icon(m_window_frame_color_picker)
@@ -1063,6 +1118,8 @@ func _shortcut_text_for_mode(mode: String) -> String:
 			return SHORTCUTS_FLOOR_TEXT
 		MODE_STAIRS:
 			return SHORTCUTS_STAIRS_TEXT
+		MODE_RAIL:
+			return SHORTCUTS_RAIL_TEXT
 		MODE_PILLAR:
 			return SHORTCUTS_PILLAR_TEXT
 		MODE_ROOF:
@@ -1084,6 +1141,8 @@ func _update_visible_tool_section(mode: String) -> void:
 		m_floor_section.visible = mode == MODE_FLOOR
 	if m_stair_section != null:
 		m_stair_section.visible = mode == MODE_STAIRS
+	if m_rail_section != null:
+		m_rail_section.visible = mode == MODE_RAIL
 	if m_pillar_section != null:
 		m_pillar_section.visible = mode == MODE_PILLAR
 	if m_roof_section != null:
@@ -1181,6 +1240,15 @@ func _on_stair_setting_changed(_value: float) -> void:
 func _on_stair_color_changed(_color: Color) -> void:
 	_update_color_picker_icon(m_stair_color_picker)
 	_emit_stair_settings()
+
+
+func _on_rail_setting_changed(_value: float) -> void:
+	_emit_rail_settings()
+
+
+func _on_rail_color_changed(_color: Color) -> void:
+	_update_color_picker_icon(m_rail_color_picker)
+	_emit_rail_settings()
 
 
 func _on_pillar_setting_changed(_value: float) -> void:
@@ -1322,6 +1390,7 @@ func _emit_all_settings() -> void:
 	_emit_wall_settings()
 	_emit_floor_settings()
 	_emit_stair_settings()
+	_emit_rail_settings()
 	_emit_pillar_settings()
 	_emit_roof_settings()
 	_emit_prop_settings()
@@ -1380,6 +1449,19 @@ func _emit_stair_settings() -> void:
 		"thickness": float(m_stair_thickness_spin.value),
 		"rotation_degrees": float(m_stair_rotation_spin.value),
 		"color": m_stair_color_picker.color,
+	})
+
+
+func _emit_rail_settings() -> void:
+	rail_settings_changed.emit({
+		"grid_step": float(m_rail_grid_spin.value),
+		"base_height": float(m_rail_base_height_spin.value),
+		"height": float(m_rail_height_spin.value),
+		"post_spacing": float(m_rail_post_spacing_spin.value),
+		"post_thickness": float(m_rail_post_thickness_spin.value),
+		"rail_thickness": float(m_rail_bar_thickness_spin.value),
+		"lower_rail_height": float(m_rail_lower_height_spin.value),
+		"color": m_rail_color_picker.color,
 	})
 
 
@@ -1828,6 +1910,16 @@ func _load_persisted_settings() -> void:
 	var stair_color_variant: Variant = state.get("stair_color", m_stair_color_picker.color)
 	if stair_color_variant is Color:
 		m_stair_color_picker.color = stair_color_variant
+	m_rail_grid_spin.value = float(state.get("rail_grid_step", m_rail_grid_spin.value))
+	m_rail_base_height_spin.value = float(state.get("rail_base_height", m_rail_base_height_spin.value))
+	m_rail_height_spin.value = float(state.get("rail_height", m_rail_height_spin.value))
+	m_rail_post_spacing_spin.value = float(state.get("rail_post_spacing", m_rail_post_spacing_spin.value))
+	m_rail_post_thickness_spin.value = float(state.get("rail_post_thickness", m_rail_post_thickness_spin.value))
+	m_rail_bar_thickness_spin.value = float(state.get("rail_thickness", m_rail_bar_thickness_spin.value))
+	m_rail_lower_height_spin.value = float(state.get("rail_lower_height", m_rail_lower_height_spin.value))
+	var rail_color_variant: Variant = state.get("rail_color", m_rail_color_picker.color)
+	if rail_color_variant is Color:
+		m_rail_color_picker.color = rail_color_variant
 	m_pillar_grid_spin.value = float(state.get("pillar_grid_step", m_pillar_grid_spin.value))
 	_select_pillar_style(str(state.get("pillar_style", _selected_pillar_style())))
 	m_pillar_base_height_spin.value = float(state.get("pillar_base_height", m_pillar_base_height_spin.value))
@@ -1969,6 +2061,14 @@ func _save_persisted_settings() -> void:
 		"stair_thickness": float(m_stair_thickness_spin.value) if m_stair_thickness_spin != null else 0.12,
 		"stair_rotation_degrees": float(m_stair_rotation_spin.value) if m_stair_rotation_spin != null else 0.0,
 		"stair_color": m_stair_color_picker.color if m_stair_color_picker != null else Color(0.52, 0.46, 0.38, 1.0),
+		"rail_grid_step": float(m_rail_grid_spin.value) if m_rail_grid_spin != null else 0.5,
+		"rail_base_height": float(m_rail_base_height_spin.value) if m_rail_base_height_spin != null else 0.0,
+		"rail_height": float(m_rail_height_spin.value) if m_rail_height_spin != null else 1.0,
+		"rail_post_spacing": float(m_rail_post_spacing_spin.value) if m_rail_post_spacing_spin != null else 1.0,
+		"rail_post_thickness": float(m_rail_post_thickness_spin.value) if m_rail_post_thickness_spin != null else 0.08,
+		"rail_thickness": float(m_rail_bar_thickness_spin.value) if m_rail_bar_thickness_spin != null else 0.1,
+		"rail_lower_height": float(m_rail_lower_height_spin.value) if m_rail_lower_height_spin != null else 0.18,
+		"rail_color": m_rail_color_picker.color if m_rail_color_picker != null else Color(0.33, 0.28, 0.22, 1.0),
 		"pillar_grid_step": float(m_pillar_grid_spin.value) if m_pillar_grid_spin != null else 0.5,
 		"pillar_style": _selected_pillar_style(),
 		"pillar_base_height": float(m_pillar_base_height_spin.value) if m_pillar_base_height_spin != null else 0.0,

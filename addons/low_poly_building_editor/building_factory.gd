@@ -6,6 +6,7 @@ const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
 const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
 const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
 const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.gd")
+const Rail3DScript = preload("res://addons/low_poly_building_editor/rail_3d.gd")
 const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
 const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
 const BuildingOpening3DScript = preload(
@@ -289,6 +290,33 @@ static func create_stairs_node(
 	stairs.generate_collision = true
 	stairs.rebuild_stairs_mesh()
 	return stairs
+
+
+static func create_rail_node(
+	building: Node,
+	local_start: Vector3,
+	local_end: Vector3,
+	height: float = 1.0,
+	post_spacing: float = 1.0,
+	post_thickness: float = 0.08,
+	rail_thickness: float = 0.1,
+	lower_rail_height: float = 0.18,
+	color: Color = Color(0.33, 0.28, 0.22, 1.0)
+) -> Rail3DScript:
+	var rail := Rail3DScript.new() as Rail3DScript
+	rail.name = _unique_child_name(building, "Rail3D")
+	rail.start_point = local_start
+	rail.end_point = Vector3(local_end.x, local_start.y, local_end.z)
+	rail.rail_height = height
+	rail.post_spacing = post_spacing
+	rail.post_thickness = post_thickness
+	rail.rail_thickness = rail_thickness
+	rail.lower_rail_height = lower_rail_height
+	rail.rail_color = color
+	rail.build_on_ready = true
+	rail.generate_collision = true
+	rail.rebuild_rail_mesh()
+	return rail
 
 
 static func create_pillar_node(
