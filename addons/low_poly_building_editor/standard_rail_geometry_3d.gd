@@ -18,20 +18,22 @@ extends RefCounted
 #
 # Posts are the exception: each post is appended as a genuinely unsheared,
 # upright box (no shear applied within its own small footprint) so its top
-# and bottom faces stay perfectly flat instead of tilting with the run's
-# rise. By default a post's flat base height follows the same rise/length
+# and bottom edge planes stay perfectly flat instead of tilting with the
+# run's rise. By default a post's flat base height follows the same rise/length
 # diagonal as the bars (matching a level rail's ground plane when rise is
 # 0.0); callers with a stepped run supply an explicit `post_base_heights`
 # entry per post so its bottom lands exactly on the real surface (for
 # example a stair tread) instead of the smooth diagonal projection. Each
-# post's height is then derived, not fixed: it always reaches exactly to
-# the top bar's underside (its bottom surface) at that post's own run
-# position, so a post whose base doesn't sit on the bars' diagonal
-# (again, a stair tread) still connects flush against the bar instead of
-# falling short of it or poking out above the bar entirely. The result is
-# clamped so it can never exceed the bar's own top surface even in a
-# degenerate case where a very thick post would otherwise need to be
-# taller than the bar itself.
+# post's height is then derived, not fixed. On a level run it reaches the
+# top bar's underside exactly. On a sloped run its flat top reaches the
+# underside at the post's uphill edge, slightly overlapping the bar across
+# the rest of the post footprint so the two volumes genuinely intersect
+# instead of leaving a wedge-shaped gap. The result is clamped so it can
+# never exceed the bar's own top surface even in a degenerate case where a
+# very thick post would otherwise need to be taller than the bar itself.
+# The post's enclosed top and hidden bottom caps are omitted; its side faces
+# still terminate at that derived flat height inside the handrail and at the
+# authored base plane.
 #
 # Every face's winding is chosen so its geometric winding normal is
 # antiparallel to its stored vertex normal (Godot's front-face convention),
@@ -121,22 +123,25 @@ static func append_rail(
 			base_height = post_base_heights[index]
 		elif length > 0.001:
 			base_height = rise * (u / length)
-		# The top bar's underside (its bottom surface) follows the same
-		# rise/length shear as its box, so compute it here to size this
-		# post: connecting exactly there keeps the post flush against the
-		# bottom surface of the top rail instead of poking through it when
-		# the post's base doesn't sit on the bars' diagonal (for example a
-		# stair tread's flat top). The result is clamped so it can never
-		# exceed the bar's own top surface even in a degenerate case where
-		# the post would otherwise need to be taller than the bar itself.
+		# The top bar's underside follows the run's rise, while each post
+		# has a flat top. Reaching only the underside height at the post
+		# center would leave a wedge-shaped gap over its uphill half.
+		# Reaching the underside at the uphill edge instead makes the post
+		# overlap the bar across its footprint and therefore merge visually
+		# and physically. Clamp to the bar top so a thick post cannot poke
+		# through the handrail.
+		var half_width_shear := 0.0
+		if length > 0.001:
+			half_width_shear = absf(rise) * post_size * 0.5 / length
 		var bar_bottom_at_u := top_bottom
 		var bar_top_at_u := height
 		if length > 0.001:
 			bar_bottom_at_u += rise * (u / length)
 			bar_top_at_u += rise * (u / length)
+		var post_target_top := minf(bar_bottom_at_u + half_width_shear, bar_top_at_u)
 		var post_max_local_top := maxf(bar_top_at_u - base_height, 0.0)
 		var post_min_local_top := minf(post_size, post_max_local_top)
-		var post_local_top := clampf(bar_bottom_at_u - base_height, post_min_local_top, post_max_local_top)
+		var post_local_top := clampf(post_target_top - base_height, post_min_local_top, post_max_local_top)
 		# Posts embed with zero rise: `base_height` already carries whatever
 		# vertical placement is needed, so the post box itself stays a flat,
 		# upright prism instead of tilting with the run's rise.
@@ -145,7 +150,9 @@ static func append_rail(
 			origin, run_axis, up_axis, side_axis, length, 0.0,
 			Vector3(u - post_size * 0.5, base_height, -post_size * 0.5),
 			Vector3(u + post_size * 0.5, base_height + post_local_top, post_size * 0.5),
-			color
+			color,
+			false,
+			false
 		)
 
 
@@ -206,7 +213,9 @@ static func _append_sheared_box(
 	rise: float,
 	minimum: Vector3,
 	maximum: Vector3,
-	color: Color
+	color: Color,
+	include_top_face: bool = true,
+	include_bottom_face: bool = true
 ) -> void:
 	_append_sheared_quad(
 		vertices, normals, colors, indices,
@@ -244,24 +253,26 @@ static func _append_sheared_box(
 		Vector3(maximum.x, maximum.y, minimum.z),
 		Vector3.RIGHT
 	)
-	_append_sheared_quad(
-		vertices, normals, colors, indices,
-		origin, run_axis, up_axis, side_axis, length, rise, color,
-		Vector3(minimum.x, maximum.y, minimum.z),
-		Vector3(maximum.x, maximum.y, minimum.z),
-		Vector3(maximum.x, maximum.y, maximum.z),
-		Vector3(minimum.x, maximum.y, maximum.z),
-		Vector3.UP
-	)
-	_append_sheared_quad(
-		vertices, normals, colors, indices,
-		origin, run_axis, up_axis, side_axis, length, rise, color,
-		Vector3(minimum.x, minimum.y, minimum.z),
-		Vector3(minimum.x, minimum.y, maximum.z),
-		Vector3(maximum.x, minimum.y, maximum.z),
-		Vector3(maximum.x, minimum.y, minimum.z),
-		Vector3.DOWN
-	)
+	if include_top_face:
+		_append_sheared_quad(
+			vertices, normals, colors, indices,
+			origin, run_axis, up_axis, side_axis, length, rise, color,
+			Vector3(minimum.x, maximum.y, minimum.z),
+			Vector3(maximum.x, maximum.y, minimum.z),
+			Vector3(maximum.x, maximum.y, maximum.z),
+			Vector3(minimum.x, maximum.y, maximum.z),
+			Vector3.UP
+		)
+	if include_bottom_face:
+		_append_sheared_quad(
+			vertices, normals, colors, indices,
+			origin, run_axis, up_axis, side_axis, length, rise, color,
+			Vector3(minimum.x, minimum.y, minimum.z),
+			Vector3(minimum.x, minimum.y, maximum.z),
+			Vector3(maximum.x, minimum.y, maximum.z),
+			Vector3(maximum.x, minimum.y, minimum.z),
+			Vector3.DOWN
+		)
 
 
 static func _append_sheared_quad(

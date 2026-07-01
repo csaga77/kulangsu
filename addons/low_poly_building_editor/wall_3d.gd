@@ -8,6 +8,7 @@ const GENERATED_META := &"wall_generated"
 const PREVIEW_META := &"building_editor_preview"
 const OPENING_META := &"building_editor_opening"
 const SEGMENT_INDEX_META := &"wall_segment_index"
+const MESH_GEOMETRY_VERSION := 2
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
 const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
 const MergedWallMeshBuilderScript = preload("res://addons/low_poly_building_editor/merged_wall_mesh_builder.gd")
@@ -1004,6 +1005,7 @@ func _authored_mesh_source_signature() -> int:
 			segment.color,
 		])
 	return hash([
+		MESH_GEOMETRY_VERSION,
 		segment_payload,
 		_assigned_opening_rects(),
 	])

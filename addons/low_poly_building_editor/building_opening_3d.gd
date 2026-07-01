@@ -11,7 +11,6 @@ const LegacyDoorGeometry = preload(
 const BuildingWireframe := preload(
 	"res://addons/low_poly_building_editor/building_wireframe_3d.gd"
 )
-const DEBUG_WIREFRAME_NODE_NAME := BuildingWireframe.NODE_NAME
 
 # Gap between the opening node origin and the wall face it is placed against.
 # Mirrors the placement offset applied by the editor plugin so the frame casing
@@ -216,9 +215,9 @@ func set_debug_wireframe(
 	m_debug_wireframe_color = color
 	m_debug_wireframe_xray = xray
 	if !enabled:
-		if was_enabled or get_node_or_null(DEBUG_WIREFRAME_NODE_NAME) != null:
+		if was_enabled or BuildingWireframe.is_active(self):
 			BuildingWireframe.clear(self)
-	elif !was_enabled or get_node_or_null(DEBUG_WIREFRAME_NODE_NAME) == null:
+	elif !was_enabled or !BuildingWireframe.is_active(self):
 		_sync_debug_wireframe()
 	elif style_changed:
 		BuildingWireframe.update_style(self, color, xray)

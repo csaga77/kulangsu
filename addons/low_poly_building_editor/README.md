@@ -23,9 +23,14 @@ building blocks, while transient wall and roof geometry resolvers perform inters
 overlap, opening-propagation, and clipping calculations.
 
 The dock's global **Debug Display** controls draw one shared, transient wireframe across
-walls, floors, stairs, rails, pillars, roofs, openings, and placed props. Edges are deduplicated,
-depth-tested by default, and can optionally use X-ray mode. Display changes replace only
-the overlay; they never rebuild authored mesh or collision geometry. New
+walls, floors, stairs, rails, pillars, roofs, openings, and placed props. The display assigns
+a transient RenderingServer material overlay to each existing mesh instance and relies on Godot's native
+wireframe shader mode instead of adding scene children, extracting triangle edges, or
+allocating duplicate geometry on the editor thread. Wireframes are depth-tested by default
+and back-face culled so invisible surface triangles stay hidden; X-ray mode is the explicit
+option for drawing hidden geometry. Display changes replace only those temporary materials,
+restore any authored material overlay when disabled, and never rebuild authored mesh or
+collision geometry. New
 `BuildingMesh3D` subclasses inherit this behavior automatically.
 
 A scene can contain multiple independent `Building3D` roots or packed building scene

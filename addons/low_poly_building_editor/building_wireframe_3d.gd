@@ -4,8 +4,35 @@ extends RefCounted
 
 const NODE_NAME := "BuildingDebugWireframe"
 const GENERATED_META := &"building_debug_wireframe"
-const EDGE_QUANTIZATION := 10000.0
 const LEGACY_NODE_NAMES := [&"RoofTriangleWireframe"]
+const DEPTH_TESTED_SHADER_CODE := """
+shader_type spatial;
+render_mode unshaded, wireframe, cull_back, shadows_disabled, depth_draw_never;
+
+uniform vec4 wire_color : source_color = vec4(0.05, 0.95, 1.0, 1.0);
+
+void fragment() {
+	ALBEDO = wire_color.rgb;
+	EMISSION = wire_color.rgb;
+	ALPHA = wire_color.a;
+}
+"""
+const XRAY_SHADER_CODE := """
+shader_type spatial;
+render_mode unshaded, wireframe, cull_back, shadows_disabled, depth_draw_never, depth_test_disabled;
+
+uniform vec4 wire_color : source_color = vec4(0.05, 0.95, 1.0, 1.0);
+
+void fragment() {
+	ALBEDO = wire_color.rgb;
+	EMISSION = wire_color.rgb;
+	ALPHA = wire_color.a;
+}
+"""
+
+static var s_depth_tested_shader: Shader
+static var s_xray_shader: Shader
+static var s_overlay_states := {}
 
 
 static func sync(
@@ -18,24 +45,32 @@ static func sync(
 	clear(root)
 	if !enabled or root == null:
 		return
-	var line_vertices := _unique_line_vertices(root, mesh_instances)
-	if line_vertices.is_empty():
+	var entries: Array[Dictionary] = []
+	for source in mesh_instances:
+		if (
+			source == null
+			or !is_instance_valid(source)
+			or source.has_meta(GENERATED_META)
+			or source.mesh == null
+		):
+			continue
+		var debug_material := _build_material(color, xray)
+		debug_material.next_pass = source.material_overlay
+		RenderingServer.instance_geometry_set_material_overlay(
+			source.get_instance(),
+			debug_material.get_rid()
+		)
+		entries.append({
+			"source": weakref(source),
+			"debug_material": debug_material,
+		})
+	if entries.is_empty():
 		return
-	var arrays: Array = []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = line_vertices
-	var wire_mesh := ArrayMesh.new()
-	wire_mesh.resource_local_to_scene = true
-	wire_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, arrays)
-	var instance := MeshInstance3D.new()
-	instance.name = NODE_NAME
-	instance.mesh = wire_mesh
-	instance.material_override = _build_material(color, xray)
-	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	instance.set_meta(GENERATED_META, true)
-	root.add_child(instance)
-	if Engine.is_editor_hint():
-		instance.owner = null
+	s_overlay_states[root.get_instance_id()] = {
+		"root": weakref(root),
+		"entries": entries,
+		"xray": xray,
+	}
 
 
 static func sync_recursive(
@@ -50,18 +85,31 @@ static func sync_recursive(
 
 
 static func update_style(root: Node3D, color: Color, xray: bool) -> bool:
-	if root == null:
+	var state := _state_for_root(root)
+	if state.is_empty():
 		return false
-	var instance := root.get_node_or_null(NODE_NAME) as MeshInstance3D
-	if instance == null:
-		return false
-	instance.material_override = _build_material(color, xray)
+	var entries: Array[Dictionary] = state["entries"]
+	for entry in entries:
+		var source := _source_from_entry(entry)
+		if source == null:
+			continue
+		var debug_material := _build_material(color, xray)
+		debug_material.next_pass = source.material_overlay
+		RenderingServer.instance_geometry_set_material_overlay(
+			source.get_instance(),
+			debug_material.get_rid()
+		)
+		entry["debug_material"] = debug_material
+	state["xray"] = xray
+	s_overlay_states[root.get_instance_id()] = state
 	return true
 
 
 static func clear(root: Node3D) -> void:
 	if root == null:
 		return
+	# Remove overlays created by older plugin versions before material-overlay
+	# rendering replaced scene-tree debug children.
 	for child in root.get_children():
 		if (
 			!child.has_meta(GENERATED_META)
@@ -71,12 +119,80 @@ static func clear(root: Node3D) -> void:
 		root.remove_child(child)
 		child.free()
 
+	var state := _state_for_root(root)
+	if state.is_empty():
+		return
+	var entries: Array[Dictionary] = state["entries"]
+	for entry in entries:
+		var source := _source_from_entry(entry)
+		if source == null:
+			continue
+		var restored_overlay := source.material_overlay
+		RenderingServer.instance_geometry_set_material_overlay(
+			source.get_instance(),
+			restored_overlay.get_rid() if restored_overlay != null else RID()
+		)
+	s_overlay_states.erase(root.get_instance_id())
 
-static func unique_edge_count(
+
+static func is_active(root: Node3D) -> bool:
+	return !_state_for_root(root).is_empty()
+
+
+static func get_overlay_sources(root: Node3D) -> Array[MeshInstance3D]:
+	var sources: Array[MeshInstance3D] = []
+	var state := _state_for_root(root)
+	if state.is_empty():
+		return sources
+	var entries: Array[Dictionary] = state["entries"]
+	for entry in entries:
+		var source := _source_from_entry(entry)
+		if source != null:
+			sources.append(source)
+	return sources
+
+
+static func get_debug_material(
 	root: Node3D,
-	mesh_instances: Array[MeshInstance3D]
-) -> int:
-	return _unique_edges(root, mesh_instances).size()
+	source: MeshInstance3D
+) -> ShaderMaterial:
+	var state := _state_for_root(root)
+	if state.is_empty() or source == null:
+		return null
+	var entries: Array[Dictionary] = state["entries"]
+	for entry in entries:
+		if _source_from_entry(entry) == source:
+			return entry.get("debug_material") as ShaderMaterial
+	return null
+
+
+static func is_xray(root: Node3D) -> bool:
+	var state := _state_for_root(root)
+	return !state.is_empty() and bool(state.get("xray", false))
+
+
+static func _state_for_root(root: Node3D) -> Dictionary:
+	if root == null:
+		return {}
+	var state_variant: Variant = s_overlay_states.get(root.get_instance_id(), {})
+	if !(state_variant is Dictionary):
+		return {}
+	var state := state_variant as Dictionary
+	var root_reference := state.get("root") as WeakRef
+	if root_reference == null or root_reference.get_ref() != root:
+		s_overlay_states.erase(root.get_instance_id())
+		return {}
+	return state
+
+
+static func _source_from_entry(entry: Dictionary) -> MeshInstance3D:
+	var source_reference := entry.get("source") as WeakRef
+	if source_reference == null:
+		return null
+	var source := source_reference.get_ref() as MeshInstance3D
+	if source == null or !is_instance_valid(source):
+		return null
+	return source
 
 
 static func _collect_mesh_instances(
@@ -91,85 +207,22 @@ static func _collect_mesh_instances(
 		_collect_mesh_instances(child, meshes)
 
 
-static func _unique_line_vertices(
-	root: Node3D,
-	mesh_instances: Array[MeshInstance3D]
-) -> PackedVector3Array:
-	var edges := _unique_edges(root, mesh_instances)
-	var line_vertices := PackedVector3Array()
-	for edge in edges.values():
-		line_vertices.append(Vector3(edge["start"]))
-		line_vertices.append(Vector3(edge["end"]))
-	return line_vertices
-
-
-static func _unique_edges(
-	root: Node3D,
-	mesh_instances: Array[MeshInstance3D]
-) -> Dictionary:
-	var edges := {}
-	if root == null:
-		return edges
-	var root_inverse := root.global_transform.affine_inverse()
-	for instance in mesh_instances:
-		if (
-			instance == null
-			or !is_instance_valid(instance)
-			or instance.has_meta(GENERATED_META)
-			or instance.mesh == null
-		):
-			continue
-		var local_transform := (
-			Transform3D.IDENTITY
-			if instance == root
-			else root_inverse * instance.global_transform
-		)
-		var faces := instance.mesh.get_faces()
-		for triangle_start in range(0, faces.size() - 2, 3):
-			var a := local_transform * faces[triangle_start]
-			var b := local_transform * faces[triangle_start + 1]
-			var c := local_transform * faces[triangle_start + 2]
-			_add_unique_edge(edges, a, b)
-			_add_unique_edge(edges, b, c)
-			_add_unique_edge(edges, c, a)
-	return edges
-
-
-static func _add_unique_edge(
-	edges: Dictionary,
-	start: Vector3,
-	end: Vector3
-) -> void:
-	if start.distance_squared_to(end) <= 0.00000001:
-		return
-	var start_key := _point_key(start)
-	var end_key := _point_key(end)
-	var edge_key := (
-		"%s|%s" % [start_key, end_key]
-		if start_key < end_key
-		else "%s|%s" % [end_key, start_key]
-	)
-	if edges.has(edge_key):
-		return
-	edges[edge_key] = {"start": start, "end": end}
-
-
-static func _point_key(point: Vector3) -> String:
-	return "%d,%d,%d" % [
-		roundi(point.x * EDGE_QUANTIZATION),
-		roundi(point.y * EDGE_QUANTIZATION),
-		roundi(point.z * EDGE_QUANTIZATION),
-	]
-
-
-static func _build_material(color: Color, xray: bool) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
+static func _build_material(color: Color, xray: bool) -> ShaderMaterial:
+	var material := ShaderMaterial.new()
 	material.resource_local_to_scene = true
-	material.albedo_color = color
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	material.set("no_depth_test", xray)
+	material.shader = _wireframe_shader(xray)
+	material.set_shader_parameter(&"wire_color", color)
 	material.render_priority = 1
-	if color.a < 0.99:
-		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	return material
+
+
+static func _wireframe_shader(xray: bool) -> Shader:
+	if xray:
+		if s_xray_shader == null:
+			s_xray_shader = Shader.new()
+			s_xray_shader.code = XRAY_SHADER_CODE
+		return s_xray_shader
+	if s_depth_tested_shader == null:
+		s_depth_tested_shader = Shader.new()
+		s_depth_tested_shader.code = DEPTH_TESTED_SHADER_CODE
+	return s_depth_tested_shader

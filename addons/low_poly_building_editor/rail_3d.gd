@@ -8,6 +8,7 @@ const StandardRailGeometry := preload(
 
 const GENERATED_META := &"rail_generated"
 const PREVIEW_META := &"building_editor_preview"
+const MESH_GEOMETRY_VERSION := 2
 
 @export var rebuild := false:
 	set(value):
@@ -180,6 +181,7 @@ func _request_rebuild() -> void:
 
 func _rail_mesh_source_signature() -> int:
 	return hash([
+		MESH_GEOMETRY_VERSION,
 		start_point,
 		end_point,
 		rail_height,

@@ -8,6 +8,7 @@ const StandardRailGeometry := preload(
 
 const GENERATED_META := &"stairs_generated"
 const PREVIEW_META := &"building_editor_preview"
+const MESH_GEOMETRY_VERSION := 2
 const SIDE_WALL_COLLISION_THICKNESS := 0.64
 const SIDE_WALL_COLLISION_META := &"stairs_side_wall_collision"
 const LEFT_SIDE_COLLISION_SHAPE_NAME := "LeftSideCollisionShape3D"
@@ -299,6 +300,7 @@ func _request_rebuild() -> void:
 
 func _stairs_mesh_source_signature() -> int:
 	return hash([
+		MESH_GEOMETRY_VERSION,
 		start_point,
 		end_point,
 		stair_height,
@@ -390,17 +392,6 @@ func _append_stair_geometry(
 		Vector3(width, height, depth),
 		Vector3(0.0, height, depth),
 		Vector3.BACK
-	)
-	_append_quad(
-		vertices,
-		normals,
-		colors,
-		indices,
-		Vector3(0.0, bottom_y, 0.0),
-		Vector3(0.0, bottom_y, depth),
-		Vector3(width, bottom_y, depth),
-		Vector3(width, bottom_y, 0.0),
-		Vector3.DOWN
 	)
 	var side_polygon := _side_profile_polygon(depth, height, bottom_y, steps)
 	_append_side_polygon(vertices, normals, colors, indices, side_polygon, 0.0, Vector3.LEFT)

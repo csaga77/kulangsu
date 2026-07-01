@@ -485,6 +485,13 @@ func _validate_wall_mesh(wall: Wall3DScript) -> void:
 		m_failures.append("Wall3D mesh is missing per-vertex normal data")
 	if colors.size() != vertices.size():
 		m_failures.append("Wall3D mesh is missing per-vertex color data")
+	for vertex_index in range(vertices.size()):
+		if (
+			absf(vertices[vertex_index].y) <= 0.001
+			and normals[vertex_index].dot(Vector3.DOWN) > 0.98
+		):
+			m_failures.append("Wall3D mesh retained hidden bottom triangles")
+			break
 	if !normals.is_empty() and normals[0].dot(Vector3.BACK) < 0.999:
 		m_failures.append("Wall3D primary outside face normal is inverted")
 	if indices.size() >= 3 and !normals.is_empty():
@@ -1575,7 +1582,7 @@ func _validate_stairs_node(coordinator: Building3DScript) -> void:
 		m_failures.append("Stairs3D mesh is missing per-vertex normal data")
 	if colors.size() != vertices.size():
 		m_failures.append("Stairs3D mesh is missing per-vertex color data")
-	if _mesh_vertex_count(stairs) != 66:
+	if _mesh_vertex_count(stairs) != 62:
 		m_failures.append("Stairs3D generated the wrong stepped vertex count")
 	if !_has_normal_near(normals, Vector3.UP):
 		m_failures.append("Stairs3D mesh is missing tread normals")
@@ -1583,6 +1590,8 @@ func _validate_stairs_node(coordinator: Building3DScript) -> void:
 		m_failures.append("Stairs3D mesh is missing riser normals")
 	if !_has_normal_near(normals, Vector3.LEFT) or !_has_normal_near(normals, Vector3.RIGHT):
 		m_failures.append("Stairs3D mesh is missing side normals")
+	if _has_normal_near(normals, Vector3.DOWN):
+		m_failures.append("Stairs3D mesh retained its hidden underside face")
 	if !_has_mesh_vertex_y_near(stairs, 1.2, 0.001):
 		m_failures.append("Stairs3D mesh did not reach the configured stair height")
 	if !_has_mesh_vertex_y_near(stairs, -0.16, 0.001):
@@ -1688,7 +1697,7 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	if no_rail_stairs.left_rail_enabled or no_rail_stairs.right_rail_enabled:
 		m_failures.append("Stairs3D enabled rails by default")
 	var base_vertex_count := _mesh_vertex_count(no_rail_stairs)
-	if base_vertex_count != 66:
+	if base_vertex_count != 62:
 		m_failures.append("Stairs3D without rails changed its baseline stepped vertex count")
 
 	var one_rail_stairs := BuildingFactoryScript.create_stairs_node(coordinator,
@@ -1710,11 +1719,11 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	coordinator.add_child(one_rail_stairs)
 	if !one_rail_stairs.left_rail_enabled or one_rail_stairs.right_rail_enabled:
 		m_failures.append("BuildingFactory did not apply the requested single-side rail flags")
-	# The shared standard-rail strategy generates a 144-vertex post/bar assembly
+	# The shared standard-rail strategy generates a 112-vertex post/bar assembly
 	# for this 4-unit run with these dimensions: one top bar box, one lower bar
-	# box, and one post per tread (4 steps) centered in the depth direction
-	# instead of Rail3D's evenly-spaced-by-post_spacing distribution.
-	if _mesh_vertex_count(one_rail_stairs) != base_vertex_count + 144:
+	# box, and one 16-vertex open-ended post per tread (4 steps) centered in
+	# the depth direction instead of Rail3D's evenly-spaced distribution.
+	if _mesh_vertex_count(one_rail_stairs) != base_vertex_count + 112:
 		m_failures.append(
 			"Stairs3D single side rail did not append the shared standard-rail vertex count"
 		)
@@ -1758,7 +1767,7 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 		Color(0.33, 0.28, 0.22, 1.0)
 	)
 	coordinator.add_child(both_rail_stairs)
-	if _mesh_vertex_count(both_rail_stairs) != base_vertex_count + 144 * 2:
+	if _mesh_vertex_count(both_rail_stairs) != base_vertex_count + 112 * 2:
 		m_failures.append(
 			"Stairs3D with both side rails did not append two shared standard-rail vertex counts"
 		)
@@ -1824,8 +1833,9 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 func _validate_standard_rail_geometry_post_base_heights() -> void:
 	# Whitebox check directly against the shared geometry strategy: with an
 	# explicit post_base_heights array, each post must be a flat, upright
-	# box whose bottom face sits exactly at the given height (not sheared or
-	# offset by the run's rise), independent of the larger Stairs3D assembly.
+	# open-ended box whose side-face bottom edges sit exactly at the given
+	# height (not sheared or offset by the run's rise), independent of the
+	# larger Stairs3D assembly.
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
@@ -1853,34 +1863,50 @@ func _validate_standard_rail_geometry_post_base_heights() -> void:
 		base_heights
 	)
 	# Layout: top bar occupies vertices [0..23] (lower rail is disabled via
-	# lower_rail_height 0.0); each post then contributes 24 vertices in
-	# FORWARD/BACK/LEFT/RIGHT/UP/DOWN face order, so a post's DOWN face is
-	# its last 4 vertices.
-	var first_post_bottom_start := 24 + 20
-	var second_post_bottom_start := 48 + 20
-	if vertices.size() != 72:
+	# lower_rail_height 0.0); each post contributes 16 vertices in
+	# FORWARD/BACK/LEFT/RIGHT face order. Its enclosed UP and hidden DOWN
+	# faces are not emitted.
+	var first_post_start := 24
+	var second_post_start := 40
+	if vertices.size() != 56:
 		m_failures.append(
 			"StandardRailGeometry generated an unexpected vertex count for this post layout"
 		)
 		return
-	for offset in range(4):
-		if absf(vertices[first_post_bottom_start + offset].y - 0.3) > 0.001:
+	var bottom_edge_offsets := PackedInt32Array([0, 1, 4, 7, 8, 11, 12, 13])
+	for offset in bottom_edge_offsets:
+		if absf(vertices[first_post_start + offset].y - 0.3) > 0.001:
 			m_failures.append("StandardRailGeometry first post base is not flat at its tread height")
-		if absf(vertices[second_post_bottom_start + offset].y - 0.6) > 0.001:
+		if absf(vertices[second_post_start + offset].y - 0.6) > 0.001:
 			m_failures.append("StandardRailGeometry second post base is not flat at its tread height")
 
 	# The bar's underside follows the rise/length diagonal: at u=0.5 that is
 	# 0.9 + 0.6*(0.5/2.0) = 1.05, and at u=1.5 it is 0.9 + 0.6*(1.5/2.0) =
-	# 1.35. Each post's top (its UP face, the 5th of the 6 faces in a box)
-	# must land exactly there -- not below it (falling short of the bar) and
-	# not above it (poking through/above the bar).
-	var first_post_top_start := 24 + 16
-	var second_post_top_start := 48 + 16
-	for offset in range(4):
-		if absf(vertices[first_post_top_start + offset].y - 1.05) > 0.001:
-			m_failures.append("StandardRailGeometry first post does not connect to the bar's bottom surface")
-		if absf(vertices[second_post_top_start + offset].y - 1.35) > 0.001:
-			m_failures.append("StandardRailGeometry second post does not connect to the bar's bottom surface")
+	# 1.35. Each post (post_thickness 0.08, so half-width 0.04) reaches the
+	# underside at its uphill edge, adding 0.6*0.04/2.0 = 0.012. That makes
+	# the flat post overlap the sloped bar across its footprint rather than
+	# leaving a wedge-shaped gap: 1.062 and 1.362. These heights live only
+	# on the post side-face top edges; there is no enclosed top-cap face.
+	var top_edge_offsets := PackedInt32Array([2, 3, 5, 6, 9, 10, 14, 15])
+	for offset in top_edge_offsets:
+		if absf(vertices[first_post_start + offset].y - 1.062) > 0.001:
+			m_failures.append("StandardRailGeometry first post does not merge into the sloped bar")
+		if absf(vertices[second_post_start + offset].y - 1.362) > 0.001:
+			m_failures.append("StandardRailGeometry second post does not merge into the sloped bar")
+	for normal_index in range(first_post_start, first_post_start + 16):
+		if normals[normal_index].dot(Vector3.UP) > 0.999:
+			m_failures.append("StandardRailGeometry first post retained an enclosed top face")
+			break
+		if normals[normal_index].dot(Vector3.DOWN) > 0.999:
+			m_failures.append("StandardRailGeometry first post retained a hidden bottom face")
+			break
+	for normal_index in range(second_post_start, second_post_start + 16):
+		if normals[normal_index].dot(Vector3.UP) > 0.999:
+			m_failures.append("StandardRailGeometry second post retained an enclosed top face")
+			break
+		if normals[normal_index].dot(Vector3.DOWN) > 0.999:
+			m_failures.append("StandardRailGeometry second post retained a hidden bottom face")
+			break
 
 	# Stairs3D's axis triple (run=BACK, up=UP, side=RIGHT) is an axis swap
 	# from Rail3D's (run=RIGHT, up=UP, side=BACK), which mirrors it
@@ -1931,7 +1957,7 @@ func _validate_rail_node(coordinator: Building3DScript) -> void:
 	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 	var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
 	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
-	if vertices.size() != 168:
+	if vertices.size() != 128:
 		m_failures.append("Rail3D generated the wrong standard rail vertex count")
 	if normals.size() != vertices.size():
 		m_failures.append("Rail3D mesh is missing per-vertex normal data")
@@ -3989,9 +4015,12 @@ func _validate_miter_draw_direction_invariance() -> void:
 			m_failures.append("%s missed the draw-direction-invariant second miter point" % case_name)
 		if _has_world_diagonal_wall_normal(corner):
 			m_failures.append("%s generated a direction-dependent diagonal joint cap" % case_name)
-		var boundary_edge_count := _world_boundary_edge_count(corner)
+		var boundary_edge_count := _world_nonbase_boundary_edge_count(corner)
 		if boundary_edge_count > 0:
-			m_failures.append("%s left %d open miter boundary edges" % [case_name, boundary_edge_count])
+			m_failures.append(
+				"%s left %d open miter boundary edges above the wall base"
+				% [case_name, boundary_edge_count]
+			)
 
 
 func _create_miter_test_wall(
@@ -4613,31 +4642,54 @@ func _validate_debug_wireframe_node(node: Node3D) -> void:
 		Color(0.12, 0.84, 0.96, 1.0),
 		false
 	)
-	var wireframe := node.get_node_or_null(
-		BuildingWireframeScript.NODE_NAME
-	) as MeshInstance3D
-	if wireframe == null or wireframe.mesh == null:
+	if !BuildingWireframeScript.is_active(node):
 		m_failures.append("%s did not generate the shared debug wireframe" % label)
 		return
-	if _wireframe_has_duplicate_segments(wireframe):
-		m_failures.append("%s debug wireframe contains duplicate edges" % label)
-	var material := wireframe.material_override as StandardMaterial3D
-	if material == null or bool(material.get("no_depth_test")):
+	var sources := BuildingWireframeScript.get_overlay_sources(node)
+	if sources.is_empty():
+		m_failures.append("%s debug wireframe did not apply to a source mesh" % label)
+		return
+	if node is MeshInstance3D and sources[0] != node:
+		m_failures.append("%s debug wireframe did not reuse its source mesh instance" % label)
+	var source_ids: Array[int] = []
+	for source in sources:
+		source_ids.append(source.get_instance_id())
+	var material := BuildingWireframeScript.get_debug_material(node, sources[0])
+	var previous_overlay := material.next_pass if material != null else null
+	if (
+		material == null
+		or material.shader == null
+		or material.shader.code.contains("depth_test_disabled")
+		or material.shader.code.contains("cull_disabled")
+		or !material.shader.code.contains("cull_back")
+		or BuildingWireframeScript.is_xray(node)
+	):
 		m_failures.append("%s debug wireframe was not depth-tested by default" % label)
-	var wireframe_instance_id := wireframe.get_instance_id()
 	node.call(
 		"set_debug_wireframe",
 		true,
 		Color(1.0, 0.32, 0.12, 0.8),
 		true
 	)
-	wireframe = node.get_node_or_null(
-		BuildingWireframeScript.NODE_NAME
-	) as MeshInstance3D
-	if wireframe == null or wireframe.get_instance_id() != wireframe_instance_id:
-		m_failures.append("%s debug style changes replaced the line geometry" % label)
-	material = wireframe.material_override as StandardMaterial3D if wireframe != null else null
-	if material == null or !bool(material.get("no_depth_test")):
+	sources = BuildingWireframeScript.get_overlay_sources(node)
+	var styled_source_ids: Array[int] = []
+	for source in sources:
+		styled_source_ids.append(source.get_instance_id())
+	if styled_source_ids != source_ids:
+		m_failures.append("%s debug style changes replaced source geometry" % label)
+	material = (
+		BuildingWireframeScript.get_debug_material(node, sources[0])
+		if !sources.is_empty()
+		else null
+	)
+	if (
+		material == null
+		or material.shader == null
+		or !material.shader.code.contains("depth_test_disabled")
+		or material.shader.code.contains("cull_disabled")
+		or !material.shader.code.contains("cull_back")
+		or !BuildingWireframeScript.is_xray(node)
+	):
 		m_failures.append("%s debug wireframe x-ray mode did not disable depth testing" % label)
 	if _debug_wireframe_rebuild_count(node) != rebuild_before:
 		m_failures.append("%s debug display changes rebuilt source geometry" % label)
@@ -4649,8 +4701,10 @@ func _validate_debug_wireframe_node(node: Node3D) -> void:
 		Color(1.0, 0.32, 0.12, 0.8),
 		true
 	)
-	if node.get_node_or_null(BuildingWireframeScript.NODE_NAME) != null:
+	if BuildingWireframeScript.is_active(node):
 		m_failures.append("%s did not clear the shared debug wireframe" % label)
+	if !sources.is_empty() and sources[0].material_overlay != previous_overlay:
+		m_failures.append("%s did not restore the previous material overlay" % label)
 	if _debug_wireframe_rebuild_count(node) != rebuild_before:
 		m_failures.append("%s wireframe removal rebuilt source geometry" % label)
 
@@ -4671,36 +4725,6 @@ func _non_wireframe_descendant_ids(node: Node) -> Array[int]:
 		ids.append(child.get_instance_id())
 		ids.append_array(_non_wireframe_descendant_ids(child))
 	return ids
-
-
-func _wireframe_has_duplicate_segments(wireframe: MeshInstance3D) -> bool:
-	if wireframe.mesh == null or wireframe.mesh.get_surface_count() <= 0:
-		return true
-	var arrays := wireframe.mesh.surface_get_arrays(0)
-	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-	if vertices.is_empty() or vertices.size() % 2 != 0:
-		return true
-	var segments := {}
-	for index in range(0, vertices.size(), 2):
-		var start_key := _wireframe_point_key(vertices[index])
-		var end_key := _wireframe_point_key(vertices[index + 1])
-		var key := (
-			"%s|%s" % [start_key, end_key]
-			if start_key < end_key
-			else "%s|%s" % [end_key, start_key]
-		)
-		if segments.has(key):
-			return true
-		segments[key] = true
-	return false
-
-
-func _wireframe_point_key(point: Vector3) -> String:
-	return "%d,%d,%d" % [
-		roundi(point.x * 10000.0),
-		roundi(point.y * 10000.0),
-		roundi(point.z * 10000.0),
-	]
 
 
 func _covered_polygon_area(polygons: Array) -> float:
@@ -5108,20 +5132,21 @@ func _wall_face_winding_matches_normal(
 	return found_face
 
 
-func _world_boundary_edge_count(wall: Wall3DScript) -> int:
+func _world_nonbase_boundary_edge_count(wall: Wall3DScript) -> int:
 	if wall.mesh == null or wall.mesh.get_surface_count() <= 0:
 		return 0
 	var arrays := wall.mesh.surface_get_arrays(0)
 	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
 	var edge_counts := {}
+	var base_y := wall.global_transform.origin.y
 	for triangle_start in range(0, indices.size(), 3):
 		var a := wall.global_transform * vertices[indices[triangle_start]]
 		var b := wall.global_transform * vertices[indices[triangle_start + 1]]
 		var c := wall.global_transform * vertices[indices[triangle_start + 2]]
-		_add_edge_count(edge_counts, a, b)
-		_add_edge_count(edge_counts, b, c)
-		_add_edge_count(edge_counts, c, a)
+		_add_nonbase_edge_count(edge_counts, a, b, base_y)
+		_add_nonbase_edge_count(edge_counts, b, c, base_y)
+		_add_nonbase_edge_count(edge_counts, c, a, base_y)
 	var open_count := 0
 	for key in edge_counts.keys():
 		if int(edge_counts[key]) != 2:
@@ -5129,7 +5154,16 @@ func _world_boundary_edge_count(wall: Wall3DScript) -> int:
 	return open_count
 
 
-func _add_edge_count(edge_counts: Dictionary, a: Vector3, b: Vector3) -> void:
+func _add_nonbase_edge_count(
+	edge_counts: Dictionary,
+	a: Vector3,
+	b: Vector3,
+	base_y: float
+) -> void:
+	# Wall undersides are intentionally open, so their perimeter is not a
+	# miter gap. Vertical and upper edges must still remain watertight.
+	if absf(a.y - base_y) <= 0.001 and absf(b.y - base_y) <= 0.001:
+		return
 	var a_key := _vertex_key(a)
 	var b_key := _vertex_key(b)
 	var edge_key := "%s|%s" % [a_key, b_key] if a_key < b_key else "%s|%s" % [b_key, a_key]

@@ -8,8 +8,9 @@ const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
 ## Builds combined geometry for a set of wall segments, clipping faces and
 ## mitering shared endpoints in plan (XZ) space so junctions render without
 ## buried interior geometry, square butt seams, or z-fighting caps. Segments
-## are assumed to share a base plane. Horizontal caps stay tied to wall
-## footprints so enclosed rooms do not become filled slabs.
+## are assumed to share a base plane. Horizontal top caps stay tied to wall
+## footprints so enclosed rooms do not become filled slabs; hidden underside
+## faces on the shared base plane are omitted.
 
 const PLANE_EPSILON := 0.002
 const VERTICAL_CLIP_DEFLATE := 0.0
@@ -288,11 +289,14 @@ static func _append_cell(
 		local_polygon, y1, Vector3.UP, color,
 		vertices, normals, colors, indices, collision_faces, roof_clips
 	)
-	_append_horizontal_face_polygon(
-		segments, segment_index, footprints, cap_clip_exceptions, frame,
-		local_polygon, y0, Vector3.DOWN, color,
-		vertices, normals, colors, indices, collision_faces, roof_clips
-	)
+	# Preserve downward-facing header surfaces above openings, but do not emit
+	# the wall's hidden underside triangles on its shared base plane.
+	if y0 > PLANE_EPSILON:
+		_append_horizontal_face_polygon(
+			segments, segment_index, footprints, cap_clip_exceptions, frame,
+			local_polygon, y0, Vector3.DOWN, color,
+			vertices, normals, colors, indices, collision_faces, roof_clips
+		)
 
 
 static func _append_vertical_face(
