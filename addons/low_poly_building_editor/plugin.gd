@@ -245,6 +245,14 @@ var m_stair_settings := {
 	"thickness": 0.12,
 	"rotation_degrees": 0.0,
 	"color": Color(0.52, 0.46, 0.38, 1.0),
+	"left_rail_enabled": false,
+	"right_rail_enabled": false,
+	"rail_edge_margin": 0.15,
+	"rail_height": 1.0,
+	"rail_post_thickness": 0.08,
+	"rail_thickness": 0.1,
+	"rail_lower_height": 0.18,
+	"rail_color": Color(0.33, 0.28, 0.22, 1.0),
 }
 var m_rail_settings := {
 	"grid_step": 0.5,
@@ -2353,6 +2361,7 @@ func _create_stair_preview(coordinator: Building3DScript) -> void:
 	var preview_color := Color(m_stair_settings["color"])
 	preview_color.a = 0.46
 	m_stair_preview.stair_color = preview_color
+	_apply_stair_rail_settings(m_stair_preview)
 	m_stair_preview.generate_collision = false
 	coordinator.add_child(m_stair_preview)
 	m_stair_preview.owner = null
@@ -2378,6 +2387,7 @@ func _update_stair_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 	m_stair_preview.stair_height = float(m_stair_settings["height"])
 	m_stair_preview.step_count = int(m_stair_settings["step_count"])
 	m_stair_preview.stair_thickness = float(m_stair_settings["thickness"])
+	_apply_stair_rail_settings(m_stair_preview)
 	m_stair_preview.set_stair_corners_and_rotation(stair_start, stair_end, m_stair_draw_rotation_degrees)
 	if m_stair_has_valid_preview:
 		var size := m_stair_preview.get_stair_size()
@@ -2385,6 +2395,17 @@ func _update_stair_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 			"Release or click to place stairs: %.2f x %.2f, %.0f deg." %
 			[size.x, size.y, m_stair_draw_rotation_degrees]
 		)
+
+
+func _apply_stair_rail_settings(stairs: Stairs3DScript) -> void:
+	stairs.left_rail_enabled = bool(m_stair_settings.get("left_rail_enabled", false))
+	stairs.right_rail_enabled = bool(m_stair_settings.get("right_rail_enabled", false))
+	stairs.rail_edge_margin = float(m_stair_settings.get("rail_edge_margin", 0.15))
+	stairs.rail_height = float(m_stair_settings.get("rail_height", 1.0))
+	stairs.rail_post_thickness = float(m_stair_settings.get("rail_post_thickness", 0.08))
+	stairs.rail_thickness = float(m_stair_settings.get("rail_thickness", 0.1))
+	stairs.rail_lower_height = float(m_stair_settings.get("rail_lower_height", 0.18))
+	stairs.rail_color = Color(m_stair_settings.get("rail_color", Color(0.33, 0.28, 0.22, 1.0)))
 
 
 func _stair_base_height() -> float:
@@ -2529,7 +2550,15 @@ func _commit_stairs(
 		int(m_stair_settings["step_count"]),
 		float(m_stair_settings["thickness"]),
 		Color(m_stair_settings["color"]),
-		normalized_rotation
+		normalized_rotation,
+		bool(m_stair_settings.get("left_rail_enabled", false)),
+		bool(m_stair_settings.get("right_rail_enabled", false)),
+		float(m_stair_settings.get("rail_height", 1.0)),
+		float(m_stair_settings.get("rail_post_thickness", 0.08)),
+		float(m_stair_settings.get("rail_thickness", 0.1)),
+		float(m_stair_settings.get("rail_lower_height", 0.18)),
+		Color(m_stair_settings.get("rail_color", Color(0.33, 0.28, 0.22, 1.0))),
+		float(m_stair_settings.get("rail_edge_margin", 0.15))
 	)
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	var undo_redo := get_undo_redo()

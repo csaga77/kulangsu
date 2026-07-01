@@ -87,6 +87,9 @@ var m_stair_step_count_spin: SpinBox
 var m_stair_thickness_spin: SpinBox
 var m_stair_rotation_spin: SpinBox
 var m_stair_color_picker: ColorPickerButton
+var m_stair_left_rail_check: CheckBox
+var m_stair_right_rail_check: CheckBox
+var m_stair_rail_margin_spin: SpinBox
 var m_rail_grid_spin: SpinBox
 var m_rail_base_height_spin: SpinBox
 var m_rail_height_spin: SpinBox
@@ -467,6 +470,27 @@ func _build_stair_controls(parent: VBoxContainer) -> void:
 	m_stair_color_picker = _make_color_picker(Color(0.52, 0.46, 0.38, 1.0))
 	m_stair_color_picker.color_changed.connect(_on_stair_color_changed)
 	_add_labeled_control(parent, "Color:", m_stair_color_picker, "Vertex color applied to newly drawn stairs.")
+
+	m_stair_left_rail_check = CheckBox.new()
+	m_stair_left_rail_check.text = "Left Rail"
+	m_stair_left_rail_check.tooltip_text = "Add an optional handrail along the left side of newly drawn stairs, using the Standard Rail Defaults height/thickness/color below. Posts sit at the mid-depth of each tread instead of following Post Spacing."
+	m_stair_left_rail_check.toggled.connect(_on_stair_setting_toggled)
+	parent.add_child(m_stair_left_rail_check)
+
+	m_stair_right_rail_check = CheckBox.new()
+	m_stair_right_rail_check.text = "Right Rail"
+	m_stair_right_rail_check.tooltip_text = "Add an optional handrail along the right side of newly drawn stairs, using the Standard Rail Defaults height/thickness/color below. Posts sit at the mid-depth of each tread instead of following Post Spacing."
+	m_stair_right_rail_check.toggled.connect(_on_stair_setting_toggled)
+	parent.add_child(m_stair_right_rail_check)
+
+	m_stair_rail_margin_spin = _make_spin(0.0, 2.0, 0.01, 0.15)
+	_add_labeled_control(
+		parent,
+		"Rail Margin:",
+		m_stair_rail_margin_spin,
+		"Inset of each enabled rail from the stairs' left/right footprint edge, clamped so opposing margins cannot cross."
+	)
+	m_stair_rail_margin_spin.value_changed.connect(_on_stair_setting_changed)
 
 
 func _build_rail_controls(parent: VBoxContainer) -> void:
@@ -1237,6 +1261,10 @@ func _on_stair_setting_changed(_value: float) -> void:
 	_emit_stair_settings()
 
 
+func _on_stair_setting_toggled(_pressed: bool) -> void:
+	_emit_stair_settings()
+
+
 func _on_stair_color_changed(_color: Color) -> void:
 	_update_color_picker_icon(m_stair_color_picker)
 	_emit_stair_settings()
@@ -1244,11 +1272,13 @@ func _on_stair_color_changed(_color: Color) -> void:
 
 func _on_rail_setting_changed(_value: float) -> void:
 	_emit_rail_settings()
+	_emit_stair_settings()
 
 
 func _on_rail_color_changed(_color: Color) -> void:
 	_update_color_picker_icon(m_rail_color_picker)
 	_emit_rail_settings()
+	_emit_stair_settings()
 
 
 func _on_pillar_setting_changed(_value: float) -> void:
@@ -1449,6 +1479,29 @@ func _emit_stair_settings() -> void:
 		"thickness": float(m_stair_thickness_spin.value),
 		"rotation_degrees": float(m_stair_rotation_spin.value),
 		"color": m_stair_color_picker.color,
+		"left_rail_enabled": (
+			m_stair_left_rail_check.button_pressed if m_stair_left_rail_check != null else false
+		),
+		"right_rail_enabled": (
+			m_stair_right_rail_check.button_pressed if m_stair_right_rail_check != null else false
+		),
+		"rail_edge_margin": (
+			float(m_stair_rail_margin_spin.value) if m_stair_rail_margin_spin != null else 0.15
+		),
+		"rail_height": float(m_rail_height_spin.value) if m_rail_height_spin != null else 1.0,
+		"rail_post_thickness": (
+			float(m_rail_post_thickness_spin.value) if m_rail_post_thickness_spin != null else 0.08
+		),
+		"rail_thickness": (
+			float(m_rail_bar_thickness_spin.value) if m_rail_bar_thickness_spin != null else 0.1
+		),
+		"rail_lower_height": (
+			float(m_rail_lower_height_spin.value) if m_rail_lower_height_spin != null else 0.18
+		),
+		"rail_color": (
+			m_rail_color_picker.color if m_rail_color_picker != null
+			else Color(0.33, 0.28, 0.22, 1.0)
+		),
 	})
 
 
@@ -1910,6 +1963,15 @@ func _load_persisted_settings() -> void:
 	var stair_color_variant: Variant = state.get("stair_color", m_stair_color_picker.color)
 	if stair_color_variant is Color:
 		m_stair_color_picker.color = stair_color_variant
+	m_stair_left_rail_check.button_pressed = bool(
+		state.get("stair_left_rail_enabled", m_stair_left_rail_check.button_pressed)
+	)
+	m_stair_right_rail_check.button_pressed = bool(
+		state.get("stair_right_rail_enabled", m_stair_right_rail_check.button_pressed)
+	)
+	m_stair_rail_margin_spin.value = float(
+		state.get("stair_rail_edge_margin", m_stair_rail_margin_spin.value)
+	)
 	m_rail_grid_spin.value = float(state.get("rail_grid_step", m_rail_grid_spin.value))
 	m_rail_base_height_spin.value = float(state.get("rail_base_height", m_rail_base_height_spin.value))
 	m_rail_height_spin.value = float(state.get("rail_height", m_rail_height_spin.value))
@@ -2061,6 +2123,15 @@ func _save_persisted_settings() -> void:
 		"stair_thickness": float(m_stair_thickness_spin.value) if m_stair_thickness_spin != null else 0.12,
 		"stair_rotation_degrees": float(m_stair_rotation_spin.value) if m_stair_rotation_spin != null else 0.0,
 		"stair_color": m_stair_color_picker.color if m_stair_color_picker != null else Color(0.52, 0.46, 0.38, 1.0),
+		"stair_left_rail_enabled": (
+			m_stair_left_rail_check.button_pressed if m_stair_left_rail_check != null else false
+		),
+		"stair_right_rail_enabled": (
+			m_stair_right_rail_check.button_pressed if m_stair_right_rail_check != null else false
+		),
+		"stair_rail_edge_margin": (
+			float(m_stair_rail_margin_spin.value) if m_stair_rail_margin_spin != null else 0.15
+		),
 		"rail_grid_step": float(m_rail_grid_spin.value) if m_rail_grid_spin != null else 0.5,
 		"rail_base_height": float(m_rail_base_height_spin.value) if m_rail_base_height_spin != null else 0.0,
 		"rail_height": float(m_rail_height_spin.value) if m_rail_height_spin != null else 1.0,

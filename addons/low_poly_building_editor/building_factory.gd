@@ -275,7 +275,15 @@ static func create_stairs_node(
 	step_count: int = 6,
 	thickness: float = 0.12,
 	color: Color = Color(0.52, 0.46, 0.38, 1.0),
-	rotation_degrees: float = 0.0
+	rotation_degrees: float = 0.0,
+	left_rail_enabled: bool = false,
+	right_rail_enabled: bool = false,
+	rail_height: float = 1.0,
+	rail_post_thickness: float = 0.08,
+	rail_thickness: float = 0.1,
+	rail_lower_height: float = 0.18,
+	rail_color: Color = Color(0.33, 0.28, 0.22, 1.0),
+	rail_edge_margin: float = 0.15
 ) -> Stairs3DScript:
 	var stairs := Stairs3DScript.new() as Stairs3DScript
 	stairs.name = _unique_child_name(building, "Stairs3D")
@@ -286,6 +294,14 @@ static func create_stairs_node(
 	stairs.stair_thickness = thickness
 	stairs.stair_color = color
 	stairs.stair_rotation_degrees = rotation_degrees
+	stairs.left_rail_enabled = left_rail_enabled
+	stairs.right_rail_enabled = right_rail_enabled
+	stairs.rail_edge_margin = rail_edge_margin
+	stairs.rail_height = rail_height
+	stairs.rail_post_thickness = rail_post_thickness
+	stairs.rail_thickness = rail_thickness
+	stairs.rail_lower_height = rail_lower_height
+	stairs.rail_color = rail_color
 	stairs.build_on_ready = true
 	stairs.generate_collision = true
 	stairs.rebuild_stairs_mesh()

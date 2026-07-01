@@ -17,6 +17,9 @@ const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
 const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
 const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.gd")
 const Rail3DScript = preload("res://addons/low_poly_building_editor/rail_3d.gd")
+const StandardRailGeometryScript = preload(
+	"res://addons/low_poly_building_editor/standard_rail_geometry_3d.gd"
+)
 const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
 const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
 const RoundPillar3DScript = preload("res://addons/low_poly_building_editor/round_pillar_3d.gd")
@@ -122,6 +125,8 @@ func _run_smoke_checks() -> void:
 	_validate_room_node(coordinator)
 	_validate_floor_node(coordinator)
 	_validate_stairs_node(coordinator)
+	_validate_stairs_optional_rails(coordinator)
+	_validate_standard_rail_geometry_post_base_heights()
 	_validate_rail_node(coordinator)
 	_validate_pillar_node(coordinator)
 	_validate_roof_node(coordinator)
@@ -1589,6 +1594,19 @@ func _validate_stairs_node(coordinator: Building3DScript) -> void:
 		var winding_normal := (b - a).cross(c - a).normalized()
 		if winding_normal.dot(normals[indices[0]]) > -0.999:
 			m_failures.append("Stairs3D triangle winding does not match Godot BoxMesh convention")
+	# The riser is the second quad appended per step (indices 6..11 for the
+	# first step), right after the tread's UP-facing quad (indices 0..5).
+	# Its winding must independently match the same convention so the riser
+	# actually renders forward-facing instead of being backface-culled.
+	if indices.size() >= 12 and normals.size() > indices[6]:
+		var riser_a := vertices[indices[6]]
+		var riser_b := vertices[indices[7]]
+		var riser_c := vertices[indices[8]]
+		var riser_winding_normal := (riser_b - riser_a).cross(riser_c - riser_a).normalized()
+		if riser_winding_normal.dot(normals[indices[6]]) > -0.999:
+			m_failures.append("Stairs3D riser triangle winding does not face forward")
+		if !normals[indices[6]].is_equal_approx(Vector3.FORWARD):
+			m_failures.append("Stairs3D riser normal is not Vector3.FORWARD")
 	if stairs.get_node_or_null("StairsCollision") == null:
 		m_failures.append("Stairs3D did not generate collision for placed stairs")
 	if !_has_box_collision_shape(stairs, "StairsCollision/%s" % Stairs3DScript.LEFT_SIDE_COLLISION_SHAPE_NAME):
@@ -1654,6 +1672,234 @@ func _validate_stairs_node(coordinator: Building3DScript) -> void:
 		m_failures.append("Stairs3D did not preserve footprint center when rotating")
 	if stairs.transform.basis.is_equal_approx(Basis.IDENTITY):
 		m_failures.append("Stairs3D did not apply rotation to its transform")
+
+
+func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
+	var base_y := 2.5
+	var no_rail_stairs := BuildingFactoryScript.create_stairs_node(coordinator,
+		Vector3(0.0, base_y, 32.0),
+		Vector3(3.0, base_y, 36.0),
+		1.2,
+		4,
+		0.16,
+		Color(0.52, 0.46, 0.38, 1.0)
+	)
+	coordinator.add_child(no_rail_stairs)
+	if no_rail_stairs.left_rail_enabled or no_rail_stairs.right_rail_enabled:
+		m_failures.append("Stairs3D enabled rails by default")
+	var base_vertex_count := _mesh_vertex_count(no_rail_stairs)
+	if base_vertex_count != 66:
+		m_failures.append("Stairs3D without rails changed its baseline stepped vertex count")
+
+	var one_rail_stairs := BuildingFactoryScript.create_stairs_node(coordinator,
+		Vector3(6.0, base_y, 32.0),
+		Vector3(9.0, base_y, 36.0),
+		1.2,
+		4,
+		0.16,
+		Color(0.52, 0.46, 0.38, 1.0),
+		0.0,
+		true,
+		false,
+		1.0,
+		0.08,
+		0.1,
+		0.18,
+		Color(0.33, 0.28, 0.22, 1.0)
+	)
+	coordinator.add_child(one_rail_stairs)
+	if !one_rail_stairs.left_rail_enabled or one_rail_stairs.right_rail_enabled:
+		m_failures.append("BuildingFactory did not apply the requested single-side rail flags")
+	# The shared standard-rail strategy generates a 144-vertex post/bar assembly
+	# for this 4-unit run with these dimensions: one top bar box, one lower bar
+	# box, and one post per tread (4 steps) centered in the depth direction
+	# instead of Rail3D's evenly-spaced-by-post_spacing distribution.
+	if _mesh_vertex_count(one_rail_stairs) != base_vertex_count + 144:
+		m_failures.append(
+			"Stairs3D single side rail did not append the shared standard-rail vertex count"
+		)
+	if one_rail_stairs.get_node_or_null("StairsCollision") == null:
+		m_failures.append("Stairs3D with a rail enabled did not generate collision")
+
+	# With the default 0.15 edge margin, rail_thickness 0.1, the left rail's
+	# bar sits with its faces at x = 0.15 +/- 0.05 (0.10 and 0.20), never at
+	# the unmargined x = 0.05 a bar straddling the exact footprint edge
+	# would have produced.
+	if absf(one_rail_stairs.rail_edge_margin - 0.15) > 0.001:
+		m_failures.append("Stairs3D did not default rail_edge_margin to 0.15")
+	var one_rail_arrays := one_rail_stairs.mesh.surface_get_arrays(0)
+	var one_rail_vertices: PackedVector3Array = one_rail_arrays[Mesh.ARRAY_VERTEX]
+	var found_margined_bar_edge := false
+	var found_unmargined_bar_edge := false
+	for vertex in one_rail_vertices:
+		if absf(vertex.x - 0.10) <= 0.001:
+			found_margined_bar_edge = true
+		if absf(vertex.x - 0.05) <= 0.001:
+			found_unmargined_bar_edge = true
+	if !found_margined_bar_edge:
+		m_failures.append("Stairs3D left rail bar did not inset by rail_edge_margin")
+	if found_unmargined_bar_edge:
+		m_failures.append("Stairs3D left rail bar still straddles the unmargined footprint edge")
+
+	var both_rail_stairs := BuildingFactoryScript.create_stairs_node(coordinator,
+		Vector3(12.0, base_y, 32.0),
+		Vector3(15.0, base_y, 36.0),
+		1.2,
+		4,
+		0.16,
+		Color(0.52, 0.46, 0.38, 1.0),
+		0.0,
+		true,
+		true,
+		1.0,
+		0.08,
+		0.1,
+		0.18,
+		Color(0.33, 0.28, 0.22, 1.0)
+	)
+	coordinator.add_child(both_rail_stairs)
+	if _mesh_vertex_count(both_rail_stairs) != base_vertex_count + 144 * 2:
+		m_failures.append(
+			"Stairs3D with both side rails did not append two shared standard-rail vertex counts"
+		)
+	var both_arrays := both_rail_stairs.mesh.surface_get_arrays(0)
+	var both_normals: PackedVector3Array = both_arrays[Mesh.ARRAY_NORMAL]
+	var both_colors: PackedColorArray = both_arrays[Mesh.ARRAY_COLOR]
+	var both_vertices: PackedVector3Array = both_arrays[Mesh.ARRAY_VERTEX]
+	if both_normals.size() != both_vertices.size() or both_colors.size() != both_vertices.size():
+		m_failures.append("Stairs3D with rails is missing per-vertex normal or color data")
+	if !_has_normal_near(both_normals, Vector3.UP):
+		m_failures.append("Stairs3D rails are missing top-facing rail surfaces")
+
+	var expected_post_positions := StandardRailGeometryScript.tread_mid_post_positions(4.0, 4)
+	if (
+		expected_post_positions.size() != 4
+		or absf(expected_post_positions[0] - 0.5) > 0.001
+		or absf(expected_post_positions[3] - 3.5) > 0.001
+	):
+		m_failures.append("Stairs3D rail posts are not centered on each tread's depth span")
+
+	# Each post's base must rest on its own tread's flat top (0.3, 0.6, 0.9,
+	# 1.2 for a 1.2-height, 4-step run) instead of the smooth rise/length
+	# diagonal a mid-run position would otherwise imply (which would be
+	# 0.15, 0.45, 0.75, 1.05 -- half a riser too low, plugging into the step).
+	var expected_post_base_heights := StandardRailGeometryScript.tread_mid_post_base_heights(1.2, 4)
+	if (
+		expected_post_base_heights.size() != 4
+		or absf(expected_post_base_heights[0] - 0.3) > 0.001
+		or absf(expected_post_base_heights[3] - 1.2) > 0.001
+	):
+		m_failures.append("Stairs3D rail posts are not based on their tread's actual height")
+
+	both_rail_stairs.left_rail_enabled = false
+	both_rail_stairs.right_rail_enabled = false
+	both_rail_stairs.rebuild_stairs_mesh()
+	if _mesh_vertex_count(both_rail_stairs) != base_vertex_count:
+		m_failures.append("Stairs3D did not remove rail geometry after disabling both rails")
+
+	# A footprint narrower than twice the configured margin must clamp the
+	# margin instead of letting the two rails cross or the mesh go invalid.
+	var narrow_stairs := BuildingFactoryScript.create_stairs_node(coordinator,
+		Vector3(18.0, base_y, 32.0),
+		Vector3(18.2, base_y, 34.0),
+		1.2,
+		2,
+		0.16,
+		Color(0.52, 0.46, 0.38, 1.0),
+		0.0,
+		true,
+		true,
+		1.0,
+		0.08,
+		0.1,
+		0.18,
+		Color(0.33, 0.28, 0.22, 1.0),
+		0.15
+	)
+	coordinator.add_child(narrow_stairs)
+	if narrow_stairs.mesh == null or narrow_stairs.mesh.get_surface_count() <= 0:
+		m_failures.append("Stairs3D with a clamped rail margin on a narrow footprint did not build a mesh")
+
+
+func _validate_standard_rail_geometry_post_base_heights() -> void:
+	# Whitebox check directly against the shared geometry strategy: with an
+	# explicit post_base_heights array, each post must be a flat, upright
+	# box whose bottom face sits exactly at the given height (not sheared or
+	# offset by the run's rise), independent of the larger Stairs3D assembly.
+	var vertices := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var colors := PackedColorArray()
+	var indices := PackedInt32Array()
+	var positions := PackedFloat32Array([0.5, 1.5])
+	var base_heights := PackedFloat32Array([0.3, 0.6])
+	StandardRailGeometryScript.append_rail(
+		vertices,
+		normals,
+		colors,
+		indices,
+		Vector3.ZERO,
+		Vector3.BACK,
+		Vector3.UP,
+		Vector3.RIGHT,
+		2.0,
+		0.6,
+		1.0,
+		1.0,
+		0.08,
+		0.1,
+		0.0,
+		Color.WHITE,
+		positions,
+		base_heights
+	)
+	# Layout: top bar occupies vertices [0..23] (lower rail is disabled via
+	# lower_rail_height 0.0); each post then contributes 24 vertices in
+	# FORWARD/BACK/LEFT/RIGHT/UP/DOWN face order, so a post's DOWN face is
+	# its last 4 vertices.
+	var first_post_bottom_start := 24 + 20
+	var second_post_bottom_start := 48 + 20
+	if vertices.size() != 72:
+		m_failures.append(
+			"StandardRailGeometry generated an unexpected vertex count for this post layout"
+		)
+		return
+	for offset in range(4):
+		if absf(vertices[first_post_bottom_start + offset].y - 0.3) > 0.001:
+			m_failures.append("StandardRailGeometry first post base is not flat at its tread height")
+		if absf(vertices[second_post_bottom_start + offset].y - 0.6) > 0.001:
+			m_failures.append("StandardRailGeometry second post base is not flat at its tread height")
+
+	# The bar's underside follows the rise/length diagonal: at u=0.5 that is
+	# 0.9 + 0.6*(0.5/2.0) = 1.05, and at u=1.5 it is 0.9 + 0.6*(1.5/2.0) =
+	# 1.35. Each post (post_thickness 0.08, so half-width 0.04) is nudged up
+	# past that by half the underside's rise across its own width -- here
+	# 0.6*0.08*0.5/2.0 = 0.012 -- so its flat top overlaps the sloped
+	# underside across its whole footprint instead of gapping on the
+	# downhill side: 1.05 + 0.012 = 1.062 and 1.35 + 0.012 = 1.362.
+	var first_post_top_start := 24 + 16
+	var second_post_top_start := 48 + 16
+	for offset in range(4):
+		if absf(vertices[first_post_top_start + offset].y - 1.062) > 0.001:
+			m_failures.append("StandardRailGeometry first post does not merge into the bar with no gap")
+		if absf(vertices[second_post_top_start + offset].y - 1.362) > 0.001:
+			m_failures.append("StandardRailGeometry second post does not merge into the bar with no gap")
+
+	# Stairs3D's axis triple (run=BACK, up=UP, side=RIGHT) is an axis swap
+	# from Rail3D's (run=RIGHT, up=UP, side=BACK), which mirrors it
+	# (negative orientation). The bar's first face (its FORWARD quad, the
+	# mesh's very first triangle) must still satisfy the same Godot winding
+	# convention Rail3D's own geometry does: the geometric winding normal
+	# should be antiparallel to the stored vertex normal, so the visible,
+	# non-culled face actually matches where the normal points.
+	if normals.size() >= 3:
+		var winding_a := vertices[indices[0]]
+		var winding_b := vertices[indices[1]]
+		var winding_c := vertices[indices[2]]
+		var winding_normal := (winding_b - winding_a).cross(winding_c - winding_a).normalized()
+		if winding_normal.dot(normals[indices[0]]) > -0.999:
+			m_failures.append(
+				"StandardRailGeometry winding does not match Godot convention for a mirrored axis triple"
+			)
 
 
 func _validate_rail_node(coordinator: Building3DScript) -> void:

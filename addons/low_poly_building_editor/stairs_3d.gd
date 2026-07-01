@@ -2,6 +2,10 @@
 class_name Stairs3D
 extends "res://addons/low_poly_building_editor/building_mesh_3d.gd"
 
+const StandardRailGeometry := preload(
+	"res://addons/low_poly_building_editor/standard_rail_geometry_3d.gd"
+)
+
 const GENERATED_META := &"stairs_generated"
 const PREVIEW_META := &"building_editor_preview"
 const SIDE_WALL_COLLISION_THICKNESS := 0.64
@@ -68,6 +72,69 @@ const RIGHT_SIDE_COLLISION_SHAPE_NAME := "RightSideCollisionShape3D"
 		stair_color = value
 		_request_rebuild()
 
+@export_group("Rails")
+@export var left_rail_enabled := false:
+	set(value):
+		if left_rail_enabled == value:
+			return
+		left_rail_enabled = value
+		_request_rebuild()
+
+@export var right_rail_enabled := false:
+	set(value):
+		if right_rail_enabled == value:
+			return
+		right_rail_enabled = value
+		_request_rebuild()
+
+@export_range(0.0, 2.0, 0.01, "or_greater") var rail_edge_margin := 0.15:
+	set(value):
+		var clamped_value := maxf(value, 0.0)
+		if is_equal_approx(rail_edge_margin, clamped_value):
+			return
+		rail_edge_margin = clamped_value
+		_request_rebuild()
+
+@export_range(0.2, 4.0, 0.01, "or_greater") var rail_height := 1.0:
+	set(value):
+		var clamped_value := maxf(value, 0.2)
+		if is_equal_approx(rail_height, clamped_value):
+			return
+		rail_height = clamped_value
+		_request_rebuild()
+
+@export_range(0.02, 1.0, 0.01, "or_greater") var rail_post_thickness := 0.08:
+	set(value):
+		var clamped_value := maxf(value, 0.02)
+		if is_equal_approx(rail_post_thickness, clamped_value):
+			return
+		rail_post_thickness = clamped_value
+		_request_rebuild()
+
+@export_range(0.02, 1.0, 0.01, "or_greater") var rail_thickness := 0.1:
+	set(value):
+		var clamped_value := maxf(value, 0.02)
+		if is_equal_approx(rail_thickness, clamped_value):
+			return
+		rail_thickness = clamped_value
+		_request_rebuild()
+
+@export_range(0.0, 4.0, 0.01, "or_greater") var rail_lower_height := 0.18:
+	set(value):
+		var clamped_value := maxf(value, 0.0)
+		if is_equal_approx(rail_lower_height, clamped_value):
+			return
+		rail_lower_height = clamped_value
+		_request_rebuild()
+
+@export var rail_color := Color(0.33, 0.28, 0.22, 1.0):
+	set(value):
+		if rail_color == value:
+			return
+		rail_color = value
+		_request_rebuild()
+
+@export_group("")
 @export var build_on_ready := true
 @export var generate_collision := true:
 	set(value):
@@ -239,6 +306,14 @@ func _stairs_mesh_source_signature() -> int:
 		stair_thickness,
 		stair_rotation_degrees,
 		stair_color,
+		left_rail_enabled,
+		right_rail_enabled,
+		rail_edge_margin,
+		rail_height,
+		rail_post_thickness,
+		rail_thickness,
+		rail_lower_height,
+		rail_color,
 	])
 
 
@@ -288,9 +363,9 @@ func _append_stair_geometry(
 			colors,
 			indices,
 			Vector3(0.0, y0, z0),
-			Vector3(width, y0, z0),
-			Vector3(width, y1, z0),
 			Vector3(0.0, y1, z0),
+			Vector3(width, y1, z0),
+			Vector3(width, y0, z0),
 			Vector3.FORWARD
 		)
 
@@ -300,9 +375,9 @@ func _append_stair_geometry(
 		colors,
 		indices,
 		Vector3(0.0, bottom_y, 0.0),
-		Vector3(width, bottom_y, 0.0),
-		Vector3(width, 0.0, 0.0),
 		Vector3(0.0, 0.0, 0.0),
+		Vector3(width, 0.0, 0.0),
+		Vector3(width, bottom_y, 0.0),
 		Vector3.FORWARD
 	)
 	_append_quad(
@@ -311,9 +386,9 @@ func _append_stair_geometry(
 		colors,
 		indices,
 		Vector3(0.0, bottom_y, depth),
-		Vector3(0.0, height, depth),
-		Vector3(width, height, depth),
 		Vector3(width, bottom_y, depth),
+		Vector3(width, height, depth),
+		Vector3(0.0, height, depth),
 		Vector3.BACK
 	)
 	_append_quad(
@@ -330,6 +405,74 @@ func _append_stair_geometry(
 	var side_polygon := _side_profile_polygon(depth, height, bottom_y, steps)
 	_append_side_polygon(vertices, normals, colors, indices, side_polygon, 0.0, Vector3.LEFT)
 	_append_side_polygon(vertices, normals, colors, indices, side_polygon, width, Vector3.RIGHT)
+
+	_append_rail_geometry(width, depth, height, vertices, normals, colors, indices)
+
+
+func _append_rail_geometry(
+	width: float,
+	depth: float,
+	height: float,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	if !left_rail_enabled and !right_rail_enabled:
+		return
+	var steps := _effective_step_count()
+	# One post per tread, centered on that tread's depth span, instead of the
+	# spacing-based distribution Rail3D uses for a level span. Each post's
+	# base height follows the actual flat tread surface it stands on, not
+	# the smooth rise/length diagonal, so it rests on top of its step
+	# instead of partway inside it, and stays a flat, upright post.
+	var post_positions := StandardRailGeometry.tread_mid_post_positions(depth, steps)
+	var post_base_heights := StandardRailGeometry.tread_mid_post_base_heights(height, steps)
+	# Inset each rail from its side edge instead of straddling the exact
+	# footprint boundary, clamped so opposing margins cannot cross.
+	var margin := minf(rail_edge_margin, width * 0.45)
+	if left_rail_enabled:
+		StandardRailGeometry.append_rail(
+			vertices,
+			normals,
+			colors,
+			indices,
+			Vector3(margin, 0.0, 0.0),
+			Vector3.BACK,
+			Vector3.UP,
+			Vector3.RIGHT,
+			depth,
+			height,
+			rail_height,
+			1.0, # post_spacing is unused: post_positions overrides it below.
+			rail_post_thickness,
+			rail_thickness,
+			rail_lower_height,
+			rail_color,
+			post_positions,
+			post_base_heights
+		)
+	if right_rail_enabled:
+		StandardRailGeometry.append_rail(
+			vertices,
+			normals,
+			colors,
+			indices,
+			Vector3(width - margin, 0.0, 0.0),
+			Vector3.BACK,
+			Vector3.UP,
+			Vector3.RIGHT,
+			depth,
+			height,
+			rail_height,
+			1.0, # post_spacing is unused: post_positions overrides it below.
+			rail_post_thickness,
+			rail_thickness,
+			rail_lower_height,
+			rail_color,
+			post_positions,
+			post_base_heights
+		)
 
 
 func _side_profile_polygon(depth: float, height: float, bottom_y: float, steps: int) -> PackedVector2Array:

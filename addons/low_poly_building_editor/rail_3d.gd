@@ -2,6 +2,10 @@
 class_name Rail3D
 extends "res://addons/low_poly_building_editor/building_mesh_3d.gd"
 
+const StandardRailGeometry := preload(
+	"res://addons/low_poly_building_editor/standard_rail_geometry_3d.gd"
+)
+
 const GENERATED_META := &"rail_generated"
 const PREVIEW_META := &"building_editor_preview"
 
@@ -131,10 +135,7 @@ func get_rail_bounds_max() -> Vector3:
 
 
 func get_post_count() -> int:
-	var length := get_rail_length()
-	if length <= 0.001:
-		return 0
-	return maxi(ceili(length / maxf(post_spacing, 0.1)) + 1, 2)
+	return StandardRailGeometry.post_count_for_length(get_rail_length(), post_spacing)
 
 
 func rebuild_rail_mesh(rebuild_collision: bool = true) -> void:
@@ -221,134 +222,24 @@ func _append_standard_rail_geometry(
 	colors: PackedColorArray,
 	indices: PackedInt32Array
 ) -> void:
-	var height := maxf(rail_height, 0.2)
-	var post_size := maxf(post_thickness, 0.02)
-	var bar_size := minf(maxf(rail_thickness, 0.02), height * 0.5)
-	var top_bottom := maxf(height - bar_size, 0.0)
-	_append_box(
+	StandardRailGeometry.append_rail(
 		vertices,
 		normals,
 		colors,
 		indices,
-		Vector3(-post_size * 0.5, top_bottom, -bar_size * 0.5),
-		Vector3(length + post_size * 0.5, height, bar_size * 0.5)
+		Vector3.ZERO,
+		Vector3.RIGHT,
+		Vector3.UP,
+		Vector3.BACK,
+		length,
+		0.0,
+		rail_height,
+		post_spacing,
+		post_thickness,
+		rail_thickness,
+		lower_rail_height,
+		rail_color
 	)
-
-	var lower_center := clampf(lower_rail_height, bar_size * 0.5, top_bottom - bar_size * 0.5)
-	if (
-		lower_rail_height > 0.0001
-		and top_bottom > bar_size
-		and lower_center + bar_size * 0.5 < top_bottom - 0.001
-	):
-		_append_box(
-			vertices,
-			normals,
-			colors,
-			indices,
-			Vector3(-post_size * 0.5, lower_center - bar_size * 0.5, -bar_size * 0.5),
-			Vector3(length + post_size * 0.5, lower_center + bar_size * 0.5, bar_size * 0.5)
-		)
-
-	var post_top := maxf(top_bottom, post_size)
-	var post_count := get_post_count()
-	for post_index in range(post_count):
-		var ratio := float(post_index) / float(post_count - 1)
-		var x := length * ratio
-		_append_box(
-			vertices,
-			normals,
-			colors,
-			indices,
-			Vector3(x - post_size * 0.5, 0.0, -post_size * 0.5),
-			Vector3(x + post_size * 0.5, post_top, post_size * 0.5)
-		)
-
-
-func _append_box(
-	vertices: PackedVector3Array,
-	normals: PackedVector3Array,
-	colors: PackedColorArray,
-	indices: PackedInt32Array,
-	minimum: Vector3,
-	maximum: Vector3
-) -> void:
-	_append_quad(
-		vertices, normals, colors, indices,
-		Vector3(minimum.x, minimum.y, minimum.z),
-		Vector3(maximum.x, minimum.y, minimum.z),
-		Vector3(maximum.x, maximum.y, minimum.z),
-		Vector3(minimum.x, maximum.y, minimum.z),
-		Vector3.FORWARD
-	)
-	_append_quad(
-		vertices, normals, colors, indices,
-		Vector3(minimum.x, minimum.y, maximum.z),
-		Vector3(minimum.x, maximum.y, maximum.z),
-		Vector3(maximum.x, maximum.y, maximum.z),
-		Vector3(maximum.x, minimum.y, maximum.z),
-		Vector3.BACK
-	)
-	_append_quad(
-		vertices, normals, colors, indices,
-		Vector3(minimum.x, minimum.y, minimum.z),
-		Vector3(minimum.x, maximum.y, minimum.z),
-		Vector3(minimum.x, maximum.y, maximum.z),
-		Vector3(minimum.x, minimum.y, maximum.z),
-		Vector3.LEFT
-	)
-	_append_quad(
-		vertices, normals, colors, indices,
-		Vector3(maximum.x, minimum.y, minimum.z),
-		Vector3(maximum.x, minimum.y, maximum.z),
-		Vector3(maximum.x, maximum.y, maximum.z),
-		Vector3(maximum.x, maximum.y, minimum.z),
-		Vector3.RIGHT
-	)
-	_append_quad(
-		vertices, normals, colors, indices,
-		Vector3(minimum.x, maximum.y, minimum.z),
-		Vector3(maximum.x, maximum.y, minimum.z),
-		Vector3(maximum.x, maximum.y, maximum.z),
-		Vector3(minimum.x, maximum.y, maximum.z),
-		Vector3.UP
-	)
-	_append_quad(
-		vertices, normals, colors, indices,
-		Vector3(minimum.x, minimum.y, minimum.z),
-		Vector3(minimum.x, minimum.y, maximum.z),
-		Vector3(maximum.x, minimum.y, maximum.z),
-		Vector3(maximum.x, minimum.y, minimum.z),
-		Vector3.DOWN
-	)
-
-
-func _append_quad(
-	vertices: PackedVector3Array,
-	normals: PackedVector3Array,
-	colors: PackedColorArray,
-	indices: PackedInt32Array,
-	a: Vector3,
-	b: Vector3,
-	c: Vector3,
-	d: Vector3,
-	normal: Vector3
-) -> void:
-	var base := vertices.size()
-	vertices.append(a)
-	vertices.append(b)
-	vertices.append(c)
-	vertices.append(d)
-	for _index in range(4):
-		normals.append(normal)
-		colors.append(rail_color)
-	indices.append_array(PackedInt32Array([
-		base,
-		base + 1,
-		base + 2,
-		base,
-		base + 2,
-		base + 3,
-	]))
 
 
 func _sync_rail_material() -> void:
