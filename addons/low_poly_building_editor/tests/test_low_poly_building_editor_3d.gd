@@ -1826,10 +1826,12 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 		or absf(floor_lower_thicknesses[0] - 0.1) > 0.001
 		or absf(floor_lower_top_heights[0] - 0.9) > 0.001
 		or absf(float(floor_lower_layout["lower_horizontal_end"])) > 0.001
+		or absf(float(floor_lower_layout["handrail_minimum_run"]) + 0.55) > 0.001
 		or absf(floor_lower_positions[4] - 3.5) > 0.001
 		or absf(floor_lower_heights[4] - 1.2) > 0.001
 		or absf(floor_lower_thicknesses[4] - 0.1) > 0.001
 		or absf(floor_lower_top_heights[4] - 1.935) > 0.001
+		or absf(float(floor_lower_layout["handrail_maximum_run"]) - 3.55) > 0.001
 	):
 		m_failures.append(
 			"Stairs3D did not place lower-floor and upper-tread newels correctly"
@@ -1843,7 +1845,7 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 		m_failures.append("Stairs3D lower-floor newel handrail is not horizontal")
 	if !_has_mesh_vertex_with_normal_near(
 		both_rail_stairs.mesh as ArrayMesh,
-		Vector3(0.10, 2.035, 4.04),
+		Vector3(0.10, 2.035, 3.55),
 		Vector3.UP,
 		0.002
 	):
@@ -1863,19 +1865,21 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 		or absf(floor_upper_heights[0] - 0.3) > 0.001
 		or absf(floor_upper_thicknesses[0] - 0.1) > 0.001
 		or absf(floor_upper_top_heights[0] - 1.065) > 0.001
+		or absf(float(floor_upper_layout["handrail_minimum_run"]) - 0.45) > 0.001
 		or absf(floor_upper_positions[4] - 4.5) > 0.001
 		or absf(floor_upper_positions[4] - floor_upper_positions[3] - 1.0) > 0.001
 		or absf(floor_upper_heights[4] - 1.2) > 0.001
 		or absf(floor_upper_thicknesses[4] - 0.1) > 0.001
 		or absf(floor_upper_top_heights[4] - 2.1) > 0.001
 		or absf(float(floor_upper_layout["upper_horizontal_start"]) - 4.0) > 0.001
+		or absf(float(floor_upper_layout["handrail_maximum_run"]) - 4.55) > 0.001
 	):
 		m_failures.append(
 			"Stairs3D did not place lower-tread and upper-floor newels correctly"
 		)
 	if !_has_mesh_vertex_with_normal_near(
 		both_rail_stairs.mesh as ArrayMesh,
-		Vector3(0.10, 1.165, -0.04),
+		Vector3(0.10, 1.165, 0.45),
 		Vector3.UP,
 		0.002
 	):

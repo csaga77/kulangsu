@@ -81,7 +81,9 @@ static func append_rail(
 	post_thicknesses: PackedFloat32Array = PackedFloat32Array(),
 	post_top_heights: PackedFloat32Array = PackedFloat32Array(),
 	lower_horizontal_end: float = -INF,
-	upper_horizontal_start: float = INF
+	upper_horizontal_start: float = INF,
+	minimum_run_override: float = NAN,
+	maximum_run_override: float = NAN
 ) -> void:
 	if length <= 0.001:
 		return
@@ -108,6 +110,10 @@ static func append_rail(
 			bar_maximum_run,
 			positions[index] + current_post_size * 0.5
 		)
+	if !is_nan(minimum_run_override):
+		bar_minimum_run = minimum_run_override
+	if !is_nan(maximum_run_override):
+		bar_maximum_run = maximum_run_override
 
 	_append_handrail_segments(
 		vertices, normals, colors, indices,

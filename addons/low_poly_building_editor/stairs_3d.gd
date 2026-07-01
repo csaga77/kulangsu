@@ -13,7 +13,7 @@ const StandardRailGeometry := preload(
 
 const GENERATED_META := &"stairs_generated"
 const PREVIEW_META := &"building_editor_preview"
-const MESH_GEOMETRY_VERSION := 4
+const MESH_GEOMETRY_VERSION := 5
 const SIDE_WALL_COLLISION_THICKNESS := 0.64
 const SIDE_WALL_COLLISION_META := &"stairs_side_wall_collision"
 const LEFT_SIDE_COLLISION_SHAPE_NAME := "LeftSideCollisionShape3D"
@@ -470,6 +470,8 @@ func _append_rail_geometry(
 	var post_top_heights: PackedFloat32Array = post_layout["top_heights"]
 	var lower_horizontal_end := float(post_layout["lower_horizontal_end"])
 	var upper_horizontal_start := float(post_layout["upper_horizontal_start"])
+	var handrail_minimum_run := float(post_layout["handrail_minimum_run"])
+	var handrail_maximum_run := float(post_layout["handrail_maximum_run"])
 	# Inset each rail from its side edge instead of straddling the exact
 	# footprint boundary, clamped so opposing margins cannot cross.
 	var margin := minf(rail_edge_margin, width * 0.45)
@@ -496,7 +498,9 @@ func _append_rail_geometry(
 			post_thicknesses,
 			post_top_heights,
 			lower_horizontal_end,
-			upper_horizontal_start
+			upper_horizontal_start,
+			handrail_minimum_run,
+			handrail_maximum_run
 		)
 	if right_rail_enabled:
 		StandardRailGeometry.append_rail(
@@ -521,7 +525,9 @@ func _append_rail_geometry(
 			post_thicknesses,
 			post_top_heights,
 			lower_horizontal_end,
-			upper_horizontal_start
+			upper_horizontal_start,
+			handrail_minimum_run,
+			handrail_maximum_run
 		)
 
 
@@ -622,6 +628,19 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 			+ height * (upper_horizontal_start / safe_depth)
 		)
 
+	var handrail_minimum_run := NAN
+	var handrail_maximum_run := NAN
+	if lower_newel_index >= 0:
+		handrail_minimum_run = (
+			positions[lower_newel_index]
+			- thicknesses[lower_newel_index] * 0.5
+		)
+	if upper_newel_index >= 0:
+		handrail_maximum_run = (
+			positions[upper_newel_index]
+			+ thicknesses[upper_newel_index] * 0.5
+		)
+
 	return {
 		"positions": positions,
 		"base_heights": base_heights,
@@ -629,6 +648,8 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 		"top_heights": top_heights,
 		"lower_horizontal_end": lower_horizontal_end,
 		"upper_horizontal_start": upper_horizontal_start,
+		"handrail_minimum_run": handrail_minimum_run,
+		"handrail_maximum_run": handrail_maximum_run,
 	}
 
 
