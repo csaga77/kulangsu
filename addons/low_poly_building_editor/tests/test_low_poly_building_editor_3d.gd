@@ -2071,6 +2071,8 @@ func _validate_roof_node(coordinator: Building3DScript) -> void:
 		m_failures.append("FlatRoof3D polygon overhang did not offset its outline")
 	if polygon_roof.mesh == null:
 		m_failures.append("FlatRoof3D polygon did not generate a mesh")
+	elif !_roof_underside_normals_are_down(polygon_roof):
+		m_failures.append("FlatRoof3D polygon underside normals are inverted")
 	if polygon_roof.get_node_or_null("RoofCollision") == null:
 		m_failures.append("FlatRoof3D polygon did not generate collision")
 	if !polygon_roof.contains_local_plan_point(Vector2(1.0, 3.0)):
@@ -2095,6 +2097,32 @@ func _validate_roof_node(coordinator: Building3DScript) -> void:
 	polygon_roof.set_roof_polygon(inserted_roof_points)
 	if polygon_roof.get_roof_polygon().size() != polygon_roof_points.size():
 		m_failures.append("FlatRoof3D did not remove a footprint vertex")
+
+	var acute_roof_points := PackedVector3Array([
+		Vector3(120.0, base_y, 12.0),
+		Vector3(124.0, base_y, 12.0),
+		Vector3(122.2, base_y, 12.2),
+		Vector3(124.0, base_y, 16.0),
+		Vector3(120.0, base_y, 16.0),
+	])
+	var acute_roof := BuildingFactoryScript.create_flat_roof_polygon_node(
+		coordinator,
+		acute_roof_points,
+		0.14,
+		0.25,
+		Color(0.50, 0.34, 0.25, 1.0)
+	)
+	coordinator.add_child(acute_roof)
+	var acute_render_polygons := acute_roof.get_roof_render_polygons()
+	if (
+		acute_render_polygons.size() != 1
+		or acute_render_polygons[0].size() != acute_roof_points.size()
+	):
+		m_failures.append("FlatRoof3D acute overhang added render-outline vertices")
+	elif acute_render_polygons[0][1].distance_to(Vector2(4.0, 0.0)) > 1.001:
+		m_failures.append("FlatRoof3D acute overhang exceeded its bounded miter")
+	if acute_roof.mesh == null:
+		m_failures.append("FlatRoof3D acute polygon did not generate a mesh")
 
 	var promoted_flat := BuildingFactoryScript.create_roof_node(
 		coordinator,

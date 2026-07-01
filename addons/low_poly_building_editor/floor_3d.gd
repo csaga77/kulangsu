@@ -6,6 +6,9 @@ const GENERATED_META := &"floor_generated"
 const PREVIEW_META := &"building_editor_preview"
 const FLOOR_HOLE_EDGE_EPSILON := 0.001
 const FLOOR_HOLE_MIN_SIZE := 0.001
+const PolygonPrismGeometry := preload(
+	"res://addons/low_poly_building_editor/polygon_prism_geometry_3d.gd"
+)
 
 var m_floor_holes: Array[Rect2] = []
 var m_floor_hole_polygons: Array[PackedVector2Array] = []
@@ -440,47 +443,16 @@ func _append_polygon_floor_geometry(
 	indices: PackedInt32Array,
 	collision_faces: PackedVector3Array
 ) -> void:
-	var normalized := _counter_clockwise_polygon(polygon)
-	var triangle_indices := Geometry2D.triangulate_polygon(normalized)
-	for triangle_start in range(0, triangle_indices.size(), 3):
-		var a_2d := normalized[triangle_indices[triangle_start]]
-		var b_2d := normalized[triangle_indices[triangle_start + 1]]
-		var c_2d := normalized[triangle_indices[triangle_start + 2]]
-		var top_a := Vector3(a_2d.x, 0.0, a_2d.y)
-		var top_b := Vector3(b_2d.x, 0.0, b_2d.y)
-		var top_c := Vector3(c_2d.x, 0.0, c_2d.y)
-		_append_triangle(
-			vertices, normals, colors, indices, collision_faces,
-			top_a, top_b, top_c, Vector3.UP
-		)
-		_append_triangle(
-			vertices, normals, colors, indices, collision_faces,
-			top_a + Vector3.DOWN * floor_thickness,
-			top_c + Vector3.DOWN * floor_thickness,
-			top_b + Vector3.DOWN * floor_thickness,
-			Vector3.DOWN
-		)
-
-	for point_index in range(normalized.size()):
-		var next_index := (point_index + 1) % normalized.size()
-		var a_2d := normalized[point_index]
-		var b_2d := normalized[next_index]
-		var edge := b_2d - a_2d
-		var outward := Vector3(edge.y, 0.0, -edge.x).normalized()
-		var top_a := Vector3(a_2d.x, 0.0, a_2d.y)
-		var top_b := Vector3(b_2d.x, 0.0, b_2d.y)
-		_append_quad(
-			vertices,
-			normals,
-			colors,
-			indices,
-			collision_faces,
-			top_a,
-			top_b,
-			top_b + Vector3.DOWN * floor_thickness,
-			top_a + Vector3.DOWN * floor_thickness,
-			outward
-		)
+	PolygonPrismGeometry.append_prism(
+		polygon,
+		floor_thickness,
+		floor_color,
+		vertices,
+		normals,
+		colors,
+		indices,
+		collision_faces
+	)
 
 
 func _append_polygon_floor_geometry_with_holes(

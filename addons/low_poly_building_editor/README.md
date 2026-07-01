@@ -11,7 +11,10 @@ inserted with Shift-click on an edge or removed with Option/Alt-click. Hole uses
 same Rectangle/Polygon creation choice and the same outline-editing gestures.
 Flat roofs follow the same pattern: Rectangle and Polygon change only creation, then
 both expose shared vertex, edge, insertion, removal, and body-drag editing. Other roof
-styles retain their rectangular footprints.
+styles retain their rectangular footprints. Floor slabs and polygon Flat roofs share
+the same polygon-prism topology builder, so generated top, underside, and boundary
+faces follow one outline; Flat-roof overhang preserves one render corner per authored
+corner, including acute footprints.
 
 `Building3D` is the scene-owned assembly root and carries no editor-tool configuration;
 the editor dock owns temporary tool defaults. `BuildingFactory` creates and names

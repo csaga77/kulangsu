@@ -54,17 +54,12 @@ func get_roof_render_polygons() -> Array[PackedVector2Array]:
 	for point in m_polygon_points:
 		local_polygon.append(Vector2(point.x - bounds.position.x, point.z - bounds.position.y))
 	if roof_overhang <= RECT_EPSILON:
-		return [local_polygon]
-	var offset_polygons := Geometry2D.offset_polygon(
+		return [PolygonPrismGeometry.counter_clockwise_polygon(local_polygon)]
+	var offset_polygon := PolygonPrismGeometry.offset_polygon_preserving_vertices(
 		local_polygon,
-		roof_overhang,
-		Geometry2D.JOIN_MITER
+		roof_overhang
 	)
-	var result: Array[PackedVector2Array] = []
-	for polygon in offset_polygons:
-		if polygon.size() >= 3:
-			result.append(PackedVector2Array(polygon))
-	return result if !result.is_empty() else [local_polygon]
+	return [offset_polygon]
 
 
 func get_roof_render_rect() -> Rect2:

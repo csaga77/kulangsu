@@ -17,6 +17,9 @@ const TRIANGLE_WIREFRAME_NODE_NAME := "RoofTriangleWireframe"
 const RoofStyleGeometryFactory := preload(
 	"res://addons/low_poly_building_editor/roof_style_geometry_factory_3d.gd"
 )
+const PolygonPrismGeometry := preload(
+	"res://addons/low_poly_building_editor/polygon_prism_geometry_3d.gd"
+)
 
 @export var rebuild := false:
 	set(value):
@@ -1013,17 +1016,18 @@ func _append_polygon_roof_geometry(
 	colors: PackedColorArray,
 	indices: PackedInt32Array
 ) -> void:
-	var visible_polygons: Array = []
-	var bottom_offset := Vector3(0.0, -roof_thickness, 0.0)
-	for top_triangle in _roof_top_triangles(get_roof_size()):
-		var top_points := _packed_vector3_to_array(top_triangle)
-		visible_polygons.append(top_points)
-		_append_polygon_triangles(top_points, false, vertices, normals, colors, indices)
-		var bottom_points: Array[Vector3] = []
-		for point in top_points:
-			bottom_points.append(point + bottom_offset)
-		_append_polygon_triangles(bottom_points, true, vertices, normals, colors, indices)
-	_append_roof_polygon_boundary_sides(visible_polygons, vertices, normals, colors, indices)
+	var collision_faces := PackedVector3Array()
+	for polygon in get_roof_render_polygons():
+		PolygonPrismGeometry.append_prism(
+			polygon,
+			roof_thickness,
+			roof_color,
+			vertices,
+			normals,
+			colors,
+			indices,
+			collision_faces
+		)
 
 
 func _roof_polygon_parent_bounds(points: PackedVector3Array) -> Rect2:
