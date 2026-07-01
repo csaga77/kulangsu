@@ -1803,6 +1803,93 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	):
 		m_failures.append("Stairs3D rail posts are not based on their tread's actual height")
 
+	if both_rail_stairs.lower_newel_enabled or both_rail_stairs.upper_newel_enabled:
+		m_failures.append("Stairs3D enabled newel posts by default")
+	both_rail_stairs.lower_newel_enabled = true
+	both_rail_stairs.lower_newel_placement = Stairs3DScript.NewelPlacement.FLOOR
+	both_rail_stairs.upper_newel_enabled = true
+	both_rail_stairs.upper_newel_placement = Stairs3DScript.NewelPlacement.TREAD
+	both_rail_stairs.rail_newel_post_thickness = 0.14
+	both_rail_stairs.rebuild_stairs_mesh()
+	# The configured 0.14 newel is clamped to this rail's 0.10 handrail width
+	# in the generated layout, keeping the welded open top fully covered.
+	var floor_lower_layout := both_rail_stairs._get_rail_post_layout()
+	var floor_lower_positions: PackedFloat32Array = floor_lower_layout["positions"]
+	var floor_lower_heights: PackedFloat32Array = floor_lower_layout["base_heights"]
+	var floor_lower_thicknesses: PackedFloat32Array = floor_lower_layout["thicknesses"]
+	var floor_lower_top_heights: PackedFloat32Array = floor_lower_layout["top_heights"]
+	if (
+		floor_lower_positions.size() != 5
+		or absf(floor_lower_positions[0] + 0.5) > 0.001
+		or absf(floor_lower_positions[1] - floor_lower_positions[0] - 1.0) > 0.001
+		or absf(floor_lower_heights[0]) > 0.001
+		or absf(floor_lower_thicknesses[0] - 0.1) > 0.001
+		or absf(floor_lower_top_heights[0] - 0.9) > 0.001
+		or absf(float(floor_lower_layout["lower_horizontal_end"])) > 0.001
+		or absf(floor_lower_positions[4] - 3.5) > 0.001
+		or absf(floor_lower_heights[4] - 1.2) > 0.001
+		or absf(floor_lower_thicknesses[4] - 0.1) > 0.001
+		or absf(floor_lower_top_heights[4] - 1.935) > 0.001
+	):
+		m_failures.append(
+			"Stairs3D did not place lower-floor and upper-tread newels correctly"
+		)
+	if !_has_mesh_vertex_with_normal_near(
+		both_rail_stairs.mesh as ArrayMesh,
+		Vector3(0.10, 1.0, -0.55),
+		Vector3.UP,
+		0.002
+	):
+		m_failures.append("Stairs3D lower-floor newel handrail is not horizontal")
+	if !_has_mesh_vertex_with_normal_near(
+		both_rail_stairs.mesh as ArrayMesh,
+		Vector3(0.10, 2.035, 4.04),
+		Vector3.UP,
+		0.002
+	):
+		m_failures.append("Stairs3D upper-tread newel handrail is not horizontal")
+
+	both_rail_stairs.lower_newel_placement = Stairs3DScript.NewelPlacement.TREAD
+	both_rail_stairs.upper_newel_placement = Stairs3DScript.NewelPlacement.FLOOR
+	both_rail_stairs.rebuild_stairs_mesh()
+	var floor_upper_layout := both_rail_stairs._get_rail_post_layout()
+	var floor_upper_positions: PackedFloat32Array = floor_upper_layout["positions"]
+	var floor_upper_heights: PackedFloat32Array = floor_upper_layout["base_heights"]
+	var floor_upper_thicknesses: PackedFloat32Array = floor_upper_layout["thicknesses"]
+	var floor_upper_top_heights: PackedFloat32Array = floor_upper_layout["top_heights"]
+	if (
+		floor_upper_positions.size() != 5
+		or absf(floor_upper_positions[0] - 0.5) > 0.001
+		or absf(floor_upper_heights[0] - 0.3) > 0.001
+		or absf(floor_upper_thicknesses[0] - 0.1) > 0.001
+		or absf(floor_upper_top_heights[0] - 1.065) > 0.001
+		or absf(floor_upper_positions[4] - 4.5) > 0.001
+		or absf(floor_upper_positions[4] - floor_upper_positions[3] - 1.0) > 0.001
+		or absf(floor_upper_heights[4] - 1.2) > 0.001
+		or absf(floor_upper_thicknesses[4] - 0.1) > 0.001
+		or absf(floor_upper_top_heights[4] - 2.1) > 0.001
+		or absf(float(floor_upper_layout["upper_horizontal_start"]) - 4.0) > 0.001
+	):
+		m_failures.append(
+			"Stairs3D did not place lower-tread and upper-floor newels correctly"
+		)
+	if !_has_mesh_vertex_with_normal_near(
+		both_rail_stairs.mesh as ArrayMesh,
+		Vector3(0.10, 1.165, -0.04),
+		Vector3.UP,
+		0.002
+	):
+		m_failures.append("Stairs3D lower-tread newel handrail is not horizontal")
+	if !_has_mesh_vertex_with_normal_near(
+		both_rail_stairs.mesh as ArrayMesh,
+		Vector3(0.10, 2.2, 4.55),
+		Vector3.UP,
+		0.002
+	):
+		m_failures.append("Stairs3D upper-floor newel handrail is not horizontal")
+	if both_rail_stairs.mesh == null or both_rail_stairs.mesh.get_surface_count() <= 0:
+		m_failures.append("Stairs3D newel configuration did not generate rail geometry")
+
 	both_rail_stairs.left_rail_enabled = false
 	both_rail_stairs.right_rail_enabled = false
 	both_rail_stairs.rebuild_stairs_mesh()
@@ -1826,11 +1913,24 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 		0.1,
 		0.18,
 		Color(0.33, 0.28, 0.22, 1.0),
-		0.15
+		0.15,
+		true,
+		Stairs3DScript.NewelPlacement.FLOOR,
+		true,
+		Stairs3DScript.NewelPlacement.TREAD,
+		0.14
 	)
 	coordinator.add_child(narrow_stairs)
 	if narrow_stairs.mesh == null or narrow_stairs.mesh.get_surface_count() <= 0:
 		m_failures.append("Stairs3D with a clamped rail margin on a narrow footprint did not build a mesh")
+	if (
+		!narrow_stairs.lower_newel_enabled
+		or narrow_stairs.lower_newel_placement != Stairs3DScript.NewelPlacement.FLOOR
+		or !narrow_stairs.upper_newel_enabled
+		or narrow_stairs.upper_newel_placement != Stairs3DScript.NewelPlacement.TREAD
+		or absf(narrow_stairs.rail_newel_post_thickness - 0.14) > 0.001
+	):
+		m_failures.append("BuildingFactory did not apply the requested stair newel settings")
 
 
 func _validate_standard_rail_geometry_post_base_heights() -> void:

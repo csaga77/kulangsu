@@ -89,6 +89,11 @@ var m_stair_rotation_spin: SpinBox
 var m_stair_color_picker: ColorPickerButton
 var m_stair_left_rail_check: CheckBox
 var m_stair_right_rail_check: CheckBox
+var m_stair_lower_newel_check: CheckBox
+var m_stair_lower_newel_position_option: OptionButton
+var m_stair_upper_newel_check: CheckBox
+var m_stair_upper_newel_position_option: OptionButton
+var m_stair_newel_size_spin: SpinBox
 var m_stair_rail_margin_spin: SpinBox
 var m_rail_grid_spin: SpinBox
 var m_rail_base_height_spin: SpinBox
@@ -483,6 +488,45 @@ func _build_stair_controls(parent: VBoxContainer) -> void:
 	m_stair_right_rail_check.toggled.connect(_on_stair_setting_toggled)
 	parent.add_child(m_stair_right_rail_check)
 
+	m_stair_lower_newel_check = CheckBox.new()
+	m_stair_lower_newel_check.text = "Lower Newel"
+	m_stair_lower_newel_check.tooltip_text = "Add a thicker newel post at the lower end of each enabled stair rail."
+	m_stair_lower_newel_check.toggled.connect(_on_stair_setting_toggled)
+	parent.add_child(m_stair_lower_newel_check)
+
+	m_stair_lower_newel_position_option = _make_newel_position_option()
+	m_stair_lower_newel_position_option.item_selected.connect(_on_stair_newel_position_selected)
+	_add_labeled_control(
+		parent,
+		"Lower At:",
+		m_stair_lower_newel_position_option,
+		"Place the lower newel on the first tread or one regular post interval beyond it on the lower floor."
+	)
+
+	m_stair_upper_newel_check = CheckBox.new()
+	m_stair_upper_newel_check.text = "Upper Newel"
+	m_stair_upper_newel_check.tooltip_text = "Add a thicker newel post at the upper end of each enabled stair rail."
+	m_stair_upper_newel_check.toggled.connect(_on_stair_setting_toggled)
+	parent.add_child(m_stair_upper_newel_check)
+
+	m_stair_upper_newel_position_option = _make_newel_position_option()
+	m_stair_upper_newel_position_option.item_selected.connect(_on_stair_newel_position_selected)
+	_add_labeled_control(
+		parent,
+		"Upper At:",
+		m_stair_upper_newel_position_option,
+		"Place the upper newel on the last tread or one regular post interval beyond it on the upper floor."
+	)
+
+	m_stair_newel_size_spin = _make_spin(0.02, 1.0, 0.01, 0.1)
+	m_stair_newel_size_spin.value_changed.connect(_on_stair_setting_changed)
+	_add_labeled_control(
+		parent,
+		"Newel Size:",
+		m_stair_newel_size_spin,
+		"Square newel width/depth. Geometry clamps it to the handrail width so the welded top stays covered."
+	)
+
 	m_stair_rail_margin_spin = _make_spin(0.0, 2.0, 0.01, 0.15)
 	_add_labeled_control(
 		parent,
@@ -491,6 +535,7 @@ func _build_stair_controls(parent: VBoxContainer) -> void:
 		"Inset of each enabled rail from the stairs' left/right footprint edge, clamped so opposing margins cannot cross."
 	)
 	m_stair_rail_margin_spin.value_changed.connect(_on_stair_setting_changed)
+	_update_stair_newel_controls()
 
 
 func _build_rail_controls(parent: VBoxContainer) -> void:
@@ -1262,6 +1307,11 @@ func _on_stair_setting_changed(_value: float) -> void:
 
 
 func _on_stair_setting_toggled(_pressed: bool) -> void:
+	_update_stair_newel_controls()
+	_emit_stair_settings()
+
+
+func _on_stair_newel_position_selected(_index: int) -> void:
 	_emit_stair_settings()
 
 
@@ -1399,6 +1449,49 @@ func _make_frame_sides_option() -> OptionButton:
 	return option
 
 
+func _make_newel_position_option() -> OptionButton:
+	var option := OptionButton.new()
+	option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	option.add_item("Tread", 0)
+	option.set_item_metadata(0, 0)
+	option.add_item("Floor", 1)
+	option.set_item_metadata(1, 1)
+	return option
+
+
+func _selected_newel_placement(option: OptionButton) -> int:
+	if option == null or option.selected < 0:
+		return 0
+	return int(option.get_item_metadata(option.selected))
+
+
+func _select_newel_placement(option: OptionButton, value: int) -> void:
+	if option == null:
+		return
+	for index in range(option.get_item_count()):
+		if int(option.get_item_metadata(index)) == value:
+			option.select(index)
+			return
+	option.select(0)
+
+
+func _update_stair_newel_controls() -> void:
+	var lower_enabled := (
+		m_stair_lower_newel_check != null
+		and m_stair_lower_newel_check.button_pressed
+	)
+	var upper_enabled := (
+		m_stair_upper_newel_check != null
+		and m_stair_upper_newel_check.button_pressed
+	)
+	if m_stair_lower_newel_position_option != null:
+		m_stair_lower_newel_position_option.disabled = !lower_enabled
+	if m_stair_upper_newel_position_option != null:
+		m_stair_upper_newel_position_option.disabled = !upper_enabled
+	if m_stair_newel_size_spin != null:
+		m_stair_newel_size_spin.editable = lower_enabled or upper_enabled
+
+
 func _selected_frame_sides(option: OptionButton) -> int:
 	if option == null or option.selected < 0:
 		return 0
@@ -1484,6 +1577,27 @@ func _emit_stair_settings() -> void:
 		),
 		"right_rail_enabled": (
 			m_stair_right_rail_check.button_pressed if m_stair_right_rail_check != null else false
+		),
+		"lower_newel_enabled": (
+			m_stair_lower_newel_check.button_pressed
+			if m_stair_lower_newel_check != null
+			else false
+		),
+		"lower_newel_placement": _selected_newel_placement(
+			m_stair_lower_newel_position_option
+		),
+		"upper_newel_enabled": (
+			m_stair_upper_newel_check.button_pressed
+			if m_stair_upper_newel_check != null
+			else false
+		),
+		"upper_newel_placement": _selected_newel_placement(
+			m_stair_upper_newel_position_option
+		),
+		"rail_newel_post_thickness": (
+			float(m_stair_newel_size_spin.value)
+			if m_stair_newel_size_spin != null
+			else 0.1
 		),
 		"rail_edge_margin": (
 			float(m_stair_rail_margin_spin.value) if m_stair_rail_margin_spin != null else 0.15
@@ -1969,6 +2083,30 @@ func _load_persisted_settings() -> void:
 	m_stair_right_rail_check.button_pressed = bool(
 		state.get("stair_right_rail_enabled", m_stair_right_rail_check.button_pressed)
 	)
+	m_stair_lower_newel_check.button_pressed = bool(
+		state.get("stair_lower_newel_enabled", m_stair_lower_newel_check.button_pressed)
+	)
+	_select_newel_placement(
+		m_stair_lower_newel_position_option,
+		int(state.get(
+			"stair_lower_newel_placement",
+			_selected_newel_placement(m_stair_lower_newel_position_option)
+		))
+	)
+	m_stair_upper_newel_check.button_pressed = bool(
+		state.get("stair_upper_newel_enabled", m_stair_upper_newel_check.button_pressed)
+	)
+	_select_newel_placement(
+		m_stair_upper_newel_position_option,
+		int(state.get(
+			"stair_upper_newel_placement",
+			_selected_newel_placement(m_stair_upper_newel_position_option)
+		))
+	)
+	m_stair_newel_size_spin.value = float(
+		state.get("stair_rail_newel_post_thickness", m_stair_newel_size_spin.value)
+	)
+	_update_stair_newel_controls()
 	m_stair_rail_margin_spin.value = float(
 		state.get("stair_rail_edge_margin", m_stair_rail_margin_spin.value)
 	)
@@ -2128,6 +2266,27 @@ func _save_persisted_settings() -> void:
 		),
 		"stair_right_rail_enabled": (
 			m_stair_right_rail_check.button_pressed if m_stair_right_rail_check != null else false
+		),
+		"stair_lower_newel_enabled": (
+			m_stair_lower_newel_check.button_pressed
+			if m_stair_lower_newel_check != null
+			else false
+		),
+		"stair_lower_newel_placement": _selected_newel_placement(
+			m_stair_lower_newel_position_option
+		),
+		"stair_upper_newel_enabled": (
+			m_stair_upper_newel_check.button_pressed
+			if m_stair_upper_newel_check != null
+			else false
+		),
+		"stair_upper_newel_placement": _selected_newel_placement(
+			m_stair_upper_newel_position_option
+		),
+		"stair_rail_newel_post_thickness": (
+			float(m_stair_newel_size_spin.value)
+			if m_stair_newel_size_spin != null
+			else 0.1
 		),
 		"stair_rail_edge_margin": (
 			float(m_stair_rail_margin_spin.value) if m_stair_rail_margin_spin != null else 0.15

@@ -283,7 +283,12 @@ static func create_stairs_node(
 	rail_thickness: float = 0.1,
 	rail_lower_height: float = 0.18,
 	rail_color: Color = Color(0.33, 0.28, 0.22, 1.0),
-	rail_edge_margin: float = 0.15
+	rail_edge_margin: float = 0.15,
+	lower_newel_enabled: bool = false,
+	lower_newel_placement: int = Stairs3DScript.NewelPlacement.TREAD,
+	upper_newel_enabled: bool = false,
+	upper_newel_placement: int = Stairs3DScript.NewelPlacement.TREAD,
+	rail_newel_post_thickness: float = 0.1
 ) -> Stairs3DScript:
 	var stairs := Stairs3DScript.new() as Stairs3DScript
 	stairs.name = _unique_child_name(building, "Stairs3D")
@@ -296,6 +301,11 @@ static func create_stairs_node(
 	stairs.stair_rotation_degrees = rotation_degrees
 	stairs.left_rail_enabled = left_rail_enabled
 	stairs.right_rail_enabled = right_rail_enabled
+	stairs.lower_newel_enabled = lower_newel_enabled
+	stairs.lower_newel_placement = lower_newel_placement
+	stairs.upper_newel_enabled = upper_newel_enabled
+	stairs.upper_newel_placement = upper_newel_placement
+	stairs.rail_newel_post_thickness = rail_newel_post_thickness
 	stairs.rail_edge_margin = rail_edge_margin
 	stairs.rail_height = rail_height
 	stairs.rail_post_thickness = rail_post_thickness
