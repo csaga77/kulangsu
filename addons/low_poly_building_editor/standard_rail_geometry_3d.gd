@@ -24,16 +24,14 @@ extends RefCounted
 # 0.0); callers with a stepped run supply an explicit `post_base_heights`
 # entry per post so its bottom lands exactly on the real surface (for
 # example a stair tread) instead of the smooth diagonal projection. Each
-# post's height is then derived, not fixed: it always reaches the top
-# bar's underside (its bottom surface) at that post's own run position,
-# so a post whose base doesn't sit on the bars' diagonal (again, a stair
-# tread) still stops flush against the bar instead of falling short of
-# it. On a sloped run the flat post top is nudged up slightly past that
-# exact meeting height -- by half the height the sloped underside gains
-# across the post's own width -- so the flat top fully overlaps the
-# sloped underside across the post's whole footprint instead of leaving a
-# sliver gap on its downhill side; that nudge is capped at the bar's own
-# top surface so the post still cannot poke out above it.
+# post's height is then derived, not fixed: it always reaches exactly to
+# the top bar's underside (its bottom surface) at that post's own run
+# position, so a post whose base doesn't sit on the bars' diagonal
+# (again, a stair tread) still connects flush against the bar instead of
+# falling short of it or poking out above the bar entirely. The result is
+# clamped so it can never exceed the bar's own top surface even in a
+# degenerate case where a very thick post would otherwise need to be
+# taller than the bar itself.
 #
 # Every face's winding is chosen so its geometric winding normal is
 # antiparallel to its stored vertex normal (Godot's front-face convention),
@@ -123,27 +121,22 @@ static func append_rail(
 			base_height = post_base_heights[index]
 		elif length > 0.001:
 			base_height = rise * (u / length)
-		# The top bar's underside follows the same rise/length shear as its
-		# box. A post is a flat, unsheared box, though, so on a sloped run
-		# its flat top only exactly touches that sloped underside at its own
-		# center position u -- across the rest of the post's own width the
-		# two surfaces diverge, which would leave a sliver gap on the
-		# downhill side of the post. Reaching the underside height at the
-		# post's *uphill* edge instead (half its width farther along the
-		# run) guarantees the flat top meets or slightly overlaps the
-		# sloped underside across the post's entire width, merging the two
-		# with no gap anywhere, and it is capped at the bar's own top
-		# surface so the post still cannot poke out above it.
-		var half_width_shear := 0.0
-		if length > 0.001:
-			half_width_shear = absf(rise) * post_size * 0.5 / length
+		# The top bar's underside (its bottom surface) follows the same
+		# rise/length shear as its box, so compute it here to size this
+		# post: connecting exactly there keeps the post flush against the
+		# bottom surface of the top rail instead of poking through it when
+		# the post's base doesn't sit on the bars' diagonal (for example a
+		# stair tread's flat top). The result is clamped so it can never
+		# exceed the bar's own top surface even in a degenerate case where
+		# the post would otherwise need to be taller than the bar itself.
 		var bar_bottom_at_u := top_bottom
 		var bar_top_at_u := height
 		if length > 0.001:
 			bar_bottom_at_u += rise * (u / length)
 			bar_top_at_u += rise * (u / length)
-		var post_target_top := minf(bar_bottom_at_u + half_width_shear, bar_top_at_u)
-		var post_local_top := maxf(post_target_top - base_height, post_size)
+		var post_max_local_top := maxf(bar_top_at_u - base_height, 0.0)
+		var post_min_local_top := minf(post_size, post_max_local_top)
+		var post_local_top := clampf(bar_bottom_at_u - base_height, post_min_local_top, post_max_local_top)
 		# Posts embed with zero rise: `base_height` already carries whatever
 		# vertical placement is needed, so the post box itself stays a flat,
 		# upright prism instead of tilting with the run's rise.

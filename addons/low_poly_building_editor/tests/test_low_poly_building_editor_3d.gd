@@ -1871,18 +1871,16 @@ func _validate_standard_rail_geometry_post_base_heights() -> void:
 
 	# The bar's underside follows the rise/length diagonal: at u=0.5 that is
 	# 0.9 + 0.6*(0.5/2.0) = 1.05, and at u=1.5 it is 0.9 + 0.6*(1.5/2.0) =
-	# 1.35. Each post (post_thickness 0.08, so half-width 0.04) is nudged up
-	# past that by half the underside's rise across its own width -- here
-	# 0.6*0.08*0.5/2.0 = 0.012 -- so its flat top overlaps the sloped
-	# underside across its whole footprint instead of gapping on the
-	# downhill side: 1.05 + 0.012 = 1.062 and 1.35 + 0.012 = 1.362.
+	# 1.35. Each post's top (its UP face, the 5th of the 6 faces in a box)
+	# must land exactly there -- not below it (falling short of the bar) and
+	# not above it (poking through/above the bar).
 	var first_post_top_start := 24 + 16
 	var second_post_top_start := 48 + 16
 	for offset in range(4):
-		if absf(vertices[first_post_top_start + offset].y - 1.062) > 0.001:
-			m_failures.append("StandardRailGeometry first post does not merge into the bar with no gap")
-		if absf(vertices[second_post_top_start + offset].y - 1.362) > 0.001:
-			m_failures.append("StandardRailGeometry second post does not merge into the bar with no gap")
+		if absf(vertices[first_post_top_start + offset].y - 1.05) > 0.001:
+			m_failures.append("StandardRailGeometry first post does not connect to the bar's bottom surface")
+		if absf(vertices[second_post_top_start + offset].y - 1.35) > 0.001:
+			m_failures.append("StandardRailGeometry second post does not connect to the bar's bottom surface")
 
 	# Stairs3D's axis triple (run=BACK, up=UP, side=RIGHT) is an axis swap
 	# from Rail3D's (run=RIGHT, up=UP, side=BACK), which mirrors it
