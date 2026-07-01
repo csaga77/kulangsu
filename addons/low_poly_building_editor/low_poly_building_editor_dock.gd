@@ -10,6 +10,7 @@ signal roof_settings_changed(settings: Dictionary)
 signal prop_settings_changed(settings: Dictionary)
 signal window_settings_changed(settings: Dictionary)
 signal door_settings_changed(settings: Dictionary)
+signal display_settings_changed(settings: Dictionary)
 signal create_coordinator_requested()
 
 const MODE_SELECT := "select"
@@ -49,6 +50,9 @@ const SHORTCUTS_DOOR_TEXT := "Shortcuts\nSelect a door style, then click a wall 
 var m_editor_interface: EditorInterface
 var m_mode_option: OptionButton
 var m_status_label: Label
+var m_debug_wireframe_check: CheckBox
+var m_debug_wireframe_xray_check: CheckBox
+var m_debug_wireframe_color_picker: ColorPickerButton
 var m_wall_section: VBoxContainer
 var m_floor_section: VBoxContainer
 var m_stair_section: VBoxContainer
@@ -102,7 +106,6 @@ var m_roof_overhang_spin: SpinBox
 var m_roof_hip_gable_height_spin: SpinBox
 var m_roof_rotation_spin: SpinBox
 var m_roof_color_picker: ColorPickerButton
-var m_roof_wireframe_check: CheckBox
 var m_roof_style_header: Label
 var m_roof_angle_row: HBoxContainer
 var m_roof_hip_gable_height_row: HBoxContainer
@@ -235,6 +238,8 @@ func _build_ui() -> void:
 	coordinator_button.pressed.connect(_on_create_coordinator)
 	content.add_child(coordinator_button)
 
+	_build_display_controls(content)
+
 	m_wall_section = _make_tool_section(content)
 	_build_wall_controls(m_wall_section)
 	m_floor_section = _make_tool_section(content)
@@ -275,6 +280,39 @@ func _make_tool_section(parent: VBoxContainer) -> VBoxContainer:
 	section.add_child(HSeparator.new())
 	parent.add_child(section)
 	return section
+
+
+func _build_display_controls(parent: VBoxContainer) -> void:
+	parent.add_child(HSeparator.new())
+	var header := Label.new()
+	header.text = "Debug Display"
+	parent.add_child(header)
+	m_debug_wireframe_check = CheckBox.new()
+	m_debug_wireframe_check.text = "Wireframe"
+	m_debug_wireframe_check.tooltip_text = (
+		"Show deduplicated triangle edges for generated building blocks and previews."
+	)
+	m_debug_wireframe_check.toggled.connect(_on_debug_wireframe_changed)
+	parent.add_child(m_debug_wireframe_check)
+	m_debug_wireframe_xray_check = CheckBox.new()
+	m_debug_wireframe_xray_check.text = "X-ray wireframe"
+	m_debug_wireframe_xray_check.tooltip_text = (
+		"Draw hidden wireframe edges through geometry. Disabled is lighter and less cluttered."
+	)
+	m_debug_wireframe_xray_check.toggled.connect(_on_debug_wireframe_changed)
+	parent.add_child(m_debug_wireframe_xray_check)
+	m_debug_wireframe_color_picker = _make_color_picker(
+		Color(0.05, 0.95, 1.0, 1.0)
+	)
+	m_debug_wireframe_color_picker.color_changed.connect(
+		_on_debug_wireframe_color_changed
+	)
+	_add_labeled_control(
+		parent,
+		"Wire Color:",
+		m_debug_wireframe_color_picker
+	)
+	_update_debug_wireframe_controls()
 
 
 func _build_wall_controls(parent: VBoxContainer) -> void:
@@ -541,12 +579,6 @@ func _build_roof_controls(parent: VBoxContainer) -> void:
 	m_roof_color_picker = _make_color_picker(Color(0.50, 0.34, 0.25, 1.0))
 	m_roof_color_picker.color_changed.connect(_on_roof_color_changed)
 	_add_labeled_control(parent, "Color:", m_roof_color_picker, "Vertex color applied to newly drawn roofs.")
-
-	m_roof_wireframe_check = CheckBox.new()
-	m_roof_wireframe_check.text = "Debug triangle wireframe"
-	m_roof_wireframe_check.tooltip_text = "Show the generated roof triangle edges for previews and newly created roofs."
-	m_roof_wireframe_check.toggled.connect(_on_roof_wireframe_changed)
-	parent.add_child(m_roof_wireframe_check)
 
 	m_roof_style_header = _add_style_properties_header(parent)
 	m_roof_height_spin = _make_spin(0.0, 89.0, 1.0, DEFAULT_ROOF_ANGLE_DEGREES)
@@ -914,6 +946,7 @@ func _sync_color_picker_minimum_width(picker: ColorPickerButton) -> void:
 
 
 func _refresh_color_picker_icons() -> void:
+	_update_color_picker_icon(m_debug_wireframe_color_picker)
 	_update_color_picker_icon(m_wall_color_picker)
 	_update_color_picker_icon(m_floor_color_picker)
 	_update_color_picker_icon(m_stair_color_picker)
@@ -1170,8 +1203,27 @@ func _on_roof_color_changed(_color: Color) -> void:
 	_emit_roof_settings()
 
 
-func _on_roof_wireframe_changed(_pressed: bool) -> void:
-	_emit_roof_settings()
+func _on_debug_wireframe_changed(_pressed: bool) -> void:
+	_update_debug_wireframe_controls()
+	_emit_display_settings()
+
+
+func _on_debug_wireframe_color_changed(_color: Color) -> void:
+	_update_color_picker_icon(m_debug_wireframe_color_picker)
+	_emit_display_settings()
+
+
+func _update_debug_wireframe_controls() -> void:
+	if m_debug_wireframe_xray_check != null:
+		m_debug_wireframe_xray_check.disabled = (
+			m_debug_wireframe_check == null
+			or !m_debug_wireframe_check.button_pressed
+		)
+	if m_debug_wireframe_color_picker != null:
+		m_debug_wireframe_color_picker.disabled = (
+			m_debug_wireframe_check == null
+			or !m_debug_wireframe_check.button_pressed
+		)
 
 
 func _on_prop_setting_changed(_value: String) -> void:
@@ -1254,6 +1306,7 @@ func _select_frame_sides(option: OptionButton, value: int) -> void:
 
 
 func _emit_all_settings() -> void:
+	_emit_display_settings()
 	_emit_wall_settings()
 	_emit_floor_settings()
 	_emit_stair_settings()
@@ -1262,6 +1315,24 @@ func _emit_all_settings() -> void:
 	_emit_prop_settings()
 	_emit_window_settings()
 	_emit_door_settings()
+
+
+func _emit_display_settings() -> void:
+	display_settings_changed.emit({
+		"wireframe": (
+			m_debug_wireframe_check != null
+			and m_debug_wireframe_check.button_pressed
+		),
+		"wireframe_xray": (
+			m_debug_wireframe_xray_check != null
+			and m_debug_wireframe_xray_check.button_pressed
+		),
+		"wireframe_color": (
+			m_debug_wireframe_color_picker.color
+			if m_debug_wireframe_color_picker != null
+			else Color(0.05, 0.95, 1.0, 1.0)
+		),
+	})
 
 
 func _emit_wall_settings() -> void:
@@ -1328,7 +1399,6 @@ func _emit_roof_settings() -> void:
 		"hip_gable_height": float(m_roof_hip_gable_height_spin.value),
 		"rotation_degrees": float(m_roof_rotation_spin.value),
 		"color": m_roof_color_picker.color,
-		"debug_wireframe": m_roof_wireframe_check.button_pressed,
 	})
 
 
@@ -1700,6 +1770,25 @@ func _load_persisted_settings() -> void:
 
 	var state: Dictionary = state_variant
 	m_palette_root_edit.text = str(state.get("prop_palette_root", m_palette_root_edit.text))
+	m_debug_wireframe_check.button_pressed = bool(
+		state.get(
+			"debug_wireframe",
+			state.get("roof_debug_wireframe", m_debug_wireframe_check.button_pressed)
+		)
+	)
+	m_debug_wireframe_xray_check.button_pressed = bool(
+		state.get(
+			"debug_wireframe_xray",
+			m_debug_wireframe_xray_check.button_pressed
+		)
+	)
+	var wireframe_color_variant: Variant = state.get(
+		"debug_wireframe_color",
+		m_debug_wireframe_color_picker.color
+	)
+	if wireframe_color_variant is Color:
+		m_debug_wireframe_color_picker.color = wireframe_color_variant
+	_update_debug_wireframe_controls()
 	_select_wall_type(str(state.get("wall_type", _selected_wall_type())))
 	m_wall_base_height_spin.value = float(state.get("wall_base_height", m_wall_base_height_spin.value))
 	_select_floor_type(str(state.get("floor_type", _selected_floor_type())))
@@ -1749,7 +1838,6 @@ func _load_persisted_settings() -> void:
 	var roof_color_variant: Variant = state.get("roof_color", m_roof_color_picker.color)
 	if roof_color_variant is Color:
 		m_roof_color_picker.color = roof_color_variant
-	m_roof_wireframe_check.button_pressed = bool(state.get("roof_debug_wireframe", m_roof_wireframe_check.button_pressed))
 	var window_style := str(state.get("window_style", _selected_window_style()))
 	_select_window_style(window_style)
 	m_window_width_spin.value = float(state.get("window_width", _window_default_width(window_style)))
@@ -1826,6 +1914,21 @@ func _save_persisted_settings() -> void:
 
 	editor_settings.set_project_metadata(PROJECT_METADATA_SECTION, PROJECT_METADATA_KEY, {
 		"prop_palette_root": _get_configured_palette_root(),
+		"debug_wireframe": (
+			m_debug_wireframe_check.button_pressed
+			if m_debug_wireframe_check != null
+			else false
+		),
+		"debug_wireframe_xray": (
+			m_debug_wireframe_xray_check.button_pressed
+			if m_debug_wireframe_xray_check != null
+			else false
+		),
+		"debug_wireframe_color": (
+			m_debug_wireframe_color_picker.color
+			if m_debug_wireframe_color_picker != null
+			else Color(0.05, 0.95, 1.0, 1.0)
+		),
 		"wall_type": _selected_wall_type(),
 		"wall_base_height": float(m_wall_base_height_spin.value) if m_wall_base_height_spin != null else 0.0,
 		"floor_type": _selected_floor_type(),
@@ -1864,7 +1967,6 @@ func _save_persisted_settings() -> void:
 		"roof_hip_gable_height": float(m_roof_hip_gable_height_spin.value) if m_roof_hip_gable_height_spin != null else 0.0,
 		"roof_rotation_degrees": float(m_roof_rotation_spin.value) if m_roof_rotation_spin != null else 0.0,
 		"roof_color": m_roof_color_picker.color if m_roof_color_picker != null else Color(0.50, 0.34, 0.25, 1.0),
-		"roof_debug_wireframe": m_roof_wireframe_check.button_pressed if m_roof_wireframe_check != null else false,
 		"window_style": _selected_window_style(),
 		"window_width": float(m_window_width_spin.value) if m_window_width_spin != null else 1.0,
 		"window_height": float(m_window_height_spin.value) if m_window_height_spin != null else 1.0,

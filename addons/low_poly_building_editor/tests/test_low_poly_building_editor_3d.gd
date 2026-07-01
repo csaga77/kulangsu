@@ -3,6 +3,9 @@ extends Node3D
 
 const Building3DScript = preload("res://addons/low_poly_building_editor/building_3d.gd")
 const BuildingFactoryScript = preload("res://addons/low_poly_building_editor/building_factory.gd")
+const BuildingWireframeScript = preload(
+	"res://addons/low_poly_building_editor/building_wireframe_3d.gd"
+)
 const BuildingSpecScript = preload("res://addons/low_poly_building_editor/building_spec.gd")
 const BuildingSpecCompilerScript = preload(
 	"res://addons/low_poly_building_editor/building_spec_compiler.gd"
@@ -120,6 +123,7 @@ func _run_smoke_checks() -> void:
 	_validate_stairs_node(coordinator)
 	_validate_pillar_node(coordinator)
 	_validate_roof_node(coordinator)
+	_validate_shared_debug_wireframes(coordinator)
 	_validate_merge_detection(coordinator)
 	_validate_intersection_merge()
 	_validate_wall_instance_intersection_clipping()
@@ -1955,16 +1959,6 @@ func _validate_roof_node(coordinator: Building3DScript) -> void:
 			m_failures.append("Roof3D triangle winding does not match Godot BoxMesh convention")
 	if roof.get_node_or_null("RoofCollision") == null:
 		m_failures.append("Roof3D did not generate collision for placed roofs")
-	if roof.get_node_or_null(Roof3DScript.TRIANGLE_WIREFRAME_NODE_NAME) != null:
-		m_failures.append("Roof3D generated a triangle wireframe when debug was disabled")
-	roof.debug_show_triangle_wireframe = true
-	roof.rebuild_roof_mesh()
-	if !_roof_wireframe_matches_triangle_indices(roof):
-		m_failures.append("Roof3D debug triangle wireframe did not match generated triangles")
-	roof.debug_show_triangle_wireframe = false
-	roof.rebuild_roof_mesh()
-	if roof.get_node_or_null(Roof3DScript.TRIANGLE_WIREFRAME_NODE_NAME) != null:
-		m_failures.append("Roof3D did not clear debug triangle wireframe when disabled")
 	if roof.get_roof_bounds_min().distance_to(Vector3(-0.25, -0.16, -0.25)) > 0.001:
 		m_failures.append("Roof3D bounds did not include overhang and thickness")
 	var expected_roof_ridge_height := Roof3DScript.gable_height_for_angle_degrees(
@@ -2236,7 +2230,6 @@ func _validate_roof_node(coordinator: Building3DScript) -> void:
 		0.15,
 		Color(0.50, 0.34, 0.25, 1.0),
 		0.0,
-		false,
 		0.4
 	)
 	coordinator.add_child(half_hip)
@@ -4193,17 +4186,157 @@ func _rect_contains_point_with_tolerance(rect: Rect2, point: Vector2, tolerance:
 	)
 
 
-func _roof_wireframe_matches_triangle_indices(roof: Roof3DScript) -> bool:
-	if roof == null or roof.mesh == null or roof.mesh.get_surface_count() <= 0:
-		return false
-	var wireframe := roof.get_node_or_null(Roof3DScript.TRIANGLE_WIREFRAME_NODE_NAME) as MeshInstance3D
-	if wireframe == null or wireframe.mesh == null or wireframe.mesh.get_surface_count() <= 0:
-		return false
-	var roof_arrays := roof.mesh.surface_get_arrays(0)
-	var roof_indices: PackedInt32Array = roof_arrays[Mesh.ARRAY_INDEX]
-	var wire_arrays := wireframe.mesh.surface_get_arrays(0)
-	var line_vertices: PackedVector3Array = wire_arrays[Mesh.ARRAY_VERTEX]
-	return line_vertices.size() == roof_indices.size() * 2
+func _validate_shared_debug_wireframes(coordinator: Building3DScript) -> void:
+	var test_root := Node3D.new()
+	test_root.name = "DebugWireframeTestRoot"
+	coordinator.add_child(test_root)
+	var nodes: Array[Node3D] = []
+
+	var wall := BuildingFactoryScript.create_wall_node(
+		test_root,
+		Vector3.ZERO,
+		Vector3(3.0, 0.0, 0.0)
+	)
+	test_root.add_child(wall)
+	nodes.append(wall)
+	var floor := BuildingFactoryScript.create_floor_node(
+		test_root,
+		Vector3(4.0, 0.0, 0.0),
+		Vector3(7.0, 0.0, 2.0)
+	)
+	test_root.add_child(floor)
+	nodes.append(floor)
+	var stairs := BuildingFactoryScript.create_stairs_node(
+		test_root,
+		Vector3(8.0, 0.0, 0.0),
+		Vector3(11.0, 0.0, 2.0)
+	)
+	test_root.add_child(stairs)
+	nodes.append(stairs)
+	var pillar := BuildingFactoryScript.create_pillar_node(
+		test_root,
+		Vector3(12.0, 0.0, 0.0),
+		0.3,
+		2.4
+	)
+	test_root.add_child(pillar)
+	nodes.append(pillar)
+	var roof := BuildingFactoryScript.create_roof_node(
+		test_root,
+		Vector3(14.0, 2.4, 0.0),
+		Vector3(18.0, 2.4, 3.0)
+	)
+	test_root.add_child(roof)
+	nodes.append(roof)
+	var opening := GridWindow3DScript.new() as BuildingOpening3DScript
+	opening.build_on_ready = false
+	opening._rebuild()
+	test_root.add_child(opening)
+	nodes.append(opening)
+
+	for node in nodes:
+		_validate_debug_wireframe_node(node)
+	test_root.queue_free()
+
+
+func _validate_debug_wireframe_node(node: Node3D) -> void:
+	var label := node.get_class()
+	var rebuild_before := _debug_wireframe_rebuild_count(node)
+	var child_ids_before := _non_wireframe_descendant_ids(node)
+	node.call(
+		"set_debug_wireframe",
+		true,
+		Color(0.12, 0.84, 0.96, 1.0),
+		false
+	)
+	var wireframe := node.get_node_or_null(
+		BuildingWireframeScript.NODE_NAME
+	) as MeshInstance3D
+	if wireframe == null or wireframe.mesh == null:
+		m_failures.append("%s did not generate the shared debug wireframe" % label)
+		return
+	if _wireframe_has_duplicate_segments(wireframe):
+		m_failures.append("%s debug wireframe contains duplicate edges" % label)
+	var material := wireframe.material_override as StandardMaterial3D
+	if material == null or bool(material.get("no_depth_test")):
+		m_failures.append("%s debug wireframe was not depth-tested by default" % label)
+	var wireframe_instance_id := wireframe.get_instance_id()
+	node.call(
+		"set_debug_wireframe",
+		true,
+		Color(1.0, 0.32, 0.12, 0.8),
+		true
+	)
+	wireframe = node.get_node_or_null(
+		BuildingWireframeScript.NODE_NAME
+	) as MeshInstance3D
+	if wireframe == null or wireframe.get_instance_id() != wireframe_instance_id:
+		m_failures.append("%s debug style changes replaced the line geometry" % label)
+	material = wireframe.material_override as StandardMaterial3D if wireframe != null else null
+	if material == null or !bool(material.get("no_depth_test")):
+		m_failures.append("%s debug wireframe x-ray mode did not disable depth testing" % label)
+	if _debug_wireframe_rebuild_count(node) != rebuild_before:
+		m_failures.append("%s debug display changes rebuilt source geometry" % label)
+	if _non_wireframe_descendant_ids(node) != child_ids_before:
+		m_failures.append("%s debug display changes replaced generated geometry or collision" % label)
+	node.call(
+		"set_debug_wireframe",
+		false,
+		Color(1.0, 0.32, 0.12, 0.8),
+		true
+	)
+	if node.get_node_or_null(BuildingWireframeScript.NODE_NAME) != null:
+		m_failures.append("%s did not clear the shared debug wireframe" % label)
+	if _debug_wireframe_rebuild_count(node) != rebuild_before:
+		m_failures.append("%s wireframe removal rebuilt source geometry" % label)
+
+
+func _debug_wireframe_rebuild_count(node: Node) -> int:
+	if node.has_method("get_mesh_rebuild_count"):
+		return int(node.call("get_mesh_rebuild_count"))
+	if node.has_method("get_geometry_rebuild_count"):
+		return int(node.call("get_geometry_rebuild_count"))
+	return -1
+
+
+func _non_wireframe_descendant_ids(node: Node) -> Array[int]:
+	var ids: Array[int] = []
+	for child in node.get_children():
+		if child.has_meta(BuildingWireframeScript.GENERATED_META):
+			continue
+		ids.append(child.get_instance_id())
+		ids.append_array(_non_wireframe_descendant_ids(child))
+	return ids
+
+
+func _wireframe_has_duplicate_segments(wireframe: MeshInstance3D) -> bool:
+	if wireframe.mesh == null or wireframe.mesh.get_surface_count() <= 0:
+		return true
+	var arrays := wireframe.mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	if vertices.is_empty() or vertices.size() % 2 != 0:
+		return true
+	var segments := {}
+	for index in range(0, vertices.size(), 2):
+		var start_key := _wireframe_point_key(vertices[index])
+		var end_key := _wireframe_point_key(vertices[index + 1])
+		var key := (
+			"%s|%s" % [start_key, end_key]
+			if start_key < end_key
+			else "%s|%s" % [end_key, start_key]
+		)
+		if segments.has(key):
+			return true
+		segments[key] = true
+	return false
+
+
+func _wireframe_point_key(point: Vector3) -> String:
+	return "%d,%d,%d" % [
+		roundi(point.x * 10000.0),
+		roundi(point.y * 10000.0),
+		roundi(point.z * 10000.0),
+	]
 
 
 func _covered_polygon_area(polygons: Array) -> float:

@@ -21,6 +21,12 @@ the editor dock owns temporary tool defaults. `BuildingFactory` creates and name
 building blocks, while transient wall and roof geometry resolvers perform intersection,
 overlap, opening-propagation, and clipping calculations.
 
+The dock's global **Debug Display** controls draw one shared, transient wireframe across
+walls, floors, stairs, pillars, roofs, openings, and placed props. Edges are deduplicated,
+depth-tested by default, and can optionally use X-ray mode. Display changes replace only
+the overlay; they never rebuild authored mesh or collision geometry. New
+`BuildingMesh3D` subclasses inherit this behavior automatically.
+
 A scene can contain multiple independent `Building3D` roots or packed building scene
 instances. **Add Building** creates and selects a new root; selecting any building root
 or one of its authored descendants makes that building the target for subsequent tool

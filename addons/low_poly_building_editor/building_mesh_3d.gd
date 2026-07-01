@@ -2,7 +2,15 @@
 class_name BuildingMesh3D
 extends MeshInstance3D
 
+const BuildingWireframe := preload(
+	"res://addons/low_poly_building_editor/building_wireframe_3d.gd"
+)
+const DEBUG_WIREFRAME_NODE_NAME := BuildingWireframe.NODE_NAME
+
 var m_mesh_rebuild_count := 0
+var m_debug_wireframe_enabled := false
+var m_debug_wireframe_color := Color(0.05, 0.95, 1.0, 1.0)
+var m_debug_wireframe_xray := false
 @export_storage var m_generated_mesh_source_signature := 0
 @export_storage var m_generated_mesh_clip_signature := 0
 @export_storage var m_generated_mesh_cache_flags := 0
@@ -12,8 +20,54 @@ func get_mesh_rebuild_count() -> int:
 	return m_mesh_rebuild_count
 
 
+func set_debug_wireframe(
+	enabled: bool,
+	color: Color = Color(0.05, 0.95, 1.0, 1.0),
+	xray: bool = false
+) -> void:
+	var was_enabled := m_debug_wireframe_enabled
+	var style_changed := (
+		m_debug_wireframe_color != color
+		or m_debug_wireframe_xray != xray
+	)
+	m_debug_wireframe_enabled = enabled
+	m_debug_wireframe_color = color
+	m_debug_wireframe_xray = xray
+	if !enabled:
+		if was_enabled or get_node_or_null(DEBUG_WIREFRAME_NODE_NAME) != null:
+			BuildingWireframe.clear(self)
+	elif !was_enabled or get_node_or_null(DEBUG_WIREFRAME_NODE_NAME) == null:
+		_sync_debug_wireframe()
+	elif style_changed:
+		BuildingWireframe.update_style(self, color, xray)
+
+
+func is_debug_wireframe_enabled() -> bool:
+	return m_debug_wireframe_enabled
+
+
+func get_debug_wireframe_color() -> Color:
+	return m_debug_wireframe_color
+
+
+func is_debug_wireframe_xray() -> bool:
+	return m_debug_wireframe_xray
+
+
+func _sync_debug_wireframe() -> void:
+	var meshes: Array[MeshInstance3D] = [self]
+	BuildingWireframe.sync(
+		self,
+		meshes,
+		m_debug_wireframe_enabled,
+		m_debug_wireframe_color,
+		m_debug_wireframe_xray
+	)
+
+
 func _begin_generated_mesh_rebuild() -> void:
 	m_mesh_rebuild_count += 1
+	BuildingWireframe.clear(self)
 
 
 func _generated_mesh_cache_matches(source_signature: int, clip_signature: int = 0) -> bool:
@@ -69,6 +123,7 @@ func _replace_generated_mesh_surface(arrays: Array) -> void:
 	else:
 		array_mesh.clear_surfaces()
 	array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	_sync_debug_wireframe()
 
 
 func _scene_local_material_for_write(

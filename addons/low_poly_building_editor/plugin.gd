@@ -19,6 +19,7 @@ const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.
 const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
 const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
+const BuildingWireframeScript = preload("res://addons/low_poly_building_editor/building_wireframe_3d.gd")
 const Window3DScript = preload("res://addons/low_poly_building_editor/window_3d.gd")
 const Door3DScript = preload("res://addons/low_poly_building_editor/door_3d.gd")
 const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
@@ -75,6 +76,7 @@ const BUILDING_STYLE_CUSTOM_TYPES := [
 ]
 const OPENING_SILL_META := BuildingFactoryScript.OPENING_SILL_META
 const OPENING_ALLOW_BASE_META := BuildingFactoryScript.OPENING_ALLOW_BASE_META
+const BUILDING_PROP_META := &"low_poly_building_editor_prop"
 # Temporary diagnostic: writes the 3D toolbar tree to native_buttons_debug.log
 # when enabled.
 const DEBUG_NATIVE_BUTTONS := false
@@ -204,6 +206,11 @@ var m_native_active_button: Button
 var m_handling_native_click := false
 var m_tool_mode := MODE_SELECT
 var m_active_coordinator: Building3DScript
+var m_display_settings := {
+	"wireframe": false,
+	"wireframe_xray": false,
+	"wireframe_color": Color(0.05, 0.95, 1.0, 1.0),
+}
 var m_wall_settings := {
 	"grid_step": 0.5,
 	"type": WALL_TYPE_WALL,
@@ -255,7 +262,6 @@ var m_roof_settings := {
 	"hip_gable_height": 0.0,
 	"rotation_degrees": 0.0,
 	"color": Color(0.50, 0.34, 0.25, 1.0),
-	"debug_wireframe": false,
 }
 var m_prop_settings := {
 	"scene_path": "",
@@ -491,6 +497,7 @@ func _enter_tree() -> void:
 	if m_dock.has_method("setup"):
 		m_dock.setup(get_editor_interface())
 	m_dock.connect("tool_mode_changed", Callable(self, "_on_tool_mode_changed"))
+	m_dock.connect("display_settings_changed", Callable(self, "_on_display_settings_changed"))
 	m_dock.connect("wall_settings_changed", Callable(self, "_on_wall_settings_changed"))
 	m_dock.connect("floor_settings_changed", Callable(self, "_on_floor_settings_changed"))
 	m_dock.connect("stair_settings_changed", Callable(self, "_on_stair_settings_changed"))
@@ -517,6 +524,8 @@ func _enter_tree() -> void:
 
 
 func _exit_tree() -> void:
+	m_display_settings["wireframe"] = false
+	_apply_debug_wireframe_to_scene()
 	_cancel_floor_drag()
 	_clear_floor_hover()
 	_cancel_stair_drag()
@@ -822,6 +831,7 @@ func _create_wall_preview(coordinator: Building3DScript) -> void:
 	m_wall_preview.generate_collision = false
 	coordinator.add_child(m_wall_preview)
 	m_wall_preview.owner = null
+	_apply_debug_wireframe_to_node(m_wall_preview)
 
 
 func _update_wall_preview(camera: Camera3D, mouse_position: Vector2) -> void:
@@ -1581,6 +1591,7 @@ func _create_floor_preview(coordinator: Building3DScript) -> void:
 	m_floor_preview.generate_collision = false
 	coordinator.add_child(m_floor_preview)
 	m_floor_preview.owner = null
+	_apply_debug_wireframe_to_node(m_floor_preview)
 
 
 func _update_floor_preview(camera: Camera3D, mouse_position: Vector2) -> void:
@@ -2295,6 +2306,7 @@ func _create_stair_preview(coordinator: Building3DScript) -> void:
 	m_stair_preview.generate_collision = false
 	coordinator.add_child(m_stair_preview)
 	m_stair_preview.owner = null
+	_apply_debug_wireframe_to_node(m_stair_preview)
 
 
 func _update_stair_preview(camera: Camera3D, mouse_position: Vector2) -> void:
@@ -2930,8 +2942,7 @@ func _commit_roof_polygon(
 		local_points,
 		float(m_roof_settings["thickness"]),
 		float(m_roof_settings["overhang"]),
-		Color(m_roof_settings["color"]),
-		bool(m_roof_settings.get("debug_wireframe", false))
+		Color(m_roof_settings["color"])
 	)
 	var covered_rects := _roof_covered_rects_from_regions(merge)
 	var covered_polygons := _roof_covered_polygons_from_regions(merge)
@@ -2978,9 +2989,9 @@ func _create_roof_preview(coordinator: Building3DScript) -> void:
 	preview_color.a = 0.46
 	m_roof_preview.roof_color = preview_color
 	m_roof_preview.generate_collision = false
-	m_roof_preview.debug_show_triangle_wireframe = bool(m_roof_settings.get("debug_wireframe", false))
 	coordinator.add_child(m_roof_preview)
 	m_roof_preview.owner = null
+	_apply_debug_wireframe_to_node(m_roof_preview)
 
 
 func _update_roof_preview(camera: Camera3D, mouse_position: Vector2) -> void:
@@ -3008,7 +3019,6 @@ func _update_roof_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 	m_roof_preview.roof_thickness = float(m_roof_settings["thickness"])
 	m_roof_preview.roof_overhang = float(m_roof_settings["overhang"])
 	m_roof_preview.set_hip_gable_height(float(m_roof_settings.get("hip_gable_height", 0.0)))
-	m_roof_preview.debug_show_triangle_wireframe = bool(m_roof_settings.get("debug_wireframe", false))
 	m_roof_preview.set_roof_corners_and_rotation(roof_start, roof_end, m_roof_draw_rotation_degrees)
 	if m_roof_has_valid_preview:
 		var size := m_roof_preview.get_roof_size()
@@ -3259,7 +3269,6 @@ func _commit_roof(
 		overhang,
 		color,
 		normalized_rotation,
-		bool(m_roof_settings.get("debug_wireframe", false)),
 		hip_gable_height
 	)
 	if !covered_rects.is_empty() or !covered_polygons.is_empty():
@@ -4123,6 +4132,7 @@ func _create_pillar_preview(coordinator: Building3DScript) -> void:
 	m_pillar_preview.generate_collision = false
 	coordinator.add_child(m_pillar_preview)
 	m_pillar_preview.owner = null
+	_apply_debug_wireframe_to_node(m_pillar_preview)
 
 
 func _update_pillar_preview(camera: Camera3D, mouse_position: Vector2, create_if_missing: bool) -> void:
@@ -4428,6 +4438,7 @@ func _update_opening_preview(wall: Wall3DScript, hit: Dictionary) -> void:
 		m_prop_preview = opening_script.new() as BuildingOpening3DScript
 		(m_prop_preview as BuildingOpening3DScript).build_on_ready = true
 	_set_preview_parent(m_prop_preview, wall)
+	_apply_debug_wireframe_to_node(m_prop_preview)
 
 	var opening := m_prop_preview as BuildingOpening3DScript
 	opening.name = "%sPreview" % String(settings["node_name"])
@@ -4610,6 +4621,7 @@ func _update_prop_preview(wall: Wall3DScript, hit: Dictionary) -> void:
 		m_preview_valid = false
 		return
 
+	var created_preview := false
 	if m_prop_preview == null or m_prop_preview_path != scene_path:
 		_clear_prop_preview()
 		m_prop_preview = _instantiate_prop(scene_path)
@@ -4619,6 +4631,7 @@ func _update_prop_preview(wall: Wall3DScript, hit: Dictionary) -> void:
 			_set_status("Prop scene root must be Node3D.")
 			return
 		_apply_preview_material(m_prop_preview, Color(0.20, 0.88, 0.36, 0.42))
+		created_preview = true
 
 	var parent := wall as Node
 	if parent == null:
@@ -4631,6 +4644,8 @@ func _update_prop_preview(wall: Wall3DScript, hit: Dictionary) -> void:
 		return
 
 	_set_preview_parent(m_prop_preview, parent)
+	if created_preview:
+		_apply_debug_wireframe_to_node(m_prop_preview)
 	if wall != null:
 		var segment_index := int(hit.get("segment", 0))
 		var segment := wall.get_segment(segment_index)
@@ -4729,6 +4744,7 @@ func _instantiate_prop(scene_path: String) -> Node3D:
 	var node := packed.instantiate() as Node3D
 	if node == null:
 		return null
+	node.set_meta(BUILDING_PROP_META, true)
 	return node
 
 
@@ -6222,6 +6238,8 @@ func _set_preview_parent(preview: Node3D, parent: Node) -> void:
 
 
 func _apply_preview_material(node: Node, color: Color) -> void:
+	if node.has_meta(BuildingWireframeScript.GENERATED_META):
+		return
 	var mesh_instance := node as MeshInstance3D
 	if mesh_instance != null:
 		mesh_instance.material_override = _build_preview_material(color)
@@ -7399,6 +7417,7 @@ func _do_add_node(parent: Node, node: Node, scene_root: Node, select_after_add: 
 	if node.get_parent() != parent:
 		parent.add_child(node)
 	_set_owner_recursive(node, scene_root)
+	_apply_debug_wireframe_to_node(node)
 	if select_after_add:
 		_select_node(node)
 
@@ -7618,6 +7637,8 @@ func _tool_mode_for_building_node(node: Node) -> String:
 		return MODE_ROOF
 	if node is BuildingOpening3DScript:
 		return _tool_mode_for_opening_node(node as BuildingOpening3DScript)
+	if node.has_meta(BUILDING_PROP_META):
+		return MODE_PROP
 	return ""
 
 
@@ -8410,6 +8431,49 @@ func _on_tool_mode_changed(mode: String) -> void:
 	_set_status("Select a tool." if mode == MODE_SELECT else "Active tool: %s" % mode.capitalize())
 
 
+func _on_display_settings_changed(settings: Dictionary) -> void:
+	m_display_settings = settings.duplicate(true)
+	_apply_debug_wireframe_to_scene()
+
+
+func _apply_debug_wireframe_to_scene() -> void:
+	var scene_root := get_editor_interface().get_edited_scene_root()
+	if scene_root != null:
+		_apply_debug_wireframe_recursive(scene_root)
+
+
+func _apply_debug_wireframe_to_node(node: Node) -> void:
+	if node == null or !is_instance_valid(node):
+		return
+	var enabled := bool(m_display_settings.get("wireframe", false))
+	var color := Color(
+		m_display_settings.get(
+			"wireframe_color",
+			Color(0.05, 0.95, 1.0, 1.0)
+		)
+	)
+	var xray := bool(m_display_settings.get("wireframe_xray", false))
+	if node.has_method("set_debug_wireframe"):
+		node.call("set_debug_wireframe", enabled, color, xray)
+	elif node is Node3D and node.has_meta(BUILDING_PROP_META):
+		var prop_root := node as Node3D
+		if (
+			!enabled
+			or !BuildingWireframeScript.update_style(prop_root, color, xray)
+		):
+			BuildingWireframeScript.sync_recursive(prop_root, enabled, color, xray)
+
+
+func _apply_debug_wireframe_recursive(node: Node) -> void:
+	if node == null or node.has_meta(BuildingWireframeScript.GENERATED_META):
+		return
+	_apply_debug_wireframe_to_node(node)
+	if node.has_meta(BUILDING_PROP_META):
+		return
+	for child in node.get_children():
+		_apply_debug_wireframe_recursive(child)
+
+
 func _sync_viewport_overlay_state() -> void:
 	var active := m_tool_mode != MODE_SELECT
 	for overlay in m_viewport_overlays:
@@ -8471,6 +8535,7 @@ func _on_scene_changed(_scene_root: Node) -> void:
 	m_active_coordinator = null
 	_cancel_active_preview()
 	_refresh_dock_context()
+	_apply_debug_wireframe_to_scene()
 
 
 func _on_editor_selection_changed() -> void:

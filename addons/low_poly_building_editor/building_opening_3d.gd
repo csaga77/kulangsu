@@ -8,6 +8,10 @@ const GENERATED_META := &"building_opening_generated"
 const LegacyDoorGeometry = preload(
 	"res://addons/low_poly_building_editor/legacy_door_geometry_3d.gd"
 )
+const BuildingWireframe := preload(
+	"res://addons/low_poly_building_editor/building_wireframe_3d.gd"
+)
+const DEBUG_WIREFRAME_NODE_NAME := BuildingWireframe.NODE_NAME
 
 # Gap between the opening node origin and the wall face it is placed against.
 # Mirrors the placement offset applied by the editor plugin so the frame casing
@@ -113,6 +117,9 @@ var m_legacy_door_panel_count := 0
 var m_legacy_door_panel_depth := 0.05
 var m_legacy_door_panel_color := Color(0.50, 0.34, 0.20, 1.0)
 var m_geometry_rebuild_count := 0
+var m_debug_wireframe_enabled := false
+var m_debug_wireframe_color := Color(0.05, 0.95, 1.0, 1.0)
+var m_debug_wireframe_xray := false
 @export_storage var m_generated_part_cache_signature := 0
 @export_storage var m_generated_part_cache: Array[Dictionary] = []
 
@@ -195,6 +202,37 @@ func get_geometry_rebuild_count() -> int:
 	return m_geometry_rebuild_count
 
 
+func set_debug_wireframe(
+	enabled: bool,
+	color: Color = Color(0.05, 0.95, 1.0, 1.0),
+	xray: bool = false
+) -> void:
+	var was_enabled := m_debug_wireframe_enabled
+	var style_changed := (
+		m_debug_wireframe_color != color
+		or m_debug_wireframe_xray != xray
+	)
+	m_debug_wireframe_enabled = enabled
+	m_debug_wireframe_color = color
+	m_debug_wireframe_xray = xray
+	if !enabled:
+		if was_enabled or get_node_or_null(DEBUG_WIREFRAME_NODE_NAME) != null:
+			BuildingWireframe.clear(self)
+	elif !was_enabled or get_node_or_null(DEBUG_WIREFRAME_NODE_NAME) == null:
+		_sync_debug_wireframe()
+	elif style_changed:
+		BuildingWireframe.update_style(self, color, xray)
+
+
+func _sync_debug_wireframe() -> void:
+	BuildingWireframe.sync_recursive(
+		self,
+		m_debug_wireframe_enabled,
+		m_debug_wireframe_color,
+		m_debug_wireframe_xray
+	)
+
+
 func _request_rebuild() -> void:
 	if !m_is_ready or m_rebuild_queued:
 		return
@@ -205,6 +243,7 @@ func _request_rebuild() -> void:
 func _rebuild() -> void:
 	m_geometry_rebuild_count += 1
 	m_rebuild_queued = false
+	BuildingWireframe.clear(self)
 	_clear_generated_children()
 	m_generated_part_cache.clear()
 
@@ -245,6 +284,7 @@ func _rebuild() -> void:
 		)
 	_build_opening_content()
 	m_generated_part_cache_signature = _opening_geometry_source_signature()
+	_sync_debug_wireframe()
 
 
 # Implemented by Door3D and Window3D. BuildingOpening3D itself remains a useful
@@ -360,6 +400,7 @@ func _restore_generated_parts_from_cache() -> void:
 	_clear_generated_children()
 	for descriptor in m_generated_part_cache:
 		_instantiate_generated_part(descriptor)
+	_sync_debug_wireframe()
 
 
 func _opening_geometry_source_signature() -> int:
@@ -370,6 +411,9 @@ func _opening_geometry_source_signature() -> int:
 		&"generate_collision": true,
 		&"m_generated_part_cache_signature": true,
 		&"m_generated_part_cache": true,
+		&"m_debug_wireframe_enabled": true,
+		&"m_debug_wireframe_color": true,
+		&"m_debug_wireframe_xray": true,
 	}
 	for property in get_property_list():
 		var usage := int(property.get("usage", 0))

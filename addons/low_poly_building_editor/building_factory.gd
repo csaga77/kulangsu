@@ -319,7 +319,6 @@ static func create_roof_node(
 	overhang: float = 0.2,
 	color: Color = Color(0.50, 0.34, 0.25, 1.0),
 	rotation_degrees: float = 0.0,
-	debug_wireframe: bool = false,
 	hip_gable_height: float = 0.0
 ) -> Roof3DScript:
 	var roof := instantiate_roof_style(style)
@@ -334,7 +333,6 @@ static func create_roof_node(
 	roof.roof_rotation_degrees = rotation_degrees
 	roof.build_on_ready = true
 	roof.generate_collision = true
-	roof.debug_show_triangle_wireframe = debug_wireframe
 	roof.rebuild_roof_mesh()
 	return roof
 
@@ -344,8 +342,7 @@ static func create_flat_roof_polygon_node(
 	local_points: PackedVector3Array,
 	thickness: float = 0.12,
 	overhang: float = 0.2,
-	color: Color = Color(0.50, 0.34, 0.25, 1.0),
-	debug_wireframe: bool = false
+	color: Color = Color(0.50, 0.34, 0.25, 1.0)
 ) -> Roof3DScript:
 	var roof := instantiate_roof_style("flat")
 	roof.name = _unique_child_name(building, "Roof3D")
@@ -354,7 +351,6 @@ static func create_flat_roof_polygon_node(
 	roof.roof_color = color
 	roof.build_on_ready = true
 	roof.generate_collision = true
-	roof.debug_show_triangle_wireframe = debug_wireframe
 	roof.set_roof_polygon(local_points)
 	return roof
 

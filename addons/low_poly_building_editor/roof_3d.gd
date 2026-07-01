@@ -13,7 +13,6 @@ const STYLE_HIP := "hip"
 const STYLE_DOME := "dome"
 const RECT_EPSILON := 0.001
 const MAX_ROOF_ANGLE_DEGREES := 89.0
-const TRIANGLE_WIREFRAME_NODE_NAME := "RoofTriangleWireframe"
 const RoofStyleGeometryFactory := preload(
 	"res://addons/low_poly_building_editor/roof_style_geometry_factory_3d.gd"
 )
@@ -99,20 +98,6 @@ const PolygonPrismGeometry := preload(
 		if generate_collision == value:
 			return
 		generate_collision = value
-		_request_rebuild()
-
-@export var debug_show_triangle_wireframe := false:
-	set(value):
-		if debug_show_triangle_wireframe == value:
-			return
-		debug_show_triangle_wireframe = value
-		_request_rebuild()
-
-@export var debug_triangle_wireframe_color := Color(0.05, 0.95, 1.0, 1.0):
-	set(value):
-		if debug_triangle_wireframe_color == value:
-			return
-		debug_triangle_wireframe_color = value
 		_request_rebuild()
 
 var m_is_ready := false
@@ -638,9 +623,6 @@ func rebuild_roof_mesh(rebuild_collision: bool = true) -> void:
 		_roof_mesh_clip_signature()
 	)
 
-	if debug_show_triangle_wireframe:
-		_add_triangle_wireframe(vertices, indices)
-
 	if rebuild_collision and generate_collision:
 		_add_collision_body(vertices, indices)
 
@@ -664,8 +646,6 @@ func _roof_mesh_source_signature() -> int:
 		roof_color,
 		get_roof_angle_degrees(),
 		get_hip_gable_height(),
-		debug_show_triangle_wireframe,
-		debug_triangle_wireframe_color,
 	])
 
 
@@ -680,8 +660,7 @@ func _rebuild_generated_children_from_cached_mesh() -> void:
 	_clear_generated_children()
 	var vertices := _cached_mesh_vertices()
 	var indices := _cached_mesh_indices()
-	if debug_show_triangle_wireframe:
-		_add_triangle_wireframe(vertices, indices)
+	_sync_debug_wireframe()
 	if generate_collision:
 		_add_collision_body(vertices, indices)
 
@@ -1529,52 +1508,6 @@ func _build_roof_material(color: Color) -> StandardMaterial3D:
 	material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	material.cull_mode = BaseMaterial3D.CULL_BACK
 	if color.a < 0.99:
-		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	return material
-
-
-func _add_triangle_wireframe(vertices: PackedVector3Array, indices: PackedInt32Array) -> void:
-	var line_vertices := PackedVector3Array()
-	for index in range(0, indices.size(), 3):
-		var a := vertices[indices[index]]
-		var b := vertices[indices[index + 1]]
-		var c := vertices[indices[index + 2]]
-		_append_wireframe_edge(line_vertices, a, b)
-		_append_wireframe_edge(line_vertices, b, c)
-		_append_wireframe_edge(line_vertices, c, a)
-	if line_vertices.is_empty():
-		return
-
-	var arrays: Array = []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = line_vertices
-
-	var wire_mesh := ArrayMesh.new()
-	wire_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, arrays)
-
-	var instance := MeshInstance3D.new()
-	instance.name = TRIANGLE_WIREFRAME_NODE_NAME
-	instance.mesh = wire_mesh
-	instance.material_override = _build_triangle_wireframe_material()
-	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	instance.set_meta(GENERATED_META, true)
-	add_child(instance)
-	if Engine.is_editor_hint():
-		instance.owner = null
-
-
-func _append_wireframe_edge(line_vertices: PackedVector3Array, start: Vector3, end: Vector3) -> void:
-	line_vertices.append(start)
-	line_vertices.append(end)
-
-
-func _build_triangle_wireframe_material() -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = debug_triangle_wireframe_color
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	material.set("no_depth_test", true)
-	if debug_triangle_wireframe_color.a < 0.99:
 		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	return material
 
