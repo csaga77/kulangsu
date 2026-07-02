@@ -589,20 +589,9 @@ func _build_rail_controls(parent: VBoxContainer) -> void:
 	_add_labeled_control(parent, "Base Y:", m_rail_base_height_spin, "Parent-local Y height for new rail bases.")
 	m_rail_base_height_spin.value_changed.connect(_on_rail_setting_changed)
 
-	m_rail_height_spin = _make_spin(0.2, 4.0, 0.01, 1.0)
-	_add_labeled_control(parent, "Height:", m_rail_height_spin, "Height from the base to the top of the handrail.")
-	m_rail_height_spin.value_changed.connect(_on_rail_setting_changed)
-
-	m_rail_post_spacing_spin = _make_spin(0.1, 8.0, 0.05, 1.0)
-
-	m_rail_post_thickness_spin = _make_spin(0.02, 1.0, 0.01, 0.08)
-	_add_labeled_control(parent, "Infill Rail Thickness:", m_rail_post_thickness_spin, "Square thickness of each vertical or horizontal infill rail between newels.")
-	m_rail_post_thickness_spin.value_changed.connect(_on_rail_setting_changed)
-
-	m_rail_bar_thickness_spin = _make_spin(0.02, 1.0, 0.01, 0.1)
-	_add_labeled_control(parent, "Rail Size:", m_rail_bar_thickness_spin, "Square width and height of the top and lower rails.")
-	m_rail_bar_thickness_spin.value_changed.connect(_on_rail_setting_changed)
-
+	# Shared rail controls follow the same order as the stair rail controls:
+	# infill style, newel count, infill count, newel size, height, infill
+	# rail thickness, rail size, lower rail, color.
 	m_rail_style_option = _make_rail_style_option()
 	m_rail_style_option.item_selected.connect(_on_rail_style_selected)
 	_add_labeled_control(
@@ -638,6 +627,20 @@ func _build_rail_controls(parent: VBoxContainer) -> void:
 		"Square newel width/depth, clamped to the handrail width."
 	)
 	m_rail_newel_size_spin.value_changed.connect(_on_rail_setting_changed)
+
+	m_rail_height_spin = _make_spin(0.2, 4.0, 0.01, 1.0)
+	_add_labeled_control(parent, "Height:", m_rail_height_spin, "Height from the base to the top of the handrail.")
+	m_rail_height_spin.value_changed.connect(_on_rail_setting_changed)
+
+	m_rail_post_spacing_spin = _make_spin(0.1, 8.0, 0.05, 1.0)
+
+	m_rail_post_thickness_spin = _make_spin(0.02, 1.0, 0.01, 0.08)
+	_add_labeled_control(parent, "Infill Rail Thickness:", m_rail_post_thickness_spin, "Square thickness of each vertical or horizontal infill rail between newels, clamped to the handrail width.")
+	m_rail_post_thickness_spin.value_changed.connect(_on_rail_setting_changed)
+
+	m_rail_bar_thickness_spin = _make_spin(0.02, 1.0, 0.01, 0.1)
+	_add_labeled_control(parent, "Rail Size:", m_rail_bar_thickness_spin, "Square width and height of the top and lower rails.")
+	m_rail_bar_thickness_spin.value_changed.connect(_on_rail_setting_changed)
 
 	m_rail_lower_height_spin = _make_spin(0.0, 4.0, 0.01, 0.18)
 	_add_labeled_control(parent, "Lower Rail Y:", m_rail_lower_height_spin, "Center height of the lower horizontal rail. Set to 0 to disable it.")

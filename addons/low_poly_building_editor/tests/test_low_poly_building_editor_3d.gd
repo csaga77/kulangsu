@@ -2191,6 +2191,60 @@ func _validate_standard_rail_geometry_post_base_heights() -> void:
 			m_failures.append("StandardRailGeometry second post retained a hidden bottom face")
 			break
 
+	# With base_follows_rise flags, each post bottom must shear onto the
+	# raked base-rail top: corners move by rise * (corner_run - position) /
+	# length = 0.6 * (+/-0.04) / 2.0 = +/-0.012 around each authored base.
+	var raked_vertices := PackedVector3Array()
+	var raked_normals := PackedVector3Array()
+	var raked_colors := PackedColorArray()
+	var raked_indices := PackedInt32Array()
+	StandardRailGeometryScript.append_rail(
+		raked_vertices,
+		raked_normals,
+		raked_colors,
+		raked_indices,
+		Vector3.ZERO,
+		Vector3.BACK,
+		Vector3.UP,
+		Vector3.RIGHT,
+		2.0,
+		0.6,
+		1.0,
+		1.0,
+		0.08,
+		0.1,
+		0.0,
+		Color.WHITE,
+		positions,
+		base_heights,
+		PackedFloat32Array(),
+		PackedFloat32Array(),
+		-INF,
+		INF,
+		NAN,
+		NAN,
+		StandardRailGeometryScript.RailStyle.VERTICAL,
+		1,
+		PackedByteArray([1, 1])
+	)
+	if raked_vertices.size() != vertices.size():
+		m_failures.append(
+			"StandardRailGeometry rise-following bases changed the post vertex layout"
+		)
+		return
+	var minimum_run_bottom_offsets := PackedInt32Array([0, 4, 8, 11])
+	var maximum_run_bottom_offsets := PackedInt32Array([1, 7, 12, 13])
+	for offset in minimum_run_bottom_offsets:
+		if absf(raked_vertices[first_post_start + offset].y - 0.288) > 0.001:
+			m_failures.append("StandardRailGeometry first post bottom did not follow the base-rail rake")
+		if absf(raked_vertices[second_post_start + offset].y - 0.588) > 0.001:
+			m_failures.append("StandardRailGeometry second post bottom did not follow the base-rail rake")
+	for offset in maximum_run_bottom_offsets:
+		if absf(raked_vertices[first_post_start + offset].y - 0.312) > 0.001:
+			m_failures.append("StandardRailGeometry first post bottom did not follow the base-rail rake")
+		if absf(raked_vertices[second_post_start + offset].y - 0.612) > 0.001:
+			m_failures.append("StandardRailGeometry second post bottom did not follow the base-rail rake")
+
 	# Stairs3D's axis triple (run=BACK, up=UP, side=RIGHT) is an axis swap
 	# from Rail3D's (run=RIGHT, up=UP, side=BACK), which mirrors it
 	# (negative orientation). The bar's first face (its FORWARD quad, the
@@ -2350,9 +2404,11 @@ func _validate_rail_node(coordinator: Building3DScript) -> void:
 	)
 	var thick_run_minimum := INF
 	var thick_run_maximum := -INF
+	var thick_side_maximum := 0.0
 	for thick_infill_vertex in thick_infill_vertices:
 		thick_run_minimum = minf(thick_run_minimum, thick_infill_vertex.x)
 		thick_run_maximum = maxf(thick_run_maximum, thick_infill_vertex.x)
+		thick_side_maximum = maxf(thick_side_maximum, absf(thick_infill_vertex.z))
 	var expected_newel_size := minf(
 		maxf(rail.newel_post_thickness, 0.02),
 		minf(maxf(rail.rail_thickness, 0.02), maxf(rail.rail_height, 0.2) * 0.5)
@@ -2364,6 +2420,14 @@ func _validate_rail_node(coordinator: Building3DScript) -> void:
 		)
 	):
 		m_failures.append("Rail3D handrail length changed with the infill rail thickness")
+	# Infill geometry is clamped to the handrail cross-section, so no vertex
+	# may stick out sideways past the handrail width.
+	var expected_handrail_width := minf(
+		maxf(rail.rail_thickness, 0.02),
+		maxf(rail.rail_height, 0.2) * 0.5
+	)
+	if thick_side_maximum > expected_handrail_width * 0.5 + 0.001:
+		m_failures.append("Rail3D infill geometry exceeded the handrail width")
 	rail.infill_rail_thickness = 0.08
 	rail.rebuild_rail_mesh()
 

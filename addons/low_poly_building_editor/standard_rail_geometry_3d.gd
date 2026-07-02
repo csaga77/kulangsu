@@ -95,7 +95,8 @@ static func append_rail(
 	minimum_run_override: float = NAN,
 	maximum_run_override: float = NAN,
 	rail_style: int = RailStyle.VERTICAL,
-	horizontal_infill_count: int = 2
+	horizontal_infill_count: int = 2,
+	post_base_follows_rise: PackedByteArray = PackedByteArray()
 ) -> void:
 	if length <= 0.001:
 		return
@@ -161,7 +162,12 @@ static func append_rail(
 	var infill_bottom := lower_center + bar_size * 0.5 if has_base_rail else 0.0
 	if normalized_style == RailStyle.HORIZONTAL:
 		var infill_count := clampi(horizontal_infill_count, 0, 64)
-		var infill_size := minf(post_size, maxf(top_bottom - infill_bottom, 0.02))
+		# Horizontal infill never exceeds the handrail cross-section or the
+		# clear height between base rail and handrail.
+		var infill_size := minf(
+			minf(post_size, bar_size),
+			maxf(top_bottom - infill_bottom, 0.02)
+		)
 		var infill_clear_height := (
 			top_bottom
 			- infill_bottom
@@ -212,11 +218,16 @@ static func append_rail(
 		var flat_top_height := NAN
 		if index < post_top_heights.size():
 			flat_top_height = post_top_heights[index]
+		var follow_rise_at_base := (
+			index < post_base_follows_rise.size()
+			and post_base_follows_rise[index] != 0
+		)
 		_append_upright_post_welded_to_handrail(
 			vertices, normals, colors, indices,
 			origin, run_axis, up_axis, side_axis, length, rise,
 			u, base_height, top_bottom, current_post_size, color,
-			flat_top_height
+			flat_top_height,
+			follow_rise_at_base
 		)
 
 
@@ -696,7 +707,8 @@ static func _append_upright_post_welded_to_handrail(
 	handrail_bottom: float,
 	post_size: float,
 	color: Color,
-	flat_top_height: float = NAN
+	flat_top_height: float = NAN,
+	follow_rise_at_base: bool = false
 ) -> void:
 	var minimum_run := position - post_size * 0.5
 	var maximum_run := position + post_size * 0.5
@@ -711,13 +723,24 @@ static func _append_upright_post_welded_to_handrail(
 		minimum_top += rise * (minimum_run / length)
 		maximum_top += rise * (maximum_run / length)
 
+	# `base_height` is authored at the post's center position. A flat-based
+	# post keeps every bottom corner on that plane; a rise-following base
+	# (an infill standing on a raked base rail) shears each bottom corner
+	# onto the sloped surface so no corner floats above or sinks into it.
+	var minimum_base := base_height
+	var maximum_base := base_height
+	if follow_rise_at_base and length > 0.001:
+		minimum_base += rise * ((minimum_run - position) / length)
+		maximum_base += rise * ((maximum_run - position) / length)
+
 	# Use zero shear for the post itself: only its top boundary follows the
-	# handrail plane, while every bottom corner stays on the authored base.
+	# handrail plane, while the bottom corners stay on the authored base
+	# plane (flat or rise-following per the flag above).
 	_append_sheared_quad(
 		vertices, normals, colors, indices,
 		origin, run_axis, up_axis, side_axis, length, 0.0, color,
-		Vector3(minimum_run, base_height, minimum_side),
-		Vector3(maximum_run, base_height, minimum_side),
+		Vector3(minimum_run, minimum_base, minimum_side),
+		Vector3(maximum_run, maximum_base, minimum_side),
 		Vector3(maximum_run, maximum_top, minimum_side),
 		Vector3(minimum_run, minimum_top, minimum_side),
 		Vector3.FORWARD
@@ -725,26 +748,26 @@ static func _append_upright_post_welded_to_handrail(
 	_append_sheared_quad(
 		vertices, normals, colors, indices,
 		origin, run_axis, up_axis, side_axis, length, 0.0, color,
-		Vector3(minimum_run, base_height, maximum_side),
+		Vector3(minimum_run, minimum_base, maximum_side),
 		Vector3(minimum_run, minimum_top, maximum_side),
 		Vector3(maximum_run, maximum_top, maximum_side),
-		Vector3(maximum_run, base_height, maximum_side),
+		Vector3(maximum_run, maximum_base, maximum_side),
 		Vector3.BACK
 	)
 	_append_sheared_quad(
 		vertices, normals, colors, indices,
 		origin, run_axis, up_axis, side_axis, length, 0.0, color,
-		Vector3(minimum_run, base_height, minimum_side),
+		Vector3(minimum_run, minimum_base, minimum_side),
 		Vector3(minimum_run, minimum_top, minimum_side),
 		Vector3(minimum_run, minimum_top, maximum_side),
-		Vector3(minimum_run, base_height, maximum_side),
+		Vector3(minimum_run, minimum_base, maximum_side),
 		Vector3.LEFT
 	)
 	_append_sheared_quad(
 		vertices, normals, colors, indices,
 		origin, run_axis, up_axis, side_axis, length, 0.0, color,
-		Vector3(maximum_run, base_height, minimum_side),
-		Vector3(maximum_run, base_height, maximum_side),
+		Vector3(maximum_run, maximum_base, minimum_side),
+		Vector3(maximum_run, maximum_base, maximum_side),
 		Vector3(maximum_run, maximum_top, maximum_side),
 		Vector3(maximum_run, maximum_top, minimum_side),
 		Vector3.RIGHT

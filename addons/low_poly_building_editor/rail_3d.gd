@@ -8,7 +8,7 @@ const StandardRailGeometry := preload(
 
 const GENERATED_META := &"rail_generated"
 const PREVIEW_META := &"building_editor_preview"
-const MESH_GEOMETRY_VERSION := 8
+const MESH_GEOMETRY_VERSION := 9
 
 @export var rebuild := false:
 	set(value):
@@ -33,38 +33,9 @@ const MESH_GEOMETRY_VERSION := 8
 		end_point = flattened
 		_request_rebuild()
 
-@export_range(0.2, 4.0, 0.01, "or_greater") var rail_height := 1.0:
-	set(value):
-		var clamped_value := maxf(value, 0.2)
-		if is_equal_approx(rail_height, clamped_value):
-			return
-		rail_height = clamped_value
-		_request_rebuild()
-
-@export_storage var post_spacing := 1.0:
-	set(value):
-		var clamped_value := maxf(value, 0.1)
-		if is_equal_approx(post_spacing, clamped_value):
-			return
-		post_spacing = clamped_value
-		_request_rebuild()
-
-@export_range(0.02, 1.0, 0.01, "or_greater") var infill_rail_thickness := 0.08:
-	set(value):
-		var clamped_value := maxf(value, 0.02)
-		if is_equal_approx(infill_rail_thickness, clamped_value):
-			return
-		infill_rail_thickness = clamped_value
-		_request_rebuild()
-
-@export_range(0.02, 1.0, 0.01, "or_greater") var rail_thickness := 0.1:
-	set(value):
-		var clamped_value := maxf(value, 0.02)
-		if is_equal_approx(rail_thickness, clamped_value):
-			return
-		rail_thickness = clamped_value
-		_request_rebuild()
-
+# Exported rail properties follow the same order as Stairs3D's rail group:
+# infill style, newel count, infill count, newel thickness, rail height,
+# infill rail thickness, rail thickness, lower rail height, color.
 @export_enum("Vertical Rail", "Horizontal Rail", "Glass Panel") var infill_style: int = (
 	StandardRailGeometry.RailStyle.VERTICAL
 ):
@@ -101,6 +72,38 @@ const MESH_GEOMETRY_VERSION := 8
 		if is_equal_approx(newel_post_thickness, clamped_value):
 			return
 		newel_post_thickness = clamped_value
+		_request_rebuild()
+
+@export_range(0.2, 4.0, 0.01, "or_greater") var rail_height := 1.0:
+	set(value):
+		var clamped_value := maxf(value, 0.2)
+		if is_equal_approx(rail_height, clamped_value):
+			return
+		rail_height = clamped_value
+		_request_rebuild()
+
+@export_storage var post_spacing := 1.0:
+	set(value):
+		var clamped_value := maxf(value, 0.1)
+		if is_equal_approx(post_spacing, clamped_value):
+			return
+		post_spacing = clamped_value
+		_request_rebuild()
+
+@export_range(0.02, 1.0, 0.01, "or_greater") var infill_rail_thickness := 0.08:
+	set(value):
+		var clamped_value := maxf(value, 0.02)
+		if is_equal_approx(infill_rail_thickness, clamped_value):
+			return
+		infill_rail_thickness = clamped_value
+		_request_rebuild()
+
+@export_range(0.02, 1.0, 0.01, "or_greater") var rail_thickness := 0.1:
+	set(value):
+		var clamped_value := maxf(value, 0.02)
+		if is_equal_approx(rail_thickness, clamped_value):
+			return
+		rail_thickness = clamped_value
 		_request_rebuild()
 
 @export_range(0.0, 4.0, 0.01, "or_greater") var lower_rail_height := 0.18:
@@ -296,7 +299,7 @@ func _append_standard_rail_geometry(
 		0.0,
 		rail_height,
 		post_spacing,
-		infill_rail_thickness,
+		_clamped_infill_rail_size(),
 		rail_thickness,
 		lower_rail_height,
 		rail_color,
@@ -313,12 +316,20 @@ func _append_standard_rail_geometry(
 	)
 
 
-func _clamped_newel_size() -> float:
-	var handrail_width := minf(
+func _handrail_width() -> float:
+	return minf(
 		maxf(rail_thickness, 0.02),
 		maxf(rail_height, 0.2) * 0.5
 	)
-	return minf(maxf(newel_post_thickness, 0.02), handrail_width)
+
+
+func _clamped_newel_size() -> float:
+	return minf(maxf(newel_post_thickness, 0.02), _handrail_width())
+
+
+func _clamped_infill_rail_size() -> float:
+	# Like newels, infill geometry never exceeds the handrail cross-section.
+	return minf(maxf(infill_rail_thickness, 0.02), _handrail_width())
 
 
 func _get_post_layout(length: float) -> Dictionary:
@@ -343,7 +354,7 @@ func _get_post_layout(length: float) -> Dictionary:
 			if infill_style == StandardRailGeometry.RailStyle.VERTICAL
 			else 0
 		),
-		infill_rail_thickness
+		_clamped_infill_rail_size()
 	)
 	positions = counted_layout["positions"]
 	base_heights = counted_layout["base_heights"]

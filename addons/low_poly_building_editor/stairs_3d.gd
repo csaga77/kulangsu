@@ -13,7 +13,7 @@ const StandardRailGeometry := preload(
 
 const GENERATED_META := &"stairs_generated"
 const PREVIEW_META := &"building_editor_preview"
-const MESH_GEOMETRY_VERSION := 14
+const MESH_GEOMETRY_VERSION := 16
 const SIDE_WALL_COLLISION_THICKNESS := 0.64
 const SIDE_WALL_COLLISION_META := &"stairs_side_wall_collision"
 const LEFT_SIDE_COLLISION_SHAPE_NAME := "LeftSideCollisionShape3D"
@@ -507,6 +507,7 @@ func _append_rail_geometry(
 	var post_base_heights: PackedFloat32Array = post_layout["base_heights"]
 	var post_thicknesses: PackedFloat32Array = post_layout["thicknesses"]
 	var post_top_heights: PackedFloat32Array = post_layout["top_heights"]
+	var post_base_follows_rise: PackedByteArray = post_layout["base_follows_rise"]
 	var lower_horizontal_end := float(post_layout["lower_horizontal_end"])
 	var upper_horizontal_start := float(post_layout["upper_horizontal_start"])
 	var handrail_minimum_run := float(post_layout["handrail_minimum_run"])
@@ -528,7 +529,7 @@ func _append_rail_geometry(
 			height,
 			rail_height,
 			1.0, # post_spacing is unused: post_positions overrides it below.
-			infill_rail_thickness,
+			_clamped_infill_rail_size(),
 			rail_thickness,
 			rail_lower_height,
 			rail_color,
@@ -541,7 +542,8 @@ func _append_rail_geometry(
 			handrail_minimum_run,
 			handrail_maximum_run,
 			infill_style,
-			infill_count_between_newels
+			infill_count_between_newels,
+			post_base_follows_rise
 		)
 	if right_rail_enabled:
 		StandardRailGeometry.append_rail(
@@ -557,7 +559,7 @@ func _append_rail_geometry(
 			height,
 			rail_height,
 			1.0, # post_spacing is unused: post_positions overrides it below.
-			infill_rail_thickness,
+			_clamped_infill_rail_size(),
 			rail_thickness,
 			rail_lower_height,
 			rail_color,
@@ -570,7 +572,8 @@ func _append_rail_geometry(
 			handrail_minimum_run,
 			handrail_maximum_run,
 			infill_style,
-			infill_count_between_newels
+			infill_count_between_newels,
+			post_base_follows_rise
 		)
 
 
@@ -583,22 +586,31 @@ func _get_rail_post_layout() -> Dictionary:
 	)
 
 
+func _handrail_width() -> float:
+	return minf(
+		maxf(rail_thickness, 0.02),
+		maxf(rail_height, 0.2) * 0.5
+	)
+
+
+func _clamped_infill_rail_size() -> float:
+	# Like newels, infill geometry never exceeds the handrail cross-section.
+	return minf(maxf(infill_rail_thickness, 0.02), _handrail_width())
+
+
 func _build_rail_post_layout(depth: float, height: float, steps: int) -> Dictionary:
 	var positions := StandardRailGeometry.tread_mid_post_positions(depth, steps)
 	var base_heights := StandardRailGeometry.tread_mid_post_base_heights(height, steps)
+	var infill_size := _clamped_infill_rail_size()
 	var thicknesses := PackedFloat32Array()
 	var newel_flags := PackedByteArray()
 	for _index in range(positions.size()):
-		thicknesses.append(maxf(infill_rail_thickness, 0.02))
+		thicknesses.append(infill_size)
 		newel_flags.append(0)
 
 	# A newel stays no wider than the handrail so its open top is completely
 	# covered by the welded handrail underside.
-	var handrail_width := minf(
-		maxf(rail_thickness, 0.02),
-		maxf(rail_height, 0.2) * 0.5
-	)
-	var newel_size := minf(maxf(rail_newel_post_thickness, 0.02), handrail_width)
+	var newel_size := minf(maxf(rail_newel_post_thickness, 0.02), _handrail_width())
 	var post_spacing := depth / float(maxi(steps, 1))
 	var lower_newel_index := -1
 	var upper_newel_index := -1
@@ -658,7 +670,7 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 			if infill_style == StandardRailGeometry.RailStyle.VERTICAL
 			else 0
 		),
-		infill_rail_thickness
+		infill_size
 	)
 	positions = counted_layout["positions"]
 	base_heights = counted_layout["base_heights"]
@@ -683,6 +695,8 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 		rail_lower_height
 	)
 	var safe_depth := maxf(depth, 0.001)
+	var base_follows_rise := PackedByteArray()
+	base_follows_rise.resize(positions.size())
 	if has_base_rail:
 		StandardRailGeometry.redistribute_infills_between_newels(
 			positions,
@@ -701,6 +715,9 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 				base_rail_top
 				+ height * (positions[index] / safe_depth)
 			)
+			# The base-rail top is raked, so this infill's bottom corners
+			# must shear along the run instead of staying flat.
+			base_follows_rise[index] = 1
 	else:
 		var tread_depth := depth / float(maxi(steps, 1))
 		var rise_per_tread := height / float(maxi(steps, 1))
@@ -773,6 +790,7 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 		"thicknesses": thicknesses,
 		"newel_flags": newel_flags,
 		"top_heights": top_heights,
+		"base_follows_rise": base_follows_rise,
 		"lower_horizontal_end": lower_horizontal_end,
 		"upper_horizontal_start": upper_horizontal_start,
 		"handrail_minimum_run": handrail_minimum_run,
