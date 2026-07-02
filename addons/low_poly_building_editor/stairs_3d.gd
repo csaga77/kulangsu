@@ -13,7 +13,7 @@ const StandardRailGeometry := preload(
 
 const GENERATED_META := &"stairs_generated"
 const PREVIEW_META := &"building_editor_preview"
-const MESH_GEOMETRY_VERSION := 5
+const MESH_GEOMETRY_VERSION := 11
 const SIDE_WALL_COLLISION_THICKNESS := 0.64
 const SIDE_WALL_COLLISION_META := &"stairs_side_wall_collision"
 const LEFT_SIDE_COLLISION_SHAPE_NAME := "LeftSideCollisionShape3D"
@@ -121,6 +121,22 @@ const RIGHT_SIDE_COLLISION_SHAPE_NAME := "RightSideCollisionShape3D"
 		if upper_newel_placement == normalized_value:
 			return
 		upper_newel_placement = normalized_value
+		_request_rebuild()
+
+@export_range(0, 64, 1) var middle_newel_post_count := 0:
+	set(value):
+		var clamped_value := clampi(value, 0, 64)
+		if middle_newel_post_count == clamped_value:
+			return
+		middle_newel_post_count = clamped_value
+		_request_rebuild()
+
+@export_range(0, 64, 1) var baluster_count_between_newels := 1:
+	set(value):
+		var clamped_value := clampi(value, 0, 64)
+		if baluster_count_between_newels == clamped_value:
+			return
+		baluster_count_between_newels = clamped_value
 		_request_rebuild()
 
 @export_range(0.02, 1.0, 0.01, "or_greater") var rail_newel_post_thickness := 0.1:
@@ -357,6 +373,8 @@ func _stairs_mesh_source_signature() -> int:
 		lower_newel_placement,
 		upper_newel_enabled,
 		upper_newel_placement,
+		middle_newel_post_count,
+		baluster_count_between_newels,
 		rail_newel_post_thickness,
 		rail_edge_margin,
 		rail_height,
@@ -441,9 +459,14 @@ func _append_stair_geometry(
 		Vector3(0.0, height, depth),
 		Vector3.BACK
 	)
-	var side_polygon := _side_profile_polygon(depth, height, bottom_y, steps)
-	_append_side_polygon(vertices, normals, colors, indices, side_polygon, 0.0, Vector3.LEFT)
-	_append_side_polygon(vertices, normals, colors, indices, side_polygon, width, Vector3.RIGHT)
+	_append_side_strips(
+		vertices, normals, colors, indices,
+		depth, height, bottom_y, steps, 0.0, Vector3.LEFT
+	)
+	_append_side_strips(
+		vertices, normals, colors, indices,
+		depth, height, bottom_y, steps, width, Vector3.RIGHT
+	)
 
 	_append_rail_geometry(width, depth, height, vertices, normals, colors, indices)
 
@@ -460,7 +483,8 @@ func _append_rail_geometry(
 	if !left_rail_enabled and !right_rail_enabled:
 		return
 	var steps := _effective_step_count()
-	# One regular post per tread, with optional thicker lower/upper newels.
+	# One post per tread, with optional thicker lower/upper and evenly spaced
+	# middle newels.
 	# Tread placement replaces the terminal regular post; Floor placement
 	# retains it and adds a newel at the corresponding stair-run endpoint.
 	var post_layout := _build_rail_post_layout(depth, height, steps)
@@ -544,8 +568,10 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 	var positions := StandardRailGeometry.tread_mid_post_positions(depth, steps)
 	var base_heights := StandardRailGeometry.tread_mid_post_base_heights(height, steps)
 	var thicknesses := PackedFloat32Array()
+	var newel_flags := PackedByteArray()
 	for _index in range(positions.size()):
 		thicknesses.append(maxf(rail_post_thickness, 0.02))
+		newel_flags.append(0)
 
 	# A newel stays no wider than the handrail so its open top is completely
 	# covered by the welded handrail underside.
@@ -558,9 +584,14 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 	var lower_newel_index := -1
 	var upper_newel_index := -1
 
+	for tread_index in _middle_newel_tread_indices(steps):
+		thicknesses[tread_index] = newel_size
+		newel_flags[tread_index] = 1
+
 	if lower_newel_enabled and !positions.is_empty():
 		if lower_newel_placement == NewelPlacement.TREAD:
 			thicknesses[0] = newel_size
+			newel_flags[0] = 1
 			lower_newel_index = 0
 		else:
 			# Continue the regular tread-post cadence by one full interval.
@@ -573,24 +604,97 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 			var floor_thicknesses := PackedFloat32Array([newel_size])
 			floor_thicknesses.append_array(thicknesses)
 			thicknesses = floor_thicknesses
+			var floor_newel_flags := PackedByteArray([1])
+			floor_newel_flags.append_array(newel_flags)
+			newel_flags = floor_newel_flags
 			lower_newel_index = 0
 
 	if upper_newel_enabled and !positions.is_empty():
 		if upper_newel_placement == NewelPlacement.TREAD:
 			var last_tread_index := positions.size() - 1
 			thicknesses[last_tread_index] = newel_size
+			newel_flags[last_tread_index] = 1
 			upper_newel_index = last_tread_index
 		else:
 			# Continue the regular tread-post cadence by one full interval.
 			positions.append(positions[positions.size() - 1] + post_spacing)
 			base_heights.append(height)
 			thicknesses.append(newel_size)
+			newel_flags.append(1)
 			upper_newel_index = positions.size() - 1
+
+	var lower_newel_position := NAN
+	var upper_newel_position := NAN
+	if lower_newel_index >= 0:
+		lower_newel_position = positions[lower_newel_index]
+	if upper_newel_index >= 0:
+		upper_newel_position = positions[upper_newel_index]
+	var counted_layout := StandardRailGeometry.apply_baluster_count_between_newels(
+		positions,
+		base_heights,
+		thicknesses,
+		newel_flags,
+		baluster_count_between_newels,
+		rail_post_thickness
+	)
+	positions = counted_layout["positions"]
+	base_heights = counted_layout["base_heights"]
+	thicknesses = counted_layout["thicknesses"]
+	newel_flags = counted_layout["newel_flags"]
+	lower_newel_index = _find_post_position(positions, lower_newel_position)
+	upper_newel_index = _find_post_position(positions, upper_newel_position)
+	var lower_newel_is_floor := (
+		lower_newel_enabled
+		and lower_newel_placement == NewelPlacement.FLOOR
+	)
+	var upper_newel_is_floor := (
+		upper_newel_enabled
+		and upper_newel_placement == NewelPlacement.FLOOR
+	)
+
+	var bar_size := minf(maxf(rail_thickness, 0.02), maxf(rail_height, 0.2) * 0.5)
+	var handrail_bottom := maxf(rail_height, 0.2) - bar_size
+	var has_base_rail := StandardRailGeometry.has_lower_rail(
+		rail_height,
+		rail_thickness,
+		rail_lower_height
+	)
+	var safe_depth := maxf(depth, 0.001)
+	if has_base_rail:
+		StandardRailGeometry.redistribute_balusters_between_newels(
+			positions,
+			thicknesses,
+			newel_flags
+		)
+		var base_rail_top := StandardRailGeometry.lower_rail_top_height(
+			rail_height,
+			rail_thickness,
+			rail_lower_height
+		)
+		for index in range(positions.size()):
+			if newel_flags[index] != 0:
+				continue
+			base_heights[index] = (
+				base_rail_top
+				+ height * (positions[index] / safe_depth)
+			)
+	else:
+		var tread_depth := depth / float(maxi(steps, 1))
+		var rise_per_tread := height / float(maxi(steps, 1))
+		for index in range(positions.size()):
+			if newel_flags[index] != 0:
+				continue
+			var tread_index := clampi(
+				floori(positions[index] / maxf(tread_depth, 0.001)),
+				0,
+				steps - 1
+			)
+			base_heights[index] = rise_per_tread * float(tread_index + 1)
 
 	var lower_horizontal_end := -INF
 	var upper_horizontal_start := INF
 	if lower_newel_index >= 0:
-		if lower_newel_placement == NewelPlacement.FLOOR:
+		if lower_newel_is_floor:
 			lower_horizontal_end = 0.0
 		else:
 			lower_horizontal_end = (
@@ -598,7 +702,7 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 				+ thicknesses[lower_newel_index] * 0.5
 			)
 	if upper_newel_index >= 0:
-		if upper_newel_placement == NewelPlacement.FLOOR:
+		if upper_newel_is_floor:
 			upper_horizontal_start = depth
 		else:
 			upper_horizontal_start = (
@@ -614,9 +718,6 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 	top_heights.resize(positions.size())
 	for index in range(top_heights.size()):
 		top_heights[index] = NAN
-	var bar_size := minf(maxf(rail_thickness, 0.02), maxf(rail_height, 0.2) * 0.5)
-	var handrail_bottom := maxf(rail_height, 0.2) - bar_size
-	var safe_depth := maxf(depth, 0.001)
 	if lower_newel_index >= 0:
 		top_heights[lower_newel_index] = (
 			handrail_bottom
@@ -630,6 +731,8 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 
 	var handrail_minimum_run := NAN
 	var handrail_maximum_run := NAN
+	# Distributed newels only create welded openings in the continuous raked
+	# handrail. Explicit lower/upper newels alone may terminate its run.
 	if lower_newel_index >= 0:
 		handrail_minimum_run = (
 			positions[lower_newel_index]
@@ -645,6 +748,7 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 		"positions": positions,
 		"base_heights": base_heights,
 		"thicknesses": thicknesses,
+		"newel_flags": newel_flags,
 		"top_heights": top_heights,
 		"lower_horizontal_end": lower_horizontal_end,
 		"upper_horizontal_start": upper_horizontal_start,
@@ -653,50 +757,153 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 	}
 
 
-func _side_profile_polygon(depth: float, height: float, bottom_y: float, steps: int) -> PackedVector2Array:
-	var polygon := PackedVector2Array()
-	polygon.append(Vector2(0.0, bottom_y))
-	polygon.append(Vector2(0.0, 0.0))
-	var tread_depth := depth / float(steps)
-	var rise := height / float(steps)
-	for step_index in range(steps):
-		var z0 := tread_depth * float(step_index)
-		var z1 := tread_depth * float(step_index + 1)
-		var y1 := rise * float(step_index + 1)
-		polygon.append(Vector2(z0, y1))
-		polygon.append(Vector2(z1, y1))
-	polygon.append(Vector2(depth, bottom_y))
-	return polygon
+func _find_post_position(positions: PackedFloat32Array, target: float) -> int:
+	if is_nan(target):
+		return -1
+	for index in range(positions.size()):
+		if is_equal_approx(positions[index], target):
+			return index
+	return -1
 
 
-func _append_side_polygon(
+func _middle_newel_tread_indices(steps: int) -> PackedInt32Array:
+	var indices := PackedInt32Array()
+	var has_lower_terminal := lower_newel_enabled
+	var has_upper_terminal := upper_newel_enabled
+	var lower_bound := (
+		-1
+		if has_lower_terminal and lower_newel_placement == NewelPlacement.FLOOR
+		else 0
+	)
+	var upper_bound := (
+		steps
+		if has_upper_terminal and upper_newel_placement == NewelPlacement.FLOOR
+		else steps - 1
+	)
+	var first_available_tread := (
+		1
+		if has_lower_terminal and lower_newel_placement == NewelPlacement.TREAD
+		else 0
+	)
+	var last_available_tread := (
+		steps - 2
+		if has_upper_terminal and upper_newel_placement == NewelPlacement.TREAD
+		else steps - 1
+	)
+	var available_middle_treads := maxi(
+		last_available_tread - first_available_tread + 1,
+		0
+	)
+	var explicit_terminal_count := (
+		(1 if has_lower_terminal else 0)
+		+ (1 if has_upper_terminal else 0)
+	)
+	var count := clampi(
+		middle_newel_post_count - explicit_terminal_count,
+		0,
+		available_middle_treads
+	)
+	if count <= 0:
+		return indices
+
+	var lower_padding := 1 if has_lower_terminal else 0
+	var upper_padding := 1 if has_upper_terminal else 0
+	var interval_count := count - 1 + lower_padding + upper_padding
+	if interval_count <= 0:
+		indices.append(first_available_tread)
+		return indices
+
+	# Divide the actual lower/upper newel interval into equal spans. Missing
+	# terminals make the first/last distributed newels occupy the endpoint
+	# tread; explicit terminals bound the interval without being duplicated.
+	for index in range(count):
+		var distributed_index := roundi(
+			lerpf(
+				float(lower_bound),
+				float(upper_bound),
+				float(index + lower_padding) / float(interval_count)
+			)
+		)
+		indices.append(clampi(
+			distributed_index,
+			first_available_tread,
+			last_available_tread
+		))
+	return indices
+
+
+func _append_side_strips(
 	vertices: PackedVector3Array,
 	normals: PackedVector3Array,
 	colors: PackedColorArray,
 	indices: PackedInt32Array,
-	polygon: PackedVector2Array,
+	depth: float,
+	height: float,
+	bottom_y: float,
+	steps: int,
 	x: float,
 	normal: Vector3
 ) -> void:
 	var base := vertices.size()
-	for point in polygon:
-		vertices.append(Vector3(x, point.y, point.x))
+	var tread_depth := depth / float(steps)
+	var rise := height / float(steps)
+
+	# Give every tread-width strip its own bottom endpoints. The old single
+	# outline triangulation had only two bottom corners, forcing ear clipping
+	# to fan long, needle-like triangles across the full stair run.
+	for boundary_index in range(steps + 1):
+		vertices.append(Vector3(
+			x,
+			bottom_y,
+			tread_depth * float(boundary_index)
+		))
 		normals.append(normal)
 		colors.append(stair_color)
-	var triangles := Geometry2D.triangulate_polygon(polygon)
-	for index in range(0, triangles.size(), 3):
-		var first := int(triangles[index])
-		var second := int(triangles[index + 1])
-		var third := int(triangles[index + 2])
-		var winding_normal := (
-			vertices[base + second] - vertices[base + first]
-		).cross(
-			vertices[base + third] - vertices[base + first]
-		).normalized()
-		if winding_normal.dot(normal) > 0.0:
-			indices.append_array(PackedInt32Array([base + first, base + third, base + second]))
-		else:
-			indices.append_array(PackedInt32Array([base + first, base + second, base + third]))
+
+	var top_base := vertices.size()
+	for step_index in range(steps):
+		var z0 := tread_depth * float(step_index)
+		var z1 := tread_depth * float(step_index + 1)
+		var y1 := rise * float(step_index + 1)
+		vertices.append(Vector3(x, y1, z0))
+		normals.append(normal)
+		colors.append(stair_color)
+		vertices.append(Vector3(x, y1, z1))
+		normals.append(normal)
+		colors.append(stair_color)
+
+	for step_index in range(steps):
+		var bottom_left := base + step_index
+		var bottom_right := bottom_left + 1
+		var top_left := top_base + step_index * 2
+		var top_right := top_left + 1
+		_append_oriented_triangle(
+			vertices, indices, normal,
+			bottom_left, top_left, top_right
+		)
+		_append_oriented_triangle(
+			vertices, indices, normal,
+			bottom_left, top_right, bottom_right
+		)
+
+
+func _append_oriented_triangle(
+	vertices: PackedVector3Array,
+	indices: PackedInt32Array,
+	normal: Vector3,
+	first: int,
+	second: int,
+	third: int
+) -> void:
+	var winding_normal := (
+		vertices[second] - vertices[first]
+	).cross(
+		vertices[third] - vertices[first]
+	).normalized()
+	if winding_normal.dot(normal) > 0.0:
+		indices.append_array(PackedInt32Array([first, third, second]))
+	else:
+		indices.append_array(PackedInt32Array([first, second, third]))
 
 
 func _append_quad(

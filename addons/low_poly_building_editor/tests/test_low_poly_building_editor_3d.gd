@@ -1582,7 +1582,7 @@ func _validate_stairs_node(coordinator: Building3DScript) -> void:
 		m_failures.append("Stairs3D mesh is missing per-vertex normal data")
 	if colors.size() != vertices.size():
 		m_failures.append("Stairs3D mesh is missing per-vertex color data")
-	if _mesh_vertex_count(stairs) != 62:
+	if _mesh_vertex_count(stairs) != 66:
 		m_failures.append("Stairs3D generated the wrong stepped vertex count")
 	if !_has_normal_near(normals, Vector3.UP):
 		m_failures.append("Stairs3D mesh is missing tread normals")
@@ -1590,6 +1590,26 @@ func _validate_stairs_node(coordinator: Building3DScript) -> void:
 		m_failures.append("Stairs3D mesh is missing riser normals")
 	if !_has_normal_near(normals, Vector3.LEFT) or !_has_normal_near(normals, Vector3.RIGHT):
 		m_failures.append("Stairs3D mesh is missing side normals")
+	var side_triangle_count := 0
+	var side_triangle_crosses_treads := false
+	for triangle_start in range(0, indices.size(), 3):
+		var first_index := indices[triangle_start]
+		if absf(normals[first_index].x) < 0.999:
+			continue
+		side_triangle_count += 1
+		var first_z := vertices[first_index].z
+		var second_z := vertices[indices[triangle_start + 1]].z
+		var third_z := vertices[indices[triangle_start + 2]].z
+		var triangle_run := (
+			maxf(first_z, maxf(second_z, third_z))
+			- minf(first_z, minf(second_z, third_z))
+		)
+		if triangle_run > stairs.get_step_run() + 0.001:
+			side_triangle_crosses_treads = true
+	if side_triangle_count != stairs.step_count * 4:
+		m_failures.append("Stairs3D sides did not generate two triangles per tread strip")
+	if side_triangle_crosses_treads:
+		m_failures.append("Stairs3D side triangulation retained long cross-tread triangles")
 	if _has_normal_near(normals, Vector3.DOWN):
 		m_failures.append("Stairs3D mesh retained its hidden underside face")
 	if !_has_mesh_vertex_y_near(stairs, 1.2, 0.001):
@@ -1697,7 +1717,7 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	if no_rail_stairs.left_rail_enabled or no_rail_stairs.right_rail_enabled:
 		m_failures.append("Stairs3D enabled rails by default")
 	var base_vertex_count := _mesh_vertex_count(no_rail_stairs)
-	if base_vertex_count != 62:
+	if base_vertex_count != 66:
 		m_failures.append("Stairs3D without rails changed its baseline stepped vertex count")
 
 	var one_rail_stairs := BuildingFactoryScript.create_stairs_node(coordinator,
@@ -1753,6 +1773,21 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	if found_unmargined_bar_edge:
 		m_failures.append("Stairs3D left rail bar still straddles the unmargined footprint edge")
 
+	one_rail_stairs.rail_lower_height = 0.0
+	one_rail_stairs.rebuild_stairs_mesh()
+	if _mesh_vertex_count(one_rail_stairs) != base_vertex_count + 176:
+		m_failures.append("Stairs3D retained base-rail geometry when its height was zero")
+	var no_base_rail_layout := one_rail_stairs._get_rail_post_layout()
+	var tread_based_baluster_heights: PackedFloat32Array = no_base_rail_layout["base_heights"]
+	if (
+		tread_based_baluster_heights.size() != 4
+		or absf(tread_based_baluster_heights[0] - 0.3) > 0.001
+		or absf(tread_based_baluster_heights[1] - 0.6) > 0.001
+		or absf(tread_based_baluster_heights[2] - 0.9) > 0.001
+		or absf(tread_based_baluster_heights[3] - 1.2) > 0.001
+	):
+		m_failures.append("Stairs3D balusters did not fall back to tread bases without a base rail")
+
 	var both_rail_stairs := BuildingFactoryScript.create_stairs_node(coordinator,
 		Vector3(12.0, base_y, 32.0),
 		Vector3(15.0, base_y, 36.0),
@@ -1791,10 +1826,8 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	):
 		m_failures.append("Stairs3D rail posts are not centered on each tread's depth span")
 
-	# Each post's base must rest on its own tread's flat top (0.3, 0.6, 0.9,
-	# 1.2 for a 1.2-height, 4-step run) instead of the smooth rise/length
-	# diagonal a mid-run position would otherwise imply (which would be
-	# 0.15, 0.45, 0.75, 1.05 -- half a riser too low, plugging into the step).
+	# Tread heights remain the structural bases used when one of these posts
+	# becomes a newel.
 	var expected_post_base_heights := StandardRailGeometryScript.tread_mid_post_base_heights(1.2, 4)
 	if (
 		expected_post_base_heights.size() != 4
@@ -1802,13 +1835,49 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 		or absf(expected_post_base_heights[3] - 1.2) > 0.001
 	):
 		m_failures.append("Stairs3D rail posts are not based on their tread's actual height")
+	# Regular balusters instead begin on the top of the raked base rail. With
+	# a 0.18 center and 0.10 thickness, that top is 0.23 above the rail slope.
+	var default_rail_layout := both_rail_stairs._get_rail_post_layout()
+	var default_baluster_bases: PackedFloat32Array = default_rail_layout["base_heights"]
+	if (
+		default_baluster_bases.size() != 4
+		or absf(default_baluster_bases[0] - 0.38) > 0.001
+		or absf(default_baluster_bases[3] - 1.28) > 0.001
+	):
+		m_failures.append("Stairs3D balusters do not sit on top of the raked base rail")
 
-	if both_rail_stairs.lower_newel_enabled or both_rail_stairs.upper_newel_enabled:
+	if (
+		both_rail_stairs.lower_newel_enabled
+		or both_rail_stairs.upper_newel_enabled
+		or both_rail_stairs.middle_newel_post_count != 0
+	):
 		m_failures.append("Stairs3D enabled newel posts by default")
+	if both_rail_stairs.baluster_count_between_newels != 1:
+		m_failures.append("Stairs3D did not default to one baluster per newel span")
+	both_rail_stairs.middle_newel_post_count = 2
+	var fallback_terminal_layout := both_rail_stairs._get_rail_post_layout()
+	var fallback_terminal_positions: PackedFloat32Array = fallback_terminal_layout["positions"]
+	var fallback_terminal_top_heights: PackedFloat32Array = fallback_terminal_layout["top_heights"]
+	if (
+		fallback_terminal_positions.size() != 3
+		or absf(fallback_terminal_positions[0] - 0.5) > 0.001
+		or absf(fallback_terminal_positions[2] - 3.5) > 0.001
+		or !is_nan(fallback_terminal_top_heights[0])
+		or !is_nan(fallback_terminal_top_heights[2])
+		or !is_nan(float(fallback_terminal_layout["handrail_minimum_run"]))
+		or !is_nan(float(fallback_terminal_layout["handrail_maximum_run"]))
+		or float(fallback_terminal_layout["lower_horizontal_end"]) != -INF
+		or float(fallback_terminal_layout["upper_horizontal_start"]) != INF
+	):
+		m_failures.append(
+			"Stairs3D distributed newels changed terminal handrail behavior"
+		)
+	both_rail_stairs.middle_newel_post_count = 0
 	both_rail_stairs.lower_newel_enabled = true
 	both_rail_stairs.lower_newel_placement = Stairs3DScript.NewelPlacement.FLOOR
 	both_rail_stairs.upper_newel_enabled = true
 	both_rail_stairs.upper_newel_placement = Stairs3DScript.NewelPlacement.TREAD
+	both_rail_stairs.middle_newel_post_count = 4
 	both_rail_stairs.rail_newel_post_thickness = 0.14
 	both_rail_stairs.rebuild_stairs_mesh()
 	# The configured 0.14 newel is clamped to this rail's 0.10 handrail width
@@ -1817,25 +1886,103 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	var floor_lower_positions: PackedFloat32Array = floor_lower_layout["positions"]
 	var floor_lower_heights: PackedFloat32Array = floor_lower_layout["base_heights"]
 	var floor_lower_thicknesses: PackedFloat32Array = floor_lower_layout["thicknesses"]
+	var floor_lower_newel_flags: PackedByteArray = floor_lower_layout["newel_flags"]
 	var floor_lower_top_heights: PackedFloat32Array = floor_lower_layout["top_heights"]
 	if (
-		floor_lower_positions.size() != 5
+		floor_lower_positions.size() != 7
 		or absf(floor_lower_positions[0] + 0.5) > 0.001
-		or absf(floor_lower_positions[1] - floor_lower_positions[0] - 1.0) > 0.001
+		or absf(floor_lower_positions[1]) > 0.001
 		or absf(floor_lower_heights[0]) > 0.001
 		or absf(floor_lower_thicknesses[0] - 0.1) > 0.001
 		or absf(floor_lower_top_heights[0] - 0.9) > 0.001
+		or floor_lower_newel_flags[0] == 0
 		or absf(float(floor_lower_layout["lower_horizontal_end"])) > 0.001
 		or absf(float(floor_lower_layout["handrail_minimum_run"]) + 0.55) > 0.001
-		or absf(floor_lower_positions[4] - 3.5) > 0.001
-		or absf(floor_lower_heights[4] - 1.2) > 0.001
-		or absf(floor_lower_thicknesses[4] - 0.1) > 0.001
-		or absf(floor_lower_top_heights[4] - 1.935) > 0.001
+		or absf(floor_lower_positions[6] - 3.5) > 0.001
+		or absf(floor_lower_heights[6] - 1.2) > 0.001
+		or absf(floor_lower_thicknesses[6] - 0.1) > 0.001
+		or absf(floor_lower_top_heights[6] - 1.935) > 0.001
+		or floor_lower_newel_flags[6] == 0
 		or absf(float(floor_lower_layout["handrail_maximum_run"]) - 3.55) > 0.001
 	):
 		m_failures.append(
 			"Stairs3D did not place lower-floor and upper-tread newels correctly"
 		)
+	if (
+		absf(floor_lower_positions[2] - 0.5) > 0.001
+		or absf(floor_lower_positions[4] - 2.5) > 0.001
+		or absf(floor_lower_thicknesses[2] - 0.1) > 0.001
+		or absf(floor_lower_thicknesses[4] - 0.1) > 0.001
+		or floor_lower_newel_flags[2] == 0
+		or floor_lower_newel_flags[4] == 0
+		or !is_nan(floor_lower_top_heights[2])
+		or !is_nan(floor_lower_top_heights[4])
+	):
+		m_failures.append(
+			"Stairs3D middle newels are not tread-centered with sloped tops"
+		)
+	both_rail_stairs.middle_newel_post_count = 5
+	var distributed_middle_indices: PackedInt32Array = (
+		both_rail_stairs._middle_newel_tread_indices(7)
+	)
+	if distributed_middle_indices != PackedInt32Array([1, 3, 4]):
+		m_failures.append(
+			"Stairs3D did not distribute middle newels across the terminal interval"
+		)
+	both_rail_stairs.lower_newel_placement = Stairs3DScript.NewelPlacement.TREAD
+	both_rail_stairs.upper_newel_placement = Stairs3DScript.NewelPlacement.TREAD
+	both_rail_stairs.middle_newel_post_count = 4
+	var tread_terminal_middle_indices: PackedInt32Array = (
+		both_rail_stairs._middle_newel_tread_indices(6)
+	)
+	both_rail_stairs.lower_newel_placement = Stairs3DScript.NewelPlacement.FLOOR
+	both_rail_stairs.upper_newel_placement = Stairs3DScript.NewelPlacement.FLOOR
+	var floor_terminal_middle_indices: PackedInt32Array = (
+		both_rail_stairs._middle_newel_tread_indices(6)
+	)
+	if (
+		tread_terminal_middle_indices != PackedInt32Array([2, 3])
+		or floor_terminal_middle_indices != PackedInt32Array([1, 4])
+	):
+		m_failures.append("Stairs3D middle newels ignored terminal newel positions")
+	both_rail_stairs.lower_newel_placement = Stairs3DScript.NewelPlacement.FLOOR
+	both_rail_stairs.upper_newel_placement = Stairs3DScript.NewelPlacement.TREAD
+	both_rail_stairs.middle_newel_post_count = 4
+	both_rail_stairs.baluster_count_between_newels = 3
+	var counted_baluster_layout := StandardRailGeometryScript.apply_baluster_count_between_newels(
+		PackedFloat32Array([0.0, 1.0, 2.0, 4.0]),
+		PackedFloat32Array([0.0, 0.0, 0.0, 0.0]),
+		PackedFloat32Array([0.2, 0.1, 0.1, 0.4]),
+		PackedByteArray([1, 0, 0, 1]),
+		3,
+		0.08
+	)
+	var counted_baluster_positions: PackedFloat32Array = counted_baluster_layout["positions"]
+	var counted_baluster_flags: PackedByteArray = counted_baluster_layout["newel_flags"]
+	if (
+		counted_baluster_positions.size() != 5
+		or counted_baluster_flags != PackedByteArray([1, 0, 0, 0, 1])
+	):
+		m_failures.append("Stairs3D did not generate the requested baluster count per span")
+	both_rail_stairs.baluster_count_between_newels = 1
+	var redistributed_positions := PackedFloat32Array([0.0, 1.0, 2.0, 4.0])
+	var redistributed_thicknesses := PackedFloat32Array([0.2, 0.1, 0.1, 0.4])
+	var redistributed_newel_flags := PackedByteArray([1, 0, 0, 1])
+	StandardRailGeometryScript.redistribute_balusters_between_newels(
+		redistributed_positions,
+		redistributed_thicknesses,
+		redistributed_newel_flags
+	)
+	var first_clear_gap := redistributed_positions[1] - 0.05 - 0.1
+	var middle_clear_gap := redistributed_positions[2] - 0.05 - (
+		redistributed_positions[1] + 0.05
+	)
+	var final_clear_gap := 3.8 - (redistributed_positions[2] + 0.05)
+	if (
+		absf(first_clear_gap - middle_clear_gap) > 0.001
+		or absf(middle_clear_gap - final_clear_gap) > 0.001
+	):
+		m_failures.append("Stairs3D balusters are not evenly spaced between newel faces")
 	if !_has_mesh_vertex_with_normal_near(
 		both_rail_stairs.mesh as ArrayMesh,
 		Vector3(0.10, 1.0, -0.55),
@@ -1860,17 +2007,17 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	var floor_upper_thicknesses: PackedFloat32Array = floor_upper_layout["thicknesses"]
 	var floor_upper_top_heights: PackedFloat32Array = floor_upper_layout["top_heights"]
 	if (
-		floor_upper_positions.size() != 5
+		floor_upper_positions.size() != 7
 		or absf(floor_upper_positions[0] - 0.5) > 0.001
 		or absf(floor_upper_heights[0] - 0.3) > 0.001
 		or absf(floor_upper_thicknesses[0] - 0.1) > 0.001
 		or absf(floor_upper_top_heights[0] - 1.065) > 0.001
 		or absf(float(floor_upper_layout["handrail_minimum_run"]) - 0.45) > 0.001
-		or absf(floor_upper_positions[4] - 4.5) > 0.001
-		or absf(floor_upper_positions[4] - floor_upper_positions[3] - 1.0) > 0.001
-		or absf(floor_upper_heights[4] - 1.2) > 0.001
-		or absf(floor_upper_thicknesses[4] - 0.1) > 0.001
-		or absf(floor_upper_top_heights[4] - 2.1) > 0.001
+		or absf(floor_upper_positions[6] - 4.5) > 0.001
+		or absf(floor_upper_positions[5] - 4.0) > 0.001
+		or absf(floor_upper_heights[6] - 1.2) > 0.001
+		or absf(floor_upper_thicknesses[6] - 0.1) > 0.001
+		or absf(floor_upper_top_heights[6] - 2.1) > 0.001
 		or absf(float(floor_upper_layout["upper_horizontal_start"]) - 4.0) > 0.001
 		or absf(float(floor_upper_layout["handrail_maximum_run"]) - 4.55) > 0.001
 	):
@@ -1922,7 +2069,9 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 		Stairs3DScript.NewelPlacement.FLOOR,
 		true,
 		Stairs3DScript.NewelPlacement.TREAD,
-		0.14
+		0.14,
+		2,
+		3
 	)
 	coordinator.add_child(narrow_stairs)
 	if narrow_stairs.mesh == null or narrow_stairs.mesh.get_surface_count() <= 0:
@@ -1932,6 +2081,8 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 		or narrow_stairs.lower_newel_placement != Stairs3DScript.NewelPlacement.FLOOR
 		or !narrow_stairs.upper_newel_enabled
 		or narrow_stairs.upper_newel_placement != Stairs3DScript.NewelPlacement.TREAD
+		or narrow_stairs.middle_newel_post_count != 2
+		or narrow_stairs.baluster_count_between_newels != 3
 		or absf(narrow_stairs.rail_newel_post_thickness - 0.14) > 0.001
 	):
 		m_failures.append("BuildingFactory did not apply the requested stair newel settings")
@@ -2079,15 +2230,27 @@ func _validate_rail_node(coordinator: Building3DScript) -> void:
 		m_failures.append("Rail3D did not place its transform at the start point")
 	if absf(rail.get_rail_length() - 4.0) > 0.001:
 		m_failures.append("Rail3D did not preserve its authored span length")
-	if rail.get_post_count() != 5:
-		m_failures.append("Rail3D did not distribute posts from the configured maximum spacing")
+	if rail.get_post_count() != 3:
+		m_failures.append("Rail3D did not generate endpoint newels and its configured baluster span")
+	var rail_layout := rail._get_post_layout(4.0)
+	var rail_positions: PackedFloat32Array = rail_layout["positions"]
+	var rail_base_heights: PackedFloat32Array = rail_layout["base_heights"]
+	var rail_newel_flags: PackedByteArray = rail_layout["newel_flags"]
+	if (
+		rail_positions != PackedFloat32Array([0.0, 2.0, 4.0])
+		or rail_newel_flags != PackedByteArray([1, 0, 1])
+		or absf(rail_base_heights[0]) > 0.001
+		or absf(rail_base_heights[1] - 0.25) > 0.001
+		or absf(rail_base_heights[2]) > 0.001
+	):
+		m_failures.append("Rail3D did not share the newel/base-rail baluster layout")
 
 	var arrays := rail.mesh.surface_get_arrays(0)
 	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 	var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
 	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
-	if vertices.size() != 212:
+	if vertices.size() != 124:
 		m_failures.append("Rail3D generated the wrong standard rail vertex count")
 	if normals.size() != vertices.size():
 		m_failures.append("Rail3D mesh is missing per-vertex normal data")
@@ -2106,6 +2269,20 @@ func _validate_rail_node(coordinator: Building3DScript) -> void:
 			m_failures.append("Rail3D triangle winding does not match Godot BoxMesh convention")
 	if rail.get_node_or_null("RailCollision") == null:
 		m_failures.append("Rail3D did not generate collision")
+	rail.lower_rail_height = 0.0
+	rail.rebuild_rail_mesh()
+	var no_base_layout := rail._get_post_layout(4.0)
+	var no_base_heights: PackedFloat32Array = no_base_layout["base_heights"]
+	if (
+		_mesh_vertex_count(rail) != 100
+		or absf(no_base_heights[1]) > 0.001
+	):
+		m_failures.append("Rail3D did not remove its base rail and rebase balusters")
+	rail.newel_post_count = 3
+	rail.baluster_count_between_newels = 2
+	rail.rebuild_rail_mesh()
+	if rail.get_post_count() != 7:
+		m_failures.append("Rail3D did not apply shared per-newel-span baluster counts")
 
 	rail.set_rail_points(
 		Vector3(3.0, base_y, 25.0),

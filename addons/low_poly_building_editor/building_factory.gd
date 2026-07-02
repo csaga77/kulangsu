@@ -288,7 +288,9 @@ static func create_stairs_node(
 	lower_newel_placement: int = Stairs3DScript.NewelPlacement.TREAD,
 	upper_newel_enabled: bool = false,
 	upper_newel_placement: int = Stairs3DScript.NewelPlacement.TREAD,
-	rail_newel_post_thickness: float = 0.1
+	rail_newel_post_thickness: float = 0.1,
+	middle_newel_post_count: int = 0,
+	baluster_count_between_newels: int = 1
 ) -> Stairs3DScript:
 	var stairs := Stairs3DScript.new() as Stairs3DScript
 	stairs.name = _unique_child_name(building, "Stairs3D")
@@ -305,6 +307,8 @@ static func create_stairs_node(
 	stairs.lower_newel_placement = lower_newel_placement
 	stairs.upper_newel_enabled = upper_newel_enabled
 	stairs.upper_newel_placement = upper_newel_placement
+	stairs.middle_newel_post_count = middle_newel_post_count
+	stairs.baluster_count_between_newels = baluster_count_between_newels
 	stairs.rail_newel_post_thickness = rail_newel_post_thickness
 	stairs.rail_edge_margin = rail_edge_margin
 	stairs.rail_height = rail_height
@@ -327,7 +331,10 @@ static func create_rail_node(
 	post_thickness: float = 0.08,
 	rail_thickness: float = 0.1,
 	lower_rail_height: float = 0.18,
-	color: Color = Color(0.33, 0.28, 0.22, 1.0)
+	color: Color = Color(0.33, 0.28, 0.22, 1.0),
+	newel_post_count: int = 2,
+	baluster_count_between_newels: int = 1,
+	newel_post_thickness: float = 0.1
 ) -> Rail3DScript:
 	var rail := Rail3DScript.new() as Rail3DScript
 	rail.name = _unique_child_name(building, "Rail3D")
@@ -337,6 +344,9 @@ static func create_rail_node(
 	rail.post_spacing = post_spacing
 	rail.post_thickness = post_thickness
 	rail.rail_thickness = rail_thickness
+	rail.newel_post_count = newel_post_count
+	rail.baluster_count_between_newels = baluster_count_between_newels
+	rail.newel_post_thickness = newel_post_thickness
 	rail.lower_rail_height = lower_rail_height
 	rail.rail_color = color
 	rail.build_on_ready = true

@@ -21,9 +21,9 @@ extends RefCounted
 # prism whose bottom edge plane stays flat instead of tilting with the run's
 # rise. By default a post's flat base height follows the same rise/length
 # diagonal as the bars (matching a level rail's ground plane when rise is
-# 0.0); callers with a stepped run supply an explicit `post_base_heights`
-# entry per post so its bottom lands exactly on the real surface (for
-# example a stair tread) instead of the smooth diagonal projection. Each
+# 0.0); callers supply an explicit `post_base_heights` entry per post so
+# newels can land on their structural surface while balusters land on a
+# lower-rail top or caller-specific fallback surface. Each
 # regular post's top edge follows the raked handrail underside across its
 # footprint. Callers may instead supply a flat top height for a newel beneath
 # a horizontal handrail end section. Every handrail underside segment is
@@ -123,12 +123,12 @@ static func append_rail(
 		lower_horizontal_end, upper_horizontal_start
 	)
 
-	var lower_center := clampf(lower_rail_height, bar_size * 0.5, top_bottom - bar_size * 0.5)
-	if (
-		lower_rail_height > 0.0001
-		and top_bottom > bar_size
-		and lower_center + bar_size * 0.5 < top_bottom - 0.001
-	):
+	var lower_center := lower_rail_top_height(
+		rail_height,
+		rail_thickness,
+		lower_rail_height
+	) - bar_size * 0.5
+	if has_lower_rail(rail_height, rail_thickness, lower_rail_height):
 		_append_sheared_box(
 			vertices, normals, colors, indices,
 			origin, run_axis, up_axis, side_axis, length, rise,
@@ -178,6 +178,125 @@ static func tread_mid_post_base_heights(rise: float, step_count: int) -> PackedF
 		# rise/length diagonal a mid-run position would otherwise imply.
 		heights.append(rise_per_step * float(step_index + 1))
 	return heights
+
+
+static func apply_baluster_count_between_newels(
+	positions: PackedFloat32Array,
+	base_heights: PackedFloat32Array,
+	thicknesses: PackedFloat32Array,
+	newel_flags: PackedByteArray,
+	baluster_count: int,
+	regular_size: float
+) -> Dictionary:
+	var counted_positions := PackedFloat32Array()
+	var counted_base_heights := PackedFloat32Array()
+	var counted_thicknesses := PackedFloat32Array()
+	var counted_newel_flags := PackedByteArray()
+	var safe_count := maxi(baluster_count, 0)
+	var safe_regular_size := maxf(regular_size, 0.02)
+	var index := 0
+	while index < positions.size():
+		counted_positions.append(positions[index])
+		counted_base_heights.append(base_heights[index])
+		counted_thicknesses.append(thicknesses[index])
+		counted_newel_flags.append(newel_flags[index])
+		if newel_flags[index] != 0:
+			var next_newel_index := -1
+			for candidate_index in range(index + 1, positions.size()):
+				if newel_flags[candidate_index] != 0:
+					next_newel_index = candidate_index
+					break
+			if next_newel_index >= 0:
+				for baluster_index in range(safe_count):
+					var ratio := (
+						float(baluster_index + 1)
+						/ float(safe_count + 1)
+					)
+					counted_positions.append(lerpf(
+						positions[index],
+						positions[next_newel_index],
+						ratio
+					))
+					counted_base_heights.append(0.0)
+					counted_thicknesses.append(safe_regular_size)
+					counted_newel_flags.append(0)
+				index = next_newel_index
+				continue
+		index += 1
+	return {
+		"positions": counted_positions,
+		"base_heights": counted_base_heights,
+		"thicknesses": counted_thicknesses,
+		"newel_flags": counted_newel_flags,
+	}
+
+
+static func redistribute_balusters_between_newels(
+	positions: PackedFloat32Array,
+	thicknesses: PackedFloat32Array,
+	newel_flags: PackedByteArray
+) -> void:
+	var previous_newel_index := -1
+	for index in range(positions.size()):
+		if newel_flags[index] == 0:
+			continue
+		if previous_newel_index >= 0 and index - previous_newel_index > 1:
+			var clear_start := (
+				positions[previous_newel_index]
+				+ thicknesses[previous_newel_index] * 0.5
+			)
+			var clear_end := positions[index] - thicknesses[index] * 0.5
+			var baluster_width_total := 0.0
+			for baluster_index in range(previous_newel_index + 1, index):
+				baluster_width_total += thicknesses[baluster_index]
+			var baluster_count := index - previous_newel_index - 1
+			var clear_gap := maxf(
+				(clear_end - clear_start - baluster_width_total)
+				/ float(baluster_count + 1),
+				0.0
+			)
+			var cursor := clear_start + clear_gap
+			for baluster_index in range(previous_newel_index + 1, index):
+				var baluster_width := thicknesses[baluster_index]
+				positions[baluster_index] = cursor + baluster_width * 0.5
+				cursor += baluster_width + clear_gap
+		previous_newel_index = index
+
+
+static func has_lower_rail(
+	rail_height: float,
+	rail_thickness: float,
+	lower_rail_height: float
+) -> bool:
+	var height := maxf(rail_height, 0.2)
+	var bar_size := minf(maxf(rail_thickness, 0.02), height * 0.5)
+	var handrail_bottom := height - bar_size
+	var lower_center := clampf(
+		lower_rail_height,
+		bar_size * 0.5,
+		handrail_bottom - bar_size * 0.5
+	)
+	return (
+		lower_rail_height > 0.0001
+		and handrail_bottom > bar_size
+		and lower_center + bar_size * 0.5 < handrail_bottom - 0.001
+	)
+
+
+static func lower_rail_top_height(
+	rail_height: float,
+	rail_thickness: float,
+	lower_rail_height: float
+) -> float:
+	var height := maxf(rail_height, 0.2)
+	var bar_size := minf(maxf(rail_thickness, 0.02), height * 0.5)
+	var handrail_bottom := height - bar_size
+	var lower_center := clampf(
+		lower_rail_height,
+		bar_size * 0.5,
+		handrail_bottom - bar_size * 0.5
+	)
+	return lower_center + bar_size * 0.5
 
 
 static func _post_size_at(

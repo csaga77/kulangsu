@@ -8,7 +8,7 @@ const StandardRailGeometry := preload(
 
 const GENERATED_META := &"rail_generated"
 const PREVIEW_META := &"building_editor_preview"
-const MESH_GEOMETRY_VERSION := 3
+const MESH_GEOMETRY_VERSION := 4
 
 @export var rebuild := false:
 	set(value):
@@ -41,7 +41,7 @@ const MESH_GEOMETRY_VERSION := 3
 		rail_height = clamped_value
 		_request_rebuild()
 
-@export_range(0.1, 8.0, 0.01, "or_greater") var post_spacing := 1.0:
+@export_storage var post_spacing := 1.0:
 	set(value):
 		var clamped_value := maxf(value, 0.1)
 		if is_equal_approx(post_spacing, clamped_value):
@@ -63,6 +63,30 @@ const MESH_GEOMETRY_VERSION := 3
 		if is_equal_approx(rail_thickness, clamped_value):
 			return
 		rail_thickness = clamped_value
+		_request_rebuild()
+
+@export_range(2, 64, 1) var newel_post_count := 2:
+	set(value):
+		var clamped_value := clampi(value, 2, 64)
+		if newel_post_count == clamped_value:
+			return
+		newel_post_count = clamped_value
+		_request_rebuild()
+
+@export_range(0, 64, 1) var baluster_count_between_newels := 1:
+	set(value):
+		var clamped_value := clampi(value, 0, 64)
+		if baluster_count_between_newels == clamped_value:
+			return
+		baluster_count_between_newels = clamped_value
+		_request_rebuild()
+
+@export_range(0.02, 1.0, 0.01, "or_greater") var newel_post_thickness := 0.1:
+	set(value):
+		var clamped_value := maxf(value, 0.02)
+		if is_equal_approx(newel_post_thickness, clamped_value):
+			return
+		newel_post_thickness = clamped_value
 		_request_rebuild()
 
 @export_range(0.0, 4.0, 0.01, "or_greater") var lower_rail_height := 0.18:
@@ -122,21 +146,25 @@ func get_rail_length() -> float:
 
 
 func get_rail_bounds_min() -> Vector3:
-	var half_width := maxf(post_thickness, rail_thickness) * 0.5
-	return Vector3(-post_thickness * 0.5, 0.0, -half_width)
+	var post_width := maxf(post_thickness, newel_post_thickness)
+	var half_width := maxf(post_width, rail_thickness) * 0.5
+	return Vector3(-post_width * 0.5, 0.0, -half_width)
 
 
 func get_rail_bounds_max() -> Vector3:
-	var half_width := maxf(post_thickness, rail_thickness) * 0.5
+	var post_width := maxf(post_thickness, newel_post_thickness)
+	var half_width := maxf(post_width, rail_thickness) * 0.5
 	return Vector3(
-		get_rail_length() + post_thickness * 0.5,
+		get_rail_length() + post_width * 0.5,
 		maxf(rail_height, 0.2),
 		half_width
 	)
 
 
 func get_post_count() -> int:
-	return StandardRailGeometry.post_count_for_length(get_rail_length(), post_spacing)
+	var layout := _get_post_layout(get_rail_length())
+	var positions: PackedFloat32Array = layout["positions"]
+	return positions.size()
 
 
 func rebuild_rail_mesh(rebuild_collision: bool = true) -> void:
@@ -188,6 +216,9 @@ func _rail_mesh_source_signature() -> int:
 		post_spacing,
 		post_thickness,
 		rail_thickness,
+		newel_post_count,
+		baluster_count_between_newels,
+		newel_post_thickness,
 		lower_rail_height,
 		rail_color,
 	])
@@ -224,6 +255,7 @@ func _append_standard_rail_geometry(
 	colors: PackedColorArray,
 	indices: PackedInt32Array
 ) -> void:
+	var layout := _get_post_layout(length)
 	StandardRailGeometry.append_rail(
 		vertices,
 		normals,
@@ -240,8 +272,71 @@ func _append_standard_rail_geometry(
 		post_thickness,
 		rail_thickness,
 		lower_rail_height,
-		rail_color
+		rail_color,
+		layout["positions"],
+		layout["base_heights"],
+		layout["thicknesses"],
+		layout["top_heights"]
 	)
+
+
+func _get_post_layout(length: float) -> Dictionary:
+	var positions := PackedFloat32Array()
+	var base_heights := PackedFloat32Array()
+	var thicknesses := PackedFloat32Array()
+	var newel_flags := PackedByteArray()
+	var handrail_width := minf(
+		maxf(rail_thickness, 0.02),
+		maxf(rail_height, 0.2) * 0.5
+	)
+	var newel_size := minf(maxf(newel_post_thickness, 0.02), handrail_width)
+	var count := clampi(newel_post_count, 2, 64)
+	for index in range(count):
+		positions.append(length * float(index) / float(count - 1))
+		base_heights.append(0.0)
+		thicknesses.append(newel_size)
+		newel_flags.append(1)
+	var counted_layout := StandardRailGeometry.apply_baluster_count_between_newels(
+		positions,
+		base_heights,
+		thicknesses,
+		newel_flags,
+		baluster_count_between_newels,
+		post_thickness
+	)
+	positions = counted_layout["positions"]
+	base_heights = counted_layout["base_heights"]
+	thicknesses = counted_layout["thicknesses"]
+	newel_flags = counted_layout["newel_flags"]
+	StandardRailGeometry.redistribute_balusters_between_newels(
+		positions,
+		thicknesses,
+		newel_flags
+	)
+	if StandardRailGeometry.has_lower_rail(
+		rail_height,
+		rail_thickness,
+		lower_rail_height
+	):
+		var base_rail_top := StandardRailGeometry.lower_rail_top_height(
+			rail_height,
+			rail_thickness,
+			lower_rail_height
+		)
+		for index in range(positions.size()):
+			if newel_flags[index] == 0:
+				base_heights[index] = base_rail_top
+	var top_heights := PackedFloat32Array()
+	top_heights.resize(positions.size())
+	for index in range(top_heights.size()):
+		top_heights[index] = NAN
+	return {
+		"positions": positions,
+		"base_heights": base_heights,
+		"thicknesses": thicknesses,
+		"newel_flags": newel_flags,
+		"top_heights": top_heights,
+	}
 
 
 func _sync_rail_material() -> void:

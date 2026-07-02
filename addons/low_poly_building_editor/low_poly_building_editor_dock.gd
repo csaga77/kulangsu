@@ -37,6 +37,7 @@ const FLOOR_TYPE_SOLID := "solid"
 const FLOOR_TYPE_HOLE := "hole"
 const FLOOR_STYLE_RECTANGLE := "rectangle"
 const FLOOR_STYLE_POLYGON := "polygon"
+const NEWEL_PLACEMENT_TREAD := 0
 const COLOR_SWATCH_ICON_SIZE := 16
 const COLOR_SWATCH_MIN_WIDTH := 34.0
 const SHORTCUTS_SELECT_TEXT := "Shortcuts\nSelect: normal Godot editor selection and transform tools are active."
@@ -93,6 +94,8 @@ var m_stair_lower_newel_check: CheckBox
 var m_stair_lower_newel_position_option: OptionButton
 var m_stair_upper_newel_check: CheckBox
 var m_stair_upper_newel_position_option: OptionButton
+var m_stair_middle_newel_count_spin: SpinBox
+var m_stair_baluster_count_spin: SpinBox
 var m_stair_newel_size_spin: SpinBox
 var m_stair_rail_margin_spin: SpinBox
 var m_rail_grid_spin: SpinBox
@@ -101,6 +104,9 @@ var m_rail_height_spin: SpinBox
 var m_rail_post_spacing_spin: SpinBox
 var m_rail_post_thickness_spin: SpinBox
 var m_rail_bar_thickness_spin: SpinBox
+var m_rail_newel_count_spin: SpinBox
+var m_rail_baluster_count_spin: SpinBox
+var m_rail_newel_size_spin: SpinBox
 var m_rail_lower_height_spin: SpinBox
 var m_rail_color_picker: ColorPickerButton
 var m_pillar_grid_spin: SpinBox
@@ -478,13 +484,13 @@ func _build_stair_controls(parent: VBoxContainer) -> void:
 
 	m_stair_left_rail_check = CheckBox.new()
 	m_stair_left_rail_check.text = "Left Rail"
-	m_stair_left_rail_check.tooltip_text = "Add an optional handrail along the left side of newly drawn stairs, using the Standard Rail Defaults height/thickness/color below. Posts sit at the mid-depth of each tread instead of following Post Spacing."
+	m_stair_left_rail_check.tooltip_text = "Add an optional handrail along the left side of newly drawn stairs. Newels sit at tread centers; balusters sit on the base rail and spread evenly between newels."
 	m_stair_left_rail_check.toggled.connect(_on_stair_setting_toggled)
 	parent.add_child(m_stair_left_rail_check)
 
 	m_stair_right_rail_check = CheckBox.new()
 	m_stair_right_rail_check.text = "Right Rail"
-	m_stair_right_rail_check.tooltip_text = "Add an optional handrail along the right side of newly drawn stairs, using the Standard Rail Defaults height/thickness/color below. Posts sit at the mid-depth of each tread instead of following Post Spacing."
+	m_stair_right_rail_check.tooltip_text = "Add an optional handrail along the right side of newly drawn stairs. Newels sit at tread centers; balusters sit on the base rail and spread evenly between newels."
 	m_stair_right_rail_check.toggled.connect(_on_stair_setting_toggled)
 	parent.add_child(m_stair_right_rail_check)
 
@@ -516,6 +522,24 @@ func _build_stair_controls(parent: VBoxContainer) -> void:
 		"Upper At:",
 		m_stair_upper_newel_position_option,
 		"Place the upper newel on the last tread or one regular post interval beyond it on the upper floor."
+	)
+
+	m_stair_middle_newel_count_spin = _make_spin(0.0, 64.0, 1.0, 0.0)
+	m_stair_middle_newel_count_spin.value_changed.connect(_on_stair_setting_changed)
+	_add_labeled_control(
+		parent,
+		"Newels (Total):",
+		m_stair_middle_newel_count_spin,
+		"Total newels including enabled lower/upper terminals. Remaining posts are distributed between the first and last newel anchors."
+	)
+
+	m_stair_baluster_count_spin = _make_spin(0.0, 64.0, 1.0, 1.0)
+	m_stair_baluster_count_spin.value_changed.connect(_on_stair_setting_changed)
+	_add_labeled_control(
+		parent,
+		"Balusters / Span:",
+		m_stair_baluster_count_spin,
+		"Exact baluster count generated in every clear opening between adjacent newel posts."
 	)
 
 	m_stair_newel_size_spin = _make_spin(0.02, 1.0, 0.01, 0.1)
@@ -556,8 +580,6 @@ func _build_rail_controls(parent: VBoxContainer) -> void:
 	m_rail_height_spin.value_changed.connect(_on_rail_setting_changed)
 
 	m_rail_post_spacing_spin = _make_spin(0.1, 8.0, 0.05, 1.0)
-	_add_labeled_control(parent, "Post Spacing:", m_rail_post_spacing_spin, "Maximum spacing between evenly distributed square posts.")
-	m_rail_post_spacing_spin.value_changed.connect(_on_rail_setting_changed)
 
 	m_rail_post_thickness_spin = _make_spin(0.02, 1.0, 0.01, 0.08)
 	_add_labeled_control(parent, "Post Size:", m_rail_post_thickness_spin, "Square width and depth of each post.")
@@ -566,6 +588,33 @@ func _build_rail_controls(parent: VBoxContainer) -> void:
 	m_rail_bar_thickness_spin = _make_spin(0.02, 1.0, 0.01, 0.1)
 	_add_labeled_control(parent, "Rail Size:", m_rail_bar_thickness_spin, "Square width and height of the top and lower rails.")
 	m_rail_bar_thickness_spin.value_changed.connect(_on_rail_setting_changed)
+
+	m_rail_newel_count_spin = _make_spin(2.0, 64.0, 1.0, 2.0)
+	_add_labeled_control(
+		parent,
+		"Newels (Total):",
+		m_rail_newel_count_spin,
+		"Total evenly distributed newel posts, including both rail endpoints."
+	)
+	m_rail_newel_count_spin.value_changed.connect(_on_rail_setting_changed)
+
+	m_rail_baluster_count_spin = _make_spin(0.0, 64.0, 1.0, 1.0)
+	_add_labeled_control(
+		parent,
+		"Balusters / Span:",
+		m_rail_baluster_count_spin,
+		"Exact baluster count between every adjacent newel pair."
+	)
+	m_rail_baluster_count_spin.value_changed.connect(_on_rail_setting_changed)
+
+	m_rail_newel_size_spin = _make_spin(0.02, 1.0, 0.01, 0.1)
+	_add_labeled_control(
+		parent,
+		"Newel Size:",
+		m_rail_newel_size_spin,
+		"Square newel width/depth, clamped to the handrail width."
+	)
+	m_rail_newel_size_spin.value_changed.connect(_on_rail_setting_changed)
 
 	m_rail_lower_height_spin = _make_spin(0.0, 4.0, 0.01, 0.18)
 	_add_labeled_control(parent, "Lower Rail Y:", m_rail_lower_height_spin, "Center height of the lower horizontal rail. Set to 0 to disable it.")
@@ -1303,6 +1352,7 @@ func _on_floor_color_changed(_color: Color) -> void:
 
 
 func _on_stair_setting_changed(_value: float) -> void:
+	_update_stair_newel_controls()
 	_emit_stair_settings()
 
 
@@ -1312,6 +1362,7 @@ func _on_stair_setting_toggled(_pressed: bool) -> void:
 
 
 func _on_stair_newel_position_selected(_index: int) -> void:
+	_update_stair_newel_controls()
 	_emit_stair_settings()
 
 
@@ -1488,8 +1539,35 @@ func _update_stair_newel_controls() -> void:
 		m_stair_lower_newel_position_option.disabled = !lower_enabled
 	if m_stair_upper_newel_position_option != null:
 		m_stair_upper_newel_position_option.disabled = !upper_enabled
+	if m_stair_middle_newel_count_spin != null and m_stair_step_count_spin != null:
+		var explicit_terminal_count := (
+			(1 if lower_enabled else 0)
+			+ (1 if upper_enabled else 0)
+		)
+		var maximum_newel_count := int(roundf(m_stair_step_count_spin.value))
+		if (
+			lower_enabled
+			and _selected_newel_placement(
+				m_stair_lower_newel_position_option
+			) != NEWEL_PLACEMENT_TREAD
+		):
+			maximum_newel_count += 1
+		if (
+			upper_enabled
+			and _selected_newel_placement(
+				m_stair_upper_newel_position_option
+			) != NEWEL_PLACEMENT_TREAD
+		):
+			maximum_newel_count += 1
+		m_stair_middle_newel_count_spin.max_value = maximum_newel_count
+		m_stair_middle_newel_count_spin.min_value = explicit_terminal_count
 	if m_stair_newel_size_spin != null:
-		m_stair_newel_size_spin.editable = lower_enabled or upper_enabled
+		var middle_count := (
+			int(roundf(m_stair_middle_newel_count_spin.value))
+			if m_stair_middle_newel_count_spin != null
+			else 0
+		)
+		m_stair_newel_size_spin.editable = lower_enabled or upper_enabled or middle_count > 0
 
 
 func _selected_frame_sides(option: OptionButton) -> int:
@@ -1594,6 +1672,16 @@ func _emit_stair_settings() -> void:
 		"upper_newel_placement": _selected_newel_placement(
 			m_stair_upper_newel_position_option
 		),
+		"middle_newel_post_count": (
+			int(roundf(m_stair_middle_newel_count_spin.value))
+			if m_stair_middle_newel_count_spin != null
+			else 0
+		),
+		"baluster_count_between_newels": (
+			int(roundf(m_stair_baluster_count_spin.value))
+			if m_stair_baluster_count_spin != null
+			else 1
+		),
 		"rail_newel_post_thickness": (
 			float(m_stair_newel_size_spin.value)
 			if m_stair_newel_size_spin != null
@@ -1627,6 +1715,9 @@ func _emit_rail_settings() -> void:
 		"post_spacing": float(m_rail_post_spacing_spin.value),
 		"post_thickness": float(m_rail_post_thickness_spin.value),
 		"rail_thickness": float(m_rail_bar_thickness_spin.value),
+		"newel_post_count": int(roundf(m_rail_newel_count_spin.value)),
+		"baluster_count_between_newels": int(roundf(m_rail_baluster_count_spin.value)),
+		"newel_post_thickness": float(m_rail_newel_size_spin.value),
 		"lower_rail_height": float(m_rail_lower_height_spin.value),
 		"color": m_rail_color_picker.color,
 	})
@@ -2103,6 +2194,18 @@ func _load_persisted_settings() -> void:
 			_selected_newel_placement(m_stair_upper_newel_position_option)
 		))
 	)
+	m_stair_middle_newel_count_spin.value = float(
+		state.get(
+			"stair_middle_newel_post_count",
+			m_stair_middle_newel_count_spin.value
+		)
+	)
+	m_stair_baluster_count_spin.value = float(
+		state.get(
+			"stair_baluster_count_between_newels",
+			m_stair_baluster_count_spin.value
+		)
+	)
 	m_stair_newel_size_spin.value = float(
 		state.get("stair_rail_newel_post_thickness", m_stair_newel_size_spin.value)
 	)
@@ -2116,6 +2219,18 @@ func _load_persisted_settings() -> void:
 	m_rail_post_spacing_spin.value = float(state.get("rail_post_spacing", m_rail_post_spacing_spin.value))
 	m_rail_post_thickness_spin.value = float(state.get("rail_post_thickness", m_rail_post_thickness_spin.value))
 	m_rail_bar_thickness_spin.value = float(state.get("rail_thickness", m_rail_bar_thickness_spin.value))
+	m_rail_newel_count_spin.value = float(
+		state.get("rail_newel_post_count", m_rail_newel_count_spin.value)
+	)
+	m_rail_baluster_count_spin.value = float(
+		state.get(
+			"rail_baluster_count_between_newels",
+			m_rail_baluster_count_spin.value
+		)
+	)
+	m_rail_newel_size_spin.value = float(
+		state.get("rail_newel_post_thickness", m_rail_newel_size_spin.value)
+	)
 	m_rail_lower_height_spin.value = float(state.get("rail_lower_height", m_rail_lower_height_spin.value))
 	var rail_color_variant: Variant = state.get("rail_color", m_rail_color_picker.color)
 	if rail_color_variant is Color:
@@ -2283,6 +2398,16 @@ func _save_persisted_settings() -> void:
 		"stair_upper_newel_placement": _selected_newel_placement(
 			m_stair_upper_newel_position_option
 		),
+		"stair_middle_newel_post_count": (
+			int(roundf(m_stair_middle_newel_count_spin.value))
+			if m_stair_middle_newel_count_spin != null
+			else 0
+		),
+		"stair_baluster_count_between_newels": (
+			int(roundf(m_stair_baluster_count_spin.value))
+			if m_stair_baluster_count_spin != null
+			else 1
+		),
 		"stair_rail_newel_post_thickness": (
 			float(m_stair_newel_size_spin.value)
 			if m_stair_newel_size_spin != null
@@ -2297,6 +2422,9 @@ func _save_persisted_settings() -> void:
 		"rail_post_spacing": float(m_rail_post_spacing_spin.value) if m_rail_post_spacing_spin != null else 1.0,
 		"rail_post_thickness": float(m_rail_post_thickness_spin.value) if m_rail_post_thickness_spin != null else 0.08,
 		"rail_thickness": float(m_rail_bar_thickness_spin.value) if m_rail_bar_thickness_spin != null else 0.1,
+		"rail_newel_post_count": int(roundf(m_rail_newel_count_spin.value)) if m_rail_newel_count_spin != null else 2,
+		"rail_baluster_count_between_newels": int(roundf(m_rail_baluster_count_spin.value)) if m_rail_baluster_count_spin != null else 1,
+		"rail_newel_post_thickness": float(m_rail_newel_size_spin.value) if m_rail_newel_size_spin != null else 0.1,
 		"rail_lower_height": float(m_rail_lower_height_spin.value) if m_rail_lower_height_spin != null else 0.18,
 		"rail_color": m_rail_color_picker.color if m_rail_color_picker != null else Color(0.33, 0.28, 0.22, 1.0),
 		"pillar_grid_step": float(m_pillar_grid_spin.value) if m_pillar_grid_spin != null else 0.5,
