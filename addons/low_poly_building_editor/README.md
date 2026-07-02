@@ -4,7 +4,11 @@ Godot editor plugin for grid-snapped low-poly building authoring — an editor d
 viewport tools for walls, floors, stairs, standard rails, pillars, roofs, openings, and
 props, authored as normal scene nodes so the result serializes into `.tscn` files. The Wall tool can draw
 either individual spans or enclosed rooms with a configurable side count of at least
-three; four sides preserves rectangular-room creation. The Floor tool's Rectangle and
+three; four sides preserves rectangular-room creation. The Stairs tool draws one
+bounding rectangle and can lay it out as a straight run or as L-shaped, double-L,
+U-shaped, or 90/180-degree winder stairs with a configurable flight width and
+left/right turn direction; landings and winder fans subdivide the same rectangle,
+and optional rails follow the full turning path. The Floor tool's Rectangle and
 Polygon styles choose only how a new footprint is drawn: two opposite corners or a
 multi-click outline. Both use the same grid-snapped editing gestures afterward. Any
 vertex can be dragged, any edge can move both adjacent vertices, and vertices can be

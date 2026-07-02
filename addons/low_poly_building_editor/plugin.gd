@@ -245,6 +245,10 @@ var m_stair_settings := {
 	"thickness": 0.12,
 	"rotation_degrees": 0.0,
 	"color": Color(0.52, 0.46, 0.38, 1.0),
+	"layout_style": Stairs3DScript.LayoutStyle.STRAIGHT,
+	"turn_direction": Stairs3DScript.TurnDirection.RIGHT,
+	"winder_turn": Stairs3DScript.WinderTurn.TURN_90,
+	"flight_width": 1.2,
 	"left_rail_enabled": false,
 	"right_rail_enabled": false,
 	"infill_style": 0,
@@ -2373,6 +2377,7 @@ func _create_stair_preview(coordinator: Building3DScript) -> void:
 	var preview_color := Color(m_stair_settings["color"])
 	preview_color.a = 0.46
 	m_stair_preview.stair_color = preview_color
+	_apply_stair_layout_settings(m_stair_preview)
 	_apply_stair_rail_settings(m_stair_preview)
 	m_stair_preview.generate_collision = false
 	coordinator.add_child(m_stair_preview)
@@ -2399,6 +2404,7 @@ func _update_stair_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 	m_stair_preview.stair_height = float(m_stair_settings["height"])
 	m_stair_preview.step_count = int(m_stair_settings["step_count"])
 	m_stair_preview.stair_thickness = float(m_stair_settings["thickness"])
+	_apply_stair_layout_settings(m_stair_preview)
 	_apply_stair_rail_settings(m_stair_preview)
 	m_stair_preview.set_stair_corners_and_rotation(stair_start, stair_end, m_stair_draw_rotation_degrees)
 	if m_stair_has_valid_preview:
@@ -2407,6 +2413,22 @@ func _update_stair_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 			"Release or click to place stairs: %.2f x %.2f, %.0f deg." %
 			[size.x, size.y, m_stair_draw_rotation_degrees]
 		)
+
+
+func _apply_stair_layout_settings(stairs: Stairs3DScript) -> void:
+	stairs.layout_style = int(m_stair_settings.get(
+		"layout_style",
+		Stairs3DScript.LayoutStyle.STRAIGHT
+	))
+	stairs.turn_direction = int(m_stair_settings.get(
+		"turn_direction",
+		Stairs3DScript.TurnDirection.RIGHT
+	))
+	stairs.winder_turn = int(m_stair_settings.get(
+		"winder_turn",
+		Stairs3DScript.WinderTurn.TURN_90
+	))
+	stairs.flight_width = float(m_stair_settings.get("flight_width", 1.2))
 
 
 func _apply_stair_rail_settings(stairs: Stairs3DScript) -> void:
@@ -2604,7 +2626,11 @@ func _commit_stairs(
 		float(m_stair_settings.get("rail_newel_post_thickness", 0.1)),
 		int(m_stair_settings.get("middle_newel_post_count", 0)),
 		int(m_stair_settings.get("infill_count_between_newels", 1)),
-		int(m_stair_settings.get("infill_style", 0))
+		int(m_stair_settings.get("infill_style", 0)),
+		int(m_stair_settings.get("layout_style", Stairs3DScript.LayoutStyle.STRAIGHT)),
+		int(m_stair_settings.get("turn_direction", Stairs3DScript.TurnDirection.RIGHT)),
+		int(m_stair_settings.get("winder_turn", Stairs3DScript.WinderTurn.TURN_90)),
+		float(m_stair_settings.get("flight_width", 1.2))
 	)
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	var undo_redo := get_undo_redo()

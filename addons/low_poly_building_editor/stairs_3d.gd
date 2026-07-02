@@ -7,13 +7,46 @@ enum NewelPlacement {
 	FLOOR,
 }
 
+enum LayoutStyle {
+	STRAIGHT,
+	L_SHAPED,
+	DOUBLE_L_SHAPED,
+	U_SHAPED,
+	WINDER,
+}
+
+enum TurnDirection {
+	LEFT,
+	RIGHT,
+}
+
+enum WinderTurn {
+	TURN_90,
+	TURN_180,
+}
+
+enum SegmentKind {
+	SEGMENT_FLIGHT,
+	SEGMENT_LANDING,
+	SEGMENT_WINDER,
+}
+
+enum RailRunKind {
+	RAIL_RUN_FLIGHT,
+	RAIL_RUN_PLAIN,
+}
+
 const StandardRailGeometry := preload(
 	"res://addons/low_poly_building_editor/standard_rail_geometry_3d.gd"
 )
 
 const GENERATED_META := &"stairs_generated"
 const PREVIEW_META := &"building_editor_preview"
-const MESH_GEOMETRY_VERSION := 16
+const MESH_GEOMETRY_VERSION := 17
+const RAIL_SIDE_LEFT := 0
+const RAIL_SIDE_RIGHT := 1
+const WINDER_TREADS_90 := 3
+const WINDER_TREADS_180 := 6
 const SIDE_WALL_COLLISION_THICKNESS := 0.64
 const SIDE_WALL_COLLISION_META := &"stairs_side_wall_collision"
 const LEFT_SIDE_COLLISION_SHAPE_NAME := "LeftSideCollisionShape3D"
@@ -76,6 +109,40 @@ const RIGHT_SIDE_COLLISION_SHAPE_NAME := "RightSideCollisionShape3D"
 		if stair_color == value:
 			return
 		stair_color = value
+		_request_rebuild()
+
+@export_group("Layout")
+@export_enum("Straight", "L Shaped", "Double L Shaped", "U Shaped", "Winder")
+var layout_style: int = LayoutStyle.STRAIGHT:
+	set(value):
+		var clamped_value := clampi(value, LayoutStyle.STRAIGHT, LayoutStyle.WINDER)
+		if layout_style == clamped_value:
+			return
+		layout_style = clamped_value
+		_request_rebuild()
+
+@export_enum("Left", "Right") var turn_direction: int = TurnDirection.RIGHT:
+	set(value):
+		var clamped_value := clampi(value, TurnDirection.LEFT, TurnDirection.RIGHT)
+		if turn_direction == clamped_value:
+			return
+		turn_direction = clamped_value
+		_request_rebuild()
+
+@export_enum("90 Degrees", "180 Degrees") var winder_turn: int = WinderTurn.TURN_90:
+	set(value):
+		var clamped_value := clampi(value, WinderTurn.TURN_90, WinderTurn.TURN_180)
+		if winder_turn == clamped_value:
+			return
+		winder_turn = clamped_value
+		_request_rebuild()
+
+@export_range(0.2, 8.0, 0.01, "or_greater") var flight_width := 1.2:
+	set(value):
+		var clamped_value := maxf(value, 0.2)
+		if is_equal_approx(flight_width, clamped_value):
+			return
+		flight_width = clamped_value
 		_request_rebuild()
 
 @export_group("Rails")
@@ -307,11 +374,19 @@ func get_stair_bounds_max() -> Vector3:
 
 
 func get_step_rise() -> float:
-	return maxf(stair_height, 0.05) / float(_effective_step_count())
+	return maxf(stair_height, 0.05) / float(_total_rising_step_count())
 
 
 func get_step_run() -> float:
 	return get_stair_size().y / float(_effective_step_count())
+
+
+func _total_rising_step_count() -> int:
+	if layout_style == LayoutStyle.STRAIGHT:
+		return _effective_step_count()
+	var size := get_stair_size()
+	var allocation := _layout_step_allocation(size.x, size.y)
+	return int(allocation["total"])
 
 
 static func stair_corners_from_base_points(base_start: Vector3, base_end: Vector3, rotation_degrees: float) -> Dictionary:
@@ -347,7 +422,10 @@ func rebuild_stairs_mesh(rebuild_collision: bool = true) -> void:
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
-	_append_stair_geometry(size.x, size.y, vertices, normals, colors, indices)
+	if layout_style == LayoutStyle.STRAIGHT:
+		_append_stair_geometry(size.x, size.y, vertices, normals, colors, indices)
+	else:
+		_append_layout_geometry(size.x, size.y, vertices, normals, colors, indices)
 
 	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
@@ -381,6 +459,10 @@ func _stairs_mesh_source_signature() -> int:
 		stair_thickness,
 		stair_rotation_degrees,
 		stair_color,
+		layout_style,
+		turn_direction,
+		winder_turn,
+		flight_width,
 		left_rail_enabled,
 		right_rail_enabled,
 		infill_style,
@@ -502,7 +584,14 @@ func _append_rail_geometry(
 	# middle newels.
 	# Tread placement replaces the terminal regular post; Floor placement
 	# retains it and adds a newel at the corresponding stair-run endpoint.
-	var post_layout := _build_rail_post_layout(depth, height, steps)
+	var post_layout := _build_rail_post_layout(
+		depth,
+		height,
+		steps,
+		lower_newel_enabled,
+		upper_newel_enabled,
+		middle_newel_post_count
+	)
 	var post_positions: PackedFloat32Array = post_layout["positions"]
 	var post_base_heights: PackedFloat32Array = post_layout["base_heights"]
 	var post_thicknesses: PackedFloat32Array = post_layout["thicknesses"]
@@ -582,7 +671,10 @@ func _get_rail_post_layout() -> Dictionary:
 	return _build_rail_post_layout(
 		size.y,
 		maxf(stair_height, 0.05),
-		_effective_step_count()
+		_effective_step_count(),
+		lower_newel_enabled,
+		upper_newel_enabled,
+		middle_newel_post_count
 	)
 
 
@@ -598,7 +690,14 @@ func _clamped_infill_rail_size() -> float:
 	return minf(maxf(infill_rail_thickness, 0.02), _handrail_width())
 
 
-func _build_rail_post_layout(depth: float, height: float, steps: int) -> Dictionary:
+func _build_rail_post_layout(
+	depth: float,
+	height: float,
+	steps: int,
+	use_lower_newel: bool,
+	use_upper_newel: bool,
+	middle_count: int
+) -> Dictionary:
 	var positions := StandardRailGeometry.tread_mid_post_positions(depth, steps)
 	var base_heights := StandardRailGeometry.tread_mid_post_base_heights(height, steps)
 	var infill_size := _clamped_infill_rail_size()
@@ -615,11 +714,13 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 	var lower_newel_index := -1
 	var upper_newel_index := -1
 
-	for tread_index in _middle_newel_tread_indices(steps):
+	for tread_index in _middle_newel_tread_indices(
+		steps, use_lower_newel, use_upper_newel, middle_count
+	):
 		thicknesses[tread_index] = newel_size
 		newel_flags[tread_index] = 1
 
-	if lower_newel_enabled and !positions.is_empty():
+	if use_lower_newel and !positions.is_empty():
 		if lower_newel_placement == NewelPlacement.TREAD:
 			thicknesses[0] = newel_size
 			newel_flags[0] = 1
@@ -640,7 +741,7 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 			newel_flags = floor_newel_flags
 			lower_newel_index = 0
 
-	if upper_newel_enabled and !positions.is_empty():
+	if use_upper_newel and !positions.is_empty():
 		if upper_newel_placement == NewelPlacement.TREAD:
 			var last_tread_index := positions.size() - 1
 			thicknesses[last_tread_index] = newel_size
@@ -679,11 +780,11 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 	lower_newel_index = _find_post_position(positions, lower_newel_position)
 	upper_newel_index = _find_post_position(positions, upper_newel_position)
 	var lower_newel_is_floor := (
-		lower_newel_enabled
+		use_lower_newel
 		and lower_newel_placement == NewelPlacement.FLOOR
 	)
 	var upper_newel_is_floor := (
-		upper_newel_enabled
+		use_upper_newel
 		and upper_newel_placement == NewelPlacement.FLOOR
 	)
 
@@ -807,10 +908,15 @@ func _find_post_position(positions: PackedFloat32Array, target: float) -> int:
 	return -1
 
 
-func _middle_newel_tread_indices(steps: int) -> PackedInt32Array:
+func _middle_newel_tread_indices(
+	steps: int,
+	use_lower_newel: bool,
+	use_upper_newel: bool,
+	middle_count: int
+) -> PackedInt32Array:
 	var indices := PackedInt32Array()
-	var has_lower_terminal := lower_newel_enabled
-	var has_upper_terminal := upper_newel_enabled
+	var has_lower_terminal := use_lower_newel
+	var has_upper_terminal := use_upper_newel
 	var lower_bound := (
 		-1
 		if has_lower_terminal and lower_newel_placement == NewelPlacement.FLOOR
@@ -840,7 +946,7 @@ func _middle_newel_tread_indices(steps: int) -> PackedInt32Array:
 		+ (1 if has_upper_terminal else 0)
 	)
 	var count := clampi(
-		middle_newel_post_count - explicit_terminal_count,
+		middle_count - explicit_terminal_count,
 		0,
 		available_middle_treads
 	)
@@ -1051,6 +1157,9 @@ func _add_side_wall_collision_shapes(body: StaticBody3D) -> void:
 	var size := get_stair_size()
 	if size.x <= 0.001 or size.y <= 0.001:
 		return
+	if layout_style != LayoutStyle.STRAIGHT:
+		_add_layout_side_wall_collision_shapes(body, size.x, size.y)
+		return
 	var bottom_y := -maxf(stair_thickness, 0.0)
 	var side_wall_thickness := minf(SIDE_WALL_COLLISION_THICKNESS, size.x * 0.45)
 	var steps := _effective_step_count()
@@ -1090,7 +1199,8 @@ func _add_side_wall_collision_shape(
 	body: StaticBody3D,
 	shape_name: String,
 	shape_position: Vector3,
-	shape_size: Vector3
+	shape_size: Vector3,
+	shape_basis := Basis.IDENTITY
 ) -> void:
 	var side_shape := CollisionShape3D.new()
 	side_shape.name = shape_name
@@ -1098,7 +1208,7 @@ func _add_side_wall_collision_shape(
 	var box := BoxShape3D.new()
 	box.size = shape_size
 	side_shape.shape = box
-	side_shape.position = shape_position
+	side_shape.transform = Transform3D(shape_basis, shape_position)
 	body.add_child(side_shape)
 
 
@@ -1127,3 +1237,1162 @@ static func _normalize_degrees_static(value: float) -> float:
 	if is_equal_approx(normalized, -180.0):
 		return 180.0
 	return normalized
+
+
+# --- Layout styles (L / double-L / U / winder) ---------------------------------
+# Non-straight layouts subdivide the drawn bounding rectangle into an ordered
+# sequence of segments: straight flights, flat landings, and fanned winder
+# turns. Every segment is authored in its own rotated right-handed local frame
+# (x across the segment width, y up from the segment entry height, z along the
+# travel run) and embedded into stairs-local space, so the straight-flight
+# generation logic is reused unchanged for every flight orientation. Plans are
+# always built for a right-hand turn and mirrored across the footprint's X
+# axis for TurnDirection.LEFT, re-deriving each frame from its mirrored run
+# axis so all frames stay right-handed and winding stays valid.
+
+
+func _layout_winder_tread_count() -> int:
+	if layout_style != LayoutStyle.WINDER:
+		return 0
+	if winder_turn == WinderTurn.TURN_180:
+		return WINDER_TREADS_180
+	return WINDER_TREADS_90
+
+
+func _layout_turns_like_u() -> bool:
+	return (
+		layout_style == LayoutStyle.U_SHAPED
+		or (
+			layout_style == LayoutStyle.WINDER
+			and winder_turn == WinderTurn.TURN_180
+		)
+	)
+
+
+func _effective_flight_width(width: float, depth: float) -> float:
+	var fw := maxf(flight_width, 0.2)
+	match layout_style:
+		LayoutStyle.DOUBLE_L_SHAPED:
+			fw = minf(fw, minf(width / 3.0, depth * 0.5))
+		LayoutStyle.U_SHAPED:
+			fw = minf(fw, minf(width * 0.5, depth * 0.5))
+		LayoutStyle.WINDER:
+			if winder_turn == WinderTurn.TURN_180:
+				fw = minf(fw, minf(width * 0.5, depth * 0.5))
+			else:
+				fw = minf(fw, minf(width, depth) * 0.5)
+		_:
+			fw = minf(fw, minf(width, depth) * 0.5)
+	return maxf(fw, 0.05)
+
+
+func _layout_run_lengths(width: float, depth: float, fw: float) -> PackedFloat32Array:
+	if layout_style == LayoutStyle.DOUBLE_L_SHAPED:
+		return PackedFloat32Array([depth - fw, width - 2.0 * fw, depth - fw])
+	if _layout_turns_like_u():
+		return PackedFloat32Array([depth - fw, depth - fw])
+	return PackedFloat32Array([depth - fw, width - fw])
+
+
+func _layout_step_allocation(width: float, depth: float) -> Dictionary:
+	var fw := _effective_flight_width(width, depth)
+	var run_lengths := _layout_run_lengths(width, depth, fw)
+	var flight_count := run_lengths.size()
+	var winder_treads := _layout_winder_tread_count()
+	var flight_budget := maxi(_effective_step_count() - winder_treads, flight_count)
+	var counts := PackedInt32Array()
+	counts.resize(flight_count)
+	counts.fill(1)
+	var extra := flight_budget - flight_count
+	var total_run := 0.0
+	for run_length in run_lengths:
+		total_run += maxf(run_length, 0.001)
+	var assigned := 0
+	var remainders: Array[Dictionary] = []
+	for index in range(flight_count):
+		var share := extra * maxf(run_lengths[index], 0.001) / total_run
+		var base := int(floorf(share))
+		counts[index] += base
+		assigned += base
+		remainders.append({"index": index, "fraction": share - float(base)})
+	remainders.sort_custom(
+		func(a: Dictionary, b: Dictionary) -> bool:
+			return float(a["fraction"]) > float(b["fraction"])
+	)
+	for pass_index in range(extra - assigned):
+		counts[int(remainders[pass_index % flight_count]["index"])] += 1
+	return {
+		"flights": counts,
+		"winder": winder_treads,
+		"total": flight_budget + winder_treads,
+	}
+
+
+func _distribute_middle_newels(flight_steps: PackedInt32Array) -> PackedInt32Array:
+	var shares := PackedInt32Array()
+	shares.resize(flight_steps.size())
+	var total := 0
+	for steps in flight_steps:
+		total += steps
+	if total <= 0 or middle_newel_post_count <= 0:
+		shares.fill(0)
+		return shares
+	for index in range(flight_steps.size()):
+		shares[index] = int(roundf(
+			float(middle_newel_post_count) * float(flight_steps[index]) / float(total)
+		))
+	return shares
+
+
+func _make_flight_segment(
+	origin: Vector3,
+	run_dir: Vector3,
+	width: float,
+	run_length: float,
+	steps: int,
+	rise: float
+) -> Dictionary:
+	return {
+		"kind": SegmentKind.SEGMENT_FLIGHT,
+		"origin": origin,
+		"run_axis": run_dir,
+		"width_axis": Vector3.UP.cross(run_dir).normalized(),
+		"width": width,
+		"run": run_length,
+		"steps": maxi(steps, 1),
+		"rise": rise,
+	}
+
+
+func _make_landing_segment(
+	origin: Vector3,
+	run_dir: Vector3,
+	width: float,
+	run_length: float
+) -> Dictionary:
+	return {
+		"kind": SegmentKind.SEGMENT_LANDING,
+		"origin": origin,
+		"run_axis": run_dir,
+		"width_axis": Vector3.UP.cross(run_dir).normalized(),
+		"width": width,
+		"run": run_length,
+		"steps": 0,
+		"rise": 0.0,
+	}
+
+
+func _make_winder_segment(
+	origin: Vector3,
+	run_dir: Vector3,
+	width: float,
+	run_length: float,
+	steps: int,
+	rise: float,
+	pivot: Vector2,
+	perimeter: PackedVector2Array,
+	extra_walls: Array[Dictionary]
+) -> Dictionary:
+	return {
+		"kind": SegmentKind.SEGMENT_WINDER,
+		"origin": origin,
+		"run_axis": run_dir,
+		"width_axis": Vector3.UP.cross(run_dir).normalized(),
+		"width": width,
+		"run": run_length,
+		"steps": maxi(steps, 1),
+		"rise": rise,
+		"pivot": pivot,
+		"perimeter": perimeter,
+		"extra_walls": extra_walls,
+	}
+
+
+func _make_flight_rail_run(
+	side: int,
+	origin: Vector3,
+	run_dir: Vector3,
+	length: float,
+	rise: float,
+	steps: int,
+	is_first: bool,
+	is_last: bool,
+	middle_newels: int
+) -> Dictionary:
+	return {
+		"kind": RailRunKind.RAIL_RUN_FLIGHT,
+		"side": side,
+		"origin": origin,
+		"run_dir": run_dir,
+		"length": length,
+		"rise": rise,
+		"steps": maxi(steps, 1),
+		"first": is_first,
+		"last": is_last,
+		"middle_newels": middle_newels,
+	}
+
+
+func _make_plain_rail_run(
+	side: int,
+	origin: Vector3,
+	run_dir: Vector3,
+	length: float,
+	rise: float,
+	post_spacing: float,
+	post_positions := PackedFloat32Array(),
+	post_base_heights := PackedFloat32Array()
+) -> Dictionary:
+	return {
+		"kind": RailRunKind.RAIL_RUN_PLAIN,
+		"side": side,
+		"origin": origin,
+		"run_dir": run_dir,
+		"length": length,
+		"rise": rise,
+		"post_spacing": post_spacing,
+		"post_positions": post_positions,
+		"post_base_heights": post_base_heights,
+	}
+
+
+func _winder_rail_posts(
+	path_length: float,
+	run_start: float,
+	run_length: float,
+	winder_treads: int,
+	rise: float,
+	rise_before_run: float
+) -> Dictionary:
+	# Posts sit at tread mids mapped proportionally from the tread fan onto the
+	# margin-inset rail path; each base is that tread's walking surface so the
+	# flat-based posts land on stepped winder treads instead of the smooth
+	# rise diagonal.
+	var positions := PackedFloat32Array()
+	var base_heights := PackedFloat32Array()
+	if winder_treads <= 0 or path_length <= 0.001:
+		return {"positions": positions, "base_heights": base_heights}
+	for tread_index in range(winder_treads):
+		var path_position := path_length * (float(tread_index) + 0.5) / float(winder_treads)
+		if path_position < run_start - 0.001:
+			continue
+		if path_position > run_start + run_length + 0.001:
+			continue
+		positions.append(clampf(path_position - run_start, 0.0, run_length))
+		base_heights.append(rise * float(tread_index + 1) - rise_before_run)
+	return {"positions": positions, "base_heights": base_heights}
+
+
+func _add_raked_path_rail_runs(
+	rail_runs: Array[Dictionary],
+	side: int,
+	waypoints: Array[Vector2],
+	start_height: float,
+	total_rise: float,
+	winder_treads: int,
+	rise: float,
+	post_spacing: float
+) -> void:
+	var total_length := 0.0
+	for index in range(waypoints.size() - 1):
+		total_length += waypoints[index].distance_to(waypoints[index + 1])
+	if total_length <= 0.001:
+		return
+	var traversed := 0.0
+	for index in range(waypoints.size() - 1):
+		var from_point := waypoints[index]
+		var to_point := waypoints[index + 1]
+		var length := from_point.distance_to(to_point)
+		if length <= 0.001:
+			continue
+		var leg_rise := total_rise * length / total_length
+		var rise_before := total_rise * traversed / total_length
+		var run_dir := Vector3(
+			to_point.x - from_point.x,
+			0.0,
+			to_point.y - from_point.y
+		).normalized()
+		var posts := _winder_rail_posts(
+			total_length, traversed, length, winder_treads, rise, rise_before
+		)
+		rail_runs.append(_make_plain_rail_run(
+			side,
+			Vector3(from_point.x, start_height + rise_before, from_point.y),
+			run_dir,
+			length,
+			leg_rise,
+			post_spacing,
+			posts["positions"],
+			posts["base_heights"]
+		))
+		traversed += length
+
+
+func _build_layout_plan(width: float, depth: float) -> Dictionary:
+	var fw := _effective_flight_width(width, depth)
+	var allocation := _layout_step_allocation(width, depth)
+	var flight_steps: PackedInt32Array = allocation["flights"]
+	var winder_treads: int = allocation["winder"]
+	var total_steps: int = allocation["total"]
+	var rise := maxf(stair_height, 0.05) / float(maxi(total_steps, 1))
+	var margin := minf(rail_edge_margin, fw * 0.45)
+	var middle_shares := _distribute_middle_newels(flight_steps)
+	var run_lengths := _layout_run_lengths(width, depth, fw)
+	var total_flight_run := 0.0
+	var total_flight_steps := 0
+	for index in range(run_lengths.size()):
+		total_flight_run += run_lengths[index]
+		total_flight_steps += flight_steps[index]
+	var post_spacing := clampf(
+		total_flight_run / float(maxi(total_flight_steps, 1)), 0.3, 2.0
+	)
+	var segments: Array[Dictionary] = []
+	var rail_runs: Array[Dictionary] = []
+	var r1 := depth - fw
+	var n1 := flight_steps[0]
+	var h1 := rise * float(n1)
+	var hw := rise * float(winder_treads)
+	var turn_height := h1 + hw
+
+	segments.append(_make_flight_segment(
+		Vector3.ZERO, Vector3.BACK, fw, r1, n1, rise
+	))
+	rail_runs.append(_make_flight_rail_run(
+		RAIL_SIDE_LEFT, Vector3(margin, 0.0, 0.0), Vector3.BACK,
+		r1, h1, n1, true, false, middle_shares[0]
+	))
+	rail_runs.append(_make_flight_rail_run(
+		RAIL_SIDE_RIGHT, Vector3(fw - margin, 0.0, 0.0), Vector3.BACK,
+		r1, h1, n1, true, false, middle_shares[0]
+	))
+
+	if layout_style == LayoutStyle.DOUBLE_L_SHAPED:
+		var r2 := width - 2.0 * fw
+		var n2 := flight_steps[1]
+		var n3 := flight_steps[2]
+		var h12 := rise * float(n1 + n2)
+		segments.append(_make_landing_segment(
+			Vector3(0.0, h1, r1), Vector3.BACK, fw, fw
+		))
+		segments.append(_make_flight_segment(
+			Vector3(fw, h1, depth), Vector3.RIGHT, fw, r2, n2, rise
+		))
+		segments.append(_make_landing_segment(
+			Vector3(width - fw, h12, depth), Vector3.RIGHT, fw, fw
+		))
+		segments.append(_make_flight_segment(
+			Vector3(width, h12, depth - fw), Vector3.FORWARD, fw, r1, n3, rise
+		))
+		_add_raked_path_rail_runs(
+			rail_runs, RAIL_SIDE_LEFT,
+			[
+				Vector2(margin, r1),
+				Vector2(margin, depth - margin),
+				Vector2(fw, depth - margin),
+			],
+			h1, 0.0, 0, rise, post_spacing
+		)
+		rail_runs.append(_make_flight_rail_run(
+			RAIL_SIDE_LEFT, Vector3(fw, h1, depth - margin), Vector3.RIGHT,
+			r2, rise * float(n2), n2, false, false, middle_shares[1]
+		))
+		_add_raked_path_rail_runs(
+			rail_runs, RAIL_SIDE_LEFT,
+			[
+				Vector2(width - fw, depth - margin),
+				Vector2(width - margin, depth - margin),
+				Vector2(width - margin, r1),
+			],
+			h12, 0.0, 0, rise, post_spacing
+		)
+		rail_runs.append(_make_flight_rail_run(
+			RAIL_SIDE_LEFT, Vector3(width - margin, h12, r1), Vector3.FORWARD,
+			r1, rise * float(n3), n3, false, true, middle_shares[2]
+		))
+		_add_raked_path_rail_runs(
+			rail_runs, RAIL_SIDE_RIGHT,
+			[
+				Vector2(fw - margin, r1),
+				Vector2(fw - margin, r1 + margin),
+				Vector2(fw, r1 + margin),
+			],
+			h1, 0.0, 0, rise, post_spacing
+		)
+		rail_runs.append(_make_flight_rail_run(
+			RAIL_SIDE_RIGHT, Vector3(fw, h1, r1 + margin), Vector3.RIGHT,
+			r2, rise * float(n2), n2, false, false, middle_shares[1]
+		))
+		_add_raked_path_rail_runs(
+			rail_runs, RAIL_SIDE_RIGHT,
+			[
+				Vector2(width - fw, r1 + margin),
+				Vector2(width - fw + margin, r1 + margin),
+				Vector2(width - fw + margin, r1),
+			],
+			h12, 0.0, 0, rise, post_spacing
+		)
+		rail_runs.append(_make_flight_rail_run(
+			RAIL_SIDE_RIGHT, Vector3(width - fw + margin, h12, r1), Vector3.FORWARD,
+			r1, rise * float(n3), n3, false, true, middle_shares[2]
+		))
+	elif _layout_turns_like_u():
+		var n2 := flight_steps[1]
+		if layout_style == LayoutStyle.U_SHAPED:
+			segments.append(_make_landing_segment(
+				Vector3(0.0, h1, r1), Vector3.BACK, width, fw
+			))
+		else:
+			var extra_walls: Array[Dictionary] = [
+				{
+					"a": Vector2(fw, 0.0),
+					"b": Vector2(width * 0.5, 0.0),
+					"top": 0.0,
+					"normal": Vector2(0.0, -1.0),
+				},
+				{
+					"a": Vector2(width * 0.5, 0.0),
+					"b": Vector2(width - fw, 0.0),
+					"top": hw,
+					"normal": Vector2(0.0, -1.0),
+				},
+			]
+			segments.append(_make_winder_segment(
+				Vector3(0.0, h1, r1), Vector3.BACK, width, fw,
+				winder_treads, rise,
+				Vector2(width * 0.5, 0.0),
+				PackedVector2Array([
+					Vector2(0.0, 0.0),
+					Vector2(0.0, fw),
+					Vector2(width, fw),
+					Vector2(width, 0.0),
+				]),
+				extra_walls
+			))
+		segments.append(_make_flight_segment(
+			Vector3(width, turn_height, r1), Vector3.FORWARD, fw, r1, n2, rise
+		))
+		_add_raked_path_rail_runs(
+			rail_runs, RAIL_SIDE_LEFT,
+			[
+				Vector2(margin, r1),
+				Vector2(margin, depth - margin),
+				Vector2(width - margin, depth - margin),
+				Vector2(width - margin, r1),
+			],
+			h1, hw, winder_treads, rise, post_spacing
+		)
+		rail_runs.append(_make_flight_rail_run(
+			RAIL_SIDE_LEFT, Vector3(width - margin, turn_height, r1), Vector3.FORWARD,
+			r1, rise * float(n2), n2, false, true, middle_shares[1]
+		))
+		_add_raked_path_rail_runs(
+			rail_runs, RAIL_SIDE_RIGHT,
+			[
+				Vector2(fw - margin, r1),
+				Vector2(fw - margin, r1 + margin),
+				Vector2(width - fw + margin, r1 + margin),
+				Vector2(width - fw + margin, r1),
+			],
+			h1, hw, 0, rise, post_spacing
+		)
+		rail_runs.append(_make_flight_rail_run(
+			RAIL_SIDE_RIGHT, Vector3(width - fw + margin, turn_height, r1), Vector3.FORWARD,
+			r1, rise * float(n2), n2, false, true, middle_shares[1]
+		))
+	else:
+		var r2 := width - fw
+		var n2 := flight_steps[1]
+		if layout_style == LayoutStyle.L_SHAPED:
+			segments.append(_make_landing_segment(
+				Vector3(0.0, h1, r1), Vector3.BACK, fw, fw
+			))
+		else:
+			var no_extra_walls: Array[Dictionary] = []
+			segments.append(_make_winder_segment(
+				Vector3(0.0, h1, r1), Vector3.BACK, fw, fw,
+				winder_treads, rise,
+				Vector2(fw, 0.0),
+				PackedVector2Array([
+					Vector2(0.0, 0.0),
+					Vector2(0.0, fw),
+					Vector2(fw, fw),
+				]),
+				no_extra_walls
+			))
+		segments.append(_make_flight_segment(
+			Vector3(fw, turn_height, depth), Vector3.RIGHT, fw, r2, n2, rise
+		))
+		_add_raked_path_rail_runs(
+			rail_runs, RAIL_SIDE_LEFT,
+			[
+				Vector2(margin, r1),
+				Vector2(margin, depth - margin),
+				Vector2(fw, depth - margin),
+			],
+			h1, hw, winder_treads, rise, post_spacing
+		)
+		rail_runs.append(_make_flight_rail_run(
+			RAIL_SIDE_LEFT, Vector3(fw, turn_height, depth - margin), Vector3.RIGHT,
+			r2, rise * float(n2), n2, false, true, middle_shares[1]
+		))
+		_add_raked_path_rail_runs(
+			rail_runs, RAIL_SIDE_RIGHT,
+			[
+				Vector2(fw - margin, r1),
+				Vector2(fw - margin, r1 + margin),
+				Vector2(fw, r1 + margin),
+			],
+			h1, hw, 0, rise, post_spacing
+		)
+		rail_runs.append(_make_flight_rail_run(
+			RAIL_SIDE_RIGHT, Vector3(fw, turn_height, r1 + margin), Vector3.RIGHT,
+			r2, rise * float(n2), n2, false, true, middle_shares[1]
+		))
+
+	var plan := {
+		"segments": segments,
+		"rail_runs": rail_runs,
+		"flight_width": fw,
+		"total_steps": total_steps,
+		"rise": rise,
+	}
+	if turn_direction == TurnDirection.LEFT:
+		_mirror_layout_plan(plan, width)
+	return plan
+
+
+func _mirror_layout_plan(plan: Dictionary, width: float) -> void:
+	for seg: Dictionary in plan["segments"]:
+		var run_axis: Vector3 = seg["run_axis"]
+		var width_axis: Vector3 = seg["width_axis"]
+		var origin: Vector3 = seg["origin"]
+		var segment_width: float = seg["width"]
+		var mirrored_run := Vector3(-run_axis.x, run_axis.y, run_axis.z)
+		var far_corner := origin + width_axis * segment_width
+		seg["run_axis"] = mirrored_run
+		seg["width_axis"] = Vector3.UP.cross(mirrored_run).normalized()
+		seg["origin"] = Vector3(width - far_corner.x, far_corner.y, far_corner.z)
+		if seg.has("pivot"):
+			var pivot: Vector2 = seg["pivot"]
+			seg["pivot"] = Vector2(segment_width - pivot.x, pivot.y)
+			var perimeter: PackedVector2Array = seg["perimeter"]
+			var mirrored_perimeter := PackedVector2Array()
+			for point in perimeter:
+				mirrored_perimeter.append(Vector2(segment_width - point.x, point.y))
+			seg["perimeter"] = mirrored_perimeter
+			for wall: Dictionary in seg["extra_walls"]:
+				var a: Vector2 = wall["a"]
+				var b: Vector2 = wall["b"]
+				wall["a"] = Vector2(segment_width - a.x, a.y)
+				wall["b"] = Vector2(segment_width - b.x, b.y)
+	for run: Dictionary in plan["rail_runs"]:
+		var run_origin: Vector3 = run["origin"]
+		var run_dir: Vector3 = run["run_dir"]
+		run["origin"] = Vector3(width - run_origin.x, run_origin.y, run_origin.z)
+		run["run_dir"] = Vector3(-run_dir.x, run_dir.y, run_dir.z)
+		run["side"] = (
+			RAIL_SIDE_RIGHT if int(run["side"]) == RAIL_SIDE_LEFT else RAIL_SIDE_LEFT
+		)
+
+
+func _segment_point(seg: Dictionary, local_point: Vector3) -> Vector3:
+	return (
+		Vector3(seg["origin"])
+		+ Vector3(seg["width_axis"]) * local_point.x
+		+ Vector3.UP * local_point.y
+		+ Vector3(seg["run_axis"]) * local_point.z
+	)
+
+
+func _segment_direction(seg: Dictionary, local_direction: Vector3) -> Vector3:
+	return (
+		Vector3(seg["width_axis"]) * local_direction.x
+		+ Vector3.UP * local_direction.y
+		+ Vector3(seg["run_axis"]) * local_direction.z
+	)
+
+
+func _segment_bottom(seg: Dictionary) -> float:
+	return -maxf(stair_thickness, 0.0) - Vector3(seg["origin"]).y
+
+
+func _append_layout_geometry(
+	width: float,
+	depth: float,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	var plan := _build_layout_plan(width, depth)
+	for seg: Dictionary in plan["segments"]:
+		match int(seg["kind"]):
+			SegmentKind.SEGMENT_FLIGHT:
+				_append_flight_segment_geometry(seg, vertices, normals, colors, indices)
+			SegmentKind.SEGMENT_LANDING:
+				_append_landing_segment_geometry(seg, vertices, normals, colors, indices)
+			SegmentKind.SEGMENT_WINDER:
+				_append_winder_segment_geometry(seg, vertices, normals, colors, indices)
+	_append_layout_rail_geometry(plan, vertices, normals, colors, indices)
+
+
+func _append_embedded_quad(
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array,
+	a: Vector3,
+	b: Vector3,
+	c: Vector3,
+	d: Vector3,
+	normal: Vector3
+) -> void:
+	var base := vertices.size()
+	vertices.append(a)
+	vertices.append(b)
+	vertices.append(c)
+	vertices.append(d)
+	for _index in range(4):
+		normals.append(normal)
+		colors.append(stair_color)
+	var winding_normal := (b - a).cross(c - a)
+	if winding_normal.length_squared() <= 0.000001:
+		winding_normal = (c - a).cross(d - a)
+	if winding_normal.dot(normal) > 0.0:
+		indices.append_array(PackedInt32Array([
+			base, base + 2, base + 1, base, base + 3, base + 2
+		]))
+	else:
+		indices.append_array(PackedInt32Array([
+			base, base + 1, base + 2, base, base + 2, base + 3
+		]))
+
+
+func _append_segment_quad(
+	seg: Dictionary,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array,
+	a: Vector3,
+	b: Vector3,
+	c: Vector3,
+	d: Vector3,
+	local_normal: Vector3
+) -> void:
+	_append_embedded_quad(
+		vertices, normals, colors, indices,
+		_segment_point(seg, a),
+		_segment_point(seg, b),
+		_segment_point(seg, c),
+		_segment_point(seg, d),
+		_segment_direction(seg, local_normal).normalized()
+	)
+
+
+func _append_flight_segment_geometry(
+	seg: Dictionary,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	var steps: int = seg["steps"]
+	var rise: float = seg["rise"]
+	var width: float = seg["width"]
+	var run: float = seg["run"]
+	if width <= 0.001 or run <= 0.001:
+		return
+	var bottom := _segment_bottom(seg)
+	var top := rise * float(steps)
+	var tread_depth := run / float(steps)
+	for step_index in range(steps):
+		var z0 := tread_depth * float(step_index)
+		var z1 := tread_depth * float(step_index + 1)
+		var y0 := rise * float(step_index)
+		var y1 := rise * float(step_index + 1)
+		_append_segment_quad(
+			seg, vertices, normals, colors, indices,
+			Vector3(0.0, y1, z0),
+			Vector3(0.0, y1, z1),
+			Vector3(width, y1, z1),
+			Vector3(width, y1, z0),
+			Vector3.UP
+		)
+		_append_segment_quad(
+			seg, vertices, normals, colors, indices,
+			Vector3(0.0, y0, z0),
+			Vector3(0.0, y1, z0),
+			Vector3(width, y1, z0),
+			Vector3(width, y0, z0),
+			Vector3.FORWARD
+		)
+	_append_segment_quad(
+		seg, vertices, normals, colors, indices,
+		Vector3(0.0, bottom, 0.0),
+		Vector3(0.0, 0.0, 0.0),
+		Vector3(width, 0.0, 0.0),
+		Vector3(width, bottom, 0.0),
+		Vector3.FORWARD
+	)
+	_append_segment_quad(
+		seg, vertices, normals, colors, indices,
+		Vector3(0.0, bottom, run),
+		Vector3(width, bottom, run),
+		Vector3(width, top, run),
+		Vector3(0.0, top, run),
+		Vector3.BACK
+	)
+	_append_segment_side_strips(seg, vertices, normals, colors, indices, 0.0, Vector3.LEFT)
+	_append_segment_side_strips(seg, vertices, normals, colors, indices, width, Vector3.RIGHT)
+
+
+func _append_segment_side_strips(
+	seg: Dictionary,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array,
+	x: float,
+	local_normal: Vector3
+) -> void:
+	var steps: int = seg["steps"]
+	var rise: float = seg["rise"]
+	var run: float = seg["run"]
+	var bottom := _segment_bottom(seg)
+	var tread_depth := run / float(steps)
+	var normal := _segment_direction(seg, local_normal).normalized()
+	var base := vertices.size()
+	for boundary_index in range(steps + 1):
+		vertices.append(_segment_point(seg, Vector3(
+			x, bottom, tread_depth * float(boundary_index)
+		)))
+		normals.append(normal)
+		colors.append(stair_color)
+	var top_base := vertices.size()
+	for step_index in range(steps):
+		var z0 := tread_depth * float(step_index)
+		var z1 := tread_depth * float(step_index + 1)
+		var y1 := rise * float(step_index + 1)
+		vertices.append(_segment_point(seg, Vector3(x, y1, z0)))
+		normals.append(normal)
+		colors.append(stair_color)
+		vertices.append(_segment_point(seg, Vector3(x, y1, z1)))
+		normals.append(normal)
+		colors.append(stair_color)
+	for step_index in range(steps):
+		var bottom_left := base + step_index
+		var bottom_right := bottom_left + 1
+		var top_left := top_base + step_index * 2
+		var top_right := top_left + 1
+		_append_oriented_triangle(
+			vertices, indices, normal,
+			bottom_left, top_left, top_right
+		)
+		_append_oriented_triangle(
+			vertices, indices, normal,
+			bottom_left, top_right, bottom_right
+		)
+
+
+func _append_landing_segment_geometry(
+	seg: Dictionary,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	var width: float = seg["width"]
+	var run: float = seg["run"]
+	if width <= 0.001 or run <= 0.001:
+		return
+	var bottom := _segment_bottom(seg)
+	_append_segment_quad(
+		seg, vertices, normals, colors, indices,
+		Vector3(0.0, 0.0, 0.0),
+		Vector3(0.0, 0.0, run),
+		Vector3(width, 0.0, run),
+		Vector3(width, 0.0, 0.0),
+		Vector3.UP
+	)
+	_append_segment_quad(
+		seg, vertices, normals, colors, indices,
+		Vector3(0.0, bottom, 0.0),
+		Vector3(0.0, 0.0, 0.0),
+		Vector3(width, 0.0, 0.0),
+		Vector3(width, bottom, 0.0),
+		Vector3.FORWARD
+	)
+	_append_segment_quad(
+		seg, vertices, normals, colors, indices,
+		Vector3(0.0, bottom, run),
+		Vector3(width, bottom, run),
+		Vector3(width, 0.0, run),
+		Vector3(0.0, 0.0, run),
+		Vector3.BACK
+	)
+	_append_segment_quad(
+		seg, vertices, normals, colors, indices,
+		Vector3(0.0, bottom, 0.0),
+		Vector3(0.0, 0.0, 0.0),
+		Vector3(0.0, 0.0, run),
+		Vector3(0.0, bottom, run),
+		Vector3.LEFT
+	)
+	_append_segment_quad(
+		seg, vertices, normals, colors, indices,
+		Vector3(width, bottom, 0.0),
+		Vector3(width, 0.0, 0.0),
+		Vector3(width, 0.0, run),
+		Vector3(width, bottom, run),
+		Vector3.RIGHT
+	)
+
+
+func _winder_perimeter_cumulative(perimeter: PackedVector2Array) -> PackedFloat32Array:
+	var cumulative := PackedFloat32Array([0.0])
+	for index in range(perimeter.size() - 1):
+		cumulative.append(
+			cumulative[index] + perimeter[index].distance_to(perimeter[index + 1])
+		)
+	return cumulative
+
+
+func _winder_point_at(
+	perimeter: PackedVector2Array,
+	cumulative: PackedFloat32Array,
+	target: float
+) -> Vector2:
+	for index in range(perimeter.size() - 1):
+		if target <= cumulative[index + 1] + 0.0001:
+			var leg_length := cumulative[index + 1] - cumulative[index]
+			if leg_length <= 0.0001:
+				continue
+			var ratio := clampf((target - cumulative[index]) / leg_length, 0.0, 1.0)
+			return perimeter[index].lerp(perimeter[index + 1], ratio)
+	return perimeter[perimeter.size() - 1]
+
+
+func _append_winder_segment_geometry(
+	seg: Dictionary,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	var steps: int = seg["steps"]
+	var rise: float = seg["rise"]
+	var pivot: Vector2 = seg["pivot"]
+	var perimeter: PackedVector2Array = seg["perimeter"]
+	var bottom := _segment_bottom(seg)
+	var cumulative := _winder_perimeter_cumulative(perimeter)
+	var total_length := cumulative[cumulative.size() - 1]
+	if total_length <= 0.001:
+		return
+	var up_normal := _segment_direction(seg, Vector3.UP).normalized()
+	for tread_index in range(steps):
+		var t0 := total_length * float(tread_index) / float(steps)
+		var t1 := total_length * float(tread_index + 1) / float(steps)
+		var tread_top := rise * float(tread_index + 1)
+		var edge_points: Array[Vector2] = [
+			_winder_point_at(perimeter, cumulative, t0),
+		]
+		for corner_index in range(1, perimeter.size() - 1):
+			var corner_distance := cumulative[corner_index]
+			if corner_distance > t0 + 0.0001 and corner_distance < t1 - 0.0001:
+				edge_points.append(perimeter[corner_index])
+		edge_points.append(_winder_point_at(perimeter, cumulative, t1))
+		for edge_index in range(edge_points.size() - 1):
+			var q0 := edge_points[edge_index]
+			var q1 := edge_points[edge_index + 1]
+			if q0.distance_to(q1) <= 0.0001:
+				continue
+			var triangle_base := vertices.size()
+			vertices.append(_segment_point(seg, Vector3(pivot.x, tread_top, pivot.y)))
+			vertices.append(_segment_point(seg, Vector3(q0.x, tread_top, q0.y)))
+			vertices.append(_segment_point(seg, Vector3(q1.x, tread_top, q1.y)))
+			for _index in range(3):
+				normals.append(up_normal)
+				colors.append(stair_color)
+			_append_oriented_triangle(
+				vertices, indices, up_normal,
+				triangle_base, triangle_base + 1, triangle_base + 2
+			)
+			var edge_dir := (q1 - q0).normalized()
+			var outward := Vector2(-edge_dir.y, edge_dir.x)
+			var edge_mid := (q0 + q1) * 0.5
+			if outward.dot(edge_mid - pivot) < 0.0:
+				outward = -outward
+			_append_segment_quad(
+				seg, vertices, normals, colors, indices,
+				Vector3(q0.x, bottom, q0.y),
+				Vector3(q1.x, bottom, q1.y),
+				Vector3(q1.x, tread_top, q1.y),
+				Vector3(q0.x, tread_top, q0.y),
+				Vector3(outward.x, 0.0, outward.y)
+			)
+	for boundary_index in range(steps):
+		var boundary_t := total_length * float(boundary_index) / float(steps)
+		var boundary_point := _winder_point_at(perimeter, cumulative, boundary_t)
+		var radial := boundary_point - pivot
+		if radial.length() <= 0.0001:
+			continue
+		var riser_low := rise * float(boundary_index)
+		var riser_high := rise * float(boundary_index + 1)
+		var riser_normal := Vector2(-radial.y, radial.x).normalized()
+		var sample := _winder_point_at(
+			perimeter, cumulative, minf(boundary_t + total_length * 0.01, total_length)
+		)
+		var edge_mid := (pivot + boundary_point) * 0.5
+		if riser_normal.dot(sample - edge_mid) > 0.0:
+			riser_normal = -riser_normal
+		_append_segment_quad(
+			seg, vertices, normals, colors, indices,
+			Vector3(pivot.x, riser_low, pivot.y),
+			Vector3(boundary_point.x, riser_low, boundary_point.y),
+			Vector3(boundary_point.x, riser_high, boundary_point.y),
+			Vector3(pivot.x, riser_high, pivot.y),
+			Vector3(riser_normal.x, 0.0, riser_normal.y)
+		)
+	for wall: Dictionary in seg["extra_walls"]:
+		var a: Vector2 = wall["a"]
+		var b: Vector2 = wall["b"]
+		if a.distance_to(b) <= 0.001:
+			continue
+		var wall_top: float = wall["top"]
+		var wall_normal: Vector2 = wall["normal"]
+		_append_segment_quad(
+			seg, vertices, normals, colors, indices,
+			Vector3(a.x, bottom, a.y),
+			Vector3(b.x, bottom, b.y),
+			Vector3(b.x, wall_top, b.y),
+			Vector3(a.x, wall_top, a.y),
+			Vector3(wall_normal.x, 0.0, wall_normal.y)
+		)
+
+
+func _append_layout_rail_geometry(
+	plan: Dictionary,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	if !left_rail_enabled and !right_rail_enabled:
+		return
+	for run: Dictionary in plan["rail_runs"]:
+		var side: int = run["side"]
+		if side == RAIL_SIDE_LEFT and !left_rail_enabled:
+			continue
+		if side == RAIL_SIDE_RIGHT and !right_rail_enabled:
+			continue
+		var length: float = run["length"]
+		if length <= 0.001:
+			continue
+		var run_dir: Vector3 = run["run_dir"]
+		var side_axis := Vector3.UP.cross(run_dir).normalized()
+		if int(run["kind"]) == RailRunKind.RAIL_RUN_FLIGHT:
+			var layout := _build_rail_post_layout(
+				length,
+				run["rise"],
+				run["steps"],
+				lower_newel_enabled and bool(run["first"]),
+				upper_newel_enabled and bool(run["last"]),
+				int(run["middle_newels"])
+			)
+			StandardRailGeometry.append_rail(
+				vertices, normals, colors, indices,
+				run["origin"], run_dir, Vector3.UP, side_axis,
+				length, run["rise"], rail_height,
+				1.0, # post_spacing is unused: post_positions overrides it below.
+				_clamped_infill_rail_size(), rail_thickness, rail_lower_height,
+				rail_color,
+				layout["positions"], layout["base_heights"],
+				layout["thicknesses"], layout["top_heights"],
+				float(layout["lower_horizontal_end"]),
+				float(layout["upper_horizontal_start"]),
+				float(layout["handrail_minimum_run"]),
+				float(layout["handrail_maximum_run"]),
+				infill_style, infill_count_between_newels,
+				layout["base_follows_rise"]
+			)
+		else:
+			StandardRailGeometry.append_rail(
+				vertices, normals, colors, indices,
+				run["origin"], run_dir, Vector3.UP, side_axis,
+				length, run["rise"], rail_height,
+				float(run["post_spacing"]),
+				_clamped_infill_rail_size(), rail_thickness, rail_lower_height,
+				rail_color,
+				run["post_positions"], run["post_base_heights"],
+				PackedFloat32Array(), PackedFloat32Array(),
+				-INF, INF, NAN, NAN,
+				infill_style, infill_count_between_newels,
+				PackedByteArray()
+			)
+
+
+func _add_layout_side_wall_collision_shapes(
+	body: StaticBody3D,
+	width: float,
+	depth: float
+) -> void:
+	var plan := _build_layout_plan(width, depth)
+	var fw: float = plan["flight_width"]
+	var wall_thickness := minf(SIDE_WALL_COLLISION_THICKNESS, fw * 0.45)
+	var shape_index := 0
+	for seg: Dictionary in plan["segments"]:
+		match int(seg["kind"]):
+			SegmentKind.SEGMENT_FLIGHT:
+				shape_index = _add_flight_collision_boxes(
+					body, seg, wall_thickness, shape_index
+				)
+			SegmentKind.SEGMENT_LANDING:
+				shape_index = _add_landing_collision_box(body, seg, shape_index)
+			SegmentKind.SEGMENT_WINDER:
+				shape_index = _add_winder_collision_boxes(
+					body, seg, wall_thickness, shape_index
+				)
+
+
+func _layout_collision_shape_name(shape_index: int) -> String:
+	if shape_index == 0:
+		return "LayoutSideCollisionShape3D"
+	return "LayoutSideCollisionShape3D_%d" % (shape_index + 1)
+
+
+func _add_flight_collision_boxes(
+	body: StaticBody3D,
+	seg: Dictionary,
+	wall_thickness: float,
+	shape_index: int
+) -> int:
+	var steps: int = seg["steps"]
+	var rise: float = seg["rise"]
+	var width: float = seg["width"]
+	var run: float = seg["run"]
+	if width <= 0.001 or run <= 0.001:
+		return shape_index
+	var bottom := _segment_bottom(seg)
+	var tread_depth := run / float(steps)
+	var thickness := minf(wall_thickness, width * 0.45)
+	var seg_basis := Basis(
+		Vector3(seg["width_axis"]), Vector3.UP, Vector3(seg["run_axis"])
+	)
+	for step_index in range(steps):
+		var z_center := tread_depth * (float(step_index) + 0.5)
+		var top := rise * float(step_index + 1)
+		var box_height := top - bottom
+		var y_center := bottom + box_height * 0.5
+		_add_side_wall_collision_shape(
+			body,
+			_layout_collision_shape_name(shape_index),
+			_segment_point(seg, Vector3(thickness * 0.5, y_center, z_center)),
+			Vector3(thickness, box_height, tread_depth),
+			seg_basis
+		)
+		shape_index += 1
+		_add_side_wall_collision_shape(
+			body,
+			_layout_collision_shape_name(shape_index),
+			_segment_point(seg, Vector3(width - thickness * 0.5, y_center, z_center)),
+			Vector3(thickness, box_height, tread_depth),
+			seg_basis
+		)
+		shape_index += 1
+	return shape_index
+
+
+func _add_landing_collision_box(
+	body: StaticBody3D,
+	seg: Dictionary,
+	shape_index: int
+) -> int:
+	var width: float = seg["width"]
+	var run: float = seg["run"]
+	if width <= 0.001 or run <= 0.001:
+		return shape_index
+	var bottom := _segment_bottom(seg)
+	var box_height := -bottom
+	if box_height <= 0.001:
+		return shape_index
+	var seg_basis := Basis(
+		Vector3(seg["width_axis"]), Vector3.UP, Vector3(seg["run_axis"])
+	)
+	_add_side_wall_collision_shape(
+		body,
+		_layout_collision_shape_name(shape_index),
+		_segment_point(seg, Vector3(width * 0.5, bottom * 0.5, run * 0.5)),
+		Vector3(width, box_height, run),
+		seg_basis
+	)
+	return shape_index + 1
+
+
+func _add_winder_collision_boxes(
+	body: StaticBody3D,
+	seg: Dictionary,
+	wall_thickness: float,
+	shape_index: int
+) -> int:
+	var steps: int = seg["steps"]
+	var rise: float = seg["rise"]
+	var pivot: Vector2 = seg["pivot"]
+	var perimeter: PackedVector2Array = seg["perimeter"]
+	var bottom := _segment_bottom(seg)
+	var cumulative := _winder_perimeter_cumulative(perimeter)
+	var total_length := cumulative[cumulative.size() - 1]
+	if total_length <= 0.001:
+		return shape_index
+	var walls: Array[Dictionary] = []
+	for tread_index in range(steps):
+		var t0 := total_length * float(tread_index) / float(steps)
+		var t1 := total_length * float(tread_index + 1) / float(steps)
+		var tread_top := rise * float(tread_index + 1)
+		var edge_points: Array[Vector2] = [
+			_winder_point_at(perimeter, cumulative, t0),
+		]
+		for corner_index in range(1, perimeter.size() - 1):
+			var corner_distance := cumulative[corner_index]
+			if corner_distance > t0 + 0.0001 and corner_distance < t1 - 0.0001:
+				edge_points.append(perimeter[corner_index])
+		edge_points.append(_winder_point_at(perimeter, cumulative, t1))
+		for edge_index in range(edge_points.size() - 1):
+			walls.append({
+				"a": edge_points[edge_index],
+				"b": edge_points[edge_index + 1],
+				"top": tread_top,
+			})
+	for wall: Dictionary in seg["extra_walls"]:
+		walls.append(wall)
+	for wall in walls:
+		var a: Vector2 = wall["a"]
+		var b: Vector2 = wall["b"]
+		var edge_length := a.distance_to(b)
+		if edge_length <= 0.01:
+			continue
+		var wall_top: float = wall["top"]
+		var box_height := wall_top - bottom
+		if box_height <= 0.001:
+			continue
+		var edge_dir := (b - a).normalized()
+		var inward := Vector2(-edge_dir.y, edge_dir.x)
+		var edge_mid := (a + b) * 0.5
+		if inward.dot(pivot - edge_mid) < 0.0:
+			inward = -inward
+		var center_2d := edge_mid + inward * (wall_thickness * 0.5)
+		var edge_dir_3d := _segment_direction(
+			seg, Vector3(edge_dir.x, 0.0, edge_dir.y)
+		).normalized()
+		var box_basis := Basis(edge_dir_3d, Vector3.UP, edge_dir_3d.cross(Vector3.UP))
+		_add_side_wall_collision_shape(
+			body,
+			_layout_collision_shape_name(shape_index),
+			_segment_point(seg, Vector3(
+				center_2d.x, bottom + box_height * 0.5, center_2d.y
+			)),
+			Vector3(edge_length, box_height, wall_thickness),
+			box_basis
+		)
+		shape_index += 1
+	return shape_index

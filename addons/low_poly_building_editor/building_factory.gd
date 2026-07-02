@@ -291,10 +291,18 @@ static func create_stairs_node(
 	rail_newel_post_thickness: float = 0.1,
 	middle_newel_post_count: int = 0,
 	infill_count_between_newels: int = 1,
-	infill_style: int = 0
+	infill_style: int = 0,
+	layout_style: int = Stairs3DScript.LayoutStyle.STRAIGHT,
+	turn_direction: int = Stairs3DScript.TurnDirection.RIGHT,
+	winder_turn: int = Stairs3DScript.WinderTurn.TURN_90,
+	flight_width: float = 1.2
 ) -> Stairs3DScript:
 	var stairs := Stairs3DScript.new() as Stairs3DScript
 	stairs.name = _unique_child_name(building, "Stairs3D")
+	stairs.layout_style = layout_style
+	stairs.turn_direction = turn_direction
+	stairs.winder_turn = winder_turn
+	stairs.flight_width = flight_width
 	stairs.start_point = local_start
 	stairs.end_point = Vector3(local_end.x, local_start.y, local_end.z)
 	stairs.stair_height = height

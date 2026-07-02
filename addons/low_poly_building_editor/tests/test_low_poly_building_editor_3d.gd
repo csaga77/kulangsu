@@ -1923,7 +1923,12 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 		)
 	both_rail_stairs.middle_newel_post_count = 5
 	var distributed_middle_indices: PackedInt32Array = (
-		both_rail_stairs._middle_newel_tread_indices(7)
+		both_rail_stairs._middle_newel_tread_indices(
+			7,
+			both_rail_stairs.lower_newel_enabled,
+			both_rail_stairs.upper_newel_enabled,
+			both_rail_stairs.middle_newel_post_count
+		)
 	)
 	if distributed_middle_indices != PackedInt32Array([1, 3, 4]):
 		m_failures.append(
@@ -1933,12 +1938,22 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	both_rail_stairs.upper_newel_placement = Stairs3DScript.NewelPlacement.TREAD
 	both_rail_stairs.middle_newel_post_count = 4
 	var tread_terminal_middle_indices: PackedInt32Array = (
-		both_rail_stairs._middle_newel_tread_indices(6)
+		both_rail_stairs._middle_newel_tread_indices(
+			6,
+			both_rail_stairs.lower_newel_enabled,
+			both_rail_stairs.upper_newel_enabled,
+			both_rail_stairs.middle_newel_post_count
+		)
 	)
 	both_rail_stairs.lower_newel_placement = Stairs3DScript.NewelPlacement.FLOOR
 	both_rail_stairs.upper_newel_placement = Stairs3DScript.NewelPlacement.FLOOR
 	var floor_terminal_middle_indices: PackedInt32Array = (
-		both_rail_stairs._middle_newel_tread_indices(6)
+		both_rail_stairs._middle_newel_tread_indices(
+			6,
+			both_rail_stairs.lower_newel_enabled,
+			both_rail_stairs.upper_newel_enabled,
+			both_rail_stairs.middle_newel_post_count
+		)
 	)
 	if (
 		tread_terminal_middle_indices != PackedInt32Array([2, 3])
