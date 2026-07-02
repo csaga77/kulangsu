@@ -2071,7 +2071,8 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 		Stairs3DScript.NewelPlacement.TREAD,
 		0.14,
 		2,
-		3
+		3,
+		StandardRailGeometryScript.RailStyle.HORIZONTAL
 	)
 	coordinator.add_child(narrow_stairs)
 	if narrow_stairs.mesh == null or narrow_stairs.mesh.get_surface_count() <= 0:
@@ -2083,6 +2084,7 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 		or narrow_stairs.upper_newel_placement != Stairs3DScript.NewelPlacement.TREAD
 		or narrow_stairs.middle_newel_post_count != 2
 		or narrow_stairs.baluster_count_between_newels != 3
+		or narrow_stairs.rail_style != StandardRailGeometryScript.RailStyle.HORIZONTAL
 		or absf(narrow_stairs.rail_newel_post_thickness - 0.14) > 0.001
 	):
 		m_failures.append("BuildingFactory did not apply the requested stair newel settings")
@@ -2283,6 +2285,35 @@ func _validate_rail_node(coordinator: Building3DScript) -> void:
 	rail.rebuild_rail_mesh()
 	if rail.get_post_count() != 7:
 		m_failures.append("Rail3D did not apply shared per-newel-span baluster counts")
+	rail.lower_rail_height = 0.2
+	rail.newel_post_count = 2
+	rail.baluster_count_between_newels = 1
+	rail.rail_style = StandardRailGeometryScript.RailStyle.HORIZONTAL
+	rail.rebuild_rail_mesh()
+	var horizontal_bar_size := minf(rail.rail_thickness, rail.rail_height * 0.5)
+	var horizontal_base_top := StandardRailGeometryScript.lower_rail_top_height(
+		rail.rail_height,
+		rail.rail_thickness,
+		rail.lower_rail_height
+	)
+	var horizontal_handrail_bottom := rail.rail_height - horizontal_bar_size
+	var horizontal_clear_gap := (
+		horizontal_handrail_bottom
+		- horizontal_base_top
+		- horizontal_bar_size * 2.0
+	) / 3.0
+	var horizontal_first_bottom := horizontal_base_top + horizontal_clear_gap
+	var horizontal_first_top := horizontal_first_bottom + horizontal_bar_size
+	var horizontal_second_bottom := horizontal_first_top + horizontal_clear_gap
+	var horizontal_second_top := horizontal_second_bottom + horizontal_bar_size
+	if (
+		rail.get_post_count() != 2
+		or !_has_mesh_vertex_y_near(rail, horizontal_first_bottom, 0.001)
+		or !_has_mesh_vertex_y_near(rail, horizontal_first_top, 0.001)
+		or !_has_mesh_vertex_y_near(rail, horizontal_second_bottom, 0.001)
+		or !_has_mesh_vertex_y_near(rail, horizontal_second_top, 0.001)
+	):
+		m_failures.append("Rail3D horizontal infill was not evenly spaced between its rails")
 
 	rail.set_rail_points(
 		Vector3(3.0, base_y, 25.0),

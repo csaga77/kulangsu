@@ -13,7 +13,7 @@ const StandardRailGeometry := preload(
 
 const GENERATED_META := &"stairs_generated"
 const PREVIEW_META := &"building_editor_preview"
-const MESH_GEOMETRY_VERSION := 11
+const MESH_GEOMETRY_VERSION := 13
 const SIDE_WALL_COLLISION_THICKNESS := 0.64
 const SIDE_WALL_COLLISION_META := &"stairs_side_wall_collision"
 const LEFT_SIDE_COLLISION_SHAPE_NAME := "LeftSideCollisionShape3D"
@@ -91,6 +91,20 @@ const RIGHT_SIDE_COLLISION_SHAPE_NAME := "RightSideCollisionShape3D"
 		if right_rail_enabled == value:
 			return
 		right_rail_enabled = value
+		_request_rebuild()
+
+@export_enum("Vertical", "Horizontal") var rail_style: int = (
+	StandardRailGeometry.RailStyle.VERTICAL
+):
+	set(value):
+		var clamped_value := clampi(
+			value,
+			StandardRailGeometry.RailStyle.VERTICAL,
+			StandardRailGeometry.RailStyle.HORIZONTAL
+		)
+		if rail_style == clamped_value:
+			return
+		rail_style = clamped_value
 		_request_rebuild()
 
 @export var lower_newel_enabled := false:
@@ -369,6 +383,7 @@ func _stairs_mesh_source_signature() -> int:
 		stair_color,
 		left_rail_enabled,
 		right_rail_enabled,
+		rail_style,
 		lower_newel_enabled,
 		lower_newel_placement,
 		upper_newel_enabled,
@@ -524,7 +539,8 @@ func _append_rail_geometry(
 			lower_horizontal_end,
 			upper_horizontal_start,
 			handrail_minimum_run,
-			handrail_maximum_run
+			handrail_maximum_run,
+			rail_style
 		)
 	if right_rail_enabled:
 		StandardRailGeometry.append_rail(
@@ -551,7 +567,8 @@ func _append_rail_geometry(
 			lower_horizontal_end,
 			upper_horizontal_start,
 			handrail_minimum_run,
-			handrail_maximum_run
+			handrail_maximum_run,
+			rail_style
 		)
 
 
@@ -634,7 +651,11 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 		base_heights,
 		thicknesses,
 		newel_flags,
-		baluster_count_between_newels,
+		(
+			baluster_count_between_newels
+			if rail_style == StandardRailGeometry.RailStyle.VERTICAL
+			else 0
+		),
 		rail_post_thickness
 	)
 	positions = counted_layout["positions"]

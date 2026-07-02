@@ -8,7 +8,7 @@ const StandardRailGeometry := preload(
 
 const GENERATED_META := &"rail_generated"
 const PREVIEW_META := &"building_editor_preview"
-const MESH_GEOMETRY_VERSION := 4
+const MESH_GEOMETRY_VERSION := 6
 
 @export var rebuild := false:
 	set(value):
@@ -63,6 +63,20 @@ const MESH_GEOMETRY_VERSION := 4
 		if is_equal_approx(rail_thickness, clamped_value):
 			return
 		rail_thickness = clamped_value
+		_request_rebuild()
+
+@export_enum("Vertical", "Horizontal") var rail_style: int = (
+	StandardRailGeometry.RailStyle.VERTICAL
+):
+	set(value):
+		var clamped_value := clampi(
+			value,
+			StandardRailGeometry.RailStyle.VERTICAL,
+			StandardRailGeometry.RailStyle.HORIZONTAL
+		)
+		if rail_style == clamped_value:
+			return
+		rail_style = clamped_value
 		_request_rebuild()
 
 @export_range(2, 64, 1) var newel_post_count := 2:
@@ -216,6 +230,7 @@ func _rail_mesh_source_signature() -> int:
 		post_spacing,
 		post_thickness,
 		rail_thickness,
+		rail_style,
 		newel_post_count,
 		baluster_count_between_newels,
 		newel_post_thickness,
@@ -276,7 +291,12 @@ func _append_standard_rail_geometry(
 		layout["positions"],
 		layout["base_heights"],
 		layout["thicknesses"],
-		layout["top_heights"]
+		layout["top_heights"],
+		-INF,
+		INF,
+		NAN,
+		NAN,
+		rail_style
 	)
 
 
@@ -301,7 +321,11 @@ func _get_post_layout(length: float) -> Dictionary:
 		base_heights,
 		thicknesses,
 		newel_flags,
-		baluster_count_between_newels,
+		(
+			baluster_count_between_newels
+			if rail_style == StandardRailGeometry.RailStyle.VERTICAL
+			else 0
+		),
 		post_thickness
 	)
 	positions = counted_layout["positions"]

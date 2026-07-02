@@ -1,6 +1,11 @@
 @tool
 extends RefCounted
 
+enum RailStyle {
+	VERTICAL,
+	HORIZONTAL,
+}
+
 # Shared post-and-bar rail geometry used by the standalone Rail3D tool and by
 # Stairs3D's optional side rails. Geometry is authored in a canonical local
 # frame -- u (run distance along the rail), h (height), s (side/thickness
@@ -83,7 +88,8 @@ static func append_rail(
 	lower_horizontal_end: float = -INF,
 	upper_horizontal_start: float = INF,
 	minimum_run_override: float = NAN,
-	maximum_run_override: float = NAN
+	maximum_run_override: float = NAN,
+	rail_style: int = RailStyle.VERTICAL
 ) -> void:
 	if length <= 0.001:
 		return
@@ -123,12 +129,22 @@ static func append_rail(
 		lower_horizontal_end, upper_horizontal_start
 	)
 
+	var normalized_style := clampi(
+		rail_style,
+		RailStyle.VERTICAL,
+		RailStyle.HORIZONTAL
+	)
 	var lower_center := lower_rail_top_height(
 		rail_height,
 		rail_thickness,
 		lower_rail_height
 	) - bar_size * 0.5
-	if has_lower_rail(rail_height, rail_thickness, lower_rail_height):
+	var has_base_rail := has_lower_rail(
+		rail_height,
+		rail_thickness,
+		lower_rail_height
+	)
+	if has_base_rail:
 		_append_sheared_box(
 			vertices, normals, colors, indices,
 			origin, run_axis, up_axis, side_axis, length, rise,
@@ -136,6 +152,37 @@ static func append_rail(
 			Vector3(bar_maximum_run, lower_center + bar_size * 0.5, bar_size * 0.5),
 			color
 		)
+	if normalized_style == RailStyle.HORIZONTAL:
+		const HORIZONTAL_INFILL_COUNT := 2
+		var infill_bottom := lower_center + bar_size * 0.5 if has_base_rail else 0.0
+		var infill_clear_height := (
+			top_bottom
+			- infill_bottom
+			- bar_size * HORIZONTAL_INFILL_COUNT
+		)
+		if infill_clear_height >= 0.0:
+			var clear_gap := infill_clear_height / float(HORIZONTAL_INFILL_COUNT + 1)
+			for infill_index in range(HORIZONTAL_INFILL_COUNT):
+				var infill_center := (
+					infill_bottom
+					+ clear_gap * float(infill_index + 1)
+					+ bar_size * (float(infill_index) + 0.5)
+				)
+				_append_sheared_box(
+					vertices, normals, colors, indices,
+					origin, run_axis, up_axis, side_axis, length, rise,
+					Vector3(
+						bar_minimum_run,
+						infill_center - bar_size * 0.5,
+						-bar_size * 0.5
+					),
+					Vector3(
+						bar_maximum_run,
+						infill_center + bar_size * 0.5,
+						bar_size * 0.5
+					),
+					color
+				)
 
 	for index in range(positions.size()):
 		var u := positions[index]
