@@ -4,7 +4,12 @@ extends RefCounted
 enum RailStyle {
 	VERTICAL,
 	HORIZONTAL,
+	GLASS_PANEL,
 }
+
+# Translucent tint applied to glass-panel infill vertices. The caller's
+# material must enable alpha transparency for the panel to render see-through.
+const GLASS_PANEL_COLOR := Color(0.68, 0.84, 0.9, 0.42)
 
 # Shared post-and-bar rail geometry used by the standalone Rail3D tool and by
 # Stairs3D's optional side rails. Geometry is authored in a canonical local
@@ -27,7 +32,7 @@ enum RailStyle {
 # rise. By default a post's flat base height follows the same rise/length
 # diagonal as the bars (matching a level rail's ground plane when rise is
 # 0.0); callers supply an explicit `post_base_heights` entry per post so
-# newels can land on their structural surface while balusters land on a
+# newels can land on their structural surface while infills land on a
 # lower-rail top or caller-specific fallback surface. Each
 # regular post's top edge follows the raked handrail underside across its
 # footprint. Callers may instead supply a flat top height for a newel beneath
@@ -89,7 +94,8 @@ static func append_rail(
 	upper_horizontal_start: float = INF,
 	minimum_run_override: float = NAN,
 	maximum_run_override: float = NAN,
-	rail_style: int = RailStyle.VERTICAL
+	rail_style: int = RailStyle.VERTICAL,
+	horizontal_infill_count: int = 2
 ) -> void:
 	if length <= 0.001:
 		return
@@ -132,7 +138,7 @@ static func append_rail(
 	var normalized_style := clampi(
 		rail_style,
 		RailStyle.VERTICAL,
-		RailStyle.HORIZONTAL
+		RailStyle.GLASS_PANEL
 	)
 	var lower_center := lower_rail_top_height(
 		rail_height,
@@ -152,37 +158,48 @@ static func append_rail(
 			Vector3(bar_maximum_run, lower_center + bar_size * 0.5, bar_size * 0.5),
 			color
 		)
+	var infill_bottom := lower_center + bar_size * 0.5 if has_base_rail else 0.0
 	if normalized_style == RailStyle.HORIZONTAL:
-		const HORIZONTAL_INFILL_COUNT := 2
-		var infill_bottom := lower_center + bar_size * 0.5 if has_base_rail else 0.0
+		var infill_count := clampi(horizontal_infill_count, 0, 64)
+		var infill_size := minf(post_size, maxf(top_bottom - infill_bottom, 0.02))
 		var infill_clear_height := (
 			top_bottom
 			- infill_bottom
-			- bar_size * HORIZONTAL_INFILL_COUNT
+			- infill_size * infill_count
 		)
-		if infill_clear_height >= 0.0:
-			var clear_gap := infill_clear_height / float(HORIZONTAL_INFILL_COUNT + 1)
-			for infill_index in range(HORIZONTAL_INFILL_COUNT):
+		if infill_count > 0 and infill_clear_height >= 0.0:
+			var clear_gap := infill_clear_height / float(infill_count + 1)
+			for infill_index in range(infill_count):
 				var infill_center := (
 					infill_bottom
 					+ clear_gap * float(infill_index + 1)
-					+ bar_size * (float(infill_index) + 0.5)
+					+ infill_size * (float(infill_index) + 0.5)
 				)
 				_append_sheared_box(
 					vertices, normals, colors, indices,
 					origin, run_axis, up_axis, side_axis, length, rise,
 					Vector3(
 						bar_minimum_run,
-						infill_center - bar_size * 0.5,
-						-bar_size * 0.5
+						infill_center - infill_size * 0.5,
+						-infill_size * 0.5
 					),
 					Vector3(
 						bar_maximum_run,
-						infill_center + bar_size * 0.5,
-						bar_size * 0.5
+						infill_center + infill_size * 0.5,
+						infill_size * 0.5
 					),
 					color
 				)
+	elif normalized_style == RailStyle.GLASS_PANEL:
+		var panel_thickness := maxf(minf(bar_size, post_size) * 0.5, 0.02)
+		if top_bottom - infill_bottom > 0.001:
+			_append_sheared_box(
+				vertices, normals, colors, indices,
+				origin, run_axis, up_axis, side_axis, length, rise,
+				Vector3(bar_minimum_run, infill_bottom, -panel_thickness * 0.5),
+				Vector3(bar_maximum_run, top_bottom, panel_thickness * 0.5),
+				GLASS_PANEL_COLOR
+			)
 
 	for index in range(positions.size()):
 		var u := positions[index]
@@ -227,19 +244,19 @@ static func tread_mid_post_base_heights(rise: float, step_count: int) -> PackedF
 	return heights
 
 
-static func apply_baluster_count_between_newels(
+static func apply_infill_count_between_newels(
 	positions: PackedFloat32Array,
 	base_heights: PackedFloat32Array,
 	thicknesses: PackedFloat32Array,
 	newel_flags: PackedByteArray,
-	baluster_count: int,
+	infill_count: int,
 	regular_size: float
 ) -> Dictionary:
 	var counted_positions := PackedFloat32Array()
 	var counted_base_heights := PackedFloat32Array()
 	var counted_thicknesses := PackedFloat32Array()
 	var counted_newel_flags := PackedByteArray()
-	var safe_count := maxi(baluster_count, 0)
+	var safe_count := maxi(infill_count, 0)
 	var safe_regular_size := maxf(regular_size, 0.02)
 	var index := 0
 	while index < positions.size():
@@ -254,9 +271,9 @@ static func apply_baluster_count_between_newels(
 					next_newel_index = candidate_index
 					break
 			if next_newel_index >= 0:
-				for baluster_index in range(safe_count):
+				for infill_index in range(safe_count):
 					var ratio := (
-						float(baluster_index + 1)
+						float(infill_index + 1)
 						/ float(safe_count + 1)
 					)
 					counted_positions.append(lerpf(
@@ -278,7 +295,7 @@ static func apply_baluster_count_between_newels(
 	}
 
 
-static func redistribute_balusters_between_newels(
+static func redistribute_infills_between_newels(
 	positions: PackedFloat32Array,
 	thicknesses: PackedFloat32Array,
 	newel_flags: PackedByteArray
@@ -293,20 +310,20 @@ static func redistribute_balusters_between_newels(
 				+ thicknesses[previous_newel_index] * 0.5
 			)
 			var clear_end := positions[index] - thicknesses[index] * 0.5
-			var baluster_width_total := 0.0
-			for baluster_index in range(previous_newel_index + 1, index):
-				baluster_width_total += thicknesses[baluster_index]
-			var baluster_count := index - previous_newel_index - 1
+			var infill_width_total := 0.0
+			for infill_index in range(previous_newel_index + 1, index):
+				infill_width_total += thicknesses[infill_index]
+			var infill_count := index - previous_newel_index - 1
 			var clear_gap := maxf(
-				(clear_end - clear_start - baluster_width_total)
-				/ float(baluster_count + 1),
+				(clear_end - clear_start - infill_width_total)
+				/ float(infill_count + 1),
 				0.0
 			)
 			var cursor := clear_start + clear_gap
-			for baluster_index in range(previous_newel_index + 1, index):
-				var baluster_width := thicknesses[baluster_index]
-				positions[baluster_index] = cursor + baluster_width * 0.5
-				cursor += baluster_width + clear_gap
+			for infill_index in range(previous_newel_index + 1, index):
+				var infill_width := thicknesses[infill_index]
+				positions[infill_index] = cursor + infill_width * 0.5
+				cursor += infill_width + clear_gap
 		previous_newel_index = index
 
 

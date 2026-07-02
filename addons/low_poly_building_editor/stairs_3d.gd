@@ -13,7 +13,7 @@ const StandardRailGeometry := preload(
 
 const GENERATED_META := &"stairs_generated"
 const PREVIEW_META := &"building_editor_preview"
-const MESH_GEOMETRY_VERSION := 13
+const MESH_GEOMETRY_VERSION := 14
 const SIDE_WALL_COLLISION_THICKNESS := 0.64
 const SIDE_WALL_COLLISION_META := &"stairs_side_wall_collision"
 const LEFT_SIDE_COLLISION_SHAPE_NAME := "LeftSideCollisionShape3D"
@@ -93,18 +93,18 @@ const RIGHT_SIDE_COLLISION_SHAPE_NAME := "RightSideCollisionShape3D"
 		right_rail_enabled = value
 		_request_rebuild()
 
-@export_enum("Vertical", "Horizontal") var rail_style: int = (
+@export_enum("Vertical Rail", "Horizontal Rail", "Glass Panel") var infill_style: int = (
 	StandardRailGeometry.RailStyle.VERTICAL
 ):
 	set(value):
 		var clamped_value := clampi(
 			value,
 			StandardRailGeometry.RailStyle.VERTICAL,
-			StandardRailGeometry.RailStyle.HORIZONTAL
+			StandardRailGeometry.RailStyle.GLASS_PANEL
 		)
-		if rail_style == clamped_value:
+		if infill_style == clamped_value:
 			return
-		rail_style = clamped_value
+		infill_style = clamped_value
 		_request_rebuild()
 
 @export var lower_newel_enabled := false:
@@ -145,12 +145,12 @@ const RIGHT_SIDE_COLLISION_SHAPE_NAME := "RightSideCollisionShape3D"
 		middle_newel_post_count = clamped_value
 		_request_rebuild()
 
-@export_range(0, 64, 1) var baluster_count_between_newels := 1:
+@export_range(0, 64, 1) var infill_count_between_newels := 1:
 	set(value):
 		var clamped_value := clampi(value, 0, 64)
-		if baluster_count_between_newels == clamped_value:
+		if infill_count_between_newels == clamped_value:
 			return
-		baluster_count_between_newels = clamped_value
+		infill_count_between_newels = clamped_value
 		_request_rebuild()
 
 @export_range(0.02, 1.0, 0.01, "or_greater") var rail_newel_post_thickness := 0.1:
@@ -177,12 +177,12 @@ const RIGHT_SIDE_COLLISION_SHAPE_NAME := "RightSideCollisionShape3D"
 		rail_height = clamped_value
 		_request_rebuild()
 
-@export_range(0.02, 1.0, 0.01, "or_greater") var rail_post_thickness := 0.08:
+@export_range(0.02, 1.0, 0.01, "or_greater") var infill_rail_thickness := 0.08:
 	set(value):
 		var clamped_value := maxf(value, 0.02)
-		if is_equal_approx(rail_post_thickness, clamped_value):
+		if is_equal_approx(infill_rail_thickness, clamped_value):
 			return
-		rail_post_thickness = clamped_value
+		infill_rail_thickness = clamped_value
 		_request_rebuild()
 
 @export_range(0.02, 1.0, 0.01, "or_greater") var rail_thickness := 0.1:
@@ -383,17 +383,17 @@ func _stairs_mesh_source_signature() -> int:
 		stair_color,
 		left_rail_enabled,
 		right_rail_enabled,
-		rail_style,
+		infill_style,
 		lower_newel_enabled,
 		lower_newel_placement,
 		upper_newel_enabled,
 		upper_newel_placement,
 		middle_newel_post_count,
-		baluster_count_between_newels,
+		infill_count_between_newels,
 		rail_newel_post_thickness,
 		rail_edge_margin,
 		rail_height,
-		rail_post_thickness,
+		infill_rail_thickness,
 		rail_thickness,
 		rail_lower_height,
 		rail_color,
@@ -528,7 +528,7 @@ func _append_rail_geometry(
 			height,
 			rail_height,
 			1.0, # post_spacing is unused: post_positions overrides it below.
-			rail_post_thickness,
+			infill_rail_thickness,
 			rail_thickness,
 			rail_lower_height,
 			rail_color,
@@ -540,7 +540,8 @@ func _append_rail_geometry(
 			upper_horizontal_start,
 			handrail_minimum_run,
 			handrail_maximum_run,
-			rail_style
+			infill_style,
+			infill_count_between_newels
 		)
 	if right_rail_enabled:
 		StandardRailGeometry.append_rail(
@@ -556,7 +557,7 @@ func _append_rail_geometry(
 			height,
 			rail_height,
 			1.0, # post_spacing is unused: post_positions overrides it below.
-			rail_post_thickness,
+			infill_rail_thickness,
 			rail_thickness,
 			rail_lower_height,
 			rail_color,
@@ -568,7 +569,8 @@ func _append_rail_geometry(
 			upper_horizontal_start,
 			handrail_minimum_run,
 			handrail_maximum_run,
-			rail_style
+			infill_style,
+			infill_count_between_newels
 		)
 
 
@@ -587,7 +589,7 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 	var thicknesses := PackedFloat32Array()
 	var newel_flags := PackedByteArray()
 	for _index in range(positions.size()):
-		thicknesses.append(maxf(rail_post_thickness, 0.02))
+		thicknesses.append(maxf(infill_rail_thickness, 0.02))
 		newel_flags.append(0)
 
 	# A newel stays no wider than the handrail so its open top is completely
@@ -646,17 +648,17 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 		lower_newel_position = positions[lower_newel_index]
 	if upper_newel_index >= 0:
 		upper_newel_position = positions[upper_newel_index]
-	var counted_layout := StandardRailGeometry.apply_baluster_count_between_newels(
+	var counted_layout := StandardRailGeometry.apply_infill_count_between_newels(
 		positions,
 		base_heights,
 		thicknesses,
 		newel_flags,
 		(
-			baluster_count_between_newels
-			if rail_style == StandardRailGeometry.RailStyle.VERTICAL
+			infill_count_between_newels
+			if infill_style == StandardRailGeometry.RailStyle.VERTICAL
 			else 0
 		),
-		rail_post_thickness
+		infill_rail_thickness
 	)
 	positions = counted_layout["positions"]
 	base_heights = counted_layout["base_heights"]
@@ -682,7 +684,7 @@ func _build_rail_post_layout(depth: float, height: float, steps: int) -> Diction
 	)
 	var safe_depth := maxf(depth, 0.001)
 	if has_base_rail:
-		StandardRailGeometry.redistribute_balusters_between_newels(
+		StandardRailGeometry.redistribute_infills_between_newels(
 			positions,
 			thicknesses,
 			newel_flags
@@ -953,6 +955,23 @@ func _update_stairs_mesh_resource(arrays: Array) -> void:
 	_replace_generated_mesh_surface(arrays)
 
 
+func _stairs_material_transparency(color: Color) -> BaseMaterial3D.Transparency:
+	# The glass-panel rail infill carries its translucency in vertex alpha
+	# inside the same surface as the opaque steps, posts, and handrail. Plain
+	# alpha blending would move the whole stairs mesh into the no-depth-write
+	# transparent pass and break depth sorting, so the glass style uses an
+	# opaque depth pre-pass: opaque fragments keep correct depth while the
+	# panel still blends.
+	if (
+		(left_rail_enabled or right_rail_enabled)
+		and infill_style == StandardRailGeometry.RailStyle.GLASS_PANEL
+	):
+		return BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
+	if color.a < 0.99:
+		return BaseMaterial3D.TRANSPARENCY_ALPHA
+	return BaseMaterial3D.TRANSPARENCY_DISABLED
+
+
 func _sync_stairs_material() -> void:
 	var material := _scene_local_material_for_write(
 		material_override as StandardMaterial3D
@@ -965,10 +984,7 @@ func _sync_stairs_material() -> void:
 	material.roughness = 0.94
 	material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	material.cull_mode = BaseMaterial3D.CULL_BACK
-	material.transparency = (
-		BaseMaterial3D.TRANSPARENCY_ALPHA if stair_color.a < 0.99
-		else BaseMaterial3D.TRANSPARENCY_DISABLED
-	)
+	material.transparency = _stairs_material_transparency(stair_color)
 
 
 func _build_stairs_material(color: Color) -> StandardMaterial3D:
@@ -979,8 +995,7 @@ func _build_stairs_material(color: Color) -> StandardMaterial3D:
 	material.roughness = 0.94
 	material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	material.cull_mode = BaseMaterial3D.CULL_BACK
-	if color.a < 0.99:
-		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.transparency = _stairs_material_transparency(color)
 	return material
 
 

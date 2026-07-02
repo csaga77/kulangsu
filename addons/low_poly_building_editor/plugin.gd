@@ -247,17 +247,17 @@ var m_stair_settings := {
 	"color": Color(0.52, 0.46, 0.38, 1.0),
 	"left_rail_enabled": false,
 	"right_rail_enabled": false,
-	"rail_style": 0,
+	"infill_style": 0,
 	"lower_newel_enabled": false,
 	"lower_newel_placement": Stairs3DScript.NewelPlacement.TREAD,
 	"upper_newel_enabled": false,
 	"upper_newel_placement": Stairs3DScript.NewelPlacement.TREAD,
 	"middle_newel_post_count": 0,
-	"baluster_count_between_newels": 1,
+	"infill_count_between_newels": 1,
 	"rail_newel_post_thickness": 0.1,
 	"rail_edge_margin": 0.15,
 	"rail_height": 1.0,
-	"rail_post_thickness": 0.08,
+	"infill_rail_thickness": 0.08,
 	"rail_thickness": 0.1,
 	"rail_lower_height": 0.18,
 	"rail_color": Color(0.33, 0.28, 0.22, 1.0),
@@ -267,11 +267,11 @@ var m_rail_settings := {
 	"base_height": 0.0,
 	"height": 1.0,
 	"post_spacing": 1.0,
-	"post_thickness": 0.08,
+	"infill_rail_thickness": 0.08,
 	"rail_thickness": 0.1,
-	"rail_style": 0,
+	"infill_style": 0,
 	"newel_post_count": 2,
-	"baluster_count_between_newels": 1,
+	"infill_count_between_newels": 1,
 	"newel_post_thickness": 0.1,
 	"lower_rail_height": 0.18,
 	"color": Color(0.33, 0.28, 0.22, 1.0),
@@ -2412,7 +2412,7 @@ func _update_stair_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 func _apply_stair_rail_settings(stairs: Stairs3DScript) -> void:
 	stairs.left_rail_enabled = bool(m_stair_settings.get("left_rail_enabled", false))
 	stairs.right_rail_enabled = bool(m_stair_settings.get("right_rail_enabled", false))
-	stairs.rail_style = int(m_stair_settings.get("rail_style", 0))
+	stairs.infill_style = int(m_stair_settings.get("infill_style", 0))
 	stairs.lower_newel_enabled = bool(m_stair_settings.get("lower_newel_enabled", false))
 	stairs.lower_newel_placement = int(m_stair_settings.get(
 		"lower_newel_placement",
@@ -2426,15 +2426,15 @@ func _apply_stair_rail_settings(stairs: Stairs3DScript) -> void:
 	stairs.middle_newel_post_count = int(
 		m_stair_settings.get("middle_newel_post_count", 0)
 	)
-	stairs.baluster_count_between_newels = int(
-		m_stair_settings.get("baluster_count_between_newels", 1)
+	stairs.infill_count_between_newels = int(
+		m_stair_settings.get("infill_count_between_newels", 1)
 	)
 	stairs.rail_newel_post_thickness = float(
 		m_stair_settings.get("rail_newel_post_thickness", 0.1)
 	)
 	stairs.rail_edge_margin = float(m_stair_settings.get("rail_edge_margin", 0.15))
 	stairs.rail_height = float(m_stair_settings.get("rail_height", 1.0))
-	stairs.rail_post_thickness = float(m_stair_settings.get("rail_post_thickness", 0.08))
+	stairs.infill_rail_thickness = float(m_stair_settings.get("infill_rail_thickness", 0.08))
 	stairs.rail_thickness = float(m_stair_settings.get("rail_thickness", 0.1))
 	stairs.rail_lower_height = float(m_stair_settings.get("rail_lower_height", 0.18))
 	stairs.rail_color = Color(m_stair_settings.get("rail_color", Color(0.33, 0.28, 0.22, 1.0)))
@@ -2586,7 +2586,7 @@ func _commit_stairs(
 		bool(m_stair_settings.get("left_rail_enabled", false)),
 		bool(m_stair_settings.get("right_rail_enabled", false)),
 		float(m_stair_settings.get("rail_height", 1.0)),
-		float(m_stair_settings.get("rail_post_thickness", 0.08)),
+		float(m_stair_settings.get("infill_rail_thickness", 0.08)),
 		float(m_stair_settings.get("rail_thickness", 0.1)),
 		float(m_stair_settings.get("rail_lower_height", 0.18)),
 		Color(m_stair_settings.get("rail_color", Color(0.33, 0.28, 0.22, 1.0))),
@@ -2603,8 +2603,8 @@ func _commit_stairs(
 		)),
 		float(m_stair_settings.get("rail_newel_post_thickness", 0.1)),
 		int(m_stair_settings.get("middle_newel_post_count", 0)),
-		int(m_stair_settings.get("baluster_count_between_newels", 1)),
-		int(m_stair_settings.get("rail_style", 0))
+		int(m_stair_settings.get("infill_count_between_newels", 1)),
+		int(m_stair_settings.get("infill_style", 0))
 	)
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	var undo_redo := get_undo_redo()
@@ -2977,12 +2977,12 @@ func _create_rail_preview(coordinator: Building3DScript) -> void:
 	m_rail_preview.set_meta(Rail3DScript.PREVIEW_META, true)
 	m_rail_preview.rail_height = float(m_rail_settings["height"])
 	m_rail_preview.post_spacing = float(m_rail_settings["post_spacing"])
-	m_rail_preview.post_thickness = float(m_rail_settings["post_thickness"])
+	m_rail_preview.infill_rail_thickness = float(m_rail_settings["infill_rail_thickness"])
 	m_rail_preview.rail_thickness = float(m_rail_settings["rail_thickness"])
-	m_rail_preview.rail_style = int(m_rail_settings.get("rail_style", 0))
+	m_rail_preview.infill_style = int(m_rail_settings.get("infill_style", 0))
 	m_rail_preview.newel_post_count = int(m_rail_settings.get("newel_post_count", 2))
-	m_rail_preview.baluster_count_between_newels = int(
-		m_rail_settings.get("baluster_count_between_newels", 1)
+	m_rail_preview.infill_count_between_newels = int(
+		m_rail_settings.get("infill_count_between_newels", 1)
 	)
 	m_rail_preview.newel_post_thickness = float(
 		m_rail_settings.get("newel_post_thickness", 0.1)
@@ -3073,14 +3073,14 @@ func _commit_rail(
 		local_end,
 		float(m_rail_settings["height"]),
 		float(m_rail_settings["post_spacing"]),
-		float(m_rail_settings["post_thickness"]),
+		float(m_rail_settings["infill_rail_thickness"]),
 		float(m_rail_settings["rail_thickness"]),
 		float(m_rail_settings["lower_rail_height"]),
 		Color(m_rail_settings["color"]),
 		int(m_rail_settings.get("newel_post_count", 2)),
-		int(m_rail_settings.get("baluster_count_between_newels", 1)),
+		int(m_rail_settings.get("infill_count_between_newels", 1)),
 		float(m_rail_settings.get("newel_post_thickness", 0.1)),
-		int(m_rail_settings.get("rail_style", 0))
+		int(m_rail_settings.get("infill_style", 0))
 	)
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	var undo_redo := get_undo_redo()

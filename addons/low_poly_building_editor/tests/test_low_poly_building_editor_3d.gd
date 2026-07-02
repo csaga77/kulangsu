@@ -1778,15 +1778,15 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	if _mesh_vertex_count(one_rail_stairs) != base_vertex_count + 176:
 		m_failures.append("Stairs3D retained base-rail geometry when its height was zero")
 	var no_base_rail_layout := one_rail_stairs._get_rail_post_layout()
-	var tread_based_baluster_heights: PackedFloat32Array = no_base_rail_layout["base_heights"]
+	var tread_based_infill_heights: PackedFloat32Array = no_base_rail_layout["base_heights"]
 	if (
-		tread_based_baluster_heights.size() != 4
-		or absf(tread_based_baluster_heights[0] - 0.3) > 0.001
-		or absf(tread_based_baluster_heights[1] - 0.6) > 0.001
-		or absf(tread_based_baluster_heights[2] - 0.9) > 0.001
-		or absf(tread_based_baluster_heights[3] - 1.2) > 0.001
+		tread_based_infill_heights.size() != 4
+		or absf(tread_based_infill_heights[0] - 0.3) > 0.001
+		or absf(tread_based_infill_heights[1] - 0.6) > 0.001
+		or absf(tread_based_infill_heights[2] - 0.9) > 0.001
+		or absf(tread_based_infill_heights[3] - 1.2) > 0.001
 	):
-		m_failures.append("Stairs3D balusters did not fall back to tread bases without a base rail")
+		m_failures.append("Stairs3D infills did not fall back to tread bases without a base rail")
 
 	var both_rail_stairs := BuildingFactoryScript.create_stairs_node(coordinator,
 		Vector3(12.0, base_y, 32.0),
@@ -1835,16 +1835,16 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 		or absf(expected_post_base_heights[3] - 1.2) > 0.001
 	):
 		m_failures.append("Stairs3D rail posts are not based on their tread's actual height")
-	# Regular balusters instead begin on the top of the raked base rail. With
+	# Regular infills instead begin on the top of the raked base rail. With
 	# a 0.18 center and 0.10 thickness, that top is 0.23 above the rail slope.
 	var default_rail_layout := both_rail_stairs._get_rail_post_layout()
-	var default_baluster_bases: PackedFloat32Array = default_rail_layout["base_heights"]
+	var default_infill_bases: PackedFloat32Array = default_rail_layout["base_heights"]
 	if (
-		default_baluster_bases.size() != 4
-		or absf(default_baluster_bases[0] - 0.38) > 0.001
-		or absf(default_baluster_bases[3] - 1.28) > 0.001
+		default_infill_bases.size() != 4
+		or absf(default_infill_bases[0] - 0.38) > 0.001
+		or absf(default_infill_bases[3] - 1.28) > 0.001
 	):
-		m_failures.append("Stairs3D balusters do not sit on top of the raked base rail")
+		m_failures.append("Stairs3D infills do not sit on top of the raked base rail")
 
 	if (
 		both_rail_stairs.lower_newel_enabled
@@ -1852,8 +1852,8 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 		or both_rail_stairs.middle_newel_post_count != 0
 	):
 		m_failures.append("Stairs3D enabled newel posts by default")
-	if both_rail_stairs.baluster_count_between_newels != 1:
-		m_failures.append("Stairs3D did not default to one baluster per newel span")
+	if both_rail_stairs.infill_count_between_newels != 1:
+		m_failures.append("Stairs3D did not default to one infill per newel span")
 	both_rail_stairs.middle_newel_post_count = 2
 	var fallback_terminal_layout := both_rail_stairs._get_rail_post_layout()
 	var fallback_terminal_positions: PackedFloat32Array = fallback_terminal_layout["positions"]
@@ -1948,8 +1948,8 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	both_rail_stairs.lower_newel_placement = Stairs3DScript.NewelPlacement.FLOOR
 	both_rail_stairs.upper_newel_placement = Stairs3DScript.NewelPlacement.TREAD
 	both_rail_stairs.middle_newel_post_count = 4
-	both_rail_stairs.baluster_count_between_newels = 3
-	var counted_baluster_layout := StandardRailGeometryScript.apply_baluster_count_between_newels(
+	both_rail_stairs.infill_count_between_newels = 3
+	var counted_infill_layout := StandardRailGeometryScript.apply_infill_count_between_newels(
 		PackedFloat32Array([0.0, 1.0, 2.0, 4.0]),
 		PackedFloat32Array([0.0, 0.0, 0.0, 0.0]),
 		PackedFloat32Array([0.2, 0.1, 0.1, 0.4]),
@@ -1957,18 +1957,18 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 		3,
 		0.08
 	)
-	var counted_baluster_positions: PackedFloat32Array = counted_baluster_layout["positions"]
-	var counted_baluster_flags: PackedByteArray = counted_baluster_layout["newel_flags"]
+	var counted_infill_positions: PackedFloat32Array = counted_infill_layout["positions"]
+	var counted_infill_flags: PackedByteArray = counted_infill_layout["newel_flags"]
 	if (
-		counted_baluster_positions.size() != 5
-		or counted_baluster_flags != PackedByteArray([1, 0, 0, 0, 1])
+		counted_infill_positions.size() != 5
+		or counted_infill_flags != PackedByteArray([1, 0, 0, 0, 1])
 	):
-		m_failures.append("Stairs3D did not generate the requested baluster count per span")
-	both_rail_stairs.baluster_count_between_newels = 1
+		m_failures.append("Stairs3D did not generate the requested infill count per span")
+	both_rail_stairs.infill_count_between_newels = 1
 	var redistributed_positions := PackedFloat32Array([0.0, 1.0, 2.0, 4.0])
 	var redistributed_thicknesses := PackedFloat32Array([0.2, 0.1, 0.1, 0.4])
 	var redistributed_newel_flags := PackedByteArray([1, 0, 0, 1])
-	StandardRailGeometryScript.redistribute_balusters_between_newels(
+	StandardRailGeometryScript.redistribute_infills_between_newels(
 		redistributed_positions,
 		redistributed_thicknesses,
 		redistributed_newel_flags
@@ -1982,7 +1982,7 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 		absf(first_clear_gap - middle_clear_gap) > 0.001
 		or absf(middle_clear_gap - final_clear_gap) > 0.001
 	):
-		m_failures.append("Stairs3D balusters are not evenly spaced between newel faces")
+		m_failures.append("Stairs3D infills are not evenly spaced between newel faces")
 	if !_has_mesh_vertex_with_normal_near(
 		both_rail_stairs.mesh as ArrayMesh,
 		Vector3(0.10, 1.0, -0.55),
@@ -2083,8 +2083,8 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 		or !narrow_stairs.upper_newel_enabled
 		or narrow_stairs.upper_newel_placement != Stairs3DScript.NewelPlacement.TREAD
 		or narrow_stairs.middle_newel_post_count != 2
-		or narrow_stairs.baluster_count_between_newels != 3
-		or narrow_stairs.rail_style != StandardRailGeometryScript.RailStyle.HORIZONTAL
+		or narrow_stairs.infill_count_between_newels != 3
+		or narrow_stairs.infill_style != StandardRailGeometryScript.RailStyle.HORIZONTAL
 		or absf(narrow_stairs.rail_newel_post_thickness - 0.14) > 0.001
 	):
 		m_failures.append("BuildingFactory did not apply the requested stair newel settings")
@@ -2233,7 +2233,7 @@ func _validate_rail_node(coordinator: Building3DScript) -> void:
 	if absf(rail.get_rail_length() - 4.0) > 0.001:
 		m_failures.append("Rail3D did not preserve its authored span length")
 	if rail.get_post_count() != 3:
-		m_failures.append("Rail3D did not generate endpoint newels and its configured baluster span")
+		m_failures.append("Rail3D did not generate endpoint newels and its configured infill span")
 	var rail_layout := rail._get_post_layout(4.0)
 	var rail_positions: PackedFloat32Array = rail_layout["positions"]
 	var rail_base_heights: PackedFloat32Array = rail_layout["base_heights"]
@@ -2245,7 +2245,7 @@ func _validate_rail_node(coordinator: Building3DScript) -> void:
 		or absf(rail_base_heights[1] - 0.25) > 0.001
 		or absf(rail_base_heights[2]) > 0.001
 	):
-		m_failures.append("Rail3D did not share the newel/base-rail baluster layout")
+		m_failures.append("Rail3D did not share the newel/base-rail infill layout")
 
 	var arrays := rail.mesh.surface_get_arrays(0)
 	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
@@ -2279,16 +2279,16 @@ func _validate_rail_node(coordinator: Building3DScript) -> void:
 		_mesh_vertex_count(rail) != 100
 		or absf(no_base_heights[1]) > 0.001
 	):
-		m_failures.append("Rail3D did not remove its base rail and rebase balusters")
+		m_failures.append("Rail3D did not remove its base rail and rebase infills")
 	rail.newel_post_count = 3
-	rail.baluster_count_between_newels = 2
+	rail.infill_count_between_newels = 2
 	rail.rebuild_rail_mesh()
 	if rail.get_post_count() != 7:
-		m_failures.append("Rail3D did not apply shared per-newel-span baluster counts")
+		m_failures.append("Rail3D did not apply shared per-newel-span infill counts")
 	rail.lower_rail_height = 0.2
 	rail.newel_post_count = 2
-	rail.baluster_count_between_newels = 1
-	rail.rail_style = StandardRailGeometryScript.RailStyle.HORIZONTAL
+	rail.infill_count_between_newels = 2
+	rail.infill_style = StandardRailGeometryScript.RailStyle.HORIZONTAL
 	rail.rebuild_rail_mesh()
 	var horizontal_bar_size := minf(rail.rail_thickness, rail.rail_height * 0.5)
 	var horizontal_base_top := StandardRailGeometryScript.lower_rail_top_height(
@@ -2297,15 +2297,19 @@ func _validate_rail_node(coordinator: Building3DScript) -> void:
 		rail.lower_rail_height
 	)
 	var horizontal_handrail_bottom := rail.rail_height - horizontal_bar_size
+	var horizontal_infill_size := minf(
+		rail.infill_rail_thickness,
+		maxf(horizontal_handrail_bottom - horizontal_base_top, 0.02)
+	)
 	var horizontal_clear_gap := (
 		horizontal_handrail_bottom
 		- horizontal_base_top
-		- horizontal_bar_size * 2.0
+		- horizontal_infill_size * 2.0
 	) / 3.0
 	var horizontal_first_bottom := horizontal_base_top + horizontal_clear_gap
-	var horizontal_first_top := horizontal_first_bottom + horizontal_bar_size
+	var horizontal_first_top := horizontal_first_bottom + horizontal_infill_size
 	var horizontal_second_bottom := horizontal_first_top + horizontal_clear_gap
-	var horizontal_second_top := horizontal_second_bottom + horizontal_bar_size
+	var horizontal_second_top := horizontal_second_bottom + horizontal_infill_size
 	if (
 		rail.get_post_count() != 2
 		or !_has_mesh_vertex_y_near(rail, horizontal_first_bottom, 0.001)
@@ -2313,7 +2317,55 @@ func _validate_rail_node(coordinator: Building3DScript) -> void:
 		or !_has_mesh_vertex_y_near(rail, horizontal_second_bottom, 0.001)
 		or !_has_mesh_vertex_y_near(rail, horizontal_second_top, 0.001)
 	):
-		m_failures.append("Rail3D horizontal infill was not evenly spaced between its rails")
+		m_failures.append("Rail3D horizontal infill did not follow the configured count and thickness")
+	rail.infill_style = StandardRailGeometryScript.RailStyle.GLASS_PANEL
+	rail.rebuild_rail_mesh()
+	var glass_material := rail.material_override as StandardMaterial3D
+	var glass_arrays: Array = rail.mesh.surface_get_arrays(0)
+	var glass_colors: PackedColorArray = glass_arrays[Mesh.ARRAY_COLOR]
+	var has_translucent_glass_vertex := false
+	for glass_color in glass_colors:
+		if glass_color.a < 0.9:
+			has_translucent_glass_vertex = true
+			break
+	if (
+		!_has_mesh_vertex_y_near(rail, horizontal_base_top, 0.001)
+		or !_has_mesh_vertex_y_near(rail, horizontal_handrail_bottom, 0.001)
+		or !has_translucent_glass_vertex
+		or glass_material == null
+		or glass_material.transparency != BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
+	):
+		m_failures.append("Rail3D glass panel did not span base rail to handrail with depth-pre-pass alpha transparency")
+	rail.infill_style = StandardRailGeometryScript.RailStyle.VERTICAL
+	rail.infill_count_between_newels = 1
+	rail.rebuild_rail_mesh()
+
+	# The handrail run is pinned to the endpoint newels' outer faces, so a
+	# thicker infill rail must not lengthen the handrail.
+	rail.infill_rail_thickness = 0.3
+	rail.rebuild_rail_mesh()
+	var thick_infill_arrays: Array = rail.mesh.surface_get_arrays(0)
+	var thick_infill_vertices: PackedVector3Array = (
+		thick_infill_arrays[Mesh.ARRAY_VERTEX]
+	)
+	var thick_run_minimum := INF
+	var thick_run_maximum := -INF
+	for thick_infill_vertex in thick_infill_vertices:
+		thick_run_minimum = minf(thick_run_minimum, thick_infill_vertex.x)
+		thick_run_maximum = maxf(thick_run_maximum, thick_infill_vertex.x)
+	var expected_newel_size := minf(
+		maxf(rail.newel_post_thickness, 0.02),
+		minf(maxf(rail.rail_thickness, 0.02), maxf(rail.rail_height, 0.2) * 0.5)
+	)
+	if (
+		thick_run_minimum < -expected_newel_size * 0.5 - 0.001
+		or thick_run_maximum > (
+			rail.get_rail_length() + expected_newel_size * 0.5 + 0.001
+		)
+	):
+		m_failures.append("Rail3D handrail length changed with the infill rail thickness")
+	rail.infill_rail_thickness = 0.08
+	rail.rebuild_rail_mesh()
 
 	rail.set_rail_points(
 		Vector3(3.0, base_y, 25.0),

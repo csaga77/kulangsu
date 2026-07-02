@@ -8,7 +8,7 @@ const StandardRailGeometry := preload(
 
 const GENERATED_META := &"rail_generated"
 const PREVIEW_META := &"building_editor_preview"
-const MESH_GEOMETRY_VERSION := 6
+const MESH_GEOMETRY_VERSION := 8
 
 @export var rebuild := false:
 	set(value):
@@ -49,12 +49,12 @@ const MESH_GEOMETRY_VERSION := 6
 		post_spacing = clamped_value
 		_request_rebuild()
 
-@export_range(0.02, 1.0, 0.01, "or_greater") var post_thickness := 0.08:
+@export_range(0.02, 1.0, 0.01, "or_greater") var infill_rail_thickness := 0.08:
 	set(value):
 		var clamped_value := maxf(value, 0.02)
-		if is_equal_approx(post_thickness, clamped_value):
+		if is_equal_approx(infill_rail_thickness, clamped_value):
 			return
-		post_thickness = clamped_value
+		infill_rail_thickness = clamped_value
 		_request_rebuild()
 
 @export_range(0.02, 1.0, 0.01, "or_greater") var rail_thickness := 0.1:
@@ -65,18 +65,18 @@ const MESH_GEOMETRY_VERSION := 6
 		rail_thickness = clamped_value
 		_request_rebuild()
 
-@export_enum("Vertical", "Horizontal") var rail_style: int = (
+@export_enum("Vertical Rail", "Horizontal Rail", "Glass Panel") var infill_style: int = (
 	StandardRailGeometry.RailStyle.VERTICAL
 ):
 	set(value):
 		var clamped_value := clampi(
 			value,
 			StandardRailGeometry.RailStyle.VERTICAL,
-			StandardRailGeometry.RailStyle.HORIZONTAL
+			StandardRailGeometry.RailStyle.GLASS_PANEL
 		)
-		if rail_style == clamped_value:
+		if infill_style == clamped_value:
 			return
-		rail_style = clamped_value
+		infill_style = clamped_value
 		_request_rebuild()
 
 @export_range(2, 64, 1) var newel_post_count := 2:
@@ -87,12 +87,12 @@ const MESH_GEOMETRY_VERSION := 6
 		newel_post_count = clamped_value
 		_request_rebuild()
 
-@export_range(0, 64, 1) var baluster_count_between_newels := 1:
+@export_range(0, 64, 1) var infill_count_between_newels := 1:
 	set(value):
 		var clamped_value := clampi(value, 0, 64)
-		if baluster_count_between_newels == clamped_value:
+		if infill_count_between_newels == clamped_value:
 			return
-		baluster_count_between_newels = clamped_value
+		infill_count_between_newels = clamped_value
 		_request_rebuild()
 
 @export_range(0.02, 1.0, 0.01, "or_greater") var newel_post_thickness := 0.1:
@@ -160,18 +160,25 @@ func get_rail_length() -> float:
 
 
 func get_rail_bounds_min() -> Vector3:
-	var post_width := maxf(post_thickness, newel_post_thickness)
-	var half_width := maxf(post_width, rail_thickness) * 0.5
-	return Vector3(-post_width * 0.5, 0.0, -half_width)
+	# The run only extends past the span by the endpoint newels; interior
+	# infills never reach beyond them, so the infill rail thickness affects
+	# side (Z) extent only.
+	var side_width := maxf(
+		maxf(infill_rail_thickness, newel_post_thickness),
+		rail_thickness
+	)
+	return Vector3(-_clamped_newel_size() * 0.5, 0.0, -side_width * 0.5)
 
 
 func get_rail_bounds_max() -> Vector3:
-	var post_width := maxf(post_thickness, newel_post_thickness)
-	var half_width := maxf(post_width, rail_thickness) * 0.5
+	var side_width := maxf(
+		maxf(infill_rail_thickness, newel_post_thickness),
+		rail_thickness
+	)
 	return Vector3(
-		get_rail_length() + post_width * 0.5,
+		get_rail_length() + _clamped_newel_size() * 0.5,
 		maxf(rail_height, 0.2),
-		half_width
+		side_width * 0.5
 	)
 
 
@@ -228,11 +235,11 @@ func _rail_mesh_source_signature() -> int:
 		end_point,
 		rail_height,
 		post_spacing,
-		post_thickness,
+		infill_rail_thickness,
 		rail_thickness,
-		rail_style,
+		infill_style,
 		newel_post_count,
-		baluster_count_between_newels,
+		infill_count_between_newels,
 		newel_post_thickness,
 		lower_rail_height,
 		rail_color,
@@ -271,6 +278,11 @@ func _append_standard_rail_geometry(
 	indices: PackedInt32Array
 ) -> void:
 	var layout := _get_post_layout(length)
+	# Pin the handrail/base-rail run to the endpoint newels' outer faces.
+	# Without these overrides the shared geometry seeds its run extents from
+	# the infill rail thickness, so a thick infill would lengthen the
+	# handrail past the end newels.
+	var newel_size := _clamped_newel_size()
 	StandardRailGeometry.append_rail(
 		vertices,
 		normals,
@@ -284,7 +296,7 @@ func _append_standard_rail_geometry(
 		0.0,
 		rail_height,
 		post_spacing,
-		post_thickness,
+		infill_rail_thickness,
 		rail_thickness,
 		lower_rail_height,
 		rail_color,
@@ -294,10 +306,19 @@ func _append_standard_rail_geometry(
 		layout["top_heights"],
 		-INF,
 		INF,
-		NAN,
-		NAN,
-		rail_style
+		-newel_size * 0.5,
+		length + newel_size * 0.5,
+		infill_style,
+		infill_count_between_newels
 	)
+
+
+func _clamped_newel_size() -> float:
+	var handrail_width := minf(
+		maxf(rail_thickness, 0.02),
+		maxf(rail_height, 0.2) * 0.5
+	)
+	return minf(maxf(newel_post_thickness, 0.02), handrail_width)
 
 
 func _get_post_layout(length: float) -> Dictionary:
@@ -305,34 +326,30 @@ func _get_post_layout(length: float) -> Dictionary:
 	var base_heights := PackedFloat32Array()
 	var thicknesses := PackedFloat32Array()
 	var newel_flags := PackedByteArray()
-	var handrail_width := minf(
-		maxf(rail_thickness, 0.02),
-		maxf(rail_height, 0.2) * 0.5
-	)
-	var newel_size := minf(maxf(newel_post_thickness, 0.02), handrail_width)
+	var newel_size := _clamped_newel_size()
 	var count := clampi(newel_post_count, 2, 64)
 	for index in range(count):
 		positions.append(length * float(index) / float(count - 1))
 		base_heights.append(0.0)
 		thicknesses.append(newel_size)
 		newel_flags.append(1)
-	var counted_layout := StandardRailGeometry.apply_baluster_count_between_newels(
+	var counted_layout := StandardRailGeometry.apply_infill_count_between_newels(
 		positions,
 		base_heights,
 		thicknesses,
 		newel_flags,
 		(
-			baluster_count_between_newels
-			if rail_style == StandardRailGeometry.RailStyle.VERTICAL
+			infill_count_between_newels
+			if infill_style == StandardRailGeometry.RailStyle.VERTICAL
 			else 0
 		),
-		post_thickness
+		infill_rail_thickness
 	)
 	positions = counted_layout["positions"]
 	base_heights = counted_layout["base_heights"]
 	thicknesses = counted_layout["thicknesses"]
 	newel_flags = counted_layout["newel_flags"]
-	StandardRailGeometry.redistribute_balusters_between_newels(
+	StandardRailGeometry.redistribute_infills_between_newels(
 		positions,
 		thicknesses,
 		newel_flags
@@ -363,6 +380,19 @@ func _get_post_layout(length: float) -> Dictionary:
 	}
 
 
+func _rail_material_transparency() -> BaseMaterial3D.Transparency:
+	# The glass-panel infill carries its translucency in vertex alpha inside
+	# the same surface as the opaque posts and handrail. Plain alpha blending
+	# would move the whole mesh into the no-depth-write transparent pass and
+	# break depth sorting, so the glass style uses an opaque depth pre-pass:
+	# opaque fragments keep correct depth while the panel still blends.
+	if infill_style == StandardRailGeometry.RailStyle.GLASS_PANEL:
+		return BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
+	if rail_color.a < 0.99:
+		return BaseMaterial3D.TRANSPARENCY_ALPHA
+	return BaseMaterial3D.TRANSPARENCY_DISABLED
+
+
 func _sync_rail_material() -> void:
 	var material := _scene_local_material_for_write(
 		material_override as StandardMaterial3D
@@ -375,11 +405,7 @@ func _sync_rail_material() -> void:
 	material.roughness = 0.94
 	material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	material.cull_mode = BaseMaterial3D.CULL_BACK
-	material.transparency = (
-		BaseMaterial3D.TRANSPARENCY_ALPHA
-		if rail_color.a < 0.99
-		else BaseMaterial3D.TRANSPARENCY_DISABLED
-	)
+	material.transparency = _rail_material_transparency()
 
 
 func _build_rail_material() -> StandardMaterial3D:
@@ -390,8 +416,7 @@ func _build_rail_material() -> StandardMaterial3D:
 	material.roughness = 0.94
 	material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	material.cull_mode = BaseMaterial3D.CULL_BACK
-	if rail_color.a < 0.99:
-		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.transparency = _rail_material_transparency()
 	return material
 
 

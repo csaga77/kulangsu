@@ -279,7 +279,7 @@ static func create_stairs_node(
 	left_rail_enabled: bool = false,
 	right_rail_enabled: bool = false,
 	rail_height: float = 1.0,
-	rail_post_thickness: float = 0.08,
+	infill_rail_thickness: float = 0.08,
 	rail_thickness: float = 0.1,
 	rail_lower_height: float = 0.18,
 	rail_color: Color = Color(0.33, 0.28, 0.22, 1.0),
@@ -290,8 +290,8 @@ static func create_stairs_node(
 	upper_newel_placement: int = Stairs3DScript.NewelPlacement.TREAD,
 	rail_newel_post_thickness: float = 0.1,
 	middle_newel_post_count: int = 0,
-	baluster_count_between_newels: int = 1,
-	rail_style: int = 0
+	infill_count_between_newels: int = 1,
+	infill_style: int = 0
 ) -> Stairs3DScript:
 	var stairs := Stairs3DScript.new() as Stairs3DScript
 	stairs.name = _unique_child_name(building, "Stairs3D")
@@ -309,12 +309,12 @@ static func create_stairs_node(
 	stairs.upper_newel_enabled = upper_newel_enabled
 	stairs.upper_newel_placement = upper_newel_placement
 	stairs.middle_newel_post_count = middle_newel_post_count
-	stairs.baluster_count_between_newels = baluster_count_between_newels
-	stairs.rail_style = rail_style
+	stairs.infill_count_between_newels = infill_count_between_newels
+	stairs.infill_style = infill_style
 	stairs.rail_newel_post_thickness = rail_newel_post_thickness
 	stairs.rail_edge_margin = rail_edge_margin
 	stairs.rail_height = rail_height
-	stairs.rail_post_thickness = rail_post_thickness
+	stairs.infill_rail_thickness = infill_rail_thickness
 	stairs.rail_thickness = rail_thickness
 	stairs.rail_lower_height = rail_lower_height
 	stairs.rail_color = rail_color
@@ -330,14 +330,14 @@ static func create_rail_node(
 	local_end: Vector3,
 	height: float = 1.0,
 	post_spacing: float = 1.0,
-	post_thickness: float = 0.08,
+	infill_rail_thickness: float = 0.08,
 	rail_thickness: float = 0.1,
 	lower_rail_height: float = 0.18,
 	color: Color = Color(0.33, 0.28, 0.22, 1.0),
 	newel_post_count: int = 2,
-	baluster_count_between_newels: int = 1,
+	infill_count_between_newels: int = 1,
 	newel_post_thickness: float = 0.1,
-	rail_style: int = 0
+	infill_style: int = 0
 ) -> Rail3DScript:
 	var rail := Rail3DScript.new() as Rail3DScript
 	rail.name = _unique_child_name(building, "Rail3D")
@@ -345,12 +345,12 @@ static func create_rail_node(
 	rail.end_point = Vector3(local_end.x, local_start.y, local_end.z)
 	rail.rail_height = height
 	rail.post_spacing = post_spacing
-	rail.post_thickness = post_thickness
+	rail.infill_rail_thickness = infill_rail_thickness
 	rail.rail_thickness = rail_thickness
 	rail.newel_post_count = newel_post_count
-	rail.baluster_count_between_newels = baluster_count_between_newels
+	rail.infill_count_between_newels = infill_count_between_newels
 	rail.newel_post_thickness = newel_post_thickness
-	rail.rail_style = rail_style
+	rail.infill_style = infill_style
 	rail.lower_rail_height = lower_rail_height
 	rail.rail_color = color
 	rail.build_on_ready = true
