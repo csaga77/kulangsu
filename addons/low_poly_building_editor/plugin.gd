@@ -243,6 +243,8 @@ var m_stair_settings := {
 	"height": 1.2,
 	"step_count": 6,
 	"thickness": 0.12,
+	"tread_style": Stairs3DScript.TreadStyle.CLOSED,
+	"nosing_depth": 0.08,
 	"rotation_degrees": 0.0,
 	"color": Color(0.52, 0.46, 0.38, 1.0),
 	"layout_style": Stairs3DScript.LayoutStyle.STRAIGHT,
@@ -2431,6 +2433,11 @@ func _apply_stair_layout_settings(stairs: Stairs3DScript) -> void:
 	))
 	stairs.spiral_turn_degrees = float(m_stair_settings.get("spiral_turn_degrees", 360.0))
 	stairs.flight_width = float(m_stair_settings.get("flight_width", 1.2))
+	stairs.tread_style = int(m_stair_settings.get(
+		"tread_style",
+		Stairs3DScript.TreadStyle.CLOSED
+	))
+	stairs.nosing_depth = float(m_stair_settings.get("nosing_depth", 0.08))
 
 
 func _apply_stair_rail_settings(stairs: Stairs3DScript) -> void:
@@ -2633,7 +2640,9 @@ func _commit_stairs(
 		int(m_stair_settings.get("turn_direction", Stairs3DScript.TurnDirection.RIGHT)),
 		int(m_stair_settings.get("winder_turn", Stairs3DScript.WinderTurn.TURN_90)),
 		float(m_stair_settings.get("flight_width", 1.2)),
-		float(m_stair_settings.get("spiral_turn_degrees", 360.0))
+		float(m_stair_settings.get("spiral_turn_degrees", 360.0)),
+		int(m_stair_settings.get("tread_style", Stairs3DScript.TreadStyle.CLOSED)),
+		float(m_stair_settings.get("nosing_depth", 0.08))
 	)
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	var undo_redo := get_undo_redo()

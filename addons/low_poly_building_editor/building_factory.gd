@@ -296,7 +296,9 @@ static func create_stairs_node(
 	turn_direction: int = Stairs3DScript.TurnDirection.RIGHT,
 	winder_turn: int = Stairs3DScript.WinderTurn.TURN_90,
 	flight_width: float = 1.2,
-	spiral_turn_degrees: float = 360.0
+	spiral_turn_degrees: float = 360.0,
+	tread_style: int = Stairs3DScript.TreadStyle.CLOSED,
+	nosing_depth: float = 0.08
 ) -> Stairs3DScript:
 	var stairs := Stairs3DScript.new() as Stairs3DScript
 	stairs.name = _unique_child_name(building, "Stairs3D")
@@ -310,6 +312,8 @@ static func create_stairs_node(
 	stairs.stair_height = height
 	stairs.step_count = step_count
 	stairs.stair_thickness = thickness
+	stairs.tread_style = tread_style
+	stairs.nosing_depth = nosing_depth
 	stairs.stair_color = color
 	stairs.stair_rotation_degrees = rotation_degrees
 	stairs.left_rail_enabled = left_rail_enabled

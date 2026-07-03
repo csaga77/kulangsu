@@ -10,6 +10,11 @@ U-shaped, 90/180-degree winder, or spiral stairs with a configurable flight widt
 and left/right turn direction. Spiral stairs add a configurable 45–1080-degree
 radial run around a low-poly central column; landings, winder fans, and spiral
 treads subdivide the same rectangle, and optional rails follow the turning path.
+Stairs offer three tread styles: Closed builds the solid stepped mass, Open
+floats individual tread slabs (and landing platforms) with no risers or
+underside, and Nosing keeps the closed mass while overhanging each tread past
+its riser by a configurable depth; winder fans and spiral treads treat Nosing
+as Closed.
 The Floor tool's Rectangle and
 Polygon styles choose only how a new footprint is drawn: two opposite corners or a
 multi-click outline. Both use the same grid-snapped editing gestures afterward. Any

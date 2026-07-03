@@ -126,6 +126,7 @@ func _run_smoke_checks() -> void:
 	_validate_floor_node(coordinator)
 	_validate_stairs_node(coordinator)
 	_validate_spiral_stairs(coordinator)
+	_validate_stair_tread_styles(coordinator)
 	_validate_stairs_optional_rails(coordinator)
 	_validate_standard_rail_geometry_post_base_heights()
 	_validate_rail_node(coordinator)
@@ -1980,6 +1981,118 @@ func _spiral_rail_vertex_count(
 		indices
 	)
 	return vertices.size()
+
+
+func _create_tread_style_stairs(
+	coordinator: Building3DScript,
+	anchor: Vector3,
+	layout_style: int,
+	tread_style: int,
+	nosing_depth: float
+) -> Stairs3DScript:
+	return BuildingFactoryScript.create_stairs_node(
+		coordinator,
+		anchor,
+		anchor + Vector3(2.0, 0.0, 4.0),
+		1.2,
+		6,
+		0.12,
+		Color(0.52, 0.46, 0.38, 1.0),
+		0.0,
+		false,
+		false,
+		1.0,
+		0.08,
+		0.1,
+		0.18,
+		Color(0.33, 0.28, 0.22, 1.0),
+		0.15,
+		false,
+		Stairs3DScript.NewelPlacement.TREAD,
+		false,
+		Stairs3DScript.NewelPlacement.TREAD,
+		0.1,
+		0,
+		1,
+		StandardRailGeometryScript.RailStyle.VERTICAL,
+		layout_style,
+		Stairs3DScript.TurnDirection.RIGHT,
+		Stairs3DScript.WinderTurn.TURN_90,
+		1.2,
+		360.0,
+		tread_style,
+		nosing_depth
+	)
+
+
+func _validate_stair_tread_styles(coordinator: Building3DScript) -> void:
+	# Height 1.2 over 6 steps: rise 0.2; thickness 0.12 is both the closed
+	# underside depth and the open/nosing slab thickness.
+	var open_stairs := _create_tread_style_stairs(
+		coordinator,
+		Vector3(40.0, 0.0, 16.0),
+		Stairs3DScript.LayoutStyle.STRAIGHT,
+		Stairs3DScript.TreadStyle.OPEN,
+		0.0
+	)
+	coordinator.add_child(open_stairs)
+	if open_stairs.tread_style != Stairs3DScript.TreadStyle.OPEN:
+		m_failures.append("BuildingFactory did not apply the open tread style")
+	if open_stairs.mesh == null or open_stairs.mesh.get_surface_count() <= 0:
+		m_failures.append("Open-tread Stairs3D did not generate a mesh")
+	else:
+		if !_has_mesh_vertex_y_near(open_stairs, 1.2, 0.001):
+			m_failures.append("Open-tread Stairs3D did not reach the configured height")
+		if !_has_mesh_vertex_y_near(open_stairs, 0.08, 0.001):
+			m_failures.append(
+				"Open-tread Stairs3D is missing the first floating tread underside"
+			)
+		if _has_mesh_vertex_y_near(open_stairs, -0.12, 0.001):
+			m_failures.append("Open-tread Stairs3D still generated the closed underside")
+	open_stairs.tread_style = Stairs3DScript.TreadStyle.CLOSED
+	open_stairs.rebuild_stairs_mesh()
+	if !_has_mesh_vertex_y_near(open_stairs, -0.12, 0.001):
+		m_failures.append(
+			"Stairs3D did not rebuild the closed underside after a tread style change"
+		)
+
+	var nosing_stairs := _create_tread_style_stairs(
+		coordinator,
+		Vector3(44.0, 0.0, 16.0),
+		Stairs3DScript.LayoutStyle.STRAIGHT,
+		Stairs3DScript.TreadStyle.NOSING,
+		0.08
+	)
+	coordinator.add_child(nosing_stairs)
+	if nosing_stairs.mesh == null or nosing_stairs.mesh.get_surface_count() <= 0:
+		m_failures.append("Nosing Stairs3D did not generate a mesh")
+	else:
+		if !_has_mesh_vertex_y_near(nosing_stairs, -0.12, 0.001):
+			m_failures.append("Nosing Stairs3D did not retain the closed underside")
+		var arrays := nosing_stairs.mesh.surface_get_arrays(0)
+		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var minimum_z := INF
+		for vertex in vertices:
+			minimum_z = minf(minimum_z, vertex.z)
+		if absf(minimum_z + 0.08) > 0.001:
+			m_failures.append(
+				"Nosing Stairs3D lip does not overhang the first riser by the nosing depth"
+			)
+
+	var open_l_stairs := _create_tread_style_stairs(
+		coordinator,
+		Vector3(48.0, 0.0, 16.0),
+		Stairs3DScript.LayoutStyle.L_SHAPED,
+		Stairs3DScript.TreadStyle.OPEN,
+		0.0
+	)
+	coordinator.add_child(open_l_stairs)
+	if open_l_stairs.mesh == null or open_l_stairs.mesh.get_surface_count() <= 0:
+		m_failures.append("Open-tread L-shaped Stairs3D did not generate a mesh")
+	elif _has_mesh_vertex_y_near(open_l_stairs, -0.12, 0.001):
+		m_failures.append(
+			"Open-tread L-shaped Stairs3D still generated closed-mass underside geometry"
+		)
 
 
 func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:

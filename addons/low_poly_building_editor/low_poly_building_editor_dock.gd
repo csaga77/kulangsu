@@ -38,6 +38,9 @@ const FLOOR_TYPE_HOLE := "hole"
 const FLOOR_STYLE_RECTANGLE := "rectangle"
 const FLOOR_STYLE_POLYGON := "polygon"
 const NEWEL_PLACEMENT_TREAD := 0
+const TREAD_STYLE_CLOSED := 0
+const TREAD_STYLE_OPEN := 1
+const TREAD_STYLE_NOSING := 2
 const RAIL_STYLE_VERTICAL := 0
 const RAIL_STYLE_HORIZONTAL := 1
 const RAIL_STYLE_GLASS_PANEL := 2
@@ -94,6 +97,8 @@ var m_stair_base_height_spin: SpinBox
 var m_stair_height_spin: SpinBox
 var m_stair_step_count_spin: SpinBox
 var m_stair_thickness_spin: SpinBox
+var m_stair_tread_style_option: OptionButton
+var m_stair_nosing_spin: SpinBox
 var m_stair_rotation_spin: SpinBox
 var m_stair_color_picker: ColorPickerButton
 var m_stair_left_rail_check: CheckBox
@@ -530,8 +535,26 @@ func _build_stair_controls(parent: VBoxContainer) -> void:
 	m_stair_step_count_spin.value_changed.connect(_on_stair_setting_changed)
 
 	m_stair_thickness_spin = _make_spin(0.0, 2.0, 0.01, 0.12)
-	_add_labeled_control(parent, "Thickness:", m_stair_thickness_spin, "Solid underside thickness extending below the lower stair entry.")
+	_add_labeled_control(parent, "Thickness:", m_stair_thickness_spin, "Solid underside thickness extending below the lower stair entry; also the slab thickness of Open treads and nosing lips.")
 	m_stair_thickness_spin.value_changed.connect(_on_stair_setting_changed)
+
+	m_stair_tread_style_option = _make_stair_tread_style_option()
+	m_stair_tread_style_option.item_selected.connect(_on_stair_tread_style_selected)
+	_add_labeled_control(
+		parent,
+		"Treads:",
+		m_stair_tread_style_option,
+		"Closed builds the solid stepped mass. Open floats individual tread slabs with no risers or underside. Nosing keeps the closed mass and overhangs each tread past the riser below. Winder fans and spiral treads treat Nosing as Closed."
+	)
+
+	m_stair_nosing_spin = _make_spin(0.0, 1.0, 0.01, 0.08)
+	_add_labeled_control(
+		parent,
+		"Nosing:",
+		m_stair_nosing_spin,
+		"Tread overhang past the riser below for the Nosing style, clamped to a fraction of the tread depth."
+	)
+	m_stair_nosing_spin.value_changed.connect(_on_stair_setting_changed)
 
 	m_stair_rotation_spin = _make_spin(-180.0, 180.0, 1.0, 0.0)
 	m_stair_rotation_spin.tooltip_text = "Starting Y rotation for new stairs, in degrees."
@@ -630,6 +653,7 @@ func _build_stair_controls(parent: VBoxContainer) -> void:
 	m_stair_rail_margin_spin.value_changed.connect(_on_stair_setting_changed)
 	_update_stair_newel_controls()
 	_update_stair_layout_controls()
+	_update_stair_tread_controls()
 
 
 func _build_rail_controls(parent: VBoxContainer) -> void:
@@ -1458,6 +1482,11 @@ func _on_stair_layout_selected(_index: int) -> void:
 	_emit_stair_settings()
 
 
+func _on_stair_tread_style_selected(_index: int) -> void:
+	_update_stair_tread_controls()
+	_emit_stair_settings()
+
+
 func _on_stair_color_changed(_color: Color) -> void:
 	_update_color_picker_icon(m_stair_color_picker)
 	_emit_stair_settings()
@@ -1618,6 +1647,16 @@ func _make_stair_layout_option() -> OptionButton:
 	return option
 
 
+func _make_stair_tread_style_option() -> OptionButton:
+	var option := OptionButton.new()
+	option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var labels := PackedStringArray(["Closed", "Open", "Nosing"])
+	for index in range(labels.size()):
+		option.add_item(labels[index], index)
+		option.set_item_metadata(index, index)
+	return option
+
+
 func _make_stair_turn_option() -> OptionButton:
 	var option := OptionButton.new()
 	option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1658,6 +1697,14 @@ func _update_stair_layout_controls() -> void:
 		m_stair_spiral_turn_spin.editable = is_spiral
 	if m_stair_flight_width_spin != null:
 		m_stair_flight_width_spin.editable = !is_straight
+
+
+func _update_stair_tread_controls() -> void:
+	if m_stair_nosing_spin != null:
+		m_stair_nosing_spin.editable = (
+			_selected_option_metadata(m_stair_tread_style_option, TREAD_STYLE_CLOSED)
+			== TREAD_STYLE_NOSING
+		)
 
 
 func _make_rail_style_option() -> OptionButton:
@@ -1825,6 +1872,14 @@ func _emit_stair_settings() -> void:
 		"height": float(m_stair_height_spin.value),
 		"step_count": int(roundf(m_stair_step_count_spin.value)),
 		"thickness": float(m_stair_thickness_spin.value),
+		"tread_style": _selected_option_metadata(
+			m_stair_tread_style_option, TREAD_STYLE_CLOSED
+		),
+		"nosing_depth": (
+			float(m_stair_nosing_spin.value)
+			if m_stair_nosing_spin != null
+			else 0.08
+		),
 		"rotation_degrees": float(m_stair_rotation_spin.value),
 		"color": m_stair_color_picker.color,
 		"layout_style": _selected_option_metadata(m_stair_layout_option, 0),
@@ -2356,6 +2411,18 @@ func _load_persisted_settings() -> void:
 	m_stair_height_spin.value = float(state.get("stair_height", m_stair_height_spin.value))
 	m_stair_step_count_spin.value = float(state.get("stair_step_count", m_stair_step_count_spin.value))
 	m_stair_thickness_spin.value = float(state.get("stair_thickness", m_stair_thickness_spin.value))
+	m_stair_tread_style_option.select(clampi(
+		int(state.get(
+			"stair_tread_style",
+			_selected_option_metadata(m_stair_tread_style_option, TREAD_STYLE_CLOSED)
+		)),
+		0,
+		m_stair_tread_style_option.get_item_count() - 1
+	))
+	m_stair_nosing_spin.value = float(
+		state.get("stair_nosing_depth", m_stair_nosing_spin.value)
+	)
+	_update_stair_tread_controls()
 	m_stair_rotation_spin.value = float(state.get("stair_rotation_degrees", m_stair_rotation_spin.value))
 	var stair_color_variant: Variant = state.get("stair_color", m_stair_color_picker.color)
 	if stair_color_variant is Color:
@@ -2619,6 +2686,14 @@ func _save_persisted_settings() -> void:
 		"stair_height": float(m_stair_height_spin.value) if m_stair_height_spin != null else 1.2,
 		"stair_step_count": int(roundf(m_stair_step_count_spin.value)) if m_stair_step_count_spin != null else 6,
 		"stair_thickness": float(m_stair_thickness_spin.value) if m_stair_thickness_spin != null else 0.12,
+		"stair_tread_style": _selected_option_metadata(
+			m_stair_tread_style_option, TREAD_STYLE_CLOSED
+		),
+		"stair_nosing_depth": (
+			float(m_stair_nosing_spin.value)
+			if m_stair_nosing_spin != null
+			else 0.08
+		),
 		"stair_rotation_degrees": float(m_stair_rotation_spin.value) if m_stair_rotation_spin != null else 0.0,
 		"stair_color": m_stair_color_picker.color if m_stair_color_picker != null else Color(0.52, 0.46, 0.38, 1.0),
 		"stair_layout_style": _selected_option_metadata(m_stair_layout_option, 0),

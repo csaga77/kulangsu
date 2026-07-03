@@ -16,6 +16,12 @@ enum LayoutStyle {
 	SPIRAL,
 }
 
+enum TreadStyle {
+	CLOSED,
+	OPEN,
+	NOSING,
+}
+
 enum TurnDirection {
 	LEFT,
 	RIGHT,
@@ -44,7 +50,7 @@ const StandardRailGeometry := preload(
 
 const GENERATED_META := &"stairs_generated"
 const PREVIEW_META := &"building_editor_preview"
-const MESH_GEOMETRY_VERSION := 25
+const MESH_GEOMETRY_VERSION := 26
 const RAIL_SIDE_LEFT := 0
 const RAIL_SIDE_RIGHT := 1
 const WINDER_TREADS_90 := 3
@@ -99,6 +105,26 @@ const RIGHT_SIDE_COLLISION_SHAPE_NAME := "RightSideCollisionShape3D"
 		if is_equal_approx(stair_thickness, clamped_value):
 			return
 		stair_thickness = clamped_value
+		_request_rebuild()
+
+# Closed keeps the solid stepped mass; Open floats individual tread slabs with
+# no risers or underside; Nosing keeps the closed mass and overhangs each tread
+# past the riser below by nosing_depth. Winder fans and spiral treads have no
+# nosing variant and treat Nosing as Closed.
+@export_enum("Closed", "Open", "Nosing") var tread_style: int = TreadStyle.CLOSED:
+	set(value):
+		var clamped_value := clampi(value, TreadStyle.CLOSED, TreadStyle.NOSING)
+		if tread_style == clamped_value:
+			return
+		tread_style = clamped_value
+		_request_rebuild()
+
+@export_range(0.0, 1.0, 0.01, "or_greater") var nosing_depth := 0.08:
+	set(value):
+		var clamped_value := maxf(value, 0.0)
+		if is_equal_approx(nosing_depth, clamped_value):
+			return
+		nosing_depth = clamped_value
 		_request_rebuild()
 
 @export_range(-180.0, 180.0, 1.0) var stair_rotation_degrees := 0.0:
@@ -470,6 +496,8 @@ func _stairs_mesh_source_signature() -> int:
 		stair_height,
 		step_count,
 		stair_thickness,
+		tread_style,
+		nosing_depth,
 		stair_rotation_degrees,
 		stair_color,
 		layout_style,
@@ -519,6 +547,14 @@ func _append_stair_geometry(
 	var bottom_y := -maxf(stair_thickness, 0.0)
 	var tread_depth := depth / float(steps)
 	var rise := height / float(steps)
+	var identity_seg := _make_flight_segment(
+		Vector3.ZERO, Vector3.BACK, width, depth, steps, rise
+	)
+
+	if tread_style == TreadStyle.OPEN:
+		_append_open_flight_treads(identity_seg, vertices, normals, colors, indices)
+		_append_rail_geometry(width, depth, height, vertices, normals, colors, indices)
+		return
 
 	for step_index in range(steps):
 		var z0 := tread_depth * float(step_index)
@@ -578,6 +614,7 @@ func _append_stair_geometry(
 		vertices, normals, colors, indices,
 		depth, height, bottom_y, steps, width, Vector3.RIGHT
 	)
+	_append_flight_nosing_lips(identity_seg, vertices, normals, colors, indices)
 
 	_append_rail_geometry(width, depth, height, vertices, normals, colors, indices)
 
@@ -2129,6 +2166,147 @@ func _append_segment_quad(
 	)
 
 
+func _tread_slab_thickness() -> float:
+	# Open tread slabs and nosing lips reuse the underside thickness, with a
+	# small floor so zero-thickness stairs still produce visible slabs. Matches
+	# the spiral tread slab rule.
+	return maxf(stair_thickness, 0.05)
+
+
+func _effective_nosing_depth(tread_depth: float) -> float:
+	if tread_style != TreadStyle.NOSING:
+		return 0.0
+	return clampf(nosing_depth, 0.0, tread_depth * 0.45)
+
+
+func _nosing_lip_thickness(rise: float) -> float:
+	# Strictly shallower than one rise so the lip underside never becomes
+	# coplanar with the tread top below it.
+	return minf(maxf(stair_thickness, 0.02), rise * 0.75)
+
+
+func _append_segment_box(
+	seg: Dictionary,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array,
+	box_min: Vector3,
+	box_max: Vector3,
+	skip_back := false
+) -> void:
+	# Axis-aligned box in segment-local space; used for floating tread slabs
+	# and nosing lips. skip_back omits the +Z face when it abuts a riser plane.
+	_append_segment_quad(
+		seg, vertices, normals, colors, indices,
+		Vector3(box_min.x, box_max.y, box_min.z),
+		Vector3(box_min.x, box_max.y, box_max.z),
+		Vector3(box_max.x, box_max.y, box_max.z),
+		Vector3(box_max.x, box_max.y, box_min.z),
+		Vector3.UP
+	)
+	_append_segment_quad(
+		seg, vertices, normals, colors, indices,
+		Vector3(box_min.x, box_min.y, box_min.z),
+		Vector3(box_min.x, box_min.y, box_max.z),
+		Vector3(box_max.x, box_min.y, box_max.z),
+		Vector3(box_max.x, box_min.y, box_min.z),
+		Vector3.DOWN
+	)
+	_append_segment_quad(
+		seg, vertices, normals, colors, indices,
+		Vector3(box_min.x, box_min.y, box_min.z),
+		Vector3(box_min.x, box_max.y, box_min.z),
+		Vector3(box_max.x, box_max.y, box_min.z),
+		Vector3(box_max.x, box_min.y, box_min.z),
+		Vector3.FORWARD
+	)
+	if !skip_back:
+		_append_segment_quad(
+			seg, vertices, normals, colors, indices,
+			Vector3(box_min.x, box_min.y, box_max.z),
+			Vector3(box_min.x, box_max.y, box_max.z),
+			Vector3(box_max.x, box_max.y, box_max.z),
+			Vector3(box_max.x, box_min.y, box_max.z),
+			Vector3.BACK
+		)
+	_append_segment_quad(
+		seg, vertices, normals, colors, indices,
+		Vector3(box_min.x, box_min.y, box_min.z),
+		Vector3(box_min.x, box_max.y, box_min.z),
+		Vector3(box_min.x, box_max.y, box_max.z),
+		Vector3(box_min.x, box_min.y, box_max.z),
+		Vector3.LEFT
+	)
+	_append_segment_quad(
+		seg, vertices, normals, colors, indices,
+		Vector3(box_max.x, box_min.y, box_min.z),
+		Vector3(box_max.x, box_max.y, box_min.z),
+		Vector3(box_max.x, box_max.y, box_max.z),
+		Vector3(box_max.x, box_min.y, box_max.z),
+		Vector3.RIGHT
+	)
+
+
+func _append_open_flight_treads(
+	seg: Dictionary,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	# Open risers: one floating slab per tread, no risers, no solid underside.
+	var steps: int = seg["steps"]
+	var rise: float = seg["rise"]
+	var width: float = seg["width"]
+	var run: float = seg["run"]
+	if width <= 0.001 or run <= 0.001:
+		return
+	var tread_depth := run / float(steps)
+	var slab := _tread_slab_thickness()
+	for step_index in range(steps):
+		var z0 := tread_depth * float(step_index)
+		var z1 := tread_depth * float(step_index + 1)
+		var y1 := rise * float(step_index + 1)
+		_append_segment_box(
+			seg, vertices, normals, colors, indices,
+			Vector3(0.0, y1 - slab, z0),
+			Vector3(width, y1, z1)
+		)
+
+
+func _append_flight_nosing_lips(
+	seg: Dictionary,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	# Nosing: a thin lip box overhanging each riser plane. Additive over the
+	# closed mass, so the underlying stepped geometry stays unchanged. The lip
+	# back face is skipped: it abuts the riser plane it overhangs.
+	var steps: int = seg["steps"]
+	var rise: float = seg["rise"]
+	var width: float = seg["width"]
+	var run: float = seg["run"]
+	if width <= 0.001 or run <= 0.001:
+		return
+	var tread_depth := run / float(steps)
+	var nose := _effective_nosing_depth(tread_depth)
+	if nose <= 0.0005:
+		return
+	var lip := _nosing_lip_thickness(rise)
+	for step_index in range(steps):
+		var z0 := tread_depth * float(step_index)
+		var y1 := rise * float(step_index + 1)
+		_append_segment_box(
+			seg, vertices, normals, colors, indices,
+			Vector3(0.0, y1 - lip, z0 - nose),
+			Vector3(width, y1, z0),
+			true
+		)
+
+
 func _append_flight_segment_geometry(
 	seg: Dictionary,
 	vertices: PackedVector3Array,
@@ -2141,6 +2319,9 @@ func _append_flight_segment_geometry(
 	var width: float = seg["width"]
 	var run: float = seg["run"]
 	if width <= 0.001 or run <= 0.001:
+		return
+	if tread_style == TreadStyle.OPEN:
+		_append_open_flight_treads(seg, vertices, normals, colors, indices)
 		return
 	var bottom := _segment_bottom(seg)
 	var top := rise * float(steps)
@@ -2184,6 +2365,7 @@ func _append_flight_segment_geometry(
 	)
 	_append_segment_side_strips(seg, vertices, normals, colors, indices, 0.0, Vector3.LEFT)
 	_append_segment_side_strips(seg, vertices, normals, colors, indices, width, Vector3.RIGHT)
+	_append_flight_nosing_lips(seg, vertices, normals, colors, indices)
 
 
 func _append_segment_side_strips(
@@ -2245,7 +2427,7 @@ func _append_landing_segment_geometry(
 	var run: float = seg["run"]
 	if width <= 0.001 or run <= 0.001:
 		return
-	var bottom := _segment_bottom(seg)
+	var bottom := _landing_bottom(seg)
 	_append_segment_quad(
 		seg, vertices, normals, colors, indices,
 		Vector3(0.0, 0.0, 0.0),
@@ -2254,6 +2436,16 @@ func _append_landing_segment_geometry(
 		Vector3(width, 0.0, 0.0),
 		Vector3.UP
 	)
+	if tread_style == TreadStyle.OPEN:
+		# Floating landing slabs expose their underside.
+		_append_segment_quad(
+			seg, vertices, normals, colors, indices,
+			Vector3(0.0, bottom, 0.0),
+			Vector3(0.0, bottom, run),
+			Vector3(width, bottom, run),
+			Vector3(width, bottom, 0.0),
+			Vector3.DOWN
+		)
 	_append_segment_quad(
 		seg, vertices, normals, colors, indices,
 		Vector3(0.0, bottom, 0.0),
@@ -2286,6 +2478,13 @@ func _append_landing_segment_geometry(
 		Vector3(width, bottom, run),
 		Vector3.RIGHT
 	)
+
+
+func _landing_bottom(seg: Dictionary) -> float:
+	# Open-riser landings float as slabs instead of dropping to the stair base.
+	if tread_style == TreadStyle.OPEN:
+		return -_tread_slab_thickness()
+	return _segment_bottom(seg)
 
 
 func _winder_perimeter_cumulative(perimeter: PackedVector2Array) -> PackedFloat32Array:
@@ -2329,10 +2528,17 @@ func _append_winder_segment_geometry(
 	if total_length <= 0.001:
 		return
 	var up_normal := _segment_direction(seg, Vector3.UP).normalized()
+	# Open risers turn each fanned tread into a floating wedge slab: a bottom
+	# fan and per-tread radial faces replace the shared closed underside,
+	# boundary risers, and extra walls. Nosing has no winder-fan variant and
+	# falls back to the closed mass.
+	var use_open := tread_style == TreadStyle.OPEN
+	var slab := _tread_slab_thickness()
 	for tread_index in range(steps):
 		var t0 := total_length * float(tread_index) / float(steps)
 		var t1 := total_length * float(tread_index + 1) / float(steps)
 		var tread_top := rise * float(tread_index + 1)
+		var tread_bottom := tread_top - slab if use_open else bottom
 		var edge_points: Array[Vector2] = [
 			_winder_point_at(perimeter, cumulative, t0),
 		]
@@ -2357,6 +2563,21 @@ func _append_winder_segment_geometry(
 				vertices, indices, up_normal,
 				triangle_base, triangle_base + 1, triangle_base + 2
 			)
+			if use_open:
+				var down_normal := -up_normal
+				var bottom_base := vertices.size()
+				vertices.append(_segment_point(seg, Vector3(
+					pivot.x, tread_bottom, pivot.y
+				)))
+				vertices.append(_segment_point(seg, Vector3(q0.x, tread_bottom, q0.y)))
+				vertices.append(_segment_point(seg, Vector3(q1.x, tread_bottom, q1.y)))
+				for _index in range(3):
+					normals.append(down_normal)
+					colors.append(stair_color)
+				_append_oriented_triangle(
+					vertices, indices, down_normal,
+					bottom_base, bottom_base + 1, bottom_base + 2
+				)
 			var edge_dir := (q1 - q0).normalized()
 			var outward := Vector2(-edge_dir.y, edge_dir.x)
 			var edge_mid := (q0 + q1) * 0.5
@@ -2364,12 +2585,27 @@ func _append_winder_segment_geometry(
 				outward = -outward
 			_append_segment_quad(
 				seg, vertices, normals, colors, indices,
-				Vector3(q0.x, bottom, q0.y),
-				Vector3(q1.x, bottom, q1.y),
+				Vector3(q0.x, tread_bottom, q0.y),
+				Vector3(q1.x, tread_bottom, q1.y),
 				Vector3(q1.x, tread_top, q1.y),
 				Vector3(q0.x, tread_top, q0.y),
 				Vector3(outward.x, 0.0, outward.y)
 			)
+		if use_open:
+			var interior := _winder_point_at(
+				perimeter, cumulative, (t0 + t1) * 0.5
+			)
+			_append_winder_radial_face(
+				seg, vertices, normals, colors, indices,
+				pivot, edge_points[0], tread_bottom, tread_top, interior
+			)
+			_append_winder_radial_face(
+				seg, vertices, normals, colors, indices,
+				pivot, edge_points[edge_points.size() - 1],
+				tread_bottom, tread_top, interior
+			)
+	if use_open:
+		return
 	for boundary_index in range(steps):
 		var boundary_t := total_length * float(boundary_index) / float(steps)
 		var boundary_point := _winder_point_at(perimeter, cumulative, boundary_t)
@@ -2408,6 +2644,37 @@ func _append_winder_segment_geometry(
 			Vector3(a.x, wall_top, a.y),
 			Vector3(wall_normal.x, 0.0, wall_normal.y)
 		)
+
+
+func _append_winder_radial_face(
+	seg: Dictionary,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array,
+	pivot: Vector2,
+	boundary_point: Vector2,
+	y0: float,
+	y1: float,
+	away_from: Vector2
+) -> void:
+	# Radial face of one floating winder tread, from pivot to a fan boundary,
+	# facing away from the tread interior sample point.
+	var radial := boundary_point - pivot
+	if radial.length() <= 0.0001 or y1 - y0 <= 0.0001:
+		return
+	var face_normal := Vector2(-radial.y, radial.x).normalized()
+	var edge_mid := (pivot + boundary_point) * 0.5
+	if face_normal.dot(away_from - edge_mid) > 0.0:
+		face_normal = -face_normal
+	_append_segment_quad(
+		seg, vertices, normals, colors, indices,
+		Vector3(pivot.x, y0, pivot.y),
+		Vector3(boundary_point.x, y0, boundary_point.y),
+		Vector3(boundary_point.x, y1, boundary_point.y),
+		Vector3(pivot.x, y1, pivot.y),
+		Vector3(face_normal.x, 0.0, face_normal.y)
+	)
 
 
 func _append_layout_rail_geometry(
@@ -2979,7 +3246,7 @@ func _add_landing_collision_box(
 	var run: float = seg["run"]
 	if width <= 0.001 or run <= 0.001:
 		return shape_index
-	var bottom := _segment_bottom(seg)
+	var bottom := _landing_bottom(seg)
 	var box_height := -bottom
 	if box_height <= 0.001:
 		return shape_index
@@ -3012,15 +3279,20 @@ func _append_spiral_segment_geometry(
 	var turn_sign: float = seg["turn_sign"]
 	if steps <= 0 or outer_radius - inner_radius <= 0.001:
 		return
-	# Floating wedge tread slabs around the central column. The inner faces
-	# are omitted: they sit inside the column, whose circumscribed prism
-	# contains the treads' inner circle.
-	var slab := maxf(stair_thickness, 0.05)
+	# Wedge tread slabs around the central column. The inner faces are
+	# omitted: they sit inside the column, whose circumscribed prism contains
+	# the treads' inner circle. Open risers keep each slab floating at the
+	# tread slab thickness; Closed (and Nosing, which has no spiral variant)
+	# drops each wedge to the previous tread's top minus the slab so
+	# consecutive wedges overlap vertically with no gap.
+	var slab := _tread_slab_thickness()
 	for tread_index in range(steps):
 		var theta0 := turn_radians * float(tread_index) / float(steps)
 		var theta1 := turn_radians * float(tread_index + 1) / float(steps)
 		var top := rise * float(tread_index + 1)
 		var bottom := top - slab
+		if tread_style != TreadStyle.OPEN:
+			bottom = rise * float(tread_index) - slab
 		var inner0 := center + _spiral_direction(theta0, turn_sign) * inner_radius
 		var inner1 := center + _spiral_direction(theta1, turn_sign) * inner_radius
 		var outer0 := center + _spiral_direction(theta0, turn_sign) * outer_radius
@@ -3116,7 +3388,7 @@ func _add_spiral_collision_boxes(
 	var turn_sign: float = seg["turn_sign"]
 	if steps <= 0:
 		return shape_index
-	var slab := maxf(stair_thickness, 0.05)
+	var slab := _tread_slab_thickness()
 	for tread_index in range(steps):
 		var theta0 := turn_radians * float(tread_index) / float(steps)
 		var theta1 := turn_radians * float(tread_index + 1) / float(steps)
@@ -3129,6 +3401,12 @@ func _add_spiral_collision_boxes(
 		var chord_dir := chord / chord_length
 		var inward := ((center - (outer0 + outer1) * 0.5)).normalized()
 		var top := rise * float(tread_index + 1)
+		var box_bottom := top - slab
+		if tread_style != TreadStyle.OPEN:
+			# Match the closed spiral wedge, which drops to the previous
+			# tread's top minus the slab.
+			box_bottom = rise * float(tread_index) - slab
+		var box_height := top - box_bottom
 		var center_2d := (outer0 + outer1) * 0.5 + inward * (wall_thickness * 0.5)
 		var chord_dir_3d := _segment_direction(
 			seg, Vector3(chord_dir.x, 0.0, chord_dir.y)
@@ -3139,8 +3417,10 @@ func _add_spiral_collision_boxes(
 		_add_side_wall_collision_shape(
 			body,
 			_layout_collision_shape_name(shape_index),
-			_segment_point(seg, Vector3(center_2d.x, top - slab * 0.5, center_2d.y)),
-			Vector3(chord_length, slab, wall_thickness),
+			_segment_point(seg, Vector3(
+				center_2d.x, (top + box_bottom) * 0.5, center_2d.y
+			)),
+			Vector3(chord_length, box_height, wall_thickness),
 			box_basis
 		)
 		shape_index += 1
