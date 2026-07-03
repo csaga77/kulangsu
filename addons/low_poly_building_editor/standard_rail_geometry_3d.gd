@@ -96,7 +96,8 @@ static func append_rail(
 	maximum_run_override: float = NAN,
 	rail_style: int = RailStyle.VERTICAL,
 	horizontal_infill_count: int = 2,
-	post_base_follows_rise: PackedByteArray = PackedByteArray()
+	post_base_follows_rise: PackedByteArray = PackedByteArray(),
+	distribute_default_posts: bool = true
 ) -> void:
 	if length <= 0.001:
 		return
@@ -107,7 +108,11 @@ static func append_rail(
 	var top_bottom := maxf(height - bar_size, 0.0)
 
 	var positions := post_positions
-	if positions.is_empty():
+	if positions.is_empty() and distribute_default_posts:
+		# Callers that own their complete post layout (for example stair
+		# transition legs whose only posts are shared with adjacent runs) pass
+		# false so an intentionally empty list stays post-free instead of
+		# seeding spacing-distributed posts at the run ends.
 		for ratio in distribute_post_ratios(length, post_spacing):
 			positions.append(length * ratio)
 

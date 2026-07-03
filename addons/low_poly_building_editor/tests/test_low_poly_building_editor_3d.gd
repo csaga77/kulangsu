@@ -1927,7 +1927,9 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 			7,
 			both_rail_stairs.lower_newel_enabled,
 			both_rail_stairs.upper_newel_enabled,
-			both_rail_stairs.middle_newel_post_count
+			both_rail_stairs.middle_newel_post_count,
+			both_rail_stairs.lower_newel_placement,
+			both_rail_stairs.upper_newel_placement
 		)
 	)
 	if distributed_middle_indices != PackedInt32Array([1, 3, 4]):
@@ -1942,7 +1944,9 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 			6,
 			both_rail_stairs.lower_newel_enabled,
 			both_rail_stairs.upper_newel_enabled,
-			both_rail_stairs.middle_newel_post_count
+			both_rail_stairs.middle_newel_post_count,
+			both_rail_stairs.lower_newel_placement,
+			both_rail_stairs.upper_newel_placement
 		)
 	)
 	both_rail_stairs.lower_newel_placement = Stairs3DScript.NewelPlacement.FLOOR
@@ -1952,7 +1956,9 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 			6,
 			both_rail_stairs.lower_newel_enabled,
 			both_rail_stairs.upper_newel_enabled,
-			both_rail_stairs.middle_newel_post_count
+			both_rail_stairs.middle_newel_post_count,
+			both_rail_stairs.lower_newel_placement,
+			both_rail_stairs.upper_newel_placement
 		)
 	)
 	if (

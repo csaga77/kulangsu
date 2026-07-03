@@ -42,7 +42,7 @@ const StandardRailGeometry := preload(
 
 const GENERATED_META := &"stairs_generated"
 const PREVIEW_META := &"building_editor_preview"
-const MESH_GEOMETRY_VERSION := 17
+const MESH_GEOMETRY_VERSION := 19
 const RAIL_SIDE_LEFT := 0
 const RAIL_SIDE_RIGHT := 1
 const WINDER_TREADS_90 := 3
@@ -590,7 +590,9 @@ func _append_rail_geometry(
 		steps,
 		lower_newel_enabled,
 		upper_newel_enabled,
-		middle_newel_post_count
+		middle_newel_post_count,
+		lower_newel_placement,
+		upper_newel_placement
 	)
 	var post_positions: PackedFloat32Array = post_layout["positions"]
 	var post_base_heights: PackedFloat32Array = post_layout["base_heights"]
@@ -674,7 +676,9 @@ func _get_rail_post_layout() -> Dictionary:
 		_effective_step_count(),
 		lower_newel_enabled,
 		upper_newel_enabled,
-		middle_newel_post_count
+		middle_newel_post_count,
+		lower_newel_placement,
+		upper_newel_placement
 	)
 
 
@@ -696,7 +700,11 @@ func _build_rail_post_layout(
 	steps: int,
 	use_lower_newel: bool,
 	use_upper_newel: bool,
-	middle_count: int
+	middle_count: int,
+	lower_placement: int,
+	upper_placement: int,
+	force_first_tread_newel: bool = false,
+	force_last_tread_newel: bool = false
 ) -> Dictionary:
 	var positions := StandardRailGeometry.tread_mid_post_positions(depth, steps)
 	var base_heights := StandardRailGeometry.tread_mid_post_base_heights(height, steps)
@@ -715,13 +723,26 @@ func _build_rail_post_layout(
 	var upper_newel_index := -1
 
 	for tread_index in _middle_newel_tread_indices(
-		steps, use_lower_newel, use_upper_newel, middle_count
+		steps, use_lower_newel, use_upper_newel, middle_count,
+		lower_placement, upper_placement
 	):
 		thicknesses[tread_index] = newel_size
 		newel_flags[tread_index] = 1
 
+	# Junction newels shared with a layout transition behave like distributed
+	# newels: tread-mid position, raked top, and no handrail termination, so
+	# the raked handrail runs continuously across the transition boundary.
+	if force_first_tread_newel and !positions.is_empty() and newel_flags[0] == 0:
+		thicknesses[0] = newel_size
+		newel_flags[0] = 1
+	if force_last_tread_newel and !positions.is_empty():
+		var forced_last_index := positions.size() - 1
+		if newel_flags[forced_last_index] == 0:
+			thicknesses[forced_last_index] = newel_size
+			newel_flags[forced_last_index] = 1
+
 	if use_lower_newel and !positions.is_empty():
-		if lower_newel_placement == NewelPlacement.TREAD:
+		if lower_placement == NewelPlacement.TREAD:
 			thicknesses[0] = newel_size
 			newel_flags[0] = 1
 			lower_newel_index = 0
@@ -742,7 +763,7 @@ func _build_rail_post_layout(
 			lower_newel_index = 0
 
 	if use_upper_newel and !positions.is_empty():
-		if upper_newel_placement == NewelPlacement.TREAD:
+		if upper_placement == NewelPlacement.TREAD:
 			var last_tread_index := positions.size() - 1
 			thicknesses[last_tread_index] = newel_size
 			newel_flags[last_tread_index] = 1
@@ -781,11 +802,11 @@ func _build_rail_post_layout(
 	upper_newel_index = _find_post_position(positions, upper_newel_position)
 	var lower_newel_is_floor := (
 		use_lower_newel
-		and lower_newel_placement == NewelPlacement.FLOOR
+		and lower_placement == NewelPlacement.FLOOR
 	)
 	var upper_newel_is_floor := (
 		use_upper_newel
-		and upper_newel_placement == NewelPlacement.FLOOR
+		and upper_placement == NewelPlacement.FLOOR
 	)
 
 	var bar_size := minf(maxf(rail_thickness, 0.02), maxf(rail_height, 0.2) * 0.5)
@@ -912,29 +933,31 @@ func _middle_newel_tread_indices(
 	steps: int,
 	use_lower_newel: bool,
 	use_upper_newel: bool,
-	middle_count: int
+	middle_count: int,
+	lower_placement: int,
+	upper_placement: int
 ) -> PackedInt32Array:
 	var indices := PackedInt32Array()
 	var has_lower_terminal := use_lower_newel
 	var has_upper_terminal := use_upper_newel
 	var lower_bound := (
 		-1
-		if has_lower_terminal and lower_newel_placement == NewelPlacement.FLOOR
+		if has_lower_terminal and lower_placement == NewelPlacement.FLOOR
 		else 0
 	)
 	var upper_bound := (
 		steps
-		if has_upper_terminal and upper_newel_placement == NewelPlacement.FLOOR
+		if has_upper_terminal and upper_placement == NewelPlacement.FLOOR
 		else steps - 1
 	)
 	var first_available_tread := (
 		1
-		if has_lower_terminal and lower_newel_placement == NewelPlacement.TREAD
+		if has_lower_terminal and lower_placement == NewelPlacement.TREAD
 		else 0
 	)
 	var last_available_tread := (
 		steps - 2
-		if has_upper_terminal and upper_newel_placement == NewelPlacement.TREAD
+		if has_upper_terminal and upper_placement == NewelPlacement.TREAD
 		else steps - 1
 	)
 	var available_middle_treads := maxi(
@@ -1441,7 +1464,11 @@ func _make_plain_rail_run(
 	rise: float,
 	post_spacing: float,
 	post_positions := PackedFloat32Array(),
-	post_base_heights := PackedFloat32Array()
+	post_base_heights := PackedFloat32Array(),
+	post_thicknesses := PackedFloat32Array(),
+	post_base_follows_rise := PackedByteArray(),
+	minimum_run_override := NAN,
+	maximum_run_override := NAN
 ) -> Dictionary:
 	return {
 		"kind": RailRunKind.RAIL_RUN_PLAIN,
@@ -1453,34 +1480,32 @@ func _make_plain_rail_run(
 		"post_spacing": post_spacing,
 		"post_positions": post_positions,
 		"post_base_heights": post_base_heights,
+		"post_thicknesses": post_thicknesses,
+		"post_base_follows_rise": post_base_follows_rise,
+		"minimum_run_override": minimum_run_override,
+		"maximum_run_override": maximum_run_override,
 	}
 
 
-func _winder_rail_posts(
+func _clamped_newel_size() -> float:
+	# Same clamp as flight newels: never wider than the handrail so the welded
+	# handrail underside fully covers the post's open top.
+	return minf(maxf(rail_newel_post_thickness, 0.02), _handrail_width())
+
+
+
+func _winder_surface_height(
+	path_position: float,
 	path_length: float,
-	run_start: float,
-	run_length: float,
 	winder_treads: int,
-	rise: float,
-	rise_before_run: float
-) -> Dictionary:
-	# Posts sit at tread mids mapped proportionally from the tread fan onto the
-	# margin-inset rail path; each base is that tread's walking surface so the
-	# flat-based posts land on stepped winder treads instead of the smooth
-	# rise diagonal.
-	var positions := PackedFloat32Array()
-	var base_heights := PackedFloat32Array()
+	rise: float
+) -> float:
+	# Walking-surface height under a path point: the top of the winder tread
+	# containing it, with exact tread boundaries resolving to the lower tread.
 	if winder_treads <= 0 or path_length <= 0.001:
-		return {"positions": positions, "base_heights": base_heights}
-	for tread_index in range(winder_treads):
-		var path_position := path_length * (float(tread_index) + 0.5) / float(winder_treads)
-		if path_position < run_start - 0.001:
-			continue
-		if path_position > run_start + run_length + 0.001:
-			continue
-		positions.append(clampf(path_position - run_start, 0.0, run_length))
-		base_heights.append(rise * float(tread_index + 1) - rise_before_run)
-	return {"positions": positions, "base_heights": base_heights}
+		return 0.0
+	var tread_ratio := path_position * float(winder_treads) / path_length
+	return rise * clampf(ceilf(tread_ratio - 0.0001), 0.0, float(winder_treads))
 
 
 func _add_raked_path_rail_runs(
@@ -1498,6 +1523,32 @@ func _add_raked_path_rail_runs(
 		total_length += waypoints[index].distance_to(waypoints[index + 1])
 	if total_length <= 0.001:
 		return
+	var newel_size := _clamped_newel_size()
+	var infill_size := _clamped_infill_rail_size()
+	# At each interior corner both adjacent legs extend their bars past the
+	# corner point by half the handrail bar thickness, so the handrail, base
+	# rail, and panel outer faces close flush around the corner instead of
+	# leaving a sliver where neither leg's cross-section reaches.
+	var half_bar := minf(
+		maxf(rail_thickness, 0.02),
+		maxf(rail_height, 0.2) * 0.5
+	) * 0.5
+	# The same vertical-rail rule as flights: exactly
+	# `infill_count_between_newels` vertical infills per newel span for the
+	# Vertical style, and none for Horizontal/Glass (their bars/panel fill the
+	# span instead). Each leg is one span bounded by its shared inflection
+	# newels.
+	var span_infill_count := (
+		clampi(infill_count_between_newels, 0, 64)
+		if infill_style == StandardRailGeometry.RailStyle.VERTICAL
+		else 0
+	)
+	var has_base_rail := StandardRailGeometry.has_lower_rail(
+		rail_height, rail_thickness, rail_lower_height
+	)
+	var base_rail_top := StandardRailGeometry.lower_rail_top_height(
+		rail_height, rail_thickness, rail_lower_height
+	)
 	var traversed := 0.0
 	for index in range(waypoints.size() - 1):
 		var from_point := waypoints[index]
@@ -1512,9 +1563,62 @@ func _add_raked_path_rail_runs(
 			0.0,
 			to_point.y - from_point.y
 		).normalized()
-		var posts := _winder_rail_posts(
-			total_length, traversed, length, winder_treads, rise, rise_before
+		var is_first_leg := traversed <= 0.001
+		var is_last_leg := traversed + length >= total_length - 0.001
+		var positions := PackedFloat32Array()
+		var base_heights := PackedFloat32Array()
+		var thicknesses := PackedFloat32Array()
+		var follows_rise := PackedByteArray()
+		# Infills between the bounding newel faces with equal clear gaps,
+		# matching redistribute_infills_between_newels(). With a base rail they
+		# mount on its top with bottoms sheared along the leg's rake; without
+		# one they rebase onto the surface beneath (winder tread top, landing
+		# floor, or the leg's base diagonal). Legs too short for the requested
+		# infills carry only their shared newels. Junction-side spans start at
+		# the leg boundary, since the flight's tread-mid junction newel sits
+		# beyond it.
+		var clear_start := 0.0 if is_first_leg else newel_size * 0.5
+		var clear_end := length if is_last_leg else length - newel_size * 0.5
+		var infill_clear_total := (
+			clear_end - clear_start - infill_size * float(span_infill_count)
 		)
+		if span_infill_count > 0 and infill_clear_total >= 0.0:
+			var clear_gap := infill_clear_total / float(span_infill_count + 1)
+			for infill_index in range(span_infill_count):
+				var center := (
+					clear_start
+					+ clear_gap * float(infill_index + 1)
+					+ infill_size * (float(infill_index) + 0.5)
+				)
+				positions.append(center)
+				thicknesses.append(infill_size)
+				if has_base_rail:
+					base_heights.append(base_rail_top + leg_rise * center / length)
+					follows_rise.append(1)
+				elif winder_treads > 0:
+					base_heights.append(_winder_surface_height(
+						traversed + center, total_length, winder_treads, rise
+					) - rise_before)
+					follows_rise.append(0)
+				else:
+					base_heights.append(leg_rise * center / length)
+					follows_rise.append(0)
+		# One shared newel per interior corner between two legs, owned by the
+		# leg that starts there, so adjacent legs never stack duplicate posts.
+		# The path's junctions with the adjacent flight rails carry no leg
+		# posts at all: the flights own tread-mid junction newels there, and
+		# this leg's bars are cut flush at the boundary where the flight's
+		# bars end at the identical height, keeping the rail continuous.
+		if !is_first_leg:
+			positions.append(0.0)
+			base_heights.append(
+				_winder_surface_height(traversed, total_length, winder_treads, rise)
+				- rise_before
+			)
+			thicknesses.append(newel_size)
+			follows_rise.append(0)
+		var minimum_override := 0.0 if is_first_leg else -half_bar
+		var maximum_override := length if is_last_leg else length + half_bar
 		rail_runs.append(_make_plain_rail_run(
 			side,
 			Vector3(from_point.x, start_height + rise_before, from_point.y),
@@ -1522,8 +1626,12 @@ func _add_raked_path_rail_runs(
 			length,
 			leg_rise,
 			post_spacing,
-			posts["positions"],
-			posts["base_heights"]
+			positions,
+			base_heights,
+			thicknesses,
+			follows_rise,
+			minimum_override,
+			maximum_override
 		))
 		traversed += length
 
@@ -2192,14 +2300,31 @@ func _append_layout_rail_geometry(
 		var run_dir: Vector3 = run["run_dir"]
 		var side_axis := Vector3.UP.cross(run_dir).normalized()
 		if int(run["kind"]) == RailRunKind.RAIL_RUN_FLIGHT:
+			# Interior flight ends (the transition side) carry one shared
+			# tread-mid junction newel with a raked top, and the raked
+			# handrail/base bars are cut flush at the flight boundary where
+			# the transition leg's bars continue at the identical height, so
+			# the rail stays continuous across every transition.
+			var is_first := bool(run["first"])
+			var is_last := bool(run["last"])
 			var layout := _build_rail_post_layout(
 				length,
 				run["rise"],
 				run["steps"],
-				lower_newel_enabled and bool(run["first"]),
-				upper_newel_enabled and bool(run["last"]),
-				int(run["middle_newels"])
+				lower_newel_enabled and is_first,
+				upper_newel_enabled and is_last,
+				int(run["middle_newels"]),
+				lower_newel_placement,
+				upper_newel_placement,
+				!is_first,
+				!is_last
 			)
+			var handrail_minimum: float = layout["handrail_minimum_run"]
+			var handrail_maximum: float = layout["handrail_maximum_run"]
+			if !is_first:
+				handrail_minimum = 0.0
+			if !is_last:
+				handrail_maximum = length
 			StandardRailGeometry.append_rail(
 				vertices, normals, colors, indices,
 				run["origin"], run_dir, Vector3.UP, side_axis,
@@ -2211,8 +2336,8 @@ func _append_layout_rail_geometry(
 				layout["thicknesses"], layout["top_heights"],
 				float(layout["lower_horizontal_end"]),
 				float(layout["upper_horizontal_start"]),
-				float(layout["handrail_minimum_run"]),
-				float(layout["handrail_maximum_run"]),
+				handrail_minimum,
+				handrail_maximum,
 				infill_style, infill_count_between_newels,
 				layout["base_follows_rise"]
 			)
@@ -2225,10 +2350,14 @@ func _append_layout_rail_geometry(
 				_clamped_infill_rail_size(), rail_thickness, rail_lower_height,
 				rail_color,
 				run["post_positions"], run["post_base_heights"],
-				PackedFloat32Array(), PackedFloat32Array(),
-				-INF, INF, NAN, NAN,
+				run["post_thicknesses"], PackedFloat32Array(),
+				-INF, INF,
+				float(run["minimum_run_override"]),
+				float(run["maximum_run_override"]),
 				infill_style, infill_count_between_newels,
-				PackedByteArray()
+				run["post_base_follows_rise"],
+				false # transition legs own their full post layout; junction
+					# posts are shared with the adjacent flight/leg runs.
 			)
 
 
