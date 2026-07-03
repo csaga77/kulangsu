@@ -16,6 +16,24 @@ const BuildingThumbnailRendererScript = preload(
 const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
 const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
 const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.gd")
+const StraightStairs3DScript = preload(
+	"res://addons/low_poly_building_editor/straight_stairs_3d.gd"
+)
+const LShapedStairs3DScript = preload(
+	"res://addons/low_poly_building_editor/l_shaped_stairs_3d.gd"
+)
+const DoubleLShapedStairs3DScript = preload(
+	"res://addons/low_poly_building_editor/double_l_shaped_stairs_3d.gd"
+)
+const UShapedStairs3DScript = preload(
+	"res://addons/low_poly_building_editor/u_shaped_stairs_3d.gd"
+)
+const WinderStairs3DScript = preload(
+	"res://addons/low_poly_building_editor/winder_stairs_3d.gd"
+)
+const SpiralStairs3DScript = preload(
+	"res://addons/low_poly_building_editor/spiral_stairs_3d.gd"
+)
 const Rail3DScript = preload("res://addons/low_poly_building_editor/rail_3d.gd")
 const StandardRailGeometryScript = preload(
 	"res://addons/low_poly_building_editor/standard_rail_geometry_3d.gd"
@@ -114,6 +132,7 @@ func _run_smoke_checks() -> void:
 	_validate_window_style_property_ownership()
 	_validate_pillar_style_property_ownership()
 	_validate_roof_style_property_ownership()
+	_validate_stair_layout_class_hierarchy()
 	_validate_legacy_opening_storage()
 	_validate_door_opening_rules(wall)
 	_validate_window_style_visuals()
@@ -828,6 +847,90 @@ func _validate_roof_style_property_ownership() -> void:
 	flat_roof.free()
 	gable_roof.free()
 	hip_roof.free()
+
+
+func _validate_stair_layout_class_hierarchy() -> void:
+	var base_stairs := Stairs3DScript.new() as Stairs3DScript
+	for property_name in [
+		&"layout_style",
+		&"turn_direction",
+		&"winder_turn",
+		&"flight_width",
+		&"spiral_turn_degrees",
+	]:
+		if _has_editor_property(base_stairs, property_name):
+			m_failures.append("Stairs3D exposes layout-only property %s" % property_name)
+	base_stairs.rebuild_stairs_mesh()
+	if base_stairs.mesh != null:
+		m_failures.append("Stairs3D base generated concrete layout geometry")
+	base_stairs.free()
+
+	var layout_entries: Array[Dictionary] = [
+		{
+			"script": StraightStairs3DScript,
+		},
+		{
+			"script": LShapedStairs3DScript,
+		},
+		{
+			"script": DoubleLShapedStairs3DScript,
+		},
+		{
+			"script": UShapedStairs3DScript,
+		},
+		{
+			"script": WinderStairs3DScript,
+		},
+		{
+			"script": SpiralStairs3DScript,
+		},
+	]
+	for entry: Dictionary in layout_entries:
+		var style_script := entry["script"] as Script
+		var stairs := style_script.new() as Stairs3DScript
+		if stairs == null:
+			m_failures.append("%s does not inherit through Stairs3D" % style_script.resource_path)
+			continue
+		var factory_stairs := BuildingFactoryScript.instantiate_stair_layout(style_script)
+		if factory_stairs.get_script() != style_script:
+			m_failures.append(
+				"Stair layout factory selected the wrong class for %s" % style_script.resource_path
+			)
+		factory_stairs.free()
+		stairs.free()
+	var legacy_spiral := BuildingFactoryScript.instantiate_stair_layout(5)
+	if legacy_spiral.get_script() != SpiralStairs3DScript:
+		m_failures.append("Stair layout factory did not normalize legacy integer key 5")
+	legacy_spiral.free()
+
+	var straight := StraightStairs3DScript.new() as Stairs3DScript
+	for property_name in [&"turn_direction", &"flight_width"]:
+		if _has_editor_property(straight, property_name):
+			m_failures.append("StraightStairs3D exposes unused property %s" % property_name)
+	straight.free()
+
+	var l_shaped := LShapedStairs3DScript.new() as Stairs3DScript
+	for property_name in [&"turn_direction", &"flight_width"]:
+		if !_has_editor_property(l_shaped, property_name):
+			m_failures.append("LShapedStairs3D is missing layout property %s" % property_name)
+	for property_name in [&"winder_turn", &"spiral_turn_degrees"]:
+		if _has_editor_property(l_shaped, property_name):
+			m_failures.append("LShapedStairs3D exposes unused property %s" % property_name)
+	l_shaped.free()
+
+	var winder := WinderStairs3DScript.new() as Stairs3DScript
+	if !_has_editor_property(winder, &"winder_turn"):
+		m_failures.append("WinderStairs3D is missing its winder turn property")
+	if _has_editor_property(winder, &"spiral_turn_degrees"):
+		m_failures.append("WinderStairs3D exposes the spiral turn property")
+	winder.free()
+
+	var spiral := SpiralStairs3DScript.new() as Stairs3DScript
+	if !_has_editor_property(spiral, &"spiral_turn_degrees"):
+		m_failures.append("SpiralStairs3D is missing its spiral turn property")
+	if _has_editor_property(spiral, &"winder_turn"):
+		m_failures.append("SpiralStairs3D exposes the winder turn property")
+	spiral.free()
 
 
 func _validate_legacy_opening_storage() -> void:
@@ -1731,7 +1834,7 @@ func _validate_spiral_stairs(coordinator: Building3DScript) -> void:
 		0,
 		1,
 		StandardRailGeometryScript.RailStyle.VERTICAL,
-		Stairs3DScript.LayoutStyle.SPIRAL,
+		SpiralStairs3DScript,
 		Stairs3DScript.TurnDirection.RIGHT,
 		Stairs3DScript.WinderTurn.TURN_90,
 		1.25,
@@ -1739,9 +1842,9 @@ func _validate_spiral_stairs(coordinator: Building3DScript) -> void:
 	)
 	coordinator.add_child(spiral)
 	if (
-		spiral.layout_style != Stairs3DScript.LayoutStyle.SPIRAL
-		or absf(spiral.spiral_turn_degrees - 360.0) > 0.001
-		or absf(spiral.flight_width - 1.25) > 0.001
+		spiral.get_script() != SpiralStairs3DScript
+		or absf(spiral._layout_spiral_turn_degrees() - 360.0) > 0.001
+		or absf(spiral._layout_flight_width() - 1.25) > 0.001
 	):
 		m_failures.append("BuildingFactory did not apply the spiral stair settings")
 	if spiral.mesh == null or spiral.mesh.get_surface_count() <= 0:
@@ -1940,7 +2043,12 @@ func _validate_spiral_stairs(coordinator: Building3DScript) -> void:
 	):
 		m_failures.append("Spiral Stairs3D did not preserve tread/floor terminal placement")
 
-	spiral.turn_direction = Stairs3DScript.TurnDirection.LEFT
+	spiral.configure_stair_layout(
+		Stairs3DScript.TurnDirection.LEFT,
+		Stairs3DScript.WinderTurn.TURN_90,
+		spiral._layout_flight_width(),
+		spiral._layout_spiral_turn_degrees()
+	)
 	spiral.rebuild_stairs_mesh()
 	var left_plan := spiral._build_layout_plan(4.0, 4.0)
 	var left_segment: Dictionary = left_plan["segments"][0]
@@ -1953,7 +2061,12 @@ func _validate_spiral_stairs(coordinator: Building3DScript) -> void:
 		m_failures.append("Left-turn Spiral Stairs3D did not mirror its winding direction")
 
 	spiral.step_count = 4
-	spiral.spiral_turn_degrees = 1080.0
+	spiral.configure_stair_layout(
+		spiral._layout_turn_direction(),
+		Stairs3DScript.WinderTurn.TURN_90,
+		spiral._layout_flight_width(),
+		1080.0
+	)
 	spiral.rebuild_stairs_mesh()
 	var dense_plan := spiral._build_layout_plan(4.0, 4.0)
 	if (
@@ -1986,7 +2099,7 @@ func _spiral_rail_vertex_count(
 func _create_tread_style_stairs(
 	coordinator: Building3DScript,
 	anchor: Vector3,
-	layout_style: int,
+	layout_script: Script,
 	tread_style: int,
 	nosing_depth: float
 ) -> Stairs3DScript:
@@ -2015,7 +2128,7 @@ func _create_tread_style_stairs(
 		0,
 		1,
 		StandardRailGeometryScript.RailStyle.VERTICAL,
-		layout_style,
+		layout_script,
 		Stairs3DScript.TurnDirection.RIGHT,
 		Stairs3DScript.WinderTurn.TURN_90,
 		1.2,
@@ -2031,7 +2144,7 @@ func _validate_stair_tread_styles(coordinator: Building3DScript) -> void:
 	var open_stairs := _create_tread_style_stairs(
 		coordinator,
 		Vector3(40.0, 0.0, 16.0),
-		Stairs3DScript.LayoutStyle.STRAIGHT,
+		StraightStairs3DScript,
 		Stairs3DScript.TreadStyle.OPEN,
 		0.0
 	)
@@ -2059,7 +2172,7 @@ func _validate_stair_tread_styles(coordinator: Building3DScript) -> void:
 	var nosing_stairs := _create_tread_style_stairs(
 		coordinator,
 		Vector3(44.0, 0.0, 16.0),
-		Stairs3DScript.LayoutStyle.STRAIGHT,
+		StraightStairs3DScript,
 		Stairs3DScript.TreadStyle.NOSING,
 		0.08
 	)
@@ -2082,7 +2195,7 @@ func _validate_stair_tread_styles(coordinator: Building3DScript) -> void:
 	var open_l_stairs := _create_tread_style_stairs(
 		coordinator,
 		Vector3(48.0, 0.0, 16.0),
-		Stairs3DScript.LayoutStyle.L_SHAPED,
+		LShapedStairs3DScript,
 		Stairs3DScript.TreadStyle.OPEN,
 		0.0
 	)

@@ -66,6 +66,32 @@ const OPENING_CUSTOM_TYPES := [
 	{"name": "DoubleDoorFrame3D", "script": OPENING_STYLE_SCRIPTS["double_frame"]},
 ]
 const BUILDING_STYLE_CUSTOM_TYPES := [
+	{
+		"name": "StraightStairs3D",
+		"script": preload("res://addons/low_poly_building_editor/straight_stairs_3d.gd"),
+	},
+	{
+		"name": "LShapedStairs3D",
+		"script": preload("res://addons/low_poly_building_editor/l_shaped_stairs_3d.gd"),
+	},
+	{
+		"name": "DoubleLShapedStairs3D",
+		"script": preload(
+			"res://addons/low_poly_building_editor/double_l_shaped_stairs_3d.gd"
+		),
+	},
+	{
+		"name": "UShapedStairs3D",
+		"script": preload("res://addons/low_poly_building_editor/u_shaped_stairs_3d.gd"),
+	},
+	{
+		"name": "WinderStairs3D",
+		"script": preload("res://addons/low_poly_building_editor/winder_stairs_3d.gd"),
+	},
+	{
+		"name": "SpiralStairs3D",
+		"script": preload("res://addons/low_poly_building_editor/spiral_stairs_3d.gd"),
+	},
 	{"name": "RoundPillar3D", "script": preload("res://addons/low_poly_building_editor/round_pillar_3d.gd")},
 	{"name": "SquarePillar3D", "script": preload("res://addons/low_poly_building_editor/square_pillar_3d.gd")},
 	{"name": "OctagonalPillar3D", "script": preload("res://addons/low_poly_building_editor/octagonal_pillar_3d.gd")},
@@ -247,7 +273,7 @@ var m_stair_settings := {
 	"nosing_depth": 0.08,
 	"rotation_degrees": 0.0,
 	"color": Color(0.52, 0.46, 0.38, 1.0),
-	"layout_style": Stairs3DScript.LayoutStyle.STRAIGHT,
+	"layout_script": BuildingFactoryScript.StraightStairs3DScript,
 	"turn_direction": Stairs3DScript.TurnDirection.RIGHT,
 	"winder_turn": Stairs3DScript.WinderTurn.TURN_90,
 	"spiral_turn_degrees": 360.0,
@@ -2370,7 +2396,12 @@ func _handle_stair_input(camera: Camera3D, event: InputEvent) -> int:
 
 func _create_stair_preview(coordinator: Building3DScript) -> void:
 	_clear_stair_preview()
-	m_stair_preview = Stairs3DScript.new() as Stairs3DScript
+	m_stair_preview = BuildingFactoryScript.instantiate_stair_layout(
+		m_stair_settings.get(
+			"layout_script",
+			BuildingFactoryScript.StraightStairs3DScript
+		)
+	)
 	m_stair_preview.name = "StairsPreview"
 	m_stair_preview.set_meta(Stairs3DScript.PREVIEW_META, true)
 	m_stair_preview.stair_height = float(m_stair_settings["height"])
@@ -2419,20 +2450,18 @@ func _update_stair_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 
 
 func _apply_stair_layout_settings(stairs: Stairs3DScript) -> void:
-	stairs.layout_style = int(m_stair_settings.get(
-		"layout_style",
-		Stairs3DScript.LayoutStyle.STRAIGHT
-	))
-	stairs.turn_direction = int(m_stair_settings.get(
-		"turn_direction",
-		Stairs3DScript.TurnDirection.RIGHT
-	))
-	stairs.winder_turn = int(m_stair_settings.get(
-		"winder_turn",
-		Stairs3DScript.WinderTurn.TURN_90
-	))
-	stairs.spiral_turn_degrees = float(m_stair_settings.get("spiral_turn_degrees", 360.0))
-	stairs.flight_width = float(m_stair_settings.get("flight_width", 1.2))
+	stairs.configure_stair_layout(
+		int(m_stair_settings.get(
+			"turn_direction",
+			Stairs3DScript.TurnDirection.RIGHT
+		)),
+		int(m_stair_settings.get(
+			"winder_turn",
+			Stairs3DScript.WinderTurn.TURN_90
+		)),
+		float(m_stair_settings.get("flight_width", 1.2)),
+		float(m_stair_settings.get("spiral_turn_degrees", 360.0))
+	)
 	stairs.tread_style = int(m_stair_settings.get(
 		"tread_style",
 		Stairs3DScript.TreadStyle.CLOSED
@@ -2636,7 +2665,10 @@ func _commit_stairs(
 		int(m_stair_settings.get("middle_newel_post_count", 0)),
 		int(m_stair_settings.get("infill_count_between_newels", 1)),
 		int(m_stair_settings.get("infill_style", 0)),
-		int(m_stair_settings.get("layout_style", Stairs3DScript.LayoutStyle.STRAIGHT)),
+		m_stair_settings.get(
+			"layout_script",
+			BuildingFactoryScript.StraightStairs3DScript
+		) as Script,
 		int(m_stair_settings.get("turn_direction", Stairs3DScript.TurnDirection.RIGHT)),
 		int(m_stair_settings.get("winder_turn", Stairs3DScript.WinderTurn.TURN_90)),
 		float(m_stair_settings.get("flight_width", 1.2)),

@@ -43,6 +43,9 @@ const TREAD_STYLE_OPEN := 1
 const TREAD_STYLE_NOSING := 2
 const RAIL_STYLE_VERTICAL := 0
 const RAIL_STYLE_HORIZONTAL := 1
+const BuildingFactoryScript := preload(
+	"res://addons/low_poly_building_editor/building_factory.gd"
+)
 const RAIL_STYLE_GLASS_PANEL := 2
 const COLOR_SWATCH_ICON_SIZE := 16
 const COLOR_SWATCH_MIN_WIDTH := 34.0
@@ -1643,7 +1646,7 @@ func _make_stair_layout_option() -> OptionButton:
 	])
 	for index in range(labels.size()):
 		option.add_item(labels[index], index)
-		option.set_item_metadata(index, index)
+		option.set_item_metadata(index, BuildingFactoryScript.STAIR_LAYOUT_SCRIPTS[index])
 	return option
 
 
@@ -1684,11 +1687,47 @@ func _selected_option_metadata(option: OptionButton, fallback: int) -> int:
 	return int(option.get_item_metadata(option.selected))
 
 
+func _stair_layout_script_from_value(value: Variant) -> Script:
+	if value is int:
+		var legacy_index := clampi(
+			int(value), 0, BuildingFactoryScript.STAIR_LAYOUT_SCRIPTS.size() - 1
+		)
+		return BuildingFactoryScript.STAIR_LAYOUT_SCRIPTS[legacy_index]
+	var selected_script: Script
+	if value is Script:
+		selected_script = value as Script
+	if selected_script != null and BuildingFactoryScript.STAIR_LAYOUT_SCRIPTS.has(selected_script):
+		return selected_script
+	var resource_path := String(value)
+	for candidate: Script in BuildingFactoryScript.STAIR_LAYOUT_SCRIPTS:
+		if candidate.resource_path == resource_path:
+			return candidate
+	return BuildingFactoryScript.StraightStairs3DScript
+
+
+func _selected_stair_layout_script() -> Script:
+	if m_stair_layout_option == null or m_stair_layout_option.selected < 0:
+		return BuildingFactoryScript.StraightStairs3DScript
+	return _stair_layout_script_from_value(
+		m_stair_layout_option.get_item_metadata(m_stair_layout_option.selected)
+	)
+
+
+func _select_stair_layout_script(value: Variant) -> void:
+	var selected_script := _stair_layout_script_from_value(value)
+	for index in range(m_stair_layout_option.get_item_count()):
+		if m_stair_layout_option.get_item_metadata(index) != selected_script:
+			continue
+		m_stair_layout_option.select(index)
+		return
+	m_stair_layout_option.select(0)
+
+
 func _update_stair_layout_controls() -> void:
-	var layout := _selected_option_metadata(m_stair_layout_option, 0)
-	var is_straight := layout == 0
-	var is_winder := layout == 4
-	var is_spiral := layout == 5
+	var layout_script := _selected_stair_layout_script()
+	var is_straight := layout_script == BuildingFactoryScript.STAIR_LAYOUT_SCRIPTS[0]
+	var is_winder := layout_script == BuildingFactoryScript.STAIR_LAYOUT_SCRIPTS[4]
+	var is_spiral := layout_script == BuildingFactoryScript.STAIR_LAYOUT_SCRIPTS[5]
 	if m_stair_turn_option != null:
 		m_stair_turn_option.disabled = is_straight
 	if m_stair_winder_turn_option != null:
@@ -1882,7 +1921,7 @@ func _emit_stair_settings() -> void:
 		),
 		"rotation_degrees": float(m_stair_rotation_spin.value),
 		"color": m_stair_color_picker.color,
-		"layout_style": _selected_option_metadata(m_stair_layout_option, 0),
+		"layout_script": _selected_stair_layout_script(),
 		"turn_direction": _selected_option_metadata(m_stair_turn_option, 1),
 		"winder_turn": _selected_option_metadata(m_stair_winder_turn_option, 0),
 		"spiral_turn_degrees": (
@@ -2427,11 +2466,12 @@ func _load_persisted_settings() -> void:
 	var stair_color_variant: Variant = state.get("stair_color", m_stair_color_picker.color)
 	if stair_color_variant is Color:
 		m_stair_color_picker.color = stair_color_variant
-	m_stair_layout_option.select(clampi(
-		int(state.get("stair_layout_style", _selected_option_metadata(m_stair_layout_option, 0))),
-		0,
-		m_stair_layout_option.get_item_count() - 1
-	))
+	_select_stair_layout_script(
+		state.get(
+			"stair_layout_script",
+			state.get("stair_layout_style", _selected_stair_layout_script())
+		)
+	)
 	m_stair_turn_option.select(clampi(
 		int(state.get("stair_turn_direction", _selected_option_metadata(m_stair_turn_option, 1))),
 		0,
@@ -2696,7 +2736,7 @@ func _save_persisted_settings() -> void:
 		),
 		"stair_rotation_degrees": float(m_stair_rotation_spin.value) if m_stair_rotation_spin != null else 0.0,
 		"stair_color": m_stair_color_picker.color if m_stair_color_picker != null else Color(0.52, 0.46, 0.38, 1.0),
-		"stair_layout_style": _selected_option_metadata(m_stair_layout_option, 0),
+		"stair_layout_script": _selected_stair_layout_script().resource_path,
 		"stair_turn_direction": _selected_option_metadata(m_stair_turn_option, 1),
 		"stair_winder_turn": _selected_option_metadata(m_stair_winder_turn_option, 0),
 		"stair_spiral_turn_degrees": (

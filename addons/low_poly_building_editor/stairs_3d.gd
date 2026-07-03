@@ -7,15 +7,6 @@ enum NewelPlacement {
 	FLOOR,
 }
 
-enum LayoutStyle {
-	STRAIGHT,
-	L_SHAPED,
-	DOUBLE_L_SHAPED,
-	U_SHAPED,
-	WINDER,
-	SPIRAL,
-}
-
 enum TreadStyle {
 	CLOSED,
 	OPEN,
@@ -140,48 +131,6 @@ const RIGHT_SIDE_COLLISION_SHAPE_NAME := "RightSideCollisionShape3D"
 		if stair_color == value:
 			return
 		stair_color = value
-		_request_rebuild()
-
-@export_group("Layout")
-@export_enum("Straight", "L Shaped", "Double L Shaped", "U Shaped", "Winder", "Spiral")
-var layout_style: int = LayoutStyle.STRAIGHT:
-	set(value):
-		var clamped_value := clampi(value, LayoutStyle.STRAIGHT, LayoutStyle.SPIRAL)
-		if layout_style == clamped_value:
-			return
-		layout_style = clamped_value
-		_request_rebuild()
-
-@export_enum("Left", "Right") var turn_direction: int = TurnDirection.RIGHT:
-	set(value):
-		var clamped_value := clampi(value, TurnDirection.LEFT, TurnDirection.RIGHT)
-		if turn_direction == clamped_value:
-			return
-		turn_direction = clamped_value
-		_request_rebuild()
-
-@export_enum("90 Degrees", "180 Degrees") var winder_turn: int = WinderTurn.TURN_90:
-	set(value):
-		var clamped_value := clampi(value, WinderTurn.TURN_90, WinderTurn.TURN_180)
-		if winder_turn == clamped_value:
-			return
-		winder_turn = clamped_value
-		_request_rebuild()
-
-@export_range(0.2, 8.0, 0.01, "or_greater") var flight_width := 1.2:
-	set(value):
-		var clamped_value := maxf(value, 0.2)
-		if is_equal_approx(flight_width, clamped_value):
-			return
-		flight_width = clamped_value
-		_request_rebuild()
-
-@export_range(45.0, 1080.0, 1.0) var spiral_turn_degrees := 360.0:
-	set(value):
-		var clamped_value := clampf(value, 45.0, 1080.0)
-		if is_equal_approx(spiral_turn_degrees, clamped_value):
-			return
-		spiral_turn_degrees = clamped_value
 		_request_rebuild()
 
 @export_group("Rails")
@@ -421,11 +370,57 @@ func get_step_run() -> float:
 
 
 func _total_rising_step_count() -> int:
-	if layout_style == LayoutStyle.STRAIGHT:
-		return _effective_step_count()
-	var size := get_stair_size()
-	var allocation := _layout_step_allocation(size.x, size.y)
-	return int(allocation["total"])
+	return _effective_step_count()
+
+
+func configure_stair_layout(
+	_turn_direction: int,
+	_winder_turn: int,
+	_flight_width: float,
+	_spiral_turn_degrees: float
+) -> void:
+	pass
+
+
+func _layout_mesh_source_signature_values() -> Array:
+	var script := get_script() as Script
+	return [script.resource_path if script != null else ""]
+
+
+func _is_l_shaped_layout() -> bool:
+	return false
+
+
+func _is_double_l_shaped_layout() -> bool:
+	return false
+
+
+func _is_u_shaped_layout() -> bool:
+	return false
+
+
+func _is_winder_layout() -> bool:
+	return false
+
+
+func _is_spiral_layout() -> bool:
+	return false
+
+
+func _layout_turn_direction() -> int:
+	return TurnDirection.RIGHT
+
+
+func _layout_winder_turn() -> int:
+	return WinderTurn.TURN_90
+
+
+func _layout_flight_width() -> float:
+	return 1.2
+
+
+func _layout_spiral_turn_degrees() -> float:
+	return 360.0
 
 
 static func stair_corners_from_base_points(base_start: Vector3, base_end: Vector3, rotation_degrees: float) -> Dictionary:
@@ -461,10 +456,12 @@ func rebuild_stairs_mesh(rebuild_collision: bool = true) -> void:
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
-	if layout_style == LayoutStyle.STRAIGHT:
-		_append_stair_geometry(size.x, size.y, vertices, normals, colors, indices)
-	else:
-		_append_layout_geometry(size.x, size.y, vertices, normals, colors, indices)
+	_append_stair_layout_geometry(
+		size.x, size.y, vertices, normals, colors, indices
+	)
+	if vertices.is_empty():
+		mesh = null
+		return
 
 	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
@@ -489,7 +486,7 @@ func _request_rebuild() -> void:
 
 
 func _stairs_mesh_source_signature() -> int:
-	return hash([
+	var signature: Array = [
 		MESH_GEOMETRY_VERSION,
 		start_point,
 		end_point,
@@ -500,11 +497,6 @@ func _stairs_mesh_source_signature() -> int:
 		nosing_depth,
 		stair_rotation_degrees,
 		stair_color,
-		layout_style,
-		turn_direction,
-		winder_turn,
-		flight_width,
-		spiral_turn_degrees,
 		left_rail_enabled,
 		right_rail_enabled,
 		infill_style,
@@ -521,7 +513,9 @@ func _stairs_mesh_source_signature() -> int:
 		rail_thickness,
 		rail_lower_height,
 		rail_color,
-	])
+	]
+	signature.append_array(_layout_mesh_source_signature_values())
+	return hash(signature)
 
 
 func _rebuild_collision_from_cached_mesh() -> void:
@@ -617,6 +611,17 @@ func _append_stair_geometry(
 	_append_flight_nosing_lips(identity_seg, vertices, normals, colors, indices)
 
 	_append_rail_geometry(width, depth, height, vertices, normals, colors, indices)
+
+
+func _append_stair_layout_geometry(
+	_width: float,
+	_depth: float,
+	_vertices: PackedVector3Array,
+	_normals: PackedVector3Array,
+	_colors: PackedColorArray,
+	_indices: PackedInt32Array
+) -> void:
+	pass
 
 
 func _append_rail_geometry(
@@ -1231,9 +1236,6 @@ func _add_side_wall_collision_shapes(body: StaticBody3D) -> void:
 	var size := get_stair_size()
 	if size.x <= 0.001 or size.y <= 0.001:
 		return
-	if layout_style != LayoutStyle.STRAIGHT:
-		_add_layout_side_wall_collision_shapes(body, size.x, size.y)
-		return
 	var bottom_y := -maxf(stair_thickness, 0.0)
 	var side_wall_thickness := minf(SIDE_WALL_COLLISION_THICKNESS, size.x * 0.45)
 	var steps := _effective_step_count()
@@ -1313,83 +1315,11 @@ static func _normalize_degrees_static(value: float) -> float:
 	return normalized
 
 
-# --- Layout styles (L / double-L / U / winder / spiral) ------------------------
-# Non-straight layouts subdivide the drawn bounding rectangle into an ordered
-# sequence of segments: straight flights, flat landings, and fanned winder
-# turns. Every segment is authored in its own rotated right-handed local frame
-# (x across the segment width, y up from the segment entry height, z along the
-# travel run) and embedded into stairs-local space, so the straight-flight
-# generation logic is reused unchanged for every flight orientation. Plans are
-# always built for a right-hand turn and mirrored across the footprint's X
-# axis for TurnDirection.LEFT, re-deriving each frame from its mirrored run
-# axis so all frames stay right-handed and winding stays valid.
-
-
-func _layout_winder_tread_count() -> int:
-	if layout_style != LayoutStyle.WINDER:
-		return 0
-	if winder_turn == WinderTurn.TURN_180:
-		return WINDER_TREADS_180
-	return WINDER_TREADS_90
-
-
-func _layout_turns_like_u() -> bool:
-	return (
-		layout_style == LayoutStyle.U_SHAPED
-		or (
-			layout_style == LayoutStyle.WINDER
-			and winder_turn == WinderTurn.TURN_180
-		)
-	)
-
-
-func _effective_flight_width(width: float, depth: float) -> float:
-	var fw := maxf(flight_width, 0.2)
-	match layout_style:
-		LayoutStyle.SPIRAL:
-			# Radial tread depth: keep a positive central-column radius.
-			fw = minf(fw, minf(width, depth) * 0.5 - 0.05)
-		LayoutStyle.DOUBLE_L_SHAPED:
-			fw = minf(fw, minf(width / 3.0, depth * 0.5))
-		LayoutStyle.U_SHAPED:
-			fw = minf(fw, minf(width * 0.5, depth * 0.5))
-		LayoutStyle.WINDER:
-			if winder_turn == WinderTurn.TURN_180:
-				fw = minf(fw, minf(width * 0.5, depth * 0.5))
-			else:
-				fw = minf(fw, minf(width, depth) * 0.5)
-		_:
-			fw = minf(fw, minf(width, depth) * 0.5)
-	return maxf(fw, 0.05)
-
-
-func _layout_run_lengths(width: float, depth: float, fw: float) -> PackedFloat32Array:
-	if layout_style == LayoutStyle.DOUBLE_L_SHAPED:
-		return PackedFloat32Array([depth - fw, width - 2.0 * fw, depth - fw])
-	if _layout_turns_like_u():
-		return PackedFloat32Array([depth - fw, depth - fw])
-	return PackedFloat32Array([depth - fw, width - fw])
-
-
-func _layout_step_allocation(width: float, depth: float) -> Dictionary:
-	if layout_style == LayoutStyle.SPIRAL:
-		# Every step is one fanned spiral tread; there are no straight flights.
-		# Increase very sparse configurations just enough to keep each radial
-		# tread a convex wedge rather than wrapping across the center line.
-		var minimum_spiral_steps := ceili(
-			clampf(spiral_turn_degrees, 45.0, 1080.0)
-			/ SPIRAL_MAX_TREAD_ANGLE_DEGREES
-		)
-		var spiral_steps := maxi(_effective_step_count(), minimum_spiral_steps)
-		return {
-			"flights": PackedInt32Array(),
-			"winder": 0,
-			"total": spiral_steps,
-		}
-	var fw := _effective_flight_width(width, depth)
-	var run_lengths := _layout_run_lengths(width, depth, fw)
+func _allocate_layout_steps(
+	run_lengths: PackedFloat32Array,
+	winder_treads: int
+) -> Dictionary:
 	var flight_count := run_lengths.size()
-	var winder_treads := _layout_winder_tread_count()
 	var flight_budget := maxi(_effective_step_count() - winder_treads, flight_count)
 	var counts := PackedInt32Array()
 	counts.resize(flight_count)
@@ -1417,6 +1347,69 @@ func _layout_step_allocation(width: float, depth: float) -> Dictionary:
 		"winder": winder_treads,
 		"total": flight_budget + winder_treads,
 	}
+
+
+func _layout_winder_tread_count() -> int:
+	if !_is_winder_layout():
+		return 0
+	if _layout_winder_turn() == WinderTurn.TURN_180:
+		return WINDER_TREADS_180
+	return WINDER_TREADS_90
+
+
+func _layout_turns_like_u() -> bool:
+	return (
+		_is_u_shaped_layout()
+		or (
+			_is_winder_layout()
+			and _layout_winder_turn() == WinderTurn.TURN_180
+		)
+	)
+
+
+func _effective_flight_width(width: float, depth: float) -> float:
+	var fw := maxf(_layout_flight_width(), 0.2)
+	if _is_spiral_layout():
+		fw = minf(fw, minf(width, depth) * 0.5 - 0.05)
+	elif _is_double_l_shaped_layout():
+		fw = minf(fw, minf(width / 3.0, depth * 0.5))
+	elif _is_u_shaped_layout():
+		fw = minf(fw, minf(width * 0.5, depth * 0.5))
+	elif _is_winder_layout():
+		if _layout_winder_turn() == WinderTurn.TURN_180:
+			fw = minf(fw, minf(width * 0.5, depth * 0.5))
+		else:
+			fw = minf(fw, minf(width, depth) * 0.5)
+	else:
+		fw = minf(fw, minf(width, depth) * 0.5)
+	return maxf(fw, 0.05)
+
+
+func _layout_run_lengths(width: float, depth: float, fw: float) -> PackedFloat32Array:
+	if _is_double_l_shaped_layout():
+		return PackedFloat32Array([depth - fw, width - 2.0 * fw, depth - fw])
+	if _layout_turns_like_u():
+		return PackedFloat32Array([depth - fw, depth - fw])
+	return PackedFloat32Array([depth - fw, width - fw])
+
+
+func _layout_step_allocation(width: float, depth: float) -> Dictionary:
+	if _is_spiral_layout():
+		var minimum_spiral_steps := ceili(
+			clampf(_layout_spiral_turn_degrees(), 45.0, 1080.0)
+			/ SPIRAL_MAX_TREAD_ANGLE_DEGREES
+		)
+		var spiral_steps := maxi(_effective_step_count(), minimum_spiral_steps)
+		return {
+			"flights": PackedInt32Array(),
+			"winder": 0,
+			"total": spiral_steps,
+		}
+	var fw := _effective_flight_width(width, depth)
+	return _allocate_layout_steps(
+		_layout_run_lengths(width, depth, fw),
+		_layout_winder_tread_count()
+	)
 
 
 func _distribute_middle_newels(flight_steps: PackedInt32Array) -> PackedInt32Array:
@@ -1732,7 +1725,9 @@ func _build_spiral_plan(width: float, depth: float) -> Dictionary:
 	var steps := maxi(total_steps, 1)
 	var rise := maxf(stair_height, 0.05) / float(steps)
 	var margin := minf(rail_edge_margin, fw * 0.45)
-	var turn_radians := deg_to_rad(clampf(spiral_turn_degrees, 45.0, 1080.0))
+	var turn_radians := deg_to_rad(clampf(
+		_layout_spiral_turn_degrees(), 45.0, 1080.0
+	))
 	var center := Vector2(width * 0.5, depth * 0.5)
 	var segments: Array[Dictionary] = [{
 		"kind": SegmentKind.SEGMENT_SPIRAL,
@@ -1781,13 +1776,13 @@ func _build_spiral_plan(width: float, depth: float) -> Dictionary:
 		"total_steps": steps,
 		"rise": rise,
 	}
-	if turn_direction == TurnDirection.LEFT:
+	if _layout_turn_direction() == TurnDirection.LEFT:
 		_mirror_layout_plan(plan, width)
 	return plan
 
 
 func _build_layout_plan(width: float, depth: float) -> Dictionary:
-	if layout_style == LayoutStyle.SPIRAL:
+	if _is_spiral_layout():
 		return _build_spiral_plan(width, depth)
 	var fw := _effective_flight_width(width, depth)
 	var allocation := _layout_step_allocation(width, depth)
@@ -1826,7 +1821,7 @@ func _build_layout_plan(width: float, depth: float) -> Dictionary:
 		r1, h1, n1, true, false, middle_shares[0]
 	))
 
-	if layout_style == LayoutStyle.DOUBLE_L_SHAPED:
+	if _is_double_l_shaped_layout():
 		var r2 := width - 2.0 * fw
 		var n2 := flight_steps[1]
 		var n3 := flight_steps[2]
@@ -1897,7 +1892,7 @@ func _build_layout_plan(width: float, depth: float) -> Dictionary:
 		))
 	elif _layout_turns_like_u():
 		var n2 := flight_steps[1]
-		if layout_style == LayoutStyle.U_SHAPED:
+		if _is_u_shaped_layout():
 			segments.append(_make_landing_segment(
 				Vector3(0.0, h1, r1), Vector3.BACK, width, fw
 			))
@@ -1962,7 +1957,7 @@ func _build_layout_plan(width: float, depth: float) -> Dictionary:
 	else:
 		var r2 := width - fw
 		var n2 := flight_steps[1]
-		if layout_style == LayoutStyle.L_SHAPED:
+		if _is_l_shaped_layout():
 			segments.append(_make_landing_segment(
 				Vector3(0.0, h1, r1), Vector3.BACK, fw, fw
 			))
@@ -2016,7 +2011,7 @@ func _build_layout_plan(width: float, depth: float) -> Dictionary:
 		"total_steps": total_steps,
 		"rise": rise,
 	}
-	if turn_direction == TurnDirection.LEFT:
+	if _layout_turn_direction() == TurnDirection.LEFT:
 		_mirror_layout_plan(plan, width)
 	return plan
 

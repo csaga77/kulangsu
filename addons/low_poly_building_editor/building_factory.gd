@@ -13,6 +13,17 @@ const BuildingOpening3DScript = preload(
 	"res://addons/low_poly_building_editor/building_opening_3d.gd"
 )
 
+const StraightStairs3DScript = preload(
+	"res://addons/low_poly_building_editor/straight_stairs_3d.gd"
+)
+const STAIR_LAYOUT_SCRIPTS: Array[Script] = [
+	StraightStairs3DScript,
+	preload("res://addons/low_poly_building_editor/l_shaped_stairs_3d.gd"),
+	preload("res://addons/low_poly_building_editor/double_l_shaped_stairs_3d.gd"),
+	preload("res://addons/low_poly_building_editor/u_shaped_stairs_3d.gd"),
+	preload("res://addons/low_poly_building_editor/winder_stairs_3d.gd"),
+	preload("res://addons/low_poly_building_editor/spiral_stairs_3d.gd"),
+]
 const PILLAR_STYLE_KEYS := ["round", "square", "octagonal", "tapered"]
 const PILLAR_STYLE_SCRIPTS := {
 	"round": preload("res://addons/low_poly_building_editor/round_pillar_3d.gd"),
@@ -292,7 +303,7 @@ static func create_stairs_node(
 	middle_newel_post_count: int = 0,
 	infill_count_between_newels: int = 1,
 	infill_style: int = 0,
-	layout_style: int = Stairs3DScript.LayoutStyle.STRAIGHT,
+	layout_script: Script = StraightStairs3DScript,
 	turn_direction: int = Stairs3DScript.TurnDirection.RIGHT,
 	winder_turn: int = Stairs3DScript.WinderTurn.TURN_90,
 	flight_width: float = 1.2,
@@ -300,13 +311,14 @@ static func create_stairs_node(
 	tread_style: int = Stairs3DScript.TreadStyle.CLOSED,
 	nosing_depth: float = 0.08
 ) -> Stairs3DScript:
-	var stairs := Stairs3DScript.new() as Stairs3DScript
+	var stairs := instantiate_stair_layout(layout_script)
 	stairs.name = _unique_child_name(building, "Stairs3D")
-	stairs.layout_style = layout_style
-	stairs.turn_direction = turn_direction
-	stairs.winder_turn = winder_turn
-	stairs.flight_width = flight_width
-	stairs.spiral_turn_degrees = spiral_turn_degrees
+	stairs.configure_stair_layout(
+		turn_direction,
+		winder_turn,
+		flight_width,
+		spiral_turn_degrees
+	)
 	stairs.start_point = local_start
 	stairs.end_point = Vector3(local_end.x, local_start.y, local_end.z)
 	stairs.stair_height = height
@@ -336,6 +348,24 @@ static func create_stairs_node(
 	stairs.generate_collision = true
 	stairs.rebuild_stairs_mesh()
 	return stairs
+
+
+static func instantiate_stair_layout(layout_selection: Variant) -> Stairs3DScript:
+	var stairs_script: Script
+	if layout_selection is Script:
+		stairs_script = layout_selection as Script
+	elif layout_selection is int:
+		var legacy_index := clampi(int(layout_selection), 0, STAIR_LAYOUT_SCRIPTS.size() - 1)
+		stairs_script = STAIR_LAYOUT_SCRIPTS[legacy_index]
+	elif layout_selection is String or layout_selection is StringName:
+		var resource_path := String(layout_selection)
+		for candidate: Script in STAIR_LAYOUT_SCRIPTS:
+			if candidate.resource_path == resource_path:
+				stairs_script = candidate
+				break
+	if stairs_script == null or !STAIR_LAYOUT_SCRIPTS.has(stairs_script):
+		stairs_script = StraightStairs3DScript
+	return stairs_script.new() as Stairs3DScript
 
 
 static func create_rail_node(

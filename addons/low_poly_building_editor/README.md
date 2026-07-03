@@ -7,9 +7,14 @@ either individual spans or enclosed rooms with a configurable side count of at l
 three; four sides preserves rectangular-room creation. The Stairs tool draws one
 bounding rectangle and can lay it out as a straight run or as L-shaped, double-L,
 U-shaped, 90/180-degree winder, or spiral stairs with a configurable flight width
-and left/right turn direction. Spiral stairs add a configurable 45–1080-degree
+and left/right turn direction. Each layout is represented by a concrete `Stairs3D`
+subclass. `Stairs3D` owns only universal stair state and reusable geometry primitives;
+the internal `TurningStairs3D` layer owns Turn and Flight Width, Winder owns its
+90/180-degree selector, and Spiral owns its configurable 45–1080-degree
 radial run around a low-poly central column; landings, winder fans, and spiral
 treads subdivide the same rectangle, and optional rails follow the turning path.
+The dock passes the selected concrete stair script directly to the factory rather
+than serializing a separate layout enum or key.
 Stairs offer three tread styles: Closed builds the solid stepped mass, Open
 floats individual tread slabs (and landing platforms) with no risers or
 underside, and Nosing keeps the closed mass while overhanging each tread past
