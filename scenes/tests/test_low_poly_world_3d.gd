@@ -51,6 +51,13 @@ const LANDMARK_PLACEMENTS := [
 const ACTOR_GROUND_PROBE_UP := 0.72
 const ACTOR_GROUND_PROBE_DOWN := 2.5
 const ACTOR_GROUND_TOLERANCE := 0.2
+# How far below the water plane the actor may wade before it is held up. In shallow
+# water it stands on the seabed (feet submerged, reading as wading); once the seabed
+# drops more than this below the surface the actor is held at this depth instead of
+# sinking further, so it stays partially submerged rather than walking on top of the
+# water, and the step back onto the shore never exceeds this (kept under the body's
+# max_step_height so the actor can always climb out).
+const MAX_ACTOR_WADE_DEPTH := 0.5
 
 const WIND_DEMO_ENABLED := true
 const WEATHER_RUNTIME := preload("res://weather/weather_runtime.gd")
@@ -441,9 +448,20 @@ func _resolve_actor_surface_height() -> float:
 
 
 func _resolve_terrain_sample_height() -> float:
-	var sample_cell := m_coordinates.world_position_to_sample_cell(m_actor.global_position)
+	# The actor wades through water: it stands on the seabed where the water is
+	# shallow (feet submerged, reading as wading) but is held at most
+	# MAX_ACTOR_WADE_DEPTH below the water plane in deeper water, so it neither walks
+	# on top of the water nor sinks into a pit it cannot step back out of. On land
+	# both queries resolve to the same land surface, so this is a no-op there.
 	var fallback_land_height: float = float(m_terrain.get("land_height"))
-	return _get_terrain_world_height(m_actor.global_position, sample_cell, fallback_land_height)
+	if !is_instance_valid(m_terrain):
+		return fallback_land_height
+	var sample_cell := m_coordinates.world_position_to_sample_cell(m_actor.global_position)
+	var seabed_height := _get_terrain_world_height(m_actor.global_position, sample_cell, fallback_land_height)
+	if !m_terrain.has_method("get_world_water_surface_height"):
+		return seabed_height
+	var water_surface := float(m_terrain.call("get_world_water_surface_height", m_actor.global_position))
+	return maxf(seabed_height, water_surface - MAX_ACTOR_WADE_DEPTH)
 
 
 func _validate_actor_terrain_elevation(failures: Array[String]) -> void:
@@ -474,23 +492,25 @@ func _validate_actor_water_cell_terrain_elevation(failures: Array[String]) -> vo
 
 	var fallback_land_height: float = float(m_terrain.get("land_height"))
 	var water_height: float = float(m_terrain.get("water_height"))
-	var terrain_height := _get_terrain_sample_height(water_cell, fallback_land_height)
-	if terrain_height >= water_height - 0.005:
+	# The seabed under this cell is genuinely below the water plane, so resting on
+	# the water surface (below) is distinguishable from sinking to the seabed.
+	var seabed_height := _get_terrain_sample_height(water_cell, fallback_land_height)
+	if seabed_height >= water_height - 0.005:
 		failures.append("LowPolyTerrain3D water cells did not expose land elevation for actor placement")
 		return
 
 	var original_position := m_actor.global_position
 	var probe_position := m_coordinates.sample_cell_to_world_center(water_cell, 0.0)
-	var land_surface := _get_terrain_world_height(probe_position, water_cell, fallback_land_height)
-	if land_surface >= water_height - 0.005:
-		failures.append("HumanBody3D water-cell terrain target used water height instead of land elevation")
-		m_actor.global_position = original_position
-		return
-
-	m_actor.global_position = Vector3(probe_position.x, land_surface + 0.5, probe_position.z)
+	# The actor wades: it rests on the seabed in shallow water but is held at most
+	# MAX_ACTOR_WADE_DEPTH below the water plane in deeper water, so it stays
+	# submerged (never standing on top of the water) and can always step back out.
+	var expected_wade_height := maxf(seabed_height, water_height - MAX_ACTOR_WADE_DEPTH)
+	m_actor.global_position = Vector3(probe_position.x, water_height + 0.5, probe_position.z)
 	_apply_actor_terrain_elevation()
-	if absf(m_actor.global_position.y - (land_surface + actor_terrain_clearance)) > ACTOR_GROUND_TOLERANCE:
-		failures.append("HumanBody3D did not settle onto land elevation in heightmap water")
+	if absf(m_actor.global_position.y - (expected_wade_height + actor_terrain_clearance)) > ACTOR_GROUND_TOLERANCE:
+		failures.append("HumanBody3D did not wade at the expected depth over a water cell")
+	if m_actor.global_position.y > water_height + ACTOR_GROUND_TOLERANCE:
+		failures.append("HumanBody3D stood on top of the water instead of wading")
 	m_actor.global_position = original_position
 
 
@@ -520,21 +540,19 @@ func _find_terrain_height_probe_cell() -> Vector2i:
 	var fallback_land_height: float = float(m_terrain.get("land_height"))
 	var origin_cell := m_coordinates.world_position_to_sample_cell(m_actor.global_position)
 	var origin_height := _get_terrain_sample_height(origin_cell, fallback_land_height)
-	var probe_cells: Array[Vector2i] = [
-		origin_cell,
-		Vector2i(grid_size.x - 1, grid_size.y - 1),
-		Vector2i(grid_size.x / 2, grid_size.y / 2),
-		Vector2i(grid_size.x - 1, 0),
-		Vector2i(0, grid_size.y - 1),
-	]
-	for probe_cell in probe_cells:
-		var clamped_cell := Vector2i(
-			clampi(probe_cell.x, 0, grid_size.x - 1),
-			clampi(probe_cell.y, 0, grid_size.y - 1)
-		)
-		var probe_height := _get_terrain_sample_height(clamped_cell, fallback_land_height)
-		if absf(probe_height - origin_height) > 0.05:
-			return clamped_cell
+	# Prefer a dry land cell whose elevation differs from the origin so the settle
+	# check exercises a real height change on solid terrain. Water cells follow the
+	# wade rule rather than the plain terrain surface and are covered separately by
+	# _validate_actor_water_cell_terrain_elevation, so they are skipped here.
+	var has_kind := m_terrain.has_method("get_sample_cell_kind")
+	for y in range(grid_size.y):
+		for x in range(grid_size.x):
+			var sample_cell := Vector2i(x, y)
+			if has_kind and int(m_terrain.call("get_sample_cell_kind", sample_cell)) == TERRAIN_KIND_WATER:
+				continue
+			var probe_height := _get_terrain_sample_height(sample_cell, fallback_land_height)
+			if absf(probe_height - origin_height) > 0.05:
+				return sample_cell
 	return origin_cell
 
 

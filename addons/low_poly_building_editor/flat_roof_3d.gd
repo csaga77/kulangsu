@@ -33,6 +33,16 @@ func set_roof_polygon(new_points: PackedVector3Array) -> void:
 		roof_rotation_degrees = 0.0
 	if _roof_mesh_source_signature() == previous_signature:
 		return
+	# Do not rebuild while the scene is still loading. `polygon_points` deserializes
+	# before `roof_thickness`/`roof_overhang` (and other roof state), so rebuilding
+	# here would bake the mesh with those properties at their defaults; the saved
+	# cache signature (recorded from the final values) would then still match and
+	# `_ready` would reuse this stale default-geometry mesh, leaving the roof looking
+	# like it lost its overhang/thickness even though the inspector shows the saved
+	# values. When not ready, just store the polygon and let `_ready` build (or reuse
+	# the correctly cached mesh) once every property is deserialized.
+	if !m_is_ready:
+		return
 	_sync_transform_from_points()
 	rebuild_roof_mesh()
 	source_geometry_changed.emit()
