@@ -94,8 +94,15 @@ func _setup_weather_wind() -> void:
 func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
-	_apply_actor_terrain_elevation()
 	_drive_demo_wind(delta)
+
+
+func _physics_process(_delta: float) -> void:
+	# Terrain elevation follow raycasts the physics space, so it must run inside a
+	# physics frame where direct_space_state is accessible.
+	if Engine.is_editor_hint():
+		return
+	_apply_actor_terrain_elevation()
 
 
 func _drive_demo_wind(delta: float) -> void:
@@ -410,19 +417,26 @@ func _apply_actor_terrain_elevation() -> void:
 # ray finds nothing within reach (e.g. over heightmap-water cells with no land
 # collision, or a genuine drop), which preserves land-elevation following there.
 func _resolve_actor_surface_height() -> float:
-	var world := m_actor.get_world_3d()
-	if world != null:
-		var origin := m_actor.global_position
-		var query := PhysicsRayQueryParameters3D.create(
-			origin + Vector3.UP * ACTOR_GROUND_PROBE_UP,
-			origin + Vector3.DOWN * ACTOR_GROUND_PROBE_DOWN
-		)
-		query.collision_mask = m_actor.collision_mask
-		query.collide_with_areas = false
-		query.exclude = [m_actor.get_rid()]
-		var hit := world.direct_space_state.intersect_ray(query)
-		if !hit.is_empty():
-			return float((hit["position"] as Vector3).y)
+	# The physics space is only accessible during a physics frame; outside one (idle
+	# _process, the position-changed signal, or the deferred validation pass) the
+	# direct_space_state getter is locked, so skip the ray and use the sampled
+	# terrain height instead of triggering an inaccessible-space error.
+	if Engine.is_in_physics_frame():
+		var world := m_actor.get_world_3d()
+		if world != null:
+			var space_state := world.direct_space_state
+			if space_state != null:
+				var origin := m_actor.global_position
+				var query := PhysicsRayQueryParameters3D.create(
+					origin + Vector3.UP * ACTOR_GROUND_PROBE_UP,
+					origin + Vector3.DOWN * ACTOR_GROUND_PROBE_DOWN
+				)
+				query.collision_mask = m_actor.collision_mask
+				query.collide_with_areas = false
+				query.exclude = [m_actor.get_rid()]
+				var hit := space_state.intersect_ray(query)
+				if !hit.is_empty():
+					return float((hit["position"] as Vector3).y)
 	return _resolve_terrain_sample_height()
 
 
