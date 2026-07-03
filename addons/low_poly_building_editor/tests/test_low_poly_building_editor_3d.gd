@@ -125,6 +125,7 @@ func _run_smoke_checks() -> void:
 	_validate_room_node(coordinator)
 	_validate_floor_node(coordinator)
 	_validate_stairs_node(coordinator)
+	_validate_spiral_stairs(coordinator)
 	_validate_stairs_optional_rails(coordinator)
 	_validate_standard_rail_geometry_post_base_heights()
 	_validate_rail_node(coordinator)
@@ -1701,6 +1702,284 @@ func _validate_stairs_node(coordinator: Building3DScript) -> void:
 		m_failures.append("Stairs3D did not preserve footprint center when rotating")
 	if stairs.transform.basis.is_equal_approx(Basis.IDENTITY):
 		m_failures.append("Stairs3D did not apply rotation to its transform")
+
+
+func _validate_spiral_stairs(coordinator: Building3DScript) -> void:
+	var spiral := BuildingFactoryScript.create_stairs_node(
+		coordinator,
+		Vector3(6.0, 0.75, 16.0),
+		Vector3(10.0, 0.75, 20.0),
+		3.0,
+		12,
+		0.16,
+		Color(0.52, 0.46, 0.38, 1.0),
+		0.0,
+		false,
+		false,
+		1.0,
+		0.08,
+		0.1,
+		0.18,
+		Color(0.33, 0.28, 0.22, 1.0),
+		0.15,
+		false,
+		Stairs3DScript.NewelPlacement.TREAD,
+		false,
+		Stairs3DScript.NewelPlacement.TREAD,
+		0.1,
+		0,
+		1,
+		StandardRailGeometryScript.RailStyle.VERTICAL,
+		Stairs3DScript.LayoutStyle.SPIRAL,
+		Stairs3DScript.TurnDirection.RIGHT,
+		Stairs3DScript.WinderTurn.TURN_90,
+		1.25,
+		360.0
+	)
+	coordinator.add_child(spiral)
+	if (
+		spiral.layout_style != Stairs3DScript.LayoutStyle.SPIRAL
+		or absf(spiral.spiral_turn_degrees - 360.0) > 0.001
+		or absf(spiral.flight_width - 1.25) > 0.001
+	):
+		m_failures.append("BuildingFactory did not apply the spiral stair settings")
+	if spiral.mesh == null or spiral.mesh.get_surface_count() <= 0:
+		m_failures.append("Spiral Stairs3D did not generate a mesh")
+		return
+	var plan := spiral._build_layout_plan(4.0, 4.0)
+	var segments: Array = plan["segments"]
+	if (
+		segments.size() != 1
+		or int(segments[0]["kind"]) != Stairs3DScript.SegmentKind.SEGMENT_SPIRAL
+		or int(plan["total_steps"]) != 12
+		or absf(float(plan["rise"]) - 0.25) > 0.001
+	):
+		m_failures.append("Spiral Stairs3D generated the wrong radial segment plan")
+	else:
+		var segment: Dictionary = segments[0]
+		if (
+			Vector2(segment["center"]).distance_to(Vector2(2.0, 2.0)) > 0.001
+			or absf(float(segment["outer_radius"]) - 2.0) > 0.001
+			or absf(float(segment["inner_radius"]) - 0.75) > 0.001
+		):
+			m_failures.append("Spiral Stairs3D did not fit its column and treads to the footprint")
+		var quarter_point := (
+			Vector2(segment["center"])
+			+ spiral._spiral_direction(PI * 0.5, float(segment["turn_sign"]))
+			* float(segment["outer_radius"])
+		)
+		if quarter_point.distance_to(Vector2(4.0, 2.0)) > 0.001:
+			m_failures.append("Right-turn Spiral Stairs3D wound in the wrong direction")
+	if !_has_mesh_vertex_y_near(spiral, 3.0, 0.001):
+		m_failures.append("Spiral Stairs3D did not reach the configured height")
+	if !_has_mesh_vertex_y_near(spiral, -0.16, 0.001):
+		m_failures.append("Spiral Stairs3D did not preserve the tread underside thickness")
+	var arrays := spiral.mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	if vertices.is_empty() or normals.size() != vertices.size():
+		m_failures.append("Spiral Stairs3D is missing mesh vertex or normal data")
+	for triangle_start in range(0, indices.size(), 3):
+		var a := vertices[indices[triangle_start]]
+		var b := vertices[indices[triangle_start + 1]]
+		var c := vertices[indices[triangle_start + 2]]
+		var winding_normal := (b - a).cross(c - a)
+		if winding_normal.length_squared() <= 0.000001:
+			m_failures.append("Spiral Stairs3D generated a degenerate triangle")
+			break
+		if winding_normal.normalized().dot(normals[indices[triangle_start]]) > -0.999:
+			m_failures.append("Spiral Stairs3D triangle winding does not match its normal")
+			break
+	if !_has_box_collision_shape(
+		spiral,
+		"StairsCollision/LayoutSideCollisionShape3D_12"
+	):
+		m_failures.append("Spiral Stairs3D did not generate one outer collision blocker per tread")
+
+	var base_vertex_count := _mesh_vertex_count(spiral)
+	spiral.lower_newel_enabled = true
+	spiral.lower_newel_placement = Stairs3DScript.NewelPlacement.FLOOR
+	spiral.upper_newel_enabled = true
+	spiral.upper_newel_placement = Stairs3DScript.NewelPlacement.TREAD
+	spiral.middle_newel_post_count = 4
+	spiral.infill_count_between_newels = 2
+	spiral.rail_newel_post_thickness = 0.14
+	spiral.infill_rail_thickness = 0.06
+	spiral.left_rail_enabled = true
+	spiral.right_rail_enabled = true
+	spiral.rebuild_stairs_mesh()
+	if _mesh_vertex_count(spiral) <= base_vertex_count:
+		m_failures.append("Spiral Stairs3D did not append its outer rail geometry")
+	var newel_plan := spiral._build_layout_plan(4.0, 4.0)
+	var spiral_path_runs: Array = newel_plan["rail_runs"]
+	var spiral_rail: Dictionary = newel_plan["spiral_rail"]
+	var member_extents: Vector2 = spiral._spiral_rail_member_extents(spiral_rail)
+	var post_layout: Dictionary = spiral_rail["post_layout"]
+	var smooth_samples := spiral._spiral_rail_sample_positions(
+		spiral_rail,
+		member_extents.x,
+		member_extents.y,
+		float(post_layout["lower_horizontal_end"]),
+		float(post_layout["upper_horizontal_start"])
+	)
+	if (
+		!spiral_path_runs.is_empty()
+		or newel_plan.has("rail_joints")
+		or smooth_samples.size() <= int(newel_plan["total_steps"]) + 1
+	):
+		m_failures.append(
+			"Spiral Stairs3D did not replace chord joints with one smooth sampled rail"
+		)
+	var vertical_rail_vertices := _spiral_rail_vertex_count(
+		spiral,
+		spiral_rail,
+		StandardRailGeometryScript.RailStyle.VERTICAL
+	)
+	var horizontal_rail_vertices := _spiral_rail_vertex_count(
+		spiral,
+		spiral_rail,
+		StandardRailGeometryScript.RailStyle.HORIZONTAL
+	)
+	var glass_rail_vertices := _spiral_rail_vertex_count(
+		spiral,
+		spiral_rail,
+		StandardRailGeometryScript.RailStyle.GLASS_PANEL
+	)
+	spiral.infill_style = StandardRailGeometryScript.RailStyle.VERTICAL
+	if (
+		vertical_rail_vertices <= 0
+		or glass_rail_vertices <= vertical_rail_vertices
+		or horizontal_rail_vertices <= glass_rail_vertices
+	):
+		m_failures.append(
+			"Spiral Stairs3D smooth sweep did not cover every continuous rail style"
+		)
+	var spiral_path_length: float = spiral_rail["length"]
+	var expected_layout := spiral._build_rail_post_layout(
+		spiral_path_length,
+		spiral.stair_height,
+		int(newel_plan["total_steps"]),
+		spiral.lower_newel_enabled,
+		spiral.upper_newel_enabled,
+		spiral.middle_newel_post_count,
+		spiral.lower_newel_placement,
+		spiral.upper_newel_placement
+	)
+	var projected_positions: PackedFloat32Array = post_layout["positions"]
+	var expected_positions: PackedFloat32Array = expected_layout["positions"]
+	var projected_bases: PackedFloat32Array = post_layout["base_heights"]
+	var expected_bases: PackedFloat32Array = expected_layout["base_heights"]
+	var projected_thicknesses: PackedFloat32Array = post_layout["thicknesses"]
+	var expected_thicknesses: PackedFloat32Array = expected_layout["thicknesses"]
+	var projected_tops: PackedFloat32Array = post_layout["top_heights"]
+	var expected_tops: PackedFloat32Array = expected_layout["top_heights"]
+	var projected_flags: PackedByteArray = post_layout["newel_flags"]
+	var expected_flags: PackedByteArray = expected_layout["newel_flags"]
+	var projection_matches := (
+		projected_positions.size() == expected_positions.size()
+		and projected_bases.size() == expected_bases.size()
+		and projected_thicknesses.size() == expected_thicknesses.size()
+		and projected_tops.size() == expected_tops.size()
+		and projected_flags == expected_flags
+	)
+	if projection_matches:
+		for post_index in range(expected_positions.size()):
+			var projected_top := projected_tops[post_index]
+			var expected_top := expected_tops[post_index]
+			var tops_match := (
+				is_nan(projected_top) and is_nan(expected_top)
+			) or absf(projected_top - expected_top) <= 0.001
+			if (
+				absf(projected_positions[post_index] - expected_positions[post_index]) > 0.001
+				or absf(projected_bases[post_index] - expected_bases[post_index]) > 0.001
+				or absf(
+					projected_thicknesses[post_index]
+					- expected_thicknesses[post_index]
+				) > 0.001
+				or !tops_match
+			):
+				projection_matches = false
+				break
+	if !projection_matches:
+		m_failures.append("Spiral Stairs3D did not project the shared newel layout onto its rail")
+	var projected_newel_count := 0
+	for flag in projected_flags:
+		if flag != 0:
+			projected_newel_count += 1
+	if (
+		projected_newel_count != 4
+		or projected_positions.is_empty()
+		or projected_positions[0] >= 0.0
+		or projected_positions[projected_positions.size() - 1] >= spiral_path_length
+	):
+		m_failures.append(
+			"Spiral Stairs3D did not preserve floor/tread terminals and total newel count"
+		)
+	for post_index in range(1, projected_flags.size()):
+		if projected_flags[post_index] == 0:
+			continue
+		var previous_newel := post_index - 1
+		while previous_newel >= 0 and projected_flags[previous_newel] == 0:
+			previous_newel -= 1
+		if previous_newel >= 0 and post_index - previous_newel - 1 != 2:
+			m_failures.append("Spiral Stairs3D did not keep the exact infill count per newel span")
+			break
+	spiral.lower_newel_placement = Stairs3DScript.NewelPlacement.TREAD
+	spiral.upper_newel_placement = Stairs3DScript.NewelPlacement.FLOOR
+	var opposite_terminal_plan := spiral._build_layout_plan(4.0, 4.0)
+	var opposite_rail: Dictionary = opposite_terminal_plan["spiral_rail"]
+	var opposite_terminal_layout: Dictionary = opposite_rail["post_layout"]
+	var opposite_positions: PackedFloat32Array = opposite_terminal_layout["positions"]
+	var opposite_path_length: float = opposite_rail["length"]
+	if (
+		opposite_positions.is_empty()
+		or opposite_positions[0] <= 0.0
+		or opposite_positions[opposite_positions.size() - 1] <= opposite_path_length
+	):
+		m_failures.append("Spiral Stairs3D did not preserve tread/floor terminal placement")
+
+	spiral.turn_direction = Stairs3DScript.TurnDirection.LEFT
+	spiral.rebuild_stairs_mesh()
+	var left_plan := spiral._build_layout_plan(4.0, 4.0)
+	var left_segment: Dictionary = left_plan["segments"][0]
+	var left_quarter_point := (
+		Vector2(left_segment["center"])
+		+ spiral._spiral_direction(PI * 0.5, float(left_segment["turn_sign"]))
+		* float(left_segment["outer_radius"])
+	)
+	if left_quarter_point.distance_to(Vector2(0.0, 2.0)) > 0.001:
+		m_failures.append("Left-turn Spiral Stairs3D did not mirror its winding direction")
+
+	spiral.step_count = 4
+	spiral.spiral_turn_degrees = 1080.0
+	spiral.rebuild_stairs_mesh()
+	var dense_plan := spiral._build_layout_plan(4.0, 4.0)
+	if (
+		int(dense_plan["total_steps"]) != 24
+		or absf(spiral.get_step_rise() - 0.125) > 0.001
+	):
+		m_failures.append("Spiral Stairs3D did not cap sparse tread angles at 45 degrees")
+
+
+func _spiral_rail_vertex_count(
+	stairs: Stairs3DScript,
+	spiral_rail: Dictionary,
+	style: int
+) -> int:
+	stairs.infill_style = style
+	var vertices := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var colors := PackedColorArray()
+	var indices := PackedInt32Array()
+	stairs._append_spiral_rail_geometry(
+		spiral_rail,
+		vertices,
+		normals,
+		colors,
+		indices
+	)
+	return vertices.size()
 
 
 func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:

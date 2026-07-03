@@ -13,6 +13,7 @@ enum LayoutStyle {
 	DOUBLE_L_SHAPED,
 	U_SHAPED,
 	WINDER,
+	SPIRAL,
 }
 
 enum TurnDirection {
@@ -29,6 +30,7 @@ enum SegmentKind {
 	SEGMENT_FLIGHT,
 	SEGMENT_LANDING,
 	SEGMENT_WINDER,
+	SEGMENT_SPIRAL,
 }
 
 enum RailRunKind {
@@ -42,11 +44,14 @@ const StandardRailGeometry := preload(
 
 const GENERATED_META := &"stairs_generated"
 const PREVIEW_META := &"building_editor_preview"
-const MESH_GEOMETRY_VERSION := 19
+const MESH_GEOMETRY_VERSION := 25
 const RAIL_SIDE_LEFT := 0
 const RAIL_SIDE_RIGHT := 1
 const WINDER_TREADS_90 := 3
 const WINDER_TREADS_180 := 6
+const SPIRAL_COLUMN_SIDES := 8
+const SPIRAL_MAX_TREAD_ANGLE_DEGREES := 45.0
+const SPIRAL_RAIL_MAX_SEGMENT_ANGLE_DEGREES := 7.5
 const SIDE_WALL_COLLISION_THICKNESS := 0.64
 const SIDE_WALL_COLLISION_META := &"stairs_side_wall_collision"
 const LEFT_SIDE_COLLISION_SHAPE_NAME := "LeftSideCollisionShape3D"
@@ -112,10 +117,10 @@ const RIGHT_SIDE_COLLISION_SHAPE_NAME := "RightSideCollisionShape3D"
 		_request_rebuild()
 
 @export_group("Layout")
-@export_enum("Straight", "L Shaped", "Double L Shaped", "U Shaped", "Winder")
+@export_enum("Straight", "L Shaped", "Double L Shaped", "U Shaped", "Winder", "Spiral")
 var layout_style: int = LayoutStyle.STRAIGHT:
 	set(value):
-		var clamped_value := clampi(value, LayoutStyle.STRAIGHT, LayoutStyle.WINDER)
+		var clamped_value := clampi(value, LayoutStyle.STRAIGHT, LayoutStyle.SPIRAL)
 		if layout_style == clamped_value:
 			return
 		layout_style = clamped_value
@@ -143,6 +148,14 @@ var layout_style: int = LayoutStyle.STRAIGHT:
 		if is_equal_approx(flight_width, clamped_value):
 			return
 		flight_width = clamped_value
+		_request_rebuild()
+
+@export_range(45.0, 1080.0, 1.0) var spiral_turn_degrees := 360.0:
+	set(value):
+		var clamped_value := clampf(value, 45.0, 1080.0)
+		if is_equal_approx(spiral_turn_degrees, clamped_value):
+			return
+		spiral_turn_degrees = clamped_value
 		_request_rebuild()
 
 @export_group("Rails")
@@ -463,6 +476,7 @@ func _stairs_mesh_source_signature() -> int:
 		turn_direction,
 		winder_turn,
 		flight_width,
+		spiral_turn_degrees,
 		left_rail_enabled,
 		right_rail_enabled,
 		infill_style,
@@ -1262,7 +1276,7 @@ static func _normalize_degrees_static(value: float) -> float:
 	return normalized
 
 
-# --- Layout styles (L / double-L / U / winder) ---------------------------------
+# --- Layout styles (L / double-L / U / winder / spiral) ------------------------
 # Non-straight layouts subdivide the drawn bounding rectangle into an ordered
 # sequence of segments: straight flights, flat landings, and fanned winder
 # turns. Every segment is authored in its own rotated right-handed local frame
@@ -1295,6 +1309,9 @@ func _layout_turns_like_u() -> bool:
 func _effective_flight_width(width: float, depth: float) -> float:
 	var fw := maxf(flight_width, 0.2)
 	match layout_style:
+		LayoutStyle.SPIRAL:
+			# Radial tread depth: keep a positive central-column radius.
+			fw = minf(fw, minf(width, depth) * 0.5 - 0.05)
 		LayoutStyle.DOUBLE_L_SHAPED:
 			fw = minf(fw, minf(width / 3.0, depth * 0.5))
 		LayoutStyle.U_SHAPED:
@@ -1318,6 +1335,20 @@ func _layout_run_lengths(width: float, depth: float, fw: float) -> PackedFloat32
 
 
 func _layout_step_allocation(width: float, depth: float) -> Dictionary:
+	if layout_style == LayoutStyle.SPIRAL:
+		# Every step is one fanned spiral tread; there are no straight flights.
+		# Increase very sparse configurations just enough to keep each radial
+		# tread a convex wedge rather than wrapping across the center line.
+		var minimum_spiral_steps := ceili(
+			clampf(spiral_turn_degrees, 45.0, 1080.0)
+			/ SPIRAL_MAX_TREAD_ANGLE_DEGREES
+		)
+		var spiral_steps := maxi(_effective_step_count(), minimum_spiral_steps)
+		return {
+			"flights": PackedInt32Array(),
+			"winder": 0,
+			"total": spiral_steps,
+		}
 	var fw := _effective_flight_width(width, depth)
 	var run_lengths := _layout_run_lengths(width, depth, fw)
 	var flight_count := run_lengths.size()
@@ -1468,7 +1499,11 @@ func _make_plain_rail_run(
 	post_thicknesses := PackedFloat32Array(),
 	post_base_follows_rise := PackedByteArray(),
 	minimum_run_override := NAN,
-	maximum_run_override := NAN
+	maximum_run_override := NAN,
+	post_top_heights := PackedFloat32Array(),
+	lower_horizontal_end := -INF,
+	upper_horizontal_start := INF,
+	post_newel_flags := PackedByteArray()
 ) -> Dictionary:
 	return {
 		"kind": RailRunKind.RAIL_RUN_PLAIN,
@@ -1484,6 +1519,10 @@ func _make_plain_rail_run(
 		"post_base_follows_rise": post_base_follows_rise,
 		"minimum_run_override": minimum_run_override,
 		"maximum_run_override": maximum_run_override,
+		"post_top_heights": post_top_heights,
+		"lower_horizontal_end": lower_horizontal_end,
+		"upper_horizontal_start": upper_horizontal_start,
+		"post_newel_flags": post_newel_flags,
 	}
 
 
@@ -1636,7 +1675,83 @@ func _add_raked_path_rail_runs(
 		traversed += length
 
 
+func _spiral_direction(theta: float, turn_sign: float) -> Vector2:
+	# Radial unit direction at spiral angle theta; theta 0 points toward the
+	# footprint front (-Z), positive turn_sign turns toward +X (right turn).
+	return Vector2(sin(theta) * turn_sign, -cos(theta))
+
+
+func _spiral_tangent(theta: float, turn_sign: float) -> Vector2:
+	# Travel direction along the spiral at angle theta.
+	return Vector2(cos(theta) * turn_sign, sin(theta)).normalized()
+
+
+func _build_spiral_plan(width: float, depth: float) -> Dictionary:
+	var fw := _effective_flight_width(width, depth)
+	var outer_radius := minf(width, depth) * 0.5
+	var inner_radius := clampf(outer_radius - fw, 0.05, outer_radius - 0.05)
+	var allocation := _layout_step_allocation(width, depth)
+	var total_steps: int = allocation["total"]
+	var steps := maxi(total_steps, 1)
+	var rise := maxf(stair_height, 0.05) / float(steps)
+	var margin := minf(rail_edge_margin, fw * 0.45)
+	var turn_radians := deg_to_rad(clampf(spiral_turn_degrees, 45.0, 1080.0))
+	var center := Vector2(width * 0.5, depth * 0.5)
+	var segments: Array[Dictionary] = [{
+		"kind": SegmentKind.SEGMENT_SPIRAL,
+		"origin": Vector3.ZERO,
+		"run_axis": Vector3.BACK,
+		"width_axis": Vector3.UP.cross(Vector3.BACK).normalized(),
+		"width": width,
+		"run": depth,
+		"steps": steps,
+		"rise": rise,
+		"center": center,
+		"outer_radius": outer_radius,
+		"inner_radius": inner_radius,
+		"turn_radians": turn_radians,
+		"turn_sign": 1.0,
+	}]
+	var rail_runs: Array[Dictionary] = []
+	var rail_radius := maxf(outer_radius - margin, inner_radius + 0.02)
+	var rail_length := rail_radius * turn_radians
+	var rail_post_layout := _build_rail_post_layout(
+		rail_length,
+		maxf(stair_height, 0.05),
+		steps,
+		lower_newel_enabled,
+		upper_newel_enabled,
+		middle_newel_post_count,
+		lower_newel_placement,
+		upper_newel_placement
+	)
+	var spiral_rail := {
+		"side": RAIL_SIDE_LEFT,
+		"center": center,
+		"radius": rail_radius,
+		"turn_radians": turn_radians,
+		"turn_sign": 1.0,
+		"length": rail_length,
+		"rise": maxf(stair_height, 0.05),
+		"steps": steps,
+		"post_layout": rail_post_layout,
+	}
+	var plan := {
+		"segments": segments,
+		"rail_runs": rail_runs,
+		"spiral_rail": spiral_rail,
+		"flight_width": fw,
+		"total_steps": steps,
+		"rise": rise,
+	}
+	if turn_direction == TurnDirection.LEFT:
+		_mirror_layout_plan(plan, width)
+	return plan
+
+
 func _build_layout_plan(width: float, depth: float) -> Dictionary:
+	if layout_style == LayoutStyle.SPIRAL:
+		return _build_spiral_plan(width, depth)
 	var fw := _effective_flight_width(width, depth)
 	var allocation := _layout_step_allocation(width, depth)
 	var flight_steps: PackedInt32Array = allocation["flights"]
@@ -1880,6 +1995,10 @@ func _mirror_layout_plan(plan: Dictionary, width: float) -> void:
 		seg["run_axis"] = mirrored_run
 		seg["width_axis"] = Vector3.UP.cross(mirrored_run).normalized()
 		seg["origin"] = Vector3(width - far_corner.x, far_corner.y, far_corner.z)
+		if seg.has("center"):
+			var spiral_center: Vector2 = seg["center"]
+			seg["center"] = Vector2(segment_width - spiral_center.x, spiral_center.y)
+			seg["turn_sign"] = -float(seg["turn_sign"])
 		if seg.has("pivot"):
 			var pivot: Vector2 = seg["pivot"]
 			seg["pivot"] = Vector2(segment_width - pivot.x, pivot.y)
@@ -1900,6 +2019,16 @@ func _mirror_layout_plan(plan: Dictionary, width: float) -> void:
 		run["run_dir"] = Vector3(-run_dir.x, run_dir.y, run_dir.z)
 		run["side"] = (
 			RAIL_SIDE_RIGHT if int(run["side"]) == RAIL_SIDE_LEFT else RAIL_SIDE_LEFT
+		)
+	if plan.has("spiral_rail"):
+		var spiral_rail: Dictionary = plan["spiral_rail"]
+		var rail_center: Vector2 = spiral_rail["center"]
+		spiral_rail["center"] = Vector2(width - rail_center.x, rail_center.y)
+		spiral_rail["turn_sign"] = -float(spiral_rail["turn_sign"])
+		spiral_rail["side"] = (
+			RAIL_SIDE_RIGHT
+				if int(spiral_rail["side"]) == RAIL_SIDE_LEFT
+				else RAIL_SIDE_LEFT
 		)
 
 
@@ -1941,6 +2070,8 @@ func _append_layout_geometry(
 				_append_landing_segment_geometry(seg, vertices, normals, colors, indices)
 			SegmentKind.SEGMENT_WINDER:
 				_append_winder_segment_geometry(seg, vertices, normals, colors, indices)
+			SegmentKind.SEGMENT_SPIRAL:
+				_append_spiral_segment_geometry(seg, vertices, normals, colors, indices)
 	_append_layout_rail_geometry(plan, vertices, normals, colors, indices)
 
 
@@ -2350,8 +2481,9 @@ func _append_layout_rail_geometry(
 				_clamped_infill_rail_size(), rail_thickness, rail_lower_height,
 				rail_color,
 				run["post_positions"], run["post_base_heights"],
-				run["post_thicknesses"], PackedFloat32Array(),
-				-INF, INF,
+				run["post_thicknesses"], run["post_top_heights"],
+				float(run["lower_horizontal_end"]),
+				float(run["upper_horizontal_start"]),
 				float(run["minimum_run_override"]),
 				float(run["maximum_run_override"]),
 				infill_style, infill_count_between_newels,
@@ -2359,6 +2491,408 @@ func _append_layout_rail_geometry(
 				false # transition legs own their full post layout; junction
 					# posts are shared with the adjacent flight/leg runs.
 			)
+	if plan.has("spiral_rail"):
+		var spiral_rail: Dictionary = plan["spiral_rail"]
+		var spiral_side: int = spiral_rail["side"]
+		if (
+			(spiral_side == RAIL_SIDE_LEFT and left_rail_enabled)
+			or (spiral_side == RAIL_SIDE_RIGHT and right_rail_enabled)
+		):
+			_append_spiral_rail_geometry(
+				spiral_rail, vertices, normals, colors, indices
+			)
+
+
+func _spiral_rail_member_extents(rail: Dictionary) -> Vector2:
+	var length: float = rail["length"]
+	var layout: Dictionary = rail["post_layout"]
+	var positions: PackedFloat32Array = layout["positions"]
+	var thicknesses: PackedFloat32Array = layout["thicknesses"]
+	var default_size := _clamped_infill_rail_size()
+	var minimum_run := -default_size * 0.5
+	var maximum_run := length + default_size * 0.5
+	for index in range(positions.size()):
+		var post_size := (
+			thicknesses[index] if index < thicknesses.size() else default_size
+		)
+		minimum_run = minf(minimum_run, positions[index] - post_size * 0.5)
+		maximum_run = maxf(maximum_run, positions[index] + post_size * 0.5)
+	var minimum_override := float(layout["handrail_minimum_run"])
+	var maximum_override := float(layout["handrail_maximum_run"])
+	if !is_nan(minimum_override):
+		minimum_run = minimum_override
+	if !is_nan(maximum_override):
+		maximum_run = maximum_override
+	return Vector2(minimum_run, maximum_run)
+
+
+func _spiral_rail_frame(rail: Dictionary, run_position: float) -> Dictionary:
+	var length := maxf(float(rail["length"]), 0.001)
+	var turn_radians: float = rail["turn_radians"]
+	var turn_sign: float = rail["turn_sign"]
+	var clamped_run := clampf(run_position, 0.0, length)
+	var theta := turn_radians * clamped_run / length
+	var tangent_2d := _spiral_tangent(theta, turn_sign)
+	var point_2d := (
+		Vector2(rail["center"])
+		+ _spiral_direction(theta, turn_sign) * float(rail["radius"])
+	)
+	if run_position < 0.0:
+		point_2d += tangent_2d * run_position
+	elif run_position > length:
+		point_2d += tangent_2d * (run_position - length)
+	var tangent := Vector3(tangent_2d.x, 0.0, tangent_2d.y)
+	var side := Vector3.UP.cross(tangent).normalized()
+	return {
+		"point": Vector3(point_2d.x, 0.0, point_2d.y),
+		"tangent": tangent,
+		"side": side,
+	}
+
+
+func _spiral_rail_path_height(
+	rail: Dictionary,
+	run_position: float,
+	lower_horizontal_end: float,
+	upper_horizontal_start: float,
+	use_horizontal_ends: bool
+) -> float:
+	var height_run := run_position
+	if use_horizontal_ends:
+		if run_position < lower_horizontal_end:
+			height_run = lower_horizontal_end
+		elif run_position > upper_horizontal_start:
+			height_run = upper_horizontal_start
+	return float(rail["rise"]) * height_run / maxf(float(rail["length"]), 0.001)
+
+
+func _spiral_rail_path_slope(
+	rail: Dictionary,
+	run_position: float,
+	lower_horizontal_end: float,
+	upper_horizontal_start: float,
+	use_horizontal_ends: bool
+) -> float:
+	if (
+		use_horizontal_ends
+		and (
+			run_position < lower_horizontal_end - 0.0001
+			or run_position > upper_horizontal_start + 0.0001
+		)
+	):
+		return 0.0
+	return float(rail["rise"]) / maxf(float(rail["length"]), 0.001)
+
+
+func _spiral_rail_sample_positions(
+	rail: Dictionary,
+	minimum_run: float,
+	maximum_run: float,
+	lower_horizontal_end: float,
+	upper_horizontal_start: float
+) -> PackedFloat32Array:
+	var candidates: Array[float] = [minimum_run, maximum_run]
+	var length: float = rail["length"]
+	if minimum_run < 0.0 and maximum_run > 0.0:
+		candidates.append(0.0)
+	if minimum_run < length and maximum_run > length:
+		candidates.append(length)
+	for transition in [lower_horizontal_end, upper_horizontal_start]:
+		if transition > minimum_run and transition < maximum_run:
+			candidates.append(transition)
+	var segment_count := maxi(
+		ceili(
+			rad_to_deg(float(rail["turn_radians"]))
+			/ SPIRAL_RAIL_MAX_SEGMENT_ANGLE_DEGREES
+		),
+		1
+	)
+	for segment_index in range(segment_count + 1):
+		var run_position := length * float(segment_index) / float(segment_count)
+		if run_position > minimum_run and run_position < maximum_run:
+			candidates.append(run_position)
+	candidates.sort()
+	var samples := PackedFloat32Array()
+	for candidate in candidates:
+		if samples.is_empty() or absf(candidate - samples[-1]) > 0.0001:
+			samples.append(candidate)
+	return samples
+
+
+func _append_spiral_rail_strip(
+	edge_a: PackedVector3Array,
+	edge_b: PackedVector3Array,
+	normal_a: PackedVector3Array,
+	normal_b: PackedVector3Array,
+	color: Color,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	if edge_a.size() < 2 or edge_b.size() != edge_a.size():
+		return
+	var base := vertices.size()
+	for sample_index in range(edge_a.size()):
+		vertices.append(edge_a[sample_index])
+		vertices.append(edge_b[sample_index])
+		normals.append(normal_a[sample_index])
+		normals.append(normal_b[sample_index])
+		colors.append(color)
+		colors.append(color)
+	for sample_index in range(edge_a.size() - 1):
+		var first := base + sample_index * 2
+		var next := first + 2
+		var face_normal := (
+			normal_a[sample_index]
+			+ normal_b[sample_index]
+			+ normal_a[sample_index + 1]
+			+ normal_b[sample_index + 1]
+		).normalized()
+		_append_oriented_triangle(
+			vertices, indices, face_normal, first, next, next + 1
+		)
+		_append_oriented_triangle(
+			vertices, indices, face_normal, first, next + 1, first + 1
+		)
+
+
+func _append_spiral_rail_cap(
+	a: Vector3,
+	b: Vector3,
+	c: Vector3,
+	d: Vector3,
+	normal: Vector3,
+	color: Color,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	var base := vertices.size()
+	vertices.append_array(PackedVector3Array([a, b, c, d]))
+	for _index in range(4):
+		normals.append(normal)
+		colors.append(color)
+	_append_oriented_triangle(vertices, indices, normal, base, base + 1, base + 2)
+	_append_oriented_triangle(vertices, indices, normal, base, base + 2, base + 3)
+
+
+func _append_spiral_rail_sweep(
+	rail: Dictionary,
+	minimum_run: float,
+	maximum_run: float,
+	bottom_height: float,
+	top_height: float,
+	member_width: float,
+	color: Color,
+	use_horizontal_ends: bool,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	if maximum_run - minimum_run <= 0.001 or top_height - bottom_height <= 0.001:
+		return
+	var layout: Dictionary = rail["post_layout"]
+	var lower_horizontal_end := float(layout["lower_horizontal_end"])
+	var upper_horizontal_start := float(layout["upper_horizontal_start"])
+	var samples := _spiral_rail_sample_positions(
+		rail,
+		minimum_run,
+		maximum_run,
+		lower_horizontal_end,
+		upper_horizontal_start
+	)
+	if samples.size() < 2:
+		return
+	var half_width := maxf(member_width, 0.01) * 0.5
+	var inner_bottom := PackedVector3Array()
+	var outer_bottom := PackedVector3Array()
+	var inner_top := PackedVector3Array()
+	var outer_top := PackedVector3Array()
+	var inner_normals := PackedVector3Array()
+	var outer_normals := PackedVector3Array()
+	var top_normals := PackedVector3Array()
+	var bottom_normals := PackedVector3Array()
+	for run_position in samples:
+		var frame := _spiral_rail_frame(rail, run_position)
+		var point: Vector3 = frame["point"]
+		var tangent: Vector3 = frame["tangent"]
+		var side: Vector3 = frame["side"]
+		var path_height := _spiral_rail_path_height(
+			rail,
+			run_position,
+			lower_horizontal_end,
+			upper_horizontal_start,
+			use_horizontal_ends
+		)
+		var slope := _spiral_rail_path_slope(
+			rail,
+			run_position,
+			lower_horizontal_end,
+			upper_horizontal_start,
+			use_horizontal_ends
+		)
+		var path_tangent := Vector3(tangent.x, slope, tangent.z).normalized()
+		var top_normal := path_tangent.cross(side).normalized()
+		var bottom_normal := -top_normal
+		var inner_offset := -side * half_width
+		var outer_offset := side * half_width
+		inner_bottom.append(point + inner_offset + Vector3.UP * (path_height + bottom_height))
+		outer_bottom.append(point + outer_offset + Vector3.UP * (path_height + bottom_height))
+		inner_top.append(point + inner_offset + Vector3.UP * (path_height + top_height))
+		outer_top.append(point + outer_offset + Vector3.UP * (path_height + top_height))
+		inner_normals.append(-side)
+		outer_normals.append(side)
+		top_normals.append(top_normal)
+		bottom_normals.append(bottom_normal)
+	_append_spiral_rail_strip(
+		inner_top, outer_top, top_normals, top_normals, color,
+		vertices, normals, colors, indices
+	)
+	_append_spiral_rail_strip(
+		outer_bottom, inner_bottom, bottom_normals, bottom_normals, color,
+		vertices, normals, colors, indices
+	)
+	_append_spiral_rail_strip(
+		outer_top, outer_bottom, outer_normals, outer_normals, color,
+		vertices, normals, colors, indices
+	)
+	_append_spiral_rail_strip(
+		inner_bottom, inner_top, inner_normals, inner_normals, color,
+		vertices, normals, colors, indices
+	)
+	var start_tangent: Vector3 = _spiral_rail_frame(rail, samples[0])["tangent"]
+	var end_tangent: Vector3 = _spiral_rail_frame(rail, samples[-1])["tangent"]
+	_append_spiral_rail_cap(
+		inner_bottom[0], inner_top[0], outer_top[0], outer_bottom[0],
+		-start_tangent, color, vertices, normals, colors, indices
+	)
+	var last := samples.size() - 1
+	_append_spiral_rail_cap(
+		inner_bottom[last], outer_bottom[last], outer_top[last], inner_top[last],
+		end_tangent, color, vertices, normals, colors, indices
+	)
+
+
+func _append_spiral_rail_posts(
+	rail: Dictionary,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	var layout: Dictionary = rail["post_layout"]
+	var positions: PackedFloat32Array = layout["positions"]
+	var base_heights: PackedFloat32Array = layout["base_heights"]
+	var thicknesses: PackedFloat32Array = layout["thicknesses"]
+	var top_heights: PackedFloat32Array = layout["top_heights"]
+	var base_follows_rise: PackedByteArray = layout["base_follows_rise"]
+	var length := maxf(float(rail["length"]), 0.001)
+	var rise_per_run := float(rail["rise"]) / length
+	for index in range(positions.size()):
+		var run_position := positions[index]
+		var frame := _spiral_rail_frame(rail, run_position)
+		var point: Vector3 = frame["point"]
+		var path_height := float(rail["rise"]) * run_position / length
+		var local_top := NAN
+		if index < top_heights.size() and !is_nan(top_heights[index]):
+			local_top = top_heights[index] - path_height
+		StandardRailGeometry.append_rail(
+			vertices, normals, colors, indices,
+			Vector3(point.x, path_height, point.z),
+			frame["tangent"], Vector3.UP, frame["side"],
+			1.0, rise_per_run, rail_height,
+			1.0, _clamped_infill_rail_size(), rail_thickness, rail_lower_height,
+			rail_color,
+			PackedFloat32Array([0.0]),
+			PackedFloat32Array([base_heights[index] - path_height]),
+			PackedFloat32Array([thicknesses[index]]),
+			PackedFloat32Array([local_top]),
+			-INF, INF, NAN, NAN,
+			infill_style, infill_count_between_newels,
+			PackedByteArray([
+				base_follows_rise[index] if index < base_follows_rise.size() else 0
+			]),
+			false,
+			false
+		)
+
+
+func _append_spiral_rail_geometry(
+	rail: Dictionary,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	var extents := _spiral_rail_member_extents(rail)
+	var height := maxf(rail_height, 0.2)
+	var bar_size := _handrail_width()
+	var handrail_bottom := height - bar_size
+	_append_spiral_rail_sweep(
+		rail, extents.x, extents.y, handrail_bottom, height, bar_size,
+		rail_color, true, vertices, normals, colors, indices
+	)
+
+	var has_base_rail := StandardRailGeometry.has_lower_rail(
+		rail_height, rail_thickness, rail_lower_height
+	)
+	var base_rail_top := StandardRailGeometry.lower_rail_top_height(
+		rail_height, rail_thickness, rail_lower_height
+	)
+	var infill_bottom := 0.0
+	if has_base_rail:
+		var base_center := base_rail_top - bar_size * 0.5
+		_append_spiral_rail_sweep(
+			rail, extents.x, extents.y,
+			base_center - bar_size * 0.5,
+			base_center + bar_size * 0.5,
+			bar_size, rail_color, false,
+			vertices, normals, colors, indices
+		)
+		infill_bottom = base_rail_top
+
+	if infill_style == StandardRailGeometry.RailStyle.HORIZONTAL:
+		var infill_count := clampi(infill_count_between_newels, 0, 64)
+		var infill_size := minf(
+			_clamped_infill_rail_size(),
+			maxf(handrail_bottom - infill_bottom, 0.02)
+		)
+		var clear_height := (
+			handrail_bottom - infill_bottom - infill_size * float(infill_count)
+		)
+		if infill_count > 0 and clear_height >= 0.0:
+			var clear_gap := clear_height / float(infill_count + 1)
+			for infill_index in range(infill_count):
+				var infill_center := (
+					infill_bottom
+					+ clear_gap * float(infill_index + 1)
+					+ infill_size * (float(infill_index) + 0.5)
+				)
+				_append_spiral_rail_sweep(
+					rail, extents.x, extents.y,
+					infill_center - infill_size * 0.5,
+					infill_center + infill_size * 0.5,
+					infill_size, rail_color, false,
+					vertices, normals, colors, indices
+				)
+	elif (
+		infill_style == StandardRailGeometry.RailStyle.GLASS_PANEL
+		and handrail_bottom - infill_bottom > 0.001
+	):
+		var panel_thickness := maxf(
+			minf(bar_size, _clamped_infill_rail_size()) * 0.5,
+			0.02
+		)
+		_append_spiral_rail_sweep(
+			rail, extents.x, extents.y,
+			infill_bottom, handrail_bottom,
+			panel_thickness, StandardRailGeometry.GLASS_PANEL_COLOR, false,
+			vertices, normals, colors, indices
+		)
+	_append_spiral_rail_posts(rail, vertices, normals, colors, indices)
 
 
 func _add_layout_side_wall_collision_shapes(
@@ -2380,6 +2914,10 @@ func _add_layout_side_wall_collision_shapes(
 				shape_index = _add_landing_collision_box(body, seg, shape_index)
 			SegmentKind.SEGMENT_WINDER:
 				shape_index = _add_winder_collision_boxes(
+					body, seg, wall_thickness, shape_index
+				)
+			SegmentKind.SEGMENT_SPIRAL:
+				shape_index = _add_spiral_collision_boxes(
 					body, seg, wall_thickness, shape_index
 				)
 
@@ -2456,6 +2994,157 @@ func _add_landing_collision_box(
 		seg_basis
 	)
 	return shape_index + 1
+
+
+func _append_spiral_segment_geometry(
+	seg: Dictionary,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	var steps: int = seg["steps"]
+	var rise: float = seg["rise"]
+	var center: Vector2 = seg["center"]
+	var outer_radius: float = seg["outer_radius"]
+	var inner_radius: float = seg["inner_radius"]
+	var turn_radians: float = seg["turn_radians"]
+	var turn_sign: float = seg["turn_sign"]
+	if steps <= 0 or outer_radius - inner_radius <= 0.001:
+		return
+	# Floating wedge tread slabs around the central column. The inner faces
+	# are omitted: they sit inside the column, whose circumscribed prism
+	# contains the treads' inner circle.
+	var slab := maxf(stair_thickness, 0.05)
+	for tread_index in range(steps):
+		var theta0 := turn_radians * float(tread_index) / float(steps)
+		var theta1 := turn_radians * float(tread_index + 1) / float(steps)
+		var top := rise * float(tread_index + 1)
+		var bottom := top - slab
+		var inner0 := center + _spiral_direction(theta0, turn_sign) * inner_radius
+		var inner1 := center + _spiral_direction(theta1, turn_sign) * inner_radius
+		var outer0 := center + _spiral_direction(theta0, turn_sign) * outer_radius
+		var outer1 := center + _spiral_direction(theta1, turn_sign) * outer_radius
+		_append_segment_quad(
+			seg, vertices, normals, colors, indices,
+			Vector3(inner0.x, top, inner0.y),
+			Vector3(inner1.x, top, inner1.y),
+			Vector3(outer1.x, top, outer1.y),
+			Vector3(outer0.x, top, outer0.y),
+			Vector3.UP
+		)
+		_append_segment_quad(
+			seg, vertices, normals, colors, indices,
+			Vector3(inner0.x, bottom, inner0.y),
+			Vector3(inner1.x, bottom, inner1.y),
+			Vector3(outer1.x, bottom, outer1.y),
+			Vector3(outer0.x, bottom, outer0.y),
+			Vector3.DOWN
+		)
+		var outer_mid := ((outer0 + outer1) * 0.5 - center).normalized()
+		_append_segment_quad(
+			seg, vertices, normals, colors, indices,
+			Vector3(outer0.x, bottom, outer0.y),
+			Vector3(outer1.x, bottom, outer1.y),
+			Vector3(outer1.x, top, outer1.y),
+			Vector3(outer0.x, top, outer0.y),
+			Vector3(outer_mid.x, 0.0, outer_mid.y)
+		)
+		var leading_normal := -_spiral_tangent(theta0, turn_sign)
+		_append_segment_quad(
+			seg, vertices, normals, colors, indices,
+			Vector3(inner0.x, bottom, inner0.y),
+			Vector3(outer0.x, bottom, outer0.y),
+			Vector3(outer0.x, top, outer0.y),
+			Vector3(inner0.x, top, inner0.y),
+			Vector3(leading_normal.x, 0.0, leading_normal.y)
+		)
+		var trailing_normal := _spiral_tangent(theta1, turn_sign)
+		_append_segment_quad(
+			seg, vertices, normals, colors, indices,
+			Vector3(inner1.x, bottom, inner1.y),
+			Vector3(outer1.x, bottom, outer1.y),
+			Vector3(outer1.x, top, outer1.y),
+			Vector3(inner1.x, top, inner1.y),
+			Vector3(trailing_normal.x, 0.0, trailing_normal.y)
+		)
+	# Central column: a fixed-side prism circumscribing the treads' inner
+	# circle, from the underside depth up to the top-floor height, with a
+	# visible top cap and an open hidden bottom.
+	var column_radius := inner_radius / cos(PI / float(SPIRAL_COLUMN_SIDES))
+	var height := maxf(stair_height, 0.05)
+	var base_y := -maxf(stair_thickness, 0.0)
+	var up_normal := _segment_direction(seg, Vector3.UP).normalized()
+	for side_index in range(SPIRAL_COLUMN_SIDES):
+		var phi0 := TAU * float(side_index) / float(SPIRAL_COLUMN_SIDES)
+		var phi1 := TAU * float(side_index + 1) / float(SPIRAL_COLUMN_SIDES)
+		var p0 := center + Vector2(cos(phi0), sin(phi0)) * column_radius
+		var p1 := center + Vector2(cos(phi1), sin(phi1)) * column_radius
+		var face_mid := ((p0 + p1) * 0.5 - center).normalized()
+		_append_segment_quad(
+			seg, vertices, normals, colors, indices,
+			Vector3(p0.x, base_y, p0.y),
+			Vector3(p1.x, base_y, p1.y),
+			Vector3(p1.x, height, p1.y),
+			Vector3(p0.x, height, p0.y),
+			Vector3(face_mid.x, 0.0, face_mid.y)
+		)
+		var triangle_base := vertices.size()
+		vertices.append(_segment_point(seg, Vector3(center.x, height, center.y)))
+		vertices.append(_segment_point(seg, Vector3(p0.x, height, p0.y)))
+		vertices.append(_segment_point(seg, Vector3(p1.x, height, p1.y)))
+		for _index in range(3):
+			normals.append(up_normal)
+			colors.append(stair_color)
+		_append_oriented_triangle(
+			vertices, indices, up_normal,
+			triangle_base, triangle_base + 1, triangle_base + 2
+		)
+
+
+func _add_spiral_collision_boxes(
+	body: StaticBody3D,
+	seg: Dictionary,
+	wall_thickness: float,
+	shape_index: int
+) -> int:
+	var steps: int = seg["steps"]
+	var rise: float = seg["rise"]
+	var center: Vector2 = seg["center"]
+	var outer_radius: float = seg["outer_radius"]
+	var turn_radians: float = seg["turn_radians"]
+	var turn_sign: float = seg["turn_sign"]
+	if steps <= 0:
+		return shape_index
+	var slab := maxf(stair_thickness, 0.05)
+	for tread_index in range(steps):
+		var theta0 := turn_radians * float(tread_index) / float(steps)
+		var theta1 := turn_radians * float(tread_index + 1) / float(steps)
+		var outer0 := center + _spiral_direction(theta0, turn_sign) * outer_radius
+		var outer1 := center + _spiral_direction(theta1, turn_sign) * outer_radius
+		var chord := outer1 - outer0
+		var chord_length := chord.length()
+		if chord_length <= 0.01:
+			continue
+		var chord_dir := chord / chord_length
+		var inward := ((center - (outer0 + outer1) * 0.5)).normalized()
+		var top := rise * float(tread_index + 1)
+		var center_2d := (outer0 + outer1) * 0.5 + inward * (wall_thickness * 0.5)
+		var chord_dir_3d := _segment_direction(
+			seg, Vector3(chord_dir.x, 0.0, chord_dir.y)
+		).normalized()
+		var box_basis := Basis(
+			chord_dir_3d, Vector3.UP, chord_dir_3d.cross(Vector3.UP)
+		)
+		_add_side_wall_collision_shape(
+			body,
+			_layout_collision_shape_name(shape_index),
+			_segment_point(seg, Vector3(center_2d.x, top - slab * 0.5, center_2d.y)),
+			Vector3(chord_length, slab, wall_thickness),
+			box_basis
+		)
+		shape_index += 1
+	return shape_index
 
 
 func _add_winder_collision_boxes(

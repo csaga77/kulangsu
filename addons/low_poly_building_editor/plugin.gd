@@ -248,6 +248,7 @@ var m_stair_settings := {
 	"layout_style": Stairs3DScript.LayoutStyle.STRAIGHT,
 	"turn_direction": Stairs3DScript.TurnDirection.RIGHT,
 	"winder_turn": Stairs3DScript.WinderTurn.TURN_90,
+	"spiral_turn_degrees": 360.0,
 	"flight_width": 1.2,
 	"left_rail_enabled": false,
 	"right_rail_enabled": false,
@@ -2428,6 +2429,7 @@ func _apply_stair_layout_settings(stairs: Stairs3DScript) -> void:
 		"winder_turn",
 		Stairs3DScript.WinderTurn.TURN_90
 	))
+	stairs.spiral_turn_degrees = float(m_stair_settings.get("spiral_turn_degrees", 360.0))
 	stairs.flight_width = float(m_stair_settings.get("flight_width", 1.2))
 
 
@@ -2630,7 +2632,8 @@ func _commit_stairs(
 		int(m_stair_settings.get("layout_style", Stairs3DScript.LayoutStyle.STRAIGHT)),
 		int(m_stair_settings.get("turn_direction", Stairs3DScript.TurnDirection.RIGHT)),
 		int(m_stair_settings.get("winder_turn", Stairs3DScript.WinderTurn.TURN_90)),
-		float(m_stair_settings.get("flight_width", 1.2))
+		float(m_stair_settings.get("flight_width", 1.2)),
+		float(m_stair_settings.get("spiral_turn_degrees", 360.0))
 	)
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	var undo_redo := get_undo_redo()

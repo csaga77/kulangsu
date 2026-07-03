@@ -97,7 +97,8 @@ static func append_rail(
 	rail_style: int = RailStyle.VERTICAL,
 	horizontal_infill_count: int = 2,
 	post_base_follows_rise: PackedByteArray = PackedByteArray(),
-	distribute_default_posts: bool = true
+	distribute_default_posts: bool = true,
+	append_continuous_members: bool = true
 ) -> void:
 	if length <= 0.001:
 		return
@@ -133,13 +134,14 @@ static func append_rail(
 	if !is_nan(maximum_run_override):
 		bar_maximum_run = maximum_run_override
 
-	_append_handrail_segments(
-		vertices, normals, colors, indices,
-		origin, run_axis, up_axis, side_axis, length, rise,
-		bar_minimum_run, bar_maximum_run, top_bottom, height, bar_size,
-		color, positions, post_size, post_thicknesses,
-		lower_horizontal_end, upper_horizontal_start
-	)
+	if append_continuous_members:
+		_append_handrail_segments(
+			vertices, normals, colors, indices,
+			origin, run_axis, up_axis, side_axis, length, rise,
+			bar_minimum_run, bar_maximum_run, top_bottom, height, bar_size,
+			color, positions, post_size, post_thicknesses,
+			lower_horizontal_end, upper_horizontal_start
+		)
 
 	var normalized_style := clampi(
 		rail_style,
@@ -156,7 +158,7 @@ static func append_rail(
 		rail_thickness,
 		lower_rail_height
 	)
-	if has_base_rail:
+	if append_continuous_members and has_base_rail:
 		_append_sheared_box(
 			vertices, normals, colors, indices,
 			origin, run_axis, up_axis, side_axis, length, rise,
@@ -165,7 +167,7 @@ static func append_rail(
 			color
 		)
 	var infill_bottom := lower_center + bar_size * 0.5 if has_base_rail else 0.0
-	if normalized_style == RailStyle.HORIZONTAL:
+	if append_continuous_members and normalized_style == RailStyle.HORIZONTAL:
 		var infill_count := clampi(horizontal_infill_count, 0, 64)
 		# Horizontal infill never exceeds the handrail cross-section or the
 		# clear height between base rail and handrail.
@@ -201,7 +203,7 @@ static func append_rail(
 					),
 					color
 				)
-	elif normalized_style == RailStyle.GLASS_PANEL:
+	elif append_continuous_members and normalized_style == RailStyle.GLASS_PANEL:
 		var panel_thickness := maxf(minf(bar_size, post_size) * 0.5, 0.02)
 		if top_bottom - infill_bottom > 0.001:
 			_append_sheared_box(

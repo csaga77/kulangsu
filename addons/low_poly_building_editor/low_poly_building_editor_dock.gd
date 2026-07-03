@@ -87,6 +87,7 @@ var m_floor_color_picker: ColorPickerButton
 var m_stair_layout_option: OptionButton
 var m_stair_turn_option: OptionButton
 var m_stair_winder_turn_option: OptionButton
+var m_stair_spiral_turn_spin: SpinBox
 var m_stair_flight_width_spin: SpinBox
 var m_stair_grid_spin: SpinBox
 var m_stair_base_height_spin: SpinBox
@@ -467,7 +468,7 @@ func _build_stair_controls(parent: VBoxContainer) -> void:
 		parent,
 		"Layout:",
 		m_stair_layout_option,
-		"Stair layout drawn inside the stair rectangle: one straight run, or turning flights joined by landings or fanned winder treads."
+		"Stair layout drawn inside the stair rectangle: one straight run, turning flights joined by landings or winders, or radial spiral treads around a central column."
 	)
 
 	m_stair_turn_option = _make_stair_turn_option()
@@ -476,7 +477,7 @@ func _build_stair_controls(parent: VBoxContainer) -> void:
 		parent,
 		"Turn:",
 		m_stair_turn_option,
-		"Turn direction for L, double L, U, and winder layouts, relative to the climb direction."
+		"Turn direction for L, double L, U, winder, and spiral layouts, relative to the climb direction."
 	)
 
 	m_stair_winder_turn_option = _make_stair_winder_turn_option()
@@ -488,12 +489,21 @@ func _build_stair_controls(parent: VBoxContainer) -> void:
 		"Total winder turn angle: 90 degrees fans one corner, 180 degrees fans a full half turn."
 	)
 
+	m_stair_spiral_turn_spin = _make_spin(45.0, 1080.0, 15.0, 360.0)
+	_add_labeled_control(
+		parent,
+		"Spiral Turn:",
+		m_stair_spiral_turn_spin,
+		"Total turn angle of the Spiral layout in degrees; 360 is one full revolution."
+	)
+	m_stair_spiral_turn_spin.value_changed.connect(_on_stair_setting_changed)
+
 	m_stair_flight_width_spin = _make_spin(0.2, 8.0, 0.01, 1.2)
 	_add_labeled_control(
 		parent,
 		"Flight Width:",
 		m_stair_flight_width_spin,
-		"Width of each flight and its landings for turning layouts, clamped to fit the drawn stair rectangle."
+		"Width of each flight and its landings for turning layouts, and the radial tread depth outside the central column for the Spiral layout; clamped to fit the drawn stair rectangle."
 	)
 	m_stair_flight_width_spin.value_changed.connect(_on_stair_setting_changed)
 
@@ -511,7 +521,12 @@ func _build_stair_controls(parent: VBoxContainer) -> void:
 	m_stair_height_spin.value_changed.connect(_on_stair_setting_changed)
 
 	m_stair_step_count_spin = _make_spin(1.0, 64.0, 1.0, 6.0)
-	_add_labeled_control(parent, "Steps:", m_stair_step_count_spin, "Number of risers/treads generated across the drawn stair run.")
+	_add_labeled_control(
+		parent,
+		"Steps:",
+		m_stair_step_count_spin,
+		"Requested riser/tread count. Spiral layouts add steps when needed to keep each radial tread at or below 45 degrees."
+	)
 	m_stair_step_count_spin.value_changed.connect(_on_stair_setting_changed)
 
 	m_stair_thickness_spin = _make_spin(0.0, 2.0, 0.01, 0.12)
@@ -1595,7 +1610,7 @@ func _make_stair_layout_option() -> OptionButton:
 	var option := OptionButton.new()
 	option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var labels := PackedStringArray([
-		"Straight", "L Shaped", "Double L Shaped", "U Shaped", "Winder"
+		"Straight", "L Shaped", "Double L Shaped", "U Shaped", "Winder", "Spiral"
 	])
 	for index in range(labels.size()):
 		option.add_item(labels[index], index)
@@ -1634,10 +1649,13 @@ func _update_stair_layout_controls() -> void:
 	var layout := _selected_option_metadata(m_stair_layout_option, 0)
 	var is_straight := layout == 0
 	var is_winder := layout == 4
+	var is_spiral := layout == 5
 	if m_stair_turn_option != null:
 		m_stair_turn_option.disabled = is_straight
 	if m_stair_winder_turn_option != null:
 		m_stair_winder_turn_option.disabled = !is_winder
+	if m_stair_spiral_turn_spin != null:
+		m_stair_spiral_turn_spin.editable = is_spiral
 	if m_stair_flight_width_spin != null:
 		m_stair_flight_width_spin.editable = !is_straight
 
@@ -1812,6 +1830,11 @@ func _emit_stair_settings() -> void:
 		"layout_style": _selected_option_metadata(m_stair_layout_option, 0),
 		"turn_direction": _selected_option_metadata(m_stair_turn_option, 1),
 		"winder_turn": _selected_option_metadata(m_stair_winder_turn_option, 0),
+		"spiral_turn_degrees": (
+			float(m_stair_spiral_turn_spin.value)
+			if m_stair_spiral_turn_spin != null
+			else 360.0
+		),
 		"flight_width": (
 			float(m_stair_flight_width_spin.value)
 			if m_stair_flight_width_spin != null
@@ -2337,6 +2360,31 @@ func _load_persisted_settings() -> void:
 	var stair_color_variant: Variant = state.get("stair_color", m_stair_color_picker.color)
 	if stair_color_variant is Color:
 		m_stair_color_picker.color = stair_color_variant
+	m_stair_layout_option.select(clampi(
+		int(state.get("stair_layout_style", _selected_option_metadata(m_stair_layout_option, 0))),
+		0,
+		m_stair_layout_option.get_item_count() - 1
+	))
+	m_stair_turn_option.select(clampi(
+		int(state.get("stair_turn_direction", _selected_option_metadata(m_stair_turn_option, 1))),
+		0,
+		m_stair_turn_option.get_item_count() - 1
+	))
+	m_stair_winder_turn_option.select(clampi(
+		int(state.get(
+			"stair_winder_turn",
+			_selected_option_metadata(m_stair_winder_turn_option, 0)
+		)),
+		0,
+		m_stair_winder_turn_option.get_item_count() - 1
+	))
+	m_stair_spiral_turn_spin.value = float(
+		state.get("stair_spiral_turn_degrees", m_stair_spiral_turn_spin.value)
+	)
+	m_stair_flight_width_spin.value = float(
+		state.get("stair_flight_width", m_stair_flight_width_spin.value)
+	)
+	_update_stair_layout_controls()
 	m_stair_left_rail_check.button_pressed = bool(
 		state.get("stair_left_rail_enabled", m_stair_left_rail_check.button_pressed)
 	)
@@ -2573,6 +2621,19 @@ func _save_persisted_settings() -> void:
 		"stair_thickness": float(m_stair_thickness_spin.value) if m_stair_thickness_spin != null else 0.12,
 		"stair_rotation_degrees": float(m_stair_rotation_spin.value) if m_stair_rotation_spin != null else 0.0,
 		"stair_color": m_stair_color_picker.color if m_stair_color_picker != null else Color(0.52, 0.46, 0.38, 1.0),
+		"stair_layout_style": _selected_option_metadata(m_stair_layout_option, 0),
+		"stair_turn_direction": _selected_option_metadata(m_stair_turn_option, 1),
+		"stair_winder_turn": _selected_option_metadata(m_stair_winder_turn_option, 0),
+		"stair_spiral_turn_degrees": (
+			float(m_stair_spiral_turn_spin.value)
+			if m_stair_spiral_turn_spin != null
+			else 360.0
+		),
+		"stair_flight_width": (
+			float(m_stair_flight_width_spin.value)
+			if m_stair_flight_width_spin != null
+			else 1.2
+		),
 		"stair_left_rail_enabled": (
 			m_stair_left_rail_check.button_pressed if m_stair_left_rail_check != null else false
 		),
