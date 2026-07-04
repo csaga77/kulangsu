@@ -1688,11 +1688,6 @@ func _selected_option_metadata(option: OptionButton, fallback: int) -> int:
 
 
 func _stair_layout_script_from_value(value: Variant) -> Script:
-	if value is int:
-		var legacy_index := clampi(
-			int(value), 0, BuildingFactoryScript.STAIR_LAYOUT_SCRIPTS.size() - 1
-		)
-		return BuildingFactoryScript.STAIR_LAYOUT_SCRIPTS[legacy_index]
 	var selected_script: Script
 	if value is Script:
 		selected_script = value as Script
@@ -2469,7 +2464,7 @@ func _load_persisted_settings() -> void:
 	_select_stair_layout_script(
 		state.get(
 			"stair_layout_script",
-			state.get("stair_layout_style", _selected_stair_layout_script())
+			_selected_stair_layout_script()
 		)
 	)
 	m_stair_turn_option.select(clampi(

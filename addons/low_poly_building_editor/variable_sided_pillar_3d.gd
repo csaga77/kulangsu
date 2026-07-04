@@ -1,5 +1,5 @@
 @tool
-extends Pillar3D
+extends "res://addons/low_poly_building_editor/pillar_3d.gd"
 
 @export_range(3, 24, 1) var side_count := 8:
 	set(value):

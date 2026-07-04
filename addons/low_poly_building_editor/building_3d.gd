@@ -2,6 +2,8 @@
 class_name Building3D
 extends Node3D
 
+const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
+
 var m_geometry_clip_refresh_queued := false
 
 
@@ -37,10 +39,10 @@ func get_wall_nodes() -> Array[Wall3D]:
 	return walls
 
 
-func get_roof_nodes() -> Array[Roof3D]:
-	var roofs: Array[Roof3D] = []
+func get_roof_nodes() -> Array[Roof3DScript]:
+	var roofs: Array[Roof3DScript] = []
 	for child in get_children():
-		if child is Roof3D:
+		if child is Roof3DScript:
 			roofs.append(child)
 	return roofs
 
@@ -257,8 +259,8 @@ func _connect_geometry_source(child: Node) -> void:
 		if !wall.source_geometry_changed.is_connected(_on_source_geometry_changed):
 			wall.source_geometry_changed.connect(_on_source_geometry_changed)
 		return
-	var roof := child as Roof3D
-	if roof == null or roof.has_meta(Roof3D.PREVIEW_META):
+	var roof := child as Roof3DScript
+	if roof == null or roof.has_meta(Roof3DScript.PREVIEW_META):
 		return
 	if !roof.source_geometry_changed.is_connected(_on_source_geometry_changed):
 		roof.source_geometry_changed.connect(_on_source_geometry_changed)
@@ -270,7 +272,7 @@ func _disconnect_geometry_source(child: Node) -> void:
 		if wall.source_geometry_changed.is_connected(_on_source_geometry_changed):
 			wall.source_geometry_changed.disconnect(_on_source_geometry_changed)
 		return
-	var roof := child as Roof3D
+	var roof := child as Roof3DScript
 	if roof == null:
 		return
 	if roof.source_geometry_changed.is_connected(_on_source_geometry_changed):
@@ -302,6 +304,6 @@ func _on_child_order_changed() -> void:
 func _is_authored_geometry_source(child: Node) -> bool:
 	if child is Wall3D:
 		return !child.has_meta(Wall3D.PREVIEW_META)
-	if child is Roof3D:
-		return !child.has_meta(Roof3D.PREVIEW_META)
+	if child is Roof3DScript:
+		return !child.has_meta(Roof3DScript.PREVIEW_META)
 	return false

@@ -1,6 +1,5 @@
 @tool
-class_name TurningStairs3D
-extends Stairs3D
+extends "res://addons/low_poly_building_editor/stairs_3d.gd"
 
 @export_group("Layout")
 @export_enum("Left", "Right") var turn_direction: int = TurnDirection.RIGHT:
@@ -53,10 +52,64 @@ func _layout_mesh_source_signature_values() -> Array:
 	return values
 
 
+func _clamped_layout_flight_width(
+	width: float,
+	depth: float,
+	maximum_width: float
+) -> float:
+	return maxf(
+		minf(maxf(flight_width, 0.2), minf(maximum_width, minf(width, depth))),
+		0.05
+	)
+
+
+func _create_turning_plan_context(
+	run_lengths: PackedFloat32Array,
+	winder_treads: int
+) -> Dictionary:
+	var allocation := _allocate_layout_steps(run_lengths, winder_treads)
+	var flight_steps: PackedInt32Array = allocation["flights"]
+	var total_steps: int = allocation["total"]
+	var rise := maxf(stair_height, 0.05) / float(maxi(total_steps, 1))
+	var total_flight_run := 0.0
+	var total_flight_steps := 0
+	for index in range(run_lengths.size()):
+		total_flight_run += run_lengths[index]
+		total_flight_steps += flight_steps[index]
+	return {
+		"allocation": allocation,
+		"flight_steps": flight_steps,
+		"total_steps": total_steps,
+		"rise": rise,
+		"middle_shares": _distribute_middle_newels(flight_steps),
+		"post_spacing": clampf(
+			total_flight_run / float(maxi(total_flight_steps, 1)), 0.3, 2.0
+		),
+		"segments": [] as Array[Dictionary],
+		"rail_runs": [] as Array[Dictionary],
+	}
+
+
+func _finish_turning_plan(
+	context: Dictionary,
+	width: float,
+	effective_flight_width: float
+) -> Dictionary:
+	var plan := {
+		"segments": context["segments"],
+		"rail_runs": context["rail_runs"],
+		"flight_width": effective_flight_width,
+		"total_steps": context["total_steps"],
+		"rise": context["rise"],
+	}
+	if turn_direction == TurnDirection.LEFT:
+		_mirror_layout_plan(plan, width)
+	return plan
+
+
 func _total_rising_step_count() -> int:
 	var size := get_stair_size()
-	var allocation := _layout_step_allocation(size.x, size.y)
-	return int(allocation["total"])
+	return int(_build_layout_plan(size.x, size.y)["total_steps"])
 
 
 func _add_side_wall_collision_shapes(body: StaticBody3D) -> void:

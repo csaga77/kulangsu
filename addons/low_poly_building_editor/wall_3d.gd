@@ -1537,7 +1537,7 @@ func _disconnect_segment_signals(source_segments: Array[WallSegment3D]) -> void:
 
 
 func _connect_opening_signal(child: Node) -> void:
-	var opening := child as BuildingOpening3D
+	var opening := child as BuildingOpening3DScript
 	if opening == null:
 		return
 	if !opening.opening_geometry_changed.is_connected(_on_opening_geometry_changed):
@@ -1545,7 +1545,7 @@ func _connect_opening_signal(child: Node) -> void:
 
 
 func _disconnect_opening_signal(child: Node) -> void:
-	var opening := child as BuildingOpening3D
+	var opening := child as BuildingOpening3DScript
 	if opening == null:
 		return
 	if opening.opening_geometry_changed.is_connected(_on_opening_geometry_changed):
@@ -1572,7 +1572,7 @@ func _on_child_entered_tree(child: Node) -> void:
 		return
 	_connect_opening_signal(child)
 	_request_rebuild()
-	if child is BuildingOpening3D:
+	if child is BuildingOpening3DScript:
 		source_geometry_changed.emit()
 
 
@@ -1583,5 +1583,5 @@ func _on_child_exiting_tree(child: Node) -> void:
 		return
 	_disconnect_opening_signal(child)
 	_request_rebuild()
-	if child is BuildingOpening3D:
+	if child is BuildingOpening3DScript:
 		source_geometry_changed.emit()

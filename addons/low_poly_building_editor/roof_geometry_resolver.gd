@@ -9,14 +9,14 @@ const MergedWallMeshBuilderScript = preload("res://addons/low_poly_building_edit
 const INTERSECT_BASE_TOLERANCE := 0.01
 const ROOF_COVER_HEIGHT_EPSILON := 0.01
 
-var m_roofs: Array[Roof3D] = []
+var m_roofs: Array[Roof3DScript] = []
 
 
-func _init(roofs: Array[Roof3D]) -> void:
+func _init(roofs: Array[Roof3DScript]) -> void:
 	m_roofs = roofs
 
 
-func get_roof_nodes() -> Array[Roof3D]:
+func get_roof_nodes() -> Array[Roof3DScript]:
 	return m_roofs
 
 
@@ -257,7 +257,7 @@ func _roof_visible_render_polygons(roof: Roof3DScript) -> Array[PackedVector2Arr
 
 
 func _roof_visible_polygons_to_parent_plan(
-	roof: Roof3D,
+	roof: Roof3DScript,
 	roof_visible_polygons: Array[PackedVector2Array]
 ) -> Array[PackedVector2Array]:
 	var parent_polygons: Array[PackedVector2Array] = []

@@ -1,5 +1,5 @@
 @tool
-extends Door3D
+extends "res://addons/low_poly_building_editor/door_3d.gd"
 
 @export_range(0.01, 0.5, 0.01) var door_panel_depth := 0.05:
 	set(value):

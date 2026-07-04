@@ -1,6 +1,6 @@
 @tool
 class_name SquarePillar3D
-extends Pillar3D
+extends "res://addons/low_poly_building_editor/pillar_3d.gd"
 
 
 func get_pillar_style() -> String:

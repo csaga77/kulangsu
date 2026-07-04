@@ -1,5 +1,5 @@
 @tool
-extends Window3D
+extends "res://addons/low_poly_building_editor/window_3d.gd"
 
 @export_range(0.01, 0.5, 0.01) var window_pane_depth := 0.03:
 	set(value):

@@ -1,5 +1,4 @@
 @tool
-class_name BuildingOpening3D
 extends Node3D
 
 signal opening_geometry_changed

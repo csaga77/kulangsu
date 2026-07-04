@@ -1,5 +1,4 @@
 @tool
-class_name Pillar3D
 extends "res://addons/low_poly_building_editor/building_mesh_3d.gd"
 
 const GENERATED_META := &"pillar_generated"

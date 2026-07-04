@@ -898,10 +898,6 @@ func _validate_stair_layout_class_hierarchy() -> void:
 			)
 		factory_stairs.free()
 		stairs.free()
-	var legacy_spiral := BuildingFactoryScript.instantiate_stair_layout(5)
-	if legacy_spiral.get_script() != SpiralStairs3DScript:
-		m_failures.append("Stair layout factory did not normalize legacy integer key 5")
-	legacy_spiral.free()
 
 	var straight := StraightStairs3DScript.new() as Stairs3DScript
 	for property_name in [&"turn_direction", &"flight_width"]:
@@ -930,7 +926,57 @@ func _validate_stair_layout_class_hierarchy() -> void:
 		m_failures.append("SpiralStairs3D is missing its spiral turn property")
 	if _has_editor_property(spiral, &"winder_turn"):
 		m_failures.append("SpiralStairs3D exposes the winder turn property")
+	if _has_editor_property(spiral, &"nosing_depth"):
+		m_failures.append("SpiralStairs3D exposes unsupported nosing depth")
+	for property: Dictionary in spiral.get_property_list():
+		if StringName(property.get("name", &"")) != &"tread_style":
+			continue
+		if String(property.get("hint_string", "")) != "Closed,Open":
+			m_failures.append("SpiralStairs3D exposes the unsupported Nosing tread style")
+		break
 	spiral.free()
+
+	var expected_style_type_count := 15
+	if BuildingFactoryScript.BUILDING_STYLE_CUSTOM_TYPES.size() != expected_style_type_count:
+		m_failures.append("BuildingFactory concrete style registry has the wrong size")
+	if BuildingFactoryScript.OPENING_CUSTOM_TYPES.size() != 15:
+		m_failures.append("BuildingFactory concrete opening registry has the wrong size")
+	for internal_script: Script in [
+		Stairs3DScript,
+		Pillar3DScript,
+		Roof3DScript,
+		BuildingOpening3DScript,
+		Window3DScript,
+		Door3DScript,
+	]:
+		if !internal_script.get_global_name().is_empty():
+			m_failures.append(
+				"Internal building base remains globally named: %s"
+				% internal_script.resource_path
+			)
+	for custom_type: Dictionary in BuildingFactoryScript.BUILDING_STYLE_CUSTOM_TYPES:
+		var registered_script := custom_type.get("script") as Script
+		if registered_script == null:
+			m_failures.append("BuildingFactory style registry contains a missing script")
+			continue
+		var registered_node := registered_script.new() as Node
+		if registered_node == null:
+			m_failures.append(
+				"BuildingFactory style registry contains a non-node script %s"
+				% registered_script.resource_path
+			)
+			continue
+		registered_node.free()
+	for custom_type: Dictionary in BuildingFactoryScript.OPENING_CUSTOM_TYPES:
+		var registered_script := custom_type.get("script") as Script
+		var registered_opening := registered_script.new() as BuildingOpening3DScript
+		if registered_opening == null:
+			m_failures.append(
+				"BuildingFactory opening registry contains an invalid script: %s"
+				% custom_type.get("name", "")
+			)
+			continue
+		registered_opening.free()
 
 
 func _validate_legacy_opening_storage() -> void:

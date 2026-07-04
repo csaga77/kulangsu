@@ -1,6 +1,6 @@
 @tool
 class_name StraightStairs3D
-extends Stairs3D
+extends "res://addons/low_poly_building_editor/stairs_3d.gd"
 
 
 func _append_stair_layout_geometry(

@@ -45,63 +45,8 @@ const FLOOR_STYLE_POLYGON := "polygon"
 const PILLAR_EDIT_MOVE := 0
 const PILLAR_EDIT_RADIUS := 1
 const OPENING_STYLE_SCRIPTS := BuildingFactoryScript.OPENING_STYLE_SCRIPTS
-const OPENING_CUSTOM_TYPES := [
-	{"name": "BuildingOpening3D", "script": BuildingOpening3DScript},
-	{"name": "Window3D", "script": Window3DScript},
-	{"name": "SingleWindow3D", "script": OPENING_STYLE_SCRIPTS["single_window"]},
-	{"name": "DoubleWindow3D", "script": OPENING_STYLE_SCRIPTS["double_window"]},
-	{"name": "GridWindow3D", "script": OPENING_STYLE_SCRIPTS["grid_window"]},
-	{"name": "LouveredWindow3D", "script": OPENING_STYLE_SCRIPTS["louvered_window"]},
-	{"name": "TransomWindow3D", "script": OPENING_STYLE_SCRIPTS["transom_window"]},
-	{"name": "ArchedWindow3D", "script": OPENING_STYLE_SCRIPTS["arched_window"]},
-	{"name": "WindowFrame3D", "script": OPENING_STYLE_SCRIPTS["frame"]},
-	{"name": "Door3D", "script": Door3DScript},
-	{"name": "SingleDoor3D", "script": OPENING_STYLE_SCRIPTS["single_door"]},
-	{"name": "DoubleDoor3D", "script": OPENING_STYLE_SCRIPTS["double_door"]},
-	{"name": "GlazedDoor3D", "script": OPENING_STYLE_SCRIPTS["glazed_door"]},
-	{"name": "GlazedGridDoor3D", "script": OPENING_STYLE_SCRIPTS["glazed_grid_door"]},
-	{"name": "PanelDoor3D", "script": OPENING_STYLE_SCRIPTS["panel_door"]},
-	{"name": "DutchDoor3D", "script": OPENING_STYLE_SCRIPTS["dutch_door"]},
-	{"name": "SingleDoorFrame3D", "script": OPENING_STYLE_SCRIPTS["single_frame"]},
-	{"name": "DoubleDoorFrame3D", "script": OPENING_STYLE_SCRIPTS["double_frame"]},
-]
-const BUILDING_STYLE_CUSTOM_TYPES := [
-	{
-		"name": "StraightStairs3D",
-		"script": preload("res://addons/low_poly_building_editor/straight_stairs_3d.gd"),
-	},
-	{
-		"name": "LShapedStairs3D",
-		"script": preload("res://addons/low_poly_building_editor/l_shaped_stairs_3d.gd"),
-	},
-	{
-		"name": "DoubleLShapedStairs3D",
-		"script": preload(
-			"res://addons/low_poly_building_editor/double_l_shaped_stairs_3d.gd"
-		),
-	},
-	{
-		"name": "UShapedStairs3D",
-		"script": preload("res://addons/low_poly_building_editor/u_shaped_stairs_3d.gd"),
-	},
-	{
-		"name": "WinderStairs3D",
-		"script": preload("res://addons/low_poly_building_editor/winder_stairs_3d.gd"),
-	},
-	{
-		"name": "SpiralStairs3D",
-		"script": preload("res://addons/low_poly_building_editor/spiral_stairs_3d.gd"),
-	},
-	{"name": "RoundPillar3D", "script": preload("res://addons/low_poly_building_editor/round_pillar_3d.gd")},
-	{"name": "SquarePillar3D", "script": preload("res://addons/low_poly_building_editor/square_pillar_3d.gd")},
-	{"name": "OctagonalPillar3D", "script": preload("res://addons/low_poly_building_editor/octagonal_pillar_3d.gd")},
-	{"name": "TaperedPillar3D", "script": preload("res://addons/low_poly_building_editor/tapered_pillar_3d.gd")},
-	{"name": "FlatRoof3D", "script": preload("res://addons/low_poly_building_editor/flat_roof_3d.gd")},
-	{"name": "ShedRoof3D", "script": preload("res://addons/low_poly_building_editor/shed_roof_3d.gd")},
-	{"name": "GableRoof3D", "script": preload("res://addons/low_poly_building_editor/gable_roof_3d.gd")},
-	{"name": "HipRoof3D", "script": preload("res://addons/low_poly_building_editor/hip_roof_3d.gd")},
-	{"name": "DomeRoof3D", "script": preload("res://addons/low_poly_building_editor/dome_roof_3d.gd")},
-]
+const OPENING_CUSTOM_TYPES := BuildingFactoryScript.OPENING_CUSTOM_TYPES
+const BUILDING_STYLE_CUSTOM_TYPES := BuildingFactoryScript.BUILDING_STYLE_CUSTOM_TYPES
 const OPENING_SILL_META := BuildingFactoryScript.OPENING_SILL_META
 const OPENING_ALLOW_BASE_META := BuildingFactoryScript.OPENING_ALLOW_BASE_META
 const BUILDING_PROP_META := &"low_poly_building_editor_prop"
@@ -547,27 +492,9 @@ func _enter_tree() -> void:
 		_get_editor_icon(&"MeshInstance3D")
 	)
 	add_custom_type(
-		"Stairs3D",
-		"MeshInstance3D",
-		Stairs3DScript,
-		_get_editor_icon(&"MeshInstance3D")
-	)
-	add_custom_type(
 		"Rail3D",
 		"MeshInstance3D",
 		Rail3DScript,
-		_get_editor_icon(&"MeshInstance3D")
-	)
-	add_custom_type(
-		"Pillar3D",
-		"MeshInstance3D",
-		Pillar3DScript,
-		_get_editor_icon(&"MeshInstance3D")
-	)
-	add_custom_type(
-		"Roof3D",
-		"MeshInstance3D",
-		Roof3DScript,
 		_get_editor_icon(&"MeshInstance3D")
 	)
 	for style_type: Dictionary in BUILDING_STYLE_CUSTOM_TYPES:
@@ -656,10 +583,7 @@ func _exit_tree() -> void:
 		remove_custom_type(String(OPENING_CUSTOM_TYPES[type_index]["name"]))
 	for type_index in range(BUILDING_STYLE_CUSTOM_TYPES.size() - 1, -1, -1):
 		remove_custom_type(String(BUILDING_STYLE_CUSTOM_TYPES[type_index]["name"]))
-	remove_custom_type("Roof3D")
-	remove_custom_type("Pillar3D")
 	remove_custom_type("Rail3D")
-	remove_custom_type("Stairs3D")
 	remove_custom_type("Floor3D")
 	remove_custom_type("Wall3D")
 	remove_custom_type("Building3D")
@@ -5061,7 +4985,10 @@ func _apply_opening_settings(opening: BuildingOpening3DScript, settings: Diction
 
 func _opening_script_for_settings(settings: Dictionary) -> Script:
 	var style := String(settings.get("style", ""))
-	return OPENING_STYLE_SCRIPTS.get(style, BuildingOpening3DScript) as Script
+	return OPENING_STYLE_SCRIPTS.get(
+		style,
+		OPENING_STYLE_SCRIPTS["single_window"]
+	) as Script
 
 
 # The both-sided frame casing (BuildingOpening3D._frame_casing) assumes the wall

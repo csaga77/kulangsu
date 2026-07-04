@@ -1,5 +1,4 @@
 @tool
-class_name Roof3D
 extends "res://addons/low_poly_building_editor/building_mesh_3d.gd"
 
 signal source_geometry_changed

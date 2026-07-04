@@ -1,6 +1,6 @@
 @tool
 class_name LouveredWindow3D
-extends Window3D
+extends "res://addons/low_poly_building_editor/window_3d.gd"
 
 @export_range(1, 16, 1) var louver_count := 6:
 	set(value):

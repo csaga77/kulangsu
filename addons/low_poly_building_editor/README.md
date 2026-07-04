@@ -11,7 +11,8 @@ and left/right turn direction. Each layout is represented by a concrete `Stairs3
 subclass. `Stairs3D` owns only universal stair state and reusable geometry primitives;
 the internal `TurningStairs3D` layer owns Turn and Flight Width, Winder owns its
 90/180-degree selector, and Spiral owns its configurable 45–1080-degree
-radial run around a low-poly central column; landings, winder fans, and spiral
+radial run around a low-poly central column. Each concrete non-straight class builds
+its own segment and rail plan; landings, winder fans, and spiral
 treads subdivide the same rectangle, and optional rails follow the turning path.
 The dock passes the selected concrete stair script directly to the factory rather
 than serializing a separate layout enum or key.
@@ -19,7 +20,8 @@ Stairs offer three tread styles: Closed builds the solid stepped mass, Open
 floats individual tread slabs (and landing platforms) with no risers or
 underside, and Nosing keeps the closed mass while overhanging each tread past
 its riser by a configurable depth; winder fans and spiral treads treat Nosing
-as Closed.
+as Closed. Spiral exposes only Closed and Open in the inspector and hides the
+inapplicable nosing-depth control.
 The Floor tool's Rectangle and
 Polygon styles choose only how a new footprint is drawn: two opposite corners or a
 multi-click outline. Both use the same grid-snapped editing gestures afterward. Any
@@ -57,7 +59,9 @@ operations. Geometry merging and clipping never cross between building roots.
 Styled blocks use typed hierarchies. Their base classes own only universal state and
 low-level generation infrastructure; optional intermediate layers own properties shared
 by a genuine subset; and concrete pillar, roof, window, and door styles own their style
-identity, style controls, and geometry. See the normative future-block pattern in
+identity, style controls, and geometry. Internal bases and intermediate layers are not
+registered as editor-creatable custom types; the factory registry is the single source
+for the concrete types exposed by the plugin. See the normative future-block pattern in
 [`docs/contract.md`](docs/contract.md#building-block-style-pattern).
 
 Serialized generated meshes are validated caches. Walls, floors, stairs, rails, pillars, and

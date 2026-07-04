@@ -1,6 +1,5 @@
 @tool
-class_name Door3D
-extends BuildingOpening3D
+extends "res://addons/low_poly_building_editor/building_opening_3d.gd"
 
 
 func _init() -> void:

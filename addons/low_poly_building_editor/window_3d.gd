@@ -1,6 +1,5 @@
 @tool
-class_name Window3D
-extends BuildingOpening3D
+extends "res://addons/low_poly_building_editor/building_opening_3d.gd"
 
 
 # Concrete window styles own their generated panes and detailing. Window3D only

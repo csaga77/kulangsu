@@ -81,6 +81,40 @@ const OPENING_STYLE_SCRIPTS := {
 		"res://addons/low_poly_building_editor/double_door_frame_3d.gd"
 	),
 }
+const BUILDING_STYLE_CUSTOM_TYPES := [
+	{"name": "StraightStairs3D", "script": STAIR_LAYOUT_SCRIPTS[0]},
+	{"name": "LShapedStairs3D", "script": STAIR_LAYOUT_SCRIPTS[1]},
+	{"name": "DoubleLShapedStairs3D", "script": STAIR_LAYOUT_SCRIPTS[2]},
+	{"name": "UShapedStairs3D", "script": STAIR_LAYOUT_SCRIPTS[3]},
+	{"name": "WinderStairs3D", "script": STAIR_LAYOUT_SCRIPTS[4]},
+	{"name": "SpiralStairs3D", "script": STAIR_LAYOUT_SCRIPTS[5]},
+	{"name": "RoundPillar3D", "script": PILLAR_STYLE_SCRIPTS["round"]},
+	{"name": "SquarePillar3D", "script": PILLAR_STYLE_SCRIPTS["square"]},
+	{"name": "OctagonalPillar3D", "script": PILLAR_STYLE_SCRIPTS["octagonal"]},
+	{"name": "TaperedPillar3D", "script": PILLAR_STYLE_SCRIPTS["tapered"]},
+	{"name": "FlatRoof3D", "script": ROOF_STYLE_SCRIPTS["flat"]},
+	{"name": "ShedRoof3D", "script": ROOF_STYLE_SCRIPTS["shed"]},
+	{"name": "GableRoof3D", "script": ROOF_STYLE_SCRIPTS["gable"]},
+	{"name": "HipRoof3D", "script": ROOF_STYLE_SCRIPTS["hip"]},
+	{"name": "DomeRoof3D", "script": ROOF_STYLE_SCRIPTS["dome"]},
+]
+const OPENING_CUSTOM_TYPES := [
+	{"name": "SingleWindow3D", "script": OPENING_STYLE_SCRIPTS["single_window"]},
+	{"name": "DoubleWindow3D", "script": OPENING_STYLE_SCRIPTS["double_window"]},
+	{"name": "GridWindow3D", "script": OPENING_STYLE_SCRIPTS["grid_window"]},
+	{"name": "LouveredWindow3D", "script": OPENING_STYLE_SCRIPTS["louvered_window"]},
+	{"name": "TransomWindow3D", "script": OPENING_STYLE_SCRIPTS["transom_window"]},
+	{"name": "ArchedWindow3D", "script": OPENING_STYLE_SCRIPTS["arched_window"]},
+	{"name": "WindowFrame3D", "script": OPENING_STYLE_SCRIPTS["frame"]},
+	{"name": "SingleDoor3D", "script": OPENING_STYLE_SCRIPTS["single_door"]},
+	{"name": "DoubleDoor3D", "script": OPENING_STYLE_SCRIPTS["double_door"]},
+	{"name": "GlazedDoor3D", "script": OPENING_STYLE_SCRIPTS["glazed_door"]},
+	{"name": "GlazedGridDoor3D", "script": OPENING_STYLE_SCRIPTS["glazed_grid_door"]},
+	{"name": "PanelDoor3D", "script": OPENING_STYLE_SCRIPTS["panel_door"]},
+	{"name": "DutchDoor3D", "script": OPENING_STYLE_SCRIPTS["dutch_door"]},
+	{"name": "SingleDoorFrame3D", "script": OPENING_STYLE_SCRIPTS["single_frame"]},
+	{"name": "DoubleDoorFrame3D", "script": OPENING_STYLE_SCRIPTS["double_frame"]},
+]
 const OPENING_STYLE_PROPERTY_NAMES: Array[StringName] = [
 	&"window_pane_depth",
 	&"window_pane_color",
@@ -354,9 +388,6 @@ static func instantiate_stair_layout(layout_selection: Variant) -> Stairs3DScrip
 	var stairs_script: Script
 	if layout_selection is Script:
 		stairs_script = layout_selection as Script
-	elif layout_selection is int:
-		var legacy_index := clampi(int(layout_selection), 0, STAIR_LAYOUT_SCRIPTS.size() - 1)
-		stairs_script = STAIR_LAYOUT_SCRIPTS[legacy_index]
 	elif layout_selection is String or layout_selection is StringName:
 		var resource_path := String(layout_selection)
 		for candidate: Script in STAIR_LAYOUT_SCRIPTS:
@@ -552,7 +583,7 @@ static func instantiate_opening_style(
 		return null
 	var opening_script := OPENING_STYLE_SCRIPTS.get(
 		normalized_style,
-		BuildingOpening3DScript
+		OPENING_STYLE_SCRIPTS["single_window"]
 	) as Script
 	return opening_script.new() as BuildingOpening3DScript
 
