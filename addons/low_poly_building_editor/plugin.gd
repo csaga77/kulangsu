@@ -2572,51 +2572,13 @@ func _commit_stairs(
 		_set_status("Stairs footprint is too small.")
 		return
 
-	var normalized_rotation := _normalize_degrees(rotation_degrees)
-	var stairs := BuildingFactoryScript.create_stairs_node(coordinator,
+	var stairs_settings := m_stair_settings.duplicate()
+	stairs_settings["rotation_degrees"] = _normalize_degrees(rotation_degrees)
+	var stairs := BuildingFactoryScript.create_stairs_node(
+		coordinator,
 		local_start,
 		local_end,
-		float(m_stair_settings["height"]),
-		int(m_stair_settings["step_count"]),
-		float(m_stair_settings["thickness"]),
-		Color(m_stair_settings["color"]),
-		normalized_rotation,
-		bool(m_stair_settings.get("left_rail_enabled", false)),
-		bool(m_stair_settings.get("right_rail_enabled", false)),
-		float(m_stair_settings.get("rail_height", 1.0)),
-		float(m_stair_settings.get("infill_rail_thickness", 0.08)),
-		float(m_stair_settings.get("rail_thickness", 0.1)),
-		float(m_stair_settings.get("rail_lower_height", 0.18)),
-		Color(m_stair_settings.get("rail_color", Color(0.33, 0.28, 0.22, 1.0))),
-		float(m_stair_settings.get("rail_edge_margin", 0.15)),
-		bool(m_stair_settings.get("lower_newel_enabled", false)),
-		int(m_stair_settings.get(
-			"lower_newel_placement",
-			Stairs3DScript.NewelPlacement.TREAD
-		)),
-		bool(m_stair_settings.get("upper_newel_enabled", false)),
-		int(m_stair_settings.get(
-			"upper_newel_placement",
-			Stairs3DScript.NewelPlacement.TREAD
-		)),
-		float(m_stair_settings.get("rail_newel_post_thickness", 0.1)),
-		int(m_stair_settings.get("middle_newel_post_count", 0)),
-		int(m_stair_settings.get("infill_count_between_newels", 1)),
-		int(m_stair_settings.get("infill_style", 0)),
-		m_stair_settings.get(
-			"layout_script",
-			BuildingFactoryScript.StraightStairs3DScript
-		) as Script,
-		int(m_stair_settings.get(
-			"turn_direction", TurningStairs3DScript.TurnDirection.RIGHT
-		)),
-		int(m_stair_settings.get(
-			"winder_turn", WinderStairs3DScript.WinderTurn.TURN_90
-		)),
-		float(m_stair_settings.get("flight_width", 1.2)),
-		float(m_stair_settings.get("spiral_turn_degrees", 360.0)),
-		int(m_stair_settings.get("tread_style", Stairs3DScript.TreadStyle.CLOSED)),
-		float(m_stair_settings.get("nosing_depth", 0.08))
+		stairs_settings
 	)
 	var scene_root := get_editor_interface().get_edited_scene_root()
 	var undo_redo := get_undo_redo()

@@ -1783,10 +1783,12 @@ func _validate_stairs_node(coordinator: Building3DScript) -> void:
 	var stairs := BuildingFactoryScript.create_stairs_node(coordinator,
 		Vector3(0.0, base_y, 16.0),
 		Vector3(3.0, base_y, 20.0),
-		1.2,
-		4,
-		0.16,
-		Color(0.52, 0.46, 0.38, 1.0)
+		{
+			"height": 1.2,
+			"step_count": 4,
+			"thickness": 0.16,
+			"color": Color(0.52, 0.46, 0.38, 1.0),
+		}
 	)
 	coordinator.add_child(stairs)
 	if stairs.mesh == null:
@@ -1943,32 +1945,17 @@ func _validate_spiral_stairs(coordinator: Building3DScript) -> void:
 		coordinator,
 		Vector3(6.0, 0.75, 16.0),
 		Vector3(10.0, 0.75, 20.0),
-		3.0,
-		12,
-		0.16,
-		Color(0.52, 0.46, 0.38, 1.0),
-		0.0,
-		false,
-		false,
-		1.0,
-		0.08,
-		0.1,
-		0.18,
-		Color(0.33, 0.28, 0.22, 1.0),
-		0.15,
-		false,
-		Stairs3DScript.NewelPlacement.TREAD,
-		false,
-		Stairs3DScript.NewelPlacement.TREAD,
-		0.1,
-		0,
-		1,
-		StandardRailGeometryScript.RailStyle.VERTICAL,
-		SpiralStairs3DScript,
-			TurningStairs3DScript.TurnDirection.RIGHT,
-			WinderStairs3DScript.WinderTurn.TURN_90,
-		1.25,
-		360.0
+		{
+			"height": 3.0,
+			"step_count": 12,
+			"thickness": 0.16,
+			"color": Color(0.52, 0.46, 0.38, 1.0),
+			"infill_style": StandardRailGeometryScript.RailStyle.VERTICAL,
+			"layout_script": SpiralStairs3DScript,
+			"turn_direction": TurningStairs3DScript.TurnDirection.RIGHT,
+			"flight_width": 1.25,
+			"spiral_turn_degrees": 360.0,
+		}
 	) as SpiralStairs3DScript
 	coordinator.add_child(spiral)
 	if (
@@ -2236,34 +2223,15 @@ func _create_tread_style_stairs(
 		coordinator,
 		anchor,
 		anchor + Vector3(2.0, 0.0, 4.0),
-		1.2,
-		6,
-		0.12,
-		Color(0.52, 0.46, 0.38, 1.0),
-		0.0,
-		false,
-		false,
-		1.0,
-		0.08,
-		0.1,
-		0.18,
-		Color(0.33, 0.28, 0.22, 1.0),
-		0.15,
-		false,
-		Stairs3DScript.NewelPlacement.TREAD,
-		false,
-		Stairs3DScript.NewelPlacement.TREAD,
-		0.1,
-		0,
-		1,
-		StandardRailGeometryScript.RailStyle.VERTICAL,
-		layout_script,
-			TurningStairs3DScript.TurnDirection.RIGHT,
-			WinderStairs3DScript.WinderTurn.TURN_90,
-		1.2,
-		360.0,
-		tread_style,
-		nosing_depth
+		{
+			"height": 1.2,
+			"step_count": 6,
+			"thickness": 0.12,
+			"color": Color(0.52, 0.46, 0.38, 1.0),
+			"layout_script": layout_script,
+			"tread_style": tread_style,
+			"nosing_depth": nosing_depth,
+		}
 	)
 
 
@@ -2342,10 +2310,12 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	var no_rail_stairs := BuildingFactoryScript.create_stairs_node(coordinator,
 		Vector3(0.0, base_y, 32.0),
 		Vector3(3.0, base_y, 36.0),
-		1.2,
-		4,
-		0.16,
-		Color(0.52, 0.46, 0.38, 1.0)
+		{
+			"height": 1.2,
+			"step_count": 4,
+			"thickness": 0.16,
+			"color": Color(0.52, 0.46, 0.38, 1.0),
+		}
 	)
 	coordinator.add_child(no_rail_stairs)
 	if no_rail_stairs.left_rail_enabled or no_rail_stairs.right_rail_enabled:
@@ -2357,18 +2327,19 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	var one_rail_stairs := BuildingFactoryScript.create_stairs_node(coordinator,
 		Vector3(6.0, base_y, 32.0),
 		Vector3(9.0, base_y, 36.0),
-		1.2,
-		4,
-		0.16,
-		Color(0.52, 0.46, 0.38, 1.0),
-		0.0,
-		true,
-		false,
-		1.0,
-		0.08,
-		0.1,
-		0.18,
-		Color(0.33, 0.28, 0.22, 1.0)
+		{
+			"height": 1.2,
+			"step_count": 4,
+			"thickness": 0.16,
+			"color": Color(0.52, 0.46, 0.38, 1.0),
+			"left_rail_enabled": true,
+			"right_rail_enabled": false,
+			"rail_height": 1.0,
+			"infill_rail_thickness": 0.08,
+			"rail_thickness": 0.1,
+			"rail_lower_height": 0.18,
+			"rail_color": Color(0.33, 0.28, 0.22, 1.0),
+		}
 	)
 	coordinator.add_child(one_rail_stairs)
 	if !one_rail_stairs.left_rail_enabled or one_rail_stairs.right_rail_enabled:
@@ -2425,18 +2396,19 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	var both_rail_stairs := BuildingFactoryScript.create_stairs_node(coordinator,
 		Vector3(12.0, base_y, 32.0),
 		Vector3(15.0, base_y, 36.0),
-		1.2,
-		4,
-		0.16,
-		Color(0.52, 0.46, 0.38, 1.0),
-		0.0,
-		true,
-		true,
-		1.0,
-		0.08,
-		0.1,
-		0.18,
-		Color(0.33, 0.28, 0.22, 1.0)
+		{
+			"height": 1.2,
+			"step_count": 4,
+			"thickness": 0.16,
+			"color": Color(0.52, 0.46, 0.38, 1.0),
+			"left_rail_enabled": true,
+			"right_rail_enabled": true,
+			"rail_height": 1.0,
+			"infill_rail_thickness": 0.08,
+			"rail_thickness": 0.1,
+			"rail_lower_height": 0.18,
+			"rail_color": Color(0.33, 0.28, 0.22, 1.0),
+		}
 	)
 	coordinator.add_child(both_rail_stairs)
 	if _mesh_vertex_count(both_rail_stairs) != base_vertex_count + 200 * 2:
@@ -2707,27 +2679,28 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	var narrow_stairs := BuildingFactoryScript.create_stairs_node(coordinator,
 		Vector3(18.0, base_y, 32.0),
 		Vector3(18.2, base_y, 34.0),
-		1.2,
-		2,
-		0.16,
-		Color(0.52, 0.46, 0.38, 1.0),
-		0.0,
-		true,
-		true,
-		1.0,
-		0.08,
-		0.1,
-		0.18,
-		Color(0.33, 0.28, 0.22, 1.0),
-		0.15,
-		true,
-		Stairs3DScript.NewelPlacement.FLOOR,
-		true,
-		Stairs3DScript.NewelPlacement.TREAD,
-		0.14,
-		2,
-		3,
-		StandardRailGeometryScript.RailStyle.HORIZONTAL
+		{
+			"height": 1.2,
+			"step_count": 2,
+			"thickness": 0.16,
+			"color": Color(0.52, 0.46, 0.38, 1.0),
+			"left_rail_enabled": true,
+			"right_rail_enabled": true,
+			"rail_height": 1.0,
+			"infill_rail_thickness": 0.08,
+			"rail_thickness": 0.1,
+			"rail_lower_height": 0.18,
+			"rail_color": Color(0.33, 0.28, 0.22, 1.0),
+			"rail_edge_margin": 0.15,
+			"lower_newel_enabled": true,
+			"lower_newel_placement": Stairs3DScript.NewelPlacement.FLOOR,
+			"upper_newel_enabled": true,
+			"upper_newel_placement": Stairs3DScript.NewelPlacement.TREAD,
+			"rail_newel_post_thickness": 0.14,
+			"middle_newel_post_count": 2,
+			"infill_count_between_newels": 3,
+			"infill_style": StandardRailGeometryScript.RailStyle.HORIZONTAL,
+		}
 	)
 	coordinator.add_child(narrow_stairs)
 	if narrow_stairs.mesh == null or narrow_stairs.mesh.get_surface_count() <= 0:
@@ -3128,10 +3101,12 @@ func _validate_stairs_side_collision_blocks_character(coordinator: Building3DScr
 	var stairs := BuildingFactoryScript.create_stairs_node(coordinator,
 		STAIRS_SIDE_COLLISION_TEST_ORIGIN + Vector3(2.0, 0.0, -2.0),
 		STAIRS_SIDE_COLLISION_TEST_ORIGIN + Vector3(5.0, 0.0, 2.0),
-		1.2,
-		4,
-		0.16,
-		Color(0.52, 0.46, 0.38, 1.0)
+		{
+			"height": 1.2,
+			"step_count": 4,
+			"thickness": 0.16,
+			"color": Color(0.52, 0.46, 0.38, 1.0),
+		}
 	)
 	coordinator.add_child(stairs)
 

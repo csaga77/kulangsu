@@ -110,11 +110,12 @@ func _add_base_and_stairs(building: Building3DScript) -> void:
 		building,
 		Vector3(-2.8, 0.0, -5.2),
 		Vector3(2.8, 0.0, -2.75),
-		0.65,
-		6,
-		0.16,
-		CREAM,
-		0.0
+		{
+			"height": 0.65,
+			"step_count": 6,
+			"thickness": 0.16,
+			"color": CREAM,
+		}
 	)
 	_attach(building, stairs, building, "FrontSteps")
 

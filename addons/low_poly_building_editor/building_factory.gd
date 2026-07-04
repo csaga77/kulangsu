@@ -305,73 +305,81 @@ static func create_floor_polygon_node(
 	return floor
 
 
+## Creates a configured stairs node from one optional `settings` dictionary,
+## mirroring the opening-settings pattern. Missing keys fall back to the
+## defaults below, so `{}` produces plain straight stairs. Recognized keys:
+## `height`, `step_count`, `thickness`, `color`, `rotation_degrees`,
+## `tread_style`, `nosing_depth`, `layout_script` (concrete stair `Script`,
+## layout key, or script path — see `instantiate_stair_layout()`),
+## `turn_direction`, `winder_turn`, `flight_width`, `spiral_turn_degrees`,
+## `left_rail_enabled`, `right_rail_enabled`, `rail_height`,
+## `infill_rail_thickness`, `rail_thickness`, `rail_lower_height`,
+## `rail_color`, `rail_edge_margin`, `lower_newel_enabled`,
+## `lower_newel_placement`, `upper_newel_enabled`, `upper_newel_placement`,
+## `rail_newel_post_thickness`, `middle_newel_post_count`,
+## `infill_count_between_newels`, and `infill_style`.
 static func create_stairs_node(
 	building: Node,
 	local_start: Vector3,
 	local_end: Vector3,
-	height: float = 1.2,
-	step_count: int = 6,
-	thickness: float = 0.12,
-	color: Color = Color(0.52, 0.46, 0.38, 1.0),
-	rotation_degrees: float = 0.0,
-	left_rail_enabled: bool = false,
-	right_rail_enabled: bool = false,
-	rail_height: float = 1.0,
-	infill_rail_thickness: float = 0.08,
-	rail_thickness: float = 0.1,
-	rail_lower_height: float = 0.18,
-	rail_color: Color = Color(0.33, 0.28, 0.22, 1.0),
-	rail_edge_margin: float = 0.15,
-	lower_newel_enabled: bool = false,
-	lower_newel_placement: int = Stairs3DScript.NewelPlacement.TREAD,
-	upper_newel_enabled: bool = false,
-	upper_newel_placement: int = Stairs3DScript.NewelPlacement.TREAD,
-	rail_newel_post_thickness: float = 0.1,
-	middle_newel_post_count: int = 0,
-	infill_count_between_newels: int = 1,
-	infill_style: int = 0,
-	layout_script: Script = StraightStairs3DScript,
-	turn_direction: int = TurningStairs3DScript.TurnDirection.RIGHT,
-	winder_turn: int = WinderStairs3DScript.WinderTurn.TURN_90,
-	flight_width: float = 1.2,
-	spiral_turn_degrees: float = 360.0,
-	tread_style: int = Stairs3DScript.TreadStyle.CLOSED,
-	nosing_depth: float = 0.08
+	settings: Dictionary = {}
 ) -> Stairs3DScript:
-	var stairs := instantiate_stair_layout(layout_script)
+	var stairs := instantiate_stair_layout(
+		settings.get("layout_script", StraightStairs3DScript)
+	)
 	stairs.name = _unique_child_name(building, "Stairs3D")
 	configure_stair_layout(
 		stairs,
-		turn_direction,
-		winder_turn,
-		flight_width,
-		spiral_turn_degrees
+		int(settings.get(
+			"turn_direction", TurningStairs3DScript.TurnDirection.RIGHT
+		)),
+		int(settings.get("winder_turn", WinderStairs3DScript.WinderTurn.TURN_90)),
+		float(settings.get("flight_width", 1.2)),
+		float(settings.get("spiral_turn_degrees", 360.0))
 	)
 	stairs.start_point = local_start
 	stairs.end_point = Vector3(local_end.x, local_start.y, local_end.z)
-	stairs.stair_height = height
-	stairs.step_count = step_count
-	stairs.stair_thickness = thickness
-	stairs.tread_style = tread_style
-	stairs.nosing_depth = nosing_depth
-	stairs.stair_color = color
-	stairs.stair_rotation_degrees = rotation_degrees
-	stairs.left_rail_enabled = left_rail_enabled
-	stairs.right_rail_enabled = right_rail_enabled
-	stairs.lower_newel_enabled = lower_newel_enabled
-	stairs.lower_newel_placement = lower_newel_placement
-	stairs.upper_newel_enabled = upper_newel_enabled
-	stairs.upper_newel_placement = upper_newel_placement
-	stairs.middle_newel_post_count = middle_newel_post_count
-	stairs.infill_count_between_newels = infill_count_between_newels
-	stairs.infill_style = infill_style
-	stairs.rail_newel_post_thickness = rail_newel_post_thickness
-	stairs.rail_edge_margin = rail_edge_margin
-	stairs.rail_height = rail_height
-	stairs.infill_rail_thickness = infill_rail_thickness
-	stairs.rail_thickness = rail_thickness
-	stairs.rail_lower_height = rail_lower_height
-	stairs.rail_color = rail_color
+	stairs.stair_height = float(settings.get("height", 1.2))
+	stairs.step_count = int(settings.get("step_count", 6))
+	stairs.stair_thickness = float(settings.get("thickness", 0.12))
+	stairs.tread_style = int(settings.get(
+		"tread_style", Stairs3DScript.TreadStyle.CLOSED
+	))
+	stairs.nosing_depth = float(settings.get("nosing_depth", 0.08))
+	stairs.stair_color = Color(settings.get(
+		"color", Color(0.52, 0.46, 0.38, 1.0)
+	))
+	stairs.stair_rotation_degrees = float(settings.get("rotation_degrees", 0.0))
+	stairs.left_rail_enabled = bool(settings.get("left_rail_enabled", false))
+	stairs.right_rail_enabled = bool(settings.get("right_rail_enabled", false))
+	stairs.lower_newel_enabled = bool(settings.get("lower_newel_enabled", false))
+	stairs.lower_newel_placement = int(settings.get(
+		"lower_newel_placement", Stairs3DScript.NewelPlacement.TREAD
+	))
+	stairs.upper_newel_enabled = bool(settings.get("upper_newel_enabled", false))
+	stairs.upper_newel_placement = int(settings.get(
+		"upper_newel_placement", Stairs3DScript.NewelPlacement.TREAD
+	))
+	stairs.middle_newel_post_count = int(settings.get(
+		"middle_newel_post_count", 0
+	))
+	stairs.infill_count_between_newels = int(settings.get(
+		"infill_count_between_newels", 1
+	))
+	stairs.infill_style = int(settings.get("infill_style", 0))
+	stairs.rail_newel_post_thickness = float(settings.get(
+		"rail_newel_post_thickness", 0.1
+	))
+	stairs.rail_edge_margin = float(settings.get("rail_edge_margin", 0.15))
+	stairs.rail_height = float(settings.get("rail_height", 1.0))
+	stairs.infill_rail_thickness = float(settings.get(
+		"infill_rail_thickness", 0.08
+	))
+	stairs.rail_thickness = float(settings.get("rail_thickness", 0.1))
+	stairs.rail_lower_height = float(settings.get("rail_lower_height", 0.18))
+	stairs.rail_color = Color(settings.get(
+		"rail_color", Color(0.33, 0.28, 0.22, 1.0)
+	))
 	stairs.build_on_ready = true
 	stairs.generate_collision = true
 	stairs.rebuild_stairs_mesh()
