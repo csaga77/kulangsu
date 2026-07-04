@@ -1,6 +1,6 @@
 # Plugin Split Plan: Tool Controllers for `plugin.gd`
 
-Status: stage 1 (context extraction) implemented, pending editor validation; stages 2–7 not started. This is the staged extraction plan for splitting
+Status: stages 1 (context extraction) and 2 (native toolbar + icons) implemented, pending editor validation; stages 3–7 not started. This is the staged extraction plan for splitting
 `../plugin.gd` (9.2k lines, 441 functions, 173 member variables) into per-tool
 controller classes. Delete this file (or fold the durable parts into
 [`contract.md`](contract.md) and [`feature.md`](feature.md)) once the split ships.
@@ -111,11 +111,12 @@ for:
 - Move to placement controller: `m_prop_*`, `m_window_settings`,
   `m_door_settings`, `m_drag_opening_*`, `m_drag_hover_opening`,
   `m_drag_face_sign`, `m_drag_target_segment`.
-- Move to native-toolbar module: `m_native_*`, `m_toolbar_buttons`,
-  `m_toolbar_icon_cache`, `m_toolbar_icon_size`, `m_handling_native_click`.
+- Move to native-toolbar module: `m_native_*`, `m_viewport_toolbar`,
+  `m_toolbar_buttons`, `m_toolbar_icon_cache`, `m_toolbar_icon_size`,
+  `m_handling_native_click` (the module owns the whole toolbar it builds).
 - Stay on plugin: `m_tool_mode`, `m_dock`, `m_editor_dock`,
-  `m_viewport_overlays`, `m_viewport_toolbar`, `m_input_capture`,
-  `m_active_coordinator`, custom-type registration caches.
+  `m_viewport_overlays`, `m_input_capture`, `m_active_coordinator`,
+  custom-type registration caches.
 - Shared via context: `m_preview_parent`, `m_display_settings`.
 
 ## Stages
