@@ -8,7 +8,8 @@ three; four sides preserves rectangular-room creation. The Stairs tool draws one
 bounding rectangle and can lay it out as a straight run or as L-shaped, double-L,
 U-shaped, 90/180-degree winder, or spiral stairs with a configurable flight width
 and left/right turn direction. Each layout is represented by a concrete `Stairs3D`
-subclass. `Stairs3D` owns only universal stair state and reusable geometry primitives;
+subclass. `Stairs3D` owns only universal stair state, delegating reusable segment mesh
+primitives to internal geometry-strategy classes that mirror the roof split;
 the internal `TurningStairs3D` layer owns Turn and Flight Width plus shared turning-plan
 allocation, mirroring, transition-rail, and collision orchestration; Winder owns its
 90/180-degree selector, and Spiral owns its configurable 45–1080-degree
