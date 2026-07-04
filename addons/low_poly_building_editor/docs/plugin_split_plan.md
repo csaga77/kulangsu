@@ -1,6 +1,6 @@
 # Plugin Split Plan: Tool Controllers for `plugin.gd`
 
-Status: stages 1 (context extraction) and 2 (native toolbar + icons) implemented, pending editor validation; stages 3–7 not started. This is the staged extraction plan for splitting
+Status: stages 1 (context extraction), 2 (native toolbar + icons), and 3 (controller base + pillar controller) implemented, pending editor validation; stages 4–7 not started. This is the staged extraction plan for splitting
 `../plugin.gd` (9.2k lines, 441 functions, 173 member variables) into per-tool
 controller classes. Delete this file (or fold the durable parts into
 [`contract.md`](contract.md) and [`feature.md`](feature.md)) once the split ships.

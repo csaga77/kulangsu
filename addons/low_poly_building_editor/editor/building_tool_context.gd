@@ -59,6 +59,12 @@ func set_status(text: String) -> void:
 		dock.set_status(text)
 
 
+## Transitional wrapper for the plugin's debug-wireframe application; moves
+## with the display cluster in a later stage.
+func apply_debug_wireframe_to_node(node: Node) -> void:
+	m_plugin._apply_debug_wireframe_to_node(node)
+
+
 # --- Coordinator resolution ---
 
 
