@@ -18,19 +18,19 @@ file now keeps only a pointer here. Keep this contract and
 - [`../building_mesh_3d.gd`](../building_mesh_3d.gd)
 - [`../building_wireframe.gd`](../building_wireframe.gd)
 - [`../polygon_prism_geometry_3d.gd`](../polygon_prism_geometry_3d.gd)
-- [`../wall_geometry_resolver.gd`](../wall_geometry_resolver.gd)
-- [`../roof_geometry_resolver.gd`](../roof_geometry_resolver.gd)
-- [`../wall_3d.gd`](../wall_3d.gd)
-- [`../floor_3d.gd`](../floor_3d.gd)
-- [`../stairs_3d.gd`](../stairs_3d.gd), the internal [`../turning_stairs_3d.gd`](../turning_stairs_3d.gd) shared-property layer, the concrete `*_stairs_3d.gd` layout scripts, and the internal `stair_segment_geometry_3d.gd`/`winder_fan_geometry_3d.gd`/`spiral_geometry_3d.gd` geometry strategies
-- [`../rail_3d.gd`](../rail_3d.gd) and the shared [`../standard_rail_geometry_3d.gd`](../standard_rail_geometry_3d.gd) post-and-bar strategy it shares with `Stairs3D`'s optional rails
-- [`../pillar_3d.gd`](../pillar_3d.gd), the internal variable-sided layer, and the concrete `*_pillar_3d.gd` style scripts
-- [`../roof_3d.gd`](../roof_3d.gd), the internal sloped-roof layer, concrete `*_roof_3d.gd` style scripts, per-style `*_roof_geometry_3d.gd` strategies, and [`../roof_style_geometry_factory_3d.gd`](../roof_style_geometry_factory_3d.gd) for cross-style geometry queries
-- [`../building_opening_3d.gd`](../building_opening_3d.gd)
-- [`../window_3d.gd`](../window_3d.gd), the internal pane-property layer in [`../window_pane_3d.gd`](../window_pane_3d.gd), and the concrete `*_window_3d.gd` style scripts
-- [`../door_3d.gd`](../door_3d.gd), the internal leaf-property layer in [`../leafed_door_3d.gd`](../leafed_door_3d.gd), and the concrete `*_door_3d.gd` style scripts
-- [`../wall_segment.gd`](../wall_segment.gd)
-- [`../merged_wall_mesh_builder.gd`](../merged_wall_mesh_builder.gd)
+- [`../walls/wall_geometry_resolver.gd`](../walls/wall_geometry_resolver.gd)
+- [`../roofs/roof_geometry_resolver.gd`](../roofs/roof_geometry_resolver.gd)
+- [`../walls/wall_3d.gd`](../walls/wall_3d.gd)
+- [`../floors/floor_3d.gd`](../floors/floor_3d.gd)
+- [`../stairs/stairs_3d.gd`](../stairs/stairs_3d.gd), the internal [`../stairs/turning_stairs_3d.gd`](../stairs/turning_stairs_3d.gd) shared-property layer, the concrete `*_stairs_3d.gd` layout scripts, and the internal `stair_segment_geometry_3d.gd`/`winder_fan_geometry_3d.gd`/`spiral_geometry_3d.gd` geometry strategies
+- [`../rails/rail_3d.gd`](../rails/rail_3d.gd) and the shared [`../rails/standard_rail_geometry_3d.gd`](../rails/standard_rail_geometry_3d.gd) post-and-bar strategy it shares with `Stairs3D`'s optional rails
+- [`../pillars/pillar_3d.gd`](../pillars/pillar_3d.gd), the internal variable-sided layer, and the concrete `*_pillar_3d.gd` style scripts
+- [`../roofs/roof_3d.gd`](../roofs/roof_3d.gd), the internal sloped-roof layer, concrete `*_roof_3d.gd` style scripts, per-style `*_roof_geometry_3d.gd` strategies, and [`../roofs/roof_style_geometry_factory_3d.gd`](../roofs/roof_style_geometry_factory_3d.gd) for cross-style geometry queries
+- [`../openings/building_opening_3d.gd`](../openings/building_opening_3d.gd)
+- [`../openings/window_3d.gd`](../openings/window_3d.gd), the internal pane-property layer in [`../openings/window_pane_3d.gd`](../openings/window_pane_3d.gd), and the concrete `*_window_3d.gd` style scripts
+- [`../openings/door_3d.gd`](../openings/door_3d.gd), the internal leaf-property layer in [`../openings/leafed_door_3d.gd`](../openings/leafed_door_3d.gd), and the concrete `*_door_3d.gd` style scripts
+- [`../walls/wall_segment.gd`](../walls/wall_segment.gd)
+- [`../walls/merged_wall_mesh_builder.gd`](../walls/merged_wall_mesh_builder.gd)
 
 ## Current contract
 
