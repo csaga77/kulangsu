@@ -191,7 +191,7 @@ func _roof_clip_surfaces_for_wall(wall: Wall3DScript) -> Array[Dictionary]:
 				roof.get_roof_style(),
 				roof.get_roof_size(),
 				roof.roof_overhang,
-				roof._style_geometry_parameters()
+				roof.get_style_geometry_parameters()
 			)
 			- roof.roof_thickness
 		)
@@ -384,7 +384,7 @@ func _roof_polygons_under_other_roof(
 		other_roof.get_roof_style(),
 		other_roof.get_roof_size(),
 		other_roof.roof_overhang,
-		other_roof._style_geometry_parameters()
+		other_roof.get_style_geometry_parameters()
 	)
 	var candidate_inverse := candidate_basis.inverse()
 	var other_anchor := other_roof.get_roof_anchor_point()
@@ -464,13 +464,13 @@ func _roof_top_faces_for_node_or_style(
 static func _roof_angle_degrees(roof: Roof3DScript) -> float:
 	if roof == null:
 		return 0.0
-	return float(roof._style_geometry_parameters().get("angle_degrees", 0.0))
+	return float(roof.get_style_geometry_parameters().get("angle_degrees", 0.0))
 
 
 static func _roof_hip_gable_height(roof: Roof3DScript) -> float:
 	if roof == null:
 		return 0.0
-	return float(roof._style_geometry_parameters().get(
+	return float(roof.get_style_geometry_parameters().get(
 		"gable_height_from_peak", 0.0
 	))
 

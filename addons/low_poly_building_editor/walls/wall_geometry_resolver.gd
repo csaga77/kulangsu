@@ -6,6 +6,7 @@ const Wall3DScript = preload("res://addons/low_poly_building_editor/walls/wall_3
 const WallSegmentScript = preload("res://addons/low_poly_building_editor/walls/wall_segment.gd")
 const MergedWallMeshBuilderScript = preload("res://addons/low_poly_building_editor/walls/merged_wall_mesh_builder.gd")
 const RoofGeometryResolverScript = preload("res://addons/low_poly_building_editor/roofs/roof_geometry_resolver.gd")
+const Roof3DScript = preload("res://addons/low_poly_building_editor/roofs/roof_3d.gd")
 
 const INTERSECT_BASE_TOLERANCE := 0.01
 
@@ -19,7 +20,7 @@ func _init(
 	owner: Node,
 	walls: Array[Wall3D],
 	grid_step: float,
-	roof_resolver: RoofGeometryResolverScript
+	roof_resolver: RoofGeometryResolverScript = null
 ) -> void:
 	m_owner = owner
 	m_walls = walls
@@ -29,6 +30,19 @@ func _init(
 
 func get_wall_nodes() -> Array[Wall3D]:
 	return m_walls
+
+
+## The roof resolver is created on first use so wall-only queries (merge
+## detection, intersection checks, opening validation) never pay for a roof
+## child scan they do not need.
+func _get_roof_resolver() -> RoofGeometryResolverScript:
+	if m_roof_resolver == null:
+		var building := m_owner as Building3D
+		var roofs: Array[Roof3DScript] = []
+		if building != null:
+			roofs = building.get_roof_nodes()
+		m_roof_resolver = RoofGeometryResolverScript.new(roofs)
+	return m_roof_resolver
 
 
 func refresh_wall_intersection_clips() -> void:
@@ -69,7 +83,7 @@ func refresh_wall_intersection_clips() -> void:
 		wall.set_geometry_clip_data(
 			before_segments,
 			after_segments,
-			m_roof_resolver.clip_surfaces_for_wall(wall),
+			_get_roof_resolver().clip_surfaces_for_wall(wall),
 			foreign_openings
 		)
 

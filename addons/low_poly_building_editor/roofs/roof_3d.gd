@@ -321,6 +321,13 @@ func get_roof_height_at_local_render_point(local_render_point: Vector2) -> float
 	)
 
 
+## Public snapshot of the style-specific geometry parameters. Every style
+## constructs the dictionary on demand, so callers may hold or mutate the
+## result without affecting authored state.
+func get_style_geometry_parameters() -> Dictionary:
+	return _style_geometry_parameters()
+
+
 func _style_geometry_parameters() -> Dictionary:
 	return {}
 

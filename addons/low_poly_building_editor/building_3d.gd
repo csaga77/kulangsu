@@ -222,13 +222,10 @@ func _create_roof_geometry_resolver() -> RoofGeometryResolver:
 	return RoofGeometryResolver.new(get_roof_nodes())
 
 
+## The wall resolver creates its roof resolver lazily on first roof-clip
+## use, so wall-only queries skip the roof child scan.
 func _create_wall_geometry_resolver(grid_step: float = 0.5) -> WallGeometryResolver:
-	return WallGeometryResolver.new(
-		self,
-		get_wall_nodes(),
-		grid_step,
-		_create_roof_geometry_resolver()
-	)
+	return WallGeometryResolver.new(self, get_wall_nodes(), grid_step)
 
 
 

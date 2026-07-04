@@ -163,11 +163,6 @@ static func create_wall_node(
 	thickness: float = 0.22,
 	color: Color = Color(0.78, 0.68, 0.54, 1.0)
 ) -> Wall3DScript:
-	var wall := Wall3DScript.new() as Wall3DScript
-	wall.name = _unique_child_name(building, "Wall3D")
-	wall.wall_height = height
-	wall.wall_thickness = thickness
-	wall.wall_color = color
 	var segment := WallSegmentScript.new() as WallSegment
 	segment.start_point = local_start
 	segment.end_point = local_end
@@ -175,6 +170,29 @@ static func create_wall_node(
 	segment.thickness = thickness
 	segment.color = color
 	var wall_segments: Array[WallSegment] = [segment]
+	return _create_wall_node_with_segments(
+		building,
+		"Wall3D",
+		wall_segments,
+		height,
+		thickness,
+		color
+	)
+
+
+static func _create_wall_node_with_segments(
+	building: Node,
+	name_prefix: String,
+	wall_segments: Array[WallSegment],
+	height: float,
+	thickness: float,
+	color: Color
+) -> Wall3DScript:
+	var wall := Wall3DScript.new() as Wall3DScript
+	wall.name = _unique_child_name(building, name_prefix)
+	wall.wall_height = height
+	wall.wall_thickness = thickness
+	wall.wall_color = color
 	wall.segments = wall_segments
 	wall.build_on_ready = true
 	wall.generate_collision = true
@@ -242,18 +260,14 @@ static func create_room_node(
 		color,
 		side_count
 	)
-	var wall := create_wall_node(
+	return _create_wall_node_with_segments(
 		building,
-		segments[0].start_point,
-		segments[0].end_point,
+		"Room3D",
+		segments,
 		height,
 		thickness,
 		color
 	)
-	wall.name = _unique_child_name(building, "Room3D")
-	wall.segments = segments
-	wall.rebuild_wall_mesh()
-	return wall
 
 
 static func create_floor_node(
@@ -548,7 +562,7 @@ static func configure_roof_style(
 static func get_roof_style_parameters(roof: Roof3DScript) -> Dictionary:
 	if roof == null:
 		return {}
-	return roof._style_geometry_parameters().duplicate()
+	return roof.get_style_geometry_parameters()
 
 
 static func get_roof_angle_degrees(roof: Roof3DScript) -> float:
@@ -760,7 +774,10 @@ static func _unique_child_name(building: Node, prefix: String) -> String:
 	var candidate := "%s%d" % [prefix, index]
 	if building == null:
 		return candidate
-	while building.has_node(candidate):
+	var used_names := {}
+	for child in building.get_children():
+		used_names[String(child.name)] = true
+	while used_names.has(candidate):
 		index += 1
 		candidate = "%s%d" % [prefix, index]
 	return candidate
