@@ -3,7 +3,7 @@ class_name BuildingFactory
 extends RefCounted
 
 const Wall3DScript = preload("res://addons/low_poly_building_editor/walls/wall_3d.gd")
-const WallSegment3DScript = preload("res://addons/low_poly_building_editor/walls/wall_segment_3d.gd")
+const WallSegmentScript = preload("res://addons/low_poly_building_editor/walls/wall_segment.gd")
 const Floor3DScript = preload("res://addons/low_poly_building_editor/floors/floor_3d.gd")
 const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs/stairs_3d.gd")
 const Rail3DScript = preload("res://addons/low_poly_building_editor/rails/rail_3d.gd")
@@ -168,13 +168,13 @@ static func create_wall_node(
 	wall.wall_height = height
 	wall.wall_thickness = thickness
 	wall.wall_color = color
-	var segment := WallSegment3DScript.new() as WallSegment3D
+	var segment := WallSegmentScript.new() as WallSegment
 	segment.start_point = local_start
 	segment.end_point = local_end
 	segment.height = height
 	segment.thickness = thickness
 	segment.color = color
-	var wall_segments: Array[WallSegment3D] = [segment]
+	var wall_segments: Array[WallSegment] = [segment]
 	wall.segments = wall_segments
 	wall.build_on_ready = true
 	wall.generate_collision = true
@@ -189,7 +189,7 @@ static func room_segments_from_corners(
 	thickness: float,
 	color: Color,
 	side_count: int = 4
-) -> Array[WallSegment3D]:
+) -> Array[WallSegment]:
 	var base_y := local_start.y
 	var resolved_side_count := maxi(side_count, 3)
 	var corners: Array[Vector3] = []
@@ -213,9 +213,9 @@ static func room_segments_from_corners(
 			corners.append(
 				center + Vector3(cos(angle) * radius_x, 0.0, sin(angle) * radius_z)
 			)
-	var segments: Array[WallSegment3D] = []
+	var segments: Array[WallSegment] = []
 	for index in range(corners.size()):
-		var segment := WallSegment3DScript.new() as WallSegment3D
+		var segment := WallSegmentScript.new() as WallSegment
 		segment.start_point = corners[index]
 		segment.end_point = corners[(index + 1) % corners.size()]
 		segment.height = height

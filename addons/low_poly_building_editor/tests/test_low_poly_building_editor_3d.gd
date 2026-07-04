@@ -7,7 +7,7 @@ const BuildingMesh3DScript = preload(
 )
 const BuildingFactoryScript = preload("res://addons/low_poly_building_editor/building_factory.gd")
 const BuildingWireframeScript = preload(
-	"res://addons/low_poly_building_editor/building_wireframe_3d.gd"
+	"res://addons/low_poly_building_editor/building_wireframe.gd"
 )
 const BuildingSpecScript = preload("res://addons/low_poly_building_editor/building_spec.gd")
 const BuildingSpecCompilerScript = preload(
@@ -73,7 +73,7 @@ const PanelDoor3DScript = preload("res://addons/low_poly_building_editor/opening
 const DutchDoor3DScript = preload("res://addons/low_poly_building_editor/openings/dutch_door_3d.gd")
 const SingleDoorFrame3DScript = preload("res://addons/low_poly_building_editor/openings/single_door_frame_3d.gd")
 const DoubleDoorFrame3DScript = preload("res://addons/low_poly_building_editor/openings/double_door_frame_3d.gd")
-const WallSegment3DScript = preload("res://addons/low_poly_building_editor/walls/wall_segment_3d.gd")
+const WallSegmentScript = preload("res://addons/low_poly_building_editor/walls/wall_segment.gd")
 const HUMAN_BODY_3D_SCENE := preload("res://characters/human_body_3d.tscn")
 const TEST_ROOF_ANGLE_DEGREES := 40.0
 const TEST_ROOF_ALT_ANGLE_DEGREES := 30.0
@@ -469,13 +469,13 @@ func _validate_empty_wall_segments() -> void:
 		m_failures.append("Wall3D segments property is not exported in the inspector")
 	if has_exported_extra_segments:
 		m_failures.append("Wall3D still exports the legacy Extra Segments property")
-	var authored_segment := WallSegment3DScript.new() as WallSegment3D
+	var authored_segment := WallSegmentScript.new() as WallSegment
 	authored_segment.start_point = Vector3.ZERO
 	authored_segment.end_point = Vector3(4.0, 0.0, 0.0)
 	authored_segment.height = 3.1
 	authored_segment.thickness = 0.35
 	authored_segment.color = Color(0.24, 0.52, 0.74, 1.0)
-	var authored_segments: Array[WallSegment3D] = [authored_segment]
+	var authored_segments: Array[WallSegment] = [authored_segment]
 	wall.segments = authored_segments
 	var split_geometry := wall.split_segment_geometry(0, Vector3(2.0, 0.0, 0.0), 0.1)
 	wall.set_wall_geometry(
@@ -1259,13 +1259,13 @@ func _validate_opening_follows_wall_segment() -> void:
 	wall.wall_color = Color(0.78, 0.68, 0.54, 1.0)
 	add_child(wall)
 
-	var branch := WallSegment3DScript.new()
+	var branch := WallSegmentScript.new()
 	branch.start_point = Vector3(2.0, 0.0, 0.0)
 	branch.end_point = Vector3(2.0, 0.0, 2.0)
 	branch.height = wall.wall_height
 	branch.thickness = wall.wall_thickness
 	branch.color = wall.wall_color
-	var extras: Array[WallSegment3DScript] = [branch]
+	var extras: Array[WallSegmentScript] = [branch]
 	wall.extra_segments = extras
 
 	var opening := BuildingOpening3DScript.new() as BuildingOpening3DScript
@@ -4247,24 +4247,24 @@ func _validate_intersection_merge() -> void:
 	if !far_hits.is_empty():
 		m_failures.append("Building3D flagged a distant wall span as intersecting")
 
-	var crossing := WallSegment3DScript.new()
+	var crossing := WallSegmentScript.new()
 	crossing.start_point = Vector3(0.0, 0.0, -2.0)
 	crossing.end_point = Vector3(0.0, 0.0, 2.0)
 	crossing.thickness = 0.22
 	crossing.height = 2.4
 	crossing.color = wall_color
-	var split_source: Array[WallSegment3DScript] = [survivor.get_segment(0), crossing]
-	var split_segments := WallSegment3DScript.split_at_intersections(split_source, 0.125)
+	var split_source: Array[WallSegmentScript] = [survivor.get_segment(0), crossing]
+	var split_segments := WallSegmentScript.split_at_intersections(split_source, 0.125)
 	if split_segments.size() != 4:
-		m_failures.append("WallSegment3D did not split a crossing into four editable spans")
+		m_failures.append("WallSegment did not split a crossing into four editable spans")
 	if _endpoint_count(split_segments, Vector3.ZERO) != 4:
-		m_failures.append("WallSegment3D did not create shared endpoints at the crossing point")
+		m_failures.append("WallSegment did not create shared endpoints at the crossing point")
 	if _endpoint_count_for_axis(split_segments, Vector3.ZERO, Vector2.RIGHT) != 2:
-		m_failures.append("WallSegment3D did not add endpoints to the intersected horizontal segment")
+		m_failures.append("WallSegment did not add endpoints to the intersected horizontal segment")
 	if _endpoint_count_for_axis(split_segments, Vector3.ZERO, Vector2.DOWN) != 2:
-		m_failures.append("WallSegment3D did not add endpoints to the crossing vertical segment")
+		m_failures.append("WallSegment did not add endpoints to the crossing vertical segment")
 	var split_primary := split_segments[0]
-	var split_extras: Array[WallSegment3DScript] = []
+	var split_extras: Array[WallSegmentScript] = []
 	for split_index in range(1, split_segments.size()):
 		split_extras.append(split_segments[split_index])
 	survivor.set_wall_endpoints(split_primary.start_point, split_primary.end_point)
@@ -4286,19 +4286,19 @@ func _validate_intersection_merge() -> void:
 			"Merged wall top cap area %.4f deviates from expected %.4f" % [top_area, expected_area]
 		)
 
-	var collinear_segments: Array[WallSegment3DScript] = []
-	var span_a := WallSegment3DScript.new()
+	var collinear_segments: Array[WallSegmentScript] = []
+	var span_a := WallSegmentScript.new()
 	span_a.start_point = Vector3.ZERO
 	span_a.end_point = Vector3(4.0, 0.0, 0.0)
 	collinear_segments.append(span_a)
-	var span_b := WallSegment3DScript.new()
+	var span_b := WallSegmentScript.new()
 	span_b.start_point = Vector3(2.0, 0.0, 0.0)
 	span_b.end_point = Vector3(6.0, 0.0, 0.0)
-	WallSegment3DScript.merge_into(collinear_segments, span_b, 0.125)
+	WallSegmentScript.merge_into(collinear_segments, span_b, 0.125)
 	if collinear_segments.size() != 1:
-		m_failures.append("WallSegment3D.merge_into did not extend a collinear overlapping span")
+		m_failures.append("WallSegment.merge_into did not extend a collinear overlapping span")
 	elif collinear_segments[0].end_point.distance_to(Vector3(6.0, 0.0, 0.0)) > 0.001:
-		m_failures.append("WallSegment3D.merge_into did not extend to the outer end point")
+		m_failures.append("WallSegment.merge_into did not extend to the outer end point")
 
 	var opening_frame: Transform3D = survivor.get_segment_local_frame(1)
 	var opening := BuildingOpening3DScript.new() as BuildingOpening3DScript
@@ -4525,7 +4525,7 @@ func _validate_serialized_building_mesh_caches() -> void:
 	var cached_segment := cached_wall.get_segment(0)
 	var changed_segment := changed_wall.get_segment(0)
 	if cached_segment == changed_segment:
-		m_failures.append("Packed Building3D instances shared a WallSegment3D resource")
+		m_failures.append("Packed Building3D instances shared a WallSegment resource")
 	changed_segment.end_point = Vector3(5.0, 0.0, 0.0)
 	if cached_segment.end_point.is_equal_approx(changed_segment.end_point):
 		m_failures.append("Editing one Building3D instance changed another instance's wall")
@@ -4916,17 +4916,17 @@ func _validate_add_wall_joint() -> void:
 	if wall.count_connected_endpoints(moved_joint, 0.03) != 2:
 		m_failures.append("Wall3D added joint did not stay editable after dragging")
 
-	var touching_segments: Array[WallSegment3DScript] = []
-	var first := WallSegment3DScript.new()
+	var touching_segments: Array[WallSegmentScript] = []
+	var first := WallSegmentScript.new()
 	first.start_point = Vector3.ZERO
 	first.end_point = Vector3(2.0, 0.0, 0.0)
 	touching_segments.append(first)
-	var second := WallSegment3DScript.new()
+	var second := WallSegmentScript.new()
 	second.start_point = Vector3(2.0, 0.0, 0.0)
 	second.end_point = Vector3(4.0, 0.0, 0.0)
-	WallSegment3DScript.merge_into(touching_segments, second, 0.125, false)
+	WallSegmentScript.merge_into(touching_segments, second, 0.125, false)
 	if touching_segments.size() != 2:
-		m_failures.append("WallSegment3D collapsed an intentional end-to-end joint")
+		m_failures.append("WallSegment collapsed an intentional end-to-end joint")
 
 
 func _validate_mitered_joint() -> void:
@@ -4940,13 +4940,13 @@ func _validate_mitered_joint() -> void:
 	corner.wall_color = Color(0.78, 0.68, 0.54, 1.0)
 	add_child(corner)
 
-	var extra := WallSegment3DScript.new()
+	var extra := WallSegmentScript.new()
 	extra.start_point = Vector3.ZERO
 	extra.end_point = Vector3(0.0, 0.0, 2.0)
 	extra.height = corner.wall_height
 	extra.thickness = corner.wall_thickness
 	extra.color = corner.wall_color
-	var extras: Array[WallSegment3DScript] = [extra]
+	var extras: Array[WallSegmentScript] = [extra]
 	corner.extra_segments = extras
 	corner.rebuild_wall_mesh()
 
@@ -5017,13 +5017,13 @@ func _validate_mitered_joint() -> void:
 	end_start_corner.wall_color = Color(0.78, 0.68, 0.54, 1.0)
 	add_child(end_start_corner)
 
-	var end_start_extra := WallSegment3DScript.new()
+	var end_start_extra := WallSegmentScript.new()
 	end_start_extra.start_point = Vector3.ZERO
 	end_start_extra.end_point = Vector3(0.0, 0.0, 2.0)
 	end_start_extra.height = end_start_corner.wall_height
 	end_start_extra.thickness = end_start_corner.wall_thickness
 	end_start_extra.color = end_start_corner.wall_color
-	var end_start_extras: Array[WallSegment3DScript] = [end_start_extra]
+	var end_start_extras: Array[WallSegmentScript] = [end_start_extra]
 	end_start_corner.extra_segments = end_start_extras
 	end_start_corner.rebuild_wall_mesh()
 
@@ -5151,13 +5151,13 @@ func _create_miter_test_wall(
 	corner.wall_color = Color(0.78, 0.68, 0.54, 1.0)
 	add_child(corner)
 
-	var extra := WallSegment3DScript.new()
+	var extra := WallSegmentScript.new()
 	extra.start_point = partner_start
 	extra.end_point = partner_end
 	extra.height = corner.wall_height
 	extra.thickness = corner.wall_thickness
 	extra.color = corner.wall_color
-	var extras: Array[WallSegment3DScript] = [extra]
+	var extras: Array[WallSegmentScript] = [extra]
 	corner.extra_segments = extras
 	corner.rebuild_wall_mesh()
 	return corner
@@ -5174,25 +5174,25 @@ func _validate_joint_endpoint_drag() -> void:
 	wall.wall_color = Color(0.78, 0.68, 0.54, 1.0)
 	add_child(wall)
 
-	var north := WallSegment3DScript.new()
+	var north := WallSegmentScript.new()
 	north.start_point = Vector3.ZERO
 	north.end_point = Vector3(0.0, 0.0, 2.0)
 	north.height = wall.wall_height
 	north.thickness = wall.wall_thickness
 	north.color = wall.wall_color
-	var west := WallSegment3DScript.new()
+	var west := WallSegmentScript.new()
 	west.start_point = Vector3.ZERO
 	west.end_point = Vector3(-2.0, 0.0, 0.0)
 	west.height = wall.wall_height
 	west.thickness = wall.wall_thickness
 	west.color = wall.wall_color
-	var isolated := WallSegment3DScript.new()
+	var isolated := WallSegmentScript.new()
 	isolated.start_point = Vector3(4.0, 0.0, 0.0)
 	isolated.end_point = Vector3(6.0, 0.0, 0.0)
 	isolated.height = wall.wall_height
 	isolated.thickness = wall.wall_thickness
 	isolated.color = wall.wall_color
-	var extras: Array[WallSegment3DScript] = [north, west, isolated]
+	var extras: Array[WallSegmentScript] = [north, west, isolated]
 	wall.extra_segments = extras
 
 	var moved_joint := Vector3(1.0, 0.0, 1.0)
@@ -5224,19 +5224,19 @@ func _validate_joint_disconnect_connect() -> void:
 	wall.wall_color = Color(0.78, 0.68, 0.54, 1.0)
 	add_child(wall)
 
-	var north := WallSegment3DScript.new()
+	var north := WallSegmentScript.new()
 	north.start_point = Vector3.ZERO
 	north.end_point = Vector3(0.0, 0.0, 2.0)
 	north.height = wall.wall_height
 	north.thickness = wall.wall_thickness
 	north.color = wall.wall_color
-	var west := WallSegment3DScript.new()
+	var west := WallSegmentScript.new()
 	west.start_point = Vector3.ZERO
 	west.end_point = Vector3(-2.0, 0.0, 0.0)
 	west.height = wall.wall_height
 	west.thickness = wall.wall_thickness
 	west.color = wall.wall_color
-	var extras: Array[WallSegment3DScript] = [north, west]
+	var extras: Array[WallSegmentScript] = [north, west]
 	wall.extra_segments = extras
 
 	var detached := Vector3(1.0, 0.0, 1.0)
@@ -5266,19 +5266,19 @@ func _validate_connected_wall_top_caps() -> void:
 	wall.wall_color = Color(0.78, 0.68, 0.54, 1.0)
 	add_child(wall)
 
-	var start_partner := WallSegment3DScript.new()
+	var start_partner := WallSegmentScript.new()
 	start_partner.start_point = Vector3.ZERO
 	start_partner.end_point = Vector3(0.0, 0.0, -1.5)
 	start_partner.height = wall.wall_height
 	start_partner.thickness = wall.wall_thickness
 	start_partner.color = wall.wall_color
-	var end_partner := WallSegment3DScript.new()
+	var end_partner := WallSegmentScript.new()
 	end_partner.start_point = Vector3(0.5, 0.0, 0.0)
 	end_partner.end_point = Vector3(0.5, 0.0, 1.5)
 	end_partner.height = wall.wall_height
 	end_partner.thickness = wall.wall_thickness
 	end_partner.color = wall.wall_color
-	var extras: Array[WallSegment3DScript] = [start_partner, end_partner]
+	var extras: Array[WallSegmentScript] = [start_partner, end_partner]
 	wall.extra_segments = extras
 	wall.rebuild_wall_mesh()
 
@@ -5305,19 +5305,19 @@ func _validate_multi_wall_joint_fill() -> void:
 	joint.wall_color = Color(0.78, 0.68, 0.54, 1.0)
 	add_child(joint)
 
-	var north := WallSegment3DScript.new()
+	var north := WallSegmentScript.new()
 	north.start_point = Vector3.ZERO
 	north.end_point = Vector3(0.0, 0.0, 2.0)
 	north.height = joint.wall_height
 	north.thickness = joint.wall_thickness
 	north.color = joint.wall_color
-	var west := WallSegment3DScript.new()
+	var west := WallSegmentScript.new()
 	west.start_point = Vector3.ZERO
 	west.end_point = Vector3(-2.0, 0.0, 0.0)
 	west.height = joint.wall_height
 	west.thickness = joint.wall_thickness
 	west.color = joint.wall_color
-	var extras: Array[WallSegment3DScript] = [north, west]
+	var extras: Array[WallSegmentScript] = [north, west]
 	joint.extra_segments = extras
 	joint.rebuild_wall_mesh()
 
@@ -5358,25 +5358,25 @@ func _validate_enclosed_wall_loop_caps() -> void:
 	loop.wall_color = Color(0.78, 0.68, 0.54, 1.0)
 	add_child(loop)
 
-	var east := WallSegment3DScript.new()
+	var east := WallSegmentScript.new()
 	east.start_point = Vector3(2.0, 0.0, 0.0)
 	east.end_point = Vector3(2.0, 0.0, 2.0)
 	east.height = loop.wall_height
 	east.thickness = loop.wall_thickness
 	east.color = loop.wall_color
-	var north := WallSegment3DScript.new()
+	var north := WallSegmentScript.new()
 	north.start_point = Vector3(2.0, 0.0, 2.0)
 	north.end_point = Vector3(0.0, 0.0, 2.0)
 	north.height = loop.wall_height
 	north.thickness = loop.wall_thickness
 	north.color = loop.wall_color
-	var west := WallSegment3DScript.new()
+	var west := WallSegmentScript.new()
 	west.start_point = Vector3(0.0, 0.0, 2.0)
 	west.end_point = Vector3.ZERO
 	west.height = loop.wall_height
 	west.thickness = loop.wall_thickness
 	west.color = loop.wall_color
-	var extras: Array[WallSegment3DScript] = [east, north, west]
+	var extras: Array[WallSegmentScript] = [east, north, west]
 	loop.extra_segments = extras
 	loop.rebuild_wall_mesh()
 
@@ -6441,7 +6441,7 @@ func _plan_triangle_contains_point(a: Vector2, b: Vector2, c: Vector2, point: Ve
 func _endpoint_count(segments: Array, point: Vector3) -> int:
 	var count := 0
 	for segment in segments:
-		var typed_segment := segment as WallSegment3DScript
+		var typed_segment := segment as WallSegmentScript
 		if typed_segment == null:
 			continue
 		if typed_segment.start_point.distance_to(point) <= 0.001:
@@ -6455,7 +6455,7 @@ func _endpoint_count_for_axis(segments: Array, point: Vector3, axis: Vector2) ->
 	var count := 0
 	var normalized_axis := axis.normalized()
 	for segment in segments:
-		var typed_segment := segment as WallSegment3DScript
+		var typed_segment := segment as WallSegmentScript
 		if typed_segment == null:
 			continue
 		var segment_axis := Vector2(

@@ -3,7 +3,7 @@ class_name WallGeometryResolver
 extends RefCounted
 
 const Wall3DScript = preload("res://addons/low_poly_building_editor/walls/wall_3d.gd")
-const WallSegment3DScript = preload("res://addons/low_poly_building_editor/walls/wall_segment_3d.gd")
+const WallSegmentScript = preload("res://addons/low_poly_building_editor/walls/wall_segment.gd")
 const MergedWallMeshBuilderScript = preload("res://addons/low_poly_building_editor/walls/merged_wall_mesh_builder.gd")
 const RoofGeometryResolverScript = preload("res://addons/low_poly_building_editor/roofs/roof_geometry_resolver.gd")
 
@@ -38,8 +38,8 @@ func refresh_wall_intersection_clips() -> void:
 		if wall.has_meta(Wall3DScript.PREVIEW_META):
 			wall.clear_intersection_clip_segments()
 			continue
-		var before_segments: Array[WallSegment3D] = []
-		var after_segments: Array[WallSegment3D] = []
+		var before_segments: Array[WallSegment] = []
+		var after_segments: Array[WallSegment] = []
 		var foreign_openings: Array = []
 		for other_index in range(walls.size()):
 			if other_index == wall_index:
@@ -100,7 +100,7 @@ func _collect_foreign_openings(
 		var owner_segment := owner.get_segment(owner_index)
 		if owner_segment == null:
 			continue
-		if !WallSegment3DScript.shares_collinear_overlap(owner_segment, neighbour_segment):
+		if !WallSegmentScript.shares_collinear_overlap(owner_segment, neighbour_segment):
 			continue
 		var owner_frame := owner_segment.get_frame()
 		var owner_axis := owner_frame.basis.x
@@ -272,13 +272,13 @@ func can_place_wall_opening(
 				# Matching collinear overlap on either wall is fine: the wall that
 				# renders the shared span cuts the opening (its own or one
 				# propagated from the clipped sibling). Other overlaps still block.
-				if WallSegment3DScript.shares_collinear_overlap(target, other):
+				if WallSegmentScript.shares_collinear_overlap(target, other):
 					continue
 				return false
 	return true
 
 
-func _wall_clip_segment_relevant(wall: Wall3DScript, clip_segment: WallSegment3D) -> bool:
+func _wall_clip_segment_relevant(wall: Wall3DScript, clip_segment: WallSegment) -> bool:
 	if wall == null or clip_segment == null:
 		return false
 	for own_index in range(wall.get_segment_count()):
@@ -290,12 +290,12 @@ func _wall_clip_segment_relevant(wall: Wall3DScript, clip_segment: WallSegment3D
 	return false
 
 
-func _wall_has_collinear_overlap(wall: Wall3DScript, candidate: WallSegment3D) -> bool:
+func _wall_has_collinear_overlap(wall: Wall3DScript, candidate: WallSegment) -> bool:
 	if wall == null or candidate == null:
 		return false
 	for segment_index in range(wall.get_segment_count()):
 		var segment := wall.get_segment(segment_index)
-		if WallSegment3DScript.shares_collinear_overlap(segment, candidate):
+		if WallSegmentScript.shares_collinear_overlap(segment, candidate):
 			return true
 	return false
 

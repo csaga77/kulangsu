@@ -1,6 +1,6 @@
 @tool
 class_name GlazedGridDoor3D
-extends GlazedDoor3D
+extends "res://addons/low_poly_building_editor/openings/glazed_door_3d.gd"
 
 @export_range(0, 8, 1) var pane_grid_rows := 2:
 	set(value):

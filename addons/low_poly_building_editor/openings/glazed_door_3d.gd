@@ -1,6 +1,6 @@
 @tool
 class_name GlazedDoor3D
-extends "res://addons/low_poly_building_editor/openings/door_leaf_3d.gd"
+extends "res://addons/low_poly_building_editor/openings/leafed_door_3d.gd"
 
 @export_range(0.0, 0.95, 0.01) var door_glazing_ratio := 0.55:
 	set(value):

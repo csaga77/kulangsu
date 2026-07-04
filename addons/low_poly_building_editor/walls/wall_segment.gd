@@ -1,5 +1,5 @@
 @tool
-class_name WallSegment3D
+class_name WallSegment
 extends Resource
 
 signal geometry_changed
@@ -59,8 +59,8 @@ func get_length() -> float:
 
 
 static func shares_collinear_overlap(
-	first: WallSegment3D,
-	second: WallSegment3D,
+	first: WallSegment,
+	second: WallSegment,
 	tolerance: float = 0.002
 ) -> bool:
 	if first == null or second == null:
@@ -101,8 +101,8 @@ static func shares_collinear_overlap(
 ## axis, line offset, thickness, height, and base match within tolerance and
 ## the ranges overlap; otherwise appends it. Returns true when extended.
 static func merge_into(
-	segments: Array[WallSegment3D],
-	candidate: WallSegment3D,
+	segments: Array[WallSegment],
+	candidate: WallSegment,
 	tolerance: float,
 	merge_touching: bool = true
 ) -> bool:
@@ -152,9 +152,9 @@ static func merge_into(
 
 
 static func split_at_intersections(
-	segments: Array[WallSegment3D],
+	segments: Array[WallSegment],
 	tolerance: float
-) -> Array[WallSegment3D]:
+) -> Array[WallSegment]:
 	var cuts: Array = []
 	for segment in segments:
 		var segment_cuts := [0.0, segment.get_length()]
@@ -181,7 +181,7 @@ static func split_at_intersections(
 			_append_unique_cut(cuts[first_index], first_distance, first_length, tolerance)
 			_append_unique_cut(cuts[second_index], second_distance, second_length, tolerance)
 
-	var pieces: Array[WallSegment3D] = []
+	var pieces: Array[WallSegment] = []
 	for segment_index in range(segments.size()):
 		var segment := segments[segment_index]
 		var segment_length := segment.get_length()
@@ -194,7 +194,7 @@ static func split_at_intersections(
 			var to_distance := float(segment_cuts[cut_index + 1])
 			if to_distance - from_distance <= tolerance:
 				continue
-			var piece := segment.duplicate() as WallSegment3D
+			var piece := segment.duplicate() as WallSegment
 			piece.start_point = _point_along_segment(segment, from_distance)
 			piece.end_point = _point_along_segment(segment, to_distance)
 			pieces.append(piece)
@@ -214,8 +214,8 @@ static func _line_distance(origin: Vector2, axis: Vector2, point: Vector2) -> fl
 
 
 static func _segment_intersection_2d(
-	first: WallSegment3D,
-	second: WallSegment3D,
+	first: WallSegment,
+	second: WallSegment,
 	tolerance: float
 ) -> Dictionary:
 	var p := Vector2(first.start_point.x, first.start_point.z)
@@ -254,7 +254,7 @@ static func _append_unique_cut(
 	cuts.append(clamped_distance)
 
 
-static func _distance_along_segment(segment: WallSegment3D, point: Vector2) -> float:
+static func _distance_along_segment(segment: WallSegment, point: Vector2) -> float:
 	var axis := _flat_axis(segment.start_point, segment.end_point)
 	if axis == Vector2.ZERO:
 		return 0.0
@@ -262,7 +262,7 @@ static func _distance_along_segment(segment: WallSegment3D, point: Vector2) -> f
 	return (point - origin).dot(axis)
 
 
-static func _point_along_segment(segment: WallSegment3D, distance: float) -> Vector3:
+static func _point_along_segment(segment: WallSegment, distance: float) -> Vector3:
 	var axis := _flat_axis(segment.start_point, segment.end_point)
 	var origin := Vector2(segment.start_point.x, segment.start_point.z)
 	var point := origin + axis * distance

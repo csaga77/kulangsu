@@ -1,6 +1,6 @@
 @tool
 class_name DoubleDoor3D
-extends "res://addons/low_poly_building_editor/openings/door_leaf_3d.gd"
+extends "res://addons/low_poly_building_editor/openings/leafed_door_3d.gd"
 
 
 func _init() -> void:

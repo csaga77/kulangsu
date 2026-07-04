@@ -33,10 +33,10 @@ const RoofStyleGeometryFactory := preload(
 	"res://addons/low_poly_building_editor/roofs/roof_style_geometry_factory_3d.gd"
 )
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/openings/building_opening_3d.gd")
-const BuildingWireframeScript = preload("res://addons/low_poly_building_editor/building_wireframe_3d.gd")
+const BuildingWireframeScript = preload("res://addons/low_poly_building_editor/building_wireframe.gd")
 const Window3DScript = preload("res://addons/low_poly_building_editor/openings/window_3d.gd")
 const Door3DScript = preload("res://addons/low_poly_building_editor/openings/door_3d.gd")
-const WallSegment3DScript = preload("res://addons/low_poly_building_editor/walls/wall_segment_3d.gd")
+const WallSegmentScript = preload("res://addons/low_poly_building_editor/walls/wall_segment.gd")
 const DockScript = preload("res://addons/low_poly_building_editor/low_poly_building_editor_dock.gd")
 const ViewportInputOverlayScript = preload("res://addons/low_poly_building_editor/viewport_input_overlay.gd")
 const ViewportInputCaptureScript = preload("res://addons/low_poly_building_editor/viewport_input_capture.gd")
@@ -446,7 +446,7 @@ var m_preview_wall: Wall3DScript
 var m_dragging_wall: Wall3DScript
 var m_drag_wall_old_start: Vector3
 var m_drag_wall_old_end: Vector3
-var m_drag_wall_old_segments: Array[WallSegment3DScript] = []
+var m_drag_wall_old_segments: Array[WallSegmentScript] = []
 var m_drag_wall_opening_anchors: Array = []
 var m_drag_wall_anchor_local: Vector3
 var m_drag_wall_segment_index := 0
@@ -901,7 +901,7 @@ func _set_wall_preview_geometry(local_start: Vector3, local_end: Vector3) -> voi
 		m_wall_preview.wall_color,
 		_room_side_count()
 	)
-	var extras: Array[WallSegment3DScript] = []
+	var extras: Array[WallSegmentScript] = []
 	for index in range(1, segments.size()):
 		extras.append(segments[index])
 	m_wall_preview.set_wall_geometry(segments[0].start_point, segments[0].end_point, extras)
@@ -6433,7 +6433,7 @@ func _apply_wall_geometry(
 	wall: Wall3DScript,
 	new_start: Vector3,
 	new_end: Vector3,
-	segments: Array[WallSegment3DScript],
+	segments: Array[WallSegmentScript],
 	opening_anchors: Array = []
 ) -> void:
 	wall.set_wall_geometry(new_start, new_end, _duplicate_segments(segments), opening_anchors)
@@ -6460,7 +6460,7 @@ func _do_set_wall_geometry(
 	wall: Wall3DScript,
 	new_start: Vector3,
 	new_end: Vector3,
-	segments: Array[WallSegment3DScript],
+	segments: Array[WallSegmentScript],
 	select_after: bool
 ) -> void:
 	if wall == null or !is_instance_valid(wall):
@@ -6474,7 +6474,7 @@ func _do_set_wall_geometry_and_refresh_intersections(
 	wall: Wall3DScript,
 	new_start: Vector3,
 	new_end: Vector3,
-	segments: Array[WallSegment3DScript],
+	segments: Array[WallSegmentScript],
 	select_after: bool,
 	coordinator: Building3DScript
 ) -> void:
@@ -6486,7 +6486,7 @@ func _do_set_wall_geometry_preserving_children(
 	wall: Wall3DScript,
 	new_start: Vector3,
 	new_end: Vector3,
-	segments: Array[WallSegment3DScript],
+	segments: Array[WallSegmentScript],
 	select_after: bool
 ) -> void:
 	if wall == null or !is_instance_valid(wall):
@@ -6504,7 +6504,7 @@ func _do_set_wall_geometry_preserving_children_and_refresh_intersections(
 	wall: Wall3DScript,
 	new_start: Vector3,
 	new_end: Vector3,
-	segments: Array[WallSegment3DScript],
+	segments: Array[WallSegmentScript],
 	select_after: bool,
 	coordinator: Building3DScript
 ) -> void:
@@ -6512,47 +6512,47 @@ func _do_set_wall_geometry_preserving_children_and_refresh_intersections(
 	_refresh_wall_intersections(coordinator)
 
 
-func _duplicate_segments(segments: Array) -> Array[WallSegment3DScript]:
-	var copies: Array[WallSegment3DScript] = []
+func _duplicate_segments(segments: Array) -> Array[WallSegmentScript]:
+	var copies: Array[WallSegmentScript] = []
 	for segment in segments:
-		var typed_segment := segment as WallSegment3DScript
+		var typed_segment := segment as WallSegmentScript
 		if typed_segment == null:
 			continue
-		copies.append(typed_segment.duplicate() as WallSegment3DScript)
+		copies.append(typed_segment.duplicate() as WallSegmentScript)
 	return copies
 
 
-func _duplicate_wall_segments(wall: Wall3DScript) -> Array[WallSegment3DScript]:
-	var segments: Array[WallSegment3DScript] = []
+func _duplicate_wall_segments(wall: Wall3DScript) -> Array[WallSegmentScript]:
+	var segments: Array[WallSegmentScript] = []
 	for segment_index in range(wall.get_segment_count()):
 		var segment := wall.get_segment(segment_index)
 		if segment == null:
 			continue
-		segments.append(segment.duplicate() as WallSegment3DScript)
+		segments.append(segment.duplicate() as WallSegmentScript)
 	return segments
 
 
 func _normalized_wall_geometry(wall: Wall3DScript) -> Dictionary:
 	var tolerance := maxf(_active_grid_step(wall) * 0.25, 0.03)
-	var combined: Array[WallSegment3DScript] = []
+	var combined: Array[WallSegmentScript] = []
 	for segment in _duplicate_wall_segments(wall):
-		WallSegment3DScript.merge_into(combined, segment, tolerance, false)
-	var split_segments := WallSegment3DScript.split_at_intersections(combined, tolerance)
+		WallSegmentScript.merge_into(combined, segment, tolerance, false)
+	var split_segments := WallSegmentScript.split_at_intersections(combined, tolerance)
 	return _wall_geometry_from_segments(split_segments)
 
 
 func _wall_geometry_from_segments(segments: Array) -> Dictionary:
 	if segments.is_empty():
 		return {}
-	var primary := segments[0] as WallSegment3DScript
+	var primary := segments[0] as WallSegmentScript
 	if primary == null:
 		return {}
-	var extras: Array[WallSegment3DScript] = []
+	var extras: Array[WallSegmentScript] = []
 	for segment_index in range(1, segments.size()):
-		var segment := segments[segment_index] as WallSegment3DScript
+		var segment := segments[segment_index] as WallSegmentScript
 		if segment == null:
 			continue
-		extras.append(segment.duplicate() as WallSegment3DScript)
+		extras.append(segment.duplicate() as WallSegmentScript)
 	return {
 		"start": primary.start_point,
 		"end": primary.end_point,
@@ -6584,12 +6584,12 @@ func _wall_geometry_without_segment(
 	wall: Wall3DScript,
 	removed_segment_index: int
 ) -> Dictionary:
-	var remaining: Array[WallSegment3DScript] = []
+	var remaining: Array[WallSegmentScript] = []
 	var zero_epsilon := _wall_segment_zero_epsilon(wall)
 	for segment_index in range(wall.get_segment_count()):
 		if segment_index == removed_segment_index:
 			continue
-		var segment := wall.get_segment(segment_index).duplicate() as WallSegment3DScript
+		var segment := wall.get_segment(segment_index).duplicate() as WallSegmentScript
 		if segment == null or segment.get_length() <= zero_epsilon:
 			continue
 		remaining.append(segment)
@@ -6622,8 +6622,8 @@ func _commit_add_wall_joint(
 		return
 	var old_start := Vector3(old_geometry["start"])
 	var old_end := Vector3(old_geometry["end"])
-	var old_segments: Array[WallSegment3DScript] = old_geometry["segments"]
-	var new_segments: Array[WallSegment3DScript] = geometry["segments"]
+	var old_segments: Array[WallSegmentScript] = old_geometry["segments"]
+	var new_segments: Array[WallSegmentScript] = geometry["segments"]
 	var undo_redo := get_undo_redo()
 	undo_redo.create_action("Add Wall Joint")
 	undo_redo.add_do_method(
@@ -6663,9 +6663,9 @@ func _commit_delete_zero_length_wall_segment(
 	geometry: Dictionary,
 	old_start: Vector3,
 	old_end: Vector3,
-	old_segments: Array[WallSegment3DScript]
+	old_segments: Array[WallSegmentScript]
 ) -> void:
-	var next_segments: Array[WallSegment3DScript] = geometry["segments"]
+	var next_segments: Array[WallSegmentScript] = geometry["segments"]
 	var coordinator := _find_coordinator_from_node(wall)
 	var undo_redo := get_undo_redo()
 	undo_redo.create_action("Delete Wall Segment")
@@ -6697,7 +6697,7 @@ func _commit_delete_zero_length_wall(
 	wall: Wall3DScript,
 	old_start: Vector3,
 	old_end: Vector3,
-	old_segments: Array[WallSegment3DScript]
+	old_segments: Array[WallSegmentScript]
 ) -> void:
 	var parent := wall.get_parent()
 	var coordinator := parent as Building3DScript
@@ -7094,7 +7094,7 @@ func _find_wall_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
 func _hit_near_wall_endpoint(
 	hit_parent_local: Vector3,
 	endpoint: Vector3,
-	segment: WallSegment3DScript,
+	segment: WallSegmentScript,
 	radius: float
 ) -> bool:
 	if hit_parent_local.y < endpoint.y - radius or hit_parent_local.y > endpoint.y + segment.height + radius:
@@ -7459,7 +7459,7 @@ func _commit_wall_drag() -> void:
 		return
 	var new_start := Vector3(new_geometry["start"])
 	var new_end := Vector3(new_geometry["end"])
-	var new_segments: Array[WallSegment3DScript] = new_geometry["segments"]
+	var new_segments: Array[WallSegmentScript] = new_geometry["segments"]
 	var old_start := m_drag_wall_old_start
 	var old_end := m_drag_wall_old_end
 	var old_segments := _duplicate_segments(m_drag_wall_old_segments)

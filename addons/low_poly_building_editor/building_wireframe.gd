@@ -1,5 +1,5 @@
 @tool
-class_name BuildingWireframe3D
+class_name BuildingWireframe
 extends RefCounted
 
 const NODE_NAME := "BuildingDebugWireframe"

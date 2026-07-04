@@ -27,14 +27,14 @@ static func footprint_from_points(
 	end_point: Vector3,
 	thickness: float
 ) -> PackedVector2Array:
-	var segment := WallSegment3D.new()
+	var segment := WallSegment.new()
 	segment.start_point = start_point
 	segment.end_point = end_point
 	segment.thickness = thickness
 	return segment_footprint(segment, segment.get_frame())
 
 
-static func segment_footprint(segment: WallSegment3D, frame: Transform3D) -> PackedVector2Array:
+static func segment_footprint(segment: WallSegment, frame: Transform3D) -> PackedVector2Array:
 	var segment_length := segment.get_length()
 	if segment_length <= MIN_SPAN:
 		return PackedVector2Array()
@@ -79,7 +79,7 @@ static func footprints_overlap(a: PackedVector2Array, b: PackedVector2Array) -> 
 
 
 static func append_segments(
-	segments: Array[WallSegment3D],
+	segments: Array[WallSegment],
 	frames: Array[Transform3D],
 	opening_rects: Array,
 	vertices: PackedVector3Array,
@@ -137,7 +137,7 @@ static func _render_segment_indices(segment_count: int, requested_indices: Array
 
 
 static func _append_segment_geometry(
-	segments: Array[WallSegment3D],
+	segments: Array[WallSegment],
 	frames: Array[Transform3D],
 	segment_index: int,
 	footprints: Array[PackedVector2Array],
@@ -198,7 +198,7 @@ static func _append_segment_geometry(
 
 
 static func _append_cell(
-	segments: Array[WallSegment3D],
+	segments: Array[WallSegment],
 	frames: Array[Transform3D],
 	segment_index: int,
 	footprints: Array[PackedVector2Array],
@@ -302,7 +302,7 @@ static func _append_cell(
 
 
 static func _append_vertical_face(
-	segments: Array[WallSegment3D],
+	segments: Array[WallSegment],
 	segment_index: int,
 	deflated: Array[PackedVector2Array],
 	clip_exceptions: Array,
@@ -328,7 +328,7 @@ static func _append_vertical_face(
 			continue
 		if (
 			other_index > segment_index
-			and WallSegment3D.shares_collinear_overlap(
+			and WallSegment.shares_collinear_overlap(
 				segments[segment_index],
 				segments[other_index],
 				PLANE_EPSILON
@@ -524,7 +524,7 @@ static func _append_vertical_segment(
 
 
 static func _append_horizontal_face_polygon(
-	segments: Array[WallSegment3D],
+	segments: Array[WallSegment],
 	segment_index: int,
 	footprints: Array[PackedVector2Array],
 	clip_exceptions: Array,
@@ -571,7 +571,7 @@ static func _append_horizontal_face_polygon(
 
 
 static func _horizontal_face_plan_polygons(
-	segments: Array[WallSegment3D],
+	segments: Array[WallSegment],
 	segment_index: int,
 	footprints: Array[PackedVector2Array],
 	clip_exceptions: Array,
@@ -1010,7 +1010,7 @@ static func _cut_values(
 	segment_length: float,
 	segment_height: float,
 	horizontal: bool,
-	segments: Array[WallSegment3D] = [],
+	segments: Array[WallSegment] = [],
 	segment_index: int = -1,
 	footprints: Array[PackedVector2Array] = []
 ) -> Array[float]:
@@ -1079,7 +1079,7 @@ static func _append_horizontal_plan_polygon(
 
 
 static func _segment_miter_plan(
-	segments: Array[WallSegment3D],
+	segments: Array[WallSegment],
 	frames: Array[Transform3D],
 	segment_index: int
 ) -> Dictionary:
@@ -1110,7 +1110,7 @@ static func _default_miter_plan(segment_length: float, half_thickness: float) ->
 
 
 static func _apply_endpoint_miter(
-	segments: Array[WallSegment3D],
+	segments: Array[WallSegment],
 	frames: Array[Transform3D],
 	segment_index: int,
 	is_start: bool,
@@ -1198,7 +1198,7 @@ static func _apply_endpoint_miter(
 
 
 static func _miter_corner_local_x(
-	segments: Array[WallSegment3D],
+	segments: Array[WallSegment],
 	frames: Array[Transform3D],
 	segment_index: int,
 	joint: Vector2,
@@ -1258,7 +1258,7 @@ static func _miter_corner_local_x(
 
 
 static func _non_collinear_endpoint_neighbor_indices(
-	segments: Array[WallSegment3D],
+	segments: Array[WallSegment],
 	frames: Array[Transform3D],
 	segment_index: int,
 	joint: Vector2,
@@ -1288,7 +1288,7 @@ static func _non_collinear_endpoint_neighbor_indices(
 
 
 static func _collinear_endpoint_neighbor_indices(
-	segments: Array[WallSegment3D],
+	segments: Array[WallSegment],
 	frames: Array[Transform3D],
 	segment_index: int,
 	joint: Vector2,
@@ -1318,7 +1318,7 @@ static func _collinear_endpoint_neighbor_indices(
 
 
 static func _has_opposite_endpoint_neighbor_pair(
-	segments: Array[WallSegment3D],
+	segments: Array[WallSegment],
 	frames: Array[Transform3D],
 	partner_indices: Array,
 	joint: Vector2,
@@ -1345,7 +1345,7 @@ static func _has_opposite_endpoint_neighbor_pair(
 
 
 static func _segment_miter_footprint(
-	segment: WallSegment3D,
+	segment: WallSegment,
 	frame: Transform3D,
 	miter_plan: Dictionary
 ) -> PackedVector2Array:

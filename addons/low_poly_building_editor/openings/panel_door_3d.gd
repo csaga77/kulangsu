@@ -1,6 +1,6 @@
 @tool
 class_name PanelDoor3D
-extends "res://addons/low_poly_building_editor/openings/door_leaf_3d.gd"
+extends "res://addons/low_poly_building_editor/openings/leafed_door_3d.gd"
 
 @export_range(0, 4, 1) var door_inset_rows := 3:
 	set(value):

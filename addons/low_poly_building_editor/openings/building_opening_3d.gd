@@ -5,7 +5,7 @@ signal opening_geometry_changed
 
 const GENERATED_META := &"building_opening_generated"
 const BuildingWireframe := preload(
-	"res://addons/low_poly_building_editor/building_wireframe_3d.gd"
+	"res://addons/low_poly_building_editor/building_wireframe.gd"
 )
 
 # Gap between the opening node origin and the wall face it is placed against.

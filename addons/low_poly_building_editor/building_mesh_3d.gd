@@ -2,7 +2,7 @@
 extends MeshInstance3D
 
 const BuildingWireframe := preload(
-	"res://addons/low_poly_building_editor/building_wireframe_3d.gd"
+	"res://addons/low_poly_building_editor/building_wireframe.gd"
 )
 
 var m_mesh_rebuild_count := 0

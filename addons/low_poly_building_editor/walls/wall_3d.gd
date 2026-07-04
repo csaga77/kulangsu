@@ -10,7 +10,7 @@ const OPENING_META := &"building_editor_opening"
 const SEGMENT_INDEX_META := &"wall_segment_index"
 const MESH_GEOMETRY_VERSION := 2
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/openings/building_opening_3d.gd")
-const WallSegment3DScript = preload("res://addons/low_poly_building_editor/walls/wall_segment_3d.gd")
+const WallSegmentScript = preload("res://addons/low_poly_building_editor/walls/wall_segment.gd")
 const MergedWallMeshBuilderScript = preload("res://addons/low_poly_building_editor/walls/merged_wall_mesh_builder.gd")
 
 const SEGMENT_ASSIGN_MARGIN := 0.25
@@ -21,7 +21,7 @@ const ROOF_COLLISION_CLIP_INFINITY := 999999.0
 
 var m_legacy_start_point := Vector3.ZERO
 var m_legacy_end_point := Vector3(4.0, 0.0, 0.0)
-var m_legacy_extra_segments: Array[WallSegment3D] = []
+var m_legacy_extra_segments: Array[WallSegment] = []
 var m_syncing_legacy_defaults := false
 
 @export var rebuild := false:
@@ -32,7 +32,7 @@ var m_syncing_legacy_defaults := false
 
 ## Canonical authored geometry. Segment zero supplies the node transform;
 ## an empty array is a valid wall with no generated mesh or collision.
-@export var segments: Array[WallSegment3D] = []:
+@export var segments: Array[WallSegment] = []:
 	set(value):
 		_disconnect_segment_signals(segments)
 		segments = value
@@ -113,16 +113,16 @@ var end_point := Vector3(4.0, 0.0, 0.0):
 					segment.color = value
 		_request_rebuild()
 
-var extra_segments: Array[WallSegment3D] = []:
+var extra_segments: Array[WallSegment] = []:
 	get:
-		var extras: Array[WallSegment3D] = []
+		var extras: Array[WallSegment] = []
 		for index in range(1, segments.size()):
 			extras.append(segments[index])
 		return extras
 	set(value):
 		m_legacy_extra_segments = value
 		_ensure_legacy_primary_segment()
-		var updated_segments: Array[WallSegment3D] = [segments[0]]
+		var updated_segments: Array[WallSegment] = [segments[0]]
 		for segment in value:
 			updated_segments.append(segment)
 		self.segments = updated_segments
@@ -148,8 +148,8 @@ var m_rebuild_queued := false
 var m_visual_rebuild_pending := false
 var m_editor_rebuild_revision := 0
 var m_is_rebuilding := false
-var m_intersection_clip_segments_before: Array[WallSegment3D] = []
-var m_intersection_clip_segments_after: Array[WallSegment3D] = []
+var m_intersection_clip_segments_before: Array[WallSegment] = []
+var m_intersection_clip_segments_after: Array[WallSegment] = []
 var m_roof_clip_surfaces: Array[Dictionary] = []
 var m_clip_data_initialized := false
 var m_current_clip_signature := 0
@@ -194,14 +194,14 @@ func _exit_tree() -> void:
 func _ensure_legacy_primary_segment() -> void:
 	if !segments.is_empty() and segments[0] != null:
 		return
-	var primary := WallSegment3DScript.new() as WallSegment3D
+	var primary := WallSegmentScript.new() as WallSegment
 	primary.start_point = m_legacy_start_point
 	primary.end_point = m_legacy_end_point
 	primary.height = wall_height
 	primary.thickness = wall_thickness
 	primary.color = wall_color
 	if segments.is_empty():
-		var initial_segments: Array[WallSegment3D] = [primary]
+		var initial_segments: Array[WallSegment] = [primary]
 		self.segments = initial_segments
 	else:
 		var updated_segments := segments.duplicate()
@@ -279,7 +279,7 @@ func get_segment_count() -> int:
 	return segments.size()
 
 
-func get_segment(index: int) -> WallSegment3DScript:
+func get_segment(index: int) -> WallSegmentScript:
 	if index < 0 or index >= segments.size():
 		return null
 	return segments[index]
@@ -497,14 +497,14 @@ func move_segment_endpoint(segment_index: int, endpoint: int, new_endpoint: Vect
 func set_wall_geometry(
 	new_start: Vector3,
 	new_end: Vector3,
-	segments: Array[WallSegment3D],
+	segments: Array[WallSegment],
 	opening_anchors: Array = []
 ) -> void:
 	var anchors := opening_anchors
 	if anchors.is_empty():
 		anchors = capture_opening_segment_anchors()
 	var primary := _segment_for_updated_span(new_start, new_end)
-	var all_segments: Array[WallSegment3D] = [primary]
+	var all_segments: Array[WallSegment] = [primary]
 	all_segments.append_array(segments)
 	self.segments = all_segments
 	_sync_transform_from_points()
@@ -515,11 +515,11 @@ func set_wall_geometry(
 func set_wall_geometry_preserving_child_transforms(
 	new_start: Vector3,
 	new_end: Vector3,
-	segments: Array[WallSegment3D]
+	segments: Array[WallSegment]
 ) -> void:
 	var child_transforms := _capture_direct_child_global_transforms()
 	var primary := _segment_for_updated_span(new_start, new_end)
-	var all_segments: Array[WallSegment3D] = [primary]
+	var all_segments: Array[WallSegment] = [primary]
 	all_segments.append_array(segments)
 	self.segments = all_segments
 	_sync_transform_from_points()
@@ -543,17 +543,17 @@ func split_segment_geometry(
 	if first_length < minimum_piece_length or second_length < minimum_piece_length:
 		return {}
 
-	var split_segments: Array[WallSegment3D] = []
+	var split_segments: Array[WallSegment] = []
 	for index in range(get_segment_count()):
-		var segment := get_segment(index).duplicate() as WallSegment3DScript
+		var segment := get_segment(index).duplicate() as WallSegmentScript
 		if segment == null:
 			continue
 		if index != segment_index:
 			split_segments.append(segment)
 			continue
-		var first := segment.duplicate() as WallSegment3DScript
+		var first := segment.duplicate() as WallSegmentScript
 		first.end_point = split_on_segment
-		var second := segment.duplicate() as WallSegment3DScript
+		var second := segment.duplicate() as WallSegmentScript
 		second.start_point = split_on_segment
 		split_segments.append(first)
 		split_segments.append(second)
@@ -704,8 +704,8 @@ func can_place_opening(
 func _opening_overlaps_clip_segments(
 	opening_min_y: float,
 	opening_plan: PackedVector2Array,
-	target_segment: WallSegment3D,
-	clip_segments: Array[WallSegment3D],
+	target_segment: WallSegment,
+	clip_segments: Array[WallSegment],
 	allow_owned_collinear_overlap: bool
 ) -> bool:
 	for clip_segment in clip_segments:
@@ -713,7 +713,7 @@ func _opening_overlaps_clip_segments(
 			continue
 		if (
 			allow_owned_collinear_overlap
-			and WallSegment3DScript.shares_collinear_overlap(target_segment, clip_segment)
+			and WallSegmentScript.shares_collinear_overlap(target_segment, clip_segment)
 		):
 			continue
 		if opening_min_y >= clip_segment.height - 0.001:
@@ -742,7 +742,7 @@ func rebuild_wall_mesh(rebuild_collision: bool = true) -> void:
 		m_is_rebuilding = false
 		return
 
-	var compiled_segments: Array[WallSegment3D] = []
+	var compiled_segments: Array[WallSegment] = []
 	var frames: Array[Transform3D] = []
 	var opening_rects: Array = []
 	var render_segment_indices: Array[int] = []
@@ -888,17 +888,17 @@ func _endpoint_with_preserved_height(endpoint: Vector3, target: Vector3) -> Vect
 	return Vector3(target.x, endpoint.y, target.z)
 
 
-func _segment_for_updated_span(new_start: Vector3, new_end: Vector3) -> WallSegment3D:
+func _segment_for_updated_span(new_start: Vector3, new_end: Vector3) -> WallSegment:
 	for source in segments:
 		if source == null:
 			continue
 		if !_point_on_segment_span(source, new_start) or !_point_on_segment_span(source, new_end):
 			continue
-		var preserved := source.duplicate() as WallSegment3D
+		var preserved := source.duplicate() as WallSegment
 		preserved.start_point = new_start
 		preserved.end_point = new_end
 		return preserved
-	var primary := WallSegment3DScript.new() as WallSegment3D
+	var primary := WallSegmentScript.new() as WallSegment
 	primary.start_point = new_start
 	primary.end_point = new_end
 	primary.height = wall_height
@@ -907,7 +907,7 @@ func _segment_for_updated_span(new_start: Vector3, new_end: Vector3) -> WallSegm
 	return primary
 
 
-func _point_on_segment_span(segment: WallSegment3D, point: Vector3) -> bool:
+func _point_on_segment_span(segment: WallSegment, point: Vector3) -> bool:
 	if absf(segment.start_point.y - point.y) > 0.01:
 		return false
 	var start := Vector2(segment.start_point.x, segment.start_point.z)
@@ -939,7 +939,7 @@ func _flat_distance(first: Vector3, second: Vector3) -> float:
 	return Vector2(second.x - first.x, second.z - first.z).length()
 
 
-func _project_point_to_segment(segment: WallSegment3DScript, point: Vector3) -> Vector3:
+func _project_point_to_segment(segment: WallSegmentScript, point: Vector3) -> Vector3:
 	var length := segment.get_length()
 	if length <= 0.000001:
 		return segment.start_point
@@ -952,18 +952,18 @@ func _project_point_to_segment(segment: WallSegment3DScript, point: Vector3) -> 
 	return Vector3(projected.x, segment.start_point.y, projected.y)
 
 
-func _geometry_from_segment_list(segments: Array[WallSegment3D]) -> Dictionary:
+func _geometry_from_segment_list(segments: Array[WallSegment]) -> Dictionary:
 	if segments.is_empty():
 		return {}
-	var primary := segments[0] as WallSegment3DScript
+	var primary := segments[0] as WallSegmentScript
 	if primary == null:
 		return {}
-	var extras: Array[WallSegment3D] = []
+	var extras: Array[WallSegment] = []
 	for index in range(1, segments.size()):
-		var segment := segments[index] as WallSegment3DScript
+		var segment := segments[index] as WallSegmentScript
 		if segment == null:
 			continue
-		extras.append(segment.duplicate() as WallSegment3DScript)
+		extras.append(segment.duplicate() as WallSegmentScript)
 	return {
 		"start": primary.start_point,
 		"end": primary.end_point,
@@ -971,13 +971,13 @@ func _geometry_from_segment_list(segments: Array[WallSegment3D]) -> Dictionary:
 	}
 
 
-func _duplicate_segment_resources(segments: Array) -> Array[WallSegment3D]:
-	var copies: Array[WallSegment3D] = []
+func _duplicate_segment_resources(segments: Array) -> Array[WallSegment]:
+	var copies: Array[WallSegment] = []
 	for segment in segments:
-		var typed_segment := segment as WallSegment3DScript
+		var typed_segment := segment as WallSegmentScript
 		if typed_segment == null:
 			continue
-		copies.append(typed_segment.duplicate() as WallSegment3DScript)
+		copies.append(typed_segment.duplicate() as WallSegmentScript)
 	return copies
 
 
@@ -1057,7 +1057,7 @@ func _geometry_clip_data_signature(
 func _segment_clip_signature_payload(source_segments: Array) -> Array:
 	var payload := []
 	for segment_variant in source_segments:
-		var segment := segment_variant as WallSegment3DScript
+		var segment := segment_variant as WallSegmentScript
 		if segment == null:
 			continue
 		payload.append([
@@ -1114,8 +1114,8 @@ func _duplicate_roof_clip_surfaces(surfaces: Array) -> Array[Dictionary]:
 	return copies
 
 
-func _all_intersection_clip_segments() -> Array[WallSegment3D]:
-	var segments: Array[WallSegment3D] = []
+func _all_intersection_clip_segments() -> Array[WallSegment]:
+	var segments: Array[WallSegment] = []
 	segments.append_array(m_intersection_clip_segments_before)
 	segments.append_array(m_intersection_clip_segments_after)
 	return segments
@@ -1516,7 +1516,7 @@ func _clear_generated_children() -> void:
 		child.free()
 
 
-func _connect_segment_signals(source_segments: Array[WallSegment3D]) -> void:
+func _connect_segment_signals(source_segments: Array[WallSegment]) -> void:
 	for segment in source_segments:
 		if segment == null:
 			continue
@@ -1526,7 +1526,7 @@ func _connect_segment_signals(source_segments: Array[WallSegment3D]) -> void:
 			segment.geometry_changed.connect(_on_segment_geometry_changed)
 
 
-func _disconnect_segment_signals(source_segments: Array[WallSegment3D]) -> void:
+func _disconnect_segment_signals(source_segments: Array[WallSegment]) -> void:
 	for segment in source_segments:
 		if segment == null:
 			continue
