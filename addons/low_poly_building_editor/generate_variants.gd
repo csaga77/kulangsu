@@ -76,7 +76,7 @@ func _run(arguments: PackedStringArray) -> int:
 	var seed_start := (
 		int(options["seed_start"])
 		if options.has("seed_start") and options["seed_start"] != null
-		else base_spec.seed
+		else base_spec.generation_seed
 	)
 	var file_stem := _safe_file_stem(base_spec.building_name)
 	var manifest_path := String(options.get("manifest", ""))
@@ -91,13 +91,13 @@ func _run(arguments: PackedStringArray) -> int:
 	var batch_errors: Array[String] = []
 	var renderer := BuildingThumbnailRendererScript.new() as BuildingThumbnailRendererScript
 	for index in range(count):
-		var seed := seed_start + index
+		var variant_seed := seed_start + index
 		var variant_number := index + 1
 		var variant_name := "%s_%03d" % [file_stem, variant_number]
 		var scene_path := output_directory.path_join(variant_name + ".tscn")
 		var thumbnail_path := output_directory.path_join(variant_name + ".png")
 		var variant_spec := base_spec.duplicate(true) as BuildingSpecScript
-		variant_spec.seed = seed
+		variant_spec.generation_seed = variant_seed
 		variant_spec.building_name = variant_name.to_pascal_case()
 		var compile_result := BuildingSpecCompilerScript.compile(variant_spec)
 		var variant_errors := _string_array(compile_result.get("errors", []))
@@ -106,7 +106,7 @@ func _run(arguments: PackedStringArray) -> int:
 		var building := compile_result.get("building") as Building3DScript
 		var entry := {
 			"index": variant_number,
-			"seed": seed,
+			"seed": variant_seed,
 			"ok": false,
 			"scene": scene_path,
 			"thumbnail": thumbnail_path,

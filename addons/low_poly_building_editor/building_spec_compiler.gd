@@ -59,7 +59,7 @@ static func compile(spec: BuildingSpecScript) -> Dictionary:
 		return _result(null, {}, errors, warnings)
 
 	var rng := RandomNumberGenerator.new()
-	rng.seed = spec.seed
+	rng.seed = spec.generation_seed
 	var resolved_footprint := _resolve_footprint_cells(spec, rng)
 	var resolved_door_style := _resolve_style(
 		spec.door_style,
@@ -88,7 +88,7 @@ static func compile(spec: BuildingSpecScript) -> Dictionary:
 	var resolved := {
 		"schema_version": spec.schema_version,
 		"generator_version": spec.generator_version,
-		"seed": spec.seed,
+		"seed": spec.generation_seed,
 		"building_name": spec.building_name,
 		"grid_step": spec.grid_step,
 		"footprint_cells": [resolved_footprint.x, resolved_footprint.y],

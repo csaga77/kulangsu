@@ -72,7 +72,7 @@ func rebuild_gallery() -> void:
 	var failures: Array[String] = []
 	for index in range(variant_count):
 		var variant_spec := base_spec.duplicate(true) as BuildingSpecScript
-		variant_spec.seed = seed_start + index
+		variant_spec.generation_seed = seed_start + index
 		variant_spec.building_name = "GalleryVilla%02d" % (index + 1)
 		var result := BuildingSpecCompilerScript.compile(variant_spec)
 		var resolved: Dictionary = result.get("resolved", {})
@@ -84,8 +84,8 @@ func rebuild_gallery() -> void:
 		var building := result.get("building") as Node3D
 		var errors: Array = result.get("errors", [])
 		if building == null or !errors.is_empty():
-			failures.append("seed %d: %s" % [variant_spec.seed, errors])
-			_add_label(center, "Seed %d\nGeneration failed" % variant_spec.seed, true)
+			failures.append("seed %d: %s" % [variant_spec.generation_seed, errors])
+			_add_label(center, "Seed %d\nGeneration failed" % variant_spec.generation_seed, true)
 			continue
 
 		var footprint: Array = resolved.get("footprint_size", [0.0, 0.0])

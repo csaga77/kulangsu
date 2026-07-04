@@ -13,7 +13,9 @@ const RANDOM_STYLE := "random"
 @export var schema_version := CURRENT_SCHEMA_VERSION
 @export var generator_version := CURRENT_GENERATOR_VERSION
 @export var building_name := "GeneratedBuilding"
-@export var seed := 1
+## Deterministic generation seed. Serialized as the JSON key `seed`; the
+## property avoids that name so it does not shadow GDScript's global `seed()`.
+@export var generation_seed := 1
 @export_range(0.05, 8.0, 0.05) var grid_step := 0.5
 @export var footprint_cells := Vector2i(16, 12)
 @export var footprint_jitter_cells := Vector2i.ZERO
@@ -119,7 +121,7 @@ func to_dictionary() -> Dictionary:
 		"schema_version": schema_version,
 		"generator_version": generator_version,
 		"name": building_name,
-		"seed": seed,
+		"seed": generation_seed,
 		"grid_step": grid_step,
 		"footprint_cells": [footprint_cells.x, footprint_cells.y],
 		"storeys": storeys,
@@ -173,7 +175,7 @@ func apply_dictionary(source: Dictionary) -> Array[String]:
 		source.get("generator_version", CURRENT_GENERATOR_VERSION)
 	)
 	spec.building_name = String(source.get("name", spec.building_name))
-	spec.seed = int(source.get("seed", spec.seed))
+	spec.generation_seed = int(source.get("seed", spec.generation_seed))
 	spec.grid_step = float(source.get("grid_step", spec.grid_step))
 	spec.footprint_cells = _parse_vector2i(
 		source.get("footprint_cells", spec.footprint_cells),
