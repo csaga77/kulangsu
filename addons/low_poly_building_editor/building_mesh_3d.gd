@@ -1,5 +1,4 @@
 @tool
-class_name BuildingMesh3D
 extends MeshInstance3D
 
 const BuildingWireframe := preload(

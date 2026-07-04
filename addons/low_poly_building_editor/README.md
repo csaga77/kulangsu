@@ -9,9 +9,11 @@ bounding rectangle and can lay it out as a straight run or as L-shaped, double-L
 U-shaped, 90/180-degree winder, or spiral stairs with a configurable flight width
 and left/right turn direction. Each layout is represented by a concrete `Stairs3D`
 subclass. `Stairs3D` owns only universal stair state and reusable geometry primitives;
-the internal `TurningStairs3D` layer owns Turn and Flight Width, Winder owns its
+the internal `TurningStairs3D` layer owns Turn and Flight Width plus shared turning-plan
+allocation, mirroring, transition-rail, and collision orchestration; Winder owns its
 90/180-degree selector, and Spiral owns its configurable 45–1080-degree
-radial run around a low-poly central column. Each concrete non-straight class builds
+radial run around a low-poly central column. Straight owns its complete single-run
+mesh, rail, and side-blocker path, while each concrete non-straight class builds
 its own segment and rail plan; landings, winder fans, and spiral
 treads subdivide the same rectangle, and optional rails follow the turning path.
 The dock passes the selected concrete stair script directly to the factory rather
@@ -19,9 +21,9 @@ than serializing a separate layout enum or key.
 Stairs offer three tread styles: Closed builds the solid stepped mass, Open
 floats individual tread slabs (and landing platforms) with no risers or
 underside, and Nosing keeps the closed mass while overhanging each tread past
-its riser by a configurable depth; winder fans and spiral treads treat Nosing
-as Closed. Spiral exposes only Closed and Open in the inspector and hides the
-inapplicable nosing-depth control.
+its riser by a configurable depth; winder fans treat Nosing as Closed. Spiral
+supports only Closed and Open: its class normalizes unsupported values, its
+inspector hides Nosing and nosing depth, and the dock disables Nosing.
 The Floor tool's Rectangle and
 Polygon styles choose only how a new footprint is drawn: two opposite corners or a
 multi-click outline. Both use the same grid-snapped editing gestures afterward. Any
@@ -48,8 +50,8 @@ allocating duplicate geometry on the editor thread. Wireframes are depth-tested 
 and back-face culled so invisible surface triangles stay hidden; X-ray mode is the explicit
 option for drawing hidden geometry. Display changes replace only those temporary materials,
 restore any authored material overlay when disabled, and never rebuild authored mesh or
-collision geometry. New
-`BuildingMesh3D` subclasses inherit this behavior automatically.
+collision geometry. New mesh blocks inherit this behavior automatically from
+the internal `building_mesh_3d.gd` infrastructure base.
 
 A scene can contain multiple independent `Building3D` roots or packed building scene
 instances. **Add Building** creates and selects a new root; selecting any building root
@@ -60,8 +62,11 @@ Styled blocks use typed hierarchies. Their base classes own only universal state
 low-level generation infrastructure; optional intermediate layers own properties shared
 by a genuine subset; and concrete pillar, roof, window, and door styles own their style
 identity, style controls, and geometry. Internal bases and intermediate layers are not
-registered as editor-creatable custom types; the factory registry is the single source
-for the concrete types exposed by the plugin. See the normative future-block pattern in
+registered as editor-creatable custom types; plugin registration is derived from the
+factory's canonical stair, pillar, roof, and opening registries. Abstract bases contain
+no retired-style compatibility adapters; cross-style roof geometry queries live in the
+roof strategy factory, while each concrete roof selects its own strategy directly. See
+the normative future-block pattern in
 [`docs/contract.md`](docs/contract.md#building-block-style-pattern).
 
 Serialized generated meshes are validated caches. Walls, floors, stairs, rails, pillars, and

@@ -2,8 +2,12 @@
 extends "res://addons/low_poly_building_editor/roof_style_geometry_3d.gd"
 
 
-func generated_height(size: Vector2, overhang: float, angle_degrees: float) -> float:
-	return roof_height_for_angle(roof_run(size, overhang), angle_degrees)
+func generated_height(
+	size: Vector2,
+	overhang: float,
+	parameters: Dictionary = {}
+) -> float:
+	return roof_height_for_angle(roof_run(size, overhang), _angle_degrees(parameters))
 
 
 func roof_run(size: Vector2, overhang: float) -> float:
@@ -14,12 +18,15 @@ func roof_run(size: Vector2, overhang: float) -> float:
 func surface_height(
 	size: Vector2,
 	overhang: float,
-	angle_degrees: float,
 	local_render_point: Vector2,
-	gable_height_from_peak: float = 0.0
+	parameters: Dictionary = {}
 ) -> float:
+	var angle_degrees := _angle_degrees(parameters)
+	var gable_height_from_peak := float(
+		parameters.get("gable_height_from_peak", 0.0)
+	)
 	var bounds := _bounds(size, overhang)
-	var height := generated_height(size, overhang, angle_degrees)
+	var height := generated_height(size, overhang, parameters)
 	var x := clampf(local_render_point.x, bounds.x, bounds.y)
 	var z := clampf(local_render_point.y, bounds.z, bounds.w)
 	var run := minf(bounds.y - bounds.x, bounds.w - bounds.z) * 0.5
@@ -141,9 +148,12 @@ func face_polygons(
 func top_triangles(
 	full_size: Vector2,
 	overhang: float,
-	angle_degrees: float,
-	gable_height_from_peak: float = 0.0
+	parameters: Dictionary = {}
 ) -> Array[PackedVector3Array]:
+	var angle_degrees := _angle_degrees(parameters)
+	var gable_height_from_peak := float(
+		parameters.get("gable_height_from_peak", 0.0)
+	)
 	var triangles: Array[PackedVector3Array] = []
 	for face in face_polygons(full_size, overhang, angle_degrees, gable_height_from_peak):
 		triangles.append_array(_triangles_for_face(face))
@@ -153,9 +163,12 @@ func top_triangles(
 func top_faces(
 	full_size: Vector2,
 	overhang: float,
-	angle_degrees: float,
-	gable_height_from_peak: float = 0.0
+	parameters: Dictionary = {}
 ) -> Array[Dictionary]:
+	var angle_degrees := _angle_degrees(parameters)
+	var gable_height_from_peak := float(
+		parameters.get("gable_height_from_peak", 0.0)
+	)
 	var faces: Array[Dictionary] = []
 	for vertices in face_polygons(full_size, overhang, angle_degrees, gable_height_from_peak):
 		var plane := _plane_points(vertices)

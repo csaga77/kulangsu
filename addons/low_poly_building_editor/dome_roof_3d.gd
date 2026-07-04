@@ -8,7 +8,7 @@ const StyleGeometry := preload(
 
 
 func get_roof_style() -> String:
-	return STYLE_DOME
+	return "dome"
 
 
 func _get_style_geometry() -> RefCounted:

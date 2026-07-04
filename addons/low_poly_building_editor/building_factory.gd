@@ -9,6 +9,15 @@ const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.
 const Rail3DScript = preload("res://addons/low_poly_building_editor/rail_3d.gd")
 const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
 const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
+const FlatRoof3DScript = preload(
+	"res://addons/low_poly_building_editor/flat_roof_3d.gd"
+)
+const SlopedRoof3DScript = preload(
+	"res://addons/low_poly_building_editor/sloped_roof_3d.gd"
+)
+const HipRoof3DScript = preload(
+	"res://addons/low_poly_building_editor/hip_roof_3d.gd"
+)
 const BuildingOpening3DScript = preload(
 	"res://addons/low_poly_building_editor/building_opening_3d.gd"
 )
@@ -16,104 +25,52 @@ const BuildingOpening3DScript = preload(
 const StraightStairs3DScript = preload(
 	"res://addons/low_poly_building_editor/straight_stairs_3d.gd"
 )
-const STAIR_LAYOUT_SCRIPTS: Array[Script] = [
-	StraightStairs3DScript,
-	preload("res://addons/low_poly_building_editor/l_shaped_stairs_3d.gd"),
-	preload("res://addons/low_poly_building_editor/double_l_shaped_stairs_3d.gd"),
-	preload("res://addons/low_poly_building_editor/u_shaped_stairs_3d.gd"),
-	preload("res://addons/low_poly_building_editor/winder_stairs_3d.gd"),
-	preload("res://addons/low_poly_building_editor/spiral_stairs_3d.gd"),
+const TurningStairs3DScript = preload(
+	"res://addons/low_poly_building_editor/turning_stairs_3d.gd"
+)
+const WinderStairs3DScript = preload(
+	"res://addons/low_poly_building_editor/winder_stairs_3d.gd"
+)
+const SpiralStairs3DScript = preload(
+	"res://addons/low_poly_building_editor/spiral_stairs_3d.gd"
+)
+const STAIR_LAYOUTS := [
+	{"key": "straight", "label": "Straight", "script": StraightStairs3DScript},
+	{"key": "l_shaped", "label": "L Shaped", "script": preload("res://addons/low_poly_building_editor/l_shaped_stairs_3d.gd")},
+	{"key": "double_l_shaped", "label": "Double L Shaped", "script": preload("res://addons/low_poly_building_editor/double_l_shaped_stairs_3d.gd")},
+	{"key": "u_shaped", "label": "U Shaped", "script": preload("res://addons/low_poly_building_editor/u_shaped_stairs_3d.gd")},
+	{"key": "winder", "label": "Winder", "script": WinderStairs3DScript},
+	{"key": "spiral", "label": "Spiral", "script": SpiralStairs3DScript},
 ]
-const PILLAR_STYLE_KEYS := ["round", "square", "octagonal", "tapered"]
-const PILLAR_STYLE_SCRIPTS := {
-	"round": preload("res://addons/low_poly_building_editor/round_pillar_3d.gd"),
-	"square": preload("res://addons/low_poly_building_editor/square_pillar_3d.gd"),
-	"octagonal": preload("res://addons/low_poly_building_editor/octagonal_pillar_3d.gd"),
-	"tapered": preload("res://addons/low_poly_building_editor/tapered_pillar_3d.gd"),
-}
-const ROOF_STYLE_KEYS := ["flat", "shed", "gable", "hip", "dome"]
-const ROOF_STYLE_SCRIPTS := {
-	"flat": preload("res://addons/low_poly_building_editor/flat_roof_3d.gd"),
-	"shed": preload("res://addons/low_poly_building_editor/shed_roof_3d.gd"),
-	"gable": preload("res://addons/low_poly_building_editor/gable_roof_3d.gd"),
-	"hip": preload("res://addons/low_poly_building_editor/hip_roof_3d.gd"),
-	"dome": preload("res://addons/low_poly_building_editor/dome_roof_3d.gd"),
-}
-const WINDOW_STYLE_KEYS := [
-	"single_window",
-	"double_window",
-	"grid_window",
-	"louvered_window",
-	"transom_window",
-	"arched_window",
-	"frame",
+const PILLAR_STYLES := [
+	{"key": "round", "label": "Round", "script": preload("res://addons/low_poly_building_editor/round_pillar_3d.gd")},
+	{"key": "square", "label": "Square", "script": preload("res://addons/low_poly_building_editor/square_pillar_3d.gd")},
+	{"key": "octagonal", "label": "Octagonal", "script": preload("res://addons/low_poly_building_editor/octagonal_pillar_3d.gd")},
+	{"key": "tapered", "label": "Tapered", "script": preload("res://addons/low_poly_building_editor/tapered_pillar_3d.gd")},
 ]
-const DOOR_STYLE_KEYS := [
-	"single_door",
-	"double_door",
-	"glazed_door",
-	"glazed_grid_door",
-	"panel_door",
-	"dutch_door",
-	"single_frame",
-	"double_frame",
+const ROOF_STYLES := [
+	{"key": "flat", "label": "Flat", "script": FlatRoof3DScript},
+	{"key": "shed", "label": "Shed", "script": preload("res://addons/low_poly_building_editor/shed_roof_3d.gd")},
+	{"key": "gable", "label": "Gable", "script": preload("res://addons/low_poly_building_editor/gable_roof_3d.gd")},
+	{"key": "hip", "label": "Hip", "script": HipRoof3DScript},
+	{"key": "dome", "label": "Dome", "script": preload("res://addons/low_poly_building_editor/dome_roof_3d.gd")},
 ]
-const OPENING_STYLE_SCRIPTS := {
-	"single_window": preload("res://addons/low_poly_building_editor/single_window_3d.gd"),
-	"double_window": preload("res://addons/low_poly_building_editor/double_window_3d.gd"),
-	"grid_window": preload("res://addons/low_poly_building_editor/grid_window_3d.gd"),
-	"louvered_window": preload("res://addons/low_poly_building_editor/louvered_window_3d.gd"),
-	"transom_window": preload("res://addons/low_poly_building_editor/transom_window_3d.gd"),
-	"arched_window": preload("res://addons/low_poly_building_editor/arched_window_3d.gd"),
-	"frame": preload("res://addons/low_poly_building_editor/window_frame_3d.gd"),
-	"single_door": preload("res://addons/low_poly_building_editor/single_door_3d.gd"),
-	"double_door": preload("res://addons/low_poly_building_editor/double_door_3d.gd"),
-	"glazed_door": preload("res://addons/low_poly_building_editor/glazed_door_3d.gd"),
-	"glazed_grid_door": preload(
-		"res://addons/low_poly_building_editor/glazed_grid_door_3d.gd"
-	),
-	"panel_door": preload("res://addons/low_poly_building_editor/panel_door_3d.gd"),
-	"dutch_door": preload("res://addons/low_poly_building_editor/dutch_door_3d.gd"),
-	"single_frame": preload(
-		"res://addons/low_poly_building_editor/single_door_frame_3d.gd"
-	),
-	"double_frame": preload(
-		"res://addons/low_poly_building_editor/double_door_frame_3d.gd"
-	),
-}
-const BUILDING_STYLE_CUSTOM_TYPES := [
-	{"name": "StraightStairs3D", "script": STAIR_LAYOUT_SCRIPTS[0]},
-	{"name": "LShapedStairs3D", "script": STAIR_LAYOUT_SCRIPTS[1]},
-	{"name": "DoubleLShapedStairs3D", "script": STAIR_LAYOUT_SCRIPTS[2]},
-	{"name": "UShapedStairs3D", "script": STAIR_LAYOUT_SCRIPTS[3]},
-	{"name": "WinderStairs3D", "script": STAIR_LAYOUT_SCRIPTS[4]},
-	{"name": "SpiralStairs3D", "script": STAIR_LAYOUT_SCRIPTS[5]},
-	{"name": "RoundPillar3D", "script": PILLAR_STYLE_SCRIPTS["round"]},
-	{"name": "SquarePillar3D", "script": PILLAR_STYLE_SCRIPTS["square"]},
-	{"name": "OctagonalPillar3D", "script": PILLAR_STYLE_SCRIPTS["octagonal"]},
-	{"name": "TaperedPillar3D", "script": PILLAR_STYLE_SCRIPTS["tapered"]},
-	{"name": "FlatRoof3D", "script": ROOF_STYLE_SCRIPTS["flat"]},
-	{"name": "ShedRoof3D", "script": ROOF_STYLE_SCRIPTS["shed"]},
-	{"name": "GableRoof3D", "script": ROOF_STYLE_SCRIPTS["gable"]},
-	{"name": "HipRoof3D", "script": ROOF_STYLE_SCRIPTS["hip"]},
-	{"name": "DomeRoof3D", "script": ROOF_STYLE_SCRIPTS["dome"]},
-]
-const OPENING_CUSTOM_TYPES := [
-	{"name": "SingleWindow3D", "script": OPENING_STYLE_SCRIPTS["single_window"]},
-	{"name": "DoubleWindow3D", "script": OPENING_STYLE_SCRIPTS["double_window"]},
-	{"name": "GridWindow3D", "script": OPENING_STYLE_SCRIPTS["grid_window"]},
-	{"name": "LouveredWindow3D", "script": OPENING_STYLE_SCRIPTS["louvered_window"]},
-	{"name": "TransomWindow3D", "script": OPENING_STYLE_SCRIPTS["transom_window"]},
-	{"name": "ArchedWindow3D", "script": OPENING_STYLE_SCRIPTS["arched_window"]},
-	{"name": "WindowFrame3D", "script": OPENING_STYLE_SCRIPTS["frame"]},
-	{"name": "SingleDoor3D", "script": OPENING_STYLE_SCRIPTS["single_door"]},
-	{"name": "DoubleDoor3D", "script": OPENING_STYLE_SCRIPTS["double_door"]},
-	{"name": "GlazedDoor3D", "script": OPENING_STYLE_SCRIPTS["glazed_door"]},
-	{"name": "GlazedGridDoor3D", "script": OPENING_STYLE_SCRIPTS["glazed_grid_door"]},
-	{"name": "PanelDoor3D", "script": OPENING_STYLE_SCRIPTS["panel_door"]},
-	{"name": "DutchDoor3D", "script": OPENING_STYLE_SCRIPTS["dutch_door"]},
-	{"name": "SingleDoorFrame3D", "script": OPENING_STYLE_SCRIPTS["single_frame"]},
-	{"name": "DoubleDoorFrame3D", "script": OPENING_STYLE_SCRIPTS["double_frame"]},
+const OPENING_STYLES := [
+	{"key": "single_window", "category": "window", "script": preload("res://addons/low_poly_building_editor/single_window_3d.gd")},
+	{"key": "double_window", "category": "window", "script": preload("res://addons/low_poly_building_editor/double_window_3d.gd")},
+	{"key": "grid_window", "category": "window", "script": preload("res://addons/low_poly_building_editor/grid_window_3d.gd")},
+	{"key": "louvered_window", "category": "window", "script": preload("res://addons/low_poly_building_editor/louvered_window_3d.gd")},
+	{"key": "transom_window", "category": "window", "script": preload("res://addons/low_poly_building_editor/transom_window_3d.gd")},
+	{"key": "arched_window", "category": "window", "script": preload("res://addons/low_poly_building_editor/arched_window_3d.gd")},
+	{"key": "frame", "category": "window", "script": preload("res://addons/low_poly_building_editor/window_frame_3d.gd")},
+	{"key": "single_door", "category": "door", "script": preload("res://addons/low_poly_building_editor/single_door_3d.gd")},
+	{"key": "double_door", "category": "door", "script": preload("res://addons/low_poly_building_editor/double_door_3d.gd")},
+	{"key": "glazed_door", "category": "door", "script": preload("res://addons/low_poly_building_editor/glazed_door_3d.gd")},
+	{"key": "glazed_grid_door", "category": "door", "script": preload("res://addons/low_poly_building_editor/glazed_grid_door_3d.gd")},
+	{"key": "panel_door", "category": "door", "script": preload("res://addons/low_poly_building_editor/panel_door_3d.gd")},
+	{"key": "dutch_door", "category": "door", "script": preload("res://addons/low_poly_building_editor/dutch_door_3d.gd")},
+	{"key": "single_frame", "category": "door", "script": preload("res://addons/low_poly_building_editor/single_door_frame_3d.gd")},
+	{"key": "double_frame", "category": "door", "script": preload("res://addons/low_poly_building_editor/double_door_frame_3d.gd")},
 ]
 const OPENING_STYLE_PROPERTY_NAMES: Array[StringName] = [
 	&"window_pane_depth",
@@ -134,6 +91,28 @@ const OPENING_STYLE_PROPERTY_NAMES: Array[StringName] = [
 	&"door_inset_rows",
 	&"door_inset_cols",
 ]
+
+
+static func get_building_style_custom_types() -> Array[Dictionary]:
+	var custom_types: Array[Dictionary] = []
+	for layout: Dictionary in STAIR_LAYOUTS:
+		custom_types.append(_custom_type_for_script(layout["script"]))
+	for style: Dictionary in PILLAR_STYLES:
+		custom_types.append(_custom_type_for_script(style["script"]))
+	for style: Dictionary in ROOF_STYLES:
+		custom_types.append(_custom_type_for_script(style["script"]))
+	return custom_types
+
+
+static func get_opening_custom_types() -> Array[Dictionary]:
+	var custom_types: Array[Dictionary] = []
+	for style: Dictionary in OPENING_STYLES:
+		custom_types.append(_custom_type_for_script(style["script"]))
+	return custom_types
+
+
+static func _custom_type_for_script(script: Script) -> Dictionary:
+	return {"name": script.get_global_name(), "script": script}
 const OPENING_SILL_META := &"building_opening_sill_height"
 const OPENING_ALLOW_BASE_META := &"building_opening_allow_base_edge"
 
@@ -338,8 +317,8 @@ static func create_stairs_node(
 	infill_count_between_newels: int = 1,
 	infill_style: int = 0,
 	layout_script: Script = StraightStairs3DScript,
-	turn_direction: int = Stairs3DScript.TurnDirection.RIGHT,
-	winder_turn: int = Stairs3DScript.WinderTurn.TURN_90,
+	turn_direction: int = TurningStairs3DScript.TurnDirection.RIGHT,
+	winder_turn: int = WinderStairs3DScript.WinderTurn.TURN_90,
 	flight_width: float = 1.2,
 	spiral_turn_degrees: float = 360.0,
 	tread_style: int = Stairs3DScript.TreadStyle.CLOSED,
@@ -347,7 +326,8 @@ static func create_stairs_node(
 ) -> Stairs3DScript:
 	var stairs := instantiate_stair_layout(layout_script)
 	stairs.name = _unique_child_name(building, "Stairs3D")
-	stairs.configure_stair_layout(
+	configure_stair_layout(
+		stairs,
 		turn_direction,
 		winder_turn,
 		flight_width,
@@ -389,14 +369,43 @@ static func instantiate_stair_layout(layout_selection: Variant) -> Stairs3DScrip
 	if layout_selection is Script:
 		stairs_script = layout_selection as Script
 	elif layout_selection is String or layout_selection is StringName:
-		var resource_path := String(layout_selection)
-		for candidate: Script in STAIR_LAYOUT_SCRIPTS:
-			if candidate.resource_path == resource_path:
+		var selection := String(layout_selection)
+		for layout: Dictionary in STAIR_LAYOUTS:
+			var candidate := layout["script"] as Script
+			if String(layout["key"]) == selection or candidate.resource_path == selection:
 				stairs_script = candidate
 				break
-	if stairs_script == null or !STAIR_LAYOUT_SCRIPTS.has(stairs_script):
+	if stairs_script == null or get_stair_layout(stairs_script).is_empty():
 		stairs_script = StraightStairs3DScript
 	return stairs_script.new() as Stairs3DScript
+
+
+static func get_stair_layout(script: Script) -> Dictionary:
+	for layout: Dictionary in STAIR_LAYOUTS:
+		if layout["script"] == script:
+			return layout
+	return {}
+
+
+static func configure_stair_layout(
+	stairs: Stairs3DScript,
+	turn_direction: int,
+	winder_turn: int,
+	flight_width: float,
+	spiral_turn_degrees: float
+) -> void:
+	if stairs is WinderStairs3DScript:
+		(stairs as WinderStairs3DScript).configure_winder_layout(
+			turn_direction, flight_width, winder_turn
+		)
+	elif stairs is SpiralStairs3DScript:
+		(stairs as SpiralStairs3DScript).configure_spiral_layout(
+			turn_direction, flight_width, spiral_turn_degrees
+		)
+	elif stairs is TurningStairs3DScript:
+		(stairs as TurningStairs3DScript).configure_turning_layout(
+			turn_direction, flight_width
+		)
 
 
 static func create_rail_node(
@@ -469,11 +478,8 @@ static func create_pillar_node(
 
 
 static func instantiate_pillar_style(style: String) -> Pillar3DScript:
-	var normalized_style := style.strip_edges().to_lower()
-	var pillar_script := PILLAR_STYLE_SCRIPTS.get(
-		normalized_style,
-		PILLAR_STYLE_SCRIPTS["round"]
-	) as Script
+	var style_record := _style_record(PILLAR_STYLES, style, "round")
+	var pillar_script := style_record["script"] as Script
 	return pillar_script.new() as Pillar3DScript
 
 
@@ -493,10 +499,9 @@ static func create_roof_node(
 	roof.name = _unique_child_name(building, "Roof3D")
 	roof.start_point = local_start
 	roof.end_point = Vector3(local_end.x, local_start.y, local_end.z)
-	roof.set_roof_angle_degrees(height)
+	configure_roof_style(roof, height, hip_gable_height)
 	roof.roof_thickness = thickness
 	roof.roof_overhang = overhang
-	roof.set_hip_gable_height(hip_gable_height)
 	roof.roof_color = color
 	roof.roof_rotation_degrees = rotation_degrees
 	roof.build_on_ready = true
@@ -511,8 +516,8 @@ static func create_flat_roof_polygon_node(
 	thickness: float = 0.12,
 	overhang: float = 0.2,
 	color: Color = Color(0.50, 0.34, 0.25, 1.0)
-) -> Roof3DScript:
-	var roof := instantiate_roof_style("flat")
+) -> FlatRoof3DScript:
+	var roof := instantiate_roof_style("flat") as FlatRoof3DScript
 	roof.name = _unique_child_name(building, "Roof3D")
 	roof.roof_thickness = thickness
 	roof.roof_overhang = overhang
@@ -524,67 +529,118 @@ static func create_flat_roof_polygon_node(
 
 
 static func instantiate_roof_style(style: String) -> Roof3DScript:
-	var normalized_style := style.strip_edges().to_lower()
-	var roof_script := ROOF_STYLE_SCRIPTS.get(
-		normalized_style,
-		ROOF_STYLE_SCRIPTS["gable"]
-	) as Script
+	var style_record := _style_record(ROOF_STYLES, style, "gable")
+	var roof_script := style_record["script"] as Script
 	return roof_script.new() as Roof3DScript
 
 
+static func configure_roof_style(
+	roof: Roof3DScript,
+	angle_degrees: float,
+	hip_gable_height: float = 0.0
+) -> void:
+	if roof is SlopedRoof3DScript:
+		(roof as SlopedRoof3DScript).set_roof_angle_degrees(angle_degrees)
+	if roof is HipRoof3DScript:
+		(roof as HipRoof3DScript).set_hip_gable_height(hip_gable_height)
+
+
+static func get_roof_style_parameters(roof: Roof3DScript) -> Dictionary:
+	if roof == null:
+		return {}
+	return roof._style_geometry_parameters().duplicate()
+
+
+static func get_roof_angle_degrees(roof: Roof3DScript) -> float:
+	return float(get_roof_style_parameters(roof).get("angle_degrees", 0.0))
+
+
+static func get_roof_hip_gable_height(roof: Roof3DScript) -> float:
+	return float(get_roof_style_parameters(roof).get(
+		"gable_height_from_peak", 0.0
+	))
+
+
 static func get_pillar_style_keys() -> PackedStringArray:
-	return PackedStringArray(PILLAR_STYLE_KEYS)
+	return _style_keys(PILLAR_STYLES)
 
 
 static func get_roof_style_keys() -> PackedStringArray:
-	return PackedStringArray(ROOF_STYLE_KEYS)
+	return _style_keys(ROOF_STYLES)
+
+
+static func _style_keys(styles: Array) -> PackedStringArray:
+	var keys := PackedStringArray()
+	for style: Dictionary in styles:
+		keys.append(String(style["key"]))
+	return keys
+
+
+static func _style_record(styles: Array, key: String, fallback_key: String = "") -> Dictionary:
+	var normalized_key := key.strip_edges().to_lower()
+	var fallback: Dictionary = {}
+	for style: Dictionary in styles:
+		if String(style["key"]) == normalized_key:
+			return style
+		if String(style["key"]) == fallback_key:
+			fallback = style
+	return fallback
 
 
 static func get_opening_style_keys() -> PackedStringArray:
-	var styles := PackedStringArray(WINDOW_STYLE_KEYS)
-	styles.append_array(PackedStringArray(DOOR_STYLE_KEYS))
-	return styles
+	return _opening_style_keys_for_category("")
 
 
 static func get_window_style_keys() -> PackedStringArray:
-	return PackedStringArray(WINDOW_STYLE_KEYS)
+	return _opening_style_keys_for_category("window")
 
 
 static func get_door_style_keys() -> PackedStringArray:
-	return PackedStringArray(DOOR_STYLE_KEYS)
+	return _opening_style_keys_for_category("door")
+
+
+static func _opening_style_keys_for_category(category: String) -> PackedStringArray:
+	var keys := PackedStringArray()
+	for style: Dictionary in OPENING_STYLES:
+		if category.is_empty() or String(style["category"]) == category:
+			keys.append(String(style["key"]))
+	return keys
+
+
+static func get_opening_style(style_key: String) -> Dictionary:
+	var normalized_key := style_key.strip_edges().to_lower()
+	for style: Dictionary in OPENING_STYLES:
+		if String(style["key"]) == normalized_key:
+			return style
+	return {}
 
 
 static func is_pillar_style_supported(style: String) -> bool:
-	return PILLAR_STYLE_SCRIPTS.has(style.strip_edges().to_lower())
+	return !_style_record(PILLAR_STYLES, style).is_empty()
 
 
 static func is_roof_style_supported(style: String) -> bool:
-	return ROOF_STYLE_SCRIPTS.has(style.strip_edges().to_lower())
+	return !_style_record(ROOF_STYLES, style).is_empty()
 
 
 static func is_opening_style_supported(style: String) -> bool:
-	return OPENING_STYLE_SCRIPTS.has(style.strip_edges().to_lower())
+	return !get_opening_style(style).is_empty()
 
 
 static func is_window_style_supported(style: String) -> bool:
-	return WINDOW_STYLE_KEYS.has(style.strip_edges().to_lower())
+	return String(get_opening_style(style).get("category", "")) == "window"
 
 
 static func is_door_style_supported(style: String) -> bool:
-	return DOOR_STYLE_KEYS.has(style.strip_edges().to_lower())
+	return String(get_opening_style(style).get("category", "")) == "door"
 
 
-static func instantiate_opening_style(
-	style: String,
-	strict: bool = false
-) -> BuildingOpening3DScript:
+static func instantiate_opening_style(style: String) -> BuildingOpening3DScript:
 	var normalized_style := style.strip_edges().to_lower()
-	if strict and !OPENING_STYLE_SCRIPTS.has(normalized_style):
+	var style_record := get_opening_style(normalized_style)
+	if style_record.is_empty():
 		return null
-	var opening_script := OPENING_STYLE_SCRIPTS.get(
-		normalized_style,
-		OPENING_STYLE_SCRIPTS["single_window"]
-	) as Script
+	var opening_script := style_record["script"] as Script
 	return opening_script.new() as BuildingOpening3DScript
 
 
@@ -655,8 +711,7 @@ static func create_opening_node(
 	distance_along_wall: float,
 	sill_height: float,
 	face_sign: float,
-	settings: Dictionary,
-	strict_style: bool = false
+	settings: Dictionary
 ) -> BuildingOpening3DScript:
 	if wall == null:
 		return null
@@ -664,7 +719,7 @@ static func create_opening_node(
 	if segment == null:
 		return null
 	var style := String(settings.get("style", ""))
-	var opening := instantiate_opening_style(style, strict_style)
+	var opening := instantiate_opening_style(style)
 	if opening == null:
 		return null
 	var name_prefix := String(settings.get("node_name", "BuildingOpening3D"))

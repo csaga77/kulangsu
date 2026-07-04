@@ -17,9 +17,21 @@ const BuildingFactoryScript = preload("res://addons/low_poly_building_editor/bui
 const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
 const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
 const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.gd")
+const TurningStairs3DScript = preload(
+	"res://addons/low_poly_building_editor/turning_stairs_3d.gd"
+)
+const WinderStairs3DScript = preload(
+	"res://addons/low_poly_building_editor/winder_stairs_3d.gd"
+)
 const Rail3DScript = preload("res://addons/low_poly_building_editor/rail_3d.gd")
 const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
 const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
+const FlatRoof3DScript = preload(
+	"res://addons/low_poly_building_editor/flat_roof_3d.gd"
+)
+const RoofStyleGeometryFactory := preload(
+	"res://addons/low_poly_building_editor/roof_style_geometry_factory_3d.gd"
+)
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
 const BuildingWireframeScript = preload("res://addons/low_poly_building_editor/building_wireframe_3d.gd")
 const Window3DScript = preload("res://addons/low_poly_building_editor/window_3d.gd")
@@ -44,9 +56,6 @@ const FLOOR_STYLE_RECTANGLE := "rectangle"
 const FLOOR_STYLE_POLYGON := "polygon"
 const PILLAR_EDIT_MOVE := 0
 const PILLAR_EDIT_RADIUS := 1
-const OPENING_STYLE_SCRIPTS := BuildingFactoryScript.OPENING_STYLE_SCRIPTS
-const OPENING_CUSTOM_TYPES := BuildingFactoryScript.OPENING_CUSTOM_TYPES
-const BUILDING_STYLE_CUSTOM_TYPES := BuildingFactoryScript.BUILDING_STYLE_CUSTOM_TYPES
 const OPENING_SILL_META := BuildingFactoryScript.OPENING_SILL_META
 const OPENING_ALLOW_BASE_META := BuildingFactoryScript.OPENING_ALLOW_BASE_META
 const BUILDING_PROP_META := &"low_poly_building_editor_prop"
@@ -219,8 +228,8 @@ var m_stair_settings := {
 	"rotation_degrees": 0.0,
 	"color": Color(0.52, 0.46, 0.38, 1.0),
 	"layout_script": BuildingFactoryScript.StraightStairs3DScript,
-	"turn_direction": Stairs3DScript.TurnDirection.RIGHT,
-	"winder_turn": Stairs3DScript.WinderTurn.TURN_90,
+	"turn_direction": TurningStairs3DScript.TurnDirection.RIGHT,
+	"winder_turn": WinderStairs3DScript.WinderTurn.TURN_90,
 	"spiral_turn_degrees": 360.0,
 	"flight_width": 1.2,
 	"left_rail_enabled": false,
@@ -470,9 +479,13 @@ var m_drag_resize_center_2d := Vector2.ZERO
 var m_drag_hover_opening: BuildingOpening3DScript
 var m_drag_hover_old_color: Color
 var m_drag_hover_edge := -1
+var m_opening_custom_types: Array[Dictionary] = []
+var m_building_style_custom_types: Array[Dictionary] = []
 
 
 func _enter_tree() -> void:
+	m_opening_custom_types = BuildingFactoryScript.get_opening_custom_types()
+	m_building_style_custom_types = BuildingFactoryScript.get_building_style_custom_types()
 	add_custom_type(
 		"Building3D",
 		"Node3D",
@@ -497,14 +510,14 @@ func _enter_tree() -> void:
 		Rail3DScript,
 		_get_editor_icon(&"MeshInstance3D")
 	)
-	for style_type: Dictionary in BUILDING_STYLE_CUSTOM_TYPES:
+	for style_type: Dictionary in m_building_style_custom_types:
 		add_custom_type(
 			String(style_type["name"]),
 			"MeshInstance3D",
 			style_type["script"],
 			_get_editor_icon(&"MeshInstance3D")
 		)
-	for opening_type: Dictionary in OPENING_CUSTOM_TYPES:
+	for opening_type: Dictionary in m_opening_custom_types:
 		add_custom_type(
 			String(opening_type["name"]),
 			"Node3D",
@@ -579,10 +592,10 @@ func _exit_tree() -> void:
 	elif m_dock != null:
 		m_dock.queue_free()
 		m_dock = null
-	for type_index in range(OPENING_CUSTOM_TYPES.size() - 1, -1, -1):
-		remove_custom_type(String(OPENING_CUSTOM_TYPES[type_index]["name"]))
-	for type_index in range(BUILDING_STYLE_CUSTOM_TYPES.size() - 1, -1, -1):
-		remove_custom_type(String(BUILDING_STYLE_CUSTOM_TYPES[type_index]["name"]))
+	for type_index in range(m_opening_custom_types.size() - 1, -1, -1):
+		remove_custom_type(String(m_opening_custom_types[type_index]["name"]))
+	for type_index in range(m_building_style_custom_types.size() - 1, -1, -1):
+		remove_custom_type(String(m_building_style_custom_types[type_index]["name"]))
 	remove_custom_type("Rail3D")
 	remove_custom_type("Floor3D")
 	remove_custom_type("Wall3D")
@@ -2374,14 +2387,15 @@ func _update_stair_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 
 
 func _apply_stair_layout_settings(stairs: Stairs3DScript) -> void:
-	stairs.configure_stair_layout(
+	BuildingFactoryScript.configure_stair_layout(
+		stairs,
 		int(m_stair_settings.get(
 			"turn_direction",
-			Stairs3DScript.TurnDirection.RIGHT
+			TurningStairs3DScript.TurnDirection.RIGHT
 		)),
 		int(m_stair_settings.get(
 			"winder_turn",
-			Stairs3DScript.WinderTurn.TURN_90
+			WinderStairs3DScript.WinderTurn.TURN_90
 		)),
 		float(m_stair_settings.get("flight_width", 1.2)),
 		float(m_stair_settings.get("spiral_turn_degrees", 360.0))
@@ -2593,8 +2607,12 @@ func _commit_stairs(
 			"layout_script",
 			BuildingFactoryScript.StraightStairs3DScript
 		) as Script,
-		int(m_stair_settings.get("turn_direction", Stairs3DScript.TurnDirection.RIGHT)),
-		int(m_stair_settings.get("winder_turn", Stairs3DScript.WinderTurn.TURN_90)),
+		int(m_stair_settings.get(
+			"turn_direction", TurningStairs3DScript.TurnDirection.RIGHT
+		)),
+		int(m_stair_settings.get(
+			"winder_turn", WinderStairs3DScript.WinderTurn.TURN_90
+		)),
 		float(m_stair_settings.get("flight_width", 1.2)),
 		float(m_stair_settings.get("spiral_turn_degrees", 360.0)),
 		int(m_stair_settings.get("tread_style", Stairs3DScript.TreadStyle.CLOSED)),
@@ -3407,7 +3425,7 @@ func _update_polygon_roof_preview(camera: Camera3D, mouse_position: Vector2) -> 
 	var preview_points := m_roof_polygon_points.duplicate()
 	if preview_points.is_empty() or !preview_points[preview_points.size() - 1].is_equal_approx(hover_point):
 		preview_points.append(hover_point)
-	m_roof_preview.set_roof_polygon(preview_points)
+	_set_roof_polygon(m_roof_preview, preview_points)
 	m_roof_has_valid_preview = _is_valid_roof_polygon(preview_points)
 
 
@@ -3434,7 +3452,7 @@ func _commit_roof_polygon(
 	var merge := coordinator.find_roof_merge_target(
 		local_start,
 		local_end,
-		Roof3DScript.STYLE_FLAT,
+			RoofStyleGeometryFactory.STYLE_FLAT,
 		0.0,
 		float(m_roof_settings["thickness"]),
 		float(m_roof_settings["overhang"]),
@@ -3485,10 +3503,13 @@ func _create_roof_preview(coordinator: Building3DScript) -> void:
 	m_roof_preview = BuildingFactoryScript.instantiate_roof_style(String(m_roof_settings["style"]))
 	m_roof_preview.name = "RoofPreview"
 	m_roof_preview.set_meta(Roof3DScript.PREVIEW_META, true)
-	m_roof_preview.set_roof_angle_degrees(float(m_roof_settings["height"]))
+	BuildingFactoryScript.configure_roof_style(
+		m_roof_preview,
+		float(m_roof_settings["height"]),
+		float(m_roof_settings.get("hip_gable_height", 0.0))
+	)
 	m_roof_preview.roof_thickness = float(m_roof_settings["thickness"])
 	m_roof_preview.roof_overhang = float(m_roof_settings["overhang"])
-	m_roof_preview.set_hip_gable_height(float(m_roof_settings.get("hip_gable_height", 0.0)))
 	m_roof_preview.roof_rotation_degrees = m_roof_draw_rotation_degrees
 	var preview_color := Color(m_roof_settings["color"])
 	preview_color.a = 0.46
@@ -3520,10 +3541,13 @@ func _update_roof_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 	var roof_start := Vector3(roof_points["start"])
 	var roof_end := Vector3(roof_points["end"])
 	m_roof_has_valid_preview = _is_roof_span_large_enough(roof_start, roof_end)
-	m_roof_preview.set_roof_angle_degrees(float(m_roof_settings["height"]))
+	BuildingFactoryScript.configure_roof_style(
+		m_roof_preview,
+		float(m_roof_settings["height"]),
+		float(m_roof_settings.get("hip_gable_height", 0.0))
+	)
 	m_roof_preview.roof_thickness = float(m_roof_settings["thickness"])
 	m_roof_preview.roof_overhang = float(m_roof_settings["overhang"])
-	m_roof_preview.set_hip_gable_height(float(m_roof_settings.get("hip_gable_height", 0.0)))
 	m_roof_preview.set_roof_corners_and_rotation(roof_start, roof_end, m_roof_draw_rotation_degrees)
 	if m_roof_has_valid_preview:
 		var size := m_roof_preview.get_roof_size()
@@ -3539,7 +3563,7 @@ func _roof_base_height() -> float:
 
 func _is_polygon_roof_mode() -> bool:
 	return (
-		String(m_roof_settings.get("style", "")) == Roof3DScript.STYLE_FLAT
+			String(m_roof_settings.get("style", "")) == RoofStyleGeometryFactory.STYLE_FLAT
 		and String(m_roof_settings.get("footprint_style", FLOOR_STYLE_RECTANGLE))
 			== FLOOR_STYLE_POLYGON
 	)
@@ -3617,7 +3641,7 @@ func _handle_roof_rotation_key(key_event: InputEventKey) -> int:
 	if roof == null:
 		_set_status("Hover or select a roof to rotate it.")
 		return _handled()
-	if roof.is_polygon_roof():
+	if _is_polygon_roof(roof):
 		_set_status("Polygon Flat roofs rotate by dragging their vertices or edges.")
 		return _handled()
 	_commit_roof_rotation(roof, delta)
@@ -3640,7 +3664,7 @@ func _commit_roof_rotation(roof: Roof3DScript, delta_degrees: float) -> void:
 	var old_start := roof.start_point
 	var old_end := roof.end_point
 	var old_rotation := roof.roof_rotation_degrees
-	var old_height := roof.get_roof_angle_degrees()
+	var old_height := _roof_angle_degrees(roof)
 	var old_covered_rects := roof.get_covered_rects()
 	var old_covered_polygons := roof.get_covered_polygons()
 	var new_rotation := _normalize_degrees(old_rotation + delta_degrees)
@@ -3655,14 +3679,14 @@ func _commit_roof_rotation(roof: Roof3DScript, delta_degrees: float) -> void:
 			new_start,
 			new_end,
 			roof.get_roof_style(),
-			roof.get_roof_angle_degrees(),
+			_roof_angle_degrees(roof),
 			roof.roof_thickness,
 			roof.roof_overhang,
 			roof.roof_color,
 			new_rotation,
 			roof,
 			true,
-			roof.get_hip_gable_height()
+			_roof_hip_gable_height(roof)
 		)
 		new_covered_rects = _roof_covered_rects_from_regions(cover_regions)
 		new_covered_polygons = _roof_covered_polygons_from_regions(cover_regions)
@@ -3800,7 +3824,7 @@ func _set_roof_edit_hover_status(roof: Roof3DScript, edit_mask: int) -> void:
 		_set_status("Drag roof vertex to reshape. Option/Alt-click it to remove.")
 	elif edit_mask == FLOOR_EDIT_POLYGON_EDGE:
 		_set_status("Drag roof edge to reshape. Shift-click it to add a vertex.")
-	elif roof.is_polygon_roof():
+	elif _is_polygon_roof(roof):
 		_set_status("Drag roof body to move it.")
 	else:
 		_set_status(
@@ -3848,7 +3872,7 @@ func _add_roof_vertex(
 	edge_index: int,
 	parent_position: Vector3
 ) -> void:
-	if roof.get_roof_style() != Roof3DScript.STYLE_FLAT:
+	if roof.get_roof_style() != RoofStyleGeometryFactory.STYLE_FLAT:
 		return
 	var old_points := _get_roof_edit_points(roof)
 	if edge_index < 0 or edge_index >= old_points.size():
@@ -3872,7 +3896,7 @@ func _add_roof_vertex(
 
 
 func _remove_roof_vertex(roof: Roof3DScript, vertex_index: int) -> void:
-	if roof.get_roof_style() != Roof3DScript.STYLE_FLAT:
+	if roof.get_roof_style() != RoofStyleGeometryFactory.STYLE_FLAT:
 		return
 	var old_points := _get_roof_edit_points(roof)
 	if old_points.size() <= 3:
@@ -3899,14 +3923,14 @@ func _commit_roof_points(
 	status: String
 ) -> void:
 	var coordinator := _find_coordinator_from_node(roof)
-	var started_as_polygon := roof.is_polygon_roof()
+	var started_as_polygon := _is_polygon_roof(roof)
 	var old_start := roof.start_point
 	var old_end := roof.end_point
 	var old_rotation := roof.roof_rotation_degrees
-	var old_height := roof.get_roof_angle_degrees()
+	var old_height := _roof_angle_degrees(roof)
 	var old_covered_rects := roof.get_covered_rects()
 	var old_covered_polygons := roof.get_covered_polygons()
-	roof.set_roof_polygon(new_points)
+	_set_roof_polygon(roof, new_points)
 	var layout_valid := true
 	if coordinator != null:
 		coordinator.refresh_roof_covered_rects()
@@ -3917,10 +3941,11 @@ func _commit_roof_points(
 				layout_valid = false
 				break
 	if started_as_polygon:
-		roof.set_roof_polygon(old_points)
+		_set_roof_polygon(roof, old_points)
 		roof.set_covered_regions(old_covered_rects, old_covered_polygons)
 	else:
-		roof.set_roof_corners_rotation_height_and_covers(
+		_set_roof_corners_rotation_angle_and_covers(
+			roof,
 			old_start,
 			old_end,
 			old_rotation,
@@ -3961,7 +3986,7 @@ func _set_roof_polygon_and_refresh(
 	points: PackedVector3Array,
 	coordinator: Building3DScript
 ) -> void:
-	roof.set_roof_polygon(points)
+	_set_roof_polygon(roof, points)
 	if coordinator != null and is_instance_valid(coordinator):
 		coordinator.refresh_building_geometry_clips()
 
@@ -3993,9 +4018,9 @@ func _start_roof_drag(
 	m_drag_roof_old_start = roof.start_point
 	m_drag_roof_old_end = roof.end_point
 	m_drag_roof_old_polygon = _get_roof_edit_points(roof)
-	m_drag_roof_started_as_polygon = roof.is_polygon_roof()
+	m_drag_roof_started_as_polygon = _is_polygon_roof(roof)
 	m_drag_roof_old_rotation_degrees = roof.roof_rotation_degrees
-	m_drag_roof_old_height = roof.get_roof_angle_degrees()
+	m_drag_roof_old_height = _roof_angle_degrees(roof)
 	m_drag_roof_old_covered_rects = roof.get_covered_rects()
 	m_drag_roof_old_covered_polygons = roof.get_covered_polygons()
 	m_drag_roof_edit_mask = edit_mask
@@ -4003,7 +4028,7 @@ func _start_roof_drag(
 		m_drag_roof_edit_mask = FLOOR_EDIT_POLYGON_VERTEX
 	elif edge_index >= 0:
 		m_drag_roof_edit_mask = FLOOR_EDIT_POLYGON_EDGE
-	elif roof.is_polygon_roof():
+	elif _is_polygon_roof(roof):
 		m_drag_roof_edit_mask = FLOOR_EDIT_MOVE
 	m_drag_roof_vertex_index = (
 		vertex_index if m_drag_roof_edit_mask == FLOOR_EDIT_POLYGON_VERTEX else -1
@@ -4037,7 +4062,7 @@ func _update_roof_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 		edited_polygon[m_drag_roof_vertex_index] = _snap_roof_edit_point(roof, hit_local)
 		var valid := _is_valid_roof_polygon(edited_polygon)
 		if valid:
-			roof.set_roof_polygon(edited_polygon)
+			_set_roof_polygon(roof, edited_polygon)
 			roof.set_covered_regions([], [])
 			_set_status("Release to commit roof vertex position.")
 		else:
@@ -4062,7 +4087,7 @@ func _update_roof_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 		edited_polygon[next_edge_index] += snapped_delta
 		var valid := _is_valid_roof_polygon(edited_polygon)
 		if valid:
-			roof.set_roof_polygon(edited_polygon)
+			_set_roof_polygon(roof, edited_polygon)
 			roof.set_covered_regions([], [])
 			_set_status("Release to commit roof edge position.")
 		else:
@@ -4071,7 +4096,7 @@ func _update_roof_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 			_roof_drag_color(FLOOR_EDIT_POLYGON_EDGE, valid)
 		)
 		return
-	if roof.is_polygon_roof():
+	if _is_polygon_roof(roof):
 		var step := _active_roof_grid_step(roof)
 		var raw_delta := hit_local - m_drag_roof_anchor_local
 		var snapped_delta := Vector3(
@@ -4082,7 +4107,7 @@ func _update_roof_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 		var moved_polygon := PackedVector3Array()
 		for point in m_drag_roof_old_polygon:
 			moved_polygon.append(point + snapped_delta)
-		roof.set_roof_polygon(moved_polygon)
+		_set_roof_polygon(roof, moved_polygon)
 		roof.set_covered_regions([], [])
 		roof.material_override = _build_preview_material(
 			_roof_drag_color(FLOOR_EDIT_MOVE, true)
@@ -4107,7 +4132,8 @@ func _update_roof_drag(camera: Camera3D, mouse_pos: Vector2) -> void:
 
 	var preview_covered_rects: Array[Rect2] = []
 	var preview_covered_polygons: Array[PackedVector2Array] = []
-	roof.set_roof_corners_rotation_height_and_covers(
+	_set_roof_corners_rotation_angle_and_covers(
+		roof,
 		new_start,
 		new_end,
 		m_drag_roof_old_rotation_degrees,
@@ -4130,7 +4156,7 @@ func _commit_roof_drag() -> void:
 	if m_dragging_roof == null:
 		return
 	var roof := m_dragging_roof
-	if roof.is_polygon_roof():
+	if _is_polygon_roof(roof):
 		_commit_polygon_roof_drag(roof)
 		return
 	var old_start := m_drag_roof_old_start
@@ -4142,12 +4168,13 @@ func _commit_roof_drag() -> void:
 	var new_start := roof.start_point
 	var new_end := roof.end_point
 	var new_rotation := roof.roof_rotation_degrees
-	var new_height := roof.get_roof_angle_degrees()
+	var new_height := _roof_angle_degrees(roof)
 	var edit_mask := m_drag_roof_edit_mask
 	var coordinator := _find_coordinator_from_node(roof)
 	roof.material_override = m_drag_roof_active_material
 	if !_is_roof_span_large_enough(new_start, new_end):
-		roof.set_roof_corners_rotation_height_and_covers(
+		_set_roof_corners_rotation_angle_and_covers(
+			roof,
 			old_start,
 			old_end,
 			old_rotation,
@@ -4166,7 +4193,8 @@ func _commit_roof_drag() -> void:
 			and _angles_match(old_rotation, new_rotation)
 			and is_equal_approx(old_height, new_height)
 	):
-		roof.set_roof_corners_rotation_height_and_covers(
+		_set_roof_corners_rotation_angle_and_covers(
+			roof,
 			old_start,
 			old_end,
 			old_rotation,
@@ -4194,7 +4222,7 @@ func _commit_roof_drag() -> void:
 			roof.roof_rotation_degrees,
 			roof,
 			true,
-			roof.get_hip_gable_height()
+			_roof_hip_gable_height(roof)
 		)
 		new_covered_rects = _roof_covered_rects_from_regions(cover_regions)
 		new_covered_polygons = _roof_covered_polygons_from_regions(cover_regions)
@@ -4205,7 +4233,8 @@ func _commit_roof_drag() -> void:
 			new_covered_rects,
 			new_covered_polygons
 		):
-			roof.set_roof_corners_rotation_height_and_covers(
+			_set_roof_corners_rotation_angle_and_covers(
+				roof,
 				old_start,
 				old_end,
 				old_rotation,
@@ -4227,7 +4256,8 @@ func _commit_roof_drag() -> void:
 			new_covered_rects,
 			new_covered_polygons
 		):
-			roof.set_roof_corners_rotation_height_and_covers(
+			_set_roof_corners_rotation_angle_and_covers(
+				roof,
 				old_start,
 				old_end,
 				old_rotation,
@@ -4277,7 +4307,7 @@ func _commit_roof_drag() -> void:
 
 
 func _commit_polygon_roof_drag(roof: Roof3DScript) -> void:
-	var new_points := roof.get_roof_polygon()
+	var new_points := _get_roof_polygon(roof)
 	var old_points := m_drag_roof_old_polygon
 	var coordinator := _find_coordinator_from_node(roof)
 	var edit_mask := m_drag_roof_edit_mask
@@ -4347,13 +4377,14 @@ func _restore_roof_drag_start(
 	coordinator: Building3DScript
 ) -> void:
 	if m_drag_roof_started_as_polygon:
-		roof.set_roof_polygon(m_drag_roof_old_polygon)
+		_set_roof_polygon(roof, m_drag_roof_old_polygon)
 		roof.set_covered_regions(
 			m_drag_roof_old_covered_rects,
 			m_drag_roof_old_covered_polygons
 		)
 	else:
-		roof.set_roof_corners_rotation_height_and_covers(
+		_set_roof_corners_rotation_angle_and_covers(
+			roof,
 			m_drag_roof_old_start,
 			m_drag_roof_old_end,
 			m_drag_roof_old_rotation_degrees,
@@ -4985,10 +5016,7 @@ func _apply_opening_settings(opening: BuildingOpening3DScript, settings: Diction
 
 func _opening_script_for_settings(settings: Dictionary) -> Script:
 	var style := String(settings.get("style", ""))
-	return OPENING_STYLE_SCRIPTS.get(
-		style,
-		OPENING_STYLE_SCRIPTS["single_window"]
-	) as Script
+	return BuildingFactoryScript.get_opening_style(style).get("script") as Script
 
 
 # The both-sided frame casing (BuildingOpening3D._frame_casing) assumes the wall
@@ -5203,8 +5231,7 @@ func _commit_placement() -> void:
 			segment_local.x,
 			sill_height,
 			1.0 if segment_local.z >= 0.0 else -1.0,
-			settings,
-			true
+			settings
 		)
 		if opening == null:
 			_set_status("Could not create the selected opening style.")
@@ -5826,7 +5853,10 @@ func _find_roof_handle_pick(camera: Camera3D, mouse_pos: Vector2) -> Dictionary:
 	var best_edge_pick: Dictionary = {}
 	var best_edge_camera_distance := INF
 	for roof in roofs:
-		if !is_instance_valid(roof) or roof.get_roof_style() != Roof3DScript.STYLE_FLAT:
+		if (
+			!is_instance_valid(roof)
+			or roof.get_roof_style() != RoofStyleGeometryFactory.STYLE_FLAT
+		):
 			continue
 		if roof == m_roof_preview or roof.has_meta(Roof3DScript.PREVIEW_META):
 			continue
@@ -8014,9 +8044,59 @@ func _roof_polygon_parent_bounds(points: PackedVector3Array) -> Rect2:
 	return Rect2(min_point, max_point - min_point)
 
 
+func _flat_roof(roof: Roof3DScript) -> FlatRoof3DScript:
+	return roof as FlatRoof3DScript
+
+
+func _is_polygon_roof(roof: Roof3DScript) -> bool:
+	var flat_roof := _flat_roof(roof)
+	return flat_roof != null and flat_roof.is_polygon_roof()
+
+
+func _get_roof_polygon(roof: Roof3DScript) -> PackedVector3Array:
+	var flat_roof := _flat_roof(roof)
+	return flat_roof.get_roof_polygon() if flat_roof != null else PackedVector3Array()
+
+
+func _set_roof_polygon(roof: Roof3DScript, points: PackedVector3Array) -> void:
+	var flat_roof := _flat_roof(roof)
+	if flat_roof != null:
+		flat_roof.set_roof_polygon(points)
+
+
+func _roof_angle_degrees(roof: Roof3DScript) -> float:
+	return BuildingFactoryScript.get_roof_angle_degrees(roof)
+
+
+func _roof_hip_gable_height(roof: Roof3DScript) -> float:
+	return BuildingFactoryScript.get_roof_hip_gable_height(roof)
+
+
+func _set_roof_corners_rotation_angle_and_covers(
+	roof: Roof3DScript,
+	new_start: Vector3,
+	new_end: Vector3,
+	new_rotation: float,
+	new_angle_degrees: float,
+	new_covered_rects: Array[Rect2],
+	new_covered_polygons: Array[PackedVector2Array]
+) -> void:
+	var parameters := BuildingFactoryScript.get_roof_style_parameters(roof)
+	if parameters.has("angle_degrees"):
+		parameters["angle_degrees"] = new_angle_degrees
+	roof.set_roof_corners_rotation_parameters_and_covers(
+		new_start,
+		new_end,
+		new_rotation,
+		parameters,
+		new_covered_rects,
+		new_covered_polygons
+	)
+
+
 func _get_roof_edit_points(roof: Roof3DScript) -> PackedVector3Array:
-	if roof.is_polygon_roof():
-		return roof.get_roof_polygon()
+	if _is_polygon_roof(roof):
+		return _get_roof_polygon(roof)
 	var size := roof.get_roof_size()
 	var anchor := roof.get_roof_anchor_point()
 	var basis := _roof_rotation_basis(roof.roof_rotation_degrees)
@@ -8104,7 +8184,8 @@ func _set_roof_state_and_refresh(
 ) -> void:
 	if roof == null or !is_instance_valid(roof):
 		return
-	roof.set_roof_corners_rotation_height_and_covers(
+	_set_roof_corners_rotation_angle_and_covers(
+		roof,
 		new_start,
 		new_end,
 		new_rotation,
@@ -8137,14 +8218,15 @@ func _roof_layout_would_hide_any_roof(
 			"roof": roof_node,
 			"start": roof_node.start_point,
 			"end": roof_node.end_point,
-			"polygon": roof_node.get_roof_polygon(),
+			"polygon": _get_roof_polygon(roof_node),
 			"rotation": roof_node.roof_rotation_degrees,
-			"height": roof_node.get_roof_angle_degrees(),
+			"height": _roof_angle_degrees(roof_node),
 			"covered_rects": roof_node.get_covered_rects(),
 			"covered_polygons": roof_node.get_covered_polygons(),
 		})
 
-	roof.set_roof_corners_rotation_height_and_covers(
+	_set_roof_corners_rotation_angle_and_covers(
+		roof,
 		new_start,
 		new_end,
 		new_rotation,
@@ -8173,10 +8255,11 @@ func _roof_layout_would_hide_any_roof(
 			snapshot_polygons.append(PackedVector2Array(polygon))
 		var snapshot_polygon := PackedVector3Array(snapshot.get("polygon", PackedVector3Array()))
 		if !snapshot_polygon.is_empty():
-			snapshot_roof.set_roof_polygon(snapshot_polygon)
+			_set_roof_polygon(snapshot_roof, snapshot_polygon)
 			snapshot_roof.set_covered_regions(snapshot_covers, snapshot_polygons)
 		else:
-			snapshot_roof.set_roof_corners_rotation_height_and_covers(
+			_set_roof_corners_rotation_angle_and_covers(
+				snapshot_roof,
 				Vector3(snapshot["start"]),
 				Vector3(snapshot["end"]),
 				float(snapshot["rotation"]),
@@ -8267,16 +8350,7 @@ func _tool_mode_for_opening_node(opening: BuildingOpening3DScript) -> String:
 		return MODE_DOOR
 	if opening is Window3DScript:
 		return MODE_WINDOW
-	# Metadata fallback keeps legacy frame-only BuildingOpening3D nodes editable.
-	return (
-		MODE_DOOR
-		if !opening.show_bottom_frame
-		or (
-			opening.has_meta(OPENING_ALLOW_BASE_META)
-			and bool(opening.get_meta(OPENING_ALLOW_BASE_META))
-		)
-		else MODE_WINDOW
-	)
+	return ""
 
 
 func _build_viewport_toolbar() -> void:
@@ -8522,6 +8596,8 @@ func _find_native_mode_buttons_in_node_3d_editor_node(root: Node) -> Dictionary:
 		NATIVE_TIPS_TRANSFORM,
 		NATIVE_SHORTCUT_TRANSFORM
 	)
+	if native_buttons.has(NATIVE_MODE_TRANSFORM):
+		print("found transform mode button")
 	native_buttons[NATIVE_MODE_MOVE] = _find_button_by_icon_tip_or_shortcut(
 		buttons,
 		[NATIVE_ICON_MOVE],

@@ -3,6 +3,9 @@ class_name FlatRoof3D
 extends "res://addons/low_poly_building_editor/roof_3d.gd"
 
 const StyleGeometry := preload("res://addons/low_poly_building_editor/roof_style_geometry_3d.gd")
+const PolygonPrismGeometry := preload(
+	"res://addons/low_poly_building_editor/polygon_prism_geometry_3d.gd"
+)
 
 var m_polygon_points := PackedVector3Array()
 
@@ -14,7 +17,7 @@ var m_polygon_points := PackedVector3Array()
 
 
 func get_roof_style() -> String:
-	return STYLE_FLAT
+	return "flat"
 
 
 func _get_style_geometry() -> RefCounted:
@@ -56,6 +59,18 @@ func is_polygon_roof() -> bool:
 	return !m_polygon_points.is_empty()
 
 
+func is_roof_polygon_valid(
+	points: PackedVector3Array = PackedVector3Array()
+) -> bool:
+	var candidate := points if !points.is_empty() else m_polygon_points
+	if candidate.size() < 3:
+		return false
+	var local_polygon := PackedVector2Array()
+	for point in candidate:
+		local_polygon.append(Vector2(point.x, point.z))
+	return !Geometry2D.triangulate_polygon(local_polygon).is_empty()
+
+
 func get_roof_render_polygons() -> Array[PackedVector2Array]:
 	if !is_polygon_roof():
 		return super.get_roof_render_polygons()
@@ -87,8 +102,40 @@ func get_roof_render_rect() -> Rect2:
 	return result
 
 
-func _clear_roof_polygon() -> void:
+func _clear_custom_footprint() -> void:
 	m_polygon_points = PackedVector3Array()
+
+
+func _has_custom_footprint() -> bool:
+	return is_polygon_roof()
+
+
+func _get_custom_footprint_points() -> PackedVector3Array:
+	return get_roof_polygon()
+
+
+func _is_custom_footprint_valid() -> bool:
+	return is_roof_polygon_valid()
+
+
+func _append_custom_footprint_geometry(
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	var collision_faces := PackedVector3Array()
+	for polygon in get_roof_render_polygons():
+		PolygonPrismGeometry.append_prism(
+			polygon,
+			roof_thickness,
+			roof_color,
+			vertices,
+			normals,
+			colors,
+			indices,
+			collision_faces
+		)
 
 
 func _sanitize_polygon_points(points: PackedVector3Array) -> PackedVector3Array:

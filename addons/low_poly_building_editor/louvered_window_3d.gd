@@ -20,8 +20,12 @@ extends "res://addons/low_poly_building_editor/window_3d.gd"
 
 
 func _build_opening_content() -> void:
-	var spans := _leaf_spans(1)
-	var rect := spans[0]
+	var rect := Rect2(
+		-opening_width * 0.5,
+		-opening_height * 0.5,
+		opening_width,
+		opening_height
+	)
 	var slat_gap := rect.size.y / float(louver_count)
 	var slat_height := slat_gap * 0.92
 	var slat_depth := maxf(louver_depth * 2.0, frame_depth)

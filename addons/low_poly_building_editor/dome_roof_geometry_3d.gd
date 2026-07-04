@@ -5,8 +5,12 @@ const ANGULAR_SEGMENTS := 16
 const RING_COUNT := 5
 
 
-func generated_height(size: Vector2, overhang: float, angle_degrees: float) -> float:
-	return roof_height_for_angle(roof_run(size, overhang), angle_degrees)
+func generated_height(
+	size: Vector2,
+	overhang: float,
+	parameters: Dictionary = {}
+) -> float:
+	return roof_height_for_angle(roof_run(size, overhang), _angle_degrees(parameters))
 
 
 func roof_run(size: Vector2, overhang: float) -> float:
@@ -17,11 +21,10 @@ func roof_run(size: Vector2, overhang: float) -> float:
 func surface_height(
 	size: Vector2,
 	overhang: float,
-	angle_degrees: float,
 	local_render_point: Vector2,
-	_gable_height_from_peak: float = 0.0
+	parameters: Dictionary = {}
 ) -> float:
-	var dome_topology := topology(size, overhang, angle_degrees)
+	var dome_topology := topology(size, overhang, parameters)
 	var points: Array[Vector3] = dome_topology["points"]
 	var triangles: Array[PackedInt32Array] = dome_topology["triangles"]
 	for triangle in triangles:
@@ -39,10 +42,9 @@ func surface_height(
 func top_triangles(
 	full_size: Vector2,
 	overhang: float,
-	angle_degrees: float,
-	_gable_height_from_peak: float = 0.0
+	parameters: Dictionary = {}
 ) -> Array[PackedVector3Array]:
-	var dome_topology := topology(full_size, overhang, angle_degrees)
+	var dome_topology := topology(full_size, overhang, parameters)
 	var points: Array[Vector3] = dome_topology["points"]
 	var triangles: Array[PackedInt32Array] = dome_topology["triangles"]
 	var result: Array[PackedVector3Array] = []
@@ -58,16 +60,10 @@ func top_triangles(
 func top_faces(
 	full_size: Vector2,
 	overhang: float,
-	angle_degrees: float,
-	gable_height_from_peak: float = 0.0
+	parameters: Dictionary = {}
 ) -> Array[Dictionary]:
 	var faces: Array[Dictionary] = []
-	for triangle in top_triangles(
-		full_size,
-		overhang,
-		angle_degrees,
-		gable_height_from_peak
-	):
+	for triangle in top_triangles(full_size, overhang, parameters):
 		faces.append({
 			"vertices": triangle,
 			"plane": triangle,
@@ -78,15 +74,14 @@ func top_faces(
 func topology(
 	full_size: Vector2,
 	overhang: float,
-	angle_degrees: float,
-	_gable_height_from_peak: float = 0.0
+	parameters: Dictionary = {}
 ) -> Dictionary:
 	var bounds := _bounds(full_size, overhang)
 	var center_x := (bounds.x + bounds.y) * 0.5
 	var center_z := (bounds.z + bounds.w) * 0.5
 	var radius_x := maxf((bounds.y - bounds.x) * 0.5, RECT_EPSILON)
 	var radius_z := maxf((bounds.w - bounds.z) * 0.5, RECT_EPSILON)
-	var height := generated_height(full_size, overhang, angle_degrees)
+	var height := generated_height(full_size, overhang, parameters)
 	var points: Array[Vector3] = []
 	var rings: Array[PackedInt32Array] = []
 

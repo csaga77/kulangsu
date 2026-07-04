@@ -5,7 +5,11 @@ const RECT_EPSILON := 0.001
 const MAX_ROOF_ANGLE_DEGREES := 89.0
 
 
-func generated_height(_size: Vector2, _overhang: float, _angle_degrees: float) -> float:
+func generated_height(
+	_size: Vector2,
+	_overhang: float,
+	_parameters: Dictionary = {}
+) -> float:
 	return 0.0
 
 
@@ -16,9 +20,8 @@ func roof_run(_size: Vector2, _overhang: float) -> float:
 func surface_height(
 	_size: Vector2,
 	_overhang: float,
-	_angle_degrees: float,
 	_local_render_point: Vector2,
-	_gable_height_from_peak: float = 0.0
+	_parameters: Dictionary = {}
 ) -> float:
 	return 0.0
 
@@ -26,8 +29,7 @@ func surface_height(
 func top_triangles(
 	full_size: Vector2,
 	overhang: float,
-	_angle_degrees: float,
-	_gable_height_from_peak: float = 0.0
+	_parameters: Dictionary = {}
 ) -> Array[PackedVector3Array]:
 	var bounds := _bounds(full_size, overhang)
 	var p0 := Vector3(bounds.x, 0.0, bounds.z)
@@ -43,10 +45,9 @@ func top_triangles(
 func top_faces(
 	full_size: Vector2,
 	overhang: float,
-	angle_degrees: float,
-	gable_height_from_peak: float = 0.0
+	parameters: Dictionary = {}
 ) -> Array[Dictionary]:
-	var triangles := top_triangles(full_size, overhang, angle_degrees, gable_height_from_peak)
+	var triangles := top_triangles(full_size, overhang, parameters)
 	if triangles.size() < 2:
 		return []
 	var first := triangles[0]
@@ -60,10 +61,9 @@ func top_faces(
 func topology(
 	full_size: Vector2,
 	overhang: float,
-	angle_degrees: float,
-	gable_height_from_peak: float = 0.0
+	parameters: Dictionary = {}
 ) -> Dictionary:
-	var triangles := top_triangles(full_size, overhang, angle_degrees, gable_height_from_peak)
+	var triangles := top_triangles(full_size, overhang, parameters)
 	var points: Array[Vector3] = []
 	var triangle_indices: Array[PackedInt32Array] = []
 	for triangle in triangles:
@@ -98,6 +98,10 @@ func edge_axis_values(
 
 static func roof_height_for_angle(run: float, angle_degrees: float) -> float:
 	return maxf(run, 0.0) * tan(deg_to_rad(clampf(angle_degrees, 0.0, MAX_ROOF_ANGLE_DEGREES)))
+
+
+static func _angle_degrees(parameters: Dictionary) -> float:
+	return float(parameters.get("angle_degrees", 0.0))
 
 
 static func _bounds(size: Vector2, overhang: float) -> Vector4:

@@ -4,9 +4,6 @@ extends Node3D
 signal opening_geometry_changed
 
 const GENERATED_META := &"building_opening_generated"
-const LegacyDoorGeometry = preload(
-	"res://addons/low_poly_building_editor/legacy_door_geometry_3d.gd"
-)
 const BuildingWireframe := preload(
 	"res://addons/low_poly_building_editor/building_wireframe_3d.gd"
 )
@@ -111,65 +108,12 @@ enum FrameSides { FRONT, BOTH }
 
 var m_is_ready := false
 var m_rebuild_queued := false
-var m_legacy_door_panel_count := 0
-var m_legacy_door_panel_depth := 0.05
-var m_legacy_door_panel_color := Color(0.50, 0.34, 0.20, 1.0)
 var m_geometry_rebuild_count := 0
 var m_debug_wireframe_enabled := false
 var m_debug_wireframe_color := Color(0.05, 0.95, 1.0, 1.0)
 var m_debug_wireframe_xray := false
 @export_storage var m_generated_part_cache_signature := 0
 @export_storage var m_generated_part_cache: Array[Dictionary] = []
-
-
-# Storage-only compatibility for scenes authored before door styles became
-# Door3D subclasses. Concrete Door3D nodes use their real exported properties,
-# while a legacy base-class opening can still deserialize and render solid panels.
-func _set(property: StringName, value: Variant) -> bool:
-	match property:
-		&"door_panel_count":
-			m_legacy_door_panel_count = clampi(int(value), 0, 2)
-		&"door_panel_depth":
-			m_legacy_door_panel_depth = maxf(float(value), 0.01)
-		&"door_panel_color":
-			m_legacy_door_panel_color = Color(value)
-		_:
-			return false
-	_request_rebuild()
-	return true
-
-
-func _get(property: StringName) -> Variant:
-	match property:
-		&"door_panel_count":
-			return m_legacy_door_panel_count
-		&"door_panel_depth":
-			return m_legacy_door_panel_depth
-		&"door_panel_color":
-			return m_legacy_door_panel_color
-	return null
-
-
-func _get_property_list() -> Array[Dictionary]:
-	if get_script().resource_path != "res://addons/low_poly_building_editor/building_opening_3d.gd":
-		return []
-	return [
-		{
-			"name": "door_panel_count",
-			"type": TYPE_INT,
-			"usage": PROPERTY_USAGE_STORAGE,
-		},
-		{
-			"name": "door_panel_depth",
-			"type": TYPE_FLOAT,
-			"usage": PROPERTY_USAGE_STORAGE,
-		},
-		{
-			"name": "door_panel_color",
-			"type": TYPE_COLOR,
-			"usage": PROPERTY_USAGE_STORAGE,
-		},
-	]
 
 
 func _ready() -> void:
@@ -285,17 +229,10 @@ func _rebuild() -> void:
 	_sync_debug_wireframe()
 
 
-# Implemented by Door3D and Window3D. BuildingOpening3D itself remains a useful
-# frame-only opening and owns the wall-cut dimensions shared by every style.
-# Legacy base-class scenes delegate their old solid panels to a compatibility
-# geometry helper so style geometry does not live in this shared base.
+# Implemented by Door3D and Window3D. BuildingOpening3D owns only the frame
+# casing and wall-cut dimensions shared by every concrete opening style.
 func _build_opening_content() -> void:
-	LegacyDoorGeometry.build(
-		self,
-		m_legacy_door_panel_count,
-		m_legacy_door_panel_depth,
-		m_legacy_door_panel_color
-	)
+	pass
 
 
 func _frame_casing() -> Dictionary:
@@ -305,29 +242,6 @@ func _frame_casing() -> Dictionary:
 	var front_edge := -FRAME_FACE_GAP + frame_protrusion
 	var back_edge := -(thickness + FRAME_FACE_GAP) - frame_protrusion
 	return {"depth": front_edge - back_edge, "center_z": (front_edge + back_edge) * 0.5}
-
-
-func _leaf_spans(count: int) -> Array[Rect2]:
-	var spans: Array[Rect2] = []
-	if count <= 0:
-		return spans
-	var half_width := opening_width * 0.5
-	var half_height := opening_height * 0.5
-	if count == 1:
-		spans.append(Rect2(-half_width, -half_height, opening_width, opening_height))
-		return spans
-	var seam_gap := minf(0.035, opening_width * 0.08)
-	var panel_width := maxf((opening_width - seam_gap) * 0.5, 0.01)
-	var offset_x := panel_width * 0.5 + seam_gap * 0.5
-	spans.append(Rect2(-offset_x - panel_width * 0.5, -half_height, panel_width, opening_height))
-	spans.append(Rect2(offset_x - panel_width * 0.5, -half_height, panel_width, opening_height))
-	return spans
-
-
-func _leaf_part_name(base: String, index: int, count: int) -> String:
-	if count <= 1:
-		return base
-	return ("Left" if index == 0 else "Right") + base
 
 
 func _add_glass(part_name: String, rect: Rect2, depth: float, color: Color) -> void:
@@ -424,11 +338,6 @@ func _opening_geometry_source_signature() -> int:
 		if excluded.has(property_name):
 			continue
 		payload.append([property_name, get(property_name)])
-	payload.append([
-		m_legacy_door_panel_count,
-		m_legacy_door_panel_depth,
-		m_legacy_door_panel_color,
-	])
 	return hash(payload)
 
 

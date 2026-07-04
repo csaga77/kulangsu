@@ -2,6 +2,14 @@
 class_name WinderStairs3D
 extends "res://addons/low_poly_building_editor/turning_stairs_3d.gd"
 
+enum WinderTurn {
+	TURN_90,
+	TURN_180,
+}
+
+const WINDER_TREADS_90 := 3
+const WINDER_TREADS_180 := 6
+
 @export_enum("90 Degrees", "180 Degrees") var winder_turn: int = WinderTurn.TURN_90:
 	set(value):
 		var clamped_value := clampi(value, WinderTurn.TURN_90, WinderTurn.TURN_180)
@@ -28,6 +36,29 @@ func _build_layout_plan(width: float, depth: float) -> Dictionary:
 	if winder_turn == WinderTurn.TURN_180:
 		return _build_180_degree_winder_plan(width, depth)
 	return _build_90_degree_winder_plan(width, depth)
+
+
+func _append_layout_specific_segment_geometry(
+	seg: Dictionary,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	_append_radial_fan_segment_primitive(
+		seg, vertices, normals, colors, indices
+	)
+
+
+func _add_layout_specific_collision_boxes(
+	body: StaticBody3D,
+	seg: Dictionary,
+	wall_thickness: float,
+	shape_index: int
+) -> int:
+	return _add_radial_fan_collision_boxes(
+		body, seg, wall_thickness, shape_index
+	)
 
 
 func _build_90_degree_winder_plan(width: float, depth: float) -> Dictionary:
@@ -199,18 +230,320 @@ func _build_180_degree_winder_plan(width: float, depth: float) -> Dictionary:
 	return _finish_turning_plan(context, width, fw)
 
 
-func _configure_specific_stair_layout(
+func configure_winder_layout(
+	new_turn_direction: int,
+	new_flight_width: float,
 	new_winder_turn: int,
-	_spiral_turn_degrees: float
 ) -> void:
+	configure_turning_layout(new_turn_direction, new_flight_width)
 	winder_turn = new_winder_turn
 
 
-func _layout_winder_turn() -> int:
-	return winder_turn
+func _make_winder_segment(
+	origin: Vector3,
+	run_dir: Vector3,
+	width: float,
+	run_length: float,
+	steps: int,
+	rise: float,
+	pivot: Vector2,
+	perimeter: PackedVector2Array,
+	extra_walls: Array[Dictionary]
+) -> Dictionary:
+	return {
+		"kind": SegmentKind.SEGMENT_LAYOUT_SPECIFIC,
+		"origin": origin,
+		"run_axis": run_dir,
+		"width_axis": Vector3.UP.cross(run_dir).normalized(),
+		"width": width,
+		"run": run_length,
+		"steps": maxi(steps, 1),
+		"rise": rise,
+		"pivot": pivot,
+		"perimeter": perimeter,
+		"extra_walls": extra_walls,
+	}
+
+
+func _mirror_layout_specific_plan(plan: Dictionary, _width: float) -> void:
+	for seg: Dictionary in plan["segments"]:
+		if !seg.has("pivot"):
+			continue
+		var segment_width: float = seg["width"]
+		var pivot: Vector2 = seg["pivot"]
+		seg["pivot"] = Vector2(segment_width - pivot.x, pivot.y)
+		var perimeter: PackedVector2Array = seg["perimeter"]
+		var mirrored_perimeter := PackedVector2Array()
+		for point in perimeter:
+			mirrored_perimeter.append(Vector2(segment_width - point.x, point.y))
+		seg["perimeter"] = mirrored_perimeter
+		for wall: Dictionary in seg["extra_walls"]:
+			var a: Vector2 = wall["a"]
+			var b: Vector2 = wall["b"]
+			wall["a"] = Vector2(segment_width - a.x, a.y)
+			wall["b"] = Vector2(segment_width - b.x, b.y)
 
 
 func _layout_mesh_source_signature_values() -> Array:
 	var values := super()
 	values.append(winder_turn)
 	return values
+
+
+func _radial_fan_perimeter_cumulative(perimeter: PackedVector2Array) -> PackedFloat32Array:
+	var cumulative := PackedFloat32Array([0.0])
+	for index in range(perimeter.size() - 1):
+		cumulative.append(
+			cumulative[index] + perimeter[index].distance_to(perimeter[index + 1])
+		)
+	return cumulative
+
+
+func _radial_fan_point_at(
+	perimeter: PackedVector2Array,
+	cumulative: PackedFloat32Array,
+	target: float
+) -> Vector2:
+	for index in range(perimeter.size() - 1):
+		if target <= cumulative[index + 1] + 0.0001:
+			var leg_length := cumulative[index + 1] - cumulative[index]
+			if leg_length <= 0.0001:
+				continue
+			var ratio := clampf((target - cumulative[index]) / leg_length, 0.0, 1.0)
+			return perimeter[index].lerp(perimeter[index + 1], ratio)
+	return perimeter[perimeter.size() - 1]
+
+
+func _append_radial_fan_segment_primitive(
+	seg: Dictionary,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array
+) -> void:
+	var steps: int = seg["steps"]
+	var rise: float = seg["rise"]
+	var pivot: Vector2 = seg["pivot"]
+	var perimeter: PackedVector2Array = seg["perimeter"]
+	var bottom := _segment_bottom(seg)
+	var cumulative := _radial_fan_perimeter_cumulative(perimeter)
+	var total_length := cumulative[cumulative.size() - 1]
+	if total_length <= 0.001:
+		return
+	var up_normal := _segment_direction(seg, Vector3.UP).normalized()
+	# Open risers turn each fanned tread into a floating wedge slab: a bottom
+	# fan and per-tread radial faces replace the shared closed underside,
+	# boundary risers, and extra walls. Nosing has no winder-fan variant and
+	# falls back to the closed mass.
+	var use_open := tread_style == TreadStyle.OPEN
+	var slab := _tread_slab_thickness()
+	for tread_index in range(steps):
+		var t0 := total_length * float(tread_index) / float(steps)
+		var t1 := total_length * float(tread_index + 1) / float(steps)
+		var tread_top := rise * float(tread_index + 1)
+		var tread_bottom := tread_top - slab if use_open else bottom
+		var edge_points: Array[Vector2] = [
+			_radial_fan_point_at(perimeter, cumulative, t0),
+		]
+		for corner_index in range(1, perimeter.size() - 1):
+			var corner_distance := cumulative[corner_index]
+			if corner_distance > t0 + 0.0001 and corner_distance < t1 - 0.0001:
+				edge_points.append(perimeter[corner_index])
+		edge_points.append(_radial_fan_point_at(perimeter, cumulative, t1))
+		for edge_index in range(edge_points.size() - 1):
+			var q0 := edge_points[edge_index]
+			var q1 := edge_points[edge_index + 1]
+			if q0.distance_to(q1) <= 0.0001:
+				continue
+			var triangle_base := vertices.size()
+			vertices.append(_segment_point(seg, Vector3(pivot.x, tread_top, pivot.y)))
+			vertices.append(_segment_point(seg, Vector3(q0.x, tread_top, q0.y)))
+			vertices.append(_segment_point(seg, Vector3(q1.x, tread_top, q1.y)))
+			for _index in range(3):
+				normals.append(up_normal)
+				colors.append(stair_color)
+			_append_oriented_triangle(
+				vertices, indices, up_normal,
+				triangle_base, triangle_base + 1, triangle_base + 2
+			)
+			if use_open:
+				var down_normal := -up_normal
+				var bottom_base := vertices.size()
+				vertices.append(_segment_point(seg, Vector3(
+					pivot.x, tread_bottom, pivot.y
+				)))
+				vertices.append(_segment_point(seg, Vector3(q0.x, tread_bottom, q0.y)))
+				vertices.append(_segment_point(seg, Vector3(q1.x, tread_bottom, q1.y)))
+				for _index in range(3):
+					normals.append(down_normal)
+					colors.append(stair_color)
+				_append_oriented_triangle(
+					vertices, indices, down_normal,
+					bottom_base, bottom_base + 1, bottom_base + 2
+				)
+			var edge_dir := (q1 - q0).normalized()
+			var outward := Vector2(-edge_dir.y, edge_dir.x)
+			var edge_mid := (q0 + q1) * 0.5
+			if outward.dot(edge_mid - pivot) < 0.0:
+				outward = -outward
+			_append_segment_quad(
+				seg, vertices, normals, colors, indices,
+				Vector3(q0.x, tread_bottom, q0.y),
+				Vector3(q1.x, tread_bottom, q1.y),
+				Vector3(q1.x, tread_top, q1.y),
+				Vector3(q0.x, tread_top, q0.y),
+				Vector3(outward.x, 0.0, outward.y)
+			)
+		if use_open:
+			var interior := _radial_fan_point_at(
+				perimeter, cumulative, (t0 + t1) * 0.5
+			)
+			_append_radial_fan_face(
+				seg, vertices, normals, colors, indices,
+				pivot, edge_points[0], tread_bottom, tread_top, interior
+			)
+			_append_radial_fan_face(
+				seg, vertices, normals, colors, indices,
+				pivot, edge_points[edge_points.size() - 1],
+				tread_bottom, tread_top, interior
+			)
+	if use_open:
+		return
+	for boundary_index in range(steps):
+		var boundary_t := total_length * float(boundary_index) / float(steps)
+		var boundary_point := _radial_fan_point_at(perimeter, cumulative, boundary_t)
+		var radial := boundary_point - pivot
+		if radial.length() <= 0.0001:
+			continue
+		var riser_low := rise * float(boundary_index)
+		var riser_high := rise * float(boundary_index + 1)
+		var riser_normal := Vector2(-radial.y, radial.x).normalized()
+		var sample := _radial_fan_point_at(
+			perimeter, cumulative, minf(boundary_t + total_length * 0.01, total_length)
+		)
+		var edge_mid := (pivot + boundary_point) * 0.5
+		if riser_normal.dot(sample - edge_mid) > 0.0:
+			riser_normal = -riser_normal
+		_append_segment_quad(
+			seg, vertices, normals, colors, indices,
+			Vector3(pivot.x, riser_low, pivot.y),
+			Vector3(boundary_point.x, riser_low, boundary_point.y),
+			Vector3(boundary_point.x, riser_high, boundary_point.y),
+			Vector3(pivot.x, riser_high, pivot.y),
+			Vector3(riser_normal.x, 0.0, riser_normal.y)
+		)
+	for wall: Dictionary in seg["extra_walls"]:
+		var a: Vector2 = wall["a"]
+		var b: Vector2 = wall["b"]
+		if a.distance_to(b) <= 0.001:
+			continue
+		var wall_top: float = wall["top"]
+		var wall_normal: Vector2 = wall["normal"]
+		_append_segment_quad(
+			seg, vertices, normals, colors, indices,
+			Vector3(a.x, bottom, a.y),
+			Vector3(b.x, bottom, b.y),
+			Vector3(b.x, wall_top, b.y),
+			Vector3(a.x, wall_top, a.y),
+			Vector3(wall_normal.x, 0.0, wall_normal.y)
+		)
+
+
+func _append_radial_fan_face(
+	seg: Dictionary,
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	colors: PackedColorArray,
+	indices: PackedInt32Array,
+	pivot: Vector2,
+	boundary_point: Vector2,
+	y0: float,
+	y1: float,
+	away_from: Vector2
+) -> void:
+	# Radial face of one floating winder tread, from pivot to a fan boundary,
+	# facing away from the tread interior sample point.
+	var radial := boundary_point - pivot
+	if radial.length() <= 0.0001 or y1 - y0 <= 0.0001:
+		return
+	var face_normal := Vector2(-radial.y, radial.x).normalized()
+	var edge_mid := (pivot + boundary_point) * 0.5
+	if face_normal.dot(away_from - edge_mid) > 0.0:
+		face_normal = -face_normal
+	_append_segment_quad(
+		seg, vertices, normals, colors, indices,
+		Vector3(pivot.x, y0, pivot.y),
+		Vector3(boundary_point.x, y0, boundary_point.y),
+		Vector3(boundary_point.x, y1, boundary_point.y),
+		Vector3(pivot.x, y1, pivot.y),
+		Vector3(face_normal.x, 0.0, face_normal.y)
+	)
+
+
+func _add_radial_fan_collision_boxes(
+	body: StaticBody3D,
+	seg: Dictionary,
+	wall_thickness: float,
+	shape_index: int
+) -> int:
+	var steps: int = seg["steps"]
+	var rise: float = seg["rise"]
+	var pivot: Vector2 = seg["pivot"]
+	var perimeter: PackedVector2Array = seg["perimeter"]
+	var bottom := _segment_bottom(seg)
+	var cumulative := _radial_fan_perimeter_cumulative(perimeter)
+	var total_length := cumulative[cumulative.size() - 1]
+	if total_length <= 0.001:
+		return shape_index
+	var walls: Array[Dictionary] = []
+	for tread_index in range(steps):
+		var t0 := total_length * float(tread_index) / float(steps)
+		var t1 := total_length * float(tread_index + 1) / float(steps)
+		var tread_top := rise * float(tread_index + 1)
+		var edge_points: Array[Vector2] = [
+			_radial_fan_point_at(perimeter, cumulative, t0),
+		]
+		for corner_index in range(1, perimeter.size() - 1):
+			var corner_distance := cumulative[corner_index]
+			if corner_distance > t0 + 0.0001 and corner_distance < t1 - 0.0001:
+				edge_points.append(perimeter[corner_index])
+		edge_points.append(_radial_fan_point_at(perimeter, cumulative, t1))
+		for edge_index in range(edge_points.size() - 1):
+			walls.append({
+				"a": edge_points[edge_index],
+				"b": edge_points[edge_index + 1],
+				"top": tread_top,
+			})
+	for wall: Dictionary in seg["extra_walls"]:
+		walls.append(wall)
+	for wall in walls:
+		var a: Vector2 = wall["a"]
+		var b: Vector2 = wall["b"]
+		var edge_length := a.distance_to(b)
+		if edge_length <= 0.01:
+			continue
+		var wall_top: float = wall["top"]
+		var box_height := wall_top - bottom
+		if box_height <= 0.001:
+			continue
+		var edge_dir := (b - a).normalized()
+		var inward := Vector2(-edge_dir.y, edge_dir.x)
+		var edge_mid := (a + b) * 0.5
+		if inward.dot(pivot - edge_mid) < 0.0:
+			inward = -inward
+		var center_2d := edge_mid + inward * (wall_thickness * 0.5)
+		var edge_dir_3d := _segment_direction(
+			seg, Vector3(edge_dir.x, 0.0, edge_dir.y)
+		).normalized()
+		var box_basis := Basis(edge_dir_3d, Vector3.UP, edge_dir_3d.cross(Vector3.UP))
+		_add_side_wall_collision_shape(
+			body,
+			_layout_collision_shape_name(shape_index),
+			_segment_point(seg, Vector3(
+				center_2d.x, bottom + box_height * 0.5, center_2d.y
+			)),
+			Vector3(edge_length, box_height, wall_thickness),
+			box_basis
+		)
+		shape_index += 1
+	return shape_index

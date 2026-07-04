@@ -6,7 +6,7 @@ const StyleGeometry := preload("res://addons/low_poly_building_editor/shed_roof_
 
 
 func get_roof_style() -> String:
-	return STYLE_SHED
+	return "shed"
 
 
 func _get_style_geometry() -> RefCounted:

@@ -250,8 +250,7 @@ static func _add_entrance(
 		distance_along_wall,
 		0.0,
 		EXTERIOR_FACE_SIGN,
-		settings,
-		true
+		settings
 	)
 	if door == null:
 		return false
@@ -307,8 +306,7 @@ static func _add_facade_windows(
 				distance_along_wall,
 				spec.window_sill_height,
 				EXTERIOR_FACE_SIGN,
-				settings,
-				true
+				settings
 			)
 			if window == null:
 				continue

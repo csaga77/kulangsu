@@ -2,6 +2,9 @@
 extends Node3D
 
 const Building3DScript = preload("res://addons/low_poly_building_editor/building_3d.gd")
+const BuildingMesh3DScript = preload(
+	"res://addons/low_poly_building_editor/building_mesh_3d.gd"
+)
 const BuildingFactoryScript = preload("res://addons/low_poly_building_editor/building_factory.gd")
 const BuildingWireframeScript = preload(
 	"res://addons/low_poly_building_editor/building_wireframe_3d.gd"
@@ -16,6 +19,9 @@ const BuildingThumbnailRendererScript = preload(
 const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
 const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
 const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.gd")
+const TurningStairs3DScript = preload(
+	"res://addons/low_poly_building_editor/turning_stairs_3d.gd"
+)
 const StraightStairs3DScript = preload(
 	"res://addons/low_poly_building_editor/straight_stairs_3d.gd"
 )
@@ -40,9 +46,13 @@ const StandardRailGeometryScript = preload(
 )
 const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
 const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
+const RoofStyleGeometryFactory := preload(
+	"res://addons/low_poly_building_editor/roof_style_geometry_factory_3d.gd"
+)
 const RoundPillar3DScript = preload("res://addons/low_poly_building_editor/round_pillar_3d.gd")
 const SquarePillar3DScript = preload("res://addons/low_poly_building_editor/square_pillar_3d.gd")
 const FlatRoof3DScript = preload("res://addons/low_poly_building_editor/flat_roof_3d.gd")
+const SlopedRoof3DScript = preload("res://addons/low_poly_building_editor/sloped_roof_3d.gd")
 const GableRoof3DScript = preload("res://addons/low_poly_building_editor/gable_roof_3d.gd")
 const HipRoof3DScript = preload("res://addons/low_poly_building_editor/hip_roof_3d.gd")
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
@@ -133,7 +143,6 @@ func _run_smoke_checks() -> void:
 	_validate_pillar_style_property_ownership()
 	_validate_roof_style_property_ownership()
 	_validate_stair_layout_class_hierarchy()
-	_validate_legacy_opening_storage()
 	_validate_door_opening_rules(wall)
 	_validate_window_style_visuals()
 	_validate_new_opening_style_visuals()
@@ -236,8 +245,7 @@ func _validate_opening_factory() -> void:
 		2.0,
 		0.9,
 		-1.0,
-		settings,
-		true
+		settings
 	)
 	if opening == null:
 		m_failures.append("BuildingFactory could not create a valid typed opening")
@@ -262,11 +270,10 @@ func _validate_opening_factory() -> void:
 		2.0,
 		0.9,
 		-1.0,
-		{"style": "imaginary_window"},
-		true
+		{"style": "imaginary_window"}
 	)
 	if invalid != null:
-		m_failures.append("BuildingFactory strict opening creation accepted an unknown style")
+		m_failures.append("BuildingFactory opening creation accepted an unknown style")
 		invalid.free()
 	building.free()
 
@@ -642,6 +649,13 @@ func _validate_opening_rules(wall: Wall3DScript) -> void:
 
 
 func _validate_opening_class_hierarchy() -> void:
+	var opening_base := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	for method_name in [&"_leaf_spans", &"_leaf_part_name"]:
+		if opening_base.has_method(method_name):
+			m_failures.append(
+				"BuildingOpening3D exposes pane/leaf-only helper %s" % method_name
+			)
+	opening_base.free()
 	var window_styles: Array[Script] = [
 		SingleWindow3DScript,
 		DoubleWindow3DScript,
@@ -675,6 +689,18 @@ func _validate_opening_class_hierarchy() -> void:
 
 
 func _validate_door_style_property_ownership() -> void:
+	var opening_base := BuildingOpening3DScript.new() as BuildingOpening3DScript
+	for property_name in [
+		&"door_panel_count",
+		&"door_panel_depth",
+		&"door_panel_color",
+	]:
+		if _has_property(opening_base, property_name):
+			m_failures.append(
+				"BuildingOpening3D retains removed door property %s" % property_name
+			)
+	opening_base.free()
+
 	var base_door := Door3DScript.new() as Door3DScript
 	var style_only_properties: Array[StringName] = [
 		&"door_panel_count",
@@ -790,6 +816,13 @@ func _has_editor_property(object: Object, property_name: StringName) -> bool:
 	return false
 
 
+func _has_property(object: Object, property_name: StringName) -> bool:
+	for property: Dictionary in object.get_property_list():
+		if StringName(property.get("name", &"")) == property_name:
+			return true
+	return false
+
+
 func _validate_pillar_style_property_ownership() -> void:
 	var base_pillar := Pillar3DScript.new() as Pillar3DScript
 	var round_pillar := RoundPillar3DScript.new() as Pillar3DScript
@@ -833,6 +866,30 @@ func _validate_roof_style_property_ownership() -> void:
 		m_failures.append("GableRoof3D exposes hip-only property hip_gable_height")
 	if !_has_editor_property(hip_roof, &"hip_gable_height"):
 		m_failures.append("HipRoof3D is missing hip-only property hip_gable_height")
+	for method_name in [
+		&"set_roof_polygon",
+		&"get_roof_polygon",
+		&"is_polygon_roof",
+		&"is_roof_polygon_valid",
+		&"get_roof_angle_degrees",
+		&"set_roof_angle_degrees",
+		&"get_hip_gable_height",
+		&"set_hip_gable_height",
+	]:
+		if base_roof.has_method(method_name):
+			m_failures.append("Roof3D exposes style-only method %s" % method_name)
+	for method_name in [
+		&"set_roof_polygon",
+		&"get_roof_polygon",
+		&"is_polygon_roof",
+		&"is_roof_polygon_valid",
+	]:
+		if !flat_roof.has_method(method_name):
+			m_failures.append("FlatRoof3D is missing polygon method %s" % method_name)
+	if !gable_roof.has_method(&"get_roof_angle_degrees"):
+		m_failures.append("GableRoof3D is missing sloped-roof angle access")
+	if !hip_roof.has_method(&"get_hip_gable_height"):
+		m_failures.append("HipRoof3D is missing hip gable-height access")
 	var coordinator := Building3DScript.new() as Building3DScript
 	var factory_flat := BuildingFactoryScript.instantiate_roof_style("flat")
 	var factory_hip := BuildingFactoryScript.instantiate_roof_style("hip")
@@ -863,6 +920,28 @@ func _validate_stair_layout_class_hierarchy() -> void:
 	base_stairs.rebuild_stairs_mesh()
 	if base_stairs.mesh != null:
 		m_failures.append("Stairs3D base generated concrete layout geometry")
+	for method_name in [
+		&"configure_stair_layout",
+		&"configure_turning_layout",
+		&"configure_winder_layout",
+		&"configure_spiral_layout",
+		&"_allocate_layout_steps",
+		&"_distribute_middle_newels",
+		&"_stepped_path_surface_height",
+		&"_add_raked_path_rail_runs",
+		&"_mirror_layout_plan",
+		&"_make_landing_segment",
+		&"_make_flight_rail_run",
+		&"_append_layout_geometry",
+		&"_append_layout_rail_geometry",
+		&"_add_layout_side_wall_collision_shapes",
+		&"_append_stair_geometry",
+		&"_append_rail_geometry",
+		&"_get_rail_post_layout",
+		&"_append_side_strips",
+	]:
+		if base_stairs.has_method(method_name):
+			m_failures.append("Stairs3D exposes layout-only method %s" % method_name)
 	base_stairs.free()
 
 	var layout_entries: Array[Dictionary] = [
@@ -903,6 +982,8 @@ func _validate_stair_layout_class_hierarchy() -> void:
 	for property_name in [&"turn_direction", &"flight_width"]:
 		if _has_editor_property(straight, property_name):
 			m_failures.append("StraightStairs3D exposes unused property %s" % property_name)
+	if straight.has_method(&"configure_turning_layout"):
+		m_failures.append("StraightStairs3D exposes turning-layout configuration")
 	straight.free()
 
 	var l_shaped := LShapedStairs3DScript.new() as Stairs3DScript
@@ -912,6 +993,8 @@ func _validate_stair_layout_class_hierarchy() -> void:
 	for property_name in [&"winder_turn", &"spiral_turn_degrees"]:
 		if _has_editor_property(l_shaped, property_name):
 			m_failures.append("LShapedStairs3D exposes unused property %s" % property_name)
+	if !l_shaped.has_method(&"configure_turning_layout"):
+		m_failures.append("LShapedStairs3D is missing turning-layout configuration")
 	l_shaped.free()
 
 	var winder := WinderStairs3DScript.new() as Stairs3DScript
@@ -919,6 +1002,10 @@ func _validate_stair_layout_class_hierarchy() -> void:
 		m_failures.append("WinderStairs3D is missing its winder turn property")
 	if _has_editor_property(winder, &"spiral_turn_degrees"):
 		m_failures.append("WinderStairs3D exposes the spiral turn property")
+	if !winder.has_method(&"configure_winder_layout"):
+		m_failures.append("WinderStairs3D is missing winder-layout configuration")
+	if winder.has_method(&"configure_spiral_layout"):
+		m_failures.append("WinderStairs3D exposes spiral-layout configuration")
 	winder.free()
 
 	var spiral := SpiralStairs3DScript.new() as Stairs3DScript
@@ -926,6 +1013,10 @@ func _validate_stair_layout_class_hierarchy() -> void:
 		m_failures.append("SpiralStairs3D is missing its spiral turn property")
 	if _has_editor_property(spiral, &"winder_turn"):
 		m_failures.append("SpiralStairs3D exposes the winder turn property")
+	if !spiral.has_method(&"configure_spiral_layout"):
+		m_failures.append("SpiralStairs3D is missing spiral-layout configuration")
+	if spiral.has_method(&"configure_winder_layout"):
+		m_failures.append("SpiralStairs3D exposes winder-layout configuration")
 	if _has_editor_property(spiral, &"nosing_depth"):
 		m_failures.append("SpiralStairs3D exposes unsupported nosing depth")
 	for property: Dictionary in spiral.get_property_list():
@@ -934,14 +1025,20 @@ func _validate_stair_layout_class_hierarchy() -> void:
 		if String(property.get("hint_string", "")) != "Closed,Open":
 			m_failures.append("SpiralStairs3D exposes the unsupported Nosing tread style")
 		break
+	spiral.tread_style = Stairs3DScript.TreadStyle.NOSING
+	if spiral.tread_style != Stairs3DScript.TreadStyle.CLOSED:
+		m_failures.append("SpiralStairs3D retained unsupported Nosing state")
 	spiral.free()
 
 	var expected_style_type_count := 15
-	if BuildingFactoryScript.BUILDING_STYLE_CUSTOM_TYPES.size() != expected_style_type_count:
+	var building_custom_types := BuildingFactoryScript.get_building_style_custom_types()
+	var opening_custom_types := BuildingFactoryScript.get_opening_custom_types()
+	if building_custom_types.size() != expected_style_type_count:
 		m_failures.append("BuildingFactory concrete style registry has the wrong size")
-	if BuildingFactoryScript.OPENING_CUSTOM_TYPES.size() != 15:
+	if opening_custom_types.size() != 15:
 		m_failures.append("BuildingFactory concrete opening registry has the wrong size")
 	for internal_script: Script in [
+		BuildingMesh3DScript,
 		Stairs3DScript,
 		Pillar3DScript,
 		Roof3DScript,
@@ -954,7 +1051,7 @@ func _validate_stair_layout_class_hierarchy() -> void:
 				"Internal building base remains globally named: %s"
 				% internal_script.resource_path
 			)
-	for custom_type: Dictionary in BuildingFactoryScript.BUILDING_STYLE_CUSTOM_TYPES:
+	for custom_type: Dictionary in building_custom_types:
 		var registered_script := custom_type.get("script") as Script
 		if registered_script == null:
 			m_failures.append("BuildingFactory style registry contains a missing script")
@@ -967,7 +1064,7 @@ func _validate_stair_layout_class_hierarchy() -> void:
 			)
 			continue
 		registered_node.free()
-	for custom_type: Dictionary in BuildingFactoryScript.OPENING_CUSTOM_TYPES:
+	for custom_type: Dictionary in opening_custom_types:
 		var registered_script := custom_type.get("script") as Script
 		var registered_opening := registered_script.new() as BuildingOpening3DScript
 		if registered_opening == null:
@@ -977,19 +1074,6 @@ func _validate_stair_layout_class_hierarchy() -> void:
 			)
 			continue
 		registered_opening.free()
-
-
-func _validate_legacy_opening_storage() -> void:
-	var legacy_door := BuildingOpening3DScript.new() as BuildingOpening3DScript
-	legacy_door.name = "LegacyDoubleDoorOpening"
-	legacy_door.show_bottom_frame = false
-	legacy_door.set(&"door_panel_count", 2)
-	add_child(legacy_door)
-	if (
-		legacy_door.get_node_or_null("LeftDoorPanel") == null
-		or legacy_door.get_node_or_null("RightDoorPanel") == null
-	):
-		m_failures.append("BuildingOpening3D did not load legacy stored door panels")
 
 
 func _validate_door_opening_rules(wall: Wall3DScript) -> void:
@@ -1881,16 +1965,16 @@ func _validate_spiral_stairs(coordinator: Building3DScript) -> void:
 		1,
 		StandardRailGeometryScript.RailStyle.VERTICAL,
 		SpiralStairs3DScript,
-		Stairs3DScript.TurnDirection.RIGHT,
-		Stairs3DScript.WinderTurn.TURN_90,
+			TurningStairs3DScript.TurnDirection.RIGHT,
+			WinderStairs3DScript.WinderTurn.TURN_90,
 		1.25,
 		360.0
-	)
+	) as SpiralStairs3DScript
 	coordinator.add_child(spiral)
 	if (
 		spiral.get_script() != SpiralStairs3DScript
-		or absf(spiral._layout_spiral_turn_degrees() - 360.0) > 0.001
-		or absf(spiral._layout_flight_width() - 1.25) > 0.001
+			or absf(spiral.spiral_turn_degrees - 360.0) > 0.001
+			or absf(spiral.flight_width - 1.25) > 0.001
 	):
 		m_failures.append("BuildingFactory did not apply the spiral stair settings")
 	if spiral.mesh == null or spiral.mesh.get_surface_count() <= 0:
@@ -1900,7 +1984,8 @@ func _validate_spiral_stairs(coordinator: Building3DScript) -> void:
 	var segments: Array = plan["segments"]
 	if (
 		segments.size() != 1
-		or int(segments[0]["kind"]) != Stairs3DScript.SegmentKind.SEGMENT_SPIRAL
+			or int(segments[0]["kind"])
+				!= Stairs3DScript.SegmentKind.SEGMENT_LAYOUT_SPECIFIC
 		or int(plan["total_steps"]) != 12
 		or absf(float(plan["rise"]) - 0.25) > 0.001
 	):
@@ -1915,7 +2000,7 @@ func _validate_spiral_stairs(coordinator: Building3DScript) -> void:
 			m_failures.append("Spiral Stairs3D did not fit its column and treads to the footprint")
 		var quarter_point := (
 			Vector2(segment["center"])
-			+ spiral._spiral_direction(PI * 0.5, float(segment["turn_sign"]))
+			+ spiral._radial_direction(PI * 0.5, float(segment["turn_sign"]))
 			* float(segment["outer_radius"])
 		)
 		if quarter_point.distance_to(Vector2(4.0, 2.0)) > 0.001:
@@ -1964,9 +2049,9 @@ func _validate_spiral_stairs(coordinator: Building3DScript) -> void:
 	var newel_plan := spiral._build_layout_plan(4.0, 4.0)
 	var spiral_path_runs: Array = newel_plan["rail_runs"]
 	var spiral_rail: Dictionary = newel_plan["spiral_rail"]
-	var member_extents: Vector2 = spiral._spiral_rail_member_extents(spiral_rail)
+	var member_extents: Vector2 = spiral._helical_rail_member_extents(spiral_rail)
 	var post_layout: Dictionary = spiral_rail["post_layout"]
-	var smooth_samples := spiral._spiral_rail_sample_positions(
+	var smooth_samples := spiral._helical_rail_sample_positions(
 		spiral_rail,
 		member_extents.x,
 		member_extents.y,
@@ -2089,28 +2174,26 @@ func _validate_spiral_stairs(coordinator: Building3DScript) -> void:
 	):
 		m_failures.append("Spiral Stairs3D did not preserve tread/floor terminal placement")
 
-	spiral.configure_stair_layout(
-		Stairs3DScript.TurnDirection.LEFT,
-		Stairs3DScript.WinderTurn.TURN_90,
-		spiral._layout_flight_width(),
-		spiral._layout_spiral_turn_degrees()
+	spiral.configure_spiral_layout(
+		TurningStairs3DScript.TurnDirection.LEFT,
+		spiral.flight_width,
+		spiral.spiral_turn_degrees
 	)
 	spiral.rebuild_stairs_mesh()
 	var left_plan := spiral._build_layout_plan(4.0, 4.0)
 	var left_segment: Dictionary = left_plan["segments"][0]
 	var left_quarter_point := (
 		Vector2(left_segment["center"])
-		+ spiral._spiral_direction(PI * 0.5, float(left_segment["turn_sign"]))
+		+ spiral._radial_direction(PI * 0.5, float(left_segment["turn_sign"]))
 		* float(left_segment["outer_radius"])
 	)
 	if left_quarter_point.distance_to(Vector2(0.0, 2.0)) > 0.001:
 		m_failures.append("Left-turn Spiral Stairs3D did not mirror its winding direction")
 
 	spiral.step_count = 4
-	spiral.configure_stair_layout(
-		spiral._layout_turn_direction(),
-		Stairs3DScript.WinderTurn.TURN_90,
-		spiral._layout_flight_width(),
+	spiral.configure_spiral_layout(
+		spiral.turn_direction,
+		spiral.flight_width,
 		1080.0
 	)
 	spiral.rebuild_stairs_mesh()
@@ -2123,7 +2206,7 @@ func _validate_spiral_stairs(coordinator: Building3DScript) -> void:
 
 
 func _spiral_rail_vertex_count(
-	stairs: Stairs3DScript,
+	stairs: SpiralStairs3DScript,
 	spiral_rail: Dictionary,
 	style: int
 ) -> int:
@@ -2132,7 +2215,7 @@ func _spiral_rail_vertex_count(
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
-	stairs._append_spiral_rail_geometry(
+	stairs._append_helical_rail_primitive(
 		spiral_rail,
 		vertices,
 		normals,
@@ -2175,8 +2258,8 @@ func _create_tread_style_stairs(
 		1,
 		StandardRailGeometryScript.RailStyle.VERTICAL,
 		layout_script,
-		Stairs3DScript.TurnDirection.RIGHT,
-		Stairs3DScript.WinderTurn.TURN_90,
+			TurningStairs3DScript.TurnDirection.RIGHT,
+			WinderStairs3DScript.WinderTurn.TURN_90,
 		1.2,
 		360.0,
 		tread_style,
@@ -2328,7 +2411,7 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	one_rail_stairs.rebuild_stairs_mesh()
 	if _mesh_vertex_count(one_rail_stairs) != base_vertex_count + 176:
 		m_failures.append("Stairs3D retained base-rail geometry when its height was zero")
-	var no_base_rail_layout := one_rail_stairs._get_rail_post_layout()
+	var no_base_rail_layout: Dictionary = one_rail_stairs._get_rail_post_layout()
 	var tread_based_infill_heights: PackedFloat32Array = no_base_rail_layout["base_heights"]
 	if (
 		tread_based_infill_heights.size() != 4
@@ -2388,7 +2471,7 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 		m_failures.append("Stairs3D rail posts are not based on their tread's actual height")
 	# Regular infills instead begin on the top of the raked base rail. With
 	# a 0.18 center and 0.10 thickness, that top is 0.23 above the rail slope.
-	var default_rail_layout := both_rail_stairs._get_rail_post_layout()
+	var default_rail_layout: Dictionary = both_rail_stairs._get_rail_post_layout()
 	var default_infill_bases: PackedFloat32Array = default_rail_layout["base_heights"]
 	if (
 		default_infill_bases.size() != 4
@@ -2406,7 +2489,7 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	if both_rail_stairs.infill_count_between_newels != 1:
 		m_failures.append("Stairs3D did not default to one infill per newel span")
 	both_rail_stairs.middle_newel_post_count = 2
-	var fallback_terminal_layout := both_rail_stairs._get_rail_post_layout()
+	var fallback_terminal_layout: Dictionary = both_rail_stairs._get_rail_post_layout()
 	var fallback_terminal_positions: PackedFloat32Array = fallback_terminal_layout["positions"]
 	var fallback_terminal_top_heights: PackedFloat32Array = fallback_terminal_layout["top_heights"]
 	if (
@@ -2433,7 +2516,7 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	both_rail_stairs.rebuild_stairs_mesh()
 	# The configured 0.14 newel is clamped to this rail's 0.10 handrail width
 	# in the generated layout, keeping the welded open top fully covered.
-	var floor_lower_layout := both_rail_stairs._get_rail_post_layout()
+	var floor_lower_layout: Dictionary = both_rail_stairs._get_rail_post_layout()
 	var floor_lower_positions: PackedFloat32Array = floor_lower_layout["positions"]
 	var floor_lower_heights: PackedFloat32Array = floor_lower_layout["base_heights"]
 	var floor_lower_thicknesses: PackedFloat32Array = floor_lower_layout["thicknesses"]
@@ -2573,7 +2656,7 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 	both_rail_stairs.lower_newel_placement = Stairs3DScript.NewelPlacement.TREAD
 	both_rail_stairs.upper_newel_placement = Stairs3DScript.NewelPlacement.FLOOR
 	both_rail_stairs.rebuild_stairs_mesh()
-	var floor_upper_layout := both_rail_stairs._get_rail_post_layout()
+	var floor_upper_layout: Dictionary = both_rail_stairs._get_rail_post_layout()
 	var floor_upper_positions: PackedFloat32Array = floor_upper_layout["positions"]
 	var floor_upper_heights: PackedFloat32Array = floor_upper_layout["base_heights"]
 	var floor_upper_thicknesses: PackedFloat32Array = floor_upper_layout["thicknesses"]
@@ -3315,7 +3398,7 @@ func _validate_roof_node(coordinator: Building3DScript) -> void:
 		0.16,
 		0.25,
 		Color(0.50, 0.34, 0.25, 1.0)
-	)
+	) as GableRoof3DScript
 	coordinator.add_child(roof)
 	if roof.mesh == null:
 		m_failures.append("Roof3D did not generate a mesh")
@@ -3356,7 +3439,7 @@ func _validate_roof_node(coordinator: Building3DScript) -> void:
 		m_failures.append("Roof3D did not generate collision for placed roofs")
 	if roof.get_roof_bounds_min().distance_to(Vector3(-0.25, -0.16, -0.25)) > 0.001:
 		m_failures.append("Roof3D bounds did not include overhang and thickness")
-	var expected_roof_ridge_height := Roof3DScript.gable_height_for_angle_degrees(
+	var expected_roof_ridge_height := RoofStyleGeometryFactory.gable_height_for_angle_degrees(
 		roof.get_roof_size().y,
 		roof.roof_overhang,
 		roof.get_roof_angle_degrees()
@@ -3518,7 +3601,7 @@ func _validate_roof_node(coordinator: Building3DScript) -> void:
 		Vector3(46.0, base_y, 12.0),
 		Vector3(49.0, base_y, 15.0),
 		"flat"
-	)
+	) as FlatRoof3DScript
 	coordinator.add_child(promoted_flat)
 	if promoted_flat.is_polygon_roof():
 		m_failures.append("FlatRoof3D rectangle unexpectedly stored polygon points")
@@ -3545,13 +3628,13 @@ func _validate_roof_node(coordinator: Building3DScript) -> void:
 		0.12,
 		0.1,
 		Color(0.50, 0.34, 0.25, 1.0)
-	)
+	) as SlopedRoof3DScript
 	coordinator.add_child(shed)
 	if _mesh_vertex_count(shed) != 28:
 		m_failures.append("Roof3D shed style generated the wrong vertex count")
 	if !_has_roof_sloped_normal(shed):
 		m_failures.append("Roof3D shed style is missing sloped roof normals")
-	var expected_shed_height := Roof3DScript.shed_height_for_angle_degrees(
+	var expected_shed_height := RoofStyleGeometryFactory.shed_height_for_angle_degrees(
 		shed.get_roof_size().y,
 		shed.roof_overhang,
 		shed.get_roof_angle_degrees()
@@ -3567,20 +3650,20 @@ func _validate_roof_node(coordinator: Building3DScript) -> void:
 		0.12,
 		0.15,
 		Color(0.50, 0.34, 0.25, 1.0)
-	)
+	) as HipRoof3DScript
 	coordinator.add_child(hip)
 	if _mesh_vertex_count(hip) != 52:
 		m_failures.append("Roof3D hip style generated the wrong vertex count")
 	if !_has_roof_sloped_normal(hip):
 		m_failures.append("Roof3D hip style is missing sloped roof normals")
-	var expected_hip_height := Roof3DScript.hip_height_for_angle_degrees(
+	var expected_hip_height := RoofStyleGeometryFactory.hip_height_for_angle_degrees(
 		hip.get_roof_size(),
 		hip.roof_overhang,
 		hip.get_roof_angle_degrees()
 	)
 	if !_has_mesh_vertex_y_near(hip, expected_hip_height, 0.001):
 		m_failures.append("Roof3D hip style did not calculate height from angle degrees")
-	var hip_ridge_points := Roof3DScript.hip_roof_ridge_points_for_size(
+	var hip_ridge_points := RoofStyleGeometryFactory.hip_roof_ridge_points_for_size(
 		hip.get_roof_size(),
 		hip.roof_overhang,
 		hip.get_roof_angle_degrees()
@@ -3596,11 +3679,11 @@ func _validate_roof_node(coordinator: Building3DScript) -> void:
 			m_failures.append("Roof3D hip mesh is missing the first ridge endpoint")
 		if !_has_mesh_vertex_near(hip.mesh as ArrayMesh, hip_ridge_points[1], 0.001):
 			m_failures.append("Roof3D hip mesh is missing the second ridge endpoint")
-	var hip_faces := Roof3DScript.roof_top_faces_for_style(
+	var hip_faces := RoofStyleGeometryFactory.roof_top_faces_for_style(
 		"hip",
 		hip.get_roof_size(),
 		hip.roof_overhang,
-		hip.get_roof_angle_degrees()
+		{"angle_degrees": hip.get_roof_angle_degrees()}
 	)
 	var triangular_hip_faces := 0
 	var trapezoid_hip_faces := 0
@@ -3626,18 +3709,18 @@ func _validate_roof_node(coordinator: Building3DScript) -> void:
 		Color(0.50, 0.34, 0.25, 1.0),
 		0.0,
 		0.4
-	)
+	) as HipRoof3DScript
 	coordinator.add_child(half_hip)
 	if _mesh_vertex_count(half_hip) != 100:
 		m_failures.append("Roof3D half-hip style generated the wrong vertex count")
 	if !_roof_surface_normals_are_not_down(half_hip):
 		m_failures.append("Roof3D half-hip visible surface normals point downward")
-	var plain_half_hip_ridge := Roof3DScript.hip_roof_ridge_points_for_size(
+	var plain_half_hip_ridge := RoofStyleGeometryFactory.hip_roof_ridge_points_for_size(
 		half_hip.get_roof_size(),
 		half_hip.roof_overhang,
 		half_hip.get_roof_angle_degrees()
 	)
-	var clipped_half_hip_ridge := Roof3DScript.hip_roof_ridge_points_for_size(
+	var clipped_half_hip_ridge := RoofStyleGeometryFactory.hip_roof_ridge_points_for_size(
 		half_hip.get_roof_size(),
 		half_hip.roof_overhang,
 		half_hip.get_roof_angle_degrees(),
@@ -3654,7 +3737,7 @@ func _validate_roof_node(coordinator: Building3DScript) -> void:
 			m_failures.append("Roof3D half-hip mesh is missing the first extended ridge endpoint")
 		if !_has_mesh_vertex_near(half_hip.mesh as ArrayMesh, clipped_half_hip_ridge[1], 0.001):
 			m_failures.append("Roof3D half-hip mesh is missing the second extended ridge endpoint")
-	var half_hip_height := Roof3DScript.hip_height_for_angle_degrees(
+	var half_hip_height := RoofStyleGeometryFactory.hip_height_for_angle_degrees(
 		half_hip.get_roof_size(),
 		half_hip.roof_overhang,
 		half_hip.get_roof_angle_degrees()
@@ -3672,12 +3755,14 @@ func _validate_roof_node(coordinator: Building3DScript) -> void:
 		m_failures.append("Roof3D half-hip ridge height changed from the hip peak")
 	if absf(half_hip.get_roof_height_at_local_render_point(Vector2(half_hip_gable_base.x, half_hip_gable_base.z)) - half_hip_gable_base.y) > 0.001:
 		m_failures.append("Roof3D half-hip clipped gable base does not follow configured drop")
-	var half_hip_faces := Roof3DScript.roof_top_faces_for_style(
+	var half_hip_faces := RoofStyleGeometryFactory.roof_top_faces_for_style(
 		"hip",
 		half_hip.get_roof_size(),
 		half_hip.roof_overhang,
-		half_hip.get_roof_angle_degrees(),
-		half_hip.get_hip_gable_height()
+		{
+			"angle_degrees": half_hip.get_roof_angle_degrees(),
+			"gable_height_from_peak": half_hip.get_hip_gable_height(),
+		}
 	)
 	var half_hip_sloped_faces := 0
 	var half_hip_vertical_faces := 0
@@ -3700,18 +3785,18 @@ func _validate_roof_node(coordinator: Building3DScript) -> void:
 		0.12,
 		0.25,
 		Color(0.50, 0.34, 0.25, 1.0)
-	)
+	) as GableRoof3DScript
 	coordinator.add_child(angle_roof)
 	var original_angle_degrees := angle_roof.get_roof_angle_degrees()
 	var preserved_angle_covers: Array[Rect2] = []
-	angle_roof.set_roof_corners_rotation_height_and_covers(
+	angle_roof.set_roof_corners_rotation_parameters_and_covers(
 		angle_roof.start_point,
 		angle_roof.start_point + Vector3(4.0, 0.0, 6.0),
 		angle_roof.roof_rotation_degrees,
-		angle_roof.get_roof_angle_degrees(),
+		{"angle_degrees": angle_roof.get_roof_angle_degrees()},
 		preserved_angle_covers
 	)
-	var expected_resized_ridge_height := Roof3DScript.gable_height_for_angle_degrees(
+	var expected_resized_ridge_height := RoofStyleGeometryFactory.gable_height_for_angle_degrees(
 		angle_roof.get_roof_size().y,
 		angle_roof.roof_overhang,
 		original_angle_degrees
@@ -3732,7 +3817,7 @@ func _validate_roof_node(coordinator: Building3DScript) -> void:
 		0.16,
 		0.25,
 		merge_color
-	)
+	) as GableRoof3DScript
 	coordinator.add_child(merge_target)
 	var merge_candidate_start := Vector3(33.0, base_y, 13.0)
 	var merge_candidate_end := Vector3(36.0, base_y, 17.0)
@@ -3850,13 +3935,13 @@ func _validate_roof_node(coordinator: Building3DScript) -> void:
 		0.12,
 		0.2,
 		merge_color
-	)
+	) as GableRoof3DScript
 	var clipped_gable_covers: Array[Rect2] = [Rect2(Vector2.ZERO, Vector2(1.0, 1.0))]
 	clipped_gable.set_covered_rects(clipped_gable_covers)
 	coordinator.add_child(clipped_gable)
 	if !_has_roof_sloped_normal(clipped_gable):
 		m_failures.append("Roof3D clipped gable lost its sloped roof normals")
-	var clipped_gable_ridge_height := Roof3DScript.gable_height_for_angle_degrees(
+	var clipped_gable_ridge_height := RoofStyleGeometryFactory.gable_height_for_angle_degrees(
 		clipped_gable.get_roof_size().y,
 		clipped_gable.roof_overhang,
 		clipped_gable.get_roof_angle_degrees()
@@ -4063,7 +4148,7 @@ func _validate_roof_node(coordinator: Building3DScript) -> void:
 		0.16,
 		0.25,
 		merge_color
-	)
+	) as GableRoof3DScript
 	var stale_cover_regions := coordinator.compute_roof_cover_regions(
 		stale_clipped.start_point,
 		stale_clipped.end_point,
@@ -5799,12 +5884,12 @@ func _cover_polygons_sample_under_other_roof(
 	for polygon_variant in polygons:
 		var polygon := _polygon_from_variant(polygon_variant)
 		for point in _polygon_sample_points(polygon):
-			var candidate_height := Roof3DScript.roof_surface_height_for_style(
+			var candidate_height := RoofStyleGeometryFactory.roof_surface_height_for_style(
 				candidate_style,
 				candidate_size,
 				candidate_overhang,
-				candidate_angle_degrees,
-				point
+				point,
+				{"angle_degrees": candidate_angle_degrees}
 			)
 			var parent_point := candidate_anchor + candidate_basis * Vector3(point.x, 0.0, point.y)
 			if !_sample_is_under_any_roof(parent_point, candidate_start.y + candidate_height, other_roofs):

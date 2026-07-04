@@ -2,7 +2,9 @@
 class_name MergedWallMeshBuilder
 extends RefCounted
 
-const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
+const RoofStyleGeometryFactory := preload(
+	"res://addons/low_poly_building_editor/roof_style_geometry_factory_3d.gd"
+)
 
 ## Static mesh-construction helpers for multi-segment Wall3D nodes.
 ## Builds combined geometry for a set of wall segments, clipping faces and
@@ -709,14 +711,14 @@ static func _append_roof_style_break_t_values(
 	clip: Dictionary,
 	values: Array[float]
 ) -> void:
-	var style := String(clip.get("style", Roof3DScript.STYLE_FLAT))
+	var style := String(clip.get("style", RoofStyleGeometryFactory.STYLE_FLAT))
 	var size := Vector2(clip.get("size", Vector2.ZERO))
 	var overhang := maxf(float(clip.get("overhang", 0.0)), 0.0)
 	match style:
-		Roof3DScript.STYLE_GABLE:
+		RoofStyleGeometryFactory.STYLE_GABLE:
 			_append_axis_break_t(local_start, local_end, 1, size.y * 0.5, values)
-		Roof3DScript.STYLE_HIP:
-			var ridge_points := Roof3DScript.hip_roof_ridge_points_for_size(
+		RoofStyleGeometryFactory.STYLE_HIP:
+			var ridge_points := RoofStyleGeometryFactory.hip_roof_ridge_points_for_size(
 				size,
 				overhang,
 				float(clip.get("angle_degrees", 0.0)),
@@ -770,13 +772,15 @@ static func _roof_clip_height_at_plan_point(point: Vector2, roof_clips: Array) -
 		var roof_point := _roof_local_point_for_plan(point, clip)
 		if !_roof_clip_contains_local_point(clip, roof_point):
 			continue
-		var roof_height := Roof3DScript.roof_surface_height_for_style(
-			String(clip.get("style", Roof3DScript.STYLE_FLAT)),
+		var roof_height := RoofStyleGeometryFactory.roof_surface_height_for_style(
+			String(clip.get("style", RoofStyleGeometryFactory.STYLE_FLAT)),
 			Vector2(clip.get("size", Vector2.ZERO)),
 			float(clip.get("overhang", 0.0)),
-			float(clip.get("angle_degrees", 0.0)),
 			roof_point,
-			float(clip.get("hip_gable_height", 0.0))
+			{
+				"angle_degrees": float(clip.get("angle_degrees", 0.0)),
+				"gable_height_from_peak": float(clip.get("hip_gable_height", 0.0)),
+			}
 		)
 		var wall_height := float(clip.get("origin_y", 0.0)) + roof_height - float(clip.get("thickness", 0.0))
 		best_height = minf(best_height, wall_height)
@@ -830,12 +834,14 @@ static func _roof_cover_polygons_above_height(
 ) -> Array[PackedVector2Array]:
 	var covers: Array[PackedVector2Array] = []
 	var threshold_top_y := wall_local_y - float(clip.get("origin_y", 0.0)) + float(clip.get("thickness", 0.0))
-	var faces := Roof3DScript.roof_top_faces_for_style(
-		String(clip.get("style", Roof3DScript.STYLE_FLAT)),
+	var faces := RoofStyleGeometryFactory.roof_top_faces_for_style(
+		String(clip.get("style", RoofStyleGeometryFactory.STYLE_FLAT)),
 		Vector2(clip.get("size", Vector2.ZERO)),
 		float(clip.get("overhang", 0.0)),
-		float(clip.get("angle_degrees", 0.0)),
-		float(clip.get("hip_gable_height", 0.0))
+		{
+			"angle_degrees": float(clip.get("angle_degrees", 0.0)),
+			"gable_height_from_peak": float(clip.get("hip_gable_height", 0.0)),
+		}
 	)
 	var visible_polygons: Array = clip.get("visible_polygons", [])
 	for face in faces:

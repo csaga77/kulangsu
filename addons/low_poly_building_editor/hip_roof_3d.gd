@@ -15,7 +15,7 @@ const StyleGeometry := preload("res://addons/low_poly_building_editor/hip_roof_g
 
 
 func get_roof_style() -> String:
-	return STYLE_HIP
+	return "hip"
 
 
 func get_hip_gable_height() -> float:
@@ -24,6 +24,19 @@ func get_hip_gable_height() -> float:
 
 func set_hip_gable_height(height: float) -> void:
 	hip_gable_height = height
+
+
+func _style_geometry_parameters() -> Dictionary:
+	var parameters := super()
+	parameters["gable_height_from_peak"] = hip_gable_height
+	return parameters
+
+
+func _apply_style_geometry_parameters(parameters: Dictionary) -> void:
+	super(parameters)
+	hip_gable_height = float(parameters.get(
+		"gable_height_from_peak", hip_gable_height
+	))
 
 
 func _get_style_geometry() -> RefCounted:

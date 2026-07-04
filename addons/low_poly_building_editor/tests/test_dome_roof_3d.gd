@@ -12,8 +12,8 @@ const BuildingSpecCompilerScript = preload(
 const DomeRoof3DScript = preload(
 	"res://addons/low_poly_building_editor/dome_roof_3d.gd"
 )
-const Roof3DScript = preload(
-	"res://addons/low_poly_building_editor/roof_3d.gd"
+const RoofStyleGeometryFactory := preload(
+	"res://addons/low_poly_building_editor/roof_style_geometry_factory_3d.gd"
 )
 
 var m_failures: Array[String] = []
@@ -65,7 +65,7 @@ func _validate_geometry() -> void:
 	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 	if vertices.size() != 928:
 		m_failures.append("DomeRoof3D generated the wrong faceted vertex count")
-	var expected_height := Roof3DScript.dome_height_for_angle_degrees(
+	var expected_height := RoofStyleGeometryFactory.dome_height_for_angle_degrees(
 		dome.get_roof_size(),
 		dome.roof_overhang,
 		dome.get_roof_angle_degrees()
@@ -79,11 +79,11 @@ func _validate_geometry() -> void:
 		m_failures.append("DomeRoof3D mesh is missing its centered peak")
 	if !_has_sloped_upward_normal(normals):
 		m_failures.append("DomeRoof3D is missing upward faceted normals")
-	if Roof3DScript.roof_top_faces_for_style(
+	if RoofStyleGeometryFactory.roof_top_faces_for_style(
 		"dome",
 		dome.get_roof_size(),
 		dome.roof_overhang,
-		dome.get_roof_angle_degrees()
+		{"angle_degrees": dome.get_roof_angle_degrees()}
 	).size() != 144:
 		m_failures.append("DomeRoof3D did not publish every top face")
 	if dome.get_node_or_null("RoofCollision") == null:

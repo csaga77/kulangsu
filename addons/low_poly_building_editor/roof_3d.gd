@@ -5,20 +5,7 @@ signal source_geometry_changed
 
 const GENERATED_META := &"roof_generated"
 const PREVIEW_META := &"building_editor_preview"
-const STYLE_FLAT := "flat"
-const STYLE_SHED := "shed"
-const STYLE_GABLE := "gable"
-const STYLE_HIP := "hip"
-const STYLE_DOME := "dome"
 const RECT_EPSILON := 0.001
-const MAX_ROOF_ANGLE_DEGREES := 89.0
-const RoofStyleGeometryFactory := preload(
-	"res://addons/low_poly_building_editor/roof_style_geometry_factory_3d.gd"
-)
-const PolygonPrismGeometry := preload(
-	"res://addons/low_poly_building_editor/polygon_prism_geometry_3d.gd"
-)
-
 @export var rebuild := false:
 	set(value):
 		if !value:
@@ -119,7 +106,7 @@ func _ready() -> void:
 
 func set_roof_corners(new_start: Vector3, new_end: Vector3) -> void:
 	var previous_signature := _roof_mesh_source_signature()
-	_clear_roof_polygon()
+	_clear_custom_footprint()
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
 	if _roof_mesh_source_signature() == previous_signature:
@@ -131,7 +118,7 @@ func set_roof_corners(new_start: Vector3, new_end: Vector3) -> void:
 
 func set_roof_corners_and_rotation(new_start: Vector3, new_end: Vector3, new_rotation_degrees: float) -> void:
 	var previous_signature := _roof_mesh_source_signature()
-	_clear_roof_polygon()
+	_clear_custom_footprint()
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
 	roof_rotation_degrees = new_rotation_degrees
@@ -149,31 +136,31 @@ func set_roof_corners_rotation_and_covers(
 	new_covered_rects: Array[Rect2],
 	new_covered_polygons: Array[PackedVector2Array] = []
 ) -> void:
-	set_roof_corners_rotation_height_and_covers(
+	set_roof_corners_rotation_parameters_and_covers(
 		new_start,
 		new_end,
 		new_rotation_degrees,
-		get_roof_angle_degrees(),
+		_style_geometry_parameters(),
 		new_covered_rects,
 		new_covered_polygons
 	)
 
 
-func set_roof_corners_rotation_height_and_covers(
+func set_roof_corners_rotation_parameters_and_covers(
 	new_start: Vector3,
 	new_end: Vector3,
 	new_rotation_degrees: float,
-	new_height: float,
+	new_style_parameters: Dictionary,
 	new_covered_rects: Array[Rect2],
 	new_covered_polygons: Array[PackedVector2Array] = []
 ) -> void:
 	var previous_source_signature := _roof_mesh_source_signature()
 	var previous_clip_signature := _roof_mesh_clip_signature()
-	_clear_roof_polygon()
+	_clear_custom_footprint()
 	start_point = new_start
 	end_point = Vector3(new_end.x, new_start.y, new_end.z)
 	roof_rotation_degrees = new_rotation_degrees
-	set_roof_angle_degrees(new_height)
+	_apply_style_geometry_parameters(new_style_parameters)
 	covered_rects = new_covered_rects
 	covered_polygons = new_covered_polygons
 	var source_changed := _roof_mesh_source_signature() != previous_source_signature
@@ -287,30 +274,8 @@ func get_roof_style() -> String:
 	return ""
 
 
-func set_roof_polygon(_new_points: PackedVector3Array) -> void:
-	pass
-
-
-func get_roof_polygon() -> PackedVector3Array:
-	return PackedVector3Array()
-
-
-func is_polygon_roof() -> bool:
-	return false
-
-
-func is_roof_polygon_valid(points: PackedVector3Array = PackedVector3Array()) -> bool:
-	var candidate := points if !points.is_empty() else get_roof_polygon()
-	if candidate.size() < 3:
-		return false
-	var local_polygon := PackedVector2Array()
-	for point in candidate:
-		local_polygon.append(Vector2(point.x, point.z))
-	return !Geometry2D.triangulate_polygon(local_polygon).is_empty()
-
-
 func contains_local_plan_point(local_point: Vector2) -> bool:
-	if !is_polygon_roof():
+	if !_has_custom_footprint():
 		var render_rect := get_roof_render_rect()
 		return render_rect.has_point(local_point)
 	for polygon in get_roof_render_polygons():
@@ -325,13 +290,25 @@ func get_roof_render_polygons() -> Array[PackedVector2Array]:
 	return polygons
 
 
-func _clear_roof_polygon() -> void:
+func _clear_custom_footprint() -> void:
 	pass
 
 
+func _has_custom_footprint() -> bool:
+	return false
+
+
+func _get_custom_footprint_points() -> PackedVector3Array:
+	return PackedVector3Array()
+
+
+func _is_custom_footprint_valid() -> bool:
+	return true
+
+
 func get_roof_size() -> Vector2:
-	if is_polygon_roof():
-		return _roof_polygon_parent_bounds(get_roof_polygon()).size
+	if _has_custom_footprint():
+		return _roof_polygon_parent_bounds(_get_custom_footprint_points()).size
 	return Vector2(absf(end_point.x - start_point.x), absf(end_point.z - start_point.z))
 
 
@@ -339,169 +316,21 @@ func get_roof_height_at_local_render_point(local_render_point: Vector2) -> float
 	return _get_style_geometry().surface_height(
 		get_roof_size(),
 		roof_overhang,
-		get_roof_angle_degrees(),
 		local_render_point,
-		get_hip_gable_height()
+		_style_geometry_parameters()
 	)
 
 
-func get_roof_angle_degrees() -> float:
-	return 0.0
+func _style_geometry_parameters() -> Dictionary:
+	return {}
 
 
-func set_roof_angle_degrees(_angle_degrees: float) -> void:
-	pass
-
-
-func get_hip_gable_height() -> float:
-	return 0.0
-
-
-func set_hip_gable_height(_height: float) -> void:
+func _apply_style_geometry_parameters(_parameters: Dictionary) -> void:
 	pass
 
 
 func _get_style_geometry() -> RefCounted:
-	return RoofStyleGeometryFactory.create(get_roof_style())
-
-
-static func roof_height_for_angle_degrees(run: float, angle_degrees: float) -> float:
-	return maxf(run, 0.0) * tan(deg_to_rad(_clamped_roof_angle_degrees(angle_degrees)))
-
-
-static func shed_height_for_angle_degrees(depth: float, overhang: float, angle_degrees: float) -> float:
-	return RoofStyleGeometryFactory.create(STYLE_SHED).generated_height(
-		Vector2(0.0, depth),
-		overhang,
-		angle_degrees
-	)
-
-
-static func shed_roof_run_for_depth(depth: float, overhang: float) -> float:
-	return RoofStyleGeometryFactory.create(STYLE_SHED).roof_run(Vector2(0.0, depth), overhang)
-
-
-static func gable_height_for_angle_degrees(depth: float, overhang: float, angle_degrees: float) -> float:
-	return RoofStyleGeometryFactory.create(STYLE_GABLE).generated_height(
-		Vector2(0.0, depth),
-		overhang,
-		angle_degrees
-	)
-
-
-static func gable_roof_run_for_depth(depth: float, overhang: float) -> float:
-	return RoofStyleGeometryFactory.create(STYLE_GABLE).roof_run(Vector2(0.0, depth), overhang)
-
-
-static func hip_height_for_angle_degrees(size: Vector2, overhang: float, angle_degrees: float) -> float:
-	return RoofStyleGeometryFactory.create(STYLE_HIP).generated_height(size, overhang, angle_degrees)
-
-
-static func hip_roof_run_for_size(size: Vector2, overhang: float) -> float:
-	return RoofStyleGeometryFactory.create(STYLE_HIP).roof_run(size, overhang)
-
-
-static func dome_height_for_angle_degrees(size: Vector2, overhang: float, angle_degrees: float) -> float:
-	return RoofStyleGeometryFactory.create(STYLE_DOME).generated_height(size, overhang, angle_degrees)
-
-
-static func dome_roof_run_for_size(size: Vector2, overhang: float) -> float:
-	return RoofStyleGeometryFactory.create(STYLE_DOME).roof_run(size, overhang)
-
-
-static func hip_roof_ridge_points_for_size(
-	size: Vector2,
-	overhang: float,
-	angle_degrees: float,
-	gable_height_from_peak: float = 0.0
-) -> PackedVector3Array:
-	return RoofStyleGeometryFactory.create(STYLE_HIP).ridge_points(
-		size,
-		overhang,
-		angle_degrees,
-		gable_height_from_peak
-	)
-
-
-static func _triangles_for_roof_face(face_vertices: PackedVector3Array) -> Array[PackedVector3Array]:
-	var triangles: Array[PackedVector3Array] = []
-	if face_vertices.size() < 3:
-		return triangles
-	for index in range(1, face_vertices.size() - 1):
-		triangles.append(PackedVector3Array([
-			face_vertices[0],
-			face_vertices[index],
-			face_vertices[index + 1],
-		]))
-	return triangles
-
-
-static func _plane_points_for_roof_face(face_vertices: PackedVector3Array) -> PackedVector3Array:
-	for first_index in range(face_vertices.size() - 2):
-		for second_index in range(first_index + 1, face_vertices.size() - 1):
-			for third_index in range(second_index + 1, face_vertices.size()):
-				var first := face_vertices[first_index]
-				var second := face_vertices[second_index]
-				var third := face_vertices[third_index]
-				if (second - first).cross(third - first).length_squared() > RECT_EPSILON * RECT_EPSILON:
-					return PackedVector3Array([first, second, third])
-	return PackedVector3Array()
-
-
-static func roof_generated_height_for_style(
-	style: String,
-	size: Vector2,
-	overhang: float,
-	angle_degrees: float
-) -> float:
-	return RoofStyleGeometryFactory.create(style).generated_height(size, overhang, angle_degrees)
-
-
-static func roof_surface_height_for_style(
-	style: String,
-	size: Vector2,
-	overhang: float,
-	angle_degrees: float,
-	local_render_point: Vector2,
-	gable_height_from_peak: float = 0.0
-) -> float:
-	return RoofStyleGeometryFactory.create(style).surface_height(
-		size,
-		overhang,
-		angle_degrees,
-		local_render_point,
-		gable_height_from_peak
-	)
-
-
-static func roof_top_triangles_for_style(
-	style: String,
-	full_size: Vector2,
-	overhang: float,
-	angle_degrees: float,
-	gable_height_from_peak: float = 0.0
-) -> Array[PackedVector3Array]:
-	return RoofStyleGeometryFactory.create(style).top_triangles(
-		full_size,
-		overhang,
-		angle_degrees,
-		gable_height_from_peak
-	)
-
-
-static func roof_top_faces_for_style(
-	style: String,
-	full_size: Vector2,
-	overhang: float,
-	angle_degrees: float,
-	gable_height_from_peak: float = 0.0
-) -> Array[Dictionary]:
-	return RoofStyleGeometryFactory.create(style).top_faces(
-		full_size,
-		overhang,
-		angle_degrees,
-		gable_height_from_peak
-	)
+	return null
 
 
 static func roof_corners_from_base_points(base_start: Vector3, base_end: Vector3, rotation_degrees: float) -> Dictionary:
@@ -521,8 +350,8 @@ static func roof_corners_from_base_points(base_start: Vector3, base_end: Vector3
 
 
 func get_roof_anchor_point() -> Vector3:
-	if is_polygon_roof():
-		var points := get_roof_polygon()
+	if _has_custom_footprint():
+		var points := _get_custom_footprint_points()
 		var bounds := _roof_polygon_parent_bounds(points)
 		return Vector3(bounds.position.x, points[0].y, bounds.position.y)
 	var min_x := minf(start_point.x, end_point.x)
@@ -536,7 +365,7 @@ func get_roof_center_point() -> Vector3:
 
 
 func get_roof_bounds_min() -> Vector3:
-	if is_polygon_roof():
+	if _has_custom_footprint():
 		var render_rect := get_roof_render_rect()
 		return Vector3(render_rect.position.x, -roof_thickness, render_rect.position.y)
 	var overhang := maxf(roof_overhang, 0.0)
@@ -545,7 +374,7 @@ func get_roof_bounds_min() -> Vector3:
 
 func get_roof_bounds_max() -> Vector3:
 	var size := get_roof_size()
-	if is_polygon_roof():
+	if _has_custom_footprint():
 		var render_rect := get_roof_render_rect()
 		return Vector3(render_rect.end.x, _effective_roof_height(), render_rect.end.y)
 	var overhang := maxf(roof_overhang, 0.0)
@@ -567,7 +396,7 @@ func rebuild_roof_mesh(rebuild_collision: bool = true) -> void:
 	if size.x <= 0.001 or size.y <= 0.001:
 		mesh = null
 		return
-	if is_polygon_roof() and !is_roof_polygon_valid():
+	if _has_custom_footprint() and !_is_custom_footprint_valid():
 		mesh = null
 		return
 
@@ -577,11 +406,11 @@ func rebuild_roof_mesh(rebuild_collision: bool = true) -> void:
 	var indices := PackedInt32Array()
 	var full_render_rect := get_roof_render_rect()
 	var sanitized_polygons := _sanitize_covered_polygons(covered_polygons)
-	if is_polygon_roof():
+	if _has_custom_footprint():
 		for covered_rect in _sanitize_covered_rects(covered_rects):
 			sanitized_polygons.append(_rect_polygon(covered_rect))
 		if sanitized_polygons.is_empty():
-			_append_polygon_roof_geometry(vertices, normals, colors, indices)
+			_append_custom_footprint_geometry(vertices, normals, colors, indices)
 		else:
 			_append_roof_polygon_clip_geometry(
 				size,
@@ -638,13 +467,12 @@ func _roof_mesh_source_signature() -> int:
 		get_roof_style(),
 		start_point,
 		end_point,
-		get_roof_polygon(),
+		_get_custom_footprint_points(),
 		roof_thickness,
 		roof_overhang,
 		roof_rotation_degrees,
 		roof_color,
-		get_roof_angle_degrees(),
-		get_hip_gable_height(),
+		_style_geometry_parameters(),
 	])
 
 
@@ -669,7 +497,7 @@ func _sync_transform_from_points() -> void:
 
 
 func _rotation_basis() -> Basis:
-	if is_polygon_roof():
+	if _has_custom_footprint():
 		return Basis.IDENTITY
 	return _rotation_basis_for_degrees(roof_rotation_degrees)
 
@@ -696,8 +524,7 @@ func _append_roof_geometry(
 	var topology: Dictionary = _get_style_geometry().topology(
 		Vector2(width, depth),
 		roof_overhang,
-		get_roof_angle_degrees(),
-		get_hip_gable_height()
+		_style_geometry_parameters()
 	)
 	var top_points: Array[Vector3] = topology["points"]
 	var top_triangles: Array[PackedInt32Array] = topology["triangles"]
@@ -969,7 +796,7 @@ func _roof_polygon_boundary_point_key(point: Vector3) -> String:
 
 
 func _roof_top_triangles(full_size: Vector2) -> Array[PackedVector3Array]:
-	if is_polygon_roof():
+	if _has_custom_footprint():
 		var triangles: Array[PackedVector3Array] = []
 		for polygon in get_roof_render_polygons():
 			var triangle_indices := Geometry2D.triangulate_polygon(polygon)
@@ -983,29 +810,17 @@ func _roof_top_triangles(full_size: Vector2) -> Array[PackedVector3Array]:
 	return _get_style_geometry().top_triangles(
 		full_size,
 		roof_overhang,
-		get_roof_angle_degrees(),
-		get_hip_gable_height()
+		_style_geometry_parameters()
 	)
 
 
-func _append_polygon_roof_geometry(
-	vertices: PackedVector3Array,
-	normals: PackedVector3Array,
-	colors: PackedColorArray,
-	indices: PackedInt32Array
+func _append_custom_footprint_geometry(
+	_vertices: PackedVector3Array,
+	_normals: PackedVector3Array,
+	_colors: PackedColorArray,
+	_indices: PackedInt32Array
 ) -> void:
-	var collision_faces := PackedVector3Array()
-	for polygon in get_roof_render_polygons():
-		PolygonPrismGeometry.append_prism(
-			polygon,
-			roof_thickness,
-			roof_color,
-			vertices,
-			normals,
-			colors,
-			indices,
-			collision_faces
-		)
+	pass
 
 
 func _roof_polygon_parent_bounds(points: PackedVector3Array) -> Rect2:
@@ -1206,9 +1021,8 @@ func _roof_height_at(full_size: Vector2, x: float, z: float) -> float:
 	return _get_style_geometry().surface_height(
 		full_size,
 		roof_overhang,
-		get_roof_angle_degrees(),
 		Vector2(x, z),
-		get_hip_gable_height()
+		_style_geometry_parameters()
 	)
 
 
@@ -1386,11 +1200,9 @@ func _effective_roof_height() -> float:
 
 
 func _effective_roof_height_for_size(size: Vector2) -> float:
-	return _get_style_geometry().generated_height(size, roof_overhang, get_roof_angle_degrees())
-
-
-static func _clamped_roof_angle_degrees(angle_degrees: float) -> float:
-	return clampf(angle_degrees, 0.0, MAX_ROOF_ANGLE_DEGREES)
+	return _get_style_geometry().generated_height(
+		size, roof_overhang, _style_geometry_parameters()
+	)
 
 
 static func _normalize_degrees_static(value: float) -> float:

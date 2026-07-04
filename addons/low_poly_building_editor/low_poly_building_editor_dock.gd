@@ -745,14 +745,11 @@ func _build_pillar_controls(parent: VBoxContainer) -> void:
 
 	m_pillar_style_option = OptionButton.new()
 	m_pillar_style_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	m_pillar_style_option.add_item("Round", 0)
-	m_pillar_style_option.set_item_metadata(0, "round")
-	m_pillar_style_option.add_item("Square", 1)
-	m_pillar_style_option.set_item_metadata(1, "square")
-	m_pillar_style_option.add_item("Octagonal", 2)
-	m_pillar_style_option.set_item_metadata(2, "octagonal")
-	m_pillar_style_option.add_item("Tapered", 3)
-	m_pillar_style_option.set_item_metadata(3, "tapered")
+	for style: Dictionary in BuildingFactoryScript.PILLAR_STYLES:
+		m_pillar_style_option.add_item(String(style["label"]))
+		m_pillar_style_option.set_item_metadata(
+			m_pillar_style_option.item_count - 1, style["key"]
+		)
 	m_pillar_style_option.item_selected.connect(_on_pillar_style_selected)
 	_add_labeled_control(parent, "Style:", m_pillar_style_option, "Pillar body shape used for newly placed pillars.")
 
@@ -822,17 +819,12 @@ func _build_roof_controls(parent: VBoxContainer) -> void:
 
 	m_roof_style_option = OptionButton.new()
 	m_roof_style_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	m_roof_style_option.add_item("Flat", 0)
-	m_roof_style_option.set_item_metadata(0, "flat")
-	m_roof_style_option.add_item("Shed", 1)
-	m_roof_style_option.set_item_metadata(1, "shed")
-	m_roof_style_option.add_item("Gable", 2)
-	m_roof_style_option.set_item_metadata(2, "gable")
-	m_roof_style_option.add_item("Hip", 3)
-	m_roof_style_option.set_item_metadata(3, "hip")
-	m_roof_style_option.add_item("Dome", 4)
-	m_roof_style_option.set_item_metadata(4, "dome")
-	m_roof_style_option.select(2)
+	for style: Dictionary in BuildingFactoryScript.ROOF_STYLES:
+		m_roof_style_option.add_item(String(style["label"]))
+		var style_index := m_roof_style_option.item_count - 1
+		m_roof_style_option.set_item_metadata(style_index, style["key"])
+		if String(style["key"]) == "gable":
+			m_roof_style_option.select(style_index)
 	m_roof_style_option.item_selected.connect(_on_roof_style_selected)
 	_add_labeled_control(parent, "Style:", m_roof_style_option, "Roof shape used for newly drawn roof footprints.")
 
@@ -1641,12 +1633,9 @@ func _make_newel_position_option() -> OptionButton:
 func _make_stair_layout_option() -> OptionButton:
 	var option := OptionButton.new()
 	option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var labels := PackedStringArray([
-		"Straight", "L Shaped", "Double L Shaped", "U Shaped", "Winder", "Spiral"
-	])
-	for index in range(labels.size()):
-		option.add_item(labels[index], index)
-		option.set_item_metadata(index, BuildingFactoryScript.STAIR_LAYOUT_SCRIPTS[index])
+	for layout: Dictionary in BuildingFactoryScript.STAIR_LAYOUTS:
+		option.add_item(String(layout["label"]))
+		option.set_item_metadata(option.item_count - 1, layout["script"])
 	return option
 
 
@@ -1691,11 +1680,15 @@ func _stair_layout_script_from_value(value: Variant) -> Script:
 	var selected_script: Script
 	if value is Script:
 		selected_script = value as Script
-	if selected_script != null and BuildingFactoryScript.STAIR_LAYOUT_SCRIPTS.has(selected_script):
+	if (
+		selected_script != null
+		and !BuildingFactoryScript.get_stair_layout(selected_script).is_empty()
+	):
 		return selected_script
-	var resource_path := String(value)
-	for candidate: Script in BuildingFactoryScript.STAIR_LAYOUT_SCRIPTS:
-		if candidate.resource_path == resource_path:
+	var selection := String(value)
+	for layout: Dictionary in BuildingFactoryScript.STAIR_LAYOUTS:
+		var candidate := layout["script"] as Script
+		if String(layout["key"]) == selection or candidate.resource_path == selection:
 			return candidate
 	return BuildingFactoryScript.StraightStairs3DScript
 
@@ -1720,9 +1713,11 @@ func _select_stair_layout_script(value: Variant) -> void:
 
 func _update_stair_layout_controls() -> void:
 	var layout_script := _selected_stair_layout_script()
-	var is_straight := layout_script == BuildingFactoryScript.STAIR_LAYOUT_SCRIPTS[0]
-	var is_winder := layout_script == BuildingFactoryScript.STAIR_LAYOUT_SCRIPTS[4]
-	var is_spiral := layout_script == BuildingFactoryScript.STAIR_LAYOUT_SCRIPTS[5]
+	var layout := BuildingFactoryScript.get_stair_layout(layout_script)
+	var layout_key := String(layout.get("key", "straight"))
+	var is_straight := layout_key == "straight"
+	var is_winder := layout_key == "winder"
+	var is_spiral := layout_key == "spiral"
 	if m_stair_turn_option != null:
 		m_stair_turn_option.disabled = is_straight
 	if m_stair_winder_turn_option != null:
@@ -1731,6 +1726,16 @@ func _update_stair_layout_controls() -> void:
 		m_stair_spiral_turn_spin.editable = is_spiral
 	if m_stair_flight_width_spin != null:
 		m_stair_flight_width_spin.editable = !is_straight
+	if m_stair_tread_style_option != null:
+		m_stair_tread_style_option.set_item_disabled(TREAD_STYLE_NOSING, is_spiral)
+		if (
+			is_spiral
+			and _selected_option_metadata(
+				m_stair_tread_style_option, TREAD_STYLE_CLOSED
+			) == TREAD_STYLE_NOSING
+		):
+			m_stair_tread_style_option.select(TREAD_STYLE_CLOSED)
+	_update_stair_tread_controls()
 
 
 func _update_stair_tread_controls() -> void:
@@ -2157,7 +2162,10 @@ func _select_roof_style(style: String) -> void:
 			m_roof_style_option.select(index)
 			_update_roof_style_controls()
 			return
-	m_roof_style_option.select(2)
+	for index in range(m_roof_style_option.get_item_count()):
+		if String(m_roof_style_option.get_item_metadata(index)) == "gable":
+			m_roof_style_option.select(index)
+			break
 	_update_roof_style_controls()
 
 

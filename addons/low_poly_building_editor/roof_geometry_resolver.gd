@@ -4,6 +4,12 @@ extends RefCounted
 
 const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
 const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
+const FlatRoof3DScript = preload(
+	"res://addons/low_poly_building_editor/flat_roof_3d.gd"
+)
+const RoofStyleGeometryFactory := preload(
+	"res://addons/low_poly_building_editor/roof_style_geometry_factory_3d.gd"
+)
 const MergedWallMeshBuilderScript = preload("res://addons/low_poly_building_editor/merged_wall_mesh_builder.gd")
 
 const INTERSECT_BASE_TOLERANCE := 0.01
@@ -140,14 +146,14 @@ func refresh_roof_covered_rects() -> void:
 			roof.start_point,
 			roof.end_point,
 			roof.get_roof_style(),
-			roof.get_roof_angle_degrees(),
+			_roof_angle_degrees(roof),
 			roof.roof_thickness,
 			roof.roof_overhang,
 			roof.roof_color,
 			roof.roof_rotation_degrees,
 			roof,
 			true,
-			roof.get_hip_gable_height()
+			_roof_hip_gable_height(roof)
 		)
 		roof.set_covered_regions(
 			_roof_covered_rects_from_regions(cover_regions),
@@ -181,11 +187,11 @@ func _roof_clip_surfaces_for_wall(wall: Wall3DScript) -> Array[Dictionary]:
 		var roof_bottom_min := roof.start_point.y - roof.roof_thickness
 		var roof_bottom_max := (
 			roof.start_point.y
-			+ Roof3DScript.roof_generated_height_for_style(
+				+ RoofStyleGeometryFactory.roof_generated_height_for_style(
 				roof.get_roof_style(),
 				roof.get_roof_size(),
 				roof.roof_overhang,
-				roof.get_roof_angle_degrees()
+				roof._style_geometry_parameters()
 			)
 			- roof.roof_thickness
 		)
@@ -206,8 +212,8 @@ func _roof_clip_surfaces_for_wall(wall: Wall3DScript) -> Array[Dictionary]:
 			"style": roof.get_roof_style(),
 			"size": roof.get_roof_size(),
 			"overhang": roof.roof_overhang,
-			"angle_degrees": roof.get_roof_angle_degrees(),
-			"hip_gable_height": roof.get_hip_gable_height(),
+			"angle_degrees": _roof_angle_degrees(roof),
+			"hip_gable_height": _roof_hip_gable_height(roof),
 			"thickness": roof.roof_thickness,
 			"visible_polygons": roof_visible_polygons,
 		})
@@ -239,7 +245,7 @@ func _roof_visible_render_polygons(roof: Roof3DScript) -> Array[PackedVector2Arr
 		return visible_polygons
 	var cover_polygons := roof.get_covered_polygons()
 	if cover_polygons.is_empty():
-		if roof.is_polygon_roof():
+		if roof is FlatRoof3DScript and (roof as FlatRoof3DScript).is_polygon_roof():
 			visible_polygons.append_array(roof.get_roof_render_polygons())
 		else:
 			for rect in roof.get_visible_render_rects():
@@ -368,16 +374,17 @@ func _roof_polygons_under_other_roof(
 		candidate_style,
 		candidate_size,
 		candidate_overhang,
-		candidate_angle_degrees,
-		candidate_hip_gable_height
+		{
+			"angle_degrees": candidate_angle_degrees,
+			"gable_height_from_peak": candidate_hip_gable_height,
+		}
 	)
 	var other_faces := _roof_top_faces_for_node_or_style(
 		other_roof,
 		other_roof.get_roof_style(),
 		other_roof.get_roof_size(),
 		other_roof.roof_overhang,
-		other_roof.get_roof_angle_degrees(),
-		other_roof.get_hip_gable_height()
+		other_roof._style_geometry_parameters()
 	)
 	var candidate_inverse := candidate_basis.inverse()
 	var other_anchor := other_roof.get_roof_anchor_point()
@@ -428,10 +435,13 @@ func _roof_top_faces_for_node_or_style(
 	style: String,
 	size: Vector2,
 	overhang: float,
-	angle_degrees: float,
-	hip_gable_height: float
+	parameters: Dictionary
 ) -> Array[Dictionary]:
-	if roof != null and is_instance_valid(roof) and roof.is_polygon_roof():
+	if (
+		roof is FlatRoof3DScript
+		and is_instance_valid(roof)
+		and (roof as FlatRoof3DScript).is_polygon_roof()
+	):
 		var faces: Array[Dictionary] = []
 		for polygon in roof.get_roof_render_polygons():
 			var triangle_indices := Geometry2D.triangulate_polygon(polygon)
@@ -443,13 +453,26 @@ func _roof_top_faces_for_node_or_style(
 				])
 				faces.append({"vertices": triangle, "plane": triangle})
 		return faces
-	return Roof3DScript.roof_top_faces_for_style(
+	return RoofStyleGeometryFactory.roof_top_faces_for_style(
 		style,
 		size,
 		overhang,
-		angle_degrees,
-		hip_gable_height
+		parameters
 	)
+
+
+static func _roof_angle_degrees(roof: Roof3DScript) -> float:
+	if roof == null:
+		return 0.0
+	return float(roof._style_geometry_parameters().get("angle_degrees", 0.0))
+
+
+static func _roof_hip_gable_height(roof: Roof3DScript) -> float:
+	if roof == null:
+		return 0.0
+	return float(roof._style_geometry_parameters().get(
+		"gable_height_from_peak", 0.0
+	))
 
 
 func _face_polygon(face_vertices: PackedVector3Array) -> PackedVector2Array:
