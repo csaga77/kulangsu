@@ -10,10 +10,10 @@ const BuildingSpecCompilerScript = preload(
 	"res://addons/low_poly_building_editor/building_spec_compiler.gd"
 )
 const DomeRoof3DScript = preload(
-	"res://addons/low_poly_building_editor/dome_roof_3d.gd"
+	"res://addons/low_poly_building_editor/roofs/dome_roof_3d.gd"
 )
 const RoofStyleGeometryFactory := preload(
-	"res://addons/low_poly_building_editor/roof_style_geometry_factory_3d.gd"
+	"res://addons/low_poly_building_editor/roofs/roof_style_geometry_factory_3d.gd"
 )
 
 var m_failures: Array[String] = []

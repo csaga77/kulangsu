@@ -12,7 +12,7 @@ const BuildingFactoryScript = preload(
 	"res://addons/low_poly_building_editor/building_factory.gd"
 )
 const Wall3DScript = preload(
-	"res://addons/low_poly_building_editor/wall_3d.gd"
+	"res://addons/low_poly_building_editor/walls/wall_3d.gd"
 )
 
 const EXTERIOR_FACE_SIGN := -1.0

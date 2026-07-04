@@ -2,7 +2,7 @@
 class_name Building3D
 extends Node3D
 
-const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
+const Roof3DScript = preload("res://addons/low_poly_building_editor/roofs/roof_3d.gd")
 
 var m_geometry_clip_refresh_queued := false
 

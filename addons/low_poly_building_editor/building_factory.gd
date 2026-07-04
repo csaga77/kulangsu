@@ -2,75 +2,75 @@
 class_name BuildingFactory
 extends RefCounted
 
-const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
-const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
-const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
-const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.gd")
-const Rail3DScript = preload("res://addons/low_poly_building_editor/rail_3d.gd")
-const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
-const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
+const Wall3DScript = preload("res://addons/low_poly_building_editor/walls/wall_3d.gd")
+const WallSegment3DScript = preload("res://addons/low_poly_building_editor/walls/wall_segment_3d.gd")
+const Floor3DScript = preload("res://addons/low_poly_building_editor/floors/floor_3d.gd")
+const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs/stairs_3d.gd")
+const Rail3DScript = preload("res://addons/low_poly_building_editor/rails/rail_3d.gd")
+const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillars/pillar_3d.gd")
+const Roof3DScript = preload("res://addons/low_poly_building_editor/roofs/roof_3d.gd")
 const FlatRoof3DScript = preload(
-	"res://addons/low_poly_building_editor/flat_roof_3d.gd"
+	"res://addons/low_poly_building_editor/roofs/flat_roof_3d.gd"
 )
 const SlopedRoof3DScript = preload(
-	"res://addons/low_poly_building_editor/sloped_roof_3d.gd"
+	"res://addons/low_poly_building_editor/roofs/sloped_roof_3d.gd"
 )
 const HipRoof3DScript = preload(
-	"res://addons/low_poly_building_editor/hip_roof_3d.gd"
+	"res://addons/low_poly_building_editor/roofs/hip_roof_3d.gd"
 )
 const BuildingOpening3DScript = preload(
-	"res://addons/low_poly_building_editor/building_opening_3d.gd"
+	"res://addons/low_poly_building_editor/openings/building_opening_3d.gd"
 )
 
 const StraightStairs3DScript = preload(
-	"res://addons/low_poly_building_editor/straight_stairs_3d.gd"
+	"res://addons/low_poly_building_editor/stairs/straight_stairs_3d.gd"
 )
 const TurningStairs3DScript = preload(
-	"res://addons/low_poly_building_editor/turning_stairs_3d.gd"
+	"res://addons/low_poly_building_editor/stairs/turning_stairs_3d.gd"
 )
 const WinderStairs3DScript = preload(
-	"res://addons/low_poly_building_editor/winder_stairs_3d.gd"
+	"res://addons/low_poly_building_editor/stairs/winder_stairs_3d.gd"
 )
 const SpiralStairs3DScript = preload(
-	"res://addons/low_poly_building_editor/spiral_stairs_3d.gd"
+	"res://addons/low_poly_building_editor/stairs/spiral_stairs_3d.gd"
 )
 const STAIR_LAYOUTS := [
 	{"key": "straight", "label": "Straight", "script": StraightStairs3DScript},
-	{"key": "l_shaped", "label": "L Shaped", "script": preload("res://addons/low_poly_building_editor/l_shaped_stairs_3d.gd")},
-	{"key": "double_l_shaped", "label": "Double L Shaped", "script": preload("res://addons/low_poly_building_editor/double_l_shaped_stairs_3d.gd")},
-	{"key": "u_shaped", "label": "U Shaped", "script": preload("res://addons/low_poly_building_editor/u_shaped_stairs_3d.gd")},
+	{"key": "l_shaped", "label": "L Shaped", "script": preload("res://addons/low_poly_building_editor/stairs/l_shaped_stairs_3d.gd")},
+	{"key": "double_l_shaped", "label": "Double L Shaped", "script": preload("res://addons/low_poly_building_editor/stairs/double_l_shaped_stairs_3d.gd")},
+	{"key": "u_shaped", "label": "U Shaped", "script": preload("res://addons/low_poly_building_editor/stairs/u_shaped_stairs_3d.gd")},
 	{"key": "winder", "label": "Winder", "script": WinderStairs3DScript},
 	{"key": "spiral", "label": "Spiral", "script": SpiralStairs3DScript},
 ]
 const PILLAR_STYLES := [
-	{"key": "round", "label": "Round", "script": preload("res://addons/low_poly_building_editor/round_pillar_3d.gd")},
-	{"key": "square", "label": "Square", "script": preload("res://addons/low_poly_building_editor/square_pillar_3d.gd")},
-	{"key": "octagonal", "label": "Octagonal", "script": preload("res://addons/low_poly_building_editor/octagonal_pillar_3d.gd")},
-	{"key": "tapered", "label": "Tapered", "script": preload("res://addons/low_poly_building_editor/tapered_pillar_3d.gd")},
+	{"key": "round", "label": "Round", "script": preload("res://addons/low_poly_building_editor/pillars/round_pillar_3d.gd")},
+	{"key": "square", "label": "Square", "script": preload("res://addons/low_poly_building_editor/pillars/square_pillar_3d.gd")},
+	{"key": "octagonal", "label": "Octagonal", "script": preload("res://addons/low_poly_building_editor/pillars/octagonal_pillar_3d.gd")},
+	{"key": "tapered", "label": "Tapered", "script": preload("res://addons/low_poly_building_editor/pillars/tapered_pillar_3d.gd")},
 ]
 const ROOF_STYLES := [
 	{"key": "flat", "label": "Flat", "script": FlatRoof3DScript},
-	{"key": "shed", "label": "Shed", "script": preload("res://addons/low_poly_building_editor/shed_roof_3d.gd")},
-	{"key": "gable", "label": "Gable", "script": preload("res://addons/low_poly_building_editor/gable_roof_3d.gd")},
+	{"key": "shed", "label": "Shed", "script": preload("res://addons/low_poly_building_editor/roofs/shed_roof_3d.gd")},
+	{"key": "gable", "label": "Gable", "script": preload("res://addons/low_poly_building_editor/roofs/gable_roof_3d.gd")},
 	{"key": "hip", "label": "Hip", "script": HipRoof3DScript},
-	{"key": "dome", "label": "Dome", "script": preload("res://addons/low_poly_building_editor/dome_roof_3d.gd")},
+	{"key": "dome", "label": "Dome", "script": preload("res://addons/low_poly_building_editor/roofs/dome_roof_3d.gd")},
 ]
 const OPENING_STYLES := [
-	{"key": "single_window", "category": "window", "script": preload("res://addons/low_poly_building_editor/single_window_3d.gd")},
-	{"key": "double_window", "category": "window", "script": preload("res://addons/low_poly_building_editor/double_window_3d.gd")},
-	{"key": "grid_window", "category": "window", "script": preload("res://addons/low_poly_building_editor/grid_window_3d.gd")},
-	{"key": "louvered_window", "category": "window", "script": preload("res://addons/low_poly_building_editor/louvered_window_3d.gd")},
-	{"key": "transom_window", "category": "window", "script": preload("res://addons/low_poly_building_editor/transom_window_3d.gd")},
-	{"key": "arched_window", "category": "window", "script": preload("res://addons/low_poly_building_editor/arched_window_3d.gd")},
-	{"key": "frame", "category": "window", "script": preload("res://addons/low_poly_building_editor/window_frame_3d.gd")},
-	{"key": "single_door", "category": "door", "script": preload("res://addons/low_poly_building_editor/single_door_3d.gd")},
-	{"key": "double_door", "category": "door", "script": preload("res://addons/low_poly_building_editor/double_door_3d.gd")},
-	{"key": "glazed_door", "category": "door", "script": preload("res://addons/low_poly_building_editor/glazed_door_3d.gd")},
-	{"key": "glazed_grid_door", "category": "door", "script": preload("res://addons/low_poly_building_editor/glazed_grid_door_3d.gd")},
-	{"key": "panel_door", "category": "door", "script": preload("res://addons/low_poly_building_editor/panel_door_3d.gd")},
-	{"key": "dutch_door", "category": "door", "script": preload("res://addons/low_poly_building_editor/dutch_door_3d.gd")},
-	{"key": "single_frame", "category": "door", "script": preload("res://addons/low_poly_building_editor/single_door_frame_3d.gd")},
-	{"key": "double_frame", "category": "door", "script": preload("res://addons/low_poly_building_editor/double_door_frame_3d.gd")},
+	{"key": "single_window", "category": "window", "script": preload("res://addons/low_poly_building_editor/openings/single_window_3d.gd")},
+	{"key": "double_window", "category": "window", "script": preload("res://addons/low_poly_building_editor/openings/double_window_3d.gd")},
+	{"key": "grid_window", "category": "window", "script": preload("res://addons/low_poly_building_editor/openings/grid_window_3d.gd")},
+	{"key": "louvered_window", "category": "window", "script": preload("res://addons/low_poly_building_editor/openings/louvered_window_3d.gd")},
+	{"key": "transom_window", "category": "window", "script": preload("res://addons/low_poly_building_editor/openings/transom_window_3d.gd")},
+	{"key": "arched_window", "category": "window", "script": preload("res://addons/low_poly_building_editor/openings/arched_window_3d.gd")},
+	{"key": "frame", "category": "window", "script": preload("res://addons/low_poly_building_editor/openings/window_frame_3d.gd")},
+	{"key": "single_door", "category": "door", "script": preload("res://addons/low_poly_building_editor/openings/single_door_3d.gd")},
+	{"key": "double_door", "category": "door", "script": preload("res://addons/low_poly_building_editor/openings/double_door_3d.gd")},
+	{"key": "glazed_door", "category": "door", "script": preload("res://addons/low_poly_building_editor/openings/glazed_door_3d.gd")},
+	{"key": "glazed_grid_door", "category": "door", "script": preload("res://addons/low_poly_building_editor/openings/glazed_grid_door_3d.gd")},
+	{"key": "panel_door", "category": "door", "script": preload("res://addons/low_poly_building_editor/openings/panel_door_3d.gd")},
+	{"key": "dutch_door", "category": "door", "script": preload("res://addons/low_poly_building_editor/openings/dutch_door_3d.gd")},
+	{"key": "single_frame", "category": "door", "script": preload("res://addons/low_poly_building_editor/openings/single_door_frame_3d.gd")},
+	{"key": "double_frame", "category": "door", "script": preload("res://addons/low_poly_building_editor/openings/double_door_frame_3d.gd")},
 ]
 const OPENING_STYLE_PROPERTY_NAMES: Array[StringName] = [
 	&"window_pane_depth",

@@ -13,7 +13,7 @@ const BuildingThumbnailRendererScript = preload(
 	"res://addons/low_poly_building_editor/building_thumbnail_renderer.gd"
 )
 const Wall3DScript = preload(
-	"res://addons/low_poly_building_editor/wall_3d.gd"
+	"res://addons/low_poly_building_editor/walls/wall_3d.gd"
 )
 
 const OUTPUT_SCENE := "res://architecture/bagua_tower/bagua_tower_stylized_3d.tscn"
@@ -519,8 +519,7 @@ func _add_opening(
 		distance,
 		sill_height,
 		-1.0,
-		settings,
-		true
+		settings
 	)
 	if opening == null:
 		push_warning("Could not create %s on %s." % [style, wall.name])

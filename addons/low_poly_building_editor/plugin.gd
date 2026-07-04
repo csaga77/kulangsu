@@ -14,29 +14,29 @@ const MODE_WINDOW := "window"
 const MODE_DOOR := "door"
 const Building3DScript = preload("res://addons/low_poly_building_editor/building_3d.gd")
 const BuildingFactoryScript = preload("res://addons/low_poly_building_editor/building_factory.gd")
-const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
-const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
-const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.gd")
+const Wall3DScript = preload("res://addons/low_poly_building_editor/walls/wall_3d.gd")
+const Floor3DScript = preload("res://addons/low_poly_building_editor/floors/floor_3d.gd")
+const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs/stairs_3d.gd")
 const TurningStairs3DScript = preload(
-	"res://addons/low_poly_building_editor/turning_stairs_3d.gd"
+	"res://addons/low_poly_building_editor/stairs/turning_stairs_3d.gd"
 )
 const WinderStairs3DScript = preload(
-	"res://addons/low_poly_building_editor/winder_stairs_3d.gd"
+	"res://addons/low_poly_building_editor/stairs/winder_stairs_3d.gd"
 )
-const Rail3DScript = preload("res://addons/low_poly_building_editor/rail_3d.gd")
-const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
-const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
+const Rail3DScript = preload("res://addons/low_poly_building_editor/rails/rail_3d.gd")
+const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillars/pillar_3d.gd")
+const Roof3DScript = preload("res://addons/low_poly_building_editor/roofs/roof_3d.gd")
 const FlatRoof3DScript = preload(
-	"res://addons/low_poly_building_editor/flat_roof_3d.gd"
+	"res://addons/low_poly_building_editor/roofs/flat_roof_3d.gd"
 )
 const RoofStyleGeometryFactory := preload(
-	"res://addons/low_poly_building_editor/roof_style_geometry_factory_3d.gd"
+	"res://addons/low_poly_building_editor/roofs/roof_style_geometry_factory_3d.gd"
 )
-const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
+const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/openings/building_opening_3d.gd")
 const BuildingWireframeScript = preload("res://addons/low_poly_building_editor/building_wireframe_3d.gd")
-const Window3DScript = preload("res://addons/low_poly_building_editor/window_3d.gd")
-const Door3DScript = preload("res://addons/low_poly_building_editor/door_3d.gd")
-const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
+const Window3DScript = preload("res://addons/low_poly_building_editor/openings/window_3d.gd")
+const Door3DScript = preload("res://addons/low_poly_building_editor/openings/door_3d.gd")
+const WallSegment3DScript = preload("res://addons/low_poly_building_editor/walls/wall_segment_3d.gd")
 const DockScript = preload("res://addons/low_poly_building_editor/low_poly_building_editor_dock.gd")
 const ViewportInputOverlayScript = preload("res://addons/low_poly_building_editor/viewport_input_overlay.gd")
 const ViewportInputCaptureScript = preload("res://addons/low_poly_building_editor/viewport_input_capture.gd")
@@ -8596,14 +8596,14 @@ func _find_native_mode_buttons_in_node_3d_editor_node(root: Node) -> Dictionary:
 		NATIVE_TIPS_TRANSFORM,
 		NATIVE_SHORTCUT_TRANSFORM
 	)
-	if native_buttons.has(NATIVE_MODE_TRANSFORM):
-		print("found transform mode button")
+	
 	native_buttons[NATIVE_MODE_MOVE] = _find_button_by_icon_tip_or_shortcut(
 		buttons,
 		[NATIVE_ICON_MOVE],
 		NATIVE_TIPS_MOVE,
 		NATIVE_SHORTCUT_MOVE
 	)
+	
 	native_buttons[NATIVE_MODE_ROTATE] = _find_button_by_icon_tip_or_shortcut(
 		buttons,
 		[NATIVE_ICON_ROTATE],
@@ -8638,10 +8638,10 @@ func _find_button_by_icon_tip_or_shortcut(
 	var icon_button := _find_button_with_icon_names(buttons, icon_names)
 	if icon_button != null:
 		return icon_button
-	var tip_button := _find_button_with_tip_text(buttons, tip_patterns)
-	if tip_button != null:
-		return tip_button
-	return _find_button_with_shortcut_key(buttons, shortcut_key)
+	var shortcut_button := _find_button_with_shortcut_key(buttons, shortcut_key)
+	if shortcut_button != null:
+		return shortcut_button;
+	return _find_button_with_tip_text(buttons, tip_patterns)
 
 
 func _find_button_with_icon_names(buttons: Array[Button], icon_names: Array[StringName]) -> Button:

@@ -16,64 +16,64 @@ const BuildingSpecCompilerScript = preload(
 const BuildingThumbnailRendererScript = preload(
 	"res://addons/low_poly_building_editor/building_thumbnail_renderer.gd"
 )
-const Wall3DScript = preload("res://addons/low_poly_building_editor/wall_3d.gd")
-const Floor3DScript = preload("res://addons/low_poly_building_editor/floor_3d.gd")
-const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs_3d.gd")
+const Wall3DScript = preload("res://addons/low_poly_building_editor/walls/wall_3d.gd")
+const Floor3DScript = preload("res://addons/low_poly_building_editor/floors/floor_3d.gd")
+const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs/stairs_3d.gd")
 const TurningStairs3DScript = preload(
-	"res://addons/low_poly_building_editor/turning_stairs_3d.gd"
+	"res://addons/low_poly_building_editor/stairs/turning_stairs_3d.gd"
 )
 const StraightStairs3DScript = preload(
-	"res://addons/low_poly_building_editor/straight_stairs_3d.gd"
+	"res://addons/low_poly_building_editor/stairs/straight_stairs_3d.gd"
 )
 const LShapedStairs3DScript = preload(
-	"res://addons/low_poly_building_editor/l_shaped_stairs_3d.gd"
+	"res://addons/low_poly_building_editor/stairs/l_shaped_stairs_3d.gd"
 )
 const DoubleLShapedStairs3DScript = preload(
-	"res://addons/low_poly_building_editor/double_l_shaped_stairs_3d.gd"
+	"res://addons/low_poly_building_editor/stairs/double_l_shaped_stairs_3d.gd"
 )
 const UShapedStairs3DScript = preload(
-	"res://addons/low_poly_building_editor/u_shaped_stairs_3d.gd"
+	"res://addons/low_poly_building_editor/stairs/u_shaped_stairs_3d.gd"
 )
 const WinderStairs3DScript = preload(
-	"res://addons/low_poly_building_editor/winder_stairs_3d.gd"
+	"res://addons/low_poly_building_editor/stairs/winder_stairs_3d.gd"
 )
 const SpiralStairs3DScript = preload(
-	"res://addons/low_poly_building_editor/spiral_stairs_3d.gd"
+	"res://addons/low_poly_building_editor/stairs/spiral_stairs_3d.gd"
 )
-const Rail3DScript = preload("res://addons/low_poly_building_editor/rail_3d.gd")
+const Rail3DScript = preload("res://addons/low_poly_building_editor/rails/rail_3d.gd")
 const StandardRailGeometryScript = preload(
-	"res://addons/low_poly_building_editor/standard_rail_geometry_3d.gd"
+	"res://addons/low_poly_building_editor/rails/standard_rail_geometry_3d.gd"
 )
-const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillar_3d.gd")
-const Roof3DScript = preload("res://addons/low_poly_building_editor/roof_3d.gd")
+const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillars/pillar_3d.gd")
+const Roof3DScript = preload("res://addons/low_poly_building_editor/roofs/roof_3d.gd")
 const RoofStyleGeometryFactory := preload(
-	"res://addons/low_poly_building_editor/roof_style_geometry_factory_3d.gd"
+	"res://addons/low_poly_building_editor/roofs/roof_style_geometry_factory_3d.gd"
 )
-const RoundPillar3DScript = preload("res://addons/low_poly_building_editor/round_pillar_3d.gd")
-const SquarePillar3DScript = preload("res://addons/low_poly_building_editor/square_pillar_3d.gd")
-const FlatRoof3DScript = preload("res://addons/low_poly_building_editor/flat_roof_3d.gd")
-const SlopedRoof3DScript = preload("res://addons/low_poly_building_editor/sloped_roof_3d.gd")
-const GableRoof3DScript = preload("res://addons/low_poly_building_editor/gable_roof_3d.gd")
-const HipRoof3DScript = preload("res://addons/low_poly_building_editor/hip_roof_3d.gd")
-const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/building_opening_3d.gd")
-const Window3DScript = preload("res://addons/low_poly_building_editor/window_3d.gd")
-const Door3DScript = preload("res://addons/low_poly_building_editor/door_3d.gd")
-const SingleWindow3DScript = preload("res://addons/low_poly_building_editor/single_window_3d.gd")
-const DoubleWindow3DScript = preload("res://addons/low_poly_building_editor/double_window_3d.gd")
-const GridWindow3DScript = preload("res://addons/low_poly_building_editor/grid_window_3d.gd")
-const LouveredWindow3DScript = preload("res://addons/low_poly_building_editor/louvered_window_3d.gd")
-const TransomWindow3DScript = preload("res://addons/low_poly_building_editor/transom_window_3d.gd")
-const ArchedWindow3DScript = preload("res://addons/low_poly_building_editor/arched_window_3d.gd")
-const WindowFrame3DScript = preload("res://addons/low_poly_building_editor/window_frame_3d.gd")
-const SingleDoor3DScript = preload("res://addons/low_poly_building_editor/single_door_3d.gd")
-const DoubleDoor3DScript = preload("res://addons/low_poly_building_editor/double_door_3d.gd")
-const GlazedDoor3DScript = preload("res://addons/low_poly_building_editor/glazed_door_3d.gd")
-const GlazedGridDoor3DScript = preload("res://addons/low_poly_building_editor/glazed_grid_door_3d.gd")
-const PanelDoor3DScript = preload("res://addons/low_poly_building_editor/panel_door_3d.gd")
-const DutchDoor3DScript = preload("res://addons/low_poly_building_editor/dutch_door_3d.gd")
-const SingleDoorFrame3DScript = preload("res://addons/low_poly_building_editor/single_door_frame_3d.gd")
-const DoubleDoorFrame3DScript = preload("res://addons/low_poly_building_editor/double_door_frame_3d.gd")
-const WallSegment3DScript = preload("res://addons/low_poly_building_editor/wall_segment_3d.gd")
+const RoundPillar3DScript = preload("res://addons/low_poly_building_editor/pillars/round_pillar_3d.gd")
+const SquarePillar3DScript = preload("res://addons/low_poly_building_editor/pillars/square_pillar_3d.gd")
+const FlatRoof3DScript = preload("res://addons/low_poly_building_editor/roofs/flat_roof_3d.gd")
+const SlopedRoof3DScript = preload("res://addons/low_poly_building_editor/roofs/sloped_roof_3d.gd")
+const GableRoof3DScript = preload("res://addons/low_poly_building_editor/roofs/gable_roof_3d.gd")
+const HipRoof3DScript = preload("res://addons/low_poly_building_editor/roofs/hip_roof_3d.gd")
+const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/openings/building_opening_3d.gd")
+const Window3DScript = preload("res://addons/low_poly_building_editor/openings/window_3d.gd")
+const Door3DScript = preload("res://addons/low_poly_building_editor/openings/door_3d.gd")
+const SingleWindow3DScript = preload("res://addons/low_poly_building_editor/openings/single_window_3d.gd")
+const DoubleWindow3DScript = preload("res://addons/low_poly_building_editor/openings/double_window_3d.gd")
+const GridWindow3DScript = preload("res://addons/low_poly_building_editor/openings/grid_window_3d.gd")
+const LouveredWindow3DScript = preload("res://addons/low_poly_building_editor/openings/louvered_window_3d.gd")
+const TransomWindow3DScript = preload("res://addons/low_poly_building_editor/openings/transom_window_3d.gd")
+const ArchedWindow3DScript = preload("res://addons/low_poly_building_editor/openings/arched_window_3d.gd")
+const WindowFrame3DScript = preload("res://addons/low_poly_building_editor/openings/window_frame_3d.gd")
+const SingleDoor3DScript = preload("res://addons/low_poly_building_editor/openings/single_door_3d.gd")
+const DoubleDoor3DScript = preload("res://addons/low_poly_building_editor/openings/double_door_3d.gd")
+const GlazedDoor3DScript = preload("res://addons/low_poly_building_editor/openings/glazed_door_3d.gd")
+const GlazedGridDoor3DScript = preload("res://addons/low_poly_building_editor/openings/glazed_grid_door_3d.gd")
+const PanelDoor3DScript = preload("res://addons/low_poly_building_editor/openings/panel_door_3d.gd")
+const DutchDoor3DScript = preload("res://addons/low_poly_building_editor/openings/dutch_door_3d.gd")
+const SingleDoorFrame3DScript = preload("res://addons/low_poly_building_editor/openings/single_door_frame_3d.gd")
+const DoubleDoorFrame3DScript = preload("res://addons/low_poly_building_editor/openings/double_door_frame_3d.gd")
+const WallSegment3DScript = preload("res://addons/low_poly_building_editor/walls/wall_segment_3d.gd")
 const HUMAN_BODY_3D_SCENE := preload("res://characters/human_body_3d.tscn")
 const TEST_ROOF_ANGLE_DEGREES := 40.0
 const TEST_ROOF_ALT_ANGLE_DEGREES := 30.0
