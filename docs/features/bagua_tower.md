@@ -57,6 +57,7 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
 - `resident_catalog.gd` owns the authored beat gates and `landmark_states` fields for `tower_keeper`.
 - `bagua_tower.tscn` owns the synthesis chamber world subject inside the reusable tower scene, while StoryEvent bindings decide when that hotspot is visible and what it does.
 - `bagua_tower_stylized_3d.tscn` is a standalone, reference-photo-derived low-poly concept generated through the Low-Poly Building Editor API. It is editable building content for the parallel 3D exploration lane and is not wired into the current 2D landmark or story flow.
+- The reproducible 3D generator uses the current typed factory contract, including polygon floors for the rear curved veranda and semicircular stair, exact-count `Rail3D` balustrades, typed facade openings, flat and hip roof composition, and the faceted dome roof. The front elevation supplies the straight seven-bay facade, central glazed entrance and stair, basement arcade, brick end bays, and pilaster rhythm; the photographic references supply the curved rear loggia, its basement arches, stacked galleries, and monumental columns. Both faces lead to the octagonal roof terrace, circular drum, and red dome. The generator writes separate straight-front and curved-facade previews for visual review.
 
 ## Relevant Files
 
