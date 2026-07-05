@@ -21,6 +21,9 @@ const OUTPUT_PREVIEW := "res://design/examples/bagua_tower_stylized_3d.png"
 const OUTPUT_CURVED_PREVIEW := (
 	"res://design/examples/bagua_tower_stylized_3d_curved_facade.png"
 )
+const FOOTPRINT_AXIS_SCALE := 0.5
+const FOOTPRINT_AREA_RATIO := FOOTPRINT_AXIS_SCALE * FOOTPRINT_AXIS_SCALE
+const SIMPLIFICATION_TARGET := 0.1
 
 const CREAM := Color("#d8d0bc")
 const WARM_WHITE := Color("#e8e2d5")
@@ -95,12 +98,14 @@ func _build_reference_scene() -> Building3DScript:
 	var building := Building3DScript.new() as Building3DScript
 	building.name = "BaguaTowerStylized3D"
 	building.set_meta("building_api", "low_poly_building_editor")
+	building.set_meta("footprint_area_ratio", FOOTPRINT_AREA_RATIO)
+	building.set_meta("simplification_target", SIMPLIFICATION_TARGET)
 	building.set_meta(
 		"building_api_features",
 		PackedStringArray([
 			"typed_openings",
 			"polygon_floors",
-			"exact_count_rails",
+			"multi_segment_rooms",
 			"typed_roofs",
 		])
 	)
@@ -110,17 +115,190 @@ func _build_reference_scene() -> Building3DScript:
 	)
 	building.set_meta(
 		"design_notes",
-		"Front-elevation-led straight facade and basement arcade, rear curved veranda, octagonal roof terrace, drum balustrade, and red dome."
+		"Simplified reference-led massing with normal-size rooms, a curved veranda, octagonal roof terrace, drum, and red dome."
 	)
 
-	_add_base_and_stairs(building)
-	_add_main_storeys(building)
-	_add_portico(building)
-	_add_roofs_and_upper_storey(building)
-	_add_drum(building)
-	_add_dome(building)
+	_add_simplified_building(building)
 	building.refresh_building_geometry_clips()
 	return building
+
+
+func _add_simplified_building(building: Building3DScript) -> void:
+	_add_floor(
+		building,
+		"MainPodium",
+		Vector3(-15.5, 0.6, -0.4),
+		Vector3(15.5, 0.6, 11.2),
+		0.6,
+		STONE
+	)
+	var main_block := _add_room(
+		building,
+		"MainBlock",
+		Vector3(-15.0, 0.65, 0.0),
+		Vector3(15.0, 0.65, 10.5),
+		5.55,
+		WARM_WHITE
+	)
+	_add_opening(
+		building,
+		main_block,
+		15.0,
+		0.0,
+		"glazed_grid_door",
+		1.55,
+		2.25,
+		true
+	)
+	var left_bay := _create_wall(
+		building,
+		Vector3(-15.0, 0.65, -0.14),
+		Vector3(-10.0, 0.65, -0.14),
+		5.55,
+		0.18,
+		BRICK
+	)
+	_attach(building, left_bay, building, "LeftBrickBay")
+	var right_bay := _create_wall(
+		building,
+		Vector3(10.0, 0.65, -0.14),
+		Vector3(15.0, 0.65, -0.14),
+		5.55,
+		0.18,
+		BRICK
+	)
+	_attach(building, right_bay, building, "RightBrickBay")
+	for bay in [left_bay, right_bay]:
+		_add_opening(
+			building,
+			bay,
+			2.5,
+			0.65,
+			"arched_window",
+			1.35,
+			1.35,
+			false
+		)
+
+	var front_stairs := BuildingFactoryScript.create_stairs_node(
+		building,
+		_scaled(Vector3(-1.75, 0.0, -2.05)),
+		_scaled(Vector3(1.75, 0.0, -0.35)),
+		{
+			"height": 0.65,
+			"step_count": 6,
+			"thickness": 0.14,
+			"color": CREAM,
+		}
+	)
+	_attach(building, front_stairs, building, "FrontEntranceSteps")
+
+	_add_roof(
+		building,
+		"MainFlatRoof",
+		Vector3(-15.15, 6.28, -0.15),
+		Vector3(15.15, 6.28, 10.7),
+		"flat",
+		0.0,
+		0.2,
+		0.2,
+		TERRACOTTA_LIGHT
+	)
+	_add_roof(
+		building,
+		"LeftHipRoof",
+		Vector3(-9.0, 6.3, 0.2),
+		Vector3(-4.65, 6.3, 9.9),
+		"hip",
+		27.0,
+		0.24,
+		0.42,
+		TERRACOTTA
+	)
+	_add_roof(
+		building,
+		"RightHipRoof",
+		Vector3(4.65, 6.3, 0.2),
+		Vector3(9.0, 6.3, 9.9),
+		"hip",
+		27.0,
+		0.24,
+		0.42,
+		TERRACOTTA
+	)
+
+	_add_room(
+		building,
+		"UpperCentralStorey",
+		Vector3(-5.2, 6.3, 2.7),
+		Vector3(5.2, 6.3, 9.8),
+		2.05,
+		WARM_WHITE
+	)
+	var upper_terrace_points := PackedVector3Array([
+		Vector3(-4.4, 8.48, 1.05),
+		Vector3(4.4, 8.48, 1.05),
+		Vector3(7.2, 8.48, 3.85),
+		Vector3(7.2, 8.48, 8.35),
+		Vector3(4.4, 8.48, 11.15),
+		Vector3(-4.4, 8.48, 11.15),
+		Vector3(-7.2, 8.48, 8.35),
+		Vector3(-7.2, 8.48, 3.85),
+	])
+	_add_floor_polygon(
+		building,
+		"UpperOctagonalTerrace",
+		upper_terrace_points,
+		0.28,
+		TERRACOTTA_LIGHT
+	)
+
+	var drum := BuildingFactoryScript.create_room_node(
+		building,
+		_scaled(Vector3(-2.76, 8.68, 3.34)),
+		_scaled(Vector3(2.76, 8.68, 8.86)),
+		2.55,
+		0.2,
+		CREAM,
+		16
+	)
+	_attach(building, drum, building, "Drum")
+	_add_dome(building)
+
+	var rear_terrace_points := _curved_rear_portico_points(
+		0.65,
+		7.0,
+		8.3,
+		13.05
+	)
+	_add_floor_polygon(
+		building,
+		"RearCurvedTerrace",
+		rear_terrace_points,
+		0.24,
+		TERRACOTTA_LIGHT
+	)
+	for column_index in range(3):
+		var column_x := -3.0 + float(column_index) * 3.0
+		var column_z := 12.0 + (0.32 if column_index == 1 else 0.0)
+		_add_pillar(
+			building,
+			"RearPorticoColumn%02d" % (column_index + 1),
+			Vector3(column_x, 0.65, column_z),
+			0.29,
+			5.55,
+			"round",
+			CREAM,
+			0.13,
+			0.11
+		)
+	_add_floor_polygon(
+		building,
+		"RearPorticoEntablature",
+		_curved_rear_portico_points(6.25, 7.0, 8.3, 12.85),
+		0.34,
+		CREAM
+	)
 
 
 func _add_base_and_stairs(building: Building3DScript) -> void:
@@ -141,18 +319,18 @@ func _add_base_and_stairs(building: Building3DScript) -> void:
 	)
 	var front_stairs := BuildingFactoryScript.create_stairs_node(
 		building,
-		Vector3(-1.75, 0.0, -2.05),
-		Vector3(1.75, 0.0, -0.35),
+		_scaled(Vector3(-1.75, 0.0, -2.05)),
+		_scaled(Vector3(1.75, 0.0, -0.35)),
 		{
-			"height": 0.65,
+			"height": _scaled_length(0.65),
 			"step_count": 6,
-			"thickness": 0.14,
+			"thickness": _scaled_length(0.14),
 			"color": CREAM,
 		}
 	)
 	_attach(building, front_stairs, building, "FrontEntranceSteps")
 
-	var basement := BuildingFactoryScript.create_wall_node(
+	var basement := _create_wall(
 		building,
 		Vector3(-9.0, 0.0, -0.18),
 		Vector3(9.0, 0.0, -0.18),
@@ -379,7 +557,7 @@ func _add_portico(building: Building3DScript) -> void:
 			0.0,
 			column_points[index + 1].z
 		)
-		var arcade_wall := BuildingFactoryScript.create_wall_node(
+		var arcade_wall := _create_wall(
 			building,
 			arcade_start,
 			arcade_end,
@@ -398,7 +576,7 @@ func _add_portico(building: Building3DScript) -> void:
 			_add_opening(
 				building,
 				arcade_wall,
-				arcade_segment.get_length() * 0.5,
+				arcade_start.distance_to(arcade_end) * 0.5,
 				0.02,
 				"arched_window",
 				1.15,
@@ -649,7 +827,7 @@ func _add_drum(building: Building3DScript) -> void:
 		var angle_1 := -PI * 0.5 + TAU * float(index + 1) / float(side_count)
 		var start := center + Vector3(cos(angle_0) * radius, 0.0, sin(angle_0) * radius)
 		var end := center + Vector3(cos(angle_1) * radius, 0.0, sin(angle_1) * radius)
-		var wall := BuildingFactoryScript.create_wall_node(
+		var wall := _create_wall(
 			building,
 			start,
 			end,
@@ -664,7 +842,7 @@ func _add_drum(building: Building3DScript) -> void:
 		_add_opening(
 			building,
 			wall,
-			segment.get_length() * 0.5,
+			start.distance_to(end) * 0.5,
 			0.38,
 			"arched_window",
 			0.62,
@@ -743,18 +921,6 @@ func _add_dome(building: Building3DScript) -> void:
 		0.0,
 		DOME_RED
 	)
-	_add_pillar(
-		building,
-		"DomeFinial",
-		Vector3(0.0, 14.72, 6.1),
-		0.055,
-		0.9,
-		"round",
-		DARK_WOOD,
-		0.0,
-		0.0,
-		8
-	)
 
 
 func _add_room(
@@ -767,10 +933,10 @@ func _add_room(
 ) -> Wall3DScript:
 	var room := BuildingFactoryScript.create_room_node(
 		building,
-		start,
-		end,
-		height,
-		0.24,
+		_scaled(start),
+		_scaled(end),
+		_scaled_length(height),
+		_scaled_length(0.24),
 		color
 	)
 	_attach(building, room, building, node_name)
@@ -787,9 +953,9 @@ func _add_floor(
 ) -> void:
 	var floor := BuildingFactoryScript.create_floor_node(
 		building,
-		start,
-		end,
-		thickness,
+		_scaled(start),
+		_scaled(end),
+		_scaled_length(thickness),
 		color
 	)
 	_attach(building, floor, building, node_name)
@@ -804,8 +970,8 @@ func _add_floor_polygon(
 ) -> void:
 	var floor := BuildingFactoryScript.create_floor_polygon_node(
 		building,
-		points,
-		thickness,
+		_scaled_points(points),
+		_scaled_length(thickness),
 		color
 	)
 	_attach(building, floor, building, node_name)
@@ -820,7 +986,7 @@ func _add_wall(
 	thickness: float,
 	color: Color
 ) -> void:
-	var wall := BuildingFactoryScript.create_wall_node(
+	var wall := _create_wall(
 		building,
 		start,
 		end,
@@ -829,6 +995,24 @@ func _add_wall(
 		color
 	)
 	_attach(building, wall, building, node_name)
+
+
+func _create_wall(
+	building: Building3DScript,
+	start: Vector3,
+	end: Vector3,
+	height: float,
+	thickness: float,
+	color: Color
+) -> Wall3DScript:
+	return BuildingFactoryScript.create_wall_node(
+		building,
+		_scaled(start),
+		_scaled(end),
+		_scaled_length(height),
+		_scaled_length(thickness),
+		color
+	)
 
 
 func _add_wall_loop(
@@ -863,17 +1047,17 @@ func _add_rail(
 ) -> void:
 	var rail := BuildingFactoryScript.create_rail_node(
 		building,
-		start,
-		end,
-		height,
-		1.0,
-		0.055,
-		0.09,
-		0.12,
+		_scaled(start),
+		_scaled(end),
+		_scaled_length(height),
+		_scaled_length(1.0),
+		_scaled_length(0.055),
+		_scaled_length(0.09),
+		_scaled_length(0.12),
 		color,
 		newel_count,
 		infill_count,
-		0.11,
+		_scaled_length(0.11),
 		0
 	)
 	_attach(building, rail, building, node_name)
@@ -892,12 +1076,12 @@ func _add_roof(
 ) -> void:
 	var roof := BuildingFactoryScript.create_roof_node(
 		building,
-		start,
-		end,
+		_scaled(start),
+		_scaled(end),
 		style,
 		angle,
-		thickness,
-		overhang,
+		_scaled_length(thickness),
+		_scaled_length(overhang),
 		color
 	)
 	_attach(building, roof, building, node_name)
@@ -917,16 +1101,16 @@ func _add_pillar(
 ) -> void:
 	var pillar := BuildingFactoryScript.create_pillar_node(
 		building,
-		base,
-		radius,
-		height,
+		_scaled(base),
+		_scaled_length(radius),
+		_scaled_length(height),
 		sides,
 		style,
 		color,
-		rim_height,
-		rim_outset,
-		rim_height,
-		rim_outset
+		_scaled_length(rim_height),
+		_scaled_length(rim_outset),
+		_scaled_length(rim_height),
+		_scaled_length(rim_outset)
 	)
 	_attach(building, pillar, building, node_name)
 
@@ -1032,12 +1216,17 @@ func _add_opening(
 	var settings := {
 		"style": style,
 		"node_name": "Door" if is_door else "Window",
-		"width": width,
-		"height": height,
-		"frame_thickness": 0.09,
+		"width": _scaled_length(width),
+		"height": _scaled_length(height),
+		"frame_thickness": _scaled_length(0.09),
+		"frame_depth": _scaled_length(0.08),
+		"frame_protrusion": _scaled_length(0.02),
 		"frame_color": CREAM,
+		"window_pane_depth": _scaled_length(0.03),
 		"window_pane_color": GLASS,
+		"door_panel_depth": _scaled_length(0.05),
 		"door_panel_color": DARK_WOOD,
+		"door_glass_depth": _scaled_length(0.025),
 		"door_glass_color": GLASS,
 		"show_bottom_frame": !allow_base_edge,
 		"allow_base_edge": allow_base_edge,
@@ -1048,8 +1237,8 @@ func _add_opening(
 	var opening := BuildingFactoryScript.create_opening_node(
 		wall,
 		segment_index,
-		distance,
-		sill_height,
+		_scaled_horizontal_length(distance),
+		_scaled_length(sill_height),
 		-1.0,
 		settings
 	)
@@ -1067,6 +1256,29 @@ func _add_opening(
 		"%s%02d" % [String(settings["node_name"]), opening_index]
 	)
 	wall.rebuild_wall_mesh()
+
+
+func _scaled(point: Vector3) -> Vector3:
+	return Vector3(
+		point.x * FOOTPRINT_AXIS_SCALE,
+		point.y,
+		point.z * FOOTPRINT_AXIS_SCALE
+	)
+
+
+func _scaled_points(points: PackedVector3Array) -> PackedVector3Array:
+	var result := PackedVector3Array()
+	for point in points:
+		result.append(_scaled(point))
+	return result
+
+
+func _scaled_length(value: float) -> float:
+	return value
+
+
+func _scaled_horizontal_length(value: float) -> float:
+	return value * FOOTPRINT_AXIS_SCALE
 
 
 func _attach(
