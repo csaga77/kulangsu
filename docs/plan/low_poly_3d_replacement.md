@@ -243,6 +243,11 @@ result-equality comparison against a 2D dispatch of the same beat.
    shell (title, HUD, journal, pause, save/continue) without deleting the 2D stack — the intended way
    to validate the whole flow before the final decision. The hard flip + 2D deletion stays gated on
    the runtime-direction decision below.
+   *Full-shell validation passed (in-editor, Godot 4.7):* title → New Game → traveler setup → 3D
+   overworld all worked; the HUD (pinned lead, status panel, contextual hints), autosave feedback,
+   resident talk with real story progression (task advanced, next-beat hint surfaced), journal
+   unlock-gating, and location sync all composed correctly over the 3D viewport with no integration
+   errors. The toggle was returned to `false` after the run.
 4. Delete the 2D render stack listed in "What Gets Replaced," and remove now-dead `preload`/
    `ext_resource` references.
 5. Run the full regression suite and the standard main-flow validation; confirm no scene or resource
