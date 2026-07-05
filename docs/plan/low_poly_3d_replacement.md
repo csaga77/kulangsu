@@ -94,6 +94,9 @@ to Phase D until all are recorded green.
 
 - **A. Correctness baseline.** All headless smoke scenes (actor, collision, terrain/water, camera
   occlusion, building tour, combined world) return process status `0`.
+  *Status: green.* `scenes/tests/test_game_world_3d.tscn` passes (`PASS: game_world_3d smoke test`,
+  exit 0), validating world build, terrain, player spawn, five landmark anchors, resident spawning,
+  registered story subjects, and a resident talk dispatch through the shared story services.
 - **B. One-landmark interaction slice.** Piano Ferry slice proves approach, deterministic prompt
   selection, one subject dispatch through existing story services, camera-occluder fade, readable
   scale, and one documented resume anchor — without touching `game_main.tscn`.
@@ -186,8 +189,12 @@ scene under `scenes/tests/` and a green headless run before the next begins:
    `ResidentSpawner` uses, placed at its landmark anchor (tunnel entry/portal anchors cluster at
    their tunnel proxy until 3D interiors exist). Each resident carries an `npc:<id>` `StorySubject3D`
    so talking routes through the same `activate_story_subject(...)` path; the returned dialogue line
-   surfaces via save-status until speech balloons are anchored (item 8). Still needs routed NPC
-   movement, tunnel visibility, per-resident model customization, and engine validation.
+   surfaces via save-status until speech balloons are anchored (item 8).
+   `characters/control/resident_controller_3d.gd` (a `BaseController3D`) now gives each resident a
+   calm local wander around its spawn anchor (stroll to a random nearby point, pause, repeat) with a
+   stuck-timeout, gravity-grounded and wall-sliding via `HumanBody3D` + world colliders. Still needs
+   authored 3D routes (vs. free wander), tunnel visibility, per-resident model customization, and
+   engine validation.
 7. **Weather + atmosphere** — re-target fog/rain/cloud-shadow/ground-impact passes to 3D space and
    register the 3D world as the weather host with `WeatherManager`.
    *Status: base atmosphere added; cycled passes pending.* `game_world_3d.tscn` now has a

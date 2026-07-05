@@ -17,12 +17,16 @@ extends RefCounted
 const HUMAN_BODY_3D_SCENE: PackedScene = preload("res://characters/human_body_3d.tscn")
 const STORY_SUBJECT_3D := preload("res://game/story_subject_3d.gd")
 const SPEECH_BALLOON_3D := preload("res://common/gui/speech_balloon_3d.gd")
+const RESIDENT_CONTROLLER_3D := preload("res://characters/control/resident_controller_3d.gd")
 const STORY_SUBJECT_GROUP := "story_subject_3d"
 # Node name the world scene looks up to surface a resident's dialogue line.
 const BALLOON_NODE_NAME := "Balloon3D"
 
 # Resident talk range (XZ), used by the world scene's proximity picker.
 const RESIDENT_TALK_RADIUS := 2.6
+# Calm stroll pace and how far residents wander from their spawn anchor.
+const RESIDENT_WALK_SPEED := 4.0
+const RESIDENT_WANDER_RADIUS := 5.0
 
 
 func spawn_residents(world_root: Node3D, app_state: Node, landmark_nodes: Dictionary) -> Node3D:
@@ -63,6 +67,7 @@ func spawn_residents(world_root: Node3D, app_state: Node, landmark_nodes: Dictio
 		anchor_counts[anchor_id] = ring_index + 1
 		npc.global_position = anchor_node.global_position + _ring_offset(ring_index)
 
+		_attach_wander_controller(npc)
 		_attach_talk_subject(npc, resident_id, app_state)
 		_attach_speech_balloon(npc)
 
@@ -104,6 +109,16 @@ func _attach_talk_subject(npc: Node3D, resident_id: String, app_state: Node) -> 
 	subject.set("interaction_radius", RESIDENT_TALK_RADIUS)
 	npc.add_child(subject)
 	subject.add_to_group(STORY_SUBJECT_GROUP)
+
+
+func _attach_wander_controller(npc: Node3D) -> void:
+	if "walk_speed" in npc:
+		npc.set("walk_speed", RESIDENT_WALK_SPEED)
+	var controller := RESIDENT_CONTROLLER_3D.new()
+	# Assigning the controller runs HumanBody3D._setup_controller, binding m_character.
+	npc.set("controller", controller)
+	if controller.has_method("configure"):
+		controller.configure(npc.global_position, RESIDENT_WANDER_RADIUS)
 
 
 func _attach_speech_balloon(npc: Node3D) -> void:
