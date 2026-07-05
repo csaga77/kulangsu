@@ -388,8 +388,8 @@ func _commit_wall(coordinator: Building3DScript, local_start: Vector3, local_end
 	undo_redo.create_action("Create Wall")
 	undo_redo.add_do_reference(wall)
 	undo_redo.add_do_method(
-		self,
-		"_do_add_node_and_refresh_wall_intersections",
+		m_context,
+		"do_add_node_and_refresh_wall_intersections",
 		coordinator,
 		wall,
 		scene_root,
@@ -434,8 +434,8 @@ func _commit_room(
 	undo_redo.create_action("Create Room")
 	undo_redo.add_do_reference(wall)
 	undo_redo.add_do_method(
-		self,
-		"_do_add_node_and_refresh_wall_intersections",
+		m_context,
+		"do_add_node_and_refresh_wall_intersections",
 		coordinator,
 		wall,
 		scene_root,
@@ -443,8 +443,8 @@ func _commit_room(
 		coordinator
 	)
 	undo_redo.add_undo_method(
-		self,
-		"_undo_remove_node_and_refresh_wall_intersections",
+		m_context,
+		"undo_remove_node_and_refresh_wall_intersections",
 		coordinator,
 		wall,
 		coordinator
@@ -740,8 +740,8 @@ func _commit_delete_zero_length_wall(
 	undo_redo.add_undo_reference(wall)
 	undo_redo.add_do_method(m_context, "undo_remove_node_and_refresh_wall_intersections", parent, wall, coordinator)
 	undo_redo.add_undo_method(
-		self,
-		"_do_add_node_and_refresh_wall_intersections",
+		m_context,
+		"do_add_node_and_refresh_wall_intersections",
 		parent,
 		wall,
 		scene_root,

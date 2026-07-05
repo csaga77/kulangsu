@@ -1,22 +1,47 @@
 # Plugin Split Plan: Tool Controllers for `plugin.gd`
 
-Status: all seven stages implemented, pending final editor validation. Final
-measurements: `plugin.gd` 522 lines / 49 functions / 13 member variables
-(from 9,268 / 441 / 173); largest controller is roof at 1,836 lines. Tool
-keys (stairs/roof R-rotation, floor/roof polygon Enter-close, prop R) live in
-their controllers' `handle_input`; the plugin key section keeps only Escape.
-The shared wall-query helpers (`raycast_walls`, `intersect_wall_box`,
-`find_wall_from_collider`, `refresh_wall_intersections`,
-`can_place_wall_opening`) and `m_preview_parent` moved into the context;
-prop/opening snapping follows the wall grid through
-`BuildingToolContext.default_grid_step()`, backed by a grid-step cache on the
-plugin. Remaining transitional context callbacks:
-`_apply_debug_wireframe_to_node` and `_refresh_dock_context`. Delete this
-file (or fold the durable parts into `contract.md`) once editor validation
-passes. This is the staged extraction plan for splitting
-`../plugin.gd` (9.2k lines, 441 functions, 173 member variables) into per-tool
-controller classes. Delete this file (or fold the durable parts into
-[`contract.md`](contract.md) and [`feature.md`](feature.md)) once the split ships.
+Status: all seven stages implemented and post-reviewed; pending final editor
+validation. Delete this file (or fold the durable parts into
+[`contract.md`](contract.md) and [`feature.md`](feature.md)) once that
+validation passes.
+
+## As-Built Summary
+
+- `plugin.gd` is 520 lines / 49 functions / 13 member variables (from
+  9,268 / 441 / 173); the largest controller is roof at 1,836 lines. All
+  size targets met.
+- Tool keys (stairs/roof R-rotation, floor/roof polygon Enter-close, prop R)
+  live in their controllers' `handle_input`; the plugin key section keeps
+  only Escape, and right-click cancel stays global.
+- The shipped controller API is `handle_input`, `apply_settings`, and
+  `cancel_preview` (the sketched `enter_tool`/`exit_tool`/
+  `handle_overlay_input` were never needed — overlay input funnels through
+  `_forward_3d_gui_input`). The placement controller deviates with
+  `apply_prop_settings`/`apply_window_settings`/`apply_door_settings`
+  because it owns three dock sections under one instance registered for the
+  window, door, and prop modes.
+- The shared wall-query helpers (`raycast_walls`, `intersect_wall_box`,
+  `find_wall_from_collider`, `refresh_wall_intersections`,
+  `can_place_wall_opening`) and `m_preview_parent` moved into the context;
+  prop/opening snapping follows the wall grid through
+  `BuildingToolContext.default_grid_step()`, backed by a grid-step cache on
+  the plugin (`m_wall_grid_step`).
+- Remaining transitional context callbacks: `_apply_debug_wireframe_to_node`
+  (display cluster) and `_refresh_dock_context` (dock wiring). Both are
+  documented in the context header.
+
+## Post-Split Review Findings (fixed)
+
+- **Multiline undo-bind bug.** Six `add_do_method`/`add_undo_method` calls in
+  the roof and wall controllers were formatted across multiple lines, so the
+  extraction's single-line substitution table left them binding retired
+  plugin method names on `self` (broken undo for polygon-flat-roof creation,
+  roof creation, and two wall commit paths). Fixed and re-verified with a
+  multiline-aware sweep across every controller: all binds now resolve on
+  their targets. Lesson for any future mechanical extraction: match and
+  verify call-site patterns with `re.S`, never line-anchored regexes.
+- Dead `OPENING_*_META` alias constants removed from `plugin.gd` (their
+  self-referential definitions defeated the naive unused-const counter).
 
 ## Why
 
@@ -202,10 +227,29 @@ undo, redo, Escape-cancel).
 
 ## Acceptance
 
-- `plugin.gd` under 1,000 lines; each controller under 2,000.
-- `tests/test_low_poly_building_editor_3d.tscn`, `tests/test_dome_roof_3d.tscn`,
-  and the variants gallery all pass.
-- Manual checklist green for all nine tools (draw, preview, commit, drag-edit,
-  rotation keys where applicable, undo/redo, Escape/right-click cancel,
-  polygon Enter-close for floor/roof, native-toolbar mutual exclusivity).
-- Contract, feature, README, and module-map docs updated in the final patch.
+- [x] `plugin.gd` under 1,000 lines; each controller under 2,000.
+- [ ] `tests/test_low_poly_building_editor_3d.tscn`,
+  `tests/test_dome_roof_3d.tscn`, and the variants gallery all pass
+  (pending — no Godot run since the split).
+- [ ] Manual checklist green for all nine tools (draw, preview, commit,
+  drag-edit, rotation keys where applicable, undo/redo, Escape/right-click
+  cancel, polygon Enter-close for floor/roof, native-toolbar mutual
+  exclusivity). Give extra attention to undo/redo on every commit path —
+  the one bug found in review was a broken undo bind.
+- [x] Contract, feature, README, and module-map docs updated.
+
+## Follow-On Candidates (out of scope for this plan)
+
+- `low_poly_building_editor_dock.gd` is now the largest file in the plugin
+  (2,866 lines / 143 functions). The same extraction pattern applies —
+  per-tool settings sections behind a small section base — and is lower risk
+  than the plugin split since the dock is plain UI.
+- Controller-level headless tests are now feasible: instantiate
+  `BuildingToolContext` plus one controller and drive synthetic input events
+  (draw → commit → undo per tool). One such test per controller would have
+  caught the undo-bind bug mechanically.
+- Retire the two remaining transitional context callbacks by moving the
+  debug-wireframe cluster into the context (or a display module) and giving
+  the dock-context refresh a first-class home.
+- `BuildingFactory.create_pillar_node` (12 positional parameters) still
+  awaits the settings-dictionary treatment `create_stairs_node` received.

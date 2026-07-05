@@ -37,8 +37,6 @@ const FloorToolControllerScript = preload("res://addons/low_poly_building_editor
 const RoofToolControllerScript = preload("res://addons/low_poly_building_editor/editor/roof_tool_controller.gd")
 const WallToolControllerScript = preload("res://addons/low_poly_building_editor/editor/wall_tool_controller.gd")
 const PlacementToolControllerScript = preload("res://addons/low_poly_building_editor/editor/placement_tool_controller.gd")
-const OPENING_SILL_META := BuildingFactoryScript.OPENING_SILL_META
-const OPENING_ALLOW_BASE_META := BuildingFactoryScript.OPENING_ALLOW_BASE_META
 const BUILDING_PROP_META := &"low_poly_building_editor_prop"
 
 var m_dock: Control

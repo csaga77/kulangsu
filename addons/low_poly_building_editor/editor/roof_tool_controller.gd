@@ -289,8 +289,8 @@ func _commit_roof_polygon(
 	undo_redo.create_action("Create Polygon Flat Roof")
 	undo_redo.add_do_reference(roof)
 	undo_redo.add_do_method(
-		self,
-		"_do_add_node_and_refresh_roofs",
+		m_context,
+		"do_add_node_and_refresh_roofs",
 		coordinator,
 		roof,
 		scene_root,
@@ -298,8 +298,8 @@ func _commit_roof_polygon(
 		coordinator
 	)
 	undo_redo.add_undo_method(
-		self,
-		"_undo_remove_node_and_refresh_roofs",
+		m_context,
+		"undo_remove_node_and_refresh_roofs",
 		coordinator,
 		roof,
 		coordinator
