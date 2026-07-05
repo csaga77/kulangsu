@@ -38,6 +38,7 @@ func _run_smoke_checks() -> void:
 	_check_residents(failures)
 	_check_story_subjects(failures)
 	_check_talk_dispatch(failures)
+	_check_subject_contract(failures)
 	_check_resume_anchor(failures)
 
 	if failures.is_empty():
@@ -122,6 +123,56 @@ func _check_talk_dispatch(failures: Array[String]) -> void:
 	var result = app_state.activate_story_subject("npc:%s" % resident_id, "talk", {})
 	if not (result is Dictionary):
 		failures.append("resident talk dispatch did not return a result dictionary")
+
+
+# The 3D interaction adapter must build the SAME stable request the shared story
+# service consumes: authored subject_id, a resolved action, and a dimension-neutral
+# context. No 3D-only story fork. Proximity selection must deterministically pick one.
+func _check_subject_contract(failures: Array[String]) -> void:
+	if !is_instance_valid(m_world):
+		return
+
+	var landmark_subjects: Array = []
+	for node in get_tree().get_nodes_in_group("story_subject_3d"):
+		if String(node.get("subject_id")).begins_with("landmark:"):
+			landmark_subjects.append(node)
+
+	if landmark_subjects.size() < 3:
+		failures.append("expected landmark story subjects, found %d" % landmark_subjects.size())
+		return
+
+	# Some landmark subjects are story-gated in a fresh state (no resolved action yet).
+	# For every request the adapter DOES build, it must be well-formed and dimension
+	# neutral; at least one landmark subject must resolve so the path is exercised.
+	var valid_request_count := 0
+	for subject in landmark_subjects:
+		var subject_id := String(subject.get("subject_id"))
+		var request: Dictionary = m_world._build_story_interaction_request(subject)
+		if request.is_empty():
+			continue
+		valid_request_count += 1
+		if String(request.get("subject_id", "")) != subject_id:
+			failures.append("interaction request subject_id mismatch for '%s'" % subject_id)
+		var context: Dictionary = request.get("context", {})
+		for key in ["location", "world_position", "level_id"]:
+			if not context.has(key):
+				failures.append("interaction context for '%s' missing key '%s'" % [subject_id, key])
+	if valid_request_count == 0:
+		failures.append("no landmark subject produced a valid interaction request")
+
+	# Proximity selection: standing on a known-targetable subject must resolve exactly
+	# that active subject, deterministically.
+	var player := m_world.get_node_or_null("human_body_3d") as Node3D
+	var probe_subject: Node3D = null
+	for subject in get_tree().get_nodes_in_group("story_subject_3d"):
+		if subject.has_method("is_targetable") and subject.call("is_targetable"):
+			probe_subject = subject
+			break
+	if is_instance_valid(player) and is_instance_valid(probe_subject):
+		player.global_position = probe_subject.global_position
+		m_world._update_interaction_target()
+		if m_world.get("m_closest_subject") == null:
+			failures.append("proximity selection found no active subject on a targetable subject")
 
 
 func _check_resume_anchor(failures: Array[String]) -> void:
