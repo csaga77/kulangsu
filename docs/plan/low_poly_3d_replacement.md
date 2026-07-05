@@ -102,6 +102,12 @@ to Phase D until all are recorded green.
   scale, and one documented resume anchor — without touching `game_main.tscn`.
 - **C. Visual + performance acceptance.** Fixed-camera evidence under `design/qa/low_poly_3d/` and a
   `performance.md` meeting the plan's frame-time, draw-call, triangle, memory, and rebuild budgets.
+  *Status: visual acceptance recorded, formal perf measurement pending.* `design/qa/low_poly_3d/acceptance.md`
+  records the 2026-07-06 in-editor visual acceptance (nonblank coherent frames, readable actors,
+  recognizable landmark approach, legible water/seabed, smoke test green, full-shell integration).
+  `design/qa/low_poly_3d/performance.md` records the render environment (Metal Forward+, Apple M5,
+  Godot 4.7) and qualitative smoothness; the fixed-camera PNG captures and the formal release-build
+  p95/draw-call/triangle/memory measurement at 1920×1080 are still to be captured.
 
 If any gate fails, the cutover stalls at that gate. This plan's later phases assume all three hold.
 
