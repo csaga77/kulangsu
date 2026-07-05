@@ -1,0 +1,34 @@
+{
+	"errors": [],
+	"ok": true,
+	"output": "res://architecture/trinity_church/trinity_church_stylized_3d.tscn",
+	"preview": "res://architecture/trinity_church/trinity_church_preview.png",
+	"resolved": {
+		"building_name": "TrinityChurchStylized3D",
+		"door_style": "panel_door",
+		"entrance_segment": 0,
+		"footprint_cells": [
+			18,
+			18
+		],
+		"generator_version": 1,
+		"grid_step": 0.5,
+		"node_count": 77,
+		"reference_features": [
+			"cruciform_plan",
+			"broad_stone_steps",
+			"brick_pilasters",
+			"white_classical_pediments",
+			"terracotta_hip_roofs",
+			"octagonal_lantern",
+			"dark_cupola",
+			"red_cross"
+		],
+		"roof_style": "hip",
+		"schema_version": 1,
+		"seed": 19011218,
+		"structural_signature": 120925870,
+		"window_style": "arched_window"
+	},
+	"warnings": []
+}

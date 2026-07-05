@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "generator_version": 1,
+  "name": "TrinityChurchStylized3D",
+  "seed": 19011218,
+  "grid_step": 0.5,
+  "footprint_cells": [18, 18],
+  "storeys": 1,
+  "variation": {
+    "footprint_jitter_cells": [0, 0]
+  },
+  "wall": {
+    "height": 4.8,
+    "thickness": 0.28,
+    "color": "#a84936ff"
+  },
+  "floor": {
+    "thickness": 0.65,
+    "color": "#c8bdaaff"
+  },
+  "facade": {
+    "door_style": "panel_door",
+    "entrance_segment": 0,
+    "door_width": 1.6,
+    "door_height": 2.8,
+    "door_color": "#4d2d25ff",
+    "window_style": "arched_window",
+    "window_count_per_wall": 0,
+    "window_width": 1.05,
+    "window_height": 2.45,
+    "window_sill_height": 0.82,
+    "window_pane_color": "#627986b8",
+    "frame_color": "#eee8dcff",
+    "porch_pillars": false,
+    "pillar_style": "square",
+    "pillar_radius": 0.22
+  },
+  "roof": {
+    "style": "hip",
+    "angle_degrees": 31.0,
+    "thickness": 0.18,
+    "overhang": 0.34,
+    "color": "#d76543ff"
+  }
+}
