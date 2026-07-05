@@ -50,12 +50,16 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
 - `resident_catalog.gd` still owns Caretaker Lian's handoff beat and is what emits the ferry reward event through its `landmark_reward` key.
 - `resident_catalog.gd` owns Caretaker Lian's gate logic and the Trinity Church handoff beat.
 - `piano_ferry.tscn` owns Piano Ferry world-subject placement; `AppState` distinguishes the onboarding harbor clue and the final harbor-stage performance point by landmark id.
+- `architecture/piano_ferry/piano_ferry_stylized_3d.tscn` is an editable, reference-photo-derived Low-Poly Building Editor concept for the parallel 3D prototype lane. Its versioned `BuildingSpec` remains standalone from the current 2D runtime scene.
 - `main.gd` and `scenes/game_main.gd` query `AppState.is_journal_unlocked()` to keep controls text and journal access in sync with the onboarding state.
 
 ## Relevant Files
 
 - Scenes:
   - [`../../architecture/piano_ferry.tscn`](../../architecture/piano_ferry.tscn)
+  - [`../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn`](../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn)
+  - [`../../architecture/piano_ferry/generate_stylized_3d.gd`](../../architecture/piano_ferry/generate_stylized_3d.gd)
+  - [`../../architecture/piano_ferry/piano_ferry_building_spec.json`](../../architecture/piano_ferry/piano_ferry_building_spec.json)
   - [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn)
 - Scripts:
   - [`../../game/app_state.gd`](../../game/app_state.gd)

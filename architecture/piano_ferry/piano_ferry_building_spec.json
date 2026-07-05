@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "generator_version": 1,
+  "name": "PianoFerryStylized3D",
+  "seed": 314159,
+  "grid_step": 0.5,
+  "footprint_cells": [60, 18],
+  "storeys": 1,
+  "variation": {
+    "footprint_jitter_cells": [0, 0]
+  },
+  "wall": {
+    "height": 4.2,
+    "thickness": 0.28,
+    "color": "#eeeDE6ff"
+  },
+  "floor": {
+    "thickness": 0.18,
+    "color": "#aaa9a3ff"
+  },
+  "facade": {
+    "door_style": "glazed_grid_door",
+    "entrance_segment": 0,
+    "door_width": 2.4,
+    "door_height": 3.0,
+    "door_color": "#4d5356ff",
+    "window_style": "grid_window",
+    "window_count_per_wall": 8,
+    "window_width": 2.4,
+    "window_height": 2.0,
+    "window_sill_height": 1.15,
+    "window_pane_color": "#53646dbf",
+    "frame_color": "#f5f4efff",
+    "porch_pillars": true,
+    "pillar_style": "square",
+    "pillar_radius": 0.18
+  },
+  "roof": {
+    "style": "flat",
+    "angle_degrees": 0.0,
+    "thickness": 0.24,
+    "overhang": 0.65,
+    "color": "#f7f5efff"
+  }
+}
