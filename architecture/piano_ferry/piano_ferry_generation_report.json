@@ -12,27 +12,33 @@
 			18
 		],
 		"footprint_size": [
-			30.0,
-			9.0
+			7.5,
+			2.25
 		],
 		"generator_version": 1,
-		"grid_step": 0.5,
+		"grid_step": 0.125,
+		"horizontal_footprint_scale": 0.25,
 		"node_count": 26,
 		"reference_canopy": {
-			"angle_degrees": 18.0,
+			"angle_degrees": 52.45,
 			"eave_height": 4.42,
 			"footprint": [
-				2.0,
-				0.45,
-				18.5,
-				8.55
+				0.5,
+				0.1125,
+				4.625,
+				2.1375
 			],
 			"style": "dome"
 		},
 		"roof_style": "flat",
+		"root_scale": [
+			1.0,
+			1.0,
+			1.0
+		],
 		"schema_version": 1,
 		"seed": 314159,
-		"structural_signature": 3962122083,
+		"structural_signature": 1580129095,
 		"window_count": 18,
 		"window_style": "grid_window"
 	},

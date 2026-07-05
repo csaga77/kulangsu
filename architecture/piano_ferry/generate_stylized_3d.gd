@@ -55,11 +55,13 @@ func _run_deferred() -> void:
 	_apply_reference_roof(building)
 	var resolved: Dictionary = compile_result.get("resolved", {}).duplicate(true)
 	resolved["node_count"] = _count_authored_nodes(building)
+	resolved["horizontal_footprint_scale"] = 0.25
+	resolved["root_scale"] = [1.0, 1.0, 1.0]
 	resolved["reference_canopy"] = {
 		"style": "dome",
-		"footprint": [2.0, 0.45, 18.5, 8.55],
+		"footprint": [0.5, 0.1125, 4.625, 2.1375],
 		"eave_height": 4.42,
-		"angle_degrees": 18.0,
+		"angle_degrees": 52.45,
 	}
 	resolved["structural_signature"] = hash(resolved)
 
@@ -106,6 +108,7 @@ func _run_deferred() -> void:
 
 
 func _apply_reference_roof(building: Building3DScript) -> void:
+	building.scale = Vector3.ONE
 	for child in building.get_children():
 		if child is Roof3DScript:
 			child.name = "FlatTerminalRoof"
@@ -113,12 +116,12 @@ func _apply_reference_roof(building: Building3DScript) -> void:
 
 	var canopy := BuildingFactoryScript.create_roof_node(
 		building,
-		Vector3(2.0, 4.42, 0.45),
-		Vector3(18.5, 4.42, 8.55),
+		Vector3(0.5, 4.42, 0.1125),
+		Vector3(4.625, 4.42, 2.1375),
 		"dome",
-		18.0,
+		52.45,
 		0.22,
-		0.42,
+		0.105,
 		CANOPY_COLOR
 	)
 	canopy.name = "ArchedEntranceCanopy"
