@@ -29,6 +29,7 @@ const OUTPUT_PREVIEW := (
 	"res://architecture/trinity_church/trinity_church_preview.png"
 )
 
+const MODEL_SCALE := 0.25
 const CREAM := Color("#eee8dc")
 const STONE := Color("#c8bdaa")
 const STONE_SHADOW := Color("#a99f8f")
@@ -61,10 +62,13 @@ func _run_deferred() -> void:
 		"seed": spec.generation_seed,
 		"building_name": spec.building_name,
 		"grid_step": spec.grid_step,
+		"model_scale": MODEL_SCALE,
+		"root_scale": [1.0, 1.0, 1.0],
 		"footprint_cells": [
 			spec.footprint_cells.x,
 			spec.footprint_cells.y,
 		],
+		"footprint_size": [4.975, 4.975],
 		"door_style": spec.door_style,
 		"window_style": spec.window_style,
 		"roof_style": spec.roof_style,
@@ -133,6 +137,7 @@ func _run_deferred() -> void:
 func _build_reference_scene(spec) -> Building3DScript:
 	var building := Building3DScript.new() as Building3DScript
 	building.name = spec.building_name
+	building.scale = Vector3.ONE
 	building.set_meta("building_api", "low_poly_building_editor")
 	building.set_meta(
 		"building_api_features",
@@ -146,6 +151,7 @@ func _build_reference_scene(spec) -> Building3DScript:
 			"rails",
 		])
 	)
+	building.set_meta("authored_linear_scale", MODEL_SCALE)
 	building.set_meta(
 		"design_source",
 		"user-provided Trinity Church reference image"
@@ -192,12 +198,21 @@ func _add_foundation(building: Building3DScript) -> void:
 	)
 	_add_stairs(
 		building,
+		"RearEntranceSteps",
+		Vector3(-4.2, 0.0, 9.55),
+		Vector3(4.2, 0.0, 11.9),
+		0.68,
+		8,
+		180.0
+	)
+	_add_stairs(
+		building,
 		"EastEntranceSteps",
 		Vector3(6.525, 0.0, -1.175),
 		Vector3(14.925, 0.0, 1.175),
 		0.68,
 		8,
-		90.0
+		-90.0
 	)
 	_add_stairs(
 		building,
@@ -206,7 +221,7 @@ func _add_foundation(building: Building3DScript) -> void:
 		Vector3(-6.525, 0.0, 1.175),
 		0.68,
 		8,
-		-90.0
+		90.0
 	)
 
 
@@ -290,23 +305,28 @@ func _add_openings(
 	)
 
 	var rear := rooms["rear"] as Wall3DScript
-	for distance in [1.15, 3.55, 5.95]:
-		_add_opening(
-			building,
-			rear,
-			2,
-			distance,
-			0.82,
-			"arched_window",
-			1.0,
-			2.4,
-			false,
-			spec
-		)
+	_add_opening(
+		building, rear, 2, 1.15, 0.82, "arched_window", 1.0, 2.4, false, spec
+	)
+	_add_opening(
+		building,
+		rear,
+		2,
+		3.55,
+		0.0,
+		spec.door_style,
+		spec.door_width,
+		spec.door_height,
+		true,
+		spec
+	)
+	_add_opening(
+		building, rear, 2, 5.95, 0.82, "arched_window", 1.0, 2.4, false, spec
+	)
 
 	var west := rooms["west"] as Wall3DScript
 	var east := rooms["east"] as Wall3DScript
-	for distance in [1.15, 3.55, 5.95]:
+	for distance in [1.15, 5.95]:
 		_add_opening(
 			building,
 			west,
@@ -331,6 +351,30 @@ func _add_openings(
 			false,
 			spec
 		)
+	_add_opening(
+		building,
+		west,
+		3,
+		3.55,
+		0.0,
+		spec.door_style,
+		spec.door_width,
+		spec.door_height,
+		true,
+		spec
+	)
+	_add_opening(
+		building,
+		east,
+		1,
+		3.55,
+		0.0,
+		spec.door_style,
+		spec.door_width,
+		spec.door_height,
+		true,
+		spec
+	)
 
 	for room_key in ["front", "rear"]:
 		var room := rooms[room_key] as Wall3DScript
@@ -425,8 +469,8 @@ func _add_cornice_and_roofs(building: Building3DScript, spec) -> void:
 	_add_roof(
 		building,
 		"WestHipRoof",
-		Vector3(-9.5, 5.68, -3.8),
-		Vector3(0.3, 5.68, 3.8),
+		Vector3(-9.5, 5.66, -3.8),
+		Vector3(0.3, 5.66, 3.8),
 		spec.roof_style,
 		spec.roof_angle_degrees,
 		spec.roof_thickness,
@@ -436,8 +480,8 @@ func _add_cornice_and_roofs(building: Building3DScript, spec) -> void:
 	_add_roof(
 		building,
 		"EastHipRoof",
-		Vector3(-0.3, 5.68, -3.8),
-		Vector3(9.5, 5.68, 3.8),
+		Vector3(-0.3, 5.66, -3.8),
+		Vector3(9.5, 5.66, 3.8),
 		spec.roof_style,
 		spec.roof_angle_degrees,
 		spec.roof_thickness,
@@ -448,19 +492,32 @@ func _add_cornice_and_roofs(building: Building3DScript, spec) -> void:
 	_add_roof(
 		building,
 		"FrontWhitePediment",
-		Vector3(-3.86, 5.72, -9.68),
-		Vector3(3.86, 5.72, -7.22),
+		Vector3(-1.23, 5.72, -12.31),
+		Vector3(1.23, 5.72, -4.59),
 		"gable",
 		34.0,
 		0.2,
 		0.16,
-		CREAM
+		CREAM,
+		90.0
+	)
+	_add_roof(
+		building,
+		"RearWhitePediment",
+		Vector3(-1.23, 5.72, 4.59),
+		Vector3(1.23, 5.72, 12.31),
+		"gable",
+		34.0,
+		0.2,
+		0.16,
+		CREAM,
+		90.0
 	)
 	_add_roof(
 		building,
 		"EastWhitePediment",
-		Vector3(7.22, 5.74, -3.86),
-		Vector3(9.68, 5.74, 3.86),
+		Vector3(7.22, 5.72, -3.86),
+		Vector3(9.68, 5.72, 3.86),
 		"gable",
 		34.0,
 		0.2,
@@ -470,8 +527,8 @@ func _add_cornice_and_roofs(building: Building3DScript, spec) -> void:
 	_add_roof(
 		building,
 		"WestWhitePediment",
-		Vector3(-9.68, 5.74, -3.86),
-		Vector3(-7.22, 5.74, 3.86),
+		Vector3(-9.68, 5.72, -3.86),
+		Vector3(-7.22, 5.72, 3.86),
 		"gable",
 		34.0,
 		0.2,
@@ -511,7 +568,7 @@ func _add_lantern_and_cross(building: Building3DScript, spec) -> void:
 			building,
 			lantern,
 			segment_index,
-			segment.get_length() * 0.5,
+			segment.get_length() / MODEL_SCALE * 0.5,
 			0.32,
 			"grid_window",
 			0.64,
@@ -522,7 +579,7 @@ func _add_lantern_and_cross(building: Building3DScript, spec) -> void:
 		_add_pillar(
 			building,
 			"LanternPilaster%02d" % (segment_index + 1),
-			segment.start_point,
+			segment.start_point / MODEL_SCALE,
 			0.1,
 			1.82,
 			"square",
@@ -655,10 +712,10 @@ func _add_room(
 ) -> Wall3DScript:
 	var room := BuildingFactoryScript.create_room_node(
 		building,
-		start,
-		end,
-		height,
-		thickness,
+		start * MODEL_SCALE,
+		end * MODEL_SCALE,
+		height * MODEL_SCALE,
+		thickness * MODEL_SCALE,
 		color,
 		side_count
 	)
@@ -675,8 +732,8 @@ func _add_floor_polygon(
 ) -> void:
 	var floor := BuildingFactoryScript.create_floor_polygon_node(
 		building,
-		points,
-		thickness,
+		_scaled_points(points),
+		thickness * MODEL_SCALE,
 		color
 	)
 	_attach(building, floor, building, node_name)
@@ -692,9 +749,9 @@ func _add_flat_roof_polygon(
 ) -> void:
 	var roof := BuildingFactoryScript.create_flat_roof_polygon_node(
 		building,
-		points,
-		thickness,
-		overhang,
+		_scaled_points(points),
+		thickness * MODEL_SCALE,
+		overhang * MODEL_SCALE,
 		color
 	)
 	_attach(building, roof, building, node_name)
@@ -711,12 +768,12 @@ func _add_stairs(
 ) -> void:
 	var stairs := BuildingFactoryScript.create_stairs_node(
 		building,
-		start,
-		end,
+		start * MODEL_SCALE,
+		end * MODEL_SCALE,
 		{
-			"height": height,
+			"height": height * MODEL_SCALE,
 			"step_count": step_count,
-			"thickness": 0.12,
+			"thickness": 0.12 * MODEL_SCALE,
 			"color": STONE,
 		}
 	)
@@ -734,18 +791,21 @@ func _add_roof(
 	angle: float,
 	thickness: float,
 	overhang: float,
-	color: Color
+	color: Color,
+	rotation_degrees: float = 0.0
 ) -> void:
 	var roof := BuildingFactoryScript.create_roof_node(
 		building,
-		start,
-		end,
+		start * MODEL_SCALE,
+		end * MODEL_SCALE,
 		style,
 		angle,
-		thickness,
-		overhang,
+		thickness * MODEL_SCALE,
+		overhang * MODEL_SCALE,
 		color
 	)
+	if !is_zero_approx(rotation_degrees):
+		roof.set_roof_rotation_around_center(rotation_degrees)
 	_attach(building, roof, building, node_name)
 
 
@@ -763,16 +823,16 @@ func _add_pillar(
 ) -> void:
 	var pillar := BuildingFactoryScript.create_pillar_node(
 		building,
-		base,
-		radius,
-		height,
+		base * MODEL_SCALE,
+		radius * MODEL_SCALE,
+		height * MODEL_SCALE,
 		sides,
 		style,
 		color,
-		rim_height,
-		rim_outset,
-		rim_height,
-		rim_outset
+		rim_height * MODEL_SCALE,
+		rim_outset * MODEL_SCALE,
+		rim_height * MODEL_SCALE,
+		rim_outset * MODEL_SCALE
 	)
 	_attach(building, pillar, building, node_name)
 
@@ -788,10 +848,10 @@ func _add_wall(
 ) -> void:
 	var wall := BuildingFactoryScript.create_wall_node(
 		building,
-		start,
-		end,
-		height,
-		thickness,
+		start * MODEL_SCALE,
+		end * MODEL_SCALE,
+		height * MODEL_SCALE,
+		thickness * MODEL_SCALE,
 		color
 	)
 	_attach(building, wall, building, node_name)
@@ -805,17 +865,17 @@ func _add_rail(
 ) -> void:
 	var rail := BuildingFactoryScript.create_rail_node(
 		building,
-		start,
-		end,
-		0.72,
-		0.55,
-		0.055,
-		0.075,
-		0.16,
+		start * MODEL_SCALE,
+		end * MODEL_SCALE,
+		0.72 * MODEL_SCALE,
+		0.55 * MODEL_SCALE,
+		0.055 * MODEL_SCALE,
+		0.075 * MODEL_SCALE,
+		0.16 * MODEL_SCALE,
 		STONE_SHADOW,
 		4,
 		2,
-		0.1,
+		0.1 * MODEL_SCALE,
 		0
 	)
 	_attach(building, rail, building, node_name)
@@ -837,10 +897,10 @@ func _add_opening(
 	var settings := {
 		"style": style,
 		"node_name": "Door" if is_door else "Window",
-		"width": width,
-		"height": height,
-		"frame_thickness": 0.1,
-		"frame_protrusion": 0.05,
+		"width": width * MODEL_SCALE,
+		"height": height * MODEL_SCALE,
+		"frame_thickness": 0.1 * MODEL_SCALE,
+		"frame_protrusion": 0.05 * MODEL_SCALE,
 		"frame_color": spec.frame_color if spec != null else CREAM,
 		"window_pane_color": spec.window_pane_color if spec != null else GLASS,
 		"door_panel_color": spec.door_color if spec != null else DARK_WOOD,
@@ -856,8 +916,8 @@ func _add_opening(
 	var opening := BuildingFactoryScript.create_opening_node(
 		wall,
 		segment_index,
-		distance,
-		sill_height,
+		distance * MODEL_SCALE,
+		sill_height * MODEL_SCALE,
 		-1.0,
 		settings
 	)
@@ -875,6 +935,13 @@ func _add_opening(
 		"%s%02d" % [String(settings["node_name"]), opening_index]
 	)
 	wall.rebuild_wall_mesh()
+
+
+func _scaled_points(points: PackedVector3Array) -> PackedVector3Array:
+	var scaled := PackedVector3Array()
+	for point in points:
+		scaled.append(point * MODEL_SCALE)
+	return scaled
 
 
 func _attach(

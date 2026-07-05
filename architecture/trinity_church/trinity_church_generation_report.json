@@ -11,9 +11,14 @@
 			18,
 			18
 		],
+		"footprint_size": [
+			4.975,
+			4.975
+		],
 		"generator_version": 1,
-		"grid_step": 0.5,
-		"node_count": 77,
+		"grid_step": 0.125,
+		"model_scale": 0.25,
+		"node_count": 79,
 		"reference_features": [
 			"cruciform_plan",
 			"broad_stone_steps",
@@ -25,9 +30,14 @@
 			"red_cross"
 		],
 		"roof_style": "hip",
+		"root_scale": [
+			1.0,
+			1.0,
+			1.0
+		],
 		"schema_version": 1,
 		"seed": 19011218,
-		"structural_signature": 120925870,
+		"structural_signature": 1463871143,
 		"window_style": "arched_window"
 	},
 	"warnings": []

@@ -3,7 +3,7 @@
   "generator_version": 1,
   "name": "TrinityChurchStylized3D",
   "seed": 19011218,
-  "grid_step": 0.5,
+  "grid_step": 0.125,
   "footprint_cells": [18, 18],
   "storeys": 1,
   "variation": {
