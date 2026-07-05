@@ -7,6 +7,7 @@ Read [`design_brief.md`](design_brief.md) and [`architecture.md`](architecture.m
 - [`../project.godot`](../project.godot) - Godot project configuration, input map, and main scene
 - [`../main.tscn`](../main.tscn) / [`../main.gd`](../main.gd) - app startup and overlay flow
 - [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - main island scene, world integration, shared overworld weather host registration, and one story-subject routing path for resident talk plus scene-authored `StorySubjectArea2D` world subjects
+- [`../scenes/game_world_3d.tscn`](../scenes/game_world_3d.tscn) / [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd) - parallel low-poly 3D overworld runtime scene (Phase D+ of [`plan/low_poly_3d_replacement.md`](plan/low_poly_3d_replacement.md)): builds `LowPolyTerrain3D`, `HumanBody3D`, an orthographic camera, five landmark anchors (three stylized building instances plus invisible tunnel markers), spawns wandering residents, owns 3D `StorySubject3D` interaction dispatch through the shared story services, generates landmark collision, and syncs location/landmarks/resume checkpoint into `AppState`; `main.gd`'s `USE_3D_OVERWORLD` toggle (default off) instances it in place of `game_main` without deleting the 2D overworld
 - [`../weather/`](../weather) - weather-specific top-level folder for reusable overlays, the global weather manager/runtime, and the dedicated weather sandbox
 - [`../weather/weather_manager.gd`](../weather/weather_manager.gd) - global overworld weather manager that instantiates runtime weather rigs, owns preset cycling, and applies synced wind across registered rain, fog, and cloud-shadow targets
 - [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd) - runtime lookup helper for the global scene-owned `WeatherManager`
@@ -75,10 +76,13 @@ If you are changing how terrain mask colors map to layers, start with the terrai
 - [`../characters/control/`](../characters/control) - controllers, resident presentation hookup, and interaction behavior
 - [`../characters/control/base_controller_3d.gd`](../characters/control/base_controller_3d.gd) - shared 3D controller base for `HumanBody3D` lifecycle, movement flags, and movement helper methods
 - [`../characters/control/player_controller_3d.gd`](../characters/control/player_controller_3d.gd) - first playable 3D input adapter for `HumanBody3D`, using the existing input map on the XZ plane
+- [`../characters/control/resident_controller_3d.gd`](../characters/control/resident_controller_3d.gd) - lightweight 3D resident wander controller (stroll to a nearby point, pause, repeat, with a stuck-timeout) plus `pause_for` so a talked-to resident holds still while facing the player
+- [`../characters/resident_presenter_3d.gd`](../characters/resident_presenter_3d.gd) - spawns `HumanBody3D` residents from shared `AppState` resident data at their landmark anchors, each with an `npc:` talk `StorySubject3D`, a wander controller, and a world-anchored 3D speech balloon; used by `game_world_3d`
 - [`../characters/control/bt/`](../characters/control/bt) - behavior-tree framework
 - [`../characters/universal_lpc/`](../characters/universal_lpc) - Universal LPC metadata tooling, source-asset audit helpers, runtime sprite composition, and related helpers
 - [`../characters/universal_lpc/tests/`](../characters/universal_lpc/tests) - Universal LPC metadata, source-asset audit, and composition validation tooling
-- [`../common/gui/`](../common/gui) - in-world UI such as speech balloons
+- [`../common/gui/`](../common/gui) - in-world UI such as speech balloons; [`../common/gui/speech_balloon_3d.gd`](../common/gui/speech_balloon_3d.gd) is the billboarded, camera-facing `Label3D` dialogue balloon used by the 3D overworld
+- [`../game/story_subject_3d.gd`](../game/story_subject_3d.gd) - `Area3D` 3D counterpart of `StorySubjectArea2D`: exposes a stable `subject_id`, resolves action/display/presence from the shared StoryEvent catalog/`AppState`, and is dispatched by `game_world_3d` through the same `AppState.activate_story_subject` path (no 3D-only story fork)
 
 Put player control, NPC behavior, interaction prompts, and behavior-tree work here.
 

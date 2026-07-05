@@ -14,7 +14,7 @@ Most gameplay and scene work happens in the main repo. Shared or vendor-style co
 ## Startup Flow
 
 1. [`../project.godot`](../project.godot) boots the app through [`../main.tscn`](../main.tscn).
-2. [`../main.gd`](../main.gd) builds the UI shell, ensures the shared runtime services exist through [`../game/app_runtime.gd`](../game/app_runtime.gd) and [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd), and instantiates [`../scenes/game_main.tscn`](../scenes/game_main.tscn) for gameplay.
+2. [`../main.gd`](../main.gd) builds the UI shell, ensures the shared runtime services exist through [`../game/app_runtime.gd`](../game/app_runtime.gd) and [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd), and instantiates [`../scenes/game_main.tscn`](../scenes/game_main.tscn) for gameplay. The `USE_3D_OVERWORLD` dev toggle in `main.gd` instead instances the parallel low-poly 3D overworld [`../scenes/game_world_3d.tscn`](../scenes/game_world_3d.tscn); it defaults to off and does not remove the 2D overworld.
 3. [`../scenes/game_main.gd`](../scenes/game_main.gd) connects the player, terrain, landmarks, residents, and interaction state to shared runtime services, and registers the overworld weather nodes with the global weather manager.
 4. Screen scripts under [`../ui/screens/`](../ui/screens) read shared state and send actions back to the shell.
 
@@ -57,6 +57,11 @@ Primary files:
 - [`../terrain/low_poly_world_coordinates_3d.gd`](../terrain/low_poly_world_coordinates_3d.gd)
 - [`../terrain/low_poly_water_wind_adapter.gd`](../terrain/low_poly_water_wind_adapter.gd)
 - [`../architecture/low_poly/low_poly_landmark_proxy_3d.gd`](../architecture/low_poly/low_poly_landmark_proxy_3d.gd)
+- [`../scenes/game_world_3d.tscn`](../scenes/game_world_3d.tscn) / [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd)
+- [`../game/story_subject_3d.gd`](../game/story_subject_3d.gd)
+- [`../characters/resident_presenter_3d.gd`](../characters/resident_presenter_3d.gd)
+- [`../characters/control/resident_controller_3d.gd`](../characters/control/resident_controller_3d.gd)
+- [`../common/gui/speech_balloon_3d.gd`](../common/gui/speech_balloon_3d.gd)
 - [`../terrain/island_generation_profile.tres`](../terrain/island_generation_profile.tres)
 - [`../terrain/terrain_generation_profile.gd`](../terrain/terrain_generation_profile.gd)
 - [`../terrain/terrain_mask_rule.gd`](../terrain/terrain_mask_rule.gd)
@@ -68,6 +73,7 @@ Responsibilities:
 - shared authored terrain-profile resource used by both direct terrain validation and the gameplay scene instance
 - terrain mask legend, per-color semantics, and street-connect defaults
 - parallel low-poly 3D terrain with split image-sampling and mesh-building stages, heightmap-level water, visible seabed, shader-displaced wind-aware water, shared style presets, canonical solid landmark proxying, and shared terrain-mask-pixel/isometric-position to 3D-world coordinate conversion
+- a parallel low-poly 3D overworld runtime scene (`game_world_3d`) that assembles terrain, `HumanBody3D`, camera, five landmark anchors (three stylized building instances plus tunnel markers), wandering residents, `StorySubject3D` interaction dispatch through the shared story services, and location/resume syncing into `AppState`; it is a drop-in for `main.gd`'s game-root contract behind the `USE_3D_OVERWORLD` toggle and is tracked by [`plan/low_poly_3d_replacement.md`](plan/low_poly_3d_replacement.md)
 - player spawn and camera context
 - shared overworld weather host registration for reusable cloud-shadow, rain, fog, and ground-impact rendering
 - global weather-manager ownership for runtime weather-rig instancing, overworld random weather cycling, and shared wind sync across reusable rain/fog/cloud passes
