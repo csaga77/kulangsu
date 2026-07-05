@@ -10,6 +10,7 @@ Use this folder for:
 ## Current Files
 
 - [`implementation_plan.md`](implementation_plan.md) is the canonical status-and-plan document for the current playable game.
+- [`low_poly_3d_replacement.md`](low_poly_3d_replacement.md) is the conditional hard-cutover execution plan for replacing the 2D overworld render with the low-poly 3D lane, gated on the sidecar evidence stages and the runtime-direction decision in `implementation_plan.md`.
 
 ## Current Position
 

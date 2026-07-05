@@ -1,0 +1,113 @@
+[gd_scene format=3 uid="uid://b3wq0lp3dv3wa"]
+
+[ext_resource type="Script" path="res://scenes/game_world_3d.gd" id="1_scene"]
+[ext_resource type="Script" uid="uid://bfok58q8akl8d" path="res://terrain/low_poly_terrain_3d.gd" id="2_terrain"]
+[ext_resource type="Resource" uid="uid://cot8hhxh0v0h8" path="res://terrain/island_generation_profile.tres" id="3_profile"]
+[ext_resource type="PackedScene" uid="uid://cfrcjv76v3c4g" path="res://characters/human_body_3d.tscn" id="4_actor"]
+[ext_resource type="Script" uid="uid://cam6vob3l5ttk" path="res://characters/control/player_controller_3d.gd" id="5_controller"]
+[ext_resource type="Script" uid="uid://3w3tvo6fg0sa" path="res://godot_common/scenes/camera_3d_controller.gd" id="6_camera_controller"]
+[ext_resource type="Resource" path="res://terrain/low_poly_postcard_diorama_style.tres" id="7_style"]
+[ext_resource type="Script" path="res://game/story_subject_3d.gd" id="9_subject"]
+[ext_resource type="PackedScene" path="res://architecture/piano_ferry/piano_ferry_stylized_3d.tscn" id="10_ferry"]
+[ext_resource type="PackedScene" path="res://architecture/trinity_church/trinity_church_stylized_3d.tscn" id="11_church"]
+[ext_resource type="PackedScene" path="res://architecture/bagua_tower/bagua_tower_stylized_3d.tscn" id="12_bagua"]
+
+[sub_resource type="Resource" id="Resource_player_controller_3d"]
+script = ExtResource("5_controller")
+camera_relative_movement = true
+
+[sub_resource type="Environment" id="Environment_world"]
+background_mode = 1
+background_color = Color(0.72, 0.82, 0.88, 1)
+ambient_light_source = 3
+ambient_light_color = Color(0.88, 0.92, 0.94, 1)
+ambient_light_energy = 0.7
+tonemap_mode = 2
+fog_enabled = true
+fog_light_color = Color(0.78, 0.84, 0.9, 1)
+fog_density = 0.0025
+fog_sky_affect = 0.0
+
+[node name="game_world_3d" type="Node3D"]
+script = ExtResource("1_scene")
+art_style = ExtResource("7_style")
+
+[node name="LowPolyTerrain3D" type="Node3D" parent="."]
+script = ExtResource("2_terrain")
+generation_profile = ExtResource("3_profile")
+art_style = ExtResource("7_style")
+water_height = 1.0
+land_height = 0.0
+heightmap_max_offset = 10.0
+street_lift = 0.025
+building_footprint_lift = 0.12
+
+[node name="human_body_3d" parent="." groups=["player"] instance=ExtResource("4_actor")]
+walk_speed = 3.6
+run_speed = 6.6
+body_height = 1.62
+body_radius = 0.25
+controller = SubResource("Resource_player_controller_3d")
+
+[node name="Landmarks" type="Node3D" parent="."]
+
+[node name="PianoFerryProxy" parent="Landmarks" instance=ExtResource("10_ferry")]
+
+[node name="Subject" type="Area3D" parent="Landmarks/PianoFerryProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.35)
+script = ExtResource("9_subject")
+subject_id = "landmark:piano_ferry.harbor_refrain"
+
+[node name="TrinityChurchProxy" parent="Landmarks" instance=ExtResource("11_church")]
+
+[node name="Subject" type="Area3D" parent="Landmarks/TrinityChurchProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.2)
+script = ExtResource("9_subject")
+subject_id = "landmark:trinity_church.steps"
+
+[node name="BiShanTunnelProxy" type="Node3D" parent="Landmarks"]
+
+[node name="Subject" type="Area3D" parent="Landmarks/BiShanTunnelProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.2)
+script = ExtResource("9_subject")
+subject_id = "landmark:bi_shan_tunnel.echo_a"
+
+[node name="LongShanTunnelProxy" type="Node3D" parent="Landmarks"]
+
+[node name="Subject" type="Area3D" parent="Landmarks/LongShanTunnelProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.2)
+script = ExtResource("9_subject")
+subject_id = "landmark:long_shan_tunnel.tunnel_entry"
+
+[node name="BaguaTowerProxy" parent="Landmarks" instance=ExtResource("12_bagua")]
+
+[node name="Subject" type="Area3D" parent="Landmarks/BaguaTowerProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.2)
+script = ExtResource("9_subject")
+subject_id = "landmark:bagua_tower.synthesis_chamber"
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.777146, 0.62932, 0, -0.62932, 0.777146, 18, 22, 18)
+projection = 1
+current = true
+size = 36.0
+
+[node name="Camera3DController" type="Node" parent="." node_paths=PackedStringArray("camera", "target_node")]
+script = ExtResource("6_camera_controller")
+camera = NodePath("../Camera3D")
+target_node = NodePath("../human_body_3d")
+follow_offset = Vector3(20, 23, 18)
+look_at_offset = Vector3(0, 0.9, 0)
+orthographic_size = 36.0
+min_orthographic_size = 12.0
+max_orthographic_size = 82.0
+zoom_step = 2.0
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.47628313, -0.65994126, 0.58106095, 0, 0.66082823, 0.75053716, -0.87929195, -0.3574682, 0.31474134, 28, 44, 18)
+light_color = Color(1, 0.91, 0.78, 1)
+light_energy = 2.35
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_world")

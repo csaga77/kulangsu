@@ -164,6 +164,7 @@ Execution order:
    - Record one explicit outcome here: replace the 2D overworld, ship 3D as an optional/limited mode, or stop the experiment while retaining its reusable tools/assets.
    - The decision record must link the green validation commands, visual evidence, performance report, interaction contract, and ownership plan.
    - Do not touch `game_main.tscn` for 3D runtime integration until that decision is recorded.
+   - If the outcome is "replace the 2D overworld," the hard-cutover execution sequence is drafted in [`low_poly_3d_replacement.md`](low_poly_3d_replacement.md). That plan does not itself authorize the cutover; it sequences the work so the decision here can be made on evidence and then carried out safely.
 
 Open art/content decisions:
 
