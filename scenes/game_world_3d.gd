@@ -87,6 +87,10 @@ const STORY_SUBJECT_GROUP := "story_subject_3d"
 
 @export var art_style: LowPolyArtStyle3DScript
 @export_range(0.0, 1.0, 0.01) var actor_terrain_clearance := 0.0
+# Generate static collision for the authored stylized landmark buildings (which ship
+# without collision) so the player cannot walk through them. Disable if the trimesh
+# generation cost at load becomes a problem.
+@export var generate_landmark_collision := true
 
 var m_coordinates: LowPolyWorldCoordinates3DScript = LowPolyWorldCoordinates3DScript.new()
 var m_landmark_nodes: Dictionary = {}
@@ -122,6 +126,8 @@ func _initialize_runtime() -> void:
 	if !is_inside_tree():
 		return
 	_setup_weather_wind()
+	if generate_landmark_collision:
+		_generate_landmark_collision()
 	_spawn_residents()
 	_gather_story_subjects()
 	_connect_inspect()
@@ -485,6 +491,24 @@ func _find_nearest_land_pixel(image: Image, profile: TerrainGenerationProfile, t
 func _spawn_residents() -> void:
 	var presenter := RESIDENT_PRESENTER_3D.new()
 	m_resident_root = presenter.spawn_residents(self, _app_state(), m_landmark_nodes)
+
+
+func _generate_landmark_collision() -> void:
+	for placement: Dictionary in LANDMARK_PLACEMENTS:
+		var node := get_node_or_null(String(placement["path"])) as Node3D
+		if is_instance_valid(node):
+			_add_trimesh_collision_recursive(node)
+
+
+# Stylized landmark scenes are visual-only meshes. Add a concave static collider per
+# building mesh so walls block the actor. Roofs sit above the ground-probe reach, so
+# this blocks walking through walls without snapping the actor up onto rooftops.
+func _add_trimesh_collision_recursive(node: Node) -> void:
+	for child in node.get_children():
+		var mesh_instance := child as MeshInstance3D
+		if mesh_instance != null and mesh_instance.mesh != null:
+			mesh_instance.create_trimesh_collision()
+		_add_trimesh_collision_recursive(child)
 
 
 func _gather_story_subjects() -> void:
