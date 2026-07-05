@@ -1,13 +1,13 @@
 @tool
 extends Node3D
 
-const TEST_HEIGHTMAP_PATH := "user://low_poly_terrain_3d_heightmap_smoke.png"
-const TEST_MASK_PATH := "user://low_poly_terrain_3d_mask_smoke.png"
 const TERRAIN_KIND_WATER := 0
 
 @onready var m_terrain: Node3D = $LowPolyTerrain3D
 @onready var m_camera: Camera3D = $Camera3D
 @onready var m_sun: DirectionalLight3D = $Sun
+var m_test_heightmap_path := OS.get_temp_dir().path_join("kulangsu_low_poly_terrain_heightmap_smoke.png")
+var m_test_mask_path := OS.get_temp_dir().path_join("kulangsu_low_poly_terrain_mask_smoke.png")
 
 
 func _ready() -> void:
@@ -36,12 +36,12 @@ func _configure_heightmap_smoke(expands_land_to_source: bool) -> void:
 			var gradient := float(x + y) / float(image.get_width() + image.get_height() - 2)
 			image.set_pixel(x, y, Color(gradient, gradient, gradient, 1.0))
 
-	var save_error := image.save_png(TEST_HEIGHTMAP_PATH)
+	var save_error := image.save_png(m_test_heightmap_path)
 	if save_error != OK:
 		push_error("failed to write low-poly terrain smoke heightmap")
 		return
 
-	m_terrain.set("heightmap_file", TEST_HEIGHTMAP_PATH)
+	m_terrain.set("heightmap_file", m_test_heightmap_path)
 	m_terrain.set("heightmap_expands_land_to_source", expands_land_to_source)
 	m_terrain.set("water_height", 0.18)
 	m_terrain.set("land_height", 0.0)
@@ -69,6 +69,8 @@ func _run_smoke_checks() -> void:
 	else:
 		for failure in failures:
 			push_error(failure)
+	if DisplayServer.get_name() == "headless":
+		get_tree().quit(0 if failures.is_empty() else 1)
 
 
 func _validate_heightmap_terrain(failures: Array[String]) -> void:
@@ -248,12 +250,12 @@ func _configure_mask_clipped_smoke() -> void:
 			var alpha := 0.0 if is_border else 1.0
 			image.set_pixel(x, y, Color(1.0, 1.0, 1.0, alpha))
 
-	var save_error := image.save_png(TEST_MASK_PATH)
+	var save_error := image.save_png(m_test_mask_path)
 	if save_error != OK:
 		push_error("failed to write low-poly terrain mask smoke image")
 		return
 
-	m_terrain.set("mask_file", TEST_MASK_PATH)
+	m_terrain.set("mask_file", m_test_mask_path)
 	m_terrain.set("heightmap_file", "")
 	m_terrain.set("heightmap_expands_land_to_source", false)
 	m_terrain.set("water_height", 0.0)

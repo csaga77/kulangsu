@@ -59,6 +59,8 @@ func _run_smoke_checks() -> void:
 	else:
 		for failure in failures:
 			push_error(failure)
+	if DisplayServer.get_name() == "headless":
+		get_tree().quit(0 if failures.is_empty() else 1)
 
 
 func _validate_actor_api(failures: Array[String]) -> void:

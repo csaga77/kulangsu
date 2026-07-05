@@ -14,6 +14,7 @@
 - [`../../characters/control/base_controller_3d.gd`](../../characters/control/base_controller_3d.gd) defines `class_name BaseController3D`, the shared 3D controller base for `HumanBody3D`.
 - [`../../characters/control/player_controller_3d.gd`](../../characters/control/player_controller_3d.gd) defines `class_name PlayerController3D`, a first playable input adapter that extends `BaseController3D`.
 - [`../../characters/tests/test_human_body_3d.tscn`](../../characters/tests/test_human_body_3d.tscn) is the focused smoke scene covering actor API parity, current-frame controller input, placement occupancy, step-up/step-down navigation, character-model structure (instanced model, mesh, material, skeleton, and `idle`/`walk`/`run` animation clips), and the absence of the removed per-part accessory API and generated accessory nodes.
+- [`../../characters/tests/test_character_collisions.tscn`](../../characters/tests/test_character_collisions.tscn) builds its own collision fixtures and validates gravity/landing, static-wall blocking, front stair ascent/descent, tagged stair-side rejection, and capped `RigidBody3D` pushing.
 - [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn) validates the actor, controller, generated terrain collision, terrain-height following, coordinate adapter, `Camera3DController` follow/zoom/orbit behavior, style preset, five canonical postcard landmark proxies, and camera together.
 - `HumanBody3D` instances the GLB model under `VisualRoot/CharacterModel`, scales it to `body_height`, rotates it to face the rig's forward axis, and auto-plants its lowest point at the foot origin.
 - Hair and clothing are authored as part of the selected GLB. `HumanBody3D` does not instance separate hair, pants, or jacket scenes, create accessory `BoneAttachment3D` nodes, or transfer skin weights at runtime.
@@ -49,7 +50,7 @@
 - The character model asset lives in [`../../assets/characters/`](../../assets/characters); `HumanBody3D` owns its instancing, scaling, orientation, grounding, and animation mapping.
 - The existing `ResidentNPC`, `BaseController`, `PlayerController`, and `NPCController` remain 2D-only.
 - `BaseController3D` and `PlayerController3D` mirror the 2D controller hierarchy while staying separate from `BaseController` and `PlayerController` because they use `Vector3`, `CharacterBody3D`, and XZ-plane movement.
-- Do not wire `HumanBody3D` into `game_main.tscn` until the parallel 3D lane has green combined smoke tests, accepted visual QA screenshots, a stable interaction contract, an acceptable performance budget, and a written story/resident ownership plan.
+- Do not wire `HumanBody3D` into `game_main.tscn` until the evidence gates in [`../plan/implementation_plan.md`](../plan/implementation_plan.md) and [`low_poly_3d_integration.md`](low_poly_3d_integration.md) are satisfied and the runtime-direction decision explicitly selects integration.
 
 ## Contracts
 
@@ -69,10 +70,10 @@
 - `PlayerController3D` reads input before the base controller applies movement so starts and stops affect the current controller tick.
 - `camera_relative_movement` can align movement to the active `Camera3D`; when disabled, movement is world-aligned on XZ.
 - Stair/floor snapping may move the actor vertically or horizontally only after the current capsule shape is checked against the physics space at the candidate placement. The resolver favors a nearer higher stair face while climbing and a farther lower floor while descending so stairs do not snap the actor back to a previous landing.
-- When `move_and_slide()` reports a blocking wall contact, stair/floor snapping must preserve the slid XZ position so diagonal input carries the actor along the wall instead of snapping it back into the original into-wall target. Forward floor probes remain available for ordinary stair riser step-up and step-down support; generated stair side blockers are tagged separately and suppress only forward step-up, preventing side-entry without making a front riser trap the actor. `RigidBody3D` contacts are excluded from that wall classification; the actor applies a small movement-direction impulse to push dynamic bodies such as balls instead of treating them as static walls.
+- When `move_and_slide()` reports a blocking wall contact, stair/floor snapping must preserve the slid XZ position so diagonal input carries the actor along the wall instead of snapping it back into the original into-wall target. Forward floor probes remain available for ordinary stair riser step-up and step-down support. Generated stair side blockers are tagged separately; current contacts and a short ahead-of-capsule ray suppress only forward step-up, and target-floor lookups preserve that suppression so the actor cannot sample a tread through a thin side wall before contact. `RigidBody3D` contacts are excluded from static-wall classification; the actor applies a small movement-direction impulse to push dynamic bodies such as balls.
 - Manual stair/floor reacquisition is suspended while the actor is in its visual jump state, and `is_grounded()` reports false during that jump window.
 - Actor placement in generated terrain must use `LowPolyWorldCoordinates3D` instead of scene-local guessed offsets.
-- Terrain elevation following is owned by the combined low-poly world scene. It samples `LowPolyTerrain3D.get_world_surface_height(...)` for the actor's current XZ position and applies a small clearance to `HumanBody3D.global_position.y`, while `HumanBody3D` itself stays terrain-agnostic.
+- Terrain/building elevation following is owned by the combined low-poly world scene. During physics frames it raycasts a short distance below the actor against the actor collision mask so terrain, piers, and collision-bearing building parts can support the feet; if no solid surface is found, it falls back to `LowPolyTerrain3D.get_world_surface_height(...)` and the documented water-wading rule. `HumanBody3D` itself stays terrain-agnostic.
 
 ## Visual Style Contract
 
@@ -86,7 +87,7 @@
 - Run:
 
 ```sh
-"/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://characters/tests/test_human_body_3d.tscn --quit-after 1
+"/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://characters/tests/test_human_body_3d.tscn
 ```
 
 - Confirm the scene logs:
@@ -95,16 +96,23 @@
 PASS: HumanBody3D adapter smoke test
 ```
 
+- Run the focused collision regression after changing gravity, wall handling, stair/floor probes, placement checks, or dynamic-body pushing:
+
+```sh
+"/Applications/Godot.app/Contents/MacOS/Godot" --headless --fixed-fps 60 --path . --scene res://characters/tests/test_character_collisions.tscn
+```
+
+- Confirm it logs `PASS: HumanBody3D collision smoke test`.
 - Run the combined low-poly world validation after actor scale, movement, camera, or terrain-collision changes:
 
 ```sh
-"/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://scenes/tests/test_low_poly_world_3d.tscn --quit-after 1
+"/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://scenes/tests/test_low_poly_world_3d.tscn
 ```
 
-- Confirm the scene logs `PASS: LowPolyWorld3D smoke test`.
+- Each headless scene must log its `PASS` line and return process status `0`; assertion failures return nonzero.
 
 ## Next Steps
 
 - Audit and validate any optional imported clips beyond `idle`, `walk`, and `run`, then map accepted clips to actor states such as the jump window or idle gestures.
-- Tune actor movement speed, camera-relative movement, `Camera3DController` follow offset, and camera orbit feel with the model inside the combined world scene before adding landmark hotspots.
+- Tune actor movement speed, camera-relative movement, `Camera3DController` follow offset, and camera orbit feel inside the first one-landmark interaction slice so gameplay scale informs visual acceptance.
 - Decide whether 3D character customization should stay with whole-model swaps or model-internal material variants before wiring residents and NPCs to the 3D actor.

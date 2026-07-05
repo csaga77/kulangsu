@@ -239,11 +239,17 @@ func move_with_speed(direction_vector: Vector3, movement_speed: float) -> void:
 		m_last_step_direction = step_direction
 	elif velocity.y < -MIN_STEP_FLOOR_ADJUSTMENT and m_last_step_direction.length_squared() > 0.000001:
 		step_direction = m_last_step_direction
+	var stair_side_wall_ahead := _has_stair_side_wall_ahead(step_direction)
 	move_and_slide()
 	_apply_rigid_body_pushes(step_direction, movement_speed)
 	var wall_contact_flags := _get_blocking_wall_contact_flags(step_direction)
 	var has_blocking_wall_contact := (wall_contact_flags & WALL_CONTACT_BLOCKING) != 0
 	var has_blocking_stair_side_wall_contact := (wall_contact_flags & WALL_CONTACT_STAIR_SIDE) != 0
+	has_blocking_stair_side_wall_contact = (
+		has_blocking_stair_side_wall_contact
+		or stair_side_wall_ahead
+		or _has_stair_side_wall_ahead(step_direction)
+	)
 	m_step_snap_grounded = is_on_floor()
 	if can_reacquire_floor and step_direction.length_squared() > 0.000001:
 		var allow_horizontal_reposition := !has_blocking_wall_contact
@@ -294,6 +300,41 @@ func _is_stair_side_wall_collision(collision: KinematicCollision3D) -> bool:
 	if collider == null:
 		return false
 	var collider_shape_index := collision.get_collider_shape_index()
+	return _is_stair_side_wall_shape(collider, collider_shape_index)
+
+
+func _has_stair_side_wall_ahead(horizontal_direction: Vector3) -> bool:
+	var flat_direction := Vector3(horizontal_direction.x, 0.0, horizontal_direction.z)
+	if flat_direction.length_squared() <= 0.000001 or !is_inside_tree():
+		return false
+	flat_direction = flat_direction.normalized()
+	var probe_height := maxf(body_radius, body_height * 0.35)
+	var probe_reach := (
+		(body_radius + STEP_FLOOR_PROBE_MARGIN) * STEP_FLOOR_FORWARD_FAR_SCALE
+		+ safe_margin
+	)
+	var probe_origin := global_position + Vector3.UP * probe_height
+	var query := PhysicsRayQueryParameters3D.create(
+		probe_origin,
+		probe_origin + flat_direction * probe_reach
+	)
+	query.collision_mask = collision_mask
+	query.collide_with_areas = false
+	query.exclude = [get_rid()]
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return false
+	var collider := hit.get("collider") as CollisionObject3D
+	var collider_shape_index := int(hit.get("shape", -1))
+	return _is_stair_side_wall_shape(collider, collider_shape_index)
+
+
+func _is_stair_side_wall_shape(
+	collider: CollisionObject3D,
+	collider_shape_index: int
+) -> bool:
+	if collider == null:
+		return false
 	if collider_shape_index < 0:
 		return false
 	var shape_owner_id := collider.shape_find_owner(collider_shape_index)
@@ -390,7 +431,9 @@ func _snap_to_walkable_step_floor(
 			target_position,
 			horizontal_direction,
 			reference_top_y,
-			reference_bottom_y
+			reference_bottom_y,
+			allow_forward_floor_probe,
+			allow_forward_step_up
 		)
 
 	if !is_nan(target_floor_y):
@@ -421,7 +464,9 @@ func _snap_to_walkable_step_floor(
 			target_position,
 			horizontal_direction,
 			reference_top_y,
-			reference_bottom_y
+			reference_bottom_y,
+			allow_forward_floor_probe,
+			allow_forward_step_up
 		)
 		if !is_nan(target_floor_y):
 			var target_snap_position := Vector3(target_position.x, target_floor_y, target_position.z)

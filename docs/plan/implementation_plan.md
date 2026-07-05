@@ -48,10 +48,11 @@ Regression coverage now includes:
 
 Parallel low-poly 3D prototypes now exist as exploratory sidecar work, not as part of the current runtime overworld:
 
-- `LowPolyTerrain3D` samples the existing terrain mask/profile plus optional full-source heightmap into coarse land, shoreline, heightmap-level or mask-clipped water with visual adjacent-land overlap, continuous visible seabed terrain, street, building-footprint, optional grayscale heightmap elevation, and optional collision meshes
-- `HumanBody3D`, `BaseController3D`, and `PlayerController3D` mirror the main actor/controller concepts on the XZ plane; `HumanBody3D` renders a premade GLB low-poly character model with idle/walk/run animation by default
-- `LowPolyWorldCoordinates3D`, `LowPolyArtStyle3D`, `Camera3DController`, and `LowPolyLandmarkProxy3D` now support the combined Painted Postcard Diorama validation scene with five canonical low-poly landmark placeholders
-- focused terrain, actor, and combined low-poly world smoke scenes validate those prototypes
+- the terrain pipeline is split into image sampling, cell data, mesh construction, and node/material integration; it supports heightmap or mask-driven land, connected seabed, collision, layered shader-displaced water, and weather-driven wind
+- `HumanBody3D`, `BaseController3D`, and `PlayerController3D` mirror the main actor/controller concepts on the XZ plane; the actor uses a premade animated GLB, gravity, wall sliding, stair traversal, floor snapping, and capped dynamic-body pushing
+- `LowPolyWorldCoordinates3D`, `LowPolyArtStyle3D`, `Camera3DController`, and `LowPolyLandmarkProxy3D` support the combined Painted Postcard Diorama scene with coordinate-safe placement, five canonical solid landmark placeholders, orthographic orbit/zoom, and target-occluder fading
+- the Low-Poly Building Editor and versioned `BuildingSpec` pipeline now produce editable authored landmark concepts, with a generic building-tour scene for loading, scale, and camera review
+- focused terrain, actor, collision, camera-occlusion, building-tour, and combined-world scenes cover the sidecar; headless smoke scenes must terminate with process status `0` on success and nonzero on failure
 
 ## Content Reality Check
 
@@ -78,12 +79,12 @@ Current pressure points:
 - `activate_landmark_trigger(...)` remains as a compatibility bridge, but regression coverage should prefer `activate_story_subject(...)` or packed-scene `StorySubjectArea2D` dispatch for landmark beats
 - high-traffic dictionary payloads (landmark progress, melody progress, autosave) are still untyped
 - missable/transformed moment processing is not implemented yet; the current life-time slice tracks and advances time but does not automatically expire optional beats into missed-state echoes
-- the parallel low-poly 3D prototype now has a shared coordinate adapter, combined terrain-plus-player validation scene, style preset, five-landmark proxy blockout, and a premade GLB character model with idle/walk/run animation, but still needs in-game integration and visual tuning before runtime integration should be considered
+- the parallel low-poly 3D prototype now has a split terrain/water pipeline, shared coordinate and style resources, solid landmark proxies, an animated actor with focused traversal/collision coverage, camera occlusion, generated landmark authoring, and playable review scenes; its remaining work is an evidence-driven landmark interaction slice, visual acceptance, performance measurement, and a formal runtime-direction decision
 - regression coverage is now strong for landmark, route, resident-interaction, reactivity, and autosave flows, but still lighter around settings/audio behavior and richer world-object reactivity
 
 ## What Remains
 
-Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but they are still active tracks rather than fully finished bodies of work. The next phase is no longer the architecture pass itself; it is about deepening those content and polish workstreams until the remaining embodied-scene, world-reactivity, and closing-movement gaps are closed. The low-poly 3D prototype is a parallel exploration lane and should stay outside the runtime overworld until its visual QA, interaction, performance, and story/resident integration gates are proven. Resident migration remains useful sidecar cleanup, but it is not the recommended next focus while the manual conversion path is still relatively expensive.
+Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but they are still active tracks rather than fully finished bodies of work. The next phase is no longer the architecture pass itself; it is about deepening those content and polish workstreams until the remaining embodied-scene, world-reactivity, and closing-movement gaps are closed. The low-poly 3D prototype is a parallel exploration lane and should stay outside the runtime overworld until the six evidence stages below are satisfied and the runtime-direction decision selects integration. Resident migration remains useful sidecar cleanup, but it is not the recommended next focus while the manual conversion path is still relatively expensive.
 
 ### Status Summary
 
@@ -95,7 +96,7 @@ Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but the
 | Workstream 3 | First pass shipped | Priority 3 (ending polish after more content) |
 | Workstream 4 | First pass shipped | Lower (polish) |
 | Workstream 5 | First pass shipped | Priority 4 (editor workflow), then Priority 5 (validation) |
-| Low-Poly 3D Prototype | Terrain, actor/controller, coordinate/style, landmark proxy, and combined-world sidecars shipped | Parallel sidecar (visual tuning, screenshot QA, interaction prototype, performance/integration gates) |
+| Low-Poly 3D Prototype | Terrain/water, actor/controller/collision, coordinate/style, camera occlusion, proxies, authored-building pipeline, and review sidecars shipped | Parallel sidecar: keep correctness green, then one-landmark interaction slice, visual QA, performance report, and go/no-go decision |
 | Resident Migration | Partial (6 migrated; remaining require manual `.tres` conversion) | Deferred sidecar (touch when content work needs it) |
 
 ### Priority 1: Route Content Depth (recommended next)
@@ -128,42 +129,73 @@ Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but the
 
 The low-poly 3D prototype is an exploration lane for the island presentation, not a replacement for the current 2D playable flow yet.
 
-First-pass shipped outcome:
+Shipped baseline:
 
-- the terrain mask and optional full-source heightmap can generate a coarse low-poly island mesh with heightmap-level or mask-clipped water, flat semi-transparent water at `water_height`, one-ring visual water overlap onto shoreline land, continuous visible seabed terrain, smooth land, mask-clipped shoreline sides, streets, building footprints, optional grayscale heightmap elevation, and optional land collision
-- `HumanBody3D` exposes familiar actor fields and methods such as direction, walking/running state, tunable body height/radius, configuration, movement, jump, ground footprint, and global-position change signaling, plus one integrated premade GLB character model (scaled, yaw-corrected, auto-grounded) whose `idle`/`walk`/`run` clips are driven by locomotion state; the procedural block-body mannequin, contact shadow, and separate hair/clothing attachment logic have been removed
-- `BaseController3D` and `PlayerController3D` mirror the 2D controller hierarchy while staying separate from the 2D runtime controller classes
-- `LowPolyWorldCoordinates3D` provides the first shared terrain-mask-pixel to 3D XZ world-position adapter, including helpers for rough conversion from authored 2D isometric positions
-- `LowPolyArtStyle3D` plus `low_poly_postcard_diorama_style.tres` provide the first Painted Postcard Diorama palette, camera, sunlight, and landmark-color preset
-- `LowPolyLandmarkProxy3D` provides the first simple reusable postcard landmark-volume generator for house, church, tunnel, and tower placeholders
-- `test_low_poly_world_3d.tscn` validates terrain, land collision, terrain-following `HumanBody3D`, `PlayerController3D`, `Camera3DController`, the style preset, five canonical postcard landmark proxies, coordinate round-tripping, movement, and camera framing together
+- `LowPolyTerrainSampler` turns mask/heightmap images into typed cells; `LowPolyTerrainMeshBuilder` turns those cells into land, seabed, street, footprint, shoreline, layered water, and collision geometry; `LowPolyTerrain3D` owns lifecycle, materials, wind, and placement-height queries
+- water uses a flat baked plane for placement semantics but real shader-displaced waves, analytic normals, layered highlights, shoreline overlap, and normalized wind supplied through `LowPolyWaterWindAdapter`
+- `HumanBody3D`, `BaseController3D`, and `PlayerController3D` provide camera-relative XZ movement, animated model locomotion, gravity, floor snap, front-riser stair traversal, tagged stair-side blocking, static-wall sliding, and capped `RigidBody3D` pushing
+- `LowPolyWorldCoordinates3D`, `LowPolyArtStyle3D`, `Camera3DController`, and solid `LowPolyLandmarkProxy3D` nodes support the combined world slice without scene-local placement math
+- the Low-Poly Building Editor, versioned `BuildingSpec` generation, authored landmark concepts, and `test_building_tour_3d.tscn` provide the environment-authoring and playable scale-review lane
+- focused actor, collision, terrain, camera-occlusion, building-tour, and combined-world scenes form the current validation set
 
-Still open:
+Execution order:
 
-- tune the initial visual-style contract through the combined world scene, especially camera angle, projection, follow offset, palette, lighting, water, terrain chunkiness, landmark proxy scale, actor movement feel, and camera-relative control
-- capture fixed-camera visual QA screenshots for the combined world scene, checking player readability, landmark visibility, water/seabed clarity, and nonblank/no-overlap rendering
-- validate any optional model clips beyond `idle`/`walk`/`run` before mapping them to jump, gesture, or idle states, then tune in-game integration and foot/terrain readability
-- keep extending placement only through shared `LowPolyWorldCoordinates3D` methods before adding residents, story anchors, or interaction hotspots
-- decide whether the current coarse sampling should remain the intended visual style or whether streets/building footprints need cleaner extraction before gameplay placement starts
-- add a non-story 3D interaction-area prototype only after the five-placeholder landmark blockout and combined playability scene stay visually stable
-- require explicit runtime-integration gates before touching `game_main.tscn`: green combined smoke tests, accepted visual QA screenshots, a stable interaction contract, an acceptable performance budget, and a written story/resident ownership plan
+1. **Correctness baseline (shipped guardrail).**
+   - Keep actor API, generated collision fixtures, terrain/water, camera occlusion, building loading, and combined-world headless scenes green.
+   - Every automated smoke scene must return process status `0` on success and nonzero on assertion failure; a logged `PASS` line alone is insufficient.
+   - `test_character_collisions.tscn` is the owner for gravity/landing, static wall blocking, front stair ascent/descent, tagged stair-side rejection, and dynamic rigid-body pushing.
+2. **One-landmark interaction slice (next, before visual freeze).**
+   - Use Piano Ferry as the default first slice because it is the arrival/tutorial landmark; Trinity Church is the fallback if its authored building reaches review quality first.
+   - Combine one authored building, collision, one non-story inspect area, one resident proxy, camera occlusion, and a stable subject-id dispatch adapter in a dedicated test scene.
+   - Keep architecture nodes presentation-only. The integration scene owns interaction dispatch, and shared story/save state remains in `AppState` and existing story services.
+   - Accept the slice only when approach, prompt selection, inspection, camera readability, collision, and a documented resume anchor all work without modifying `game_main.tscn`.
+3. **Visual-style acceptance.**
+   - Tune camera, projection, follow offset, palette, lighting, restrained wave depth, terrain chunkiness, building scale, actor readability, and camera-relative movement using the interaction slice plus combined world.
+   - Store fixed-camera evidence under `design/qa/low_poly_3d/`: `world_overview.png`, `player_scale.png`, `landmark_approach.png`, `camera_occlusion.png`, and `water_shoreline.png`.
+   - The visual gate requires nonblank frames, readable player silhouette, recognizable landmark approach, legible water/seabed layering, successful occluder fade, no incoherent overlap, and a dated acceptance note in the same folder.
+4. **Performance acceptance.**
+   - Record renderer, build type, resolution, hardware, scene revision, and measurement method in `design/qa/low_poly_3d/performance.md`.
+   - At `1920 x 1080`, after a 5-second warm-up over a 60-second interaction-slice run, target p95 frame time at or below `16.7 ms`, worst sustained frame time at or below `33.3 ms`, no more than `500` visible draw calls, no more than `750,000` visible triangles, peak process memory below `1 GiB`, and a cold terrain rebuild below `3 seconds`.
+   - If a target is missed, record the exception and approved tradeoff explicitly; “looks acceptable” is not a passing measurement.
+5. **Story/resident/save ownership acceptance.**
+   - Follow [`../features/low_poly_3d_integration.md`](../features/low_poly_3d_integration.md): the 3D scene owns spatial adapters, existing story services own rules/effects, `AppState` owns shared progression/save data, and resident definitions remain dimension-neutral data.
+   - Prove one subject dispatch and one resume anchor in the interaction slice before proposing broader resident migration.
+6. **Runtime-direction decision.**
+   - Record one explicit outcome here: replace the 2D overworld, ship 3D as an optional/limited mode, or stop the experiment while retaining its reusable tools/assets.
+   - The decision record must link the green validation commands, visual evidence, performance report, interaction contract, and ownership plan.
+   - Do not touch `game_main.tscn` for 3D runtime integration until that decision is recorded.
+
+Open art/content decisions:
+
+- validate optional character clips beyond `idle`/`walk`/`run` before mapping them to gameplay states
+- decide whether coarse street/building-footprint sampling is the intended style or needs cleaner extraction
+- decide whether character customization uses whole-model swaps or model-internal material variants
 
 Primary files:
 
 - `terrain/low_poly_terrain_3d.gd`
+- `terrain/low_poly_terrain_sampler.gd`
+- `terrain/low_poly_terrain_mesh_builder.gd`
+- `terrain/low_poly_terrain_cell.gd`
 - `terrain/low_poly_art_style_3d.gd`
 - `terrain/low_poly_postcard_diorama_style.tres`
 - `terrain/low_poly_world_coordinates_3d.gd`
+- `terrain/low_poly_water_wind_adapter.gd`
+- `resources/materials/water_3d.gdshader`
 - `architecture/low_poly/low_poly_landmark_proxy_3d.gd`
 - `scenes/tests/test_low_poly_terrain_3d.tscn`
 - `scenes/tests/test_low_poly_world_3d.tscn`
+- `scenes/tests/test_camera_3d_occlusion.tscn`
+- `scenes/tests/test_building_tour_3d.tscn`
 - `characters/human_body_3d.gd`
 - `assets/characters/male.glb` (default; `boy.glb`, `female.glb` alternates)
 - `characters/control/base_controller_3d.gd`
 - `characters/control/player_controller_3d.gd`
 - `characters/tests/test_human_body_3d.tscn`
+- `characters/tests/test_character_collisions.tscn`
 - `docs/features/low_poly_terrain_3d.md`
 - `docs/features/low_poly_actor_3d.md`
+- `docs/features/low_poly_3d_integration.md`
 
 ### Deferred Sidecar: Resident Migration (manual conversion; not the recommended next focus)
 

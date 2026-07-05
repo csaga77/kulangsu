@@ -11,10 +11,10 @@ roughness = 0.95
 
 [sub_resource type="BoxMesh" id="BoxMesh_ground"]
 material = SubResource("StandardMaterial3D_ground")
-size = Vector3(44, 0.3, 34)
+size = Vector3(100, 0.3, 100)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
-size = Vector3(44, 0.3, 34)
+size = Vector3(100, 0.3, 100)
 
 [sub_resource type="Resource" id="Resource_player_controller"]
 script = ExtResource("4_player_controller")
@@ -29,8 +29,10 @@ ambient_light_energy = 0.72
 
 [node name="TestBuildingTour3D" type="Node3D" unique_id=292976201]
 script = ExtResource("1_scene")
+player_spawn = Vector3(0, 0.08, -18)
 
 [node name="BuildingContainer" type="Node3D" parent="." unique_id=668456635]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, 0)
 
 [node name="Ground" type="MeshInstance3D" parent="." unique_id=189259589]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.15, 3)
@@ -42,7 +44,7 @@ mesh = SubResource("BoxMesh_ground")
 shape = SubResource("BoxShape3D_ground")
 
 [node name="Player" parent="." unique_id=1917270485 instance=ExtResource("3_player")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, -7)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, -18)
 draw_skeleton_bones = false
 walk_speed = 3.4
 run_speed = 6.0
@@ -70,7 +72,7 @@ zoom_step = 1.5
 occluder_transparency = 0.48
 
 [node name="Sun" type="DirectionalLight3D" parent="." unique_id=431477212]
-transform = Transform3D(-0.88663185, -0.36443615, 0.2847287, -5.1364086e-09, 0.61566156, 0.78801084, -0.4624762, 0.6986754, -0.54586506, 0, 0, 0)
+transform = Transform3D(-0.59622496, 0.6326288, -0.4942638, 0, 0.61566156, 0.7880107, 0.8028176, 0.46983168, -0.36707273, 0, 0, 0)
 light_color = Color(1, 0.92, 0.82, 1)
 light_energy = 2.2
 shadow_enabled = true

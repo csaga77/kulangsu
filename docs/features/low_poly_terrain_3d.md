@@ -35,7 +35,7 @@
 - The current runtime 2D terrain remains owned by [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn) and [`../../terrain/terrain.gd`](../../terrain/terrain.gd).
 - The 3D prototype is owned by [`../../terrain/low_poly_terrain_3d.gd`](../../terrain/low_poly_terrain_3d.gd) and the focused test scene under [`../../scenes/tests/`](../../scenes/tests).
 - Terrain mask meaning remains owned by [`../../terrain/terrain_generation_profile.gd`](../../terrain/terrain_generation_profile.gd), [`../../terrain/terrain_mask_rule.gd`](../../terrain/terrain_mask_rule.gd), and [`../../terrain/island_generation_profile.tres`](../../terrain/island_generation_profile.tres).
-- Do not route story, save state, resident spawning, or main-scene weather through this prototype until the parallel 3D lane has green combined smoke tests, accepted visual QA screenshots, a stable interaction contract, an acceptable performance budget, and a written story/resident ownership plan.
+- Do not route story, save state, resident spawning, or main-scene weather through this prototype until the measurable evidence gates in [`../plan/implementation_plan.md`](../plan/implementation_plan.md) and [`low_poly_3d_integration.md`](low_poly_3d_integration.md) are satisfied and the recorded runtime-direction decision selects integration.
 - Water waves are wind-aware through a decoupled API: `LowPolyTerrain3D.set_wind(wind_angle_degrees, normalized_strength)` (plus the inspector-exported `wind_angle_degrees` / `wind_strength`) retunes the cached water materials live without a rebuild. The terrain never imports or reads `WeatherManager`.
 - The weather connection lives in the integration layer: `WeatherManager` publishes live wind via the `wind_changed(angle, raw_strength)` signal plus `get_current_wind()` / `get_reference_wind_strength()`, and `terrain/low_poly_water_wind_adapter.gd` (`class_name LowPolyWaterWindAdapter`) binds a weather source to a terrain — duck-typed on both ends — normalizing raw wind into 0..1 and calling `set_wind()`. `scenes/tests/test_low_poly_world_3d.gd` acquires the global `WeatherManager` (via `WeatherRuntime`), binds the adapter, and feeds a gusting stand-in into the manager (the 3D slice has no 2D overlays to cycle) so the full weather -> adapter -> water path runs until the lane is cleared to consume the real cycle.
 
@@ -87,7 +87,7 @@
 - Tune palette, camera, sunlight, and proxy landmark colors through `low_poly_postcard_diorama_style.tres` while this scene remains the golden slice.
 - After editing the style preset, manually rebuild affected terrain/proxy nodes or reload the validation scene before judging the new visual read.
 - Use the combined world scene to tune terrain scale, land collision, actor scale, `Camera3DController` follow offset, orbit rotation feel, landmark placeholder scale, and material readability together.
-- Add interaction areas only after the five-placeholder blockout stays readable and the coordinate adapter placement contract remains stable.
+- Build one dedicated landmark interaction slice before visual-style acceptance so approach distance, camera occlusion, collision, subject range, resident scale, and resume placement inform the final terrain/camera tuning.
 - If this evolves into a real gameplay terrain layer, update this doc with navigation, landmark anchors, weather, and story-resume contracts.
 
 ## Review Notes
@@ -116,7 +116,7 @@ Known tradeoffs left as-is for the prototype:
 - Run:
 
 ```sh
-"/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://scenes/tests/test_low_poly_terrain_3d.tscn --quit-after 1
+"/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://scenes/tests/test_low_poly_terrain_3d.tscn
 ```
 
 - Confirm the scene loads and logs a summary like:
@@ -131,7 +131,7 @@ PASS: LowPolyTerrain3D heightmap smoke test
 - Run the combined validation scene after coordinate, collision, player movement, or camera changes:
 
 ```sh
-"/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://scenes/tests/test_low_poly_world_3d.tscn --quit-after 1
+"/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://scenes/tests/test_low_poly_world_3d.tscn
 ```
 
 - Confirm the scene logs:
@@ -140,6 +140,7 @@ PASS: LowPolyTerrain3D heightmap smoke test
 PASS: LowPolyWorld3D smoke test
 ```
 
+- Both headless scenes must return process status `0`; assertion failures return nonzero.
 - Run the focused camera-occlusion regression after changing `Camera3DController` transparency or ray-query behavior:
 
 ```sh

@@ -50,9 +50,12 @@ Primary files:
 - [`../terrain/terrain.tscn`](../terrain/terrain.tscn)
 - [`../terrain/terrain.gd`](../terrain/terrain.gd)
 - [`../terrain/low_poly_terrain_3d.gd`](../terrain/low_poly_terrain_3d.gd)
+- [`../terrain/low_poly_terrain_sampler.gd`](../terrain/low_poly_terrain_sampler.gd)
+- [`../terrain/low_poly_terrain_mesh_builder.gd`](../terrain/low_poly_terrain_mesh_builder.gd)
 - [`../terrain/low_poly_art_style_3d.gd`](../terrain/low_poly_art_style_3d.gd)
 - [`../terrain/low_poly_postcard_diorama_style.tres`](../terrain/low_poly_postcard_diorama_style.tres)
 - [`../terrain/low_poly_world_coordinates_3d.gd`](../terrain/low_poly_world_coordinates_3d.gd)
+- [`../terrain/low_poly_water_wind_adapter.gd`](../terrain/low_poly_water_wind_adapter.gd)
 - [`../architecture/low_poly/low_poly_landmark_proxy_3d.gd`](../architecture/low_poly/low_poly_landmark_proxy_3d.gd)
 - [`../terrain/island_generation_profile.tres`](../terrain/island_generation_profile.tres)
 - [`../terrain/terrain_generation_profile.gd`](../terrain/terrain_generation_profile.gd)
@@ -64,7 +67,7 @@ Responsibilities:
 - mask-driven terrain generation and generated helper-layer lifecycle
 - shared authored terrain-profile resource used by both direct terrain validation and the gameplay scene instance
 - terrain mask legend, per-color semantics, and street-connect defaults
-- parallel low-poly 3D terrain with heightmap-level water and visible seabed prototyping, shared style presets, canonical postcard landmark proxying, and shared terrain-mask-pixel/isometric-position to 3D-world coordinate conversion
+- parallel low-poly 3D terrain with split image-sampling and mesh-building stages, heightmap-level water, visible seabed, shader-displaced wind-aware water, shared style presets, canonical solid landmark proxying, and shared terrain-mask-pixel/isometric-position to 3D-world coordinate conversion
 - player spawn and camera context
 - shared overworld weather host registration for reusable cloud-shadow, rain, fog, and ground-impact rendering
 - global weather-manager ownership for runtime weather-rig instancing, overworld random weather cycling, and shared wind sync across reusable rain/fog/cloud passes
@@ -83,7 +86,7 @@ Boundary:
 
 - Keep scene-specific world integration here instead of scattering it across UI files or unrelated helpers.
 - Keep terrain semantics in terrain profile/rule resources instead of hard-coding new mask-color branches directly into unrelated systems.
-- Keep low-poly 3D terrain and coordinate work in the prototype lane until the 3D sidecar has green combined smoke tests, accepted visual QA screenshots, a stable interaction contract, an acceptable performance budget, and a written story/resident ownership plan.
+- Keep low-poly 3D work in the prototype lane until every evidence gate in [`plan/implementation_plan.md`](plan/implementation_plan.md) and [`features/low_poly_3d_integration.md`](features/low_poly_3d_integration.md) is satisfied: process-level green smoke tests, the one-landmark interaction slice, fixed-camera visual evidence, measured performance thresholds, story/resident/save ownership, and a recorded runtime-direction decision.
 - Keep low-poly 3D palette, water tuning, camera, lighting, and proxy-landmark tuning in `LowPolyArtStyle3D` resources while the art direction is still exploratory.
 
 ### Shared State And Catalogs
@@ -173,7 +176,7 @@ Notes:
 
 - The runtime game consumes the prebuilt Universal LPC metadata under [`../resources/sprites/universal_lpc/`](../resources/sprites/universal_lpc).
 - [`../characters/human_body_2d.gd`](../characters/human_body_2d.gd) owns the root material/shader setup for composed avatars, while the child Universal LPC node composes the visible layers.
-- [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd), [`../characters/control/base_controller_3d.gd`](../characters/control/base_controller_3d.gd), and [`../characters/control/player_controller_3d.gd`](../characters/control/player_controller_3d.gd) own the parallel low-poly 3D actor/controller prototype. They mirror the main `HumanBody2D` and controller hierarchy for future 3D slices, and `HumanBody3D` renders one premade low-poly GLB character model (default [`../assets/characters/male.glb`](../assets/characters/male.glb), with `boy.glb`/`female.glb` alternates) whose integrated appearance and idle/walk/run animation come from the model asset. The runtime overworld still uses the 2D actor/controller stack.
+- [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd), [`../characters/control/base_controller_3d.gd`](../characters/control/base_controller_3d.gd), and [`../characters/control/player_controller_3d.gd`](../characters/control/player_controller_3d.gd) own the parallel low-poly 3D actor/controller prototype. They mirror the main `HumanBody2D` and controller hierarchy for future 3D slices, and `HumanBody3D` renders one premade low-poly GLB character model (default [`../assets/characters/male.glb`](../assets/characters/male.glb), with `boy.glb`/`female.glb` alternates) whose integrated appearance and idle/walk/run animation come from the model asset. Gravity, static walls, front and side stair behavior, and dynamic-body pushing are covered by [`../characters/tests/test_character_collisions.tscn`](../characters/tests/test_character_collisions.tscn). The runtime overworld still uses the 2D actor/controller stack.
 
 ### World Spaces And Landmark Content
 

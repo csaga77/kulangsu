@@ -141,7 +141,8 @@
 - [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn)
 - [`../../scenes/tests/test_level_resolution.tscn`](../../scenes/tests/test_level_resolution.tscn)
 - [`../../scenes/tests/test_portal_overlap.tscn`](../../scenes/tests/test_portal_overlap.tscn)
-- [`../../scenes/tests/test_building_tiles.tscn`](../../scenes/tests/test_building_tiles.tscn)
+- [`../../characters/tests/test_character_collisions.tscn`](../../characters/tests/test_character_collisions.tscn)
+- [`../../scenes/tests/test_building_tour_3d.tscn`](../../scenes/tests/test_building_tour_3d.tscn)
 - [`../../scenes/tests/test_landmark_cue_loading.tscn`](../../scenes/tests/test_landmark_cue_loading.tscn)
 - [`../../game/tests/cue_progression/test_cue_progression.tscn`](../../game/tests/cue_progression/test_cue_progression.tscn)
 
@@ -154,6 +155,7 @@
 - Validate physical stair traversal with [`../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn`](../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn).
 - Validate tunnel-only visibility swaps, `exterior`/`interior` presentation handoff, and surface-overlap behavior with [`../../game/tests/npc_system/test_tunnel_visibility.tscn`](../../game/tests/npc_system/test_tunnel_visibility.tscn).
 - Validate routed NPC re-entry and tunnel level restoration with [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn).
-- Validate reusable wall, door, window, and stair building-piece loading, GridMap floor/wall/stair collision, and `HumanBody3D` wall-blocking plus stair traversal with [`../../scenes/tests/test_building_tiles.tscn`](../../scenes/tests/test_building_tiles.tscn).
+- Validate `HumanBody3D` wall blocking, gravity, front/side stair traversal, and dynamic-body pushing with [`../../characters/tests/test_character_collisions.tscn`](../../characters/tests/test_character_collisions.tscn).
+- Validate an authored low-poly building scene, player/controller, camera, and ground setup together with [`../../scenes/tests/test_building_tour_3d.tscn`](../../scenes/tests/test_building_tour_3d.tscn).
 - Validate landmark cue audio loading with [`../../scenes/tests/test_landmark_cue_loading.tscn`](../../scenes/tests/test_landmark_cue_loading.tscn).
 - Validate canonical landmark progression and cue interaction state with [`../../game/tests/cue_progression/test_cue_progression.tscn`](../../game/tests/cue_progression/test_cue_progression.tscn).

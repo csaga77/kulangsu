@@ -93,6 +93,10 @@ func _run_smoke_check() -> void:
 			"PASS: Generic building tour scene (%s)"
 			% building_scene.resource_path
 		)
+		if DisplayServer.get_name() == "headless":
+			get_tree().quit(0)
 		return
 	for failure in failures:
 		push_error(failure)
+	if DisplayServer.get_name() == "headless":
+		get_tree().quit(1)
