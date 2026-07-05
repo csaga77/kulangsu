@@ -8,12 +8,10 @@ extends RefCounted
 ## layers; not an editor-creatable type.
 ##
 ## Transitional plugin callbacks that move in later stages:
-## `_raycast_walls` and `_refresh_wall_intersections` (wall stage),
-## `_apply_debug_wireframe_to_node` (display), `_refresh_dock_context`
-## (dock wiring). `m_active_coordinator`, `m_preview_parent`, and `m_dock`
-## remain plugin members per the split plan and are accessed through
-## `m_plugin`. Undo/redo actions keep binding the plugin's delegating
-## methods so queued actions stay valid while bodies live here.
+## `_apply_debug_wireframe_to_node` (display) and `_refresh_dock_context`
+## (dock wiring). `m_active_coordinator` and `m_dock` remain plugin members
+## per the split plan and are accessed through `m_plugin`. Undo/redo actions bind either this context or the concrete
+## tool controllers; both are plugin-lifetime objects.
 
 const Building3DScript = preload("res://addons/low_poly_building_editor/building_3d.gd")
 const BuildingFactoryScript = preload("res://addons/low_poly_building_editor/building_factory.gd")
@@ -31,6 +29,10 @@ const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/o
 ## services resolve as typed native calls; the documented transitional
 ## callbacks and member accesses are dynamic and flagged unsafe by design.
 var m_plugin: EditorPlugin
+
+## Parent node of the most recently parented tool preview (see
+## `set_preview_parent`); read by the placement controller when committing.
+var m_preview_parent: Node
 
 
 func _init(plugin: EditorPlugin) -> void:
@@ -57,6 +59,18 @@ func set_status(text: String) -> void:
 	var dock: Control = m_plugin.m_dock
 	if dock != null and dock.has_method("set_status"):
 		dock.set_status(text)
+
+
+## The dock/toolbar tool mode currently active on the plugin. Lets the
+## multi-mode placement controller distinguish window/door/prop.
+func active_tool_mode() -> String:
+	return String(m_plugin.m_tool_mode)
+
+
+## Default grid step for cross-tool snapping: follows the wall tool's dock
+## grid step, which prop and opening placement intentionally share.
+func default_grid_step() -> float:
+	return maxf(float(m_plugin.m_wall_grid_step), 0.05)
 
 
 ## Transitional wrapper for the plugin's debug-wireframe application; moves
@@ -95,8 +109,8 @@ func create_coordinator() -> Building3DScript:
 	var undo := undo_redo()
 	undo.create_action("Create Building")
 	undo.add_do_reference(coordinator)
-	undo.add_do_method(m_plugin, "_do_add_node", scene_root, coordinator, scene_root, true)
-	undo.add_undo_method(m_plugin, "_undo_remove_node", scene_root, coordinator)
+	undo.add_do_method(self, "do_add_node", scene_root, coordinator, scene_root, true)
+	undo.add_undo_method(self, "undo_remove_node", scene_root, coordinator)
 	undo.commit_action()
 	m_plugin._refresh_dock_context()
 	return coordinator
@@ -176,7 +190,7 @@ func raycast_world(
 	var origin := camera.project_ray_origin(mouse_position)
 	var direction := camera.project_ray_normal(mouse_position)
 	if include_walls:
-		var wall_hit: Dictionary = m_plugin._raycast_walls(origin, direction)
+		var wall_hit := raycast_walls(origin, direction)
 		if !wall_hit.is_empty():
 			return wall_hit
 
@@ -284,18 +298,138 @@ func closest_point_on_plan_segment(
 	return segment_start + segment * ratio
 
 
+## Nearest authored wall segment hit along a ray. Wall previews are excluded
+## by their `PREVIEW_META` marker.
+func raycast_walls(origin: Vector3, direction: Vector3) -> Dictionary:
+	var scene_root := editor_interface().get_edited_scene_root()
+	if scene_root == null:
+		return {}
+
+	var walls: Array[Wall3DScript] = []
+	_collect_scene_walls(scene_root, walls)
+
+	var best_hit: Dictionary = {}
+	var best_distance := INF
+	for wall in walls:
+		if !is_instance_valid(wall) or wall.has_meta(Wall3DScript.PREVIEW_META):
+			continue
+		var hit := intersect_wall_box(wall, origin, direction)
+		if hit.is_empty():
+			continue
+		var distance := float(hit["distance"])
+		if distance < best_distance:
+			best_distance = distance
+			best_hit = hit
+	return best_hit
+
+
+func _collect_scene_walls(node: Node, walls: Array[Wall3DScript]) -> void:
+	if node is Wall3DScript:
+		walls.append(node as Wall3DScript)
+	for child in node.get_children():
+		_collect_scene_walls(child, walls)
+
+
+func intersect_wall_box(
+	wall: Wall3DScript,
+	origin: Vector3,
+	direction: Vector3
+) -> Dictionary:
+	var best_hit: Dictionary = {}
+	var best_distance := INF
+	for segment_index in range(wall.get_segment_count()):
+		var segment := wall.get_segment(segment_index)
+		var segment_length := segment.get_length()
+		if segment_length <= 0.001:
+			continue
+		var world_frame := wall.global_transform * wall.get_segment_local_frame(segment_index)
+		var inverse_frame := world_frame.affine_inverse()
+		var local_origin := inverse_frame * origin
+		var local_direction := (inverse_frame.basis * direction)
+		if local_direction.length_squared() <= 0.000001:
+			continue
+		local_direction = local_direction.normalized()
+
+		var half_thickness := segment.thickness * 0.5
+		var min_corner := Vector3(0.0, 0.0, -half_thickness)
+		var max_corner := Vector3(segment_length, segment.height, half_thickness)
+		var hit := intersect_aabb_ray(local_origin, local_direction, min_corner, max_corner)
+		if hit.is_empty():
+			continue
+
+		var local_hit := Vector3(hit["position"])
+		var local_normal := nearest_box_normal(local_hit, min_corner, max_corner)
+		var global_hit := world_frame * local_hit
+		var distance := origin.distance_to(global_hit)
+		if distance >= best_distance:
+			continue
+		best_distance = distance
+		best_hit = {
+			"position": global_hit,
+			"normal": (world_frame.basis * local_normal).normalized(),
+			"collider": wall,
+			"segment": segment_index,
+			"distance": distance,
+		}
+	return best_hit
+
+
+func find_wall_from_collider(collider: Variant) -> Wall3DScript:
+	var node := collider as Node
+	while node != null:
+		if node is Wall3DScript:
+			return node as Wall3DScript
+		node = node.get_parent()
+	return null
+
+
+func refresh_wall_intersections(coordinator: Building3DScript) -> void:
+	if coordinator != null and is_instance_valid(coordinator):
+		coordinator.refresh_building_geometry_clips()
+
+
+func can_place_wall_opening(
+	wall: Wall3DScript,
+	segment_index: int,
+	center: Vector2,
+	size: Vector2,
+	clearance: float,
+	ignored_opening: Node,
+	allow_base_edge: bool
+) -> bool:
+	var coordinator := find_coordinator_from_node(wall)
+	if coordinator != null:
+		return coordinator.can_place_wall_opening(
+			wall,
+			segment_index,
+			center,
+			size,
+			clearance,
+			ignored_opening,
+			allow_base_edge
+		)
+	return wall.can_place_opening(
+		center,
+		size,
+		clearance,
+		ignored_opening,
+		segment_index,
+		allow_base_edge
+	)
+
+
 # --- Preview plumbing ---
 
 
 func set_preview_parent(preview: Node3D, parent: Node) -> void:
 	if preview.get_parent() == parent:
-		m_plugin.m_preview_parent = parent
+		m_preview_parent = parent
 		return
 	if preview.get_parent() != null:
 		preview.get_parent().remove_child(preview)
 	parent.add_child(preview)
 	preview.owner = null
-	m_plugin.m_preview_parent = parent
+	m_preview_parent = parent
 
 
 func apply_preview_material(node: Node, color: Color) -> void:
@@ -344,7 +478,7 @@ func do_add_node_and_refresh_wall_intersections(
 	coordinator: Building3DScript
 ) -> void:
 	do_add_node(parent, node, scene_root, select_after_add)
-	m_plugin._refresh_wall_intersections(coordinator)
+	refresh_wall_intersections(coordinator)
 
 
 func do_add_node_and_refresh_roofs(
@@ -376,7 +510,7 @@ func undo_remove_node_and_refresh_wall_intersections(
 	coordinator: Building3DScript
 ) -> void:
 	undo_remove_node(parent, node)
-	m_plugin._refresh_wall_intersections(coordinator)
+	refresh_wall_intersections(coordinator)
 
 
 func undo_remove_node_and_refresh_roofs(parent: Node, node: Node, coordinator: Building3DScript) -> void:

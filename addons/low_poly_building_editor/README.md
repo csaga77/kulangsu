@@ -129,7 +129,7 @@ This README is the plugin's entry point; the full documentation lives in [`docs/
 
 - [`docs/feature.md`](docs/feature.md) — goals, authoring experience, rules, edge cases, ownership, and validation.
 - [`docs/contract.md`](docs/contract.md) — stable contract and governance for the plugin's nodes, storage, and editor interaction.
-- [`docs/plugin_split_plan.md`](docs/plugin_split_plan.md) — proposed staged plan for splitting `plugin.gd` into per-tool editor controllers (delete once shipped).
+- [`docs/plugin_split_plan.md`](docs/plugin_split_plan.md) — staged plan for the shipped `plugin.gd` split into per-tool editor controllers under `editor/` (delete after editor validation).
 
 The focused smoke scene is
 [`tests/test_low_poly_building_editor_3d.tscn`](tests/test_low_poly_building_editor_3d.tscn), the focused

@@ -1,6 +1,19 @@
 # Plugin Split Plan: Tool Controllers for `plugin.gd`
 
-Status: stages 1 (context extraction), 2 (native toolbar + icons), 3 (controller base + pillar controller), and 4 (rail + stairs controllers) implemented, pending editor validation; stages 5–7 not started. The stairs R-rotation key now lives in the stairs controller's `handle_input`, not the plugin key section. This is the staged extraction plan for splitting
+Status: all seven stages implemented, pending final editor validation. Final
+measurements: `plugin.gd` 522 lines / 49 functions / 13 member variables
+(from 9,268 / 441 / 173); largest controller is roof at 1,836 lines. Tool
+keys (stairs/roof R-rotation, floor/roof polygon Enter-close, prop R) live in
+their controllers' `handle_input`; the plugin key section keeps only Escape.
+The shared wall-query helpers (`raycast_walls`, `intersect_wall_box`,
+`find_wall_from_collider`, `refresh_wall_intersections`,
+`can_place_wall_opening`) and `m_preview_parent` moved into the context;
+prop/opening snapping follows the wall grid through
+`BuildingToolContext.default_grid_step()`, backed by a grid-step cache on the
+plugin. Remaining transitional context callbacks:
+`_apply_debug_wireframe_to_node` and `_refresh_dock_context`. Delete this
+file (or fold the durable parts into `contract.md`) once editor validation
+passes. This is the staged extraction plan for splitting
 `../plugin.gd` (9.2k lines, 441 functions, 173 member variables) into per-tool
 controller classes. Delete this file (or fold the durable parts into
 [`contract.md`](contract.md) and [`feature.md`](feature.md)) once the split ships.
