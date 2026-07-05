@@ -1,6 +1,14 @@
 extends Node
 
-const GAME_SCENE: PackedScene = preload("res://scenes/game_main.tscn")
+# 2D overworld (current shipped runtime) and the parallel low-poly 3D overworld.
+# USE_3D_OVERWORLD is a reversible dev toggle for the cutover tracked in
+# docs/plan/low_poly_3d_replacement.md. Keep it false until the 3D world reaches
+# parity and the runtime-direction decision is recorded (Phase G). Flipping it does
+# NOT delete the 2D stack; it only chooses which overworld the app shell instances,
+# so the full title/HUD/journal/save flow can be exercised against the 3D world.
+const GAME_SCENE_2D: PackedScene = preload("res://scenes/game_main.tscn")
+const GAME_SCENE_3D: PackedScene = preload("res://scenes/game_world_3d.tscn")
+const USE_3D_OVERWORLD := false
 const BOOT_SCREEN_SCENE: PackedScene = preload("res://ui/screens/boot_screen.tscn")
 const TITLE_SCREEN_SCENE: PackedScene = preload("res://ui/screens/title_screen.tscn")
 const PLAYER_SETUP_SCENE: PackedScene = preload("res://ui/screens/player_customization_overlay.tscn")
@@ -302,7 +310,8 @@ func _ensure_game_loaded() -> void:
 	if m_game_root != null and !is_instance_valid(m_game_root):
 		m_game_root = null
 
-	m_game_root = GAME_SCENE.instantiate()
+	var overworld_scene: PackedScene = GAME_SCENE_3D if USE_3D_OVERWORLD else GAME_SCENE_2D
+	m_game_root = overworld_scene.instantiate()
 	m_game_root.name = "GameRoot"
 	get_node("GameLayer").add_child(m_game_root)
 

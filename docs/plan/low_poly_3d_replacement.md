@@ -192,9 +192,10 @@ scene under `scenes/tests/` and a green headless run before the next begins:
    surfaces via save-status until speech balloons are anchored (item 8).
    `characters/control/resident_controller_3d.gd` (a `BaseController3D`) now gives each resident a
    calm local wander around its spawn anchor (stroll to a random nearby point, pause, repeat) with a
-   stuck-timeout, gravity-grounded and wall-sliding via `HumanBody3D` + world colliders. Still needs
-   authored 3D routes (vs. free wander), tunnel visibility, per-resident model customization, and
-   engine validation.
+   stuck-timeout, gravity-grounded and wall-sliding via `HumanBody3D` + world colliders. Talking to a
+   resident turns it to face the player and holds it still briefly (via `ResidentController3D.pause_for`),
+   matching the 2D reveal-dialogue behaviour. Still needs authored 3D routes (vs. free wander),
+   tunnel visibility, per-resident model customization, and engine validation.
 7. **Weather + atmosphere** — re-target fog/rain/cloud-shadow/ground-impact passes to 3D space and
    register the 3D world as the weather host with `WeatherManager`.
    *Status: base atmosphere added; cycled passes pending.* `game_world_3d.tscn` now has a
@@ -236,6 +237,12 @@ result-equality comparison against a 2D dispatch of the same beat.
 2. Tag a pre-cutover commit and work the cutover on a dedicated branch (source-control rollback).
 3. Repoint `main.gd` / `main.tscn` to instantiate `scenes/game_world_3d.tscn` instead of
    `scenes/game_main.tscn`.
+   *Status: reversible toggle in place (not flipped).* `main.gd` now holds both `GAME_SCENE_2D` and
+   `GAME_SCENE_3D` and selects between them with the `USE_3D_OVERWORLD` constant (default `false`, so
+   the shipped runtime is unchanged). Setting it `true` runs the 3D overworld through the full app
+   shell (title, HUD, journal, pause, save/continue) without deleting the 2D stack — the intended way
+   to validate the whole flow before the final decision. The hard flip + 2D deletion stays gated on
+   the runtime-direction decision below.
 4. Delete the 2D render stack listed in "What Gets Replaced," and remove now-dead `preload`/
    `ext_resource` references.
 5. Run the full regression suite and the standard main-flow validation; confirm no scene or resource

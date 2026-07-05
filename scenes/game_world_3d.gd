@@ -78,6 +78,8 @@ const MAX_ACTOR_WADE_DEPTH := 0.5
 
 # Story subjects register here so the world can pick one active target by proximity.
 const STORY_SUBJECT_GROUP := "story_subject_3d"
+# How long a resident holds still and faces the player after being talked to.
+const RESIDENT_TALK_PAUSE_SEC := 4.0
 
 @onready var m_terrain: Node3D = $LowPolyTerrain3D
 @onready var m_actor: CharacterBody3D = $human_body_3d
@@ -598,6 +600,7 @@ func _on_inspect_requested() -> void:
 		if line.is_empty():
 			line = "Talked with %s" % subject_display_name
 		_show_resident_balloon(m_closest_subject, line)
+		_pause_and_face_resident(m_closest_subject)
 		_app_state().set_save_status(line)
 	elif request_action == "inspect":
 		_app_state().set_save_status(
@@ -668,6 +671,25 @@ func _show_resident_balloon(subject: StorySubject3D, line: String) -> void:
 	var balloon := resident.get_node_or_null("Balloon3D")
 	if balloon != null and balloon.has_method("show_line"):
 		balloon.call("show_line", line)
+
+
+# Match the 2D reveal-dialogue behaviour: the talked-to resident turns to face the
+# player and holds still for a moment before resuming its wander.
+func _pause_and_face_resident(subject: StorySubject3D) -> void:
+	if !is_instance_valid(subject) or !is_instance_valid(m_actor):
+		return
+	var resident := subject.get_parent() as Node3D
+	if !is_instance_valid(resident):
+		return
+
+	var to_player := m_actor.global_position - resident.global_position
+	to_player.y = 0.0
+	if to_player.length() > 0.01 and resident.has_method("set_direction_vector"):
+		resident.call("set_direction_vector", to_player.normalized())
+
+	var controller: Variant = resident.get("controller")
+	if controller != null and controller is Object and controller.has_method("pause_for"):
+		controller.call("pause_for", RESIDENT_TALK_PAUSE_SEC)
 
 
 func _interaction_verb_for_action(action: String) -> String:

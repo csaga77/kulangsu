@@ -67,6 +67,17 @@ func _process(delta: float) -> void:
 	super._process(delta)
 
 
+# Hold position for a while (e.g. while the player is talking to this resident).
+# Facing is left to the caller so the resident can turn toward the player.
+func pause_for(seconds: float) -> void:
+	m_waiting = true
+	m_wait_remaining = maxf(seconds, 0.0)
+	m_move_time = 0.0
+	stop_moving()
+	if is_instance_valid(m_character):
+		m_character.set("is_walking", false)
+
+
 func _pick_next_waypoint() -> void:
 	var angle := randf() * TAU
 	var distance := randf() * wander_radius
