@@ -30,8 +30,10 @@ const STORY_EVENT_CATALOG := preload("res://game/story_event_catalog.gd")
 
 @export var story_action: String = ""
 @export var display_name: String = ""
-# Selection range used by the owning world scene's proximity picker.
-@export_range(0.5, 12.0, 0.1) var interaction_radius := 3.0
+# Selection range used by the owning world scene's proximity picker. Landmark
+# buildings are large, so their subjects sit near the building centre and need a
+# wide radius; residents override this with a small talk range.
+@export_range(0.5, 40.0, 0.1) var interaction_radius := 12.0
 
 var m_story_state: Node = null
 

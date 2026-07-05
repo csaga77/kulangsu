@@ -38,6 +38,7 @@ func _run_smoke_checks() -> void:
 	_check_residents(failures)
 	_check_story_subjects(failures)
 	_check_talk_dispatch(failures)
+	_check_resume_anchor(failures)
 
 	if failures.is_empty():
 		print("PASS: game_world_3d smoke test")
@@ -121,3 +122,36 @@ func _check_talk_dispatch(failures: Array[String]) -> void:
 	var result = app_state.activate_story_subject("npc:%s" % resident_id, "talk", {})
 	if not (result is Dictionary):
 		failures.append("resident talk dispatch did not return a result dictionary")
+
+
+func _check_resume_anchor(failures: Array[String]) -> void:
+	if !is_instance_valid(m_world):
+		return
+	var app_state = APP_RUNTIME.get_app_state(self)
+	if app_state == null:
+		return
+	var landmark_nodes: Dictionary = m_world.get("m_landmark_nodes")
+	var player := m_world.get_node_or_null("human_body_3d") as Node3D
+	if player == null or landmark_nodes.size() < 5:
+		failures.append("resume-anchor check is missing world nodes")
+		return
+
+	app_state.mode = "Story"
+
+	# A known anchor should place the player near that landmark.
+	app_state.set_story_resume_checkpoint("Bagua Tower", "Bagua Tower")
+	m_world._apply_story_resume_anchor_if_needed()
+	var bagua := landmark_nodes.get("Bagua Tower") as Node3D
+	if is_instance_valid(bagua) and _flat_distance(player.global_position, bagua.global_position) > 4.0:
+		failures.append("resume anchor did not place the player near Bagua Tower")
+
+	# A missing anchor should fall back to the Piano Ferry entry anchor.
+	app_state.set_story_resume_checkpoint("Nonexistent Place", "Nonexistent Place")
+	m_world._apply_story_resume_anchor_if_needed()
+	var ferry := landmark_nodes.get("Piano Ferry") as Node3D
+	if is_instance_valid(ferry) and _flat_distance(player.global_position, ferry.global_position) > 4.0:
+		failures.append("resume fallback did not place the player at Piano Ferry")
+
+
+func _flat_distance(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x, a.z).distance_to(Vector2(b.x, b.z))

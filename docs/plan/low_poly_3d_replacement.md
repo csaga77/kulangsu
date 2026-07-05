@@ -216,6 +216,15 @@ progression; and save/continue restores through stable semantic resume anchors, 
 fallback when a requested anchor is missing. The 2D save must remain loadable through the cutover;
 any prototype-only state needs a versioned migration, never a schema fork.
 
+*Status: resume anchor proven; dispatch reuse in place.* `game_world_3d` updates the shared story
+resume checkpoint (`AppState.set_story_resume_checkpoint`) to the last landmark the player reaches in
+Story mode, and applies it on entry with a Piano Ferry fallback — the same stable landmark-name
+anchors the 2D game uses. `test_game_world_3d.tscn` now asserts the resume anchor places the player
+at the requested landmark and falls back to Piano Ferry for a missing anchor, alongside the existing
+resident-talk dispatch check through the shared `AppState.activate_story_subject` path. Still to
+prove: full landmark-beat dispatch equivalence against the 2D path and resident dialogue/trust parity
+in the running 3D world.
+
 ### Phase G — Record the decision and execute the cutover
 
 1. Record the explicit "replace the 2D overworld" outcome in `implementation_plan.md`, linking the

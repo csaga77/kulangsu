@@ -38,7 +38,8 @@ const LANDMARK_MASK_META := &"low_poly_landmark_mask_pixel"
 const DEFAULT_RESUME_ANCHOR := "Piano Ferry"
 const ISLAND_PATHS_LABEL := "Island Paths"
 # Player is treated as "at" a landmark when within this XZ distance of its proxy.
-const LANDMARK_LOCATION_RADIUS := 4.0
+# Sized for the scaled-up world and the large stylized building footprints.
+const LANDMARK_LOCATION_RADIUS := 14.0
 
 # Authored island placements mirror the validated combined-world scene. Landmark
 # display names match the 2D game_main landmark dictionary so AppState, the journal,
@@ -315,6 +316,20 @@ func _sync_location_from_player() -> void:
 		return
 	m_last_location = resolved
 	_app_state().set_location(resolved)
+	_update_story_resume_checkpoint(resolved)
+
+
+# Mirror scenes/game_main.gd: while in Story mode, keep the resume checkpoint at the
+# last landmark the player reached so Continue restores near where they were. The
+# landmark display names double as stable safe-resume anchor ids.
+func _update_story_resume_checkpoint(resolved_location: String) -> void:
+	if _app_state().mode != "Story":
+		return
+	if resolved_location.is_empty() or resolved_location == ISLAND_PATHS_LABEL:
+		return
+	if !m_landmark_nodes.has(resolved_location):
+		return
+	_app_state().set_story_resume_checkpoint(resolved_location, resolved_location)
 
 
 func _flatten(position: Vector3) -> Vector2:
