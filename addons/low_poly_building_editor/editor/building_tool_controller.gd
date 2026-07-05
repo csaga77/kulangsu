@@ -11,6 +11,22 @@ extends RefCounted
 
 const BuildingToolContextScript = preload("res://addons/low_poly_building_editor/editor/building_tool_context.gd")
 
+## Screen-space distance (pixels) a draw gesture must travel before releasing
+## the mouse commits the preview. Matches `WALL_DRAG_COMMIT_DISTANCE` in
+## `plugin.gd` until the remaining drawing tools move into controllers.
+const DRAG_COMMIT_DISTANCE := 6.0
+
+## Rectangle-footprint edit-mask bits shared by the floor/stairs/roof pick
+## helpers. Match the `FLOOR_EDIT_*` constants in `plugin.gd` until the
+## floor and roof tools move into controllers.
+const FLOOR_EDIT_MOVE := 0
+const FLOOR_EDIT_MIN_X := 1
+const FLOOR_EDIT_MAX_X := 2
+const FLOOR_EDIT_MIN_Z := 4
+const FLOOR_EDIT_MAX_Z := 8
+const FLOOR_EDIT_POLYGON_VERTEX := 16
+const FLOOR_EDIT_POLYGON_EDGE := 32
+
 var m_context: BuildingToolContextScript
 
 
@@ -35,3 +51,16 @@ func apply_settings(_settings: Dictionary) -> void:
 ## plugin exit; must be safe to call at any time.
 func cancel_preview() -> void:
 	pass
+
+
+## Shared angle helpers; match `_normalize_degrees`/`_angles_match` in
+## `plugin.gd` until the roof tool moves into a controller.
+static func normalize_degrees(value: float) -> float:
+	var normalized := fposmod(value + 180.0, 360.0) - 180.0
+	if is_equal_approx(normalized, -180.0):
+		return 180.0
+	return normalized
+
+
+static func angles_match(first: float, second: float) -> bool:
+	return absf(angle_difference(deg_to_rad(first), deg_to_rad(second))) <= deg_to_rad(0.5)
