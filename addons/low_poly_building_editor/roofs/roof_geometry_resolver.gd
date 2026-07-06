@@ -40,7 +40,8 @@ func find_roof_merge_target(
 	color: Color,
 	rotation_degrees: float = 0.0,
 	ignored_roof: Node = null,
-	hip_gable_height: float = 0.0
+	hip_gable_height: float = 0.0,
+	hip_shape: int = 0
 ) -> Dictionary:
 	return _find_roof_cover_data(
 		local_start,
@@ -53,7 +54,8 @@ func find_roof_merge_target(
 		rotation_degrees,
 		ignored_roof,
 		false,
-		hip_gable_height
+		hip_gable_height,
+		hip_shape
 	)
 
 
@@ -68,7 +70,8 @@ func compute_roof_covered_rects(
 	rotation_degrees: float = 0.0,
 	ignored_roof: Node = null,
 	only_before_ignored_roof := false,
-	hip_gable_height: float = 0.0
+	hip_gable_height: float = 0.0,
+	hip_shape: int = 0
 ) -> Array[Rect2]:
 	var cover_data := compute_roof_cover_regions(
 		local_start,
@@ -81,7 +84,8 @@ func compute_roof_covered_rects(
 		rotation_degrees,
 		ignored_roof,
 		only_before_ignored_roof,
-		hip_gable_height
+		hip_gable_height,
+		hip_shape
 	)
 	var rects: Array[Rect2] = []
 	for rect in cover_data.get("covered_rects", []):
@@ -100,7 +104,8 @@ func compute_roof_cover_regions(
 	rotation_degrees: float = 0.0,
 	ignored_roof: Node = null,
 	only_before_ignored_roof := false,
-	hip_gable_height: float = 0.0
+	hip_gable_height: float = 0.0,
+	hip_shape: int = 0
 ) -> Dictionary:
 	return _find_roof_cover_data(
 		local_start,
@@ -113,7 +118,8 @@ func compute_roof_cover_regions(
 		rotation_degrees,
 		ignored_roof,
 		only_before_ignored_roof,
-		hip_gable_height
+		hip_gable_height,
+		hip_shape
 	)
 
 
@@ -153,7 +159,8 @@ func refresh_roof_covered_rects() -> void:
 			roof.roof_rotation_degrees,
 			roof,
 			true,
-			_roof_hip_gable_height(roof)
+			_roof_hip_gable_height(roof),
+			_roof_hip_shape(roof)
 		)
 		roof.set_covered_regions(
 			_roof_covered_rects_from_regions(cover_regions),
@@ -214,6 +221,7 @@ func _roof_clip_surfaces_for_wall(wall: Wall3DScript) -> Array[Dictionary]:
 			"overhang": roof.roof_overhang,
 			"angle_degrees": _roof_angle_degrees(roof),
 			"hip_gable_height": _roof_hip_gable_height(roof),
+			"hip_shape": _roof_hip_shape(roof),
 			"thickness": roof.roof_thickness,
 			"visible_polygons": roof_visible_polygons,
 		})
@@ -289,7 +297,8 @@ func _find_roof_cover_data(
 	rotation_degrees: float,
 	ignored_roof: Node,
 	_only_before_ignored_roof: bool,
-	hip_gable_height: float
+	hip_gable_height: float,
+	hip_shape: int = 0
 ) -> Dictionary:
 	var new_size := Vector2(absf(local_end.x - local_start.x), absf(local_end.z - local_start.z))
 	if new_size.x <= 0.001 or new_size.y <= 0.001:
@@ -332,6 +341,7 @@ func _find_roof_cover_data(
 				height,
 				overhang,
 				hip_gable_height,
+				hip_shape,
 				ignored_roof as Roof3DScript,
 				roof,
 				covered_rect,
@@ -363,6 +373,7 @@ func _roof_polygons_under_other_roof(
 	candidate_angle_degrees: float,
 	candidate_overhang: float,
 	candidate_hip_gable_height: float,
+	candidate_hip_shape: int,
 	candidate_roof: Roof3DScript,
 	other_roof: Roof3DScript,
 	overlap_rect: Rect2,
@@ -377,6 +388,7 @@ func _roof_polygons_under_other_roof(
 		{
 			"angle_degrees": candidate_angle_degrees,
 			"gable_height_from_peak": candidate_hip_gable_height,
+			"hip_shape": candidate_hip_shape,
 		}
 	)
 	var other_faces := _roof_top_faces_for_node_or_style(
@@ -473,6 +485,12 @@ static func _roof_hip_gable_height(roof: Roof3DScript) -> float:
 	return float(roof.get_style_geometry_parameters().get(
 		"gable_height_from_peak", 0.0
 	))
+
+
+static func _roof_hip_shape(roof: Roof3DScript) -> int:
+	if roof == null:
+		return 0
+	return int(roof.get_style_geometry_parameters().get("hip_shape", 0))
 
 
 func _face_polygon(face_vertices: PackedVector3Array) -> PackedVector2Array:

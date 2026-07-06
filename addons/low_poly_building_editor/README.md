@@ -133,7 +133,9 @@ This README is the plugin's entry point; the full documentation lives in [`docs/
 
 The focused smoke scene is
 [`tests/test_low_poly_building_editor_3d.tscn`](tests/test_low_poly_building_editor_3d.tscn), the focused
-dome smoke scene is [`tests/test_dome_roof_3d.tscn`](tests/test_dome_roof_3d.tscn), and the
+dome smoke scene is [`tests/test_dome_roof_3d.tscn`](tests/test_dome_roof_3d.tscn), the
+hip shape smoke scene is
+[`tests/test_hip_shapes_3d.tscn`](tests/test_hip_shapes_3d.tscn), and the
 interactive generator gallery is
 [`tests/test_building_variants_gallery_3d.tscn`](tests/test_building_variants_gallery_3d.tscn). The
 project-level [`../../docs/module_map.md`](../../docs/module_map.md),

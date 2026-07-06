@@ -57,7 +57,8 @@ func find_roof_merge_target(
 	color: Color,
 	rotation_degrees: float = 0.0,
 	ignored_roof: Node = null,
-	hip_gable_height: float = 0.0
+	hip_gable_height: float = 0.0,
+	hip_shape: int = 0
 ) -> Dictionary:
 	return _create_roof_geometry_resolver().find_roof_merge_target(
 		local_start,
@@ -69,7 +70,8 @@ func find_roof_merge_target(
 		color,
 		rotation_degrees,
 		ignored_roof,
-		hip_gable_height
+		hip_gable_height,
+		hip_shape
 	)
 
 
@@ -84,7 +86,8 @@ func compute_roof_covered_rects(
 	rotation_degrees: float = 0.0,
 	ignored_roof: Node = null,
 	only_before_ignored_roof := false,
-	hip_gable_height: float = 0.0
+	hip_gable_height: float = 0.0,
+	hip_shape: int = 0
 ) -> Array[Rect2]:
 	return _create_roof_geometry_resolver().compute_roof_covered_rects(
 		local_start,
@@ -97,7 +100,8 @@ func compute_roof_covered_rects(
 		rotation_degrees,
 		ignored_roof,
 		only_before_ignored_roof,
-		hip_gable_height
+		hip_gable_height,
+		hip_shape
 	)
 
 
@@ -112,7 +116,8 @@ func compute_roof_cover_regions(
 	rotation_degrees: float = 0.0,
 	ignored_roof: Node = null,
 	only_before_ignored_roof := false,
-	hip_gable_height: float = 0.0
+	hip_gable_height: float = 0.0,
+	hip_shape: int = 0
 ) -> Dictionary:
 	return _create_roof_geometry_resolver().compute_roof_cover_regions(
 		local_start,
@@ -125,7 +130,8 @@ func compute_roof_cover_regions(
 		rotation_degrees,
 		ignored_roof,
 		only_before_ignored_roof,
-		hip_gable_height
+		hip_gable_height,
+		hip_shape
 	)
 
 

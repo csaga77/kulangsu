@@ -26,6 +26,7 @@ var m_roof_settings := {
 	"thickness": 0.12,
 	"overhang": 0.2,
 	"hip_gable_height": 0.0,
+	"hip_shape": 0,
 	"rotation_degrees": 0.0,
 	"color": Color(0.50, 0.34, 0.25, 1.0),
 }
@@ -316,7 +317,8 @@ func _create_roof_preview(coordinator: Building3DScript) -> void:
 	BuildingFactoryScript.configure_roof_style(
 		m_roof_preview,
 		float(m_roof_settings["height"]),
-		float(m_roof_settings.get("hip_gable_height", 0.0))
+		float(m_roof_settings.get("hip_gable_height", 0.0)),
+		int(m_roof_settings.get("hip_shape", 0))
 	)
 	m_roof_preview.roof_thickness = float(m_roof_settings["thickness"])
 	m_roof_preview.roof_overhang = float(m_roof_settings["overhang"])
@@ -354,7 +356,8 @@ func _update_roof_preview(camera: Camera3D, mouse_position: Vector2) -> void:
 	BuildingFactoryScript.configure_roof_style(
 		m_roof_preview,
 		float(m_roof_settings["height"]),
-		float(m_roof_settings.get("hip_gable_height", 0.0))
+		float(m_roof_settings.get("hip_gable_height", 0.0)),
+		int(m_roof_settings.get("hip_shape", 0))
 	)
 	m_roof_preview.roof_thickness = float(m_roof_settings["thickness"])
 	m_roof_preview.roof_overhang = float(m_roof_settings["overhang"])
@@ -496,7 +499,8 @@ func _commit_roof_rotation(roof: Roof3DScript, delta_degrees: float) -> void:
 			new_rotation,
 			roof,
 			true,
-			_roof_hip_gable_height(roof)
+			_roof_hip_gable_height(roof),
+			_roof_hip_shape(roof)
 		)
 		new_covered_rects = _roof_covered_rects_from_regions(cover_regions)
 		new_covered_polygons = _roof_covered_polygons_from_regions(cover_regions)
@@ -582,6 +586,7 @@ func _commit_roof(
 	var thickness := float(m_roof_settings["thickness"])
 	var overhang := float(m_roof_settings["overhang"])
 	var hip_gable_height := float(m_roof_settings.get("hip_gable_height", 0.0))
+	var hip_shape := int(m_roof_settings.get("hip_shape", 0))
 	var color := Color(m_roof_settings["color"])
 	var normalized_rotation := normalize_degrees(rotation_degrees)
 	var merge := coordinator.find_roof_merge_target(
@@ -594,7 +599,8 @@ func _commit_roof(
 		color,
 		normalized_rotation,
 		m_roof_preview,
-		hip_gable_height
+		hip_gable_height,
+		hip_shape
 	)
 	var covered_rects := _roof_covered_rects_from_regions(merge)
 	var covered_polygons := _roof_covered_polygons_from_regions(merge)
@@ -608,7 +614,8 @@ func _commit_roof(
 		overhang,
 		color,
 		normalized_rotation,
-		hip_gable_height
+		hip_gable_height,
+		hip_shape
 	)
 	if !covered_rects.is_empty() or !covered_polygons.is_empty():
 		roof.set_covered_regions(covered_rects, covered_polygons)
@@ -1032,7 +1039,8 @@ func _commit_roof_drag() -> void:
 			roof.roof_rotation_degrees,
 			roof,
 			true,
-			_roof_hip_gable_height(roof)
+			_roof_hip_gable_height(roof),
+			_roof_hip_shape(roof)
 		)
 		new_covered_rects = _roof_covered_rects_from_regions(cover_regions)
 		new_covered_polygons = _roof_covered_polygons_from_regions(cover_regions)
@@ -1699,6 +1707,10 @@ func _roof_angle_degrees(roof: Roof3DScript) -> float:
 
 func _roof_hip_gable_height(roof: Roof3DScript) -> float:
 	return BuildingFactoryScript.get_roof_hip_gable_height(roof)
+
+
+func _roof_hip_shape(roof: Roof3DScript) -> int:
+	return BuildingFactoryScript.get_roof_hip_shape(roof)
 
 
 func _set_roof_corners_rotation_angle_and_covers(

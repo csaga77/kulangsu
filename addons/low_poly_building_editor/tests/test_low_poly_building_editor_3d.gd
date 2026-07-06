@@ -55,6 +55,9 @@ const FlatRoof3DScript = preload("res://addons/low_poly_building_editor/roofs/fl
 const SlopedRoof3DScript = preload("res://addons/low_poly_building_editor/roofs/sloped_roof_3d.gd")
 const GableRoof3DScript = preload("res://addons/low_poly_building_editor/roofs/gable_roof_3d.gd")
 const HipRoof3DScript = preload("res://addons/low_poly_building_editor/roofs/hip_roof_3d.gd")
+const PyramidHipGeometryScript = preload("res://addons/low_poly_building_editor/roofs/pyramid_hip_geometry_3d.gd")
+const HexagonalHipGeometryScript = preload("res://addons/low_poly_building_editor/roofs/hexagonal_hip_geometry_3d.gd")
+const OctagonHipGeometryScript = preload("res://addons/low_poly_building_editor/roofs/octagon_hip_geometry_3d.gd")
 const BuildingOpening3DScript = preload("res://addons/low_poly_building_editor/openings/building_opening_3d.gd")
 const Window3DScript = preload("res://addons/low_poly_building_editor/openings/window_3d.gd")
 const Door3DScript = preload("res://addons/low_poly_building_editor/openings/door_3d.gd")
@@ -852,7 +855,7 @@ func _validate_roof_style_property_ownership() -> void:
 	var flat_roof := FlatRoof3DScript.new() as Roof3DScript
 	var gable_roof := GableRoof3DScript.new() as Roof3DScript
 	var hip_roof := HipRoof3DScript.new() as Roof3DScript
-	for property_name in [&"roof_style_index", &"roof_height", &"hip_gable_height"]:
+	for property_name in [&"roof_style_index", &"roof_height", &"hip_gable_height", &"hip_shape"]:
 		if _has_editor_property(base_roof, property_name):
 			m_failures.append("Roof3D still exposes style-only property %s" % property_name)
 	base_roof.rebuild_roof_mesh()
@@ -890,6 +893,32 @@ func _validate_roof_style_property_ownership() -> void:
 		m_failures.append("GableRoof3D is missing sloped-roof angle access")
 	if !hip_roof.has_method(&"get_hip_gable_height"):
 		m_failures.append("HipRoof3D is missing hip gable-height access")
+	# Hip shape is an authored substyle of the single hip roof class, not a
+	# separate serialized style. Standard keeps the ridge and gable drop; the
+	# pavilion shapes select their apex geometry strategy.
+	if !_has_editor_property(hip_roof, &"hip_shape"):
+		m_failures.append("HipRoof3D is missing the hip_shape substyle property")
+	if _has_editor_property(gable_roof, &"hip_shape"):
+		m_failures.append("GableRoof3D exposes hip-only property hip_shape")
+	if base_roof.has_method(&"get_hip_shape") or base_roof.has_method(&"set_hip_shape"):
+		m_failures.append("Roof3D exposes style-only hip shape accessors")
+	var hip_shape_geometry := {
+		HipRoof3DScript.HipShape.PYRAMID: PyramidHipGeometryScript,
+		HipRoof3DScript.HipShape.HEXAGONAL: HexagonalHipGeometryScript,
+		HipRoof3DScript.HipShape.OCTAGON: OctagonHipGeometryScript,
+	}
+	for shape in hip_shape_geometry:
+		var shaped_hip := HipRoof3DScript.new() as HipRoof3DScript
+		shaped_hip.set_hip_shape(int(shape))
+		if shaped_hip.get_roof_style() != "hip":
+			m_failures.append("Hip shape %d changed the serialized roof style" % shape)
+		if shaped_hip.get_hip_shape() != int(shape):
+			m_failures.append("HipRoof3D did not retain hip shape %d" % shape)
+		if shaped_hip._get_style_geometry().get_script() != hip_shape_geometry[shape]:
+			m_failures.append("Hip shape %d selected the wrong geometry strategy" % shape)
+		if int(shaped_hip.get_style_geometry_parameters().get("hip_shape", -1)) != int(shape):
+			m_failures.append("Hip shape %d is not published through style parameters" % shape)
+		shaped_hip.free()
 	var coordinator := Building3DScript.new() as Building3DScript
 	var factory_flat := BuildingFactoryScript.instantiate_roof_style("flat")
 	var factory_hip := BuildingFactoryScript.instantiate_roof_style("hip")

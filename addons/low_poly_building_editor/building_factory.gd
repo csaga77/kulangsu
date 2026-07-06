@@ -515,13 +515,14 @@ static func create_roof_node(
 	overhang: float = 0.2,
 	color: Color = Color(0.50, 0.34, 0.25, 1.0),
 	rotation_degrees: float = 0.0,
-	hip_gable_height: float = 0.0
+	hip_gable_height: float = 0.0,
+	hip_shape: int = 0
 ) -> Roof3DScript:
 	var roof := instantiate_roof_style(style)
 	roof.name = _unique_child_name(building, "Roof3D")
 	roof.start_point = local_start
 	roof.end_point = Vector3(local_end.x, local_start.y, local_end.z)
-	configure_roof_style(roof, height, hip_gable_height)
+	configure_roof_style(roof, height, hip_gable_height, hip_shape)
 	roof.roof_thickness = thickness
 	roof.roof_overhang = overhang
 	roof.roof_color = color
@@ -559,12 +560,14 @@ static func instantiate_roof_style(style: String) -> Roof3DScript:
 static func configure_roof_style(
 	roof: Roof3DScript,
 	angle_degrees: float,
-	hip_gable_height: float = 0.0
+	hip_gable_height: float = 0.0,
+	hip_shape: int = 0
 ) -> void:
 	if roof is SlopedRoof3DScript:
 		(roof as SlopedRoof3DScript).set_roof_angle_degrees(angle_degrees)
 	if roof is HipRoof3DScript:
 		(roof as HipRoof3DScript).set_hip_gable_height(hip_gable_height)
+		(roof as HipRoof3DScript).set_hip_shape(hip_shape)
 
 
 static func get_roof_style_parameters(roof: Roof3DScript) -> Dictionary:
@@ -581,6 +584,10 @@ static func get_roof_hip_gable_height(roof: Roof3DScript) -> float:
 	return float(get_roof_style_parameters(roof).get(
 		"gable_height_from_peak", 0.0
 	))
+
+
+static func get_roof_hip_shape(roof: Roof3DScript) -> int:
+	return int(get_roof_style_parameters(roof).get("hip_shape", 0))
 
 
 static func get_pillar_style_keys() -> PackedStringArray:

@@ -154,6 +154,8 @@ var m_roof_rotation_spin: SpinBox
 var m_roof_color_picker: ColorPickerButton
 var m_roof_style_header: Label
 var m_roof_angle_row: HBoxContainer
+var m_roof_hip_shape_option: OptionButton
+var m_roof_hip_shape_row: HBoxContainer
 var m_roof_hip_gable_height_row: HBoxContainer
 var m_palette_root_edit: LineEdit
 var m_prop_path_edit: LineEdit
@@ -871,6 +873,27 @@ func _build_roof_controls(parent: VBoxContainer) -> void:
 	m_roof_angle_row = _add_labeled_control(parent, "Angle:", m_roof_height_spin)
 	m_roof_height_spin.value_changed.connect(_on_roof_setting_changed)
 
+	m_roof_hip_shape_option = OptionButton.new()
+	m_roof_hip_shape_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for hip_shape: Dictionary in [
+		{"label": "Standard", "value": 0},
+		{"label": "Pyramid", "value": 1},
+		{"label": "Hexagonal", "value": 2},
+		{"label": "Octagon", "value": 3},
+	]:
+		m_roof_hip_shape_option.add_item(String(hip_shape["label"]))
+		m_roof_hip_shape_option.set_item_metadata(
+			m_roof_hip_shape_option.item_count - 1, int(hip_shape["value"])
+		)
+	m_roof_hip_shape_option.select(0)
+	m_roof_hip_shape_option.item_selected.connect(_on_roof_hip_shape_selected)
+	m_roof_hip_shape_row = _add_labeled_control(
+		parent,
+		"Hip Shape:",
+		m_roof_hip_shape_option,
+		"Standard raises a ridge; Pyramid, Hexagonal, and Octagon raise the footprint to a centered apex."
+	)
+
 	m_roof_hip_gable_height_spin = _make_spin(0.0, 20.0, 0.01, 0.0)
 	m_roof_hip_gable_height_row = _add_labeled_control(
 		parent,
@@ -1525,6 +1548,11 @@ func _on_roof_style_selected(_index: int) -> void:
 	_emit_roof_settings()
 
 
+func _on_roof_hip_shape_selected(_index: int) -> void:
+	_update_roof_style_controls()
+	_emit_roof_settings()
+
+
 func _on_roof_footprint_selected(_index: int) -> void:
 	_emit_roof_settings()
 
@@ -2036,6 +2064,7 @@ func _emit_roof_settings() -> void:
 		"thickness": float(m_roof_thickness_spin.value),
 		"overhang": float(m_roof_overhang_spin.value),
 		"hip_gable_height": float(m_roof_hip_gable_height_spin.value),
+		"hip_shape": _selected_roof_hip_shape(),
 		"rotation_degrees": float(m_roof_rotation_spin.value),
 		"color": m_roof_color_picker.color,
 	})
@@ -2172,15 +2201,37 @@ func _select_roof_style(style: String) -> void:
 func _update_roof_style_controls() -> void:
 	var style := _selected_roof_style()
 	var has_angle := style != "flat"
-	var has_gable_drop := style == "hip"
+	var is_hip := style == "hip"
+	# Only the standard hip shape carries a ridge and its gable drop.
+	var has_gable_drop := is_hip and _selected_roof_hip_shape() == 0
 	if m_roof_footprint_row != null:
 		m_roof_footprint_row.visible = style == "flat"
 	if m_roof_style_header != null:
-		m_roof_style_header.visible = has_angle or has_gable_drop
+		m_roof_style_header.visible = has_angle or is_hip
 	if m_roof_angle_row != null:
 		m_roof_angle_row.visible = has_angle
+	if m_roof_hip_shape_row != null:
+		m_roof_hip_shape_row.visible = is_hip
 	if m_roof_hip_gable_height_row != null:
 		m_roof_hip_gable_height_row.visible = has_gable_drop
+
+
+func _selected_roof_hip_shape() -> int:
+	if m_roof_hip_shape_option == null or m_roof_hip_shape_option.selected < 0:
+		return 0
+	return int(m_roof_hip_shape_option.get_item_metadata(m_roof_hip_shape_option.selected))
+
+
+func _select_roof_hip_shape(hip_shape: int) -> void:
+	if m_roof_hip_shape_option == null:
+		return
+	for index in range(m_roof_hip_shape_option.get_item_count()):
+		if int(m_roof_hip_shape_option.get_item_metadata(index)) == hip_shape:
+			m_roof_hip_shape_option.select(index)
+			_update_roof_style_controls()
+			return
+	m_roof_hip_shape_option.select(0)
+	_update_roof_style_controls()
 
 
 func _emit_prop_settings() -> void:
@@ -2616,6 +2667,7 @@ func _load_persisted_settings() -> void:
 	m_roof_hip_gable_height_spin.value = float(
 		state.get("roof_hip_gable_height", m_roof_hip_gable_height_spin.value)
 	)
+	_select_roof_hip_shape(int(state.get("roof_hip_shape", _selected_roof_hip_shape())))
 	m_roof_rotation_spin.value = float(state.get("roof_rotation_degrees", m_roof_rotation_spin.value))
 	var roof_color_variant: Variant = state.get("roof_color", m_roof_color_picker.color)
 	if roof_color_variant is Color:
@@ -2826,6 +2878,7 @@ func _save_persisted_settings() -> void:
 		"roof_thickness": float(m_roof_thickness_spin.value) if m_roof_thickness_spin != null else 0.12,
 		"roof_overhang": float(m_roof_overhang_spin.value) if m_roof_overhang_spin != null else 0.2,
 		"roof_hip_gable_height": float(m_roof_hip_gable_height_spin.value) if m_roof_hip_gable_height_spin != null else 0.0,
+		"roof_hip_shape": _selected_roof_hip_shape() if m_roof_hip_shape_option != null else 0,
 		"roof_rotation_degrees": float(m_roof_rotation_spin.value) if m_roof_rotation_spin != null else 0.0,
 		"roof_color": m_roof_color_picker.color if m_roof_color_picker != null else Color(0.50, 0.34, 0.25, 1.0),
 		"window_style": _selected_window_style(),

@@ -718,21 +718,24 @@ static func _append_roof_style_break_t_values(
 		RoofStyleGeometryFactory.STYLE_GABLE:
 			_append_axis_break_t(local_start, local_end, 1, size.y * 0.5, values)
 		RoofStyleGeometryFactory.STYLE_HIP:
-			var ridge_points := RoofStyleGeometryFactory.hip_roof_ridge_points_for_size(
-				size,
-				overhang,
-				float(clip.get("angle_degrees", 0.0)),
-				float(clip.get("hip_gable_height", 0.0))
-			)
 			var min_x := -overhang
 			var max_x := size.x + overhang
 			var min_z := -overhang
 			var max_z := size.y + overhang
+			# The apex/ridge of every hip shape passes through the footprint center.
 			_append_axis_break_t(local_start, local_end, 0, (min_x + max_x) * 0.5, values)
 			_append_axis_break_t(local_start, local_end, 1, (min_z + max_z) * 0.5, values)
-			for ridge_point in ridge_points:
-				_append_axis_break_t(local_start, local_end, 0, ridge_point.x, values)
-				_append_axis_break_t(local_start, local_end, 1, ridge_point.z, values)
+			# Only the standard hip carries a horizontal ridge line to break along.
+			if int(clip.get("hip_shape", RoofStyleGeometryFactory.HIP_SHAPE_STANDARD)) == RoofStyleGeometryFactory.HIP_SHAPE_STANDARD:
+				var ridge_points := RoofStyleGeometryFactory.hip_roof_ridge_points_for_size(
+					size,
+					overhang,
+					float(clip.get("angle_degrees", 0.0)),
+					float(clip.get("hip_gable_height", 0.0))
+				)
+				for ridge_point in ridge_points:
+					_append_axis_break_t(local_start, local_end, 0, ridge_point.x, values)
+					_append_axis_break_t(local_start, local_end, 1, ridge_point.z, values)
 
 
 static func _append_axis_break_t(
@@ -780,6 +783,7 @@ static func _roof_clip_height_at_plan_point(point: Vector2, roof_clips: Array) -
 			{
 				"angle_degrees": float(clip.get("angle_degrees", 0.0)),
 				"gable_height_from_peak": float(clip.get("hip_gable_height", 0.0)),
+				"hip_shape": int(clip.get("hip_shape", 0)),
 			}
 		)
 		var wall_height := float(clip.get("origin_y", 0.0)) + roof_height - float(clip.get("thickness", 0.0))
@@ -841,6 +845,7 @@ static func _roof_cover_polygons_above_height(
 		{
 			"angle_degrees": float(clip.get("angle_degrees", 0.0)),
 			"gable_height_from_peak": float(clip.get("hip_gable_height", 0.0)),
+			"hip_shape": int(clip.get("hip_shape", 0)),
 		}
 	)
 	var visible_polygons: Array = clip.get("visible_polygons", [])
