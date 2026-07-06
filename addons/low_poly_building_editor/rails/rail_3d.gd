@@ -256,6 +256,10 @@ func _rebuild_collision_from_cached_mesh() -> void:
 
 
 func _sync_transform_from_points() -> void:
+	transform = _authored_transform()
+
+
+func _authored_transform() -> Transform3D:
 	var flat_delta := Vector3(
 		end_point.x - start_point.x,
 		0.0,
@@ -267,9 +271,39 @@ func _sync_transform_from_points() -> void:
 	var side := direction.cross(Vector3.UP)
 	if side.length_squared() <= 0.000001:
 		side = Vector3.BACK
-	transform = Transform3D(
+	return Transform3D(
 		Basis(direction, Vector3.UP, side.normalized()).orthonormalized(),
 		start_point
+	)
+
+
+func supports_native_transform() -> bool:
+	return true
+
+
+func _bake_native_delta(delta: Transform3D, grid_step: float) -> void:
+	var scale := native_delta_scale(delta)
+	var new_start := snap_vector3_to_grid(delta * start_point, grid_step)
+	var new_end := snap_vector3_to_grid(delta * end_point, grid_step)
+	rail_height = maxf(rail_height * scale.y, 0.2)
+	set_rail_points(new_start, new_end)
+
+
+func capture_native_transform_state() -> Dictionary:
+	return {
+		"start_point": start_point,
+		"end_point": end_point,
+		"rail_height": rail_height,
+	}
+
+
+func restore_native_transform_state(state: Dictionary) -> void:
+	if state.is_empty():
+		return
+	rail_height = float(state.get("rail_height", rail_height))
+	set_rail_points(
+		Vector3(state.get("start_point", start_point)),
+		Vector3(state.get("end_point", end_point))
 	)
 
 

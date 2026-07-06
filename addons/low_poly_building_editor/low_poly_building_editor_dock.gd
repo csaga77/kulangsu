@@ -12,6 +12,7 @@ signal prop_settings_changed(settings: Dictionary)
 signal window_settings_changed(settings: Dictionary)
 signal door_settings_changed(settings: Dictionary)
 signal display_settings_changed(settings: Dictionary)
+signal transform_snap_changed(step: float)
 signal create_coordinator_requested()
 
 const MODE_SELECT := "select"
@@ -66,6 +67,7 @@ var m_status_label: Label
 var m_debug_wireframe_check: CheckBox
 var m_debug_wireframe_xray_check: CheckBox
 var m_debug_wireframe_color_picker: ColorPickerButton
+var m_transform_snap_spin: SpinBox
 var m_wall_section: VBoxContainer
 var m_floor_section: VBoxContainer
 var m_stair_section: VBoxContainer
@@ -364,7 +366,19 @@ func _build_display_controls(parent: VBoxContainer) -> void:
 		"Wire Color:",
 		m_debug_wireframe_color_picker
 	)
+	m_transform_snap_spin = _make_spin(0.0, 8.0, 0.05, 0.5)
+	m_transform_snap_spin.allow_greater = true
+	m_transform_snap_spin.tooltip_text = (
+		"Grid step applied when a building block is edited with the native Move/Rotate/Scale "
+		+ "gizmos. Positions and baked sizes snap to this step; 0 disables snapping."
+	)
+	_add_labeled_control(parent, "Transform Snap:", m_transform_snap_spin)
+	m_transform_snap_spin.value_changed.connect(_on_transform_snap_changed)
 	_update_debug_wireframe_controls()
+
+
+func _on_transform_snap_changed(_value: float) -> void:
+	transform_snap_changed.emit(float(m_transform_snap_spin.value))
 
 
 func _build_wall_controls(parent: VBoxContainer) -> void:
@@ -2669,6 +2683,10 @@ func _load_persisted_settings() -> void:
 	)
 	_select_roof_hip_shape(int(state.get("roof_hip_shape", _selected_roof_hip_shape())))
 	m_roof_rotation_spin.value = float(state.get("roof_rotation_degrees", m_roof_rotation_spin.value))
+	if m_transform_snap_spin != null:
+		m_transform_snap_spin.value = float(
+			state.get("transform_snap_step", m_transform_snap_spin.value)
+		)
 	var roof_color_variant: Variant = state.get("roof_color", m_roof_color_picker.color)
 	if roof_color_variant is Color:
 		m_roof_color_picker.color = roof_color_variant
@@ -2880,6 +2898,7 @@ func _save_persisted_settings() -> void:
 		"roof_hip_gable_height": float(m_roof_hip_gable_height_spin.value) if m_roof_hip_gable_height_spin != null else 0.0,
 		"roof_hip_shape": _selected_roof_hip_shape() if m_roof_hip_shape_option != null else 0,
 		"roof_rotation_degrees": float(m_roof_rotation_spin.value) if m_roof_rotation_spin != null else 0.0,
+		"transform_snap_step": float(m_transform_snap_spin.value) if m_transform_snap_spin != null else 0.5,
 		"roof_color": m_roof_color_picker.color if m_roof_color_picker != null else Color(0.50, 0.34, 0.25, 1.0),
 		"window_style": _selected_window_style(),
 		"window_width": float(m_window_width_spin.value) if m_window_width_spin != null else 1.0,

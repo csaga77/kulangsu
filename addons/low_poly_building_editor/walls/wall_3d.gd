@@ -1147,17 +1147,63 @@ func _restore_direct_child_global_transforms(child_transforms: Array) -> void:
 
 
 func _sync_transform_from_points() -> void:
+	transform = _authored_transform()
+
+
+func _authored_transform() -> Transform3D:
 	var primary := get_segment(0)
 	if primary == null:
-		transform = Transform3D.IDENTITY
-		return
+		return Transform3D.IDENTITY
 	var direction := get_wall_direction()
 	var side := direction.cross(Vector3.UP)
 	if side.length_squared() <= 0.000001:
 		side = Vector3.BACK
 	side = side.normalized()
 	var basis := Basis(direction, Vector3.UP, side).orthonormalized()
-	transform = Transform3D(basis, primary.start_point)
+	return Transform3D(basis, primary.start_point)
+
+
+func supports_native_transform() -> bool:
+	return true
+
+
+func _bake_native_delta(delta: Transform3D, grid_step: float) -> void:
+	var vertical_scale := native_delta_scale(delta).y
+	for segment in segments:
+		if segment == null:
+			continue
+		segment.start_point = snap_vector3_to_grid(delta * segment.start_point, grid_step)
+		segment.end_point = snap_vector3_to_grid(delta * segment.end_point, grid_step)
+		segment.height = maxf(segment.height * vertical_scale, 0.1)
+	_sync_transform_from_points()
+	rebuild_wall_mesh()
+
+
+func capture_native_transform_state() -> Dictionary:
+	var segment_states: Array = []
+	for segment in segments:
+		if segment == null:
+			segment_states.append(null)
+			continue
+		segment_states.append({
+			"start_point": segment.start_point,
+			"end_point": segment.end_point,
+			"height": segment.height,
+		})
+	return {"segments": segment_states}
+
+
+func restore_native_transform_state(state: Dictionary) -> void:
+	var segment_states: Array = state.get("segments", [])
+	for index in range(mini(segment_states.size(), segments.size())):
+		var segment_state = segment_states[index]
+		if segment_state == null or segments[index] == null:
+			continue
+		segments[index].start_point = Vector3(segment_state["start_point"])
+		segments[index].end_point = Vector3(segment_state["end_point"])
+		segments[index].height = float(segment_state["height"])
+	_sync_transform_from_points()
+	rebuild_wall_mesh()
 
 
 ## One Array[Rect2] per segment, mapping each child opening to the nearest

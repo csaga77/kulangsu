@@ -460,7 +460,49 @@ func _rebuild_collision_from_cached_mesh() -> void:
 
 
 func _sync_transform_from_points() -> void:
-	transform = Transform3D(_rotation_basis(), get_stair_anchor_point())
+	transform = _authored_transform()
+
+
+func _authored_transform() -> Transform3D:
+	return Transform3D(_rotation_basis(), get_stair_anchor_point())
+
+
+func supports_native_transform() -> bool:
+	return true
+
+
+func _bake_native_delta(delta: Transform3D, grid_step: float) -> void:
+	var anchor := get_stair_anchor_point()
+	var size := get_stair_size()
+	var scale := native_delta_scale(delta)
+	var yaw := native_delta_yaw_degrees(delta)
+	var new_anchor := snap_vector3_to_grid(delta * anchor, grid_step)
+	var new_width := snap_size_to_grid(size.x * scale.x, grid_step)
+	var new_depth := snap_size_to_grid(size.y * scale.z, grid_step)
+	stair_rotation_degrees = _normalize_degrees_static(stair_rotation_degrees + yaw)
+	stair_height = maxf(stair_height * scale.y, 0.05)
+	start_point = new_anchor
+	end_point = Vector3(new_anchor.x + new_width, new_anchor.y, new_anchor.z + new_depth)
+	rebuild_stairs_mesh()
+
+
+func capture_native_transform_state() -> Dictionary:
+	return {
+		"start_point": start_point,
+		"end_point": end_point,
+		"stair_rotation_degrees": stair_rotation_degrees,
+		"stair_height": stair_height,
+	}
+
+
+func restore_native_transform_state(state: Dictionary) -> void:
+	if state.is_empty():
+		return
+	stair_rotation_degrees = float(state.get("stair_rotation_degrees", stair_rotation_degrees))
+	stair_height = float(state.get("stair_height", stair_height))
+	start_point = Vector3(state.get("start_point", start_point))
+	end_point = Vector3(state.get("end_point", end_point))
+	rebuild_stairs_mesh()
 
 
 func _append_stair_layout_geometry(

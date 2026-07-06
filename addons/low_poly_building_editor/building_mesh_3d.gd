@@ -133,3 +133,100 @@ func _scene_local_material_for_write(
 	local_material.resource_local_to_scene = true
 	material_override = local_material
 	return local_material
+
+
+# --- Native gizmo transform reconciliation ---------------------------------
+# Every block derives its node transform from authored parent-local properties
+# (start/end points, base point, segments, ...). When the user edits a block
+# with Godot's native Move/Rotate/Scale gizmos only the node transform changes,
+# so the plugin calls apply_native_transform() to bake that edit back into the
+# authored properties (snapping translations/sizes to the shared grid) and reset
+# the node scale to 1. Concrete blocks override _authored_transform(),
+# _bake_native_delta(), and the capture/restore hooks.
+
+const NATIVE_TRANSFORM_EPSILON := 0.0005
+
+
+## Transform this node would have purely from its authored properties. This is
+## the value _sync_transform_from_points()/_sync_transform_from_base() assigns.
+## Concrete blocks override it so a native gizmo edit can be measured as a delta.
+func _authored_transform() -> Transform3D:
+	return transform
+
+
+## Parent-space transform introduced by a native gizmo edit: the difference
+## between the current node transform and the transform implied by the authored
+## properties (which have not changed yet).
+func native_transform_delta() -> Transform3D:
+	return transform * _authored_transform().affine_inverse()
+
+
+## Bakes a native gizmo edit back into authored properties, snapping translated
+## positions and baked sizes to grid_step (0 disables snapping), then rebuilds.
+## Returns true when authored state actually changed.
+func apply_native_transform(grid_step: float) -> bool:
+	var delta := native_transform_delta()
+	if native_transform_is_identity(delta):
+		return false
+	_bake_native_delta(delta, maxf(grid_step, 0.0))
+	return true
+
+
+## True when this node is a building block that supports native-gizmo baking.
+func supports_native_transform() -> bool:
+	return false
+
+
+func _bake_native_delta(_delta: Transform3D, _grid_step: float) -> void:
+	pass
+
+
+## Authored-state snapshot used for undo/redo of a native transform edit.
+func capture_native_transform_state() -> Dictionary:
+	return {}
+
+
+func restore_native_transform_state(_state: Dictionary) -> void:
+	pass
+
+
+static func native_transform_is_identity(delta: Transform3D) -> bool:
+	return (
+		delta.origin.length() <= NATIVE_TRANSFORM_EPSILON
+		and (delta.basis.x - Vector3.RIGHT).length() <= NATIVE_TRANSFORM_EPSILON
+		and (delta.basis.y - Vector3.UP).length() <= NATIVE_TRANSFORM_EPSILON
+		and (delta.basis.z - Vector3.BACK).length() <= NATIVE_TRANSFORM_EPSILON
+	)
+
+
+static func snap_axis_to_grid(value: float, step: float) -> float:
+	if step <= 0.0:
+		return value
+	return roundf(value / step) * step
+
+
+static func snap_vector3_to_grid(value: Vector3, step: float) -> Vector3:
+	return Vector3(
+		snap_axis_to_grid(value.x, step),
+		snap_axis_to_grid(value.y, step),
+		snap_axis_to_grid(value.z, step)
+	)
+
+
+## Snaps a baked size/length to the grid while keeping it strictly positive.
+static func snap_size_to_grid(value: float, step: float) -> float:
+	return maxf(snap_axis_to_grid(value, step), maxf(step, 0.05))
+
+
+## Yaw (rotation about Y, in degrees) carried by a native transform delta.
+static func native_delta_yaw_degrees(delta: Transform3D) -> float:
+	return rad_to_deg(delta.basis.orthonormalized().get_euler().y)
+
+
+## Per-axis scale factors carried by a native transform delta.
+static func native_delta_scale(delta: Transform3D) -> Vector3:
+	return Vector3(
+		delta.basis.x.length(),
+		delta.basis.y.length(),
+		delta.basis.z.length()
+	)

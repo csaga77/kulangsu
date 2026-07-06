@@ -233,7 +233,45 @@ func _rebuild_collision_from_cached_mesh() -> void:
 
 
 func _sync_transform_from_base() -> void:
-	transform = Transform3D(Basis.IDENTITY, base_point)
+	transform = _authored_transform()
+
+
+func _authored_transform() -> Transform3D:
+	return Transform3D(Basis.IDENTITY, base_point)
+
+
+func supports_native_transform() -> bool:
+	return true
+
+
+func _bake_native_delta(delta: Transform3D, grid_step: float) -> void:
+	var scale := native_delta_scale(delta)
+	var horizontal := (scale.x + scale.z) * 0.5
+	base_point = snap_vector3_to_grid(delta * base_point, grid_step)
+	pillar_radius = maxf(pillar_radius * horizontal, 0.05)
+	if upper_radius > 0.0:
+		upper_radius = maxf(upper_radius * horizontal, 0.0)
+	pillar_height = maxf(pillar_height * scale.y, 0.1)
+	rebuild_pillar_mesh()
+
+
+func capture_native_transform_state() -> Dictionary:
+	return {
+		"base_point": base_point,
+		"pillar_radius": pillar_radius,
+		"upper_radius": upper_radius,
+		"pillar_height": pillar_height,
+	}
+
+
+func restore_native_transform_state(state: Dictionary) -> void:
+	if state.is_empty():
+		return
+	pillar_radius = float(state.get("pillar_radius", pillar_radius))
+	upper_radius = float(state.get("upper_radius", upper_radius))
+	pillar_height = float(state.get("pillar_height", pillar_height))
+	base_point = Vector3(state.get("base_point", base_point))
+	rebuild_pillar_mesh()
 
 
 func _append_pillar_geometry(

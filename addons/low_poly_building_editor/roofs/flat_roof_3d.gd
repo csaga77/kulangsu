@@ -102,6 +102,29 @@ func get_roof_render_rect() -> Rect2:
 	return result
 
 
+func _bake_native_delta(delta: Transform3D, grid_step: float) -> void:
+	if !is_polygon_roof():
+		super(delta, grid_step)
+		return
+	var new_points := PackedVector3Array()
+	for point in m_polygon_points:
+		new_points.append(snap_vector3_to_grid(delta * point, grid_step))
+	set_roof_polygon(new_points)
+
+
+func capture_native_transform_state() -> Dictionary:
+	if is_polygon_roof():
+		return {"polygon_points": get_roof_polygon()}
+	return super()
+
+
+func restore_native_transform_state(state: Dictionary) -> void:
+	if state.has("polygon_points"):
+		set_roof_polygon(PackedVector3Array(state["polygon_points"]))
+		return
+	super(state)
+
+
 func _clear_custom_footprint() -> void:
 	m_polygon_points = PackedVector3Array()
 

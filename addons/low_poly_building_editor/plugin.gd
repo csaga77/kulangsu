@@ -50,6 +50,12 @@ var m_tool_controllers := {}
 ## Cached wall grid step for cross-tool snapping (prop placement follows
 ## the wall grid); updated by _on_wall_settings_changed.
 var m_wall_grid_step := 0.5
+## Shared grid step applied when a building block is edited with the native
+## Move/Rotate/Scale gizmos; updated by _on_transform_snap_changed.
+var m_transform_snap_step := 0.5
+## Pre-drag authored snapshots for blocks being edited with native gizmos, keyed
+## by node. Captured on left-press in SELECT mode and consumed on release.
+var m_native_edit_snapshots := {}
 var m_active_coordinator: Building3DScript
 var m_display_settings := {
 	"wireframe": false,
@@ -121,6 +127,7 @@ func _enter_tree() -> void:
 		m_dock.setup(get_editor_interface())
 	m_dock.connect("tool_mode_changed", Callable(self, "_on_tool_mode_changed"))
 	m_dock.connect("display_settings_changed", Callable(self, "_on_display_settings_changed"))
+	m_dock.connect("transform_snap_changed", Callable(self, "_on_transform_snap_changed"))
 	m_dock.connect("wall_settings_changed", Callable(self, "_on_wall_settings_changed"))
 	m_dock.connect("floor_settings_changed", Callable(self, "_on_floor_settings_changed"))
 	m_dock.connect("stair_settings_changed", Callable(self, "_on_stair_settings_changed"))
@@ -184,6 +191,7 @@ func _handles(object: Object) -> bool:
 
 func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 	if m_tool_mode == MODE_SELECT:
+		_track_native_transform_edit(event)
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
 
 	if event is InputEventKey:
@@ -398,6 +406,85 @@ func _on_tool_mode_changed(mode: String) -> void:
 func _on_display_settings_changed(settings: Dictionary) -> void:
 	m_display_settings = settings.duplicate(true)
 	_apply_debug_wireframe_to_scene()
+
+
+func _on_transform_snap_changed(step: float) -> void:
+	m_transform_snap_step = maxf(step, 0.0)
+
+
+## In SELECT mode the native Move/Rotate/Scale gizmos edit the raw node
+## transform. We snapshot the authored state of any selected building block on
+## left-press and, after the gizmo finalizes, bake the transform back into
+## authored properties (grid-snapped) with an undoable action.
+func _track_native_transform_edit(event: InputEvent) -> void:
+	if !(event is InputEventMouseButton):
+		return
+	var mouse_button := event as InputEventMouseButton
+	if mouse_button.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if mouse_button.pressed:
+		_snapshot_native_transform_targets()
+	else:
+		call_deferred("_commit_native_transform_edits")
+
+
+func _snapshot_native_transform_targets() -> void:
+	m_native_edit_snapshots.clear()
+	var selection := get_editor_interface().get_selection()
+	if selection == null:
+		return
+	for node in selection.get_selected_nodes():
+		if !_is_native_transform_block(node):
+			continue
+		m_native_edit_snapshots[node] = {
+			"before": node.call("capture_native_transform_state"),
+			"coordinator": _coordinator_for_node(node),
+		}
+
+
+func _commit_native_transform_edits() -> void:
+	if m_native_edit_snapshots.is_empty():
+		return
+	var undo_redo := get_undo_redo()
+	for node in m_native_edit_snapshots:
+		if node == null or !is_instance_valid(node):
+			continue
+		var snapshot: Dictionary = m_native_edit_snapshots[node]
+		var changed: bool = node.call("apply_native_transform", m_transform_snap_step)
+		if !changed:
+			continue
+		var after_state: Dictionary = node.call("capture_native_transform_state")
+		var coordinator = snapshot.get("coordinator")
+		if undo_redo != null:
+			undo_redo.create_action("Snap building block transform")
+			undo_redo.add_do_method(node, "restore_native_transform_state", after_state)
+			undo_redo.add_undo_method(node, "restore_native_transform_state", snapshot["before"])
+			if coordinator != null and is_instance_valid(coordinator):
+				undo_redo.add_do_method(coordinator, "refresh_building_geometry_clips")
+				undo_redo.add_undo_method(coordinator, "refresh_building_geometry_clips")
+			# The bake is already applied; commit without re-executing the do steps.
+			undo_redo.commit_action(false)
+		if coordinator != null and is_instance_valid(coordinator):
+			coordinator.refresh_building_geometry_clips()
+		_apply_debug_wireframe_to_node(node)
+	m_native_edit_snapshots.clear()
+
+
+func _is_native_transform_block(node: Object) -> bool:
+	return (
+		node is Node3D
+		and node.has_method("supports_native_transform")
+		and bool(node.call("supports_native_transform"))
+	)
+
+
+func _coordinator_for_node(node: Node) -> Building3DScript:
+	var current := node.get_parent()
+	while current != null:
+		if current is Building3DScript:
+			return current
+		current = current.get_parent()
+	return null
 
 
 func _apply_debug_wireframe_to_scene() -> void:

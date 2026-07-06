@@ -423,16 +423,64 @@ func _rebuild_collision_from_cached_mesh() -> void:
 
 
 func _sync_transform_from_points() -> void:
+	transform = _authored_transform()
+
+
+func _authored_transform() -> Transform3D:
 	if is_polygon_floor() and !m_polygon_points.is_empty():
 		var bounds := _polygon_parent_bounds(m_polygon_points)
-		transform = Transform3D(
+		return Transform3D(
 			Basis.IDENTITY,
 			Vector3(bounds.position.x, m_polygon_points[0].y, bounds.position.y)
 		)
-		return
 	var min_x := minf(start_point.x, end_point.x)
 	var min_z := minf(start_point.z, end_point.z)
-	transform = Transform3D(Basis.IDENTITY, Vector3(min_x, start_point.y, min_z))
+	return Transform3D(Basis.IDENTITY, Vector3(min_x, start_point.y, min_z))
+
+
+func supports_native_transform() -> bool:
+	return true
+
+
+func _bake_native_delta(delta: Transform3D, grid_step: float) -> void:
+	if is_polygon_floor():
+		var polygon := get_floor_polygon()
+		var new_polygon := PackedVector3Array()
+		for point in polygon:
+			new_polygon.append(snap_vector3_to_grid(delta * point, grid_step))
+		set_floor_polygon(new_polygon)
+		return
+	# A rotated native edit promotes the rectangle to polygon storage, matching
+	# how manual rectangle reshaping already promotes to polygon points.
+	if absf(native_delta_yaw_degrees(delta)) > 0.5:
+		var corners := PackedVector3Array([
+			Vector3(start_point.x, start_point.y, start_point.z),
+			Vector3(end_point.x, start_point.y, start_point.z),
+			Vector3(end_point.x, start_point.y, end_point.z),
+			Vector3(start_point.x, start_point.y, end_point.z),
+		])
+		var promoted := PackedVector3Array()
+		for corner in corners:
+			promoted.append(snap_vector3_to_grid(delta * corner, grid_step))
+		set_floor_polygon(promoted)
+		return
+	set_floor_corners(
+		snap_vector3_to_grid(delta * start_point, grid_step),
+		snap_vector3_to_grid(delta * end_point, grid_step)
+	)
+
+
+func capture_native_transform_state() -> Dictionary:
+	if is_polygon_floor():
+		return {"polygon_points": get_floor_polygon()}
+	return {"start_point": start_point, "end_point": end_point}
+
+
+func restore_native_transform_state(state: Dictionary) -> void:
+	if state.has("polygon_points"):
+		set_floor_polygon(PackedVector3Array(state["polygon_points"]))
+	elif state.has("start_point"):
+		set_floor_corners(Vector3(state["start_point"]), Vector3(state["end_point"]))
 
 
 func _append_polygon_floor_geometry(
