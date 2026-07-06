@@ -198,7 +198,19 @@ Owned by:
 
 Current contract:
 
-- the low-poly 3D prototype remains a sidecar validation lane and must not be wired into `game_main.tscn` until the evidence gates in [`plan/implementation_plan.md`](plan/implementation_plan.md) and [`features/low_poly_3d_integration.md`](features/low_poly_3d_integration.md) are satisfied: process-level green smoke tests, one accepted landmark interaction slice, the fixed-camera screenshot set, the measured performance report, story/resident/save ownership, and a recorded runtime-direction decision
+- the low-poly 3D world remains a runtime candidate behind
+  `main.gd`'s `USE_3D_OVERWORLD` development toggle (default off); it must not
+  become the default or trigger deletion of `game_main.tscn` until the open
+  evidence gates in [`plan/implementation_plan.md`](plan/implementation_plan.md)
+  and [`features/low_poly_3d_integration.md`](features/low_poly_3d_integration.md)
+  are green and a runtime-direction decision is recorded
+- `StorySubject3D` nodes may provide 3D spatial adapters for the same stable
+  subject ids used by the 2D world, but they must dispatch through
+  `AppState.activate_story_subject(...)`; visual building replacement must not
+  rename subject ids or introduce 3D-only story effects
+- `game_world_3d` may resolve semantic landmark-name resume anchors to 3D
+  transforms, including the Piano Ferry fallback; save data must not persist
+  `NodePath`, instance ids, or raw generated-mesh details as the sole resume key
 - `LowPolyWorldCoordinates3D` owns terrain-mask-pixel to 3D XZ conversion plus rough 2D isometric-position to mask-pixel conversion for authored landmark blockouts
 - landmark, actor, story-anchor, and future hotspot placement must use `LowPolyWorldCoordinates3D` instead of duplicating grid-centering or isometric conversion math
 - `LowPolyTerrain3D` owns optional grayscale heightmap sampling; black maps to `heightmap_min_offset`, white maps to `heightmap_max_offset`, and offsets are added to `land_height`
@@ -210,11 +222,20 @@ Current contract:
 - heightmap file, expansion-mode, and offset edits are manual-apply: assigning the image, toggling `heightmap_expands_land_to_source`, or tuning min/max must not automatically rebuild in the editor; use the exported rebuild control or `rebuild_from_source()`
 - height-aware placement must query generated terrain heights through `LowPolyTerrain3D.get_world_surface_height(...)` or `LowPolyTerrain3D.get_sample_cell_height(...)` after rebuild instead of assuming global `land_height`; in heightmap-expanded water these queries currently expose underlying land/seabed elevation rather than visual water-plane height
 - the combined low-poly world scene owns actor grounding wiring: each frame it seats the player actor on the solid surface directly beneath it by casting a short downward ray against the physics world (the actor's `collision_mask`), so the actor stands on whatever it is over -- terrain mesh, pier, or any collision-bearing building part -- instead of hovering. It falls back to `LowPolyTerrain3D.get_world_surface_height(...)` only when the ray finds nothing within reach (e.g. heightmap-water cells with no land collision), preserving land/seabed elevation following there. `actor_terrain_clearance` defaults to `0` so the feet rest on the floor rather than floating above it; `HumanBody3D` itself stays terrain-agnostic
-- the current five canonical `LowPolyLandmarkProxy3D` nodes are non-interactive visual blockouts snapped to nearby land, not authoritative gameplay hotspots; "non-interactive" means no story/gameplay hotspot, not non-solid -- with `generate_collision` (default `true`) each generated part (wall/body boxes, tower cylinders, and gable roofs) parents a `StaticBody3D`/`CollisionShape3D` on the default layer so the character is physically blocked by the landmark's walls and roof. The collision children are `GENERATED_META` rebuild artifacts freed and rebuilt with their parts
+- standalone `LowPolyLandmarkProxy3D` nodes remain presentation-only blockouts;
+  `game_world_3d` currently replaces three of its five landmark anchors with
+  authored building scenes and owns the separate `StorySubject3D` hotspots.
+  Proxy `generate_collision` (default `true`) adds generated static collision to
+  each proxy part, while the runtime candidate generates collision recursively
+  for authored landmark meshes
 - `Camera3DController` keeps its followed target readable by raycasting from the current camera to the look-at point and fading every collision-backed `GeometryInstance3D` blocker through the instance `transparency` property. It excludes the target subtree, preserves pre-existing transparency, restores cleared blockers (or blockers tracked by a camera that stops being current), and exposes collision-mask, fade amount/duration, area-query, and hit-limit tuning. Automatic visual resolution requires the geometry instance to be an ancestor or descendant of the hit collision object
 - `HumanBody3D.body_height` and `HumanBody3D.body_radius` are the current low-poly actor shape contract; they update the GLB model scale, capsule collision, bounding box, and ground footprint together
 - `HumanBody3D` always renders one integrated GLB character model under `VisualRoot/CharacterModel`; there is no procedural block-mannequin fallback or separate hair, pants, jacket, accessory-attachment, or runtime skin-transfer layer. The only code-generated geometry left is the optional `DebugBox` bounding-box gizmo and the optional skeleton bone-debug lines
 - the default character model is `assets/characters/male.glb`, with `boy.glb` and `female.glb` as interchangeable alternates; the selected model owns its complete visible appearance and is scaled by `body_height / character_model_height`, rotated by `character_model_yaw_offset` to face the rig's `+Z` forward, and planted so its lowest rendered point sits at the foot origin (`character_model_auto_ground` plus the manual `character_model_y_offset`)
+- `game_world_3d` maps the shared player profile to those whole-model alternates:
+  adult masculine uses `male.glb`, adult feminine uses `female.glb`, and teen
+  uses `boy.glb`; the 3D layer does not duplicate or persist a separate
+  appearance profile
 - `HumanBody3D.draw_skeleton_bones` is a debug toggle (default `false`): when on with the GLB model active it draws the model's `Skeleton3D` as bone lines in a `SkeletonDebug` `ImmediateMesh` under the skeleton, refreshed each frame to track animation, colored by `skeleton_debug_color`; it is a debug aid only and stays hidden in normal play
 - locomotion drives the model `AnimationPlayer`: `model_idle_animation` / `model_walk_animation` / `model_run_animation` map to standing/walking/running and loop with a short crossfade; clip names resolve case-insensitively against the imported animation list; optional imported clips beyond `idle`/`walk`/`run` must be validated before being bound to gameplay states
 - `HumanBody3D.max_step_height`, `HumanBody3D.floor_snap_distance`, and `HumanBody3D.grounding_speed` tune prototype 3D navigation over floor meshes, including stair treads; solid wall geometry must still block traversal instead of being bypassed by stair support, while preserving lateral `move_and_slide()` motion. Blocking wall contact suppresses horizontal snap repositioning, but forward floor probes stay available for normal riser step-up and step-down support. Generated stair side blockers are tagged as side walls; `HumanBody3D` checks both current contact and the short movement path ahead before permitting forward step-up, and every target-floor lookup propagates that permission so a tread cannot be sampled through a thin side wall before contact. `RigidBody3D` contacts are dynamic push targets, not blocking wall contacts: the actor applies a small movement-direction impulse to them while keeping static walls on the wall-slide path
@@ -227,7 +248,9 @@ Current contract:
 Governance:
 
 - keep prototype placement, style, and validation docs in sync with [`features/low_poly_terrain_3d.md`](features/low_poly_terrain_3d.md) and [`features/low_poly_actor_3d.md`](features/low_poly_actor_3d.md)
-- update this contract before treating low-poly landmarks as runtime story subjects or save/resume anchors
+- keep the stable 3D subject-id and semantic resume-anchor rules above aligned
+  with `features/low_poly_3d_integration.md` whenever interaction or save
+  ownership changes
 
 ## Multi-Level Scene Contract
 

@@ -50,7 +50,10 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
 - `resident_catalog.gd` still owns Caretaker Lian's handoff beat and is what emits the ferry reward event through its `landmark_reward` key.
 - `resident_catalog.gd` owns Caretaker Lian's gate logic and the Trinity Church handoff beat.
 - `piano_ferry.tscn` owns Piano Ferry world-subject placement; `AppState` distinguishes the onboarding harbor clue and the final harbor-stage performance point by landmark id.
-- `architecture/piano_ferry/piano_ferry_stylized_3d.tscn` is an editable, reference-photo-derived Low-Poly Building Editor concept for the parallel 3D prototype lane. Its versioned `BuildingSpec` remains standalone from the current 2D runtime scene.
+- `architecture/piano_ferry/piano_ferry_stylized_3d.tscn` is an editable,
+  reference-photo-derived Low-Poly Building Editor scene instanced by the
+  default-off 3D runtime candidate. Its versioned `BuildingSpec` and geometry
+  remain presentation-only; `game_world_3d` owns story subjects and placement.
 - `main.gd` and `scenes/game_main.gd` query `AppState.is_journal_unlocked()` to keep controls text and journal access in sync with the onboarding state.
 
 ## Relevant Files

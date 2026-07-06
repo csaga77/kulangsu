@@ -56,7 +56,10 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
 - `scenes/game_main.gd` routes R-inspect on tower world subjects through the shared `activate_story_subject(...)` path.
 - `resident_catalog.gd` owns the authored beat gates and `landmark_states` fields for `tower_keeper`.
 - `bagua_tower.tscn` owns the synthesis chamber world subject inside the reusable tower scene, while StoryEvent bindings decide when that hotspot is visible and what it does.
-- `bagua_tower_stylized_3d.tscn` is a standalone, reference-photo-derived low-poly concept generated through the Low-Poly Building Editor API. It is editable building content for the parallel 3D exploration lane and is not wired into the current 2D landmark or story flow.
+- `bagua_tower_stylized_3d.tscn` is a reference-photo-derived editable
+  low-poly building generated through the Low-Poly Building Editor API and
+  instanced by the default-off 3D runtime candidate. It remains separate from
+  the 2D landmark; `game_world_3d` owns its 3D placement and stable story subject.
 - The reproducible 3D generator uses the current typed factory contract and targets roughly one-tenth of the previous authored-node detail. Its authored X and Z footprint dimensions are each halved, producing exactly one-quarter of the prior ground area while preserving room heights, construction thicknesses, and an identity `Building3D` root transform. The simplified assembly keeps the straight main block, brick end bays, central entrances, flat and hip roof composition, curved rear terrace, three monumental columns, octagonal roof terrace, 16-sided drum, and faceted red dome. It writes separate straight-front and curved-facade previews for visual review.
 
 ## Relevant Files

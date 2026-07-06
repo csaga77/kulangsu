@@ -10,9 +10,9 @@ extends RefCounted
 # `npc:<id>` StorySubject3D so talking routes through the exact same
 # AppState.activate_story_subject(...) path as every other 3D subject.
 #
-# NOT YET PORTED (later items): routed NPC movement/behavior trees, tunnel-interior
-# visibility, model-per-resident customization, and world-anchored speech balloons.
-# Residents currently stand idle at their landmark anchor.
+# NOT YET PORTED (later items): authored routed movement/behavior trees,
+# tunnel-interior visibility, and model-per-resident customization. Residents
+# currently wander locally around their landmark anchor and use a Label3D balloon.
 
 const HUMAN_BODY_3D_SCENE: PackedScene = preload("res://characters/human_body_3d.tscn")
 const STORY_SUBJECT_3D := preload("res://game/story_subject_3d.gd")

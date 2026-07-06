@@ -115,4 +115,7 @@ PASS: HumanBody3D adapter smoke test
 
 - Audit and validate any optional imported clips beyond `idle`, `walk`, and `run`, then map accepted clips to actor states such as the jump window or idle gestures.
 - Tune actor movement speed, camera-relative movement, `Camera3DController` follow offset, and camera orbit feel inside the first one-landmark interaction slice so gameplay scale informs visual acceptance.
-- Decide whether 3D character customization should stay with whole-model swaps or model-internal material variants before wiring residents and NPCs to the 3D actor.
+- The 3D runtime candidate maps the shared player profile to whole-model swaps:
+  adult masculine → `male.glb`, adult feminine → `female.glb`, and teen →
+  `boy.glb`. Resident-specific visual identity beyond the current shared model
+  remains an open content decision.

@@ -18,17 +18,21 @@ extends Node3D
 # behavior matches the green combined-world smoke scene. The smoke-test assertions
 # are intentionally dropped here; that scene remains the correctness owner.
 #
-# NOT YET PORTED (later phases of the replacement plan, tracked in that doc):
-#   - Phase E: 3D residents, tunnels/multi-level interiors + portals, 3D-space
-#     weather passes, world-anchored speech balloons, Area3D story subjects
-#   - Phase F: story/resident/save parity in the full 3D world
-#   - Phase G: repoint main.tscn to this scene and delete the 2D render stack
-# Until Phase G, main.tscn still boots scenes/game_main.tscn; nothing here is
-# wired into the runtime yet, so adding this scene changes no existing behavior.
+# The runtime candidate now includes residents, Area3D story subjects, speech
+# balloons, shared BGM/cue audio, and save/resume anchors. Tunnel interiors,
+# routed tunnel residents, cycled 3D weather passes, representative landmark
+# result parity, and the final cutover remain tracked by the replacement plan. Until
+# Phase G, main.gd keeps this scene behind USE_3D_OVERWORLD (default false).
 
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const WEATHER_RUNTIME := preload("res://weather/weather_runtime.gd")
 const WATER_WIND_ADAPTER := preload("res://terrain/low_poly_water_wind_adapter.gd")
+const BGM_MANAGER_SCRIPT := preload("res://game/bgm_manager.gd")
+const LANDMARK_CUE_LOADER_SCRIPT := preload("res://game/landmark_cue_loader.gd")
+const PLAYER_APPEARANCE_CATALOG := preload("res://game/player_appearance_catalog.gd")
+const PLAYER_MODEL_MALE: PackedScene = preload("res://assets/characters/male.glb")
+const PLAYER_MODEL_FEMALE: PackedScene = preload("res://assets/characters/female.glb")
+const PLAYER_MODEL_TEEN: PackedScene = preload("res://assets/characters/boy.glb")
 const LowPolyWorldCoordinates3DScript = preload("res://terrain/low_poly_world_coordinates_3d.gd")
 const LowPolyArtStyle3DScript = preload("res://terrain/low_poly_art_style_3d.gd")
 const LowPolyLandmarkProxy3DScript = preload("res://architecture/low_poly/low_poly_landmark_proxy_3d.gd")
@@ -80,6 +84,15 @@ const MAX_ACTOR_WADE_DEPTH := 0.5
 const STORY_SUBJECT_GROUP := "story_subject_3d"
 # How long a resident holds still and faces the player after being talked to.
 const RESIDENT_TALK_PAUSE_SEC := 4.0
+const LANDMARK_CUE_FILES := {
+	"piano_ferry": "res://resources/audio/sfx/landmark_cues/piano_ferry_refrain.ogg",
+	"trinity_church": "res://resources/audio/sfx/landmark_cues/trinity_chime.ogg",
+	"bi_shan_tunnel": "res://resources/audio/sfx/landmark_cues/bi_shan_echo.ogg",
+	"long_shan_tunnel": "res://resources/audio/sfx/landmark_cues/long_shan_route.ogg",
+	"bagua_tower": "res://resources/audio/sfx/landmark_cues/bagua_synthesis.ogg",
+	"festival_stage": "res://resources/audio/sfx/landmark_cues/festival_stage.ogg",
+}
+const LANDMARK_CUE_VOLUME_DB := -4.0
 
 @onready var m_terrain: Node3D = $LowPolyTerrain3D
 @onready var m_actor: CharacterBody3D = $human_body_3d
@@ -94,6 +107,9 @@ const RESIDENT_TALK_PAUSE_SEC := 4.0
 # without collision) so the player cannot walk through them. Disable if the trimesh
 # generation cost at load becomes a problem.
 @export var generate_landmark_collision := true
+# Tests may disable only automatic playback while still validating that the
+# runtime audio owners and signal wiring are created.
+@export var audio_autoplay := true
 # Show an on-screen performance overlay (FPS, frame time, draw calls, primitives,
 # video memory) for the QA performance-capture gate. Off in normal play.
 @export var show_debug_stats := false
@@ -102,12 +118,17 @@ var m_coordinates: LowPolyWorldCoordinates3DScript = LowPolyWorldCoordinates3DSc
 var m_landmark_nodes: Dictionary = {}
 var m_weather_manager: WeatherManager = null
 var m_wind_adapter: LowPolyWaterWindAdapter = null
+var m_previous_weather_cycles_enabled := true
+var m_weather_cycles_overridden := false
 var m_is_ready := false
 var m_last_location := ""
 var m_subjects: Array[StorySubject3D] = []
 var m_closest_subject: StorySubject3D = null
 var m_resident_root: Node3D = null
 var m_stats_label: Label = null
+var m_bgm_manager: Node = null
+var m_landmark_cue_player: AudioStreamPlayer = null
+var m_landmark_cue_loader: RefCounted = LANDMARK_CUE_LOADER_SCRIPT.new()
 
 
 func _app_state():
@@ -133,6 +154,8 @@ func _initialize_runtime() -> void:
 	if !is_inside_tree():
 		return
 	_setup_weather_wind()
+	_setup_audio()
+	_setup_player_appearance()
 	if generate_landmark_collision:
 		_generate_landmark_collision()
 	_spawn_residents()
@@ -144,6 +167,16 @@ func _initialize_runtime() -> void:
 	m_is_ready = true
 	sync_ui_state()
 	_update_interaction_target()
+
+
+func _exit_tree() -> void:
+	if m_wind_adapter != null:
+		m_wind_adapter.unbind()
+	m_wind_adapter = null
+	if is_instance_valid(m_weather_manager) and m_weather_cycles_overridden:
+		m_weather_manager.cycles_enabled = m_previous_weather_cycles_enabled
+	m_weather_cycles_overridden = false
+	m_weather_manager = null
 
 
 func _physics_process(_delta: float) -> void:
@@ -198,11 +231,11 @@ func sync_ui_state() -> void:
 	_sync_location_from_player()
 
 
-func set_prompt_bgm_ducked(_ducked: bool) -> void:
-	# BGM ownership is ported to the 3D world in Phase E of the replacement plan.
-	# Kept as a safe no-op so the main.gd melody-prompt duck call never errors when
-	# this scene becomes the game root.
-	pass
+func set_prompt_bgm_ducked(ducked: bool) -> void:
+	if !is_instance_valid(m_bgm_manager):
+		return
+	if m_bgm_manager.has_method("set_ducked"):
+		m_bgm_manager.call("set_ducked", ducked)
 
 
 # --- world setup ----------------------------------------------------------------
@@ -291,9 +324,107 @@ func _setup_weather_wind() -> void:
 		return
 	# 3D-space weather overlays are Phase E work; until then the manager only drives
 	# the water wind through the decoupled adapter and does not cycle 2D overlays.
+	m_previous_weather_cycles_enabled = m_weather_manager.cycles_enabled
+	m_weather_cycles_overridden = true
 	m_weather_manager.cycles_enabled = false
 	m_wind_adapter = WATER_WIND_ADAPTER.new()
 	m_wind_adapter.bind(m_weather_manager, m_terrain)
+
+
+func _setup_audio() -> void:
+	_setup_bgm()
+	_setup_landmark_audio_feedback()
+	var app_state = _app_state()
+	if !app_state.landmark_audio_cue_requested.is_connected(_on_landmark_audio_cue_requested):
+		app_state.landmark_audio_cue_requested.connect(_on_landmark_audio_cue_requested)
+	if !app_state.prompt_volume_changed.is_connected(_on_prompt_volume_changed):
+		app_state.prompt_volume_changed.connect(_on_prompt_volume_changed)
+
+
+func _setup_bgm() -> void:
+	if is_instance_valid(m_bgm_manager):
+		return
+	m_bgm_manager = BGM_MANAGER_SCRIPT.new()
+	m_bgm_manager.name = "BGMManager"
+	m_bgm_manager.set("autoplay", audio_autoplay)
+	add_child(m_bgm_manager)
+
+
+func _setup_landmark_audio_feedback() -> void:
+	if is_instance_valid(m_landmark_cue_player):
+		return
+	m_landmark_cue_player = AudioStreamPlayer.new()
+	m_landmark_cue_player.name = "LandmarkCuePlayer"
+	m_landmark_cue_player.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(m_landmark_cue_player)
+	_apply_prompt_volume()
+
+
+func _on_landmark_audio_cue_requested(cue_id: String, _context: Dictionary) -> void:
+	_play_landmark_audio_cue(cue_id)
+
+
+func _on_prompt_volume_changed(_volume_percent: float) -> void:
+	_apply_prompt_volume()
+
+
+func _apply_prompt_volume() -> void:
+	if !is_instance_valid(m_landmark_cue_player):
+		return
+	m_landmark_cue_player.volume_db = _app_state().get_prompt_volume_db(LANDMARK_CUE_VOLUME_DB)
+
+
+func _play_landmark_audio_cue(cue_id: String) -> void:
+	if cue_id.is_empty():
+		return
+	if !is_instance_valid(m_landmark_cue_player):
+		_setup_landmark_audio_feedback()
+	if !is_instance_valid(m_landmark_cue_player):
+		return
+	var stream := _get_landmark_cue_stream(cue_id)
+	if stream == null:
+		push_warning("Landmark cue %s is missing or failed to load." % cue_id)
+		return
+	var cue_duration := maxf(stream.get_length(), 0.75)
+	if is_instance_valid(m_bgm_manager) and m_bgm_manager.has_method("duck_for_cue"):
+		m_bgm_manager.call("duck_for_cue", cue_duration)
+	m_landmark_cue_player.stop()
+	m_landmark_cue_player.stream = stream
+	m_landmark_cue_player.play()
+
+
+func _get_landmark_cue_stream(cue_id: String) -> AudioStream:
+	var file_path := String(LANDMARK_CUE_FILES.get(cue_id, ""))
+	if file_path.is_empty():
+		return null
+	return m_landmark_cue_loader.get_stream(file_path) as AudioStream
+
+
+func _setup_player_appearance() -> void:
+	var app_state = _app_state()
+	if !app_state.player_appearance_changed.is_connected(_on_player_appearance_changed):
+		app_state.player_appearance_changed.connect(_on_player_appearance_changed)
+	_apply_player_appearance(app_state.get_player_profile())
+
+
+func _on_player_appearance_changed(profile: Dictionary, _appearance_config: Dictionary) -> void:
+	_apply_player_appearance(profile)
+
+
+func _apply_player_appearance(profile: Dictionary) -> void:
+	if !is_instance_valid(m_actor):
+		return
+	m_actor.set("character_model_scene", _resolve_player_model_scene(profile))
+
+
+func _resolve_player_model_scene(profile: Dictionary) -> PackedScene:
+	match PLAYER_APPEARANCE_CATALOG.resolve_body_type(profile):
+		"teen":
+			return PLAYER_MODEL_TEEN
+		"female":
+			return PLAYER_MODEL_FEMALE
+		_:
+			return PLAYER_MODEL_MALE
 
 
 func _snap_camera_controller() -> void:

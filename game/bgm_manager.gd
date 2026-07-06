@@ -23,6 +23,8 @@ const MIN_SCHEDULED_FADE_DELAY_SECONDS := 0.05
 signal track_selected(track_id: String, file_path: String, context: Dictionary)
 signal track_started(track_id: String)
 
+@export var autoplay := true
+
 var app_state: AppStateService = null
 var melody_id := PRIMARY_MELODY_ID
 
@@ -64,7 +66,8 @@ func _ready() -> void:
 	_connect_app_state()
 	_validate_catalog()
 	_sync_context_from_app_state()
-	call_deferred("_start_if_idle")
+	if autoplay:
+		call_deferred("_start_if_idle")
 
 
 func _process(_delta: float) -> void:
@@ -80,6 +83,25 @@ func _process(_delta: float) -> void:
 		return
 
 	_start_location_reselection()
+
+
+func _exit_tree() -> void:
+	if is_instance_valid(m_fade_tween):
+		m_fade_tween.kill()
+	m_fade_tween = null
+	for timer in [m_gap_timer, m_track_end_fade_timer, m_cue_duck_timer]:
+		if is_instance_valid(timer):
+			timer.stop()
+	if is_instance_valid(m_player):
+		m_player.stop()
+		m_player.stream = null
+	m_stream_cache.clear()
+	if is_instance_valid(app_state):
+		if app_state.location_changed.is_connected(_on_location_changed):
+			app_state.location_changed.disconnect(_on_location_changed)
+		if app_state.melody_progress_changed.is_connected(_on_melody_progress_changed):
+			app_state.melody_progress_changed.disconnect(_on_melody_progress_changed)
+	app_state = null
 
 
 func get_current_track_id() -> String:
@@ -203,6 +225,8 @@ func _resolve_progress_state() -> String:
 
 
 func _start_if_idle() -> void:
+	if !autoplay:
+		return
 	if m_is_transitioning:
 		return
 	if is_instance_valid(m_gap_timer) and !m_gap_timer.is_stopped():

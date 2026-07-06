@@ -6,7 +6,9 @@ extends Node
 #   - terrain generated, player spawned, five landmark proxies placed
 #   - residents spawned from the shared AppState roster
 #   - story subjects registered for proximity selection
-#   - a resident talk dispatches through AppState.activate_story_subject without error
+#   - resident talk dispatches through controller input and the 3D adapter
+#   - equivalent fresh 2D/3D resident dispatches produce the same story result/state
+#   - shared BGM and landmark-cue owners are present
 #
 # Run:
 #   "/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . \
@@ -15,6 +17,7 @@ extends Node
 # assertion failures push errors and return nonzero.
 
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
+const APP_STATE_SCRIPT := preload("res://game/app_state.gd")
 
 @onready var m_world: Node3D = $game_world_3d
 
@@ -34,11 +37,14 @@ func _run_smoke_checks() -> void:
 	_check_world(failures)
 	_check_terrain(failures)
 	_check_player(failures)
+	_check_player_appearance_mapping(failures)
 	_check_landmarks(failures)
 	_check_residents(failures)
 	_check_story_subjects(failures)
+	_check_audio(failures)
 	_check_talk_dispatch(failures)
 	_check_subject_contract(failures)
+	_check_dimension_neutral_result_parity(failures)
 	_check_resume_anchor(failures)
 
 	if failures.is_empty():
@@ -47,6 +53,10 @@ func _run_smoke_checks() -> void:
 		for failure in failures:
 			push_error(failure)
 	if DisplayServer.get_name() == "headless":
+		if is_instance_valid(m_world):
+			m_world.queue_free()
+			await get_tree().process_frame
+			await get_tree().process_frame
 		get_tree().quit(0 if failures.is_empty() else 1)
 
 
@@ -89,6 +99,27 @@ func _check_landmarks(failures: Array[String]) -> void:
 		failures.append("expected 5 landmark proxies, found %d" % landmark_nodes.size())
 
 
+func _check_player_appearance_mapping(failures: Array[String]) -> void:
+	var expectations := {
+		"res://assets/characters/male.glb": {
+			"body_frame_id": "adult",
+			"presentation_id": "masculine",
+		},
+		"res://assets/characters/female.glb": {
+			"body_frame_id": "adult",
+			"presentation_id": "feminine",
+		},
+		"res://assets/characters/boy.glb": {
+			"body_frame_id": "teen",
+			"presentation_id": "masculine",
+		},
+	}
+	for expected_path in expectations:
+		var model_scene: PackedScene = m_world._resolve_player_model_scene(expectations[expected_path])
+		if model_scene == null or model_scene.resource_path != expected_path:
+			failures.append("3D player profile did not map to '%s'" % expected_path)
+
+
 func _check_residents(failures: Array[String]) -> void:
 	if !is_instance_valid(m_world):
 		return
@@ -100,8 +131,12 @@ func _check_residents(failures: Array[String]) -> void:
 	for child in resident_root.get_children():
 		if child is CharacterBody3D:
 			resident_count += 1
-	if resident_count <= 0:
-		failures.append("world spawned no residents")
+	var app_state = APP_RUNTIME.get_app_state(self)
+	var expected_count: int = app_state.get_resident_ids().size() if app_state != null else 0
+	if resident_count != expected_count:
+		failures.append(
+			"world spawned %d residents, expected the shared roster's %d" % [resident_count, expected_count]
+		)
 
 
 func _check_story_subjects(failures: Array[String]) -> void:
@@ -110,19 +145,46 @@ func _check_story_subjects(failures: Array[String]) -> void:
 		failures.append("no StorySubject3D nodes registered for interaction")
 
 
+func _check_audio(failures: Array[String]) -> void:
+	if !is_instance_valid(m_world):
+		return
+	if m_world.get_node_or_null("BGMManager") == null:
+		failures.append("3D world did not create the shared BGMManager")
+	if m_world.get_node_or_null("LandmarkCuePlayer") == null:
+		failures.append("3D world did not create the landmark cue player")
+
+
 func _check_talk_dispatch(failures: Array[String]) -> void:
 	var app_state = APP_RUNTIME.get_app_state(self)
 	if app_state == null:
 		failures.append("could not resolve AppState")
 		return
-	var resident_ids: PackedStringArray = app_state.get_resident_ids()
-	if resident_ids.is_empty():
-		failures.append("AppState exposed no residents to talk to")
+
+	var player := m_world.get_node_or_null("human_body_3d") as Node3D
+	var resident_subject: StorySubject3D = null
+	for subject in get_tree().get_nodes_in_group("story_subject_3d"):
+		if String(subject.get("subject_id")).begins_with("npc:"):
+			resident_subject = subject as StorySubject3D
+			break
+	if player == null or resident_subject == null:
+		failures.append("3D interaction path is missing a player or resident subject")
 		return
-	var resident_id := String(resident_ids[0])
-	var result = app_state.activate_story_subject("npc:%s" % resident_id, "talk", {})
-	if not (result is Dictionary):
-		failures.append("resident talk dispatch did not return a result dictionary")
+
+	player.global_position = resident_subject.global_position
+	m_world._update_interaction_target()
+	var selected_subject := m_world.get("m_closest_subject") as StorySubject3D
+	if selected_subject == null or !selected_subject.subject_id.begins_with("npc:"):
+		failures.append("resident proximity did not select a resident StorySubject3D")
+		return
+
+	var controller: Variant = player.get("controller")
+	if controller == null or !controller.has_signal("inspect_requested"):
+		failures.append("3D player controller has no inspect_requested signal")
+		return
+	app_state.set_save_status("")
+	controller.emit_signal("inspect_requested")
+	if String(app_state.save_status).is_empty():
+		failures.append("resident inspect input did not dispatch through the 3D world adapter")
 
 
 # The 3D interaction adapter must build the SAME stable request the shared story
@@ -202,6 +264,53 @@ func _check_resume_anchor(failures: Array[String]) -> void:
 	var ferry := landmark_nodes.get("Piano Ferry") as Node3D
 	if is_instance_valid(ferry) and _flat_distance(player.global_position, ferry.global_position) > 4.0:
 		failures.append("resume fallback did not place the player at Piano Ferry")
+
+
+func _check_dimension_neutral_result_parity(failures: Array[String]) -> void:
+	var resident_ids: PackedStringArray = APP_RUNTIME.get_app_state(self).get_resident_ids()
+	if resident_ids.is_empty():
+		failures.append("cannot compare 2D/3D dispatch results without a resident")
+		return
+	var resident_id := String(resident_ids[0])
+	var subject_id := "npc:%s" % resident_id
+	var state_2d := APP_STATE_SCRIPT.new() as AppStateService
+	var state_3d := APP_STATE_SCRIPT.new() as AppStateService
+	var result_2d: Dictionary = state_2d.activate_story_subject(subject_id, "talk", {
+		"resident_id": resident_id,
+		"location": "Piano Ferry",
+		"world_position": Vector2.ZERO,
+		"level_id": 0,
+	})
+	var result_3d: Dictionary = state_3d.activate_story_subject(subject_id, "talk", {
+		"resident_id": resident_id,
+		"location": "Piano Ferry",
+		"world_position": Vector3.ZERO,
+		"level_id": 0,
+	})
+	if _dimension_neutral_result(result_2d) != _dimension_neutral_result(result_3d):
+		failures.append("equivalent 2D/3D resident dispatches produced different story results")
+	var state_keys := [
+		"objective",
+		"hint",
+		"story_flags",
+		"route_progress",
+		"landmark_progress",
+		"melody_progress",
+		"resident_profiles",
+	]
+	for key in state_keys:
+		if state_2d.get(key) != state_3d.get(key):
+			failures.append("equivalent 2D/3D resident dispatches diverged in '%s'" % key)
+	state_2d.free()
+	state_3d.free()
+
+
+func _dimension_neutral_result(result: Dictionary) -> Dictionary:
+	var normalized := result.duplicate(true)
+	var context: Dictionary = normalized.get("context", {})
+	context.erase("world_position")
+	normalized["context"] = context
+	return normalized
 
 
 func _flat_distance(a: Vector3, b: Vector3) -> float:

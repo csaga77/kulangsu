@@ -2,14 +2,25 @@
 
 ## Goal
 
-- Define how the low-poly 3D sidecar can prove interaction, resident, story, save, and resume behavior without coupling prototype rendering code to the current 2D runtime.
+- Define how the low-poly 3D runtime candidate proves interaction, resident,
+  story, audio, save, and resume behavior without forking dimension-neutral
+  gameplay services.
 - Provide an explicit decision gate before any 3D work changes `game_main.tscn`.
 
 ## Current Status
 
-- Terrain, actor/controller, collision, camera, landmark proxy, authored-building, and playable review foundations exist.
-- Runtime story/resident integration is not shipped.
-- The next integration artifact is one non-story landmark slice, defaulting to Piano Ferry, in a dedicated test scene.
+- `scenes/game_world_3d.tscn` is a playable runtime candidate behind
+  `main.gd`'s `USE_3D_OVERWORLD` development toggle (default off).
+- Terrain/water, actor/controller, collision, camera, three authored landmarks,
+  five stable landmark subjects, the complete shared resident roster, local
+  resident wandering, 3D speech balloons, shared BGM/landmark-cue audio, and
+  semantic resume anchors are integrated.
+- `test_game_world_3d.tscn` boots the runtime candidate and exercises resident
+  proximity selection and inspect dispatch through the 3D controller/adapter.
+- The remaining acceptance work is two authored tunnel/interior spaces, routed
+  tunnel residents, cycled 3D weather, representative landmark progression
+  parity, fixed-camera captures, release performance
+  acceptance, and the recorded runtime-direction decision.
 
 ## Player Experience
 
@@ -47,24 +58,36 @@
 - If the requested anchor is missing, resume falls back to the slice entry anchor.
 - The current 2D save remains readable while the 3D lane is experimental. Prototype-only state must not alter the existing save schema without a versioned migration.
 
-## First Vertical Slice
+## Runtime Candidate Slice
 
 - Default landmark: Piano Ferry.
-- Required content: one authored landmark building, walkable collision, one inspect subject, one resident proxy, entry/resume anchors, `HumanBody3D`, `PlayerController3D`, and `Camera3DController`.
-- Required checks: approach without clipping, deterministic prompt selection, one subject dispatch, camera-occluder fade, readable resident/player scale, and fallback resume behavior.
-- The slice stays under `scenes/tests/` until the final runtime-direction decision.
+- Shipped content: an authored landmark building, generated walkable collision,
+  stable subjects, shared-data residents, entry/resume anchors, `HumanBody3D`,
+  `PlayerController3D`, and `Camera3DController`.
+- Automated checks cover deterministic prompt selection, controller-driven
+  resident dispatch, camera-occluder behavior, the full shared resident count,
+  audio-manager creation, and fallback resume behavior.
+- The runtime candidate stays behind the development toggle until the final
+  runtime-direction decision.
 
 ## Acceptance Evidence
 
-- All focused 3D headless smoke scenes return status `0`.
-- Fixed-camera screenshots and their dated acceptance note exist under `design/qa/low_poly_3d/`.
-- `design/qa/low_poly_3d/performance.md` records the measurements and budgets defined in the implementation plan.
-- The first vertical slice proves one subject dispatch and one resume anchor.
-- `docs/plan/implementation_plan.md` records whether 3D replaces the 2D overworld, ships in a limited mode, or remains a discontinued experiment.
+- **Green:** focused 3D headless smoke scenes return status `0`.
+- **Green:** the runtime candidate proves a controller/adapter resident dispatch
+  and semantic resume anchor with fallback.
+- **Open:** fixed-camera screenshots listed by the implementation plan.
+- **Open:** release performance acceptance. The current editor sample exceeds
+  the draw-call budget and is not the required 60-second p95 capture.
+- **Green baseline:** equivalent fresh 2D/3D resident dispatches produce the same
+  dimension-neutral result and core progression state.
+- **Open:** equivalent landmark dispatch parity with a meaningful progression
+  effect.
+- **Open:** `docs/plan/implementation_plan.md` must record replace, limited mode,
+  or stop.
 
 ## Out Of Scope
 
-- Replacing `game_main.tscn` before the decision gate.
-- Reauthoring all residents or landmarks.
+- Replacing or deleting `game_main.tscn` before the decision gate.
+- Duplicating resident/story data for the 3D presentation.
 - A second story-event system, save format, resident catalog, or route model.
 - Treating visual landmark proxies as authoritative story subjects.

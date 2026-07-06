@@ -27,7 +27,7 @@ steady state with 25 residents wandering, camera following. Editor debug run at 
 | objects drawn | — | ~1,406 | — |
 | video memory | < 1 GiB | 272 MiB | within target |
 | static (CPU) memory | < 1 GiB | 157 MiB | within target |
-| cold terrain rebuild | < 3 s | no perceptible stall in `_ready` | within target |
+| cold terrain rebuild | < 3 s | not instrumented | open |
 
 Notes:
 - Frame rate is comfortable even at a resolution well above the 1920×1080 target, so frame time is
@@ -38,20 +38,26 @@ Notes:
 ## Draw-call finding and mitigations
 
 ~1,222 draw calls exceeds the ≤500 budget. Draw calls are geometry-count driven (not resolution), so
-this holds at 1920×1080 too. Main contributors and options, in rough priority:
+this likely remains over budget at 1920×1080. The current attribution is a hypothesis, not a profile:
 
-1. **25 residents**, each an individual `HumanBody3D` GLB with several surfaces. Batch them with a
-   `MultiMeshInstance3D` (or shared material/mesh) — the single biggest reduction.
-2. **336 building-footprint meshes + street cells** in the terrain. Merge terrain sub-meshes per
-   material into fewer surfaces.
-3. **Per-mesh landmark trimesh collision** (~300 static bodies) adds objects; collision does not draw
-   but the stylized building meshes themselves are many surfaces — consider merging building meshes.
+1. Capture draw calls with residents hidden, then with each authored landmark hidden, to assign the
+   cost before changing geometry.
+2. The terrain already emits one `MeshInstance3D` per populated material pass; its 336 footprint
+   cells and street cells are not 336 separate drawables. Do not schedule a redundant terrain merge.
+3. Residents are independently moving, skinned GLB instances. A normal `MultiMeshInstance3D` is not
+   a drop-in replacement for independently animated skeletons. First reduce material/surface count,
+   use visibility distance/culling, or approve the measured tradeoff.
+4. Stylized buildings contain many mesh surfaces. Consolidating static visual surfaces per material
+   and replacing per-mesh trimesh collision with simplified authored colliders are the most plausible
+   optimization paths after profiling.
 
-Re-measure on a **release export at 1920×1080** after applying (1) to confirm the budget is met.
+Re-measure on a **release export at 1920×1080** after the profiled optimization or after recording an
+explicitly approved draw-call exception.
 
 ## Next step
 
-Export a release build (or run with `--profile`/the debugger Monitors), capture the metrics above at
-1920×1080, and record them here. The largest expected cost is the per-mesh trimesh collision on the
-stylized buildings (~300 concave shapes); if draw calls or triangles exceed budget, switch those to a
-single simplified collider per building (`generate_landmark_collision` already gates the current path).
+Export a release build, run the specified 5-second warm-up plus 60-second capture at 1920×1080, and
+record p95 and worst sustained frame time. Instrument a cold terrain rebuild separately. Capture
+resident-hidden and per-landmark-hidden samples before selecting a draw-call mitigation. Collision
+does not itself add render draw calls, but replacing the current per-mesh concave shapes with
+simplified authored colliders remains worthwhile for load time and physics cost.

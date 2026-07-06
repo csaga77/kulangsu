@@ -7,3 +7,4 @@
 script = ExtResource("2_test")
 
 [node name="game_world_3d" parent="." instance=ExtResource("1_world")]
+audio_autoplay = false

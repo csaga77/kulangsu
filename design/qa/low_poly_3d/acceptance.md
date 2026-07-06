@@ -35,4 +35,5 @@ Observed and accepted:
   `player_scale.png`, `landmark_approach.png`, `camera_occlusion.png`, `water_shoreline.png`.
 - A camera-occluder fade capture (walk the player behind a landmark and confirm the target-occluder
   transparency pass).
-- The performance measurement in [`performance.md`](performance.md).
+- A passing release performance capture in [`performance.md`](performance.md);
+  the current editor sample is recorded but remains over the draw-call budget.

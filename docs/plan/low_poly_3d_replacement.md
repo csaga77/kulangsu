@@ -16,12 +16,14 @@ The 3D overworld is built, validated in-engine (Godot 4.7, Apple M5, Metal Forwa
 through the entire app shell. Per-item status is inline in the phases below; the rollup:
 
 - **Built and validated (green):** 3D world scene (terrain, actor, orthographic camera, sky/fog
-  atmosphere); interaction dispatch through the shared story services (proven identical to 2D,
-  no fork); 25 residents spawned from shared `AppState` data, wandering, pausing/facing on talk;
+  atmosphere); interaction dispatch through the same shared story services (no 3D story fork);
+  25 residents spawned from shared `AppState` data, wandering, pausing/facing on talk;
   world-anchored speech balloons; three stylized landmark buildings (Piano Ferry, Trinity Church,
-  Bagua Tower) with generated collision; story resume-anchor save/restore. Headless smoke test
+  Bagua Tower) with generated collision; story resume-anchor save/restore; shared BGM and landmark
+  cue playback. Headless smoke test
   `test_game_world_3d.tscn` passes (world build, spawn, five landmark anchors, story subjects,
-  resident talk dispatch, resume anchor + fallback, interaction contract). Full-shell run
+  full resident count, controller/adapter resident talk dispatch, audio managers, resume anchor +
+  fallback, interaction contract). Full-shell run
   (`USE_3D_OVERWORLD = true`) exercised title → New Game → traveler setup → 3D overworld with HUD,
   status panel, hints, autosave, resident dialogue with real story progression, and journal gating,
   all with 0 errors / 0 warnings.
@@ -29,10 +31,10 @@ through the entire app shell. Per-item status is inline in the phases below; the
   static memory (all within budget), but **~1,222 draw calls vs the ≤500 target**. Frame time meets
   the p95 target, so this is a budget-vs-reality call: either record an approved tradeoff or merge
   static building/terrain sub-meshes (residents are individually skinned, so not MultiMesh-batchable).
-- **Not started (editor / decision work):** tunnel interior geometry (Bi Shan / Long Shan are still
+- **Open (editor / decision work):** tunnel interior geometry (Bi Shan / Long Shan are still
   invisible anchors); 3D-space weather passes (rain/fog/cloud); fixed-camera QA PNG captures; the
-  formal release-build perf re-measure at 1920×1080; the runtime-direction decision; and the Phase G
-  hard flip + 2D deletion.
+  formal release-build perf re-measure at 1920×1080; representative landmark result equality; the
+  runtime-direction decision; and the Phase G hard flip + 2D deletion.
 
 Integration is wired reversibly (the `USE_3D_OVERWORLD` toggle, default off), so none of the above
 has touched the shipped 2D runtime.
@@ -108,10 +110,9 @@ greenfield rendering work:
   `characters/tests/test_character_collisions.tscn`, `test_low_poly_terrain_3d.tscn`,
   `test_camera_3d_occlusion.tscn`
 
-Gaps the cutover must close: multi-level/tunnel interiors and portals in 3D, a 3D interaction-subject
-node, a 3D resident presenter driven by existing definitions, 3D-space weather, world-anchored
-speech balloons, and a 3D runtime world scene that owns the same integration responsibilities
-`game_main.gd` owns today.
+Gaps the cutover must close: multi-level/tunnel interiors and entrances in 3D, routed
+tunnel-resident visibility, 3D-space weather, representative landmark result equality, formal
+visual/performance acceptance, and a recorded runtime-direction decision.
 
 ## Preconditions: Sidecar Evidence Gates (must be green first)
 
@@ -127,17 +128,23 @@ to Phase D until all are recorded green.
 - **B. One-landmark interaction slice.** Piano Ferry slice proves approach, deterministic prompt
   selection, one subject dispatch through existing story services, camera-occluder fade, readable
   scale, and one documented resume anchor — without touching `game_main.tscn`.
+  *Status: green runtime baseline; landmark follow-up open.* The runtime-world smoke exercises
+  controller/adapter resident dispatch, compares equivalent fresh 2D/3D resident result/state
+  parity, and proves semantic resume fallback. Landmark result parity remains a Phase F gate.
 - **C. Visual + performance acceptance.** Fixed-camera evidence under `design/qa/low_poly_3d/` and a
   `performance.md` meeting the plan's frame-time, draw-call, triangle, memory, and rebuild budgets.
-  *Status: visual accepted; perf measured with one finding.* `design/qa/low_poly_3d/acceptance.md`
-  records the 2026-07-06 in-editor visual acceptance (nonblank coherent frames, readable actors,
+  *Status: review recorded; formal gate open.* `design/qa/low_poly_3d/acceptance.md`
+  records the 2026-07-06 in-editor visual review (nonblank coherent frames, readable actors,
   recognizable landmark approach, legible water/seabed, smoke test green, full-shell integration).
   `design/qa/low_poly_3d/performance.md` now records measured numbers from an on-screen
   `Performance` overlay (`show_debug_stats` in `game_world_3d`): ~95–98 FPS, ~432k primitives,
   272 MiB video / 157 MiB static memory — all within budget — but **~1,222 draw calls, over the ≤500
-  budget** (25 individual resident GLBs plus many terrain/building sub-meshes). Remaining: batch
-  residents (MultiMesh) and merge meshes, then re-measure on a release export at 1920×1080; and
-  export the fixed-camera PNG captures.
+  budget** (25 individual skinned resident GLBs plus many authored-building surfaces). Remaining:
+  profile resident-hidden and per-landmark-hidden samples, consolidate the measured static visual
+  surfaces or record an approved tradeoff, re-measure on a release export at 1920×1080, instrument
+  cold terrain rebuild time, and export the fixed-camera PNG captures. The terrain is already one
+  mesh per material pass, and a normal MultiMesh is not a drop-in replacement for independently
+  animated skinned residents.
 
 If any gate fails, the cutover stalls at that gate. This plan's later phases assume all three hold.
 
@@ -145,20 +152,16 @@ If any gate fails, the cutover stalls at that gate. This plan's later phases ass
 
 ### Phase D — Build the 3D runtime world scene
 
-Status: **scaffolded, not engine-validated.** `scenes/game_world_3d.tscn` and
-`scenes/game_world_3d.gd` now exist. The scene mirrors the validated
+Status: **runtime candidate, engine-validated.** `scenes/game_world_3d.tscn` and
+`scenes/game_world_3d.gd` boot standalone and through the full shell. The scene builds on the validated
 `scenes/tests/test_low_poly_world_3d.tscn` (terrain, `HumanBody3D` in the `player` group,
-`PlayerController3D`, orthographic `Camera3D` + `Camera3DController`, sun, five landmark proxies).
-The script reuses that test scene's proven world-config and terrain-elevation-follow logic and adds
+`PlayerController3D`, orthographic `Camera3D` + `Camera3DController`, sun, five landmark anchors).
+The script reuses that scene's proven world-config and terrain-elevation-follow logic and adds
 the runtime-integration layer: `AppState` resolution via `AppRuntime`, landmark-list/resident-list
-sync, nearest-landmark location sync, story resume-anchor placement (Piano Ferry fallback), and the
-two methods `main.gd` calls on a game root (`sync_ui_state()`, `set_prompt_bgm_ducked()`). It is a
-`Node3D` drop-in for `main.gd`'s `GAME_SCENE` contract but is **not** wired into `main.tscn` yet, so
-it changes no existing runtime behavior.
-
-All references were statically checked (ext-resource UIDs, called APIs, base classes) because no
-Godot engine is available in the authoring environment. It still needs an in-editor/headless boot,
-a dedicated headless smoke scene, and the Phase E subsystem ports before it can host runtime play.
+sync, nearest-landmark location sync, story resume-anchor placement (Piano Ferry fallback),
+shared BGM/landmark-cue audio, resident spawning, and story-subject dispatch. It satisfies
+`main.gd`'s game-root contract and is selectable through `USE_3D_OVERWORLD`, which remains off by
+default.
 
 Create `scenes/game_world_3d.tscn` / `scenes/game_world_3d.gd` as the 3D counterpart of
 `game_main`. It owns the same integration responsibilities `game_main.gd` owns today — actor spawn
@@ -208,7 +211,7 @@ scene under `scenes/tests/` and a green headless run before the next begins:
 5. **Interaction subjects** — add an `Area3D`-based `StorySubject3D` that exposes the same stable
    `subject_id` set as `StorySubjectArea2D` and dispatches through `StoryEventService`. Removing or
    restyling a building must not change subject ids.
-   *Status: first pass scaffolded (needs engine validation).* `game/story_subject_3d.gd` mirrors
+   *Status: first pass engine-validated.* `game/story_subject_3d.gd` mirrors
    `StorySubjectArea2D`'s subject-id/action/display/presence contract on `Area3D`.
    `game_world_3d.gd` now owns deterministic proximity selection, hint text, and inspect dispatch
    via `PlayerController3D.inspect_requested`, calling the same `AppState.activate_story_subject(...)`
@@ -216,11 +219,13 @@ scene under `scenes/tests/` and a green headless run before the next begins:
    `subject_id`s from the 2D landmark scenes (`landmark:piano_ferry.harbor_refrain`,
    `landmark:trinity_church.steps`, `landmark:bi_shan_tunnel.echo_a`,
    `landmark:long_shan_tunnel.tunnel_entry`, `landmark:bagua_tower.synthesis_chamber`) so dispatch
-   is identical. Still needs an in-engine boot, a headless dispatch-equivalence test, and richer
-   per-landmark subject coverage.
+   is identical. The runtime smoke now exercises resident selection and dispatch through the 3D
+   controller/adapter and compares a representative resident result/core-state outcome against an
+   equivalent fresh 2D dispatch. Still needed: landmark result parity and richer per-landmark
+   subject coverage.
 6. **Residents** — a 3D resident presenter that renders existing `ResidentDefinition` data with
    `HumanBody3D`; identity, dialogue, routine, and story gates stay in the shared definitions.
-   *Status: first pass scaffolded (needs engine validation).* `characters/resident_presenter_3d.gd`
+   *Status: first pass engine-validated.* `characters/resident_presenter_3d.gd`
    spawns one `HumanBody3D` per resident from the same `AppState` resident APIs the 2D
    `ResidentSpawner` uses, placed at its landmark anchor (tunnel entry/portal anchors cluster at
    their tunnel proxy until 3D interiors exist). Each resident carries an `npc:<id>` `StorySubject3D`
@@ -230,8 +235,10 @@ scene under `scenes/tests/` and a green headless run before the next begins:
    calm local wander around its spawn anchor (stroll to a random nearby point, pause, repeat) with a
    stuck-timeout, gravity-grounded and wall-sliding via `HumanBody3D` + world colliders. Talking to a
    resident turns it to face the player and holds it still briefly (via `ResidentController3D.pause_for`),
-   matching the 2D reveal-dialogue behaviour. Still needs authored 3D routes (vs. free wander),
-   tunnel visibility, per-resident model customization, and engine validation.
+   matching the 2D reveal-dialogue behaviour. The smoke test asserts that the spawned count matches
+   the complete shared resident roster. Still needed: authored 3D routes (vs. free wander), tunnel
+   visibility and per-resident model customization. Player body-frame/presentation profiles now map
+   to the male/female/boy GLB scenes through whole-model swaps.
 7. **Weather + atmosphere** — re-target fog/rain/cloud-shadow/ground-impact passes to 3D space and
    register the 3D world as the weather host with `WeatherManager`.
    *Status: base atmosphere added; cycled passes pending.* `game_world_3d.tscn` now has a
@@ -240,10 +247,14 @@ scene under `scenes/tests/` and a green headless run before the next begins:
    3D-space rain/fog/cloud-shadow passes registered through `WeatherManager`, which need in-editor
    visual tuning rather than blind authoring.
 8. **Speech balloons + world UI** — anchor `speech_balloon` content to 3D actor positions.
-   *Status: first pass scaffolded (needs engine validation).* `common/gui/speech_balloon_3d.gd` is a
+   *Status: first pass engine-validated.* `common/gui/speech_balloon_3d.gd` is a
    billboarded `Label3D` that floats above a resident and auto-hides; the presenter attaches one to
    each resident and `game_world_3d` shows the story-returned dialogue line there (and in
    save-status). The atlas-based 2D balloon styling is intentionally not reproduced.
+9. **BGM + landmark cues** — reuse the dimension-neutral BGM catalog/manager and cue assets.
+   *Status: engine-validated baseline.* `game_world_3d` creates the shared `BgmManager`, forwards
+   melody-prompt ducking, listens for shared landmark-cue requests, applies prompt volume, and ducks
+   BGM while a cue plays. The runtime smoke asserts both audio owners are present.
 
 ### Phase F — Story / resident / save ownership parity
 
@@ -253,7 +264,9 @@ progression; and save/continue restores through stable semantic resume anchors, 
 fallback when a requested anchor is missing. The 2D save must remain loadable through the cutover;
 any prototype-only state needs a versioned migration, never a schema fork.
 
-*Status: resume anchor proven; dispatch reuse in place.* `game_world_3d` updates the shared story
+*Status: resume anchor, controller/adapter resident dispatch, and resident result equality proven;
+landmark equality open.*
+`game_world_3d` updates the shared story
 resume checkpoint (`AppState.set_story_resume_checkpoint`) to the last landmark the player reaches in
 Story mode, and applies it on entry with a Piano Ferry fallback — the same stable landmark-name
 anchors the 2D game uses. `test_game_world_3d.tscn` now asserts the resume anchor places the player
@@ -261,9 +274,11 @@ at the requested landmark and falls back to Piano Ferry for a missing anchor, al
 resident-talk dispatch check through the shared `AppState.activate_story_subject` path. It also
 asserts the interaction contract: every landmark subject the adapter can resolve builds a well-formed
 request (matching `subject_id`, resolved action, dimension-neutral `location`/`world_position`/
-`level_id` context) and proximity selection deterministically resolves an active subject. Still to
-prove: resident dialogue/trust progression parity in the running 3D world, and a direct
-result-equality comparison against a 2D dispatch of the same beat.
+`level_id` context) and proximity selection deterministically resolves an active subject. The smoke
+now drives a resident interaction through `PlayerController3D.inspect_requested` and the world
+adapter. It also compares a representative resident result and core state against an equivalent
+fresh 2D dispatch after removing dimension-specific `world_position`. Still to prove:
+representative landmark outcome equality against a 2D dispatch from an equivalent fresh story state.
 
 ### Phase G — Record the decision and execute the cutover
 
@@ -342,8 +357,8 @@ rules. The final gate is the standard full main-flow validation after `main.tscn
 
 ## Open Decisions
 
-- Character customization in 3D: whole-model swaps versus model-internal material variants (must
-  resolve before wiring residents in Phase E, item 6).
+- Resident visual identity beyond the current shared male GLB; player customization is resolved as
+  whole-model male/female/boy swaps from the shared profile's body-frame/presentation values.
 - Whether coarse street/building-footprint terrain sampling is the intended final style or needs
   cleaner extraction.
 - Whether any optional character clips beyond `idle`/`walk`/`run` are validated and mapped before
