@@ -9,6 +9,7 @@ extends Node
 #   - resident talk dispatches through controller input and the 3D adapter
 #   - equivalent fresh 2D/3D resident dispatches produce the same story result/state
 #   - shared BGM and landmark-cue owners are present
+#   - WeatherManager registers/cycles the 3D rain/fog/cloud-light target and propagates wind
 #
 # Run:
 #   "/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . \
@@ -42,6 +43,7 @@ func _run_smoke_checks() -> void:
 	_check_residents(failures)
 	_check_story_subjects(failures)
 	_check_audio(failures)
+	_check_weather_3d(failures)
 	_check_talk_dispatch(failures)
 	_check_subject_contract(failures)
 	_check_dimension_neutral_result_parity(failures)
@@ -152,6 +154,47 @@ func _check_audio(failures: Array[String]) -> void:
 		failures.append("3D world did not create the shared BGMManager")
 	if m_world.get_node_or_null("LandmarkCuePlayer") == null:
 		failures.append("3D world did not create the landmark cue player")
+
+
+func _check_weather_3d(failures: Array[String]) -> void:
+	if !is_instance_valid(m_world):
+		return
+	var rig := m_world.get_node_or_null("WeatherRig3D")
+	var manager: WeatherManager = m_world.get("m_weather_manager") as WeatherManager
+	if rig == null:
+		failures.append("3D world did not create WeatherRig3D")
+		return
+	if manager == null:
+		failures.append("3D world did not resolve WeatherManager")
+		return
+	var registered: Dictionary = manager.get_registered_weather_nodes(m_world)
+	if registered.get("weather_state_target") != rig:
+		failures.append("WeatherManager did not register the 3D weather state target")
+	if !manager.cycles_enabled:
+		failures.append("3D overworld weather cycling is disabled")
+
+	manager._apply_weather({
+		"rain_density": 0.0012,
+		"fog_density": 0.42,
+		"fog_height_ratio": 0.58,
+		"fog_drift_speed": 0.11,
+		"wind_angle_degrees": 72.0,
+		"wind_strength": 460.0,
+		"drop_speed": 250.0,
+		"drop_size": 0.1,
+	})
+	if !bool(rig.call("is_raining")):
+		failures.append("steady-rain weather did not enable 3D rain particles")
+	if !is_equal_approx(float(rig.get("wind_strength")), 460.0):
+		failures.append("WeatherManager did not propagate wind into WeatherRig3D")
+	var initial_preset_id := String(manager.get("m_current_preset_id"))
+	manager._begin_random_transition()
+	if int(manager.get("m_phase")) != WeatherManager.CyclePhase.TRANSITION:
+		failures.append("WeatherManager did not begin a 3D weather transition")
+	else:
+		manager._process(float(manager.get("m_phase_duration")))
+		if String(manager.get("m_current_preset_id")) == initial_preset_id:
+			failures.append("WeatherManager did not complete a new 3D weather preset")
 
 
 func _check_talk_dispatch(failures: Array[String]) -> void:

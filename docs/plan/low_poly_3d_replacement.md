@@ -28,12 +28,13 @@ through the entire app shell. Per-item status is inline in the phases below; the
   status panel, hints, autosave, resident dialogue with real story progression, and journal gating,
   all with 0 errors / 0 warnings.
 - **Visual and diagnostic performance acceptance green:** all five fixed-camera PNGs are captured
-  and accepted. The reproducible standalone Metal editor-debug runner measured 12.745 ms p95,
-  14.557 ms worst, 91 max draw calls, 226,814 max primitives, 264.98 MiB video / 126.71 MiB static
-  memory, and a 546 ms cold terrain rebuild over 60 seconds at 2880×1620 physical pixels. Every
-  numeric budget passes; the earlier 1,222 embedded-editor draw-call estimate was not reproduced.
+  and accepted. With cycling 3D weather active, the reproducible standalone Metal editor-debug
+  runner measured 14.963 ms p95, 20.420 ms worst, 92 max draw calls, 231,166 max primitives,
+  264.98 MiB video / 140.50 MiB static memory, and a 534.52 ms cold terrain rebuild over 60 seconds
+  at 2880×1620 physical pixels. Every numeric budget passes; the earlier 1,222 embedded-editor
+  draw-call estimate was not reproduced.
 - **Open (editor / decision work):** tunnel interior geometry (Bi Shan / Long Shan are still
-  invisible anchors); 3D-space weather passes (rain/fog/cloud); the formal release-export
+  invisible anchors); the formal release-export
   performance repeat; representative landmark result equality; the
   runtime-direction decision; and the Phase G hard flip + 2D deletion.
 
@@ -112,7 +113,7 @@ greenfield rendering work:
   `test_camera_3d_occlusion.tscn`
 
 Gaps the cutover must close: multi-level/tunnel interiors and entrances in 3D, routed
-tunnel-resident visibility, 3D-space weather, representative landmark result equality, formal
+tunnel-resident visibility, representative landmark result equality, formal
 visual/performance acceptance, and a recorded runtime-direction decision.
 
 ## Preconditions: Sidecar Evidence Gates (must be green first)
@@ -139,8 +140,9 @@ to Phase D until all are recorded green.
   (nonblank coherent frames, readable actors,
   recognizable landmark approach, legible water/seabed, smoke test green, full-shell integration).
   `design/qa/low_poly_3d/performance.md` records the reproducible 60-second standalone Metal
-  editor-debug capture and raw JSON. Every numeric budget passes at 2880×1620 physical pixels,
-  including 91 max draw calls and a 546 ms cold rebuild. Remaining: repeat the runner through a
+  editor-debug capture and raw JSON. With cycling 3D weather active, every numeric budget passes at
+  2880×1620 physical pixels, including 92 max draw calls and a 534.52 ms cold rebuild. Remaining:
+  repeat the runner through a
   release export. No speculative mesh merge is justified by the measured draw-call count.
 
 If any gate fails, the cutover stalls at that gate. This plan's later phases assume all three hold.
@@ -238,11 +240,12 @@ scene under `scenes/tests/` and a green headless run before the next begins:
    to the male/female/boy GLB scenes through whole-model swaps.
 7. **Weather + atmosphere** — re-target fog/rain/cloud-shadow/ground-impact passes to 3D space and
    register the 3D world as the weather host with `WeatherManager`.
-   *Status: base atmosphere added; cycled passes pending.* `game_world_3d.tscn` now has a
-   `WorldEnvironment` (soft sky background, sky-sourced ambient, filmic tonemap, subtle depth fog)
-   and the water already consumes `WeatherManager` wind via `LowPolyWaterWindAdapter`. Still to do:
-   3D-space rain/fog/cloud-shadow passes registered through `WeatherManager`, which need in-editor
-   visual tuning rather than blind authoring.
+   *Status: first pass shipped and engine-validated.* `game_world_3d.tscn` has a
+   `WorldEnvironment` plus `WeatherRig3D`, registered as the manager's generic state target. The
+   shared cycle now drives player-following 3D rain particles, environment fog, moving cloud-cover
+   sun modulation, and water wind through `LowPolyWaterWindAdapter`. The runtime smoke verifies
+   registration, cycling, steady-rain emission, and wind propagation; the graphical steady-rain
+   capture records the tuned first-pass presentation.
 8. **Speech balloons + world UI** — anchor `speech_balloon` content to 3D actor positions.
    *Status: first pass engine-validated.* `common/gui/speech_balloon_3d.gd` is a
    billboarded `Label3D` that floats above a resident and auto-hides; the presenter attaches one to

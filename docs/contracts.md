@@ -236,6 +236,10 @@ Current contract:
   adult masculine uses `male.glb`, adult feminine uses `female.glb`, and teen
   uses `boy.glb`; the 3D layer does not duplicate or persist a separate
   appearance profile
+- `game_world_3d` registers one `WeatherRig3D` generic state target with the shared
+  `WeatherManager`; the manager remains authoritative for preset choice, hold/transition timing,
+  interpolation, and published wind, while the rig owns only 3D rain, fog, and cloud-light
+  presentation
 - `HumanBody3D.draw_skeleton_bones` is a debug toggle (default `false`): when on with the GLB model active it draws the model's `Skeleton3D` as bone lines in a `SkeletonDebug` `ImmediateMesh` under the skeleton, refreshed each frame to track animation, colored by `skeleton_debug_color`; it is a debug aid only and stays hidden in normal play
 - locomotion drives the model `AnimationPlayer`: `model_idle_animation` / `model_walk_animation` / `model_run_animation` map to standing/walking/running and loop with a short crossfade; clip names resolve case-insensitively against the imported animation list; optional imported clips beyond `idle`/`walk`/`run` must be validated before being bound to gameplay states
 - `HumanBody3D.max_step_height`, `HumanBody3D.floor_snap_distance`, and `HumanBody3D.grounding_speed` tune prototype 3D navigation over floor meshes, including stair treads; solid wall geometry must still block traversal instead of being bypassed by stair support, while preserving lateral `move_and_slide()` motion. Blocking wall contact suppresses horizontal snap repositioning, but forward floor probes stay available for normal riser step-up and step-down support. Generated stair side blockers are tagged as side walls; `HumanBody3D` checks both current contact and the short movement path ahead before permitting forward step-up, and every target-floor lookup propagates that permission so a tread cannot be sampled through a thin side wall before contact. `RigidBody3D` contacts are dynamic push targets, not blocking wall contacts: the actor applies a small movement-direction impulse to them while keeping static walls on the wall-slide path

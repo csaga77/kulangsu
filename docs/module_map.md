@@ -11,6 +11,8 @@ Read [`design_brief.md`](design_brief.md) and [`architecture.md`](architecture.m
 - [`../scenes/tests/capture_game_world_3d_qa.tscn`](../scenes/tests/capture_game_world_3d_qa.tscn) - graphical Metal QA runner that produces the five fixed-camera acceptance PNGs plus a raw 5-second-warm-up/60-second performance report, cold-terrain timing, and resident/per-landmark visibility variants under `design/qa/low_poly_3d/`
 - [`../weather/`](../weather) - weather-specific top-level folder for reusable overlays, the global weather manager/runtime, and the dedicated weather sandbox
 - [`../weather/weather_manager.gd`](../weather/weather_manager.gd) - global overworld weather manager that instantiates runtime weather rigs, owns preset cycling, and applies synced wind across registered rain, fog, and cloud-shadow targets
+- [`../weather/weather_rig_3d.gd`](../weather/weather_rig_3d.gd) - 3D weather presentation target registered with `WeatherManager`; translates the shared cycle into player-following rain particles, `WorldEnvironment` fog, and moving cloud-cover sun modulation while water continues to consume the published wind
+- [`../weather/tests/capture_weather_3d.tscn`](../weather/tests/capture_weather_3d.tscn) - graphical steady-rain validation/capture scene for the 3D runtime weather rig
 - [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd) - runtime lookup helper for the global scene-owned `WeatherManager`
 - [`../scenes/route_resolver.gd`](../scenes/route_resolver.gd) - resolves resident spawn anchors, tunnel portal approach points, and tunnel-to-surface route transitions
 - [`../scenes/resident_spawner.gd`](../scenes/resident_spawner.gd) - instantiates runtime residents from `AppState` definitions onto the shared actor layer

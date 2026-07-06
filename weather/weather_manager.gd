@@ -11,6 +11,7 @@ class WeatherRig:
 	var fog_overlay: FogOverlay = null
 	var cloud_shadow_overlay: CloudShadowOverlay = null
 	var ground_impacts: RainGroundImpacts = null
+	var weather_state_target: Node = null
 
 
 ## Emitted whenever the live applied wind changes (during transitions or via
@@ -110,6 +111,7 @@ var m_fog_overlay: FogOverlay = null
 var m_cloud_shadow_overlay: CloudShadowOverlay = null
 var m_ground_impacts: RainGroundImpacts = null
 var m_weather_layer: CanvasLayer = null
+var m_weather_state_target: Node = null
 var m_sync_rain_with_wind := true
 var m_sync_fog_with_wind := true
 var m_sync_cloud_with_wind := true
@@ -176,6 +178,7 @@ func register_weather_host(host_owner: Node, host_config: Dictionary = {}) -> Di
 	m_fog_overlay = rig.fog_overlay
 	m_cloud_shadow_overlay = rig.cloud_shadow_overlay
 	m_ground_impacts = rig.ground_impacts
+	m_weather_state_target = rig.weather_state_target
 	m_sync_rain_with_wind = bool(host_config.get("sync_rain_with_wind", true))
 	m_sync_fog_with_wind = bool(host_config.get("sync_fog_with_wind", true))
 	m_sync_cloud_with_wind = bool(host_config.get("sync_cloud_with_wind", true))
@@ -199,6 +202,7 @@ func get_registered_weather_nodes(host_owner: Node = null) -> Dictionary:
 		"fog_overlay": m_fog_overlay,
 		"cloud_shadow_overlay": m_cloud_shadow_overlay,
 		"ground_impacts": m_ground_impacts,
+		"weather_state_target": m_weather_state_target,
 	}
 
 
@@ -238,6 +242,11 @@ func set_registered_visibility(is_visible: bool) -> void:
 		if not is_visible:
 			m_ground_impacts.clear_impacts()
 		m_ground_impacts.visible = is_visible
+	if is_instance_valid(m_weather_state_target):
+		if m_weather_state_target.has_method("set_weather_visible"):
+			m_weather_state_target.call("set_weather_visible", is_visible)
+		else:
+			m_weather_state_target.visible = is_visible
 
 
 func unregister_weather_targets(host_owner: Node) -> void:
@@ -258,9 +267,11 @@ func _build_weather_rig(host_owner: Node, host_config: Dictionary) -> WeatherRig
 	var fog_properties: Dictionary = host_config.get("fog_properties", {})
 	var cloud_properties: Dictionary = host_config.get("cloud_properties", {})
 	var impact_properties: Dictionary = host_config.get("impact_properties", {})
+	var weather_state_target := host_config.get("weather_state_target") as Node
 
 	var rig := WeatherRig.new()
 	rig.owner = host_owner
+	rig.weather_state_target = weather_state_target
 
 	if is_instance_valid(overlay_parent):
 		rig.weather_layer = CanvasLayer.new()
@@ -327,12 +338,15 @@ func _resolve_weather_targets() -> void:
 		m_registered_rig.cloud_shadow_overlay = null
 	if m_registered_rig.ground_impacts != null and not is_instance_valid(m_registered_rig.ground_impacts):
 		m_registered_rig.ground_impacts = null
+	if m_registered_rig.weather_state_target != null and not is_instance_valid(m_registered_rig.weather_state_target):
+		m_registered_rig.weather_state_target = null
 
 	m_weather_layer = m_registered_rig.weather_layer
 	m_rain_overlay = m_registered_rig.rain_overlay
 	m_fog_overlay = m_registered_rig.fog_overlay
 	m_cloud_shadow_overlay = m_registered_rig.cloud_shadow_overlay
 	m_ground_impacts = m_registered_rig.ground_impacts
+	m_weather_state_target = m_registered_rig.weather_state_target
 
 	if not _has_weather_targets():
 		m_target_owner = null
@@ -350,6 +364,8 @@ func _clear_invalid_node_refs() -> void:
 		m_cloud_shadow_overlay = null
 	if m_ground_impacts != null and not is_instance_valid(m_ground_impacts):
 		m_ground_impacts = null
+	if m_weather_state_target != null and not is_instance_valid(m_weather_state_target):
+		m_weather_state_target = null
 
 
 func _clear_weather_targets() -> void:
@@ -365,6 +381,7 @@ func _clear_weather_targets() -> void:
 	m_fog_overlay = null
 	m_cloud_shadow_overlay = null
 	m_ground_impacts = null
+	m_weather_state_target = null
 
 
 func _free_rig_node(node: Node) -> void:
@@ -394,6 +411,7 @@ func _has_weather_targets() -> bool:
 		or is_instance_valid(m_fog_overlay)
 		or is_instance_valid(m_cloud_shadow_overlay)
 		or is_instance_valid(m_ground_impacts)
+		or is_instance_valid(m_weather_state_target)
 	)
 
 
@@ -428,6 +446,8 @@ func _capture_current_weather() -> Dictionary:
 	if is_instance_valid(m_cloud_shadow_overlay) and not is_instance_valid(m_fog_overlay):
 		weather["wind_angle_degrees"] = m_cloud_shadow_overlay.wind_angle_degrees
 		weather["wind_strength"] = m_cloud_shadow_overlay.wind_strength
+	if is_instance_valid(m_weather_state_target) and m_weather_state_target.has_method("capture_weather_state"):
+		weather.merge(m_weather_state_target.call("capture_weather_state"), true)
 
 	return weather
 
@@ -535,6 +555,8 @@ func _apply_weather(weather: Dictionary) -> void:
 		m_fog_overlay.density = float(weather.get("fog_density", m_fog_overlay.density))
 		m_fog_overlay.height_ratio = float(weather.get("fog_height_ratio", m_fog_overlay.height_ratio))
 		m_fog_overlay.drift_speed = float(weather.get("fog_drift_speed", m_fog_overlay.drift_speed))
+	if is_instance_valid(m_weather_state_target) and m_weather_state_target.has_method("apply_weather"):
+		m_weather_state_target.call("apply_weather", weather)
 
 	_apply_synced_wind(wind_angle_degrees, wind_strength)
 
@@ -551,6 +573,8 @@ func _apply_synced_wind(wind_angle_degrees: float, wind_strength: float) -> void
 	if is_instance_valid(m_cloud_shadow_overlay) and m_sync_cloud_with_wind:
 		m_cloud_shadow_overlay.wind_angle_degrees = wind_angle_degrees
 		m_cloud_shadow_overlay.wind_strength = wind_strength
+	if is_instance_valid(m_weather_state_target) and m_weather_state_target.has_method("set_wind"):
+		m_weather_state_target.call("set_wind", wind_angle_degrees, wind_strength)
 
 	# Publish the live applied wind so non-overlay consumers (e.g. low-poly 3D
 	# water) can follow it without registering as a weather overlay.

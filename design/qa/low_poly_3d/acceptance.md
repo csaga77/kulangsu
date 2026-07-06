@@ -46,3 +46,10 @@ The reproducible `capture_game_world_3d_qa.tscn` runner generated and this revie
 Formal visual sign-off is green. Formal performance sign-off still requires a release-export repeat;
 the new standalone Metal editor-debug capture passes every numeric budget and replaces the earlier
 embedded-editor draw-call estimate as the current diagnostic baseline.
+
+## 2026-07-06 — 3D weather evidence
+
+[`weather_steady_rain.png`](weather_steady_rain.png) records the manager-driven steady-rain state:
+screen-wide low-poly rain streaks, increased environment fog, readable residents/building edges,
+restrained cloud-cover lighting, and coherent shoreline water. The graphical capture scene completed
+with `PASS: WeatherRig3D steady-rain capture`.

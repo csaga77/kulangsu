@@ -19,28 +19,29 @@ Tracks the performance-acceptance gate (stage 4) of
 
 ## Measured
 
-Captured from frame timestamps plus Godot `Performance` monitors with 25 residents wandering.
+Captured from frame timestamps plus Godot `Performance` monitors with 25 residents wandering and
+the manager-owned 3D weather cycle active.
 
 | Metric | Target (release @1920×1080) | Standalone debug @2880×1620 | Diagnostic verdict |
 |---|---|---|---|
-| p95 frame time | ≤ 16.7 ms | 12.745 ms | pass |
-| worst sustained frame time | ≤ 33.3 ms | 14.557 ms | pass |
-| visible draw calls | ≤ 500 | 88.6 average / 91 max | pass |
-| visible primitives | ≤ 750,000 | 225,946 average / 226,814 max | pass |
+| p95 frame time | ≤ 16.7 ms | 14.963 ms | pass |
+| worst sustained frame time | ≤ 33.3 ms | 20.420 ms | pass |
+| visible draw calls | ≤ 500 | 90.1 average / 92 max | pass |
+| visible primitives | ≤ 750,000 | 228,390 average / 231,166 max | pass |
 | video memory | < 1 GiB | 264.98 MiB | pass |
-| static (CPU) memory | < 1 GiB | 126.71 MiB | pass |
-| cold terrain rebuild | < 3 s | 546.0 ms | pass |
+| static (CPU) memory | < 1 GiB | 140.50 MiB | pass |
+| cold terrain rebuild | < 3 s | 534.52 ms | pass |
 
 ## Draw-call attribution
 
 The earlier ~1,222 embedded-editor reading was not reproduced standalone and must not drive
 optimization work. Controlled one-second visibility variants measured:
 
-- baseline: ~88.6 calls
-- residents hidden: 74 calls (about 15 fewer)
-- Bagua Tower hidden: 27 calls (about 62 fewer)
-- Piano Ferry hidden: 88 calls
-- Trinity Church hidden: 88 calls
+- baseline with cycling 3D weather: ~90.1 calls
+- residents hidden: 75 calls (about 15 fewer)
+- Bagua Tower hidden: 29 calls (about 61 fewer)
+- Piano Ferry hidden: 90 calls
+- Trinity Church hidden: 90 calls
 
 This camera position makes Bagua Tower the dominant visible static-surface cost, but total draw calls
 are already far below budget. No speculative resident MultiMesh or redundant terrain merge is

@@ -85,8 +85,7 @@ Current pressure points:
 - the low-poly 3D runtime candidate now has terrain/water, actor/camera,
   three authored landmarks, shared-data residents, controller/adapter story
   dispatch, speech balloons, BGM/cues, and semantic resume anchors; its remaining
-  work is tunnel/interior content, routed tunnel residents, cycled 3D weather,
-  representative landmark result parity, formal visual and
+  work is tunnel/interior content, routed tunnel residents, representative landmark result parity, formal visual and
   release-performance acceptance, and the runtime-direction decision
 - regression coverage is now strong for landmark, route, resident-interaction, reactivity, and autosave flows, but still lighter around settings/audio behavior and richer world-object reactivity
 
@@ -104,7 +103,7 @@ Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but the
 | Workstream 3 | First pass shipped | Priority 3 (ending polish after more content) |
 | Workstream 4 | First pass shipped | Lower (polish) |
 | Workstream 5 | First pass shipped | Priority 4 (editor workflow), then Priority 5 (validation) |
-| Low-Poly 3D Runtime Candidate | Full-shell development toggle; terrain/water, actor/camera, three authored landmarks, shared residents/story/save/audio, speech balloons, representative resident result parity, fixed-camera acceptance, diagnostically green 60-second performance capture, and smoke coverage shipped | Parity hardening: tunnels, weather, landmark result equality, release-export performance repeat, then go/no-go |
+| Low-Poly 3D Runtime Candidate | Full-shell development toggle; terrain/water, actor/camera, three authored landmarks, shared residents/story/save/audio, speech balloons, manager-cycled 3D weather, representative resident result parity, fixed-camera acceptance, diagnostically green 60-second performance capture, and smoke coverage shipped | Parity hardening: tunnels, landmark result equality, release-export performance repeat, then go/no-go |
 | Resident Migration | Partial (6 migrated; remaining require manual `.tres` conversion) | Deferred sidecar (touch when content work needs it) |
 
 ### Priority 1: Route Content Depth (recommended next)
@@ -177,9 +176,10 @@ Execution order:
    - Record renderer, build type, resolution, hardware, scene revision, and measurement method in `design/qa/low_poly_3d/performance.md`.
    - At `1920 x 1080`, after a 5-second warm-up over a 60-second interaction-slice run, target p95 frame time at or below `16.7 ms`, worst sustained frame time at or below `33.3 ms`, no more than `500` visible draw calls, no more than `750,000` visible triangles, peak process memory below `1 GiB`, and a cold terrain rebuild below `3 seconds`.
    - If a target is missed, record the exception and approved tradeoff explicitly; “looks acceptable” is not a passing measurement.
-   - The reproducible standalone Metal editor-debug run passed every numeric budget: 12.745 ms p95,
-     14.557 ms worst, 91 max draw calls, 226,814 max primitives, 264.98 MiB video memory,
-     126.71 MiB static memory, and a 546 ms cold terrain rebuild at 2880×1620 physical pixels.
+   - The reproducible standalone Metal editor-debug run with cycling 3D weather passed every numeric
+     budget: 14.963 ms p95, 20.420 ms worst, 92 max draw calls, 231,166 max primitives,
+     264.98 MiB video memory, 140.50 MiB static memory, and a 534.52 ms cold terrain rebuild at
+     2880×1620 physical pixels.
      `performance_latest.json` contains the raw 60-second capture and visibility variants.
    - Repeat the same runner through a release export to satisfy the build-type formality; the prior
      1,222 embedded-editor draw-call estimate was not reproduced and is superseded.

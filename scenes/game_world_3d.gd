@@ -27,6 +27,7 @@ extends Node3D
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const WEATHER_RUNTIME := preload("res://weather/weather_runtime.gd")
 const WATER_WIND_ADAPTER := preload("res://terrain/low_poly_water_wind_adapter.gd")
+const WEATHER_RIG_3D_SCRIPT := preload("res://weather/weather_rig_3d.gd")
 const BGM_MANAGER_SCRIPT := preload("res://game/bgm_manager.gd")
 const LANDMARK_CUE_LOADER_SCRIPT := preload("res://game/landmark_cue_loader.gd")
 const PLAYER_APPEARANCE_CATALOG := preload("res://game/player_appearance_catalog.gd")
@@ -93,6 +94,10 @@ const LANDMARK_CUE_FILES := {
 	"festival_stage": "res://resources/audio/sfx/landmark_cues/festival_stage.ogg",
 }
 const LANDMARK_CUE_VOLUME_DB := -4.0
+const WEATHER_HOLD_DURATION_MIN := 20.0
+const WEATHER_HOLD_DURATION_MAX := 38.0
+const WEATHER_TRANSITION_DURATION_MIN := 9.0
+const WEATHER_TRANSITION_DURATION_MAX := 18.0
 
 @onready var m_terrain: Node3D = $LowPolyTerrain3D
 @onready var m_actor: CharacterBody3D = $human_body_3d
@@ -118,6 +123,7 @@ var m_coordinates: LowPolyWorldCoordinates3DScript = LowPolyWorldCoordinates3DSc
 var m_landmark_nodes: Dictionary = {}
 var m_weather_manager: WeatherManager = null
 var m_wind_adapter: LowPolyWaterWindAdapter = null
+var m_weather_rig_3d: Node3D = null
 var m_previous_weather_cycles_enabled := true
 var m_weather_cycles_overridden := false
 var m_is_ready := false
@@ -173,6 +179,8 @@ func _exit_tree() -> void:
 	if m_wind_adapter != null:
 		m_wind_adapter.unbind()
 	m_wind_adapter = null
+	if is_instance_valid(m_weather_manager):
+		m_weather_manager.unregister_weather_targets(self)
 	if is_instance_valid(m_weather_manager) and m_weather_cycles_overridden:
 		m_weather_manager.cycles_enabled = m_previous_weather_cycles_enabled
 	m_weather_cycles_overridden = false
@@ -322,11 +330,24 @@ func _setup_weather_wind() -> void:
 	m_weather_manager = WEATHER_RUNTIME.get_weather_manager(self) as WeatherManager
 	if m_weather_manager == null:
 		return
-	# 3D-space weather overlays are Phase E work; until then the manager only drives
-	# the water wind through the decoupled adapter and does not cycle 2D overlays.
 	m_previous_weather_cycles_enabled = m_weather_manager.cycles_enabled
 	m_weather_cycles_overridden = true
-	m_weather_manager.cycles_enabled = false
+	m_weather_manager.cycles_enabled = true
+	m_weather_manager.hold_duration_min = WEATHER_HOLD_DURATION_MIN
+	m_weather_manager.hold_duration_max = WEATHER_HOLD_DURATION_MAX
+	m_weather_manager.transition_duration_min = WEATHER_TRANSITION_DURATION_MIN
+	m_weather_manager.transition_duration_max = WEATHER_TRANSITION_DURATION_MAX
+	m_weather_rig_3d = WEATHER_RIG_3D_SCRIPT.new()
+	m_weather_rig_3d.name = "WeatherRig3D"
+	add_child(m_weather_rig_3d)
+	m_weather_rig_3d.configure(
+		m_actor,
+		get_node_or_null("WorldEnvironment") as WorldEnvironment,
+		m_sun
+	)
+	m_weather_manager.register_weather_host(self, {
+		"weather_state_target": m_weather_rig_3d,
+	})
 	m_wind_adapter = WATER_WIND_ADAPTER.new()
 	m_wind_adapter.bind(m_weather_manager, m_terrain)
 

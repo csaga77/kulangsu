@@ -16,6 +16,12 @@ This document is also the current handoff guide for the weather system. Another 
 - The shared reusable pieces live in [`../../weather/`](../../weather).
 - [`../../scenes/game_main.gd`](../../scenes/game_main.gd) and [`../../weather/tests/test_weather.gd`](../../weather/tests/test_weather.gd) now register weather hosts instead of serializing rain/fog/cloud/impact nodes directly into their scenes.
 - [`../../weather/weather_manager.gd`](../../weather/weather_manager.gd) now instantiates the runtime weather rig, drives random preset-to-preset transitions for the overworld rain and fog, and keeps cloud-shadow drift aligned with the shared wind.
+- [`../../weather/weather_rig_3d.gd`](../../weather/weather_rig_3d.gd) is the 3D runtime target for
+  the same manager-owned cycle. It renders camera-following rain particles, maps fog presets into the
+  `WorldEnvironment`, and applies broad moving cloud cover through restrained sun-energy modulation.
+- [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd) registers `WeatherRig3D` as the
+  manager's generic weather-state target and enables the same hold/transition cycle used by the 2D
+  overworld. Wind continues to drive the low-poly water through `LowPolyWaterWindAdapter`.
 - [`../../weather/weather_runtime.gd`](../../weather/weather_runtime.gd) resolves that manager as a scene-owned runtime service without using a Project Settings autoload.
 - The dedicated integration/tuning target is [`../../weather/tests/test_weather.tscn`](../../weather/tests/test_weather.tscn).
 - The sandbox is the source of truth for default tuning. Its runtime weather values are captured at startup and reused for the panel reset flow.
@@ -61,6 +67,16 @@ WeatherManager runtime rig
   - RainOverlay
 ```
 
+The 3D runtime candidate instead registers:
+
+```text
+game_world_3d
+- WeatherRig3D
+  - Rain3D (GPUParticles3D)
+- WorldEnvironment (fog target)
+- Sun (moving cloud-cover light target)
+```
+
 Important implications:
 
 - Terrain and ground are tilemap-backed.
@@ -80,6 +96,8 @@ Important implications:
 - [`../../weather/overworld_weather_preset.gd`](../../weather/overworld_weather_preset.gd) and [`../../weather/overworld_weather_preset.tres`](../../weather/overworld_weather_preset.tres) own the shared default overworld rain/fog/cloud/impact tuning.
 - [`../../scenes/game_main.gd`](../../scenes/game_main.gd) owns how the real overworld scene registers weather hosts and consumes the shared preset resource.
 - [`../../weather/weather_manager.gd`](../../weather/weather_manager.gd) owns runtime weather-rig instancing, random preset selection, hold timing, smooth interpolation between overworld weather states, and the live application of synced wind settings to registered rain/fog/cloud targets.
+- [`../../weather/weather_rig_3d.gd`](../../weather/weather_rig_3d.gd) owns translation of those
+  dimension-neutral weather values into 3D rain, environment fog, and cloud-light presentation.
 - [`../../weather/weather_runtime.gd`](../../weather/weather_runtime.gd) owns the runtime lookup path for that single shared manager instance.
 - [`../../weather/tests/test_weather.tscn`](../../weather/tests/test_weather.tscn) and [`../../weather/tests/test_weather.gd`](../../weather/tests/test_weather.gd) own the sandbox scene, tilemap-backed reference terrain, thunder pass, actor readability setup, in-scene weather controls, the weather-host registration used for runtime weather nodes, and the preset-parity smoke check.
 
@@ -160,6 +178,10 @@ If you need to change something, start here:
 - It interpolates rain density, rain drop speed/size, fog density, fog height, fog drift speed, wind angle, and wind strength.
 - It owns the synced wind application into rain, fog, and cloud-shadow targets, so gameplay scenes and the weather sandbox do not need their own per-pass wind propagation helpers.
 - It publishes the live applied wind for non-overlay consumers via the `wind_changed(wind_angle_degrees, wind_strength)` signal plus the `get_current_wind()` and `get_reference_wind_strength()` getters. These are read-only outputs; consumers (such as the low-poly 3D water through `terrain/low_poly_water_wind_adapter.gd`) follow them without registering as a weather overlay or coupling back into the manager.
+- A host may register a generic `weather_state_target` implementing
+  `capture_weather_state()`, `apply_weather(weather)`, `set_wind(...)`, and
+  `set_weather_visible(...)`. This is how the 3D world consumes the same cycle without teaching the
+  manager about 3D renderer nodes or duplicating its preset policy.
 - The random cycle currently affects the playable overworld only. The weather sandbox reuses the manager for wind-sync behavior while keeping `cycles_enabled = false` so it remains a predictable tuning environment.
 - If future work needs authored districts, chapters, or forecast control, replace the preset selection policy in `WeatherManager` instead of pushing that logic down into `RainOverlay` or `FogOverlay`.
 
@@ -169,6 +191,20 @@ If you need to change something, start here:
 - This logic lives in [`../../scenes/game_main.gd`](../../scenes/game_main.gd) alongside the existing tunnel-context visibility sync.
 - When tunnel suppression activates, ground impacts are also cleared so outdoor raindrop hits do not reappear when the player exits.
 - The sandbox does not apply this behavior because it is meant for direct weather inspection, not tunnel integration validation.
+
+### 3D Weather Rig
+
+- Rain is a camera-following `GPUParticles3D` box emitter above the player. Preset density controls
+  particle count; drop speed/size and normalized shared wind control streak scale and motion.
+- Fog remains owned by the scene's `WorldEnvironment`; the rig maps the manager's normalized fog
+  density into the narrow volumetric-distance-fog range appropriate for the island.
+- Broad cloud movement modulates the existing directional sun with a slow wind-scaled phase. This
+  avoids a screen-stuck overlay and keeps the effect coherent across terrain, buildings, and actors.
+- `WeatherRig3D` carries presentation only. Preset choice, interpolation, timing, and wind publication
+  remain in `WeatherManager`.
+- [`../../weather/tests/capture_weather_3d.tscn`](../../weather/tests/capture_weather_3d.tscn)
+  forces the steady-rain state, validates particle emission and manager registration through the
+  runtime-world smoke, and writes `design/qa/low_poly_3d/weather_steady_rain.png`.
 
 ### Thunder
 
@@ -264,6 +300,9 @@ These are reasonable follow-on features for the current design:
 - Run [`../../scenes/game_main.tscn`](../../scenes/game_main.tscn) or the full app flow when you need to confirm that the shared weather layers read correctly over the real island terrain and resident silhouettes.
 - Let the overworld run long enough to confirm at least one random preset transition occurs without sudden popping, stray dry-weather ground impacts, or obviously mismatched fog/rain wind direction.
 - Run [`../../weather/tests/test_weather.tscn`](../../weather/tests/test_weather.tscn) for focused weather tuning.
+- Run [`../../weather/tests/capture_weather_3d.tscn`](../../weather/tests/capture_weather_3d.tscn)
+  with a graphical renderer for the 3D steady-rain proof. It must print
+  `PASS: WeatherRig3D steady-rain capture`.
 - Use the in-scene weather control panel to toggle rain, fog, or thunder on or off, trigger thunder manually, and tune the main shared parameters while the scene is running.
 - Adjust the shared weather nodes in the inspector only when a change needs a deeper structural retune than the panel exposes.
 - Walk the player around the pier and approach residents to confirm weather still reads cleanly around actors and nearby `...` talk cues.

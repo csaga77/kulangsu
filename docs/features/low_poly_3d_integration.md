@@ -18,8 +18,7 @@
 - `test_game_world_3d.tscn` boots the runtime candidate and exercises resident
   proximity selection and inspect dispatch through the 3D controller/adapter.
 - The remaining acceptance work is two authored tunnel/interior spaces, routed
-  tunnel residents, cycled 3D weather, representative landmark progression
-  parity, the release-export repeat of the diagnostically green performance
+  tunnel residents, representative landmark progression parity, the release-export repeat of the diagnostically green performance
   capture, and the recorded runtime-direction decision.
 
 ## Player Experience
