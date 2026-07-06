@@ -10,6 +10,33 @@ Read [`../design_brief.md`](../design_brief.md), [`../architecture.md`](../archi
 two documents above before executing any phase here. Do not start the cutover phases (D onward)
 until every sidecar evidence gate in the implementation plan is green.
 
+## Current Status (2026-07-06)
+
+The 3D overworld is built, validated in-engine (Godot 4.7, Apple M5, Metal Forward+), and playable
+through the entire app shell. Per-item status is inline in the phases below; the rollup:
+
+- **Built and validated (green):** 3D world scene (terrain, actor, orthographic camera, sky/fog
+  atmosphere); interaction dispatch through the shared story services (proven identical to 2D,
+  no fork); 25 residents spawned from shared `AppState` data, wandering, pausing/facing on talk;
+  world-anchored speech balloons; three stylized landmark buildings (Piano Ferry, Trinity Church,
+  Bagua Tower) with generated collision; story resume-anchor save/restore. Headless smoke test
+  `test_game_world_3d.tscn` passes (world build, spawn, five landmark anchors, story subjects,
+  resident talk dispatch, resume anchor + fallback, interaction contract). Full-shell run
+  (`USE_3D_OVERWORLD = true`) exercised title → New Game → traveler setup → 3D overworld with HUD,
+  status panel, hints, autosave, resident dialogue with real story progression, and journal gating,
+  all with 0 errors / 0 warnings.
+- **Measured, one finding:** perf overlay read ~95–98 FPS, ~432k primitives, 272 MiB video / 157 MiB
+  static memory (all within budget), but **~1,222 draw calls vs the ≤500 target**. Frame time meets
+  the p95 target, so this is a budget-vs-reality call: either record an approved tradeoff or merge
+  static building/terrain sub-meshes (residents are individually skinned, so not MultiMesh-batchable).
+- **Not started (editor / decision work):** tunnel interior geometry (Bi Shan / Long Shan are still
+  invisible anchors); 3D-space weather passes (rain/fog/cloud); fixed-camera QA PNG captures; the
+  formal release-build perf re-measure at 1920×1080; the runtime-direction decision; and the Phase G
+  hard flip + 2D deletion.
+
+Integration is wired reversibly (the `USE_3D_OVERWORLD` toggle, default off), so none of the above
+has touched the shipped 2D runtime.
+
 ## Decision Framing
 
 The implementation plan's "Runtime-direction decision" (evidence stage 6) has three allowed
@@ -102,12 +129,15 @@ to Phase D until all are recorded green.
   scale, and one documented resume anchor — without touching `game_main.tscn`.
 - **C. Visual + performance acceptance.** Fixed-camera evidence under `design/qa/low_poly_3d/` and a
   `performance.md` meeting the plan's frame-time, draw-call, triangle, memory, and rebuild budgets.
-  *Status: visual acceptance recorded, formal perf measurement pending.* `design/qa/low_poly_3d/acceptance.md`
+  *Status: visual accepted; perf measured with one finding.* `design/qa/low_poly_3d/acceptance.md`
   records the 2026-07-06 in-editor visual acceptance (nonblank coherent frames, readable actors,
   recognizable landmark approach, legible water/seabed, smoke test green, full-shell integration).
-  `design/qa/low_poly_3d/performance.md` records the render environment (Metal Forward+, Apple M5,
-  Godot 4.7) and qualitative smoothness; the fixed-camera PNG captures and the formal release-build
-  p95/draw-call/triangle/memory measurement at 1920×1080 are still to be captured.
+  `design/qa/low_poly_3d/performance.md` now records measured numbers from an on-screen
+  `Performance` overlay (`show_debug_stats` in `game_world_3d`): ~95–98 FPS, ~432k primitives,
+  272 MiB video / 157 MiB static memory — all within budget — but **~1,222 draw calls, over the ≤500
+  budget** (25 individual resident GLBs plus many terrain/building sub-meshes). Remaining: batch
+  residents (MultiMesh) and merge meshes, then re-measure on a release export at 1920×1080; and
+  export the fixed-camera PNG captures.
 
 If any gate fails, the cutover stalls at that gate. This plan's later phases assume all three hold.
 

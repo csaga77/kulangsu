@@ -94,6 +94,9 @@ const RESIDENT_TALK_PAUSE_SEC := 4.0
 # without collision) so the player cannot walk through them. Disable if the trimesh
 # generation cost at load becomes a problem.
 @export var generate_landmark_collision := true
+# Show an on-screen performance overlay (FPS, frame time, draw calls, primitives,
+# video memory) for the QA performance-capture gate. Off in normal play.
+@export var show_debug_stats := false
 
 var m_coordinates: LowPolyWorldCoordinates3DScript = LowPolyWorldCoordinates3DScript.new()
 var m_landmark_nodes: Dictionary = {}
@@ -104,6 +107,7 @@ var m_last_location := ""
 var m_subjects: Array[StorySubject3D] = []
 var m_closest_subject: StorySubject3D = null
 var m_resident_root: Node3D = null
+var m_stats_label: Label = null
 
 
 func _app_state():
@@ -135,6 +139,8 @@ func _initialize_runtime() -> void:
 	_gather_story_subjects()
 	_connect_inspect()
 	_apply_story_resume_anchor_if_needed()
+	if show_debug_stats:
+		_setup_debug_stats()
 	m_is_ready = true
 	sync_ui_state()
 	_update_interaction_target()
@@ -151,6 +157,35 @@ func _process(_delta: float) -> void:
 		return
 	_sync_location_from_player()
 	_update_interaction_target()
+	_update_debug_stats()
+
+
+func _setup_debug_stats() -> void:
+	var layer := CanvasLayer.new()
+	layer.name = "DebugStatsLayer"
+	layer.layer = 20
+	add_child(layer)
+	m_stats_label = Label.new()
+	m_stats_label.position = Vector2(16.0, 60.0)
+	m_stats_label.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+	m_stats_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	m_stats_label.add_theme_constant_override("outline_size", 6)
+	layer.add_child(m_stats_label)
+
+
+func _update_debug_stats() -> void:
+	if m_stats_label == null:
+		return
+	var fps := Performance.get_monitor(Performance.TIME_FPS)
+	var frame_ms := Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
+	var draw_calls := Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
+	var primitives := Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)
+	var objects := Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)
+	var video_mem_mib := Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0
+	var static_mem_mib := Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0
+	m_stats_label.text = "FPS: %d\nProcess: %.2f ms\nDraw calls: %d\nPrimitives: %d\nObjects: %d\nVideo mem: %.1f MiB\nStatic mem: %.1f MiB" % [
+		int(fps), frame_ms, int(draw_calls), int(primitives), int(objects), video_mem_mib, static_mem_mib
+	]
 
 
 # --- main.gd game-root contract -------------------------------------------------
