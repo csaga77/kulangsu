@@ -29,11 +29,20 @@ Observed and accepted:
   (task advanced, next-beat hint surfaced), journal unlock-gating, and location sync all composed
   correctly over the 3D viewport with no integration errors.
 
-## Still required for a formal visual sign-off
+## 2026-07-06 — Fixed-camera evidence
 
-- Fixed-camera PNG captures exported from the editor into this folder: `world_overview.png`,
-  `player_scale.png`, `landmark_approach.png`, `camera_occlusion.png`, `water_shoreline.png`.
-- A camera-occluder fade capture (walk the player behind a landmark and confirm the target-occluder
-  transparency pass).
-- A passing release performance capture in [`performance.md`](performance.md);
-  the current editor sample is recorded but remains over the draw-call budget.
+The reproducible `capture_game_world_3d_qa.tscn` runner generated and this review accepted:
+
+- [`world_overview.png`](world_overview.png): nonblank coherent island, coastline, road network,
+  three authored landmarks, and distributed residents.
+- [`player_scale.png`](player_scale.png): player/resident silhouettes remain readable against a
+  landmark and terrain grid.
+- [`landmark_approach.png`](landmark_approach.png): Piano Ferry approach, building scale, collision
+  edge, residents, and coastline are legible.
+- [`camera_occlusion.png`](camera_occlusion.png): Bagua Tower geometry between camera and player is
+  visibly faded while the player remains readable.
+- [`water_shoreline.png`](water_shoreline.png): water/shoreline/seabed layering remains distinct.
+
+Formal visual sign-off is green. Formal performance sign-off still requires a release-export repeat;
+the new standalone Metal editor-debug capture passes every numeric budget and replaces the earlier
+embedded-editor draw-call estimate as the current diagnostic baseline.

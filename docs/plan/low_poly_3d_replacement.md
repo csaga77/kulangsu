@@ -27,13 +27,14 @@ through the entire app shell. Per-item status is inline in the phases below; the
   (`USE_3D_OVERWORLD = true`) exercised title → New Game → traveler setup → 3D overworld with HUD,
   status panel, hints, autosave, resident dialogue with real story progression, and journal gating,
   all with 0 errors / 0 warnings.
-- **Measured, one finding:** perf overlay read ~95–98 FPS, ~432k primitives, 272 MiB video / 157 MiB
-  static memory (all within budget), but **~1,222 draw calls vs the ≤500 target**. Frame time meets
-  the p95 target, so this is a budget-vs-reality call: either record an approved tradeoff or merge
-  static building/terrain sub-meshes (residents are individually skinned, so not MultiMesh-batchable).
+- **Visual and diagnostic performance acceptance green:** all five fixed-camera PNGs are captured
+  and accepted. The reproducible standalone Metal editor-debug runner measured 12.745 ms p95,
+  14.557 ms worst, 91 max draw calls, 226,814 max primitives, 264.98 MiB video / 126.71 MiB static
+  memory, and a 546 ms cold terrain rebuild over 60 seconds at 2880×1620 physical pixels. Every
+  numeric budget passes; the earlier 1,222 embedded-editor draw-call estimate was not reproduced.
 - **Open (editor / decision work):** tunnel interior geometry (Bi Shan / Long Shan are still
-  invisible anchors); 3D-space weather passes (rain/fog/cloud); fixed-camera QA PNG captures; the
-  formal release-build perf re-measure at 1920×1080; representative landmark result equality; the
+  invisible anchors); 3D-space weather passes (rain/fog/cloud); the formal release-export
+  performance repeat; representative landmark result equality; the
   runtime-direction decision; and the Phase G hard flip + 2D deletion.
 
 Integration is wired reversibly (the `USE_3D_OVERWORLD` toggle, default off), so none of the above
@@ -133,18 +134,14 @@ to Phase D until all are recorded green.
   parity, and proves semantic resume fallback. Landmark result parity remains a Phase F gate.
 - **C. Visual + performance acceptance.** Fixed-camera evidence under `design/qa/low_poly_3d/` and a
   `performance.md` meeting the plan's frame-time, draw-call, triangle, memory, and rebuild budgets.
-  *Status: review recorded; formal gate open.* `design/qa/low_poly_3d/acceptance.md`
-  records the 2026-07-06 in-editor visual review (nonblank coherent frames, readable actors,
+  *Status: visual green; performance diagnostic green, release repeat open.*
+  `design/qa/low_poly_3d/acceptance.md` records the 2026-07-06 fixed-camera visual acceptance
+  (nonblank coherent frames, readable actors,
   recognizable landmark approach, legible water/seabed, smoke test green, full-shell integration).
-  `design/qa/low_poly_3d/performance.md` now records measured numbers from an on-screen
-  `Performance` overlay (`show_debug_stats` in `game_world_3d`): ~95–98 FPS, ~432k primitives,
-  272 MiB video / 157 MiB static memory — all within budget — but **~1,222 draw calls, over the ≤500
-  budget** (25 individual skinned resident GLBs plus many authored-building surfaces). Remaining:
-  profile resident-hidden and per-landmark-hidden samples, consolidate the measured static visual
-  surfaces or record an approved tradeoff, re-measure on a release export at 1920×1080, instrument
-  cold terrain rebuild time, and export the fixed-camera PNG captures. The terrain is already one
-  mesh per material pass, and a normal MultiMesh is not a drop-in replacement for independently
-  animated skinned residents.
+  `design/qa/low_poly_3d/performance.md` records the reproducible 60-second standalone Metal
+  editor-debug capture and raw JSON. Every numeric budget passes at 2880×1620 physical pixels,
+  including 91 max draw calls and a 546 ms cold rebuild. Remaining: repeat the runner through a
+  release export. No speculative mesh merge is justified by the measured draw-call count.
 
 If any gate fails, the cutover stalls at that gate. This plan's later phases assume all three hold.
 

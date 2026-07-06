@@ -1,0 +1,94 @@
+{
+	"baseline": {
+		"draw_calls_average": 88.5630174793008,
+		"draw_calls_max": 91.0,
+		"fps_average": 144.928811554413,
+		"frame_ms_p95": 12.745,
+		"frame_ms_worst": 14.557,
+		"objects_average": 88.5630174793008,
+		"primitives_average": 225946.402023919,
+		"primitives_max": 226814.0,
+		"sample_count": 8696,
+		"static_memory_mib": 126.708662986755,
+		"video_memory_mib": 264.984375
+	},
+	"build": "editor_debug",
+	"capture_seconds": 60.0,
+	"captured_at_unix": 1783299981.985,
+	"cold_terrain_rebuild_ms": 546.003,
+	"engine": {
+		"build": "official",
+		"hash": "5b4e0cb0fd279832bbdd69fed5354d4e5ad26f88",
+		"hex": 263936,
+		"major": 4,
+		"minor": 7,
+		"patch": 0,
+		"status": "stable",
+		"string": "4.7-stable (official)",
+		"timestamp": 0
+	},
+	"renderer": "metal",
+	"render_pixel_size": [
+		2880,
+		1620
+	],
+	"viewport_logical_size": [
+		1440,
+		810
+	],
+	"variants": {
+		"bagua_tower_hidden": {
+			"draw_calls_average": 27.0,
+			"draw_calls_max": 27.0,
+			"fps_average": 144.23328647398,
+			"frame_ms_p95": 12.678,
+			"frame_ms_worst": 12.964,
+			"objects_average": 27.0,
+			"primitives_average": 223676.0,
+			"primitives_max": 223676.0,
+			"sample_count": 146,
+			"static_memory_mib": 125.611510276794,
+			"video_memory_mib": 264.984375
+		},
+		"piano_ferry_hidden": {
+			"draw_calls_average": 88.0,
+			"draw_calls_max": 88.0,
+			"fps_average": 144.893213701502,
+			"frame_ms_p95": 12.808,
+			"frame_ms_worst": 13.197,
+			"objects_average": 88.0,
+			"primitives_average": 225610.0,
+			"primitives_max": 225610.0,
+			"sample_count": 145,
+			"static_memory_mib": 125.627684593201,
+			"video_memory_mib": 264.984375
+		},
+		"residents_hidden": {
+			"draw_calls_average": 74.0,
+			"draw_calls_max": 74.0,
+			"fps_average": 144.293869289521,
+			"frame_ms_p95": 12.96,
+			"frame_ms_worst": 13.351,
+			"objects_average": 74.0,
+			"primitives_average": 221256.0,
+			"primitives_max": 221256.0,
+			"sample_count": 146,
+			"static_memory_mib": 125.583090782166,
+			"video_memory_mib": 264.984375
+		},
+		"trinity_church_hidden": {
+			"draw_calls_average": 88.0,
+			"draw_calls_max": 88.0,
+			"fps_average": 145.985693402047,
+			"frame_ms_p95": 12.936,
+			"frame_ms_worst": 13.458,
+			"objects_average": 88.0,
+			"primitives_average": 225610.0,
+			"primitives_max": 225610.0,
+			"sample_count": 146,
+			"static_memory_mib": 125.605612754822,
+			"video_memory_mib": 264.984375
+		}
+	},
+	"warmup_seconds": 5.0
+}

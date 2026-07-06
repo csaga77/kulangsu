@@ -3,7 +3,7 @@
 Tracks the performance-acceptance gate (stage 4) of
 [`../../../docs/plan/low_poly_3d_replacement.md`](../../../docs/plan/low_poly_3d_replacement.md).
 
-## Environment (2026-07-06)
+## Reproducible standalone capture (2026-07-06)
 
 - Engine: Godot 4.7.stable.official (5b4e0cb0f)
 - Renderer: Metal 4.0, Forward+
@@ -11,53 +11,43 @@ Tracks the performance-acceptance gate (stage 4) of
 - Scene: `scenes/game_world_3d.tscn` (five landmark anchors, three stylized building instances with
   generated trimesh collision, 25 wandering residents), terrain 512×512 source → 128×128 sampled
   cells (7914 land, 1448 street, 336 building, 8470 water, 8956 water render)
-- Build type: **editor debug run** (not a release export)
-- Run window resolution: 2880×1620 (editor embedded game view)
+- Build type: **standalone editor-debug run** (not a release export)
+- Render resolution: **2880×1620 physical pixels** (1440×810 logical Retina viewport), above the
+  1920×1080 target pixel count
+- Runner: `scenes/tests/capture_game_world_3d_qa.tscn`, 5-second warm-up followed by a measured
+  60-second baseline; raw output is [`performance_latest.json`](performance_latest.json)
 
-## Measured (in-editor debug overlay, 2026-07-06)
+## Measured
 
-Read from the `show_debug_stats` overlay in `game_world_3d` (on-screen `Performance` monitors),
-steady state with 25 residents wandering, camera following. Editor debug run at 2880×1620.
+Captured from frame timestamps plus Godot `Performance` monitors with 25 residents wandering.
 
-| Metric | Target (release @1920×1080) | Measured (editor debug @2880×1620) | Verdict |
+| Metric | Target (release @1920×1080) | Standalone debug @2880×1620 | Diagnostic verdict |
 |---|---|---|---|
-| Frame rate / frame time | ≤ 16.7 ms p95 | ~95–98 FPS (~10.3–10.5 ms) | within target |
-| visible draw calls | ≤ 500 | **~1,222** | **over budget** |
-| visible primitives | ≤ 750,000 tris | ~432,000 | within target |
-| objects drawn | — | ~1,406 | — |
-| video memory | < 1 GiB | 272 MiB | within target |
-| static (CPU) memory | < 1 GiB | 157 MiB | within target |
-| cold terrain rebuild | < 3 s | not instrumented | open |
+| p95 frame time | ≤ 16.7 ms | 12.745 ms | pass |
+| worst sustained frame time | ≤ 33.3 ms | 14.557 ms | pass |
+| visible draw calls | ≤ 500 | 88.6 average / 91 max | pass |
+| visible primitives | ≤ 750,000 | 225,946 average / 226,814 max | pass |
+| video memory | < 1 GiB | 264.98 MiB | pass |
+| static (CPU) memory | < 1 GiB | 126.71 MiB | pass |
+| cold terrain rebuild | < 3 s | 546.0 ms | pass |
 
-Notes:
-- Frame rate is comfortable even at a resolution well above the 1920×1080 target, so frame time is
-  not the concern; the render is geometry-bound, not fill-bound.
-- The `TIME_PROCESS` monitor read ~16.7 ms, which exceeds the observed frame time — likely editor/
-  debug-server overhead. Trust the FPS reading for frame cadence; confirm on a release build.
+## Draw-call attribution
 
-## Draw-call finding and mitigations
+The earlier ~1,222 embedded-editor reading was not reproduced standalone and must not drive
+optimization work. Controlled one-second visibility variants measured:
 
-~1,222 draw calls exceeds the ≤500 budget. Draw calls are geometry-count driven (not resolution), so
-this likely remains over budget at 1920×1080. The current attribution is a hypothesis, not a profile:
+- baseline: ~88.6 calls
+- residents hidden: 74 calls (about 15 fewer)
+- Bagua Tower hidden: 27 calls (about 62 fewer)
+- Piano Ferry hidden: 88 calls
+- Trinity Church hidden: 88 calls
 
-1. Capture draw calls with residents hidden, then with each authored landmark hidden, to assign the
-   cost before changing geometry.
-2. The terrain already emits one `MeshInstance3D` per populated material pass; its 336 footprint
-   cells and street cells are not 336 separate drawables. Do not schedule a redundant terrain merge.
-3. Residents are independently moving, skinned GLB instances. A normal `MultiMeshInstance3D` is not
-   a drop-in replacement for independently animated skeletons. First reduce material/surface count,
-   use visibility distance/culling, or approve the measured tradeoff.
-4. Stylized buildings contain many mesh surfaces. Consolidating static visual surfaces per material
-   and replacing per-mesh trimesh collision with simplified authored colliders are the most plausible
-   optimization paths after profiling.
+This camera position makes Bagua Tower the dominant visible static-surface cost, but total draw calls
+are already far below budget. No speculative resident MultiMesh or redundant terrain merge is
+justified by this evidence.
 
-Re-measure on a **release export at 1920×1080** after the profiled optimization or after recording an
-explicitly approved draw-call exception.
+## Formal gate
 
-## Next step
-
-Export a release build, run the specified 5-second warm-up plus 60-second capture at 1920×1080, and
-record p95 and worst sustained frame time. Instrument a cold terrain rebuild separately. Capture
-resident-hidden and per-landmark-hidden samples before selecting a draw-call mitigation. Collision
-does not itself add render draw calls, but replacing the current per-mesh concave shapes with
-simplified authored colliders remains worthwhile for load time and physics cost.
+Every numeric budget passes in the standalone editor-debug capture at a physical resolution above
+the target. The remaining formality is to create/use a release export preset and repeat the same
+runner at 1920×1080 or higher. Until then performance is **diagnostically green, formally open**.

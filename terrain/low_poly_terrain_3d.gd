@@ -164,6 +164,7 @@ var m_heightmap_defines_water_area := false
 var m_default_style: LowPolyArtStyle3DScript = null
 var m_water_materials: Array[ShaderMaterial] = []
 var m_mesh_builder: LowPolyTerrainMeshBuilder = null
+var last_rebuild_duration_ms := 0.0
 
 
 func _ready() -> void:
@@ -317,6 +318,7 @@ func get_source_size() -> Vector2i:
 
 
 func _rebuild_from_source() -> void:
+	var rebuild_started_usec := Time.get_ticks_usec()
 	m_rebuild_queued = false
 	_clear_generated_children()
 	m_sample_grid.clear()
@@ -345,6 +347,9 @@ func _rebuild_from_source() -> void:
 	m_source_size = source_size
 	m_heightmap_defines_water_area = heightmap_defines_water_area
 	_build_meshes_from_grid(grid, source_size.x, source_size.y, heightmap_defines_water_area)
+	last_rebuild_duration_ms = float(Time.get_ticks_usec() - rebuild_started_usec) / 1000.0
+	if print_summary:
+		print("LowPolyTerrain3D: cold rebuild %.2f ms." % last_rebuild_duration_ms)
 
 
 func _build_sampler() -> LowPolyTerrainSampler:

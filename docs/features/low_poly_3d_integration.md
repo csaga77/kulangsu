@@ -19,8 +19,8 @@
   proximity selection and inspect dispatch through the 3D controller/adapter.
 - The remaining acceptance work is two authored tunnel/interior spaces, routed
   tunnel residents, cycled 3D weather, representative landmark progression
-  parity, fixed-camera captures, release performance
-  acceptance, and the recorded runtime-direction decision.
+  parity, the release-export repeat of the diagnostically green performance
+  capture, and the recorded runtime-direction decision.
 
 ## Player Experience
 
@@ -75,9 +75,11 @@
 - **Green:** focused 3D headless smoke scenes return status `0`.
 - **Green:** the runtime candidate proves a controller/adapter resident dispatch
   and semantic resume anchor with fallback.
-- **Open:** fixed-camera screenshots listed by the implementation plan.
-- **Open:** release performance acceptance. The current editor sample exceeds
-  the draw-call budget and is not the required 60-second p95 capture.
+- **Green:** the five fixed-camera screenshots and dated visual acceptance note.
+- **Diagnostic green / formal open:** the reproducible standalone Metal debug
+  run passes every frame-time, draw-call, primitive, memory, and cold-rebuild
+  budget over 60 seconds at 2880×1620 physical pixels. Repeat through a release
+  export to close the formal gate.
 - **Green baseline:** equivalent fresh 2D/3D resident dispatches produce the same
   dimension-neutral result and core progression state.
 - **Open:** equivalent landmark dispatch parity with a meaningful progression

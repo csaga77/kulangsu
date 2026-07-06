@@ -104,7 +104,7 @@ Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but the
 | Workstream 3 | First pass shipped | Priority 3 (ending polish after more content) |
 | Workstream 4 | First pass shipped | Lower (polish) |
 | Workstream 5 | First pass shipped | Priority 4 (editor workflow), then Priority 5 (validation) |
-| Low-Poly 3D Runtime Candidate | Full-shell development toggle; terrain/water, actor/camera, three authored landmarks, shared residents/story/save/audio, speech balloons, representative resident result parity, and smoke coverage shipped | Parity hardening: tunnels, weather, appearance, landmark result equality, visual captures, release performance, then go/no-go |
+| Low-Poly 3D Runtime Candidate | Full-shell development toggle; terrain/water, actor/camera, three authored landmarks, shared residents/story/save/audio, speech balloons, representative resident result parity, fixed-camera acceptance, diagnostically green 60-second performance capture, and smoke coverage shipped | Parity hardening: tunnels, weather, landmark result equality, release-export performance repeat, then go/no-go |
 | Resident Migration | Partial (6 migrated; remaining require manual `.tres` conversion) | Deferred sidecar (touch when content work needs it) |
 
 ### Priority 1: Route Content Depth (recommended next)
@@ -168,14 +168,21 @@ Execution order:
    - Equivalent fresh 2D/3D resident dispatches now assert identical
      dimension-neutral results and core progression state. Still required:
      cover a landmark interaction with a meaningful progression effect.
-3. **Visual-style acceptance (open).**
+3. **Visual-style acceptance (green).**
    - Tune camera, projection, follow offset, palette, lighting, restrained wave depth, terrain chunkiness, building scale, actor readability, and camera-relative movement using the interaction slice plus combined world.
    - Store fixed-camera evidence under `design/qa/low_poly_3d/`: `world_overview.png`, `player_scale.png`, `landmark_approach.png`, `camera_occlusion.png`, and `water_shoreline.png`.
    - The visual gate requires nonblank frames, readable player silhouette, recognizable landmark approach, legible water/seabed layering, successful occluder fade, no incoherent overlap, and a dated acceptance note in the same folder.
-4. **Performance acceptance (open).**
+   - `capture_game_world_3d_qa.tscn` generated the complete set at 2880×1620 physical pixels; the dated acceptance note records each accepted view.
+4. **Performance acceptance (diagnostic green; release repeat open).**
    - Record renderer, build type, resolution, hardware, scene revision, and measurement method in `design/qa/low_poly_3d/performance.md`.
    - At `1920 x 1080`, after a 5-second warm-up over a 60-second interaction-slice run, target p95 frame time at or below `16.7 ms`, worst sustained frame time at or below `33.3 ms`, no more than `500` visible draw calls, no more than `750,000` visible triangles, peak process memory below `1 GiB`, and a cold terrain rebuild below `3 seconds`.
    - If a target is missed, record the exception and approved tradeoff explicitly; “looks acceptable” is not a passing measurement.
+   - The reproducible standalone Metal editor-debug run passed every numeric budget: 12.745 ms p95,
+     14.557 ms worst, 91 max draw calls, 226,814 max primitives, 264.98 MiB video memory,
+     126.71 MiB static memory, and a 546 ms cold terrain rebuild at 2880×1620 physical pixels.
+     `performance_latest.json` contains the raw 60-second capture and visibility variants.
+   - Repeat the same runner through a release export to satisfy the build-type formality; the prior
+     1,222 embedded-editor draw-call estimate was not reproduced and is superseded.
 5. **Story/resident/save ownership acceptance (partially green).**
    - Follow [`../features/low_poly_3d_integration.md`](../features/low_poly_3d_integration.md): the 3D scene owns spatial adapters, existing story services own rules/effects, `AppState` owns shared progression/save data, and resident definitions remain dimension-neutral data.
    - Controller/adapter resident dispatch, equivalent resident result/state
