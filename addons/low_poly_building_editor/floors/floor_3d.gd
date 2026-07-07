@@ -443,12 +443,20 @@ func supports_native_transform() -> bool:
 
 
 func _bake_native_delta(delta: Transform3D, grid_step: float) -> void:
+	# Snap the placement to the grid via one shared offset so the scaled/rotated
+	# footprint keeps its exact size and shape.
+	var hole_parent_polygons := _floor_hole_parent_polygons()
 	if is_polygon_floor():
 		var polygon := get_floor_polygon()
-		var new_polygon := PackedVector3Array()
+		var raw_polygon := PackedVector3Array()
 		for point in polygon:
-			new_polygon.append(snap_vector3_to_grid(delta * point, grid_step))
+			raw_polygon.append(delta * point)
+		var polygon_offset := grid_snap_offset(raw_polygon[0], grid_step) if raw_polygon.size() > 0 else Vector3.ZERO
+		var new_polygon := PackedVector3Array()
+		for point in raw_polygon:
+			new_polygon.append(point + polygon_offset)
 		set_floor_polygon(new_polygon)
+		_restore_transformed_floor_holes(hole_parent_polygons, delta, polygon_offset)
 		return
 	# A rotated native edit promotes the rectangle to polygon storage, matching
 	# how manual rectangle reshaping already promotes to polygon points.
@@ -459,21 +467,36 @@ func _bake_native_delta(delta: Transform3D, grid_step: float) -> void:
 			Vector3(end_point.x, start_point.y, end_point.z),
 			Vector3(start_point.x, start_point.y, end_point.z),
 		])
-		var promoted := PackedVector3Array()
+		var raw_corners := PackedVector3Array()
 		for corner in corners:
-			promoted.append(snap_vector3_to_grid(delta * corner, grid_step))
+			raw_corners.append(delta * corner)
+		var corner_offset := grid_snap_offset(raw_corners[0], grid_step)
+		var promoted := PackedVector3Array()
+		for corner in raw_corners:
+			promoted.append(corner + corner_offset)
 		set_floor_polygon(promoted)
+		_restore_transformed_floor_holes(hole_parent_polygons, delta, corner_offset)
 		return
-	set_floor_corners(
-		snap_vector3_to_grid(delta * start_point, grid_step),
-		snap_vector3_to_grid(delta * end_point, grid_step)
-	)
+	var raw_start := delta * start_point
+	var raw_end := delta * end_point
+	var offset := grid_snap_offset(raw_start, grid_step)
+	set_floor_corners(raw_start + offset, raw_end + offset)
+	_restore_transformed_floor_holes(hole_parent_polygons, delta, offset)
 
 
 func capture_native_transform_state() -> Dictionary:
 	if is_polygon_floor():
-		return {"polygon_points": get_floor_polygon()}
-	return {"start_point": start_point, "end_point": end_point}
+		return {
+			"polygon_points": get_floor_polygon(),
+			"floor_holes": get_floor_holes(),
+			"floor_hole_polygons": get_floor_hole_polygons(),
+		}
+	return {
+		"start_point": start_point,
+		"end_point": end_point,
+		"floor_holes": get_floor_holes(),
+		"floor_hole_polygons": get_floor_hole_polygons(),
+	}
 
 
 func restore_native_transform_state(state: Dictionary) -> void:
@@ -481,6 +504,53 @@ func restore_native_transform_state(state: Dictionary) -> void:
 		set_floor_polygon(PackedVector3Array(state["polygon_points"]))
 	elif state.has("start_point"):
 		set_floor_corners(Vector3(state["start_point"]), Vector3(state["end_point"]))
+	_restore_floor_holes_from_state(state)
+
+
+func _floor_hole_parent_polygons() -> Array[PackedVector3Array]:
+	var parent_polygons: Array[PackedVector3Array] = []
+	if !has_any_floor_holes():
+		return parent_polygons
+	var origin := _authored_transform().origin
+	for hole in get_all_floor_hole_polygons():
+		var parent_polygon := PackedVector3Array()
+		for point in hole:
+			parent_polygon.append(Vector3(origin.x + point.x, origin.y, origin.z + point.y))
+		parent_polygons.append(parent_polygon)
+	return parent_polygons
+
+
+func _restore_transformed_floor_holes(
+	hole_parent_polygons: Array[PackedVector3Array],
+	delta: Transform3D,
+	offset: Vector3
+) -> void:
+	if hole_parent_polygons.is_empty():
+		m_floor_holes.clear()
+		m_floor_hole_polygons.clear()
+		return
+	var origin := _authored_transform().origin
+	var local_holes: Array[PackedVector2Array] = []
+	for parent_polygon in hole_parent_polygons:
+		var local_hole := PackedVector2Array()
+		for point in parent_polygon:
+			var transformed := delta * point + offset
+			local_hole.append(Vector2(transformed.x - origin.x, transformed.z - origin.z))
+		local_holes.append(local_hole)
+	m_floor_holes.clear()
+	set_floor_hole_polygons(local_holes)
+
+
+func _restore_floor_holes_from_state(state: Dictionary) -> void:
+	var rect_holes: Array[Rect2] = []
+	for rect in state.get("floor_holes", []):
+		rect_holes.append(Rect2(rect))
+	var polygon_holes: Array[PackedVector2Array] = []
+	for hole in state.get("floor_hole_polygons", []):
+		polygon_holes.append(PackedVector2Array(hole))
+	m_floor_holes = _sanitize_floor_holes(rect_holes, get_floor_size()) if !is_polygon_floor() else []
+	m_floor_hole_polygons = _sanitize_floor_hole_polygons(polygon_holes)
+	rebuild_floor_mesh()
 
 
 func _append_polygon_floor_geometry(

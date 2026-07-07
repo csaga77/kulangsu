@@ -1169,11 +1169,17 @@ func supports_native_transform() -> bool:
 
 func _bake_native_delta(delta: Transform3D, grid_step: float) -> void:
 	var vertical_scale := native_delta_scale(delta).y
+	# Snap the primary span start onto the grid and shift every segment by the
+	# same offset, so scaled span lengths and the wall shape are preserved.
+	var primary := get_segment(0)
+	var offset := Vector3.ZERO
+	if primary != null:
+		offset = grid_snap_offset(delta * primary.start_point, grid_step)
 	for segment in segments:
 		if segment == null:
 			continue
-		segment.start_point = snap_vector3_to_grid(delta * segment.start_point, grid_step)
-		segment.end_point = snap_vector3_to_grid(delta * segment.end_point, grid_step)
+		segment.start_point = delta * segment.start_point + offset
+		segment.end_point = delta * segment.end_point + offset
 		segment.height = maxf(segment.height * vertical_scale, 0.1)
 	_sync_transform_from_points()
 	rebuild_wall_mesh()

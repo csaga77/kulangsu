@@ -14,6 +14,7 @@ const MODE_WINDOW := "window"
 const MODE_DOOR := "door"
 const Building3DScript = preload("res://addons/low_poly_building_editor/building_3d.gd")
 const BuildingFactoryScript = preload("res://addons/low_poly_building_editor/building_factory.gd")
+const BuildingMeshScript = preload("res://addons/low_poly_building_editor/building_mesh_3d.gd")
 const Wall3DScript = preload("res://addons/low_poly_building_editor/walls/wall_3d.gd")
 const Floor3DScript = preload("res://addons/low_poly_building_editor/floors/floor_3d.gd")
 const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs/stairs_3d.gd")
@@ -433,41 +434,180 @@ func _snapshot_native_transform_targets() -> void:
 	var selection := get_editor_interface().get_selection()
 	if selection == null:
 		return
-	for node in selection.get_selected_nodes():
-		if !_is_native_transform_block(node):
+	var selected_nodes := selection.get_selected_nodes()
+	var selected_roots: Array = []
+	var roots_with_selected_descendants := {}
+	for node in selected_nodes:
+		if !(node is Node3D):
 			continue
+		var selected_ancestor := _top_selected_node_ancestor(node, selected_nodes)
+		if selected_ancestor != null:
+			roots_with_selected_descendants[selected_ancestor] = true
+			selection.remove_node(node)
+			continue
+		selected_roots.append(node)
+	for node in selected_roots:
+		var selected_node := node as Node3D
+		var selected_parent := selected_node.get_parent() as Node3D
+		var blocks := _descendant_blocks(node)
+		if blocks.is_empty():
+			continue
+		var block_snapshots: Array = []
+		for block in blocks:
+			var block_parent := block.get_parent() as Node3D
+			block_snapshots.append({
+				"block": block,
+				"before": block.call("capture_native_transform_state"),
+				"parent_global_before": (
+					block_parent.global_transform if block_parent != null
+					else Transform3D.IDENTITY
+				),
+			})
 		m_native_edit_snapshots[node] = {
-			"before": node.call("capture_native_transform_state"),
+			"is_block": _is_native_transform_block(node),
+			"global_before": selected_node.global_transform,
+			"transform_before": selected_node.transform,
+			"parent_global_before": (
+				selected_parent.global_transform if selected_parent != null else Transform3D.IDENTITY
+			),
+			"had_selected_descendant": roots_with_selected_descendants.has(node),
+			"blocks": block_snapshots,
 			"coordinator": _coordinator_for_node(node),
 		}
 
 
+## Applies native gizmo deltas to authored block geometry where needed. A pure
+## move on a non-block parent remains on that parent so child local positions do
+## not change; parent scale/rotate still bakes into descendant blocks.
 func _commit_native_transform_edits() -> void:
 	if m_native_edit_snapshots.is_empty():
 		return
 	var undo_redo := get_undo_redo()
+	var coordinators_to_refresh := {}
 	for node in m_native_edit_snapshots:
 		if node == null or !is_instance_valid(node):
 			continue
 		var snapshot: Dictionary = m_native_edit_snapshots[node]
-		var changed: bool = node.call("apply_native_transform", m_transform_snap_step)
-		if !changed:
+		var node3d := node as Node3D
+		var global_before: Transform3D = snapshot["global_before"]
+		var world_delta: Transform3D = node3d.global_transform * global_before.affine_inverse()
+		if BuildingMeshScript.native_transform_is_identity(world_delta):
 			continue
-		var after_state: Dictionary = node.call("capture_native_transform_state")
-		var coordinator = snapshot.get("coordinator")
+		var block_grid_step := m_transform_snap_step
+		if !bool(snapshot["is_block"]):
+			if _native_delta_is_translation_only(world_delta):
+				if bool(snapshot.get("had_selected_descendant", false)):
+					_restore_block_snapshots(snapshot["blocks"])
+				continue
+			var parent_global_before: Transform3D = snapshot["parent_global_before"]
+			var snap_offset := BuildingMeshScript.grid_snap_offset(
+				node3d.transform.origin,
+				m_transform_snap_step
+			)
+			var world_snap_offset := parent_global_before.basis * snap_offset
+			world_delta = Transform3D(world_delta.basis, world_delta.origin + world_snap_offset)
+			block_grid_step = 0.0
+		var block_snapshots_to_bake: Array = snapshot["blocks"]
+		if bool(snapshot["is_block"]) and _native_delta_is_placement_only(world_delta):
+			var selected_block_split := _split_selected_block_snapshots(
+				block_snapshots_to_bake,
+				node3d
+			)
+			block_snapshots_to_bake = selected_block_split["selected"]
+			if bool(snapshot.get("had_selected_descendant", false)):
+				_restore_block_snapshots(selected_block_split["descendants"])
+		# One undo action covers every baked block plus the container reset for
+		# this edit, so a single undo reverts the whole thing.
 		if undo_redo != null:
-			undo_redo.create_action("Snap building block transform")
-			undo_redo.add_do_method(node, "restore_native_transform_state", after_state)
-			undo_redo.add_undo_method(node, "restore_native_transform_state", snapshot["before"])
-			if coordinator != null and is_instance_valid(coordinator):
+			undo_redo.create_action("Transform building blocks")
+		for block_snapshot in block_snapshots_to_bake:
+			var block = block_snapshot["block"]
+			if block == null or !is_instance_valid(block):
+				continue
+			var parent_global: Transform3D = block_snapshot["parent_global_before"]
+			var parent_delta: Transform3D = parent_global.affine_inverse() * world_delta * parent_global
+			block.call("bake_external_delta", parent_delta, block_grid_step)
+			var after_state: Dictionary = block.call("capture_native_transform_state")
+			if undo_redo != null:
+				undo_redo.add_do_method(block, "restore_native_transform_state", after_state)
+				undo_redo.add_undo_method(
+					block, "restore_native_transform_state", block_snapshot["before"]
+				)
+			_apply_debug_wireframe_to_node(block)
+		# A container (non-block) keeps riding the gizmo transform, so reset it to
+		# its pre-edit transform (recorded in the same undo action).
+		if !bool(snapshot["is_block"]):
+			var transform_before: Transform3D = snapshot["transform_before"]
+			node3d.transform = transform_before
+			if undo_redo != null:
+				undo_redo.add_do_property(node3d, "transform", transform_before)
+				undo_redo.add_undo_property(node3d, "transform", transform_before)
+		var coordinator = snapshot.get("coordinator")
+		if coordinator != null and is_instance_valid(coordinator):
+			coordinators_to_refresh[coordinator] = true
+			if undo_redo != null:
 				undo_redo.add_do_method(coordinator, "refresh_building_geometry_clips")
 				undo_redo.add_undo_method(coordinator, "refresh_building_geometry_clips")
-			# The bake is already applied; commit without re-executing the do steps.
+		if undo_redo != null:
+			# The bake is already applied; commit without re-running the do steps.
 			undo_redo.commit_action(false)
-		if coordinator != null and is_instance_valid(coordinator):
-			coordinator.refresh_building_geometry_clips()
-		_apply_debug_wireframe_to_node(node)
+	for coordinator in coordinators_to_refresh:
+		coordinator.refresh_building_geometry_clips()
 	m_native_edit_snapshots.clear()
+
+
+func _native_delta_is_translation_only(delta: Transform3D) -> bool:
+	return BuildingMeshScript.native_transform_is_identity(
+		Transform3D(delta.basis, Vector3.ZERO)
+	)
+
+
+func _native_delta_is_placement_only(delta: Transform3D) -> bool:
+	var scale := BuildingMeshScript.native_delta_scale(delta)
+	return scale.distance_to(Vector3.ONE) <= BuildingMeshScript.NATIVE_TRANSFORM_EPSILON
+
+
+func _top_selected_node_ancestor(node: Node, selected_nodes: Array) -> Node:
+	var selected_ancestor: Node = null
+	var current := node.get_parent()
+	while current != null:
+		if selected_nodes.has(current):
+			selected_ancestor = current
+		current = current.get_parent()
+	return selected_ancestor
+
+
+func _split_selected_block_snapshots(block_snapshots: Array, selected_node: Node) -> Dictionary:
+	var selected_snapshots: Array = []
+	var descendant_snapshots: Array = []
+	for block_snapshot in block_snapshots:
+		if block_snapshot["block"] == selected_node:
+			selected_snapshots.append(block_snapshot)
+		else:
+			descendant_snapshots.append(block_snapshot)
+	return {
+		"selected": selected_snapshots,
+		"descendants": descendant_snapshots,
+	}
+
+
+func _restore_block_snapshots(block_snapshots: Array) -> void:
+	for block_snapshot in block_snapshots:
+		var block = block_snapshot["block"]
+		if block == null or !is_instance_valid(block):
+			continue
+		block.call("restore_native_transform_state", block_snapshot["before"])
+		_apply_debug_wireframe_to_node(block)
+
+
+## Every building block in the subtree rooted at `node`, including `node` itself.
+func _descendant_blocks(node: Node) -> Array:
+	var blocks: Array = []
+	if _is_native_transform_block(node):
+		blocks.append(node)
+	for child in node.get_children():
+		blocks.append_array(_descendant_blocks(child))
+	return blocks
 
 
 func _is_native_transform_block(node: Object) -> bool:
@@ -479,7 +619,7 @@ func _is_native_transform_block(node: Object) -> bool:
 
 
 func _coordinator_for_node(node: Node) -> Building3DScript:
-	var current := node.get_parent()
+	var current := node
 	while current != null:
 		if current is Building3DScript:
 			return current

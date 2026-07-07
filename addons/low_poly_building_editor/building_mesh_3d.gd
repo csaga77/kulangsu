@@ -161,15 +161,32 @@ func native_transform_delta() -> Transform3D:
 	return transform * _authored_transform().affine_inverse()
 
 
-## Bakes a native gizmo edit back into authored properties, snapping translated
-## positions and baked sizes to grid_step (0 disables snapping), then rebuilds.
-## Returns true when authored state actually changed.
+## Bakes this block's own native gizmo edit back into authored properties,
+## snapping placement to grid_step (0 disables snapping) then rebuilding. Returns
+## true when authored state actually changed.
 func apply_native_transform(grid_step: float) -> bool:
 	var delta := native_transform_delta()
 	if native_transform_is_identity(delta):
 		return false
-	_bake_native_delta(delta, maxf(grid_step, 0.0))
+	var planar_delta := native_planar_delta(delta)
+	if native_transform_is_identity(planar_delta):
+		transform = _authored_transform()
+		return false
+	_bake_native_delta(planar_delta, maxf(grid_step, 0.0))
 	return true
+
+
+## Bakes a supplied parent-frame delta into this block's authored properties.
+## Used both for the block's own edit and to propagate an ancestor's edit down to
+## a descendant block whose own node transform did not change.
+func bake_external_delta(delta: Transform3D, grid_step: float) -> void:
+	if native_transform_is_identity(delta):
+		return
+	var planar_delta := native_planar_delta(delta)
+	if native_transform_is_identity(planar_delta):
+		transform = _authored_transform()
+		return
+	_bake_native_delta(planar_delta, maxf(grid_step, 0.0))
 
 
 ## True when this node is a building block that supports native-gizmo baking.
@@ -213,9 +230,13 @@ static func snap_vector3_to_grid(value: Vector3, step: float) -> Vector3:
 	)
 
 
-## Snaps a baked size/length to the grid while keeping it strictly positive.
-static func snap_size_to_grid(value: float, step: float) -> float:
-	return maxf(snap_axis_to_grid(value, step), maxf(step, 0.05))
+## Offset that moves `reference` onto the grid. Adding it to a whole point group
+## snaps the group's placement to the grid while preserving the relative shape
+## and size exactly, so a scaled block keeps its scaled geometry.
+static func grid_snap_offset(reference: Vector3, step: float) -> Vector3:
+	if step <= 0.0:
+		return Vector3.ZERO
+	return snap_vector3_to_grid(reference, step) - reference
 
 
 ## Yaw (rotation about Y, in degrees) carried by a native transform delta.
@@ -230,3 +251,32 @@ static func native_delta_scale(delta: Transform3D) -> Vector3:
 		delta.basis.y.length(),
 		delta.basis.z.length()
 	)
+
+
+## Native building edits support translation, yaw, and scale. Pitch/roll are
+## intentionally flattened so unsupported rotations cannot leave blocks tilted
+## away from their authored horizontal construction plane.
+static func native_planar_delta(delta: Transform3D) -> Transform3D:
+	var yaw := native_delta_yaw_degrees(delta)
+	var scale := native_delta_scale(delta)
+	var planar_basis := Basis(Vector3.UP, deg_to_rad(yaw)) * Basis.from_scale(scale)
+	return Transform3D(planar_basis, delta.origin)
+
+
+## Per-axis scale of a transform measured along its own local axes. Blocks that
+## map scale onto a scalar size plus a separate rotation field use this on their
+## effective transform (delta * authored) instead of native_delta_scale(): a
+## parent-frame delta scale lands on the wrong axis once the block is rotated, so
+## a widened rotated roof would deepen instead.
+static func transform_scale(effective: Transform3D) -> Vector3:
+	return Vector3(
+		effective.basis.x.length(),
+		effective.basis.y.length(),
+		effective.basis.z.length()
+	)
+
+
+## Absolute yaw (degrees) of a transform, robust to non-uniform scale because the
+## basis is orthonormalized before the euler read.
+static func transform_yaw_degrees(effective: Transform3D) -> float:
+	return rad_to_deg(effective.basis.orthonormalized().get_euler().y)

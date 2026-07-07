@@ -472,14 +472,16 @@ func supports_native_transform() -> bool:
 
 
 func _bake_native_delta(delta: Transform3D, grid_step: float) -> void:
-	var anchor := get_stair_anchor_point()
 	var size := get_stair_size()
-	var scale := native_delta_scale(delta)
-	var yaw := native_delta_yaw_degrees(delta)
-	var new_anchor := snap_vector3_to_grid(delta * anchor, grid_step)
-	var new_width := snap_size_to_grid(size.x * scale.x, grid_step)
-	var new_depth := snap_size_to_grid(size.y * scale.z, grid_step)
-	stair_rotation_degrees = _normalize_degrees_static(stair_rotation_degrees + yaw)
+	# Effective transform (delta folded onto authored) read in the local frame so
+	# a resized rotated stair grows along its own run/width axes.
+	var effective := delta * _authored_transform()
+	var scale := transform_scale(effective)
+	# Snap the placement (anchor) to the grid; keep the scaled footprint exact.
+	var new_anchor := snap_vector3_to_grid(effective.origin, grid_step)
+	var new_width := maxf(size.x * scale.x, 0.05)
+	var new_depth := maxf(size.y * scale.z, 0.05)
+	stair_rotation_degrees = _normalize_degrees_static(transform_yaw_degrees(effective))
 	stair_height = maxf(stair_height * scale.y, 0.05)
 	start_point = new_anchor
 	end_point = Vector3(new_anchor.x + new_width, new_anchor.y, new_anchor.z + new_depth)

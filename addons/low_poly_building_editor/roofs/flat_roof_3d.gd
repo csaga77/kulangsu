@@ -106,9 +106,13 @@ func _bake_native_delta(delta: Transform3D, grid_step: float) -> void:
 	if !is_polygon_roof():
 		super(delta, grid_step)
 		return
-	var new_points := PackedVector3Array()
+	var raw_points := PackedVector3Array()
 	for point in m_polygon_points:
-		new_points.append(snap_vector3_to_grid(delta * point, grid_step))
+		raw_points.append(delta * point)
+	var offset := grid_snap_offset(raw_points[0], grid_step) if raw_points.size() > 0 else Vector3.ZERO
+	var new_points := PackedVector3Array()
+	for point in raw_points:
+		new_points.append(point + offset)
 	set_roof_polygon(new_points)
 
 

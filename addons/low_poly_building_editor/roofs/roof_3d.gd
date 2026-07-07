@@ -515,15 +515,19 @@ func _bake_native_delta(delta: Transform3D, grid_step: float) -> void:
 	# Flat polygon roofs carry their own footprint; FlatRoof3D overrides this.
 	if _has_custom_footprint():
 		return
-	var anchor := get_roof_anchor_point()
 	var size := get_roof_size()
-	var scale := native_delta_scale(delta)
-	var yaw := native_delta_yaw_degrees(delta)
-	var new_anchor := snap_vector3_to_grid(delta * anchor, grid_step)
-	var new_width := snap_size_to_grid(size.x * scale.x, grid_step)
-	var new_depth := snap_size_to_grid(size.y * scale.z, grid_step)
+	# The effective transform folds the (possibly propagated) delta onto the
+	# authored transform; reading scale/yaw from it in the block's local frame
+	# keeps a widened rotated roof growing along its rotated width axis.
+	var effective := delta * _authored_transform()
+	var scale := transform_scale(effective)
+	# Snap the placement (anchor) to the grid, but keep the scaled size exact so
+	# the resized geometry is preserved rather than quantized.
+	var new_anchor := snap_vector3_to_grid(effective.origin, grid_step)
+	var new_width := maxf(size.x * scale.x, 0.05)
+	var new_depth := maxf(size.y * scale.z, 0.05)
 	_clear_custom_footprint()
-	roof_rotation_degrees = _normalize_degrees(roof_rotation_degrees + yaw)
+	roof_rotation_degrees = _normalize_degrees(transform_yaw_degrees(effective))
 	start_point = new_anchor
 	end_point = Vector3(new_anchor.x + new_width, new_anchor.y, new_anchor.z + new_depth)
 	rebuild_roof_mesh()

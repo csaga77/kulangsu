@@ -283,10 +283,13 @@ func supports_native_transform() -> bool:
 
 func _bake_native_delta(delta: Transform3D, grid_step: float) -> void:
 	var scale := native_delta_scale(delta)
-	var new_start := snap_vector3_to_grid(delta * start_point, grid_step)
-	var new_end := snap_vector3_to_grid(delta * end_point, grid_step)
+	# Snap the start onto the grid and shift the end by the same offset so the
+	# scaled length and orientation are preserved exactly.
+	var raw_start := delta * start_point
+	var raw_end := delta * end_point
+	var offset := grid_snap_offset(raw_start, grid_step)
 	rail_height = maxf(rail_height * scale.y, 0.2)
-	set_rail_points(new_start, new_end)
+	set_rail_points(raw_start + offset, raw_end + offset)
 
 
 func capture_native_transform_state() -> Dictionary:
