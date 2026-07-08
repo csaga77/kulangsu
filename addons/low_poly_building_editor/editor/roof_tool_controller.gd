@@ -208,16 +208,7 @@ func _handle_polygon_roof_input(camera: Camera3D, event: InputEvent) -> int:
 	):
 		_finish_polygon_roof()
 		return m_context.handled()
-	if snapped_local.distance_to(m_roof_polygon_points[m_roof_polygon_points.size() - 1]) <= 0.001:
-		m_context.set_status("Choose a different point for the next roof vertex.")
-		return m_context.handled()
-
-	var candidate := m_roof_polygon_points.duplicate()
-	candidate.append(snapped_local)
-	if candidate.size() >= 3 and !_is_valid_roof_polygon(candidate):
-		m_context.set_status("That vertex would make an invalid or self-intersecting roof polygon.")
-		return m_context.handled()
-	m_roof_polygon_points = candidate
+	m_roof_polygon_points.append(snapped_local)
 	_update_polygon_roof_preview(camera, mouse_button.position)
 	m_context.set_status(
 		"Roof polygon vertex %d captured. Click the first vertex or press Enter to close."

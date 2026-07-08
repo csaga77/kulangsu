@@ -237,16 +237,7 @@ func _handle_polygon_floor_input(camera: Camera3D, event: InputEvent) -> int:
 	):
 		_finish_polygon_floor()
 		return m_context.handled()
-	if snapped_local.distance_to(m_floor_polygon_points[m_floor_polygon_points.size() - 1]) <= 0.001:
-		m_context.set_status("Choose a different point for the next polygon vertex.")
-		return m_context.handled()
-
-	var candidate := m_floor_polygon_points.duplicate()
-	candidate.append(snapped_local)
-	if candidate.size() >= 3 and !_is_valid_floor_polygon(candidate):
-		m_context.set_status("That vertex would make an invalid or self-intersecting polygon.")
-		return m_context.handled()
-	m_floor_polygon_points = candidate
+	m_floor_polygon_points.append(snapped_local)
 	_update_polygon_floor_preview(camera, mouse_button.position)
 	m_context.set_status(
 		"Polygon vertex %d captured. Click the first vertex or press Enter to close."
