@@ -46,6 +46,7 @@ func _run_checks() -> void:
 	_validate_pillar_scale_translate()
 	_validate_rail_translate()
 	_validate_floor_translate()
+	_validate_floor_scale_preserves_anchor()
 	_validate_floor_holes_scale()
 	_validate_floor_pitch_is_ignored()
 	_validate_flat_polygon_roof_translate_preserves_shape()
@@ -261,6 +262,38 @@ func _validate_floor_translate() -> void:
 		m_failures.append("Floor translate did not move the start corner")
 	if floor_node.end_point.distance_to(Vector3(6.0, 0.0, 6.0)) > 0.01:
 		m_failures.append("Floor translate did not move the far corner")
+	floor_node.queue_free()
+
+
+func _validate_floor_scale_preserves_anchor() -> void:
+	# Scaling a floor around its min-corner anchor must keep that anchor put and
+	# grid-aligned, and preserve the exact scaled size — even when start_point is
+	# the far corner and the scale is off-grid. Snapping the far corner instead
+	# would shift the whole slab and move its position.
+	var floor_node := Floor3DScript.new()
+	# start_point is the max corner; the min corner (anchor) sits on the grid.
+	floor_node.set_floor_corners(Vector3(4.0, 0.0, 4.0), Vector3.ZERO)
+	add_child(floor_node)
+	floor_node.transform = Transform3D(
+		floor_node.transform.basis.scaled(Vector3(1.3, 1.0, 1.3)),
+		floor_node.transform.origin
+	)
+	floor_node.apply_native_transform(GRID)
+	var min_corner := Vector3(
+		minf(floor_node.start_point.x, floor_node.end_point.x),
+		floor_node.start_point.y,
+		minf(floor_node.start_point.z, floor_node.end_point.z)
+	)
+	if min_corner.distance_to(Vector3.ZERO) > 0.001:
+		m_failures.append(
+			"Floor scale moved the min-corner anchor off its position: got %s"
+			% [min_corner]
+		)
+	if floor_node.get_floor_size().distance_to(Vector2(5.2, 5.2)) > 0.001:
+		m_failures.append(
+			"Floor scale did not preserve the exact scaled size: got %s"
+			% [floor_node.get_floor_size()]
+		)
 	floor_node.queue_free()
 
 

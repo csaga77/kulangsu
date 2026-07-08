@@ -444,14 +444,21 @@ func supports_native_transform() -> bool:
 
 func _bake_native_delta(delta: Transform3D, grid_step: float) -> void:
 	# Snap the placement to the grid via one shared offset so the scaled/rotated
-	# footprint keeps its exact size and shape.
+	# footprint keeps its exact size and shape. The floor derives its node
+	# transform from its minimum X/Z corner, so the offset must snap that anchor
+	# onto the grid — snapping any other corner would shift the anchor off the
+	# grid and move the slab's position (e.g. when start_point is the far corner
+	# or the scale is off-grid).
 	var hole_parent_polygons := _floor_hole_parent_polygons()
 	if is_polygon_floor():
 		var polygon := get_floor_polygon()
 		var raw_polygon := PackedVector3Array()
 		for point in polygon:
 			raw_polygon.append(delta * point)
-		var polygon_offset := grid_snap_offset(raw_polygon[0], grid_step) if raw_polygon.size() > 0 else Vector3.ZERO
+		var polygon_offset := (
+			grid_snap_offset(_parent_points_anchor(raw_polygon), grid_step)
+			if raw_polygon.size() > 0 else Vector3.ZERO
+		)
 		var new_polygon := PackedVector3Array()
 		for point in raw_polygon:
 			new_polygon.append(point + polygon_offset)
@@ -470,7 +477,7 @@ func _bake_native_delta(delta: Transform3D, grid_step: float) -> void:
 		var raw_corners := PackedVector3Array()
 		for corner in corners:
 			raw_corners.append(delta * corner)
-		var corner_offset := grid_snap_offset(raw_corners[0], grid_step)
+		var corner_offset := grid_snap_offset(_parent_points_anchor(raw_corners), grid_step)
 		var promoted := PackedVector3Array()
 		for corner in raw_corners:
 			promoted.append(corner + corner_offset)
@@ -479,9 +486,22 @@ func _bake_native_delta(delta: Transform3D, grid_step: float) -> void:
 		return
 	var raw_start := delta * start_point
 	var raw_end := delta * end_point
-	var offset := grid_snap_offset(raw_start, grid_step)
+	var raw_anchor := Vector3(
+		minf(raw_start.x, raw_end.x),
+		raw_start.y,
+		minf(raw_start.z, raw_end.z)
+	)
+	var offset := grid_snap_offset(raw_anchor, grid_step)
 	set_floor_corners(raw_start + offset, raw_end + offset)
 	_restore_transformed_floor_holes(hole_parent_polygons, delta, offset)
+
+
+## Parent-space anchor (minimum X/Z corner) of a set of transformed footprint
+## points. Mirrors how `_authored_transform()` places the node origin, so the
+## grid snap moves that same anchor and keeps the slab's position stable.
+func _parent_points_anchor(points: PackedVector3Array) -> Vector3:
+	var bounds := _polygon_parent_bounds(points)
+	return Vector3(bounds.position.x, points[0].y, bounds.position.y)
 
 
 func capture_native_transform_state() -> Dictionary:
