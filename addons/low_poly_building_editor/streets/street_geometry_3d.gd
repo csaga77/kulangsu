@@ -1,0 +1,264 @@
+@tool
+class_name StreetGeometry3D
+extends RefCounted
+
+const EPSILON := 0.00001
+const MAX_MITER_SCALE := 3.0
+
+
+static func build(profile: PackedVector3Array, settings: Dictionary) -> Dictionary:
+	var vertices := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var colors := PackedColorArray()
+	var indices := PackedInt32Array()
+	var result := {
+		"vertices": vertices,
+		"normals": normals,
+		"colors": colors,
+		"indices": indices,
+		"stair_segment_count": 0,
+		"step_count": 0,
+	}
+	if profile.size() < 2:
+		return result
+
+	var road_half_width := maxf(float(settings.get("road_width", 3.2)) * 0.5, 0.05)
+	var kerb_width := maxf(float(settings.get("kerb_width", 0.18)), 0.01)
+	var footpath_width := maxf(float(settings.get("footpath_width", 1.1)), 0.05)
+	var road_thickness := maxf(float(settings.get("road_thickness", 0.18)), 0.01)
+	var kerb_height := maxf(float(settings.get("kerb_height", 0.14)), 0.01)
+	var footpath_thickness := maxf(float(settings.get("footpath_thickness", 0.16)), 0.01)
+	var threshold := clampf(float(settings.get("stair_threshold_degrees", 25.0)), 0.0, 89.0)
+	var target_riser := maxf(float(settings.get("target_riser_height", 0.16)), 0.02)
+	var max_riser := maxf(float(settings.get("max_riser_height", 0.18)), target_riser)
+	var min_tread := maxf(float(settings.get("min_tread_depth", 0.24)), 0.05)
+	var road_color := Color(settings.get("road_color", Color(0.38, 0.37, 0.34, 1.0)))
+	var kerb_color := Color(settings.get("kerb_color", Color(0.66, 0.64, 0.59, 1.0)))
+	var footpath_color := Color(settings.get("footpath_color", Color(0.72, 0.67, 0.57, 1.0)))
+
+	var road_left := _build_offset_polyline(profile, road_half_width)
+	var road_right := _build_offset_polyline(profile, -road_half_width)
+	var kerb_left := _build_offset_polyline(profile, road_half_width + kerb_width)
+	var kerb_right := _build_offset_polyline(profile, -road_half_width - kerb_width)
+	var foot_left := _build_offset_polyline(profile, road_half_width + kerb_width + footpath_width)
+	var foot_right := _build_offset_polyline(profile, -road_half_width - kerb_width - footpath_width)
+
+	for segment_index in range(profile.size() - 1):
+		var a := profile[segment_index]
+		var b := profile[segment_index + 1]
+		var run := Vector2(b.x - a.x, b.z - a.z).length()
+		if run <= EPSILON:
+			continue
+		_append_sloped_band(
+			road_left[segment_index], road_right[segment_index],
+			road_left[segment_index + 1], road_right[segment_index + 1],
+			road_thickness, road_color, vertices, normals, colors, indices
+		)
+		var rise := absf(b.y - a.y)
+		var slope_degrees := rad_to_deg(atan2(rise, run))
+		var step_count := 0
+		if slope_degrees > threshold + 0.0001:
+			step_count = _choose_step_count(rise, run, target_riser, max_riser, min_tread)
+		if step_count > 0:
+			result["stair_segment_count"] = int(result["stair_segment_count"]) + 1
+			result["step_count"] = int(result["step_count"]) + step_count
+			_append_stepped_side(
+				road_left[segment_index], kerb_left[segment_index], foot_left[segment_index],
+				road_left[segment_index + 1], kerb_left[segment_index + 1], foot_left[segment_index + 1],
+				step_count, kerb_height, footpath_thickness, kerb_color, footpath_color,
+				vertices, normals, colors, indices
+			)
+			_append_stepped_side(
+				road_right[segment_index], kerb_right[segment_index], foot_right[segment_index],
+				road_right[segment_index + 1], kerb_right[segment_index + 1], foot_right[segment_index + 1],
+				step_count, kerb_height, footpath_thickness, kerb_color, footpath_color,
+				vertices, normals, colors, indices
+			)
+		else:
+			_append_sloped_side(
+				road_left[segment_index], kerb_left[segment_index], foot_left[segment_index],
+				road_left[segment_index + 1], kerb_left[segment_index + 1], foot_left[segment_index + 1],
+				kerb_height, footpath_thickness, kerb_color, footpath_color,
+				vertices, normals, colors, indices
+			)
+			_append_sloped_side(
+				road_right[segment_index], kerb_right[segment_index], foot_right[segment_index],
+				road_right[segment_index + 1], kerb_right[segment_index + 1], foot_right[segment_index + 1],
+				kerb_height, footpath_thickness, kerb_color, footpath_color,
+				vertices, normals, colors, indices
+			)
+
+	result["vertices"] = vertices
+	result["normals"] = normals
+	result["colors"] = colors
+	result["indices"] = indices
+	return result
+
+
+static func _choose_step_count(
+	rise: float,
+	run: float,
+	target_riser: float,
+	max_riser: float,
+	min_tread: float
+) -> int:
+	if rise <= EPSILON or run <= EPSILON:
+		return 0
+	var minimum_steps := ceili(rise / max_riser)
+	var maximum_steps := floori(run / min_tread)
+	if minimum_steps > maximum_steps or maximum_steps < 1:
+		return 0
+	return clampi(roundi(rise / target_riser), minimum_steps, maximum_steps)
+
+
+static func _build_offset_polyline(profile: PackedVector3Array, offset: float) -> PackedVector3Array:
+	var result := PackedVector3Array()
+	for index in range(profile.size()):
+		var previous_direction := _plan_direction(
+			profile[maxi(index - 1, 0)], profile[index if index > 0 else 1]
+		)
+		var next_direction := _plan_direction(
+			profile[index], profile[mini(index + 1, profile.size() - 1)]
+		)
+		if index == 0:
+			previous_direction = next_direction
+		elif index == profile.size() - 1:
+			next_direction = previous_direction
+		var previous_normal := Vector3(-previous_direction.z, 0.0, previous_direction.x)
+		var next_normal := Vector3(-next_direction.z, 0.0, next_direction.x)
+		var bisector := previous_normal + next_normal
+		if bisector.length_squared() <= EPSILON:
+			bisector = next_normal
+		bisector = bisector.normalized()
+		var denominator := absf(bisector.dot(next_normal))
+		var scale := 1.0 if denominator <= EPSILON else minf(1.0 / denominator, MAX_MITER_SCALE)
+		result.append(profile[index] + bisector * offset * scale)
+	return result
+
+
+static func _plan_direction(a: Vector3, b: Vector3) -> Vector3:
+	var delta := Vector3(b.x - a.x, 0.0, b.z - a.z)
+	return Vector3.FORWARD if delta.length_squared() <= EPSILON else delta.normalized()
+
+
+static func _append_sloped_band(
+	a_left: Vector3, a_right: Vector3, b_left: Vector3, b_right: Vector3,
+	thickness: float, color: Color,
+	vertices: PackedVector3Array, normals: PackedVector3Array,
+	colors: PackedColorArray, indices: PackedInt32Array
+) -> void:
+	_append_upward_quad(a_left, b_left, b_right, a_right, color, vertices, normals, colors, indices)
+	_append_quad(
+		a_right - Vector3.UP * thickness, b_right - Vector3.UP * thickness,
+		b_left - Vector3.UP * thickness, a_left - Vector3.UP * thickness,
+		color.darkened(0.08), vertices, normals, colors, indices
+	)
+	_append_quad(a_left - Vector3.UP * thickness, b_left - Vector3.UP * thickness, b_left, a_left, color, vertices, normals, colors, indices)
+	_append_quad(a_right, b_right, b_right - Vector3.UP * thickness, a_right - Vector3.UP * thickness, color, vertices, normals, colors, indices)
+
+
+static func _append_sloped_side(
+	a_road: Vector3, a_kerb: Vector3, a_outer: Vector3,
+	b_road: Vector3, b_kerb: Vector3, b_outer: Vector3,
+	kerb_height: float, footpath_thickness: float,
+	kerb_color: Color, footpath_color: Color,
+	vertices: PackedVector3Array, normals: PackedVector3Array,
+	colors: PackedColorArray, indices: PackedInt32Array
+) -> void:
+	var up := Vector3.UP * kerb_height
+	_append_upward_quad(a_road + up, b_road + up, b_kerb + up, a_kerb + up, kerb_color, vertices, normals, colors, indices)
+	_append_quad(a_road, b_road, b_road + up, a_road + up, kerb_color, vertices, normals, colors, indices)
+	_append_upward_quad(a_kerb + up, b_kerb + up, b_outer + up, a_outer + up, footpath_color, vertices, normals, colors, indices)
+	_append_quad(
+		a_outer + up, b_outer + up,
+		b_outer + up - Vector3.UP * footpath_thickness,
+		a_outer + up - Vector3.UP * footpath_thickness,
+		footpath_color.darkened(0.08), vertices, normals, colors, indices
+	)
+
+
+static func _append_stepped_side(
+	a_road: Vector3, a_kerb: Vector3, a_outer: Vector3,
+	b_road: Vector3, b_kerb: Vector3, b_outer: Vector3,
+	step_count: int, kerb_height: float, footpath_thickness: float,
+	kerb_color: Color, footpath_color: Color,
+	vertices: PackedVector3Array, normals: PackedVector3Array,
+	colors: PackedColorArray, indices: PackedInt32Array
+) -> void:
+	if a_road.y > b_road.y:
+		var swap_road := a_road
+		a_road = b_road
+		b_road = swap_road
+		var swap_kerb := a_kerb
+		a_kerb = b_kerb
+		b_kerb = swap_kerb
+		var swap_outer := a_outer
+		a_outer = b_outer
+		b_outer = swap_outer
+	for step_index in range(step_count):
+		var t0 := float(step_index) / float(step_count)
+		var t1 := float(step_index + 1) / float(step_count)
+		var top_y := lerpf(a_road.y, b_road.y, float(step_index + 1) / float(step_count)) + kerb_height
+		var road0 := a_road.lerp(b_road, t0)
+		var road1 := a_road.lerp(b_road, t1)
+		var kerb0 := a_kerb.lerp(b_kerb, t0)
+		var kerb1 := a_kerb.lerp(b_kerb, t1)
+		var outer0 := a_outer.lerp(b_outer, t0)
+		var outer1 := a_outer.lerp(b_outer, t1)
+		road0.y = top_y
+		road1.y = top_y
+		kerb0.y = top_y
+		kerb1.y = top_y
+		outer0.y = top_y
+		outer1.y = top_y
+		_append_upward_quad(road0, road1, kerb1, kerb0, kerb_color, vertices, normals, colors, indices)
+		_append_upward_quad(kerb0, kerb1, outer1, outer0, footpath_color, vertices, normals, colors, indices)
+		var road_base0 := a_road.lerp(b_road, t0)
+		var road_base1 := a_road.lerp(b_road, t1)
+		_append_quad(road_base0, road_base1, road1, road0, kerb_color, vertices, normals, colors, indices)
+		_append_quad(
+			outer0, outer1,
+			outer1 - Vector3.UP * footpath_thickness,
+			outer0 - Vector3.UP * footpath_thickness,
+			footpath_color.darkened(0.08), vertices, normals, colors, indices
+		)
+		if step_index == 0:
+			_append_quad(
+				road0 - Vector3.UP * footpath_thickness,
+				road0, outer0, outer0 - Vector3.UP * footpath_thickness,
+				footpath_color.darkened(0.05), vertices, normals, colors, indices
+			)
+		else:
+			var lower_top := top_y - absf(b_road.y - a_road.y) / float(step_count)
+			var lower_road := road0
+			var lower_outer := outer0
+			lower_road.y = lower_top
+			lower_outer.y = lower_top
+			_append_quad(lower_road, road0, outer0, lower_outer, footpath_color.darkened(0.05), vertices, normals, colors, indices)
+
+
+static func _append_quad(
+	a: Vector3, b: Vector3, c: Vector3, d: Vector3, color: Color,
+	vertices: PackedVector3Array, normals: PackedVector3Array,
+	colors: PackedColorArray, indices: PackedInt32Array
+) -> void:
+	var normal := (b - a).cross(c - a).normalized()
+	if normal.length_squared() <= EPSILON:
+		return
+	var base := vertices.size()
+	vertices.append_array(PackedVector3Array([a, b, c, d]))
+	for _index in range(4):
+		normals.append(normal)
+		colors.append(color)
+	indices.append_array(PackedInt32Array([base, base + 1, base + 2, base, base + 2, base + 3]))
+
+
+static func _append_upward_quad(
+	a: Vector3, b: Vector3, c: Vector3, d: Vector3, color: Color,
+	vertices: PackedVector3Array, normals: PackedVector3Array,
+	colors: PackedColorArray, indices: PackedInt32Array
+) -> void:
+	if (b - a).cross(c - a).y < 0.0:
+		_append_quad(a, d, c, b, color, vertices, normals, colors, indices)
+	else:
+		_append_quad(a, b, c, d, color, vertices, normals, colors, indices)

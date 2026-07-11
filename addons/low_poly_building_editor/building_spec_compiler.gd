@@ -5,6 +5,12 @@ extends RefCounted
 const BuildingSpecScript = preload(
 	"res://addons/low_poly_building_editor/building_spec.gd"
 )
+const BuildingGenerationSpecScript = preload(
+	"res://addons/low_poly_building_editor/building_generation_spec.gd"
+)
+const StreetSpecScript = preload(
+	"res://addons/low_poly_building_editor/street_spec.gd"
+)
 const Building3DScript = preload(
 	"res://addons/low_poly_building_editor/building_3d.gd"
 )
@@ -40,7 +46,16 @@ static func load_json_spec(path: String) -> Dictionary:
 	if !(parser.data is Dictionary):
 		errors.append("The building spec JSON root must be an object.")
 		return {"spec": null, "errors": errors}
-	var spec := BuildingSpecScript.new() as BuildingSpecScript
+	var type := String(parser.data.get("type", "building")).strip_edges().to_lower()
+	var spec: BuildingGenerationSpecScript
+	match type:
+		"building":
+			spec = BuildingSpecScript.new() as BuildingSpecScript
+		"street":
+			spec = StreetSpecScript.new() as StreetSpecScript
+		_:
+			errors.append("Unsupported generated asset type '%s'." % type)
+			return {"spec": null, "errors": errors}
 	errors.append_array(spec.apply_dictionary(parser.data))
 	return {
 		"spec": spec,
@@ -48,7 +63,17 @@ static func load_json_spec(path: String) -> Dictionary:
 	}
 
 
-static func compile(spec: BuildingSpecScript) -> Dictionary:
+static func compile(spec: BuildingGenerationSpecScript) -> Dictionary:
+	if spec == null:
+		return _result(null, {}, ["No generation spec was provided."], [])
+	if spec is StreetSpecScript:
+		return _compile_street(spec as StreetSpecScript)
+	if spec is BuildingSpecScript:
+		return _compile_building(spec as BuildingSpecScript)
+	return _result(null, {}, ["Unsupported generation spec resource."], [])
+
+
+static func _compile_building(spec: BuildingSpecScript) -> Dictionary:
 	var errors: Array[String] = []
 	var warnings: Array[String] = []
 	if spec == null:
@@ -176,6 +201,59 @@ static func compile(spec: BuildingSpecScript) -> Dictionary:
 	if !errors.is_empty():
 		building.free()
 		return _result(null, resolved, errors, warnings)
+	return _result(building, resolved, errors, warnings)
+
+
+static func _compile_street(spec: StreetSpecScript) -> Dictionary:
+	var errors: Array[String] = spec.validate()
+	var warnings: Array[String] = []
+	if !errors.is_empty():
+		return _result(null, {}, errors, warnings)
+	var building := Building3DScript.new() as Building3D
+	building.name = _safe_node_name(spec.building_name)
+	var street := BuildingFactoryScript.create_street_node(
+		building,
+		spec.path_points,
+		{
+			"road_width": spec.road_width,
+			"road_thickness": spec.road_thickness,
+			"road_color": spec.road_color,
+			"kerb_width": spec.kerb_width,
+			"kerb_height": spec.kerb_height,
+			"kerb_color": spec.kerb_color,
+			"footpath_width": spec.footpath_width,
+			"footpath_thickness": spec.footpath_thickness,
+			"footpath_color": spec.footpath_color,
+			"stair_threshold_degrees": spec.stair_threshold_degrees,
+			"target_riser_height": spec.target_riser_height,
+			"max_riser_height": spec.max_riser_height,
+			"min_tread_depth": spec.min_tread_depth,
+		}
+	)
+	var street_errors: Array[String] = street.get_validation_errors()
+	if !street_errors.is_empty():
+		street.free()
+		building.free()
+		return _result(null, {}, street_errors, warnings)
+	_attach_authored(building, street, building)
+	var stats: Dictionary = street.get_last_build_stats()
+	var serialized_path: Array[Array] = []
+	for point in spec.path_points:
+		serialized_path.append([point.x, point.y, point.z])
+	var resolved := {
+		"type": "street",
+		"schema_version": spec.schema_version,
+		"generator_version": spec.generator_version,
+		"seed": spec.generation_seed,
+		"building_name": spec.building_name,
+		"grid_step": spec.grid_step,
+		"path": serialized_path,
+		"path_point_count": spec.path_points.size(),
+		"stair_segment_count": int(stats.get("stair_segment_count", 0)),
+		"step_count": int(stats.get("step_count", 0)),
+		"node_count": _count_authored_nodes(building, building),
+	}
+	resolved["structural_signature"] = hash(resolved)
 	return _result(building, resolved, errors, warnings)
 
 

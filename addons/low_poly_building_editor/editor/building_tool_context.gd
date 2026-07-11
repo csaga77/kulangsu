@@ -18,6 +18,7 @@ const BuildingFactoryScript = preload("res://addons/low_poly_building_editor/bui
 const BuildingWireframeScript = preload("res://addons/low_poly_building_editor/building_wireframe.gd")
 const Wall3DScript = preload("res://addons/low_poly_building_editor/walls/wall_3d.gd")
 const Floor3DScript = preload("res://addons/low_poly_building_editor/floors/floor_3d.gd")
+const Street3DScript = preload("res://addons/low_poly_building_editor/streets/street_3d.gd")
 const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs/stairs_3d.gd")
 const Rail3DScript = preload("res://addons/low_poly_building_editor/rails/rail_3d.gd")
 const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillars/pillar_3d.gd")
@@ -523,6 +524,7 @@ func set_owner_recursive(node: Node, scene_root: Node) -> void:
 	if (
 		node.has_meta(Wall3DScript.GENERATED_META)
 		or node.has_meta(Floor3DScript.GENERATED_META)
+		or node.has_meta(Street3DScript.GENERATED_META)
 		or node.has_meta(Stairs3DScript.GENERATED_META)
 		or node.has_meta(Rail3DScript.GENERATED_META)
 		or node.has_meta(Pillar3DScript.GENERATED_META)

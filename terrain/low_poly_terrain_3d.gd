@@ -2,8 +2,19 @@
 class_name LowPolyTerrain3D
 extends Node3D
 
+signal terrain_rebuilt(summary: Dictionary)
+
 const GENERATED_META := &"low_poly_terrain_generated"
 const LowPolyArtStyle3DScript = preload("res://terrain/low_poly_art_style_3d.gd")
+const LowPolyStreetCorridorIntegratorScript = preload(
+	"res://terrain/low_poly_street_corridor_integrator.gd"
+)
+const LowPolyStreetPathExtractorScript = preload(
+	"res://terrain/low_poly_street_path_extractor.gd"
+)
+const GENERATED_STREET_META := &"low_poly_terrain_generated_street"
+const GENERATED_STREET_ROOT_NAME := &"GeneratedStreets"
+const STREET_3D_SCRIPT_PATH := "res://addons/low_poly_building_editor/streets/street_3d.gd"
 const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 
 @export var rebuild: bool = false:
@@ -141,6 +152,80 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 @export var build_on_ready := true
 @export var print_summary := true
 
+@export_group("Street Integration")
+## Converts STREET cells from the terrain mask into generated road, kerb, and
+## footpath assemblies. This happens before corridor shaping and mesh creation.
+@export var generate_streets_from_mask := true:
+	set(value):
+		if generate_streets_from_mask == value:
+			return
+		generate_streets_from_mask = value
+		_request_rebuild()
+@export_range(2, 32, 1) var generated_street_minimum_path_cells := 2:
+	set(value):
+		var clamped_value := maxi(value, 2)
+		if generated_street_minimum_path_cells == clamped_value:
+			return
+		generated_street_minimum_path_cells = clamped_value
+		_request_rebuild()
+@export_range(1, 512, 1) var generated_street_maximum_paths := 256:
+	set(value):
+		var clamped_value := maxi(value, 1)
+		if generated_street_maximum_paths == clamped_value:
+			return
+		generated_street_maximum_paths = clamped_value
+		_request_rebuild()
+@export_range(0.25, 3.0, 0.05) var generated_street_road_width_cells := 0.9:
+	set(value):
+		var clamped_value := maxf(value, 0.25)
+		if is_equal_approx(generated_street_road_width_cells, clamped_value):
+			return
+		generated_street_road_width_cells = clamped_value
+		_request_rebuild()
+@export_range(0.0, 2.0, 0.05) var generated_street_footpath_width_cells := 0.35:
+	set(value):
+		var clamped_value := maxf(value, 0.0)
+		if is_equal_approx(generated_street_footpath_width_cells, clamped_value):
+			return
+		generated_street_footpath_width_cells = clamped_value
+		_request_rebuild()
+## When enabled, the terrain discovers duck-typed street sources, lets them
+## sample the unmodified base grid, then shapes the terrain bed beneath their
+## published road/kerb/footpath corridors before mesh and collision creation.
+@export var integrate_street_corridors := true:
+	set(value):
+		if integrate_street_corridors == value:
+			return
+		integrate_street_corridors = value
+		_request_rebuild()
+@export var auto_resample_street_profiles := true:
+	set(value):
+		if auto_resample_street_profiles == value:
+			return
+		auto_resample_street_profiles = value
+		_request_rebuild()
+## Optional subtree containing Street3D-compatible sources. Empty searches the
+## owning/current scene without serializing a dependency on the editor add-on.
+@export_node_path("Node") var street_source_root_path := NodePath(""):
+	set(value):
+		if street_source_root_path == value:
+			return
+		street_source_root_path = value
+		_request_rebuild()
+@export_range(0.0, 4.0, 0.25) var street_corridor_feather_cells := 1.0:
+	set(value):
+		var clamped_value := clampf(value, 0.0, 4.0)
+		if is_equal_approx(street_corridor_feather_cells, clamped_value):
+			return
+		street_corridor_feather_cells = clamped_value
+		_request_rebuild()
+@export var street_corridors_may_shape_water := false:
+	set(value):
+		if street_corridors_may_shape_water == value:
+			return
+		street_corridors_may_shape_water = value
+		_request_rebuild()
+
 @export_group("Wind")
 ## Horizontal direction the water waves travel, in degrees. Drive this from
 ## weather (e.g. WeatherManager wind_angle_degrees) via set_wind(); the
@@ -164,7 +249,11 @@ var m_heightmap_defines_water_area := false
 var m_default_style: LowPolyArtStyle3DScript = null
 var m_water_materials: Array[ShaderMaterial] = []
 var m_mesh_builder: LowPolyTerrainMeshBuilder = null
+var m_integrating_streets := false
+var m_street_integrator: LowPolyStreetCorridorIntegratorScript = null
+var m_street_path_extractor: LowPolyStreetPathExtractorScript = null
 var last_rebuild_duration_ms := 0.0
+var last_street_integration_summary: Dictionary = {}
 
 
 func _ready() -> void:
@@ -184,6 +273,10 @@ func _request_rebuild() -> void:
 
 func rebuild_from_source() -> void:
 	_rebuild_from_source()
+
+
+func request_street_integration_rebuild() -> void:
+	_request_rebuild()
 
 
 func get_sample_cell_height(sample_cell: Vector2i) -> float:
@@ -317,6 +410,10 @@ func get_source_size() -> Vector2i:
 	return m_source_size
 
 
+func get_street_integration_summary() -> Dictionary:
+	return last_street_integration_summary.duplicate(true)
+
+
 func _rebuild_from_source() -> void:
 	var rebuild_started_usec := Time.get_ticks_usec()
 	m_rebuild_queued = false
@@ -346,10 +443,261 @@ func _rebuild_from_source() -> void:
 	m_sample_grid = grid
 	m_source_size = source_size
 	m_heightmap_defines_water_area = heightmap_defines_water_area
+	var generated_streets := _generate_streets_from_mask(grid)
+	last_street_integration_summary = _integrate_street_generation(grid, generated_streets["sources"])
+	last_street_integration_summary.merge(generated_streets["summary"], true)
+	if print_summary and int(last_street_integration_summary.get("mask_street_cell_count", 0)) > 0:
+		print(
+			"LowPolyTerrain3D: street mask %d cells -> %d paths -> %d generated streets (%d errors)."
+			% [
+				int(last_street_integration_summary.get("mask_street_cell_count", 0)),
+				int(last_street_integration_summary.get("mask_path_count", 0)),
+				int(last_street_integration_summary.get("generated_source_count", 0)),
+				(last_street_integration_summary.get("generation_errors", []) as Array).size(),
+			]
+		)
 	_build_meshes_from_grid(grid, source_size.x, source_size.y, heightmap_defines_water_area)
 	last_rebuild_duration_ms = float(Time.get_ticks_usec() - rebuild_started_usec) / 1000.0
+	var rebuild_summary := {
+		"duration_ms": last_rebuild_duration_ms,
+		"source_size": source_size,
+		"street_integration": last_street_integration_summary.duplicate(true),
+	}
+	terrain_rebuilt.emit(rebuild_summary)
 	if print_summary:
 		print("LowPolyTerrain3D: cold rebuild %.2f ms." % last_rebuild_duration_ms)
+
+
+func _integrate_street_generation(
+	grid: Array[Array],
+	generated_sources: Array[Node] = []
+) -> Dictionary:
+	var empty_summary := {
+		"source_count": 0,
+		"authored_source_count": 0,
+		"generated_source_count": generated_sources.size(),
+		"corridor_count": 0,
+		"core_cells": 0,
+		"feather_cells": 0,
+		"water_cells_skipped": 0,
+		"errors": [] as Array[String],
+	}
+	if !integrate_street_corridors or grid.is_empty():
+		return empty_summary
+	var sources: Array[Node] = []
+	_collect_street_sources(_street_source_root(), sources)
+	var authored_source_count := sources.size()
+	for source: Node in generated_sources:
+		if !sources.has(source):
+			sources.append(source)
+	if sources.is_empty():
+		return empty_summary
+	var errors: Array[String] = []
+	var corridors: Array[Dictionary] = []
+	m_integrating_streets = true
+	for source: Node in sources:
+		_connect_street_source(source)
+		var source_failed := false
+		if (
+			auto_resample_street_profiles
+			and !source.has_meta(GENERATED_STREET_META)
+			and source.has_method("resample_terrain")
+		):
+			var previous_state: Dictionary = {}
+			if source.has_method("capture_native_transform_state"):
+				previous_state = source.call("capture_native_transform_state")
+			var sample_result: Variant = source.call("resample_terrain", self)
+			var sample_errors := _string_array(sample_result)
+			if !sample_errors.is_empty():
+				errors.append_array(sample_errors)
+				source_failed = true
+				if !previous_state.is_empty() and source.has_method("restore_native_transform_state"):
+					source.call("restore_native_transform_state", previous_state)
+		if source_failed:
+			continue
+		if !source.has_method("get_world_terrain_corridor"):
+			continue
+		var corridor: Variant = source.call("get_world_terrain_corridor")
+		if corridor is Dictionary and !(corridor as Dictionary).is_empty():
+			corridors.append(corridor)
+	m_integrating_streets = false
+	if m_street_integrator == null:
+		m_street_integrator = LowPolyStreetCorridorIntegratorScript.new()
+	var integration: Dictionary = m_street_integrator.apply(
+		grid,
+		self,
+		corridors,
+		cell_size,
+		_get_grid_origin_offset(Vector2i(grid[0].size(), grid.size())),
+		street_corridor_feather_cells * cell_size,
+		street_corridors_may_shape_water
+	)
+	integration["source_count"] = sources.size()
+	integration["authored_source_count"] = authored_source_count
+	integration["generated_source_count"] = generated_sources.size()
+	integration["errors"] = errors
+	for error in errors:
+		push_warning("LowPolyTerrain3D street integration: %s" % error)
+	return integration
+
+
+func _generate_streets_from_mask(grid: Array[Array]) -> Dictionary:
+	var sources: Array[Node] = []
+	var generation_errors: Array[String] = []
+	var summary := {
+		"mask_street_cell_count": 0,
+		"mask_street_skeleton_cell_count": 0,
+		"mask_path_count": 0,
+		"generated_source_count": 0,
+		"discarded_mask_path_count": 0,
+		"truncated_mask_path_count": 0,
+		"generation_errors": generation_errors,
+	}
+	if !generate_streets_from_mask or grid.is_empty():
+		return {"sources": sources, "summary": summary}
+	if m_street_path_extractor == null:
+		m_street_path_extractor = LowPolyStreetPathExtractorScript.new()
+	var extraction: Dictionary = m_street_path_extractor.extract(
+		grid,
+		cell_size,
+		_get_grid_origin_offset(Vector2i(grid[0].size(), grid.size())),
+		generated_street_minimum_path_cells,
+		generated_street_maximum_paths
+	)
+	summary["mask_street_cell_count"] = int(extraction.get("street_cell_count", 0))
+	summary["mask_street_skeleton_cell_count"] = int(extraction.get("skeleton_cell_count", 0))
+	summary["discarded_mask_path_count"] = int(extraction.get("discarded_path_count", 0))
+	summary["truncated_mask_path_count"] = int(extraction.get("truncated_path_count", 0))
+	var paths: Array[PackedVector3Array] = extraction.get("paths", [] as Array[PackedVector3Array])
+	summary["mask_path_count"] = paths.size()
+	if paths.is_empty():
+		return {"sources": sources, "summary": summary}
+	var street_script := load(STREET_3D_SCRIPT_PATH) as GDScript
+	if street_script == null:
+		var missing_script_error := "Street mask paths were found, but Street3D could not be loaded."
+		generation_errors.append(missing_script_error)
+		push_warning("LowPolyTerrain3D: %s" % missing_script_error)
+		return {"sources": sources, "summary": summary}
+
+	var root := Node3D.new()
+	root.name = GENERATED_STREET_ROOT_NAME
+	root.set_meta(GENERATED_META, true)
+	add_child(root)
+	if Engine.is_editor_hint():
+		root.owner = null
+	for index in range(paths.size()):
+		var street := street_script.new() as Node3D
+		if street == null:
+			generation_errors.append("Could not instantiate generated street path %d." % index)
+			continue
+		street.name = "Street_%03d" % (index + 1)
+		street.set_meta(GENERATED_STREET_META, true)
+		street.set("build_on_ready", false)
+		street.set("generate_collision", generate_collision)
+		street.set("path_points", paths[index])
+		street.set("road_width", generated_street_road_width_cells * cell_size)
+		street.set("kerb_width", maxf(cell_size * 0.06, 0.04))
+		street.set("kerb_height", maxf(cell_size * 0.06, 0.04))
+		street.set("footpath_width", maxf(generated_street_footpath_width_cells * cell_size, 0.05))
+		street.set("terrain_sample_spacing", maxf(cell_size * 0.5, 0.1))
+		street.set("terrain_clearance", maxf(street_lift, 0.015))
+		root.add_child(street)
+		if Engine.is_editor_hint():
+			street.owner = null
+		var sample_result: Variant = street.call("resample_terrain", self)
+		var sample_errors := _string_array(sample_result)
+		if !sample_errors.is_empty():
+			# A source heightmap can be steeper than the authoring defaults permit.
+			# Keep the requested 25-degree trigger, but derive the smallest larger
+			# riser needed to make this particular sampled path constructible.
+			_adapt_generated_stair_constraints(street)
+			street.call("rebuild_street_mesh")
+			sample_errors = _string_array(street.call("get_validation_errors"))
+		if !sample_errors.is_empty():
+			generation_errors.append_array(sample_errors)
+			root.remove_child(street)
+			street.queue_free()
+			continue
+		sources.append(street)
+	summary["generated_source_count"] = sources.size()
+	return {"sources": sources, "summary": summary}
+
+
+func _adapt_generated_stair_constraints(street: Node3D) -> void:
+	if !street.has_method("get_geometry_profile"):
+		return
+	var profile: PackedVector3Array = street.call("get_geometry_profile")
+	if profile.size() < 2:
+		return
+	var minimum_tread := maxf(cell_size * 0.1, 0.05)
+	var required_maximum_riser := float(street.get("max_riser_height"))
+	for index in range(profile.size() - 1):
+		var a := profile[index]
+		var b := profile[index + 1]
+		var run := Vector2(b.x - a.x, b.z - a.z).length()
+		var rise := absf(b.y - a.y)
+		if run <= 0.00001 or rad_to_deg(atan2(rise, run)) <= 25.0001:
+			continue
+		var available_steps := maxi(floori(run / minimum_tread), 1)
+		required_maximum_riser = maxf(
+			required_maximum_riser,
+			rise / float(available_steps) + 0.0001
+		)
+	street.set("min_tread_depth", minimum_tread)
+	street.set("max_riser_height", required_maximum_riser)
+
+
+func _street_source_root() -> Node:
+	if !street_source_root_path.is_empty():
+		var configured := get_node_or_null(street_source_root_path)
+		if configured != null:
+			return configured
+	if owner != null:
+		return owner
+	if get_tree() != null and get_tree().current_scene != null:
+		return get_tree().current_scene
+	var root: Node = self
+	while root.get_parent() != null:
+		root = root.get_parent()
+	return root
+
+
+func _collect_street_sources(node: Node, result: Array[Node]) -> void:
+	if node == null:
+		return
+	if (
+		node != self
+		and node.has_method("is_terrain_street_source")
+		and bool(node.call("is_terrain_street_source"))
+		and node.has_method("get_world_terrain_corridor")
+	):
+		result.append(node)
+	for child in node.get_children():
+		if child.has_meta(GENERATED_META):
+			continue
+		_collect_street_sources(child, result)
+
+
+func _connect_street_source(source: Node) -> void:
+	if !source.has_signal("terrain_corridor_changed"):
+		return
+	var callback := Callable(self, "_on_street_corridor_changed")
+	if !source.is_connected("terrain_corridor_changed", callback):
+		source.connect("terrain_corridor_changed", callback)
+
+
+func _on_street_corridor_changed() -> void:
+	if m_integrating_streets:
+		return
+	_request_rebuild()
+
+
+static func _string_array(value: Variant) -> Array[String]:
+	var result: Array[String] = []
+	if value is Array:
+		for entry in value:
+			result.append(String(entry))
+	return result
 
 
 func _build_sampler() -> LowPolyTerrainSampler:

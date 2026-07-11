@@ -4,6 +4,8 @@ extends VBoxContainer
 signal tool_mode_changed(mode: String)
 signal wall_settings_changed(settings: Dictionary)
 signal floor_settings_changed(settings: Dictionary)
+signal street_settings_changed(settings: Dictionary)
+signal street_resample_requested()
 signal stair_settings_changed(settings: Dictionary)
 signal rail_settings_changed(settings: Dictionary)
 signal pillar_settings_changed(settings: Dictionary)
@@ -18,6 +20,7 @@ signal create_coordinator_requested()
 const MODE_SELECT := "select"
 const MODE_WALL := "wall"
 const MODE_FLOOR := "floor"
+const MODE_STREET := "street"
 const MODE_STAIRS := "stairs"
 const MODE_RAIL := "rail"
 const MODE_PILLAR := "pillar"
@@ -53,6 +56,7 @@ const COLOR_SWATCH_MIN_WIDTH := 34.0
 const SHORTCUTS_SELECT_TEXT := "Shortcuts\nSelect: normal Godot editor selection and transform tools are active."
 const SHORTCUTS_WALL_TEXT := "Shortcuts\nUse Wall Type to choose a single wall or enclosed room.\nRoom Sides sets its connected span count (minimum 3).\nDrag empty space to draw a wall span or room bounds.\nClick once, then click the endpoint or opposite room bound.\nDrag a four-side room wall to resize in one direction.\nOption/Alt-drag a four-side room to move it.\nDrag other wall bodies to move them.\nDrag endpoint or joint to edit.\nShift-click wall body to add joint.\nOption/Alt-drag shared joint to disconnect.\nEsc or right-click cancels."
 const SHORTCUTS_FLOOR_TEXT := "Shortcuts\nRectangle and Polygon only change how a floor is created.\nRectangle: drag, or click two opposite corners.\nPolygon: click each vertex; click the first vertex or press Enter to close.\nFor either style, drag any vertex to reshape.\nDrag any edge to move its two vertices.\nShift-click an edge to add a vertex.\nOption/Alt-click a vertex to remove it.\nDrag the floor body to move it.\nEsc or right-click cancels."
+const SHORTCUTS_STREET_TEXT := "Shortcuts\nClick successive points to draw a street path.\nDouble-click or press Enter to finish.\nBackspace removes the last point.\nUse Resample Terrain on a selected Street3D after terrain changes.\nEdit baked StreetProfilePoint heights in the Inspector and enable Manual Height to preserve them.\nEsc or right-click cancels."
 const SHORTCUTS_STAIRS_TEXT := "Shortcuts\nDrag empty space to draw a stair rectangle.\nClick one corner, then click the opposite corner to place.\nR rotates the preview or hovered stairs by 90 degrees.\nShift+R rotates the opposite direction.\nDrag stairs body to move it.\nDrag stairs edge or corner to resize.\nEsc or right-click cancels."
 const SHORTCUTS_RAIL_TEXT := "Shortcuts\nDrag empty space to draw a standard rail.\nClick once, then click the endpoint to place.\nDrag a rail endpoint to resize it.\nDrag the rail body to move it.\nEsc or right-click cancels."
 const SHORTCUTS_PILLAR_TEXT := "Shortcuts\nClick empty space to place a pillar.\nDrag pillar body to move it.\nDrag pillar edge to resize its radius.\nEsc or right-click cancels."
@@ -70,6 +74,7 @@ var m_debug_wireframe_color_picker: ColorPickerButton
 var m_transform_snap_spin: SpinBox
 var m_wall_section: VBoxContainer
 var m_floor_section: VBoxContainer
+var m_street_section: VBoxContainer
 var m_stair_section: VBoxContainer
 var m_rail_section: VBoxContainer
 var m_pillar_section: VBoxContainer
@@ -92,6 +97,23 @@ var m_floor_grid_spin: SpinBox
 var m_floor_base_height_spin: SpinBox
 var m_floor_thickness_spin: SpinBox
 var m_floor_color_picker: ColorPickerButton
+var m_street_grid_spin: SpinBox
+var m_street_base_height_spin: SpinBox
+var m_street_road_width_spin: SpinBox
+var m_street_road_thickness_spin: SpinBox
+var m_street_road_color_picker: ColorPickerButton
+var m_street_kerb_width_spin: SpinBox
+var m_street_kerb_height_spin: SpinBox
+var m_street_kerb_color_picker: ColorPickerButton
+var m_street_footpath_width_spin: SpinBox
+var m_street_footpath_thickness_spin: SpinBox
+var m_street_footpath_color_picker: ColorPickerButton
+var m_street_stair_threshold_spin: SpinBox
+var m_street_target_riser_spin: SpinBox
+var m_street_max_riser_spin: SpinBox
+var m_street_min_tread_spin: SpinBox
+var m_street_sample_spacing_spin: SpinBox
+var m_street_clearance_spin: SpinBox
 var m_stair_layout_option: OptionButton
 var m_stair_turn_option: OptionButton
 var m_stair_winder_turn_option: OptionButton
@@ -266,20 +288,22 @@ func _build_ui() -> void:
 	m_mode_option.set_item_metadata(1, MODE_WALL)
 	m_mode_option.add_item("Floor", 2)
 	m_mode_option.set_item_metadata(2, MODE_FLOOR)
-	m_mode_option.add_item("Stairs", 3)
-	m_mode_option.set_item_metadata(3, MODE_STAIRS)
-	m_mode_option.add_item("Rail", 4)
-	m_mode_option.set_item_metadata(4, MODE_RAIL)
-	m_mode_option.add_item("Pillar", 5)
-	m_mode_option.set_item_metadata(5, MODE_PILLAR)
-	m_mode_option.add_item("Roof", 6)
-	m_mode_option.set_item_metadata(6, MODE_ROOF)
-	m_mode_option.add_item("Prop", 7)
-	m_mode_option.set_item_metadata(7, MODE_PROP)
-	m_mode_option.add_item("Door", 8)
-	m_mode_option.set_item_metadata(8, MODE_DOOR)
-	m_mode_option.add_item("Window", 9)
-	m_mode_option.set_item_metadata(9, MODE_WINDOW)
+	m_mode_option.add_item("Street", 3)
+	m_mode_option.set_item_metadata(3, MODE_STREET)
+	m_mode_option.add_item("Stairs", 4)
+	m_mode_option.set_item_metadata(4, MODE_STAIRS)
+	m_mode_option.add_item("Rail", 5)
+	m_mode_option.set_item_metadata(5, MODE_RAIL)
+	m_mode_option.add_item("Pillar", 6)
+	m_mode_option.set_item_metadata(6, MODE_PILLAR)
+	m_mode_option.add_item("Roof", 7)
+	m_mode_option.set_item_metadata(7, MODE_ROOF)
+	m_mode_option.add_item("Prop", 8)
+	m_mode_option.set_item_metadata(8, MODE_PROP)
+	m_mode_option.add_item("Door", 9)
+	m_mode_option.set_item_metadata(9, MODE_DOOR)
+	m_mode_option.add_item("Window", 10)
+	m_mode_option.set_item_metadata(10, MODE_WINDOW)
 	m_mode_option.item_selected.connect(_on_mode_selected)
 	mode_row.add_child(m_mode_option)
 	content.add_child(mode_row)
@@ -296,6 +320,8 @@ func _build_ui() -> void:
 	_build_wall_controls(m_wall_section)
 	m_floor_section = _make_tool_section(content)
 	_build_floor_controls(m_floor_section)
+	m_street_section = _make_tool_section(content)
+	_build_street_controls(m_street_section)
 	m_stair_section = _make_tool_section(content)
 	_build_stair_controls(m_stair_section)
 	m_rail_section = _make_tool_section(content)
@@ -479,6 +505,60 @@ func _build_floor_controls(parent: VBoxContainer) -> void:
 	m_floor_color_picker = _make_color_picker(Color(0.46, 0.40, 0.32, 1.0))
 	m_floor_color_picker.color_changed.connect(_on_floor_color_changed)
 	_add_labeled_control(parent, "Color:", m_floor_color_picker, "Vertex color applied to newly drawn floors.")
+
+
+func _build_street_controls(parent: VBoxContainer) -> void:
+	var header := Label.new()
+	header.text = "Street Defaults"
+	parent.add_child(header)
+	m_street_grid_spin = _make_spin(0.05, 8.0, 0.05, 0.5)
+	m_street_base_height_spin = _make_spin(-20.0, 20.0, 0.01, 0.0)
+	m_street_road_width_spin = _make_spin(0.1, 20.0, 0.05, 3.2)
+	m_street_road_thickness_spin = _make_spin(0.01, 2.0, 0.01, 0.18)
+	m_street_road_color_picker = _make_color_picker(Color(0.38, 0.37, 0.34, 1.0))
+	m_street_kerb_width_spin = _make_spin(0.01, 2.0, 0.01, 0.18)
+	m_street_kerb_height_spin = _make_spin(0.01, 1.0, 0.01, 0.14)
+	m_street_kerb_color_picker = _make_color_picker(Color(0.66, 0.64, 0.59, 1.0))
+	m_street_footpath_width_spin = _make_spin(0.05, 10.0, 0.05, 1.1)
+	m_street_footpath_thickness_spin = _make_spin(0.01, 2.0, 0.01, 0.16)
+	m_street_footpath_color_picker = _make_color_picker(Color(0.72, 0.67, 0.57, 1.0))
+	m_street_stair_threshold_spin = _make_spin(0.0, 89.0, 0.1, 25.0)
+	m_street_target_riser_spin = _make_spin(0.02, 1.0, 0.01, 0.16)
+	m_street_max_riser_spin = _make_spin(0.02, 1.0, 0.01, 0.18)
+	m_street_min_tread_spin = _make_spin(0.05, 2.0, 0.01, 0.24)
+	m_street_sample_spacing_spin = _make_spin(0.1, 10.0, 0.1, 0.5)
+	m_street_clearance_spin = _make_spin(-1.0, 2.0, 0.005, 0.025)
+	var controls: Array[Array] = [
+		["Grid:", m_street_grid_spin],
+		["Base Y:", m_street_base_height_spin],
+		["Road Width:", m_street_road_width_spin],
+		["Road Depth:", m_street_road_thickness_spin],
+		["Kerb Width:", m_street_kerb_width_spin],
+		["Kerb Height:", m_street_kerb_height_spin],
+		["Footpath Width:", m_street_footpath_width_spin],
+		["Footpath Depth:", m_street_footpath_thickness_spin],
+		["Stair Threshold:", m_street_stair_threshold_spin],
+		["Target Riser:", m_street_target_riser_spin],
+		["Max Riser:", m_street_max_riser_spin],
+		["Min Tread:", m_street_min_tread_spin],
+		["Sample Spacing:", m_street_sample_spacing_spin],
+		["Terrain Lift:", m_street_clearance_spin],
+	]
+	for entry: Array in controls:
+		_add_labeled_control(parent, String(entry[0]), entry[1] as Control)
+		(entry[1] as SpinBox).value_changed.connect(_on_street_setting_changed)
+	for color_entry: Array in [
+		["Road Color:", m_street_road_color_picker],
+		["Kerb Color:", m_street_kerb_color_picker],
+		["Footpath Color:", m_street_footpath_color_picker],
+	]:
+		_add_labeled_control(parent, String(color_entry[0]), color_entry[1] as Control)
+		(color_entry[1] as ColorPickerButton).color_changed.connect(_on_street_color_changed)
+	var resample_button := Button.new()
+	resample_button.text = "Resample Selected Street"
+	resample_button.tooltip_text = "Rebuild automatic profile heights from the first scene node exposing get_world_surface_height(); Manual Height profile points are preserved."
+	resample_button.pressed.connect(_on_street_resample_pressed)
+	parent.add_child(resample_button)
 
 
 func _build_stair_controls(parent: VBoxContainer) -> void:
@@ -1271,6 +1351,9 @@ func _refresh_color_picker_icons() -> void:
 	_update_color_picker_icon(m_debug_wireframe_color_picker)
 	_update_color_picker_icon(m_wall_color_picker)
 	_update_color_picker_icon(m_floor_color_picker)
+	_update_color_picker_icon(m_street_road_color_picker)
+	_update_color_picker_icon(m_street_kerb_color_picker)
+	_update_color_picker_icon(m_street_footpath_color_picker)
 	_update_color_picker_icon(m_stair_color_picker)
 	_update_color_picker_icon(m_rail_color_picker)
 	_update_color_picker_icon(m_pillar_color_picker)
@@ -1372,6 +1455,8 @@ func _shortcut_text_for_mode(mode: String) -> String:
 			return SHORTCUTS_WALL_TEXT
 		MODE_FLOOR:
 			return SHORTCUTS_FLOOR_TEXT
+		MODE_STREET:
+			return SHORTCUTS_STREET_TEXT
 		MODE_STAIRS:
 			return SHORTCUTS_STAIRS_TEXT
 		MODE_RAIL:
@@ -1395,6 +1480,8 @@ func _update_visible_tool_section(mode: String) -> void:
 		m_wall_section.visible = mode == MODE_WALL
 	if m_floor_section != null:
 		m_floor_section.visible = mode == MODE_FLOOR
+	if m_street_section != null:
+		m_street_section.visible = mode == MODE_STREET
 	if m_stair_section != null:
 		m_stair_section.visible = mode == MODE_STAIRS
 	if m_rail_section != null:
@@ -1487,6 +1574,21 @@ func _on_floor_setting_changed(_value: float) -> void:
 func _on_floor_color_changed(_color: Color) -> void:
 	_update_color_picker_icon(m_floor_color_picker)
 	_emit_floor_settings()
+
+
+func _on_street_setting_changed(_value: float) -> void:
+	_emit_street_settings()
+
+
+func _on_street_color_changed(_color: Color) -> void:
+	_update_color_picker_icon(m_street_road_color_picker)
+	_update_color_picker_icon(m_street_kerb_color_picker)
+	_update_color_picker_icon(m_street_footpath_color_picker)
+	_emit_street_settings()
+
+
+func _on_street_resample_pressed() -> void:
+	street_resample_requested.emit()
 
 
 func _on_stair_setting_changed(_value: float) -> void:
@@ -1895,6 +1997,7 @@ func _emit_all_settings() -> void:
 	_emit_display_settings()
 	_emit_wall_settings()
 	_emit_floor_settings()
+	_emit_street_settings()
 	_emit_stair_settings()
 	_emit_rail_settings()
 	_emit_pillar_settings()
@@ -1943,6 +2046,28 @@ func _emit_floor_settings() -> void:
 		"base_height": float(m_floor_base_height_spin.value),
 		"thickness": float(m_floor_thickness_spin.value),
 		"color": m_floor_color_picker.color,
+	})
+
+
+func _emit_street_settings() -> void:
+	street_settings_changed.emit({
+		"grid_step": float(m_street_grid_spin.value),
+		"base_height": float(m_street_base_height_spin.value),
+		"road_width": float(m_street_road_width_spin.value),
+		"road_thickness": float(m_street_road_thickness_spin.value),
+		"road_color": m_street_road_color_picker.color,
+		"kerb_width": float(m_street_kerb_width_spin.value),
+		"kerb_height": float(m_street_kerb_height_spin.value),
+		"kerb_color": m_street_kerb_color_picker.color,
+		"footpath_width": float(m_street_footpath_width_spin.value),
+		"footpath_thickness": float(m_street_footpath_thickness_spin.value),
+		"footpath_color": m_street_footpath_color_picker.color,
+		"stair_threshold_degrees": float(m_street_stair_threshold_spin.value),
+		"target_riser_height": float(m_street_target_riser_spin.value),
+		"max_riser_height": float(m_street_max_riser_spin.value),
+		"min_tread_depth": float(m_street_min_tread_spin.value),
+		"terrain_sample_spacing": float(m_street_sample_spacing_spin.value),
+		"terrain_clearance": float(m_street_clearance_spin.value),
 	})
 
 
@@ -2513,6 +2638,28 @@ func _load_persisted_settings() -> void:
 	var floor_color_variant: Variant = state.get("floor_color", m_floor_color_picker.color)
 	if floor_color_variant is Color:
 		m_floor_color_picker.color = floor_color_variant
+	m_street_grid_spin.value = float(state.get("street_grid_step", m_street_grid_spin.value))
+	m_street_base_height_spin.value = float(state.get("street_base_height", m_street_base_height_spin.value))
+	m_street_road_width_spin.value = float(state.get("street_road_width", m_street_road_width_spin.value))
+	m_street_road_thickness_spin.value = float(state.get("street_road_thickness", m_street_road_thickness_spin.value))
+	m_street_kerb_width_spin.value = float(state.get("street_kerb_width", m_street_kerb_width_spin.value))
+	m_street_kerb_height_spin.value = float(state.get("street_kerb_height", m_street_kerb_height_spin.value))
+	m_street_footpath_width_spin.value = float(state.get("street_footpath_width", m_street_footpath_width_spin.value))
+	m_street_footpath_thickness_spin.value = float(state.get("street_footpath_thickness", m_street_footpath_thickness_spin.value))
+	m_street_stair_threshold_spin.value = float(state.get("street_stair_threshold", m_street_stair_threshold_spin.value))
+	m_street_target_riser_spin.value = float(state.get("street_target_riser", m_street_target_riser_spin.value))
+	m_street_max_riser_spin.value = float(state.get("street_max_riser", m_street_max_riser_spin.value))
+	m_street_min_tread_spin.value = float(state.get("street_min_tread", m_street_min_tread_spin.value))
+	m_street_sample_spacing_spin.value = float(state.get("street_sample_spacing", m_street_sample_spacing_spin.value))
+	m_street_clearance_spin.value = float(state.get("street_terrain_clearance", m_street_clearance_spin.value))
+	for color_state: Array in [
+		["street_road_color", m_street_road_color_picker],
+		["street_kerb_color", m_street_kerb_color_picker],
+		["street_footpath_color", m_street_footpath_color_picker],
+	]:
+		var stored_color: Variant = state.get(String(color_state[0]), (color_state[1] as ColorPickerButton).color)
+		if stored_color is Color:
+			(color_state[1] as ColorPickerButton).color = stored_color
 	m_stair_grid_spin.value = float(state.get("stair_grid_step", m_stair_grid_spin.value))
 	m_stair_base_height_spin.value = float(state.get("stair_base_height", m_stair_base_height_spin.value))
 	m_stair_height_spin.value = float(state.get("stair_height", m_stair_height_spin.value))
@@ -2794,6 +2941,23 @@ func _save_persisted_settings() -> void:
 		"floor_base_height": float(m_floor_base_height_spin.value) if m_floor_base_height_spin != null else 0.0,
 		"floor_thickness": float(m_floor_thickness_spin.value) if m_floor_thickness_spin != null else 0.12,
 		"floor_color": m_floor_color_picker.color if m_floor_color_picker != null else Color(0.46, 0.40, 0.32, 1.0),
+		"street_grid_step": float(m_street_grid_spin.value) if m_street_grid_spin != null else 0.5,
+		"street_base_height": float(m_street_base_height_spin.value) if m_street_base_height_spin != null else 0.0,
+		"street_road_width": float(m_street_road_width_spin.value) if m_street_road_width_spin != null else 3.2,
+		"street_road_thickness": float(m_street_road_thickness_spin.value) if m_street_road_thickness_spin != null else 0.18,
+		"street_road_color": m_street_road_color_picker.color if m_street_road_color_picker != null else Color(0.38, 0.37, 0.34, 1.0),
+		"street_kerb_width": float(m_street_kerb_width_spin.value) if m_street_kerb_width_spin != null else 0.18,
+		"street_kerb_height": float(m_street_kerb_height_spin.value) if m_street_kerb_height_spin != null else 0.14,
+		"street_kerb_color": m_street_kerb_color_picker.color if m_street_kerb_color_picker != null else Color(0.66, 0.64, 0.59, 1.0),
+		"street_footpath_width": float(m_street_footpath_width_spin.value) if m_street_footpath_width_spin != null else 1.1,
+		"street_footpath_thickness": float(m_street_footpath_thickness_spin.value) if m_street_footpath_thickness_spin != null else 0.16,
+		"street_footpath_color": m_street_footpath_color_picker.color if m_street_footpath_color_picker != null else Color(0.72, 0.67, 0.57, 1.0),
+		"street_stair_threshold": float(m_street_stair_threshold_spin.value) if m_street_stair_threshold_spin != null else 25.0,
+		"street_target_riser": float(m_street_target_riser_spin.value) if m_street_target_riser_spin != null else 0.16,
+		"street_max_riser": float(m_street_max_riser_spin.value) if m_street_max_riser_spin != null else 0.18,
+		"street_min_tread": float(m_street_min_tread_spin.value) if m_street_min_tread_spin != null else 0.24,
+		"street_sample_spacing": float(m_street_sample_spacing_spin.value) if m_street_sample_spacing_spin != null else 0.5,
+		"street_terrain_clearance": float(m_street_clearance_spin.value) if m_street_clearance_spin != null else 0.025,
 		"stair_grid_step": float(m_stair_grid_spin.value) if m_stair_grid_spin != null else 0.5,
 		"stair_base_height": float(m_stair_base_height_spin.value) if m_stair_base_height_spin != null else 0.0,
 		"stair_height": float(m_stair_height_spin.value) if m_stair_height_spin != null else 1.2,

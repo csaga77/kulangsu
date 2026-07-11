@@ -1,7 +1,7 @@
 extends SceneTree
 
-const BuildingSpecScript = preload(
-	"res://addons/low_poly_building_editor/building_spec.gd"
+const BuildingGenerationSpecScript = preload(
+	"res://addons/low_poly_building_editor/building_generation_spec.gd"
 )
 const BuildingSpecCompilerScript = preload(
 	"res://addons/low_poly_building_editor/building_spec_compiler.gd"
@@ -69,7 +69,7 @@ func _run(arguments: PackedStringArray) -> int:
 	if !load_errors.is_empty():
 		_print_failure(load_errors)
 		return 2
-	var base_spec := load_result.get("spec") as BuildingSpecScript
+	var base_spec := load_result.get("spec") as BuildingGenerationSpecScript
 	if base_spec == null:
 		_print_failure(["Building spec could not be loaded."])
 		return 2
@@ -96,7 +96,7 @@ func _run(arguments: PackedStringArray) -> int:
 		var variant_name := "%s_%03d" % [file_stem, variant_number]
 		var scene_path := output_directory.path_join(variant_name + ".tscn")
 		var thumbnail_path := output_directory.path_join(variant_name + ".png")
-		var variant_spec := base_spec.duplicate(true) as BuildingSpecScript
+		var variant_spec := base_spec.duplicate(true) as BuildingGenerationSpecScript
 		variant_spec.generation_seed = variant_seed
 		variant_spec.building_name = variant_name.to_pascal_case()
 		var compile_result := BuildingSpecCompilerScript.compile(variant_spec)

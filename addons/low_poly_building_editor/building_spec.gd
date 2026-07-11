@@ -1,22 +1,13 @@
 @tool
 class_name BuildingSpec
-extends Resource
+extends "res://addons/low_poly_building_editor/building_generation_spec.gd"
 
 const BuildingFactoryScript = preload(
 	"res://addons/low_poly_building_editor/building_factory.gd"
 )
 
-const CURRENT_SCHEMA_VERSION := 1
-const CURRENT_GENERATOR_VERSION := 1
 const RANDOM_STYLE := "random"
 
-@export var schema_version := CURRENT_SCHEMA_VERSION
-@export var generator_version := CURRENT_GENERATOR_VERSION
-@export var building_name := "GeneratedBuilding"
-## Deterministic generation seed. Serialized as the JSON key `seed`; the
-## property avoids that name so it does not shadow GDScript's global `seed()`.
-@export var generation_seed := 1
-@export_range(0.05, 8.0, 0.05) var grid_step := 0.5
 @export var footprint_cells := Vector2i(16, 12)
 @export var footprint_jitter_cells := Vector2i.ZERO
 @export_range(1, 8, 1) var storeys := 1
@@ -56,21 +47,9 @@ const RANDOM_STYLE := "random"
 
 
 func validate() -> Array[String]:
-	var errors: Array[String] = []
-	if schema_version != CURRENT_SCHEMA_VERSION:
-		errors.append(
-			"Unsupported schema_version %d; expected %d."
-			% [schema_version, CURRENT_SCHEMA_VERSION]
-		)
-	if generator_version != CURRENT_GENERATOR_VERSION:
-		errors.append(
-			"Unsupported generator_version %d; expected %d."
-			% [generator_version, CURRENT_GENERATOR_VERSION]
-		)
-	if building_name.strip_edges().is_empty():
-		errors.append("building_name must not be empty.")
-	if grid_step < 0.05:
-		errors.append("grid_step must be at least 0.05.")
+	var errors: Array[String] = super.validate()
+	if generation_type != "building":
+		errors.append("BuildingSpec type must be 'building'.")
 	if footprint_cells.x < 6 or footprint_cells.y < 6:
 		errors.append("footprint_cells must be at least [6, 6].")
 	if footprint_jitter_cells.x < 0 or footprint_jitter_cells.y < 0:
@@ -117,12 +96,8 @@ func validate() -> Array[String]:
 
 
 func to_dictionary() -> Dictionary:
-	return {
-		"schema_version": schema_version,
-		"generator_version": generator_version,
-		"name": building_name,
-		"seed": generation_seed,
-		"grid_step": grid_step,
+	var result := common_dictionary()
+	result.merge({
 		"footprint_cells": [footprint_cells.x, footprint_cells.y],
 		"storeys": storeys,
 		"variation": {
@@ -164,19 +139,14 @@ func to_dictionary() -> Dictionary:
 			"overhang": roof_overhang,
 			"color": roof_color.to_html(true),
 		},
-	}
+	})
+	return result
 
 
 func apply_dictionary(source: Dictionary) -> Array[String]:
 	var spec := self
 	var parse_errors: Array[String] = []
-	spec.schema_version = int(source.get("schema_version", CURRENT_SCHEMA_VERSION))
-	spec.generator_version = int(
-		source.get("generator_version", CURRENT_GENERATOR_VERSION)
-	)
-	spec.building_name = String(source.get("name", spec.building_name))
-	spec.generation_seed = int(source.get("seed", spec.generation_seed))
-	spec.grid_step = float(source.get("grid_step", spec.grid_step))
+	spec.apply_common_dictionary(source, "building")
 	spec.footprint_cells = _parse_vector2i(
 		source.get("footprint_cells", spec.footprint_cells),
 		spec.footprint_cells,

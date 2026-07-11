@@ -5,6 +5,7 @@ extends RefCounted
 const Wall3DScript = preload("res://addons/low_poly_building_editor/walls/wall_3d.gd")
 const WallSegmentScript = preload("res://addons/low_poly_building_editor/walls/wall_segment.gd")
 const Floor3DScript = preload("res://addons/low_poly_building_editor/floors/floor_3d.gd")
+const Street3DScript = preload("res://addons/low_poly_building_editor/streets/street_3d.gd")
 const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs/stairs_3d.gd")
 const Rail3DScript = preload("res://addons/low_poly_building_editor/rails/rail_3d.gd")
 const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillars/pillar_3d.gd")
@@ -303,6 +304,38 @@ static func create_floor_polygon_node(
 	floor.generate_collision = true
 	floor.set_floor_polygon(local_points)
 	return floor
+
+
+## Creates one multi-point street with a continuously sloped carriageway and
+## independently generated kerb/footpath bands. Terrain sampling is an explicit
+## later authoring operation on the returned Street3D.
+static func create_street_node(
+	building: Node,
+	local_path_points: PackedVector3Array,
+	settings: Dictionary = {}
+) -> Street3DScript:
+	var street := Street3DScript.new() as Street3DScript
+	street.name = _unique_child_name(building, "Street3D")
+	street.path_points = local_path_points
+	street.road_width = float(settings.get("road_width", 3.2))
+	street.road_thickness = float(settings.get("road_thickness", 0.18))
+	street.road_color = Color(settings.get("road_color", Color(0.38, 0.37, 0.34, 1.0)))
+	street.kerb_width = float(settings.get("kerb_width", 0.18))
+	street.kerb_height = float(settings.get("kerb_height", 0.14))
+	street.kerb_color = Color(settings.get("kerb_color", Color(0.66, 0.64, 0.59, 1.0)))
+	street.footpath_width = float(settings.get("footpath_width", 1.1))
+	street.footpath_thickness = float(settings.get("footpath_thickness", 0.16))
+	street.footpath_color = Color(settings.get("footpath_color", Color(0.72, 0.67, 0.57, 1.0)))
+	street.stair_threshold_degrees = float(settings.get("stair_threshold_degrees", 25.0))
+	street.target_riser_height = float(settings.get("target_riser_height", 0.16))
+	street.max_riser_height = float(settings.get("max_riser_height", 0.18))
+	street.min_tread_depth = float(settings.get("min_tread_depth", 0.24))
+	street.terrain_sample_spacing = float(settings.get("terrain_sample_spacing", 0.5))
+	street.terrain_clearance = float(settings.get("terrain_clearance", 0.025))
+	street.build_on_ready = true
+	street.generate_collision = bool(settings.get("generate_collision", true))
+	street.rebuild_street_mesh()
+	return street
 
 
 ## Creates a configured stairs node from one optional `settings` dictionary,

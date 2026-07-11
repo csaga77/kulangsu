@@ -80,6 +80,7 @@ const BUTTON_FONT_SIZE_THEME_ITEMS := [
 const MODE_SELECT := "select"
 const MODE_WALL := "wall"
 const MODE_FLOOR := "floor"
+const MODE_STREET := "street"
 const MODE_STAIRS := "stairs"
 const MODE_RAIL := "rail"
 const MODE_PILLAR := "pillar"
@@ -102,6 +103,12 @@ const TOOLBAR_TOOLS := [
 		"mode": MODE_FLOOR,
 		"label": "Floor",
 		"tooltip": "Draw rectangle or polygon floor slabs.",
+		"generated_icon": true,
+	},
+	{
+		"mode": MODE_STREET,
+		"label": "Street",
+		"tooltip": "Draw terrain-profiled roads with kerbs and footpaths.",
 		"generated_icon": true,
 	},
 	{
@@ -797,6 +804,12 @@ func _make_toolbar_tool_icon(mode: String) -> Texture2D:
 			_draw_icon_line(image, Vector2i(3, 10), Vector2i(12, 4), color, 2)
 			_draw_icon_line(image, Vector2i(3, 10), Vector2i(21, 10), color, 1)
 			_draw_icon_line(image, Vector2i(12, 4), Vector2i(12, 17), color, 1)
+		MODE_STREET:
+			_draw_icon_line(image, Vector2i(5, 21), Vector2i(9, 3), color, 2)
+			_draw_icon_line(image, Vector2i(19, 21), Vector2i(15, 3), color, 2)
+			_draw_icon_line(image, Vector2i(12, 20), Vector2i(12, 16), color, 1)
+			_draw_icon_line(image, Vector2i(12, 12), Vector2i(12, 8), color, 1)
+			_draw_icon_line(image, Vector2i(12, 5), Vector2i(12, 3), color, 1)
 		MODE_STAIRS:
 			_draw_icon_line(image, Vector2i(4, 18), Vector2i(8, 18), color, 2)
 			_draw_icon_line(image, Vector2i(8, 18), Vector2i(8, 14), color, 2)

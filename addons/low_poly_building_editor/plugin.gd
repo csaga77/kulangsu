@@ -5,6 +5,7 @@ const _DOCK_SLOT := EditorDock.DOCK_SLOT_RIGHT_UL
 const MODE_SELECT := "select"
 const MODE_WALL := "wall"
 const MODE_FLOOR := "floor"
+const MODE_STREET := "street"
 const MODE_STAIRS := "stairs"
 const MODE_RAIL := "rail"
 const MODE_PILLAR := "pillar"
@@ -17,6 +18,7 @@ const BuildingFactoryScript = preload("res://addons/low_poly_building_editor/bui
 const BuildingMeshScript = preload("res://addons/low_poly_building_editor/building_mesh_3d.gd")
 const Wall3DScript = preload("res://addons/low_poly_building_editor/walls/wall_3d.gd")
 const Floor3DScript = preload("res://addons/low_poly_building_editor/floors/floor_3d.gd")
+const Street3DScript = preload("res://addons/low_poly_building_editor/streets/street_3d.gd")
 const Stairs3DScript = preload("res://addons/low_poly_building_editor/stairs/stairs_3d.gd")
 const Rail3DScript = preload("res://addons/low_poly_building_editor/rails/rail_3d.gd")
 const Pillar3DScript = preload("res://addons/low_poly_building_editor/pillars/pillar_3d.gd")
@@ -35,6 +37,7 @@ const PillarToolControllerScript = preload("res://addons/low_poly_building_edito
 const RailToolControllerScript = preload("res://addons/low_poly_building_editor/editor/rail_tool_controller.gd")
 const StairsToolControllerScript = preload("res://addons/low_poly_building_editor/editor/stairs_tool_controller.gd")
 const FloorToolControllerScript = preload("res://addons/low_poly_building_editor/editor/floor_tool_controller.gd")
+const StreetToolControllerScript = preload("res://addons/low_poly_building_editor/editor/street_tool_controller.gd")
 const RoofToolControllerScript = preload("res://addons/low_poly_building_editor/editor/roof_tool_controller.gd")
 const WallToolControllerScript = preload("res://addons/low_poly_building_editor/editor/wall_tool_controller.gd")
 const PlacementToolControllerScript = preload("res://addons/low_poly_building_editor/editor/placement_tool_controller.gd")
@@ -74,6 +77,7 @@ func _enter_tree() -> void:
 	m_tool_controllers[MODE_RAIL] = RailToolControllerScript.new(m_context)
 	m_tool_controllers[MODE_STAIRS] = StairsToolControllerScript.new(m_context)
 	m_tool_controllers[MODE_FLOOR] = FloorToolControllerScript.new(m_context)
+	m_tool_controllers[MODE_STREET] = StreetToolControllerScript.new(m_context)
 	m_tool_controllers[MODE_ROOF] = RoofToolControllerScript.new(m_context)
 	m_tool_controllers[MODE_WALL] = WallToolControllerScript.new(m_context)
 	var placement_controller := PlacementToolControllerScript.new(m_context)
@@ -98,6 +102,12 @@ func _enter_tree() -> void:
 		"Floor3D",
 		"MeshInstance3D",
 		Floor3DScript,
+		_get_editor_icon(&"MeshInstance3D")
+	)
+	add_custom_type(
+		"Street3D",
+		"MeshInstance3D",
+		Street3DScript,
 		_get_editor_icon(&"MeshInstance3D")
 	)
 	add_custom_type(
@@ -131,6 +141,8 @@ func _enter_tree() -> void:
 	m_dock.connect("transform_snap_changed", Callable(self, "_on_transform_snap_changed"))
 	m_dock.connect("wall_settings_changed", Callable(self, "_on_wall_settings_changed"))
 	m_dock.connect("floor_settings_changed", Callable(self, "_on_floor_settings_changed"))
+	m_dock.connect("street_settings_changed", Callable(self, "_on_street_settings_changed"))
+	m_dock.connect("street_resample_requested", Callable(self, "_on_street_resample_requested"))
 	m_dock.connect("stair_settings_changed", Callable(self, "_on_stair_settings_changed"))
 	m_dock.connect("rail_settings_changed", Callable(self, "_on_rail_settings_changed"))
 	m_dock.connect("pillar_settings_changed", Callable(self, "_on_pillar_settings_changed"))
@@ -179,6 +191,7 @@ func _exit_tree() -> void:
 		remove_custom_type(String(m_building_style_custom_types[type_index]["name"]))
 	remove_custom_type("Rail3D")
 	remove_custom_type("Floor3D")
+	remove_custom_type("Street3D")
 	remove_custom_type("Wall3D")
 	remove_custom_type("Building3D")
 	m_tool_controllers.clear()
@@ -325,6 +338,8 @@ func _tool_mode_for_building_node(node: Node) -> String:
 		return MODE_WALL
 	if node is Floor3DScript:
 		return MODE_FLOOR
+	if node is Street3DScript:
+		return MODE_STREET
 	if node is Stairs3DScript:
 		return MODE_STAIRS
 	if node is Rail3DScript:
@@ -679,6 +694,14 @@ func _on_wall_settings_changed(settings: Dictionary) -> void:
 
 func _on_floor_settings_changed(settings: Dictionary) -> void:
 	m_tool_controllers[MODE_FLOOR].apply_settings(settings)
+
+
+func _on_street_settings_changed(settings: Dictionary) -> void:
+	m_tool_controllers[MODE_STREET].apply_settings(settings)
+
+
+func _on_street_resample_requested() -> void:
+	m_tool_controllers[MODE_STREET].resample_selected_street()
 
 
 func _on_stair_settings_changed(settings: Dictionary) -> void:

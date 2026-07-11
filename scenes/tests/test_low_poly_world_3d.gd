@@ -224,6 +224,29 @@ func _validate_world(failures: Array[String]) -> void:
 		failures.append("LowPolyTerrain3D did not generate WaterShorelineMesh")
 	if m_terrain.get_node_or_null("TerrainCollision") == null:
 		failures.append("LowPolyTerrain3D did not generate TerrainCollision")
+	if m_terrain.has_method("get_street_integration_summary"):
+		var street_summary: Dictionary = m_terrain.call("get_street_integration_summary")
+		if int(street_summary.get("mask_street_cell_count", 0)) > 0:
+			if int(street_summary.get("mask_path_count", 0)) <= 0:
+				failures.append("LowPolyTerrain3D did not extract paths from the island STREET mask")
+			if int(street_summary.get("generated_source_count", 0)) <= 0:
+				failures.append("LowPolyTerrain3D did not generate streets from the island mask: %s" % street_summary)
+			var generated_streets := m_terrain.get_node_or_null("GeneratedStreets")
+			if generated_streets == null:
+				failures.append("LowPolyTerrain3D did not expose its generated island street assembly")
+			else:
+				var visible_street_count := 0
+				var stair_segment_count := 0
+				for street in generated_streets.get_children():
+					if street is MeshInstance3D and (street as MeshInstance3D).mesh != null:
+						visible_street_count += 1
+					if street.has_method("get_last_build_stats"):
+						var stats: Dictionary = street.call("get_last_build_stats")
+						stair_segment_count += int(stats.get("stair_segment_count", 0))
+				if visible_street_count <= 0:
+					failures.append("Island mask streets were generated without visible meshes")
+				if stair_segment_count <= 0:
+					failures.append("Island terrain slopes did not generate any footpath stair segments")
 
 	var controller: Variant = m_actor.get("controller")
 	if controller == null:

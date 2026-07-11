@@ -1,7 +1,7 @@
 # Low-Poly Building Editor
 
 Godot editor plugin for grid-snapped low-poly building authoring — an editor dock plus 3D
-viewport tools for walls, floors, stairs, standard rails, pillars, roofs, openings, and
+viewport tools for walls, floors, terrain-profiled streets, stairs, standard rails, pillars, roofs, openings, and
 props, authored as normal scene nodes so the result serializes into `.tscn` files. The Wall tool can draw
 either individual spans or enclosed rooms with a configurable side count of at least
 three; four sides preserves rectangular-room creation. The Stairs tool draws one
@@ -93,11 +93,33 @@ godot --headless --path . \
   --report res://generated/buildings/seeded_villa.report.json
 ```
 
-Generator version 1 supports one rectangular storey, one required entrance, repeated
+Generator version 1 supports two spec types. The default `building` type supports one rectangular storey, one required entrance, repeated
 validated facade windows, optional porch pillars, footprint jitter, and one flat, shed,
-gable, hip, or dome roof. A style value of `random` resolves deterministically from `seed`.
+gable, hip, or dome roof. The `street` type supports a multi-point 3D path, a continuously sloped road, raised kerbs, two footpaths, and automatic footpath-only stairs where local slope is strictly greater than 25 degrees. A style value of `random` resolves deterministically from `seed`.
 The command prints the same machine-readable report it optionally writes to `--report`.
 Invalid specs and buildings that cannot fit their entrance do not produce a scene.
+
+Generate the included bent hill-street example:
+
+```sh
+godot --headless --path . \
+  --script addons/low_poly_building_editor/generate_building.gd -- \
+  --spec res://addons/low_poly_building_editor/examples/seeded_street.json \
+  --output res://generated/buildings/seeded_street.tscn
+```
+
+The Street viewport tool samples the first scene node exposing
+`get_world_surface_height(world_position)` when a path is committed or the author presses
+**Resample Selected Street**. Samples are baked as editable `StreetProfilePoint` resources;
+points marked **Manual Height** survive later resampling. `LowPolyTerrain3D` now discovers
+these streets during its generation pass: each street samples the untouched base grid, then
+terrain feathers a lowered bed beneath the published full cross-section corridor before
+building terrain mesh and collision. `Street3D` remains the authority for visible road,
+kerb, footpath, stair, mesh, and collision generation; terrain owns only its supporting bed.
+When no authored street exists, the terrain's default `generate_streets_from_mask` pass also
+thins sampled blue STREET cells into branch-aware multipoint centerlines and creates transient
+Street3D assemblies beneath `LowPolyTerrain3D/GeneratedStreets`. Persistent manual height edits
+still belong on authored Street3D nodes; mask-generated assemblies are replaced on rebuild.
 
 ### Visual Variant Batches
 
@@ -133,6 +155,7 @@ This README is the plugin's entry point; the full documentation lives in [`docs/
 
 The focused smoke scene is
 [`tests/test_low_poly_building_editor_3d.tscn`](tests/test_low_poly_building_editor_3d.tscn), the focused
+street smoke scene is [`tests/test_street_3d.tscn`](tests/test_street_3d.tscn), the focused
 dome smoke scene is [`tests/test_dome_roof_3d.tscn`](tests/test_dome_roof_3d.tscn), the
 hip shape smoke scene is
 [`tests/test_hip_shapes_3d.tscn`](tests/test_hip_shapes_3d.tscn), the native transform

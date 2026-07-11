@@ -1,7 +1,7 @@
 extends SceneTree
 
-const BuildingSpecScript = preload(
-	"res://addons/low_poly_building_editor/building_spec.gd"
+const BuildingGenerationSpecScript = preload(
+	"res://addons/low_poly_building_editor/building_generation_spec.gd"
 )
 const BuildingSpecCompilerScript = preload(
 	"res://addons/low_poly_building_editor/building_spec_compiler.gd"
@@ -38,7 +38,7 @@ func _run(arguments: PackedStringArray) -> int:
 	var load_errors := _string_array(load_result.get("errors", []))
 	if !load_errors.is_empty():
 		return _finish_report({}, load_errors, [], options, 2)
-	var spec := load_result.get("spec") as BuildingSpecScript
+	var spec := load_result.get("spec") as BuildingGenerationSpecScript
 	var compile_result := BuildingSpecCompilerScript.compile(spec)
 	var errors := _string_array(compile_result.get("errors", []))
 	var warnings := _string_array(compile_result.get("warnings", []))

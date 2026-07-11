@@ -17,7 +17,7 @@
   - shoreline water highlight bands
   - smooth low-poly land and visible seabed terrain
   - shoreline side walls for mask-clipped terrain
-  - street overlays
+  - generated road/kerb/footpath assemblies derived from street-mask centerlines, with the old street overlay retained only for fragments that cannot become a path
   - building footprint overlays
   - optional land collision
 - An optional grayscale `heightmap_file` can add terrain elevation offsets on top of `land_height`; by default it also expands land to the full heightmap source instead of clipping land to the mask.
@@ -34,6 +34,7 @@
 
 - The current runtime 2D terrain remains owned by [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn) and [`../../terrain/terrain.gd`](../../terrain/terrain.gd).
 - The 3D prototype is owned by [`../../terrain/low_poly_terrain_3d.gd`](../../terrain/low_poly_terrain_3d.gd) and the focused test scene under [`../../scenes/tests/`](../../scenes/tests).
+- Street integration is a pre-mesh terrain stage. With `generate_streets_from_mask` enabled (the default), `LowPolyStreetPathExtractor` thins sampled STREET cells to deterministic centerlines and traces branch-to-branch multipoint paths through bends and junctions. `LowPolyTerrain3D` instantiates transient Street3D assemblies beneath `GeneratedStreets`, samples each path from the untouched base grid, and automatically relaxes only an impossible generated-path riser limit enough to keep extreme heightmap slopes constructible. The same pass also discovers authored duck-typed sources beneath `street_source_root_path` (or the owning/current scene). `LowPolyStreetCorridorIntegrator` then lowers and feathers the supporting bed before terrain mesh/collision construction, converts corridor-core cells to plain land so the legacy mask overlay does not bleed through, and skips water by default. Street3D retains visible road, kerb, footpath, stair, material, mesh, and collision ownership.
 - Terrain mask meaning remains owned by [`../../terrain/terrain_generation_profile.gd`](../../terrain/terrain_generation_profile.gd), [`../../terrain/terrain_mask_rule.gd`](../../terrain/terrain_mask_rule.gd), and [`../../terrain/island_generation_profile.tres`](../../terrain/island_generation_profile.tres).
 - Do not route story, save state, resident spawning, or main-scene weather through this prototype until the measurable evidence gates in [`../plan/implementation_plan.md`](../plan/implementation_plan.md) and [`low_poly_3d_integration.md`](low_poly_3d_integration.md) are satisfied and the recorded runtime-direction decision selects integration.
 - Water waves are wind-aware through a decoupled API: `LowPolyTerrain3D.set_wind(wind_angle_degrees, normalized_strength)` (plus the inspector-exported `wind_angle_degrees` / `wind_strength`) retunes the cached water materials live without a rebuild. The terrain never imports or reads `WeatherManager`.
@@ -43,11 +44,12 @@
 
 - Without heightmap expansion, the prototype treats water the same way as the 2D terrain generator: pixels below `land_min_alpha_8bit` are water.
 - With `heightmap_expands_land_to_source` enabled and a heightmap assigned, the heightmap dimensions become the generated terrain source and every sampled heightmap cell at or below `water_height` becomes water; higher cells become land unless the mask upgrades them to street or building-footprint overlays.
-- Opaque blue terrain-rule pixels become street overlays.
+- Opaque blue terrain-rule pixels become sampled STREET cells. By default those cells generate centerline-based road/kerb/footpath assemblies; untraced, water-skipped, or invalid fragments remain visible through the legacy street overlay.
 - Opaque red terrain-rule pixels become building footprint overlays.
 - Other opaque land pixels become low-poly land.
 - The prototype should remain coarse and fast enough to regenerate in editor or headless validation.
 - Generated mesh and collision nodes are runtime/editor transient children marked with metadata; they should not become serialized child content in the scene.
+- Mask-generated streets are also transient and are replaced deterministically on each terrain rebuild. Authored Street3D nodes remain the path for persistent manual profile-height edits.
 - Terrain sampling currently lets street or building pixels win the whole sampled cell. Treat that chunkiness as prototype style until a deliberate readability pass decides otherwise.
 - Heightmaps are sampled at the same coarse cell resolution as the terrain mask, then `smooth_land_surface` builds connected low-poly surface facets by averaging adjacent cell heights at shared corners.
 - `height_smoothing_passes` applies a small blur before mesh creation. In heightmap-expanded mode it smooths the source heights before waterline classification; in mask-clipped mode it remains land-only. Keep it low so the terrain reads as simple low-poly slopes rather than noisy per-pixel relief.
@@ -81,6 +83,7 @@
 
 - Use `sample_stride` to trade mask fidelity against mesh density.
 - Use `cell_size`, `land_height`, `smooth_land_surface`, `height_smoothing_passes`, `street_lift`, and `building_footprint_lift` to tune the island scale and low-poly read.
+- Use `generate_streets_from_mask`, `generated_street_minimum_path_cells`, `generated_street_maximum_paths`, `generated_street_road_width_cells`, and `generated_street_footpath_width_cells` to control automatic street extraction and cross-section scale. Disable `generate_streets_from_mask` to restore overlay-only mask streets while retaining authored Street3D corridor integration.
 - Use `heightmap_file`, `heightmap_expands_land_to_source`, `heightmap_min_offset`, `heightmap_max_offset`, and `water_height` to prototype full heightmap land, mask-clipped islands, terraces, hills, sea level, and exposed coastlines without changing terrain mask semantics.
 - Use `water_color`, `water_deep_color`, `water_surface_layer_color`, `water_shoreline_color`, `water_highlight_color`, `water_wave_depth`, `water_wave_frequency`, `water_shoreline_band_ratio`, `water_shoreline_lift`, and `water_surface_layer_lift` on the shared `LowPolyArtStyle3D` style preset to tune the 3D water tint, transparency, shimmer, and shoreline read. `water_land_overlap_cells` stays on the terrain node since it controls geometry footprint, not palette.
 - After assigning or editing heightmap settings in the editor, manually rebuild affected terrain nodes before judging the elevation result.
@@ -101,6 +104,8 @@ Addressed:
 - The heightmap image is normalized to `FORMAT_RGBA8` on load, matching the mask path.
 - The exported `rebuild` toggle routes through `_request_rebuild()` so it respects readiness and the queued-rebuild guard instead of issuing a redundant deferred build.
 - `test_low_poly_terrain_3d.gd` now also covers the non-expanded mask-clipped path (synthetic water-border mask), asserting land/water/shoreline meshes and water/land cell classification.
+- `test_street_terrain_integration.gd` covers automatic Street3D discovery, base-grid terrain sampling, corridor bed shaping, unaffected exterior terrain, manual profile-height preservation, and coalesced terrain regeneration after a street-width change.
+- `test_street_mask_generation.gd` covers STREET-cell centerline extraction, a bent multipoint path, visible generated Street3D mesh, corridor shaping, and deterministic replacement on rebuild. `test_low_poly_world_3d.gd` also asserts that the real island mask produces a non-empty generated street assembly.
 - Terrain palette and water tuning are no longer duplicated between the terrain node and `LowPolyArtStyle3D`. The node-level color/water exports were removed and all values resolve through `_effective_style()` (assigned `art_style`, else a built-in default style), so a scene can no longer set a node color that the style silently overrides. The previously dead `water_color` override in `test_low_poly_world_3d.tscn` was removed.
 - Heightmap elevation sampling reads through the same cached pixel-reader RGBA8 buffer as the mask path instead of calling `Image.get_pixel` per cell.
 - The generator was split along its natural seams. First the "images -> cell grid" sampling stage (classification, height smoothing, heightmap waterline, mask/heightmap pixel sampling) moved out of the monolithic node into `LowPolyTerrainSampler`, with the shared `LowPolyTerrainCell` (and its `Kind` enum) and `LowPolyImagePixelReader` promoted to their own files. Then the "cell grid -> meshes/collision" stage (the per-cell build loop, water-render-cell expansion, all the quad/side/water-band geometry helpers, and the corner/surface-height math) moved into `LowPolyTerrainMeshBuilder`, whose `build(...)` returns a `MeshBuildResult` of per-pass `MeshBuildState` buffers plus collision faces and cell counts, and whose `WaterRendering` type carries the resolved water palette/wave tuning. The node now configures a sampler and calls `build_grid(...)`, then configures a mesh builder (setting geometry params and a `WaterRendering` resolved from the art style) and calls `build(...)`, and only wraps the returned buffers in `MeshInstance3D`/material children, adds collision, and prints the summary. The node's public surface-height queries delegate to the same cached mesh builder via `get_cell_surface_height(...)`, so the node retains only exports, lifecycle, image loading, materials, wind, and style resolution. Behavior is unchanged.
@@ -117,6 +122,8 @@ Known tradeoffs left as-is for the prototype:
 
 ```sh
 "/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://scenes/tests/test_low_poly_terrain_3d.tscn
+"/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://scenes/tests/test_street_terrain_integration.tscn
+"/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://scenes/tests/test_street_mask_generation.tscn
 ```
 
 - Confirm the scene loads and logs a summary like:
