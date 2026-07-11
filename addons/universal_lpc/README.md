@@ -1,8 +1,8 @@
-# Universal LPC 2D Character Addon
+# Universal LPC 2D Character Plugin
 
-This runtime addon composes layered 2D characters from Universal LPC metadata and generated spritesheets. It also includes the development-time metadata generator, source-asset auditor, and focused validation scenes used by Kulangsu.
+This Godot plugin composes layered 2D characters from Universal LPC metadata and generated spritesheets. It also includes an editor dock for the development-time sprite-composition and source-asset-audit workflows used by Kulangsu.
 
-The addon is runtime/tooling code rather than an `EditorPlugin`, so it does not need to be enabled in Project Settings. Its reusable entry point is [`universal_lpc_sprite_2d.gd`](universal_lpc_sprite_2d.gd), which exposes the `UniversalLpcSprite2D` node type.
+Enable `Universal LPC 2D Character` under **Project > Project Settings > Plugins**. Kulangsu enables it by default. The reusable runtime entry point remains [`universal_lpc_sprite_2d.gd`](universal_lpc_sprite_2d.gd), which exposes the `UniversalLpcSprite2D` node type independently of the editor dock.
 
 ## Contents
 
@@ -12,7 +12,13 @@ The addon is runtime/tooling code rather than an `EditorPlugin`, so it does not 
 - `universal_lpc_metadata_generator.gd` - development-time metadata and combined-sheet generator
 - `universal_lpc_asset_auditor.gd` - source-art and metadata coverage audit
 - `universal_lpc_metadata.json` - prebuilt manifest consumed by the runtime
+- `plugin.gd` / `plugin.cfg` - editor plugin registration and dock lifecycle
+- `universal_lpc_dock.gd` - editor status and workflow launcher
 - `tests/` - focused generation, composition, and source-audit scenes
+
+## Editor Dock
+
+The `Universal LPC 2D Character` dock reports whether the prebuilt manifest and upstream source checkout are available. It provides actions to open the sprite-composition scene and run the source-asset audit scene, whose report appears in Godot's Output panel.
 
 ## Kulangsu Integration
 

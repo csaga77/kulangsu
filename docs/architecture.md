@@ -234,7 +234,7 @@ Each plugin documents itself in its own root `README.md` (with deeper docs under
 
 Responsibilities:
 
-- reusable runtime LPC sprite composition plus development-time metadata generation and source-asset auditing (see [`../addons/universal_lpc/README.md`](../addons/universal_lpc/README.md))
+- reusable runtime LPC sprite composition plus an editor dock for development-time metadata composition and source-asset auditing (see [`../addons/universal_lpc/README.md`](../addons/universal_lpc/README.md))
 - project-local editor tooling for authoring content and validating assets
 - low-poly building and terrain-profiled street blockout authoring through normal scene nodes, with Street3D owning visible road/kerb/footpath/stair geometry while LowPolyTerrain3D extracts deterministic multipoint centerlines from mask STREET cells, creates transient Street3D assemblies, and shapes its own supporting bed from generated or authored published corridors before terrain mesh construction (see [`../addons/low_poly_building_editor/README.md`](../addons/low_poly_building_editor/README.md))
 - deterministic, versioned JSON-to-scene low-poly building and street generation plus graphical seeded-variant thumbnails/contact sheets for agents and batch authoring, kept inside the building-editor addon

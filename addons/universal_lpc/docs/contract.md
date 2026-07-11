@@ -17,6 +17,8 @@
 
 ## Development-Time Contract
 
+- Enabling `plugin.cfg` adds a `Universal LPC 2D Character` editor dock without changing the runtime renderer API.
+- The dock may open the sprite-composition scene and run the source-asset audit scene; it does not mutate metadata or source art by itself.
 - `UniversalLpcMetadataGenerator` reads Universal LPC source definitions from `res://3rdparty/Universal-LPC-Spritesheet-Character-Generator` by default.
 - Generating metadata may update the addon's manifest while generated combined sprites remain project content under `res://resources/sprites/universal_lpc`.
 - `UniversalLpcAssetAuditor` reports missing animation rows and source/definition mismatches without changing source art.
@@ -25,5 +27,6 @@
 ## Integration Boundary
 
 - The addon owns LPC metadata interpretation and visible layered-sprite composition.
+- The editor plugin owns only addon status and development-workflow navigation.
 - Consuming actors own movement, collision, gameplay animation selection, materials, and higher-level appearance catalogs.
 - The upstream Universal LPC generator remains a third-party dependency and is not modified through this addon.
