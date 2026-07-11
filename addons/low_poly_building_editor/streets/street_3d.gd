@@ -11,11 +11,12 @@ const StreetProfilePointScript := preload(
 
 const GENERATED_META := &"street_generated"
 const PREVIEW_META := &"building_editor_preview"
-const MESH_GEOMETRY_VERSION := 1
+const MESH_GEOMETRY_VERSION := 2
 const EPSILON := 0.00001
 
 signal terrain_profile_resampled(sample_count: int)
 signal terrain_corridor_changed()
+signal source_geometry_changed
 
 @export var rebuild := false:
 	set(value):
@@ -98,6 +99,8 @@ signal terrain_corridor_changed()
 	set(value):
 		stair_threshold_degrees = clampf(value, 0.0, 89.0)
 		_request_rebuild()
+		if m_is_ready:
+			source_geometry_changed.emit()
 @export_range(0.02, 1.0, 0.01, "or_greater") var target_riser_height := 0.16:
 	set(value):
 		target_riser_height = maxf(value, 0.02)
@@ -135,6 +138,7 @@ var m_is_ready := false
 var m_rebuild_queued := false
 var m_last_build_stats := {}
 var m_preserve_profile_on_path_change := false
+var m_intersection_cuts: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -171,6 +175,25 @@ func get_geometry_profile() -> PackedVector3Array:
 
 func get_last_build_stats() -> Dictionary:
 	return m_last_build_stats.duplicate(true)
+
+
+func set_intersection_cuts(cuts: Array) -> void:
+	var normalized: Array[Dictionary] = []
+	for cut: Dictionary in cuts:
+		normalized.append({
+			"segment_index": int(cut.get("segment_index", -1)),
+			"start_t": clampf(float(cut.get("start_t", 0.0)), 0.0, 1.0),
+			"end_t": clampf(float(cut.get("end_t", 0.0)), 0.0, 1.0),
+			"clip_road": bool(cut.get("clip_road", false)),
+		})
+	if hash(normalized) == hash(m_intersection_cuts):
+		return
+	m_intersection_cuts = normalized
+	rebuild_street_mesh()
+
+
+func get_intersection_cuts() -> Array[Dictionary]:
+	return m_intersection_cuts.duplicate(true)
 
 
 ## Generic terrain-generation contract. LowPolyTerrain3D discovers sources by
@@ -343,6 +366,7 @@ func _geometry_settings() -> Dictionary:
 		"target_riser_height": target_riser_height,
 		"max_riser_height": max_riser_height,
 		"min_tread_depth": min_tread_depth,
+		"intersection_cuts": m_intersection_cuts,
 	}
 
 
@@ -357,6 +381,7 @@ func _street_mesh_source_signature() -> int:
 		kerb_width, kerb_height, kerb_color,
 		footpath_width, footpath_thickness, footpath_color,
 		stair_threshold_degrees, target_riser_height, max_riser_height, min_tread_depth,
+		m_intersection_cuts,
 	])
 
 
@@ -387,6 +412,7 @@ func _on_profile_point_changed() -> void:
 func _notify_terrain_corridor_changed() -> void:
 	if m_is_ready:
 		terrain_corridor_changed.emit()
+		source_geometry_changed.emit()
 
 
 func _sync_transform_from_path() -> void:

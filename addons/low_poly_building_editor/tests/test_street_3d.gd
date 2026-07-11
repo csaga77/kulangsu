@@ -6,6 +6,9 @@ const BuildingFactoryScript = preload(
 const Street3DScript = preload(
 	"res://addons/low_poly_building_editor/streets/street_3d.gd"
 )
+const Building3DScript = preload(
+	"res://addons/low_poly_building_editor/building_3d.gd"
+)
 const BuildingSpecCompilerScript = preload(
 	"res://addons/low_poly_building_editor/building_spec_compiler.gd"
 )
@@ -26,6 +29,7 @@ func _run_checks() -> void:
 	_validate_descending_stairs()
 	_validate_impossible_stairs()
 	_validate_terrain_profile_and_manual_override()
+	_validate_sibling_intersection_merging()
 	_validate_street_json_generation()
 	_validate_wireframe_and_native_transform()
 	for failure in m_failures:
@@ -125,6 +129,77 @@ func _validate_terrain_profile_and_manual_override() -> void:
 			% [street.profile_points[2].position.y, street.profile_points[2].manual_height, errors]
 		)
 	street.queue_free()
+
+
+func _validate_sibling_intersection_merging() -> void:
+	var coordinator := Building3DScript.new() as Building3DScript
+	add_child(coordinator)
+	var through_street := BuildingFactoryScript.create_street_node(
+		coordinator,
+		PackedVector3Array([Vector3(-6.0, 0.0, 0.0), Vector3(6.0, 0.0, 0.0)])
+	)
+	var branch_street := BuildingFactoryScript.create_street_node(
+		coordinator,
+		PackedVector3Array([Vector3(0.0, 0.0, -6.0), Vector3.ZERO])
+	)
+	coordinator.add_child(through_street)
+	coordinator.add_child(branch_street)
+	coordinator.refresh_street_intersection_cuts()
+	var through_stats: Dictionary = through_street.get_last_build_stats()
+	var branch_stats: Dictionary = branch_street.get_last_build_stats()
+	if int(through_stats.get("intersection_cut_count", 0)) != 1:
+		m_failures.append("Through street did not clip its kerbs and footpaths at a T-junction")
+	if int(through_stats.get("road_surface_cut_count", 0)) != 0:
+		m_failures.append("Through street lost road-surface ownership at a T-junction")
+	if int(branch_stats.get("intersection_cut_count", 0)) != 1:
+		m_failures.append("Branch street did not clip its kerbs and footpaths at a T-junction")
+	if int(branch_stats.get("road_surface_cut_count", 0)) != 1:
+		m_failures.append("Branch street retained buried road geometry inside a T-junction")
+	var through_arrays: Array = through_street.mesh.surface_get_arrays(0)
+	var through_vertices: PackedVector3Array = through_arrays[Mesh.ARRAY_VERTEX]
+	var through_colors: PackedColorArray = through_arrays[Mesh.ARRAY_COLOR]
+	var found_kerb_cut_boundary := false
+	for vertex_index in range(through_vertices.size()):
+		if !_colors_near(through_colors[vertex_index], through_street.kerb_color):
+			continue
+		if absf(through_vertices[vertex_index].x - 4.4) <= 0.001:
+			found_kerb_cut_boundary = true
+			break
+	if !found_kerb_cut_boundary:
+		m_failures.append("T-junction mesh did not terminate its kerb at the branch road edge")
+	var branch_arrays: Array = branch_street.mesh.surface_get_arrays(0)
+	var branch_vertices: PackedVector3Array = branch_arrays[Mesh.ARRAY_VERTEX]
+	var branch_colors: PackedColorArray = branch_arrays[Mesh.ARRAY_COLOR]
+	var branch_road_max_z := -INF
+	for vertex_index in range(branch_vertices.size()):
+		if _colors_near(branch_colors[vertex_index], branch_street.road_color):
+			branch_road_max_z = maxf(branch_road_max_z, branch_vertices[vertex_index].z)
+	if absf(branch_road_max_z - 4.4) > 0.001:
+		m_failures.append("Branch road surface did not stop flush at the through-road edge")
+	coordinator.remove_child(branch_street)
+	branch_street.free()
+	coordinator.refresh_street_intersection_cuts()
+	if !through_street.get_intersection_cuts().is_empty():
+		m_failures.append("Removing a branch street left stale intersection geometry")
+
+	var separated_street := BuildingFactoryScript.create_street_node(
+		coordinator,
+		PackedVector3Array([Vector3(-6.0, 1.0, 0.0), Vector3(6.0, 1.0, 0.0)])
+	)
+	coordinator.add_child(separated_street)
+	coordinator.refresh_street_intersection_cuts()
+	if !separated_street.get_intersection_cuts().is_empty():
+		m_failures.append("Vertically separated streets were merged as a plan intersection")
+	coordinator.queue_free()
+
+
+func _colors_near(first: Color, second: Color, tolerance := 0.01) -> bool:
+	return (
+		absf(first.r - second.r) <= tolerance
+		and absf(first.g - second.g) <= tolerance
+		and absf(first.b - second.b) <= tolerance
+		and absf(first.a - second.a) <= tolerance
+	)
 
 
 func _make_street(end_point: Vector3) -> Street3DScript:

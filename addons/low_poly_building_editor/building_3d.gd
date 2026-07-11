@@ -3,6 +3,10 @@ class_name Building3D
 extends Node3D
 
 const Roof3DScript = preload("res://addons/low_poly_building_editor/roofs/roof_3d.gd")
+const Street3DScript = preload("res://addons/low_poly_building_editor/streets/street_3d.gd")
+const StreetGeometryResolverScript = preload(
+	"res://addons/low_poly_building_editor/streets/street_geometry_resolver.gd"
+)
 
 var m_geometry_clip_refresh_queued := false
 
@@ -45,6 +49,14 @@ func get_roof_nodes() -> Array[Roof3DScript]:
 		if child is Roof3DScript:
 			roofs.append(child)
 	return roofs
+
+
+func get_street_nodes() -> Array[Street3DScript]:
+	var streets: Array[Street3DScript] = []
+	for child in get_children():
+		if child is Street3DScript:
+			streets.append(child)
+	return streets
 
 
 func find_roof_merge_target(
@@ -173,6 +185,10 @@ func refresh_roof_covered_rects() -> void:
 	_create_roof_geometry_resolver().refresh_roof_covered_rects()
 
 
+func refresh_street_intersection_cuts() -> void:
+	StreetGeometryResolverScript.new(get_street_nodes()).refresh_street_intersection_cuts()
+
+
 func find_merge_target(
 	local_start: Vector3,
 	local_end: Vector3,
@@ -239,6 +255,7 @@ func refresh_building_geometry_clips() -> void:
 	m_geometry_clip_refresh_queued = false
 	refresh_roof_covered_rects()
 	refresh_wall_intersection_clips()
+	refresh_street_intersection_cuts()
 
 
 func request_geometry_clip_refresh() -> void:
@@ -263,10 +280,17 @@ func _connect_geometry_source(child: Node) -> void:
 			wall.source_geometry_changed.connect(_on_source_geometry_changed)
 		return
 	var roof := child as Roof3DScript
-	if roof == null or roof.has_meta(Roof3DScript.PREVIEW_META):
+	if roof != null:
+		if roof.has_meta(Roof3DScript.PREVIEW_META):
+			return
+		if !roof.source_geometry_changed.is_connected(_on_source_geometry_changed):
+			roof.source_geometry_changed.connect(_on_source_geometry_changed)
 		return
-	if !roof.source_geometry_changed.is_connected(_on_source_geometry_changed):
-		roof.source_geometry_changed.connect(_on_source_geometry_changed)
+	var street := child as Street3DScript
+	if street == null or street.has_meta(Street3DScript.PREVIEW_META):
+		return
+	if !street.source_geometry_changed.is_connected(_on_source_geometry_changed):
+		street.source_geometry_changed.connect(_on_source_geometry_changed)
 
 
 func _disconnect_geometry_source(child: Node) -> void:
@@ -276,10 +300,13 @@ func _disconnect_geometry_source(child: Node) -> void:
 			wall.source_geometry_changed.disconnect(_on_source_geometry_changed)
 		return
 	var roof := child as Roof3DScript
-	if roof == null:
+	if roof != null:
+		if roof.source_geometry_changed.is_connected(_on_source_geometry_changed):
+			roof.source_geometry_changed.disconnect(_on_source_geometry_changed)
 		return
-	if roof.source_geometry_changed.is_connected(_on_source_geometry_changed):
-		roof.source_geometry_changed.disconnect(_on_source_geometry_changed)
+	var street := child as Street3DScript
+	if street != null and street.source_geometry_changed.is_connected(_on_source_geometry_changed):
+		street.source_geometry_changed.disconnect(_on_source_geometry_changed)
 
 
 func _on_source_geometry_changed() -> void:
@@ -309,4 +336,6 @@ func _is_authored_geometry_source(child: Node) -> bool:
 		return !child.has_meta(Wall3D.PREVIEW_META)
 	if child is Roof3DScript:
 		return !child.has_meta(Roof3DScript.PREVIEW_META)
+	if child is Street3DScript:
+		return !child.has_meta(Street3DScript.PREVIEW_META)
 	return false

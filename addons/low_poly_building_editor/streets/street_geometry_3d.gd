@@ -18,6 +18,8 @@ static func build(profile: PackedVector3Array, settings: Dictionary) -> Dictiona
 		"indices": indices,
 		"stair_segment_count": 0,
 		"step_count": 0,
+		"intersection_cut_count": 0,
+		"road_surface_cut_count": 0,
 	}
 	if profile.size() < 2:
 		return result
@@ -35,6 +37,11 @@ static func build(profile: PackedVector3Array, settings: Dictionary) -> Dictiona
 	var road_color := Color(settings.get("road_color", Color(0.38, 0.37, 0.34, 1.0)))
 	var kerb_color := Color(settings.get("kerb_color", Color(0.66, 0.64, 0.59, 1.0)))
 	var footpath_color := Color(settings.get("footpath_color", Color(0.72, 0.67, 0.57, 1.0)))
+	var intersection_cuts: Array = settings.get("intersection_cuts", [])
+	result["intersection_cut_count"] = intersection_cuts.size()
+	for cut: Dictionary in intersection_cuts:
+		if bool(cut.get("clip_road", false)):
+			result["road_surface_cut_count"] = int(result["road_surface_cut_count"]) + 1
 
 	var road_left := _build_offset_polyline(profile, road_half_width)
 	var road_right := _build_offset_polyline(profile, -road_half_width)
@@ -49,10 +56,13 @@ static func build(profile: PackedVector3Array, settings: Dictionary) -> Dictiona
 		var run := Vector2(b.x - a.x, b.z - a.z).length()
 		if run <= EPSILON:
 			continue
+		var side_ranges := _retained_ranges(intersection_cuts, segment_index, false)
+		var road_ranges := _retained_ranges(intersection_cuts, segment_index, true)
 		_append_sloped_band(
 			road_left[segment_index], road_right[segment_index],
 			road_left[segment_index + 1], road_right[segment_index + 1],
-			road_thickness, road_color, vertices, normals, colors, indices
+			road_thickness, road_color, road_ranges, side_ranges,
+			vertices, normals, colors, indices
 		)
 		var rise := absf(b.y - a.y)
 		var slope_degrees := rad_to_deg(atan2(rise, run))
@@ -75,18 +85,27 @@ static func build(profile: PackedVector3Array, settings: Dictionary) -> Dictiona
 				vertices, normals, colors, indices
 			)
 		else:
-			_append_sloped_side(
-				road_left[segment_index], kerb_left[segment_index], foot_left[segment_index],
-				road_left[segment_index + 1], kerb_left[segment_index + 1], foot_left[segment_index + 1],
-				kerb_height, footpath_thickness, kerb_color, footpath_color,
-				vertices, normals, colors, indices
-			)
-			_append_sloped_side(
-				road_right[segment_index], kerb_right[segment_index], foot_right[segment_index],
-				road_right[segment_index + 1], kerb_right[segment_index + 1], foot_right[segment_index + 1],
-				kerb_height, footpath_thickness, kerb_color, footpath_color,
-				vertices, normals, colors, indices
-			)
+			for retained_range: Vector2 in side_ranges:
+				_append_sloped_side(
+					road_left[segment_index].lerp(road_left[segment_index + 1], retained_range.x),
+					kerb_left[segment_index].lerp(kerb_left[segment_index + 1], retained_range.x),
+					foot_left[segment_index].lerp(foot_left[segment_index + 1], retained_range.x),
+					road_left[segment_index].lerp(road_left[segment_index + 1], retained_range.y),
+					kerb_left[segment_index].lerp(kerb_left[segment_index + 1], retained_range.y),
+					foot_left[segment_index].lerp(foot_left[segment_index + 1], retained_range.y),
+					kerb_height, footpath_thickness, kerb_color, footpath_color,
+					vertices, normals, colors, indices
+				)
+				_append_sloped_side(
+					road_right[segment_index].lerp(road_right[segment_index + 1], retained_range.x),
+					kerb_right[segment_index].lerp(kerb_right[segment_index + 1], retained_range.x),
+					foot_right[segment_index].lerp(foot_right[segment_index + 1], retained_range.x),
+					road_right[segment_index].lerp(road_right[segment_index + 1], retained_range.y),
+					kerb_right[segment_index].lerp(kerb_right[segment_index + 1], retained_range.y),
+					foot_right[segment_index].lerp(foot_right[segment_index + 1], retained_range.y),
+					kerb_height, footpath_thickness, kerb_color, footpath_color,
+					vertices, normals, colors, indices
+				)
 
 	result["vertices"] = vertices
 	result["normals"] = normals
@@ -141,20 +160,81 @@ static func _plan_direction(a: Vector3, b: Vector3) -> Vector3:
 	return Vector3.FORWARD if delta.length_squared() <= EPSILON else delta.normalized()
 
 
+static func _retained_ranges(
+	intersection_cuts: Array, segment_index: int, road_surface_only: bool
+) -> Array[Vector2]:
+	var clipped_ranges: Array[Vector2] = []
+	for cut: Dictionary in intersection_cuts:
+		if int(cut.get("segment_index", -1)) != segment_index:
+			continue
+		if road_surface_only and !bool(cut.get("clip_road", false)):
+			continue
+		var start_t := clampf(float(cut.get("start_t", 0.0)), 0.0, 1.0)
+		var end_t := clampf(float(cut.get("end_t", 0.0)), 0.0, 1.0)
+		if end_t - start_t > EPSILON:
+			clipped_ranges.append(Vector2(start_t, end_t))
+	if clipped_ranges.is_empty():
+		return [Vector2(0.0, 1.0)]
+	clipped_ranges.sort_custom(func(first: Vector2, second: Vector2) -> bool: return first.x < second.x)
+	var merged: Array[Vector2] = []
+	for clipped_range: Vector2 in clipped_ranges:
+		if merged.is_empty() or clipped_range.x > merged[-1].y + EPSILON:
+			merged.append(clipped_range)
+		else:
+			var merged_range := merged[-1]
+			merged_range.y = maxf(merged_range.y, clipped_range.y)
+			merged[-1] = merged_range
+	var retained: Array[Vector2] = []
+	var cursor := 0.0
+	for clipped_range: Vector2 in merged:
+		if clipped_range.x > cursor + EPSILON:
+			retained.append(Vector2(cursor, clipped_range.x))
+		cursor = maxf(cursor, clipped_range.y)
+	if cursor < 1.0 - EPSILON:
+		retained.append(Vector2(cursor, 1.0))
+	return retained
+
+
 static func _append_sloped_band(
 	a_left: Vector3, a_right: Vector3, b_left: Vector3, b_right: Vector3,
 	thickness: float, color: Color,
+	surface_ranges: Array[Vector2], side_ranges: Array[Vector2],
 	vertices: PackedVector3Array, normals: PackedVector3Array,
 	colors: PackedColorArray, indices: PackedInt32Array
 ) -> void:
-	_append_upward_quad(a_left, b_left, b_right, a_right, color, vertices, normals, colors, indices)
-	_append_quad(
-		a_right - Vector3.UP * thickness, b_right - Vector3.UP * thickness,
-		b_left - Vector3.UP * thickness, a_left - Vector3.UP * thickness,
-		color.darkened(0.08), vertices, normals, colors, indices
-	)
-	_append_quad(a_left - Vector3.UP * thickness, b_left - Vector3.UP * thickness, b_left, a_left, color, vertices, normals, colors, indices)
-	_append_quad(a_right, b_right, b_right - Vector3.UP * thickness, a_right - Vector3.UP * thickness, color, vertices, normals, colors, indices)
+	for retained_range: Vector2 in surface_ranges:
+		var range_a_left := a_left.lerp(b_left, retained_range.x)
+		var range_a_right := a_right.lerp(b_right, retained_range.x)
+		var range_b_left := a_left.lerp(b_left, retained_range.y)
+		var range_b_right := a_right.lerp(b_right, retained_range.y)
+		_append_upward_quad(
+			range_a_left, range_b_left, range_b_right, range_a_right,
+			color, vertices, normals, colors, indices
+		)
+		_append_quad(
+			range_a_right - Vector3.UP * thickness,
+			range_b_right - Vector3.UP * thickness,
+			range_b_left - Vector3.UP * thickness,
+			range_a_left - Vector3.UP * thickness,
+			color.darkened(0.08), vertices, normals, colors, indices
+		)
+	for retained_range: Vector2 in side_ranges:
+		var range_a_left := a_left.lerp(b_left, retained_range.x)
+		var range_a_right := a_right.lerp(b_right, retained_range.x)
+		var range_b_left := a_left.lerp(b_left, retained_range.y)
+		var range_b_right := a_right.lerp(b_right, retained_range.y)
+		_append_quad(
+			range_a_left - Vector3.UP * thickness,
+			range_b_left - Vector3.UP * thickness,
+			range_b_left, range_a_left,
+			color, vertices, normals, colors, indices
+		)
+		_append_quad(
+			range_a_right, range_b_right,
+			range_b_right - Vector3.UP * thickness,
+			range_a_right - Vector3.UP * thickness,
+			color, vertices, normals, colors, indices
+		)
 
 
 static func _append_sloped_side(

@@ -116,6 +116,10 @@ these streets during its generation pass: each street samples the untouched base
 terrain feathers a lowered bed beneath the published full cross-section corridor before
 building terrain mesh and collision. `Street3D` remains the authority for visible road,
 kerb, footpath, stair, mesh, and collision generation; terrain owns only its supporting bed.
+Coplanar sibling streets under the same `Building3D` automatically merge their visible
+crossings and T-junctions: road ownership is deterministic, while buried road edges and
+kerb/footpath runs are clipped at the intersecting road edges without changing either
+authored path. Vertically separated crossings and stair-profile segments remain independent.
 When no authored street exists, the terrain's default `generate_streets_from_mask` pass also
 thins sampled blue STREET cells into branch-aware multipoint centerlines and creates transient
 Street3D assemblies beneath `LowPolyTerrain3D/GeneratedStreets`. Persistent manual height edits

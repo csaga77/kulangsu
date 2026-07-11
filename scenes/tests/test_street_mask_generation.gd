@@ -31,6 +31,8 @@ func _build_fixture() -> LowPolyTerrain3DScript:
 		mask.set_pixel(x, 8, Color.BLUE)
 	for y in range(8, 25):
 		mask.set_pixel(24, y, Color.BLUE)
+	for y in range(2, 15):
+		mask.set_pixel(16, y, Color.BLUE)
 	if mask.save_png(m_mask_path) != OK:
 		m_failures.append("Could not write the generated-street mask fixture")
 		return null
@@ -80,16 +82,21 @@ func _validate_generated_streets(terrain: LowPolyTerrain3DScript) -> void:
 		return
 	var has_mesh := false
 	var has_bend := false
+	var has_intersection_cut := false
 	for child in root.get_children():
 		if child is MeshInstance3D and (child as MeshInstance3D).mesh != null:
 			has_mesh = true
 		var path: PackedVector3Array = child.get("path_points")
 		if path.size() >= 3:
 			has_bend = true
+		if child.has_method("get_intersection_cuts") and !child.call("get_intersection_cuts").is_empty():
+			has_intersection_cut = true
 	if !has_mesh:
 		m_failures.append("Generated Street3D assemblies have no visible mesh")
 	if !has_bend:
 		m_failures.append("The bent STREET mask did not produce a multipoint street path")
+	if !has_intersection_cut:
+		m_failures.append("Generated STREET junction paths did not merge their sibling geometry")
 
 
 func _validate_rebuild_replaces_streets(terrain: LowPolyTerrain3DScript) -> void:

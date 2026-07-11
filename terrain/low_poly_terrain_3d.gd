@@ -19,6 +19,9 @@ const GENERATED_STREET_META := &"low_poly_terrain_generated_street"
 const GENERATED_STREET_ROOT_META := &"low_poly_terrain_generated_street_root"
 const GENERATED_STREET_ROOT_NAME := &"GeneratedStreets"
 const STREET_3D_SCRIPT_PATH := "res://addons/low_poly_building_editor/streets/street_3d.gd"
+const STREET_GEOMETRY_RESOLVER_SCRIPT_PATH := (
+	"res://addons/low_poly_building_editor/streets/street_geometry_resolver.gd"
+)
 const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 
 @export var rebuild: bool = false:
@@ -496,6 +499,7 @@ func _rebuild_from_source(regenerate_streets: bool = true) -> void:
 		# their baked corridors into terrain shaping.
 		generated_sources = _collect_generated_street_sources()
 		generation_summary = _reused_street_summary(generated_sources)
+	_refresh_generated_street_intersections(generated_sources)
 	last_street_integration_summary = _integrate_street_generation(grid, generated_sources)
 	last_street_integration_summary.merge(generation_summary, true)
 	if print_summary and int(last_street_integration_summary.get("mask_street_cell_count", 0)) > 0:
@@ -701,6 +705,17 @@ func _adapt_generated_stair_constraints(street: Node3D) -> void:
 		)
 	street.set("min_tread_depth", minimum_tread)
 	street.set("max_riser_height", required_maximum_riser)
+
+
+func _refresh_generated_street_intersections(streets: Array[Node]) -> void:
+	if streets.size() < 2:
+		return
+	var resolver_script := load(STREET_GEOMETRY_RESOLVER_SCRIPT_PATH) as GDScript
+	if resolver_script == null:
+		push_warning("LowPolyTerrain3D could not load the generated-street intersection resolver.")
+		return
+	var resolver: RefCounted = resolver_script.new(streets)
+	resolver.call("refresh_street_intersection_cuts")
 
 
 func _street_source_root() -> Node:
