@@ -874,15 +874,25 @@ func _update_state() -> void:
 	_sync_model_animation()
 
 
+func _get_jump_offset_y() -> float:
+	if !m_is_currently_jumping:
+		return 0.0
+	var t := clampf(m_jump_timer / JUMP_DURATION, 0.0, 1.0)
+	var parabola := 1.0 - pow(2.0 * t - 1.0, 2.0)
+	return JUMP_HEIGHT * parabola
+
+
 func _apply_visual_offset() -> void:
-	if !is_instance_valid(m_visual_root):
+	var jump_y := _get_jump_offset_y()
+	if is_instance_valid(m_visual_root):
+		m_visual_root.position = Vector3(0.0, jump_y, 0.0)
+	_apply_collision_jump_offset(jump_y)
+
+
+func _apply_collision_jump_offset(jump_y: float) -> void:
+	if !is_instance_valid(m_collision_shape):
 		return
-	var jump_y := 0.0
-	if m_is_currently_jumping:
-		var t := clampf(m_jump_timer / JUMP_DURATION, 0.0, 1.0)
-		var parabola := 1.0 - pow(2.0 * t - 1.0, 2.0)
-		jump_y = JUMP_HEIGHT * parabola
-	m_visual_root.position = Vector3(0.0, jump_y, 0.0)
+	m_collision_shape.position = Vector3(0.0, body_height * 0.5 + jump_y, 0.0)
 
 
 func _sync_visual_rotation() -> void:

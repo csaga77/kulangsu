@@ -109,6 +109,8 @@ var m_animation: String = "idle-s"
 var m_last_global_position: Vector2 = Vector2.ZERO
 var m_is_currently_jumping: bool = false
 var m_jump_timer: float = 0.0
+var m_collision_shapes: Array[Node2D] = []
+var m_collision_base_positions: PackedVector2Array = PackedVector2Array()
 var m_current_animation_name: String = ""
 var m_anim_options: Array[String] = []
 var m_cached_configuration: Dictionary = {}
@@ -156,6 +158,7 @@ func _ready() -> void:
 		controller.setup(self)
 
 	_ensure_universal_lpc_sprite()
+	_cache_collision_shapes()
 
 	_restart_face_driver_no_apply()
 
@@ -370,7 +373,7 @@ func _update_state() -> void:
 	if m_universal_lpc_sprite == null:
 		return
 
-	_set_sprite_offset(_get_current_sprite_offset())
+	_apply_jump_transform()
 
 	var base_animation_name: String = "walk"
 	if not is_walking:
@@ -498,14 +501,17 @@ func _apply_face_switch() -> void:
 	_set_universal_expression_by_name(face_to_use)
 
 
-func _get_current_sprite_offset() -> Vector2:
+func _get_jump_offset() -> Vector2:
 	if !m_is_currently_jumping:
-		return BASE_SPRITE_OFFSET
+		return Vector2.ZERO
 
 	var t: float = clampf(m_jump_timer / JUMP_DURATION, 0.0, 1.0)
 	var parabola: float = 1.0 - pow(2.0 * t - 1.0, 2.0)
-	var jump_y: float = -JUMP_HEIGHT * parabola
-	return BASE_SPRITE_OFFSET + Vector2(0.0, jump_y)
+	return Vector2(0.0, -JUMP_HEIGHT * parabola)
+
+
+func _get_current_sprite_offset() -> Vector2:
+	return BASE_SPRITE_OFFSET + _get_jump_offset()
 
 
 func _get_direction_suffix() -> String:
@@ -525,6 +531,28 @@ func _set_sprite_offset(offset: Vector2) -> void:
 		m_universal_lpc_sprite.position = offset
 
 
+func _cache_collision_shapes() -> void:
+	m_collision_shapes.clear()
+	m_collision_base_positions = PackedVector2Array()
+	for child in get_children():
+		if child is CollisionShape2D or child is CollisionPolygon2D:
+			var shape_node: Node2D = child as Node2D
+			m_collision_shapes.append(shape_node)
+			m_collision_base_positions.append(shape_node.position)
+
+
+func _set_collision_jump_offset(offset: Vector2) -> void:
+	for i in m_collision_shapes.size():
+		var shape_node: Node2D = m_collision_shapes[i]
+		if shape_node != null and is_instance_valid(shape_node):
+			shape_node.position = m_collision_base_positions[i] + offset
+
+
+func _apply_jump_transform() -> void:
+	_set_sprite_offset(_get_current_sprite_offset())
+	_set_collision_jump_offset(_get_jump_offset())
+
+
 func _process(delta: float) -> void:
 	if controller != null:
 		controller.process(delta)
@@ -536,7 +564,7 @@ func _process(delta: float) -> void:
 			m_is_currently_jumping = false
 			_update_state()
 		else:
-			_set_sprite_offset(_get_current_sprite_offset())
+			_apply_jump_transform()
 
 	if m_action_is_running and m_has_ready:
 		var def: Dictionary = ACTION_DEFS.get(int(facial_action), ACTION_DEFS[FacialActionEnum.NONE])
