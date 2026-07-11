@@ -186,6 +186,11 @@ func _configure_world(failures: Array[String]) -> void:
 
 	m_coordinates.configure_from_terrain(m_terrain)
 
+	# Streets are only regenerated on an explicit rebuild now (scene load reuses
+	# baked ones), so force one here to exercise generation from the island mask.
+	if m_terrain.has_method("rebuild_from_source"):
+		m_terrain.call("rebuild_from_source")
+
 	var profile := _resolve_generation_profile(failures)
 	var image := _load_mask_image(failures)
 	if profile == null or image == null:

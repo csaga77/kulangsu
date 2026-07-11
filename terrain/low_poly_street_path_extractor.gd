@@ -5,6 +5,14 @@ extends RefCounted
 ## Converts sampled STREET cells into deterministic centerline polylines. The
 ## thinning pass removes the width introduced when a source line touches more
 ## than one sample block; graph tracing then preserves bends and junctions.
+##
+## A diagonal source line does not land on the grid as a clean 45-degree run of
+## cells: block downsampling snaps it into a staircase whose corners sit up to
+## about one cell away from the ideal straight chord. Those sub-cell jogs are
+## sampling noise the grid cannot actually resolve, so the simplify pass runs
+## with a tolerance above one cell (see the extract() default). That collapses a
+## staircase back into a straight diagonal while still keeping genuine bends and
+## curves, whose deviation spans several cells.
 
 const NEIGHBOR_OFFSETS := [
 	Vector2i(0, -1),
@@ -24,7 +32,7 @@ func extract(
 	origin_offset: Vector3,
 	minimum_path_cells := 2,
 	maximum_paths := 256,
-	simplify_tolerance_cells := 0.35
+	simplify_tolerance_cells := 1.2
 ) -> Dictionary:
 	var result := {
 		"paths": [] as Array[PackedVector3Array],

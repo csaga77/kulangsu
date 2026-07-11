@@ -13,6 +13,10 @@ const LowPolyStreetPathExtractorScript = preload(
 	"res://terrain/low_poly_street_path_extractor.gd"
 )
 const GENERATED_STREET_META := &"low_poly_terrain_generated_street"
+## The generated-street root is persisted into the scene, so it carries its own
+## meta instead of GENERATED_META. That keeps the per-rebuild transient clear
+## (which targets GENERATED_META mesh/water children) from deleting baked streets.
+const GENERATED_STREET_ROOT_META := &"low_poly_terrain_generated_street_root"
 const GENERATED_STREET_ROOT_NAME := &"GeneratedStreets"
 const STREET_3D_SCRIPT_PATH := "res://addons/low_poly_building_editor/streets/street_3d.gd"
 const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
@@ -189,6 +193,17 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 			return
 		generated_street_footpath_width_cells = clamped_value
 		_request_rebuild()
+## Centerline simplify tolerance in cells. Diagonal mask lines rasterize into a
+## staircase whose corners sit up to ~1 cell off the ideal chord, so a tolerance
+## above one cell straightens diagonals into a single run while preserving
+## multi-cell bends and curves. Lower it only to keep finer sub-cell jogs.
+@export_range(0.0, 3.0, 0.05) var generated_street_simplify_tolerance_cells := 1.2:
+	set(value):
+		var clamped_value := maxf(value, 0.0)
+		if is_equal_approx(generated_street_simplify_tolerance_cells, clamped_value):
+			return
+		generated_street_simplify_tolerance_cells = clamped_value
+		_request_rebuild()
 ## When enabled, the terrain discovers duck-typed street sources, lets them
 ## sample the unmodified base grid, then shapes the terrain bed beneath their
 ## published road/kerb/footpath corridors before mesh and collision creation.
@@ -254,12 +269,28 @@ var m_street_integrator: LowPolyStreetCorridorIntegratorScript = null
 var m_street_path_extractor: LowPolyStreetPathExtractorScript = null
 var last_rebuild_duration_ms := 0.0
 var last_street_integration_summary: Dictionary = {}
+# Generated street meshes are held out of the saved scene: only their centerline,
+# sampled heights, and authored properties serialize, and the mesh rebuilds from
+# those on load. This stashes the live meshes across an editor save.
+var m_saved_street_meshes: Dictionary = {}
 
 
 func _ready() -> void:
 	m_is_ready = true
 	if build_on_ready:
-		_rebuild_from_source()
+		# Scene load reshapes terrain but reuses the streets baked into the scene
+		# instead of regenerating them.
+		_rebuild_from_source(false)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_EDITOR_PRE_SAVE:
+		# Drop generated street geometry so the .tscn stores only the street
+		# definition (centerline, sampled heights, authored properties).
+		_strip_generated_street_meshes_for_save()
+	elif what == NOTIFICATION_EDITOR_POST_SAVE:
+		# Restore the live meshes so the editor keeps showing the streets.
+		_restore_generated_street_meshes_after_save()
 
 
 func _request_rebuild() -> void:
@@ -268,11 +299,20 @@ func _request_rebuild() -> void:
 	if m_rebuild_queued:
 		return
 	m_rebuild_queued = true
-	call_deferred("_rebuild_from_source")
+	call_deferred("_rebuild_from_source", true)
 
 
+## Explicit rebuild: regenerates street geometry from the mask and bakes it into
+## the scene. This is the "rebuild the terrain in the editor" entry point.
 func rebuild_from_source() -> void:
-	_rebuild_from_source()
+	_rebuild_from_source(true)
+
+
+## Reshapes terrain from the source while keeping the already-generated streets
+## stored in the scene. Matches the scene-load path; useful for refreshing the
+## terrain bed without discarding baked street geometry.
+func rebuild_reusing_generated_streets() -> void:
+	_rebuild_from_source(false)
 
 
 func request_street_integration_rebuild() -> void:
@@ -414,7 +454,7 @@ func get_street_integration_summary() -> Dictionary:
 	return last_street_integration_summary.duplicate(true)
 
 
-func _rebuild_from_source() -> void:
+func _rebuild_from_source(regenerate_streets: bool = true) -> void:
 	var rebuild_started_usec := Time.get_ticks_usec()
 	m_rebuild_queued = false
 	_clear_generated_children()
@@ -443,9 +483,21 @@ func _rebuild_from_source() -> void:
 	m_sample_grid = grid
 	m_source_size = source_size
 	m_heightmap_defines_water_area = heightmap_defines_water_area
-	var generated_streets := _generate_streets_from_mask(grid)
-	last_street_integration_summary = _integrate_street_generation(grid, generated_streets["sources"])
-	last_street_integration_summary.merge(generated_streets["summary"], true)
+	var generated_sources: Array[Node] = []
+	var generation_summary: Dictionary = {}
+	if regenerate_streets:
+		# Explicit rebuild: discard baked streets and re-derive them from the mask.
+		_clear_generated_streets()
+		var generated_streets := _generate_streets_from_mask(grid)
+		generated_sources = generated_streets["sources"]
+		generation_summary = generated_streets["summary"]
+	else:
+		# Scene load / reuse: keep the streets stored in the scene and only feed
+		# their baked corridors into terrain shaping.
+		generated_sources = _collect_generated_street_sources()
+		generation_summary = _reused_street_summary(generated_sources)
+	last_street_integration_summary = _integrate_street_generation(grid, generated_sources)
+	last_street_integration_summary.merge(generation_summary, true)
 	if print_summary and int(last_street_integration_summary.get("mask_street_cell_count", 0)) > 0:
 		print(
 			"LowPolyTerrain3D: street mask %d cells -> %d paths -> %d generated streets (%d errors)."
@@ -562,7 +614,8 @@ func _generate_streets_from_mask(grid: Array[Array]) -> Dictionary:
 		cell_size,
 		_get_grid_origin_offset(Vector2i(grid[0].size(), grid.size())),
 		generated_street_minimum_path_cells,
-		generated_street_maximum_paths
+		generated_street_maximum_paths,
+		generated_street_simplify_tolerance_cells
 	)
 	summary["mask_street_cell_count"] = int(extraction.get("street_cell_count", 0))
 	summary["mask_street_skeleton_cell_count"] = int(extraction.get("skeleton_cell_count", 0))
@@ -581,10 +634,9 @@ func _generate_streets_from_mask(grid: Array[Array]) -> Dictionary:
 
 	var root := Node3D.new()
 	root.name = GENERATED_STREET_ROOT_NAME
-	root.set_meta(GENERATED_META, true)
+	root.set_meta(GENERATED_STREET_ROOT_META, true)
 	add_child(root)
-	if Engine.is_editor_hint():
-		root.owner = null
+	_persist_generated_street(root)
 	for index in range(paths.size()):
 		var street := street_script.new() as Node3D
 		if street == null:
@@ -602,8 +654,6 @@ func _generate_streets_from_mask(grid: Array[Array]) -> Dictionary:
 		street.set("terrain_sample_spacing", maxf(cell_size * 0.5, 0.1))
 		street.set("terrain_clearance", maxf(street_lift, 0.015))
 		root.add_child(street)
-		if Engine.is_editor_hint():
-			street.owner = null
 		var sample_result: Variant = street.call("resample_terrain", self)
 		var sample_errors := _string_array(sample_result)
 		if !sample_errors.is_empty():
@@ -618,6 +668,12 @@ func _generate_streets_from_mask(grid: Array[Array]) -> Dictionary:
 			root.remove_child(street)
 			street.queue_free()
 			continue
+		# Bake the street into the scene: build_on_ready lets a later scene load
+		# rebuild collision from the cached mesh without regenerating geometry, and
+		# _persist_generated_street sets owner so the node and its serialized mesh
+		# save into the .tscn.
+		street.set("build_on_ready", true)
+		_persist_generated_street(street)
 		sources.append(street)
 	summary["generated_source_count"] = sources.size()
 	return {"sources": sources, "summary": summary}
@@ -673,7 +729,9 @@ func _collect_street_sources(node: Node, result: Array[Node]) -> void:
 	):
 		result.append(node)
 	for child in node.get_children():
-		if child.has_meta(GENERATED_META):
+		# Skip transient generated meshes and the baked-street root so generated
+		# streets are never rediscovered here as authored sources.
+		if child.has_meta(GENERATED_META) or child.has_meta(GENERATED_STREET_ROOT_META):
 			continue
 		_collect_street_sources(child, result)
 
@@ -1006,3 +1064,82 @@ func _clear_generated_children() -> void:
 			continue
 		remove_child(child)
 		child.queue_free()
+
+
+## Removes the baked-street root. Called only on an explicit rebuild, right
+## before streets are regenerated, so scene loads never discard baked streets.
+func _clear_generated_streets() -> void:
+	var root := _generated_street_root()
+	if root == null:
+		return
+	remove_child(root)
+	root.queue_free()
+
+
+func _generated_street_root() -> Node:
+	return get_node_or_null(NodePath(String(GENERATED_STREET_ROOT_NAME)))
+
+
+## Editor PRE_SAVE: null each generated street's mesh so the geometry is not
+## serialized. The centerline, sampled height profile, and authored properties
+## still persist, and build_on_ready rebuilds the mesh from them on load.
+func _strip_generated_street_meshes_for_save() -> void:
+	m_saved_street_meshes.clear()
+	var root := _generated_street_root()
+	if root == null:
+		return
+	for child in root.get_children():
+		if !child.has_meta(GENERATED_STREET_META):
+			continue
+		var street := child as MeshInstance3D
+		if street == null:
+			continue
+		m_saved_street_meshes[street.get_instance_id()] = street.mesh
+		street.mesh = null
+
+
+## Editor POST_SAVE companion: put the live meshes back after the save wrote the
+## definition-only nodes.
+func _restore_generated_street_meshes_after_save() -> void:
+	for instance_id: int in m_saved_street_meshes:
+		var street := instance_from_id(instance_id) as MeshInstance3D
+		if street != null:
+			street.mesh = m_saved_street_meshes[instance_id]
+	m_saved_street_meshes.clear()
+
+
+## Streets already baked into the scene, used as corridor sources on reuse.
+func _collect_generated_street_sources() -> Array[Node]:
+	var result: Array[Node] = []
+	if !generate_streets_from_mask:
+		return result
+	var root := _generated_street_root()
+	if root == null:
+		return result
+	for child in root.get_children():
+		if child.has_meta(GENERATED_STREET_META) and child.has_method("get_world_terrain_corridor"):
+			result.append(child)
+	return result
+
+
+## Sets owner so a generated street node (and its serialized mesh) saves into the
+## edited scene. No-op at runtime, where nothing is serialized.
+func _persist_generated_street(node: Node) -> void:
+	if !Engine.is_editor_hint():
+		return
+	node.owner = owner if owner != null else self
+
+
+## Street summary for the reuse path: reports the streets carried over from the
+## scene rather than freshly extracted mask paths.
+func _reused_street_summary(reused_sources: Array[Node]) -> Dictionary:
+	return {
+		"mask_street_cell_count": 0,
+		"mask_street_skeleton_cell_count": 0,
+		"mask_path_count": reused_sources.size(),
+		"discarded_mask_path_count": 0,
+		"truncated_mask_path_count": 0,
+		"generated_source_count": reused_sources.size(),
+		"generation_errors": [] as Array[String],
+		"streets_reused": true,
+	}
