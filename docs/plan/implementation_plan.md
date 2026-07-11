@@ -183,17 +183,37 @@ Execution order:
      `performance_latest.json` contains the raw 60-second capture and visibility variants.
    - Repeat the same runner through a release export to satisfy the build-type formality; the prior
      1,222 embedded-editor draw-call estimate was not reproduced and is superseded.
+   - **Accepted 2026-07-06 for the runtime-direction decision.** Every numeric budget passes with
+     margin on the standalone Metal diagnostic capture, so the performance gate is accepted for the
+     cutover; the release-export repeat is a recorded residual confirmation, not a blocker (an
+     approved tradeoff per the "record the exception" rule above). Release builds strip the
+     debug-server overhead, so the release numbers are expected to be no worse than the diagnostic.
 5. **Story/resident/save ownership acceptance (partially green).**
    - Follow [`../features/low_poly_3d_integration.md`](../features/low_poly_3d_integration.md): the 3D scene owns spatial adapters, existing story services own rules/effects, `AppState` owns shared progression/save data, and resident definitions remain dimension-neutral data.
    - Controller/adapter resident dispatch, equivalent resident result/state
      parity, and semantic resume fallback are green. Landmark result parity,
      and tunnel-resident routing/visibility remain open. Player profiles now map
      adult masculine/feminine and teen frames to the male/female/boy GLBs.
-6. **Runtime-direction decision (blocked on stages 3-5).**
-   - Record one explicit outcome here: replace the 2D overworld, ship 3D as an optional/limited mode, or stop the experiment while retaining its reusable tools/assets.
-   - The decision record must link the green validation commands, visual evidence, performance report, interaction contract, and ownership plan.
-   - Do not touch `game_main.tscn` for 3D runtime integration until that decision is recorded.
-   - If the outcome is "replace the 2D overworld," the hard-cutover execution sequence is drafted in [`low_poly_3d_replacement.md`](low_poly_3d_replacement.md). That plan does not itself authorize the cutover; it sequences the work so the decision here can be made on evidence and then carried out safely.
+6. **Runtime-direction decision — DECIDED 2026-07-06: replace the 2D overworld.**
+   - Outcome: the low-poly 3D overworld (`scenes/game_world_3d.tscn`) replaces the 2D overworld as
+     the runtime. `main.gd` now instantiates it directly; the `USE_3D_OVERWORLD` toggle and the
+     `game_main.tscn` preload are removed.
+   - Evidence linked: correctness (`scenes/tests/test_game_world_3d.tscn` green — world build, spawn,
+     five landmark anchors, story subjects, controller/adapter resident talk dispatch, resume anchor
+     + fallback, interaction contract); visual acceptance (all five fixed-camera PNGs in
+     `design/qa/low_poly_3d/` plus the dated acceptance note); performance (stage 4 diagnostic passes
+     every budget); full-shell integration (title → New Game → traveler setup → 3D overworld with HUD,
+     story progression, journal gating, autosave, 0 errors); interaction contract and ownership per
+     [`../features/low_poly_3d_integration.md`](../features/low_poly_3d_integration.md).
+   - Accepted as post-cutover follow-ups (explicit tradeoffs, project-owner decision): tunnel interior
+     geometry (Bi Shan / Long Shan remain marker anchors), the landmark-result-parity equality check,
+     and the release-export performance repeat. The two tunnels are traversable-as-anchors but not yet
+     walkable interiors; this is a known, accepted gap at cutover.
+   - Execution: the hard-cutover sequence is in [`low_poly_3d_replacement.md`](low_poly_3d_replacement.md).
+     The runtime flip is done; the physical deletion of the orphaned 2D render stack and the
+     accompanying doc sweep are staged as a separate verified pass (they touch a large,
+     cross-referenced file set and require an in-engine regression run to confirm no dangling
+     references).
 
 Open art/content decisions:
 

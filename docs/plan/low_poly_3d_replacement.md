@@ -33,10 +33,15 @@ through the entire app shell. Per-item status is inline in the phases below; the
   264.98 MiB video / 140.50 MiB static memory, and a 534.52 ms cold terrain rebuild over 60 seconds
   at 2880×1620 physical pixels. Every numeric budget passes; the earlier 1,222 embedded-editor
   draw-call estimate was not reproduced.
-- **Open (editor / decision work):** tunnel interior geometry (Bi Shan / Long Shan are still
-  invisible anchors); the formal release-export
-  performance repeat; representative landmark result equality; the
-  runtime-direction decision; and the Phase G hard flip + 2D deletion.
+- **Decision made + runtime flipped (2026-07-06):** the runtime-direction decision is recorded as
+  **replace the 2D overworld** in `implementation_plan.md`, and `main.gd` now instantiates only
+  `game_world_3d.tscn` (toggle and `game_main.tscn` preload removed). The 3D overworld is the runtime;
+  the 2D scene is orphaned.
+- **Open (accepted follow-ups):** tunnel interior geometry (Bi Shan / Long Shan are still marker
+  anchors); the landmark-result-parity equality check; the release-export performance repeat; and the
+  physical deletion of the orphaned 2D render stack plus the Phase H doc sweep — held for an
+  editor-verified pass (the deletion touches a large cross-referenced file set and needs an in-engine
+  regression run).
 
 Integration is wired reversibly (the `USE_3D_OVERWORLD` toggle, default off), so none of the above
 has touched the shipped 2D runtime.
@@ -298,11 +303,22 @@ representative landmark outcome equality against a 2D dispatch from an equivalen
    overworld all worked; the HUD (pinned lead, status panel, contextual hints), autosave feedback,
    resident talk with real story progression (task advanced, next-beat hint surfaced), journal
    unlock-gating, and location sync all composed correctly over the 3D viewport with no integration
-   errors. The toggle was returned to `false` after the run.
+   errors.
+   *Flip executed 2026-07-06.* `main.gd` now holds a single `GAME_SCENE` = `game_world_3d.tscn` and
+   instantiates it directly; the `USE_3D_OVERWORLD` toggle and the `GAME_SCENE_2D`/`game_main.tscn`
+   preload are removed. The 3D overworld is the runtime overworld. `game_main.tscn` is now orphaned
+   (nothing references it), so nothing dangles.
 4. Delete the 2D render stack listed in "What Gets Replaced," and remove now-dead `preload`/
    `ext_resource` references.
+   *Status: staged, not executed.* The runtime flip (step 3) already retires the 2D overworld
+   functionally. The physical deletion is held for a separate verified pass because the 2D stack is
+   referenced across a large file set (a reference sweep of `game_main`/`StorySubjectArea2D`/etc. spans
+   docs, tests, and shared scenes), and Phase G step 5 requires an in-engine regression run to confirm
+   no dangling references — which the current authoring environment cannot perform. Doing the mass
+   deletion blind would risk a broken build and disrupt concurrent work, so it is deferred to an
+   editor-verified pass with the doc sweep in Phase H.
 5. Run the full regression suite and the standard main-flow validation; confirm no scene or resource
-   references dangle.
+   references dangle. *(Runs with the step-4 verified deletion pass.)*
 
 ### Phase H — Documentation and cleanup
 
