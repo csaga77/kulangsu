@@ -2,7 +2,7 @@
 
 [ext_resource type="Shader" uid="uid://bmvmdjduukkw5" path="res://characters/human_body_2d.gdshader" id="1_hhl7b"]
 [ext_resource type="Script" uid="uid://b2f2s66pb145c" path="res://characters/human_body_2d.gd" id="1_wfnr8"]
-[ext_resource type="Script" uid="uid://cslac4wgwcsl6" path="res://characters/universal_lpc/universal_lpc_sprite_2d.gd" id="3_1fo3j"]
+[ext_resource type="Script" uid="uid://cslac4wgwcsl6" path="res://addons/universal_lpc/universal_lpc_sprite_2d.gd" id="3_1fo3j"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_1lao4"]
 shader = ExtResource("1_hhl7b")

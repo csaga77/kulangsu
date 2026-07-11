@@ -2,7 +2,7 @@
 
 [ext_resource type="Shader" path="res://characters/human_body_2d.gdshader" id="1_hhl7b"]
 [ext_resource type="Script" path="res://characters/resident_npc.gd" id="1_resident"]
-[ext_resource type="Script" path="res://characters/universal_lpc/universal_lpc_sprite_2d.gd" id="3_1fo3j"]
+[ext_resource type="Script" path="res://addons/universal_lpc/universal_lpc_sprite_2d.gd" id="3_1fo3j"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_1lao4"]
 shader = ExtResource("1_hhl7b")

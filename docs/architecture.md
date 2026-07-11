@@ -167,7 +167,7 @@ Primary folders:
 
 - [`../characters/control/`](../characters/control)
 - [`../characters/control/bt/`](../characters/control/bt)
-- [`../characters/universal_lpc/`](../characters/universal_lpc)
+- [`../addons/universal_lpc/`](../addons/universal_lpc)
 - [`../common/gui/`](../common/gui)
 
 Responsibilities:
@@ -180,7 +180,8 @@ Responsibilities:
 
 Notes:
 
-- The runtime game consumes the prebuilt Universal LPC metadata under [`../resources/sprites/universal_lpc/`](../resources/sprites/universal_lpc).
+- The reusable Universal LPC 2D renderer, metadata manifest, generator/auditor tooling, and focused tests are colocated under [`../addons/universal_lpc/`](../addons/universal_lpc); its [`README.md`](../addons/universal_lpc/README.md) and [`docs/contract.md`](../addons/universal_lpc/docs/contract.md) define the addon boundary.
+- The runtime game consumes the addon's prebuilt [`universal_lpc_metadata.json`](../addons/universal_lpc/universal_lpc_metadata.json), which resolves generated spritesheets under [`../resources/sprites/universal_lpc/`](../resources/sprites/universal_lpc).
 - [`../characters/human_body_2d.gd`](../characters/human_body_2d.gd) owns the root material/shader setup for composed avatars, while the child Universal LPC node composes the visible layers.
 - [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd), [`../characters/control/base_controller_3d.gd`](../characters/control/base_controller_3d.gd), and [`../characters/control/player_controller_3d.gd`](../characters/control/player_controller_3d.gd) own the parallel low-poly 3D actor/controller prototype. They mirror the main `HumanBody2D` and controller hierarchy for future 3D slices, and `HumanBody3D` renders one premade low-poly GLB character model (default [`../assets/characters/male.glb`](../assets/characters/male.glb), with `boy.glb`/`female.glb` alternates) whose integrated appearance and idle/walk/run animation come from the model asset. Gravity, static walls, front and side stair behavior, and dynamic-body pushing are covered by [`../characters/tests/test_character_collisions.tscn`](../characters/tests/test_character_collisions.tscn). The runtime overworld still uses the 2D actor/controller stack.
 
@@ -218,10 +219,11 @@ Boundary:
 
 - Extend the owning feature folder before creating duplicate logic elsewhere.
 
-### Editor Tooling
+### Addons And Editor Tooling
 
 Primary folders:
 
+- [`../addons/universal_lpc/`](../addons/universal_lpc)
 - [`../addons/low_poly_building_editor/`](../addons/low_poly_building_editor)
 - [`../addons/mp3_to_ogg/`](../addons/mp3_to_ogg)
 - [`../addons/storyline_editor/`](../addons/storyline_editor)
@@ -232,6 +234,7 @@ Each plugin documents itself in its own root `README.md` (with deeper docs under
 
 Responsibilities:
 
+- reusable runtime LPC sprite composition plus development-time metadata generation and source-asset auditing (see [`../addons/universal_lpc/README.md`](../addons/universal_lpc/README.md))
 - project-local editor tooling for authoring content and validating assets
 - low-poly building and terrain-profiled street blockout authoring through normal scene nodes, with Street3D owning visible road/kerb/footpath/stair geometry while LowPolyTerrain3D extracts deterministic multipoint centerlines from mask STREET cells, creates transient Street3D assemblies, and shapes its own supporting bed from generated or authored published corridors before terrain mesh construction (see [`../addons/low_poly_building_editor/README.md`](../addons/low_poly_building_editor/README.md))
 - deterministic, versioned JSON-to-scene low-poly building and street generation plus graphical seeded-variant thumbnails/contact sheets for agents and batch authoring, kept inside the building-editor addon
@@ -241,6 +244,7 @@ Responsibilities:
 Boundary:
 
 - Editor plugins are authoring helpers. They should not become runtime gameplay services or be wired into `main.tscn`.
+- Runtime addons may be consumed by game-owned actors, but gameplay movement, collision, and appearance-catalog policy stay outside the addon.
 - Building-editor-generated content should remain ordinary scene-owned nodes under `Building3D` coordinators.
 
 ### Submodule Layer

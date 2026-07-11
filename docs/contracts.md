@@ -112,6 +112,25 @@ Governance:
 - do not let future route implementations bypass the generic subject/fact model by adding direct route-to-route service calls unless there is a proven ownership need
 - prefer optional capability adapters and published facts over hardcoded calls between individual story families
 
+## Universal LPC Addon Boundary
+
+Owned by:
+
+- [`../addons/universal_lpc/`](../addons/universal_lpc)
+- [`../addons/universal_lpc/docs/contract.md`](../addons/universal_lpc/docs/contract.md)
+
+Current contract:
+
+- the addon owns Universal LPC metadata interpretation, texture resolution/caching, layered `AnimatedSprite2D` composition, metadata generation, and source-asset auditing
+- consuming actors such as [`../characters/human_body_2d.gd`](../characters/human_body_2d.gd) own movement, collision, materials, gameplay animation selection, and project-specific appearance policy
+- runtime consumers load the prebuilt addon manifest at `res://addons/universal_lpc/universal_lpc_metadata.json`; that manifest resolves Kulangsu's generated sprite content under `res://resources/sprites/universal_lpc`
+- development tooling may read the upstream generator submodule, but the addon does not own or modify that third-party repository
+
+Governance:
+
+- keep reusable LPC renderer/tooling changes in the addon and document contract changes in the addon's own docs
+- keep Kulangsu-specific actor, resident, and wardrobe behavior outside the addon
+
 ## Weather Runtime Contract
 
 Owned by:

@@ -2,7 +2,7 @@
 class_name LpcSpriteBuilder
 extends Node
 
-@export var metadata_file: String = "res://resources/sprites/universal_lpc/universal_lpc_metadata.json"
+@export var metadata_file: String = "res://addons/universal_lpc/universal_lpc_metadata.json"
 
 func get_configuration() -> Dictionary:
 	return m_configuration
@@ -124,8 +124,8 @@ func _apply_selection_state_recursive(children: Array, selections: Dictionary, c
 			if data.get("match_body_color", false):
 				m_body_variant = variant_index + 1
 
-func _get_property_list() -> Array:
-	var properties: Array = []
+func _get_property_list() -> Array[Dictionary]:
+	var properties: Array[Dictionary] = []
 
 	if not m_body_types.is_empty():
 		properties.append({

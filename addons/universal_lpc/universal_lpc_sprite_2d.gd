@@ -2,7 +2,7 @@
 class_name UniversalLpcSprite2D
 extends Node2D
 
-@export var metadata_file: String = "res://resources/sprites/universal_lpc/universal_lpc_metadata.json":
+@export var metadata_file: String = "res://addons/universal_lpc/universal_lpc_metadata.json":
 	set(new_file):
 		if metadata_file == new_file:
 			return
@@ -79,8 +79,8 @@ var is_playing: bool = true:
 var m_configuration: Dictionary = {}
 var m_sprite_nodes: Array[AnimatedSprite2D] = []
 
-func _get_property_list() -> Array:
-	var properties: Array = []
+func _get_property_list() -> Array[Dictionary]:
+	var properties: Array[Dictionary] = []
 
 	properties.append({
 		"name": "is_playing",

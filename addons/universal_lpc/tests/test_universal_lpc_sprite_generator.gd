@@ -5,7 +5,7 @@ extends Node2D
 @onready var m_builder: LpcSpriteBuilder = $universal_lpc_sprite_builder
 @onready var m_sprite: UniversalLpcSprite2D = $universal_lpc_sprite
 
-@export var metadata_file: String = "res://resources/sprites/universal_lpc/universal_lpc_metadata.json"
+@export var metadata_file: String = "res://addons/universal_lpc/universal_lpc_metadata.json"
 @export var target_path: String = "res://resources/sprites/universal_lpc"
 
 var m_is_loading_sprite := false
@@ -22,7 +22,7 @@ func _ready() -> void:
 	_generate_selection_data()
 
 
-func _get_property_list() -> Array:
+func _get_property_list() -> Array[Dictionary]:
 	return [
 		{
 			"name": "generate_metadata_json",

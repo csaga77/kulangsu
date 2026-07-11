@@ -1,7 +1,7 @@
 @tool
 extends Node
 
-const UniversalLpcAssetAuditorScript = preload("res://characters/universal_lpc/universal_lpc_asset_auditor.gd")
+const UniversalLpcAssetAuditorScript = preload("res://addons/universal_lpc/universal_lpc_asset_auditor.gd")
 
 @export_dir var universal_lpc_root: String = "res://3rdparty/Universal-LPC-Spritesheet-Character-Generator"
 @export var sheet_definitions_dir: String = "sheet_definitions"
@@ -27,7 +27,7 @@ func _ready() -> void:
 		get_tree().quit()
 
 
-func _get_property_list() -> Array:
+func _get_property_list() -> Array[Dictionary]:
 	return [
 		{
 			"name": "run_asset_audit",

@@ -326,7 +326,7 @@ When the system breaks, start here:
 - Resident appears but has the wrong look:
   - Check `resident_id` on the instantiated controller.
   - Check `AppState.get_resident_appearance_config()` and `NPCController._apply_resident_presentation()`.
-  - Check the resident's LPC path/body-type/variant combination against [`../resources/sprites/universal_lpc/universal_lpc_metadata.json`](../resources/sprites/universal_lpc/universal_lpc_metadata.json).
+  - Check the resident's LPC path/body-type/variant combination against [`../addons/universal_lpc/universal_lpc_metadata.json`](../addons/universal_lpc/universal_lpc_metadata.json).
   - Treat `Failed to resolve combined texture for selection layer` warnings as invalid appearance content, not as a harmless fallback.
 - Prompt says `Inspect` instead of `Talk`:
   - Check whether the target is actually using `NPCController`.
