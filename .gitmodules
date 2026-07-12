@@ -14,3 +14,6 @@
 	path = agent_tools
 	url = ../agent_tools.git
 	branch = main
+[submodule "addons/mp3_to_ogg"]
+	path = addons/mp3_to_ogg
+	url = ../../csaga77-godot-addons/mp3_to_ogg.git
