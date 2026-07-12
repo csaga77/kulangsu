@@ -25,7 +25,7 @@ No package manager, CI pipeline, or automated test runner is checked into this r
 - [`scenes/`](scenes) - runtime gameplay scenes plus validation scene containers
 - [`terrain/`](terrain) - island terrain scene, terrain generation, and water rendering setup
 - [`resources/`](resources) - audio, sprites, materials, animations, and tilesets
-- [`addons/universal_lpc/`](addons/universal_lpc) - reusable Universal LPC 2D renderer, metadata/tooling, and focused validation scenes
+- [`addons/universal_lpc/`](addons/universal_lpc) - reusable Universal LPC 2D renderer, bundled generated sprites, metadata/tooling, and focused validation scenes
 - [`scripts/`](scripts) - repo-local workflow configs and project-specific helper data
 - [`docs/`](docs) - project documentation for humans and coding agents
 - [`agent_tools/`](agent_tools) - shared agent runbooks and reusable support docs

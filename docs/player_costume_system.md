@@ -58,7 +58,7 @@ The prototype wardrobe currently ships with four presets:
 
 ### Universal LPC Runtime Contract
 
-- The shipped game consumes the prebuilt metadata file at [`../addons/universal_lpc/universal_lpc_metadata.json`](../addons/universal_lpc/universal_lpc_metadata.json); generated spritesheets remain under [`../resources/sprites/universal_lpc/`](../resources/sprites/universal_lpc).
+- The shipped game consumes the prebuilt metadata file at [`../addons/universal_lpc/universal_lpc_metadata.json`](../addons/universal_lpc/universal_lpc_metadata.json); generated spritesheets are colocated under [`../addons/universal_lpc/resources/`](../addons/universal_lpc/resources).
 - Regenerating Universal LPC metadata is a development-time workflow driven by the validation tooling under [`../addons/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn`](../addons/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn), not a runtime game step.
 - [`../characters/human_body_2d.gd`](../characters/human_body_2d.gd) remains the root avatar node and owns the material/shader setup for the composed character.
 - [`../addons/universal_lpc/universal_lpc_sprite_2d.gd`](../addons/universal_lpc/universal_lpc_sprite_2d.gd) handles metadata-driven layer composition under `HumanBody2D`.

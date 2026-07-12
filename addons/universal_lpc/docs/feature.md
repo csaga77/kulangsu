@@ -13,7 +13,7 @@ The runtime path is:
 
 ## Regenerating Metadata
 
-Enable the `Universal LPC 2D Character` plugin and use **Open Sprite Composer** in its editor dock. The opened `tests/test_universal_lpc_sprite_generator.tscn` scene exposes inspector tool buttons for loading and generating metadata. The default workflow writes the manifest to `res://addons/universal_lpc/universal_lpc_metadata.json` and generated sprites to `res://resources/sprites/universal_lpc`.
+Enable the `Universal LPC 2D Character` plugin and use **Open Sprite Composer** in its editor dock. The opened `tests/test_universal_lpc_sprite_generator.tscn` scene exposes inspector tool buttons for loading and generating metadata. The default workflow writes the manifest to `res://addons/universal_lpc/universal_lpc_metadata.json` and generated sprites to `res://addons/universal_lpc/resources`.
 
 Generation depends on the upstream Universal LPC submodule being initialized at `res://3rdparty/Universal-LPC-Spritesheet-Character-Generator`.
 

@@ -11,7 +11,7 @@
 ## Metadata And Asset Contract
 
 - The metadata file describes layer definitions, animation layouts, body types, expressions, and the generated sprite target path.
-- Kulangsu's checked-in metadata resolves textures below `res://resources/sprites/universal_lpc/spritesheets`.
+- Kulangsu's checked-in metadata resolves textures below `res://addons/universal_lpc/resources/spritesheets`.
 - Runtime code consumes prebuilt metadata and sprites. It does not regenerate character assets during gameplay.
 - `UniversalLpcFactory` owns metadata parsing and texture caching for all renderer instances using the configured manifest.
 
@@ -20,7 +20,7 @@
 - Enabling `plugin.cfg` adds a `Universal LPC 2D Character` editor dock without changing the runtime renderer API.
 - The dock may open the sprite-composition scene and run the source-asset audit scene; it does not mutate metadata or source art by itself.
 - `UniversalLpcMetadataGenerator` reads Universal LPC source definitions from `res://3rdparty/Universal-LPC-Spritesheet-Character-Generator` by default.
-- Generating metadata may update the addon's manifest while generated combined sprites remain project content under `res://resources/sprites/universal_lpc`.
+- Generating metadata may update the addon's manifest and generated combined sprites under `res://addons/universal_lpc/resources`.
 - `UniversalLpcAssetAuditor` reports missing animation rows and source/definition mismatches without changing source art.
 - A consuming project may override all source, metadata, target, and report paths.
 

@@ -226,7 +226,7 @@ func read_all_sheet_metadata() -> Array[Dictionary]:
 	return results
 
 
-func export_metadata_as_json(output_path: String = "res://universal_lpc_metadata.json", target_path: String = "res://resources/sprites/universal_lpc") -> bool:
+func export_metadata_as_json(output_path: String = "res://universal_lpc_metadata.json", target_path: String = "res://addons/universal_lpc/resources") -> bool:
 	m_unreferenced_animations = _unique_packed(_to_packed_string_array(_get_default_frame_layout().keys()))
 	var definitions := read_all_sheet_metadata()
 

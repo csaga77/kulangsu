@@ -6,7 +6,7 @@ extends Node2D
 @onready var m_sprite: UniversalLpcSprite2D = $universal_lpc_sprite
 
 @export var metadata_file: String = "res://addons/universal_lpc/universal_lpc_metadata.json"
-@export var target_path: String = "res://resources/sprites/universal_lpc"
+@export var target_path: String = "res://addons/universal_lpc/resources"
 
 var m_is_loading_sprite := false
 

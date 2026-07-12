@@ -12,6 +12,7 @@ Enable `Universal LPC 2D Character` under **Project > Project Settings > Plugins
 - `universal_lpc_metadata_generator.gd` - development-time metadata and combined-sheet generator
 - `universal_lpc_asset_auditor.gd` - source-art and metadata coverage audit
 - `universal_lpc_metadata.json` - prebuilt manifest consumed by the runtime
+- `resources/spritesheets/` - generated LPC textures consumed by the manifest
 - `plugin.gd` / `plugin.cfg` - editor plugin registration and dock lifecycle
 - `universal_lpc_dock.gd` - editor status and workflow launcher
 - `tests/` - focused generation, composition, and source-audit scenes
@@ -22,7 +23,7 @@ The `Universal LPC 2D Character` dock reports whether the prebuilt manifest and 
 
 ## Kulangsu Integration
 
-Kulangsu's generated spritesheets remain under `res://resources/sprites/universal_lpc/spritesheets`. The prebuilt manifest's `target_path` points at that content directory. `HumanBody2D` remains a game-owned actor under `res://characters`; it embeds `UniversalLpcSprite2D` as its renderer.
+Kulangsu's generated spritesheets are colocated under `res://addons/universal_lpc/resources/spritesheets`. The prebuilt manifest's `target_path` points at the addon's resource directory. `HumanBody2D` remains a game-owned actor under `res://characters`; it embeds `UniversalLpcSprite2D` as its renderer.
 
 Development-time generation and auditing read the upstream source checkout at `res://3rdparty/Universal-LPC-Spritesheet-Character-Generator`. That submodule is not part of this addon and remains governed separately.
 

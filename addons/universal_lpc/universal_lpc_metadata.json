@@ -42066,6 +42066,6 @@
 	],
 	"sheet_definitions_dir": "sheet_definitions",
 	"spritesheets_dir": "spritesheets",
-	"target_path": "res://resources/sprites/universal_lpc",
+	"target_path": "res://addons/universal_lpc/resources",
 	"universal_lpc_root": "res://3rdparty/Universal-LPC-Spritesheet-Character-Generator"
 }
