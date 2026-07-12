@@ -47,16 +47,6 @@
           ]
         },
         {
-          "label": "godot_tilemap status",
-          "cmd": [
-            "git",
-            "-C",
-            "godot_tilemap",
-            "status",
-            "-sb"
-          ]
-        },
-        {
           "label": "lpc generator status",
           "cmd": [
             "git",

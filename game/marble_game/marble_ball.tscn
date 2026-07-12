@@ -1,62 +1,37 @@
-[gd_scene format=3 uid="uid://cx454ysopwbyg"]
+[gd_scene load_steps=6 format=3 uid="uid://cx454ysopwbyg"]
 
-[ext_resource type="Script" uid="uid://djt6soykmlobh" path="res://game/marble_game/marble_ball.gd" id="1_h55h2"]
-[ext_resource type="AudioStream" uid="uid://eoxfok8ew80c" path="res://resources/audio/sfx/marble_hit.mp3" id="2_h55h2"]
-[ext_resource type="Shader" uid="uid://c0jfymial01io" path="res://game/marble_game/marble_ball.gdshader" id="3_aphqf"]
-[ext_resource type="Texture2D" uid="uid://bmfvvxghdvi6b" path="res://resources/sprites/white_marble.png" id="4_js1yd"]
+[ext_resource type="Script" uid="uid://djt6soykmlobh" path="res://game/marble_game/marble_ball.gd" id="1_ball"]
+[ext_resource type="AudioStream" uid="uid://eoxfok8ew80c" path="res://resources/audio/sfx/marble_hit.mp3" id="2_hit"]
 
-[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_onfuh"]
-bounce = 0.2
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_ball"]
+friction = 0.32
+bounce = 0.48
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_1f8l1"]
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_j17kk"]
+[sub_resource type="SphereShape3D" id="SphereShape3D_ball"]
 resource_local_to_scene = true
-shader = ExtResource("3_aphqf")
-shader_parameter/radius = 1.0
-shader_parameter/keep_original_aspect = true
-shader_parameter/roll_rot = Basis(1, 0, 0, 0, 1, 0, 0, 0, 1)
-shader_parameter/rim_darkening = 0.650000030875
-shader_parameter/highlight_power = 72.4930033959175
-shader_parameter/highlight_strength = 0.522000024795
-shader_parameter/light_dir = Vector2(-0.5, -0.8)
-shader_parameter/refraction_strength = 0.02
-shader_parameter/refraction_power = 2.2
-shader_parameter/fresnel_strength = 0.9
-shader_parameter/fresnel_power = 3.0
-shader_parameter/ball_opacity = 0.6550000311125
+radius = 0.25
 
-[node name="ball" type="RigidBody2D" unique_id=1800977570]
-physics_material_override = SubResource("PhysicsMaterial_onfuh")
-gravity_scale = 0.0
-linear_damp = 1.0
-angular_damp = 29.283
-script = ExtResource("1_h55h2")
-marble_radius_px = 10.0
-hit_min_speed = 0.0
-hit_max_speed = 80.0
-hit_volume_db_slow = -40.0
+[sub_resource type="SphereMesh" id="SphereMesh_ball"]
+resource_local_to_scene = true
+radius = 0.25
+height = 0.5
+radial_segments = 12
+rings = 6
 
-[node name="collision_shape" type="CollisionShape2D" parent="." unique_id=539894603]
-visible = false
-shape = SubResource("CircleShape2D_1f8l1")
+[node name="ball" type="RigidBody3D"]
+physics_material_override = SubResource("PhysicsMaterial_ball")
+linear_damp = 0.75
+angular_damp = 0.9
+continuous_cd = true
+script = ExtResource("1_ball")
 
-[node name="marble_sprite" type="TextureRect" parent="." unique_id=611055060]
-material = SubResource("ShaderMaterial_j17kk")
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -10.0
-offset_top = -10.0
-offset_right = 10.0
-offset_bottom = 10.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-texture = ExtResource("4_js1yd")
-expand_mode = 1
+[node name="collision_shape" type="CollisionShape3D" parent="."]
+shape = SubResource("SphereShape3D_ball")
 
-[node name="hit_sfx" type="AudioStreamPlayer2D" parent="." unique_id=2109234748]
-stream = ExtResource("2_h55h2")
+[node name="marble_mesh" type="MeshInstance3D" parent="."]
+mesh = SubResource("SphereMesh_ball")
+cast_shadow = 1
+
+[node name="hit_sfx" type="AudioStreamPlayer3D" parent="."]
+stream = ExtResource("2_hit")
+unit_size = 4.0

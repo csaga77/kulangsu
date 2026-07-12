@@ -6,7 +6,7 @@ Read [`design_brief.md`](design_brief.md) first for the minimum-token project su
 
 This document captures the current design and implementation shape of the marble game prototype so future work can extend it without re-deriving the rules from code.
 
-The prototype is currently a self-contained physics toy rather than part of the island progression loop. It is still useful as a reference for:
+The prototype is currently a self-contained low-poly 3D physics toy rather than part of the island progression loop. It is still useful as a reference for:
 
 - tactile physics interaction
 - reusable minigame architecture
@@ -32,16 +32,16 @@ Primary scripts:
 - [`../game/marble_game/marble_hole.gd`](../game/marble_game/marble_hole.gd)
 - [`../game/marble_game/damping_area.gd`](../game/marble_game/damping_area.gd)
 
-The shipped scene currently defaults to `FreeMode`, contains one player-controlled marble and one AI marble, and restarts itself after a full clear.
+The shipped scene currently defaults to `FreeMode`, contains one player-controlled marble and one AI marble, and restarts itself after a full clear. Rendering and physics are fully 3D and use no external tilemap resources.
 
 ## Player Experience
 
-The prototype currently reads as a compact tabletop challenge:
+The prototype reads as a compact low-poly tabletop diorama:
 
-- marbles spawn around a central hole
+- faceted 3D marbles spawn around a recessed hole
 - each marble is kicked by drag input or simple AI
-- the hole acts as both target and elimination state
-- damping zones and wall bounces shape the motion
+- the hole acts as both target and physical drop/catch state
+- a raised sand patch adds damping while solid rails shape wall bounces
 
 The feel is closer to a short physics toy than a scored sports game. The strongest qualities today are immediacy and visual readability rather than progression depth.
 
@@ -88,11 +88,11 @@ Two modes exist today:
 
 [`../game/marble_game/marble_ball.gd`](../game/marble_game/marble_ball.gd) combines:
 
-- `RigidBody2D` motion
+- `RigidBody3D` rolling and collision
 - collision and hole state signaling
-- rolling shader presentation
-- hit sound playback
-- damping aggregation from overlapping areas
+- low-segment sphere-mesh presentation and dynamic 3D shadows
+- positional hit sound playback
+- damping aggregation from overlapping `Area3D` zones
 - delegation to a controller resource
 
 This makes the marble scene reusable across player, AI, and future scripted controllers.
@@ -106,8 +106,8 @@ Current implementations:
 - [`../game/marble_game/marble_ball_player_controller.gd`](../game/marble_game/marble_ball_player_controller.gd): click-drag kick input
 - [`../game/marble_game/marble_ball_ai_controller.gd`](../game/marble_game/marble_ball_ai_controller.gd): delayed kick toward the hole with jitter and strength variation
 
-Controllers are resources, so a scene can mix human and AI marbles without changing the marble body script.
-The shared spawn helper now samples inside the root game’s exported board bounds before throwing a marble away from the hole.
+Controllers are resources, so a scene can mix human and AI marbles without changing the marble body script. Player input projects the mouse through the active `Camera3D` onto the marble-height board plane before calculating the kick impulse.
+The shared spawn helper samples X/Z positions inside the root game’s exported `Rect2` board bounds before throwing a marble away from the hole.
 
 ### Hole and Damping
 
@@ -115,9 +115,9 @@ The shared spawn helper now samples inside the root game’s exported board boun
 
 - overlap tracking
 - `m_in_hole` state transitions
-- inward pull force
+- inward and downward pull force into a physical catch pocket
 
-[`../game/marble_game/damping_area.gd`](../game/marble_game/damping_area.gd) provides localized friction-like behavior by contributing additional linear and angular damping while a marble is inside the area.
+[`../game/marble_game/damping_area.gd`](../game/marble_game/damping_area.gd) provides localized friction-like behavior through a visible sand-colored `Area3D`, contributing additional linear and angular damping while a marble overlaps it.
 
 ## Mode Rules
 
@@ -149,32 +149,37 @@ This mode is the more game-like ruleset and is the better foundation if the prot
 
 ## Scene Layout Notes
 
-The current scene is a small enclosed board:
+The current scene is a small enclosed 3D board:
 
-- world bounds form a rectangle from `(0, 0)` to `(544, 352)`
-- the hole sits near the upper-left quadrant at `(144, 118)`
-- one damping polygon sits left of center
-- the camera follows the player marble
+- X/Z world bounds form a rectangle from `(0, 0)` to `(13.6, 8.8)`
+- the hole sits near the upper-left quadrant at `(3.6, 2.95)`
+- one raised damping patch sits near the board center
+- four `StaticBody3D` rails enclose the playfield
+- a fixed perspective `Camera3D`, two-direction light rig, and ambient environment present the board as a tabletop diorama
+- the floor is split around the target opening so marbles physically drop into its lower catch plate
 
 Because the hole is off-center, spawn and shot tuning must account for the small playfield and asymmetric safe space.
 
 ## What Is Working Well
 
 - The split between root game state, mode rules, and per-ball controllers is a strong reusable pattern.
-- The marble presentation is already appealing thanks to the rolling shader and hit audio.
+- Low-segment meshes, warm rails, a recessed target, and real lighting make the board read clearly as low-poly 3D.
+- Camera-ray input preserves direct drag interaction despite the perspective view.
 - `FreeMode` is useful for rapid feel iteration.
 - `TurnMode` already has the beginnings of a readable winner / loser structure.
 
 ## Recent Stability Notes
 
 - Mode callbacks are routed through [`../game/marble_game/marble_game.gd`](../game/marble_game/marble_game.gd) only.
-- Restart spawn sampling uses the scene’s configured board bounds and avoids obvious ball overlap when possible.
+- Restart spawn sampling maps the scene’s configured `Rect2` bounds onto the X/Z plane and avoids obvious ball overlap when possible.
 - The prototype currently loads without the earlier stale scene connection issue.
+- [`../game/marble_game/tests/test_marble_game_3d.gd`](../game/marble_game/tests/test_marble_game_3d.gd) verifies the 3D node types, marble discovery, rail containment, floor support, and a post-impulse physics sample.
 
 ## Recommended Next Steps
 
-1. Add a small deterministic probe or test scene for turn-mode rules so kick counting, extra chances, and loser resolution can be verified quickly after changes.
-2. If the board becomes more crowded, upgrade spawn selection from simple clearance checks to shape queries against live physics.
+1. Add a deterministic probe for turn-mode rules so kick counting, extra chances, and loser resolution can be verified quickly after changes.
+2. Add an in-world drag trajectory preview if the perspective camera makes shot strength difficult to judge during playtesting.
+3. If the board becomes more crowded, upgrade spawn selection from simple clearance checks to 3D shape queries against live physics.
 
 ## Fit With The Main Game
 

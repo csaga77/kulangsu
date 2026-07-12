@@ -1,6 +1,6 @@
 # MarbleBall.gd
 class_name MarbleBall
-extends RigidBody2D
+extends RigidBody3D
 
 signal kicked(ball: MarbleBall)
 signal body_hit(ball: MarbleBall, other_body: Node)
@@ -8,61 +8,38 @@ signal hole_state_changed(ball: MarbleBall, in_hole: bool)
 
 @export var controller: MarbleBallController
 
-@export var marble_texture: Texture2D:
-	set(v):
-		marble_texture = v
-		_apply_texture_to_sprite()
+@export var marble_radius: float = 0.25:
+	set(value):
+		marble_radius = maxf(value, 0.01)
 		_apply_radius_to_nodes()
-		_update_rolling_shader(0.0, true)
+
+@export var marble_color: Color = Color("#75b9ee"):
+	set(value):
+		marble_color = value
+		_apply_color_to_mesh()
 
 @export var enable_area_damping: bool = true
-@export var max_linear_damp: float = 50.0
-@export var max_angular_damp: float = 50.0
+@export var max_linear_damp: float = 12.0
+@export var max_angular_damp: float = 12.0
 
-@export var enable_rolling_shader: bool = true
-
-@export var marble_radius_px: float = 32.0:
-	set(v):
-		marble_radius_px = max(v, 0.001)
-		_apply_radius_to_nodes()
-		_update_rolling_shader(0.0, true)
-
-@export var max_roll_radians_per_sec: float = 40.0
-@export var roll_use_linear_velocity: bool = true
-@export var invert_roll_direction: bool = true
-
-# ------------------------------------------------
-# SIMPLE HIT SFX (uses $hit_sfx)
-# Faster hit => louder
-# ------------------------------------------------
-@export var hit_min_speed: float = 40.0
-@export var hit_max_speed: float = 500.0
+@export var hit_min_speed: float = 0.2
+@export var hit_max_speed: float = 5.0
 @export var hit_cooldown_sec: float = 0.06
-
-@export var hit_volume_db_slow: float = -22.0
+@export var hit_volume_db_slow: float = -30.0
 @export var hit_volume_db_fast: float = -6.0
 @export var hit_pitch_slow: float = 0.95
 @export var hit_pitch_fast: float = 1.05
-# ------------------------------------------------
 
-@onready var m_marble_sprite: CanvasItem = $marble_sprite
-@onready var m_collision_shape: CollisionShape2D = $collision_shape
+@onready var m_marble_mesh: MeshInstance3D = $marble_mesh
+@onready var m_collision_shape: CollisionShape3D = $collision_shape
+@onready var m_hit_sfx: AudioStreamPlayer3D = $hit_sfx
 
-@onready var m_hit_sfx: AudioStreamPlayer2D = $hit_sfx
 var m_hit_cooldown: float = 0.0
-
 var m_game: MarbleGame = null
 var m_in_hole: bool = false
-
 var m_base_linear_damp: float = 0.0
 var m_base_angular_damp: float = 0.0
 var m_damping_contrib: Dictionary = {}
-
-var m_last_valid_roll_axis: Vector2 = Vector2.UP
-var m_roll_q: Quaternion = Quaternion()
-var m_last_pos: Vector2 = Vector2.ZERO
-
-const shader_param_roll_rot: StringName = &"roll_rot"
 
 
 func _ready() -> void:
@@ -71,21 +48,14 @@ func _ready() -> void:
 
 	if not body_entered.is_connected(_on_body_entered):
 		body_entered.connect(_on_body_entered)
-
 	if is_instance_valid(controller):
 		controller.set_ball(self)
 
-	_apply_texture_to_sprite()
 	_apply_radius_to_nodes()
-
+	_apply_color_to_mesh()
 	m_base_linear_damp = linear_damp
 	m_base_angular_damp = angular_damp
 	_recompute_damping()
-
-	m_last_pos = global_position
-	m_roll_q = Quaternion()
-
-	_update_rolling_shader(0.0, true)
 
 
 func set_game(game: MarbleGame) -> void:
@@ -118,11 +88,8 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	if is_instance_valid(controller):
 		controller.physics_tick(delta)
-
 	if m_hit_cooldown > 0.0:
-		m_hit_cooldown = max(0.0, m_hit_cooldown - delta)
-
-	_update_rolling_shader(delta, false)
+		m_hit_cooldown = maxf(0.0, m_hit_cooldown - delta)
 
 
 func _on_body_entered(body: Node) -> void:
@@ -131,33 +98,22 @@ func _on_body_entered(body: Node) -> void:
 
 
 func _play_hit_sfx(body: Node) -> void:
-	if m_hit_sfx == null:
-		return
-	if m_hit_cooldown > 0.0:
-		return
-	if not (body is MarbleBall):
+	if m_hit_sfx == null or m_hit_cooldown > 0.0 or not (body is MarbleBall):
 		return
 
 	var other := body as MarbleBall
 	if other == null or not is_instance_valid(other):
 		return
 
-	var rel_speed := (linear_velocity - other.linear_velocity).length()
-	if rel_speed < hit_min_speed:
+	var relative_speed: float = (linear_velocity - other.linear_velocity).length()
+	if relative_speed < hit_min_speed:
 		return
 
-	var t = clamp(inverse_lerp(hit_min_speed, hit_max_speed, rel_speed), 0.0, 1.0)
-	# Cubic response (soft -> strong hits grow faster)
-	var t_cubic = t * t * t
-
-	var vol_db = lerp(hit_volume_db_slow, hit_volume_db_fast, t_cubic)
-	var pitch = lerp(hit_pitch_slow, hit_pitch_fast, t_cubic)
-	pitch *= randf_range(0.98, 1.02)
-
-	m_hit_sfx.volume_db = vol_db
-	m_hit_sfx.pitch_scale = pitch
+	var amount: float = clampf(inverse_lerp(hit_min_speed, hit_max_speed, relative_speed), 0.0, 1.0)
+	var cubic_amount: float = amount * amount * amount
+	m_hit_sfx.volume_db = lerpf(hit_volume_db_slow, hit_volume_db_fast, cubic_amount)
+	m_hit_sfx.pitch_scale = lerpf(hit_pitch_slow, hit_pitch_fast, cubic_amount) * randf_range(0.98, 1.02)
 	m_hit_sfx.play()
-
 	m_hit_cooldown = hit_cooldown_sec
 
 
@@ -170,14 +126,12 @@ func capture_base_damping() -> void:
 func add_damping_contribution(area_id: int, linear: float, angular: float) -> void:
 	if not enable_area_damping:
 		return
-	m_damping_contrib[area_id] = {"linear": float(linear), "angular": float(angular)}
+	m_damping_contrib[area_id] = {"linear": linear, "angular": angular}
 	_recompute_damping()
 
 
 func remove_damping_contribution(area_id: int) -> void:
-	if not enable_area_damping:
-		return
-	if m_damping_contrib.erase(area_id):
+	if enable_area_damping and m_damping_contrib.erase(area_id):
 		_recompute_damping()
 
 
@@ -190,130 +144,39 @@ func _recompute_damping() -> void:
 	if not enable_area_damping:
 		return
 
-	var lin := m_base_linear_damp
-	var ang := m_base_angular_damp
+	var combined_linear: float = m_base_linear_damp
+	var combined_angular: float = m_base_angular_damp
+	for key: Variant in m_damping_contrib.keys():
+		var contribution: Dictionary = m_damping_contrib[key]
+		combined_linear += float(contribution.get("linear", 0.0))
+		combined_angular += float(contribution.get("angular", 0.0))
 
-	for k in m_damping_contrib.keys():
-		var d: Dictionary = m_damping_contrib[k]
-		lin += float(d.get("linear", 0.0))
-		ang += float(d.get("angular", 0.0))
-
-	lin = clamp(lin, 0.0, max_linear_damp)
-	ang = clamp(ang, 0.0, max_angular_damp)
-
-	linear_damp = lin
-	angular_damp = ang
-
-
-func _apply_texture_to_sprite() -> void:
-	if not is_node_ready():
-		return
-	if not is_instance_valid(m_marble_sprite):
-		return
-
-	if m_marble_sprite is Sprite2D:
-		var sp2 := m_marble_sprite as Sprite2D
-		if marble_texture != null:
-			sp2.texture = marble_texture
-	elif m_marble_sprite is TextureRect:
-		var texture_rect := m_marble_sprite as TextureRect
-		if marble_texture != null:
-			texture_rect.texture = marble_texture
+	linear_damp = clampf(combined_linear, 0.0, max_linear_damp)
+	angular_damp = clampf(combined_angular, 0.0, max_angular_damp)
 
 
 func _apply_radius_to_nodes() -> void:
 	if not is_node_ready():
 		return
 
-	if is_instance_valid(m_collision_shape) and is_instance_valid(m_collision_shape.shape):
-		var s := m_collision_shape.shape
-		if s is CircleShape2D:
-			(s as CircleShape2D).radius = marble_radius_px
-		else:
-			push_warning("MarbleBall: collision_shape.shape is not CircleShape2D; cannot auto-sync radius.")
-
-	if is_instance_valid(m_marble_sprite):
-		if m_marble_sprite is Sprite2D:
-			var sp := m_marble_sprite as Sprite2D
-			sp.centered = true
-			sp.offset = Vector2.ZERO
-			sp.position = Vector2.ZERO
-
-			var tex := sp.texture
-			if tex != null:
-				var tex_w := float(tex.get_width())
-				var tex_h := float(tex.get_height())
-				var target_d := marble_radius_px * 2.0
-
-				var sx = target_d / max(tex_w, 0.001)
-				var sy = target_d / max(tex_h, 0.001)
-				var smin = min(sx, sy)
-				sp.scale = Vector2(smin, smin)
-		elif "size" in m_marble_sprite:
-			var target_d2 := marble_radius_px * 2.0
-			m_marble_sprite.position = -Vector2(target_d2, target_d2) / 2.0
-			m_marble_sprite.size = Vector2(target_d2, target_d2)
+	if is_instance_valid(m_collision_shape) and m_collision_shape.shape is SphereShape3D:
+		(m_collision_shape.shape as SphereShape3D).radius = marble_radius
+	if is_instance_valid(m_marble_mesh) and m_marble_mesh.mesh is SphereMesh:
+		var sphere := m_marble_mesh.mesh as SphereMesh
+		sphere.radius = marble_radius
+		sphere.height = marble_radius * 2.0
 
 
-func _update_rolling_shader(delta: float, force: bool) -> void:
-	if not enable_rolling_shader:
-		return
-	if not is_instance_valid(m_marble_sprite):
+func _apply_color_to_mesh() -> void:
+	if not is_node_ready() or not is_instance_valid(m_marble_mesh):
 		return
 
-	var mat := m_marble_sprite.material
-	if mat == null or not (mat is ShaderMaterial):
-		return
-	var sm := mat as ShaderMaterial
-
-	if force:
-		m_last_pos = global_position
-
-	var axis_uv := m_last_valid_roll_axis
-	var roll_delta := 0.0
-
-	if roll_use_linear_velocity:
-		var pos := global_position
-		var dp: Vector2 = pos - m_last_pos
-		m_last_pos = pos
-
-		var dist := dp.length()
-		if dist > 0.000001:
-			var travel_dir := dp / dist
-			axis_uv = Vector2(-travel_dir.y, travel_dir.x)
-			if invert_roll_direction:
-				axis_uv = -axis_uv
-			if axis_uv.length() > 0.000001:
-				axis_uv = axis_uv.normalized()
-				m_last_valid_roll_axis = axis_uv
-
-			var radius = max(marble_radius_px, 0.001)
-			roll_delta = dist / radius
-	else:
-		var v: Vector2 = linear_velocity
-		var speed := v.length()
-		if speed > 0.000001:
-			var dir := v / speed
-			axis_uv = Vector2(-dir.y, dir.x)
-			if invert_roll_direction:
-				axis_uv = -axis_uv
-			if axis_uv.length() > 0.000001:
-				axis_uv = axis_uv.normalized()
-				m_last_valid_roll_axis = axis_uv
-
-		roll_delta = angular_velocity * delta
-
-	if force:
-		roll_delta = 0.0
-
-	var max_delta := max_roll_radians_per_sec * delta
-	roll_delta = clamp(roll_delta, -max_delta, max_delta)
-
-	if absf(roll_delta) > 0.000001:
-		var axis3 := Vector3(axis_uv.x, axis_uv.y, 0.0)
-		if axis3.length() > 0.000001:
-			axis3 = axis3.normalized()
-			var dq := Quaternion(axis3, roll_delta)
-			m_roll_q = (m_roll_q * dq).normalized()
-
-	sm.set_shader_parameter(shader_param_roll_rot, Basis(m_roll_q))
+	var material := m_marble_mesh.material_override as StandardMaterial3D
+	if material == null:
+		material = StandardMaterial3D.new()
+		material.roughness = 0.34
+		m_marble_mesh.material_override = material
+	elif not material.resource_local_to_scene:
+		material = material.duplicate() as StandardMaterial3D
+		m_marble_mesh.material_override = material
+	material.albedo_color = marble_color

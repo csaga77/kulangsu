@@ -1,103 +1,330 @@
-[gd_scene format=4 uid="uid://dla8xqv4d73jt"]
+[gd_scene format=3 uid="uid://dla8xqv4d73jt"]
 
-[ext_resource type="Script" uid="uid://cvf50dvhuswgx" path="res://game/marble_game/marble_game.gd" id="1_1f8l1"]
-[ext_resource type="Material" uid="uid://o1ocwjidnaaf" path="res://godot_tilemap/resources/materials/ghost_material.tres" id="1_ycs87"]
-[ext_resource type="TileSet" uid="uid://bbu6vuvl5k3ct" path="res://godot_tilemap/resources/tilesets/tile_set_2x2_combined_32x32.tres" id="2_1f8l1"]
-[ext_resource type="Script" uid="uid://o4sfxasth5gi" path="res://godot_tilemap/scenes/dual_tile_map_layer.gd" id="2_dshdi"]
-[ext_resource type="Script" uid="uid://cdgubj5jcj12l" path="res://game/marble_game/marble_game_free_mode.gd" id="2_qesyv"]
-[ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="5_onfuh"]
-[ext_resource type="Script" uid="uid://kux2sebcpljy" path="res://game/marble_game/damping_area.gd" id="6_j17kk"]
-[ext_resource type="Script" uid="uid://82qmw7treb7c" path="res://game/marble_game/marble_hole.gd" id="7_qesyv"]
-[ext_resource type="Script" uid="uid://bgiy4eb1a2738" path="res://game/marble_game/marble_ball_player_controller.gd" id="7_xt7c1"]
-[ext_resource type="Script" uid="uid://btg1c6qvxh8mb" path="res://game/marble_game/marble_ball_ai_controller.gd" id="8_6ehy8"]
-[ext_resource type="PackedScene" uid="uid://cx454ysopwbyg" path="res://game/marble_game/marble_ball.tscn" id="8_lsn68"]
-[ext_resource type="Texture2D" uid="uid://b1xojkjfqykvn" path="res://resources/sprites/architecture/walls/brick_0.png" id="11_qesyv"]
+[ext_resource type="Script" uid="uid://cvf50dvhuswgx" path="res://game/marble_game/marble_game.gd" id="1_game"]
+[ext_resource type="Script" uid="uid://cdgubj5jcj12l" path="res://game/marble_game/marble_game_free_mode.gd" id="2_free_mode"]
+[ext_resource type="Script" uid="uid://kux2sebcpljy" path="res://game/marble_game/damping_area.gd" id="3_damping"]
+[ext_resource type="Script" uid="uid://82qmw7treb7c" path="res://game/marble_game/marble_hole.gd" id="4_hole"]
+[ext_resource type="Script" uid="uid://bgiy4eb1a2738" path="res://game/marble_game/marble_ball_player_controller.gd" id="5_player_controller"]
+[ext_resource type="Script" uid="uid://btg1c6qvxh8mb" path="res://game/marble_game/marble_ball_ai_controller.gd" id="6_ai_controller"]
+[ext_resource type="PackedScene" uid="uid://cx454ysopwbyg" path="res://game/marble_game/marble_ball.tscn" id="7_ball"]
+[ext_resource type="Script" path="res://game/marble_game/marble_camera_3d.gd" id="8_camera"]
 
-[sub_resource type="Resource" id="Resource_qesyv"]
-script = ExtResource("2_qesyv")
-metadata/_custom_type_script = "uid://cdgubj5jcj12l"
+[sub_resource type="Resource" id="Resource_free_mode"]
+script = ExtResource("2_free_mode")
 
-[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_1f8l1"]
-friction = 0.0
-bounce = 0.5
+[sub_resource type="Resource" id="Resource_player_controller"]
+script = ExtResource("5_player_controller")
 
-[sub_resource type="WorldBoundaryShape2D" id="WorldBoundaryShape2D_dshdi"]
+[sub_resource type="Resource" id="Resource_ai_controller"]
+script = ExtResource("6_ai_controller")
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_onfuh"]
-radius = 30.0
+[sub_resource type="Environment" id="Environment_board"]
+background_mode = 1
+background_color = Color(0.055, 0.16, 0.18, 1)
+ambient_light_source = 3
+ambient_light_color = Color(0.72, 0.86, 0.82, 1)
+ambient_light_energy = 0.72
+tonemap_mode = 2
 
-[sub_resource type="Resource" id="Resource_j17kk"]
-script = ExtResource("7_xt7c1")
-metadata/_custom_type_script = "uid://bgiy4eb1a2738"
+[sub_resource type="StandardMaterial3D" id="Material_pedestal"]
+albedo_color = Color(0.12, 0.22, 0.22, 1)
+roughness = 0.94
 
-[sub_resource type="Resource" id="Resource_lsn68"]
-script = ExtResource("8_6ehy8")
-metadata/_custom_type_script = "uid://btg1c6qvxh8mb"
+[sub_resource type="BoxMesh" id="Mesh_pedestal"]
+material = SubResource("Material_pedestal")
+size = Vector3(14.6, 0.75, 9.8)
 
-[node name="marble_game" type="Node2D" unique_id=2041496526]
-script = ExtResource("1_1f8l1")
-game_mode = SubResource("Resource_qesyv")
-spawn_bounds = Rect2(0, 0, 544, 352)
+[sub_resource type="StandardMaterial3D" id="Material_board"]
+albedo_color = Color(0.31, 0.57, 0.44, 1)
+roughness = 0.9
 
-[node name="camera" type="Camera2D" parent="." unique_id=1796277555]
-position_smoothing_enabled = true
+[sub_resource type="StandardMaterial3D" id="Material_board_light"]
+albedo_color = Color(0.35, 0.62, 0.49, 1)
+roughness = 0.9
 
-[node name="camera_controller" type="Node" parent="camera" unique_id=1751679360 node_paths=PackedStringArray("camera", "target_node")]
-script = ExtResource("5_onfuh")
-camera = NodePath("..")
-target_node = NodePath("../../player_ball")
+[sub_resource type="BoxMesh" id="Mesh_floor_left"]
+material = SubResource("Material_board")
+size = Vector3(2.85, 0.3, 8.8)
 
-[node name="map" type="TileMapLayer" parent="." unique_id=1008537539]
-material = ExtResource("1_ycs87")
-tile_map_data = PackedByteArray("AAAIAAQACQACAAEAAAAIAAMACQACAAEAAAAIAAIACQACAAEAAAAIAAEACQACAAEAAAAIAAAACQACAAEAAAAHAAQACQACAAEAAAAHAAMACQACAAEAAAAHAAIACQACAAEAAAAHAAEACQACAAEAAAAHAAAACQACAAEAAAAGAAQACQACAAEAAAAGAAMACQACAAEAAAAGAAIACQACAAEAAAAGAAEACQACAAEAAAAGAAAACQACAAEAAAAFAAQACQACAAEAAAAFAAMACQACAAEAAAAFAAIACQACAAEAAAAFAAEACQACAAEAAAAFAAAACQACAAEAAAAEAAQACQACAAEAAAAEAAMACQACAAEAAAAEAAIACQACAAEAAAAEAAEACQACAAEAAAAEAAAACQACAAEAAAADAAQACQACAAEAAAADAAMACQACAAEAAAADAAIACQACAAEAAAADAAEACQACAAEAAAADAAAACQACAAEAAAACAAQACQACAAEAAAACAAMACQACAAEAAAACAAIACQACAAEAAAACAAEACQACAAEAAAACAAAACQACAAEAAAABAAQACQACAAEAAAABAAMACQACAAEAAAABAAIACQACAAEAAAABAAEACQACAAEAAAABAAAACQACAAEAAAAAAAQACQACAAEAAAAAAAMACQACAAEAAAAAAAIACQACAAEAAAAAAAEACQACAAEAAAAAAAAACQACAAEAAAAKAAUACQACAAEAAAAKAAQACQACAAEAAAAKAAMACQACAAEAAAAKAAIACQACAAEAAAAKAAEACQACAAEAAAAKAAAACQACAAEAAAAJAAUACQACAAEAAAAJAAQACQACAAEAAAAJAAMACQACAAEAAAAJAAIACQACAAEAAAAJAAEACQACAAEAAAAJAAAACQACAAEAAAAIAAUACQACAAEAAAAHAAUACQACAAEAAAAGAAUACQACAAEAAAAFAAUACQACAAEAAAAEAAUACQACAAEAAAADAAUACQACAAEAAAACAAUACQACAAEAAAABAAUACQACAAEAAAAAAAUACQACAAEAAAAMAAcACQACAAEAAAAMAAYACQACAAEAAAAMAAUACQACAAEAAAAMAAQACQACAAEAAAAMAAMACQACAAEAAAAMAAIACQACAAEAAAAMAAEACQACAAEAAAAMAAAACQACAAEAAAALAAgACQACAAEAAAALAAcACQACAAEAAAALAAYACQACAAEAAAALAAUACQACAAEAAAALAAQACQACAAEAAAALAAMACQACAAEAAAALAAIACQACAAEAAAALAAEACQACAAEAAAALAAAACQACAAEAAAAKAAgACQACAAEAAAAKAAcACQACAAEAAAAKAAYACQACAAEAAAAJAAgACQACAAEAAAAJAAcACQACAAEAAAAJAAYACQACAAEAAAAIAAgACQACAAEAAAAIAAcACQACAAEAAAAIAAYACQACAAEAAAAHAAgACQACAAEAAAAHAAcACQACAAEAAAAHAAYACQACAAEAAAAGAAgACQACAAEAAAAGAAcACQACAAEAAAAGAAYACQACAAEAAAAFAAgACQACAAEAAAAFAAcACQACAAEAAAAFAAYACQACAAEAAAAEAAgACQACAAEAAAAEAAcACQACAAEAAAAEAAYACQACAAEAAAADAAgACQACAAEAAAADAAcACQACAAEAAAADAAYACQACAAEAAAACAAgACQACAAEAAAACAAcACQACAAEAAAACAAYACQACAAEAAAABAAgACQACAAEAAAABAAcACQACAAEAAAABAAYACQACAAEAAAAAAAgACQACAAEAAAAAAAcACQACAAEAAAAAAAYACQACAAEAAAAMAAgACQACAAEAAAAQAAoACQACAAEAAAAQAAkACQACAAEAAAAQAAgACQACAAEAAAAQAAcACQACAAEAAAAQAAYACQACAAEAAAAQAAUACQACAAEAAAAQAAQACQACAAEAAAAQAAMACQACAAEAAAAQAAIACQACAAEAAAAQAAEACQACAAEAAAAQAAAACQACAAEAAAAPAAoACQACAAEAAAAPAAkACQACAAEAAAAPAAgACQACAAEAAAAPAAcACQACAAEAAAAPAAYACQACAAEAAAAPAAUACQACAAEAAAAPAAQACQACAAEAAAAPAAMACQACAAEAAAAPAAIACQACAAEAAAAPAAEACQACAAEAAAAPAAAACQACAAEAAAAOAAoACQACAAEAAAAOAAkACQACAAEAAAAOAAgACQACAAEAAAAOAAcACQACAAEAAAAOAAYACQACAAEAAAAOAAUACQACAAEAAAAOAAQACQACAAEAAAAOAAMACQACAAEAAAAOAAIACQACAAEAAAAOAAEACQACAAEAAAAOAAAACQACAAEAAAANAAoACQACAAEAAAANAAkACQACAAEAAAANAAgACQACAAEAAAANAAcACQACAAEAAAANAAYACQACAAEAAAANAAUACQACAAEAAAANAAQACQACAAEAAAANAAMACQACAAEAAAANAAIACQACAAEAAAANAAEACQACAAEAAAANAAAACQACAAEAAAAMAAoACQACAAEAAAAMAAkACQACAAEAAAALAAoACQACAAEAAAALAAkACQACAAEAAAAKAAoACQACAAEAAAAKAAkACQACAAEAAAAJAAoACQACAAEAAAAJAAkACQACAAEAAAAIAAoACQACAAEAAAAIAAkACQACAAEAAAAHAAoACQACAAEAAAAHAAkACQACAAEAAAAGAAoACQACAAEAAAAGAAkACQACAAEAAAAFAAoACQACAAEAAAAFAAkACQACAAEAAAAEAAoACQACAAEAAAAEAAkACQACAAEAAAADAAoACQACAAEAAAADAAkACQACAAEAAAACAAoACQACAAEAAAACAAkACQACAAEAAAABAAoACQACAAEAAAABAAkACQACAAEAAAAAAAoACQACAAEAAAAAAAkACQACAAEAAAA=")
-tile_set = ExtResource("2_1f8l1")
-script = ExtResource("2_dshdi")
-metadata/_custom_type_script = "uid://o4sfxasth5gi"
+[sub_resource type="BoxShape3D" id="Shape_floor_left"]
+size = Vector3(2.85, 0.3, 8.8)
 
-[node name="damping_area" type="Node2D" parent="." unique_id=165588674]
+[sub_resource type="BoxMesh" id="Mesh_floor_right"]
+material = SubResource("Material_board_light")
+size = Vector3(9.25, 0.3, 8.8)
 
-[node name="area1" type="Area2D" parent="damping_area" unique_id=1742464821]
-position = Vector2(203, 133)
-script = ExtResource("6_j17kk")
+[sub_resource type="BoxShape3D" id="Shape_floor_right"]
+size = Vector3(9.25, 0.3, 8.8)
 
-[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="damping_area/area1" unique_id=919141950]
-position = Vector2(50, 60)
-polygon = PackedVector2Array(59.1, -64, -59, -64, -104, -25, -64, 61, -60.3, 64, 59.6, 64, 63.9, 59, 64, -61.1)
+[sub_resource type="BoxMesh" id="Mesh_floor_bridge_top"]
+material = SubResource("Material_board_light")
+size = Vector3(1.5, 0.3, 2.2)
 
-[node name="boundary" type="StaticBody2D" parent="." unique_id=1246079552]
-physics_material_override = SubResource("PhysicsMaterial_1f8l1")
+[sub_resource type="BoxShape3D" id="Shape_floor_bridge_top"]
+size = Vector3(1.5, 0.3, 2.2)
 
-[node name="left" type="CollisionShape2D" parent="boundary" unique_id=916080807]
-rotation = 1.5707964
-shape = SubResource("WorldBoundaryShape2D_dshdi")
+[sub_resource type="BoxMesh" id="Mesh_floor_bridge_bottom"]
+material = SubResource("Material_board")
+size = Vector3(1.5, 0.3, 5.1)
 
-[node name="right" type="CollisionShape2D" parent="boundary" unique_id=592653146]
-position = Vector2(544, 352)
-rotation = -1.5707964
-shape = SubResource("WorldBoundaryShape2D_dshdi")
+[sub_resource type="BoxShape3D" id="Shape_floor_bridge_bottom"]
+size = Vector3(1.5, 0.3, 5.1)
 
-[node name="top" type="CollisionShape2D" parent="boundary" unique_id=452429594]
-rotation = 3.1415927
-shape = SubResource("WorldBoundaryShape2D_dshdi")
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_board"]
+friction = 0.52
+bounce = 0.28
 
-[node name="bottom" type="CollisionShape2D" parent="boundary" unique_id=1729185230]
-position = Vector2(544, 352)
-shape = SubResource("WorldBoundaryShape2D_dshdi")
+[sub_resource type="StandardMaterial3D" id="Material_rail"]
+albedo_color = Color(0.72, 0.43, 0.19, 1)
+roughness = 0.78
 
-[node name="hole" type="Area2D" parent="." unique_id=1384930562]
-position = Vector2(144, 118)
-script = ExtResource("7_qesyv")
+[sub_resource type="BoxMesh" id="Mesh_rail_horizontal"]
+material = SubResource("Material_rail")
+size = Vector3(14.6, 0.68, 0.5)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="hole" unique_id=172063252]
-shape = SubResource("CircleShape2D_onfuh")
-debug_color = Color(0.755117, 0.45648783, 5.7756904e-07, 0.41960785)
+[sub_resource type="BoxShape3D" id="Shape_rail_horizontal"]
+size = Vector3(14.6, 0.68, 0.5)
 
-[node name="player_ball" parent="." unique_id=1800977570 instance=ExtResource("8_lsn68")]
-modulate = Color(0.44313726, 0.13725491, 1, 1)
-position = Vector2(78, 71)
-controller = SubResource("Resource_j17kk")
-marble_texture = ExtResource("11_qesyv")
+[sub_resource type="BoxMesh" id="Mesh_rail_vertical"]
+material = SubResource("Material_rail")
+size = Vector3(0.5, 0.68, 8.8)
 
-[node name="ai_ball" parent="." unique_id=1269023125 instance=ExtResource("8_lsn68")]
-position = Vector2(134, 48)
-controller = SubResource("Resource_lsn68")
+[sub_resource type="BoxShape3D" id="Shape_rail_vertical"]
+size = Vector3(0.5, 0.68, 8.8)
+
+[sub_resource type="StandardMaterial3D" id="Material_damping"]
+albedo_color = Color(0.78, 0.63, 0.34, 1)
+roughness = 1.0
+
+[sub_resource type="BoxMesh" id="Mesh_damping"]
+material = SubResource("Material_damping")
+size = Vector3(3.8, 0.035, 2.8)
+
+[sub_resource type="BoxShape3D" id="Shape_damping"]
+size = Vector3(3.8, 0.3, 2.8)
+
+[sub_resource type="StandardMaterial3D" id="Material_hole_rim"]
+albedo_color = Color(0.79, 0.55, 0.27, 1)
+roughness = 0.75
+
+[sub_resource type="CylinderMesh" id="Mesh_hole_rim"]
+material = SubResource("Material_hole_rim")
+top_radius = 1.04
+bottom_radius = 1.04
+height = 0.12
+radial_segments = 12
+rings = 1
+
+[sub_resource type="StandardMaterial3D" id="Material_hole_dark"]
+albedo_color = Color(0.018, 0.055, 0.06, 1)
+roughness = 1.0
+
+[sub_resource type="CylinderMesh" id="Mesh_hole_dark"]
+material = SubResource("Material_hole_dark")
+top_radius = 0.64
+bottom_radius = 0.7
+height = 0.15
+radial_segments = 12
+rings = 1
+
+[sub_resource type="CylinderShape3D" id="Shape_hole_area"]
+radius = 0.86
+height = 2.4
+
+[sub_resource type="CylinderMesh" id="Mesh_hole_catch"]
+material = SubResource("Material_hole_dark")
+top_radius = 0.67
+bottom_radius = 0.67
+height = 0.12
+radial_segments = 12
+
+[sub_resource type="CylinderShape3D" id="Shape_hole_catch"]
+radius = 0.67
+height = 0.12
+
+[sub_resource type="StandardMaterial3D" id="Material_marker"]
+albedo_color = Color(0.93, 0.82, 0.48, 1)
+roughness = 0.72
+
+[sub_resource type="CylinderMesh" id="Mesh_marker"]
+material = SubResource("Material_marker")
+top_radius = 0.11
+bottom_radius = 0.11
+height = 0.025
+radial_segments = 6
+
+[node name="marble_game" type="Node3D"]
+script = ExtResource("1_game")
+game_mode = SubResource("Resource_free_mode")
+spawn_bounds = Rect2(0, 0, 13.6, 8.8)
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_board")
+
+[node name="sun" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-56, -32, 0)
+light_color = Color(1, 0.87, 0.68, 1)
+light_energy = 2.1
+shadow_enabled = true
+directional_shadow_max_distance = 32.0
+
+[node name="fill_light" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-42, 138, 0)
+light_color = Color(0.5, 0.75, 0.82, 1)
+light_energy = 0.48
+
+[node name="camera" type="Camera3D" parent="."]
+position = Vector3(6.8, 11.2, 14.2)
+current = true
+fov = 43.0
+script = ExtResource("8_camera")
+
+[node name="board" type="Node3D" parent="."]
+
+[node name="pedestal" type="MeshInstance3D" parent="board"]
+position = Vector3(6.8, -0.57, 4.4)
+mesh = SubResource("Mesh_pedestal")
+
+[node name="floor_left" type="StaticBody3D" parent="board"]
+position = Vector3(1.425, -0.15, 4.4)
+physics_material_override = SubResource("PhysicsMaterial_board")
+
+[node name="mesh" type="MeshInstance3D" parent="board/floor_left"]
+mesh = SubResource("Mesh_floor_left")
+
+[node name="collision" type="CollisionShape3D" parent="board/floor_left"]
+shape = SubResource("Shape_floor_left")
+
+[node name="floor_right" type="StaticBody3D" parent="board"]
+position = Vector3(8.975, -0.15, 4.4)
+physics_material_override = SubResource("PhysicsMaterial_board")
+
+[node name="mesh" type="MeshInstance3D" parent="board/floor_right"]
+mesh = SubResource("Mesh_floor_right")
+
+[node name="collision" type="CollisionShape3D" parent="board/floor_right"]
+shape = SubResource("Shape_floor_right")
+
+[node name="floor_bridge_top" type="StaticBody3D" parent="board"]
+position = Vector3(3.6, -0.15, 1.1)
+physics_material_override = SubResource("PhysicsMaterial_board")
+
+[node name="mesh" type="MeshInstance3D" parent="board/floor_bridge_top"]
+mesh = SubResource("Mesh_floor_bridge_top")
+
+[node name="collision" type="CollisionShape3D" parent="board/floor_bridge_top"]
+shape = SubResource("Shape_floor_bridge_top")
+
+[node name="floor_bridge_bottom" type="StaticBody3D" parent="board"]
+position = Vector3(3.6, -0.15, 6.25)
+physics_material_override = SubResource("PhysicsMaterial_board")
+
+[node name="mesh" type="MeshInstance3D" parent="board/floor_bridge_bottom"]
+mesh = SubResource("Mesh_floor_bridge_bottom")
+
+[node name="collision" type="CollisionShape3D" parent="board/floor_bridge_bottom"]
+shape = SubResource("Shape_floor_bridge_bottom")
+
+[node name="rail_top" type="StaticBody3D" parent="board"]
+position = Vector3(6.8, 0.34, -0.25)
+physics_material_override = SubResource("PhysicsMaterial_board")
+
+[node name="mesh" type="MeshInstance3D" parent="board/rail_top"]
+mesh = SubResource("Mesh_rail_horizontal")
+
+[node name="collision" type="CollisionShape3D" parent="board/rail_top"]
+shape = SubResource("Shape_rail_horizontal")
+
+[node name="rail_bottom" type="StaticBody3D" parent="board"]
+position = Vector3(6.8, 0.34, 9.05)
+physics_material_override = SubResource("PhysicsMaterial_board")
+
+[node name="mesh" type="MeshInstance3D" parent="board/rail_bottom"]
+mesh = SubResource("Mesh_rail_horizontal")
+
+[node name="collision" type="CollisionShape3D" parent="board/rail_bottom"]
+shape = SubResource("Shape_rail_horizontal")
+
+[node name="rail_left" type="StaticBody3D" parent="board"]
+position = Vector3(-0.25, 0.34, 4.4)
+physics_material_override = SubResource("PhysicsMaterial_board")
+
+[node name="mesh" type="MeshInstance3D" parent="board/rail_left"]
+mesh = SubResource("Mesh_rail_vertical")
+
+[node name="collision" type="CollisionShape3D" parent="board/rail_left"]
+shape = SubResource("Shape_rail_vertical")
+
+[node name="rail_right" type="StaticBody3D" parent="board"]
+position = Vector3(13.85, 0.34, 4.4)
+physics_material_override = SubResource("PhysicsMaterial_board")
+
+[node name="mesh" type="MeshInstance3D" parent="board/rail_right"]
+mesh = SubResource("Mesh_rail_vertical")
+
+[node name="collision" type="CollisionShape3D" parent="board/rail_right"]
+shape = SubResource("Shape_rail_vertical")
+
+[node name="damping_area" type="Area3D" parent="."]
+position = Vector3(6.65, 0.04, 5)
+script = ExtResource("3_damping")
+
+[node name="mesh" type="MeshInstance3D" parent="damping_area"]
+mesh = SubResource("Mesh_damping")
+
+[node name="collision" type="CollisionShape3D" parent="damping_area"]
+position = Vector3(0, 0.1, 0)
+shape = SubResource("Shape_damping")
+
+[node name="hole" type="Area3D" parent="."]
+position = Vector3(3.6, -0.2, 2.95)
+script = ExtResource("4_hole")
+
+[node name="collision" type="CollisionShape3D" parent="hole"]
+shape = SubResource("Shape_hole_area")
+
+[node name="rim" type="MeshInstance3D" parent="hole"]
+position = Vector3(0, 0.14, 0)
+mesh = SubResource("Mesh_hole_rim")
+
+[node name="opening" type="MeshInstance3D" parent="hole"]
+position = Vector3(0, 0.145, 0)
+mesh = SubResource("Mesh_hole_dark")
+
+[node name="catch" type="StaticBody3D" parent="hole"]
+position = Vector3(0, -0.86, 0)
+physics_material_override = SubResource("PhysicsMaterial_board")
+
+[node name="mesh" type="MeshInstance3D" parent="hole/catch"]
+mesh = SubResource("Mesh_hole_catch")
+
+[node name="collision" type="CollisionShape3D" parent="hole/catch"]
+shape = SubResource("Shape_hole_catch")
+
+[node name="corner_markers" type="Node3D" parent="."]
+
+[node name="top_left" type="MeshInstance3D" parent="corner_markers"]
+position = Vector3(0.55, 0.025, 0.55)
+mesh = SubResource("Mesh_marker")
+
+[node name="top_right" type="MeshInstance3D" parent="corner_markers"]
+position = Vector3(13.05, 0.025, 0.55)
+mesh = SubResource("Mesh_marker")
+
+[node name="bottom_left" type="MeshInstance3D" parent="corner_markers"]
+position = Vector3(0.55, 0.025, 8.25)
+mesh = SubResource("Mesh_marker")
+
+[node name="bottom_right" type="MeshInstance3D" parent="corner_markers"]
+position = Vector3(13.05, 0.025, 8.25)
+mesh = SubResource("Mesh_marker")
+
+[node name="player_ball" parent="." instance=ExtResource("7_ball")]
+position = Vector3(1.95, 0.29, 1.78)
+controller = SubResource("Resource_player_controller")
+marble_color = Color(0.23, 0.58, 0.95, 1)
+
+[node name="ai_ball" parent="." instance=ExtResource("7_ball")]
+position = Vector3(3.35, 0.29, 1.2)
+controller = SubResource("Resource_ai_controller")
+marble_color = Color(0.96, 0.34, 0.2, 1)

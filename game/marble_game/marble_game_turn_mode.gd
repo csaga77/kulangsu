@@ -466,7 +466,7 @@ func _all_balls_are_slow(game: MarbleGame) -> bool:
 			continue
 		if b.linear_velocity.length() > rest_linear_speed_threshold:
 			return false
-		if absf(b.angular_velocity) > rest_angular_speed_threshold:
+		if b.angular_velocity.length() > rest_angular_speed_threshold:
 			return false
 	return true
 

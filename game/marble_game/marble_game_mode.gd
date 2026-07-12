@@ -10,10 +10,10 @@ extends Resource
 @export var rest_settle_time: float = 0.35
 
 ## Linear speed threshold considered "stopped enough".
-@export var rest_linear_speed_threshold: float = 12.0
+@export var rest_linear_speed_threshold: float = 0.12
 
 ## Angular speed threshold considered "stopped enough".
-@export var rest_angular_speed_threshold: float = 2.5
+@export var rest_angular_speed_threshold: float = 0.3
 
 var m_game: MarbleGame = null
 var m_rng := RandomNumberGenerator.new()
@@ -50,8 +50,8 @@ func on_throw_initial_balls(game: MarbleGame) -> void:
 			# Defer teleports so restart logic never moves bodies mid-physics step.
 			b.controller.call_deferred("spawn_and_throw_away_from_hole", m_rng)
 		else:
-			b.linear_velocity = Vector2.ZERO
-			b.angular_velocity = 0.0
+			b.linear_velocity = Vector3.ZERO
+			b.angular_velocity = Vector3.ZERO
 			b.sleeping = false
 
 	print("[GameMode] throw initial balls")
@@ -65,6 +65,6 @@ func _all_balls_are_slow(game: MarbleGame) -> bool:
 			continue
 		if b.linear_velocity.length() > rest_linear_speed_threshold:
 			return false
-		if absf(b.angular_velocity) > rest_angular_speed_threshold:
+		if b.angular_velocity.length() > rest_angular_speed_threshold:
 			return false
 	return true

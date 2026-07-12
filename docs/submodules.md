@@ -16,14 +16,6 @@ Source of truth:
 - Docs to read first: [`../godot_common/AGENTS.md`](../godot_common/AGENTS.md), [`../godot_common/README.md`](../godot_common/README.md), [`../godot_common/docs/architecture.md`](../godot_common/docs/architecture.md), [`../godot_common/docs/module_map.md`](../godot_common/docs/module_map.md), and [`../godot_common/docs/coding_rules.md`](../godot_common/docs/coding_rules.md)
 - Documentation status inside submodule: agent-facing startup and architecture docs are now available in the submodule itself
 
-### `godot_tilemap`
-
-- Path: [`../godot_tilemap/`](../godot_tilemap)
-- Branch in `.gitmodules`: `main`
-- Role in this repo: tilemap-related helpers and support code
-- Docs to read first: [`../godot_tilemap/AGENTS.md`](../godot_tilemap/AGENTS.md), [`../godot_tilemap/README.md`](../godot_tilemap/README.md), [`../godot_tilemap/docs/architecture.md`](../godot_tilemap/docs/architecture.md), [`../godot_tilemap/docs/module_map.md`](../godot_tilemap/docs/module_map.md), and [`../godot_tilemap/docs/coding_rules.md`](../godot_tilemap/docs/coding_rules.md)
-- Documentation status inside submodule: agent-facing startup and architecture docs are now available in the submodule itself
-
 ### `3rdparty/Universal-LPC-Spritesheet-Character-Generator`
 
 - Path: [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator)
@@ -90,7 +82,6 @@ Start with:
 
 - `agent_tools`: start with [`../agent_tools/AGENTS.md`](../agent_tools/AGENTS.md), then the smallest relevant runbook or `docs/` file for the task; open [`../agent_tools/README.md`](../agent_tools/README.md) only when overview or onboarding context helps
 - `godot_common`: start with [`../godot_common/AGENTS.md`](../godot_common/AGENTS.md), then [`../godot_common/README.md`](../godot_common/README.md)
-- `godot_tilemap`: start with [`../godot_tilemap/AGENTS.md`](../godot_tilemap/AGENTS.md), then [`../godot_tilemap/README.md`](../godot_tilemap/README.md)
 - `3rdparty/Universal-LPC-Spritesheet-Character-Generator`: start with [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md), then check tool docs if the task touches generator workflows
 - `addons/mp3_to_ogg`: start with [`../addons/mp3_to_ogg/README.md`](../addons/mp3_to_ogg/README.md), then its [`docs/`](../addons/mp3_to_ogg/docs) folder
 - `addons/universal_lpc`: start with [`../addons/universal_lpc/README.md`](../addons/universal_lpc/README.md), then [`../addons/universal_lpc/docs/contract.md`](../addons/universal_lpc/docs/contract.md), [`../addons/universal_lpc/docs/feature.md`](../addons/universal_lpc/docs/feature.md), and [`../addons/universal_lpc/docs/authoring.md`](../addons/universal_lpc/docs/authoring.md)

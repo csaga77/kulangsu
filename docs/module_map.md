@@ -108,7 +108,7 @@ Put new landmark scenes and reusable architectural pieces here. Define shared fl
 ## Reusable Gameplay Modules
 
 - [`../game/grid_board_game/`](../game/grid_board_game) - reusable board-game module and local test scenes
-- [`../game/marble_game/`](../game/marble_game) - marble-game prototype
+- [`../game/marble_game/`](../game/marble_game) - self-contained native low-poly 3D marble-game prototype, including `RigidBody3D` actors, board physics, camera-ray input, and a focused smoke test; no tilemap dependency
 - [`../game/piano_game/`](../game/piano_game) - piano mini-game prototype
 - [`../game/tests/npc_system/`](../game/tests/npc_system) - NPC/resident validation scenes and companion test assets
 
@@ -130,7 +130,6 @@ If a feature is self-contained and reusable, extend its module folder instead of
 ## Shared Utilities And Assets
 
 - [`../godot_common/`](../godot_common) - support utilities reused across scenes
-- [`../godot_tilemap/`](../godot_tilemap) - tilemap tooling and related helpers
 - [`../resources/`](../resources) - materials, sprites, audio, animations, and tilesets
 
 Be careful about renames or moves here because scene and resource references can break easily.
@@ -212,7 +211,6 @@ Use these when you need a focused validation target instead of the full project 
 ## Submodules
 
 - [`../godot_common/`](../godot_common) - shared Godot support code, tracked as a submodule
-- [`../godot_tilemap/`](../godot_tilemap) - tilemap helpers/tooling, tracked as a submodule
 - [`../agent_tools/`](../agent_tools) - shared agent docs and runbooks, tracked as a submodule
 - [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator) - third-party LPC asset generator, tracked as a submodule
 - [`../addons/mp3_to_ogg/`](../addons/mp3_to_ogg) - reusable MP3 conversion editor addon, tracked as a submodule
@@ -225,9 +223,6 @@ Submodule doc entry points:
 - [`../godot_common/AGENTS.md`](../godot_common/AGENTS.md)
 - [`../godot_common/README.md`](../godot_common/README.md)
 - [`../godot_common/docs/architecture.md`](../godot_common/docs/architecture.md)
-- [`../godot_tilemap/AGENTS.md`](../godot_tilemap/AGENTS.md)
-- [`../godot_tilemap/README.md`](../godot_tilemap/README.md)
-- [`../godot_tilemap/docs/architecture.md`](../godot_tilemap/docs/architecture.md)
 - [`../agent_tools/README.md`](../agent_tools/README.md)
 - [`../agent_tools/AGENTS.md`](../agent_tools/AGENTS.md)
 - [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md)

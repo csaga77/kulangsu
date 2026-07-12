@@ -27,7 +27,6 @@ Submodule doc entry points:
 
 - `agent_tools/AGENTS.md` for shared agent guidance and runbook routing; open `agent_tools/README.md` only when overview or onboarding context helps
 - `godot_common/AGENTS.md`, `godot_common/README.md`, and `godot_common/docs/` for the shared Godot support-code submodule
-- `godot_tilemap/AGENTS.md`, `godot_tilemap/README.md`, and `godot_tilemap/docs/` for the tilemap helper/tooling submodule
 - `3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md` for upstream LPC generator usage and licensing details
 - `addons/mp3_to_ogg/README.md` and `addons/mp3_to_ogg/docs/` for the MP3 conversion addon submodule
 - `addons/universal_lpc/README.md` and `addons/universal_lpc/docs/` for the Universal LPC runtime/editor addon submodule
@@ -37,7 +36,6 @@ Submodule doc entry points:
 Submodule read order when editing inside a submodule:
 
 - `godot_common`: `godot_common/AGENTS.md` -> `godot_common/README.md` -> `godot_common/docs/architecture.md` -> `godot_common/docs/module_map.md` -> `godot_common/docs/coding_rules.md`
-- `godot_tilemap`: `godot_tilemap/AGENTS.md` -> `godot_tilemap/README.md` -> `godot_tilemap/docs/architecture.md` -> `godot_tilemap/docs/module_map.md` -> `godot_tilemap/docs/coding_rules.md`
 - `agent_tools`: `agent_tools/AGENTS.md` -> the relevant runbook or `agent_tools/docs/` file for the task -> `agent_tools/README.md` if overview or onboarding context is needed
 - `3rdparty/Universal-LPC-Spritesheet-Character-Generator`: upstream `README.md` first, then tool docs if the task touches generator workflows
 - `addons/mp3_to_ogg`: `addons/mp3_to_ogg/README.md` -> `addons/mp3_to_ogg/docs/contract.md` -> `addons/mp3_to_ogg/docs/feature.md`
@@ -67,7 +65,7 @@ Submodule read order when editing inside a submodule:
 - Reusable gameplay modules should stay under `game/` in their existing feature folders such as `grid_board_game`, `marble_game`, and `piano_game`.
 - Landmark scenes and reusable building pieces belong under `architecture/`.
 - Keep gameplay rules in gameplay modules and controllers, not in UI scripts.
-- Treat `godot_common`, `godot_tilemap`, `agent_tools`, `3rdparty/Universal-LPC-Spritesheet-Character-Generator`, `addons/mp3_to_ogg`, `addons/universal_lpc`, `addons/low_poly_building_editor`, and `addons/storyline_editor` as submodule boundaries, not normal local folders.
+- Treat `godot_common`, `agent_tools`, `3rdparty/Universal-LPC-Spritesheet-Character-Generator`, `addons/mp3_to_ogg`, `addons/universal_lpc`, `addons/low_poly_building_editor`, and `addons/storyline_editor` as submodule boundaries, not normal local folders.
 
 ## Change Scope Rules
 

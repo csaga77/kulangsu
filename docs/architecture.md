@@ -251,7 +251,6 @@ Boundary:
 Primary folders:
 
 - [`../godot_common/`](../godot_common)
-- [`../godot_tilemap/`](../godot_tilemap)
 - [`../agent_tools/`](../agent_tools)
 - [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator)
 - [`../addons/mp3_to_ogg/`](../addons/mp3_to_ogg)
@@ -262,7 +261,6 @@ Primary folders:
 Responsibilities:
 
 - shared support code used by the main project
-- reusable tilemap tooling and helpers
 - agent runbooks and shared documentation assets
 - third-party LPC asset generator content
 - reusable MP3 conversion editor tooling

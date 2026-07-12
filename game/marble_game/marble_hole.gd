@@ -1,17 +1,15 @@
-# MarbleHole.gd
 class_name MarbleHole
-extends Area2D
+extends Area3D
 
-## Pull strength applied to balls currently inside the hole.
-@export var pull_strength: float = 0.5
+## Pulls marbles toward the opening and down into the catch pocket.
+@export var pull_strength: float = 8.0
+@export var pull_target_y_offset: float = -0.8
 
-## Emitted when a MarbleBall enters the hole (after ball state updated).
 signal ball_entered(ball: MarbleBall)
-
-## Emitted when a MarbleBall exits the hole (after ball state updated).
 signal ball_exited(ball: MarbleBall)
 
 var m_balls_in_hole: Array[MarbleBall] = []
+
 
 func _ready() -> void:
 	if not body_entered.is_connected(_on_body_entered):
@@ -19,34 +17,33 @@ func _ready() -> void:
 	if not body_exited.is_connected(_on_body_exited):
 		body_exited.connect(_on_body_exited)
 
+
 func _physics_process(_delta: float) -> void:
 	if pull_strength <= 0.0:
 		return
 
-	for b in m_balls_in_hole:
-		if not is_instance_valid(b):
+	var pull_target := global_position + Vector3.UP * pull_target_y_offset
+	for ball: MarbleBall in m_balls_in_hole:
+		if not is_instance_valid(ball):
 			continue
-		var vec := global_position - b.global_position
-		if vec.length() > 15.0:
-			b.apply_central_force(vec.normalized() * vec.length_squared() * pull_strength)
+		var offset: Vector3 = pull_target - ball.global_position
+		if offset.length_squared() > 0.0001:
+			ball.apply_central_force(offset.normalized() * pull_strength)
 
-func _on_body_entered(body: Node2D) -> void:
-	if body is MarbleBall:
-		var b := body as MarbleBall
-		if not m_balls_in_hole.has(b):
-			m_balls_in_hole.append(b)
 
-		# ✅ Hole owns the state flip
-		b.set_in_hole(true)
+func _on_body_entered(body: Node3D) -> void:
+	var ball := body as MarbleBall
+	if ball == null or m_balls_in_hole.has(ball):
+		return
+	m_balls_in_hole.append(ball)
+	ball.set_in_hole(true)
+	ball_entered.emit(ball)
 
-		ball_entered.emit(b)
 
-func _on_body_exited(body: Node2D) -> void:
-	if body is MarbleBall:
-		var b := body as MarbleBall
-		m_balls_in_hole.erase(b)
-
-		# ✅ Hole owns the state flip
-		b.set_in_hole(false)
-
-		ball_exited.emit(b)
+func _on_body_exited(body: Node3D) -> void:
+	var ball := body as MarbleBall
+	if ball == null:
+		return
+	m_balls_in_hole.erase(ball)
+	ball.set_in_hole(false)
+	ball_exited.emit(ball)

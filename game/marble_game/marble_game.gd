@@ -1,16 +1,18 @@
 # MarbleGame.gd
 @tool
 class_name MarbleGame
-extends Node2D
+extends Node3D
 
 enum GameStatus { FREE_PLAY, WAITING_FOR_REST, WAITING_FOR_KICK, GAME_OVER }
 
 @export var game_mode: MarbleGameMode:
-	set(v):
-		game_mode = v
+	set(value):
+		game_mode = value
 		_apply_mode()
 
+## X/Z board bounds. Rect2.y maps to world Z.
 @export var spawn_bounds: Rect2 = Rect2()
+@export var board_surface_y: float = 0.0
 
 signal game_mode_changed(new_mode: MarbleGameMode)
 signal status_changed(new_status: GameStatus)
@@ -32,10 +34,9 @@ var m_rest_progress: float = 0.0
 var m_current_ball: MarbleBall = null
 
 var m_balls: Array[MarbleBall] = []
+var m_mode: MarbleGameMode = null
 
 @onready var m_hole: MarbleHole = $hole
-
-var m_mode: MarbleGameMode = null
 
 
 func _ready() -> void:
@@ -50,14 +51,15 @@ func _ready() -> void:
 
 func _auto_discover_balls() -> void:
 	m_balls.clear()
-
-	var found: Array = CommonUtils.find_all_children_of_type(self, MarbleBall)
-	for n in found:
-		var b: MarbleBall = n
-		if b != null:
-			m_balls.append(b)
-
+	_find_balls_recursive(self)
 	print("[MarbleGame] Auto found balls: ", m_balls.size())
+
+
+func _find_balls_recursive(node: Node) -> void:
+	for child: Node in node.get_children():
+		if child is MarbleBall:
+			m_balls.append(child as MarbleBall)
+		_find_balls_recursive(child)
 
 
 func get_balls() -> Array[MarbleBall]:
@@ -74,13 +76,19 @@ func get_spawn_rect_for_ball(ball: MarbleBall) -> Rect2:
 	if spawn_bounds.size.x <= 0.0 or spawn_bounds.size.y <= 0.0:
 		return Rect2()
 
-	var margin: float = max(ball.marble_radius_px, 0.0)
+	var margin: float = maxf(ball.marble_radius, 0.0)
 	var usable_position: Vector2 = spawn_bounds.position + Vector2.ONE * margin
 	var usable_size: Vector2 = spawn_bounds.size - Vector2.ONE * margin * 2.0
 	if usable_size.x <= 0.0 or usable_size.y <= 0.0:
 		return Rect2()
 
 	return Rect2(usable_position, usable_size)
+
+
+func get_ball_spawn_height(ball: MarbleBall) -> float:
+	if ball == null or not is_instance_valid(ball):
+		return board_surface_y
+	return board_surface_y + ball.marble_radius + 0.04
 
 
 func restart_game() -> void:
@@ -94,76 +102,61 @@ func restart_game() -> void:
 	_set_status(GameStatus.WAITING_FOR_REST)
 
 	_apply_mode()
-
-	# Throw balls on restart (mode can implement or ignore)
 	if m_mode != null:
 		m_mode.on_restart(self)
 
 
 func declare_winner(ball: MarbleBall) -> void:
-	if ball == null or not is_instance_valid(ball):
-		return
-	if m_winners.has(ball):
+	if ball == null or not is_instance_valid(ball) or m_winners.has(ball):
 		return
 
 	m_winners.append(ball)
-	var place := m_winners.size()
+	var place: int = m_winners.size()
 	print("[MarbleGame] WINNER ", _ordinal(place), " -> ", ball.name)
 	ball_won.emit(ball)
 
 
 func declare_loser(ball: MarbleBall) -> void:
-	if ball == null or not is_instance_valid(ball):
-		return
-	if m_loser == ball:
+	if ball == null or not is_instance_valid(ball) or m_loser == ball:
 		return
 
 	m_loser = ball
-	var total := m_balls.size()
+	var total: int = m_balls.size()
 	print("[MarbleGame] LOSER ", _ordinal(total), " -> ", ball.name)
 	ball_lost.emit(ball)
 
 
 func set_active_lock_ball(ball: MarbleBall) -> void:
-	# TurnMode may still use this. FreeMode should ignore it.
 	if m_active_lock_ball == ball:
 		return
 	m_active_lock_ball = ball
-	if m_active_lock_ball != null:
-		print("[MarbleGame] ActiveLockBall -> ", m_active_lock_ball.name)
-	else:
-		print("[MarbleGame] ActiveLockBall -> <none>")
+	print("[MarbleGame] ActiveLockBall -> ", m_active_lock_ball.name if m_active_lock_ball != null else "<none>")
 
 
 func end_game() -> void:
 	if m_status == GameStatus.GAME_OVER:
 		return
 
-	# IMPORTANT: do not disable balls here either. If you want that behavior,
-	# do it in the mode before calling end_game().
 	_set_current_ball(null)
 	_set_turn_active(false)
 	_set_rest_progress(0.0)
 	_set_status(GameStatus.GAME_OVER)
-
 	print("[MarbleGame] GAME OVER")
 	game_over.emit()
 
 
 func _assign_game_to_balls() -> void:
-	for b in m_balls:
-		if not is_instance_valid(b):
+	for ball: MarbleBall in m_balls:
+		if not is_instance_valid(ball):
 			continue
 
-		b.set_game(self)
-
-		# Forward ball events to active mode.
-		if not b.kicked.is_connected(_on_ball_kicked):
-			b.kicked.connect(_on_ball_kicked)
-		if not b.body_hit.is_connected(_on_ball_body_hit):
-			b.body_hit.connect(_on_ball_body_hit)
-		if not b.hole_state_changed.is_connected(_on_ball_hole_state_changed):
-			b.hole_state_changed.connect(_on_ball_hole_state_changed)
+		ball.set_game(self)
+		if not ball.kicked.is_connected(_on_ball_kicked):
+			ball.kicked.connect(_on_ball_kicked)
+		if not ball.body_hit.is_connected(_on_ball_body_hit):
+			ball.body_hit.connect(_on_ball_body_hit)
+		if not ball.hole_state_changed.is_connected(_on_ball_hole_state_changed):
+			ball.hole_state_changed.connect(_on_ball_hole_state_changed)
 
 
 func _apply_mode() -> void:
@@ -173,11 +166,7 @@ func _apply_mode() -> void:
 	if m_mode != null:
 		m_mode.on_exit_mode()
 
-	if is_instance_valid(game_mode):
-		m_mode = game_mode.duplicate(true) as MarbleGameMode
-	else:
-		m_mode = null
-
+	m_mode = game_mode.duplicate(true) as MarbleGameMode if is_instance_valid(game_mode) else null
 	game_mode_changed.emit(m_mode)
 
 	if m_mode != null:
@@ -185,78 +174,79 @@ func _apply_mode() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if Engine.is_editor_hint():
-		return
-
-	if m_mode != null:
+	if not Engine.is_editor_hint() and m_mode != null:
 		m_mode.on_physics_process(self, delta)
 
 
-# ------------------------------------------------
-# Ball event forwarders (NO global win/lose/end logic here)
-# ------------------------------------------------
 func _on_ball_kicked(ball: MarbleBall) -> void:
 	if m_mode != null:
 		m_mode.on_ball_kicked(self, ball)
+
 
 func _on_ball_body_hit(ball: MarbleBall, other_body: Node) -> void:
 	if m_mode != null:
 		m_mode.on_ball_body_entered(self, ball, other_body)
 
+
 func _on_ball_hole_state_changed(ball: MarbleBall, in_hole: bool) -> void:
-	# IMPORTANT: never auto-end or auto-restart here.
 	if m_mode != null:
 		m_mode.on_ball_hole_state_changed(self, ball, in_hole)
 
 
-# -----------------------
-# UI/state helpers
-# -----------------------
-func _set_status(s: GameStatus) -> void:
-	if m_status == s:
+func _set_status(status: GameStatus) -> void:
+	if m_status == status:
 		return
-	m_status = s
+	m_status = status
 	status_changed.emit(m_status)
 	print("[MarbleGame] Status -> ", _status_name(m_status))
+
 
 func _set_turn_active(is_active: bool) -> void:
 	if m_turn_active == is_active:
 		return
 	m_turn_active = is_active
 	turn_active_changed.emit(m_turn_active)
-	print("[MarbleGame] TurnActive -> ", m_turn_active)
 
-func _set_rest_progress(p: float) -> void:
-	p = clamp(p, 0.0, 1.0)
-	if is_equal_approx(m_rest_progress, p):
+
+func _set_rest_progress(progress: float) -> void:
+	progress = clampf(progress, 0.0, 1.0)
+	if is_equal_approx(m_rest_progress, progress):
 		return
-	m_rest_progress = p
+	m_rest_progress = progress
 	rest_progress_changed.emit(m_rest_progress)
+
 
 func _set_current_ball(ball: MarbleBall) -> void:
 	if m_current_ball == ball:
 		return
 	m_current_ball = ball
 	current_ball_changed.emit(m_current_ball)
-	if m_current_ball != null:
-		print("[MarbleGame] CurrentBall -> ", m_current_ball.name)
-	else:
-		print("[MarbleGame] CurrentBall -> <none>")
+	print("[MarbleGame] CurrentBall -> ", m_current_ball.name if m_current_ball != null else "<none>")
 
-func _status_name(s: GameStatus) -> String:
-	match s:
-		GameStatus.FREE_PLAY: return "FREE_PLAY"
-		GameStatus.WAITING_FOR_REST: return "WAITING_FOR_REST"
-		GameStatus.WAITING_FOR_KICK: return "WAITING_FOR_KICK"
-		GameStatus.GAME_OVER: return "GAME_OVER"
+
+func _status_name(status: GameStatus) -> String:
+	match status:
+		GameStatus.FREE_PLAY:
+			return "FREE_PLAY"
+		GameStatus.WAITING_FOR_REST:
+			return "WAITING_FOR_REST"
+		GameStatus.WAITING_FOR_KICK:
+			return "WAITING_FOR_KICK"
+		GameStatus.GAME_OVER:
+			return "GAME_OVER"
 	return "UNKNOWN"
 
-func _ordinal(n: int) -> String:
-	var mod100 := n % 100
+
+func _ordinal(number: int) -> String:
+	var mod100: int = number % 100
 	if mod100 >= 11 and mod100 <= 13:
-		return str(n) + "th"
-	match n % 10:
-		1: return str(n) + "st"
-		2: return str(n) + "nd"
-		3: return str(n) + "rd"
-		_: return str(n) + "th"
+		return str(number) + "th"
+	match number % 10:
+		1:
+			return str(number) + "st"
+		2:
+			return str(number) + "nd"
+		3:
+			return str(number) + "rd"
+		_:
+			return str(number) + "th"

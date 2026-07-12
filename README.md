@@ -32,7 +32,6 @@ No package manager, CI pipeline, or automated test runner is checked into this r
 - [`docs/`](docs) - project documentation for humans and coding agents
 - [`agent_tools/`](agent_tools) - shared agent runbooks and reusable support docs
 - [`godot_common/`](godot_common) - shared Godot support code via submodule
-- [`godot_tilemap/`](godot_tilemap) - tilemap tooling/support code via submodule
 - [`3rdparty/Universal-LPC-Spritesheet-Character-Generator/`](3rdparty/Universal-LPC-Spritesheet-Character-Generator) - third-party LPC asset generator via submodule
 
 ## Submodules
@@ -40,7 +39,6 @@ No package manager, CI pipeline, or automated test runner is checked into this r
 This repo currently tracks these submodules through [`.gitmodules`](.gitmodules):
 
 - [`godot_common/`](godot_common)
-- [`godot_tilemap/`](godot_tilemap)
 - [`3rdparty/Universal-LPC-Spritesheet-Character-Generator/`](3rdparty/Universal-LPC-Spritesheet-Character-Generator)
 - [`agent_tools/`](agent_tools)
 - [`addons/mp3_to_ogg/`](addons/mp3_to_ogg)
@@ -54,7 +52,6 @@ Primary submodule documentation entry points:
 
 - [`agent_tools/AGENTS.md`](agent_tools/AGENTS.md) and [`agent_tools/README.md`](agent_tools/README.md) - generic agent guidance, reusable runbooks, and the submodule's own docs map
 - [`godot_common/AGENTS.md`](godot_common/AGENTS.md), [`godot_common/README.md`](godot_common/README.md), and [`godot_common/docs/`](godot_common/docs) - entry points for shared Godot support code and helper ownership guidance
-- [`godot_tilemap/AGENTS.md`](godot_tilemap/AGENTS.md), [`godot_tilemap/README.md`](godot_tilemap/README.md), and [`godot_tilemap/docs/`](godot_tilemap/docs) - entry points for tilemap helper/tooling architecture and repo conventions
 - [`3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md`](3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md) - upstream LPC generator overview, licensing, attribution, and development references
 - [`addons/mp3_to_ogg/README.md`](addons/mp3_to_ogg/README.md) and [`addons/mp3_to_ogg/docs/`](addons/mp3_to_ogg/docs) - MP3 conversion addon behavior and contract
 - [`addons/universal_lpc/README.md`](addons/universal_lpc/README.md) and [`addons/universal_lpc/docs/`](addons/universal_lpc/docs) - Universal LPC addon usage, contract, authoring, and validation guidance

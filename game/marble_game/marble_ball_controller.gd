@@ -1,147 +1,125 @@
-# MarbleBallController.gd
 class_name MarbleBallController
 extends Resource
 
-## The ball currently controlled by this controller (assigned by MarbleBall).
 var m_ball: MarbleBall = null
-
-## The game instance owning the ball (assigned by MarbleGame -> MarbleBall).
 var m_game: MarbleGame = null
-
-## Whether the game/mode currently allows this controller to act.
 var m_allowed: bool = false
 
-## Called by MarbleBall when the controller is assigned / re-assigned.
+
 func set_ball(ball: MarbleBall) -> void:
 	m_ball = ball
 
-## Called by MarbleBall when MarbleGame injects the game instance.
+
 func set_game(game: MarbleGame) -> void:
 	m_game = game
 
-## Called by MarbleBall (via game/mode) to enable/disable this controller.
+
 func set_allowed(is_allowed: bool) -> void:
 	if m_allowed == is_allowed:
 		return
 	m_allowed = is_allowed
 	_on_allowed_changed(m_allowed)
 
-## Optional override in subclasses.
+
 func _on_allowed_changed(_is_allowed: bool) -> void:
 	pass
 
-## Called by MarbleBall from _unhandled_input.
+
 func handle_input(_event: InputEvent) -> void:
 	pass
 
-## Called by MarbleBall from _physics_process.
+
 func physics_tick(_delta: float) -> void:
 	pass
 
+
 func spawn_and_throw_away_from_hole(rng: RandomNumberGenerator) -> void:
-	if m_ball == null or not is_instance_valid(m_ball):
-		return
-	if m_game == null or not is_instance_valid(m_game):
+	if not is_instance_valid(m_ball) or not is_instance_valid(m_game):
 		return
 
 	var hole: MarbleHole = m_game.get_hole()
-	if hole == null or not is_instance_valid(hole):
+	if not is_instance_valid(hole):
 		return
 
-	# -----------------------------
-	# Reset physics safely
-	# -----------------------------
 	m_ball.sleeping = false
 	m_ball.freeze = false
-	m_ball.linear_velocity = Vector2.ZERO
-	m_ball.angular_velocity = 0.0
+	m_ball.linear_velocity = Vector3.ZERO
+	m_ball.angular_velocity = Vector3.ZERO
+	m_ball.clear_damping_contributions()
+	m_ball.set_in_hole(false)
 
-	# Reset rolling state (prevents shader jumps after teleport)
-	# These fields exist in your MarbleBall.gd script.
-	m_ball.m_last_valid_roll_axis = Vector2.UP
-	m_ball.m_roll_q = Quaternion()
+	var hole_position_2d := Vector2(hole.global_position.x, hole.global_position.z)
+	var minimum_distance: float = m_ball.marble_radius * 4.0
+	var maximum_distance: float = m_ball.marble_radius * 24.0
+	var spawn_rect: Rect2 = m_game.get_spawn_rect_for_ball(m_ball)
+	var spawn_position_2d := _pick_spawn_position(
+		rng,
+		hole_position_2d,
+		minimum_distance,
+		maximum_distance,
+		spawn_rect
+	)
+	var spawn_position := Vector3(
+		spawn_position_2d.x,
+		m_game.get_ball_spawn_height(m_ball),
+		spawn_position_2d.y
+	)
+	m_ball.global_position = spawn_position
+	m_ball.reset_physics_interpolation()
 
-	# -----------------------------
-	# Pick a spawn position OUTSIDE the hole area
-	# -----------------------------
-	var hole_pos: Vector2 = hole.global_position
-
-	var r := float(m_ball.marble_radius_px)
-	var min_dist := r * 10.0
-	var max_dist := r * 30.0
-	var spawn_rect := m_game.get_spawn_rect_for_ball(m_ball)
-	var spawn_pos := _pick_spawn_position(rng, hole_pos, min_dist, max_dist, spawn_rect)
-	CommonUtils.safe_teleport_body(m_ball, spawn_pos)
-	m_ball.m_last_pos = spawn_pos
-
-	# Important for your roll accumulation method (uses position delta)
-	m_ball.m_last_pos = m_ball.global_position
-
-	# -----------------------------
-	# Throw direction AWAY from hole (+ small spread)
-	# -----------------------------
-	var dir := (spawn_pos - hole_pos).normalized()
-	dir = dir.rotated(rng.randf_range(-0.35, 0.35)).normalized()
-
-	var throw_speed := rng.randf_range(100.0, 500.0)
-	m_ball.linear_velocity = dir * throw_speed
-	print("spawn_and_throw_away_from_hole:", throw_speed)
-	m_ball.angular_velocity = 0.0
+	var direction_2d := (spawn_position_2d - hole_position_2d).normalized()
+	direction_2d = direction_2d.rotated(rng.randf_range(-0.35, 0.35)).normalized()
+	var throw_speed: float = rng.randf_range(2.2, 5.4)
+	m_ball.linear_velocity = Vector3(direction_2d.x, 0.0, direction_2d.y) * throw_speed
 
 
 func _pick_spawn_position(
 	rng: RandomNumberGenerator,
-	hole_pos: Vector2,
-	min_dist: float,
-	max_dist: float,
+	hole_position: Vector2,
+	minimum_distance: float,
+	maximum_distance: float,
 	spawn_rect: Rect2
 ) -> Vector2:
-	var has_spawn_rect := spawn_rect.size.x > 0.0 and spawn_rect.size.y > 0.0
-
+	var has_spawn_rect: bool = spawn_rect.size.x > 0.0 and spawn_rect.size.y > 0.0
 	if has_spawn_rect:
-		for _attempt in range(48):
+		for _attempt: int in 48:
 			var candidate := Vector2(
-				rng.randf_range(spawn_rect.position.x, spawn_rect.position.x + spawn_rect.size.x),
-				rng.randf_range(spawn_rect.position.y, spawn_rect.position.y + spawn_rect.size.y)
+				rng.randf_range(spawn_rect.position.x, spawn_rect.end.x),
+				rng.randf_range(spawn_rect.position.y, spawn_rect.end.y)
 			)
-			var dist_to_hole := candidate.distance_to(hole_pos)
-			if dist_to_hole < min_dist or dist_to_hole > max_dist:
+			var distance_to_hole: float = candidate.distance_to(hole_position)
+			if distance_to_hole < minimum_distance or distance_to_hole > maximum_distance:
 				continue
-			if not _is_spawn_position_clear(candidate):
-				continue
-			return candidate
+			if _is_spawn_position_clear(candidate):
+				return candidate
 
-		for _attempt in range(48):
+		for _attempt: int in 48:
 			var relaxed_candidate := Vector2(
-				rng.randf_range(spawn_rect.position.x, spawn_rect.position.x + spawn_rect.size.x),
-				rng.randf_range(spawn_rect.position.y, spawn_rect.position.y + spawn_rect.size.y)
+				rng.randf_range(spawn_rect.position.x, spawn_rect.end.x),
+				rng.randf_range(spawn_rect.position.y, spawn_rect.end.y)
 			)
-			if not _is_spawn_position_clear(relaxed_candidate):
-				continue
-			return relaxed_candidate
-
+			if _is_spawn_position_clear(relaxed_candidate):
+				return relaxed_candidate
 		return spawn_rect.get_center()
 
-	for _attempt in range(48):
-		var angle := rng.randf_range(0.0, TAU)
-		var dist := rng.randf_range(min_dist, max_dist)
-		var candidate := hole_pos + Vector2.RIGHT.rotated(angle) * dist
-		if not _is_spawn_position_clear(candidate):
-			continue
-		return candidate
-
-	return hole_pos + Vector2.RIGHT * min_dist
+	for _attempt: int in 48:
+		var angle: float = rng.randf_range(0.0, TAU)
+		var distance: float = rng.randf_range(minimum_distance, maximum_distance)
+		var candidate := hole_position + Vector2.RIGHT.rotated(angle) * distance
+		if _is_spawn_position_clear(candidate):
+			return candidate
+	return hole_position + Vector2.RIGHT * minimum_distance
 
 
 func _is_spawn_position_clear(candidate: Vector2) -> bool:
 	if not is_instance_valid(m_game) or not is_instance_valid(m_ball):
 		return true
 
-	var min_gap := m_ball.marble_radius_px * 2.25
+	var minimum_gap: float = m_ball.marble_radius * 2.25
 	for other: MarbleBall in m_game.get_balls():
 		if other == null or other == m_ball or not is_instance_valid(other):
 			continue
-		if candidate.distance_to(other.global_position) < min_gap:
+		var other_position := Vector2(other.global_position.x, other.global_position.z)
+		if candidate.distance_to(other_position) < minimum_gap:
 			return false
-
 	return true
