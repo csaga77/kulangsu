@@ -50,13 +50,11 @@ static func build(profile: PackedVector3Array, settings: Dictionary) -> Dictiona
 	var foot_left := _build_offset_polyline(profile, road_half_width + kerb_width + footpath_width)
 	var foot_right := _build_offset_polyline(profile, -road_half_width - kerb_width - footpath_width)
 
-	# Extend the kerb and footpath (and the road edge the kerb sits against) onto
-	# the shared junction corners so a street's sidewalks meet its neighbours
-	# instead of leaving a gap. The road SURFACE keeps its natural ends so the
-	# arms still overlap and fill the junction centre; only the side rings and
-	# their inner anchor are mitered. Only the plan (XZ) position moves.
-	var side_road_left := road_left.duplicate()
-	var side_road_right := road_right.duplicate()
+	# Retreat each terminal cross-section onto the shared junction corners so a
+	# street's road edge, kerb, and footpath meet its neighbours. The road band is
+	# pulled back to the junction boundary here (not left overlapping); the centre
+	# wedge below fills the gap between the boundary and the junction point so the
+	# arms tile the junction without overlap. Only the plan (XZ) position moves.
 	var side_end_overrides: Dictionary = settings.get("side_end_overrides", {})
 	var start_side: Dictionary = side_end_overrides.get("start", {})
 	var end_side: Dictionary = side_end_overrides.get("end", {})
@@ -65,9 +63,9 @@ static func build(profile: PackedVector3Array, settings: Dictionary) -> Dictiona
 	# arrays; passing packed arrays into a mutating helper is copy-on-write unsafe.
 	if !start_side.is_empty():
 		if start_side.has("left_road"):
-			side_road_left[0] = _override_plan(side_road_left[0], start_side["left_road"])
+			road_left[0] = _override_plan(road_left[0], start_side["left_road"])
 		if start_side.has("right_road"):
-			side_road_right[0] = _override_plan(side_road_right[0], start_side["right_road"])
+			road_right[0] = _override_plan(road_right[0], start_side["right_road"])
 		if start_side.has("left_kerb"):
 			kerb_left[0] = _override_plan(kerb_left[0], start_side["left_kerb"])
 		if start_side.has("right_kerb"):
@@ -78,9 +76,9 @@ static func build(profile: PackedVector3Array, settings: Dictionary) -> Dictiona
 			foot_right[0] = _override_plan(foot_right[0], start_side["right_foot"])
 	if !end_side.is_empty() and last_index > 0:
 		if end_side.has("left_road"):
-			side_road_left[last_index] = _override_plan(side_road_left[last_index], end_side["left_road"])
+			road_left[last_index] = _override_plan(road_left[last_index], end_side["left_road"])
 		if end_side.has("right_road"):
-			side_road_right[last_index] = _override_plan(side_road_right[last_index], end_side["right_road"])
+			road_right[last_index] = _override_plan(road_right[last_index], end_side["right_road"])
 		if end_side.has("left_kerb"):
 			kerb_left[last_index] = _override_plan(kerb_left[last_index], end_side["left_kerb"])
 		if end_side.has("right_kerb"):
@@ -89,6 +87,20 @@ static func build(profile: PackedVector3Array, settings: Dictionary) -> Dictiona
 			foot_left[last_index] = _override_plan(foot_left[last_index], end_side["left_foot"])
 		if end_side.has("right_foot"):
 			foot_right[last_index] = _override_plan(foot_right[last_index], end_side["right_foot"])
+
+	# Fill the junction centre: a triangle wedge from the junction point out to the
+	# two retreated road corners. Adjacent arms' wedges fan around the shared point
+	# and tile the intersection with no overlap or hole.
+	if !start_side.is_empty():
+		_append_road_wedge(
+			profile[0], road_left[0], road_right[0], road_thickness, road_color,
+			vertices, normals, colors, indices
+		)
+	if !end_side.is_empty() and last_index > 0:
+		_append_road_wedge(
+			profile[last_index], road_left[last_index], road_right[last_index],
+			road_thickness, road_color, vertices, normals, colors, indices
+		)
 
 	for segment_index in range(profile.size() - 1):
 		var a := profile[segment_index]
@@ -113,34 +125,34 @@ static func build(profile: PackedVector3Array, settings: Dictionary) -> Dictiona
 			result["stair_segment_count"] = int(result["stair_segment_count"]) + 1
 			result["step_count"] = int(result["step_count"]) + step_count
 			_append_stepped_side(
-				side_road_left[segment_index], kerb_left[segment_index], foot_left[segment_index],
-				side_road_left[segment_index + 1], kerb_left[segment_index + 1], foot_left[segment_index + 1],
+				road_left[segment_index], kerb_left[segment_index], foot_left[segment_index],
+				road_left[segment_index + 1], kerb_left[segment_index + 1], foot_left[segment_index + 1],
 				step_count, kerb_height, footpath_thickness, kerb_color, footpath_color,
 				vertices, normals, colors, indices
 			)
 			_append_stepped_side(
-				side_road_right[segment_index], kerb_right[segment_index], foot_right[segment_index],
-				side_road_right[segment_index + 1], kerb_right[segment_index + 1], foot_right[segment_index + 1],
+				road_right[segment_index], kerb_right[segment_index], foot_right[segment_index],
+				road_right[segment_index + 1], kerb_right[segment_index + 1], foot_right[segment_index + 1],
 				step_count, kerb_height, footpath_thickness, kerb_color, footpath_color,
 				vertices, normals, colors, indices
 			)
 		else:
 			for retained_range: Vector2 in side_ranges:
 				_append_sloped_side(
-					side_road_left[segment_index].lerp(side_road_left[segment_index + 1], retained_range.x),
+					road_left[segment_index].lerp(road_left[segment_index + 1], retained_range.x),
 					kerb_left[segment_index].lerp(kerb_left[segment_index + 1], retained_range.x),
 					foot_left[segment_index].lerp(foot_left[segment_index + 1], retained_range.x),
-					side_road_left[segment_index].lerp(side_road_left[segment_index + 1], retained_range.y),
+					road_left[segment_index].lerp(road_left[segment_index + 1], retained_range.y),
 					kerb_left[segment_index].lerp(kerb_left[segment_index + 1], retained_range.y),
 					foot_left[segment_index].lerp(foot_left[segment_index + 1], retained_range.y),
 					kerb_height, footpath_thickness, kerb_color, footpath_color,
 					vertices, normals, colors, indices
 				)
 				_append_sloped_side(
-					side_road_right[segment_index].lerp(side_road_right[segment_index + 1], retained_range.x),
+					road_right[segment_index].lerp(road_right[segment_index + 1], retained_range.x),
 					kerb_right[segment_index].lerp(kerb_right[segment_index + 1], retained_range.x),
 					foot_right[segment_index].lerp(foot_right[segment_index + 1], retained_range.x),
-					side_road_right[segment_index].lerp(side_road_right[segment_index + 1], retained_range.y),
+					road_right[segment_index].lerp(road_right[segment_index + 1], retained_range.y),
 					kerb_right[segment_index].lerp(kerb_right[segment_index + 1], retained_range.y),
 					foot_right[segment_index].lerp(foot_right[segment_index + 1], retained_range.y),
 					kerb_height, footpath_thickness, kerb_color, footpath_color,
@@ -168,6 +180,54 @@ static func _choose_step_count(
 	if minimum_steps > maximum_steps or maximum_steps < 1:
 		return 0
 	return clampi(roundi(rise / target_riser), minimum_steps, maximum_steps)
+
+
+## Junction centre fill: one triangle from the junction point out to the two
+## retreated road corners, with a matching underside so the road keeps thickness.
+static func _append_road_wedge(
+	apex: Vector3, corner_left: Vector3, corner_right: Vector3,
+	thickness: float, color: Color,
+	vertices: PackedVector3Array, normals: PackedVector3Array,
+	colors: PackedColorArray, indices: PackedInt32Array
+) -> void:
+	if apex.distance_to(corner_left) <= EPSILON or apex.distance_to(corner_right) <= EPSILON:
+		return
+	if corner_left.distance_to(corner_right) <= EPSILON:
+		return
+	_append_upward_triangle(apex, corner_left, corner_right, color, vertices, normals, colors, indices)
+	var drop := Vector3.UP * thickness
+	_append_triangle(
+		apex - drop, corner_right - drop, corner_left - drop,
+		color.darkened(0.08), vertices, normals, colors, indices
+	)
+
+
+static func _append_triangle(
+	a: Vector3, b: Vector3, c: Vector3, color: Color,
+	vertices: PackedVector3Array, normals: PackedVector3Array,
+	colors: PackedColorArray, indices: PackedInt32Array
+) -> void:
+	var normal := (b - a).cross(c - a)
+	if normal.length_squared() <= EPSILON:
+		return
+	normal = normal.normalized()
+	var base := vertices.size()
+	vertices.append_array(PackedVector3Array([a, b, c]))
+	for _index in range(3):
+		normals.append(normal)
+		colors.append(color)
+	indices.append_array(PackedInt32Array([base, base + 1, base + 2]))
+
+
+static func _append_upward_triangle(
+	a: Vector3, b: Vector3, c: Vector3, color: Color,
+	vertices: PackedVector3Array, normals: PackedVector3Array,
+	colors: PackedColorArray, indices: PackedInt32Array
+) -> void:
+	if (b - a).cross(c - a).y < 0.0:
+		_append_triangle(a, c, b, color, vertices, normals, colors, indices)
+	else:
+		_append_triangle(a, b, c, color, vertices, normals, colors, indices)
 
 
 static func _override_plan(original: Vector3, target: Vector3) -> Vector3:

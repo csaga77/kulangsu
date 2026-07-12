@@ -248,6 +248,30 @@ func _validate_intersection_kerb_connection() -> void:
 			break
 	if !reached:
 		m_failures.append("Junction arm mesh did not extend its kerb onto the shared corner")
+
+	# Road surfaces: each arm retreats to shared road corners (four, each shared by
+	# two arms) and fills the centre with a wedge whose apex is the junction point.
+	var road_corner_owners: Dictionary = {}
+	for arm: Street3DScript in arms:
+		var start_join: Dictionary = arm.get_end_joins().get("start", {})
+		for field: String in ["left_road", "right_road"]:
+			if start_join.has(field):
+				var key := _corner_key(start_join[field])
+				road_corner_owners[key] = int(road_corner_owners.get(key, 0)) + 1
+	if road_corner_owners.size() != 4:
+		m_failures.append("+ junction produced %d road corners, expected 4" % road_corner_owners.size())
+	for key: String in road_corner_owners:
+		if int(road_corner_owners[key]) != 2:
+			m_failures.append("Road corner %s was not shared by two arms" % key)
+	var road_center_filled := false
+	for vertex_index in range(vertices.size()):
+		if !_colors_near(colors[vertex_index], east.road_color):
+			continue
+		if absf(vertices[vertex_index].x) <= 0.01 and absf(vertices[vertex_index].z) <= 0.01:
+			road_center_filled = true
+			break
+	if !road_center_filled:
+		m_failures.append("Junction arm road did not fill the centre with a wedge to the junction point")
 	coordinator.queue_free()
 
 
