@@ -243,7 +243,6 @@ func move_with_speed(direction_vector: Vector3, movement_speed: float) -> void:
 	move_and_slide()
 	_apply_rigid_body_pushes(step_direction, movement_speed)
 	var wall_contact_flags := _get_blocking_wall_contact_flags(step_direction)
-	var has_blocking_wall_contact := (wall_contact_flags & WALL_CONTACT_BLOCKING) != 0
 	var has_blocking_stair_side_wall_contact := (wall_contact_flags & WALL_CONTACT_STAIR_SIDE) != 0
 	has_blocking_stair_side_wall_contact = (
 		has_blocking_stair_side_wall_contact
@@ -252,7 +251,14 @@ func move_with_speed(direction_vector: Vector3, movement_speed: float) -> void:
 	)
 	m_step_snap_grounded = is_on_floor()
 	if can_reacquire_floor and step_direction.length_squared() > 0.000001:
-		var allow_horizontal_reposition := !has_blocking_wall_contact
+		# Only stair side blockers suppress the horizontal reposition. A front riser
+		# (a kerb or the next stair tread) IS a blocking wall, but the body must be
+		# allowed to move forward onto its top -- otherwise the step-up raises the body
+		# straight up in place, still horizontally over the lower floor, and the floor
+		# snap immediately pulls it back down, so a small kerb reads as an impassable
+		# wall. The forward reposition stays bounded by _can_place_body_at (it will not
+		# clip into a genuine tall wall) and max_step_height, so opening it here is safe.
+		var allow_horizontal_reposition := !has_blocking_stair_side_wall_contact
 		var allow_forward_step_up := !has_blocking_stair_side_wall_contact
 		# Keep forward probes during wall contact for step-downs, but block their
 		# step-up path only for stair side blockers. A front riser contact is the
