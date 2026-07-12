@@ -227,7 +227,7 @@ This shared-anchor-plus-offset model is intentionally cheap to author. It is les
 - `appearance` is now authored as a `ResidentAppearanceDefinition` built by `_look(...)` in [`../game/resident_catalog.gd`](../game/resident_catalog.gd).
 - [`../characters/resident_npc.gd`](../characters/resident_npc.gd) converts that authored appearance into the `HumanBody2D.set_configuration()` payload used by the LPC renderer.
 - Resident looks should continue to be authored in the catalog, not hardcoded in scene instances.
-- When authoring a resident look, verify that each selected LPC path supports that resident's `body_type` and chosen variant in the shipped metadata. A path existing in the metadata file is not enough if its layer data only supports another body type or a narrower variant set.
+- Validate resident LPC selections against the plugin-owned [`authoring.md`](../addons/universal_lpc/docs/authoring.md) workflow; a path existing in the manifest is not enough if its definition only supports another body type or a narrower variant set.
 
 ## Current Player-Facing Behavior
 
@@ -326,7 +326,7 @@ When the system breaks, start here:
 - Resident appears but has the wrong look:
   - Check `resident_id` on the instantiated controller.
   - Check `AppState.get_resident_appearance_config()` and `NPCController._apply_resident_presentation()`.
-  - Check the resident's LPC path/body-type/variant combination against [`../addons/universal_lpc/universal_lpc_metadata.json`](../addons/universal_lpc/universal_lpc_metadata.json).
+  - Check the resident's LPC path/body-type/variant combination using [`../addons/universal_lpc/docs/authoring.md`](../addons/universal_lpc/docs/authoring.md).
   - Treat `Failed to resolve combined texture for selection layer` warnings as invalid appearance content, not as a harmless fallback.
 - Prompt says `Inspect` instead of `Talk`:
   - Check whether the target is actually using `NPCController`.

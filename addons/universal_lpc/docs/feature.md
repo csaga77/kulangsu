@@ -17,6 +17,8 @@ Enable the `Universal LPC 2D Character` plugin and use **Open Sprite Composer** 
 
 Generation depends on the upstream Universal LPC submodule being initialized at `res://3rdparty/Universal-LPC-Spritesheet-Character-Generator`.
 
+See [`authoring.md`](authoring.md) for the canonical appearance-selection, asset-generation, validation, and attribution workflow.
+
 ## Validation
 
 - Run `tests/test_universal_lpc_sprite_generator.tscn` to load the manifest and validate sprite composition.

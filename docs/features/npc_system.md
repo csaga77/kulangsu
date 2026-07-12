@@ -114,7 +114,7 @@ Use [`../npc_system_design.md`](../npc_system_design.md) only when you need the 
 1. For editor-authored residents, edit the `ResidentAppearanceDefinition` resource in the Inspector.
 2. Prefer the named appearance fields (`skin`, `head_path`, `hair_path`, `shirt_path`, `pants_path`, `shoes_path`) over the raw `selections` dictionary.
 3. Use `selections` only for advanced overrides that do not fit the simple outfit fields cleanly.
-4. Confirm that every selected LPC path supports the resident's body type and chosen variant in the shipped metadata. A matching path name alone does not guarantee the combination can render.
+4. Confirm every LPC selection through the plugin-owned [`authoring.md`](../../addons/universal_lpc/docs/authoring.md) workflow. A matching path name alone does not guarantee the resident's body type and variant can render.
 5. Do not hardcode appearance in scenes; [`../../characters/resident_npc.gd`](../../characters/resident_npc.gd) applies `ResidentDefinition.appearance` automatically when the overworld spawns the actor.
 6. Verify both the main scene and [`../../game/tests/npc_system/test_scene.tscn`](../../game/tests/npc_system/test_scene.tscn) if that resident id is used there.
 7. Treat `Failed to resolve combined texture for selection layer` warnings as a resident-content bug and fix the catalog entry instead of ignoring the warning.

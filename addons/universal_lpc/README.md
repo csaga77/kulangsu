@@ -33,3 +33,4 @@ Universal LPC artwork has per-asset licensing and attribution requirements. Revi
 
 - [`docs/contract.md`](docs/contract.md) - runtime, metadata, asset, and integration contract
 - [`docs/feature.md`](docs/feature.md) - architecture, generation workflow, and validation
+- [`docs/authoring.md`](docs/authoring.md) - appearance selection, asset generation, validation, and attribution workflow

@@ -58,11 +58,9 @@ The prototype wardrobe currently ships with four presets:
 
 ### Universal LPC Runtime Contract
 
-- The shipped game consumes the prebuilt metadata file at [`../addons/universal_lpc/universal_lpc_metadata.json`](../addons/universal_lpc/universal_lpc_metadata.json); generated spritesheets are colocated under [`../addons/universal_lpc/resources/`](../addons/universal_lpc/resources).
-- Regenerating Universal LPC metadata is a development-time workflow driven by the validation tooling under [`../addons/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn`](../addons/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn), not a runtime game step.
+- The reusable runtime, metadata, asset, and tooling contract is owned by the plugin's [`contract.md`](../addons/universal_lpc/docs/contract.md); selection, generation, validation, and attribution guidance is owned by [`authoring.md`](../addons/universal_lpc/docs/authoring.md).
 - [`../characters/human_body_2d.gd`](../characters/human_body_2d.gd) remains the root avatar node and owns the material/shader setup for the composed character.
 - [`../addons/universal_lpc/universal_lpc_sprite_2d.gd`](../addons/universal_lpc/universal_lpc_sprite_2d.gd) handles metadata-driven layer composition under `HumanBody2D`.
-- Animation authoring for this slice should stay within the shipped default LPC animation set and any explicitly supported custom animation layouts captured in the prebuilt metadata.
 - [`../characters/human_body_2d.gd`](../characters/human_body_2d.gd) currently auto-drives idle, walk, run, and jump presentation from movement state; custom animation layouts still require an explicit gameplay/UI caller that sets the active animation name.
 
 ### Player Application
@@ -113,9 +111,7 @@ This keeps the feature overlay-based and consistent with the project’s minimal
 - In-story costume changes should remain preset looks, not combinatorial paper-doll editing.
 - Unlocks should read as gifts, local borrowing, or story recognition rather than loot drops.
 - Wardrobe text should stay short enough to scan in the journal without feeling like a spreadsheet.
-- New outfits should use asset paths already supported by the shipped Universal LPC metadata unless the sprite pipeline is intentionally expanded.
-- A valid-looking LPC path is not enough on its own; the shipped metadata must support the requested body types and color/variant choices for that path.
-- Player-facing preset layers should also cover the shipped movement contract (`idle`, `walk`, `run`, `jump`) for every reachable body type before they land in the costume catalog.
+- Validate new LPC selections, variants, body-type coverage, and animation rows through the plugin-owned [`authoring.md`](../addons/universal_lpc/docs/authoring.md) workflow before they land in a Kulangsu catalog.
 - New appearance content should assume prebuilt metadata and existing runtime animation support, not on-demand metadata generation in the shipped game.
 
 ## Adding New Content
@@ -126,21 +122,17 @@ This keeps the feature overlay-based and consistent with the project’s minimal
 2. Add the costume id to `ORDER` so journal cycling and unlocked-list ordering stay deterministic.
 3. Update `is_costume_unlocked(...)` so the preset can actually become available in story mode or free walk.
 4. Keep the unlock hint text aligned with the real unlock rule so the journal stays trustworthy.
-5. Before shipping the preset, confirm each selected LPC path supports the body types and variants the player can actually reach with that costume.
+5. Before shipping the preset, validate its LPC selections through [`authoring.md`](../addons/universal_lpc/docs/authoring.md).
 
 ### New Base Appearance Option
 
 1. Add the option in [`../game/player_appearance_catalog.gd`](../game/player_appearance_catalog.gd). Hair styles should stay aligned with the full shipped set of player-safe standalone LPC hair definitions unless the project intentionally returns to a smaller curated subset.
-2. Confirm the referenced LPC path and variant already exist in the shipped metadata at [`../addons/universal_lpc/universal_lpc_metadata.json`](../addons/universal_lpc/universal_lpc_metadata.json).
-3. Confirm the path also supports the intended `body_type` values for that option set; some shipped LPC entries only support a subset of male/female/teen variants.
-4. If the change introduces a brand new profile field instead of a new option value, update the `AppState` getters/cyclers plus both customization surfaces in [`../ui/screens/player_customization_overlay.gd`](../ui/screens/player_customization_overlay.gd) and [`../ui/screens/journal_overlay.gd`](../ui/screens/journal_overlay.gd).
+2. Validate the referenced LPC selection, variant, body types, and required animation rows through [`authoring.md`](../addons/universal_lpc/docs/authoring.md).
+3. If the change introduces a brand new profile field instead of a new option value, update the `AppState` getters/cyclers plus both customization surfaces in [`../ui/screens/player_customization_overlay.gd`](../ui/screens/player_customization_overlay.gd) and [`../ui/screens/journal_overlay.gd`](../ui/screens/journal_overlay.gd).
 
 ### New LPC Asset Or Animation Support
 
-1. Prefer reusing paths and variants already present in the shipped metadata.
-2. If new metadata must be generated, treat that as development tooling work and revalidate the shipped JSON before relying on the new content in gameplay.
-3. Do not assume metadata alone makes a custom animation playable in the game; add or update an explicit runtime trigger path when the feature needs one.
-4. Before spending time painting or AI-generating missing rows, run [`../addons/universal_lpc/tests/test_universal_lpc_asset_audit.tscn`](../addons/universal_lpc/tests/test_universal_lpc_asset_audit.tscn) to separate true source-art gaps from JSON/source mismatches and alias-only runtime gaps.
+Follow the plugin-owned [`authoring.md`](../addons/universal_lpc/docs/authoring.md) workflow. If the feature needs a new animation, Kulangsu must still add or update an explicit gameplay/UI trigger after the addon metadata and sprite rows validate.
 
 ## Validation
 
@@ -149,10 +141,8 @@ This keeps the feature overlay-based and consistent with the project’s minimal
 - Open the journal wardrobe tab and confirm the preview, labels, unlocked count, and costume cycling reflect the new content.
 - Validate the live overworld avatar through the main project flow so `AppState.player_appearance_changed` still updates the active player immediately.
 - If unlock rules changed, confirm both the locked and unlocked states read correctly in the journal text.
-- If new LPC assets or animations were introduced, use [`../addons/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn`](../addons/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn) or another focused validation scene before relying on the full game flow.
-- Use [`../addons/universal_lpc/tests/test_universal_lpc_asset_audit.tscn`](../addons/universal_lpc/tests/test_universal_lpc_asset_audit.tscn) before asset-authoring passes to identify which curated player paths are missing `idle / walk / run / jump`, which styles only need JSON/runtime fixes, and which dynamic-path definitions still need manual review.
+- If LPC selections, assets, or animations changed, complete the plugin-owned [`authoring.md`](../addons/universal_lpc/docs/authoring.md) validation workflow before relying on the full game flow.
 - Use [`../ui/screens/tests/test_player_customization_overlay.tscn`](../ui/screens/tests/test_player_customization_overlay.tscn) to regression-test draft setup behavior and confirm that setup only commits on confirm.
-- Treat `Failed to resolve combined texture for selection layer` warnings as content bugs. They usually mean the chosen path, body type, or variant is unsupported by the shipped metadata.
 
 ## Good Next Steps
 

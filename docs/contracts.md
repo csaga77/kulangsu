@@ -114,22 +114,7 @@ Governance:
 
 ## Universal LPC Addon Boundary
 
-Owned by:
-
-- [`../addons/universal_lpc/`](../addons/universal_lpc)
-- [`../addons/universal_lpc/docs/contract.md`](../addons/universal_lpc/docs/contract.md)
-
-Current contract:
-
-- the addon owns Universal LPC metadata interpretation, texture resolution/caching, layered `AnimatedSprite2D` composition, metadata generation, and source-asset auditing
-- consuming actors such as [`../characters/human_body_2d.gd`](../characters/human_body_2d.gd) own movement, collision, materials, gameplay animation selection, and project-specific appearance policy
-- runtime consumers load the prebuilt addon manifest at `res://addons/universal_lpc/universal_lpc_metadata.json`; that manifest resolves Kulangsu's generated sprite content under `res://addons/universal_lpc/resources`
-- development tooling may read the upstream generator submodule, but the addon does not own or modify that third-party repository
-
-Governance:
-
-- keep reusable LPC renderer/tooling changes in the addon and document contract changes in the addon's own docs
-- keep Kulangsu-specific actor, resident, and wardrobe behavior outside the addon
+The canonical renderer, metadata, asset, tooling, and integration contract now lives with the plugin at [`../addons/universal_lpc/docs/contract.md`](../addons/universal_lpc/docs/contract.md). Reusable character-authoring and validation guidance lives in [`../addons/universal_lpc/docs/authoring.md`](../addons/universal_lpc/docs/authoring.md). Kulangsu-specific actor, resident, wardrobe, and gameplay policy remains in the owning project docs.
 
 ## Weather Runtime Contract
 
