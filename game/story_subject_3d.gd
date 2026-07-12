@@ -10,7 +10,7 @@ extends Area3D
 # StoryEvent catalog / AppState metadata the 2D subject uses. It performs no story
 # logic itself; the owning 3D world scene reads these fields, picks one active
 # subject by proximity, and dispatches through AppState.activate_story_subject(...)
-# exactly like scenes/game_main.gd does for StorySubjectArea2D.
+# exactly like the retired 2D overworld did for StorySubjectArea2D.
 #
 # It deliberately does NOT reimplement the LevelArea2D multi-level system; 3D
 # tunnels/levels are a later Phase E item. Until then level_id is reported as 0.

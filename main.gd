@@ -2,7 +2,7 @@ extends Node
 
 # The low-poly 3D overworld is the runtime overworld (Phase G cutover recorded in
 # docs/plan/low_poly_3d_replacement.md and docs/plan/implementation_plan.md). The 2D
-# overworld (`scenes/game_main.tscn`) has been retired.
+# overworld (formerly scenes/game_main.tscn) has been retired and removed.
 const GAME_SCENE: PackedScene = preload("res://scenes/game_world_3d.tscn")
 const BOOT_SCREEN_SCENE: PackedScene = preload("res://ui/screens/boot_screen.tscn")
 const TITLE_SCREEN_SCENE: PackedScene = preload("res://ui/screens/title_screen.tscn")

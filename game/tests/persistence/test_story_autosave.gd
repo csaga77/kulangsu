@@ -1,6 +1,9 @@
 extends Node2D
 
-const GAME_SCENE: PackedScene = preload("res://scenes/game_main.tscn")
+const GAME_SCENE: PackedScene = preload("res://scenes/game_world_3d.tscn")
+# The 3D world places the resumed player next to the anchor proxy with a small
+# fixed offset (see game_world_3d.gd _apply_story_resume_anchor_if_needed).
+const RESUME_ANCHOR_TOLERANCE := 3.0
 const TEST_AUTOSAVE_PATH := "user://story_autosave_test.save"
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 
@@ -52,11 +55,20 @@ func _run() -> void:
 	var story_scene := GAME_SCENE.instantiate()
 	add_child(story_scene)
 	await get_tree().process_frame
+	await get_tree().physics_frame
+	await get_tree().process_frame
 
-	var player := story_scene.get_node("actors/player") as Node2D
-	var trinity_anchor := story_scene.get_node("terrain/ground/buildings/TrinityChurch") as Node2D
-	var expected_position: Vector2 = story_scene.call("_resolve_actor_anchor_position", player, trinity_anchor, Vector2.ZERO)
-	_assert_true(player.global_position.distance_to(expected_position) <= 1.0, "GameMain places the player at the saved Trinity resume anchor")
+	var player := story_scene.get_node("human_body_3d") as Node3D
+	var trinity_anchor := story_scene.get_node("Landmarks/TrinityChurchProxy") as Node3D
+	_assert_true(player != null, "game_world_3d exposes the player actor for resume-anchor validation")
+	_assert_true(trinity_anchor != null, "game_world_3d exposes the Trinity Church proxy for resume-anchor validation")
+	if player != null and trinity_anchor != null:
+		var player_xz := Vector2(player.global_position.x, player.global_position.z)
+		var anchor_xz := Vector2(trinity_anchor.global_position.x, trinity_anchor.global_position.z)
+		_assert_true(
+			player_xz.distance_to(anchor_xz) <= RESUME_ANCHOR_TOLERANCE,
+			"game_world_3d places the player at the saved Trinity resume anchor"
+		)
 	story_scene.queue_free()
 	await get_tree().process_frame
 

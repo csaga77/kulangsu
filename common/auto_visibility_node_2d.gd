@@ -2,7 +2,9 @@
 class_name AutoVisibilityNode2D
 extends IsometricBlock
 
-const APP_RUNTIME := preload("res://game/app_runtime.gd")
+# Player resolution contract: the live 2D player actor must be in this group.
+# Resolved locally so this reusable helper does not depend on game/ runtime code.
+const PLAYER_GROUP := &"player"
 
 @export var visibility_mask_nodes: Array[Node2D]
 @export var use_ground_bounding_rect := true
@@ -30,7 +32,9 @@ func _exit_tree() -> void:
 func _sync_player() -> void:
 	if Engine.is_editor_hint():
 		return
-	_set_player(APP_RUNTIME.get_player(self))
+	if !is_inside_tree():
+		return
+	_set_player(get_tree().get_first_node_in_group(PLAYER_GROUP) as HumanBody2D)
 
 func _set_player(new_player: HumanBody2D) -> void:
 	if m_player == new_player:

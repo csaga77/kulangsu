@@ -17,7 +17,7 @@ No package manager, CI pipeline, or automated test runner is checked into this r
 ## Repository Layout
 
 - [`ui/`](ui) - app shell, screens, overlays, and shared UI styling
-- [`scenes/game_main.tscn`](scenes/game_main.tscn) / [`scenes/game_main.gd`](scenes/game_main.gd) - main island scene and world integration logic
+- [`scenes/game_world_3d.tscn`](scenes/game_world_3d.tscn) / [`scenes/game_world_3d.gd`](scenes/game_world_3d.gd) - production low-poly 3D island scene and world integration logic
 - [`game/`](game) - shared state, catalogs, and reusable gameplay modules
 - [`weather/`](weather) - reusable weather overlays, the global weather manager/runtime, and the dedicated weather sandbox
 - [`characters/`](characters) - player, NPC, controller, and behavior-tree code
@@ -112,7 +112,7 @@ Use a local Godot 4 editor or runtime to open [`project.godot`](project.godot).
 Important runtime entry points:
 
 - Main configured scene: [`main.tscn`](main.tscn)
-- Main gameplay scene embedded by the shell: [`scenes/game_main.tscn`](scenes/game_main.tscn), which now registers overworld weather hosts and lets the global [`WeatherManager`](weather/weather_manager.gd) instantiate and manage the shared cloud-shadow, rain, fog, and ground-impact passes at runtime
+- Main gameplay scene embedded by the shell: [`scenes/game_world_3d.tscn`](scenes/game_world_3d.tscn), which registers the 3D weather rig and lets the global [`WeatherManager`](weather/weather_manager.gd) instantiate and cycle the shared rain, fog, and cloud-light passes at runtime
 
 This repo does not include export scripts or shell wrappers for launching the project.
 
@@ -124,7 +124,7 @@ Validation is currently manual:
 - Open focused scenes when changing a specific subsystem.
 - Use the existing validation scenes under [`scenes/tests/`](scenes/tests), the dedicated weather sandbox under [`weather/tests/`](weather/tests), and feature-local test scenes such as [`game/grid_board_game/test_grid_board_game.tscn`](game/grid_board_game/test_grid_board_game.tscn) and [`game/grid_board_game/test_terminal_turn_state.tscn`](game/grid_board_game/test_terminal_turn_state.tscn).
 - For landmark, building-piece, or multi-level traversal work, use the focused validation map in [`docs/features/multi_level_spaces.md`](docs/features/multi_level_spaces.md) alongside [`game/tests/cue_progression/test_cue_progression.tscn`](game/tests/cue_progression/test_cue_progression.tscn) for canonical landmark progression coverage.
-- Use [`scenes/game_main.tscn`](scenes/game_main.tscn) or the full app flow when validating the shared overworld weather, cloud shadows, and global weather-manager transitions against the real island terrain and resident silhouettes.
+- Use [`scenes/game_world_3d.tscn`](scenes/game_world_3d.tscn) (or the full app flow) when validating the shared overworld weather and global weather-manager transitions against the real island terrain, plus [`scenes/tests/test_game_world_3d.tscn`](scenes/tests/test_game_world_3d.tscn) for the headless world smoke test.
 - Use [`weather/tests/test_weather.tscn`](weather/tests/test_weather.tscn) for weather-specific validation. It now combines tilemap-backed water and terrain, manager-attached shared fog/rain/cloud/impact passes, a thunder-flash test pass, and a tabbed weather control panel split into `Wind`, `Rain`, `Fog`, and `Cloud` groups with per-pass `Sync With Wind` toggles for faster tuning, alongside foreground occluders and actor readability checks.
 
 If you make a change that affects behavior and you cannot run the project or a relevant scene, call that out explicitly in your handoff.

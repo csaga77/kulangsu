@@ -60,7 +60,7 @@ Submodule read order when editing inside a submodule:
 ## Architecture Boundaries
 
 - `main.tscn` and `main.gd` own startup, title flow, overlay flow, and UI scaling.
-- `scenes/game_main.tscn` and `scenes/game_main.gd` own the island scene, landmark syncing, resident spawning, and world-to-UI integration.
+- `scenes/game_world_3d.tscn` and `scenes/game_world_3d.gd` own the production island scene, landmark syncing, resident spawning, and world-to-UI integration. The 2D overworld (`scenes/game_main.*`) has been removed.
 - `game/app_state.gd` owns shared UI-facing and progression-facing state. Do not turn it into a dump for scene-local logic.
 - Reusable gameplay modules should stay under `game/` in their existing feature folders such as `grid_board_game`, `marble_game`, and `piano_game`.
 - Landmark scenes and reusable building pieces belong under `architecture/`.

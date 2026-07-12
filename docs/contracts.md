@@ -102,9 +102,9 @@ Current contract:
 - StoryEvent catalog validation checks authored `story_event` effect references against the typed route-event resources loaded by `StorylineCatalog`, so interaction bindings cannot silently point at missing route facts
 - resident conditional beats now resolve through `pick_story_candidate(...)` and apply their side effects through `apply_story_effects(...)` rather than keeping separate copies of condition/effect logic
 - typed route resources are now the canonical narrative gate source for route events; cached `StoryRouteGraph.can_resolve_story_event(...)` and `get_story_event_blockers(...)` calls are the shared availability surface consumed by resident dialogue and StoryEvent effect application
-- `StorySubjectArea2D` is now the shared world-side subject adapter; `game_main.gd` routes all world-subject interactions through `activate_story_subject(...)`, and `StoryEventService` resolves current `landmark:` and `inspectable:` subjects plus landmark reward world events through the authored catalog before any compatibility fallback path
+- `StorySubjectArea2D` (2D landmark scenes) and `StorySubject3D` (production 3D world) are the shared world-side subject adapters; `game_world_3d.gd` routes all world-subject interactions through `activate_story_subject(...)`, and `StoryEventService` resolves current `landmark:` and `inspectable:` subjects plus landmark reward world events through the authored catalog before any compatibility fallback path
 - non-resident inspect text now resolves through `StoryWorldReactivity.resolve_inspect_result(...)`, which builds stable `inspectable:` subject ids and reuses the shared condition matcher
-- resident routine overrides are the first live world-state effect channel driven through the shared StoryEvent boundary; the world scene listens for override changes and reapplies spawn anchor, level, and movement state to live resident actors
+- resident routine overrides are the first live world-state effect channel driven through the shared StoryEvent boundary; they redirect the shared spawn/movement config, and reapplying them to live 3D resident actors in `game_world_3d.gd` is a pending work item (the retired 2D overworld owned that behavior)
 - the current route ledger remains the player-facing progression view, while the longer-term goal is still to migrate route families into authored recursive StoryEvent definitions and a published-fact ledger
 
 Governance:
@@ -122,16 +122,16 @@ Owned by:
 
 - [`../weather/weather_manager.gd`](../weather/weather_manager.gd)
 - [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd)
-- [`../scenes/game_main.gd`](../scenes/game_main.gd)
+- [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd)
 
 Current contract:
 
 - `WeatherManager` owns the overworld weather preset list, random hold/transition timing, interpolation, runtime weather-rig instancing, and the live application of synced wind settings to registered rain, fog, and cloud-shadow nodes
 - the running app owns exactly one `WeatherManager` node; callers resolve it through `WeatherRuntime.get_weather_manager(node)` instead of a Project Settings autoload
 - gameplay scenes register weather hosts with `WeatherManager.register_weather_host(...)`, providing attachment parents, a ground-impact spawn layer, and any scene-specific default properties instead of instantiating weather nodes themselves
-- the shared default overworld rain/fog/cloud/impact properties now live in [`../weather/overworld_weather_preset.tres`](../weather/overworld_weather_preset.tres), and both [`../scenes/game_main.gd`](../scenes/game_main.gd) and [`../weather/tests/test_weather.gd`](../weather/tests/test_weather.gd) must consume that same resource instead of carrying duplicate inline constant dictionaries
+- the shared default overworld rain/fog/cloud/impact properties now live in [`../weather/overworld_weather_preset.tres`](../weather/overworld_weather_preset.tres), and both the overworld weather stack and [`../weather/tests/test_weather.gd`](../weather/tests/test_weather.gd) must consume that same resource instead of carrying duplicate inline constant dictionaries
 - gameplay scenes may update sync flags and shared wind through `WeatherManager.set_target_sync(...)` and `WeatherManager.set_registered_wind(...)` instead of duplicating per-pass wind propagation logic
-- gameplay scenes may use `WeatherManager.set_registered_visibility(...)` for aggregate show/hide, but tunnel suppression and other visibility-policy decisions still stay in `game_main.gd`
+- gameplay scenes may use `WeatherManager.set_registered_visibility(...)` for aggregate show/hide, but visibility-policy decisions stay in the owning world scene (2D tunnel suppression retired with the 2D overworld)
 - the focused weather sandbox may reuse the same manager for wind-sync behavior while keeping random cycling disabled
 
 Governance:
@@ -149,7 +149,7 @@ Owned by:
 Current contract:
 
 - scene-graph systems that need the live player node resolve it through `AppRuntime.get_player(node)`
-- the current player contract depends on the active player actor staying in the `"player"` group
+- the current player contract depends on the active player actor staying in the `"player"` group; the production player is a `HumanBody3D`, so `get_player` returns an untyped `Node` and callers cast to the actor type they require
 - shared UI/progression code should still use `AppState`, not direct player-node lookups, for anything save-relevant or player-facing
 
 Governance:
@@ -161,26 +161,23 @@ Governance:
 
 Owned by:
 
-- [`../scenes/game_main.tscn`](../scenes/game_main.tscn)
-- [`../scenes/game_main.gd`](../scenes/game_main.gd)
+- [`../scenes/game_world_3d.tscn`](../scenes/game_world_3d.tscn)
+- [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd)
 
 Current contract:
 
-- `scenes/game_main.gd` maps landmarks plus resident spawn/movement anchors, reacts to controller events, syncs player tunnel context into `AppState`, and delegates route resolution, resident spawning, tunnel context, and debug route drawing to focused helper scripts under `scenes/`
-- `scenes/game_main.gd` instantiates `ResidentNPC` actors from `AppState.get_resident_definition(...)` and then applies world-specific spawn, level, and route resolution
-- `scenes/game_main.gd` now routes resident talk and `StorySubjectArea2D` world interactions through `AppState.activate_story_subject(...)`, while still owning closest-target selection, world prompt presentation, and fallback generic inspect text
-- `scenes/game_main.gd` also owns mapping the live player position onto safe story resume anchors for autosave and continue
-- `scenes/game_main.gd` registers overworld weather hosts plus the terrain spawn layer with `WeatherManager`, which instantiates the active rain, fog, cloud-shadow, and ground-impact nodes at runtime
-- `scenes/game_main.tscn` keeps the player and resident instances under one shared y-sorted actor layer rooted at `actors`
-- player inspect and talk prompts flow from the nearest nearby same-layer resident or landmark cue through controller signals into `AppState`
-- `scenes/game_main.gd` listens for `resident_routine_override_changed(...)` and reapplies the shared spawn-anchor, level, and movement pipeline to already spawned residents when story state changes their routine
-- landmark naming and location sync depend on known nodes in the main scene
-- player tunnel context must only become active after the player reaches the tunnel interior level; overlapping the tunnel footprint on the surface must not count as tunnel entry
+- `scenes/game_world_3d.gd` maps landmark proxies through the shared coordinate adapter, spawns the resident roster through `ResidentPresenter3D`, reacts to controller events, and syncs location/landmark/resume context into `AppState`
+- `scenes/game_world_3d.gd` routes resident talk and `StorySubject3D` world interactions through `AppState.activate_story_subject(...)`, while owning proximity-based target selection and world prompt presentation
+- `scenes/game_world_3d.gd` owns mapping the live player position onto safe story resume anchors for autosave and continue, and applies the saved resume anchor on entry (falling back to Piano Ferry)
+- `scenes/game_world_3d.gd` registers the 3D weather rig target with `WeatherManager`, which owns preset cycling and synced wind application
+- `scenes/game_world_3d.tscn` keeps the player actor in the `"player"` group and residents under a scene-owned resident root
+- landmark naming and location sync depend on the authored `Landmarks/*Proxy` nodes in the world scene
+- reapplying resident routine overrides to live 3D resident actors is a pending work item; overrides currently take effect through the shared spawn/movement config (validated at the shared-state level by `game/tests/story_routes/test_story_event_service.tscn`)
 
 Governance:
 
-- keep scene-specific world wiring local to `scenes/game_main.gd` unless it becomes a reusable subsystem; reusable overworld helpers should live under `scenes/`
-- document node-path, actor-layer, or spawn-anchor naming assumptions if new systems depend on them
+- keep scene-specific world wiring local to `scenes/game_world_3d.gd` unless it becomes a reusable subsystem
+- document node-path or spawn-anchor naming assumptions if new systems depend on them
 
 ## Editor Addon Contracts
 
@@ -353,11 +350,11 @@ Owned by:
 
 - [`../game/bgm_catalog.gd`](../game/bgm_catalog.gd)
 - [`../game/bgm_manager.gd`](../game/bgm_manager.gd)
-- [`../scenes/game_main.gd`](../scenes/game_main.gd)
+- [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd)
 
 Current contract:
 
-- `game_main.gd` owns exactly one scene-local `BgmManager` while gameplay is loaded
+- `game_world_3d.gd` owns exactly one scene-local `BgmManager` while gameplay is loaded
 - `BgmManager` owns the active `AudioStreamPlayer`, recent-history buffer, commitment window, silence gap timer, and weighted track selection
 - `BgmManager` also owns short-lived ducking state through `duck_for_cue(duration)` and `set_ducked(ducked)` so landmark cues and melody prompts can lower BGM without moving BGM ownership into the UI
 - `BgmManager` reads shared state from `AppState` through the existing `location_changed` and `melody_progress_changed` signals plus current location/progress snapshots; it does not write shared gameplay state back
@@ -367,7 +364,7 @@ Current contract:
 Governance:
 
 - if the catalog format changes materially, update this file and the BGM feature docs
-- if BGM ownership moves out of `game_main.gd` or begins depending on new `AppState` APIs, update this file, [`architecture.md`](architecture.md), and [`module_map.md`](module_map.md)
+- if BGM ownership moves out of `game_world_3d.gd` or begins depending on new `AppState` APIs, update this file, [`architecture.md`](architecture.md), and [`module_map.md`](module_map.md)
 
 ### Grid Board Game
 

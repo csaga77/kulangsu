@@ -2,7 +2,6 @@ extends Node2D
 
 const TEST_AUTOSAVE_PATH := "user://story_event_service_test.save"
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
-const GAME_MAIN_SCENE := preload("res://scenes/game_main.tscn")
 const STORY_EVENT_CATALOG := preload("res://game/story_event_catalog.gd")
 
 var m_failures := PackedStringArray()
@@ -136,60 +135,33 @@ func _run() -> void:
 		"StoryEvent inspect activation resolves the same route-aware inspect text"
 	)
 
+	# Routine overrides are validated at the shared-state level: the retired 2D
+	# overworld used to reapply them to live actors; the 3D overworld does not
+	# yet listen for resident_routine_override_changed (known coverage gap,
+	# tracked in docs/plan/implementation_plan.md).
 	_app_state().configure_new_game()
-	var game_main := GAME_MAIN_SCENE.instantiate()
-	add_child(game_main)
-	await get_tree().process_frame
+	var base_spawn: Dictionary = _app_state().get_resident_spawn_config("ferry_caretaker")
+	var base_anchor := String(base_spawn.get("anchor_id", ""))
+	_assert_true(!base_anchor.is_empty(), "Ferry caretaker exposes a base authored spawn anchor")
 
-	var lian_actor := _find_resident_actor(game_main, "ferry_caretaker")
-	var trinity_anchor := game_main.get_node_or_null("terrain/ground/buildings/TrinityChurch") as Node2D
-	var ferry_anchor := game_main.get_node_or_null("terrain/ground/buildings/piano_ferry") as Node2D
-	_assert_true(lian_actor != null, "GameMain exposes ferry caretaker for routine-override validation")
-	_assert_true(trinity_anchor != null, "Trinity Church anchor exists for runtime routine overrides")
-	_assert_true(ferry_anchor != null, "Piano Ferry anchor exists for runtime routine overrides")
+	_app_state().set_resident_routine_override("ferry_caretaker", {
+		"spawn": {
+			"anchor_id": "Trinity Church",
+		},
+	})
+	var override_spawn: Dictionary = _app_state().get_resident_spawn_config("ferry_caretaker")
+	_assert_true(
+		String(override_spawn.get("anchor_id", "")) == "Trinity Church",
+		"Resident routine overrides redirect the shared spawn-anchor config to the story-driven anchor"
+	)
 
-	if lian_actor != null and trinity_anchor != null and ferry_anchor != null:
-		var original_position := lian_actor.global_position
-		_app_state().set_resident_routine_override("ferry_caretaker", {
-			"spawn": {
-				"anchor_id": "Trinity Church",
-			},
-		})
-		await get_tree().process_frame
+	_app_state().clear_resident_routine_override("ferry_caretaker")
+	var restored_spawn: Dictionary = _app_state().get_resident_spawn_config("ferry_caretaker")
+	_assert_true(
+		String(restored_spawn.get("anchor_id", "")) == base_anchor,
+		"Clearing a resident routine override restores the resident's base authored spawn config"
+	)
 
-		var override_spawn: Dictionary = _app_state().get_resident_spawn_config("ferry_caretaker")
-		var expected_override: Vector2 = game_main.call(
-			"_resolve_actor_anchor_position",
-			lian_actor,
-			trinity_anchor,
-			override_spawn.get("offset", Vector2.ZERO)
-		)
-		_assert_true(
-			lian_actor.global_position.distance_to(original_position) > 64.0,
-			"Resident routine overrides can move an already spawned resident to a new story-driven anchor"
-		)
-		_assert_true(
-			lian_actor.global_position.distance_to(expected_override) <= 2.0,
-			"Resident routine overrides resolve through the shared spawn-anchor pipeline"
-		)
-
-		_app_state().clear_resident_routine_override("ferry_caretaker")
-		await get_tree().process_frame
-
-		var restored_spawn: Dictionary = _app_state().get_resident_spawn_config("ferry_caretaker")
-		var expected_restored: Vector2 = game_main.call(
-			"_resolve_actor_anchor_position",
-			lian_actor,
-			ferry_anchor,
-			restored_spawn.get("offset", Vector2.ZERO)
-		)
-		_assert_true(
-			lian_actor.global_position.distance_to(expected_restored) <= 2.0,
-			"Clearing a resident routine override restores the resident's base authored spawn route"
-		)
-
-	game_main.queue_free()
-	await get_tree().process_frame
 	_app_state().clear_story_autosave_for_tests()
 
 	if m_failures.is_empty():
@@ -465,22 +437,6 @@ func _progress_through_landmark_spine_via_story_subjects() -> void:
 		bool(_app_state().get_melody_state("festival_melody").get("performed", false)),
 		"StoryEvent landmark prompt completion still resolves the harbor-stage performance path"
 	)
-
-
-func _find_resident_actor(game_main: Node, resident_id: String) -> HumanBody2D:
-	var resident_root := game_main.get_node_or_null("actors/Residents")
-	if resident_root == null:
-		return null
-	for child in resident_root.get_children():
-		var resident := child as HumanBody2D
-		if resident == null:
-			continue
-		var controller := resident.controller as NPCController
-		if controller == null:
-			continue
-		if controller.get_resident_id() == resident_id:
-			return resident
-	return null
 
 
 func _assert_true(condition: bool, label: String) -> void:

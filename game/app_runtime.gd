@@ -21,12 +21,15 @@ static func get_app_state(context: Node):
 	return state
 
 
-static func get_player(context: Node):
+# Resolves the live player actor through the "player" group contract.
+# The production overworld is 3D (HumanBody3D), so this intentionally returns
+# an untyped Node; callers cast to the actor type they require.
+static func get_player(context: Node) -> Node:
 	var tree := _resolve_tree(context)
 	if tree == null:
 		return null
 
-	var player := tree.get_first_node_in_group("player") as HumanBody2D
+	var player := tree.get_first_node_in_group("player")
 	if player != null and is_instance_valid(player):
 		return player
 	return null

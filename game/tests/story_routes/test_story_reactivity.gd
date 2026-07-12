@@ -2,7 +2,18 @@ extends Node2D
 
 const TEST_AUTOSAVE_PATH := "user://story_reactivity_test.save"
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
-const GAME_MAIN_SCENE := preload("res://scenes/game_main.tscn")
+const GAME_WORLD_3D_SCENE := preload("res://scenes/game_world_3d.tscn")
+const STORY_SUBJECT_3D_SCRIPT := preload("res://game/story_subject_3d.gd")
+
+# Subject nodes authored directly inside scenes/game_world_3d.tscn. Keep in
+# sync with the Landmarks/*Proxy/Subject nodes.
+const AUTHORED_WORLD_SUBJECTS := {
+	"Landmarks/PianoFerryProxy/Subject": "landmark:piano_ferry.harbor_refrain",
+	"Landmarks/TrinityChurchProxy/Subject": "landmark:trinity_church.steps",
+	"Landmarks/BiShanTunnelProxy/Subject": "landmark:bi_shan_tunnel.echo_a",
+	"Landmarks/LongShanTunnelProxy/Subject": "landmark:long_shan_tunnel.tunnel_entry",
+	"Landmarks/BaguaTowerProxy/Subject": "landmark:bagua_tower.synthesis_chamber",
+}
 
 var m_failures := PackedStringArray()
 
@@ -100,7 +111,7 @@ func _run() -> void:
 		String(jia_after.get("line", "")).to_lower().contains("custody"),
 		"Map Student Jia reacts once Bagua turns preservation into responsibility"
 	)
-	await _assert_story_subject_areas_are_authored_in_scene("entrusted")
+	_assert_story_subjects_are_authored_in_world("entrusted")
 	var postcard_rack_text := String(
 		_app_state().activate_story_subject("inspectable:postcard_display_rack", "inspect").get("text", "")
 	)
@@ -172,67 +183,45 @@ func _progress_to_future_choice() -> void:
 	_app_state().interact_with_resident("dock_musician_pei")
 
 
-func _assert_story_subject_areas_are_authored_in_scene(expected_bagua_fragment: String) -> void:
-	var game_main := GAME_MAIN_SCENE.instantiate()
-	add_child(game_main)
-	await get_tree().process_frame
+# Regression guard for scene-authored story subjects in the production 3D
+# overworld. The world scene is instantiated without entering the tree, so the
+# authored node structure is checked without paying for a full terrain build;
+# live proximity/dispatch behavior is owned by scenes/tests/test_game_world_3d.gd.
+func _assert_story_subjects_are_authored_in_world(expected_bagua_fragment: String) -> void:
+	var world := GAME_WORLD_3D_SCENE.instantiate()
 
-	var harbor_lantern_lines := game_main.get_node_or_null(
-		"terrain/ground/buildings/piano_ferry/HarborLanternLines"
-	) as StorySubjectArea2D
-	_assert_true(
-		harbor_lantern_lines != null,
-		"Harbor Lantern Lines are authored in the Piano Ferry scene"
-	)
-
-	var church_stone_bench := game_main.get_node_or_null(
-		"terrain/ground/buildings/TrinityChurch/ChurchStoneBench"
-	) as StorySubjectArea2D
-	_assert_true(
-		church_stone_bench != null,
-		"Church Stone Bench is authored in the Trinity Church scene"
-	)
-
-	var bagua_upper_level := game_main.get_node_or_null(
-		"terrain/ground/buildings/BaguaTower/base/ground_level/upper_level"
-	) as Node2D
-	_assert_true(
-		bagua_upper_level != null,
-		"Bagua upper level is available for scene-owned inspectable checks"
-	)
-
-	var bagua_railings := game_main.get_node_or_null(
-		"terrain/ground/buildings/BaguaTower/base/ground_level/upper_level/BaguaRailings"
-	) as StorySubjectArea2D
-	_assert_true(
-		bagua_railings != null,
-		"Bagua Railings are authored in the Bagua upper level scene"
-	)
-
-	var player := game_main.get_node_or_null("actors/player") as HumanBody2D
-	var player_controller := player.controller as PlayerController if player != null else null
-	_assert_true(
-		player_controller != null,
-		"GameMain exposes the player controller for inspect integration checks"
-	)
-
-	if bagua_upper_level != null and bagua_railings != null and player != null and player_controller != null:
+	for node_path in AUTHORED_WORLD_SUBJECTS:
+		var expected_subject_id: String = AUTHORED_WORLD_SUBJECTS[node_path]
+		var subject := world.get_node_or_null(node_path)
 		_assert_true(
-			CommonUtils.get_absolute_z_index(bagua_railings) == CommonUtils.get_absolute_z_index(bagua_upper_level),
-			"Bagua Railings share the Bagua upper-level interaction layer"
+			subject != null and subject.get_script() == STORY_SUBJECT_3D_SCRIPT,
+			"Story subject is authored in game_world_3d at %s" % node_path
 		)
-		LevelRegistry.apply_level_to_actor(bagua_railings.get_resolved_level_id(), player)
-		player.global_position = bagua_railings.global_position
-		player_controller._on_body_entered(bagua_railings)
-		player_controller._process(0.0)
-		player_controller.inspect_requested.emit()
+		if subject == null:
+			continue
 		_assert_true(
-			_app_state().save_status.to_lower().contains(expected_bagua_fragment),
-			"Bagua Railings inspect text runs through the scene-owned inspectable path"
+			String(subject.get("subject_id")) == expected_subject_id,
+			"Authored subject at %s carries the stable id %s" % [node_path, expected_subject_id]
+		)
+		var metadata: Dictionary = _app_state().describe_story_subject_metadata(
+			expected_subject_id, {}
+		)
+		_assert_true(
+			!metadata.is_empty(),
+			"Authored subject id %s resolves through the shared StoryEvent metadata path" % expected_subject_id
 		)
 
-	game_main.queue_free()
-	await get_tree().process_frame
+	world.free()
+
+	# The route-aware inspect surface itself stays validated at the shared
+	# service level (scene-owned dispatch parity is covered by the 3D smoke test).
+	var railing_text := String(
+		_app_state().activate_story_subject("inspectable:bagua_railings", "inspect").get("text", "")
+	)
+	_assert_true(
+		railing_text.to_lower().contains(expected_bagua_fragment),
+		"Bagua Railings inspect text runs through the shared inspectable path"
+	)
 
 
 func _assert_true(condition: bool, label: String) -> void:

@@ -80,12 +80,11 @@ Responsibilities:
 - shared y-sorted actor layer for the player and spawned residents
 - landmark lookup and location syncing
 - data-driven resident spawning, inspect/talk prompts, and overworld resident presentation
-- extracted world helpers under `scenes/` now own route resolution (`route_resolver.gd`), resident spawning (`resident_spawner.gd`), tunnel context (`tunnel_context.gd`), and optional NPC route debug drawing (`npc_route_debug_drawer.gd`)
-- resident route resolution from authored anchors into runtime world-space waypoints, including tunnel path expansion and portal-direction helper points
-- tunnel interior context, tunnel-resident visibility syncing, and ground-building masking when the player actually enters a tunnel interior
-- lightweight story inspectables authored inside major landmark scenes so route-state changes can surface on non-resident world objects as well as in dialogue without losing level context
-- `scenes/game_main.gd` now routes resident talk and all scene-authored `StorySubjectArea2D` interactions through one story-subject dispatch path so world nodes keep placement and level context while shared StoryEvent metadata owns visibility, response selection, and side effects
+- lightweight story subjects authored inside the world scene (`StorySubject3D` nodes under the landmark proxies) so route-state changes can surface on world objects as well as in dialogue
+- `scenes/game_world_3d.gd` routes resident talk and all scene-authored `StorySubject3D` interactions through one story-subject dispatch path (`AppState.activate_story_subject`) so world nodes keep placement context while shared StoryEvent metadata owns visibility, response selection, and side effects
 - feeding current world context into `AppState`
+
+The 2D overworld (`scenes/game_main.*`) and its extracted helpers (`route_resolver.gd`, `resident_spawner.gd`, `tunnel_context.gd`, `npc_route_debug_drawer.gd`) have been removed. 2D-only behaviors they owned - tunnel interior context, tunnel-resident visibility masking, and routed waypoint travel through tunnels - have no 3D equivalent yet; resident routine overrides are currently validated at the shared-state level only.
 
 Boundary:
 
@@ -149,7 +148,7 @@ Responsibilities:
 - resolves the one scene-owned `AppStateService` instance for runtime callers without using a Project Settings autoload
 - resolves the one scene-owned `WeatherManager` instance for runtime callers without using a Project Settings autoload
 - keeps the default overworld weather tuning in a shared resource consumed by both the real overworld and the focused weather sandbox
-- keeps overworld weather-cycle selection, interpolation, and shared wind-sync application out of `game_main.tscn`
+- keeps overworld weather-cycle selection, interpolation, and shared wind-sync application out of `game_world_3d.tscn`
 - resolves the live `HumanBody2D` player from the existing `"player"` group for scene-graph helpers such as visibility masking
 
 Boundary:
@@ -284,7 +283,7 @@ Boundary:
 
 - Screen flow, menus, overlays, HUD: [`../ui/`](../ui)
 - Shared player-facing state: [`../game/app_state.gd`](../game/app_state.gd)
-- Overworld logic and resident syncing: [`../scenes/game_main.gd`](../scenes/game_main.gd)
+- Overworld logic and resident syncing: [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd)
 - Player or NPC behavior: [`../characters/control/`](../characters/control)
 - Landmark scenes and reusable architecture pieces: [`../architecture/`](../architecture)
 - Reusable mini-games or subsystems: [`../game/`](../game)

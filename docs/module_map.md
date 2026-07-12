@@ -13,10 +13,6 @@ Read [`design_brief.md`](design_brief.md) and [`architecture.md`](architecture.m
 - [`../weather/weather_rig_3d.gd`](../weather/weather_rig_3d.gd) - 3D weather presentation target registered with `WeatherManager`; translates the shared cycle into player-following rain particles, `WorldEnvironment` fog, and moving cloud-cover sun modulation while water continues to consume the published wind
 - [`../weather/tests/capture_weather_3d.tscn`](../weather/tests/capture_weather_3d.tscn) - graphical steady-rain validation/capture scene for the 3D runtime weather rig
 - [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd) - runtime lookup helper for the global scene-owned `WeatherManager`
-- [`../scenes/route_resolver.gd`](../scenes/route_resolver.gd) - resolves resident spawn anchors, tunnel portal approach points, and tunnel-to-surface route transitions
-- [`../scenes/resident_spawner.gd`](../scenes/resident_spawner.gd) - instantiates runtime residents from `AppState` definitions onto the shared actor layer
-- [`../scenes/tunnel_context.gd`](../scenes/tunnel_context.gd) - keeps resident visibility and level state aligned with the player's active tunnel interior
-- [`../scenes/npc_route_debug_drawer.gd`](../scenes/npc_route_debug_drawer.gd) - optional extracted NPC route debug drawing for overworld validation
 
 ## UI And Screen Flow
 
@@ -27,7 +23,7 @@ Put new menu, overlay, HUD, or shell-flow work here.
 
 ## World Integration And Shared State
 
-- [`../scenes/game_main.tscn`](../scenes/game_main.tscn) / [`../scenes/game_main.gd`](../scenes/game_main.gd) - connects terrain, the shared actor layer, manager-owned overworld weather, tunnel-based weather suppression, landmarks, tunnel interior context, resident route resolution, and residents to the UI
+- [`../scenes/game_world_3d.tscn`](../scenes/game_world_3d.tscn) / [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd) - production overworld integration: connects terrain, landmarks, residents, weather, audio, story subjects, and resume anchors to shared state (the 2D `game_main` overworld and its route/tunnel helpers have been removed)
 - [`../terrain/terrain.tscn`](../terrain/terrain.tscn) / [`../terrain/terrain.gd`](../terrain/terrain.gd) - island terrain, generated helper layers, water rendering setup, and the ground-layer masking hooks used by tunnel interiors
 - [`../terrain/low_poly_terrain_3d.gd`](../terrain/low_poly_terrain_3d.gd) - production low-poly 3D terrain node that owns exports, lifecycle, image loading, materials, wind, style resolution, and public surface-height queries; it configures a `LowPolyTerrainSampler` and `LowPolyTerrainMeshBuilder` and wraps the built buffers in `MeshInstance3D`/collision children
 - [`../terrain/low_poly_terrain_sampler.gd`](../terrain/low_poly_terrain_sampler.gd) - the "images -> cell grid" half of the low-poly 3D pipeline: samples the terrain mask/profile and optional full-source heightmap into a coarse `LowPolyTerrainCell` grid, including land/street/building classification, height smoothing, and heightmap waterline application
@@ -38,7 +34,7 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../terrain/low_poly_art_style_3d.gd`](../terrain/low_poly_art_style_3d.gd) / [`../terrain/low_poly_postcard_diorama_style.tres`](../terrain/low_poly_postcard_diorama_style.tres) - shared low-poly style preset schema plus the current Painted Postcard Diorama palette, water tuning, camera, sunlight, and landmark-color preset
 - [`../terrain/low_poly_world_coordinates_3d.gd`](../terrain/low_poly_world_coordinates_3d.gd) - shared coordinate adapter for converting terrain mask pixels and rough 2D isometric authored positions to low-poly 3D XZ world positions
 - [`../terrain/low_poly_water_wind_adapter.gd`](../terrain/low_poly_water_wind_adapter.gd) - integration adapter that normalizes published weather wind and drives the terrain water shader without coupling `LowPolyTerrain3D` to `WeatherManager`
-- [`../terrain/island_generation_profile.tres`](../terrain/island_generation_profile.tres) - shared authored terrain profile resource referenced by `terrain.tscn` so direct terrain validation and `game_main` use the same rules
+- [`../terrain/island_generation_profile.tres`](../terrain/island_generation_profile.tres) - shared authored terrain profile resource referenced by `terrain.tscn` so direct terrain validation and the gameplay world use the same rules
 - [`../terrain/water_layer_setup.gd`](../terrain/water_layer_setup.gd) - shared water `TileMapLayer` setup used by runtime terrain and the focused water sandbox
 - [`../terrain/terrain_generation_profile.gd`](../terrain/terrain_generation_profile.gd) / [`../terrain/terrain_mask_rule.gd`](../terrain/terrain_mask_rule.gd) - terrain mask legend, per-color semantics, and generated-layer paint defaults
 - [`../game/app_state.gd`](../game/app_state.gd) - shared UI/progression-facing state plus the compatibility shell that composes profile, journal, autosave, landmark, and StoryEvent helpers
@@ -66,7 +62,7 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../game/resident_system/`](../game/resident_system) - resident definition resources for appearance, dialogue, routine, and behavior metadata
 - [`../game/residents/`](../game/residents) - all 25 editor-authored resident `.tres` definitions under `definitions/`, templates, and the short designer workflow note
 - [`../game/player_appearance_catalog.gd`](../game/player_appearance_catalog.gd) / [`../game/player_costume_catalog.gd`](../game/player_costume_catalog.gd) - player customization data
-- [`../weather/overworld_weather_preset.gd`](../weather/overworld_weather_preset.gd) / [`../weather/overworld_weather_preset.tres`](../weather/overworld_weather_preset.tres) - shared default rain/fog/cloud/impact tuning consumed by `game_main` and `test_weather`
+- [`../weather/overworld_weather_preset.gd`](../weather/overworld_weather_preset.gd) / [`../weather/overworld_weather_preset.tres`](../weather/overworld_weather_preset.tres) - shared default rain/fog/cloud/impact tuning consumed by the overworld weather stack and `test_weather`
 If several screens or systems need the same player-facing state, it probably belongs in `game/app_state.gd`.
 If you are changing how terrain mask colors map to layers, start with the terrain profile and rule scripts before editing `terrain.gd`.
 
@@ -136,7 +132,7 @@ Be careful about renames or moves here because scene and resource references can
 
 ## Validation Scenes
 
-- [`../scenes/`](../scenes) - runtime gameplay scenes such as `game_main`
+- [`../scenes/`](../scenes) - runtime gameplay scenes such as `game_world_3d`
 - [`../scenes/tests/`](../scenes/tests) - ad hoc prototype and validation scenes
 - [`../weather/tests/`](../weather/tests) - dedicated weather validation scenes and tuning sandboxes
 - [`../characters/tests/test_human_body_2d.tscn`](../characters/tests/test_human_body_2d.tscn) - direct `HumanBody2D` smoke sandbox with player-controller wiring
@@ -144,19 +140,16 @@ Be careful about renames or moves here because scene and resource references can
 - [`../addons/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn`](../addons/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn) - Universal LPC metadata and sprite-composition validation tool
 - [`../addons/universal_lpc/tests/test_universal_lpc_asset_audit.tscn`](../addons/universal_lpc/tests/test_universal_lpc_asset_audit.tscn) - focused Universal LPC source-sheet audit for missing animation rows, JSON/source mismatches, and player-facing AI target triage
 - [`../game/tests/npc_system/test_npc_layer_interaction.tscn`](../game/tests/npc_system/test_npc_layer_interaction.tscn) - focused same-layer NPC targeting and portal-driven z-layer switching sandbox
-- [`../game/tests/npc_system/test_npc_control.tscn`](../game/tests/npc_system/test_npc_control.tscn) - focused routed NPC control regression scene covering Ren's in-tunnel walk-frame playback, nearby talk pause, dialogue reveal, and route resume
 - [`../game/tests/npc_system/test_resident_interaction.tscn`](../game/tests/npc_system/test_resident_interaction.tscn) - focused resident progression regression covering gate fallbacks, trust-max milestones, and a resident-driven autosave/continue path
 - [`../game/tests/npc_system/test_resident_catalog_external_defs.tscn`](../game/tests/npc_system/test_resident_catalog_external_defs.tscn) - focused resident catalog regression covering external `.tres` definition loading, roster completeness, and field-level validation
 - [`../game/tests/npc_system/test_npc_route_collision.tscn`](../game/tests/npc_system/test_npc_route_collision.tscn) - focused routed NPC wall-collision regression scene covering collision-aware route motion against blocking geometry
-- [`../game/tests/npc_system/test_tunnel_visibility.tscn`](../game/tests/npc_system/test_tunnel_visibility.tscn) - focused tunnel-resident spawn, spacing, and tunnel-context visibility regression scene
-- [`../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../game/tests/npc_system/test_tunnel_npc_travel.tscn) - focused tunnel resident route regression scene covering Ren's inside-only Long Shan path plus Nuo's Bi Shan portal-to-surface transition and level-state restoration
 - [`../game/tests/cue_progression/test_cue_progression.tscn`](../game/tests/cue_progression/test_cue_progression.tscn) - focused Ferry -> Trinity choir chime -> Bi Shan chamber prompt -> Long Shan exit prompt -> Bagua -> harbor-stage progression regression covering fragment awards, dependable-route notes, Bagua gating, and the spring guardrail on harbor-triggered endgame
 - [`../game/tests/bgm/test_bgm_manager.tscn`](../game/tests/bgm/test_bgm_manager.tscn) - focused BGM regression scene covering lazy catalog validation, natural-end fade scheduling, and location-fallback variety rules
 - [`../game/tests/persistence/test_story_autosave.tscn`](../game/tests/persistence/test_story_autosave.tscn) - focused story autosave regression covering first-save creation, real `Continue`, safe resume anchors, guarded harbor-performance persistence, soft-ending continuation restore, and departure-save clearing
 - [`../game/tests/persistence/test_story_state_persistence.tscn`](../game/tests/persistence/test_story_state_persistence.tscn) - focused persistence regression covering unknown `story_flags` plus save/load restoration for override-backed resident profiles
 - [`../game/tests/story_routes/test_story_routes.tscn`](../game/tests/story_routes/test_story_routes.tscn) - focused seasonal-route regression covering concurrent route seeds, manual lead pinning persistence, non-landmark seasonal progression, guarded endgame activation, and final-act save/restore
 - [`../game/tests/story_routes/test_story_reactivity.tscn`](../game/tests/story_routes/test_story_reactivity.tscn) - focused cross-route resident reactivity regression covering winter-memory, Spring Festival aftermath, future-choice, second-summer, and preservation-perspective follow-through
-- [`../game/tests/story_routes/test_story_event_service.tscn`](../game/tests/story_routes/test_story_event_service.tscn) - focused StoryEvent bridge regression covering subject-based resident talk, landmark-trigger activation, inspectable resolution, and live resident routine overrides inside `game_main`
+- [`../game/tests/story_routes/test_story_event_service.tscn`](../game/tests/story_routes/test_story_event_service.tscn) - focused StoryEvent bridge regression covering subject-based resident talk, landmark-trigger activation, inspectable resolution, and resident routine overrides at the shared-state level
 - [`../scenes/tests/test_level_resolution.tscn`](../scenes/tests/test_level_resolution.tscn) - focused relative-level resolution and inherited room-level sandbox
 - [`../scenes/tests/test_portal_overlap.tscn`](../scenes/tests/test_portal_overlap.tscn) - focused multi-actor portal transition regression test
 - [`../characters/tests/test_character_collisions.tscn`](../characters/tests/test_character_collisions.tscn) - self-contained generated-fixture regression covering `HumanBody3D` gravity/landing, static-wall blocking, front stair ascent/descent, tagged stair-side rejection, and capped `RigidBody3D` pushing
@@ -164,6 +157,7 @@ Be careful about renames or moves here because scene and resource references can
 - [`../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn`](../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn) - focused Bagua base-to-ground portal integration for `level_id` actor transitions
 - [`../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn`](../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn) - full Bagua Tower ascent, descent, and upper-floor visibility integration test
 - [`../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn`](../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn) - focused Bagua stair physical traversal integration test
+- [`../scenes/tests/test_low_poly_building_editor_3d.tscn`](../scenes/tests/test_low_poly_building_editor_3d.tscn) - end-to-end building-editor smoke suite relocated from the `addons/low_poly_building_editor` submodule so the addon carries no parent-repo paths; probes generated buildings with `HumanBody3D` collision and covers the full wall/floor/stairs/rail/pillar/roof/opening regression matrix described in the addon's `docs/feature.md`
 - [`../scenes/tests/test_building_tour_3d.tscn`](../scenes/tests/test_building_tour_3d.tscn) - generic playable building-tour harness with an exported `building_scene`, transform and player spawn, plus `HumanBody3D`, camera-relative movement, orbit/zoom camera, lighting, and ground collision; defaults to the generated low-poly Bagua Tower concept
 - [`../weather/tests/test_weather.tscn`](../weather/tests/test_weather.tscn) - focused weather tuning sandbox with tilemap-backed water/terrain, manager-attached fog/rain/cloud/impact passes, a thunder-flash pass, a tabbed weather control panel split into `Wind`, `Rain`, `Fog`, and `Cloud` tuning groups with per-pass `Sync With Wind` toggles, actor readability checks, temporary foreground occluder proxies, and a parity check against the shared overworld weather preset
 - [`../scenes/tests/test_water_render.tscn`](../scenes/tests/test_water_render.tscn) - focused water color, wave, transparency, and refraction sandbox

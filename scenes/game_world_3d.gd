@@ -498,7 +498,7 @@ func _sync_location_from_player() -> void:
 	_update_story_resume_checkpoint(resolved)
 
 
-# Mirror scenes/game_main.gd: while in Story mode, keep the resume checkpoint at the
+# While in Story mode, keep the resume checkpoint at the
 # last landmark the player reached so Continue restores near where they were. The
 # landmark display names double as stable safe-resume anchor ids.
 func _update_story_resume_checkpoint(resolved_location: String) -> void:
@@ -680,7 +680,7 @@ func _find_nearest_land_pixel(image: Image, profile: TerrainGenerationProfile, t
 	return clamped_target
 
 
-# --- story-subject interaction (mirrors scenes/game_main.gd's subject path) -------
+# --- story-subject interaction (shared AppState story-subject dispatch path) -------
 
 func _spawn_residents() -> void:
 	var presenter := RESIDENT_PRESENTER_3D.new()
