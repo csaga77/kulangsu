@@ -2,6 +2,7 @@
 extends Node3D
 
 const TERRAIN_KIND_WATER := 0
+const LowPolyWorldCoordinates3DScript = preload("res://terrain/low_poly_world_coordinates_3d.gd")
 
 @onready var m_terrain: Node3D = $LowPolyTerrain3D
 @onready var m_camera: Camera3D = $Camera3D
@@ -58,6 +59,7 @@ func _run_smoke_checks() -> void:
 	else:
 		_validate_heightmap_terrain(failures)
 		_validate_heightmap_source_expansion(failures)
+		_validate_coordinate_round_trips(failures)
 		_configure_heightmap_smoke(false)
 		_validate_water_rendering(failures)
 		_validate_wind_control(failures)
@@ -157,6 +159,28 @@ func _validate_heightmap_source_expansion(failures: Array[String]) -> void:
 			failures.append("heightmap-expanded terrain did not draw seabed below water level")
 		if land_height_range.y <= water_height + 0.05:
 			failures.append("heightmap-expanded terrain did not preserve dry land above water level")
+
+
+func _validate_coordinate_round_trips(failures: Array[String]) -> void:
+	var coordinates: LowPolyWorldCoordinates3DScript = LowPolyWorldCoordinates3DScript.new()
+	coordinates.configure_from_terrain(m_terrain)
+	if coordinates.resolve_source_size() != Vector2i(32, 32):
+		failures.append("coordinate adapter did not follow LowPolyTerrain3D source size")
+		return
+
+	var mask_pixel := Vector2(12.0, 20.0)
+	var world_position := coordinates.mask_pixel_to_world_position(mask_pixel, 0.25)
+	if mask_pixel.distance_to(coordinates.world_position_to_mask_pixel(world_position)) > 0.001:
+		failures.append("coordinate adapter mask/world round trip drifted")
+	if mask_pixel.distance_to(coordinates.world3d_to_world2d(coordinates.world2d_to_world3d(mask_pixel, 0.25))) > 0.001:
+		failures.append("coordinate adapter 2D/3D round trip drifted")
+
+	var isometric_position := Vector2(3360.0, 6160.0)
+	var isometric_round_trip := coordinates.mask_pixel_to_isometric_position(
+		coordinates.isometric_position_to_mask_pixel(isometric_position)
+	)
+	if isometric_position.distance_to(isometric_round_trip) > 0.001:
+		failures.append("coordinate adapter isometric/mask round trip drifted")
 
 
 func _validate_water_rendering(failures: Array[String]) -> void:

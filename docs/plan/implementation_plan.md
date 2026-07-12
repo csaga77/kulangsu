@@ -46,16 +46,15 @@ Regression coverage now includes:
 - BGM lazy catalog validation and location-fallback variety
 - portal/level transitions across Bagua Tower, tunnels, and multi-level spaces
 
-The low-poly 3D lane is now a runtime candidate behind `main.gd`'s
-`USE_3D_OVERWORLD` development toggle (default off), not the shipped overworld:
+The low-poly 3D lane is now the production overworld instantiated directly by `main.gd`:
 
 - the terrain pipeline is split into image sampling, cell data, mesh construction, and node/material integration; it supports heightmap or mask-driven land, connected seabed, collision, layered shader-displaced water, and weather-driven wind
 - `HumanBody3D`, `BaseController3D`, and `PlayerController3D` mirror the main actor/controller concepts on the XZ plane; the actor uses a premade animated GLB, gravity, wall sliding, stair traversal, floor snapping, and capped dynamic-body pushing
 - `LowPolyWorldCoordinates3D`, `LowPolyArtStyle3D`, and `Camera3DController` support coordinate-safe placement, orthographic orbit/zoom, and target-occluder fading
-- the Low-Poly Building Editor and versioned `BuildingSpec` pipeline produce editable authored landmark concepts; Piano Ferry, Trinity Church, and Bagua Tower are instanced in the runtime candidate while both tunnels remain anchors without authored geometry
+- the Low-Poly Building Editor and versioned `BuildingSpec` pipeline produce editable authored landmarks; Piano Ferry, Trinity Church, and Bagua Tower are instanced in the runtime while both tunnels remain anchors without authored geometry
 - the full shared resident roster spawns as locally wandering `HumanBody3D` presenters with stable `StorySubject3D` ids and world-anchored speech balloons
-- the runtime candidate dispatches through the shared story services, resolves semantic resume anchors, and now owns the same shared BGM manager and landmark-cue path as the 2D world
-- focused terrain, actor, collision, camera-occlusion, building-tour, combined-world, and runtime-world scenes cover the lane; headless smoke scenes must terminate with process status `0` on success and nonzero on failure
+- the runtime dispatches through shared story services, resolves semantic resume anchors, and owns shared BGM and landmark-cue playback
+- focused terrain, actor, collision, camera-occlusion, building-tour, and production-world scenes cover the lane; headless smoke scenes must terminate with process status `0` on success and nonzero on failure
 
 ## Content Reality Check
 
@@ -82,16 +81,16 @@ Current pressure points:
 - `activate_landmark_trigger(...)` remains as a compatibility bridge, but regression coverage should prefer `activate_story_subject(...)` or packed-scene `StorySubjectArea2D` dispatch for landmark beats
 - high-traffic dictionary payloads (landmark progress, melody progress, autosave) are still untyped
 - missable/transformed moment processing is not implemented yet; the current life-time slice tracks and advances time but does not automatically expire optional beats into missed-state echoes
-- the low-poly 3D runtime candidate now has terrain/water, actor/camera,
+- the low-poly 3D runtime now has terrain/water, actor/camera,
   three authored landmarks, shared-data residents, controller/adapter story
   dispatch, speech balloons, BGM/cues, and semantic resume anchors; its remaining
   work is tunnel/interior content, routed tunnel residents, representative landmark result parity, formal visual and
-  release-performance acceptance, and the runtime-direction decision
+  release-performance confirmation
 - regression coverage is now strong for landmark, route, resident-interaction, reactivity, and autosave flows, but still lighter around settings/audio behavior and richer world-object reactivity
 
 ## What Remains
 
-Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but they are still active tracks rather than fully finished bodies of work. The next phase is no longer the architecture pass itself; it is about deepening those content and polish workstreams until the remaining embodied-scene, world-reactivity, and closing-movement gaps are closed. The low-poly 3D prototype is a parallel exploration lane and should stay outside the runtime overworld until the six evidence stages below are satisfied and the runtime-direction decision selects integration. Resident migration remains useful sidecar cleanup, but it is not the recommended next focus while the manual conversion path is still relatively expensive.
+Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but they are still active tracks rather than fully finished bodies of work. The next phase is no longer the architecture pass itself; it is about deepening those content and polish workstreams until the remaining embodied-scene, world-reactivity, and closing-movement gaps are closed. The low-poly 3D runtime cutover is complete; its remaining tunnel, parity, and release-performance items are accepted follow-ups. Resident migration remains useful cleanup, but it is not the recommended next focus while the manual conversion path is still relatively expensive.
 
 ### Status Summary
 
@@ -132,18 +131,17 @@ Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but the
 - widen validation around settings/audio behavior and richer world-state reactivity
 - add focused coverage for future typed payload migrations and storyline-editor migrations if that cleanup starts
 
-### Parallel Sidecar: Low-Poly 3D Prototype
+### Low-Poly 3D Runtime
 
-The low-poly 3D world is a playable runtime candidate behind a default-off
-development toggle. It is not the shipped replacement until every open gate
-below is green and stage 6 records that decision.
+The low-poly 3D world is the production overworld. Stage 6 records the completed
+runtime-direction decision; remaining items below are accepted follow-ups.
 
 Shipped baseline:
 
 - `LowPolyTerrainSampler` turns mask/heightmap images into typed cells; `LowPolyTerrainMeshBuilder` turns those cells into land, seabed, street, footprint, shoreline, layered water, and collision geometry; `LowPolyTerrain3D` owns lifecycle, materials, wind, and placement-height queries
 - water uses a flat baked plane for placement semantics but real shader-displaced waves, analytic normals, layered highlights, shoreline overlap, and normalized wind supplied through `LowPolyWaterWindAdapter`
 - `HumanBody3D`, `BaseController3D`, and `PlayerController3D` provide camera-relative XZ movement, animated model locomotion, gravity, floor snap, front-riser stair traversal, tagged stair-side blocking, static-wall sliding, and capped `RigidBody3D` pushing
-- `LowPolyWorldCoordinates3D`, `LowPolyArtStyle3D`, `Camera3DController`, and solid `LowPolyLandmarkProxy3D` nodes support the combined world slice without scene-local placement math
+- `LowPolyWorldCoordinates3D`, `LowPolyArtStyle3D`, and `Camera3DController` support the production world without scene-local placement math; authored landmark scenes provide runtime massing and collision
 - the Low-Poly Building Editor, versioned `BuildingSpec` generation, authored landmark concepts, and `test_building_tour_3d.tscn` provide the environment-authoring and playable scale-review lane
 - three authored landmarks, the shared resident roster, `StorySubject3D`
   dispatch, speech balloons, BGM/landmark cues, and semantic resume anchors are
@@ -234,9 +232,8 @@ Primary files:
 - `terrain/low_poly_world_coordinates_3d.gd`
 - `terrain/low_poly_water_wind_adapter.gd`
 - `resources/materials/water_3d.gdshader`
-- `architecture/low_poly/low_poly_landmark_proxy_3d.gd`
 - `scenes/tests/test_low_poly_terrain_3d.tscn`
-- `scenes/tests/test_low_poly_world_3d.tscn`
+- `scenes/tests/test_game_world_3d.tscn`
 - `scenes/tests/test_camera_3d_occlusion.tscn`
 - `scenes/tests/test_building_tour_3d.tscn`
 - `characters/human_body_3d.gd`

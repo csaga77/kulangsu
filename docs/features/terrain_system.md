@@ -92,7 +92,7 @@
 - For water-only tuning, use [`../../scenes/tests/test_water_render.tscn`](../../scenes/tests/test_water_render.tscn) before rechecking the full terrain scene.
 - For full integration changes that affect landmark readability or masking, validate through [`../../scenes/game_main.tscn`](../../scenes/game_main.tscn).
 - For the parallel low-poly 3D prototype, validate [`../../scenes/tests/test_low_poly_terrain_3d.tscn`](../../scenes/tests/test_low_poly_terrain_3d.tscn). It should load without errors and log the sampled-cell terrain summary.
-- For combined low-poly terrain/player/camera changes, validate [`../../scenes/tests/test_low_poly_world_3d.tscn`](../../scenes/tests/test_low_poly_world_3d.tscn). It should log `PASS: LowPolyWorld3D smoke test`.
+- For combined low-poly terrain/player/camera changes, validate [`../../scenes/tests/test_game_world_3d.tscn`](../../scenes/tests/test_game_world_3d.tscn). It should log `PASS: game_world_3d smoke test`.
 
 ## Out Of Scope
 

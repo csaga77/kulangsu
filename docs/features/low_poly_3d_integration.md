@@ -2,24 +2,24 @@
 
 ## Goal
 
-- Define how the low-poly 3D runtime candidate proves interaction, resident,
+- Define how the production low-poly 3D runtime integrates interaction, resident,
   story, audio, save, and resume behavior without forking dimension-neutral
   gameplay services.
-- Provide an explicit decision gate before any 3D work changes `game_main.tscn`.
+- Preserve the evidence and ownership contract used for the completed 3D cutover.
 
 ## Current Status
 
-- `scenes/game_world_3d.tscn` is a playable runtime candidate behind
-  `main.gd`'s `USE_3D_OVERWORLD` development toggle (default off).
+- `scenes/game_world_3d.tscn` is the production overworld instantiated directly by `main.gd`.
 - Terrain/water, actor/controller, collision, camera, three authored landmarks,
   five stable landmark subjects, the complete shared resident roster, local
   resident wandering, 3D speech balloons, shared BGM/landmark-cue audio, and
   semantic resume anchors are integrated.
-- `test_game_world_3d.tscn` boots the runtime candidate and exercises resident
-  proximity selection and inspect dispatch through the 3D controller/adapter.
+- `test_game_world_3d.tscn` boots the production world and exercises terrain/water/street generation,
+  actor grounding and wading, camera wiring, authored-landmark collision, resident proximity and
+  inspect dispatch, shared audio/weather, and semantic resume behavior.
 - The remaining acceptance work is two authored tunnel/interior spaces, routed
   tunnel residents, representative landmark progression parity, the release-export repeat of the diagnostically green performance
-  capture, and the recorded runtime-direction decision.
+  capture. The runtime-direction decision is recorded as **replace** and the flip is complete.
 
 ## Player Experience
 
@@ -38,7 +38,7 @@
 - Existing story services own availability, response selection, and effects. No 3D-only fork of story rules is allowed.
 - `AppState` remains the owner of shared progression, location, route, resident-override, and save-facing state.
 - Existing resident definitions remain the source data. A 3D resident presenter may interpret appearance differently, but it must not duplicate identity, dialogue, routine, or story-gate data.
-- A future 3D runtime world scene, not `game_main.tscn`, should own 3D spawning and world-to-story wiring until the runtime-direction decision is accepted.
+- `game_world_3d.tscn` owns 3D spawning and world-to-story wiring.
 
 ## Interaction Contract
 
@@ -57,7 +57,7 @@
 - If the requested anchor is missing, resume falls back to the slice entry anchor.
 - The current 2D save remains readable while the 3D lane is experimental. Prototype-only state must not alter the existing save schema without a versioned migration.
 
-## Runtime Candidate Slice
+## Runtime World
 
 - Default landmark: Piano Ferry.
 - Shipped content: an authored landmark building, generated walkable collision,
@@ -66,13 +66,13 @@
 - Automated checks cover deterministic prompt selection, controller-driven
   resident dispatch, camera-occluder behavior, the full shared resident count,
   audio-manager creation, and fallback resume behavior.
-- The runtime candidate stays behind the development toggle until the final
-  runtime-direction decision.
+- Lower-level terrain, actor, camera, street, and building behavior remains covered by focused tests;
+  `test_game_world_3d.tscn` owns their production-world integration.
 
 ## Acceptance Evidence
 
 - **Green:** focused 3D headless smoke scenes return status `0`.
-- **Green:** the runtime candidate proves a controller/adapter resident dispatch
+- **Green:** the runtime world proves a controller/adapter resident dispatch
   and semantic resume anchor with fallback.
 - **Green:** the five fixed-camera screenshots and dated visual acceptance note.
 - **Diagnostic green / formal open:** the reproducible standalone Metal debug
@@ -83,12 +83,11 @@
   dimension-neutral result and core progression state.
 - **Open:** equivalent landmark dispatch parity with a meaningful progression
   effect.
-- **Open:** `docs/plan/implementation_plan.md` must record replace, limited mode,
-  or stop.
+- **Green:** `docs/plan/implementation_plan.md` records the replace decision and completed runtime flip.
 
 ## Out Of Scope
 
-- Replacing or deleting `game_main.tscn` before the decision gate.
+- Restoring a second runtime overworld path without a new architecture decision.
 - Duplicating resident/story data for the 3D presentation.
 - A second story-event system, save format, resident catalog, or route model.
 - Treating visual landmark proxies as authoritative story subjects.

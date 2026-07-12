@@ -2,27 +2,19 @@ extends Node3D
 
 # Low-poly 3D runtime world scene.
 #
-# This is the Phase D deliverable of docs/plan/low_poly_3d_replacement.md: the 3D
-# counterpart of scenes/game_main.gd. It boots a playable low-poly island on the
-# existing 3D sidecar (LowPolyTerrain3D, HumanBody3D, PlayerController3D,
-# Camera3DController, LowPolyLandmarkProxy3D) and carries the runtime-integration
-# duties main.gd expects from a game root:
+# This is the production overworld selected by main.gd. It boots a playable
+# low-poly island with LowPolyTerrain3D, HumanBody3D, PlayerController3D,
+# Camera3DController, authored landmark scenes, and stable tunnel anchors. It
+# carries the runtime-integration duties main.gd expects from a game root:
 #   - it is a drop-in for main.gd's GAME_SCENE contract (visible flag,
 #     sync_ui_state(), set_prompt_bgm_ducked())
 #   - it resolves the shared AppState through AppRuntime and keeps location,
 #     landmark, and resident lists in sync
 #   - it applies the story resume anchor on entry and falls back to Piano Ferry
 #
-# The terrain-generation, actor placement, and terrain-elevation-follow logic is
-# lifted from the validated scenes/tests/test_low_poly_world_3d.gd so runtime
-# behavior matches the green combined-world smoke scene. The smoke-test assertions
-# are intentionally dropped here; that scene remains the correctness owner.
-#
-# The runtime candidate now includes residents, Area3D story subjects, speech
-# balloons, shared BGM/cue audio, and save/resume anchors. Tunnel interiors,
-# routed tunnel residents, cycled 3D weather passes, representative landmark
-# result parity, and the final cutover remain tracked by the replacement plan. Until
-# Phase G, main.gd keeps this scene behind USE_3D_OVERWORLD (default false).
+# Runtime correctness is covered by scenes/tests/test_game_world_3d.tscn, with
+# focused terrain, street, actor-collision, camera, and building tests owning the
+# lower-level subsystem regressions.
 
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const WEATHER_RUNTIME := preload("res://weather/weather_runtime.gd")
@@ -36,7 +28,6 @@ const PLAYER_MODEL_FEMALE: PackedScene = preload("res://assets/characters/female
 const PLAYER_MODEL_TEEN: PackedScene = preload("res://assets/characters/boy.glb")
 const LowPolyWorldCoordinates3DScript = preload("res://terrain/low_poly_world_coordinates_3d.gd")
 const LowPolyArtStyle3DScript = preload("res://terrain/low_poly_art_style_3d.gd")
-const LowPolyLandmarkProxy3DScript = preload("res://architecture/low_poly/low_poly_landmark_proxy_3d.gd")
 const RESIDENT_PRESENTER_3D := preload("res://characters/resident_presenter_3d.gd")
 
 const LANDMARK_MASK_META := &"low_poly_landmark_mask_pixel"
@@ -46,9 +37,8 @@ const ISLAND_PATHS_LABEL := "Island Paths"
 # Sized for the scaled-up world and the large stylized building footprints.
 const LANDMARK_LOCATION_RADIUS := 14.0
 
-# Authored island placements mirror the validated combined-world scene. Landmark
-# display names match the 2D game_main landmark dictionary so AppState, the journal,
-# and the story layer keep reading the same canonical names.
+# Authored island placements preserve the canonical landmark coordinates and
+# display names consumed by AppState, the journal, and the story layer.
 const LANDMARK_PLACEMENTS := [
 	{
 		"name": "Piano Ferry",
@@ -525,7 +515,7 @@ func _flatten(position: Vector3) -> Vector2:
 	return Vector2(position.x, position.z)
 
 
-# --- terrain elevation follow (mirrors the validated combined-world scene) -------
+# --- terrain elevation follow ----------------------------------------------------
 
 func _connect_actor_terrain_elevation() -> void:
 	if !is_instance_valid(m_actor):
@@ -607,7 +597,7 @@ func _get_terrain_world_height(world_position: Vector3, sample_cell: Vector2i, f
 	return _get_terrain_sample_height(sample_cell, fallback)
 
 
-# --- terrain mask helpers (mirror the validated combined-world scene) ------------
+# --- terrain mask helpers --------------------------------------------------------
 
 func _resolve_generation_profile() -> TerrainGenerationProfile:
 	var terrain_profile: Variant = m_terrain.get("generation_profile")

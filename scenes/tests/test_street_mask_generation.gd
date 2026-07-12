@@ -1,6 +1,9 @@
 extends Node3D
 
 const LowPolyTerrain3DScript = preload("res://terrain/low_poly_terrain_3d.gd")
+const ISLAND_GENERATION_PROFILE: TerrainGenerationProfile = preload(
+	"res://terrain/island_generation_profile.tres"
+)
 
 var m_failures: Array[String] = []
 var m_mask_path := OS.get_temp_dir().path_join("kulangsu_street_mask_generation.png")
@@ -21,6 +24,7 @@ func _run_checks() -> void:
 		_validate_reuse_preserves_streets(terrain)
 		_validate_geometry_not_stored(terrain)
 	_validate_diagonal_stays_straight()
+	_validate_real_island_generation()
 	_finish()
 
 
@@ -241,6 +245,51 @@ func _validate_diagonal_stays_straight() -> void:
 		var delta := longest[1] - longest[0]
 		if absf(delta.x) < 0.5 or absf(delta.z) < 0.5:
 			m_failures.append("Diagonal street path collapsed but is not actually diagonal")
+	terrain.queue_free()
+
+
+func _validate_real_island_generation() -> void:
+	# Keep one real-data integration check in the focused street suite. The runtime
+	# scene uses its lightweight mask StreetMesh; explicit Street3D extraction is an
+	# authoring/rebuild path and should not be forced during every runtime smoke test.
+	var terrain := LowPolyTerrain3DScript.new() as LowPolyTerrain3DScript
+	terrain.name = "IslandTerrain"
+	terrain.build_on_ready = false
+	terrain.print_summary = false
+	terrain.generation_profile = ISLAND_GENERATION_PROFILE
+	terrain.water_height = 1.0
+	terrain.land_height = 0.0
+	terrain.heightmap_max_offset = 10.0
+	terrain.street_lift = 0.025
+	terrain.building_footprint_lift = 0.12
+	terrain.generate_collision = false
+	add_child(terrain)
+	terrain.rebuild_from_source()
+
+	var summary := terrain.get_street_integration_summary()
+	if int(summary.get("mask_street_cell_count", 0)) <= 0:
+		m_failures.append("Real island generation did not retain STREET cells")
+	if int(summary.get("mask_path_count", 0)) <= 0:
+		m_failures.append("Real island generation did not extract STREET paths")
+	if int(summary.get("generated_source_count", 0)) <= 0:
+		m_failures.append("Real island generation did not create Street3D sources")
+
+	var root := terrain.get_node_or_null("GeneratedStreets")
+	if root == null:
+		m_failures.append("Real island generation is missing GeneratedStreets")
+	else:
+		var visible_street_count := 0
+		var stair_segment_count := 0
+		for street in root.get_children():
+			if street is MeshInstance3D and (street as MeshInstance3D).mesh != null:
+				visible_street_count += 1
+			if street.has_method("get_last_build_stats"):
+				var stats: Dictionary = street.call("get_last_build_stats")
+				stair_segment_count += int(stats.get("stair_segment_count", 0))
+		if visible_street_count <= 0:
+			m_failures.append("Real island Street3D sources have no visible meshes")
+		if stair_segment_count <= 0:
+			m_failures.append("Real island slopes did not generate street stair segments")
 	terrain.queue_free()
 
 

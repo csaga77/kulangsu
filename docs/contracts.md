@@ -208,21 +208,16 @@ Owned by:
 - [`../terrain/low_poly_terrain_3d.gd`](../terrain/low_poly_terrain_3d.gd)
 - [`../terrain/low_poly_world_coordinates_3d.gd`](../terrain/low_poly_world_coordinates_3d.gd)
 - [`../terrain/low_poly_art_style_3d.gd`](../terrain/low_poly_art_style_3d.gd)
-- [`../architecture/low_poly/low_poly_landmark_proxy_3d.gd`](../architecture/low_poly/low_poly_landmark_proxy_3d.gd)
 - [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd)
 - [`../assets/characters/male.glb`](../assets/characters/male.glb) (default model; `boy.glb` and `female.glb` are alternates)
 - [`../characters/tests/test_character_collisions.tscn`](../characters/tests/test_character_collisions.tscn)
-- [`../scenes/tests/test_low_poly_world_3d.tscn`](../scenes/tests/test_low_poly_world_3d.tscn)
+- [`../scenes/game_world_3d.tscn`](../scenes/game_world_3d.tscn)
+- [`../scenes/tests/test_game_world_3d.tscn`](../scenes/tests/test_game_world_3d.tscn)
 - [`features/low_poly_3d_integration.md`](features/low_poly_3d_integration.md)
 
 Current contract:
 
-- the low-poly 3D world remains a runtime candidate behind
-  `main.gd`'s `USE_3D_OVERWORLD` development toggle (default off); it must not
-  become the default or trigger deletion of `game_main.tscn` until the open
-  evidence gates in [`plan/implementation_plan.md`](plan/implementation_plan.md)
-  and [`features/low_poly_3d_integration.md`](features/low_poly_3d_integration.md)
-  are green and a runtime-direction decision is recorded
+- `game_world_3d.tscn` is the production overworld instantiated directly by `main.gd`; the runtime-direction decision and cutover evidence are recorded in [`plan/implementation_plan.md`](plan/implementation_plan.md) and [`features/low_poly_3d_integration.md`](features/low_poly_3d_integration.md)
 - `StorySubject3D` nodes may provide 3D spatial adapters for the same stable
   subject ids used by the 2D world, but they must dispatch through
   `AppState.activate_story_subject(...)`; visual building replacement must not
@@ -241,13 +236,8 @@ Current contract:
 - heightmap file, expansion-mode, and offset edits are manual-apply: assigning the image, toggling `heightmap_expands_land_to_source`, or tuning min/max must not automatically rebuild in the editor; use the exported rebuild control or `rebuild_from_source()`
 - generated streets persist as definitions, not geometry: `LowPolyTerrain3D` only re-extracts the `GeneratedStreets` subtree from the mask on an explicit rebuild (`rebuild_from_source()`, the `rebuild` toggle, or a property change) and owns it under the edited scene so each Street3D's centerline `path_points`, sampled `profile_points`, and authored properties serialize into the `.tscn`; the mesh geometry must stay out of the file (the terrain nulls generated street meshes on `NOTIFICATION_EDITOR_PRE_SAVE` and restores them on `POST_SAVE`) and each Street3D rebuilds its mesh from the stored profile on load. On scene load / `rebuild_reusing_generated_streets()` the terrain reshapes its bed from the stored street corridors without re-extracting them; the subtree carries `GENERATED_STREET_ROOT_META` so the per-rebuild transient clear never discards it, and a scene must be rebuilt once in the editor to bake its streets
 - height-aware placement must query generated terrain heights through `LowPolyTerrain3D.get_world_surface_height(...)` or `LowPolyTerrain3D.get_sample_cell_height(...)` after rebuild instead of assuming global `land_height`; in heightmap-expanded water these queries currently expose underlying land/seabed elevation rather than visual water-plane height
-- the combined low-poly world scene owns actor grounding wiring: each frame it seats the player actor on the solid surface directly beneath it by casting a short downward ray against the physics world (the actor's `collision_mask`), so the actor stands on whatever it is over -- terrain mesh, pier, or any collision-bearing building part -- instead of hovering. It falls back to `LowPolyTerrain3D.get_world_surface_height(...)` only when the ray finds nothing within reach (e.g. heightmap-water cells with no land collision), preserving land/seabed elevation following there. `actor_terrain_clearance` defaults to `0` so the feet rest on the floor rather than floating above it; `HumanBody3D` itself stays terrain-agnostic
-- standalone `LowPolyLandmarkProxy3D` nodes remain presentation-only blockouts;
-  `game_world_3d` currently replaces three of its five landmark anchors with
-  authored building scenes and owns the separate `StorySubject3D` hotspots.
-  Proxy `generate_collision` (default `true`) adds generated static collision to
-  each proxy part, while the runtime candidate generates collision recursively
-  for authored landmark meshes
+- `game_world_3d` owns actor grounding wiring: each frame it seats the player actor on the solid surface directly beneath it by casting a short downward ray against the physics world (the actor's `collision_mask`), so the actor stands on terrain, piers, or collision-bearing building parts instead of hovering. It falls back to `LowPolyTerrain3D.get_world_surface_height(...)` only when the ray finds nothing within reach, preserving land/seabed elevation following. `actor_terrain_clearance` defaults to `0`; `HumanBody3D` itself stays terrain-agnostic
+- `game_world_3d` owns three authored building scenes, two stable tunnel marker anchors, separate `StorySubject3D` hotspots, and recursively generated static collision for authored landmark meshes
 - `Camera3DController` keeps its followed target readable by raycasting from the current camera to the look-at point and fading every collision-backed `GeometryInstance3D` blocker through the instance `transparency` property. It excludes the target subtree, preserves pre-existing transparency, restores cleared blockers (or blockers tracked by a camera that stops being current), and exposes collision-mask, fade amount/duration, area-query, and hit-limit tuning. Automatic visual resolution requires the geometry instance to be an ancestor or descendant of the hit collision object
 - `HumanBody3D.body_height` and `HumanBody3D.body_radius` are the current low-poly actor shape contract; they update the GLB model scale, capsule collision, bounding box, and ground footprint together
 - `HumanBody3D` always renders one integrated GLB character model under `VisualRoot/CharacterModel`; there is no procedural block-mannequin fallback or separate hair, pants, jacket, accessory-attachment, or runtime skin-transfer layer. The only code-generated geometry left is the optional `DebugBox` bounding-box gizmo and the optional skeleton bone-debug lines

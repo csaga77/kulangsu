@@ -3,7 +3,9 @@ extends Node
 # Headless smoke test for the low-poly 3D runtime world (Phase A/B acceptance of
 # docs/plan/low_poly_3d_replacement.md). It boots scenes/game_world_3d.tscn and
 # asserts the world builds and the shared interaction path works:
-#   - terrain generated, player spawned, five landmark proxies placed
+#   - terrain/water/streets generated, player spawned and terrain-following
+#   - runtime camera/controller wiring and authored landmark collision
+#   - five stable landmark anchors placed through the coordinate adapter
 #   - residents spawned from the shared AppState roster
 #   - story subjects registered for proximity selection
 #   - resident talk dispatches through controller input and the 3D adapter
@@ -19,6 +21,10 @@ extends Node
 
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const APP_STATE_SCRIPT := preload("res://game/app_state.gd")
+const BASE_CONTROLLER_3D_SCRIPT := preload("res://characters/control/base_controller_3d.gd")
+const TERRAIN_KIND_WATER := 0
+const ACTOR_GROUND_TOLERANCE := 0.2
+const MAX_ACTOR_WADE_DEPTH := 0.5
 
 @onready var m_world: Node3D = $game_world_3d
 
@@ -38,6 +44,8 @@ func _run_smoke_checks() -> void:
 	_check_world(failures)
 	_check_terrain(failures)
 	_check_player(failures)
+	_check_player_surface_follow(failures)
+	_check_camera(failures)
 	_check_player_appearance_mapping(failures)
 	_check_landmarks(failures)
 	_check_residents(failures)
@@ -76,8 +84,18 @@ func _check_terrain(failures: Array[String]) -> void:
 		return
 	if terrain.get_node_or_null("LandMesh") == null:
 		failures.append("LowPolyTerrain3D did not generate LandMesh")
+	if terrain.get_node_or_null("WaterMesh") == null:
+		failures.append("LowPolyTerrain3D did not generate WaterMesh")
+	if terrain.get_node_or_null("WaterSurfaceLayerMesh") == null:
+		failures.append("LowPolyTerrain3D did not generate WaterSurfaceLayerMesh")
+	if terrain.get_node_or_null("WaterShorelineMesh") == null:
+		failures.append("LowPolyTerrain3D did not generate WaterShorelineMesh")
 	if terrain.get_node_or_null("TerrainCollision") == null:
 		failures.append("LowPolyTerrain3D did not generate TerrainCollision")
+
+	var street_mesh := terrain.get_node_or_null("StreetMesh") as MeshInstance3D
+	if street_mesh == null or street_mesh.mesh == null:
+		failures.append("runtime terrain did not generate its island street mesh")
 
 
 func _check_player(failures: Array[String]) -> void:
@@ -91,6 +109,96 @@ func _check_player(failures: Array[String]) -> void:
 		failures.append("player is not in the 'player' group")
 	if not is_finite(player.global_position.y):
 		failures.append("player spawned with a non-finite height")
+	if float(player.get("body_height")) <= 0.0 or float(player.get("body_radius")) <= 0.0:
+		failures.append("player body dimensions are invalid")
+	if player.get_node_or_null("VisualRoot/CharacterModel") == null:
+		failures.append("player did not instance its character model")
+	var controller: Variant = player.get("controller")
+	if controller == null or !(controller is BASE_CONTROLLER_3D_SCRIPT):
+		failures.append("player controller does not extend BaseController3D")
+
+
+func _check_player_surface_follow(failures: Array[String]) -> void:
+	if !is_instance_valid(m_world):
+		return
+	var terrain := m_world.get_node_or_null("LowPolyTerrain3D")
+	var player := m_world.get_node_or_null("human_body_3d") as CharacterBody3D
+	var coordinates: LowPolyWorldCoordinates3D = m_world.get("m_coordinates") as LowPolyWorldCoordinates3D
+	if terrain == null or player == null or coordinates == null:
+		failures.append("terrain-follow check is missing runtime world nodes")
+		return
+
+	var original_position := player.global_position
+	var dry_cell := _find_surface_probe_cell(terrain, coordinates, false)
+	if dry_cell == Vector2i(-1, -1):
+		failures.append("runtime terrain has no dry cell for player settling")
+	else:
+		var dry_position := coordinates.sample_cell_to_world_center(dry_cell, 0.0) + Vector3(0.21, 0.0, -0.17)
+		var dry_height := float(terrain.call("get_world_surface_height", dry_position))
+		player.global_position = Vector3(dry_position.x, dry_height + 0.5, dry_position.z)
+		m_world._apply_actor_terrain_elevation()
+		if absf(player.global_position.y - dry_height) > ACTOR_GROUND_TOLERANCE:
+			failures.append("player did not settle onto the runtime terrain surface")
+
+	var water_cell := _find_surface_probe_cell(terrain, coordinates, true)
+	if water_cell == Vector2i(-1, -1):
+		failures.append("runtime terrain has no submerged cell for player wading")
+	else:
+		var water_position := coordinates.sample_cell_to_world_center(water_cell, 0.0)
+		var seabed_height := float(terrain.call("get_world_surface_height", water_position))
+		var water_surface := float(terrain.call("get_world_water_surface_height", water_position))
+		var expected_wade_height := maxf(seabed_height, water_surface - MAX_ACTOR_WADE_DEPTH)
+		player.global_position = Vector3(water_position.x, water_surface + 0.5, water_position.z)
+		m_world._apply_actor_terrain_elevation()
+		if absf(player.global_position.y - expected_wade_height) > ACTOR_GROUND_TOLERANCE:
+			failures.append("player did not wade at the expected runtime water depth")
+		if player.global_position.y > water_surface + ACTOR_GROUND_TOLERANCE:
+			failures.append("player stood on top of runtime water instead of wading")
+
+	player.global_position = original_position
+	m_world._apply_actor_terrain_elevation()
+
+
+func _find_surface_probe_cell(terrain: Node, coordinates: LowPolyWorldCoordinates3D, find_water: bool) -> Vector2i:
+	var grid_size := coordinates.get_grid_size()
+	for y in range(grid_size.y):
+		for x in range(grid_size.x):
+			var sample_cell := Vector2i(x, y)
+			var is_water := int(terrain.call("get_sample_cell_kind", sample_cell)) == TERRAIN_KIND_WATER
+			if is_water != find_water:
+				continue
+			if find_water:
+				var position := coordinates.sample_cell_to_world_center(sample_cell, 0.0)
+				var seabed := float(terrain.call("get_world_surface_height", position))
+				var water_surface := float(terrain.call("get_world_water_surface_height", position))
+				if seabed >= water_surface - 0.02:
+					continue
+			return sample_cell
+	return Vector2i(-1, -1)
+
+
+func _check_camera(failures: Array[String]) -> void:
+	if !is_instance_valid(m_world):
+		return
+	var camera := m_world.get_node_or_null("Camera3D") as Camera3D
+	var player := m_world.get_node_or_null("human_body_3d") as Node3D
+	var controller := m_world.get_node_or_null("Camera3DController")
+	if camera == null or controller == null:
+		failures.append("runtime world is missing Camera3D or Camera3DController")
+		return
+	if camera.projection != Camera3D.PROJECTION_ORTHOGONAL:
+		failures.append("runtime world camera is not orthographic")
+	if controller.get("camera") != camera or controller.get("target_node") != player:
+		failures.append("Camera3DController is not wired to the runtime camera and player")
+	if !controller.has_method("rotate_yaw"):
+		failures.append("Camera3DController is missing orbit rotation support")
+		return
+	var original_yaw := float(controller.get("orbit_yaw_degrees"))
+	controller.call("rotate_yaw", 12.0)
+	var expected_yaw := wrapf(original_yaw + 12.0, -180.0, 180.0)
+	if !is_equal_approx(float(controller.get("orbit_yaw_degrees")), expected_yaw):
+		failures.append("Camera3DController did not apply orbit yaw rotation")
+	controller.set("orbit_yaw_degrees", original_yaw)
 
 
 func _check_landmarks(failures: Array[String]) -> void:
@@ -98,7 +206,33 @@ func _check_landmarks(failures: Array[String]) -> void:
 		return
 	var landmark_nodes: Dictionary = m_world.get("m_landmark_nodes")
 	if landmark_nodes.size() != 5:
-		failures.append("expected 5 landmark proxies, found %d" % landmark_nodes.size())
+		failures.append("expected 5 landmark anchors, found %d" % landmark_nodes.size())
+	var coordinates: LowPolyWorldCoordinates3D = m_world.get("m_coordinates") as LowPolyWorldCoordinates3D
+	for landmark_name in landmark_nodes:
+		var landmark := landmark_nodes[landmark_name] as Node3D
+		if landmark == null or !landmark.has_meta(&"low_poly_landmark_mask_pixel"):
+			failures.append("%s was not placed through LowPolyWorldCoordinates3D" % landmark_name)
+			continue
+		var mask_pixel: Variant = landmark.get_meta(&"low_poly_landmark_mask_pixel")
+		if !(mask_pixel is Vector2i) or coordinates == null or !coordinates.is_mask_pixel_inside(Vector2(mask_pixel)):
+			failures.append("%s has an invalid terrain-mask placement" % landmark_name)
+
+	for authored_path in [
+		"Landmarks/TrinityChurchProxy",
+		"Landmarks/BaguaTowerProxy",
+	]:
+		var authored_landmark := m_world.get_node_or_null(authored_path)
+		if authored_landmark == null or !_has_static_collision(authored_landmark):
+			failures.append("%s did not generate runtime landmark collision" % authored_path)
+
+
+func _has_static_collision(node: Node) -> bool:
+	if node is StaticBody3D:
+		return true
+	for child in node.get_children():
+		if _has_static_collision(child):
+			return true
+	return false
 
 
 func _check_player_appearance_mapping(failures: Array[String]) -> void:
@@ -187,6 +321,15 @@ func _check_weather_3d(failures: Array[String]) -> void:
 		failures.append("steady-rain weather did not enable 3D rain particles")
 	if !is_equal_approx(float(rig.get("wind_strength")), 460.0):
 		failures.append("WeatherManager did not propagate wind into WeatherRig3D")
+	var reference_wind := manager.get_reference_wind_strength()
+	manager.set_registered_wind(95.0, 0.0)
+	manager.set_registered_wind(95.0, reference_wind)
+	var water_mesh := m_world.get_node_or_null("LowPolyTerrain3D/WaterMesh") as MeshInstance3D
+	var water_material := water_mesh.material_override as ShaderMaterial if water_mesh != null else null
+	if water_material == null:
+		failures.append("runtime water is missing its wind-aware ShaderMaterial")
+	elif !is_equal_approx(float(water_material.get_shader_parameter(&"wind_strength")), 1.0):
+		failures.append("WeatherManager wind did not reach runtime water through the adapter")
 	var initial_preset_id := String(manager.get("m_current_preset_id"))
 	manager._begin_random_transition()
 	if int(manager.get("m_phase")) != WeatherManager.CyclePhase.TRANSITION:

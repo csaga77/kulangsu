@@ -24,7 +24,7 @@ through the entire app shell. Per-item status is inline in the phases below; the
   `test_game_world_3d.tscn` passes (world build, spawn, five landmark anchors, story subjects,
   full resident count, controller/adapter resident talk dispatch, audio managers, resume anchor +
   fallback, interaction contract). Full-shell run
-  (`USE_3D_OVERWORLD = true`) exercised title → New Game → traveler setup → 3D overworld with HUD,
+  exercised title → New Game → traveler setup → 3D overworld with HUD,
   status panel, hints, autosave, resident dialogue with real story progression, and journal gating,
   all with 0 errors / 0 warnings.
 - **Visual and diagnostic performance acceptance green:** all five fixed-camera PNGs are captured
@@ -43,8 +43,8 @@ through the entire app shell. Per-item status is inline in the phases below; the
   editor-verified pass (the deletion touches a large cross-referenced file set and needs an in-engine
   regression run).
 
-Integration is wired reversibly (the `USE_3D_OVERWORLD` toggle, default off), so none of the above
-has touched the shipped 2D runtime.
+The runtime flip is complete. Reversibility is provided by source control rather than a second live
+overworld path.
 
 ## Decision Framing
 
@@ -111,9 +111,9 @@ greenfield rendering work:
 - style/coords: `LowPolyArtStyle3D` (+ `low_poly_postcard_diorama_style.tres`),
   `LowPolyWorldCoordinates3D`
 - actor/control: `HumanBody3D`, `BaseController3D`, `PlayerController3D`, `Camera3DController`
-- landmarks: `LowPolyLandmarkProxy3D` plus the Low-Poly Building Editor and versioned `BuildingSpec`
-  pipeline, with authored concepts for Bagua Tower and Piano Ferry
-- review scenes: `scenes/tests/test_low_poly_world_3d.tscn`, `test_building_tour_3d.tscn`,
+- landmarks: the Low-Poly Building Editor and versioned `BuildingSpec` pipeline,
+  with authored runtime scenes for Bagua Tower, Piano Ferry, and Trinity Church
+- review scenes: `scenes/tests/test_game_world_3d.tscn`, `test_building_tour_3d.tscn`,
   `characters/tests/test_character_collisions.tscn`, `test_low_poly_terrain_3d.tscn`,
   `test_camera_3d_occlusion.tscn`
 
@@ -128,7 +128,7 @@ satisfied. Phases A–C below are those stages restated as this plan's entry cri
 to Phase D until all are recorded green.
 
 - **A. Correctness baseline.** All headless smoke scenes (actor, collision, terrain/water, camera
-  occlusion, building tour, combined world) return process status `0`.
+  occlusion, building tour, production world) return process status `0`.
   *Status: green.* `scenes/tests/test_game_world_3d.tscn` passes (`PASS: game_world_3d smoke test`,
   exit 0), validating world build, terrain, player spawn, five landmark anchors, resident spawning,
   registered story subjects, and a resident talk dispatch through the shared story services.
@@ -156,16 +156,14 @@ If any gate fails, the cutover stalls at that gate. This plan's later phases ass
 
 ### Phase D — Build the 3D runtime world scene
 
-Status: **runtime candidate, engine-validated.** `scenes/game_world_3d.tscn` and
-`scenes/game_world_3d.gd` boot standalone and through the full shell. The scene builds on the validated
-`scenes/tests/test_low_poly_world_3d.tscn` (terrain, `HumanBody3D` in the `player` group,
-`PlayerController3D`, orthographic `Camera3D` + `Camera3DController`, sun, five landmark anchors).
-The script reuses that scene's proven world-config and terrain-elevation-follow logic and adds
-the runtime-integration layer: `AppState` resolution via `AppRuntime`, landmark-list/resident-list
-sync, nearest-landmark location sync, story resume-anchor placement (Piano Ferry fallback),
-shared BGM/landmark-cue audio, resident spawning, and story-subject dispatch. It satisfies
-`main.gd`'s game-root contract and is selectable through `USE_3D_OVERWORLD`, which remains off by
-default.
+Status: **production, engine-validated.** `scenes/game_world_3d.tscn` and
+`scenes/game_world_3d.gd` boot standalone and through the full shell. The scene owns terrain,
+`HumanBody3D` in the `player` group, `PlayerController3D`, orthographic `Camera3D` plus
+`Camera3DController`, lighting, and five landmark anchors. It adds `AppState` resolution through
+`AppRuntime`, landmark/resident sync, nearest-landmark location sync, semantic resume placement,
+shared audio, resident spawning, story-subject dispatch, and 3D weather. `main.gd` instantiates it
+directly. Focused subsystem tests plus `scenes/tests/test_game_world_3d.tscn` now own the regressions
+previously kept in the retired combined prototype fixture.
 
 Create `scenes/game_world_3d.tscn` / `scenes/game_world_3d.gd` as the 3D counterpart of
 `game_main`. It owns the same integration responsibilities `game_main.gd` owns today — actor spawn
@@ -199,7 +197,7 @@ scene under `scenes/tests/` and a green headless run before the next begins:
    Trinity Church (`architecture/trinity_church/trinity_church_stylized_3d.tscn`), and Bagua Tower
    (`architecture/bagua_tower/bagua_tower_stylized_3d.tscn`) in place of their proxy silhouettes,
    keeping node names, runtime placement, and interaction subjects. Bi Shan and Long Shan tunnels
-   still use `LowPolyLandmarkProxy3D` placeholders because no stylized tunnel scenes exist yet.
+   remain plain marker anchors because no stylized tunnel scenes exist yet.
    Still needs in-editor scale/orientation/collision checks against the diorama and, eventually,
    stylized tunnel entrances.
 4. **Multi-level + tunnels + portals** — port `LevelNode2D`/`LevelArea2D`/`LevelRegistry`,
