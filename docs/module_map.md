@@ -83,7 +83,7 @@ If you are changing how terrain mask colors map to layers, start with the terrai
 - [`../characters/control/resident_controller_3d.gd`](../characters/control/resident_controller_3d.gd) - lightweight 3D resident wander controller (stroll to a nearby point, pause, repeat, with a stuck-timeout) plus `pause_for` so a talked-to resident holds still while facing the player
 - [`../characters/resident_presenter_3d.gd`](../characters/resident_presenter_3d.gd) - spawns `HumanBody3D` residents from shared `AppState` resident data at their landmark anchors, each with an `npc:` talk `StorySubject3D`, a wander controller, and a world-anchored 3D speech balloon; used by `game_world_3d`
 - [`../characters/control/bt/`](../characters/control/bt) - behavior-tree framework
-- [`../addons/universal_lpc/`](../addons/universal_lpc) - reusable Universal LPC 2D runtime renderer, generated sprites under `resources/`, prebuilt metadata manifest, metadata generation/source-audit tooling, and addon-owned docs; see its [`README.md`](../addons/universal_lpc/README.md), [`docs/contract.md`](../addons/universal_lpc/docs/contract.md), and [`docs/authoring.md`](../addons/universal_lpc/docs/authoring.md)
+- [`../addons/universal_lpc/`](../addons/universal_lpc) - submodule containing the reusable Universal LPC 2D runtime renderer, generated sprites under `resources/`, prebuilt metadata manifest, metadata generation/source-audit tooling, and addon-owned docs; see its [`README.md`](../addons/universal_lpc/README.md), [`docs/contract.md`](../addons/universal_lpc/docs/contract.md), and [`docs/authoring.md`](../addons/universal_lpc/docs/authoring.md)
 - [`../addons/universal_lpc/tests/`](../addons/universal_lpc/tests) - Universal LPC metadata, source-asset audit, and composition validation tooling
 - [`../common/gui/`](../common/gui) - in-world UI such as speech balloons; [`../common/gui/speech_balloon_3d.gd`](../common/gui/speech_balloon_3d.gd) is the billboarded, camera-facing `Label3D` dialogue balloon used by the 3D overworld
 - [`../game/story_subject_3d.gd`](../game/story_subject_3d.gd) - `Area3D` 3D counterpart of `StorySubjectArea2D`: exposes a stable `subject_id`, resolves action/display/presence from the shared StoryEvent catalog/`AppState`, and is dispatched by `game_world_3d` through the same `AppState.activate_story_subject` path (no 3D-only story fork)
@@ -116,9 +116,9 @@ If a feature is self-contained and reusable, extend its module folder instead of
 
 ## Addons And Editor Plugins
 
-- [`../addons/universal_lpc/`](../addons/universal_lpc) - enabled Universal LPC 2D character plugin with a reusable runtime renderer and editor dock for development-time composition/audit workflows. See the addon's own [`README.md`](../addons/universal_lpc/README.md), [`docs/feature.md`](../addons/universal_lpc/docs/feature.md), and [`docs/contract.md`](../addons/universal_lpc/docs/contract.md).
+- [`../addons/universal_lpc/`](../addons/universal_lpc) - submodule containing the enabled Universal LPC 2D character plugin with a reusable runtime renderer and editor dock for development-time composition/audit workflows. See the addon's own [`README.md`](../addons/universal_lpc/README.md), [`docs/feature.md`](../addons/universal_lpc/docs/feature.md), and [`docs/contract.md`](../addons/universal_lpc/docs/contract.md).
 - [`../addons/low_poly_building_editor/`](../addons/low_poly_building_editor) - native editor dock and 3D viewport tool for low-poly building authoring, including terrain-profiled multi-point Street3D authoring with sloped roads and automatic footpath stairs, plus versioned building/street JSON-to-scene generation, graphical seeded-variant thumbnails/contact sheets, and the interactive generated-building gallery. See the plugin's own docs for the full description: [`../addons/low_poly_building_editor/README.md`](../addons/low_poly_building_editor/README.md) (overview), [`../addons/low_poly_building_editor/docs/feature.md`](../addons/low_poly_building_editor/docs/feature.md) (feature spec), and [`../addons/low_poly_building_editor/docs/contract.md`](../addons/low_poly_building_editor/docs/contract.md) (contract).
-- [`../addons/mp3_to_ogg/`](../addons/mp3_to_ogg) - editor dock plugin that batch-converts MP3 files to OGG Vorbis via ffmpeg. See the plugin's own docs: [`../addons/mp3_to_ogg/README.md`](../addons/mp3_to_ogg/README.md).
+- [`../addons/mp3_to_ogg/`](../addons/mp3_to_ogg) - submodule containing the editor dock plugin that batch-converts MP3 files to OGG Vorbis via ffmpeg. See the plugin's own docs: [`../addons/mp3_to_ogg/README.md`](../addons/mp3_to_ogg/README.md).
 - [`../addons/storyline_editor/`](../addons/storyline_editor) - editor plugin that visualizes and edits storyline event dependencies (route browser, graph, and validation/inspector bridge). See the plugin's own docs: [`../addons/storyline_editor/README.md`](../addons/storyline_editor/README.md).
 - [`../addons/asset_browser/`](../addons/asset_browser) - Blender-style asset browser panel for dragging `.tscn` files into the viewport. See the plugin's own docs: [`../addons/asset_browser/README.md`](../addons/asset_browser/README.md).
 - [`../addons/asset_placer/`](../addons/asset_placer) - third-party (vendored) 3D asset placement/management addon. See the plugin's own docs: [`../addons/asset_placer/README.md`](../addons/asset_placer/README.md).
@@ -215,6 +215,8 @@ Use these when you need a focused validation target instead of the full project 
 - [`../godot_tilemap/`](../godot_tilemap) - tilemap helpers/tooling, tracked as a submodule
 - [`../agent_tools/`](../agent_tools) - shared agent docs and runbooks, tracked as a submodule
 - [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator) - third-party LPC asset generator, tracked as a submodule
+- [`../addons/mp3_to_ogg/`](../addons/mp3_to_ogg) - reusable MP3 conversion editor addon, tracked as a submodule
+- [`../addons/universal_lpc/`](../addons/universal_lpc) - reusable Universal LPC runtime/editor addon and generated assets, tracked as a submodule
 
 Submodule doc entry points:
 
@@ -227,6 +229,9 @@ Submodule doc entry points:
 - [`../agent_tools/README.md`](../agent_tools/README.md)
 - [`../agent_tools/AGENTS.md`](../agent_tools/AGENTS.md)
 - [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md)
+- [`../addons/mp3_to_ogg/README.md`](../addons/mp3_to_ogg/README.md)
+- [`../addons/universal_lpc/README.md`](../addons/universal_lpc/README.md)
+- [`../addons/universal_lpc/docs/contract.md`](../addons/universal_lpc/docs/contract.md)
 
 See [`submodules.md`](submodules.md) for edit rules, update rules, and a parent-repo index of submodule documentation.
 

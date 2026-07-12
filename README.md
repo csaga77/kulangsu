@@ -10,7 +10,7 @@ This repository is also a small super-repo: the main game lives here, and severa
 - GDScript and `.tscn` scenes
 - Canvas-based UI rooted in [`main.tscn`](main.tscn)
 - Shared scene-owned runtime services for UI/progression state and overworld weather, resolved through [`AppRuntime`](game/app_runtime.gd) and [`WeatherRuntime`](weather/weather_runtime.gd)
-- Git submodules for shared support code, tilemap tooling, third-party LPC assets, and agent runbooks
+- Git submodules for shared support code, tilemap tooling, reusable addons, third-party LPC assets, and agent runbooks
 
 No package manager, CI pipeline, or automated test runner is checked into this repository.
 
@@ -25,7 +25,7 @@ No package manager, CI pipeline, or automated test runner is checked into this r
 - [`scenes/`](scenes) - runtime gameplay scenes plus validation scene containers
 - [`terrain/`](terrain) - island terrain scene, terrain generation, and water rendering setup
 - [`resources/`](resources) - audio, sprites, materials, animations, and tilesets
-- [`addons/universal_lpc/`](addons/universal_lpc) - reusable Universal LPC 2D renderer, bundled generated sprites, metadata/tooling, and focused validation scenes
+- [`addons/universal_lpc/`](addons/universal_lpc) - reusable Universal LPC 2D renderer submodule with bundled generated sprites, metadata/tooling, and focused validation scenes
 - [`scripts/`](scripts) - repo-local workflow configs and project-specific helper data
 - [`docs/`](docs) - project documentation for humans and coding agents
 - [`agent_tools/`](agent_tools) - shared agent runbooks and reusable support docs
@@ -41,6 +41,8 @@ This repo currently tracks these submodules through [`.gitmodules`](.gitmodules)
 - [`godot_tilemap/`](godot_tilemap)
 - [`3rdparty/Universal-LPC-Spritesheet-Character-Generator/`](3rdparty/Universal-LPC-Spritesheet-Character-Generator)
 - [`agent_tools/`](agent_tools)
+- [`addons/mp3_to_ogg/`](addons/mp3_to_ogg)
+- [`addons/universal_lpc/`](addons/universal_lpc)
 
 See [`docs/submodules.md`](docs/submodules.md) for update rules, boundaries, and when to edit a submodule versus the parent repo.
 
@@ -50,6 +52,8 @@ Primary submodule documentation entry points:
 - [`godot_common/AGENTS.md`](godot_common/AGENTS.md), [`godot_common/README.md`](godot_common/README.md), and [`godot_common/docs/`](godot_common/docs) - entry points for shared Godot support code and helper ownership guidance
 - [`godot_tilemap/AGENTS.md`](godot_tilemap/AGENTS.md), [`godot_tilemap/README.md`](godot_tilemap/README.md), and [`godot_tilemap/docs/`](godot_tilemap/docs) - entry points for tilemap helper/tooling architecture and repo conventions
 - [`3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md`](3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md) - upstream LPC generator overview, licensing, attribution, and development references
+- [`addons/mp3_to_ogg/README.md`](addons/mp3_to_ogg/README.md) and [`addons/mp3_to_ogg/docs/`](addons/mp3_to_ogg/docs) - MP3 conversion addon behavior and contract
+- [`addons/universal_lpc/README.md`](addons/universal_lpc/README.md) and [`addons/universal_lpc/docs/`](addons/universal_lpc/docs) - Universal LPC addon usage, contract, authoring, and validation guidance
 
 ## Workflow Helpers
 

@@ -114,7 +114,7 @@ Governance:
 
 ## Universal LPC Addon Boundary
 
-The canonical renderer, metadata, asset, tooling, and integration contract now lives with the plugin at [`../addons/universal_lpc/docs/contract.md`](../addons/universal_lpc/docs/contract.md). Reusable character-authoring and validation guidance lives in [`../addons/universal_lpc/docs/authoring.md`](../addons/universal_lpc/docs/authoring.md). Kulangsu-specific actor, resident, wardrobe, and gameplay policy remains in the owning project docs.
+The canonical renderer, metadata, asset, tooling, and integration contract lives in the [`../addons/universal_lpc/`](../addons/universal_lpc) submodule at [`docs/contract.md`](../addons/universal_lpc/docs/contract.md). Reusable character-authoring and validation guidance lives in [`docs/authoring.md`](../addons/universal_lpc/docs/authoring.md). The submodule repository owns reusable implementation and addon docs; the parent repo owns its pinned revision plus Kulangsu-specific actor, resident, wardrobe, and gameplay policy.
 
 ## Weather Runtime Contract
 

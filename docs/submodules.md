@@ -33,6 +33,21 @@ Source of truth:
 - Additional docs: [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/tools/README.md`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator/tools/README.md)
 - Important note for this repo: the upstream README is also the best source for licensing and attribution expectations around LPC assets
 
+### `addons/mp3_to_ogg`
+
+- Path: [`../addons/mp3_to_ogg/`](../addons/mp3_to_ogg)
+- Branch in `.gitmodules`: not explicitly configured; the remote default is `main`
+- Role in this repo: reusable Godot editor addon for batch-converting MP3 files to OGG Vorbis
+- Docs to read first: [`../addons/mp3_to_ogg/README.md`](../addons/mp3_to_ogg/README.md), then its [`docs/`](../addons/mp3_to_ogg/docs) folder
+
+### `addons/universal_lpc`
+
+- Path: [`../addons/universal_lpc/`](../addons/universal_lpc)
+- Branch in `.gitmodules`: `main`
+- Role in this repo: reusable Universal LPC runtime renderer, editor tooling, prebuilt metadata, generated sprites, and focused validation scenes
+- Docs to read first: [`../addons/universal_lpc/README.md`](../addons/universal_lpc/README.md), [`../addons/universal_lpc/docs/contract.md`](../addons/universal_lpc/docs/contract.md), [`../addons/universal_lpc/docs/feature.md`](../addons/universal_lpc/docs/feature.md), and [`../addons/universal_lpc/docs/authoring.md`](../addons/universal_lpc/docs/authoring.md)
+- Artwork distribution must preserve the submodule's [`artwork_credits/CREDITS.csv`](../addons/universal_lpc/artwork_credits/CREDITS.csv) and follow [`artwork_credits/ARTWORK_LICENSING.md`](../addons/universal_lpc/artwork_credits/ARTWORK_LICENSING.md)
+
 ### `agent_tools`
 
 - Path: [`../agent_tools/`](../agent_tools)
@@ -62,6 +77,8 @@ Start with:
 - `godot_common`: start with [`../godot_common/AGENTS.md`](../godot_common/AGENTS.md), then [`../godot_common/README.md`](../godot_common/README.md)
 - `godot_tilemap`: start with [`../godot_tilemap/AGENTS.md`](../godot_tilemap/AGENTS.md), then [`../godot_tilemap/README.md`](../godot_tilemap/README.md)
 - `3rdparty/Universal-LPC-Spritesheet-Character-Generator`: start with [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md), then check tool docs if the task touches generator workflows
+- `addons/mp3_to_ogg`: start with [`../addons/mp3_to_ogg/README.md`](../addons/mp3_to_ogg/README.md), then its [`docs/`](../addons/mp3_to_ogg/docs) folder
+- `addons/universal_lpc`: start with [`../addons/universal_lpc/README.md`](../addons/universal_lpc/README.md), then [`../addons/universal_lpc/docs/contract.md`](../addons/universal_lpc/docs/contract.md), [`../addons/universal_lpc/docs/feature.md`](../addons/universal_lpc/docs/feature.md), and [`../addons/universal_lpc/docs/authoring.md`](../addons/universal_lpc/docs/authoring.md)
 
 ### Documentation Caveat
 

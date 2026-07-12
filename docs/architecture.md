@@ -178,7 +178,7 @@ Responsibilities:
 
 Notes:
 
-- The reusable Universal LPC 2D renderer, metadata manifest, generator/auditor tooling, and focused tests are colocated under [`../addons/universal_lpc/`](../addons/universal_lpc); its [`README.md`](../addons/universal_lpc/README.md) and [`docs/contract.md`](../addons/universal_lpc/docs/contract.md) define the addon boundary.
+- The reusable Universal LPC 2D renderer, metadata manifest, generator/auditor tooling, and focused tests are colocated under the [`../addons/universal_lpc/`](../addons/universal_lpc) submodule; its [`README.md`](../addons/universal_lpc/README.md) and [`docs/contract.md`](../addons/universal_lpc/docs/contract.md) define the addon boundary, while the parent repo owns the pinned revision and game integration.
 - The runtime game consumes the addon's prebuilt [`universal_lpc_metadata.json`](../addons/universal_lpc/universal_lpc_metadata.json), which resolves generated spritesheets under [`../addons/universal_lpc/resources/`](../addons/universal_lpc/resources).
 - [`../characters/human_body_2d.gd`](../characters/human_body_2d.gd) owns the root material/shader setup for composed avatars, while the child Universal LPC node composes the visible layers.
 - [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd), [`../characters/control/base_controller_3d.gd`](../characters/control/base_controller_3d.gd), and [`../characters/control/player_controller_3d.gd`](../characters/control/player_controller_3d.gd) own the runtime actor/controller stack. `HumanBody3D` renders one premade low-poly GLB character model (default [`../assets/characters/male.glb`](../assets/characters/male.glb), with `boy.glb`/`female.glb` alternates) whose integrated appearance and idle/walk/run animation come from the model asset. Gravity, static walls, front and side stair behavior, and dynamic-body pushing are covered by [`../characters/tests/test_character_collisions.tscn`](../characters/tests/test_character_collisions.tscn).
@@ -243,6 +243,7 @@ Boundary:
 
 - Editor plugins are authoring helpers. They should not become runtime gameplay services or be wired into `main.tscn`.
 - Runtime addons may be consumed by game-owned actors, but gameplay movement, collision, and appearance-catalog policy stay outside the addon.
+- `addons/universal_lpc` and `addons/mp3_to_ogg` are submodule repository boundaries; reusable changes land in those repositories first, then the parent intentionally updates their pointers.
 - Building-editor-generated content should remain ordinary scene-owned nodes under `Building3D` coordinators.
 
 ### Submodule Layer
@@ -253,6 +254,8 @@ Primary folders:
 - [`../godot_tilemap/`](../godot_tilemap)
 - [`../agent_tools/`](../agent_tools)
 - [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator)
+- [`../addons/mp3_to_ogg/`](../addons/mp3_to_ogg)
+- [`../addons/universal_lpc/`](../addons/universal_lpc)
 
 Responsibilities:
 
@@ -260,6 +263,8 @@ Responsibilities:
 - reusable tilemap tooling and helpers
 - agent runbooks and shared documentation assets
 - third-party LPC asset generator content
+- reusable MP3 conversion editor tooling
+- reusable Universal LPC runtime/editor tooling and generated character assets
 
 Boundary:
 
