@@ -182,9 +182,9 @@ Governance:
 - keep scene-specific world wiring local to `scenes/game_main.gd` unless it becomes a reusable subsystem; reusable overworld helpers should live under `scenes/`
 - document node-path, actor-layer, or spawn-anchor naming assumptions if new systems depend on them
 
-## Low-Poly Building Editor Contract
+## Editor Addon Contracts
 
-Moved to the plugin's own docs folder: [`../addons/low_poly_building_editor/docs/contract.md`](../addons/low_poly_building_editor/docs/contract.md).
+The low-poly building editor contract lives in its [`../addons/low_poly_building_editor/`](../addons/low_poly_building_editor) submodule at [`docs/contract.md`](../addons/low_poly_building_editor/docs/contract.md). The storyline editor contract lives in its [`../addons/storyline_editor/`](../addons/storyline_editor) submodule at [`docs/contract.md`](../addons/storyline_editor/docs/contract.md). The parent repo owns the pinned revisions and Kulangsu-specific integration data; reusable editor implementation and addon documentation land in the addon repositories first.
 
 ## Low-Poly 3D Prototype Contract
 

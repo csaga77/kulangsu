@@ -26,6 +26,8 @@ No package manager, CI pipeline, or automated test runner is checked into this r
 - [`terrain/`](terrain) - island terrain scene, terrain generation, and water rendering setup
 - [`resources/`](resources) - audio, sprites, materials, animations, and tilesets
 - [`addons/universal_lpc/`](addons/universal_lpc) - reusable Universal LPC 2D renderer submodule with bundled generated sprites, metadata/tooling, and focused validation scenes
+- [`addons/low_poly_building_editor/`](addons/low_poly_building_editor) - reusable low-poly building and street authoring submodule
+- [`addons/storyline_editor/`](addons/storyline_editor) - storyline route and dependency editor submodule
 - [`scripts/`](scripts) - repo-local workflow configs and project-specific helper data
 - [`docs/`](docs) - project documentation for humans and coding agents
 - [`agent_tools/`](agent_tools) - shared agent runbooks and reusable support docs
@@ -43,6 +45,8 @@ This repo currently tracks these submodules through [`.gitmodules`](.gitmodules)
 - [`agent_tools/`](agent_tools)
 - [`addons/mp3_to_ogg/`](addons/mp3_to_ogg)
 - [`addons/universal_lpc/`](addons/universal_lpc)
+- [`addons/low_poly_building_editor/`](addons/low_poly_building_editor)
+- [`addons/storyline_editor/`](addons/storyline_editor)
 
 See [`docs/submodules.md`](docs/submodules.md) for update rules, boundaries, and when to edit a submodule versus the parent repo.
 
@@ -54,6 +58,8 @@ Primary submodule documentation entry points:
 - [`3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md`](3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md) - upstream LPC generator overview, licensing, attribution, and development references
 - [`addons/mp3_to_ogg/README.md`](addons/mp3_to_ogg/README.md) and [`addons/mp3_to_ogg/docs/`](addons/mp3_to_ogg/docs) - MP3 conversion addon behavior and contract
 - [`addons/universal_lpc/README.md`](addons/universal_lpc/README.md) and [`addons/universal_lpc/docs/`](addons/universal_lpc/docs) - Universal LPC addon usage, contract, authoring, and validation guidance
+- [`addons/low_poly_building_editor/README.md`](addons/low_poly_building_editor/README.md) and [`addons/low_poly_building_editor/docs/`](addons/low_poly_building_editor/docs) - low-poly building editor usage, feature, contract, and validation guidance
+- [`addons/storyline_editor/README.md`](addons/storyline_editor/README.md) and [`addons/storyline_editor/docs/`](addons/storyline_editor/docs) - storyline editor integration, feature, and contract guidance
 
 ## Workflow Helpers
 

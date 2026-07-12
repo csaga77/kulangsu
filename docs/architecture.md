@@ -243,7 +243,7 @@ Boundary:
 
 - Editor plugins are authoring helpers. They should not become runtime gameplay services or be wired into `main.tscn`.
 - Runtime addons may be consumed by game-owned actors, but gameplay movement, collision, and appearance-catalog policy stay outside the addon.
-- `addons/universal_lpc` and `addons/mp3_to_ogg` are submodule repository boundaries; reusable changes land in those repositories first, then the parent intentionally updates their pointers.
+- `addons/universal_lpc`, `addons/mp3_to_ogg`, `addons/low_poly_building_editor`, and `addons/storyline_editor` are submodule repository boundaries; reusable changes land in those repositories first, then the parent intentionally updates their pointers.
 - Building-editor-generated content should remain ordinary scene-owned nodes under `Building3D` coordinators.
 
 ### Submodule Layer
@@ -256,6 +256,8 @@ Primary folders:
 - [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator)
 - [`../addons/mp3_to_ogg/`](../addons/mp3_to_ogg)
 - [`../addons/universal_lpc/`](../addons/universal_lpc)
+- [`../addons/low_poly_building_editor/`](../addons/low_poly_building_editor)
+- [`../addons/storyline_editor/`](../addons/storyline_editor)
 
 Responsibilities:
 
@@ -265,6 +267,8 @@ Responsibilities:
 - third-party LPC asset generator content
 - reusable MP3 conversion editor tooling
 - reusable Universal LPC runtime/editor tooling and generated character assets
+- reusable low-poly building and street authoring tooling
+- reusable storyline route/dependency editor tooling over parent-owned data
 
 Boundary:
 
