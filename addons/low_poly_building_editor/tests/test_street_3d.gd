@@ -1,3 +1,4 @@
+@tool
 extends Node3D
 
 const BuildingFactoryScript = preload(
@@ -20,6 +21,11 @@ var m_failures: Array[String] = []
 
 
 func _ready() -> void:
+	# The smoke checks resample a plain (non-tool) provider node and quit the tree,
+	# so they must only run as a game/headless. In the editor's tool context that
+	# provider is a placeholder, so skip — matching test_low_poly_building_editor_3d.
+	if Engine.is_editor_hint():
+		return
 	call_deferred("_run_checks")
 
 
