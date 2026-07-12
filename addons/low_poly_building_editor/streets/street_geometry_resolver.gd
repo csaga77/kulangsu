@@ -5,6 +5,8 @@ extends RefCounted
 const EPSILON := 0.0001
 const MIN_CROSS_ANGLE_SINE := 0.05
 const VERTICAL_TOLERANCE := 0.02
+## Endpoints closer than this in plan share a junction and get mitered together.
+const JOIN_TOLERANCE := 0.05
 
 var m_streets: Array[Street3D] = []
 
@@ -26,8 +28,145 @@ func refresh_street_intersection_cuts() -> void:
 			var second := m_streets[second_index]
 			var second_profile := second.get_geometry_profile()
 			_append_pair_cuts(first, first_profile, second, second_profile, cuts_by_street)
+	var joins_by_street := _compute_end_joins()
 	for street: Street3D in m_streets:
-		street.set_intersection_cuts(cuts_by_street.get(street, []))
+		street.set_intersection_geometry(
+			cuts_by_street.get(street, []), joins_by_street.get(street, {})
+		)
+
+
+## Groups coincident street endpoints into junctions and, for each pair of
+## angularly adjacent arms, extends their touching road/kerb/footpath edges onto
+## a shared miter corner so the kerbs and footpaths connect across the junction.
+func _compute_end_joins() -> Dictionary:
+	var ends: Array[Dictionary] = []
+	for street: Street3D in m_streets:
+		var profile := street.get_geometry_profile()
+		if profile.size() < 2:
+			continue
+		if !_terminal_uses_stairs(street, profile[0], profile[1]):
+			ends.append({
+				"street": street, "is_start": true,
+				"point": profile[0], "dir": _plan_dir(profile[0], profile[1]),
+			})
+		var last := profile.size() - 1
+		if !_terminal_uses_stairs(street, profile[last], profile[last - 1]):
+			ends.append({
+				"street": street, "is_start": false,
+				"point": profile[last], "dir": _plan_dir(profile[last], profile[last - 1]),
+			})
+
+	var result: Dictionary = {}
+	var claimed := PackedByteArray()
+	claimed.resize(ends.size())
+	for i in range(ends.size()):
+		if claimed[i] != 0:
+			continue
+		var group: Array[Dictionary] = [ends[i]]
+		claimed[i] = 1
+		for j in range(i + 1, ends.size()):
+			if claimed[j] != 0:
+				continue
+			if _points_coincide(ends[i]["point"], ends[j]["point"]):
+				group.append(ends[j])
+				claimed[j] = 1
+		if group.size() < 2:
+			continue
+		group.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+			return _heading(a["dir"]) < _heading(b["dir"])
+		)
+		var count := group.size()
+		for arm_index in range(count):
+			var arm := group[arm_index]
+			var next_arm := group[(arm_index + 1) % count]
+			if arm["dir"] == Vector3.ZERO or next_arm["dir"] == Vector3.ZERO:
+				continue
+			var corner_road := _miter_corner(arm, next_arm, _ring_offset(arm, 0), _ring_offset(next_arm, 0))
+			var corner_kerb := _miter_corner(arm, next_arm, _ring_offset(arm, 1), _ring_offset(next_arm, 1))
+			var corner_foot := _miter_corner(arm, next_arm, _ring_offset(arm, 2), _ring_offset(next_arm, 2))
+			if corner_road.is_empty() or corner_kerb.is_empty() or corner_foot.is_empty():
+				continue
+			# The corner sits on this arm's CCW boundary and the next arm's CW one.
+			_assign_corner(result, arm, true, corner_road, corner_kerb, corner_foot)
+			_assign_corner(result, next_arm, false, corner_road, corner_kerb, corner_foot)
+	return result
+
+
+func _ring_offset(arm: Dictionary, ring: int) -> float:
+	var street: Street3D = arm["street"]
+	var half_width := street.road_width * 0.5
+	if ring == 0:
+		return half_width
+	if ring == 1:
+		return half_width + street.kerb_width
+	return half_width + street.kerb_width + street.footpath_width
+
+
+## Intersects arm's CCW boundary line with next_arm's CW boundary line for a
+## given ring offset. Returns {} when the boundaries are parallel.
+func _miter_corner(arm: Dictionary, next_arm: Dictionary, offset: float, next_offset: float) -> Dictionary:
+	var junction: Vector3 = arm["point"]
+	var arm_dir: Vector3 = arm["dir"]
+	var next_dir: Vector3 = next_arm["dir"]
+	var arm_ccw_normal := Vector3(-arm_dir.z, 0.0, arm_dir.x)
+	var next_cw_normal := Vector3(next_dir.z, 0.0, -next_dir.x)
+	var arm_point := junction + arm_ccw_normal * offset
+	var next_point := junction + next_cw_normal * next_offset
+	var hit := _line_intersection_xz(arm_point, arm_dir, next_point, next_dir)
+	if hit.is_empty():
+		return {}
+	return {"point": Vector3(float(hit["x"]), junction.y, float(hit["z"]))}
+
+
+func _assign_corner(
+	result: Dictionary, arm: Dictionary, is_ccw_side: bool,
+	corner_road: Dictionary, corner_kerb: Dictionary, corner_foot: Dictionary
+) -> void:
+	var street: Street3D = arm["street"]
+	var key := "start" if bool(arm["is_start"]) else "end"
+	# start joins keep the offset polyline's left on the CCW side; end joins are
+	# traced back toward the junction, so their left maps to the CW side.
+	var side_is_left := is_ccw_side if bool(arm["is_start"]) else !is_ccw_side
+	var prefix := "left_" if side_is_left else "right_"
+	var entry: Dictionary = result.get(street, {})
+	var joins: Dictionary = entry.get(key, {})
+	joins[prefix + "road"] = corner_road["point"]
+	joins[prefix + "kerb"] = corner_kerb["point"]
+	joins[prefix + "foot"] = corner_foot["point"]
+	entry[key] = joins
+	result[street] = entry
+
+
+func _line_intersection_xz(
+	first_point: Vector3, first_dir: Vector3, second_point: Vector3, second_dir: Vector3
+) -> Dictionary:
+	var denominator := first_dir.x * second_dir.z - first_dir.z * second_dir.x
+	if absf(denominator) <= EPSILON:
+		return {}
+	var diff_x := second_point.x - first_point.x
+	var diff_z := second_point.z - first_point.z
+	var first_t := (diff_x * second_dir.z - diff_z * second_dir.x) / denominator
+	return {
+		"x": first_point.x + first_dir.x * first_t,
+		"z": first_point.z + first_dir.z * first_t,
+	}
+
+
+func _points_coincide(a: Vector3, b: Vector3) -> bool:
+	return _plan_length(a, b) <= JOIN_TOLERANCE and absf(a.y - b.y) <= VERTICAL_TOLERANCE
+
+
+func _terminal_uses_stairs(street: Street3D, terminal: Vector3, inward: Vector3) -> bool:
+	return _segment_uses_stairs(street, terminal, inward)
+
+
+func _plan_dir(from_point: Vector3, to_point: Vector3) -> Vector3:
+	var delta := Vector3(to_point.x - from_point.x, 0.0, to_point.z - from_point.z)
+	return Vector3.ZERO if delta.length_squared() <= EPSILON else delta.normalized()
+
+
+func _heading(direction: Vector3) -> float:
+	return atan2(direction.z, direction.x)
 
 
 func _append_pair_cuts(
@@ -58,6 +197,11 @@ func _append_pair_cuts(
 				continue
 			var first_through := first_t > EPSILON and first_t < 1.0 - EPSILON
 			var second_through := second_t > EPSILON and second_t < 1.0 - EPSILON
+			if !first_through and !second_through:
+				# Both streets meet at their own endpoints: this is a shared-corner
+				# junction handled by kerb/footpath mitering, not by clipping. Cutting
+				# here would trim back the very ends the miter joins extend.
+				continue
 			var first_clips_road := second_through and !first_through
 			var second_clips_road := first_through and !second_through
 			if first_through and second_through:

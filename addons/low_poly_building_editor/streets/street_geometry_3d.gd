@@ -50,6 +50,46 @@ static func build(profile: PackedVector3Array, settings: Dictionary) -> Dictiona
 	var foot_left := _build_offset_polyline(profile, road_half_width + kerb_width + footpath_width)
 	var foot_right := _build_offset_polyline(profile, -road_half_width - kerb_width - footpath_width)
 
+	# Extend the kerb and footpath (and the road edge the kerb sits against) onto
+	# the shared junction corners so a street's sidewalks meet its neighbours
+	# instead of leaving a gap. The road SURFACE keeps its natural ends so the
+	# arms still overlap and fill the junction centre; only the side rings and
+	# their inner anchor are mitered. Only the plan (XZ) position moves.
+	var side_road_left := road_left.duplicate()
+	var side_road_right := road_right.duplicate()
+	var side_end_overrides: Dictionary = settings.get("side_end_overrides", {})
+	var start_side: Dictionary = side_end_overrides.get("start", {})
+	var end_side: Dictionary = side_end_overrides.get("end", {})
+	var last_index := profile.size() - 1
+	# Applied inline (not via a helper) so the writes land on these local packed
+	# arrays; passing packed arrays into a mutating helper is copy-on-write unsafe.
+	if !start_side.is_empty():
+		if start_side.has("left_road"):
+			side_road_left[0] = _override_plan(side_road_left[0], start_side["left_road"])
+		if start_side.has("right_road"):
+			side_road_right[0] = _override_plan(side_road_right[0], start_side["right_road"])
+		if start_side.has("left_kerb"):
+			kerb_left[0] = _override_plan(kerb_left[0], start_side["left_kerb"])
+		if start_side.has("right_kerb"):
+			kerb_right[0] = _override_plan(kerb_right[0], start_side["right_kerb"])
+		if start_side.has("left_foot"):
+			foot_left[0] = _override_plan(foot_left[0], start_side["left_foot"])
+		if start_side.has("right_foot"):
+			foot_right[0] = _override_plan(foot_right[0], start_side["right_foot"])
+	if !end_side.is_empty() and last_index > 0:
+		if end_side.has("left_road"):
+			side_road_left[last_index] = _override_plan(side_road_left[last_index], end_side["left_road"])
+		if end_side.has("right_road"):
+			side_road_right[last_index] = _override_plan(side_road_right[last_index], end_side["right_road"])
+		if end_side.has("left_kerb"):
+			kerb_left[last_index] = _override_plan(kerb_left[last_index], end_side["left_kerb"])
+		if end_side.has("right_kerb"):
+			kerb_right[last_index] = _override_plan(kerb_right[last_index], end_side["right_kerb"])
+		if end_side.has("left_foot"):
+			foot_left[last_index] = _override_plan(foot_left[last_index], end_side["left_foot"])
+		if end_side.has("right_foot"):
+			foot_right[last_index] = _override_plan(foot_right[last_index], end_side["right_foot"])
+
 	for segment_index in range(profile.size() - 1):
 		var a := profile[segment_index]
 		var b := profile[segment_index + 1]
@@ -73,34 +113,34 @@ static func build(profile: PackedVector3Array, settings: Dictionary) -> Dictiona
 			result["stair_segment_count"] = int(result["stair_segment_count"]) + 1
 			result["step_count"] = int(result["step_count"]) + step_count
 			_append_stepped_side(
-				road_left[segment_index], kerb_left[segment_index], foot_left[segment_index],
-				road_left[segment_index + 1], kerb_left[segment_index + 1], foot_left[segment_index + 1],
+				side_road_left[segment_index], kerb_left[segment_index], foot_left[segment_index],
+				side_road_left[segment_index + 1], kerb_left[segment_index + 1], foot_left[segment_index + 1],
 				step_count, kerb_height, footpath_thickness, kerb_color, footpath_color,
 				vertices, normals, colors, indices
 			)
 			_append_stepped_side(
-				road_right[segment_index], kerb_right[segment_index], foot_right[segment_index],
-				road_right[segment_index + 1], kerb_right[segment_index + 1], foot_right[segment_index + 1],
+				side_road_right[segment_index], kerb_right[segment_index], foot_right[segment_index],
+				side_road_right[segment_index + 1], kerb_right[segment_index + 1], foot_right[segment_index + 1],
 				step_count, kerb_height, footpath_thickness, kerb_color, footpath_color,
 				vertices, normals, colors, indices
 			)
 		else:
 			for retained_range: Vector2 in side_ranges:
 				_append_sloped_side(
-					road_left[segment_index].lerp(road_left[segment_index + 1], retained_range.x),
+					side_road_left[segment_index].lerp(side_road_left[segment_index + 1], retained_range.x),
 					kerb_left[segment_index].lerp(kerb_left[segment_index + 1], retained_range.x),
 					foot_left[segment_index].lerp(foot_left[segment_index + 1], retained_range.x),
-					road_left[segment_index].lerp(road_left[segment_index + 1], retained_range.y),
+					side_road_left[segment_index].lerp(side_road_left[segment_index + 1], retained_range.y),
 					kerb_left[segment_index].lerp(kerb_left[segment_index + 1], retained_range.y),
 					foot_left[segment_index].lerp(foot_left[segment_index + 1], retained_range.y),
 					kerb_height, footpath_thickness, kerb_color, footpath_color,
 					vertices, normals, colors, indices
 				)
 				_append_sloped_side(
-					road_right[segment_index].lerp(road_right[segment_index + 1], retained_range.x),
+					side_road_right[segment_index].lerp(side_road_right[segment_index + 1], retained_range.x),
 					kerb_right[segment_index].lerp(kerb_right[segment_index + 1], retained_range.x),
 					foot_right[segment_index].lerp(foot_right[segment_index + 1], retained_range.x),
-					road_right[segment_index].lerp(road_right[segment_index + 1], retained_range.y),
+					side_road_right[segment_index].lerp(side_road_right[segment_index + 1], retained_range.y),
 					kerb_right[segment_index].lerp(kerb_right[segment_index + 1], retained_range.y),
 					foot_right[segment_index].lerp(foot_right[segment_index + 1], retained_range.y),
 					kerb_height, footpath_thickness, kerb_color, footpath_color,
@@ -128,6 +168,10 @@ static func _choose_step_count(
 	if minimum_steps > maximum_steps or maximum_steps < 1:
 		return 0
 	return clampi(roundi(rise / target_riser), minimum_steps, maximum_steps)
+
+
+static func _override_plan(original: Vector3, target: Vector3) -> Vector3:
+	return Vector3(target.x, original.y, target.z)
 
 
 static func _build_offset_polyline(profile: PackedVector3Array, offset: float) -> PackedVector3Array:

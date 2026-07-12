@@ -139,6 +139,11 @@ var m_rebuild_queued := false
 var m_last_build_stats := {}
 var m_preserve_profile_on_path_change := false
 var m_intersection_cuts: Array[Dictionary] = []
+# Miter targets that extend a terminal cross-section so a street's road edge,
+# kerb, and footpath reach the shared junction corners of its neighbours. Keyed
+# "start"/"end"; each side holds left_/right_ road/kerb/foot Vector3s in the
+# parent-local frame. Recomputed by the resolver, never serialized.
+var m_end_joins: Dictionary = {}
 
 
 func _ready() -> void:
@@ -178,6 +183,25 @@ func get_last_build_stats() -> Dictionary:
 
 
 func set_intersection_cuts(cuts: Array) -> void:
+	set_intersection_geometry(cuts, m_end_joins)
+
+
+## Applies both the crossing cuts (mid-span clipping) and the endpoint miter
+## joins (corner extensions) in a single rebuild.
+func set_intersection_geometry(cuts: Array, end_joins: Dictionary) -> void:
+	var normalized_cuts := _normalize_intersection_cuts(cuts)
+	var normalized_joins := _normalize_end_joins(end_joins)
+	if (
+		hash(normalized_cuts) == hash(m_intersection_cuts)
+		and hash(normalized_joins) == hash(m_end_joins)
+	):
+		return
+	m_intersection_cuts = normalized_cuts
+	m_end_joins = normalized_joins
+	rebuild_street_mesh()
+
+
+func _normalize_intersection_cuts(cuts: Array) -> Array[Dictionary]:
 	var normalized: Array[Dictionary] = []
 	for cut: Dictionary in cuts:
 		normalized.append({
@@ -186,14 +210,33 @@ func set_intersection_cuts(cuts: Array) -> void:
 			"end_t": clampf(float(cut.get("end_t", 0.0)), 0.0, 1.0),
 			"clip_road": bool(cut.get("clip_road", false)),
 		})
-	if hash(normalized) == hash(m_intersection_cuts):
-		return
-	m_intersection_cuts = normalized
-	rebuild_street_mesh()
+	return normalized
+
+
+func _normalize_end_joins(end_joins: Dictionary) -> Dictionary:
+	var normalized: Dictionary = {}
+	for key: String in ["start", "end"]:
+		var side: Dictionary = end_joins.get(key, {})
+		if side.is_empty():
+			continue
+		var entry: Dictionary = {}
+		for field: String in [
+			"left_road", "left_kerb", "left_foot",
+			"right_road", "right_kerb", "right_foot",
+		]:
+			if side.has(field):
+				entry[field] = Vector3(side[field])
+		if !entry.is_empty():
+			normalized[key] = entry
+	return normalized
 
 
 func get_intersection_cuts() -> Array[Dictionary]:
 	return m_intersection_cuts.duplicate(true)
+
+
+func get_end_joins() -> Dictionary:
+	return m_end_joins.duplicate(true)
 
 
 ## Generic terrain-generation contract. LowPolyTerrain3D discovers sources by
@@ -367,7 +410,25 @@ func _geometry_settings() -> Dictionary:
 		"max_riser_height": max_riser_height,
 		"min_tread_depth": min_tread_depth,
 		"intersection_cuts": m_intersection_cuts,
+		"side_end_overrides": _local_side_end_overrides(),
 	}
+
+
+## Converts the parent-local miter joins into the node-local build frame (the
+## same frame rebuild_street_mesh uses for the profile) so build() can extend the
+## terminal cross-section to them.
+func _local_side_end_overrides() -> Dictionary:
+	if m_end_joins.is_empty():
+		return {}
+	var origin := transform.origin
+	var result: Dictionary = {}
+	for key: String in m_end_joins:
+		var side: Dictionary = m_end_joins[key]
+		var local_side: Dictionary = {}
+		for field: String in side:
+			local_side[field] = (side[field] as Vector3) - origin
+		result[key] = local_side
+	return result
 
 
 func _street_mesh_source_signature() -> int:
@@ -381,7 +442,7 @@ func _street_mesh_source_signature() -> int:
 		kerb_width, kerb_height, kerb_color,
 		footpath_width, footpath_thickness, footpath_color,
 		stair_threshold_degrees, target_riser_height, max_riser_height, min_tread_depth,
-		m_intersection_cuts,
+		m_intersection_cuts, m_end_joins,
 	])
 
 

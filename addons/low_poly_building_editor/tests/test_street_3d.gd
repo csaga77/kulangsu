@@ -30,6 +30,7 @@ func _run_checks() -> void:
 	_validate_impossible_stairs()
 	_validate_terrain_profile_and_manual_override()
 	_validate_sibling_intersection_merging()
+	_validate_intersection_kerb_connection()
 	_validate_street_json_generation()
 	_validate_wireframe_and_native_transform()
 	for failure in m_failures:
@@ -191,6 +192,67 @@ func _validate_sibling_intersection_merging() -> void:
 	if !separated_street.get_intersection_cuts().is_empty():
 		m_failures.append("Vertically separated streets were merged as a plan intersection")
 	coordinator.queue_free()
+
+
+func _validate_intersection_kerb_connection() -> void:
+	# Four streets meeting at the origin form a + junction. Each arm should
+	# extend its kerb/footpath onto shared corners so adjacent arms connect
+	# instead of leaving a gap.
+	var coordinator := Building3DScript.new() as Building3DScript
+	add_child(coordinator)
+	var arms: Array = []
+	for direction: Vector3 in [
+		Vector3(6.0, 0.0, 0.0), Vector3(-6.0, 0.0, 0.0),
+		Vector3(0.0, 0.0, 6.0), Vector3(0.0, 0.0, -6.0),
+	]:
+		var arm := BuildingFactoryScript.create_street_node(
+			coordinator, PackedVector3Array([Vector3.ZERO, direction])
+		)
+		coordinator.add_child(arm)
+		arms.append(arm)
+	coordinator.refresh_street_intersection_cuts()
+
+	# Collect every arm's junction-side kerb corners; each should be shared by
+	# exactly two arms (the gap between them is closed).
+	var corner_owners: Dictionary = {}
+	for arm: Street3DScript in arms:
+		var joins: Dictionary = arm.get_end_joins()
+		var start_join: Dictionary = joins.get("start", {})
+		if start_join.is_empty():
+			m_failures.append("A + junction arm did not receive a kerb miter join")
+			continue
+		for field: String in ["left_kerb", "right_kerb"]:
+			if !start_join.has(field):
+				continue
+			var key := _corner_key(start_join[field])
+			corner_owners[key] = int(corner_owners.get(key, 0)) + 1
+	if corner_owners.size() != 4:
+		m_failures.append("+ junction produced %d kerb corners, expected 4" % corner_owners.size())
+	for key: String in corner_owners:
+		if int(corner_owners[key]) != 2:
+			m_failures.append("Kerb corner %s was not shared by two arms (gap remains)" % key)
+
+	# The east arm's mesh should actually reach one of its shared corners.
+	var east: Street3DScript = arms[0]
+	var east_join: Dictionary = east.get_end_joins().get("start", {})
+	var target: Vector3 = east_join.get("right_kerb", Vector3.INF)
+	var arrays: Array = east.mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+	var reached := false
+	for vertex_index in range(vertices.size()):
+		if !_colors_near(colors[vertex_index], east.kerb_color):
+			continue
+		if absf(vertices[vertex_index].x - target.x) <= 0.01 and absf(vertices[vertex_index].z - target.z) <= 0.01:
+			reached = true
+			break
+	if !reached:
+		m_failures.append("Junction arm mesh did not extend its kerb onto the shared corner")
+	coordinator.queue_free()
+
+
+func _corner_key(point: Vector3) -> String:
+	return "%.2f,%.2f" % [point.x, point.z]
 
 
 func _colors_near(first: Color, second: Color, tolerance := 0.01) -> bool:
