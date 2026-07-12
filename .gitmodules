@@ -21,3 +21,11 @@
 	path = addons/universal_lpc
 	url = ../../csaga77-godot-addons/universal_lpc.git
 	branch = main
+[submodule "addons/low_poly_building_editor"]
+	path = addons/low_poly_building_editor
+	url = ../../csaga77-godot-addons/low_poly_building_editor.git
+	branch = main
+[submodule "addons/storyline_editor"]
+	path = addons/storyline_editor
+	url = ../../csaga77-godot-addons/storyline_editor.git
+	branch = main
