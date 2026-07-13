@@ -13,10 +13,6 @@
 [submodule "addons/mp3_to_ogg"]
 	path = addons/mp3_to_ogg
 	url = ../../csaga77-godot-addons/mp3_to_ogg.git
-[submodule "addons/universal_lpc"]
-	path = addons/universal_lpc
-	url = ../../csaga77-godot-addons/universal_lpc.git
-	branch = main
 [submodule "addons/low_poly_building_editor"]
 	path = addons/low_poly_building_editor
 	url = ../../csaga77-godot-addons/low_poly_building_editor.git
