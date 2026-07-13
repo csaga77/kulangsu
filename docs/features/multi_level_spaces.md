@@ -2,151 +2,44 @@
 
 ## Goal
 
-- Support stacked interiors and landmarks where the player can move between floors, tunnels, stairs, and portals.
-- Keep reusable room scenes reusable by letting each level-aware node resolve its `level_id` relative to the closest level-aware parent when needed.
-- Preserve the player-facing behavior that higher floors hide and reveal correctly as the player moves on and off them.
+Define how stacked rooms, stairs, and tunnel interiors should work in the production 3D world without reviving the retired z-index/TileMap level simulation.
 
-## Requirement Summary For New Agents
+## Current Status
 
-- Every level-aware node must define a `level_id` for its own level.
-- A level-aware node may also define related ids such as `level_from`, `level_to`, `level_bottom`, or `level_top`.
-- A node chooses whether all of those ids are absolute or relative to the closest level-aware parent.
-- Reusable room scenes should prefer relative level ids so they do not hardcode global runtime ids.
-- Portals and stairs must move actors between levels in both directions.
-- Visibility changes must continue to match the player's active floor.
-- Tunnel interiors should only hide ground-space art after the player actually reaches the tunnel's interior level; surface overlap alone is not enough.
-- Tunnel scenes should keep shared surface-mouth art and entry anchors under their own `exterior` node rather than under global terrain ownership.
+- The 2D `LevelNode2D`, `LevelArea2D`, `LevelRegistry`, portal, stair, visibility-mask, room, and tunnel-interior stack was removed after the 3D runtime cutover.
+- `HumanBody3D` already supports gravity, floor snap, wall sliding, front-riser stair traversal, tagged stair-side rejection, and capped dynamic-body pushing.
+- The production Bagua building is 3D geometry, but its story subject currently uses the world scene's shared proximity interaction layer rather than authored interior floors.
+- Bi Shan and Long Shan remain traversable marker anchors. Walkable tunnel interiors, interior resident routing, and tunnel-specific visibility are accepted post-cutover gaps.
+- All current landmark and inspectable hotspots are `StorySubject3D` nodes authored in [`../../scenes/game_world_3d.tscn`](../../scenes/game_world_3d.tscn).
 
-## Current Design
+## 3D Contract For Future Work
 
-### 1. Level Id Resolution
+- Use real `Node3D` transforms, collision, stairs, doors, and portals. Do not encode floors through canvas `z_index`, tile-atlas columns, or collision-bit formulas inherited from the removed renderer.
+- A portal must define explicit 3D source/destination transforms and preserve actor orientation/state intentionally.
+- Story hotspots remain stable `subject_id` adapters through `StorySubject3D`; spatial placement changes must not fork story rules.
+- Tunnel interiors should own their geometry, collision, entry/exit transforms, resident anchors, and camera/occlusion context.
+- Save/resume anchors remain semantic landmark ids resolved by `game_world_3d`, not raw interior coordinates.
+- Add focused 3D validation before making any new traversal component production-critical.
 
-- [`../../common/level_registry.gd`](../../common/level_registry.gd) is now the single source of truth for level behavior.
-- It owns:
-  - the relative-vs-absolute `level_id` resolution rules
-  - the shared derivation rules for tile-atlas lookup, collision-mask lookup, `z_index` lookup, and applying actor state
-- By default it derives:
-  - `physics_atlas_column = level_id`
-  - `z_index = level_id`
-  - `collision_mask = 1 << (19 + level_id)`
-- If a level id is invalid, callers fall back to their existing authored values.
+## Reference Files
 
-### 2. Level-Aware Nodes
-
-- [`../../common/level_node_2d.gd`](../../common/level_node_2d.gd)
-  - owns a node's resolved room level for tile physics atlas selection
-  - rewrites `coords.x` for its exported `physics_layers`
-- [`../../common/level_area_2d.gd`](../../common/level_area_2d.gd)
-  - gives reusable `Area2D` gameplay nodes the same exported `level_id` / `level_id_mode` contract
-  - may resolve relative level ids through either the closest level-aware parent or an explicit `level_context_path`
-  - should usually be parented under the matching level-aware node when the scene owns the interactable directly; treat `level_context_path` as an escape hatch for terrain-owned or cross-scene placement
-  - can sync its interaction-facing `z_index` from the resolved level without requiring a separate level container
-- [`../../architecture/components/portal.gd`](../../architecture/components/portal.gd)
-  - owns `level_id`, `level_from`, and `level_to`
-  - resolves actor collision-mask and `z_index` state through `LevelRegistry`
-  - still falls back to hand-authored masks if no valid level data is available
-- [`../../architecture/components/steps.gd`](../../architecture/components/steps.gd)
-  - owns `level_id`, `level_bottom`, and `level_top`
-  - derives stair portal masks and `delta_z` from `LevelRegistry`
-  - still falls back to hand-authored masks if no valid level data is available
-- [`../../architecture/components/door_2d.gd`](../../architecture/components/door_2d.gd)
-  - owns open/closed presentation for reusable door and window aperture scenes
-  - gates open/close reactions by comparing the entering actor's absolute z layer to the aperture's absolute z layer
-  - does not resolve levels through `LevelRegistry`; it assumes the surrounding landmark or building piece already placed it on the intended floor
-
-### 3. Global Static Level Data
-
-- The derived level rules currently live in [`../../common/level_registry.gd`](../../common/level_registry.gd).
-- The active shared floor ids used by Bagua are:
-  - `0`: Bagua exterior base bridge
-  - `2`: Bagua ground floor
-  - `4`: Bagua upper floor
-  - `6`: Bagua roof
-- Other scenes may still use raw authored masks and atlas-column fallback when they do not need a shared derived level id yet.
-
-### 4. Visibility
-
-- [`../../common/auto_visibility_node_2d.gd`](../../common/auto_visibility_node_2d.gd) still owns visibility masking behavior.
-- Visibility is still based on authored mask tilemaps plus absolute `z_index` relationships.
-- `AutoVisibilityNode2D` must also respect actor level changes that happen without a new position sample, such as portal-driven tunnel entry.
-- Tunnel scenes may further require interior-level membership before a visibility mask hides the ground layer.
-- The level system does not currently derive visibility masks automatically.
-
-### 5. Tunnel System
-
-- [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd) owns the shared tunnel scene contract.
-- The tunnel root still owns level-aware masking, walkable path lookup, portal anchors, and the player-inside state.
-- Each tunnel scene now splits visible presentation into `exterior` and `interior` child nodes that both inherit `IsometricBlock`.
-- `exterior` stays visible while the player is outside the tunnel. `interior` only becomes the active presentation after the player actually reaches the tunnel interior level.
-- Tunnel-mouth entry anchors and surface mouth art now live under each tunnel scene's `exterior/..._entries` node so the full surface presentation travels with the tunnel scene instead of global terrain.
-- The reusable landmark and tunnel scenes now own their `StorySubjectArea2D` world-subject placement. Interior cues still resolve their level from the scene-local tunnel instance through `StorySubjectArea2D`'s shared level-aware fields.
-- [`../../scenes/tunnel_context.gd`](../../scenes/tunnel_context.gd) marks which tunnel, if any, is active for the player. It should only manage actors that are actually inside a tunnel and must not rewrite unrelated non-tunnel residents onto ground level.
-- [`../../scenes/route_resolver.gd`](../../scenes/route_resolver.gd) must treat anchors under a tunnel `exterior` node as outside anchors even though they are nested under a tunnel root. Only interior/path anchors should snap onto the tunnel walkable path.
-- [`../../scenes/game_main.gd`](../../scenes/game_main.gd) owns the shared spawn-anchor map that points resident movement and resume anchors at the tunnel exterior mouths and portal nodes.
-
-## Reference Implementation
-
-- [`../../architecture/bagua_tower/bagua_tower.tscn`](../../architecture/bagua_tower/bagua_tower.tscn) is the best current reference.
-- Bagua uses:
-  - `ground_level`: absolute `level_id = 2`
-  - `upper_level`: relative `level_id = +2`
-  - `roof_level`: relative `level_id = +2`
-  - corner rooms: relative `level_id = 0`
-  - door portals: absolute `0 -> 2`
-  - stairs: relative `0 -> 2`
-- [`../../architecture/bi_shan_tunnel.tscn`](../../architecture/bi_shan_tunnel.tscn) and [`../../architecture/long_shan_tunnel.tscn`](../../architecture/long_shan_tunnel.tscn) are the current reference for tunnel-specific interior masking and tunnel-level traversal.
-
-## Known Limitation
-
-- Visibility masking remains a separate authored concern.
-- Direct spawn, teleport, or restore into non-base floors should still call `LevelRegistry.apply_level_to_actor(level_id, actor)` explicitly.
-- Door/window open state is currently a simple same-layer enter/exit toggle, not an occupancy-counted state. If multiple actors can overlap one hot area, add overlap tracking and a focused validation scene before relying on it for gameplay-critical doors.
-- If a new landmark needs non-formula level behavior, [`../../common/level_registry.gd`](../../common/level_registry.gd) must be updated.
-
-## Ownership / Boundaries
-
-- Shared level-id rules and static level data belong in [`../../common/level_registry.gd`](../../common/level_registry.gd).
-- Room tile-level resolution belongs in [`../../common/level_node_2d.gd`](../../common/level_node_2d.gd).
-- Scene-owned level-aware interactables should usually live in the reusable landmark scene under the matching level-aware parent instead of being installed from outside the scene.
-- Actor mask / z transitions belong in reusable traversal components under [`../../architecture/components/`](../../architecture/components/).
-- Visibility behavior belongs in [`../../common/auto_visibility_node_2d.gd`](../../common/auto_visibility_node_2d.gd) plus scene-authored mask tilemaps.
-- Tunnel presentation and tunnel-only resident visibility belong in [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd), [`../../scenes/tunnel_context.gd`](../../scenes/tunnel_context.gd), [`../../scenes/game_main.gd`](../../scenes/game_main.gd), and authored visibility masks.
-- Tunnel route-anchor resolution belongs in [`../../scenes/route_resolver.gd`](../../scenes/route_resolver.gd).
-- Tunnel route subjects should now live in the reusable tunnel scenes so the same physical hotspots travel with the landmark wherever it is instanced.
-- Reusable room scenes should prefer relative level ids instead of hardcoded global runtime ids.
-
-## Relevant Files
-
-- [`../../common/level_registry.gd`](../../common/level_registry.gd)
-- [`../../common/level_node_2d.gd`](../../common/level_node_2d.gd)
-- [`../../common/level_area_2d.gd`](../../common/level_area_2d.gd)
-- [`../../common/auto_visibility_node_2d.gd`](../../common/auto_visibility_node_2d.gd)
-- [`../../architecture/tunnel.gd`](../../architecture/tunnel.gd)
-- [`../../architecture/components/portal.gd`](../../architecture/components/portal.gd)
-- [`../../architecture/components/steps.gd`](../../architecture/components/steps.gd)
-- [`../../architecture/components/door_2d.gd`](../../architecture/components/door_2d.gd)
-- [`../../architecture/components/wall.gd`](../../architecture/components/wall.gd)
-- [`../../architecture/components/window_wall.gd`](../../architecture/components/window_wall.gd)
-- [`../../scenes/tunnel_context.gd`](../../scenes/tunnel_context.gd)
-- [`../../scenes/route_resolver.gd`](../../scenes/route_resolver.gd)
-- [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
-- [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn)
-- [`../../architecture/bagua_tower/bagua_tower.tscn`](../../architecture/bagua_tower/bagua_tower.tscn)
-- [`../../architecture/bi_shan_tunnel.tscn`](../../architecture/bi_shan_tunnel.tscn)
-- [`../../architecture/long_shan_tunnel.tscn`](../../architecture/long_shan_tunnel.tscn)
-- [`../../scenes/tests/test_level_resolution.tscn`](../../scenes/tests/test_level_resolution.tscn)
-- [`../../scenes/tests/test_portal_overlap.tscn`](../../scenes/tests/test_portal_overlap.tscn)
-- [`../../characters/tests/test_character_collisions.tscn`](../../characters/tests/test_character_collisions.tscn)
+- [`../../characters/human_body_3d.gd`](../../characters/human_body_3d.gd)
+- [`../../characters/control/base_controller_3d.gd`](../../characters/control/base_controller_3d.gd)
+- [`../../characters/control/player_controller_3d.gd`](../../characters/control/player_controller_3d.gd)
+- [`../../scenes/game_world_3d.tscn`](../../scenes/game_world_3d.tscn)
+- [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd)
+- [`../../game/story_subject_3d.gd`](../../game/story_subject_3d.gd)
 - [`../../scenes/tests/test_building_tour_3d.tscn`](../../scenes/tests/test_building_tour_3d.tscn)
-- [`../../scenes/tests/test_landmark_cue_loading.tscn`](../../scenes/tests/test_landmark_cue_loading.tscn)
-- [`../../game/tests/cue_progression/test_cue_progression.tscn`](../../game/tests/cue_progression/test_cue_progression.tscn)
+- [`../../characters/tests/test_character_collisions.tscn`](../../characters/tests/test_character_collisions.tscn)
 
 ## Validation
 
-- Validate relative-level resolution with [`../../scenes/tests/test_level_resolution.tscn`](../../scenes/tests/test_level_resolution.tscn).
-- Validate concurrent portal usage with [`../../scenes/tests/test_portal_overlap.tscn`](../../scenes/tests/test_portal_overlap.tscn).
-- Validate `HumanBody3D` wall blocking, gravity, front/side stair traversal, and dynamic-body pushing with [`../../characters/tests/test_character_collisions.tscn`](../../characters/tests/test_character_collisions.tscn).
-- Validate an authored low-poly building scene, player/controller, camera, and ground setup together with [`../../scenes/tests/test_building_tour_3d.tscn`](../../scenes/tests/test_building_tour_3d.tscn).
-- The former Bagua `HumanBody2D` portal/stair and routed tunnel-NPC tests were retired with the legacy character system; new multi-level runtime coverage must use 3D actors and physics.
-- Validate landmark cue audio loading with [`../../scenes/tests/test_landmark_cue_loading.tscn`](../../scenes/tests/test_landmark_cue_loading.tscn).
-- Validate canonical landmark progression and cue interaction state with [`../../game/tests/cue_progression/test_cue_progression.tscn`](../../game/tests/cue_progression/test_cue_progression.tscn).
+- Use [`../../characters/tests/test_character_collisions.tscn`](../../characters/tests/test_character_collisions.tscn) for wall, gravity, stair, and pushing behavior.
+- Use [`../../scenes/tests/test_building_tour_3d.tscn`](../../scenes/tests/test_building_tour_3d.tscn) for an authored building, actor, controller, camera, and collision together.
+- Use [`../../scenes/tests/test_game_world_3d.tscn`](../../scenes/tests/test_game_world_3d.tscn) for production landmark subjects and resume anchors.
+
+## Out Of Scope Until Authored
+
+- Walkable Bi Shan and Long Shan interiors.
+- A reusable 3D portal/room-level framework.
+- Tunnel-resident route masking and interior camera rules.

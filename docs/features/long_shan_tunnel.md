@@ -17,7 +17,7 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 ## Rules
 
 - Long Shan Tunnel starts `locked`. It unlocks to `available` when the Trinity church reward event resolves (simultaneously with Bi Shan Tunnel).
-- The `tunnel_entry` interaction is a `StorySubjectArea2D` authored inside `long_shan_tunnel.tscn` at the south tunnel mouth and visible once StoryEvent presence rules say the route is available. Reaching it resolves through the authored StoryEvent subject `landmark:long_shan_tunnel.tunnel_entry` and advances the landmark to `introduced`.
+- The `tunnel_entry` interaction is a `StorySubject3D` authored under the Long Shan marker in `game_world_3d.tscn` and visible once StoryEvent presence rules say the route is available. Reaching it resolves through the authored StoryEvent subject `landmark:long_shan_tunnel.tunnel_entry` and advances the landmark to `introduced`.
 - `tunnel_guide` beat 0 fires when the player talks to Ren. Beat 0 carries `"landmark_states": {"long_shan_tunnel": "introduced"}` which confirms the landmark state (may already be introduced by the entry trigger — either order is safe).
 - `tunnel_guide` beat 1 fires on the next interaction. Beat 1 carries `"landmark_states": {"long_shan_tunnel": "in_progress"}`.
 - Two intermediate lit-pocket triggers (`light_pocket_south`, `light_pocket_north`) become visible once the landmark is `in_progress`.
@@ -56,13 +56,13 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 ## Relevant Files
 
 - Scenes:
-  - [`../../architecture/long_shan_tunnel.tscn`](../../architecture/long_shan_tunnel.tscn)
-  - [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn)
+  - [`../../scenes/game_world_3d.tscn`](../../scenes/game_world_3d.tscn)
+  - [`../../terrain/low_poly_terrain_3d.gd`](../../terrain/low_poly_terrain_3d.gd)
 - Scripts:
-  - [`../../game/story_subject_area.gd`](../../game/story_subject_area.gd)
+  - [`../../game/story_subject_3d.gd`](../../game/story_subject_3d.gd)
   - [`../../game/app_state.gd`](../../game/app_state.gd)
   - [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
-  - [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
+  - [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd)
 - Shared state or catalogs:
   - `AppState.landmark_progress["long_shan_tunnel"]`
   - `AppState.melody_progress["festival_melody"]`
@@ -80,20 +80,20 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
   - `AppState.melody_progress_changed("festival_melody", state)` — on arc resolution
   - `AppState.fragments_changed(found, total)` — on arc resolution
 - Signals consumed:
-  - `AppState.landmark_progress_changed` — consumed by each `StorySubjectArea2D` through StoryEvent presence sync
+  - `AppState.landmark_progress_changed` — consumed by each `StorySubject3D` through StoryEvent presence sync
 - Data flow:
   - Trinity reward event resolves → `advance_landmark_state("long_shan_tunnel", "available")` → StoryEvent presence rules show the entry subject
-  - Player reaches entry trigger → `StorySubjectArea2D` builds subject context → `AppState.activate_story_subject(...)` → authored Long Shan entry binding advances the landmark to `introduced` → entry trigger hides
+  - Player reaches entry trigger → `StorySubject3D` builds subject context → `AppState.activate_story_subject(...)` → authored Long Shan entry binding advances the landmark to `introduced` → entry trigger hides
   - Player talks to tunnel_guide (beats 0 and 1) → `landmark_states` fields confirm `introduced` then `in_progress` → `landmark_progress_changed` → lit-pocket and exit triggers appear
-  - Player reaches both lit pockets → `StorySubjectArea2D` builds subject context → `AppState.activate_story_subject(...)` → authored checkpoint bindings update `checkpoints_collected`
-  - Player reaches exit trigger → `StorySubjectArea2D` builds subject context → `AppState.activate_story_subject(...)` → authored Long Shan exit binding opens the route prompt → `complete_prompt_request(...)` → `StoryEventService.notify_world_event("prompt_completed:long_shan_route", ...)` → melody + landmark state update + objective points back to Ren
+  - Player reaches both lit pockets → `StorySubject3D` builds subject context → `AppState.activate_story_subject(...)` → authored checkpoint bindings update `checkpoints_collected`
+  - Player reaches exit trigger → `StorySubject3D` builds subject context → `AppState.activate_story_subject(...)` → authored Long Shan exit binding opens the route prompt → `complete_prompt_request(...)` → `StoryEventService.notify_world_event("prompt_completed:long_shan_route", ...)` → melody + landmark state update + objective points back to Ren
   - Player talks to tunnel_guide after the route settles → either the comparison beat points toward Bi Shan or the conditional beat unlocks Bagua Tower once both tunnel routes agree
 
 ## Contracts / Boundaries
 
 - The `"gate"`, `"gate_fallback"`, `"unlock_landmark"`, and `"landmark_states"` beat fields are part of the resident beat contract. If renamed or removed, update `contracts.md` and `_apply_resident_beat`.
 - The `landmark_progress["long_shan_tunnel"]` shape (`state`, `checkpoints_collected`) is part of the Landmark Progress Contract in `contracts.md`.
-- `StorySubjectArea2D` must not read or write `AppState` fields directly.
+- `StorySubject3D` must not read or write `AppState` fields directly.
 
 ## Validation
 
@@ -108,16 +108,15 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 
 ## Integration Checklist
 
-- [x] Place four `StorySubjectArea2D` nodes in `long_shan_tunnel.tscn` for the Long Shan tunnel arc: `tunnel_entry`, `light_pocket_south`, `light_pocket_north`, and `tunnel_exit`.
+- [x] Place four `StorySubject3D` nodes under the Long Shan marker in `game_world_3d.tscn`: `tunnel_entry`, `light_pocket_south`, `light_pocket_north`, and `tunnel_exit`.
 - [x] For `tunnel_entry`: set `subject_id = "landmark:long_shan_tunnel.tunnel_entry"`.
 - [x] For the lit-pocket cues: set `subject_id` to the authored StoryEvent subjects and keep the sequence/visibility rules in subject metadata.
 - [x] For `tunnel_exit`: set `subject_id = "landmark:long_shan_tunnel.tunnel_exit"` and keep route gating in StoryEvent subject metadata.
 - [x] Position each trigger at the south mouth, two interior lit pockets, and the north mouth respectively.
-- [x] Confirm `collision_layer` matches the layer used for inspectable objects.
 
 ## Out Of Scope
 
 - True NPC-follow AI for the escort. The current version is trigger-based.
 - Audio or visual effects for the passage completion.
-- Any changes to the tunnel scene's tile layout or lighting.
+- Authored tunnel geometry or lighting; the current production representation is marker-based.
 - Ambient resident arcs inside the tunnel (raincoat_child_xiu, storyteller_wen, etc.). Those are separate.

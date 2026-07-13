@@ -1,4 +1,4 @@
-extends Node2D
+extends Node
 
 const TEST_AUTOSAVE_PATH := "user://story_state_persistence.save"
 const OVERRIDE_PATH := "res://game/residents/definitions/terrace_painter_nian.tres"

@@ -1,4 +1,4 @@
-extends Node2D
+extends Node
 
 const GAME_SCENE: PackedScene = preload("res://scenes/game_world_3d.tscn")
 # The 3D world places the resumed player next to the anchor proxy with a small

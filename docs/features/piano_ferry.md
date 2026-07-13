@@ -18,7 +18,7 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
 
 - Piano Ferry starts `available` in `New Game` and `introduced` in `Free Walk`. `Continue` restores whatever the active story autosave had already reached.
 - `ferry_caretaker` beat 0 carries `"landmark_states": {"piano_ferry": "introduced"}`. This reveals the harbor clue trigger and sets the immediate objective to inspect the piano crate.
-- The harbor clue is a single `StorySubjectArea2D` node authored inside `piano_ferry.tscn` so the physical hotspot travels with the reusable landmark scene.
+- The harbor clue is a `StorySubject3D` node authored under the Piano Ferry proxy in `game_world_3d.tscn`.
 - `piano_ferry.tscn` also hosts the late-game `festival_stage` subject under the same landmark scene, but that belongs to the separate `festival_stage` landmark id rather than the onboarding arc itself.
 - Pressing `R` at the harbor clue calls `AppState.activate_landmark_trigger("piano_ferry", "harbor_refrain", ...)`, which now bridges into the authored StoryEvent subject `landmark:piano_ferry.harbor_refrain`.
 - When the trigger fires:
@@ -52,24 +52,24 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
 - `piano_ferry.tscn` owns Piano Ferry world-subject placement; `AppState` distinguishes the onboarding harbor clue and the final harbor-stage performance point by landmark id.
 - `architecture/piano_ferry/piano_ferry_stylized_3d.tscn` is an editable,
   reference-photo-derived Low-Poly Building Editor scene instanced by the
-  default-off 3D runtime candidate. Its versioned `BuildingSpec` and geometry
+  production 3D runtime. Its versioned `BuildingSpec` and geometry
   remain presentation-only; `game_world_3d` owns story subjects and placement.
-- `main.gd` and `scenes/game_main.gd` query `AppState.is_journal_unlocked()` to keep controls text and journal access in sync with the onboarding state.
+- `main.gd` and `scenes/game_world_3d.gd` query `AppState.is_journal_unlocked()` to keep controls text and journal access in sync with the onboarding state.
 
 ## Relevant Files
 
 - Scenes:
-  - [`../../architecture/piano_ferry.tscn`](../../architecture/piano_ferry.tscn)
+  - [`../../scenes/game_world_3d.tscn`](../../scenes/game_world_3d.tscn)
   - [`../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn`](../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn)
   - [`../../architecture/piano_ferry/generate_stylized_3d.gd`](../../architecture/piano_ferry/generate_stylized_3d.gd)
   - [`../../architecture/piano_ferry/piano_ferry_building_spec.json`](../../architecture/piano_ferry/piano_ferry_building_spec.json)
-  - [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn)
+  - [`../../terrain/low_poly_terrain_3d.gd`](../../terrain/low_poly_terrain_3d.gd)
 - Scripts:
   - [`../../game/app_state.gd`](../../game/app_state.gd)
   - [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
-  - [`../../game/story_subject_area.gd`](../../game/story_subject_area.gd)
+  - [`../../game/story_subject_3d.gd`](../../game/story_subject_3d.gd)
   - [`../../main.gd`](../../main.gd)
-  - [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
+  - [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd)
   - [`../../ui/screens/pause_overlay.gd`](../../ui/screens/pause_overlay.gd)
 - Shared state or catalogs:
   - `AppState.landmark_progress["piano_ferry"]`
@@ -85,17 +85,17 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
   - `AppState.landmark_progress_changed("piano_ferry", progress)` — on intro and clue resolution
   - `AppState.melody_hint_shown(text)` — when the harbor clue StoryEvent effect emits its flavour line
 - Signals consumed:
-  - `AppState.landmark_progress_changed` — consumed by the ferry `StorySubjectArea2D` through StoryEvent presence sync
+  - `AppState.landmark_progress_changed` — consumed by the ferry `StorySubject3D` through StoryEvent presence sync
 - Data flow:
   - player talks to `ferry_caretaker` beat 0 -> landmark advances to `introduced`
-  - player presses `R` at `HarborRefrain` -> `StorySubjectArea2D` builds subject context -> `AppState.activate_story_subject("landmark:piano_ferry.harbor_refrain", "collect", ...)` -> `StoryEventService` applies the authored ferry binding -> `harbor_clue_found = true` and the objective points back to Lian
+  - player presses `R` at `HarborRefrain` -> `StorySubject3D` builds subject context -> `AppState.activate_story_subject("landmark:piano_ferry.harbor_refrain", "collect", ...)` -> `StoryEventService` applies the authored ferry binding -> `harbor_clue_found = true` and the objective points back to Lian
   - player talks to `ferry_caretaker` beat 1 -> gate passes -> Trinity Church unlocks -> `StoryEventService.notify_world_event("landmark_reward:piano_ferry", ...)` unlocks the journal and marks the first lead
 
 ## Contracts / Boundaries
 
 - The `landmark_progress["piano_ferry"]` shape (`state`, `harbor_clue_found`) is part of the Landmark Progress Contract in `contracts.md`.
 - `main.gd` should gate journal opening through `AppState.is_journal_unlocked()` rather than duplicating local tutorial state.
-- `StorySubjectArea2D` must not write `AppState` fields directly.
+- `StorySubject3D` must not write `AppState` fields directly.
 
 ## Validation
 

@@ -10,7 +10,7 @@ Shipped files:
 
 - `game/bgm_catalog.gd` — 7-track seed pool with location, progress, time, season, and weather weights
 - `game/bgm_manager.gd` — runtime BGM controller with weighted selection, recent history, commitment window, fade/gap handling, and location-triggered reselection
-- `scenes/game_main.gd` — scene-owned BGM manager setup
+- `scenes/game_world_3d.gd` — scene-owned BGM manager setup
 - `default_bus_layout.tres` — `BGM` bus
 - `game/tests/bgm/test_bgm_manager.tscn` — focused regression scene for lazy loading, natural-end fade scheduling, and location fallback behavior
 
@@ -33,7 +33,7 @@ Done:
 
 - Seed pool catalog in `game/bgm_catalog.gd`
 - Scene-owned runtime controller in `game/bgm_manager.gd`
-- `game_main` integration
+- `game_world_3d` integration
 - `BGM` audio bus wiring
 
 Validation already in place:

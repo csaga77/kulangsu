@@ -1,4 +1,4 @@
-extends Node2D
+extends Node
 
 const RESIDENT_CATALOG_SCRIPT := preload("res://game/resident_catalog.gd")
 

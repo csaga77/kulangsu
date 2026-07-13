@@ -15896,12 +15896,52 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.35)
 script = ExtResource("9_subject")
 subject_id = "landmark:piano_ferry.harbor_refrain"
 
+[node name="HarborLanternLinesSubject" type="Area3D" parent="Landmarks/PianoFerryProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0, 2.0)
+script = ExtResource("9_subject")
+subject_id = "inspectable:harbor_lantern_lines"
+
+[node name="HarborNoticeBoardSubject" type="Area3D" parent="Landmarks/PianoFerryProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, 2.0)
+script = ExtResource("9_subject")
+subject_id = "inspectable:harbor_notice_board"
+
+[node name="PostcardDisplayRackSubject" type="Area3D" parent="Landmarks/PianoFerryProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 0, -0.5)
+script = ExtResource("9_subject")
+subject_id = "inspectable:postcard_display_rack"
+
+[node name="FestivalStageSubject" type="Area3D" parent="Landmarks/PianoFerryProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.0, 0, -1.5)
+script = ExtResource("9_subject")
+subject_id = "landmark:festival_stage.harbor_stage"
+
 [node name="TrinityChurchProxy" parent="Landmarks" unique_id=1837981626 instance=ExtResource("11_church")]
 
 [node name="Subject" type="Area3D" parent="Landmarks/TrinityChurchProxy" unique_id=688006128 groups=["story_subject_3d"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.2)
 script = ExtResource("9_subject")
 subject_id = "landmark:trinity_church.steps"
+
+[node name="ChurchStoneBenchSubject" type="Area3D" parent="Landmarks/TrinityChurchProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.0, 0, 0)
+script = ExtResource("9_subject")
+subject_id = "inspectable:church_stone_bench"
+
+[node name="GardenSubject" type="Area3D" parent="Landmarks/TrinityChurchProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.0, 0, 2.0)
+script = ExtResource("9_subject")
+subject_id = "landmark:trinity_church.garden"
+
+[node name="YardSubject" type="Area3D" parent="Landmarks/TrinityChurchProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.0, 0, 3.0)
+script = ExtResource("9_subject")
+subject_id = "landmark:trinity_church.yard"
+
+[node name="ChoirChimeSubject" type="Area3D" parent="Landmarks/TrinityChurchProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -2.0)
+script = ExtResource("9_subject")
+subject_id = "landmark:trinity_church.choir_chime"
 
 [node name="BiShanTunnelProxy" type="Node3D" parent="Landmarks" unique_id=627149541]
 
@@ -15910,6 +15950,21 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.2)
 script = ExtResource("9_subject")
 subject_id = "landmark:bi_shan_tunnel.echo_a"
 
+[node name="EchoBSubject" type="Area3D" parent="Landmarks/BiShanTunnelProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 4.0)
+script = ExtResource("9_subject")
+subject_id = "landmark:bi_shan_tunnel.echo_b"
+
+[node name="EchoCSubject" type="Area3D" parent="Landmarks/BiShanTunnelProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 7.0)
+script = ExtResource("9_subject")
+subject_id = "landmark:bi_shan_tunnel.echo_c"
+
+[node name="ChamberSubject" type="Area3D" parent="Landmarks/BiShanTunnelProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10.0)
+script = ExtResource("9_subject")
+subject_id = "landmark:bi_shan_tunnel.chamber"
+
 [node name="LongShanTunnelProxy" type="Node3D" parent="Landmarks" unique_id=1163735595]
 
 [node name="Subject" type="Area3D" parent="Landmarks/LongShanTunnelProxy" unique_id=1545233324 groups=["story_subject_3d"]]
@@ -15917,12 +15972,32 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.2)
 script = ExtResource("9_subject")
 subject_id = "landmark:long_shan_tunnel.tunnel_entry"
 
+[node name="LightPocketSouthSubject" type="Area3D" parent="Landmarks/LongShanTunnelProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 4.0)
+script = ExtResource("9_subject")
+subject_id = "landmark:long_shan_tunnel.light_pocket_south"
+
+[node name="LightPocketNorthSubject" type="Area3D" parent="Landmarks/LongShanTunnelProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 7.0)
+script = ExtResource("9_subject")
+subject_id = "landmark:long_shan_tunnel.light_pocket_north"
+
+[node name="TunnelExitSubject" type="Area3D" parent="Landmarks/LongShanTunnelProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10.0)
+script = ExtResource("9_subject")
+subject_id = "landmark:long_shan_tunnel.tunnel_exit"
+
 [node name="BaguaTowerProxy" parent="Landmarks" unique_id=222173634 instance=ExtResource("12_bagua")]
 
 [node name="Subject" type="Area3D" parent="Landmarks/BaguaTowerProxy" unique_id=1659067171 groups=["story_subject_3d"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.2)
 script = ExtResource("9_subject")
 subject_id = "landmark:bagua_tower.synthesis_chamber"
+
+[node name="BaguaRailingsSubject" type="Area3D" parent="Landmarks/BaguaTowerProxy" groups=["story_subject_3d"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.0, 0, 1.0)
+script = ExtResource("9_subject")
+subject_id = "inspectable:bagua_railings"
 
 [node name="Camera3D" type="Camera3D" parent="." unique_id=160440921]
 transform = Transform3D(1, 0, 0, 0, 0.777146, 0.62932, 0, -0.62932, 0.777146, 18, 22, 18)

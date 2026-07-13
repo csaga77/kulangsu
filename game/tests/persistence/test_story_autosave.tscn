@@ -2,5 +2,5 @@
 
 [ext_resource type="Script" path="res://game/tests/persistence/test_story_autosave.gd" id="1_n5ejn"]
 
-[node name="TestStoryAutosave" type="Node2D"]
+[node name="TestStoryAutosave" type="Node"]
 script = ExtResource("1_n5ejn")

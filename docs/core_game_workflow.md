@@ -172,7 +172,7 @@ Under the current first-pass StoryEvent model, these resident beats and landmark
 - level-bound inspect surfaces
 - district props and stewardship-facing inspectables
 
-That shared pipeline is what lets one active route change what an NPC says while another active route changes what a landmark or `LevelNode2D`-bound subject says.
+That shared pipeline is what lets one active route change what an NPC says while another active route changes what a landmark or inspectable `StorySubject3D` says.
 
 ## Current Coverage And Gameplay Gaps
 

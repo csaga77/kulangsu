@@ -1,4 +1,4 @@
-extends Node2D
+extends Node
 
 const TEST_AUTOSAVE_PATH := "user://story_reactivity_test.save"
 const APP_RUNTIME := preload("res://game/app_runtime.gd")

@@ -6,7 +6,7 @@ Self-contained low-poly 3D physics marble gameplay prototype.
 
 **Standalone prototype — not yet wired into the main story flow.**
 
-`marble_game.gd` and `marble_game.tscn` define the module interface, but there is currently no trigger in `scenes/game_main.gd`, `main.gd`, or any landmark scene that instantiates or enters this module during normal gameplay.
+`marble_game.gd` and `marble_game.tscn` define the module interface, but there is currently no trigger in `scenes/game_world_3d.gd`, `main.gd`, or any production world subject that instantiates or enters this module during normal gameplay.
 
 If this module is intended to serve as a landmark mini-game (e.g. a puzzle at Bi Shan Tunnel or Long Shan Tunnel), that integration should be designed as a landmark-local controller that instantiates the module scene — see `docs/architecture.md` (Reusable Game Modules boundary) and `AGENTS.md` (Architecture Boundaries) before adding wiring.
 

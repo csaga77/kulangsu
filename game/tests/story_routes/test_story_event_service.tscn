@@ -2,5 +2,5 @@
 
 [ext_resource type="Script" path="res://game/tests/story_routes/test_story_event_service.gd" id="1_story_event_service"]
 
-[node name="test_story_event_service" type="Node2D"]
+[node name="test_story_event_service" type="Node"]
 script = ExtResource("1_story_event_service")

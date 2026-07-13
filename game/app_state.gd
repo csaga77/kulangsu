@@ -1527,7 +1527,7 @@ func _request_landmark_audio_cue(
 
 
 ## Compatibility bridge for legacy tests/callers that still activate landmark
-## subjects from ids instead of walking through a StorySubjectArea2D instance.
+## subjects from ids instead of walking through a world-node instance.
 ## Returns true only when the current authored StoryEvent binding consumes the
 ## interaction immediately.
 func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_name: String) -> bool:

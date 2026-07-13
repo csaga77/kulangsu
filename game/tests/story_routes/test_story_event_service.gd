@@ -1,4 +1,4 @@
-extends Node2D
+extends Node
 
 const TEST_AUTOSAVE_PATH := "user://story_event_service_test.save"
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
@@ -62,14 +62,14 @@ func _run() -> void:
 			},
 		],
 	}
-	var timed_subject := StorySubjectArea2D.new()
+	var timed_subject := StorySubject3D.new()
 	timed_subject.subject_id = "inspectable:test_morning_marker"
 	add_child(timed_subject)
 	await get_tree().process_frame
-	_assert_true(timed_subject.visible, "StorySubjectArea2D time-gated presence starts visible in matching time")
+	_assert_true(timed_subject.visible, "StorySubject3D time-gated presence starts visible in matching time")
 	_app_state().apply_story_effects({"advance_time": {"advance_to_time_of_day": "afternoon"}})
 	await get_tree().process_frame
-	_assert_true(!timed_subject.visible, "StorySubjectArea2D time-gated presence refreshes when story time changes")
+	_assert_true(!timed_subject.visible, "StorySubject3D time-gated presence refreshes when story time changes")
 	timed_subject.queue_free()
 	await get_tree().process_frame
 	_assert_true(_app_state().get_time_of_day() == "afternoon", "StoryEvent effects can advance to a later day phase")
@@ -84,25 +84,25 @@ func _run() -> void:
 	_assert_true(_app_state().get_time_of_day() == "morning", "Advancing the day resets to morning by default")
 
 	_app_state().configure_new_game()
-	var harbor_trigger := StorySubjectArea2D.new()
+	var harbor_trigger := StorySubject3D.new()
 	harbor_trigger.subject_id = "landmark:piano_ferry.harbor_refrain"
 	_assert_true(
 		harbor_trigger.get_story_subject_id() == "landmark:piano_ferry.harbor_refrain",
-		"StorySubjectArea2D keeps a stable world subject id"
+		"StorySubject3D keeps a stable world subject id"
 	)
 	_assert_true(
 		harbor_trigger.get_story_action() == "collect",
-		"StorySubjectArea2D resolves the default collect action from StoryEvent metadata"
+		"StorySubject3D resolves the default collect action from StoryEvent metadata"
 	)
 	_assert_true(
 		!harbor_trigger.build_story_subject_context().has("melody_hint"),
-		"StorySubjectArea2D keeps melody-specific flavour text out of the generic world-subject context"
+		"StorySubject3D keeps melody-specific flavour text out of the generic world-subject context"
 	)
-	var choir_trigger := StorySubjectArea2D.new()
+	var choir_trigger := StorySubject3D.new()
 	choir_trigger.subject_id = "landmark:trinity_church.choir_chime"
 	_assert_true(
 		choir_trigger.get_story_action() == "perform",
-		"StorySubjectArea2D resolves the default perform action from StoryEvent metadata"
+		"StorySubject3D resolves the default perform action from StoryEvent metadata"
 	)
 	harbor_trigger.free()
 	choir_trigger.free()

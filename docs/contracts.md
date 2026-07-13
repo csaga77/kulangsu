@@ -54,7 +54,7 @@ Current contract:
 - `AppState` now owns lightweight story-time state through `story_day`, `world_hour`, and derived `time_of_day`; `game/story_time_service.gd` owns normalization, display labels, authored hour/day/day-phase advancement, and story autosave persistence through `StorySaveService`
 - `AppState` also keeps the landmark bridge methods (`activate_landmark_trigger(...)`, prompt-request/completion facades) and resident/audio facades even when helper scripts own the implementation, so legacy direct callers still have a stable bridge while runtime and regression coverage prefer the generic story-subject path
 - `AppState` now composes `game/story_event_service.gd` and exposes `describe_story_subject(subject_id, action, context)`, `activate_story_subject(subject_id, action, context)`, `notify_story_world_event(event_id, payload, context)`, `pick_story_candidate(candidates, context)`, `matches_story_conditions(conditions, context)`, and `apply_story_effects(payload, context)` as the shared StoryEvent bridge
-- `activate_story_subject(...)` is now the generic interaction entry point for resident talk and all scene-authored `StorySubjectArea2D` world subjects; the current subject taxonomy includes `npc:<resident_id>`, `landmark:<landmark_id>.<trigger_id>`, and `inspectable:<inspectable_id>`
+- `activate_story_subject(...)` is the generic interaction entry point for resident talk and all scene-authored `StorySubject3D` world subjects; the current subject taxonomy includes `npc:<resident_id>`, `landmark:<landmark_id>.<trigger_id>`, and `inspectable:<inspectable_id>`
 - `activate_landmark_trigger(...)` remains as a compatibility bridge for direct callers, but it now consults the authored StoryEvent landmark bindings first; the current landmark-trigger surface is authored there, and landmark reward handoffs now route through authored StoryEvent world-event bindings as well
 - `apply_story_effects(...)` is the shared write path for resident beats and future StoryEvent bindings; current supported effect channels include objective/hint/save-status updates, `season_phase`, story-time effects (`advance_time`, `advance_hours`, `advance_to_time_of_day`, `advance_day`, `story_day`, `world_hour`), landmark unlock/state/reward changes, landmark-progress patch/list updates, melody hint/audio/prompt emission, melody-progress patch/fragment-award updates, journal/shortcut unlocks, `story_flags`, `story_event`, `pin_lead_id`, resident routine overrides, resident routine override clearing, conditional follow-up effects, and story milestones
 - `game/storylines/` owns canonical route and route-event authoring, while `game/story_route_graph.gd` owns projection, lead selection, canonical story-event availability checks/blocker reporting, endgame-trigger evaluation, ending-behavior classification, and baseline ending-tone tag generation
@@ -103,7 +103,7 @@ Current contract:
 - StoryEvent catalog validation checks authored `story_event` effect references against the typed route-event resources loaded by `StorylineCatalog`, so interaction bindings cannot silently point at missing route facts
 - resident conditional beats now resolve through `pick_story_candidate(...)` and apply their side effects through `apply_story_effects(...)` rather than keeping separate copies of condition/effect logic
 - typed route resources are now the canonical narrative gate source for route events; cached `StoryRouteGraph.can_resolve_story_event(...)` and `get_story_event_blockers(...)` calls are the shared availability surface consumed by resident dialogue and StoryEvent effect application
-- `StorySubjectArea2D` (2D landmark scenes) and `StorySubject3D` (production 3D world) are the shared world-side subject adapters; `game_world_3d.gd` routes all world-subject interactions through `activate_story_subject(...)`, and `StoryEventService` resolves current `landmark:` and `inspectable:` subjects plus landmark reward world events through the authored catalog before any compatibility fallback path
+- `StorySubject3D` is the production world-side subject adapter; `game_world_3d.gd` routes all world-subject interactions through `activate_story_subject(...)`, and `StoryEventService` resolves current `landmark:` and `inspectable:` subjects plus landmark reward world events through the authored catalog before any compatibility fallback path
 - non-resident inspect text now resolves through `StoryWorldReactivity.resolve_inspect_result(...)`, which builds stable `inspectable:` subject ids and reuses the shared condition matcher
 - resident routine overrides are the first live world-state effect channel driven through the shared StoryEvent boundary; they redirect the shared spawn/movement config, and reapplying them to live 3D resident actors in `game_world_3d.gd` is a pending work item (the retired 2D overworld owned that behavior)
 - the current route ledger remains the player-facing progression view, while the longer-term goal is still to migrate route families into authored recursive StoryEvent definitions and a published-fact ledger
@@ -127,18 +127,17 @@ Owned by:
 
 Current contract:
 
-- `WeatherManager` owns the overworld weather preset list, random hold/transition timing, interpolation, runtime weather-rig instancing, and the live application of synced wind settings to registered rain, fog, and cloud-shadow nodes
+- `WeatherManager` owns the weighted overworld weather-state list, random hold/transition timing, interpolation, live application to one registered `WeatherRig3D`, and publication of synced wind for terrain water
 - the running app owns exactly one `WeatherManager` node; callers resolve it through `WeatherRuntime.get_weather_manager(node)` instead of a Project Settings autoload
-- gameplay scenes register weather hosts with `WeatherManager.register_weather_host(...)`, providing attachment parents, a ground-impact spawn layer, and any scene-specific default properties instead of instantiating weather nodes themselves
-- the shared default overworld rain/fog/cloud/impact properties now live in [`../weather/overworld_weather_preset.tres`](../weather/overworld_weather_preset.tres), and both the overworld weather stack and [`../weather/tests/test_weather.gd`](../weather/tests/test_weather.gd) must consume that same resource instead of carrying duplicate inline constant dictionaries
-- gameplay scenes may update sync flags and shared wind through `WeatherManager.set_target_sync(...)` and `WeatherManager.set_registered_wind(...)` instead of duplicating per-pass wind propagation logic
-- gameplay scenes may use `WeatherManager.set_registered_visibility(...)` for aggregate show/hide, but visibility-policy decisions stay in the owning world scene (2D tunnel suppression retired with the 2D overworld)
-- the focused weather sandbox may reuse the same manager for wind-sync behavior while keeping random cycling disabled
+- gameplay scenes register a weather host with `WeatherManager.register_weather_host(...)`, providing the scene-owned `WeatherRig3D` as `weather_state_target`
+- weather state dictionaries remain internal to the manager; the rig exposes `capture_weather_state()` and `apply_weather_state(...)` as the presentation boundary
+- gameplay scenes may update the shared wind through `WeatherManager.set_registered_wind(...)`; water consumes that same state through `LowPolyWaterWindAdapter`
+- [`../weather/tests/capture_weather_3d.tscn`](../weather/tests/capture_weather_3d.tscn) is the focused presentation validation scene
 
 Governance:
 
-- keep overworld weather-cycle policy, synced wind application, and runtime weather-rig creation in `WeatherManager`, not in reusable overlay nodes or scene files
-- keep scene-specific visibility rules such as tunnel suppression in the owning scene script
+- keep overworld weather-cycle policy and synced wind publication in `WeatherManager`, not in presentation nodes or scene files
+- keep 3D rain/fog/cloud rendering in `WeatherRig3D`
 - if the registration API or the single-manager runtime assumption changes, update this file and the weather feature docs
 
 ## Scene-Graph Lookup Contract
@@ -201,8 +200,8 @@ Owned by:
 Current contract:
 
 - `game_world_3d.tscn` is the production overworld instantiated directly by `main.gd`; the runtime-direction decision and cutover evidence are recorded in [`plan/implementation_plan.md`](plan/implementation_plan.md) and [`features/low_poly_3d_integration.md`](features/low_poly_3d_integration.md)
-- `StorySubject3D` nodes may provide 3D spatial adapters for the same stable
-  subject ids used by the 2D world, but they must dispatch through
+- `StorySubject3D` nodes provide spatial adapters for the stable subject ids in
+  the authored StoryEvent catalog, and they must dispatch through
   `AppState.activate_story_subject(...)`; visual building replacement must not
   rename subject ids or introduce 3D-only story effects
 - `game_world_3d` may resolve semantic landmark-name resume anchors to 3D
@@ -220,7 +219,7 @@ Current contract:
 - generated streets persist as definitions, not geometry: `LowPolyTerrain3D` only re-extracts the `GeneratedStreets` subtree from the mask on an explicit rebuild (`rebuild_from_source()`, the `rebuild` toggle, or a property change) and owns it under the edited scene so each Street3D's centerline `path_points`, sampled `profile_points`, and authored properties serialize into the `.tscn`; the mesh geometry must stay out of the file (the terrain nulls generated street meshes on `NOTIFICATION_EDITOR_PRE_SAVE` and restores them on `POST_SAVE`) and each Street3D rebuilds its mesh from the stored profile on load. On scene load / `rebuild_reusing_generated_streets()` the terrain reshapes its bed from the stored street corridors without re-extracting them; the subtree carries `GENERATED_STREET_ROOT_META` so the per-rebuild transient clear never discards it, and a scene must be rebuilt once in the editor to bake its streets
 - height-aware placement must query generated terrain heights through `LowPolyTerrain3D.get_world_surface_height(...)` or `LowPolyTerrain3D.get_sample_cell_height(...)` after rebuild instead of assuming global `land_height`; in heightmap-expanded water these queries currently expose underlying land/seabed elevation rather than visual water-plane height
 - `game_world_3d` owns actor grounding wiring: each frame it seats the player actor on the solid surface directly beneath it by casting a short downward ray against the physics world (the actor's `collision_mask`), so the actor stands on terrain, piers, or collision-bearing building parts instead of hovering. It falls back to `LowPolyTerrain3D.get_world_surface_height(...)` only when the ray finds nothing within reach, preserving land/seabed elevation following. `actor_terrain_clearance` defaults to `0`; `HumanBody3D` itself stays terrain-agnostic
-- `game_world_3d` owns three authored building scenes, two stable tunnel marker anchors, separate `StorySubject3D` hotspots, and recursively generated static collision for authored landmark meshes
+- `game_world_3d` owns three authored building scenes, two stable tunnel marker anchors, the complete 15-landmark/5-inspectable `StorySubject3D` set, and recursively generated static collision for authored landmark meshes
 - `Camera3DController` keeps its followed target readable by raycasting from the current camera to the look-at point and fading every collision-backed `GeometryInstance3D` blocker through the instance `transparency` property. It excludes the target subtree, preserves pre-existing transparency, restores cleared blockers (or blockers tracked by a camera that stops being current), and exposes collision-mask, fade amount/duration, area-query, and hit-limit tuning. Automatic visual resolution requires the geometry instance to be an ancestor or descendant of the hit collision object
 - `HumanBody3D.body_height` and `HumanBody3D.body_radius` are the current low-poly actor shape contract; they update the GLB model scale, capsule collision, bounding box, and ground footprint together
 - `HumanBody3D` always renders one integrated GLB character model under `VisualRoot/CharacterModel`; there is no procedural block-mannequin fallback or separate hair, pants, jacket, accessory-attachment, or runtime skin-transfer layer. The only code-generated geometry left is the optional `DebugBox` bounding-box gizmo and the optional skeleton bone-debug lines
@@ -249,74 +248,16 @@ Governance:
   with `features/low_poly_3d_integration.md` whenever interaction or save
   ownership changes
 
-## Multi-Level Scene Contract
+## Multi-Level World Contract
 
-Owned by:
-
-- [`../common/level_node_2d.gd`](../common/level_node_2d.gd)
-- [`../common/level_area_2d.gd`](../common/level_area_2d.gd)
-- [`../common/level_registry.gd`](../common/level_registry.gd)
-- [`features/multi_level_spaces.md`](features/multi_level_spaces.md)
-
-Current contract:
-
-- every level-aware node must expose a `level_id` for its own level
-- every level-aware node may expose additional `level_id` properties such as `level_from`, `level_to`, `level_bottom`, or `level_top`
-- `LevelNode2D` resolves its `level_id` either absolutely or relative to the closest level-aware parent
-- `LevelArea2D` exposes the same `level_id` contract for reusable `Area2D` gameplay nodes and may optionally resolve relative ids through an explicit `level_context_path`, but scene-owned interactables should normally live under the matching level-aware parent
-- reusable room scenes should prefer relative level ids so they do not hardcode runtime level ids
-- `LevelRegistry` derives shared runtime floor data from `level_id`
-- By default, `LevelRegistry` maps `level_id` to runtime floor data as `physics_atlas_column = level_id`, `z_index = level_id`, and `collision_mask = 1 << (19 + level_id)`
-- `LevelRegistry` remains the place to update if a landmark ever needs non-formula level behavior
-- `LevelNode2D` resolves a `level_id`, then asks `LevelRegistry` for the corresponding physics-atlas column instead of assuming `level_id == atlas_column`
-- actor traversal components resolve their final collision-mask and `z_index` state through the same shared global level data
-- level-aware `Area2D` nodes may also sync their runtime `z_index` from the resolved level so interaction-layer checks line up with the shared level model
-- visibility masking still depends on authored mask layers plus absolute `z_index` behavior
-- tunnel masking may layer additional context rules on top of authored masks, such as requiring the player to be on the tunnel's interior level before hiding ground buildings
-
-Governance:
-
-- keep shared level ids consistent across scenes when child rooms are intended to be reusable
-- when introducing new multi-level spaces, prefer relative level ids on child instances over repeating raw runtime level ids everywhere
-- do not duplicate physics-atlas, collision-mask, or actor-`z_index` values outside `LevelRegistry` when a scene is using the shared model
-- do not assume `LevelRegistry` automatically configures visibility masks
-- if you need the full current design, known limitation, or validation targets, start with [`features/multi_level_spaces.md`](features/multi_level_spaces.md)
-- if the level-id resolution model or `LevelRegistry` derivation rules change, update this file and the relevant scene docs
-
-## Multi-Level Actor Transition Contract
-
-Owned by:
-
-- [`../common/level_registry.gd`](../common/level_registry.gd)
-- [`../architecture/components/portal.gd`](../architecture/components/portal.gd)
-- [`../architecture/components/steps.gd`](../architecture/components/steps.gd)
-
-Current contract:
-
-- `LevelRegistry` owns the shared level derivation rules keyed by `level_id`
-- `LevelRegistry` exposes `resolve_level_physics_atlas_column()`, `resolve_level_collision_mask()`, `resolve_level_z_index()`, and `apply_level_to_actor()`
-- `LevelRegistry` is used as a static global helper and should not be instantiated
-- `Portal` exposes `level_id`, `level_from`, and `level_to` plus a mode that makes all of those ids either absolute or relative to the closest level-aware parent.
-- `Steps` exposes `level_id`, `level_bottom`, and `level_top` plus a mode that makes all of those ids either absolute or relative to the closest level-aware parent.
-- When their related `level_id` properties are set, `Portal` and `Steps` resolve the matching profiles through `LevelRegistry`.
-- Both `Portal` and `Steps` fall back to hand-authored mask values if level ids are not provided or profile lookup is unavailable, preserving backward compatibility.
-- Direct spawn, teleport, or restore of an actor into a non-ground level should call `LevelRegistry.apply_level_to_actor(level_id, actor)` or the equivalent profile lookup path.
-- Both player and NPC actors use the same shared level-transition helpers, but gameplay systems may still interpret tunnel context differently on top of that shared transition data.
-
-Governance:
-
-- if the shared level derivation rules or the traversal components' `level_id` interface change, update this file and relevant feature docs
-- new multi-level spaces should use either absolute or parent-relative exported `level_id` values where a reusable scene or component needs to point at a logical level
-- when a reusable `Area2D` needs shared level behavior, prefer `LevelArea2D` or a subclass instead of duplicating level-resolution logic in the leaf node
-- when a scene-owned `LevelArea2D` can live under the right `LevelNode2D`, prefer that parentage over pointing back to an external `level_context_path`
-- existing portals and stairs outside Bagua Tower may continue to use hand-authored mask values; migration is not required but recommended
+The retired 2D level registry, level-aware nodes, portals, steps, rooms, and tunnel masking stack has been removed. The production world currently uses ordinary 3D collision, authored terrain heights, and model-owned stair geometry. There is no general-purpose 3D portal or tunnel-interior visibility contract yet; [`features/multi_level_spaces.md`](features/multi_level_spaces.md) records that gap and the requirements for a future implementation.
 
 ## Landmark Progress Contract
 
 Owned by:
 
 - [`../game/app_state.gd`](../game/app_state.gd)
-- [`../game/story_subject_area.gd`](../game/story_subject_area.gd) (scene-authored world subject node)
+- [`../game/story_subject_3d.gd`](../game/story_subject_3d.gd) (scene-authored production world subject node)
 
 Current contract:
 
@@ -326,22 +267,21 @@ Current contract:
 - `AppState.landmark_progress_changed(landmark_id, progress)` fires whenever any landmark's entry changes
 - `AppState.get_landmark_progress(landmark_id)` and `get_landmark_state(landmark_id)` are the read API
 - `AppState.set_landmark_progress(landmark_id, progress)` and `advance_landmark_state(landmark_id, new_state)` are the write API
-- `AppState.activate_landmark_trigger(landmark_id, trigger_id, display_name)` now exists as a compatibility bridge for legacy callers; runtime world interaction and regression coverage go through `StorySubjectArea2D` nodes or `AppState.activate_story_subject(...)`, which first offers the interaction to `game/story_event_service.gd` as the stable subject id `landmark:<landmark_id>.<trigger_id>`
-- `AppState.melody_hint_shown(text)` fires when a melody-specific StoryEvent effect emits flavour text; the HUD subscribes to display it on-screen without making `StorySubjectArea2D` carry melody-only metadata
+- `AppState.activate_landmark_trigger(landmark_id, trigger_id, display_name)` remains a compatibility bridge for direct service callers; runtime world interaction and regression coverage go through `StorySubject3D` nodes and `AppState.activate_story_subject(...)`, which first offers the stable subject id `landmark:<landmark_id>.<trigger_id>` to `game/story_event_service.gd`
+- `AppState.melody_hint_shown(text)` fires when a melody-specific StoryEvent effect emits flavour text; the HUD subscribes to display it on-screen without making `StorySubject3D` carry melody-only metadata
 - successful landmark interactions may also emit `AppState.landmark_audio_cue_requested(cue_id, context)` so the world scene can play a local motif without relying on `melody_hint_shown` text alone
 - `AppState.set_all_landmark_progress(progress)` sets multiple landmarks at once; used by `configure_*` methods
 - Resident dialogue beats may carry `"unlock_landmark"` to unlock a landmark when the beat fires, and `"gate"` / `"gate_fallback"` to block a beat until a landmark condition is satisfied
 - Resident dialogue beats may carry `"landmark_reward"` to trigger a landmark resolution (fragment award, melody state update, downstream unlocks) when the beat fires
-- `StorySubjectArea2D` inherits the shared `LevelArea2D` level fields, so a world subject can resolve its interaction layer from a parent level node or an explicit `level_context_path` without landmark-specific logic; use the explicit context path mainly for scene-internal cross-level placement or other exceptional cases where the hotspot cannot sit directly under its level context
-- `game/story_event_catalog.gd` owns the canonical authored world-subject metadata list and presence rules; the `StorySubjectArea2D.subject_id` dropdown reads from that shared catalog, surfaces configuration warnings for unknown ids, and keeps stable world subjects decoupled from whichever StoryEvent currently binds them
+- `game/story_event_catalog.gd` owns the canonical authored world-subject metadata list and presence rules; the `StorySubject3D.subject_id` dropdown reads from that shared catalog, surfaces configuration warnings for unknown ids, and keeps stable world subjects decoupled from whichever StoryEvent currently binds them
+- `scenes/game_world_3d.tscn` owns production placement for the exact 15 landmark and 5 inspectable non-NPC subject ids; the production-world smoke test checks that complete set
 
 Governance:
 
-- keep per-landmark and inspect-surface setup in `StorySubjectArea2D` nodes placed in the landmark or feature scene that owns the hotspot, and keep active resolution logic behind `AppState`'s public API; current landmark interaction beats plus landmark prompt-completion/reward follow-through and world-subject visibility rules live in `game/story_event_catalog.gd`/`game/story_event_service.gd`, while `game/landmark_progression.gd` now mostly supplies generic prompt-building and fallback behavior
-- when a trigger must follow a non-ground interaction layer, set its shared level fields instead of hardcoding a separate scene-local z contract
-- if a new landmark arc is added, add its id to `_default_landmark_progress()` and `_build_landmark_progress()`, place `StorySubjectArea2D` nodes with the correct stable `subject_id` and level placement in the owning landmark scene, and prefer authored `StoryEvent` subject/world-event bindings plus subject metadata/presence rules before extending any remaining legacy `game/landmark_progression.gd` fallback
+- keep per-landmark and inspect-surface setup in `StorySubject3D` nodes under the owning production-world landmark proxy, and keep active resolution logic behind `AppState`'s public API; current landmark interaction beats plus landmark prompt-completion/reward follow-through and visibility rules live in `game/story_event_catalog.gd`/`game/story_event_service.gd`
+- if a new landmark arc is added, add its id to `_default_landmark_progress()` and `_build_landmark_progress()`, place `StorySubject3D` nodes with the correct stable `subject_id` in `game_world_3d.tscn`, update the exact expected-id set in `test_game_world_3d.gd`, and prefer authored StoryEvent bindings before extending compatibility fallbacks
 - if the landmark state enum changes, update this file and the relevant landmark feature docs
-- `StorySubjectArea2D` nodes mirror visibility and targetability from StoryEvent metadata; callers should not own hide/disable decisions directly
+- `StorySubject3D` nodes mirror visibility and targetability from StoryEvent metadata; callers should not own hide/disable decisions directly
 
 ## Reusable Module Contracts
 

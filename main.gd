@@ -111,7 +111,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _build_app_shell() -> void:
-	var game_layer := Node2D.new()
+	var game_layer := Node.new()
 	game_layer.name = "GameLayer"
 	add_child(game_layer)
 

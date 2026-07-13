@@ -13,7 +13,7 @@ Open these files first in this order:
 5. [`../../game/story_event_service.gd`](../../game/story_event_service.gd)
 6. [`../../game/landmark_progression.gd`](../../game/landmark_progression.gd)
 7. [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
-8. [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
+8. [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd)
 9. [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd)
 
 Use [`../core_gameplay_plays.md`](../core_gameplay_plays.md) after this file when you need the broader tone and repeatable-play rationale.
@@ -43,7 +43,7 @@ This is how the current repo already maps to the high-level RPG pitch.
 
 ### Core Loop Mapping
 
-- `Explore` already exists through the main island scene in [`../../scenes/game_main.gd`](../../scenes/game_main.gd) and the terrain/landmark setup.
+- `Explore` already exists through the main island scene in [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd) and the terrain/landmark setup.
 - `Hear` is represented through resident writing, ambient lines, melody clue text, and shared melody runtime state in [`../../game/app_state.gd`](../../game/app_state.gd).
 - `Collect` exists today as a fragment counter in [`../../game/app_state.gd`](../../game/app_state.gd) and the journal `Melody` tab in [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd).
 - `Practice` now exists as a short ordered-confirmation prompt launched from the journal once the melody is reconstructed.
@@ -78,7 +78,7 @@ The external GDD's `Sunlight Rock` and `Zheng Chenggong Statue` are not part of 
   - residents are already the main source of local clues, trust, and objective nudges
   - current `melody_hint` text is narrative-facing color emitted by authored StoryEvent effects, not a deeper mechanical link back into melody ids yet
 - Audio system:
-  - a scene-owned BGM controller now runs from `scenes/game_main.gd` through `game/bgm_manager.gd`, using a 12-track weighted pool from `game/bgm_catalog.gd`
+  - a scene-owned BGM controller now runs from `scenes/game_world_3d.gd` through `game/bgm_manager.gd`, using a 12-track weighted pool from `game/bgm_catalog.gd`
   - the current V1 BGM pass keys off location plus melody progress, with fixed defaults for time, season, and weather
   - landmark cues now play as local one-shot motifs in the overworld and briefly duck BGM so "hear before you name it" lands before the journal text does
   - the recognition prompt now has segment-select, correct-order, and wrong-order audio feedback, and ducks BGM for the full prompt overlay
@@ -137,12 +137,12 @@ The `Melody` journal tab now shows melody name, district, stage, fragment progre
 All five landmark arcs are fully integrated and confirmed:
 
 - Piano Ferry onboarding arc (Caretaker Lian -> harbor clue trigger -> journal unlock -> Trinity Church handoff)
-- Trinity Church arc (choir cue collection via three `StorySubjectArea2D` nodes plus the `ChoirChime` confirmation point)
+- Trinity Church arc (choir cue collection via three `StorySubject3D` nodes plus the `ChoirChime` confirmation point)
 - Bi Shan Tunnel arc (echo tracing via three echo triggers + mural-chamber prompt + route-note update)
 - Long Shan Tunnel arc (entry trigger + lit-pocket checkpoints + exit-route prompt + return-to-Ren comparison handoff + `tunnel_guide` dialogue beats)
-- Bagua Tower arc (synthesis chamber `StorySubjectArea2D` + `tower_keeper` dialogue beats + spring-gated harbor-stage handoff)
+- Bagua Tower arc (synthesis chamber `StorySubject3D` + `tower_keeper` dialogue beats + spring-gated harbor-stage handoff)
 
-All landmark `StorySubjectArea2D` nodes have `collision_layer = 1` (layer "object") confirmed explicit. The `SynthesisChamber` is now authored inside `bagua_tower.tscn` and keeps an internal roof-level context so its runtime z index still aligns with the player's top-tower level.
+All 15 landmark `StorySubject3D` ids are authored in `game_world_3d.tscn`; the production-world smoke test asserts the exact set together with the 5 inspectable ids. World selection uses each subject's 3D position, visibility/targetability metadata, and `interaction_radius`.
 
 See [`piano_ferry.md`](piano_ferry.md), [`trinity_church.md`](trinity_church.md), [`bi_shan_tunnel.md`](bi_shan_tunnel.md), [`long_shan_tunnel.md`](long_shan_tunnel.md), [`bagua_tower.md`](bagua_tower.md), and [`../../game/tests/cue_progression/test_cue_progression.tscn`](../../game/tests/cue_progression/test_cue_progression.tscn) for the current integration coverage.
 
@@ -176,7 +176,7 @@ See [`piano_ferry.md`](piano_ferry.md), [`trinity_church.md`](trinity_church.md)
 
 - Story mode now writes one versioned autosave payload from `AppState`.
 - `Continue` restores melody, landmark, dependable-route notes, resident, player-appearance, and any active ending context together.
-- `scenes/game_main.gd` now resumes from safe landmark and tunnel-entry anchors instead of interior tunnel positions.
+- `scenes/game_world_3d.gd` now resumes from safe landmark and tunnel-entry anchors instead of interior tunnel positions.
 
 ## Recommended Growth Tiers
 
@@ -276,7 +276,7 @@ That structure may become useful later, but the current project is already organ
 - [`../../game/app_state.gd`](../../game/app_state.gd) owns shared player-facing melody progress.
 - [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd) owns resident-authored clue text and resident-to-melody relationships.
 - [`../../game/melody_catalog.gd`](../../game/melody_catalog.gd) owns melody definitions and fragment metadata.
-- [`../../scenes/game_main.gd`](../../scenes/game_main.gd) owns overworld integration, location context, and resident interaction wiring.
+- [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd) owns overworld integration, location context, and resident interaction wiring.
 - Landmark scenes under [`../../architecture/`](../../architecture) or focused gameplay modules under [`../../game/`](../../game) should own local task logic and performance triggers.
 - [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd) owns melody presentation in the journal.
 - [`../../main.gd`](../../main.gd) owns shell flow and overlays, not gameplay rules.
@@ -284,11 +284,11 @@ That structure may become useful later, but the current project is already organ
 ## Relevant Files
 
 - Scenes:
-  - [`../../scenes/game_main.tscn`](../../scenes/game_main.tscn)
+  - [`../../scenes/game_world_3d.tscn`](../../scenes/game_world_3d.tscn)
   - [`../../main.tscn`](../../main.tscn)
   - landmark scenes under [`../../architecture/`](../../architecture)
 - Scripts:
-  - [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
+  - [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd)
   - [`../../main.gd`](../../main.gd)
   - [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd)
 - Shared state or catalogs:
@@ -312,7 +312,7 @@ That structure may become useful later, but the current project is already organ
   - `summary_changed`
   - `save_metadata_changed`
 - Current flow:
-  - resident interaction starts in [`../../scenes/game_main.gd`](../../scenes/game_main.gd)
+  - resident interaction starts in [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd)
   - resident progression updates in [`../../game/app_state.gd`](../../game/app_state.gd)
   - the journal reads summary text from [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd)
   - story autosave metadata stays in [`../../game/app_state.gd`](../../game/app_state.gd) and feeds the title shell in [`../../main.gd`](../../main.gd)

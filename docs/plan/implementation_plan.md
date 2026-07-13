@@ -78,14 +78,10 @@ Current pressure points:
 - `StorySaveService` and `LandmarkProgression` remain intentionally tight `AppState` helpers, so future cleanup still needs to preserve the bridge API instead of assuming those helpers are independently reusable modules
 - `StoryEventService` is now live as a shared subject/effect bridge, and `story_event_catalog.gd` now owns the full melody-landmark interaction spine plus its landmark prompt-completion/reward world events, but progression still spans typed storyline route resources, resident resources, the StoryEvent catalog, and `story_world_reactivity.gd` instead of one fuller recursive event definition set plus a published-fact ledger
 - StoryEvent catalog validation now checks authored `story_event` effect references against typed route resources, but subject/world-event bindings themselves are still authored in GDScript rather than editor-native resources
-- `activate_landmark_trigger(...)` remains as a compatibility bridge, but regression coverage should prefer `activate_story_subject(...)` or packed-scene `StorySubjectArea2D` dispatch for landmark beats
+- `activate_landmark_trigger(...)` remains as a compatibility bridge, but runtime and regression coverage use `activate_story_subject(...)` through production `StorySubject3D` nodes for landmark beats
 - high-traffic dictionary payloads (landmark progress, melody progress, autosave) are still untyped
 - missable/transformed moment processing is not implemented yet; the current life-time slice tracks and advances time but does not automatically expire optional beats into missed-state echoes
-- the low-poly 3D runtime now has terrain/water, actor/camera,
-  three authored landmarks, shared-data residents, controller/adapter story
-  dispatch, speech balloons, BGM/cues, and semantic resume anchors; its remaining
-  work is tunnel/interior content, routed tunnel residents, representative landmark result parity, formal visual and
-  release-performance confirmation
+- the low-poly 3D runtime now has terrain/water, actor/camera, three authored landmark models plus two tunnel markers, shared-data residents, the complete 15-landmark/5-inspectable `StorySubject3D` set, speech balloons, BGM/cues, and semantic resume anchors; remaining work is tunnel/interior content, routed tunnel residents, richer landmark presentation, and release-performance confirmation
 - regression coverage is now strong for landmark, route, resident-interaction, reactivity, and autosave flows, but still lighter around settings/audio behavior and richer world-object reactivity
 
 ## What Remains
@@ -143,8 +139,8 @@ Shipped baseline:
 - `HumanBody3D`, `BaseController3D`, and `PlayerController3D` provide camera-relative XZ movement, animated model locomotion, gravity, floor snap, front-riser stair traversal, tagged stair-side blocking, static-wall sliding, and capped `RigidBody3D` pushing
 - `LowPolyWorldCoordinates3D`, `LowPolyArtStyle3D`, and `Camera3DController` support the production world without scene-local placement math; authored landmark scenes provide runtime massing and collision
 - the Low-Poly Building Editor, versioned `BuildingSpec` generation, authored landmark concepts, and `test_building_tour_3d.tscn` provide the environment-authoring and playable scale-review lane
-- three authored landmarks, the shared resident roster, `StorySubject3D`
-  dispatch, speech balloons, BGM/landmark cues, and semantic resume anchors are
+- three authored landmarks, two tunnel markers, the complete 15-landmark/5-inspectable `StorySubject3D`
+  set, the shared resident roster, speech balloons, BGM/landmark cues, and semantic resume anchors are
   assembled by `game_world_3d`
 - focused actor, collision, terrain, camera-occlusion, building-tour,
   combined-world, and runtime-world scenes form the current validation set
@@ -155,16 +151,14 @@ Execution order:
    - Keep actor API, generated collision fixtures, terrain/water, camera occlusion, building loading, and combined-world headless scenes green.
    - Every automated smoke scene must return process status `0` on success and nonzero on assertion failure; a logged `PASS` line alone is insufficient.
    - `test_character_collisions.tscn` is the owner for gravity/landing, static wall blocking, front stair ascent/descent, tagged stair-side rejection, and dynamic rigid-body pushing.
-2. **Runtime interaction slice (green baseline; parity follow-up open).**
-   - Piano Ferry, shared-data residents, stable subject-id dispatch, collision,
+2. **Runtime interaction slice (green for current authored scope).**
+   - All five landmark anchors, shared-data residents, stable subject-id dispatch, collision,
      prompt selection, camera readability, and semantic resume fallback are
      assembled in `game_world_3d`.
    - `test_game_world_3d.tscn` now enters resident talk through proximity
      selection and the player controller's inspect signal rather than calling
      `AppState` directly.
-   - Equivalent fresh 2D/3D resident dispatches now assert identical
-     dimension-neutral results and core progression state. Still required:
-     cover a landmark interaction with a meaningful progression effect.
+   - Resident dispatch asserts the expected dimension-neutral result and core progression state. The smoke also asserts the exact 15 landmark and 5 inspectable production subject ids and their shared request contract.
 3. **Visual-style acceptance (green).**
    - Tune camera, projection, follow offset, palette, lighting, restrained wave depth, terrain chunkiness, building scale, actor readability, and camera-relative movement using the interaction slice plus combined world.
    - Store fixed-camera evidence under `design/qa/low_poly_3d/`: `world_overview.png`, `player_scale.png`, `landmark_approach.png`, `camera_occlusion.png`, and `water_shoreline.png`.
@@ -186,12 +180,9 @@ Execution order:
      cutover; the release-export repeat is a recorded residual confirmation, not a blocker (an
      approved tradeoff per the "record the exception" rule above). Release builds strip the
      debug-server overhead, so the release numbers are expected to be no worse than the diagnostic.
-5. **Story/resident/save ownership acceptance (partially green).**
+5. **Story/resident/save ownership acceptance (green for current runtime scope).**
    - Follow [`../features/low_poly_3d_integration.md`](../features/low_poly_3d_integration.md): the 3D scene owns spatial adapters, existing story services own rules/effects, `AppState` owns shared progression/save data, and resident definitions remain dimension-neutral data.
-   - Controller/adapter resident dispatch, equivalent resident result/state
-     parity, and semantic resume fallback are green. Landmark result parity,
-     and tunnel-resident routing/visibility remain open. Player profiles now map
-     adult masculine/feminine and teen frames to the male/female/boy GLBs.
+   - Controller/adapter resident dispatch, resident result/state parity, semantic resume fallback, and the exact production set of 15 landmark plus 5 inspectable subjects are green. Tunnel-resident routing/visibility remains open. Player profiles map adult masculine/feminine and teen frames to the male/female/boy GLBs.
 6. **Runtime-direction decision — DECIDED 2026-07-06: replace the 2D overworld.**
    - Outcome: the low-poly 3D overworld (`scenes/game_world_3d.tscn`) replaces the 2D overworld as
      the runtime. `main.gd` now instantiates it directly; the `USE_3D_OVERWORLD` toggle and the
@@ -204,12 +195,11 @@ Execution order:
      story progression, journal gating, autosave, 0 errors); interaction contract and ownership per
      [`../features/low_poly_3d_integration.md`](../features/low_poly_3d_integration.md).
    - Accepted as post-cutover follow-ups (explicit tradeoffs, project-owner decision): tunnel interior
-     geometry (Bi Shan / Long Shan remain marker anchors), the landmark-result-parity equality check,
-     and the release-export performance repeat. The two tunnels are traversable-as-anchors but not yet
+     geometry (Bi Shan / Long Shan remain marker anchors) and the release-export performance repeat. The two tunnels are traversable-as-anchors but not yet
      walkable interiors; this is a known, accepted gap at cutover.
    - Execution: the hard-cutover sequence is recorded in [`low_poly_3d_replacement.md`](low_poly_3d_replacement.md).
      The runtime flip, legacy 2D character/NPC deletion, 3D UI preview migration, Universal LPC
-     submodule removal, and canonical doc sweep are complete.
+     submodule removal, final 2D world/landmark/terrain/weather residual cleanup, and canonical doc sweep are complete.
 
 Open art/content decisions:
 
@@ -399,7 +389,7 @@ Shipped outcome:
 - resident dialogue/application lives in `game/resident_interaction_service.gd` with `AppState` facades preserved for runtime callers and tests
 - runtime settings state lives in `game/audio_settings_service.gd`
 - `StorySaveService` owns the active payload pipeline plus `configure_new_game()`, `configure_continue()`, and `configure_free_walk()` implementation while `AppState` keeps the public bridge methods
-- the shared default overworld weather tuning now lives in `weather/overworld_weather_preset.tres`, consumed by both `scenes/game_world_3d.gd` and `weather/tests/test_weather.gd`
+- the weather cycle now lives in `weather/weather_manager.gd` and applies to the production `WeatherRig3D`; focused presentation validation lives in `weather/tests/capture_weather_3d.tscn`
 - all resident definitions now live as external resources under `game/residents/definitions/`, with `resident_catalog.gd` kept as the loader/normalizer bridge
 
 Verification now in repo:

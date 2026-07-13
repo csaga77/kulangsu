@@ -16,7 +16,7 @@ Current shipped pieces:
 - `game/story_event_catalog.gd` is the authored StoryEvent tree file for the current migrated landmark interaction slices
 - `game/story_event_service.gd` is composed by `AppState` as the shared StoryEvent bridge
 - `AppState` now exposes `describe_story_subject(...)`, `activate_story_subject(...)`, `notify_story_world_event(...)`, `pick_story_candidate(...)`, `matches_story_conditions(...)`, and `apply_story_effects(...)`
-- `game_main.gd` now routes resident talk and scene-authored `StorySubjectArea2D` interactions through stable subject ids instead of separate route-specific callbacks
+- `game_world_3d.gd` routes resident talk and scene-authored `StorySubject3D` interactions through stable subject ids instead of separate route-specific callbacks
 - resident conditional beats now reuse the shared candidate-selection, condition-matching, and effect-application paths
 - resident routine overrides are now a live world-effect channel that can reposition already spawned residents and persist through story autosave/continue
 - migrated authored landmark nodes now cover the full `melody_landmarks` interaction spine plus landmark prompt-completion/reward world events: `piano_ferry.harbor_refrain`, Trinity cue/chime/reward beats, Bi Shan echoes/chamber/reward, Long Shan entry/checkpoints/exit/reward, Bagua synthesis/reward, and the harbor-stage prompt/performance completion
@@ -37,7 +37,7 @@ Still not migrated:
 
 ### Goals
 
-- Keep the **world system generic**: terrain, NPCs, landmarks, `LevelNode2D`, and interaction geometry stay reusable and story-agnostic.
+- Keep the **world system generic**: terrain, NPCs, landmarks, and `StorySubject3D` placement stay reusable and story-agnostic.
 - Move progression meaning into a **generic StoryEvent system**.
 - Allow **multiple active story events at once**.
 - Allow **nested story events** so one top-level event can contain child events and steps.
@@ -241,10 +241,10 @@ Current-route examples:
 
 ### Ownership Boundaries
 
-- `LevelNode2D`, terrain, landmarks, NPCs, and other world primitives remain generic and reusable.
-- Scene-authored nodes still own placement, collision shape, and level binding.
+- Terrain, landmarks, NPCs, and other world primitives remain generic and reusable.
+- Scene-authored nodes still own 3D placement and interaction range.
 - Story events own current meaning: dialogue, inspect text, unlock rules, and progression side effects.
-- `LevelNode2D` itself should not carry story logic. If interacting with a level-bound surface matters to story, bind that surface to a stable subject id.
+- Terrain and landmark models should not carry story logic. If interacting with a surface matters to story, bind a `StorySubject3D` hotspot to a stable subject id.
 
 ### Migration Direction
 
@@ -252,9 +252,9 @@ This direction implies the following refactor target:
 
 - current hardcoded progression in `landmark_progression.gd` should be split into generic StoryEvent runtime plus authored event definitions
 - current non-resident inspect text in `story_world_reactivity.gd` should move into the same StoryEvent-driven subject model
-- `game_main.gd` should become a thin interaction router into the director
-- scene-owned interaction geometry should remain scene-authored, while world-subject behavior should stay in the generic `StorySubjectArea2D` + StoryEvent metadata layer instead of bespoke trigger/inspectable scripts
-- a `StorySubjectArea2D` instance should represent a stable physical hotspot in the world; different StoryEvents may reuse that same `subject_id`, with active binding metadata deciding the current action, label, and visibility while story-specific flavour text stays in the authored event effects
+- `game_world_3d.gd` should remain a thin interaction router into the director
+- scene-owned interaction placement should remain scene-authored, while world-subject behavior should stay in the generic `StorySubject3D` + StoryEvent metadata layer instead of bespoke trigger/inspectable scripts
+- a `StorySubject3D` instance represents a stable physical hotspot in the world; different StoryEvents may reuse that same `subject_id`, with active binding metadata deciding the current action, label, and visibility while story-specific flavour text stays in authored effects
 - the current route ledger and UI route categories should remain player-facing views, even if their backing state is generated from active `StoryEventDefinition` trees and published facts
 
 ### Concrete Runtime Spec
@@ -268,8 +268,8 @@ The runtime should be split across the existing boundaries rather than introduci
 
 - `AppState` remains the public shared-state bridge for UI, save, route summaries, and other gameplay systems
 - `StoryEventDirector` should live under `game/` as a focused progression helper owned by `AppState` or composed through it
-- `game_main.gd`, resident interaction, and inspect systems should route story-facing interactions through the shared bridge instead of calling route-specific services directly
-- scene-authored world nodes continue to own placement, collision, and level context, while the StoryEvent layer owns meaning, gating, and side effects
+- `game_world_3d.gd`, resident interaction, and inspect systems should route story-facing interactions through the shared bridge instead of calling route-specific services directly
+- scene-authored world nodes continue to own 3D placement and interaction range, while the StoryEvent layer owns meaning, gating, and side effects
 
 This keeps the public progression boundary where the project already expects it while still moving route-specific logic out of scene scripts.
 
@@ -615,7 +615,7 @@ Milestones are emitted from authored StoryEvent effect application and `_apply_r
 
 ### Who Subscribes
 
-- **`game_main.gd`**: can update ambient sound layers, toggle visual details (lights in windows, crowd density), or change NPC idle behavior.
+- **`game_world_3d.gd`**: can update ambient sound layers, toggle visual details (lights in windows, crowd density), or change NPC idle behavior.
 - **`npc_controller.gd`**: can trigger a one-shot reaction animation or mood change when a relevant milestone fires while the NPC is on screen.
 - **Journal overlay**: can show a brief "The island remembers..." moment text.
 
@@ -661,7 +661,7 @@ Each landmark phase can define a recovery entry in the catalog:
 
 ### Trigger Logic
 
-`game_main.gd` tracks a timer since the last `landmark_progress_changed` or `objective_changed` signal. When the timer exceeds the configured `idle_seconds` for the current landmark and phase:
+`game_world_3d.gd` could track a timer since the last `landmark_progress_changed` or `objective_changed` signal. When the timer exceeds the configured `idle_seconds` for the current landmark and phase:
 
 1. Find the specified `resident_id`.
 2. If the resident is spawned and on the same layer, have them emit their `hint_line` as a speech balloon (bypassing the normal talk interaction).
@@ -732,7 +732,7 @@ All four suggestions follow the existing project conventions:
 
 - Authored content stays in catalog scripts.
 - Mutable runtime state stays in `AppState`.
-- World integration stays in `game_main.gd` and controllers.
+- World integration stays in `game_world_3d.gd` and 3D controllers.
 - No new singletons or autoloads are introduced.
 - Signal-based communication rather than direct coupling.
 - The HUD and journal remain thin consumers of `AppState` data.

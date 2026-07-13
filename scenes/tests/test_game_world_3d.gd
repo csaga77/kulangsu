@@ -9,7 +9,7 @@ extends Node
 #   - residents spawned from the shared AppState roster
 #   - story subjects registered for proximity selection
 #   - resident talk dispatches through controller input and the 3D adapter
-#   - equivalent fresh 2D/3D resident dispatches produce the same story result/state
+#   - legacy Vector2 and production Vector3 spatial contexts produce the same story result/state
 #   - shared BGM and landmark-cue owners are present
 #   - WeatherManager registers/cycles the 3D rain/fog/cloud-light target and propagates wind
 #
@@ -25,6 +25,28 @@ const BASE_CONTROLLER_3D_SCRIPT := preload("res://characters/control/base_contro
 const TERRAIN_KIND_WATER := 0
 const ACTOR_GROUND_TOLERANCE := 0.2
 const MAX_ACTOR_WADE_DEPTH := 0.5
+const EXPECTED_WORLD_SUBJECT_IDS: Array[String] = [
+	"inspectable:bagua_railings",
+	"inspectable:church_stone_bench",
+	"inspectable:harbor_lantern_lines",
+	"inspectable:harbor_notice_board",
+	"inspectable:postcard_display_rack",
+	"landmark:bagua_tower.synthesis_chamber",
+	"landmark:bi_shan_tunnel.chamber",
+	"landmark:bi_shan_tunnel.echo_a",
+	"landmark:bi_shan_tunnel.echo_b",
+	"landmark:bi_shan_tunnel.echo_c",
+	"landmark:festival_stage.harbor_stage",
+	"landmark:long_shan_tunnel.light_pocket_north",
+	"landmark:long_shan_tunnel.light_pocket_south",
+	"landmark:long_shan_tunnel.tunnel_entry",
+	"landmark:long_shan_tunnel.tunnel_exit",
+	"landmark:piano_ferry.harbor_refrain",
+	"landmark:trinity_church.choir_chime",
+	"landmark:trinity_church.garden",
+	"landmark:trinity_church.steps",
+	"landmark:trinity_church.yard",
+]
 
 @onready var m_world: Node3D = $game_world_3d
 
@@ -279,6 +301,22 @@ func _check_story_subjects(failures: Array[String]) -> void:
 	var subjects := get_tree().get_nodes_in_group("story_subject_3d")
 	if subjects.is_empty():
 		failures.append("no StorySubject3D nodes registered for interaction")
+		return
+	var authored_subject_ids: Array[String] = []
+	for subject in subjects:
+		if !(subject is StorySubject3D) or !m_world.is_ancestor_of(subject):
+			continue
+		var subject_id := String(subject.get("subject_id"))
+		if subject_id.begins_with("landmark:") or subject_id.begins_with("inspectable:"):
+			authored_subject_ids.append(subject_id)
+	authored_subject_ids.sort()
+	var expected_subject_ids: Array[String] = EXPECTED_WORLD_SUBJECT_IDS.duplicate()
+	expected_subject_ids.sort()
+	if authored_subject_ids != expected_subject_ids:
+		failures.append(
+			"authored 3D world subjects differ: expected %s, found %s"
+			% [expected_subject_ids, authored_subject_ids]
+		)
 
 
 func _check_audio(failures: Array[String]) -> void:
@@ -385,8 +423,15 @@ func _check_subject_contract(failures: Array[String]) -> void:
 		if String(node.get("subject_id")).begins_with("landmark:"):
 			landmark_subjects.append(node)
 
-	if landmark_subjects.size() < 3:
-		failures.append("expected landmark story subjects, found %d" % landmark_subjects.size())
+	var expected_landmark_count := 0
+	for subject_id in EXPECTED_WORLD_SUBJECT_IDS:
+		if subject_id.begins_with("landmark:"):
+			expected_landmark_count += 1
+	if landmark_subjects.size() != expected_landmark_count:
+		failures.append(
+			"expected %d landmark story subjects, found %d"
+			% [expected_landmark_count, landmark_subjects.size()]
+		)
 		return
 
 	# Some landmark subjects are story-gated in a fresh state (no resolved action yet).
@@ -455,26 +500,26 @@ func _check_resume_anchor(failures: Array[String]) -> void:
 func _check_dimension_neutral_result_parity(failures: Array[String]) -> void:
 	var resident_ids: PackedStringArray = APP_RUNTIME.get_app_state(self).get_resident_ids()
 	if resident_ids.is_empty():
-		failures.append("cannot compare 2D/3D dispatch results without a resident")
+		failures.append("cannot compare spatial-context dispatch results without a resident")
 		return
 	var resident_id := String(resident_ids[0])
 	var subject_id := "npc:%s" % resident_id
-	var state_2d := APP_STATE_SCRIPT.new() as AppStateService
-	var state_3d := APP_STATE_SCRIPT.new() as AppStateService
-	var result_2d: Dictionary = state_2d.activate_story_subject(subject_id, "talk", {
+	var vector2_context_state := APP_STATE_SCRIPT.new() as AppStateService
+	var vector3_context_state := APP_STATE_SCRIPT.new() as AppStateService
+	var vector2_context_result: Dictionary = vector2_context_state.activate_story_subject(subject_id, "talk", {
 		"resident_id": resident_id,
 		"location": "Piano Ferry",
 		"world_position": Vector2.ZERO,
 		"level_id": 0,
 	})
-	var result_3d: Dictionary = state_3d.activate_story_subject(subject_id, "talk", {
+	var vector3_context_result: Dictionary = vector3_context_state.activate_story_subject(subject_id, "talk", {
 		"resident_id": resident_id,
 		"location": "Piano Ferry",
 		"world_position": Vector3.ZERO,
 		"level_id": 0,
 	})
-	if _dimension_neutral_result(result_2d) != _dimension_neutral_result(result_3d):
-		failures.append("equivalent 2D/3D resident dispatches produced different story results")
+	if _dimension_neutral_result(vector2_context_result) != _dimension_neutral_result(vector3_context_result):
+		failures.append("Vector2/Vector3 context payloads produced different story results")
 	var state_keys := [
 		"objective",
 		"hint",
@@ -485,10 +530,10 @@ func _check_dimension_neutral_result_parity(failures: Array[String]) -> void:
 		"resident_profiles",
 	]
 	for key in state_keys:
-		if state_2d.get(key) != state_3d.get(key):
-			failures.append("equivalent 2D/3D resident dispatches diverged in '%s'" % key)
-	state_2d.free()
-	state_3d.free()
+		if vector2_context_state.get(key) != vector3_context_state.get(key):
+			failures.append("Vector2/Vector3 context payloads diverged in '%s'" % key)
+	vector2_context_state.free()
+	vector3_context_state.free()
 
 
 func _dimension_neutral_result(result: Dictionary) -> Dictionary:

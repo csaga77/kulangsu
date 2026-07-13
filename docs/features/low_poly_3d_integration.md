@@ -11,23 +11,21 @@
 
 - `scenes/game_world_3d.tscn` is the production overworld instantiated directly by `main.gd`.
 - Terrain/water, actor/controller, collision, camera, three authored landmarks,
-  five stable landmark subjects, the complete shared resident roster, local
+  two tunnel markers, all 15 landmark subjects, all 5 inspectable subjects, the complete shared resident roster, local
   resident wandering, 3D speech balloons, shared BGM/landmark-cue audio, and
   semantic resume anchors are integrated.
 - `test_game_world_3d.tscn` boots the production world and exercises terrain/water/street generation,
   actor grounding and wading, camera wiring, authored-landmark collision, resident proximity and
   inspect dispatch, shared audio/weather, and semantic resume behavior.
-- The remaining acceptance work is two authored tunnel/interior spaces, routed
-  tunnel residents, representative landmark progression parity, the release-export repeat of the diagnostically green performance
-  capture. The runtime-direction decision is recorded as **replace** and the flip is complete.
+- Remaining work is two authored tunnel/interior spaces, routed tunnel residents, richer landmark presentation, and the release-export repeat of the diagnostically green performance capture. The runtime-direction decision is recorded as **replace**, the flip is complete, and the old 2D world stack has been removed.
 
 ## Player Experience
 
-- The player can approach one recognizable landmark with normal 3D movement and collision.
+- The player can approach five recognizable landmark anchors with normal 3D movement and collision.
 - A nearby inspect subject becomes the active contextual interaction.
 - Inspecting it produces a response through the same subject-id semantics used by the current story layer.
-- One resident proxy demonstrates readable scale and interaction range without introducing a parallel resident-data format.
-- Leaving and restoring the slice returns the player to a safe documented anchor.
+- The complete resident roster uses shared definitions without introducing a parallel resident-data format.
+- Leaving and restoring the world returns the player to a safe documented anchor.
 
 ## Architecture And Ownership
 
@@ -42,7 +40,7 @@
 
 ## Interaction Contract
 
-- Every interactive `Area3D` exposes a non-empty stable `subject_id`.
+- Every interactive `StorySubject3D` exposes a non-empty stable `subject_id`; the production-world test asserts the exact 15-landmark/5-inspectable non-NPC set.
 - Proximity selection is scene-local and must choose one deterministic active subject when ranges overlap.
 - Input continues through `PlayerController3D`; architecture nodes do not poll input.
 - The adapter emits an inspect request carrying the stable subject id and optional spatial context. It does not mutate progression directly.
@@ -55,13 +53,13 @@
 - Save data stores stable semantic ids and existing shared progression, never `NodePath`, instance id, raw `Vector3`, or generated mesh details as the sole resume key.
 - The slice defines one stable resume-anchor id whose 3D transform is resolved by the owning scene.
 - If the requested anchor is missing, resume falls back to the slice entry anchor.
-- The current 2D save remains readable while the 3D lane is experimental. Prototype-only state must not alter the existing save schema without a versioned migration.
+- Save-schema changes still require a versioned migration; presentation-specific 3D details must not leak into the dimension-neutral payload.
 
 ## Runtime World
 
-- Default landmark: Piano Ferry.
-- Shipped content: an authored landmark building, generated walkable collision,
-  stable subjects, shared-data residents, entry/resume anchors, `HumanBody3D`,
+- Default resume landmark: Piano Ferry.
+- Shipped content: three authored landmark buildings, two tunnel markers, generated walkable collision,
+  the complete authored subject set, shared-data residents, entry/resume anchors, `HumanBody3D`,
   `PlayerController3D`, and `Camera3DController`.
 - Automated checks cover deterministic prompt selection, controller-driven
   resident dispatch, camera-occluder behavior, the full shared resident count,
@@ -79,10 +77,7 @@
   run passes every frame-time, draw-call, primitive, memory, and cold-rebuild
   budget over 60 seconds at 2880×1620 physical pixels. Repeat through a release
   export to close the formal gate.
-- **Green baseline:** equivalent fresh 2D/3D resident dispatches produce the same
-  dimension-neutral result and core progression state.
-- **Open:** equivalent landmark dispatch parity with a meaningful progression
-  effect.
+- **Green:** resident dispatch produces the expected dimension-neutral result/core progression state, and all 20 authored non-NPC world subjects satisfy the same shared service contract.
 - **Green:** `docs/plan/implementation_plan.md` records the replace decision and completed runtime flip.
 
 ## Out Of Scope

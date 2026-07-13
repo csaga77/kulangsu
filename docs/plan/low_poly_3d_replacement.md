@@ -36,13 +36,14 @@ through the entire app shell. Per-item status is inline in the phases below; the
 - **Decision made + runtime flipped (2026-07-06):** the runtime-direction decision is recorded as
   **replace the 2D overworld** in `implementation_plan.md`, and `main.gd` now instantiates only
   `game_world_3d.tscn` (toggle and `game_main.tscn` preload removed). The 3D overworld is the runtime;
-  the 2D scene is orphaned.
+  the 2D scene has been deleted.
 - **Legacy removal complete:** the orphaned 2D character/NPC renderer, physics controllers,
   behavior tree, pixel-route tests, 2D speech balloon, and Universal LPC runtime/editor submodule
-  have been removed. Traveler setup and journal previews now render the shared 3D actor/model
-  contract. The weather sandbox uses lightweight markers instead of gameplay actors.
+  have been removed. The final 2D overworld residuals — legacy landmark/component scenes,
+  level/portal helpers, tilemap terrain/water, overlay weather nodes, and their focused tests — are
+  also removed. Traveler setup and journal previews render the shared 3D actor/model contract.
 - **Open (accepted follow-ups):** tunnel interior geometry (Bi Shan / Long Shan are still marker
-  anchors), the landmark-result-parity equality check, and the release-export performance repeat.
+  anchors) and the release-export performance repeat.
 
 The runtime flip is complete. Reversibility is provided by source control rather than a second live
 overworld path.
@@ -214,18 +215,14 @@ scene under `scenes/tests/` and a green headless run before the next begins:
 5. **Interaction subjects** — add an `Area3D`-based `StorySubject3D` that exposes the same stable
    `subject_id` set as `StorySubjectArea2D` and dispatches through `StoryEventService`. Removing or
    restyling a building must not change subject ids.
-   *Status: first pass engine-validated.* `game/story_subject_3d.gd` mirrors
-   `StorySubjectArea2D`'s subject-id/action/display/presence contract on `Area3D`.
+   *Status: complete for the authored production catalog.* `game/story_subject_3d.gd` preserves
+   the subject-id/action/display/presence contract on `Area3D`.
    `game_world_3d.gd` now owns deterministic proximity selection, hint text, and inspect dispatch
    via `PlayerController3D.inspect_requested`, calling the same `AppState.activate_story_subject(...)`
-   path as `game_main`. One subject per landmark is authored in the scene using the exact
-   `subject_id`s from the 2D landmark scenes (`landmark:piano_ferry.harbor_refrain`,
-   `landmark:trinity_church.steps`, `landmark:bi_shan_tunnel.echo_a`,
-   `landmark:long_shan_tunnel.tunnel_entry`, `landmark:bagua_tower.synthesis_chamber`) so dispatch
-   is identical. The runtime smoke now exercises resident selection and dispatch through the 3D
-   controller/adapter and compares a representative resident result/core-state outcome against an
-   equivalent fresh 2D dispatch. Still needed: landmark result parity and richer per-landmark
-   subject coverage.
+   path as the shared story services. All 15 landmark subjects and all 5 inspectable subjects are
+   authored under their production landmark proxies. The runtime smoke asserts the exact id set,
+   exercises resident selection and dispatch through the 3D controller/adapter, and validates the
+   dimension-neutral subject result contract.
 6. **Residents** — a 3D resident presenter that renders existing `ResidentDefinition` data with
    `HumanBody3D`; identity, dialogue, routine, and story gates stay in the shared definitions.
    *Status: first pass engine-validated.* `characters/resident_presenter_3d.gd`
@@ -268,21 +265,19 @@ progression; and save/continue restores through stable semantic resume anchors, 
 fallback when a requested anchor is missing. The 2D save must remain loadable through the cutover;
 any prototype-only state needs a versioned migration, never a schema fork.
 
-*Status: resume anchor, controller/adapter resident dispatch, and resident result equality proven;
-landmark equality open.*
+*Status: resume anchor, controller/adapter resident dispatch, resident result parity, and the exact
+production landmark/inspectable subject set proven.*
 `game_world_3d` updates the shared story
 resume checkpoint (`AppState.set_story_resume_checkpoint`) to the last landmark the player reaches in
 Story mode, and applies it on entry with a Piano Ferry fallback — the same stable landmark-name
-anchors the 2D game uses. `test_game_world_3d.tscn` now asserts the resume anchor places the player
+anchors the story/save layer uses. `test_game_world_3d.tscn` asserts the resume anchor places the player
 at the requested landmark and falls back to Piano Ferry for a missing anchor, alongside the existing
 resident-talk dispatch check through the shared `AppState.activate_story_subject` path. It also
 asserts the interaction contract: every landmark subject the adapter can resolve builds a well-formed
-request (matching `subject_id`, resolved action, dimension-neutral `location`/`world_position`/
-`level_id` context) and proximity selection deterministically resolves an active subject. The smoke
+request (matching `subject_id`, resolved action, and dimension-neutral spatial context) and proximity
+selection deterministically resolves an active subject. The smoke
 now drives a resident interaction through `PlayerController3D.inspect_requested` and the world
-adapter. It also compares a representative resident result and core state against an equivalent
-fresh 2D dispatch after removing dimension-specific `world_position`. Still to prove:
-representative landmark outcome equality against a 2D dispatch from an equivalent fresh story state.
+adapter and verifies all 15 landmark plus 5 inspectable production subject ids.
 
 ### Phase G — Record the decision and execute the cutover
 
@@ -305,12 +300,13 @@ representative landmark outcome equality against a 2D dispatch from an equivalen
    errors.
    *Flip executed 2026-07-06.* `main.gd` now holds a single `GAME_SCENE` = `game_world_3d.tscn` and
    instantiates it directly; the `USE_3D_OVERWORLD` toggle and the `GAME_SCENE_2D`/`game_main.tscn`
-   preload are removed. The 3D overworld is the runtime overworld. `game_main.tscn` is now orphaned
-   (nothing references it), so nothing dangles.
+   preload are removed. The 3D overworld is the runtime overworld, and the retired 2D scene has been
+   deleted.
 4. Delete the 2D character/NPC render stack, physics controllers, behavior tree, 2D speech balloon,
+   legacy landmark/components and level/portal helpers, tilemap terrain/water, overlay weather stack,
    obsolete 2D-only tests, and Universal LPC submodule; remove dead references.
    *Completed 2026-07-13.* The dimension-neutral resident/story/save layer remains intact, and UI
-   previews now use `CharacterPreview3D` plus the shared model catalog.
+   previews use `CharacterPreview3D` plus the shared model catalog.
 5. Run focused actor, collision, resident, UI, weather, production-world, and main-flow validation;
    confirm no scene or resource references dangle. *Completed with the verified removal pass.*
 

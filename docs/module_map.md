@@ -8,8 +8,8 @@ Read [`design_brief.md`](design_brief.md) and [`architecture.md`](architecture.m
 - [`../main.tscn`](../main.tscn) / [`../main.gd`](../main.gd) - app startup and overlay flow
 - [`../scenes/game_world_3d.tscn`](../scenes/game_world_3d.tscn) / [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd) - production low-poly 3D overworld: builds `LowPolyTerrain3D`, `HumanBody3D`, an orthographic camera, five landmark anchors (three stylized building instances plus tunnel markers), maps the shared player profile to male/female/boy GLBs, spawns the shared wandering resident roster, owns 3D `StorySubject3D` interaction dispatch, shared BGM/landmark-cue audio, generated landmark collision, and location/landmark/resume syncing into `AppState`
 - [`../scenes/tests/capture_game_world_3d_qa.tscn`](../scenes/tests/capture_game_world_3d_qa.tscn) - graphical Metal QA runner that produces the five fixed-camera acceptance PNGs plus a raw 5-second-warm-up/60-second performance report, cold-terrain timing, and resident/per-landmark visibility variants under `design/qa/low_poly_3d/`
-- [`../weather/`](../weather) - weather-specific top-level folder for reusable overlays, the global weather manager/runtime, and the dedicated weather sandbox
-- [`../weather/weather_manager.gd`](../weather/weather_manager.gd) - global overworld weather manager that instantiates runtime weather rigs, owns preset cycling, and applies synced wind across registered rain, fog, and cloud-shadow targets
+- [`../weather/`](../weather) - 3D weather presentation, the global weather manager/runtime, and focused 3D capture validation
+- [`../weather/weather_manager.gd`](../weather/weather_manager.gd) - global overworld weather manager that owns weighted weather-state cycling, applies it to the registered `WeatherRig3D`, and publishes synced wind for terrain water
 - [`../weather/weather_rig_3d.gd`](../weather/weather_rig_3d.gd) - 3D weather presentation target registered with `WeatherManager`; translates the shared cycle into player-following rain particles, `WorldEnvironment` fog, and moving cloud-cover sun modulation while water continues to consume the published wind
 - [`../weather/tests/capture_weather_3d.tscn`](../weather/tests/capture_weather_3d.tscn) - graphical steady-rain validation/capture scene for the 3D runtime weather rig
 - [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd) - runtime lookup helper for the global scene-owned `WeatherManager`
@@ -24,7 +24,6 @@ Put new menu, overlay, HUD, or shell-flow work here.
 ## World Integration And Shared State
 
 - [`../scenes/game_world_3d.tscn`](../scenes/game_world_3d.tscn) / [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd) - production overworld integration: connects terrain, landmarks, residents, weather, audio, story subjects, and resume anchors to shared state (the 2D `game_main` overworld and its route/tunnel helpers have been removed)
-- [`../terrain/terrain.tscn`](../terrain/terrain.tscn) / [`../terrain/terrain.gd`](../terrain/terrain.gd) - island terrain, generated helper layers, water rendering setup, and the ground-layer masking hooks used by tunnel interiors
 - [`../terrain/low_poly_terrain_3d.gd`](../terrain/low_poly_terrain_3d.gd) - production low-poly 3D terrain node that owns exports, lifecycle, image loading, materials, wind, style resolution, and public surface-height queries; it configures a `LowPolyTerrainSampler` and `LowPolyTerrainMeshBuilder` and wraps the built buffers in `MeshInstance3D`/collision children
 - [`../terrain/low_poly_terrain_sampler.gd`](../terrain/low_poly_terrain_sampler.gd) - the "images -> cell grid" half of the low-poly 3D pipeline: samples the terrain mask/profile and optional full-source heightmap into a coarse `LowPolyTerrainCell` grid, including land/street/building classification, height smoothing, and heightmap waterline application
 - [`../terrain/low_poly_terrain_mesh_builder.gd`](../terrain/low_poly_terrain_mesh_builder.gd) - the "cell grid -> meshes" half of the low-poly 3D pipeline: `build(...)` turns the cell grid into a `MeshBuildResult` of per-pass `MeshBuildState` buffers (land, shoreline, water body/surface-layer/shoreline, street, building) plus collision faces and cell counts, and owns the shared corner/surface-height math reused by the node's placement queries
@@ -35,7 +34,6 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../terrain/low_poly_world_coordinates_3d.gd`](../terrain/low_poly_world_coordinates_3d.gd) - shared coordinate adapter for converting terrain mask pixels and rough 2D isometric authored positions to low-poly 3D XZ world positions
 - [`../terrain/low_poly_water_wind_adapter.gd`](../terrain/low_poly_water_wind_adapter.gd) - integration adapter that normalizes published weather wind and drives the terrain water shader without coupling `LowPolyTerrain3D` to `WeatherManager`
 - [`../terrain/island_generation_profile.tres`](../terrain/island_generation_profile.tres) - shared authored terrain profile resource referenced by `terrain.tscn` so direct terrain validation and the gameplay world use the same rules
-- [`../terrain/water_layer_setup.gd`](../terrain/water_layer_setup.gd) - shared water `TileMapLayer` setup used by runtime terrain and the focused water sandbox
 - [`../terrain/terrain_generation_profile.gd`](../terrain/terrain_generation_profile.gd) / [`../terrain/terrain_mask_rule.gd`](../terrain/terrain_mask_rule.gd) - terrain mask legend, per-color semantics, and generated-layer paint defaults
 - [`../game/app_state.gd`](../game/app_state.gd) - shared UI/progression-facing state plus the compatibility shell that composes profile, journal, autosave, landmark, and StoryEvent helpers
 - [`../game/app_runtime.gd`](../game/app_runtime.gd) - scene-owned runtime lookup for `AppStateService` and the live `"player"` group member
@@ -43,7 +41,6 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../game/story_event_service.gd`](../game/story_event_service.gd) - first-pass generic StoryEvent bridge for subject-based interactions, including `npc:`, `landmark:`, and `inspectable:` subjects, plus shared condition matching, candidate selection, and shared effect application
 - [`../weather/weather_manager.gd`](../weather/weather_manager.gd) - global scene-owned weather service for overworld preset cycling, runtime weather-rig instancing, and synced wind application
 - [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd) - runtime lookup helper for `WeatherManager`
-- [`../game/story_subject_area.gd`](../game/story_subject_area.gd) - generic `LevelArea2D`-based world-subject node used for both landmark interactions and scene-owned inspect surfaces; resolves `subject_id`, default action, label, and visibility from the shared StoryEvent catalog/service
 - [`../game/player_profile_service.gd`](../game/player_profile_service.gd) - owns player appearance/profile and unlocked/equipped costume state while preserving `AppState`'s public API
 - [`../game/journal_builder.gd`](../game/journal_builder.gd) - pure journal/setup text builders used by the journal and player setup overlays
 - [`../game/story_save_service.gd`](../game/story_save_service.gd) - versioned story autosave read/write logic and save metadata refresh
@@ -53,7 +50,7 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../game/resident_interaction_service.gd`](../game/resident_interaction_service.gd) - applies resident dialogue beats, conditional beats, trust milestones, route refresh, and resident-facing autosave side effects behind `AppState` facades
 - [`../game/story_route_graph.gd`](../game/story_route_graph.gd) - keeps an instance-local runtime cache of modular storyline definitions, then projects them into route progress, lead selection, display-order-independent route-score gates, canonical story-event availability/blocker checks, endgame trigger logic, and tone-tag assembly
 - [`../game/storylines/`](../game/storylines) - authored storyline data: typed route resources under `routes/`, the `phase_set.tres` phase vocabulary, and the checked-in graph layout; add new `StorylineRouteResource` files under `routes/` instead of editing the central route graph. The schema classes and `StorylineCatalog` loader now live in the `addons/storyline_editor` submodule, located through the `storyline_editor/*` project settings.
-- [`../game/story_world_reactivity.gd`](../game/story_world_reactivity.gd) - resolves route-aware non-resident inspection text for `inspectable:` world subjects authored through `StorySubjectArea2D` nodes in the ferry, church, and Bagua landmark scenes
+- [`../game/story_world_reactivity.gd`](../game/story_world_reactivity.gd) - resolves route-aware non-resident inspection text for `inspectable:` world subjects authored as `StorySubject3D` nodes in the production world scene
 - [`../game/landmark_progression.gd`](../game/landmark_progression.gd) - shared melody-prompt builder plus compatibility/fallback landmark helpers kept behind the `AppState` bridge while the authored StoryEvent tree owns the current melody-landmark interaction and completion spine
 - [`../game/landmark_cue_loader.gd`](../game/landmark_cue_loader.gd) - shared one-shot landmark cue loader/cache that decodes shipped Vorbis `.ogg` cues directly instead of relying on editor import state
 - [`../game/bgm_catalog.gd`](../game/bgm_catalog.gd) / [`../game/bgm_manager.gd`](../game/bgm_manager.gd) - seed-pool BGM definitions plus scene-owned weighted playback and transition logic for overworld music
@@ -62,9 +59,8 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../game/resident_system/`](../game/resident_system) - resident definition resources for appearance, dialogue, routine, and behavior metadata
 - [`../game/residents/`](../game/residents) - all 25 editor-authored resident `.tres` definitions under `definitions/`, templates, and the short designer workflow note
 - [`../game/player_appearance_catalog.gd`](../game/player_appearance_catalog.gd) / [`../game/player_costume_catalog.gd`](../game/player_costume_catalog.gd) - player customization data
-- [`../weather/overworld_weather_preset.gd`](../weather/overworld_weather_preset.gd) / [`../weather/overworld_weather_preset.tres`](../weather/overworld_weather_preset.tres) - shared default rain/fog/cloud/impact tuning consumed by the overworld weather stack and `test_weather`
 If several screens or systems need the same player-facing state, it probably belongs in `game/app_state.gd`.
-If you are changing how terrain mask colors map to layers, start with the terrain profile and rule scripts before editing `terrain.gd`.
+If you are changing how terrain mask colors map to generated surfaces, start with the terrain profile and rule scripts before editing `low_poly_terrain_3d.gd`.
 
 ## Characters And Interaction
 
@@ -80,30 +76,29 @@ If you are changing how terrain mask colors map to layers, start with the terrai
 - [`../characters/control/resident_controller_3d.gd`](../characters/control/resident_controller_3d.gd) - lightweight 3D resident wander controller (stroll to a nearby point, pause, repeat, with a stuck-timeout) plus `pause_for` so a talked-to resident holds still while facing the player
 - [`../characters/resident_presenter_3d.gd`](../characters/resident_presenter_3d.gd) - spawns `HumanBody3D` residents from shared `AppState` resident data at their landmark anchors, each with an `npc:` talk `StorySubject3D`, a wander controller, and a world-anchored 3D speech balloon; used by `game_world_3d`
 - [`../common/gui/`](../common/gui) - in-world UI such as speech balloons; [`../common/gui/speech_balloon_3d.gd`](../common/gui/speech_balloon_3d.gd) is the billboarded, camera-facing `Label3D` dialogue balloon used by the 3D overworld
-- [`../game/story_subject_3d.gd`](../game/story_subject_3d.gd) - `Area3D` 3D counterpart of `StorySubjectArea2D`: exposes a stable `subject_id`, resolves action/display/presence from the shared StoryEvent catalog/`AppState`, and is dispatched by `game_world_3d` through the same `AppState.activate_story_subject` path (no 3D-only story fork)
+- [`../game/story_subject_3d.gd`](../game/story_subject_3d.gd) - production `Area3D` world-subject adapter: exposes a stable `subject_id`, resolves action/display/presence from the shared StoryEvent catalog/`AppState`, and is dispatched by `game_world_3d` through `AppState.activate_story_subject`
 
 Put player control, resident movement, model presentation, and interaction prompts here.
 
 ## Landmark And World Content
 
-- [`../architecture/`](../architecture) - landmark scenes such as Bagua Tower, tunnels, church, and ferry content
-- [`../architecture/components/`](../architecture/components) - reusable world-building pieces such as portals and stairs
-- [`../architecture/bagua_tower/bagua_tower_stylized_3d.tscn`](../architecture/bagua_tower/bagua_tower_stylized_3d.tscn) / [`../architecture/bagua_tower/generate_stylized_3d.gd`](../architecture/bagua_tower/generate_stylized_3d.gd) - editable reference-photo-derived Bagua Tower concept and its reproducible Low-Poly Building Editor API generator; standalone from the current 2D runtime landmark
-- [`../architecture/piano_ferry/piano_ferry_stylized_3d.tscn`](../architecture/piano_ferry/piano_ferry_stylized_3d.tscn) / [`../architecture/piano_ferry/generate_stylized_3d.gd`](../architecture/piano_ferry/generate_stylized_3d.gd) / [`../architecture/piano_ferry/piano_ferry_building_spec.json`](../architecture/piano_ferry/piano_ferry_building_spec.json) - editable reference-photo-derived Piano Ferry concept, its reproducible Low-Poly Building Editor API generator, and its versioned deterministic base spec; standalone from the current 2D runtime landmark
+- [`../architecture/`](../architecture) - editable low-poly 3D landmark scenes and their reproducible generators; production placement and interaction hotspots are owned by `game_world_3d.tscn`
+- [`../architecture/bagua_tower/bagua_tower_stylized_3d.tscn`](../architecture/bagua_tower/bagua_tower_stylized_3d.tscn) / [`../architecture/bagua_tower/generate_stylized_3d.gd`](../architecture/bagua_tower/generate_stylized_3d.gd) - production Bagua Tower model and its reproducible Low-Poly Building Editor API generator
+- [`../architecture/piano_ferry/piano_ferry_stylized_3d.tscn`](../architecture/piano_ferry/piano_ferry_stylized_3d.tscn) / [`../architecture/piano_ferry/generate_stylized_3d.gd`](../architecture/piano_ferry/generate_stylized_3d.gd) / [`../architecture/piano_ferry/piano_ferry_building_spec.json`](../architecture/piano_ferry/piano_ferry_building_spec.json) - production Piano Ferry model, generator, and versioned deterministic base spec
 - [`../architecture/bagua_tower/tests/`](../architecture/bagua_tower/tests) - Bagua Tower-specific validation scenes and scripts
-- [`../common/`](../common) - shared world nodes, effects, visibility helpers, level helpers, and common world-facing UI primitives
+- [`../common/`](../common) - shared runtime helpers and common world-facing UI primitives
 
 ### Landmark Quest Triggers
 
-- [`../game/story_subject_area.gd`](../game/story_subject_area.gd) - `class_name StorySubjectArea2D extends LevelArea2D`; place in the reusable landmark or feature scene that owns the physical hotspot, assign a stable `subject_id`, and let the shared StoryEvent catalog/service provide action, label, and presence rules so the same world subject can be reused by different StoryEvents while the node keeps only placement, collision, and shared level-aware fields
+- [`../game/story_subject_3d.gd`](../game/story_subject_3d.gd) - place `StorySubject3D` hotspots under the owning landmark proxy in `game_world_3d.tscn`, assign a catalog-backed stable `subject_id`, and leave visibility/action resolution to the shared StoryEvent service
 
-Put new landmark scenes and reusable architectural pieces here. Define shared floor data in `LevelRegistry`, and use absolute or parent-relative exported `level_id` integers in traversal components.
+Put new landmark models and reproducible generators under `architecture/`; author production placement, collision, and story hotspots in `game_world_3d.tscn`.
 
 ## Reusable Gameplay Modules
 
-- [`../game/grid_board_game/`](../game/grid_board_game) - reusable board-game module and local test scenes
+- [`../game/grid_board_game/`](../game/grid_board_game) - reusable, intentionally 2D board-game module and local test scenes; isolated from the production overworld
 - [`../game/marble_game/`](../game/marble_game) - self-contained native low-poly 3D marble-game prototype, including `RigidBody3D` actors, board physics, camera-ray input, and a focused smoke test; no tilemap dependency
-- [`../game/piano_game/`](../game/piano_game) - piano mini-game prototype
+- [`../game/piano_game/`](../game/piano_game) - intentionally 2D piano mini-game prototype; isolated from the production overworld
 - [`../game/tests/npc_system/`](../game/tests/npc_system) - NPC/resident validation scenes and companion test assets
 
 If a feature is self-contained and reusable, extend its module folder instead of scattering logic across unrelated directories.
@@ -124,7 +119,7 @@ If a feature is self-contained and reusable, extend its module folder instead of
 ## Shared Utilities And Assets
 
 - [`../godot_common/`](../godot_common) - support utilities reused across scenes
-- [`../resources/`](../resources) - materials, sprites, audio, animations, and tilesets
+- [`../resources/`](../resources) - materials, sprites, audio, and animations
 
 Be careful about renames or moves here because scene and resource references can break easily.
 
@@ -132,7 +127,7 @@ Be careful about renames or moves here because scene and resource references can
 
 - [`../scenes/`](../scenes) - runtime gameplay scenes such as `game_world_3d`
 - [`../scenes/tests/`](../scenes/tests) - ad hoc prototype and validation scenes
-- [`../weather/tests/`](../weather/tests) - dedicated weather validation scenes and tuning sandboxes
+- [`../weather/tests/`](../weather/tests) - dedicated 3D weather validation and capture scenes
 - [`../characters/tests/test_human_body_3d.tscn`](../characters/tests/test_human_body_3d.tscn) - direct `HumanBody3D` adapter smoke scene covering configuration, flat direction, movement velocity, current-frame controller input, safe capsule placement, step-up/step-down behavior, jump state, ground footprint behavior, and character-model structure (instanced model, mesh, material, animation clips)
 - [`../game/tests/npc_system/test_resident_interaction.tscn`](../game/tests/npc_system/test_resident_interaction.tscn) - focused resident progression regression covering gate fallbacks, trust-max milestones, and a resident-driven autosave/continue path
 - [`../game/tests/npc_system/test_resident_catalog_external_defs.tscn`](../game/tests/npc_system/test_resident_catalog_external_defs.tscn) - focused resident catalog regression covering external `.tres` definition loading, roster completeness, and field-level validation
@@ -143,14 +138,11 @@ Be careful about renames or moves here because scene and resource references can
 - [`../game/tests/story_routes/test_story_routes.tscn`](../game/tests/story_routes/test_story_routes.tscn) - focused seasonal-route regression covering concurrent route seeds, manual lead pinning persistence, non-landmark seasonal progression, guarded endgame activation, and final-act save/restore
 - [`../game/tests/story_routes/test_story_reactivity.tscn`](../game/tests/story_routes/test_story_reactivity.tscn) - focused cross-route resident reactivity regression covering winter-memory, Spring Festival aftermath, future-choice, second-summer, and preservation-perspective follow-through
 - [`../game/tests/story_routes/test_story_event_service.tscn`](../game/tests/story_routes/test_story_event_service.tscn) - focused StoryEvent bridge regression covering subject-based resident talk, landmark-trigger activation, inspectable resolution, and resident routine overrides at the shared-state level
-- [`../scenes/tests/test_level_resolution.tscn`](../scenes/tests/test_level_resolution.tscn) - focused relative-level resolution and inherited room-level sandbox
-- [`../scenes/tests/test_portal_overlap.tscn`](../scenes/tests/test_portal_overlap.tscn) - focused multi-actor portal transition regression test
 - [`../characters/tests/test_character_collisions.tscn`](../characters/tests/test_character_collisions.tscn) - self-contained generated-fixture regression covering `HumanBody3D` gravity/landing, static-wall blocking, front stair ascent/descent, tagged stair-side rejection, and capped `RigidBody3D` pushing
 - [`../scenes/tests/test_landmark_cue_loading.tscn`](../scenes/tests/test_landmark_cue_loading.tscn) - focused landmark cue audio loader/cache smoke test
 - [`../scenes/tests/test_low_poly_building_editor_3d.tscn`](../scenes/tests/test_low_poly_building_editor_3d.tscn) - end-to-end building-editor smoke suite relocated from the `addons/low_poly_building_editor` submodule so the addon carries no parent-repo paths; probes generated buildings with `HumanBody3D` collision and covers the full wall/floor/stairs/rail/pillar/roof/opening regression matrix described in the addon's `docs/feature.md`
 - [`../scenes/tests/test_building_tour_3d.tscn`](../scenes/tests/test_building_tour_3d.tscn) - generic playable building-tour harness with an exported `building_scene`, transform and player spawn, plus `HumanBody3D`, camera-relative movement, orbit/zoom camera, lighting, and ground collision; defaults to the generated low-poly Bagua Tower concept
-- [`../weather/tests/test_weather.tscn`](../weather/tests/test_weather.tscn) - focused weather tuning sandbox with tilemap-backed water/terrain, manager-attached fog/rain/cloud/impact passes, a thunder-flash pass, a tabbed weather control panel split into `Wind`, `Rain`, `Fog`, and `Cloud` tuning groups with per-pass `Sync With Wind` toggles, actor readability checks, temporary foreground occluder proxies, and a parity check against the shared overworld weather preset
-- [`../scenes/tests/test_water_render.tscn`](../scenes/tests/test_water_render.tscn) - focused water color, wave, transparency, and refraction sandbox
+- [`../weather/tests/capture_weather_3d.tscn`](../weather/tests/capture_weather_3d.tscn) - focused steady-rain validation/capture scene for the production 3D weather rig
 - [`../scenes/tests/test_camera_3d_occlusion.tscn`](../scenes/tests/test_camera_3d_occlusion.tscn) - focused `Camera3DController` regression covering multiple blockers, target exclusion, prior-transparency preservation, sightline restoration, disable cleanup, and inactive-camera cleanup
 - [`../scenes/tests/test_low_poly_terrain_3d.tscn`](../scenes/tests/test_low_poly_terrain_3d.tscn) - focused 3D terrain scene covering heightmap and mask-clipped generation, layered water, wind control, and coordinate round-trips
 - [`../scenes/tests/test_street_terrain_integration.tscn`](../scenes/tests/test_street_terrain_integration.tscn) - focused terrain-generation/Street3D integration regression covering automatic source discovery, base-grid profile baking, corridor bed shaping/feathering, manual-height preservation, street mesh/collision retention, and street-triggered terrain regeneration
@@ -184,7 +176,7 @@ Use these when you need a focused validation target instead of the full project 
 - [`features/low_poly_terrain_3d.md`](features/low_poly_terrain_3d.md) - current low-poly 3D terrain prototype scope, ownership, and validation notes
 - [`features/low_poly_actor_3d.md`](features/low_poly_actor_3d.md) - current low-poly 3D actor adapter prototype scope, ownership, and validation notes
 - [`features/low_poly_3d_integration.md`](features/low_poly_3d_integration.md) - planned one-landmark interaction, story/resident/save ownership, evidence gates, and runtime-direction decision contract for the 3D sidecar
-- [`features/weather_rendering.md`](features/weather_rendering.md) - current weather-system design, ownership, extension guide, and focused validation notes for the tilemap-backed sandbox
+- [`features/weather_rendering.md`](features/weather_rendering.md) - current 3D weather-system design, ownership, extension guide, and validation notes
 - [`features/terrain_water_rendering.md`](features/terrain_water_rendering.md) - terrain water rendering and validation notes
 - [`features/`](features) - feature specs
 - [`features/template.md`](features/template.md) - local feature-spec template
@@ -225,12 +217,8 @@ Useful searches when locating code:
 - `inspect_requested` for inspect flow
 - `set_location` for location syncing
 - `resident` for resident systems and data
-- `FogOverlay` for the reusable fog/weather effect
-- `RainOverlay` for the reusable rain/weather effect
-- `CloudShadowOverlay` for the slow-moving ground cloud-shadow pass
-- `RainGroundImpacts` for isometric raindrop ground-hit rendering
 - `WeatherManager` for the overworld's global weather-cycle and wind-sync service
-- `test_weather` for the focused weather sandbox and control panel
+- `WeatherRig3D` for the production rain/fog/cloud presentation target
 - `water_tint` for the water shader and material
 - `LowPolyTerrain3D` for production terrain-mask/heightmap-to-3D generation, including optional full-heightmap source expansion, heightmap elevation sampling, water-level classification, continuous visible seabed generation, and smooth low-poly land-surface generation
 - `LowPolyArtStyle3D` for low-poly 3D palette, camera, lighting, and landmark-color presets

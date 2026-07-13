@@ -1,116 +1,34 @@
 # Terrain Water Rendering
 
-> Scope: this doc covers the **2D overworld** water — a generated `TileMapLayer`
-> driven by the `canvas_item` shader in `resources/materials/water.gdshader`.
-> The parallel **low-poly 3D** prototype renders water as procedural meshes with
-> the spatial shader `resources/materials/water_3d.gdshader`; that path is owned
-> by [`low_poly_terrain_3d.md`](low_poly_terrain_3d.md). The two systems are
-> independent and intentionally not shared.
-
 ## Goal
 
-- Keep the island coastline readable and calm without breaking isometric tile seams.
-- Give future water-render improvements a single implementation-facing note that explains where the shoreline logic lives and what constraints it must preserve.
+Keep production 3D water calm, readable, continuous with the seabed, and responsive to the shared weather wind without creating a second water implementation.
 
-## User / Player Experience
+## Ownership
 
-- Open water should feel soft, clearly blue, gently animated, and lightly translucent rather than noisy, murky, or overprocessed.
-- Water should support the game's harbor-storybook atmosphere instead of drawing attention to the rendering technique.
+- [`../../terrain/low_poly_terrain_3d.gd`](../../terrain/low_poly_terrain_3d.gd) owns water mesh children, material setup, and lifecycle.
+- [`../../terrain/low_poly_terrain_mesh_builder.gd`](../../terrain/low_poly_terrain_mesh_builder.gd) builds continuous seabed, water-body, surface, overlap, and shoreline geometry from the sampled grid.
+- [`../../resources/materials/water_3d.gdshader`](../../resources/materials/water_3d.gdshader) owns spatial wave, color, transparency, and highlight behavior.
+- [`../../terrain/low_poly_art_style_3d.gd`](../../terrain/low_poly_art_style_3d.gd) and [`../../terrain/low_poly_postcard_diorama_style.tres`](../../terrain/low_poly_postcard_diorama_style.tres) own palette and tuning defaults.
+- [`../../terrain/low_poly_water_wind_adapter.gd`](../../terrain/low_poly_water_wind_adapter.gd) normalizes `WeatherManager` wind and updates the water shader.
 
-## Rules
+The retired `TileMapLayer` water material, setup helper, tilesets, focused 2D water scene, and hidden shoreline tile collision were removed with the 2D overworld.
 
-- The water base remains a generated `TileMapLayer` populated from mask pixels whose alpha falls below the authored land threshold and attached directly under the terrain root so it stays independent from the ground helper layers.
-- Water rendering is built from four active layers of responsibility:
-- blue body color
-- world-space water animation and waves
-- semi-transparent compositing
-- background distortion through screen refraction
-- Water tile art must remain visually seamless across neighboring cells; avoid per-tile UV warps that break atlas edges.
-- Semi-transparent water should preserve the base tile alpha first, then layer tint and refraction on top so the water remains visible on `TileMapLayer` rendering paths.
-- Refraction should support the water read, not replace it. If the sea starts looking muddy or brown, pull distortion influence back before changing terrain generation.
-- Tool-generated terrain helpers should stay transient and unowned so they do not show up in the editor scene tree or accumulate large serialized `TileMapLayer` caches in `terrain/terrain.tscn`.
-- Water and foam changes should stay calm and restrained. Favor subtle motion and shoreline readability over dramatic wave effects.
-- Shoreline blocking should live on a separate generated `water_collision` helper layer that stays hidden at runtime so visible water tiles do not need collision data.
+## Contracts
 
-## Edge Cases
-
-- Mask boundary checks must safely treat out-of-bounds pixels as non-land.
-- Because terrain is generated in a `@tool` script, scene validation in the editor can dirty generated nodes. Keep an eye on accidental `.tscn` churn.
-- If generated terrain helper nodes ever start showing up in the scene tree again, treat that as a regression and remove their owner/serialization path before tuning water visuals.
-- If water ever looks inactive, confirm whether the issue is shader hookup, wave motion strength, or scene composition before reworking the material again.
-- If background distortion is hard to see, confirm that useful scenery is actually rendered behind the water layer before increasing the refraction further.
-- If white seam lines appear after a transparency pass, check alpha-mask stability and atlas-edge sampling before changing terrain generation.
-- If animation becomes too subtle after a transparency pass, strengthen self-driven tint or highlight motion before relying on more screen distortion.
-
-## Architecture / Ownership
-
-- [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn) and [`../../terrain/terrain.gd`](../../terrain/terrain.gd) own water tile generation.
-- [`../../terrain/island_generation_profile.tres`](../../terrain/island_generation_profile.tres) is the shared authored terrain profile used by both direct terrain validation and the instanced overworld terrain.
-- [`../../terrain/water_layer_setup.gd`](../../terrain/water_layer_setup.gd) owns the shared `TileMapLayer` configuration used by both generated terrain water and the focused water sandbox.
-- [`../../terrain/terrain_generation_profile.gd`](../../terrain/terrain_generation_profile.gd) owns the default water tile source, atlas coordinates, and alpha-threshold terrain rule used by terrain generation.
-- [`../../resources/tilesets/collision_tiles.tres`](../../resources/tilesets/collision_tiles.tres) owns the hidden collision-only tile used by the generated shoreline blocker layer.
-- [`../../resources/materials/water.tres`](../../resources/materials/water.tres) and [`../../resources/materials/water.gdshader`](../../resources/materials/water.gdshader) own the blue water body, wave animation, semi-transparent tinting, and screen-space refraction treatment.
-- Keep water rendering local to terrain/common rendering helpers. Do not move it into UI, `AppState`, or unrelated gameplay modules.
-
-## Relevant Files
-
-- Scenes:
-- [`../../scenes/tests/test_water_render.tscn`](../../scenes/tests/test_water_render.tscn)
-- [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn)
-- Resources:
-- [`../../terrain/island_generation_profile.tres`](../../terrain/island_generation_profile.tres)
-- [`../../resources/tilesets/collision_tiles.tres`](../../resources/tilesets/collision_tiles.tres)
-- Scripts:
-- [`../../scenes/tests/test_water_render.gd`](../../scenes/tests/test_water_render.gd)
-- [`../../terrain/terrain.gd`](../../terrain/terrain.gd)
-- [`../../terrain/water_layer_setup.gd`](../../terrain/water_layer_setup.gd)
-- [`../../terrain/terrain_generation_profile.gd`](../../terrain/terrain_generation_profile.gd)
-- Materials:
-- [`../../resources/materials/water.tres`](../../resources/materials/water.tres)
-- [`../../resources/materials/water.gdshader`](../../resources/materials/water.gdshader)
-- Related docs:
-- [`../module_map.md`](../module_map.md)
-- [`terrain_system.md`](terrain_system.md)
-
-## Signals / Nodes / Data Flow
-
-- Signals emitted:
-- None dedicated to water rendering.
-- Signals consumed:
-- None dedicated to water rendering.
-- Important node paths, dictionaries, resources, or data flow:
-- `terrain.tscn` points at `island_generation_profile.tres`, so `game_main.tscn` inherits the same water-placement rules instead of carrying a separate inline profile.
-- `terrain/terrain.gd` reads `mask_file`, asks `TerrainGenerationProfile` to interpret each pixel, then fills water whenever the profile treats that pixel as water.
-- `TerrainGenerationProfile` now treats only pixels at or above `land_min_alpha_8bit` as land by default, so semi-transparent coastline antialiasing does not create stray walkable fringe.
-- `terrain/water_layer_setup.gd` keeps the water tileset/material/visibility/y-sort state in one place so the terrain scene and water sandbox stay aligned.
-- `terrain/terrain.gd` paints the same water mask cells into a hidden `water_collision` helper layer that uses `collision_tiles.tres` for shoreline blocking.
-- `water.tres` points to `water.gdshader`, which applies world-space wave motion, a blue water body, semi-transparent compositing, and light screen refraction on the water layer.
-
-## Contracts / Boundaries
-
-- Pixels whose alpha falls below `land_min_alpha_8bit` in the terrain mask are still the source of truth for water placement.
-- Water tile source ids and atlas coordinates now live with the terrain generation profile, not as ad hoc constants inside `terrain.gd`.
-- Water layer state should be configured through [`../../terrain/water_layer_setup.gd`](../../terrain/water_layer_setup.gd) so the terrain scene and [`../../scenes/tests/test_water_render.tscn`](../../scenes/tests/test_water_render.tscn) do not drift apart.
-- Visible water should stay visually driven; shoreline blocking belongs to the hidden `water_collision` layer.
-- The water layer must stay compatible with the existing isometric `TileMapLayer` placement conventions, but it should not depend on editor snapping from [`../../common/isometric_block.gd`](../../common/isometric_block.gd) because it is generated, not hand-placed.
-- Because shoreline blocking now lives in `water_collision`, any future non-blocking decorative water should leave that helper layer empty instead of changing the visible water tile.
-- If terrain generation stops being mask-driven, this doc and [`../module_map.md`](../module_map.md) should be updated.
-- If shoreline foam moves from procedural drawing to atlas/mesh-based content, update this doc with the new asset ownership and validation steps.
+- Water classification comes from the same mask/heightmap sample used by land generation.
+- Underwater terrain remains visible as continuous seabed; water must not expose holes at the shoreline.
+- Water rendering may overlap neighboring land visually to avoid cracks, but actor collision and height queries remain terrain-owned.
+- Wind is consumed through the adapter rather than coupling `LowPolyTerrain3D` directly to `WeatherManager`.
+- Keep motion and highlights restrained enough for the painted-postcard art direction.
 
 ## Validation
 
-- Use [`../../scenes/tests/test_water_render.tscn`](../../scenes/tests/test_water_render.tscn) as the primary validation target for water shader and layer-setup changes.
-- The test scene root exposes a `rebuild` toggle in the inspector so water tiles and the guide backdrop can be refreshed after local scene edits.
-- Run [`../../terrain/terrain.tscn`](../../terrain/terrain.tscn) only when terrain mask generation or water placement logic changes.
-- Confirm the test scene logs `test_water_render: rebuilt ...` without new water shader parse errors.
-- In the full terrain or `game_main` scene, confirm the player can no longer walk into open water.
-- Visually check four things:
-- water tiles remain seamless
-- blue color and wave motion remain readable before any refraction detail
-- motion stays subtle enough for the harbor tone
+- Run [`../../scenes/tests/test_low_poly_terrain_3d.tscn`](../../scenes/tests/test_low_poly_terrain_3d.tscn) after mesh, classification, material, or wind changes.
+- Run [`../../scenes/tests/test_game_world_3d.tscn`](../../scenes/tests/test_game_world_3d.tscn) to verify wading limits and live weather-to-water propagation.
+- Use the full app or the fixed production-world QA captures for visual checks of shoreline continuity, transparency, wave restraint, and actor readability.
 
 ## Out Of Scope
 
-- Dynamic wake systems, boats, splashes, or resident interaction ripples.
-- Full shoreline terrain autotiling or depth-based water simulation.
-- Gameplay logic based on water state.
+- A second 2D/tilemap water renderer.
+- Boats, wakes, dynamic splashes, or gameplay rules based on water state.

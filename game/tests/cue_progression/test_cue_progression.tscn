@@ -2,5 +2,5 @@
 
 [ext_resource type="Script" path="res://game/tests/cue_progression/test_cue_progression.gd" id="1_0q85u"]
 
-[node name="test_cue_progression" type="Node2D"]
+[node name="test_cue_progression" type="Node"]
 script = ExtResource("1_0q85u")

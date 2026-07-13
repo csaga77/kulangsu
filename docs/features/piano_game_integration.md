@@ -53,7 +53,7 @@ Recommended first result payload:
 
 ### Audio Ownership
 
-- `game_main.gd` keeps ownership of the live `BgmManager`.
+- `game_world_3d.gd` keeps ownership of the live `BgmManager`.
 - `main.gd` is responsible for ducking or muting BGM before the piano game starts and restoring it when the overlay closes.
 - The piano game owns its own playback stream and should not route song playback through `BgmManager`.
 - If a dedicated bus is added later, keep the split as: `BGM` for overworld music, piano-game playback on its own bus, one-shot UI feedback on UI/SFX.

@@ -2,5 +2,5 @@
 
 [ext_resource type="Script" path="res://game/tests/npc_system/test_resident_interaction.gd" id="1_resident_interaction"]
 
-[node name="TestResidentInteraction" type="Node2D"]
+[node name="TestResidentInteraction" type="Node"]
 script = ExtResource("1_resident_interaction")

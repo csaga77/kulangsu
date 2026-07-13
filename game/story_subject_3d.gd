@@ -2,18 +2,10 @@
 class_name StorySubject3D
 extends Area3D
 
-# 3D counterpart of StorySubjectArea2D.
-#
-# Phase E of docs/plan/low_poly_3d_replacement.md: the interaction contract that
-# the whole cutover hinges on. A StorySubject3D exposes a stable `subject_id` and
-# resolves its action, display name, and runtime presence from the SAME shared
-# StoryEvent catalog / AppState metadata the 2D subject uses. It performs no story
-# logic itself; the owning 3D world scene reads these fields, picks one active
-# subject by proximity, and dispatches through AppState.activate_story_subject(...)
-# exactly like the retired 2D overworld did for StorySubjectArea2D.
-#
-# It deliberately does NOT reimplement the LevelArea2D multi-level system; 3D
-# tunnels/levels are a later Phase E item. Until then level_id is reported as 0.
+# Production 3D world-subject adapter. It exposes a stable `subject_id` and
+# resolves action, display name, and runtime presence from the shared StoryEvent
+# catalog / AppState metadata. The owning world scene handles proximity and
+# dispatches through AppState.activate_story_subject(...).
 
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const STORY_EVENT_CATALOG := preload("res://game/story_event_catalog.gd")
@@ -24,6 +16,7 @@ const STORY_EVENT_CATALOG := preload("res://game/story_event_catalog.gd")
 		if subject_id == normalized:
 			return
 		subject_id = normalized
+		notify_property_list_changed()
 		update_configuration_warnings()
 		if is_inside_tree() and !Engine.is_editor_hint():
 			sync_story_presence()
@@ -72,6 +65,16 @@ func _get_configuration_warnings() -> PackedStringArray:
 	if STORY_EVENT_CATALOG.get_subject_metadata(subject_id).is_empty():
 		warnings.append("subject_id '%s' is not in the StoryEvent world-subject catalog." % subject_id)
 	return warnings
+
+
+func _validate_property(property: Dictionary) -> void:
+	match String(property.get("name", "")):
+		"subject_id":
+			property["hint"] = PROPERTY_HINT_ENUM
+			property["hint_string"] = STORY_EVENT_CATALOG.build_world_subject_enum_hint()
+		"story_action":
+			property["hint"] = PROPERTY_HINT_ENUM
+			property["hint_string"] = "Default:,collect,perform,inspect"
 
 
 func get_story_subject_id() -> String:
@@ -207,9 +210,10 @@ func _story_state_signal_names() -> PackedStringArray:
 
 
 func _build_base_story_subject_context() -> Dictionary:
+	var world_position := global_position if is_inside_tree() else position
 	var context := {
 		"subject_id": get_story_subject_id(),
-		"world_position": global_position,
+		"world_position": world_position,
 		"level_id": 0,
 	}
 	var explicit_action := story_action.strip_edges().to_lower()

@@ -47,8 +47,6 @@ Primary files:
 - [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd)
 - [`../weather/weather_manager.gd`](../weather/weather_manager.gd)
 - [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd)
-- [`../terrain/terrain.tscn`](../terrain/terrain.tscn)
-- [`../terrain/terrain.gd`](../terrain/terrain.gd)
 - [`../terrain/low_poly_terrain_3d.gd`](../terrain/low_poly_terrain_3d.gd)
 - [`../terrain/low_poly_terrain_sampler.gd`](../terrain/low_poly_terrain_sampler.gd)
 - [`../terrain/low_poly_terrain_mesh_builder.gd`](../terrain/low_poly_terrain_mesh_builder.gd)
@@ -72,10 +70,10 @@ Responsibilities:
 - shared authored terrain-profile resource used by both direct terrain validation and the gameplay scene instance
 - terrain mask legend, per-color semantics, and street-connect defaults
 - low-poly 3D terrain with split image-sampling and mesh-building stages, heightmap-level water, visible seabed, shader-displaced wind-aware water, shared style presets, and shared terrain-mask-pixel/isometric-position to 3D-world coordinate conversion
-- the production low-poly 3D overworld (`game_world_3d`), which assembles terrain, `HumanBody3D`, camera, five landmark anchors (three stylized building instances plus tunnel markers), wandering residents, `StorySubject3D` interaction dispatch through shared story services, shared BGM/landmark-cue audio, manager-cycled 3D rain/fog/cloud light plus wind-aware water, and location/resume syncing into `AppState`
+- the production low-poly 3D overworld (`game_world_3d`), which assembles terrain, `HumanBody3D`, camera, five landmark anchors (three stylized building instances plus tunnel markers), wandering residents, the complete set of 15 landmark and 5 inspectable `StorySubject3D` interactions, shared BGM/landmark-cue audio, manager-cycled 3D rain/fog/cloud light plus wind-aware water, and location/resume syncing into `AppState`
 - player spawn and camera context
-- shared overworld weather host registration for reusable cloud-shadow, rain, fog, and ground-impact rendering
-- global weather-manager ownership for runtime weather-rig instancing, overworld random weather cycling, and shared wind sync across reusable rain/fog/cloud passes
+- shared overworld registration of one `WeatherRig3D` presentation target
+- global weather-manager ownership for random weather cycling and shared wind sync across the 3D rain/fog/cloud presentation and terrain water
 - scene-owned BGM playback driven by shared location and melody-progress context
 - shared y-sorted actor layer for the player and spawned residents
 - landmark lookup and location syncing
@@ -140,16 +138,13 @@ Primary file:
 - [`../game/app_runtime.gd`](../game/app_runtime.gd)
 - [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd)
 - [`../weather/weather_manager.gd`](../weather/weather_manager.gd)
-- [`../weather/overworld_weather_preset.gd`](../weather/overworld_weather_preset.gd)
-- [`../weather/overworld_weather_preset.tres`](../weather/overworld_weather_preset.tres)
 
 Responsibilities:
 
 - resolves the one scene-owned `AppStateService` instance for runtime callers without using a Project Settings autoload
 - resolves the one scene-owned `WeatherManager` instance for runtime callers without using a Project Settings autoload
-- keeps the default overworld weather tuning in a shared resource consumed by both the real overworld and the focused weather sandbox
-- keeps overworld weather-cycle selection, interpolation, and shared wind-sync application out of `game_world_3d.tscn`
-- allows legacy 2D validation helpers to resolve a compatible `Node2D` marker from the `"player"` group without depending on a retired gameplay actor class
+- keeps overworld weather-cycle selection, interpolation, and shared wind publication out of `game_world_3d.tscn`
+- applies the active weather state only to the registered `WeatherRig3D`; water consumes the same published wind through its adapter
 
 Boundary:
 
@@ -183,14 +178,14 @@ Notes:
 Primary folders:
 
 - [`../architecture/`](../architecture)
-- [`../architecture/components/`](../architecture/components)
-- [`../common/`](../common)
+- [`../architecture/bagua_tower/`](../architecture/bagua_tower)
+- [`../architecture/piano_ferry/`](../architecture/piano_ferry)
 
 Responsibilities:
 
-- landmark scenes such as Bagua Tower, tunnels, church, and ferry content
-- reusable architectural pieces shared by those spaces
-- shared multi-level helpers such as `LevelNode2D`, `LevelArea2D`, and `LevelRegistry`
+- editable low-poly 3D landmark scenes and their reproducible generators
+- production landmark placement and all landmark/inspectable hotspots remain owned by `game_world_3d.tscn`
+- the retired 2D landmark/component and multi-level helper stack is no longer part of runtime architecture
 
 ### Reusable Game Modules
 
@@ -205,6 +200,7 @@ Primary folders:
 Responsibilities:
 
 - self-contained gameplay modules and prototypes
+- the grid-board and piano prototypes intentionally keep local `Node2D` rendering; they are isolated activities, not part of the overworld scene graph
 - seed-pool BGM catalog authoring plus scene-owned weighted playback orchestration
 - feature-specific scenes, scripts, rules, AI helpers, and local test scenes
 
