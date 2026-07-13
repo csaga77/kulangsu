@@ -15,7 +15,7 @@ Important limitation:
 ## UI Goal
 Design a full UI journey from app launch to app exit that supports a calm exploration game, stays lightweight during play, and gives the player clear orientation without breaking immersion.
 
-The current project already includes an in-world dialogue UI in [`../common/gui/speech_balloon.tscn`](../common/gui/speech_balloon.tscn), so the rest of the interface should follow the same principle:
+The current project includes camera-facing 3D dialogue labels through [`../common/gui/speech_balloon_3d.gd`](../common/gui/speech_balloon_3d.gd), so the rest of the interface should follow the same principle:
 
 - readable
 - minimal

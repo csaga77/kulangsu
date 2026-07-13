@@ -18,13 +18,13 @@ Shipped foundations:
 - first authored StoryEvent tree file in `game/story_event_catalog.gd`, now owning the full `melody_landmarks` interaction spine: ferry harbor clue, Trinity cue/chime, Bi Shan echoes/chamber, Long Shan entry/checkpoints/exit, Bagua synthesis, and the harbor-stage prompt-open
 - save/load support for seasonal story state, route state, lead pinning, and endgame state
 - first lightweight life-time runtime slice with `story_day`, `world_hour`, derived `time_of_day`, StoryEvent time conditions/effects, journal summary exposure, and autosave persistence
-- story-driven resident routine overrides that persist through autosave/continue and reapply to live actors in `game_main`
+- story-driven resident routine overrides that persist through autosave/continue and reapply to live actors in `game_world_3d`
 - resident gating against `season_phase`, route state, and `story_flags`
 - guarded final-act start with `spring_festival_resolved` as the earliest allowed endgame threshold
 - `AppState` composition pattern with extracted helpers for profile, journal, save, landmark progression, resident interaction, audio settings, and story routes
 - explicit manual-versus-auto lead presentation plus an in-journal `Auto Lead` clear action
 - weather system with manager-owned overworld preset cycling, wind sync, and runtime rig instancing
-- shared overworld weather preset resource consumed by both `game_main` and the focused weather sandbox
+- shared overworld weather preset resource consumed by both `game_world_3d` and the focused weather sandbox
 - BGM weighted selection with 12-track catalog, commitment window, silence gaps, and landmark cue ducking
 - landmark audio cues for all five canonical landmarks plus the festival stage
 - all 25 resident definitions shipped as external resources under `game/residents/definitions/`
@@ -102,8 +102,8 @@ Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but the
 | Workstream 3 | First pass shipped | Priority 3 (ending polish after more content) |
 | Workstream 4 | First pass shipped | Lower (polish) |
 | Workstream 5 | First pass shipped | Priority 4 (editor workflow), then Priority 5 (validation) |
-| Low-Poly 3D Runtime Candidate | Full-shell development toggle; terrain/water, actor/camera, three authored landmarks, shared residents/story/save/audio, speech balloons, manager-cycled 3D weather, representative resident result parity, fixed-camera acceptance, diagnostically green 60-second performance capture, and smoke coverage shipped | Parity hardening: tunnels, landmark result equality, release-export performance repeat, then go/no-go |
-| Resident Migration | Partial (6 migrated; remaining require manual `.tres` conversion) | Deferred sidecar (touch when content work needs it) |
+| Low-Poly 3D Runtime | Production; terrain/water, actor/camera, three authored landmarks, shared residents/story/save/audio, speech balloons, manager-cycled 3D weather, representative resident result parity, fixed-camera acceptance, diagnostically green 60-second performance capture, and smoke coverage shipped | Parity hardening: tunnels, landmark result equality, release-export performance repeat |
+| Resident Migration | Complete; all resident definitions are external `.tres` resources and all runtime presentation/physics are 3D | Add model/material variants only when identity readability needs them |
 
 ### Priority 1: Route Content Depth (recommended next)
 
@@ -207,11 +207,9 @@ Execution order:
      geometry (Bi Shan / Long Shan remain marker anchors), the landmark-result-parity equality check,
      and the release-export performance repeat. The two tunnels are traversable-as-anchors but not yet
      walkable interiors; this is a known, accepted gap at cutover.
-   - Execution: the hard-cutover sequence is in [`low_poly_3d_replacement.md`](low_poly_3d_replacement.md).
-     The runtime flip is done; the physical deletion of the orphaned 2D render stack and the
-     accompanying doc sweep are staged as a separate verified pass (they touch a large,
-     cross-referenced file set and require an in-engine regression run to confirm no dangling
-     references).
+   - Execution: the hard-cutover sequence is recorded in [`low_poly_3d_replacement.md`](low_poly_3d_replacement.md).
+     The runtime flip, legacy 2D character/NPC deletion, 3D UI preview migration, Universal LPC
+     submodule removal, and canonical doc sweep are complete.
 
 Open art/content decisions:
 
@@ -246,11 +244,11 @@ Primary files:
 - `docs/features/low_poly_actor_3d.md`
 - `docs/features/low_poly_3d_integration.md`
 
-### Deferred Sidecar: Resident Migration (manual conversion; not the recommended next focus)
+### Completed Resident Migration
 
-- 6 residents already migrated to `.tres` files
-- keep migrating touched residents when content work already requires editing them, or when review velocity becomes the bottleneck
-- avoid making manual conversion the headline task until helper/tooling work makes that path meaningfully cheaper
+- all resident definitions live as external `.tres` resources
+- all production resident actors use `HumanBody3D`, `ResidentController3D`, and `ResidentPresenter3D`
+- compatibility appearance keys remain authored, while `CharacterModelCatalog3D` selects integrated GLB models
 
 ## Workstream 1: Route Content Depth
 
@@ -277,7 +275,7 @@ Primary files:
 First-pass shipped outcome:
 
 - new conditional beats now react to winter-memory, Spring Festival, future-choice, second-summer, preservation, and resonant-festival state across ferry, church, and Bagua districts
-- `scenes/game_main.gd` now surfaces selected route-event resolutions as world-status feedback instead of leaving those turns only in journal state
+- `scenes/game_world_3d.gd` surfaces selected route-event resolutions as world-status feedback instead of leaving those turns only in journal state
 - route-aware inspectables at Piano Ferry, Trinity Church, and Bagua Tower now carry non-resident world reactivity alongside dialogue follow-through
 - first-pass StoryEvent routing now unifies resident talk, inspectable resolution, shared condition matching, and live resident routine overrides behind the `AppState` story-subject bridge
 - route progress now changes more of what the island feels like without requiring landmark-only progression
@@ -296,7 +294,7 @@ Primary files:
 - `architecture/piano_ferry.tscn`
 - `architecture/trinity_church.tscn`
 - `architecture/bagua_tower/bagua_tower.tscn`
-- `scenes/game_main.gd`
+- `scenes/game_world_3d.gd`
 
 ## Workstream 3: Final-Act And Ending Polish
 
@@ -401,7 +399,7 @@ Shipped outcome:
 - resident dialogue/application lives in `game/resident_interaction_service.gd` with `AppState` facades preserved for runtime callers and tests
 - runtime settings state lives in `game/audio_settings_service.gd`
 - `StorySaveService` owns the active payload pipeline plus `configure_new_game()`, `configure_continue()`, and `configure_free_walk()` implementation while `AppState` keeps the public bridge methods
-- the shared default overworld weather tuning now lives in `weather/overworld_weather_preset.tres`, consumed by both `scenes/game_main.gd` and `weather/tests/test_weather.gd`
+- the shared default overworld weather tuning now lives in `weather/overworld_weather_preset.tres`, consumed by both `scenes/game_world_3d.gd` and `weather/tests/test_weather.gd`
 - all resident definitions now live as external resources under `game/residents/definitions/`, with `resident_catalog.gd` kept as the loader/normalizer bridge
 
 Verification now in repo:
@@ -409,7 +407,7 @@ Verification now in repo:
 - `game/tests/cue_progression/test_cue_progression.tscn`
 - `game/tests/persistence/test_story_autosave.tscn`
 - `game/tests/story_routes/test_story_routes.tscn`
-- `game/tests/npc_system/test_npc_control.tscn`
+- `game/tests/npc_system/test_resident_interaction.tscn`
 - `game/tests/npc_system/test_resident_interaction.tscn`
 - `game/tests/npc_system/test_resident_catalog_external_defs.tscn`
 

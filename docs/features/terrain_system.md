@@ -66,7 +66,7 @@
 - Signals emitted:
 - None dedicated to terrain generation.
 - Signals consumed:
-- `HumanBody2D.global_position_changed` for the terrain transparency rectangle update.
+- A compatible optional 2D test actor's `global_position_changed` signal for the retired terrain sandbox transparency rectangle; production terrain and actors are 3D.
 - Important node paths, dictionaries, resources, or data flow:
 - `terrain.tscn` exports `generation_profile` as the shared `island_generation_profile.tres`, so direct terrain validation and the instanced terrain inside `game_main.tscn` read the same authored rules.
 - `Terrain._paint_terrain_from_mask()` reads `mask_file`, asks `TerrainGenerationProfile` how to interpret each pixel, then writes to `base`, `streets`, `water`, `water_collision`, and `building_mask`.

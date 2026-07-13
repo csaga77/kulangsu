@@ -28,14 +28,15 @@ const WATER_COLLISION_TILE_ALTERNATIVE := 0
 
 @export var generation_profile: TerrainGenerationProfile
 
-@export var player :HumanBody2D:
+@export var player: Node2D:
 	get:
 		return m_player
 	set(new_player):
 		if m_player == new_player:
 			return
 		if is_instance_valid(m_player):
-			m_player.global_position_changed.disconnect(self._on_player_moved)
+			if m_player.has_signal(&"global_position_changed") and m_player.is_connected(&"global_position_changed", self._on_player_moved):
+				m_player.disconnect(&"global_position_changed", self._on_player_moved)
 		m_player = new_player
 		_on_player_changed()
 
@@ -46,7 +47,7 @@ var m_water: TileMapLayer
 var m_water_collision: TileMapLayer
 var m_building_mask: TileMapLayer
 var m_is_ready := false
-var m_player :HumanBody2D
+var m_player: Node2D
 var m_has_generated_from_mask := false
 
 func _ready() -> void:
@@ -55,14 +56,14 @@ func _ready() -> void:
 	if _should_generate_terrain():
 		_paint_terrain_from_mask()
 	if m_player:
-		if !m_player.global_position_changed.is_connected(self._on_player_moved):
-			m_player.global_position_changed.connect(self._on_player_moved)
+		if m_player.has_signal(&"global_position_changed") and !m_player.is_connected(&"global_position_changed", self._on_player_moved):
+			m_player.connect(&"global_position_changed", self._on_player_moved)
 		_on_player_moved()
 		
 func _on_player_changed():
 	if m_player:
-		if !m_player.global_position_changed.is_connected(self._on_player_moved):
-			m_player.global_position_changed.connect(self._on_player_moved)
+		if m_player.has_signal(&"global_position_changed") and !m_player.is_connected(&"global_position_changed", self._on_player_moved):
+			m_player.connect(&"global_position_changed", self._on_player_moved)
 		_on_player_moved()
 
 func _reload_terrain() -> void:
@@ -268,7 +269,9 @@ func _resolve_building_mask_tile_alternative(rule: TerrainMaskRule, profile: Ter
 func _on_player_moved() -> void:
 	if !is_instance_valid(m_player):
 		return
-	var bounding_rect := m_player.get_bounding_rect()
+	if !m_player.has_method("get_bounding_rect"):
+		return
+	var bounding_rect: Rect2 = m_player.call("get_bounding_rect")
 	var shader_material :ShaderMaterial = material
 	if shader_material:
 		shader_material.set_shader_parameter("trans_rect_pos", bounding_rect.position)

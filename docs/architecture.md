@@ -149,7 +149,7 @@ Responsibilities:
 - resolves the one scene-owned `WeatherManager` instance for runtime callers without using a Project Settings autoload
 - keeps the default overworld weather tuning in a shared resource consumed by both the real overworld and the focused weather sandbox
 - keeps overworld weather-cycle selection, interpolation, and shared wind-sync application out of `game_world_3d.tscn`
-- resolves the live `HumanBody2D` player from the existing `"player"` group for scene-graph helpers such as visibility masking
+- allows legacy 2D validation helpers to resolve a compatible `Node2D` marker from the `"player"` group without depending on a retired gameplay actor class
 
 Boundary:
 
@@ -163,8 +163,6 @@ Boundary:
 Primary folders:
 
 - [`../characters/control/`](../characters/control)
-- [`../characters/control/bt/`](../characters/control/bt)
-- [`../addons/universal_lpc/`](../addons/universal_lpc)
 - [`../common/gui/`](../common/gui)
 
 Responsibilities:
@@ -177,10 +175,8 @@ Responsibilities:
 
 Notes:
 
-- The reusable Universal LPC 2D renderer, metadata manifest, generator/auditor tooling, and focused tests are colocated under the [`../addons/universal_lpc/`](../addons/universal_lpc) submodule; its [`README.md`](../addons/universal_lpc/README.md) and [`docs/contract.md`](../addons/universal_lpc/docs/contract.md) define the addon boundary, while the parent repo owns the pinned revision and game integration.
-- The runtime game consumes the addon's prebuilt [`universal_lpc_metadata.json`](../addons/universal_lpc/universal_lpc_metadata.json), which resolves generated spritesheets under [`../addons/universal_lpc/resources/`](../addons/universal_lpc/resources).
-- [`../characters/human_body_2d.gd`](../characters/human_body_2d.gd) owns the root material/shader setup for composed avatars, while the child Universal LPC node composes the visible layers.
 - [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd), [`../characters/control/base_controller_3d.gd`](../characters/control/base_controller_3d.gd), and [`../characters/control/player_controller_3d.gd`](../characters/control/player_controller_3d.gd) own the runtime actor/controller stack. `HumanBody3D` renders one premade low-poly GLB character model (default [`../assets/characters/male.glb`](../assets/characters/male.glb), with `boy.glb`/`female.glb` alternates) whose integrated appearance and idle/walk/run animation come from the model asset. Gravity, static walls, front and side stair behavior, and dynamic-body pushing are covered by [`../characters/tests/test_character_collisions.tscn`](../characters/tests/test_character_collisions.tscn).
+- [`../characters/character_model_catalog_3d.gd`](../characters/character_model_catalog_3d.gd) centralizes player and resident model selection, while [`../characters/character_preview_3d.gd`](../characters/character_preview_3d.gd) provides the transparent SubViewport preview used by customization and journal UI.
 
 ### World Spaces And Landmark Content
 
@@ -220,7 +216,6 @@ Boundary:
 
 Primary folders:
 
-- [`../addons/universal_lpc/`](../addons/universal_lpc)
 - [`../addons/low_poly_building_editor/`](../addons/low_poly_building_editor)
 - [`../addons/mp3_to_ogg/`](../addons/mp3_to_ogg)
 - [`../addons/storyline_editor/`](../addons/storyline_editor)
@@ -231,7 +226,6 @@ Each plugin documents itself in its own root `README.md` (with deeper docs under
 
 Responsibilities:
 
-- reusable runtime LPC sprite composition plus an editor dock for development-time metadata composition and source-asset auditing (see [`../addons/universal_lpc/README.md`](../addons/universal_lpc/README.md))
 - project-local editor tooling for authoring content and validating assets
 - low-poly building and terrain-profiled street blockout authoring through normal scene nodes, with Street3D owning visible road/kerb/footpath/stair geometry while LowPolyTerrain3D extracts deterministic multipoint centerlines from mask STREET cells, creates transient Street3D assemblies, and shapes its own supporting bed from generated or authored published corridors before terrain mesh construction (see [`../addons/low_poly_building_editor/README.md`](../addons/low_poly_building_editor/README.md))
 - deterministic, versioned JSON-to-scene low-poly building and street generation plus graphical seeded-variant thumbnails/contact sheets for agents and batch authoring, kept inside the building-editor addon
@@ -242,7 +236,7 @@ Boundary:
 
 - Editor plugins are authoring helpers. They should not become runtime gameplay services or be wired into `main.tscn`.
 - Runtime addons may be consumed by game-owned actors, but gameplay movement, collision, and appearance-catalog policy stay outside the addon.
-- `addons/universal_lpc`, `addons/mp3_to_ogg`, `addons/low_poly_building_editor`, and `addons/storyline_editor` are submodule repository boundaries; reusable changes land in those repositories first, then the parent intentionally updates their pointers.
+- `addons/mp3_to_ogg`, `addons/low_poly_building_editor`, and `addons/storyline_editor` are submodule repository boundaries; reusable changes land in those repositories first, then the parent intentionally updates their pointers.
 - Building-editor-generated content should remain ordinary scene-owned nodes under `Building3D` coordinators.
 
 ### Submodule Layer
@@ -253,7 +247,6 @@ Primary folders:
 - [`../agent_tools/`](../agent_tools)
 - [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator)
 - [`../addons/mp3_to_ogg/`](../addons/mp3_to_ogg)
-- [`../addons/universal_lpc/`](../addons/universal_lpc)
 - [`../addons/low_poly_building_editor/`](../addons/low_poly_building_editor)
 - [`../addons/storyline_editor/`](../addons/storyline_editor)
 
@@ -263,7 +256,6 @@ Responsibilities:
 - agent runbooks and shared documentation assets
 - third-party LPC asset generator content
 - reusable MP3 conversion editor tooling
-- reusable Universal LPC runtime/editor tooling and generated character assets
 - reusable low-poly building and street authoring tooling
 - reusable storyline route/dependency editor tooling over parent-owned data
 

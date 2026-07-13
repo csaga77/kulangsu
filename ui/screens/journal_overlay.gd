@@ -1,6 +1,6 @@
 extends PanelContainer
 
-const HUMAN_BODY_SCENE := preload("res://characters/human_body_2d.tscn")
+const CHARACTER_PREVIEW_3D := preload("res://characters/character_preview_3d.gd")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const JOURNAL_BUILDER := preload("res://game/journal_builder.gd")
 
@@ -28,7 +28,7 @@ signal close_requested()
 @onready var m_next_hair_color_button: Button = $Margin/Body/Tabs/Wardrobe/WardrobeContent/HairColorRow/Controls/NextHairColorButton
 @onready var m_close_button: Button = $Margin/Body/CloseButton
 
-var m_preview_actor: HumanBody2D = null
+var m_preview_actor: CHARACTER_PREVIEW_3D = null
 
 
 func _app_state():
@@ -39,6 +39,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	add_theme_stylebox_override("panel", UIStyle.build_panel_style())
 	_build_preview_actor()
+	_hide_unsupported_appearance_controls()
 	m_prev_costume_button.pressed.connect(_on_previous_costume_pressed)
 	m_next_costume_button.pressed.connect(_on_next_costume_pressed)
 	m_prev_hair_style_button.pressed.connect(_on_previous_hair_style_pressed)
@@ -71,7 +72,7 @@ func refresh_from_state() -> void:
 	m_map_body.text = JOURNAL_BUILDER.build_map_journal_text(_app_state())
 	m_residents_body.text = "Resident Notes\n%s" % JOURNAL_BUILDER.build_resident_journal_text(_app_state())
 	m_melody_body.text = "Melody Journal\n%s" % JOURNAL_BUILDER.build_melody_journal_text(_app_state())
-	m_wardrobe_body.text = "Wardrobe\n%s" % JOURNAL_BUILDER.build_player_costume_journal_text(_app_state())
+	m_wardrobe_body.text = "Appearance\nYour 3D traveler model follows the body and presentation chosen during setup. Legacy costume and hair selections remain stored for save compatibility."
 	m_costume_value.text = _app_state().get_equipped_player_costume_display_name()
 	m_hair_style_value.text = _app_state().get_player_hair_style_display_name()
 	m_hair_color_value.text = _app_state().get_player_hair_color_display_name()
@@ -104,28 +105,22 @@ func refresh_from_state() -> void:
 
 
 func _build_preview_actor() -> void:
-	var preview_root := Node2D.new()
-	preview_root.name = "PreviewRoot"
-	m_preview_viewport.add_child(preview_root)
-
-	m_preview_actor = HUMAN_BODY_SCENE.instantiate() as HumanBody2D
-	if m_preview_actor == null:
-		return
-
-	preview_root.add_child(m_preview_actor)
-	m_preview_actor.position = Vector2(140, 228)
-	m_preview_actor.scale = Vector2.ONE * 1.85
-	m_preview_actor.direction = 180.0
-	m_preview_actor.is_running = false
-	m_preview_actor.is_walking = false
-	m_preview_actor.facial_mood = HumanBody2D.FacialMoodEnum.NORMAL
+	m_preview_actor = CHARACTER_PREVIEW_3D.new() as CHARACTER_PREVIEW_3D
+	m_preview_actor.name = "CharacterPreview3D"
+	m_preview_viewport.add_child(m_preview_actor)
 
 
 func _refresh_preview() -> void:
 	if m_preview_actor == null:
 		return
 
-	m_preview_actor.set_configuration(_app_state().get_player_appearance_config())
+	m_preview_actor.set_profile(_app_state().get_player_profile())
+
+
+func _hide_unsupported_appearance_controls() -> void:
+	$Margin/Body/Tabs/Wardrobe/WardrobeContent/CostumeRow.visible = false
+	$Margin/Body/Tabs/Wardrobe/WardrobeContent/HairStyleRow.visible = false
+	$Margin/Body/Tabs/Wardrobe/WardrobeContent/HairColorRow.visible = false
 
 
 func _primary_melody_id() -> String:

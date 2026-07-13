@@ -3,7 +3,7 @@
 ## Goal
 
 - Provide the production 3D actor adapter for the low-poly overworld.
-- Preserve the useful `HumanBody2D`-era controller concepts while using 3D movement and collision.
+- Provide a single 3D movement and collision contract for all production characters.
 - Keep resident, NPC, and story rules outside the physical actor.
 
 ## Current Status
@@ -13,6 +13,7 @@
 - [`../../assets/characters/`](../../assets/characters) holds the premade low-poly character models (skinned and textured). The current validated locomotion baseline is `idle`, `walk`, and `run`; imported models may include extra clips such as `dance`, `scared`, or `wave_goodbye`, but those must be validated before gameplay use. [`male.glb`](../../assets/characters/male.glb) is the default actor visual; [`boy.glb`](../../assets/characters/boy.glb) and [`female.glb`](../../assets/characters/female.glb) are interchangeable alternates assignable through `character_model_scene`.
 - [`../../characters/control/base_controller_3d.gd`](../../characters/control/base_controller_3d.gd) defines `class_name BaseController3D`, the shared 3D controller base for `HumanBody3D`.
 - [`../../characters/control/player_controller_3d.gd`](../../characters/control/player_controller_3d.gd) defines `class_name PlayerController3D`, a first playable input adapter that extends `BaseController3D`.
+- [`../../characters/character_model_catalog_3d.gd`](../../characters/character_model_catalog_3d.gd) centralizes player and resident model selection, and [`../../characters/character_preview_3d.gd`](../../characters/character_preview_3d.gd) renders the same actor/model contract in UI SubViewports.
 - [`../../characters/tests/test_human_body_3d.tscn`](../../characters/tests/test_human_body_3d.tscn) is the focused smoke scene covering actor API parity, current-frame controller input, placement occupancy, step-up/step-down navigation, character-model structure (instanced model, mesh, material, skeleton, and `idle`/`walk`/`run` animation clips), and the absence of the removed per-part accessory API and generated accessory nodes.
 - [`../../characters/tests/test_character_collisions.tscn`](../../characters/tests/test_character_collisions.tscn) builds its own collision fixtures and validates gravity/landing, static-wall blocking, front stair ascent/descent, tagged stair-side rejection, and capped `RigidBody3D` pushing.
 - [`../../scenes/tests/test_game_world_3d.tscn`](../../scenes/tests/test_game_world_3d.tscn) validates the production actor/controller, generated terrain collision and streets, terrain-height following and wading, camera follow/orbit wiring, authored-landmark collision, and runtime integration.
@@ -47,14 +48,13 @@
 
 - The runtime actor is owned by [`../../characters/human_body_3d.gd`](../../characters/human_body_3d.gd).
 - The character model asset lives in [`../../assets/characters/`](../../assets/characters); `HumanBody3D` owns its instancing, scaling, orientation, grounding, and animation mapping.
-- The existing `ResidentNPC`, `BaseController`, `PlayerController`, and `NPCController` remain 2D-only.
-- `BaseController3D` and `PlayerController3D` mirror the 2D controller hierarchy while staying separate from `BaseController` and `PlayerController` because they use `Vector3`, `CharacterBody3D`, and XZ-plane movement.
+- `BaseController3D`, `PlayerController3D`, and `ResidentController3D` are the only production character controllers. The former 2D actor/controller hierarchy has been removed.
 - `game_world_3d.tscn` owns runtime placement and integration; `HumanBody3D` remains independent of story and shared app state.
 
 ## Contracts
 
-- `direction` uses the same flat-angle convention as `HumanBody2D`: `0` points east, `90` points south, `180` points west, and `270` points north.
-- `configuration` accepts and round-trips the same high-level appearance dictionary shape used by the 2D LPC actor (stored and re-emitted via `configuration_changed`). The 3D actor does not interpret per-part selections; all visible appearance comes from the selected GLB.
+- `direction` uses a flat-angle convention: `0` points east, `90` points south, `180` points west, and `270` points north.
+- `configuration` accepts and round-trips the retained high-level appearance dictionary for save compatibility. The 3D actor does not interpret per-part selections; all visible appearance comes from the selected GLB.
 - `character_model_scene` is the `PackedScene` instanced for the model and defaults to `male.glb` (swap in `boy.glb` or `female.glb` for a different character). The model is scaled by `body_height / character_model_height`, rotated by `character_model_yaw_offset` (default `-90` so the model's authored facing aligns with the rig's `+Z` forward), and vertically planted so its lowest rendered point sits at the foot origin when `character_model_auto_ground` is on, with `character_model_y_offset` as an additional manual nudge.
 - Hair, clothing, and other body styling must be part of `character_model_scene`; the actor intentionally exposes no separate hair, pants, jacket, attachment, or runtime skin-transfer contract.
 - `draw_skeleton_bones` is an editor/runtime debug toggle (default `false`). When enabled with the GLB model active, `HumanBody3D` draws the character model's `Skeleton3D` as bone lines in a `SkeletonDebug` `ImmediateMesh` parented under the skeleton, refreshed every frame so it tracks animation; `skeleton_debug_color` sets the line color.
@@ -64,7 +64,7 @@
 - `get_ground_rect()` returns an XZ-plane `Rect2` footprint for future adapter code; it is not a drop-in replacement for 2D physics queries.
 - `is_grounded()` is the preferred 3D actor grounded check because it includes both Godot floor contact and the actor's manual stair/floor snap support.
 - `body_height` and `body_radius` update the model scale, capsule collision shape, local bounding box, and ground footprint together.
-- The optional `controller` slot accepts `BaseController3D` resources such as `PlayerController3D`; the existing 2D `BaseController` should not be assigned to it.
+- The optional `controller` slot accepts `BaseController3D` resources such as `PlayerController3D` or `ResidentController3D`.
 - `PlayerController3D` consumes the existing input map: `ui_left`, `ui_right`, `ui_up`, `ui_down`, `ui_walk`, `ui_jump`, and `ui_inspect`.
 - `PlayerController3D` reads input before the base controller applies movement so starts and stops affect the current controller tick.
 - `camera_relative_movement` can align movement to the active `Camera3D`; when disabled, movement is world-aligned on XZ.

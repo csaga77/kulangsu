@@ -212,18 +212,13 @@ Future UI work should respect this unless the entire UI system is intentionally 
 
 ## Relationship to Gameplay UI
 
-There is still an existing in-world speech UI:
-
-- [`../common/gui/speech_balloon.tscn`](../common/gui/speech_balloon.tscn)
-- [`../common/gui/speech_balloon.gd`](../common/gui/speech_balloon.gd)
-
-That remains the right pattern for ambient moment-to-moment interaction.
+The production overworld uses camera-facing 3D speech labels through [`../common/gui/speech_balloon_3d.gd`](../common/gui/speech_balloon_3d.gd). That remains the right pattern for ambient moment-to-moment interaction.
 
 The larger shell UI should complement it, not replace it.
 
 Recommended split:
 
-- speech balloons for short local reactions
+- world-anchored 3D speech balloons for short local reactions
 - shell overlays for objectives, pause, settings, journal, wardrobe browsing, and ending summary
 
 ## Content Model the UI Assumes

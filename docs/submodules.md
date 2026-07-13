@@ -32,14 +32,6 @@ Source of truth:
 - Role in this repo: reusable Godot editor addon for batch-converting MP3 files to OGG Vorbis
 - Docs to read first: [`../addons/mp3_to_ogg/README.md`](../addons/mp3_to_ogg/README.md), then its [`docs/`](../addons/mp3_to_ogg/docs) folder
 
-### `addons/universal_lpc`
-
-- Path: [`../addons/universal_lpc/`](../addons/universal_lpc)
-- Branch in `.gitmodules`: `main`
-- Role in this repo: reusable Universal LPC runtime renderer, editor tooling, prebuilt metadata, generated sprites, and focused validation scenes
-- Docs to read first: [`../addons/universal_lpc/README.md`](../addons/universal_lpc/README.md), [`../addons/universal_lpc/docs/contract.md`](../addons/universal_lpc/docs/contract.md), [`../addons/universal_lpc/docs/feature.md`](../addons/universal_lpc/docs/feature.md), and [`../addons/universal_lpc/docs/authoring.md`](../addons/universal_lpc/docs/authoring.md)
-- Artwork distribution must preserve the submodule's [`artwork_credits/CREDITS.csv`](../addons/universal_lpc/artwork_credits/CREDITS.csv) and follow [`artwork_credits/ARTWORK_LICENSING.md`](../addons/universal_lpc/artwork_credits/ARTWORK_LICENSING.md)
-
 ### `addons/low_poly_building_editor`
 
 - Path: [`../addons/low_poly_building_editor/`](../addons/low_poly_building_editor)
@@ -84,7 +76,6 @@ Start with:
 - `godot_common`: start with [`../godot_common/AGENTS.md`](../godot_common/AGENTS.md), then [`../godot_common/README.md`](../godot_common/README.md)
 - `3rdparty/Universal-LPC-Spritesheet-Character-Generator`: start with [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md), then check tool docs if the task touches generator workflows
 - `addons/mp3_to_ogg`: start with [`../addons/mp3_to_ogg/README.md`](../addons/mp3_to_ogg/README.md), then its [`docs/`](../addons/mp3_to_ogg/docs) folder
-- `addons/universal_lpc`: start with [`../addons/universal_lpc/README.md`](../addons/universal_lpc/README.md), then [`../addons/universal_lpc/docs/contract.md`](../addons/universal_lpc/docs/contract.md), [`../addons/universal_lpc/docs/feature.md`](../addons/universal_lpc/docs/feature.md), and [`../addons/universal_lpc/docs/authoring.md`](../addons/universal_lpc/docs/authoring.md)
 - `addons/low_poly_building_editor`: start with [`../addons/low_poly_building_editor/README.md`](../addons/low_poly_building_editor/README.md), then [`../addons/low_poly_building_editor/docs/contract.md`](../addons/low_poly_building_editor/docs/contract.md) and [`../addons/low_poly_building_editor/docs/feature.md`](../addons/low_poly_building_editor/docs/feature.md)
 - `addons/storyline_editor`: start with [`../addons/storyline_editor/README.md`](../addons/storyline_editor/README.md), then [`../addons/storyline_editor/docs/contract.md`](../addons/storyline_editor/docs/contract.md) and [`../addons/storyline_editor/docs/feature.md`](../addons/storyline_editor/docs/feature.md)
 

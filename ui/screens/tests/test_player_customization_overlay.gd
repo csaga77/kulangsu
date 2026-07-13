@@ -4,6 +4,7 @@ const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const PLAYER_APPEARANCE_CATALOG := preload("res://game/player_appearance_catalog.gd")
 const PLAYER_COSTUME_CATALOG := preload("res://game/player_costume_catalog.gd")
 const PLAYER_SETUP_SCENE := preload("res://ui/screens/player_customization_overlay.tscn")
+const CHARACTER_PREVIEW_3D := preload("res://characters/character_preview_3d.gd")
 
 var m_failures := PackedStringArray()
 var m_cancel_requested := false
@@ -122,30 +123,33 @@ func _run() -> void:
 	var cancel_button := overlay.get_node("Margin/Body/Footer/CancelButton") as Button
 	var confirm_button := overlay.get_node("Margin/Body/Footer/ConfirmButton") as Button
 	var preview_viewport := overlay.get_node("Margin/Body/Content/PreviewColumn/PreviewFrame/PreviewViewportContainer/PreviewViewport") as SubViewport
-	var preview_actor := overlay.get_node(
-		"Margin/Body/Content/PreviewColumn/PreviewFrame/PreviewViewportContainer/PreviewViewport/PreviewRoot/human_body_2d"
-	) as Node2D
-
-	var expected_preview_position := Vector2(
-		float(preview_viewport.size.x) * 0.5,
-		float(preview_viewport.size.y) * 0.5 + (64.0 * preview_actor.scale.y * 0.5)
-	)
-	_assert_vector_approx(
-		"Preview actor recenters after the hidden setup panel becomes visible",
-		preview_actor.position,
-		expected_preview_position
-	)
+	var preview: CHARACTER_PREVIEW_3D = overlay.get_node(
+		"Margin/Body/Content/PreviewColumn/PreviewFrame/PreviewViewportContainer/PreviewViewport/CharacterPreview3D"
+	) as CHARACTER_PREVIEW_3D
+	var preview_actor: HumanBody3D = preview.get_actor() if preview != null else null
+	_assert_true("Setup preview uses CharacterPreview3D", preview != null)
+	_assert_true("Setup preview contains HumanBody3D", preview_actor is HumanBody3D)
+	_assert_true("Setup preview viewport stays transparent", preview_viewport.transparent_bg)
 
 	_assert_contains(
-		"Setup preview always shows the default starting costume",
+		"Setup preview reports the selected 3D model",
 		summary_label.text,
-		"Starting look: Harbor Arrival"
+		"3D model: male"
+	)
+	_assert_true(
+		"LPC-only skin controls are hidden",
+		!overlay.get_node("Margin/Body/Content/ControlsColumn/SkinRow").visible
 	)
 	_assert_equal("Initial body label matches the live profile", body_value.text, "Adult")
 
 	body_next_button.emit_signal("pressed")
 	await get_tree().process_frame
 	_assert_equal("Browsing body options only changes the setup draft", body_value.text, "Teen")
+	_assert_equal(
+		"Teen setup option selects the teen 3D model",
+		preview.get_actor().character_model_scene.resource_path,
+		"res://assets/characters/boy.glb"
+	)
 	_assert_dict_equal("Browsing setup options does not mutate AppState immediately", app_state.get_player_profile(), base_profile)
 	_assert_equal(
 		"Browsing setup options does not change the equipped live costume",
@@ -209,13 +213,6 @@ func _assert_contains(label: String, text: String, expected_fragment: String) ->
 
 func _assert_dict_equal(label: String, actual: Dictionary, expected: Dictionary) -> void:
 	if actual == expected:
-		print("PASS: %s" % label)
-		return
-	m_failures.append("%s. Expected %s, got %s." % [label, str(expected), str(actual)])
-
-
-func _assert_vector_approx(label: String, actual: Vector2, expected: Vector2, tolerance: float = 0.05) -> void:
-	if actual.distance_to(expected) <= tolerance:
 		print("PASS: %s" % label)
 		return
 	m_failures.append("%s. Expected %s, got %s." % [label, str(expected), str(actual)])

@@ -68,23 +68,21 @@ If you are changing how terrain mask colors map to layers, start with the terrai
 
 ## Characters And Interaction
 
-- [`../characters/`](../characters) - player and NPC scenes plus sprite systems
-- [`../characters/resident_npc.gd`](../characters/resident_npc.gd) / [`../characters/resident_npc.tscn`](../characters/resident_npc.tscn) - runtime resident actor that applies a `ResidentDefinition` on top of `HumanBody2D`
+- [`../characters/`](../characters) - low-poly 3D actor, resident presentation, controller, model-selection, and UI-preview systems
 - [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd) / [`../characters/human_body_3d.tscn`](../characters/human_body_3d.tscn) - runtime low-poly 3D actor that renders one integrated premade GLB character model (scaled, yaw-corrected, auto-grounded, with idle/walk/run animation), with optional debug draws, gravity, wall sliding, floor snap, front-riser stair traversal, tagged stair-side rejection, and capped dynamic-body pushing
 - [`../assets/characters/`](../assets/characters) - premade skinned, textured low-poly character models; `idle`/`walk`/`run` are the current validated baseline clips, optional imported clips such as `dance`, `scared`, or `wave_goodbye` must be validated before gameplay use, and `male.glb` is the default `HumanBody3D` visual with `boy.glb` and `female.glb` as interchangeable alternates
-- [`../characters/tests/`](../characters/tests) - direct character smoke scenes for `HumanBody2D`, `HumanBody3D`, and generated-fixture 3D collision/traversal behavior
+- [`../characters/character_model_catalog_3d.gd`](../characters/character_model_catalog_3d.gd) - canonical mapping from saved player profiles and resident definitions to integrated GLB models
+- [`../characters/character_preview_3d.gd`](../characters/character_preview_3d.gd) - transparent SubViewport-friendly low-poly actor preview used by customization and journal screens
+- [`../characters/tests/`](../characters/tests) - direct `HumanBody3D` smoke scenes and generated-fixture 3D collision/traversal behavior
 - [`../characters/control/`](../characters/control) - controllers, resident presentation hookup, and interaction behavior
 - [`../characters/control/base_controller_3d.gd`](../characters/control/base_controller_3d.gd) - shared 3D controller base for `HumanBody3D` lifecycle, movement flags, and movement helper methods
 - [`../characters/control/player_controller_3d.gd`](../characters/control/player_controller_3d.gd) - first playable 3D input adapter for `HumanBody3D`, using the existing input map on the XZ plane
 - [`../characters/control/resident_controller_3d.gd`](../characters/control/resident_controller_3d.gd) - lightweight 3D resident wander controller (stroll to a nearby point, pause, repeat, with a stuck-timeout) plus `pause_for` so a talked-to resident holds still while facing the player
 - [`../characters/resident_presenter_3d.gd`](../characters/resident_presenter_3d.gd) - spawns `HumanBody3D` residents from shared `AppState` resident data at their landmark anchors, each with an `npc:` talk `StorySubject3D`, a wander controller, and a world-anchored 3D speech balloon; used by `game_world_3d`
-- [`../characters/control/bt/`](../characters/control/bt) - behavior-tree framework
-- [`../addons/universal_lpc/`](../addons/universal_lpc) - submodule containing the reusable Universal LPC 2D runtime renderer, generated sprites under `resources/`, prebuilt metadata manifest, metadata generation/source-audit tooling, and addon-owned docs; see its [`README.md`](../addons/universal_lpc/README.md), [`docs/contract.md`](../addons/universal_lpc/docs/contract.md), and [`docs/authoring.md`](../addons/universal_lpc/docs/authoring.md)
-- [`../addons/universal_lpc/tests/`](../addons/universal_lpc/tests) - Universal LPC metadata, source-asset audit, and composition validation tooling
 - [`../common/gui/`](../common/gui) - in-world UI such as speech balloons; [`../common/gui/speech_balloon_3d.gd`](../common/gui/speech_balloon_3d.gd) is the billboarded, camera-facing `Label3D` dialogue balloon used by the 3D overworld
 - [`../game/story_subject_3d.gd`](../game/story_subject_3d.gd) - `Area3D` 3D counterpart of `StorySubjectArea2D`: exposes a stable `subject_id`, resolves action/display/presence from the shared StoryEvent catalog/`AppState`, and is dispatched by `game_world_3d` through the same `AppState.activate_story_subject` path (no 3D-only story fork)
 
-Put player control, NPC behavior, interaction prompts, and behavior-tree work here.
+Put player control, resident movement, model presentation, and interaction prompts here.
 
 ## Landmark And World Content
 
@@ -112,7 +110,6 @@ If a feature is self-contained and reusable, extend its module folder instead of
 
 ## Addons And Editor Plugins
 
-- [`../addons/universal_lpc/`](../addons/universal_lpc) - submodule containing the enabled Universal LPC 2D character plugin with a reusable runtime renderer and editor dock for development-time composition/audit workflows. See the addon's own [`README.md`](../addons/universal_lpc/README.md), [`docs/feature.md`](../addons/universal_lpc/docs/feature.md), and [`docs/contract.md`](../addons/universal_lpc/docs/contract.md).
 - [`../addons/low_poly_building_editor/`](../addons/low_poly_building_editor) - submodule containing the native editor dock and 3D viewport tool for low-poly building authoring, including terrain-profiled multi-point Street3D authoring with sloped roads and automatic footpath stairs, plus versioned building/street JSON-to-scene generation, graphical seeded-variant thumbnails/contact sheets, and the interactive generated-building gallery. See the plugin's own docs for the full description: [`../addons/low_poly_building_editor/README.md`](../addons/low_poly_building_editor/README.md) (overview), [`../addons/low_poly_building_editor/docs/feature.md`](../addons/low_poly_building_editor/docs/feature.md) (feature spec), and [`../addons/low_poly_building_editor/docs/contract.md`](../addons/low_poly_building_editor/docs/contract.md) (contract).
 - [`../addons/mp3_to_ogg/`](../addons/mp3_to_ogg) - submodule containing the editor dock plugin that batch-converts MP3 files to OGG Vorbis via ffmpeg. See the plugin's own docs: [`../addons/mp3_to_ogg/README.md`](../addons/mp3_to_ogg/README.md).
 - [`../addons/storyline_editor/`](../addons/storyline_editor) - submodule containing the editor plugin that visualizes and edits storyline event dependencies (route browser, graph, and validation/inspector bridge) over parent-owned canonical route resources. See the plugin's own docs: [`../addons/storyline_editor/README.md`](../addons/storyline_editor/README.md), [`../addons/storyline_editor/docs/feature.md`](../addons/storyline_editor/docs/feature.md), and [`../addons/storyline_editor/docs/contract.md`](../addons/storyline_editor/docs/contract.md).
@@ -135,14 +132,9 @@ Be careful about renames or moves here because scene and resource references can
 - [`../scenes/`](../scenes) - runtime gameplay scenes such as `game_world_3d`
 - [`../scenes/tests/`](../scenes/tests) - ad hoc prototype and validation scenes
 - [`../weather/tests/`](../weather/tests) - dedicated weather validation scenes and tuning sandboxes
-- [`../characters/tests/test_human_body_2d.tscn`](../characters/tests/test_human_body_2d.tscn) - direct `HumanBody2D` smoke sandbox with player-controller wiring
 - [`../characters/tests/test_human_body_3d.tscn`](../characters/tests/test_human_body_3d.tscn) - direct `HumanBody3D` adapter smoke scene covering configuration, flat direction, movement velocity, current-frame controller input, safe capsule placement, step-up/step-down behavior, jump state, ground footprint behavior, and character-model structure (instanced model, mesh, material, animation clips)
-- [`../addons/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn`](../addons/universal_lpc/tests/test_universal_lpc_sprite_generator.tscn) - Universal LPC metadata and sprite-composition validation tool
-- [`../addons/universal_lpc/tests/test_universal_lpc_asset_audit.tscn`](../addons/universal_lpc/tests/test_universal_lpc_asset_audit.tscn) - focused Universal LPC source-sheet audit for missing animation rows, JSON/source mismatches, and player-facing AI target triage
-- [`../game/tests/npc_system/test_npc_layer_interaction.tscn`](../game/tests/npc_system/test_npc_layer_interaction.tscn) - focused same-layer NPC targeting and portal-driven z-layer switching sandbox
 - [`../game/tests/npc_system/test_resident_interaction.tscn`](../game/tests/npc_system/test_resident_interaction.tscn) - focused resident progression regression covering gate fallbacks, trust-max milestones, and a resident-driven autosave/continue path
 - [`../game/tests/npc_system/test_resident_catalog_external_defs.tscn`](../game/tests/npc_system/test_resident_catalog_external_defs.tscn) - focused resident catalog regression covering external `.tres` definition loading, roster completeness, and field-level validation
-- [`../game/tests/npc_system/test_npc_route_collision.tscn`](../game/tests/npc_system/test_npc_route_collision.tscn) - focused routed NPC wall-collision regression scene covering collision-aware route motion against blocking geometry
 - [`../game/tests/cue_progression/test_cue_progression.tscn`](../game/tests/cue_progression/test_cue_progression.tscn) - focused Ferry -> Trinity choir chime -> Bi Shan chamber prompt -> Long Shan exit prompt -> Bagua -> harbor-stage progression regression covering fragment awards, dependable-route notes, Bagua gating, and the spring guardrail on harbor-triggered endgame
 - [`../game/tests/bgm/test_bgm_manager.tscn`](../game/tests/bgm/test_bgm_manager.tscn) - focused BGM regression scene covering lazy catalog validation, natural-end fade scheduling, and location-fallback variety rules
 - [`../game/tests/persistence/test_story_autosave.tscn`](../game/tests/persistence/test_story_autosave.tscn) - focused story autosave regression covering first-save creation, real `Continue`, safe resume anchors, guarded harbor-performance persistence, soft-ending continuation restore, and departure-save clearing
@@ -154,9 +146,6 @@ Be careful about renames or moves here because scene and resource references can
 - [`../scenes/tests/test_portal_overlap.tscn`](../scenes/tests/test_portal_overlap.tscn) - focused multi-actor portal transition regression test
 - [`../characters/tests/test_character_collisions.tscn`](../characters/tests/test_character_collisions.tscn) - self-contained generated-fixture regression covering `HumanBody3D` gravity/landing, static-wall blocking, front stair ascent/descent, tagged stair-side rejection, and capped `RigidBody3D` pushing
 - [`../scenes/tests/test_landmark_cue_loading.tscn`](../scenes/tests/test_landmark_cue_loading.tscn) - focused landmark cue audio loader/cache smoke test
-- [`../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn`](../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn) - focused Bagua base-to-ground portal integration for `level_id` actor transitions
-- [`../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn`](../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn) - full Bagua Tower ascent, descent, and upper-floor visibility integration test
-- [`../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn`](../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn) - focused Bagua stair physical traversal integration test
 - [`../scenes/tests/test_low_poly_building_editor_3d.tscn`](../scenes/tests/test_low_poly_building_editor_3d.tscn) - end-to-end building-editor smoke suite relocated from the `addons/low_poly_building_editor` submodule so the addon carries no parent-repo paths; probes generated buildings with `HumanBody3D` collision and covers the full wall/floor/stairs/rail/pillar/roof/opening regression matrix described in the addon's `docs/feature.md`
 - [`../scenes/tests/test_building_tour_3d.tscn`](../scenes/tests/test_building_tour_3d.tscn) - generic playable building-tour harness with an exported `building_scene`, transform and player spawn, plus `HumanBody3D`, camera-relative movement, orbit/zoom camera, lighting, and ground collision; defaults to the generated low-poly Bagua Tower concept
 - [`../weather/tests/test_weather.tscn`](../weather/tests/test_weather.tscn) - focused weather tuning sandbox with tilemap-backed water/terrain, manager-attached fog/rain/cloud/impact passes, a thunder-flash pass, a tabbed weather control panel split into `Wind`, `Rain`, `Fog`, and `Cloud` tuning groups with per-pass `Sync With Wind` toggles, actor readability checks, temporary foreground occluder proxies, and a parity check against the shared overworld weather preset
@@ -166,7 +155,6 @@ Be careful about renames or moves here because scene and resource references can
 - [`../scenes/tests/test_street_terrain_integration.tscn`](../scenes/tests/test_street_terrain_integration.tscn) - focused terrain-generation/Street3D integration regression covering automatic source discovery, base-grid profile baking, corridor bed shaping/feathering, manual-height preservation, street mesh/collision retention, and street-triggered terrain regeneration
 - [`../scenes/tests/test_street_mask_generation.tscn`](../scenes/tests/test_street_mask_generation.tscn) - focused STREET-mask regression covering centerline extraction, bent multipoint and sibling-junction generated street geometry, terrain corridor shaping, deterministic replacement/reuse, and a real-island rebuild with visible Street3D meshes and stairs
 - [`../scenes/tests/test_game_world_3d.tscn`](../scenes/tests/test_game_world_3d.tscn) - production-world smoke covering terrain/water/street generation, actor/controller grounding and wading, camera wiring/orbit, authored-landmark placement/collision, residents, story interaction, audio, weather-to-water integration, and semantic resume anchors
-- [`../game/tests/npc_system/test_scene.tscn`](../game/tests/npc_system/test_scene.tscn) - focused resident speech, talk, and journal sandbox
 - [`../game/grid_board_game/test_grid_board_game.tscn`](../game/grid_board_game/test_grid_board_game.tscn)
 - [`../game/grid_board_game/test_terminal_turn_state.tscn`](../game/grid_board_game/test_terminal_turn_state.tscn)
 
@@ -208,7 +196,6 @@ Use these when you need a focused validation target instead of the full project 
 - [`../agent_tools/`](../agent_tools) - shared agent docs and runbooks, tracked as a submodule
 - [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator) - third-party LPC asset generator, tracked as a submodule
 - [`../addons/mp3_to_ogg/`](../addons/mp3_to_ogg) - reusable MP3 conversion editor addon, tracked as a submodule
-- [`../addons/universal_lpc/`](../addons/universal_lpc) - reusable Universal LPC runtime/editor addon and generated assets, tracked as a submodule
 - [`../addons/low_poly_building_editor/`](../addons/low_poly_building_editor) - reusable low-poly building and street editor addon, tracked as a submodule
 - [`../addons/storyline_editor/`](../addons/storyline_editor) - reusable storyline route/dependency editor addon, tracked as a submodule
 
@@ -221,8 +208,6 @@ Submodule doc entry points:
 - [`../agent_tools/AGENTS.md`](../agent_tools/AGENTS.md)
 - [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md)
 - [`../addons/mp3_to_ogg/README.md`](../addons/mp3_to_ogg/README.md)
-- [`../addons/universal_lpc/README.md`](../addons/universal_lpc/README.md)
-- [`../addons/universal_lpc/docs/contract.md`](../addons/universal_lpc/docs/contract.md)
 - [`../addons/low_poly_building_editor/README.md`](../addons/low_poly_building_editor/README.md)
 - [`../addons/low_poly_building_editor/docs/contract.md`](../addons/low_poly_building_editor/docs/contract.md)
 - [`../addons/storyline_editor/README.md`](../addons/storyline_editor/README.md)

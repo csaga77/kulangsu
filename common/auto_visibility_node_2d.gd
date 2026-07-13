@@ -2,7 +2,7 @@
 class_name AutoVisibilityNode2D
 extends IsometricBlock
 
-# Player resolution contract: the live 2D player actor must be in this group.
+# Player resolution contract: a compatible legacy 2D test actor must be in this group.
 # Resolved locally so this reusable helper does not depend on game/ runtime code.
 const PLAYER_GROUP := &"player"
 
@@ -12,7 +12,7 @@ const PLAYER_GROUP := &"player"
 @export var is_inverted := false
 @export var is_enabled := true
 
-var m_player: HumanBody2D = null
+var m_player: Node2D = null
 var m_target_visible := true
 var m_is_changing_visibility := false
 var m_last_player_absolute_z := 0
@@ -34,21 +34,22 @@ func _sync_player() -> void:
 		return
 	if !is_inside_tree():
 		return
-	_set_player(get_tree().get_first_node_in_group(PLAYER_GROUP) as HumanBody2D)
+	_set_player(get_tree().get_first_node_in_group(PLAYER_GROUP) as Node2D)
 
-func _set_player(new_player: HumanBody2D) -> void:
+func _set_player(new_player: Node2D) -> void:
 	if m_player == new_player:
 		return
 
 	if m_player:
-		if m_player.global_position_changed.is_connected(self._update_visibility):
-			m_player.global_position_changed.disconnect(self._update_visibility)
+		if m_player.has_signal(&"global_position_changed") and m_player.is_connected(&"global_position_changed", self._update_visibility):
+			m_player.disconnect(&"global_position_changed", self._update_visibility)
 
 	m_player = new_player
 	m_has_player_level_sample = false
 
 	if m_player:
-		m_player.global_position_changed.connect(self._update_visibility)
+		if m_player.has_signal(&"global_position_changed"):
+			m_player.connect(&"global_position_changed", self._update_visibility)
 
 	_update_visibility()
 
@@ -109,7 +110,14 @@ func _update_visibility() -> void:
 	m_has_player_level_sample = true
 
 	var should_be_visible := true
-	var bounding_rect: Rect2 = m_player.get_ground_rect() if use_ground_bounding_rect else m_player.get_bounding_rect()
+	if !m_player.has_method("get_ground_rect") or !m_player.has_method("get_bounding_rect"):
+		_set_visible(true)
+		return
+	var bounding_rect: Rect2
+	if use_ground_bounding_rect:
+		bounding_rect = m_player.call("get_ground_rect")
+	else:
+		bounding_rect = m_player.call("get_bounding_rect")
 
 	for mask_node in visibility_mask_nodes:
 		if mask_node == null:

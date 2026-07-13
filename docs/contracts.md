@@ -112,9 +112,9 @@ Governance:
 - do not let future route implementations bypass the generic subject/fact model by adding direct route-to-route service calls unless there is a proven ownership need
 - prefer optional capability adapters and published facts over hardcoded calls between individual story families
 
-## Universal LPC Addon Boundary
+## 3D Character Presentation Contract
 
-The canonical renderer, metadata, asset, tooling, and integration contract lives in the [`../addons/universal_lpc/`](../addons/universal_lpc) submodule at [`docs/contract.md`](../addons/universal_lpc/docs/contract.md). Reusable character-authoring and validation guidance lives in [`docs/authoring.md`](../addons/universal_lpc/docs/authoring.md). The submodule repository owns reusable implementation and addon docs; the parent repo owns its pinned revision plus Kulangsu-specific actor, resident, wardrobe, and gameplay policy.
+[`../characters/character_model_catalog_3d.gd`](../characters/character_model_catalog_3d.gd) is the single mapping from saved player profiles and resident definitions to integrated low-poly GLB models. Runtime actors and UI previews must use that catalog rather than interpreting the retained per-part appearance keys. Those keys remain serialized for backward save compatibility, but they do not imply a layered 2D renderer contract.
 
 ## Weather Runtime Contract
 

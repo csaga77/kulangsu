@@ -16,13 +16,14 @@ Use the Godot Inspector to author new residents without editing `resident_catalo
    - `appearance`
    - `dialogue`
    - `routine`
-5. Set `routine.spawn.anchor_id` to an existing overworld anchor from `scenes/game_main.gd`.
+5. Set `routine.spawn.anchor_id` to an existing overworld anchor from `scenes/game_world_3d.gd`.
 6. If needed, add route points under `routine.movement.route_points`.
-7. Open `characters/resident_npc.tscn` or an NPC test scene to preview the result in the editor.
-8. Assign the resource through the `resident_definition` Inspector slot, which now only accepts `ResidentDefinition` resources.
+7. Run `scenes/tests/test_game_world_3d.tscn` to validate roster spawning and shared interaction wiring.
+8. Use `characters/character_model_catalog_3d.gd` when a new appearance category needs an explicit low-poly model mapping.
 
 ## Notes
 
 - A resource in `definitions/` with the same `id` as a built-in resident overrides the built-in catalog version.
 - `sort_order` controls where new editor-authored residents appear after the built-in roster.
-- `include_in_catalog = false` keeps a resource available for preview without spawning it in the main overworld.
+- `include_in_catalog = false` keeps a resource available without spawning it in the main overworld.
+- Legacy appearance fields remain in resident resources for data compatibility; the 3D model catalog currently maps broad body/presentation categories to `male.glb`, `female.glb`, or `boy.glb`.

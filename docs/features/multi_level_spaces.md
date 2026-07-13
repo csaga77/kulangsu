@@ -134,11 +134,6 @@
 - [`../../architecture/bagua_tower/bagua_tower.tscn`](../../architecture/bagua_tower/bagua_tower.tscn)
 - [`../../architecture/bi_shan_tunnel.tscn`](../../architecture/bi_shan_tunnel.tscn)
 - [`../../architecture/long_shan_tunnel.tscn`](../../architecture/long_shan_tunnel.tscn)
-- [`../../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn`](../../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn)
-- [`../../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn`](../../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn)
-- [`../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn`](../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn)
-- [`../../game/tests/npc_system/test_tunnel_visibility.tscn`](../../game/tests/npc_system/test_tunnel_visibility.tscn)
-- [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn)
 - [`../../scenes/tests/test_level_resolution.tscn`](../../scenes/tests/test_level_resolution.tscn)
 - [`../../scenes/tests/test_portal_overlap.tscn`](../../scenes/tests/test_portal_overlap.tscn)
 - [`../../characters/tests/test_character_collisions.tscn`](../../characters/tests/test_character_collisions.tscn)
@@ -150,12 +145,8 @@
 
 - Validate relative-level resolution with [`../../scenes/tests/test_level_resolution.tscn`](../../scenes/tests/test_level_resolution.tscn).
 - Validate concurrent portal usage with [`../../scenes/tests/test_portal_overlap.tscn`](../../scenes/tests/test_portal_overlap.tscn).
-- Validate direct portal actor transitions with [`../../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn`](../../architecture/bagua_tower/tests/test_bagua_portal_levels.tscn).
-- Validate Bagua ascent, descent, and visibility behavior with [`../../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn`](../../architecture/bagua_tower/tests/test_bagua_stairs_visibility.tscn).
-- Validate physical stair traversal with [`../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn`](../../architecture/bagua_tower/tests/test_bagua_stairs_walk.tscn).
-- Validate tunnel-only visibility swaps, `exterior`/`interior` presentation handoff, and surface-overlap behavior with [`../../game/tests/npc_system/test_tunnel_visibility.tscn`](../../game/tests/npc_system/test_tunnel_visibility.tscn).
-- Validate routed NPC re-entry and tunnel level restoration with [`../../game/tests/npc_system/test_tunnel_npc_travel.tscn`](../../game/tests/npc_system/test_tunnel_npc_travel.tscn).
 - Validate `HumanBody3D` wall blocking, gravity, front/side stair traversal, and dynamic-body pushing with [`../../characters/tests/test_character_collisions.tscn`](../../characters/tests/test_character_collisions.tscn).
 - Validate an authored low-poly building scene, player/controller, camera, and ground setup together with [`../../scenes/tests/test_building_tour_3d.tscn`](../../scenes/tests/test_building_tour_3d.tscn).
+- The former Bagua `HumanBody2D` portal/stair and routed tunnel-NPC tests were retired with the legacy character system; new multi-level runtime coverage must use 3D actors and physics.
 - Validate landmark cue audio loading with [`../../scenes/tests/test_landmark_cue_loading.tscn`](../../scenes/tests/test_landmark_cue_loading.tscn).
 - Validate canonical landmark progression and cue interaction state with [`../../game/tests/cue_progression/test_cue_progression.tscn`](../../game/tests/cue_progression/test_cue_progression.tscn).

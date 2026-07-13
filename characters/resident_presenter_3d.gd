@@ -18,6 +18,7 @@ const HUMAN_BODY_3D_SCENE: PackedScene = preload("res://characters/human_body_3d
 const STORY_SUBJECT_3D := preload("res://game/story_subject_3d.gd")
 const SPEECH_BALLOON_3D := preload("res://common/gui/speech_balloon_3d.gd")
 const RESIDENT_CONTROLLER_3D := preload("res://characters/control/resident_controller_3d.gd")
+const CHARACTER_MODEL_CATALOG := preload("res://characters/character_model_catalog_3d.gd")
 const STORY_SUBJECT_GROUP := "story_subject_3d"
 # Node name the world scene looks up to surface a resident's dialogue line.
 const BALLOON_NODE_NAME := "Balloon3D"
@@ -54,7 +55,7 @@ func spawn_residents(world_root: Node3D, app_state: Node, landmark_nodes: Dictio
 		if !is_instance_valid(anchor_node):
 			continue
 
-		var npc := HUMAN_BODY_3D_SCENE.instantiate() as CharacterBody3D
+		var npc := HUMAN_BODY_3D_SCENE.instantiate() as HumanBody3D
 		if npc == null:
 			continue
 		npc.name = "Resident_%s" % resident_id
@@ -62,6 +63,7 @@ func spawn_residents(world_root: Node3D, app_state: Node, landmark_nodes: Dictio
 			npc.set("direction", float(spawn_config.get("direction", 0.0)))
 
 		resident_root.add_child(npc)
+		npc.character_model_scene = CHARACTER_MODEL_CATALOG.resolve_resident_model(resident_definition)
 
 		var ring_index := int(anchor_counts.get(anchor_id, 0))
 		anchor_counts[anchor_id] = ring_index + 1

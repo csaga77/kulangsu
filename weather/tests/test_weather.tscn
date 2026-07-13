@@ -3,28 +3,8 @@
 [ext_resource type="Script" uid="uid://bs1ug7kjsfm3j" path="res://weather/tests/test_weather.gd" id="1_dpjoi"]
 [ext_resource type="Material" uid="uid://cjiajajuywre1" path="res://resources/materials/water.tres" id="2_g3svb"]
 [ext_resource type="TileSet" uid="uid://cqo6awm27cwcf" path="res://resources/tilesets/terrain_0_tiles.tres" id="3_d2mrq"]
-[ext_resource type="PackedScene" uid="uid://di1r1bw1orpdw" path="res://characters/human_body_2d.tscn" id="4_human"]
-[ext_resource type="Script" uid="uid://cmokaqask0s2p" path="res://characters/control/player_controller.gd" id="5_player"]
+[ext_resource type="PackedScene" path="res://weather/tests/weather_test_actor_2d.tscn" id="4_actor"]
 [ext_resource type="Script" uid="uid://1lv88f7nn3d4" path="res://godot_common/scenes/camera_2d_controller.gd" id="6_camera"]
-[ext_resource type="PackedScene" uid="uid://c1le3qk68o7lw" path="res://common/gui/speech_balloon.tscn" id="7_7hrv5"]
-[ext_resource type="Script" uid="uid://vk6rfdoxtkgv" path="res://characters/control/npc_controller.gd" id="7_npc"]
-[sub_resource type="Resource" id="Resource_player"]
-script = ExtResource("5_player")
-
-[sub_resource type="Resource" id="Resource_ferry_caretaker"]
-script = ExtResource("7_npc")
-use_json_bt = false
-resident_id = &"ferry_caretaker"
-
-[sub_resource type="Resource" id="Resource_church_caretaker"]
-script = ExtResource("7_npc")
-use_json_bt = false
-resident_id = &"church_caretaker"
-
-[sub_resource type="Resource" id="Resource_tunnel_guide"]
-script = ExtResource("7_npc")
-use_json_bt = false
-resident_id = &"tunnel_guide"
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_thunder"]
 blend_mode = 1
@@ -52,25 +32,20 @@ tile_set = ExtResource("3_d2mrq")
 z_index = 3
 y_sort_enabled = true
 
-[node name="Player" parent="Actors" unique_id=1056328346 groups=["player"] instance=ExtResource("4_human")]
+[node name="Player" parent="Actors" unique_id=1056328346 groups=["player"] instance=ExtResource("4_actor")]
 position = Vector2(622, 570)
-controller = SubResource("Resource_player")
 
-[node name="CaretakerLian" parent="Actors" unique_id=576076650 instance=ExtResource("4_human")]
+[node name="CaretakerLian" parent="Actors" unique_id=576076650 instance=ExtResource("4_actor")]
 position = Vector2(464, 514)
-direction = -35.0
-controller = SubResource("Resource_ferry_caretaker")
+modulate = Color(0.88, 0.72, 0.42, 1)
 
-[node name="ChoirCaretakerMei" parent="Actors" unique_id=1135320075 instance=ExtResource("4_human")]
+[node name="ChoirCaretakerMei" parent="Actors" unique_id=1135320075 instance=ExtResource("4_actor")]
 position = Vector2(760, 462)
-direction = 160.0
-is_running = false
-controller = SubResource("Resource_church_caretaker")
+modulate = Color(0.76, 0.48, 0.7, 1)
 
-[node name="TunnelGuideRen" parent="Actors" unique_id=1092457157 instance=ExtResource("4_human")]
+[node name="TunnelGuideRen" parent="Actors" unique_id=1092457157 instance=ExtResource("4_actor")]
 position = Vector2(910, 558)
-direction = 205.0
-controller = SubResource("Resource_tunnel_guide")
+modulate = Color(0.42, 0.72, 0.56, 1)
 
 [node name="ForegroundOccluders" type="Node2D" parent="." unique_id=997601425]
 z_index = 4

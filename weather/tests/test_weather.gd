@@ -80,8 +80,6 @@ const THUNDER_MAX_DELAY := 6.5
 		if is_node_ready():
 			_rebuild_ground()
 
-var m_player_controller: PlayerController = null
-var m_closest_object: Node2D = null
 var m_weather_defaults: Dictionary = {}
 var m_master_wind_angle_degrees := 72.0
 var m_master_wind_strength := 460.0
@@ -106,7 +104,6 @@ var m_weather_manager: WeatherManager = null
 @onready var m_water: TileMapLayer = $Water
 @onready var m_backdrop_terrain: TileMapLayer = $BackdropTerrain
 @onready var m_ground: TileMapLayer = $Ground
-@onready var m_player: HumanBody2D = $Actors/Player
 @onready var m_thunder_fill: ColorRect = $ThunderLayer/ThunderFill
 @onready var m_thunder_glow: ColorRect = $ThunderLayer/ThunderGlow
 @onready var m_toggle_weather_controls_button: Button = $WeatherControlsLayer/ToggleWeatherControlsButton
@@ -233,19 +230,6 @@ func _ready() -> void:
 	_setup_weather_controls()
 	if Engine.is_editor_hint():
 		return
-
-	if !_app_state().player_appearance_changed.is_connected(_on_player_appearance_changed):
-		_app_state().player_appearance_changed.connect(_on_player_appearance_changed)
-
-	m_player_controller = m_player.controller as PlayerController
-	_apply_player_costume()
-	if m_player_controller != null:
-		if !m_player_controller.closest_object_changed.is_connected(_on_closest_object_changed):
-			m_player_controller.closest_object_changed.connect(_on_closest_object_changed)
-		if !m_player_controller.inspect_requested.is_connected(_on_player_inspect_requested):
-			m_player_controller.inspect_requested.connect(_on_player_inspect_requested)
-	_app_state().set_residents(_app_state().get_known_resident_names())
-
 
 func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
@@ -383,44 +367,6 @@ func _world_to_iso_map_coords(layer: TileMapLayer, world_pos: Vector2) -> Vector
 	var map_x := local_pos.x / tile_width + local_pos.y / tile_height
 	var map_y := local_pos.y / tile_height - local_pos.x / tile_width
 	return Vector2(map_x, map_y)
-
-
-func _on_player_appearance_changed(_profile: Dictionary, _appearance_config: Dictionary) -> void:
-	_apply_player_costume()
-
-
-func _apply_player_costume() -> void:
-	if !is_instance_valid(m_player):
-		return
-
-	var appearance_config = _app_state().get_player_appearance_config()
-	if appearance_config.is_empty():
-		return
-
-	m_player.set_configuration(appearance_config)
-
-
-func _on_closest_object_changed(new_object: Node2D) -> void:
-	m_closest_object = new_object
-
-
-func _on_player_inspect_requested() -> void:
-	var resident_controller := _get_resident_controller(m_closest_object)
-	if resident_controller == null:
-		return
-
-	var resident_id := resident_controller.get_resident_id()
-	var interaction = _app_state().interact_with_resident(resident_id)
-	var dialogue_line := String(interaction.get("line", ""))
-	resident_controller.reveal_dialogue(dialogue_line)
-	_app_state().set_residents(_app_state().get_known_resident_names())
-
-
-func _get_resident_controller(target: Node2D) -> NPCController:
-	var human := target as HumanBody2D
-	if human == null:
-		return null
-	return human.controller as NPCController
 
 
 func _unhandled_input(event: InputEvent) -> void:

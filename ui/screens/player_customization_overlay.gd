@@ -1,11 +1,10 @@
 extends PanelContainer
 
-const HUMAN_BODY_SCENE := preload("res://characters/human_body_2d.tscn")
+const CHARACTER_PREVIEW_3D := preload("res://characters/character_preview_3d.gd")
+const CHARACTER_MODEL_CATALOG_3D := preload("res://characters/character_model_catalog_3d.gd")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const PLAYER_APPEARANCE_CATALOG := preload("res://game/player_appearance_catalog.gd")
 const PLAYER_COSTUME_CATALOG := preload("res://game/player_costume_catalog.gd")
-const PREVIEW_ACTOR_SCALE := 2.2
-const PREVIEW_SPRITE_SIZE := Vector2(64.0, 64.0)
 
 signal confirm_requested()
 signal cancel_requested()
@@ -24,9 +23,8 @@ signal cancel_requested()
 @onready var m_cancel_button: Button = $Margin/Body/Footer/CancelButton
 
 var m_is_free_walk := false
-var m_preview_actor: HumanBody2D = null
+var m_preview_actor: CHARACTER_PREVIEW_3D = null
 var m_draft_profile: Dictionary = {}
-var m_preview_center_refresh_pending := false
 
 
 func _app_state():
@@ -37,8 +35,8 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	add_theme_stylebox_override("panel", UIStyle.build_panel_style())
 	_build_preview_actor()
+	_hide_unsupported_appearance_controls()
 	_connect_buttons()
-	m_preview_viewport.size_changed.connect(_schedule_preview_center_refresh)
 
 	visibility_changed.connect(_on_visibility_changed)
 	refresh_from_state()
@@ -84,21 +82,9 @@ func _refresh_from_draft() -> void:
 
 
 func _build_preview_actor() -> void:
-	var preview_root := Node2D.new()
-	preview_root.name = "PreviewRoot"
-	m_preview_viewport.add_child(preview_root)
-
-	m_preview_actor = HUMAN_BODY_SCENE.instantiate() as HumanBody2D
-	if m_preview_actor == null:
-		return
-
-	preview_root.add_child(m_preview_actor)
-	m_preview_actor.scale = Vector2.ONE * PREVIEW_ACTOR_SCALE
-	_schedule_preview_center_refresh()
-	m_preview_actor.direction = 180.0
-	m_preview_actor.is_running = false
-	m_preview_actor.is_walking = false
-	m_preview_actor.facial_mood = HumanBody2D.FacialMoodEnum.NORMAL
+	m_preview_actor = CHARACTER_PREVIEW_3D.new() as CHARACTER_PREVIEW_3D
+	m_preview_actor.name = "CharacterPreview3D"
+	m_preview_viewport.add_child(m_preview_actor)
 
 
 func _connect_buttons() -> void:
@@ -154,49 +140,18 @@ func _connect_buttons() -> void:
 func _refresh_flow_labels() -> void:
 	if m_is_free_walk:
 		m_title_label.text = "Set Up Your Walker"
-		m_subtitle_label.text = "Choose a body, gender, skin tone, and hair before entering free walk. Costume changes unlock inside the journal once you are on the island."
+		m_subtitle_label.text = "Choose a body and presentation for your low-poly 3D traveler before entering free walk."
 		m_confirm_button.text = "Enter Free Walk"
 	else:
 		m_title_label.text = "Set Up Your Traveler"
-		m_subtitle_label.text = "Choose a body, gender, skin tone, and hair before arriving on Kulangsu. Costumes and hair can still change later from the journal."
+		m_subtitle_label.text = "Choose a body and presentation for your low-poly 3D traveler before arriving on Kulangsu."
 		m_confirm_button.text = "Begin Story"
 
 
 func _refresh_preview() -> void:
 	if m_preview_actor == null:
 		return
-
-	_schedule_preview_center_refresh()
-	m_preview_actor.set_configuration(_build_preview_appearance_config())
-
-
-func _center_preview_actor() -> void:
-	if m_preview_actor == null:
-		return
-
-	var viewport_size := Vector2(m_preview_viewport.size)
-	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
-		return
-	var scaled_preview_size := PREVIEW_SPRITE_SIZE * PREVIEW_ACTOR_SCALE
-	m_preview_actor.position = Vector2(
-		viewport_size.x * 0.5,
-		viewport_size.y * 0.5 + scaled_preview_size.y * 0.5
-	)
-
-
-func _schedule_preview_center_refresh() -> void:
-	if m_preview_center_refresh_pending:
-		return
-
-	m_preview_center_refresh_pending = true
-	call_deferred("_refresh_preview_center_after_layout")
-
-
-func _refresh_preview_center_after_layout() -> void:
-	_center_preview_actor()
-	await get_tree().process_frame
-	_center_preview_actor()
-	m_preview_center_refresh_pending = false
+	m_preview_actor.set_profile(m_draft_profile)
 
 
 func _ensure_draft_profile() -> void:
@@ -212,23 +167,19 @@ func _cycle_draft_option(profile_key: String, options: Array, direction: int) ->
 	_refresh_from_draft()
 
 
-func _build_preview_appearance_config() -> Dictionary:
-	_ensure_draft_profile()
-	var costume: Dictionary = _default_setup_costume()
-	var costume_selections: Dictionary = costume.get("selections", {})
-	return PLAYER_APPEARANCE_CATALOG.build_appearance_config(m_draft_profile, costume_selections)
-
-
 func _build_setup_summary_text() -> String:
 	_ensure_draft_profile()
-	return "Body: %s\nGender: %s\nSkin: %s\nHair: %s\nHair color: %s\nStarting look: %s" % [
+	return "Body: %s\nPresentation: %s\n3D model: %s" % [
 		PLAYER_APPEARANCE_CATALOG.body_frame_display_name(String(m_draft_profile.get("body_frame_id", "adult"))),
 		PLAYER_APPEARANCE_CATALOG.presentation_display_name(String(m_draft_profile.get("presentation_id", "masculine"))),
-		PLAYER_APPEARANCE_CATALOG.skin_tone_display_name(String(m_draft_profile.get("skin_tone_id", "light"))),
-		PLAYER_APPEARANCE_CATALOG.hair_style_display_name(String(m_draft_profile.get("hair_style_id", "short_bangs"))),
-		PLAYER_APPEARANCE_CATALOG.hair_color_display_name(String(m_draft_profile.get("hair_color_id", "chestnut"))),
-		String(_default_setup_costume().get("display_name", "Harbor Arrival")),
+		CHARACTER_MODEL_CATALOG_3D.model_id_for_player(m_draft_profile),
 	]
+
+
+func _hide_unsupported_appearance_controls() -> void:
+	$Margin/Body/Content/ControlsColumn/SkinRow.visible = false
+	$Margin/Body/Content/ControlsColumn/HairStyleRow.visible = false
+	$Margin/Body/Content/ControlsColumn/HairColorRow.visible = false
 
 
 func _default_setup_costume() -> Dictionary:
@@ -244,5 +195,4 @@ func grab_default_focus() -> void:
 
 func _on_visibility_changed() -> void:
 	if is_visible_in_tree():
-		_schedule_preview_center_refresh()
 		call_deferred("grab_default_focus")

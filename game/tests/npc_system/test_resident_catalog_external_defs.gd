@@ -10,24 +10,18 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	var builtins := RESIDENT_CATALOG_SCRIPT.build_builtin_definitions()
 	var merged := RESIDENT_CATALOG_SCRIPT.build_definitions()
 	var merged_defaults := RESIDENT_CATALOG_SCRIPT.build_defaults()
 
-	_assert_true(builtins.has("ticket_clerk_min"), "Built-in resident catalog still contains Ticket Clerk Min")
-	_assert_true(builtins.has("terrace_painter_nian"), "Built-in resident catalog still contains Terrace Painter Nian")
-
-	_assert_override_matches_baseline(
+	_assert_external_definition_loaded(
 		"ticket_clerk_min",
 		"res://game/residents/definitions/ticket_clerk_min.tres",
-		builtins,
 		merged,
 		merged_defaults
 	)
-	_assert_override_matches_baseline(
+	_assert_external_definition_loaded(
 		"terrace_painter_nian",
 		"res://game/residents/definitions/terrace_painter_nian.tres",
-		builtins,
 		merged,
 		merged_defaults
 	)
@@ -43,30 +37,24 @@ func _run() -> void:
 	get_tree().quit(0 if m_failures.is_empty() else 1)
 
 
-func _assert_override_matches_baseline(
+func _assert_external_definition_loaded(
 	resident_id: String,
 	expected_path: String,
-	builtins: Dictionary,
 	merged: Dictionary,
 	merged_defaults: Dictionary
 ) -> void:
-	var baseline = builtins.get(resident_id)
-	var override = merged.get(resident_id)
-	_assert_true(override != null, "%s override loads into the merged catalog" % resident_id)
-	if override == null or baseline == null:
+	var definition = merged.get(resident_id)
+	_assert_true(definition != null, "%s external definition loads into the merged catalog" % resident_id)
+	if definition == null:
 		return
 
 	_assert_true(
-		String(override.resource_path) == expected_path,
-		"%s merged definition comes from the external override resource" % resident_id
+		String(definition.resource_path) == expected_path,
+		"%s merged definition comes from the external resource" % resident_id
 	)
 	_assert_true(
-		override.to_runtime_profile() == baseline.to_runtime_profile(),
-		"%s override preserves the built-in runtime profile fields" % resident_id
-	)
-	_assert_true(
-		merged_defaults.get(resident_id, {}) == baseline.to_runtime_profile(),
-		"%s default runtime profile still matches the built-in baseline after the override merge" % resident_id
+		merged_defaults.get(resident_id, {}) == definition.to_runtime_profile(),
+		"%s default runtime profile matches its external definition" % resident_id
 	)
 	_assert_true(
 		RESIDENT_CATALOG_SCRIPT.resident_order().find(resident_id) >= 0,

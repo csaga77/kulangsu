@@ -10,7 +10,7 @@ This repository is also a small super-repo: the main game lives here, and severa
 - GDScript and `.tscn` scenes
 - Canvas-based UI rooted in [`main.tscn`](main.tscn)
 - Shared scene-owned runtime services for UI/progression state and overworld weather, resolved through [`AppRuntime`](game/app_runtime.gd) and [`WeatherRuntime`](weather/weather_runtime.gd)
-- Git submodules for shared support code, tilemap tooling, reusable addons, third-party LPC assets, and agent runbooks
+- Git submodules for shared support code, reusable addons, optional third-party source assets, and agent runbooks
 
 No package manager, CI pipeline, or automated test runner is checked into this repository.
 
@@ -20,12 +20,11 @@ No package manager, CI pipeline, or automated test runner is checked into this r
 - [`scenes/game_world_3d.tscn`](scenes/game_world_3d.tscn) / [`scenes/game_world_3d.gd`](scenes/game_world_3d.gd) - production low-poly 3D island scene and world integration logic
 - [`game/`](game) - shared state, catalogs, and reusable gameplay modules
 - [`weather/`](weather) - reusable weather overlays, the global weather manager/runtime, and the dedicated weather sandbox
-- [`characters/`](characters) - player, NPC, controller, and behavior-tree code
+- [`characters/`](characters) - low-poly 3D player/resident actors, controllers, model selection, and preview code
 - [`architecture/`](architecture) - landmark scenes and reusable building pieces
 - [`scenes/`](scenes) - runtime gameplay scenes plus validation scene containers
 - [`terrain/`](terrain) - island terrain scene, terrain generation, and water rendering setup
 - [`resources/`](resources) - audio, sprites, materials, animations, and tilesets
-- [`addons/universal_lpc/`](addons/universal_lpc) - reusable Universal LPC 2D renderer submodule with bundled generated sprites, metadata/tooling, and focused validation scenes
 - [`addons/low_poly_building_editor/`](addons/low_poly_building_editor) - reusable low-poly building and street authoring submodule
 - [`addons/storyline_editor/`](addons/storyline_editor) - storyline route and dependency editor submodule
 - [`scripts/`](scripts) - repo-local workflow configs and project-specific helper data
@@ -42,7 +41,6 @@ This repo currently tracks these submodules through [`.gitmodules`](.gitmodules)
 - [`3rdparty/Universal-LPC-Spritesheet-Character-Generator/`](3rdparty/Universal-LPC-Spritesheet-Character-Generator)
 - [`agent_tools/`](agent_tools)
 - [`addons/mp3_to_ogg/`](addons/mp3_to_ogg)
-- [`addons/universal_lpc/`](addons/universal_lpc)
 - [`addons/low_poly_building_editor/`](addons/low_poly_building_editor)
 - [`addons/storyline_editor/`](addons/storyline_editor)
 
@@ -54,7 +52,6 @@ Primary submodule documentation entry points:
 - [`godot_common/AGENTS.md`](godot_common/AGENTS.md), [`godot_common/README.md`](godot_common/README.md), and [`godot_common/docs/`](godot_common/docs) - entry points for shared Godot support code and helper ownership guidance
 - [`3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md`](3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md) - upstream LPC generator overview, licensing, attribution, and development references
 - [`addons/mp3_to_ogg/README.md`](addons/mp3_to_ogg/README.md) and [`addons/mp3_to_ogg/docs/`](addons/mp3_to_ogg/docs) - MP3 conversion addon behavior and contract
-- [`addons/universal_lpc/README.md`](addons/universal_lpc/README.md) and [`addons/universal_lpc/docs/`](addons/universal_lpc/docs) - Universal LPC addon usage, contract, authoring, and validation guidance
 - [`addons/low_poly_building_editor/README.md`](addons/low_poly_building_editor/README.md) and [`addons/low_poly_building_editor/docs/`](addons/low_poly_building_editor/docs) - low-poly building editor usage, feature, contract, and validation guidance
 - [`addons/storyline_editor/README.md`](addons/storyline_editor/README.md) and [`addons/storyline_editor/docs/`](addons/storyline_editor/docs) - storyline editor integration, feature, and contract guidance
 
@@ -125,7 +122,7 @@ Validation is currently manual:
 - Use the existing validation scenes under [`scenes/tests/`](scenes/tests), the dedicated weather sandbox under [`weather/tests/`](weather/tests), and feature-local test scenes such as [`game/grid_board_game/test_grid_board_game.tscn`](game/grid_board_game/test_grid_board_game.tscn) and [`game/grid_board_game/test_terminal_turn_state.tscn`](game/grid_board_game/test_terminal_turn_state.tscn).
 - For landmark, building-piece, or multi-level traversal work, use the focused validation map in [`docs/features/multi_level_spaces.md`](docs/features/multi_level_spaces.md) alongside [`game/tests/cue_progression/test_cue_progression.tscn`](game/tests/cue_progression/test_cue_progression.tscn) for canonical landmark progression coverage.
 - Use [`scenes/game_world_3d.tscn`](scenes/game_world_3d.tscn) (or the full app flow) when validating the shared overworld weather and global weather-manager transitions against the real island terrain, plus [`scenes/tests/test_game_world_3d.tscn`](scenes/tests/test_game_world_3d.tscn) for the headless world smoke test.
-- Use [`weather/tests/test_weather.tscn`](weather/tests/test_weather.tscn) for weather-specific validation. It now combines tilemap-backed water and terrain, manager-attached shared fog/rain/cloud/impact passes, a thunder-flash test pass, and a tabbed weather control panel split into `Wind`, `Rain`, `Fog`, and `Cloud` groups with per-pass `Sync With Wind` toggles for faster tuning, alongside foreground occluders and actor readability checks.
+- Use [`weather/tests/test_weather.tscn`](weather/tests/test_weather.tscn) for weather-specific validation. It combines tilemap-backed water and terrain, manager-attached shared fog/rain/cloud/impact passes, a thunder-flash test pass, and a tabbed weather control panel split into `Wind`, `Rain`, `Fog`, and `Cloud` groups with per-pass `Sync With Wind` toggles. Lightweight marker silhouettes provide readability checks without depending on a retired gameplay actor stack.
 
 If you make a change that affects behavior and you cannot run the project or a relevant scene, call that out explicitly in your handoff.
 

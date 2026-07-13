@@ -22,13 +22,10 @@ const WATER_WIND_ADAPTER := preload("res://terrain/low_poly_water_wind_adapter.g
 const WEATHER_RIG_3D_SCRIPT := preload("res://weather/weather_rig_3d.gd")
 const BGM_MANAGER_SCRIPT := preload("res://game/bgm_manager.gd")
 const LANDMARK_CUE_LOADER_SCRIPT := preload("res://game/landmark_cue_loader.gd")
-const PLAYER_APPEARANCE_CATALOG := preload("res://game/player_appearance_catalog.gd")
-const PLAYER_MODEL_MALE: PackedScene = preload("res://assets/characters/male.glb")
-const PLAYER_MODEL_FEMALE: PackedScene = preload("res://assets/characters/female.glb")
-const PLAYER_MODEL_TEEN: PackedScene = preload("res://assets/characters/boy.glb")
 const LowPolyWorldCoordinates3DScript = preload("res://terrain/low_poly_world_coordinates_3d.gd")
 const LowPolyArtStyle3DScript = preload("res://terrain/low_poly_art_style_3d.gd")
 const RESIDENT_PRESENTER_3D := preload("res://characters/resident_presenter_3d.gd")
+const CHARACTER_MODEL_CATALOG_3D := preload("res://characters/character_model_catalog_3d.gd")
 
 const LANDMARK_MASK_META := &"low_poly_landmark_mask_pixel"
 const DEFAULT_RESUME_ANCHOR := "Piano Ferry"
@@ -429,13 +426,7 @@ func _apply_player_appearance(profile: Dictionary) -> void:
 
 
 func _resolve_player_model_scene(profile: Dictionary) -> PackedScene:
-	match PLAYER_APPEARANCE_CATALOG.resolve_body_type(profile):
-		"teen":
-			return PLAYER_MODEL_TEEN
-		"female":
-			return PLAYER_MODEL_FEMALE
-		_:
-			return PLAYER_MODEL_MALE
+	return CHARACTER_MODEL_CATALOG_3D.resolve_player_model(profile)
 
 
 func _snap_camera_controller() -> void:

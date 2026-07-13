@@ -10,7 +10,7 @@ Read [`../design_brief.md`](../design_brief.md), [`../architecture.md`](../archi
 two documents above before executing any phase here. Do not start the cutover phases (D onward)
 until every sidecar evidence gate in the implementation plan is green.
 
-## Current Status (2026-07-06)
+## Current Status (2026-07-13)
 
 The 3D overworld is built, validated in-engine (Godot 4.7, Apple M5, Metal Forward+), and playable
 through the entire app shell. Per-item status is inline in the phases below; the rollup:
@@ -37,11 +37,12 @@ through the entire app shell. Per-item status is inline in the phases below; the
   **replace the 2D overworld** in `implementation_plan.md`, and `main.gd` now instantiates only
   `game_world_3d.tscn` (toggle and `game_main.tscn` preload removed). The 3D overworld is the runtime;
   the 2D scene is orphaned.
+- **Legacy removal complete:** the orphaned 2D character/NPC renderer, physics controllers,
+  behavior tree, pixel-route tests, 2D speech balloon, and Universal LPC runtime/editor submodule
+  have been removed. Traveler setup and journal previews now render the shared 3D actor/model
+  contract. The weather sandbox uses lightweight markers instead of gameplay actors.
 - **Open (accepted follow-ups):** tunnel interior geometry (Bi Shan / Long Shan are still marker
-  anchors); the landmark-result-parity equality check; the release-export performance repeat; and the
-  physical deletion of the orphaned 2D render stack plus the Phase H doc sweep — held for an
-  editor-verified pass (the deletion touches a large cross-referenced file set and needs an in-engine
-  regression run).
+  anchors), the landmark-result-parity equality check, and the release-export performance repeat.
 
 The runtime flip is complete. Reversibility is provided by source control rather than a second live
 overworld path.
@@ -71,8 +72,8 @@ Replaced (2D render stack, deleted at cutover):
   `$terrain`) and its extracted 2D helpers where they assume 2D space
 - `terrain/terrain.tscn` / `terrain/terrain.gd` and the TileMap water setup
   (`terrain/water_layer_setup.gd`), replaced by the `LowPolyTerrain3D` pipeline
-- `characters/human_body_2d.*`, `characters/resident_npc.*`, and the 2D controller stack
-  (`characters/control/player_controller.gd`, `base_controller.gd`, `npc_controller.gd`)
+- `characters/human_body_2d.*`, `characters/resident_npc.*`, the 2D controller stack, its behavior
+  tree, and the Universal LPC renderer/addon
 - 2D landmark scenes: `architecture/piano_ferry.tscn`, `architecture/trinity_church.tscn`,
   `architecture/bagua_tower/*.tscn`, `architecture/bi_shan_tunnel.tscn`,
   `architecture/long_shan_tunnel.tscn`, and the 2D `architecture/components/*` pieces
@@ -81,8 +82,8 @@ Replaced (2D render stack, deleted at cutover):
   the overworld stops depending on it)
 - the 2D weather overlays (fog, rain, cloud-shadow, ground-impact) as authored for canvas/`Node2D`
   space, replaced by 3D-space weather passes
-- 2D in-world UI placement for `common/gui/speech_balloon.tscn` (the balloon content can stay; its
-  world anchoring moves to 3D)
+- 2D in-world UI placement and `common/gui/speech_balloon.tscn`, replaced by the dedicated
+  camera-facing `SpeechBalloon3D`
 
 Preserved (dimension-neutral, must not be forked):
 
@@ -306,17 +307,12 @@ representative landmark outcome equality against a 2D dispatch from an equivalen
    instantiates it directly; the `USE_3D_OVERWORLD` toggle and the `GAME_SCENE_2D`/`game_main.tscn`
    preload are removed. The 3D overworld is the runtime overworld. `game_main.tscn` is now orphaned
    (nothing references it), so nothing dangles.
-4. Delete the 2D render stack listed in "What Gets Replaced," and remove now-dead `preload`/
-   `ext_resource` references.
-   *Status: staged, not executed.* The runtime flip (step 3) already retires the 2D overworld
-   functionally. The physical deletion is held for a separate verified pass because the 2D stack is
-   referenced across a large file set (a reference sweep of `game_main`/`StorySubjectArea2D`/etc. spans
-   docs, tests, and shared scenes), and Phase G step 5 requires an in-engine regression run to confirm
-   no dangling references — which the current authoring environment cannot perform. Doing the mass
-   deletion blind would risk a broken build and disrupt concurrent work, so it is deferred to an
-   editor-verified pass with the doc sweep in Phase H.
-5. Run the full regression suite and the standard main-flow validation; confirm no scene or resource
-   references dangle. *(Runs with the step-4 verified deletion pass.)*
+4. Delete the 2D character/NPC render stack, physics controllers, behavior tree, 2D speech balloon,
+   obsolete 2D-only tests, and Universal LPC submodule; remove dead references.
+   *Completed 2026-07-13.* The dimension-neutral resident/story/save layer remains intact, and UI
+   previews now use `CharacterPreview3D` plus the shared model catalog.
+5. Run focused actor, collision, resident, UI, weather, production-world, and main-flow validation;
+   confirm no scene or resource references dangle. *Completed with the verified removal pass.*
 
 ### Phase H — Documentation and cleanup
 
@@ -340,7 +336,7 @@ a parallel exploration lane.
 | `LevelNode2D`/`LevelArea2D`/`portal`/stairs | 3D level + portal + stair components | Preserve `level_id` + tunnel masking |
 | `StorySubjectArea2D` | `StorySubject3D` (`Area3D`) | Same `subject_id` → same `StoryEventService` |
 | 2D weather overlays | 3D-space weather passes | Re-register host with `WeatherManager` |
-| 2D speech-balloon anchoring | 3D-anchored balloons | Balloon content reused |
+| 2D speech-balloon anchoring | `SpeechBalloon3D` | Dedicated camera-facing 3D label |
 
 ## Validation Strategy
 
