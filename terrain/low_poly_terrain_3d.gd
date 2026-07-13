@@ -789,7 +789,7 @@ func _build_sampler() -> LowPolyTerrainSampler:
 func _get_generation_profile() -> TerrainGenerationProfile:
 	var profile := generation_profile
 	if profile == null:
-		profile = TerrainGenerationProfile.create_default_profile()
+		profile = TerrainGenerationProfile.create_default_profile() as TerrainGenerationProfile
 	profile.ensure_defaults()
 	if !profile.is_valid_profile():
 		return null

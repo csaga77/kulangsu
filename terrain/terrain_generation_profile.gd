@@ -77,8 +77,10 @@ func build_street_cells(tile_pos: Vector2i) -> Array[Vector2i]:
 	return cells
 
 
-static func create_default_profile() -> TerrainGenerationProfile:
-	var profile := TerrainGenerationProfile.new()
+# Untyped return / bare new(): naming this script's own class here would make
+# the GDScript reference itself and leak at exit ("resources still in use").
+static func create_default_profile() -> Resource:
+	var profile := new()
 	profile.base_source_id = 8
 	profile.base_tile_coords = Vector2i(1, 0)
 	profile.base_tile_alternative = 0

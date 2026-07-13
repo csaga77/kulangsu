@@ -594,7 +594,7 @@ func _resolve_generation_profile() -> TerrainGenerationProfile:
 	var terrain_profile: Variant = m_terrain.get("generation_profile")
 	var profile := terrain_profile as TerrainGenerationProfile
 	if profile == null:
-		profile = TerrainGenerationProfile.create_default_profile()
+		profile = TerrainGenerationProfile.create_default_profile() as TerrainGenerationProfile
 	profile.ensure_defaults()
 	if !profile.is_valid_profile():
 		return null
