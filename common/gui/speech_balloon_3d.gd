@@ -2,10 +2,10 @@ class_name SpeechBalloon3D
 extends Node3D
 
 # Phase E of docs/plan/low_poly_3d_replacement.md: world-anchored dialogue for the
-# 3D lane. The 2D SpeechBalloon is an atlas-based Node2D UI; this 3D counterpart is
-# a camera-facing text label with a translucent background panel that floats above
-# an actor and auto-hides. It carries no story logic — the world scene feeds it the
-# line returned by the shared story services.
+# 3D lane. (It replaced the retired atlas-based 2D SpeechBalloon.) A camera-facing
+# text label with a translucent background panel that floats above an actor and
+# auto-hides. It carries no story logic — the world scene feeds it the line
+# returned by the shared story services.
 #
 # Tuning: raise TEXT_WORLD_SIZE to make the text bigger, lower it to shrink. The
 # background quad resizes itself to the text automatically.
