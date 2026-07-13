@@ -20,7 +20,12 @@ const LEVEL_REGISTRY := preload("res://common/level_registry.gd")
 		_request_level_refresh()
 		
 @export var physics_layers : Array [TileMapLayer]
-@export var sub_level_nodes : Array [LevelNode2D]
+# Child LevelNode2D rooms. Typed as Array[Node2D] instead of Array[LevelNode2D]
+# because a script-typed export of the script's own class makes the GDScript
+# hold a reference to itself, leaking isometric_block/auto_visibility/level_node
+# scripts at exit ("resources still in use") in every headless test run.
+# Entries are validated at refresh time instead.
+@export var sub_level_nodes : Array [Node2D]
 
 var m_resolved_level := 0
 var m_parent_level_node: Node = null
@@ -56,7 +61,7 @@ func _update_level() -> void:
 
 	var ancestors_to_remove := []
 	for room in sub_level_nodes:
-		if room == null or !is_instance_valid(room):
+		if room == null or !is_instance_valid(room) or !room.has_method("refresh_level_from_context"):
 			ancestors_to_remove.append(room)
 			continue
 		if CommonUtils.is_ancestor(room, self):
@@ -64,7 +69,7 @@ func _update_level() -> void:
 			continue
 		room.refresh_level_from_context()
 	if !ancestors_to_remove.is_empty():
-		print("Warning: do not assign acestor rooms to children rooms! " + self.name)
+		print("Warning: sub_level_nodes must be non-ancestor LevelNode2D rooms! " + self.name)
 		for ancestor in ancestors_to_remove:
 			sub_level_nodes.erase(ancestor)
 
