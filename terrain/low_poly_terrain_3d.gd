@@ -134,7 +134,7 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		building_footprint_lift = new_lift
 		_request_rebuild()
 
-# Terrain palette and water tuning (land_color, shoreline_color, street_color,
+# Terrain palette and water tuning (land_color, shoreline_color,
 # building_footprint_color, water_color, water_deep_color, water_surface_layer_color,
 # water_shoreline_color, water_highlight_color, water_wave_depth, water_wave_frequency,
 # water_shoreline_band_ratio, water_shoreline_lift, water_surface_layer_lift) now live
@@ -881,7 +881,6 @@ func _build_meshes_from_grid(
 	_add_mesh_instance("WaterSurfaceLayerMesh", result.water_surface_layer, water_surface_layer_material)
 	_add_mesh_instance("LandMesh", result.land, _build_material("Low Poly Land", _resolve_style_color(&"land_color"), false))
 	_add_mesh_instance("ShorelineMesh", result.shoreline, _build_material("Low Poly Shoreline", _resolve_style_color(&"shoreline_color"), false))
-	_add_mesh_instance("StreetMesh", result.street, _build_material("Low Poly Streets", _resolve_style_color(&"street_color"), false))
 	_add_mesh_instance(
 		"BuildingFootprintMesh",
 		result.building,
@@ -912,7 +911,6 @@ func _ensure_mesh_builder() -> LowPolyTerrainMeshBuilder:
 
 func _configure_mesh_builder() -> LowPolyTerrainMeshBuilder:
 	var builder := _ensure_mesh_builder()
-	builder.street_lift = street_lift
 	builder.building_footprint_lift = building_footprint_lift
 	builder.water_land_overlap_cells = water_land_overlap_cells
 	builder.water_rendering = _build_water_rendering()

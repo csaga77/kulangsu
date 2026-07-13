@@ -5,7 +5,6 @@ extends Resource
 @export_group("Terrain")
 @export var land_color: Color = Color(0.52, 0.70, 0.48, 1.0)
 @export var shoreline_color: Color = Color(0.34, 0.49, 0.41, 1.0)
-@export var street_color: Color = Color(0.84, 0.77, 0.62, 1.0)
 @export var building_footprint_color: Color = Color(0.76, 0.57, 0.43, 1.0)
 @export var water_color: Color = Color(0.38, 0.66, 0.82, 0.46)
 @export var water_deep_color: Color = Color(0.24, 0.48, 0.67, 0.54)

@@ -21,7 +21,6 @@ var cell_size := 1.0
 var water_height := 0.0
 var land_height := 0.22
 var smooth_land_surface := true
-var street_lift := 0.02
 var building_footprint_lift := 0.09
 var water_land_overlap_cells := 1
 var water_rendering: WaterRendering = null
@@ -75,6 +74,8 @@ func build(
 							seabed_corner_heights
 						)
 				LowPolyTerrainCell.Kind.STREET:
+					# The mask kind remains input for centerline extraction, but visible
+					# roads are owned by Street3D. Render only their supporting land here.
 					result.street_cells += 1
 					result.land_cells += 1
 					var street_corner_heights := _get_cell_corner_heights(
@@ -99,7 +100,6 @@ func build(
 						result.collision_faces,
 						!heightmap_defines_water_area
 					)
-					_append_inset_surface_quad(result.street, min_x, max_x, min_z, max_z, street_corner_heights, street_lift, 0.08)
 				LowPolyTerrainCell.Kind.BUILDING:
 					result.building_cells += 1
 					result.land_cells += 1
@@ -821,7 +821,6 @@ class MeshBuildResult:
 	var water := MeshBuildState.new()
 	var water_surface_layer := MeshBuildState.new()
 	var water_shoreline := MeshBuildState.new()
-	var street := MeshBuildState.new()
 	var building := MeshBuildState.new()
 	var collision_faces := PackedVector3Array()
 	var land_cells := 0

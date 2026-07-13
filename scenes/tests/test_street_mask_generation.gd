@@ -80,13 +80,15 @@ func _validate_generated_streets(terrain: LowPolyTerrain3DScript) -> void:
 		m_failures.append("Terrain generation did not instantiate Street3D from extracted paths")
 	if int(summary.get("core_cells", 0)) <= 0:
 		m_failures.append("Generated mask streets did not shape their terrain corridors")
+	if terrain.get_node_or_null("StreetMesh") != null:
+		m_failures.append("Terrain retained the obsolete mask-derived StreetMesh")
 	var root := terrain.get_node_or_null("GeneratedStreets")
 	if root == null or root.get_child_count() <= 0:
 		m_failures.append("Terrain is missing its GeneratedStreets assembly")
 		return
 	var has_mesh := false
 	var has_bend := false
-	var has_intersection_cut := false
+	var has_intersection_geometry := false
 	for child in root.get_children():
 		if child is MeshInstance3D and (child as MeshInstance3D).mesh != null:
 			has_mesh = true
@@ -94,13 +96,16 @@ func _validate_generated_streets(terrain: LowPolyTerrain3DScript) -> void:
 		if path.size() >= 3:
 			has_bend = true
 		if child.has_method("get_intersection_cuts") and !child.call("get_intersection_cuts").is_empty():
-			has_intersection_cut = true
+			has_intersection_geometry = true
+		if child.has_method("get_end_joins") and !child.call("get_end_joins").is_empty():
+			has_intersection_geometry = true
 	if !has_mesh:
 		m_failures.append("Generated Street3D assemblies have no visible mesh")
 	if !has_bend:
 		m_failures.append("The bent STREET mask did not produce a multipoint street path")
-	if !has_intersection_cut:
+	if !has_intersection_geometry:
 		m_failures.append("Generated STREET junction paths did not merge their sibling geometry")
+	_validate_shared_endpoint_junctions(root, "Generated STREET fixture")
 
 
 func _validate_rebuild_replaces_streets(terrain: LowPolyTerrain3DScript) -> void:
@@ -249,9 +254,8 @@ func _validate_diagonal_stays_straight() -> void:
 
 
 func _validate_real_island_generation() -> void:
-	# Keep one real-data integration check in the focused street suite. The runtime
-	# scene uses its lightweight mask StreetMesh; explicit Street3D extraction is an
-	# authoring/rebuild path and should not be forced during every runtime smoke test.
+	# Keep one real-data integration check in the focused street suite so mask
+	# extraction, visible Street3D geometry, and legacy-overlay removal stay covered.
 	var terrain := LowPolyTerrain3DScript.new() as LowPolyTerrain3DScript
 	terrain.name = "IslandTerrain"
 	terrain.build_on_ready = false
@@ -290,7 +294,53 @@ func _validate_real_island_generation() -> void:
 			m_failures.append("Real island Street3D sources have no visible meshes")
 		if stair_segment_count <= 0:
 			m_failures.append("Real island slopes did not generate street stair segments")
+		_validate_shared_endpoint_junctions(root, "Real island")
 	terrain.queue_free()
+
+
+func _validate_shared_endpoint_junctions(root: Node, label: String) -> void:
+	var ends: Array[Dictionary] = []
+	for street in root.get_children():
+		if !street.has_method("get_geometry_profile") or !street.has_method("get_end_joins"):
+			continue
+		var profile: PackedVector3Array = street.call("get_geometry_profile")
+		if profile.size() < 2:
+			continue
+		ends.append({"street": street, "end_key": "start", "point": profile[0]})
+		ends.append({"street": street, "end_key": "end", "point": profile[-1]})
+	var claimed := PackedByteArray()
+	claimed.resize(ends.size())
+	var junction_count := 0
+	for first_index in range(ends.size()):
+		if claimed[first_index] != 0:
+			continue
+		var group: Array[Dictionary] = [ends[first_index]]
+		claimed[first_index] = 1
+		var first_point: Vector3 = ends[first_index]["point"]
+		for second_index in range(first_index + 1, ends.size()):
+			if claimed[second_index] != 0:
+				continue
+			var second_point: Vector3 = ends[second_index]["point"]
+			if (
+				Vector2(second_point.x - first_point.x, second_point.z - first_point.z).length() <= 0.05
+				and absf(second_point.y - first_point.y) <= 0.02
+			):
+				group.append(ends[second_index])
+				claimed[second_index] = 1
+		# Two-arm collinear continuations need no miter. Generated intersections
+		# have at least three arms and every one must receive endpoint geometry.
+		if group.size() < 3:
+			continue
+		junction_count += 1
+		for entry: Dictionary in group:
+			var joins: Dictionary = entry["street"].call("get_end_joins")
+			if joins.get(entry["end_key"], {}).is_empty():
+				m_failures.append(
+					"%s junction at (%.2f, %.2f) left %s disconnected"
+					% [label, first_point.x, first_point.z, entry["street"].name]
+				)
+	if junction_count <= 0:
+		m_failures.append("%s did not produce a shared-endpoint street junction" % label)
 
 
 func _finish() -> void:

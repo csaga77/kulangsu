@@ -115,9 +115,18 @@ func _check_terrain(failures: Array[String]) -> void:
 	if terrain.get_node_or_null("TerrainCollision") == null:
 		failures.append("LowPolyTerrain3D did not generate TerrainCollision")
 
-	var street_mesh := terrain.get_node_or_null("StreetMesh") as MeshInstance3D
-	if street_mesh == null or street_mesh.mesh == null:
-		failures.append("runtime terrain did not generate its island street mesh")
+	if terrain.get_node_or_null("StreetMesh") != null:
+		failures.append("runtime terrain retained the obsolete mask-derived StreetMesh")
+	var generated_streets := terrain.get_node_or_null("GeneratedStreets")
+	if generated_streets == null:
+		failures.append("runtime terrain is missing its generated Street3D assembly")
+	else:
+		var visible_street_count := 0
+		for child in generated_streets.get_children():
+			if child is MeshInstance3D and (child as MeshInstance3D).mesh != null:
+				visible_street_count += 1
+		if visible_street_count <= 0:
+			failures.append("runtime terrain generated no visible Street3D meshes")
 
 
 func _check_player(failures: Array[String]) -> void:
