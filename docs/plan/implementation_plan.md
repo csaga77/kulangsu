@@ -347,11 +347,11 @@ First-pass shipped outcome:
 
 Phases 1–3 shipped:
 
-- Phase 1 — typed Resource schema:
-  - `game/storylines/resources/storyline_ending_tone_rule.gd` — `StorylineEndingToneRule`
-  - `game/storylines/resources/storyline_event_resource.gd` — `StorylineEventResource` with `to_dict()` and `validate()`
-  - `game/storylines/resources/storyline_route_resource.gd` — `StorylineRouteResource` with `to_storyline_dict()` and `validate()`
-  - `StorylineCatalog` now loads only `.tres` files from `game/storylines/routes/` as the canonical source
+- Phase 1 — typed Resource schema (schema scripts have since moved into the `addons/storyline_editor` submodule under `resources/`; the parent keeps the authored data and the `storyline_editor/*` project settings):
+  - `storyline_ending_tone_rule.gd` — `StorylineEndingToneRule`
+  - `storyline_event_resource.gd` — `StorylineEventResource` with `to_dict()` and `validate()`
+  - `storyline_route_resource.gd` — `StorylineRouteResource` with `to_storyline_dict()` and `validate()`
+  - `StorylineCatalog` now loads only `.tres` files from the configured routes directory (`game/storylines/routes/` in this project) as the canonical source
   - `StorylineCatalog.build_definition_bundle()` builds route definitions, event definitions, and display order in one pass so runtime `StoryRouteGraph` instances can cache that bundle instead of reloading route resources during normal progression refreshes
 - Phase 2 — inspector-first workflow:
   - `@tool` `validate()` methods on all three resource classes check for empty ids, duplicate event ids within a route, invalid `phase_window` values, and missing `ending_behavior` on endgame events, while project-wide prerequisite existence checks remain in the editor tooling so valid cross-route dependencies are not treated as route-local warnings
@@ -382,10 +382,10 @@ Exit criteria for this workstream:
 
 Primary files:
 
-- `game/storylines/storyline_catalog.gd`
+- `addons/storyline_editor/storyline_catalog.gd` (schema/loader now addon-owned)
 - `game/story_route_graph.gd`
-- planned editor-native storyline resource classes near `game/storylines/`
-- planned editor plugin under `addons/`
+- storyline resource classes under `addons/storyline_editor/resources/`
+- editor plugin under `addons/storyline_editor/`
 - `game/tests/story_routes/test_story_reactivity.gd`
 - `game/tests/persistence/test_story_state_persistence.gd`
 - `game/tests/story_routes/test_story_routes.gd`
