@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="StorylinePhaseSet" format=3]
+
+[ext_resource type="Script" path="res://addons/storyline_editor/resources/storyline_phase_set.gd" id="1_phaseset"]
+
+[resource]
+script = ExtResource("1_phaseset")
+authorable_phase_ids = PackedStringArray("summer_1", "autumn_study", "winter", "spring_festival", "summer_2")
+runtime_phase_ids = PackedStringArray("summer_1", "autumn_study", "winter", "spring_festival", "summer_2", "endgame")
+display_names = {
+"autumn_study": "Autumn / Study",
+"endgame": "Final Act",
+"spring_festival": "Spring Festival / Spring",
+"summer_1": "Summer",
+"summer_2": "Second Summer",
+"winter": "Winter"
+}
+default_phase = "summer_1"
+default_resume_phase = "spring_festival"

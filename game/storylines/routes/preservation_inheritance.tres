@@ -1,8 +1,8 @@
 [gd_resource type="Resource" script_class="StorylineRouteResource" format=3 uid="uid://30itkcqlihcf"]
 
-[ext_resource type="Script" uid="uid://bssjal5r1kndr" path="res://game/storylines/resources/storyline_ending_tone_rule.gd" id="1_gdvyl"]
-[ext_resource type="Script" uid="uid://bqu32w3oy336b" path="res://game/storylines/resources/storyline_event_resource.gd" id="2_sppxw"]
-[ext_resource type="Script" uid="uid://dn6270j664m1n" path="res://game/storylines/resources/storyline_route_resource.gd" id="3_42eds"]
+[ext_resource type="Script" uid="uid://bssjal5r1kndr" path="res://addons/storyline_editor/resources/storyline_ending_tone_rule.gd" id="1_gdvyl"]
+[ext_resource type="Script" uid="uid://bqu32w3oy336b" path="res://addons/storyline_editor/resources/storyline_event_resource.gd" id="2_sppxw"]
+[ext_resource type="Script" uid="uid://dn6270j664m1n" path="res://addons/storyline_editor/resources/storyline_route_resource.gd" id="3_42eds"]
 
 [sub_resource type="Resource" id="Resource_4473g"]
 script = ExtResource("1_gdvyl")

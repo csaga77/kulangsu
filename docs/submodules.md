@@ -43,9 +43,9 @@ Source of truth:
 
 - Path: [`../addons/storyline_editor/`](../addons/storyline_editor)
 - Branch in `.gitmodules`: `main`
-- Role in this repo: editor-only route browser, dependency graph, validation, and inspector bridge for Kulangsu's canonical storyline resources
+- Role in this repo: storyline schema types, catalog loader, route browser, dependency graph, validation, and inspector bridge for Kulangsu's authored storyline data
 - Docs to read first: [`../addons/storyline_editor/README.md`](../addons/storyline_editor/README.md), [`../addons/storyline_editor/docs/contract.md`](../addons/storyline_editor/docs/contract.md), and [`../addons/storyline_editor/docs/feature.md`](../addons/storyline_editor/docs/feature.md)
-- Integration note: the submodule owns the editor implementation; the parent owns `StorylineCatalog`, typed route resources, route data, and the graph-layout file consumed by the addon
+- Integration note: the submodule owns the editor implementation plus the generic schema (`StorylineCatalog`, `StorylineRouteResource`, `StorylineEventResource`, `StorylineEndingToneRule`, `StorylinePhaseSet`); the parent owns the authored route `.tres` data, `phase_set.tres`, the graph-layout file, and the `storyline_editor/*` project settings that point the addon at them
 
 ### `agent_tools`
 

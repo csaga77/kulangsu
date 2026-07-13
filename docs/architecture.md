@@ -257,7 +257,7 @@ Responsibilities:
 - third-party LPC asset generator content
 - reusable MP3 conversion editor tooling
 - reusable low-poly building and street authoring tooling
-- reusable storyline route/dependency editor tooling over parent-owned data
+- reusable storyline schema, catalog loader, and route/dependency editor tooling over parent-owned authored data (routes, phase vocabulary, graph layout), located through `storyline_editor/*` project settings
 
 Boundary:
 

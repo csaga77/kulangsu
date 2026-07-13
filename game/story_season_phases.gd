@@ -1,5 +1,11 @@
 class_name StorySeasonPhases
 extends RefCounted
+## Runtime season-phase constants.
+##
+## The storyline editor addon reads the same vocabulary from the authored
+## game/storylines/phase_set.tres (storyline_editor/phase_set project setting).
+## Keep both in sync — game/tests/story_routes/test_storyline_resources.gd
+## fails when they drift.
 
 const SUMMER_1 := "summer_1"
 const AUTUMN_STUDY := "autumn_study"

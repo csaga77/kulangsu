@@ -1,9 +1,10 @@
 extends Node
 
-const ENDING_TONE_RULE_SCRIPT := preload("res://game/storylines/resources/storyline_ending_tone_rule.gd")
-const EVENT_RESOURCE_SCRIPT := preload("res://game/storylines/resources/storyline_event_resource.gd")
-const ROUTE_RESOURCE_SCRIPT := preload("res://game/storylines/resources/storyline_route_resource.gd")
+const ENDING_TONE_RULE_SCRIPT := preload("res://addons/storyline_editor/resources/storyline_ending_tone_rule.gd")
+const EVENT_RESOURCE_SCRIPT := preload("res://addons/storyline_editor/resources/storyline_event_resource.gd")
+const ROUTE_RESOURCE_SCRIPT := preload("res://addons/storyline_editor/resources/storyline_route_resource.gd")
 const STORY_SEASON_PHASES_SCRIPT := preload("res://game/story_season_phases.gd")
+const PHASE_SET_RESOURCE := preload("res://game/storylines/phase_set.tres")
 const STORYLINE_EDITOR_PLUGIN_SCRIPT := preload("res://addons/storyline_editor/plugin.gd")
 const INSPECTOR_PLUGIN_SCRIPT := preload("res://addons/storyline_editor/storyline_validator_inspector_plugin.gd")
 const VALIDATION_PANEL_SCRIPT := preload(
@@ -78,9 +79,32 @@ func _run() -> void:
 	route_resource.ending_tone_rules = [tone_rule]
 	route_resource.events = [anchor_event, soft_ending_event, cross_route_event]
 
+	# Drift guard: the addon consumes the authored phase_set.tres, while runtime
+	# code keeps the StorySeasonPhases constants. These must stay identical.
 	_assert_true(
-		PackedStringArray(EVENT_RESOURCE_SCRIPT.VALID_PHASES) == STORY_SEASON_PHASES_SCRIPT.authorable_phase_ids(),
-		"Storyline event resources reuse the canonical authorable season phase ids"
+		PHASE_SET_RESOURCE.authorable_phase_ids == STORY_SEASON_PHASES_SCRIPT.authorable_phase_ids(),
+		"phase_set.tres authorable ids match the runtime StorySeasonPhases catalog"
+	)
+	_assert_true(
+		PHASE_SET_RESOURCE.runtime_phase_ids == STORY_SEASON_PHASES_SCRIPT.runtime_phase_ids(),
+		"phase_set.tres runtime ids match the runtime StorySeasonPhases catalog"
+	)
+	_assert_true(
+		PHASE_SET_RESOURCE.default_phase == STORY_SEASON_PHASES_SCRIPT.DEFAULT_PHASE
+			and PHASE_SET_RESOURCE.default_resume_phase == STORY_SEASON_PHASES_SCRIPT.DEFAULT_RESUME_PHASE,
+		"phase_set.tres defaults match the runtime StorySeasonPhases catalog"
+	)
+	var phase_display_names_match := true
+	for phase_id in PHASE_SET_RESOURCE.runtime_phase_ids:
+		if PHASE_SET_RESOURCE.display_name(phase_id) != STORY_SEASON_PHASES_SCRIPT.display_name(phase_id):
+			phase_display_names_match = false
+	_assert_true(
+		phase_display_names_match,
+		"phase_set.tres display names match the runtime StorySeasonPhases catalog"
+	)
+	_assert_true(
+		PHASE_SET_RESOURCE.validate().is_empty(),
+		"phase_set.tres passes the addon's phase-set validation"
 	)
 	_assert_true(
 		STORY_SEASON_PHASES_SCRIPT.display_name(STORY_SEASON_PHASES_SCRIPT.SPRING_FESTIVAL) == "Spring Festival / Spring",

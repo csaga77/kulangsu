@@ -125,6 +125,12 @@ ui_inspect={
 
 textures/canvas_textures/default_texture_filter=0
 
+[storyline_editor]
+
+routes_dir="res://game/storylines/routes"
+phase_set="res://game/storylines/phase_set.tres"
+graph_layout_path="res://game/storylines/storyline_graph_layout.cfg"
+
 [tripo_bridge]
 
 last_cleanup="2026-06-29T10:18:24"
