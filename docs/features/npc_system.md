@@ -6,7 +6,7 @@ The production NPC system spawns the full resident roster as low-poly `HumanBody
 
 ## Main Components
 
-- [`../../characters/resident_presenter_3d.gd`](../../characters/resident_presenter_3d.gd): assembles residents, subjects, speech balloons, and wander controllers.
+- [`../../characters/resident_factory.gd`](../../characters/resident_factory.gd): assembles residents, subjects, speech balloons, and wander controllers.
 - [`../../characters/control/resident_controller_3d.gd`](../../characters/control/resident_controller_3d.gd): local XZ wandering, stuck recovery, and talk pauses.
 - [`../../characters/character_model_catalog_3d.gd`](../../characters/character_model_catalog_3d.gd): shared player/resident GLB selection.
 - [`../../game/story_subject_3d.gd`](../../game/story_subject_3d.gd): stable `npc:<resident_id>` proximity subject.

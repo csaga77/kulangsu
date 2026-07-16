@@ -24,7 +24,7 @@ const BGM_MANAGER_SCRIPT := preload("res://game/bgm_manager.gd")
 const LANDMARK_CUE_LOADER_SCRIPT := preload("res://game/landmark_cue_loader.gd")
 const LowPolyWorldCoordinates3DScript = preload("res://terrain/low_poly_world_coordinates_3d.gd")
 const LowPolyArtStyle3DScript = preload("res://terrain/low_poly_art_style_3d.gd")
-const RESIDENT_PRESENTER_3D := preload("res://characters/resident_presenter_3d.gd")
+const RESIDENT_FACTORY := preload("res://characters/resident_factory.gd")
 const CHARACTER_MODEL_CATALOG_3D := preload("res://characters/character_model_catalog_3d.gd")
 
 const LANDMARK_MASK_META := &"low_poly_landmark_mask_pixel"
@@ -674,8 +674,8 @@ func _find_nearest_land_pixel(image: Image, profile: TerrainGenerationProfile, t
 # --- story-subject interaction (shared AppState story-subject dispatch path) -------
 
 func _spawn_residents() -> void:
-	var presenter := RESIDENT_PRESENTER_3D.new()
-	m_resident_root = presenter.spawn_residents(self, _app_state(), m_landmark_nodes)
+	var factory := RESIDENT_FACTORY.new()
+	m_resident_root = factory.spawn_residents(self, _app_state(), m_landmark_nodes)
 
 
 func _generate_landmark_collision() -> void:

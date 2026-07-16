@@ -52,7 +52,7 @@ The low-poly 3D lane is now the production overworld instantiated directly by `m
 - `HumanBody3D`, `BaseController3D`, and `PlayerController3D` mirror the main actor/controller concepts on the XZ plane; the actor uses a premade animated GLB, gravity, wall sliding, stair traversal, floor snapping, and capped dynamic-body pushing
 - `LowPolyWorldCoordinates3D`, `LowPolyArtStyle3D`, and `Camera3DController` support coordinate-safe placement, orthographic orbit/zoom, and target-occluder fading
 - the Low-Poly Building Editor and versioned `BuildingSpec` pipeline produce editable authored landmarks; Piano Ferry, Trinity Church, and Bagua Tower are instanced in the runtime while both tunnels remain anchors without authored geometry
-- the full shared resident roster spawns as locally wandering `HumanBody3D` presenters with stable `StorySubject3D` ids and world-anchored speech balloons
+- the resident factory spawns the full shared roster as locally wandering `HumanBody3D` actors with stable `StorySubject3D` ids and world-anchored speech balloons
 - the runtime dispatches through shared story services, resolves semantic resume anchors, and owns shared BGM and landmark-cue playback
 - focused terrain, actor, collision, camera-occlusion, building-tour, and production-world scenes cover the lane; headless smoke scenes must terminate with process status `0` on success and nonzero on failure
 
@@ -237,7 +237,7 @@ Primary files:
 ### Completed Resident Migration
 
 - all resident definitions live as external `.tres` resources
-- all production resident actors use `HumanBody3D`, `ResidentController3D`, and `ResidentPresenter3D`
+- all production resident actors use `HumanBody3D`, `ResidentController3D`, and `ResidentFactory`
 - compatibility appearance keys remain authored, while `CharacterModelCatalog3D` selects integrated GLB models
 
 ## Workstream 1: Route Content Depth

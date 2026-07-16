@@ -223,9 +223,9 @@ scene under `scenes/tests/` and a green headless run before the next begins:
    authored under their production landmark proxies. The runtime smoke asserts the exact id set,
    exercises resident selection and dispatch through the 3D controller/adapter, and validates the
    dimension-neutral subject result contract.
-6. **Residents** — a 3D resident presenter that renders existing `ResidentDefinition` data with
+6. **Residents** — a resident factory that renders existing `ResidentDefinition` data with
    `HumanBody3D`; identity, dialogue, routine, and story gates stay in the shared definitions.
-   *Status: first pass engine-validated.* `characters/resident_presenter_3d.gd`
+   *Status: first pass engine-validated.* `characters/resident_factory.gd`
    spawns one `HumanBody3D` per resident from the same `AppState` resident APIs the 2D
    `ResidentSpawner` uses, placed at its landmark anchor (tunnel entry/portal anchors cluster at
    their tunnel proxy until 3D interiors exist). Each resident carries an `npc:<id>` `StorySubject3D`
@@ -249,7 +249,7 @@ scene under `scenes/tests/` and a green headless run before the next begins:
    capture records the tuned first-pass presentation.
 8. **Speech balloons + world UI** — anchor `speech_balloon` content to 3D actor positions.
    *Status: first pass engine-validated.* `common/gui/speech_balloon_3d.gd` is a
-   billboarded `Label3D` that floats above a resident and auto-hides; the presenter attaches one to
+   billboarded `Label3D` that floats above a resident and auto-hides; the factory attaches one to
    each resident and `game_world_3d` shows the story-returned dialogue line there (and in
    save-status). The atlas-based 2D balloon styling is intentionally not reproduced.
 9. **BGM + landmark cues** — reuse the dimension-neutral BGM catalog/manager and cue assets.
@@ -327,7 +327,7 @@ a parallel exploration lane.
 | `characters/human_body_2d.*` | `HumanBody3D` | Input map unchanged |
 | `characters/control/*` (2D) | `BaseController3D` / `PlayerController3D` | XZ-plane movement |
 | `godot_common` `Camera2DController` (usage) | `Camera3DController` | Orbit/zoom/occluder fade |
-| `characters/resident_npc.*` | 3D resident presenter | Driven by existing `.tres` definitions |
+| `characters/resident_npc.*` | Resident factory | Driven by existing `.tres` definitions |
 | `architecture/*.tscn` (2D landmarks + components) | Building Editor / `BuildingSpec` low-poly builds | Five canonical landmarks, same roles |
 | `LevelNode2D`/`LevelArea2D`/`portal`/stairs | 3D level + portal + stair components | Preserve `level_id` + tunnel masking |
 | `StorySubjectArea2D` | `StorySubject3D` (`Area3D`) | Same `subject_id` → same `StoryEventService` |

@@ -56,7 +56,7 @@ Primary files:
 - [`../terrain/low_poly_water_wind_adapter.gd`](../terrain/low_poly_water_wind_adapter.gd)
 - [`../scenes/game_world_3d.tscn`](../scenes/game_world_3d.tscn) / [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd)
 - [`../game/story_subject_3d.gd`](../game/story_subject_3d.gd)
-- [`../characters/resident_presenter_3d.gd`](../characters/resident_presenter_3d.gd)
+- [`../characters/resident_factory.gd`](../characters/resident_factory.gd)
 - [`../characters/control/resident_controller_3d.gd`](../characters/control/resident_controller_3d.gd)
 - [`../common/gui/speech_balloon_3d.gd`](../common/gui/speech_balloon_3d.gd)
 - [`../terrain/island_generation_profile.tres`](../terrain/island_generation_profile.tres)

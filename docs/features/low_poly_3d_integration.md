@@ -35,7 +35,7 @@
 - A thin 3D interaction adapter converts the selected `Area3D` subject into the existing stable subject id and sends it to the integration scene.
 - Existing story services own availability, response selection, and effects. No 3D-only fork of story rules is allowed.
 - `AppState` remains the owner of shared progression, location, route, resident-override, and save-facing state.
-- Existing resident definitions remain the source data. A 3D resident presenter may interpret appearance differently, but it must not duplicate identity, dialogue, routine, or story-gate data.
+- Existing resident definitions remain the source data. `ResidentFactory` may interpret appearance differently for the 3D world, but it must not duplicate identity, dialogue, routine, or story-gate data.
 - `game_world_3d.tscn` owns 3D spawning and world-to-story wiring.
 
 ## Interaction Contract

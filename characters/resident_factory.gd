@@ -1,7 +1,7 @@
-class_name ResidentPresenter3D
+class_name ResidentFactory
 extends RefCounted
 
-# Phase E of docs/plan/low_poly_3d_replacement.md: the 3D resident presenter.
+# Phase E of docs/plan/low_poly_3d_replacement.md: the resident factory.
 #
 # It spawns one HumanBody3D per resident from the SAME shared AppState resident
 # data the 2D ResidentSpawner uses (get_resident_ids / get_resident_definition /

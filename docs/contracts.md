@@ -166,7 +166,7 @@ Owned by:
 
 Current contract:
 
-- `scenes/game_world_3d.gd` maps landmark proxies through the shared coordinate adapter, spawns the resident roster through `ResidentPresenter3D`, reacts to controller events, and syncs location/landmark/resume context into `AppState`
+- `scenes/game_world_3d.gd` maps landmark proxies through the shared coordinate adapter, spawns the resident roster through `ResidentFactory`, reacts to controller events, and syncs location/landmark/resume context into `AppState`
 - `scenes/game_world_3d.gd` routes resident talk and `StorySubject3D` world interactions through `AppState.activate_story_subject(...)`, while owning proximity-based target selection and world prompt presentation
 - `scenes/game_world_3d.gd` owns mapping the live player position onto safe story resume anchors for autosave and continue, and applies the saved resume anchor on entry (falling back to Piano Ferry)
 - `scenes/game_world_3d.gd` registers the 3D weather rig target with `WeatherManager`, which owns preset cycling and synced wind application
