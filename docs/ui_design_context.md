@@ -44,6 +44,7 @@ The UI is currently orchestrated by:
 
 - [`../main.gd`](../main.gd)
 - [`../main.tscn`](../main.tscn)
+- [`../ui/app_screen_router.gd`](../ui/app_screen_router.gd)
 
 This app shell is the startup scene through:
 
@@ -57,6 +58,8 @@ The shell is responsible for:
 - pause / journal / settings / credits / ending overlays
 - confirm modals
 - fit-to-window scaling
+
+`AppScreenRouter` owns the route stack and presentation rules. Screen handlers only request replace, push, or pop operations; `main.gd` then applies panel, HUD, backdrop, gameplay-root, BGM-ducking, and pause state together from the resolved presentation. This keeps `Esc`, modal cancellation, and nested settings/credits flows tied to actual navigation history instead of panel-visibility inference.
 
 ### Shared UI State
 

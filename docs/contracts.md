@@ -17,10 +17,13 @@ Owned by:
 
 - [`../main.tscn`](../main.tscn)
 - [`../main.gd`](../main.gd)
+- [`../ui/app_screen_router.gd`](../ui/app_screen_router.gd)
 
 Current contract:
 
 - the app shell owns boot, title, player setup, gameplay entry, and in-game overlays
+- `AppScreenRouter` is the single navigation-history authority: handlers replace, push, or pop routes, and `main.gd` renders the resulting presentation instead of reconstructing prior state from panel visibility
+- panel, HUD, backdrop, gameplay-root visibility, prompt BGM ducking, and `SceneTree.paused` are derived together from the current route stack; individual transition handlers must not mutate those presentation fields independently
 - gameplay remains embedded while overlays are shown on top
 - UI is authored against a `1920 x 1080` design canvas and scaled to the live viewport
 - `Esc` backs out through overlay flow and `J` toggles the journal during gameplay

@@ -6,7 +6,7 @@ Read [`design_brief.md`](design_brief.md) first for the minimum-token summary. U
 
 This document mixes current first-pass shipped behavior with planned later UI flow.
 
-Current runtime truth lives in [`../main.gd`](../main.gd), [`../game/app_state.gd`](../game/app_state.gd), and [`design_brief.md`](design_brief.md).
+Current runtime truth lives in [`../main.gd`](../main.gd), [`../ui/app_screen_router.gd`](../ui/app_screen_router.gd), [`../game/app_state.gd`](../game/app_state.gd), and [`design_brief.md`](design_brief.md).
 
 Important limitation:
 
@@ -552,6 +552,9 @@ If in active story mode:
 
 ## 18. Navigation Rules
 
+- The route stack is the navigation-history authority; opening a nested screen pushes it and Back/Esc pops to the actual prior route.
+- Route presentation centrally derives panel, HUD, backdrop, gameplay-root visibility, prompt BGM ducking, and pause state.
+- Confirm is a modal route rendered above the underlying content route, so cancellation restores that route without inspecting panel visibility.
 - `Esc` closes the current overlay before opening pause
 - `Esc` from pause resumes game
 - `Esc` from title opens quit confirm

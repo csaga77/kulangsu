@@ -1,0 +1,106 @@
+extends Node
+
+const MAIN_SCENE := preload("res://main.tscn")
+const APP_SCREEN_ROUTER_SCRIPT := preload("res://ui/app_screen_router.gd")
+const ScreenState = APP_SCREEN_ROUTER_SCRIPT.ScreenState
+
+var m_failures := PackedStringArray()
+
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	call_deferred("_run")
+
+
+func _run() -> void:
+	var shell := MAIN_SCENE.instantiate()
+	add_child(shell)
+	await get_tree().process_frame
+
+	shell.call("_show_title")
+	_assert_shell_state(shell, "Title route", ScreenState.TITLE, true, false, false, true, false)
+
+	shell.call("_on_title_settings_pressed")
+	_assert_shell_state(shell, "Title settings", ScreenState.SETTINGS, false, true, false, true, false)
+	shell.call("_close_settings_panel")
+	_assert_shell_state(shell, "Settings back", ScreenState.TITLE, true, false, false, true, false)
+
+	shell.call("_show_confirm", "Quit?", "Return to title state?", Callable())
+	_assert_shell_state(shell, "Title confirm", ScreenState.CONFIRM, true, false, true, true, false)
+	shell.call("_hide_confirm")
+	_assert_shell_state(shell, "Title confirm cancel", ScreenState.TITLE, true, false, false, true, false)
+
+	var fake_game_root := Node3D.new()
+	fake_game_root.name = "FakeGameRoot"
+	shell.get_node("GameLayer").add_child(fake_game_root)
+	shell.set("m_game_root", fake_game_root)
+	shell.call("_replace_route", ScreenState.PLAYING)
+	_assert_shell_state(shell, "Gameplay route", ScreenState.PLAYING, false, false, false, false, true)
+	_assert_true("Gameplay route shows the world", fake_game_root.visible)
+
+	shell.call("_open_overlay", ScreenState.PAUSE)
+	_assert_shell_state(shell, "Pause route", ScreenState.PAUSE, false, false, false, true, true, true)
+	shell.call("_open_overlay", ScreenState.SETTINGS)
+	_assert_shell_state(shell, "Gameplay settings", ScreenState.SETTINGS, false, true, false, true, true, true)
+	shell.call("_close_settings_panel")
+	_assert_shell_state(shell, "Gameplay settings back", ScreenState.PAUSE, false, false, false, true, true, true)
+
+	shell.call("_show_confirm", "Return?", "Keep pause beneath this modal.", Callable())
+	_assert_shell_state(shell, "Pause confirm", ScreenState.CONFIRM, false, false, true, true, true, true)
+	shell.call("_hide_confirm")
+	_assert_shell_state(shell, "Pause confirm cancel", ScreenState.PAUSE, false, false, false, true, true, true)
+
+	shell.call("_resume_gameplay")
+	_assert_shell_state(shell, "Resume route", ScreenState.PLAYING, false, false, false, false, true)
+	_assert_true("Resume keeps the world visible", fake_game_root.visible)
+
+	get_tree().paused = false
+	if m_failures.is_empty():
+		print("PASS: app shell navigation regression")
+	else:
+		for failure in m_failures:
+			push_error(failure)
+		push_error("App shell navigation regression failed with %d issue(s)." % m_failures.size())
+
+	shell.queue_free()
+	await get_tree().process_frame
+	get_tree().quit(0 if m_failures.is_empty() else 1)
+
+
+func _assert_shell_state(
+	shell: Node,
+	label: String,
+	expected_state: int,
+	title_visible: bool,
+	settings_visible: bool,
+	confirm_visible: bool,
+	backdrop_visible: bool,
+	hud_visible: bool,
+	paused: bool = false
+) -> void:
+	_assert_equal("%s has the expected state" % label, int(shell.get("m_state")), expected_state)
+	_assert_equal("%s resolves title visibility" % label, _panel_visible(shell, "m_title_screen"), title_visible)
+	_assert_equal("%s resolves settings visibility" % label, _panel_visible(shell, "m_settings_panel"), settings_visible)
+	_assert_equal("%s resolves confirm visibility" % label, _panel_visible(shell, "m_confirm_panel"), confirm_visible)
+	_assert_equal("%s resolves backdrop visibility" % label, _panel_visible(shell, "m_backdrop"), backdrop_visible)
+	_assert_equal("%s resolves HUD visibility" % label, _panel_visible(shell, "m_hud"), hud_visible)
+	_assert_equal("%s resolves pause state" % label, get_tree().paused, paused)
+
+
+func _panel_visible(shell: Node, property_name: String) -> bool:
+	var panel := shell.get(property_name) as CanvasItem
+	return panel != null and panel.visible
+
+
+func _assert_true(label: String, condition: bool) -> void:
+	if condition:
+		print("PASS: %s" % label)
+		return
+	m_failures.append("%s. Expected true, got false." % label)
+
+
+func _assert_equal(label: String, actual: Variant, expected: Variant) -> void:
+	if actual == expected:
+		print("PASS: %s" % label)
+		return
+	m_failures.append("%s. Expected %s, got %s." % [label, str(expected), str(actual)])

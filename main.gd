@@ -16,28 +16,17 @@ const CREDITS_SCENE: PackedScene = preload("res://ui/screens/credits_overlay.tsc
 const ENDING_SCENE: PackedScene = preload("res://ui/screens/ending_overlay.tscn")
 const DEPARTURE_SCENE: PackedScene = preload("res://ui/screens/departure_overlay.tscn")
 const CONFIRM_SCENE: PackedScene = preload("res://ui/screens/confirm_modal.tscn")
+const APP_SCREEN_ROUTER_SCRIPT := preload("res://ui/app_screen_router.gd")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const WEATHER_RUNTIME := preload("res://weather/weather_runtime.gd")
 const UI_DESIGN_SIZE := Vector2(1920.0, 1080.0)
+const ScreenState = APP_SCREEN_ROUTER_SCRIPT.ScreenState
 
-enum ScreenState {
-	BOOT,
-	TITLE,
-	PLAYER_SETUP,
-	PLAYING,
-	JOURNAL,
-	MELODY_PROMPT,
-	PAUSE,
-	SETTINGS,
-	CREDITS,
-	ENDING,
-	DEPARTURE,
-	CONFIRM,
-}
-
-var m_state: ScreenState = ScreenState.BOOT
+var m_state: int = ScreenState.BOOT
 var m_game_root: Node = null
 var m_has_resume_state := false
+var m_screen_router: APP_SCREEN_ROUTER_SCRIPT = APP_SCREEN_ROUTER_SCRIPT.new(ScreenState.BOOT)
+var m_route_panels: Dictionary = {}
 
 var m_viewport_root: Control
 var m_ui_root: Control
@@ -56,8 +45,6 @@ var m_departure_panel: PanelContainer
 var m_confirm_panel: PanelContainer
 var m_confirm_action: Callable
 var m_pending_setup_free_walk := false
-var m_prompt_return_state: ScreenState = ScreenState.PLAYING
-var m_credits_return_state: ScreenState = ScreenState.TITLE
 
 
 func _app_state():
@@ -221,7 +208,7 @@ func _build_app_shell() -> void:
 			_resume_gameplay()
 	)
 	m_ending_panel.connect("credits_requested", func() -> void:
-		_open_credits_panel(ScreenState.ENDING)
+		_open_credits_panel()
 	)
 
 	m_departure_panel = DEPARTURE_SCENE.instantiate() as PanelContainer
@@ -233,17 +220,19 @@ func _build_app_shell() -> void:
 	m_confirm_panel.connect("cancel_requested", _hide_confirm)
 	m_confirm_panel.connect("confirm_requested", _on_confirm_accepted)
 
-	_set_panel_visible(m_title_screen, false)
-	_set_panel_visible(m_player_setup_panel, false)
-	_set_panel_visible(m_hud, false)
-	_set_panel_visible(m_journal_panel, false)
-	_set_panel_visible(m_melody_prompt_panel, false)
-	_set_panel_visible(m_pause_panel, false)
-	_set_panel_visible(m_settings_panel, false)
-	_set_panel_visible(m_credits_panel, false)
-	_set_panel_visible(m_ending_panel, false)
-	_set_panel_visible(m_departure_panel, false)
-	_set_panel_visible(m_confirm_panel, false)
+	m_route_panels = {
+		&"boot": m_boot_screen,
+		&"title": m_title_screen,
+		&"player_setup": m_player_setup_panel,
+		&"journal": m_journal_panel,
+		&"melody_prompt": m_melody_prompt_panel,
+		&"pause": m_pause_panel,
+		&"settings": m_settings_panel,
+		&"credits": m_credits_panel,
+		&"ending": m_ending_panel,
+		&"departure": m_departure_panel,
+		&"confirm": m_confirm_panel,
+	}
 
 
 func _update_ui_layout() -> void:
@@ -265,41 +254,20 @@ func _update_ui_layout() -> void:
 
 
 func _show_boot_sequence() -> void:
-	m_state = ScreenState.BOOT
-	_set_panel_visible(m_boot_screen, true)
-	_set_panel_visible(m_title_screen, false)
+	_replace_route(ScreenState.BOOT)
 	await get_tree().create_timer(1.1, true, false, true).timeout
 	if m_state == ScreenState.BOOT:
 		_show_title()
 
 
 func _show_title() -> void:
-	_set_prompt_bgm_ducked(false)
-	m_state = ScreenState.TITLE
-	m_credits_return_state = ScreenState.TITLE
-	get_tree().paused = false
-	_set_panel_visible(m_backdrop, true)
-	_set_panel_visible(m_boot_screen, false)
-	_set_panel_visible(m_title_screen, true)
-	_set_panel_visible(m_player_setup_panel, false)
-	_set_panel_visible(m_hud, false)
-	_set_panel_visible(m_journal_panel, false)
-	_set_panel_visible(m_melody_prompt_panel, false)
-	_set_panel_visible(m_pause_panel, false)
-	_set_panel_visible(m_settings_panel, false)
-	_set_panel_visible(m_credits_panel, false)
-	_set_panel_visible(m_ending_panel, false)
-	_set_panel_visible(m_departure_panel, false)
-	_set_panel_visible(m_confirm_panel, false)
-	if m_game_root != null:
-		m_game_root.visible = false
+	_replace_route(ScreenState.TITLE)
 	_refresh_story_save_state(_app_state().get_story_save_metadata())
 	_app_state().set_mode("Title")
 
 
 func _ensure_game_loaded() -> void:
 	if m_game_root != null and is_instance_valid(m_game_root):
-		m_game_root.visible = true
 		return
 
 	if m_game_root != null and !is_instance_valid(m_game_root):
@@ -344,228 +312,94 @@ func _begin_gameplay(is_free_walk: bool, is_continue: bool = false) -> void:
 
 	_refresh_story_save_state(_app_state().get_story_save_metadata())
 	_ensure_game_loaded()
-	_set_prompt_bgm_ducked(false)
-	m_game_root.visible = true
 	if m_game_root.has_method("sync_ui_state"):
 		m_game_root.call("sync_ui_state")
 
-	_set_panel_visible(m_backdrop, false)
-	_set_panel_visible(m_boot_screen, false)
-	_set_panel_visible(m_title_screen, false)
-	_set_panel_visible(m_player_setup_panel, false)
-	_set_panel_visible(m_hud, true)
-	_set_panel_visible(m_journal_panel, false)
-	_set_panel_visible(m_melody_prompt_panel, false)
-	_set_panel_visible(m_pause_panel, false)
-	_set_panel_visible(m_settings_panel, false)
-	_set_panel_visible(m_credits_panel, false)
-	_set_panel_visible(m_ending_panel, false)
-	_set_panel_visible(m_departure_panel, false)
-	_set_panel_visible(m_confirm_panel, false)
-	m_state = ScreenState.PLAYING
-	get_tree().paused = false
+	_replace_route(ScreenState.PLAYING)
 	if bool(_app_state().endgame_state.get("active", false)):
 		call_deferred("_open_overlay", ScreenState.ENDING)
 
 
-func _open_overlay(new_state: ScreenState) -> void:
+func _open_overlay(new_state: int) -> void:
 	if !_is_game_active():
 		return
 	if new_state == ScreenState.JOURNAL and !_app_state().is_journal_unlocked():
 		_app_state().set_save_status("The journal will open after you return to Caretaker Lian with the harbor clue.")
 		return
-	m_state = new_state
-	get_tree().paused = true
-	_refresh_journal_content()
-	_refresh_ending_content()
+	if new_state == ScreenState.JOURNAL:
+		_refresh_journal_content()
+	elif new_state == ScreenState.ENDING:
+		_refresh_ending_content()
 	if new_state == ScreenState.PAUSE:
 		m_pause_panel.call("set_journal_enabled", _app_state().is_journal_unlocked())
-	_set_panel_visible(m_backdrop, true)
-	_set_panel_visible(m_hud, true)
-	_set_panel_visible(m_journal_panel, new_state == ScreenState.JOURNAL)
-	_set_panel_visible(m_melody_prompt_panel, false)
-	_set_panel_visible(m_pause_panel, new_state == ScreenState.PAUSE)
-	_set_panel_visible(m_settings_panel, new_state == ScreenState.SETTINGS)
-	_set_panel_visible(m_credits_panel, new_state == ScreenState.CREDITS)
-	_set_panel_visible(m_ending_panel, new_state == ScreenState.ENDING)
-	_set_panel_visible(m_departure_panel, false)
-	_set_panel_visible(m_confirm_panel, false)
+	_push_route(new_state)
 
 
 func _resume_gameplay() -> void:
 	if !_is_game_active():
 		return
-	m_state = ScreenState.PLAYING
-	get_tree().paused = false
-	_set_panel_visible(m_backdrop, false)
-	_set_panel_visible(m_journal_panel, false)
-	_set_panel_visible(m_melody_prompt_panel, false)
-	_set_panel_visible(m_pause_panel, false)
-	_set_panel_visible(m_settings_panel, false)
-	_set_panel_visible(m_credits_panel, false)
-	_set_panel_visible(m_ending_panel, false)
-	_set_panel_visible(m_departure_panel, false)
-	_set_panel_visible(m_confirm_panel, false)
-	_set_panel_visible(m_hud, true)
+	_replace_route(ScreenState.PLAYING)
 
 
 func _close_settings_panel() -> void:
-	if _is_game_active():
-		_open_overlay(ScreenState.PAUSE)
-	else:
-		_set_panel_visible(m_backdrop, true)
-		_set_panel_visible(m_settings_panel, false)
+	if !_pop_route():
 		_show_title()
 
 
 func _show_confirm(title_text: String, body_text: String, action: Callable) -> void:
 	m_confirm_action = action
 	m_confirm_panel.call("set_content", title_text, body_text)
-	_set_panel_visible(m_backdrop, true)
-	_set_panel_visible(m_confirm_panel, true)
-	m_state = ScreenState.CONFIRM
-	get_tree().paused = _is_game_active()
+	_push_route(ScreenState.CONFIRM)
 
 
 func _hide_confirm() -> void:
-	_set_panel_visible(m_confirm_panel, false)
-	if _is_game_active():
-		if m_pause_panel.visible:
-			m_state = ScreenState.PAUSE
-			_set_panel_visible(m_backdrop, true)
-		elif m_ending_panel.visible:
-			m_state = ScreenState.ENDING
-			_set_panel_visible(m_backdrop, true)
-		else:
-			m_state = ScreenState.PLAYING
-			get_tree().paused = false
-			_set_panel_visible(m_backdrop, false)
-	else:
-		m_state = ScreenState.TITLE
-		_set_panel_visible(m_backdrop, true)
+	m_confirm_action = Callable()
+	if !_pop_route():
+		_show_title()
 
 
-func _open_credits_panel(return_state: ScreenState) -> void:
-	m_credits_return_state = return_state
-	if return_state == ScreenState.TITLE or !_is_game_active():
-		m_state = ScreenState.CREDITS
-		get_tree().paused = false
-		_set_panel_visible(m_backdrop, true)
-		_set_panel_visible(m_boot_screen, false)
-		_set_panel_visible(m_title_screen, false)
-		_set_panel_visible(m_player_setup_panel, false)
-		_set_panel_visible(m_hud, false)
-		_set_panel_visible(m_journal_panel, false)
-		_set_panel_visible(m_melody_prompt_panel, false)
-		_set_panel_visible(m_pause_panel, false)
-		_set_panel_visible(m_settings_panel, false)
-		_set_panel_visible(m_credits_panel, true)
-		_set_panel_visible(m_ending_panel, false)
-		_set_panel_visible(m_departure_panel, false)
-		_set_panel_visible(m_confirm_panel, false)
-		return
-
-	_open_overlay(ScreenState.CREDITS)
+func _open_credits_panel() -> void:
+	_push_route(ScreenState.CREDITS)
 
 
 func _close_credits_panel() -> void:
-	match m_credits_return_state:
-		ScreenState.ENDING:
-			if _is_game_active():
-				_open_overlay(ScreenState.ENDING)
-			else:
-				_show_title()
-		ScreenState.PAUSE:
-			if _is_game_active():
-				_open_overlay(ScreenState.PAUSE)
-			else:
-				_show_title()
-		ScreenState.PLAYING:
-			if _is_game_active():
-				_resume_gameplay()
-			else:
-				_show_title()
-		_:
-			_set_panel_visible(m_credits_panel, false)
-			_show_title()
+	if !_pop_route():
+		_show_title()
 
 
 func _open_melody_prompt(request: Dictionary) -> void:
 	if !_is_game_active():
 		return
 
-	if m_state == ScreenState.PLAYING:
-		m_prompt_return_state = ScreenState.PLAYING
-	elif m_state == ScreenState.JOURNAL:
-		m_prompt_return_state = ScreenState.JOURNAL
-	else:
-		m_prompt_return_state = ScreenState.PLAYING
-
-	m_state = ScreenState.MELODY_PROMPT
-	_set_prompt_bgm_ducked(true)
-	get_tree().paused = true
 	m_melody_prompt_panel.call("configure_request", request)
-	_set_panel_visible(m_backdrop, true)
-	_set_panel_visible(m_hud, true)
-	_set_panel_visible(m_journal_panel, false)
-	_set_panel_visible(m_melody_prompt_panel, true)
-	_set_panel_visible(m_pause_panel, false)
-	_set_panel_visible(m_settings_panel, false)
-	_set_panel_visible(m_credits_panel, false)
-	_set_panel_visible(m_ending_panel, false)
-	_set_panel_visible(m_confirm_panel, false)
+	_push_route(ScreenState.MELODY_PROMPT)
 
 
 func _close_melody_prompt() -> void:
-	_set_prompt_bgm_ducked(false)
-	_set_panel_visible(m_melody_prompt_panel, false)
 	if !_is_game_active():
 		return
-
-	if m_prompt_return_state == ScreenState.JOURNAL:
-		m_state = ScreenState.JOURNAL
-		get_tree().paused = true
-		_refresh_journal_content()
-		_set_panel_visible(m_backdrop, true)
-		_set_panel_visible(m_hud, true)
-		_set_panel_visible(m_journal_panel, true)
+	if !_pop_route():
+		_resume_gameplay()
 		return
-
-	_resume_gameplay()
+	if m_state == ScreenState.JOURNAL:
+		_refresh_journal_content()
 
 
 func _return_to_title() -> void:
 	_persist_story_session()
-	get_tree().paused = false
-	if m_game_root != null:
-		m_game_root.visible = false
 	_show_title()
 
 
 func _complete_story_departure() -> void:
 	_app_state().clear_story_autosave()
 	_app_state().set_mode("Title")
-	get_tree().paused = false
 	_discard_game_loaded()
 	_open_departure_panel()
 
 
 func _open_departure_panel() -> void:
-	m_state = ScreenState.DEPARTURE
 	m_departure_panel.call("refresh_from_state")
-	_set_panel_visible(m_backdrop, true)
-	_set_panel_visible(m_boot_screen, false)
-	_set_panel_visible(m_title_screen, false)
-	_set_panel_visible(m_player_setup_panel, false)
-	_set_panel_visible(m_hud, false)
-	_set_panel_visible(m_journal_panel, false)
-	_set_panel_visible(m_melody_prompt_panel, false)
-	_set_panel_visible(m_pause_panel, false)
-	_set_panel_visible(m_settings_panel, false)
-	_set_panel_visible(m_credits_panel, false)
-	_set_panel_visible(m_ending_panel, false)
-	_set_panel_visible(m_departure_panel, true)
-	_set_panel_visible(m_confirm_panel, false)
+	_replace_route(ScreenState.DEPARTURE)
 
 
 func _refresh_journal_content() -> void:
@@ -588,7 +422,8 @@ func _handle_escape() -> void:
 					get_tree().quit()
 			)
 		ScreenState.PLAYER_SETUP:
-			_show_title()
+			if !_pop_route():
+				_show_title()
 		ScreenState.PLAYING:
 			_open_overlay(ScreenState.PAUSE)
 		ScreenState.JOURNAL:
@@ -610,9 +445,67 @@ func _handle_escape() -> void:
 
 
 func _on_confirm_accepted() -> void:
-	_hide_confirm()
-	if m_confirm_action.is_valid():
-		m_confirm_action.call()
+	var action := m_confirm_action
+	m_confirm_action = Callable()
+	if !_pop_route():
+		_show_title()
+	if action.is_valid():
+		action.call()
+
+
+func _replace_route(state: int) -> bool:
+	if !m_screen_router.replace_route(state):
+		return false
+	_render_routes()
+	return true
+
+
+func _push_route(state: int) -> bool:
+	if !m_screen_router.push_route(state):
+		return false
+	_render_routes()
+	return true
+
+
+func _pop_route() -> bool:
+	if !m_screen_router.pop_route():
+		return false
+	_render_routes()
+	return true
+
+
+func _render_routes() -> void:
+	if m_route_panels.is_empty():
+		return
+
+	var presentation := m_screen_router.resolve_presentation()
+	m_state = int(presentation.get("top_state", ScreenState.BOOT))
+	for panel_value in m_route_panels.values():
+		var panel := panel_value as CanvasItem
+		if panel != null:
+			_set_panel_visible(panel, false)
+
+	var content_panel_id := StringName(presentation.get("content_panel_id", &""))
+	_show_route_panel(content_panel_id)
+	var modal_panel_id := StringName(presentation.get("modal_panel_id", &""))
+	_show_route_panel(modal_panel_id)
+
+	_set_panel_visible(m_backdrop, bool(presentation.get("show_backdrop", false)))
+	_set_panel_visible(m_hud, bool(presentation.get("show_hud", false)))
+	if m_game_root != null and is_instance_valid(m_game_root):
+		m_game_root.visible = bool(presentation.get("game_context", false))
+	get_tree().paused = bool(presentation.get("pause_game", false))
+	_set_prompt_bgm_ducked(
+		int(presentation.get("content_state", ScreenState.BOOT)) == ScreenState.MELODY_PROMPT
+	)
+
+
+func _show_route_panel(panel_id: StringName) -> void:
+	if panel_id.is_empty():
+		return
+	var panel := m_route_panels.get(panel_id) as CanvasItem
+	if panel != null:
+		_set_panel_visible(panel, true)
 
 
 func _set_panel_visible(node: CanvasItem, is_visible: bool) -> void:
@@ -658,13 +551,11 @@ func _on_free_walk_pressed() -> void:
 
 
 func _on_title_settings_pressed() -> void:
-	_set_panel_visible(m_title_screen, false)
-	_set_panel_visible(m_settings_panel, true)
-	m_state = ScreenState.SETTINGS
+	_push_route(ScreenState.SETTINGS)
 
 
 func _on_title_credits_pressed() -> void:
-	_open_credits_panel(ScreenState.TITLE)
+	_open_credits_panel()
 
 
 func _on_title_quit_pressed() -> void:
@@ -679,12 +570,7 @@ func _open_player_setup(is_free_walk: bool) -> void:
 	m_pending_setup_free_walk = is_free_walk
 	m_player_setup_panel.call("set_flow_context", is_free_walk)
 	m_player_setup_panel.call("refresh_from_state")
-	_set_panel_visible(m_backdrop, true)
-	_set_panel_visible(m_title_screen, false)
-	_set_panel_visible(m_player_setup_panel, true)
-	_set_panel_visible(m_confirm_panel, false)
-	m_state = ScreenState.PLAYER_SETUP
-	get_tree().paused = false
+	_push_route(ScreenState.PLAYER_SETUP)
 
 
 func _on_player_setup_confirmed() -> void:
@@ -692,7 +578,8 @@ func _on_player_setup_confirmed() -> void:
 
 
 func _on_player_setup_cancelled() -> void:
-	_show_title()
+	if !_pop_route():
+		_show_title()
 
 
 func _on_story_milestone(milestone_id: String, _context: Dictionary) -> void:
@@ -722,4 +609,5 @@ func _on_melody_prompt_performance_completed(request: Dictionary) -> void:
 
 
 func _on_departure_continue_requested() -> void:
-	_open_credits_panel(ScreenState.TITLE)
+	_show_title()
+	_open_credits_panel()

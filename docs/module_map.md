@@ -5,7 +5,7 @@ Read [`design_brief.md`](design_brief.md) and [`architecture.md`](architecture.m
 ## Entry Points
 
 - [`../project.godot`](../project.godot) - Godot project configuration, input map, and main scene
-- [`../main.tscn`](../main.tscn) / [`../main.gd`](../main.gd) - app startup and overlay flow
+- [`../main.tscn`](../main.tscn) / [`../main.gd`](../main.gd) - app startup, route rendering, and screen-action wiring
 - [`../scenes/game_world_3d.tscn`](../scenes/game_world_3d.tscn) / [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd) - production low-poly 3D overworld: builds `LowPolyTerrain3D`, `HumanBody3D`, an orthographic camera, five landmark anchors (three stylized building instances plus tunnel markers), maps the shared player profile to male/female/boy GLBs, spawns the shared wandering resident roster, owns 3D `StorySubject3D` interaction dispatch, shared BGM/landmark-cue audio, generated landmark collision, and location/landmark/resume syncing into `AppState`
 - [`../scenes/tests/capture_game_world_3d_qa.tscn`](../scenes/tests/capture_game_world_3d_qa.tscn) - graphical Metal QA runner that produces the five fixed-camera acceptance PNGs plus a raw 5-second-warm-up/60-second performance report, cold-terrain timing, and resident/per-landmark visibility variants under `design/qa/low_poly_3d/`
 - [`../weather/`](../weather) - 3D weather presentation, the global weather manager/runtime, and focused 3D capture validation
@@ -17,6 +17,7 @@ Read [`design_brief.md`](design_brief.md) and [`architecture.md`](architecture.m
 ## UI And Screen Flow
 
 - [`../ui/`](../ui) - shell logic, screen scenes, UI styling, and title assets
+- [`../ui/app_screen_router.gd`](../ui/app_screen_router.gd) - app-specific route stack and presentation rules; derives the active content/modal panels, gameplay context, pause state, backdrop, and HUD state
 - [`../ui/screens/`](../ui/screens) - boot, title, HUD, journal, melody prompt, pause, settings, departure, credits, ending, and player setup screens
 
 Put new menu, overlay, HUD, or shell-flow work here.
@@ -130,6 +131,8 @@ Be careful about renames or moves here because scene and resource references can
 - [`../scenes/`](../scenes) - runtime gameplay scenes such as `game_world_3d`
 - [`../scenes/tests/`](../scenes/tests) - ad hoc prototype and validation scenes
 - [`../weather/tests/`](../weather/tests) - dedicated 3D weather validation and capture scenes
+- [`../ui/screens/tests/test_app_screen_router.tscn`](../ui/screens/tests/test_app_screen_router.tscn) - focused route-stack regression covering frontend/gameplay context inheritance, nested back behavior, credits/ending return, and confirm-modal restoration
+- [`../ui/screens/tests/test_app_shell_navigation.tscn`](../ui/screens/tests/test_app_shell_navigation.tscn) - shell integration regression proving that route rendering alone controls title/settings/confirm panels, HUD, backdrop, world visibility, and pause state
 - [`../characters/tests/test_human_body_3d.tscn`](../characters/tests/test_human_body_3d.tscn) - direct `HumanBody3D` adapter smoke scene covering configuration, flat direction, movement velocity, current-frame controller input, safe capsule placement, step-up/step-down behavior, jump state, ground footprint behavior, and character-model structure (instanced model, mesh, material, animation clips)
 - [`../game/tests/npc_system/test_resident_interaction.tscn`](../game/tests/npc_system/test_resident_interaction.tscn) - focused resident progression regression covering gate fallbacks, trust-max milestones, and a resident-driven autosave/continue path
 - [`../game/tests/npc_system/test_resident_catalog_external_defs.tscn`](../game/tests/npc_system/test_resident_catalog_external_defs.tscn) - focused resident catalog regression covering external `.tres` definition loading, roster completeness, and field-level validation

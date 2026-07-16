@@ -36,6 +36,7 @@ Read this first. It is the minimum-token design context for new Codex threads.
 
 - UI entry point: [`../main.tscn`](../main.tscn)
 - App shell logic: [`../main.gd`](../main.gd)
+- App screen navigation: [`../ui/app_screen_router.gd`](../ui/app_screen_router.gd)
 - Shared UI state: [`../game/app_state.gd`](../game/app_state.gd)
 - Shared UI styling: [`../ui/ui_style.gd`](../ui/ui_style.gd)
 - Current dedicated screens: boot, title, player setup, game HUD

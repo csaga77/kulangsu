@@ -14,7 +14,7 @@ Most gameplay and scene work happens in the main repo. Shared or vendor-style co
 ## Startup Flow
 
 1. [`../project.godot`](../project.godot) boots the app through [`../main.tscn`](../main.tscn).
-2. [`../main.gd`](../main.gd) builds the UI shell, ensures the shared runtime services exist through [`../game/app_runtime.gd`](../game/app_runtime.gd) and [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd), and instantiates the low-poly 3D overworld [`../scenes/game_world_3d.tscn`](../scenes/game_world_3d.tscn) for gameplay.
+2. [`../main.gd`](../main.gd) builds the UI shell, delegates navigation history and presentation rules to [`../ui/app_screen_router.gd`](../ui/app_screen_router.gd), ensures the shared runtime services exist through [`../game/app_runtime.gd`](../game/app_runtime.gd) and [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd), and instantiates the low-poly 3D overworld [`../scenes/game_world_3d.tscn`](../scenes/game_world_3d.tscn) for gameplay.
 3. [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd) connects the player, terrain, landmarks, residents, interaction state, audio, save anchors, and 3D weather rig to shared runtime services.
 4. Screen scripts under [`../ui/screens/`](../ui/screens) read shared state and send actions back to the shell.
 
@@ -26,18 +26,21 @@ Primary files:
 
 - [`../main.tscn`](../main.tscn)
 - [`../main.gd`](../main.gd)
+- [`../ui/app_screen_router.gd`](../ui/app_screen_router.gd)
 - [`../ui/screens/`](../ui/screens)
 - [`../ui/ui_style.gd`](../ui/ui_style.gd)
 
 Responsibilities:
 
 - boot, title, new game, free walk, pause, journal, settings, credits, ending, and confirm flows
+- stack-based screen history plus centralized derivation of panel, HUD, backdrop, gameplay visibility, BGM ducking, and pause state
 - scaling the `1920 x 1080` authored UI to the live viewport
 - keeping gameplay in one scene while overlays come and go on top of it
 
 Boundary:
 
 - UI scripts should present state and route actions. They should not become the home for gameplay rules.
+- Screen handlers request route replacement, push, or pop operations; only the shell's route renderer applies global visibility and pause state.
 
 ### World Scene And Overworld Integration
 
