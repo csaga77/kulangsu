@@ -45,7 +45,7 @@ Source of truth:
 - Branch in `.gitmodules`: `main`
 - Role in this repo: storyline schema types, catalog loader, route browser, dependency graph, validation, and inspector bridge for Kulangsu's authored storyline data
 - Docs to read first: [`../addons/storyline_editor/README.md`](../addons/storyline_editor/README.md), [`../addons/storyline_editor/docs/contract.md`](../addons/storyline_editor/docs/contract.md), and [`../addons/storyline_editor/docs/feature.md`](../addons/storyline_editor/docs/feature.md)
-- Integration note: the submodule owns the editor implementation plus the generic schema (`StorylineCatalog`, `StorylineRouteResource`, `StorylineEventResource`, `StorylineEndingToneRule`, `StorylinePhaseSet`); the parent owns the authored route `.tres` data, `phase_set.tres`, the graph-layout file, and the `storyline_editor/*` project settings that point the addon at them
+- Integration note: the submodule owns the editor implementation plus the generic schema (`StorylineCatalog`, `StorylineRouteResource`, `StorylineEventResource`, `StorylineEndingToneRule`, `StorylinePhaseSet`) and optional `StorylineHostValidationProvider` interface; the parent owns the authored route `.tres` data, `phase_set.tres`, the graph-layout file, `KulangsuStorylineValidationProvider`, and the `storyline_editor/*` project settings. Dependency direction is parent provider → addon interface; the addon never references Kulangsu code
 
 ### `agent_tools`
 

@@ -1,6 +1,8 @@
 class_name ResidentInteractionService
 extends RefCounted
 
+const STORY_EFFECT_SCHEMA_SCRIPT := preload("res://game/story_effect_schema.gd")
+
 var m_owner: Node = null
 
 
@@ -147,7 +149,7 @@ func get_resident_ambient_line(resident_id: String) -> String:
 
 
 func _apply_resident_beat(beat: Dictionary, resident_id: String = "") -> void:
-	m_owner.apply_story_effects(beat, {
+	m_owner.apply_story_effects(STORY_EFFECT_SCHEMA_SCRIPT.extract_effects(beat), {
 		"subject_id": "npc:%s" % resident_id,
 		"action": "talk",
 		"resident_id": resident_id,

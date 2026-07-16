@@ -1,6 +1,8 @@
 class_name StoryEventCatalog
 extends RefCounted
 
+const STORY_EFFECT_SCHEMA_SCRIPT := preload("res://game/story_effect_schema.gd")
+
 
 static func build_event_tree() -> Array[Dictionary]:
 	return [
@@ -194,6 +196,14 @@ static func validate_story_event_references(event_definitions: Dictionary = {}) 
 
 	var warnings := PackedStringArray()
 	_collect_story_event_reference_warnings(build_event_tree(), known_event_ids, [], warnings)
+	return warnings
+
+
+static func validate_catalog(catalog_context: Dictionary = {}) -> PackedStringArray:
+	var context := STORY_EFFECT_SCHEMA_SCRIPT.build_validation_context(catalog_context)
+	var warnings := PackedStringArray()
+	_collect_binding_schema_warnings(build_event_tree(), context, [], warnings)
+	_collect_metadata_schema_warnings(build_subject_metadata_definitions(), context, warnings)
 	return warnings
 
 
@@ -502,6 +512,98 @@ static func _collect_story_event_reference_warnings(
 			next_path,
 			warnings
 		)
+
+
+static func _collect_binding_schema_warnings(
+	nodes: Array,
+	context: Dictionary,
+	path: Array[String],
+	warnings: PackedStringArray
+) -> void:
+	for node_value in nodes:
+		if !(node_value is Dictionary):
+			continue
+		var node: Dictionary = node_value
+		var node_id := String(node.get("id", "")).strip_edges()
+		var next_path: Array[String] = path.duplicate()
+		if !node_id.is_empty():
+			next_path.append(node_id)
+		var event_path := ".".join(next_path)
+
+		var subject_bindings: Array = node.get("subject_bindings", [])
+		for index in subject_bindings.size():
+			var binding_value = subject_bindings[index]
+			if !(binding_value is Dictionary):
+				warnings.append("%s subject_bindings[%d] must be a Dictionary." % [event_path, index])
+				continue
+			var binding: Dictionary = binding_value
+			var origin := "%s subject %s %s" % [
+				event_path,
+				String(binding.get("subject_id", "")).strip_edges(),
+				String(binding.get("action", "")).strip_edges().to_lower(),
+			]
+			_collect_binding_payload_warnings(binding, context, origin.strip_edges(), warnings)
+
+		var world_bindings: Array = node.get("world_event_bindings", [])
+		for index in world_bindings.size():
+			var binding_value = world_bindings[index]
+			if !(binding_value is Dictionary):
+				warnings.append("%s world_event_bindings[%d] must be a Dictionary." % [event_path, index])
+				continue
+			var binding: Dictionary = binding_value
+			var origin := "%s world event %s" % [
+				event_path,
+				String(binding.get("event_id", "")).strip_edges(),
+			]
+			_collect_binding_payload_warnings(binding, context, origin.strip_edges(), warnings)
+
+		_collect_binding_schema_warnings(node.get("children", []), context, next_path, warnings)
+
+
+static func _collect_binding_payload_warnings(
+	binding: Dictionary,
+	context: Dictionary,
+	origin: String,
+	warnings: PackedStringArray
+) -> void:
+	if binding.has("conditions"):
+		for warning in STORY_EFFECT_SCHEMA_SCRIPT.validate_conditions(
+			binding["conditions"],
+			context,
+			"%s conditions" % origin
+		):
+			warnings.append(warning)
+	if binding.has("effects"):
+		for warning in STORY_EFFECT_SCHEMA_SCRIPT.validate_effects(
+			binding["effects"],
+			context,
+			"%s effects" % origin
+		):
+			warnings.append(warning)
+
+
+static func _collect_metadata_schema_warnings(
+	metadata_definitions: Array[Dictionary],
+	context: Dictionary,
+	warnings: PackedStringArray
+) -> void:
+	for metadata in metadata_definitions:
+		var subject_id := String(metadata.get("subject_id", "")).strip_edges()
+		var presence_rules: Array = metadata.get("presence_rules", [])
+		for index in presence_rules.size():
+			var rule_value = presence_rules[index]
+			if !(rule_value is Dictionary):
+				warnings.append("metadata %s presence_rules[%d] must be a Dictionary." % [subject_id, index])
+				continue
+			var rule: Dictionary = rule_value
+			if !rule.has("conditions"):
+				continue
+			for warning in STORY_EFFECT_SCHEMA_SCRIPT.validate_conditions(
+				rule["conditions"],
+				context,
+				"metadata %s presence_rules[%d].conditions" % [subject_id, index]
+			):
+				warnings.append(warning)
 
 
 static func _collect_effect_story_event_references(

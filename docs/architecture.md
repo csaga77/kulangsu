@@ -231,6 +231,7 @@ Responsibilities:
 Boundary:
 
 - Editor plugins are authoring helpers. They should not become runtime gameplay services or be wired into `main.tscn`.
+- Project-specific storyline semantics plug into the generic storyline editor through its optional `StorylineHostValidationProvider` setting. The parent provider may depend on the addon interface; the addon must not depend on Kulangsu classes or paths.
 - Runtime addons may be consumed by game-owned actors, but gameplay movement, collision, and appearance-catalog policy stay outside the addon.
 - `addons/mp3_to_ogg`, `addons/low_poly_building_editor`, and `addons/storyline_editor` are submodule repository boundaries; reusable changes land in those repositories first, then the parent intentionally updates their pointers.
 - Building-editor-generated content should remain ordinary scene-owned nodes under `Building3D` coordinators.
@@ -253,7 +254,7 @@ Responsibilities:
 - third-party LPC asset generator content
 - reusable MP3 conversion editor tooling
 - reusable low-poly building and street authoring tooling
-- reusable storyline schema, catalog loader, and route/dependency editor tooling over parent-owned authored data (routes, phase vocabulary, graph layout), located through `storyline_editor/*` project settings
+- reusable storyline schema, catalog loader, and route/dependency editor tooling over parent-owned authored data (routes, phase vocabulary, graph layout) plus an optional host-validation interface, configured through `storyline_editor/*` project settings
 
 Boundary:
 

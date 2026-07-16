@@ -15,9 +15,12 @@ Current shipped pieces:
 
 - `game/story_event_catalog.gd` is the authored StoryEvent tree file for the current migrated landmark interaction slices
 - `game/story_event_service.gd` is composed by `AppState` as the shared StoryEvent bridge
+- `game/story_effect_schema.gd` defines and recursively validates the complete condition/effect dictionary contract; runtime effect application preflights the entire payload before mutating state
+- `game/storyline_validation_provider.gd` supplies the same Kulangsu semantic checks to the generic storyline editor through its optional host-provider setting, preserving the addon boundary
 - `AppState` now exposes `describe_story_subject(...)`, `activate_story_subject(...)`, `notify_story_world_event(...)`, `pick_story_candidate(...)`, `matches_story_conditions(...)`, and `apply_story_effects(...)`
 - `game_world_3d.gd` routes resident talk and scene-authored `StorySubject3D` interactions through stable subject ids instead of separate route-specific callbacks
 - resident conditional beats now reuse the shared candidate-selection, condition-matching, and effect-application paths
+- resident beats now extract only declared StoryEvent effect keys before entering the strict executor, so dialogue metadata is not mistaken for runtime effects
 - resident routine overrides are now a live world-effect channel that can reposition already spawned residents and persist through story autosave/continue
 - migrated authored landmark nodes now cover the full `melody_landmarks` interaction spine plus landmark prompt-completion/reward world events: `piano_ferry.harbor_refrain`, Trinity cue/chime/reward beats, Bi Shan echoes/chamber/reward, Long Shan entry/checkpoints/exit/reward, Bagua synthesis/reward, and the harbor-stage prompt/performance completion
 

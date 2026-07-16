@@ -125,6 +125,32 @@ func _run() -> void:
 		String(bundled_events.get("summer_return_complete", {}).get("route_id", "")) == "family_memory",
 		"Storyline definition bundle injects event route ids for runtime caching"
 	)
+	var host_validation_provider := StorylineSettings.load_validation_provider()
+	_assert_true(
+		host_validation_provider != null,
+		"Storyline editor loads Kulangsu semantic validation through the optional host-provider setting"
+	)
+	if host_validation_provider != null:
+		_assert_true(
+			host_validation_provider.validate_catalog(definition_bundle).is_empty(),
+			"Configured host validation accepts the canonical StoryEvent catalog"
+		)
+		var incomplete_bundle := definition_bundle.duplicate(true)
+		var incomplete_events: Dictionary = bundled_events.duplicate(true)
+		incomplete_events.erase("harbor_festival_performed")
+		incomplete_bundle["event_definitions"] = incomplete_events
+		_assert_true(
+			!host_validation_provider.validate_catalog(incomplete_bundle).is_empty(),
+			"Configured host validation reports semantic StoryEvent references while editing"
+		)
+	var provider_setting := StorylineSettings.SETTING_VALIDATION_PROVIDER_SCRIPT
+	var configured_provider_path := String(ProjectSettings.get_setting(provider_setting, ""))
+	ProjectSettings.set_setting(provider_setting, "")
+	_assert_true(
+		StorylineSettings.load_validation_provider() == null,
+		"Storyline editor remains usable without a host validation provider"
+	)
+	ProjectSettings.set_setting(provider_setting, configured_provider_path)
 
 	_assert_true(anchor_event.validate().is_empty(), "Anchor resource event validates cleanly")
 	_assert_true(soft_ending_event.validate().is_empty(), "Soft-ending resource event validates cleanly")

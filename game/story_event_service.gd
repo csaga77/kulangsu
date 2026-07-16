@@ -3,12 +3,14 @@ extends RefCounted
 
 const STORY_WORLD_REACTIVITY_SCRIPT := preload("res://game/story_world_reactivity.gd")
 const STORY_EVENT_CATALOG_SCRIPT := preload("res://game/story_event_catalog.gd")
+const STORY_EFFECT_SCHEMA_SCRIPT := preload("res://game/story_effect_schema.gd")
 const LANDMARK_SUBJECT_PREFIX := "landmark:"
 
 var m_owner: Node = null
 var m_subject_binding_index: Dictionary = {}
 var m_subject_metadata_index: Dictionary = {}
 var m_world_event_binding_index: Dictionary = {}
+var m_effect_validation_context: Dictionary = {}
 
 
 func _init(owner: Node) -> void:
@@ -16,6 +18,7 @@ func _init(owner: Node) -> void:
 	m_subject_binding_index = STORY_EVENT_CATALOG_SCRIPT.build_subject_binding_index()
 	m_subject_metadata_index = STORY_EVENT_CATALOG_SCRIPT.build_subject_metadata_index()
 	m_world_event_binding_index = STORY_EVENT_CATALOG_SCRIPT.build_world_event_binding_index()
+	m_effect_validation_context = STORY_EFFECT_SCHEMA_SCRIPT.build_validation_context()
 
 
 func build_context(subject_id: String = "", extra_context: Dictionary = {}) -> Dictionary:
@@ -356,6 +359,14 @@ func matches_conditions(conditions_value: Variant, context: Dictionary = {}) -> 
 
 func apply_effects(payload: Dictionary, context: Dictionary = {}) -> void:
 	if payload.is_empty():
+		return
+	var validation_warnings := STORY_EFFECT_SCHEMA_SCRIPT.validate_effects(
+		payload,
+		m_effect_validation_context
+	)
+	if !validation_warnings.is_empty():
+		for warning in validation_warnings:
+			push_error("Story effects rejected before mutation: %s" % warning)
 		return
 
 	var resolved_context := build_context(String(context.get("subject_id", "")), context)

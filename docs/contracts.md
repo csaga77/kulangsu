@@ -87,8 +87,10 @@ Reference:
 Owned by:
 
 - [`../game/app_state.gd`](../game/app_state.gd)
+- [`../game/story_effect_schema.gd`](../game/story_effect_schema.gd)
 - [`../game/story_event_catalog.gd`](../game/story_event_catalog.gd)
 - [`../game/story_event_service.gd`](../game/story_event_service.gd)
+- [`../game/storyline_validation_provider.gd`](../game/storyline_validation_provider.gd)
 - [`../game/resident_interaction_service.gd`](../game/resident_interaction_service.gd)
 - [`../game/story_world_reactivity.gd`](../game/story_world_reactivity.gd)
 
@@ -96,11 +98,14 @@ Current contract:
 
 - story-facing world interactions now flow through stable `subject_id + action` pairs instead of route-specific scene callbacks
 - `StoryEventService` owns generic context building, shared condition matching, priority-based candidate selection, and shared effect application, while typed route resources under `game/storylines/routes/`, resident data, and existing landmark helpers remain the current canonical source for route/event meaning
+- `StoryEffectSchema` is the parent-owned contract for dictionary-authored StoryEvent conditions and effects. It rejects unknown keys, wrong nested types, invalid canonical ids, and malformed recursive `conditional_effects`; `StoryEventService` validates the complete payload before applying any mutation, so a bad payload cannot leave partially updated story state
 - each `StorylineRouteResource` under `game/storylines/routes/` resolves to one `route` definition plus that route's `events`; `StoryRouteGraph` loads that catalog into an instance-local runtime cache, while editor tools continue to rebuild directly from `StorylineCatalog` when authors refresh or edit resources
-- the storyline schema classes (`StorylineCatalog`, `StorylineRouteResource`, `StorylineEventResource`, `StorylineEndingToneRule`, `StorylinePhaseSet`) are owned by the `addons/storyline_editor` submodule; the parent owns the authored `.tres` data, `game/storylines/phase_set.tres` (kept in sync with `StorySeasonPhases` by `test_storyline_resources`), and the `storyline_editor/*` project settings that locate them
+- the storyline schema classes (`StorylineCatalog`, `StorylineRouteResource`, `StorylineEventResource`, `StorylineEndingToneRule`, `StorylinePhaseSet`, `StorylineHostValidationProvider`) are owned by the `addons/storyline_editor` submodule; the parent owns the authored `.tres` data, `game/storylines/phase_set.tres` (kept in sync with `StorySeasonPhases` by `test_storyline_resources`), `StoryEffectSchema`, `KulangsuStorylineValidationProvider`, and the `storyline_editor/*` project settings that locate/configure them
+- `storyline_editor/validation_provider_script` points from the parent to `game/storyline_validation_provider.gd`; the provider extends the addon's generic interface and supplies live Kulangsu semantic validation to the inspector and route browser. The addon has no Kulangsu class/path dependency and must continue working when the setting is empty
 - route events may depend on events from any other route resource by referencing those event ids in `prerequisites.story_flags_all` or `prerequisites.story_flags_any`
 - `game/story_event_catalog.gd` is the authored StoryEvent tree file for the current landmark migration; it now owns the full `melody_landmarks` landmark-interaction subtree
-- StoryEvent catalog validation checks authored `story_event` effect references against the typed route-event resources loaded by `StorylineCatalog`, so interaction bindings cannot silently point at missing route facts
+- StoryEvent catalog validation checks every authored condition/effect payload, including nested conditional effects and `story_event` references against the typed route-event resources loaded by `StorylineCatalog`, so interaction bindings cannot silently contain typos, invalid types, or missing canonical ids
+- resident dialogue beats are projected through `StoryEffectSchema.extract_effects(...)` before runtime application, keeping dialogue metadata out of the strict effect executor while preserving declared effect keys
 - resident conditional beats now resolve through `pick_story_candidate(...)` and apply their side effects through `apply_story_effects(...)` rather than keeping separate copies of condition/effect logic
 - typed route resources are now the canonical narrative gate source for route events; cached `StoryRouteGraph.can_resolve_story_event(...)` and `get_story_event_blockers(...)` calls are the shared availability surface consumed by resident dialogue and StoryEvent effect application
 - `StorySubject3D` is the production world-side subject adapter; `game_world_3d.gd` routes all world-subject interactions through `activate_story_subject(...)`, and `StoryEventService` resolves current `landmark:` and `inspectable:` subjects plus landmark reward world events through the authored catalog before any compatibility fallback path

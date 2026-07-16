@@ -3,6 +3,7 @@ extends Node
 const TEST_AUTOSAVE_PATH := "user://story_event_service_test.save"
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const STORY_EVENT_CATALOG := preload("res://game/story_event_catalog.gd")
+const STORY_EFFECT_SCHEMA := preload("res://game/story_effect_schema.gd")
 
 var m_failures := PackedStringArray()
 var m_prompt_requests: Array[Dictionary] = []
@@ -30,6 +31,56 @@ func _run() -> void:
 	_assert_true(
 		story_event_reference_warnings.is_empty(),
 		"StoryEvent catalog effects only reference canonical storyline route events"
+	)
+	var validation_context := STORY_EFFECT_SCHEMA.build_validation_context()
+	var catalog_schema_warnings := STORY_EVENT_CATALOG.validate_catalog(validation_context)
+	for warning in catalog_schema_warnings:
+		_assert_true(false, "StoryEvent catalog schema: %s" % warning)
+	_assert_true(
+		catalog_schema_warnings.is_empty(),
+		"StoryEvent catalog conditions and effects satisfy the complete host schema"
+	)
+	_assert_true(
+		_warnings_contain(
+			STORY_EFFECT_SCHEMA.validate_effects(
+				{"objectve": "Typo must not mutate state"},
+				validation_context
+			),
+			"Unknown story effect key 'objectve'"
+		),
+		"Story effect validation reports unknown keys"
+	)
+	_assert_true(
+		_warnings_contain(
+			STORY_EFFECT_SCHEMA.validate_effects(
+				{"conditional_effects": [{"effects": {"objective": 42}}]},
+				validation_context
+			),
+			"objective must be a String"
+		),
+		"Story effect validation recursively checks conditional payload types"
+	)
+	_assert_true(
+		_warnings_contain(
+			STORY_EFFECT_SCHEMA.validate_conditions(
+				{"season_phase": "not_a_phase"},
+				validation_context
+			),
+			"unknown id 'not_a_phase'"
+		),
+		"Story condition validation checks canonical ids"
+	)
+	var extracted_resident_effects := STORY_EFFECT_SCHEMA.extract_effects({
+		"line": "Resident dialogue metadata",
+		"trust_delta": 1,
+		"objective": "A real story effect",
+		"story_event": "summer_return_complete",
+	})
+	_assert_true(
+		extracted_resident_effects.size() == 2
+			and extracted_resident_effects.has("objective")
+			and extracted_resident_effects.has("story_event"),
+		"Resident beats pass only declared StoryEvent effects into the atomic executor"
 	)
 
 	_app_state().configure_new_game()
@@ -199,6 +250,13 @@ func _progress_through_ferry_opening() -> void:
 		"Harbor refrain melody flavour text now comes from the authored StoryEvent effect payload"
 	)
 	_app_state().activate_story_subject("npc:ferry_caretaker", "talk")
+
+
+func _warnings_contain(warnings: PackedStringArray, expected_text: String) -> bool:
+	for warning in warnings:
+		if warning.contains(expected_text):
+			return true
+	return false
 
 
 func _progress_to_winter_memory_via_story_subjects() -> void:
