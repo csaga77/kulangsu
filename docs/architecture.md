@@ -15,7 +15,7 @@ Most gameplay and scene work happens in the main repo. Shared or vendor-style co
 
 1. [`../project.godot`](../project.godot) boots the app through [`../main.tscn`](../main.tscn).
 2. [`../main.gd`](../main.gd) builds the UI shell, delegates navigation history and presentation rules to [`../ui/app_screen_router.gd`](../ui/app_screen_router.gd), ensures the shared runtime services exist through [`../game/app_runtime.gd`](../game/app_runtime.gd) and [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd), and instantiates the low-poly 3D overworld [`../scenes/game_world_3d.tscn`](../scenes/game_world_3d.tscn) for gameplay.
-3. [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd) connects the player, terrain, landmarks, residents, interaction state, audio, save anchors, and 3D weather rig to shared runtime services.
+3. [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd) composes the player, terrain, landmarks, residents, audio, save anchors, and 3D weather rig with focused actor-surface and story-interaction components, then connects them to shared runtime services.
 4. Screen scripts under [`../ui/screens/`](../ui/screens) read shared state and send actions back to the shell.
 
 ## Main Systems
@@ -48,6 +48,8 @@ Primary files:
 
 - [`../scenes/game_world_3d.tscn`](../scenes/game_world_3d.tscn)
 - [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd)
+- [`../game/world/actor_surface_follower.gd`](../game/world/actor_surface_follower.gd)
+- [`../game/world/story_interaction_coordinator.gd`](../game/world/story_interaction_coordinator.gd)
 - [`../weather/weather_manager.gd`](../weather/weather_manager.gd)
 - [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd)
 - [`../terrain/low_poly_terrain_3d.gd`](../terrain/low_poly_terrain_3d.gd)
@@ -80,16 +82,17 @@ Responsibilities:
 - scene-owned BGM playback driven by shared location and melody-progress context
 - shared y-sorted actor layer for the player and spawned residents
 - landmark lookup and location syncing
-- data-driven resident spawning, inspect/talk prompts, and overworld resident presentation
+- data-driven resident spawning and overworld resident presentation
 - lightweight story subjects authored inside the world scene (`StorySubject3D` nodes under the landmark proxies) so route-state changes can surface on world objects as well as in dialogue
-- `scenes/game_world_3d.gd` routes resident talk and all scene-authored `StorySubject3D` interactions through one story-subject dispatch path (`AppState.activate_story_subject`) so world nodes keep placement context while shared StoryEvent metadata owns visibility, response selection, and side effects
+- `ActorSurfaceFollower` owns player grounding and shallow-water seating after the world supplies its actor, terrain, and coordinate adapter
+- `StoryInteractionCoordinator` owns scene-local subject discovery, deterministic proximity selection, inspect/talk hints, and dispatch through `AppState.activate_story_subject`; subjects outside its configured world root are ignored
 - feeding current world context into `AppState`
 
 The 2D overworld (`scenes/game_main.*`) and its extracted helpers (`route_resolver.gd`, `resident_spawner.gd`, `tunnel_context.gd`, `npc_route_debug_drawer.gd`) have been removed. 2D-only behaviors they owned - tunnel interior context, tunnel-resident visibility masking, and routed waypoint travel through tunnels - have no 3D equivalent yet; resident routine overrides are currently validated at the shared-state level only.
 
 Boundary:
 
-- Keep scene-specific world integration here instead of scattering it across UI files or unrelated helpers.
+- Keep `game_world_3d.gd` as the composition root; keep actor-surface policy and story-interaction coordination in their focused `game/world/` components.
 - Keep terrain semantics in terrain profile/rule resources instead of hard-coding new mask-color branches directly into unrelated systems.
 - Keep low-poly 3D palette, water tuning, camera, and lighting in `LowPolyArtStyle3D` resources.
 
@@ -283,7 +286,8 @@ Boundary:
 
 - Screen flow, menus, overlays, HUD: [`../ui/`](../ui)
 - Shared player-facing state: [`../game/app_state.gd`](../game/app_state.gd)
-- Overworld logic and resident syncing: [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd)
+- Overworld composition, location, and resident syncing: [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd)
+- Actor grounding and world-subject coordination: [`../game/world/`](../game/world)
 - Player or NPC behavior: [`../characters/control/`](../characters/control)
 - Landmark scenes and reusable architecture pieces: [`../architecture/`](../architecture)
 - Reusable mini-games or subsystems: [`../game/`](../game)

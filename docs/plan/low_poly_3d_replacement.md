@@ -22,7 +22,7 @@ through the entire app shell. Per-item status is inline in the phases below; the
   Bagua Tower) with generated collision; story resume-anchor save/restore; shared BGM and landmark
   cue playback. Headless smoke test
   `test_game_world_3d.tscn` passes (world build, spawn, five landmark anchors, story subjects,
-  full resident count, controller/adapter resident talk dispatch, audio managers, resume anchor +
+  full resident count, controller/coordinator resident talk dispatch, audio managers, resume anchor +
   fallback, interaction contract). Full-shell run
   exercised title → New Game → traveler setup → 3D overworld with HUD,
   status panel, hints, autosave, resident dialogue with real story progression, and journal gating,
@@ -138,7 +138,7 @@ to Phase D until all are recorded green.
   selection, one subject dispatch through existing story services, camera-occluder fade, readable
   scale, and one documented resume anchor — without touching `game_main.tscn`.
   *Status: green runtime baseline; landmark follow-up open.* The runtime-world smoke exercises
-  controller/adapter resident dispatch, compares equivalent fresh 2D/3D resident result/state
+  controller/coordinator resident dispatch, compares equivalent fresh 2D/3D resident result/state
   parity, and proves semantic resume fallback. Landmark result parity remains a Phase F gate.
 - **C. Visual + performance acceptance.** Fixed-camera evidence under `design/qa/low_poly_3d/` and a
   `performance.md` meeting the plan's frame-time, draw-call, triangle, memory, and rebuild budgets.
@@ -217,11 +217,12 @@ scene under `scenes/tests/` and a green headless run before the next begins:
    restyling a building must not change subject ids.
    *Status: complete for the authored production catalog.* `game/story_subject_3d.gd` preserves
    the subject-id/action/display/presence contract on `Area3D`.
-   `game_world_3d.gd` now owns deterministic proximity selection, hint text, and inspect dispatch
+   `StoryInteractionCoordinator`, composed by `game_world_3d.gd`, owns deterministic world-local
+   proximity selection, hint text, and inspect dispatch
    via `PlayerController3D.inspect_requested`, calling the same `AppState.activate_story_subject(...)`
    path as the shared story services. All 15 landmark subjects and all 5 inspectable subjects are
    authored under their production landmark proxies. The runtime smoke asserts the exact id set,
-   exercises resident selection and dispatch through the 3D controller/adapter, and validates the
+   exercises resident selection and dispatch through the controller/coordinator path, and validates the
    dimension-neutral subject result contract.
 6. **Residents** — a resident factory that renders existing `ResidentDefinition` data with
    `HumanBody3D`; identity, dialogue, routine, and story gates stay in the shared definitions.
@@ -265,7 +266,7 @@ progression; and save/continue restores through stable semantic resume anchors, 
 fallback when a requested anchor is missing. The 2D save must remain loadable through the cutover;
 any prototype-only state needs a versioned migration, never a schema fork.
 
-*Status: resume anchor, controller/adapter resident dispatch, resident result parity, and the exact
+*Status: resume anchor, controller/coordinator resident dispatch, resident result parity, and the exact
 production landmark/inspectable subject set proven.*
 `game_world_3d` updates the shared story
 resume checkpoint (`AppState.set_story_resume_checkpoint`) to the last landmark the player reaches in
@@ -276,8 +277,9 @@ resident-talk dispatch check through the shared `AppState.activate_story_subject
 asserts the interaction contract: every landmark subject the adapter can resolve builds a well-formed
 request (matching `subject_id`, resolved action, and dimension-neutral spatial context) and proximity
 selection deterministically resolves an active subject. The smoke
-now drives a resident interaction through `PlayerController3D.inspect_requested` and the world
-adapter and verifies all 15 landmark plus 5 inspectable production subject ids.
+now drives a resident interaction through `PlayerController3D.inspect_requested` and the interaction
+coordinator and verifies all 15 landmark plus 5 inspectable production subject ids and cross-world
+isolation.
 
 ### Phase G — Record the decision and execute the cutover
 

@@ -97,7 +97,7 @@ The mood should stay calm throughout. There is no timer and no hard fail state. 
   - `AppState.landmark_progress_changed` — consumed by each `StorySubject3D` through StoryEvent presence sync
 - Data flow:
   - `ferry_caretaker` beat 0 fires → `_apply_resident_beat` reads `"unlock_landmark": "trinity_church"` → `advance_landmark_state("trinity_church", "available")` → StoryEvent presence rules show cue subjects
-  - Player presses R near a cue → `scenes/game_world_3d.gd._on_inspect_requested` → `StorySubject3D` builds subject context → `AppState.activate_story_subject(...)` → authored Trinity cue binding applies shared landmark-progress effects → `landmark_progress_changed`
+  - Player presses R near a cue → `StoryInteractionCoordinator` selects the scene-local `StorySubject3D` and builds its context → `AppState.activate_story_subject(...)` → authored Trinity cue binding applies shared landmark-progress effects → `landmark_progress_changed`
   - Player presses R at `ChoirChime` after all cues are found → `StorySubject3D` builds subject context → `AppState.activate_story_subject(...)` → authored Trinity choir-chime binding emits `melody_prompt_requested`
   - Prompt succeeds → `AppState.complete_prompt_request(...)` → `StoryEventService.notify_world_event("prompt_completed:trinity_chime", ...)` → authored Trinity completion binding returns the objective to Mei
   - Player presses R on church_caretaker after the chime settles → `interact_with_resident` → gate passes → beat fires → `_apply_resident_beat` reads `"landmark_reward": "trinity_church"` → `StoryEventService.notify_world_event("landmark_reward:trinity_church", ...)` → melody and landmark state update

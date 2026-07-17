@@ -10,7 +10,8 @@ The production NPC system spawns the full resident roster as low-poly `HumanBody
 - [`../../characters/control/resident_controller_3d.gd`](../../characters/control/resident_controller_3d.gd): local XZ wandering, stuck recovery, and talk pauses.
 - [`../../characters/character_model_catalog_3d.gd`](../../characters/character_model_catalog_3d.gd): shared player/resident GLB selection.
 - [`../../game/story_subject_3d.gd`](../../game/story_subject_3d.gd): stable `npc:<resident_id>` proximity subject.
-- [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd): anchor resolution, subject selection, and dispatch to shared services.
+- [`../../game/world/story_interaction_coordinator.gd`](../../game/world/story_interaction_coordinator.gd): scene-local subject selection, talk presentation, and dispatch to shared services.
+- [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd): anchor resolution, resident spawning, and component composition.
 
 ## Authoring
 

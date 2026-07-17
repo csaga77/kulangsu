@@ -276,7 +276,7 @@ That structure may become useful later, but the current project is already organ
 - [`../../game/app_state.gd`](../../game/app_state.gd) owns shared player-facing melody progress.
 - [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd) owns resident-authored clue text and resident-to-melody relationships.
 - [`../../game/melody_catalog.gd`](../../game/melody_catalog.gd) owns melody definitions and fragment metadata.
-- [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd) owns overworld integration, location context, and resident interaction wiring.
+- [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd) owns overworld composition and location context; [`../../game/world/story_interaction_coordinator.gd`](../../game/world/story_interaction_coordinator.gd) owns resident interaction wiring.
 - Landmark scenes under [`../../architecture/`](../../architecture) or focused gameplay modules under [`../../game/`](../../game) should own local task logic and performance triggers.
 - [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd) owns melody presentation in the journal.
 - [`../../main.gd`](../../main.gd) owns shell flow and overlays, not gameplay rules.
@@ -312,7 +312,7 @@ That structure may become useful later, but the current project is already organ
   - `summary_changed`
   - `save_metadata_changed`
 - Current flow:
-  - resident interaction starts in [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd)
+  - resident interaction starts in [`../../game/world/story_interaction_coordinator.gd`](../../game/world/story_interaction_coordinator.gd)
   - resident progression updates in [`../../game/app_state.gd`](../../game/app_state.gd)
   - the journal reads summary text from [`../../ui/screens/journal_overlay.gd`](../../ui/screens/journal_overlay.gd)
   - story autosave metadata stays in [`../../game/app_state.gd`](../../game/app_state.gd) and feeds the title shell in [`../../main.gd`](../../main.gd)

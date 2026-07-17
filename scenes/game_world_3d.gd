@@ -22,6 +22,10 @@ const WATER_WIND_ADAPTER := preload("res://terrain/low_poly_water_wind_adapter.g
 const WEATHER_RIG_3D_SCRIPT := preload("res://weather/weather_rig_3d.gd")
 const BGM_MANAGER_SCRIPT := preload("res://game/bgm_manager.gd")
 const LANDMARK_CATALOG_SCRIPT := preload("res://game/landmarks/landmark_catalog.gd")
+const ActorSurfaceFollowerScript = preload("res://game/world/actor_surface_follower.gd")
+const StoryInteractionCoordinatorScript = preload(
+	"res://game/world/story_interaction_coordinator.gd"
+)
 const LowPolyWorldCoordinates3DScript = preload("res://terrain/low_poly_world_coordinates_3d.gd")
 const LowPolyArtStyle3DScript = preload("res://terrain/low_poly_art_style_3d.gd")
 const RESIDENT_FACTORY := preload("res://characters/resident_factory.gd")
@@ -33,21 +37,13 @@ const ISLAND_PATHS_LABEL := "Island Paths"
 # Sized for the scaled-up world and the large stylized building footprints.
 const LANDMARK_LOCATION_RADIUS := 14.0
 
-const ACTOR_GROUND_PROBE_UP := 0.72
-const ACTOR_GROUND_PROBE_DOWN := 2.5
-const MAX_ACTOR_WADE_DEPTH := 0.5
-
-# Story subjects register here so the world can pick one active target by proximity.
-const STORY_SUBJECT_GROUP := "story_subject_3d"
-# How long a resident holds still and faces the player after being talked to.
-const RESIDENT_TALK_PAUSE_SEC := 4.0
 const LANDMARK_CUE_VOLUME_DB := -4.0
 const WEATHER_HOLD_DURATION_MIN := 20.0
 const WEATHER_HOLD_DURATION_MAX := 38.0
 const WEATHER_TRANSITION_DURATION_MIN := 9.0
 const WEATHER_TRANSITION_DURATION_MAX := 18.0
 
-@onready var m_terrain: Node3D = $LowPolyTerrain3D
+@onready var m_terrain: LowPolyTerrain3D = $LowPolyTerrain3D
 @onready var m_actor: CharacterBody3D = $human_body_3d
 @onready var m_camera: Camera3D = $Camera3D
 @onready var m_camera_controller: Node = $Camera3DController
@@ -76,12 +72,12 @@ var m_previous_weather_cycles_enabled := true
 var m_weather_cycles_overridden := false
 var m_is_ready := false
 var m_last_location := ""
-var m_subjects: Array[StorySubject3D] = []
-var m_closest_subject: StorySubject3D = null
 var m_resident_root: Node3D = null
 var m_stats_label: Label = null
 var m_bgm_manager: Node = null
 var m_landmark_cue_player: AudioStreamPlayer = null
+var m_actor_surface_follower: ActorSurfaceFollowerScript = null
+var m_story_interaction_coordinator: StoryInteractionCoordinatorScript = null
 
 
 func _app_state():
@@ -95,7 +91,8 @@ func _ready() -> void:
 
 	_cache_landmarks()
 	_configure_world()
-	_connect_actor_terrain_elevation()
+	_setup_actor_surface_follower()
+	_snap_camera_controller()
 	# Resolving AppState / WeatherManager can add service nodes to the current scene,
 	# which fails while the scene tree is still instantiating this scene (e.g. when the
 	# world is a child of another scene). Defer everything that touches shared services
@@ -112,14 +109,12 @@ func _initialize_runtime() -> void:
 	if generate_landmark_collision:
 		_generate_landmark_collision()
 	_spawn_residents()
-	_gather_story_subjects()
-	_connect_inspect()
+	_setup_story_interaction_coordinator()
 	_apply_story_resume_anchor_if_needed()
 	if show_debug_stats:
 		_setup_debug_stats()
 	m_is_ready = true
 	sync_ui_state()
-	_update_interaction_target()
 
 
 func _exit_tree() -> void:
@@ -134,17 +129,10 @@ func _exit_tree() -> void:
 	m_weather_manager = null
 
 
-func _physics_process(_delta: float) -> void:
-	# Terrain elevation follow raycasts the physics space, so it must run inside a
-	# physics frame where direct_space_state is accessible.
-	_apply_actor_terrain_elevation()
-
-
 func _process(_delta: float) -> void:
 	if !m_is_ready:
 		return
 	_sync_location_from_player()
-	_update_interaction_target()
 	_update_debug_stats()
 
 
@@ -222,8 +210,17 @@ func _configure_world() -> void:
 		sample_cell, spawn_height + actor_terrain_clearance
 	)
 	_place_landmarks(image, profile, fallback_land_height)
-	_apply_actor_terrain_elevation()
-	_snap_camera_controller()
+
+
+func _setup_actor_surface_follower() -> void:
+	if is_instance_valid(m_actor_surface_follower):
+		return
+	m_actor_surface_follower = ActorSurfaceFollowerScript.new() as ActorSurfaceFollowerScript
+	m_actor_surface_follower.name = "ActorSurfaceFollower"
+	m_actor_surface_follower.terrain_clearance = actor_terrain_clearance
+	add_child(m_actor_surface_follower)
+	m_actor_surface_follower.configure(m_actor, m_terrain, m_coordinates)
+	m_actor_surface_follower.settle_now()
 
 
 func _place_landmarks(image: Image, profile: TerrainGenerationProfile, land_height: float) -> void:
@@ -417,7 +414,8 @@ func _apply_story_resume_anchor_if_needed() -> void:
 	# Drop the actor just in front of the landmark on XZ; the elevation follow seats
 	# it onto the surface on the next physics frame.
 	m_actor.global_position = Vector3(anchor_origin.x, m_actor.global_position.y, anchor_origin.z + 1.5)
-	_apply_actor_terrain_elevation()
+	if is_instance_valid(m_actor_surface_follower):
+		m_actor_surface_follower.settle_now()
 
 
 func _sync_location_from_player() -> void:
@@ -465,86 +463,10 @@ func _flatten(position: Vector3) -> Vector2:
 	return Vector2(position.x, position.z)
 
 
-# --- terrain elevation follow ----------------------------------------------------
-
-func _connect_actor_terrain_elevation() -> void:
-	if !is_instance_valid(m_actor):
-		return
-	if !m_actor.has_signal("global_position_changed"):
-		return
-	var callback := Callable(self, "_on_actor_global_position_changed")
-	if m_actor.is_connected("global_position_changed", callback):
-		return
-	m_actor.connect("global_position_changed", callback)
-
-
-func _on_actor_global_position_changed() -> void:
-	_apply_actor_terrain_elevation()
-
-
-func _apply_actor_terrain_elevation() -> void:
-	if !is_instance_valid(m_actor) or !is_instance_valid(m_terrain):
-		return
-	if m_coordinates.resolve_source_size() == Vector2i.ZERO:
-		return
-
-	var ground_height := _resolve_actor_surface_height()
-	if is_nan(ground_height):
-		return
-	var position := m_actor.global_position
-	var target_y := ground_height + actor_terrain_clearance
-	if is_equal_approx(position.y, target_y):
-		return
-	position.y = target_y
-	m_actor.global_position = position
-
-
-func _resolve_actor_surface_height() -> float:
-	if Engine.is_in_physics_frame():
-		var world := m_actor.get_world_3d()
-		if world != null:
-			var space_state := world.direct_space_state
-			if space_state != null:
-				var origin := m_actor.global_position
-				var query := PhysicsRayQueryParameters3D.create(
-					origin + Vector3.UP * ACTOR_GROUND_PROBE_UP,
-					origin + Vector3.DOWN * ACTOR_GROUND_PROBE_DOWN
-				)
-				query.collision_mask = m_actor.collision_mask
-				query.collide_with_areas = false
-				query.exclude = [m_actor.get_rid()]
-				var hit := space_state.intersect_ray(query)
-				if !hit.is_empty():
-					return float((hit["position"] as Vector3).y)
-	return _resolve_terrain_sample_height()
-
-
-func _resolve_terrain_sample_height() -> float:
-	var fallback_land_height: float = float(m_terrain.get("land_height"))
-	if !is_instance_valid(m_terrain):
-		return fallback_land_height
-	var sample_cell := m_coordinates.world_position_to_sample_cell(m_actor.global_position)
-	var seabed_height := _get_terrain_world_height(m_actor.global_position, sample_cell, fallback_land_height)
-	if !m_terrain.has_method("get_world_water_surface_height"):
-		return seabed_height
-	var water_surface := float(m_terrain.call("get_world_water_surface_height", m_actor.global_position))
-	return maxf(seabed_height, water_surface - MAX_ACTOR_WADE_DEPTH)
-
-
 func _get_terrain_sample_height(sample_cell: Vector2i, fallback: float) -> float:
 	if !is_instance_valid(m_terrain):
 		return fallback
-	if !m_terrain.has_method("get_sample_cell_height"):
-		return fallback
-	return float(m_terrain.call("get_sample_cell_height", sample_cell))
-
-
-func _get_terrain_world_height(world_position: Vector3, sample_cell: Vector2i, fallback: float) -> float:
-	if !is_instance_valid(m_terrain):
-		return fallback
-	if m_terrain.has_method("get_world_surface_height"):
-		return float(m_terrain.call("get_world_surface_height", world_position))
-	return _get_terrain_sample_height(sample_cell, fallback)
+	return m_terrain.get_sample_cell_height(sample_cell)
 
 
 # --- terrain mask helpers --------------------------------------------------------
@@ -630,11 +552,26 @@ func _find_nearest_land_pixel(image: Image, profile: TerrainGenerationProfile, t
 	return clamped_target
 
 
-# --- story-subject interaction (shared AppState story-subject dispatch path) -------
+# --- resident and interaction component setup -----------------------------------
 
 func _spawn_residents() -> void:
 	var factory := RESIDENT_FACTORY.new()
 	m_resident_root = factory.spawn_residents(self, _app_state(), m_landmark_nodes)
+
+
+func _setup_story_interaction_coordinator() -> void:
+	if is_instance_valid(m_story_interaction_coordinator):
+		m_story_interaction_coordinator.refresh_subjects()
+		return
+	var app_state := _app_state() as AppStateService
+	if app_state == null:
+		return
+	m_story_interaction_coordinator = (
+		StoryInteractionCoordinatorScript.new() as StoryInteractionCoordinatorScript
+	)
+	m_story_interaction_coordinator.name = "StoryInteractionCoordinator"
+	add_child(m_story_interaction_coordinator)
+	m_story_interaction_coordinator.configure(self, m_actor, app_state)
 
 
 func _generate_landmark_collision() -> void:
@@ -653,179 +590,3 @@ func _add_trimesh_collision_recursive(node: Node) -> void:
 		if mesh_instance != null and mesh_instance.mesh != null:
 			mesh_instance.create_trimesh_collision()
 		_add_trimesh_collision_recursive(child)
-
-
-func _gather_story_subjects() -> void:
-	m_subjects.clear()
-	for node in get_tree().get_nodes_in_group(STORY_SUBJECT_GROUP):
-		var subject := node as StorySubject3D
-		if subject != null:
-			m_subjects.append(subject)
-
-
-func _connect_inspect() -> void:
-	var controller: Variant = m_actor.get("controller") if is_instance_valid(m_actor) else null
-	if controller == null:
-		return
-	if !(controller is Object) or !controller.has_signal("inspect_requested"):
-		return
-	if !controller.is_connected("inspect_requested", _on_inspect_requested):
-		controller.connect("inspect_requested", _on_inspect_requested)
-
-
-func _update_interaction_target() -> void:
-	m_closest_subject = _resolve_closest_subject()
-	_update_hint_text(m_closest_subject)
-
-
-# Deterministic proximity pick: nearest targetable subject inside its own radius,
-# tie-broken by interaction priority so collect/perform win over inspect.
-func _resolve_closest_subject() -> StorySubject3D:
-	if !is_instance_valid(m_actor):
-		return null
-	var actor_flat := _flatten(m_actor.global_position)
-	var best: StorySubject3D = null
-	var best_distance := INF
-	var best_priority := 2147483647
-	for subject in m_subjects:
-		if !is_instance_valid(subject) or !subject.is_targetable():
-			continue
-		var distance := actor_flat.distance_to(_flatten(subject.global_position))
-		if distance > subject.interaction_radius:
-			continue
-		var priority := subject.get_interaction_priority()
-		if priority < best_priority or (priority == best_priority and distance < best_distance):
-			best = subject
-			best_distance = distance
-			best_priority = priority
-	return best
-
-
-func _on_inspect_requested() -> void:
-	if !is_instance_valid(m_closest_subject):
-		_app_state().set_save_status("Inspect: nothing nearby")
-		return
-
-	var interaction_request := _build_story_interaction_request(m_closest_subject)
-	if interaction_request.is_empty():
-		_app_state().set_save_status("Inspect: %s" % m_closest_subject.get_display_name())
-		return
-
-	var interaction_context: Dictionary = interaction_request.get("context", {})
-	var interaction: Dictionary = _app_state().activate_story_subject(
-		String(interaction_request.get("subject_id", "")),
-		String(interaction_request.get("action", "")),
-		interaction_context
-	)
-
-	var request_action := String(interaction_request.get("action", ""))
-	var subject_display_name := String(interaction_request.get("display_name", ""))
-	if request_action == "talk":
-		# Resident dialogue shows in a world-anchored balloon above the resident and
-		# also surfaces through the shared save-status channel.
-		var line := String(interaction.get("line", ""))
-		if line.is_empty():
-			line = "Talked with %s" % subject_display_name
-		_show_resident_balloon(m_closest_subject, line)
-		_pause_and_face_resident(m_closest_subject)
-		_app_state().set_save_status(line)
-	elif request_action == "inspect":
-		_app_state().set_save_status(
-			String(interaction.get("text", "Inspect: %s" % subject_display_name))
-		)
-
-	_update_hint_text(m_closest_subject)
-
-
-func _build_story_interaction_request(subject: StorySubject3D) -> Dictionary:
-	if !is_instance_valid(subject):
-		return {}
-	var subject_id := subject.get_story_subject_id()
-	var action := subject.get_story_action()
-	if subject_id.is_empty() or action.is_empty():
-		return {}
-	return {
-		"subject_id": subject_id,
-		"action": action,
-		"display_name": subject.get_display_name(),
-		"context": _build_story_subject_context(subject, subject.build_story_subject_context()),
-	}
-
-
-func _build_story_subject_context(subject: StorySubject3D, extra_context: Dictionary = {}) -> Dictionary:
-	var context := extra_context.duplicate(true)
-	context["location"] = _app_state().location
-	if is_instance_valid(subject):
-		context["display_name"] = context.get("display_name", subject.get_display_name())
-		context["world_position"] = subject.global_position
-		context["level_id"] = 0
-	return context
-
-
-func _update_hint_text(subject: StorySubject3D) -> void:
-	if !is_instance_valid(subject):
-		_app_state().set_hint(_app_state().build_input_hint("R Inspect"))
-		return
-
-	var interaction_request := _build_story_interaction_request(subject)
-	if interaction_request.is_empty():
-		_app_state().set_hint(_app_state().build_input_hint("R Inspect %s" % subject.get_display_name()))
-		return
-
-	var action := String(interaction_request.get("action", ""))
-	var display_name := String(interaction_request.get("display_name", ""))
-	if action == "talk":
-		_app_state().set_hint(_app_state().build_input_hint("R Talk to %s" % display_name))
-		return
-
-	var description: Dictionary = _app_state().describe_story_subject(
-		String(interaction_request.get("subject_id", "")),
-		action,
-		interaction_request.get("context", {})
-	)
-	var prompt_text := String(description.get("prompt", "")).strip_edges()
-	if prompt_text.is_empty():
-		prompt_text = "%s %s" % [_interaction_verb_for_action(action), display_name]
-	_app_state().set_hint(_app_state().build_input_hint("R %s" % prompt_text))
-
-
-func _show_resident_balloon(subject: StorySubject3D, line: String) -> void:
-	if !is_instance_valid(subject):
-		return
-	var resident := subject.get_parent()
-	if resident == null:
-		return
-	var balloon := resident.get_node_or_null("Balloon3D")
-	if balloon != null and balloon.has_method("show_line"):
-		balloon.call("show_line", line)
-
-
-# Match the 2D reveal-dialogue behaviour: the talked-to resident turns to face the
-# player and holds still for a moment before resuming its wander.
-func _pause_and_face_resident(subject: StorySubject3D) -> void:
-	if !is_instance_valid(subject) or !is_instance_valid(m_actor):
-		return
-	var resident := subject.get_parent() as Node3D
-	if !is_instance_valid(resident):
-		return
-
-	var to_player := m_actor.global_position - resident.global_position
-	to_player.y = 0.0
-	if to_player.length() > 0.01 and resident.has_method("set_direction_vector"):
-		resident.call("set_direction_vector", to_player.normalized())
-
-	var controller: Variant = resident.get("controller")
-	if controller != null and controller is Object and controller.has_method("pause_for"):
-		controller.call("pause_for", RESIDENT_TALK_PAUSE_SEC)
-
-
-func _interaction_verb_for_action(action: String) -> String:
-	match action:
-		"perform":
-			return "Perform"
-		"collect":
-			return "Collect"
-		"talk":
-			return "Talk to"
-		_:
-			return "Inspect"

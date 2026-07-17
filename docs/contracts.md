@@ -114,7 +114,7 @@ Current contract:
 - resident dialogue beats are projected through `StoryEffectSchema.extract_effects(...)` before runtime application, keeping dialogue metadata out of the strict effect executor while preserving declared effect keys
 - resident conditional beats now resolve through `pick_story_candidate(...)` and apply their side effects through `apply_story_effects(...)` rather than keeping separate copies of condition/effect logic
 - typed route resources are now the canonical narrative gate source for route events; cached `StoryRouteGraph.can_resolve_story_event(...)` and `get_story_event_blockers(...)` calls are the shared availability surface consumed by resident dialogue and StoryEvent effect application
-- `StorySubject3D` is the production world-side subject adapter; `game_world_3d.gd` routes all world-subject interactions through `activate_story_subject(...)`, and `StoryEventService` resolves current `landmark:` and `inspectable:` subjects plus landmark reward world events through the authored catalog before any compatibility fallback path
+- `StorySubject3D` is the production world-side subject adapter; `StoryInteractionCoordinator` routes all subjects below its configured world root through `activate_story_subject(...)`, and `StoryEventService` resolves current `landmark:` and `inspectable:` subjects plus landmark reward world events through the authored catalog before any compatibility fallback path
 - non-resident inspect text now resolves through `StoryWorldReactivity.resolve_inspect_result(...)`, which builds stable `inspectable:` subject ids and reuses the shared condition matcher
 - resident routine overrides are the first live world-state effect channel driven through the shared StoryEvent boundary; they redirect the shared spawn/movement config, and reapplying them to live 3D resident actors in `game_world_3d.gd` is a pending work item (the retired 2D overworld owned that behavior)
 - the current route ledger remains the player-facing progression view, while the longer-term goal is still to migrate route families into authored recursive StoryEvent definitions and a published-fact ledger
@@ -174,11 +174,14 @@ Owned by:
 
 - [`../scenes/game_world_3d.tscn`](../scenes/game_world_3d.tscn)
 - [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd)
+- [`../game/world/actor_surface_follower.gd`](../game/world/actor_surface_follower.gd)
+- [`../game/world/story_interaction_coordinator.gd`](../game/world/story_interaction_coordinator.gd)
 
 Current contract:
 
-- `scenes/game_world_3d.gd` maps landmark proxies through the shared coordinate adapter, spawns the resident roster through `ResidentFactory`, reacts to controller events, and syncs location/landmark/resume context into `AppState`
-- `scenes/game_world_3d.gd` routes resident talk and `StorySubject3D` world interactions through `AppState.activate_story_subject(...)`, while owning proximity-based target selection and world prompt presentation
+- `scenes/game_world_3d.gd` is the world composition root: it maps landmark proxies through the shared coordinate adapter, spawns the resident roster through `ResidentFactory`, configures the focused world components, and syncs location/landmark/resume context into `AppState`
+- `ActorSurfaceFollower` seats its configured actor on the solid surface beneath it and applies the shallow-water policy; `HumanBody3D` remains terrain-agnostic
+- `StoryInteractionCoordinator` listens to the configured actor controller, selects only `StorySubject3D` nodes below its configured world root, and owns proximity hints plus dispatch through `AppState.activate_story_subject(...)`
 - `scenes/game_world_3d.gd` owns mapping the live player position onto safe story resume anchors for autosave and continue, and applies the saved resume anchor on entry (falling back to the definition marked as the catalog default)
 - `scenes/game_world_3d.gd` registers the 3D weather rig target with `WeatherManager`, which owns preset cycling and synced wind application
 - `scenes/game_world_3d.tscn` keeps the player actor in the `"player"` group and residents under a scene-owned resident root
@@ -187,7 +190,7 @@ Current contract:
 
 Governance:
 
-- keep scene-specific world wiring local to `scenes/game_world_3d.gd` unless it becomes a reusable subsystem
+- keep scene-specific composition in `scenes/game_world_3d.gd`; keep surface-follow and interaction-coordination policy in their `game/world/` components
 - document node-path or spawn-anchor naming assumptions if new systems depend on them
 
 ## Editor Addon Contracts
@@ -230,7 +233,7 @@ Current contract:
 - generated streets persist as definitions, not geometry: `LowPolyTerrain3D` only re-extracts the `GeneratedStreets` subtree from the mask on an explicit rebuild (`rebuild_from_source()`, the `rebuild` toggle, or a property change) and owns it under the edited scene so each Street3D's centerline `path_points`, sampled `profile_points`, and authored properties serialize into the `.tscn`; the mesh geometry must stay out of the file (the terrain nulls generated street meshes on `NOTIFICATION_EDITOR_PRE_SAVE` and restores them on `POST_SAVE`) and each Street3D rebuilds its mesh from the stored profile on load. On scene load / `rebuild_reusing_generated_streets()` the terrain reshapes its bed from the stored street corridors without re-extracting them; the subtree carries `GENERATED_STREET_ROOT_META` so the per-rebuild transient clear never discards it, and a scene must be rebuilt once in the editor to bake its streets
 - STREET mask cells remain extraction and terrain-classification input, but they must not emit a parallel mask-derived `StreetMesh`; Street3D exclusively owns visible street geometry, and any cells that cannot become a generated path render as supporting land
 - height-aware placement must query generated terrain heights through `LowPolyTerrain3D.get_world_surface_height(...)` or `LowPolyTerrain3D.get_sample_cell_height(...)` after rebuild instead of assuming global `land_height`; in heightmap-expanded water these queries currently expose underlying land/seabed elevation rather than visual water-plane height
-- `game_world_3d` owns actor grounding wiring: each frame it seats the player actor on the solid surface directly beneath it by casting a short downward ray against the physics world (the actor's `collision_mask`), so the actor stands on terrain, piers, or collision-bearing building parts instead of hovering. It falls back to `LowPolyTerrain3D.get_world_surface_height(...)` only when the ray finds nothing within reach, preserving land/seabed elevation following. `actor_terrain_clearance` defaults to `0`; `HumanBody3D` itself stays terrain-agnostic
+- `ActorSurfaceFollower`, configured by `game_world_3d`, owns actor grounding: each physics frame it seats the player actor on the solid surface directly beneath it by casting a short downward ray against the physics world (the actor's `collision_mask`), so the actor stands on terrain, piers, or collision-bearing building parts instead of hovering. It falls back to `LowPolyTerrain3D.get_world_surface_height(...)` only when the ray finds nothing within reach, preserving land/seabed elevation following and shallow-water seating. `terrain_clearance` defaults to `0`; `HumanBody3D` itself stays terrain-agnostic
 - `game_world_3d` owns three authored building scenes, two stable tunnel marker anchors, the complete 15-landmark/5-inspectable `StorySubject3D` set, and recursively generated static collision for authored landmark meshes
 - `Camera3DController` keeps its followed target readable by raycasting from the current camera to the look-at point and fading every collision-backed `GeometryInstance3D` blocker through the instance `transparency` property. It excludes the target subtree, preserves pre-existing transparency, restores cleared blockers (or blockers tracked by a camera that stops being current), and exposes collision-mask, fade amount/duration, area-query, and hit-limit tuning. Automatic visual resolution requires the geometry instance to be an ancestor or descendant of the hit collision object
 - `HumanBody3D.body_height` and `HumanBody3D.body_radius` are the current low-poly actor shape contract; they update the GLB model scale, capsule collision, bounding box, and ground footprint together

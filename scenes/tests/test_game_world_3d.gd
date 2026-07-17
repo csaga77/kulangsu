@@ -8,7 +8,7 @@ extends Node
 #   - five stable landmark anchors placed through the coordinate adapter
 #   - residents spawned from the shared AppState roster
 #   - story subjects registered for proximity selection
-#   - resident talk dispatches through controller input and the 3D adapter
+#   - resident talk dispatches through controller input and the interaction coordinator
 #   - legacy Vector2 and production Vector3 spatial contexts produce the same story result/state
 #   - shared BGM and landmark-cue owners are present
 #   - WeatherManager registers/cycles the 3D rain/fog/cloud-light target and propagates wind
@@ -22,6 +22,10 @@ extends Node
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const APP_STATE_SCRIPT := preload("res://game/app_state.gd")
 const BASE_CONTROLLER_3D_SCRIPT := preload("res://characters/control/base_controller_3d.gd")
+const ActorSurfaceFollowerScript = preload("res://game/world/actor_surface_follower.gd")
+const StoryInteractionCoordinatorScript = preload(
+	"res://game/world/story_interaction_coordinator.gd"
+)
 const TERRAIN_KIND_WATER := 0
 const ACTOR_GROUND_TOLERANCE := 0.2
 const MAX_ACTOR_WADE_DEPTH := 0.5
@@ -95,6 +99,17 @@ func _run_smoke_checks() -> void:
 func _check_world(failures: Array[String]) -> void:
 	if !is_instance_valid(m_world):
 		failures.append("game_world_3d did not instance")
+		return
+	var surface_follower := (
+		m_world.get_node_or_null("ActorSurfaceFollower") as ActorSurfaceFollowerScript
+	)
+	if surface_follower == null or !surface_follower.is_configured():
+		failures.append("world did not configure ActorSurfaceFollower")
+	var interaction_coordinator := (
+		m_world.get_node_or_null("StoryInteractionCoordinator") as StoryInteractionCoordinatorScript
+	)
+	if interaction_coordinator == null or !interaction_coordinator.is_configured():
+		failures.append("world did not configure StoryInteractionCoordinator")
 
 
 func _check_terrain(failures: Array[String]) -> void:
@@ -155,7 +170,10 @@ func _check_player_surface_follow(failures: Array[String]) -> void:
 	var terrain := m_world.get_node_or_null("LowPolyTerrain3D")
 	var player := m_world.get_node_or_null("human_body_3d") as CharacterBody3D
 	var coordinates: LowPolyWorldCoordinates3D = m_world.get("m_coordinates") as LowPolyWorldCoordinates3D
-	if terrain == null or player == null or coordinates == null:
+	var surface_follower := (
+		m_world.get_node_or_null("ActorSurfaceFollower") as ActorSurfaceFollowerScript
+	)
+	if terrain == null or player == null or coordinates == null or surface_follower == null:
 		failures.append("terrain-follow check is missing runtime world nodes")
 		return
 
@@ -167,7 +185,7 @@ func _check_player_surface_follow(failures: Array[String]) -> void:
 		var dry_position := coordinates.sample_cell_to_world_center(dry_cell, 0.0) + Vector3(0.21, 0.0, -0.17)
 		var dry_height := float(terrain.call("get_world_surface_height", dry_position))
 		player.global_position = Vector3(dry_position.x, dry_height + 0.5, dry_position.z)
-		m_world._apply_actor_terrain_elevation()
+		surface_follower.settle_now()
 		if absf(player.global_position.y - dry_height) > ACTOR_GROUND_TOLERANCE:
 			failures.append("player did not settle onto the runtime terrain surface")
 
@@ -180,14 +198,14 @@ func _check_player_surface_follow(failures: Array[String]) -> void:
 		var water_surface := float(terrain.call("get_world_water_surface_height", water_position))
 		var expected_wade_height := maxf(seabed_height, water_surface - MAX_ACTOR_WADE_DEPTH)
 		player.global_position = Vector3(water_position.x, water_surface + 0.5, water_position.z)
-		m_world._apply_actor_terrain_elevation()
+		surface_follower.settle_now()
 		if absf(player.global_position.y - expected_wade_height) > ACTOR_GROUND_TOLERANCE:
 			failures.append("player did not wade at the expected runtime water depth")
 		if player.global_position.y > water_surface + ACTOR_GROUND_TOLERANCE:
 			failures.append("player stood on top of runtime water instead of wading")
 
 	player.global_position = original_position
-	m_world._apply_actor_terrain_elevation()
+	surface_follower.settle_now()
 
 
 func _find_surface_probe_cell(terrain: Node, coordinates: LowPolyWorldCoordinates3D, find_water: bool) -> Vector2i:
@@ -394,18 +412,21 @@ func _check_talk_dispatch(failures: Array[String]) -> void:
 		return
 
 	var player := m_world.get_node_or_null("human_body_3d") as Node3D
+	var coordinator := (
+		m_world.get_node_or_null("StoryInteractionCoordinator") as StoryInteractionCoordinatorScript
+	)
 	var resident_subject: StorySubject3D = null
 	for subject in get_tree().get_nodes_in_group("story_subject_3d"):
 		if String(subject.get("subject_id")).begins_with("npc:"):
 			resident_subject = subject as StorySubject3D
 			break
-	if player == null or resident_subject == null:
-		failures.append("3D interaction path is missing a player or resident subject")
+	if player == null or resident_subject == null or coordinator == null:
+		failures.append("interaction path is missing its player, coordinator, or resident subject")
 		return
 
 	player.global_position = resident_subject.global_position
-	m_world._update_interaction_target()
-	var selected_subject := m_world.get("m_closest_subject") as StorySubject3D
+	coordinator.update_target()
+	var selected_subject := coordinator.get_active_subject()
 	if selected_subject == null or !selected_subject.subject_id.begins_with("npc:"):
 		failures.append("resident proximity did not select a resident StorySubject3D")
 		return
@@ -417,14 +438,20 @@ func _check_talk_dispatch(failures: Array[String]) -> void:
 	app_state.set_save_status("")
 	controller.emit_signal("inspect_requested")
 	if String(app_state.save_status).is_empty():
-		failures.append("resident inspect input did not dispatch through the 3D world adapter")
+		failures.append("resident inspect input did not dispatch through the interaction coordinator")
 
 
-# The 3D interaction adapter must build the SAME stable request the shared story
+# The interaction coordinator must build the SAME stable request the shared story
 # service consumes: authored subject_id, a resolved action, and a dimension-neutral
 # context. No 3D-only story fork. Proximity selection must deterministically pick one.
 func _check_subject_contract(failures: Array[String]) -> void:
 	if !is_instance_valid(m_world):
+		return
+	var coordinator := (
+		m_world.get_node_or_null("StoryInteractionCoordinator") as StoryInteractionCoordinatorScript
+	)
+	if coordinator == null:
+		failures.append("subject contract check is missing StoryInteractionCoordinator")
 		return
 
 	var landmark_subjects: Array = []
@@ -449,7 +476,7 @@ func _check_subject_contract(failures: Array[String]) -> void:
 	var valid_request_count := 0
 	for subject in landmark_subjects:
 		var subject_id := String(subject.get("subject_id"))
-		var request: Dictionary = m_world._build_story_interaction_request(subject)
+		var request: Dictionary = coordinator.build_story_interaction_request(subject)
 		if request.is_empty():
 			continue
 		valid_request_count += 1
@@ -472,9 +499,22 @@ func _check_subject_contract(failures: Array[String]) -> void:
 			break
 	if is_instance_valid(player) and is_instance_valid(probe_subject):
 		player.global_position = probe_subject.global_position
-		m_world._update_interaction_target()
-		if m_world.get("m_closest_subject") == null:
+		coordinator.update_target()
+		if coordinator.get_active_subject() == null:
 			failures.append("proximity selection found no active subject on a targetable subject")
+
+	# A coordinator only owns subjects below its configured world root. This keeps
+	# another loaded world or test fixture from competing for the active target.
+	var external_subject := StorySubject3D.new()
+	external_subject.name = "ExternalStorySubject"
+	external_subject.subject_id = "inspectable:harbor_notice_board"
+	add_child(external_subject)
+	external_subject.add_to_group("story_subject_3d")
+	coordinator.refresh_subjects()
+	if coordinator.get_subjects().has(external_subject):
+		failures.append("interaction coordinator captured a subject outside its world root")
+	external_subject.queue_free()
+	coordinator.refresh_subjects()
 
 
 func _check_resume_anchor(failures: Array[String]) -> void:

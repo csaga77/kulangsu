@@ -182,13 +182,13 @@ Execution order:
      debug-server overhead, so the release numbers are expected to be no worse than the diagnostic.
 5. **Story/resident/save ownership acceptance (green for current runtime scope).**
    - Follow [`../features/low_poly_3d_integration.md`](../features/low_poly_3d_integration.md): the 3D scene owns spatial adapters, existing story services own rules/effects, `AppState` owns shared progression/save data, and resident definitions remain dimension-neutral data.
-   - Controller/adapter resident dispatch, resident result/state parity, semantic resume fallback, and the exact production set of 15 landmark plus 5 inspectable subjects are green. Tunnel-resident routing/visibility remains open. Player profiles map adult masculine/feminine and teen frames to the male/female/boy GLBs.
+   - Controller/coordinator resident dispatch, resident result/state parity, semantic resume fallback, and the exact production set of 15 landmark plus 5 inspectable subjects are green. Tunnel-resident routing/visibility remains open. Player profiles map adult masculine/feminine and teen frames to the male/female/boy GLBs.
 6. **Runtime-direction decision — DECIDED 2026-07-06: replace the 2D overworld.**
    - Outcome: the low-poly 3D overworld (`scenes/game_world_3d.tscn`) replaces the 2D overworld as
      the runtime. `main.gd` now instantiates it directly; the `USE_3D_OVERWORLD` toggle and the
      `game_main.tscn` preload are removed.
    - Evidence linked: correctness (`scenes/tests/test_game_world_3d.tscn` green — world build, spawn,
-     five landmark anchors, story subjects, controller/adapter resident talk dispatch, resume anchor
+     five landmark anchors, story subjects, controller/coordinator resident talk dispatch, resume anchor
      + fallback, interaction contract); visual acceptance (all five fixed-camera PNGs in
      `design/qa/low_poly_3d/` plus the dated acceptance note); performance (stage 4 diagnostic passes
      every budget); full-shell integration (title → New Game → traveler setup → 3D overworld with HUD,
@@ -281,6 +281,7 @@ Primary files:
 - `game/resident_catalog.gd`
 - `game/story_event_service.gd`
 - `game/story_world_reactivity.gd`
+- `game/world/story_interaction_coordinator.gd`
 - `architecture/piano_ferry.tscn`
 - `architecture/trinity_church.tscn`
 - `architecture/bagua_tower/bagua_tower.tscn`

@@ -32,19 +32,19 @@
 - The dedicated 3D slice scene owns terrain/building instances, `HumanBody3D`, camera, spatial interaction areas, resident proxy instances, and mapping between authored 3D anchors and stable subject/resume ids.
 - `HumanBody3D` owns movement and physical presentation only. It must not read `AppState`, route progress, resident definitions, or save data.
 - Landmark and building scenes own geometry, collision, authored anchor nodes, and visual metadata. They must not apply story effects.
-- A thin 3D interaction adapter converts the selected `Area3D` subject into the existing stable subject id and sends it to the integration scene.
+- `StoryInteractionCoordinator` converts the selected `Area3D` subject into the existing stable subject request and sends it through `AppState`; it only considers subjects below its configured world root.
 - Existing story services own availability, response selection, and effects. No 3D-only fork of story rules is allowed.
 - `AppState` remains the owner of shared progression, location, route, resident-override, and save-facing state.
 - Existing resident definitions remain the source data. `ResidentFactory` may interpret appearance differently for the 3D world, but it must not duplicate identity, dialogue, routine, or story-gate data.
-- `game_world_3d.tscn` owns 3D spawning and world-to-story wiring.
+- `game_world_3d.tscn` owns 3D spawning and composition; `ActorSurfaceFollower` owns grounding policy and `StoryInteractionCoordinator` owns world-to-story interaction wiring.
 
 ## Interaction Contract
 
 - Every interactive `StorySubject3D` exposes a non-empty stable `subject_id`; the production-world test asserts the exact 15-landmark/5-inspectable non-NPC set.
-- Proximity selection is scene-local and must choose one deterministic active subject when ranges overlap.
+- Proximity selection is world-root-local and must choose one deterministic active subject when ranges overlap; simultaneously loaded worlds cannot contribute competing subjects.
 - Input continues through `PlayerController3D`; architecture nodes do not poll input.
-- The adapter emits an inspect request carrying the stable subject id and optional spatial context. It does not mutate progression directly.
-- Story response/effect results flow back through the integration scene for presentation.
+- The coordinator emits an inspect request carrying the stable subject id and optional spatial context. It does not mutate progression directly.
+- Story response/effect results flow back through the coordinator for world presentation.
 - Removing or replacing a visual building must not change stable subject ids.
 - `LowPolyWorldCoordinates3D` remains the placement authority for island-level subjects and anchors.
 
@@ -61,8 +61,8 @@
 - Shipped content: three authored landmark buildings, two tunnel markers, generated walkable collision,
   the complete authored subject set, shared-data residents, entry/resume anchors, `HumanBody3D`,
   `PlayerController3D`, and `Camera3DController`.
-- Automated checks cover deterministic prompt selection, controller-driven
-  resident dispatch, camera-occluder behavior, the full shared resident count,
+- Automated checks cover deterministic prompt selection, cross-world subject isolation,
+  controller-driven resident dispatch, camera-occluder behavior, the full shared resident count,
   audio-manager creation, and fallback resume behavior.
 - Lower-level terrain, actor, camera, street, and building behavior remains covered by focused tests;
   `test_game_world_3d.tscn` owns their production-world integration.
@@ -70,7 +70,7 @@
 ## Acceptance Evidence
 
 - **Green:** focused 3D headless smoke scenes return status `0`.
-- **Green:** the runtime world proves a controller/adapter resident dispatch
+- **Green:** the runtime world proves a controller/coordinator resident dispatch
   and semantic resume anchor with fallback.
 - **Green:** the five fixed-camera screenshots and dated visual acceptance note.
 - **Diagnostic green / formal open:** the reproducible standalone Metal debug

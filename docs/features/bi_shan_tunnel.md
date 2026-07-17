@@ -76,7 +76,7 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
   - `AppState.landmark_progress_changed` — consumed by each `StorySubject3D` through StoryEvent presence sync
 - Data flow:
   - Trinity reward event resolves → `advance_landmark_state("bi_shan_tunnel", "available")` → StoryEvent presence rules show echo subjects
-  - Player presses R near an echo → `scenes/game_world_3d.gd._on_inspect_requested` → `StorySubject3D` builds subject context → `AppState.activate_story_subject(...)` → authored Bi Shan echo binding updates `echoes_collected` → `landmark_progress_changed`
+  - Player presses R near an echo → `StoryInteractionCoordinator` selects the scene-local `StorySubject3D` and builds its context → `AppState.activate_story_subject(...)` → authored Bi Shan echo binding updates `echoes_collected` → `landmark_progress_changed`
   - All echoes collected → chamber trigger appears → player presses R at chamber → `StorySubject3D` builds subject context → `AppState.activate_story_subject(...)` → authored Bi Shan chamber binding emits the prompt request → `complete_prompt_request(...)` → `StoryEventService.notify_world_event("prompt_completed:bi_shan_chamber", ...)` → melody and landmark state update
 
 ## Contracts / Boundaries
