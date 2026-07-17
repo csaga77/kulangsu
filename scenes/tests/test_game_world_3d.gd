@@ -317,7 +317,7 @@ func _check_residents(failures: Array[String]) -> void:
 		if child is CharacterBody3D:
 			resident_count += 1
 	var app_state = APP_RUNTIME.get_app_state(self)
-	var expected_count: int = app_state.get_resident_ids().size() if app_state != null else 0
+	var expected_count: int = app_state.get_projection().resident_ids.size() if app_state != null else 0
 	if resident_count != expected_count:
 		failures.append(
 			"world spawned %d residents, expected the shared roster's %d" % [resident_count, expected_count]
@@ -435,9 +435,9 @@ func _check_talk_dispatch(failures: Array[String]) -> void:
 	if controller == null or !controller.has_signal("inspect_requested"):
 		failures.append("3D player controller has no inspect_requested signal")
 		return
-	app_state.set_save_status("")
+	app_state.update_world_context({"status": ""})
 	controller.emit_signal("inspect_requested")
-	if String(app_state.save_status).is_empty():
+	if String(app_state.get_projection().save_status).is_empty():
 		failures.append("resident inspect input did not dispatch through the interaction coordinator")
 
 
@@ -529,17 +529,17 @@ func _check_resume_anchor(failures: Array[String]) -> void:
 		failures.append("resume-anchor check is missing world nodes")
 		return
 
-	app_state.mode = "Story"
+	app_state.start_new_story()
 
 	# A known anchor should place the player near that landmark.
-	app_state.set_story_resume_checkpoint("Bagua Tower", "Bagua Tower")
+	app_state.update_resume_checkpoint("Bagua Tower", "Bagua Tower")
 	m_world._apply_story_resume_anchor_if_needed()
 	var bagua := landmark_nodes.get("Bagua Tower") as Node3D
 	if is_instance_valid(bagua) and _flat_distance(player.global_position, bagua.global_position) > 4.0:
 		failures.append("resume anchor did not place the player near Bagua Tower")
 
 	# A missing anchor should fall back to the Piano Ferry entry anchor.
-	app_state.set_story_resume_checkpoint("Nonexistent Place", "Nonexistent Place")
+	app_state.update_resume_checkpoint("Nonexistent Place", "Nonexistent Place")
 	m_world._apply_story_resume_anchor_if_needed()
 	var ferry := landmark_nodes.get("Piano Ferry") as Node3D
 	if is_instance_valid(ferry) and _flat_distance(player.global_position, ferry.global_position) > 4.0:
@@ -547,7 +547,7 @@ func _check_resume_anchor(failures: Array[String]) -> void:
 
 
 func _check_dimension_neutral_result_parity(failures: Array[String]) -> void:
-	var resident_ids: PackedStringArray = APP_RUNTIME.get_app_state(self).get_resident_ids()
+	var resident_ids: PackedStringArray = APP_RUNTIME.get_app_state(self).get_projection().resident_ids
 	if resident_ids.is_empty():
 		failures.append("cannot compare spatial-context dispatch results without a resident")
 		return
@@ -555,6 +555,8 @@ func _check_dimension_neutral_result_parity(failures: Array[String]) -> void:
 	var subject_id := "npc:%s" % resident_id
 	var vector2_context_state := APP_STATE_SCRIPT.new() as AppStateService
 	var vector3_context_state := APP_STATE_SCRIPT.new() as AppStateService
+	vector2_context_state.start_new_story()
+	vector3_context_state.start_new_story()
 	var vector2_context_result: Dictionary = vector2_context_state.activate_story_subject(subject_id, "talk", {
 		"resident_id": resident_id,
 		"location": "Piano Ferry",
@@ -569,18 +571,10 @@ func _check_dimension_neutral_result_parity(failures: Array[String]) -> void:
 	})
 	if _dimension_neutral_result(vector2_context_result) != _dimension_neutral_result(vector3_context_result):
 		failures.append("Vector2/Vector3 context payloads produced different story results")
-	var state_keys := [
-		"objective",
-		"hint",
-		"story_flags",
-		"route_progress",
-		"landmark_progress",
-		"melody_progress",
-		"resident_profiles",
-	]
-	for key in state_keys:
-		if vector2_context_state.get(key) != vector3_context_state.get(key):
-			failures.append("Vector2/Vector3 context payloads diverged in '%s'" % key)
+	if vector2_context_state.get_snapshot().canonical_dictionary() != vector3_context_state.get_snapshot().canonical_dictionary():
+		failures.append("Vector2/Vector3 context payloads diverged in canonical state")
+	if vector2_context_state.get_projection().route_progress != vector3_context_state.get_projection().route_progress:
+		failures.append("Vector2/Vector3 context payloads diverged in route projection")
 	vector2_context_state.free()
 	vector3_context_state.free()
 

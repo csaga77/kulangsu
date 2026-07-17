@@ -23,7 +23,7 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 - Two intermediate lit-pocket triggers (`light_pocket_south`, `light_pocket_north`) become visible once the landmark is `in_progress`.
   - `light_pocket_north` requires `light_pocket_south`.
   - Both write into `landmark_progress["long_shan_tunnel"]["checkpoints_collected"]`.
-- The `tunnel_exit` trigger becomes visible once the landmark is `in_progress`. Reaching it calls `AppState.activate_landmark_trigger("long_shan_tunnel", "tunnel_exit", ...)`. The authored StoryEvent binding only opens the route-settling prompt after both lit pockets have been collected. On prompt success:
+- The `tunnel_exit` trigger becomes visible once the landmark is `in_progress`. Reaching it dispatches `landmark:long_shan_tunnel.tunnel_exit` through `AppState.activate_story_subject(...)`. The authored StoryEvent binding only opens the route-settling prompt after both lit pockets have been collected. On prompt success:
   - Landmark state advances to `reward_collected`.
   - `long_shan_route` is confirmed in `festival_melody.known_sources`.
   - `festival_melody.fragments_found` increments by 1 as its own third fragment.
@@ -64,8 +64,8 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
   - [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
   - [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd)
 - Shared state or catalogs:
-  - `AppState.landmark_progress["long_shan_tunnel"]`
-  - `AppState.melody_progress["festival_melody"]`
+  - `AppStateSnapshot.landmark_progress["long_shan_tunnel"]`, exposed to consumers by `AppStateProjection`
+  - `AppStateSnapshot.melody_progress["festival_melody"]`, exposed to consumers by `AppStateProjection`
 - Related docs:
   - [`../contracts.md`](../contracts.md) — Landmark Progress Contract
   - [`core_melody_loop.md`](core_melody_loop.md)
@@ -76,15 +76,13 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 ## Signals / Nodes / Data Flow
 
 - Signals emitted:
-  - `AppState.landmark_progress_changed("long_shan_tunnel", progress)` — on state advance and lit-pocket collection
-  - `AppState.melody_progress_changed("festival_melody", state)` — on arc resolution
-  - `AppState.fragments_changed(found, total)` — on arc resolution
+  - one `AppState.state_committed(changes)` containing `LANDMARKS`, and `MELODY` when the route awards its fragment
 - Signals consumed:
-  - `AppState.landmark_progress_changed` — consumed by each `StorySubject3D` through StoryEvent presence sync
+  - each `StorySubject3D` listens to `state_committed` and refreshes presence from the latest projection
 - Data flow:
   - Trinity reward event resolves → `advance_landmark_state("long_shan_tunnel", "available")` → StoryEvent presence rules show the entry subject
   - Player reaches entry trigger → `StorySubject3D` builds subject context → `AppState.activate_story_subject(...)` → authored Long Shan entry binding advances the landmark to `introduced` → entry trigger hides
-  - Player talks to tunnel_guide (beats 0 and 1) → `landmark_states` fields confirm `introduced` then `in_progress` → `landmark_progress_changed` → lit-pocket and exit triggers appear
+  - Player talks to tunnel_guide (beats 0 and 1) → `landmark_states` fields confirm `introduced` then `in_progress` → one state commit → lit-pocket and exit triggers appear
   - Player reaches both lit pockets → `StorySubject3D` builds subject context → `AppState.activate_story_subject(...)` → authored checkpoint bindings update `checkpoints_collected`
   - Player reaches exit trigger → `StorySubject3D` builds subject context → `AppState.activate_story_subject(...)` → authored Long Shan exit binding opens the route prompt → `complete_prompt_request(...)` → `StoryEventService.notify_world_event("prompt_completed:long_shan_route", ...)` → melody + landmark state update + objective points back to Ren
   - Player talks to tunnel_guide after the route settles → either the comparison beat points toward Bi Shan or the conditional beat unlocks Bagua Tower once both tunnel routes agree

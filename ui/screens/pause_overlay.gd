@@ -27,7 +27,7 @@ func _ready() -> void:
 	m_settings_button.pressed.connect(settings_requested.emit)
 	m_return_button.pressed.connect(return_to_title_requested.emit)
 	m_quit_button.pressed.connect(quit_requested.emit)
-	set_journal_enabled(_app_state().is_journal_unlocked())
+	set_journal_enabled(_app_state().get_projection().journal_unlocked)
 	visibility_changed.connect(_on_visibility_changed)
 
 

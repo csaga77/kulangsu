@@ -20,7 +20,7 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
 - `ferry_caretaker` beat 0 carries `"landmark_states": {"piano_ferry": "introduced"}`. This reveals the harbor clue trigger and sets the immediate objective to inspect the piano crate.
 - The harbor clue is a `StorySubject3D` node authored under the Piano Ferry proxy in `game_world_3d.tscn`.
 - `piano_ferry.tscn` also hosts the late-game `festival_stage` subject under the same landmark scene, but that belongs to the separate `festival_stage` landmark id rather than the onboarding arc itself.
-- Pressing `R` at the harbor clue calls `AppState.activate_landmark_trigger("piano_ferry", "harbor_refrain", ...)`, which now bridges into the authored StoryEvent subject `landmark:piano_ferry.harbor_refrain`.
+- Pressing `R` at the harbor clue dispatches the authored subject id `landmark:piano_ferry.harbor_refrain` through `AppState.activate_story_subject(...)`.
 - When the trigger fires:
   - `landmark_progress["piano_ferry"]["harbor_clue_found"]` becomes `true`
   - landmark state advances to `resolved`
@@ -45,7 +45,7 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
 
 ## Architecture / Ownership
 
-- `AppState` owns Piano Ferry progress state, the journal unlock flag, and the public landmark trigger bridge.
+- `AppStateService` owns Piano Ferry progress and the journal unlock flag in its canonical snapshot; `activate_story_subject(...)` is the semantic interaction boundary.
 - `game/story_event_catalog.gd` and `game/story_event_service.gd` now own both the harbor-clue interaction beat and the `landmark_reward:piano_ferry` onboarding reward flow.
 - `resident_catalog.gd` still owns Caretaker Lian's handoff beat and is what emits the ferry reward event through its `landmark_reward` key.
 - `resident_catalog.gd` owns Caretaker Lian's gate logic and the Trinity Church handoff beat.
@@ -54,7 +54,7 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
   reference-photo-derived Low-Poly Building Editor scene instanced by the
   production 3D runtime. Its versioned `BuildingSpec` and geometry
   remain presentation-only; `game_world_3d` owns story subjects and placement.
-- `main.gd` and `scenes/game_world_3d.gd` query `AppState.is_journal_unlocked()` to keep controls text and journal access in sync with the onboarding state.
+- `main.gd` and `scenes/game_world_3d.gd` read `AppStateProjection.journal_unlocked` to keep controls text and journal access in sync with the onboarding state.
 
 ## Relevant Files
 
@@ -72,8 +72,8 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
   - [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd)
   - [`../../ui/screens/pause_overlay.gd`](../../ui/screens/pause_overlay.gd)
 - Shared state or catalogs:
-  - `AppState.landmark_progress["piano_ferry"]`
-  - `AppState.melody_progress["festival_melody"]`
+  - `AppStateSnapshot.landmark_progress["piano_ferry"]`, exposed to consumers by `AppStateProjection`
+  - `AppStateSnapshot.melody_progress["festival_melody"]`, exposed to consumers by `AppStateProjection`
 - Related docs:
   - [`../contracts.md`](../contracts.md) — Shared State Contract and Landmark Progress Contract
   - [`core_melody_loop.md`](core_melody_loop.md)
@@ -82,10 +82,10 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
 ## Signals / Nodes / Data Flow
 
 - Signals emitted:
-  - `AppState.landmark_progress_changed("piano_ferry", progress)` — on intro and clue resolution
-  - `AppState.melody_hint_shown(text)` — when the harbor clue StoryEvent effect emits its flavour line
+  - one `AppState.state_committed(changes)` containing `LANDMARKS` on intro/clue resolution
+  - `AppState.melody_hint_shown(text)` remains an imperative event emitted after the commit
 - Signals consumed:
-  - `AppState.landmark_progress_changed` — consumed by the ferry `StorySubject3D` through StoryEvent presence sync
+  - the ferry `StorySubject3D` listens to `state_committed` and refreshes presence from the latest projection
 - Data flow:
   - player talks to `ferry_caretaker` beat 0 -> landmark advances to `introduced`
   - player presses `R` at `HarborRefrain` -> `StorySubject3D` builds subject context -> `AppState.activate_story_subject("landmark:piano_ferry.harbor_refrain", "collect", ...)` -> `StoryEventService` applies the authored ferry binding -> `harbor_clue_found = true` and the objective points back to Lian
@@ -94,7 +94,7 @@ The mood stays calm. There is no timer, no wrong answer, and no fragment reward 
 ## Contracts / Boundaries
 
 - The `landmark_progress["piano_ferry"]` shape (`state`, `harbor_clue_found`) is part of the Landmark Progress Contract in `contracts.md`.
-- `main.gd` should gate journal opening through `AppState.is_journal_unlocked()` rather than duplicating local tutorial state.
+- `main.gd` should gate journal opening through the latest projection's `journal_unlocked` value rather than duplicating local tutorial state.
 - `StorySubject3D` must not write `AppState` fields directly.
 
 ## Validation

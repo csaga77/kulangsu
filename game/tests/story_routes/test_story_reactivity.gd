@@ -16,21 +16,24 @@ const AUTHORED_WORLD_SUBJECTS := {
 }
 
 var m_failures := PackedStringArray()
+var m_app_state: AppStateService
 
 
-func _app_state():
-	return APP_RUNTIME.get_app_state(self)
+func _app_state() -> AppStateService:
+	return m_app_state
 
 
 func _ready() -> void:
+	m_app_state = AppStateService.new(StorySaveRepository.new(TEST_AUTOSAVE_PATH))
+	m_app_state.name = "AppState"
+	add_child(m_app_state)
 	call_deferred("_run")
 
 
 func _run() -> void:
-	_app_state().override_story_autosave_path_for_tests(TEST_AUTOSAVE_PATH)
-	_app_state().clear_story_autosave_for_tests()
+	_app_state().clear_story_save()
 
-	_app_state().configure_new_game()
+	_app_state().start_new_story()
 	_progress_to_winter_memory()
 	var qiao_result: Dictionary = _app_state().interact_with_resident("bell_repairer_qiao")
 	_assert_true(
@@ -71,7 +74,7 @@ func _run() -> void:
 		"Harbor Lantern Lines keep the Spring Festival aftermath visible after the route resolves"
 	)
 
-	_app_state().configure_new_game()
+	_app_state().start_new_story()
 	_progress_to_future_choice()
 	var lin_after: Dictionary = _app_state().interact_with_resident("choir_student_lin")
 	_assert_true(
@@ -99,12 +102,11 @@ func _run() -> void:
 		"Harbor Notice Board reflects the quieter second-summer aftermath"
 	)
 
-	_app_state().configure_new_game()
+	_app_state().start_new_story()
 	_progress_through_ferry_opening()
 	_app_state().interact_with_resident("dock_musician_pei")
 	_app_state().interact_with_resident("postcard_seller_an")
-	_app_state().advance_landmark_state("bagua_tower", "available")
-	_app_state().refresh_story_routes()
+	_app_state().apply_story_effects({"unlock_landmark": "bagua_tower"})
 	_app_state().interact_with_resident("terrace_painter_nian")
 	var jia_after: Dictionary = _app_state().interact_with_resident("map_student_jia")
 	_assert_true(
@@ -132,7 +134,7 @@ func _run() -> void:
 		"Bagua Railings carry the preservation perspective onto a non-resident surface"
 	)
 
-	_app_state().clear_story_autosave_for_tests()
+	_app_state().clear_story_save()
 
 	if m_failures.is_empty():
 		print("PASS: story route reactivity")

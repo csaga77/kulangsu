@@ -18,7 +18,7 @@ Shipped foundations:
 - first authored StoryEvent tree file in `game/story_event_catalog.gd`, now owning the full `melody_landmarks` interaction spine: ferry harbor clue, Trinity cue/chime, Bi Shan echoes/chamber, Long Shan entry/checkpoints/exit, Bagua synthesis, and the harbor-stage prompt-open
 - save/load support for seasonal story state, route state, lead pinning, and endgame state
 - first lightweight life-time runtime slice with `story_day`, `world_hour`, derived `time_of_day`, StoryEvent time conditions/effects, journal summary exposure, and autosave persistence
-- story-driven resident routine overrides that persist through autosave/continue and reapply to live actors in `game_world_3d`
+- story-driven resident routine overrides that persist through autosave/continue and affect future projection-based resident configuration; live reapplication to already-spawned 3D actors remains open
 - resident gating against `season_phase`, route state, and `story_flags`
 - guarded final-act start with `spring_festival_resolved` as the earliest allowed endgame threshold
 - `AppState` composition pattern with extracted helpers for profile, journal, save, landmark progression, resident interaction, audio settings, and story routes
@@ -70,16 +70,15 @@ Current practical coverage:
 
 ## Architecture Reality Check
 
-`AppState` (about 1.6k lines, 30 signals) is still the shared state hub and is now explicitly the single owner of mutable shared runtime state. Player-profile/costume, story-time, and audio/settings helpers are stateless transforms instead of mirrored state stores. The Workstream 0 cleanup shipped first, and the follow-on content/HUD/ending pass now builds on that bridge surface cleanly. `resident_catalog.gd` is now a loader/normalizer over external resident resources rather than the main route-content monolith.
+`AppStateService` is now the scene-owned atomic snapshot store and the single owner of mutable shared runtime state. Player-profile/costume, story-time, audio/settings, route, StoryEvent, and resident helpers transform detached command state instead of owning mirrored runtime state. `resident_catalog.gd` is a loader/normalizer over external resident resources rather than the main route-content monolith.
 
 Current pressure points:
 
-- `AppState` still carries a broad facade/signal surface, including many one-line forwarding methods that are useful for compatibility but still add maintenance cost
-- `StorySaveService` and `LandmarkProgression` remain intentionally tight `AppState` helpers, so future cleanup still needs to preserve the bridge API instead of assuming those helpers are independently reusable modules
+- `AppStateService` is now an atomic snapshot store. Save migration/mapping lives in a pure codec, file I/O lives in an injectable repository, and `LandmarkProgression` remains an owner-free prompt calculator.
 - `StoryEventService` is now live as a shared subject/effect bridge, and `story_event_catalog.gd` now owns the full melody-landmark interaction spine plus its landmark prompt-completion/reward world events, but progression still spans typed storyline route resources, resident resources, the StoryEvent catalog, and `story_world_reactivity.gd` instead of one fuller recursive event definition set plus a published-fact ledger
 - StoryEvent catalog validation now checks authored `story_event` effect references against typed route resources, but subject/world-event bindings themselves are still authored in GDScript rather than editor-native resources
-- `activate_landmark_trigger(...)` remains as a compatibility bridge, but runtime and regression coverage use `activate_story_subject(...)` through production `StorySubject3D` nodes for landmark beats
-- high-traffic dictionary payloads (landmark progress, melody progress, autosave) are still untyped
+- runtime and regression coverage use `activate_story_subject(...)` through production `StorySubject3D` nodes for landmark beats; the direct landmark-trigger compatibility facade has been removed
+- nested landmark, melody, resident, route, and endgame payloads remain dictionaries inside the typed top-level snapshot/projection boundary and are candidates for later typing
 - missable/transformed moment processing is not implemented yet; the current life-time slice tracks and advances time but does not automatically expire optional beats into missed-state echoes
 - the low-poly 3D runtime now has terrain/water, actor/camera, three authored landmark models plus two tunnel markers, shared-data residents, the complete 15-landmark/5-inspectable `StorySubject3D` set, speech balloons, BGM/cues, and semantic resume anchors; remaining work is tunnel/interior content, routed tunnel residents, richer landmark presentation, and release-performance confirmation
 - regression coverage is now strong for landmark, route, resident-interaction, reactivity, autosave, and shared-state ownership flows, but remains lighter around audio-bus integration and richer world-object reactivity
@@ -267,7 +266,7 @@ First-pass shipped outcome:
 - new conditional beats now react to winter-memory, Spring Festival, future-choice, second-summer, preservation, and resonant-festival state across ferry, church, and Bagua districts
 - `scenes/game_world_3d.gd` surfaces selected route-event resolutions as world-status feedback instead of leaving those turns only in journal state
 - route-aware inspectables at Piano Ferry, Trinity Church, and Bagua Tower now carry non-resident world reactivity alongside dialogue follow-through
-- first-pass StoryEvent routing now unifies resident talk, inspectable resolution, shared condition matching, and live resident routine overrides behind the `AppState` story-subject bridge
+- first-pass StoryEvent routing now unifies resident talk, inspectable resolution, shared condition matching, and saved resident routine-override configuration behind the `AppState` story-subject bridge
 - route progress now changes more of what the island feels like without requiring landmark-only progression
 
 Still open:
@@ -386,10 +385,11 @@ Primary files:
 
 Shipped outcome:
 
-- landmark progression behavior is now split between authored StoryEvent landmark bindings/world events and `game/landmark_progression.gd`'s remaining generic prompt-builder/fallback helpers, while `AppState` keeps the landmark bridge API and signal surface
-- resident dialogue/application lives in `game/resident_interaction_service.gd` with `AppState` facades preserved for runtime callers and tests
-- mutable player-profile/costume, story-time, and runtime settings values live only in `AppState`; their focused helper services are stateless transforms, and `audio_settings_service.gd` additionally applies committed values to audio buses
-- `StorySaveService` owns the active payload pipeline plus `configure_new_game()`, `configure_continue()`, and `configure_free_walk()` implementation while `AppState` keeps the public bridge methods
+- `AppStateService` owns one typed canonical `AppStateSnapshot` and one cached `AppStateProjection`; every top-level command commits once, emits one `state_committed` change set, and requests at most one autosave
+- route, StoryEvent, and resident logic run against detached transitions and never retain the live store, emit public state signals, or perform file I/O; the former runtime ports and `runtime_*` forwarding surface have been removed
+- canonical player-profile/costume, story-time, runtime-settings, checkpoint, and progression values live only in the snapshot; chapter/time labels, fragments, routes/leads, display lists, costume unlocks, and ending summary are derived projection data
+- `StorySaveCodec` owns V1-to-V2 migration and canonical-only V2 mapping, while `StorySaveRepository` owns injectable file I/O. Existing V1 files remain untouched until the next successful normal autosave
+- production shell, HUD, journal, settings, BGM, world integration, resident spawning, story subjects, and customization code now consume detached projections or semantic commands instead of raw AppState fields and field-specific signals
 - the weather cycle now lives in `weather/weather_manager.gd` and applies to the production `WeatherRig3D`; focused presentation validation lives in `weather/tests/capture_weather_3d.tscn`
 - all resident definitions now live as external resources under `game/residents/definitions/`, with `resident_catalog.gd` kept as the loader/normalizer bridge
 
@@ -402,6 +402,7 @@ Verification now in repo:
 - `game/tests/npc_system/test_resident_interaction.tscn`
 - `game/tests/npc_system/test_resident_catalog_external_defs.tscn`
 - `game/tests/state/test_app_state_ownership.tscn`
+- `game/tests/state/test_app_state_snapshot_store.tscn`
 
 ## Deferred Design Questions
 

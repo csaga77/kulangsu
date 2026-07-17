@@ -1,17 +1,27 @@
 extends Node
 
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
+const JOURNAL_BUILDER := preload("res://game/journal_builder.gd")
+const TEST_AUTOSAVE_PATH := "user://cue_progression_test.save"
 
 var m_failures := PackedStringArray()
 var m_milestones := PackedStringArray()
 var m_prompt_requests: Array[Dictionary] = []
+var m_app_state: AppStateService
 
 
-func _app_state():
-	return APP_RUNTIME.get_app_state(self)
+func _app_state() -> AppStateService:
+	return m_app_state
+
+
+func _view() -> AppStateProjection:
+	return m_app_state.get_projection()
 
 
 func _ready() -> void:
+	m_app_state = AppStateService.new(StorySaveRepository.new(TEST_AUTOSAVE_PATH))
+	m_app_state.name = "AppState"
+	add_child(m_app_state)
 	call_deferred("_run")
 
 
@@ -21,17 +31,18 @@ func _run() -> void:
 	if !_app_state().melody_prompt_requested.is_connected(_on_melody_prompt_requested):
 		_app_state().melody_prompt_requested.connect(_on_melody_prompt_requested)
 
-	_app_state().configure_new_game()
-	_assert_true(_app_state().fragments_found == 0, "New game starts with zero fragments")
-	_assert_true(_app_state().get_landmark_state("festival_stage") == "locked", "Festival stage starts locked")
+	_app_state().clear_story_save()
+	_app_state().start_new_story()
+	_assert_true(_view().fragments_found == 0, "New game starts with zero fragments")
+	_assert_true(_view().get_landmark_state("festival_stage") == "locked", "Festival stage starts locked")
 	_assert_true(!_app_state().can_practice_melody("festival_melody"), "Practice stays locked until at least two true fragments are restored")
 
 	_app_state().interact_with_resident("ferry_caretaker")
 	_activate_landmark_subject("piano_ferry", "harbor_refrain", "Harbor Clue")
 	_app_state().interact_with_resident("ferry_caretaker")
-	_assert_true(_app_state().is_journal_unlocked(), "Journal unlocks after the ferry handoff")
-	_assert_true(_app_state().fragments_found == 0, "Ferry onboarding does not count as a fragment")
-	_assert_true(_app_state().get_landmark_state("trinity_church") == "available", "Trinity unlocks after the ferry handoff")
+	_assert_true(_view().journal_unlocked, "Journal unlocks after the ferry handoff")
+	_assert_true(_view().fragments_found == 0, "Ferry onboarding does not count as a fragment")
+	_assert_true(_view().get_landmark_state("trinity_church") == "available", "Trinity unlocks after the ferry handoff")
 
 	_app_state().interact_with_resident("church_caretaker")
 	_app_state().interact_with_resident("church_caretaker")
@@ -42,13 +53,13 @@ func _run() -> void:
 	var chime_consumed = _activate_landmark_subject("trinity_church", "choir_chime", "Choir Chime")
 	_assert_true(!chime_consumed, "Trinity choir chime waits for prompt confirmation before resolution")
 	_assert_true(m_prompt_requests.size() == trinity_requests_before + 1, "Trinity choir chime requests the prompt once all cues are gathered")
-	_assert_true(_app_state().fragments_found == 0, "Trinity does not award a fragment before the choir chime settles")
+	_assert_true(_view().fragments_found == 0, "Trinity does not award a fragment before the choir chime settles")
 	_app_state().complete_prompt_request(m_prompt_requests[m_prompt_requests.size() - 1])
-	_assert_true(_app_state().get_landmark_state("trinity_church") == "resolved", "Trinity enters a settled state after the choir chime prompt succeeds")
+	_assert_true(_view().get_landmark_state("trinity_church") == "resolved", "Trinity enters a settled state after the choir chime prompt succeeds")
 	_app_state().interact_with_resident("church_caretaker")
-	_assert_true(_app_state().fragments_found == 1, "Trinity awards the first fragment")
-	_assert_true(_app_state().get_landmark_state("bi_shan_tunnel") == "available", "Bi Shan unlocks after Trinity")
-	_assert_true(_app_state().get_landmark_state("long_shan_tunnel") == "available", "Long Shan unlocks after Trinity")
+	_assert_true(_view().fragments_found == 1, "Trinity awards the first fragment")
+	_assert_true(_view().get_landmark_state("bi_shan_tunnel") == "available", "Bi Shan unlocks after Trinity")
+	_assert_true(_view().get_landmark_state("long_shan_tunnel") == "available", "Long Shan unlocks after Trinity")
 
 	_activate_landmark_subject("bi_shan_tunnel", "echo_a", "Echo A")
 	_activate_landmark_subject("bi_shan_tunnel", "echo_b", "Echo B")
@@ -58,10 +69,10 @@ func _run() -> void:
 	_assert_true(!chamber_consumed, "Bi Shan chamber waits for prompt confirmation before resolution")
 	_assert_true(m_prompt_requests.size() == bi_shan_requests_before + 1, "Bi Shan chamber requests the prompt once all echoes are gathered")
 	_app_state().complete_prompt_request(m_prompt_requests[m_prompt_requests.size() - 1])
-	_assert_true(_app_state().fragments_found == 2, "Bi Shan awards the second fragment")
-	_assert_true(_app_state().get_open_shortcuts().find("bi_shan_crossing") >= 0, "Bi Shan records the dependable tunnel route reward")
-	_assert_true(_app_state().build_map_journal_text().contains("Dependable routes"), "The journal map lists dependable route notes")
-	_assert_true(_app_state().build_map_journal_text().contains("Bi Shan Tunnel Route"), "The journal map lists the Bi Shan tunnel route note")
+	_assert_true(_view().fragments_found == 2, "Bi Shan awards the second fragment")
+	_assert_true(_view().open_shortcuts.find("bi_shan_crossing") >= 0, "Bi Shan records the dependable tunnel route reward")
+	_assert_true(JOURNAL_BUILDER.build_map_journal_text(_view()).contains("Dependable routes"), "The journal map lists dependable route notes")
+	_assert_true(JOURNAL_BUILDER.build_map_journal_text(_view()).contains("Bi Shan Tunnel Route"), "The journal map lists the Bi Shan tunnel route note")
 	_assert_true(_app_state().can_practice_melody("festival_melody"), "Practice unlocks once the melody is reconstructed")
 
 	var practice_requests_before := m_prompt_requests.size()
@@ -78,44 +89,44 @@ func _run() -> void:
 	_assert_true(!exit_consumed, "Long Shan exit waits for prompt confirmation before resolution")
 	_assert_true(m_prompt_requests.size() == long_shan_requests_before + 1, "Long Shan exit requests the route prompt after both lit pockets")
 	_app_state().complete_prompt_request(m_prompt_requests[m_prompt_requests.size() - 1])
-	_assert_true(_app_state().objective.contains("Tunnel Guide Ren"), "Long Shan exit points the player back to Ren before Bagua unlocks")
-	_assert_true(_app_state().fragments_found == 3, "Long Shan awards the third fragment after the route prompt settles")
-	_assert_true(_app_state().get_landmark_state("bagua_tower") == "locked", "Bagua stays locked until Ren delivers the tower handoff")
+	_assert_true(_view().objective.contains("Tunnel Guide Ren"), "Long Shan exit points the player back to Ren before Bagua unlocks")
+	_assert_true(_view().fragments_found == 3, "Long Shan awards the third fragment after the route prompt settles")
+	_assert_true(_view().get_landmark_state("bagua_tower") == "locked", "Bagua stays locked until Ren delivers the tower handoff")
 	_app_state().interact_with_resident("tunnel_guide")
-	_assert_true(_app_state().get_landmark_state("bagua_tower") == "available", "Bagua unlocks after Long Shan")
+	_assert_true(_view().get_landmark_state("bagua_tower") == "available", "Bagua unlocks after Long Shan")
 
 	_app_state().interact_with_resident("tower_keeper")
 	_app_state().interact_with_resident("tower_keeper")
 	_activate_landmark_subject("bagua_tower", "synthesis_chamber", "Synthesis Chamber")
 	_app_state().interact_with_resident("tower_keeper")
-	_assert_true(_app_state().fragments_found == 4, "Bagua awards the fourth fragment")
-	_assert_true(_app_state().get_landmark_state("festival_stage") == "locked", "Festival stage stays locked until Spring Festival is emotionally ready")
-	_assert_true(!bool(_app_state().get_melody_state("festival_melody").get("performed", false)), "Bagua does not mark the melody performed")
+	_assert_true(_view().fragments_found == 4, "Bagua awards the fourth fragment")
+	_assert_true(_view().get_landmark_state("festival_stage") == "locked", "Festival stage stays locked until Spring Festival is emotionally ready")
+	_assert_true(!bool(_view().get_melody_state("festival_melody").get("performed", false)), "Bagua does not mark the melody performed")
 
 	_app_state().interact_with_resident("dock_musician_pei")
 	_app_state().interact_with_resident("postcard_seller_an")
 	_app_state().interact_with_resident("church_caretaker")
 	_app_state().interact_with_resident("tea_vendor_hua")
 	_app_state().interact_with_resident("ferry_caretaker")
-	_assert_true(bool(_app_state().get_story_flag("spring_festival_resolved", false)), "The family route can still bring Spring Festival online after the melody is complete")
-	_assert_true(_app_state().get_landmark_state("festival_stage") == "available", "Festival stage unlocks once Bagua and Spring Festival are both resolved")
+	_assert_true(bool(_app_state().get_snapshot().story_flags.get("spring_festival_resolved", false)), "The family route can still bring Spring Festival online after the melody is complete")
+	_assert_true(_view().get_landmark_state("festival_stage") == "available", "Festival stage unlocks once Bagua and Spring Festival are both resolved")
 
 	var festival_requests_before := m_prompt_requests.size()
 	var stage_consumed = _activate_landmark_subject("festival_stage", "harbor_stage", "Festival Stage")
 	_assert_true(!stage_consumed, "Festival stage waits for prompt confirmation before completion")
 	_assert_true(m_prompt_requests.size() == festival_requests_before + 1, "Festival stage requests the melody prompt")
-	_assert_true(!bool(_app_state().get_melody_state("festival_melody").get("performed", false)), "Festival stage does not mark the melody performed before prompt success")
+	_assert_true(!bool(_view().get_melody_state("festival_melody").get("performed", false)), "Festival stage does not mark the melody performed before prompt success")
 	_app_state().complete_prompt_request(m_prompt_requests[m_prompt_requests.size() - 1])
-	_assert_true(bool(_app_state().get_melody_state("festival_melody").get("performed", false)), "Festival stage marks the melody performed")
+	_assert_true(bool(_view().get_melody_state("festival_melody").get("performed", false)), "Festival stage marks the melody performed")
 	_assert_true(m_milestones.has("festival_performed"), "Festival performance emits the festival_performed milestone")
-	_assert_true(bool(_app_state().endgame_state.get("active", false)), "Festival performance can now start the final act once spring has resolved")
-	_assert_true(String(_app_state().endgame_state.get("trigger_event_id", "")) == "harbor_festival_performed", "Festival performance stores the correct endgame trigger once it is allowed")
-	_assert_true(_app_state().get_endgame_behavior() == "continue_story", "Harbor performance is classified as a soft ending that can continue into play")
+	_assert_true(bool(_view().endgame_state.get("active", false)), "Festival performance can now start the final act once spring has resolved")
+	_assert_true(String(_view().endgame_state.get("trigger_event_id", "")) == "harbor_festival_performed", "Festival performance stores the correct endgame trigger once it is allowed")
+	_assert_true(String(_view().endgame_state.get("ending_behavior", "")) == "continue_story", "Harbor performance is classified as a soft ending that can continue into play")
 	_assert_true(_app_state().continue_story_after_endgame(), "Soft endings can clear the ending state and return to live story play")
-	_assert_true(!bool(_app_state().endgame_state.get("active", false)), "Continuing after a soft ending clears the active endgame state")
-	_assert_true(String(_app_state().get_melody_state("festival_melody").get("state", "")) == "resonant", "Continuing after the harbor ending upgrades the melody into its persistent resonant state")
+	_assert_true(!bool(_view().endgame_state.get("active", false)), "Continuing after a soft ending clears the active endgame state")
+	_assert_true(String(_view().get_melody_state("festival_melody").get("state", "")) == "resonant", "Continuing after the harbor ending upgrades the melody into its persistent resonant state")
 
-	_app_state().configure_new_game()
+	_app_state().start_new_story()
 	_app_state().interact_with_resident("ferry_caretaker")
 	_activate_landmark_subject("piano_ferry", "harbor_refrain", "Harbor Clue")
 	_app_state().interact_with_resident("ferry_caretaker")
@@ -135,15 +146,15 @@ func _run() -> void:
 	_activate_landmark_subject("long_shan_tunnel", "tunnel_exit", "Exit")
 	_app_state().complete_prompt_request({"completion_kind": "long_shan_route"})
 	var ren_midgame = _app_state().interact_with_resident("tunnel_guide")
-	_assert_true(_app_state().get_landmark_state("bagua_tower") == "locked", "Long Shan alone does not unlock Bagua")
-	_assert_true(String(ren_midgame.get("objective", _app_state().objective)).contains("Bi Shan"), "Ren redirects the player to Bi Shan when the other tunnel is still unresolved")
+	_assert_true(_view().get_landmark_state("bagua_tower") == "locked", "Long Shan alone does not unlock Bagua")
+	_assert_true(String(ren_midgame.get("objective", _view().objective)).contains("Bi Shan"), "Ren redirects the player to Bi Shan when the other tunnel is still unresolved")
 	_activate_landmark_subject("bi_shan_tunnel", "echo_a", "Echo A")
 	_activate_landmark_subject("bi_shan_tunnel", "echo_b", "Echo B")
 	_activate_landmark_subject("bi_shan_tunnel", "echo_c", "Echo C")
 	_activate_landmark_subject("bi_shan_tunnel", "chamber", "Mural Chamber")
 	_app_state().complete_prompt_request({"completion_kind": "bi_shan_chamber"})
 	_app_state().interact_with_resident("tunnel_guide")
-	_assert_true(_app_state().get_landmark_state("bagua_tower") == "available", "Ren unlocks Bagua once both tunnel routes are steady")
+	_assert_true(_view().get_landmark_state("bagua_tower") == "available", "Ren unlocks Bagua once both tunnel routes are steady")
 
 	var inspector_subject := StorySubject3D.new()
 	var subject_property := _get_property_info(inspector_subject, "subject_id")

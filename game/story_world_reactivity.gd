@@ -144,7 +144,11 @@ static func _matches_conditions(app_state, conditions_value: Variant, context: D
 		return bool(app_state.call("matches_story_conditions", conditions, context))
 
 	var expected_phase := String(conditions.get("season_phase", ""))
-	if !expected_phase.is_empty() and String(app_state.season_phase) != expected_phase:
+	if (
+		!expected_phase.is_empty()
+		and app_state.has_method("get_season_phase")
+		and String(app_state.call("get_season_phase")) != expected_phase
+	):
 		return false
 
 	for flag_value in conditions.get("story_flag_all", []):

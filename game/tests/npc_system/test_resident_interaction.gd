@@ -5,45 +5,48 @@ const APP_RUNTIME := preload("res://game/app_runtime.gd")
 
 var m_failures := PackedStringArray()
 var m_story_milestones: Array[Dictionary] = []
+var m_app_state: AppStateService
 
 
-func _app_state():
-	return APP_RUNTIME.get_app_state(self)
+func _app_state() -> AppStateService:
+	return m_app_state
 
 
 func _ready() -> void:
+	m_app_state = AppStateService.new(StorySaveRepository.new(TEST_AUTOSAVE_PATH))
+	m_app_state.name = "AppState"
+	add_child(m_app_state)
 	call_deferred("_run")
 
 
 func _run() -> void:
-	_app_state().override_story_autosave_path_for_tests(TEST_AUTOSAVE_PATH)
-	_app_state().clear_story_autosave_for_tests()
+	_app_state().clear_story_save()
 	if !_app_state().story_milestone.is_connected(_on_story_milestone):
 		_app_state().story_milestone.connect(_on_story_milestone)
 
-	_app_state().configure_new_game()
+	_app_state().start_new_story()
 	var pei_too_early: Dictionary = _app_state().interact_with_resident("dock_musician_pei")
 	_assert_true(
 		String(pei_too_early.get("line", "")).to_lower().contains("homecoming"),
 		"Resident interaction now falls back when a story-event beat is blocked by route prerequisites"
 	)
 	_assert_true(
-		int(_app_state().get_resident_profile("dock_musician_pei").get("conversation_index", 0)) == 0,
+		int(_app_state().get_projection().get_resident_profile("dock_musician_pei").get("conversation_index", 0)) == 0,
 		"Blocked route-gated resident beats do not advance conversation progress"
 	)
 	_assert_true(
-		!bool(_app_state().get_story_flag("autumn_pressure_named", false)),
+		!bool(_app_state().get_snapshot().story_flags.get("autumn_pressure_named", false)),
 		"Blocked route-gated resident beats do not resolve their story event"
 	)
 
-	_app_state().configure_new_game()
+	_app_state().start_new_story()
 	var lian_intro: Dictionary = _app_state().interact_with_resident("ferry_caretaker")
 	_assert_true(
 		String(lian_intro.get("line", "")).to_lower().contains("old piano crate"),
 		"Ferry caretaker still opens with the harbor-clue onboarding beat"
 	)
 	_assert_true(
-		int(_app_state().get_resident_profile("ferry_caretaker").get("conversation_index", 0)) == 1,
+		int(_app_state().get_projection().get_resident_profile("ferry_caretaker").get("conversation_index", 0)) == 1,
 		"Ferry caretaker advances to the second beat after the intro"
 	)
 
@@ -53,7 +56,7 @@ func _run() -> void:
 		"Gate fallback still repeats the harbor-clue requirement before the ferry trigger is found"
 	)
 	_assert_true(
-		int(_app_state().get_resident_profile("ferry_caretaker").get("conversation_index", 0)) == 1,
+		int(_app_state().get_projection().get_resident_profile("ferry_caretaker").get("conversation_index", 0)) == 1,
 		"Gate fallback does not advance ferry caretaker dialogue progress"
 	)
 
@@ -66,7 +69,7 @@ func _run() -> void:
 		"Ferry caretaker still reacts to the first restored fragment through the conditional follow-up beat"
 	)
 	_assert_true(
-		int(_app_state().get_resident_profile("ferry_caretaker").get("trust", 0)) == 3,
+		int(_app_state().get_projection().get_resident_profile("ferry_caretaker").get("trust", 0)) == 3,
 		"Ferry caretaker still reaches max trust after the first-fragment return"
 	)
 	_assert_true(
@@ -75,24 +78,24 @@ func _run() -> void:
 	)
 
 	m_story_milestones.clear()
-	_app_state().configure_new_game()
+	_app_state().start_new_story()
 	_progress_through_ferry_opening()
 	_app_state().interact_with_resident("dock_musician_pei")
 	_app_state().interact_with_resident("postcard_seller_an")
 	_assert_true(
-		bool(_app_state().get_story_flag("preservation_inheritance_seen", false)),
+		bool(_app_state().get_snapshot().story_flags.get("preservation_inheritance_seen", false)),
 		"Postcard Seller An still advances the preservation route from resident interaction"
 	)
 
-	_app_state().configure_free_walk()
-	_assert_true(_app_state().configure_continue(), "Continue still reloads resident-driven autosave state")
-	_assert_true(_app_state().mode == "Story", "Continue restores Story mode after resident interaction autosave")
+	_app_state().start_free_walk()
+	_assert_true(_app_state().resume_story(), "Continue still reloads resident-driven autosave state")
+	_assert_true(_app_state().get_projection().mode == "Story", "Continue restores Story mode after resident interaction autosave")
 	_assert_true(
-		bool(_app_state().get_story_flag("preservation_inheritance_seen", false)),
+		bool(_app_state().get_snapshot().story_flags.get("preservation_inheritance_seen", false)),
 		"Resident-driven preservation progress survives autosave and continue"
 	)
 
-	_app_state().configure_new_game()
+	_app_state().start_new_story()
 	_progress_to_exam_ending()
 	var pei_repeat_exam: Dictionary = _app_state().interact_with_resident("dock_musician_pei")
 	_assert_true(
@@ -100,7 +103,7 @@ func _run() -> void:
 		"Resolved story-event beats replay their authored line instead of reporting the route gate as blocked"
 	)
 
-	_app_state().clear_story_autosave_for_tests()
+	_app_state().clear_story_save()
 
 	if m_failures.is_empty():
 		print("PASS: resident interaction flow")

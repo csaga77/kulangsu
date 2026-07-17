@@ -3,19 +3,25 @@ extends RefCounted
 
 const MELODY_CATALOG_SCRIPT := preload("res://game/melody_catalog.gd")
 const RESIDENT_CATALOG_SCRIPT := preload("res://game/resident_catalog.gd")
+const SHORTCUT_DEFINITIONS := {
+	"bi_shan_crossing": {
+		"display_name": "Bi Shan Tunnel Route",
+		"summary": "The Bi Shan tunnel now reads as a dependable passage between the island's north and south approaches.",
+	},
+}
 
 
-static func build_map_journal_text(app_state: Node) -> String:
+static func build_map_journal_text(projection: AppStateProjection) -> String:
 	var landmark_text := "None marked yet."
-	if !app_state.landmarks.is_empty():
-		landmark_text = "\n".join(app_state.landmarks)
+	if !projection.landmark_names.is_empty():
+		landmark_text = "\n".join(projection.landmark_names)
 
 	var shortcut_text := "No dependable routes noted yet."
-	var open_shortcuts: PackedStringArray = app_state.get_open_shortcuts()
+	var open_shortcuts: PackedStringArray = projection.open_shortcuts
 	if !open_shortcuts.is_empty():
 		var shortcut_sections: Array[String] = []
 		for shortcut_id in open_shortcuts:
-			var shortcut_definition: Dictionary = app_state.SHORTCUT_DEFINITIONS.get(String(shortcut_id), {})
+			var shortcut_definition: Dictionary = SHORTCUT_DEFINITIONS.get(String(shortcut_id), {})
 			shortcut_sections.append(
 				"%s\n%s" % [
 					String(shortcut_definition.get("display_name", shortcut_id)),
@@ -26,16 +32,16 @@ static func build_map_journal_text(app_state: Node) -> String:
 
 	return "Discovered landmarks\n%s\n\nCurrent location\n%s\n\nDependable routes\n%s" % [
 		landmark_text,
-		app_state.location,
+		projection.location,
 		shortcut_text,
 	]
 
 
-static func build_resident_journal_text(app_state: Node) -> String:
+static func build_resident_journal_text(projection: AppStateProjection) -> String:
 	var sections: Array[String] = []
 
-	for resident_id in app_state.get_resident_ids():
-		var resident: Dictionary = app_state.get_resident_profile(String(resident_id))
+	for resident_id in projection.resident_ids:
+		var resident: Dictionary = projection.get_resident_profile(String(resident_id))
 		if !bool(resident.get("known", false)):
 			continue
 
@@ -57,16 +63,16 @@ static func build_resident_journal_text(app_state: Node) -> String:
 	return "\n\n".join(PackedStringArray(sections))
 
 
-static func build_story_routes_journal_text(app_state: Node) -> String:
+static func build_story_routes_journal_text(projection: AppStateProjection) -> String:
 	var sections: Array[String] = []
-	var active_lead_text: String = app_state.get_active_lead_text()
+	var active_lead_text: String = projection.active_lead_text
 	if active_lead_text.is_empty():
-		active_lead_text = app_state.objective
-	var active_lead_id: String = app_state.get_active_lead_id()
-	var live_lead_ids: PackedStringArray = app_state.get_available_lead_ids()
+		active_lead_text = projection.objective
+	var active_lead_id: String = projection.active_lead_id
+	var live_lead_ids: PackedStringArray = projection.available_lead_ids
 	var other_live_leads := maxi(live_lead_ids.size() - (0 if active_lead_id.is_empty() else 1), 0)
 	var lead_mode_text := "Automatic routing is following the strongest live lead right now."
-	if app_state.is_story_lead_manually_pinned():
+	if projection.manual_lead_pinned:
 		lead_mode_text = "Manual pin active. Use Auto Lead below to hand the HUD back to automatic routing."
 	var other_live_text := "No other live leads right now."
 	if other_live_leads > 0:
@@ -80,22 +86,22 @@ static func build_story_routes_journal_text(app_state: Node) -> String:
 			active_lead_text,
 			lead_mode_text,
 			other_live_text,
-			app_state.get_season_phase_display_name(),
-			app_state.objective,
-			app_state.build_route_emphasis_text(),
+			projection.season_display_name,
+			projection.objective,
+			projection.route_emphasis_text,
 		]
 	)
 
 	var live_leads: Array[String] = []
 	for lead_id in live_lead_ids:
-		var event_definition: Dictionary = app_state.get_story_event_definition(String(lead_id))
+		var event_definition: Dictionary = projection.get_story_event_definition(String(lead_id))
 		if event_definition.is_empty():
 			continue
 		var route_id := String(event_definition.get("route_id", ""))
-		var route_name := String(app_state.get_story_route_definition(route_id).get("display_name", route_id))
+		var route_name := String(projection.get_story_route_definition(route_id).get("display_name", route_id))
 		var lead_prefix := ""
 		if String(lead_id) == active_lead_id:
-			lead_prefix = "[Manual HUD] " if app_state.is_story_lead_manually_pinned() else "[HUD] "
+			lead_prefix = "[Manual HUD] " if projection.manual_lead_pinned else "[HUD] "
 		live_leads.append(
 			"%s%s\nRoute: %s\n%s" % [
 				lead_prefix,
@@ -111,15 +117,15 @@ static func build_story_routes_journal_text(app_state: Node) -> String:
 		sections.append("Live routes\n%s" % "\n\n".join(PackedStringArray(live_leads)))
 
 	var route_sections: Array[String] = []
-	for route_id in app_state.get_story_route_ids():
-		var route_definition: Dictionary = app_state.get_story_route_definition(route_id)
-		var progress: Dictionary = app_state.get_route_progress(route_id)
+	for route_id in projection.route_ids:
+		var route_definition: Dictionary = projection.get_story_route_definition(route_id)
+		var progress: Dictionary = projection.get_route_progress(route_id)
 		if route_definition.is_empty() or progress.is_empty():
 			continue
 		var next_lead_id := String(progress.get("next_lead_id", ""))
 		var next_text := "No open lead."
 		if !next_lead_id.is_empty():
-			next_text = String(app_state.get_story_event_definition(next_lead_id).get("lead_text", "No open lead."))
+			next_text = String(projection.get_story_event_definition(next_lead_id).get("lead_text", "No open lead."))
 		var resolved_count := _normalize_string_array(progress.get("resolved_beat_ids", [])).size()
 		var open_count := _normalize_string_array(progress.get("available_beat_ids", [])).size()
 		var blocked_count := _normalize_string_array(progress.get("blocked_beat_ids", [])).size()
@@ -140,15 +146,15 @@ static func build_story_routes_journal_text(app_state: Node) -> String:
 	return "\n\n".join(PackedStringArray(sections))
 
 
-static func build_melody_journal_text(app_state: Node) -> String:
+static func build_melody_journal_text(projection: AppStateProjection) -> String:
 	var sections: Array[String] = []
 
-	for melody_id in app_state.get_melody_ids():
-		var melody_definition: Dictionary = app_state.get_melody_definition(String(melody_id))
+	for melody_id in projection.get_melody_ids():
+		var melody_definition: Dictionary = projection.get_melody_definition(String(melody_id))
 		if melody_definition.is_empty():
 			continue
 
-		var melody_state: Dictionary = app_state.get_melody_state(String(melody_id))
+		var melody_state: Dictionary = projection.get_melody_state(String(melody_id))
 		var known_sources := _normalize_string_array(melody_state.get("known_sources", []))
 		var source_lines: Array[String] = []
 
@@ -188,28 +194,28 @@ static func build_melody_journal_text(app_state: Node) -> String:
 	return "\n\n".join(PackedStringArray(sections))
 
 
-static func build_player_costume_journal_text(app_state: Node) -> String:
+static func build_player_costume_journal_text(projection: AppStateProjection) -> String:
 	var sections: Array[String] = []
-	var unlocked_ids: PackedStringArray = app_state.get_unlocked_player_costume_ids()
+	var unlocked_ids: PackedStringArray = projection.unlocked_player_costume_ids
 
 	sections.append(
 		"Current look: %s\nBody: %s\nGender: %s\nHair: %s\nHair color: %s\nUnlocked looks: %d / %d\nUse the controls below to change costume and hair." % [
-			app_state.get_equipped_player_costume_display_name(),
-			app_state.get_player_body_display_name(),
-			app_state.get_player_gender_display_name(),
-			app_state.get_player_hair_style_display_name(),
-			app_state.get_player_hair_color_display_name(),
+			projection.get_equipped_player_costume_display_name(),
+			projection.player_body_display_name,
+			projection.player_gender_display_name,
+			projection.player_hair_style_display_name,
+			projection.player_hair_color_display_name,
 			unlocked_ids.size(),
-			app_state.get_player_costume_ids().size(),
+			projection.player_costume_ids.size(),
 		]
 	)
 
-	for costume_id_value in app_state.get_player_costume_ids():
+	for costume_id_value in projection.player_costume_ids:
 		var costume_id := String(costume_id_value)
-		var costume: Dictionary = app_state.get_player_costume(costume_id)
+		var costume: Dictionary = projection.get_player_costume(costume_id)
 		var is_unlocked: bool = unlocked_ids.find(costume_id) >= 0
 		var state_text := "Locked"
-		if costume_id == app_state.get_equipped_player_costume_id():
+		if costume_id == projection.equipped_player_costume_id:
 			state_text = "Wearing"
 		elif is_unlocked:
 			state_text = "Unlocked"
@@ -226,14 +232,14 @@ static func build_player_costume_journal_text(app_state: Node) -> String:
 	return "\n\n".join(PackedStringArray(sections))
 
 
-static func build_player_setup_summary_text(app_state: Node) -> String:
+static func build_player_setup_summary_text(projection: AppStateProjection) -> String:
 	return "Body: %s\nGender: %s\nSkin: %s\nHair: %s\nHair color: %s\nStarting look: %s" % [
-		app_state.get_player_body_display_name(),
-		app_state.get_player_gender_display_name(),
-		app_state.get_player_skin_display_name(),
-		app_state.get_player_hair_style_display_name(),
-		app_state.get_player_hair_color_display_name(),
-		app_state.get_equipped_player_costume_display_name(),
+		projection.player_body_display_name,
+		projection.player_gender_display_name,
+		projection.player_skin_display_name,
+		projection.player_hair_style_display_name,
+		projection.player_hair_color_display_name,
+		projection.get_equipped_player_costume_display_name(),
 	]
 
 

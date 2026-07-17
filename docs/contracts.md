@@ -40,41 +40,32 @@ Owned by:
 
 Current contract:
 
-- `AppState` is the shared UI/progression-facing bridge between gameplay and UI
-- the running app owns exactly one `AppStateService` node; callers resolve it through `AppRuntime.get_app_state(node)` instead of a Project Settings autoload
-- `AppState` keeps the stable public API and is the single owner of mutable shared runtime state. Pure helpers receive detached values/snapshots and return results; operation-oriented route, StoryEvent, and resident coordinators receive narrow typed capabilities from `game/runtime_ports/` instead of an `AppState` owner reference.
-- `chapter` is now a compatibility/display label; authoritative story progression lives in `season_phase`, route state, and `story_flags`
-- resident definitions and default resident runtime profiles are initialized lazily through `AppState` getters/configuration instead of being fully built at script-load time
-- it exposes signals for mode, chapter, season phase, story time, location, objective, hint, save status, fragments, melody progress, melody prompt requests, landmark audio cue requests, landmarks, residents, resident profiles, player appearance/costumes, route progress, active leads, endgame state, summary updates, and story milestones
+- the running app owns exactly one scene-owned `AppStateService`, resolved through the typed `AppRuntime.get_app_state(node) -> AppStateService` lookup rather than an autoload
+- the store owns one `AppStateSnapshot` and one `AppStateProjection`; `get_snapshot()` and `get_projection()` always return detached copies
+- canonical snapshot data includes mode, season/day/hour, location/objective/journal, story flags, melody/landmark/endgame/resident progress, player profile/costume, runtime settings, checkpoint, and save metadata
+- chapter, time-of-day, fragment totals, route progress/leads, display-name lists, unlocked costumes, and ending summary are projection-only values and must not be serialized or independently mutated
+- top-level commands finalize in this order: normalize, rebuild projection, diff into `AppStateChangeSet`, commit snapshot/projection, attempt one requested autosave, emit one `state_committed(changes)`, then emit queued imperative events
+- unchanged `update_world_context(...)` requests must return before creating a transition, and the world interaction coordinator must not republish the same proximity hint every frame
+- reducer contexts may share immutable catalog, route-definition, and StoryEvent-index data, but per-command snapshot/projection data stays detached; helper back-references to the reducer context are released after each operation
+- failed autosaves do not roll back gameplay state and do not replace the last valid save metadata
+- production callers must not read or mutate service fields. UI, BGM, world integration, resident spawning, and journals fetch projections and issue semantic commands
+- `state_committed(changes)` replaces field-specific state signals. Consumers check the `SESSION`, `STORY`, `TIME`, `MELODY`, `LANDMARKS`, `RESIDENTS`, `PLAYER`, `SETTINGS`, `CHECKPOINT`, and `SAVE` domains before refreshing
+- the only non-state signals are `melody_prompt_requested`, `melody_hint_shown`, `landmark_audio_cue_requested`, and `story_milestone`; queued events run after committed state is observable
 - `landmark_audio_cue_requested(cue_id, context)` is the bridge from successful landmark interactions into one-shot world audio feedback; it fires for both collected pickups and prompt-opening landmark interactions such as the Trinity choir chime, Bi Shan chamber, Long Shan exit, and harbor stage
 - `story_milestone(milestone_id, context)` fires after compound state changes resolve; current milestone ids include `landmark_resolved`, `fragment_restored`, `festival_ready`, `festival_performed`, `resident_trust_max`, and `endgame_started`
-- it now owns shared melody runtime state while [`../game/melody_catalog.gd`](../game/melody_catalog.gd) owns authored melody definitions
-- `melody_prompt_requested(request)` is the bridge from gameplay/journal actions into the reusable ordered-confirmation overlay; `AppState` preserves the public validation/completion API while `game/landmark_progression.gd` now mainly owns generic melody-prompt validation/building and StoryEvent world-event bindings own the current landmark-specific completions
-- prompt completions now flow back through `complete_prompt_request(request)`, which first offers the request to authored StoryEvent world-event bindings for landmark-specific confirmations such as the Trinity choir chime, the Bi Shan chamber contour, the Long Shan exit route, and the harbor-stage performance, while melody practice still falls back through the compatibility helper
-- `save_metadata_changed(metadata)` is the shell-facing signal for title `Continue` state and latest story autosave summary
-- `AppState` commits canonical state before emitting its public signals. Transformation helpers must not mirror `AppState` fields, retain an owner reference to mutate them indirectly, or emit `AppState` signals; operation-oriented helpers may keep bounded caches or configuration only when those are not a second source of gameplay state.
-- `game/runtime_ports/` is the only internal adapter layer allowed to bridge those coordinators back to `AppState`; each typed port exposes a domain-specific capability surface, and the generic `Node` reference stays confined to `AppStatePortBase`. Coordinators must not call `AppState` private methods or access its fields directly.
-- `AppState` owns the one-slot story autosave contract, current safe resume anchor, and the `configure_new_game()`, `configure_continue()`, `configure_free_walk()`, `save_story_autosave()`, `clear_story_autosave()`, and `set_story_resume_checkpoint(...)` bridge methods used by the shell and world scene; `game/story_save_service.gd` receives a detached versioned payload, performs file I/O/normalization, and returns a detached payload/metadata result for `AppState` to apply
-- `AppState` owns lightweight story-time state through `story_day`, `world_hour`, and derived `time_of_day`; `game/story_time_service.gd` calculates normalized snapshots and authored hour/day/day-phase advancement without retaining state. Compound time effects are committed as one final snapshot and emit one `story_time_changed` signal.
-- `AppState` also keeps the landmark bridge methods (`activate_landmark_trigger(...)`, prompt-request/completion facades) plus resident and audio/settings facades, so legacy direct callers have a stable bridge while runtime and regression coverage prefer the generic story-subject path. The audio/settings facade owns its values; `game/audio_settings_service.gd` only normalizes them and applies audio-bus side effects.
-- `AppState` now composes `game/story_event_service.gd` and exposes `describe_story_subject(subject_id, action, context)`, `activate_story_subject(subject_id, action, context)`, `notify_story_world_event(event_id, payload, context)`, `pick_story_candidate(candidates, context)`, `matches_story_conditions(conditions, context)`, and `apply_story_effects(payload, context)` as the shared StoryEvent bridge
+- lifecycle commands are `start_new_story()`, `resume_story()`, and `start_free_walk()`; persistence commands are `request_autosave()` and `clear_story_save()`
+- world commands cover subject description/activation, world-event notification, prompt completion, world-context changes, and resume-checkpoint changes. Player commands replace the full profile, equip a costume, or pin/cycle/clear a lead. `commit_settings(...)` accepts one complete normalized settings set
+- `game/app_state/story_save_codec.gd` owns V1 migration and V2 dictionary mapping; `story_save_repository.gd` owns file I/O and accepts a configurable path. Loading V1 leaves the file unchanged, and the next successful normal autosave writes V2
+- V2 stores canonical story data only. It excludes projections, transient hint/status, save metadata, and runtime settings
+- `StoryEventService`, `StoryRouteGraph`, and `ResidentInteractionService` operate against a detached transition context. They do not retain the live store, emit public signals, or perform file I/O; runtime-port files and `runtime_*` forwarding methods no longer exist
 - `activate_story_subject(...)` is the generic interaction entry point for resident talk and all scene-authored `StorySubject3D` world subjects; the current subject taxonomy includes `npc:<resident_id>`, `landmark:<landmark_id>.<trigger_id>`, and `inspectable:<inspectable_id>`
-- `activate_landmark_trigger(...)` remains as a compatibility bridge for direct callers, but it now consults the authored StoryEvent landmark bindings first; the current landmark-trigger surface is authored there, and landmark reward handoffs now route through authored StoryEvent world-event bindings as well
-- `apply_story_effects(...)` is the shared write path for resident beats and future StoryEvent bindings; current supported effect channels include objective/hint/save-status updates, `season_phase`, story-time effects (`advance_time`, `advance_hours`, `advance_to_time_of_day`, `advance_day`, `story_day`, `world_hour`), landmark unlock/state/reward changes, landmark-progress patch/list updates, melody hint/audio/prompt emission, melody-progress patch/fragment-award updates, journal/shortcut unlocks, `story_flags`, `story_event`, `pin_lead_id`, resident routine overrides, resident routine override clearing, conditional follow-up effects, and story milestones
 - `game/storylines/` owns canonical route and route-event authoring, while `game/story_route_graph.gd` owns projection, lead selection, canonical story-event availability checks/blocker reporting, endgame-trigger evaluation, ending-behavior classification, and baseline ending-tone tag generation
-- resident dialogue beats and StoryEvent effect payloads must treat `AppState.can_resolve_story_event(...)` / `get_story_event_blockers(...)` as the narrative-availability authority instead of re-authoring route prerequisite logic through custom resident gate ids
 - route-score prerequisites are evaluated against an all-route completion snapshot, so cross-route score gates cannot depend on route display order
-- story-state bundles include route progress plus available/active leads; mode setup must apply the full bundle so Free Walk clears story leads instead of inheriting stale HUD state
-- the app shell and world hint logic may query `AppState.is_journal_unlocked()` and `AppState.build_input_hint(...)` to keep the early tutorial flow and controls text aligned
-- world and UI code rely on resident getters for resident ids, definitions, display names, appearance configs, spawn configs, movement configs, behavior configs, ambient speech, resident journal text, and full resident profiles when optional movement metadata is needed
 - all resident definitions live in external `.tres` files under `res://game/residents/definitions/`; `ResidentCatalog` loads them at runtime and `include_in_catalog = false` keeps a resource out of the runtime roster
 - `interact_with_resident()` checks a resident's `conditional_beats` (priority-sorted, condition-gated) before falling through to the linear `dialogue_beats` spine
 - resident conditional gating and StoryEvent conditions may now read `season_phase`, `story_day`, `world_hour`, `time_of_day`, `story_flags`, route state, route score, and endgame-active state
-- `resident_routine_override_changed(resident_id, routine_override)` is the world-facing signal for live resident route changes; `get_resident_spawn_config(...)`, `get_resident_movement_config(...)`, and `get_resident_behavior_config(...)` now merge base authored data with any active override, and story autosave persists those overrides through continue/load
-- UI code can now rely on melody getters, journal helpers, `build_map_journal_text()`, `get_open_shortcuts()`, `can_practice_melody(...)`, `request_melody_practice(...)`, and `complete_prompt_request(...)` for melody-facing and dependable-route player context
-- `ui/screens/journal_overlay.gd` and `ui/screens/player_customization_overlay.gd` are the live consumers of `game/journal_builder.gd`
-- HUD and journal code now treat one active lead as the primary player-facing objective while the journal exposes the broader live route list
-- UI screens and world integration code rely on those signals and state getters/setters
+- routine overrides are saved and are merged into projection configuration. They are not yet reapplied to resident actors that are already alive in the production 3D world
+- `JournalBuilder` consumes detached `AppStateProjection` data and never receives the live service node
 
 Governance:
 
@@ -96,16 +87,16 @@ Owned by:
 - [`../game/story_event_service.gd`](../game/story_event_service.gd)
 - [`../game/storyline_validation_provider.gd`](../game/storyline_validation_provider.gd)
 - [`../game/resident_interaction_service.gd`](../game/resident_interaction_service.gd)
-- [`../game/runtime_ports/`](../game/runtime_ports)
+- [`../game/app_state/app_state_reducer_context.gd`](../game/app_state/app_state_reducer_context.gd)
 - [`../game/story_world_reactivity.gd`](../game/story_world_reactivity.gd)
 
 Current contract:
 
 - story-facing world interactions now flow through stable `subject_id + action` pairs instead of route-specific scene callbacks
-- `StoryEventService` owns generic context building, shared condition matching, priority-based candidate selection, and shared effect application. It depends on `StoryEventRuntimePort`, not on `AppState`; typed route resources under `game/storylines/routes/`, resident data, and existing landmark helpers remain the current canonical source for route/event meaning.
-- `StoryRouteGraph` and `ResidentInteractionService` follow the same rule through `StoryRouteRuntimePort` and `ResidentInteractionRuntimePort`; this keeps their required capabilities explicit while `AppState` remains the sole committer and signal owner.
+- `StoryEventService` owns generic context building, shared condition matching, priority-based candidate selection, and shared effect application. It receives a per-command detached reducer context, never the live store.
+- `StoryRouteGraph` and `ResidentInteractionService` follow the same detached-input rule; `AppStateService` remains the sole committer, persistence coordinator, and public signal owner.
 - `StoryEffectSchema` is the parent-owned contract for dictionary-authored StoryEvent conditions and effects. It rejects unknown keys, wrong nested types, invalid canonical ids, and malformed recursive `conditional_effects`; `StoryEventService` validates the complete payload before applying any mutation, so a bad payload cannot leave partially updated story state
-- each `StorylineRouteResource` under `game/storylines/routes/` resolves to one `route` definition plus that route's `events`; `StoryRouteGraph` loads that catalog into an instance-local runtime cache, while editor tools continue to rebuild directly from `StorylineCatalog` when authors refresh or edit resources
+- each `StorylineRouteResource` under `game/storylines/routes/` resolves to one `route` definition plus that route's `events`; runtime `StoryRouteGraph` instances share one immutable definition bundle for the process, while editor tools continue to rebuild directly from `StorylineCatalog` when authors refresh or edit resources
 - the storyline schema classes (`StorylineCatalog`, `StorylineRouteResource`, `StorylineEventResource`, `StorylineEndingToneRule`, `StorylinePhaseSet`, `StorylineHostValidationProvider`) are owned by the `addons/storyline_editor` submodule; the parent owns the authored `.tres` data, `game/storylines/phase_set.tres` (kept in sync with `StorySeasonPhases` by `test_storyline_resources`), `StoryEffectSchema`, `KulangsuStorylineValidationProvider`, and the `storyline_editor/*` project settings that locate/configure them
 - `storyline_editor/validation_provider_script` points from the parent to `game/storyline_validation_provider.gd`; the provider extends the addon's generic interface and supplies live Kulangsu semantic validation to the inspector and route browser. The addon has no Kulangsu class/path dependency and must continue working when the setting is empty
 - route events may depend on events from any other route resource by referencing those event ids in `prerequisites.story_flags_all` or `prerequisites.story_flags_any`
@@ -279,18 +270,16 @@ Owned by:
 
 Current contract:
 
-- `AppState.landmark_progress` is a `Dictionary` keyed by landmark id (`piano_ferry`, `trinity_church`, `bi_shan_tunnel`, `long_shan_tunnel`, `bagua_tower`, `festival_stage`)
+- `AppStateSnapshot.landmark_progress` is the canonical `Dictionary` keyed by landmark id (`piano_ferry`, `trinity_church`, `bi_shan_tunnel`, `long_shan_tunnel`, `bagua_tower`, `festival_stage`)
 - `LandmarkCatalog` is the canonical registry for static landmark identity, display name, world inclusion/path/coordinate metadata, default resume selection, audio cue id/resource, and named initial-progress profiles
-- `AppState` builds new-game, continue, free-walk, and fallback progress snapshots from the catalog, then owns every mutable runtime copy; definition resources must not be mutated during play
+- `AppStateService` builds new-story, resume, free-walk, and fallback snapshots from the catalog, then owns the committed runtime copy; definition resources must not be mutated during play
 - each entry is a `Dictionary` with at minimum a `"state"` key: `locked / available / introduced / in_progress / resolved / reward_collected`
 - landmark-specific sub-state (e.g. `"harbor_clue_found"` for Piano Ferry, `"cues_collected"` plus `"chime_performed"` for Trinity Church, `"checkpoints_collected"` for Long Shan Tunnel, or `"synthesis_done"` for Bagua Tower) lives inside the same per-landmark entry
-- `AppState.landmark_progress_changed(landmark_id, progress)` fires whenever any landmark's entry changes
-- `AppState.get_landmark_progress(landmark_id)` and `get_landmark_state(landmark_id)` are the read API
-- `AppState.set_landmark_progress(landmark_id, progress)` and `advance_landmark_state(landmark_id, new_state)` are the write API
-- `AppState.activate_landmark_trigger(landmark_id, trigger_id, display_name)` remains a compatibility bridge for direct service callers; runtime world interaction and regression coverage go through `StorySubject3D` nodes and `AppState.activate_story_subject(...)`, which first offers the stable subject id `landmark:<landmark_id>.<trigger_id>` to `game/story_event_service.gd`
+- consumers read detached landmark data through `AppStateService.get_projection()` and `AppStateProjection.get_landmark_progress()` / `get_landmark_state()`; production callers must not access the committed snapshot directly
+- semantic commands such as `activate_story_subject()`, `notify_story_world_event()`, and `complete_prompt_request()` are the write boundary; reducers update a detached working snapshot and return one transition
+- a successful landmark mutation contributes `LANDMARKS` (and, when relevant, `MELODY`) to the single `AppState.state_committed(changes)` notification for that command
 - `AppState.melody_hint_shown(text)` fires when a melody-specific StoryEvent effect emits flavour text; the HUD subscribes to display it on-screen without making `StorySubject3D` carry melody-only metadata
 - successful landmark interactions may also emit `AppState.landmark_audio_cue_requested(cue_id, context)` so the world scene can play the catalog-assigned local motif without relying on `melody_hint_shown` text alone; `StoryEffectSchema` validates cue and landmark ids against the same catalog before mutation
-- `AppState.set_all_landmark_progress(progress)` sets multiple landmarks at once; used by `configure_*` methods
 - Resident dialogue beats may carry `"unlock_landmark"` to unlock a landmark when the beat fires, and `"gate"` / `"gate_fallback"` to block a beat until a landmark condition is satisfied
 - Resident dialogue beats may carry `"landmark_reward"` to trigger a landmark resolution (fragment award, melody state update, downstream unlocks) when the beat fires
 - `game/story_event_catalog.gd` owns the canonical authored world-subject metadata list and presence rules; the `StorySubject3D.subject_id` dropdown reads from that shared catalog, surfaces configuration warnings for unknown ids, and keeps stable world subjects decoupled from whichever StoryEvent currently binds them
@@ -298,7 +287,7 @@ Current contract:
 
 Governance:
 
-- keep per-landmark and inspect-surface setup in `StorySubject3D` nodes under the owning production-world landmark proxy, and keep active resolution logic behind `AppState`'s public API; current landmark interaction beats plus landmark prompt-completion/reward follow-through and visibility rules live in `game/story_event_catalog.gd`/`game/story_event_service.gd`
+- keep per-landmark and inspect-surface setup in `StorySubject3D` nodes under the owning production-world landmark proxy, and keep active resolution logic behind `AppStateService` semantic commands; current landmark interaction beats plus landmark prompt-completion/reward follow-through and visibility rules live in `game/story_event_catalog.gd`/`game/story_event_service.gd`
 - if a new landmark arc is added, create its typed definition resource and register it in `LandmarkCatalog`, place any navigable proxy and `StorySubject3D` nodes with the correct stable ids in `game_world_3d.tscn`, update catalog/world regression expectations, and prefer authored StoryEvent bindings before extending compatibility fallbacks
 - adding a landmark id, audio cue id, or progress-profile name anywhere else without updating the catalog is a contract violation; derived consumers must query the catalog instead of maintaining parallel lists
 - if the landmark state enum changes, update this file and the relevant landmark feature docs
@@ -319,7 +308,7 @@ Current contract:
 - `game_world_3d.gd` owns exactly one scene-local `BgmManager` while gameplay is loaded
 - `BgmManager` owns the active `AudioStreamPlayer`, recent-history buffer, commitment window, silence gap timer, and weighted track selection
 - `BgmManager` also owns short-lived ducking state through `duck_for_cue(duration)` and `set_ducked(ducked)` so landmark cues and melody prompts can lower BGM without moving BGM ownership into the UI
-- `BgmManager` reads shared state from `AppState` through the existing `location_changed` and `melody_progress_changed` signals plus current location/progress snapshots; it does not write shared gameplay state back
+- `BgmManager` listens to `AppState.state_committed(changes)` and refreshes location or melody context from the latest projection when the `SESSION` or `MELODY` domain changes; it does not write shared gameplay state back
 - the current V1 context is `location + melody progress` with fixed defaults `time = afternoon`, `season = summer`, and `weather = clear`
 - the current seed pool is authored in `BgmCatalog` rather than inferred from directory scanning
 

@@ -49,13 +49,15 @@ func set_flow_context(is_free_walk: bool) -> void:
 
 
 func refresh_from_state() -> void:
-	m_draft_profile = PLAYER_APPEARANCE_CATALOG.normalize_profile(_app_state().get_player_profile())
+	m_draft_profile = PLAYER_APPEARANCE_CATALOG.normalize_profile(
+		_app_state().get_projection().player_profile
+	)
 	_refresh_from_draft()
 
 
 func commit_draft_to_app_state() -> void:
 	_ensure_draft_profile()
-	_app_state().set_player_profile(m_draft_profile)
+	_app_state().replace_player_profile(m_draft_profile)
 	_app_state().equip_player_costume(PLAYER_COSTUME_CATALOG.default_costume_id())
 
 

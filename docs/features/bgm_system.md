@@ -73,7 +73,7 @@ V1 default: `afternoon` for all selection passes until a time-of-day system exis
 
 ### Progress
 
-Derived directly from `AppState.melody_progress.state`:
+Derived from the detached `AppStateProjection.melody_progress` view:
 
 - `unknown` — before the melody has been meaningfully heard
 - `heard` — one or more fragments found, the island is starting to speak
@@ -271,15 +271,14 @@ Location-based bus effects can color any track that plays in that zone without n
 
 ### Reads From
 
-- `AppState.melody_progress` — progress tier
-- `AppState.current_location` or zone detection signals — location
+- `AppStateProjection.melody_progress` — progress tier
+- `AppStateProjection.location` — location
 - Game clock or time-of-day system (later) — time
 - Season/weather system (later) — season, weather
 
 ### Signals To Listen For
 
-- `fragments_changed` — update progress tier for next selection
-- `melody_progress_changed` — tier transition
+- `AppState.state_committed(changes)` with `SESSION` for location changes or `MELODY` for progress changes
 - Location zone enter/exit signals from world-subject or area nodes
 - Weather change signal (later)
 - Time-of-day period change signal (later)

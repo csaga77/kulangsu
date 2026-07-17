@@ -5,6 +5,7 @@ signal practice_completed(request: Dictionary)
 signal performance_completed(request: Dictionary)
 
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
+const AUDIO_SETTINGS_SERVICE := preload("res://game/audio_settings_service.gd")
 const DEFAULT_FEEDBACK_COLOR := Color(0.88, 0.90, 0.94, 1.0)
 const ERROR_FEEDBACK_COLOR := Color(0.95, 0.70, 0.64, 1.0)
 const SEGMENT_SELECT_PATH := "res://resources/audio/sfx/melody_prompt/segment_select.ogg"
@@ -44,8 +45,8 @@ func _ready() -> void:
 	m_clear_button.pressed.connect(_on_clear_pressed)
 	m_confirm_button.pressed.connect(_on_confirm_pressed)
 	m_cancel_button.pressed.connect(close_requested.emit)
-	if !_app_state().prompt_volume_changed.is_connected(_on_prompt_volume_changed):
-		_app_state().prompt_volume_changed.connect(_on_prompt_volume_changed)
+	if !_app_state().state_committed.is_connected(_on_state_committed):
+		_app_state().state_committed.connect(_on_state_committed)
 	visibility_changed.connect(_on_visibility_changed)
 	_reset_content()
 
@@ -176,14 +177,19 @@ func _apply_prompt_volume() -> void:
 	if app_state == null:
 		return
 
-	var volume_db = app_state.get_prompt_volume_db(UI_AUDIO_VOLUME_DB)
+	var projection := app_state.get_projection()
+	var volume_db = AUDIO_SETTINGS_SERVICE.new().get_prompt_volume_db(
+		projection.prompt_volume_percent,
+		UI_AUDIO_VOLUME_DB
+	)
 	for player in [m_segment_select_player, m_order_correct_player, m_order_wrong_player]:
 		if player != null:
 			player.volume_db = volume_db
 
 
-func _on_prompt_volume_changed(_volume_percent: float) -> void:
-	_apply_prompt_volume()
+func _on_state_committed(changes: AppStateChangeSet) -> void:
+	if changes.has_domain(AppStateChangeSet.Domain.SETTINGS):
+		_apply_prompt_volume()
 
 
 func _on_visibility_changed() -> void:

@@ -93,7 +93,7 @@ Preserved (dimension-neutral, must not be forked):
   `game/storylines/**`, and the typed storyline resources
 - all resident definition `.tres` data under `game/residents/definitions/` and the resident catalog
   loader
-- `game/melody_catalog.gd`, save/resume (`game/story_save_service.gd`), journal, BGM, and
+- `game/melody_catalog.gd`, save/resume (`game/app_state/story_save_codec.gd` plus `story_save_repository.gd`), journal, BGM, and
   landmark-cue audio
 - the whole `ui/` shell, HUD, and overlay layer, which already reads shared state rather than the
   world scene directly

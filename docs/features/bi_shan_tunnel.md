@@ -57,8 +57,8 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
   - [`../../game/app_state.gd`](../../game/app_state.gd)
   - [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd)
 - Shared state or catalogs:
-  - `AppState.landmark_progress["bi_shan_tunnel"]`
-  - `AppState.melody_progress["festival_melody"]`
+  - `AppStateSnapshot.landmark_progress["bi_shan_tunnel"]`, exposed to consumers by `AppStateProjection`
+  - `AppStateSnapshot.melody_progress["festival_melody"]`, exposed to consumers by `AppStateProjection`
 - Related docs:
   - [`../contracts.md`](../contracts.md) — Landmark Progress Contract
   - [`core_melody_loop.md`](core_melody_loop.md)
@@ -69,14 +69,12 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
 ## Signals / Nodes / Data Flow
 
 - Signals emitted:
-  - `AppState.landmark_progress_changed("bi_shan_tunnel", progress)` — on any echo collection or state advance
-  - `AppState.melody_progress_changed("festival_melody", state)` — on arc resolution
-  - `AppState.fragments_changed(found, total)` — on arc resolution (via set_melody_progress)
+  - one `AppState.state_committed(changes)` containing `LANDMARKS` for echo/state changes and `MELODY` when the arc awards melody progress
 - Signals consumed:
-  - `AppState.landmark_progress_changed` — consumed by each `StorySubject3D` through StoryEvent presence sync
+  - `StorySubject3D` listens to `state_committed` and refreshes its StoryEvent presence from the latest projection
 - Data flow:
   - Trinity reward event resolves → `advance_landmark_state("bi_shan_tunnel", "available")` → StoryEvent presence rules show echo subjects
-  - Player presses R near an echo → `StoryInteractionCoordinator` selects the scene-local `StorySubject3D` and builds its context → `AppState.activate_story_subject(...)` → authored Bi Shan echo binding updates `echoes_collected` → `landmark_progress_changed`
+  - Player presses R near an echo → `StoryInteractionCoordinator` selects the scene-local `StorySubject3D` and builds its context → `AppState.activate_story_subject(...)` → authored Bi Shan echo binding updates `echoes_collected` → one `state_committed`
   - All echoes collected → chamber trigger appears → player presses R at chamber → `StorySubject3D` builds subject context → `AppState.activate_story_subject(...)` → authored Bi Shan chamber binding emits the prompt request → `complete_prompt_request(...)` → `StoryEventService.notify_world_event("prompt_completed:bi_shan_chamber", ...)` → melody and landmark state update
 
 ## Contracts / Boundaries

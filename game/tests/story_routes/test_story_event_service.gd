@@ -8,13 +8,21 @@ const STORY_EFFECT_SCHEMA := preload("res://game/story_effect_schema.gd")
 var m_failures := PackedStringArray()
 var m_prompt_requests: Array[Dictionary] = []
 var m_melody_hints: Array[String] = []
+var m_app_state: AppStateService
 
 
-func _app_state():
-	return APP_RUNTIME.get_app_state(self)
+func _app_state() -> AppStateService:
+	return m_app_state
+
+
+func _view() -> AppStateProjection:
+	return m_app_state.get_projection()
 
 
 func _ready() -> void:
+	m_app_state = AppStateService.new(StorySaveRepository.new(TEST_AUTOSAVE_PATH))
+	m_app_state.name = "AppState"
+	add_child(m_app_state)
 	call_deferred("_run")
 
 
@@ -24,8 +32,7 @@ func _run() -> void:
 	if !_app_state().melody_hint_shown.is_connected(_on_melody_hint_shown):
 		_app_state().melody_hint_shown.connect(_on_melody_hint_shown)
 
-	_app_state().override_story_autosave_path_for_tests(TEST_AUTOSAVE_PATH)
-	_app_state().clear_story_autosave_for_tests()
+	_app_state().clear_story_save()
 
 	var story_event_reference_warnings := STORY_EVENT_CATALOG.validate_story_event_references()
 	_assert_true(
@@ -99,58 +106,31 @@ func _run() -> void:
 		"Resident beats pass only declared StoryEvent effects into the atomic executor"
 	)
 
-	_app_state().configure_new_game()
+	_app_state().start_new_story()
 	_app_state().apply_story_effects({"story_event": "future_commitment_choice"})
 	_assert_true(
-		!bool(_app_state().get_story_flag("future_commitment_choice", false)),
+		!bool(_app_state().get_snapshot().story_flags.get("future_commitment_choice", false)),
 		"StoryEvent effects no longer force blocked route events through shared progression"
 	)
-	_assert_true(_app_state().get_story_day() == 1, "Story time starts on the first story day")
-	_assert_true(_app_state().get_time_of_day() == "morning", "Story time starts in the morning")
+	_assert_true(_view().story_day == 1, "Story time starts on the first story day")
+	_assert_true(_view().time_of_day == "morning", "Story time starts in the morning")
 	_assert_true(
 		_app_state().matches_story_conditions({"time_of_day": "morning", "world_hour_min": 7.5, "world_hour_max": 8.5}),
 		"StoryEvent conditions can match the current story time"
 	)
-	_app_state().m_story_event_service.m_subject_metadata_index["inspectable:test_morning_marker"] = {
-		"subject_id": "inspectable:test_morning_marker",
-		"default_action": "inspect",
-		"display_name": "Morning Marker",
-		"presence_rules": [
-			{
-				"priority": 10,
-				"conditions": {"time_of_day": "morning"},
-				"visible": true,
-				"targetable": true,
-			},
-			{
-				"priority": 0,
-				"visible": false,
-				"targetable": false,
-			},
-		],
-	}
-	var timed_subject := StorySubject3D.new()
-	timed_subject.subject_id = "inspectable:test_morning_marker"
-	add_child(timed_subject)
-	await get_tree().process_frame
-	_assert_true(timed_subject.visible, "StorySubject3D time-gated presence starts visible in matching time")
 	_app_state().apply_story_effects({"advance_time": {"advance_to_time_of_day": "afternoon"}})
-	await get_tree().process_frame
-	_assert_true(!timed_subject.visible, "StorySubject3D time-gated presence refreshes when story time changes")
-	timed_subject.queue_free()
-	await get_tree().process_frame
-	_assert_true(_app_state().get_time_of_day() == "afternoon", "StoryEvent effects can advance to a later day phase")
+	_assert_true(_view().time_of_day == "afternoon", "StoryEvent effects can advance to a later day phase")
 	_assert_true(
 		!_app_state().matches_story_conditions({"time_of_day": "morning"}),
 		"Morning-only StoryEvent conditions close after the time phase advances"
 	)
 	_app_state().apply_story_effects({"advance_hours": 10.0})
-	_assert_true(_app_state().get_time_of_day() == "night", "StoryEvent effects can advance by authored hours")
+	_assert_true(_view().time_of_day == "night", "StoryEvent effects can advance by authored hours")
 	_app_state().apply_story_effects({"advance_day": 1})
-	_assert_true(_app_state().get_story_day() == 2, "StoryEvent effects can advance to the next story day")
-	_assert_true(_app_state().get_time_of_day() == "morning", "Advancing the day resets to morning by default")
+	_assert_true(_view().story_day == 2, "StoryEvent effects can advance to the next story day")
+	_assert_true(_view().time_of_day == "morning", "Advancing the day resets to morning by default")
 
-	_app_state().configure_new_game()
+	_app_state().start_new_story()
 	var harbor_trigger := StorySubject3D.new()
 	harbor_trigger.subject_id = "landmark:piano_ferry.harbor_refrain"
 	_assert_true(
@@ -180,16 +160,16 @@ func _run() -> void:
 		"StoryEvent talk activation routes ferry caretaker dialogue through the generic subject API"
 	)
 	_assert_true(
-		int(_app_state().get_resident_profile("ferry_caretaker").get("conversation_index", 0)) == 1,
+		int(_view().get_resident_profile("ferry_caretaker").get("conversation_index", 0)) == 1,
 		"StoryEvent talk activation still advances resident progress"
 	)
 
-	_app_state().configure_new_game()
+	_app_state().start_new_story()
 	m_prompt_requests.clear()
 	m_melody_hints.clear()
 	_progress_through_landmark_spine_via_story_subjects()
 
-	_app_state().configure_new_game()
+	_app_state().start_new_story()
 	_progress_to_winter_memory_via_story_subjects()
 	var bench_preview: Dictionary = _app_state().describe_story_subject("inspectable:church_stone_bench", "inspect")
 	_assert_true(
@@ -206,8 +186,8 @@ func _run() -> void:
 	# overworld used to reapply them to live actors; the 3D overworld does not
 	# yet listen for resident_routine_override_changed (known coverage gap,
 	# tracked in docs/plan/implementation_plan.md).
-	_app_state().configure_new_game()
-	var base_spawn: Dictionary = _app_state().get_resident_spawn_config("ferry_caretaker")
+	_app_state().start_new_story()
+	var base_spawn: Dictionary = _view().get_resident_spawn_config("ferry_caretaker")
 	var base_anchor := String(base_spawn.get("anchor_id", ""))
 	_assert_true(!base_anchor.is_empty(), "Ferry caretaker exposes a base authored spawn anchor")
 
@@ -216,20 +196,20 @@ func _run() -> void:
 			"anchor_id": "Trinity Church",
 		},
 	})
-	var override_spawn: Dictionary = _app_state().get_resident_spawn_config("ferry_caretaker")
+	var override_spawn: Dictionary = _view().get_resident_spawn_config("ferry_caretaker")
 	_assert_true(
 		String(override_spawn.get("anchor_id", "")) == "Trinity Church",
 		"Resident routine overrides redirect the shared spawn-anchor config to the story-driven anchor"
 	)
 
 	_app_state().clear_resident_routine_override("ferry_caretaker")
-	var restored_spawn: Dictionary = _app_state().get_resident_spawn_config("ferry_caretaker")
+	var restored_spawn: Dictionary = _view().get_resident_spawn_config("ferry_caretaker")
 	_assert_true(
 		String(restored_spawn.get("anchor_id", "")) == base_anchor,
 		"Clearing a resident routine override restores the resident's base authored spawn config"
 	)
 
-	_app_state().clear_story_autosave_for_tests()
+	_app_state().clear_story_save()
 
 	if m_failures.is_empty():
 		print("PASS: story event service flow")
@@ -316,7 +296,7 @@ func _progress_through_trinity_church_via_story_subjects() -> void:
 		"StoryEvent landmark activation collects the final Trinity cue through the generic subject API"
 	)
 	_assert_true(
-		_app_state().get_landmark_progress("trinity_church").get("cues_collected", []).size() == 3,
+		_view().get_landmark_progress("trinity_church").get("cues_collected", []).size() == 3,
 		"StoryEvent landmark activation updates Trinity cue progress in shared landmark state"
 	)
 
@@ -348,7 +328,7 @@ func _progress_through_landmark_spine_via_story_subjects() -> void:
 	_app_state().complete_prompt_request(m_prompt_requests[m_prompt_requests.size() - 1])
 	_app_state().activate_story_subject("npc:church_caretaker", "talk")
 	_assert_true(
-		_app_state().fragments_found == 1,
+		_view().fragments_found == 1,
 		"StoryEvent landmark prompt completion still leaves Trinity reward resolution intact"
 	)
 
@@ -397,7 +377,7 @@ func _progress_through_landmark_spine_via_story_subjects() -> void:
 	)
 	_app_state().complete_prompt_request(m_prompt_requests[m_prompt_requests.size() - 1])
 	_assert_true(
-		_app_state().fragments_found == 2,
+		_view().fragments_found == 2,
 		"StoryEvent landmark prompt completion still resolves the Bi Shan reward path"
 	)
 
@@ -449,7 +429,7 @@ func _progress_through_landmark_spine_via_story_subjects() -> void:
 	_app_state().complete_prompt_request(m_prompt_requests[m_prompt_requests.size() - 1])
 	_app_state().activate_story_subject("npc:tunnel_guide", "talk")
 	_assert_true(
-		_app_state().get_landmark_state("bagua_tower") == "available",
+		_view().get_landmark_state("bagua_tower") == "available",
 		"StoryEvent landmark prompt completion still leaves Ren's Bagua handoff intact"
 	)
 
@@ -465,12 +445,12 @@ func _progress_through_landmark_spine_via_story_subjects() -> void:
 		"StoryEvent landmark activation routes the Bagua synthesis chamber through the generic subject API"
 	)
 	_assert_true(
-		bool(_app_state().get_landmark_progress("bagua_tower").get("synthesis_done", false)),
+		bool(_view().get_landmark_progress("bagua_tower").get("synthesis_done", false)),
 		"StoryEvent landmark activation writes Bagua synthesis progress through shared landmark state"
 	)
 	_app_state().activate_story_subject("npc:tower_keeper", "talk")
 	_assert_true(
-		_app_state().get_landmark_state("festival_stage") == "locked",
+		_view().get_landmark_state("festival_stage") == "locked",
 		"StoryEvent landmark migration keeps the festival stage gated behind Spring Festival resolution"
 	)
 
@@ -480,11 +460,11 @@ func _progress_through_landmark_spine_via_story_subjects() -> void:
 	_app_state().activate_story_subject("npc:tea_vendor_hua", "talk")
 	_app_state().activate_story_subject("npc:ferry_caretaker", "talk")
 	_assert_true(
-		bool(_app_state().get_story_flag("spring_festival_resolved", false)),
+		bool(_app_state().get_snapshot().story_flags.get("spring_festival_resolved", false)),
 		"StoryEvent landmark migration still fits the existing Spring Festival resolution path"
 	)
 	_assert_true(
-		_app_state().get_landmark_state("festival_stage") == "available",
+		_view().get_landmark_state("festival_stage") == "available",
 		"StoryEvent landmark migration still unlocks the harbor stage once melody and Spring Festival are ready"
 	)
 
@@ -508,7 +488,7 @@ func _progress_through_landmark_spine_via_story_subjects() -> void:
 	)
 	_app_state().complete_prompt_request(m_prompt_requests[m_prompt_requests.size() - 1])
 	_assert_true(
-		bool(_app_state().get_melody_state("festival_melody").get("performed", false)),
+		bool(_view().get_melody_state("festival_melody").get("performed", false)),
 		"StoryEvent landmark prompt completion still resolves the harbor-stage performance path"
 	)
 

@@ -34,7 +34,7 @@ Still not migrated:
 
 - authored recursive `StoryEventDefinition` trees for the four top-level route families; those route families now live as separate typed route resources under `game/storylines/routes/`, but they are still flat route/event dictionaries rather than nested StoryEvent trees
 - a director that arbitrates across many active route-family definitions instead of the current shared helpers over typed route resources, resident data, and inspectable catalogs
-- legacy direct landmark-trigger calls can still enter through `activate_landmark_trigger(...)`, but runtime interaction and regression coverage now use stable `landmark:` subjects through `activate_story_subject(...)`; the current melody landmark subjects and their prompt-completion/reward follow-through resolve in authored StoryEvent definitions before any legacy fallback helper in `landmark_progression.gd`
+- all landmark interaction enters through stable `landmark:` subject ids and `activate_story_subject(...)`; the current melody landmark subjects and their prompt-completion/reward follow-through resolve in authored StoryEvent definitions, while `landmark_progression.gd` remains an owner-free prompt/progression calculator
 - broader non-interaction signals beyond the current landmark prompt-completion/reward events moving fully through `notify_story_world_event(...)`
 - a published-fact ledger replacing the current storyline-module plus `story_route_graph.gd` projection as the canonical progression source
 
@@ -599,11 +599,11 @@ All of these are already readable from `AppState` without new infrastructure.
 
 ### Problem
 
-When a landmark resolves, the design wants the island to "feel slightly more alive." Currently, landmark resolution fires `landmark_progress_changed` and updates melody/fragment state, but there is no systematic way for ambient systems (NPCs, sound, visuals) to react to story milestones without coupling directly to `AppState` internals.
+When a landmark resolves, the design wants the island to "feel slightly more alive." Landmark and melody changes now arrive atomically through `state_committed`, but domain changes alone do not tell ambient systems which authored narrative beat just occurred.
 
 ### Suggestion: Story Milestone Signal
 
-Add a small set of high-level story signals to `AppState` that fire after compound state changes resolve:
+Use the existing high-level story signal on `AppState` after compound state changes resolve:
 
 ```gdscript
 signal story_milestone(milestone_id: String, context: Dictionary)
@@ -664,7 +664,7 @@ Each landmark phase can define a recovery entry in the catalog:
 
 ### Trigger Logic
 
-`game_world_3d.gd` could track a timer since the last `landmark_progress_changed` or `objective_changed` signal. When the timer exceeds the configured `idle_seconds` for the current landmark and phase:
+`game_world_3d.gd` could track a timer since the last `state_committed` notification containing `LANDMARKS` or `STORY`. When the timer exceeds the configured `idle_seconds` for the current landmark and phase:
 
 1. Find the specified `resident_id`.
 2. If the resident is spawned and on the same layer, have them emit their `hint_line` as a speech balloon (bypassing the normal talk interaction).

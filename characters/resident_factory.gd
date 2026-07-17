@@ -30,10 +30,14 @@ const RESIDENT_WALK_SPEED := 4.0
 const RESIDENT_WANDER_RADIUS := 5.0
 
 
-func spawn_residents(world_root: Node3D, app_state: Node, landmark_nodes: Dictionary) -> Node3D:
+func spawn_residents(
+	world_root: Node3D,
+	projection: AppStateProjection,
+	landmark_nodes: Dictionary
+) -> Node3D:
 	if Engine.is_editor_hint():
 		return null
-	if !is_instance_valid(world_root) or app_state == null:
+	if !is_instance_valid(world_root) or projection == null:
 		return null
 
 	var resident_root := Node3D.new()
@@ -43,13 +47,13 @@ func spawn_residents(world_root: Node3D, app_state: Node, landmark_nodes: Dictio
 	# Fan residents that share an anchor around a small ring so they do not overlap.
 	var anchor_counts: Dictionary = {}
 
-	for resident_id_value in app_state.get_resident_ids():
+	for resident_id_value in projection.resident_ids:
 		var resident_id := String(resident_id_value)
-		var resident_definition = app_state.get_resident_definition(resident_id)
+		var resident_definition = projection.get_resident_definition(resident_id)
 		if resident_definition == null:
 			continue
 
-		var spawn_config: Dictionary = app_state.get_resident_spawn_config(resident_id)
+		var spawn_config: Dictionary = projection.get_resident_spawn_config(resident_id)
 		var anchor_id := String(spawn_config.get("anchor_id", ""))
 		var anchor_node := _resolve_anchor_landmark(anchor_id, landmark_nodes)
 		if !is_instance_valid(anchor_node):
@@ -70,7 +74,7 @@ func spawn_residents(world_root: Node3D, app_state: Node, landmark_nodes: Dictio
 		npc.global_position = anchor_node.global_position + _ring_offset(ring_index)
 
 		_attach_wander_controller(npc)
-		_attach_talk_subject(npc, resident_id, app_state)
+		_attach_talk_subject(npc, resident_id, projection)
 		_attach_speech_balloon(npc)
 
 	return resident_root
@@ -102,12 +106,16 @@ func _ring_offset(index: int) -> Vector3:
 	return Vector3(cos(angle) * radius, 0.0, sin(angle) * radius)
 
 
-func _attach_talk_subject(npc: Node3D, resident_id: String, app_state: Node) -> void:
+func _attach_talk_subject(
+	npc: Node3D,
+	resident_id: String,
+	projection: AppStateProjection
+) -> void:
 	var subject := STORY_SUBJECT_3D.new() as Area3D
 	subject.name = "TalkSubject"
 	subject.set("subject_id", "npc:%s" % resident_id)
 	subject.set("story_action", "talk")
-	subject.set("display_name", app_state.get_resident_display_name(resident_id))
+	subject.set("display_name", projection.get_resident_display_name(resident_id))
 	subject.set("interaction_radius", RESIDENT_TALK_RADIUS)
 	npc.add_child(subject)
 	subject.add_to_group(STORY_SUBJECT_GROUP)

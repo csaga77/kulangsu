@@ -5,16 +5,16 @@ const APP_STATE_GROUP := &"app_state_service"
 const APP_STATE_SCRIPT := preload("res://game/app_state.gd")
 
 
-static func get_app_state(context: Node):
+static func get_app_state(context: Node) -> AppStateService:
 	var tree := _resolve_tree(context)
 	if tree == null:
 		return null
 
 	var existing := tree.get_first_node_in_group(APP_STATE_GROUP)
 	if existing != null and is_instance_valid(existing):
-		return existing
+		return existing as AppStateService
 
-	var state = APP_STATE_SCRIPT.new()
+	var state := APP_STATE_SCRIPT.new() as AppStateService
 	state.name = "AppState"
 	var parent := _resolve_service_parent(context, tree)
 	parent.add_child(state)

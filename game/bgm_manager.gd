@@ -97,10 +97,8 @@ func _exit_tree() -> void:
 		m_player.stream = null
 	m_stream_cache.clear()
 	if is_instance_valid(app_state):
-		if app_state.location_changed.is_connected(_on_location_changed):
-			app_state.location_changed.disconnect(_on_location_changed)
-		if app_state.melody_progress_changed.is_connected(_on_melody_progress_changed):
-			app_state.melody_progress_changed.disconnect(_on_melody_progress_changed)
+		if app_state.state_committed.is_connected(_on_state_committed):
+			app_state.state_committed.disconnect(_on_state_committed)
 	app_state = null
 
 
@@ -176,10 +174,8 @@ func _connect_app_state() -> void:
 	if app_state == null:
 		return
 
-	if !app_state.location_changed.is_connected(_on_location_changed):
-		app_state.location_changed.connect(_on_location_changed)
-	if !app_state.melody_progress_changed.is_connected(_on_melody_progress_changed):
-		app_state.melody_progress_changed.connect(_on_melody_progress_changed)
+	if !app_state.state_committed.is_connected(_on_state_committed):
+		app_state.state_committed.connect(_on_state_committed)
 
 
 func _validate_catalog() -> void:
@@ -202,7 +198,8 @@ func _sync_context_from_app_state() -> void:
 	if app_state == null:
 		return
 
-	m_context["location"] = _map_location_label(app_state.location)
+	var projection := app_state.get_projection()
+	m_context["location"] = _map_location_label(projection.location)
 	m_context["progress"] = _resolve_progress_state()
 
 
@@ -210,14 +207,15 @@ func _resolve_progress_state() -> String:
 	if app_state == null:
 		return "unknown"
 
+	var projection := app_state.get_projection()
 	var tracked_melody_id := melody_id
-	if !app_state.get_melody_ids().has(tracked_melody_id):
-		var melody_ids := app_state.get_melody_ids()
+	if !projection.get_melody_ids().has(tracked_melody_id):
+		var melody_ids := projection.get_melody_ids()
 		if melody_ids.is_empty():
 			return "unknown"
 		tracked_melody_id = String(melody_ids[0])
 
-	var melody_state := app_state.get_melody_state(tracked_melody_id)
+	var melody_state := projection.get_melody_state(tracked_melody_id)
 	var state_id := String(melody_state.get("state", "unknown"))
 	if state_id in ["unknown", "heard", "reconstructed", "performed", "resonant"]:
 		return state_id
@@ -258,13 +256,14 @@ func _on_location_changed(location_label: String) -> void:
 		_start_location_reselection()
 
 
-func _on_melody_progress_changed(changed_melody_id: String, _melody: Dictionary) -> void:
-	if changed_melody_id != melody_id and changed_melody_id != PRIMARY_MELODY_ID:
-		return
-
-	m_context["progress"] = _resolve_progress_state()
-	if m_current_track_id.is_empty():
-		_start_if_idle()
+func _on_state_committed(changes: AppStateChangeSet) -> void:
+	var projection := app_state.get_projection()
+	if changes.has_domain(AppStateChangeSet.Domain.SESSION):
+		_on_location_changed(projection.location)
+	if changes.has_domain(AppStateChangeSet.Domain.MELODY):
+		m_context["progress"] = _resolve_progress_state()
+		if m_current_track_id.is_empty():
+			_start_if_idle()
 
 
 func _start_location_reselection() -> void:

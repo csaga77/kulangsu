@@ -16,7 +16,7 @@ func _ready() -> void:
 
 func _run() -> void:
 	var app_state = APP_RUNTIME.get_app_state(self)
-	app_state.configure_free_walk()
+	app_state.start_free_walk()
 	await get_tree().process_frame
 
 	var hair_style_ids := _collect_option_ids(PLAYER_APPEARANCE_CATALOG.hair_style_options())
@@ -99,8 +99,8 @@ func _run() -> void:
 
 	var base_profile := PLAYER_APPEARANCE_CATALOG.default_profile()
 	_assert_true("Free walk unlocks the festival costume for test setup", app_state.equip_player_costume("festival_evening"))
-	app_state.set_player_profile(base_profile)
-	_assert_dict_equal("Base profile is active before opening setup", app_state.get_player_profile(), base_profile)
+	app_state.replace_player_profile(base_profile)
+	_assert_dict_equal("Base profile is active before opening setup", app_state.get_projection().player_profile, base_profile)
 
 	var overlay := PLAYER_SETUP_SCENE.instantiate()
 	overlay.visible = false
@@ -150,17 +150,17 @@ func _run() -> void:
 		preview.get_actor().character_model_scene.resource_path,
 		"res://assets/characters/boy.glb"
 	)
-	_assert_dict_equal("Browsing setup options does not mutate AppState immediately", app_state.get_player_profile(), base_profile)
+	_assert_dict_equal("Browsing setup options does not mutate AppState immediately", app_state.get_projection().player_profile, base_profile)
 	_assert_equal(
 		"Browsing setup options does not change the equipped live costume",
-		app_state.get_equipped_player_costume_id(),
+		app_state.get_projection().equipped_player_costume_id,
 		"festival_evening"
 	)
 
 	cancel_button.emit_signal("pressed")
 	await get_tree().process_frame
 	_assert_true("Cancel still emits the setup cancellation signal", m_cancel_requested)
-	_assert_dict_equal("Cancel leaves the live player profile untouched", app_state.get_player_profile(), base_profile)
+	_assert_dict_equal("Cancel leaves the live player profile untouched", app_state.get_projection().player_profile, base_profile)
 
 	overlay.call("refresh_from_state")
 	await get_tree().process_frame
@@ -171,11 +171,11 @@ func _run() -> void:
 	confirm_button.emit_signal("pressed")
 	await get_tree().process_frame
 
-	var committed_profile: Dictionary = app_state.get_player_profile()
+	var committed_profile: Dictionary = app_state.get_projection().player_profile
 	_assert_equal("Confirm commits the setup draft into AppState", String(committed_profile.get("body_frame_id", "")), "teen")
 	_assert_equal(
 		"Confirm resets the equipped costume to the default starting look",
-		app_state.get_equipped_player_costume_id(),
+		app_state.get_projection().equipped_player_costume_id,
 		PLAYER_COSTUME_CATALOG.default_costume_id()
 	)
 

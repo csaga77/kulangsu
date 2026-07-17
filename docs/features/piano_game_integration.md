@@ -19,7 +19,7 @@ The ordered-confirmation prompt stays the canonical story-facing performance lay
 
 ### Entry
 
-- A dedicated Piano Ferry interaction opens the piano game only after `AppState.is_journal_unlocked()` is true.
+- A dedicated Piano Ferry interaction opens the piano game only after the latest `AppStateProjection.journal_unlocked` value is true.
 - The trigger lives in world content or a focused Ferry-side helper, not in `AppState`.
 - `main.gd` owns opening and closing the piano interaction as an overlay or framed mode, following the same shell pattern as the melody prompt.
 

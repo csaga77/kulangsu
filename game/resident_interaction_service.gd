@@ -4,11 +4,15 @@ extends RefCounted
 const STORY_EFFECT_SCHEMA_SCRIPT := preload("res://game/story_effect_schema.gd")
 const RESIDENT_CATALOG_SCRIPT := preload("res://game/resident_catalog.gd")
 
-var m_runtime: ResidentInteractionRuntimePort = null
+var m_runtime = null
 
 
-func _init(runtime: ResidentInteractionRuntimePort) -> void:
+func _init(runtime) -> void:
 	m_runtime = runtime
+
+
+func detach_runtime() -> void:
+	m_runtime = null
 
 
 func interact_with_resident(resident_id: String) -> Dictionary:
@@ -16,7 +20,7 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 	if !m_runtime.has_resident_profile(resident_id):
 		return {}
 
-	var resident := m_runtime.get_resident_profile(resident_id)
+	var resident: Dictionary = m_runtime.get_resident_profile(resident_id)
 	var dialogue_beats: Array = resident.get("dialogue_beats", [])
 	var resident_was_known := bool(resident.get("known", false))
 
@@ -125,7 +129,7 @@ func get_known_resident_names() -> PackedStringArray:
 	m_runtime.ensure_resident_profiles()
 	var names := PackedStringArray()
 	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
-		var resident := m_runtime.get_resident_profile(resident_id)
+		var resident: Dictionary = m_runtime.get_resident_profile(resident_id)
 		if resident.get("known", false):
 			names.append(String(resident.get("display_name", resident_id)))
 	return names
@@ -133,7 +137,7 @@ func get_known_resident_names() -> PackedStringArray:
 
 func get_resident_ambient_line(resident_id: String) -> String:
 	m_runtime.ensure_resident_profiles()
-	var resident := m_runtime.get_resident_profile(resident_id)
+	var resident: Dictionary = m_runtime.get_resident_profile(resident_id)
 	if resident.is_empty():
 		return ""
 
@@ -172,7 +176,7 @@ func _seed_resident_progress(
 	if !m_runtime.has_resident_profile(resident_id):
 		return
 
-	var resident := m_runtime.get_resident_profile(resident_id)
+	var resident: Dictionary = m_runtime.get_resident_profile(resident_id)
 	var dialogue_beats: Array = resident.get("dialogue_beats", [])
 
 	resident["known"] = true
@@ -195,7 +199,7 @@ func _count_helped_residents() -> int:
 	m_runtime.ensure_resident_profiles()
 	var count := 0
 	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
-		var resident := m_runtime.get_resident_profile(resident_id)
+		var resident: Dictionary = m_runtime.get_resident_profile(resident_id)
 		if int(resident.get("trust", 0)) > 0:
 			count += 1
 	return count
@@ -226,28 +230,28 @@ func _check_beat_gate(beat: Dictionary) -> bool:
 		return true
 	match gate:
 		"piano_ferry_harbor_clue":
-			var ferry_progress := m_runtime.get_landmark_progress("piano_ferry")
+			var ferry_progress: Dictionary = m_runtime.get_landmark_progress("piano_ferry")
 			return bool(ferry_progress.get("harbor_clue_found", false))
 		"first_fragment_restored":
 			return m_runtime.get_fragments_found() >= 1
 		"trinity_church_cues":
-			var trinity_progress := m_runtime.get_landmark_progress("trinity_church")
+			var trinity_progress: Dictionary = m_runtime.get_landmark_progress("trinity_church")
 			var cues: Array = trinity_progress.get("cues_collected", [])
 			return cues.size() >= 3
 		"trinity_church_chime":
-			var trinity_resolved_progress := m_runtime.get_landmark_progress("trinity_church")
+			var trinity_resolved_progress: Dictionary = m_runtime.get_landmark_progress("trinity_church")
 			return bool(trinity_resolved_progress.get("chime_performed", false))
 		"long_shan_exit_reached":
 			return m_runtime.get_landmark_state("long_shan_tunnel") == "reward_collected"
 		"bagua_synthesis_done":
-			var tower_progress := m_runtime.get_landmark_progress("bagua_tower")
+			var tower_progress: Dictionary = m_runtime.get_landmark_progress("bagua_tower")
 			return bool(tower_progress.get("synthesis_done", false))
 		"bagua_tower_available":
 			return m_runtime.get_landmark_state("bagua_tower") != "locked"
 		"three_fragments_restored":
 			return m_runtime.get_fragments_found() >= 3
 		_:
-			var story_flags := m_runtime.get_story_flags()
+			var story_flags: Dictionary = m_runtime.get_story_flags()
 			if story_flags.has(gate):
 				return bool(story_flags.get(gate, false))
 	return true
@@ -258,7 +262,7 @@ func _build_story_event_gate_fallback(beat: Dictionary, story_event: String) -> 
 	if !fallback.is_empty():
 		return fallback
 
-	var blockers := m_runtime.get_story_event_blockers(story_event)
+	var blockers: Dictionary = m_runtime.get_story_event_blockers(story_event)
 	if blockers.has("phase_window"):
 		return "This conversation belongs to another season of the year."
 	if blockers.has("landmark_state"):

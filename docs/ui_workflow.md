@@ -187,7 +187,7 @@ Existing attribution source:
 Selecting `Continue`:
 
 - Current first-pass behavior:
-  - Loads the latest story autosave through `AppState.configure_continue()`
+  - Loads the latest story autosave through `AppState.resume_story()`
   - Restores shared story state including melody, resident, landmark, and any active ending context
   - Enters play at the latest safe resume anchor instead of a fragile interior tunnel position
   - Shows the latest saved chapter, location, and fragment summary in the title footer

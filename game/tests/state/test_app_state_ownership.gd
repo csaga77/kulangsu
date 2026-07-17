@@ -3,13 +3,10 @@ extends Node
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 
 var m_failures := PackedStringArray()
-var m_player_profile_signal_count := 0
-var m_player_costume_signal_count := 0
-var m_story_time_signal_count := 0
-var m_master_volume_signal_count := 0
-var m_music_volume_signal_count := 0
-var m_prompt_volume_signal_count := 0
-var m_dialogue_speed_signal_count := 0
+var m_commit_count := 0
+var m_player_commit_count := 0
+var m_time_commit_count := 0
+var m_settings_commit_count := 0
 
 
 func _app_state() -> AppStateService:
@@ -22,50 +19,38 @@ func _ready() -> void:
 
 func _run() -> void:
 	var app_state := _app_state()
-	app_state.player_profile_changed.connect(func(_profile: Dictionary) -> void:
-		m_player_profile_signal_count += 1
-	)
-	app_state.player_costume_changed.connect(func(_costume_id: String, _costume: Dictionary) -> void:
-		m_player_costume_signal_count += 1
-	)
-	app_state.story_time_changed.connect(func(_time_state: Dictionary) -> void:
-		m_story_time_signal_count += 1
-	)
-	app_state.master_volume_changed.connect(func(_percent: float) -> void:
-		m_master_volume_signal_count += 1
-	)
-	app_state.music_volume_changed.connect(func(_percent: float) -> void:
-		m_music_volume_signal_count += 1
-	)
-	app_state.prompt_volume_changed.connect(func(_percent: float) -> void:
-		m_prompt_volume_signal_count += 1
-	)
-	app_state.dialogue_text_speed_changed.connect(
-		func(_percent: float, _characters_per_second: float) -> void:
-			m_dialogue_speed_signal_count += 1
+	app_state.state_committed.connect(func(changes: AppStateChangeSet) -> void:
+		m_commit_count += 1
+		if changes.has_domain(AppStateChangeSet.Domain.PLAYER):
+			m_player_commit_count += 1
+		if changes.has_domain(AppStateChangeSet.Domain.TIME):
+			m_time_commit_count += 1
+		if changes.has_domain(AppStateChangeSet.Domain.SETTINGS):
+			m_settings_commit_count += 1
 	)
 
-	app_state.configure_free_walk()
-	m_player_profile_signal_count = 0
-	m_player_costume_signal_count = 0
-	m_story_time_signal_count = 0
+	app_state.start_free_walk()
+	m_commit_count = 0
+	m_player_commit_count = 0
+	m_time_commit_count = 0
+	m_settings_commit_count = 0
 
-	var next_profile := app_state.get_player_profile()
+	var next_profile := app_state.get_projection().player_profile
 	next_profile["body_frame_id"] = "teen"
-	_assert_true(app_state.set_player_profile(next_profile), "Player profile accepts a real change")
+	_assert_true(app_state.replace_player_profile(next_profile), "Player profile accepts a real change")
 	_assert_true(
-		String(app_state.player_profile.get("body_frame_id", "")) == "teen",
+		String(app_state.get_projection().player_profile.get("body_frame_id", "")) == "teen",
 		"AppState stores the canonical player profile"
 	)
 	_assert_true(
-		m_player_profile_signal_count == 1,
+		m_player_commit_count == 1,
 		"Player profile changes emit once after AppState commits"
 	)
-	var detached_profile := app_state.get_player_profile()
+	var detached_profile := app_state.get_snapshot().player_profile
 	detached_profile["body_frame_id"] = "adult"
 	_assert_true(
-		String(app_state.player_profile.get("body_frame_id", "")) == "teen",
-		"Player profile getters cannot mutate canonical AppState data"
+		String(app_state.get_snapshot().player_profile.get("body_frame_id", "")) == "teen",
+		"Detached snapshots cannot mutate canonical AppState data"
 	)
 
 	_assert_true(
@@ -73,61 +58,64 @@ func _run() -> void:
 		"Free Walk can equip an unlocked costume"
 	)
 	_assert_true(
-		app_state.equipped_player_costume_id == "festival_evening",
+		app_state.get_projection().equipped_player_costume_id == "festival_evening",
 		"AppState stores the canonical equipped costume id"
 	)
 	_assert_true(
-		m_player_costume_signal_count == 1,
+		m_player_commit_count == 2,
 		"Costume changes emit once after AppState commits"
 	)
 
+	app_state.update_world_context({
+		"story_time": {"story_day": 2, "world_hour": 13.0},
+	})
 	_assert_true(
-		app_state.set_story_time_state({"story_day": 2, "world_hour": 13.0}),
-		"Story time accepts a normalized state change"
-	)
-	_assert_true(
-		app_state.story_day == 2 and is_equal_approx(app_state.world_hour, 13.0)
-			and app_state.time_of_day == "afternoon",
+		app_state.get_projection().story_day == 2
+			and is_equal_approx(app_state.get_projection().world_hour, 13.0)
+			and app_state.get_projection().time_of_day == "afternoon",
 		"AppState stores canonical story-time fields"
 	)
 	_assert_true(
-		m_story_time_signal_count == 1,
+		m_time_commit_count == 1,
 		"Story-time state changes emit once after AppState commits"
 	)
-	app_state.apply_story_time_effects({
-		"story_day": 3,
-		"world_hour": 9.0,
-		"advance_hours": 10.0,
+	app_state.update_world_context({
+		"story_time": {
+			"story_day": 3,
+			"world_hour": 9.0,
+			"advance_hours": 10.0,
+		},
 	})
 	_assert_true(
-		app_state.story_day == 3 and is_equal_approx(app_state.world_hour, 19.0)
-			and app_state.time_of_day == "evening",
+		app_state.get_projection().story_day == 3
+			and is_equal_approx(app_state.get_projection().world_hour, 19.0)
+			and app_state.get_projection().time_of_day == "evening",
 		"Compound story-time operations resolve into one final AppState snapshot"
 	)
 	_assert_true(
-		m_story_time_signal_count == 2,
+		m_time_commit_count == 2,
 		"Compound story-time operations emit only their final state"
 	)
 
-	app_state.set_master_volume_percent(65.0)
-	app_state.set_music_volume_percent(55.0)
-	app_state.set_prompt_volume_percent(40.0)
-	app_state.set_dialogue_text_speed_percent(150.0)
+	app_state.commit_settings({
+		"master_volume_percent": 65.0,
+		"music_volume_percent": 55.0,
+		"prompt_volume_percent": 40.0,
+		"dialogue_text_speed_percent": 150.0,
+	})
+	var settings := app_state.get_projection()
 	_assert_true(
-		is_equal_approx(app_state.get_master_volume_percent(), 65.0)
-			and is_equal_approx(app_state.get_music_volume_percent(), 55.0)
-			and is_equal_approx(app_state.get_prompt_volume_percent(), 40.0)
-			and is_equal_approx(app_state.get_dialogue_text_speed_percent(), 150.0),
+		is_equal_approx(settings.master_volume_percent, 65.0)
+			and is_equal_approx(settings.music_volume_percent, 55.0)
+			and is_equal_approx(settings.prompt_volume_percent, 40.0)
+			and is_equal_approx(settings.dialogue_text_speed_percent, 150.0),
 		"AppState owns the canonical runtime settings values"
 	)
 	_assert_true(
-		m_master_volume_signal_count == 1
-			and m_music_volume_signal_count == 1
-			and m_prompt_volume_signal_count == 1
-			and m_dialogue_speed_signal_count == 1,
-		"Runtime settings emit once after AppState commits"
+		m_settings_commit_count == 1,
+		"A complete runtime settings command emits one state commit"
 	)
-	app_state.set_master_volume_percent(100.0)
+	app_state.commit_settings({"master_volume_percent": 100.0})
 
 	if m_failures.is_empty():
 		print("PASS: AppState ownership regression")

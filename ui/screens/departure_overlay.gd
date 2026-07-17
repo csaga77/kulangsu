@@ -22,7 +22,7 @@ func _ready() -> void:
 
 
 func refresh_from_state() -> void:
-	var summary: Dictionary = _app_state().ending_summary
+	var summary: Dictionary = _app_state().get_projection().ending_summary
 	var trigger_event_id := String(summary.get("ending_trigger", ""))
 	var tones := String(summary.get("ending_tones", ""))
 	if tones.is_empty():

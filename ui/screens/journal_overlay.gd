@@ -3,6 +3,7 @@ extends PanelContainer
 const CHARACTER_PREVIEW_3D := preload("res://characters/character_preview_3d.gd")
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const JOURNAL_BUILDER := preload("res://game/journal_builder.gd")
+const PLAYER_APPEARANCE_CATALOG := preload("res://game/player_appearance_catalog.gd")
 
 signal close_requested()
 
@@ -51,12 +52,8 @@ func _ready() -> void:
 	m_clear_lead_pin_button.pressed.connect(_on_clear_lead_pin_pressed)
 	m_melody_practice_button.pressed.connect(_on_melody_practice_pressed)
 	m_close_button.pressed.connect(close_requested.emit)
-	if !_app_state().player_costumes_changed.is_connected(_on_player_costumes_changed):
-		_app_state().player_costumes_changed.connect(_on_player_costumes_changed)
-	if !_app_state().player_appearance_changed.is_connected(_on_player_appearance_changed):
-		_app_state().player_appearance_changed.connect(_on_player_appearance_changed)
-	if !_app_state().active_leads_changed.is_connected(_on_active_leads_changed):
-		_app_state().active_leads_changed.connect(_on_active_leads_changed)
+	if !_app_state().state_committed.is_connected(_on_state_committed):
+		_app_state().state_committed.connect(_on_state_committed)
 	visibility_changed.connect(_on_visibility_changed)
 	refresh_from_state()
 
@@ -68,23 +65,24 @@ func grab_default_focus() -> void:
 
 
 func refresh_from_state() -> void:
-	m_quest_body.text = "Story Routes\n%s" % JOURNAL_BUILDER.build_story_routes_journal_text(_app_state())
-	m_map_body.text = JOURNAL_BUILDER.build_map_journal_text(_app_state())
-	m_residents_body.text = "Resident Notes\n%s" % JOURNAL_BUILDER.build_resident_journal_text(_app_state())
-	m_melody_body.text = "Melody Journal\n%s" % JOURNAL_BUILDER.build_melody_journal_text(_app_state())
+	var projection := _app_state().get_projection()
+	m_quest_body.text = "Story Routes\n%s" % JOURNAL_BUILDER.build_story_routes_journal_text(projection)
+	m_map_body.text = JOURNAL_BUILDER.build_map_journal_text(projection)
+	m_residents_body.text = "Resident Notes\n%s" % JOURNAL_BUILDER.build_resident_journal_text(projection)
+	m_melody_body.text = "Melody Journal\n%s" % JOURNAL_BUILDER.build_melody_journal_text(projection)
 	m_wardrobe_body.text = "Appearance\nYour 3D traveler model follows the body and presentation chosen during setup. Legacy costume and hair selections remain stored for save compatibility."
-	m_costume_value.text = _app_state().get_equipped_player_costume_display_name()
-	m_hair_style_value.text = _app_state().get_player_hair_style_display_name()
-	m_hair_color_value.text = _app_state().get_player_hair_color_display_name()
+	m_costume_value.text = projection.get_equipped_player_costume_display_name()
+	m_hair_style_value.text = projection.player_hair_style_display_name
+	m_hair_color_value.text = projection.player_hair_color_display_name
 	_refresh_preview()
 
-	var unlocked_count: int = _app_state().get_unlocked_player_costume_ids().size()
+	var unlocked_count: int = projection.unlocked_player_costume_ids.size()
 	m_prev_costume_button.disabled = unlocked_count <= 1
 	m_next_costume_button.disabled = unlocked_count <= 1
-	var lead_count: int = _app_state().get_available_lead_ids().size()
+	var lead_count: int = projection.available_lead_ids.size()
 	m_prev_lead_button.disabled = lead_count <= 1
 	m_next_lead_button.disabled = lead_count <= 1
-	m_clear_lead_pin_button.disabled = !_app_state().is_story_lead_manually_pinned()
+	m_clear_lead_pin_button.disabled = !projection.manual_lead_pinned
 
 	var primary_melody_id := _primary_melody_id()
 	if primary_melody_id.is_empty():
@@ -92,8 +90,8 @@ func refresh_from_state() -> void:
 		m_melody_practice_button.text = "Practice Melody"
 		return
 
-	var melody_definition: Dictionary = _app_state().get_melody_definition(primary_melody_id)
-	var melody_state: Dictionary = _app_state().get_melody_state(primary_melody_id)
+	var melody_definition: Dictionary = projection.get_melody_definition(primary_melody_id)
+	var melody_state: Dictionary = projection.get_melody_state(primary_melody_id)
 	var melody_label := String(melody_definition.get("display_name", "Melody"))
 	var stage := String(melody_state.get("state", "unknown"))
 	var is_replay := stage in ["performed", "resonant"]
@@ -114,7 +112,7 @@ func _refresh_preview() -> void:
 	if m_preview_actor == null:
 		return
 
-	m_preview_actor.set_profile(_app_state().get_player_profile())
+	m_preview_actor.set_profile(_app_state().get_projection().player_profile)
 
 
 func _hide_unsupported_appearance_controls() -> void:
@@ -124,39 +122,39 @@ func _hide_unsupported_appearance_controls() -> void:
 
 
 func _primary_melody_id() -> String:
-	var melody_ids = _app_state().get_melody_ids()
+	var melody_ids = _app_state().get_projection().get_melody_ids()
 	if melody_ids.is_empty():
 		return ""
 	return String(melody_ids[0])
 
 
 func _on_previous_costume_pressed() -> void:
-	_app_state().cycle_player_costume(-1)
+	_cycle_costume(-1)
 	refresh_from_state()
 
 
 func _on_next_costume_pressed() -> void:
-	_app_state().cycle_player_costume(1)
+	_cycle_costume(1)
 	refresh_from_state()
 
 
 func _on_previous_hair_style_pressed() -> void:
-	_app_state().cycle_player_hair_style(-1)
+	_cycle_profile_option("hair_style_id", PLAYER_APPEARANCE_CATALOG.hair_style_options(), -1)
 	refresh_from_state()
 
 
 func _on_next_hair_style_pressed() -> void:
-	_app_state().cycle_player_hair_style(1)
+	_cycle_profile_option("hair_style_id", PLAYER_APPEARANCE_CATALOG.hair_style_options(), 1)
 	refresh_from_state()
 
 
 func _on_previous_hair_color_pressed() -> void:
-	_app_state().cycle_player_hair_color(-1)
+	_cycle_profile_option("hair_color_id", PLAYER_APPEARANCE_CATALOG.hair_color_options(), -1)
 	refresh_from_state()
 
 
 func _on_next_hair_color_pressed() -> void:
-	_app_state().cycle_player_hair_color(1)
+	_cycle_profile_option("hair_color_id", PLAYER_APPEARANCE_CATALOG.hair_color_options(), 1)
 	refresh_from_state()
 
 
@@ -171,7 +169,7 @@ func _on_next_lead_pressed() -> void:
 
 
 func _on_clear_lead_pin_pressed() -> void:
-	_app_state().clear_manual_story_lead()
+	_app_state().clear_story_lead_pin()
 	refresh_from_state()
 
 
@@ -182,16 +180,27 @@ func _on_melody_practice_pressed() -> void:
 	_app_state().request_melody_practice(melody_id)
 
 
-func _on_player_costumes_changed(_unlocked_ids: PackedStringArray, _equipped_costume_id: String) -> void:
+func _on_state_committed(_changes: AppStateChangeSet) -> void:
 	refresh_from_state()
 
 
-func _on_player_appearance_changed(_profile: Dictionary, _appearance_config: Dictionary) -> void:
-	refresh_from_state()
+func _cycle_costume(direction: int) -> void:
+	var projection := _app_state().get_projection()
+	var ids := projection.unlocked_player_costume_ids
+	if ids.is_empty():
+		return
+	var index := maxi(ids.find(projection.equipped_player_costume_id), 0)
+	_app_state().equip_player_costume(String(ids[posmod(index + direction, ids.size())]))
 
 
-func _on_active_leads_changed(_active_lead_id: String, _available_lead_ids: PackedStringArray) -> void:
-	refresh_from_state()
+func _cycle_profile_option(key: String, options: Array, direction: int) -> void:
+	var profile := _app_state().get_projection().player_profile
+	profile[key] = PLAYER_APPEARANCE_CATALOG.cycle_option_id(
+		options,
+		String(profile.get(key, "")),
+		direction
+	)
+	_app_state().replace_player_profile(profile)
 
 
 func _on_visibility_changed() -> void:

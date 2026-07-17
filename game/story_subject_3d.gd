@@ -155,20 +155,16 @@ func _bind_story_state() -> void:
 	if next_story_state == null:
 		return
 	m_story_state = next_story_state
-	for signal_name in _story_state_signal_names():
-		if !m_story_state.has_signal(signal_name):
-			continue
-		if !m_story_state.is_connected(signal_name, _on_story_state_changed):
-			m_story_state.connect(signal_name, _on_story_state_changed)
+	if !m_story_state.state_committed.is_connected(_on_story_state_changed):
+		m_story_state.state_committed.connect(_on_story_state_changed)
 
 
 func _unbind_story_state() -> void:
 	if !is_instance_valid(m_story_state):
 		m_story_state = null
 		return
-	for signal_name in _story_state_signal_names():
-		if m_story_state.has_signal(signal_name) and m_story_state.is_connected(signal_name, _on_story_state_changed):
-			m_story_state.disconnect(signal_name, _on_story_state_changed)
+	if m_story_state.state_committed.is_connected(_on_story_state_changed):
+		m_story_state.state_committed.disconnect(_on_story_state_changed)
 	m_story_state = null
 
 
@@ -193,20 +189,6 @@ func _runtime_subject_metadata() -> Dictionary:
 	if metadata_value is Dictionary:
 		return (metadata_value as Dictionary).duplicate(true)
 	return {}
-
-
-func _story_state_signal_names() -> PackedStringArray:
-	return PackedStringArray([
-		"mode_changed",
-		"chapter_changed",
-		"story_time_changed",
-		"landmark_progress_changed",
-		"route_progress_changed",
-		"story_milestone",
-		"season_phase_changed",
-		"active_leads_changed",
-		"endgame_state_changed",
-	])
 
 
 func _build_base_story_subject_context() -> Dictionary:
@@ -236,5 +218,5 @@ func _fallback_display_name() -> String:
 	return String(subject_tail).replace("_", " ").strip_edges().capitalize()
 
 
-func _on_story_state_changed(_arg1 = null, _arg2 = null) -> void:
+func _on_story_state_changed(_changes: AppStateChangeSet) -> void:
 	sync_story_presence()

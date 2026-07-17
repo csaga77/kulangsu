@@ -69,7 +69,7 @@ The external GDD's `Sunlight Rock` and `Zheng Chenggong Statue` are not part of 
   - shared melody runtime state exists
   - melody-specific authored metadata exists in `melody_catalog.gd`
   - the current authored melody is `festival_melody`, with four landmark fragments and the non-fragment ferry plaza source `ferry_plaza` (`Harbor Refrain`)
-  - `AppState` currently owns `{ state, fragments_found, fragments_total, known_sources, next_lead, performed }` per melody and emits `melody_progress_changed`, `melody_hint_shown`, `melody_prompt_requested`, `landmark_audio_cue_requested`, and `fragments_changed`
+  - `AppStateSnapshot` owns `{ state, fragments_found, fragments_total, known_sources, next_lead, performed }` per melody; stored melody changes emit one `state_committed` change set containing `MELODY`, while prompts, hints, and landmark audio remain imperative signals
   - `game/story_event_catalog.gd` plus `game/story_event_service.gd` now own the active landmark trigger, landmark prompt-completion, and fragment-award implementation for the melody-landmark spine behind the `AppState` bridge API
   - `game/landmark_progression.gd` now mainly owns generic melody-prompt validation/building plus compatibility fallback helpers
   - journal melody view now shows landmark/source-specific detail
@@ -105,7 +105,7 @@ The external GDD's `Sunlight Rock` and `Zheng Chenggong Statue` are not part of 
 
 These are the biggest differences between the current project and the target "music RPG" design.
 
-1. ~~There is no formal melody catalog.~~ **Resolved.** `game/melody_catalog.gd` now owns melody definitions. `AppState` now owns per-melody runtime state (`melody_progress`) with named ids, fragment counts, progression tier, known sources, next lead, and performed flag. `melody_progress_changed` is a live signal. The journal `Melody` tab reads full melody-specific text from `AppState.build_melody_journal_text()`.
+1. ~~There is no formal melody catalog.~~ **Resolved.** `game/melody_catalog.gd` owns melody definitions. `AppStateSnapshot` owns per-melody runtime state, and the journal reads the detached projection through `JournalBuilder`.
 2. ~~The journal `Melody` tab only shows recovered fragment count.~~ **Resolved.** The journal now shows melody name, district, stage, fragment progress, clue map, next lead, and world-response summary per melody.
 3. ~~There is still no shared `practice` layer in the main story loop.~~ **Resolved.** The journal can now request a reusable ordered-confirmation practice prompt once the melody is reconstructed.
 4. ~~Performance exists as one world trigger, but there is not yet a reusable recognition / prompt system for landmark performances.~~ **Resolved for the festival finale.** The harbor-stage performance point now routes through the reusable melody prompt before `performed` is set.
@@ -304,13 +304,12 @@ That structure may become useful later, but the current project is already organ
 
 ## Signals / Nodes / Data Flow
 
-- Current signals already involved:
-  - `objective_changed`
-  - `hint_changed`
-  - `fragments_changed`
-  - `resident_profile_changed`
-  - `summary_changed`
-  - `save_metadata_changed`
+- Current state notification:
+  - `AppState.state_committed(changes)`, with consumers filtering `STORY`, `MELODY`, `RESIDENTS`, or `SAVE` before fetching a fresh projection
+- Imperative events emitted after the committed state is observable:
+  - `melody_prompt_requested`
+  - `melody_hint_shown`
+  - `story_milestone`
 - Current flow:
   - resident interaction starts in [`../../game/world/story_interaction_coordinator.gd`](../../game/world/story_interaction_coordinator.gd)
   - resident progression updates in [`../../game/app_state.gd`](../../game/app_state.gd)

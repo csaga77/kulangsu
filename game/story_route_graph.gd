@@ -5,38 +5,68 @@ const MAX_GLOBAL_LEADS := 4
 const STORY_SEASON_PHASES_SCRIPT := preload("res://game/story_season_phases.gd")
 const RESIDENT_CATALOG_SCRIPT := preload("res://game/resident_catalog.gd")
 
-var m_runtime: StoryRouteRuntimePort = null
+var m_runtime = null
 var m_storyline_definitions_loaded := false
 var m_route_definitions: Dictionary = {}
 var m_event_definitions: Dictionary = {}
 var m_route_display_order: Array[String] = []
 
+static var s_definition_bundle: Dictionary = {}
 
-func _init(runtime: StoryRouteRuntimePort) -> void:
+
+func _init(runtime) -> void:
 	m_runtime = runtime
 	reload_storyline_definitions()
 
 
+func detach_runtime() -> void:
+	m_runtime = null
+
+
 static func route_display_order() -> Array[String]:
-	return StorylineCatalog.route_display_order()
+	var output: Array[String] = []
+	for route_id in _shared_definition_bundle().get("route_display_order", []):
+		output.append(String(route_id))
+	return output
 
 
 static func build_route_definitions() -> Dictionary:
-	return StorylineCatalog.build_route_definitions()
+	return (_shared_definition_bundle().get("route_definitions", {}) as Dictionary).duplicate(true)
 
 
 static func build_event_definitions() -> Dictionary:
-	return StorylineCatalog.build_event_definitions()
+	return (_shared_definition_bundle().get("event_definitions", {}) as Dictionary).duplicate(true)
+
+
+static func _shared_definition_bundle() -> Dictionary:
+	if s_definition_bundle.is_empty():
+		s_definition_bundle = StorylineCatalog.build_definition_bundle()
+	return s_definition_bundle
 
 
 func reload_storyline_definitions() -> void:
-	var bundle := StorylineCatalog.build_definition_bundle()
-	m_route_definitions = bundle.get("route_definitions", {}).duplicate(true)
-	m_event_definitions = bundle.get("event_definitions", {}).duplicate(true)
+	var bundle := _shared_definition_bundle()
+	m_route_definitions = bundle.get("route_definitions", {})
+	m_event_definitions = bundle.get("event_definitions", {})
 	m_route_display_order = []
 	for route_id_value in bundle.get("route_display_order", []):
 		m_route_display_order.append(String(route_id_value))
 	m_storyline_definitions_loaded = true
+
+
+func get_route_definitions_view() -> Dictionary:
+	_ensure_storyline_definitions()
+	return m_route_definitions
+
+
+func get_event_definitions_view() -> Dictionary:
+	_ensure_storyline_definitions()
+	return m_event_definitions
+
+
+func get_route_display_order_view() -> Array[String]:
+	_ensure_storyline_definitions()
+	return m_route_display_order
 
 
 func _ensure_storyline_definitions() -> void:
@@ -153,11 +183,11 @@ func get_story_event_blockers(event_id: String) -> Dictionary:
 
 
 func get_active_lead_text() -> String:
-	var current_endgame_state := m_runtime.get_endgame_state()
+	var current_endgame_state: Dictionary = m_runtime.get_endgame_state()
 	if bool(current_endgame_state.get("active", false)):
 		return String(current_endgame_state.get("closing_label", "Take a quiet moment before choosing what comes next."))
 
-	var lead_id := m_runtime.get_active_lead_id()
+	var lead_id: String = m_runtime.get_active_lead_id()
 	if lead_id.is_empty():
 		return ""
 
@@ -171,7 +201,7 @@ func get_route_summary_lines() -> Array[String]:
 	_ensure_storyline_definitions()
 	var lines: Array[String] = []
 
-	var current_route_progress := m_runtime.get_route_progress()
+	var current_route_progress: Dictionary = m_runtime.get_route_progress()
 	for route_id in m_route_display_order:
 		var progress: Dictionary = current_route_progress.get(route_id, {})
 		if progress.is_empty():
@@ -248,7 +278,7 @@ func resolve_story_event(event_id: String) -> bool:
 
 func pin_story_lead(lead_id: String) -> void:
 	var normalized_id := lead_id.strip_edges()
-	var available_lead_ids := m_runtime.get_available_lead_ids()
+	var available_lead_ids: PackedStringArray = m_runtime.get_available_lead_ids()
 	var available_ids := _normalize_string_array(available_lead_ids)
 	if available_ids.find(normalized_id) < 0:
 		return
@@ -257,7 +287,7 @@ func pin_story_lead(lead_id: String) -> void:
 
 
 func cycle_story_lead(direction: int) -> void:
-	var available_lead_ids := m_runtime.get_available_lead_ids()
+	var available_lead_ids: PackedStringArray = m_runtime.get_available_lead_ids()
 	var available_ids := _normalize_string_array(available_lead_ids)
 	if available_ids.is_empty():
 		return
@@ -277,7 +307,7 @@ func clear_manual_pinned_lead() -> void:
 func build_route_completion_summary() -> String:
 	_ensure_storyline_definitions()
 	var parts: Array[String] = []
-	var current_route_progress := m_runtime.get_route_progress()
+	var current_route_progress: Dictionary = m_runtime.get_route_progress()
 	for route_id in m_route_display_order:
 		var route_definition: Dictionary = m_route_definitions.get(route_id, {})
 		var progress: Dictionary = current_route_progress.get(route_id, {})
@@ -421,7 +451,7 @@ func _compute_route_snapshot(
 
 func _build_story_event_availability_inputs() -> Dictionary:
 	var flags := normalize_story_flags(m_runtime.get_story_flags())
-	var phase_id := m_runtime.get_season_phase()
+	var phase_id: String = m_runtime.get_season_phase()
 	var endgame := normalize_endgame_state(m_runtime.get_endgame_state())
 	var snapshot := _compute_route_snapshot(
 		flags,
@@ -505,9 +535,9 @@ func _maybe_start_endgame(preferred_event_id: String) -> void:
 func _build_tone_tags(event_definition: Dictionary, ending_choice: String = "") -> PackedStringArray:
 	_ensure_storyline_definitions()
 	var tags := PackedStringArray(_normalize_string_array(event_definition.get("tone_tags", [])))
-	var helped_residents := m_runtime.count_helped_residents()
+	var helped_residents: int = m_runtime.count_helped_residents()
 	var max_trust_residents := _count_max_trust_residents()
-	var current_route_progress := m_runtime.get_route_progress()
+	var current_route_progress: Dictionary = m_runtime.get_route_progress()
 
 	for route_id in m_route_display_order:
 		var route_definition: Dictionary = m_route_definitions.get(route_id, {})
@@ -599,7 +629,7 @@ func _event_blockers(
 				for landmark_id in required_landmarks.keys():
 					var normalized_landmark_id := String(landmark_id)
 					var expected_state := String(required_landmarks[landmark_id])
-					var actual_state := m_runtime.get_landmark_state(normalized_landmark_id)
+					var actual_state: String = m_runtime.get_landmark_state(normalized_landmark_id)
 					if actual_state != expected_state:
 						blocked_landmarks[normalized_landmark_id] = {
 							"expected": expected_state,
@@ -675,7 +705,7 @@ func _route_state_label(
 func _build_route_mix_entries() -> Array[Dictionary]:
 	_ensure_storyline_definitions()
 	var entries: Array[Dictionary] = []
-	var current_route_progress := m_runtime.get_route_progress()
+	var current_route_progress: Dictionary = m_runtime.get_route_progress()
 	for route_id in m_route_display_order:
 		var route_definition: Dictionary = m_route_definitions.get(route_id, {})
 		var progress: Dictionary = current_route_progress.get(route_id, {})

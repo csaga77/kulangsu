@@ -30,6 +30,7 @@ const LowPolyWorldCoordinates3DScript = preload("res://terrain/low_poly_world_co
 const LowPolyArtStyle3DScript = preload("res://terrain/low_poly_art_style_3d.gd")
 const RESIDENT_FACTORY := preload("res://characters/resident_factory.gd")
 const CHARACTER_MODEL_CATALOG_3D := preload("res://characters/character_model_catalog_3d.gd")
+const AUDIO_SETTINGS_SERVICE := preload("res://game/audio_settings_service.gd")
 
 const LANDMARK_MASK_META := &"low_poly_landmark_mask_pixel"
 const ISLAND_PATHS_LABEL := "Island Paths"
@@ -169,8 +170,6 @@ func _update_debug_stats() -> void:
 func sync_ui_state() -> void:
 	if !m_is_ready:
 		return
-	_app_state().set_landmarks(PackedStringArray(m_landmark_nodes.keys()))
-	_app_state().set_residents(_app_state().get_known_resident_names())
 	_sync_location_from_player()
 
 
@@ -303,8 +302,8 @@ func _setup_audio() -> void:
 	var app_state = _app_state()
 	if !app_state.landmark_audio_cue_requested.is_connected(_on_landmark_audio_cue_requested):
 		app_state.landmark_audio_cue_requested.connect(_on_landmark_audio_cue_requested)
-	if !app_state.prompt_volume_changed.is_connected(_on_prompt_volume_changed):
-		app_state.prompt_volume_changed.connect(_on_prompt_volume_changed)
+	if !app_state.state_committed.is_connected(_on_state_committed):
+		app_state.state_committed.connect(_on_state_committed)
 
 
 func _setup_bgm() -> void:
@@ -330,14 +329,21 @@ func _on_landmark_audio_cue_requested(cue_id: String, _context: Dictionary) -> v
 	_play_landmark_audio_cue(cue_id)
 
 
-func _on_prompt_volume_changed(_volume_percent: float) -> void:
-	_apply_prompt_volume()
+func _on_state_committed(changes: AppStateChangeSet) -> void:
+	if changes.has_domain(AppStateChangeSet.Domain.SETTINGS):
+		_apply_prompt_volume()
+	if changes.has_domain(AppStateChangeSet.Domain.PLAYER):
+		_apply_player_appearance(_app_state().get_projection().player_profile)
 
 
 func _apply_prompt_volume() -> void:
 	if !is_instance_valid(m_landmark_cue_player):
 		return
-	m_landmark_cue_player.volume_db = _app_state().get_prompt_volume_db(LANDMARK_CUE_VOLUME_DB)
+	var projection := _app_state().get_projection()
+	m_landmark_cue_player.volume_db = AUDIO_SETTINGS_SERVICE.new().get_prompt_volume_db(
+		projection.prompt_volume_percent,
+		LANDMARK_CUE_VOLUME_DB
+	)
 
 
 func _play_landmark_audio_cue(cue_id: String) -> void:
@@ -365,13 +371,9 @@ func _get_landmark_cue_stream(cue_id: String) -> AudioStream:
 
 func _setup_player_appearance() -> void:
 	var app_state = _app_state()
-	if !app_state.player_appearance_changed.is_connected(_on_player_appearance_changed):
-		app_state.player_appearance_changed.connect(_on_player_appearance_changed)
-	_apply_player_appearance(app_state.get_player_profile())
-
-
-func _on_player_appearance_changed(profile: Dictionary, _appearance_config: Dictionary) -> void:
-	_apply_player_appearance(profile)
+	if !app_state.state_committed.is_connected(_on_state_committed):
+		app_state.state_committed.connect(_on_state_committed)
+	_apply_player_appearance(app_state.get_projection().player_profile)
 
 
 func _apply_player_appearance(profile: Dictionary) -> void:
@@ -396,11 +398,12 @@ func _snap_camera_controller() -> void:
 func _apply_story_resume_anchor_if_needed() -> void:
 	if !is_instance_valid(m_actor):
 		return
-	if _app_state().mode != "Story":
+	var projection := _app_state().get_projection()
+	if projection.mode_id != AppStateSnapshot.MODE_STORY:
 		return
 
 	var default_resume_anchor := LANDMARK_CATALOG_SCRIPT.default_resume_display_name()
-	var anchor_id: String = _app_state().get_story_resume_anchor_id()
+	var anchor_id: String = projection.story_resume_anchor_id
 	if anchor_id.is_empty():
 		anchor_id = default_resume_anchor
 
@@ -442,7 +445,7 @@ func _sync_location_from_player() -> void:
 	if resolved == m_last_location:
 		return
 	m_last_location = resolved
-	_app_state().set_location(resolved)
+	_app_state().update_world_context({"location": resolved})
 	_update_story_resume_checkpoint(resolved)
 
 
@@ -450,13 +453,13 @@ func _sync_location_from_player() -> void:
 # last landmark the player reached so Continue restores near where they were. The
 # landmark display names double as stable safe-resume anchor ids.
 func _update_story_resume_checkpoint(resolved_location: String) -> void:
-	if _app_state().mode != "Story":
+	if _app_state().get_projection().mode_id != AppStateSnapshot.MODE_STORY:
 		return
 	if resolved_location.is_empty() or resolved_location == ISLAND_PATHS_LABEL:
 		return
 	if !m_landmark_nodes.has(resolved_location):
 		return
-	_app_state().set_story_resume_checkpoint(resolved_location, resolved_location)
+	_app_state().update_resume_checkpoint(resolved_location, resolved_location)
 
 
 func _flatten(position: Vector3) -> Vector2:
@@ -556,7 +559,11 @@ func _find_nearest_land_pixel(image: Image, profile: TerrainGenerationProfile, t
 
 func _spawn_residents() -> void:
 	var factory := RESIDENT_FACTORY.new()
-	m_resident_root = factory.spawn_residents(self, _app_state(), m_landmark_nodes)
+	m_resident_root = factory.spawn_residents(
+		self,
+		_app_state().get_projection(),
+		m_landmark_nodes
+	)
 
 
 func _setup_story_interaction_coordinator() -> void:

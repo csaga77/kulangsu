@@ -76,8 +76,8 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
   - [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
   - [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd)
 - Shared state or catalogs:
-  - `AppState.landmark_progress["bagua_tower"]`
-  - `AppState.melody_progress["festival_melody"]`
+  - `AppStateSnapshot.landmark_progress["bagua_tower"]`, exposed to consumers by `AppStateProjection`
+  - `AppStateSnapshot.melody_progress["festival_melody"]`, exposed to consumers by `AppStateProjection`
 - Related docs:
   - [`../contracts.md`](../contracts.md) — Landmark Progress Contract
   - [`core_melody_loop.md`](core_melody_loop.md) — MVP Step 5 (performance point) is next after this arc
@@ -88,14 +88,12 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
 ## Signals / Nodes / Data Flow
 
 - Signals emitted:
-  - `AppState.landmark_progress_changed("bagua_tower", progress)` — on any state advance
-  - `AppState.melody_progress_changed("festival_melody", state)` — on arc resolution
-  - `AppState.fragments_changed(found, total)` — on arc resolution
+  - one `AppState.state_committed(changes)` containing `LANDMARKS`, and `MELODY` when resolution awards the final fragment
 - Signals consumed:
-  - `AppState.landmark_progress_changed` — consumed by the tower `StorySubject3D` through StoryEvent presence sync
+  - the tower `StorySubject3D` listens to `state_committed` and refreshes presence from the latest projection
 - Data flow:
   - `tunnel_guide` beat 2 → `advance_landmark_state("bagua_tower", "available")`
-  - Player talks to tower_keeper (beats 0 and 1) → `landmark_states` confirms `available` then `in_progress` → `landmark_progress_changed` → chamber trigger appears
+  - Player talks to tower_keeper (beats 0 and 1) → `landmark_states` confirms `available` then `in_progress` → one state commit → chamber trigger appears
   - Player presses R at synthesis_chamber → `StorySubject3D` builds subject context → `AppState.activate_story_subject(...)` → authored Bagua synthesis binding sets landmark `resolved` + `synthesis_done`
   - Player talks to tower_keeper beat 2 → gate passes → `_apply_resident_beat` → `_resolve_landmark("bagua_tower")` → `StoryEventService.notify_world_event("landmark_reward:bagua_tower", ...)` → final fragment + `festival_stage` unlock
 

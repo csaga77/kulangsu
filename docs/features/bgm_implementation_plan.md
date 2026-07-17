@@ -17,7 +17,7 @@ Shipped files:
 Current V1 scope:
 
 - Real catalog/controller architecture, not a placeholder loop
-- Live context from `AppState.location` and melody progress
+- Live context from the detached `AppStateProjection` location and melody progress
 - Deferred defaults of `afternoon`, `summer`, and `clear`
 - Single-file playback, no layered variants
 - 45-second minimum commitment window

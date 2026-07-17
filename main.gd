@@ -63,9 +63,9 @@ func _ready() -> void:
 	if !_app_state().melody_prompt_requested.is_connected(_on_melody_prompt_requested):
 		_app_state().melody_prompt_requested.connect(_on_melody_prompt_requested)
 	_build_app_shell()
-	if !_app_state().save_metadata_changed.is_connected(_on_story_save_metadata_changed):
-		_app_state().save_metadata_changed.connect(_on_story_save_metadata_changed)
-	_refresh_story_save_state(_app_state().get_story_save_metadata())
+	if !_app_state().state_committed.is_connected(_on_state_committed):
+		_app_state().state_committed.connect(_on_state_committed)
+	_refresh_story_save_state(_app_state().get_save_metadata())
 	get_viewport().size_changed.connect(_update_ui_layout)
 	_update_ui_layout()
 	_show_boot_sequence()
@@ -87,9 +87,11 @@ func _input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_J:
 				if _is_game_active():
-					if !_app_state().is_journal_unlocked():
+					if !_app_state().get_projection().journal_unlocked:
 						if m_state == ScreenState.PLAYING:
-							_app_state().set_save_status("The journal will open after you return to Caretaker Lian with the harbor clue.")
+							_app_state().update_world_context({
+								"status": "The journal will open after you return to Caretaker Lian with the harbor clue.",
+							})
 					elif m_state == ScreenState.JOURNAL:
 						_resume_gameplay()
 					elif m_state == ScreenState.PLAYING:
@@ -262,8 +264,8 @@ func _show_boot_sequence() -> void:
 
 func _show_title() -> void:
 	_replace_route(ScreenState.TITLE)
-	_refresh_story_save_state(_app_state().get_story_save_metadata())
-	_app_state().set_mode("Title")
+	_refresh_story_save_state(_app_state().get_save_metadata())
+	_app_state().enter_title_mode()
 
 
 func _ensure_game_loaded() -> void:
@@ -296,8 +298,8 @@ func _discard_game_loaded() -> void:
 func _begin_gameplay(is_free_walk: bool, is_continue: bool = false) -> void:
 	_discard_game_loaded()
 	if is_continue:
-		if !_app_state().configure_continue():
-			_refresh_story_save_state(_app_state().get_story_save_metadata())
+		if !_app_state().resume_story():
+			_refresh_story_save_state(_app_state().get_save_metadata())
 			_show_title()
 			_show_confirm(
 				"Continue Unavailable",
@@ -306,32 +308,37 @@ func _begin_gameplay(is_free_walk: bool, is_continue: bool = false) -> void:
 			)
 			return
 	elif is_free_walk:
-		_app_state().configure_free_walk()
+		_app_state().start_free_walk()
 	else:
-		_app_state().configure_new_game()
+		_app_state().start_new_story()
 
-	_refresh_story_save_state(_app_state().get_story_save_metadata())
+	_refresh_story_save_state(_app_state().get_save_metadata())
 	_ensure_game_loaded()
 	if m_game_root.has_method("sync_ui_state"):
 		m_game_root.call("sync_ui_state")
 
 	_replace_route(ScreenState.PLAYING)
-	if bool(_app_state().endgame_state.get("active", false)):
+	if bool(_app_state().get_projection().endgame_state.get("active", false)):
 		call_deferred("_open_overlay", ScreenState.ENDING)
 
 
 func _open_overlay(new_state: int) -> void:
 	if !_is_game_active():
 		return
-	if new_state == ScreenState.JOURNAL and !_app_state().is_journal_unlocked():
-		_app_state().set_save_status("The journal will open after you return to Caretaker Lian with the harbor clue.")
+	if new_state == ScreenState.JOURNAL and !_app_state().get_projection().journal_unlocked:
+		_app_state().update_world_context({
+			"status": "The journal will open after you return to Caretaker Lian with the harbor clue.",
+		})
 		return
 	if new_state == ScreenState.JOURNAL:
 		_refresh_journal_content()
 	elif new_state == ScreenState.ENDING:
 		_refresh_ending_content()
 	if new_state == ScreenState.PAUSE:
-		m_pause_panel.call("set_journal_enabled", _app_state().is_journal_unlocked())
+		m_pause_panel.call(
+			"set_journal_enabled",
+			_app_state().get_projection().journal_unlocked
+		)
 	_push_route(new_state)
 
 
@@ -391,8 +398,8 @@ func _return_to_title() -> void:
 
 
 func _complete_story_departure() -> void:
-	_app_state().clear_story_autosave()
-	_app_state().set_mode("Title")
+	_app_state().clear_story_save()
+	_app_state().enter_title_mode()
 	_discard_game_loaded()
 	_open_departure_panel()
 
@@ -524,8 +531,8 @@ func _is_game_active() -> bool:
 
 
 func _persist_story_session() -> void:
-	if _app_state().mode == "Story":
-		_app_state().save_story_autosave()
+	if _app_state().get_projection().mode_id == AppStateSnapshot.MODE_STORY:
+		_app_state().request_autosave()
 
 
 func _refresh_story_save_state(metadata: Dictionary) -> void:
@@ -587,8 +594,9 @@ func _on_story_milestone(milestone_id: String, _context: Dictionary) -> void:
 		_open_overlay(ScreenState.ENDING)
 
 
-func _on_story_save_metadata_changed(metadata: Dictionary) -> void:
-	_refresh_story_save_state(metadata)
+func _on_state_committed(changes: AppStateChangeSet) -> void:
+	if changes.has_domain(AppStateChangeSet.Domain.SAVE):
+		_refresh_story_save_state(_app_state().get_save_metadata())
 
 
 func _on_melody_prompt_requested(request: Dictionary) -> void:

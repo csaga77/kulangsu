@@ -6,19 +6,40 @@ const STORY_EVENT_CATALOG_SCRIPT := preload("res://game/story_event_catalog.gd")
 const STORY_EFFECT_SCHEMA_SCRIPT := preload("res://game/story_effect_schema.gd")
 const LANDMARK_SUBJECT_PREFIX := "landmark:"
 
-var m_runtime: StoryEventRuntimePort = null
+var m_runtime = null
 var m_subject_binding_index: Dictionary = {}
 var m_subject_metadata_index: Dictionary = {}
 var m_world_event_binding_index: Dictionary = {}
 var m_effect_validation_context: Dictionary = {}
 
+static var s_subject_binding_index: Dictionary = {}
+static var s_subject_metadata_index: Dictionary = {}
+static var s_world_event_binding_index: Dictionary = {}
+static var s_effect_validation_context: Dictionary = {}
 
-func _init(runtime: StoryEventRuntimePort) -> void:
+
+func _init(runtime) -> void:
 	m_runtime = runtime
-	m_subject_binding_index = STORY_EVENT_CATALOG_SCRIPT.build_subject_binding_index()
-	m_subject_metadata_index = STORY_EVENT_CATALOG_SCRIPT.build_subject_metadata_index()
-	m_world_event_binding_index = STORY_EVENT_CATALOG_SCRIPT.build_world_event_binding_index()
-	m_effect_validation_context = STORY_EFFECT_SCHEMA_SCRIPT.build_validation_context()
+	_initialize_shared_indexes()
+	m_subject_binding_index = s_subject_binding_index
+	m_subject_metadata_index = s_subject_metadata_index
+	m_world_event_binding_index = s_world_event_binding_index
+	m_effect_validation_context = s_effect_validation_context
+
+
+func detach_runtime() -> void:
+	m_runtime = null
+
+
+static func _initialize_shared_indexes() -> void:
+	if s_subject_binding_index.is_empty():
+		s_subject_binding_index = STORY_EVENT_CATALOG_SCRIPT.build_subject_binding_index()
+	if s_subject_metadata_index.is_empty():
+		s_subject_metadata_index = STORY_EVENT_CATALOG_SCRIPT.build_subject_metadata_index()
+	if s_world_event_binding_index.is_empty():
+		s_world_event_binding_index = STORY_EVENT_CATALOG_SCRIPT.build_world_event_binding_index()
+	if s_effect_validation_context.is_empty():
+		s_effect_validation_context = STORY_EFFECT_SCHEMA_SCRIPT.build_validation_context()
 
 
 func build_context(subject_id: String = "", extra_context: Dictionary = {}) -> Dictionary:
@@ -281,7 +302,7 @@ func matches_conditions(conditions_value: Variant, context: Dictionary = {}) -> 
 			var progress_requirements = required_progress_entries[landmark_id_value]
 			if !(progress_requirements is Dictionary):
 				continue
-			var progress := m_runtime.get_landmark_progress(landmark_id)
+			var progress: Dictionary = m_runtime.get_landmark_progress(landmark_id)
 			for progress_key_value in progress_requirements.keys():
 				var progress_key := String(progress_key_value)
 				var required_entries: Array[String] = _normalize_string_array(progress_requirements[progress_key_value])
@@ -297,7 +318,7 @@ func matches_conditions(conditions_value: Variant, context: Dictionary = {}) -> 
 			var count_requirements = minimum_progress_counts[landmark_id_value]
 			if !(count_requirements is Dictionary):
 				continue
-			var progress := m_runtime.get_landmark_progress(landmark_id)
+			var progress: Dictionary = m_runtime.get_landmark_progress(landmark_id)
 			for progress_key_value in count_requirements.keys():
 				var progress_key := String(progress_key_value)
 				if _progress_value_count(progress.get(progress_key, null)) < int(count_requirements[progress_key_value]):
@@ -310,7 +331,7 @@ func matches_conditions(conditions_value: Variant, context: Dictionary = {}) -> 
 			var field_requirements = required_progress_fields[landmark_id_value]
 			if !(field_requirements is Dictionary):
 				continue
-			var progress := m_runtime.get_landmark_progress(landmark_id)
+			var progress: Dictionary = m_runtime.get_landmark_progress(landmark_id)
 			for field_name_value in field_requirements.keys():
 				var field_name := String(field_name_value)
 				if !_matches_expected_value(progress.get(field_name, null), field_requirements[field_name_value]):
@@ -320,7 +341,7 @@ func matches_conditions(conditions_value: Variant, context: Dictionary = {}) -> 
 	if required_melodies is Dictionary:
 		for melody_id_value in required_melodies.keys():
 			var melody_id := String(melody_id_value)
-			var melody_state := m_runtime.get_melody_state(melody_id)
+			var melody_state: Dictionary = m_runtime.get_melody_state(melody_id)
 			if String(melody_state.get("state", "unknown")) != String(required_melodies[melody_id_value]):
 				return false
 
@@ -331,7 +352,7 @@ func matches_conditions(conditions_value: Variant, context: Dictionary = {}) -> 
 			var field_requirements = required_melody_fields[melody_id_value]
 			if !(field_requirements is Dictionary):
 				continue
-			var melody_state := m_runtime.get_melody_state(melody_id)
+			var melody_state: Dictionary = m_runtime.get_melody_state(melody_id)
 			for field_name_value in field_requirements.keys():
 				var field_name := String(field_name_value)
 				if !_matches_expected_value(melody_state.get(field_name, null), field_requirements[field_name_value]):
@@ -347,7 +368,7 @@ func matches_conditions(conditions_value: Variant, context: Dictionary = {}) -> 
 	if required_known is Array or required_known is PackedStringArray:
 		for resident_id_value in required_known:
 			var resident_id := String(resident_id_value)
-			var other_resident := m_runtime.get_resident_profile(resident_id)
+			var other_resident: Dictionary = m_runtime.get_resident_profile(resident_id)
 			if !bool(other_resident.get("known", false)):
 				return false
 
@@ -417,7 +438,7 @@ func apply_effects(payload: Dictionary, context: Dictionary = {}) -> void:
 			var append_requirements = landmark_progress_list_append[landmark_id_value]
 			if !(append_requirements is Dictionary):
 				continue
-			var current_progress := m_runtime.get_landmark_progress(landmark_id)
+			var current_progress: Dictionary = m_runtime.get_landmark_progress(landmark_id)
 			if current_progress.is_empty():
 				continue
 			var patched_progress: Dictionary = current_progress.duplicate(true)
@@ -438,7 +459,7 @@ func apply_effects(payload: Dictionary, context: Dictionary = {}) -> void:
 			var progress_patch = landmark_progress_patch[landmark_id_value]
 			if !(progress_patch is Dictionary):
 				continue
-			var current_progress := m_runtime.get_landmark_progress(landmark_id)
+			var current_progress: Dictionary = m_runtime.get_landmark_progress(landmark_id)
 			if current_progress.is_empty():
 				continue
 			var patched_progress: Dictionary = current_progress.duplicate(true)
@@ -596,7 +617,7 @@ func _activate_npc_subject(subject_id: String, context: Dictionary) -> Dictionar
 	var resident_id := _resident_id_from_subject_id(subject_id)
 	if resident_id.is_empty():
 		return {}
-	var result := m_runtime.interact_with_resident(resident_id)
+	var result: Dictionary = m_runtime.interact_with_resident(resident_id)
 	result["subject_id"] = subject_id
 	result["action"] = "talk"
 	result["resident_id"] = resident_id
@@ -981,13 +1002,13 @@ func _progress_value_count(value: Variant) -> int:
 
 
 func _apply_melody_progress_patch(progress_patch: Dictionary) -> void:
-	var next_progress := m_runtime.get_melody_progress()
+	var next_progress: Dictionary = m_runtime.get_melody_progress()
 	for melody_id_value in progress_patch.keys():
 		var melody_id := String(melody_id_value)
 		var patch_value = progress_patch[melody_id_value]
 		if !(patch_value is Dictionary):
 			continue
-		var current_state := m_runtime.get_melody_state(melody_id)
+		var current_state: Dictionary = m_runtime.get_melody_state(melody_id)
 		current_state.merge(patch_value, true)
 		next_progress[melody_id] = current_state
 	m_runtime.set_melody_progress(next_progress)
@@ -1003,8 +1024,8 @@ func _apply_melody_source_award(award: Dictionary) -> void:
 		return
 
 	var counts_as_fragment := bool(award.get("counts_as_fragment", true))
-	var next_progress := m_runtime.get_melody_progress()
-	var previous_melody := m_runtime.get_melody_state(melody_id)
+	var next_progress: Dictionary = m_runtime.get_melody_progress()
+	var previous_melody: Dictionary = m_runtime.get_melody_state(melody_id)
 	var melody_state: Dictionary = previous_melody.duplicate(true)
 	var known_sources: Array[String] = _normalize_string_array(melody_state.get("known_sources", []))
 	var is_new_source: bool = known_sources.find(source_id) < 0
@@ -1064,7 +1085,7 @@ func _sync_festival_stage_availability(notify_player: bool = false) -> void:
 	if m_runtime.get_mode() != "Story":
 		return
 
-	var stage_state := m_runtime.get_landmark_state("festival_stage")
+	var stage_state: String = m_runtime.get_landmark_state("festival_stage")
 	if stage_state == "reward_collected":
 		return
 
@@ -1073,8 +1094,8 @@ func _sync_festival_stage_availability(notify_player: bool = false) -> void:
 	if melody_ready and spring_ready:
 		if stage_state != "available":
 			m_runtime.advance_landmark_state("festival_stage", "available")
-		var next_progress := m_runtime.get_melody_progress()
-		var melody_state := m_runtime.get_melody_state("festival_melody")
+		var next_progress: Dictionary = m_runtime.get_melody_progress()
+		var melody_state: Dictionary = m_runtime.get_melody_state("festival_melody")
 		melody_state["next_lead"] = "Return to the ferry plaza and perform the restored melody at the festival stage."
 		next_progress["festival_melody"] = melody_state
 		m_runtime.set_melody_progress(next_progress)

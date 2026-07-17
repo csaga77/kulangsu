@@ -85,7 +85,7 @@ Responsibilities:
 - data-driven resident spawning and overworld resident presentation
 - lightweight story subjects authored inside the world scene (`StorySubject3D` nodes under the landmark proxies) so route-state changes can surface on world objects as well as in dialogue
 - `ActorSurfaceFollower` owns player grounding and shallow-water seating after the world supplies its actor, terrain, and coordinate adapter
-- `StoryInteractionCoordinator` owns scene-local subject discovery, deterministic proximity selection, inspect/talk hints, and dispatch through `AppState.activate_story_subject`; subjects outside its configured world root are ignored
+- `StoryInteractionCoordinator` owns scene-local subject discovery, deterministic proximity selection, inspect/talk hints, and dispatch through `AppState.activate_story_subject`; it republishes hint context only when the selected subject or committed story state changes, and subjects outside its configured world root are ignored
 - feeding current world context into `AppState`
 
 The 2D overworld (`scenes/game_main.*`) and its extracted helpers (`route_resolver.gd`, `resident_spawner.gd`, `tunnel_context.gd`, `npc_route_debug_drawer.gd`) have been removed. 2D-only behaviors they owned - tunnel interior context, tunnel-resident visibility masking, and routed waypoint travel through tunnels - have no 3D equivalent yet; resident routine overrides are currently validated at the shared-state level only.
@@ -101,6 +101,7 @@ Boundary:
 Primary files:
 
 - [`../game/app_state.gd`](../game/app_state.gd)
+- [`../game/app_state/`](../game/app_state)
 - [`../game/landmarks/`](../game/landmarks)
 - [`../game/melody_catalog.gd`](../game/melody_catalog.gd)
 - [`../game/resident_catalog.gd`](../game/resident_catalog.gd)
@@ -111,7 +112,6 @@ Primary files:
 - [`../game/storylines/`](../game/storylines)
 - [`../game/audio_settings_service.gd`](../game/audio_settings_service.gd)
 - [`../game/resident_interaction_service.gd`](../game/resident_interaction_service.gd)
-- [`../game/runtime_ports/`](../game/runtime_ports)
 - [`../game/resident_system/`](../game/resident_system)
 - [`../game/residents/`](../game/residents)
 - [`../game/player_appearance_catalog.gd`](../game/player_appearance_catalog.gd)
@@ -119,16 +119,19 @@ Primary files:
 
 Responsibilities:
 
-- shared mode, chapter, location, objective, hint, save status, and summary data
-- shared seasonal story state: `season_phase`, `story_day`, `world_hour`, derived `time_of_day`, `route_progress`, `story_flags`, active leads, and endgame state
+- one typed canonical `AppStateSnapshot` for shared session, progression, player, settings, checkpoint, and save-metadata values
+- one cached `AppStateProjection` for chapter/time labels, route progress and leads, fragment totals, display lists, unlocked costumes, ending summary, and UI/world/audio views
 - typed landmark definitions for stable ids, display names, world-node mapping, authored coordinates, resume defaults, audio cues, and initial progress profiles; `AppState`, the StoryEffect schema, and the production world consume the same catalog
 - first-pass generic StoryEvent routing now lives in `game/story_event_service.gd`, composed by `AppState`, while `game/story_event_catalog.gd` now owns the full melody-landmark interaction spine plus its landmark prompt-completion/reward world events: ferry harbor clue and onboarding reward, Trinity cue/chime/reward beats, Bi Shan echoes/chamber/reward, Long Shan entry/checkpoints/exit/reward, Bagua synthesis/reward, and the harbor-stage prompt/performance completion
 - shared melody definitions and melody-progress state used by the journal and future performance systems
 - modular storyline route/event definitions in `game/storylines/`, with `story_route_graph.gd` loading them once into a runtime definition cache and projecting them into route progress, lead selection, display-order-independent route-score gates, canonical story-event availability checks, and endgame-trigger logic
 - resident and player-facing catalog data
-- `AppState` is the single owner of mutable shared runtime state, including player profile/costumes, story time, and audio/text-speed settings. It passes detached snapshots into pure calculators and persistence helpers (`player_profile_service.gd`, `story_time_service.gd`, `audio_settings_service.gd`, `story_save_service.gd`, and `landmark_progression.gd`), while the operation-oriented route, StoryEvent, and resident coordinators receive only typed capability ports from `game/runtime_ports/`.
+- `AppStateService` owns exactly one canonical snapshot and one projection cache. Every semantic command runs against a detached transition, normalizes once, commits once, optionally autosaves once, emits one `state_committed(changes)`, and only then emits queued imperative events.
+- high-frequency world-context calls reject unchanged values before allocating a transition. Detached reducer contexts seed from the committed projection, reuse immutable catalog/index caches, and explicitly detach helper back-references when a command or read calculation finishes.
+- `StoryEventService`, `StoryRouteGraph`, and `ResidentInteractionService` operate on a detached reducer context and never retain the live store, emit public signals, or perform file I/O.
+- `game/app_state/story_save_codec.gd` owns defaults, validation, V1-to-V2 migration, and V2 mapping; `story_save_repository.gd` owns the configurable persistence path and file I/O.
 - resident dialogue and shared StoryEvent effects now consume the route graph's story-event availability API instead of duplicating narrative prerequisite rules through custom resident gates
-- resident routine overrides are now part of shared story state so story effects can temporarily redirect spawn, movement, or behavior through the same `AppState` getters and autosave pipeline the rest of the game already uses
+- resident routine overrides are canonical story state and affect projection-based spawn/movement/behavior configuration. The production 3D world still does not reapply a changed override to an already-spawned resident; that remains a documented feature gap.
 - the app shell now opens the ending overlay from the shared `endgame_started` story milestone instead of relying on the older landmark-only ending assumption
 - lazy resident definition/profile initialization so startup does not eagerly build the full resident runtime just to load the shared state service
 - resident definition resources for appearance, dialogue, routine, and behavior metadata
@@ -138,8 +141,8 @@ Responsibilities:
 
 Boundary:
 
-- `AppState` is for shared UI/progression state. A mutable shared field has one canonical owner there; composed transformation helpers must not mirror it, retain a generic owner reference, reach into private fields/methods, or emit `AppState` signals.
-- `game/runtime_ports/` is the deliberate integration boundary for operation-oriented helpers. Each port exposes only the reads, commands, and notifications needed by one coordinator; the generic `Node` bridge is confined to `AppStatePortBase` and must not leak back into the helpers.
+- `AppState` is for shared UI/progression state. Production callers read detached data through `get_snapshot()` or `get_projection()` and mutate only through semantic commands; direct field access is not part of the contract.
+- Reducers receive only a detached transition context. Runtime-port forwarding and `runtime_*` methods are intentionally absent.
 - `game/landmarks/` owns immutable authored landmark metadata and initial-state presets. Mutable landmark progress remains owned by `AppState`, and interaction rules remain owned by StoryEvents and scene-authored `StorySubject3D` nodes.
 - Do not use `AppState` as a dumping ground for scene-local implementation details.
 

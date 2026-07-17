@@ -68,7 +68,7 @@ Bagua Tower still uses the simpler synthesis trigger plus Suyin follow-up dialog
 - Performance requires the player to be at the melody's `performance_landmark`.
 - The `festival_stage` performance point specifically requires both Bagua alignment and `spring_festival_resolved`, so the harbor performance cannot outrun the seasonal story.
 - A failed recognition attempt is not a fail state. The player retries immediately.
-- Performance state is stored in `AppState.melody_progress[melody_id]["performed"]`.
+- Performance state is canonical in `AppStateSnapshot.melody_progress[melody_id]["performed"]` and read through `AppStateProjection`.
 - The `piano_game` module is a candidate for the full performance interaction but should not be required for the first working version.
 - Free Walk mode should allow performance replay without re-advancing melody state.
 
@@ -78,7 +78,7 @@ Bagua Tower still uses the simpler synthesis trigger plus Suyin follow-up dialog
 - Player opens journal practice before reconstruction: keep the button disabled and do not open the prompt.
 - Player already performed the melody: journal practice can still replay the ordered prompt; the world performance point itself remains hidden once collected.
 - The performance prompt should fail softly if the melody catalog entry is missing. Log a warning and do not crash.
-- Free Walk seeds melody state differently; practice and performance in Free Walk should read from AppState normally but not set story chapter.
+- Free Walk seeds melody state differently; practice and performance read the detached projection and issue semantic commands without setting a canonical chapter.
 
 ## Architecture / Ownership
 

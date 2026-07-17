@@ -47,7 +47,7 @@ The mood should stay calm throughout. There is no timer and no hard fail state. 
 
 - If the player talks to church_caretaker before collecting any cues, her beat 0 fires normally (no gate). Beat 1 fires normally. Beat 2 is gated.
 - If the player collects all three cues without ever talking to church_caretaker, the objective updates to the choir chime first, then back to Mei after the prompt succeeds.
-- If `activate_landmark_trigger` is called with an already-collected cue_id, it is a no-op.
+- Re-activating an already-collected cue subject through `activate_story_subject(...)` is a no-op.
 - If the player presses `R` at the choir chime before all three cues are collected, a status line explains that the phrase still needs every choir cue.
 - If the church reward event is applied more than once (e.g. due to a save/load edge case), `church_bells` is only appended once and fragment counts stay clamped to `fragments_total`.
 - Free Walk should not advance story chapter or set tunnel states differently. Currently it does advance `bi_shan_tunnel` and `long_shan_tunnel` to `available` on resolve — this is acceptable in sandbox mode.
@@ -78,8 +78,8 @@ The mood should stay calm throughout. There is no timer and no hard fail state. 
   - [`../../game/resident_catalog.gd`](../../game/resident_catalog.gd)
   - [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd)
 - Shared state or catalogs:
-  - `AppState.landmark_progress["trinity_church"]`
-  - `AppState.melody_progress["festival_melody"]`
+  - `AppStateSnapshot.landmark_progress["trinity_church"]`, exposed to consumers by `AppStateProjection`
+  - `AppStateSnapshot.melody_progress["festival_melody"]`, exposed to consumers by `AppStateProjection`
 - Related docs:
   - [`../contracts.md`](../contracts.md) — Landmark Progress Contract
   - [`core_melody_loop.md`](core_melody_loop.md)
@@ -88,16 +88,13 @@ The mood should stay calm throughout. There is no timer and no hard fail state. 
 ## Signals / Nodes / Data Flow
 
 - Signals emitted:
-  - `AppState.landmark_progress_changed("trinity_church", progress)` — on any cue collection or state advance
-  - `AppState.melody_hint_shown(text)` — on each cue collection (emitted by the authored cue-collection StoryEvent effects)
-  - `AppState.melody_prompt_requested(request)` — when the choir chime is activated after all three cues are found
-  - `AppState.melody_progress_changed("festival_melody", state)` — on Mei's final arc resolution
-  - `AppState.fragments_changed(found, total)` — on arc resolution (via set_melody_progress)
+  - one `AppState.state_committed(changes)` containing `LANDMARKS` for cue/state changes and `MELODY` on Mei's final resolution
+  - `AppState.melody_hint_shown(text)` and `AppState.melody_prompt_requested(request)` remain imperative events emitted after the commit
 - Signals consumed:
-  - `AppState.landmark_progress_changed` — consumed by each `StorySubject3D` through StoryEvent presence sync
+  - `StorySubject3D` listens to `state_committed` and refreshes its StoryEvent presence from the latest projection
 - Data flow:
   - `ferry_caretaker` beat 0 fires → `_apply_resident_beat` reads `"unlock_landmark": "trinity_church"` → `advance_landmark_state("trinity_church", "available")` → StoryEvent presence rules show cue subjects
-  - Player presses R near a cue → `StoryInteractionCoordinator` selects the scene-local `StorySubject3D` and builds its context → `AppState.activate_story_subject(...)` → authored Trinity cue binding applies shared landmark-progress effects → `landmark_progress_changed`
+  - Player presses R near a cue → `StoryInteractionCoordinator` selects the scene-local `StorySubject3D` and builds its context → `AppState.activate_story_subject(...)` → authored Trinity cue binding applies shared landmark-progress effects → one `state_committed`
   - Player presses R at `ChoirChime` after all cues are found → `StorySubject3D` builds subject context → `AppState.activate_story_subject(...)` → authored Trinity choir-chime binding emits `melody_prompt_requested`
   - Prompt succeeds → `AppState.complete_prompt_request(...)` → `StoryEventService.notify_world_event("prompt_completed:trinity_chime", ...)` → authored Trinity completion binding returns the objective to Mei
   - Player presses R on church_caretaker after the chime settles → `interact_with_resident` → gate passes → beat fires → `_apply_resident_beat` reads `"landmark_reward": "trinity_church"` → `StoryEventService.notify_world_event("landmark_reward:trinity_church", ...)` → melody and landmark state update

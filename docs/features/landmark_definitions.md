@@ -15,7 +15,7 @@ This is an architecture feature rather than a new player-facing mechanic. Existi
 - A landmark included in world navigation must also define a production proxy `NodePath` and authored isometric position.
 - Exactly one definition is the default resume anchor.
 - Named progress profiles currently include `default`, `new_game`, `continue`, and `free_walk`; missing requested profiles fall back to `default`.
-- Built progress dictionaries are deep copies. Runtime mutations belong only to `AppState.landmark_progress`.
+- Built progress dictionaries are deep copies. Canonical runtime mutations belong only to the snapshot committed by `AppStateService`; consumers use detached projections.
 - Story actions, visibility conditions, and reward logic do not belong in `LandmarkDefinition`; they remain in StoryEvents and `StorySubject3D` nodes.
 
 ## Edge Cases

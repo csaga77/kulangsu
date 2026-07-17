@@ -34,7 +34,7 @@
 - Landmark and building scenes own geometry, collision, authored anchor nodes, and visual metadata. They must not apply story effects.
 - `StoryInteractionCoordinator` converts the selected `Area3D` subject into the existing stable subject request and sends it through `AppState`; it only considers subjects below its configured world root.
 - Existing story services own availability, response selection, and effects. No 3D-only fork of story rules is allowed.
-- `AppState` remains the owner of shared progression, location, route, resident-override, and save-facing state.
+- `AppStateService` remains the owner of shared progression, location, resident-override, and save-facing canonical state; the 3D world reads a detached projection and issues semantic world/checkpoint commands.
 - Existing resident definitions remain the source data. `ResidentFactory` may interpret appearance differently for the 3D world, but it must not duplicate identity, dialogue, routine, or story-gate data.
 - `game_world_3d.tscn` owns 3D spawning and composition; `ActorSurfaceFollower` owns grounding policy and `StoryInteractionCoordinator` owns world-to-story interaction wiring.
 

@@ -39,14 +39,8 @@ func _bind_controls() -> void:
 
 
 func _bind_state() -> void:
-	if !_app_state().master_volume_changed.is_connected(_on_master_volume_changed):
-		_app_state().master_volume_changed.connect(_on_master_volume_changed)
-	if !_app_state().music_volume_changed.is_connected(_on_music_volume_changed):
-		_app_state().music_volume_changed.connect(_on_music_volume_changed)
-	if !_app_state().prompt_volume_changed.is_connected(_on_prompt_volume_changed):
-		_app_state().prompt_volume_changed.connect(_on_prompt_volume_changed)
-	if !_app_state().dialogue_text_speed_changed.is_connected(_on_dialogue_text_speed_changed):
-		_app_state().dialogue_text_speed_changed.connect(_on_dialogue_text_speed_changed)
+	if !_app_state().state_committed.is_connected(_on_state_committed):
+		_app_state().state_committed.connect(_on_state_committed)
 
 
 func _refresh_from_state() -> void:
@@ -54,10 +48,11 @@ func _refresh_from_state() -> void:
 	if app_state == null:
 		return
 
-	m_master_slider.set_value_no_signal(app_state.get_master_volume_percent())
-	m_music_slider.set_value_no_signal(app_state.get_music_volume_percent())
-	m_prompt_slider.set_value_no_signal(app_state.get_prompt_volume_percent())
-	m_speech_text_speed_slider.set_value_no_signal(app_state.get_dialogue_text_speed_percent())
+	var projection := app_state.get_projection()
+	m_master_slider.set_value_no_signal(projection.master_volume_percent)
+	m_music_slider.set_value_no_signal(projection.music_volume_percent)
+	m_prompt_slider.set_value_no_signal(projection.prompt_volume_percent)
+	m_speech_text_speed_slider.set_value_no_signal(projection.dialogue_text_speed_percent)
 
 
 func _on_visibility_changed() -> void:
@@ -66,32 +61,33 @@ func _on_visibility_changed() -> void:
 
 
 func _on_master_slider_value_changed(value: float) -> void:
-	_app_state().set_master_volume_percent(value)
+	_commit_setting("master_volume_percent", value)
 
 
 func _on_music_slider_value_changed(value: float) -> void:
-	_app_state().set_music_volume_percent(value)
+	_commit_setting("music_volume_percent", value)
 
 
 func _on_prompt_slider_value_changed(value: float) -> void:
-	_app_state().set_prompt_volume_percent(value)
+	_commit_setting("prompt_volume_percent", value)
 
 
 func _on_speech_text_speed_slider_value_changed(value: float) -> void:
-	_app_state().set_dialogue_text_speed_percent(value)
+	_commit_setting("dialogue_text_speed_percent", value)
 
 
-func _on_master_volume_changed(value: float) -> void:
-	m_master_slider.set_value_no_signal(value)
+func _on_state_committed(changes: AppStateChangeSet) -> void:
+	if changes.has_domain(AppStateChangeSet.Domain.SETTINGS):
+		_refresh_from_state()
 
 
-func _on_music_volume_changed(value: float) -> void:
-	m_music_slider.set_value_no_signal(value)
-
-
-func _on_prompt_volume_changed(value: float) -> void:
-	m_prompt_slider.set_value_no_signal(value)
-
-
-func _on_dialogue_text_speed_changed(value: float, _characters_per_second: float) -> void:
-	m_speech_text_speed_slider.set_value_no_signal(value)
+func _commit_setting(key: String, value: float) -> void:
+	var projection := _app_state().get_projection()
+	var settings := {
+		"master_volume_percent": projection.master_volume_percent,
+		"music_volume_percent": projection.music_volume_percent,
+		"prompt_volume_percent": projection.prompt_volume_percent,
+		"dialogue_text_speed_percent": projection.dialogue_text_speed_percent,
+	}
+	settings[key] = value
+	_app_state().commit_settings(settings)

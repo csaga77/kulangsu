@@ -28,8 +28,9 @@ func _ready() -> void:
 
 
 func refresh_from_state() -> void:
-	var summary: Dictionary = _app_state().ending_summary
-	var endgame: Dictionary = _app_state().endgame_state
+	var projection := _app_state().get_projection()
+	var summary: Dictionary = projection.ending_summary
+	var endgame: Dictionary = projection.endgame_state
 	var trigger_event_id := String(endgame.get("trigger_event_id", ""))
 	var ending_behavior := String(endgame.get("ending_behavior", "end_run"))
 	var tones := String(summary.get("ending_tones", ""))

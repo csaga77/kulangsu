@@ -47,8 +47,8 @@ func _assert_catalog_validation_stays_lazy() -> void:
 
 
 func _assert_runtime_selection_behaviors() -> void:
-	_app_state().configure_new_game()
-	_app_state().set_location("Ferry Plaza")
+	_app_state().start_new_story()
+	_app_state().update_world_context({"location": "Ferry Plaza"})
 
 	var manager: BgmManager = BGM_MANAGER_SCRIPT.new()
 	add_child(manager)
