@@ -60,7 +60,7 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
   low-poly building generated through the Low-Poly Building Editor API and
   instanced by the production 3D runtime. `game_world_3d` owns its placement and
   stable story subject.
-- The reproducible 3D generator uses the current typed factory contract and targets roughly one-tenth of the previous authored-node detail. Its authored X and Z footprint dimensions are each halved, producing exactly one-quarter of the prior ground area while preserving room heights, construction thicknesses, and an identity `Building3D` root transform. The simplified assembly keeps the straight main block, brick end bays, central entrances, flat and hip roof composition, curved rear terrace, three monumental columns, octagonal roof terrace, 16-sided drum, and faceted red dome. It writes separate straight-front and curved-facade previews for visual review.
+- The reproducible 3D generator uses the current typed factory contract and authors 207 editable nodes. Its authored X and Z footprint dimensions are each halved, producing exactly one-quarter of the source-scale ground area while preserving room heights, construction thicknesses, and an identity `Building3D` root transform. The reference-led assembly includes two brick wings, two gallery levels, a bowed five-column portico and broad curved steps, flat and hip terracotta roofs, an octagonal upper terrace and parapet, a 16-sided arched drum, and a faceted red dome. It writes separate straight-front and curved-facade previews for visual review.
 
 ## Relevant Files
 

@@ -111,14 +111,19 @@ func _build_reference_scene() -> Building3DScript:
 	)
 	building.set_meta(
 		"design_source",
-		"user-provided Bagua Tower reference photo and front elevation"
+		"user-provided Bagua Tower front-elevation reference photo"
 	)
 	building.set_meta(
 		"design_notes",
-		"Simplified reference-led massing with normal-size rooms, a curved veranda, octagonal roof terrace, drum, and red dome."
+		"Reference-led low-poly massing with two brick wings, two-level galleries, a bowed classical portico, terracotta terraces, an octagonal upper platform, an arched drum, and a red dome."
 	)
 
-	_add_simplified_building(building)
+	_add_base_and_stairs(building)
+	_add_main_storeys(building)
+	_add_portico(building)
+	_add_roofs_and_upper_storey(building)
+	_add_drum(building)
+	_add_dome(building)
 	building.refresh_building_geometry_clips()
 	return building
 
@@ -865,7 +870,7 @@ func _add_drum(building: Building3DScript) -> void:
 		building,
 		"DrumLowerRing",
 		Vector3(center.x, 8.56, center.z),
-		2.96,
+		_scaled_horizontal_length(2.96),
 		0.18,
 		"round",
 		STONE,
@@ -899,7 +904,7 @@ func _add_drum(building: Building3DScript) -> void:
 		building,
 		"DrumUpperRing",
 		Vector3(center.x, 11.18, center.z),
-		2.98,
+		_scaled_horizontal_length(2.98),
 		0.22,
 		"round",
 		CREAM,
