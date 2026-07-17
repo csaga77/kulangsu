@@ -113,6 +113,7 @@ func _build_app_shell() -> void:
 	m_viewport_root = Control.new()
 	m_viewport_root.name = "ViewportRoot"
 	m_viewport_root.process_mode = Node.PROCESS_MODE_ALWAYS
+	m_viewport_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	m_viewport_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	ui_layer.add_child(m_viewport_root)
 
@@ -124,6 +125,7 @@ func _build_app_shell() -> void:
 	m_ui_root = Control.new()
 	m_ui_root.name = "Root"
 	m_ui_root.process_mode = Node.PROCESS_MODE_ALWAYS
+	m_ui_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	m_ui_root.position = Vector2.ZERO
 	m_ui_root.custom_minimum_size = UI_DESIGN_SIZE
 	m_ui_root.size = UI_DESIGN_SIZE
@@ -149,6 +151,7 @@ func _build_app_shell() -> void:
 	m_player_setup_panel.connect("cancel_requested", _on_player_setup_cancelled)
 
 	m_hud = HUD_SCENE.instantiate() as Control
+	_set_control_tree_mouse_passthrough(m_hud)
 	m_ui_root.add_child(m_hud)
 
 	m_journal_panel = JOURNAL_SCENE.instantiate() as PanelContainer
@@ -235,6 +238,14 @@ func _build_app_shell() -> void:
 		&"departure": m_departure_panel,
 		&"confirm": m_confirm_panel,
 	}
+
+
+func _set_control_tree_mouse_passthrough(root_control: Control) -> void:
+	root_control.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for node in root_control.find_children("*", "Control", true, false):
+		var child_control := node as Control
+		if child_control != null:
+			child_control.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 func _update_ui_layout() -> void:

@@ -150,6 +150,8 @@ Current bindings already implied by [`../project.godot`](../project.godot):
 - Walk modifier
 - Jump
 - Inspect
+- Orbit camera around the player: hold the right mouse button and drag horizontally
+- Zoom camera: mouse wheel
 
 ### Accessibility
 

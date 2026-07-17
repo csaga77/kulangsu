@@ -5,6 +5,7 @@ const APP_SCREEN_ROUTER_SCRIPT := preload("res://ui/app_screen_router.gd")
 const ScreenState = APP_SCREEN_ROUTER_SCRIPT.ScreenState
 
 var m_failures := PackedStringArray()
+var m_unhandled_mouse_motion_count := 0
 
 
 func _ready() -> void:
@@ -37,6 +38,7 @@ func _run() -> void:
 	shell.call("_replace_route", ScreenState.PLAYING)
 	_assert_shell_state(shell, "Gameplay route", ScreenState.PLAYING, false, false, false, false, true)
 	_assert_true("Gameplay route shows the world", fake_game_root.visible)
+	await _assert_gameplay_mouse_passthrough(shell)
 
 	shell.call("_open_overlay", ScreenState.PAUSE)
 	_assert_shell_state(shell, "Pause route", ScreenState.PAUSE, false, false, false, true, true, true)
@@ -90,6 +92,50 @@ func _assert_shell_state(
 func _panel_visible(shell: Node, property_name: String) -> bool:
 	var panel := shell.get(property_name) as CanvasItem
 	return panel != null and panel.visible
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		m_unhandled_mouse_motion_count += 1
+
+
+func _assert_gameplay_mouse_passthrough(shell: Node) -> void:
+	var viewport_root := shell.get("m_viewport_root") as Control
+	var ui_root := shell.get("m_ui_root") as Control
+	var hud := shell.get("m_hud") as Control
+	_assert_true(
+		"Gameplay viewport root passes mouse input to the world",
+		viewport_root != null and viewport_root.mouse_filter == Control.MOUSE_FILTER_IGNORE
+	)
+	_assert_true(
+		"Gameplay UI root passes mouse input to the world",
+		ui_root != null and ui_root.mouse_filter == Control.MOUSE_FILTER_IGNORE
+	)
+	_assert_true(
+		"Gameplay HUD passes mouse input to the world",
+		hud != null and _control_tree_ignores_mouse(hud)
+	)
+
+	var previous_motion_count := m_unhandled_mouse_motion_count
+	var motion := InputEventMouseMotion.new()
+	motion.position = get_viewport().get_visible_rect().size * 0.5
+	motion.relative = Vector2(12.0, 0.0)
+	Input.parse_input_event(motion)
+	await get_tree().process_frame
+	_assert_true(
+		"Gameplay mouse motion reaches the unhandled world-input stage",
+		m_unhandled_mouse_motion_count > previous_motion_count
+	)
+
+
+func _control_tree_ignores_mouse(root_control: Control) -> bool:
+	if root_control.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+		return false
+	for node in root_control.find_children("*", "Control", true, false):
+		var child_control := node as Control
+		if child_control != null and child_control.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+			return false
+	return true
 
 
 func _assert_true(label: String, condition: bool) -> void:
