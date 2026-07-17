@@ -9,6 +9,8 @@ var m_failures: Array[String] = []
 var m_mask_path := OS.get_temp_dir().path_join("kulangsu_street_mask_generation.png")
 var m_heightmap_path := OS.get_temp_dir().path_join("kulangsu_street_mask_heightmap.png")
 var m_diagonal_mask_path := OS.get_temp_dir().path_join("kulangsu_street_mask_diagonal.png")
+var m_initial_junction_ids := PackedStringArray()
+var m_initial_segment_ids := PackedStringArray()
 
 
 func _ready() -> void:
@@ -77,7 +79,7 @@ func _validate_generated_streets(terrain: LowPolyTerrain3DScript) -> void:
 	if int(summary.get("mask_path_count", 0)) <= 0:
 		m_failures.append("Terrain generation did not extract centerline paths from STREET cells")
 	if int(summary.get("generated_source_count", 0)) <= 0:
-		m_failures.append("Terrain generation did not instantiate Street3D from extracted paths")
+		m_failures.append("Terrain generation did not instantiate StreetNetwork3D from extracted paths")
 	if int(summary.get("core_cells", 0)) <= 0:
 		m_failures.append("Generated mask streets did not shape their terrain corridors")
 	if terrain.get_node_or_null("StreetMesh") != null:
@@ -86,15 +88,27 @@ func _validate_generated_streets(terrain: LowPolyTerrain3DScript) -> void:
 	if root == null or root.get_child_count() <= 0:
 		m_failures.append("Terrain is missing its GeneratedStreets assembly")
 		return
+	var network := _generated_network(root)
+	if network == null:
+		m_failures.append("GeneratedStreets does not contain its canonical StreetNetwork3D")
+		return
+	m_initial_junction_ids = PackedStringArray()
+	for junction: StreetJunctionData in network.network_data.junctions:
+		m_initial_junction_ids.append(junction.stable_id)
+	m_initial_segment_ids = PackedStringArray()
+	for segment: StreetSegmentData in network.network_data.segments:
+		m_initial_segment_ids.append(segment.stable_id)
 	var has_mesh := false
 	var has_bend := false
 	var has_intersection_geometry := false
-	for child in root.get_children():
+	for child in network.get_children():
 		if child is MeshInstance3D and (child as MeshInstance3D).mesh != null:
 			has_mesh = true
-		var path: PackedVector3Array = child.get("path_points")
-		if path.size() >= 3:
-			has_bend = true
+		if child is Street3D:
+			var segment_id := String(child.get_meta(network.SEGMENT_ID_META, ""))
+			var segment := network.network_data.find_segment(segment_id)
+			if segment != null and segment.polyline_points.size() >= 3:
+				has_bend = true
 		if child.has_method("get_intersection_cuts") and !child.call("get_intersection_cuts").is_empty():
 			has_intersection_geometry = true
 		if child.has_method("get_end_joins") and !child.call("get_end_joins").is_empty():
@@ -105,7 +119,7 @@ func _validate_generated_streets(terrain: LowPolyTerrain3DScript) -> void:
 		m_failures.append("The bent STREET mask did not produce a multipoint street path")
 	if !has_intersection_geometry:
 		m_failures.append("Generated STREET junction paths did not merge their sibling geometry")
-	_validate_shared_endpoint_junctions(root, "Generated STREET fixture")
+	_validate_shared_endpoint_junctions(network, "Generated STREET fixture")
 
 
 func _validate_rebuild_replaces_streets(terrain: LowPolyTerrain3DScript) -> void:
@@ -115,6 +129,17 @@ func _validate_rebuild_replaces_streets(terrain: LowPolyTerrain3DScript) -> void
 		return
 	if root.get_child_count() != int(terrain.get_street_integration_summary().get("generated_source_count", -1)):
 		m_failures.append("Terrain rebuild left stale generated street nodes")
+	var network := _generated_network(root)
+	if network == null:
+		return
+	var junction_ids := PackedStringArray()
+	for junction: StreetJunctionData in network.network_data.junctions:
+		junction_ids.append(junction.stable_id)
+	var segment_ids := PackedStringArray()
+	for segment: StreetSegmentData in network.network_data.segments:
+		segment_ids.append(segment.stable_id)
+	if junction_ids != m_initial_junction_ids or segment_ids != m_initial_segment_ids:
+		m_failures.append("Mask regeneration did not preserve deterministic network IDs")
 
 
 func _validate_reuse_preserves_streets(terrain: LowPolyTerrain3DScript) -> void:
@@ -148,33 +173,32 @@ func _validate_reuse_preserves_streets(terrain: LowPolyTerrain3DScript) -> void:
 
 
 func _validate_geometry_not_stored(terrain: LowPolyTerrain3DScript) -> void:
-	# The scene stores only the street definition (centerline points, sampled
-	# height profile, authored properties); the mesh geometry is dropped on save
-	# and rebuilt from that definition on load. Verify the definition is present
-	# and that the mesh reconstructs from it once the geometry is cleared.
+	# StreetNetworkData is the authored definition. Generated segment meshes are
+	# caches and must reconstruct exactly from the serialized graph/profile.
 	var root := terrain.get_node_or_null("GeneratedStreets")
 	if root == null or root.get_child_count() <= 0:
 		m_failures.append("No generated streets to check geometry persistence")
 		return
-	var street := root.get_child(0)
-	var path: PackedVector3Array = street.get("path_points")
-	var profile: Array = street.get("profile_points")
-	if path.size() < 2:
-		m_failures.append("Generated street did not retain its centerline points")
-	if profile.size() < 2:
-		m_failures.append("Generated street did not retain its sampled height profile")
-	var mesh_before := street.get("mesh") as ArrayMesh
+	var network := _generated_network(root)
+	if network == null or network.network_data.segments.is_empty():
+		m_failures.append("Generated street network did not retain segment definitions")
+		return
+	var segment := network.network_data.segments[0]
+	if segment.terrain_profile.size() < 2:
+		m_failures.append("Generated segment did not retain its sampled height profile")
+	var street := _segment_node(network, segment.stable_id)
+	if street == null:
+		m_failures.append("Generated network did not retain its segment mesh cache")
+		return
+	var mesh_before := street.mesh as ArrayMesh
 	if mesh_before == null or mesh_before.get_surface_count() <= 0:
 		m_failures.append("Generated street has no baked mesh to start from")
 		return
 	var vertices_before := int(mesh_before.surface_get_arrays(0)[Mesh.ARRAY_VERTEX].size())
 
-	# Simulate the save-time geometry drop, then load-time reconstruction.
-	terrain._strip_generated_street_meshes_for_save()
-	if street.get("mesh") != null:
-		m_failures.append("Save-time strip did not drop the generated street mesh")
-	street.call("rebuild_street_mesh")
-	var mesh_after := street.get("mesh") as ArrayMesh
+	street.mesh = null
+	street.rebuild_street_mesh()
+	var mesh_after := street.mesh as ArrayMesh
 	if mesh_after == null or mesh_after.get_surface_count() <= 0:
 		m_failures.append("Generated street did not rebuild its mesh from the stored profile")
 	else:
@@ -184,7 +208,6 @@ func _validate_geometry_not_stored(terrain: LowPolyTerrain3DScript) -> void:
 				"Mesh rebuilt from the stored profile differs from the original (%d vs %d vertices)"
 				% [vertices_after, vertices_before]
 			)
-	terrain._restore_generated_street_meshes_after_save()
 
 
 func _validate_diagonal_stays_straight() -> void:
@@ -234,11 +257,17 @@ func _validate_diagonal_stays_straight() -> void:
 		m_failures.append("Diagonal mask did not generate any streets")
 		terrain.queue_free()
 		return
+	var network := _generated_network(root)
 	var longest: PackedVector3Array = PackedVector3Array()
-	for child in root.get_children():
-		var path: PackedVector3Array = child.get("path_points")
-		if path.size() > longest.size():
-			longest = path
+	if network != null:
+		for segment: StreetSegmentData in network.network_data.segments:
+			var start_junction := network.network_data.find_junction(segment.start_junction_id)
+			var end_junction := network.network_data.find_junction(segment.end_junction_id)
+			var path := segment.polyline_points
+			if path.size() < 2 and start_junction != null and end_junction != null:
+				path = PackedVector3Array([start_junction.position, end_junction.position])
+			if path.size() > longest.size():
+				longest = path
 	if longest.size() < 2:
 		m_failures.append("Diagonal mask produced no usable street path")
 	elif longest.size() > 2:
@@ -276,15 +305,16 @@ func _validate_real_island_generation() -> void:
 	if int(summary.get("mask_path_count", 0)) <= 0:
 		m_failures.append("Real island generation did not extract STREET paths")
 	if int(summary.get("generated_source_count", 0)) <= 0:
-		m_failures.append("Real island generation did not create Street3D sources")
+		m_failures.append("Real island generation did not create a StreetNetwork3D source")
 
 	var root := terrain.get_node_or_null("GeneratedStreets")
 	if root == null:
 		m_failures.append("Real island generation is missing GeneratedStreets")
 	else:
+		var network := _generated_network(root)
 		var visible_street_count := 0
 		var stair_segment_count := 0
-		for street in root.get_children():
+		for street in network.get_children() if network != null else []:
 			if street is MeshInstance3D and (street as MeshInstance3D).mesh != null:
 				visible_street_count += 1
 			if street.has_method("get_last_build_stats"):
@@ -294,11 +324,26 @@ func _validate_real_island_generation() -> void:
 			m_failures.append("Real island Street3D sources have no visible meshes")
 		if stair_segment_count <= 0:
 			m_failures.append("Real island slopes did not generate street stair segments")
-		_validate_shared_endpoint_junctions(root, "Real island")
+		if network != null:
+			_validate_shared_endpoint_junctions(network, "Real island")
 	terrain.queue_free()
 
 
-func _validate_shared_endpoint_junctions(root: Node, label: String) -> void:
+func _validate_shared_endpoint_junctions(network: StreetNetwork3D, label: String) -> void:
+	var explicit_junction_count := 0
+	for junction: StreetJunctionData in network.network_data.junctions:
+		if network.network_data.incident_segments(junction.stable_id).size() < 3:
+			continue
+		explicit_junction_count += 1
+		var junction_node := _junction_node(network, junction.stable_id)
+		if junction_node == null or junction_node.mesh == null:
+			m_failures.append("%s junction %s has no dedicated junction mesh" % [label, junction.stable_id])
+	if explicit_junction_count <= 0:
+		m_failures.append("%s did not produce an explicit multi-road junction" % label)
+	return
+
+
+func _validate_legacy_shared_endpoint_junctions(root: Node, label: String) -> void:
 	var ends: Array[Dictionary] = []
 	for street in root.get_children():
 		if !street.has_method("get_geometry_profile") or !street.has_method("get_end_joins"):
@@ -341,6 +386,30 @@ func _validate_shared_endpoint_junctions(root: Node, label: String) -> void:
 				)
 	if junction_count <= 0:
 		m_failures.append("%s did not produce a shared-endpoint street junction" % label)
+
+
+func _generated_network(root: Node) -> StreetNetwork3D:
+	for child in root.get_children():
+		if child is StreetNetwork3D:
+			return child
+	return null
+
+
+func _segment_node(network: StreetNetwork3D, segment_id: String) -> Street3D:
+	for child in network.get_children():
+		if child is Street3D and String(child.get_meta(network.SEGMENT_ID_META, "")) == segment_id:
+			return child
+	return null
+
+
+func _junction_node(network: StreetNetwork3D, junction_id: String) -> StreetJunction3D:
+	for child in network.get_children():
+		if (
+			child is StreetJunction3D
+			and String(child.get_meta(network.JUNCTION_ID_META, "")) == junction_id
+		):
+			return child
+	return null
 
 
 func _finish() -> void:

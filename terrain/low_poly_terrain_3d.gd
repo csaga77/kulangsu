@@ -19,6 +19,12 @@ const GENERATED_STREET_META := &"low_poly_terrain_generated_street"
 const GENERATED_STREET_ROOT_META := &"low_poly_terrain_generated_street_root"
 const GENERATED_STREET_ROOT_NAME := &"GeneratedStreets"
 const STREET_3D_SCRIPT_PATH := "res://addons/low_poly_building_editor/streets/street_3d.gd"
+const STREET_NETWORK_3D_SCRIPT_PATH := (
+	"res://addons/low_poly_building_editor/streets/street_network_3d.gd"
+)
+const STREET_SECTION_PROFILE_SCRIPT_PATH := (
+	"res://addons/low_poly_building_editor/streets/street_section_profile.gd"
+)
 const STREET_GEOMETRY_RESOLVER_SCRIPT_PATH := (
 	"res://addons/low_poly_building_editor/streets/street_geometry_resolver.gd"
 )
@@ -584,11 +590,16 @@ func _integrate_street_generation(
 					source.call("restore_native_transform_state", previous_state)
 		if source_failed:
 			continue
-		if !source.has_method("get_world_terrain_corridor"):
-			continue
-		var corridor: Variant = source.call("get_world_terrain_corridor")
-		if corridor is Dictionary and !(corridor as Dictionary).is_empty():
-			corridors.append(corridor)
+		if source.has_method("get_world_terrain_corridors"):
+			var source_corridors: Variant = source.call("get_world_terrain_corridors")
+			if source_corridors is Array:
+				for corridor_value: Variant in source_corridors:
+					if corridor_value is Dictionary and !(corridor_value as Dictionary).is_empty():
+						corridors.append(corridor_value)
+		elif source.has_method("get_world_terrain_corridor"):
+			var corridor: Variant = source.call("get_world_terrain_corridor")
+			if corridor is Dictionary and !(corridor as Dictionary).is_empty():
+				corridors.append(corridor)
 	m_integrating_streets = false
 	if m_street_integrator == null:
 		m_street_integrator = LowPolyStreetCorridorIntegratorScript.new()
@@ -642,9 +653,10 @@ func _generate_streets_from_mask(grid: Array[Array]) -> Dictionary:
 	summary["mask_path_count"] = paths.size()
 	if paths.is_empty():
 		return {"sources": sources, "summary": summary}
-	var street_script := load(STREET_3D_SCRIPT_PATH) as GDScript
-	if street_script == null:
-		var missing_script_error := "Street mask paths were found, but Street3D could not be loaded."
+	var network_script := load(STREET_NETWORK_3D_SCRIPT_PATH) as GDScript
+	var profile_script := load(STREET_SECTION_PROFILE_SCRIPT_PATH) as GDScript
+	if network_script == null or profile_script == null:
+		var missing_script_error := "Street mask paths were found, but StreetNetwork3D could not be loaded."
 		generation_errors.append(missing_script_error)
 		push_warning("LowPolyTerrain3D: %s" % missing_script_error)
 		return {"sources": sources, "summary": summary}
@@ -654,44 +666,42 @@ func _generate_streets_from_mask(grid: Array[Array]) -> Dictionary:
 	root.set_meta(GENERATED_STREET_ROOT_META, true)
 	add_child(root)
 	_persist_generated_street(root)
-	for index in range(paths.size()):
-		var street := street_script.new() as Node3D
-		if street == null:
-			generation_errors.append("Could not instantiate generated street path %d." % index)
-			continue
-		street.name = "Street_%03d" % (index + 1)
-		street.set_meta(GENERATED_STREET_META, true)
-		street.set("build_on_ready", false)
-		street.set("generate_collision", generate_collision)
-		street.set("path_points", paths[index])
-		street.set("road_width", generated_street_road_width_cells * cell_size)
-		street.set("kerb_width", maxf(cell_size * 0.06, 0.04))
-		street.set("kerb_height", maxf(cell_size * 0.06, 0.04))
-		street.set("footpath_width", maxf(generated_street_footpath_width_cells * cell_size, 0.05))
-		street.set("terrain_sample_spacing", maxf(cell_size * 0.5, 0.1))
-		street.set("terrain_clearance", maxf(street_lift, 0.015))
-		root.add_child(street)
-		var sample_result: Variant = street.call("resample_terrain", self)
-		var sample_errors := _string_array(sample_result)
-		if !sample_errors.is_empty():
-			# A source heightmap can be steeper than the authoring defaults permit.
-			# Keep the requested 25-degree trigger, but derive the smallest larger
-			# riser needed to make this particular sampled path constructible.
-			_adapt_generated_stair_constraints(street)
-			street.call("rebuild_street_mesh")
-			sample_errors = _string_array(street.call("get_validation_errors"))
-		if !sample_errors.is_empty():
-			generation_errors.append_array(sample_errors)
-			root.remove_child(street)
-			street.queue_free()
-			continue
-		# Bake the street into the scene: build_on_ready lets a later scene load
-		# rebuild collision from the cached mesh without regenerating geometry, and
-		# _persist_generated_street sets owner so the node and its serialized mesh
-		# save into the .tscn.
-		street.set("build_on_ready", true)
-		_persist_generated_street(street)
-		sources.append(street)
+	var network := network_script.new() as Node3D
+	if network == null:
+		generation_errors.append("Could not instantiate the generated street network.")
+		return {"sources": sources, "summary": summary}
+	network.name = "StreetNetwork3D"
+	network.set_meta(GENERATED_STREET_META, true)
+	network.set("build_on_ready", false)
+	network.set("generate_collision", generate_collision)
+	root.add_child(network)
+	_persist_generated_street(network)
+	var section_profile := profile_script.new() as Resource
+	section_profile.set("road_width", generated_street_road_width_cells * cell_size)
+	section_profile.set("left_kerb_width", maxf(cell_size * 0.06, 0.04))
+	section_profile.set("right_kerb_width", maxf(cell_size * 0.06, 0.04))
+	section_profile.set("kerb_height", maxf(cell_size * 0.06, 0.04))
+	section_profile.set(
+		"left_footpath_width",
+		maxf(generated_street_footpath_width_cells * cell_size, 0.05)
+	)
+	section_profile.set(
+		"right_footpath_width",
+		maxf(generated_street_footpath_width_cells * cell_size, 0.05)
+	)
+	section_profile.set("terrain_clearance", maxf(street_lift, 0.015))
+	network.call("add_paths", paths, section_profile, &"mask", true, 0)
+	var sample_result: Variant = network.call("resample_terrain", self)
+	var sample_errors := _string_array(sample_result)
+	if !sample_errors.is_empty():
+		generation_errors.append_array(sample_errors)
+		root.remove_child(network)
+		network.queue_free()
+		return {"sources": sources, "summary": summary}
+	network.call("adapt_stair_constraints", maxf(cell_size * 0.1, 0.05))
+	network.call("rebuild_network")
+	network.set("build_on_ready", true)
+	sources.append(network)
 	summary["generated_source_count"] = sources.size()
 	return {"sources": sources, "summary": summary}
 
@@ -753,7 +763,10 @@ func _collect_street_sources(node: Node, result: Array[Node]) -> void:
 		node != self
 		and node.has_method("is_terrain_street_source")
 		and bool(node.call("is_terrain_street_source"))
-		and node.has_method("get_world_terrain_corridor")
+		and (
+			node.has_method("get_world_terrain_corridor")
+			or node.has_method("get_world_terrain_corridors")
+		)
 	):
 		result.append(node)
 	for child in node.get_children():

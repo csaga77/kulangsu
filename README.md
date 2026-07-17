@@ -25,7 +25,7 @@ No package manager, CI pipeline, or automated test runner is checked into this r
 - [`scenes/`](scenes) - runtime gameplay scenes plus validation scene containers
 - [`terrain/`](terrain) - island terrain scene, terrain generation, and water rendering setup
 - [`resources/`](resources) - audio, sprites, materials, animations, and tilesets
-- [`addons/low_poly_building_editor/`](addons/low_poly_building_editor) - reusable low-poly building and street authoring submodule
+- [`addons/low_poly_building_editor/`](addons/low_poly_building_editor) - reusable low-poly building and design-time street-network authoring submodule
 - [`addons/storyline_editor/`](addons/storyline_editor) - storyline route and dependency editor submodule
 - [`scripts/`](scripts) - repo-local workflow configs and project-specific helper data
 - [`docs/`](docs) - project documentation for humans and coding agents

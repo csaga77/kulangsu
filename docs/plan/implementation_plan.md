@@ -138,6 +138,7 @@ Shipped baseline:
 - `HumanBody3D`, `BaseController3D`, and `PlayerController3D` provide camera-relative XZ movement, animated model locomotion, gravity, floor snap, front-riser stair traversal, tagged stair-side blocking, static-wall sliding, and capped `RigidBody3D` pushing
 - `LowPolyWorldCoordinates3D`, `LowPolyArtStyle3D`, and `Camera3DController` support the production world without scene-local placement math; authored landmark scenes provide runtime massing and collision
 - the Low-Poly Building Editor, versioned `BuildingSpec` generation, authored landmark concepts, and `test_building_tour_3d.tscn` provide the environment-authoring and playable scale-review lane
+- design-time streets now use an explicit `StreetNetwork3D` graph with stable junction/segment resources, adaptive horizontal curves and vertical profiles, asymmetric cross-sections, dedicated multi-road centre geometry, topology-aware placement/editing, deterministic mask conversion, terrain junction footprints, and legacy Street3D migration compatibility
 - three authored landmarks, two tunnel markers, the complete 15-landmark/5-inspectable `StorySubject3D`
   set, the shared resident roster, speech balloons, BGM/landmark cues, and semantic resume anchors are
   assembled by `game_world_3d`
@@ -203,7 +204,7 @@ Execution order:
 Open art/content decisions:
 
 - validate optional character clips beyond `idle`/`walk`/`run` before mapping them to gameplay states
-- decide whether coarse street/building-footprint sampling is the intended style or needs cleaner extraction
+- visually tune the shipped street-network curve/profile defaults and remaining building-footprint sampling after island-scale editor review
 - decide whether resident identity needs additional model/material variants;
   player body-frame/presentation mapping now uses whole-model male/female/boy
   GLB swaps

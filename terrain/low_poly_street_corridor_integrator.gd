@@ -75,14 +75,35 @@ func _local_corridors(terrain: Node3D, corridors: Array[Dictionary]) -> Array[Di
 	var vertical_scale := maxf(absf(terrain_scale.y), EPSILON)
 	for corridor: Dictionary in corridors:
 		var world_path: PackedVector3Array = corridor.get("path", PackedVector3Array())
-		if world_path.size() < 2:
+		if world_path.size() >= 2:
+			var local_path := PackedVector3Array()
+			for world_point in world_path:
+				local_path.append(terrain.to_local(world_point))
+			result.append({
+				"path": local_path,
+				"polygon": PackedVector2Array(),
+				"profile_height": 0.0,
+				"half_width": maxf(float(corridor.get("half_width", 0.0)) / horizontal_scale, 0.0),
+				"bed_depth": maxf(float(corridor.get("bed_depth", 0.01)) / vertical_scale, 0.01),
+			})
 			continue
-		var local_path := PackedVector3Array()
-		for world_point in world_path:
-			local_path.append(terrain.to_local(world_point))
+		var world_polygon: PackedVector3Array = corridor.get(
+			"polygon", PackedVector3Array()
+		)
+		if world_polygon.size() < 3:
+			continue
+		var local_polygon := PackedVector2Array()
+		var profile_height := 0.0
+		for world_point in world_polygon:
+			var local_point := terrain.to_local(world_point)
+			local_polygon.append(Vector2(local_point.x, local_point.z))
+			profile_height += local_point.y
+		profile_height /= float(world_polygon.size())
 		result.append({
-			"path": local_path,
-			"half_width": maxf(float(corridor.get("half_width", 0.0)) / horizontal_scale, 0.0),
+			"path": PackedVector3Array(),
+			"polygon": local_polygon,
+			"profile_height": profile_height,
+			"half_width": 0.0,
 			"bed_depth": maxf(float(corridor.get("bed_depth", 0.01)) / vertical_scale, 0.01),
 		})
 	return result
@@ -104,6 +125,41 @@ func _build_segment_spatial_index(
 		var corridor: Dictionary = local_corridors[corridor_index]
 		var path: PackedVector3Array = corridor["path"]
 		var reach := float(corridor["half_width"]) + feather_width
+		var polygon: PackedVector2Array = corridor.get("polygon", PackedVector2Array())
+		if polygon.size() >= 3:
+			var polygon_segment_index := segments.size()
+			segments.append({
+				"corridor_index": corridor_index,
+				"polygon_fill": true,
+				"polygon": polygon,
+				"profile_height": float(corridor.get("profile_height", 0.0)),
+			})
+			var bounds := _polygon_bounds(polygon).grow(feather_width)
+			var polygon_min_x := clampi(
+				floori((bounds.position.x - origin_offset.x) / safe_cell_size - 0.5),
+				0, grid_size.x - 1
+			)
+			var polygon_max_x := clampi(
+				ceili((bounds.end.x - origin_offset.x) / safe_cell_size - 0.5),
+				0, grid_size.x - 1
+			)
+			var polygon_min_y := clampi(
+				floori((bounds.position.y - origin_offset.z) / safe_cell_size - 0.5),
+				0, grid_size.y - 1
+			)
+			var polygon_max_y := clampi(
+				ceili((bounds.end.y - origin_offset.z) / safe_cell_size - 0.5),
+				0, grid_size.y - 1
+			)
+			for y in range(polygon_min_y, polygon_max_y + 1):
+				for x in range(polygon_min_x, polygon_max_x + 1):
+					var bucket_key := y * grid_size.x + x
+					var bucket: PackedInt32Array = buckets.get(
+						bucket_key, PackedInt32Array()
+					)
+					bucket.append(polygon_segment_index)
+					buckets[bucket_key] = bucket
+			continue
 		for path_index in range(path.size() - 1):
 			var a := path[path_index]
 			var b := path[path_index + 1]
@@ -206,6 +262,8 @@ func _strongest_influence(
 
 
 func _closest_segment_profile(point: Vector2, segment: Dictionary) -> Vector2:
+	if bool(segment.get("polygon_fill", false)):
+		return _closest_polygon_profile(point, segment)
 	var a: Vector2 = segment["a"]
 	var b: Vector2 = segment["b"]
 	var direction := b - a
@@ -218,3 +276,31 @@ func _closest_segment_profile(point: Vector2, segment: Dictionary) -> Vector2:
 		point.distance_to(closest),
 		lerpf(float(segment["a_height"]), float(segment["b_height"]), t)
 	)
+
+
+func _closest_polygon_profile(point: Vector2, segment: Dictionary) -> Vector2:
+	var polygon: PackedVector2Array = segment.get("polygon", PackedVector2Array())
+	if polygon.size() < 3:
+		return Vector2(INF, 0.0)
+	if Geometry2D.is_point_in_polygon(point, polygon):
+		return Vector2(0.0, float(segment.get("profile_height", 0.0)))
+	var closest_distance := INF
+	for index in range(polygon.size()):
+		var a := polygon[index]
+		var b := polygon[(index + 1) % polygon.size()]
+		var closest := Geometry2D.get_closest_point_to_segment(point, a, b)
+		closest_distance = minf(closest_distance, point.distance_to(closest))
+	return Vector2(closest_distance, float(segment.get("profile_height", 0.0)))
+
+
+func _polygon_bounds(polygon: PackedVector2Array) -> Rect2:
+	if polygon.is_empty():
+		return Rect2()
+	var minimum := polygon[0]
+	var maximum := polygon[0]
+	for index in range(1, polygon.size()):
+		minimum.x = minf(minimum.x, polygon[index].x)
+		minimum.y = minf(minimum.y, polygon[index].y)
+		maximum.x = maxf(maximum.x, polygon[index].x)
+		maximum.y = maxf(maximum.y, polygon[index].y)
+	return Rect2(minimum, maximum - minimum)

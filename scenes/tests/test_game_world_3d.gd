@@ -151,14 +151,20 @@ func _check_terrain(failures: Array[String]) -> void:
 		failures.append("runtime terrain retained the obsolete mask-derived StreetMesh")
 	var generated_streets := terrain.get_node_or_null("GeneratedStreets")
 	if generated_streets == null:
-		failures.append("runtime terrain is missing its generated Street3D assembly")
+		failures.append("runtime terrain is missing its generated street-network assembly")
 	else:
-		var visible_street_count := 0
-		for child in generated_streets.get_children():
-			if child is MeshInstance3D and (child as MeshInstance3D).mesh != null:
-				visible_street_count += 1
+		var visible_street_count := _count_visible_street_meshes(generated_streets)
 		if visible_street_count <= 0:
-			failures.append("runtime terrain generated no visible Street3D meshes")
+			failures.append("runtime terrain generated no visible street-network meshes")
+
+
+func _count_visible_street_meshes(node: Node) -> int:
+	var count := 0
+	if node is MeshInstance3D and (node as MeshInstance3D).mesh != null:
+		count += 1
+	for child in node.get_children():
+		count += _count_visible_street_meshes(child)
+	return count
 
 
 func _check_player(failures: Array[String]) -> void:
