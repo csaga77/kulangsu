@@ -16,7 +16,7 @@ Existing profile, skin, hair, color, and costume keys remain accepted and serial
 
 ## Ownership
 
-- `PlayerProfile` and `AppState` own saved player-facing profile data.
+- `AppState` is the single runtime owner of the player profile plus unlocked/equipped costume ids; `PlayerProfile` defines the profile value type and `PlayerProfileService` provides stateless normalization, catalog lookup, and selection transforms.
 - `CharacterModelCatalog3D` owns model selection policy.
 - `HumanBody3D` owns model instancing, grounding, scale, facing, and locomotion animation.
 - Customization and journal UI collect/display supported choices; they do not implement rendering rules.
@@ -28,5 +28,6 @@ Add a validated integrated GLB under `assets/characters/`, then extend `Characte
 ## Validation
 
 - `ui/screens/tests/test_player_customization_overlay.tscn` validates the 3D preview, hidden unsupported controls, and model mapping.
+- `game/tests/state/test_app_state_ownership.tscn` validates canonical profile/costume ownership, detached profile reads, and one signal per committed change.
 - `characters/tests/test_human_body_3d.tscn` validates model structure and locomotion clips.
 - `scenes/tests/test_game_world_3d.tscn` validates the production player model and world integration.

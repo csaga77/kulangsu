@@ -11,89 +11,40 @@ const DEFAULT_DIALOGUE_TEXT_CHARACTERS_PER_SECOND := 120.0
 const MIN_DIALOGUE_TEXT_SPEED_PERCENT := 25.0
 const MAX_DIALOGUE_TEXT_SPEED_PERCENT := 200.0
 
-var m_owner: Node = null
-var m_master_volume_percent := DEFAULT_MASTER_VOLUME_PERCENT
-var m_music_volume_percent := DEFAULT_MUSIC_VOLUME_PERCENT
-var m_prompt_volume_percent := DEFAULT_PROMPT_VOLUME_PERCENT
-var m_dialogue_text_speed_percent := DEFAULT_DIALOGUE_TEXT_SPEED_PERCENT
+
+func apply_runtime_settings(master_volume_percent: float, music_volume_percent: float) -> void:
+	apply_master_volume(master_volume_percent)
+	apply_music_volume(music_volume_percent)
 
 
-func _init(owner: Node) -> void:
-	m_owner = owner
+func normalize_volume_percent(value: float) -> float:
+	return clampf(value, 0.0, 100.0)
 
 
-func apply_runtime_settings() -> void:
-	_apply_bus_volume(MASTER_BUS_NAME, m_master_volume_percent)
-	_apply_bus_volume(BGM_BUS_NAME, m_music_volume_percent)
-
-
-func get_master_volume_percent() -> float:
-	return m_master_volume_percent
-
-
-func set_master_volume_percent(new_percent: float) -> void:
-	var normalized_percent := clampf(new_percent, 0.0, 100.0)
-	if is_equal_approx(m_master_volume_percent, normalized_percent):
-		return
-
-	m_master_volume_percent = normalized_percent
-	_apply_bus_volume(MASTER_BUS_NAME, m_master_volume_percent)
-	m_owner.master_volume_changed.emit(m_master_volume_percent)
-
-
-func get_music_volume_percent() -> float:
-	return m_music_volume_percent
-
-
-func set_music_volume_percent(new_percent: float) -> void:
-	var normalized_percent := clampf(new_percent, 0.0, 100.0)
-	if is_equal_approx(m_music_volume_percent, normalized_percent):
-		return
-
-	m_music_volume_percent = normalized_percent
-	_apply_bus_volume(BGM_BUS_NAME, m_music_volume_percent)
-	m_owner.music_volume_changed.emit(m_music_volume_percent)
-
-
-func get_prompt_volume_percent() -> float:
-	return m_prompt_volume_percent
-
-
-func set_prompt_volume_percent(new_percent: float) -> void:
-	var normalized_percent := clampf(new_percent, 0.0, 100.0)
-	if is_equal_approx(m_prompt_volume_percent, normalized_percent):
-		return
-
-	m_prompt_volume_percent = normalized_percent
-	m_owner.prompt_volume_changed.emit(m_prompt_volume_percent)
-
-
-func get_dialogue_text_speed_percent() -> float:
-	return m_dialogue_text_speed_percent
-
-
-func set_dialogue_text_speed_percent(new_percent: float) -> void:
-	var normalized_percent := clampf(
-		new_percent,
+func normalize_dialogue_text_speed_percent(value: float) -> float:
+	return clampf(
+		value,
 		MIN_DIALOGUE_TEXT_SPEED_PERCENT,
 		MAX_DIALOGUE_TEXT_SPEED_PERCENT
 	)
-	if is_equal_approx(m_dialogue_text_speed_percent, normalized_percent):
-		return
 
-	m_dialogue_text_speed_percent = normalized_percent
-	m_owner.dialogue_text_speed_changed.emit(
-		m_dialogue_text_speed_percent,
-		get_dialogue_text_characters_per_second()
+
+func apply_master_volume(volume_percent: float) -> void:
+	_apply_bus_volume(MASTER_BUS_NAME, normalize_volume_percent(volume_percent))
+
+
+func apply_music_volume(volume_percent: float) -> void:
+	_apply_bus_volume(BGM_BUS_NAME, normalize_volume_percent(volume_percent))
+
+
+func get_dialogue_text_characters_per_second(speed_percent: float) -> float:
+	return DEFAULT_DIALOGUE_TEXT_CHARACTERS_PER_SECOND * (
+		normalize_dialogue_text_speed_percent(speed_percent) / 100.0
 	)
 
 
-func get_dialogue_text_characters_per_second() -> float:
-	return DEFAULT_DIALOGUE_TEXT_CHARACTERS_PER_SECOND * (m_dialogue_text_speed_percent / 100.0)
-
-
-func get_prompt_volume_db(base_volume_db: float = 0.0) -> float:
-	return _scale_db_from_percent(m_prompt_volume_percent, base_volume_db)
+func get_prompt_volume_db(volume_percent: float, base_volume_db: float = 0.0) -> float:
+	return _scale_db_from_percent(normalize_volume_percent(volume_percent), base_volume_db)
 
 
 func _apply_bus_volume(bus_name: StringName, volume_percent: float) -> void:

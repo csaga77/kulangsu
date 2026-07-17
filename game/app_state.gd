@@ -97,6 +97,10 @@ var unlocked_player_costume_ids: PackedStringArray = PLAYER_COSTUME_CATALOG_SCRI
 	{}
 )
 var equipped_player_costume_id := PLAYER_COSTUME_CATALOG_SCRIPT.default_costume_id()
+var m_master_volume_percent := AUDIO_SETTINGS_SERVICE_SCRIPT.DEFAULT_MASTER_VOLUME_PERCENT
+var m_music_volume_percent := AUDIO_SETTINGS_SERVICE_SCRIPT.DEFAULT_MUSIC_VOLUME_PERCENT
+var m_prompt_volume_percent := AUDIO_SETTINGS_SERVICE_SCRIPT.DEFAULT_PROMPT_VOLUME_PERCENT
+var m_dialogue_text_speed_percent := AUDIO_SETTINGS_SERVICE_SCRIPT.DEFAULT_DIALOGUE_TEXT_SPEED_PERCENT
 var landmark_progress: Dictionary = _default_landmark_progress()
 var route_progress: Dictionary = {}
 var story_flags: Dictionary = {}
@@ -114,34 +118,29 @@ var story_save_metadata := _default_story_save_metadata()
 var story_resume_anchor_id := "Piano Ferry"
 var story_resume_location := "Piano Ferry"
 var _story_autosave_path := STORY_AUTOSAVE_PATH
-var m_player_profile_service: RefCounted = null
-var m_story_save_service: RefCounted = null
-var m_landmark_progression: RefCounted = null
-var m_story_route_graph: RefCounted = null
-var m_story_event_service: RefCounted = null
-var m_story_time_service: RefCounted = null
-var m_audio_settings_service: RefCounted = null
-var m_resident_interaction_service: RefCounted = null
+var m_player_profile_service: PlayerProfileService = null
+var m_story_save_service: StorySaveService = null
+var m_landmark_progression: LandmarkProgression = null
+var m_story_route_graph: StoryRouteGraph = null
+var m_story_event_service: StoryEventService = null
+var m_story_time_service: StoryTimeService = null
+var m_audio_settings_service: AudioSettingsService = null
+var m_resident_interaction_service: ResidentInteractionService = null
 
 
 func _init() -> void:
 	m_player_profile_service = PLAYER_PROFILE_SERVICE_SCRIPT.new(
-		self,
 		PLAYER_APPEARANCE_CATALOG_SCRIPT,
 		PLAYER_COSTUME_CATALOG_SCRIPT,
-		player_costume_catalog,
-		mode,
-		fragments_found,
-		fragments_total,
-		resident_profiles
+		player_costume_catalog
 	)
 	m_story_save_service = STORY_SAVE_SERVICE_SCRIPT.new(self)
 	m_story_save_service.set_story_autosave_path(_story_autosave_path)
 	m_landmark_progression = LANDMARK_PROGRESSION_SCRIPT.new(self)
 	m_story_route_graph = STORY_ROUTE_GRAPH_SCRIPT.new(self)
 	m_story_event_service = STORY_EVENT_SERVICE_SCRIPT.new(self)
-	m_story_time_service = STORY_TIME_SERVICE_SCRIPT.new(self)
-	m_audio_settings_service = AUDIO_SETTINGS_SERVICE_SCRIPT.new(self)
+	m_story_time_service = STORY_TIME_SERVICE_SCRIPT.new()
+	m_audio_settings_service = AUDIO_SETTINGS_SERVICE_SCRIPT.new()
 	m_resident_interaction_service = RESIDENT_INTERACTION_SERVICE_SCRIPT.new(self)
 	story_flags = m_story_route_graph.build_default_story_flags()
 	route_progress = m_story_route_graph.build_story_state("new_game").get("route_progress", {}).duplicate(true)
@@ -269,7 +268,10 @@ func _resolve_story_autosave_test_path(path: String) -> String:
 func _apply_runtime_settings() -> void:
 	if m_audio_settings_service == null:
 		return
-	m_audio_settings_service.apply_runtime_settings()
+	m_audio_settings_service.apply_runtime_settings(
+		m_master_volume_percent,
+		m_music_volume_percent
+	)
 
 
 func refresh_story_autosave_metadata() -> void:
@@ -285,43 +287,71 @@ func load_story_autosave() -> bool:
 
 
 func get_master_volume_percent() -> float:
-	return m_audio_settings_service.get_master_volume_percent()
+	return m_master_volume_percent
 
 
 func set_master_volume_percent(new_percent: float) -> void:
-	m_audio_settings_service.set_master_volume_percent(new_percent)
+	var normalized_percent := m_audio_settings_service.normalize_volume_percent(new_percent)
+	if is_equal_approx(m_master_volume_percent, normalized_percent):
+		return
+	m_master_volume_percent = normalized_percent
+	m_audio_settings_service.apply_master_volume(m_master_volume_percent)
+	master_volume_changed.emit(m_master_volume_percent)
 
 
 func get_music_volume_percent() -> float:
-	return m_audio_settings_service.get_music_volume_percent()
+	return m_music_volume_percent
 
 
 func set_music_volume_percent(new_percent: float) -> void:
-	m_audio_settings_service.set_music_volume_percent(new_percent)
+	var normalized_percent := m_audio_settings_service.normalize_volume_percent(new_percent)
+	if is_equal_approx(m_music_volume_percent, normalized_percent):
+		return
+	m_music_volume_percent = normalized_percent
+	m_audio_settings_service.apply_music_volume(m_music_volume_percent)
+	music_volume_changed.emit(m_music_volume_percent)
 
 
 func get_prompt_volume_percent() -> float:
-	return m_audio_settings_service.get_prompt_volume_percent()
+	return m_prompt_volume_percent
 
 
 func set_prompt_volume_percent(new_percent: float) -> void:
-	m_audio_settings_service.set_prompt_volume_percent(new_percent)
+	var normalized_percent := m_audio_settings_service.normalize_volume_percent(new_percent)
+	if is_equal_approx(m_prompt_volume_percent, normalized_percent):
+		return
+	m_prompt_volume_percent = normalized_percent
+	prompt_volume_changed.emit(m_prompt_volume_percent)
 
 
 func get_dialogue_text_speed_percent() -> float:
-	return m_audio_settings_service.get_dialogue_text_speed_percent()
+	return m_dialogue_text_speed_percent
 
 
 func set_dialogue_text_speed_percent(new_percent: float) -> void:
-	m_audio_settings_service.set_dialogue_text_speed_percent(new_percent)
+	var normalized_percent := m_audio_settings_service.normalize_dialogue_text_speed_percent(
+		new_percent
+	)
+	if is_equal_approx(m_dialogue_text_speed_percent, normalized_percent):
+		return
+	m_dialogue_text_speed_percent = normalized_percent
+	dialogue_text_speed_changed.emit(
+		m_dialogue_text_speed_percent,
+		get_dialogue_text_characters_per_second()
+	)
 
 
 func get_dialogue_text_characters_per_second() -> float:
-	return m_audio_settings_service.get_dialogue_text_characters_per_second()
+	return m_audio_settings_service.get_dialogue_text_characters_per_second(
+		m_dialogue_text_speed_percent
+	)
 
 
 func get_prompt_volume_db(base_volume_db: float = 0.0) -> float:
-	return m_audio_settings_service.get_prompt_volume_db(base_volume_db)
+	return m_audio_settings_service.get_prompt_volume_db(
+		m_prompt_volume_percent,
+		base_volume_db
+	)
 
 
 func set_mode(new_mode: String) -> void:
@@ -361,19 +391,32 @@ func get_season_phase_display_name() -> String:
 func get_story_time_state() -> Dictionary:
 	if m_story_time_service == null:
 		return STORY_TIME_SERVICE_SCRIPT.default_time_state()
-	return m_story_time_service.get_time_state()
+	return m_story_time_service.get_time_state(story_day, world_hour)
 
 
 func set_story_time_state(time_state: Dictionary) -> bool:
 	if m_story_time_service == null:
 		return false
-	return m_story_time_service.set_time_state(time_state)
+	var normalized := STORY_TIME_SERVICE_SCRIPT.normalize_time_state(time_state)
+	var next_story_day := int(normalized.get("story_day", STORY_TIME_SERVICE_SCRIPT.DEFAULT_STORY_DAY))
+	var next_world_hour := float(normalized.get("world_hour", STORY_TIME_SERVICE_SCRIPT.DEFAULT_WORLD_HOUR))
+	var next_time_of_day := String(normalized.get("time_of_day", STORY_TIME_SERVICE_SCRIPT.TIME_MORNING))
+	if story_day == next_story_day \
+	and is_equal_approx(world_hour, next_world_hour) \
+	and time_of_day == next_time_of_day:
+		return false
+
+	story_day = next_story_day
+	world_hour = next_world_hour
+	time_of_day = next_time_of_day
+	_emit_story_time_changed(get_story_time_state())
+	return true
 
 
 func reset_story_time() -> void:
 	if m_story_time_service == null:
 		return
-	m_story_time_service.reset_time_state()
+	set_story_time_state(STORY_TIME_SERVICE_SCRIPT.default_time_state())
 
 
 func get_story_day() -> int:
@@ -399,25 +442,36 @@ func get_story_time_label() -> String:
 func advance_story_hours(hours: float) -> bool:
 	if m_story_time_service == null:
 		return false
-	return m_story_time_service.advance_hours(hours)
+	return set_story_time_state(
+		m_story_time_service.advance_hours(get_story_time_state(), hours)
+	)
 
 
 func advance_story_day(days: int = 1) -> bool:
 	if m_story_time_service == null:
 		return false
-	return m_story_time_service.advance_day(days)
+	return set_story_time_state(
+		m_story_time_service.advance_day(get_story_time_state(), days)
+	)
 
 
 func advance_to_time_of_day(target_time_of_day: String) -> bool:
 	if m_story_time_service == null:
 		return false
-	return m_story_time_service.advance_to_time_of_day(target_time_of_day)
+	return set_story_time_state(
+		m_story_time_service.advance_to_time_of_day(
+			get_story_time_state(),
+			target_time_of_day
+		)
+	)
 
 
 func apply_story_time_effects(payload: Dictionary) -> bool:
 	if m_story_time_service == null:
 		return false
-	return m_story_time_service.apply_time_effects(payload)
+	return set_story_time_state(
+		m_story_time_service.apply_time_effects(get_story_time_state(), payload)
+	)
 
 
 func is_world_hour_in_range(min_hour: Variant, max_hour: Variant) -> bool:
@@ -984,27 +1038,27 @@ func get_resident_behavior_config(resident_id: String) -> Dictionary:
 
 
 func get_player_profile() -> Dictionary:
-	return m_player_profile_service.get_player_profile()
+	return player_profile.duplicate(true)
 
 
 func get_player_body_display_name() -> String:
-	return m_player_profile_service.get_player_body_display_name()
+	return m_player_profile_service.get_player_body_display_name(player_profile)
 
 
 func get_player_gender_display_name() -> String:
-	return m_player_profile_service.get_player_gender_display_name()
+	return m_player_profile_service.get_player_gender_display_name(player_profile)
 
 
 func get_player_skin_display_name() -> String:
-	return m_player_profile_service.get_player_skin_display_name()
+	return m_player_profile_service.get_player_skin_display_name(player_profile)
 
 
 func get_player_hair_style_display_name() -> String:
-	return m_player_profile_service.get_player_hair_style_display_name()
+	return m_player_profile_service.get_player_hair_style_display_name(player_profile)
 
 
 func get_player_hair_color_display_name() -> String:
-	return m_player_profile_service.get_player_hair_color_display_name()
+	return m_player_profile_service.get_player_hair_color_display_name(player_profile)
 
 
 func get_player_costume_ids() -> PackedStringArray:
@@ -1016,55 +1070,107 @@ func get_player_costume(costume_id: String) -> Dictionary:
 
 
 func get_unlocked_player_costume_ids() -> PackedStringArray:
-	return m_player_profile_service.get_unlocked_player_costume_ids()
+	return PackedStringArray(unlocked_player_costume_ids)
 
 
 func get_equipped_player_costume_id() -> String:
-	return m_player_profile_service.get_equipped_player_costume_id()
+	return equipped_player_costume_id
 
 
 func get_equipped_player_costume() -> Dictionary:
-	return m_player_profile_service.get_equipped_player_costume()
+	return m_player_profile_service.get_equipped_player_costume(equipped_player_costume_id)
 
 
 func get_equipped_player_costume_display_name() -> String:
-	return m_player_profile_service.get_equipped_player_costume_display_name()
+	return m_player_profile_service.get_equipped_player_costume_display_name(
+		equipped_player_costume_id
+	)
 
 
 func set_player_profile(new_profile: Dictionary) -> bool:
-	return m_player_profile_service.set_player_profile(new_profile)
+	var normalized_profile := m_player_profile_service.normalize_profile(new_profile)
+	if player_profile == normalized_profile:
+		return false
+
+	player_profile = normalized_profile
+	_emit_player_profile_changed(get_player_profile())
+	_emit_player_appearance_changed()
+	return true
 
 
 func cycle_player_body_frame(direction: int) -> void:
-	m_player_profile_service.cycle_player_body_frame(direction)
+	_cycle_player_profile_option(
+		"body_frame_id",
+		PLAYER_APPEARANCE_CATALOG_SCRIPT.body_frame_options(),
+		direction
+	)
 
 
 func cycle_player_gender(direction: int) -> void:
-	m_player_profile_service.cycle_player_gender(direction)
+	_cycle_player_profile_option(
+		"presentation_id",
+		PLAYER_APPEARANCE_CATALOG_SCRIPT.presentation_options(),
+		direction
+	)
 
 
 func cycle_player_skin_tone(direction: int) -> void:
-	m_player_profile_service.cycle_player_skin_tone(direction)
+	_cycle_player_profile_option(
+		"skin_tone_id",
+		PLAYER_APPEARANCE_CATALOG_SCRIPT.skin_tone_options(),
+		direction
+	)
 
 
 func cycle_player_hair_style(direction: int) -> void:
-	m_player_profile_service.cycle_player_hair_style(direction)
+	_cycle_player_profile_option(
+		"hair_style_id",
+		PLAYER_APPEARANCE_CATALOG_SCRIPT.hair_style_options(),
+		direction
+	)
 
 
 func cycle_player_hair_color(direction: int) -> void:
-	m_player_profile_service.cycle_player_hair_color(direction)
+	_cycle_player_profile_option(
+		"hair_color_id",
+		PLAYER_APPEARANCE_CATALOG_SCRIPT.hair_color_options(),
+		direction
+	)
 
 
 func get_player_appearance_config() -> Dictionary:
-	return m_player_profile_service.get_player_appearance_config()
+	return m_player_profile_service.get_player_appearance_config(
+		player_profile,
+		equipped_player_costume_id
+	)
 
 
 func equip_player_costume(costume_id: String) -> bool:
-	return m_player_profile_service.equip_player_costume(costume_id)
+	if get_player_costume(costume_id).is_empty():
+		return false
+	if unlocked_player_costume_ids.find(costume_id) < 0:
+		return false
+	if equipped_player_costume_id == costume_id:
+		return true
+
+	equipped_player_costume_id = costume_id
+	_emit_player_costume_changed(equipped_player_costume_id, get_equipped_player_costume())
+	_emit_player_appearance_changed()
+	_emit_player_costumes_changed(
+		get_unlocked_player_costume_ids(),
+		equipped_player_costume_id
+	)
+	return true
 
 
 func cycle_player_costume(direction: int) -> void:
-	m_player_profile_service.cycle_player_costume(direction)
+	var next_costume_id := m_player_profile_service.cycle_costume_id(
+		unlocked_player_costume_ids,
+		equipped_player_costume_id,
+		direction
+	)
+	if next_costume_id != equipped_player_costume_id:
+		equip_player_costume(next_costume_id)
 
 
 func get_known_resident_names() -> PackedStringArray:
@@ -1317,12 +1423,30 @@ func _emit_player_appearance_changed() -> void:
 
 func _refresh_player_costumes() -> void:
 	_ensure_resident_profiles()
-	m_player_profile_service.refresh_player_costumes(
+	var next_unlocked := m_player_profile_service.build_unlocked_costume_ids(
 		mode,
 		fragments_found,
 		fragments_total,
 		resident_profiles
 	)
+	var next_equipped := m_player_profile_service.resolve_equipped_costume_id(
+		next_unlocked,
+		equipped_player_costume_id
+	)
+	var unlocked_changed := unlocked_player_costume_ids != next_unlocked
+	var costume_changed := equipped_player_costume_id != next_equipped
+
+	unlocked_player_costume_ids = next_unlocked
+	equipped_player_costume_id = next_equipped
+
+	if costume_changed:
+		_emit_player_costume_changed(equipped_player_costume_id, get_equipped_player_costume())
+		_emit_player_appearance_changed()
+	if unlocked_changed or costume_changed:
+		_emit_player_costumes_changed(
+			get_unlocked_player_costume_ids(),
+			equipped_player_costume_id
+		)
 
 
 func _ensure_resident_definitions() -> void:

@@ -28,12 +28,6 @@ const TIME_OF_DAY_DISPLAY_NAMES := {
 	TIME_NIGHT: "Night",
 }
 
-var m_owner: Node = null
-
-
-func _init(owner: Node) -> void:
-	m_owner = owner
-
 
 static func default_time_state() -> Dictionary:
 	return {
@@ -86,17 +80,25 @@ static func display_name(time_of_day: String) -> String:
 static func normalize_time_state(value: Variant) -> Dictionary:
 	var incoming: Dictionary = {}
 	if value is Dictionary:
-		incoming = (value as Dictionary)
+		incoming = value as Dictionary
 	var default_state := default_time_state()
-	var hour := normalize_world_hour(incoming.get("world_hour", default_state.get("world_hour", DEFAULT_WORLD_HOUR)))
+	var hour := normalize_world_hour(
+		incoming.get("world_hour", default_state.get("world_hour", DEFAULT_WORLD_HOUR))
+	)
 	return {
-		"story_day": normalize_story_day(incoming.get("story_day", default_state.get("story_day", DEFAULT_STORY_DAY))),
+		"story_day": normalize_story_day(
+			incoming.get("story_day", default_state.get("story_day", DEFAULT_STORY_DAY))
+		),
 		"world_hour": hour,
 		"time_of_day": time_of_day_for_hour(hour),
 	}
 
 
-static func hour_is_in_range(hour_value: float, min_hour_value: Variant, max_hour_value: Variant) -> bool:
+static func hour_is_in_range(
+	hour_value: float,
+	min_hour_value: Variant,
+	max_hour_value: Variant
+) -> bool:
 	var hour := normalize_world_hour(hour_value)
 	var min_hour := normalize_world_hour(min_hour_value)
 	var max_hour := normalize_world_hour(max_hour_value)
@@ -105,76 +107,65 @@ static func hour_is_in_range(hour_value: float, min_hour_value: Variant, max_hou
 	return hour >= min_hour or hour <= max_hour
 
 
-func reset_time_state() -> void:
-	set_time_state(default_time_state())
+func get_time_state(story_day: int, world_hour: float) -> Dictionary:
+	return normalize_time_state({
+		"story_day": story_day,
+		"world_hour": world_hour,
+	})
 
 
-func get_time_state() -> Dictionary:
-	return {
-		"story_day": normalize_story_day(m_owner.story_day),
-		"world_hour": normalize_world_hour(m_owner.world_hour),
-		"time_of_day": time_of_day_for_hour(float(m_owner.world_hour)),
-	}
-
-
-func set_time_state(value: Variant) -> bool:
-	var normalized := normalize_time_state(value)
-	if m_owner.story_day == int(normalized.get("story_day", DEFAULT_STORY_DAY)) \
-	and is_equal_approx(m_owner.world_hour, float(normalized.get("world_hour", DEFAULT_WORLD_HOUR))) \
-	and m_owner.time_of_day == String(normalized.get("time_of_day", TIME_MORNING)):
-		return false
-
-	m_owner.story_day = int(normalized.get("story_day", DEFAULT_STORY_DAY))
-	m_owner.world_hour = float(normalized.get("world_hour", DEFAULT_WORLD_HOUR))
-	m_owner.time_of_day = String(normalized.get("time_of_day", TIME_MORNING))
-	m_owner._emit_story_time_changed(get_time_state())
-	return true
-
-
-func advance_hours(hours: float) -> bool:
+func advance_hours(current_state: Dictionary, hours: float) -> Dictionary:
+	var next_state := normalize_time_state(current_state)
 	var amount := maxf(hours, 0.0)
 	if is_zero_approx(amount):
-		return false
+		return next_state
 
-	var next_hour := normalize_world_hour(m_owner.world_hour)
+	var next_hour := float(next_state.get("world_hour", DEFAULT_WORLD_HOUR)) + amount
 	var day_delta := 0
-	next_hour += amount
 	while next_hour >= HOURS_PER_DAY:
 		next_hour -= HOURS_PER_DAY
 		day_delta += 1
 
-	return set_time_state({
-		"story_day": normalize_story_day(m_owner.story_day) + day_delta,
+	return normalize_time_state({
+		"story_day": int(next_state.get("story_day", DEFAULT_STORY_DAY)) + day_delta,
 		"world_hour": next_hour,
 	})
 
 
-func advance_day(days: int = 1, target_hour: float = DEFAULT_WORLD_HOUR) -> bool:
-	var day_delta := maxi(days, 1)
-	return set_time_state({
-		"story_day": normalize_story_day(m_owner.story_day) + day_delta,
+func advance_day(
+	current_state: Dictionary,
+	days: int = 1,
+	target_hour: float = DEFAULT_WORLD_HOUR
+) -> Dictionary:
+	var next_state := normalize_time_state(current_state)
+	return normalize_time_state({
+		"story_day": int(next_state.get("story_day", DEFAULT_STORY_DAY)) + maxi(days, 1),
 		"world_hour": normalize_world_hour(target_hour),
 	})
 
 
-func advance_to_time_of_day(target_time_of_day: String) -> bool:
+func advance_to_time_of_day(
+	current_state: Dictionary,
+	target_time_of_day: String
+) -> Dictionary:
+	var next_state := normalize_time_state(current_state)
 	var normalized_target := normalize_time_of_day(target_time_of_day)
-	if normalized_target == m_owner.time_of_day:
-		return false
+	if normalized_target == String(next_state.get("time_of_day", TIME_MORNING)):
+		return next_state
 
 	var target_hour := float(TIME_OF_DAY_START_HOURS.get(normalized_target, DEFAULT_WORLD_HOUR))
-	var next_day := normalize_story_day(m_owner.story_day)
-	if target_hour <= normalize_world_hour(m_owner.world_hour):
+	var next_day := int(next_state.get("story_day", DEFAULT_STORY_DAY))
+	if target_hour <= float(next_state.get("world_hour", DEFAULT_WORLD_HOUR)):
 		next_day += 1
 
-	return set_time_state({
+	return normalize_time_state({
 		"story_day": next_day,
 		"world_hour": target_hour,
 	})
 
 
-func apply_time_effects(payload: Dictionary) -> bool:
-	var changed := false
+func apply_time_effects(current_state: Dictionary, payload: Dictionary) -> Dictionary:
+	var next_state := normalize_time_state(current_state)
 	var time_payload: Dictionary = {}
 	var nested_time_payload = payload.get("advance_time", {})
 	if nested_time_payload is Dictionary:
@@ -192,20 +183,22 @@ func apply_time_effects(payload: Dictionary) -> bool:
 		time_payload["advance_day"] = payload.get("advance_day")
 
 	if time_payload.has("story_day") or time_payload.has("world_hour"):
-		var next_state := get_time_state()
 		if time_payload.has("story_day"):
 			next_state["story_day"] = time_payload.get("story_day")
 		if time_payload.has("world_hour"):
 			next_state["world_hour"] = time_payload.get("world_hour")
-		changed = set_time_state(next_state) or changed
+		next_state = normalize_time_state(next_state)
 
 	if time_payload.has("advance_hours"):
-		changed = advance_hours(float(time_payload.get("advance_hours", 0.0))) or changed
+		next_state = advance_hours(next_state, float(time_payload.get("advance_hours", 0.0)))
 
 	if time_payload.has("advance_to_time_of_day"):
-		changed = advance_to_time_of_day(String(time_payload.get("advance_to_time_of_day", ""))) or changed
+		next_state = advance_to_time_of_day(
+			next_state,
+			String(time_payload.get("advance_to_time_of_day", ""))
+		)
 
 	if time_payload.has("advance_day"):
-		changed = advance_day(int(time_payload.get("advance_day", 1))) or changed
+		next_state = advance_day(next_state, int(time_payload.get("advance_day", 1)))
 
-	return changed
+	return next_state

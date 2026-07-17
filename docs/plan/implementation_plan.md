@@ -70,7 +70,7 @@ Current practical coverage:
 
 ## Architecture Reality Check
 
-`AppState` (about 1.6k lines, 30 signals) is still the shared state hub. The Workstream 0 cleanup shipped first, and the follow-on content/HUD/ending pass now builds on that bridge surface cleanly. `resident_catalog.gd` is now a loader/normalizer over external resident resources rather than the main route-content monolith.
+`AppState` (about 1.6k lines, 30 signals) is still the shared state hub and is now explicitly the single owner of mutable shared runtime state. Player-profile/costume, story-time, and audio/settings helpers are stateless transforms instead of mirrored state stores. The Workstream 0 cleanup shipped first, and the follow-on content/HUD/ending pass now builds on that bridge surface cleanly. `resident_catalog.gd` is now a loader/normalizer over external resident resources rather than the main route-content monolith.
 
 Current pressure points:
 
@@ -82,7 +82,7 @@ Current pressure points:
 - high-traffic dictionary payloads (landmark progress, melody progress, autosave) are still untyped
 - missable/transformed moment processing is not implemented yet; the current life-time slice tracks and advances time but does not automatically expire optional beats into missed-state echoes
 - the low-poly 3D runtime now has terrain/water, actor/camera, three authored landmark models plus two tunnel markers, shared-data residents, the complete 15-landmark/5-inspectable `StorySubject3D` set, speech balloons, BGM/cues, and semantic resume anchors; remaining work is tunnel/interior content, routed tunnel residents, richer landmark presentation, and release-performance confirmation
-- regression coverage is now strong for landmark, route, resident-interaction, reactivity, and autosave flows, but still lighter around settings/audio behavior and richer world-object reactivity
+- regression coverage is now strong for landmark, route, resident-interaction, reactivity, autosave, and shared-state ownership flows, but remains lighter around audio-bus integration and richer world-object reactivity
 
 ## What Remains
 
@@ -387,7 +387,7 @@ Shipped outcome:
 
 - landmark progression behavior is now split between authored StoryEvent landmark bindings/world events and `game/landmark_progression.gd`'s remaining generic prompt-builder/fallback helpers, while `AppState` keeps the landmark bridge API and signal surface
 - resident dialogue/application lives in `game/resident_interaction_service.gd` with `AppState` facades preserved for runtime callers and tests
-- runtime settings state lives in `game/audio_settings_service.gd`
+- mutable player-profile/costume, story-time, and runtime settings values live only in `AppState`; their focused helper services are stateless transforms, and `audio_settings_service.gd` additionally applies committed values to audio buses
 - `StorySaveService` owns the active payload pipeline plus `configure_new_game()`, `configure_continue()`, and `configure_free_walk()` implementation while `AppState` keeps the public bridge methods
 - the weather cycle now lives in `weather/weather_manager.gd` and applies to the production `WeatherRig3D`; focused presentation validation lives in `weather/tests/capture_weather_3d.tscn`
 - all resident definitions now live as external resources under `game/residents/definitions/`, with `resident_catalog.gd` kept as the loader/normalizer bridge
@@ -400,6 +400,7 @@ Verification now in repo:
 - `game/tests/npc_system/test_resident_interaction.tscn`
 - `game/tests/npc_system/test_resident_interaction.tscn`
 - `game/tests/npc_system/test_resident_catalog_external_defs.tscn`
+- `game/tests/state/test_app_state_ownership.tscn`
 
 ## Deferred Design Questions
 

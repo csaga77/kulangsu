@@ -19,7 +19,7 @@ Current day phases:
 - `evening`: `17:00` to before `21:00`
 - `night`: `21:00` to before `05:00`
 
-`game/story_time_service.gd` owns normalization, display labels, hour/day advancement, and day-phase jumps. `time_of_day` is derived from `world_hour`; do not treat it as an independent source of truth.
+`game/story_time_service.gd` is a stateless transform helper for normalization, display labels, hour/day advancement, and day-phase jumps. `AppState` supplies the current clock, commits the returned normalized snapshot, and emits `story_time_changed` after the commit. Compound time effects produce one final snapshot and one signal. `time_of_day` is derived from `world_hour`; do not treat it as an independent source of truth.
 
 The in-game HUD displays the compact story-time label, for example `Day 1, Morning`, in the status card beside season, location, and melody-fragment progress.
 
@@ -57,3 +57,4 @@ Current coverage checks:
 - StoryEvent time conditions against the default morning start
 - StoryEvent effects advancing to a later day phase, advancing by authored hours, and advancing to the next day
 - story autosave persistence and restore for the saved day phase
+- `game/tests/state/test_app_state_ownership.tscn` verifies canonical clock ownership and single-signal commits for compound time effects

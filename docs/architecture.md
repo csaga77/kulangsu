@@ -120,7 +120,7 @@ Responsibilities:
 - shared melody definitions and melody-progress state used by the journal and future performance systems
 - modular storyline route/event definitions in `game/storylines/`, with `story_route_graph.gd` loading them once into a runtime definition cache and projecting them into route progress, lead selection, display-order-independent route-score gates, canonical story-event availability checks, and endgame-trigger logic
 - resident and player-facing catalog data
-- `AppState` now composes focused helper scripts for journal text (`journal_builder.gd`), player profile/costume ownership (`player_profile_service.gd`), story autosave (`story_save_service.gd`), lightweight story time (`story_time_service.gd`), landmark/melody progression (`landmark_progression.gd`), resident dialogue/application (`resident_interaction_service.gd`), and runtime audio/settings state (`audio_settings_service.gd`)
+- `AppState` is the single owner of mutable shared runtime state, including player profile/costumes, story time, and audio/text-speed settings; it composes focused helpers for stateless normalization/derivation/application (`player_profile_service.gd`, `story_time_service.gd`, `audio_settings_service.gd`), journal text (`journal_builder.gd`), story autosave (`story_save_service.gd`), landmark/melody progression (`landmark_progression.gd`), and resident dialogue/application (`resident_interaction_service.gd`)
 - resident dialogue and shared StoryEvent effects now consume the route graph's story-event availability API instead of duplicating narrative prerequisite rules through custom resident gates
 - resident routine overrides are now part of shared story state so story effects can temporarily redirect spawn, movement, or behavior through the same `AppState` getters and autosave pipeline the rest of the game already uses
 - the app shell now opens the ending overlay from the shared `endgame_started` story milestone instead of relying on the older landmark-only ending assumption
@@ -132,7 +132,7 @@ Responsibilities:
 
 Boundary:
 
-- `AppState` is for shared UI/progression state. Do not use it as a dumping ground for scene-local implementation details.
+- `AppState` is for shared UI/progression state. A mutable shared field has one canonical owner there; composed transformation helpers must not mirror it or emit `AppState` signals. Do not use `AppState` as a dumping ground for scene-local implementation details.
 
 ### Runtime Service Lookup
 
