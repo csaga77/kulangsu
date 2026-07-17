@@ -261,6 +261,7 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 
 var m_is_ready := false
 var m_rebuild_queued := false
+var m_queued_regenerate_streets := false
 var m_sample_grid: Array[Array] = []
 var m_source_size := Vector2i.ZERO
 var m_heightmap_defines_water_area := false
@@ -296,13 +297,23 @@ func _notification(what: int) -> void:
 		_restore_generated_street_meshes_after_save()
 
 
-func _request_rebuild() -> void:
+func _request_rebuild(regenerate_streets := true) -> void:
 	if !m_is_ready:
 		return
+	m_queued_regenerate_streets = m_queued_regenerate_streets or regenerate_streets
 	if m_rebuild_queued:
 		return
 	m_rebuild_queued = true
-	call_deferred("_rebuild_from_source", true)
+	call_deferred("_run_queued_rebuild")
+
+
+func _run_queued_rebuild() -> void:
+	if !m_rebuild_queued:
+		return
+	var regenerate_streets := m_queued_regenerate_streets
+	m_rebuild_queued = false
+	m_queued_regenerate_streets = false
+	_rebuild_from_source(regenerate_streets)
 
 
 ## Explicit rebuild: regenerates street geometry from the mask and bakes it into
@@ -319,7 +330,7 @@ func rebuild_reusing_generated_streets() -> void:
 
 
 func request_street_integration_rebuild() -> void:
-	_request_rebuild()
+	_request_rebuild(false)
 
 
 func get_sample_cell_height(sample_cell: Vector2i) -> float:
@@ -460,6 +471,7 @@ func get_street_integration_summary() -> Dictionary:
 func _rebuild_from_source(regenerate_streets: bool = true) -> void:
 	var rebuild_started_usec := Time.get_ticks_usec()
 	m_rebuild_queued = false
+	m_queued_regenerate_streets = false
 	_clear_generated_children()
 	m_sample_grid.clear()
 	m_source_size = Vector2i.ZERO
@@ -762,7 +774,10 @@ func _connect_street_source(source: Node) -> void:
 func _on_street_corridor_changed() -> void:
 	if m_integrating_streets:
 		return
-	_request_rebuild()
+	# Street definitions beneath GeneratedStreets are intentionally editable.
+	# Refresh the supporting terrain without replacing those nodes from the mask;
+	# explicit terrain property changes and rebuild_from_source() still regenerate.
+	_request_rebuild(false)
 
 
 static func _string_array(value: Variant) -> Array[String]:

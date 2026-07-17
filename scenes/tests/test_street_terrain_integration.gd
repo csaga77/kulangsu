@@ -24,6 +24,7 @@ func _run_checks() -> void:
 	_validate_initial_integration()
 	_validate_manual_height_survives_rebuild()
 	await _validate_street_change_rebuilds_terrain()
+	await _validate_generated_street_width_edit_survives_rebuild()
 	_finish()
 
 
@@ -115,6 +116,38 @@ func _validate_street_change_rebuilds_terrain() -> void:
 		await get_tree().process_frame
 	if m_rebuild_count <= before:
 		m_failures.append("Changing the street corridor did not request terrain regeneration")
+
+
+func _validate_generated_street_width_edit_survives_rebuild() -> void:
+	var generated_root := Node3D.new()
+	generated_root.name = LowPolyTerrain3DScript.GENERATED_STREET_ROOT_NAME
+	generated_root.set_meta(LowPolyTerrain3DScript.GENERATED_STREET_ROOT_META, true)
+	m_terrain.add_child(generated_root)
+
+	var generated_street := Street3DScript.new() as Street3D
+	generated_street.name = "Street_001"
+	generated_street.path_points = PackedVector3Array([
+		Vector3(-6.0, 0.0, -6.0),
+		Vector3(6.0, 0.0, -6.0),
+	])
+	generated_street.set_meta(LowPolyTerrain3DScript.GENERATED_STREET_META, true)
+	generated_root.add_child(generated_street)
+	m_terrain.rebuild_reusing_generated_streets()
+
+	var before := m_rebuild_count
+	var expected_width := 4.75
+	generated_street.road_width = expected_width
+	for _frame in range(4):
+		await get_tree().process_frame
+	if m_rebuild_count <= before:
+		m_failures.append("Changing a generated street did not refresh its terrain corridor")
+	if !is_instance_valid(generated_street) or generated_street.get_parent() != generated_root:
+		m_failures.append("Changing a generated street replaced its baked scene node")
+	elif !is_equal_approx(generated_street.road_width, expected_width):
+		m_failures.append("Terrain refresh overwrote an individual generated-street width edit")
+	var summary := m_terrain.get_street_integration_summary()
+	if !bool(summary.get("streets_reused", false)):
+		m_failures.append("Generated-street edit re-extracted the mask instead of reusing baked streets")
 
 
 func _on_terrain_rebuilt(_summary: Dictionary) -> void:
