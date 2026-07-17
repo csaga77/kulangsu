@@ -1,28 +1,43 @@
-[gd_resource type="Resource" load_steps=8 format=3]
+[gd_resource type="Resource" script_class="LandmarkDefinition" format=3 uid="uid://ce5pk2ukcvl2t"]
 
-[ext_resource type="Script" path="res://game/landmarks/landmark_definition.gd" id="1_definition"]
-[ext_resource type="Script" path="res://game/landmarks/landmark_progress_profile.gd" id="2_profile"]
-[ext_resource type="AudioStream" path="res://resources/audio/sfx/landmark_cues/trinity_chime.ogg" id="3_audio"]
+[ext_resource type="Script" uid="uid://c3v6a4js2x5k7" path="res://game/landmarks/landmark_definition.gd" id="1_definition"]
+[ext_resource type="Script" uid="uid://ve0k5wbo4xpn" path="res://game/landmarks/landmark_progress_profile.gd" id="2_profile"]
+[ext_resource type="AudioStream" uid="uid://dv3mkfy6enkik" path="res://resources/audio/sfx/landmark_cues/trinity_chime.ogg" id="3_audio"]
 
 [sub_resource type="Resource" id="Progress_default"]
 script = ExtResource("2_profile")
-profile_id = &"default"
-progress = {"chime_performed": false, "cues_collected": [], "state": "locked"}
+progress = {
+"chime_performed": false,
+"cues_collected": [],
+"state": "locked"
+}
 
 [sub_resource type="Resource" id="Progress_new_game"]
 script = ExtResource("2_profile")
 profile_id = &"new_game"
-progress = {"chime_performed": false, "cues_collected": [], "state": "locked"}
+progress = {
+"chime_performed": false,
+"cues_collected": [],
+"state": "locked"
+}
 
 [sub_resource type="Resource" id="Progress_continue"]
 script = ExtResource("2_profile")
 profile_id = &"continue"
-progress = {"chime_performed": true, "cues_collected": ["steps", "garden", "yard"], "state": "reward_collected"}
+progress = {
+"chime_performed": true,
+"cues_collected": ["steps", "garden", "yard"],
+"state": "reward_collected"
+}
 
 [sub_resource type="Resource" id="Progress_free_walk"]
 script = ExtResource("2_profile")
 profile_id = &"free_walk"
-progress = {"chime_performed": false, "cues_collected": [], "state": "available"}
+progress = {
+"chime_performed": false,
+"cues_collected": [],
+"state": "available"
+}
 
 [resource]
 script = ExtResource("1_definition")

@@ -1,28 +1,39 @@
-[gd_resource type="Resource" load_steps=8 format=3]
+[gd_resource type="Resource" script_class="LandmarkDefinition" format=3 uid="uid://n6h3mpwtgqa2"]
 
-[ext_resource type="Script" path="res://game/landmarks/landmark_definition.gd" id="1_definition"]
-[ext_resource type="Script" path="res://game/landmarks/landmark_progress_profile.gd" id="2_profile"]
-[ext_resource type="AudioStream" path="res://resources/audio/sfx/landmark_cues/piano_ferry_refrain.ogg" id="3_audio"]
+[ext_resource type="Script" uid="uid://c3v6a4js2x5k7" path="res://game/landmarks/landmark_definition.gd" id="1_definition"]
+[ext_resource type="Script" uid="uid://ve0k5wbo4xpn" path="res://game/landmarks/landmark_progress_profile.gd" id="2_profile"]
+[ext_resource type="AudioStream" uid="uid://bdyg5njrxf0n0" path="res://resources/audio/sfx/landmark_cues/piano_ferry_refrain.ogg" id="3_audio"]
 
 [sub_resource type="Resource" id="Progress_default"]
 script = ExtResource("2_profile")
-profile_id = &"default"
-progress = {"harbor_clue_found": false, "state": "locked"}
+progress = {
+"harbor_clue_found": false,
+"state": "locked"
+}
 
 [sub_resource type="Resource" id="Progress_new_game"]
 script = ExtResource("2_profile")
 profile_id = &"new_game"
-progress = {"harbor_clue_found": false, "state": "available"}
+progress = {
+"harbor_clue_found": false,
+"state": "available"
+}
 
 [sub_resource type="Resource" id="Progress_continue"]
 script = ExtResource("2_profile")
 profile_id = &"continue"
-progress = {"harbor_clue_found": true, "state": "reward_collected"}
+progress = {
+"harbor_clue_found": true,
+"state": "reward_collected"
+}
 
 [sub_resource type="Resource" id="Progress_free_walk"]
 script = ExtResource("2_profile")
 profile_id = &"free_walk"
-progress = {"harbor_clue_found": false, "state": "introduced"}
+progress = {
+"harbor_clue_found": false,
+"state": "introduced"
+}
 
 [resource]
 script = ExtResource("1_definition")
