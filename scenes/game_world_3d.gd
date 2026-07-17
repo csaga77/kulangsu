@@ -10,7 +10,7 @@ extends Node3D
 #     sync_ui_state(), set_prompt_bgm_ducked())
 #   - it resolves the shared AppState through AppRuntime and keeps location,
 #     landmark, and resident lists in sync
-#   - it applies the story resume anchor on entry and falls back to Piano Ferry
+#   - it applies the story resume anchor on entry and falls back to the catalog default
 #
 # Runtime correctness is covered by scenes/tests/test_game_world_3d.tscn, with
 # focused terrain, street, actor-collision, camera, and building tests owning the
@@ -21,48 +21,17 @@ const WEATHER_RUNTIME := preload("res://weather/weather_runtime.gd")
 const WATER_WIND_ADAPTER := preload("res://terrain/low_poly_water_wind_adapter.gd")
 const WEATHER_RIG_3D_SCRIPT := preload("res://weather/weather_rig_3d.gd")
 const BGM_MANAGER_SCRIPT := preload("res://game/bgm_manager.gd")
-const LANDMARK_CUE_LOADER_SCRIPT := preload("res://game/landmark_cue_loader.gd")
+const LANDMARK_CATALOG_SCRIPT := preload("res://game/landmarks/landmark_catalog.gd")
 const LowPolyWorldCoordinates3DScript = preload("res://terrain/low_poly_world_coordinates_3d.gd")
 const LowPolyArtStyle3DScript = preload("res://terrain/low_poly_art_style_3d.gd")
 const RESIDENT_FACTORY := preload("res://characters/resident_factory.gd")
 const CHARACTER_MODEL_CATALOG_3D := preload("res://characters/character_model_catalog_3d.gd")
 
 const LANDMARK_MASK_META := &"low_poly_landmark_mask_pixel"
-const DEFAULT_RESUME_ANCHOR := "Piano Ferry"
 const ISLAND_PATHS_LABEL := "Island Paths"
 # Player is treated as "at" a landmark when within this XZ distance of its proxy.
 # Sized for the scaled-up world and the large stylized building footprints.
 const LANDMARK_LOCATION_RADIUS := 14.0
-
-# Authored island placements preserve the canonical landmark coordinates and
-# display names consumed by AppState, the journal, and the story layer.
-const LANDMARK_PLACEMENTS := [
-	{
-		"name": "Piano Ferry",
-		"path": "Landmarks/PianoFerryProxy",
-		"isometric_position": Vector2(5248.0, 9376.0),
-	},
-	{
-		"name": "Trinity Church",
-		"path": "Landmarks/TrinityChurchProxy",
-		"isometric_position": Vector2(-1120.0, 7888.0),
-	},
-	{
-		"name": "Bi Shan Tunnel",
-		"path": "Landmarks/BiShanTunnelProxy",
-		"isometric_position": Vector2(-992.0, 7824.0),
-	},
-	{
-		"name": "Long Shan Tunnel",
-		"path": "Landmarks/LongShanTunnelProxy",
-		"isometric_position": Vector2(3360.0, 7536.0),
-	},
-	{
-		"name": "Bagua Tower",
-		"path": "Landmarks/BaguaTowerProxy",
-		"isometric_position": Vector2(3360.0, 6160.0),
-	},
-]
 
 const ACTOR_GROUND_PROBE_UP := 0.72
 const ACTOR_GROUND_PROBE_DOWN := 2.5
@@ -72,14 +41,6 @@ const MAX_ACTOR_WADE_DEPTH := 0.5
 const STORY_SUBJECT_GROUP := "story_subject_3d"
 # How long a resident holds still and faces the player after being talked to.
 const RESIDENT_TALK_PAUSE_SEC := 4.0
-const LANDMARK_CUE_FILES := {
-	"piano_ferry": "res://resources/audio/sfx/landmark_cues/piano_ferry_refrain.ogg",
-	"trinity_church": "res://resources/audio/sfx/landmark_cues/trinity_chime.ogg",
-	"bi_shan_tunnel": "res://resources/audio/sfx/landmark_cues/bi_shan_echo.ogg",
-	"long_shan_tunnel": "res://resources/audio/sfx/landmark_cues/long_shan_route.ogg",
-	"bagua_tower": "res://resources/audio/sfx/landmark_cues/bagua_synthesis.ogg",
-	"festival_stage": "res://resources/audio/sfx/landmark_cues/festival_stage.ogg",
-}
 const LANDMARK_CUE_VOLUME_DB := -4.0
 const WEATHER_HOLD_DURATION_MIN := 20.0
 const WEATHER_HOLD_DURATION_MAX := 38.0
@@ -121,7 +82,6 @@ var m_resident_root: Node3D = null
 var m_stats_label: Label = null
 var m_bgm_manager: Node = null
 var m_landmark_cue_player: AudioStreamPlayer = null
-var m_landmark_cue_loader: RefCounted = LANDMARK_CUE_LOADER_SCRIPT.new()
 
 
 func _app_state():
@@ -237,10 +197,10 @@ func set_prompt_bgm_ducked(ducked: bool) -> void:
 
 func _cache_landmarks() -> void:
 	m_landmark_nodes.clear()
-	for placement: Dictionary in LANDMARK_PLACEMENTS:
-		var proxy := get_node_or_null(String(placement["path"])) as Node3D
+	for definition: LandmarkDefinition in LANDMARK_CATALOG_SCRIPT.world_definitions():
+		var proxy := get_node_or_null(definition.world_node_path) as Node3D
 		if is_instance_valid(proxy):
-			m_landmark_nodes[String(placement["name"])] = proxy
+			m_landmark_nodes[definition.display_name] = proxy
 
 
 func _configure_world() -> void:
@@ -270,13 +230,14 @@ func _place_landmarks(image: Image, profile: TerrainGenerationProfile, land_heig
 	if !is_instance_valid(m_landmarks_root):
 		return
 
-	for placement: Dictionary in LANDMARK_PLACEMENTS:
-		var proxy := get_node_or_null(String(placement["path"])) as Node3D
+	for definition: LandmarkDefinition in LANDMARK_CATALOG_SCRIPT.world_definitions():
+		var proxy := get_node_or_null(definition.world_node_path) as Node3D
 		if !is_instance_valid(proxy):
 			continue
 
-		var isometric_position := placement["isometric_position"] as Vector2
-		var mask_pixel := m_coordinates.isometric_position_to_mask_pixel(isometric_position)
+		var mask_pixel := m_coordinates.isometric_position_to_mask_pixel(
+			definition.isometric_position
+		)
 		var snapped_mask_pixel := _find_nearest_land_pixel(
 			image,
 			profile,
@@ -402,10 +363,7 @@ func _play_landmark_audio_cue(cue_id: String) -> void:
 
 
 func _get_landmark_cue_stream(cue_id: String) -> AudioStream:
-	var file_path := String(LANDMARK_CUE_FILES.get(cue_id, ""))
-	if file_path.is_empty():
-		return null
-	return m_landmark_cue_loader.get_stream(file_path) as AudioStream
+	return LANDMARK_CATALOG_SCRIPT.get_audio_cue(StringName(cue_id))
 
 
 func _setup_player_appearance() -> void:
@@ -444,13 +402,14 @@ func _apply_story_resume_anchor_if_needed() -> void:
 	if _app_state().mode != "Story":
 		return
 
+	var default_resume_anchor := LANDMARK_CATALOG_SCRIPT.default_resume_display_name()
 	var anchor_id: String = _app_state().get_story_resume_anchor_id()
 	if anchor_id.is_empty():
-		anchor_id = DEFAULT_RESUME_ANCHOR
+		anchor_id = default_resume_anchor
 
 	var anchor_node := m_landmark_nodes.get(anchor_id) as Node3D
 	if !is_instance_valid(anchor_node):
-		anchor_node = m_landmark_nodes.get(DEFAULT_RESUME_ANCHOR) as Node3D
+		anchor_node = m_landmark_nodes.get(default_resume_anchor) as Node3D
 	if !is_instance_valid(anchor_node):
 		return
 
@@ -679,8 +638,8 @@ func _spawn_residents() -> void:
 
 
 func _generate_landmark_collision() -> void:
-	for placement: Dictionary in LANDMARK_PLACEMENTS:
-		var node := get_node_or_null(String(placement["path"])) as Node3D
+	for definition: LandmarkDefinition in LANDMARK_CATALOG_SCRIPT.world_definitions():
+		var node := get_node_or_null(definition.world_node_path) as Node3D
 		if is_instance_valid(node):
 			_add_trimesh_collision_recursive(node)
 

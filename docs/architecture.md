@@ -98,6 +98,7 @@ Boundary:
 Primary files:
 
 - [`../game/app_state.gd`](../game/app_state.gd)
+- [`../game/landmarks/`](../game/landmarks)
 - [`../game/melody_catalog.gd`](../game/melody_catalog.gd)
 - [`../game/resident_catalog.gd`](../game/resident_catalog.gd)
 - [`../game/story_event_catalog.gd`](../game/story_event_catalog.gd)
@@ -107,6 +108,7 @@ Primary files:
 - [`../game/storylines/`](../game/storylines)
 - [`../game/audio_settings_service.gd`](../game/audio_settings_service.gd)
 - [`../game/resident_interaction_service.gd`](../game/resident_interaction_service.gd)
+- [`../game/runtime_ports/`](../game/runtime_ports)
 - [`../game/resident_system/`](../game/resident_system)
 - [`../game/residents/`](../game/residents)
 - [`../game/player_appearance_catalog.gd`](../game/player_appearance_catalog.gd)
@@ -116,11 +118,12 @@ Responsibilities:
 
 - shared mode, chapter, location, objective, hint, save status, and summary data
 - shared seasonal story state: `season_phase`, `story_day`, `world_hour`, derived `time_of_day`, `route_progress`, `story_flags`, active leads, and endgame state
+- typed landmark definitions for stable ids, display names, world-node mapping, authored coordinates, resume defaults, audio cues, and initial progress profiles; `AppState`, the StoryEffect schema, and the production world consume the same catalog
 - first-pass generic StoryEvent routing now lives in `game/story_event_service.gd`, composed by `AppState`, while `game/story_event_catalog.gd` now owns the full melody-landmark interaction spine plus its landmark prompt-completion/reward world events: ferry harbor clue and onboarding reward, Trinity cue/chime/reward beats, Bi Shan echoes/chamber/reward, Long Shan entry/checkpoints/exit/reward, Bagua synthesis/reward, and the harbor-stage prompt/performance completion
 - shared melody definitions and melody-progress state used by the journal and future performance systems
 - modular storyline route/event definitions in `game/storylines/`, with `story_route_graph.gd` loading them once into a runtime definition cache and projecting them into route progress, lead selection, display-order-independent route-score gates, canonical story-event availability checks, and endgame-trigger logic
 - resident and player-facing catalog data
-- `AppState` is the single owner of mutable shared runtime state, including player profile/costumes, story time, and audio/text-speed settings; it composes focused helpers for stateless normalization/derivation/application (`player_profile_service.gd`, `story_time_service.gd`, `audio_settings_service.gd`), journal text (`journal_builder.gd`), story autosave (`story_save_service.gd`), landmark/melody progression (`landmark_progression.gd`), and resident dialogue/application (`resident_interaction_service.gd`)
+- `AppState` is the single owner of mutable shared runtime state, including player profile/costumes, story time, and audio/text-speed settings. It passes detached snapshots into pure calculators and persistence helpers (`player_profile_service.gd`, `story_time_service.gd`, `audio_settings_service.gd`, `story_save_service.gd`, and `landmark_progression.gd`), while the operation-oriented route, StoryEvent, and resident coordinators receive only typed capability ports from `game/runtime_ports/`.
 - resident dialogue and shared StoryEvent effects now consume the route graph's story-event availability API instead of duplicating narrative prerequisite rules through custom resident gates
 - resident routine overrides are now part of shared story state so story effects can temporarily redirect spawn, movement, or behavior through the same `AppState` getters and autosave pipeline the rest of the game already uses
 - the app shell now opens the ending overlay from the shared `endgame_started` story milestone instead of relying on the older landmark-only ending assumption
@@ -132,7 +135,10 @@ Responsibilities:
 
 Boundary:
 
-- `AppState` is for shared UI/progression state. A mutable shared field has one canonical owner there; composed transformation helpers must not mirror it or emit `AppState` signals. Do not use `AppState` as a dumping ground for scene-local implementation details.
+- `AppState` is for shared UI/progression state. A mutable shared field has one canonical owner there; composed transformation helpers must not mirror it, retain a generic owner reference, reach into private fields/methods, or emit `AppState` signals.
+- `game/runtime_ports/` is the deliberate integration boundary for operation-oriented helpers. Each port exposes only the reads, commands, and notifications needed by one coordinator; the generic `Node` bridge is confined to `AppStatePortBase` and must not leak back into the helpers.
+- `game/landmarks/` owns immutable authored landmark metadata and initial-state presets. Mutable landmark progress remains owned by `AppState`, and interaction rules remain owned by StoryEvents and scene-authored `StorySubject3D` nodes.
+- Do not use `AppState` as a dumping ground for scene-local implementation details.
 
 ### Runtime Service Lookup
 
@@ -183,11 +189,13 @@ Primary folders:
 - [`../architecture/`](../architecture)
 - [`../architecture/bagua_tower/`](../architecture/bagua_tower)
 - [`../architecture/piano_ferry/`](../architecture/piano_ferry)
+- [`../game/landmarks/`](../game/landmarks)
 
 Responsibilities:
 
 - editable low-poly 3D landmark scenes and their reproducible generators
-- production landmark placement and all landmark/inspectable hotspots remain owned by `game_world_3d.tscn`
+- `LandmarkDefinition` resources own the static mapping from landmark ids to display names, world proxy paths, authored isometric coordinates, audio cues, resume defaults, and progress presets
+- `game_world_3d.tscn` owns the actual landmark proxy nodes and landmark/inspectable hotspots; `game_world_3d.gd` resolves their placement and audio through `LandmarkCatalog`
 - the retired 2D landmark/component and multi-level helper stack is no longer part of runtime architecture
 
 ### Reusable Game Modules

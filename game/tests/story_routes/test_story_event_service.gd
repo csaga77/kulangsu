@@ -70,6 +70,22 @@ func _run() -> void:
 		),
 		"Story condition validation checks canonical ids"
 	)
+	_assert_true(
+		_warnings_contain(
+			STORY_EFFECT_SCHEMA.validate_effects(
+				{
+					"landmark_audio_cue_request": {
+						"cue_id": "not_a_landmark_cue",
+						"landmark_id": "piano_ferry",
+						"trigger_id": "test_trigger",
+					}
+				},
+				validation_context
+			),
+			"unknown id 'not_a_landmark_cue'"
+		),
+		"Story effect validation checks catalog-backed landmark cue ids"
+	)
 	var extracted_resident_effects := STORY_EFFECT_SCHEMA.extract_effects({
 		"line": "Resident dialogue metadata",
 		"trust_delta": 1,

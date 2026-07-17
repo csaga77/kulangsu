@@ -1,0 +1,35 @@
+[gd_resource type="Resource" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://game/landmarks/landmark_definition.gd" id="1_definition"]
+[ext_resource type="Script" path="res://game/landmarks/landmark_progress_profile.gd" id="2_profile"]
+[ext_resource type="AudioStream" path="res://resources/audio/sfx/landmark_cues/trinity_chime.ogg" id="3_audio"]
+
+[sub_resource type="Resource" id="Progress_default"]
+script = ExtResource("2_profile")
+profile_id = &"default"
+progress = {"chime_performed": false, "cues_collected": [], "state": "locked"}
+
+[sub_resource type="Resource" id="Progress_new_game"]
+script = ExtResource("2_profile")
+profile_id = &"new_game"
+progress = {"chime_performed": false, "cues_collected": [], "state": "locked"}
+
+[sub_resource type="Resource" id="Progress_continue"]
+script = ExtResource("2_profile")
+profile_id = &"continue"
+progress = {"chime_performed": true, "cues_collected": ["steps", "garden", "yard"], "state": "reward_collected"}
+
+[sub_resource type="Resource" id="Progress_free_walk"]
+script = ExtResource("2_profile")
+profile_id = &"free_walk"
+progress = {"chime_performed": false, "cues_collected": [], "state": "available"}
+
+[resource]
+script = ExtResource("1_definition")
+id = &"trinity_church"
+display_name = "Trinity Church"
+world_node_path = NodePath("Landmarks/TrinityChurchProxy")
+isometric_position = Vector2(-1120, 7888)
+audio_cue_id = &"trinity_church"
+audio_cue = ExtResource("3_audio")
+progress_profiles = Array[ExtResource("2_profile")]([SubResource("Progress_default"), SubResource("Progress_new_game"), SubResource("Progress_continue"), SubResource("Progress_free_walk")])

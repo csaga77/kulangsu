@@ -2,20 +2,21 @@ class_name ResidentInteractionService
 extends RefCounted
 
 const STORY_EFFECT_SCHEMA_SCRIPT := preload("res://game/story_effect_schema.gd")
+const RESIDENT_CATALOG_SCRIPT := preload("res://game/resident_catalog.gd")
 
-var m_owner: Node = null
+var m_runtime: ResidentInteractionRuntimePort = null
 
 
-func _init(owner: Node) -> void:
-	m_owner = owner
+func _init(runtime: ResidentInteractionRuntimePort) -> void:
+	m_runtime = runtime
 
 
 func interact_with_resident(resident_id: String) -> Dictionary:
-	m_owner._ensure_resident_profiles()
-	if !m_owner.resident_profiles.has(resident_id):
+	m_runtime.ensure_resident_profiles()
+	if !m_runtime.has_resident_profile(resident_id):
 		return {}
 
-	var resident: Dictionary = m_owner.resident_profiles[resident_id].duplicate(true)
+	var resident := m_runtime.get_resident_profile(resident_id)
 	var dialogue_beats: Array = resident.get("dialogue_beats", [])
 	var resident_was_known := bool(resident.get("known", false))
 
@@ -25,15 +26,15 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 	if !conditional_beat.is_empty():
 		var conditional_availability := _check_beat_availability(conditional_beat)
 		if !bool(conditional_availability.get("allowed", true)):
-			m_owner.resident_profiles[resident_id] = resident
+			m_runtime.store_resident_profile(resident_id, resident)
 			_sync_known_residents()
 			if !resident_was_known:
-				m_owner._autosave_story_progress()
-			m_owner._refresh_player_costumes()
-			m_owner.resident_profile_changed.emit(resident_id, m_owner.get_resident_profile(resident_id))
+				m_runtime.autosave_story_progress()
+			m_runtime.refresh_player_costumes()
+			m_runtime.emit_resident_profile_changed(resident_id)
 			return {"line": String(conditional_availability.get("fallback", ""))}
 
-		var fired: Array = m_owner._normalize_string_array(resident.get("_fired_conditional_beats", []))
+		var fired: Array[String] = _normalize_string_array(resident.get("_fired_conditional_beats", []))
 		var beat_key := String(conditional_beat.get("_beat_key", ""))
 		var is_new_conditional := !beat_key.is_empty() and fired.find(beat_key) < 0
 		if is_new_conditional:
@@ -44,33 +45,33 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 		resident["trust"] = clampi(
 			old_cond_trust + int(conditional_beat.get("trust_delta", 0)),
 			0,
-			m_owner.RESIDENT_CATALOG_SCRIPT.max_trust()
+			RESIDENT_CATALOG_SCRIPT.max_trust()
 		)
 		var cond_journal := String(conditional_beat.get("journal_step", ""))
 		if !cond_journal.is_empty():
 			resident["current_step"] = cond_journal
 
-		m_owner.resident_profiles[resident_id] = resident
+		m_runtime.store_resident_profile(resident_id, resident)
 		_sync_known_residents()
 		if is_new_conditional:
 			_apply_resident_beat(conditional_beat, resident_id)
 			_emit_trust_milestone_if_max(resident_id, old_cond_trust, int(resident.get("trust", 0)))
-			m_owner._autosave_story_progress()
+			m_runtime.autosave_story_progress()
 		elif !resident_was_known:
-			m_owner._autosave_story_progress()
-		m_owner._refresh_player_costumes()
-		m_owner.resident_profile_changed.emit(resident_id, m_owner.get_resident_profile(resident_id))
+			m_runtime.autosave_story_progress()
+		m_runtime.refresh_player_costumes()
+		m_runtime.emit_resident_profile_changed(resident_id)
 		var result := conditional_beat.duplicate(true)
 		result.erase("_beat_key")
 		return result
 
 	if dialogue_beats.is_empty():
-		m_owner.resident_profiles[resident_id] = resident
+		m_runtime.store_resident_profile(resident_id, resident)
 		_sync_known_residents()
 		if !resident_was_known:
-			m_owner._autosave_story_progress()
-		m_owner._refresh_player_costumes()
-		m_owner.resident_profile_changed.emit(resident_id, m_owner.get_resident_profile(resident_id))
+			m_runtime.autosave_story_progress()
+		m_runtime.refresh_player_costumes()
+		m_runtime.emit_resident_profile_changed(resident_id)
 		return {}
 
 	var beat_index := clampi(
@@ -82,12 +83,12 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 
 	var beat_availability := _check_beat_availability(beat)
 	if !bool(beat_availability.get("allowed", true)):
-		m_owner.resident_profiles[resident_id] = resident
+		m_runtime.store_resident_profile(resident_id, resident)
 		_sync_known_residents()
 		if !resident_was_known:
-			m_owner._autosave_story_progress()
-		m_owner._refresh_player_costumes()
-		m_owner.resident_profile_changed.emit(resident_id, m_owner.get_resident_profile(resident_id))
+			m_runtime.autosave_story_progress()
+		m_runtime.refresh_player_costumes()
+		m_runtime.emit_resident_profile_changed(resident_id)
 		return {"line": String(beat_availability.get("fallback", ""))}
 
 	var is_new_beat := beat_index < dialogue_beats.size() - 1 \
@@ -97,7 +98,7 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 	resident["trust"] = clampi(
 		old_trust + int(beat.get("trust_delta", 0)),
 		0,
-		m_owner.RESIDENT_CATALOG_SCRIPT.max_trust()
+		RESIDENT_CATALOG_SCRIPT.max_trust()
 	)
 	resident["quest_state"] = String(beat.get("quest_state", resident.get("quest_state", "available")))
 	resident["current_step"] = String(beat.get("journal_step", beat.get("objective", "Stay in touch.")))
@@ -107,32 +108,32 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 
 	resident["_last_applied_beat"] = beat_index
 
-	m_owner.resident_profiles[resident_id] = resident
+	m_runtime.store_resident_profile(resident_id, resident)
 	_sync_known_residents()
 	if is_new_beat:
 		_apply_resident_beat(beat, resident_id)
-		m_owner._autosave_story_progress()
+		m_runtime.autosave_story_progress()
 	elif !resident_was_known:
-		m_owner._autosave_story_progress()
+		m_runtime.autosave_story_progress()
 	_emit_trust_milestone_if_max(resident_id, old_trust, int(resident.get("trust", 0)))
-	m_owner._refresh_player_costumes()
-	m_owner.resident_profile_changed.emit(resident_id, m_owner.get_resident_profile(resident_id))
+	m_runtime.refresh_player_costumes()
+	m_runtime.emit_resident_profile_changed(resident_id)
 	return beat.duplicate(true)
 
 
 func get_known_resident_names() -> PackedStringArray:
-	m_owner._ensure_resident_profiles()
+	m_runtime.ensure_resident_profiles()
 	var names := PackedStringArray()
-	for resident_id in m_owner.RESIDENT_CATALOG_SCRIPT.resident_order():
-		var resident: Dictionary = m_owner.resident_profiles.get(resident_id, {})
+	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
+		var resident := m_runtime.get_resident_profile(resident_id)
 		if resident.get("known", false):
 			names.append(String(resident.get("display_name", resident_id)))
 	return names
 
 
 func get_resident_ambient_line(resident_id: String) -> String:
-	m_owner._ensure_resident_profiles()
-	var resident: Dictionary = m_owner.resident_profiles.get(resident_id, {})
+	m_runtime.ensure_resident_profiles()
+	var resident := m_runtime.get_resident_profile(resident_id)
 	if resident.is_empty():
 		return ""
 
@@ -149,7 +150,7 @@ func get_resident_ambient_line(resident_id: String) -> String:
 
 
 func _apply_resident_beat(beat: Dictionary, resident_id: String = "") -> void:
-	m_owner.apply_story_effects(STORY_EFFECT_SCHEMA_SCRIPT.extract_effects(beat), {
+	m_runtime.apply_story_effects(STORY_EFFECT_SCHEMA_SCRIPT.extract_effects(beat), {
 		"subject_id": "npc:%s" % resident_id,
 		"action": "talk",
 		"resident_id": resident_id,
@@ -157,8 +158,8 @@ func _apply_resident_beat(beat: Dictionary, resident_id: String = "") -> void:
 
 
 func _sync_known_residents() -> void:
-	m_owner.set_residents(get_known_resident_names())
-	m_owner._update_summary_counts()
+	m_runtime.set_residents(get_known_resident_names())
+	m_runtime.update_summary_counts()
 
 
 func _seed_resident_progress(
@@ -168,14 +169,14 @@ func _seed_resident_progress(
 	quest_state: String,
 	current_step: String
 ) -> void:
-	if !m_owner.resident_profiles.has(resident_id):
+	if !m_runtime.has_resident_profile(resident_id):
 		return
 
-	var resident: Dictionary = m_owner.resident_profiles[resident_id].duplicate(true)
+	var resident := m_runtime.get_resident_profile(resident_id)
 	var dialogue_beats: Array = resident.get("dialogue_beats", [])
 
 	resident["known"] = true
-	resident["trust"] = clampi(trust, 0, m_owner.RESIDENT_CATALOG_SCRIPT.max_trust())
+	resident["trust"] = clampi(trust, 0, RESIDENT_CATALOG_SCRIPT.max_trust())
 	resident["quest_state"] = quest_state
 	resident["current_step"] = current_step
 
@@ -184,17 +185,17 @@ func _seed_resident_progress(
 	else:
 		resident["conversation_index"] = clampi(conversation_index, 0, dialogue_beats.size() - 1)
 
-	m_owner.resident_profiles[resident_id] = resident
+	m_runtime.store_resident_profile(resident_id, resident)
 	_sync_known_residents()
-	m_owner._refresh_player_costumes()
-	m_owner.resident_profile_changed.emit(resident_id, m_owner.get_resident_profile(resident_id))
+	m_runtime.refresh_player_costumes()
+	m_runtime.emit_resident_profile_changed(resident_id)
 
 
 func _count_helped_residents() -> int:
-	m_owner._ensure_resident_profiles()
+	m_runtime.ensure_resident_profiles()
 	var count := 0
-	for resident_id in m_owner.RESIDENT_CATALOG_SCRIPT.resident_order():
-		var resident: Dictionary = m_owner.resident_profiles.get(resident_id, {})
+	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
+		var resident := m_runtime.get_resident_profile(resident_id)
 		if int(resident.get("trust", 0)) > 0:
 			count += 1
 	return count
@@ -209,8 +210,8 @@ func _check_beat_availability(beat: Dictionary) -> Dictionary:
 
 	var story_event := String(beat.get("story_event", "")).strip_edges()
 	if story_event.is_empty() \
-	or bool(m_owner.get_story_flag(story_event, false)) \
-	or m_owner.can_resolve_story_event(story_event):
+	or bool(m_runtime.get_story_flag(story_event, false)) \
+	or m_runtime.can_resolve_story_event(story_event):
 		return {"allowed": true}
 
 	return {
@@ -225,29 +226,30 @@ func _check_beat_gate(beat: Dictionary) -> bool:
 		return true
 	match gate:
 		"piano_ferry_harbor_clue":
-			var ferry_progress: Dictionary = m_owner.get_landmark_progress("piano_ferry")
+			var ferry_progress := m_runtime.get_landmark_progress("piano_ferry")
 			return bool(ferry_progress.get("harbor_clue_found", false))
 		"first_fragment_restored":
-			return m_owner.fragments_found >= 1
+			return m_runtime.get_fragments_found() >= 1
 		"trinity_church_cues":
-			var trinity_progress: Dictionary = m_owner.get_landmark_progress("trinity_church")
+			var trinity_progress := m_runtime.get_landmark_progress("trinity_church")
 			var cues: Array = trinity_progress.get("cues_collected", [])
 			return cues.size() >= 3
 		"trinity_church_chime":
-			var trinity_resolved_progress: Dictionary = m_owner.get_landmark_progress("trinity_church")
+			var trinity_resolved_progress := m_runtime.get_landmark_progress("trinity_church")
 			return bool(trinity_resolved_progress.get("chime_performed", false))
 		"long_shan_exit_reached":
-			return m_owner.get_landmark_state("long_shan_tunnel") == "reward_collected"
+			return m_runtime.get_landmark_state("long_shan_tunnel") == "reward_collected"
 		"bagua_synthesis_done":
-			var tower_progress: Dictionary = m_owner.get_landmark_progress("bagua_tower")
+			var tower_progress := m_runtime.get_landmark_progress("bagua_tower")
 			return bool(tower_progress.get("synthesis_done", false))
 		"bagua_tower_available":
-			return m_owner.get_landmark_state("bagua_tower") != "locked"
+			return m_runtime.get_landmark_state("bagua_tower") != "locked"
 		"three_fragments_restored":
-			return m_owner.fragments_found >= 3
+			return m_runtime.get_fragments_found() >= 3
 		_:
-			if m_owner.story_flags.has(gate):
-				return bool(m_owner.story_flags.get(gate, false))
+			var story_flags := m_runtime.get_story_flags()
+			if story_flags.has(gate):
+				return bool(story_flags.get(gate, false))
 	return true
 
 
@@ -256,7 +258,7 @@ func _build_story_event_gate_fallback(beat: Dictionary, story_event: String) -> 
 	if !fallback.is_empty():
 		return fallback
 
-	var blockers: Dictionary = m_owner.get_story_event_blockers(story_event)
+	var blockers := m_runtime.get_story_event_blockers(story_event)
 	if blockers.has("phase_window"):
 		return "This conversation belongs to another season of the year."
 	if blockers.has("landmark_state"):
@@ -269,7 +271,7 @@ func _pick_conditional_beat(_resident_id: String, resident: Dictionary) -> Dicti
 	if conditional_beats.is_empty():
 		return {}
 
-	var fired: Array[String] = m_owner._normalize_string_array(resident.get("_fired_conditional_beats", []))
+	var fired: Array[String] = _normalize_string_array(resident.get("_fired_conditional_beats", []))
 	var available_beats: Array = []
 
 	for i in conditional_beats.size():
@@ -283,7 +285,7 @@ func _pick_conditional_beat(_resident_id: String, resident: Dictionary) -> Dicti
 		candidate["_beat_key"] = beat_key
 		available_beats.append(candidate)
 
-	return m_owner.pick_story_candidate(available_beats, {
+	return m_runtime.pick_story_candidate(available_beats, {
 		"subject_id": "npc:%s" % _resident_id,
 		"action": "talk",
 		"resident_id": _resident_id,
@@ -292,10 +294,21 @@ func _pick_conditional_beat(_resident_id: String, resident: Dictionary) -> Dicti
 
 
 func _check_conditional_conditions(conditions: Dictionary, resident: Dictionary) -> bool:
-	return m_owner.matches_story_conditions(conditions, {"resident": resident})
+	return m_runtime.matches_story_conditions(conditions, {"resident": resident})
 
 
 func _emit_trust_milestone_if_max(resident_id: String, old_trust: int, new_trust: int) -> void:
-	if new_trust >= m_owner.RESIDENT_CATALOG_SCRIPT.max_trust() \
-	and old_trust < m_owner.RESIDENT_CATALOG_SCRIPT.max_trust():
-		m_owner._emit_story_milestone("resident_trust_max", {"resident_id": resident_id})
+	if new_trust >= RESIDENT_CATALOG_SCRIPT.max_trust() \
+	and old_trust < RESIDENT_CATALOG_SCRIPT.max_trust():
+		m_runtime.emit_story_milestone("resident_trust_max", {"resident_id": resident_id})
+
+
+static func _normalize_string_array(value: Variant) -> Array[String]:
+	var output: Array[String] = []
+	if value is PackedStringArray:
+		for entry in value:
+			output.append(String(entry))
+	elif value is Array:
+		for entry in value:
+			output.append(String(entry))
+	return output

@@ -7,14 +7,7 @@ extends RefCounted
 ## runtime code uses the same validator as an atomic preflight before mutating
 ## AppState.
 
-const LANDMARK_IDS := [
-	"piano_ferry",
-	"trinity_church",
-	"bi_shan_tunnel",
-	"long_shan_tunnel",
-	"bagua_tower",
-	"festival_stage",
-]
+const LANDMARK_CATALOG_SCRIPT := preload("res://game/landmarks/landmark_catalog.gd")
 const TIME_OF_DAY_IDS := ["morning", "afternoon", "evening", "night"]
 const EFFECT_KEYS := {
 	"objective": true,
@@ -97,7 +90,8 @@ static func build_validation_context(catalog_context: Dictionary = {}) -> Dictio
 	context["route_ids"] = _id_set(route_definitions.keys())
 	context["resident_ids"] = _id_set(ResidentCatalog.resident_order())
 	context["melody_ids"] = _id_set(MelodyCatalog.ordered_ids())
-	context["landmark_ids"] = _id_set(LANDMARK_IDS)
+	context["landmark_ids"] = _id_set(LANDMARK_CATALOG_SCRIPT.landmark_ids())
+	context["landmark_audio_cue_ids"] = _id_set(LANDMARK_CATALOG_SCRIPT.audio_cue_ids())
 	context["phase_ids"] = _id_set(StorySeasonPhases.runtime_phase_ids())
 	return context
 
@@ -279,11 +273,20 @@ static func _validate_landmark_audio_cue_request(value: Variant, context: Dictio
 		return
 	var request: Dictionary = value
 	_validate_allowed_keys(request, ["cue_id", "landmark_id", "trigger_id", "display_name"], path, warnings)
-	for key in ["cue_id", "trigger_id"]:
-		if !request.has(key):
-			warnings.append("%s.%s is required." % [path, key])
-		else:
-			_expect_nonempty_string(request[key], "%s.%s" % [path, key], warnings)
+	if !request.has("cue_id"):
+		warnings.append("%s.cue_id is required." % path)
+	else:
+		_validate_known_id(
+			request["cue_id"],
+			"%s.cue_id" % path,
+			context,
+			"landmark_audio_cue_ids",
+			warnings
+		)
+	if !request.has("trigger_id"):
+		warnings.append("%s.trigger_id is required." % path)
+	else:
+		_expect_nonempty_string(request["trigger_id"], "%s.trigger_id" % path, warnings)
 	if !request.has("landmark_id"):
 		warnings.append("%s.landmark_id is required." % path)
 	else:

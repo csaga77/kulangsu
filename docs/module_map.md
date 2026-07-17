@@ -39,23 +39,25 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../game/app_state.gd`](../game/app_state.gd) - single owner of mutable shared UI/progression state plus the stable facade that composes stateless transforms, persistence, landmark, resident, and StoryEvent helpers
 - [`../game/app_runtime.gd`](../game/app_runtime.gd) - scene-owned runtime lookup for `AppStateService` and the live `"player"` group member
 - [`../game/story_event_catalog.gd`](../game/story_event_catalog.gd) - authored StoryEvent tree data file; currently owns the full `melody_landmarks` landmark-interaction subtree, including ferry, Trinity, Bi Shan, Long Shan, Bagua, and harbor-stage trigger bindings
-- [`../game/story_event_service.gd`](../game/story_event_service.gd) - first-pass generic StoryEvent bridge for subject-based interactions, including `npc:`, `landmark:`, and `inspectable:` subjects, plus shared condition matching, candidate selection, and shared effect application
+- [`../game/story_event_service.gd`](../game/story_event_service.gd) - generic StoryEvent coordinator for `npc:`, `landmark:`, and `inspectable:` subjects, shared condition matching, candidate selection, and effect application through `StoryEventRuntimePort`
 - [`../weather/weather_manager.gd`](../weather/weather_manager.gd) - global scene-owned weather service for overworld preset cycling, runtime weather-rig instancing, and synced wind application
 - [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd) - runtime lookup helper for `WeatherManager`
 - [`../game/player_profile_service.gd`](../game/player_profile_service.gd) - stateless player-profile normalization, costume-catalog lookup, and costume-selection transforms used by `AppState`
 - [`../game/journal_builder.gd`](../game/journal_builder.gd) - pure journal/setup text builders used by the journal and player setup overlays
-- [`../game/story_save_service.gd`](../game/story_save_service.gd) - versioned story autosave read/write logic and save metadata refresh
+- [`../game/story_save_service.gd`](../game/story_save_service.gd) - owner-free versioned story autosave I/O and payload normalization; accepts detached snapshots and returns detached load/metadata results for `AppState` to commit
 - [`../game/story_time_service.gd`](../game/story_time_service.gd) - stateless story-time normalization, display, and advancement transforms; `AppState` owns and commits the resulting runtime clock state
 - [`../game/story_effect_schema.gd`](../game/story_effect_schema.gd) - parent-owned schema and extraction boundary for StoryEvent condition/effect dictionaries; validates unknown keys, nested types, canonical ids, and recursive conditional effects before runtime mutation
 - [`../game/storyline_validation_provider.gd`](../game/storyline_validation_provider.gd) - Kulangsu implementation of the addon's optional host-validation interface; exposes `StoryEffectSchema`/`StoryEventCatalog` warnings during storyline editing without creating an addon-to-parent dependency
 - [`../game/story_season_phases.gd`](../game/story_season_phases.gd) - canonical season-phase ids, default progression phases, and player-facing phase labels shared by route resources, the route graph, and autosave/state helpers
 - [`../game/audio_settings_service.gd`](../game/audio_settings_service.gd) - stateless settings normalization and audio-bus application; `AppState` owns the runtime values and signals
-- [`../game/resident_interaction_service.gd`](../game/resident_interaction_service.gd) - applies resident dialogue beats, conditional beats, trust milestones, route refresh, and resident-facing autosave side effects behind `AppState` facades
-- [`../game/story_route_graph.gd`](../game/story_route_graph.gd) - keeps an instance-local runtime cache of modular storyline definitions, then projects them into route progress, lead selection, display-order-independent route-score gates, canonical story-event availability/blocker checks, endgame trigger logic, and tone-tag assembly
+- [`../game/resident_interaction_service.gd`](../game/resident_interaction_service.gd) - applies resident dialogue beats, conditional beats, trust milestones, route refresh, and resident-facing autosave commands through `ResidentInteractionRuntimePort`
+- [`../game/story_route_graph.gd`](../game/story_route_graph.gd) - keeps an instance-local runtime cache of modular storyline definitions, then projects them into route progress, lead selection, display-order-independent route-score gates, canonical story-event availability/blocker checks, endgame trigger logic, and tone-tag assembly through `StoryRouteRuntimePort`
+- [`../game/runtime_ports/`](../game/runtime_ports) - typed capability adapters for the route graph, StoryEvent executor, and resident coordinator; this is the only internal layer that holds the generic bridge to `AppState`
 - [`../game/storylines/`](../game/storylines) - authored storyline data: typed route resources under `routes/`, the `phase_set.tres` phase vocabulary, and the checked-in graph layout; add new `StorylineRouteResource` files under `routes/` instead of editing the central route graph. The schema classes and `StorylineCatalog` loader now live in the `addons/storyline_editor` submodule, located through the `storyline_editor/*` project settings.
 - [`../game/story_world_reactivity.gd`](../game/story_world_reactivity.gd) - resolves route-aware non-resident inspection text for `inspectable:` world subjects authored as `StorySubject3D` nodes in the production world scene
-- [`../game/landmark_progression.gd`](../game/landmark_progression.gd) - shared melody-prompt builder plus compatibility/fallback landmark helpers kept behind the `AppState` bridge while the authored StoryEvent tree owns the current melody-landmark interaction and completion spine
-- [`../game/landmark_cue_loader.gd`](../game/landmark_cue_loader.gd) - shared one-shot landmark cue loader/cache that decodes shipped Vorbis `.ogg` cues directly instead of relying on editor import state
+- [`../game/landmarks/landmark_definition.gd`](../game/landmarks/landmark_definition.gd) / [`../game/landmarks/landmark_progress_profile.gd`](../game/landmarks/landmark_progress_profile.gd) - typed resource schemas for immutable landmark metadata and named initial-progress presets
+- [`../game/landmarks/landmark_catalog.gd`](../game/landmarks/landmark_catalog.gd) / [`../game/landmarks/definitions/`](../game/landmarks/definitions) - ordered landmark registry and editor-authored definitions consumed by `AppState`, StoryEffect validation, and the production world
+- [`../game/landmark_progression.gd`](../game/landmark_progression.gd) - owner-free melody-prompt/result calculator used by `AppState`; the authored StoryEvent tree owns the current melody-landmark interaction and completion spine
 - [`../game/bgm_catalog.gd`](../game/bgm_catalog.gd) / [`../game/bgm_manager.gd`](../game/bgm_manager.gd) - seed-pool BGM definitions plus scene-owned weighted playback and transition logic for overworld music
 - [`../game/melody_catalog.gd`](../game/melody_catalog.gd) - authored melody definitions, onboarding clue sources, fragment sources, and performance-point summaries
 - [`../game/resident_catalog.gd`](../game/resident_catalog.gd) - resident roster ordering, external `.tres` definition loading, and helper builders consumed by the loading pipeline
@@ -85,7 +87,8 @@ Put player control, resident movement, model presentation, and interaction promp
 
 ## Landmark And World Content
 
-- [`../architecture/`](../architecture) - editable low-poly 3D landmark scenes and their reproducible generators; production placement and interaction hotspots are owned by `game_world_3d.tscn`
+- [`../architecture/`](../architecture) - editable low-poly 3D landmark scenes and their reproducible generators; the production proxy nodes and interaction hotspots are owned by `game_world_3d.tscn`
+- [`../game/landmarks/`](../game/landmarks) - typed static landmark metadata, including the proxy-node mapping and authored placement coordinates resolved by `game_world_3d.gd`
 - [`../architecture/bagua_tower/bagua_tower_stylized_3d.tscn`](../architecture/bagua_tower/bagua_tower_stylized_3d.tscn) / [`../architecture/bagua_tower/generate_stylized_3d.gd`](../architecture/bagua_tower/generate_stylized_3d.gd) - production Bagua Tower model and its reproducible Low-Poly Building Editor API generator
 - [`../architecture/piano_ferry/piano_ferry_stylized_3d.tscn`](../architecture/piano_ferry/piano_ferry_stylized_3d.tscn) / [`../architecture/piano_ferry/generate_stylized_3d.gd`](../architecture/piano_ferry/generate_stylized_3d.gd) / [`../architecture/piano_ferry/piano_ferry_building_spec.json`](../architecture/piano_ferry/piano_ferry_building_spec.json) - production Piano Ferry model, generator, and versioned deterministic base spec
 - [`../architecture/bagua_tower/tests/`](../architecture/bagua_tower/tests) - Bagua Tower-specific validation scenes and scripts
@@ -95,7 +98,7 @@ Put player control, resident movement, model presentation, and interaction promp
 
 - [`../game/story_subject_3d.gd`](../game/story_subject_3d.gd) - place `StorySubject3D` hotspots under the owning landmark proxy in `game_world_3d.tscn`, assign a catalog-backed stable `subject_id`, and leave visibility/action resolution to the shared StoryEvent service
 
-Put new landmark models and reproducible generators under `architecture/`; author production placement, collision, and story hotspots in `game_world_3d.tscn`.
+Put new landmark models and reproducible generators under `architecture/`; add static identity/placement/audio/default-progress metadata under `game/landmarks/`; author the proxy node, collision source, and story hotspots in `game_world_3d.tscn`.
 
 ## Reusable Gameplay Modules
 
@@ -145,7 +148,8 @@ Be careful about renames or moves here because scene and resource references can
 - [`../game/tests/story_routes/test_story_event_service.tscn`](../game/tests/story_routes/test_story_event_service.tscn) - focused StoryEvent bridge regression covering strict condition/effect schema validation, resident-beat effect extraction, subject-based resident talk, landmark-trigger activation, inspectable resolution, and resident routine overrides at the shared-state level
 - [`../game/tests/state/test_app_state_ownership.tscn`](../game/tests/state/test_app_state_ownership.tscn) - focused single-owner regression covering player profile/costumes, detached profile reads, story-time snapshot commits, and audio/text-speed settings signals
 - [`../characters/tests/test_character_collisions.tscn`](../characters/tests/test_character_collisions.tscn) - self-contained generated-fixture regression covering `HumanBody3D` gravity/landing, static-wall blocking, front stair ascent/descent, tagged stair-side rejection, and capped `RigidBody3D` pushing
-- [`../scenes/tests/test_landmark_cue_loading.tscn`](../scenes/tests/test_landmark_cue_loading.tscn) - focused landmark cue audio loader/cache smoke test
+- [`../game/tests/landmarks/test_landmark_catalog.tscn`](../game/tests/landmarks/test_landmark_catalog.tscn) - typed landmark catalog contract covering identity/order, world navigation names, resume fallback, initial progress profiles, deep-copy behavior, and audio resources
+- [`../scenes/tests/test_landmark_cue_loading.tscn`](../scenes/tests/test_landmark_cue_loading.tscn) - focused landmark catalog audio-resource smoke test
 - [`../scenes/tests/test_low_poly_building_editor_3d.tscn`](../scenes/tests/test_low_poly_building_editor_3d.tscn) - end-to-end building-editor smoke suite relocated from the `addons/low_poly_building_editor` submodule so the addon carries no parent-repo paths; probes generated buildings with `HumanBody3D` collision and covers the full wall/floor/stairs/rail/pillar/roof/opening regression matrix described in the addon's `docs/feature.md`
 - [`../scenes/tests/test_building_tour_3d.tscn`](../scenes/tests/test_building_tour_3d.tscn) - generic playable building-tour harness with an exported `building_scene`, transform and player spawn, plus `HumanBody3D`, camera-relative movement, orbit/zoom camera, lighting, and ground collision; defaults to the generated low-poly Bagua Tower concept
 - [`../weather/tests/capture_weather_3d.tscn`](../weather/tests/capture_weather_3d.tscn) - focused steady-rain validation/capture scene for the production 3D weather rig
@@ -177,6 +181,7 @@ Use these when you need a focused validation target instead of the full project 
 - [`piano_game_design.md`](piano_game_design.md) - current piano prototype status plus integration rules for short story-facing performance beats
 - [`features/piano_game_integration.md`](features/piano_game_integration.md) - canonical decision and future contract for connecting the standalone piano prototype to the main game
 - [`features/piano_ferry.md`](features/piano_ferry.md) - implementation-facing summary of the ferry onboarding arc and journal unlock handoff
+- [`features/landmark_definitions.md`](features/landmark_definitions.md) - static landmark-definition ownership, extension workflow, runtime boundaries, and validation
 - [`features/npc_system.md`](features/npc_system.md) - implementation-facing summary of the resident/NPC system
 - [`features/terrain_system.md`](features/terrain_system.md) - terrain generation ownership, mask-rule workflow, and extension guide
 - [`features/low_poly_terrain_3d.md`](features/low_poly_terrain_3d.md) - current low-poly 3D terrain prototype scope, ownership, and validation notes

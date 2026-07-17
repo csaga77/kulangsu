@@ -19,8 +19,12 @@ const STORY_SEASON_PHASES_SCRIPT := preload("res://game/story_season_phases.gd")
 const STORY_EVENT_SERVICE_SCRIPT := preload("res://game/story_event_service.gd")
 const STORY_TIME_SERVICE_SCRIPT := preload("res://game/story_time_service.gd")
 const LANDMARK_PROGRESSION_SCRIPT := preload("res://game/landmark_progression.gd")
+const LANDMARK_CATALOG_SCRIPT := preload("res://game/landmarks/landmark_catalog.gd")
 const AUDIO_SETTINGS_SERVICE_SCRIPT := preload("res://game/audio_settings_service.gd")
 const RESIDENT_INTERACTION_SERVICE_SCRIPT := preload("res://game/resident_interaction_service.gd")
+const STORY_ROUTE_RUNTIME_PORT_SCRIPT := preload("res://game/runtime_ports/story_route_runtime_port.gd")
+const STORY_EVENT_RUNTIME_PORT_SCRIPT := preload("res://game/runtime_ports/story_event_runtime_port.gd")
+const RESIDENT_INTERACTION_RUNTIME_PORT_SCRIPT := preload("res://game/runtime_ports/resident_interaction_runtime_port.gd")
 const STORY_AUTOSAVE_PATH := "user://story_autosave.save"
 const APP_STATE_GROUP := &"app_state_service"
 const SHORTCUT_DEFINITIONS := {
@@ -73,7 +77,7 @@ var season_phase := STORY_SEASON_PHASES_SCRIPT.DEFAULT_PHASE
 var story_day := STORY_TIME_SERVICE_SCRIPT.DEFAULT_STORY_DAY
 var world_hour := STORY_TIME_SERVICE_SCRIPT.DEFAULT_WORLD_HOUR
 var time_of_day := STORY_TIME_SERVICE_SCRIPT.time_of_day_for_hour(STORY_TIME_SERVICE_SCRIPT.DEFAULT_WORLD_HOUR)
-var location := "Piano Ferry"
+var location := LANDMARK_CATALOG_SCRIPT.default_resume_display_name()
 var objective := "Find out why the island feels quiet today."
 var hint := "R Inspect   J Journal   Esc Pause"
 var save_status := "Autosave: ready when story begins"
@@ -115,8 +119,8 @@ var ending_summary := {
 	"playtime": "a brief evening on Kulangsu",
 }
 var story_save_metadata := _default_story_save_metadata()
-var story_resume_anchor_id := "Piano Ferry"
-var story_resume_location := "Piano Ferry"
+var story_resume_anchor_id := LANDMARK_CATALOG_SCRIPT.default_resume_display_name()
+var story_resume_location := LANDMARK_CATALOG_SCRIPT.default_resume_display_name()
 var _story_autosave_path := STORY_AUTOSAVE_PATH
 var m_player_profile_service: PlayerProfileService = null
 var m_story_save_service: StorySaveService = null
@@ -126,6 +130,9 @@ var m_story_event_service: StoryEventService = null
 var m_story_time_service: StoryTimeService = null
 var m_audio_settings_service: AudioSettingsService = null
 var m_resident_interaction_service: ResidentInteractionService = null
+var m_story_route_runtime: StoryRouteRuntimePort = null
+var m_story_event_runtime: StoryEventRuntimePort = null
+var m_resident_interaction_runtime: ResidentInteractionRuntimePort = null
 
 
 func _init() -> void:
@@ -134,14 +141,17 @@ func _init() -> void:
 		PLAYER_COSTUME_CATALOG_SCRIPT,
 		player_costume_catalog
 	)
-	m_story_save_service = STORY_SAVE_SERVICE_SCRIPT.new(self)
+	m_story_save_service = STORY_SAVE_SERVICE_SCRIPT.new()
 	m_story_save_service.set_story_autosave_path(_story_autosave_path)
-	m_landmark_progression = LANDMARK_PROGRESSION_SCRIPT.new(self)
-	m_story_route_graph = STORY_ROUTE_GRAPH_SCRIPT.new(self)
-	m_story_event_service = STORY_EVENT_SERVICE_SCRIPT.new(self)
+	m_landmark_progression = LANDMARK_PROGRESSION_SCRIPT.new()
+	m_story_route_runtime = STORY_ROUTE_RUNTIME_PORT_SCRIPT.new(self)
+	m_story_event_runtime = STORY_EVENT_RUNTIME_PORT_SCRIPT.new(self)
+	m_resident_interaction_runtime = RESIDENT_INTERACTION_RUNTIME_PORT_SCRIPT.new(self)
+	m_story_route_graph = STORY_ROUTE_GRAPH_SCRIPT.new(m_story_route_runtime)
+	m_story_event_service = STORY_EVENT_SERVICE_SCRIPT.new(m_story_event_runtime)
 	m_story_time_service = STORY_TIME_SERVICE_SCRIPT.new()
 	m_audio_settings_service = AUDIO_SETTINGS_SERVICE_SCRIPT.new()
-	m_resident_interaction_service = RESIDENT_INTERACTION_SERVICE_SCRIPT.new(self)
+	m_resident_interaction_service = RESIDENT_INTERACTION_SERVICE_SCRIPT.new(m_resident_interaction_runtime)
 	story_flags = m_story_route_graph.build_default_story_flags()
 	route_progress = m_story_route_graph.build_story_state("new_game").get("route_progress", {}).duplicate(true)
 
@@ -244,6 +254,7 @@ func override_story_autosave_path_for_tests(path: String) -> void:
 
 func clear_story_autosave() -> void:
 	m_story_save_service.clear_story_autosave()
+	refresh_story_autosave_metadata()
 
 
 func clear_story_autosave_for_tests() -> void:
@@ -275,15 +286,141 @@ func _apply_runtime_settings() -> void:
 
 
 func refresh_story_autosave_metadata() -> void:
-	m_story_save_service.refresh_story_autosave_metadata()
+	var payload := m_story_save_service.load_story_autosave(_build_story_save_defaults())
+	var next_metadata := _default_story_save_metadata()
+	if !payload.is_empty():
+		next_metadata = m_story_save_service.build_story_save_metadata(payload)
+	story_save_metadata = next_metadata
+	_emit_save_metadata_changed(get_story_save_metadata())
 
 
 func save_story_autosave(status_text: String = "") -> bool:
-	return m_story_save_service.save_story_autosave(status_text)
+	if !_is_story_persistable_mode():
+		return false
+	var saved := m_story_save_service.save_story_autosave(_build_story_autosave_payload())
+	if saved:
+		refresh_story_autosave_metadata()
+	if !status_text.is_empty():
+		set_save_status(status_text)
+	return saved
 
 
 func load_story_autosave() -> bool:
-	return m_story_save_service.load_story_autosave()
+	var payload := m_story_save_service.load_story_autosave(_build_story_save_defaults())
+	if payload.is_empty():
+		return false
+	return _apply_story_autosave_payload(payload)
+
+
+func _build_story_save_defaults() -> Dictionary:
+	var default_location := LANDMARK_CATALOG_SCRIPT.default_resume_display_name()
+	return {
+		"mode": "Story",
+		"chapter": "Arrival",
+		"season_phase": STORY_SEASON_PHASES_SCRIPT.DEFAULT_PHASE,
+		"story_time": STORY_TIME_SERVICE_SCRIPT.default_time_state(),
+		"location": default_location,
+		"objective": "Find out why the island feels quiet today.",
+		"journal_unlocked": true,
+		"melody_progress": _default_melody_progress(),
+		"landmark_progress": _default_landmark_progress(),
+		"route_progress": m_story_route_graph.build_story_state("new_game").get(
+			"route_progress",
+			{}
+		),
+		"story_flags": m_story_route_graph.build_default_story_flags(),
+		"available_lead_ids": PackedStringArray(),
+		"active_lead_id": "",
+		"endgame_state": STORY_ROUTE_GRAPH_SCRIPT.default_endgame_state(),
+		"manual_pinned_lead_id": "",
+		"open_shortcuts": PackedStringArray(),
+		"resident_profiles": _default_resident_profiles(),
+		"player_profile": PLAYER_APPEARANCE_CATALOG_SCRIPT.default_profile(),
+		"equipped_player_costume_id": PLAYER_COSTUME_CATALOG_SCRIPT.default_costume_id(),
+		"ending_summary": ending_summary.duplicate(true),
+		"story_resume_anchor_id": default_location,
+		"story_resume_location": default_location,
+		"fragments_found": 0,
+		"fragments_total": 4,
+	}
+
+
+func _build_story_autosave_payload() -> Dictionary:
+	return {
+		"version": STORY_SAVE_SERVICE_SCRIPT.STORY_AUTOSAVE_VERSION,
+		"saved_at_unix": int(Time.get_unix_time_from_system()),
+		"mode": mode,
+		"chapter": chapter,
+		"season_phase": season_phase,
+		"story_time": get_story_time_state(),
+		"location": location,
+		"objective": objective,
+		"journal_unlocked": journal_unlocked,
+		"melody_progress": melody_progress.duplicate(true),
+		"landmark_progress": landmark_progress.duplicate(true),
+		"route_progress": route_progress.duplicate(true),
+		"story_flags": get_story_flags(),
+		"available_lead_ids": get_available_lead_ids(),
+		"active_lead_id": get_active_lead_id(),
+		"endgame_state": endgame_state.duplicate(true),
+		"manual_pinned_lead_id": _manual_pinned_lead_id,
+		"open_shortcuts": get_open_shortcuts(),
+		"resident_profiles": resident_profiles.duplicate(true),
+		"resident_routine_overrides": get_all_resident_routine_overrides(),
+		"player_profile": get_player_profile(),
+		"equipped_player_costume_id": get_equipped_player_costume_id(),
+		"ending_summary": ending_summary.duplicate(true),
+		"story_resume_anchor_id": story_resume_anchor_id,
+		"story_resume_location": story_resume_location,
+		"fragments_found": fragments_found,
+		"fragments_total": fragments_total,
+	}
+
+
+func _apply_story_autosave_payload(payload: Dictionary) -> bool:
+	if payload.is_empty():
+		return false
+
+	var default_location := LANDMARK_CATALOG_SCRIPT.default_resume_display_name()
+	story_resume_anchor_id = String(payload.get("story_resume_anchor_id", default_location))
+	if story_resume_anchor_id.is_empty():
+		story_resume_anchor_id = default_location
+	story_resume_location = String(
+		payload.get("story_resume_location", payload.get("location", default_location))
+	)
+	if story_resume_location.is_empty():
+		story_resume_location = default_location
+
+	set_mode(String(payload.get("mode", "Story")))
+	_apply_story_route_state_bundle(payload)
+	set_story_time_state(payload.get("story_time", {}))
+	set_location(String(payload.get("location", story_resume_location)))
+	set_objective(String(payload.get("objective", objective)))
+	set_journal_unlocked(bool(payload.get("journal_unlocked", true)))
+	set_hint(build_input_hint("R Inspect"))
+	set_landmarks(_default_landmarks())
+	set_open_shortcuts(payload.get("open_shortcuts", []))
+	set_resident_profiles(payload.get("resident_profiles", {}))
+	set_resident_routine_overrides(payload.get("resident_routine_overrides", {}))
+	set_melody_progress(payload.get("melody_progress", {}))
+	set_all_landmark_progress(payload.get("landmark_progress", {}))
+	set_summary(payload.get("ending_summary", {}))
+	set_player_profile(payload.get("player_profile", {}))
+	refresh_story_routes()
+	_sync_story_route_dependent_landmarks()
+
+	var saved_costume_id := String(
+		payload.get(
+			"equipped_player_costume_id",
+			PLAYER_COSTUME_CATALOG_SCRIPT.default_costume_id()
+		)
+	)
+	if !equip_player_costume(saved_costume_id):
+		equip_player_costume(PLAYER_COSTUME_CATALOG_SCRIPT.default_costume_id())
+
+	_update_summary_counts()
+	refresh_story_autosave_metadata()
+	return true
 
 
 func get_master_volume_percent() -> float:
@@ -842,13 +979,7 @@ func continue_story_after_endgame() -> bool:
 
 
 func _default_landmarks() -> PackedStringArray:
-	return PackedStringArray([
-		"Piano Ferry",
-		"Trinity Church",
-		"Bi Shan Tunnel",
-		"Long Shan Tunnel",
-		"Bagua Tower",
-	])
+	return LANDMARK_CATALOG_SCRIPT.world_display_names()
 
 
 func _default_resident_profiles() -> Dictionary:
@@ -908,7 +1039,10 @@ func can_practice_melody(melody_id: String) -> bool:
 	if melody_stage not in ["reconstructed", "performed", "resonant"]:
 		return false
 
-	return m_landmark_progression.build_melody_prompt_segments(melody_id).size() >= 2
+	return m_landmark_progression.build_melody_prompt_segments(
+		get_melody_definition(melody_id),
+		melody_state
+	).size() >= 2
 
 
 func can_perform_melody(melody_id: String) -> bool:
@@ -925,12 +1059,22 @@ func request_melody_prompt(
 	completion_kind: String = "",
 	request_overrides: Dictionary = {}
 ) -> void:
-	m_landmark_progression.request_melody_prompt(
+	var result := m_landmark_progression.build_melody_prompt_result(
 		melody_id,
 		prompt_mode,
 		completion_kind,
-		request_overrides
+		request_overrides,
+		get_melody_definition(melody_id),
+		get_melody_state(melody_id),
+		can_perform_melody(melody_id)
 	)
+	var status := String(result.get("status", ""))
+	if !status.is_empty():
+		set_save_status(status)
+		return
+	var request: Dictionary = result.get("request", {})
+	if !request.is_empty():
+		_emit_melody_prompt_requested(request)
 
 
 func request_melody_practice(melody_id: String) -> void:
@@ -947,11 +1091,27 @@ func complete_prompt_request(request: Dictionary) -> void:
 		)
 		if bool(result.get("handled", false)):
 			return
-	m_landmark_progression.complete_prompt_request(request)
+	var melody_id := String(request.get("melody_id", ""))
+	if completion_kind == "festival_performance":
+		set_save_status(
+			m_landmark_progression.get_melody_performance_status(
+				get_melody_state(melody_id),
+				can_perform_melody(melody_id)
+			)
+		)
+		return
+	set_save_status(
+		m_landmark_progression.get_prompt_completion_status(
+			request,
+			get_melody_definition(melody_id)
+		)
+	)
 
 
 func complete_melody_practice(melody_id: String) -> void:
-	m_landmark_progression.complete_melody_practice(melody_id)
+	set_save_status(
+		m_landmark_progression.get_melody_practice_status(get_melody_definition(melody_id))
+	)
 
 
 func complete_melody_performance(melody_id: String) -> void:
@@ -1234,15 +1394,77 @@ func interact_with_resident(resident_id: String) -> Dictionary:
 
 
 func configure_new_game() -> void:
-	m_story_save_service.configure_new_game()
+	var default_location := LANDMARK_CATALOG_SCRIPT.default_resume_display_name()
+	var story_state: Dictionary = m_story_route_graph.build_story_state("new_game") \
+		if m_story_route_graph != null else {}
+	set_mode("Story")
+	_apply_story_route_state_bundle(story_state)
+	reset_story_time()
+	set_location(default_location)
+	set_objective("Find out why the island feels quiet today.")
+	set_journal_unlocked(false)
+	set_hint(build_input_hint("R Inspect"))
+	set_save_status("Autosave: story start saved")
+	set_landmarks(_default_landmarks())
+	set_open_shortcuts(PackedStringArray())
+	clear_resident_routine_overrides()
+	set_resident_profiles(_default_resident_profiles())
+	set_melody_progress(_build_story_melody_progress("new_game"))
+	set_all_landmark_progress(_build_landmark_progress("new_game"))
+	refresh_story_routes()
+	_sync_story_route_dependent_landmarks()
+	story_resume_anchor_id = default_location
+	story_resume_location = default_location
+	set_summary({
+		"fragments": "0 / 4",
+		"residents": "0",
+		"collectibles": "Not tracked in this build",
+		"playtime": "a brief evening on Kulangsu",
+	})
+	save_story_autosave()
 
 
 func configure_continue() -> bool:
-	return m_story_save_service.configure_continue()
+	if !load_story_autosave():
+		set_save_status("Continue is unavailable until a story autosave exists.")
+		return false
+
+	set_hint(build_input_hint("R Inspect"))
+	var resume_label := story_resume_location
+	if resume_label.is_empty():
+		resume_label = location
+	set_save_status("Autosave: resumed at %s" % resume_label)
+	return true
 
 
 func configure_free_walk() -> void:
-	m_story_save_service.configure_free_walk()
+	var default_location := LANDMARK_CATALOG_SCRIPT.default_resume_display_name()
+	var story_state: Dictionary = m_story_route_graph.build_story_state("free_walk") \
+		if m_story_route_graph != null else {}
+	set_mode("Free Walk")
+	_apply_story_route_state_bundle(story_state)
+	reset_story_time()
+	set_chapter("Free Walk")
+	set_location(default_location)
+	set_objective("Wander the island and learn how the first district wants to be introduced.")
+	set_journal_unlocked(true)
+	set_hint(build_input_hint("R Inspect"))
+	set_save_status("Free Walk: sandbox ready")
+	set_landmarks(_default_landmarks())
+	set_open_shortcuts(PackedStringArray())
+	clear_resident_routine_overrides()
+	set_resident_profiles(_default_resident_profiles())
+	set_melody_progress(_build_story_melody_progress("free_walk"))
+	set_all_landmark_progress(_build_landmark_progress("free_walk"))
+	for resident_id in RESIDENT_CATALOG_SCRIPT.resident_order():
+		_seed_resident_progress(
+			resident_id,
+			1,
+			1,
+			"introduced",
+			"Sandbox resident notes are available in free walk."
+		)
+	_update_summary_counts()
 
 
 func _apply_resident_beat(beat: Dictionary) -> void:
@@ -1367,6 +1589,85 @@ func _normalize_string_array(value: Variant) -> Array[String]:
 			output.append(String(entry))
 
 	return output
+
+
+## Narrow integration surface used only by the typed runtime ports in
+## `game/runtime_ports/`. Story helpers must not read AppState private fields or
+## call private methods directly.
+func runtime_get_manual_pinned_lead_id() -> String:
+	return _manual_pinned_lead_id
+
+
+func runtime_set_manual_pinned_lead_id(lead_id: String) -> void:
+	_manual_pinned_lead_id = lead_id.strip_edges()
+
+
+func runtime_update_summary_counts() -> void:
+	_update_summary_counts()
+
+
+func runtime_count_helped_residents() -> int:
+	return _count_helped_residents()
+
+
+func runtime_emit_story_milestone(milestone_id: String, context: Dictionary = {}) -> void:
+	_emit_story_milestone(milestone_id, context)
+
+
+func runtime_ensure_resident_profiles() -> void:
+	_ensure_resident_profiles()
+
+
+func runtime_has_resident_profile(resident_id: String) -> bool:
+	_ensure_resident_profiles()
+	return resident_profiles.has(resident_id)
+
+
+func runtime_store_resident_profile(resident_id: String, profile: Dictionary) -> void:
+	_ensure_resident_profiles()
+	if resident_profiles.has(resident_id):
+		resident_profiles[resident_id] = profile.duplicate(true)
+
+
+func runtime_emit_resident_profile_changed(resident_id: String) -> void:
+	resident_profile_changed.emit(resident_id, get_resident_profile(resident_id))
+
+
+func runtime_autosave_story_progress() -> void:
+	_autosave_story_progress()
+
+
+func runtime_refresh_player_costumes() -> void:
+	_refresh_player_costumes()
+
+
+func runtime_resolve_landmark(landmark_id: String) -> void:
+	_resolve_landmark(landmark_id)
+
+
+func runtime_request_landmark_audio_cue(
+	cue_id: String,
+	landmark_id: String,
+	trigger_id: String,
+	display_name: String
+) -> void:
+	_request_landmark_audio_cue(cue_id, landmark_id, trigger_id, display_name)
+
+
+func runtime_emit_melody_hint(text: String) -> void:
+	_emit_melody_hint_shown(text)
+
+
+func runtime_emit_melody_prompt(request: Dictionary) -> void:
+	_emit_melody_prompt_requested(request)
+
+
+func runtime_activate_legacy_landmark_trigger(
+	landmark_id: String,
+	trigger_id: String,
+	display_name: String
+) -> bool:
+	return _activate_legacy_landmark_trigger(landmark_id, trigger_id, display_name)
 
 
 func _sync_fragment_summary_from_melodies() -> void:
@@ -1560,47 +1861,14 @@ func _get_base_resident_behavior_config(resident_id: String) -> Dictionary:
 # ---------------------------------------------------------------------------
 
 func _default_landmark_progress() -> Dictionary:
-	return {
-		"piano_ferry": {"state": "locked", "harbor_clue_found": false},
-		"trinity_church": {"state": "locked", "cues_collected": [], "chime_performed": false},
-		"bi_shan_tunnel": {"state": "locked", "echoes_collected": []},
-		"long_shan_tunnel": {"state": "locked", "checkpoints_collected": []},
-		"bagua_tower": {"state": "locked", "synthesis_done": false},
-		"festival_stage": {"state": "locked"},
-	}
+	return LANDMARK_CATALOG_SCRIPT.build_progress(&"default")
 
 
 func _build_landmark_progress(state_id: String) -> Dictionary:
-	match state_id:
-		"new_game":
-			return {
-				"piano_ferry": {"state": "available", "harbor_clue_found": false},
-				"trinity_church": {"state": "locked", "cues_collected": [], "chime_performed": false},
-				"bi_shan_tunnel": {"state": "locked", "echoes_collected": []},
-				"long_shan_tunnel": {"state": "locked", "checkpoints_collected": []},
-				"bagua_tower": {"state": "locked", "synthesis_done": false},
-				"festival_stage": {"state": "locked"},
-			}
-		"continue":
-			return {
-				"piano_ferry": {"state": "reward_collected", "harbor_clue_found": true},
-				"trinity_church": {"state": "reward_collected", "cues_collected": ["steps", "garden", "yard"], "chime_performed": true},
-				"bi_shan_tunnel": {"state": "available", "echoes_collected": []},
-				"long_shan_tunnel": {"state": "available", "checkpoints_collected": []},
-				"bagua_tower": {"state": "locked", "synthesis_done": false},
-				"festival_stage": {"state": "locked"},
-			}
-		"free_walk":
-			return {
-				"piano_ferry": {"state": "introduced", "harbor_clue_found": false},
-				"trinity_church": {"state": "available", "cues_collected": [], "chime_performed": false},
-				"bi_shan_tunnel": {"state": "available", "echoes_collected": []},
-				"long_shan_tunnel": {"state": "available", "checkpoints_collected": []},
-				"bagua_tower": {"state": "available", "synthesis_done": false},
-				"festival_stage": {"state": "locked"},
-			}
-		_:
-			return _default_landmark_progress()
+	var profile_id := StringName(state_id.strip_edges())
+	if profile_id == &"":
+		profile_id = &"default"
+	return LANDMARK_CATALOG_SCRIPT.build_progress(profile_id)
 
 
 func get_landmark_progress(landmark_id: String) -> Dictionary:
@@ -1667,15 +1935,11 @@ func activate_landmark_trigger(landmark_id: String, trigger_id: String, display_
 
 
 func _activate_legacy_landmark_trigger(
-	landmark_id: String,
-	trigger_id: String,
-	display_name: String
+	_landmark_id: String,
+	_trigger_id: String,
+	_display_name: String
 ) -> bool:
-	return m_landmark_progression.activate_landmark_trigger(
-		landmark_id,
-		trigger_id,
-		display_name
-	)
+	return false
 
 
 func _sync_story_route_dependent_landmarks(event_id: String = "") -> void:
@@ -1699,4 +1963,4 @@ func _resolve_landmark(landmark_id: String) -> void:
 		)
 		if bool(result.get("handled", false)):
 			return
-	m_landmark_progression.resolve_landmark(landmark_id)
+	set_save_status("This landmark reward is not wired yet.")
