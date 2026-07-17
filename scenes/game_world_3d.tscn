@@ -13975,7 +13975,7 @@ camera_relative_movement = true
 [sub_resource type="Environment" id="Environment_world"]
 background_mode = 1
 background_color = Color(0.72, 0.82, 0.88, 1)
-ambient_light_source = 3
+ambient_light_source = 2
 ambient_light_color = Color(0.88, 0.92, 0.94, 1)
 ambient_light_energy = 0.7
 tonemap_mode = 2

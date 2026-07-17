@@ -269,6 +269,7 @@ var m_default_style: LowPolyArtStyle3DScript = null
 var m_water_materials: Array[ShaderMaterial] = []
 var m_mesh_builder: LowPolyTerrainMeshBuilder = null
 var m_integrating_streets := false
+var m_generated_street_intersection_refresh_queued := false
 var m_street_integrator: LowPolyStreetCorridorIntegratorScript = null
 var m_street_path_extractor: LowPolyStreetPathExtractorScript = null
 var last_rebuild_duration_ms := 0.0
@@ -766,18 +767,35 @@ func _collect_street_sources(node: Node, result: Array[Node]) -> void:
 func _connect_street_source(source: Node) -> void:
 	if !source.has_signal("terrain_corridor_changed"):
 		return
-	var callback := Callable(self, "_on_street_corridor_changed")
+	var legacy_callback := Callable(self, "_on_street_corridor_changed")
+	if source.is_connected("terrain_corridor_changed", legacy_callback):
+		source.disconnect("terrain_corridor_changed", legacy_callback)
+	var callback := legacy_callback.bind(source)
 	if !source.is_connected("terrain_corridor_changed", callback):
 		source.connect("terrain_corridor_changed", callback)
 
 
-func _on_street_corridor_changed() -> void:
+func _on_street_corridor_changed(source: Node = null) -> void:
 	if m_integrating_streets:
 		return
-	# Street definitions beneath GeneratedStreets are intentionally editable.
-	# Refresh the supporting terrain without replacing those nodes from the mask;
-	# explicit terrain property changes and rebuild_from_source() still regenerate.
-	_request_rebuild(false)
+	if source != null and !source.has_meta(GENERATED_STREET_META):
+		# Authored streets remain terrain corridor sources; their owning Building3D
+		# resolves visible sibling intersections independently.
+		_request_rebuild(false)
+		return
+	_request_generated_street_intersection_refresh()
+
+
+func _request_generated_street_intersection_refresh() -> void:
+	if m_generated_street_intersection_refresh_queued:
+		return
+	m_generated_street_intersection_refresh_queued = true
+	call_deferred("_refresh_queued_generated_street_intersections")
+
+
+func _refresh_queued_generated_street_intersections() -> void:
+	m_generated_street_intersection_refresh_queued = false
+	_refresh_generated_street_intersections(_collect_generated_street_sources())
 
 
 static func _string_array(value: Variant) -> Array[String]:

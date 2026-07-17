@@ -132,22 +132,41 @@ func _validate_generated_street_width_edit_survives_rebuild() -> void:
 	])
 	generated_street.set_meta(LowPolyTerrain3DScript.GENERATED_STREET_META, true)
 	generated_root.add_child(generated_street)
+	var crossing_street := Street3DScript.new() as Street3D
+	crossing_street.name = "Street_002"
+	crossing_street.path_points = PackedVector3Array([
+		Vector3(0.0, 0.0, -10.0),
+		Vector3(0.0, 0.0, -2.0),
+	])
+	crossing_street.set_meta(LowPolyTerrain3DScript.GENERATED_STREET_META, true)
+	generated_root.add_child(crossing_street)
 	m_terrain.rebuild_reusing_generated_streets()
 
 	var before := m_rebuild_count
+	var cuts_before := crossing_street.get_intersection_cuts()
+	if cuts_before.is_empty():
+		m_failures.append("Generated crossing fixture did not resolve its initial intersection")
+		return
+	var cut_before: Dictionary = cuts_before[0]
+	var span_before := float(cut_before["end_t"]) - float(cut_before["start_t"])
 	var expected_width := 4.75
 	generated_street.road_width = expected_width
 	for _frame in range(4):
 		await get_tree().process_frame
-	if m_rebuild_count <= before:
-		m_failures.append("Changing a generated street did not refresh its terrain corridor")
+	if m_rebuild_count != before:
+		m_failures.append("Changing a generated street unnecessarily rebuilt the terrain mask")
 	if !is_instance_valid(generated_street) or generated_street.get_parent() != generated_root:
 		m_failures.append("Changing a generated street replaced its baked scene node")
 	elif !is_equal_approx(generated_street.road_width, expected_width):
-		m_failures.append("Terrain refresh overwrote an individual generated-street width edit")
-	var summary := m_terrain.get_street_integration_summary()
-	if !bool(summary.get("streets_reused", false)):
-		m_failures.append("Generated-street edit re-extracted the mask instead of reusing baked streets")
+		m_failures.append("Intersection refresh overwrote an individual generated-street width edit")
+	var cuts_after := crossing_street.get_intersection_cuts()
+	if cuts_after.is_empty():
+		m_failures.append("Generated-street edit discarded existing intersection geometry")
+	else:
+		var cut_after: Dictionary = cuts_after[0]
+		var span_after := float(cut_after["end_t"]) - float(cut_after["start_t"])
+		if span_after <= span_before:
+			m_failures.append("Generated-street width edit did not refresh sibling intersection cuts")
 
 
 func _on_terrain_rebuilt(_summary: Dictionary) -> void:

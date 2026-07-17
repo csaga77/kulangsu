@@ -68,6 +68,7 @@ func _run_smoke_checks() -> void:
 
 	var failures: Array[String] = []
 	_check_world(failures)
+	_check_lighting(failures)
 	_check_terrain(failures)
 	_check_player(failures)
 	_check_player_surface_follow(failures)
@@ -110,6 +111,22 @@ func _check_world(failures: Array[String]) -> void:
 	)
 	if interaction_coordinator == null or !interaction_coordinator.is_configured():
 		failures.append("world did not configure StoryInteractionCoordinator")
+
+
+func _check_lighting(failures: Array[String]) -> void:
+	if !is_instance_valid(m_world):
+		return
+	var world_environment := m_world.get_node_or_null("WorldEnvironment") as WorldEnvironment
+	if world_environment == null or world_environment.environment == null:
+		failures.append("world is missing its configured environment")
+		return
+	if (
+		world_environment.environment.ambient_light_source
+		!= Environment.AMBIENT_SOURCE_COLOR
+	):
+		failures.append(
+			"world ambient lighting does not use its configured color; horizontal street colors will render black"
+		)
 
 
 func _check_terrain(failures: Array[String]) -> void:
