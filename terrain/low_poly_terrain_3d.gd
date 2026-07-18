@@ -61,7 +61,8 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		if art_style == new_style:
 			return
 		art_style = new_style
-		_request_rebuild()
+		# Colors and water tuning only; keep baked streets.
+		_request_rebuild(false)
 
 @export_range(1, 32, 1) var sample_stride := 4:
 	set(new_stride):
@@ -138,7 +139,8 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		if is_equal_approx(building_footprint_lift, new_lift):
 			return
 		building_footprint_lift = new_lift
-		_request_rebuild()
+		# Footprint mesh lift only; keep baked streets.
+		_request_rebuild(false)
 
 # Terrain palette and water tuning (land_color, shoreline_color,
 # building_footprint_color, water_color, water_deep_color, water_surface_layer_color,
@@ -153,7 +155,8 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		if water_land_overlap_cells == clamped_overlap:
 			return
 		water_land_overlap_cells = clamped_overlap
-		_request_rebuild()
+		# Water mesh overlap only; keep baked streets.
+		_request_rebuild(false)
 
 @export var generate_collision := true:
 	set(new_generate_collision):
@@ -221,13 +224,15 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		if integrate_street_corridors == value:
 			return
 		integrate_street_corridors = value
-		_request_rebuild()
+		# Corridor integration reshapes the terrain bed; street derivation from the
+		# mask is unaffected, so keep baked streets.
+		_request_rebuild(false)
 @export var auto_resample_street_profiles := true:
 	set(value):
 		if auto_resample_street_profiles == value:
 			return
 		auto_resample_street_profiles = value
-		_request_rebuild()
+		_request_rebuild(false)
 ## Optional subtree containing Street3D-compatible sources. Empty searches the
 ## owning/current scene without serializing a dependency on the editor add-on.
 @export_node_path("Node") var street_source_root_path := NodePath(""):
@@ -235,20 +240,20 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		if street_source_root_path == value:
 			return
 		street_source_root_path = value
-		_request_rebuild()
+		_request_rebuild(false)
 @export_range(0.0, 4.0, 0.25) var street_corridor_feather_cells := 1.0:
 	set(value):
 		var clamped_value := clampf(value, 0.0, 4.0)
 		if is_equal_approx(street_corridor_feather_cells, clamped_value):
 			return
 		street_corridor_feather_cells = clamped_value
-		_request_rebuild()
+		_request_rebuild(false)
 @export var street_corridors_may_shape_water := false:
 	set(value):
 		if street_corridors_may_shape_water == value:
 			return
 		street_corridors_may_shape_water = value
-		_request_rebuild()
+		_request_rebuild(false)
 
 @export_group("Wind")
 ## Horizontal direction the water waves travel, in degrees. Drive this from
@@ -283,7 +288,7 @@ var last_street_integration_summary: Dictionary = {}
 # Generated street meshes are held out of the saved scene: only their centerline,
 # sampled heights, and authored properties serialize, and the mesh rebuilds from
 # those on load. This stashes the live meshes across an editor save.
-var m_saved_street_meshes: Dictionary = {}
+var m_saved_street_meshes: Dictionary[int, Mesh] = {}
 
 
 func _ready() -> void:
@@ -349,31 +354,7 @@ func get_sample_cell_height(sample_cell: Vector2i) -> float:
 		clampi(sample_cell.x, 0, grid_size.x - 1),
 		clampi(sample_cell.y, 0, grid_size.y - 1)
 	)
-	var cell := m_sample_grid[clamped_cell.y][clamped_cell.x] as LowPolyTerrainCell
-	if cell == null:
-		return land_height
-	var builder := _ensure_mesh_builder()
-	if cell.kind == LowPolyTerrainCell.Kind.WATER:
-		if !m_heightmap_defines_water_area:
-			return water_height
-		return builder.get_cell_surface_height(
-			m_sample_grid,
-			clamped_cell.x,
-			clamped_cell.y,
-			cell.height,
-			0.5,
-			0.5,
-			true
-		)
-	return builder.get_cell_surface_height(
-		m_sample_grid,
-		clamped_cell.x,
-		clamped_cell.y,
-		cell.height,
-		0.5,
-		0.5,
-		m_heightmap_defines_water_area
-	)
+	return _sampled_surface_height(clamped_cell, 0.5, 0.5)
 
 
 func get_sample_cell_kind(sample_cell: Vector2i) -> LowPolyTerrainCell.Kind:
@@ -407,30 +388,28 @@ func get_world_surface_height(world_position: Vector3) -> float:
 	)
 	var local_x := clampf(grid_position.x - float(sample_cell.x), 0.0, 1.0)
 	var local_z := clampf(grid_position.y - float(sample_cell.y), 0.0, 1.0)
+	return _sampled_surface_height(sample_cell, local_x, local_z)
+
+
+## Shared water/land surface-height branch for the cell-center and world-space
+## queries. sample_cell must already be clamped to the grid.
+func _sampled_surface_height(sample_cell: Vector2i, local_x: float, local_z: float) -> float:
 	var cell := m_sample_grid[sample_cell.y][sample_cell.x] as LowPolyTerrainCell
 	if cell == null:
 		return land_height
-	var builder := _ensure_mesh_builder()
-	if cell.kind == LowPolyTerrainCell.Kind.WATER:
-		if !m_heightmap_defines_water_area:
-			return water_height
-		return builder.get_cell_surface_height(
-			m_sample_grid,
-			sample_cell.x,
-			sample_cell.y,
-			cell.height,
-			local_x,
-			local_z,
-			true
-		)
-	return builder.get_cell_surface_height(
+	if cell.kind == LowPolyTerrainCell.Kind.WATER and !m_heightmap_defines_water_area:
+		return water_height
+	var use_heightmap_water := (
+		m_heightmap_defines_water_area or cell.kind == LowPolyTerrainCell.Kind.WATER
+	)
+	return _ensure_mesh_builder().get_cell_surface_height(
 		m_sample_grid,
 		sample_cell.x,
 		sample_cell.y,
 		cell.height,
 		local_x,
 		local_z,
-		m_heightmap_defines_water_area
+		use_heightmap_water
 	)
 
 
@@ -540,7 +519,8 @@ func _rebuild_from_source(regenerate_streets: bool = true) -> void:
 	}
 	terrain_rebuilt.emit(rebuild_summary)
 	if print_summary:
-		print("LowPolyTerrain3D: cold rebuild %.2f ms." % last_rebuild_duration_ms)
+		var rebuild_kind := "cold" if regenerate_streets else "warm (streets reused)"
+		print("LowPolyTerrain3D: %s rebuild %.2f ms." % [rebuild_kind, last_rebuild_duration_ms])
 
 
 func _integrate_street_generation(
@@ -669,6 +649,7 @@ func _generate_streets_from_mask(grid: Array[Array]) -> Dictionary:
 	var network := network_script.new() as Node3D
 	if network == null:
 		generation_errors.append("Could not instantiate the generated street network.")
+		_discard_generated_street_root(root)
 		return {"sources": sources, "summary": summary}
 	network.name = "StreetNetwork3D"
 	network.set_meta(GENERATED_STREET_META, true)
@@ -697,6 +678,7 @@ func _generate_streets_from_mask(grid: Array[Array]) -> Dictionary:
 		generation_errors.append_array(sample_errors)
 		root.remove_child(network)
 		network.queue_free()
+		_discard_generated_street_root(root)
 		return {"sources": sources, "summary": summary}
 	network.call("adapt_stair_constraints", maxf(cell_size * 0.1, 0.05))
 	network.call("rebuild_network")
@@ -704,30 +686,6 @@ func _generate_streets_from_mask(grid: Array[Array]) -> Dictionary:
 	sources.append(network)
 	summary["generated_source_count"] = sources.size()
 	return {"sources": sources, "summary": summary}
-
-
-func _adapt_generated_stair_constraints(street: Node3D) -> void:
-	if !street.has_method("get_geometry_profile"):
-		return
-	var profile: PackedVector3Array = street.call("get_geometry_profile")
-	if profile.size() < 2:
-		return
-	var minimum_tread := maxf(cell_size * 0.1, 0.05)
-	var required_maximum_riser := float(street.get("max_riser_height"))
-	for index in range(profile.size() - 1):
-		var a := profile[index]
-		var b := profile[index + 1]
-		var run := Vector2(b.x - a.x, b.z - a.z).length()
-		var rise := absf(b.y - a.y)
-		if run <= 0.00001 or rad_to_deg(atan2(rise, run)) <= 25.0001:
-			continue
-		var available_steps := maxi(floori(run / minimum_tread), 1)
-		required_maximum_riser = maxf(
-			required_maximum_riser,
-			rise / float(available_steps) + 0.0001
-		)
-	street.set("min_tread_depth", minimum_tread)
-	street.set("max_riser_height", required_maximum_riser)
 
 
 func _refresh_generated_street_intersections(streets: Array[Node]) -> void:
@@ -780,10 +738,7 @@ func _collect_street_sources(node: Node, result: Array[Node]) -> void:
 func _connect_street_source(source: Node) -> void:
 	if !source.has_signal("terrain_corridor_changed"):
 		return
-	var legacy_callback := Callable(self, "_on_street_corridor_changed")
-	if source.is_connected("terrain_corridor_changed", legacy_callback):
-		source.disconnect("terrain_corridor_changed", legacy_callback)
-	var callback := legacy_callback.bind(source)
+	var callback := Callable(self, "_on_street_corridor_changed").bind(source)
 	if !source.is_connected("terrain_corridor_changed", callback):
 		source.connect("terrain_corridor_changed", callback)
 
@@ -1123,6 +1078,13 @@ func _clear_generated_children() -> void:
 			continue
 		remove_child(child)
 		child.queue_free()
+
+
+## Frees a just-created street root after generation fails, so an empty
+## GeneratedStreets node is never persisted into the scene.
+func _discard_generated_street_root(root: Node) -> void:
+	remove_child(root)
+	root.queue_free()
 
 
 ## Removes the baked-street root. Called only on an explicit rebuild, right
