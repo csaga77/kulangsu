@@ -1139,22 +1139,27 @@ func _generated_street_root() -> Node:
 	return get_node_or_null(NodePath(String(GENERATED_STREET_ROOT_NAME)))
 
 
-## Editor PRE_SAVE: null each generated street's mesh so the geometry is not
-## serialized. The centerline, sampled height profile, and authored properties
-## still persist, and build_on_ready rebuilds the mesh from them on load.
+## Editor PRE_SAVE: null every generated street-network mesh so the geometry is
+## not serialized. Generated Street3D and StreetJunction3D caches are descendants
+## of the persisted network node, while the graph/profile definition stays on the
+## network itself and build_on_ready reconstructs the meshes on load.
 func _strip_generated_street_meshes_for_save() -> void:
 	m_saved_street_meshes.clear()
 	var root := _generated_street_root()
 	if root == null:
 		return
-	for child in root.get_children():
-		if !child.has_meta(GENERATED_STREET_META):
+	for source in root.get_children():
+		if !source.has_meta(GENERATED_STREET_META):
 			continue
-		var street := child as MeshInstance3D
-		if street == null:
-			continue
-		m_saved_street_meshes[street.get_instance_id()] = street.mesh
-		street.mesh = null
+		var pending: Array[Node] = [source]
+		while !pending.is_empty():
+			var node: Node = pending.pop_back()
+			pending.append_array(node.get_children())
+			var generated_mesh := node as MeshInstance3D
+			if generated_mesh == null or generated_mesh.mesh == null:
+				continue
+			m_saved_street_meshes[generated_mesh.get_instance_id()] = generated_mesh.mesh
+			generated_mesh.mesh = null
 
 
 ## Editor POST_SAVE companion: put the live meshes back after the save wrote the

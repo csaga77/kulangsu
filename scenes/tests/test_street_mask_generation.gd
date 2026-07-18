@@ -195,6 +195,26 @@ func _validate_geometry_not_stored(terrain: LowPolyTerrain3DScript) -> void:
 		m_failures.append("Generated street has no baked mesh to start from")
 		return
 	var vertices_before := int(mesh_before.surface_get_arrays(0)[Mesh.ARRAY_VERTEX].size())
+	var cached_meshes: Dictionary = {}
+	for candidate in network.find_children("*", "MeshInstance3D", true, false):
+		var generated_mesh := candidate as MeshInstance3D
+		if generated_mesh != null and generated_mesh.mesh != null:
+			cached_meshes[generated_mesh.get_instance_id()] = generated_mesh.mesh
+	if cached_meshes.is_empty():
+		m_failures.append("Generated network has no mesh caches to exercise the save hook")
+	else:
+		terrain._strip_generated_street_meshes_for_save()
+		for instance_id: int in cached_meshes:
+			var stripped_mesh := instance_from_id(instance_id) as MeshInstance3D
+			if stripped_mesh != null and stripped_mesh.mesh != null:
+				m_failures.append("Editor save hook left a nested street mesh cache serialized")
+				break
+		terrain._restore_generated_street_meshes_after_save()
+		for instance_id: int in cached_meshes:
+			var restored_mesh := instance_from_id(instance_id) as MeshInstance3D
+			if restored_mesh != null and restored_mesh.mesh == null:
+				m_failures.append("Editor save hook did not restore a live street mesh cache")
+				break
 
 	street.mesh = null
 	street.rebuild_street_mesh()
