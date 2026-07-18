@@ -30,12 +30,20 @@ const STREET_GEOMETRY_RESOLVER_SCRIPT_PATH := (
 )
 const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 
+## Editor rebuild button: check to run an explicit cold rebuild that discards
+## baked streets and re-extracts them from the mask. Required after editing
+## heightmap settings or values inside an assigned art-style preset, which are
+## manual-apply by design.
 @export var rebuild: bool = false:
 	set(value):
 		if !value:
 			return
 		_request_rebuild()
 
+## Terrain mask PNG sharing the 2D generator legend: opaque blue pixels become
+## STREET cells, opaque red pixels become building-footprint overlays, other
+## opaque pixels become land, and pixels below the profile's land alpha
+## threshold become water. Cold rebuild (re-extracts streets).
 @export_file_path("*.png") var mask_file: String = "res://design/gulangyu_map_mini_export.png":
 	set(new_mask_file):
 		if mask_file == new_mask_file:
@@ -43,12 +51,18 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		mask_file = new_mask_file
 		_request_rebuild()
 
+## Optional grayscale heightmap adding elevation offsets on top of land_height
+## (black = heightmap_min_offset, white = heightmap_max_offset). Manual-apply by
+## design: press rebuild or call rebuild_from_source() after assigning, so large
+## imports do not rebuild during the Inspector assignment itself.
 @export_file_path("*.png") var heightmap_file: String = "res://design/gulangyu_height_map_mini_export.png":
 	set(new_heightmap_file):
 		if heightmap_file == new_heightmap_file:
 			return
 		heightmap_file = new_heightmap_file
 
+## Mask legend resource shared with the 2D terrain generator. Empty uses the
+## default profile. Cold rebuild (re-extracts streets).
 @export var generation_profile: TerrainGenerationProfile:
 	set(new_profile):
 		if generation_profile == new_profile:
@@ -56,6 +70,9 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		generation_profile = new_profile
 		_request_rebuild()
 
+## Style preset owning the terrain palette and water color/wave tuning. Empty
+## uses a built-in default style. Assignment queues a warm rebuild (keeps baked
+## streets); edits inside the preset are manual-apply — press rebuild after.
 @export var art_style: LowPolyArtStyle3DScript:
 	set(new_style):
 		if art_style == new_style:
@@ -64,6 +81,8 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		# Colors and water tuning only; keep baked streets.
 		_request_rebuild(false)
 
+## Source pixels per sampled cell: trades mask fidelity against mesh density.
+## Cold rebuild (re-extracts streets).
 @export_range(1, 32, 1) var sample_stride := 4:
 	set(new_stride):
 		var clamped_stride := maxi(new_stride, 1)
@@ -72,6 +91,8 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		sample_stride = clamped_stride
 		_request_rebuild()
 
+## World size of one sampled cell in meters; scales the whole island. Cold
+## rebuild (re-extracts streets).
 @export_range(0.1, 10.0, 0.1) var cell_size := 1.0:
 	set(new_cell_size):
 		var clamped_size := maxf(new_cell_size, 0.1)
@@ -80,6 +101,8 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		cell_size = clamped_size
 		_request_rebuild()
 
+## World height of the flat water plane. In heightmap-expanded mode, sampled
+## cells at or below this height become water. Cold rebuild.
 @export_range(0.0, 4.0, 0.01) var water_height := 0.0:
 	set(new_height):
 		if is_equal_approx(water_height, new_height):
@@ -87,6 +110,7 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		water_height = new_height
 		_request_rebuild()
 
+## Base land surface height; heightmap offsets are added on top. Cold rebuild.
 @export_range(0.0, 4.0, 0.01) var land_height := 0.22:
 	set(new_height):
 		if is_equal_approx(land_height, new_height):
@@ -94,6 +118,9 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		land_height = new_height
 		_request_rebuild()
 
+## Averages adjacent cell heights at shared corners into connected low-poly
+## facets. Off preserves the old block/terrace style with vertical height walls.
+## Cold rebuild.
 @export var smooth_land_surface := true:
 	set(new_smooth_land_surface):
 		if smooth_land_surface == new_smooth_land_surface:
@@ -101,6 +128,9 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		smooth_land_surface = new_smooth_land_surface
 		_request_rebuild()
 
+## Small height blur before mesh creation. In heightmap-expanded mode it runs
+## before waterline classification; in mask-clipped mode it is land-only. Keep
+## low so terrain reads as simple slopes, not per-pixel relief. Cold rebuild.
 @export_range(0, 4, 1) var height_smoothing_passes := 1:
 	set(new_passes):
 		var clamped_passes := clampi(new_passes, 0, 4)
@@ -109,24 +139,33 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		height_smoothing_passes = clamped_passes
 		_request_rebuild()
 
+## When enabled, the heightmap dimensions become the generated terrain source
+## and the mask only upgrades cells to street/building semantics; sampled cells
+## at or below water_height become water. Manual-apply: press rebuild after.
 @export var heightmap_expands_land_to_source := true:
 	set(new_expands_land):
 		if heightmap_expands_land_to_source == new_expands_land:
 			return
 		heightmap_expands_land_to_source = new_expands_land
 
+## Height offset for black heightmap pixels, added to land_height. Manual-apply:
+## press rebuild after editing.
 @export_range(-4.0, 4.0, 0.01) var heightmap_min_offset := 0.0:
 	set(new_offset):
 		if is_equal_approx(heightmap_min_offset, new_offset):
 			return
 		heightmap_min_offset = new_offset
 
+## Height offset for white heightmap pixels, added to land_height. Manual-apply:
+## press rebuild after editing.
 @export_range(-10.0, 10.0, 0.01) var heightmap_max_offset := 0.0:
 	set(new_offset):
 		if is_equal_approx(heightmap_max_offset, new_offset):
 			return
 		heightmap_max_offset = new_offset
 
+## Terrain clearance for generated street sections (their minimum lift above the
+## shaped terrain bed). Cold rebuild (re-extracts streets).
 @export_range(0.0, 1.0, 0.01) var street_lift := 0.02:
 	set(new_lift):
 		if is_equal_approx(street_lift, new_lift):
@@ -134,6 +173,8 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		street_lift = new_lift
 		_request_rebuild()
 
+## Lift of the building-footprint overlay mesh above the land surface. Warm
+## rebuild (keeps baked streets).
 @export_range(0.0, 2.0, 0.01) var building_footprint_lift := 0.09:
 	set(new_lift):
 		if is_equal_approx(building_footprint_lift, new_lift):
@@ -149,6 +190,9 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 # only on LowPolyArtStyle3D. Assign `art_style` to override them; otherwise a built-in
 # default style is used. See _effective_style().
 
+## Expands only the rendered water footprint over adjacent land cells so the
+## water plane visually connects into the shoreline; height, collision, and
+## placement queries are unaffected. Warm rebuild (keeps baked streets).
 @export_range(0, 4, 1) var water_land_overlap_cells := 1:
 	set(new_overlap_cells):
 		var clamped_overlap := clampi(new_overlap_cells, 0, 4)
@@ -158,6 +202,8 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		# Water mesh overlap only; keep baked streets.
 		_request_rebuild(false)
 
+## Builds concave land collision and passes collision generation on to the
+## generated street network. Cold rebuild (re-extracts streets).
 @export var generate_collision := true:
 	set(new_generate_collision):
 		if generate_collision == new_generate_collision:
@@ -165,7 +211,10 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		generate_collision = new_generate_collision
 		_request_rebuild()
 
+## Rebuild terrain on scene load, reusing the street network baked into the
+## scene instead of re-extracting it from the mask.
 @export var build_on_ready := true
+## Print rebuild timing and street-generation summaries to the output log.
 @export var print_summary := true
 
 @export_group("Street Integration")
@@ -177,6 +226,8 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 			return
 		generate_streets_from_mask = value
 		_request_rebuild()
+## Minimum centerline length in cells for an extracted mask path; shorter
+## fragments render as ordinary supporting land. Cold rebuild.
 @export_range(2, 32, 1) var generated_street_minimum_path_cells := 2:
 	set(value):
 		var clamped_value := maxi(value, 2)
@@ -184,6 +235,8 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 			return
 		generated_street_minimum_path_cells = clamped_value
 		_request_rebuild()
+## Cap on extracted street paths; excess paths are discarded deterministically.
+## Cold rebuild.
 @export_range(1, 512, 1) var generated_street_maximum_paths := 256:
 	set(value):
 		var clamped_value := maxi(value, 1)
@@ -191,6 +244,7 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 			return
 		generated_street_maximum_paths = clamped_value
 		_request_rebuild()
+## Road width of generated street sections, in cells. Cold rebuild.
 @export_range(0.25, 3.0, 0.05) var generated_street_road_width_cells := 0.9:
 	set(value):
 		var clamped_value := maxf(value, 0.25)
@@ -198,6 +252,8 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 			return
 		generated_street_road_width_cells = clamped_value
 		_request_rebuild()
+## Footpath width on each side of generated street sections, in cells. Cold
+## rebuild.
 @export_range(0.0, 2.0, 0.05) var generated_street_footpath_width_cells := 0.35:
 	set(value):
 		var clamped_value := maxf(value, 0.0)
@@ -227,6 +283,9 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		# Corridor integration reshapes the terrain bed; street derivation from the
 		# mask is unaffected, so keep baked streets.
 		_request_rebuild(false)
+## Authored street sources resample their vertical profiles from the unmodified
+## base grid before corridor shaping; generated streets keep their baked
+## profiles. Warm rebuild (keeps baked streets).
 @export var auto_resample_street_profiles := true:
 	set(value):
 		if auto_resample_street_profiles == value:
@@ -241,6 +300,8 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 			return
 		street_source_root_path = value
 		_request_rebuild(false)
+## Feather distance in cells for blending the shaped corridor bed into the
+## surrounding terrain. Warm rebuild (keeps baked streets).
 @export_range(0.0, 4.0, 0.25) var street_corridor_feather_cells := 1.0:
 	set(value):
 		var clamped_value := clampf(value, 0.0, 4.0)
@@ -248,6 +309,8 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 			return
 		street_corridor_feather_cells = clamped_value
 		_request_rebuild(false)
+## Allow street corridors to reshape water cells; skipped by default so streets
+## never carve the seabed. Warm rebuild (keeps baked streets).
 @export var street_corridors_may_shape_water := false:
 	set(value):
 		if street_corridors_may_shape_water == value:
