@@ -81,9 +81,13 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		# Colors and water tuning only; keep baked streets.
 		_request_rebuild(false)
 
-## Source pixels per sampled cell: trades mask fidelity against mesh density.
-## Cold rebuild (re-extracts streets).
-@export_range(1, 32, 1) var sample_stride := 4:
+## Resolution: how many source pixels collapse into one sampled cell (a 512x512
+## mask at stride 4 becomes a 128x128 grid). Higher is chunkier and faster but
+## can swallow small mask features like narrow streets or footprints; it does
+## not change world size. Island world width = (source pixels / sample_stride)
+## * cell_size. Tune this for the low-poly read and rebuild cost before tuning
+## cell_size. Cold rebuild (re-extracts streets).
+@export_range(1, 32, 1) var sample_stride := 2:
 	set(new_stride):
 		var clamped_stride := maxi(new_stride, 1)
 		if sample_stride == clamped_stride:
@@ -91,8 +95,12 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 		sample_stride = clamped_stride
 		_request_rebuild()
 
-## World size of one sampled cell in meters; scales the whole island. Cold
-## rebuild (re-extracts streets).
+## Physical scale: world meters per sampled cell. Does not change what is
+## sampled, only how big the result is; also scales generated street
+## cross-sections authored in cells (road/footpath widths, kerbs). Island world
+## width = (source pixels / sample_stride) * cell_size. Tune after
+## sample_stride, to match actor and building scale. Cold rebuild (re-extracts
+## streets).
 @export_range(0.1, 10.0, 0.1) var cell_size := 1.0:
 	set(new_cell_size):
 		var clamped_size := maxf(new_cell_size, 0.1)
