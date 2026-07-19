@@ -166,7 +166,7 @@ const WATER_SHADER := preload("res://resources/materials/water_3d.gdshader")
 
 ## Height offset for white heightmap pixels, added to land_height. Manual-apply:
 ## press rebuild after editing.
-@export_range(-10.0, 10.0, 0.01) var heightmap_max_offset := 0.0:
+@export_range(-10.0, 100.0, 0.01) var heightmap_max_offset := 0.0:
 	set(new_offset):
 		if is_equal_approx(heightmap_max_offset, new_offset):
 			return
