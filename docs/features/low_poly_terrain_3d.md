@@ -81,8 +81,8 @@
 
 ## Extension Notes
 
-- Use `sample_stride` to trade mask fidelity against mesh density.
-- Use `cell_size`, `land_height`, `smooth_land_surface`, `height_smoothing_passes`, `street_lift`, and `building_footprint_lift` to tune the island scale, generated-street clearance, and low-poly read.
+- `sample_stride` and `cell_size` control different axes: stride is resolution (how many source pixels collapse into one sampled cell — higher is chunkier and faster, and can swallow small mask features), while cell size is physical scale (world meters per sampled cell, which also scales generated street cross-sections authored in cells). Island world width = (source pixels ÷ `sample_stride`) × `cell_size`. Tune stride for the low-poly read and rebuild cost first, then cell size to match actor and building scale.
+- Use `land_height`, `smooth_land_surface`, `height_smoothing_passes`, `street_lift`, and `building_footprint_lift` to tune elevation, generated-street clearance, and the low-poly read.
 - Use `generate_streets_from_mask`, `generated_street_minimum_path_cells`, `generated_street_maximum_paths`, `generated_street_road_width_cells`, and `generated_street_footpath_width_cells` to control automatic street-network extraction and cross-section scale. Disabling it stops mask-derived visible streets; authored StreetNetwork3D and legacy Street3D corridor integration remain available.
 - Use `heightmap_file`, `heightmap_expands_land_to_source`, `heightmap_min_offset`, `heightmap_max_offset`, and `water_height` to prototype full heightmap land, mask-clipped islands, terraces, hills, sea level, and exposed coastlines without changing terrain mask semantics.
 - Use `water_color`, `water_deep_color`, `water_surface_layer_color`, `water_shoreline_color`, `water_highlight_color`, `water_wave_depth`, `water_wave_frequency`, `water_shoreline_band_ratio`, `water_shoreline_lift`, and `water_surface_layer_lift` on the shared `LowPolyArtStyle3D` style preset to tune the 3D water tint, transparency, shimmer, and shoreline read. `water_land_overlap_cells` stays on the terrain node since it controls geometry footprint, not palette.
