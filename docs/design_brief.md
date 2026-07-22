@@ -24,6 +24,16 @@ Read this first. It is the minimum-token design context for new Codex threads.
 - `chapter` remains a compatibility/display label, not the authoritative progression key.
 - `Free Walk` is a low-pressure exploration mode separate from story progression.
 
+## Character Action Direction
+
+- The shipped baseline remains idle/walk/run movement, gravity and landing, stairs,
+  contextual inspect/talk, a cosmetic jump, and light contact-based dynamic pushing.
+- The target game also requires physical traversal jumping, carrying, deliberate
+  push/pull puzzles, sitting, and ladder climbing.
+- These planned verbs must deepen exploration, environmental care, reflection, and
+  authored vertical routes without introducing precision platforming or a general
+  physics sandbox.
+
 ## UI Direction
 
 - Keep gameplay screens mostly clear.
@@ -100,6 +110,7 @@ Input expectations:
 - Feature-doc template: [`features/template.md`](features/template.md)
 - Core melody loop, current gap list, and MVP implementation order: [`features/core_melody_loop.md`](features/core_melody_loop.md)
 - Multi-level landmark and stacked-room design: [`features/multi_level_spaces.md`](features/multi_level_spaces.md)
+- Current character actions, physics, and future capability gates: [`features/low_poly_actor_3d.md`](features/low_poly_actor_3d.md)
 - NPC and resident system slice: [`npc_system_design.md`](npc_system_design.md)
 - Event and story extension ideas: [`event_story_system_design.md`](event_story_system_design.md)
 - Player wardrobe and costume unlocks: [`player_costume_system.md`](player_costume_system.md)

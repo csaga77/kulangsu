@@ -16,6 +16,7 @@ Use this folder for:
 
 - The current playable canon is the seasonal multi-route architecture.
 - The five-landmark melody route remains canonical as one major route inside that broader structure.
+- Physical traversal jumping, carrying, deliberate push/pull, sitting, and ladder climbing form a required planned character-action workstream; [`implementation_plan.md`](implementation_plan.md) owns its sequencing and status.
 - `implementation_plan.md` is the source of truth for what is shipped, what is still active, and what the next follow-on work should be.
 - This folder no longer keeps historical or superseded draft notes.
 

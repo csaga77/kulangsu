@@ -40,6 +40,49 @@ The whole game should stay legible around a small verb set:
 
 If a feature does not strengthen one of these verbs, it should be optional or cut.
 
+## Character Action Scope
+
+The required movement baseline is intentionally small: idle, walk, run, forgiving
+gravity and landing, static collision, stair traversal, contextual inspect/talk,
+and the current light contact response for dynamic bodies. The current jump is a
+cosmetic expression only; it does not clear obstacles, cross gaps, reach ledges,
+or gate story progress.
+
+The target game requires five planned physical verbs beyond that shipped baseline:
+
+- Physical traversal jumping supports forgiving obstacle, gap, ledge, and vertical
+  route traversal without becoming precision platforming.
+- Carrying supports small acts of delivery, restoration, and environmental care.
+- Deliberate push/pull supports compact, deterministic spatial puzzles.
+- Sitting supports reflection, listening, conversation, and appreciation of place.
+- Ladder climbing supports readable authored vertical routes, especially where
+  stairs or portals would weaken the landmark's physical character.
+
+Each verb must receive at least one authored route or environmental use; the target
+character-action milestone is incomplete until all five are implemented and
+validated. Cooperative multi-character object manipulation, NPC-assisted
+traversal, mandatory precision platforming, and arbitrary persistent furniture
+placement remain out of scope until a separate design decision supplies a concrete
+need and owner.
+
+Physical actions should follow these player-facing rules:
+
+- Keep short inspect and speech-balloon exchanges non-blocking by default.
+- Let an authored performance, mechanism, or posture lock movement only when its
+  owner defines completion, cancellation, cleanup, and camera behavior.
+- Prefer one contextual interaction input when the selected target and result are
+  unambiguous.
+- Keep object counts and manipulation sequences small; avoid turning Tend into
+  inventory management or a general physics puzzle.
+- Provide a deterministic reset when a movable object can leave its authored area
+  or obstruct required traversal.
+- Never assume residents inherit player actions; actor capabilities are opt-in.
+- Use ladders and traversal jumps for deliberate authored routes, not as generic
+  shortcuts that bypass story gates or semantic resume anchors.
+
+See [`features/low_poly_actor_3d.md`](features/low_poly_actor_3d.md) for the current
+runtime, input, physics, ownership, and validation contract.
+
 ## The Eight Core Plays
 
 These are the repeatable gameplay units that should combine into every district arc.
