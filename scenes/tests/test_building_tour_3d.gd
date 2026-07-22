@@ -38,8 +38,15 @@ func _ready() -> void:
 	m_camera.current = true
 	if Engine.is_editor_hint():
 		return
+	# Run after Camera3DController so the tour keeps its orbit/zoom behavior but
+	# does not move the entire frame vertically when the player jumps.
+	process_priority = 1
 	m_camera_controller.call_deferred("snap_to_target")
 	call_deferred("_run_smoke_check")
+
+
+func _process(_delta: float) -> void:
+	_lock_camera_vertical_follow()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -73,6 +80,25 @@ func _rebuild_building() -> void:
 	instance.transform = building_transform
 	m_building_container.add_child(instance)
 	m_building_instance = instance
+
+
+func _lock_camera_vertical_follow() -> void:
+	if Engine.is_editor_hint():
+		return
+	if (
+		!is_instance_valid(m_player)
+		or !is_instance_valid(m_camera)
+		or !is_instance_valid(m_camera_controller)
+	):
+		return
+	var follow_offset: Vector3 = m_camera_controller.get("follow_offset")
+	var look_at_offset: Vector3 = m_camera_controller.get("look_at_offset")
+	var camera_position := m_camera.global_position
+	camera_position.y = player_spawn.y + follow_offset.y
+	m_camera.global_position = camera_position
+	var look_at_position := m_player.global_position
+	look_at_position.y = player_spawn.y
+	m_camera.look_at(look_at_position + look_at_offset, Vector3.UP)
 
 
 func _run_smoke_check() -> void:

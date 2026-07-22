@@ -46,10 +46,10 @@ shape = SubResource("BoxShape3D_ground")
 [node name="Player" parent="." unique_id=1917270485 instance=ExtResource("3_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, -18)
 draw_skeleton_bones = false
-walk_speed = 3.4
-run_speed = 6.0
-body_height = 1.68
-body_radius = 0.27
+walk_speed = 3.6
+run_speed = 6.6
+body_height = 1.62
+body_radius = 0.25
 controller = SubResource("Resource_player_controller")
 
 [node name="Camera3D" type="Camera3D" parent="." unique_id=1745836389]

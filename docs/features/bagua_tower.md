@@ -105,7 +105,7 @@ The mood is contemplative. There is no combat, no timer, and no scoring. The syn
 
 ## Validation
 
-- Run `scenes/tests/test_building_tour_3d.tscn` with its `building_scene` set to the stylized Bagua Tower to tour the standalone 3D concept. Use WASD or the arrow keys to move, hold Shift to walk, press Space to jump, right-drag to orbit, and use the mouse wheel to zoom.
+- Run `scenes/tests/test_building_tour_3d.tscn` with its `building_scene` set to the stylized Bagua Tower to tour the standalone 3D concept. Its `HumanBody3D` uses `PlayerController3D`; use WASD or the arrow keys to move, hold Shift to walk, press Space to jump, right-drag to orbit, and use the mouse wheel to zoom. The tour camera follows movement on the ground plane without shifting the building view vertically during a jump.
 - Run the game, complete the Long Shan Tunnel arc and talk to Ren once more. Confirm bagua_tower advances to `available`.
 - Talk to tower_keeper (beats 0 and 1). Confirm landmark advances to `in_progress` and the synthesis chamber trigger appears at the top.
 - Climb to the chamber with fewer than 3 fragments. Confirm the "not yet direction" status line appears.
