@@ -29,13 +29,13 @@ Define how stacked rooms, stairs, and tunnel interiors should work in the produc
 - [`../../scenes/game_world_3d.tscn`](../../scenes/game_world_3d.tscn)
 - [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd)
 - [`../../game/story_subject_3d.gd`](../../game/story_subject_3d.gd)
-- [`../../scenes/tests/test_building_tour_3d.tscn`](../../scenes/tests/test_building_tour_3d.tscn)
+- [`../../scenes/tests/test_environment_3d.tscn`](../../scenes/tests/test_environment_3d.tscn)
 - [`../../characters/tests/test_character_collisions.tscn`](../../characters/tests/test_character_collisions.tscn)
 
 ## Validation
 
 - Use [`../../characters/tests/test_character_collisions.tscn`](../../characters/tests/test_character_collisions.tscn) for wall, gravity, stair, and pushing behavior.
-- Use [`../../scenes/tests/test_building_tour_3d.tscn`](../../scenes/tests/test_building_tour_3d.tscn) for an authored building, actor, controller, camera, and collision together.
+- Use [`../../scenes/tests/test_environment_3d.tscn`](../../scenes/tests/test_environment_3d.tscn) for character interactions with an authored building, terrain, camera, and collision together.
 - Use [`../../scenes/tests/test_game_world_3d.tscn`](../../scenes/tests/test_game_world_3d.tscn) for production landmark subjects and resume anchors.
 
 ## Out Of Scope Until Authored

@@ -54,7 +54,7 @@ The low-poly 3D lane is now the production overworld instantiated directly by `m
 - the Low-Poly Building Editor and versioned `BuildingSpec` pipeline produce editable authored landmarks; Piano Ferry, Trinity Church, and Bagua Tower are instanced in the runtime while both tunnels remain anchors without authored geometry
 - the resident factory spawns the full shared roster as locally wandering `HumanBody3D` actors with stable `StorySubject3D` ids and world-anchored speech balloons
 - the runtime dispatches through shared story services, resolves semantic resume anchors, and owns shared BGM and landmark-cue playback
-- focused terrain, actor, collision, camera-occlusion, building-tour, and production-world scenes cover the lane; headless smoke scenes must terminate with process status `0` on success and nonzero on failure
+- focused terrain, actor, collision, camera-occlusion, environment-interaction, and production-world scenes cover the lane; headless smoke scenes must terminate with process status `0` on success and nonzero on failure
 
 ## Content Reality Check
 
@@ -137,12 +137,12 @@ Shipped baseline:
 - water uses a flat baked plane for placement semantics but real shader-displaced waves, analytic normals, layered highlights, shoreline overlap, and normalized wind supplied through `LowPolyWaterWindAdapter`
 - `HumanBody3D`, `BaseController3D`, and `PlayerController3D` provide camera-relative XZ movement, animated model locomotion, gravity, native stair-slope traversal and static-wall sliding, and capped `RigidBody3D` pushing
 - `LowPolyWorldCoordinates3D`, `LowPolyArtStyle3D`, and `Camera3DController` support the production world without scene-local placement math; authored landmark scenes provide runtime massing and collision
-- the Low-Poly Building Editor, versioned `BuildingSpec` generation, authored landmark concepts, and `test_building_tour_3d.tscn` provide the environment-authoring and playable scale-review lane
+- the Low-Poly Building Editor, versioned `BuildingSpec` generation, authored landmark concepts, and `test_environment_3d.tscn` provide the environment-authoring and playable character-interaction review lane
 - design-time streets now use an explicit `StreetNetwork3D` graph with stable junction/segment resources, adaptive horizontal curves and vertical profiles, asymmetric cross-sections, dedicated multi-road centre geometry, topology-aware placement/editing, deterministic mask conversion, terrain junction footprints, and legacy Street3D migration compatibility
 - three authored landmarks, two tunnel markers, the complete 15-landmark/5-inspectable `StorySubject3D`
   set, the shared resident roster, speech balloons, BGM/landmark cues, and semantic resume anchors are
   assembled by `game_world_3d`
-- focused actor, collision, terrain, camera-occlusion, building-tour,
+- focused actor, collision, terrain, camera-occlusion, environment-interaction,
   combined-world, and runtime-world scenes form the current validation set
 
 Execution order:
@@ -223,7 +223,7 @@ Primary files:
 - `scenes/tests/test_low_poly_terrain_3d.tscn`
 - `scenes/tests/test_game_world_3d.tscn`
 - `scenes/tests/test_camera_3d_occlusion.tscn`
-- `scenes/tests/test_building_tour_3d.tscn`
+- `scenes/tests/test_environment_3d.tscn`
 - `characters/human_body_3d.gd`
 - `assets/characters/male.glb` (default; `boy.glb`, `female.glb` alternates)
 - `characters/control/base_controller_3d.gd`

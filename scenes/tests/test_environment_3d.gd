@@ -38,7 +38,7 @@ func _ready() -> void:
 	m_camera.current = true
 	if Engine.is_editor_hint():
 		return
-	# Run after Camera3DController so the tour keeps its orbit/zoom behavior but
+	# Run after Camera3DController so the test keeps its orbit/zoom behavior but
 	# does not move the entire frame vertically when the player jumps.
 	process_priority = 1
 	m_camera_controller.call_deferred("snap_to_target")
@@ -74,7 +74,7 @@ func _rebuild_building() -> void:
 		return
 	var instance := building_scene.instantiate() as Node3D
 	if instance == null:
-		push_error("Building test scene root must inherit Node3D.")
+		push_error("Environment fixture root must inherit Node3D.")
 		return
 	instance.name = "BuildingUnderTest"
 	instance.transform = building_transform
@@ -110,13 +110,13 @@ func _run_smoke_check() -> void:
 	elif !(m_player.get("controller") is BaseController3DScript):
 		failures.append("player is missing PlayerController3D")
 	if !is_instance_valid(m_camera) or !m_camera.current:
-		failures.append("tour camera is not active")
+		failures.append("environment test camera is not active")
 	if $Ground/StaticBody3D/CollisionShape3D.shape == null:
-		failures.append("tour ground is missing collision")
+		failures.append("environment test ground is missing collision")
 
 	if failures.is_empty():
 		print(
-			"PASS: Generic building tour scene (%s)"
+			"PASS: Environment test scene (%s)"
 			% building_scene.resource_path
 		)
 		if DisplayServer.get_name() == "headless":

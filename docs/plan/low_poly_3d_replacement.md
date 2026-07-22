@@ -115,7 +115,7 @@ greenfield rendering work:
 - actor/control: `HumanBody3D`, `BaseController3D`, `PlayerController3D`, `Camera3DController`
 - landmarks: the Low-Poly Building Editor and versioned `BuildingSpec` pipeline,
   with authored runtime scenes for Bagua Tower, Piano Ferry, and Trinity Church
-- review scenes: `scenes/tests/test_game_world_3d.tscn`, `test_building_tour_3d.tscn`,
+- review scenes: `scenes/tests/test_game_world_3d.tscn`, `test_environment_3d.tscn`,
   `characters/tests/test_character_collisions.tscn`, `test_low_poly_terrain_3d.tscn`,
   `test_camera_3d_occlusion.tscn`
 
@@ -130,7 +130,7 @@ satisfied. Phases A–C below are those stages restated as this plan's entry cri
 to Phase D until all are recorded green.
 
 - **A. Correctness baseline.** All headless smoke scenes (actor, collision, terrain/water, camera
-  occlusion, building tour, production world) return process status `0`.
+  occlusion, environment interaction, production world) return process status `0`.
   *Status: green.* `scenes/tests/test_game_world_3d.tscn` passes (`PASS: game_world_3d smoke test`,
   exit 0), validating world build, terrain, player spawn, five landmark anchors, resident spawning,
   registered story subjects, and a resident talk dispatch through the shared story services.
