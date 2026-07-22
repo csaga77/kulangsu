@@ -29,7 +29,6 @@ const STAIR_SIDE_START := Vector3(1.35, 0.08, STAIR_LANE_Z - 2.2)
 const STAIR_SIDE_FRAMES := 90
 const STAIR_SIDE_MAX_Z := STAIR_LANE_Z - (STAIR_WIDTH * 0.5) - 0.20
 const STAIR_SIDE_MAX_HEIGHT := 0.20
-const STAIR_SIDE_WALL_COLLISION_META := &"stairs_side_wall_collision"
 
 
 func _ready() -> void:
@@ -165,54 +164,29 @@ func _validate_stair_front_and_side_traversal(failures: Array[String]) -> void:
 	var side_probe := _create_probe("StairSideProbe", STAIR_SIDE_START)
 	await _settle_probe(side_probe)
 	var max_side_y := side_probe.global_position.y
-	var saw_side_wall_collision := false
-	var saw_side_wall_flag := false
-	var saw_side_wall_ahead := false
-	var first_side_step_frame := -1
-	var first_side_step_position := Vector3.ZERO
-	var first_side_step_had_blocker_ahead := false
+	var saw_slope_side_collision := false
 	for frame in range(STAIR_SIDE_FRAMES):
-		var blocker_ahead := bool(side_probe.call("_has_stair_side_wall_ahead", Vector3.BACK))
-		saw_side_wall_ahead = saw_side_wall_ahead or blocker_ahead
 		side_probe.velocity.y = GROUNDING_VELOCITY
 		side_probe.move_with_speed(Vector3.BACK, 2.4)
 		max_side_y = maxf(max_side_y, side_probe.global_position.y)
-		if first_side_step_frame < 0 and side_probe.global_position.y > STAIR_SIDE_MAX_HEIGHT:
-			first_side_step_frame = frame
-			first_side_step_position = side_probe.global_position
-			first_side_step_had_blocker_ahead = blocker_ahead
 		for collision_index in range(side_probe.get_slide_collision_count()):
 			var collision := side_probe.get_slide_collision(collision_index)
 			var collider := collision.get_collider() as Node
-			if collider != null and String(collider.name).begins_with("StairSideWall"):
-				saw_side_wall_collision = true
-		var wall_flags := int(side_probe.call("_get_blocking_wall_contact_flags", Vector3.BACK))
-		saw_side_wall_flag = saw_side_wall_flag or (wall_flags & 2) != 0
+			if collider != null and collider.name == &"StairSlope":
+				saw_slope_side_collision = true
 		await get_tree().physics_frame
 
-	if !saw_side_wall_collision:
-		failures.append("HumanBody3D did not collide with the generated stair side blocker")
-	if !saw_side_wall_flag:
-		failures.append("HumanBody3D did not classify the generated stair side blocker")
-	if !saw_side_wall_ahead:
-		failures.append("HumanBody3D did not detect the generated stair side blocker ahead")
+	if !saw_slope_side_collision:
+		failures.append("HumanBody3D did not collide with the stair slope's side face")
 	if side_probe.global_position.z > STAIR_SIDE_MAX_Z:
 		failures.append(
-			"HumanBody3D crossed the generated stair side blocker "
+			"HumanBody3D crossed the stair slope's side face "
 			+ "(position=%s, max z=%0.2f)" % [side_probe.global_position, STAIR_SIDE_MAX_Z]
 		)
 	if max_side_y > STAIR_SIDE_MAX_HEIGHT:
 		failures.append(
-			(
-				"HumanBody3D stepped to y=%0.2f through the stair side blocker "
-				+ "(first at frame %d, position=%s, blocker ahead=%s)"
-			)
-			% [
-				max_side_y,
-				first_side_step_frame,
-				first_side_step_position,
-				first_side_step_had_blocker_ahead,
-			]
+			"HumanBody3D climbed to y=%0.2f through the stair slope's side face"
+			% max_side_y
 		)
 	side_probe.queue_free()
 
@@ -252,17 +226,15 @@ func _build_stair_fixture() -> void:
 		Vector3(4.0, 0.10, 4.0),
 		Vector3(-2.0, -0.05, STAIR_LANE_Z)
 	)
-	for step_index in range(STAIR_STEP_COUNT):
-		var top_height := float(step_index + 1) * STAIR_STEP_HEIGHT
-		var center_x := (float(step_index) + 0.5) * STAIR_STEP_DEPTH
-		_add_static_box(
-			"StairStep%d" % (step_index + 1),
-			Vector3(STAIR_STEP_DEPTH, top_height, STAIR_WIDTH),
-			Vector3(center_x, top_height * 0.5, STAIR_LANE_Z)
-		)
-
 	var top_height := float(STAIR_STEP_COUNT) * STAIR_STEP_HEIGHT
 	var stair_length := float(STAIR_STEP_COUNT) * STAIR_STEP_DEPTH
+	_add_static_ramp(
+		"StairSlope",
+		stair_length,
+		top_height,
+		STAIR_WIDTH,
+		Vector3(0.0, 0.0, STAIR_LANE_Z)
+	)
 	_add_static_box(
 		"StairSideApproachFloor",
 		Vector3(stair_length, 0.10, 4.0),
@@ -273,24 +245,41 @@ func _build_stair_fixture() -> void:
 		Vector3(3.0, 0.10, 4.0),
 		Vector3(stair_length + 1.5, top_height - 0.05, STAIR_LANE_Z)
 	)
-	for side_sign in [-1.0, 1.0]:
-		_add_static_box(
-			"StairSideWall%s" % ("Left" if side_sign < 0.0 else "Right"),
-			Vector3(stair_length, top_height + 0.8, 0.12),
-			Vector3(
-				stair_length * 0.5,
-				(top_height + 0.8) * 0.5,
-				STAIR_LANE_Z + side_sign * (STAIR_WIDTH * 0.5 + 0.06)
-			),
-			true
-		)
+
+
+func _add_static_ramp(
+	body_name: String,
+	run: float,
+	height: float,
+	width: float,
+	origin: Vector3
+) -> void:
+	var body := StaticBody3D.new()
+	body.name = body_name
+	body.position = origin
+	var half_width := width * 0.5
+	var shape := ConvexPolygonShape3D.new()
+	shape.points = PackedVector3Array([
+		Vector3(0.0, 0.0, -half_width),
+		Vector3(0.0, 0.0, half_width),
+		Vector3(run, height, -half_width),
+		Vector3(run, height, half_width),
+		Vector3(0.0, -0.10, -half_width),
+		Vector3(0.0, -0.10, half_width),
+		Vector3(run, -0.10, -half_width),
+		Vector3(run, -0.10, half_width),
+	])
+	var collision_shape := CollisionShape3D.new()
+	collision_shape.name = "CollisionShape3D"
+	collision_shape.shape = shape
+	body.add_child(collision_shape)
+	add_child(body)
 
 
 func _add_static_box(
 	body_name: String,
 	box_size: Vector3,
-	center_position: Vector3,
-	is_stair_side_wall := false
+	center_position: Vector3
 ) -> void:
 	var body := StaticBody3D.new()
 	body.name = body_name
@@ -300,7 +289,5 @@ func _add_static_box(
 	var collision_shape := CollisionShape3D.new()
 	collision_shape.name = "CollisionShape3D"
 	collision_shape.shape = shape
-	if is_stair_side_wall:
-		collision_shape.set_meta(STAIR_SIDE_WALL_COLLISION_META, true)
 	body.add_child(collision_shape)
 	add_child(body)

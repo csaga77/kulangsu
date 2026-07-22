@@ -49,7 +49,7 @@ Regression coverage now includes:
 The low-poly 3D lane is now the production overworld instantiated directly by `main.gd`:
 
 - the terrain pipeline is split into image sampling, cell data, mesh construction, and node/material integration; it supports heightmap or mask-driven land, connected seabed, collision, layered shader-displaced water, and weather-driven wind
-- `HumanBody3D`, `BaseController3D`, and `PlayerController3D` mirror the main actor/controller concepts on the XZ plane; the actor uses a premade animated GLB, gravity, wall sliding, stair traversal, floor snapping, and capped dynamic-body pushing
+- `HumanBody3D`, `BaseController3D`, and `PlayerController3D` mirror the main actor/controller concepts on the XZ plane; the actor uses a premade animated GLB, gravity, native wall and stair-slope movement, and capped dynamic-body pushing
 - `LowPolyWorldCoordinates3D`, `LowPolyArtStyle3D`, and `Camera3DController` support coordinate-safe placement, orthographic orbit/zoom, and target-occluder fading
 - the Low-Poly Building Editor and versioned `BuildingSpec` pipeline produce editable authored landmarks; Piano Ferry, Trinity Church, and Bagua Tower are instanced in the runtime while both tunnels remain anchors without authored geometry
 - the resident factory spawns the full shared roster as locally wandering `HumanBody3D` actors with stable `StorySubject3D` ids and world-anchored speech balloons
@@ -135,7 +135,7 @@ Shipped baseline:
 
 - `LowPolyTerrainSampler` turns mask/heightmap images into typed cells; `LowPolyTerrainMeshBuilder` turns those cells into land, seabed, street, footprint, shoreline, layered water, and collision geometry; `LowPolyTerrain3D` owns lifecycle, materials, wind, and placement-height queries
 - water uses a flat baked plane for placement semantics but real shader-displaced waves, analytic normals, layered highlights, shoreline overlap, and normalized wind supplied through `LowPolyWaterWindAdapter`
-- `HumanBody3D`, `BaseController3D`, and `PlayerController3D` provide camera-relative XZ movement, animated model locomotion, gravity, floor snap, front-riser stair traversal, tagged stair-side blocking, static-wall sliding, and capped `RigidBody3D` pushing
+- `HumanBody3D`, `BaseController3D`, and `PlayerController3D` provide camera-relative XZ movement, animated model locomotion, gravity, native stair-slope traversal and static-wall sliding, and capped `RigidBody3D` pushing
 - `LowPolyWorldCoordinates3D`, `LowPolyArtStyle3D`, and `Camera3DController` support the production world without scene-local placement math; authored landmark scenes provide runtime massing and collision
 - the Low-Poly Building Editor, versioned `BuildingSpec` generation, authored landmark concepts, and `test_building_tour_3d.tscn` provide the environment-authoring and playable scale-review lane
 - design-time streets now use an explicit `StreetNetwork3D` graph with stable junction/segment resources, adaptive horizontal curves and vertical profiles, asymmetric cross-sections, dedicated multi-road centre geometry, topology-aware placement/editing, deterministic mask conversion, terrain junction footprints, and legacy Street3D migration compatibility
@@ -150,7 +150,7 @@ Execution order:
 1. **Correctness baseline (shipped guardrail).**
    - Keep actor API, generated collision fixtures, terrain/water, camera occlusion, building loading, and combined-world headless scenes green.
    - Every automated smoke scene must return process status `0` on success and nonzero on assertion failure; a logged `PASS` line alone is insufficient.
-   - `test_character_collisions.tscn` is the owner for gravity/landing, static wall blocking, front stair ascent/descent, tagged stair-side rejection, and dynamic rigid-body pushing.
+   - `test_character_collisions.tscn` is the owner for gravity/landing, static wall blocking, native stair-slope ascent/descent and side blocking, and dynamic rigid-body pushing.
 2. **Runtime interaction slice (green for current authored scope).**
    - All five landmark anchors, shared-data residents, stable subject-id dispatch, collision,
      prompt selection, camera readability, and semantic resume fallback are

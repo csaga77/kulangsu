@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://dmg4qwx0rchm6" path="res://characters/human_body_3d.gd" id="1_human_body_3d"]
 
 [node name="human_body_3d" type="CharacterBody3D" unique_id=771716252]
-floor_snap_length = 0.72
 script = ExtResource("1_human_body_3d")
 draw_skeleton_bones = true
 body_height = 1.84

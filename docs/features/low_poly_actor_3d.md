@@ -14,8 +14,8 @@
 - [`../../characters/control/base_controller_3d.gd`](../../characters/control/base_controller_3d.gd) defines `class_name BaseController3D`, the shared 3D controller base for `HumanBody3D`.
 - [`../../characters/control/player_controller_3d.gd`](../../characters/control/player_controller_3d.gd) defines `class_name PlayerController3D`, a first playable input adapter that extends `BaseController3D`.
 - [`../../characters/character_model_catalog_3d.gd`](../../characters/character_model_catalog_3d.gd) centralizes player and resident model selection, and [`../../characters/character_preview_3d.gd`](../../characters/character_preview_3d.gd) renders the same actor/model contract in UI SubViewports.
-- [`../../characters/tests/test_human_body_3d.tscn`](../../characters/tests/test_human_body_3d.tscn) is the focused smoke scene covering actor API parity, current-frame controller input, placement occupancy, step-up/step-down navigation, character-model structure (instanced model, mesh, material, skeleton, and `idle`/`walk`/`run` animation clips), and the absence of the removed per-part accessory API and generated accessory nodes.
-- [`../../characters/tests/test_character_collisions.tscn`](../../characters/tests/test_character_collisions.tscn) builds its own collision fixtures and validates gravity/landing, static-wall blocking, front stair ascent/descent, tagged stair-side rejection, and capped `RigidBody3D` pushing.
+- [`../../characters/tests/test_human_body_3d.tscn`](../../characters/tests/test_human_body_3d.tscn) is the focused smoke scene covering actor API parity, current-frame controller input, jump takeoff velocity, character-model structure (instanced model, mesh, material, skeleton, and `idle`/`walk`/`run` animation clips), and the absence of the removed per-part accessory API and generated accessory nodes.
+- [`../../characters/tests/test_character_collisions.tscn`](../../characters/tests/test_character_collisions.tscn) builds its own collision fixtures and validates gravity/landing, static-wall blocking, native stair-slope ascent/descent and side blocking, and capped `RigidBody3D` pushing.
 - [`../../scenes/tests/test_game_world_3d.tscn`](../../scenes/tests/test_game_world_3d.tscn) validates the production actor/controller, generated terrain collision and streets, terrain-height following and wading, camera follow/orbit wiring, authored-landmark collision, and runtime integration.
 - `HumanBody3D` instances the GLB model under `VisualRoot/CharacterModel`, scales it to `body_height`, rotates it to face the rig's forward axis, and auto-plants its lowest point at the foot origin.
 - Hair and clothing are authored as part of the selected GLB. `HumanBody3D` does not instance separate hair, pants, or jacket scenes, create accessory `BoneAttachment3D` nodes, or transfer skin weights at runtime.
@@ -62,15 +62,15 @@
 - The character model carries its own mesh, texture, skeleton, and animation clips; no runtime mesh generation or per-vertex color authoring is involved.
 - `move(...)` and `move_with_speed(...)` consume XZ-plane `Vector3` directions.
 - `get_ground_rect()` returns an XZ-plane `Rect2` footprint for future adapter code; it is not a drop-in replacement for 2D physics queries.
-- `is_grounded()` is the preferred 3D actor grounded check because it includes both Godot floor contact and the actor's manual stair/floor snap support.
+- `is_grounded()` is the preferred 3D actor grounded check; it reports Godot floor contact except during the actor's cosmetic jump window.
 - `body_height` and `body_radius` update the model scale, capsule collision shape, local bounding box, and ground footprint together.
 - The optional `controller` slot accepts `BaseController3D` resources such as `PlayerController3D` or `ResidentController3D`.
 - `PlayerController3D` consumes the existing input map: `ui_left`, `ui_right`, `ui_up`, `ui_down`, `ui_walk`, `ui_jump`, and `ui_inspect`.
 - `PlayerController3D` reads input before the base controller applies movement so starts and stops affect the current controller tick.
 - `camera_relative_movement` can align movement to the active `Camera3D`; when disabled, movement is world-aligned on XZ.
-- Stair/floor snapping may move the actor vertically or horizontally only after the current capsule shape is checked against the physics space at the candidate placement. The resolver favors a nearer higher stair face while climbing and a farther lower floor while descending so stairs do not snap the actor back to a previous landing.
-- When `move_and_slide()` reports a blocking wall contact, stair/floor snapping must preserve the slid XZ position so diagonal input carries the actor along the wall instead of snapping it back into the original into-wall target. Forward floor probes remain available for ordinary stair riser step-up and step-down support. Generated stair side blockers are tagged separately; current contacts and a short ahead-of-capsule ray suppress only forward step-up, and target-floor lookups preserve that suppression so the actor cannot sample a tread through a thin side wall before contact. `RigidBody3D` contacts are excluded from static-wall classification; the actor applies a small movement-direction impulse to push dynamic bodies such as balls.
-- Manual stair/floor reacquisition is suspended while the actor is in its visual jump state, and `is_grounded()` reports false during that jump window.
+- Stairs expose smooth walkable ramp/platform collision beneath their stepped render meshes. `HumanBody3D` traverses those shapes through its ordinary downward grounding velocity and Godot's native `move_and_slide()` slope response; it has no stair-specific floor probes, placement queries, position rewrites, or synthetic grounded state.
+- Static walls and stair side faces stay on the same native collision path, while the actor applies a small movement-direction impulse to push dynamic bodies such as balls.
+- A grounded jump clears the downward planting velocity and applies its parabolic offset only to `VisualRoot`; the collision capsule remains planted so floor resolution cannot cancel the visible jump. `is_grounded()` reports false during that jump window.
 - Actor placement in generated terrain must use `LowPolyWorldCoordinates3D` instead of scene-local guessed offsets.
 - Terrain/building elevation following is owned by `game_world_3d`. During physics frames it raycasts a short distance below the actor against the actor collision mask so terrain, piers, and collision-bearing building parts can support the feet; if no solid surface is found, it falls back to `LowPolyTerrain3D.get_world_surface_height(...)` and the documented water-wading rule. `HumanBody3D` itself stays terrain-agnostic.
 
@@ -95,7 +95,7 @@
 PASS: HumanBody3D adapter smoke test
 ```
 
-- Run the focused collision regression after changing gravity, wall handling, stair/floor probes, placement checks, or dynamic-body pushing:
+- Run the focused collision regression after changing gravity, wall handling, stair slope collision, or dynamic-body pushing:
 
 ```sh
 "/Applications/Godot.app/Contents/MacOS/Godot" --headless --fixed-fps 60 --path . --scene res://characters/tests/test_character_collisions.tscn

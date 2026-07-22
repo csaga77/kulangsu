@@ -3,14 +3,6 @@ extends Node3D
 
 const BaseController3DScript = preload("res://characters/control/base_controller_3d.gd")
 const PlayerController3DScript = preload("res://characters/control/player_controller_3d.gd")
-const STEP_FIXTURE_HEIGHT := 0.30
-const STEP_UP_START := Vector3(11.65, 0.0, 0.0)
-const STEP_UP_MOTION := Vector3(0.80, 0.0, 0.0)
-const BLOCKED_STEP_START := Vector3(31.65, 0.0, 0.0)
-const BLOCKED_STEP_MOTION := Vector3(0.80, 0.0, 0.0)
-const BLOCKED_STEP_TARGET := BLOCKED_STEP_START + BLOCKED_STEP_MOTION + Vector3(0.0, STEP_FIXTURE_HEIGHT, 0.0)
-const STEP_DOWN_START := Vector3(42.0, STEP_FIXTURE_HEIGHT, 0.0)
-const STEP_DOWN_MOTION := Vector3(0.90, 0.0, 0.0)
 const REMOVED_ACCESSORY_PROPERTIES: Array[StringName] = [
 	&"use_hair_model",
 	&"hair_model_scene",
@@ -41,7 +33,6 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 
-	_ensure_navigation_fixtures()
 	call_deferred("_run_smoke_checks")
 
 
@@ -128,11 +119,21 @@ func _validate_actor_api(failures: Array[String]) -> void:
 		failures.append("move_with_speed did not apply positive x velocity")
 
 	_validate_player_controller_input_order(failures, controller)
-	_validate_step_navigation(failures)
 
+	m_actor.velocity.y = -1.6
 	m_actor.jump()
 	if m_actor.is_grounded():
 		failures.append("jump should suspend the grounded state")
+	if !is_zero_approx(m_actor.velocity.y):
+		failures.append("jump should clear the downward grounding velocity")
+	m_actor.call("_process_jump", 0.275)
+	if visual_root != null and visual_root.position.y < 0.47:
+		failures.append("jump should visibly reach its configured apex")
+	if (
+		collision_shape != null
+		and !is_equal_approx(collision_shape.position.y, float(m_actor.get("body_height")) * 0.5)
+	):
+		failures.append("jump should keep the grounded collision capsule planted")
 
 	var ground_rect: Rect2 = m_actor.get_ground_rect()
 	if ground_rect.size.x <= 0.0 or ground_rect.size.y <= 0.0:
@@ -272,82 +273,3 @@ func _validate_player_controller_input_order(failures: Array[String], controller
 	m_actor.velocity = original_velocity
 	m_actor.set("is_walking", original_is_walking)
 	m_actor.set("is_running", original_is_running)
-
-
-func _validate_step_navigation(failures: Array[String]) -> void:
-	var original_position := m_actor.global_position
-	var original_velocity := m_actor.velocity
-	var original_max_step_height := float(m_actor.get("max_step_height"))
-	var original_floor_snap_distance := float(m_actor.get("floor_snap_distance"))
-
-	m_actor.set("max_step_height", 0.45)
-	m_actor.set("floor_snap_distance", 0.50)
-	m_actor.velocity = Vector3.ZERO
-
-	if !bool(m_actor.call("_can_place_body_at", STEP_UP_START)):
-		failures.append("HumanBody3D placement query rejected a clear floor position")
-	if bool(m_actor.call("_can_place_body_at", BLOCKED_STEP_TARGET)):
-		failures.append("HumanBody3D placement query accepted an occupied step position")
-
-	m_actor.global_position = STEP_UP_START
-	var stepped_up := bool(m_actor.call("_snap_to_walkable_step_floor", STEP_UP_START, STEP_UP_MOTION, Vector3.RIGHT))
-	if !stepped_up:
-		failures.append("HumanBody3D did not snap up onto a walkable low step")
-	elif absf(m_actor.global_position.y - STEP_FIXTURE_HEIGHT) > 0.02:
-		failures.append("HumanBody3D step-up snap used the wrong floor height")
-
-	m_actor.global_position = BLOCKED_STEP_START
-	var blocked_step := bool(m_actor.call(
-		"_snap_to_walkable_step_floor",
-		BLOCKED_STEP_START,
-		BLOCKED_STEP_MOTION,
-		Vector3.RIGHT
-	))
-	if blocked_step or m_actor.global_position.y > 0.05:
-		failures.append("HumanBody3D snapped into or onto an occupied step target")
-
-	m_actor.global_position = STEP_DOWN_START
-	var stepped_down := bool(m_actor.call("_snap_to_walkable_step_floor", STEP_DOWN_START, STEP_DOWN_MOTION, Vector3.RIGHT))
-	if !stepped_down:
-		failures.append("HumanBody3D did not snap down to a walkable lower floor")
-	elif absf(m_actor.global_position.y) > 0.02:
-		failures.append("HumanBody3D step-down snap used the wrong floor height")
-	if m_actor.has_method("is_grounded") and !bool(m_actor.call("is_grounded")):
-		failures.append("HumanBody3D did not report grounded after a manual step-down snap")
-
-	m_actor.global_position = original_position
-	m_actor.velocity = original_velocity
-	m_actor.set("max_step_height", original_max_step_height)
-	m_actor.set("floor_snap_distance", original_floor_snap_distance)
-
-
-func _ensure_navigation_fixtures() -> void:
-	if get_node_or_null("NavigationFixtures") != null:
-		return
-
-	var root := Node3D.new()
-	root.name = "NavigationFixtures"
-	add_child(root)
-
-	_add_static_box_fixture(root, "StepUpBaseFloor", Vector3(6.0, 0.10, 3.0), Vector3(12.0, -0.05, 0.0))
-	_add_static_box_fixture(root, "StepUpBlock", Vector3(1.40, STEP_FIXTURE_HEIGHT, 2.0), Vector3(12.75, STEP_FIXTURE_HEIGHT * 0.5, 0.0))
-	_add_static_box_fixture(root, "BlockedBaseFloor", Vector3(6.0, 0.10, 3.0), Vector3(32.0, -0.05, 0.0))
-	_add_static_box_fixture(root, "BlockedStepBlock", Vector3(1.40, STEP_FIXTURE_HEIGHT, 2.0), Vector3(32.75, STEP_FIXTURE_HEIGHT * 0.5, 0.0))
-	_add_static_box_fixture(root, "BlockedSideObstacle", Vector3(0.90, 1.60, 0.60), Vector3(32.45, 0.80, 0.0))
-	_add_static_box_fixture(root, "StepDownBaseFloor", Vector3(6.0, 0.10, 3.0), Vector3(42.0, -0.05, 0.0))
-	_add_static_box_fixture(root, "StepDownPlatform", Vector3(1.20, STEP_FIXTURE_HEIGHT, 2.0), Vector3(41.85, STEP_FIXTURE_HEIGHT * 0.5, 0.0))
-
-
-func _add_static_box_fixture(parent: Node, fixture_name: String, box_size: Vector3, center_position: Vector3) -> void:
-	var body := StaticBody3D.new()
-	body.name = fixture_name
-	body.position = center_position
-	parent.add_child(body)
-
-	var shape := BoxShape3D.new()
-	shape.size = box_size
-
-	var collision_shape := CollisionShape3D.new()
-	collision_shape.name = "CollisionShape3D"
-	collision_shape.shape = shape
-	body.add_child(collision_shape)

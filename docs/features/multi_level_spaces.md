@@ -7,7 +7,7 @@ Define how stacked rooms, stairs, and tunnel interiors should work in the produc
 ## Current Status
 
 - The 2D `LevelNode2D`, `LevelArea2D`, `LevelRegistry`, portal, stair, visibility-mask, room, and tunnel-interior stack was removed after the 3D runtime cutover.
-- `HumanBody3D` already supports gravity, floor snap, wall sliding, front-riser stair traversal, tagged stair-side rejection, and capped dynamic-body pushing.
+- `HumanBody3D` already supports gravity, native wall and stair-slope movement, and capped dynamic-body pushing.
 - The production Bagua building is 3D geometry, but its story subject currently uses the world scene's shared proximity interaction layer rather than authored interior floors.
 - Bi Shan and Long Shan remain traversable marker anchors. Walkable tunnel interiors, interior resident routing, and tunnel-specific visibility are accepted post-cutover gaps.
 - All current landmark and inspectable hotspots are `StorySubject3D` nodes authored in [`../../scenes/game_world_3d.tscn`](../../scenes/game_world_3d.tscn).

@@ -16,31 +16,11 @@ const GRAVITY := 16.0
 const MAX_FALL_SPEED := 12.0
 const DEFAULT_BODY_HEIGHT := 1.72
 const DEFAULT_BODY_RADIUS := 0.28
-const STEP_FLOOR_PROBE_MARGIN := 0.08
-const STEP_FLOOR_SIDE_PROBE_SCALE := 0.72
-const STEP_FLOOR_FORWARD_FAR_SCALE := 2.0
-const STEP_FLOOR_CAST_MARGIN := 0.16
-const WALL_SLIDE_INPUT_DOT_THRESHOLD := 0.05
-const WALL_CONTACT_BLOCKING := 1
-const WALL_CONTACT_STAIR_SIDE := 2
-const STAIR_SIDE_WALL_COLLISION_META := &"stairs_side_wall_collision"
-const STAIR_SIDE_COLLISION_SHAPE_PREFIXES: Array[String] = [
-	"LeftSideCollisionShape3D",
-	"RightSideCollisionShape3D",
-]
 const RIGID_BODY_PUSH_INPUT_DOT_THRESHOLD := 0.05
 const RIGID_BODY_PUSH_SPEED_FACTOR := 0.35
 const RIGID_BODY_PUSH_MAX_EFFECTIVE_MASS := 1.0
 const RIGID_BODY_PUSH_MAX_IMPULSE := 1.2
-const MIN_STEP_FLOOR_ADJUSTMENT := 0.002
-const MIN_STEP_BLOCKED_PROGRESS_RATIO := 0.35
-const MAX_STEP_LATERAL_DRIFT_RATIO := 0.1
-const PLACEMENT_QUERY_FLOOR_CLEARANCE := 0.01
-# The placement overlap test shrinks a copy of the capsule by this much so resting
-# floor contact at the lifted candidate height is not mistaken for a blocking overlap
-# (which would reject a valid step), while still catching genuine wall/body interpenetration.
-const PLACEMENT_QUERY_SHAPE_SHRINK := 0.01
-const FLOOR_SAMPLE_MISSING := -INF
+const MIN_RIGID_BODY_PUSH_SPEED_DELTA := 0.002
 const BaseController3DScript = preload("res://characters/control/base_controller_3d.gd")
 # Default character model. Alternate models (boy.glb, female.glb) live alongside
 # it in assets/characters and can be assigned through character_model_scene.
@@ -112,11 +92,6 @@ const DEFAULT_CHARACTER_MODEL_HEIGHT := 0.998
 		_sync_body_profile()
 
 @export_group("3D Navigation")
-@export_range(0.0, 1.0, 0.01) var max_step_height := 0.72
-@export_range(0.0, 2.0, 0.01) var floor_snap_distance := 0.72:
-	set(value):
-		floor_snap_distance = maxf(value, 0.0)
-		floor_snap_length = floor_snap_distance
 @export_range(0.0, 5.0, 0.05) var grounding_speed := 1.6
 
 @export_group("Character Model")
@@ -173,8 +148,6 @@ var m_last_global_position := Vector3.ZERO
 var m_did_move_this_frame := false
 var m_is_currently_jumping := false
 var m_jump_timer := 0.0
-var m_last_step_direction := Vector3.ZERO
-var m_step_snap_grounded := false
 
 var m_visual_root: Node3D = null
 var m_debug_box_part: MeshInstance3D = null
@@ -186,7 +159,6 @@ var m_skeleton_debug_material: StandardMaterial3D = null
 
 
 func _ready() -> void:
-	floor_snap_length = floor_snap_distance
 	_ensure_collision_shape()
 	_ensure_visual_nodes()
 	_update_state()
@@ -230,130 +202,8 @@ func move_with_speed(direction_vector: Vector3, movement_speed: float) -> void:
 		# Airborne and not in a cosmetic jump: accumulate gravity so the body falls
 		# to the floor instead of walking through the air.
 		velocity.y = maxf(velocity.y - GRAVITY * get_physics_process_delta_time(), -MAX_FALL_SPEED)
-	var can_reacquire_floor := !m_is_currently_jumping and (grounded_before_move or velocity.y <= 0.0)
-	var start_position := global_position
-	var horizontal_motion := Vector3(velocity.x, 0.0, velocity.z) * get_physics_process_delta_time()
-	var step_direction := Vector3.ZERO
-	if horizontal_motion.length_squared() > 0.000001:
-		step_direction = horizontal_motion.normalized()
-		m_last_step_direction = step_direction
-	elif velocity.y < -MIN_STEP_FLOOR_ADJUSTMENT and m_last_step_direction.length_squared() > 0.000001:
-		step_direction = m_last_step_direction
-	var stair_side_wall_ahead := _has_stair_side_wall_ahead(step_direction)
 	move_and_slide()
-	_apply_rigid_body_pushes(step_direction, movement_speed)
-	var wall_contact_flags := _get_blocking_wall_contact_flags(step_direction)
-	var has_blocking_stair_side_wall_contact := (wall_contact_flags & WALL_CONTACT_STAIR_SIDE) != 0
-	has_blocking_stair_side_wall_contact = (
-		has_blocking_stair_side_wall_contact
-		or stair_side_wall_ahead
-		or _has_stair_side_wall_ahead(step_direction)
-	)
-	m_step_snap_grounded = is_on_floor()
-	if can_reacquire_floor and step_direction.length_squared() > 0.000001:
-		# Only stair side blockers suppress the horizontal reposition. A front riser
-		# (a kerb or the next stair tread) IS a blocking wall, but the body must be
-		# allowed to move forward onto its top -- otherwise the step-up raises the body
-		# straight up in place, still horizontally over the lower floor, and the floor
-		# snap immediately pulls it back down, so a small kerb reads as an impassable
-		# wall. The forward reposition stays bounded by _can_place_body_at (it will not
-		# clip into a genuine tall wall) and max_step_height, so opening it here is safe.
-		var allow_horizontal_reposition := !has_blocking_stair_side_wall_contact
-		var allow_forward_step_up := !has_blocking_stair_side_wall_contact
-		# Keep forward probes during wall contact for step-downs, but block their
-		# step-up path only for stair side blockers. A front riser contact is the
-		# normal starting point for stepping up onto the next tread.
-		if _snap_to_walkable_step_floor(
-			start_position,
-			horizontal_motion,
-			step_direction,
-			allow_horizontal_reposition,
-			true,
-			allow_forward_step_up
-		):
-			m_step_snap_grounded = true
-
-
-func _get_blocking_wall_contact_flags(horizontal_direction: Vector3) -> int:
-	var flat_direction := Vector3(horizontal_direction.x, 0.0, horizontal_direction.z)
-	if flat_direction.length_squared() <= 0.000001:
-		return 0
-	flat_direction = flat_direction.normalized()
-	var min_floor_normal_y := cos(floor_max_angle)
-	var flags := 0
-	for collision_index in range(get_slide_collision_count()):
-		var collision := get_slide_collision(collision_index)
-		if collision == null:
-			continue
-		if collision.get_collider() is RigidBody3D:
-			continue
-		var normal := collision.get_normal()
-		if normal.y >= min_floor_normal_y:
-			continue
-		var flat_normal := Vector3(normal.x, 0.0, normal.z)
-		if flat_normal.length_squared() <= 0.000001:
-			continue
-		flat_normal = flat_normal.normalized()
-		if flat_direction.dot(flat_normal) < -WALL_SLIDE_INPUT_DOT_THRESHOLD:
-			flags = flags | WALL_CONTACT_BLOCKING
-			if _is_stair_side_wall_collision(collision):
-				flags = flags | WALL_CONTACT_STAIR_SIDE
-	return flags
-
-
-func _is_stair_side_wall_collision(collision: KinematicCollision3D) -> bool:
-	var collider := collision.get_collider() as CollisionObject3D
-	if collider == null:
-		return false
-	var collider_shape_index := collision.get_collider_shape_index()
-	return _is_stair_side_wall_shape(collider, collider_shape_index)
-
-
-func _has_stair_side_wall_ahead(horizontal_direction: Vector3) -> bool:
-	var flat_direction := Vector3(horizontal_direction.x, 0.0, horizontal_direction.z)
-	if flat_direction.length_squared() <= 0.000001 or !is_inside_tree():
-		return false
-	flat_direction = flat_direction.normalized()
-	var probe_height := maxf(body_radius, body_height * 0.35)
-	var probe_reach := (
-		(body_radius + STEP_FLOOR_PROBE_MARGIN) * STEP_FLOOR_FORWARD_FAR_SCALE
-		+ safe_margin
-	)
-	var probe_origin := global_position + Vector3.UP * probe_height
-	var query := PhysicsRayQueryParameters3D.create(
-		probe_origin,
-		probe_origin + flat_direction * probe_reach
-	)
-	query.collision_mask = collision_mask
-	query.collide_with_areas = false
-	query.exclude = [get_rid()]
-	var hit := get_world_3d().direct_space_state.intersect_ray(query)
-	if hit.is_empty():
-		return false
-	var collider := hit.get("collider") as CollisionObject3D
-	var collider_shape_index := int(hit.get("shape", -1))
-	return _is_stair_side_wall_shape(collider, collider_shape_index)
-
-
-func _is_stair_side_wall_shape(
-	collider: CollisionObject3D,
-	collider_shape_index: int
-) -> bool:
-	if collider == null:
-		return false
-	if collider_shape_index < 0:
-		return false
-	var shape_owner_id := collider.shape_find_owner(collider_shape_index)
-	var shape_owner := collider.shape_owner_get_owner(shape_owner_id) as Node
-	if shape_owner == null:
-		return false
-	if shape_owner.has_meta(STAIR_SIDE_WALL_COLLISION_META):
-		return true
-	var shape_name := String(shape_owner.name)
-	for shape_prefix in STAIR_SIDE_COLLISION_SHAPE_PREFIXES:
-		if shape_name.begins_with(shape_prefix):
-			return true
-	return false
+	_apply_rigid_body_pushes(flat_direction, movement_speed)
 
 
 func _apply_rigid_body_pushes(horizontal_direction: Vector3, movement_speed: float) -> void:
@@ -380,7 +230,7 @@ func _apply_rigid_body_pushes(horizontal_direction: Vector3, movement_speed: flo
 			continue
 		var current_speed := rigid_body.linear_velocity.dot(flat_direction)
 		var target_speed_delta := maxf(movement_speed - current_speed, 0.0)
-		if target_speed_delta <= MIN_STEP_FLOOR_ADJUSTMENT:
+		if target_speed_delta <= MIN_RIGID_BODY_PUSH_SPEED_DELTA:
 			continue
 		var effective_mass := minf(maxf(rigid_body.mass, 0.01), RIGID_BODY_PUSH_MAX_EFFECTIVE_MASS)
 		var impulse_strength := minf(
@@ -390,361 +240,20 @@ func _apply_rigid_body_pushes(horizontal_direction: Vector3, movement_speed: flo
 		rigid_body.apply_central_impulse(flat_direction * impulse_strength)
 
 
-func _snap_to_walkable_step_floor(
-	start_position: Vector3,
-	horizontal_motion: Vector3,
-	horizontal_direction: Vector3,
-	allow_horizontal_reposition: bool = true,
-	allow_forward_floor_probe: bool = true,
-	allow_forward_step_up: bool = true
-) -> bool:
-	if max_step_height <= 0.0 and floor_snap_distance <= 0.0:
-		return false
-
-	horizontal_direction = Vector3(horizontal_direction.x, 0.0, horizontal_direction.z)
-	if horizontal_direction.length_squared() <= 0.000001:
-		return false
-	horizontal_direction = horizontal_direction.normalized()
-
-	var reference_top_y := maxf(start_position.y, global_position.y)
-	var reference_bottom_y := minf(start_position.y, global_position.y)
-	var snap_position := global_position
-	var floor_y := _find_walkable_step_floor_y(
-		snap_position,
-		horizontal_direction,
-		reference_top_y,
-		reference_bottom_y,
-		allow_forward_floor_probe,
-		allow_forward_step_up
-	)
-	var requested_distance := horizontal_motion.length()
-	var actual_motion := Vector3(
-		global_position.x - start_position.x,
-		0.0,
-		global_position.z - start_position.z
-	)
-	var actual_forward_distance := actual_motion.dot(horizontal_direction)
-	var actual_lateral_motion := actual_motion - (horizontal_direction * actual_forward_distance)
-	var target_position_blocked := false
-	var target_position := Vector3(
-		start_position.x + horizontal_motion.x,
-		global_position.y,
-		start_position.z + horizontal_motion.z
-	)
-	var target_floor_y := NAN
-	if allow_horizontal_reposition and requested_distance > 0.0:
-		target_floor_y = _find_walkable_step_floor_y(
-			target_position,
-			horizontal_direction,
-			reference_top_y,
-			reference_bottom_y,
-			allow_forward_floor_probe,
-			allow_forward_step_up
-		)
-
-	if !is_nan(target_floor_y):
-		var should_use_target_position := is_nan(floor_y)
-		should_use_target_position = should_use_target_position or absf(target_floor_y - floor_y) > MIN_STEP_FLOOR_ADJUSTMENT
-		should_use_target_position = should_use_target_position or actual_forward_distance < requested_distance * MIN_STEP_BLOCKED_PROGRESS_RATIO
-		should_use_target_position = should_use_target_position or actual_lateral_motion.length() > requested_distance * MAX_STEP_LATERAL_DRIFT_RATIO
-		if should_use_target_position:
-			var target_floor_delta_from_start := target_floor_y - start_position.y
-			if (
-				target_floor_delta_from_start <= max_step_height + MIN_STEP_FLOOR_ADJUSTMENT
-				and target_floor_delta_from_start >= -(floor_snap_distance + MIN_STEP_FLOOR_ADJUSTMENT)
-			):
-				var target_snap_position := Vector3(target_position.x, target_floor_y, target_position.z)
-				if _can_place_body_at(target_snap_position):
-					snap_position = target_snap_position
-					floor_y = target_floor_y
-				else:
-					target_position_blocked = true
-
-	if (
-		allow_horizontal_reposition
-		and is_nan(floor_y)
-		and requested_distance > 0.0
-		and actual_forward_distance < requested_distance * MIN_STEP_BLOCKED_PROGRESS_RATIO
-	):
-		target_floor_y = _find_walkable_step_floor_y(
-			target_position,
-			horizontal_direction,
-			reference_top_y,
-			reference_bottom_y,
-			allow_forward_floor_probe,
-			allow_forward_step_up
-		)
-		if !is_nan(target_floor_y):
-			var target_snap_position := Vector3(target_position.x, target_floor_y, target_position.z)
-			if _can_place_body_at(target_snap_position):
-				snap_position = target_snap_position
-				floor_y = target_floor_y
-			else:
-				target_position_blocked = true
-
-	if target_position_blocked and actual_forward_distance < requested_distance * MIN_STEP_BLOCKED_PROGRESS_RATIO:
-		return false
-
-	if is_nan(floor_y):
-		var start_floor_y := _find_walkable_step_floor_y(
-			start_position,
-			horizontal_direction,
-			reference_top_y,
-			reference_bottom_y,
-			allow_forward_floor_probe,
-			allow_forward_step_up
-		)
-		if !is_nan(start_floor_y):
-			var would_drop_to_older_floor := (
-				requested_distance > MIN_STEP_FLOOR_ADJUSTMENT
-				and actual_forward_distance >= requested_distance * MIN_STEP_BLOCKED_PROGRESS_RATIO
-				and start_floor_y < start_position.y - MIN_STEP_FLOOR_ADJUSTMENT
-			)
-			if !would_drop_to_older_floor:
-				var start_snap_position := Vector3(start_position.x, start_floor_y, start_position.z)
-				if _can_place_body_at(start_snap_position):
-					global_position = start_snap_position
-					velocity.x = 0.0
-					velocity.z = 0.0
-					velocity.y = minf(velocity.y, 0.0)
-					_refresh_floor_state_after_manual_snap()
-					return true
-		return false
-
-	var floor_delta_from_start := floor_y - start_position.y
-	if floor_delta_from_start > max_step_height + MIN_STEP_FLOOR_ADJUSTMENT:
-		return false
-	if floor_delta_from_start < -(floor_snap_distance + MIN_STEP_FLOOR_ADJUSTMENT):
-		return false
-
-	var vertical_adjustment := floor_y - global_position.y
-	var horizontal_adjustment := Vector3(
-		snap_position.x - global_position.x,
-		0.0,
-		snap_position.z - global_position.z
-	)
-	if (
-		absf(vertical_adjustment) <= MIN_STEP_FLOOR_ADJUSTMENT
-		and horizontal_adjustment.length_squared() <= 0.000001
-	):
-		return false
-
-	var final_snap_position := Vector3(snap_position.x, floor_y, snap_position.z)
-	if !_can_place_body_at(final_snap_position):
-		return false
-
-	global_position = final_snap_position
-	if vertical_adjustment > 0.0:
-		velocity.y = 0.0
-	else:
-		velocity.y = minf(velocity.y, 0.0)
-	_refresh_floor_state_after_manual_snap()
-	return true
-
-
-func _refresh_floor_state_after_manual_snap() -> void:
-	if floor_snap_length <= 0.0 or m_is_currently_jumping:
-		return
-	apply_floor_snap()
-
-
-# reference_top_y bounds how far up a step crest may sit (max_step_height above it);
-# reference_bottom_y bounds how far down the cast reaches (floor_snap_distance below
-# it). Passing the lower of start/current y as the bottom reference keeps a floor that
-# the body just climbed away from -- but is still within snap range -- inside the cast
-# window, so undulating terrain does not drop re-grounding after move_and_slide nudges
-# the body upward.
-func _find_walkable_step_floor_y(
-	body_position: Vector3,
-	horizontal_direction: Vector3,
-	reference_top_y: float,
-	reference_bottom_y: float,
-	allow_forward_floor_probe: bool = true,
-	allow_forward_step_up: bool = true
-) -> float:
-	var side_direction := Vector3(-horizontal_direction.z, 0.0, horizontal_direction.x)
-	var forward_reach := body_radius + STEP_FLOOR_PROBE_MARGIN
-	var side_reach := body_radius * STEP_FLOOR_SIDE_PROBE_SCALE
-	var cast_top_y := reference_top_y + max_step_height + STEP_FLOOR_CAST_MARGIN
-	var cast_bottom_y := reference_bottom_y - floor_snap_distance - STEP_FLOOR_CAST_MARGIN
-	var min_floor_normal_y := cos(floor_max_angle)
-
-	var center_floor_y := _sample_walkable_floor_y(
-		body_position,
-		cast_top_y,
-		cast_bottom_y,
-		min_floor_normal_y
-	)
-	var side_floor_y := maxf(
-		_sample_walkable_floor_y(
-			body_position + (side_direction * side_reach),
-			cast_top_y,
-			cast_bottom_y,
-			min_floor_normal_y
-		),
-		_sample_walkable_floor_y(
-			body_position - (side_direction * side_reach),
-			cast_top_y,
-			cast_bottom_y,
-			min_floor_normal_y
-		)
-	)
-
-	var body_support_y := maxf(center_floor_y, side_floor_y)
-	if body_support_y == FLOOR_SAMPLE_MISSING:
-		# Nothing under the body's own footprint (center or either side) within step /
-		# snap range: the actor is standing over a hole or a drop too deep to step down,
-		# so it must fall. Do NOT reach forward to a floor across the gap -- returning the
-		# forward sample here would re-plant the body at that height while it hovers over
-		# the hole. A real step-up keeps the body supported (the center cast reaches up to
-		# max_step_height), so this never blocks climbing.
-		return NAN
-	if !allow_forward_floor_probe:
-		return body_support_y
-
-	var forward_near_floor_y := _sample_walkable_floor_y(
-		body_position + (horizontal_direction * forward_reach),
-		cast_top_y,
-		cast_bottom_y,
-		min_floor_normal_y
-	)
-	var forward_far_floor_y := _sample_walkable_floor_y(
-		body_position + (horizontal_direction * forward_reach * STEP_FLOOR_FORWARD_FAR_SCALE),
-		cast_top_y,
-		cast_bottom_y,
-		min_floor_normal_y
-	)
-	var forward_floor_y := _resolve_forward_step_floor_y(
-		forward_near_floor_y,
-		forward_far_floor_y,
-		body_support_y
-	)
-
-	if allow_forward_step_up and forward_floor_y > body_support_y + MIN_STEP_FLOOR_ADJUSTMENT:
-		return forward_floor_y
-	if !allow_forward_step_up and forward_floor_y < body_support_y - MIN_STEP_FLOOR_ADJUSTMENT:
-		return forward_floor_y
-
-	if center_floor_y < body_support_y - MIN_STEP_FLOOR_ADJUSTMENT:
-		if forward_floor_y < body_support_y - MIN_STEP_FLOOR_ADJUSTMENT:
-			return center_floor_y
-		return body_support_y
-
-	return body_support_y
-
-
-func _sample_walkable_floor_y(
-	sample_position: Vector3,
-	cast_top_y: float,
-	cast_bottom_y: float,
-	min_floor_normal_y: float
-) -> float:
-	var query := PhysicsRayQueryParameters3D.create(
-		Vector3(sample_position.x, cast_top_y, sample_position.z),
-		Vector3(sample_position.x, cast_bottom_y, sample_position.z)
-	)
-	# Probe only the layers the body actually collides with, matching
-	# _can_place_body_at. Casting against all layers (the ray default) would let
-	# the sampler snap onto -- or be blocked by -- surfaces the capsule never
-	# touches (water/area-style colliders, other characters, decorative bodies),
-	# and a non-walkable first hit on an unrelated layer would mask real ground
-	# just below it.
-	query.collision_mask = collision_mask
-	query.collide_with_areas = false
-	query.exclude = [get_rid()]
-	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
-	var hit: Dictionary = space.intersect_ray(query)
-	if hit.is_empty():
-		return FLOOR_SAMPLE_MISSING
-
-	var hit_normal: Vector3 = hit.get("normal", Vector3.ZERO)
-	if hit_normal.y < min_floor_normal_y:
-		return FLOOR_SAMPLE_MISSING
-
-	var hit_position: Vector3 = hit.get("position", Vector3.ZERO)
-	return hit_position.y
-
-
-func _resolve_forward_step_floor_y(near_floor_y: float, far_floor_y: float, body_support_y: float) -> float:
-	if near_floor_y == FLOOR_SAMPLE_MISSING:
-		return far_floor_y
-	if far_floor_y == FLOOR_SAMPLE_MISSING:
-		return near_floor_y
-	if body_support_y == FLOOR_SAMPLE_MISSING:
-		return maxf(near_floor_y, far_floor_y)
-
-	if near_floor_y > body_support_y + MIN_STEP_FLOOR_ADJUSTMENT:
-		return near_floor_y
-	if far_floor_y < body_support_y - MIN_STEP_FLOOR_ADJUSTMENT:
-		return far_floor_y
-	if near_floor_y < body_support_y - MIN_STEP_FLOOR_ADJUSTMENT:
-		return far_floor_y
-	return maxf(near_floor_y, far_floor_y)
-
-
-func _can_place_body_at(candidate_position: Vector3) -> bool:
-	var candidate_transform := global_transform
-	candidate_transform.origin = candidate_position
-	if !is_inside_tree():
-		return !test_move(candidate_transform, Vector3.ZERO)
-	if !is_instance_valid(m_collision_shape):
-		return !test_move(candidate_transform, Vector3.ZERO)
-	if m_collision_shape.disabled or m_collision_shape.shape == null:
-		return !test_move(candidate_transform, Vector3.ZERO)
-
-	var world := get_world_3d()
-	if world == null:
-		return !test_move(candidate_transform, Vector3.ZERO)
-
-	var probe_shape := _build_placement_probe_shape()
-	if probe_shape == null:
-		return !test_move(candidate_transform, Vector3.ZERO)
-
-	# Lift by at least the body's collision safe margin so the floor we would rest on
-	# is not counted as an overlap on coarse terrain triangles where a fixed 1 cm nudge
-	# is not enough to clear the contact.
-	candidate_transform.origin.y += maxf(safe_margin, PLACEMENT_QUERY_FLOOR_CLEARANCE)
-	var query := PhysicsShapeQueryParameters3D.new()
-	query.shape = probe_shape
-	query.transform = candidate_transform * m_collision_shape.transform
-	query.margin = 0.0
-	query.collision_mask = collision_mask
-	query.collide_with_bodies = true
-	query.collide_with_areas = false
-	query.exclude = [get_rid()]
-
-	var overlaps: Array[Dictionary] = world.direct_space_state.intersect_shape(query, 1)
-	return overlaps.is_empty()
-
-
-# A copy of the body capsule shrunk by the safe margin, used only for the placement
-# overlap test. Shrinking keeps resting floor/wall contact from registering as a
-# blocking overlap (a fixed lift alone can leave the supporting surface inside the
-# shape on steep or coarse geometry) while still detecting real interpenetration.
-func _build_placement_probe_shape() -> Shape3D:
-	if !is_instance_valid(m_collision_shape):
-		return null
-	var capsule := m_collision_shape.shape as CapsuleShape3D
-	if capsule == null:
-		return m_collision_shape.shape
-	var shrink := maxf(safe_margin, PLACEMENT_QUERY_SHAPE_SHRINK)
-	var probe := CapsuleShape3D.new()
-	probe.radius = maxf(capsule.radius - shrink, 0.01)
-	probe.height = maxf(capsule.height - shrink * 2.0, probe.radius * 2.0)
-	return probe
-
-
 func jump() -> void:
 	if m_is_currently_jumping:
 		return
+	# Grounded movement keeps a small downward velocity so the capsule stays planted.
+	# Clear it at takeoff so the stable capsule does not pull the visual jump downward.
+	if is_grounded():
+		velocity.y = 0.0
 	m_is_currently_jumping = true
-	m_step_snap_grounded = false
 	m_jump_timer = 0.0
 	_update_state()
 
 
 func is_grounded() -> bool:
-	return !m_is_currently_jumping and (is_on_floor() or m_step_snap_grounded)
+	return !m_is_currently_jumping and is_on_floor()
 
 
 func get_direction_vector() -> Vector3:
@@ -835,7 +344,6 @@ func _apply_passive_vertical_motion(delta: float) -> void:
 	elif !m_is_currently_jumping:
 		velocity.y = maxf(velocity.y - GRAVITY * delta, -MAX_FALL_SPEED)
 	move_and_slide()
-	m_step_snap_grounded = is_on_floor()
 
 
 func _setup_controller() -> void:
@@ -892,13 +400,6 @@ func _apply_visual_offset() -> void:
 	var jump_y := _get_jump_offset_y()
 	if is_instance_valid(m_visual_root):
 		m_visual_root.position = Vector3(0.0, jump_y, 0.0)
-	_apply_collision_jump_offset(jump_y)
-
-
-func _apply_collision_jump_offset(jump_y: float) -> void:
-	if !is_instance_valid(m_collision_shape):
-		return
-	m_collision_shape.position = Vector3(0.0, body_height * 0.5 + jump_y, 0.0)
 
 
 func _sync_visual_rotation() -> void:

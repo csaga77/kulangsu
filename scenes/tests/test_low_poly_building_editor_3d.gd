@@ -963,7 +963,7 @@ func _validate_stair_layout_class_hierarchy() -> void:
 		&"_make_flight_rail_run",
 		&"_append_layout_geometry",
 		&"_append_layout_rail_geometry",
-		&"_add_layout_side_wall_collision_shapes",
+		&"_add_layout_specific_slope_collision_shapes",
 		&"_append_stair_geometry",
 		&"_append_rail_geometry",
 		&"_get_rail_post_layout",
@@ -1003,6 +1003,26 @@ func _validate_stair_layout_class_hierarchy() -> void:
 		if factory_stairs.get_script() != style_script:
 			m_failures.append(
 				"Stair layout factory selected the wrong class for %s" % style_script.resource_path
+			)
+		stairs.rebuild_stairs_mesh()
+		var collision_body := stairs.get_node_or_null("StairsCollision") as StaticBody3D
+		var has_convex_slope := false
+		if collision_body != null:
+			for child in collision_body.get_children():
+				var collision_shape := child as CollisionShape3D
+				if collision_shape == null:
+					continue
+				if collision_shape.shape is ConvexPolygonShape3D:
+					has_convex_slope = true
+				if collision_shape.shape is ConcavePolygonShape3D:
+					m_failures.append(
+						"Stair layout %s retained stepped mesh collision"
+						% style_script.resource_path
+					)
+		if !has_convex_slope:
+			m_failures.append(
+				"Stair layout %s did not generate convex slope collision"
+				% style_script.resource_path
 			)
 		factory_stairs.free()
 		stairs.free()
@@ -1904,54 +1924,25 @@ func _validate_stairs_node(coordinator: Building3DScript) -> void:
 			m_failures.append("Stairs3D riser normal is not Vector3.FORWARD")
 	if stairs.get_node_or_null("StairsCollision") == null:
 		m_failures.append("Stairs3D did not generate collision for placed stairs")
-	if !_has_box_collision_shape(stairs, "StairsCollision/%s" % Stairs3DScript.LEFT_SIDE_COLLISION_SHAPE_NAME):
-		m_failures.append("Stairs3D did not generate left side-wall collision")
-	if !_has_box_collision_shape(stairs, "StairsCollision/%s" % Stairs3DScript.RIGHT_SIDE_COLLISION_SHAPE_NAME):
-		m_failures.append("Stairs3D did not generate right side-wall collision")
-	if !_has_box_collision_shape(stairs, "StairsCollision/%s_4" % Stairs3DScript.LEFT_SIDE_COLLISION_SHAPE_NAME):
-		m_failures.append("Stairs3D did not generate stepped left side-wall collision")
-	if !_has_box_collision_shape(stairs, "StairsCollision/%s_4" % Stairs3DScript.RIGHT_SIDE_COLLISION_SHAPE_NAME):
-		m_failures.append("Stairs3D did not generate stepped right side-wall collision")
-	var first_side_box := _box_collision_shape(
-		stairs,
-		"StairsCollision/%s" % Stairs3DScript.LEFT_SIDE_COLLISION_SHAPE_NAME
-	)
-	var first_left_side_shape := _collision_shape(
-		stairs,
-		"StairsCollision/%s" % Stairs3DScript.LEFT_SIDE_COLLISION_SHAPE_NAME
-	)
-	var first_right_side_box := _box_collision_shape(
-		stairs,
-		"StairsCollision/%s" % Stairs3DScript.RIGHT_SIDE_COLLISION_SHAPE_NAME
-	)
-	var first_right_side_shape := _collision_shape(
-		stairs,
-		"StairsCollision/%s" % Stairs3DScript.RIGHT_SIDE_COLLISION_SHAPE_NAME
-	)
-	var last_side_box := _box_collision_shape(
-		stairs,
-		"StairsCollision/%s_4" % Stairs3DScript.LEFT_SIDE_COLLISION_SHAPE_NAME
-	)
-	if first_side_box != null:
-		var expected_first_side_height := stairs.get_step_rise() + maxf(stairs.stair_thickness, 0.0)
-		if absf(first_side_box.size.y - expected_first_side_height) > 0.001:
-			m_failures.append("Stairs3D first side-wall collision does not follow first step height")
-		if absf(first_side_box.size.z - stairs.get_step_run()) > 0.001:
-			m_failures.append("Stairs3D first side-wall collision does not follow first step run")
-	if first_side_box != null and first_left_side_shape != null:
-		var left_side_outer_x := first_left_side_shape.position.x - first_side_box.size.x * 0.5
-		if absf(left_side_outer_x) > 0.001:
-			m_failures.append("Stairs3D left side-wall collision extends outside the stair footprint")
-	if first_right_side_box != null and first_right_side_shape != null:
-		var right_side_outer_x := first_right_side_shape.position.x + first_right_side_box.size.x * 0.5
-		if absf(right_side_outer_x - size.x) > 0.001:
-			m_failures.append("Stairs3D right side-wall collision extends outside the stair footprint")
-	if last_side_box != null:
-		var expected_last_side_height := maxf(stairs.stair_height, 0.05) + maxf(stairs.stair_thickness, 0.0)
-		if absf(last_side_box.size.y - expected_last_side_height) > 0.001:
-			m_failures.append("Stairs3D final side-wall collision does not follow top step height")
-		if absf(last_side_box.size.z - stairs.get_step_run()) > 0.001:
-			m_failures.append("Stairs3D final side-wall collision does not follow final step run")
+	var slope_path := "StairsCollision/%s" % Stairs3DScript.SLOPE_COLLISION_SHAPE_NAME
+	var slope := _convex_collision_shape(stairs, slope_path)
+	if slope == null:
+		m_failures.append("Stairs3D did not generate one convex slope collision")
+	else:
+		var lower_top := -INF
+		var upper_top := -INF
+		for point in slope.points:
+			if absf(point.z) <= 0.001:
+				lower_top = maxf(lower_top, point.y)
+			if absf(point.z - size.y) <= 0.001:
+				upper_top = maxf(upper_top, point.y)
+		if absf(lower_top) > 0.001:
+			m_failures.append("Stairs3D slope collision did not start at the lower entry")
+		if absf(upper_top - maxf(stairs.stair_height, 0.05)) > 0.001:
+			m_failures.append("Stairs3D slope collision did not reach the top floor")
+	var collision_body := stairs.get_node_or_null("StairsCollision") as StaticBody3D
+	if collision_body != null and collision_body.get_child_count() != 1:
+		m_failures.append("Stairs3D without rails generated stepped or duplicate collision shapes")
 
 	stairs.set_stair_corners(Vector3(1.0, base_y, 16.5), Vector3(4.5, base_y, 21.0))
 	var edited_size := stairs.get_stair_size()
@@ -2042,11 +2033,16 @@ func _validate_spiral_stairs(coordinator: Building3DScript) -> void:
 		if winding_normal.normalized().dot(normals[indices[triangle_start]]) > -0.999:
 			m_failures.append("Spiral Stairs3D triangle winding does not match its normal")
 			break
-	if !_has_box_collision_shape(
+	if !_has_convex_collision_shape(
 		spiral,
-		"StairsCollision/LayoutSideCollisionShape3D_12"
+		"StairsCollision/%s_12" % Stairs3DScript.SLOPE_COLLISION_SHAPE_NAME
 	):
-		m_failures.append("Spiral Stairs3D did not generate one outer collision blocker per tread")
+		m_failures.append("Spiral Stairs3D did not generate one slope segment per tread")
+	if !_has_convex_collision_shape(
+		spiral,
+		"StairsCollision/ColumnCollisionShape3D"
+	):
+		m_failures.append("Spiral Stairs3D did not retain solid central-column collision")
 
 	var base_vertex_count := _mesh_vertex_count(spiral)
 	spiral.lower_newel_enabled = true
@@ -2386,6 +2382,12 @@ func _validate_stairs_optional_rails(coordinator: Building3DScript) -> void:
 		)
 	if one_rail_stairs.get_node_or_null("StairsCollision") == null:
 		m_failures.append("Stairs3D with a rail enabled did not generate collision")
+	var rail_collision := _collision_shape(
+		one_rail_stairs,
+		"StairsCollision/%s" % Stairs3DScript.RAIL_COLLISION_SHAPE_NAME
+	)
+	if rail_collision == null or !(rail_collision.shape is ConcavePolygonShape3D):
+		m_failures.append("Stairs3D did not retain concave collision for its optional rail")
 
 	# With the default 0.15 edge margin, rail_thickness 0.1, the left rail's
 	# bar sits with its faces at x = 0.15 +/- 0.05 (0.10 and 0.20), never at
@@ -3102,6 +3104,17 @@ func _validate_rail_node(coordinator: Building3DScript) -> void:
 
 func _has_box_collision_shape(root: Node, path: String) -> bool:
 	return _box_collision_shape(root, path) != null
+
+
+func _has_convex_collision_shape(root: Node, path: String) -> bool:
+	return _convex_collision_shape(root, path) != null
+
+
+func _convex_collision_shape(root: Node, path: String) -> ConvexPolygonShape3D:
+	var collision_shape := _collision_shape(root, path)
+	if collision_shape == null:
+		return null
+	return collision_shape.shape as ConvexPolygonShape3D
 
 
 func _box_collision_shape(root: Node, path: String) -> BoxShape3D:
