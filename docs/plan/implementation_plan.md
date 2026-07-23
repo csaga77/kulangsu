@@ -89,7 +89,7 @@ Current pressure points:
 ## Delivery View
 
 Plan status was reconciled against repository structure on **2026-07-23** at parent
-revision `551d7e72a`. This documentation pass did not rerun the shipped validation
+revision `4f0bda223`. This documentation pass did not rerun the shipped validation
 scenes; dated runtime evidence remains with the owning feature or QA record.
 
 Workstreams 0 and 5, the low-poly 3D cutover, and resident-data migration are
