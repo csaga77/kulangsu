@@ -391,7 +391,7 @@ In current route grouping terms, this landmark line is the `melody_landmarks` fa
 
 The current playable game still uses major anchors to give each season emotional shape:
 
-- `summer_reentry_complete`
+- `summer_return_complete`
 - `autumn_pressure_named`
 - `winter_memory_reveal`
 - `spring_festival_resolved`
@@ -432,10 +432,14 @@ With the seasonal missability principle, current playable coverage should track 
 
 The next narrative expansion should stay focused on the gaps that most affect the shape of the year:
 
-1. Deepen `family_memory` with more embodied household scenes around A Po, the parents, and the cost of care so those beats are not carried mostly by dialogue alone.
-2. Expand `study_future` with more lived middle beats and small world responses so the route keeps its year-long pressure shape between the major turning points.
-3. Grow `preservation_inheritance` into stronger district-facing reactions, props, inspectables, and character-led tasks through Mr. Lin, Mei, Uncle Zhao, Madam Wei, Mr. Huang, Professor Xu, and A Po so stewardship is visible even when the player is not in a resident conversation.
-4. Add missed-beat echoes for each route so seasonal absence becomes visible through changed dialogue, props, ambience, and ending tone.
+1. Ship Milestone A's embodied `family_memory` household/courtyard scene around A Po,
+   the parents, and the cost of care so those beats are not carried mostly by
+   dialogue alone.
+2. Make that scene the first completed-versus-missed seasonal transformation, with
+   distinct later dialogue, prop or ambience response, and ending texture while the
+   main family route remains available.
+3. Expand `study_future` with more lived middle beats and small world responses so the route keeps its year-long pressure shape between the major turning points.
+4. Grow `preservation_inheritance` into stronger district-facing reactions, props, inspectables, and character-led tasks through Mr. Lin, Mei, Uncle Zhao, Madam Wei, Mr. Huang, Professor Xu, and A Po so stewardship is visible even when the player is not in a resident conversation.
 5. Turn the improved ending and departure language into more playable closing movement once the route-specific copy settles.
 6. Keep `melody_landmarks` optional for completion while giving its resonant follow-through more wandering texture after the public performance.
 

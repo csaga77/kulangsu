@@ -64,7 +64,7 @@ Current contract:
 - all resident definitions live in external `.tres` files under `res://game/residents/definitions/`; `ResidentCatalog` loads them at runtime and `include_in_catalog = false` keeps a resource out of the runtime roster
 - `interact_with_resident()` checks a resident's `conditional_beats` (priority-sorted, condition-gated) before falling through to the linear `dialogue_beats` spine
 - resident conditional gating and StoryEvent conditions may now read `season_phase`, `story_day`, `world_hour`, `time_of_day`, `story_flags`, route state, route score, and endgame-active state
-- routine overrides are saved and are merged into projection configuration. They are not yet reapplied to resident actors that are already alive in the production 3D world
+- routine overrides are saved and are merged into projection configuration. They are not yet reapplied to resident actors that are already alive in the production 3D world; the implementation plan schedules that work under Next world-state reactivity
 - `JournalBuilder` consumes detached `AppStateProjection` data and never receives the live service node
 
 Governance:
@@ -107,7 +107,7 @@ Current contract:
 - typed route resources are now the canonical narrative gate source for route events; cached `StoryRouteGraph.can_resolve_story_event(...)` and `get_story_event_blockers(...)` calls are the shared availability surface consumed by resident dialogue and StoryEvent effect application
 - `StorySubject3D` is the production world-side subject adapter; `StoryInteractionCoordinator` routes all subjects below its configured world root through `activate_story_subject(...)`, and `StoryEventService` resolves current `landmark:` and `inspectable:` subjects plus landmark reward world events through the authored catalog before any compatibility fallback path
 - non-resident inspect text now resolves through `StoryWorldReactivity.resolve_inspect_result(...)`, which builds stable `inspectable:` subject ids and reuses the shared condition matcher
-- resident routine overrides are the first live world-state effect channel driven through the shared StoryEvent boundary; they redirect the shared spawn/movement config, and reapplying them to live 3D resident actors in `game_world_3d.gd` is a pending work item (the retired 2D overworld owned that behavior)
+- resident routine overrides are the first live world-state effect channel driven through the shared StoryEvent boundary; they redirect the shared spawn/movement config, and reapplying them to live 3D resident actors in `game_world_3d.gd` is scheduled under the implementation plan's Next world-state reactivity work (the retired 2D overworld owned that behavior)
 - the current route ledger remains the player-facing progression view, while the longer-term goal is still to migrate route families into authored recursive StoryEvent definitions and a published-fact ledger
 
 Governance:
@@ -177,7 +177,7 @@ Current contract:
 - `scenes/game_world_3d.gd` registers the 3D weather rig target with `WeatherManager`, which owns preset cycling and synced wind application
 - `scenes/game_world_3d.tscn` keeps the player actor in the `"player"` group and residents under a scene-owned resident root
 - landmark naming, proxy lookup, placement, and location sync depend on `LandmarkCatalog` definitions resolving to the authored `Landmarks/*Proxy` nodes in the world scene
-- reapplying resident routine overrides to live 3D resident actors is a pending work item; overrides currently take effect through the shared spawn/movement config (validated at the shared-state level by `game/tests/story_routes/test_story_event_service.tscn`)
+- reapplying resident routine overrides to live 3D resident actors is scheduled under the implementation plan's Next world-state reactivity work; overrides currently take effect through the shared spawn/movement config (validated at the shared-state level by `game/tests/story_routes/test_story_event_service.tscn`)
 
 Governance:
 

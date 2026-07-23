@@ -188,7 +188,7 @@ Use these when you need a focused validation target instead of the full project 
 - [`features/npc_system.md`](features/npc_system.md) - implementation-facing summary of the resident/NPC system
 - [`features/terrain_system.md`](features/terrain_system.md) - terrain generation ownership, mask-rule workflow, and extension guide
 - [`features/low_poly_terrain_3d.md`](features/low_poly_terrain_3d.md) - current low-poly 3D terrain prototype scope, ownership, and validation notes
-- [`features/low_poly_actor_3d.md`](features/low_poly_actor_3d.md) - canonical current 3D actor, character-action scope, input/physics contract, ownership, validation, and future capability gates
+- [`features/low_poly_actor_3d.md`](features/low_poly_actor_3d.md) - canonical current 3D actor plus planned character-action ownership, input/physics contract, delivery stages, validation, and future capability gates
 - [`features/low_poly_3d_integration.md`](features/low_poly_3d_integration.md) - planned one-landmark interaction, story/resident/save ownership, evidence gates, and runtime-direction decision contract for the 3D sidecar
 - [`features/weather_rendering.md`](features/weather_rendering.md) - current 3D weather-system design, ownership, extension guide, and validation notes
 - [`features/terrain_water_rendering.md`](features/terrain_water_rendering.md) - terrain water rendering and validation notes

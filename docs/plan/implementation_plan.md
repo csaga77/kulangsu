@@ -18,7 +18,7 @@ Shipped foundations:
 - first authored StoryEvent tree file in `game/story_event_catalog.gd`, now owning the full `melody_landmarks` interaction spine: ferry harbor clue, Trinity cue/chime, Bi Shan echoes/chamber, Long Shan entry/checkpoints/exit, Bagua synthesis, and the harbor-stage prompt-open
 - save/load support for seasonal story state, route state, lead pinning, and endgame state
 - first lightweight life-time runtime slice with `story_day`, `world_hour`, derived `time_of_day`, StoryEvent time conditions/effects, journal summary exposure, and autosave persistence
-- story-driven resident routine overrides that persist through autosave/continue and affect future projection-based resident configuration; live reapplication to already-spawned 3D actors remains open
+- story-driven resident routine overrides that persist through autosave/continue and affect future projection-based resident configuration; live reapplication to already-spawned 3D actors remains open and is scheduled under Next world-state reactivity
 - resident gating against `season_phase`, route state, and `story_flags`
 - guarded final-act start with `spring_festival_resolved` as the earliest allowed endgame threshold
 - `AppState` composition pattern with extracted helpers for profile, journal, save, landmark progression, resident interaction, audio settings, and story routes
@@ -80,66 +80,104 @@ Current pressure points:
 - StoryEvent catalog validation now checks authored `story_event` effect references against typed route resources, but subject/world-event bindings themselves are still authored in GDScript rather than editor-native resources
 - runtime and regression coverage use `activate_story_subject(...)` through production `StorySubject3D` nodes for landmark beats; the direct landmark-trigger compatibility facade has been removed
 - nested landmark, melody, resident, route, and endgame payloads remain dictionaries inside the typed top-level snapshot/projection boundary and are candidates for later typing
-- missable/transformed moment processing is not implemented yet; the current life-time slice tracks and advances time but does not automatically expire optional beats into missed-state echoes
+- missable/transformed moment processing is not implemented yet; the current life-time slice tracks and advances time but does not automatically expire optional beats into missed-state echoes, and Milestone A owns the first completed-versus-missed implementation
 - the low-poly 3D runtime now has terrain/water, actor/camera, three authored landmark models plus two tunnel markers, shared-data residents, the complete 15-landmark/5-inspectable `StorySubject3D` set, speech balloons, BGM/cues, and semantic resume anchors; remaining work is tunnel/interior content, routed tunnel residents, richer landmark presentation, and release-performance confirmation
 - regression coverage is now strong for landmark, route, resident-interaction, reactivity, autosave, and shared-state ownership flows, but remains lighter around audio-bus integration and richer world-object reactivity
 
-## What Remains
+## Delivery View
 
-Workstream 0 is complete. Workstreams 1-5 all have a shipped first pass, but they are still active tracks rather than fully finished bodies of work. Workstream 6 is a new required planned character-action track covering physical traversal jumping, carrying, deliberate push/pull, sitting, and ladder climbing. The next phase combines deeper embodied content with staged character-action slices so the new verbs serve authored routes rather than becoming disconnected mechanics. The low-poly 3D runtime cutover is complete; its remaining tunnel, parity, and release-performance items are accepted follow-ups. Resident migration remains useful cleanup, but it is not the recommended next focus while the manual conversion path is still relatively expensive.
+Plan status was reconciled against repository structure on **2026-07-23** at parent
+revision `551d7e72a`. This documentation pass did not rerun the shipped validation
+scenes; dated runtime evidence remains with the owning feature or QA record.
 
-### Status Summary
+Workstreams 0 and 5, the low-poly 3D cutover, and resident-data migration are
+complete. Workstreams 1-4 remain content and polish tracks. Workstream 6 is the
+required planned character-action track. The accepted tunnel, parity, and release-
+performance follow-ups remain later work rather than blockers for the next slice.
 
-| Workstream | Status | Next Priority |
-|------------|--------|---------------|
-| Workstream 0 | Complete | — |
-| Workstream 1 | First pass shipped | Priority 1 (content depth) |
-| Workstream 2 | First pass shipped | Priority 2 (world reactivity) |
-| Workstream 3 | First pass shipped | Priority 3 (ending polish after more content) |
-| Workstream 4 | First pass shipped | Lower (polish) |
-| Workstream 5 | First pass shipped | Priority 4 (editor workflow), then Priority 5 (validation) |
-| Workstream 6 | Planned; five required character actions are not implemented | Stage alongside authored content: traversal/recovery, ladders, carry, push/pull, then sit/polish |
-| Low-Poly 3D Runtime | Production; terrain/water, actor/camera, three authored landmarks, shared residents/story/save/audio, speech balloons, manager-cycled 3D weather, representative resident result parity, fixed-camera acceptance, diagnostically green 60-second performance capture, and smoke coverage shipped | Parity hardening: tunnels, landmark result equality, release-export performance repeat |
-| Resident Migration | Complete; all resident definitions are external `.tres` resources and all runtime presentation/physics are 3D | Add model/material variants only when identity readability needs them |
+### Now: Milestone A — A Po's Household Care Beat And Action Gate
 
-### Priority 1: Route Content Depth (recommended next)
+This is the next implementation milestone. It has one playable content slice and
+one bounded enabling gate; neither lane may silently expand into a general household
+system or an implementation of all five character actions.
 
-- add more embodied household, festival, and closing-movement scenes so the strongest beats are not carried mostly by overlays and talk lines
-- focus first on `family_memory` household beats or `study_future` middle beats
+Content slice:
 
-### Priority 2: World-State Reactivity (depends on content depth)
+- Add one embodied `family_memory` household/courtyard scene near the ferry district,
+  positioned between `winter_memory_reveal` and `spring_festival_prepared`.
+- Use `family_household_care_seen` as the canonical completed event id. The scene
+  should contain an arrival, one small act of care, and one reflective response from
+  A Po or a parent, with prop or ambience feedback after resolution.
+- Make this the first optional seasonal beat with a transformed absence. If its
+  authored phase closes before completion, publish
+  `family_household_care_missed` and let the later Spring Festival response use the
+  completed-or-missed fact without blocking `spring_festival_resolved`.
+- Keep route rewards in StoryEvents. The scene and props emit semantic subjects or
+  completion ids and do not write route state directly.
 
-- extend route reactivity into inspectables, props, ambient audio, district dressing, and more non-resident surfaces
-- keep widening cross-district follow-through so major anchors feel visible outside the specific resident who resolved them
+Character-action gate:
 
-### Priority 3: Final-Act And Ending Polish (after more embodied content)
+- Complete Workstream 6 Phase 0 only: lock the numeric acceptance matrix, inspect
+  animation coverage for all three player models, decide carried-object rotation
+  input, and approve the first production proof for each capability.
+- Lock the next production action slice as the Bagua stewardship ascent: physical
+  traversal jump plus recovery followed by one authored ladder connection. This is
+  planning approval, not a claim that either action is implemented in Milestone A.
 
-- turn more of the final-act and departure texture into playable closing movement rather than leaving it mostly in overlays
-- keep sharpening trigger-specific aftermath and ferry framing once more embodied content exists to support it
+Milestone A exit criteria:
 
-### Priority 4: Storyline Editor Workflow (before major route-count expansion)
+- the household scene is playable through the production Story flow and updates the
+  journal, world feedback, autosave, and continue state through semantic commands
+- completing and missing the optional beat produce distinct saved facts and later
+  Spring Festival text, while both paths preserve main-route continuity
+- focused route, StoryEvent, missed-beat, and persistence coverage passes, followed
+  by one manual title -> New Game -> household -> journal -> continue check
+- Workstream 6 Phase 0's numeric fixtures, input decisions, animation audit, and five
+  approved production proof locations are recorded in
+  [`../features/low_poly_actor_3d.md`](../features/low_poly_actor_3d.md)
 
-- introduce an editor-native, typed storyline data model first, then let the runtime loader/projector read that data without changing route semantics
-- ship inspector-first authoring and validation before any graph view so the source of truth becomes stable before UI polish work starts
-- make cross-route dependencies safe to author through searchable event-id pickers and validation instead of raw string editing
+Primary implementation areas:
 
-### Priority 5: Validation Expansion (lower urgency, opportunistic)
+- `game/storylines/routes/family_memory.tres`
+- `game/residents/definitions/`
+- `game/story_event_catalog.gd` and `game/story_event_service.gd`
+- the authored household/courtyard scene and its `StorySubject3D` nodes
+- `scenes/game_world_3d.tscn` / `scenes/game_world_3d.gd`
+- route, StoryEvent, persistence, and production-world validations
 
-- widen validation around settings/audio behavior and richer world-state reactivity
-- add focused coverage for future typed payload migrations and storyline-editor migrations if that cleanup starts
+### Next
 
-### Required Planned Track: Character Action Expansion
+1. **Milestone B — Bagua stewardship ascent.** Complete Workstream 6 Phases 1-3:
+   shared action/recovery foundation, physical traversal jump, and ladder climbing.
+   Integrate them into a short optional Bagua route that strengthens
+   `preservation_tower_perspective` without gating the existing route event until
+   focused and production-flow checks pass.
+2. **Milestone C — Object care actions.** Add carry and deliberate push/pull on the
+   shared action foundation, first through one compact Piano Ferry or Trinity
+   restoration beat. Sitting follows through one harbor or church listening moment.
+3. **World-state reactivity.** Reapply saved resident routine overrides to already-
+   spawned 3D residents and extend route response into props, ambience, district
+   dressing, and other non-resident surfaces.
+4. **Final-act polish.** Turn differentiated ending and departure copy into playable
+   closing movement after the embodied route slices above exist.
 
-- Build physical traversal jumping and safe-anchor recovery first, because every
-  later vertical route depends on trustworthy airborne and failure behavior.
-- Add ladder climbing next as a constrained authored vertical-locomotion mode.
-- Add carrying, then deliberate push/pull, on a shared target-selection and object-
-  recovery foundation without treating incidental `RigidBody3D` contact as a
-  puzzle contract.
-- Add sitting after seating anchors, animation, camera continuity, and safe exit
-  transforms are ready.
-- Pair every capability with at least one authored production use and keep it out of
-  required story progress until its focused fixture and production-flow check pass.
+### Later
+
+- settings/audio-bus and richer world-reactivity validation
+- typed migrations for remaining high-traffic dictionary payloads if their defect
+  rate justifies the cost
+- authored Bi Shan and Long Shan interiors, routed tunnel residents, landmark result
+  equality, and a release-export performance repeat
+- journal/HUD grouping and identity-focused resident model/material variants when
+  content density makes either necessary
+
+### Done
+
+- Workstream 0: AppState decomposition and atomic snapshot ownership
+- Workstream 5: typed storyline resources, inspector authoring, route browser,
+  editable dependency graph, canonical-source persistence, and editor validation
+- low-poly 3D production cutover and removal of the retired 2D overworld
+- external resident-definition migration and 3D resident presentation
 
 ### Low-Poly 3D Runtime
 
@@ -266,12 +304,19 @@ First-pass shipped outcome:
 
 Still open:
 
+- deliver Milestone A's embodied `family_household_care_seen` scene and its
+  `family_household_care_missed` transformed-absence path
 - add more embodied household, festival, and district scenes so route depth is not carried mostly by talk beats
 - spread the mid-route beats across more playable spaces and smaller turns instead of relying on a handful of major resident conversations
 
 Primary files:
 
-- `game/resident_catalog.gd`
+- `game/storylines/routes/`
+- `game/residents/definitions/`
+- `game/story_event_catalog.gd`
+- authored production scenes and `StorySubject3D` nodes
+- `scenes/game_world_3d.tscn`
+- `scenes/game_world_3d.gd`
 - `docs/story/summer_of_piano_island_story_framework.md`
 - `docs/core_game_workflow.md`
 
@@ -288,18 +333,20 @@ First-pass shipped outcome:
 Still open:
 
 - extend route-state changes into inspectables, props, ambient audio, district dressing, and more non-resident surfaces
+- reapply changed resident routine overrides to already-spawned 3D actors instead
+  of waiting for a future spawn or scene reload
 - move landmark subject/world-event bindings toward typed StoryEvent resources, or keep expanding validation so authored bindings, route events, subject metadata, and resident effects cannot drift silently
 - keep widening cross-district follow-through so major anchors feel visible outside the specific resident who resolved them
 
 Primary files:
 
-- `game/resident_catalog.gd`
+- `game/residents/definitions/`
 - `game/story_event_service.gd`
 - `game/story_world_reactivity.gd`
 - `game/world/story_interaction_coordinator.gd`
-- `architecture/piano_ferry.tscn`
-- `architecture/trinity_church.tscn`
-- `architecture/bagua_tower/bagua_tower.tscn`
+- `architecture/piano_ferry/piano_ferry_stylized_3d.tscn`
+- `architecture/trinity_church/trinity_church_stylized_3d.tscn`
+- `architecture/bagua_tower/bagua_tower_stylized_3d.tscn`
 - `scenes/game_world_3d.gd`
 
 ## Workstream 3: Final-Act And Ending Polish
@@ -341,7 +388,11 @@ Primary files:
 - `ui/screens/journal_overlay.tscn`
 - `game/journal_builder.gd`
 
-## Workstream 5: Storyline Editor Workflow, Content Tooling, And Test Growth
+## Completed Workstream 5: Storyline Editor Workflow, Content Tooling, And Test Growth
+
+Status: complete for its defined authoring-workflow exit criteria. Future validation
+growth belongs to the Later queue or to the feature that introduces a new schema or
+runtime behavior; it is not a reason to keep the editor workflow itself active.
 
 First-pass shipped outcome:
 
@@ -377,9 +428,8 @@ Phase 4 shipped (first pass):
 - selecting a graph node now resolves the backing `StorylineEventResource` into the Inspector so authors can edit event properties directly from the graph, and graph edits save directly back to the canonical typed route resource for the target event
 - graph edits emit a catalog refresh so the route browser updates its source badge and event tree without requiring a manual dock reload, and structural route/event changes from the browser or route-event inspector panel now refresh the graph's route filter and visible nodes without a manual graph reload
 - manual graph layout now persists in the checked-in `game/storylines/storyline_graph_layout.cfg` file instead of a per-user-only editor cache, so node arrangement changes can be reviewed and committed alongside route edits, and the graph toolbar can explicitly re-run automatic layout for the currently visible nodes
-- widen validation around settings/audio behavior and any future typed payload migrations, and keep extending regression coverage as the authoring format evolves
 
-Exit criteria for this workstream:
+Satisfied exit criteria for this workstream:
 
 - authors can create and edit a storyline in the Godot editor without changing `story_route_graph.gd` or hand-editing raw GDScript dictionaries
 - cross-route event dependencies are selectable and validated from the editor
@@ -403,253 +453,33 @@ Status: planned. The production actor currently has the shipped locomotion basel
 only; none of the five capabilities below should be described as implemented until
 its focused and production-flow validations pass.
 
-### Required Architecture
+The full ownership, input, compatibility, recovery, animation, phase validation, and
+completion contract now lives in
+[`../features/low_poly_actor_3d.md`](../features/low_poly_actor_3d.md). Keep that
+feature document and the focused fixtures authoritative for engineering detail; this
+plan owns only delivery order and milestone status.
 
-| Owner | Responsibility |
-| --- | --- |
-| `HumanBody3D` | Own physical locomotion mode, velocity, one physics integration step per tick, floor/air transitions, and animation requests. It remains free of story rules. |
-| `PlayerController3D` | Translate input into movement, jump, contextual-action, and cancel intentions; it must not manipulate world targets directly. |
-| `CharacterActionController3D` (planned) | Own the sustained action/posture mode (`free`, `carry`, `push`, `pull`, or `sit`), compatibility gates, target lifecycle, and cleanup. |
-| `WorldActionCoordinator3D` (planned) | Become the single consumer of the contextual-action input, arbitrate physical targets versus story subjects, publish one hint, and delegate story activation to `StoryInteractionCoordinator`. |
-| `StoryInteractionCoordinator` | Continue owning story-subject selection/request construction and `AppState` dispatch, but stop competing for the input/hint once the world coordinator is active. |
-| `ActorSurfaceFollower` | Seat the actor only during normal grounded locomotion; expose an explicit forced-settle path for spawn/resume teleports and suspend automatic seating during jumps, falls, ladders, and recovery. |
-| `PlayerRecoveryController3D` (planned) | Track a scene-local safe transform plus semantic landmark fallback, detect out-of-bounds/fall failure, cancel active actions, restore the player, and reset affected objects without changing story progress. |
-| `CharacterActionTarget3D` (planned) | Provide typed action id, display label, priority, range, facing/anchor data, availability, and begin/cancel/complete hooks for physical targets. |
-| Feature targets (planned) | `Ladder3D`, `CarryableObject3D`, `PushPullObject3D`, and `Seat3D` own only their authored transforms, constraints, and local lifecycle. |
-| `CharacterAnimationProfile3D` (planned) | Map locomotion/action modes to validated clips per model, with explicit development fallbacks and no silent assumption that all GLBs share a rig or clip set. |
+Delivery order:
 
-`AppState` receives only semantic completion results that affect story or save state.
-It must not receive live velocity, locomotion/action modes, ladder progress, held-
-object transforms, push/pull coordinates, or seat alignment.
+0. Phase 0 tuning/content/animation gate — active inside Milestone A
+1. shared physics, action-state, world-interaction, animation, and recovery foundation
+2. physical traversal jump and recovery
+3. ladder climbing
+4. carrying
+5. deliberate push/pull
+6. sitting
+7. production integration and hardening
 
-### Input And Arbitration Contract
+Milestone B owns Phases 1-3. Milestone C owns Phases 4-6. Phase 7 closes the
+workstream only after every capability has a focused automated fixture, one authored
+production use, a manual production-flow check, consistent input/cancellation/camera
+behavior, and accepted animation coverage or an approved fallback for all three
+player models.
 
-- Keep `Space` as the single jump input; the physical jump replaces the current
-  production cosmetic-only behavior.
-- Keep `R` as the single contextual world action. One press talks/inspects, picks up
-  or places, mounts or dismounts a ladder, sits or stands, and engages or releases a
-  push/pull target according to the selected target and active action.
-- Let movement direction determine push versus pull after engagement; do not add a
-  second push/pull button.
-- Let `Esc` cancel a sustained physical action before it opens a higher app overlay,
-  preserving the app-wide back-one-level rule.
-- Rank candidates deterministically by authored priority, facing, then distance.
-  An already-engaged action always receives its own exit/cancel input first.
-- Preserve story-subject priority authoring and add explicit physical-target
-  priorities so an overlapping crate, seat, ladder, and resident never all react to
-  one press.
-- Phase 0 must decide whether carried-object rotation needs dedicated inputs. Do not
-  claim rotation support until its mapping, prompt, controller behavior, and test
-  are approved together.
-
-### Phase 0: Tuning, Content, And Animation Gate
-
-- Author the numeric acceptance matrix for jump height, obstacle height, gap width,
-  landing width, jump buffer, edge forgiveness, air control, ladder speed, action
-  ranges, carry classes, push/pull speed/range, placement clearance, and recovery
-  bounds in [`../features/low_poly_actor_3d.md`](../features/low_poly_actor_3d.md).
-- Audit the actual animation libraries and skeleton compatibility of `male.glb`,
-  `female.glb`, and `boy.glb` for jump, fall, land, carry, push, pull, climb, sit,
-  and stand. Identify which clips can be shared and which must be authored or
-  acquired. Functional test poses may unblock physics development, but missing
-  production clips block feature acceptance.
-- Confirm the first production proof for each capability and the geometry/collision
-  it needs before building the general system.
-- Capture the current four-scene actor baseline before refactoring so regressions
-  can be attributed to the action workstream.
-
-Phase 0 exit gate: numeric fixtures, input rules, model-animation coverage, and one
-production proof location per capability are approved and documented.
-
-### Phase 1: Physics, State, Interaction, And Recovery Foundation
-
-- Introduce typed locomotion and sustained-action modes without changing shipped
-  behavior. Preserve current adapter methods while migrating callers.
-- Refactor movement so controllers set intent and `HumanBody3D` applies horizontal
-  and vertical velocity through exactly one `move_and_slide()` integration per
-  physics tick. Preserve current-frame starts/stops and idle falling.
-- Add `CharacterActionController3D` and its compatibility/cancellation contract.
-- Add `WorldActionCoordinator3D` as the only contextual-input/hint publisher. First
-  route existing story interactions through it and prove dialogue, inspectables,
-  prompts, and StoryEvent results are unchanged before adding physical targets.
-- Make `ActorSurfaceFollower` locomotion-aware. Normal per-frame seating must not run
-  while the actor is airborne or ladder-mounted; spawn/resume placement keeps an
-  explicit forced-settle call.
-- Add scene-local safe-transform tracking and recovery. Semantic story resume
-  anchors remain fallback ids rather than a high-frequency physics store.
-- Add the animation profile and explicit missing-clip fallback behavior.
-
-Phase 1 validation:
-
-- existing actor, collision, environment, and production-world smoke scenes remain
-  green with no change to shipped movement or story interaction
-- a new `test_character_action_state_3d.tscn` covers mode compatibility, contextual
-  target arbitration, action cancellation, overlay/back handling, and cleanup on
-  scene exit
-- forced spawn/resume settling still works while airborne modes demonstrably skip
-  automatic surface seating
-
-### Phase 2: Physical Traversal Jumping
-
-- Replace the visual-only jump timer with a physical takeoff velocity and gravity-
-  driven collision-body arc; the visual model follows the actor instead of carrying
-  a separate scripted jump offset.
-- Implement the approved input buffer, edge forgiveness, horizontal air control,
-  ceiling rejection, landing transition, and takeoff restrictions.
-- Suspend surface following from takeoff through landing and re-enable it only after
-  valid floor contact.
-- Keep the camera's short-jump vertical response restrained so the world does not
-  bob with every jump; test orbit and occlusion while airborne.
-- Recover cleanly after out-of-bounds falls, cancelling actions and restoring the
-  last safe transform with zero velocity and no story-state loss.
-
-Phase 2 validation:
-
-- add `test_character_traversal_3d.tscn` with numeric obstacle, gap, landing, ceiling,
-  wall, edge-buffer, air-control, fall, and recovery fixtures
-- update `test_human_body_3d.tscn` to remove the planted-capsule cosmetic-jump
-  assertion and cover physical takeoff/landing mode transitions
-- update `test_character_collisions.tscn` for physical jump collision without
-  weakening the existing gravity, wall, stair, and contact-push coverage
-- validate one forgiving production jump route that cannot bypass a StoryEvent gate
-  or semantic resume anchor
-
-### Phase 3: Ladder Climbing
-
-- Implement `Ladder3D` as an authored straight climb path with detection volume,
-  bottom/top mount transforms, climb endpoints, dismount transforms, facing, and
-  clearance checks.
-- Mount through the contextual action, align deterministically, suspend gravity and
-  surface following, constrain movement to the ladder path, and dismount only onto a
-  clear endpoint.
-- Define blocked-exit behavior, mid-ladder cancellation/fall behavior, recovery,
-  camera framing, and pause/scene-exit cleanup.
-- Reject carrying, push/pull, sitting, and traversal jumping while ladder-mounted.
-
-Phase 3 validation:
-
-- extend `test_character_traversal_3d.tscn` with mount-from-both-ends, climb, reverse,
-  blocked-exit, dismount, fall/cancel, camera, and recovery fixtures
-- validate one production ladder route with readable prompts and no route-gate bypass
-
-### Phase 4: Carrying Objects
-
-- Implement `CarryableObject3D` with typed light/medium class, authored carry anchor,
-  original/reset transform, placement bounds, and semantic completion id.
-- Add an actor carry socket. On pickup, preserve the object's original state, apply
-  collision exceptions/freeze policy, and keep it out of the actor capsule.
-- On placement, shape-test the proposed transform and reject clipping, blocked
-  doorways, invalid ground, and placement outside authored bounds.
-- Enforce movement compatibility: light and medium carryables allow idle/walk;
-  medium blocks run/jump/ladder, and light begins with the same safe restriction
-  until an authored fixture explicitly relaxes it.
-- Cancel and reset safely on recovery or scene exit. Persist only a semantic
-  completion result when a story interaction requires it.
-
-Phase 4 validation:
-
-- add `test_character_object_actions_3d.tscn` for pickup, carry classes, collision
-  exclusion, blocked placement, doorway clearance, valid placement, reset, recovery,
-  and mode rejection
-- validate one compact production delivery/restoration interaction
-
-### Phase 5: Deliberate Push/Pull Puzzles
-
-- Implement `PushPullObject3D` as a constrained deterministic body with authored
-  axis/path, range, alignment anchors, movement speed, original/reset transform, and
-  completion target. Do not use free rigid-body simulation for puzzle state.
-- Engage with the contextual action, align the actor, derive push versus pull from
-  movement direction, stop on blockage, and release/cancel without residual velocity.
-- Prevent the object or actor from crossing its authored range, sealing a critical
-  route, trapping the player, or overlapping invalid geometry.
-- Keep current incidental `RigidBody3D` impulses for ambient objects separate from
-  deliberate puzzle logic.
-
-Phase 5 validation:
-
-- extend `test_character_object_actions_3d.tscn` for engage/release, push/pull
-  direction, path limits, blockage, alignment, route protection, reset, recovery,
-  and mode rejection
-- validate one three-beat-or-shorter production Tend puzzle
-
-### Phase 6: Sitting
-
-- Implement `Seat3D` with detection volume, seat transform, one or more clear exit
-  transforms, occupancy, camera policy, and semantic context if the seat triggers a
-  listening or conversation beat.
-- Align within the documented position/rotation tolerance, play sit/idle/stand
-  presentation, keep camera control, and let contextual action or cancel exit at any
-  time.
-- Shape-test exit transforms and choose a clear fallback rather than restoring
-  control inside geometry.
-
-Phase 6 validation:
-
-- add sitting to `test_character_action_state_3d.tscn`, covering entry tolerance,
-  occupied seats, blocked primary exit, fallback exit, camera control, cancel,
-  overlay/scene exit, and recovery
-- validate one production listening, conversation, or reflective seat
-
-### Phase 7: Production Integration And Hardening
-
-First production proofs should be small and legible:
-
-| Capability | First production proof |
-| --- | --- |
-| Physical traversal jump | A forgiving Bagua approach or terrace route with generous landing space. |
-| Ladder | A Bagua maintenance or upper-platform connection with visible endpoints. |
-| Carry | A Piano Ferry or Trinity delivery/restoration beat using one light object. |
-| Push/pull | A Trinity spatial-care beat using one constrained stand, cart, or furniture object. |
-| Sit | A harbor or church listening seat with an ambient or conversational response. |
-
-- Keep exact story rewards in StoryEvents; physical components emit only semantic
-  completion ids and never write route state directly.
-- In Story mode, actions may resolve authored events. In `Free Walk`, the safe
-  physical verbs remain usable but do not advance story state.
-- On pause, mode change, recovery, scene unload, or return to title, cancel or settle
-  every sustained action deterministically; never leave collision exceptions,
-  frozen objects, occupancy, or movement locks behind.
-- Add hints and player-facing instructions only after final input behavior is stable.
-- Run the main title/new-game/Free-Walk/overlay flow in addition to focused scenes.
-
-Exit criteria:
-
-- physical traversal jumping, carrying, deliberate push/pull, sitting, and ladder
-  climbing are all marked Current in [`../features/low_poly_actor_3d.md`](../features/low_poly_actor_3d.md)
-- each capability has a focused automated fixture and at least one production-flow
-  manual check
-- each capability appears in at least one authored production use that strengthens
-  the core plays
-- contextual hints, input behavior, cancellation, camera behavior, animation, and
-  recovery are consistent across capabilities
-- no capability introduces precision-platforming gates, route softlocks, punitive
-  fall recovery, or transient physics state in `AppState`
-- actor, collision, environment, and production-world regression scenes remain green
-- all three production player models have accepted action-animation coverage or an
-  explicitly approved per-model fallback
-
-Primary files:
-
-- `characters/human_body_3d.gd`
-- `characters/control/base_controller_3d.gd`
-- `characters/control/player_controller_3d.gd`
-- planned `characters/actions/character_action_controller_3d.gd`
-- planned `characters/actions/character_action_target_3d.gd`
-- planned `characters/actions/character_animation_profile_3d.gd`
-- planned `characters/actions/carryable_object_3d.gd`
-- planned `characters/actions/push_pull_object_3d.gd`
-- planned `characters/actions/seat_3d.gd`
-- planned `characters/actions/ladder_3d.gd`
-- `game/world/actor_surface_follower.gd`
-- planned `game/world/world_action_coordinator_3d.gd`
-- planned `game/world/player_recovery_controller_3d.gd`
-- `game/world/story_interaction_coordinator.gd`
-- `scenes/game_world_3d.tscn`
-- `scenes/game_world_3d.gd`
-- character/action fixtures under `characters/tests/` and `scenes/tests/`
-- [`../features/low_poly_actor_3d.md`](../features/low_poly_actor_3d.md)
-- [`../features/multi_level_spaces.md`](../features/multi_level_spaces.md)
-- [`../core_gameplay_plays.md`](../core_gameplay_plays.md)
+No action may become required story progress until its focused and production-flow
+checks pass. Physical components publish only semantic completion ids; `AppState`
+must never own transient locomotion, collision, carried-object, ladder, push/pull,
+seat, or recovery state.
 
 ## Completed Workstream 0: AppState Decomposition And Architecture Cleanup
 
@@ -668,7 +498,6 @@ Verification now in repo:
 - `game/tests/cue_progression/test_cue_progression.tscn`
 - `game/tests/persistence/test_story_autosave.tscn`
 - `game/tests/story_routes/test_story_routes.tscn`
-- `game/tests/npc_system/test_resident_interaction.tscn`
 - `game/tests/npc_system/test_resident_interaction.tscn`
 - `game/tests/npc_system/test_resident_catalog_external_defs.tscn`
 - `game/tests/state/test_app_state_ownership.tscn`

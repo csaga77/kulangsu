@@ -188,11 +188,22 @@ Current read of the playable slice:
 
 Current gameplay-content priority order:
 
-1. Add more embodied household scenes around A Po, the parents, and daily care so the family route is not carried mostly by talk beats.
-2. Push preservation and melody reactivity into more inspectables, props, and district-facing world cues instead of leaving it mostly in resident dialogue.
-3. Turn the differentiated ending copy into more playable authored closing moments once the final-act overlay language settles.
-4. Keep enriching the landmark route without letting it reclaim the role of sole progression spine.
-5. Continue migrating residents out of `resident_catalog.gd` so route growth does not stay trapped in one large script.
+1. Ship the implementation plan's Milestone A: one embodied household/courtyard
+   scene around A Po and family care between `winter_memory_reveal` and
+   `spring_festival_prepared`.
+2. Use that scene for the first completed-versus-missed seasonal transformation so
+   absence changes later text and world response without blocking the family route.
+3. Push preservation and melody reactivity into more inspectables, props, and
+   district-facing world cues, including live reapplication of changed routine
+   overrides to already-spawned residents.
+4. Turn the differentiated ending copy into more playable authored closing moments
+   once the embodied route slices exist.
+5. Keep enriching the landmark route and pairing planned physical actions with
+   authored uses without letting it reclaim the role of sole progression spine.
+
+Resident definition migration is complete. New resident content belongs in the
+external resources under `game/residents/definitions/`; `resident_catalog.gd`
+remains the loader/normalizer rather than a route-content destination.
 
 ## HUD And Journal Structure
 

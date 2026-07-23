@@ -149,6 +149,94 @@ The required planned compatibility defaults are:
 | Sit | Idle | Movement remains locked until the player exits; camera control stays available. |
 | Ladder climb | Ladder locomotion with no sustained object action | No carry, push, pull, sit, or traversal jump while mounted. |
 
+### Planned Action Ownership
+
+The action expansion keeps physical state scene-local and story meaning semantic:
+
+| Owner | Planned responsibility |
+| --- | --- |
+| `HumanBody3D` | Own locomotion mode, velocity, one physics integration step per tick, floor/air transitions, and animation requests; remain free of story rules. |
+| `PlayerController3D` | Translate input into movement, jump, contextual-action, and cancel intentions without manipulating world targets. |
+| `CharacterActionController3D` | Own sustained `free`, `carry`, `push`, `pull`, or `sit` state, target lifecycle, compatibility, and cleanup. |
+| `WorldActionCoordinator3D` | Become the sole contextual-input and hint arbiter across physical targets and story subjects, delegating story activation to `StoryInteractionCoordinator`. |
+| `StoryInteractionCoordinator` | Continue story-subject selection, request construction, and `AppState` dispatch without competing for the input or hint. |
+| `ActorSurfaceFollower` | Run normal seating only for grounded locomotion, expose forced spawn/resume settling, and suspend automatic seating during airborne, ladder, and recovery modes. |
+| `PlayerRecoveryController3D` | Track a scene-local safe transform plus semantic landmark fallback, recover the player, cancel actions, and reset affected objects without changing story progress. |
+| `CharacterActionTarget3D` | Provide typed action id, label, priority, range, facing/anchor data, availability, and begin/cancel/complete hooks. |
+| Feature targets | `Ladder3D`, `CarryableObject3D`, `PushPullObject3D`, and `Seat3D` own only authored transforms, constraints, and local lifecycle. |
+| `CharacterAnimationProfile3D` | Map locomotion/action modes to validated per-model clips with explicit development fallbacks. |
+
+`AppState` receives only semantic completion results. It never owns velocity,
+locomotion/action modes, ladder progress, held-object transforms, push/pull
+coordinates, or seat alignment.
+
+The world-action coordinator ranks candidates by authored priority, facing, then
+distance. An engaged action receives its own exit/cancel first. `Esc` cancels a
+sustained physical action before opening a higher overlay, preserving the app-wide
+back-one-level rule. Phase 0 decides whether carried-object rotation warrants
+dedicated inputs; rotation is not supported until its input, prompt, behavior, and
+test are approved together.
+
+### Planned Delivery Stages
+
+The implementation plan owns which milestone is active; this feature owns the
+engineering and acceptance contract for every stage.
+
+0. **Tuning, content, and animation gate.** Lock numeric jump, gap, landing,
+   buffering, forgiveness, ladder, action-range, carry, push/pull, placement, and
+   recovery fixtures. Audit `male.glb`, `female.glb`, and `boy.glb` clips. Approve an
+   exact scene, semantic completion id, geometry requirement, and manual check for
+   every production proof. Capture the existing actor/collision/environment/world
+   baseline before refactoring.
+1. **Physics, state, interaction, and recovery foundation.** Introduce typed
+   locomotion/action modes, make controllers provide intent, keep exactly one
+   `move_and_slide()` integration per physics tick, route current story interaction
+   through `WorldActionCoordinator3D`, make surface following locomotion-aware, and
+   add safe-transform recovery plus animation profiles without changing shipped
+   behavior.
+2. **Physical traversal jump.** Replace the visual-only jump with a collision-body
+   arc using the approved buffer, forgiveness, air-control, ceiling, landing,
+   camera, and recovery values. It must not bypass StoryEvent gates or semantic
+   resume anchors.
+3. **Ladder climbing.** Add a straight authored ladder path with deterministic
+   mount/alignment, endpoints, clearance, constrained movement, blocked-exit,
+   cancellation/fall, camera, cleanup, and recovery behavior.
+4. **Carry.** Add typed light/medium carryables, an actor socket, collision policy,
+   bounded shape-tested placement, movement restrictions, reset behavior, and an
+   optional semantic completion id.
+5. **Deliberate push/pull.** Add constrained deterministic objects with authored
+   axis/path, range, alignment, blockage, release, route-protection, reset, and
+   completion behavior; retain incidental `RigidBody3D` impulses only for ambient
+   objects.
+6. **Sit.** Add seat/exit transforms, occupancy, camera policy, animation,
+   shape-tested fallback exits, immediate contextual/cancel exit, and semantic
+   listening/conversation context where authored.
+7. **Production hardening.** Keep rewards in StoryEvents, disable story advancement
+   in `Free Walk`, deterministically settle every action during pause/recovery/unload,
+   add final hints, and run the full title/New Game/Free Walk/overlay flow.
+
+Focused validation ownership:
+
+- `test_character_action_state_3d.tscn`: mode compatibility, target arbitration,
+  cancellation/back behavior, surface-follow suspension, sitting, and cleanup
+- `test_character_traversal_3d.tscn`: numeric jump/fall/recovery fixtures plus ladder
+  mount, climb, blocked exit, cancel/fall, camera, and recovery behavior
+- `test_character_object_actions_3d.tscn`: carry, placement, push/pull, blockage,
+  bounds, reset, recovery, and incompatible-mode rejection
+- existing actor, collision, environment, and production-world scenes remain green
+  throughout the migration
+
+Candidate first production proofs are Bagua for traversal jump and ladder, Piano
+Ferry or Trinity for a light carry/restoration beat, Trinity for constrained
+push/pull care, and the harbor or church for a reflective seat. Phase 0 must replace
+those candidates with exact commitments before implementation.
+
+The workstream is complete only when all five required actions are Current, each has
+a focused fixture and authored production use, all three player models have accepted
+animation coverage or an approved fallback, and no action introduces precision-
+platforming gates, route softlocks, punitive recovery, or transient physics state in
+`AppState`.
+
 ### Current Physics Defaults
 
 These values describe the implementation defaults, not permanent design constants:
