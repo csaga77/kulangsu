@@ -26,6 +26,9 @@ const ActorSurfaceFollowerScript = preload("res://game/world/actor_surface_follo
 const StoryInteractionCoordinatorScript = preload(
 	"res://game/world/story_interaction_coordinator.gd"
 )
+const APO_HOUSEHOLD_SCRIPT := preload(
+	"res://architecture/apo_household/apo_household_courtyard_3d.gd"
+)
 const TERRAIN_KIND_WATER := 0
 const ACTOR_GROUND_TOLERANCE := 0.2
 const MAX_ACTOR_WADE_DEPTH := 0.5
@@ -379,7 +382,7 @@ func _check_household_courtyard(failures: Array[String]) -> void:
 	var ferry := m_world.get_node_or_null("Landmarks/PianoFerryProxy") as Node3D
 	var household := m_world.get_node_or_null(
 		"Landmarks/PianoFerryProxy/APosHouseholdCourtyard"
-	) as APosHouseholdCourtyard3D
+	) as APO_HOUSEHOLD_SCRIPT
 	if household == null:
 		failures.append("production world is missing A Po's household courtyard")
 		return

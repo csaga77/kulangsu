@@ -31,6 +31,9 @@ const LowPolyArtStyle3DScript = preload("res://terrain/low_poly_art_style_3d.gd"
 const RESIDENT_FACTORY := preload("res://characters/resident_factory.gd")
 const CHARACTER_MODEL_CATALOG_3D := preload("res://characters/character_model_catalog_3d.gd")
 const AUDIO_SETTINGS_SERVICE := preload("res://game/audio_settings_service.gd")
+const APO_HOUSEHOLD_COURTYARD_3D_SCRIPT := preload(
+	"res://architecture/apo_household/apo_household_courtyard_3d.gd"
+)
 
 const LANDMARK_MASK_META := &"low_poly_landmark_mask_pixel"
 const ISLAND_PATHS_LABEL := "Island Paths"
@@ -50,7 +53,7 @@ const WEATHER_TRANSITION_DURATION_MAX := 18.0
 @onready var m_camera_controller: Node = $Camera3DController
 @onready var m_sun: DirectionalLight3D = $Sun
 @onready var m_landmarks_root: Node3D = $Landmarks
-@onready var m_apo_household: APosHouseholdCourtyard3D = (
+@onready var m_apo_household: APO_HOUSEHOLD_COURTYARD_3D_SCRIPT = (
 	$Landmarks/PianoFerryProxy/APosHouseholdCourtyard
 )
 

@@ -75,7 +75,7 @@ Responsibilities:
 - shared authored terrain-profile resource used by both direct terrain validation and the gameplay scene instance
 - terrain mask legend, per-color semantics, and street-connect defaults
 - low-poly 3D terrain with split image-sampling and mesh-building stages, heightmap-level water, visible seabed, shader-displaced wind-aware water, shared style presets, and shared terrain-mask-pixel/isometric-position to 3D-world coordinate conversion
-- the production low-poly 3D overworld (`game_world_3d`), which assembles terrain, `HumanBody3D`, camera, five landmark anchors (three stylized building instances plus tunnel markers), wandering residents, the complete set of 15 landmark and 5 inspectable `StorySubject3D` interactions, shared BGM/landmark-cue audio, manager-cycled 3D rain/fog/cloud light plus wind-aware water, and location/resume syncing into `AppState`
+- the production low-poly 3D overworld (`game_world_3d`), which assembles terrain, `HumanBody3D`, camera, five landmark anchors (three stylized building instances plus tunnel markers), A Po's ferry-district household courtyard, wandering residents, the complete set of 17 landmark and 6 inspectable `StorySubject3D` interactions, shared BGM/landmark-cue audio, manager-cycled 3D rain/fog/cloud light plus wind-aware water, and location/resume syncing into `AppState`
 - player spawn and camera context
 - shared overworld registration of one `WeatherRig3D` presentation target
 - global weather-manager ownership for random weather cycling and shared wind sync across the 3D rain/fog/cloud presentation and terrain water
@@ -107,6 +107,7 @@ Primary files:
 - [`../game/resident_catalog.gd`](../game/resident_catalog.gd)
 - [`../game/story_event_catalog.gd`](../game/story_event_catalog.gd)
 - [`../game/story_event_service.gd`](../game/story_event_service.gd)
+- [`../game/story_moment_ledger.gd`](../game/story_moment_ledger.gd)
 - [`../game/story_time_service.gd`](../game/story_time_service.gd)
 - [`../game/story_route_graph.gd`](../game/story_route_graph.gd)
 - [`../game/storylines/`](../game/storylines)
@@ -125,6 +126,10 @@ Responsibilities:
 - first-pass generic StoryEvent routing now lives in `game/story_event_service.gd`, composed by `AppState`, while `game/story_event_catalog.gd` now owns the full melody-landmark interaction spine plus its landmark prompt-completion/reward world events: ferry harbor clue and onboarding reward, Trinity cue/chime/reward beats, Bi Shan echoes/chamber/reward, Long Shan entry/checkpoints/exit/reward, Bagua synthesis/reward, and the harbor-stage prompt/performance completion
 - shared melody definitions and melody-progress state used by the journal and future performance systems
 - modular storyline route/event definitions in `game/storylines/`, with `story_route_graph.gd` loading them once into a runtime definition cache and projecting them into route progress, lead selection, display-order-independent route-score gates, canonical story-event availability checks, and endgame-trigger logic
+- one explicit, bounded `StoryMomentLedger` definition maps the Winter household-care
+  route event to its exclusive completed/missed facts; normalization runs inside
+  detached transitions and save decode while `AppState` remains the only mutable
+  state owner
 - resident and player-facing catalog data
 - `AppStateService` owns exactly one canonical snapshot and one projection cache. Every semantic command runs against a detached transition, normalizes once, commits once, optionally autosaves once, emits one `state_committed(changes)`, and only then emits queued imperative events.
 - high-frequency world-context calls reject unchanged values before allocating a transition. Detached reducer contexts seed from the committed projection, reuse immutable catalog/index caches, and explicitly detach helper back-references when a command or read calculation finishes.

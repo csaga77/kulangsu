@@ -21,6 +21,9 @@ Read this first. It is the minimum-token design context for new Codex threads.
 - Seasonal multi-route structure rather than one main quest route.
 - The five-landmark melody route remains one major route, not the only route.
 - Progress is tracked through `season_phase`, lightweight story time (`story_day`, `world_hour`, `time_of_day`), `route_progress`, `story_flags`, melody fragments, reconstructed melodies, landmarks, residents, location, player appearance, and wardrobe unlocks.
+- The first completed-versus-missed seasonal moment is live: Winter household care
+  resolves as exclusive `family_household_care_seen` or
+  `family_household_care_missed` story facts without blocking the main family route.
 - `chapter` remains a compatibility/display label, not the authoritative progression key.
 - `Free Walk` is a low-pressure exploration mode separate from story progression.
 
@@ -109,6 +112,7 @@ Input expectations:
 - Feature-doc guide: [`features/README.md`](features/README.md)
 - Feature-doc template: [`features/template.md`](features/template.md)
 - Core melody loop, current gap list, and MVP implementation order: [`features/core_melody_loop.md`](features/core_melody_loop.md)
+- First completed-versus-missed household-care moment: [`features/household_care_story_moment.md`](features/household_care_story_moment.md)
 - Multi-level landmark and stacked-room design: [`features/multi_level_spaces.md`](features/multi_level_spaces.md)
 - Current character actions, physics, and future capability gates: [`features/low_poly_actor_3d.md`](features/low_poly_actor_3d.md)
 - NPC and resident system slice: [`npc_system_design.md`](npc_system_design.md)

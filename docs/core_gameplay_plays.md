@@ -81,7 +81,10 @@ Physical actions should follow these player-facing rules:
   shortcuts that bypass story gates or semantic resume anchors.
 
 See [`features/low_poly_actor_3d.md`](features/low_poly_actor_3d.md) for the current
-runtime, input, physics, ownership, and validation contract.
+runtime, input, physics, ownership, and validation contract. Its Phase 0 numeric,
+input/cancellation, animation-fallback, production-proof, and recovery decisions
+were accepted on 2026-07-23; the five physical actions remain unimplemented until
+their later focused and production-flow gates pass.
 
 ## The Eight Core Plays
 

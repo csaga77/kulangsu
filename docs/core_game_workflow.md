@@ -129,6 +129,9 @@ These anchors replace the older assumption that `chapter` is the real progressio
 
 ### First Completed-Versus-Missed Window
 
+See [`features/household_care_story_moment.md`](features/household_care_story_moment.md)
+for the implementation ownership and validation summary.
+
 Milestone A's `family_household_care_seen` is an optional `family_memory` route
 event. Its authored window opens in Winter after `winter_memory_reveal` and closes
 exactly when `spring_festival_prepared` resolves. Ambient clock advancement does not
@@ -210,7 +213,9 @@ The current structure is in place, and each non-melody route now has at least a 
 
 Current read of the playable slice:
 
-- `family_memory` now runs through harbor return, church memory, winter revelation, A Po and parent-care reflection, harbor preparation, and Spring Festival aftermath
+- `family_memory` now runs through harbor return, church memory, winter revelation,
+  the embodied A Po household-care opportunity or its transformed absence, harbor
+  preparation, and Spring Festival aftermath
 - `study_future` now stretches across Pei, Lin, Min, and Jun, with both the honest-future turn and second-summer release receiving broader district follow-through
 - `preservation_inheritance` now starts at the harbor, widens at Bagua Tower, and continues through map and postcard reactions instead of collapsing into one tower exchange
 - `spring_festival_resolved` now lands as preparation, resolution, and quieter aftermath rather than a single gate line
@@ -218,14 +223,12 @@ Current read of the playable slice:
 
 Current gameplay-content priority order:
 
-1. Ship the implementation plan's Milestone A: one embodied household/courtyard
-   scene around A Po and family care between `winter_memory_reveal` and
-   `spring_festival_prepared`.
-2. Use the parent-owned story-moment ledger for the first
-   completed-versus-missed seasonal transformation: the exact
-   `spring_festival_prepared` close publishes one exclusive outcome, closes route
-   projection, and changes later dialogue, prop/ambience response, and ending
-   texture without blocking the family route.
+1. Complete Milestone A's manual fixed-fixture and New Game production-flow review
+   for both household-care outcomes, journal continuation, and saved world
+   presentation.
+2. Begin Milestone B only after that acceptance: build the shared action/recovery
+   foundation, forgiving physical traversal jump, and authored Bagua ladder proof
+   against the accepted Phase 0 values.
 3. Push preservation and melody reactivity into more inspectables, props, and
    district-facing world cues, including live reapplication of changed routine
    overrides to already-spawned residents.

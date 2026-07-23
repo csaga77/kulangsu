@@ -142,7 +142,11 @@ All five landmark arcs are fully integrated and confirmed:
 - Long Shan Tunnel arc (entry trigger + lit-pocket checkpoints + exit-route prompt + return-to-Ren comparison handoff + `tunnel_guide` dialogue beats)
 - Bagua Tower arc (synthesis chamber `StorySubject3D` + `tower_keeper` dialogue beats + spring-gated harbor-stage handoff)
 
-All 15 landmark `StorySubject3D` ids are authored in `game_world_3d.tscn`; the production-world smoke test asserts the exact set together with the 5 inspectable ids. World selection uses each subject's 3D position, visibility/targetability metadata, and `interaction_radius`.
+All 15 melody/landmark-spine `StorySubject3D` ids remain authored in
+`game_world_3d.tscn`. The production world now also owns two household
+`landmark:` subjects and one household inspectable, so its smoke test asserts the
+exact 17-landmark/6-inspectable set. World selection uses each subject's 3D
+position, visibility/targetability metadata, and `interaction_radius`.
 
 See [`piano_ferry.md`](piano_ferry.md), [`trinity_church.md`](trinity_church.md), [`bi_shan_tunnel.md`](bi_shan_tunnel.md), [`long_shan_tunnel.md`](long_shan_tunnel.md), [`bagua_tower.md`](bagua_tower.md), and [`../../game/tests/cue_progression/test_cue_progression.tscn`](../../game/tests/cue_progression/test_cue_progression.tscn) for the current integration coverage.
 

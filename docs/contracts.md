@@ -37,6 +37,7 @@ Owned by:
 
 - [`../game/app_state.gd`](../game/app_state.gd)
 - [`../game/app_runtime.gd`](../game/app_runtime.gd)
+- [`../game/story_moment_ledger.gd`](../game/story_moment_ledger.gd)
 
 Current contract:
 
@@ -60,6 +61,16 @@ Current contract:
 - `StoryEventService`, `StoryRouteGraph`, and `ResidentInteractionService` operate against a detached transition context. They do not retain the live store, emit public signals, or perform file I/O; runtime-port files and `runtime_*` forwarding methods no longer exist
 - `activate_story_subject(...)` is the generic interaction entry point for resident talk and all scene-authored `StorySubject3D` world subjects; the current subject taxonomy includes `npc:<resident_id>`, `landmark:<landmark_id>.<trigger_id>`, and `inspectable:<inspectable_id>`
 - `game/storylines/` owns canonical route and route-event authoring, while `game/story_route_graph.gd` owns projection, lead selection, canonical story-event availability checks/blocker reporting, endgame-trigger evaluation, ending-behavior classification, and baseline ending-tone tag generation
+- `StoryMomentLedger` is a pure, explicit policy over canonical
+  `AppStateSnapshot.story_flags`, not a second store. Its household-care definition
+  preserves the first committed seen/missed outcome, lets seen win malformed
+  no-prior-outcome conflicts, and publishes missed exactly when
+  `spring_festival_prepared` closes an unresolved window.
+- story-moment normalization runs after authored effects and route-flag
+  normalization but before projection, change-set construction, autosave, and
+  queued events; save decode applies the same idempotent policy to legacy data
+- route projection reports a mapped missed event in `missed_beat_ids`, treats it as
+  terminal, removes it from available/blocked leads, and grants no completion score
 - route-score prerequisites are evaluated against an all-route completion snapshot, so cross-route score gates cannot depend on route display order
 - all resident definitions live in external `.tres` files under `res://game/residents/definitions/`; `ResidentCatalog` loads them at runtime and `include_in_catalog = false` keeps a resource out of the runtime roster
 - `interact_with_resident()` checks a resident's `conditional_beats` (priority-sorted, condition-gated) before falling through to the linear `dialogue_beats` spine
@@ -100,7 +111,7 @@ Current contract:
 - the storyline schema classes (`StorylineCatalog`, `StorylineRouteResource`, `StorylineEventResource`, `StorylineEndingToneRule`, `StorylinePhaseSet`, `StorylineHostValidationProvider`) are owned by the `addons/storyline_editor` submodule; the parent owns the authored `.tres` data, `game/storylines/phase_set.tres` (kept in sync with `StorySeasonPhases` by `test_storyline_resources`), `StoryEffectSchema`, `KulangsuStorylineValidationProvider`, and the `storyline_editor/*` project settings that locate/configure them
 - `storyline_editor/validation_provider_script` points from the parent to `game/storyline_validation_provider.gd`; the provider extends the addon's generic interface and supplies live Kulangsu semantic validation to the inspector and route browser. The addon has no Kulangsu class/path dependency and must continue working when the setting is empty
 - route events may depend on events from any other route resource by referencing those event ids in `prerequisites.story_flags_all` or `prerequisites.story_flags_any`
-- `game/story_event_catalog.gd` is the authored StoryEvent tree file for the current landmark migration; it now owns the full `melody_landmarks` landmark-interaction subtree
+- `game/story_event_catalog.gd` is the authored StoryEvent tree file for the current landmark migration and first household slice; it owns the full `melody_landmarks` landmark-interaction subtree plus A Po household arrival and care bindings
 - StoryEvent catalog validation checks every authored condition/effect payload, including nested conditional effects and `story_event` references against the typed route-event resources loaded by `StorylineCatalog`, so interaction bindings cannot silently contain typos, invalid types, or missing canonical ids
 - resident dialogue beats are projected through `StoryEffectSchema.extract_effects(...)` before runtime application, keeping dialogue metadata out of the strict effect executor while preserving declared effect keys
 - resident conditional beats now resolve through `pick_story_candidate(...)` and apply their side effects through `apply_story_effects(...)` rather than keeping separate copies of condition/effect logic
@@ -176,6 +187,10 @@ Current contract:
 - `scenes/game_world_3d.gd` owns mapping the live player position onto safe story resume anchors for autosave and continue, and applies the saved resume anchor on entry (falling back to the definition marked as the catalog default)
 - `scenes/game_world_3d.gd` registers the 3D weather rig target with `WeatherManager`, which owns preset cycling and synced wind application
 - `scenes/game_world_3d.tscn` keeps the player actor in the `"player"` group and residents under a scene-owned resident root
+- A Po's household courtyard is a parent-owned scene instanced below the Piano Ferry
+  proxy. Its `StorySubject3D` nodes emit semantic arrival, care, and reflection
+  requests, while its script only projects saved seen/missed flags into
+  cared-for/untended props and ambience.
 - landmark naming, proxy lookup, placement, and location sync depend on `LandmarkCatalog` definitions resolving to the authored `Landmarks/*Proxy` nodes in the world scene
 - reapplying resident routine overrides to live 3D resident actors is scheduled under the implementation plan's Next world-state reactivity work; overrides currently take effect through the shared spawn/movement config (validated at the shared-state level by `game/tests/story_routes/test_story_event_service.tscn`)
 
@@ -225,7 +240,10 @@ Current contract:
 - STREET mask cells remain extraction and terrain-classification input, but they must not emit a parallel mask-derived `StreetMesh`; `StreetNetwork3D` owns generated visible road/junction geometry, standalone `Street3D` remains an authored compatibility source, and cells that cannot become a generated path render as supporting land
 - height-aware placement must query generated terrain heights through `LowPolyTerrain3D.get_world_surface_height(...)` or `LowPolyTerrain3D.get_sample_cell_height(...)` after rebuild instead of assuming global `land_height`; in heightmap-expanded water these queries currently expose underlying land/seabed elevation rather than visual water-plane height
 - `ActorSurfaceFollower`, configured by `game_world_3d`, owns actor grounding: each physics frame it seats the player actor on the solid surface directly beneath it by casting a short downward ray against the physics world (the actor's `collision_mask`), so the actor stands on terrain, piers, or collision-bearing building parts instead of hovering. It falls back to `LowPolyTerrain3D.get_world_surface_height(...)` only when the ray finds nothing within reach, preserving land/seabed elevation following and shallow-water seating. `terrain_clearance` defaults to `0`; `HumanBody3D` itself stays terrain-agnostic
-- `game_world_3d` owns three authored building scenes, two stable tunnel marker anchors, the complete 15-landmark/5-inspectable `StorySubject3D` set, and recursively generated static collision for authored landmark meshes
+- `game_world_3d` owns three authored landmark building scenes, the A Po household
+  courtyard, two stable tunnel marker anchors, the complete
+  17-landmark/6-inspectable `StorySubject3D` set, and recursively generated static
+  collision for authored landmark meshes
 - `Camera3DController` keeps its followed target readable by raycasting from the current camera to the look-at point and fading every collision-backed `GeometryInstance3D` blocker through the instance `transparency` property. It excludes the target subtree, preserves pre-existing transparency, restores cleared blockers (or blockers tracked by a camera that stops being current), and exposes collision-mask, fade amount/duration, area-query, and hit-limit tuning. Automatic visual resolution requires the geometry instance to be an ancestor or descendant of the hit collision object
 - `HumanBody3D.body_height` and `HumanBody3D.body_radius` are the current low-poly actor shape contract; they update the GLB model scale, capsule collision, bounding box, and ground footprint together
 - `HumanBody3D` always renders one integrated GLB character model under `VisualRoot/CharacterModel`; there is no procedural block-mannequin fallback or separate hair, pants, jacket, accessory-attachment, or runtime skin-transfer layer. The only code-generated geometry left is the optional `DebugBox` bounding-box gizmo and the optional skeleton bone-debug lines
@@ -285,7 +303,7 @@ Current contract:
 - Resident dialogue beats may carry `"unlock_landmark"` to unlock a landmark when the beat fires, and `"gate"` / `"gate_fallback"` to block a beat until a landmark condition is satisfied
 - Resident dialogue beats may carry `"landmark_reward"` to trigger a landmark resolution (fragment award, melody state update, downstream unlocks) when the beat fires
 - `game/story_event_catalog.gd` owns the canonical authored world-subject metadata list and presence rules; the `StorySubject3D.subject_id` dropdown reads from that shared catalog, surfaces configuration warnings for unknown ids, and keeps stable world subjects decoupled from whichever StoryEvent currently binds them
-- `scenes/game_world_3d.tscn` owns the production proxy nodes and exact 15 landmark plus 5 inspectable non-NPC subject ids; each navigable `LandmarkDefinition` maps to one proxy path and authored isometric coordinate, and the production-world smoke test checks the complete subject set
+- `scenes/game_world_3d.tscn` owns the production proxy nodes and exact 17 landmark plus 6 inspectable non-NPC subject ids; each navigable `LandmarkDefinition` maps to one proxy path and authored isometric coordinate, and the production-world smoke test checks the complete subject set
 
 Governance:
 

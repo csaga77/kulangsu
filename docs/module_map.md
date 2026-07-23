@@ -41,8 +41,11 @@ Put new menu, overlay, HUD, or shell-flow work here.
 - [`../game/app_state.gd`](../game/app_state.gd) - scene-owned snapshot store and atomic command finalizer; owns one canonical snapshot, one projection cache, persistence coordination, `state_committed`, and queued imperative events
 - [`../game/app_state/`](../game/app_state) - typed snapshot/projection/transition/change-set models, the detached reducer context with shared immutable catalog caches and explicit helper cleanup, V1/V2 save codec, and configurable save repository
 - [`../game/app_runtime.gd`](../game/app_runtime.gd) - scene-owned runtime lookup for `AppStateService` and the live `"player"` group member
-- [`../game/story_event_catalog.gd`](../game/story_event_catalog.gd) - authored StoryEvent tree data file; currently owns the full `melody_landmarks` landmark-interaction subtree, including ferry, Trinity, Bi Shan, Long Shan, Bagua, and harbor-stage trigger bindings
+- [`../game/story_event_catalog.gd`](../game/story_event_catalog.gd) - authored StoryEvent tree data file; currently owns the full `melody_landmarks` landmark-interaction subtree plus the A Po household arrival/care bindings
 - [`../game/story_event_service.gd`](../game/story_event_service.gd) - detached generic StoryEvent reducer for `npc:`, `landmark:`, and `inspectable:` subjects, shared condition matching, candidate selection, and effect application
+- [`../game/story_moment_ledger.gd`](../game/story_moment_ledger.gd) - explicit
+  parent-owned policy for bounded completed-versus-missed moments; currently maps
+  only the Winter household-care event to its exclusive terminal story facts
 - [`../weather/weather_manager.gd`](../weather/weather_manager.gd) - global scene-owned weather service for overworld preset cycling, runtime weather-rig instancing, and synced wind application
 - [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd) - runtime lookup helper for `WeatherManager`
 - [`../game/player_profile_service.gd`](../game/player_profile_service.gd) - stateless player-profile normalization, costume-catalog lookup, and costume-selection transforms used by `AppState`
@@ -93,6 +96,7 @@ Put player control, resident movement, model presentation, and interaction promp
 - [`../game/landmarks/`](../game/landmarks) - typed static landmark metadata, including the proxy-node mapping and authored placement coordinates resolved by `game_world_3d.gd`
 - [`../architecture/bagua_tower/bagua_tower_stylized_3d.tscn`](../architecture/bagua_tower/bagua_tower_stylized_3d.tscn) / [`../architecture/bagua_tower/generate_stylized_3d.gd`](../architecture/bagua_tower/generate_stylized_3d.gd) - production Bagua Tower model and its reproducible Low-Poly Building Editor API generator
 - [`../architecture/piano_ferry/piano_ferry_stylized_3d.tscn`](../architecture/piano_ferry/piano_ferry_stylized_3d.tscn) / [`../architecture/piano_ferry/generate_stylized_3d.gd`](../architecture/piano_ferry/generate_stylized_3d.gd) / [`../architecture/piano_ferry/piano_ferry_building_spec.json`](../architecture/piano_ferry/piano_ferry_building_spec.json) - production Piano Ferry model, generator, and versioned deterministic base spec
+- [`../architecture/apo_household/apo_household_courtyard_3d.tscn`](../architecture/apo_household/apo_household_courtyard_3d.tscn) / [`../architecture/apo_household/apo_household_courtyard_3d.gd`](../architecture/apo_household/apo_household_courtyard_3d.gd) - parent-owned ferry-district household/courtyard scene with semantic arrival/care/reflect subjects and saved cared-for versus untended presentation
 - [`../architecture/bagua_tower/tests/`](../architecture/bagua_tower/tests) - Bagua Tower-specific validation scenes and scripts
 - [`../common/`](../common) - shared runtime helpers and common world-facing UI primitives
 
@@ -177,6 +181,7 @@ Use these when you need a focused validation target instead of the full project 
 - [`plan/implementation_plan.md`](plan/implementation_plan.md) - canonical implementation plan for the current seasonal multi-route playable game
 - [`features/multi_level_spaces.md`](features/multi_level_spaces.md) - implementation-facing guide for stacked rooms, parent-owned level mapping, portals, stairs, and current design gaps
 - [`features/core_melody_loop.md`](features/core_melody_loop.md) - implementation-facing summary of the current melody-driven gameplay loop, gap list, MVP build order, reusable manual playtest route, and manual ending smoke pass
+- [`features/household_care_story_moment.md`](features/household_care_story_moment.md) - implementation-facing contract for the first bounded completed-versus-missed route moment, its A Po courtyard scene, saved outcome projection, and validation
 - [`story/summer_of_piano_island_story_framework.md`](story/summer_of_piano_island_story_framework.md) - single source of truth for the current story, protagonist background, seasonal frame, route meanings, and ending tone
 - [`features/bgm_system.md`](features/bgm_system.md) - BGM pool design, V1 controller scope, selection rules, fallback order, and variant policy
 - [`features/bgm_tagging_guide.md`](features/bgm_tagging_guide.md) - track-weight authoring rules for the future `bgm_catalog.gd`

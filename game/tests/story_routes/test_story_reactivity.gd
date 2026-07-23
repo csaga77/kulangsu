@@ -6,6 +6,9 @@ const GAME_WORLD_3D_SCENE := preload("res://scenes/game_world_3d.tscn")
 const APO_HOUSEHOLD_SCENE := preload(
 	"res://architecture/apo_household/apo_household_courtyard_3d.tscn"
 )
+const APO_HOUSEHOLD_SCRIPT := preload(
+	"res://architecture/apo_household/apo_household_courtyard_3d.gd"
+)
 const STORY_SUBJECT_3D_SCRIPT := preload("res://game/story_subject_3d.gd")
 
 # Subject nodes authored directly inside scenes/game_world_3d.tscn. Keep in
@@ -128,7 +131,7 @@ func _run() -> void:
 		"The household inspect surface retains the untended absence"
 	)
 
-	var household := APO_HOUSEHOLD_SCENE.instantiate() as APosHouseholdCourtyard3D
+	var household := APO_HOUSEHOLD_SCENE.instantiate() as APO_HOUSEHOLD_SCRIPT
 	add_child(household)
 	await get_tree().process_frame
 	household.apply_story_flags({"family_household_care_seen": true})

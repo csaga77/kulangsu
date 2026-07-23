@@ -16,6 +16,9 @@ Shipped foundations:
 - modular storyline authoring in `game/storylines/`, with route projection and endgame trigger logic in `game/story_route_graph.gd`
 - first-pass StoryEvent runtime in `game/story_event_service.gd`, including subject-based resident talk, landmark-trigger routing, and inspectable routing through `AppState`
 - first authored StoryEvent tree file in `game/story_event_catalog.gd`, now owning the full `melody_landmarks` interaction spine: ferry harbor clue, Trinity cue/chime, Bi Shan echoes/chamber, Long Shan entry/checkpoints/exit, Bagua synthesis, and the harbor-stage prompt-open
+- first bounded story-moment ledger policy for the Winter household-care window,
+  including exclusive completed/missed facts, load normalization, terminal missed
+  route projection, journal treatment, and care-versus-regret ending texture
 - save/load support for seasonal story state, route state, lead pinning, and endgame state
 - first lightweight life-time runtime slice with `story_day`, `world_hour`, derived `time_of_day`, StoryEvent time conditions/effects, journal summary exposure, and autosave persistence
 - story-driven resident routine overrides that persist through autosave/continue and affect future projection-based resident configuration; live reapplication to already-spawned 3D actors remains open and is scheduled under Next world-state reactivity
@@ -31,7 +34,7 @@ Shipped foundations:
 - differentiated ending and departure copy for exam, honest-future, and harbor-performance routes, including soft-ending stay-versus-leave text
 - added cross-route resident follow-through across harbor, church, and Bagua districts after winter-memory, preservation, future-choice, second-summer, and resonant-festival beats
 - scene-level milestone status feedback for major route events so world-state changes are not only visible in journal text
-- harbor, church, and Bagua inspectable surfaces now carry route-state reactivity so non-resident world objects reflect Spring Festival, winter-memory, future-choice, second-summer, and preservation beats
+- harbor, church, Bagua, and A Po household inspectable surfaces now carry route-state reactivity so non-resident world objects reflect Spring Festival, winter-memory, household care or absence, future-choice, second-summer, and preservation beats
 
 Regression coverage now includes:
 
@@ -65,7 +68,10 @@ The architecture and authored content are now much closer together, but route de
 
 Current practical coverage:
 
-- `family_memory` now carries harbor return, church memory, winter revelation, A Po and parent-care reflection, Spring Festival preparation, and aftermath, but still leans heavily on resident talk instead of household scenes
+- `family_memory` now carries harbor return, church memory, winter revelation, one
+  embodied A Po household-care scene with a transformed missed path, Spring
+  Festival preparation, and aftermath; it still needs more embodied family and
+  district scenes beyond this first slice
 - `study_future` now echoes across Pei, Lin, Min, and Jun, but still needs more lived middle beats between the major turns
 - `preservation_inheritance` now spans harbor, Bagua, postcards, and map-making language, but still needs more inspectable and prop-level world response
 - `melody_landmarks` remains the richest embodied route and now has a resonant follow-through after the public performance
@@ -82,26 +88,33 @@ Current pressure points:
 - StoryEvent catalog validation now checks authored `story_event` effect references against typed route resources, but subject/world-event bindings themselves are still authored in GDScript rather than editor-native resources
 - runtime and regression coverage use `activate_story_subject(...)` through production `StorySubject3D` nodes for landmark beats; the direct landmark-trigger compatibility facade has been removed
 - nested landmark, melody, resident, route, and endgame payloads remain dictionaries inside the typed top-level snapshot/projection boundary and are candidates for later typing
-- missable/transformed moment processing is not implemented yet; the current life-time slice tracks and advances time but does not automatically expire optional beats into missed-state echoes, and Milestone A owns the first completed-versus-missed implementation
-- the low-poly 3D runtime now has terrain/water, actor/camera, three authored landmark models plus two tunnel markers, shared-data residents, the complete 15-landmark/5-inspectable `StorySubject3D` set, speech balloons, BGM/cues, and semantic resume anchors; remaining work is tunnel/interior content, routed tunnel residents, richer landmark presentation, and release-performance confirmation
+- the first bounded missable/transformed moment is implemented for household care;
+  later moments still need explicit ledger definitions and authored echoes instead
+  of suffix conventions or a general runtime registry
+- the low-poly 3D runtime now has terrain/water, actor/camera, three authored landmark models plus two tunnel markers, the A Po household courtyard, shared-data residents, the complete 17-landmark/6-inspectable `StorySubject3D` set, speech balloons, BGM/cues, and semantic resume anchors; remaining work is tunnel/interior content, routed tunnel residents, richer landmark presentation, and release-performance confirmation
 - regression coverage is now strong for landmark, route, resident-interaction, reactivity, autosave, and shared-state ownership flows, but remains lighter around audio-bus integration and richer world-object reactivity
 
 ## Delivery View
 
-Plan status was reconciled against repository structure on **2026-07-23** at parent
-revision `4f0bda223`. This documentation pass did not rerun the shipped validation
-scenes; dated runtime evidence remains with the owning feature or QA record.
+Plan status was reconciled against the integrated Milestone A implementation on
+**2026-07-23**. The focused route, state, persistence, StoryEvent, reactivity,
+storyline-resource, and production-world scenes passed with process status `0`.
+The dated pre-refactor character-action baseline remains recorded in
+[`../features/low_poly_actor_3d.md`](../features/low_poly_actor_3d.md).
 
 Workstreams 0 and 5, the low-poly 3D cutover, and resident-data migration are
 complete. Workstreams 1-4 remain content and polish tracks. Workstream 6 is the
 required planned character-action track. The accepted tunnel, parity, and release-
 performance follow-ups remain later work rather than blockers for the next slice.
 
-### Now: Milestone A — A Po's Household Care Beat And Action Gate
+### Now: Milestone A — Implemented; Manual Visual Acceptance Pending
 
-This is the next implementation milestone. It has one playable content slice and
-one bounded enabling gate; neither lane may silently expand into a general household
-system or an implementation of all five character actions.
+The playable content slice, story-moment ledger, automated coverage, and bounded
+Workstream 6 Phase 0 gate are implemented. The remaining Milestone A closure work
+is the fixed-fixture and New Game production-flow review listed in the exit
+criteria; until that visual review is accepted, Milestone B remains queued rather
+than active. This milestone does not introduce a general household system or
+implement any of the five planned character actions.
 
 Content slice:
 
@@ -220,6 +233,10 @@ Milestone A exit criteria:
   dated pre-refactor baseline are recorded in
   [`../features/low_poly_actor_3d.md`](../features/low_poly_actor_3d.md)
 
+Automated status on **2026-07-23**: satisfied. Manual status: pending the two fixed
+title -> Continue fixtures and the completed-versus-missed New Game production
+playthroughs above.
+
 Primary implementation areas:
 
 - `game/storylines/routes/family_memory.tres`
@@ -244,15 +261,18 @@ Primary implementation areas:
 
 ### Next
 
-1. **Milestone B — Bagua stewardship ascent.** Complete Workstream 6 Phases 1-3:
+1. **Milestone A manual acceptance.** Review the open-window and legacy
+   post-closer Continue fixtures, then inspect both New Game household outcomes,
+   journal state, saved continuation, and cared-for/untended world presentation.
+2. **Milestone B — Bagua stewardship ascent.** Complete Workstream 6 Phases 1-3:
    shared action/recovery foundation, physical traversal jump, and ladder climbing.
    Integrate them into a short optional Bagua route that strengthens
    `preservation_tower_perspective` without gating the existing route event until
    focused and production-flow checks pass.
-2. **Milestone C — Object care actions.** Add carry and deliberate push/pull on the
+3. **Milestone C — Object care actions.** Add carry and deliberate push/pull on the
    shared action foundation, first through one compact Piano Ferry or Trinity
    restoration beat. Sitting follows through one harbor or church listening moment.
-3. **Milestone D — Character-action production hardening.** Complete Workstream 6
+4. **Milestone D — Character-action production hardening.** Complete Workstream 6
    Phase 7 after Phases 1-6 have passed their focused and production-use gates.
    Disable story advancement for every physical action in `Free Walk`,
    deterministically settle actions and affected objects during pause, recovery, and
@@ -262,10 +282,10 @@ Primary implementation areas:
    focused automated fixtures, an authored production use, a manual production-flow
    check, and accepted animation coverage or an approved fallback for all three
    player models.
-4. **World-state reactivity.** Reapply saved resident routine overrides to already-
+5. **World-state reactivity.** Reapply saved resident routine overrides to already-
    spawned 3D residents and extend route response into props, ambience, district
    dressing, and other non-resident surfaces.
-5. **Final-act polish.** Turn differentiated ending and departure copy into playable
+6. **Final-act polish.** Turn differentiated ending and departure copy into playable
    closing movement after the embodied route slices above exist.
 
 ### Later
@@ -299,8 +319,9 @@ Shipped baseline:
 - `LowPolyWorldCoordinates3D`, `LowPolyArtStyle3D`, and `Camera3DController` support the production world without scene-local placement math; authored landmark scenes provide runtime massing and collision
 - the Low-Poly Building Editor, versioned `BuildingSpec` generation, authored landmark concepts, and `test_environment_3d.tscn` provide the environment-authoring and playable character-interaction review lane
 - design-time streets now use an explicit `StreetNetwork3D` graph with stable junction/segment resources, adaptive horizontal curves and vertical profiles, asymmetric cross-sections, dedicated multi-road centre geometry, topology-aware placement/editing, deterministic mask conversion, terrain junction footprints, and legacy Street3D migration compatibility
-- three authored landmarks, two tunnel markers, the complete 15-landmark/5-inspectable `StorySubject3D`
-  set, the shared resident roster, speech balloons, BGM/landmark cues, and semantic resume anchors are
+- three authored landmarks, two tunnel markers, A Po's household courtyard, the
+  complete 17-landmark/6-inspectable `StorySubject3D` set, the shared resident
+  roster, speech balloons, BGM/landmark cues, and semantic resume anchors are
   assembled by `game_world_3d`
 - focused actor, collision, terrain, camera-occlusion, environment-interaction,
   combined-world, and runtime-world scenes form the current validation set
@@ -318,7 +339,7 @@ Execution order:
    - `test_game_world_3d.tscn` now enters resident talk through proximity
      selection and the player controller's inspect signal rather than calling
      `AppState` directly.
-   - Resident dispatch asserts the expected dimension-neutral result and core progression state. The smoke also asserts the exact 15 landmark and 5 inspectable production subject ids and their shared request contract.
+   - Resident dispatch asserts the expected dimension-neutral result and core progression state. The smoke also asserts the exact 17 landmark and 6 inspectable production subject ids and their shared request contract.
 3. **Visual-style acceptance (green).**
    - Tune camera, projection, follow offset, palette, lighting, restrained wave depth, terrain chunkiness, building scale, actor readability, and camera-relative movement using the interaction slice plus combined world.
    - Store fixed-camera evidence under `design/qa/low_poly_3d/`: `world_overview.png`, `player_scale.png`, `landmark_approach.png`, `camera_occlusion.png`, and `water_shoreline.png`.
@@ -342,7 +363,7 @@ Execution order:
      debug-server overhead, so the release numbers are expected to be no worse than the diagnostic.
 5. **Story/resident/save ownership acceptance (green for current runtime scope).**
    - Follow [`../features/low_poly_3d_integration.md`](../features/low_poly_3d_integration.md): the 3D scene owns spatial adapters, existing story services own rules/effects, `AppState` owns shared progression/save data, and resident definitions remain dimension-neutral data.
-   - Controller/coordinator resident dispatch, resident result/state parity, semantic resume fallback, and the exact production set of 15 landmark plus 5 inspectable subjects are green. Tunnel-resident routing/visibility remains open. Player profiles map adult masculine/feminine and teen frames to the male/female/boy GLBs.
+   - Controller/coordinator resident dispatch, resident result/state parity, semantic resume fallback, and the exact production set of 17 landmark plus 6 inspectable subjects are green. Tunnel-resident routing/visibility remains open. Player profiles map adult masculine/feminine and teen frames to the male/female/boy GLBs.
 6. **Runtime-direction decision — DECIDED 2026-07-06: replace the 2D overworld.**
    - Outcome: the low-poly 3D overworld (`scenes/game_world_3d.tscn`) replaces the 2D overworld as
      the runtime. `main.gd` now instantiates it directly; the `USE_3D_OVERWORLD` toggle and the
@@ -406,15 +427,15 @@ Primary files:
 
 First-pass shipped outcome:
 
-- `family_memory` now has explicit A Po and parent-care reflection after winter, plus a Spring Festival aftermath beat
+- `family_memory` now has an embodied A Po household/courtyard care beat, an
+  exclusive transformed missed path, explicit parent-care reflection after winter,
+  and a Spring Festival aftermath beat
 - `study_future` now keeps sounding across church and harbor residents after the future choice and second-summer release
 - `preservation_inheritance` now reaches beyond Bagua's first perspective beat into postcard and map-stewardship reactions
 - `melody_landmarks` now has a softer resonant follow-through after the harbor performance
 
 Still open:
 
-- deliver Milestone A's embodied `family_household_care_seen` scene and its
-  `family_household_care_missed` transformed-absence path
 - add more embodied household, festival, and district scenes so route depth is not carried mostly by talk beats
 - spread the mid-route beats across more playable spaces and smaller turns instead of relying on a handful of major resident conversations
 
@@ -436,6 +457,9 @@ First-pass shipped outcome:
 - new conditional beats now react to winter-memory, Spring Festival, future-choice, second-summer, preservation, and resonant-festival state across ferry, church, and Bagua districts
 - `scenes/game_world_3d.gd` surfaces selected route-event resolutions as world-status feedback instead of leaving those turns only in journal state
 - route-aware inspectables at Piano Ferry, Trinity Church, and Bagua Tower now carry non-resident world reactivity alongside dialogue follow-through
+- A Po's household now retains cared-for versus untended props, window/lantern
+  ambience, reflective inspect text, and later Spring Festival dialogue from saved
+  completed/missed facts
 - first-pass StoryEvent routing now unifies resident talk, inspectable resolution, shared condition matching, and saved resident routine-override configuration behind the `AppState` story-subject bridge
 - route progress now changes more of what the island feels like without requiring landmark-only progression
 
@@ -465,6 +489,8 @@ First-pass shipped outcome:
 - ending and departure overlays now have trigger-specific title, summary, and departure language for exam, honest-future, and harbor-performance runs
 - soft endings now present explicit stay-versus-leave text instead of only a generic continue prompt
 - route emphasis and expanded tone tags now feed the final summary language
+- household care versus absence adds distinct care/regret tone tags and summary
+  texture without changing final-act eligibility
 
 Still open:
 
@@ -484,6 +510,8 @@ First-pass shipped outcome:
 - the HUD now distinguishes manual versus automatic pinned-lead state
 - the journal now shows lead-selection mode, route emphasis, richer per-route counts, and lead-control guidance
 - the `Auto Lead` action now makes manual lead clearing explicit instead of leaving it implied
+- route sections now distinguish terminal missed optional beats from blocked and
+  resolved work
 
 Still open:
 
@@ -558,9 +586,9 @@ Primary files:
 
 ## Workstream 6: Required Character Action Expansion
 
-Status: planned. The production actor currently has the shipped locomotion baseline
-only; none of the five capabilities below should be described as implemented until
-its focused and production-flow validations pass.
+Status: Phase 0 complete; Phases 1-7 planned. The production actor still has the
+shipped locomotion baseline only; none of the five capabilities below should be
+described as implemented until its focused and production-flow validations pass.
 
 The full ownership, input, compatibility, recovery, animation, phase validation, and
 completion contract now lives in
@@ -570,7 +598,7 @@ plan owns only delivery order and milestone status.
 
 Delivery order:
 
-0. Phase 0 tuning/content/animation gate — active inside Milestone A
+0. Phase 0 tuning/content/animation gate — complete 2026-07-23
 1. shared physics, action-state, world-interaction, animation, and recovery foundation
 2. physical traversal jump and recovery
 3. ladder climbing

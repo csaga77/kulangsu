@@ -11,9 +11,10 @@
 
 - `scenes/game_world_3d.tscn` is the production overworld instantiated directly by `main.gd`.
 - Terrain/water, actor/controller, collision, camera, three authored landmarks,
-  two tunnel markers, all 15 landmark subjects, all 5 inspectable subjects, the complete shared resident roster, local
-  resident wandering, 3D speech balloons, shared BGM/landmark-cue audio, and
-  semantic resume anchors are integrated.
+  two tunnel markers, A Po's household courtyard, all 17 landmark subjects, all 6
+  inspectable subjects, the complete shared resident roster, local resident
+  wandering, 3D speech balloons, shared BGM/landmark-cue audio, and semantic resume
+  anchors are integrated.
 - `test_game_world_3d.tscn` boots the production world and exercises terrain/water/street generation,
   actor grounding and wading, camera wiring, authored-landmark collision, resident proximity and
   inspect dispatch, shared audio/weather, and semantic resume behavior.
@@ -40,7 +41,7 @@
 
 ## Interaction Contract
 
-- Every interactive `StorySubject3D` exposes a non-empty stable `subject_id`; the production-world test asserts the exact 15-landmark/5-inspectable non-NPC set.
+- Every interactive `StorySubject3D` exposes a non-empty stable `subject_id`; the production-world test asserts the exact 17-landmark/6-inspectable non-NPC set.
 - Proximity selection is world-root-local and must choose one deterministic active subject when ranges overlap; simultaneously loaded worlds cannot contribute competing subjects.
 - Input continues through `PlayerController3D`; architecture nodes do not poll input.
 - The coordinator emits an inspect request carrying the stable subject id and optional spatial context. It does not mutate progression directly.

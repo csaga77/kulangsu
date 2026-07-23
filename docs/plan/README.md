@@ -20,10 +20,11 @@ Use this folder for:
 - The current playable canon is the seasonal multi-route architecture.
 - The five-landmark melody route remains canonical as one major route inside that broader structure.
 - Physical traversal jumping, carrying, deliberate push/pull, sitting, and ladder climbing form a required planned character-action workstream; [`implementation_plan.md`](implementation_plan.md) owns its sequencing and status.
-- The next implementation milestone is the `family_memory` household-care slice and
-  first completed-versus-missed seasonal transformation, paired with the bounded
-  Phase 0 character-action tuning/content/animation gate.
-- Workstream 6 then advances through Milestone B's traversal foundation,
+- Milestone A's `family_memory` household-care slice, first
+  completed-versus-missed seasonal transformation, and bounded Phase 0
+  character-action gate are implemented and automated-green. Its fixed-fixture and
+  New Game production-flow review remains the current manual acceptance step.
+- After that acceptance, Workstream 6 advances through Milestone B's traversal foundation,
   Milestone C's object-care actions, and Milestone D's Phase 7 production hardening;
   Milestone D is the sole gate that can mark the character-action workstream
   complete.

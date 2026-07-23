@@ -143,8 +143,11 @@ missable does not mean broken; missable means emotionally transformed.
 
 A missed beat should not usually block the main route. It should change later echoes, relationship tone, regret weight, ending texture, and the player's understanding of what was lost.
 
-The first planned implementation of this principle is the Winter household-care
+The first shipped implementation of this principle is the Winter household-care
 moment:
+
+Implementation ownership and validation live in
+[`../features/household_care_story_moment.md`](../features/household_care_story_moment.md).
 
 - `family_household_care_seen` is an optional `family_memory` route event available
   after `winter_memory_reveal`.
@@ -440,7 +443,9 @@ This section keeps the canon aligned with the game's current playable slice.
 
 The intended story is broader than the currently authored resident and route content. For now, the game expresses each route at different levels of depth:
 
-- `family_memory` currently lands the summer emotional re-entry, church-linked memory, winter reveal, A Po and parent-care reflection, Spring Festival preparation, and a quieter aftermath beat
+- `family_memory` currently lands the summer emotional re-entry, church-linked
+  memory, winter reveal, an embodied A Po household-care opportunity or transformed
+  absence, Spring Festival preparation, and a quieter aftermath beat
 - `study_future` currently lands the naming of autumn pressure, a shared-pressure social echo, the honest-future turn, harbor witnessing, and the release of second summer
 - `preservation_inheritance` currently lands a harbor recognition beat, the Bagua tower perspective, and follow-through reactions that treat maps and postcards as stewardship rather than scenery
 - `melody_landmarks` currently remains the most embodied route in terms of landmark spaces, musical restoration, public payoff, and soft post-festival resonance
@@ -453,14 +458,11 @@ With the seasonal missability principle, current playable coverage should track 
 
 The next narrative expansion should stay focused on the gaps that most affect the shape of the year:
 
-1. Ship Milestone A's embodied `family_memory` household/courtyard scene around A Po,
-   the parents, and the cost of care so those beats are not carried mostly by
-   dialogue alone.
-2. Make that scene the first completed-versus-missed seasonal transformation, with
-   `family_household_care_seen` available after `winter_memory_reveal`,
-   `spring_festival_prepared` publishing `family_household_care_missed` when needed,
-   and distinct later dialogue, prop or ambience response, journal closure, and
-   ending texture while the main family route remains available.
+1. Complete the manual production-flow acceptance for Milestone A's shipped
+   household-care and transformed-absence paths.
+2. Add later embodied family and festival scenes that build on the first
+   completed-versus-missed transformation without turning its bounded ledger into
+   a suffix convention or general household system.
 3. Expand `study_future` with more lived middle beats and small world responses so the route keeps its year-long pressure shape between the major turning points.
 4. Grow `preservation_inheritance` into stronger district-facing reactions, props, inspectables, and character-led tasks through Mr. Lin, Mei, Uncle Zhao, Madam Wei, Mr. Huang, Professor Xu, and A Po so stewardship is visible even when the player is not in a resident conversation.
 5. Turn the improved ending and departure language into more playable closing movement once the route-specific copy settles.

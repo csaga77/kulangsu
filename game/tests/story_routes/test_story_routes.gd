@@ -2,6 +2,7 @@ extends Node
 
 const TEST_AUTOSAVE_PATH := "user://story_routes_test.save"
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
+const STORY_MOMENT_LEDGER := preload("res://game/story_moment_ledger.gd")
 
 var m_failures := PackedStringArray()
 var m_app_state: AppStateService
@@ -48,7 +49,7 @@ func _run() -> void:
 			and _sorted_strings(household_care_definition.get("phase_window", [])) == ["winter"],
 		"Household care is an explicitly bounded Winter event in the family route"
 	)
-	var moment_definition := StoryMomentLedger.definition_for_moment(
+	var moment_definition: Dictionary = STORY_MOMENT_LEDGER.definition_for_moment(
 		"family_household_care"
 	)
 	_assert_true(
