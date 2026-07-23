@@ -1,19 +1,28 @@
 extends Node
 
-const APP_RUNTIME := preload("res://game/app_runtime.gd")
+const MEMORY_REPOSITORY := preload(
+	"res://game/tests/state/memory_story_save_repository.gd"
+)
 
 var m_failures := PackedStringArray()
+var m_app_state: AppStateService
+var m_repository: MemoryStorySaveRepository
 var m_commit_count := 0
 var m_player_commit_count := 0
 var m_time_commit_count := 0
 var m_settings_commit_count := 0
+var m_expiry_commit_saw_missed := false
 
 
 func _app_state() -> AppStateService:
-	return APP_RUNTIME.get_app_state(self) as AppStateService
+	return m_app_state
 
 
 func _ready() -> void:
+	m_repository = MEMORY_REPOSITORY.new()
+	m_app_state = AppStateService.new(m_repository)
+	m_app_state.name = "AppState"
+	add_child(m_app_state)
 	call_deferred("_run")
 
 
@@ -27,6 +36,14 @@ func _run() -> void:
 			m_time_commit_count += 1
 		if changes.has_domain(AppStateChangeSet.Domain.SETTINGS):
 			m_settings_commit_count += 1
+		if (
+			changes.has_domain(AppStateChangeSet.Domain.STORY)
+			and bool(app_state.get_snapshot().story_flags.get(
+				"family_household_care_missed",
+				false
+			))
+		):
+			m_expiry_commit_saw_missed = true
 	)
 
 	app_state.start_free_walk()
@@ -116,6 +133,74 @@ func _run() -> void:
 		"A complete runtime settings command emits one state commit"
 	)
 	app_state.commit_settings({"master_volume_percent": 100.0})
+
+	app_state.start_new_story()
+	m_commit_count = 0
+	m_expiry_commit_saw_missed = false
+	var saves_before_expiry := m_repository.save_count
+	app_state.apply_story_effects({
+		"season_phase": "winter",
+		"story_flags": {
+			"winter_memory_reveal": true,
+			"spring_festival_prepared": true,
+		},
+		"autosave_story_progress": true,
+	})
+	var expired_flags := app_state.get_snapshot().story_flags
+	_assert_true(
+		bool(expired_flags.get("family_household_care_missed", false))
+			and !bool(expired_flags.get("family_household_care_seen", false)),
+		"Closer expiry normalizes into one exclusive missed outcome"
+	)
+	_assert_true(
+		m_commit_count == 1 and m_repository.save_count == saves_before_expiry + 1,
+		"Closer expiry commits and autosaves exactly once"
+	)
+	_assert_true(
+		m_expiry_commit_saw_missed,
+		"The committed missed fact is visible before command delivery completes"
+	)
+
+	var repeated_transition := AppStateTransition.new(app_state.get_snapshot())
+	var repeated_context := AppStateReducerContext.new(repeated_transition)
+	var normalized_once := repeated_transition.next_snapshot.story_flags.duplicate(true)
+	repeated_context.normalize_snapshot()
+	repeated_context.normalize_snapshot()
+	_assert_true(
+		repeated_transition.next_snapshot.story_flags == normalized_once,
+		"Repeated story-moment normalization is idempotent"
+	)
+	repeated_context.dispose()
+
+	var commits_before_repeat := m_commit_count
+	var saves_before_repeat := m_repository.save_count
+	_assert_true(
+		!app_state.resolve_story_event("family_household_care_seen")
+			and !app_state.resolve_story_event("spring_festival_prepared"),
+		"Repeated completion and close commands are rejected after expiry"
+	)
+	_assert_true(
+		m_commit_count == commits_before_repeat
+			and m_repository.save_count == saves_before_repeat,
+		"Repeated terminal commands produce no commit or autosave"
+	)
+
+	app_state.start_new_story()
+	app_state.apply_story_effects({
+		"season_phase": "winter",
+		"story_flags": {
+			"winter_memory_reveal": true,
+			"family_household_care_seen": true,
+			"family_household_care_missed": true,
+			"spring_festival_prepared": true,
+		},
+	})
+	var dual_flags := app_state.get_snapshot().story_flags
+	_assert_true(
+		bool(dual_flags.get("family_household_care_seen", false))
+			and !bool(dual_flags.get("family_household_care_missed", false)),
+		"Completion wins when one detached command produces both outcomes"
+	)
 
 	if m_failures.is_empty():
 		print("PASS: AppState ownership regression")

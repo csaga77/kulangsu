@@ -4,6 +4,7 @@ extends RefCounted
 const MAX_GLOBAL_LEADS := 4
 const STORY_SEASON_PHASES_SCRIPT := preload("res://game/story_season_phases.gd")
 const RESIDENT_CATALOG_SCRIPT := preload("res://game/resident_catalog.gd")
+const STORY_MOMENT_LEDGER_SCRIPT := preload("res://game/story_moment_ledger.gd")
 
 var m_runtime = null
 var m_storyline_definitions_loaded := false
@@ -79,7 +80,7 @@ func build_default_story_flags() -> Dictionary:
 	var flags: Dictionary = {}
 	for event_id_value in m_event_definitions.keys():
 		flags[String(event_id_value)] = false
-	return flags
+	return STORY_MOMENT_LEDGER_SCRIPT.add_default_flags(flags)
 
 
 static func default_endgame_state() -> Dictionary:
@@ -170,6 +171,11 @@ func get_story_event_blockers(event_id: String) -> Dictionary:
 		return {"missing_event": true}
 	if bool(m_runtime.get_story_flags().get(event_id, false)):
 		return {"resolved": true}
+	if STORY_MOMENT_LEDGER_SCRIPT.is_completed_event_missed(
+		event_id,
+		m_runtime.get_story_flags()
+	):
+		return {"missed": true}
 
 	var availability_inputs := _build_story_event_availability_inputs()
 	var availability_flags: Dictionary = availability_inputs.get("flags", {})
@@ -366,6 +372,7 @@ func _compute_route_snapshot(
 	for route_id in m_route_display_order:
 		var route_events: Array[String] = []
 		var resolved_ids := PackedStringArray()
+		var missed_ids := PackedStringArray()
 		var available_ids := PackedStringArray()
 		var blocked_ids := PackedStringArray()
 		var next_lead_id := ""
@@ -381,6 +388,9 @@ func _compute_route_snapshot(
 			if bool(flags.get(event_id, false)):
 				resolved_ids.append(event_id)
 				completion_score += int(event_definition.get("completion_score", 1))
+				continue
+			if STORY_MOMENT_LEDGER_SCRIPT.is_completed_event_missed(event_id, flags):
+				missed_ids.append(event_id)
 				continue
 
 			if !_event_is_available(event_definition, flags, phase_id, completion_snapshot):
@@ -399,9 +409,15 @@ func _compute_route_snapshot(
 			})
 
 		route_progress[route_id] = {
-			"state": _route_state_label(resolved_ids, available_ids, route_events.size()),
+			"state": _route_state_label(
+				resolved_ids,
+				missed_ids,
+				available_ids,
+				route_events.size()
+			),
 			"available_beat_ids": available_ids,
 			"resolved_beat_ids": resolved_ids,
+			"missed_beat_ids": missed_ids,
 			"blocked_beat_ids": blocked_ids,
 			"next_lead_id": next_lead_id,
 			"completion_score": completion_score,
@@ -559,6 +575,13 @@ func _build_tone_tags(event_definition: Dictionary, ending_choice: String = "") 
 		tags.append("community")
 	if max_trust_residents >= 2 and tags.find("trust") < 0:
 		tags.append("trust")
+	var story_flags: Dictionary = m_runtime.get_story_flags()
+	if bool(story_flags.get("family_household_care_seen", false)):
+		if tags.find("household_care") < 0:
+			tags.append("household_care")
+	elif bool(story_flags.get("family_household_care_missed", false)):
+		if tags.find("household_regret") < 0:
+			tags.append("household_regret")
 	match ending_choice.strip_edges().to_lower():
 		"stay":
 			if tags.find("lingering") < 0:
@@ -688,16 +711,18 @@ func _event_priority(event_definition: Dictionary, route_definition: Dictionary)
 
 func _route_state_label(
 	resolved_ids: PackedStringArray,
+	missed_ids: PackedStringArray,
 	available_ids: PackedStringArray,
 	total_events: int
 ) -> String:
-	if total_events > 0 and resolved_ids.size() >= total_events:
+	var terminal_count := resolved_ids.size() + missed_ids.size()
+	if total_events > 0 and terminal_count >= total_events:
 		return "complete"
-	if !available_ids.is_empty() and !resolved_ids.is_empty():
+	if !available_ids.is_empty() and terminal_count > 0:
 		return "active"
 	if !available_ids.is_empty():
 		return "available"
-	if !resolved_ids.is_empty():
+	if terminal_count > 0:
 		return "waiting"
 	return "idle"
 

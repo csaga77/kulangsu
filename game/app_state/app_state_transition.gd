@@ -1,6 +1,7 @@
 class_name AppStateTransition
 extends RefCounted
 
+var base_snapshot: AppStateSnapshot
 var next_snapshot: AppStateSnapshot
 var changes := AppStateChangeSet.new()
 var events: Array[Dictionary] = []
@@ -9,7 +10,14 @@ var result: Variant = null
 
 
 func _init(snapshot: AppStateSnapshot) -> void:
+	base_snapshot = snapshot.duplicate_state()
 	next_snapshot = snapshot.duplicate_state()
+
+
+func replace_snapshot(snapshot: AppStateSnapshot, reset_base: bool = false) -> void:
+	next_snapshot = snapshot
+	if reset_base:
+		base_snapshot = snapshot.duplicate_state()
 
 
 func queue_event(kind: StringName, payload: Dictionary = {}) -> void:

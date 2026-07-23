@@ -6,6 +6,7 @@ const APP_RUNTIME := preload("res://game/app_runtime.gd")
 
 var m_failures := PackedStringArray()
 var m_app_state: AppStateService
+var m_repository: StorySaveRepository
 
 
 func _app_state() -> AppStateService:
@@ -13,7 +14,8 @@ func _app_state() -> AppStateService:
 
 
 func _ready() -> void:
-	m_app_state = AppStateService.new(StorySaveRepository.new(TEST_AUTOSAVE_PATH))
+	m_repository = StorySaveRepository.new(TEST_AUTOSAVE_PATH)
+	m_app_state = AppStateService.new(m_repository)
 	m_app_state.name = "AppState"
 	add_child(m_app_state)
 	call_deferred("_run")
@@ -59,6 +61,7 @@ func _run() -> void:
 		"Resident profiles keep their current journal step after continue"
 	)
 
+	_test_story_moment_save_normalization()
 	_app_state().clear_story_save()
 
 	if m_failures.is_empty():
@@ -87,6 +90,111 @@ func _activate_landmark_subject(landmark_id: String, trigger_id: String, display
 		action = "inspect"
 	var result: Dictionary = _app_state().activate_story_subject(subject_id, action, context)
 	return bool(result.get("consumed", false))
+
+
+func _test_story_moment_save_normalization() -> void:
+	var codec := StorySaveCodec.new()
+	var defaults := _app_state().get_snapshot()
+	var open_legacy := {
+		"version": 1,
+		"season_phase": "winter",
+		"story_flags": {
+			"winter_memory_reveal": true,
+		},
+	}
+	var open_decoded := codec.decode(open_legacy, defaults)
+	var open_snapshot: AppStateSnapshot = open_decoded.get("snapshot")
+	_assert_true(
+		!bool(open_snapshot.story_flags.get("family_household_care_seen", false))
+			and !bool(open_snapshot.story_flags.get("family_household_care_missed", false)),
+		"A pre-ledger save inside the open Winter window keeps household care open"
+	)
+
+	var closed_legacy := {
+		"version": 1,
+		"season_phase": "winter",
+		"story_flags": {
+			"winter_memory_reveal": true,
+			"spring_festival_prepared": true,
+		},
+	}
+	var closed_decoded := codec.decode(closed_legacy, defaults)
+	var closed_snapshot: AppStateSnapshot = closed_decoded.get("snapshot")
+	_assert_true(
+		bool(closed_snapshot.story_flags.get("family_household_care_missed", false))
+			and !bool(closed_snapshot.story_flags.get("family_household_care_seen", false)),
+		"A pre-ledger save beyond the closer acquires the missed fact"
+	)
+
+	var malformed_dual := {
+		"version": 2,
+		"season_phase": "winter",
+		"story_flags": {
+			"winter_memory_reveal": true,
+			"family_household_care_seen": true,
+			"family_household_care_missed": true,
+			"spring_festival_prepared": true,
+		},
+	}
+	var dual_decoded := codec.decode(malformed_dual, defaults)
+	var dual_snapshot: AppStateSnapshot = dual_decoded.get("snapshot")
+	_assert_true(
+		bool(dual_snapshot.story_flags.get("family_household_care_seen", false))
+			and !bool(dual_snapshot.story_flags.get("family_household_care_missed", false)),
+		"Malformed dual-fact save data deterministically normalizes to seen"
+	)
+
+	var seen_snapshot := defaults.duplicate_state()
+	seen_snapshot.season_phase = "winter"
+	seen_snapshot.story_flags["winter_memory_reveal"] = true
+	seen_snapshot.story_flags["family_household_care_seen"] = true
+	seen_snapshot.story_flags["family_household_care_missed"] = false
+	var seen_round_trip := codec.decode(codec.encode(seen_snapshot, 101), defaults)
+	var seen_round_trip_snapshot: AppStateSnapshot = seen_round_trip.get("snapshot")
+	_assert_true(
+		bool(seen_round_trip_snapshot.story_flags.get("family_household_care_seen", false))
+			and !bool(seen_round_trip_snapshot.story_flags.get("family_household_care_missed", false)),
+		"Seen household care survives a V2 save round trip"
+	)
+
+	var missed_snapshot := defaults.duplicate_state()
+	missed_snapshot.season_phase = "winter"
+	missed_snapshot.story_flags["winter_memory_reveal"] = true
+	missed_snapshot.story_flags["spring_festival_prepared"] = true
+	missed_snapshot.story_flags["family_household_care_seen"] = false
+	missed_snapshot.story_flags["family_household_care_missed"] = true
+	var missed_round_trip := codec.decode(codec.encode(missed_snapshot, 102), defaults)
+	var missed_round_trip_snapshot: AppStateSnapshot = missed_round_trip.get("snapshot")
+	_assert_true(
+		bool(missed_round_trip_snapshot.story_flags.get("family_household_care_missed", false))
+			and !bool(missed_round_trip_snapshot.story_flags.get("family_household_care_seen", false)),
+		"Missed household care survives a V2 save round trip"
+	)
+
+	m_repository.save_payload(closed_legacy)
+	_assert_true(
+		_app_state().resume_story(),
+		"Continue accepts a legacy save beyond the household-care closer"
+	)
+	_assert_true(
+		bool(_app_state().get_snapshot().story_flags.get(
+			"family_household_care_missed",
+			false
+		)),
+		"Continue exposes the normalized missed fact before projection"
+	)
+	_app_state().request_autosave()
+	var upgraded_payload := m_repository.load_payload()
+	_assert_true(
+		int(upgraded_payload.get("version", 0)) == StorySaveCodec.SAVE_VERSION
+			and bool(
+				(upgraded_payload.get("story_flags", {}) as Dictionary).get(
+					"family_household_care_missed",
+					false
+				)
+			),
+		"The next autosave persists the normalized legacy outcome"
+	)
 
 
 func _assert_true(condition: bool, label: String) -> void:

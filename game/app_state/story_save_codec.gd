@@ -5,6 +5,7 @@ const SAVE_VERSION := 2
 const STORY_SEASON_PHASES := preload("res://game/story_season_phases.gd")
 const STORY_TIME_SERVICE := preload("res://game/story_time_service.gd")
 const STORY_ROUTE_GRAPH := preload("res://game/story_route_graph.gd")
+const STORY_MOMENT_LEDGER := preload("res://game/story_moment_ledger.gd")
 const PLAYER_APPEARANCE_CATALOG := preload("res://game/player_appearance_catalog.gd")
 const PLAYER_COSTUME_CATALOG := preload("res://game/player_costume_catalog.gd")
 
@@ -164,13 +165,16 @@ func _normalize_decoded_snapshot(snapshot: AppStateSnapshot) -> void:
 	var costume_catalog := PLAYER_COSTUME_CATALOG.build_catalog()
 	if !costume_catalog.has(snapshot.equipped_player_costume_id):
 		snapshot.equipped_player_costume_id = PLAYER_COSTUME_CATALOG.default_costume_id()
+	var route_graph := STORY_ROUTE_GRAPH.new(null)
+	snapshot.story_flags = route_graph.normalize_story_flags(snapshot.story_flags)
+	snapshot.story_flags = STORY_MOMENT_LEDGER.normalize_story_flags(snapshot.story_flags)
 	var event_definitions := STORY_ROUTE_GRAPH.build_event_definitions()
 	if (
 		!snapshot.manual_pinned_lead_id.is_empty()
 		and !event_definitions.has(snapshot.manual_pinned_lead_id)
 	):
 		snapshot.manual_pinned_lead_id = ""
-	snapshot.endgame_state = STORY_ROUTE_GRAPH.new(null).normalize_endgame_state(
+	snapshot.endgame_state = route_graph.normalize_endgame_state(
 		snapshot.endgame_state
 	)
 	var resume_phase := String(snapshot.endgame_state.get("resume_phase_id", ""))

@@ -14,6 +14,7 @@ const LANDMARK_CATALOG := preload("res://game/landmarks/landmark_catalog.gd")
 const AUDIO_SETTINGS_SERVICE := preload("res://game/audio_settings_service.gd")
 const RESIDENT_INTERACTION_SERVICE := preload("res://game/resident_interaction_service.gd")
 const STORY_SEASON_PHASES := preload("res://game/story_season_phases.gd")
+const STORY_MOMENT_LEDGER := preload("res://game/story_moment_ledger.gd")
 
 const SHORTCUT_DEFINITIONS := {
 	"bi_shan_crossing": {
@@ -103,6 +104,10 @@ func normalize_snapshot() -> void:
 	state.story_day = int(normalized_time.get("story_day", STORY_TIME_SERVICE.DEFAULT_STORY_DAY))
 	state.world_hour = float(normalized_time.get("world_hour", STORY_TIME_SERVICE.DEFAULT_WORLD_HOUR))
 	state.story_flags = m_story_route_graph.normalize_story_flags(state.story_flags)
+	state.story_flags = STORY_MOMENT_LEDGER.normalize_story_flags(
+		state.story_flags,
+		transition.base_snapshot.story_flags
+	)
 	state.endgame_state = m_story_route_graph.normalize_endgame_state(state.endgame_state)
 	state.melody_progress = _normalize_melody_progress(state.melody_progress)
 	state.landmark_progress = _normalize_landmark_progress(state.landmark_progress)
@@ -184,7 +189,7 @@ func reset_for_mode(mode_id: StringName) -> void:
 			state.save_status = "Autosave: ready when story begins"
 			state.melody_progress = _default_melody_progress()
 			state.landmark_progress = LANDMARK_CATALOG.build_progress(&"default")
-	transition.next_snapshot = state
+	transition.replace_snapshot(state, true)
 	normalize_snapshot()
 	projection = _build_projection()
 	if mode_id == AppStateSnapshot.MODE_FREE_WALK:
@@ -810,7 +815,16 @@ func _build_ending_summary(view: AppStateProjection) -> Dictionary:
 		"ending_trigger": String(view.endgame_state.get("trigger_event_id", "")),
 		"ending_tones": ", ".join(PackedStringArray(tone_tags)),
 		"ending_choice": String(get_story_flag("ending_choice", "")),
+		"care_texture": _build_household_care_texture(view.story_flags),
 	}
+
+
+func _build_household_care_texture(story_flags: Dictionary) -> String:
+	if bool(story_flags.get("family_household_care_seen", false)):
+		return "Care reached A Po's household in time, and its warmth stays with the ending."
+	if bool(story_flags.get("family_household_care_missed", false)):
+		return "The untended household leaves a quiet thread of regret in the ending."
+	return ""
 
 
 func _default_melody_progress() -> Dictionary:

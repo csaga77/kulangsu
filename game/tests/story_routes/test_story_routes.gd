@@ -40,6 +40,24 @@ func _run() -> void:
 	_assert_true(_view().route_ids.size() == 4, "Story routes load from modular storyline definitions")
 	var family_prep_definition: Dictionary = _view().get_story_event_definition("spring_festival_prepared")
 	_assert_true(String(family_prep_definition.get("route_id", "")) == "family_memory", "Family preparation remains owned by the family storyline route resource")
+	var household_care_definition: Dictionary = _view().get_story_event_definition(
+		"family_household_care_seen"
+	)
+	_assert_true(
+		String(household_care_definition.get("route_id", "")) == "family_memory"
+			and _sorted_strings(household_care_definition.get("phase_window", [])) == ["winter"],
+		"Household care is an explicitly bounded Winter event in the family route"
+	)
+	var moment_definition := StoryMomentLedger.definition_for_moment(
+		"family_household_care"
+	)
+	_assert_true(
+		String(moment_definition.get("completed_event_id", "")) == "family_household_care_seen"
+			and String(moment_definition.get("missed_fact_id", "")) == "family_household_care_missed"
+			and String(moment_definition.get("opener_event_id", "")) == "winter_memory_reveal"
+			and String(moment_definition.get("closer_event_id", "")) == "spring_festival_prepared",
+		"The story-moment ledger exposes one explicit household-care policy"
+	)
 	_assert_story_flag_all(
 		"trinity_memory_awakened",
 		["summer_return_complete"],
@@ -121,6 +139,12 @@ func _run() -> void:
 	)
 	_assert_true(_view().available_lead_ids.size() >= 2, "New game seeds multiple live routes")
 	_assert_true(!_view().active_lead_id.is_empty(), "New game pins one HUD lead")
+	_assert_true(
+		_normalize_string_array(
+			_view().get_route_progress("family_memory").get("blocked_beat_ids", [])
+		).has("family_household_care_seen"),
+		"Household care stays blocked before the Winter memory reveal"
+	)
 
 	_progress_through_ferry_opening()
 	_assert_true(bool(_story_flag("summer_return_complete", false)), "Ferry opening resolves the family return anchor")
@@ -160,9 +184,55 @@ func _run() -> void:
 	_app_state().interact_with_resident("church_caretaker")
 	_assert_true(_view().season_phase == "winter", "The church memory reveal advances the year into winter")
 	_assert_true(bool(_story_flag("winter_memory_reveal", false)), "Winter memory reveal can resolve through route dialogue")
+	var family_before_close: Dictionary = _view().get_route_progress("family_memory")
+	_assert_true(
+		_normalize_string_array(
+			family_before_close.get("available_beat_ids", [])
+		).has("family_household_care_seen"),
+		"Household care opens only after the Winter memory reveal"
+	)
+	var family_score_before_close := int(family_before_close.get("completion_score", 0))
 
 	_app_state().interact_with_resident("tea_vendor_hua")
 	_assert_true(bool(_story_flag("spring_festival_prepared", false)), "Spring Festival now has a harbor-preparation step before Lian resolves it")
+	_assert_true(
+		bool(_story_flag("family_household_care_missed", false))
+			and !bool(_story_flag("family_household_care_seen", false)),
+		"Festival preparation closes unresolved household care as one exclusive missed fact"
+	)
+	var family_after_close: Dictionary = _view().get_route_progress("family_memory")
+	_assert_true(
+		!_normalize_string_array(
+			family_after_close.get("available_beat_ids", [])
+		).has("family_household_care_seen")
+			and !_normalize_string_array(
+				family_after_close.get("blocked_beat_ids", [])
+			).has("family_household_care_seen")
+			and _normalize_string_array(
+				family_after_close.get("missed_beat_ids", [])
+			).has("family_household_care_seen"),
+		"A missed care beat is terminal instead of remaining available or blocked"
+	)
+	_assert_true(
+		int(family_after_close.get("completion_score", 0)) == family_score_before_close + 1,
+		"Missing household care adds no completion score beyond festival preparation itself"
+	)
+	_assert_true(
+		JournalBuilder.build_story_routes_journal_text(_view()).contains(
+			"Missed optional beats: 1"
+		),
+		"The journal distinguishes the missed optional beat from blocked work"
+	)
+	var saves_after_miss := _app_state().get_save_metadata()
+	_assert_true(
+		!_app_state().resolve_story_event("family_household_care_seen")
+			and bool(_story_flag("family_household_care_missed", false)),
+		"Care completion cannot replace a previously committed missed outcome"
+	)
+	_assert_true(
+		_app_state().get_save_metadata() == saves_after_miss,
+		"Repeating completion after a miss is a persistence no-op"
+	)
 
 	var lian_result: Dictionary = _app_state().interact_with_resident("ferry_caretaker")
 	_assert_true(String(lian_result.get("line", "")).to_lower().contains("festival"), "Cross-route family dialogue changes once winter memory and preservation align")
@@ -222,6 +292,47 @@ func _run() -> void:
 	_app_state().apply_story_effects({"unlock_landmark": "bagua_tower"})
 	_app_state().interact_with_resident("terrace_painter_nian")
 	_assert_true(bool(_story_flag("preservation_tower_perspective", false)), "Preservation now gets a Bagua follow-up beat once the tower is reachable")
+
+	_app_state().start_new_story()
+	_app_state().apply_story_effects({
+		"season_phase": "winter",
+		"story_flags": {
+			"winter_memory_reveal": true,
+			"preservation_inheritance_seen": true,
+		},
+	})
+	_assert_true(
+		_normalize_string_array(
+			_view().get_route_progress("family_memory").get("available_beat_ids", [])
+		).has("family_household_care_seen"),
+		"The care event is available in a normalized open-window fixture"
+	)
+	_assert_true(
+		_app_state().resolve_story_event("family_household_care_seen"),
+		"The open care event resolves through the canonical route API"
+	)
+	_assert_true(
+		bool(_story_flag("family_household_care_seen", false))
+			and !bool(_story_flag("family_household_care_missed", false)),
+		"Completing care publishes only the seen outcome"
+	)
+	_assert_true(
+		_app_state().resolve_story_event("spring_festival_prepared"),
+		"Seen care does not block the independent festival-preparation anchor"
+	)
+	_assert_true(
+		bool(_story_flag("family_household_care_seen", false))
+			and !bool(_story_flag("family_household_care_missed", false)),
+		"Closing an already completed moment preserves its first outcome"
+	)
+	_assert_true(
+		_app_state().resolve_story_event("spring_festival_resolved"),
+		"Seen care leaves the main family-route resolution available"
+	)
+	_assert_true(
+		String(_view().ending_summary.get("care_texture", "")).contains("warmth"),
+		"The ending summary projects care texture without changing eligibility"
+	)
 
 	_app_state().clear_story_save()
 

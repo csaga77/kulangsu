@@ -51,6 +51,20 @@ story_flags_any = PackedStringArray()
 resident_known = PackedStringArray()
 tone_tags = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_household_care"]
+script = ExtResource("2_6wqdi")
+id = "family_household_care_seen"
+lead_text = "Visit A Po's household near the ferry and offer one small act of care before festival preparations begin."
+journal_note = "A small household task became a way to answer distance with care while there was still time."
+status_text = "The household carries the warmth of care offered before Spring Festival."
+phase_window = Array[String](["winter"])
+pin_priority = 117
+completion_score = 1
+story_flags_all = PackedStringArray("winter_memory_reveal")
+story_flags_any = PackedStringArray()
+resident_known = PackedStringArray()
+tone_tags = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_x7xst"]
 script = ExtResource("2_6wqdi")
 id = "spring_festival_prepared"
@@ -85,4 +99,4 @@ journal_section = "Family"
 display_order = 10
 pin_priority = 110
 ending_tone_rules = Array[ExtResource("1_6p0sm")]([SubResource("Resource_lfqkl"), SubResource("Resource_0xss8")])
-events = Array[ExtResource("2_6wqdi")]([SubResource("Resource_xay5t"), SubResource("Resource_wa6hs"), SubResource("Resource_r231o"), SubResource("Resource_x7xst"), SubResource("Resource_gnkui")])
+events = Array[ExtResource("2_6wqdi")]([SubResource("Resource_xay5t"), SubResource("Resource_wa6hs"), SubResource("Resource_r231o"), SubResource("Resource_household_care"), SubResource("Resource_x7xst"), SubResource("Resource_gnkui")])

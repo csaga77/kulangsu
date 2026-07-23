@@ -127,13 +127,15 @@ static func build_story_routes_journal_text(projection: AppStateProjection) -> S
 		if !next_lead_id.is_empty():
 			next_text = String(projection.get_story_event_definition(next_lead_id).get("lead_text", "No open lead."))
 		var resolved_count := _normalize_string_array(progress.get("resolved_beat_ids", [])).size()
+		var missed_count := _normalize_string_array(progress.get("missed_beat_ids", [])).size()
 		var open_count := _normalize_string_array(progress.get("available_beat_ids", [])).size()
 		var blocked_count := _normalize_string_array(progress.get("blocked_beat_ids", [])).size()
 		route_sections.append(
-			"%s\nState: %s\nResolved beats: %d\nOpen beats: %d\nBlocked beats: %d\nCompletion score: %d\nNext lead: %s" % [
+			"%s\nState: %s\nResolved beats: %d\nMissed optional beats: %d\nOpen beats: %d\nBlocked beats: %d\nCompletion score: %d\nNext lead: %s" % [
 				String(route_definition.get("display_name", route_id)),
 				String(progress.get("state", "idle")),
 				resolved_count,
+				missed_count,
 				open_count,
 				blocked_count,
 				int(progress.get("completion_score", 0)),

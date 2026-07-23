@@ -116,6 +116,20 @@ func _run() -> void:
 	_app_state().interact_with_resident("postcard_seller_an")
 	_app_state().interact_with_resident("church_caretaker")
 	_app_state().interact_with_resident("tea_vendor_hua")
+	_assert_true(
+		bool(_app_state().get_snapshot().story_flags.get(
+			"family_household_care_missed",
+			false
+		)),
+		"Festival preparation autosaves household-care expiry"
+	)
+	var missed_route: Dictionary = _view().get_route_progress("family_memory")
+	_assert_true(
+		_normalize_string_array(missed_route.get("missed_beat_ids", [])).has(
+			"family_household_care_seen"
+		),
+		"Autosaved route projection treats the missed optional beat as terminal"
+	)
 	_app_state().interact_with_resident("ferry_caretaker")
 	_assert_true(_view().get_landmark_state("festival_stage") == "available", "Spring Festival resolution unlocks the harbor stage once the melody route is complete")
 	_app_state().update_resume_checkpoint("Piano Ferry", "Festival Stage")
@@ -141,6 +155,17 @@ func _run() -> void:
 	_assert_true(String(_view().endgame_state.get("trigger_event_id", "")) == "harbor_festival_performed", "Continue preserves the harbor-performance endgame trigger")
 	_assert_true(String(_view().endgame_state.get("ending_behavior", "")) == "continue_story", "Continue preserves the soft-ending classification for harbor performance")
 	_assert_true(_view().open_shortcuts.find("bi_shan_crossing") >= 0, "Continue restores dependable route state")
+	_assert_true(
+		bool(_app_state().get_snapshot().story_flags.get(
+			"family_household_care_missed",
+			false
+		)),
+		"Continue restores the autosaved missed household-care fact"
+	)
+	_assert_true(
+		String(_view().ending_summary.get("care_texture", "")).contains("regret"),
+		"Continue rebuilds the regret ending texture from the missed fact"
+	)
 
 	_assert_true(_app_state().continue_story_after_endgame(), "Soft endings can be cleared into continued story play")
 	_assert_true(!bool(_view().endgame_state.get("active", false)), "Continuing after a soft ending removes the active endgame state")
@@ -185,3 +210,11 @@ func _activate_landmark_subject(landmark_id: String, trigger_id: String, display
 		action = "inspect"
 	var result: Dictionary = _app_state().activate_story_subject(subject_id, action, context)
 	return bool(result.get("consumed", false))
+
+
+func _normalize_string_array(value: Variant) -> PackedStringArray:
+	var output := PackedStringArray()
+	if value is PackedStringArray or value is Array:
+		for entry in value:
+			output.append(String(entry))
+	return output
