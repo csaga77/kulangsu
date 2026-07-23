@@ -98,6 +98,10 @@ mesh = SubResource("Mesh_blanket")
 
 [node name="UntendedProps" type="Node3D" parent="Courtyard"]
 
+[node name="UntouchedBasin" type="MeshInstance3D" parent="Courtyard/UntendedProps"]
+position = Vector3(-1.45, 0.17, 2.35)
+mesh = SubResource("Mesh_basin")
+
 [node name="LeafA" type="MeshInstance3D" parent="Courtyard/UntendedProps"]
 position = Vector3(-1.8, 0.02, 2.1)
 rotation = Vector3(-1.5708, 0.3, 0)

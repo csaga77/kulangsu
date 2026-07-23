@@ -410,12 +410,19 @@ func _check_household_courtyard(failures: Array[String]) -> void:
 		failures.append("seen household care did not render its warm, tended state")
 
 	household.apply_story_flags({"family_household_care_missed": true})
+	var untouched_basin := household.get_node_or_null(
+		"Courtyard/UntendedProps/UntouchedBasin"
+	) as MeshInstance3D
 	if (
 		household.get_presentation_state() != "untended"
 		or household.get_node("House/WarmWindow").visible
 		or !household.get_node("Courtyard/UntendedProps").visible
+		or untouched_basin == null
+		or !untouched_basin.visible
 	):
-		failures.append("missed household care did not render its cold, untended state")
+		failures.append(
+			"missed household care did not render its cold state with an untouched basin"
+		)
 
 
 func _check_audio(failures: Array[String]) -> void:
