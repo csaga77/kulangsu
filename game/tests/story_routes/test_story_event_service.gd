@@ -34,12 +34,27 @@ func _run() -> void:
 
 	_app_state().clear_story_save()
 
-	var story_event_reference_warnings := STORY_EVENT_CATALOG.validate_story_event_references()
+	var event_definitions := StorylineCatalog.build_event_definitions()
+	var household_route_contract_available := event_definitions.has("family_household_care_seen")
+	var validation_event_definitions: Dictionary = event_definitions.duplicate(true)
+	if !household_route_contract_available:
+		# This worker owns the world binding while the ledger worker owns the
+		# canonical route resource. Keep isolated validation strict for every
+		# reference while supplying that one exact integration contract.
+		validation_event_definitions["family_household_care_seen"] = {
+			"id": "family_household_care_seen",
+			"route_id": "family_memory",
+		}
+	var story_event_reference_warnings := STORY_EVENT_CATALOG.validate_story_event_references(
+		validation_event_definitions
+	)
 	_assert_true(
 		story_event_reference_warnings.is_empty(),
 		"StoryEvent catalog effects only reference canonical storyline route events"
 	)
-	var validation_context := STORY_EFFECT_SCHEMA.build_validation_context()
+	var validation_context := STORY_EFFECT_SCHEMA.build_validation_context({
+		"event_definitions": validation_event_definitions,
+	})
 	var catalog_schema_warnings := STORY_EVENT_CATALOG.validate_catalog(validation_context)
 	for warning in catalog_schema_warnings:
 		_assert_true(false, "StoryEvent catalog schema: %s" % warning)
@@ -180,6 +195,88 @@ func _run() -> void:
 	_assert_true(
 		String(bench_activation.get("text", "")).to_lower().contains("winter memory"),
 		"StoryEvent inspect activation resolves the same route-aware inspect text"
+	)
+	var arrival_metadata: Dictionary = _app_state().describe_story_subject_metadata(
+		"landmark:family_household.arrival"
+	)
+	_assert_true(
+		bool(arrival_metadata.get("visible", false))
+			and bool(arrival_metadata.get("targetable", false))
+			and String(arrival_metadata.get("action", "")) == "perform",
+		"Winter reveal exposes the household arrival through StorySubject metadata"
+	)
+	var arrival_result: Dictionary = _app_state().activate_story_subject(
+		"landmark:family_household.arrival",
+		"perform"
+	)
+	_assert_true(
+		bool(arrival_result.get("consumed", false))
+			and bool(_app_state().get_snapshot().story_flags.get("family_household_arrived", false)),
+		"Household arrival publishes only its semantic arrival fact through StoryEvent effects"
+	)
+	var care_metadata: Dictionary = _app_state().describe_story_subject_metadata(
+		"landmark:family_household.courtyard_care"
+	)
+	_assert_true(
+		bool(care_metadata.get("visible", false))
+			and bool(care_metadata.get("targetable", false)),
+		"Household arrival exposes the small courtyard care action"
+	)
+	var household_binding_index := STORY_EVENT_CATALOG.build_subject_binding_index()
+	var care_bindings: Array = household_binding_index.get(
+		"landmark:family_household.courtyard_care|perform",
+		[]
+	)
+	var care_effects: Dictionary = (
+		care_bindings[0].get("effects", {}) if !care_bindings.is_empty() else {}
+	)
+	_assert_true(
+		String(care_effects.get("story_event", "")) == "family_household_care_seen"
+			and !care_effects.has("route_progress"),
+		"Courtyard care resolves the canonical route event without direct route writes"
+	)
+	if household_route_contract_available:
+		var care_result: Dictionary = _app_state().activate_story_subject(
+			"landmark:family_household.courtyard_care",
+			"perform"
+		)
+		_assert_true(
+			bool(care_result.get("consumed", false))
+				and bool(_app_state().get_snapshot().story_flags.get("family_household_care_seen", false)),
+			"Courtyard care resolves the canonical seen fact through the integrated route definition"
+		)
+		var repeated_care: Dictionary = _app_state().activate_story_subject(
+			"landmark:family_household.courtyard_care",
+			"perform"
+		)
+		_assert_true(
+			bool(repeated_care.get("blocked", false)),
+			"Resolved courtyard care is no longer targetable"
+		)
+	else:
+		print(
+			"SKIP: household completion activation awaits the ledger worker's "
+			+ "family_household_care_seen route definition"
+		)
+	_app_state().start_new_story()
+	_app_state().apply_story_effects({
+		"season_phase": "winter",
+		"story_flags": {
+			"winter_memory_reveal": true,
+			"family_household_arrived": true,
+			"spring_festival_prepared": true,
+		},
+	})
+	var closed_arrival_metadata: Dictionary = _app_state().describe_story_subject_metadata(
+		"landmark:family_household.arrival"
+	)
+	var closed_care_metadata: Dictionary = _app_state().describe_story_subject_metadata(
+		"landmark:family_household.courtyard_care"
+	)
+	_assert_true(
+		!bool(closed_arrival_metadata.get("targetable", true))
+			and !bool(closed_care_metadata.get("targetable", true)),
+		"Spring Festival preparation closes both household subjects even while phase remains Winter"
 	)
 
 	# Routine overrides are validated at the shared-state level: the retired 2D

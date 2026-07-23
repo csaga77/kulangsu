@@ -1,0 +1,174 @@
+[gd_scene load_steps=20 format=3]
+
+[ext_resource type="Script" path="res://architecture/apo_household/apo_household_courtyard_3d.gd" id="1_household"]
+[ext_resource type="Script" path="res://game/story_subject_3d.gd" id="2_subject"]
+
+[sub_resource type="StandardMaterial3D" id="Material_wall"]
+albedo_color = Color(0.72, 0.57, 0.43, 1)
+roughness = 0.88
+
+[sub_resource type="StandardMaterial3D" id="Material_roof"]
+albedo_color = Color(0.27, 0.16, 0.13, 1)
+roughness = 0.92
+
+[sub_resource type="StandardMaterial3D" id="Material_wood"]
+albedo_color = Color(0.34, 0.2, 0.12, 1)
+roughness = 0.8
+
+[sub_resource type="StandardMaterial3D" id="Material_stone"]
+albedo_color = Color(0.48, 0.45, 0.4, 1)
+roughness = 0.95
+
+[sub_resource type="StandardMaterial3D" id="Material_warm_window"]
+albedo_color = Color(1, 0.57, 0.22, 1)
+emission_enabled = true
+emission = Color(1, 0.33, 0.08, 1)
+emission_energy_multiplier = 2.2
+
+[sub_resource type="StandardMaterial3D" id="Material_cold_window"]
+albedo_color = Color(0.31, 0.4, 0.45, 1)
+roughness = 0.42
+
+[sub_resource type="StandardMaterial3D" id="Material_cloth"]
+albedo_color = Color(0.8, 0.25, 0.16, 1)
+roughness = 0.83
+
+[sub_resource type="StandardMaterial3D" id="Material_leaves"]
+albedo_color = Color(0.35, 0.24, 0.08, 1)
+roughness = 1.0
+
+[sub_resource type="BoxMesh" id="Mesh_house"]
+material = SubResource("Material_wall")
+size = Vector3(7.2, 3.5, 4.8)
+
+[sub_resource type="PrismMesh" id="Mesh_roof"]
+material = SubResource("Material_roof")
+size = Vector3(8.1, 1.8, 5.7)
+
+[sub_resource type="BoxMesh" id="Mesh_door"]
+material = SubResource("Material_wood")
+size = Vector3(1.35, 2.55, 0.18)
+
+[sub_resource type="BoxMesh" id="Mesh_window"]
+size = Vector3(1.45, 1.1, 0.12)
+
+[sub_resource type="BoxMesh" id="Mesh_courtyard"]
+material = SubResource("Material_stone")
+size = Vector3(9.5, 0.18, 7.5)
+
+[sub_resource type="CylinderMesh" id="Mesh_basin"]
+material = SubResource("Material_stone")
+top_radius = 0.68
+bottom_radius = 0.78
+height = 0.34
+
+[sub_resource type="BoxMesh" id="Mesh_blanket"]
+material = SubResource("Material_cloth")
+size = Vector3(1.8, 0.12, 0.92)
+
+[sub_resource type="QuadMesh" id="Mesh_leaf"]
+material = SubResource("Material_leaves")
+size = Vector2(0.48, 0.32)
+
+[sub_resource type="BoxShape3D" id="Shape_house"]
+size = Vector3(7.2, 3.5, 4.8)
+
+[sub_resource type="BoxShape3D" id="Shape_courtyard"]
+size = Vector3(9.5, 0.18, 7.5)
+
+[node name="APosHouseholdCourtyard3D" type="Node3D"]
+script = ExtResource("1_household")
+
+[node name="Courtyard" type="Node3D" parent="."]
+
+[node name="StonePad" type="MeshInstance3D" parent="Courtyard"]
+position = Vector3(0, -0.09, 2.65)
+mesh = SubResource("Mesh_courtyard")
+
+[node name="TendedProps" type="Node3D" parent="Courtyard"]
+
+[node name="RinsedBasin" type="MeshInstance3D" parent="Courtyard/TendedProps"]
+position = Vector3(-1.45, 0.17, 2.35)
+mesh = SubResource("Mesh_basin")
+
+[node name="FoldedBlanket" type="MeshInstance3D" parent="Courtyard/TendedProps"]
+position = Vector3(1.25, 0.12, 2.15)
+rotation = Vector3(0, 0.18, 0)
+mesh = SubResource("Mesh_blanket")
+
+[node name="UntendedProps" type="Node3D" parent="Courtyard"]
+
+[node name="LeafA" type="MeshInstance3D" parent="Courtyard/UntendedProps"]
+position = Vector3(-1.8, 0.02, 2.1)
+rotation = Vector3(-1.5708, 0.3, 0)
+mesh = SubResource("Mesh_leaf")
+
+[node name="LeafB" type="MeshInstance3D" parent="Courtyard/UntendedProps"]
+position = Vector3(0.25, 0.025, 3.5)
+rotation = Vector3(-1.5708, -0.7, 0)
+mesh = SubResource("Mesh_leaf")
+
+[node name="LeafC" type="MeshInstance3D" parent="Courtyard/UntendedProps"]
+position = Vector3(2.15, 0.02, 1.6)
+rotation = Vector3(-1.5708, 0.85, 0)
+mesh = SubResource("Mesh_leaf")
+
+[node name="House" type="Node3D" parent="."]
+
+[node name="Walls" type="MeshInstance3D" parent="House"]
+position = Vector3(0, 1.75, -1.2)
+mesh = SubResource("Mesh_house")
+
+[node name="Roof" type="MeshInstance3D" parent="House"]
+position = Vector3(0, 4.38, -1.2)
+rotation = Vector3(0, 0, 1.5708)
+mesh = SubResource("Mesh_roof")
+
+[node name="Door" type="MeshInstance3D" parent="House"]
+position = Vector3(1.8, 1.275, 1.24)
+mesh = SubResource("Mesh_door")
+
+[node name="WarmWindow" type="MeshInstance3D" parent="House"]
+position = Vector3(-1.35, 2.0, 1.25)
+material_override = SubResource("Material_warm_window")
+mesh = SubResource("Mesh_window")
+
+[node name="ColdWindow" type="MeshInstance3D" parent="House"]
+position = Vector3(-1.35, 2.0, 1.25)
+material_override = SubResource("Material_cold_window")
+mesh = SubResource("Mesh_window")
+
+[node name="LanternGlow" type="OmniLight3D" parent="House"]
+position = Vector3(1.8, 2.35, 1.75)
+light_color = Color(1, 0.53, 0.24, 1)
+light_energy = 2.3
+omni_range = 5.5
+shadow_enabled = true
+
+[node name="Collision" type="StaticBody3D" parent="."]
+
+[node name="HouseShape" type="CollisionShape3D" parent="Collision"]
+position = Vector3(0, 1.75, -1.2)
+shape = SubResource("Shape_house")
+
+[node name="CourtyardShape" type="CollisionShape3D" parent="Collision"]
+position = Vector3(0, -0.09, 2.65)
+shape = SubResource("Shape_courtyard")
+
+[node name="ArrivalSubject" type="Area3D" parent="." groups=["story_subject_3d"]]
+position = Vector3(-3.4, 0, 4.8)
+script = ExtResource("2_subject")
+subject_id = "landmark:family_household.arrival"
+interaction_radius = 3.2
+
+[node name="CareSubject" type="Area3D" parent="." groups=["story_subject_3d"]]
+position = Vector3(-1.35, 0, 2.35)
+script = ExtResource("2_subject")
+subject_id = "landmark:family_household.courtyard_care"
+interaction_radius = 2.8
+
+[node name="ReflectionSubject" type="Area3D" parent="." groups=["story_subject_3d"]]
+position = Vector3(1.8, 0, 1.9)
+script = ExtResource("2_subject")
+subject_id = "inspectable:family_household_courtyard"
+interaction_radius = 3.0

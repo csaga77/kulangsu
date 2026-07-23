@@ -50,6 +50,9 @@ const WEATHER_TRANSITION_DURATION_MAX := 18.0
 @onready var m_camera_controller: Node = $Camera3DController
 @onready var m_sun: DirectionalLight3D = $Sun
 @onready var m_landmarks_root: Node3D = $Landmarks
+@onready var m_apo_household: APosHouseholdCourtyard3D = (
+	$Landmarks/PianoFerryProxy/APosHouseholdCourtyard
+)
 
 @export var art_style: LowPolyArtStyle3DScript
 @export_range(0.0, 1.0, 0.01) var actor_terrain_clearance := 0.0
@@ -107,6 +110,7 @@ func _initialize_runtime() -> void:
 	_setup_weather_wind()
 	_setup_audio()
 	_setup_player_appearance()
+	_setup_household_story_presentation()
 	if generate_landmark_collision:
 		_generate_landmark_collision()
 	_spawn_residents()
@@ -374,6 +378,12 @@ func _setup_player_appearance() -> void:
 	if !app_state.state_committed.is_connected(_on_state_committed):
 		app_state.state_committed.connect(_on_state_committed)
 	_apply_player_appearance(app_state.get_projection().player_profile)
+
+
+func _setup_household_story_presentation() -> void:
+	if !is_instance_valid(m_apo_household):
+		return
+	m_apo_household.bind_story_state(_app_state())
 
 
 func _apply_player_appearance(profile: Dictionary) -> void:

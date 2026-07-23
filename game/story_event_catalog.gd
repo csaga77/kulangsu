@@ -136,6 +136,15 @@ static func build_event_tree() -> Array[Dictionary]:
 				},
 			],
 		},
+		{
+			"id": "family_memory",
+			"children": [
+				{
+					"id": "family_household_care",
+					"subject_bindings": _family_household_care_bindings(),
+				},
+			],
+		},
 	]
 
 
@@ -214,6 +223,9 @@ static func build_subject_metadata_definitions() -> Array[Dictionary]:
 		_inspect_subject_metadata("postcard_display_rack", "Postcard Display Rack"),
 		_inspect_subject_metadata("church_stone_bench", "Church Stone Bench"),
 		_inspect_subject_metadata("bagua_railings", "Bagua Railings"),
+		_family_household_arrival_metadata(),
+		_family_household_care_metadata(),
+		_family_household_reflection_metadata(),
 		{
 			"subject_id": "landmark:piano_ferry.harbor_refrain",
 			"default_action": "collect",
@@ -631,6 +643,47 @@ static func _collect_effect_story_event_references(
 
 static func _binding_key(subject_id: String, action: String) -> String:
 	return "%s|%s" % [subject_id.strip_edges(), action.strip_edges().to_lower()]
+
+
+static func _family_household_care_bindings() -> Array[Dictionary]:
+	return [
+		{
+			"priority": 20,
+			"subject_id": "landmark:family_household.arrival",
+			"action": "perform",
+			"prompt": "Enter A Po's Courtyard",
+			"conditions": {
+				"season_phase": "winter",
+				"story_flag_all": ["winter_memory_reveal"],
+			},
+			"effects": {
+				"story_flags": {
+					"family_household_arrived": true,
+				},
+				"objective": "Rinse A Po's courtyard basin and fold the blanket left in the winter air.",
+				"save_status": "The courtyard is quiet enough to make every small unfinished task visible.",
+				"autosave_story_progress": true,
+			},
+			"consumes_interaction": true,
+		},
+		{
+			"priority": 20,
+			"subject_id": "landmark:family_household.courtyard_care",
+			"action": "perform",
+			"prompt": "Tend the Courtyard",
+			"conditions": {
+				"season_phase": "winter",
+				"story_flag_all": ["winter_memory_reveal", "family_household_arrived"],
+			},
+			"effects": {
+				"story_event": "family_household_care_seen",
+				"objective": "Carry A Po's quiet answer back toward the harbor.",
+				"save_status": "A Po watches the rinsed basin catch the light. “Care is how a house answers when words arrive late.”",
+				"autosave_story_progress": true,
+			},
+			"consumes_interaction": true,
+		},
+	]
 
 
 static func _trinity_cue_bindings(trigger_id: String) -> Array[Dictionary]:
@@ -1602,6 +1655,62 @@ static func _inspect_subject_metadata(inspectable_id: String, display_name: Stri
 		"subject_id": "inspectable:%s" % inspectable_id,
 		"default_action": "inspect",
 		"display_name": display_name,
+	}
+
+
+static func _family_household_arrival_metadata() -> Dictionary:
+	return {
+		"subject_id": "landmark:family_household.arrival",
+		"default_action": "perform",
+		"display_name": "A Po's Courtyard",
+		"presence_rules": [
+			_presence_hidden_rule(100, {"story_flag_all": ["family_household_care_seen"]}),
+			_presence_hidden_rule(100, {"story_flag_all": ["family_household_care_missed"]}),
+			_presence_hidden_rule(100, {"story_flag_all": ["spring_festival_prepared"]}),
+			_presence_hidden_rule(100, {"story_flag_all": ["family_household_arrived"]}),
+			_presence_visible_rule(
+				10,
+				{
+					"season_phase": "winter",
+					"story_flag_all": ["winter_memory_reveal"],
+				}
+			),
+			_presence_hidden_rule(),
+		],
+	}
+
+
+static func _family_household_care_metadata() -> Dictionary:
+	return {
+		"subject_id": "landmark:family_household.courtyard_care",
+		"default_action": "perform",
+		"display_name": "Courtyard Care",
+		"presence_rules": [
+			_presence_hidden_rule(100, {"story_flag_all": ["family_household_care_seen"]}),
+			_presence_hidden_rule(100, {"story_flag_all": ["family_household_care_missed"]}),
+			_presence_hidden_rule(100, {"story_flag_all": ["spring_festival_prepared"]}),
+			_presence_visible_rule(
+				10,
+				{
+					"season_phase": "winter",
+					"story_flag_all": ["winter_memory_reveal", "family_household_arrived"],
+				}
+			),
+			_presence_hidden_rule(),
+		],
+	}
+
+
+static func _family_household_reflection_metadata() -> Dictionary:
+	return {
+		"subject_id": "inspectable:family_household_courtyard",
+		"default_action": "inspect",
+		"display_name": "A Po's Courtyard",
+		"presence_rules": [
+			_presence_visible_rule(20, {"story_flag_all": ["family_household_care_seen"]}),
+			_presence_visible_rule(20, {"story_flag_all": ["family_household_care_missed"]}),
+			_presence_hidden_rule(),
+		],
 	}
 
 

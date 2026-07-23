@@ -62,6 +62,20 @@ const INSPECTABLE_DEFINITIONS := {
 			},
 		],
 	},
+	"family_household_courtyard": {
+		"display_name": "A Po's Courtyard",
+		"default_text": "The courtyard waits in winter stillness, its basin and folded things asking for ordinary hands.",
+		"reactions": [
+			{
+				"conditions": {"story_flag_all": ["family_household_care_seen"]},
+				"text": "The rinsed basin holds a small circle of lantern light. From the doorway A Po says, “Care is how a house answers when words arrive late.”",
+			},
+			{
+				"conditions": {"story_flag_all": ["family_household_care_missed"]},
+				"text": "Dry leaves have gathered around the untouched basin. A Po is away from the doorway now, and the courtyard keeps the answer that arrived too late.",
+			},
+		],
+	},
 }
 
 

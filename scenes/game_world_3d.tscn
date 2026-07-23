@@ -18,6 +18,7 @@
 [ext_resource type="PackedScene" uid="uid://y1unovf2ajox" path="res://architecture/trinity_church/trinity_church_stylized_3d.tscn" id="11_church"]
 [ext_resource type="Script" uid="uid://31o08ichyotv" path="res://addons/low_poly_building_editor/streets/street_junction_3d.gd" id="11_r6b2s"]
 [ext_resource type="PackedScene" path="res://architecture/bagua_tower/bagua_tower_stylized_3d.tscn" id="12_bagua"]
+[ext_resource type="PackedScene" path="res://architecture/apo_household/apo_household_courtyard_3d.tscn" id="13_household"]
 
 [sub_resource type="Resource" id="Resource_yvyj5"]
 script = ExtResource("6_m77li")
@@ -8595,6 +8596,9 @@ subject_id = "inspectable:postcard_display_rack"
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, -1.5)
 script = ExtResource("9_subject")
 subject_id = "landmark:festival_stage.harbor_stage"
+
+[node name="APosHouseholdCourtyard" parent="Landmarks/PianoFerryProxy" instance=ExtResource("13_household")]
+transform = Transform3D(0.965926, 0, -0.258819, 0, 1, 0, 0.258819, 0, 0.965926, 10.5, 0, 7.5)
 
 [node name="TrinityChurchProxy" parent="Landmarks" unique_id=1837981626 instance=ExtResource("11_church")]
 

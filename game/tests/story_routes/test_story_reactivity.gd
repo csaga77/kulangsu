@@ -3,6 +3,9 @@ extends Node
 const TEST_AUTOSAVE_PATH := "user://story_reactivity_test.save"
 const APP_RUNTIME := preload("res://game/app_runtime.gd")
 const GAME_WORLD_3D_SCENE := preload("res://scenes/game_world_3d.tscn")
+const APO_HOUSEHOLD_SCENE := preload(
+	"res://architecture/apo_household/apo_household_courtyard_3d.tscn"
+)
 const STORY_SUBJECT_3D_SCRIPT := preload("res://game/story_subject_3d.gd")
 
 # Subject nodes authored directly inside scenes/game_world_3d.tscn. Keep in
@@ -13,6 +16,9 @@ const AUTHORED_WORLD_SUBJECTS := {
 	"Landmarks/BiShanTunnelProxy/Subject": "landmark:bi_shan_tunnel.echo_a",
 	"Landmarks/LongShanTunnelProxy/Subject": "landmark:long_shan_tunnel.tunnel_entry",
 	"Landmarks/BaguaTowerProxy/Subject": "landmark:bagua_tower.synthesis_chamber",
+	"Landmarks/PianoFerryProxy/APosHouseholdCourtyard/ArrivalSubject": "landmark:family_household.arrival",
+	"Landmarks/PianoFerryProxy/APosHouseholdCourtyard/CareSubject": "landmark:family_household.courtyard_care",
+	"Landmarks/PianoFerryProxy/APosHouseholdCourtyard/ReflectionSubject": "inspectable:family_household_courtyard",
 }
 
 var m_failures := PackedStringArray()
@@ -73,6 +79,74 @@ func _run() -> void:
 		lanterns_resolved_text.to_lower().contains("wax"),
 		"Harbor Lantern Lines keep the Spring Festival aftermath visible after the route resolves"
 	)
+
+	_app_state().start_new_story()
+	_app_state().apply_story_effects({
+		"story_flags": {
+			"family_household_care_seen": true,
+			"spring_festival_resolved": true,
+		},
+	})
+	var hua_seen: Dictionary = _app_state().interact_with_resident("tea_vendor_hua")
+	_assert_true(
+		String(hua_seen.get("line", "")).to_lower().contains("basin caught the lantern light"),
+		"Spring Festival dialogue remembers the completed household care"
+	)
+	var cared_for_courtyard_text := String(
+		_app_state().activate_story_subject(
+			"inspectable:family_household_courtyard",
+			"inspect"
+		).get("text", "")
+	)
+	_assert_true(
+		cared_for_courtyard_text.to_lower().contains("rinsed basin")
+			and cared_for_courtyard_text.to_lower().contains("a po says"),
+		"The household inspect surface retains A Po's warm reflective response"
+	)
+
+	_app_state().start_new_story()
+	_app_state().apply_story_effects({
+		"story_flags": {
+			"family_household_care_missed": true,
+			"spring_festival_resolved": true,
+		},
+	})
+	var hua_missed: Dictionary = _app_state().interact_with_resident("tea_vendor_hua")
+	_assert_true(
+		String(hua_missed.get("line", "")).to_lower().contains("untouched basin"),
+		"Spring Festival dialogue retains the missed household-care regret"
+	)
+	var untended_courtyard_text := String(
+		_app_state().activate_story_subject(
+			"inspectable:family_household_courtyard",
+			"inspect"
+		).get("text", "")
+	)
+	_assert_true(
+		untended_courtyard_text.to_lower().contains("dry leaves")
+			and untended_courtyard_text.to_lower().contains("too late"),
+		"The household inspect surface retains the untended absence"
+	)
+
+	var household := APO_HOUSEHOLD_SCENE.instantiate() as APosHouseholdCourtyard3D
+	add_child(household)
+	await get_tree().process_frame
+	household.apply_story_flags({"family_household_care_seen": true})
+	_assert_true(
+		household.get_presentation_state() == "cared_for"
+			and household.get_node("House/WarmWindow").visible
+			and household.get_node("Courtyard/TendedProps").visible
+			and !household.get_node("Courtyard/UntendedProps").visible,
+		"Seen story flags render the household warm and cared for"
+	)
+	household.apply_story_flags({"family_household_care_missed": true})
+	_assert_true(
+		household.get_presentation_state() == "untended"
+			and !household.get_node("House/WarmWindow").visible
+			and household.get_node("Courtyard/UntendedProps").visible,
+		"Missed story flags render the household cold and untended"
+	)
+	household.queue_free()
 
 	_app_state().start_new_story()
 	_progress_to_future_choice()

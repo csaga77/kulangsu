@@ -1,4 +1,4 @@
-[gd_resource type="Resource" load_steps=15 format=3]
+[gd_resource type="Resource" load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://game/resident_system/resident_definition.gd" id="1_definition"]
 [ext_resource type="Script" path="res://game/resident_system/resident_appearance_definition.gd" id="2_appearance"]
@@ -49,6 +49,30 @@ conditions = SubResource("ResidentBeatConditionsDefinition_tea_vendor_hua_cond_b
 priority = 30
 once = true
 
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_tea_vendor_hua_cond_c"]
+script = ExtResource("5_conditions")
+extra_conditions = {"story_flag_all": ["spring_festival_resolved", "family_household_care_seen"]}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_tea_vendor_hua_cond_c"]
+script = ExtResource("4_conditional")
+line = "A Po told me the courtyard basin caught the lantern light because you rinsed it before festival week. The extra cup still hurts, but the house has one warm answer ready beside it."
+journal_step = "Hua carried the cared-for courtyard into Spring Festival as proof that grief and warmth can share one household."
+conditions = SubResource("ResidentBeatConditionsDefinition_tea_vendor_hua_cond_c")
+priority = 40
+once = true
+
+[sub_resource type="Resource" id="ResidentBeatConditionsDefinition_tea_vendor_hua_cond_d"]
+script = ExtResource("5_conditions")
+extra_conditions = {"story_flag_all": ["spring_festival_resolved", "family_household_care_missed"]}
+
+[sub_resource type="Resource" id="ResidentConditionalBeatDefinition_tea_vendor_hua_cond_d"]
+script = ExtResource("4_conditional")
+line = "A Po came through alone after festival dawn. The untouched basin had gathered leaves around it, she said. We poured the extra cup anyway, and let regret sit with us without pretending it was care."
+journal_step = "Hua let the untended courtyard remain part of Spring Festival instead of smoothing absence into a kinder memory."
+conditions = SubResource("ResidentBeatConditionsDefinition_tea_vendor_hua_cond_d")
+priority = 40
+once = true
+
 [sub_resource type="Resource" id="ResidentSpawnDefinition_tea_vendor_hua"]
 script = ExtResource("7_spawn")
 anchor_id = "Piano Ferry"
@@ -65,7 +89,7 @@ spawn = SubResource("ResidentSpawnDefinition_tea_vendor_hua")
 script = ExtResource("3_dialogue")
 ambient_lines = PackedStringArray("My kettle still tries to whistle the opening bar every morning.", "The day the island settles, even the tea steam will rise in time.")
 dialogue_beats = []
-conditional_beats = [SubResource("ResidentConditionalBeatDefinition_tea_vendor_hua_cond_a"), SubResource("ResidentConditionalBeatDefinition_tea_vendor_hua_cond_b")]
+conditional_beats = [SubResource("ResidentConditionalBeatDefinition_tea_vendor_hua_cond_a"), SubResource("ResidentConditionalBeatDefinition_tea_vendor_hua_cond_b"), SubResource("ResidentConditionalBeatDefinition_tea_vendor_hua_cond_c"), SubResource("ResidentConditionalBeatDefinition_tea_vendor_hua_cond_d")]
 
 [resource]
 script = ExtResource("1_definition")

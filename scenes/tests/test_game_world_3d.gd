@@ -32,6 +32,7 @@ const MAX_ACTOR_WADE_DEPTH := 0.5
 const EXPECTED_WORLD_SUBJECT_IDS: Array[String] = [
 	"inspectable:bagua_railings",
 	"inspectable:church_stone_bench",
+	"inspectable:family_household_courtyard",
 	"inspectable:harbor_lantern_lines",
 	"inspectable:harbor_notice_board",
 	"inspectable:postcard_display_rack",
@@ -41,6 +42,8 @@ const EXPECTED_WORLD_SUBJECT_IDS: Array[String] = [
 	"landmark:bi_shan_tunnel.echo_b",
 	"landmark:bi_shan_tunnel.echo_c",
 	"landmark:festival_stage.harbor_stage",
+	"landmark:family_household.arrival",
+	"landmark:family_household.courtyard_care",
 	"landmark:long_shan_tunnel.light_pocket_north",
 	"landmark:long_shan_tunnel.light_pocket_south",
 	"landmark:long_shan_tunnel.tunnel_entry",
@@ -77,6 +80,7 @@ func _run_smoke_checks() -> void:
 	_check_landmarks(failures)
 	_check_residents(failures)
 	_check_story_subjects(failures)
+	_check_household_courtyard(failures)
 	_check_audio(failures)
 	_check_weather_3d(failures)
 	_check_talk_dispatch(failures)
@@ -367,6 +371,48 @@ func _check_story_subjects(failures: Array[String]) -> void:
 			"authored 3D world subjects differ: expected %s, found %s"
 			% [expected_subject_ids, authored_subject_ids]
 		)
+
+
+func _check_household_courtyard(failures: Array[String]) -> void:
+	if !is_instance_valid(m_world):
+		return
+	var ferry := m_world.get_node_or_null("Landmarks/PianoFerryProxy") as Node3D
+	var household := m_world.get_node_or_null(
+		"Landmarks/PianoFerryProxy/APosHouseholdCourtyard"
+	) as APosHouseholdCourtyard3D
+	if household == null:
+		failures.append("production world is missing A Po's household courtyard")
+		return
+	if ferry == null or _flat_distance(household.global_position, ferry.global_position) > 18.0:
+		failures.append("A Po's household courtyard is not placed near the ferry district")
+
+	for subject_contract in [
+		["ArrivalSubject", "landmark:family_household.arrival"],
+		["CareSubject", "landmark:family_household.courtyard_care"],
+		["ReflectionSubject", "inspectable:family_household_courtyard"],
+	]:
+		var subject := household.get_node_or_null(String(subject_contract[0])) as StorySubject3D
+		if subject == null or subject.subject_id != String(subject_contract[1]):
+			failures.append(
+				"household subject %s is missing semantic id %s"
+				% [subject_contract[0], subject_contract[1]]
+			)
+
+	household.apply_story_flags({"family_household_care_seen": true})
+	if (
+		household.get_presentation_state() != "cared_for"
+		or !household.get_node("House/WarmWindow").visible
+		or !household.get_node("Courtyard/TendedProps").visible
+	):
+		failures.append("seen household care did not render its warm, tended state")
+
+	household.apply_story_flags({"family_household_care_missed": true})
+	if (
+		household.get_presentation_state() != "untended"
+		or household.get_node("House/WarmWindow").visible
+		or !household.get_node("Courtyard/UntendedProps").visible
+	):
+		failures.append("missed household care did not render its cold, untended state")
 
 
 func _check_audio(failures: Array[String]) -> void:
