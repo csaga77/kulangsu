@@ -23,6 +23,10 @@ Use this folder for:
 - The next implementation milestone is the `family_memory` household-care slice and
   first completed-versus-missed seasonal transformation, paired with the bounded
   Phase 0 character-action tuning/content/animation gate.
+- Workstream 6 then advances through Milestone B's traversal foundation,
+  Milestone C's object-care actions, and Milestone D's Phase 7 production hardening;
+  Milestone D is the sole gate that can mark the character-action workstream
+  complete.
 - The typed storyline resource, inspector, browser, dependency graph, and canonical-
   source authoring workflow are complete; later validation follows the feature that
   introduces new behavior instead of keeping the editor workstream permanently open.

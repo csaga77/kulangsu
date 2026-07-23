@@ -160,9 +160,35 @@ Locked story-moment contract:
 
 Character-action gate:
 
-- Complete Workstream 6 Phase 0 only: lock the numeric acceptance matrix, inspect
-  animation coverage for all three player models, decide carried-object rotation
-  input, and approve the first production proof for each capability.
+- Complete Workstream 6 Phase 0 only. Record accepted values and their fixture
+  geometry in [`../features/low_poly_actor_3d.md`](../features/low_poly_actor_3d.md)
+  for the full numeric matrix: jump obstacle clearance and arc; gap width; landing
+  width and recovery; input buffering and edge forgiveness; air control and ceiling
+  rejection; ladder mount/dismount alignment, climb speed, endpoint clearance, and
+  blocked-exit recovery; contextual action and pickup ranges; light/medium carry
+  movement values plus attachment and doorway clearances; push/pull alignment,
+  speed, path bounds, and blockage; object-placement reach, clearance, and
+  tolerances; seat entry/exit alignment and clearance; and player/object
+  out-of-bounds recovery thresholds.
+- Record one input-and-cancellation decision table for traversal jump, ladder, carry,
+  push/pull, and sit. It must name entry and continued-control inputs, completion,
+  explicit cancel/exit, `Esc` precedence, incompatible-mode rejection, and
+  pause/recovery/unload cleanup, and must decide whether carried-object rotation has
+  a dedicated input, prompt, behavior, and test or remains unsupported.
+- Audit `male.glb`, `female.glb`, and `boy.glb` against every required locomotion and
+  action phase: idle/walk/run, takeoff/airborne/landing, ladder
+  mount/climb/dismount, carry idle/walk/place, push, pull, sit enter/idle/exit, and
+  fall/recovery. Record the exact accepted clip or an explicitly approved fallback
+  for every model-and-phase cell; the presence of an imported clip alone is not
+  acceptance.
+- Replace the five candidate production locations with one approved proof record per
+  capability. Each traversal-jump, ladder, carry, push/pull, and sit record must name
+  the exact production scene, semantic completion id, required geometry, and manual
+  production-flow check.
+- Before Phase 1 refactors actor behavior, capture the dated passing actor,
+  collision, environment, and production-world baseline from
+  `test_human_body_3d.tscn`, `test_character_collisions.tscn`,
+  `test_environment_3d.tscn`, and `test_game_world_3d.tscn`.
 - Lock the next production action slice as the Bagua stewardship ascent: physical
   traversal jump plus recovery followed by one authored ladder connection. This is
   planning approval, not a claim that either action is implemented in Milestone A.
@@ -189,8 +215,9 @@ Milestone A exit criteria:
   `spring_festival_prepared`; also play New Game -> winter reveal -> household ->
   journal -> continue and New Game -> winter reveal -> festival preparation ->
   journal -> continue to inspect both outcomes in the production world
-- Workstream 6 Phase 0's numeric fixtures, input decisions, animation audit, and five
-  approved production proof locations are recorded in
+- Workstream 6 Phase 0's complete numeric matrix, action-by-action input/cancel
+  table, three-model clip/fallback matrix, five exact production-proof records, and
+  dated pre-refactor baseline are recorded in
   [`../features/low_poly_actor_3d.md`](../features/low_poly_actor_3d.md)
 
 Primary implementation areas:
@@ -225,10 +252,20 @@ Primary implementation areas:
 2. **Milestone C — Object care actions.** Add carry and deliberate push/pull on the
    shared action foundation, first through one compact Piano Ferry or Trinity
    restoration beat. Sitting follows through one harbor or church listening moment.
-3. **World-state reactivity.** Reapply saved resident routine overrides to already-
+3. **Milestone D — Character-action production hardening.** Complete Workstream 6
+   Phase 7 after Phases 1-6 have passed their focused and production-use gates.
+   Disable story advancement for every physical action in `Free Walk`,
+   deterministically settle actions and affected objects during pause, recovery, and
+   scene unload, finish contextual hints and consistent input/cancel/camera behavior,
+   and run the full title, New Game, Free Walk, and overlay flows. Milestone D is
+   the sole Workstream 6 closure gate: it passes only when all five actions have
+   focused automated fixtures, an authored production use, a manual production-flow
+   check, and accepted animation coverage or an approved fallback for all three
+   player models.
+4. **World-state reactivity.** Reapply saved resident routine overrides to already-
    spawned 3D residents and extend route response into props, ambience, district
    dressing, and other non-resident surfaces.
-4. **Final-act polish.** Turn differentiated ending and departure copy into playable
+5. **Final-act polish.** Turn differentiated ending and departure copy into playable
    closing movement after the embodied route slices above exist.
 
 ### Later
@@ -542,11 +579,12 @@ Delivery order:
 6. sitting
 7. production integration and hardening
 
-Milestone B owns Phases 1-3. Milestone C owns Phases 4-6. Phase 7 closes the
-workstream only after every capability has a focused automated fixture, one authored
-production use, a manual production-flow check, consistent input/cancellation/camera
-behavior, and accepted animation coverage or an approved fallback for all three
-player models.
+Milestone B owns Phases 1-3. Milestone C owns Phases 4-6. Milestone D owns Phase 7
+and is the sole Workstream 6 closure gate. Earlier milestones may deliver individual
+capabilities but may not close the workstream. Milestone D closes it only after every
+capability has a focused automated fixture, one authored production use, a manual
+production-flow check, consistent input/cancellation/camera behavior, and accepted
+animation coverage or an approved fallback for all three player models.
 
 No action may become required story progress until its focused and production-flow
 checks pass. Physical components publish only semantic completion ids; `AppState`
