@@ -173,9 +173,11 @@ coordinates, or seat alignment.
 The world-action coordinator ranks candidates by authored priority, facing, then
 distance. An engaged action receives its own exit/cancel first. `Esc` cancels a
 sustained physical action before opening a higher overlay, preserving the app-wide
-back-one-level rule. Phase 0 decides whether carried-object rotation warrants
-dedicated inputs; rotation is not supported until its input, prompt, behavior, and
-test are approved together.
+back-one-level rule. Phase 0 rejects player-controlled carried-object rotation:
+there is no dedicated input or prompt, carried objects keep their authored socket
+orientation, and a valid placement applies the target's authored orientation.
+Rotation remains unsupported unless a later repeated production need approves a
+dedicated input, prompt, behavior, and focused test together.
 
 ### Planned Delivery Stages
 
@@ -226,10 +228,168 @@ Focused validation ownership:
 - existing actor, collision, environment, and production-world scenes remain green
   throughout the migration
 
-Candidate first production proofs are Bagua for traversal jump and ladder, Piano
-Ferry or Trinity for a light carry/restoration beat, Trinity for constrained
-push/pull care, and the harbor or church for a reflective seat. Phase 0 must replace
-those candidates with exact commitments before implementation.
+### Phase 0 Accepted Tuning And Content Gate
+
+Phase 0 was completed on **2026-07-23**. The values below are acceptance targets,
+not claims that the planned action code exists. World units are metres at the
+current `1.72`-unit actor height. Fixtures must test the accepted boundary and the
+named rejection boundary; authors may make production geometry easier but not
+harder. All mandatory paths retain a walkable alternative until the focused and
+production-flow checks for the action pass.
+
+#### Numeric Acceptance Matrix
+
+| Item | Accepted value | Required fixture geometry and boundary check |
+| --- | --- | --- |
+| Jump obstacle clearance and arc | Full press uses `4.80 m/s` takeoff velocity with `16.0 m/s²` gravity: `0.72 m` apex and `0.60 s` same-height flight. Releasing Space while rising clamps vertical velocity to `2.00 m/s`. Maximum authored obstacle is `0.45 m` high. | `2.00 m`-wide approach, a `0.45 m` high x `0.60 m` deep block, and a `1.40 m` deep landing pass. A `0.55 m` high block rejects cleanly; there is no mantle. |
+| Gap width | Maximum required clear span is `1.20 m`; production proof uses `1.00 m`. | `2.00 m`-wide, `3.00 m`-long approach; `1.00 m`, `1.20 m`, and `1.35 m` trenches; `1.40 m`-deep x `2.00 m`-wide far pads. `1.20 m` passes and `1.35 m` is explicitly non-required/rejected. |
+| Landing width and recovery | Required landing is at least `1.40 m` deep x `2.00 m` wide, with up to `0.12 m` downward floor snap. Normal control returns within `0.10 s`; there is no damage or stumble lock. | The gap fixture's far pad plus a `0.70 m`-deep narrow pad that must not be accepted as required geometry. Missing the pad enters player recovery rather than a fail screen. |
+| Jump input buffering and edge forgiveness | `0.16 s` pre-landing input buffer and `0.18 s` coyote time after leaving a floor edge. Holding Space never auto-repeats; a new press is required. | A `2.00 m` square takeoff platform ending at a sharp edge records presses `0.16 s`/`0.17 s` before landing and `0.18 s`/`0.19 s` after departure as pass/reject pairs. |
+| Air control | Horizontal jump speed is capped at `4.50 m/s`; steering acceleration is `6.00 m/s²`, with at most `1.00 m/s` total change from takeoff velocity during one jump. | Three `1.40 m`-deep landing lanes centred at `-0.45 m`, `0`, and `+0.45 m` after a `1.00 m` gap. Adjacent-lane correction passes; reversing direction or reaching a second adjacent lane does not. |
+| Ceiling rejection | Takeoff needs `0.20 m` clear above the standing capsule. A ceiling contact cancels upward velocity in that physics tick and begins the fall; it never clips or crouch-launches. | Standing actor under slabs whose undersides are `1.90 m` and `1.94 m` above the floor. The `1.90 m` fixture rejects takeoff for the `1.72 m` body; `1.94 m` starts safely and later collision still cancels ascent. |
+| Ladder mount/dismount alignment | Context range `0.90 m`, facing error at most `20°`, final anchor error at most `0.10 m` and `10°`, and alignment blend at most `0.30 s`. | Straight `3.20 m` ladder, `1.20 m` square bottom pad, mount probes at `0.90 m`/`0.91 m` and `20°`/`21°`, and authored top/bottom anchors. |
+| Ladder climb speed | `1.80 m/s` in either direction; no acceleration ramp and no free XZ drift. | The `3.20 m` ladder path must take `1.78 s ± 0.05 s` between endpoint holds, excluding alignment blends. |
+| Ladder endpoint clearance | Actor capsule sweep expanded by `0.10 m` radially and `0.20 m` vertically. Bottom clear pad is `1.20 m` square; top pad is `1.40 m` deep x `1.40 m` wide; top dismount anchor is `0.75 m` forward of the rail. | Clear endpoints pass. A `0.20 m`-deep overhead blocker or a `0.30 m` cube occupying either dismount capsule rejects that exit without ejecting the player. |
+| Blocked ladder-exit recovery | After `0.20 s` of blocked endpoint contact, move back `0.35 m` along the ladder over `0.20 s`, remain mounted, and accept movement away from the blockage. If `Esc` is used, restore the last clear mount anchor. | Toggle the endpoint blocker in the ladder fixture while climbing. The actor must never remain inside the blocker, fall through the ladder, or advance story state. |
+| Contextual physical-action range | Target anchor within `1.50 m`, vertical delta at most `1.00 m`, and facing half-angle `60°`. Story subjects retain their own authored radii; the shared arbiter still ranks priority, facing, then distance. | Anchors at `1.50 m`/`1.51 m`, `1.00 m`/`1.01 m` vertical delta, and `60°`/`61°`, with a competing story subject to prove deterministic arbitration. |
+| Pickup range | Carryable centre/handle within `1.10 m`, vertical delta at most `0.65 m`, and a clear capsule-to-handle sweep. | Identical `0.50 m` light boxes at `1.10 m` and `1.11 m`, one on a `0.65 m` shelf and one on a `0.66 m` shelf, plus a `0.10 m` occluding wall. |
+| Light carry movement, attachment, and doorway clearance | Forced walk speed `3.20 m/s`, turn rate `180°/s`, socket `0.45 m` forward and `1.05 m` above feet, maximum carried bounds `0.55 m` per axis, and `0.08 m` world-sweep margin. Door opening must exceed the combined actor/object envelope by `0.20 m` in width and `0.15 m` in height. | `0.50 m` cube; `4.00 m` walk lane; `1.00 m` wide x `2.10 m` high pass doorway and `0.75 m` wide rejection doorway. |
+| Medium carry movement, attachment, and doorway clearance | Forced walk speed `2.40 m/s`, turn rate `120°/s`, socket `0.50 m` forward and `0.90 m` above feet, maximum bounds `0.75 x 0.55 x 0.55 m`, and `0.08 m` world-sweep margin. Door opening must exceed the combined envelope by `0.20 m` in width and `0.15 m` in height. | `0.75 x 0.55 x 0.55 m` case; `4.00 m` walk lane; `1.10 m` wide x `2.15 m` high pass doorway and `0.94 m` wide rejection doorway. |
+| Push/pull alignment | Target handle within `1.10 m`; aligned actor anchor error at most `0.12 m` and `10°`; constrained object cross-axis error at most `0.05 m`. | `0.80 x 0.55 x 0.65 m` chest on a visible `3.00 m` rail, with entry probes at `0.12 m`/`0.13 m` and `10°`/`11°`. |
+| Push/pull speed | Push `1.25 m/s`; pull `1.00 m/s`; no run modifier or acceleration impulse. | Timed `2.50 m` clear segment: push `2.00 s ± 0.05 s`, pull `2.50 s ± 0.05 s`. The object never leaves its authored axis. |
+| Push/pull path bounds | Maximum production path length `4.00 m`; proof path `3.00 m`; stop `0.10 m` before either hard endpoint. | The `3.00 m` rail has explicit min/max anchors and goal at `2.50 m`. Continued input at either stop produces no drift or physics impulse. |
+| Push/pull blockage | Combined actor/object sweep margin `0.08 m`. Less than `0.02 m` progress for `0.20 s` while input is held is blocked; stop motion, retain alignment, and show the blocked hint. | Insert a `0.30 m` wall across the rail and a side blocker beside the actor. Removing either resumes motion without accumulated impulse; `Esc` remains available. |
+| Object-placement reach | Placement anchor `0.65-1.35 m` forward of the actor, with target height within `±0.60 m` of the carried socket. | Ground pads at `0.65 m`, `1.35 m`, and `1.36 m`; shelves at `±0.60 m` and `±0.61 m`. Out-of-range attempts keep the object attached. |
+| Object-placement clearance | Object shape sweep and final overlap check use `0.08 m` margin; support must cover at least `80%` of the footprint. | One clear pad, one pad with a `0.07 m` gap, one with a `0.09 m` gap, and a support shelf covering `79%`/`80%`. Only the `0.09 m` and `80%` cases pass. |
+| Object-placement tolerances | Final anchor error at most `0.10 m`, yaw error at most `10°`, and support slope at most `10°`. Valid placement applies authored orientation; the player cannot rotate the carried object. | Target sockets at `0.10 m`/`0.11 m`, `10°`/`11°`, and support ramps at `10°`/`11°`. Failed attempts keep the previous held transform. |
+| Seat entry alignment and clearance | Context range `1.10 m`; seat-anchor error at most `0.10 m` and `10°`; entry blend `0.35 s`; occupied capsule volume has `0.10 m` radial/head margin. | `0.50 m`-high bench with one seat anchor, probes at `1.10 m`/`1.11 m`, and an overhead/side blocker intruding by `0.05 m`. |
+| Seat exit alignment and clearance | Primary exit is `0.90 m` from the seat; final error at most `0.10 m` and `10°`; exit blend `0.30 s`; clear pad is `1.00 m` square. If blocked, test eight directions at radii `0.75`, `1.00`, then `1.25 m`; otherwise use player recovery. | Block the primary exit and then all but one radial candidate. The chosen capsule must be clear with `0.10 m` margin and must not overlap the bench or a drop. |
+| Player out-of-bounds recovery | Record a safe transform only while grounded, free, and vertically stable (`≤0.50 m/s`) for `0.25 s`. Recover if feet fall `4.00 m` below it, remain `2.00 m` outside an authored recovery volume for `0.25 s`, or stay unsupported for `2.50 s`; settle within `0.25 s`, without damage or story rollback. | Guarded floor, `4.00 m` pit threshold, volume boundary markers at `2.00 m`/`2.01 m`, and a void fall. Recovery returns to the latest safe semantic anchor. |
+| Movable-object out-of-bounds recovery | Save the last clear in-bounds transform. Restore if centre falls `2.00 m` below authored origin, remains `0.50 m` beyond its bounds for `0.25 s`, or blocks a required traversal volume for `2.00 s`; restored shape needs `0.10 m` clearance. | Carry and rail fixtures include a drop, boundary at `0.50 m`/`0.51 m`, and a required-path volume. Reset never changes story facts or teleports the player. |
+
+#### Input, Cancellation, And Cleanup
+
+`R` remains the contextual action input and `Space` becomes the one physical jump
+input when traversal jump ships. While an action is engaged, its controls outrank
+new physical targets and story subjects.
+
+| Action | Entry and continued control | Completion | Explicit cancel/exit | `Esc` precedence | Incompatible-mode rejection | Pause, recovery, and unload cleanup |
+| --- | --- | --- | --- | --- | --- | --- |
+| Traversal jump | Press Space while grounded and `free`; WASD uses the accepted air-control limits; releasing Space shortens ascent. | Clear landing plus the `0.10 s` landing recovery. | No arbitrary mid-air drop. `Esc` invokes safe-anchor recovery. | Consume the first press for recovery; do not open pause on that press. A later press follows normal shell back behavior. | Reject while carrying, pushing, pulling, sitting, mounted on a ladder, recovering, or without accepted ceiling clearance. Rejection does not consume buffered movement. | External pause, forced recovery, or scene unload cancels velocity and restores the last safe transform before control/state teardown. |
+| Ladder | Press R on the selected ladder while grounded and `free`; W/S climbs, camera remains available, A/D has no locomotion effect. | Cross a clear top or bottom dismount anchor; a semantic id may publish only after the dismount settles. | R at an endpoint dismounts; `Esc` restores the last clear mount anchor. | Ladder exit/cancel consumes the first press and prevents an overlay on that press. | Reject while airborne, carrying, pushing, pulling, sitting, recovering, or when mount/endpoint clearance fails. | Settle at the nearest clear endpoint; if neither is clear, use the mount safe anchor. Clear ladder reservation and zero velocity on pause, recovery, or unload. |
+| Carry | Press R on the selected carryable while grounded and `free`; WASD uses the light/medium forced walk and turn values. | Press R on a valid placement target; apply its authored orientation, detach, then publish its optional semantic id once. | `Esc` returns the object to its last safe authored transform and exits carry. Invalid R placement is not a drop. | Carry cancel consumes the first press; pause does not open until a later press. | Reject in air, on a ladder, while push/pull or sit is active, during recovery, for heavy/unavailable objects, or on blocked pickup sweep. | Restore the object to its last safe transform, clear ownership/socket state, and return the actor to `free` before pause, recovery, or unload. |
+| Push/pull | Press R on the selected handle while grounded and `free`; W pushes and S pulls on the authored axis; camera remains available. | Reaching the authored goal within `0.10 m` publishes the optional semantic id once and releases. | R releases at the last valid constrained coordinate without completion; `Esc` also releases. | Release consumes the first press and prevents an overlay on that press. | Reject while airborne, carrying, sitting, ladder-mounted, recovering, already reserved, outside alignment, or blocked at entry. | Snap to the last valid constrained coordinate, clear reservation/alignment, and restore free movement on pause, recovery, or unload. |
+| Sit | Press R on a selected unoccupied seat while grounded and `free`; movement is locked and camera remains available. | Entry completes on the seat anchor after the `0.35 s` blend; any semantic listening completion is feature-owned and idempotent. | R exits immediately to the first clear exit; `Esc` performs the same exit. | Seat exit consumes the first press and prevents an overlay on that press. | Reject while airborne, carrying, pushing, pulling, ladder-mounted, recovering, occupied, or without a clear seat capsule. | Resolve a clear authored/fallback exit before pause or unload; forced recovery uses the player safe anchor. Always release occupancy. |
+
+Carried-object rotation is firmly **unsupported** for the accepted action set. There
+is no rotation input, no rotation hint, no free-spin behavior, and therefore no
+rotation-control test. Placement validation tests only the authored target
+orientation and the `0.10 m` / `10°` tolerance. A later change must add all four
+parts—input, prompt, deterministic behavior, and focused test—in one approved slice.
+
+#### Three-Model Animation Audit
+
+The audit instantiated each GLB through Godot 4.7's importer and inspected the live
+`AnimationPlayer`, not only the `.import` metadata. All three models expose the same
+41-bone skeleton from `Root` through named hip, spine, arm, hand, leg, and foot
+bones, so the explicitly approved generated fallbacks below can share bone names.
+Imported clips are `30 fps`, have 40 tracks, and import with `LOOP_NONE`; runtime
+profiles may loop only the accepted locomotion clips.
+
+| Model | Imported clips and exact lengths | Acceptance decision |
+| --- | --- | --- |
+| `male.glb` | `cross_arms` `17.083334 s`; `idle` `17.583334 s`; `idle_1` `15.375000 s`; `run` `1.291667 s`; `scared` `3.291667 s`; `walk` `2.375000 s` | Accept only exact `idle`, `walk`, and `run` for locomotion. `cross_arms`, `idle_1`, and `scared` are not accepted for any required action phase. |
+| `female.glb` | `dance` `23.166666 s`; `idle` `15.375000 s`; `run` `1.291667 s`; `scared` `2.583333 s`; `walk` `2.375000 s`; `wave_goodbye` `5.875000 s` | Accept only exact `idle`, `walk`, and `run` for locomotion. `dance`, `scared`, and `wave_goodbye` are not accepted for any required action phase. |
+| `boy.glb` | `dance` `23.166666 s`; `idle` `15.375000 s`; `run` `1.291667 s`; `scared` `2.583333 s`; `walk` `2.375000 s`; `wave_goodbye` `5.875000 s` | Accept only exact `idle`, `walk`, and `run` for locomotion. `dance`, `scared`, and `wave_goodbye` are not accepted for any required action phase. |
+
+Approved fallback profiles are explicit animation work owned by the future
+`CharacterAnimationProfile3D`; they are not evidence that the source GLBs contain
+the action clips:
+
+- `FB_AIR`: blend from the current locomotion clip to the first neutral sample of
+  exact `idle` over `0.12 s`; the physical body owns the arc/fall.
+- `FB_LAND`: restart exact `idle` with a `0.10 s` crossfade; control is not delayed.
+- `FB_LADDER`: generated `fallback_ladder_climb` `1.00 s` alternating hand/foot
+  cycle on the common skeleton; mount and dismount are `0.30 s` blends to/from its
+  endpoint poses.
+- `FB_CARRY`: generated `fallback_carry_hold` two-hand upper-body pose layered over
+  exact `idle` or exact `walk`; placement removes the layer over `0.25 s`.
+- `FB_PUSH` / `FB_PULL`: generated `fallback_object_brace` upper-body pose layered
+  over exact `walk` at `0.55x`; pull reverses the walk sample while the authored
+  object axis owns motion.
+- `FB_SIT`: generated `fallback_sit` on the common skeleton with `80°` hip and
+  `90°` knee flexion, neutral ankles, upright spine, `0.35 s` entry, held seated
+  pose, and `0.30 s` reversed exit.
+- `FB_RECOVER`: first neutral sample of exact `idle`, held through a `0.15 s`
+  recovery fade. No fall-damage or hurt clip is implied.
+
+Every required model-and-phase cell is locked as follows:
+
+| Required phase | `male.glb` | `female.glb` | `boy.glb` |
+| --- | --- | --- | --- |
+| Idle | exact `idle` (`17.583334 s`) | exact `idle` (`15.375000 s`) | exact `idle` (`15.375000 s`) |
+| Walk | exact `walk` (`2.375000 s`) | exact `walk` (`2.375000 s`) | exact `walk` (`2.375000 s`) |
+| Run | exact `run` (`1.291667 s`) | exact `run` (`1.291667 s`) | exact `run` (`1.291667 s`) |
+| Takeoff | approved `FB_AIR` | approved `FB_AIR` | approved `FB_AIR` |
+| Airborne | approved `FB_AIR` | approved `FB_AIR` | approved `FB_AIR` |
+| Landing | approved `FB_LAND` | approved `FB_LAND` | approved `FB_LAND` |
+| Ladder mount | approved `FB_LADDER` mount blend | approved `FB_LADDER` mount blend | approved `FB_LADDER` mount blend |
+| Ladder climb | approved `FB_LADDER` cycle | approved `FB_LADDER` cycle | approved `FB_LADDER` cycle |
+| Ladder dismount | approved `FB_LADDER` dismount blend | approved `FB_LADDER` dismount blend | approved `FB_LADDER` dismount blend |
+| Carry idle | approved `FB_CARRY` over exact `idle` | approved `FB_CARRY` over exact `idle` | approved `FB_CARRY` over exact `idle` |
+| Carry walk | approved `FB_CARRY` over exact `walk` | approved `FB_CARRY` over exact `walk` | approved `FB_CARRY` over exact `walk` |
+| Carry place | approved `FB_CARRY` `0.25 s` release | approved `FB_CARRY` `0.25 s` release | approved `FB_CARRY` `0.25 s` release |
+| Push | approved `FB_PUSH` | approved `FB_PUSH` | approved `FB_PUSH` |
+| Pull | approved `FB_PULL` | approved `FB_PULL` | approved `FB_PULL` |
+| Sit enter | approved `FB_SIT` `0.35 s` entry | approved `FB_SIT` `0.35 s` entry | approved `FB_SIT` `0.35 s` entry |
+| Sit idle | approved `FB_SIT` held pose | approved `FB_SIT` held pose | approved `FB_SIT` held pose |
+| Sit exit | approved `FB_SIT` `0.30 s` exit | approved `FB_SIT` `0.30 s` exit | approved `FB_SIT` `0.30 s` exit |
+| Fall | approved `FB_AIR` | approved `FB_AIR` | approved `FB_AIR` |
+| Recovery | approved `FB_RECOVER` | approved `FB_RECOVER` | approved `FB_RECOVER` |
+
+Each generated fallback must be checked at actor scale in its focused fixture and
+its named production proof. Substituting any merely present optional imported clip
+does not satisfy that check.
+
+#### Exact Production Proofs
+
+These commitments replace the former location candidates. Geometry is authored in
+the named landmark scene, which is instanced by
+[`../../scenes/game_world_3d.tscn`](../../scenes/game_world_3d.tscn). Physical
+targets publish the exact semantic completion id; StoryEvents decide any reward.
+
+| Capability | Exact production scene and semantic completion id | Required production geometry | Required manual production-flow check |
+| --- | --- | --- | --- |
+| Traversal jump | [`../../architecture/bagua_tower/bagua_tower_stylized_3d.tscn`](../../architecture/bagua_tower/bagua_tower_stylized_3d.tscn); `bagua_stewardship_jump_crossed` | Lower stewardship terrace: `3.00 x 2.00 m` approach, `1.00 m` clear span, `1.40 x 2.00 m` landing, side rails outside the jump lane, and a recovery volume at the `4.00 m` drop threshold. | Title -> Continue from the fixed pre-ascent fixture; walk and run approaches both cross; a miss restores the lower terrace without changing route state; successful landing publishes once; journal/reload retains only StoryEvent-owned meaning. |
+| Ladder | [`../../architecture/bagua_tower/bagua_tower_stylized_3d.tscn`](../../architecture/bagua_tower/bagua_tower_stylized_3d.tscn); `bagua_stewardship_ladder_ascended` | Straight `3.20 m` service ladder after the jump, `1.20 m` bottom pad, `1.40 x 1.40 m` top pad, `0.75 m` top dismount, and a controllable endpoint blocker for validation. | Continue from the same fixture; mount only after the jump terrace, climb both ways, prove blocked-top retreat and `Esc` mount recovery, dismount at the view deck, and confirm one semantic publication with no softlock after reload. |
+| Carry | [`../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn`](../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn); `piano_ferry_music_case_shelved` | Light `0.50 x 0.35 x 0.30 m` music case, `1.00 x 2.10 m` doorway, `4.00 m` carry lane, and a clear authored shelf socket `1.00 m` forward of the standing anchor. | Title -> Continue from the fixed ferry-care fixture; pick up, walk through the pass doorway, verify the narrow rejection frame, cancel/reset once, then place on the shelf and confirm one completion plus deterministic reload. |
+| Push/pull | [`../../architecture/trinity_church/trinity_church_stylized_3d.tscn`](../../architecture/trinity_church/trinity_church_stylized_3d.tscn); `trinity_hymn_chest_aligned` | `0.80 x 0.55 x 0.65 m` hymn chest on a `3.00 m` authored axis, goal at `2.50 m`, `0.30 m` removable blocker, and required-path reset volume. | Title -> Continue from the fixed church-care fixture; push, pull, release/re-engage, prove blockage with no impulse buildup, reach the goal once, and reload with the StoryEvent result while the transient object resets deterministically. |
+| Sit | [`../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn`](../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn); `harbor_sea_melody_listened` | `0.50 m`-high harbor bench, one seat anchor, `0.90 m` primary exit, `1.00 m` square clear pad, and one blocker that forces the radial fallback exit. | Title -> Continue from the fixed harbor-listening fixture; enter, orbit the camera, exit immediately with R and with `Esc`, prove fallback exit, sit through the authored listening completion once, then journal/reload without retained occupancy. |
+
+The locked next production slice is **Milestone B: Bagua stewardship ascent**:
+shared action/recovery foundation, then the physical traversal jump proof, then the
+authored ladder proof. It is optional and may strengthen
+`preservation_tower_perspective`; it must not gate or rename that existing event.
+This lock is planning approval only—none of Phases 1-3 is implemented by Phase 0.
+
+#### Dated Pre-Refactor Baseline
+
+The pinned `godot_common`, `low_poly_building_editor`, and `storyline_editor`
+submodules were initialized before this baseline. On **2026-07-23**, Godot
+`4.7.stable.official.5b4e0cb0f` produced:
+
+| Scene | Required result | Recorded result |
+| --- | --- | --- |
+| `res://characters/tests/test_human_body_3d.tscn` | `PASS: HumanBody3D adapter smoke test`, status `0` | **PASS**, exact line present, status `0` |
+| `res://characters/tests/test_character_collisions.tscn` (`--fixed-fps 60`) | `PASS: HumanBody3D collision smoke test`, status `0` | **PASS**, exact line present, status `0` |
+| `res://scenes/tests/test_environment_3d.tscn` | `PASS: Environment test scene (res://architecture/bagua_tower/bagua_tower_stylized_3d.tscn)`, status `0` | **PASS**, exact line present, status `0` |
+| `res://scenes/tests/test_game_world_3d.tscn` | `PASS: game_world_3d smoke test`, status `0` | **PASS**, exact line present, status `0` |
+
+The sandboxed runs also logged the macOS CA-certificate lookup diagnostic. The
+production-world scene logged expected unavailable-user-save warnings and
+exit-time resource-leak diagnostics, but its PASS line and process status were
+still `0`. No source, scene, test, plan, or submodule content was changed to obtain
+this baseline.
 
 The workstream is complete only when all five required actions are Current, each has
 a focused fixture and authored production use, all three player models have accepted
@@ -279,27 +439,26 @@ A future physical action needs a concrete story or exploration use, numeric
 authored limits, focused automated validation, and one production-flow manual check
 before it moves into Current scope.
 
-- **Traversal jump:** define obstacle height, gap width, landing width, timings,
-  input buffering, edge forgiveness, air control, takeoff rejection, camera
-  response, and out-of-bounds recovery. It must remain forgiving and must not make
-  precision platforming mandatory. When it becomes Current, `ui_jump` must drive
-  the physical player jump and supersede the production cosmetic-only behavior
-  rather than adding a second ambiguous jump input.
-- **Carry:** define a typed carryable component, light/medium weight classes, pickup
-  range, attachment and collision policy, rotation and placement validation,
-  doorway rejection, reset behavior, and whether placement is save-relevant.
-  Heavy objects are not carryable.
+- **Traversal jump:** implement and validate the Phase 0 obstacle, gap, landing,
+  timing, buffer, forgiveness, air-control, ceiling, and recovery values. It must
+  remain forgiving and must not make precision platforming mandatory. When it
+  becomes Current, `ui_jump` must drive the physical player jump and supersede the
+  production cosmetic-only behavior rather than adding a second ambiguous jump
+  input.
+- **Carry:** implement a typed carryable component with the accepted light/medium
+  movement, pickup, attachment, doorway, placement, cancellation, and recovery
+  contract. Heavy objects are not carryable, and player-controlled rotation stays
+  unsupported.
 - **Deliberate push/pull:** use a constrained target interface distinct from
-  incidental `RigidBody3D` contact; define alignment, interaction distance,
-  movement, release, blockage, cancellation, route protection, and reset behavior.
-- **Sit:** provide authored seat and clear exit transforms. Entry must align within
-  `0.10` world units and `10` degrees unless the seat resource explicitly overrides
-  those tolerances; the player may exit at any time.
-- **Ladder climbing:** define a typed ladder path, mount and dismount transforms,
-  climb speed, input mapping, top/bottom clearance, collision policy, animation,
-  camera behavior, cancellation, blocked-exit handling, and fall recovery. Mounting
-  must use the contextual interaction path unless playtesting demonstrates that an
-  explicit ladder action is clearer.
+  incidental `RigidBody3D` contact and validate the accepted alignment, distance,
+  speed, bounds, blockage, cancellation, route-protection, and reset values.
+- **Sit:** provide authored seat and clear exit transforms using the accepted
+  alignment, blend, clearance, and fallback-search values. A seat resource may make
+  entry or exit more forgiving but not tighter; the player may exit at any time.
+- **Ladder climbing:** implement a typed ladder path with the accepted
+  mount/dismount alignment, climb speed, endpoint clearance, blocked-exit,
+  cancellation, camera, animation-fallback, and recovery behavior. Mounting uses
+  the contextual interaction path.
 
 Dangerous drops must remain behind authored collision while there is no player
 recovery service. Before any unguarded fall ships, the world must restore the
@@ -362,7 +521,9 @@ do not acquire an accidental movement lock.
   jump and recovery, ladder climbing, carry, deliberate push/pull, then sitting and
   integrated action polish. Keep each capability behind its acceptance gates until
   its focused fixture and production-flow check pass.
-- Audit and validate any optional imported clips beyond `idle`, `walk`, and `run`, then map accepted clips to actor states such as the jump window or idle gestures.
+- Build the approved generated animation fallbacks in
+  `CharacterAnimationProfile3D`; do not substitute the rejected optional imported
+  clips.
 - Tune actor movement speed, camera-relative movement, `Camera3DController` follow offset, and camera orbit feel inside the first one-landmark interaction slice so gameplay scale informs visual acceptance.
 - The 3D runtime maps the shared player profile to whole-model swaps:
   adult masculine → `male.glb`, adult feminine → `female.glb`, and teen →
