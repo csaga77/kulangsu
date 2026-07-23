@@ -14,6 +14,10 @@ The player arrives at Long Shan Tunnel after Trinity Church resolves. Tunnel Gui
 
 The tone stays quiet. There is no timer, no NPC pathfinding, and no failure state. "Escort" here means the player traverses the tunnel while a resident's words stay with them — it is a mood and a framing, not a mechanical chase.
 
+In the current production runtime, the entrance, lit-pocket, and exit beats are proxy
+`StorySubject3D` hotspots arranged around the Long Shan marker footprint. There is no authored,
+walkable tunnel interior yet.
+
 ## Rules
 
 - Long Shan Tunnel starts `locked`. It unlocks to `available` when the Trinity church reward event resolves (simultaneously with Bi Shan Tunnel).
@@ -50,8 +54,10 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 - `game/story_event_catalog.gd` and `game/story_event_service.gd` now own Long Shan entry/checkpoint/exit interactions plus the `prompt_completed:long_shan_route` completion/reward beat.
 - `game/landmark_progression.gd` now mainly supplies the generic melody prompt builder and compatibility fallback behind that flow.
 - `resident_catalog.gd` owns the authored beat gates and `landmark_states` fields for `tunnel_guide`.
-- `long_shan_tunnel.tscn` owns both Long Shan presentation and the reusable route world subjects, while each interior trigger still resolves its runtime level from the tunnel parent.
-- Shared tunnel presentation, resident visibility, level masking, and exterior/interior ownership are documented in [`multi_level_spaces.md`](multi_level_spaces.md).
+- `scenes/game_world_3d.tscn` owns the current Long Shan marker anchor and its reusable route world
+  subjects. There is no production `long_shan_tunnel.tscn`, interior level, or tunnel parent.
+- The current marker-based gap and the ownership contract for a future authored interior are
+  documented in [`multi_level_spaces.md`](multi_level_spaces.md).
 
 ## Relevant Files
 
@@ -69,7 +75,8 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 - Related docs:
   - [`../contracts.md`](../contracts.md) — Landmark Progress Contract
   - [`core_melody_loop.md`](core_melody_loop.md)
-  - [`multi_level_spaces.md`](multi_level_spaces.md) — shared tunnel presentation and level behavior
+  - [`multi_level_spaces.md`](multi_level_spaces.md) — current marker-based gap and future 3D
+    tunnel-space contract
   - [`trinity_church.md`](trinity_church.md) — beat gate pattern
   - [`../core_game_workflow.md`](../core_game_workflow.md)
 
@@ -102,7 +109,8 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 - Talk to Ren after the exit resolves. Confirm he redirects the player to Bi Shan if that tunnel is still unresolved, or opens Bagua Tower once both routes are steady.
 - Try talking to tunnel_guide at beat 2 before reaching the exit. Confirm the gate_fallback line appears.
 - Start a Continue game. Confirm the arc is accessible (state: available, entry trigger visible).
-- If shared tunnel presentation or level behavior changed, also run the tunnel validation steps documented in [`multi_level_spaces.md`](multi_level_spaces.md).
+- If a future authored tunnel space, portal, or traversal component changes, also run the focused
+  validation required by [`multi_level_spaces.md`](multi_level_spaces.md).
 
 ## Integration Checklist
 
@@ -110,7 +118,8 @@ The tone stays quiet. There is no timer, no NPC pathfinding, and no failure stat
 - [x] For `tunnel_entry`: set `subject_id = "landmark:long_shan_tunnel.tunnel_entry"`.
 - [x] For the lit-pocket cues: set `subject_id` to the authored StoryEvent subjects and keep the sequence/visibility rules in subject metadata.
 - [x] For `tunnel_exit`: set `subject_id = "landmark:long_shan_tunnel.tunnel_exit"` and keep route gating in StoryEvent subject metadata.
-- [x] Position each trigger at the south mouth, two interior lit pockets, and the north mouth respectively.
+- [x] Position each trigger at its story-space proxy location around the marker footprint; these
+  positions do not claim authored interior geometry.
 
 ## Out Of Scope
 

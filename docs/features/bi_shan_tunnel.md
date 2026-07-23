@@ -12,6 +12,10 @@ Navigation and echo-tracing arc for the second landmark. Establishes the pickup-
 
 The player enters Bi Shan Tunnel after Trinity Church resolves. Three faint echo markers are scattered along the tunnel walls — a north-wall spot, an arch midpoint, and a mural approach near the far end. The player walks the tunnel, presses `R` at each invisible cue volume, and hears a short descriptive line as each echo is collected. Once all three are in hand, a fourth marker appears at the mural chamber at the far end. Pressing `R` at the chamber now opens a short ordered-confirmation prompt that asks the player to settle the contour they just traced. On success, the fragment is awarded, the tunnel becomes legible as a calmer cross-island route, and the journal updates to point toward Long Shan Tunnel or back to Ren if Long Shan is already complete.
 
+In the current production runtime, those named wall and chamber beats are proxy
+`StorySubject3D` hotspots arranged around the Bi Shan marker footprint. There is no authored,
+walkable tunnel interior yet.
+
 The mood stays quiet throughout. There is no timer, no failure state, and no required order for the three echo markers. The chamber trigger is simply hidden until all three echoes are collected.
 
 ## Rules
@@ -44,8 +48,10 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
 - `AppState` owns the shared landmark progress state and the public trigger bridge.
 - `game/story_event_catalog.gd` and `game/story_event_service.gd` now own Bi Shan echo collection, the chamber prompt-open interaction, and the `prompt_completed:bi_shan_chamber` reward follow-through.
 - `game/landmark_progression.gd` now mainly supplies the generic melody prompt builder and compatibility fallback behind that flow.
-- `bi_shan_tunnel.tscn` owns both tunnel presentation and the reusable echo/chamber world subjects; each trigger still resolves its runtime level from the tunnel parent.
-- Shared tunnel presentation, resident visibility, level masking, and exterior/interior ownership are documented in [`multi_level_spaces.md`](multi_level_spaces.md).
+- `scenes/game_world_3d.tscn` owns the current Bi Shan marker anchor and its reusable echo/chamber
+  world subjects. There is no production `bi_shan_tunnel.tscn`, interior level, or tunnel parent.
+- The current marker-based gap and the ownership contract for a future authored interior are
+  documented in [`multi_level_spaces.md`](multi_level_spaces.md).
 
 ## Relevant Files
 
@@ -62,7 +68,8 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
 - Related docs:
   - [`../contracts.md`](../contracts.md) — Landmark Progress Contract
   - [`core_melody_loop.md`](core_melody_loop.md)
-  - [`multi_level_spaces.md`](multi_level_spaces.md) — shared tunnel presentation and level behavior
+  - [`multi_level_spaces.md`](multi_level_spaces.md) — current marker-based gap and future 3D
+    tunnel-space contract
   - [`trinity_church.md`](trinity_church.md) — arc pattern this one follows
   - [`../core_game_workflow.md`](../core_game_workflow.md)
 
@@ -84,21 +91,25 @@ The mood stays quiet throughout. There is no timer, no failure state, and no req
 
 ## Validation
 
-- Run the game, start a New Game, complete the Trinity Church arc. Confirm bi_shan_tunnel advances to `available` and the three echo triggers appear inside the tunnel.
-- Walk to each echo and press R. Confirm each one disappears and the mural chamber trigger appears after the third.
+- Run the game, start a New Game, complete the Trinity Church arc. Confirm bi_shan_tunnel advances
+  to `available` and the three echo proxy subjects appear around the Bi Shan marker route.
+- Walk to each proxy echo position and press R. Confirm each one disappears and the chamber proxy
+  appears after the third.
 - Press R at the chamber. Confirm the prompt opens before the arc resolves, then complete it and confirm the journal Melody tab shows `bi_shan_echo` as a confirmed source and fragments_found increments.
 - Open the journal Map tab after the chamber resolves. Confirm `Bi Shan Tunnel Route` appears under `Dependable routes`.
 - Press R at the chamber before collecting all echoes. Confirm the "silent panel" status line appears and nothing advances.
 - Start a Continue game. Confirm echo triggers are visible (echoes_collected is empty) and the arc is playable.
 - Start a Free Walk game. Confirm echo triggers appear and the arc plays through.
-- If shared tunnel presentation or level behavior changed, also run the tunnel validation steps documented in [`multi_level_spaces.md`](multi_level_spaces.md).
+- If a future authored tunnel space, portal, or traversal component changes, also run the focused
+  validation required by [`multi_level_spaces.md`](multi_level_spaces.md).
 
 ## Integration Checklist
 
 - [x] Place four `StorySubject3D` nodes under the Bi Shan marker in `game_world_3d.tscn` for the tunnel arc: `echo_a`, `echo_b`, `echo_c`, and `chamber`.
 - [x] For echo triggers: set `subject_id` to the authored StoryEvent subjects (`landmark:bi_shan_tunnel.echo_a`, `...echo_b`, `...echo_c`).
 - [x] For the chamber trigger: set `subject_id = "landmark:bi_shan_tunnel.chamber"` and keep the echo prerequisite / visibility rules in StoryEvent subject metadata.
-- [x] Position each trigger node at the matching world location in the tunnel.
+- [x] Position each trigger node at its story-space proxy location around the marker footprint;
+  these positions do not claim authored interior geometry.
 
 ## Out Of Scope
 

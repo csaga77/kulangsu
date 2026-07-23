@@ -177,11 +177,10 @@ Primary folders:
 
 Responsibilities:
 
-- player and NPC control
+- 3D player control, collision-aware movement, and locomotion presentation
 - interaction discovery and inspect requests
-- behavior-tree support code
-- resident presentation hookup, collision-aware routed NPC movement, character visuals, and in-world speech balloon UI
-- metadata-driven LPC sprite composition and development-time metadata generation tooling
+- resident model presentation, local wandering and talk-facing behavior, and in-world speech balloon UI
+- shared low-poly model selection plus transparent 3D player preview rendering
 
 Notes:
 
@@ -268,7 +267,8 @@ Responsibilities:
 
 - shared support code used by the main project
 - agent runbooks and shared documentation assets
-- third-party LPC asset generator content
+- offline third-party LPC asset generator content and licensing reference; the production actor,
+  resident, and preview runtime does not depend on it
 - reusable MP3 conversion editor tooling
 - reusable low-poly building and street authoring tooling
 - reusable storyline schema, catalog loader, and route/dependency editor tooling over parent-owned authored data (routes, phase vocabulary, graph layout) plus an optional host-validation interface, configured through `storyline_editor/*` project settings

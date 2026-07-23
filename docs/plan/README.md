@@ -10,7 +10,10 @@ Use this folder for:
 ## Current Files
 
 - [`implementation_plan.md`](implementation_plan.md) is the canonical status-and-plan document for the current playable game.
-- [`low_poly_3d_replacement.md`](low_poly_3d_replacement.md) is the completed hard-cutover record for replacing the 2D overworld and retiring its character/NPC, landmark/component, level/portal, tilemap terrain/water, overlay weather, and LPC stack.
+- [`low_poly_3d_replacement.md`](low_poly_3d_replacement.md) is the completed hard-cutover record for
+  replacing the 2D overworld and retiring its runtime character/NPC, landmark/component,
+  level/portal, tilemap terrain/water, overlay weather, and LPC renderer/addon stack. The
+  third-party LPC generator remains tracked for offline asset generation and licensing reference.
 
 ## Current Position
 

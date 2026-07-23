@@ -24,6 +24,9 @@ Source of truth:
 - Docs to read first: [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator/README.md)
 - Additional docs: [`../3rdparty/Universal-LPC-Spritesheet-Character-Generator/tools/README.md`](../3rdparty/Universal-LPC-Spritesheet-Character-Generator/tools/README.md)
 - Important note for this repo: the upstream README is also the best source for licensing and attribution expectations around LPC assets
+- Runtime status: the generator remains a tracked submodule for offline asset generation and
+  licensing reference, but its former renderer/addon integration is not part of the production 3D
+  actor, resident, or preview runtime
 
 ### `addons/mp3_to_ogg`
 

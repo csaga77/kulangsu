@@ -38,8 +38,10 @@ through the entire app shell. Per-item status is inline in the phases below; the
   `game_world_3d.tscn` (toggle and `game_main.tscn` preload removed). The 3D overworld is the runtime;
   the 2D scene has been deleted.
 - **Legacy removal complete:** the orphaned 2D character/NPC renderer, physics controllers,
-  behavior tree, pixel-route tests, 2D speech balloon, and Universal LPC runtime/editor submodule
-  have been removed. The final 2D overworld residuals — legacy landmark/component scenes,
+  behavior tree, pixel-route tests, 2D speech balloon, and Universal LPC runtime renderer/addon
+  integration have been removed. The third-party Universal LPC generator submodule remains tracked
+  as an offline asset-generation and licensing reference; the production runtime does not depend on
+  it. The final 2D overworld residuals — legacy landmark/component scenes,
   level/portal helpers, tilemap terrain/water, overlay weather nodes, and their focused tests — are
   also removed. Traveler setup and journal previews render the shared 3D actor/model contract.
 - **Open (accepted follow-ups):** tunnel interior geometry (Bi Shan / Long Shan are still marker
@@ -95,6 +97,8 @@ Preserved (dimension-neutral, must not be forked):
   loader
 - `game/melody_catalog.gd`, save/resume (`game/app_state/story_save_codec.gd` plus `story_save_repository.gd`), journal, BGM, and
   landmark-cue audio
+- `3rdparty/Universal-LPC-Spritesheet-Character-Generator`, retained as an offline asset-generation
+  and licensing reference rather than a production runtime dependency
 - the whole `ui/` shell, HUD, and overlay layer, which already reads shared state rather than the
   world scene directly
 - the **stable subject-id interaction contract**. `StorySubjectArea2D` is a `LevelArea2D`; the 3D
@@ -119,9 +123,10 @@ greenfield rendering work:
   `characters/tests/test_character_collisions.tscn`, `test_low_poly_terrain_3d.tscn`,
   `test_camera_3d_occlusion.tscn`
 
-Gaps the cutover must close: multi-level/tunnel interiors and entrances in 3D, routed
-tunnel-resident visibility, representative landmark result equality, formal
-visual/performance acceptance, and a recorded runtime-direction decision.
+Accepted post-cutover gaps are authored multi-level/tunnel interiors and entrances in 3D, routed
+tunnel-resident visibility, and the release-export performance repeat. The current production
+guardrail covers the marker-based landmark subjects and semantic resume anchors, not portal or
+interior-level transitions.
 
 ## Preconditions: Sidecar Evidence Gates (must be green first)
 
@@ -202,16 +207,18 @@ scene under `scenes/tests/` and a green headless run before the next begins:
    remain plain marker anchors because no stylized tunnel scenes exist yet.
    Still needs in-editor scale/orientation/collision checks against the diorama and, eventually,
    stylized tunnel entrances.
-4. **Multi-level + tunnels + portals** — port `LevelNode2D`/`LevelArea2D`/`LevelRegistry`,
-   `components/portal`, and stairs to 3D interiors, preserving `level_id` semantics and tunnel
-   masking/visibility behavior.
-   *Status: deferred — this is authoring, not a script port.* The 2D `Portal`/`LevelArea2D` system is
+4. **Multi-level + tunnels + portals** — author real 3D interiors, collision, stairs, and explicit
+   source/destination transforms when production routes need them; do not port the retired
+   `LevelNode2D`/`LevelArea2D`/`LevelRegistry` visibility simulation or preserve its `level_id`
+   masking formulas as a runtime requirement.
+   *Status: deferred — this is future authoring, not a script port.* The 2D
+   `Portal`/`LevelArea2D` system is
    a z-layer visibility trick that fakes vertical overlap in 2D; the whole `LevelRegistry` masking
    machinery exists only because 2D cannot represent real stacked space. In true 3D the tunnels
    become actual walkable geometry with collision, so most of that machinery dissolves rather than
-   ports. The remaining real work is modelling the five tunnel/interior spaces as low-poly meshes
-   (via the Building Editor) and placing their entrances — an in-editor content task that needs
-   engine iteration, tracked as the largest open Phase E item.
+   ports. The remaining real work is modelling the planned Bagua and tunnel interior spaces as
+   low-poly geometry, placing collision-safe entrances and exits, and adding focused traversal
+   coverage — an in-editor content task that needs engine iteration.
 5. **Interaction subjects** — add an `Area3D`-based `StorySubject3D` that exposes the same stable
    `subject_id` set as `StorySubjectArea2D` and dispatches through `StoryEventService`. Removing or
    restyling a building must not change subject ids.
@@ -228,8 +235,8 @@ scene under `scenes/tests/` and a green headless run before the next begins:
    `HumanBody3D`; identity, dialogue, routine, and story gates stay in the shared definitions.
    *Status: first pass engine-validated.* `characters/resident_factory.gd`
    spawns one `HumanBody3D` per resident from the same `AppState` resident APIs the 2D
-   `ResidentSpawner` uses, placed at its landmark anchor (tunnel entry/portal anchors cluster at
-   their tunnel proxy until 3D interiors exist). Each resident carries an `npc:<id>` `StorySubject3D`
+   `ResidentSpawner` uses, placed at its landmark anchor (tunnel-associated residents cluster at
+   their tunnel marker until 3D interiors exist). Each resident carries an `npc:<id>` `StorySubject3D`
    so talking routes through the same `activate_story_subject(...)` path; the returned dialogue line
    surfaces via save-status until speech balloons are anchored (item 8).
    `characters/control/resident_controller_3d.gd` (a `BaseController3D`) now gives each resident a
@@ -306,9 +313,11 @@ isolation.
    deleted.
 4. Delete the 2D character/NPC render stack, physics controllers, behavior tree, 2D speech balloon,
    legacy landmark/components and level/portal helpers, tilemap terrain/water, overlay weather stack,
-   obsolete 2D-only tests, and Universal LPC submodule; remove dead references.
-   *Completed 2026-07-13.* The dimension-neutral resident/story/save layer remains intact, and UI
-   previews use `CharacterPreview3D` plus the shared model catalog.
+   obsolete 2D-only tests, and Universal LPC runtime renderer/addon integration; remove dead
+   references while retaining the third-party generator submodule for offline use.
+   *Completed 2026-07-13.* The dimension-neutral resident/story/save layer remains intact, UI
+   previews use `CharacterPreview3D` plus the shared model catalog, and the retained generator
+   submodule is not a production dependency.
 5. Run focused actor, collision, resident, UI, weather, production-world, and main-flow validation;
    confirm no scene or resource references dangle. *Completed with the verified removal pass.*
 
@@ -331,7 +340,7 @@ a parallel exploration lane.
 | `godot_common` `Camera2DController` (usage) | `Camera3DController` | Orbit/zoom/occluder fade |
 | `characters/resident_npc.*` | Resident factory | Driven by existing `.tres` definitions |
 | `architecture/*.tscn` (2D landmarks + components) | Building Editor / `BuildingSpec` low-poly builds | Five canonical landmarks, same roles |
-| `LevelNode2D`/`LevelArea2D`/`portal`/stairs | 3D level + portal + stair components | Preserve `level_id` + tunnel masking |
+| `LevelNode2D`/`LevelArea2D`/`portal`/stairs | Future authored 3D interiors, real stairs, and explicit-transform portals | Do not port 2D `level_id` masking; add focused coverage with the authored space |
 | `StorySubjectArea2D` | `StorySubject3D` (`Area3D`) | Same `subject_id` → same `StoryEventService` |
 | 2D weather overlays | 3D-space weather passes | Re-register host with `WeatherManager` |
 | 2D speech-balloon anchoring | `SpeechBalloon3D` | Dedicated camera-facing 3D label |
@@ -341,8 +350,11 @@ a parallel exploration lane.
 Each phase ships with a focused headless scene under `scenes/tests/` that logs a `PASS` line and
 returns process status `0` on success, nonzero on assertion failure (a logged `PASS` alone is
 insufficient). The first such scene, `scenes/tests/test_game_world_3d.tscn`, boots the runtime world
-and asserts terrain generation, player spawn, five landmark proxies, resident spawning, registered
-story subjects, and a resident talk dispatch through `AppState.activate_story_subject`. Run it with:
+and asserts terrain generation, player spawn, five landmark anchors, resident spawning, the exact
+production landmark/inspectable subject set and request contract, cross-world subject isolation,
+semantic resume-anchor placement/fallback, and resident talk dispatch through
+`AppState.activate_story_subject`. It does not cover unimplemented portal or interior-level
+transitions. Run it with:
 `"/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://scenes/tests/test_game_world_3d.tscn`. Keep the existing story/resident/route/autosave regressions green throughout — they
 exercise the preserved layer and are the guard that the render swap did not leak into gameplay
 rules. The final gate is the standard full main-flow validation after `main.tscn` is repointed.

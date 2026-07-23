@@ -44,7 +44,9 @@ Regression coverage now includes:
 - override-backed resident profile persistence coverage
 - external resident override parity coverage
 - BGM lazy catalog validation and location-fallback variety
-- portal/level transitions across Bagua Tower, tunnels, and multi-level spaces
+- production 3D landmark/inspectable subject ids, dimension-neutral interaction
+  requests, cross-world subject isolation, and semantic resume-anchor placement
+  plus fallback
 
 The low-poly 3D lane is now the production overworld instantiated directly by `main.gd`:
 
@@ -252,7 +254,9 @@ Execution order:
      walkable interiors; this is a known, accepted gap at cutover.
    - Execution: the hard-cutover sequence is recorded in [`low_poly_3d_replacement.md`](low_poly_3d_replacement.md).
      The runtime flip, legacy 2D character/NPC deletion, 3D UI preview migration, Universal LPC
-     submodule removal, final 2D world/landmark/terrain/weather residual cleanup, and canonical doc sweep are complete.
+     runtime renderer/addon removal, final 2D world/landmark/terrain/weather residual cleanup, and
+     canonical doc sweep are complete. The third-party LPC generator remains a tracked submodule for
+     offline asset-generation and licensing reference; the production runtime does not depend on it.
 
 Open art/content decisions:
 
