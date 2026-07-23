@@ -93,14 +93,24 @@ Automated coverage:
 - `game/tests/state/test_app_state_ownership.tscn`
 - `game/tests/persistence/test_story_state_persistence.tscn`
 - `game/tests/persistence/test_story_autosave.tscn`
+- `game/tests/persistence/test_household_care_continue_fixtures.tscn`
 - `scenes/tests/test_game_world_3d.tscn`
 
 Manual closure checks:
 
-- Title -> Continue from an open Winter fixture.
-- Title -> Continue from a legacy post-closer fixture.
+- Run `game/tests/persistence/fixtures/open_winter_continue.tscn`, then use
+  Title -> Continue to review the open Winter fixture.
+- Run `game/tests/persistence/fixtures/legacy_post_closer_continue.tscn`, then use
+  Title -> Continue to review the legacy post-closer fixture.
 - New Game -> winter reveal -> household -> journal -> continue.
 - New Game -> winter reveal -> festival preparation -> journal -> continue.
+
+The two fixed Continue scenes preserve the pre-review story autosave before opening
+the production title flow. Run
+`game/tests/persistence/fixtures/restore_previous_save.tscn` after the review to
+restore it. The open fixture uses the current save format; the post-closer fixture
+intentionally remains V1 and omits both household outcome facts so Continue must
+normalize it to the missed path.
 
 Milestone A remains pending manual visual acceptance until those four production
 checks inspect the expected route, journal, continuation, dialogue, and world

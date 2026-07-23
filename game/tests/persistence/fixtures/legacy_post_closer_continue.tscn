@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://game/tests/persistence/fixtures/prepare_household_care_continue_fixture.gd" id="1_prepare"]
+
+[node name="LegacyPostCloserContinueFixture" type="Node"]
+script = ExtResource("1_prepare")
+fixture_id = "legacy_post_closer"
