@@ -106,16 +106,57 @@ system or an implementation of all five character actions.
 Content slice:
 
 - Add one embodied `family_memory` household/courtyard scene near the ferry district,
-  positioned between `winter_memory_reveal` and `spring_festival_prepared`.
-- Use `family_household_care_seen` as the canonical completed event id. The scene
+  positioned in the Winter window after `winter_memory_reveal`.
+- Use `family_household_care_seen` as the canonical optional route-event id. It is
+  available only while `winter_memory_reveal` is true,
+  `spring_festival_prepared` is false, and `season_phase` is `winter`. The scene
   should contain an arrival, one small act of care, and one reflective response from
   A Po or a parent, with prop or ambience feedback after resolution.
-- Make this the first optional seasonal beat with a transformed absence. If its
-  authored phase closes before completion, publish
-  `family_household_care_missed` and let the later Spring Festival response use the
-  completed-or-missed fact without blocking `spring_festival_resolved`.
+- Use resolution of `spring_festival_prepared` as the exact window-closing trigger.
+  Do not infer expiry from elapsed real time, a hidden day count, or a later generic
+  season transition. If the care event is still unresolved in the same detached
+  transition that resolves the closing trigger, publish
+  `family_household_care_missed` before rebuilding route projection and autosaving.
+- Keep `spring_festival_prepared` and `spring_festival_resolved` independent of both
+  care outcomes. The optional beat changes later texture; it never blocks the main
+  family route or ending access.
 - Keep route rewards in StoryEvents. The scene and props emit semantic subjects or
   completion ids and do not write route state directly.
+
+Locked story-moment contract:
+
+- Add a parent-owned, bounded `StoryMomentLedger` policy over canonical
+  `AppStateSnapshot.story_flags`; do not introduce a second mutable state owner.
+  Its first and initially only definition is `family_household_care`, mapped to
+  route `family_memory`, completed event `family_household_care_seen`, missed fact
+  `family_household_care_missed`, opener `winter_memory_reveal`, Winter phase, and
+  closer `spring_festival_prepared`. Definitions are explicit; suffix matching or
+  arbitrary runtime registration is out of scope.
+- Normalize the ledger inside the existing detached `AppStateTransition`, after
+  authored command effects and story-flag normalization but before projection,
+  change-set construction, autosave, and queued-event delivery. For a live command,
+  preserve any terminal outcome already present in the transition's base snapshot;
+  if the base has no outcome and the command produces both facts, completed wins.
+  The closer publishes missed only when neither the base nor working snapshot has a
+  terminal outcome. Repeating completion, expiry, load normalization, or
+  normalization itself must be a no-op after the first terminal outcome.
+- Run the same normalizer when a save is decoded and resumed. Saves from before the
+  ledger keep the moment open when the opener is resolved and the closer is not;
+  saves at or beyond `spring_festival_prepared` acquire the missed fact when neither
+  outcome exists; seen and missed saves retain their outcome; conflicting old data
+  deterministically normalizes to seen. The facts remain in the existing
+  `story_flags` save payload, so this slice does not need a parallel save field.
+- Extend route projection so a missed alternative closes its mapped route event.
+  `family_household_care_seen` must disappear from available and blocked leads,
+  appear in `missed_beat_ids`, count as terminal when deriving route state, and add
+  no completion score. The seen path remains in `resolved_beat_ids` and earns its
+  authored score. The journal must distinguish one missed optional beat from a
+  blocked beat.
+- Make both facts available to later consumers through normal StoryEvent condition
+  matching. Spring Festival dialogue must have seen and missed variants; the
+  household prop/ambience state must retain a warm/cared-for versus absent/untended
+  distinction; ending tone/summary projection must add care versus regret texture
+  without changing endgame eligibility.
 
 Character-action gate:
 
@@ -130,10 +171,24 @@ Milestone A exit criteria:
 
 - the household scene is playable through the production Story flow and updates the
   journal, world feedback, autosave, and continue state through semantic commands
-- completing and missing the optional beat produce distinct saved facts and later
-  Spring Festival text, while both paths preserve main-route continuity
-- focused route, StoryEvent, missed-beat, and persistence coverage passes, followed
-  by one manual title -> New Game -> household -> journal -> continue check
+- completing and missing the optional beat produce exclusive, idempotent saved facts
+  plus distinct Spring Festival dialogue, prop/ambience state, journal treatment,
+  and ending texture, while both paths preserve main-route continuity
+- route tests cover opening only after `winter_memory_reveal`, closing exactly on
+  `spring_festival_prepared`, no stale available/blocked lead after a miss, no
+  completion score for a miss, and unchanged access to
+  `spring_festival_resolved`
+- state and persistence tests cover one detached commit/autosave for expiry,
+  repeated normalization, repeated completion/close commands, malformed dual-fact
+  normalization, seen/missed save round trips, and pre-ledger saves on both sides of
+  the closing trigger
+- StoryEvent/reactivity tests cover both later dialogue branches, both saved
+  prop/ambience branches, and both ending-tone projections
+- automated coverage is followed by two manual title -> Continue checks from fixed
+  fixtures: one save inside the open Winter window and one legacy save after
+  `spring_festival_prepared`; also play New Game -> winter reveal -> household ->
+  journal -> continue and New Game -> winter reveal -> festival preparation ->
+  journal -> continue to inspect both outcomes in the production world
 - Workstream 6 Phase 0's numeric fixtures, input decisions, animation audit, and five
   approved production proof locations are recorded in
   [`../features/low_poly_actor_3d.md`](../features/low_poly_actor_3d.md)
@@ -141,11 +196,24 @@ Milestone A exit criteria:
 Primary implementation areas:
 
 - `game/storylines/routes/family_memory.tres`
+- new parent-owned `game/story_moment_ledger.gd`
+- `game/app_state.gd`, `game/app_state/app_state_transition.gd`,
+  `game/app_state/app_state_reducer_context.gd`,
+  `game/app_state/app_state_projection.gd`, and
+  `game/app_state/story_save_codec.gd`
+- `game/story_route_graph.gd` and `game/journal_builder.gd`
 - `game/residents/definitions/`
-- `game/story_event_catalog.gd` and `game/story_event_service.gd`
+- `game/story_event_catalog.gd`, `game/story_event_service.gd`, and
+  `game/story_world_reactivity.gd`
 - the authored household/courtyard scene and its `StorySubject3D` nodes
 - `scenes/game_world_3d.tscn` / `scenes/game_world_3d.gd`
-- route, StoryEvent, persistence, and production-world validations
+- `game/tests/story_routes/test_story_routes.*`,
+  `game/tests/story_routes/test_story_event_service.*`,
+  `game/tests/story_routes/test_story_reactivity.*`,
+  `game/tests/state/test_app_state_ownership.*`,
+  `game/tests/persistence/test_story_state_persistence.*`,
+  `game/tests/persistence/test_story_autosave.*`, and
+  `scenes/tests/test_game_world_3d.*`
 
 ### Next
 

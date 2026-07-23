@@ -127,6 +127,36 @@ Current anchors:
 
 These anchors replace the older assumption that `chapter` is the real progression key.
 
+### First Completed-Versus-Missed Window
+
+Milestone A's `family_household_care_seen` is an optional `family_memory` route
+event. Its authored window opens in Winter after `winter_memory_reveal` and closes
+exactly when `spring_festival_prepared` resolves. Ambient clock advancement does not
+close it.
+
+The parent-owned story-moment ledger publishes exactly one terminal fact:
+
+- `family_household_care_seen` when the household/courtyard care scene is completed
+- `family_household_care_missed` when `spring_festival_prepared` resolves first
+
+The first previously committed terminal outcome is permanent. If a transaction with
+no prior outcome completes care and closes the window together, seen wins; malformed
+old-save dual input also normalizes to seen. Repeating either command or loading and
+renormalizing the save is a no-op. Old saves inside the Winter window remain
+eligible, while old saves with `spring_festival_prepared` already resolved acquire
+the missed fact if they lack an outcome.
+
+The care event is an optional branch, not a prerequisite for
+`spring_festival_prepared` or `spring_festival_resolved`. Route projection closes a
+missed care beat instead of leaving it available or blocked forever, identifies it
+separately from resolved work in the journal, and awards no completion score for the
+miss.
+
+Spring Festival dialogue, household prop/ambience state, and ending tone read the
+exclusive published facts through normal StoryEvent conditions. The seen path
+retains warmth and evidence of care; the missed path retains absence and regret.
+Both preserve the same main-route and final-act access.
+
 ## Landmark Route
 
 The five landmarks remain canonical world spaces and the melody route remains the strongest symbolic route.
@@ -191,8 +221,11 @@ Current gameplay-content priority order:
 1. Ship the implementation plan's Milestone A: one embodied household/courtyard
    scene around A Po and family care between `winter_memory_reveal` and
    `spring_festival_prepared`.
-2. Use that scene for the first completed-versus-missed seasonal transformation so
-   absence changes later text and world response without blocking the family route.
+2. Use the parent-owned story-moment ledger for the first
+   completed-versus-missed seasonal transformation: the exact
+   `spring_festival_prepared` close publishes one exclusive outcome, closes route
+   projection, and changes later dialogue, prop/ambience response, and ending
+   texture without blocking the family route.
 3. Push preservation and melody reactivity into more inspectables, props, and
    district-facing world cues, including live reapplication of changed routine
    overrides to already-spawned residents.

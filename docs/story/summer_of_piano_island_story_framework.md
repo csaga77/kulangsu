@@ -143,6 +143,21 @@ missable does not mean broken; missable means emotionally transformed.
 
 A missed beat should not usually block the main route. It should change later echoes, relationship tone, regret weight, ending texture, and the player's understanding of what was lost.
 
+The first planned implementation of this principle is the Winter household-care
+moment:
+
+- `family_household_care_seen` is an optional `family_memory` route event available
+  after `winter_memory_reveal`.
+- `spring_festival_prepared` is its exact window-closing trigger. If preparation
+  resolves first, the story publishes `family_household_care_missed`.
+- Seen and missed are exclusive terminal facts. A previously committed outcome
+  cannot flip; seen wins a no-prior-outcome dual result or malformed old-save
+  conflict, and normalization is idempotent across repeated commands and load.
+- A miss closes the optional route beat without granting its completion score and
+  without blocking Spring Festival preparation, resolution, or the final act.
+- Later Spring Festival dialogue, the household's prop/ambience state, and ending
+  texture remember which fact was published.
+
 Examples of seasonal missability:
 
 - A late-summer A Po memory about where Grandma sat may become a colder winter chair scene if the boy never asked in time.
@@ -394,10 +409,16 @@ The current playable game still uses major anchors to give each season emotional
 - `summer_return_complete`
 - `autumn_pressure_named`
 - `winter_memory_reveal`
+- `spring_festival_prepared`
 - `spring_festival_resolved`
 - `summer_exam_complete`
 
 These anchors should feel like emotional turns in the year, not checklist checkpoints. They should shape the season's meaning, but they do not require every optional route beat to be completed before time moves forward. The summer anchor should be understood as emotional re-entry into the island, not a physical return from elsewhere.
+
+For the first completed-versus-missed slice, `winter_memory_reveal` opens the
+household-care opportunity and `spring_festival_prepared` closes it. The optional
+care outcome changes later emotional evidence; neither outcome gates the anchors
+that follow.
 
 ## Cross-Route Relationship Rules
 
@@ -436,8 +457,10 @@ The next narrative expansion should stay focused on the gaps that most affect th
    the parents, and the cost of care so those beats are not carried mostly by
    dialogue alone.
 2. Make that scene the first completed-versus-missed seasonal transformation, with
-   distinct later dialogue, prop or ambience response, and ending texture while the
-   main family route remains available.
+   `family_household_care_seen` available after `winter_memory_reveal`,
+   `spring_festival_prepared` publishing `family_household_care_missed` when needed,
+   and distinct later dialogue, prop or ambience response, journal closure, and
+   ending texture while the main family route remains available.
 3. Expand `study_future` with more lived middle beats and small world responses so the route keeps its year-long pressure shape between the major turning points.
 4. Grow `preservation_inheritance` into stronger district-facing reactions, props, inspectables, and character-led tasks through Mr. Lin, Mei, Uncle Zhao, Madam Wei, Mr. Huang, Professor Xu, and A Po so stewardship is visible even when the player is not in a resident conversation.
 5. Turn the improved ending and departure language into more playable closing movement once the route-specific copy settles.
