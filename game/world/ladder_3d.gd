@@ -12,6 +12,12 @@ enum LadderState {
 
 const EXIT_FLOOR_PROBE_LIFT := 0.04
 const EXIT_CLEARANCE_SAFE_FRACTION := 0.999
+const ENDPOINT_RADIAL_EXPANSION := 0.10
+const ENDPOINT_VERTICAL_EXPANSION := 0.20
+const BLOCKED_CONTACT_DURATION := 0.20
+const BLOCKED_RETREAT_DURATION := 0.20
+const BLOCKED_RETREAT_DISTANCE := 0.35
+const BLOCKED_ENDPOINT_POSITION_EPSILON := 0.01
 
 @export var bottom_mount_path: NodePath
 @export var top_mount_path: NodePath
@@ -20,12 +26,22 @@ const EXIT_CLEARANCE_SAFE_FRACTION := 0.999
 @export_range(0.1, 5.0, 0.05) var climb_speed := 1.8
 @export_range(0.0, 2.0, 0.01) var alignment_duration := 0.3
 @export_range(0.1, 2.0, 0.05) var endpoint_clearance := 0.75
-@export_range(0.05, 1.0, 0.05) var blocked_retreat_distance := 0.3
+@export_range(0.05, 1.0, 0.05) var blocked_retreat_distance := BLOCKED_RETREAT_DISTANCE:
+	set(_value):
+		# Retained as an exported compatibility field for authored scenes, but the
+		# accepted Milestone B retreat is a locked runtime value.
+		blocked_retreat_distance = BLOCKED_RETREAT_DISTANCE
 
 var m_state := LadderState.IDLE
 var m_alignment_elapsed := 0.0
 var m_alignment_start := Transform3D.IDENTITY
 var m_mount_transform := Transform3D.IDENTITY
+var m_blocked_endpoint := -1
+var m_blocked_contact_elapsed := 0.0
+var m_blocked_retreat_elapsed := 0.0
+var m_blocked_retreat_start := Vector3.ZERO
+var m_blocked_retreat_end := Vector3.ZERO
+var m_blocked_retreating := false
 
 
 func _init() -> void:
@@ -83,6 +99,7 @@ func begin_action(actor: CharacterBody3D) -> bool:
 		super.cancel_action(actor, &"mount_rejected")
 		return false
 	m_state = LadderState.ALIGNING
+	_clear_blocked_exit()
 	m_alignment_elapsed = 0.0
 	m_alignment_start = alignment_start
 	# HumanBody3D may snap to the authored mount while entering ladder mode.
@@ -98,6 +115,7 @@ func cancel_action(actor: CharacterBody3D, reason: StringName = &"cancel") -> vo
 		return
 	set_physics_process(false)
 	m_state = LadderState.IDLE
+	_clear_blocked_exit()
 	_cancel_actor_ladder(actor, m_mount_transform)
 	super.cancel_action(actor, reason)
 
@@ -155,10 +173,6 @@ func _process_alignment(actor: CharacterBody3D, delta: float) -> void:
 
 func _process_climb(actor: CharacterBody3D, delta: float) -> void:
 	var signed_input := _resolve_climb_input(actor)
-	if is_zero_approx(signed_input):
-		_apply_actor_ladder_motion(actor, 0.0, delta)
-		return
-
 	var bottom := _get_bottom_mount_transform()
 	var top := _get_top_mount_transform()
 	var axis_delta := top.origin - bottom.origin
@@ -167,6 +181,18 @@ func _process_climb(actor: CharacterBody3D, delta: float) -> void:
 		cancel_action(actor, &"invalid_path")
 		return
 	var climb_axis := axis_delta / ladder_length
+	if _process_blocked_exit(
+		actor,
+		delta,
+		signed_input,
+		bottom.origin,
+		ladder_length,
+		climb_axis
+	):
+		return
+	if is_zero_approx(signed_input):
+		_apply_actor_ladder_motion(actor, 0.0, delta)
+		return
 	_apply_actor_ladder_motion(actor, signed_input, delta)
 	var progress := clampf(
 		(actor.global_position - bottom.origin).dot(climb_axis),
@@ -179,30 +205,26 @@ func _process_climb(actor: CharacterBody3D, delta: float) -> void:
 	var reached_top := progress >= ladder_length - 0.001 and signed_input > 0.0
 	var reached_bottom := progress <= 0.001 and signed_input < 0.0
 	if reached_top:
-		_try_dismount(actor, true, climb_axis)
+		_try_dismount(actor, true)
 	elif reached_bottom:
-		_try_dismount(actor, false, climb_axis)
+		_try_dismount(actor, false)
 
 
-func _try_dismount(actor: CharacterBody3D, at_top: bool, climb_axis: Vector3) -> void:
+func _try_dismount(actor: CharacterBody3D, at_top: bool) -> void:
 	var exit_transform := _get_top_exit_transform() if at_top else _get_bottom_exit_transform()
 	if !_is_exit_clear(actor, exit_transform):
-		var retreat_direction := -climb_axis if at_top else climb_axis
-		var retreat_position := actor.global_position + retreat_direction * blocked_retreat_distance
-		var bottom_origin := _get_bottom_mount_transform().origin
-		var top_origin := _get_top_mount_transform().origin
-		var ladder_length := bottom_origin.distance_to(top_origin)
-		var retreat_progress := clampf(
-			(retreat_position - bottom_origin).dot(climb_axis),
-			0.0,
-			ladder_length
-		)
-		_move_actor_to_ladder_position(
-			actor,
-			bottom_origin + climb_axis * retreat_progress
-		)
+		_begin_blocked_contact(at_top)
 		return
 
+	_clear_blocked_exit()
+	_complete_dismount(actor, at_top, exit_transform)
+
+
+func _complete_dismount(
+	actor: CharacterBody3D,
+	at_top: bool,
+	exit_transform: Transform3D
+) -> void:
 	set_physics_process(false)
 	m_state = LadderState.IDLE
 	_finish_actor_ladder(actor, exit_transform)
@@ -217,6 +239,102 @@ func _try_dismount(actor: CharacterBody3D, at_top: bool, climb_axis: Vector3) ->
 		semantic_completion_id = &""
 		super.complete_action(actor, completion_context)
 		semantic_completion_id = saved_semantic_id
+
+
+func _process_blocked_exit(
+	actor: CharacterBody3D,
+	delta: float,
+	signed_input: float,
+	bottom_origin: Vector3,
+	ladder_length: float,
+	climb_axis: Vector3
+) -> bool:
+	if m_blocked_endpoint < 0:
+		return false
+	var at_top := m_blocked_endpoint == 1
+	var endpoint_progress := ladder_length if at_top else 0.0
+	var current_progress := clampf(
+		(actor.global_position - bottom_origin).dot(climb_axis),
+		0.0,
+		ladder_length
+	)
+	var input_moves_away := signed_input < 0.0 if at_top else signed_input > 0.0
+	if m_blocked_retreating:
+		var expected_blend := clampf(
+			m_blocked_retreat_elapsed / BLOCKED_RETREAT_DURATION,
+			0.0,
+			1.0
+		)
+		var expected_position := m_blocked_retreat_start.lerp(
+			m_blocked_retreat_end,
+			expected_blend
+		)
+		if actor.global_position.distance_to(expected_position) > BLOCKED_ENDPOINT_POSITION_EPSILON:
+			_clear_blocked_exit()
+			return false
+	if input_moves_away or (
+		!m_blocked_retreating
+		and absf(current_progress - endpoint_progress) > BLOCKED_ENDPOINT_POSITION_EPSILON
+	):
+		_clear_blocked_exit()
+		return false
+
+	var exit_transform := _get_top_exit_transform() if at_top else _get_bottom_exit_transform()
+	if _is_exit_clear(actor, exit_transform):
+		_clear_blocked_exit()
+		var input_moves_toward := signed_input > 0.0 if at_top else signed_input < 0.0
+		if input_moves_toward:
+			_complete_dismount(actor, at_top, exit_transform)
+		return true
+
+	if !m_blocked_retreating:
+		m_blocked_contact_elapsed += delta
+		if m_blocked_contact_elapsed + 0.000001 < BLOCKED_CONTACT_DURATION:
+			return true
+		m_blocked_retreating = true
+		m_blocked_retreat_elapsed = 0.0
+		m_blocked_retreat_start = actor.global_position
+		var retreat_direction := -climb_axis if at_top else climb_axis
+		var retreat_progress := clampf(
+			(current_progress + retreat_direction.dot(climb_axis) * blocked_retreat_distance),
+			0.0,
+			ladder_length
+		)
+		m_blocked_retreat_end = bottom_origin + climb_axis * retreat_progress
+		return true
+
+	m_blocked_retreat_elapsed += delta
+	var retreat_blend := clampf(
+		m_blocked_retreat_elapsed / BLOCKED_RETREAT_DURATION,
+		0.0,
+		1.0
+	)
+	_move_actor_to_ladder_position(
+		actor,
+		m_blocked_retreat_start.lerp(m_blocked_retreat_end, retreat_blend)
+	)
+	if retreat_blend >= 1.0:
+		_clear_blocked_exit()
+	return true
+
+
+func _begin_blocked_contact(at_top: bool) -> void:
+	var endpoint := 1 if at_top else 0
+	if m_blocked_endpoint == endpoint:
+		return
+	m_blocked_endpoint = endpoint
+	m_blocked_contact_elapsed = 0.0
+	m_blocked_retreat_elapsed = 0.0
+	m_blocked_retreating = false
+
+
+func _clear_blocked_exit() -> void:
+	m_blocked_endpoint = -1
+	m_blocked_contact_elapsed = 0.0
+	m_blocked_retreat_elapsed = 0.0
+	m_blocked_retreat_start = Vector3.ZERO
+	m_blocked_retreat_end = Vector3.ZERO
+	m_blocked_retreating = false
 
 
 func _begin_actor_ladder(actor: CharacterBody3D, mount_transform: Transform3D) -> bool:
@@ -296,16 +414,24 @@ func _is_exit_clear(actor: CharacterBody3D, exit_transform: Transform3D) -> bool
 		motion = fallback_direction * endpoint_clearance
 
 	var probe_transform := actor.global_transform
-	probe_transform.origin += Vector3.UP * EXIT_FLOOR_PROBE_LIFT
 	var collision_shape := actor.get_node_or_null("CollisionShape3D") as CollisionShape3D
 	if collision_shape == null or collision_shape.shape == null:
+		probe_transform.origin += Vector3.UP * EXIT_FLOOR_PROBE_LIFT
 		return !actor.test_move(probe_transform, motion)
 	var world := actor.get_world_3d()
 	if world == null or world.direct_space_state == null:
+		probe_transform.origin += Vector3.UP * EXIT_FLOOR_PROBE_LIFT
 		return !actor.test_move(probe_transform, motion)
 
+	var query_shape := _build_expanded_endpoint_shape(collision_shape.shape)
+	var vertical_lift := EXIT_FLOOR_PROBE_LIFT
+	if query_shape != collision_shape.shape:
+		# Keep the expanded capsule's foot above the walkable endpoint floor. The
+		# extra height therefore probes upward from the actor's planted feet.
+		vertical_lift += ENDPOINT_VERTICAL_EXPANSION * 0.5
+	probe_transform.origin += Vector3.UP * vertical_lift
 	var query := PhysicsShapeQueryParameters3D.new()
-	query.shape = collision_shape.shape
+	query.shape = query_shape
 	query.transform = probe_transform * collision_shape.transform
 	query.motion = motion
 	query.collision_mask = actor.collision_mask
@@ -314,6 +440,16 @@ func _is_exit_clear(actor: CharacterBody3D, exit_transform: Transform3D) -> bool
 	query.exclude = [actor.get_rid()]
 	var clearance := world.direct_space_state.cast_motion(query)
 	return !clearance.is_empty() and clearance[0] >= EXIT_CLEARANCE_SAFE_FRACTION
+
+
+func _build_expanded_endpoint_shape(source_shape: Shape3D) -> Shape3D:
+	var capsule := source_shape as CapsuleShape3D
+	if capsule == null:
+		return source_shape
+	var expanded := capsule.duplicate() as CapsuleShape3D
+	expanded.radius = capsule.radius + ENDPOINT_RADIAL_EXPANSION
+	expanded.height = capsule.height + ENDPOINT_VERTICAL_EXPANSION
+	return expanded
 
 
 func _get_bottom_mount_transform() -> Transform3D:
@@ -371,6 +507,7 @@ func _facing_alignment_to_transform(
 func _clear_orphaned_reservation() -> void:
 	set_physics_process(false)
 	m_state = LadderState.IDLE
+	_clear_blocked_exit()
 	m_reserved_actor = null
 
 
