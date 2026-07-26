@@ -14,8 +14,9 @@ const ACTION_TARGET_GROUP := &"character_action_target_3d"
 @export var action_id: StringName = &""
 @export var action_label := "Interact"
 @export_range(-100, 100, 1) var action_priority := 0
-@export_range(0.1, 10.0, 0.05) var interaction_range := 0.9
-@export_range(0.0, 180.0, 0.5) var facing_tolerance_degrees := 20.0
+@export_range(0.1, 10.0, 0.05) var interaction_range := 1.5
+@export_range(0.0, 5.0, 0.05) var max_vertical_delta := 1.0
+@export_range(0.0, 180.0, 0.5) var facing_tolerance_degrees := 60.0
 @export var action_anchor_path: NodePath
 @export var action_enabled := true
 @export var sustained_action := false
@@ -72,6 +73,12 @@ func get_action_distance(actor: CharacterBody3D) -> float:
 	return delta.length()
 
 
+func get_vertical_delta(actor: CharacterBody3D) -> float:
+	if !is_instance_valid(actor):
+		return INF
+	return absf(get_action_anchor_transform(actor).origin.y - actor.global_position.y)
+
+
 func get_facing_alignment(actor: CharacterBody3D) -> float:
 	if !is_instance_valid(actor):
 		return -1.0
@@ -95,6 +102,8 @@ func is_action_available(actor: CharacterBody3D) -> bool:
 	if is_instance_valid(m_reserved_actor) and m_reserved_actor != actor:
 		return false
 	if get_action_distance(actor) > interaction_range:
+		return false
+	if get_vertical_delta(actor) > max_vertical_delta:
 		return false
 	if !is_within_facing_gate(actor):
 		return false

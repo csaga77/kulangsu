@@ -28,6 +28,11 @@ var m_alignment_start := Transform3D.IDENTITY
 var m_mount_transform := Transform3D.IDENTITY
 
 
+func _init() -> void:
+	interaction_range = 0.9
+	facing_tolerance_degrees = 20.0
+
+
 func _ready() -> void:
 	sustained_action = true
 	set_physics_process(false)
@@ -55,6 +60,8 @@ func is_action_available(actor: CharacterBody3D) -> bool:
 		return false
 	var mount_transform := get_action_anchor_transform(actor)
 	if _flat_distance(actor.global_position, mount_transform.origin) > interaction_range:
+		return false
+	if absf(actor.global_position.y - mount_transform.origin.y) > max_vertical_delta:
 		return false
 	return _facing_alignment_to_transform(actor, mount_transform) >= cos(
 		deg_to_rad(facing_tolerance_degrees)
