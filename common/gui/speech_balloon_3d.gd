@@ -15,7 +15,9 @@ const DEFAULT_DURATION := 3.5
 # World-space height of one text line, in metres. The whole balloon scales from this.
 const TEXT_WORLD_SIZE := 0.42
 # Text wrapping width in the label's virtual pixels (world width = WRAP_PIXELS * pixel_size).
-const WRAP_PIXELS := 260.0
+# The camera counter-scale converts this to roughly 315 logical screen pixels at
+# the reference viewport, wide enough for resident dialogue to remain readable.
+const WRAP_PIXELS := 1440.0
 const FONT_PIXELS := 48
 # Extra background around the text, in metres.
 const BG_PADDING := Vector2(0.14, 0.08)
