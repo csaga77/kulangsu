@@ -144,6 +144,10 @@ static func build_story_routes_journal_text(projection: AppStateProjection) -> S
 		)
 
 	sections.append("Route ledger\n%s" % "\n\n".join(PackedStringArray(route_sections)))
+	if bool(projection.story_flags.get("bagua_stewardship_ladder_ascended", false)):
+		sections.append(
+			"Preservation note\nThe Bagua service view revealed patched roofs, rain channels, and narrow lanes as one joined stewardship promise."
+		)
 	sections.append("Lead controls\nPrevious and Next create a manual pin. Auto Lead clears it and returns the HUD to automatic routing.")
 	return "\n\n".join(PackedStringArray(sections))
 

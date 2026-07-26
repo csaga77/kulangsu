@@ -122,6 +122,10 @@ static func build_event_tree() -> Array[Dictionary]:
 							"id": "synthesis_chamber",
 							"subject_bindings": _bagua_synthesis_bindings(),
 						},
+						{
+							"id": "stewardship_ascent",
+							"world_event_bindings": _bagua_stewardship_ascent_bindings(),
+						},
 					],
 				},
 				{
@@ -1639,6 +1643,62 @@ static func _bagua_tower_reward_bindings() -> Array[Dictionary]:
 					},
 				],
 				"landmark_resolved_milestone": "bagua_tower",
+				"autosave_story_progress": true,
+			},
+		},
+	]
+
+
+static func _bagua_stewardship_ascent_bindings() -> Array[Dictionary]:
+	return [
+		{
+			"priority": 100,
+			"event_id": "bagua_stewardship_jump_crossed",
+			"conditions": {
+				"mode": "Story",
+				"story_flag_all": ["bagua_stewardship_jump_crossed"],
+			},
+			"effects": {},
+		},
+		{
+			"priority": 50,
+			"event_id": "bagua_stewardship_jump_crossed",
+			"conditions": {
+				"mode": "Story",
+				"story_flag_all": ["preservation_tower_perspective"],
+			},
+			"effects": {
+				"story_flags": {
+					"bagua_stewardship_jump_crossed": true,
+				},
+				"save_status": "The lower stewardship terrace is safely crossed.",
+				"autosave_story_progress": true,
+			},
+		},
+		{
+			"priority": 100,
+			"event_id": "bagua_stewardship_ladder_ascended",
+			"conditions": {
+				"mode": "Story",
+				"story_flag_all": ["bagua_stewardship_ladder_ascended"],
+			},
+			"effects": {},
+		},
+		{
+			"priority": 50,
+			"event_id": "bagua_stewardship_ladder_ascended",
+			"conditions": {
+				"mode": "Story",
+				"story_flag_all": [
+					"preservation_tower_perspective",
+					"bagua_stewardship_jump_crossed",
+				],
+			},
+			"effects": {
+				"story_flags": {
+					"bagua_stewardship_ladder_ascended": true,
+				},
+				"save_status": "The service ladder opens a quieter stewardship view.",
 				"autosave_story_progress": true,
 			},
 		},

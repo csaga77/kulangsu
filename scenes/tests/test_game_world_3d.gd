@@ -26,6 +26,9 @@ const ActorSurfaceFollowerScript = preload("res://game/world/actor_surface_follo
 const StoryInteractionCoordinatorScript = preload(
 	"res://game/world/story_interaction_coordinator.gd"
 )
+const WorldActionCoordinator3DScript = preload(
+	"res://game/world/world_action_coordinator_3d.gd"
+)
 const APO_HOUSEHOLD_SCRIPT := preload(
 	"res://architecture/apo_household/apo_household_courtyard_3d.gd"
 )
@@ -118,6 +121,11 @@ func _check_world(failures: Array[String]) -> void:
 	)
 	if interaction_coordinator == null or !interaction_coordinator.is_configured():
 		failures.append("world did not configure StoryInteractionCoordinator")
+	var action_coordinator := (
+		m_world.get_node_or_null("WorldActionCoordinator3D") as WorldActionCoordinator3DScript
+	)
+	if action_coordinator == null or !action_coordinator.is_configured():
+		failures.append("world did not configure WorldActionCoordinator3D")
 
 
 func _check_lighting(failures: Array[String]) -> void:
@@ -303,6 +311,133 @@ func _check_landmarks(failures: Array[String]) -> void:
 		var authored_landmark := m_world.get_node_or_null(authored_path)
 		if authored_landmark == null or !_has_static_collision(authored_landmark):
 			failures.append("%s did not generate runtime landmark collision" % authored_path)
+	_check_bagua_stewardship_ascent(failures)
+
+
+func _check_bagua_stewardship_ascent(failures: Array[String]) -> void:
+	var bagua := m_world.get_node_or_null("Landmarks/BaguaTowerProxy")
+	if bagua == null:
+		return
+	var ascent := bagua.get_node_or_null("MilestoneBStewardshipAscent")
+	if ascent == null:
+		failures.append("Bagua Tower is missing MilestoneBStewardshipAscent")
+		return
+	if (
+		!bool(ascent.get_meta("optional_route", false))
+		or !bool(ascent.get_meta("ordinary_route_unchanged", false))
+	):
+		failures.append("Bagua stewardship ascent is not marked as an optional alternate route")
+	if bagua.get_node_or_null("FrontEntranceSteps") == null:
+		failures.append("Bagua stewardship ascent removed the ordinary FrontEntranceSteps route")
+
+	var approach := ascent.get_node_or_null("JumpApproach3x2") as MeshInstance3D
+	var landing := ascent.get_node_or_null("JumpLanding1_4x2") as MeshInstance3D
+	if (
+		approach == null
+		or !(approach.mesh is BoxMesh)
+		or (approach.mesh as BoxMesh).size != Vector3(3.0, 0.2, 2.0)
+	):
+		failures.append("Bagua jump approach is not the accepted 3.00 x 2.00 m geometry")
+	if (
+		landing == null
+		or !(landing.mesh is BoxMesh)
+		or (landing.mesh as BoxMesh).size != Vector3(1.4, 0.2, 2.0)
+	):
+		failures.append("Bagua jump landing is not the accepted 1.40 x 2.00 m geometry")
+	if approach != null and landing != null and approach.mesh is BoxMesh and landing.mesh is BoxMesh:
+		var approach_edge := approach.position.x + (approach.mesh as BoxMesh).size.x * 0.5
+		var landing_edge := landing.position.x - (landing.mesh as BoxMesh).size.x * 0.5
+		if !is_equal_approx(landing_edge - approach_edge, 1.0):
+			failures.append("Bagua lower stewardship terrace clear span is not exactly 1.00 m")
+
+	for rail_name in ["JumpLaneSideRail01", "JumpLaneSideRail02"]:
+		if ascent.get_node_or_null(rail_name) == null:
+			failures.append("Bagua jump lane is missing guarded side %s" % rail_name)
+	var recovery_volume := ascent.get_node_or_null("RecoveryVolume4m") as Area3D
+	if (
+		recovery_volume == null
+		or !is_equal_approx(
+			float(recovery_volume.get("drop_threshold_m")),
+			4.0
+		)
+	):
+		failures.append("Bagua jump lane is missing its authored 4.00 m recovery volume")
+	elif (
+		recovery_volume.get_script() == null
+		or recovery_volume.get_script().resource_path
+			!= "res://game/world/player_recovery_area_3d.gd"
+		or recovery_volume.get("safe_anchor_path") != NodePath("../RecoveryAnchor")
+	):
+		failures.append("Bagua recovery volume is not bound to its authored safe anchor")
+
+	var completion_area := ascent.get_node_or_null("JumpCompletionArea") as Area3D
+	if (
+		completion_area == null
+		or String(completion_area.get("semantic_completion_id"))
+			!= "bagua_stewardship_jump_crossed"
+	):
+		failures.append("Bagua jump landing is missing its exact semantic completion id")
+	elif (
+		completion_area.get_script() == null
+		or completion_area.get_script().resource_path
+			!= "res://game/world/traversal_semantic_completion_area_3d.gd"
+	):
+		failures.append("Bagua jump completion does not use the shared traversal area")
+
+	var bottom_pad := ascent.get_node_or_null("BottomMountPad1_2") as MeshInstance3D
+	var top_pad := ascent.get_node_or_null("TopViewDeckPad1_4x1_4") as MeshInstance3D
+	if (
+		bottom_pad == null
+		or !(bottom_pad.mesh is BoxMesh)
+		or (bottom_pad.mesh as BoxMesh).size != Vector3(1.2, 0.04, 1.2)
+	):
+		failures.append("Bagua service ladder is missing its exact 1.20 m bottom pad")
+	if (
+		top_pad == null
+		or !(top_pad.mesh is BoxMesh)
+		or (top_pad.mesh as BoxMesh).size != Vector3(1.4, 0.2, 1.4)
+	):
+		failures.append("Bagua service ladder is missing its exact 1.40 x 1.40 m top pad")
+
+	var ladder := ascent.get_node_or_null("ServiceLadder3_2m") as Node3D
+	if ladder == null:
+		failures.append("Bagua stewardship ascent is missing ServiceLadder3_2m")
+		return
+	if (
+		ladder.get_script() == null
+		or ladder.get_script().resource_path != "res://game/world/ladder_3d.gd"
+	):
+		failures.append("Bagua service ladder does not use the shared Ladder3D script")
+	if !bool(ladder.get_meta("skip_runtime_collision", false)):
+		failures.append("Bagua ladder visuals are not excluded from runtime trimesh collision")
+	if String(ladder.get("semantic_completion_id")) != "bagua_stewardship_ladder_ascended":
+		failures.append("Bagua service ladder is missing its exact semantic completion id")
+	if (
+		int(ladder.get("action_priority")) != -10
+		or !is_equal_approx(float(ladder.get("interaction_range")), 0.9)
+		or !is_equal_approx(float(ladder.get("facing_tolerance_degrees")), 20.0)
+	):
+		failures.append(
+			"Bagua ladder does not outrank nearby story subjects only inside its narrow mount gate"
+		)
+	var bottom_mount := ladder.get_node_or_null("BottomMount") as Marker3D
+	var top_mount := ladder.get_node_or_null("TopMount") as Marker3D
+	var top_exit := ladder.get_node_or_null("TopExit") as Marker3D
+	if (
+		bottom_mount == null
+		or top_mount == null
+		or !is_equal_approx(top_mount.position.y - bottom_mount.position.y, 3.2)
+	):
+		failures.append("Bagua service ladder path is not exactly 3.20 m")
+	if (
+		top_mount == null
+		or top_exit == null
+		or !is_equal_approx(top_exit.position.distance_to(top_mount.position), 0.75)
+	):
+		failures.append("Bagua service ladder top dismount is not exactly 0.75 m")
+	var blocker := ladder.get_node_or_null("TopEndpointBlocker/CollisionShape3D") as CollisionShape3D
+	if blocker == null or !blocker.disabled:
+		failures.append("Bagua service ladder lacks its controllable disabled endpoint blocker")
 
 
 func _has_static_collision(node: Node) -> bool:
@@ -494,30 +629,47 @@ func _check_talk_dispatch(failures: Array[String]) -> void:
 	var coordinator := (
 		m_world.get_node_or_null("StoryInteractionCoordinator") as StoryInteractionCoordinatorScript
 	)
+	var action_coordinator := (
+		m_world.get_node_or_null("WorldActionCoordinator3D") as WorldActionCoordinator3DScript
+	)
 	var resident_subject: StorySubject3D = null
 	for subject in get_tree().get_nodes_in_group("story_subject_3d"):
 		if String(subject.get("subject_id")).begins_with("npc:"):
 			resident_subject = subject as StorySubject3D
 			break
-	if player == null or resident_subject == null or coordinator == null:
-		failures.append("interaction path is missing its player, coordinator, or resident subject")
+	if (
+		player == null
+		or resident_subject == null
+		or coordinator == null
+		or action_coordinator == null
+	):
+		failures.append(
+			"interaction path is missing its player, coordinators, or resident subject"
+		)
 		return
 
 	player.global_position = resident_subject.global_position
 	coordinator.update_target()
+	action_coordinator.refresh_targets()
+	action_coordinator.update_selection()
 	var selected_subject := coordinator.get_active_subject()
 	if selected_subject == null or !selected_subject.subject_id.begins_with("npc:"):
 		failures.append("resident proximity did not select a resident StorySubject3D")
 		return
+	if action_coordinator.get_selected_story_subject() != resident_subject:
+		failures.append("world action arbitration did not select the nearby resident subject")
+		return
+	if !String(app_state.get_projection().hint).contains("Talk"):
+		failures.append("WorldActionCoordinator3D did not publish the resident action hint")
 
 	var controller: Variant = player.get("controller")
-	if controller == null or !controller.has_signal("inspect_requested"):
-		failures.append("3D player controller has no inspect_requested signal")
+	if controller == null or !controller.has_signal("context_action_requested"):
+		failures.append("3D player controller has no context_action_requested signal")
 		return
 	app_state.update_world_context({"status": ""})
-	controller.emit_signal("inspect_requested")
+	controller.emit_signal("context_action_requested")
 	if String(app_state.get_projection().save_status).is_empty():
-		failures.append("resident inspect input did not dispatch through the interaction coordinator")
+		failures.append("resident context input did not dispatch through WorldActionCoordinator3D")
 
 
 # The interaction coordinator must build the SAME stable request the shared story

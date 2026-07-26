@@ -57,6 +57,10 @@ const INSPECTABLE_DEFINITIONS := {
 		"default_text": "From the railings, the older roofs still read like a pattern more than a responsibility.",
 		"reactions": [
 			{
+				"conditions": {"story_flag_all": ["bagua_stewardship_ladder_ascended"]},
+				"text": "From the service view deck, patched roofs, rain channels, and narrow lanes read as one patient promise: keep the island usable, not merely picturesque.",
+			},
+			{
 				"conditions": {"story_flag_all": ["preservation_tower_perspective"]},
 				"text": "From the railings down, the roofs stop looking quaint and start looking entrusted to everyone still here.",
 			},

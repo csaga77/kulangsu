@@ -183,6 +183,7 @@ func _run() -> void:
 	m_prompt_requests.clear()
 	m_melody_hints.clear()
 	_progress_through_landmark_spine_via_story_subjects()
+	_test_bagua_stewardship_semantics()
 
 	_app_state().start_new_story()
 	_progress_to_winter_memory_via_story_subjects()
@@ -323,6 +324,128 @@ func _run() -> void:
 
 	await get_tree().create_timer(0.2).timeout
 	get_tree().quit(0 if m_failures.is_empty() else 1)
+
+
+func _test_bagua_stewardship_semantics() -> void:
+	_app_state().start_new_story()
+	_app_state().notify_story_world_event("bagua_stewardship_jump_crossed")
+	_assert_true(
+		!bool(_app_state().get_snapshot().story_flags.get(
+			"bagua_stewardship_jump_crossed",
+			false
+		)),
+		"Bagua jump completion stays semantically gated before the tower perspective"
+	)
+
+	_app_state().apply_story_effects({
+		"story_flags": {
+			"preservation_inheritance_seen": true,
+			"preservation_tower_perspective": true,
+		},
+	})
+	var score_before := int(
+		_view().get_route_progress("preservation_inheritance").get(
+			"completion_score",
+			0
+		)
+	)
+	_app_state().notify_story_world_event("bagua_stewardship_ladder_ascended")
+	_assert_true(
+		!bool(_app_state().get_snapshot().story_flags.get(
+			"bagua_stewardship_ladder_ascended",
+			false
+		)),
+		"Bagua ladder meaning requires the settled jump fact"
+	)
+
+	_app_state().notify_story_world_event("bagua_stewardship_jump_crossed")
+	_app_state().notify_story_world_event("bagua_stewardship_jump_crossed")
+	_assert_true(
+		bool(_app_state().get_snapshot().story_flags.get(
+			"bagua_stewardship_jump_crossed",
+			false
+		)),
+		"Settled Bagua landing publishes one persistent stewardship fact"
+	)
+	_app_state().notify_story_world_event("bagua_stewardship_ladder_ascended")
+	_app_state().notify_story_world_event("bagua_stewardship_ladder_ascended")
+	var ascent_flags: Dictionary = _app_state().get_snapshot().story_flags
+	var score_after := int(
+		_view().get_route_progress("preservation_inheritance").get(
+			"completion_score",
+			0
+		)
+	)
+	_assert_true(
+		bool(ascent_flags.get("bagua_stewardship_ladder_ascended", false)),
+		"Settled Bagua top dismount publishes one persistent ladder fact"
+	)
+	_assert_true(
+		bool(ascent_flags.get("preservation_tower_perspective", false))
+			and score_after == score_before,
+		"Bagua ascent leaves the tower perspective resolved and unrescored"
+	)
+	_assert_true(
+		!bool(_view().endgame_state.get("active", false)),
+		"Optional Bagua stewardship facts do not change endgame eligibility"
+	)
+	var journal_text := JournalBuilder.build_story_routes_journal_text(_view())
+	var view_deck_text := String(
+		_app_state().activate_story_subject(
+			"inspectable:bagua_railings",
+			"inspect"
+		).get("text", "")
+	)
+	_assert_true(
+		journal_text.contains("Preservation note")
+			and journal_text.contains("joined stewardship promise"),
+		"The ladder fact unlocks one conditional preservation journal note"
+	)
+	_assert_true(
+		view_deck_text.to_lower().contains("patient promise"),
+		"The ladder fact unlocks the Bagua view-deck world response"
+	)
+
+	_assert_true(
+		_app_state().request_autosave(),
+		"Bagua stewardship facts write through the normal Story autosave boundary"
+	)
+	_app_state().start_free_walk()
+	_assert_true(
+		_app_state().resume_story(),
+		"Continue restores the saved Bagua stewardship ascent"
+	)
+	_assert_true(
+		bool(_app_state().get_snapshot().story_flags.get(
+			"bagua_stewardship_jump_crossed",
+			false
+		))
+			and bool(_app_state().get_snapshot().story_flags.get(
+				"bagua_stewardship_ladder_ascended",
+				false
+			)),
+		"Continue preserves only the two authored Bagua ascent facts"
+	)
+
+	_app_state().start_free_walk()
+	_app_state().apply_story_effects({
+		"story_flags": {
+			"preservation_tower_perspective": true,
+			"bagua_stewardship_jump_crossed": false,
+			"bagua_stewardship_ladder_ascended": false,
+		},
+	})
+	_app_state().notify_story_world_event("bagua_stewardship_jump_crossed")
+	_app_state().notify_story_world_event("bagua_stewardship_ladder_ascended")
+	var free_walk_flags: Dictionary = _app_state().get_snapshot().story_flags
+	_assert_true(
+		!bool(free_walk_flags.get("bagua_stewardship_jump_crossed", false))
+			and !bool(free_walk_flags.get(
+				"bagua_stewardship_ladder_ascended",
+				false
+			)),
+		"Equivalent Free Walk traversal publishes no Bagua story meaning"
+	)
 
 
 func _progress_through_ferry_opening() -> void:

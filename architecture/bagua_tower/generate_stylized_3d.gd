@@ -21,6 +21,13 @@ const OUTPUT_PREVIEW := "res://design/examples/bagua_tower_stylized_3d.png"
 const OUTPUT_CURVED_PREVIEW := (
 	"res://design/examples/bagua_tower_stylized_3d_curved_facade.png"
 )
+const LADDER_SCRIPT_PATH := "res://game/world/ladder_3d.gd"
+const TRAVERSAL_COMPLETION_SCRIPT_PATH := (
+	"res://game/world/traversal_semantic_completion_area_3d.gd"
+)
+const PLAYER_RECOVERY_AREA_SCRIPT_PATH := (
+	"res://game/world/player_recovery_area_3d.gd"
+)
 const FOOTPRINT_AXIS_SCALE := 0.5
 const FOOTPRINT_AREA_RATIO := FOOTPRINT_AXIS_SCALE * FOOTPRINT_AXIS_SCALE
 const SIMPLIFICATION_TARGET := 0.1
@@ -124,6 +131,7 @@ func _build_reference_scene() -> Building3DScript:
 	_add_roofs_and_upper_storey(building)
 	_add_drum(building)
 	_add_dome(building)
+	_add_stewardship_ascent(building)
 	building.refresh_building_geometry_clips()
 	return building
 
@@ -926,6 +934,202 @@ func _add_dome(building: Building3DScript) -> void:
 		0.0,
 		DOME_RED
 	)
+
+
+func _add_stewardship_ascent(building: Building3DScript) -> void:
+	var ascent := Node3D.new()
+	ascent.position = Vector3(-5.5, 0.6, 7.4)
+	ascent.set_meta("optional_route", true)
+	ascent.set_meta("ordinary_route_unchanged", true)
+	ascent.set_meta("jump_span_m", 1.0)
+	ascent.set_meta("ladder_height_m", 3.2)
+	_attach(building, ascent, building, "MilestoneBStewardshipAscent")
+
+	_add_ascent_box(
+		ascent,
+		building,
+		"JumpApproach3x2",
+		Vector3(1.5, 0.0, 0.0),
+		Vector3(3.0, 0.2, 2.0),
+		STONE
+	)
+	_add_ascent_box(
+		ascent,
+		building,
+		"JumpLanding1_4x2",
+		Vector3(4.7, 0.0, 0.0),
+		Vector3(1.4, 0.2, 2.0),
+		CREAM
+	)
+	for side_index in 2:
+		var side_sign := -1.0 if side_index == 0 else 1.0
+		_add_ascent_box(
+			ascent,
+			building,
+			"JumpLaneSideRail%02d" % (side_index + 1),
+			Vector3(2.7, 0.55, side_sign * 1.08),
+			Vector3(5.4, 1.1, 0.1),
+			DARK_WOOD
+		)
+	_add_ascent_box(
+		ascent,
+		building,
+		"BottomMountPad1_2",
+		Vector3(4.8, 0.12, 0.0),
+		Vector3(1.2, 0.04, 1.2),
+		TERRACOTTA_LIGHT
+	)
+	_add_ascent_box(
+		ascent,
+		building,
+		"TopViewDeckPad1_4x1_4",
+		Vector3(6.1, 3.2, 0.0),
+		Vector3(1.4, 0.2, 1.4),
+		CREAM
+	)
+
+	var recovery_anchor := Marker3D.new()
+	recovery_anchor.position = Vector3(1.5, 0.2, 0.0)
+	_attach(ascent, recovery_anchor, building, "RecoveryAnchor")
+	var recovery_volume := Area3D.new()
+	recovery_volume.position = Vector3(2.7, -4.25, 0.0)
+	recovery_volume.add_to_group("player_recovery_volume_3d")
+	_attach_optional_script(recovery_volume, PLAYER_RECOVERY_AREA_SCRIPT_PATH)
+	recovery_volume.set("safe_anchor_path", NodePath("../RecoveryAnchor"))
+	recovery_volume.set("drop_threshold_m", 4.0)
+	_attach(ascent, recovery_volume, building, "RecoveryVolume4m")
+	_add_area_box_shape(
+		recovery_volume,
+		building,
+		"CollisionShape3D",
+		Vector3(7.0, 0.5, 3.0)
+	)
+
+	var jump_completion := Area3D.new()
+	jump_completion.position = Vector3(4.7, 0.22, 0.0)
+	_attach_optional_script(jump_completion, TRAVERSAL_COMPLETION_SCRIPT_PATH)
+	jump_completion.set("semantic_completion_id", &"bagua_stewardship_jump_crossed")
+	jump_completion.set("require_grounded", true)
+	jump_completion.set("one_shot_per_entry", true)
+	_attach(ascent, jump_completion, building, "JumpCompletionArea")
+	_add_area_box_shape(
+		jump_completion,
+		building,
+		"CollisionShape3D",
+		Vector3(1.2, 0.35, 1.8)
+	)
+
+	var ladder := Node3D.new()
+	ladder.position = Vector3(5.4, 0.2, 0.0)
+	_attach_optional_script(ladder, LADDER_SCRIPT_PATH)
+	ladder.set_meta("skip_runtime_collision", true)
+	ladder.set("action_id", &"ladder")
+	ladder.set("action_label", "Climb Service Ladder")
+	ladder.set("action_priority", -10)
+	ladder.set("interaction_range", 0.9)
+	ladder.set("facing_tolerance_degrees", 20.0)
+	ladder.set("action_anchor_path", NodePath("BottomMount"))
+	ladder.set("bottom_mount_path", NodePath("BottomMount"))
+	ladder.set("top_mount_path", NodePath("TopMount"))
+	ladder.set("bottom_exit_path", NodePath("BottomExit"))
+	ladder.set("top_exit_path", NodePath("TopExit"))
+	ladder.set("climb_speed", 1.8)
+	ladder.set("alignment_duration", 0.3)
+	ladder.set("endpoint_clearance", 0.75)
+	ladder.set("blocked_retreat_distance", 0.35)
+	ladder.set("semantic_completion_id", &"bagua_stewardship_ladder_ascended")
+	_attach(ascent, ladder, building, "ServiceLadder3_2m")
+	_add_ladder_markers(ladder, building)
+	_add_ladder_visuals(ladder, building)
+	_add_top_endpoint_blocker(ladder, building)
+
+
+func _add_ascent_box(
+	parent: Node3D,
+	scene_owner: Node,
+	node_name: String,
+	center: Vector3,
+	size: Vector3,
+	color: Color
+) -> void:
+	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.position = center
+	var box_mesh := BoxMesh.new()
+	box_mesh.size = size
+	mesh_instance.mesh = box_mesh
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.roughness = 0.94
+	mesh_instance.material_override = material
+	_attach(parent, mesh_instance, scene_owner, node_name)
+
+
+func _add_area_box_shape(
+	parent: Area3D,
+	scene_owner: Node,
+	node_name: String,
+	size: Vector3
+) -> void:
+	var collision_shape := CollisionShape3D.new()
+	var box_shape := BoxShape3D.new()
+	box_shape.size = size
+	collision_shape.shape = box_shape
+	_attach(parent, collision_shape, scene_owner, node_name)
+
+
+func _add_ladder_markers(ladder: Node3D, scene_owner: Node) -> void:
+	var marker_positions := {
+		"BottomMount": Vector3(-0.6, 0.0, 0.0),
+		"BottomExit": Vector3(-0.75, 0.0, 0.0),
+		"TopMount": Vector3(0.0, 3.2, 0.0),
+		"TopExit": Vector3(0.75, 3.2, 0.0),
+	}
+	for marker_name in marker_positions:
+		var marker := Marker3D.new()
+		marker.position = marker_positions[marker_name]
+		_attach(ladder, marker, scene_owner, marker_name)
+
+
+func _add_ladder_visuals(ladder: Node3D, scene_owner: Node) -> void:
+	for rail_index in 2:
+		var rail_sign := -1.0 if rail_index == 0 else 1.0
+		_add_ascent_box(
+			ladder,
+			scene_owner,
+			"Rail%02d" % (rail_index + 1),
+			Vector3(0.0, 1.6, rail_sign * 0.35),
+			Vector3(0.08, 3.2, 0.08),
+			DARK_WOOD
+		)
+	for rung_index in 9:
+		_add_ascent_box(
+			ladder,
+			scene_owner,
+			"Rung%02d" % (rung_index + 1),
+			Vector3(-0.04, 0.2 + float(rung_index) * 0.35, 0.0),
+			Vector3(0.08, 0.06, 0.78),
+			DARK_WOOD
+		)
+
+
+func _add_top_endpoint_blocker(ladder: Node3D, scene_owner: Node) -> void:
+	var blocker := StaticBody3D.new()
+	blocker.position = Vector3(0.75, 3.75, 0.0)
+	blocker.set_meta("validation_toggle", true)
+	_attach(ladder, blocker, scene_owner, "TopEndpointBlocker")
+	var shape_node := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(0.3, 0.3, 0.3)
+	shape_node.shape = shape
+	shape_node.disabled = true
+	_attach(blocker, shape_node, scene_owner, "CollisionShape3D")
+
+
+func _attach_optional_script(node: Node, script_path: String) -> void:
+	if ResourceLoader.exists(script_path):
+		node.set_script(load(script_path))
+	else:
+		node.set_meta("planned_script_path", script_path)
 
 
 func _add_room(
