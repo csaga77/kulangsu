@@ -10,6 +10,9 @@ enum LadderState {
 	CLIMBING,
 }
 
+const EXIT_FLOOR_PROBE_LIFT := 0.04
+const EXIT_CLEARANCE_SAFE_FRACTION := 0.999
+
 @export var bottom_mount_path: NodePath
 @export var top_mount_path: NodePath
 @export var bottom_exit_path: NodePath
@@ -283,7 +286,26 @@ func _is_exit_clear(actor: CharacterBody3D, exit_transform: Transform3D) -> bool
 			exit_transform.basis.z.normalized()
 		)
 		motion = fallback_direction * endpoint_clearance
-	return !actor.test_move(actor.global_transform, motion)
+
+	var probe_transform := actor.global_transform
+	probe_transform.origin += Vector3.UP * EXIT_FLOOR_PROBE_LIFT
+	var collision_shape := actor.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if collision_shape == null or collision_shape.shape == null:
+		return !actor.test_move(probe_transform, motion)
+	var world := actor.get_world_3d()
+	if world == null or world.direct_space_state == null:
+		return !actor.test_move(probe_transform, motion)
+
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = collision_shape.shape
+	query.transform = probe_transform * collision_shape.transform
+	query.motion = motion
+	query.collision_mask = actor.collision_mask
+	query.collide_with_areas = false
+	query.collide_with_bodies = true
+	query.exclude = [actor.get_rid()]
+	var clearance := world.direct_space_state.cast_motion(query)
+	return !clearance.is_empty() and clearance[0] >= EXIT_CLEARANCE_SAFE_FRACTION
 
 
 func _get_bottom_mount_transform() -> Transform3D:
