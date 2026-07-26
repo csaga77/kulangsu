@@ -2,16 +2,32 @@
 class_name HumanBody3D
 extends CharacterBody3D
 
+enum LocomotionMode {
+	IDLE,
+	WALK,
+	RUN,
+	AIRBORNE,
+	TRAVERSAL_JUMP,
+	LADDER,
+	RECOVERY,
+}
+
 signal global_position_changed()
 signal configuration_changed(cfg: Dictionary)
+signal locomotion_mode_changed(mode: LocomotionMode)
+signal traversal_jump_started()
+signal landed()
+signal recovery_started()
+signal recovery_finished()
+signal ladder_started()
+signal ladder_finished()
 
 const DEFAULT_WALK_SPEED := 4.0
 const DEFAULT_RUN_SPEED := 7.5
+# Retained cosmetic adapter values. Production input uses request_jump(), which
+# owns physical traversal. jump() remains compatible for previews and legacy probes.
 const JUMP_DURATION := 0.55
 const JUMP_HEIGHT := 0.48
-# Downward acceleration applied while the body is airborne (off the floor and not
-# in a cosmetic jump), so a character spawned or walked off an edge above the floor
-# falls and lands instead of hovering. MAX_FALL_SPEED caps the descent.
 const GRAVITY := 16.0
 const MAX_FALL_SPEED := 12.0
 const DEFAULT_BODY_HEIGHT := 1.72
@@ -22,6 +38,18 @@ const RIGID_BODY_PUSH_MAX_EFFECTIVE_MASS := 1.0
 const RIGID_BODY_PUSH_MAX_IMPULSE := 1.2
 const MIN_RIGID_BODY_PUSH_SPEED_DELTA := 0.002
 const BaseController3DScript = preload("res://characters/control/base_controller_3d.gd")
+const CharacterMotionIntent3DScript = preload(
+	"res://characters/control/character_motion_intent_3d.gd"
+)
+const CharacterAnimationProfile3DScript = preload(
+	"res://characters/actions/character_animation_profile_3d.gd"
+)
+const CharacterActionController3DScript = preload(
+	"res://characters/actions/character_action_controller_3d.gd"
+)
+const PlayerRecoveryController3DScript = preload(
+	"res://characters/control/player_recovery_controller_3d.gd"
+)
 # Default character model. Alternate models (boy.glb, female.glb) live alongside
 # it in assets/characters and can be assigned through character_model_scene.
 const CharacterModelScene: PackedScene = preload("res://assets/characters/male.glb")
@@ -93,6 +121,25 @@ const DEFAULT_CHARACTER_MODEL_HEIGHT := 0.998
 
 @export_group("3D Navigation")
 @export_range(0.0, 5.0, 0.05) var grounding_speed := 1.6
+@export_range(0.0, 30.0, 0.1) var gravity := GRAVITY
+@export_range(0.0, 30.0, 0.1) var maximum_fall_speed := MAX_FALL_SPEED
+
+@export_group("Traversal Jump")
+@export_range(0.0, 12.0, 0.05) var jump_takeoff_velocity := 4.80
+@export_range(0.0, 12.0, 0.05) var jump_release_velocity := 2.00
+@export_range(0.0, 12.0, 0.05) var jump_horizontal_speed_cap := 4.50
+@export_range(0.0, 1.0, 0.01) var jump_buffer_seconds := 0.16
+@export_range(0.0, 1.0, 0.01) var jump_coyote_seconds := 0.18
+@export_range(0.0, 1.0, 0.01) var jump_ceiling_clearance := 0.20
+@export_range(0.0, 20.0, 0.1) var air_control_acceleration := 6.00
+@export_range(0.0, 5.0, 0.05) var air_control_max_delta := 1.00
+@export_range(0.0, 1.0, 0.01) var landing_control_delay := 0.10
+
+@export_group("Recovery")
+@export_range(0.0, 2.0, 0.01) var recovery_stable_seconds := 0.25
+@export_range(0.0, 20.0, 0.1) var recovery_drop_distance := 4.00
+@export_range(0.0, 10.0, 0.1) var unsupported_recovery_seconds := 2.50
+@export_range(0.0, 1.0, 0.01) var recovery_settle_seconds := 0.15
 
 @export_group("Character Model")
 @export var character_model_scene: PackedScene = CharacterModelScene:
@@ -127,6 +174,15 @@ const DEFAULT_CHARACTER_MODEL_HEIGHT := 0.998
 @export var model_idle_animation := "idle"
 @export var model_walk_animation := "walk"
 @export var model_run_animation := "run"
+@export var animation_profile: CharacterAnimationProfile3DScript = (
+	CharacterAnimationProfile3DScript.new()
+)
+@export var action_controller: CharacterActionController3DScript = (
+	CharacterActionController3DScript.new()
+)
+@export var recovery_controller: PlayerRecoveryController3DScript = (
+	PlayerRecoveryController3DScript.new()
+)
 
 @export var configuration: Dictionary:
 	get:
@@ -145,9 +201,23 @@ const DEFAULT_CHARACTER_MODEL_HEIGHT := 0.998
 var m_cached_configuration: Dictionary = {}
 var m_has_ready := false
 var m_last_global_position := Vector3.ZERO
-var m_did_move_this_frame := false
+# Legacy visual-only jump state used only by jump().
 var m_is_currently_jumping := false
 var m_jump_timer := 0.0
+var m_pending_motion_intent: CharacterMotionIntent3DScript = (
+	CharacterMotionIntent3DScript.new()
+)
+var m_locomotion_mode: LocomotionMode = LocomotionMode.IDLE
+var m_physical_jump_active := false
+var m_jump_buffer_remaining := 0.0
+var m_time_since_grounded := INF
+var m_jump_takeoff_horizontal_velocity := Vector3.ZERO
+var m_landing_timer := 0.0
+var m_recovery_timer := 0.0
+var m_ladder_mount_transform := Transform3D.IDENTITY
+var m_ladder_axis := Vector3.UP
+var m_ladder_distance := 0.0
+var m_last_animation_phase := -1
 
 var m_visual_root: Node3D = null
 var m_debug_box_part: MeshInstance3D = null
@@ -161,14 +231,37 @@ var m_skeleton_debug_material: StandardMaterial3D = null
 func _ready() -> void:
 	_ensure_collision_shape()
 	_ensure_visual_nodes()
+	if animation_profile == null:
+		animation_profile = CharacterAnimationProfile3DScript.new()
+	if action_controller == null:
+		action_controller = CharacterActionController3DScript.new()
+	action_controller.setup(self)
+	if recovery_controller == null:
+		recovery_controller = PlayerRecoveryController3DScript.new()
+	recovery_controller.setup(self)
 	_update_state()
 	_sync_debug_box()
 	m_has_ready = true
 	m_last_global_position = global_position
+	recovery_controller.set_safe_transform(global_transform)
 	_setup_controller()
 
 
+func _notification(what: int) -> void:
+	if (
+		what == NOTIFICATION_PAUSED
+		and is_inside_tree()
+		and !Engine.is_editor_hint()
+	):
+		_settle_transient_state()
+
+
 func _exit_tree() -> void:
+	_settle_transient_state()
+	if action_controller != null:
+		action_controller.teardown()
+	if recovery_controller != null:
+		recovery_controller.teardown()
 	_teardown_controller()
 
 
@@ -188,22 +281,40 @@ func move(direction_vector: Vector3) -> void:
 	move_with_speed(direction_vector, movement_speed)
 
 
+## Compatibility adapter for manually driven probes and older controllers.
+## Production controllers use submit_motion_intent(), which is consumed once by
+## this actor's _physics_process. A controller-less probe is integrated immediately
+## so existing focused collision fixtures retain one step per explicit call.
 func move_with_speed(direction_vector: Vector3, movement_speed: float) -> void:
 	var flat_direction := Vector3(direction_vector.x, 0.0, direction_vector.z)
 	if flat_direction.length_squared() > 0.000001:
 		flat_direction = flat_direction.normalized()
-	velocity.x = flat_direction.x * movement_speed
-	velocity.z = flat_direction.z * movement_speed
-	m_did_move_this_frame = true
-	var grounded_before_move := is_grounded()
-	if grounded_before_move and !m_is_currently_jumping:
-		velocity.y = -grounding_speed
-	elif !m_is_currently_jumping:
-		# Airborne and not in a cosmetic jump: accumulate gravity so the body falls
-		# to the floor instead of walking through the air.
-		velocity.y = maxf(velocity.y - GRAVITY * get_physics_process_delta_time(), -MAX_FALL_SPEED)
-	move_and_slide()
-	_apply_rigid_body_pushes(flat_direction, movement_speed)
+	var intent := CharacterMotionIntent3DScript.new(flat_direction, movement_speed)
+	if controller != null:
+		submit_motion_intent(intent)
+		# Preserve the adapter's immediate velocity observability without performing
+		# a second physics integration.
+		velocity.x = flat_direction.x * movement_speed
+		velocity.z = flat_direction.z * movement_speed
+		return
+	_integrate_motion_intent(intent, get_physics_process_delta_time())
+
+
+func submit_motion_intent(intent: CharacterMotionIntent3DScript) -> void:
+	if intent == null:
+		m_pending_motion_intent = CharacterMotionIntent3DScript.new()
+		return
+	m_pending_motion_intent = CharacterMotionIntent3DScript.new(
+		intent.direction,
+		intent.movement_speed
+	)
+	if (
+		!is_airborne()
+		and !is_on_ladder()
+		and !is_recovering()
+	):
+		velocity.x = m_pending_motion_intent.direction.x * m_pending_motion_intent.movement_speed
+		velocity.z = m_pending_motion_intent.direction.z * m_pending_motion_intent.movement_speed
 
 
 func _apply_rigid_body_pushes(horizontal_direction: Vector3, movement_speed: float) -> void:
@@ -252,8 +363,217 @@ func jump() -> void:
 	_update_state()
 
 
+## Requests the production physical jump. The request starts immediately during
+## coyote time or queues for the accepted pre-landing buffer.
+func request_jump() -> bool:
+	if !is_action_free() or !is_free_locomotion() or m_is_currently_jumping:
+		return false
+	m_jump_buffer_remaining = jump_buffer_seconds
+	return _try_start_physical_jump()
+
+
+func release_jump() -> void:
+	if (
+		m_physical_jump_active
+		and velocity.y > jump_release_velocity
+		and velocity.y > 0.0
+	):
+		velocity.y = jump_release_velocity
+
+
+func get_jump_buffer_remaining() -> float:
+	return m_jump_buffer_remaining
+
+
+func get_coyote_remaining() -> float:
+	return maxf(jump_coyote_seconds - m_time_since_grounded, 0.0)
+
+
 func is_grounded() -> bool:
-	return !m_is_currently_jumping and is_on_floor()
+	return (
+		!m_is_currently_jumping
+		and !is_airborne()
+		and m_locomotion_mode != LocomotionMode.LADDER
+		and m_locomotion_mode != LocomotionMode.RECOVERY
+		and is_on_floor()
+	)
+
+
+func get_locomotion_mode() -> LocomotionMode:
+	return m_locomotion_mode
+
+
+func get_locomotion_state() -> LocomotionMode:
+	return get_locomotion_mode()
+
+
+func is_free_locomotion() -> bool:
+	return m_locomotion_mode in [
+		LocomotionMode.IDLE,
+		LocomotionMode.WALK,
+		LocomotionMode.RUN,
+		LocomotionMode.AIRBORNE,
+		LocomotionMode.TRAVERSAL_JUMP,
+	]
+
+
+func is_airborne() -> bool:
+	return m_locomotion_mode in [
+		LocomotionMode.AIRBORNE,
+		LocomotionMode.TRAVERSAL_JUMP,
+	]
+
+
+func is_recovering() -> bool:
+	return m_locomotion_mode == LocomotionMode.RECOVERY
+
+
+func is_on_ladder() -> bool:
+	return m_locomotion_mode == LocomotionMode.LADDER
+
+
+func get_action_mode() -> int:
+	if action_controller == null:
+		return CharacterActionController3DScript.ActionMode.FREE
+	return int(action_controller.get_action_mode())
+
+
+func is_action_free() -> bool:
+	return action_controller == null or action_controller.is_free()
+
+
+## Begins ladder locomotion at an authored mount transform. Ladder target selection,
+## endpoint clearance, and StoryEvent meaning remain world-owned.
+func begin_ladder(
+	mount_transform: Transform3D,
+	climb_axis: Vector3 = Vector3.UP
+) -> bool:
+	if !is_action_free() or !is_grounded() or !is_free_locomotion():
+		return false
+	var normalized_axis := climb_axis.normalized()
+	if normalized_axis.is_zero_approx():
+		return false
+	m_ladder_mount_transform = mount_transform
+	m_ladder_axis = normalized_axis
+	m_ladder_distance = 0.0
+	global_transform = mount_transform
+	velocity = Vector3.ZERO
+	m_physical_jump_active = false
+	m_jump_buffer_remaining = 0.0
+	_set_locomotion_mode(LocomotionMode.LADDER)
+	_play_animation_phase(
+		CharacterAnimationProfile3DScript.Phase.LADDER_MOUNT,
+		true
+	)
+	ladder_started.emit()
+	return true
+
+
+## Applies signed ladder intent while constraining the actor to the authored axis.
+func apply_ladder_motion(
+	signed_input: float,
+	delta: float,
+	climb_speed: float = 1.80
+) -> void:
+	if !is_on_ladder():
+		return
+	_play_animation_phase(
+		CharacterAnimationProfile3DScript.Phase.LADDER_CLIMB
+	)
+	m_ladder_distance += signed_input * maxf(climb_speed, 0.0) * maxf(delta, 0.0)
+	var ladder_transform := m_ladder_mount_transform
+	ladder_transform.origin = (
+		m_ladder_mount_transform.origin + m_ladder_axis * m_ladder_distance
+	)
+	global_transform = ladder_transform
+	velocity = Vector3.ZERO
+
+
+## Compatibility target-position form used by the world coordinator. The target is
+## projected onto the ladder axis so no free XZ drift can enter actor state.
+func move_on_ladder(target_position: Vector3, climb_speed: float = 1.80) -> void:
+	if !is_on_ladder():
+		return
+	_play_animation_phase(
+		CharacterAnimationProfile3DScript.Phase.LADDER_CLIMB
+	)
+	var target_distance := (
+		target_position - m_ladder_mount_transform.origin
+	).dot(m_ladder_axis)
+	m_ladder_distance = move_toward(
+		m_ladder_distance,
+		target_distance,
+		maxf(climb_speed, 0.0) * get_physics_process_delta_time()
+	)
+	var ladder_transform := m_ladder_mount_transform
+	ladder_transform.origin = (
+		m_ladder_mount_transform.origin + m_ladder_axis * m_ladder_distance
+	)
+	global_transform = ladder_transform
+	velocity = Vector3.ZERO
+
+
+func finish_ladder(exit_transform: Transform3D) -> void:
+	if !is_on_ladder():
+		return
+	_play_animation_phase(
+		CharacterAnimationProfile3DScript.Phase.LADDER_DISMOUNT,
+		true
+	)
+	global_transform = exit_transform
+	velocity = Vector3.ZERO
+	_set_locomotion_mode(LocomotionMode.IDLE)
+	set_safe_transform(exit_transform)
+	ladder_finished.emit()
+
+
+func cancel_ladder(mount_transform: Transform3D) -> void:
+	if !is_on_ladder():
+		return
+	_play_animation_phase(
+		CharacterAnimationProfile3DScript.Phase.LADDER_DISMOUNT,
+		true
+	)
+	global_transform = mount_transform
+	velocity = Vector3.ZERO
+	_set_locomotion_mode(LocomotionMode.IDLE)
+	set_safe_transform(mount_transform)
+	ladder_finished.emit()
+
+
+func set_safe_transform(safe_transform: Transform3D) -> void:
+	if recovery_controller == null:
+		recovery_controller = PlayerRecoveryController3DScript.new()
+		recovery_controller.setup(self)
+	recovery_controller.set_safe_transform(safe_transform)
+
+
+func get_safe_transform() -> Transform3D:
+	if recovery_controller == null:
+		return global_transform
+	return recovery_controller.get_safe_transform()
+
+
+func has_safe_transform() -> bool:
+	return recovery_controller != null and recovery_controller.has_safe_transform()
+
+
+func recover_to_transform(safe_transform: Transform3D) -> void:
+	set_safe_transform(safe_transform)
+	_begin_recovery(safe_transform)
+
+
+func recover_to_safe_transform() -> void:
+	if has_safe_transform():
+		_begin_recovery(get_safe_transform())
+
+
+func settle_for_pause() -> void:
+	_settle_transient_state()
+
+
+func cleanup_for_unload() -> void:
+	_settle_transient_state()
 
 
 func get_direction_vector() -> Vector3:
@@ -321,29 +641,257 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
-	m_did_move_this_frame = false
+	_advance_transient_timers(delta)
+	m_pending_motion_intent = CharacterMotionIntent3DScript.new()
 	_process_controller(delta)
-	# When a controlled body was not actively moved this frame (idle, or a controller
-	# that issued no move), keep advancing its vertical physics so gravity settles it
-	# onto the floor instead of leaving it hovering. Skipped when there is no
-	# controller (e.g. manually driven test probes) so we never double-step physics.
-	if controller != null and not m_did_move_this_frame:
-		_apply_passive_vertical_motion(delta)
+	if controller == null:
+		return
+	if is_on_ladder() or is_recovering():
+		velocity = Vector3.ZERO
+		return
+	_integrate_motion_intent(m_pending_motion_intent, delta)
 
 
-# Vertical-only physics step for an idle controlled body: hold horizontal velocity
-# at zero and either keep the gentle grounding press while on the floor or apply
-# gravity while airborne, so the character drops onto and rests on the floor
-# beneath it without any horizontal input.
+## Compatibility helper retained for focused callers. It goes through the same
+## single integration path as all other motion.
 func _apply_passive_vertical_motion(delta: float) -> void:
-	velocity.x = 0.0
-	velocity.z = 0.0
-	var grounded_before_move := is_grounded()
-	if grounded_before_move and !m_is_currently_jumping:
+	_integrate_motion_intent(CharacterMotionIntent3DScript.new(), delta)
+
+
+func _integrate_motion_intent(
+	intent: CharacterMotionIntent3DScript,
+	delta: float
+) -> void:
+	if is_on_ladder() or is_recovering():
+		velocity = Vector3.ZERO
+		return
+	var safe_intent := intent
+	if safe_intent == null:
+		safe_intent = CharacterMotionIntent3DScript.new()
+	var flat_direction := safe_intent.direction
+	var movement_speed := safe_intent.movement_speed
+	var was_on_floor := is_on_floor()
+
+	if m_physical_jump_active or !was_on_floor:
+		_apply_air_control(flat_direction, movement_speed, delta)
+	else:
+		velocity.x = flat_direction.x * movement_speed
+		velocity.z = flat_direction.z * movement_speed
+
+	if m_is_currently_jumping:
+		# Legacy cosmetic adapter keeps the capsule planted.
+		if was_on_floor:
+			velocity.y = -grounding_speed
+	elif m_physical_jump_active or !was_on_floor:
+		velocity.y = maxf(
+			velocity.y - gravity * delta,
+			-maximum_fall_speed
+		)
+	else:
 		velocity.y = -grounding_speed
-	elif !m_is_currently_jumping:
-		velocity.y = maxf(velocity.y - GRAVITY * delta, -MAX_FALL_SPEED)
+
 	move_and_slide()
+	_apply_rigid_body_pushes(flat_direction, movement_speed)
+
+	if is_on_ceiling() and velocity.y > 0.0:
+		velocity.y = 0.0
+		m_physical_jump_active = false
+		_set_locomotion_mode(LocomotionMode.AIRBORNE)
+
+	_update_locomotion_after_motion(was_on_floor, safe_intent)
+	_update_recovery_tracking(delta)
+
+
+func _apply_air_control(
+	requested_direction: Vector3,
+	requested_speed: float,
+	delta: float
+) -> void:
+	var desired_speed := minf(requested_speed, jump_horizontal_speed_cap)
+	var desired_velocity := requested_direction * desired_speed
+	var current_horizontal := Vector3(velocity.x, 0.0, velocity.z)
+	var candidate := current_horizontal.move_toward(
+		desired_velocity,
+		air_control_acceleration * maxf(delta, 0.0)
+	)
+	var takeoff_delta := candidate - m_jump_takeoff_horizontal_velocity
+	if takeoff_delta.length() > air_control_max_delta:
+		candidate = (
+			m_jump_takeoff_horizontal_velocity
+			+ takeoff_delta.normalized() * air_control_max_delta
+		)
+	if candidate.length() > jump_horizontal_speed_cap:
+		candidate = candidate.normalized() * jump_horizontal_speed_cap
+	velocity.x = candidate.x
+	velocity.z = candidate.z
+
+
+func _update_locomotion_after_motion(
+	was_on_floor: bool,
+	intent: CharacterMotionIntent3DScript
+) -> void:
+	var now_on_floor := is_on_floor()
+	if now_on_floor:
+		m_time_since_grounded = 0.0
+		if !was_on_floor:
+			m_physical_jump_active = false
+			m_landing_timer = landing_control_delay
+			landed.emit()
+			_play_animation_phase(
+				CharacterAnimationProfile3DScript.Phase.LAND,
+				true
+			)
+		_set_ground_locomotion_mode(intent)
+		if m_jump_buffer_remaining > 0.0:
+			_try_start_physical_jump()
+		return
+
+	m_time_since_grounded += get_physics_process_delta_time()
+	if was_on_floor:
+		var ledge_velocity := Vector3(velocity.x, 0.0, velocity.z)
+		if ledge_velocity.length() > jump_horizontal_speed_cap:
+			ledge_velocity = ledge_velocity.normalized() * jump_horizontal_speed_cap
+		m_jump_takeoff_horizontal_velocity = ledge_velocity
+		velocity.x = ledge_velocity.x
+		velocity.z = ledge_velocity.z
+	if m_physical_jump_active and velocity.y > 0.0:
+		_set_locomotion_mode(LocomotionMode.TRAVERSAL_JUMP)
+	else:
+		m_physical_jump_active = false
+		_set_locomotion_mode(LocomotionMode.AIRBORNE)
+
+
+func _set_ground_locomotion_mode(intent: CharacterMotionIntent3DScript) -> void:
+	if intent != null and intent.is_moving():
+		_set_locomotion_mode(
+			LocomotionMode.RUN if is_running else LocomotionMode.WALK
+		)
+	else:
+		_set_locomotion_mode(LocomotionMode.IDLE)
+
+
+func _try_start_physical_jump() -> bool:
+	if !is_free_locomotion() or m_physical_jump_active:
+		return false
+	var has_floor_forgiveness := (
+		is_on_floor() or m_time_since_grounded <= jump_coyote_seconds
+	)
+	if !has_floor_forgiveness:
+		return false
+	if !_has_jump_clearance():
+		if is_on_floor():
+			m_jump_buffer_remaining = 0.0
+		return false
+	m_jump_buffer_remaining = 0.0
+	m_is_currently_jumping = false
+	m_jump_timer = 0.0
+	_apply_visual_offset()
+
+	var initial_horizontal := Vector3(velocity.x, 0.0, velocity.z)
+	if m_pending_motion_intent != null and m_pending_motion_intent.is_moving():
+		initial_horizontal = (
+			m_pending_motion_intent.direction
+			* minf(
+				m_pending_motion_intent.movement_speed,
+				jump_horizontal_speed_cap
+			)
+		)
+	if initial_horizontal.length() > jump_horizontal_speed_cap:
+		initial_horizontal = initial_horizontal.normalized() * jump_horizontal_speed_cap
+	m_jump_takeoff_horizontal_velocity = initial_horizontal
+	velocity.x = initial_horizontal.x
+	velocity.z = initial_horizontal.z
+	velocity.y = jump_takeoff_velocity
+	m_physical_jump_active = true
+	_set_locomotion_mode(LocomotionMode.TRAVERSAL_JUMP)
+	traversal_jump_started.emit()
+	return true
+
+
+func _has_jump_clearance() -> bool:
+	if jump_ceiling_clearance <= 0.0:
+		return true
+	return !test_move(global_transform, Vector3.UP * jump_ceiling_clearance)
+
+
+func _advance_transient_timers(delta: float) -> void:
+	m_jump_buffer_remaining = maxf(m_jump_buffer_remaining - delta, 0.0)
+	m_landing_timer = maxf(m_landing_timer - delta, 0.0)
+	if !is_recovering():
+		return
+	m_recovery_timer = maxf(m_recovery_timer - delta, 0.0)
+	if m_recovery_timer > 0.0:
+		return
+	_set_locomotion_mode(LocomotionMode.IDLE)
+	recovery_finished.emit()
+
+
+func _update_recovery_tracking(delta: float) -> void:
+	if recovery_controller == null or is_recovering():
+		return
+	recovery_controller.stable_seconds = recovery_stable_seconds
+	recovery_controller.drop_distance = recovery_drop_distance
+	recovery_controller.unsupported_seconds = unsupported_recovery_seconds
+	if recovery_controller.update_after_motion(
+		delta,
+		is_on_floor(),
+		is_free_locomotion(),
+		velocity.y
+	):
+		recover_to_safe_transform()
+
+
+func _begin_recovery(target_transform: Transform3D) -> void:
+	var was_on_ladder := is_on_ladder()
+	if action_controller != null:
+		action_controller.cleanup()
+	global_transform = target_transform
+	velocity = Vector3.ZERO
+	m_physical_jump_active = false
+	m_is_currently_jumping = false
+	m_jump_timer = 0.0
+	m_jump_buffer_remaining = 0.0
+	m_ladder_distance = 0.0
+	if recovery_controller != null:
+		recovery_controller.reset_transient_tracking()
+	m_recovery_timer = recovery_settle_seconds
+	_apply_visual_offset()
+	_set_locomotion_mode(LocomotionMode.RECOVERY)
+	if was_on_ladder:
+		ladder_finished.emit()
+	recovery_started.emit()
+
+
+func _set_locomotion_mode(mode: LocomotionMode) -> void:
+	if m_locomotion_mode == mode:
+		return
+	m_locomotion_mode = mode
+	locomotion_mode_changed.emit(mode)
+	_sync_model_animation(true)
+
+
+func _settle_transient_state() -> void:
+	var was_on_ladder := is_on_ladder()
+	if action_controller != null:
+		action_controller.cleanup()
+	if is_on_ladder():
+		global_transform = m_ladder_mount_transform
+	elif is_airborne() or is_recovering():
+		if has_safe_transform():
+			global_transform = get_safe_transform()
+	velocity = Vector3.ZERO
+	m_physical_jump_active = false
+	m_is_currently_jumping = false
+	m_jump_timer = 0.0
+	m_jump_buffer_remaining = 0.0
+	m_recovery_timer = 0.0
+	m_ladder_distance = 0.0
+	if recovery_controller != null:
+		recovery_controller.reset_transient_tracking()
+	_apply_visual_offset()
+	_set_locomotion_mode(LocomotionMode.IDLE)
+	if was_on_ladder:
+		ladder_finished.emit()
 
 
 func _setup_controller() -> void:
@@ -470,8 +1018,13 @@ func _ensure_character_model() -> Node3D:
 
 func _rebuild_character_model() -> void:
 	if is_instance_valid(m_character_model):
+		var model_parent := m_character_model.get_parent()
+		if model_parent != null:
+			model_parent.remove_child(m_character_model)
 		m_character_model.queue_free()
 		m_character_model = null
+	m_model_animation_player = null
+	m_last_animation_phase = -1
 	# The skeleton debug draw lives under the model's skeleton and is freed with it.
 	m_skeleton_debug_part = null
 	if is_inside_tree():
@@ -493,6 +1046,14 @@ func _sync_character_model() -> void:
 	_align_model_feet()
 	if not is_instance_valid(m_model_animation_player):
 		m_model_animation_player = _find_animation_player(m_character_model)
+	if is_instance_valid(m_model_animation_player) and animation_profile != null:
+		animation_profile.idle_animation = model_idle_animation
+		animation_profile.walk_animation = model_walk_animation
+		animation_profile.run_animation = model_run_animation
+		animation_profile.ensure_generated_fallbacks(
+			m_model_animation_player,
+			_find_skeleton(m_character_model)
+		)
 	_sync_model_animation()
 	_sync_skeleton_debug()
 
@@ -635,25 +1196,60 @@ func _align_model_feet() -> void:
 	m_character_model.position.y = character_model_y_offset - lowest
 
 
-func _sync_model_animation() -> void:
+func _sync_model_animation(force_restart := false) -> void:
 	if not is_instance_valid(m_model_animation_player):
 		return
-	var target := _match_model_animation(_desired_model_animation())
+	var phase := _desired_animation_phase()
+	_play_animation_phase(phase, force_restart)
+
+
+func _play_animation_phase(
+	phase: int,
+	force_restart := false
+) -> void:
+	if !is_instance_valid(m_model_animation_player):
+		return
+	if animation_profile == null:
+		animation_profile = CharacterAnimationProfile3DScript.new()
+	animation_profile.idle_animation = model_idle_animation
+	animation_profile.walk_animation = model_walk_animation
+	animation_profile.run_animation = model_run_animation
+	var target := _match_model_animation(animation_profile.get_animation_name(phase))
 	if target.is_empty():
 		return
 	var animation := m_model_animation_player.get_animation(target)
-	if animation != null and animation.loop_mode == Animation.LOOP_NONE:
-		animation.loop_mode = Animation.LOOP_LINEAR
-	if m_model_animation_player.current_animation != target:
-		m_model_animation_player.play(target, 0.15)
+	if animation != null:
+		animation.loop_mode = (
+			Animation.LOOP_LINEAR
+			if animation_profile.should_loop(phase)
+			else Animation.LOOP_NONE
+		)
+	if force_restart or m_model_animation_player.current_animation != target:
+		m_model_animation_player.play(
+			target,
+			animation_profile.get_blend_seconds(phase)
+		)
+		if animation_profile.should_seek_neutral_sample(phase):
+			m_model_animation_player.seek(0.0, true)
+	m_last_animation_phase = int(phase)
 
 
-func _desired_model_animation() -> String:
+func _desired_animation_phase() -> int:
+	match m_locomotion_mode:
+		LocomotionMode.RECOVERY:
+			return CharacterAnimationProfile3DScript.Phase.RECOVERY
+		LocomotionMode.LADDER:
+			return CharacterAnimationProfile3DScript.Phase.LADDER_CLIMB
+		LocomotionMode.TRAVERSAL_JUMP, LocomotionMode.AIRBORNE:
+			return CharacterAnimationProfile3DScript.Phase.AIR
+	if m_landing_timer > 0.0:
+		if !is_walking:
+			return CharacterAnimationProfile3DScript.Phase.LAND
 	if is_walking and is_running:
-		return model_run_animation
+		return CharacterAnimationProfile3DScript.Phase.RUN
 	if is_walking:
-		return model_walk_animation
-	return model_idle_animation
+		return CharacterAnimationProfile3DScript.Phase.WALK
+	return CharacterAnimationProfile3DScript.Phase.IDLE
 
 
 func _match_model_animation(animation_name: String) -> String:

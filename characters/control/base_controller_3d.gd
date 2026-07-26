@@ -2,6 +2,10 @@
 class_name BaseController3D
 extends Resource
 
+const CharacterMotionIntent3DScript = preload(
+	"res://characters/control/character_motion_intent_3d.gd"
+)
+
 enum MoveDirectionEnum {
 	MOVE_IDLE = 0,
 	MOVE_FORWARD   = 1 << 0,
@@ -12,6 +16,7 @@ enum MoveDirectionEnum {
 
 var move_direction: int = MoveDirectionEnum.MOVE_IDLE
 var m_character: Node3D = null
+var m_running := false
 
 
 func is_in_flock() -> bool:
@@ -51,6 +56,7 @@ func get_linear_velocity() -> Vector3:
 
 
 func set_running(is_running: bool) -> void:
+	m_running = is_running
 	if is_instance_valid(m_character):
 		m_character.set("is_running", is_running)
 
@@ -123,11 +129,31 @@ func process(delta: float) -> void:
 
 
 func _process(_delta: float) -> void:
-	if is_instance_valid(m_character):
-		m_character.set("is_walking", is_moving())
+	if !is_instance_valid(m_character):
+		return
+	m_character.set("is_walking", is_moving())
+	var requested_direction := Vector3.ZERO
+	if move_direction & MoveDirectionEnum.MOVE_FORWARD:
+		requested_direction = get_direction_vector()
+	var requested_speed := 0.0
+	if !requested_direction.is_zero_approx():
+		requested_speed = _get_requested_speed()
+	var intent := CharacterMotionIntent3DScript.new(requested_direction, requested_speed)
+	if m_character.has_method("submit_motion_intent"):
+		m_character.call("submit_motion_intent", intent)
+	elif !requested_direction.is_zero_approx() and m_character.has_method("move"):
+		# Compatibility for an older actor adapter.
+		m_character.call("move", requested_direction)
 
-		if move_direction & MoveDirectionEnum.MOVE_FORWARD and m_character.has_method("move"):
-			m_character.call("move", get_direction_vector())
+
+func _get_requested_speed() -> float:
+	if !is_instance_valid(m_character):
+		return 0.0
+	var speed_property := &"run_speed" if m_running else &"walk_speed"
+	var speed: Variant = m_character.get(speed_property)
+	if speed is float or speed is int:
+		return maxf(float(speed), 0.0)
+	return 0.0
 
 
 func inspect() -> void:
