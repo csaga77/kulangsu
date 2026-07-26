@@ -1,8 +1,8 @@
 class_name StoryInteractionCoordinator
 extends Node
 
-## Owns the active world-subject selection and the spatial adapter between the
-## player controller and AppState's dimension-neutral story-subject API.
+## Owns story-subject discovery, request construction, and AppState dispatch.
+## WorldActionCoordinator3D owns contextual input, cross-kind selection, and hints.
 
 const STORY_SUBJECT_GROUP := &"story_subject_3d"
 
@@ -13,12 +13,10 @@ var m_actor: CharacterBody3D = null
 var m_app_state: AppStateService = null
 var m_subjects: Array[StorySubject3D] = []
 var m_active_subject: StorySubject3D = null
-var m_hint_dirty := true
-var m_publishing_hint := false
 
 
 func _ready() -> void:
-	set_process(is_configured())
+	set_process(false)
 
 
 func configure(
@@ -26,25 +24,17 @@ func configure(
 	actor: CharacterBody3D,
 	app_state: AppStateService
 ) -> void:
-	_disconnect_inspect()
 	_disconnect_app_state()
 	m_world_root = world_root
 	m_actor = actor
 	m_app_state = app_state
 	_connect_app_state()
 	refresh_subjects()
-	_connect_inspect()
-	set_process(is_configured())
 	update_target()
 
 
 func _exit_tree() -> void:
-	_disconnect_inspect()
 	_disconnect_app_state()
-
-
-func _process(_delta: float) -> void:
-	update_target()
 
 
 func is_configured() -> bool:
@@ -78,12 +68,7 @@ func update_target() -> void:
 	if !is_configured():
 		m_active_subject = null
 		return
-	var next_subject := _resolve_closest_subject()
-	if next_subject == m_active_subject and !m_hint_dirty:
-		return
-	m_active_subject = next_subject
-	m_hint_dirty = false
-	_update_hint_text(m_active_subject)
+	m_active_subject = _resolve_closest_subject()
 
 
 func build_story_interaction_request(subject: StorySubject3D) -> Dictionary:
@@ -101,28 +86,11 @@ func build_story_interaction_request(subject: StorySubject3D) -> Dictionary:
 	}
 
 
-func _connect_inspect() -> void:
-	var controller: Variant = m_actor.get("controller") if is_instance_valid(m_actor) else null
-	if controller == null or !(controller is Object) or !controller.has_signal("inspect_requested"):
-		return
-	if !controller.is_connected("inspect_requested", _on_inspect_requested):
-		controller.connect("inspect_requested", _on_inspect_requested)
-
-
-func _disconnect_inspect() -> void:
-	var controller: Variant = m_actor.get("controller") if is_instance_valid(m_actor) else null
-	if controller == null or !(controller is Object) or !controller.has_signal("inspect_requested"):
-		return
-	if controller.is_connected("inspect_requested", _on_inspect_requested):
-		controller.disconnect("inspect_requested", _on_inspect_requested)
-
-
 func _connect_app_state() -> void:
 	if !is_instance_valid(m_app_state):
 		return
 	if !m_app_state.state_committed.is_connected(_on_state_committed):
 		m_app_state.state_committed.connect(_on_state_committed)
-	m_hint_dirty = true
 
 
 func _disconnect_app_state() -> void:
@@ -133,8 +101,9 @@ func _disconnect_app_state() -> void:
 
 
 func _on_state_committed(_changes: AppStateChangeSet) -> void:
-	if !m_publishing_hint:
-		m_hint_dirty = true
+	# StorySubject3D nodes update their own presence from the same commit. Keep the
+	# cached fallback target coherent for callers that inspect this component.
+	update_target()
 
 
 func _resolve_closest_subject() -> StorySubject3D:
@@ -156,17 +125,16 @@ func _resolve_closest_subject() -> StorySubject3D:
 	return best
 
 
-func _on_inspect_requested() -> void:
-	if !is_instance_valid(m_active_subject):
-		m_app_state.update_world_context({"status": "Inspect: nothing nearby"})
-		return
-
-	var interaction_request := build_story_interaction_request(m_active_subject)
+func activate_subject(subject: StorySubject3D) -> bool:
+	if !is_instance_valid(subject):
+		return false
+	m_active_subject = subject
+	var interaction_request := build_story_interaction_request(subject)
 	if interaction_request.is_empty():
 		m_app_state.update_world_context({
-			"status": "Inspect: %s" % m_active_subject.get_display_name(),
+			"status": "Inspect: %s" % subject.get_display_name(),
 		})
-		return
+		return true
 
 	var interaction: Dictionary = m_app_state.activate_story_subject(
 		String(interaction_request.get("subject_id", "")),
@@ -180,15 +148,37 @@ func _on_inspect_requested() -> void:
 		var line := String(interaction.get("line", ""))
 		if line.is_empty():
 			line = "Talked with %s" % subject_display_name
-		_show_resident_balloon(m_active_subject, line)
-		_pause_and_face_resident(m_active_subject)
+		_show_resident_balloon(subject, line)
+		_pause_and_face_resident(subject)
 		m_app_state.update_world_context({"status": line})
 	elif request_action == "inspect":
 		m_app_state.update_world_context({
 			"status": String(interaction.get("text", "Inspect: %s" % subject_display_name)),
 		})
+	return true
 
-	_update_hint_text(m_active_subject)
+func describe_subject_hint(subject: StorySubject3D) -> String:
+	if !is_instance_valid(subject):
+		return "R Inspect"
+
+	var interaction_request := build_story_interaction_request(subject)
+	if interaction_request.is_empty():
+		return "R Inspect %s" % subject.get_display_name()
+
+	var action := String(interaction_request.get("action", ""))
+	var display_name := String(interaction_request.get("display_name", ""))
+	if action == "talk":
+		return "R Talk to %s" % display_name
+
+	var description: Dictionary = m_app_state.describe_story_subject(
+		String(interaction_request.get("subject_id", "")),
+		action,
+		interaction_request.get("context", {})
+	)
+	var prompt_text := String(description.get("prompt", "")).strip_edges()
+	if prompt_text.is_empty():
+		prompt_text = "%s %s" % [_interaction_verb_for_action(action), display_name]
+	return "R %s" % prompt_text
 
 
 func _build_story_subject_context(
@@ -202,39 +192,6 @@ func _build_story_subject_context(
 		context["world_position"] = subject.global_position
 		context["level_id"] = 0
 	return context
-
-
-func _update_hint_text(subject: StorySubject3D) -> void:
-	if !is_instance_valid(subject):
-		_publish_hint_action("R Inspect")
-		return
-
-	var interaction_request := build_story_interaction_request(subject)
-	if interaction_request.is_empty():
-		_publish_hint_action("R Inspect %s" % subject.get_display_name())
-		return
-
-	var action := String(interaction_request.get("action", ""))
-	var display_name := String(interaction_request.get("display_name", ""))
-	if action == "talk":
-		_publish_hint_action("R Talk to %s" % display_name)
-		return
-
-	var description: Dictionary = m_app_state.describe_story_subject(
-		String(interaction_request.get("subject_id", "")),
-		action,
-		interaction_request.get("context", {})
-	)
-	var prompt_text := String(description.get("prompt", "")).strip_edges()
-	if prompt_text.is_empty():
-		prompt_text = "%s %s" % [_interaction_verb_for_action(action), display_name]
-	_publish_hint_action("R %s" % prompt_text)
-
-
-func _publish_hint_action(action: String) -> void:
-	m_publishing_hint = true
-	m_app_state.update_world_context({"hint_action": action})
-	m_publishing_hint = false
 
 
 func _show_resident_balloon(subject: StorySubject3D, line: String) -> void:

@@ -26,6 +26,15 @@ const ActorSurfaceFollowerScript = preload("res://game/world/actor_surface_follo
 const StoryInteractionCoordinatorScript = preload(
 	"res://game/world/story_interaction_coordinator.gd"
 )
+const WorldActionCoordinator3DScript = preload(
+	"res://game/world/world_action_coordinator_3d.gd"
+)
+const TraversalSemanticCompletionArea3DScript = preload(
+	"res://game/world/traversal_semantic_completion_area_3d.gd"
+)
+const PlayerRecoveryArea3DScript = preload(
+	"res://game/world/player_recovery_area_3d.gd"
+)
 const LowPolyWorldCoordinates3DScript = preload("res://terrain/low_poly_world_coordinates_3d.gd")
 const LowPolyArtStyle3DScript = preload("res://terrain/low_poly_art_style_3d.gd")
 const RESIDENT_FACTORY := preload("res://characters/resident_factory.gd")
@@ -85,6 +94,9 @@ var m_bgm_manager: Node = null
 var m_landmark_cue_player: AudioStreamPlayer = null
 var m_actor_surface_follower: ActorSurfaceFollowerScript = null
 var m_story_interaction_coordinator: StoryInteractionCoordinatorScript = null
+var m_world_action_coordinator: WorldActionCoordinator3DScript = null
+var m_traversal_completion_areas: Array[TraversalSemanticCompletionArea3DScript] = []
+var m_player_recovery_areas: Array[PlayerRecoveryArea3DScript] = []
 
 
 func _app_state():
@@ -118,6 +130,9 @@ func _initialize_runtime() -> void:
 		_generate_landmark_collision()
 	_spawn_residents()
 	_setup_story_interaction_coordinator()
+	_setup_world_action_coordinator()
+	_setup_traversal_completion_areas()
+	_setup_player_recovery_areas()
 	_apply_story_resume_anchor_if_needed()
 	if show_debug_stats:
 		_setup_debug_stats()
@@ -126,6 +141,12 @@ func _initialize_runtime() -> void:
 
 
 func _exit_tree() -> void:
+	if is_instance_valid(m_world_action_coordinator):
+		m_world_action_coordinator.cancel_active_action(&"scene_unload")
+	_disconnect_traversal_completion_areas()
+	m_player_recovery_areas.clear()
+	if is_instance_valid(m_actor) and m_actor.has_method("cleanup_for_unload"):
+		m_actor.call("cleanup_for_unload")
 	if m_wind_adapter != null:
 		m_wind_adapter.unbind()
 	m_wind_adapter = null
@@ -135,6 +156,14 @@ func _exit_tree() -> void:
 		m_weather_manager.cycles_enabled = m_previous_weather_cycles_enabled
 	m_weather_cycles_overridden = false
 	m_weather_manager = null
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PAUSED and is_instance_valid(m_world_action_coordinator):
+		m_world_action_coordinator.cancel_active_action(&"pause")
+	if what == NOTIFICATION_PAUSED and is_instance_valid(m_actor):
+		if m_actor.has_method("settle_for_pause"):
+			m_actor.call("settle_for_pause")
 
 
 func _process(_delta: float) -> void:
@@ -226,7 +255,7 @@ func _setup_actor_surface_follower() -> void:
 	m_actor_surface_follower.terrain_clearance = actor_terrain_clearance
 	add_child(m_actor_surface_follower)
 	m_actor_surface_follower.configure(m_actor, m_terrain, m_coordinates)
-	m_actor_surface_follower.settle_now()
+	m_actor_surface_follower.force_settle_now()
 
 
 func _place_landmarks(image: Image, profile: TerrainGenerationProfile, land_height: float) -> void:
@@ -431,7 +460,7 @@ func _apply_story_resume_anchor_if_needed() -> void:
 	# it onto the surface on the next physics frame.
 	m_actor.global_position = Vector3(anchor_origin.x, m_actor.global_position.y, anchor_origin.z + 1.5)
 	if is_instance_valid(m_actor_surface_follower):
-		m_actor_surface_follower.settle_now()
+		m_actor_surface_follower.force_settle_now()
 
 
 func _sync_location_from_player() -> void:
@@ -594,6 +623,102 @@ func _setup_story_interaction_coordinator() -> void:
 	m_story_interaction_coordinator.configure(self, m_actor, app_state)
 
 
+func _setup_world_action_coordinator() -> void:
+	if !is_instance_valid(m_story_interaction_coordinator):
+		return
+	if is_instance_valid(m_world_action_coordinator):
+		m_world_action_coordinator.refresh_targets()
+		return
+	var app_state := _app_state() as AppStateService
+	if app_state == null:
+		return
+	m_world_action_coordinator = (
+		WorldActionCoordinator3DScript.new() as WorldActionCoordinator3DScript
+	)
+	m_world_action_coordinator.name = "WorldActionCoordinator3D"
+	add_child(m_world_action_coordinator)
+	m_world_action_coordinator.configure(
+		self,
+		m_actor,
+		app_state,
+		m_story_interaction_coordinator
+	)
+	if !m_world_action_coordinator.semantic_completion_requested.is_connected(
+		_on_physical_semantic_completion_requested
+	):
+		m_world_action_coordinator.semantic_completion_requested.connect(
+			_on_physical_semantic_completion_requested
+		)
+
+
+func _setup_traversal_completion_areas() -> void:
+	_disconnect_traversal_completion_areas()
+	m_traversal_completion_areas.clear()
+	if get_tree() == null:
+		return
+	for node in get_tree().get_nodes_in_group(
+		TraversalSemanticCompletionArea3DScript.COMPLETION_AREA_GROUP
+	):
+		var completion_area := node as TraversalSemanticCompletionArea3DScript
+		if completion_area == null or !is_ancestor_of(completion_area):
+			continue
+		completion_area.configure_actor(m_actor)
+		if !completion_area.semantic_completion_requested.is_connected(
+			_on_physical_semantic_completion_requested
+		):
+			completion_area.semantic_completion_requested.connect(
+				_on_physical_semantic_completion_requested
+			)
+		m_traversal_completion_areas.append(completion_area)
+
+
+func _disconnect_traversal_completion_areas() -> void:
+	for completion_area in m_traversal_completion_areas:
+		if !is_instance_valid(completion_area):
+			continue
+		if completion_area.semantic_completion_requested.is_connected(
+			_on_physical_semantic_completion_requested
+		):
+			completion_area.semantic_completion_requested.disconnect(
+				_on_physical_semantic_completion_requested
+			)
+
+
+func _setup_player_recovery_areas() -> void:
+	m_player_recovery_areas.clear()
+	if get_tree() == null:
+		return
+	for node in get_tree().get_nodes_in_group(
+		PlayerRecoveryArea3DScript.RECOVERY_VOLUME_GROUP
+	):
+		var recovery_area := node as PlayerRecoveryArea3DScript
+		if recovery_area == null or !is_ancestor_of(recovery_area):
+			continue
+		recovery_area.configure(m_actor, m_world_action_coordinator)
+		m_player_recovery_areas.append(recovery_area)
+
+
+func _on_physical_semantic_completion_requested(
+	event_id: StringName,
+	context: Dictionary
+) -> void:
+	if event_id.is_empty():
+		return
+	var app_state := _app_state() as AppStateService
+	if app_state == null:
+		return
+	var projection := app_state.get_projection()
+	if projection.mode_id != AppStateSnapshot.MODE_STORY:
+		return
+	var payload := context.duplicate(true)
+	payload["source"] = "physical_action"
+	var world_context := {
+		"location": projection.location,
+		"world_position": payload.get("world_position", m_actor.global_position),
+	}
+	app_state.notify_story_world_event(String(event_id), payload, world_context)
+
+
 func _generate_landmark_collision() -> void:
 	for definition: LandmarkDefinition in LANDMARK_CATALOG_SCRIPT.world_definitions():
 		var node := get_node_or_null(definition.world_node_path) as Node3D
@@ -605,6 +730,8 @@ func _generate_landmark_collision() -> void:
 # building mesh so walls block the actor. Roofs sit above the ground-probe reach, so
 # this blocks walking through walls without snapping the actor up onto rooftops.
 func _add_trimesh_collision_recursive(node: Node) -> void:
+	if bool(node.get_meta("skip_runtime_collision", false)):
+		return
 	for child in node.get_children():
 		var mesh_instance := child as MeshInstance3D
 		if mesh_instance != null and mesh_instance.mesh != null:

@@ -48,8 +48,10 @@ func is_configured() -> bool:
 	)
 
 
-func settle_now() -> void:
+func settle_now(force: bool = false) -> void:
 	if !is_configured():
+		return
+	if !force and _should_suspend_automatic_settling():
 		return
 	if m_coordinates.resolve_source_size() == Vector2i.ZERO:
 		return
@@ -63,6 +65,10 @@ func settle_now() -> void:
 		return
 	actor_position.y = target_y
 	m_actor.global_position = actor_position
+
+
+func force_settle_now() -> void:
+	settle_now(true)
 
 
 func _connect_actor() -> void:
@@ -83,6 +89,36 @@ func _disconnect_actor() -> void:
 
 func _on_actor_global_position_changed() -> void:
 	settle_now()
+
+
+func _should_suspend_automatic_settling() -> bool:
+	if !is_instance_valid(m_actor):
+		return true
+	if m_actor.has_method("is_on_ladder") and bool(m_actor.call("is_on_ladder")):
+		return true
+	if m_actor.has_method("is_recovering") and bool(m_actor.call("is_recovering")):
+		return true
+	if m_actor.has_method("is_airborne") and bool(m_actor.call("is_airborne")):
+		return true
+	if m_actor.has_method("is_grounded"):
+		return !bool(m_actor.call("is_grounded"))
+	var locomotion_state := _read_locomotion_state()
+	return locomotion_state in [
+		&"airborne",
+		&"traversal_jump",
+		&"ladder",
+		&"recovery",
+	]
+
+
+func _read_locomotion_state() -> StringName:
+	for method_name in [&"get_locomotion_state", &"get_locomotion_mode"]:
+		if !m_actor.has_method(method_name):
+			continue
+		var value: Variant = m_actor.call(method_name)
+		if value is String or value is StringName:
+			return StringName(String(value).strip_edges().to_lower())
+	return &""
 
 
 func _resolve_surface_height() -> float:
