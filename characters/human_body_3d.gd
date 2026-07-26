@@ -37,6 +37,7 @@ const RIGID_BODY_PUSH_SPEED_FACTOR := 0.35
 const RIGID_BODY_PUSH_MAX_EFFECTIVE_MASS := 1.0
 const RIGID_BODY_PUSH_MAX_IMPULSE := 1.2
 const MIN_RIGID_BODY_PUSH_SPEED_DELTA := 0.002
+const TRAVERSAL_FLOOR_SNAP_LENGTH := 0.12
 const BaseController3DScript = preload("res://characters/control/base_controller_3d.gd")
 const CharacterMotionIntent3DScript = preload(
 	"res://characters/control/character_motion_intent_3d.gd"
@@ -210,8 +211,12 @@ var m_pending_motion_intent: CharacterMotionIntent3DScript = (
 var m_locomotion_mode: LocomotionMode = LocomotionMode.IDLE
 var m_physical_jump_active := false
 var m_jump_buffer_remaining := 0.0
+var m_jump_buffer_pending := false
 var m_time_since_grounded := INF
 var m_jump_takeoff_horizontal_velocity := Vector3.ZERO
+# A wall touched during one jump stays blocked until landing. Reapplying input
+# must not turn a rejected obstacle into an implicit wall climb.
+var m_airborne_wall_normal := Vector3.ZERO
 var m_landing_timer := 0.0
 var m_recovery_timer := 0.0
 var m_ladder_mount_transform := Transform3D.IDENTITY
@@ -229,6 +234,7 @@ var m_skeleton_debug_material: StandardMaterial3D = null
 
 
 func _ready() -> void:
+	floor_snap_length = TRAVERSAL_FLOOR_SNAP_LENGTH
 	_ensure_collision_shape()
 	_ensure_visual_nodes()
 	if animation_profile == null:
@@ -369,6 +375,7 @@ func request_jump() -> bool:
 	if !is_action_free() or !is_free_locomotion() or m_is_currently_jumping:
 		return false
 	m_jump_buffer_remaining = jump_buffer_seconds
+	m_jump_buffer_pending = true
 	return _try_start_physical_jump()
 
 
@@ -460,6 +467,8 @@ func begin_ladder(
 	velocity = Vector3.ZERO
 	m_physical_jump_active = false
 	m_jump_buffer_remaining = 0.0
+	m_jump_buffer_pending = false
+	m_airborne_wall_normal = Vector3.ZERO
 	_set_locomotion_mode(LocomotionMode.LADDER)
 	_play_animation_phase(
 		CharacterAnimationProfile3DScript.Phase.LADDER_MOUNT,
@@ -693,6 +702,13 @@ func _integrate_motion_intent(
 	move_and_slide()
 	_apply_rigid_body_pushes(flat_direction, movement_speed)
 
+	if (m_physical_jump_active or !was_on_floor) and is_on_wall():
+		var wall_normal := get_wall_normal()
+		m_airborne_wall_normal = Vector3(
+			wall_normal.x,
+			0.0,
+			wall_normal.z
+		).normalized()
 	if is_on_ceiling() and velocity.y > 0.0:
 		velocity.y = 0.0
 		m_physical_jump_active = false
@@ -714,6 +730,9 @@ func _apply_air_control(
 		desired_velocity,
 		air_control_acceleration * maxf(delta, 0.0)
 	)
+	if !m_airborne_wall_normal.is_zero_approx():
+		var into_wall := -m_airborne_wall_normal
+		candidate -= into_wall * maxf(candidate.dot(into_wall), 0.0)
 	var takeoff_delta := candidate - m_jump_takeoff_horizontal_velocity
 	if takeoff_delta.length() > air_control_max_delta:
 		candidate = (
@@ -733,6 +752,7 @@ func _update_locomotion_after_motion(
 	var now_on_floor := is_on_floor()
 	if now_on_floor:
 		m_time_since_grounded = 0.0
+		m_airborne_wall_normal = Vector3.ZERO
 		if !was_on_floor:
 			m_physical_jump_active = false
 			m_landing_timer = landing_control_delay
@@ -742,12 +762,12 @@ func _update_locomotion_after_motion(
 				true
 			)
 		_set_ground_locomotion_mode(intent)
-		if m_jump_buffer_remaining > 0.0:
+		if m_jump_buffer_pending:
 			_try_start_physical_jump()
 		return
 
 	m_time_since_grounded += get_physics_process_delta_time()
-	if was_on_floor:
+	if was_on_floor and !m_physical_jump_active:
 		var ledge_velocity := Vector3(velocity.x, 0.0, velocity.z)
 		if ledge_velocity.length() > jump_horizontal_speed_cap:
 			ledge_velocity = ledge_velocity.normalized() * jump_horizontal_speed_cap
@@ -781,8 +801,10 @@ func _try_start_physical_jump() -> bool:
 	if !_has_jump_clearance():
 		if is_on_floor():
 			m_jump_buffer_remaining = 0.0
+			m_jump_buffer_pending = false
 		return false
 	m_jump_buffer_remaining = 0.0
+	m_jump_buffer_pending = false
 	m_is_currently_jumping = false
 	m_jump_timer = 0.0
 	_apply_visual_offset()
@@ -799,6 +821,7 @@ func _try_start_physical_jump() -> bool:
 	if initial_horizontal.length() > jump_horizontal_speed_cap:
 		initial_horizontal = initial_horizontal.normalized() * jump_horizontal_speed_cap
 	m_jump_takeoff_horizontal_velocity = initial_horizontal
+	m_airborne_wall_normal = Vector3.ZERO
 	velocity.x = initial_horizontal.x
 	velocity.z = initial_horizontal.z
 	velocity.y = jump_takeoff_velocity
@@ -815,7 +838,14 @@ func _has_jump_clearance() -> bool:
 
 
 func _advance_transient_timers(delta: float) -> void:
-	m_jump_buffer_remaining = maxf(m_jump_buffer_remaining - delta, 0.0)
+	if m_jump_buffer_pending:
+		m_jump_buffer_remaining -= maxf(delta, 0.0)
+		# Zero remains an inclusive boundary until the landing integration runs.
+		if m_jump_buffer_remaining < -0.00001:
+			m_jump_buffer_remaining = 0.0
+			m_jump_buffer_pending = false
+		else:
+			m_jump_buffer_remaining = maxf(m_jump_buffer_remaining, 0.0)
 	m_landing_timer = maxf(m_landing_timer - delta, 0.0)
 	if !is_recovering():
 		return
@@ -851,6 +881,8 @@ func _begin_recovery(target_transform: Transform3D) -> void:
 	m_is_currently_jumping = false
 	m_jump_timer = 0.0
 	m_jump_buffer_remaining = 0.0
+	m_jump_buffer_pending = false
+	m_airborne_wall_normal = Vector3.ZERO
 	m_ladder_distance = 0.0
 	if recovery_controller != null:
 		recovery_controller.reset_transient_tracking()
@@ -884,6 +916,8 @@ func _settle_transient_state() -> void:
 	m_is_currently_jumping = false
 	m_jump_timer = 0.0
 	m_jump_buffer_remaining = 0.0
+	m_jump_buffer_pending = false
+	m_airborne_wall_normal = Vector3.ZERO
 	m_recovery_timer = 0.0
 	m_ladder_distance = 0.0
 	if recovery_controller != null:

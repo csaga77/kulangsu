@@ -2,8 +2,12 @@ extends Node3D
 
 const HUMAN_BODY_SCENE := preload("res://characters/human_body_3d.tscn")
 const LADDER_SCRIPT := preload("res://game/world/ladder_3d.gd")
+const MOTION_INTENT_SCRIPT := preload(
+	"res://characters/control/character_motion_intent_3d.gd"
+)
 const FIXED_DELTA := 1.0 / 60.0
 const LADDER_CLIMB_FRAMES := 112
+const MOTION_EPSILON := 0.015
 
 var m_failures := PackedStringArray()
 var m_semantic_completions: Array[StringName] = []
@@ -15,7 +19,13 @@ func _ready() -> void:
 
 func _run() -> void:
 	await get_tree().physics_frame
-	_validate_numeric_jump_contract()
+	await _validate_jump_buffer_boundaries()
+	await _validate_coyote_boundaries()
+	await _validate_air_control_boundaries()
+	await _validate_obstacle_boundaries()
+	await _validate_gap_boundaries()
+	await _validate_floor_snap_boundaries()
+	await _validate_landing_depth_boundaries()
 	await _validate_jump_state_and_recovery()
 	await _validate_ceiling_rejection()
 	await _validate_ladder_mount_climb_and_cleanup()
@@ -37,59 +47,226 @@ func _run() -> void:
 	get_tree().quit(0 if m_failures.is_empty() else 1)
 
 
-func _validate_numeric_jump_contract() -> void:
-	var actor := _create_actor("NumericContractActor", Vector3.ZERO, false)
+func _validate_jump_buffer_boundaries() -> void:
+	var fixture := Node3D.new()
+	fixture.name = "JumpBufferFixture"
+	add_child(fixture)
+	_add_static_box(
+		fixture,
+		"LandingFloor",
+		Vector3(3.0, 0.1, 3.0),
+		Vector3(0.0, -0.05, 0.0)
+	)
+	var accepted_actor := _create_actor(
+		"AcceptedBufferActor",
+		Vector3(0.0, 0.4, 0.0),
+		true,
+		fixture
+	)
+	await get_tree().physics_frame
+	accepted_actor.move_with_speed(Vector3.ZERO, 0.0)
 	_assert_true(
-		is_equal_approx(actor.jump_takeoff_velocity, 4.8)
-			and is_equal_approx(actor.gravity, 16.0)
-			and is_equal_approx(actor.jump_release_velocity, 2.0),
-		"Traversal jump exposes the accepted takeoff, gravity, and short-hop values"
+		!accepted_actor.request_jump(),
+		"A pre-landing press queues while the actor is physically airborne"
 	)
-	var apex := (
-		actor.jump_takeoff_velocity * actor.jump_takeoff_velocity
-		/ (2.0 * actor.gravity)
-	)
-	var same_height_flight := 2.0 * actor.jump_takeoff_velocity / actor.gravity
+	accepted_actor._advance_transient_timers(0.16)
+	_force_physical_landing(accepted_actor)
 	_assert_true(
-		is_equal_approx(apex, 0.72)
-			and is_equal_approx(same_height_flight, 0.6),
-		"The accepted traversal arc reaches 0.72 m over a 0.60 s same-height flight"
+		accepted_actor.is_airborne()
+			and accepted_actor.velocity.y > 4.0
+			and accepted_actor.get_jump_buffer_remaining() <= MOTION_EPSILON,
+		"A press exactly 0.16 s before physical landing starts one buffered jump"
 	)
+
+	var rejected_actor := _create_actor(
+		"RejectedBufferActor",
+		Vector3(0.0, 0.4, 1.0),
+		true,
+		fixture
+	)
+	await get_tree().physics_frame
+	rejected_actor.move_with_speed(Vector3.ZERO, 0.0)
 	_assert_true(
-		is_equal_approx(actor.jump_horizontal_speed_cap, 4.5)
-			and is_equal_approx(actor.air_control_acceleration, 6.0)
-			and is_equal_approx(actor.air_control_max_delta, 1.0),
-		"Air control is capped at the accepted speed, acceleration, and total correction"
+		!rejected_actor.request_jump(),
+		"The rejected buffer probe also starts from an airborne queued press"
 	)
+	rejected_actor._advance_transient_timers(0.17)
+	_force_physical_landing(rejected_actor)
 	_assert_true(
-		_boundary_accepts(0.16, actor.jump_buffer_seconds)
-			and !_boundary_accepts(0.17, actor.jump_buffer_seconds)
-			and _boundary_accepts(0.18, actor.jump_coyote_seconds)
-			and !_boundary_accepts(0.19, actor.jump_coyote_seconds),
-		"Jump buffer and coyote fixtures accept 0.16/0.18 s and reject 0.17/0.19 s"
+		rejected_actor.is_on_floor()
+			and rejected_actor.velocity.y <= 0.0
+			and !rejected_actor.is_airborne(),
+		"A press 0.17 s before physical landing expires without a jump"
 	)
+	fixture.queue_free()
+	await get_tree().process_frame
+
+
+func _validate_coyote_boundaries() -> void:
+	var fixture := Node3D.new()
+	fixture.name = "CoyoteFixture"
+	add_child(fixture)
+	_add_static_box(
+		fixture,
+		"SharpEdgePlatform",
+		Vector3(2.0, 0.1, 4.0),
+		Vector3(-1.0, -0.05, 0.0)
+	)
+	var accepted_actor := _create_actor(
+		"AcceptedCoyoteActor",
+		Vector3(-0.65, 0.04, -1.0),
+		true,
+		fixture
+	)
+	await _settle_actor(accepted_actor)
+	await _drive_actor_off_edge(accepted_actor)
+	# 60 Hz frames are wider than the 0.01 s boundary pair. The actor first
+	# leaves real collision geometry, then the exact request age is injected.
+	accepted_actor.set("m_time_since_grounded", 0.18)
 	_assert_true(
-		_boundary_accepts(0.45, 0.45)
-			and !_boundary_accepts(0.55, 0.45)
-			and _boundary_accepts(1.20, 1.20)
-			and !_boundary_accepts(1.35, 1.20),
-		"Obstacle and gap fixtures accept 0.45/1.20 m and reject 0.55/1.35 m"
+		!accepted_actor.is_on_floor()
+			and accepted_actor.request_jump()
+			and accepted_actor.velocity.y > 4.0,
+		"A jump requested 0.18 s after physical edge departure uses coyote time"
 	)
+
+	var rejected_actor := _create_actor(
+		"RejectedCoyoteActor",
+		Vector3(-0.65, 0.04, 1.0),
+		true,
+		fixture
+	)
+	await _settle_actor(rejected_actor)
+	await _drive_actor_off_edge(rejected_actor)
+	rejected_actor.set("m_time_since_grounded", 0.19)
 	_assert_true(
-		_boundary_accepts(0.12, 0.12)
-			and !_boundary_accepts(0.13, 0.12)
-			and 1.4 >= 1.4
-			and !(0.7 >= 1.4),
-		"Floor snap and landing-depth fixtures preserve accepted and rejected boundaries"
+		!rejected_actor.is_on_floor()
+			and !rejected_actor.request_jump()
+			and rejected_actor.velocity.y <= 0.0,
+		"A jump requested 0.19 s after physical edge departure is rejected"
 	)
+	fixture.queue_free()
+	await get_tree().process_frame
+
+
+func _validate_air_control_boundaries() -> void:
+	var fixture := Node3D.new()
+	fixture.name = "AirControlFixture"
+	add_child(fixture)
+	_add_static_box(
+		fixture,
+		"TakeoffFloor",
+		Vector3(6.0, 0.1, 6.0),
+		Vector3.ZERO - Vector3(0.0, 0.05, 0.0)
+	)
+	var capped_actor := _create_actor(
+		"CappedTakeoffActor",
+		Vector3(-1.5, 0.04, 0.0),
+		true,
+		fixture
+	)
+	await _settle_actor(capped_actor)
+	capped_actor.velocity.x = 7.5
+	_assert_true(capped_actor.request_jump(), "The speed-cap probe starts a physical jump")
+	var capped_horizontal := Vector2(
+		capped_actor.velocity.x,
+		capped_actor.velocity.z
+	).length()
 	_assert_true(
-		is_equal_approx(actor.jump_ceiling_clearance, 0.20)
-			and is_equal_approx(actor.landing_control_delay, 0.10)
-			and is_equal_approx(actor.recovery_drop_distance, 4.0)
-			and is_equal_approx(actor.unsupported_recovery_seconds, 2.5),
-		"Ceiling, landing, and recovery exports match the accepted numeric contract"
+		is_equal_approx(capped_horizontal, 4.5),
+		"Physical takeoff caps horizontal speed at 4.50 m/s"
 	)
-	actor.free()
+
+	var steering_actor := _create_actor(
+		"SteeringActor",
+		Vector3(1.5, 0.04, 0.0),
+		true,
+		fixture
+	)
+	await _settle_actor(steering_actor)
+	_assert_true(steering_actor.request_jump(), "The steering probe starts from rest")
+	steering_actor.move_with_speed(Vector3.RIGHT, 4.5)
+	var first_step_speed := Vector2(
+		steering_actor.velocity.x,
+		steering_actor.velocity.z
+	).length()
+	_assert_true(
+		absf(first_step_speed - 6.0 * FIXED_DELTA) <= 0.001,
+		"One airborne physics step applies 6.00 m/s² steering acceleration"
+	)
+	for frame in range(20):
+		steering_actor.move_with_speed(Vector3.RIGHT, 4.5)
+	_assert_true(
+		Vector2(
+			steering_actor.velocity.x,
+			steering_actor.velocity.z
+		).length() <= 1.0 + 0.001,
+		"Repeated airborne steering cannot exceed 1.00 m/s total takeoff correction"
+	)
+	fixture.queue_free()
+	await get_tree().process_frame
+
+
+func _validate_obstacle_boundaries() -> void:
+	var accepted := await _run_obstacle_fixture(0.45, "AcceptedObstacle")
+	_assert_true(
+		bool(accepted.get("started", false))
+			and bool(accepted.get("cleared", false))
+			and float(accepted.get("maximum_foot_height", 0.0)) > 0.45,
+		"A physical full-press jump clears the authored 0.45 m obstacle"
+	)
+	var rejected := await _run_obstacle_fixture(0.55, "RejectedObstacle")
+	_assert_true(
+		bool(rejected.get("started", false))
+			and !bool(rejected.get("cleared", true))
+			and float(rejected.get("maximum_x", INF)) < 0.62,
+		"A 0.55 m obstacle physically blocks the same jump without mantling"
+	)
+
+
+func _validate_gap_boundaries() -> void:
+	var accepted := await _run_gap_fixture(1.20, 2.40, 1.40, "AcceptedGap")
+	_assert_true(
+		bool(accepted.get("started", false))
+			and bool(accepted.get("landed_far_side", false)),
+		"A tuned physical traversal jump crosses the required 1.20 m clear span"
+	)
+	var rejected := await _run_gap_fixture(1.35, 2.40, 1.40, "RejectedGap")
+	_assert_true(
+		bool(rejected.get("started", false))
+			and !bool(rejected.get("landed_far_side", true)),
+		"The same jump rejects the explicitly non-required 1.35 m span"
+	)
+
+
+func _validate_floor_snap_boundaries() -> void:
+	var accepted := await _run_floor_snap_fixture(0.12, "AcceptedFloorSnap")
+	_assert_true(
+		bool(accepted.get("stayed_grounded", false))
+			and absf(float(accepted.get("final_y", INF)) + 0.12) <= 0.02,
+		"A 0.12 m downward step remains physically floor-snapped"
+	)
+	var rejected := await _run_floor_snap_fixture(0.13, "RejectedFloorSnap")
+	_assert_true(
+		!bool(rejected.get("stayed_grounded", true)),
+		"A 0.13 m downward step leaves the floor-snap envelope"
+	)
+
+
+func _validate_landing_depth_boundaries() -> void:
+	var accepted := await _run_gap_fixture(1.00, 4.0, 1.40, "AcceptedLandingDepth")
+	_assert_true(
+		bool(accepted.get("started", false))
+			and bool(accepted.get("landed_far_side", false))
+			and float(accepted.get("landing_x", -INF)) <= 2.40,
+		"A 1.40 m-deep far pad physically accepts the required landing"
+	)
+	var rejected := await _run_gap_fixture(1.00, 4.0, 0.70, "RejectedLandingDepth")
+	_assert_true(
+		bool(rejected.get("started", false))
+			and !bool(rejected.get("landed_far_side", true)),
+		"A 0.70 m-deep far pad is physically overshot and is not accepted"
+	)
 
 
 func _validate_jump_state_and_recovery() -> void:
@@ -338,6 +515,183 @@ func _validate_ladder_mount_climb_and_cleanup() -> void:
 	await get_tree().process_frame
 
 
+func _run_obstacle_fixture(
+	obstacle_height: float,
+	fixture_name: String
+) -> Dictionary:
+	var fixture := Node3D.new()
+	fixture.name = fixture_name
+	add_child(fixture)
+	_add_static_box(
+		fixture,
+		"ApproachAndLanding",
+		Vector3(6.0, 0.1, 2.0),
+		Vector3(0.0, -0.05, 0.0)
+	)
+	_add_static_box(
+		fixture,
+		"Obstacle",
+		Vector3(0.60, obstacle_height, 2.0),
+		Vector3(0.30, obstacle_height * 0.5, 0.0)
+	)
+	var actor := _create_actor(
+		"%sActor" % fixture_name,
+		Vector3(-0.74, 0.04, 0.0),
+		true,
+		fixture
+	)
+	await _settle_actor(actor)
+	actor.move_with_speed(Vector3.RIGHT, 4.5)
+	var started := actor.request_jump()
+	var maximum_x := actor.global_position.x
+	var maximum_foot_height := actor.global_position.y
+	var cleared := false
+	var left_floor := false
+	for frame in range(60):
+		actor.move_with_speed(Vector3.RIGHT, 4.5)
+		maximum_x = maxf(maximum_x, actor.global_position.x)
+		maximum_foot_height = maxf(
+			maximum_foot_height,
+			actor.global_position.y
+		)
+		if !actor.is_on_floor():
+			left_floor = true
+		if actor.global_position.x > 0.65:
+			cleared = true
+		if left_floor and actor.is_on_floor():
+			break
+		await get_tree().physics_frame
+	var result := {
+		"started": started,
+		"cleared": cleared,
+		"maximum_x": maximum_x,
+		"maximum_foot_height": maximum_foot_height,
+	}
+	fixture.queue_free()
+	await get_tree().process_frame
+	return result
+
+
+func _run_gap_fixture(
+	gap_width: float,
+	takeoff_speed: float,
+	landing_depth: float,
+	fixture_name: String
+) -> Dictionary:
+	var fixture := Node3D.new()
+	fixture.name = fixture_name
+	add_child(fixture)
+	_add_static_box(
+		fixture,
+		"Approach",
+		Vector3(3.0, 0.1, 2.0),
+		Vector3(-1.5, -0.05, 0.0)
+	)
+	_add_static_box(
+		fixture,
+		"FarPad",
+		Vector3(landing_depth, 0.1, 2.0),
+		Vector3(gap_width + landing_depth * 0.5, -0.05, 0.0)
+	)
+	var actor := _create_actor(
+		"%sActor" % fixture_name,
+		Vector3(-0.34, 0.04, 0.0),
+		true,
+		fixture
+	)
+	await _settle_actor(actor)
+	actor.move_with_speed(Vector3.RIGHT, takeoff_speed)
+	var started := actor.request_jump()
+	var landed_far_side := false
+	var landing_x := -INF
+	var left_approach := false
+	for frame in range(90):
+		actor.move_with_speed(Vector3.RIGHT, takeoff_speed)
+		if actor.global_position.x > 0.05:
+			left_approach = true
+		if (
+			left_approach
+			and actor.is_on_floor()
+			and actor.global_position.x >= gap_width - MOTION_EPSILON
+			and actor.global_position.x <= gap_width + landing_depth + MOTION_EPSILON
+		):
+			landed_far_side = true
+			landing_x = actor.global_position.x
+			break
+		if actor.global_position.y < -1.0:
+			break
+		await get_tree().physics_frame
+	var result := {
+		"started": started,
+		"landed_far_side": landed_far_side,
+		"landing_x": landing_x,
+		"final_position": actor.global_position,
+	}
+	fixture.queue_free()
+	await get_tree().process_frame
+	return result
+
+
+func _run_floor_snap_fixture(
+	drop_height: float,
+	fixture_name: String
+) -> Dictionary:
+	var fixture := Node3D.new()
+	fixture.name = fixture_name
+	add_child(fixture)
+	_add_static_box(
+		fixture,
+		"UpperFloor",
+		Vector3(2.0, 0.1, 2.0),
+		Vector3(-1.0, -0.05, 0.0)
+	)
+	_add_static_box(
+		fixture,
+		"LowerFloor",
+		Vector3(2.0, 0.1, 2.0),
+		Vector3(1.0, -drop_height - 0.05, 0.0)
+	)
+	var actor := _create_actor(
+		"%sActor" % fixture_name,
+		Vector3(-0.65, 0.04, 0.0),
+		true,
+		fixture
+	)
+	await _settle_actor(actor)
+	actor.global_position = Vector3(0.40, 0.0, 0.0)
+	actor.velocity = Vector3.ZERO
+	actor.move_and_slide()
+	actor.apply_floor_snap()
+	var snapped_to_lower_floor := (
+		actor.is_on_floor()
+		and absf(actor.global_position.y + drop_height) <= 0.02
+	)
+	var result := {
+		"crossed_edge": true,
+		"stayed_grounded": snapped_to_lower_floor,
+		"final_y": actor.global_position.y,
+	}
+	fixture.queue_free()
+	await get_tree().process_frame
+	return result
+
+
+func _drive_actor_off_edge(actor: HumanBody3D) -> void:
+	for frame in range(30):
+		actor.move_with_speed(Vector3.RIGHT, 4.5)
+		await get_tree().physics_frame
+		if !actor.is_on_floor() and actor.global_position.x > 0.0:
+			return
+	_assert_true(false, "%s physically leaves the sharp platform edge" % actor.name)
+
+
+func _force_physical_landing(actor: HumanBody3D) -> void:
+	actor.global_position.y = 0.005
+	actor.velocity = Vector3(0.0, -1.0, 0.0)
+	var still_intent = MOTION_INTENT_SCRIPT.new(Vector3.ZERO, 0.0)
+	actor._integrate_motion_intent(still_intent, FIXED_DELTA)
+
+
 func _create_actor(
 	actor_name: String,
 	position: Vector3,
@@ -425,10 +779,6 @@ func _advance_actor_motion(actor: HumanBody3D, frame_count: int) -> void:
 	for frame in range(frame_count):
 		actor.move_with_speed(Vector3.ZERO, 0.0)
 		await get_tree().physics_frame
-
-
-func _boundary_accepts(value: float, limit: float) -> bool:
-	return value <= limit + 0.00001
 
 
 func _on_semantic_completion_requested(
