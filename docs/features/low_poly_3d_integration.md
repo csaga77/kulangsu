@@ -42,7 +42,10 @@
 ## Interaction Contract
 
 - Every interactive `StorySubject3D` exposes a non-empty stable `subject_id`; the production-world test asserts the exact 17-landmark/6-inspectable non-NPC set.
-- Proximity selection is world-root-local and must choose one deterministic active subject when ranges overlap; simultaneously loaded worlds cannot contribute competing subjects.
+- Proximity selection is world-root-local and must choose one deterministic active
+  subject when ranges overlap; actionable resident talk and landmark
+  collect/perform subjects compete by distance, while passive inspection remains
+  the fallback. Simultaneously loaded worlds cannot contribute competing subjects.
 - Input continues through `PlayerController3D`; architecture nodes do not poll input.
 - The coordinator emits an inspect request carrying the stable subject id and optional spatial context. It does not mutate progression directly.
 - Story response/effect results flow back through the coordinator for world presentation.

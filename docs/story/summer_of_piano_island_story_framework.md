@@ -458,15 +458,14 @@ With the seasonal missability principle, current playable coverage should track 
 
 The next narrative expansion should stay focused on the gaps that most affect the shape of the year:
 
-1. Complete the manual production-flow acceptance for Milestone A's shipped
-   household-care and transformed-absence paths.
-2. Add later embodied family and festival scenes that build on the first
-   completed-versus-missed transformation without turning its bounded ledger into
-   a suffix convention or general household system.
-3. Expand `study_future` with more lived middle beats and small world responses so the route keeps its year-long pressure shape between the major turning points.
-4. Grow `preservation_inheritance` into stronger district-facing reactions, props, inspectables, and character-led tasks through Mr. Lin, Mei, Uncle Zhao, Madam Wei, Mr. Huang, Professor Xu, and A Po so stewardship is visible even when the player is not in a resident conversation.
-5. Turn the improved ending and departure language into more playable closing movement once the route-specific copy settles.
-6. Keep `melody_landmarks` optional for completion while giving its resonant follow-through more wandering texture after the public performance.
+1. Add later embodied family and festival scenes that build on the accepted
+   household-care and transformed-absence paths without turning the first
+   completed-versus-missed transformation's bounded ledger into a suffix
+   convention or general household system.
+2. Expand `study_future` with more lived middle beats and small world responses so the route keeps its year-long pressure shape between the major turning points.
+3. Grow `preservation_inheritance` into stronger district-facing reactions, props, inspectables, and character-led tasks through Mr. Lin, Mei, Uncle Zhao, Madam Wei, Mr. Huang, Professor Xu, and A Po so stewardship is visible even when the player is not in a resident conversation.
+4. Turn the improved ending and departure language into more playable closing movement once the route-specific copy settles.
+5. Keep `melody_landmarks` optional for completion while giving its resonant follow-through more wandering texture after the public performance.
 
 Until those gaps are filled, the canon should be read as the target story shape rather than a claim that every route already has equal playable weight.
 

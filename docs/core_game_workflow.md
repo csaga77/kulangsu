@@ -223,18 +223,15 @@ Current read of the playable slice:
 
 Current gameplay-content priority order:
 
-1. Complete Milestone A's manual fixed-fixture and New Game production-flow review
-   for both household-care outcomes, journal continuation, and saved world
-   presentation.
-2. Begin Milestone B only after that acceptance: build the shared action/recovery
+1. Begin Milestone B: build the shared action/recovery
    foundation, forgiving physical traversal jump, and authored Bagua ladder proof
    against the accepted Phase 0 values.
-3. Push preservation and melody reactivity into more inspectables, props, and
+2. Push preservation and melody reactivity into more inspectables, props, and
    district-facing world cues, including live reapplication of changed routine
    overrides to already-spawned residents.
-4. Turn the differentiated ending copy into more playable authored closing moments
+3. Turn the differentiated ending copy into more playable authored closing moments
    once the embodied route slices exist.
-5. Keep enriching the landmark route and pairing planned physical actions with
+4. Keep enriching the landmark route and pairing planned physical actions with
    authored uses without letting it reclaim the role of sole progression spine.
 
 Resident definition migration is complete. New resident content belongs in the

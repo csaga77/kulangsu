@@ -22,12 +22,12 @@ Use this folder for:
 - Physical traversal jumping, carrying, deliberate push/pull, sitting, and ladder climbing form a required planned character-action workstream; [`implementation_plan.md`](implementation_plan.md) owns its sequencing and status.
 - Milestone A's `family_memory` household-care slice, first
   completed-versus-missed seasonal transformation, and bounded Phase 0
-  character-action gate are implemented and automated-green. Its fixed-fixture and
-  New Game production-flow review remains the current manual acceptance step.
-- After that acceptance, Workstream 6 advances through Milestone B's traversal foundation,
-  Milestone C's object-care actions, and Milestone D's Phase 7 production hardening;
-  Milestone D is the sole gate that can mark the character-action workstream
-  complete.
+  character-action gate are implemented, automated-green, and production-flow
+  accepted as of 2026-07-26.
+- Milestone B's traversal foundation is now the active work. Workstream 6 then
+  advances through Milestone C's object-care actions and Milestone D's Phase 7
+  production hardening; Milestone D is the sole gate that can mark the
+  character-action workstream complete.
 - The typed storyline resource, inspector, browser, dependency graph, and canonical-
   source authoring workflow are complete; later validation follows the feature that
   introduces new behavior instead of keeping the editor workstream permanently open.

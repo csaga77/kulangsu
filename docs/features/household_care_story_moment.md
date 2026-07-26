@@ -112,9 +112,10 @@ restore it. The open fixture uses the current save format; the post-closer fixtu
 intentionally remains V1 and omits both household outcome facts so Continue must
 normalize it to the missed path.
 
-Milestone A remains pending manual visual acceptance until those four production
-checks inspect the expected route, journal, continuation, dialogue, and world
-presentation.
+Milestone A's four production checks were accepted on **2026-07-26**. They covered
+the two fixed Continue fixtures plus completed and missed New Game paths through
+route state, journal, continuation, dialogue, ending texture, and cared-for versus
+untended world presentation.
 
 ## Out Of Scope
 

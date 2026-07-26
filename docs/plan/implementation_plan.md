@@ -96,9 +96,10 @@ Current pressure points:
 
 ## Delivery View
 
-Plan status was reconciled against the integrated Milestone A implementation on
-**2026-07-23**. The focused route, state, persistence, StoryEvent, reactivity,
-storyline-resource, and production-world scenes passed with process status `0`.
+Plan status was reconciled against the integrated Milestone A implementation and
+accepted production-flow review on **2026-07-26**. The focused route, state,
+persistence, StoryEvent, reactivity, storyline-resource, and production-world
+scenes passed with process status `0`.
 The dated pre-refactor character-action baseline remains recorded in
 [`../features/low_poly_actor_3d.md`](../features/low_poly_actor_3d.md).
 
@@ -107,14 +108,13 @@ complete. Workstreams 1-4 remain content and polish tracks. Workstream 6 is the
 required planned character-action track. The accepted tunnel, parity, and release-
 performance follow-ups remain later work rather than blockers for the next slice.
 
-### Now: Milestone A — Implemented; Manual Visual Acceptance Pending
+### Completed Milestone A — Accepted 2026-07-26
 
 The playable content slice, story-moment ledger, automated coverage, and bounded
-Workstream 6 Phase 0 gate are implemented. The remaining Milestone A closure work
-is the fixed-fixture and New Game production-flow review listed in the exit
-criteria; until that visual review is accepted, Milestone B remains queued rather
-than active. This milestone does not introduce a general household system or
-implement any of the five planned character actions.
+Workstream 6 Phase 0 gate are implemented. The two fixed-fixture Continue reviews
+and both New Game household outcomes passed their production-flow review. This
+milestone does not introduce a general household system or implement any of the
+five planned character actions.
 
 Content slice:
 
@@ -233,9 +233,12 @@ Milestone A exit criteria:
   dated pre-refactor baseline are recorded in
   [`../features/low_poly_actor_3d.md`](../features/low_poly_actor_3d.md)
 
-Automated status on **2026-07-23**: satisfied. Manual status: pending the two fixed
-title -> Continue fixtures and the completed-versus-missed New Game production
-playthroughs above.
+Automated status on **2026-07-26**: satisfied. Production-flow acceptance status:
+satisfied for the open-window Continue fixture, legacy post-closer Continue
+fixture, completed-care New Game path, and missed-care New Game path. The review
+also fixed A Po's overwritten courtyard response, unreadably narrow 3D resident
+dialogue wrapping, and resident talk losing unconditionally to nearby actionable
+landmark subjects.
 
 Primary implementation areas:
 
@@ -259,20 +262,17 @@ Primary implementation areas:
   `game/tests/persistence/test_story_autosave.*`, and
   `scenes/tests/test_game_world_3d.*`
 
-### Next
+### Now
 
-1. **Milestone A manual acceptance.** Review the open-window and legacy
-   post-closer Continue fixtures, then inspect both New Game household outcomes,
-   journal state, saved continuation, and cared-for/untended world presentation.
-2. **Milestone B — Bagua stewardship ascent.** Complete Workstream 6 Phases 1-3:
+1. **Milestone B — Bagua stewardship ascent.** Complete Workstream 6 Phases 1-3:
    shared action/recovery foundation, physical traversal jump, and ladder climbing.
    Integrate them into a short optional Bagua route that strengthens
    `preservation_tower_perspective` without gating the existing route event until
    focused and production-flow checks pass.
-3. **Milestone C — Object care actions.** Add carry and deliberate push/pull on the
+2. **Milestone C — Object care actions.** Add carry and deliberate push/pull on the
    shared action foundation, first through one compact Piano Ferry or Trinity
    restoration beat. Sitting follows through one harbor or church listening moment.
-4. **Milestone D — Character-action production hardening.** Complete Workstream 6
+3. **Milestone D — Character-action production hardening.** Complete Workstream 6
    Phase 7 after Phases 1-6 have passed their focused and production-use gates.
    Disable story advancement for every physical action in `Free Walk`,
    deterministically settle actions and affected objects during pause, recovery, and
@@ -282,10 +282,10 @@ Primary implementation areas:
    focused automated fixtures, an authored production use, a manual production-flow
    check, and accepted animation coverage or an approved fallback for all three
    player models.
-5. **World-state reactivity.** Reapply saved resident routine overrides to already-
+4. **World-state reactivity.** Reapply saved resident routine overrides to already-
    spawned 3D residents and extend route response into props, ambience, district
    dressing, and other non-resident surfaces.
-6. **Final-act polish.** Turn differentiated ending and departure copy into playable
+5. **Final-act polish.** Turn differentiated ending and departure copy into playable
    closing movement after the embodied route slices above exist.
 
 ### Later

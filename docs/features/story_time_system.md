@@ -137,7 +137,7 @@ Current coverage checks:
 - story autosave persistence and restore for the saved day phase
 - `game/tests/state/test_app_state_ownership.tscn` verifies canonical clock ownership and single-commit behavior for compound time effects
 
-Milestone A must add:
+Milestone A validation includes:
 
 - route opening after `winter_memory_reveal`, exact closure on
   `spring_festival_prepared`, and continued access to the Spring Festival route
@@ -151,3 +151,5 @@ Milestone A must add:
 - both dialogue, prop/ambience, and ending-tone branches
 - manual Continue checks for an open-window save and a legacy post-closer save, plus
   production playthroughs of the seen and missed paths through journal and Continue
+
+The automated and production-flow checks above were accepted on **2026-07-26**.

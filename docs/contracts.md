@@ -184,6 +184,10 @@ Current contract:
 - `scenes/game_world_3d.gd` is the world composition root: it maps landmark proxies through the shared coordinate adapter, spawns the resident roster through `ResidentFactory`, configures the focused world components, and syncs location/landmark/resume context into `AppState`
 - `ActorSurfaceFollower` seats its configured actor on the solid surface beneath it and applies the shallow-water policy; `HumanBody3D` remains terrain-agnostic
 - `StoryInteractionCoordinator` listens to the configured actor controller, selects only `StorySubject3D` nodes below its configured world root, and owns proximity hints plus dispatch through `AppState.activate_story_subject(...)`
+- actionable `talk`, `collect`, and `perform` subjects share the primary interaction
+  priority and resolve by distance when their ranges overlap; passive `inspect`
+  subjects remain the fallback, so a nearby landmark cannot make an adjacent
+  resident's required dialogue unreachable
 - `scenes/game_world_3d.gd` owns mapping the live player position onto safe story resume anchors for autosave and continue, and applies the saved resume anchor on entry (falling back to the definition marked as the catalog default)
 - `scenes/game_world_3d.gd` registers the 3D weather rig target with `WeatherManager`, which owns preset cycling and synced wind application
 - `scenes/game_world_3d.tscn` keeps the player actor in the `"player"` group and residents under a scene-owned resident root
