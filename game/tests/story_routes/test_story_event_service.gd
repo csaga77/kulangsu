@@ -245,6 +245,12 @@ func _run() -> void:
 				and bool(_app_state().get_snapshot().story_flags.get("family_household_care_seen", false)),
 			"Courtyard care resolves the canonical seen fact through the integrated route definition"
 		)
+		_assert_true(
+			String(care_result.get("text", "")).to_lower().contains(
+				"care is how a house answers"
+			),
+			"Courtyard care presents A Po's authored reflective response"
+		)
 		var repeated_care: Dictionary = _app_state().activate_story_subject(
 			"landmark:family_household.courtyard_care",
 			"perform"

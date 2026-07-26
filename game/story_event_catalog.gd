@@ -678,7 +678,14 @@ static func _family_household_care_bindings() -> Array[Dictionary]:
 			"effects": {
 				"story_event": "family_household_care_seen",
 				"objective": "Carry A Po's quiet answer back toward the harbor.",
-				"save_status": "A Po watches the rinsed basin catch the light. “Care is how a house answers when words arrive late.”",
+				"conditional_effects": [
+					{
+						"priority": 10,
+						"effects": {
+							"save_status": "A Po watches the rinsed basin catch the light. “Care is how a house answers when words arrive late.”",
+						},
+					},
+				],
 				"autosave_story_progress": true,
 			},
 			"consumes_interaction": true,
