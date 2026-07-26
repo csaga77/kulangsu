@@ -225,14 +225,19 @@ Current gameplay-content priority order:
 
 1. Begin Milestone B: build the shared action/recovery
    foundation, forgiving physical traversal jump, and authored Bagua ladder proof
-   against the accepted Phase 0 values.
-2. Push preservation and melody reactivity into more inspectables, props, and
-   district-facing world cues, including live reapplication of changed routine
-   overrides to already-spawned residents.
-3. Turn the differentiated ending copy into more playable authored closing moments
-   once the embodied route slices exist.
-4. Keep enriching the landmark route and pairing planned physical actions with
-   authored uses without letting it reclaim the role of sole progression spine.
+   against the accepted Phase 0 values. Free Walk isolation and deterministic
+   pause/recovery/unload cleanup are exit gates for each delivered capability, not
+   later hardening work.
+2. After Milestone B, complete the bounded live-reactivity slice: reapply changed
+   resident routine overrides to already-spawned residents, using Nian's
+   post-ascent move to an authored Bagua view-deck anchor as the production proof.
+3. Add the bounded playable ferry closing movement for the three current endgame
+   triggers while preserving their hard-versus-soft ending behavior.
+4. Complete Milestone C through the locked Piano Ferry carry, Trinity push/pull,
+   and Piano Ferry sitting proofs.
+5. Complete Milestone D's combined title, Story, Continue, Free Walk, overlay,
+   recovery, and unload review. This is the Workstream 6 closure gate, not the first
+   implementation point for action safeguards.
 
 Resident definition migration is complete. New resident content belongs in the
 external resources under `game/residents/definitions/`; `resident_catalog.gd`

@@ -456,7 +456,13 @@ With the seasonal missability principle, current playable coverage should track 
 
 ## Storyline Gap Priorities
 
-The next narrative expansion should stay focused on the gaps that most affect the shape of the year:
+Milestone B's optional Bagua stewardship ascent is the active implementation slice
+because it proves the required shared action/recovery, traversal-jump, and ladder
+foundation while adding bounded preservation follow-through. It does not reorder
+the broader narrative gaps below or make preservation the sole progression spine.
+
+After that active system/content slice, narrative expansion should stay focused on
+the gaps that most affect the shape of the year:
 
 1. Add later embodied family and festival scenes that build on the accepted
    household-care and transformed-absence paths without turning the first

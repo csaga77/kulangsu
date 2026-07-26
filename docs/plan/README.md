@@ -24,10 +24,15 @@ Use this folder for:
   completed-versus-missed seasonal transformation, and bounded Phase 0
   character-action gate are implemented, automated-green, and production-flow
   accepted as of 2026-07-26.
-- Milestone B's traversal foundation is now the active work. Workstream 6 then
-  advances through Milestone C's object-care actions and Milestone D's Phase 7
-  production hardening; Milestone D is the sole gate that can mark the
-  character-action workstream complete.
+- Milestone B's Bagua stewardship ascent is the only active delivery milestone. It
+  owns the shared action/recovery foundation, physical traversal jump, and ladder
+  proof, including per-capability Free Walk isolation and deterministic
+  pause/recovery/unload cleanup.
+- After Milestone B, the queue is one bounded live world-reactivity slice, one
+  playable final-act slice, Milestone C's three exact object-care proofs, and then
+  Milestone D's full-flow closure review. Milestone D revalidates safeguards that
+  each earlier action slice must already pass and remains the sole gate that can
+  mark the character-action workstream complete.
 - The typed storyline resource, inspector, browser, dependency graph, and canonical-
   source authoring workflow are complete; later validation follows the feature that
   introduces new behavior instead of keeping the editor workstream permanently open.

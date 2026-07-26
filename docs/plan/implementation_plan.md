@@ -100,6 +100,8 @@ Plan status was reconciled against the integrated Milestone A implementation and
 accepted production-flow review on **2026-07-26**. The focused route, state,
 persistence, StoryEvent, reactivity, storyline-resource, and production-world
 scenes passed with process status `0`.
+The active queue, per-capability safety gates, and bounded follow-on slices were
+reconciled across the canonical planning docs on **2026-07-27**.
 The dated pre-refactor character-action baseline remains recorded in
 [`../features/low_poly_actor_3d.md`](../features/low_poly_actor_3d.md).
 
@@ -110,183 +112,129 @@ performance follow-ups remain later work rather than blockers for the next slice
 
 ### Completed Milestone A — Accepted 2026-07-26
 
-The playable content slice, story-moment ledger, automated coverage, and bounded
-Workstream 6 Phase 0 gate are implemented. The two fixed-fixture Continue reviews
-and both New Game household outcomes passed their production-flow review. This
-milestone does not introduce a general household system or implement any of the
-five planned character actions.
+Milestone A shipped the embodied Winter household-care scene, the first bounded
+completed-versus-missed story-moment policy, its saved world/dialogue/journal/ending
+reactivity, and Workstream 6 Phase 0's tuning/content/animation gate.
 
-Content slice:
+Acceptance evidence:
 
-- Add one embodied `family_memory` household/courtyard scene near the ferry district,
-  positioned in the Winter window after `winter_memory_reveal`.
-- Use `family_household_care_seen` as the canonical optional route-event id. It is
-  available only while `winter_memory_reveal` is true,
-  `spring_festival_prepared` is false, and `season_phase` is `winter`. The scene
-  should contain an arrival, one small act of care, and one reflective response from
-  A Po or a parent, with prop or ambience feedback after resolution.
-- Use resolution of `spring_festival_prepared` as the exact window-closing trigger.
-  Do not infer expiry from elapsed real time, a hidden day count, or a later generic
-  season transition. If the care event is still unresolved in the same detached
-  transition that resolves the closing trigger, publish
-  `family_household_care_missed` before rebuilding route projection and autosaving.
-- Keep `spring_festival_prepared` and `spring_festival_resolved` independent of both
-  care outcomes. The optional beat changes later texture; it never blocks the main
-  family route or ending access.
-- Keep route rewards in StoryEvents. The scene and props emit semantic subjects or
-  completion ids and do not write route state directly.
-
-Locked story-moment contract:
-
-- Add a parent-owned, bounded `StoryMomentLedger` policy over canonical
-  `AppStateSnapshot.story_flags`; do not introduce a second mutable state owner.
-  Its first and initially only definition is `family_household_care`, mapped to
-  route `family_memory`, completed event `family_household_care_seen`, missed fact
-  `family_household_care_missed`, opener `winter_memory_reveal`, Winter phase, and
-  closer `spring_festival_prepared`. Definitions are explicit; suffix matching or
-  arbitrary runtime registration is out of scope.
-- Normalize the ledger inside the existing detached `AppStateTransition`, after
-  authored command effects and story-flag normalization but before projection,
-  change-set construction, autosave, and queued-event delivery. For a live command,
-  preserve any terminal outcome already present in the transition's base snapshot;
-  if the base has no outcome and the command produces both facts, completed wins.
-  The closer publishes missed only when neither the base nor working snapshot has a
-  terminal outcome. Repeating completion, expiry, load normalization, or
-  normalization itself must be a no-op after the first terminal outcome.
-- Run the same normalizer when a save is decoded and resumed. Saves from before the
-  ledger keep the moment open when the opener is resolved and the closer is not;
-  saves at or beyond `spring_festival_prepared` acquire the missed fact when neither
-  outcome exists; seen and missed saves retain their outcome; conflicting old data
-  deterministically normalizes to seen. The facts remain in the existing
-  `story_flags` save payload, so this slice does not need a parallel save field.
-- Extend route projection so a missed alternative closes its mapped route event.
-  `family_household_care_seen` must disappear from available and blocked leads,
-  appear in `missed_beat_ids`, count as terminal when deriving route state, and add
-  no completion score. The seen path remains in `resolved_beat_ids` and earns its
-  authored score. The journal must distinguish one missed optional beat from a
-  blocked beat.
-- Make both facts available to later consumers through normal StoryEvent condition
-  matching. Spring Festival dialogue must have seen and missed variants; the
-  household prop/ambience state must retain a warm/cared-for versus absent/untended
-  distinction; ending tone/summary projection must add care versus regret texture
-  without changing endgame eligibility.
-
-Character-action gate:
-
-- Complete Workstream 6 Phase 0 only. Record accepted values and their fixture
-  geometry in [`../features/low_poly_actor_3d.md`](../features/low_poly_actor_3d.md)
-  for the full numeric matrix: jump obstacle clearance and arc; gap width; landing
-  width and recovery; input buffering and edge forgiveness; air control and ceiling
-  rejection; ladder mount/dismount alignment, climb speed, endpoint clearance, and
-  blocked-exit recovery; contextual action and pickup ranges; light/medium carry
-  movement values plus attachment and doorway clearances; push/pull alignment,
-  speed, path bounds, and blockage; object-placement reach, clearance, and
-  tolerances; seat entry/exit alignment and clearance; and player/object
-  out-of-bounds recovery thresholds.
-- Record one input-and-cancellation decision table for traversal jump, ladder, carry,
-  push/pull, and sit. It must name entry and continued-control inputs, completion,
-  explicit cancel/exit, `Esc` precedence, incompatible-mode rejection, and
-  pause/recovery/unload cleanup, and must decide whether carried-object rotation has
-  a dedicated input, prompt, behavior, and test or remains unsupported.
-- Audit `male.glb`, `female.glb`, and `boy.glb` against every required locomotion and
-  action phase: idle/walk/run, takeoff/airborne/landing, ladder
-  mount/climb/dismount, carry idle/walk/place, push, pull, sit enter/idle/exit, and
-  fall/recovery. Record the exact accepted clip or an explicitly approved fallback
-  for every model-and-phase cell; the presence of an imported clip alone is not
-  acceptance.
-- Replace the five candidate production locations with one approved proof record per
-  capability. Each traversal-jump, ladder, carry, push/pull, and sit record must name
-  the exact production scene, semantic completion id, required geometry, and manual
-  production-flow check.
-- Before Phase 1 refactors actor behavior, capture the dated passing actor,
-  collision, environment, and production-world baseline from
-  `test_human_body_3d.tscn`, `test_character_collisions.tscn`,
-  `test_environment_3d.tscn`, and `test_game_world_3d.tscn`.
-- Lock the next production action slice as the Bagua stewardship ascent: physical
-  traversal jump plus recovery followed by one authored ladder connection. This is
-  planning approval, not a claim that either action is implemented in Milestone A.
-
-Milestone A exit criteria:
-
-- the household scene is playable through the production Story flow and updates the
-  journal, world feedback, autosave, and continue state through semantic commands
-- completing and missing the optional beat produce exclusive, idempotent saved facts
-  plus distinct Spring Festival dialogue, prop/ambience state, journal treatment,
-  and ending texture, while both paths preserve main-route continuity
-- route tests cover opening only after `winter_memory_reveal`, closing exactly on
-  `spring_festival_prepared`, no stale available/blocked lead after a miss, no
-  completion score for a miss, and unchanged access to
-  `spring_festival_resolved`
-- state and persistence tests cover one detached commit/autosave for expiry,
-  repeated normalization, repeated completion/close commands, malformed dual-fact
-  normalization, seen/missed save round trips, and pre-ledger saves on both sides of
-  the closing trigger
-- StoryEvent/reactivity tests cover both later dialogue branches, both saved
-  prop/ambience branches, and both ending-tone projections
-- automated coverage is followed by two manual title -> Continue checks from fixed
-  fixtures: one save inside the open Winter window and one legacy save after
-  `spring_festival_prepared`; also play New Game -> winter reveal -> household ->
-  journal -> continue and New Game -> winter reveal -> festival preparation ->
-  journal -> continue to inspect both outcomes in the production world
-- Workstream 6 Phase 0's complete numeric matrix, action-by-action input/cancel
-  table, three-model clip/fallback matrix, five exact production-proof records, and
-  dated pre-refactor baseline are recorded in
+- focused route, state, persistence, StoryEvent, reactivity, and production-world
+  scenes passed with process status `0`
+- open-window Continue, legacy post-closer Continue, completed-care New Game, and
+  missed-care New Game production flows passed
+- the care and missed outcomes remain exclusive and idempotent, do not block Spring
+  Festival or endgame, and retain distinct later texture
+- the complete numeric, input/cancellation, three-model animation-fallback, exact
+  production-proof, and pre-refactor baseline records live in
   [`../features/low_poly_actor_3d.md`](../features/low_poly_actor_3d.md)
 
-Automated status on **2026-07-26**: satisfied. Production-flow acceptance status:
-satisfied for the open-window Continue fixture, legacy post-closer Continue
-fixture, completed-care New Game path, and missed-care New Game path. The review
-also fixed A Po's overwritten courtyard response, unreadably narrow 3D resident
-dialogue wrapping, and resident talk losing unconditionally to nearby actionable
-landmark subjects.
+The durable household-moment contract and validation summary live in
+[`../features/household_care_story_moment.md`](../features/household_care_story_moment.md).
+Milestone A implemented none of the five planned character actions.
+
+### Active — Milestone B: Bagua Stewardship Ascent
+
+Milestone B is the only active delivery milestone. Complete Workstream 6 Phases 1-3
+in order:
+
+1. shared physics, action-state, contextual-interaction, animation-fallback, and
+   recovery foundation
+2. forgiving physical traversal jump and recovery
+3. authored ladder climbing
+
+The production proof is one optional Bagua stewardship ascent in
+`architecture/bagua_tower/bagua_tower_stylized_3d.tscn`: the accepted lower-terrace
+jump followed by the accepted service ladder. The ordinary route to the tower and
+the existing `preservation_tower_perspective` event remain available throughout;
+the new physical path never gates, resolves, renames, or changes the score of that
+event.
+
+Story-semantic contract:
+
+- physical movement may remain usable whenever its geometry is enabled, but saved
+  StoryEvent meaning is eligible only in Story mode after
+  `preservation_tower_perspective` has resolved
+- a settled jump landing publishes `bagua_stewardship_jump_crossed` once through a
+  StoryEvent effect; it is a persistent story fact, not a scored route event
+- a settled top ladder dismount requires the jump fact at the semantic layer and
+  publishes `bagua_stewardship_ladder_ascended` once; it unlocks one conditional
+  preservation journal note plus one view-deck world response, without changing
+  route score or endgame eligibility
+- both semantic completions are no-ops in `Free Walk`; physical components never
+  write `AppState` or route state directly
+- save/continue preserves only StoryEvent-owned facts and derived presentation;
+  locomotion mode, ladder position, recovery state, and other transient action state
+  always reset deterministically
+
+Per-phase exit gates:
+
+- **Phase 1 — foundation:** introduce the ownership components named in
+  [`../features/low_poly_actor_3d.md`](../features/low_poly_actor_3d.md), route current
+  inspect/talk through one contextual arbiter, establish safe-transform recovery and
+  generated animation profiles, and preserve shipped behavior. Cancellation,
+  pause, recovery, scene-unload cleanup, and Free Walk semantic suppression are
+  foundation requirements, not Milestone D follow-ups.
+- **Phase 2 — traversal jump:** pass every accepted numeric boundary and rejection
+  case in `test_character_traversal_3d.tscn`; pass the Bagua jump proof for walk and
+  run approaches, miss recovery, ceiling rejection, pause/unload cleanup, one
+  idempotent Story-mode publication, Free Walk no-op behavior, save/continue, and
+  all three player-model fallbacks.
+- **Phase 3 — ladder:** pass mount, climb, endpoint, blocked-exit, cancel, camera,
+  recovery, pause/unload, and incompatible-mode cases in
+  `test_character_traversal_3d.tscn`; pass the Bagua ladder production proof in both
+  directions, one idempotent Story-mode publication, Free Walk no-op behavior,
+  save/continue, and all three player-model fallbacks.
+
+Milestone B closes only when:
+
+- `test_character_action_state_3d.tscn` and
+  `test_character_traversal_3d.tscn` exist and pass with process status `0`
+- the existing actor, collision, environment, production-world, story route,
+  StoryEvent, persistence, app-shell, and screen-router regressions remain green
+- the fixed pre-ascent Continue fixture and a New Game production flow prove the
+  optional path, alternate walkable route, journal/world response, recovery,
+  overlays, reload, and Free Walk isolation
+- the current-status tables in the actor feature, module map, gameplay workflow, and
+  this plan are updated together
 
 Primary implementation areas:
 
-- `game/storylines/routes/family_memory.tres`
-- new parent-owned `game/story_moment_ledger.gd`
-- `game/app_state.gd`, `game/app_state/app_state_transition.gd`,
-  `game/app_state/app_state_reducer_context.gd`,
-  `game/app_state/app_state_projection.gd`, and
-  `game/app_state/story_save_codec.gd`
-- `game/story_route_graph.gd` and `game/journal_builder.gd`
-- `game/residents/definitions/`
-- `game/story_event_catalog.gd`, `game/story_event_service.gd`, and
-  `game/story_world_reactivity.gd`
-- the authored household/courtyard scene and its `StorySubject3D` nodes
+- `characters/` and `characters/control/`
+- `characters/tests/`
+- `game/world/`
+- `architecture/bagua_tower/bagua_tower_stylized_3d.tscn`
+- `game/story_event_catalog.gd`, `game/story_world_reactivity.gd`, and
+  `game/journal_builder.gd`
+- `game/tests/persistence/fixtures/`
+- `game/tests/story_routes/` and `game/tests/persistence/`
 - `scenes/game_world_3d.tscn` / `scenes/game_world_3d.gd`
-- `game/tests/story_routes/test_story_routes.*`,
-  `game/tests/story_routes/test_story_event_service.*`,
-  `game/tests/story_routes/test_story_reactivity.*`,
-  `game/tests/state/test_app_state_ownership.*`,
-  `game/tests/persistence/test_story_state_persistence.*`,
-  `game/tests/persistence/test_story_autosave.*`, and
-  `scenes/tests/test_game_world_3d.*`
 
-### Now
+### Next
 
-1. **Milestone B — Bagua stewardship ascent.** Complete Workstream 6 Phases 1-3:
-   shared action/recovery foundation, physical traversal jump, and ladder climbing.
-   Integrate them into a short optional Bagua route that strengthens
-   `preservation_tower_perspective` without gating the existing route event until
-   focused and production-flow checks pass.
-2. **Milestone C — Object care actions.** Add carry and deliberate push/pull on the
-   shared action foundation, first through one compact Piano Ferry or Trinity
-   restoration beat. Sitting follows through one harbor or church listening moment.
-3. **Milestone D — Character-action production hardening.** Complete Workstream 6
-   Phase 7 after Phases 1-6 have passed their focused and production-use gates.
-   Disable story advancement for every physical action in `Free Walk`,
-   deterministically settle actions and affected objects during pause, recovery, and
-   scene unload, finish contextual hints and consistent input/cancel/camera behavior,
-   and run the full title, New Game, Free Walk, and overlay flows. Milestone D is
-   the sole Workstream 6 closure gate: it passes only when all five actions have
-   focused automated fixtures, an authored production use, a manual production-flow
-   check, and accepted animation coverage or an approved fallback for all three
-   player models.
-4. **World-state reactivity.** Reapply saved resident routine overrides to already-
-   spawned 3D residents and extend route response into props, ambience, district
-   dressing, and other non-resident surfaces.
-5. **Final-act polish.** Turn differentiated ending and departure copy into playable
-   closing movement after the embodied route slices above exist.
+1. **Bounded world-state reactivity slice.** Reapply changed resident routine
+   overrides to already-spawned 3D actors without respawning them. Use a
+   post-ascent `terrace_painter_nian` override to an authored view-deck anchor as the
+   production proof. Close the slice only when focused reactivity coverage and the
+   production-world test prove live update, save/continue parity, and no
+   interruption of active talk or physical action state.
+2. **Bounded final-act slice.** Add one playable ferry closing movement shared by
+   the three current endgame triggers, with trigger-specific aftermath, hard-ending
+   departure, and soft-ending stay/continue behavior. Close it only when all three
+   trigger flows pass focused routing/persistence coverage and a production flow.
+3. **Milestone C — object-care actions.** Complete Workstream 6 Phases 4-6 through
+   the already locked proofs: carry the Piano Ferry music case
+   (`piano_ferry_music_case_shelved`), push/pull the Trinity hymn chest
+   (`trinity_hymn_chest_aligned`), and sit for the Piano Ferry harbor listening beat
+   (`harbor_sea_melody_listened`). Each capability must ship with its focused
+   fixture, deterministic pause/recovery/unload cleanup, Story-mode idempotency,
+   Free Walk no-op semantics, production-flow check, and three-model animation
+   acceptance.
+4. **Milestone D — character-action production hardening.** Re-run all five actions
+   across title, New Game, Continue, Free Walk, journal, pause, settings, ending,
+   recovery, and scene-unload flows; finish shared hints and camera/input consistency.
+   Milestone D revalidates safeguards required by each earlier slice; it is not the
+   first point at which Free Walk suppression or deterministic cleanup is
+   implemented. It remains the sole Workstream 6 closure gate.
 
 ### Later
 
@@ -296,10 +244,12 @@ Primary implementation areas:
 - authored Bi Shan and Long Shan interiors, routed tunnel residents, landmark result
   equality, and a release-export performance repeat
 - journal/HUD grouping and identity-focused resident model/material variants when
-  content density makes either necessary
+  content density or a usability finding justifies either
 
 ### Done
 
+- Milestone A: household-care content slice, bounded missed-moment ledger, and
+  Workstream 6 Phase 0
 - Workstream 0: AppState decomposition and atomic snapshot ownership
 - Workstream 5: typed storyline resources, inspector authoring, route browser,
   editable dependency graph, canonical-source persistence, and editor validation
@@ -308,114 +258,25 @@ Primary implementation areas:
 
 ### Low-Poly 3D Runtime
 
-The low-poly 3D world is the production overworld. Stage 6 records the completed
-runtime-direction decision; remaining items below are accepted follow-ups.
+The low-poly 3D world became the production overworld on 2026-07-06. The cutover,
+legacy 2D runtime removal, visual acceptance, standalone Metal performance
+acceptance, shell integration, story/resident/save ownership review, and focused
+actor/terrain/camera/environment/world regressions are complete.
 
-Shipped baseline:
+The durable execution record and evidence live in
+[`low_poly_3d_replacement.md`](low_poly_3d_replacement.md),
+[`../features/low_poly_3d_integration.md`](../features/low_poly_3d_integration.md),
+and `design/qa/low_poly_3d/`. Keep their established correctness tests green during
+Milestone B.
 
-- `LowPolyTerrainSampler` turns mask/heightmap images into typed cells; `LowPolyTerrainMeshBuilder` turns those cells into land, seabed, street, footprint, shoreline, layered water, and collision geometry; `LowPolyTerrain3D` owns lifecycle, materials, wind, and placement-height queries
-- water uses a flat baked plane for placement semantics but real shader-displaced waves, analytic normals, layered highlights, shoreline overlap, and normalized wind supplied through `LowPolyWaterWindAdapter`
-- `HumanBody3D`, `BaseController3D`, and `PlayerController3D` provide camera-relative XZ movement, animated model locomotion, gravity, native stair-slope traversal and static-wall sliding, and capped `RigidBody3D` pushing
-- `LowPolyWorldCoordinates3D`, `LowPolyArtStyle3D`, and `Camera3DController` support the production world without scene-local placement math; authored landmark scenes provide runtime massing and collision
-- the Low-Poly Building Editor, versioned `BuildingSpec` generation, authored landmark concepts, and `test_environment_3d.tscn` provide the environment-authoring and playable character-interaction review lane
-- design-time streets now use an explicit `StreetNetwork3D` graph with stable junction/segment resources, adaptive horizontal curves and vertical profiles, asymmetric cross-sections, dedicated multi-road centre geometry, topology-aware placement/editing, deterministic mask conversion, terrain junction footprints, and legacy Street3D migration compatibility
-- three authored landmarks, two tunnel markers, A Po's household courtyard, the
-  complete 17-landmark/6-inspectable `StorySubject3D` set, the shared resident
-  roster, speech balloons, BGM/landmark cues, and semantic resume anchors are
-  assembled by `game_world_3d`
-- focused actor, collision, terrain, camera-occlusion, environment-interaction,
-  combined-world, and runtime-world scenes form the current validation set
+Accepted residual follow-ups:
 
-Execution order:
-
-1. **Correctness baseline (shipped guardrail).**
-   - Keep actor API, generated collision fixtures, terrain/water, camera occlusion, building loading, and combined-world headless scenes green.
-   - Every automated smoke scene must return process status `0` on success and nonzero on assertion failure; a logged `PASS` line alone is insufficient.
-   - `test_character_collisions.tscn` is the owner for gravity/landing, static wall blocking, native stair-slope ascent/descent and side blocking, and dynamic rigid-body pushing.
-2. **Runtime interaction slice (green for current authored scope).**
-   - All five landmark anchors, shared-data residents, stable subject-id dispatch, collision,
-     prompt selection, camera readability, and semantic resume fallback are
-     assembled in `game_world_3d`.
-   - `test_game_world_3d.tscn` now enters resident talk through proximity
-     selection and the player controller's inspect signal rather than calling
-     `AppState` directly.
-   - Resident dispatch asserts the expected dimension-neutral result and core progression state. The smoke also asserts the exact 17 landmark and 6 inspectable production subject ids and their shared request contract.
-3. **Visual-style acceptance (green).**
-   - Tune camera, projection, follow offset, palette, lighting, restrained wave depth, terrain chunkiness, building scale, actor readability, and camera-relative movement using the interaction slice plus combined world.
-   - Store fixed-camera evidence under `design/qa/low_poly_3d/`: `world_overview.png`, `player_scale.png`, `landmark_approach.png`, `camera_occlusion.png`, and `water_shoreline.png`.
-   - The visual gate requires nonblank frames, readable player silhouette, recognizable landmark approach, legible water/seabed layering, successful occluder fade, no incoherent overlap, and a dated acceptance note in the same folder.
-   - `capture_game_world_3d_qa.tscn` generated the complete set at 2880×1620 physical pixels; the dated acceptance note records each accepted view.
-4. **Performance acceptance (diagnostic green; release repeat open).**
-   - Record renderer, build type, resolution, hardware, scene revision, and measurement method in `design/qa/low_poly_3d/performance.md`.
-   - At `1920 x 1080`, after a 5-second warm-up over a 60-second interaction-slice run, target p95 frame time at or below `16.7 ms`, worst sustained frame time at or below `33.3 ms`, no more than `500` visible draw calls, no more than `750,000` visible triangles, peak process memory below `1 GiB`, and a cold terrain rebuild below `3 seconds`.
-   - If a target is missed, record the exception and approved tradeoff explicitly; “looks acceptable” is not a passing measurement.
-   - The reproducible standalone Metal editor-debug run with cycling 3D weather passed every numeric
-     budget: 14.963 ms p95, 20.420 ms worst, 92 max draw calls, 231,166 max primitives,
-     264.98 MiB video memory, 140.50 MiB static memory, and a 534.52 ms cold terrain rebuild at
-     2880×1620 physical pixels.
-     `performance_latest.json` contains the raw 60-second capture and visibility variants.
-   - Repeat the same runner through a release export to satisfy the build-type formality; the prior
-     1,222 embedded-editor draw-call estimate was not reproduced and is superseded.
-   - **Accepted 2026-07-06 for the runtime-direction decision.** Every numeric budget passes with
-     margin on the standalone Metal diagnostic capture, so the performance gate is accepted for the
-     cutover; the release-export repeat is a recorded residual confirmation, not a blocker (an
-     approved tradeoff per the "record the exception" rule above). Release builds strip the
-     debug-server overhead, so the release numbers are expected to be no worse than the diagnostic.
-5. **Story/resident/save ownership acceptance (green for current runtime scope).**
-   - Follow [`../features/low_poly_3d_integration.md`](../features/low_poly_3d_integration.md): the 3D scene owns spatial adapters, existing story services own rules/effects, `AppState` owns shared progression/save data, and resident definitions remain dimension-neutral data.
-   - Controller/coordinator resident dispatch, resident result/state parity, semantic resume fallback, and the exact production set of 17 landmark plus 6 inspectable subjects are green. Tunnel-resident routing/visibility remains open. Player profiles map adult masculine/feminine and teen frames to the male/female/boy GLBs.
-6. **Runtime-direction decision — DECIDED 2026-07-06: replace the 2D overworld.**
-   - Outcome: the low-poly 3D overworld (`scenes/game_world_3d.tscn`) replaces the 2D overworld as
-     the runtime. `main.gd` now instantiates it directly; the `USE_3D_OVERWORLD` toggle and the
-     `game_main.tscn` preload are removed.
-   - Evidence linked: correctness (`scenes/tests/test_game_world_3d.tscn` green — world build, spawn,
-     five landmark anchors, story subjects, controller/coordinator resident talk dispatch, resume anchor
-     + fallback, interaction contract); visual acceptance (all five fixed-camera PNGs in
-     `design/qa/low_poly_3d/` plus the dated acceptance note); performance (stage 4 diagnostic passes
-     every budget); full-shell integration (title → New Game → traveler setup → 3D overworld with HUD,
-     story progression, journal gating, autosave, 0 errors); interaction contract and ownership per
-     [`../features/low_poly_3d_integration.md`](../features/low_poly_3d_integration.md).
-   - Accepted as post-cutover follow-ups (explicit tradeoffs, project-owner decision): tunnel interior
-     geometry (Bi Shan / Long Shan remain marker anchors) and the release-export performance repeat. The two tunnels are traversable-as-anchors but not yet
-     walkable interiors; this is a known, accepted gap at cutover.
-   - Execution: the hard-cutover sequence is recorded in [`low_poly_3d_replacement.md`](low_poly_3d_replacement.md).
-     The runtime flip, legacy 2D character/NPC deletion, 3D UI preview migration, Universal LPC
-     runtime renderer/addon removal, final 2D world/landmark/terrain/weather residual cleanup, and
-     canonical doc sweep are complete. The third-party LPC generator remains a tracked submodule for
-     offline asset-generation and licensing reference; the production runtime does not depend on it.
-
-Open art/content decisions:
-
-- validate optional character clips beyond `idle`/`walk`/`run` before mapping them to gameplay states
-- visually tune the shipped street-network curve/profile defaults and remaining building-footprint sampling after island-scale editor review
-- decide whether resident identity needs additional model/material variants;
-  player body-frame/presentation mapping now uses whole-model male/female/boy
-  GLB swaps
-
-Primary files:
-
-- `terrain/low_poly_terrain_3d.gd`
-- `terrain/low_poly_terrain_sampler.gd`
-- `terrain/low_poly_terrain_mesh_builder.gd`
-- `terrain/low_poly_terrain_cell.gd`
-- `terrain/low_poly_art_style_3d.gd`
-- `terrain/low_poly_postcard_diorama_style.tres`
-- `terrain/low_poly_world_coordinates_3d.gd`
-- `terrain/low_poly_water_wind_adapter.gd`
-- `resources/materials/water_3d.gdshader`
-- `scenes/tests/test_low_poly_terrain_3d.tscn`
-- `scenes/tests/test_game_world_3d.tscn`
-- `scenes/tests/test_camera_3d_occlusion.tscn`
-- `scenes/tests/test_environment_3d.tscn`
-- `characters/human_body_3d.gd`
-- `assets/characters/male.glb` (default; `boy.glb`, `female.glb` alternates)
-- `characters/control/base_controller_3d.gd`
-- `characters/control/player_controller_3d.gd`
-- `characters/tests/test_human_body_3d.tscn`
-- `characters/tests/test_character_collisions.tscn`
-- `docs/features/low_poly_terrain_3d.md`
-- `docs/features/low_poly_actor_3d.md`
-- `docs/features/low_poly_3d_integration.md`
+- author walkable Bi Shan and Long Shan interiors plus routed tunnel residents
+- repeat the accepted performance runner through a release export
+- tune street-network defaults and remaining footprint sampling after island-scale
+  review
+- add resident model/material variants only if a later identity-readability review
+  demonstrates the need
 
 ### Completed Resident Migration
 
@@ -425,7 +286,10 @@ Primary files:
 
 ## Workstream 1: Route Content Depth
 
-First-pass shipped outcome:
+Status: ongoing content track. Only a named, bounded slice may enter the delivery
+queue; “add more content” is not an executable task or closure criterion.
+
+Shipped baseline:
 
 - `family_memory` now has an embodied A Po household/courtyard care beat, an
   exclusive transformed missed path, explicit parent-care reflection after winter,
@@ -434,10 +298,19 @@ First-pass shipped outcome:
 - `preservation_inheritance` now reaches beyond Bagua's first perspective beat into postcard and map-stewardship reactions
 - `melody_landmarks` now has a softer resonant follow-through after the harbor performance
 
-Still open:
+Current bounded slice:
 
-- add more embodied household, festival, and district scenes so route depth is not carried mostly by talk beats
-- spread the mid-route beats across more playable spaces and smaller turns instead of relying on a handful of major resident conversations
+- Milestone B adds the optional Bagua stewardship ascent and its journal/world
+  follow-through without gating or rescoring `preservation_tower_perspective`
+- its content portion closes only with the exact semantic, production-flow,
+  persistence, recovery, and alternate-path evidence in the Active milestone
+
+Selection rule for the following slice:
+
+- choose exactly one unresolved gap from the story framework
+- name the production scene, route family, semantic facts, opening/closing
+  conditions, journal/world response, automated owner, and manual production flow
+- do not begin another general household system or new top-level route by default
 
 Primary files:
 
@@ -452,7 +325,10 @@ Primary files:
 
 ## Workstream 2: World-State Reactivity
 
-First-pass shipped outcome:
+Status: first pass shipped; one bounded follow-up is queued immediately after
+Milestone B.
+
+Shipped baseline:
 
 - new conditional beats now react to winter-memory, Spring Festival, future-choice, second-summer, preservation, and resonant-festival state across ferry, church, and Bagua districts
 - `scenes/game_world_3d.gd` surfaces selected route-event resolutions as world-status feedback instead of leaving those turns only in journal state
@@ -463,13 +339,21 @@ First-pass shipped outcome:
 - first-pass StoryEvent routing now unifies resident talk, inspectable resolution, shared condition matching, and saved resident routine-override configuration behind the `AppState` story-subject bridge
 - route progress now changes more of what the island feels like without requiring landmark-only progression
 
-Still open:
+Next bounded slice:
 
-- extend route-state changes into inspectables, props, ambient audio, district dressing, and more non-resident surfaces
 - reapply changed resident routine overrides to already-spawned 3D actors instead
   of waiting for a future spawn or scene reload
-- move landmark subject/world-event bindings toward typed StoryEvent resources, or keep expanding validation so authored bindings, route events, subject metadata, and resident effects cannot drift silently
-- keep widening cross-district follow-through so major anchors feel visible outside the specific resident who resolved them
+- after `bagua_stewardship_ladder_ascended`, apply a
+  `terrace_painter_nian` routine override to an authored view-deck anchor as the
+  production proof
+- close only when focused reactivity and production-world coverage prove live
+  update without respawn, save/continue parity, and no disruption of active talk or
+  physical action state
+
+Later reactivity work must enter the queue as another named surface/district slice.
+The typed-binding migration remains conditional: either introduce typed StoryEvent
+bindings with a dedicated migration plan, or add drift validation in the feature
+that introduces the next binding shape.
 
 Primary files:
 
@@ -477,14 +361,21 @@ Primary files:
 - `game/story_event_service.gd`
 - `game/story_world_reactivity.gd`
 - `game/world/story_interaction_coordinator.gd`
+- `characters/resident_factory.gd`
+- `characters/control/resident_controller_3d.gd`
 - `architecture/piano_ferry/piano_ferry_stylized_3d.tscn`
 - `architecture/trinity_church/trinity_church_stylized_3d.tscn`
 - `architecture/bagua_tower/bagua_tower_stylized_3d.tscn`
 - `scenes/game_world_3d.gd`
+- `game/tests/story_routes/test_story_reactivity.gd`
+- `scenes/tests/test_game_world_3d.gd`
 
 ## Workstream 3: Final-Act And Ending Polish
 
-First-pass shipped outcome:
+Status: overlay differentiation shipped; one bounded playable closing slice is
+queued after the world-state reactivity slice.
+
+Shipped baseline:
 
 - ending and departure overlays now have trigger-specific title, summary, and departure language for exam, honest-future, and harbor-performance runs
 - soft endings now present explicit stay-versus-leave text instead of only a generic continue prompt
@@ -492,20 +383,31 @@ First-pass shipped outcome:
 - household care versus absence adds distinct care/regret tone tags and summary
   texture without changing final-act eligibility
 
-Still open:
+Next bounded slice:
 
-- turn more of the final-act and departure texture into playable closing movement rather than leaving it mostly in overlays
-- keep sharpening trigger-specific aftermath and ferry framing once more embodied content exists to support it
+- add one shared playable ferry closing movement with trigger-specific aftermath
+  for `summer_exam_complete`, `future_commitment_end`, and
+  `harbor_festival_performed`
+- preserve hard-ending departure for the first two triggers and soft-ending
+  stay/continue behavior for the harbor performance
+- close only when focused route/persistence coverage and one production flow per
+  trigger prove entry, departure, continue, save handling, and return-to-title
 
 Primary files:
 
 - `ui/screens/ending_overlay.gd`
 - `ui/screens/departure_overlay.gd`
 - `game/story_route_graph.gd`
+- `main.gd` and `scenes/game_world_3d.gd`
+- `game/tests/persistence/test_story_autosave.gd`
+- `ui/screens/tests/test_app_screen_router.gd`
 
 ## Workstream 4: Journal And HUD Polish
 
-First-pass shipped outcome:
+Status: no active slice. The current presentation is accepted for the existing
+content density.
+
+Shipped baseline:
 
 - the HUD now distinguishes manual versus automatic pinned-lead state
 - the journal now shows lead-selection mode, route emphasis, richer per-route counts, and lead-control guidance
@@ -513,10 +415,13 @@ First-pass shipped outcome:
 - route sections now distinguish terminal missed optional beats from blocked and
   resolved work
 
-Still open:
+Reopen trigger:
 
-- decide whether later route-sectioning, icons, or other stronger visual grouping would help once more route content lands
-- keep tuning wording and density as the ledger grows so readability does not slip
+- a second missable moment, materially denser route ledger, or documented usability
+  finding demonstrates that current grouping or wording is insufficient
+- before implementation, name the exact readability problem, affected states,
+  proposed presentation, screenshot/manual review, and focused projection/UI
+  coverage
 
 Primary files:
 
@@ -531,58 +436,20 @@ Status: complete for its defined authoring-workflow exit criteria. Future valida
 growth belongs to the Later queue or to the feature that introduces a new schema or
 runtime behavior; it is not a reason to keep the editor workflow itself active.
 
-First-pass shipped outcome:
+Shipped outcome:
 
-- per-route storyline resources now live under `game/storylines/routes/`, so adding or editing a route no longer requires touching the central route graph
-- added focused route-reactivity coverage in `game/tests/story_routes/test_story_reactivity.tscn`
-- added focused StoryEvent bridge coverage in `game/tests/story_routes/test_story_event_service.tscn`
-- added arbitrary-flag plus override-backed resident profile persistence coverage in `game/tests/persistence/test_story_state_persistence.tscn`
-- kept the existing seasonal-route, resident-interaction, and autosave regressions green after the content pass
+- typed route resources under `game/storylines/routes/` are the canonical runtime
+  and editor source
+- the addon-owned schema, inspector workflow, route browser, editable dependency
+  graph, checked-in graph layout, and cross-route validation all write back to that
+  source
+- runtime, journal, and autosave consumers keep reading one definition bundle rather
+  than a graph-only or editor-only format
+- focused storyline-resource, route, StoryEvent, reactivity, and persistence
+  regressions cover the delivered workflow
 
-Phases 1–3 shipped:
-
-- Phase 1 — typed Resource schema (schema scripts have since moved into the `addons/storyline_editor` submodule under `resources/`; the parent keeps the authored data and the `storyline_editor/*` project settings):
-  - `storyline_ending_tone_rule.gd` — `StorylineEndingToneRule`
-  - `storyline_event_resource.gd` — `StorylineEventResource` with `to_dict()` and `validate()`
-  - `storyline_route_resource.gd` — `StorylineRouteResource` with `to_storyline_dict()` and `validate()`
-  - `StorylineCatalog` now loads only `.tres` files from the configured routes directory (`game/storylines/routes/` in this project) as the canonical source
-  - `StorylineCatalog.build_definition_bundle()` builds route definitions, event definitions, and display order in one pass so runtime `StoryRouteGraph` instances can cache that bundle instead of reloading route resources during normal progression refreshes
-- Phase 2 — inspector-first workflow:
-  - `@tool` `validate()` methods on all three resource classes check for empty ids, duplicate event ids within a route, invalid `phase_window` values, and missing `ending_behavior` on endgame events, while project-wide prerequisite existence checks remain in the editor tooling so valid cross-route dependencies are not treated as route-local warnings
-  - `addons/storyline_editor/storyline_validator_inspector_plugin.gd` — `EditorInspectorPlugin` that shows a validation-warning panel which auto-refreshes when inspector edits change route or event validation status, listens to normal inspector property edits so browser warnings and inspector status messages update immediately, swaps `StorylineEventResource.phase_window` editing away from the raw array widget into an inline Phase Window panel that stays adjacent to `season_phase` in the normal property order, filters out already-selected season phases, and disables `Add Element` once all authorable phases are chosen, swaps `story_flags_all` / `story_flags_any` editing away from raw string arrays into a route-rooted event picker that mirrors the storyline browser and keeps those `All` / `Any` dependencies synchronized with graph/browser refreshes, and swaps `StorylineRouteResource` event creation away from raw array editing into a Route Events panel that generates unique default ids like `<route_name>_new_event_1`, confirms before deleting events, and refreshes the storyline browser immediately
-- Phase 3 — route browser dock:
-  - `addons/storyline_editor/storyline_route_browser.gd` — Scene/Import-stack dock with one combined storyline tree whose top-level rows are routes and whose child rows are route events; the plugin now registers this browser through Godot's editor-managed `EditorDock` API so the editor restores its remembered Scene/Import placement cleanly from startup instead of relying on the older `add_control_to_dock()` path; it also surfaces project-wide missing-prerequisite validation warnings, provides a `+ New` scaffold action for `StorylineRouteResource` files, and uses a selection-driven `Delete` action that confirms before deleting the selected route's authored resource files or the selected event from its canonical typed route resource while clearing any now-deleted inspector selection
-  - selecting a route row emits an inspector-edit request so the plugin opens that `StorylineRouteResource` in the Inspector; selecting an event row does the same for the backing `StorylineEventResource`, while double-clicking an event still emits `event_show_in_graph_requested` to scroll and highlight the node in the graph editor
-
-Phase 4 shipped (first pass):
-
-- `addons/storyline_editor/` — GraphEdit-based dependency view added as an editor bottom panel
-- reads live data directly from `StorylineCatalog`; events from all four typed route resources are shown as color-coded GraphNodes
-- prerequisite edges (`story_flags_all` / `story_flags_any`) are drawn as directed connections; cross-route dependencies visible in "All routes" mode
-- events are laid out in columns by topological depth (longest prerequisite chain), sorted within each column by route display order
-- per-route filter, Refresh button, and graph-first authoring flow without a redundant in-panel details pane; event inspection/editing now happens through the Inspector when a node is selected
-- dependency edges are now editable in the graph: each node exposes separate `All` and `Any` input slots, so connecting to `All` writes `story_flags_all`, connecting to `Any` writes `story_flags_any`, and dragging either end of an existing connection disconnects it from the targeted bucket
-- selecting a graph node now resolves the backing `StorylineEventResource` into the Inspector so authors can edit event properties directly from the graph, and graph edits save directly back to the canonical typed route resource for the target event
-- graph edits emit a catalog refresh so the route browser updates its source badge and event tree without requiring a manual dock reload, and structural route/event changes from the browser or route-event inspector panel now refresh the graph's route filter and visible nodes without a manual graph reload
-- manual graph layout now persists in the checked-in `game/storylines/storyline_graph_layout.cfg` file instead of a per-user-only editor cache, so node arrangement changes can be reviewed and committed alongside route edits, and the graph toolbar can explicitly re-run automatic layout for the currently visible nodes
-
-Satisfied exit criteria for this workstream:
-
-- authors can create and edit a storyline in the Godot editor without changing `story_route_graph.gd` or hand-editing raw GDScript dictionaries
-- cross-route event dependencies are selectable and validated from the editor
-- the runtime, journal, and autosave systems keep reading one canonical storyline source of truth
-- any later graph editor writes back to that same source of truth instead of inventing a separate graph-only format
-
-Primary files:
-
-- `addons/storyline_editor/storyline_catalog.gd` (schema/loader now addon-owned)
-- `game/story_route_graph.gd`
-- storyline resource classes under `addons/storyline_editor/resources/`
-- editor plugin under `addons/storyline_editor/`
-- `game/tests/story_routes/test_story_reactivity.gd`
-- `game/tests/persistence/test_story_state_persistence.gd`
-- `game/tests/story_routes/test_story_routes.gd`
-- `game/tests/persistence/test_story_autosave.gd`
+Detailed addon behavior belongs in `addons/storyline_editor/README.md` and its
+`docs/` folder rather than in this current delivery plan.
 
 ## Workstream 6: Required Character Action Expansion
 
@@ -605,7 +472,7 @@ Delivery order:
 4. carrying
 5. deliberate push/pull
 6. sitting
-7. production integration and hardening
+7. full-flow integration, regression, and closure review
 
 Milestone B owns Phases 1-3. Milestone C owns Phases 4-6. Milestone D owns Phase 7
 and is the sole Workstream 6 closure gate. Earlier milestones may deliver individual
@@ -618,6 +485,11 @@ No action may become required story progress until its focused and production-fl
 checks pass. Physical components publish only semantic completion ids; `AppState`
 must never own transient locomotion, collision, carried-object, ladder, push/pull,
 seat, or recovery state.
+
+Before an individual capability is described as implemented, its own slice must
+also prove deterministic pause/recovery/unload cleanup and no StoryEvent mutation in
+`Free Walk`. Milestone D repeats those safeguards across combined actions and the
+full app flow; it does not postpone their first implementation.
 
 ## Completed Workstream 0: AppState Decomposition And Architecture Cleanup
 
@@ -646,14 +518,13 @@ Verification now in repo:
 ### High-Impact (affect significant architecture)
 
 1. **Typed Resource Migration**: Whether to introduce `Resource` subclasses for high-traffic dictionary payloads (landmark progress, melody progress, autosave) to catch key-typo bugs at parse time
-2. **Route State Visibility**: Whether to expose more route state directly in the world instead of mostly in dialogue and journal text
 
 ### Medium-Impact (add content or modes)
 
-3. **Additional Routes**: Whether to add more non-landmark routes beyond the current four
-4. **Additional Endgame Triggers**: Whether to add more major-event endgame triggers after the current structure settles
-5. **Post-Ending Wandering**: Whether to add more authored wandering content after soft endings without introducing a separate after-ending mode
+2. **Additional Routes**: Whether to add more non-landmark routes beyond the current four
+3. **Additional Endgame Triggers**: Whether to add more major-event endgame triggers after the current structure settles
+4. **Post-Ending Wandering**: Whether to add more authored wandering content after soft endings without introducing a separate after-ending mode
 
 ### Low-Impact (cleanup/refinement)
 
-6. **Profile Facade Collapse**: Whether to collapse the player profile facade by exposing the profile service directly to UI consumers
+5. **Profile Facade Collapse**: Whether to collapse the player profile facade by exposing the profile service directly to UI consumers

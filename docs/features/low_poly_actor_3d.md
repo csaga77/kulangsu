@@ -195,7 +195,9 @@ engineering and acceptance contract for every stage.
    `move_and_slide()` integration per physics tick, route current story interaction
    through `WorldActionCoordinator3D`, make surface following locomotion-aware, and
    add safe-transform recovery plus animation profiles without changing shipped
-   behavior.
+   behavior. Establish deterministic pause/recovery/unload cleanup and suppress
+   physical-action StoryEvent effects in `Free Walk` before any capability publishes
+   a production semantic completion.
 2. **Physical traversal jump.** Replace the visual-only jump with a collision-body
    arc using the approved buffer, forgiveness, air-control, ceiling, landing,
    camera, and recovery values. It must not bypass StoryEvent gates or semantic
@@ -213,9 +215,11 @@ engineering and acceptance contract for every stage.
 6. **Sit.** Add seat/exit transforms, occupancy, camera policy, animation,
    shape-tested fallback exits, immediate contextual/cancel exit, and semantic
    listening/conversation context where authored.
-7. **Production hardening.** Keep rewards in StoryEvents, disable story advancement
-   in `Free Walk`, deterministically settle every action during pause/recovery/unload,
-   add final hints, and run the full title/New Game/Free Walk/overlay flow.
+7. **Full-flow integration and closure review.** Revalidate StoryEvent ownership,
+   Free Walk suppression, deterministic pause/recovery/unload settlement, shared
+   hints, camera/input consistency, and all five actions across the full
+   title/New Game/Continue/Free Walk/overlay flow. These safeguards are required by
+   each earlier capability slice; Phase 7 is not their first implementation point.
 
 Focused validation ownership:
 
@@ -360,17 +364,20 @@ targets publish the exact semantic completion id; StoryEvents decide any reward.
 
 | Capability | Exact production scene and semantic completion id | Required production geometry | Required manual production-flow check |
 | --- | --- | --- | --- |
-| Traversal jump | [`../../architecture/bagua_tower/bagua_tower_stylized_3d.tscn`](../../architecture/bagua_tower/bagua_tower_stylized_3d.tscn); `bagua_stewardship_jump_crossed` | Lower stewardship terrace: `3.00 x 2.00 m` approach, `1.00 m` clear span, `1.40 x 2.00 m` landing, side rails outside the jump lane, and a recovery volume at the `4.00 m` drop threshold. | Title -> Continue from the fixed pre-ascent fixture; walk and run approaches both cross; a miss restores the lower terrace without changing route state; successful landing publishes once; journal/reload retains only StoryEvent-owned meaning. |
-| Ladder | [`../../architecture/bagua_tower/bagua_tower_stylized_3d.tscn`](../../architecture/bagua_tower/bagua_tower_stylized_3d.tscn); `bagua_stewardship_ladder_ascended` | Straight `3.20 m` service ladder after the jump, `1.20 m` bottom pad, `1.40 x 1.40 m` top pad, `0.75 m` top dismount, and a controllable endpoint blocker for validation. | Continue from the same fixture; mount only after the jump terrace, climb both ways, prove blocked-top retreat and `Esc` mount recovery, dismount at the view deck, and confirm one semantic publication with no softlock after reload. |
-| Carry | [`../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn`](../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn); `piano_ferry_music_case_shelved` | Light `0.50 x 0.35 x 0.30 m` music case, `1.00 x 2.10 m` doorway, `4.00 m` carry lane, and a clear authored shelf socket `1.00 m` forward of the standing anchor. | Title -> Continue from the fixed ferry-care fixture; pick up, walk through the pass doorway, verify the narrow rejection frame, cancel/reset once, then place on the shelf and confirm one completion plus deterministic reload. |
-| Push/pull | [`../../architecture/trinity_church/trinity_church_stylized_3d.tscn`](../../architecture/trinity_church/trinity_church_stylized_3d.tscn); `trinity_hymn_chest_aligned` | `0.80 x 0.55 x 0.65 m` hymn chest on a `3.00 m` authored axis, goal at `2.50 m`, `0.30 m` removable blocker, and required-path reset volume. | Title -> Continue from the fixed church-care fixture; push, pull, release/re-engage, prove blockage with no impulse buildup, reach the goal once, and reload with the StoryEvent result while the transient object resets deterministically. |
-| Sit | [`../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn`](../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn); `harbor_sea_melody_listened` | `0.50 m`-high harbor bench, one seat anchor, `0.90 m` primary exit, `1.00 m` square clear pad, and one blocker that forces the radial fallback exit. | Title -> Continue from the fixed harbor-listening fixture; enter, orbit the camera, exit immediately with R and with `Esc`, prove fallback exit, sit through the authored listening completion once, then journal/reload without retained occupancy. |
+| Traversal jump | [`../../architecture/bagua_tower/bagua_tower_stylized_3d.tscn`](../../architecture/bagua_tower/bagua_tower_stylized_3d.tscn); `bagua_stewardship_jump_crossed` | Lower stewardship terrace: `3.00 x 2.00 m` approach, `1.00 m` clear span, `1.40 x 2.00 m` landing, side rails outside the jump lane, and a recovery volume at the `4.00 m` drop threshold. | Title -> Continue from the fixed Story-mode pre-ascent fixture with `preservation_tower_perspective` resolved; walk and run approaches both cross; a miss restores the lower terrace without changing route state; successful landing publishes the StoryEvent-owned fact once; journal/reload retains only that authored meaning; the equivalent Free Walk crossing changes no story state. |
+| Ladder | [`../../architecture/bagua_tower/bagua_tower_stylized_3d.tscn`](../../architecture/bagua_tower/bagua_tower_stylized_3d.tscn); `bagua_stewardship_ladder_ascended` | Straight `3.20 m` service ladder after the jump, `1.20 m` bottom pad, `1.40 x 1.40 m` top pad, `0.75 m` top dismount, and a controllable endpoint blocker for validation. | Continue from the same Story-mode fixture; mount only after the jump terrace, climb both ways, prove blocked-top retreat and `Esc` mount recovery, dismount at the view deck, confirm one StoryEvent-owned fact plus the journal/world response with no softlock after reload, and prove the equivalent Free Walk ascent changes no story state. |
+| Carry | [`../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn`](../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn); `piano_ferry_music_case_shelved` | Light `0.50 x 0.35 x 0.30 m` music case, `1.00 x 2.10 m` doorway, `4.00 m` carry lane, and a clear authored shelf socket `1.00 m` forward of the standing anchor. | Title -> Continue from the fixed ferry-care fixture; pick up, walk through the pass doorway, verify the narrow rejection frame, cancel/reset once, then place on the shelf and confirm one completion plus deterministic reload; repeat the placement in Free Walk with no story mutation. |
+| Push/pull | [`../../architecture/trinity_church/trinity_church_stylized_3d.tscn`](../../architecture/trinity_church/trinity_church_stylized_3d.tscn); `trinity_hymn_chest_aligned` | `0.80 x 0.55 x 0.65 m` hymn chest on a `3.00 m` authored axis, goal at `2.50 m`, `0.30 m` removable blocker, and required-path reset volume. | Title -> Continue from the fixed church-care fixture; push, pull, release/re-engage, prove blockage with no impulse buildup, reach the goal once, and reload with the StoryEvent result while the transient object resets deterministically; repeat the goal in Free Walk with no story mutation. |
+| Sit | [`../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn`](../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn); `harbor_sea_melody_listened` | `0.50 m`-high harbor bench, one seat anchor, `0.90 m` primary exit, `1.00 m` square clear pad, and one blocker that forces the radial fallback exit. | Title -> Continue from the fixed harbor-listening fixture; enter, orbit the camera, exit immediately with R and with `Esc`, prove fallback exit, sit through the authored listening completion once, then journal/reload without retained occupancy; repeat the listening duration in Free Walk with no story mutation. |
 
 The locked next production slice is **Milestone B: Bagua stewardship ascent**:
 shared action/recovery foundation, then the physical traversal jump proof, then the
-authored ladder proof. It is optional and may strengthen
-`preservation_tower_perspective`; it must not gate or rename that existing event.
-This lock is planning approval only—none of Phases 1-3 is implemented by Phase 0.
+authored ladder proof. It is optional and, in Story mode after
+`preservation_tower_perspective` resolves, persists the two exact stewardship facts
+and unlocks conditional journal/world follow-through. It must not gate, resolve,
+rename, or rescore that existing event, and both facts are suppressed in
+`Free Walk`. This lock is planning approval only—none of Phases 1-3 is implemented
+by Phase 0.
 
 #### Dated Pre-Refactor Baseline
 
@@ -438,6 +445,9 @@ feature resource rather than in unrelated scenes.
 A future physical action needs a concrete story or exploration use, numeric
 authored limits, focused automated validation, and one production-flow manual check
 before it moves into Current scope.
+
+It must also prove deterministic pause/recovery/unload cleanup and no StoryEvent
+mutation in `Free Walk` before it moves into Current scope.
 
 - **Traversal jump:** implement and validate the Phase 0 obstacle, gap, landing,
   timing, buffer, forgiveness, air-control, ceiling, and recovery values. It must
