@@ -63,8 +63,9 @@ func is_action_available(actor: CharacterBody3D) -> bool:
 		return false
 	if absf(actor.global_position.y - mount_transform.origin.y) > max_vertical_delta:
 		return false
-	return _facing_alignment_to_transform(actor, mount_transform) >= cos(
-		deg_to_rad(facing_tolerance_degrees)
+	return (
+		_facing_alignment_to_transform(actor, mount_transform) + FACING_ALIGNMENT_EPSILON
+		>= cos(deg_to_rad(facing_tolerance_degrees))
 	)
 
 

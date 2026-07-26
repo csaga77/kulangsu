@@ -10,6 +10,7 @@ signal action_finished(actor: CharacterBody3D, reason: StringName)
 signal semantic_completion_requested(event_id: StringName, context: Dictionary)
 
 const ACTION_TARGET_GROUP := &"character_action_target_3d"
+const FACING_ALIGNMENT_EPSILON := 0.00001
 
 @export var action_id: StringName = &""
 @export var action_label := "Interact"
@@ -93,7 +94,10 @@ func get_facing_alignment(actor: CharacterBody3D) -> float:
 func is_within_facing_gate(actor: CharacterBody3D) -> bool:
 	if facing_tolerance_degrees >= 180.0:
 		return true
-	return get_facing_alignment(actor) >= cos(deg_to_rad(facing_tolerance_degrees))
+	return (
+		get_facing_alignment(actor) + FACING_ALIGNMENT_EPSILON
+		>= cos(deg_to_rad(facing_tolerance_degrees))
+	)
 
 
 func is_action_available(actor: CharacterBody3D) -> bool:
