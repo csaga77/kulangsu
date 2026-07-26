@@ -533,6 +533,26 @@ func _check_subject_contract(failures: Array[String]) -> void:
 		failures.append("subject contract check is missing StoryInteractionCoordinator")
 		return
 
+	var talk_priority_probe := StorySubject3D.new()
+	talk_priority_probe.story_action = "talk"
+	var collect_priority_probe := StorySubject3D.new()
+	collect_priority_probe.story_action = "collect"
+	var inspect_priority_probe := StorySubject3D.new()
+	inspect_priority_probe.story_action = "inspect"
+	if (
+		talk_priority_probe.get_interaction_priority()
+			!= collect_priority_probe.get_interaction_priority()
+		or talk_priority_probe.get_interaction_priority()
+			>= inspect_priority_probe.get_interaction_priority()
+	):
+		failures.append(
+			"resident talk must compete with actionable landmarks by distance "
+			+ "instead of losing unconditionally to every nearby landmark"
+		)
+	talk_priority_probe.free()
+	collect_priority_probe.free()
+	inspect_priority_probe.free()
+
 	var landmark_subjects: Array = []
 	for node in get_tree().get_nodes_in_group("story_subject_3d"):
 		if String(node.get("subject_id")).begins_with("landmark:"):

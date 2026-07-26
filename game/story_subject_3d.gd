@@ -105,8 +105,9 @@ func get_display_name() -> String:
 
 
 func get_interaction_priority() -> int:
+	# Direct actions compete by proximity; passive inspection remains the fallback.
 	match get_story_action():
-		"collect", "perform":
+		"collect", "perform", "talk":
 			return 0
 		_:
 			return 1
