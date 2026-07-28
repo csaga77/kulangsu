@@ -1381,7 +1381,15 @@ func _desired_animation_phase() -> int:
 			return CharacterAnimationProfile3DScript.Phase.LADDER_CLIMB
 		LocomotionMode.TRAVERSAL_JUMP, LocomotionMode.AIRBORNE:
 			return CharacterAnimationProfile3DScript.Phase.AIR
-	match get_action_mode():
+	var presentation_action_mode := get_action_mode()
+	var action_target := get_active_action_target()
+	if is_instance_valid(action_target) and action_target.has_method(
+		"get_animation_action_mode"
+	):
+		presentation_action_mode = int(
+			action_target.call("get_animation_action_mode")
+		)
+	match presentation_action_mode:
 		CharacterActionController3DScript.ActionMode.CARRY:
 			return (
 				CharacterAnimationProfile3DScript.Phase.CARRY_WALK
