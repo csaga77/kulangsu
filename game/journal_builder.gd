@@ -148,6 +148,24 @@ static func build_story_routes_journal_text(projection: AppStateProjection) -> S
 		sections.append(
 			"Preservation note\nThe Bagua service view revealed patched roofs, rain channels, and narrow lanes as one joined stewardship promise."
 		)
+	var object_care_notes: Array[String] = []
+	if bool(projection.story_flags.get("piano_ferry_music_case_shelved", false)):
+		object_care_notes.append(
+			"The ferry music case now rests safely on its authored shelf."
+		)
+	if bool(projection.story_flags.get("trinity_hymn_chest_aligned", false)):
+		object_care_notes.append(
+			"The Trinity hymn chest is aligned and the aisle remains clear."
+		)
+	if bool(projection.story_flags.get("harbor_sea_melody_listened", false)):
+		object_care_notes.append(
+			"A quiet harbor bench listening held one phrase of the sea melody."
+		)
+	if !object_care_notes.is_empty():
+		sections.append(
+			"Island care notes\n%s"
+			% "\n".join(PackedStringArray(object_care_notes))
+		)
 	sections.append("Lead controls\nPrevious and Next create a manual pin. Auto Lead clears it and returns the HUD to automatic routing.")
 	return "\n\n".join(PackedStringArray(sections))
 

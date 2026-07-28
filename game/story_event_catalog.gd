@@ -45,6 +45,10 @@ static func build_event_tree() -> Array[Dictionary]:
 								},
 							],
 						},
+						{
+							"id": "object_care",
+							"world_event_bindings": _piano_ferry_object_care_bindings(),
+						},
 					],
 				},
 				{
@@ -67,6 +71,10 @@ static func build_event_tree() -> Array[Dictionary]:
 							"id": "choir_chime",
 							"subject_bindings": _trinity_chime_bindings(),
 							"world_event_bindings": _trinity_chime_completion_bindings(),
+						},
+						{
+							"id": "object_care",
+							"world_event_bindings": _trinity_object_care_bindings(),
 						},
 					],
 				},
@@ -1699,6 +1707,85 @@ static func _bagua_stewardship_ascent_bindings() -> Array[Dictionary]:
 					"bagua_stewardship_ladder_ascended": true,
 				},
 				"save_status": "The service ladder opens a quieter stewardship view.",
+				"autosave_story_progress": true,
+			},
+		},
+	]
+
+
+static func _piano_ferry_object_care_bindings() -> Array[Dictionary]:
+	return [
+		{
+			"priority": 100,
+			"event_id": "piano_ferry_music_case_shelved",
+			"conditions": {
+				"mode": "Story",
+				"story_flag_all": ["piano_ferry_music_case_shelved"],
+			},
+			"effects": {},
+		},
+		{
+			"priority": 50,
+			"event_id": "piano_ferry_music_case_shelved",
+			"conditions": {
+				"mode": "Story",
+			},
+			"effects": {
+				"story_flags": {
+					"piano_ferry_music_case_shelved": true,
+				},
+				"save_status": "The ferry music case is safely shelved.",
+				"autosave_story_progress": true,
+			},
+		},
+		{
+			"priority": 100,
+			"event_id": "harbor_sea_melody_listened",
+			"conditions": {
+				"mode": "Story",
+				"story_flag_all": ["harbor_sea_melody_listened"],
+			},
+			"effects": {},
+		},
+		{
+			"priority": 50,
+			"event_id": "harbor_sea_melody_listened",
+			"conditions": {
+				"mode": "Story",
+			},
+			"effects": {
+				"story_flags": {
+					"harbor_sea_melody_listened": true,
+				},
+				"save_status": "The harbor bench held a quiet phrase of the sea melody.",
+				"autosave_story_progress": true,
+			},
+		},
+	]
+
+
+static func _trinity_object_care_bindings() -> Array[Dictionary]:
+	return [
+		{
+			"priority": 100,
+			"event_id": "trinity_hymn_chest_aligned",
+			"conditions": {
+				"mode": "Story",
+				"story_flag_all": ["trinity_hymn_chest_aligned"],
+			},
+			"effects": {},
+		},
+		{
+			"priority": 50,
+			"event_id": "trinity_hymn_chest_aligned",
+			"conditions": {
+				"mode": "Story",
+			},
+			"effects": {
+				"story_flags": {
+					"trinity_hymn_chest_aligned": true,
+				},
+				"save_status": "The Trinity hymn chest is aligned without blocking the aisle.",
 				"autosave_story_progress": true,
 			},
 		},
