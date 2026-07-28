@@ -35,6 +35,7 @@ const APO_HOUSEHOLD_SCRIPT := preload(
 const TERRAIN_KIND_WATER := 0
 const ACTOR_GROUND_TOLERANCE := 0.2
 const MAX_ACTOR_WADE_DEPTH := 0.5
+const ROAD_SURFACE_MIN_SEPARATION := 0.15
 const EXPECTED_WORLD_SUBJECT_IDS: Array[String] = [
 	"inspectable:bagua_railings",
 	"inspectable:church_stone_bench",
@@ -81,6 +82,7 @@ func _run_smoke_checks() -> void:
 	_check_terrain(failures)
 	_check_player(failures)
 	_check_player_surface_follow(failures)
+	_check_road_surface_notification_safety(failures)
 	_check_camera(failures)
 	_check_player_appearance_mapping(failures)
 	_check_landmarks(failures)
@@ -244,6 +246,73 @@ func _check_player_surface_follow(failures: Array[String]) -> void:
 
 	player.global_position = original_position
 	surface_follower.settle_now()
+
+
+func _check_road_surface_notification_safety(failures: Array[String]) -> void:
+	if !is_instance_valid(m_world):
+		return
+	var terrain := m_world.get_node_or_null("LowPolyTerrain3D") as LowPolyTerrain3D
+	var player := m_world.get_node_or_null("human_body_3d") as HumanBody3D
+	var surface_follower := (
+		m_world.get_node_or_null("ActorSurfaceFollower") as ActorSurfaceFollowerScript
+	)
+	if terrain == null or player == null or surface_follower == null:
+		failures.append("road-surface notification check is missing runtime world nodes")
+		return
+	if !player.is_grounded():
+		failures.append("player was not grounded before the road-surface notification check")
+		return
+
+	var probe := _find_elevated_street_position(terrain)
+	if probe.is_empty():
+		failures.append("runtime world has no elevated street surface for grounding regression")
+		return
+
+	var original_transform := player.global_transform
+	var road_position: Vector3 = probe["position"]
+	player.global_position = road_position
+	player.global_position_changed.emit()
+	if !player.global_position.is_equal_approx(road_position):
+		failures.append(
+			"process-frame position notification pulled the player off an elevated road "
+			+ "(road y=%0.3f, settled y=%0.3f, terrain separation=%0.3f)"
+			% [
+				road_position.y,
+				player.global_position.y,
+				float(probe["separation"]),
+			]
+		)
+	player.global_transform = original_transform
+	player.velocity = Vector3.ZERO
+	surface_follower.force_settle_now()
+
+
+func _find_elevated_street_position(terrain: LowPolyTerrain3D) -> Dictionary:
+	var street_network := terrain.get_node_or_null(
+		"GeneratedStreets/StreetNetwork3D"
+	) as Node3D
+	if street_network == null:
+		return {}
+	var best_probe: Dictionary = {}
+	var best_separation := ROAD_SURFACE_MIN_SEPARATION
+	for segment in street_network.get_children():
+		if !segment.has_meta(&"street_network_segment"):
+			continue
+		var path_points: PackedVector3Array = segment.get("path_points")
+		for index in range(1, path_points.size() - 1):
+			var world_position := street_network.to_global(path_points[index])
+			var terrain_height := terrain.get_world_surface_height(world_position)
+			if !is_finite(terrain_height):
+				continue
+			var separation := world_position.y - terrain_height
+			if separation <= best_separation:
+				continue
+			best_separation = separation
+			best_probe = {
+				"position": world_position,
+				"separation": separation,
+			}
+	return best_probe
 
 
 func _find_surface_probe_cell(terrain: Node, coordinates: LowPolyWorldCoordinates3D, find_water: bool) -> Vector2i:

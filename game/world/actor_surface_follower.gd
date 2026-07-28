@@ -88,6 +88,12 @@ func _disconnect_actor() -> void:
 
 
 func _on_actor_global_position_changed() -> void:
+	# HumanBody3D publishes this signal from _process(). Settling there cannot
+	# raycast the solid road/building surface and would fall back to terrain,
+	# potentially moving a grounded capsule inside elevated collision before the
+	# next physics step. The regular physics process owns automatic seating.
+	if !Engine.is_in_physics_frame():
+		return
 	settle_now()
 
 
