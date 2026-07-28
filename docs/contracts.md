@@ -75,7 +75,7 @@ Current contract:
 - all resident definitions live in external `.tres` files under `res://game/residents/definitions/`; `ResidentCatalog` loads them at runtime and `include_in_catalog = false` keeps a resource out of the runtime roster
 - `interact_with_resident()` checks a resident's `conditional_beats` (priority-sorted, condition-gated) before falling through to the linear `dialogue_beats` spine
 - resident conditional gating and StoryEvent conditions may now read `season_phase`, `story_day`, `world_hour`, `time_of_day`, `story_flags`, route state, route score, and endgame-active state
-- routine overrides are saved and are merged into projection configuration. They are not yet reapplied to resident actors that are already alive in the production 3D world; the implementation plan schedules that work under Next world-state reactivity
+- routine overrides are saved and are merged into projection configuration. They are not yet reapplied to resident actors that are already alive in the production 3D world; the implementation plan tracks that work as the active world-state reactivity slice
 - `JournalBuilder` consumes detached `AppStateProjection` data and never receives the live service node
 
 Governance:
@@ -125,7 +125,7 @@ Current contract:
   `StoryEventService` resolves current `landmark:` and `inspectable:` subjects plus
   landmark reward world events through the authored catalog
 - non-resident inspect text now resolves through `StoryWorldReactivity.resolve_inspect_result(...)`, which builds stable `inspectable:` subject ids and reuses the shared condition matcher
-- resident routine overrides are the first live world-state effect channel driven through the shared StoryEvent boundary; they redirect the shared spawn/movement config, and reapplying them to live 3D resident actors in `game_world_3d.gd` is scheduled under the implementation plan's Next world-state reactivity work (the retired 2D overworld owned that behavior)
+- resident routine overrides are the first live world-state effect channel driven through the shared StoryEvent boundary; they redirect the shared spawn/movement config, and reapplying them to live 3D resident actors in `game_world_3d.gd` is the implementation plan's active world-state reactivity slice (the retired 2D overworld owned that behavior)
 - the current route ledger remains the player-facing progression view, while the longer-term goal is still to migrate route families into authored recursive StoryEvent definitions and a published-fact ledger
 
 Governance:
@@ -214,7 +214,7 @@ Current contract:
   requests, while its script only projects saved seen/missed flags into
   cared-for/untended props and ambience.
 - landmark naming, proxy lookup, placement, and location sync depend on `LandmarkCatalog` definitions resolving to the authored `Landmarks/*Proxy` nodes in the world scene
-- reapplying resident routine overrides to live 3D resident actors is scheduled under the implementation plan's Next world-state reactivity work; overrides currently take effect through the shared spawn/movement config (validated at the shared-state level by `game/tests/story_routes/test_story_event_service.tscn`)
+- reapplying resident routine overrides to live 3D resident actors is the implementation plan's active world-state reactivity work; overrides currently take effect through the shared spawn/movement config (validated at the shared-state level by `game/tests/story_routes/test_story_event_service.tscn`)
 
 Governance:
 

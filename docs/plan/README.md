@@ -27,14 +27,13 @@ Use this folder for:
   completed-versus-missed seasonal transformation, and bounded Phase 0
   character-action gate are implemented, automated-green, and production-flow
   accepted as of 2026-07-26.
-- Milestone B's Bagua stewardship ascent is integrated and automated-green; its
-  fixed Continue and New Game production-flow review is the remaining acceptance
-  gate before the plan marks it complete.
-- After that review, the queue is one bounded live world-reactivity slice, one
-  playable final-act slice, Milestone C's three exact object-care proofs, and then
-  Milestone D's full-flow closure review. Milestone D revalidates safeguards that
-  each earlier action slice must already pass and remains the sole gate that can
-  mark the character-action workstream complete.
+- Milestone B's Bagua stewardship ascent, fixed Continue fixture, and New Game
+  production flow were accepted on 2026-07-28.
+- The active slice is bounded live world reactivity, followed by one playable
+  final-act slice, Milestone C's three exact object-care proofs, and Milestone D's
+  full-flow closure review. Milestone D revalidates safeguards that each earlier
+  action slice must already pass and remains the sole gate that can mark the
+  character-action workstream complete.
 - The typed storyline resource, inspector, browser, dependency graph, and canonical-
   source authoring workflow are complete; later validation follows the feature that
   introduces new behavior instead of keeping the editor workstream permanently open.

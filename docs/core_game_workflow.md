@@ -223,18 +223,14 @@ Current read of the playable slice:
 
 Current gameplay-content priority order:
 
-1. Review Milestone B's integrated Bagua stewardship ascent through the fixed
-   pre-ascent Continue fixture and a New Game production flow. Its shared
-   action/recovery foundation, traversal jump, ladder, Free Walk isolation, and
-   deterministic cleanup are implemented and automated-green.
-2. Complete the bounded live-reactivity slice: reapply changed
+1. Complete the bounded live-reactivity slice: reapply changed
    resident routine overrides to already-spawned residents, using Nian's
    post-ascent move to an authored Bagua view-deck anchor as the production proof.
-3. Add the bounded playable ferry closing movement for the three current endgame
+2. Add the bounded playable ferry closing movement for the three current endgame
    triggers while preserving their hard-versus-soft ending behavior.
-4. Complete Milestone C through the locked Piano Ferry carry, Trinity push/pull,
+3. Complete Milestone C through the locked Piano Ferry carry, Trinity push/pull,
    and Piano Ferry sitting proofs.
-5. Complete Milestone D's combined title, Story, Continue, Free Walk, overlay,
+4. Complete Milestone D's combined title, Story, Continue, Free Walk, overlay,
    recovery, and unload review. This is the Workstream 6 closure gate, not the first
    implementation point for action safeguards.
 

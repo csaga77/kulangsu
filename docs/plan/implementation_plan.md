@@ -21,7 +21,9 @@ Shipped foundations:
   route projection, journal treatment, and care-versus-regret ending texture
 - save/load support for seasonal story state, route state, lead pinning, and endgame state
 - first lightweight life-time runtime slice with `story_day`, `world_hour`, derived `time_of_day`, StoryEvent time conditions/effects, journal summary exposure, and autosave persistence
-- story-driven resident routine overrides that persist through autosave/continue and affect future projection-based resident configuration; live reapplication to already-spawned 3D actors remains open and is scheduled under Next world-state reactivity
+- story-driven resident routine overrides that persist through autosave/continue and
+  affect future projection-based resident configuration; live reapplication to
+  already-spawned 3D actors is the active world-state reactivity slice
 - resident gating against `season_phase`, route state, and `story_flags`
 - guarded final-act start with `spring_festival_resolved` as the earliest allowed endgame threshold
 - `AppState` composition pattern with extracted helpers for profile, journal, save, landmark progression, resident interaction, audio settings, and story routes
@@ -107,6 +109,8 @@ persistence, StoryEvent, reactivity, storyline-resource, and production-world
 scenes passed with process status `0`.
 The active queue, per-capability safety gates, and bounded follow-on slices were
 reconciled across the canonical planning docs on **2026-07-27**.
+Milestone B's fixed Continue and New Game production-flow review was accepted on
+**2026-07-28**; the bounded live world-state reactivity slice is now active.
 The dated pre-refactor character-action baseline remains recorded in
 [`../features/low_poly_actor_3d.md`](../features/low_poly_actor_3d.md).
 
@@ -137,11 +141,10 @@ The durable household-moment contract and validation summary live in
 [`../features/household_care_story_moment.md`](../features/household_care_story_moment.md).
 Milestone A implemented none of the five planned character actions.
 
-### Active Acceptance Review — Milestone B: Bagua Stewardship Ascent
+### Completed Milestone B — Accepted 2026-07-28
 
-Milestone B's implementation is integrated and automated-green. Its fixed
-pre-ascent Continue and New Game production-flow review remains the final acceptance
-gate before this plan moves it to Done. Workstream 6 Phases 1-3 landed in order:
+Milestone B shipped the optional Bagua stewardship ascent and completed Workstream 6
+Phases 1-3 in order:
 
 1. shared physics, action-state, contextual-interaction, animation-fallback, and
    recovery foundation
@@ -191,19 +194,19 @@ Per-phase exit gates:
   directions, one idempotent Story-mode publication, Free Walk no-op behavior,
   save/continue, and all three player-model fallbacks.
 
-Milestone B closes only when:
+Acceptance evidence:
 
 - `test_character_action_state_3d.tscn` and
-  `test_character_traversal_3d.tscn` exist and pass with process status `0`
+  `test_character_traversal_3d.tscn` pass with process status `0`
 - the existing actor, collision, environment, production-world, story route,
   StoryEvent, persistence, app-shell, and screen-router regressions remain green
-- the fixed pre-ascent Continue fixture and a New Game production flow prove the
+- the fixed pre-ascent Continue fixture and New Game production flow proved the
   optional path, alternate walkable route, journal/world response, recovery,
   overlays, reload, and Free Walk isolation
-- the current-status tables in the actor feature, module map, gameplay workflow, and
-  this plan are updated together
+- the actor feature, module map, gameplay workflow, and this plan record the
+  accepted current state together
 
-Implemented evidence now in the repository:
+Delivered implementation:
 
 - `CharacterMotionIntent3D`, `CharacterActionController3D`,
   `CharacterAnimationProfile3D`, and `PlayerRecoveryController3D` provide the
@@ -214,8 +217,7 @@ Implemented evidence now in the repository:
 - the Bagua proof, exact StoryEvent facts, journal/view response, Free Walk
   suppression, fixed Continue fixture, and focused/production regressions are
   checked in and pass with process status `0`
-- the remaining review action is the hands-on fixed Continue and New Game
-  production-flow pass named above
+- the fixed Continue and New Game production-flow review passed on 2026-07-28
 
 Primary implementation areas:
 
@@ -229,19 +231,21 @@ Primary implementation areas:
 - `game/tests/story_routes/` and `game/tests/persistence/`
 - `scenes/game_world_3d.tscn` / `scenes/game_world_3d.gd`
 
+### Active — Bounded World-State Reactivity Slice
+
+Reapply changed resident routine overrides to already-spawned 3D actors without
+respawning them. Use a post-ascent `terrace_painter_nian` override to an authored
+view-deck anchor as the production proof. Close the slice only when focused
+reactivity coverage and the production-world test prove live update, save/continue
+parity, and no interruption of active talk or physical action state.
+
 ### Next
 
-1. **Bounded world-state reactivity slice.** After Milestone B acceptance, reapply changed resident routine
-   overrides to already-spawned 3D actors without respawning them. Use a
-   post-ascent `terrace_painter_nian` override to an authored view-deck anchor as the
-   production proof. Close the slice only when focused reactivity coverage and the
-   production-world test prove live update, save/continue parity, and no
-   interruption of active talk or physical action state.
-2. **Bounded final-act slice.** Add one playable ferry closing movement shared by
+1. **Bounded final-act slice.** Add one playable ferry closing movement shared by
    the three current endgame triggers, with trigger-specific aftermath, hard-ending
    departure, and soft-ending stay/continue behavior. Close it only when all three
    trigger flows pass focused routing/persistence coverage and a production flow.
-3. **Milestone C — object-care actions.** Complete Workstream 6 Phases 4-6 through
+2. **Milestone C — object-care actions.** Complete Workstream 6 Phases 4-6 through
    the already locked proofs: carry the Piano Ferry music case
    (`piano_ferry_music_case_shelved`), push/pull the Trinity hymn chest
    (`trinity_hymn_chest_aligned`), and sit for the Piano Ferry harbor listening beat
@@ -249,7 +253,7 @@ Primary implementation areas:
    fixture, deterministic pause/recovery/unload cleanup, Story-mode idempotency,
    Free Walk no-op semantics, production-flow check, and three-model animation
    acceptance.
-4. **Milestone D — character-action production hardening.** Re-run all five actions
+3. **Milestone D — character-action production hardening.** Re-run all five actions
    across title, New Game, Continue, Free Walk, journal, pause, settings, ending,
    recovery, and scene-unload flows; finish shared hints and camera/input consistency.
    Milestone D revalidates safeguards required by each earlier slice; it is not the
@@ -287,7 +291,7 @@ The durable execution record and evidence live in
 [`low_poly_3d_replacement.md`](low_poly_3d_replacement.md),
 [`../features/low_poly_3d_integration.md`](../features/low_poly_3d_integration.md),
 and `design/qa/low_poly_3d/`. Keep their established correctness tests green during
-Milestone B.
+later delivery slices.
 
 Accepted residual follow-ups:
 
@@ -318,12 +322,12 @@ Shipped baseline:
 - `preservation_inheritance` now reaches beyond Bagua's first perspective beat into postcard and map-stewardship reactions
 - `melody_landmarks` now has a softer resonant follow-through after the harbor performance
 
-Current bounded slice:
+Shipped bounded slice:
 
 - Milestone B added the optional Bagua stewardship ascent and its journal/world
   follow-through without gating or rescoring `preservation_tower_perspective`
-- its implementation and automated evidence are complete; fixed Continue and New
-  Game production-flow acceptance remains tracked in the Active milestone
+- its implementation, automated evidence, and fixed Continue/New Game production
+  flows were accepted on 2026-07-28
 
 Selection rule for the following slice:
 
@@ -345,8 +349,7 @@ Primary files:
 
 ## Workstream 2: World-State Reactivity
 
-Status: first pass shipped; one bounded follow-up is queued immediately after
-Milestone B acceptance.
+Status: active bounded follow-up.
 
 Shipped baseline:
 
@@ -359,7 +362,7 @@ Shipped baseline:
 - first-pass StoryEvent routing now unifies resident talk, inspectable resolution, shared condition matching, and saved resident routine-override configuration behind the `AppState` story-subject bridge
 - route progress now changes more of what the island feels like without requiring landmark-only progression
 
-Next bounded slice:
+Active bounded slice:
 
 - reapply changed resident routine overrides to already-spawned 3D actors instead
   of waiting for a future spawn or scene reload
@@ -473,9 +476,9 @@ Detailed addon behavior belongs in `addons/storyline_editor/README.md` and its
 
 ## Workstream 6: Required Character Action Expansion
 
-Status: Phases 0-3 implemented; Milestone B production-flow acceptance is pending.
-Phases 4-7 remain planned. Traversal jump and ladder are current capabilities;
-carry, deliberate push/pull, and sit remain planned.
+Status: Phases 0-3 complete; Milestone B was accepted on 2026-07-28. Phases 4-7
+remain planned. Traversal jump and ladder are current capabilities; carry,
+deliberate push/pull, and sit remain planned.
 
 The full ownership, input, compatibility, recovery, animation, phase validation, and
 completion contract now lives in

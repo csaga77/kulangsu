@@ -388,14 +388,14 @@ targets publish the exact semantic completion id; StoryEvents decide any reward.
 | Push/pull | [`../../architecture/trinity_church/trinity_church_stylized_3d.tscn`](../../architecture/trinity_church/trinity_church_stylized_3d.tscn); `trinity_hymn_chest_aligned` | `0.80 x 0.55 x 0.65 m` hymn chest on a `3.00 m` authored axis, goal at `2.50 m`, `0.30 m` removable blocker, and required-path reset volume. | Title -> Continue from the fixed church-care fixture; push, pull, release/re-engage, prove blockage with no impulse buildup, reach the goal once, and reload with the StoryEvent result while the transient object resets deterministically; repeat the goal in Free Walk with no story mutation. |
 | Sit | [`../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn`](../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn); `harbor_sea_melody_listened` | `0.50 m`-high harbor bench, one seat anchor, `0.90 m` primary exit, `1.00 m` square clear pad, and one blocker that forces the radial fallback exit. | Title -> Continue from the fixed harbor-listening fixture; enter, orbit the camera, exit immediately with R and with `Esc`, prove fallback exit, sit through the authored listening completion once, then journal/reload without retained occupancy; repeat the listening duration in Free Walk with no story mutation. |
 
-**Milestone B: Bagua stewardship ascent** is implemented and automated-green:
-shared action/recovery foundation, physical traversal jump proof, and authored
-ladder proof. It is optional and, in Story mode after
+**Milestone B: Bagua stewardship ascent** was accepted on **2026-07-28** with its
+shared action/recovery foundation, physical traversal jump proof, authored ladder
+proof, fixed Continue fixture, and New Game production flow. It is optional and, in
+Story mode after
 `preservation_tower_perspective` resolves, persists the two exact stewardship facts
 and unlocks conditional journal/world follow-through. It must not gate, resolve,
 rename, or rescore that existing event, and both facts are suppressed in
-`Free Walk`. The fixed Continue and New Game production-flow review remains the
-Milestone acceptance gate.
+`Free Walk`.
 
 #### Dated Pre-Refactor Baseline
 
@@ -538,8 +538,6 @@ and short story interactions do not acquire an accidental movement lock.
 
 ## Next Steps
 
-- Complete Milestone B's fixed Continue and New Game production-flow acceptance
-  review.
 - Continue the required character-action workstream with Milestone C: carry,
   deliberate push/pull, then sitting. Keep each capability behind its focused and
   production-flow acceptance gates.

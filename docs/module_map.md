@@ -9,8 +9,8 @@ Read [`design_brief.md`](design_brief.md) and [`architecture.md`](architecture.m
 - [`../scenes/game_world_3d.tscn`](../scenes/game_world_3d.tscn) / [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd) - production low-poly 3D overworld composition root: builds terrain, actor/camera, landmarks and residents; composes surface-follow, unified contextual actions, story dispatch, traversal completion, and recovery; owns audio/generated collision; and forwards only Story-mode semantic results
 - [`../scenes/tests/capture_game_world_3d_qa.tscn`](../scenes/tests/capture_game_world_3d_qa.tscn) - graphical Metal QA runner that produces the five fixed-camera acceptance PNGs plus a raw 5-second-warm-up/60-second performance report, cold-terrain timing, and resident/per-landmark visibility variants under `design/qa/low_poly_3d/`
 - [`../game/tests/persistence/fixtures/`](../game/tests/persistence/fixtures/) -
-  reversible fixed-save launch/restore scenes for Milestone A and Milestone B's
-  pre-ascent Continue review
+  reversible fixed-save launch/restore scenes for Milestone A and Milestone B
+  production-flow acceptance
 - [`../game/tests/persistence/test_household_care_continue_fixtures.tscn`](../game/tests/persistence/test_household_care_continue_fixtures.tscn) - focused regression for fixed-fixture metadata, load normalization, journal/world/dialogue projection, repeated Continue, and route/endgame continuity
 - [`../weather/`](../weather) - 3D weather presentation, the global weather manager/runtime, and focused 3D capture validation
 - [`../weather/weather_manager.gd`](../weather/weather_manager.gd) - global overworld weather manager that owns weighted weather-state cycling, applies it to the registered `WeatherRig3D`, and publishes synced wind for terrain water

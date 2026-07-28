@@ -147,7 +147,7 @@ Responsibilities:
 - `StoryEventService`, `StoryRouteGraph`, and `ResidentInteractionService` operate on a detached reducer context and never retain the live store, emit public signals, or perform file I/O.
 - `game/app_state/story_save_codec.gd` owns defaults, validation, V1-to-V2 migration, and V2 mapping; `story_save_repository.gd` owns the configurable persistence path and file I/O.
 - resident dialogue and shared StoryEvent effects now consume the route graph's story-event availability API instead of duplicating narrative prerequisite rules through custom resident gates
-- resident routine overrides are canonical story state and affect projection-based spawn/movement/behavior configuration. The production 3D world still does not reapply a changed override to an already-spawned resident; the implementation plan schedules that gap under Next world-state reactivity.
+- resident routine overrides are canonical story state and affect projection-based spawn/movement/behavior configuration. The production 3D world still does not reapply a changed override to an already-spawned resident; the implementation plan tracks that gap as the active world-state reactivity slice.
 - the app shell now opens the ending overlay from the shared `endgame_started` story milestone instead of relying on the older landmark-only ending assumption
 - lazy resident definition/profile initialization so startup does not eagerly build the full resident runtime just to load the shared state service
 - resident definition resources for appearance, dialogue, routine, and behavior metadata

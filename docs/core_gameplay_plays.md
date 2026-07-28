@@ -84,8 +84,8 @@ See [`features/low_poly_actor_3d.md`](features/low_poly_actor_3d.md) for the cur
 runtime, input, physics, ownership, and validation contract. Its Phase 0 numeric,
 input/cancellation, animation-fallback, production-proof, and recovery decisions
 were accepted on 2026-07-23. Traversal jump and ladder now pass their focused
-automated gates and await Milestone B's production-flow acceptance review; carry,
-push/pull, and sit remain planned.
+automated gates and their Milestone B production flows were accepted on 2026-07-28;
+carry, push/pull, and sit remain planned.
 
 ## The Eight Core Plays
 
