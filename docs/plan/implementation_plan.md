@@ -54,13 +54,18 @@ Regression coverage now includes:
 The low-poly 3D lane is now the production overworld instantiated directly by `main.gd`:
 
 - the terrain pipeline is split into image sampling, cell data, mesh construction, and node/material integration; it supports heightmap or mask-driven land, connected seabed, collision, layered shader-displaced water, and weather-driven wind
-- `HumanBody3D`, `BaseController3D`, and `PlayerController3D` mirror the main actor/controller concepts on the XZ plane; the actor uses a premade animated GLB, gravity, native wall and stair-slope movement, and capped dynamic-body pushing
+- `HumanBody3D`, `BaseController3D`, and `PlayerController3D` own one intent-driven
+  XZ/vertical physics step, typed locomotion and action layers, forgiving traversal
+  jump, safe-transform recovery, authored ladder locomotion, and capped
+  dynamic-body pushing
 - `LowPolyWorldCoordinates3D`, `LowPolyArtStyle3D`, and `Camera3DController` support coordinate-safe placement, orthographic orbit/zoom, and target-occluder fading
 - the Low-Poly Building Editor and versioned `BuildingSpec` pipeline produce editable authored landmarks; Piano Ferry, Trinity Church, and Bagua Tower are instanced in the runtime while both tunnels remain anchors without authored geometry
 - the resident factory spawns the full shared roster as locally wandering `HumanBody3D` actors with stable `StorySubject3D` ids and world-anchored speech balloons
 - the runtime dispatches through shared story services, resolves semantic resume anchors, and owns shared BGM and landmark-cue playback
 - focused terrain, actor, collision, camera-occlusion, environment-interaction, and production-world scenes cover the lane; headless smoke scenes must terminate with process status `0` on success and nonzero on failure
-- physical traversal jumping, carrying, deliberate push/pull, sitting, and ladder climbing are now required planned capabilities; none is implemented by the current actor baseline
+- physical traversal jumping and ladder climbing are implemented through the
+  optional Bagua stewardship ascent; carrying, deliberate push/pull, and sitting
+  remain required planned capabilities
 
 ## Content Reality Check
 
@@ -132,10 +137,11 @@ The durable household-moment contract and validation summary live in
 [`../features/household_care_story_moment.md`](../features/household_care_story_moment.md).
 Milestone A implemented none of the five planned character actions.
 
-### Active — Milestone B: Bagua Stewardship Ascent
+### Active Acceptance Review — Milestone B: Bagua Stewardship Ascent
 
-Milestone B is the only active delivery milestone. Complete Workstream 6 Phases 1-3
-in order:
+Milestone B's implementation is integrated and automated-green. Its fixed
+pre-ascent Continue and New Game production-flow review remains the final acceptance
+gate before this plan moves it to Done. Workstream 6 Phases 1-3 landed in order:
 
 1. shared physics, action-state, contextual-interaction, animation-fallback, and
    recovery foundation
@@ -197,6 +203,20 @@ Milestone B closes only when:
 - the current-status tables in the actor feature, module map, gameplay workflow, and
   this plan are updated together
 
+Implemented evidence now in the repository:
+
+- `CharacterMotionIntent3D`, `CharacterActionController3D`,
+  `CharacterAnimationProfile3D`, and `PlayerRecoveryController3D` provide the
+  story-free actor foundation
+- `WorldActionCoordinator3D`, `CharacterActionTarget3D`, `Ladder3D`, traversal
+  completion areas, and recovery areas provide unified physical/story arbitration
+  without storing transient state in `AppState`
+- the Bagua proof, exact StoryEvent facts, journal/view response, Free Walk
+  suppression, fixed Continue fixture, and focused/production regressions are
+  checked in and pass with process status `0`
+- the remaining review action is the hands-on fixed Continue and New Game
+  production-flow pass named above
+
 Primary implementation areas:
 
 - `characters/` and `characters/control/`
@@ -211,7 +231,7 @@ Primary implementation areas:
 
 ### Next
 
-1. **Bounded world-state reactivity slice.** Reapply changed resident routine
+1. **Bounded world-state reactivity slice.** After Milestone B acceptance, reapply changed resident routine
    overrides to already-spawned 3D actors without respawning them. Use a
    post-ascent `terrace_painter_nian` override to an authored view-deck anchor as the
    production proof. Close the slice only when focused reactivity coverage and the
@@ -300,10 +320,10 @@ Shipped baseline:
 
 Current bounded slice:
 
-- Milestone B adds the optional Bagua stewardship ascent and its journal/world
+- Milestone B added the optional Bagua stewardship ascent and its journal/world
   follow-through without gating or rescoring `preservation_tower_perspective`
-- its content portion closes only with the exact semantic, production-flow,
-  persistence, recovery, and alternate-path evidence in the Active milestone
+- its implementation and automated evidence are complete; fixed Continue and New
+  Game production-flow acceptance remains tracked in the Active milestone
 
 Selection rule for the following slice:
 
@@ -326,7 +346,7 @@ Primary files:
 ## Workstream 2: World-State Reactivity
 
 Status: first pass shipped; one bounded follow-up is queued immediately after
-Milestone B.
+Milestone B acceptance.
 
 Shipped baseline:
 
@@ -453,9 +473,9 @@ Detailed addon behavior belongs in `addons/storyline_editor/README.md` and its
 
 ## Workstream 6: Required Character Action Expansion
 
-Status: Phase 0 complete; Phases 1-7 planned. The production actor still has the
-shipped locomotion baseline only; none of the five capabilities below should be
-described as implemented until its focused and production-flow validations pass.
+Status: Phases 0-3 implemented; Milestone B production-flow acceptance is pending.
+Phases 4-7 remain planned. Traversal jump and ladder are current capabilities;
+carry, deliberate push/pull, and sit remain planned.
 
 The full ownership, input, compatibility, recovery, animation, phase validation, and
 completion contract now lives in
@@ -466,9 +486,9 @@ plan owns only delivery order and milestone status.
 Delivery order:
 
 0. Phase 0 tuning/content/animation gate — complete 2026-07-23
-1. shared physics, action-state, world-interaction, animation, and recovery foundation
-2. physical traversal jump and recovery
-3. ladder climbing
+1. shared physics, action-state, world-interaction, animation, and recovery foundation — implemented
+2. physical traversal jump and recovery — implemented
+3. ladder climbing — implemented
 4. carrying
 5. deliberate push/pull
 6. sitting

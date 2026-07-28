@@ -2,6 +2,10 @@ extends Node
 
 const MAIN_SCENE := preload("res://main.tscn")
 const APP_SCREEN_ROUTER_SCRIPT := preload("res://ui/app_screen_router.gd")
+const HUMAN_BODY_SCENE := preload("res://characters/human_body_3d.tscn")
+const PLAYER_CONTROLLER_SCRIPT := preload(
+	"res://characters/control/player_controller_3d.gd"
+)
 const ScreenState = APP_SCREEN_ROUTER_SCRIPT.ScreenState
 
 var m_failures := PackedStringArray()
@@ -40,7 +44,34 @@ func _run() -> void:
 	_assert_true("Gameplay route shows the world", fake_game_root.visible)
 	await _assert_gameplay_mouse_passthrough(shell)
 
-	shell.call("_open_overlay", ScreenState.PAUSE)
+	var fake_player := HUMAN_BODY_SCENE.instantiate() as HumanBody3D
+	fake_player.name = "FakePlayer"
+	fake_player.character_model_scene = null
+	fake_player.draw_skeleton_bones = false
+	fake_player.add_to_group("player")
+	var controller := PLAYER_CONTROLLER_SCRIPT.new() as PlayerController3D
+	fake_player.controller = controller
+	fake_game_root.add_child(fake_player)
+	var consume_cancel := true
+	controller.cancel_requested.connect(
+		func() -> void:
+			if consume_cancel:
+				controller.consume_cancel_request()
+	)
+	shell.call("_handle_escape")
+	_assert_shell_state(
+		shell,
+		"Active action consumes first Escape",
+		ScreenState.PLAYING,
+		false,
+		false,
+		false,
+		false,
+		true
+	)
+	consume_cancel = false
+	controller.clear_cancel_request()
+	shell.call("_handle_escape")
 	_assert_shell_state(shell, "Pause route", ScreenState.PAUSE, false, false, false, true, true, true)
 	shell.call("_open_overlay", ScreenState.SETTINGS)
 	_assert_shell_state(shell, "Gameplay settings", ScreenState.SETTINGS, false, true, false, true, true, true)

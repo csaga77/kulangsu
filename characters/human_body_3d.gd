@@ -498,6 +498,23 @@ func apply_ladder_motion(
 	velocity = Vector3.ZERO
 
 
+## Applies a ladder-owned path correction without performing another physics
+## integration. This keeps the actor's internal ladder distance synchronized with
+## blocked-endpoint retreat and other authored constraint corrections.
+func constrain_ladder_position(target_position: Vector3) -> void:
+	if !is_on_ladder():
+		return
+	m_ladder_distance = (
+		target_position - m_ladder_mount_transform.origin
+	).dot(m_ladder_axis)
+	var ladder_transform := m_ladder_mount_transform
+	ladder_transform.origin = (
+		m_ladder_mount_transform.origin + m_ladder_axis * m_ladder_distance
+	)
+	global_transform = ladder_transform
+	velocity = Vector3.ZERO
+
+
 ## Compatibility target-position form used by the world coordinator. The target is
 ## projected onto the ladder axis so no free XZ drift can enter actor state.
 func move_on_ladder(target_position: Vector3, climb_speed: float = 1.80) -> void:

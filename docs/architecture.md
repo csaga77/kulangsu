@@ -49,6 +49,9 @@ Primary files:
 - [`../scenes/game_world_3d.tscn`](../scenes/game_world_3d.tscn)
 - [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd)
 - [`../game/world/actor_surface_follower.gd`](../game/world/actor_surface_follower.gd)
+- [`../game/world/world_action_coordinator_3d.gd`](../game/world/world_action_coordinator_3d.gd)
+- [`../game/world/character_action_target_3d.gd`](../game/world/character_action_target_3d.gd)
+- [`../game/world/ladder_3d.gd`](../game/world/ladder_3d.gd)
 - [`../game/world/story_interaction_coordinator.gd`](../game/world/story_interaction_coordinator.gd)
 - [`../weather/weather_manager.gd`](../weather/weather_manager.gd)
 - [`../weather/weather_runtime.gd`](../weather/weather_runtime.gd)
@@ -85,14 +88,22 @@ Responsibilities:
 - data-driven resident spawning and overworld resident presentation
 - lightweight story subjects authored inside the world scene (`StorySubject3D` nodes under the landmark proxies) so route-state changes can surface on world objects as well as in dialogue
 - `ActorSurfaceFollower` owns player grounding and shallow-water seating after the world supplies its actor, terrain, and coordinate adapter
-- `StoryInteractionCoordinator` owns scene-local subject discovery, deterministic proximity selection, inspect/talk hints, and dispatch through `AppState.activate_story_subject`; it republishes hint context only when the selected subject or committed story state changes, and subjects outside its configured world root are ignored
+- `WorldActionCoordinator3D` owns contextual input, cross-kind priority/facing/distance
+  selection, hints, cancellation, and physical semantic forwarding
+- `StoryInteractionCoordinator` owns story-subject discovery, request construction,
+  and `AppState.activate_story_subject(...)` dispatch after the world-action
+  coordinator selects a story subject
+- the Bagua stewardship ascent provides the current traversal-jump completion area,
+  two-way `Ladder3D`, recovery volume, and Story-only semantic proof
 - feeding current world context into `AppState`
 
 The 2D overworld (`scenes/game_main.*`) and its extracted helpers (`route_resolver.gd`, `resident_spawner.gd`, `tunnel_context.gd`, `npc_route_debug_drawer.gd`) have been removed. 2D-only behaviors they owned - tunnel interior context, tunnel-resident visibility masking, and routed waypoint travel through tunnels - have no 3D equivalent yet; resident routine overrides are currently validated at the shared-state level only.
 
 Boundary:
 
-- Keep `game_world_3d.gd` as the composition root; keep actor-surface policy and story-interaction coordination in their focused `game/world/` components.
+- Keep `game_world_3d.gd` as the composition root; keep actor-surface, unified
+  action arbitration, physical targets, and story-dispatch policy in focused
+  `game/world/` components.
 - Keep terrain semantics in terrain profile/rule resources instead of hard-coding new mask-color branches directly into unrelated systems.
 - Keep low-poly 3D palette, water tuning, camera, and lighting in `LowPolyArtStyle3D` resources.
 
@@ -189,7 +200,13 @@ Responsibilities:
 
 Notes:
 
-- [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd), [`../characters/control/base_controller_3d.gd`](../characters/control/base_controller_3d.gd), and [`../characters/control/player_controller_3d.gd`](../characters/control/player_controller_3d.gd) own the runtime actor/controller stack. `HumanBody3D` renders one premade low-poly GLB character model (default [`../assets/characters/male.glb`](../assets/characters/male.glb), with `boy.glb`/`female.glb` alternates) whose integrated appearance and idle/walk/run animation come from the model asset. Gravity, static walls, front and side stair behavior, and dynamic-body pushing are covered by [`../characters/tests/test_character_collisions.tscn`](../characters/tests/test_character_collisions.tscn).
+- [`../characters/human_body_3d.gd`](../characters/human_body_3d.gd),
+  [`../characters/control/`](../characters/control), and
+  [`../characters/actions/`](../characters/actions) own the runtime actor stack:
+  one intent-driven physics step, typed locomotion/action layers, physical traversal
+  jump, safe-transform recovery, ladder adapters, and validated/generated
+  animation fallbacks. Focused action and traversal coverage lives under
+  [`../characters/tests/`](../characters/tests).
 - [`../characters/character_model_catalog_3d.gd`](../characters/character_model_catalog_3d.gd) centralizes player and resident model selection, while [`../characters/character_preview_3d.gd`](../characters/character_preview_3d.gd) provides the transparent SubViewport preview used by customization and journal UI.
 
 ### World Spaces And Landmark Content

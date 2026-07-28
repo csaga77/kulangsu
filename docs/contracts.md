@@ -111,12 +111,19 @@ Current contract:
 - the storyline schema classes (`StorylineCatalog`, `StorylineRouteResource`, `StorylineEventResource`, `StorylineEndingToneRule`, `StorylinePhaseSet`, `StorylineHostValidationProvider`) are owned by the `addons/storyline_editor` submodule; the parent owns the authored `.tres` data, `game/storylines/phase_set.tres` (kept in sync with `StorySeasonPhases` by `test_storyline_resources`), `StoryEffectSchema`, `KulangsuStorylineValidationProvider`, and the `storyline_editor/*` project settings that locate/configure them
 - `storyline_editor/validation_provider_script` points from the parent to `game/storyline_validation_provider.gd`; the provider extends the addon's generic interface and supplies live Kulangsu semantic validation to the inspector and route browser. The addon has no Kulangsu class/path dependency and must continue working when the setting is empty
 - route events may depend on events from any other route resource by referencing those event ids in `prerequisites.story_flags_all` or `prerequisites.story_flags_any`
-- `game/story_event_catalog.gd` is the authored StoryEvent tree file for the current landmark migration and first household slice; it owns the full `melody_landmarks` landmark-interaction subtree plus A Po household arrival and care bindings
+- `game/story_event_catalog.gd` is the authored StoryEvent tree file for the current
+  landmark migration and bounded physical/story slices; it owns the full
+  `melody_landmarks` subtree, A Po household arrival/care, and the optional Bagua
+  stewardship jump/ladder facts
 - StoryEvent catalog validation checks every authored condition/effect payload, including nested conditional effects and `story_event` references against the typed route-event resources loaded by `StorylineCatalog`, so interaction bindings cannot silently contain typos, invalid types, or missing canonical ids
 - resident dialogue beats are projected through `StoryEffectSchema.extract_effects(...)` before runtime application, keeping dialogue metadata out of the strict effect executor while preserving declared effect keys
 - resident conditional beats now resolve through `pick_story_candidate(...)` and apply their side effects through `apply_story_effects(...)` rather than keeping separate copies of condition/effect logic
 - typed route resources are now the canonical narrative gate source for route events; cached `StoryRouteGraph.can_resolve_story_event(...)` and `get_story_event_blockers(...)` calls are the shared availability surface consumed by resident dialogue and StoryEvent effect application
-- `StorySubject3D` is the production world-side subject adapter; `StoryInteractionCoordinator` routes all subjects below its configured world root through `activate_story_subject(...)`, and `StoryEventService` resolves current `landmark:` and `inspectable:` subjects plus landmark reward world events through the authored catalog before any compatibility fallback path
+- `StorySubject3D` is the production world-side subject adapter;
+  `WorldActionCoordinator3D` selects it alongside physical targets, then
+  `StoryInteractionCoordinator` routes it through `activate_story_subject(...)`.
+  `StoryEventService` resolves current `landmark:` and `inspectable:` subjects plus
+  landmark reward world events through the authored catalog
 - non-resident inspect text now resolves through `StoryWorldReactivity.resolve_inspect_result(...)`, which builds stable `inspectable:` subject ids and reuses the shared condition matcher
 - resident routine overrides are the first live world-state effect channel driven through the shared StoryEvent boundary; they redirect the shared spawn/movement config, and reapplying them to live 3D resident actors in `game_world_3d.gd` is scheduled under the implementation plan's Next world-state reactivity work (the retired 2D overworld owned that behavior)
 - the current route ledger remains the player-facing progression view, while the longer-term goal is still to migrate route families into authored recursive StoryEvent definitions and a published-fact ledger
@@ -177,13 +184,24 @@ Owned by:
 - [`../scenes/game_world_3d.tscn`](../scenes/game_world_3d.tscn)
 - [`../scenes/game_world_3d.gd`](../scenes/game_world_3d.gd)
 - [`../game/world/actor_surface_follower.gd`](../game/world/actor_surface_follower.gd)
+- [`../game/world/world_action_coordinator_3d.gd`](../game/world/world_action_coordinator_3d.gd)
+- [`../game/world/character_action_target_3d.gd`](../game/world/character_action_target_3d.gd)
+- [`../game/world/ladder_3d.gd`](../game/world/ladder_3d.gd)
 - [`../game/world/story_interaction_coordinator.gd`](../game/world/story_interaction_coordinator.gd)
 
 Current contract:
 
 - `scenes/game_world_3d.gd` is the world composition root: it maps landmark proxies through the shared coordinate adapter, spawns the resident roster through `ResidentFactory`, configures the focused world components, and syncs location/landmark/resume context into `AppState`
 - `ActorSurfaceFollower` seats its configured actor on the solid surface beneath it and applies the shallow-water policy; `HumanBody3D` remains terrain-agnostic
-- `StoryInteractionCoordinator` listens to the configured actor controller, selects only `StorySubject3D` nodes below its configured world root, and owns proximity hints plus dispatch through `AppState.activate_story_subject(...)`
+- `WorldActionCoordinator3D` is the sole contextual-input and hint arbiter. It ranks
+  physical targets and story subjects by priority, facing, then distance; active
+  action cancel or airborne recovery consumes Esc before shell back behavior
+- `StoryInteractionCoordinator` discovers only `StorySubject3D` nodes below its
+  configured root and owns request construction plus
+  `AppState.activate_story_subject(...)` dispatch after selection
+- `CharacterActionTarget3D` owns story-free physical target gates and lifecycle;
+  `Ladder3D` owns two-way constrained climb, expanded endpoint clearance, blocked
+  retreat, and semantic completion after a clear dismount
 - actionable `talk`, `collect`, and `perform` subjects share the primary interaction
   priority and resolve by distance when their ranges overlap; passive `inspect`
   subjects remain the fallback, so a nearby landmark cannot make an adjacent
@@ -243,7 +261,9 @@ Current contract:
 - generated streets persist as one deterministic `StreetNetwork3D` definition: `LowPolyTerrain3D` only re-extracts `GeneratedStreets` from the mask on an explicit rebuild and owns the network under the edited scene so stable junction/segment IDs, curves, vertical profiles, and section resources serialize into the `.tscn`. Generated segment and junction meshes remain rebuildable caches. On scene load / `rebuild_reusing_generated_streets()` terrain reshapes its bed from stored segment corridors and junction footprints without re-extracting the mask; `GENERATED_STREET_ROOT_META` protects the subtree from transient terrain-mesh clearing. Legacy stored Street3D children remain readable until an explicit rebuild migrates the generated subtree.
 - STREET mask cells remain extraction and terrain-classification input, but they must not emit a parallel mask-derived `StreetMesh`; `StreetNetwork3D` owns generated visible road/junction geometry, standalone `Street3D` remains an authored compatibility source, and cells that cannot become a generated path render as supporting land
 - height-aware placement must query generated terrain heights through `LowPolyTerrain3D.get_world_surface_height(...)` or `LowPolyTerrain3D.get_sample_cell_height(...)` after rebuild instead of assuming global `land_height`; in heightmap-expanded water these queries currently expose underlying land/seabed elevation rather than visual water-plane height
-- `ActorSurfaceFollower`, configured by `game_world_3d`, owns actor grounding: each physics frame it seats the player actor on the solid surface directly beneath it by casting a short downward ray against the physics world (the actor's `collision_mask`), so the actor stands on terrain, piers, or collision-bearing building parts instead of hovering. It falls back to `LowPolyTerrain3D.get_world_surface_height(...)` only when the ray finds nothing within reach, preserving land/seabed elevation following and shallow-water seating. `terrain_clearance` defaults to `0`; `HumanBody3D` itself stays terrain-agnostic
+- `ActorSurfaceFollower`, configured by `game_world_3d`, owns grounded actor seating
+  and shallow-water policy, and suspends automatic seating during airborne,
+  traversal-jump, ladder, and recovery modes
 - `game_world_3d` owns three authored landmark building scenes, the A Po household
   courtyard, two stable tunnel marker anchors, the complete
   17-landmark/6-inspectable `StorySubject3D` set, and recursively generated static
@@ -263,11 +283,18 @@ Current contract:
 - `HumanBody3D.draw_skeleton_bones` is a debug toggle (default `false`): when on with the GLB model active it draws the model's `Skeleton3D` as bone lines in a `SkeletonDebug` `ImmediateMesh` under the skeleton, refreshed each frame to track animation, colored by `skeleton_debug_color`; it is a debug aid only and stays hidden in normal play
 - locomotion drives the model `AnimationPlayer`: `model_idle_animation` / `model_walk_animation` / `model_run_animation` map to standing/walking/running and loop with a short crossfade; clip names resolve case-insensitively against the imported animation list; optional imported clips beyond `idle`/`walk`/`run` must be validated before being bound to gameplay states
 - `HumanBody3D.grounding_speed` supplies the small downward velocity that keeps grounded movement planted. Stair traversal relies on the generated stair ramp/platform collision and Godot's native `move_and_slide()` slope handling; the actor does not raycast for stair floors, rewrite its position, or maintain a separate snap-grounded state. Solid walls and the vertical side faces of stair collision block traversal through normal physics. `RigidBody3D` contacts remain dynamic push targets: the actor applies a small movement-direction impulse to them while static walls stay on the native wall-slide path
-- `HumanBody3D` applies gravity (`GRAVITY`, capped by `MAX_FALL_SPEED`) whenever it is airborne and not in a cosmetic jump, so a body spawned or walked off an edge above the floor falls and lands instead of hovering. For a body that has a `controller`, `_physics_process` also runs a vertical-only `_apply_passive_vertical_motion` step on any frame the controller issued no move, so an idle character still settles onto the floor beneath it. Bodies without a controller (manually driven test probes) are exempt so their physics is never double-stepped, and `stop_moving` zeroes only horizontal velocity so the vertical fall continues while idle
-- A grounded jump clears the downward planting velocity before applying its visual/collision offset, and `is_grounded()` intentionally returns false throughout the cosmetic jump window
+- `HumanBody3D` consumes one typed movement intent and calls `move_and_slide()` once
+  per controlled physics tick. Typed locomotion owns floor/air transitions,
+  physical jump, ladder, and recovery; transient state never enters `AppState`
+- production `ui_jump` uses the physical traversal request with accepted
+  buffer/coyote/air-control/ceiling limits. The old cosmetic `jump()` remains only
+  as a compatibility adapter
 - `HumanBody3D` locomotion is conveyed entirely by the GLB model's `idle`/`walk`/`run` animation clips; the actor adds no procedural walk/run bob (the only scripted `VisualRoot` offset is the jump arc). It remains a prototype actor until the 3D asset direction is finalized
-- `PlayerController3D` runs by default and treats `ui_walk` as a held slow-walk modifier; `ui_jump` requests the cosmetic visual jump and `ui_inspect` emits a one-shot contextual interaction request. Inspect input alone does not create a sustained actor state or movement lock
-- required planned carry, deliberate push/pull, sit, physical traversal-jump, and ladder-climb behavior must remain orthogonal: traversal jump and ladder climb are locomotion modes, while carry, push/pull, and sit are sustained action/posture modes. Each capability is opt-in through the owning actor/controller or world component. `AppState` must not own transient locomotion modes, collision details, carried-object transforms, ladder progress, or seat alignment; only semantic save-relevant results cross into shared state
+- `PlayerController3D` treats `ui_walk` as the held slow-walk modifier, publishes
+  physical jump/context/cancel intentions, and never manipulates world targets
+- traversal jump and ladder climb are current locomotion modes; carry, push/pull,
+  and sit remain planned sustained action/posture modes. `AppState` owns only
+  semantic save-relevant results, including the two optional Bagua stewardship facts
 - low-poly palette, camera, lighting, and landmark colors should flow through `LowPolyArtStyle3D` presets while the art direction is exploratory
 - `LowPolyArtStyle3D` preset field edits are manual-apply: use exported rebuild controls, deliberate rebuild calls, or scene reloads after style changes rather than adding automatic resource-change rebuild behavior
 

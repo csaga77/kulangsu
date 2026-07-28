@@ -29,11 +29,12 @@ Read this first. It is the minimum-token design context for new Codex threads.
 
 ## Character Action Direction
 
-- The shipped baseline remains idle/walk/run movement, gravity and landing, stairs,
-  contextual inspect/talk, a cosmetic jump, and light contact-based dynamic pushing.
-- The target game also requires physical traversal jumping, carrying, deliberate
-  push/pull puzzles, sitting, and ladder climbing.
-- These planned verbs must deepen exploration, environmental care, reflection, and
+- The shipped baseline now includes idle/walk/run movement, physical traversal
+  jumping and safe recovery, two-way authored ladder climbing, stairs, unified
+  contextual inspect/talk/action selection, and light contact-based dynamic pushing.
+- The remaining required character-action work is carrying, deliberate push/pull
+  puzzles, and sitting.
+- These verbs must deepen exploration, environmental care, reflection, and
   authored vertical routes without introducing precision platforming or a general
   physics sandbox.
 

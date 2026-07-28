@@ -362,11 +362,10 @@ func _apply_actor_ladder_motion(
 
 
 func _move_actor_to_ladder_position(actor: CharacterBody3D, target_position: Vector3) -> void:
-	if actor.has_method("apply_ladder_motion"):
-		# apply_ladder_motion already performed the actor's one physics integration
-		# for this tick. Projection back to the authored straight path is a
-		# constraint correction, not a second movement integration.
-		actor.global_position = target_position
+	if actor.has_method("constrain_ladder_position"):
+		# Projection back to the authored straight path is a constraint correction,
+		# not a second movement integration.
+		actor.call("constrain_ladder_position", target_position)
 	elif actor.has_method("move_on_ladder"):
 		actor.call("move_on_ladder", target_position, climb_speed)
 	else:

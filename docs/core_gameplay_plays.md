@@ -43,12 +43,12 @@ If a feature does not strengthen one of these verbs, it should be optional or cu
 ## Character Action Scope
 
 The required movement baseline is intentionally small: idle, walk, run, forgiving
-gravity and landing, static collision, stair traversal, contextual inspect/talk,
-and the current light contact response for dynamic bodies. The current jump is a
-cosmetic expression only; it does not clear obstacles, cross gaps, reach ledges,
-or gate story progress.
+physical traversal jumping and recovery, two-way authored ladders, static
+collision, stair traversal, unified contextual inspect/talk/action selection, and
+the current light contact response for dynamic bodies.
 
-The target game requires five planned physical verbs beyond that shipped baseline:
+The target game requires five physical verbs beyond the original baseline.
+Traversal jumping and ladder climbing are current; three remain planned:
 
 - Physical traversal jumping supports forgiving obstacle, gap, ledge, and vertical
   route traversal without becoming precision platforming.
@@ -83,8 +83,9 @@ Physical actions should follow these player-facing rules:
 See [`features/low_poly_actor_3d.md`](features/low_poly_actor_3d.md) for the current
 runtime, input, physics, ownership, and validation contract. Its Phase 0 numeric,
 input/cancellation, animation-fallback, production-proof, and recovery decisions
-were accepted on 2026-07-23; the five physical actions remain unimplemented until
-their later focused and production-flow gates pass.
+were accepted on 2026-07-23. Traversal jump and ladder now pass their focused
+automated gates and await Milestone B's production-flow acceptance review; carry,
+push/pull, and sit remain planned.
 
 ## The Eight Core Plays
 

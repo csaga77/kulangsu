@@ -7,9 +7,11 @@ Define how stacked rooms, stairs, and tunnel interiors should work in the produc
 ## Current Status
 
 - The 2D `LevelNode2D`, `LevelArea2D`, `LevelRegistry`, portal, stair, visibility-mask, room, and tunnel-interior stack was removed after the 3D runtime cutover.
-- `HumanBody3D` already supports gravity, native wall and stair-slope movement, and capped dynamic-body pushing.
-- The current jump is cosmetic: only the visual model rises, while the collision capsule remains planted. It cannot clear obstacles, gaps, or ledges.
-- The production Bagua building is 3D geometry, but its story subject currently uses the world scene's shared proximity interaction layer rather than authored interior floors.
+- `HumanBody3D` supports physical traversal jumping, safe-transform recovery,
+  gravity, native wall and stair-slope movement, and capped dynamic-body pushing.
+- The production Bagua building now owns the first optional physical ascent: a
+  guarded jump lane, recovery volume, and two-way service ladder. Its ordinary
+  route and story subject remain available.
 - Bi Shan and Long Shan remain traversable marker anchors. Walkable tunnel interiors, interior resident routing, and tunnel-specific visibility are accepted post-cutover gaps.
 - All current landmark and inspectable hotspots are `StorySubject3D` nodes authored in [`../../scenes/game_world_3d.tscn`](../../scenes/game_world_3d.tscn).
 
@@ -21,15 +23,20 @@ Define how stacked rooms, stairs, and tunnel interiors should work in the produc
 - Tunnel interiors should own their geometry, collision, entry/exit transforms, resident anchors, and camera/occlusion context.
 - Save/resume anchors remain semantic landmark ids resolved by `game_world_3d`, not raw interior coordinates.
 - Add focused 3D validation before making any new traversal component production-critical.
-- A physical traversal jump must define numeric obstacle, gap, landing, timing, air-control, camera, and recovery fixtures before any room or route depends on it.
-- A ladder must own an explicit 3D climb path, top/bottom mount and dismount transforms, clearance checks, collision policy, animation context, and blocked-exit fallback. Ladder climbing is an authored locomotion mode, not unconstrained surface climbing.
-- Physical traversal jumping and ladder climbing are required planned capabilities. Each must ship in at least one production-space slice before the target character-action milestone is complete.
+- A physical traversal jump uses the accepted obstacle, gap, landing, timing,
+  air-control, ceiling, and recovery contract in the actor feature.
+- A ladder owns an explicit 3D climb path, top/bottom mount and dismount transforms,
+  expanded clearance checks, collision policy, animation context, and blocked-exit
+  fallback. Ladder climbing is authored locomotion, not surface climbing.
+- Traversal jump and ladder are current through the optional Bagua proof; new
+  production spaces must reuse or deliberately extend those contracts.
 
 ## Traversal Safety
 
-- Dangerous drops must remain behind authored collision while the game has no player recovery service.
-- Safe jump-down routes cannot be required until a physical traversal jump and fall-recovery contract exist.
-- Before an unguarded fall ships, the world must track a recent safe semantic anchor and restore the player there without damage, story-progress loss, or an unrelated shared-state reload.
+- Dangerous drops require authored collision plus an authored recovery area or the
+  actor's safe-transform recovery.
+- Required jump-down routes must remain within the accepted traversal and recovery
+  limits.
 - Portals and authored exit transforms must place the actor on clear, stable ground and preserve intended orientation.
 - Future movable objects need a deterministic reset path if they leave their authored bounds or obstruct required traversal.
 
@@ -41,6 +48,8 @@ Define how stacked rooms, stairs, and tunnel interiors should work in the produc
 - [`../../scenes/game_world_3d.tscn`](../../scenes/game_world_3d.tscn)
 - [`../../scenes/game_world_3d.gd`](../../scenes/game_world_3d.gd)
 - [`../../game/story_subject_3d.gd`](../../game/story_subject_3d.gd)
+- [`../../game/world/world_action_coordinator_3d.gd`](../../game/world/world_action_coordinator_3d.gd)
+- [`../../game/world/ladder_3d.gd`](../../game/world/ladder_3d.gd)
 - [`../../scenes/tests/test_environment_3d.tscn`](../../scenes/tests/test_environment_3d.tscn)
 - [`../../characters/tests/test_character_collisions.tscn`](../../characters/tests/test_character_collisions.tscn)
 

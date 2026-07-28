@@ -223,12 +223,11 @@ Current read of the playable slice:
 
 Current gameplay-content priority order:
 
-1. Begin Milestone B: build the shared action/recovery
-   foundation, forgiving physical traversal jump, and authored Bagua ladder proof
-   against the accepted Phase 0 values. Free Walk isolation and deterministic
-   pause/recovery/unload cleanup are exit gates for each delivered capability, not
-   later hardening work.
-2. After Milestone B, complete the bounded live-reactivity slice: reapply changed
+1. Review Milestone B's integrated Bagua stewardship ascent through the fixed
+   pre-ascent Continue fixture and a New Game production flow. Its shared
+   action/recovery foundation, traversal jump, ladder, Free Walk isolation, and
+   deterministic cleanup are implemented and automated-green.
+2. Complete the bounded live-reactivity slice: reapply changed
    resident routine overrides to already-spawned residents, using Nian's
    post-ascent move to an authored Bagua view-deck anchor as the production proof.
 3. Add the bounded playable ferry closing movement for the three current endgame

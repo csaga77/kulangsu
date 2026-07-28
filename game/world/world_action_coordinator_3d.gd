@@ -202,6 +202,20 @@ func cancel_active_action(reason: StringName = &"cancel") -> bool:
 	return true
 
 
+func cancel_or_recover_actor(reason: StringName = &"cancel") -> bool:
+	if cancel_active_action(reason):
+		return true
+	if !is_instance_valid(m_actor):
+		return false
+	if m_actor.has_method("is_airborne") and bool(m_actor.call("is_airborne")):
+		if m_actor.has_method("recover_to_safe_transform"):
+			m_actor.call("recover_to_safe_transform")
+			physical_cancel_consumed.emit(reason)
+			m_hint_dirty = true
+			return true
+	return false
+
+
 func recover_active_action(recovery_transform: Transform3D) -> void:
 	cancel_active_action(&"recovery")
 	if !is_instance_valid(m_actor):
@@ -310,7 +324,7 @@ func _on_context_action_requested() -> void:
 
 
 func _on_cancel_requested() -> void:
-	if !cancel_active_action(&"cancel"):
+	if !cancel_or_recover_actor(&"cancel"):
 		return
 	var controller := _resolve_controller()
 	if controller != null and controller.has_method("consume_cancel_request"):

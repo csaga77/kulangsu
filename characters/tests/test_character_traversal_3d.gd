@@ -408,6 +408,28 @@ func _validate_ladder_mount_climb_and_cleanup() -> void:
 	var ladder = _create_ladder(fixture)
 	await get_tree().process_frame
 
+	var actor_collision := actor.get_node("CollisionShape3D") as CollisionShape3D
+	var actor_capsule := actor_collision.shape as CapsuleShape3D
+	var actor_radius_before := actor_capsule.radius
+	var actor_height_before := actor_capsule.height
+	var endpoint_capsule := ladder._build_expanded_endpoint_shape(
+		actor_capsule
+	) as CapsuleShape3D
+	_assert_true(
+		endpoint_capsule != actor_capsule
+			and is_equal_approx(
+				endpoint_capsule.radius,
+				actor_radius_before + 0.10
+			)
+			and is_equal_approx(
+				endpoint_capsule.height,
+				actor_height_before + 0.20
+			)
+			and is_equal_approx(actor_capsule.radius, actor_radius_before)
+			and is_equal_approx(actor_capsule.height, actor_height_before),
+		"Endpoint clearance duplicates and expands the capsule by 0.10 m radially "
+			+ "and 0.20 m vertically without changing the actor shape"
+	)
 	_assert_true(
 		is_equal_approx(ladder.interaction_range, 0.9)
 			and is_equal_approx(ladder.facing_tolerance_degrees, 20.0)
@@ -442,13 +464,50 @@ func _validate_ladder_mount_climb_and_cleanup() -> void:
 		Vector3(0.75, 4.01, 0.0)
 	)
 	Input.action_press("ui_up")
-	await _wait_physics_frames(LADDER_CLIMB_FRAMES + 18)
+	var reached_blocked_endpoint := await _wait_for_ladder_blocked_endpoint(
+		ladder,
+		LADDER_CLIMB_FRAMES + 18
+	)
+	var blocked_position := actor.global_position
+	await _wait_physics_frames(11)
+	_assert_true(
+		reached_blocked_endpoint
+			and !bool(ladder.get("m_blocked_retreating"))
+			and actor.global_position.distance_to(blocked_position) <= 0.001,
+		"A blocked ladder endpoint holds position before 0.20 s of continuous contact"
+	)
+	await _wait_physics_frames(1)
+	_assert_true(
+		bool(ladder.get("m_blocked_retreating"))
+			and actor.global_position.distance_to(blocked_position) <= 0.001,
+		"At exactly 0.20 s the blocked retreat starts without teleporting the actor"
+	)
+	await _wait_physics_frames(6)
+	var half_retreat_distance := actor.global_position.distance_to(blocked_position)
+	_assert_true(
+		absf(half_retreat_distance - 0.175) <= 0.01,
+		"The blocked retreat covers half of 0.35 m after 0.10 s"
+	)
+	await _wait_physics_frames(6)
 	Input.action_release("ui_up")
+	var completed_retreat_distance := actor.global_position.distance_to(
+		blocked_position
+	)
 	_assert_true(
 		ladder.is_mounted()
 			and actor.is_on_ladder()
+			and absf(completed_retreat_distance - 0.35) <= 0.01
 			and ladder.get_climb_progress() < 1.0,
-		"A blocked top exit retreats along the ladder and keeps movement away available"
+		"A blocked top exit retreats exactly 0.35 m over 0.20 s and remains mounted"
+	)
+	var retreat_progress: float = float(ladder.get_climb_progress())
+	Input.action_press("ui_down")
+	await _wait_physics_frames(1)
+	Input.action_release("ui_down")
+	var away_progress: float = float(ladder.get_climb_progress())
+	_assert_true(
+		away_progress < retreat_progress,
+		"A blocked endpoint accepts immediate movement away after retreat"
 	)
 
 	blocker.queue_free()
@@ -773,6 +832,17 @@ func _settle_actor(actor: HumanBody3D) -> void:
 func _wait_physics_frames(frame_count: int) -> void:
 	for frame in range(frame_count):
 		await get_tree().physics_frame
+
+
+func _wait_for_ladder_blocked_endpoint(
+	ladder: Node,
+	max_frame_count: int
+) -> bool:
+	for frame in range(max_frame_count):
+		await get_tree().physics_frame
+		if int(ladder.get("m_blocked_endpoint")) == 1:
+			return true
+	return false
 
 
 func _advance_actor_motion(actor: HumanBody3D, frame_count: int) -> void:

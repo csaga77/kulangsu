@@ -14,9 +14,19 @@
 - [`../../assets/characters/`](../../assets/characters) holds the premade low-poly character models (skinned and textured). The current validated locomotion baseline is `idle`, `walk`, and `run`; imported models may include extra clips such as `dance`, `scared`, or `wave_goodbye`, but those must be validated before gameplay use. [`male.glb`](../../assets/characters/male.glb) is the default actor visual; [`boy.glb`](../../assets/characters/boy.glb) and [`female.glb`](../../assets/characters/female.glb) are interchangeable alternates assignable through `character_model_scene`.
 - [`../../characters/control/base_controller_3d.gd`](../../characters/control/base_controller_3d.gd) defines `class_name BaseController3D`, the shared 3D controller base for `HumanBody3D`.
 - [`../../characters/control/player_controller_3d.gd`](../../characters/control/player_controller_3d.gd) defines `class_name PlayerController3D`, a first playable input adapter that extends `BaseController3D`.
+- [`../../characters/actions/`](../../characters/actions) owns the story-free
+  sustained action state and validated/generated animation fallback profile.
+- [`../../game/world/`](../../game/world) owns unified contextual arbitration,
+  physical action targets, ladder paths, traversal completion, and recovery areas.
 - [`../../characters/character_model_catalog_3d.gd`](../../characters/character_model_catalog_3d.gd) centralizes player and resident model selection, and [`../../characters/character_preview_3d.gd`](../../characters/character_preview_3d.gd) renders the same actor/model contract in UI SubViewports.
 - [`../../characters/tests/test_human_body_3d.tscn`](../../characters/tests/test_human_body_3d.tscn) is the focused smoke scene covering actor API parity, current-frame controller input, jump takeoff velocity, character-model structure (instanced model, mesh, material, skeleton, and `idle`/`walk`/`run` animation clips), and the absence of the removed per-part accessory API and generated accessory nodes.
 - [`../../characters/tests/test_character_collisions.tscn`](../../characters/tests/test_character_collisions.tscn) builds its own collision fixtures and validates gravity/landing, static-wall blocking, native stair-slope ascent/descent and side blocking, and capped `RigidBody3D` pushing.
+- [`../../characters/tests/test_character_action_state_3d.tscn`](../../characters/tests/test_character_action_state_3d.tscn)
+  validates mode compatibility, exact target gates, arbitration, cancellation,
+  recovery, cleanup, and Story/Free Walk semantic boundaries.
+- [`../../characters/tests/test_character_traversal_3d.tscn`](../../characters/tests/test_character_traversal_3d.tscn)
+  validates the accepted physical jump, recovery, ceiling, ladder, endpoint, and
+  blocked-retreat contracts.
 - [`../../scenes/tests/test_game_world_3d.tscn`](../../scenes/tests/test_game_world_3d.tscn) validates the production actor/controller, generated terrain collision and streets, terrain-height following and wading, camera follow/orbit wiring, authored-landmark collision, and runtime integration.
 - `HumanBody3D` instances the GLB model under `VisualRoot/CharacterModel`, scales it to `body_height`, rotates it to face the rig's forward axis, and auto-plants its lowest point at the foot origin.
 - Hair and clothing are authored as part of the selected GLB. `HumanBody3D` does not instance separate hair, pants, or jacket scenes, create accessory `BoneAttachment3D` nodes, or transfer skin weights at runtime.
@@ -27,15 +37,15 @@
 | Capability | Status | Current contract or scope |
 | --- | --- | --- |
 | Idle, walk, and run | Current | Camera-relative XZ movement with validated `idle`, `walk`, and `run` model clips. |
-| Cosmetic jump | Current | A short visual arc; the collision capsule remains planted and cannot clear obstacles or gaps. |
-| Physical fall and landing | Current | Gravity applies when the body is unsupported outside the cosmetic jump window. There is no fall damage or dedicated landing animation. |
-| Inspect and talk | Current | One contextual inspect request selects a nearby story subject and dispatches through `StoryInteractionCoordinator`. |
+| Legacy cosmetic jump adapter | Compatibility only | `jump()` remains for old previews/probes; production `ui_jump` uses the physical traversal request. |
+| Physical fall and landing | Current | One intent-driven physics step owns gravity, floor/air transitions, landing recovery, and safe-transform recovery without fall damage. |
+| Inspect, talk, and physical context | Current | `WorldActionCoordinator3D` is the sole contextual selector/hint owner and delegates story activation to `StoryInteractionCoordinator`. |
 | Contact-based dynamic pushing | Current | Contact with an unfrozen `RigidBody3D` applies a small capped impulse; this is not an aligned Push action or puzzle-object framework. |
-| Physical traversal jump | Required planned | Add a physical collision-body arc with numeric clearance fixtures and recovery rules. |
+| Physical traversal jump | Current | `ui_jump` drives the accepted collision-body arc, buffer/coyote/air-control/ceiling limits, landing recovery, and safe-anchor cancellation. |
 | Carry | Required planned | Add typed light/medium carryables, placement validation, movement restrictions, and reset behavior. |
 | Deliberate push/pull | Required planned | Add constrained target alignment and deterministic puzzle-object movement distinct from contact pushing. |
 | Sit | Required planned | Add authored seat/exit anchors, animation, camera continuity, and immediate player-controlled exit. |
-| Ladder climbing | Required planned | Add authored ladder paths, safe mount/dismount anchors, vertical locomotion, animation, and recovery. |
+| Ladder climbing | Current | Two-way straight authored paths own mount alignment, constrained climb, expanded endpoint clearance, blocked retreat, cancellation, semantic completion, and recovery. |
 | Cooperative physical tasks and NPC-assisted traversal | Out of scope | These remain separate from the required player-action set until a route and resident-behavior contract owns them. |
 
 The current playable build contains only the Current capabilities above. The target
@@ -60,7 +70,11 @@ The actor exposes familiar adapter fields and methods:
 - `configuration`
 - `move(...)`
 - `move_with_speed(...)`
-- `jump()`
+- `jump()` (legacy cosmetic adapter)
+- `request_jump()` / `release_jump()`
+- `get_locomotion_mode()` / `is_free_locomotion()` / `is_airborne()`
+- `begin_ladder(...)` / `apply_ladder_motion(...)` / `finish_ladder(...)` / `cancel_ladder(...)`
+- `set_safe_transform(...)` / `recover_to_safe_transform()`
 - `get_direction_vector()`
 - `set_direction_vector(...)`
 - `get_ground_rect()`
@@ -85,7 +99,8 @@ The actor exposes familiar adapter fields and methods:
 - The character model carries its own mesh, texture, skeleton, and animation clips; no runtime mesh generation or per-vertex color authoring is involved.
 - `move(...)` and `move_with_speed(...)` consume XZ-plane `Vector3` directions.
 - `get_ground_rect()` returns an XZ-plane `Rect2` footprint for future adapter code; it is not a drop-in replacement for 2D physics queries.
-- `is_grounded()` is the preferred 3D actor grounded check; it reports Godot floor contact except during the actor's cosmetic jump window.
+- `is_grounded()` is the preferred 3D actor grounded check; it excludes physical
+  airborne/traversal, ladder, recovery, and legacy cosmetic-jump states.
 - `body_height` and `body_radius` update the model scale, capsule collision shape, local bounding box, and ground footprint together.
 - The optional `controller` slot accepts `BaseController3D` resources such as `PlayerController3D` or `ResidentController3D`.
 - `PlayerController3D` consumes the existing input map: `ui_left`, `ui_right`, `ui_up`, `ui_down`, `ui_walk`, `ui_jump`, and `ui_inspect`.
@@ -93,7 +108,9 @@ The actor exposes familiar adapter fields and methods:
 - `camera_relative_movement` can align movement to the active `Camera3D`; when disabled, movement is world-aligned on XZ.
 - Stairs expose smooth walkable ramp/platform collision beneath their stepped render meshes. `HumanBody3D` traverses those shapes through its ordinary downward grounding velocity and Godot's native `move_and_slide()` slope response; it has no stair-specific floor probes, placement queries, position rewrites, or synthetic grounded state.
 - Static walls and stair side faces stay on the same native collision path, while the actor applies a small movement-direction impulse to push dynamic bodies such as balls.
-- A grounded jump clears the downward planting velocity and applies its parabolic offset only to `VisualRoot`; the collision capsule remains planted so floor resolution cannot cancel the visible jump. `is_grounded()` reports false during that jump window.
+- Production `ui_jump` calls `request_jump()` and moves the collision body through
+  the accepted physical arc. The old `jump()` visual-only behavior is retained only
+  as an explicit compatibility adapter.
 - Actor placement in generated terrain must use `LowPolyWorldCoordinates3D` instead of scene-local guessed offsets.
 - Terrain/building elevation following is owned by `game_world_3d`. During physics frames it raycasts a short distance below the actor against the actor collision mask so terrain, piers, and collision-bearing building parts can support the feet; if no solid surface is found, it falls back to `LowPolyTerrain3D.get_world_surface_height(...)` and the documented water-wading rule. `HumanBody3D` itself stays terrain-agnostic.
 
@@ -102,11 +119,10 @@ The actor exposes familiar adapter fields and methods:
 Character behavior uses orthogonal layers instead of one mutually exclusive list
 of every action:
 
-- the locomotion layer is currently `idle`, `walk`, `run`, or physically `airborne`,
-  and will add `traversal_jump` and `ladder_climb` modes;
-- the current cosmetic jump is a timed visual overlay, not physical locomotion;
-- the sustained action/posture layer will support `free`, `carry`, `push`, `pull`,
-  or `sit`;
+- the locomotion layer is `idle`, `walk`, `run`, `airborne`,
+  `traversal_jump`, `ladder`, or `recovery`;
+- the sustained action/posture layer is typed as `free`, `carry`, `push`, `pull`,
+  or `sit`, with only the shared lifecycle foundation current until Milestone C;
 - inspecting and talking are one-shot requests, not sustained actor states.
 
 Only one locomotion mode and at most one sustained action/posture may be active.
@@ -118,8 +134,10 @@ The current player input contract is:
 - `WASD` or arrow keys move;
 - holding `Shift` (`ui_walk`) uses the slower walk speed;
 - releasing `Shift` while moving returns to the default run speed;
-- `Space` (`ui_jump`) plays the cosmetic jump;
-- `R` (`ui_inspect`) requests contextual inspect or talk.
+- `Space` (`ui_jump`) requests the physical traversal jump;
+- `R` (`ui_inspect`) requests the selected physical action, inspect, or talk;
+- `Esc` first cancels an active physical action or recovers an airborne player,
+  then follows normal shell back behavior on a later press.
 
 Changing from run-by-default to walk-by-default is a product and input decision
 that must update the controller, hints, test scenes, and this document together.
@@ -138,7 +156,7 @@ requests; `ResidentController3D` owns resident wandering, pauses, and facing.
 Future actions are opt-in per controller and must not introduce player input or
 story rules into `HumanBody3D`.
 
-The required planned compatibility defaults are:
+The required compatibility defaults are:
 
 | Action or posture | Allowed locomotion | Default restriction |
 | --- | --- | --- |
@@ -149,16 +167,16 @@ The required planned compatibility defaults are:
 | Sit | Idle | Movement remains locked until the player exits; camera control stays available. |
 | Ladder climb | Ladder locomotion with no sustained object action | No carry, push, pull, sit, or traversal jump while mounted. |
 
-### Planned Action Ownership
+### Action Ownership
 
 The action expansion keeps physical state scene-local and story meaning semantic:
 
-| Owner | Planned responsibility |
+| Owner | Current or planned responsibility |
 | --- | --- |
 | `HumanBody3D` | Own locomotion mode, velocity, one physics integration step per tick, floor/air transitions, and animation requests; remain free of story rules. |
 | `PlayerController3D` | Translate input into movement, jump, contextual-action, and cancel intentions without manipulating world targets. |
 | `CharacterActionController3D` | Own sustained `free`, `carry`, `push`, `pull`, or `sit` state, target lifecycle, compatibility, and cleanup. |
-| `WorldActionCoordinator3D` | Become the sole contextual-input and hint arbiter across physical targets and story subjects, delegating story activation to `StoryInteractionCoordinator`. |
+| `WorldActionCoordinator3D` | Sole contextual-input and hint arbiter across physical targets and story subjects, delegating story activation to `StoryInteractionCoordinator`. |
 | `StoryInteractionCoordinator` | Continue story-subject selection, request construction, and `AppState` dispatch without competing for the input or hint. |
 | `ActorSurfaceFollower` | Run normal seating only for grounded locomotion, expose forced spawn/resume settling, and suspend automatic seating during airborne, ladder, and recovery modes. |
 | `PlayerRecoveryController3D` | Track a scene-local safe transform plus semantic landmark fallback, recover the player, cancel actions, and reset affected objects without changing story progress. |
@@ -370,14 +388,14 @@ targets publish the exact semantic completion id; StoryEvents decide any reward.
 | Push/pull | [`../../architecture/trinity_church/trinity_church_stylized_3d.tscn`](../../architecture/trinity_church/trinity_church_stylized_3d.tscn); `trinity_hymn_chest_aligned` | `0.80 x 0.55 x 0.65 m` hymn chest on a `3.00 m` authored axis, goal at `2.50 m`, `0.30 m` removable blocker, and required-path reset volume. | Title -> Continue from the fixed church-care fixture; push, pull, release/re-engage, prove blockage with no impulse buildup, reach the goal once, and reload with the StoryEvent result while the transient object resets deterministically; repeat the goal in Free Walk with no story mutation. |
 | Sit | [`../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn`](../../architecture/piano_ferry/piano_ferry_stylized_3d.tscn); `harbor_sea_melody_listened` | `0.50 m`-high harbor bench, one seat anchor, `0.90 m` primary exit, `1.00 m` square clear pad, and one blocker that forces the radial fallback exit. | Title -> Continue from the fixed harbor-listening fixture; enter, orbit the camera, exit immediately with R and with `Esc`, prove fallback exit, sit through the authored listening completion once, then journal/reload without retained occupancy; repeat the listening duration in Free Walk with no story mutation. |
 
-The locked next production slice is **Milestone B: Bagua stewardship ascent**:
-shared action/recovery foundation, then the physical traversal jump proof, then the
-authored ladder proof. It is optional and, in Story mode after
+**Milestone B: Bagua stewardship ascent** is implemented and automated-green:
+shared action/recovery foundation, physical traversal jump proof, and authored
+ladder proof. It is optional and, in Story mode after
 `preservation_tower_perspective` resolves, persists the two exact stewardship facts
 and unlocks conditional journal/world follow-through. It must not gate, resolve,
 rename, or rescore that existing event, and both facts are suppressed in
-`Free Walk`. This lock is planning approval only—none of Phases 1-3 is implemented
-by Phase 0.
+`Free Walk`. The fixed Continue and New Game production-flow review remains the
+Milestone acceptance gate.
 
 #### Dated Pre-Refactor Baseline
 
@@ -412,8 +430,10 @@ These values describe the implementation defaults, not permanent design constant
 | --- | ---: |
 | Walk speed | `4.0` world units per second |
 | Run speed | `7.5` world units per second |
-| Cosmetic jump height | `0.48` world units |
-| Cosmetic jump duration | `0.55` seconds |
+| Traversal jump takeoff | `4.8` world units per second |
+| Traversal jump short-hop clamp | `2.0` world units per second |
+| Traversal jump horizontal cap | `4.5` world units per second |
+| Jump buffer / coyote time | `0.16` / `0.18` seconds |
 | Gravity | `16.0` world units per second squared |
 | Maximum fall speed | `12.0` world units per second |
 | Body height | `1.72` world units |
@@ -429,8 +449,10 @@ feature resource rather than in unrelated scenes.
 
 - Idle zeroes horizontal velocity while vertical physics continues, so an
   unsupported controlled actor still falls and settles.
-- The cosmetic jump never clears collision, crosses gaps, reaches ledges, starts a
-  physical falling arc, or gates story progress.
+- The production traversal jump uses physical collision and the accepted forgiving
+  obstacle/gap/landing limits; no required route depends on precision platforming.
+- The legacy cosmetic `jump()` adapter never clears collision and is not bound to
+  production input.
 - Unsupported actors fall at the capped gravity speed, land through native floor
   contact, regain control immediately, and take no fall damage.
 - Stairs use smooth authored ramp/platform collision and require no jump.
@@ -449,12 +471,6 @@ before it moves into Current scope.
 It must also prove deterministic pause/recovery/unload cleanup and no StoryEvent
 mutation in `Free Walk` before it moves into Current scope.
 
-- **Traversal jump:** implement and validate the Phase 0 obstacle, gap, landing,
-  timing, buffer, forgiveness, air-control, ceiling, and recovery values. It must
-  remain forgiving and must not make precision platforming mandatory. When it
-  becomes Current, `ui_jump` must drive the physical player jump and supersede the
-  production cosmetic-only behavior rather than adding a second ambiguous jump
-  input.
 - **Carry:** implement a typed carryable component with the accepted light/medium
   movement, pickup, attachment, doorway, placement, cancellation, and recovery
   contract. Heavy objects are not carryable, and player-controlled rotation stays
@@ -465,16 +481,11 @@ mutation in `Free Walk` before it moves into Current scope.
 - **Sit:** provide authored seat and clear exit transforms using the accepted
   alignment, blend, clearance, and fallback-search values. A seat resource may make
   entry or exit more forgiving but not tighter; the player may exit at any time.
-- **Ladder climbing:** implement a typed ladder path with the accepted
-  mount/dismount alignment, climb speed, endpoint clearance, blocked-exit,
-  cancellation, camera, animation-fallback, and recovery behavior. Mounting uses
-  the contextual interaction path.
 
-Dangerous drops must remain behind authored collision while there is no player
-recovery service. Before any unguarded fall ships, the world must restore the
-player to a recent safe semantic anchor without damage, story-progress loss, or an
-unrelated shared-state reload. Future movable objects likewise need deterministic
-recovery when they leave their bounds or block required traversal.
+Dangerous drops require an authored recovery volume or the actor's safe-transform
+recovery. Recovery must not cause damage, story-progress loss, or an unrelated
+shared-state reload. Future movable objects likewise need deterministic recovery
+when they leave their bounds or block required traversal.
 
 ## Visual Style Contract
 
@@ -519,21 +530,21 @@ PASS: HumanBody3D adapter smoke test
 
 - Each headless scene must log its `PASS` line and return process status `0`; assertion failures return nonzero.
 
-The current character-action baseline is accepted when all four validations pass,
-movement starts and stops in the current controller tick, holding `Shift` walks,
-the cosmetic jump never bypasses collision, unsupported actors land and regain
-control, static geometry and stairs remain reliable, and short story interactions
-do not acquire an accidental movement lock.
+The current character-action baseline is accepted when the actor, action-state,
+traversal, collision, environment, and production-world validations pass; movement
+starts and stops in the current controller tick; holding `Shift` walks; physical
+jump and ladder boundaries remain deterministic; unsupported actors recover safely;
+and short story interactions do not acquire an accidental movement lock.
 
 ## Next Steps
 
-- Implement the required character-action workstream in staged slices: traversal
-  jump and recovery, ladder climbing, carry, deliberate push/pull, then sitting and
-  integrated action polish. Keep each capability behind its acceptance gates until
-  its focused fixture and production-flow check pass.
-- Build the approved generated animation fallbacks in
-  `CharacterAnimationProfile3D`; do not substitute the rejected optional imported
-  clips.
+- Complete Milestone B's fixed Continue and New Game production-flow acceptance
+  review.
+- Continue the required character-action workstream with Milestone C: carry,
+  deliberate push/pull, then sitting. Keep each capability behind its focused and
+  production-flow acceptance gates.
+- Extend `CharacterAnimationProfile3D` with the already approved carry, push/pull,
+  and sit fallbacks; do not substitute rejected optional imported clips.
 - Tune actor movement speed, camera-relative movement, `Camera3DController` follow offset, and camera orbit feel inside the first one-landmark interaction slice so gameplay scale informs visual acceptance.
 - The 3D runtime maps the shared player profile to whole-model swaps:
   adult masculine → `male.glb`, adult feminine → `female.glb`, and teen →

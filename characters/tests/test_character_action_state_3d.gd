@@ -6,6 +6,9 @@ const WORLD_COORDINATOR_SCRIPT := preload("res://game/world/world_action_coordin
 const STORY_COORDINATOR_SCRIPT := preload(
 	"res://game/world/story_interaction_coordinator.gd"
 )
+const PLAYER_CONTROLLER_SCRIPT := preload(
+	"res://characters/control/player_controller_3d.gd"
+)
 const TEST_SAVE_PATH := "user://character_action_state_3d_test.save"
 
 var m_failures := PackedStringArray()
@@ -218,6 +221,27 @@ func _test_cancel_recovery_and_cleanup() -> void:
 		"Scene-unload cleanup releases target ownership deterministically"
 	)
 
+	var safe_transform := actor.global_transform
+	actor.set_safe_transform(safe_transform)
+	_assert_true(
+		actor.request_jump(),
+		"Traversal jump starts before the shared Escape recovery check"
+	)
+	var player_controller := actor.controller as PlayerController3D
+	_assert_true(
+		player_controller != null
+			and player_controller.request_cancel()
+			and player_controller.was_cancel_consumed()
+			and actor.is_recovering(),
+		"Airborne Escape is consumed synchronously and starts safe-anchor recovery"
+	)
+	await _wait_physics_frames(12)
+	_assert_true(
+		actor.is_free_locomotion()
+			and actor.global_transform.is_equal_approx(safe_transform),
+		"Airborne Escape recovery settles before a later Escape can reach the shell"
+	)
+
 	fixture.root.queue_free()
 	await get_tree().process_frame
 
@@ -316,6 +340,7 @@ func _create_action_fixture(app_state) -> Dictionary:
 	actor.global_position = Vector3(0.0, 0.04, 0.0)
 	actor.set_direction_vector(Vector3.RIGHT)
 	await _settle_actor(actor)
+	actor.controller = PLAYER_CONTROLLER_SCRIPT.new() as PlayerController3D
 	var story_coordinator = STORY_COORDINATOR_SCRIPT.new()
 	story_coordinator.name = "StoryInteractionCoordinator"
 	root.add_child(story_coordinator)

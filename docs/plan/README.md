@@ -19,16 +19,18 @@ Use this folder for:
 
 - The current playable canon is the seasonal multi-route architecture.
 - The five-landmark melody route remains canonical as one major route inside that broader structure.
-- Physical traversal jumping, carrying, deliberate push/pull, sitting, and ladder climbing form a required planned character-action workstream; [`implementation_plan.md`](implementation_plan.md) owns its sequencing and status.
+- Physical traversal jumping and ladder climbing are implemented; carrying,
+  deliberate push/pull, and sitting remain in the required character-action
+  workstream. [`implementation_plan.md`](implementation_plan.md) owns sequencing and
+  acceptance status.
 - Milestone A's `family_memory` household-care slice, first
   completed-versus-missed seasonal transformation, and bounded Phase 0
   character-action gate are implemented, automated-green, and production-flow
   accepted as of 2026-07-26.
-- Milestone B's Bagua stewardship ascent is the only active delivery milestone. It
-  owns the shared action/recovery foundation, physical traversal jump, and ladder
-  proof, including per-capability Free Walk isolation and deterministic
-  pause/recovery/unload cleanup.
-- After Milestone B, the queue is one bounded live world-reactivity slice, one
+- Milestone B's Bagua stewardship ascent is integrated and automated-green; its
+  fixed Continue and New Game production-flow review is the remaining acceptance
+  gate before the plan marks it complete.
+- After that review, the queue is one bounded live world-reactivity slice, one
   playable final-act slice, Milestone C's three exact object-care proofs, and then
   Milestone D's full-flow closure review. Milestone D revalidates safeguards that
   each earlier action slice must already pass and remains the sole gate that can

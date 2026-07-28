@@ -443,7 +443,8 @@ func _handle_escape() -> void:
 			if !_pop_route():
 				_show_title()
 		ScreenState.PLAYING:
-			_open_overlay(ScreenState.PAUSE)
+			if !_try_consume_player_action_cancel():
+				_open_overlay(ScreenState.PAUSE)
 		ScreenState.JOURNAL:
 			_resume_gameplay()
 		ScreenState.MELODY_PROMPT:
@@ -460,6 +461,17 @@ func _handle_escape() -> void:
 			pass
 		ScreenState.CONFIRM:
 			_hide_confirm()
+
+
+func _try_consume_player_action_cancel() -> bool:
+	var player := APP_RUNTIME.get_player(self)
+	if !is_instance_valid(player):
+		return false
+	var controller_value: Variant = player.get("controller")
+	var controller := controller_value as Object
+	if controller == null or !controller.has_method("request_cancel"):
+		return false
+	return bool(controller.call("request_cancel"))
 
 
 func _on_confirm_accepted() -> void:
