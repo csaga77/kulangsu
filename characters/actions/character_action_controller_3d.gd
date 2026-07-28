@@ -83,9 +83,9 @@ func cancel_active_action(invoke_target_hook := true) -> bool:
 		return false
 	var previous_mode := m_action_mode
 	var previous_target := m_active_target
-	if invoke_target_hook:
-		_call_target_hook(&"cancel_action")
 	_clear_active_action()
+	if invoke_target_hook:
+		_call_hook_on_target(previous_target, &"cancel_action")
 	action_cancelled.emit(previous_mode, previous_target)
 	return true
 
@@ -95,9 +95,9 @@ func complete_active_action(invoke_target_hook := true) -> bool:
 		return false
 	var previous_mode := m_action_mode
 	var previous_target := m_active_target
-	if invoke_target_hook:
-		_call_target_hook(&"complete_action")
 	_clear_active_action()
+	if invoke_target_hook:
+		_call_hook_on_target(previous_target, &"complete_action")
 	action_completed.emit(previous_mode, previous_target)
 	return true
 
@@ -116,6 +116,10 @@ func _clear_active_action() -> void:
 
 
 func _call_target_hook(method_name: StringName) -> void:
-	if !is_instance_valid(m_active_target) or !m_active_target.has_method(method_name):
+	_call_hook_on_target(m_active_target, method_name)
+
+
+func _call_hook_on_target(target: Object, method_name: StringName) -> void:
+	if !is_instance_valid(target) or !target.has_method(method_name):
 		return
-	m_active_target.call(method_name, m_actor)
+	target.call(method_name, m_actor)
