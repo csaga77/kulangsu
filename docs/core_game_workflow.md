@@ -228,8 +228,8 @@ Current gameplay-content priority order:
    post-ascent move to an authored Bagua view-deck anchor as the production proof.
 2. Add the bounded playable ferry closing movement for the three current endgame
    triggers while preserving their hard-versus-soft ending behavior.
-3. Complete Milestone C through the locked Piano Ferry carry, Trinity push/pull,
-   and Piano Ferry sitting proofs.
+3. Review and accept the implemented Milestone C Piano Ferry carry, Trinity
+   push/pull, and Piano Ferry sitting proofs.
 4. Complete Milestone D's combined title, Story, Continue, Free Walk, overlay,
    recovery, and unload review. This is the Workstream 6 closure gate, not the first
    implementation point for action safeguards.

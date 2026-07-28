@@ -293,8 +293,9 @@ Current contract:
 - `PlayerController3D` treats `ui_walk` as the held slow-walk modifier, publishes
   physical jump/context/cancel intentions, and never manipulates world targets
 - traversal jump and ladder climb are current locomotion modes; carry, push/pull,
-  and sit remain planned sustained action/posture modes. `AppState` owns only
-  semantic save-relevant results, including the two optional Bagua stewardship facts
+  and sit are current sustained action/posture modes. `AppState` owns only semantic
+  save-relevant results, including the two optional Bagua stewardship facts and the
+  three Milestone C object-care facts
 - low-poly palette, camera, lighting, and landmark colors should flow through `LowPolyArtStyle3D` presets while the art direction is exploratory
 - `LowPolyArtStyle3D` preset field edits are manual-apply: use exported rebuild controls, deliberate rebuild calls, or scene reloads after style changes rather than adding automatic resource-change rebuild behavior
 

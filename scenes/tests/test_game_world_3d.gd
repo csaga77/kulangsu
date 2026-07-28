@@ -381,6 +381,7 @@ func _check_landmarks(failures: Array[String]) -> void:
 		if authored_landmark == null or !_has_static_collision(authored_landmark):
 			failures.append("%s did not generate runtime landmark collision" % authored_path)
 	_check_bagua_stewardship_ascent(failures)
+	_check_milestone_c_object_care_actions(failures)
 
 
 func _check_bagua_stewardship_ascent(failures: Array[String]) -> void:
@@ -507,6 +508,75 @@ func _check_bagua_stewardship_ascent(failures: Array[String]) -> void:
 	var blocker := ladder.get_node_or_null("TopEndpointBlocker/CollisionShape3D") as CollisionShape3D
 	if blocker == null or !blocker.disabled:
 		failures.append("Bagua service ladder lacks its controllable disabled endpoint blocker")
+
+
+func _check_milestone_c_object_care_actions(failures: Array[String]) -> void:
+	var ferry := m_world.get_node_or_null("Landmarks/PianoFerryProxy")
+	var church := m_world.get_node_or_null("Landmarks/TrinityChurchProxy")
+	if ferry == null or church == null:
+		return
+
+	var carry := ferry.get_node_or_null("MilestoneCCarryAction")
+	if carry == null:
+		failures.append("Piano Ferry is missing its Milestone C music-case carry action")
+	else:
+		var music_case := carry.get_node_or_null("MusicCase")
+		var pass_lane := carry.get_node_or_null(
+			"CarryLane/MeshInstance3D"
+		) as MeshInstance3D
+		if (
+			String(carry.get_meta("semantic_completion_id", ""))
+				!= "piano_ferry_music_case_shelved"
+			or music_case == null
+			or String(music_case.get("semantic_completion_id"))
+				!= "piano_ferry_music_case_shelved"
+			or music_case.get("carried_bounds") != Vector3(0.5, 0.35, 0.3)
+		):
+			failures.append("Piano Ferry music case lacks its exact carry proof contract")
+		if (
+			pass_lane == null
+			or !(pass_lane.mesh is BoxMesh)
+			or (pass_lane.mesh as BoxMesh).size.z < 4.0
+			or carry.get_node_or_null("PassDoorway") == null
+			or carry.get_node_or_null("NarrowRejectionFrame") == null
+			or carry.get_node_or_null("MusicCaseShelfPlacement") == null
+		):
+			failures.append("Piano Ferry carry proof lacks its lane, doorway, or shelf geometry")
+
+	var seat_action := ferry.get_node_or_null("MilestoneCSeatAction")
+	var seat := (
+		seat_action.get_node_or_null("Seat") if seat_action != null else null
+	)
+	if (
+		seat_action == null
+		or seat == null
+		or String(seat.get("semantic_completion_id"))
+			!= "harbor_sea_melody_listened"
+		or !is_equal_approx(float(seat.get("interaction_range")), 1.10)
+		or !is_equal_approx(float(seat.get("entry_alignment_duration")), 0.35)
+		or !is_equal_approx(float(seat.get("exit_alignment_duration")), 0.30)
+		or seat.get_node_or_null("SeatAnchor") == null
+		or seat.get_node_or_null("PrimaryExit") == null
+	):
+		failures.append("Piano Ferry harbor bench lacks its exact sitting proof contract")
+
+	var push_pull := church.get_node_or_null("MilestoneCPushPullAction")
+	if (
+		push_pull == null
+		or String(push_pull.get("semantic_completion_id"))
+			!= "trinity_hymn_chest_aligned"
+		or !is_equal_approx(
+			float(push_pull.get_meta("authored_path_length_m", 0.0)),
+			3.0
+		)
+		or !is_equal_approx(
+			float(push_pull.get_meta("authored_goal_coordinate_m", 0.0)),
+			2.5
+		)
+		or push_pull.get_node_or_null("HymnChest") == null
+		or push_pull.get_node_or_null("RequiredPathResetVolume") == null
+	):
+		failures.append("Trinity hymn chest lacks its exact push/pull proof contract")
 
 
 func _has_static_collision(node: Node) -> bool:

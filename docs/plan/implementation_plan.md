@@ -67,7 +67,7 @@ The low-poly 3D lane is now the production overworld instantiated directly by `m
 - focused terrain, actor, collision, camera-occlusion, environment-interaction, and production-world scenes cover the lane; headless smoke scenes must terminate with process status `0` on success and nonzero on failure
 - physical traversal jumping and ladder climbing are implemented through the
   optional Bagua stewardship ascent; carrying, deliberate push/pull, and sitting
-  remain required planned capabilities
+  are implemented through the Piano Ferry and Trinity Church object-care proofs
 
 ## Content Reality Check
 
@@ -111,6 +111,8 @@ The active queue, per-capability safety gates, and bounded follow-on slices were
 reconciled across the canonical planning docs on **2026-07-27**.
 Milestone B's fixed Continue and New Game production-flow review was accepted on
 **2026-07-28**; the bounded live world-state reactivity slice is now active.
+Milestone C's implementation and automated consolidation completed on
+**2026-07-29** and is awaiting production review.
 The dated pre-refactor character-action baseline remains recorded in
 [`../features/low_poly_actor_3d.md`](../features/low_poly_actor_3d.md).
 
@@ -231,6 +233,44 @@ Primary implementation areas:
 - `game/tests/story_routes/` and `game/tests/persistence/`
 - `scenes/game_world_3d.tscn` / `scenes/game_world_3d.gd`
 
+### Milestone C Implementation Complete — Review Pending 2026-07-29
+
+Milestone C implements Workstream 6 Phases 4-6 through three independent,
+production-authored object-care slices:
+
+1. carry the Piano Ferry music case to publish
+   `piano_ferry_music_case_shelved`
+2. deliberately push or pull the Trinity hymn chest to publish
+   `trinity_hymn_chest_aligned`
+3. sit at the Piano Ferry harbor bench long enough to publish
+   `harbor_sea_melody_listened`
+
+Each target owns only physical state and publishes its semantic completion through
+`WorldActionCoordinator3D`. `StoryEventCatalog` owns idempotent Story-mode facts,
+autosave, and journal follow-through; equivalent Free Walk completions are no-ops.
+Carry, push/pull, and sit settle or reset deterministically on cancel, pause,
+recovery, and unload. Generated carry, object-brace, and sitting fallback animations
+are exercised against `male.glb`, `female.glb`, and `boy.glb`.
+
+Automated consolidation evidence:
+
+- `test_character_object_actions_3d.tscn`,
+  `test_character_push_pull_3d.tscn`, and `test_character_sit_3d.tscn` pass with
+  process status `0`
+- `test_milestone_c_object_care_continue_fixtures.tscn` passes fixed ferry/church
+  Continue, exact fact, idempotency, journal, autosave/reload, and Free Walk checks
+- `test_human_body_3d.tscn` passes the three-model generated-fallback audit
+- `test_character_action_state_3d.tscn`, `test_character_traversal_3d.tscn`,
+  `test_story_event_service.tscn`, and `test_game_world_3d.tscn` remain green
+- the Piano Ferry production landmark instances the carry and sit child scenes;
+  Trinity Church instances the push/pull child scene, and the production-world
+  regression asserts their exact semantic and geometry contracts
+
+Milestone C is ready for production review but is not marked accepted here. That
+review should exercise the three locked flows from their fixed Continue fixtures
+and confirm player-facing feel, camera, prompts, cancel/reset, reload, and Free Walk
+isolation. Milestone D remains the sole Workstream 6 closure gate.
+
 ### Active — Bounded World-State Reactivity Slice
 
 Reapply changed resident routine overrides to already-spawned 3D actors without
@@ -245,15 +285,8 @@ parity, and no interruption of active talk or physical action state.
    the three current endgame triggers, with trigger-specific aftermath, hard-ending
    departure, and soft-ending stay/continue behavior. Close it only when all three
    trigger flows pass focused routing/persistence coverage and a production flow.
-2. **Milestone C — object-care actions.** Complete Workstream 6 Phases 4-6 through
-   the already locked proofs: carry the Piano Ferry music case
-   (`piano_ferry_music_case_shelved`), push/pull the Trinity hymn chest
-   (`trinity_hymn_chest_aligned`), and sit for the Piano Ferry harbor listening beat
-   (`harbor_sea_melody_listened`). Each capability must ship with its focused
-   fixture, deterministic pause/recovery/unload cleanup, Story-mode idempotency,
-   Free Walk no-op semantics, production-flow check, and three-model animation
-   acceptance.
-3. **Milestone D — character-action production hardening.** Re-run all five actions
+2. **Milestone D — character-action production hardening.** After Milestone C
+   production review, re-run all five actions
    across title, New Game, Continue, Free Walk, journal, pause, settings, ending,
    recovery, and scene-unload flows; finish shared hints and camera/input consistency.
    Milestone D revalidates safeguards required by each earlier slice; it is not the
@@ -274,6 +307,9 @@ parity, and no interruption of active talk or physical action state.
 
 - Milestone A: household-care content slice, bounded missed-moment ledger, and
   Workstream 6 Phase 0
+- Milestone C implementation: Piano Ferry carry and sit, Trinity push/pull,
+  focused/Continue/production-world automation, and three-model fallbacks; production
+  review pending
 - Workstream 0: AppState decomposition and atomic snapshot ownership
 - Workstream 5: typed storyline resources, inspector authoring, route browser,
   editable dependency graph, canonical-source persistence, and editor validation
@@ -476,9 +512,9 @@ Detailed addon behavior belongs in `addons/storyline_editor/README.md` and its
 
 ## Workstream 6: Required Character Action Expansion
 
-Status: Phases 0-3 complete; Milestone B was accepted on 2026-07-28. Phases 4-7
-remain planned. Traversal jump and ladder are current capabilities; carry,
-deliberate push/pull, and sit remain planned.
+Status: Phases 0-6 are implemented. Milestone B was accepted on 2026-07-28;
+Milestone C implementation completed on 2026-07-29 and awaits production review.
+Phase 7 remains planned and is the sole Workstream 6 closure gate.
 
 The full ownership, input, compatibility, recovery, animation, phase validation, and
 completion contract now lives in
@@ -492,9 +528,9 @@ Delivery order:
 1. shared physics, action-state, world-interaction, animation, and recovery foundation — implemented
 2. physical traversal jump and recovery — implemented
 3. ladder climbing — implemented
-4. carrying
-5. deliberate push/pull
-6. sitting
+4. carrying — implemented
+5. deliberate push/pull — implemented
+6. sitting — implemented
 7. full-flow integration, regression, and closure review
 
 Milestone B owns Phases 1-3. Milestone C owns Phases 4-6. Milestone D owns Phase 7

@@ -135,6 +135,11 @@ Responsibilities:
 - one cached `AppStateProjection` for chapter/time labels, route progress and leads, fragment totals, display lists, unlocked costumes, ending summary, and UI/world/audio views
 - typed landmark definitions for stable ids, display names, world-node mapping, authored coordinates, resume defaults, audio cues, and initial progress profiles; `AppState`, the StoryEffect schema, and the production world consume the same catalog
 - first-pass generic StoryEvent routing now lives in `game/story_event_service.gd`, composed by `AppState`, while `game/story_event_catalog.gd` now owns the full melody-landmark interaction spine plus its landmark prompt-completion/reward world events: ferry harbor clue and onboarding reward, Trinity cue/chime/reward beats, Bi Shan echoes/chamber/reward, Long Shan entry/checkpoints/exit/reward, Bagua synthesis/reward, and the harbor-stage prompt/performance completion
+- Milestone C physical targets remain story-free and publish only the exact
+  `piano_ferry_music_case_shelved`, `trinity_hymn_chest_aligned`, or
+  `harbor_sea_melody_listened` semantic id through `WorldActionCoordinator3D`;
+  `StoryEventCatalog` owns Story-mode idempotency, autosave, journal follow-through,
+  and Free Walk suppression
 - shared melody definitions and melody-progress state used by the journal and future performance systems
 - modular storyline route/event definitions in `game/storylines/`, with `story_route_graph.gd` loading them once into a runtime definition cache and projecting them into route progress, lead selection, display-order-independent route-score gates, canonical story-event availability checks, and endgame-trigger logic
 - one explicit, bounded `StoryMomentLedger` definition maps the Winter household-care

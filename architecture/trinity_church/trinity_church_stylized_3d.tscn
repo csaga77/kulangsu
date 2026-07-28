@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://qwhdc70m32yo" path="res://addons/low_poly_building_editor/building_3d.gd" id="1_uodsf"]
 [ext_resource type="Script" uid="uid://danhw8e5mkxye" path="res://addons/low_poly_building_editor/floors/floor_3d.gd" id="2_48mm6"]
+[ext_resource type="PackedScene" path="res://architecture/trinity_church/trinity_push_pull_action_3d.tscn" id="3_push_pull"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_7m2x3"]
 resource_local_to_scene = true
@@ -30,6 +31,9 @@ metadata/building_api_features = PackedStringArray("versioned_building_spec", "p
 metadata/authored_linear_scale = 0.25
 metadata/design_source = "user-provided Trinity Church reference image"
 metadata/design_notes = "Cruciform red-brick church with white classical trim, terracotta roofs, an octagonal lantern, dark cupola, and red cross."
+
+[node name="MilestoneCPushPullAction" parent="." instance=ExtResource("3_push_pull")]
+position = Vector3(-1.5, 0, 5.5)
 
 [node name="base" type="MeshInstance3D" parent="." unique_id=214374649]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, -5)

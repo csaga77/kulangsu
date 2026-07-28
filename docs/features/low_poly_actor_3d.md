@@ -4,7 +4,7 @@
 
 - Provide the production 3D actor adapter for the low-poly overworld.
 - Provide a single 3D movement and collision contract for all production characters.
-- Define the current character-action baseline and the acceptance gates for future physical actions.
+- Define the current character-action baseline and the acceptance gates for physical actions.
 - Keep resident, NPC, and story rules outside the physical actor.
 
 ## Current Status
@@ -27,6 +27,11 @@
 - [`../../characters/tests/test_character_traversal_3d.tscn`](../../characters/tests/test_character_traversal_3d.tscn)
   validates the accepted physical jump, recovery, ceiling, ladder, endpoint, and
   blocked-retreat contracts.
+- [`../../characters/tests/test_character_object_actions_3d.tscn`](../../characters/tests/test_character_object_actions_3d.tscn),
+  [`../../characters/tests/test_character_push_pull_3d.tscn`](../../characters/tests/test_character_push_pull_3d.tscn),
+  and [`../../characters/tests/test_character_sit_3d.tscn`](../../characters/tests/test_character_sit_3d.tscn)
+  validate the carry, deliberate push/pull, and sitting contracts plus their
+  authored production child scenes.
 - [`../../scenes/tests/test_game_world_3d.tscn`](../../scenes/tests/test_game_world_3d.tscn) validates the production actor/controller, generated terrain collision and streets, terrain-height following and wading, camera follow/orbit wiring, authored-landmark collision, and runtime integration.
 - `HumanBody3D` instances the GLB model under `VisualRoot/CharacterModel`, scales it to `body_height`, rotates it to face the rig's forward axis, and auto-plants its lowest point at the foot origin.
 - Hair and clothing are authored as part of the selected GLB. `HumanBody3D` does not instance separate hair, pants, or jacket scenes, create accessory `BoneAttachment3D` nodes, or transfer skin weights at runtime.
@@ -42,15 +47,15 @@
 | Inspect, talk, and physical context | Current | `WorldActionCoordinator3D` is the sole contextual selector/hint owner and delegates story activation to `StoryInteractionCoordinator`. |
 | Contact-based dynamic pushing | Current | Contact with an unfrozen `RigidBody3D` applies a small capped impulse; this is not an aligned Push action or puzzle-object framework. |
 | Physical traversal jump | Current | `ui_jump` drives the accepted collision-body arc, buffer/coyote/air-control/ceiling limits, landing recovery, and safe-anchor cancellation. |
-| Carry | Required planned | Add typed light/medium carryables, placement validation, movement restrictions, and reset behavior. |
-| Deliberate push/pull | Required planned | Add constrained target alignment and deterministic puzzle-object movement distinct from contact pushing. |
-| Sit | Required planned | Add authored seat/exit anchors, animation, camera continuity, and immediate player-controlled exit. |
+| Carry | Current | Typed light/medium carryables, bounded placement validation, movement restrictions, deterministic reset, and optional semantic completion. |
+| Deliberate push/pull | Current | Constrained alignment and deterministic puzzle-object movement distinct from contact pushing, with blockage, bounds, reset, and goal handling. |
+| Sit | Current | Authored seat/exit anchors, occupancy, animation, camera continuity, immediate exit, fallback search, and optional listening completion. |
 | Ladder climbing | Current | Two-way straight authored paths own mount alignment, constrained climb, expanded endpoint clearance, blocked retreat, cancellation, semantic completion, and recovery. |
 | Cooperative physical tasks and NPC-assisted traversal | Out of scope | These remain separate from the required player-action set until a route and resident-behavior contract owns them. |
 
-The current playable build contains only the Current capabilities above. The target
-character-action milestone is not complete until every Required planned capability
-is implemented in an authored production slice and passes its acceptance gates.
+All five required capabilities are now Current and have authored production slices.
+Milestone C production review and Milestone D's combined full-flow closure review
+remain before the character-action workstream can be marked complete.
 
 The actor exposes familiar adapter fields and methods:
 
@@ -122,7 +127,7 @@ of every action:
 - the locomotion layer is `idle`, `walk`, `run`, `airborne`,
   `traversal_jump`, `ladder`, or `recovery`;
 - the sustained action/posture layer is typed as `free`, `carry`, `push`, `pull`,
-  or `sit`, with only the shared lifecycle foundation current until Milestone C;
+  or `sit`, with the three object-care modes current after Milestone C;
 - inspecting and talking are one-shot requests, not sustained actor states.
 
 Only one locomotion mode and at most one sustained action/posture may be active.
@@ -197,7 +202,7 @@ orientation, and a valid placement applies the target's authored orientation.
 Rotation remains unsupported unless a later repeated production need approves a
 dedicated input, prompt, behavior, and focused test together.
 
-### Planned Delivery Stages
+### Delivery Stages
 
 The implementation plan owns which milestone is active; this feature owns the
 engineering and acceptance contract for every stage.
@@ -223,14 +228,14 @@ engineering and acceptance contract for every stage.
 3. **Ladder climbing.** Add a straight authored ladder path with deterministic
    mount/alignment, endpoints, clearance, constrained movement, blocked-exit,
    cancellation/fall, camera, cleanup, and recovery behavior.
-4. **Carry.** Add typed light/medium carryables, an actor socket, collision policy,
+4. **Carry — implemented.** Provides typed light/medium carryables, an actor socket, collision policy,
    bounded shape-tested placement, movement restrictions, reset behavior, and an
    optional semantic completion id.
-5. **Deliberate push/pull.** Add constrained deterministic objects with authored
+5. **Deliberate push/pull — implemented.** Provides constrained deterministic objects with authored
    axis/path, range, alignment, blockage, release, route-protection, reset, and
    completion behavior; retain incidental `RigidBody3D` impulses only for ambient
    objects.
-6. **Sit.** Add seat/exit transforms, occupancy, camera policy, animation,
+6. **Sit — implemented.** Provides seat/exit transforms, occupancy, camera policy, animation,
    shape-tested fallback exits, immediate contextual/cancel exit, and semantic
    listening/conversation context where authored.
 7. **Full-flow integration and closure review.** Revalidate StoryEvent ownership,
@@ -242,11 +247,18 @@ engineering and acceptance contract for every stage.
 Focused validation ownership:
 
 - `test_character_action_state_3d.tscn`: mode compatibility, target arbitration,
-  cancellation/back behavior, surface-follow suspension, sitting, and cleanup
+  cancellation/back behavior, surface-follow suspension, Story/Free Walk semantic
+  boundaries, and shared cleanup
 - `test_character_traversal_3d.tscn`: numeric jump/fall/recovery fixtures plus ladder
   mount, climb, blocked exit, cancel/fall, camera, and recovery behavior
-- `test_character_object_actions_3d.tscn`: carry, placement, push/pull, blockage,
-  bounds, reset, recovery, and incompatible-mode rejection
+- `test_character_object_actions_3d.tscn`: carry, placement, doorway clearance,
+  reset, recovery, rejection, and the Piano Ferry carry proof
+- `test_character_push_pull_3d.tscn`: alignment, push/pull speed, blockage, bounds,
+  route protection, reset, goal completion, cleanup, and the Trinity proof
+- `test_character_sit_3d.tscn`: entry, occupancy, camera continuity, listening,
+  authored/radial exits, cleanup, and the Piano Ferry bench proof
+- `test_milestone_c_object_care_continue_fixtures.tscn`: exact Story-mode facts,
+  idempotency, journal, autosave/reload, and Free Walk no-op behavior
 - existing actor, collision, environment, and production-world scenes remain green
   throughout the migration
 
@@ -397,6 +409,16 @@ and unlocks conditional journal/world follow-through. It must not gate, resolve,
 rename, or rescore that existing event, and both facts are suppressed in
 `Free Walk`.
 
+**Milestone C: object-care actions** completed implementation and automated
+consolidation on **2026-07-29** and awaits production review. The Piano Ferry
+instances its music-case carry and harbor-bench sitting child scenes; Trinity Church
+instances its constrained hymn-chest push/pull child scene. Their focused fixtures,
+fixed Continue persistence fixture, production-world assertions, deterministic
+cancel/pause/recovery/unload behavior, Story-mode idempotency, Free Walk no-op
+semantics, and generated action fallbacks for all three player models pass with
+process status `0`. The locked manual production-flow checks in the table above
+remain the acceptance review; Milestone D remains the sole workstream closure gate.
+
 #### Dated Pre-Refactor Baseline
 
 The pinned `godot_common`, `low_poly_building_editor`, and `storyline_editor`
@@ -416,11 +438,11 @@ exit-time resource-leak diagnostics, but its PASS line and process status were
 still `0`. No source, scene, test, plan, or submodule content was changed to obtain
 this baseline.
 
-The workstream is complete only when all five required actions are Current, each has
-a focused fixture and authored production use, all three player models have accepted
-animation coverage or an approved fallback, and no action introduces precision-
-platforming gates, route softlocks, punitive recovery, or transient physics state in
-`AppState`.
+All five required actions are now Current, each has a focused fixture and authored
+production use, and all three player models have accepted animation coverage or an
+approved fallback. The workstream is complete only after Milestone D confirms the
+combined full-flow behavior and no action introduces precision-platforming gates,
+route softlocks, punitive recovery, or transient physics state in `AppState`.
 
 ### Current Physics Defaults
 
@@ -458,33 +480,34 @@ feature resource rather than in unrelated scenes.
 - Stairs use smooth authored ramp/platform collision and require no jump.
 - Slopes use `CharacterBody3D` floor classification and native `move_and_slide()`;
   there is no bespoke speed-reduction band for steep slopes.
-- Current dynamic-body contact does not align the actor, reserve a target, classify
-  weight, guarantee puzzle placement, or persist object position. Critical paths
-  must not depend on a freely simulated body remaining in place.
+- Incidental dynamic-body contact still does not align the actor, reserve a target,
+  classify weight, guarantee puzzle placement, or persist object position. Authored
+  carry and deliberate push/pull use their deterministic target components instead;
+  critical paths must not depend on a freely simulated body remaining in place.
 
-### Future Capability Gates
+### Current Object-Care Capability Contracts
 
-A future physical action needs a concrete story or exploration use, numeric
-authored limits, focused automated validation, and one production-flow manual check
-before it moves into Current scope.
+Each current physical action has a concrete story or exploration use, numeric
+authored limits, focused automated validation, and one locked production-flow
+manual check.
 
-It must also prove deterministic pause/recovery/unload cleanup and no StoryEvent
-mutation in `Free Walk` before it moves into Current scope.
+Each object-care capability proves deterministic pause/recovery/unload cleanup and
+no StoryEvent mutation in `Free Walk`.
 
-- **Carry:** implement a typed carryable component with the accepted light/medium
+- **Carry:** uses a typed carryable component with the accepted light/medium
   movement, pickup, attachment, doorway, placement, cancellation, and recovery
   contract. Heavy objects are not carryable, and player-controlled rotation stays
   unsupported.
-- **Deliberate push/pull:** use a constrained target interface distinct from
-  incidental `RigidBody3D` contact and validate the accepted alignment, distance,
+- **Deliberate push/pull:** uses a constrained target interface distinct from
+  incidental `RigidBody3D` contact and validates the accepted alignment, distance,
   speed, bounds, blockage, cancellation, route-protection, and reset values.
-- **Sit:** provide authored seat and clear exit transforms using the accepted
+- **Sit:** provides authored seat and clear exit transforms using the accepted
   alignment, blend, clearance, and fallback-search values. A seat resource may make
   entry or exit more forgiving but not tighter; the player may exit at any time.
 
 Dangerous drops require an authored recovery volume or the actor's safe-transform
 recovery. Recovery must not cause damage, story-progress loss, or an unrelated
-shared-state reload. Future movable objects likewise need deterministic recovery
+shared-state reload. Movable objects likewise need deterministic recovery
 when they leave their bounds or block required traversal.
 
 ## Visual Style Contract
@@ -506,6 +529,17 @@ when they leave their bounds or block required traversal.
 
 ```text
 PASS: HumanBody3D adapter smoke test
+```
+
+- Run the focused action regressions after changing sustained action state,
+  interaction, animation, carry, push/pull, sitting, or semantic completion:
+
+```sh
+"/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://characters/tests/test_character_action_state_3d.tscn
+"/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://characters/tests/test_character_object_actions_3d.tscn
+"/Applications/Godot.app/Contents/MacOS/Godot" --headless --fixed-fps 60 --path . --scene res://characters/tests/test_character_push_pull_3d.tscn
+"/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://characters/tests/test_character_sit_3d.tscn
+"/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://game/tests/persistence/test_milestone_c_object_care_continue_fixtures.tscn
 ```
 
 - Run the focused collision regression after changing gravity, wall handling, stair slope collision, or dynamic-body pushing:
@@ -530,19 +564,19 @@ PASS: HumanBody3D adapter smoke test
 
 - Each headless scene must log its `PASS` line and return process status `0`; assertion failures return nonzero.
 
-The current character-action baseline is accepted when the actor, action-state,
-traversal, collision, environment, and production-world validations pass; movement
-starts and stops in the current controller tick; holding `Shift` walks; physical
-jump and ladder boundaries remain deterministic; unsupported actors recover safely;
-and short story interactions do not acquire an accidental movement lock.
+Milestone C implementation is review-ready when the actor, action-state, traversal,
+carry, push/pull, sit, persistence, collision, environment, and production-world
+validations pass; movement starts and stops in the current controller tick; holding
+`Shift` walks; all three player models expose the generated action fallbacks;
+unsupported actors and objects recover safely; and short story interactions do not
+acquire an accidental movement lock.
 
 ## Next Steps
 
-- Continue the required character-action workstream with Milestone C: carry,
-  deliberate push/pull, then sitting. Keep each capability behind its focused and
-  production-flow acceptance gates.
-- Extend `CharacterAnimationProfile3D` with the already approved carry, push/pull,
-  and sit fallbacks; do not substitute rejected optional imported clips.
+- Complete Milestone C's locked manual production-flow review for carry, deliberate
+  push/pull, and sitting, then record acceptance without broadening the slice.
+- Continue to Milestone D's combined title, New Game, Continue, Free Walk, overlay,
+  recovery, and scene-unload closure review only after Milestone C is accepted.
 - Tune actor movement speed, camera-relative movement, `Camera3DController` follow offset, and camera orbit feel inside the first one-landmark interaction slice so gameplay scale informs visual acceptance.
 - The 3D runtime maps the shared player profile to whole-model swaps:
   adult masculine → `male.glb`, adult feminine → `female.glb`, and teen →

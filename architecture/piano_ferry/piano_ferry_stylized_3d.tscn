@@ -1,9 +1,17 @@
 [gd_scene format=3 uid="uid://ko18n0loig8d"]
 
 [ext_resource type="Script" uid="uid://qwhdc70m32yo" path="res://addons/low_poly_building_editor/building_3d.gd" id="1_atrq1"]
+[ext_resource type="PackedScene" path="res://architecture/piano_ferry/piano_ferry_carry_action_3d.tscn" id="2_carry"]
+[ext_resource type="PackedScene" path="res://architecture/piano_ferry/piano_ferry_seat_action_3d.tscn" id="3_seat"]
 
 [node name="PianoFerryStylized3D" type="Node3D" unique_id=1657791193]
 script = ExtResource("1_atrq1")
 metadata/building_api = "low_poly_building_editor"
 metadata/design_source = "user-provided Piano Ferry reference photo"
 metadata/design_notes = "Long flat terminal wing with a raised low-poly arched entrance canopy."
+
+[node name="MilestoneCCarryAction" parent="." instance=ExtResource("2_carry")]
+position = Vector3(5.5, 0, 0)
+
+[node name="MilestoneCSeatAction" parent="." instance=ExtResource("3_seat")]
+position = Vector3(-5.5, 0, 2.5)

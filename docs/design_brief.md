@@ -31,9 +31,11 @@ Read this first. It is the minimum-token design context for new Codex threads.
 
 - The shipped baseline now includes idle/walk/run movement, physical traversal
   jumping and safe recovery, two-way authored ladder climbing, stairs, unified
-  contextual inspect/talk/action selection, and light contact-based dynamic pushing.
-- The remaining required character-action work is carrying, deliberate push/pull
-  puzzles, and sitting.
+  contextual inspect/talk/action selection, carrying, deliberate push/pull, sitting,
+  and light contact-based dynamic pushing.
+- Milestone C's three object-care capabilities are implemented and automated-green;
+  production review remains pending, while Milestone D remains the combined
+  full-flow closure gate for the character-action workstream.
 - These verbs must deepen exploration, environmental care, reflection, and
   authored vertical routes without introducing precision platforming or a general
   physics sandbox.

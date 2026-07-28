@@ -3,6 +3,18 @@ extends Node3D
 
 const BaseController3DScript = preload("res://characters/control/base_controller_3d.gd")
 const PlayerController3DScript = preload("res://characters/control/player_controller_3d.gd")
+const REQUIRED_ACTION_FALLBACKS: Array[String] = [
+	"generated_fallbacks/fallback_carry_hold",
+	"generated_fallbacks/fallback_object_brace",
+	"generated_fallbacks/fallback_sit_enter",
+	"generated_fallbacks/fallback_sit_idle",
+	"generated_fallbacks/fallback_sit_exit",
+]
+const REQUIRED_PLAYER_MODEL_PATHS: Array[String] = [
+	"res://assets/characters/male.glb",
+	"res://assets/characters/female.glb",
+	"res://assets/characters/boy.glb",
+]
 const REMOVED_ACCESSORY_PROPERTIES: Array[StringName] = [
 	&"use_hair_model",
 	&"hair_model_scene",
@@ -44,6 +56,7 @@ func _run_smoke_checks() -> void:
 		failures.append("missing HumanBody3D actor")
 	else:
 		_validate_actor_api(failures)
+		_validate_required_action_fallbacks_for_all_models(failures)
 
 	if failures.is_empty():
 		print("PASS: HumanBody3D adapter smoke test")
@@ -173,6 +186,47 @@ func _validate_character_model(failures: Array[String], visual_root: Node3D) -> 
 		return
 	_validate_single_model_visual(failures, model)
 	_validate_skeleton_debug(failures, skeleton)
+
+
+func _validate_required_action_fallbacks_for_all_models(
+	failures: Array[String]
+) -> void:
+	for model_path in REQUIRED_PLAYER_MODEL_PATHS:
+		var model_scene := load(model_path) as PackedScene
+		if model_scene == null:
+			failures.append("could not load required player model %s" % model_path)
+			continue
+		m_actor.set("character_model_scene", model_scene)
+		var model_root := m_actor.get_node_or_null(
+			"VisualRoot/CharacterModel"
+		) as Node3D
+		var animation_player := _find_animation_player(model_root)
+		if animation_player == null:
+			failures.append("%s has no AnimationPlayer for action fallbacks" % model_path)
+			continue
+		for fallback_path in REQUIRED_ACTION_FALLBACKS:
+			if !animation_player.has_animation(fallback_path):
+				failures.append(
+					"%s is missing required action fallback %s"
+					% [model_path, fallback_path]
+				)
+				continue
+			var fallback := animation_player.get_animation(fallback_path)
+			if fallback == null or fallback.get_track_count() == 0:
+				failures.append(
+					"%s fallback %s contains no skeleton tracks"
+					% [model_path, fallback_path]
+				)
+		var sit_entry := animation_player.get_animation(
+			"generated_fallbacks/fallback_sit_enter"
+		)
+		var sit_exit := animation_player.get_animation(
+			"generated_fallbacks/fallback_sit_exit"
+		)
+		if sit_entry == null or !is_equal_approx(sit_entry.length, 0.35):
+			failures.append("%s sit entry fallback is not exactly 0.35 s" % model_path)
+		if sit_exit == null or !is_equal_approx(sit_exit.length, 0.30):
+			failures.append("%s sit exit fallback is not exactly 0.30 s" % model_path)
 
 
 func _validate_single_model_visual(failures: Array[String], model: Node3D) -> void:

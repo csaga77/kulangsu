@@ -47,8 +47,8 @@ physical traversal jumping and recovery, two-way authored ladders, static
 collision, stair traversal, unified contextual inspect/talk/action selection, and
 the current light contact response for dynamic bodies.
 
-The target game requires five physical verbs beyond the original baseline.
-Traversal jumping and ladder climbing are current; three remain planned:
+The target game's five physical verbs beyond the original baseline are now
+implemented:
 
 - Physical traversal jumping supports forgiving obstacle, gap, ledge, and vertical
   route traversal without becoming precision platforming.
@@ -84,8 +84,10 @@ See [`features/low_poly_actor_3d.md`](features/low_poly_actor_3d.md) for the cur
 runtime, input, physics, ownership, and validation contract. Its Phase 0 numeric,
 input/cancellation, animation-fallback, production-proof, and recovery decisions
 were accepted on 2026-07-23. Traversal jump and ladder now pass their focused
-automated gates and their Milestone B production flows were accepted on 2026-07-28;
-carry, push/pull, and sit remain planned.
+automated gates and their Milestone B production flows were accepted on 2026-07-28.
+Carry, deliberate push/pull, and sit now pass their focused Milestone C gates and
+are wired into the Piano Ferry and Trinity Church production landmarks; Milestone C
+production review remains pending.
 
 ## The Eight Core Plays
 
