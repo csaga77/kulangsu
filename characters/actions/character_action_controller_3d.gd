@@ -62,34 +62,41 @@ func can_begin_action(mode: ActionMode) -> bool:
 	return true
 
 
-func begin_action(mode: ActionMode, target: Object = null) -> bool:
+func begin_action(
+	mode: ActionMode,
+	target: Object = null,
+	invoke_target_hook := true
+) -> bool:
 	if !can_begin_action(mode):
 		return false
 	m_action_mode = mode
 	m_active_target = target
-	_call_target_hook(&"begin_action")
+	if invoke_target_hook:
+		_call_target_hook(&"begin_action")
 	action_mode_changed.emit(m_action_mode)
 	action_started.emit(m_action_mode, m_active_target)
 	return true
 
 
-func cancel_active_action() -> bool:
+func cancel_active_action(invoke_target_hook := true) -> bool:
 	if is_free():
 		return false
 	var previous_mode := m_action_mode
 	var previous_target := m_active_target
-	_call_target_hook(&"cancel_action")
+	if invoke_target_hook:
+		_call_target_hook(&"cancel_action")
 	_clear_active_action()
 	action_cancelled.emit(previous_mode, previous_target)
 	return true
 
 
-func complete_active_action() -> bool:
+func complete_active_action(invoke_target_hook := true) -> bool:
 	if is_free():
 		return false
 	var previous_mode := m_action_mode
 	var previous_target := m_active_target
-	_call_target_hook(&"complete_action")
+	if invoke_target_hook:
+		_call_target_hook(&"complete_action")
 	_clear_active_action()
 	action_completed.emit(previous_mode, previous_target)
 	return true

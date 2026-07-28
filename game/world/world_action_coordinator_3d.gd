@@ -171,6 +171,10 @@ func update_selection() -> void:
 
 func request_context_action() -> bool:
 	if is_instance_valid(m_active_target):
+		if m_active_target.has_method("request_active_context_action"):
+			return bool(
+				m_active_target.call("request_active_context_action", m_actor)
+			)
 		return true
 	if is_instance_valid(m_selected_target):
 		if !m_selected_target.begin_action(m_actor):
@@ -333,9 +337,16 @@ func _on_cancel_requested() -> void:
 
 func _on_target_action_finished(
 	_actor: CharacterBody3D,
-	_reason: StringName,
+	reason: StringName,
 	target: CharacterActionTarget3D
 ) -> void:
+	if is_instance_valid(m_actor):
+		if reason == &"complete" and m_actor.has_method(
+			"complete_sustained_action"
+		):
+			m_actor.call("complete_sustained_action", target)
+		elif m_actor.has_method("cancel_sustained_action"):
+			m_actor.call("cancel_sustained_action", target)
 	if target == m_active_target:
 		m_active_target = null
 	m_hint_dirty = true

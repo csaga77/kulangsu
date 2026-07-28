@@ -223,6 +223,8 @@ var m_ladder_mount_transform := Transform3D.IDENTITY
 var m_ladder_axis := Vector3.UP
 var m_ladder_distance := 0.0
 var m_last_animation_phase := -1
+var m_action_transition_timer := 0.0
+var m_action_transition_phase := -1
 
 var m_visual_root: Node3D = null
 var m_debug_box_part: MeshInstance3D = null
@@ -447,6 +449,66 @@ func get_action_mode() -> int:
 
 func is_action_free() -> bool:
 	return action_controller == null or action_controller.is_free()
+
+
+func get_active_action_target() -> Object:
+	if action_controller == null:
+		return null
+	return action_controller.get_active_target()
+
+
+## Reserves one sustained posture after a world target has accepted the actor.
+## Target hooks are deliberately skipped here because the target already owns its
+## physical begin lifecycle.
+func begin_sustained_action(action_mode: int, target: Object) -> bool:
+	if action_controller == null:
+		action_controller = CharacterActionController3DScript.new()
+		action_controller.setup(self)
+	if !action_controller.begin_action(action_mode, target, false):
+		return false
+	match action_mode:
+		CharacterActionController3DScript.ActionMode.SIT:
+			_begin_action_animation_transition(
+				CharacterAnimationProfile3DScript.Phase.SIT_ENTER,
+				animation_profile.sit_entry_seconds
+			)
+		CharacterActionController3DScript.ActionMode.CARRY:
+			_sync_model_animation(true)
+		CharacterActionController3DScript.ActionMode.PUSH:
+			_play_animation_phase(
+				CharacterAnimationProfile3DScript.Phase.PUSH,
+				true
+			)
+		CharacterActionController3DScript.ActionMode.PULL:
+			_play_animation_phase(
+				CharacterAnimationProfile3DScript.Phase.PULL,
+				true
+			)
+	return true
+
+
+func cancel_sustained_action(target: Object = null) -> bool:
+	if action_controller == null or action_controller.is_free():
+		return false
+	if target != null and action_controller.get_active_target() != target:
+		return false
+	var previous_mode := action_controller.get_action_mode()
+	if !action_controller.cancel_active_action(false):
+		return false
+	_play_action_exit_transition(previous_mode)
+	return true
+
+
+func complete_sustained_action(target: Object = null) -> bool:
+	if action_controller == null or action_controller.is_free():
+		return false
+	if target != null and action_controller.get_active_target() != target:
+		return false
+	var previous_mode := action_controller.get_action_mode()
+	if !action_controller.complete_active_action(false):
+		return false
+	_play_action_exit_transition(previous_mode)
+	return true
 
 
 ## Begins ladder locomotion at an authored mount transform. Ladder target selection,
@@ -675,7 +737,21 @@ func _physics_process(delta: float) -> void:
 	if is_on_ladder() or is_recovering():
 		velocity = Vector3.ZERO
 		return
-	_integrate_motion_intent(m_pending_motion_intent, delta)
+	var action_intent := _constrain_sustained_action_intent(
+		m_pending_motion_intent,
+		delta
+	)
+	_call_active_action_motion_hook(
+		&"before_actor_motion",
+		action_intent,
+		delta
+	)
+	_integrate_motion_intent(action_intent, delta)
+	_call_active_action_motion_hook(
+		&"after_actor_motion",
+		action_intent,
+		delta
+	)
 
 
 ## Compatibility helper retained for focused callers. It goes through the same
@@ -864,6 +940,14 @@ func _advance_transient_timers(delta: float) -> void:
 		else:
 			m_jump_buffer_remaining = maxf(m_jump_buffer_remaining, 0.0)
 	m_landing_timer = maxf(m_landing_timer - delta, 0.0)
+	if m_action_transition_timer > 0.0:
+		m_action_transition_timer = maxf(
+			m_action_transition_timer - maxf(delta, 0.0),
+			0.0
+		)
+		if is_zero_approx(m_action_transition_timer):
+			m_action_transition_phase = -1
+			_sync_model_animation(true)
 	if !is_recovering():
 		return
 	m_recovery_timer = maxf(m_recovery_timer - delta, 0.0)
@@ -936,6 +1020,8 @@ func _settle_transient_state() -> void:
 	m_jump_buffer_pending = false
 	m_airborne_wall_normal = Vector3.ZERO
 	m_recovery_timer = 0.0
+	m_action_transition_timer = 0.0
+	m_action_transition_phase = -1
 	m_ladder_distance = 0.0
 	if recovery_controller != null:
 		recovery_controller.reset_transient_tracking()
@@ -1286,6 +1372,8 @@ func _play_animation_phase(
 
 
 func _desired_animation_phase() -> int:
+	if m_action_transition_phase >= 0 and m_action_transition_timer > 0.0:
+		return m_action_transition_phase
 	match m_locomotion_mode:
 		LocomotionMode.RECOVERY:
 			return CharacterAnimationProfile3DScript.Phase.RECOVERY
@@ -1293,6 +1381,19 @@ func _desired_animation_phase() -> int:
 			return CharacterAnimationProfile3DScript.Phase.LADDER_CLIMB
 		LocomotionMode.TRAVERSAL_JUMP, LocomotionMode.AIRBORNE:
 			return CharacterAnimationProfile3DScript.Phase.AIR
+	match get_action_mode():
+		CharacterActionController3DScript.ActionMode.CARRY:
+			return (
+				CharacterAnimationProfile3DScript.Phase.CARRY_WALK
+				if is_walking
+				else CharacterAnimationProfile3DScript.Phase.CARRY_IDLE
+			)
+		CharacterActionController3DScript.ActionMode.PUSH:
+			return CharacterAnimationProfile3DScript.Phase.PUSH
+		CharacterActionController3DScript.ActionMode.PULL:
+			return CharacterAnimationProfile3DScript.Phase.PULL
+		CharacterActionController3DScript.ActionMode.SIT:
+			return CharacterAnimationProfile3DScript.Phase.SIT_IDLE
 	if m_landing_timer > 0.0:
 		if !is_walking:
 			return CharacterAnimationProfile3DScript.Phase.LAND
@@ -1301,6 +1402,71 @@ func _desired_animation_phase() -> int:
 	if is_walking:
 		return CharacterAnimationProfile3DScript.Phase.WALK
 	return CharacterAnimationProfile3DScript.Phase.IDLE
+
+
+func _constrain_sustained_action_intent(
+	intent: CharacterMotionIntent3DScript,
+	delta: float
+) -> CharacterMotionIntent3DScript:
+	if is_action_free():
+		return intent
+	var target := get_active_action_target()
+	if is_instance_valid(target) and target.has_method(
+		"constrain_motion_intent"
+	):
+		var constrained: Variant = target.call(
+			"constrain_motion_intent",
+			self,
+			intent,
+			delta
+		)
+		if constrained is CharacterMotionIntent3DScript:
+			return constrained as CharacterMotionIntent3DScript
+	match get_action_mode():
+		CharacterActionController3DScript.ActionMode.CARRY:
+			return CharacterMotionIntent3DScript.new(
+				intent.direction,
+				minf(intent.movement_speed, 3.2)
+			)
+		_:
+			return CharacterMotionIntent3DScript.new()
+
+
+func _call_active_action_motion_hook(
+	method_name: StringName,
+	intent: CharacterMotionIntent3DScript,
+	delta: float
+) -> void:
+	var target := get_active_action_target()
+	if !is_instance_valid(target) or !target.has_method(method_name):
+		return
+	target.call(method_name, self, intent, delta)
+
+
+func _begin_action_animation_transition(phase: int, duration: float) -> void:
+	m_action_transition_phase = phase
+	m_action_transition_timer = maxf(duration, 0.0)
+	_play_animation_phase(phase, true)
+	if is_zero_approx(m_action_transition_timer):
+		m_action_transition_phase = -1
+
+
+func _play_action_exit_transition(previous_mode: int) -> void:
+	match previous_mode:
+		CharacterActionController3DScript.ActionMode.CARRY:
+			_begin_action_animation_transition(
+				CharacterAnimationProfile3DScript.Phase.CARRY_PLACE,
+				animation_profile.carry_release_seconds
+			)
+		CharacterActionController3DScript.ActionMode.SIT:
+			_begin_action_animation_transition(
+				CharacterAnimationProfile3DScript.Phase.SIT_EXIT,
+				animation_profile.sit_exit_seconds
+			)
+		_:
+			m_action_transition_timer = 0.0
+			m_action_transition_phase = -1
+			_sync_model_animation(true)
 
 
 func _match_model_animation(animation_name: String) -> String:
