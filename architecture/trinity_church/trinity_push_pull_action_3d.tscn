@@ -1,0 +1,164 @@
+[gd_scene load_steps=16 format=3]
+
+[ext_resource type="Script" path="res://game/world/push_pull_object_3d.gd" id="1_push_pull"]
+
+[sub_resource type="StandardMaterial3D" id="ChestWoodMaterial"]
+albedo_color = Color(0.31, 0.13, 0.055, 1)
+roughness = 0.82
+
+[sub_resource type="StandardMaterial3D" id="ChestTrimMaterial"]
+albedo_color = Color(0.67, 0.42, 0.16, 1)
+metallic = 0.15
+roughness = 0.62
+
+[sub_resource type="StandardMaterial3D" id="RailMaterial"]
+albedo_color = Color(0.23, 0.25, 0.28, 1)
+metallic = 0.45
+roughness = 0.58
+
+[sub_resource type="StandardMaterial3D" id="GoalMaterial"]
+albedo_color = Color(0.76, 0.65, 0.28, 1)
+emission_enabled = true
+emission = Color(0.16, 0.12, 0.025, 1)
+roughness = 0.72
+
+[sub_resource type="StandardMaterial3D" id="BlockerMaterial"]
+albedo_color = Color(0.55, 0.16, 0.12, 1)
+roughness = 0.85
+
+[sub_resource type="BoxMesh" id="ChestBaseMesh"]
+material = SubResource("ChestWoodMaterial")
+size = Vector3(0.8, 0.5, 0.55)
+
+[sub_resource type="BoxMesh" id="ChestLidMesh"]
+material = SubResource("ChestWoodMaterial")
+size = Vector3(0.82, 0.15, 0.57)
+
+[sub_resource type="BoxMesh" id="ChestBandMesh"]
+material = SubResource("ChestTrimMaterial")
+size = Vector3(0.06, 0.66, 0.57)
+
+[sub_resource type="BoxMesh" id="HandleMesh"]
+material = SubResource("ChestTrimMaterial")
+size = Vector3(0.06, 0.16, 0.24)
+
+[sub_resource type="BoxShape3D" id="ChestCollisionShape"]
+size = Vector3(0.8, 0.65, 0.55)
+
+[sub_resource type="BoxMesh" id="RailMesh"]
+material = SubResource("RailMaterial")
+size = Vector3(3, 0.05, 0.12)
+
+[sub_resource type="BoxMesh" id="GoalMarkerMesh"]
+material = SubResource("GoalMaterial")
+size = Vector3(0.08, 0.015, 0.75)
+
+[sub_resource type="BoxShape3D" id="RequiredPathShape"]
+size = Vector3(0.3, 1.3, 1.15)
+
+[sub_resource type="BoxMesh" id="ValidationBlockerMesh"]
+material = SubResource("BlockerMaterial")
+size = Vector3(0.3, 1.2, 1)
+
+[sub_resource type="BoxShape3D" id="ValidationBlockerShape"]
+size = Vector3(0.3, 1.2, 1)
+
+[node name="TrinityPushPullAction3D" type="Node3D"]
+script = ExtResource("1_push_pull")
+action_id = &"trinity_hymn_chest"
+action_label = "Align hymn chest"
+action_priority = 8
+interaction_range = 1.1
+max_vertical_delta = 1.0
+facing_tolerance_degrees = 10.0
+sustained_action = true
+semantic_completion_id = &"trinity_hymn_chest_aligned"
+path_start_path = NodePath("PathStart")
+path_end_path = NodePath("PathEnd")
+goal_path = NodePath("Goal")
+movable_body_path = NodePath("HymnChest")
+movable_collision_shape_path = NodePath("HymnChest/CollisionShape3D")
+handle_path = NodePath("HymnChest/Handle")
+actor_anchor_path = NodePath("HymnChest/ActorAnchor")
+required_path_area_path = NodePath("RequiredPathResetVolume")
+metadata/_edit_group_ = true
+metadata/production_slice = "milestone_c_push_pull"
+metadata/authored_path_length_m = 3.0
+metadata/authored_goal_coordinate_m = 2.5
+
+[node name="Rail" type="MeshInstance3D" parent="."]
+position = Vector3(1.5, 0.025, 0)
+mesh = SubResource("RailMesh")
+cast_shadow = 0
+
+[node name="PathStart" type="Marker3D" parent="."]
+position = Vector3(0, 0.325, 0)
+
+[node name="PathEnd" type="Marker3D" parent="."]
+position = Vector3(3, 0.325, 0)
+
+[node name="Goal" type="Marker3D" parent="."]
+position = Vector3(2.5, 0.325, 0)
+
+[node name="GoalMarker" type="MeshInstance3D" parent="Goal"]
+position = Vector3(0, -0.2925, 0)
+mesh = SubResource("GoalMarkerMesh")
+cast_shadow = 0
+
+[node name="RequiredPathResetVolume" type="Area3D" parent="."]
+position = Vector3(1.5, 0.65, 0)
+collision_layer = 0
+collision_mask = 1
+monitoring = true
+monitorable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RequiredPathResetVolume"]
+shape = SubResource("RequiredPathShape")
+
+[node name="ValidationBlocker" type="StaticBody3D" parent="."]
+position = Vector3(1.5, 0.6, 0)
+collision_layer = 1
+collision_mask = 1
+metadata/validation_toggle = "Set CollisionShape3D.disabled false and show BlockerVisual"
+
+[node name="BlockerVisual" type="MeshInstance3D" parent="ValidationBlocker"]
+visible = false
+mesh = SubResource("ValidationBlockerMesh")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ValidationBlocker"]
+disabled = true
+shape = SubResource("ValidationBlockerShape")
+
+[node name="HymnChest" type="AnimatableBody3D" parent="."]
+position = Vector3(0.1, 0.325, 0)
+collision_layer = 1
+collision_mask = 1
+sync_to_physics = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="HymnChest"]
+shape = SubResource("ChestCollisionShape")
+
+[node name="Base" type="MeshInstance3D" parent="HymnChest"]
+position = Vector3(0, -0.075, 0)
+mesh = SubResource("ChestBaseMesh")
+
+[node name="Lid" type="MeshInstance3D" parent="HymnChest"]
+position = Vector3(0, 0.25, 0)
+mesh = SubResource("ChestLidMesh")
+
+[node name="LeftBand" type="MeshInstance3D" parent="HymnChest"]
+position = Vector3(-0.25, 0, 0)
+mesh = SubResource("ChestBandMesh")
+
+[node name="RightBand" type="MeshInstance3D" parent="HymnChest"]
+position = Vector3(0.25, 0, 0)
+mesh = SubResource("ChestBandMesh")
+
+[node name="Handle" type="Marker3D" parent="HymnChest"]
+position = Vector3(-0.43, 0.2, 0)
+
+[node name="HandleVisual" type="MeshInstance3D" parent="HymnChest/Handle"]
+mesh = SubResource("HandleMesh")
+
+[node name="ActorAnchor" type="Marker3D" parent="HymnChest"]
+position = Vector3(-0.72, -0.325, 0)
