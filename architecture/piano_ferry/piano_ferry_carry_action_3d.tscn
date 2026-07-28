@@ -1,0 +1,190 @@
+[gd_scene load_steps=19 format=3]
+
+[ext_resource type="Script" path="res://game/world/carryable_object_3d.gd" id="1_carry"]
+[ext_resource type="Script" path="res://game/world/carry_placement_target_3d.gd" id="2_place"]
+
+[sub_resource type="StandardMaterial3D" id="Material_lane"]
+albedo_color = Color(0.294118, 0.333333, 0.345098, 1)
+roughness = 0.82
+
+[sub_resource type="StandardMaterial3D" id="Material_frame"]
+albedo_color = Color(0.698039, 0.25098, 0.188235, 1)
+roughness = 0.78
+
+[sub_resource type="StandardMaterial3D" id="Material_case"]
+albedo_color = Color(0.188235, 0.0941176, 0.0509804, 1)
+roughness = 0.58
+
+[sub_resource type="StandardMaterial3D" id="Material_case_trim"]
+albedo_color = Color(0.827451, 0.607843, 0.247059, 1)
+metallic = 0.35
+roughness = 0.42
+
+[sub_resource type="StandardMaterial3D" id="Material_shelf"]
+albedo_color = Color(0.435294, 0.247059, 0.133333, 1)
+roughness = 0.72
+
+[sub_resource type="BoxMesh" id="Mesh_lane"]
+material = SubResource("Material_lane")
+size = Vector3(1.5, 0.08, 4.5)
+
+[sub_resource type="BoxShape3D" id="Shape_lane"]
+size = Vector3(1.5, 0.08, 4.5)
+
+[sub_resource type="BoxMesh" id="Mesh_post"]
+material = SubResource("Material_frame")
+size = Vector3(0.15, 2.1, 0.18)
+
+[sub_resource type="BoxShape3D" id="Shape_post"]
+size = Vector3(0.15, 2.1, 0.18)
+
+[sub_resource type="BoxMesh" id="Mesh_lintel"]
+material = SubResource("Material_frame")
+size = Vector3(1.3, 0.18, 0.18)
+
+[sub_resource type="BoxShape3D" id="Shape_lintel"]
+size = Vector3(1.3, 0.18, 0.18)
+
+[sub_resource type="BoxMesh" id="Mesh_case"]
+material = SubResource("Material_case")
+size = Vector3(0.5, 0.35, 0.3)
+
+[sub_resource type="BoxShape3D" id="Shape_case"]
+size = Vector3(0.5, 0.35, 0.3)
+
+[sub_resource type="BoxMesh" id="Mesh_handle"]
+material = SubResource("Material_case_trim")
+size = Vector3(0.2, 0.04, 0.04)
+
+[sub_resource type="BoxMesh" id="Mesh_shelf"]
+material = SubResource("Material_shelf")
+size = Vector3(1.2, 0.1, 0.5)
+
+[sub_resource type="BoxShape3D" id="Shape_shelf"]
+size = Vector3(1.2, 0.1, 0.5)
+
+[node name="PianoFerryCarryAction3D" type="Node3D"]
+metadata/feature = "milestone_c_carry"
+metadata/production_parent = "piano_ferry_stylized_3d.tscn"
+metadata/semantic_completion_id = "piano_ferry_music_case_shelved"
+
+[node name="CarryLane" type="StaticBody3D" parent="."]
+position = Vector3(0, -0.04, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="CarryLane"]
+mesh = SubResource("Mesh_lane")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CarryLane"]
+shape = SubResource("Shape_lane")
+
+[node name="PassDoorway" type="Node3D" parent="."]
+position = Vector3(0, 0, -0.2)
+metadata/opening_width = 1.0
+metadata/opening_height = 2.1
+
+[node name="LeftPost" type="StaticBody3D" parent="PassDoorway"]
+position = Vector3(-0.575, 1.05, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="PassDoorway/LeftPost"]
+mesh = SubResource("Mesh_post")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PassDoorway/LeftPost"]
+shape = SubResource("Shape_post")
+
+[node name="RightPost" type="StaticBody3D" parent="PassDoorway"]
+position = Vector3(0.575, 1.05, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="PassDoorway/RightPost"]
+mesh = SubResource("Mesh_post")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PassDoorway/RightPost"]
+shape = SubResource("Shape_post")
+
+[node name="Lintel" type="StaticBody3D" parent="PassDoorway"]
+position = Vector3(0, 2.19, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="PassDoorway/Lintel"]
+mesh = SubResource("Mesh_lintel")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PassDoorway/Lintel"]
+shape = SubResource("Shape_lintel")
+
+[node name="NarrowRejectionFrame" type="Node3D" parent="."]
+position = Vector3(2, 0, -0.2)
+metadata/opening_width = 0.75
+metadata/opening_height = 2.1
+metadata/validation_only = true
+
+[node name="LeftPost" type="StaticBody3D" parent="NarrowRejectionFrame"]
+position = Vector3(-0.45, 1.05, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NarrowRejectionFrame/LeftPost"]
+mesh = SubResource("Mesh_post")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NarrowRejectionFrame/LeftPost"]
+shape = SubResource("Shape_post")
+
+[node name="RightPost" type="StaticBody3D" parent="NarrowRejectionFrame"]
+position = Vector3(0.45, 1.05, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NarrowRejectionFrame/RightPost"]
+mesh = SubResource("Mesh_post")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NarrowRejectionFrame/RightPost"]
+shape = SubResource("Shape_post")
+
+[node name="Lintel" type="StaticBody3D" parent="NarrowRejectionFrame"]
+position = Vector3(0, 2.19, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NarrowRejectionFrame/Lintel"]
+mesh = SubResource("Mesh_lintel")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NarrowRejectionFrame/Lintel"]
+shape = SubResource("Shape_lintel")
+
+[node name="MusicCase" type="Node3D" parent="."]
+position = Vector3(0, 0.175, -2)
+script = ExtResource("1_carry")
+action_id = &"ferry_music_case_carry"
+action_label = "Pick up music case"
+action_priority = -20
+pickup_handle_path = NodePath("PickupHandle")
+semantic_completion_id = &"piano_ferry_music_case_shelved"
+carried_bounds = Vector3(0.5, 0.35, 0.3)
+
+[node name="CaseMesh" type="MeshInstance3D" parent="MusicCase"]
+mesh = SubResource("Mesh_case")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="MusicCase"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MusicCase/StaticBody3D"]
+shape = SubResource("Shape_case")
+
+[node name="PickupHandle" type="Marker3D" parent="MusicCase"]
+position = Vector3(0, 0.195, 0)
+
+[node name="HandleMesh" type="MeshInstance3D" parent="MusicCase/PickupHandle"]
+mesh = SubResource("Mesh_handle")
+
+[node name="Shelf" type="StaticBody3D" parent="."]
+position = Vector3(0, 0.7, 2)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Shelf"]
+mesh = SubResource("Mesh_shelf")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Shelf"]
+shape = SubResource("Shape_shelf")
+
+[node name="ShelfStandingAnchor" type="Marker3D" parent="."]
+position = Vector3(0, 0, 1)
+metadata/placement_forward_distance = 1.0
+
+[node name="MusicCaseShelfPlacement" type="Node3D" parent="."]
+position = Vector3(0, 0.925, 2)
+script = ExtResource("2_place")
+placement_id = &"piano_ferry_music_case_shelf"
+placement_label = "Shelve music case"
+placement_priority = -20
+accepted_action_ids = Array[StringName]([&"ferry_music_case_carry"])
+authored_support_coverage = 1.0
+authored_support_slope_degrees = 0.0
