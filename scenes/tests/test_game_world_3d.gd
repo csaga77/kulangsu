@@ -83,6 +83,7 @@ func _run_smoke_checks() -> void:
 	_check_player(failures)
 	_check_player_surface_follow(failures)
 	_check_road_surface_notification_safety(failures)
+	_check_street_junction_collision_safety(failures)
 	_check_camera(failures)
 	_check_player_appearance_mapping(failures)
 	_check_landmarks(failures)
@@ -313,6 +314,65 @@ func _find_elevated_street_position(terrain: LowPolyTerrain3D) -> Dictionary:
 				"separation": separation,
 			}
 	return best_probe
+
+
+func _check_street_junction_collision_safety(failures: Array[String]) -> void:
+	if !is_instance_valid(m_world):
+		return
+	var network := m_world.get_node_or_null(
+		"LowPolyTerrain3D/GeneratedStreets/StreetNetwork3D"
+	) as Node3D
+	if network == null:
+		failures.append("junction-collision check is missing the generated street network")
+		return
+	var junction_count := 0
+	for junction in network.get_children():
+		if !junction.has_meta(&"street_network_junction_id"):
+			continue
+		junction_count += 1
+		var collision_shape := junction.get_node_or_null(
+			"JunctionCollision/CollisionShape3D"
+		) as CollisionShape3D
+		var concave_shape := (
+			collision_shape.shape as ConcavePolygonShape3D
+			if collision_shape != null
+			else null
+		)
+		if concave_shape == null:
+			failures.append(
+				"generated junction %s is missing walkable collision"
+				% String(junction.get_meta(&"street_network_junction_id", ""))
+			)
+			continue
+		if !concave_shape.backface_collision:
+			failures.append(
+				"generated junction %s does not use two-sided walkable collision"
+				% String(junction.get_meta(&"street_network_junction_id", ""))
+			)
+		var upward_face_count := 0
+		var entry_barrier_count := 0
+		var faces := concave_shape.get_faces()
+		for index in range(0, faces.size(), 3):
+			var normal := (
+				(faces[index + 1] - faces[index])
+				.cross(faces[index + 2] - faces[index])
+				.normalized()
+			)
+			if normal.y >= 0.9:
+				upward_face_count += 1
+			elif absf(normal.y) < 0.1:
+				entry_barrier_count += 1
+		if upward_face_count <= 0 or entry_barrier_count > 0:
+			failures.append(
+				"generated junction %s has %d walkable and %d vertical collision face(s)"
+				% [
+					String(junction.get_meta(&"street_network_junction_id", "")),
+					upward_face_count,
+					entry_barrier_count,
+				]
+			)
+	if junction_count <= 0:
+		failures.append("production street network generated no junction collision fixtures")
 
 
 func _find_surface_probe_cell(terrain: Node, coordinates: LowPolyWorldCoordinates3D, find_water: bool) -> Vector2i:
