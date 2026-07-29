@@ -413,10 +413,13 @@ rename, or rescore that existing event, and both facts are suppressed in
 consolidation on **2026-07-29** and awaits production review. The Piano Ferry
 instances its music-case carry and harbor-bench sitting child scenes; Trinity Church
 instances its constrained hymn-chest push/pull child scene. Their focused fixtures,
-fixed Continue persistence fixture, production-world assertions, deterministic
-cancel/pause/recovery/unload behavior, Story-mode idempotency, Free Walk no-op
-semantics, and generated action fallbacks for all three player models pass with
-process status `0`. The locked manual production-flow checks in the table above
+fixed Continue persistence fixture, production-world assertions, and standalone
+environment test strip pass with process status `0`. The environment harness places
+carry, sit, and push/pull fixtures clear of the default Bagua Tower and verifies
+context registration, visible grounding, building clearance, and fixture spacing.
+Deterministic cancel/pause/recovery/unload behavior, Story-mode idempotency, Free
+Walk no-op semantics, and generated action fallbacks for all three player models
+also remain green. The locked manual production-flow checks in the table above
 remain the acceptance review; Milestone D remains the sole workstream closure gate.
 
 #### Dated Pre-Refactor Baseline
@@ -556,6 +559,11 @@ PASS: HumanBody3D adapter smoke test
 "/Applications/Godot.app/Contents/MacOS/Godot" --headless --path . --scene res://scenes/tests/test_environment_3d.tscn
 ```
 
+- The environment scene must register all three Milestone C targets and keep their
+  visible bounds above ground, at least `3.0 m` from the default building, and at
+  least `2.0 m` from each other. Open the scene without `--headless` for a compact
+  manual sandbox: walk south from the spawn and press `R` at the left carry,
+  center sit, or right push/pull fixture; `Esc` cancels an active action.
 - Run the production-world validation after actor scale, movement, camera, or terrain-collision changes:
 
 ```sh

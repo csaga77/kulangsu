@@ -24,7 +24,8 @@ var m_hint_dirty := true
 
 
 func _ready() -> void:
-	set_process(is_configured())
+	set_process(false)
+	set_physics_process(is_configured())
 
 
 func configure(
@@ -43,8 +44,8 @@ func configure(
 	refresh_targets()
 	_connect_controller()
 	_connect_app_state()
-	set_process(is_configured())
-	update_selection()
+	set_process(false)
+	set_physics_process(is_configured())
 
 
 func _exit_tree() -> void:
@@ -59,7 +60,7 @@ func _notification(what: int) -> void:
 		cancel_active_action(&"pause")
 
 
-func _process(_delta: float) -> void:
+func _physics_process(_delta: float) -> void:
 	update_selection()
 
 

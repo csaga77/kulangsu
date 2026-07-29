@@ -4,6 +4,9 @@
 [ext_resource type="PackedScene" uid="uid://cfrcjv76v3c4g" path="res://characters/human_body_3d.tscn" id="3_player"]
 [ext_resource type="Script" uid="uid://cam6vob3l5ttk" path="res://characters/control/player_controller_3d.gd" id="4_player_controller"]
 [ext_resource type="Script" uid="uid://3w3tvo6fg0sa" path="res://godot_common/scenes/camera_3d_controller.gd" id="5_camera_controller"]
+[ext_resource type="PackedScene" path="res://architecture/piano_ferry/piano_ferry_carry_action_3d.tscn" id="6_carry"]
+[ext_resource type="PackedScene" path="res://architecture/piano_ferry/piano_ferry_seat_action_3d.tscn" id="7_sit"]
+[ext_resource type="PackedScene" path="res://architecture/trinity_church/trinity_push_pull_action_3d.tscn" id="8_push_pull"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
 albedo_color = Color(0.46, 0.56, 0.48, 1)
@@ -33,6 +36,19 @@ player_spawn = Vector3(0, 0.08, -18)
 
 [node name="BuildingContainer" type="Node3D" parent="." unique_id=668456635]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, 0)
+
+[node name="MilestoneCActionFixtures" type="Node3D" parent="."]
+metadata/building_clearance_m = 3.0
+metadata/layout = "south_test_strip"
+
+[node name="CarryFixture" parent="MilestoneCActionFixtures" instance=ExtResource("6_carry")]
+position = Vector3(-9, 0.08, -14)
+
+[node name="SitFixture" parent="MilestoneCActionFixtures" instance=ExtResource("7_sit")]
+position = Vector3(0, 0, -14)
+
+[node name="PushPullFixture" parent="MilestoneCActionFixtures" instance=ExtResource("8_push_pull")]
+position = Vector3(5, 0.01, -14)
 
 [node name="Ground" type="MeshInstance3D" parent="." unique_id=189259589]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.15, 3)
@@ -86,10 +102,11 @@ environment = SubResource("Environment_tour")
 [node name="Panel" type="PanelContainer" parent="Instructions" unique_id=1048532928]
 offset_left = 18.0
 offset_top = 18.0
-offset_right = 608.0
-offset_bottom = 92.0
+offset_right = 758.0
+offset_bottom = 132.0
 
 [node name="Label" type="Label" parent="Instructions/Panel" unique_id=599184378]
 layout_mode = 2
-text = "Environment Test
-WASD / arrows move • Shift walks • Space jumps • Right-drag rotates • Mouse wheel zooms • Esc exits"
+text = "Environment Test • Milestone C fixtures are south of the tower: carry left, sit center, push/pull right
+WASD / arrows move • Shift walks • Space jumps • R interacts • Right-drag rotates • Mouse wheel zooms
+Esc cancels an active action; press Esc again to exit"
